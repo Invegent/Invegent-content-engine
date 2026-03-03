@@ -57,6 +57,36 @@ The foundation is solid enough to onboard a third paying client.
 - [ ] New GitHub Personal Access Token generated (old one rotated)
 - [ ] Environment variables audited — no secrets in code
 
+**1.6 — Meta App Review (Start NOW)**
+- [ ] Register invegent.com domain — host privacy policy and terms of service
+- [ ] Privacy policy covers: data collected, how used, third-party sharing (Meta),
+      user rights, contact details
+- [ ] Submit ONE review covering all five permissions in a single submission:
+      - pages_manage_posts (publish to client pages)
+      - pages_read_engagement (read post metrics)
+      - ads_management (create and manage boost campaigns)
+      - ads_read (read campaign performance)
+      - pages_manage_ads (manage ads on client pages)
+- [ ] Prepare screencast demo: ingest → draft → approve → publish flow
+- [ ] Review submitted — confirmation email received
+- [ ] Note: Standard Access graduation requires ~1,500 successful API calls
+      within a 15-day window — NDIS Yarns + Property Pulse publishing
+      volume is building this record now
+- [ ] Timeline: 2-8 weeks for review decision — start immediately, do not wait
+
+**1.7 — Dead Letter Queue**
+- [ ] Add dead status to all pipeline tables:
+      f.canonical_content_body (fetch_status = 'dead')
+      m.post_draft (approval_status = 'dead')
+      m.post_publish_queue (status = 'dead')
+      m.ai_job (status = 'dead')
+- [ ] Add dead_reason column (text) to each table above
+- [ ] pg_cron sweep: daily job moves items stuck in terminal failure
+      states for > 7 days to 'dead' with reason code
+- [ ] Dashboard Failures panel: surfaces all dead items with reason,
+      last_error, and one-click "requeue" action
+- [ ] Dead items are never deleted — they are an audit trail
+
 ### Phase 1 Done When
 ALL four of these are true simultaneously:
 1. Auto-approval agent running — less than 2 hours/week manual review
@@ -118,6 +148,19 @@ ICE learns from what it publishes.
 - [ ] Deployed on Vercel
 - [ ] Retool subscription cancelled
 
+**2.6 — Public Proof Dashboard**
+- [ ] Read-only Next.js page (no auth required)
+- [ ] Hosted at proof.invegent.com or similar
+- [ ] Shows NDIS Yarns live metrics:
+      followers (current + growth since ICE started)
+      posts published (total, last 30 days)
+      average engagement rate
+      top 3 posts (by engagement, with post preview)
+- [ ] Data served from m.post_performance via Supabase public read API
+- [ ] Used as primary sales asset in client acquisition conversations
+- [ ] "This is what ICE did for our own page — it will do the same for yours"
+- [ ] Updates automatically as new performance data comes in
+
 ### Phase 2 Done When
 1. Less than 2 hours/week total manual input for both clients
 2. Performance data flowing back into scoring
@@ -164,9 +207,17 @@ at small scale.
 - [ ] First external client onboarded end-to-end
 
 **3.4 — Distribution Layer**
-- [ ] Facebook Ads API boost integration
-      (auto-boost top 2 posts/week per client, $10/post)
-- [ ] Boost rules configurable per client in publish profile
+- [ ] Facebook Ads API boost integration — four-step API hierarchy:
+      Step 1: Create Campaign (objective = POST_ENGAGEMENT or PAGE_LIKES)
+      Step 2: Create Ad Set (targeting from boost_targeting jsonb, budget, schedule)
+      Step 3: Create Ad Creative (reference platform_post_id from m.post_publish)
+      Step 4: Create Ad (combine creative + ad set, submit for review)
+- [ ] boost-worker Edge Function deployed (see Blueprint: Agent 4)
+- [ ] Boost rules configurable per client: boost_enabled, boost_budget_aud,
+      boost_duration_days, boost_objective, boost_targeting, boost_score_threshold
+- [ ] m.post_boost table created — tracks campaign_id, adset_id, ad_id,
+      spend, reach, status per boosted post
+- [ ] Standard Access graduation confirmed (required for third-party page boosts)
 - [ ] Email newsletter channel via Resend
 - [ ] Cross-promotion / spotlight post template in campaign system
 
@@ -254,7 +305,8 @@ a mature ICE deployment. Success is defined as:
 ## Cross-Phase Dependencies
 Facebook Insights (2.1)
 → required for Content Analyst Agent (3.2)
-→ required for meaningful auto-boost rules (3.4)
+→ required for Auto-Boost Agent (3.4)
+→ required for Public Proof Dashboard content (2.6)
 → required for feed scoring improvement (ongoing)
 Auto-Approval Agent (1.2)
 → required for under 2 hours/week target
@@ -262,13 +314,21 @@ Auto-Approval Agent (1.2)
 Next.js Dashboard (2.5)
 → required before Client Portal (3.1)
 (shares codebase patterns)
-Meta App Review (3.5)
-→ must START in Phase 2 even though it completes in Phase 3
-→ takes weeks regardless of other work
-→ blocking item for external client production publishing
+Meta App Review (1.6) ← NOW PHASE 1
+→ must START immediately — review takes 2-8 weeks regardless of other work
+→ single submission covers publishing AND advertising permissions
+→ Standard Access graduation (~1,500 API calls in 15 days) blocks
+  third-party client publishing and boosting
+→ blocking item for ALL external client work (3.x)
 LinkedIn Publisher (2.3)
 → required before Facebook dependency = unacceptable risk
 → should complete before first external client onboards
+Dead Letter Queue (1.7)
+→ required for reliable pipeline monitoring at scale
+→ dashboard Failures panel depends on this
+Public Proof Dashboard (2.6)
+→ required as primary sales asset before first client conversation
+→ depends on Facebook Insights (2.1) for live data
 
 ---
 

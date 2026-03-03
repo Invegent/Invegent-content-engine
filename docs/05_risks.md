@@ -44,9 +44,12 @@ a Meta API issue outside our control.
 - Abstract publish layer so adding platforms takes hours not weeks
 - Implement proper exponential backoff on all Meta API calls (done)
 - Never queue more than 7 days of posts — keeps queue manageable during outages
+- Meta App Review (Phase 1.6) — one submission covers both publishing AND
+  advertising permissions (pages_manage_posts, ads_management, ads_read,
+  pages_manage_ads, pages_read_engagement). Not two separate reviews.
 
-**Status:** 🔴 HIGH RISK — LinkedIn publisher not yet built
-**Action required:** LinkedIn publisher is Phase 2 Priority 1
+**Status:** 🔴 HIGH RISK — LinkedIn publisher not yet built. App Review not started.
+**Action required:** LinkedIn publisher Phase 2 Priority 1. App Review Phase 1 — start NOW.
 
 ---
 
@@ -88,37 +91,54 @@ corruption, or Supabase infrastructure failure.
 ## Risk 3 — Meta App Review Not Started
 **Category:** Compliance / Business
 **Likelihood:** High (certainty if not addressed)
-**Impact:** High — blocks production publishing for external clients
+**Impact:** Critical — blocks ALL external client publishing AND advertising
 
 **Description:**
-ICE currently publishes using development-tier Meta API access.
-This is acceptable for testing with your own pages but is not
-permitted for managing third-party client pages at scale.
-To publish on behalf of external clients, ICE needs Meta App
-Review approval for the pages_manage_posts and
-pages_read_engagement permissions. The review process takes
-weeks to months, requires a privacy policy, terms of service,
-a working demo, and sometimes a video walkthrough. It cannot
-be rushed.
+ICE currently operates on development-tier Meta API access. This is
+acceptable for testing with your own pages but is explicitly not permitted
+for managing third-party client pages at scale. Meta App Review is required
+for both publishing AND advertising permissions — and these should be
+submitted together in ONE review, not separately.
+
+Permissions required (submit all five together):
+- pages_manage_posts — publish to client pages
+- pages_read_engagement — read post metrics
+- ads_management — create and manage boost campaigns
+- ads_read — read campaign performance data
+- pages_manage_ads — manage ads on client pages
+
+Standard Access graduation requirement: approximately 1,500 successful
+API calls within a 15-day window before Meta upgrades from Development
+to Standard Access. NDIS Yarns and Property Pulse publishing activity
+is building this record now — but only if the app is being used with
+the correct app credentials. This needs to be verified.
+
+The review process takes 2-8 weeks. It cannot be rushed. Starting it
+now means it may be approved before Phase 1 is complete. Starting it
+in Phase 2 means it will still be pending when the first external
+client is ready to onboard.
 
 **Trigger:**
-Attempting to onboard an external client and discovering
-publishing is blocked due to insufficient API permissions.
+Attempting to onboard an external client and discovering publishing
+is blocked due to insufficient permissions OR attempting to activate
+the boost agent and discovering ads permissions are missing.
 
 **Response:**
-1. Explain delay to client honestly
+1. Explain delay to client honestly — this is a Meta process, not an ICE bug
 2. Use manual publishing workaround while review completes
-3. Expedite review submission if not already submitted
+3. Check if Standard Access threshold has been met — if not, increase
+   publishing volume on existing pages to build the call record faster
 
 **Mitigation:**
-- Start Meta App Review process during Phase 2 (runs in background)
-- Prepare required assets: privacy policy, terms of service, demo video
-- Register invegent.com domain and host privacy policy there
-- Do not promise external clients a start date until review is approved
+- Submit Meta App Review NOW (Phase 1.6 — not Phase 2 as previously planned)
+- Register invegent.com — host privacy policy and terms of service there
+- Submit all five permissions in one review, not piecemeal
+- Do not promise external clients a start date until Standard Access confirmed
+- Verify existing publishing activity is accruing against the correct app credentials
 
-**Status:** 🟡 NOT STARTED — Must begin in Phase 2
-**Action required:** Add to Phase 2 task list. Start no later than
-when LinkedIn publisher is complete.
+**Status:** 🔴 CRITICAL — Not started. Now a Phase 1 deliverable.
+**Action required:** Phase 1.6 — start immediately. Every week of delay
+is a week added to the external client onboarding timeline.
 
 ---
 
@@ -237,16 +257,63 @@ Nothing reduces this risk faster.
 
 ---
 
+## Risk 7 — Silent Pipeline Failures
+**Category:** Operations / Reliability
+**Likelihood:** Medium — already occurring
+**Impact:** Medium — clients miss posts, trust erodes, debugging is slow
+
+**Description:**
+The ICE pipeline has multiple failure modes that currently produce no
+alert and leave no visible record. An ai_job can stay in 'pending' state
+indefinitely if the Edge Function crashes mid-run. A post_publish_queue
+item can be locked by a worker that timed out and never unlocked. A
+feed ingest run can fail silently with no error surfaced to the dashboard.
+The operator has no reliable way to know when the pipeline has stalled
+until a client notices they haven't received posts.
+
+This is not a theoretical risk — the error code 368 incident was only
+discovered because publishing stopped, not because an alert fired.
+At 2 clients this is recoverable. At 8-10 clients, silent failures
+become a business-threatening pattern.
+
+**Trigger:**
+Any client goes more than 48 hours without a scheduled post, OR
+an ai_job or post_publish_queue item remains in a locked/pending
+state for more than 2 hours with no progress.
+
+**Response:**
+1. Check dashboard Failures panel (once built — Phase 1.7)
+2. Identify which table and which rows are stuck
+3. Manually reset status or requeue as appropriate
+4. Investigate root cause — was it a timeout? An API error? A lock not released?
+5. Add the failure pattern to the dead letter sweep rules
+
+**Mitigation:**
+- Build Dead Letter Queue (Phase 1.7):
+  - dead status on all pipeline tables
+  - dead_reason column capturing last error
+  - pg_cron daily sweep moves stale locked/pending items to dead
+  - dashboard Failures panel surfaces all dead items with requeue action
+- Add monitoring: pg_cron job that alerts (writes to a monitoring table)
+  if no posts have been published in > 36 hours for any active client
+
+**Status:** 🟡 RISK ACTIVE — No dead letter queue or monitoring in place
+**Action required:** Phase 1.7 — Dead Letter Queue. Pairs with dashboard
+Failures panel to make all pipeline state visible at a glance.
+
+---
+
 ## Risk Summary Table
 
 | Risk | Likelihood | Impact | Status | Priority |
 |---|---|---|---|---|
-| Facebook API dependency | Medium | Critical | 🔴 LinkedIn not built | Phase 2.3 |
+| Facebook API dependency | Medium | Critical | 🔴 App Review not started | Phase 1.6 + 2.3 |
 | No database backups | Low | Catastrophic | 🔴 Not active | TODAY |
-| Meta App Review not started | High | High | 🟡 Not started | Phase 2 |
+| Meta App Review not started | High | Critical | 🔴 Not started | Phase 1.6 — NOW |
 | AI model vendor dependency | Medium | Medium | 🟡 Partial | Phase 4 |
 | No feedback loop | Certain | High | 🔴 Active | Phase 2.1 |
 | Solo founder bottleneck | High | High | 🟡 Partial | Phase 1.2 |
+| Silent pipeline failures | Medium | Medium | 🟡 Active | Phase 1.7 |
 
 ---
 

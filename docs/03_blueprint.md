@@ -15,7 +15,7 @@ Multiple apps and agents read from and write to the same database.
 │  content-fetch            feed-intelligence    m.* (publishing) │
 │  ai-worker                content-analyst      c.* (clients)    │
 │  bundler                  insights-worker      t.* (taxonomy)   │
-│  publisher                                     a.* (enrichment) │
+│  publisher                boost-worker         a.* (enrichment) │
 │  pg_cron (scheduler)                           k.* (governance) │
 └──────────┬──────────────────────┬──────────────────┬───────────┘
 │                      │                  │
@@ -102,6 +102,7 @@ m.post_draft               AI-generated drafts awaiting approval
 m.post_publish_queue       Approved posts awaiting publishing
 m.post_publish             Published post record
 m.post_performance         Engagement data from platform APIs (planned)
+m.post_boost               Boost job record (campaign_id, adset_id, ad_id, status)
 m.post_feedback            Manual feedback on published posts
 m.ai_job                   Job queue for AI processing tasks
 
@@ -110,7 +111,9 @@ c.client                   Client identity (name, slug, timezone, status)
 c.client_ai_profile        AI persona, system prompt, model, platform rules
 c.client_channel           Platform connections per client
 c.client_digest_policy     Content selection rules (strict/lenient, window)
-c.client_publish_profile   Publishing settings (mode, throttle, token, enabled)
+c.client_publish_profile   Publishing settings (mode, throttle, token, enabled,
+                           boost_enabled, boost_budget_aud, boost_duration_days,
+                           boost_objective, boost_targeting jsonb, boost_score_threshold)
 c.client_source            Feed → client links with weights
 c.client_content_scope     Client → content vertical links
 
@@ -201,7 +204,7 @@ This architecture means:
 
 ---
 
-## The Three Agents
+## The Four Agents
 
 ### Agent 1 — Auto-Approval Agent
 **Purpose:** Eliminate manual review of 80-90% of drafts
@@ -253,6 +256,46 @@ This architecture means:
 
 **Implementation:** Edge Function, runs weekly via pg_cron
 **Dependencies:** Facebook Insights back-feed must be working first
+
+---
+
+### Agent 4 — Auto-Boost Agent
+**Purpose:** Automatically boost top-performing posts via the Facebook Ads API
+to grow page reach without manual ad management
+
+**Four-step Facebook Ads API hierarchy:**
+1. Campaign — create with objective = PAGE_LIKES or POST_ENGAGEMENT
+2. Ad Set — define targeting (job title, location, age), budget, schedule
+3. Creative — reference the existing page post by platform_post_id
+4. Ad — combine creative + ad set → submit for review → goes live
+
+**Logic:**
+1. Read m.post_publish where published_at > 24 hours ago
+2. Read m.post_performance — check engagement rate vs client threshold
+3. If engagement_rate ≥ boost_score_threshold in client_publish_profile:
+   - Create Campaign via Ads API
+   - Create Ad Set (targeting from boost_targeting jsonb field)
+   - Create Ad Creative referencing platform_post_id
+   - Create Ad → status transitions: PENDING_REVIEW → ACTIVE
+4. Write to m.post_boost (campaign_id, adset_id, creative_id, ad_id, status)
+5. Daily: check ad status, write spend and reach back to m.post_boost
+
+**Rate limits:**
+- Ads API: 200 calls per hour per ad account
+- Each boost = 4 API calls (one per hierarchy level)
+- 10 boosts per hour is well within limits
+
+**Permissions required (Meta App Review):**
+- ads_management
+- ads_read
+- pages_manage_ads
+- business_management (for Business Manager accounts)
+
+**Implementation:** Edge Function (boost-worker), runs daily via pg_cron
+**Dependencies:**
+- m.post_performance must be populated (requires Phase 2.1)
+- Meta App Review must include ads_management permission (Phase 1.6)
+- Standard Access graduation required before boosting third-party client pages
 
 ---
 
