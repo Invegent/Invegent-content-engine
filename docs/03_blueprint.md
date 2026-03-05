@@ -95,25 +95,50 @@ f.canonical_content_item   Deduplicated canonical identity
 f.content_item_canonical_map  Item → canonical mapping
 f.canonical_content_body   Full text extraction with workflow states
 
+Operational tables (logging, not in pipeline flow):
+f.cron_http_log            HTTP response log for pg_cron invocations
+f.ingest_error_log         Detailed error log per ingest run
+f.trend_point              Raw trend signal data (future use)
+f.raw_metric_point         Raw metric snapshots (future use)
+f.raw_timeseries_point     Raw timeseries data (future use)
+
 **m schema — Publishing Pipeline**
+
+The actual pipeline flow is:
+m.digest_item → m.post_seed → m.ai_job → m.post_draft → m.post_publish_queue → m.post_publish
+
 m.digest_run               Digest execution windows
 m.digest_item              Scored and selected items per digest
+m.post_seed                Bridge record: digest_item → ai_job (holds client_id,
+                           seed_type, seed_payload; required for client resolution
+                           since post_draft has no direct client_id column)
+m.ai_job                   Job queue for AI processing tasks
+m.ai_job_attempt           Attempt-level log per ai_job (retry tracking)
 m.post_draft               AI-generated drafts awaiting approval
 m.post_publish_queue       Approved posts awaiting publishing
 m.post_publish             Published post record
-m.post_performance         Engagement data from platform APIs (planned)
+m.post_performance         Engagement data from platform APIs (⏳ Phase 2.1 — not yet created)
 m.post_boost               Boost job record (campaign_id, adset_id, ad_id, status)
+                           (⏳ Phase 3.4 — not yet created)
 m.post_feedback            Manual feedback on published posts
-m.ai_job                   Job queue for AI processing tasks
+m.platform_token_health    Token validity checks per client/platform (written daily by cron)
+m.taxonomy_tag             Tags applied to digest items and drafts
+m.worker_http_log          HTTP response log for Edge Function invocations
+m.digest_item_manual_tag   Manual topic tags applied to digest items
 
 **c schema — Client Configuration**
 c.client                   Client identity (name, slug, timezone, status)
 c.client_ai_profile        AI persona, system prompt, model, platform rules
+                           Also holds: auto_approve_enabled flag (read by auto-approver)
 c.client_channel           Platform connections per client
 c.client_digest_policy     Content selection rules (strict/lenient, window)
-c.client_publish_profile   Publishing settings (mode, throttle, token, enabled,
-                           boost_enabled, boost_budget_aud, boost_duration_days,
-                           boost_objective, boost_targeting jsonb, boost_score_threshold)
+c.client_publish_profile   Publishing settings: mode, throttle, token expiry,
+                           paused_until/paused_reason/paused_at (operational pause),
+                           auto_approve_enabled (per-client toggle)
+                           ⚠️  Boost columns (boost_enabled, boost_budget_aud,
+                           boost_duration_days, boost_objective, boost_targeting,
+                           boost_score_threshold) are DESIGNED but NOT YET ADDED.
+                           They will be added in Phase 3.4 when boost-worker is built.
 c.client_source            Feed → client links with weights
 c.client_content_scope     Client → content vertical links
 
@@ -127,6 +152,16 @@ t.5.4_use_case_prompt_template  Prompt templates (27)
 t.5.5_cta_master           CTA library (9 CTAs)
 t.5.6_brand_voice          Brand voice definitions
 t.5.7_compliance_rule      Disclaimer and compliance rules
+
+Additional taxonomy tables in live DB (Australian standard classifications):
+t.1.*  ANZSIC (industry classification — 6 tables)
+t.2.*  ANZSCO (occupation classification — 8 tables)
+t.3.*  Individual demographics (10 tables)
+t.4.*  Education classifications (3 tables)
+t.5.*  Social/platform/content metadata (11 tables)
+t.6.*  Content vertical taxonomy (6 tables + 2 mapping tables)
+t.8.*  Cross-classification links (2 tables)
+t.9.*  Product category (1 table)
 
 ---
 
@@ -154,24 +189,25 @@ pg_cron (every 2 hours)
 → selects top items into m.digest_item
 → creates m.digest_run record
 AI GENERATION
-pg_cron (every 30 minutes)
+pg_cron (every 5 minutes)
 → ai-worker Edge Function
-→ reads m.digest_item (status = 'pending_draft')
+→ reads m.post_seed → m.ai_job (status = 'queued')
 → reads c.client_ai_profile (persona, system prompt, model)
 → calls Claude/OpenAI API
 → writes m.post_draft (status = 'needs_review')
+→ updates m.ai_job status = 'succeeded'
 APPROVAL
 Manual: human reviews draft in dashboard → approve/reject
-Auto: auto-approver agent scores against rules → auto-approve or flag
-→ approved drafts → m.post_publish_queue
+Auto: auto-approver agent (every 10 min) scores against client rules → auto-approve or flag
+→ approved drafts → m.post_publish_queue (via enqueue cron every 5 min)
 PUBLISH
-pg_cron (every 15 minutes)
+pg_cron (every 5 minutes)
 → publisher Edge Function
 → reads m.post_publish_queue (due items, mode = 'auto')
 → calls platform API (Facebook, LinkedIn etc)
 → writes m.post_publish
 → updates queue item status
-PERFORMANCE (planned)
+PERFORMANCE (planned — Phase 2.1)
 pg_cron (daily)
 → insights-worker Edge Function
 → calls Facebook Graph API /insights
@@ -208,26 +244,28 @@ This architecture means:
 
 ### Agent 1 — Auto-Approval Agent
 **Purpose:** Eliminate manual review of 80-90% of drafts
+**Status:** ✅ Deployed and running (auto-approver v1.3.0, every 10 min via pg_cron)
 
 **Logic:**
-1. Read m.post_draft where approval_status = 'needs_review'
-2. Score against c.client_ai_profile rules:
-   - Tone compliance
-   - Compliance/disclaimer check
-   - Topic relevance to client verticals
-   - Quality signals (hook strength, CTA present, word count)
-3. Decision:
-   - Score ≥ threshold → auto-approve → publish queue
-   - Score < threshold → flag with reason → human reviews
-   - Rule violation → reject with reason
+1. Read m.post_draft where approval_status = 'needs_review' (via RPC auto_approver_fetch_drafts)
+2. Check c.client_publish_profile.auto_approve_enabled — skip if false
+3. Score against per-client gate rules:
+   - Source score vs min_score threshold (Property Pulse: 6, NDIS Yarns: 5)
+   - Body length (min 80 chars, max 1800–2000 chars)
+   - Sensitive keyword blocklist (client-specific)
+4. Decision:
+   - All gates pass → auto-approve (approved_by = 'auto-agent-v1')
+   - Any gate fails → write reason to draft_format.auto_review, leave as needs_review
+5. Results logged in draft_format jsonb (gates, reason, checked_at, agent version)
 
-**Implementation:** Edge Function, runs every 30 minutes via pg_cron
-**Dependencies:** c.client_ai_profile rules fully populated per client
+**Implementation:** Edge Function auto-approver, every 10 min via pg_cron (limit=30 per run)
+**Dependencies:** c.client_publish_profile.auto_approve_enabled = true per client
 
 ---
 
 ### Agent 2 — Feed Intelligence Agent
 **Purpose:** Keep feed quality high without manual monitoring
+**Status:** 🔲 Designed, not yet built (Phase 2.2)
 
 **Logic:**
 1. Weekly analysis of f.canonical_content_body per source:
@@ -246,6 +284,7 @@ This architecture means:
 
 ### Agent 3 — Content Analyst Agent
 **Purpose:** Generate weekly performance reports per client
+**Status:** 🔲 Designed, not yet built (Phase 3.2)
 
 **Logic:**
 1. Read m.post_performance for the past 7 days per client
@@ -255,13 +294,14 @@ This architecture means:
 5. Write to client portal for client to read
 
 **Implementation:** Edge Function, runs weekly via pg_cron
-**Dependencies:** Facebook Insights back-feed must be working first
+**Dependencies:** Facebook Insights back-feed must be working first (Phase 2.1)
 
 ---
 
 ### Agent 4 — Auto-Boost Agent
 **Purpose:** Automatically boost top-performing posts via the Facebook Ads API
 to grow page reach without manual ad management
+**Status:** 🔲 Designed, not yet built (Phase 3.4)
 
 **Four-step Facebook Ads API hierarchy:**
 1. Campaign — create with objective = PAGE_LIKES or POST_ENGAGEMENT
@@ -294,6 +334,10 @@ to grow page reach without manual ad management
 **Implementation:** Edge Function (boost-worker), runs daily via pg_cron
 **Dependencies:**
 - m.post_performance must be populated (requires Phase 2.1)
+- m.post_boost table must be created (Phase 3.4)
+- Boost columns on c.client_publish_profile must be added (Phase 3.4):
+  boost_enabled, boost_budget_aud, boost_duration_days, boost_objective,
+  boost_targeting (jsonb), boost_score_threshold
 - Meta App Review must include ads_management permission (Phase 1.6)
 - Standard Access graduation required before boosting third-party client pages
 
