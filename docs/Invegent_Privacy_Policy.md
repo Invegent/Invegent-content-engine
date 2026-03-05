@@ -1,3 +1,5 @@
+![](media/logo.png){width="1.0in" height="1.0in"}
+
 **INVEGENT**
 
 Privacy Policy
@@ -36,7 +38,7 @@ Contact: hello@invegent.com
 
 Website: invegent.com
 
-ABN: \[INSERT ABN\]
+ABN: 39 769 957 807
 
 3\. What Permissions the App Uses
 
