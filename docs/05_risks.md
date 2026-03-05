@@ -61,10 +61,9 @@ a Meta API issue outside our control.
 **Description:**
 The entire ICE system — 30+ tables, all client configuration,
 all content history, all taxonomy, all pipeline data — lives in
-a single Supabase project on the free tier. The free tier does
-not include automatic backups. One accidental DELETE without a
-WHERE clause, one botched migration, or one Supabase incident
-could destroy months of work with no recovery path.
+a single Supabase project. Without automatic backups, one accidental
+DELETE without a WHERE clause, one botched migration, or one Supabase
+incident could destroy months of work with no recovery path.
 
 **Trigger:**
 Any data loss event — accidental deletion, failed migration,
@@ -72,19 +71,20 @@ corruption, or Supabase infrastructure failure.
 
 **Response:**
 1. Immediately pause all pipeline cron jobs
-2. Contact Supabase support — they may have internal snapshots
+2. Contact Supabase support — use point-in-time recovery
 3. Assess scope of loss from available logs
-4. Restore from most recent manual export if available
+4. Restore from most recent backup or manual export
 5. Rebuild lost configuration from documentation
 
 **Mitigation:**
-- Upgrade Supabase to Pro plan ($25/month) — includes daily backups
-- Enable point-in-time recovery
-- Monthly manual export of critical configuration tables
+- ✅ Supabase Pro plan upgraded 2026-03-05 — daily automatic backups now active
+- ✅ Point-in-time recovery available via Supabase Pro
+- Monthly manual export of critical configuration tables (ongoing discipline)
 - All schema changes go through documented migrations, never ad-hoc
 
-**Status:** 🔴 CRITICAL — No backups currently active
-**Action required:** Upgrade Supabase Pro TODAY. This is non-negotiable.
+**Status:** ✅ RESOLVED — Supabase Pro upgraded 2026-03-05. Daily backups active.
+**Next action:** Confirm first backup completes successfully (check Supabase
+dashboard → Settings → Backups within 24 hours of upgrade).
 
 ---
 
@@ -136,9 +136,12 @@ the boost agent and discovering ads permissions are missing.
 - Do not promise external clients a start date until Standard Access confirmed
 - Verify existing publishing activity is accruing against the correct app credentials
 
-**Status:** 🔴 CRITICAL — Not started. Now a Phase 1 deliverable.
-**Action required:** Phase 1.6 — start immediately. Every week of delay
-is a week added to the external client onboarding timeline.
+**Status:** 🟡 IN PROGRESS — Privacy Policy live at invegent.com. Business verification
+submitted (~2 working days). App icon upload needs retry. Tech Provider status
+pending verification approval. Next: apply for Tech Provider after business
+verification approved, then submit permissions review.
+**Action required:** Complete Tech Provider application → submit permissions review.
+Every week of delay is a week added to the external client onboarding timeline.
 
 ---
 
@@ -251,9 +254,11 @@ failure during a period of founder unavailability.
 - Consider a part-time virtual assistant for client communication
   at 8+ clients
 
-**Status:** 🟡 PARTIALLY MITIGATED
-**Action required:** Auto-approval agent is Phase 1 Priority 1.
-Nothing reduces this risk faster.
+**Status:** 🟡 PARTIALLY MITIGATED — Auto-approver deployed and running (v1.3.0).
+Processing up to 30 drafts per 10-min run. Backlog of ~236 needs_review
+drafts being worked through progressively.
+**Action required:** Monitor auto-approver throughput. Investigate if
+backlog clearance rate is sufficient or if limit per run needs increasing.
 
 ---
 
@@ -297,9 +302,14 @@ state for more than 2 hours with no progress.
 - Add monitoring: pg_cron job that alerts (writes to a monitoring table)
   if no posts have been published in > 36 hours for any active client
 
-**Status:** 🟡 RISK ACTIVE — No dead letter queue or monitoring in place
-**Action required:** Phase 1.7 — Dead Letter Queue. Pairs with dashboard
-Failures panel to make all pipeline state visible at a glance.
+**Note:** dead_reason column already exists on m.post_draft, m.ai_job, and
+m.post_publish_queue as of March 2026. The dead_letter_sweep() function and
+its daily pg_cron job are also live. The remaining gap is the dashboard
+Failures panel (Phase 1.7 UI work).
+
+**Status:** 🟡 PARTIALLY MITIGATED — DB-level dead letter infrastructure is live.
+Dashboard Failures panel not yet built.
+**Action required:** Phase 1.7 — build Failures panel in dashboard.
 
 ---
 
@@ -307,22 +317,22 @@ Failures panel to make all pipeline state visible at a glance.
 
 | Risk | Likelihood | Impact | Status | Priority |
 |---|---|---|---|---|
-| Facebook API dependency | Medium | Critical | 🔴 App Review not started | Phase 1.6 + 2.3 |
-| No database backups | Low | Catastrophic | 🔴 Not active | TODAY |
-| Meta App Review not started | High | Critical | 🔴 Not started | Phase 1.6 — NOW |
+| Facebook API dependency | Medium | Critical | 🔴 App Review in progress | Phase 1.6 + 2.3 |
+| No database backups | Low | Catastrophic | ✅ Resolved 2026-03-05 | — |
+| Meta App Review not started | High | Critical | 🟡 In progress | Phase 1.6 — continue |
 | AI model vendor dependency | Medium | Medium | 🟡 Partial | Phase 4 |
 | No feedback loop | Certain | High | 🔴 Active | Phase 2.1 |
-| Solo founder bottleneck | High | High | 🟡 Partial | Phase 1.2 |
-| Silent pipeline failures | Medium | Medium | 🟡 Active | Phase 1.7 |
+| Solo founder bottleneck | High | High | 🟡 Partial — auto-approver live | Phase 1.2 monitor |
+| Silent pipeline failures | Medium | Medium | 🟡 Partial — DLQ live, UI pending | Phase 1.7 |
 
 ---
 
 ## Monthly Review Checklist
 
 Run through this checklist on the first Monday of each month:
-□ Supabase backups — confirm last backup completed successfully
+□ Supabase backups — confirm last backup completed successfully (Settings → Backups)
 □ Facebook tokens — check token_expires_at for all clients
-(dashboard Overview tab shows warning banners)
+  (dashboard Overview tab shows warning banners)
 □ Meta App Review — check submission status if in progress
 □ Feed health — check getFeedsQuery for any feeds turning red
 □ AI costs — check OpenAI/Anthropic usage dashboard
