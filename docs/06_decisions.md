@@ -352,10 +352,74 @@ Win the NDIS vertical completely before expanding.
 
 ---
 
+## D012 — Operational Tables Not Documented in Blueprint
+**Date:** March 2026
+**Status:** Noted — intentional omission, not a gap
+
+**Decision:**
+A number of tables exist in the live database that are not
+listed in the blueprint schema map. These are intentionally
+omitted from the blueprint as they are operational/logging
+infrastructure rather than pipeline data flow tables.
+
+**Tables in this category:**
+- f.cron_http_log — HTTP response log for pg_cron invocations
+- f.ingest_error_log — detailed error log per ingest run
+- f.raw_metric_point, f.raw_timeseries_point, f.trend_point — raw
+  signal data for future trend intelligence features (not yet used)
+- m.ai_job_attempt — attempt-level retry tracking per ai_job
+- m.digest_item_manual_tag — manual topic tags on digest items
+- m.platform_token_health — token validity written daily by cron
+- m.taxonomy_tag — tags applied to pipeline items
+- m.worker_http_log — HTTP response log for Edge Function invocations
+- k.column_purpose_backup, k.column_purpose_import — governance
+  import artefacts from initial schema build
+- Full t.* ANZSIC / ANZSCO / demographics classification tables
+  (40+ tables covering Australian standard industry, occupation,
+  and demographic classifications — built as taxonomy foundation,
+  not yet wired into active pipeline)
+
+**Reasoning:**
+The blueprint documents the pipeline data flow — what matters
+for understanding how content moves from signal to post. Logging
+tables, governance artefacts, and future-use classification tables
+would add noise without adding understanding. They are acknowledged
+here so future sessions don't mistake their absence from the
+blueprint as an undocumented gap.
+
+---
+
+## D013 — Edge Function Folder Naming Convention
+**Date:** March 2026
+**Status:** Noted — inconsistency to resolve in next Claude Code session
+
+**Decision:**
+Two Edge Function folders in GitHub use mixed-case names
+(supabase/functions/Ingest, supabase/functions/Content_fetch)
+while all other folders and Supabase slugs use lowercase
+(auto-approver, ai-worker, publisher, inspector, inspector_sql_ro).
+
+**Current state:**
+- GitHub: Ingest, Content_fetch (mixed case — how they were originally committed)
+- Supabase slugs: ingest, content_fetch (lowercase)
+
+**Resolution:**
+Rename the two GitHub folders to lowercase in the next Claude Code
+terminal session (git mv is required — cannot be done safely via
+GitHub API without risk of history disruption). Do not rename via
+the GitHub web UI or API. Target state: all function folders
+lowercase, matching their Supabase slug names exactly.
+
+This is cosmetic only — Supabase deploys by slug, not folder name.
+No production impact until the rename is executed.
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target Date |
 |---|---|---|
+| Rename Ingest + Content_fetch folders to lowercase | Cosmetic — next Claude Code session | Next build session |
 | Retool cancellation date | When Next.js dashboard is live and stable | Phase 2 completion |
 | Model router implementation | When AI costs become significant | Phase 4 |
 | Trigger.dev evaluation | When pg_cron job complexity demands it | Phase 4 |
