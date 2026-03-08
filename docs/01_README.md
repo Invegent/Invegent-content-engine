@@ -12,11 +12,40 @@ ICE is a signal-centric AI content engine that transforms raw information stream
 - Analyses performance and feeds results back into scoring to improve over time
 
 ## Current Status
-**Phase 1 — In Progress**
+**Phase 2 — In Progress**
 - Pipeline: ✅ Working (ingest → canonicalise → score → draft → approve → publish)
 - Clients: NDIS Yarns (disability services), Property Pulse (property investment)
-- Dashboard: Retool (migrating to Next.js)
-- Database: Supabase (PostgreSQL, 30+ tables)
-- Publishing: Facebook (LinkedIn next)
+- Dashboard: Next.js build in progress (replaces Retool)
+- Database: Supabase Pro (PostgreSQL, 30+ tables, daily backups active)
+- Publishing: Facebook ✅ | LinkedIn ⏳ (pending account recovery)
+
+## Phase Completion Summary
+- ✅ Phase 1 — Stabilise: COMPLETE
+- 🔄 Phase 2 — Automate: IN PROGRESS (2.1 ✅ 2.2 ✅ 2.3 ⏳ 2.5 🔄)
+- ⏸ Phase 3 — Expand: NOT STARTED
+- ⏸ Phase 4 — Scale: NOT STARTED
 
 ## Repository Structure
+```
+/docs                    Project documentation (markdown, single source of truth)
+/supabase/functions      Edge Functions (Deno/TypeScript) — one folder per function
+/supabase/migrations     DDL migration files
+RUNBOOK_ROLLBACK.md      Emergency rollback procedure
+```
+
+## Schema History Note
+The full Phase 1 database schema (all tables across f, m, c, t, a, k schemas) was
+built incrementally before formal migration file discipline was established. The live
+schema in Supabase is the source of truth for Phase 1 table definitions. Migration
+files in /supabase/migrations cover Phase 2 onwards. All future DDL changes must
+include a dated migration file committed alongside deployment.
+
+## Key Infrastructure
+- Supabase project: mbkmaxqhsohbtwsqolns (ap-southeast-2, Sydney)
+- GitHub org: github.com/Invegent
+- Primary repo: github.com/Invegent/Invegent-content-engine
+- Dashboard repo: github.com/Invegent/invegent-dashboard (Next.js, in progress)
+- Portal repo: github.com/Invegent/invegent-portal (Next.js, planned)
+- Deployment: Vercel
+- Dashboard URL: dashboard.invegent.com (planned)
+- Portal URL: portal.invegent.com (planned)

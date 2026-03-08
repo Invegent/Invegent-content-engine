@@ -5,6 +5,7 @@
 ICE is built on a single Supabase backend serving multiple surfaces.
 All intelligence, automation, and data lives in one place.
 Multiple apps and agents read from and write to the same database.
+```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         SUPABASE                                │
 │              (PostgreSQL + Edge Functions + Auth)               │
@@ -18,20 +19,44 @@ Multiple apps and agents read from and write to the same database.
 │  publisher                boost-worker         a.* (enrichment) │
 │  pg_cron (scheduler)                           k.* (governance) │
 └──────────┬──────────────────────┬──────────────────┬───────────┘
-│                      │                  │
-▼                      ▼                  ▼
+           │                      │                  │
+           ▼                      ▼                  ▼
 ┌──────────────┐      ┌──────────────┐    ┌──────────────┐
 │  Operations  │      │    Client    │    │   Client     │
 │  Dashboard   │      │    Portal    │    │   Websites   │
 │              │      │              │    │  (one per    │
 │  Next.js     │      │  Next.js     │    │   client)    │
 │  Vercel      │      │  Vercel      │    │  Next.js     │
-│  (you only)  │      │  (RLS auth)  │    │  Vercel      │
+│  (team only) │      │  (RLS auth)  │    │  Vercel      │
 └──────────────┘      └──────────────┘    └──────────────┘
-│                      │                  │
-└──────────────────────┴──────────────────┘
-Claude Code
-builds and maintains all three
+         │                      │                  │
+         └──────────────────────┴──────────────────┘
+                           Claude Code
+               builds and maintains all three
+```
+
+## Frontend Architecture
+
+**Three separate Next.js apps, three separate GitHub repos:**
+
+| App | Repo | URL | Audience |
+|---|---|---|---|
+| Operations Dashboard | invegent-dashboard | dashboard.invegent.com | Internal team (2-3 people) |
+| Client Portal | invegent-portal | portal.invegent.com | Paying clients |
+| Marketing / Web | invegent-web | invegent.com | Public |
+
+All deployed on Vercel. Subdomain DNS via Cloudflare pointing to Vercel.
+
+Client proof pages (NDIS Yarns, Property Pulse) are served as subdomains of invegent.com
+(e.g. ndisyarns.invegent.com) until separate domains are warranted.
+
+**Dashboard authentication:** Supabase Auth (email/password), multi-user from day one.
+No sign-up flow — users created manually by admin. All authenticated users have full
+read/write access (no per-user RLS for internal dashboard). Service role key used
+server-side for all data fetching.
+
+**Client portal authentication:** Supabase Auth + Row Level Security enforced at DB level.
+Each client sees only their own data.
 
 ---
 
@@ -58,7 +83,7 @@ builds and maintains all three
 | Platform | API | Status |
 |---|---|---|
 | Facebook | Meta Graph API | ✅ Working |
-| LinkedIn | LinkedIn API v2 | 🔲 Next sprint |
+| LinkedIn | LinkedIn API v2 | ⏳ Pending account recovery |
 | Email | Resend API | 🔲 Planned |
 | Website | Next.js + Supabase | 🔲 Planned |
 | Instagram | Meta Graph API | 🔲 Future |
@@ -67,6 +92,7 @@ builds and maintains all three
 | Component | Technology | Purpose |
 |---|---|---|
 | Dashboard / Portal / Sites | Next.js 14 (App Router) | All three client layers |
+| Component library | shadcn/ui + Tailwind | Production-grade UI |
 | Deployment | Vercel | Auto-deploy on git push |
 | Version control | GitHub (Invegent org) | Source of truth for code |
 | AI builder | Claude Code | Builds and maintains all layers |
@@ -77,72 +103,73 @@ builds and maintains all three
 ## Database Schema
 
 ### Schema Map
+```
 f.*  — Feed / Ingest layer (facts, raw data)
 m.*  — Publishing layer (meaning, decisions, outputs)
 c.*  — Client configuration layer
 t.*  — Taxonomy reference layer (global, never changes)
 a.*  — Enrichment layer (keywords, topics)
 k.*  — Governance / data catalog
+```
 
 ### Key Tables by Schema
 
 **f schema — Feed & Ingest**
+```
 f.feed_source              Master list of all feed sources
 f.ingest_run               Log of each ingest execution
+f.ingest_error_log         Errors from ingest runs
 f.raw_content_item         Raw items from each source
 f.content_item             Normalised content items
 f.canonical_content_item   Deduplicated canonical identity
 f.content_item_canonical_map  Item → canonical mapping
 f.canonical_content_body   Full text extraction with workflow states
-
-Operational tables (logging, not in pipeline flow):
-f.cron_http_log            HTTP response log for pg_cron invocations
-f.ingest_error_log         Detailed error log per ingest run
-f.trend_point              Raw trend signal data (future use)
-f.raw_metric_point         Raw metric snapshots (future use)
-f.raw_timeseries_point     Raw timeseries data (future use)
+f.cron_http_log            HTTP log for cron-triggered function calls
+f.raw_metric_point         Raw metric data points
+f.raw_timeseries_point     Raw timeseries data
+f.trend_point              Trend signal data
+```
 
 **m schema — Publishing Pipeline**
-
-The actual pipeline flow is:
-m.digest_item → m.post_seed → m.ai_job → m.post_draft → m.post_publish_queue → m.post_publish
-
+```
 m.digest_run               Digest execution windows
 m.digest_item              Scored and selected items per digest
-m.post_seed                Bridge record: digest_item → ai_job (holds client_id,
-                           seed_type, seed_payload; required for client resolution
-                           since post_draft has no direct client_id column)
-m.ai_job                   Job queue for AI processing tasks
-m.ai_job_attempt           Attempt-level log per ai_job (retry tracking)
+m.digest_item_manual_tag   Manual taxonomy tags on digest items
+m.post_seed                Seed records linking digest items to AI jobs
 m.post_draft               AI-generated drafts awaiting approval
+                           NOTE: post_draft has NO direct client_id column.
+                           Client resolution: post_draft → m.post_seed → client_id
 m.post_publish_queue       Approved posts awaiting publishing
 m.post_publish             Published post record
-m.post_performance         Engagement data from platform APIs (⏳ Phase 2.1 — not yet created)
-m.post_boost               Boost job record (campaign_id, adset_id, ad_id, status)
-                           (⏳ Phase 3.4 — not yet created)
+m.post_performance         Engagement data from platform APIs ✅ (Phase 2.1)
 m.post_feedback            Manual feedback on published posts
-m.platform_token_health    Token validity checks per client/platform (written daily by cron)
-m.taxonomy_tag             Tags applied to digest items and drafts
-m.worker_http_log          HTTP response log for Edge Function invocations
-m.digest_item_manual_tag   Manual topic tags applied to digest items
+m.post_boost               Boost job record (campaign_id, adset_id, ad_id, status)
+m.ai_job                   Job queue for AI processing tasks
+m.ai_job_attempt           Individual attempt records per ai_job
+m.taxonomy_tag             Taxonomy tags applied to content
+m.agent_recommendations    Feed intelligence agent output ✅ (Phase 2.2)
+m.platform_token_health    Facebook token health check results
+m.worker_http_log          HTTP response log for Edge Function calls
+m.vw_ops_pipeline_health   View: pipeline health summary for dashboard
+m.vw_ops_failures_24h      View: dead/failed items in last 24 hours
+m.vw_ops_token_health      View: token expiry status per client
+```
 
 **c schema — Client Configuration**
+```
 c.client                   Client identity (name, slug, timezone, status)
 c.client_ai_profile        AI persona, system prompt, model, platform rules
-                           Also holds: auto_approve_enabled flag (read by auto-approver)
 c.client_channel           Platform connections per client
 c.client_digest_policy     Content selection rules (strict/lenient, window)
-c.client_publish_profile   Publishing settings: mode, throttle, token expiry,
-                           paused_until/paused_reason/paused_at (operational pause),
-                           auto_approve_enabled (per-client toggle)
-                           ⚠️  Boost columns (boost_enabled, boost_budget_aud,
-                           boost_duration_days, boost_objective, boost_targeting,
-                           boost_score_threshold) are DESIGNED but NOT YET ADDED.
-                           They will be added in Phase 3.4 when boost-worker is built.
+c.client_publish_profile   Publishing settings (mode, throttle, token, enabled,
+                           boost_enabled, boost_budget_aud, boost_duration_days,
+                           boost_objective, boost_targeting jsonb, boost_score_threshold)
 c.client_source            Feed → client links with weights
 c.client_content_scope     Client → content vertical links
+```
 
 **t schema — Taxonomy**
+```
 t.content_vertical         Vertical hierarchy (global → jurisdiction-specific)
 t.6.0_content_domain       Top-level domains (17 domains)
 t.6.1_content_pillar       Pillars per domain (71 pillars)
@@ -152,20 +179,62 @@ t.5.4_use_case_prompt_template  Prompt templates (27)
 t.5.5_cta_master           CTA library (9 CTAs)
 t.5.6_brand_voice          Brand voice definitions
 t.5.7_compliance_rule      Disclaimer and compliance rules
+(+ additional ANZSIC, ANZSCO, audience and platform taxonomy tables)
+```
 
-Additional taxonomy tables in live DB (Australian standard classifications):
-t.1.*  ANZSIC (industry classification — 6 tables)
-t.2.*  ANZSCO (occupation classification — 8 tables)
-t.3.*  Individual demographics (10 tables)
-t.4.*  Education classifications (3 tables)
-t.5.*  Social/platform/content metadata (11 tables)
-t.6.*  Content vertical taxonomy (6 tables + 2 mapping tables)
-t.8.*  Cross-classification links (2 tables)
-t.9.*  Product category (1 table)
+**Key client IDs (production)**
+```
+NDIS Yarns:      fb98a472-ae4d-432d-8738-2273231c1ef4
+Property Pulse:  4036a6b5-b4a3-406e-998d-c2fe14a8bbdd
+```
+
+---
+
+## Active Edge Functions & Cron Schedule
+
+| Function | Version | Schedule | Purpose |
+|---|---|---|---|
+| ingest | v75 | Every 6 hours | RSS feed ingestion |
+| content_fetch | v45 | Every 10 min | Full text extraction (Jina) |
+| ai-worker | v40 | Every 5 min | AI draft generation |
+| auto-approver | v9 | Every 10 min | Auto-approve qualifying drafts |
+| publisher | v34 | Every 5 min | Publish to Facebook |
+| insights-worker | v11 | Daily 3am UTC | Facebook Insights back-feed |
+| feed-intelligence | v1 | Weekly Sun 2am UTC | Feed quality analysis |
+| inspector | v63 | On-demand | Pipeline diagnostics |
+| inspector_sql_ro | v18 | On-demand | Read-only SQL diagnostics |
+
+**Additional pg_cron jobs (SQL-only, no Edge Function):**
+- planner-hourly — creates digest runs and populates digest items
+- m_phase2_ndis_daily_8am_sydney — NDIS scoring, selection, bundling, seeding
+- m_phase2_property_hourly — Property scoring, selection, bundling, seeding
+- enqueue-publish-queue-every-5m — moves approved drafts into publish queue
+- seed-and-enqueue-facebook-every-10m — seeds AI jobs for Facebook
+- sweep-stale-running-every-10m — requeues stuck AI jobs and publish queue items
+- dead-letter-sweep-daily — daily sweep of stale items to dead status (2am UTC)
+- token-health-daily-7am-sydney — writes token health check results
+
+---
+
+## Critical Architecture Gotchas
+
+**PostgREST schema exposure:** The f, m, c schemas are NOT in PostgREST's
+exposed_schemas list. Direct `.from()` calls via Supabase JS client return
+zero rows silently. Fix: use SECURITY DEFINER RPCs in public schema, or
+use service role key server-side (bypasses PostgREST entirely).
+
+**post_draft has no direct client_id:** Client resolution requires joining
+through m.post_seed via the seed relationship. Direct column reference causes
+ERROR: 42703.
+
+**Edge Function deployment confirmation:** Use get_logs with service: edge-function
+— not the deploy response. Ground truth is always actual table row counts.
 
 ---
 
 ## Pipeline Flow
+
+```
 INGEST
 pg_cron (every 6 hours)
 → ingest-worker Edge Function
@@ -174,32 +243,36 @@ pg_cron (every 6 hours)
 → writes to f.raw_content_item
 → creates f.content_item (normalised)
 → deduplicates into f.canonical_content_item
+
 CONTENT FETCH
 pg_cron (every 10 minutes)
 → content-fetch Edge Function
 → reads canonical items with status = 'pending_fetch'
 → attempts full text extraction via Jina reader
 → writes to f.canonical_content_body
-→ status: 'success' | 'give_up_paywall' | 'give_up_blocked'
+→ status: 'success' | 'give_up_paywall' | 'give_up_blocked' | 'dead'
+
 DIGEST
-pg_cron (every 2 hours)
-→ bundler Edge Function
+pg_cron (hourly + client-specific schedules)
+→ SQL functions (score_digest_items, select, bundle, seed)
 → reads client_content_scope → vertical → relevant topics
 → scores canonical items by relevance to client verticals
 → selects top items into m.digest_item
-→ creates m.digest_run record
+→ seeds m.ai_job via m.post_seed
+
 AI GENERATION
 pg_cron (every 5 minutes)
 → ai-worker Edge Function
-→ reads m.post_seed → m.ai_job (status = 'queued')
+→ reads m.ai_job (status = 'queued')
 → reads c.client_ai_profile (persona, system prompt, model)
 → calls Claude/OpenAI API
-→ writes m.post_draft (status = 'needs_review')
-→ updates m.ai_job status = 'succeeded'
+→ writes m.post_draft (approval_status = 'needs_review')
+
 APPROVAL
+Auto: auto-approver agent (every 10 min) scores against rules → auto-approve or flag
 Manual: human reviews draft in dashboard → approve/reject
-Auto: auto-approver agent (every 10 min) scores against client rules → auto-approve or flag
-→ approved drafts → m.post_publish_queue (via enqueue cron every 5 min)
+→ approved drafts → m.post_publish_queue
+
 PUBLISH
 pg_cron (every 5 minutes)
 → publisher Edge Function
@@ -207,31 +280,43 @@ pg_cron (every 5 minutes)
 → calls platform API (Facebook, LinkedIn etc)
 → writes m.post_publish
 → updates queue item status
-PERFORMANCE (planned — Phase 2.1)
-pg_cron (daily)
+
+PERFORMANCE ✅ (Phase 2.1 complete)
+pg_cron (daily 3am UTC)
 → insights-worker Edge Function
 → calls Facebook Graph API /insights
 → writes m.post_performance
 → feeds back into digest scoring
+
+FEED INTELLIGENCE ✅ (Phase 2.2 complete)
+pg_cron (weekly Sunday 2am UTC)
+→ feed-intelligence Edge Function
+→ analyses feed give-up rates and content quality
+→ writes recommendations to m.agent_recommendations
+```
 
 ---
 
 ## Content Vertical Taxonomy
 
 A three-level hierarchy that handles both global and jurisdiction-specific content:
+```
 Global Domain (universal)
 └── Vertical (industry-level, stable)
-└── Market/Program (jurisdiction-specific)
+    └── Market/Program (jurisdiction-specific)
+
 Example:
 Health & Wellness
 └── Disability Services (global vertical)
-└── NDIS (Australia-specific)
-└── NDCP (New Zealand, future)
+    └── NDIS (Australia-specific)
+    └── NDCP (New Zealand, future)
+
 Business & Finance
 └── Real Estate (global vertical)
-└── AU Residential Property
-└── AU Commercial Property
-└── UK Property (future)
+    └── AU Residential Property
+    └── AU Commercial Property
+    └── UK Property (future)
+```
 
 This architecture means:
 - New jurisdiction = add rows to t.content_vertical, never change global taxonomy
@@ -242,115 +327,43 @@ This architecture means:
 
 ## The Four Agents
 
-### Agent 1 — Auto-Approval Agent
+### Agent 1 — Auto-Approval Agent ✅ COMPLETE (v9)
 **Purpose:** Eliminate manual review of 80-90% of drafts
-**Status:** ✅ Deployed and running (auto-approver v1.3.0, every 10 min via pg_cron)
 
-**Logic:**
-1. Read m.post_draft where approval_status = 'needs_review' (via RPC auto_approver_fetch_drafts)
-2. Check c.client_publish_profile.auto_approve_enabled — skip if false
-3. Score against per-client gate rules:
-   - Source score vs min_score threshold (Property Pulse: 6, NDIS Yarns: 5)
-   - Body length (min 80 chars, max 1800–2000 chars)
-   - Sensitive keyword blocklist (client-specific)
-4. Decision:
-   - All gates pass → auto-approve (approved_by = 'auto-agent-v1')
-   - Any gate fails → write reason to draft_format.auto_review, leave as needs_review
-5. Results logged in draft_format jsonb (gates, reason, checked_at, agent version)
+Runs every 10 minutes via pg_cron. 5-gate logic:
+1. auto_approve_enabled flag
+2. Not previously rejected
+3. Digest score above threshold
+4. Body length within range
+5. Keyword blocklist clear
 
-**Implementation:** Edge Function auto-approver, every 10 min via pg_cron (limit=30 per run)
-**Dependencies:** c.client_publish_profile.auto_approve_enabled = true per client
+approved_by = 'auto-agent-v1' for auditability.
 
----
-
-### Agent 2 — Feed Intelligence Agent
+### Agent 2 — Feed Intelligence Agent ✅ COMPLETE (v1)
 **Purpose:** Keep feed quality high without manual monitoring
-**Status:** 🔲 Designed, not yet built (Phase 2.2)
 
-**Logic:**
-1. Weekly analysis of f.canonical_content_body per source:
-   - Give-up rate (> 70% for 2 weeks → flag for deprecation)
-   - Content quality (% of items producing approved drafts)
-   - Relevance score (items matching client verticals)
-2. Actions:
-   - Poor feed → write recommendation to m.agent_recommendations
-   - Gap detected → suggest new feed sources
-   - Human approves/rejects recommendations in dashboard
+Runs weekly Sunday 2am UTC. Analyses give-up rates per source.
+Recommendations written to m.agent_recommendations.
+Human approves/rejects recommendations in dashboard.
 
-**Implementation:** Edge Function, runs weekly via pg_cron
-**New table needed:** m.agent_recommendations
-
----
-
-### Agent 3 — Content Analyst Agent
+### Agent 3 — Content Analyst Agent 🔲 PLANNED (Phase 3.2)
 **Purpose:** Generate weekly performance reports per client
-**Status:** 🔲 Designed, not yet built (Phase 3.2)
+**Dependencies:** Facebook Insights back-feed (2.1) must be running ✅
 
-**Logic:**
-1. Read m.post_performance for the past 7 days per client
-2. Identify: top performing topics, best posting times, content type performance
-3. Compare against vertical benchmarks
-4. Generate insight report with recommendations
-5. Write to client portal for client to read
-
-**Implementation:** Edge Function, runs weekly via pg_cron
-**Dependencies:** Facebook Insights back-feed must be working first (Phase 2.1)
-
----
-
-### Agent 4 — Auto-Boost Agent
-**Purpose:** Automatically boost top-performing posts via the Facebook Ads API
-to grow page reach without manual ad management
-**Status:** 🔲 Designed, not yet built (Phase 3.4)
-
-**Four-step Facebook Ads API hierarchy:**
-1. Campaign — create with objective = PAGE_LIKES or POST_ENGAGEMENT
-2. Ad Set — define targeting (job title, location, age), budget, schedule
-3. Creative — reference the existing page post by platform_post_id
-4. Ad — combine creative + ad set → submit for review → goes live
-
-**Logic:**
-1. Read m.post_publish where published_at > 24 hours ago
-2. Read m.post_performance — check engagement rate vs client threshold
-3. If engagement_rate ≥ boost_score_threshold in client_publish_profile:
-   - Create Campaign via Ads API
-   - Create Ad Set (targeting from boost_targeting jsonb field)
-   - Create Ad Creative referencing platform_post_id
-   - Create Ad → status transitions: PENDING_REVIEW → ACTIVE
-4. Write to m.post_boost (campaign_id, adset_id, creative_id, ad_id, status)
-5. Daily: check ad status, write spend and reach back to m.post_boost
-
-**Rate limits:**
-- Ads API: 200 calls per hour per ad account
-- Each boost = 4 API calls (one per hierarchy level)
-- 10 boosts per hour is well within limits
-
-**Permissions required (Meta App Review):**
-- ads_management
-- ads_read
-- pages_manage_ads
-- business_management (for Business Manager accounts)
-
-**Implementation:** Edge Function (boost-worker), runs daily via pg_cron
-**Dependencies:**
-- m.post_performance must be populated (requires Phase 2.1)
-- m.post_boost table must be created (Phase 3.4)
-- Boost columns on c.client_publish_profile must be added (Phase 3.4):
-  boost_enabled, boost_budget_aud, boost_duration_days, boost_objective,
-  boost_targeting (jsonb), boost_score_threshold
-- Meta App Review must include ads_management permission (Phase 1.6)
-- Standard Access graduation required before boosting third-party client pages
+### Agent 4 — Auto-Boost Agent 🔲 PLANNED (Phase 3.4)
+**Purpose:** Automatically boost top-performing posts via Facebook Ads API
+**Dependencies:** m.post_performance (2.1) ✅, Meta App Review ads permissions
 
 ---
 
 ## Publishing Mode Architecture
 
 Each client has a mode setting in c.client_publish_profile:
+```
 auto     → approved drafts publish automatically on schedule
 manual   → approved drafts sit in queue, human triggers publish
 staging  → nothing publishes, for testing only
-
-The publisher Edge Function filters by mode = 'auto'. Manual clients require a button press in the dashboard to release queued posts.
+```
 
 ---
 
@@ -362,6 +375,8 @@ The publisher Edge Function filters by mode = 'auto'. Manual clients require a b
 | AI API | Claude primary, OpenAI fallback | Claude better for synthesis and brand voice |
 | Persona storage | Database (client_ai_profile) | Not in API (Assistants deprecated), portable |
 | Pipeline orchestration | pg_cron + Edge Functions | Already proven, no new infrastructure |
-| Frontend | Next.js + Vercel | Claude Code builds it, auto-deploy, same pattern for all three layers |
+| Frontend | Next.js + Vercel | Claude Code builds it, auto-deploy, same pattern for all layers |
 | Multi-tenancy | Supabase RLS | Enforced at DB level, not application level |
 | Feed normalisation | Single schema regardless of source | source_type_code field, normaliser per type |
+| Frontend repos | Two separate repos (dashboard + portal) | Focused scope, simpler Vercel config |
+| Domain structure | Subdomains of invegent.com | Cost control, all under one brand |

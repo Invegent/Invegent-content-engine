@@ -24,8 +24,8 @@ ICE's entire publishing operation runs through the Meta Graph API.
 A single API policy change, account suspension, rate limit change,
 or Meta outage stops all clients from publishing simultaneously.
 This has already happened once (error code 368 spam block causing
-infinite retry loops). Meta has a history of sudden API changes
-with minimal notice.
+infinite retry loops — fixed in publisher v34 with exponential backoff).
+Meta has a history of sudden API changes with minimal notice.
 
 **Trigger:**
 Publishing fails for any client for more than 24 hours due to
@@ -42,14 +42,12 @@ a Meta API issue outside our control.
 **Mitigation:**
 - Build LinkedIn publisher (Phase 2.3) — reduces to single-platform dependency
 - Abstract publish layer so adding platforms takes hours not weeks
-- Implement proper exponential backoff on all Meta API calls (done)
+- Exponential backoff on all Meta API calls ✅ done (publisher v34)
 - Never queue more than 7 days of posts — keeps queue manageable during outages
-- Meta App Review (Phase 1.6) — one submission covers both publishing AND
-  advertising permissions (pages_manage_posts, ads_management, ads_read,
-  pages_manage_ads, pages_read_engagement). Not two separate reviews.
+- Meta App Review (Phase 1.6) — in progress
 
-**Status:** 🔴 HIGH RISK — LinkedIn publisher not yet built. App Review not started.
-**Action required:** LinkedIn publisher Phase 2 Priority 1. App Review Phase 1 — start NOW.
+**Status:** 🟡 PARTIALLY MITIGATED
+**Action required:** LinkedIn publisher Phase 2.3 — unblocked once LinkedIn account recovery resolves.
 
 ---
 
@@ -61,9 +59,9 @@ a Meta API issue outside our control.
 **Description:**
 The entire ICE system — 30+ tables, all client configuration,
 all content history, all taxonomy, all pipeline data — lives in
-a single Supabase project. Without automatic backups, one accidental
-DELETE without a WHERE clause, one botched migration, or one Supabase
-incident could destroy months of work with no recovery path.
+a single Supabase project. Without backups, one accidental DELETE,
+botched migration, or infrastructure failure could destroy months
+of work with no recovery path.
 
 **Trigger:**
 Any data loss event — accidental deletion, failed migration,
@@ -71,77 +69,63 @@ corruption, or Supabase infrastructure failure.
 
 **Response:**
 1. Immediately pause all pipeline cron jobs
-2. Contact Supabase support — use point-in-time recovery
+2. Contact Supabase support — they may have internal snapshots
 3. Assess scope of loss from available logs
-4. Restore from most recent backup or manual export
+4. Restore from most recent backup
 5. Rebuild lost configuration from documentation
 
 **Mitigation:**
-- ✅ Supabase Pro plan upgraded 2026-03-05 — daily automatic backups now active
-- ✅ Point-in-time recovery available via Supabase Pro
-- Monthly manual export of critical configuration tables (ongoing discipline)
-- All schema changes go through documented migrations, never ad-hoc
+- ✅ Supabase Pro enabled ($25/month) — daily automatic backups confirmed active
+- ✅ Monthly manual export of critical configuration tables
+- ✅ All schema changes go through documented migrations
 
-**Status:** ✅ RESOLVED — Supabase Pro upgraded 2026-03-05. Daily backups active.
-**Next action:** Confirm first backup completes successfully (check Supabase
-dashboard → Settings → Backups within 24 hours of upgrade).
+**Status:** ✅ MITIGATED
 
 ---
 
-## Risk 3 — Meta App Review Not Started
+## Risk 3 — Meta App Review Not Complete
 **Category:** Compliance / Business
 **Likelihood:** High (certainty if not addressed)
 **Impact:** Critical — blocks ALL external client publishing AND advertising
 
 **Description:**
-ICE currently operates on development-tier Meta API access. This is
-acceptable for testing with your own pages but is explicitly not permitted
-for managing third-party client pages at scale. Meta App Review is required
-for both publishing AND advertising permissions — and these should be
-submitted together in ONE review, not separately.
+ICE currently operates on development-tier Meta API access.
+Meta App Review is required for both publishing AND advertising
+permissions before managing third-party client pages at scale.
 
-Permissions required (submit all five together):
+Permissions to obtain:
 - pages_manage_posts — publish to client pages
 - pages_read_engagement — read post metrics
-- ads_management — create and manage boost campaigns
-- ads_read — read campaign performance data
+- pages_show_list — list pages the user manages
+- ads_management — create and manage boost campaigns (Phase 3.4)
+- ads_read — read campaign performance
 - pages_manage_ads — manage ads on client pages
 
-Standard Access graduation requirement: approximately 1,500 successful
-API calls within a 15-day window before Meta upgrades from Development
-to Standard Access. NDIS Yarns and Property Pulse publishing activity
-is building this record now — but only if the app is being used with
-the correct app credentials. This needs to be verified.
+Standard Access graduation requirement: ~1,500 successful API calls
+within a 15-day window. NDIS Yarns and Property Pulse publishing is
+building this record now.
 
-The review process takes 2-8 weeks. It cannot be rushed. Starting it
-now means it may be approved before Phase 1 is complete. Starting it
-in Phase 2 means it will still be pending when the first external
-client is ready to onboard.
+Review timeline: 2-8 weeks after submission.
 
 **Trigger:**
 Attempting to onboard an external client and discovering publishing
-is blocked due to insufficient permissions OR attempting to activate
-the boost agent and discovering ads permissions are missing.
+is blocked due to insufficient permissions.
 
 **Response:**
-1. Explain delay to client honestly — this is a Meta process, not an ICE bug
+1. Explain delay to client honestly — this is a Meta process
 2. Use manual publishing workaround while review completes
-3. Check if Standard Access threshold has been met — if not, increase
-   publishing volume on existing pages to build the call record faster
+3. Increase publishing volume on existing pages to build API call record faster
 
 **Mitigation:**
-- Submit Meta App Review NOW (Phase 1.6 — not Phase 2 as previously planned)
-- Register invegent.com — host privacy policy and terms of service there
-- Submit all five permissions in one review, not piecemeal
+- ✅ Privacy Policy live
+- ✅ Business verification submitted (ABN: 39 769 957 807)
+- 🔄 Business verification approval pending
+- 🔄 Tech Provider status application — after business verification approved
+- 🔄 Permissions review submission — after Tech Provider approved
 - Do not promise external clients a start date until Standard Access confirmed
-- Verify existing publishing activity is accruing against the correct app credentials
 
-**Status:** 🟡 IN PROGRESS — Privacy Policy live at invegent.com. Business verification
-submitted (~2 working days). App icon upload needs retry. Tech Provider status
-pending verification approval. Next: apply for Tech Provider after business
-verification approved, then submit permissions review.
-**Action required:** Complete Tech Provider application → submit permissions review.
-Every week of delay is a week added to the external client onboarding timeline.
+**Status:** 🟡 IN PROGRESS
+**Action required:** Retry app icon upload. Apply for Tech Provider once business verification approved. Then submit permissions review.
 
 ---
 
@@ -151,93 +135,65 @@ Every week of delay is a week added to the external client onboarding timeline.
 **Impact:** Medium — cost increase or quality degradation
 
 **Description:**
-ICE currently depends on OpenAI for all AI generation. OpenAI
-has raised prices multiple times, has experienced reliability
-issues, and has made breaking API changes (Assistants API
-deprecated). A significant price increase or quality degradation
-would either increase costs across all clients or require urgent
-migration work. At scale (50+ clients, 3 agents running),
-AI costs become the primary cost driver at $100-300/month.
+ICE uses Claude API (primary) and OpenAI (fallback) for all AI generation.
+A significant price increase or quality degradation would either increase
+costs across all clients or require urgent migration work.
+At scale (50+ clients, 3 agents running), AI costs become the primary
+cost driver at $100-300/month.
 
 **Trigger:**
-OpenAI announces price increase > 50%, sustained quality
-degradation over 2 weeks, or API deprecation notice
-affecting ICE's implementation.
+AI provider announces price increase > 50%, sustained quality
+degradation over 2 weeks, or API deprecation notice.
 
 **Response:**
-1. If model router is built: switch affected clients to Claude API
-2. If model router not built: emergency sprint to abstract AI layer
-3. Test output quality on Claude for all client personas
+1. If model router is built: switch affected clients to alternate model
+2. If not built: emergency sprint to abstract AI layer
+3. Test output quality on alternate model for all client personas
 4. Migrate clients one at a time, monitoring quality
 
 **Mitigation:**
-- Switch primary model to Claude API now (better for synthesis anyway)
+- ✅ Claude API as primary model (switched from OpenAI)
+- ✅ OpenAI retained as fallback
+- ✅ Per-client model config in client_ai_profile
 - Build model router in Phase 4 (ai-job → model_router → claude | openai)
-- Store model preference in client_ai_profile — per-client flexibility
-- Monitor OpenAI cost per client monthly
 
 **Status:** 🟡 PARTIALLY MITIGATED
-**Action required:** Switch to Claude API as primary model in next
-ai-worker update. Model router abstraction in Phase 4.
+**Action required:** Model router abstraction in Phase 4.
 
 ---
 
 ## Risk 5 — No Performance Feedback Loop
 **Category:** Product Quality / Competitive
-**Likelihood:** Certain (already materialised)
-**Impact:** High — system cannot improve, no proof of value
+**Likelihood:** Resolved
+**Impact:** Resolved
 
 **Description:**
-ICE publishes content but receives no data back about how that
-content performs. Without engagement data, the scoring system
-cannot improve over time, the auto-approver cannot calibrate
-its thresholds against real outcomes, the Content Analyst Agent
-cannot function, and most importantly — there is no proof of
-value to show potential clients. "We published 5 posts a week"
-is not a sales case study. "We grew your page from 0 to 800
-followers with 4.2% average engagement rate" is.
+Without engagement data, the scoring system cannot improve over time,
+the Content Analyst Agent cannot function, and there is no proof of
+value to show potential clients.
 
-**Trigger:**
-Already triggered. Every day without the feedback loop is
-a day of learning lost.
-
-**Response:**
-This risk is already materialised. The response is to build
-the mitigation as fast as possible.
-
-**Mitigation:**
-- Build insights-worker Edge Function (Phase 2.1)
-- Create m.post_performance table
-- Call Facebook Graph API /post_id/insights daily
-- Store: reach, impressions, engagement, clicks, shares per post
-- Wire performance back into digest item scoring weights
-- Surface in dashboard Overview tab
-
-**Status:** 🔴 RISK ACTIVE — No mitigation in place
-**Action required:** Phase 2.1 is the highest priority item
-after Phase 1 is complete.
+**Status:** ✅ MITIGATED — Phase 2.1 complete
+- m.post_performance table live with 50 rows (25 with reach data)
+- insights-worker running daily
+- Note: New Pages Experience limits impressions data (platform constraint, not a bug)
+- Data will feed back into scoring as volume grows
 
 ---
 
 ## Risk 6 — Solo Founder Bottleneck
 **Category:** Operations / Scale
-**Likelihood:** High if agents not built
+**Likelihood:** Medium (reducing as automation increases)
 **Impact:** High — growth ceiling, burnout risk
 
 **Description:**
-ICE is built and operated by one person with no development
-background, using AI-assisted development. Every new client
-currently adds manual work — feed management, draft review,
-token management, error handling. Without agents reducing
-per-client overhead, the business hits a hard ceiling at
-3-4 clients where the operational load matches available time.
-There is also no redundancy — if the founder is unavailable,
-all client publishing stops.
+ICE is built and operated by one person growing to a small team.
+Without agents reducing per-client overhead, the business hits a hard
+ceiling at 3-4 clients where operational load matches available time.
 
 **Trigger:**
-Total operational time across all clients exceeds 15 hours
-per week, OR a client escalates because of a publishing
-failure during a period of founder unavailability.
+Total operational time across all clients exceeds 15 hours per week,
+OR a client escalates because of a publishing failure during founder
+unavailability.
 
 **Response:**
 1. Triage: which clients need immediate attention
@@ -246,70 +202,51 @@ failure during a period of founder unavailability.
 4. Document all recurring manual tasks as candidates for automation
 
 **Mitigation:**
-- Auto-approval agent (Phase 1.2) — eliminates largest manual task
-- Feed intelligence agent (Phase 2.2) — eliminates feed monitoring
-- Client portal (Phase 3.1) — clients self-serve common requests
-- Next.js dashboard (Phase 2.5) — reduces debugging time per issue
+- ✅ Auto-approval agent (Phase 1.2) — eliminates largest manual task
+- ✅ Feed intelligence agent (Phase 2.2) — automates feed monitoring
+- 🔄 Next.js dashboard (Phase 2.5) — reduces debugging time per issue
+- 🔲 Client portal (Phase 3.1) — clients self-serve common requests
+- ✅ Dashboard auth designed for 2-3 team members from day one
 - Document all SOPs so processes survive founder unavailability
-- Consider a part-time virtual assistant for client communication
-  at 8+ clients
+- Consider part-time VA for client communication at 8+ clients
 
-**Status:** 🟡 PARTIALLY MITIGATED — Auto-approver deployed and running (v1.3.0).
-Processing up to 30 drafts per 10-min run. Backlog of ~236 needs_review
-drafts being worked through progressively.
-**Action required:** Monitor auto-approver throughput. Investigate if
-backlog clearance rate is sufficient or if limit per run needs increasing.
+**Status:** 🟡 PARTIALLY MITIGATED
+**Action required:** Next.js dashboard (Phase 2.5) is the current priority.
 
 ---
 
 ## Risk 7 — Silent Pipeline Failures
 **Category:** Operations / Reliability
-**Likelihood:** Medium — already occurring
-**Impact:** Medium — clients miss posts, trust erodes, debugging is slow
+**Likelihood:** Low (significantly reduced)
+**Impact:** Medium — clients miss posts, trust erodes
 
 **Description:**
-The ICE pipeline has multiple failure modes that currently produce no
-alert and leave no visible record. An ai_job can stay in 'pending' state
-indefinitely if the Edge Function crashes mid-run. A post_publish_queue
-item can be locked by a worker that timed out and never unlocked. A
-feed ingest run can fail silently with no error surfaced to the dashboard.
-The operator has no reliable way to know when the pipeline has stalled
-until a client notices they haven't received posts.
-
-This is not a theoretical risk — the error code 368 incident was only
-discovered because publishing stopped, not because an alert fired.
-At 2 clients this is recoverable. At 8-10 clients, silent failures
-become a business-threatening pattern.
+The ICE pipeline has multiple failure modes that could produce no
+alert and leave no visible record. Without monitoring, pipeline
+stalls are only discovered when a client notices missing posts.
 
 **Trigger:**
 Any client goes more than 48 hours without a scheduled post, OR
-an ai_job or post_publish_queue item remains in a locked/pending
-state for more than 2 hours with no progress.
+an ai_job or post_publish_queue item remains stuck for more than 2 hours.
 
 **Response:**
-1. Check dashboard Failures panel (once built — Phase 1.7)
+1. Check dashboard Failures panel (m.vw_ops_failures_24h)
 2. Identify which table and which rows are stuck
 3. Manually reset status or requeue as appropriate
-4. Investigate root cause — was it a timeout? An API error? A lock not released?
+4. Investigate root cause
 5. Add the failure pattern to the dead letter sweep rules
 
 **Mitigation:**
-- Build Dead Letter Queue (Phase 1.7):
+- ✅ Dead Letter Queue (Phase 1.7) complete:
   - dead status on all pipeline tables
   - dead_reason column capturing last error
-  - pg_cron daily sweep moves stale locked/pending items to dead
-  - dashboard Failures panel surfaces all dead items with requeue action
-- Add monitoring: pg_cron job that alerts (writes to a monitoring table)
-  if no posts have been published in > 36 hours for any active client
+  - pg_cron daily sweep at 2am UTC
+  - m.vw_ops_failures_24h view for dashboard
+- ✅ sweep-stale-running-every-10m cron job requeues stuck items
+- ✅ token-health-daily cron job monitors Facebook token expiry
+- 🔄 Dashboard Failures panel (Phase 2.5 Session 4) — surfaces all dead items
 
-**Note:** dead_reason column already exists on m.post_draft, m.ai_job, and
-m.post_publish_queue as of March 2026. The dead_letter_sweep() function and
-its daily pg_cron job are also live. The remaining gap is the dashboard
-Failures panel (Phase 1.7 UI work).
-
-**Status:** 🟡 PARTIALLY MITIGATED — DB-level dead letter infrastructure is live.
-Dashboard Failures panel not yet built.
-**Action required:** Phase 1.7 — build Failures panel in dashboard.
+**Status:** 🟡 MOSTLY MITIGATED — backend detection complete, dashboard surfacing in progress
 
 ---
 
@@ -317,25 +254,24 @@ Dashboard Failures panel not yet built.
 
 | Risk | Likelihood | Impact | Status | Priority |
 |---|---|---|---|---|
-| Facebook API dependency | Medium | Critical | 🔴 App Review in progress | Phase 1.6 + 2.3 |
-| No database backups | Low | Catastrophic | ✅ Resolved 2026-03-05 | — |
-| Meta App Review not started | High | Critical | 🟡 In progress | Phase 1.6 — continue |
+| Facebook API dependency | Medium | Critical | 🟡 Partial — LinkedIn pending | Phase 2.3 |
+| No database backups | Low | Catastrophic | ✅ Mitigated | Done |
+| Meta App Review | Medium | Critical | 🟡 In Progress | Phase 1.6 continuing |
 | AI model vendor dependency | Medium | Medium | 🟡 Partial | Phase 4 |
-| No feedback loop | Certain | High | 🔴 Active | Phase 2.1 |
-| Solo founder bottleneck | High | High | 🟡 Partial — auto-approver live | Phase 1.2 monitor |
-| Silent pipeline failures | Medium | Medium | 🟡 Partial — DLQ live, UI pending | Phase 1.7 |
+| No feedback loop | Resolved | Resolved | ✅ Mitigated (Phase 2.1) | Done |
+| Solo founder bottleneck | Medium | High | 🟡 Partial | Phase 2.5 |
+| Silent pipeline failures | Low | Medium | 🟡 Mostly mitigated | Phase 2.5 |
 
 ---
 
 ## Monthly Review Checklist
 
 Run through this checklist on the first Monday of each month:
-□ Supabase backups — confirm last backup completed successfully (Settings → Backups)
-□ Facebook tokens — check token_expires_at for all clients
-  (dashboard Overview tab shows warning banners)
-□ Meta App Review — check submission status if in progress
-□ Feed health — check getFeedsQuery for any feeds turning red
-□ AI costs — check OpenAI/Anthropic usage dashboard
-□ Operational hours — did last month exceed 15 hours total?
-□ Any new risks identified this month? Add to this document.
-□ Any mitigations completed? Update status above.
+- [ ] Supabase backups — confirm last backup completed successfully
+- [ ] Facebook tokens — check m.vw_ops_token_health for expiry warnings
+- [ ] Meta App Review — check submission status if in progress
+- [ ] Feed health — check m.agent_recommendations for new recommendations
+- [ ] AI costs — check Anthropic/OpenAI usage dashboard
+- [ ] Operational hours — did last month exceed 15 hours total?
+- [ ] Any new risks identified this month? Add to this document.
+- [ ] Any mitigations completed? Update status above.
