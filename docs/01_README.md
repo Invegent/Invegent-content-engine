@@ -15,13 +15,13 @@ ICE is a signal-centric AI content engine that transforms raw information stream
 **Phase 2 — In Progress**
 - Pipeline: ✅ Working (ingest → canonicalise → score → draft → approve → publish)
 - Clients: NDIS Yarns (disability services), Property Pulse (property investment)
-- Dashboard: Next.js build in progress (replaces Retool)
+- Dashboard: Next.js — live at dashboard.invegent.com (migrating from Retool)
 - Database: Supabase Pro (PostgreSQL, 30+ tables, daily backups active)
 - Publishing: Facebook ✅ | LinkedIn ⏳ (pending account recovery)
 
 ## Phase Completion Summary
 - ✅ Phase 1 — Stabilise: COMPLETE
-- 🔄 Phase 2 — Automate: IN PROGRESS (2.1 ✅ 2.2 ✅ 2.3 ⏳ 2.5 🔄)
+- 🔄 Phase 2 — Automate: IN PROGRESS (2.1 ✅ 2.2 ✅ 2.3 ⏳ 2.5 🔄 2.8 ✅)
 - ⏸ Phase 3 — Expand: NOT STARTED
 - ⏸ Phase 4 — Scale: NOT STARTED
 
@@ -44,8 +44,8 @@ include a dated migration file committed alongside deployment.
 - Supabase project: mbkmaxqhsohbtwsqolns (ap-southeast-2, Sydney)
 - GitHub org: github.com/Invegent
 - Primary repo: github.com/Invegent/Invegent-content-engine
-- Dashboard repo: github.com/Invegent/invegent-dashboard (Next.js, in progress)
+- Dashboard repo: github.com/Invegent/invegent-dashboard (Next.js, live)
 - Portal repo: github.com/Invegent/invegent-portal (Next.js, planned)
 - Deployment: Vercel
-- Dashboard URL: dashboard.invegent.com (planned)
+- Dashboard URL: dashboard.invegent.com ✅ live
 - Portal URL: portal.invegent.com (planned)

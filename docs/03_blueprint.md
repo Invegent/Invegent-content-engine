@@ -40,7 +40,7 @@ Multiple apps and agents read from and write to the same database.
 **Three separate Next.js apps, three separate GitHub repos:**
 
 | App | Repo | URL | Audience |
-|---|---|---|---|
+|---|---|---|---------|
 | Operations Dashboard | invegent-dashboard | dashboard.invegent.com | Internal team (2-3 people) |
 | Client Portal | invegent-portal | portal.invegent.com | Paying clients |
 | Marketing / Web | invegent-web | invegent.com | Public |
@@ -76,8 +76,8 @@ Each client sees only their own data.
 |---|---|---|
 | Primary model | Claude API (Anthropic) | Better synthesis, brand voice, compliance |
 | Secondary model | OpenAI GPT-4o | Fallback, specific tasks |
-| Model routing | client_ai_profile.model | Per-client config, swappable |
-| API pattern | Chat Completions / Responses API | Not Assistants (deprecated) |
+| Model routing | c.client_brand_profile.model | Per-client config, swappable |
+| API pattern | Chat Completions / Messages API | Not Assistants (deprecated) |
 
 ### Publishing Layer
 | Platform | API | Status |
@@ -158,7 +158,7 @@ m.vw_ops_token_health      View: token expiry status per client
 **c schema — Client Configuration**
 ```
 c.client                   Client identity (name, slug, timezone, status)
-c.client_ai_profile        AI persona, system prompt, model, platform rules
+c.client_ai_profile        Legacy AI persona config (superseded by brand profile below)
 c.client_channel           Platform connections per client
 c.client_digest_policy     Content selection rules (strict/lenient, window)
 c.client_publish_profile   Publishing settings (mode, throttle, token, enabled,
@@ -166,6 +166,23 @@ c.client_publish_profile   Publishing settings (mode, throttle, token, enabled,
                            boost_objective, boost_targeting jsonb, boost_score_threshold)
 c.client_source            Feed → client links with weights
 c.client_content_scope     Client → content vertical links
+
+— Content Intelligence Profiles (Phase 2.8) ✅ —
+c.client_brand_profile     Brand identity, presenter voice, compliance rules, model config
+                           Columns: brand_name, brand_bio, presenter_identity,
+                           core_expertise, audience_description, audience_is_dynamic,
+                           brand_voice_keywords (ARRAY), brand_values,
+                           brand_never_do (ARRAY), compliance_context,
+                           disclaimer_template, model, temperature, max_output_tokens,
+                           brand_identity_prompt, use_prompt_override, is_active, version
+c.client_platform_profile  Per-platform publishing rules (one row per client per platform)
+                           Columns: platform, platform_voice_notes, register, max_chars,
+                           min_chars, emoji_level, use_hashtags, hashtag_count,
+                           use_markdown, structure_notes, output_fields (jsonb),
+                           platform_voice_prompt, is_active, version
+c.content_type_prompt      Per-job-type prompt templates (task_prompt + output_schema_hint)
+                           Columns: client_id, job_type, platform, task_prompt,
+                           output_schema_hint, is_active, version
 ```
 
 **t schema — Taxonomy**
@@ -194,15 +211,15 @@ Property Pulse:  4036a6b5-b4a3-406e-998d-c2fe14a8bbdd
 
 | Function | Version | Schedule | Purpose |
 |---|---|---|---|
-| ingest | v75 | Every 6 hours | RSS feed ingestion |
-| content_fetch | v45 | Every 10 min | Full text extraction (Jina) |
-| ai-worker | v40 | Every 5 min | AI draft generation |
-| auto-approver | v9 | Every 10 min | Auto-approve qualifying drafts |
-| publisher | v34 | Every 5 min | Publish to Facebook |
-| insights-worker | v11 | Daily 3am UTC | Facebook Insights back-feed |
-| feed-intelligence | v1 | Weekly Sun 2am UTC | Feed quality analysis |
-| inspector | v63 | On-demand | Pipeline diagnostics |
-| inspector_sql_ro | v18 | On-demand | Read-only SQL diagnostics |
+| ingest | v78 | Every 6 hours | RSS feed ingestion |
+| content_fetch | v48 | Every 10 min | Full text extraction (Jina) |
+| ai-worker | v44 | Every 5 min | AI draft generation (v2.0.0 — content intelligence profiles) |
+| auto-approver | v12 | Every 10 min | Auto-approve qualifying drafts |
+| publisher | v37 | Every 15 min | Publish to Facebook |
+| insights-worker | v15 | Daily 3am UTC | Facebook Insights back-feed |
+| feed-intelligence | v4 | Weekly Sun 2am UTC | Feed quality analysis |
+| inspector | v66 | On-demand | Pipeline diagnostics |
+| inspector_sql_ro | v21 | On-demand | Read-only SQL diagnostics |
 
 **Additional pg_cron jobs (SQL-only, no Edge Function):**
 - planner-hourly — creates digest runs and populates digest items
@@ -220,8 +237,14 @@ Property Pulse:  4036a6b5-b4a3-406e-998d-c2fe14a8bbdd
 
 **PostgREST schema exposure:** The f, m, c schemas are NOT in PostgREST's
 exposed_schemas list. Direct `.from()` calls via Supabase JS client return
-zero rows silently. Fix: use SECURITY DEFINER RPCs in public schema, or
-use service role key server-side (bypasses PostgREST entirely).
+zero rows silently for reads; writes succeed (creating a misleading false positive).
+Fix: use SECURITY DEFINER RPCs in public schema, or use service role key
+server-side (bypasses PostgREST entirely — used in the Next.js dashboard).
+
+**c schema service role grant:** The service_role must be explicitly granted
+SELECT/INSERT/UPDATE on c.client_brand_profile, c.client_platform_profile,
+and c.content_type_prompt. These are not inherited from the schema grant.
+Verify with: SELECT has_table_privilege('service_role', 'c.table_name', 'SELECT');
 
 **post_draft has no direct client_id:** Client resolution requires joining
 through m.post_seed via the seed relationship. Direct column reference causes
@@ -262,10 +285,14 @@ pg_cron (hourly + client-specific schedules)
 
 AI GENERATION
 pg_cron (every 5 minutes)
-→ ai-worker Edge Function
+→ ai-worker v44 Edge Function (v2.0.0)
 → reads m.ai_job (status = 'queued')
-→ reads c.client_ai_profile (persona, system prompt, model)
-→ calls Claude/OpenAI API
+→ reads c.client_brand_profile (brand identity, model, temperature)
+→ reads c.client_platform_profile (platform rules, voice)
+→ reads c.content_type_prompt (task_prompt, output_schema_hint)
+→ assembles: brand_identity_prompt + platform_voice_prompt → system prompt
+→ assembles: task_prompt + output_schema_hint + payload → user prompt
+→ calls Claude API (primary) or OpenAI (fallback)
 → writes m.post_draft (approval_status = 'needs_review')
 
 APPROVAL
@@ -274,7 +301,7 @@ Manual: human reviews draft in dashboard → approve/reject
 → approved drafts → m.post_publish_queue
 
 PUBLISH
-pg_cron (every 5 minutes)
+pg_cron (every 15 minutes)
 → publisher Edge Function
 → reads m.post_publish_queue (due items, mode = 'auto')
 → calls platform API (Facebook, LinkedIn etc)
@@ -327,7 +354,7 @@ This architecture means:
 
 ## The Four Agents
 
-### Agent 1 — Auto-Approval Agent ✅ COMPLETE (v9)
+### Agent 1 — Auto-Approval Agent ✅ COMPLETE (v12)
 **Purpose:** Eliminate manual review of 80-90% of drafts
 
 Runs every 10 minutes via pg_cron. 5-gate logic:
@@ -339,18 +366,27 @@ Runs every 10 minutes via pg_cron. 5-gate logic:
 
 approved_by = 'auto-agent-v1' for auditability.
 
-### Agent 2 — Feed Intelligence Agent ✅ COMPLETE (v1)
+### Agent 2 — Feed Intelligence Agent ✅ COMPLETE (v4)
 **Purpose:** Keep feed quality high without manual monitoring
 
 Runs weekly Sunday 2am UTC. Analyses give-up rates per source.
 Recommendations written to m.agent_recommendations.
 Human approves/rejects recommendations in dashboard.
 
-### Agent 3 — Content Analyst Agent 🔲 PLANNED (Phase 3.2)
+### Agent 3 — Content Intelligence Agent ✅ COMPLETE (Phase 2.8 — ai-worker v44)
+**Purpose:** Generate high-quality, on-brand drafts using structured content
+profiles rather than monolithic system prompts
+
+Not a separate Edge Function — this is the ai-worker v2.0.0 rewrite.
+Three-table profile system: client_brand_profile + client_platform_profile
++ content_type_prompt → assembled into system + user prompt per job.
+Client Profile Editor in dashboard allows updating all three tables via UI.
+
+### Agent 4 — Content Analyst Agent 🔲 PLANNED (Phase 3.2)
 **Purpose:** Generate weekly performance reports per client
 **Dependencies:** Facebook Insights back-feed (2.1) must be running ✅
 
-### Agent 4 — Auto-Boost Agent 🔲 PLANNED (Phase 3.4)
+### Agent 5 — Auto-Boost Agent 🔲 PLANNED (Phase 3.4)
 **Purpose:** Automatically boost top-performing posts via Facebook Ads API
 **Dependencies:** m.post_performance (2.1) ✅, Meta App Review ads permissions
 
@@ -373,7 +409,7 @@ staging  → nothing publishes, for testing only
 |---|---|---|
 | Database | Supabase / PostgreSQL | Low lock-in, portable, RLS built-in |
 | AI API | Claude primary, OpenAI fallback | Claude better for synthesis and brand voice |
-| Persona storage | Database (client_ai_profile) | Not in API (Assistants deprecated), portable |
+| Persona storage | Database (content intelligence profiles) | Per-client, version-controlled, UI-editable |
 | Pipeline orchestration | pg_cron + Edge Functions | Already proven, no new infrastructure |
 | Frontend | Next.js + Vercel | Claude Code builds it, auto-deploy, same pattern for all layers |
 | Multi-tenancy | Supabase RLS | Enforced at DB level, not application level |

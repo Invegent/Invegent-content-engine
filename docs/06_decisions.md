@@ -120,25 +120,23 @@ Responses API with personas stored in the database.
 The Assistants API was designed for conversational agents.
 ICE does not need conversation — it needs batch processing
 with consistent persona application. Storing personas in
-c.client_ai_profile was architecturally correct before
-the deprecation and is now the only viable approach.
-The database-driven approach is actually superior: personas
-are version-controlled, per-client configurable, visible
-in the dashboard, and portable across AI providers.
-No rebuild required when OpenAI deprecated Assistants —
-the architecture was already correct.
+the database was architecturally correct before the deprecation
+and is now the only viable approach. The database-driven
+approach is actually superior: personas are version-controlled,
+per-client configurable, visible in the dashboard, and portable
+across AI providers. No rebuild required when OpenAI deprecated
+Assistants — the architecture was already correct.
 
 ---
 
 ## D005 — Next.js vs Retool for Dashboard
 **Date:** February 2026
-**Status:** Confirmed — Retool is transitional, Next.js is target
+**Status:** Confirmed — Retool retired, Next.js live
 
 **Decision:**
-Retool is used as a transitional tool during Phase 1.
-The long-term operations dashboard, client portal, and
-client websites will all be built in Next.js on Vercel
-by Claude Code.
+Retool was used as a transitional tool during Phase 1.
+The operations dashboard is now being built in Next.js on Vercel
+by Claude Code. dashboard.invegent.com is live.
 
 **Options Considered:**
 - Retool (low-code, drag and drop)
@@ -169,12 +167,11 @@ one AI builder.
 
 ## D006 — Claude API as Primary AI Model
 **Date:** March 2026
-**Status:** Confirmed — pending implementation in ai-worker
+**Status:** Confirmed — implemented in ai-worker v44
 
 **Decision:**
-Switch primary AI model from OpenAI GPT-4o to Anthropic
-Claude as the default for content generation. Retain OpenAI
-as fallback option.
+Primary AI model is Anthropic Claude. OpenAI GPT-4o is retained
+as fallback. Per-client model config in c.client_brand_profile.
 
 **Options Considered:**
 - OpenAI GPT-4o only
@@ -192,9 +189,14 @@ complex multi-rule instructions like NDIS compliance
 requirements. For a content engine where quality and
 brand consistency are the core value proposition, the
 better synthesis model is the right choice. Per-client
-config in client_ai_profile means clients can be migrated
-gradually. OpenAI retained as fallback reduces vendor
-concentration risk.
+config in client_brand_profile means clients can be migrated
+or tested individually. OpenAI retained as fallback reduces
+vendor concentration risk.
+
+Implemented: ai-worker v44 dispatches to Anthropic Messages API
+if model.startsWith('claude-'), otherwise OpenAI Chat Completions.
+Both NDIS Yarns and Property Pulse currently configured for
+claude-sonnet-4-6.
 
 ---
 
@@ -261,11 +263,12 @@ or when job queue complexity demands it.
 
 ## D009 — Chat-to-SQL-to-Supabase Development Workflow
 **Date:** November 2025
-**Status:** Confirmed — primary development method
+**Status:** Confirmed — primary development method for DB changes
 
 **Decision:**
 All database changes follow the pattern: describe in chat
-→ Claude generates SQL → review → apply in Supabase SQL editor.
+→ Claude generates SQL → review → apply in Supabase SQL editor
+or via Supabase MCP apply_migration.
 No direct ad-hoc database editing.
 
 **Options Considered:**
@@ -283,8 +286,9 @@ reviewable, explainable, and documented before it touches
 production. It also means Claude can reason about the
 full schema context when generating changes, reducing
 errors. The workflow has produced 30+ tables and
-complex migrations without data loss. It will continue
-until a formal migration framework becomes necessary at scale.
+complex migrations without data loss. Claude Code adoption
+(Phase 2 onwards) extends this to code changes as well —
+same discipline applied to Edge Functions and Next.js components.
 
 ---
 
@@ -338,16 +342,17 @@ secondary. Other verticals are future.
 **Choice:** NDIS providers as primary, property secondary
 
 **Reasoning:**
-The founder is a practising OT with deep domain knowledge
-of the NDIS sector. This creates a trust advantage that
+The founder is a CPA and NDIS plan manager with operational
+knowledge of the NDIS ecosystem, married to the OT who runs
+Care for Welfare. This creates a trust advantage that
 no general marketing agency can replicate — walking into
 an NDIS provider conversation as a peer, not a vendor.
 NDIS Yarns is proof of concept already in market.
 The compliance requirements in NDIS content make
 providers particularly anxious about getting it wrong —
-ICE's NDIS-specific taxonomy and an OT founder addresses
-this anxiety directly. Broad horizontal targeting diffuses
-this advantage across a market where ICE has no edge.
+ICE's NDIS-specific taxonomy and insider founder context
+addresses this anxiety directly. Broad horizontal targeting
+diffuses this advantage across a market where ICE has no edge.
 Win the NDIS vertical completely before expanding.
 
 ---
@@ -415,12 +420,56 @@ No production impact until the rename is executed.
 
 ---
 
+## D014 — Content Intelligence Profiles Architecture
+**Date:** March 2026
+**Status:** Confirmed — implemented in Phase 2.8
+
+**Decision:**
+Replace the monolithic c.client_ai_profile system prompt with a
+three-table structured content intelligence profile system:
+c.client_brand_profile + c.client_platform_profile + c.content_type_prompt.
+
+**Options Considered:**
+- Keep monolithic system prompt in c.client_ai_profile (single string, hard to update)
+- Structured profiles with separate tables per concern (brand, platform, job type)
+- External prompt management tool (Langsmith, Promptlayer)
+
+**Choice:** Three-table structured profiles
+
+**Reasoning:**
+The monolithic system prompt approach worked for Phase 1 but has
+several compounding problems at scale: it cannot be partially updated
+(the whole string must be replaced), it mixes brand voice, platform
+rules, and job-type instructions into one undifferentiated block,
+there is no per-platform differentiation (Facebook vs LinkedIn vs Blog
+have fundamentally different rules), and it cannot be edited via a UI
+without risking accidental corruption of the entire prompt.
+
+The three-table approach separates concerns cleanly:
+- client_brand_profile: who the client is and how they speak (stable, changes rarely)
+- client_platform_profile: what the rules are for each platform (stable per platform)
+- content_type_prompt: what task to perform for each job type (iterable, prompt engineering)
+
+This means task_prompt copy can be iterated via SQL UPDATE without any
+code deployment. New platforms just need a new client_platform_profile
+row. New content types just need a new content_type_prompt row.
+Legacy fallback preserves backward compatibility during migration.
+
+**Implementation:**
+- ai-worker v44 reads all three tables and assembles structured prompts
+- brand_identity_prompt + platform_voice_prompt → system prompt
+- task_prompt + output_schema_hint + source payload → user prompt
+- Client Profile Editor tab in dashboard provides UI for all three tables
+- service_role explicit grants required on all three c-schema tables (gotcha)
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target Date |
 |---|---|---|
 | Rename Ingest + Content_fetch folders to lowercase | Cosmetic — next Claude Code session | Next build session |
-| Retool cancellation date | When Next.js dashboard is live and stable | Phase 2 completion |
+| Retool cancellation date | When Next.js dashboard tabs are all complete | Phase 2.5 completion |
 | Model router implementation | When AI costs become significant | Phase 4 |
 | Trigger.dev evaluation | When pg_cron job complexity demands it | Phase 4 |
 | SaaS vs managed service long-term | When 10 clients served for 3+ months | Phase 4 |

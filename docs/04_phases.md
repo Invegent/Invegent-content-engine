@@ -26,21 +26,21 @@ The foundation is solid enough to onboard a third paying client.
 - [x] NDIS.gov.au tested and rejected as poor source (documented)
 
 **1.2 — Auto-Approval Agent** ✅
-- [x] Edge Function: auto-approver (v9)
+- [x] Edge Function: auto-approver (v12)
 - [x] 5-gate approval logic implemented
 - [x] Auto-approves drafts above threshold
 - [x] Flags below-threshold with reason code
 - [x] Runs every 10 minutes via pg_cron
 - [x] approved_by = 'auto-agent-v1' for auditability
 
-**1.3 — Dashboard (Retool)** ✅ → being replaced by Next.js
+**1.3 — Dashboard (Retool)** ✅ → replaced by Next.js
 - [x] Retool functional for Phase 1 operations
-- [ ] Next.js migration in progress (Phase 2.5)
+- [x] Next.js migration in progress (Phase 2.5)
 
 **1.4 — Both Clients Publishing Consistently** ✅
 - [x] NDIS Yarns: 5+ posts per week
 - [x] Property Pulse: 5+ posts per week
-- [x] 393 total posts published as of March 2026
+- [x] 393+ total posts published as of March 2026
 
 **1.5 — Security & Backups** ✅
 - [x] Supabase Pro enabled — daily automatic backups confirmed active
@@ -78,7 +78,7 @@ ICE learns from what it publishes.
 
 **2.1 — Facebook Insights Back-Feed** ✅ COMPLETE
 - [x] m.post_performance table created
-- [x] insights-worker Edge Function (v11)
+- [x] insights-worker Edge Function (v15)
 - [x] Calls Facebook Graph API /insights daily (3am UTC)
 - [x] 50 rows populated — 25 with reach data
 - [x] Note: New Pages Experience limits impressions to null (platform limitation)
@@ -86,10 +86,9 @@ ICE learns from what it publishes.
 
 **2.2 — Feed Intelligence Agent** ✅ COMPLETE
 - [x] m.agent_recommendations table created
-- [x] feed-intelligence Edge Function (v1)
+- [x] feed-intelligence Edge Function (v4)
 - [x] Weekly analysis via pg_cron (Sundays 2am UTC)
 - [x] Recommendations written to m.agent_recommendations
-- [x] GitHub commit: e622da6
 
 **2.3 — LinkedIn Publisher** ⏳ BLOCKED
 - [ ] LinkedIn account recovery in progress (support ticket submitted)
@@ -101,14 +100,15 @@ ICE learns from what it publishes.
 - Deprioritised — will revisit after 2.5 and first paying client
 
 **2.5 — Next.js Dashboard Migration** 🔄 IN PROGRESS
-- [ ] Repo: github.com/Invegent/invegent-dashboard
-- [ ] Stack: Next.js 14 + TypeScript + Tailwind + shadcn/ui
-- [ ] Auth: Supabase Auth (email/password, multi-user)
-- [ ] Deployed at: dashboard.invegent.com
-- [ ] Session 1: scaffold + auth + Overview tab
-- [ ] Session 2: Drafts + Queue tabs
-- [ ] Session 3: Clients + Feeds tabs
-- [ ] Session 4: Failures tab + deploy
+- [x] Repo: github.com/Invegent/invegent-dashboard
+- [x] Stack: Next.js 14 + TypeScript + Tailwind + shadcn/ui
+- [x] Auth: Supabase Auth (email/password, multi-user)
+- [x] Deployed at: dashboard.invegent.com ✅ live
+- [x] Client Profile Editor tab: brand, platform, prompts, generation settings
+- [ ] Overview tab: pipeline health, token status, performance summary
+- [ ] Drafts + Queue tabs
+- [ ] Clients + Feeds tabs
+- [ ] Failures tab (surfaces m.vw_ops_failures_24h)
 - [ ] Retool subscription cancelled on completion
 
 **2.6 — Public Proof Dashboard** 🔲 PLANNED
@@ -117,11 +117,30 @@ ICE learns from what it publishes.
 - [ ] Served from m.post_performance via Supabase
 - [ ] Primary sales asset for client acquisition
 
+**2.7 — Audience Foundation** 🔲 PLANNED
+- [ ] Facebook community building (NDIS provider groups — organic presence)
+- [ ] LinkedIn personal profile active (PK as NDIS content authority)
+- [ ] First paid Facebook boost campaigns ($200-400/month per client)
+- [ ] Facebook Custom Audiences (provider email lists)
+- [ ] Target: NDIS Yarns 500+ engaged followers before first client conversation
+
+**2.8 — Content Intelligence Profiles** ✅ COMPLETE
+- [x] c.client_brand_profile table — brand identity, presenter voice, compliance, model config
+- [x] c.client_platform_profile table — per-platform rules (one row per client per platform)
+- [x] c.content_type_prompt table — per-job-type task prompts and output schemas
+- [x] ai-worker v44 (v2.0.0) deployed — reads all three tables, assembles structured prompts
+- [x] Legacy fallback: if no brand_profile or content_type_prompt, falls back to c.client_ai_profile
+- [x] Brand profiles seeded for both clients (NDIS Yarns + Property Pulse)
+- [x] Platform profiles seeded: 7 platforms × 2 clients (Facebook active, 6 inactive stubs)
+- [x] Content type prompts seeded: rewrite_v1 + synth_bundle_v1 × 2 clients (Facebook)
+- [x] Client Profile Editor tab live in dashboard (brand, platform, prompts, settings)
+- [x] Service role grants applied to all three c-schema tables
+
 ### Phase 2 Done When
 1. Less than 2 hours/week total manual input for both clients
 2. Performance data flowing back into scoring
 3. LinkedIn publishing live for both clients (unblocked)
-4. Next.js dashboard live on Vercel and Retool retired
+4. Next.js dashboard live on Vercel with all tabs complete and Retool retired
 
 ---
 
@@ -205,7 +224,7 @@ growth without linear time increase.
 
 **4.3 — AI Model Abstraction**
 - [ ] Model router: ai-job → model_router → claude | openai
-- [ ] Per-client model preference in client_ai_profile
+- [ ] Per-client model preference in client_brand_profile
 - [ ] A/B testing capability for model quality comparison
 - [ ] Cost monitoring per client per model
 
@@ -240,6 +259,10 @@ Facebook Insights (2.1) ✅
 → required for Public Proof Dashboard content (2.6)
 → required for feed scoring improvement (ongoing)
 
+Content Intelligence Profiles (2.8) ✅
+→ required for consistent brand voice at scale
+→ required before adding new clients (each needs their own profile set)
+
 Auto-Approval Agent (1.2) ✅
 → required for under 2 hours/week target
 → required before scaling to external clients (3.x)
@@ -264,6 +287,7 @@ Dead Letter Queue (1.7) ✅
 Public Proof Dashboard (2.6)
 → required as primary sales asset before first client conversation
 → depends on Facebook Insights (2.1) ✅
+→ depends on Audience Foundation (2.7) for meaningful follower numbers
 ```
 
 ---
