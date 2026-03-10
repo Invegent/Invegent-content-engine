@@ -464,6 +464,98 @@ Legacy fallback preserves backward compatibility during migration.
 
 ---
 
+## D015 — Launch Readiness Gate: Quality Before Clients
+**Date:** March 2026
+**Status:** Confirmed — active constraint on client acquisition timeline
+
+**Decision:**
+First paying client conversations will not begin until a
+sustained period of quality-verified publishing is observed
+across both internal clients. The gate is quality demonstrated,
+not features built.
+
+**Context:**
+As of 10 March 2026, Claude API (claude-sonnet-4-6) has just
+been wired into the pipeline for the first time. All prior
+published posts used GPT-4o-mini via legacy fallback — the
+content intelligence profile system (Phase 2.8) was silently
+bypassed. The full Phase 2.8 profile stack is now active but
+has zero publishing history.
+
+**Gate criteria (all must be true before first client conversation):**
+1. Both profiles have produced 4+ consecutive weeks of
+   quality-verified posts — correct voice, no markdown,
+   appropriate length, genuine insight, clean disclaimers
+2. Post history on both Facebook pages is clean enough to
+   serve as a proof point — test/poor-quality posts from
+   the GPT-4o-mini era archived or deleted
+3. Meta App Review approved or in final review stage
+4. LinkedIn account recovered (or confirmed not a blocker
+   for first client onboarding on Facebook-only basis)
+5. A specific proof point document prepared for NDIS Yarns
+   (follower growth, posts published, engagement rate,
+   top performing posts)
+
+**Reasoning:**
+The instinct to launch as soon as it is built is correct in
+many businesses. It is wrong here. The product being sold is
+content quality and brand trust — if the first client
+sees mediocre posts or a thin proof point, the sale fails
+and the reputation in a small professional community is damaged.
+One month of patience to verify quality is not delay —
+it is the minimum viable proof that the product works.
+"We release based on quality tested, not what is built."
+
+**Target first client conversation:** April 2026, conditional
+on gate criteria being met.
+
+---
+
+## D016 — Premium Services Layer: Deferred
+**Date:** March 2026
+**Status:** Deferred — revisit at 5 paying clients
+
+**Decision:**
+A Premium Services catalogue (VA-driven distribution, video
+editing, editorial review, graphic design, strategy sessions)
+was discussed and deliberately deferred. No design, pricing,
+or delivery infrastructure will be built until the core
+managed service has 5 paying clients.
+
+**Services identified for future evaluation:**
+- VA-driven distribution: community participation in NDIS
+  Facebook groups and LinkedIn on behalf of clients
+- Video editing: script from ICE, human editor produces asset
+- Content editorial: human review layer above AI output
+- Graphic design: branded visuals per post or campaign
+- Monthly strategy call: 60-min quarterly review per client
+- Cross-promotion coordination: managing spotlight posts
+  across the ICE client network
+
+**Why deferred:**
+No paying clients yet. Delivery capacity is one person.
+VA distribution requires trained SOPs before it can be
+delegated — the knowledge is not yet documented. Video
+and editorial are different service businesses bolted
+onto a software product. Designing Premium Services before
+the base service is validated is productive avoidance.
+
+**One exception noted:**
+The monthly strategy call is the only Premium Service that
+makes sense before 5 clients. It requires no delivery
+infrastructure, directly leverages CPA and NDIS background,
+and addresses the real anxiety of time-poor providers:
+"Is someone with domain knowledge actually watching over
+my content?" Price point: $200-250/month add-on.
+This can be offered informally from client 1 onwards
+without formal catalogue design.
+
+**Revisit trigger:** When 5 paying clients are live and
+operational time across all clients is being measured
+in hours per week.
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target Date |
@@ -475,3 +567,4 @@ Legacy fallback preserves backward compatibility during migration.
 | SaaS vs managed service long-term | When 10 clients served for 3+ months | Phase 4 |
 | Second market expansion | After NDIS vertical proven with 5+ clients | Phase 4 |
 | YouTube / video layer | When client demand justifies investment | Phase 4 |
+| Premium Services catalogue design | When 5 paying clients live | Phase 3+ |
