@@ -35,7 +35,8 @@ The foundation is solid enough to onboard a third paying client.
 
 **1.3 — Dashboard (Retool)** ✅ → replaced by Next.js
 - [x] Retool functional for Phase 1 operations
-- [x] Next.js migration in progress (Phase 2.5)
+- [x] Next.js migration complete (Phase 2.5 ✅)
+- [x] Retool subscription CANCELLED — March 2026
 
 **1.4 — Both Clients Publishing Consistently** ✅
 - [x] NDIS Yarns: 5+ posts per week
@@ -97,19 +98,22 @@ ICE learns from what it publishes.
 - [ ] Permissions required: w_organization_social, r_organization_social
 
 **2.4 — Campaign / Series Content Type** ⏸ DEFERRED
-- Deprioritised — will revisit after 2.5 and first paying client
+- Deprioritised — will revisit after first paying client
 
-**2.5 — Next.js Dashboard Migration** 🔄 IN PROGRESS
+**2.5 — Next.js Dashboard Migration** ✅ COMPLETE
 - [x] Repo: github.com/Invegent/invegent-dashboard
 - [x] Stack: Next.js 14 + TypeScript + Tailwind + shadcn/ui
 - [x] Auth: Supabase Auth (email/password, multi-user)
 - [x] Deployed at: dashboard.invegent.com ✅ live
-- [x] Client Profile Editor tab: brand, platform, prompts, generation settings
-- [ ] Overview tab: pipeline health, token status, performance summary
-- [ ] Drafts + Queue tabs
-- [ ] Clients + Feeds tabs
-- [ ] Failures tab (surfaces m.vw_ops_failures_24h)
-- [ ] Retool subscription cancelled on completion
+- [x] Overview tab: pipeline health, published stats, client cards, token banner
+- [x] Drafts tab: filterable by approval_status (approved/rejected/published/scheduled/dead)
+- [x] Queue tab: status tabs, locked item detection, scheduled times
+- [x] Clients tab: publish profiles, token status, mode, platform config
+- [x] Feeds tab: grouped by client, give-up rates, health badges
+- [x] Failures tab: dead items from all pipeline tables with dead_reason
+- [x] Post Studio tab: operator-prompted generation with promo_v1 job type
+- [x] Client Profile tab: brand, platform, prompts, generation settings
+- [x] Retool subscription CANCELLED — March 2026
 
 **2.6 — Public Proof Dashboard** 🔲 PLANNED
 - [ ] Read-only page within invegent.com app
@@ -132,7 +136,7 @@ ICE learns from what it publishes.
 - [x] Legacy fallback: if no brand_profile or content_type_prompt, falls back to c.client_ai_profile
 - [x] Brand profiles seeded for both clients (NDIS Yarns + Property Pulse)
 - [x] Platform profiles seeded: 7 platforms × 2 clients (Facebook active, 6 inactive stubs)
-- [x] Content type prompts seeded: rewrite_v1 + synth_bundle_v1 × 2 clients (Facebook)
+- [x] Content type prompts seeded: rewrite_v1 + synth_bundle_v1 + promo_v1 × 2 clients (Facebook)
 - [x] Client Profile Editor tab live in dashboard (brand, platform, prompts, settings)
 - [x] Service role grants applied to all three c-schema tables
 
@@ -140,7 +144,7 @@ ICE learns from what it publishes.
 1. Less than 2 hours/week total manual input for both clients
 2. Performance data flowing back into scoring
 3. LinkedIn publishing live for both clients (unblocked)
-4. Next.js dashboard live on Vercel with all tabs complete and Retool retired
+4. Next.js dashboard live on Vercel with all tabs complete and Retool retired ✅
 
 ---
 
@@ -267,8 +271,8 @@ Auto-Approval Agent (1.2) ✅
 → required for under 2 hours/week target
 → required before scaling to external clients (3.x)
 
-Next.js Dashboard (2.5) ← IN PROGRESS
-→ required before Client Portal (3.1) — shares codebase patterns
+Next.js Dashboard (2.5) ✅ COMPLETE — Retool cancelled
+→ portal (3.1) can now be scaffolded using same patterns
 
 Meta App Review (1.6) ← IN PROGRESS
 → single submission covers publishing AND advertising permissions
