@@ -131,12 +131,13 @@ Assistants — the architecture was already correct.
 
 ## D005 — Next.js vs Retool for Dashboard
 **Date:** February 2026
-**Status:** Confirmed — Retool retired, Next.js live
+**Status:** Confirmed — Retool retired March 2026, Next.js live
 
 **Decision:**
 Retool was used as a transitional tool during Phase 1.
-The operations dashboard is now being built in Next.js on Vercel
-by Claude Code. dashboard.invegent.com is live.
+The operations dashboard is now live in Next.js on Vercel
+built by Claude Code. dashboard.invegent.com is live with all 8 tabs.
+Retool subscription cancelled March 2026.
 
 **Options Considered:**
 - Retool (low-code, drag and drop)
@@ -167,7 +168,7 @@ one AI builder.
 
 ## D006 — Claude API as Primary AI Model
 **Date:** March 2026
-**Status:** Confirmed — implemented in ai-worker v44
+**Status:** Confirmed — implemented in ai-worker v45
 
 **Decision:**
 Primary AI model is Anthropic Claude. OpenAI GPT-4o is retained
@@ -193,7 +194,7 @@ config in client_brand_profile means clients can be migrated
 or tested individually. OpenAI retained as fallback reduces
 vendor concentration risk.
 
-Implemented: ai-worker v44 dispatches to Anthropic Messages API
+Implemented: ai-worker v45 dispatches to Anthropic Messages API
 if model.startsWith('claude-'), otherwise OpenAI Chat Completions.
 Both NDIS Yarns and Property Pulse currently configured for
 claude-sonnet-4-6.
@@ -396,27 +397,18 @@ blueprint as an undocumented gap.
 
 ## D013 — Edge Function Folder Naming Convention
 **Date:** March 2026
-**Status:** Noted — inconsistency to resolve in next Claude Code session
+**Status:** Pending — to resolve in next Claude Code session
 
 **Decision:**
 Two Edge Function folders in GitHub use mixed-case names
 (supabase/functions/Ingest, supabase/functions/Content_fetch)
-while all other folders and Supabase slugs use lowercase
-(auto-approver, ai-worker, publisher, inspector, inspector_sql_ro).
-
-**Current state:**
-- GitHub: Ingest, Content_fetch (mixed case — how they were originally committed)
-- Supabase slugs: ingest, content_fetch (lowercase)
+while all other folders and Supabase slugs use lowercase.
 
 **Resolution:**
 Rename the two GitHub folders to lowercase in the next Claude Code
-terminal session (git mv is required — cannot be done safely via
-GitHub API without risk of history disruption). Do not rename via
-the GitHub web UI or API. Target state: all function folders
-lowercase, matching their Supabase slug names exactly.
-
-This is cosmetic only — Supabase deploys by slug, not folder name.
-No production impact until the rename is executed.
+terminal session using git mv. Do not rename via GitHub web UI or API.
+Target state: all function folders lowercase, matching Supabase slug names.
+This is cosmetic only — no production impact until executed.
 
 ---
 
@@ -456,7 +448,7 @@ row. New content types just need a new content_type_prompt row.
 Legacy fallback preserves backward compatibility during migration.
 
 **Implementation:**
-- ai-worker v44 reads all three tables and assembles structured prompts
+- ai-worker v45 reads all three tables and assembles structured prompts
 - brand_identity_prompt + platform_voice_prompt → system prompt
 - task_prompt + output_schema_hint + source payload → user prompt
 - Client Profile Editor tab in dashboard provides UI for all three tables
@@ -476,19 +468,16 @@ not features built.
 
 **Context:**
 As of 10 March 2026, Claude API (claude-sonnet-4-6) has just
-been wired into the pipeline for the first time. All prior
-published posts used GPT-4o-mini via legacy fallback — the
-content intelligence profile system (Phase 2.8) was silently
-bypassed. The full Phase 2.8 profile stack is now active but
-has zero publishing history.
+been wired into the pipeline for the first time via the Phase 2.8
+content intelligence profile system. The full profile stack is
+now active but has zero publishing history.
 
 **Gate criteria (all must be true before first client conversation):**
 1. Both profiles have produced 4+ consecutive weeks of
    quality-verified posts — correct voice, no markdown,
    appropriate length, genuine insight, clean disclaimers
 2. Post history on both Facebook pages is clean enough to
-   serve as a proof point — test/poor-quality posts from
-   the GPT-4o-mini era archived or deleted
+   serve as a proof point
 3. Meta App Review approved or in final review stage
 4. LinkedIn account recovered (or confirmed not a blocker
    for first client onboarding on Facebook-only basis)
@@ -497,11 +486,7 @@ has zero publishing history.
    top performing posts)
 
 **Reasoning:**
-The instinct to launch as soon as it is built is correct in
-many businesses. It is wrong here. The product being sold is
-content quality and brand trust — if the first client
-sees mediocre posts or a thin proof point, the sale fails
-and the reputation in a small professional community is damaged.
+The product being sold is content quality and brand trust.
 One month of patience to verify quality is not delay —
 it is the minimum viable proof that the product works.
 "We release based on quality tested, not what is built."
@@ -522,37 +507,81 @@ was discussed and deliberately deferred. No design, pricing,
 or delivery infrastructure will be built until the core
 managed service has 5 paying clients.
 
-**Services identified for future evaluation:**
-- VA-driven distribution: community participation in NDIS
-  Facebook groups and LinkedIn on behalf of clients
-- Video editing: script from ICE, human editor produces asset
-- Content editorial: human review layer above AI output
-- Graphic design: branded visuals per post or campaign
-- Monthly strategy call: 60-min quarterly review per client
-- Cross-promotion coordination: managing spotlight posts
-  across the ICE client network
-
-**Why deferred:**
-No paying clients yet. Delivery capacity is one person.
-VA distribution requires trained SOPs before it can be
-delegated — the knowledge is not yet documented. Video
-and editorial are different service businesses bolted
-onto a software product. Designing Premium Services before
-the base service is validated is productive avoidance.
-
 **One exception noted:**
-The monthly strategy call is the only Premium Service that
-makes sense before 5 clients. It requires no delivery
-infrastructure, directly leverages CPA and NDIS background,
-and addresses the real anxiety of time-poor providers:
-"Is someone with domain knowledge actually watching over
-my content?" Price point: $200-250/month add-on.
-This can be offered informally from client 1 onwards
-without formal catalogue design.
+The monthly strategy call ($200-250/month add-on) can be
+offered informally from client 1 onwards — no delivery
+infrastructure required, directly leverages CPA and NDIS background.
 
-**Revisit trigger:** When 5 paying clients are live and
-operational time across all clients is being measured
-in hours per week.
+**Revisit trigger:** When 5 paying clients are live.
+
+---
+
+## D017 — Email Newsletter Feed Architecture
+**Date:** March 2026
+**Status:** Designed — implementation pending (Phase 4.2)
+
+**Decision:**
+Email newsletters are the primary path to solving content
+quality gaps in verticals where the best sources sit behind
+paywalls or don't publish RSS feeds. Full article body
+arrives in email — no Jina fetch, no Cloudflare, no paywall.
+
+**Architecture:**
+- Dedicated Google Workspace account: feeds@invegent.com
+  (separate from pk@invegent.com — isolated credentials,
+  newsletter-only inbox, does not affect main email identity)
+- Vertical aliases: feeds.ndis@invegent.com, feeds.property@invegent.com
+- Future client aliases: feeds.client-[slug]@invegent.com
+- Gmail alias limit: 30 per Workspace account — sufficient for foreseeable scale
+- Gmail labels auto-applied by To: address filter (feeds-ndis, feeds-property)
+
+**Database model (no schema changes needed):**
+- f.feed_source: source_type_code = 'email_newsletter'
+  config JSONB carries: gmail_account, gmail_label, to_address,
+  scope ('vertical' | 'client'), vertical_key or client_id,
+  sender_domain, last_history_id
+- f.raw_content_item: external_id = Gmail message ID (dedup key)
+  payload JSONB carries: body_text, body_html, subject, from, to, date
+- last_history_id stored in feed_source.config, updated after each run
+
+**Pipeline:**
+email-ingest Edge Function (every 2h via pg_cron) →
+Gmail History API (incremental, from last_history_id) →
+strip HTML → f.raw_content_item → existing pipeline unchanged
+
+**Target NDIS newsletters:**
+- NDIS Commission Provider Alerts
+- NDIA News
+- Summer Foundation Research Digest
+- OT Australia Member Bulletin
+- NDS Weekly Roundup
+- Inclusion Australia Newsletter
+- DSS Disability Sector Briefing
+
+**Target property newsletters:**
+- CoreLogic Research Newsletter
+- PropTrack Property Market Outlook
+- REIA Market Update
+- RBA Bulletin
+- Property Council e-Bulletin
+- Smart Property Investment Newsletter
+
+**Implementation order:**
+1. Create feeds@invegent.com in Google Workspace Admin
+2. Add aliases: feeds.ndis@, feeds.property@
+3. Create Gmail labels + filters inside feeds account
+4. Subscribe to all newsletters above
+5. Confirm first emails arriving + assess quality (3-5 days)
+6. Build email-ingest Edge Function
+7. Gmail OAuth token setup for feeds account (one-time)
+
+**Why not Postmark inbound (listed in Phase 4.2):**
+Gmail is already a trusted tool with stable API, accessible
+via MCP, and the feeds account can subscribe to newsletters
+using a real inbox. Postmark inbound would require configuring
+MX records and a custom domain — more infrastructure for
+no quality gain at current scale. Postmark remains valid for
+high-volume or production reliability at scale.
 
 ---
 
@@ -561,7 +590,6 @@ in hours per week.
 | Decision | Context | Target Date |
 |---|---|---|
 | Rename Ingest + Content_fetch folders to lowercase | Cosmetic — next Claude Code session | Next build session |
-| Retool cancellation date | When Next.js dashboard tabs are all complete | Phase 2.5 completion |
 | Model router implementation | When AI costs become significant | Phase 4 |
 | Trigger.dev evaluation | When pg_cron job complexity demands it | Phase 4 |
 | SaaS vs managed service long-term | When 10 clients served for 3+ months | Phase 4 |

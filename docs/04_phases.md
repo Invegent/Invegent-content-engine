@@ -26,7 +26,7 @@ The foundation is solid enough to onboard a third paying client.
 - [x] NDIS.gov.au tested and rejected as poor source (documented)
 
 **1.2 — Auto-Approval Agent** ✅
-- [x] Edge Function: auto-approver (v12)
+- [x] Edge Function: auto-approver (v13)
 - [x] 5-gate approval logic implemented
 - [x] Auto-approves drafts above threshold
 - [x] Flags below-threshold with reason code
@@ -40,7 +40,7 @@ The foundation is solid enough to onboard a third paying client.
 
 **1.4 — Both Clients Publishing Consistently** ✅
 - [x] NDIS Yarns: 5+ posts per week
-- [x] Property Pulse: 5+ posts per week
+- [x] Property Pulse: 5+ posts per week (intermittent — monitoring)
 - [x] 393+ total posts published as of March 2026
 
 **1.5 — Security & Backups** ✅
@@ -52,7 +52,7 @@ The foundation is solid enough to onboard a third paying client.
 - [x] Privacy Policy live at invegent.github.io/Invegent-content-engine/Invegent_Privacy_Policy
 - [x] Data Deletion URL live
 - [x] Business verification submitted (ABN: 39 769 957 807, sole trader NSW)
-- [ ] Business verification approval pending (~2 working days)
+- [ ] Business verification approval pending
 - [ ] App icon upload pending (portal error — retry required)
 - [ ] Tech Provider status — apply after business verification approved
 - [ ] Permissions review submission: pages_manage_posts, pages_read_engagement, pages_show_list
@@ -79,7 +79,7 @@ ICE learns from what it publishes.
 
 **2.1 — Facebook Insights Back-Feed** ✅ COMPLETE
 - [x] m.post_performance table created
-- [x] insights-worker Edge Function (v15)
+- [x] insights-worker Edge Function (v16)
 - [x] Calls Facebook Graph API /insights daily (3am UTC)
 - [x] 50 rows populated — 25 with reach data
 - [x] Note: New Pages Experience limits impressions to null (platform limitation)
@@ -87,7 +87,7 @@ ICE learns from what it publishes.
 
 **2.2 — Feed Intelligence Agent** ✅ COMPLETE
 - [x] m.agent_recommendations table created
-- [x] feed-intelligence Edge Function (v4)
+- [x] feed-intelligence Edge Function (v5)
 - [x] Weekly analysis via pg_cron (Sundays 2am UTC)
 - [x] Recommendations written to m.agent_recommendations
 
@@ -115,11 +115,12 @@ ICE learns from what it publishes.
 - [x] Client Profile tab: brand, platform, prompts, generation settings
 - [x] Retool subscription CANCELLED — March 2026
 
-**2.6 — Public Proof Dashboard** 🔲 PLANNED
+**2.6 — Public Proof Dashboard** 🔲 NEXT BUILD CANDIDATE
 - [ ] Read-only page within invegent.com app
 - [ ] Shows NDIS Yarns live metrics (followers, posts, engagement, top posts)
 - [ ] Served from m.post_performance via Supabase
 - [ ] Primary sales asset for client acquisition
+- [ ] Depends on: meaningful follower numbers (2.7), Facebook Insights data (2.1 ✅)
 
 **2.7 — Audience Foundation** 🔲 PLANNED
 - [ ] Facebook community building (NDIS provider groups — organic presence)
@@ -132,13 +133,20 @@ ICE learns from what it publishes.
 - [x] c.client_brand_profile table — brand identity, presenter voice, compliance, model config
 - [x] c.client_platform_profile table — per-platform rules (one row per client per platform)
 - [x] c.content_type_prompt table — per-job-type task prompts and output schemas
-- [x] ai-worker v44 (v2.0.0) deployed — reads all three tables, assembles structured prompts
+- [x] ai-worker v45 (v2.0.0) deployed — reads all three tables, assembles structured prompts
 - [x] Legacy fallback: if no brand_profile or content_type_prompt, falls back to c.client_ai_profile
 - [x] Brand profiles seeded for both clients (NDIS Yarns + Property Pulse)
 - [x] Platform profiles seeded: 7 platforms × 2 clients (Facebook active, 6 inactive stubs)
 - [x] Content type prompts seeded: rewrite_v1 + synth_bundle_v1 + promo_v1 × 2 clients (Facebook)
 - [x] Client Profile Editor tab live in dashboard (brand, platform, prompts, settings)
 - [x] Service role grants applied to all three c-schema tables
+
+**2.9 — Post Studio** ✅ COMPLETE
+- [x] Post Studio tab in dashboard — operator-prompted content generation
+- [x] Supports promo_v1 job type (promotional/manual content briefs)
+- [x] Submits ai_job record, polls for completion, surfaces draft for review
+- [x] Drafts created via Post Studio carry created_by = 'manual-studio' for auditability
+- [x] Integrated with content intelligence profile system (Phase 2.8)
 
 ### Phase 2 Done When
 1. Less than 2 hours/week total manual input for both clients
@@ -222,7 +230,11 @@ growth without linear time increase.
 **4.2 — Additional Signal Sources**
 - [ ] Reddit API integration
 - [ ] YouTube trending topics via Data API
-- [ ] Email newsletter ingest via Postmark inbound
+- [ ] Email newsletter ingest (feeds@invegent.com — see D017)
+      Architecture designed March 2026 — build when newsletter subscriptions confirmed
+      feeds.ndis@invegent.com + feeds.property@invegent.com aliases
+      email-ingest Edge Function via Gmail History API
+      source_type_code = 'email_newsletter' in f.feed_source
 - [ ] Apify scrapers for priority non-RSS sources
 - [ ] Perplexity API for real-time synthesis and paywall bypass
 

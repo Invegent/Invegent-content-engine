@@ -15,13 +15,14 @@ ICE is a signal-centric AI content engine that transforms raw information stream
 **Phase 2 — In Progress**
 - Pipeline: ✅ Working (ingest → canonicalise → score → draft → approve → publish)
 - Clients: NDIS Yarns (disability services), Property Pulse (property investment)
-- Dashboard: Next.js — live at dashboard.invegent.com (migrating from Retool)
+- Dashboard: ✅ Next.js live at dashboard.invegent.com — all 8 tabs live (Retool cancelled March 2026)
 - Database: Supabase Pro (PostgreSQL, 30+ tables, daily backups active)
 - Publishing: Facebook ✅ | LinkedIn ⏳ (pending account recovery)
+- AI: Claude API primary (claude-sonnet-4-6) | OpenAI fallback
 
 ## Phase Completion Summary
 - ✅ Phase 1 — Stabilise: COMPLETE
-- 🔄 Phase 2 — Automate: IN PROGRESS (2.1 ✅ 2.2 ✅ 2.3 ⏳ 2.5 🔄 2.8 ✅)
+- 🔄 Phase 2 — Automate: IN PROGRESS (2.1 ✅ 2.2 ✅ 2.3 ⏳ 2.5 ✅ 2.8 ✅ 2.9 ✅)
 - ⏸ Phase 3 — Expand: NOT STARTED
 - ⏸ Phase 4 — Scale: NOT STARTED
 

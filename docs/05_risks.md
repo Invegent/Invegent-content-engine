@@ -42,9 +42,11 @@ a Meta API issue outside our control.
 **Mitigation:**
 - Build LinkedIn publisher (Phase 2.3) — reduces to single-platform dependency
 - Abstract publish layer so adding platforms takes hours not weeks
-- Exponential backoff on all Meta API calls ✅ done (publisher v34)
+- ✅ Exponential backoff on all Meta API calls (publisher v34)
 - Never queue more than 7 days of posts — keeps queue manageable during outages
-- Meta App Review (Phase 1.6) — in progress
+- ✅ Meta App Review (Phase 1.6) — in progress
+- ✅ content_fetch v2.5 — false-positive paywall detection fixed, reducing pipeline
+  stall risk from give-up storms on trusted free sources (abc.net.au, gov.au, etc.)
 
 **Status:** 🟡 PARTIALLY MITIGATED
 **Action required:** LinkedIn publisher Phase 2.3 — unblocked once LinkedIn account recovery resolves.
@@ -152,9 +154,9 @@ degradation over 2 weeks, or API deprecation notice.
 4. Migrate clients one at a time, monitoring quality
 
 **Mitigation:**
-- ✅ Claude API as primary model (switched from OpenAI)
+- ✅ Claude API as primary model (switched from OpenAI — ai-worker v45)
 - ✅ OpenAI retained as fallback
-- ✅ Per-client model config in client_ai_profile
+- ✅ Per-client model config in client_brand_profile
 - Build model router in Phase 4 (ai-job → model_router → claude | openai)
 
 **Status:** 🟡 PARTIALLY MITIGATED
@@ -204,14 +206,14 @@ unavailability.
 **Mitigation:**
 - ✅ Auto-approval agent (Phase 1.2) — eliminates largest manual task
 - ✅ Feed intelligence agent (Phase 2.2) — automates feed monitoring
-- 🔄 Next.js dashboard (Phase 2.5) — reduces debugging time per issue
+- ✅ Next.js dashboard (Phase 2.5) — reduces debugging time per issue
 - 🔲 Client portal (Phase 3.1) — clients self-serve common requests
 - ✅ Dashboard auth designed for 2-3 team members from day one
 - Document all SOPs so processes survive founder unavailability
 - Consider part-time VA for client communication at 8+ clients
 
 **Status:** 🟡 PARTIALLY MITIGATED
-**Action required:** Next.js dashboard (Phase 2.5) is the current priority.
+**Action required:** Client portal (Phase 3.1) is the next key unlock for this risk.
 
 ---
 
@@ -244,9 +246,11 @@ an ai_job or post_publish_queue item remains stuck for more than 2 hours.
   - m.vw_ops_failures_24h view for dashboard
 - ✅ sweep-stale-running-every-10m cron job requeues stuck items
 - ✅ token-health-daily cron job monitors Facebook token expiry
-- 🔄 Dashboard Failures panel (Phase 2.5 Session 4) — surfaces all dead items
+- ✅ Dashboard Failures tab live (Phase 2.5 ✅) — surfaces all dead items with reason
+- ✅ content_fetch v2.5 — false-positive give-up storm prevention
+  (TRUSTED_FREE_DOMAINS bypass paywall check; GOVAU_CLOUDFLARE_DOMAINS get 5 retries)
 
-**Status:** 🟡 MOSTLY MITIGATED — backend detection complete, dashboard surfacing in progress
+**Status:** ✅ MOSTLY MITIGATED — detection and surfacing both in place
 
 ---
 
@@ -259,8 +263,8 @@ an ai_job or post_publish_queue item remains stuck for more than 2 hours.
 | Meta App Review | Medium | Critical | 🟡 In Progress | Phase 1.6 continuing |
 | AI model vendor dependency | Medium | Medium | 🟡 Partial | Phase 4 |
 | No feedback loop | Resolved | Resolved | ✅ Mitigated (Phase 2.1) | Done |
-| Solo founder bottleneck | Medium | High | 🟡 Partial | Phase 2.5 |
-| Silent pipeline failures | Low | Medium | 🟡 Mostly mitigated | Phase 2.5 |
+| Solo founder bottleneck | Medium | High | 🟡 Partial | Phase 3.1 |
+| Silent pipeline failures | Low | Medium | ✅ Mostly mitigated | Done |
 
 ---
 
