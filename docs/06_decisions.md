@@ -480,6 +480,8 @@ exposure restrictions, and are safe for production use.
   queue entry using direct client_id or digest chain as fallback
 - public.draft_set_status(p_draft_id, p_status, p_approved_by) — updates
   approval_status on any draft
+- public.store_facebook_page_token(p_client_id, p_platform, p_page_access_token,
+  p_page_id, p_page_name, p_token_expires_at) — stores OAuth page token (D020)
 
 **Pattern rule:**
 Whenever a new dashboard write operation touches m or c schema,
@@ -520,31 +522,59 @@ set client_id directly on the post_draft row.
 
 ## D020 — OAuth Connect Flow Pulled Forward to Phase 3.3
 **Date:** March 2026
-**Status:** Confirmed — next build target
+**Status:** ✅ Implemented — 16 March 2026
 
 **Decision:**
 The Facebook OAuth page connect flow (originally Phase 3.3 client
-onboarding) is pulled forward and will be built before the Meta
-App Review screencast is recorded.
+onboarding) is pulled forward and built before the Meta App Review
+screencast is recorded.
 
 **Context:**
 Meta App Review requires the screencast to demonstrate the OAuth
-authorization flow — a user granting the app permission to access
-their Facebook Page via Meta's consent screen. ICE currently connects
+authorisation flow — a user granting the app permission to access
+their Facebook Page via Meta's consent screen. ICE previously connected
 pages by manually storing tokens, which is not visible in a recording.
 
-**Plan:**
-- Build /connect page on dashboard.invegent.com
-- Facebook Login OAuth flow: connect button → Meta consent screen
-  (shows pages_manage_posts, pages_read_engagement, pages_show_list) →
-  callback → token stored → page connected
-- Screencast demo: disconnect Care for Welfare from Meta Business Manager,
-  then reconnect it live during recording as if onboarding a new client
-- This is real, functional onboarding infrastructure — not a demo mockup
+**What was built (16 March 2026):**
+- `app/(dashboard)/connect/page.tsx` — per-client connection status,
+  shows connected page name/ID/token expiry, Connect/Reconnect button per client
+- `app/api/facebook/auth/route.ts` — builds FB OAuth URL with state=clientId,
+  redirects to Meta consent screen requesting pages_manage_posts,
+  pages_read_engagement, pages_show_list
+- `app/api/facebook/callback/route.ts` — exchanges code for short-lived token,
+  upgrades to long-lived token (~60 days), fetches page list via /me/accounts,
+  handles single-page (store immediately) vs multi-page (cookie + picker) flows
+- `app/(dashboard)/connect/select-page/page.tsx` — page picker UI for accounts
+  managing multiple FB Pages
+- `app/api/facebook/select-page/route.ts` — reads picker cookie, stores chosen
+  page token via store_facebook_page_token() RPC, clears cookie
+- `components/sidebar.tsx` — Connect nav item added (Link2 icon)
+- `docs/migrations/20260316_oauth_connect.sql` — migration file with ALTER TABLE
+  and CREATE FUNCTION (run before deploying)
 
-**Prerequisites:** All met. No Phase 2 blockers apply to building this flow.
+**Schema changes required (migration file):**
+```sql
+ALTER TABLE c.client_publish_profile
+  ADD COLUMN page_access_token TEXT,
+  ADD COLUMN page_id TEXT,
+  ADD COLUMN page_name TEXT;
+CREATE FUNCTION public.store_facebook_page_token(...) SECURITY DEFINER ...
+```
 
-**Build session:** 16 March 2026 (next chat)
+**Env vars required in Vercel:**
+- `META_APP_ID` — Facebook App ID
+- `META_APP_SECRET` — Facebook App Secret
+
+**Meta App Dashboard setup required:**
+- Add `https://dashboard.invegent.com/api/facebook/callback`
+  to Valid OAuth Redirect URIs under Facebook Login > Settings
+
+**Screencast plan:**
+1. Navigate to dashboard.invegent.com/connect
+2. Show Care for Welfare listed with "Not connected" status
+3. Click "Connect Page" → Meta consent screen appears with three permissions
+4. Grant access → return to /connect with "Care for Welfare Page connected" success banner
+5. Show token expiry badge and Page ID confirming the connection stored
 
 ---
 
@@ -552,6 +582,9 @@ pages by manually storing tokens, which is not visible in a recording.
 
 | Decision | Context | Target Date |
 |---|---|---|
+| Run migration 20260316_oauth_connect.sql | Prerequisite for /connect page to work | Before next Vercel deploy |
+| Add redirect URI to Meta App Dashboard | https://dashboard.invegent.com/api/facebook/callback | Before screencast |
+| Add META_APP_ID + META_APP_SECRET to Vercel | Required env vars | Before screencast |
 | Rename Ingest + Content_fetch folders to lowercase | Cosmetic — next Claude Code session | Next build session |
 | Model router implementation | When AI costs become significant | Phase 4 |
 | Trigger.dev evaluation | When pg_cron job complexity demands it | Phase 4 |
