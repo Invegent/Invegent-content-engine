@@ -107,14 +107,14 @@ existing clients.
 
 **Decision:**
 Do not use OpenAI Assistants API. Use Chat Completions /
-Responses API with personas stored in the database.
+Messages API with personas stored in the database.
 
 **Options Considered:**
 - OpenAI Assistants API (persistent threads, built-in instructions)
 - Chat Completions API with database-stored personas
-- Anthropic Claude API
+- Anthropic Claude Messages API
 
-**Choice:** Database-stored personas + Responses/Chat Completions API
+**Choice:** Database-stored personas + Messages/Chat Completions API
 
 **Reasoning:**
 The Assistants API was designed for conversational agents.
@@ -127,6 +127,11 @@ per-client configurable, visible in the dashboard, and portable
 across AI providers. No rebuild required when OpenAI deprecated
 Assistants — the architecture was already correct.
 
+Note: OpenAI's Responses API (2025) adds server-side thread
+storage but is designed for interactive chat, not batch pipelines.
+ICE's stateless-per-call approach with explicit context injection
+from the DB is the correct pattern for scheduled content generation.
+
 ---
 
 ## D005 — Next.js vs Retool for Dashboard
@@ -136,7 +141,7 @@ Assistants — the architecture was already correct.
 **Decision:**
 Retool was used as a transitional tool during Phase 1.
 The operations dashboard is now live in Next.js on Vercel
-built by Claude Code. dashboard.invegent.com is live with all 8 tabs.
+built by Claude Code. dashboard.invegent.com is live with all 9 tabs.
 Retool subscription cancelled March 2026.
 
 **Options Considered:**
@@ -148,31 +153,26 @@ Retool subscription cancelled March 2026.
 **Choice:** Next.js + Vercel + Claude Code
 
 **Reasoning:**
-Retool was chosen initially as the fastest path to a working
-dashboard. It proved problematic: layout bugs caused by
-component nesting, AI stalling on complex prompts,
-permission errors surfacing late, no pixel-level control,
-Enterprise API access required for programmatic manipulation.
+Retool proved problematic: layout bugs, AI stalling on complex
+prompts, permission errors surfacing late, no pixel-level control.
 Every problem encountered in the Retool build would not exist
-in a Claude Code-built Next.js app. Claude Code controls the
-full output — no JSON exports, no component dragging,
-no wiring issues. The deployment workflow (describe →
-Claude Code writes → git push → Vercel deploys in 60 seconds)
+in a Claude Code-built Next.js app. The deployment workflow
+(describe → Claude Code writes → git push → Vercel deploys in 60 seconds)
 is faster than Retool AI for any non-trivial change.
-Additionally, the same Next.js pattern serves all three
-layers: operations dashboard, client portal, and client
-websites — one codebase pattern, one deployment platform,
-one AI builder.
+The same Next.js pattern serves all three layers: operations
+dashboard, client portal, and client websites — one codebase
+pattern, one deployment platform, one AI builder.
 
 ---
 
 ## D006 — Claude API as Primary AI Model
 **Date:** March 2026
-**Status:** Confirmed — implemented in ai-worker v45
+**Status:** Confirmed — implemented in ai-worker v2.1.0
 
 **Decision:**
-Primary AI model is Anthropic Claude. OpenAI GPT-4o is retained
-as fallback. Per-client model config in c.client_brand_profile.
+Primary AI model is Anthropic Claude (claude-sonnet-4-6).
+OpenAI GPT-4o is retained as silent fallback.
+Per-client model config in c.client_brand_profile.
 
 **Options Considered:**
 - OpenAI GPT-4o only
@@ -185,19 +185,18 @@ as fallback. Per-client model config in c.client_brand_profile.
 **Reasoning:**
 Claude is measurably better for ICE's core use case —
 long-form synthesis across multiple sources, maintaining
-consistent brand voice across a long document, and following
-complex multi-rule instructions like NDIS compliance
-requirements. For a content engine where quality and
-brand consistency are the core value proposition, the
-better synthesis model is the right choice. Per-client
-config in client_brand_profile means clients can be migrated
-or tested individually. OpenAI retained as fallback reduces
-vendor concentration risk.
+consistent brand voice, and following complex multi-rule
+instructions like NDIS compliance requirements.
+Per-client config in client_brand_profile means clients can be
+migrated or tested individually. OpenAI retained as fallback
+reduces vendor concentration risk.
 
-Implemented: ai-worker v45 dispatches to Anthropic Messages API
+**Implementation:**
+ai-worker v2.1.0 dispatches to Anthropic Messages API
 if model.startsWith('claude-'), otherwise OpenAI Chat Completions.
-Both NDIS Yarns and Property Pulse currently configured for
-claude-sonnet-4-6.
+Both NDIS Yarns and Property Pulse configured for claude-sonnet-4-6,
+temperature 0.72, max_output_tokens 1200.
+Fallback incidents logged in draft_format JSON: fallback_used: true.
 
 ---
 
@@ -218,15 +217,12 @@ not at the application level.
 **Choice:** One shared project with RLS
 
 **Reasoning:**
-One project per client becomes unmanageable at 10+ clients —
-separate deployments, separate costs, separate maintenance.
-Application-level filtering is dangerous — a bug in the
-filtering logic could expose one client's data to another.
-RLS enforces isolation at the database level, meaning a bug
-in the application cannot cause a data leak — the database
-itself rejects unauthorized queries. Schema already designed
-with client_id on every relevant table. This is the correct
-enterprise pattern for multi-tenant SaaS.
+One project per client becomes unmanageable at 10+ clients.
+Application-level filtering is dangerous — a bug in filtering
+logic could expose one client's data to another. RLS enforces
+isolation at the database level. Schema designed with client_id
+on every relevant table. This is the correct enterprise pattern
+for multi-tenant SaaS.
 
 ---
 
@@ -249,16 +245,9 @@ orchestration mechanism. No external workflow tools.
 **Reasoning:**
 pg_cron is built into Supabase and requires no additional
 infrastructure or cost. Edge Functions run in the same
-environment as the database, reducing latency and complexity.
-The pattern is proven — all existing pipeline workers
-(ingest-worker, content-fetch, ai-worker, bundler, publisher)
-use this pattern successfully. External tools like Zapier
-add vendor dependency and per-task costs that compound at
-scale. Trigger.dev is a better long-term solution for
-complex job queues but adds migration work that is not
-yet justified. The existing pattern is sufficient for
-current scale and will be re-evaluated at 20+ clients
-or when job queue complexity demands it.
+environment as the database. The pattern is proven — all
+existing pipeline workers use it successfully. Will be
+re-evaluated at 20+ clients or when job queue complexity demands it.
 
 ---
 
@@ -268,9 +257,8 @@ or when job queue complexity demands it.
 
 **Decision:**
 All database changes follow the pattern: describe in chat
-→ Claude generates SQL → review → apply in Supabase SQL editor
-or via Supabase MCP apply_migration.
-No direct ad-hoc database editing.
+→ Claude generates SQL → review → apply via Supabase MCP
+apply_migration. No direct ad-hoc database editing.
 
 **Options Considered:**
 - Direct Supabase UI table editing (dangerous, no review step)
@@ -282,14 +270,10 @@ No direct ad-hoc database editing.
 
 **Reasoning:**
 The founder has no traditional development background.
-The chat-to-SQL workflow makes every database change
-reviewable, explainable, and documented before it touches
-production. It also means Claude can reason about the
-full schema context when generating changes, reducing
-errors. The workflow has produced 30+ tables and
-complex migrations without data loss. Claude Code adoption
-(Phase 2 onwards) extends this to code changes as well —
-same discipline applied to Edge Functions and Next.js components.
+The chat-to-SQL workflow makes every database change reviewable,
+explainable, and documented before it touches production.
+Claude Code adoption (Phase 2 onwards) extends this to code
+changes as well.
 
 ---
 
@@ -310,18 +294,14 @@ a self-serve SaaS platform.
 **Choice:** Managed service first
 
 **Reasoning:**
-A SaaS platform requires: proper OAuth onboarding flows,
-self-service client configuration, support infrastructure,
-reliability guarantees, sales and marketing, and Meta App
-Review completion. These are 12-18 months of work beyond
-what exists today. A managed service requires none of these —
-just a working pipeline and a client willing to pay.
-The managed service also generates the proof points
-(follower growth, engagement rates, time saved) that
-make the SaaS pitch credible. Building SaaS before
-the managed service is proven is building in the wrong order.
-The managed service IS the product. SaaS is a distribution
-model decision made after the product is proven.
+A SaaS platform requires OAuth onboarding flows, self-service
+client configuration, support infrastructure, reliability
+guarantees, and Meta App Review completion — 12-18 months
+beyond current state. A managed service requires none of these.
+The managed service generates the proof points that make the
+SaaS pitch credible. The managed service IS the product.
+SaaS is a distribution model decision made after the product
+is proven.
 
 ---
 
@@ -343,18 +323,12 @@ secondary. Other verticals are future.
 **Choice:** NDIS providers as primary, property secondary
 
 **Reasoning:**
-The founder is a CPA and NDIS plan manager with operational
-knowledge of the NDIS ecosystem, married to the OT who runs
-Care for Welfare. This creates a trust advantage that
-no general marketing agency can replicate — walking into
-an NDIS provider conversation as a peer, not a vendor.
-NDIS Yarns is proof of concept already in market.
-The compliance requirements in NDIS content make
-providers particularly anxious about getting it wrong —
-ICE's NDIS-specific taxonomy and insider founder context
-addresses this anxiety directly. Broad horizontal targeting
-diffuses this advantage across a market where ICE has no edge.
-Win the NDIS vertical completely before expanding.
+The founder is a CPA and NDIS plan manager, married to the OT
+who runs Care for Welfare. This creates a trust advantage no
+general marketing agency can replicate. NDIS Yarns is proof of
+concept already in market. The compliance requirements in NDIS
+content make providers anxious — ICE's insider founder context
+addresses this directly.
 
 ---
 
@@ -365,33 +339,15 @@ Win the NDIS vertical completely before expanding.
 **Decision:**
 A number of tables exist in the live database that are not
 listed in the blueprint schema map. These are intentionally
-omitted from the blueprint as they are operational/logging
-infrastructure rather than pipeline data flow tables.
+omitted as they are operational/logging infrastructure.
 
 **Tables in this category:**
-- f.cron_http_log — HTTP response log for pg_cron invocations
-- f.ingest_error_log — detailed error log per ingest run
-- f.raw_metric_point, f.raw_timeseries_point, f.trend_point — raw
-  signal data for future trend intelligence features (not yet used)
-- m.ai_job_attempt — attempt-level retry tracking per ai_job
-- m.digest_item_manual_tag — manual topic tags on digest items
-- m.platform_token_health — token validity written daily by cron
-- m.taxonomy_tag — tags applied to pipeline items
-- m.worker_http_log — HTTP response log for Edge Function invocations
-- k.column_purpose_backup, k.column_purpose_import — governance
-  import artefacts from initial schema build
+- f.cron_http_log, f.ingest_error_log
+- f.raw_metric_point, f.raw_timeseries_point, f.trend_point
+- m.ai_job_attempt, m.digest_item_manual_tag
+- m.platform_token_health, m.taxonomy_tag, m.worker_http_log
+- k.column_purpose_backup, k.column_purpose_import
 - Full t.* ANZSIC / ANZSCO / demographics classification tables
-  (40+ tables covering Australian standard industry, occupation,
-  and demographic classifications — built as taxonomy foundation,
-  not yet wired into active pipeline)
-
-**Reasoning:**
-The blueprint documents the pipeline data flow — what matters
-for understanding how content moves from signal to post. Logging
-tables, governance artefacts, and future-use classification tables
-would add noise without adding understanding. They are acknowledged
-here so future sessions don't mistake their absence from the
-blueprint as an undocumented gap.
 
 ---
 
@@ -400,15 +356,13 @@ blueprint as an undocumented gap.
 **Status:** Pending — to resolve in next Claude Code session
 
 **Decision:**
-Two Edge Function folders in GitHub use mixed-case names
+Two Edge Function folders use mixed-case names
 (supabase/functions/Ingest, supabase/functions/Content_fetch)
 while all other folders and Supabase slugs use lowercase.
 
 **Resolution:**
 Rename the two GitHub folders to lowercase in the next Claude Code
-terminal session using git mv. Do not rename via GitHub web UI or API.
-Target state: all function folders lowercase, matching Supabase slug names.
-This is cosmetic only — no production impact until executed.
+terminal session using git mv. Cosmetic only — no production impact.
 
 ---
 
@@ -422,77 +376,44 @@ three-table structured content intelligence profile system:
 c.client_brand_profile + c.client_platform_profile + c.content_type_prompt.
 
 **Options Considered:**
-- Keep monolithic system prompt in c.client_ai_profile (single string, hard to update)
-- Structured profiles with separate tables per concern (brand, platform, job type)
+- Keep monolithic system prompt in c.client_ai_profile
+- Structured profiles with separate tables per concern
 - External prompt management tool (Langsmith, Promptlayer)
 
 **Choice:** Three-table structured profiles
 
 **Reasoning:**
-The monolithic system prompt approach worked for Phase 1 but has
-several compounding problems at scale: it cannot be partially updated
-(the whole string must be replaced), it mixes brand voice, platform
-rules, and job-type instructions into one undifferentiated block,
-there is no per-platform differentiation (Facebook vs LinkedIn vs Blog
-have fundamentally different rules), and it cannot be edited via a UI
-without risking accidental corruption of the entire prompt.
-
-The three-table approach separates concerns cleanly:
-- client_brand_profile: who the client is and how they speak (stable, changes rarely)
-- client_platform_profile: what the rules are for each platform (stable per platform)
-- content_type_prompt: what task to perform for each job type (iterable, prompt engineering)
-
-This means task_prompt copy can be iterated via SQL UPDATE without any
-code deployment. New platforms just need a new client_platform_profile
-row. New content types just need a new content_type_prompt row.
-Legacy fallback preserves backward compatibility during migration.
+The monolithic system prompt cannot be partially updated,
+mixes brand voice and platform rules into one block, has no
+per-platform differentiation, and cannot be edited via UI safely.
+The three-table approach separates concerns: brand identity
+(stable), platform rules (stable per platform), and task prompts
+(iterable via SQL UPDATE without code deployment).
 
 **Implementation:**
-- ai-worker v45 reads all three tables and assembles structured prompts
 - brand_identity_prompt + platform_voice_prompt → system prompt
 - task_prompt + output_schema_hint + source payload → user prompt
-- Client Profile Editor tab in dashboard provides UI for all three tables
-- service_role explicit grants required on all three c-schema tables (gotcha)
+- Legacy fallback preserves backward compatibility
 
 ---
 
 ## D015 — Launch Readiness Gate: Quality Before Clients
 **Date:** March 2026
-**Status:** Confirmed — active constraint on client acquisition timeline
+**Status:** Confirmed — active constraint
 
 **Decision:**
 First paying client conversations will not begin until a
-sustained period of quality-verified publishing is observed
-across both internal clients. The gate is quality demonstrated,
-not features built.
+sustained period of quality-verified publishing is observed.
 
-**Context:**
-As of 10 March 2026, Claude API (claude-sonnet-4-6) has just
-been wired into the pipeline for the first time via the Phase 2.8
-content intelligence profile system. The full profile stack is
-now active but has zero publishing history.
-
-**Gate criteria (all must be true before first client conversation):**
-1. Both profiles have produced 4+ consecutive weeks of
-   quality-verified posts — correct voice, no markdown,
-   appropriate length, genuine insight, clean disclaimers
-2. Post history on both Facebook pages is clean enough to
-   serve as a proof point
+**Gate criteria (all must be true):**
+1. Both profiles: 4+ consecutive weeks of quality-verified posts
+2. Facebook page history clean enough to serve as proof point
 3. Meta App Review approved or in final review stage
-4. LinkedIn account recovered (or confirmed not a blocker
-   for first client onboarding on Facebook-only basis)
-5. A specific proof point document prepared for NDIS Yarns
-   (follower growth, posts published, engagement rate,
-   top performing posts)
+4. LinkedIn recovered (or confirmed not a blocker for Facebook-only clients)
+5. NDIS Yarns proof point document prepared
 
-**Reasoning:**
-The product being sold is content quality and brand trust.
-One month of patience to verify quality is not delay —
-it is the minimum viable proof that the product works.
-"We release based on quality tested, not what is built."
-
-**Target first client conversation:** April 2026, conditional
-on gate criteria being met.
+**Target first client conversation:** April/May 2026,
+conditional on gate criteria.
 
 ---
 
@@ -501,18 +422,9 @@ on gate criteria being met.
 **Status:** Deferred — revisit at 5 paying clients
 
 **Decision:**
-A Premium Services catalogue (VA-driven distribution, video
-editing, editorial review, graphic design, strategy sessions)
-was discussed and deliberately deferred. No design, pricing,
-or delivery infrastructure will be built until the core
-managed service has 5 paying clients.
-
-**One exception noted:**
-The monthly strategy call ($200-250/month add-on) can be
-offered informally from client 1 onwards — no delivery
-infrastructure required, directly leverages CPA and NDIS background.
-
-**Revisit trigger:** When 5 paying clients are live.
+Premium Services catalogue deliberately deferred until 5 paying clients.
+Exception: monthly strategy call ($200-250/month) can be offered
+informally from client 1 onwards — no delivery infrastructure required.
 
 ---
 
@@ -521,67 +433,118 @@ infrastructure required, directly leverages CPA and NDIS background.
 **Status:** Designed — implementation pending (Phase 4.2)
 
 **Decision:**
-Email newsletters are the primary path to solving content
-quality gaps in verticals where the best sources sit behind
-paywalls or don't publish RSS feeds. Full article body
-arrives in email — no Jina fetch, no Cloudflare, no paywall.
+Email newsletters as primary path to solving paywall content gaps.
+Full article body arrives in email — no Jina fetch, no Cloudflare.
 
 **Architecture:**
-- Dedicated Google Workspace account: feeds@invegent.com
-  (separate from pk@invegent.com — isolated credentials,
-  newsletter-only inbox, does not affect main email identity)
-- Vertical aliases: feeds.ndis@invegent.com, feeds.property@invegent.com
-- Future client aliases: feeds.client-[slug]@invegent.com
-- Gmail alias limit: 30 per Workspace account — sufficient for foreseeable scale
-- Gmail labels auto-applied by To: address filter (feeds-ndis, feeds-property)
-
-**Database model (no schema changes needed):**
+- Dedicated account: feeds@invegent.com
+- Vertical aliases: feeds.ndis@, feeds.property@invegent.com
+- Future: feeds.client-[slug]@invegent.com
+- Gmail labels auto-applied by To: address filter
 - f.feed_source: source_type_code = 'email_newsletter'
-  config JSONB carries: gmail_account, gmail_label, to_address,
-  scope ('vertical' | 'client'), vertical_key or client_id,
-  sender_domain, last_history_id
-- f.raw_content_item: external_id = Gmail message ID (dedup key)
-  payload JSONB carries: body_text, body_html, subject, from, to, date
-- last_history_id stored in feed_source.config, updated after each run
+- f.raw_content_item: external_id = Gmail message ID (dedup)
+- email-ingest Edge Function every 2h via pg_cron
+- Gmail History API (incremental from last_history_id)
 
-**Pipeline:**
-email-ingest Edge Function (every 2h via pg_cron) →
-Gmail History API (incremental, from last_history_id) →
-strip HTML → f.raw_content_item → existing pipeline unchanged
+---
 
-**Target NDIS newsletters:**
-- NDIS Commission Provider Alerts
-- NDIA News
-- Summer Foundation Research Digest
-- OT Australia Member Bulletin
-- NDS Weekly Roundup
-- Inclusion Australia Newsletter
-- DSS Disability Sector Briefing
+## D018 — m/c Schema Write Pattern: SECURITY DEFINER Functions
+**Date:** March 2026
+**Status:** Confirmed — standard pattern for all dashboard writes
 
-**Target property newsletters:**
-- CoreLogic Research Newsletter
-- PropTrack Property Market Outlook
-- REIA Market Update
-- RBA Bulletin
-- Property Council e-Bulletin
-- Smart Property Investment Newsletter
+**Decision:**
+All writes from the Next.js dashboard to the m or c Supabase schemas
+must go through SECURITY DEFINER PostgreSQL functions called via
+supabase.rpc(), not via direct .schema("m").from().insert() calls.
 
-**Implementation order:**
-1. Create feeds@invegent.com in Google Workspace Admin
-2. Add aliases: feeds.ndis@, feeds.property@
-3. Create Gmail labels + filters inside feeds account
-4. Subscribe to all newsletters above
-5. Confirm first emails arriving + assess quality (3-5 days)
-6. Build email-ingest Edge Function
-7. Gmail OAuth token setup for feeds account (one-time)
+**Options Considered:**
+- Direct PostgREST calls with service role key (fails — m/c schemas not exposed)
+- exec_sql() RPC with SQL string interpolation (works but unsafe for user input)
+- SECURITY DEFINER named functions with typed parameters (safe, correct)
 
-**Why not Postmark inbound (listed in Phase 4.2):**
-Gmail is already a trusted tool with stable API, accessible
-via MCP, and the feeds account can subscribe to newsletters
-using a real inbox. Postmark inbound would require configuring
-MX records and a custom domain — more infrastructure for
-no quality gain at current scale. Postmark remains valid for
-high-volume or production reliability at scale.
+**Choice:** SECURITY DEFINER named functions
+
+**Reasoning:**
+The m and c schemas are not exposed via PostgREST for security reasons.
+Direct .schema("m").from().insert() calls return 403 even with service
+role key. exec_sql() with string interpolation works but creates SQL
+injection risk for any field containing user-generated content (draft body,
+client names, etc.). SECURITY DEFINER functions accept typed parameters,
+run with superuser privileges at the DB level, bypass RLS and schema
+exposure restrictions, and are safe for production use.
+
+**Functions created as of March 2026:**
+- public.manual_post_insert(p_platform, p_draft_body, p_approval_status,
+  p_client_id, p_destination) — inserts post_draft + optional queue entry
+- public.draft_approve_and_enqueue(p_draft_id) — approves draft and creates
+  queue entry using direct client_id or digest chain as fallback
+- public.draft_set_status(p_draft_id, p_status, p_approved_by) — updates
+  approval_status on any draft
+
+**Pattern rule:**
+Whenever a new dashboard write operation touches m or c schema,
+create a new SECURITY DEFINER function first, then call it via .rpc().
+Never use string interpolation in exec_sql for user-supplied content.
+
+---
+
+## D019 — Direct client_id on post_draft for Manual Posts
+**Date:** March 2026
+**Status:** Confirmed — implemented
+
+**Decision:**
+Add a direct client_id FK column to m.post_draft to support manual
+and Post Studio posts that have no digest chain.
+
+**Problem:**
+The existing join chain for resolving client name and client_id
+from a post_draft is: post_draft → digest_item → digest_run → client.
+Manual/Post Studio posts have digest_item_id = null (no feed source),
+so this join chain returns nothing. This caused:
+- Client name showing as "Unknown" in Drafts tab
+- draft_approve_and_enqueue() silently skipping queue entry creation
+  (couldn't find client_id, so skipped the INSERT)
+
+**Solution:**
+- ALTER TABLE m.post_draft ADD COLUMN client_id uuid (nullable FK)
+- manual_post_insert() populates client_id directly at creation time
+- draft_approve_and_enqueue() uses COALESCE(digest_chain_client_id, pd.client_id)
+  so both pathways work
+- Drafts query uses COALESCE(c_direct.client_name, c_digest.client_name, 'Unknown')
+
+**Rule:**
+All new post creation paths that bypass the feed pipeline must
+set client_id directly on the post_draft row.
+
+---
+
+## D020 — OAuth Connect Flow Pulled Forward to Phase 3.3
+**Date:** March 2026
+**Status:** Confirmed — next build target
+
+**Decision:**
+The Facebook OAuth page connect flow (originally Phase 3.3 client
+onboarding) is pulled forward and will be built before the Meta
+App Review screencast is recorded.
+
+**Context:**
+Meta App Review requires the screencast to demonstrate the OAuth
+authorization flow — a user granting the app permission to access
+their Facebook Page via Meta's consent screen. ICE currently connects
+pages by manually storing tokens, which is not visible in a recording.
+
+**Plan:**
+- Build /connect page on dashboard.invegent.com
+- Facebook Login OAuth flow: connect button → Meta consent screen
+  (shows pages_manage_posts, pages_read_engagement, pages_show_list) →
+  callback → token stored → page connected
+- Screencast demo: disconnect Care for Welfare from Meta Business Manager,
+  then reconnect it live during recording as if onboarding a new client
+- This is real, functional onboarding infrastructure — not a demo mockup
+
+**Prerequisites:** All met. No Phase 2 blockers apply to building this flow.
+
+**Build session:** 16 March 2026 (next chat)
 
 ---
 
@@ -596,3 +559,5 @@ high-volume or production reliability at scale.
 | Second market expansion | After NDIS vertical proven with 5+ clients | Phase 4 |
 | YouTube / video layer | When client demand justifies investment | Phase 4 |
 | Premium Services catalogue design | When 5 paying clients live | Phase 3+ |
+| Recent post history injection into ai-worker | Prevent topic repetition — planned enhancement | Phase 4 |
+| Mobile dashboard responsive design | Internal tool, defer until first paying client | Phase 4 |
