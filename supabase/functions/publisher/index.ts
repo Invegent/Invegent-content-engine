@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "publisher-v1.1.0";
+const VERSION = "publisher-v1.2.0";
 
 // -------------------------
 // Helpers
@@ -163,13 +163,37 @@ type PublishProfile = {
   status: string;
   mode: string | null;
   is_default: boolean | null;
+  // Legacy token method (env-var based)
   destination_id: string | null;
   credential_env_key: string | null;
+  // OAuth token method (DB-stored, preferred)
+  page_id: string | null;
+  page_access_token: string | null;
+  page_name: string | null;
+  // Publishing config
   publish_enabled: boolean | null;
   test_prefix: string | null;
   max_per_day: number | null;
   min_gap_minutes: number | null;
 };
+
+/**
+ * Resolve page ID: prefer OAuth page_id, fall back to legacy destination_id.
+ */
+function resolvePageId(profile: PublishProfile): string {
+  return (profile.page_id ?? profile.destination_id ?? "").toString();
+}
+
+/**
+ * Resolve page access token: prefer OAuth page_access_token stored in DB,
+ * fall back to legacy env-var method via credential_env_key.
+ * Returns null if neither is available.
+ */
+function resolvePageToken(profile: PublishProfile): string | null {
+  if (profile.page_access_token) return profile.page_access_token;
+  const tokenKey = (profile.credential_env_key ?? "").toString();
+  return tokenKey ? (Deno.env.get(tokenKey) ?? null) : null;
+}
 
 // -------------------------
 // Routes
@@ -208,7 +232,7 @@ app.get("*", async (c) => {
     const { data: profiles, error } = await supabase
       .schema("c")
       .from("client_publish_profile")
-      .select("client_id, platform, status, mode, destination_id, credential_env_key, publish_enabled, test_prefix, max_per_day, min_gap_minutes")
+      .select("*")
       .eq("platform", "facebook")
       .eq("status", "active");
 
@@ -218,17 +242,19 @@ app.get("*", async (c) => {
 
     const results: any[] = [];
     for (const p of profiles ?? []) {
-      const pageId = (p.destination_id ?? "").toString();
-      const tokenKey = (p.credential_env_key ?? "").toString();
-      const pageToken = tokenKey ? Deno.env.get(tokenKey) : null;
+      const profile = p as unknown as PublishProfile;
+      const pageId = resolvePageId(profile);
+      const pageToken = resolvePageToken(profile);
+      const tokenSource = profile.page_access_token ? "db_oauth" : "env_var";
 
-      if (!pageId || !tokenKey || !pageToken) {
+      if (!pageId || !pageToken) {
         results.push({
           client_id: p.client_id,
           page_id: pageId || null,
-          token_key: tokenKey || null,
+          page_name: profile.page_name || null,
+          token_source: tokenSource,
           ok: false,
-          error: "missing_page_id_or_token_key_or_token_secret",
+          error: "missing_page_id_or_token",
         });
         continue;
       }
@@ -239,7 +265,8 @@ app.get("*", async (c) => {
         results.push({
           client_id: p.client_id,
           page_id: pageId,
-          token_key: tokenKey,
+          page_name: profile.page_name || null,
+          token_source: tokenSource,
           is_valid: Boolean(d.is_valid),
           expires_at: d.expires_at ?? null,
           data_access_expires_at: d.data_access_expires_at ?? null,
@@ -250,7 +277,8 @@ app.get("*", async (c) => {
         results.push({
           client_id: p.client_id,
           page_id: pageId,
-          token_key: tokenKey,
+          page_name: profile.page_name || null,
+          token_source: tokenSource,
           ok: false,
           error: (e?.message ?? String(e)).slice(0, 1200),
         });
@@ -348,18 +376,19 @@ app.post("*", async (c) => {
         continue;
       }
 
-      const pageId = (profile.destination_id ?? "").toString();
-      const tokenKey = (profile.credential_env_key ?? "").toString();
-      if (!pageId) throw new Error("missing_destination_id_page_id");
-      if (!tokenKey) throw new Error("missing_credential_env_key");
+      // ── Token resolution ──────────────────────────────────────────────────
+      // Prefer OAuth page_access_token stored in DB (from /connect flow).
+      // Fall back to legacy env-var method for clients not yet migrated.
+      const pageId = resolvePageId(profile);
+      const pageToken = resolvePageToken(profile);
+      const tokenSource = profile.page_access_token ? "db_oauth" : "env_var";
 
-      const pageToken = Deno.env.get(tokenKey);
-      if (!pageToken) throw new Error(`missing_edge_secret_for_page_token: ${tokenKey}`);
+      if (!pageId) throw new Error("missing_page_id");
+      if (!pageToken) throw new Error("missing_page_access_token");
 
       // 2.5) Optional token validation (fail-fast)
       if (validateToken) {
         if (!appAccessToken) {
-          // If you want validation, set FB_APP_ID & FB_APP_SECRET. Otherwise set PUBLISH_VALIDATE_TOKEN=false.
           throw new Error("token_validation_enabled_but_FB_APP_ID_or_FB_APP_SECRET_missing");
         }
         const dbg = await fbDebugToken({ graphVersion, inputToken: pageToken, appAccessToken });
@@ -384,7 +413,7 @@ app.post("*", async (c) => {
             destination_id: pageId,
             status: "failed",
             platform_post_id: null,
-            request_payload: { graph_version: graphVersion, endpoint: `/${pageId}/feed`, dry_run: dryRun },
+            request_payload: { graph_version: graphVersion, endpoint: `/${pageId}/feed`, dry_run: dryRun, token_source: tokenSource },
             response_payload: dbg,
             error: "invalid_facebook_token",
             created_at: nowIso(),
@@ -477,10 +506,7 @@ app.post("*", async (c) => {
       const prefix = (profile.mode === "staging" ? (profile.test_prefix ?? "[TEST] ") : "") as string;
       const msg = `${prefix}${title}${title && body ? "\n\n" : ""}${body}`.trim();
 
-      // 7) Dry run handling (SAFE):
-      // - NO DB post_publish insert
-      // - NO queue "published"
-      // - requeue after hold minutes so cron doesn't instantly publish it
+      // 7) Dry run handling (SAFE)
       if (dryRun) {
         const requeueFor = new Date(Date.now() + dryRunHoldMinutes * 60_000).toISOString();
         await supabase.schema("m").from("post_publish_queue").update({
@@ -497,6 +523,7 @@ app.post("*", async (c) => {
           post_draft_id: q.post_draft_id,
           status: "dry_run_ok",
           dry_run: true,
+          token_source: tokenSource,
           would_post_to: `/${pageId}/feed`,
           requeue_for: requeueFor,
         });
@@ -507,7 +534,7 @@ app.post("*", async (c) => {
       const fbResp = await fbPostToFeed({ graphVersion, pageId, pageToken, message: msg });
       const platformPostId = fbResp?.id ?? null;
 
-      // 9) Write publish attempt log (status stays within existing constraints: published/failed)
+      // 9) Write publish attempt log
       await supabase.schema("m").from("post_publish").insert({
         queue_id: queueId,
         ai_job_id: q.ai_job_id,
@@ -518,7 +545,7 @@ app.post("*", async (c) => {
         status: "published",
         platform_post_id: platformPostId,
         published_at: nowIso(),
-        request_payload: { endpoint: `/${pageId}/feed`, graph_version: graphVersion, dry_run: false, message_len: msg.length },
+        request_payload: { endpoint: `/${pageId}/feed`, graph_version: graphVersion, dry_run: false, message_len: msg.length, token_source: tokenSource },
         response_payload: fbResp,
         error: null,
         created_at: nowIso(),
@@ -533,7 +560,7 @@ app.post("*", async (c) => {
         updated_at: nowIso(),
       }).eq("queue_id", queueId);
 
-      // 11) Optional: mark draft as published (keeps your table consistent)
+      // 11) Mark draft as published
       await supabase.schema("m").from("post_draft").update({
         approval_status: "published",
         updated_at: nowIso(),
@@ -544,6 +571,7 @@ app.post("*", async (c) => {
         post_draft_id: q.post_draft_id,
         status: "published",
         dry_run: false,
+        token_source: tokenSource,
         platform_post_id: platformPostId,
       });
     } catch (e: any) {
