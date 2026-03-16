@@ -474,14 +474,10 @@ run with superuser privileges at the DB level, bypass RLS and schema
 exposure restrictions, and are safe for production use.
 
 **Functions created as of March 2026:**
-- public.manual_post_insert(p_platform, p_draft_body, p_approval_status,
-  p_client_id, p_destination) — inserts post_draft + optional queue entry
-- public.draft_approve_and_enqueue(p_draft_id) — approves draft and creates
-  queue entry using direct client_id or digest chain as fallback
-- public.draft_set_status(p_draft_id, p_status, p_approved_by) — updates
-  approval_status on any draft
-- public.store_facebook_page_token(p_client_id, p_platform, p_page_access_token,
-  p_page_id, p_page_name, p_token_expires_at) — stores OAuth page token (D020)
+- public.manual_post_insert() — inserts post_draft + optional queue entry
+- public.draft_approve_and_enqueue() — approves draft, creates queue entry
+- public.draft_set_status() — updates approval_status on any draft
+- public.store_facebook_page_token() — stores OAuth page token (D020)
 
 **Pattern rule:**
 Whenever a new dashboard write operation touches m or c schema,
@@ -499,19 +495,15 @@ Add a direct client_id FK column to m.post_draft to support manual
 and Post Studio posts that have no digest chain.
 
 **Problem:**
-The existing join chain for resolving client name and client_id
-from a post_draft is: post_draft → digest_item → digest_run → client.
-Manual/Post Studio posts have digest_item_id = null (no feed source),
-so this join chain returns nothing. This caused:
-- Client name showing as "Unknown" in Drafts tab
-- draft_approve_and_enqueue() silently skipping queue entry creation
-  (couldn't find client_id, so skipped the INSERT)
+The existing join chain: post_draft → digest_item → digest_run → client.
+Manual posts have digest_item_id = null, so the join returns nothing.
+This caused client name showing as "Unknown" and draft_approve_and_enqueue()
+silently skipping queue entry creation.
 
 **Solution:**
 - ALTER TABLE m.post_draft ADD COLUMN client_id uuid (nullable FK)
-- manual_post_insert() populates client_id directly at creation time
+- manual_post_insert() populates client_id directly
 - draft_approve_and_enqueue() uses COALESCE(digest_chain_client_id, pd.client_id)
-  so both pathways work
 - Drafts query uses COALESCE(c_direct.client_name, c_digest.client_name, 'Unknown')
 
 **Rule:**
@@ -525,56 +517,335 @@ set client_id directly on the post_draft row.
 **Status:** ✅ Implemented — 16 March 2026
 
 **Decision:**
-The Facebook OAuth page connect flow (originally Phase 3.3 client
-onboarding) is pulled forward and built before the Meta App Review
-screencast is recorded.
-
-**Context:**
-Meta App Review requires the screencast to demonstrate the OAuth
-authorisation flow — a user granting the app permission to access
-their Facebook Page via Meta's consent screen. ICE previously connected
-pages by manually storing tokens, which is not visible in a recording.
+The Facebook OAuth page connect flow is pulled forward from Phase 3.3
+and built before the Meta App Review screencast is recorded.
 
 **What was built (16 March 2026):**
-- `app/(dashboard)/connect/page.tsx` — per-client connection status,
-  shows connected page name/ID/token expiry, Connect/Reconnect button per client
-- `app/api/facebook/auth/route.ts` — builds FB OAuth URL with state=clientId,
-  redirects to Meta consent screen requesting pages_manage_posts,
-  pages_read_engagement, pages_show_list
-- `app/api/facebook/callback/route.ts` — exchanges code for short-lived token,
-  upgrades to long-lived token (~60 days), fetches page list via /me/accounts,
-  handles single-page (store immediately) vs multi-page (cookie + picker) flows
-- `app/(dashboard)/connect/select-page/page.tsx` — page picker UI for accounts
-  managing multiple FB Pages
-- `app/api/facebook/select-page/route.ts` — reads picker cookie, stores chosen
-  page token via store_facebook_page_token() RPC, clears cookie
-- `components/sidebar.tsx` — Connect nav item added (Link2 icon)
-- `docs/migrations/20260316_oauth_connect.sql` — migration file with ALTER TABLE
-  and CREATE FUNCTION (run before deploying)
+- `app/(dashboard)/connect/page.tsx` — per-client connection status + Connect/Reconnect
+- `app/api/facebook/auth/route.ts` — builds OAuth URL with state=clientId
+- `app/api/facebook/callback/route.ts` — token exchange, page fetch, single/multi-page handling
+- `app/(dashboard)/connect/select-page/page.tsx` — picker for multi-page accounts
+- `app/api/facebook/select-page/route.ts` — stores chosen page token, clears cookie
+- `components/sidebar.tsx` — Connect nav item added
+- `docs/migrations/20260316_oauth_connect.sql` — schema migration
 
-**Schema changes required (migration file):**
+**Schema changes applied:**
 ```sql
 ALTER TABLE c.client_publish_profile
   ADD COLUMN page_access_token TEXT,
   ADD COLUMN page_id TEXT,
   ADD COLUMN page_name TEXT;
-CREATE FUNCTION public.store_facebook_page_token(...) SECURITY DEFINER ...
+CREATE FUNCTION public.store_facebook_page_token(...) SECURITY DEFINER;
 ```
 
-**Env vars required in Vercel:**
-- `META_APP_ID` — Facebook App ID
-- `META_APP_SECRET` — Facebook App Secret
+**Publisher v1.2.0** updated simultaneously to prefer `page_access_token`
+from DB over legacy env-var method. Backward compatible — existing clients
+using `destination_id` + `credential_env_key` are unaffected.
 
-**Meta App Dashboard setup required:**
-- Add `https://dashboard.invegent.com/api/facebook/callback`
-  to Valid OAuth Redirect URIs under Facebook Login > Settings
+**Client onboarding note:**
+The `/connect` page on the ops dashboard is the internal tool.
+For external clients, this flow moves to `portal.invegent.com/connect`
+(Phase 3.1) so clients can complete OAuth themselves. For managed
+service onboarding before the portal exists, the workaround is to
+have the client temporarily add Invegent as a Page admin, run the
+flow, then optionally remove admin access.
 
-**Screencast plan:**
-1. Navigate to dashboard.invegent.com/connect
-2. Show Care for Welfare listed with "Not connected" status
-3. Click "Connect Page" → Meta consent screen appears with three permissions
-4. Grant access → return to /connect with "Care for Welfare Page connected" success banner
-5. Show token expiry badge and Page ID confirming the connection stored
+**Meta Business Manager note:**
+OAuth connect is sufficient for publishing. Business Manager partner
+access is only required for the boost agent (Phase 3.4 ads permissions).
+
+---
+
+## D021 — AI Usage Ledger and Cost Attribution
+**Date:** March 2026
+**Status:** Designed — schema migration and ai-worker update pending (Phase 2.10)
+
+**Decision:**
+Every AI API call is written to an immutable ledger with token counts,
+cost calculated at call time, and attribution to client + content type.
+Cost rates are stored in a separate table (not in code) so they can
+be updated without deployment when providers change pricing.
+
+**Problem being solved:**
+- No visibility into per-client AI cost — impossible to know if the
+  unit economics hold as clients are added
+- No separation of token costs by client — all AI spend is aggregated
+- No tracking of fallback (OpenAI) usage or its relative cost
+- No client-facing cost transparency
+
+**Schema:**
+
+```sql
+-- Rates table: updated when pricing changes, no code deployment required
+m.ai_model_rate
+  provider           text        -- 'anthropic', 'openai', future: 'gemini'
+  model              text        -- exact model string e.g. 'claude-sonnet-4-6'
+  rate_input_per_1m  numeric     -- USD per 1M input tokens
+  rate_output_per_1m numeric     -- USD per 1M output tokens
+  effective_from     timestamptz -- when this rate came into effect
+  effective_until    timestamptz -- NULL = currently active
+
+-- Immutable usage ledger: one row per AI API call, never updated
+m.ai_usage_log
+  usage_id       uuid        PK
+  client_id      uuid        FK → c.client
+  ai_job_id      uuid        FK → m.ai_job (nullable)
+  post_draft_id  uuid        FK → m.post_draft (nullable)
+  provider       text        -- 'anthropic', 'openai'
+  model          text        -- exact model string
+  content_type   text        -- 'feed', 'campaign', 'instant', 'retry'
+  platform       text        -- 'facebook', 'linkedin' etc. (nullable)
+  input_tokens   integer
+  output_tokens  integer
+  total_tokens   integer     -- generated: input + output
+  cost_usd       numeric(10,6) -- calculated at call time from rates table
+  fallback_used  boolean     -- true if primary model failed, fallback ran
+  created_at     timestamptz
+```
+
+**How cost is calculated:**
+Both Claude and OpenAI return token counts in every API response.
+ai-worker captures these, looks up current rate from `m.ai_model_rate`
+where `effective_until IS NULL`, calculates:
+`cost_usd = (input_tokens / 1_000_000 * rate_input) + (output_tokens / 1_000_000 * rate_output)`
+and inserts one row to `m.ai_usage_log`.
+
+On fallback: both the failed primary call and the successful fallback
+call each get their own row. Both costs are attributed to the client.
+Historical costs remain accurate because the ledger stores the rate
+at time of call — not a reference to the current rate.
+
+**Initial rates to seed:**
+
+| provider | model | input/1M | output/1M |
+|---|---|---|---|
+| anthropic | claude-sonnet-4-6 | $3.00 | $15.00 |
+| openai | gpt-4o | $2.50 | $10.00 |
+
+**What operators see (ops dashboard — AI Costs tab):**
+- Total spend this month across all clients
+- Per-client breakdown — cost per post, monthly total
+- Model split — Claude vs OpenAI fallback proportions
+- Trend: this month vs last 3 months
+
+**What clients see (portal — simplified):**
+- Posts generated this month: N
+- AI generation cost: $X.XX (included in your plan)
+- This is transparency, not a billing interface — v1 is a managed
+  service with bundled AI costs, not metered billing
+
+**Why rates table not code:**
+AI providers change pricing without warning. A rates table update
+takes 30 seconds and is live immediately. A code change requires
+a deployment. Historical data remains accurate because costs are
+calculated and stored at call time, not recalculated later.
+
+**Future model support:**
+Adding Gemini, Mistral, or a new Claude model requires only a new
+row in `m.ai_model_rate`. No schema changes, no code changes to
+the ledger. The ai-worker stores whatever model string was used.
+
+**Build sequence:**
+1. Schema migration — create tables, seed initial rates
+2. ai-worker update — capture tokens from API response, insert ledger row
+3. Ops dashboard — AI Costs tab (read-only queries)
+4. Client portal — simplified cost display per client
+
+---
+
+## D022 — Per-Post Platform Targeting Architecture
+**Date:** March 2026
+**Status:** Designed — schema migration and ai-worker update pending (Phase 2.11)
+
+**Decision:**
+Each post (from any content path) carries an explicit list of target
+platforms. The ai-worker generates one separate draft per platform
+from the same source signal, using platform-specific instructions.
+This eliminates wasted generation, enables platform-appropriate
+formatting, and provides the architecture for video/shorts/reels
+content types in future.
+
+**Problem being solved:**
+- Currently: one draft generated, published to whichever platform the
+  profile points at — no per-post platform selection
+- Token waste: generating a LinkedIn long-form post for a Facebook-only
+  client, or vice versa
+- No differentiation: same text published to Facebook and LinkedIn
+  despite very different optimal formats
+- No client control: clients cannot select which platforms receive
+  a given post, campaign, or series
+
+**Architecture:**
+
+One source signal → N drafts (one per target platform)
+
+```
+digest_item (target_platforms = ['facebook', 'linkedin'])
+    ↓
+ai-worker loops over target_platforms
+    ↓
+For each platform:
+  load client_platform_profile (platform-specific voice/format rules)
+  build system prompt (brand_identity + platform_voice for THIS platform)
+  call Claude API
+  insert post_draft (platform = 'facebook')  ← separate draft per platform
+  insert post_draft (platform = 'linkedin')  ← separate draft per platform
+    ↓
+Each draft goes through its own:
+  auto-approver → post_publish_queue → publisher
+```
+
+**Schema changes required:**
+
+```sql
+-- On m.digest_item: which platforms to generate for
+ALTER TABLE m.digest_item
+  ADD COLUMN target_platforms TEXT[] DEFAULT NULL;
+-- NULL = inherit from client's active publish profiles
+-- ['facebook'] = Facebook only, regardless of active profiles
+-- ['facebook', 'linkedin'] = both
+
+-- On m.post_draft: which platform this draft is for
+ALTER TABLE m.post_draft
+  ADD COLUMN platform TEXT DEFAULT NULL;
+-- 'facebook', 'linkedin', 'instagram', 'instagram_reels' etc.
+```
+
+**Where target_platforms comes from per content path:**
+
+| Content path | Source of target_platforms |
+|---|---|
+| Feed / daily signals | NULL → bundler reads active client_publish_profile rows |
+| Content series / campaign | Set at campaign level in c.content_campaign |
+| Instant / one-off post | Explicit selection in Post Studio or client portal |
+
+**Token economics:**
+Cost scales linearly with target platforms. Facebook-only clients
+pay for one generation per post. Facebook + LinkedIn clients pay
+for two. This is fair, transparent, and visible in the usage ledger
+(D021) via the `platform` column on `m.ai_usage_log`.
+
+**Future-proofing for video/reels/shorts:**
+When Instagram Reels or TikTok is added, a new platform type
+('instagram_reels') gets a new `c.client_platform_profile` row
+with a prompt instructing the AI to generate a script rather than
+post copy. The ai-worker, platform ticker, and usage ledger need
+no structural changes — just a new profile row and platform string.
+In the client portal, video platforms show greyed out with
+"Contact us to activate" until the client has video production set up.
+
+**Client portal UI — the platform ticker:**
+On instant posts and campaign briefs, the client sees a row of
+platform toggles (Facebook, LinkedIn, Instagram, etc.) above the
+content brief. Active platforms for their account are selectable.
+Inactive platforms are visible but greyed out. Default state is
+their standard platform mix from active publish profiles.
+
+---
+
+## D023 — Client Portal Information Architecture and Auth Model
+**Date:** March 2026
+**Status:** Designed — build starts Phase 3.1
+
+**Decision:**
+The client portal (portal.invegent.com) is a separate Next.js app
+from the ops dashboard, with Supabase Auth enforcing per-client
+data isolation via RLS. The portal covers the full client lifecycle:
+onboarding, operating, feedback, and offboarding. Build order is
+driven by what unblocks the first paying client, not by completeness.
+
+**Auth model:**
+Supabase Auth natively supports all required methods — no third-party
+auth library needed. Minimum two methods available to every client:
+
+- **Magic link** — client enters email, receives a login link, clicks
+  to authenticate. No password. Best for NDIS practice owners who
+  primarily use mobile and don't want another password to remember.
+- **Email OTP** — 6-digit verification code sent to email. Same
+  security as magic link, different UX — better for users who prefer
+  codes over clicking links (some corporate email clients block links).
+
+Optional third method (Phase 3+ enhancement):
+- **TOTP authenticator app** — Google Authenticator, Authy, 1Password.
+  Client sets up once, generates a code on their phone. Higher security
+  for clients who handle sensitive participant data and want it.
+
+Password-based login is deliberately excluded. Passwords create
+support overhead (resets, lockouts) that is not justified for a
+managed service with a small client base. If a client specifically
+requests it, it can be enabled per-account in Supabase Auth settings.
+
+A `notifications_email` column on `c.client` stores the email address
+used for auth and notifications. This is set during onboarding and
+is the single address for both login links and draft review alerts.
+
+**Full portal scope — all phases:**
+
+Phase A — Onboarding (one time, Phase 3.1)
+- Welcome screen with account overview
+- Connect Facebook Page (OAuth flow — same as /connect on ops dashboard)
+- Connect LinkedIn Page (when built, Phase 2.3)
+- Brand voice review — client reviews AI persona, requests changes
+- First content preview — 3 draft posts shown before going live
+- Go-live confirmation — you flip mode from staging to auto
+
+Phase B — Operating (ongoing, phased build)
+- Draft inbox — approve/reject posts flagged below auto-approve threshold
+- Content calendar — week/month view, scheduled + published + empty slots
+- Platform ticker — per-post platform selection (D022, Phase 2.11)
+- Instant post / slot picker — compose brief, pick available time slot,
+  preview generated post, confirm (available slots calculated from
+  min_gap_minutes + max_per_day in publish profile — not a free picker)
+- Content series planner — campaign brief → AI-generated outline →
+  client reviews/edits → schedule full series (requires Phase 2.4)
+- Feedback signals — thumbs up/down on posts, "more/less like this"
+  on topics, free-text topic requests ("we have a new OT joining")
+- Performance dashboard — reach, engagement, follower growth
+  (requires Phase 2.1 ✅ data flowing)
+- Monthly report — plain-language insights + recommendations
+  (requires Content Analyst Agent, Phase 3.2)
+- AI cost transparency — posts generated this month, AI cost,
+  "included in your plan" (requires D021 usage ledger)
+
+Phase C — Ongoing feedback (lightweight, continuous, Phase 3+)
+- Post-level signals feed back into scoring weights
+- Topic preference adjustments stored in m.post_feedback
+- Free-text brief requests ("we have a new OT joining next month")
+  appear in ops dashboard as action items
+
+Phase D — Leaving the platform (Phase 4)
+- Pause publishing — stops auto-publishing, keeps account
+- Export content history — all published posts as CSV
+- Disconnect pages — revoke OAuth tokens
+- Account closure request — triggers your offboarding checklist
+
+**Build order for v1 (what unblocks first paying client):**
+
+| Priority | Feature | Why |
+|---|---|---|
+| 1 | Auth + RLS policies | Security prerequisite for everything |
+| 2 | Email notification on draft flagged | The doorbell — without it clients never open portal |
+| 3 | Draft inbox (approve/reject) | Primary weekly client interaction |
+| 4 | Calendar (read-only) | Builds trust, eliminates "what's going out?" queries |
+| 5 | Facebook connect (OAuth moved from ops dashboard) | Required for external client onboarding |
+
+Everything in Phase B and beyond is in scope — it is confirmed product
+direction. The build order above is the minimum to onboard first client.
+Series planner, performance, reports, offboarding are all real features
+that will be built — the question is when, not whether.
+
+**Mobile-first constraint:**
+NDIS practice owners run their business from their phone. The portal
+is designed mobile-first from the first component. This is a design
+constraint applied at build time, not a responsive pass at the end.
+Minimum touch target: 44px. All primary actions (approve/reject,
+calendar navigation) must be fully operable on a 375px viewport.
+
+**Ops dashboard visibility:**
+When a client takes an action in the portal (approve, reject, flag,
+feedback), it writes to the same tables the ops dashboard reads.
+No separate sync needed — the operator sees client actions in real
+time via the Drafts tab, Queue tab, and Failures tab.
 
 ---
 
@@ -582,15 +853,17 @@ CREATE FUNCTION public.store_facebook_page_token(...) SECURITY DEFINER ...
 
 | Decision | Context | Target Date |
 |---|---|---|
-| Run migration 20260316_oauth_connect.sql | Prerequisite for /connect page to work | Before next Vercel deploy |
-| Add redirect URI to Meta App Dashboard | https://dashboard.invegent.com/api/facebook/callback | Before screencast |
-| Add META_APP_ID + META_APP_SECRET to Vercel | Required env vars | Before screencast |
 | Rename Ingest + Content_fetch folders to lowercase | Cosmetic — next Claude Code session | Next build session |
+| Schema migration: m.ai_model_rate + m.ai_usage_log | Prerequisite for usage ledger (D021) | Phase 2.10 |
+| ai-worker update: capture tokens, write ledger | Fills usage ledger with live data | Phase 2.10 |
+| Schema migration: target_platforms + platform columns | Prerequisite for platform targeting (D022) | Phase 2.11 |
+| ai-worker update: loop per target platform | One draft per platform per source signal | Phase 2.11 |
+| Client portal auth config in Supabase | Magic link + email OTP enabled, password disabled | Phase 3.1 start |
+| notifications_email column on c.client | Required for draft review email notifications | Phase 3.1 start |
 | Model router implementation | When AI costs become significant | Phase 4 |
 | Trigger.dev evaluation | When pg_cron job complexity demands it | Phase 4 |
 | SaaS vs managed service long-term | When 10 clients served for 3+ months | Phase 4 |
 | Second market expansion | After NDIS vertical proven with 5+ clients | Phase 4 |
 | YouTube / video layer | When client demand justifies investment | Phase 4 |
 | Premium Services catalogue design | When 5 paying clients live | Phase 3+ |
-| Recent post history injection into ai-worker | Prevent topic repetition — planned enhancement | Phase 4 |
-| Mobile dashboard responsive design | Internal tool, defer until first paying client | Phase 4 |
+| Recent post history injection into ai-worker | Prevent topic repetition | Phase 4 |
