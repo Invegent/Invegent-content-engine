@@ -849,6 +849,98 @@ time via the Drafts tab, Queue tab, and Failures tab.
 
 ---
 
+## D024 — RLS Client Data Isolation for Portal Tables
+**Date:** 17 March 2026
+**Status:** Confirmed — applied to production
+
+**Decision:**
+Enable Row Level Security on all four portal-facing m.* tables.
+Use a single helper function `public.auth_client_id()` to resolve
+the current session's client_id from portal_user. All four policies
+use the same simple pattern: `client_id = public.auth_client_id()`.
+
+**Options Considered:**
+- Application-layer filtering only (client code filters by client_id)
+- RLS with join-based policy (encode digest chain into each policy)
+- RLS with helper function + direct client_id match (chosen)
+
+**Choice:** Helper function + direct client_id match
+
+**Reasoning:**
+Application-layer filtering alone is insufficient — a bug in the
+portal code could expose one client's data to another. The digest
+chain join (post_draft → digest_item → digest_run → client) is too
+complex to encode safely into four separate RLS policies — and it
+would have to be repeated in each one.
+
+The correct solution was to first backfill `client_id` directly onto
+`m.post_draft` for all existing rows (482 nulls resolved via the digest
+join, run once as a data migration), then enforce simple direct-match
+policies across all tables. Future rows are set directly at creation time.
+
+**Implementation (17 March 2026):**
+
+```sql
+-- Helper: resolves client_id for the current auth session
+CREATE OR REPLACE FUNCTION public.auth_client_id()
+RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT client_id FROM public.portal_user
+  WHERE user_id = auth.uid() LIMIT 1;
+$$;
+
+-- Four tables, simple policies
+ALTER TABLE m.post_draft ENABLE ROW LEVEL SECURITY;
+ALTER TABLE m.post_publish_queue ENABLE ROW LEVEL SECURITY;
+ALTER TABLE m.post_publish ENABLE ROW LEVEL SECURITY;
+ALTER TABLE m.post_performance ENABLE ROW LEVEL SECURITY;
+
+-- post_draft: SELECT + UPDATE (approve/reject)
+CREATE POLICY "portal: read own client drafts"
+  ON m.post_draft FOR SELECT
+  USING (client_id = public.auth_client_id());
+
+CREATE POLICY "portal: update own client drafts"
+  ON m.post_draft FOR UPDATE
+  USING (client_id = public.auth_client_id());
+
+-- post_publish_queue, post_publish, post_performance: SELECT only
+CREATE POLICY "portal: read own client queue"
+  ON m.post_publish_queue FOR SELECT
+  USING (client_id = public.auth_client_id());
+
+CREATE POLICY "portal: read own client published"
+  ON m.post_publish FOR SELECT
+  USING (client_id = public.auth_client_id());
+
+CREATE POLICY "portal: read own client performance"
+  ON m.post_performance FOR SELECT
+  USING (client_id = public.auth_client_id());
+```
+
+**Data migration run simultaneously:**
+```sql
+UPDATE m.post_draft pd
+SET client_id = dr.client_id
+FROM m.digest_item di
+JOIN m.digest_run dr ON dr.digest_run_id = di.digest_run_id
+WHERE pd.digest_item_id = di.digest_item_id
+AND pd.client_id IS NULL;
+-- Result: 482 rows updated. 7 orphaned published rows remain null (harmless).
+```
+
+**Scope:**
+- Service role key (Edge Functions + ops dashboard) bypasses RLS entirely
+- Portal uses anon key + Supabase Auth JWT — RLS is enforced
+- 7 orphaned null-client_id published drafts are invisible to portal users
+  (null ≠ any client_id) — harmless
+
+**Rule going forward:**
+Every new post creation path must set `client_id` directly on
+`m.post_draft` at insert time. The manual_post_insert() and
+draft_approve_and_enqueue() functions already do this (D019).
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target Date |
@@ -858,8 +950,7 @@ time via the Drafts tab, Queue tab, and Failures tab.
 | ai-worker update: capture tokens, write ledger | Fills usage ledger with live data | Phase 2.10 |
 | Schema migration: target_platforms + platform columns | Prerequisite for platform targeting (D022) | Phase 2.11 |
 | ai-worker update: loop per target platform | One draft per platform per source signal | Phase 2.11 |
-| Client portal auth config in Supabase | Magic link + email OTP enabled, password disabled | Phase 3.1 start |
-| notifications_email column on c.client | Required for draft review email notifications | Phase 3.1 start |
+| Draft notifier email subject redesign | Current subject works but needs thought for multi-post / content-type variety | Next portal session |
 | Model router implementation | When AI costs become significant | Phase 4 |
 | Trigger.dev evaluation | When pg_cron job complexity demands it | Phase 4 |
 | SaaS vs managed service long-term | When 10 clients served for 3+ months | Phase 4 |
