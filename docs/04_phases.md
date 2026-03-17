@@ -44,7 +44,7 @@ The foundation is solid enough to onboard a third paying client.
 **1.4 — Both Clients Publishing Consistently** ✅
 - [x] NDIS Yarns: 5+ posts per week
 - [x] Property Pulse: 5+ posts per week
-- [x] 215+ total publish records as of 16 March 2026
+- [x] 53 posts published in last 7 days alone (~7-8/day across both clients)
 
 **1.5 — Security & Backups** ✅
 - [x] Supabase Pro enabled — daily automatic backups confirmed active
@@ -121,6 +121,7 @@ ICE learns from what it publishes.
 - [ ] NDIS Yarns live metrics: followers, posts, engagement, top posts
 - [ ] Primary sales asset for client acquisition conversations
 - [ ] Depends on: Facebook Insights data (2.1 ✅), follower numbers (2.7)
+- [ ] Requires: invegent-web repo + Vercel project (not yet created)
 
 **2.7 — Audience Foundation** 🔲 ACTIVE
 - [ ] Facebook community building (NDIS provider groups)
@@ -187,26 +188,27 @@ at small scale.
 
 ### Deliverables
 
-**3.1 — Client Portal v1** 🔲
-- [ ] Repo: github.com/Invegent/invegent-portal
-- [ ] Stack: Next.js 14 + Supabase Auth + RLS
-- [ ] Deployed at: portal.invegent.com
-- [ ] Auth: Magic link (primary) + Email OTP (secondary),
-      TOTP authenticator app as optional Phase 3+ enhancement
-      Password login explicitly excluded (see D023)
-- [ ] c.client.notifications_email column — single address for
-      login links and draft review notifications
-- [ ] RLS enforced: clients see only their own data
-- [ ] Mobile-first design constraint: 375px viewport, 44px touch targets
+**3.1 — Client Portal v1** 🔄 IN PROGRESS
+- [x] Repo: github.com/Invegent/invegent-portal
+- [x] Stack: Next.js 14 + Supabase Auth + RLS
+- [x] Deployed at: portal.invegent.com ✅ live
+- [x] Auth: Magic link via Resend — SMTP configured, domain verified,
+      full login flow smoke tested 17 March 2026
+- [x] portal_user table: email → client_id lookup, user_id hydrated on first login
+- [x] PKCE flow: same-browser requirement documented (security feature, not bug)
+- [x] Middleware: /callback correctly excluded from auth guard
+- [x] Draft inbox — approve/reject working, posts move to publish queue ✅
+- [x] Calendar — read-only scheduled + published posts view ✅
+- [x] draft-notifier Edge Function deployed (v2) — fires when draft flagged
+      ⚠️ email delivery not yet confirmed — pending live test
+- [ ] RLS policies — verify client data isolation enforced
+- [ ] Facebook connect flow in portal (moved from dashboard, D020)
+- [ ] Email notification live test: flag a draft → confirm email arrives
 
-**v1 build order (minimum to onboard first paying client):**
-- [ ] Auth setup + RLS policies
-- [ ] Email notification: when post_draft flagged for review,
-      send to client.notifications_email via Resend
-      (this is the doorbell — nothing else matters without it)
-- [ ] Draft inbox — approve/reject flagged posts
-- [ ] Calendar — read-only week/month view of scheduled + published posts
-- [ ] Facebook connect — OAuth flow (D020) moved from ops dashboard
+**v1 remaining to onboard first paying client:**
+- [ ] Confirm draft-notifier email delivery end-to-end
+- [ ] RLS audit — confirm clients cannot see each other's data
+- [ ] Facebook OAuth connect flow moved to portal
 
 **3.2 — Content Analyst Agent** 🔲
 - [ ] Weekly report generation per client
@@ -406,12 +408,49 @@ Campaigns (2.4)
 Public Proof Dashboard (2.6)
 → required as primary sales asset before first client conversation
 → depends on Insights (2.1 ✅) and follower numbers (2.7)
+→ requires invegent-web repo + Vercel project (not yet created)
 
-Client Portal v1 (3.1)
-→ required before external client onboarding
-→ Magic link + Email OTP auth (D023)
-→ Draft inbox + email notifications + calendar = minimum
+Client Portal v1 (3.1) ← IN PROGRESS
+→ Magic link auth ✅ working (17 Mar 2026)
+→ Inbox + calendar ✅ working
+→ draft-notifier ⚠️ deployed, email delivery not yet confirmed
+→ RLS audit pending
+→ Facebook OAuth connect flow pending
 ```
+
+---
+
+## Infrastructure Status (17 March 2026)
+
+### Edge Functions (11 active)
+| Function | Version | Status |
+|---|---|---|
+| ingest | v81 | ✅ Active |
+| content_fetch | v52 | ✅ Active |
+| ai-worker | v49 | ✅ Active |
+| publisher | v41 | ✅ Active |
+| auto-approver | v16 | ✅ Active |
+| insights-worker | v18 | ✅ Active |
+| feed-intelligence | v7 | ✅ Active |
+| email-ingest | v2 | ✅ Active |
+| draft-notifier | v2 | ✅ Active |
+| inspector | v69 | ✅ Active |
+| inspector_sql_ro | v24 | ✅ Active |
+
+### Vercel Projects
+| Project | Domain | Status |
+|---|---|---|
+| invegent-dashboard | dashboard.invegent.com | ✅ Live |
+| invegent-portal | portal.invegent.com | ✅ Live |
+| invegent-web | invegent.com | ❌ Not created yet — needed for 2.6 |
+
+### Email Infrastructure
+| Component | Status |
+|---|---|
+| Resend domain (invegent.com) | ✅ Verified 16 Mar 2026 |
+| Supabase Auth SMTP | ✅ Configured (smtp.resend.com:465) |
+| RESEND_API_KEY Edge Secret | ✅ Added 17 Mar 2026 |
+| Magic link delivery | ✅ Confirmed working |
 
 ---
 
