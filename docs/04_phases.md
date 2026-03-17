@@ -2,7 +2,7 @@
 
 ## Phase Summary
 Phase 1 — Stabilise    ✅ COMPLETE
-Phase 2 — Automate     ← YOU ARE HERE (blocked on LinkedIn + Meta App Review)
+Phase 2 — Automate     ← YOU ARE HERE
 Phase 3 — Expand
 Phase 4 — Scale
 
@@ -60,9 +60,10 @@ The foundation is solid enough to onboard a third paying client.
       pages_read_engagement, pages_show_list
 - [x] pages_manage_posts API test calls: Completed (green tick)
 - [x] Facebook OAuth connect flow built (D020, 16 March 2026)
-- [ ] Screencast recording uploaded for all 3 permissions
+- [x] Screencasts recorded for all 3 permissions (18 March 2026)
+- [ ] Screencasts uploaded to App Review submission
 - [ ] Data handling + reviewer instructions sections completed
-- [ ] Business verification approval confirmed
+- [ ] Business verification approval confirmed (In Review — ~2 working days)
 - [ ] Review submitted — decision pending (2-8 weeks)
 
 **1.7 — Dead Letter Queue** ✅
@@ -79,7 +80,9 @@ under 2 hours per week total. Feedback loop closes —
 ICE learns from what it publishes.
 
 **Started:** March 2026
-**Blocked by:** LinkedIn account recovery (2.3), Meta App Review (1.6)
+**Previous blocker resolved:** LinkedIn account recovery — new account
+created at pk@invegent.com (18 March 2026). Developer apps verified.
+API products added. LinkedIn is now unblocked — ready to build.
 
 ### Deliverables
 
@@ -94,11 +97,20 @@ ICE learns from what it publishes.
 - [x] feed-intelligence Edge Function (v5), Sundays 2am UTC
 - [x] Give-up rate analysis + recommendations written to DB
 
-**2.3 — LinkedIn Publisher** ⏳ BLOCKED
-- [ ] LinkedIn account recovery in progress (support ticket open)
-- [ ] Requires: Invegent Company Page → client pages → Developer App
-- [ ] Permissions: w_organization_social, r_organization_social
-- [ ] OAuth connect flow in portal will use same pattern as Facebook (D020)
+**2.3 — LinkedIn Publisher** 🔲 READY TO BUILD
+- [x] Account blocker resolved — new LinkedIn account: pk@invegent.com
+- [x] Invegent Company Page connected and verified on both dev apps
+- [x] Developer app: Invegent Publisher (Client ID: 78npkxuir4z64j)
+- [x] Share on LinkedIn product added (Default Tier) ✅
+- [x] Sign In with LinkedIn using OpenID Connect added (Standard Tier) ✅
+- [ ] linkedin-publisher Edge Function built
+- [ ] OAuth connect flow — /connect page on portal (same pattern as Facebook D020)
+      Auth via pk@invegent.com LinkedIn account
+      Permissions: w_member_social (personal posts) or
+      w_organization_social (company page posts)
+- [ ] c.client_channel row for LinkedIn per client
+- [ ] Both clients configured and test posts verified
+- [ ] Platform abstraction layer confirmed (publisher → platform router)
 
 **2.4 — Campaign / Series Content Type** ⏸ DEFERRED to Phase 3
 - [ ] c.content_campaign table — name, brief, client_id, cadence, start_date
@@ -117,11 +129,13 @@ ICE learns from what it publishes.
 - [x] Retool subscription CANCELLED — March 2026
 
 **2.6 — Public Proof Dashboard** 🔲 NEXT BUILD CANDIDATE
-- [ ] Read-only page on invegent.com
-- [ ] NDIS Yarns live metrics: followers, posts, engagement, top posts
+- [ ] Read-only page at invegent.com/proof
+- [ ] NDIS Yarns live metrics: followers, posts published, engagement, top posts
 - [ ] Primary sales asset for client acquisition conversations
-- [ ] Depends on: Facebook Insights data (2.1 ✅), follower numbers (2.7)
-- [ ] Requires: invegent-web repo + Vercel project (not yet created)
+- [ ] Depends on: Facebook Insights data (2.1 ✅)
+- [x] invegent-web repo created (18 March 2026)
+- [x] invegent-web deployed to Vercel — invegent.com (DNS propagating 18 Mar)
+- [ ] /proof page built into invegent-web
 
 **2.7 — Audience Foundation** 🔲 ACTIVE
 - [ ] Facebook community building (NDIS provider groups)
@@ -148,30 +162,21 @@ ICE learns from what it publishes.
       OpenAI GPT-4o ($2.50/$10.00 per 1M)
 - [ ] ai-worker update: capture input_tokens + output_tokens from every
       API response, calculate cost_usd from rates table, insert ledger row
-- [ ] Fallback tracking: failed primary call + successful fallback call
-      each get their own ledger row, both attributed to client
 - [ ] Ops dashboard: AI Costs tab — total spend, per-client breakdown,
       model split (Claude vs OpenAI), cost per post, month trend
-- [ ] Rates table update is the only action needed when provider changes
-      pricing — no code deployment required
 
 **2.11 — Per-Post Platform Targeting** 🔲 PLANNED
 - [ ] Schema migration: target_platforms TEXT[] on m.digest_item,
       platform TEXT on m.post_draft
-      (see D022 for full schema and architecture)
 - [ ] Bundler update: populate target_platforms from active publish profiles
-      when not explicitly overridden
-- [ ] ai-worker update: loop over target_platforms, generate one draft per
-      platform using platform-specific client_platform_profile
-- [ ] Auto-approver update: platform-aware threshold (LinkedIn may differ)
-- [ ] Post Studio update: platform ticker on manual/instant posts
-- [ ] Dashboard Drafts tab: platform badge on each draft
-- [ ] Client portal: platform ticker on instant posts and campaign briefs
+- [ ] ai-worker update: loop over target_platforms, one draft per platform
+- [ ] Auto-approver update: platform-aware threshold
+- [ ] Post Studio + portal: platform ticker
 
 ### Phase 2 Done When
 1. Less than 2 hours/week total manual input ✅ (approaching)
 2. Performance data flowing back into scoring ✅ (2.1 complete)
-3. LinkedIn publishing live ❌ (blocked on account recovery)
+3. LinkedIn publishing live 🔲 (unblocked — ready to build)
 4. Next.js dashboard live with all tabs ✅ (complete)
 5. Usage ledger running (2.10) — no cost surprises
 6. Platform targeting in pipeline (2.11) — token efficiency
@@ -199,147 +204,43 @@ at small scale.
 - [x] Middleware: /callback correctly excluded from auth guard
 - [x] Draft inbox — approve/reject working, posts move to publish queue ✅
 - [x] Calendar — read-only scheduled + published posts view ✅
-- [x] draft-notifier Edge Function deployed (v2) — fires when draft flagged
-      ⚠️ email delivery not yet confirmed — pending live test
-- [ ] RLS policies — verify client data isolation enforced
+- [x] draft-notifier Edge Function deployed (v2) — confirmed working 18 Mar 2026
+- [x] RLS enforced on m.post_draft, post_publish_queue, post_publish,
+      post_performance — applied 17 March 2026, confirmed working 18 Mar 2026
 - [ ] Facebook connect flow in portal (moved from dashboard, D020)
-- [ ] Email notification live test: flag a draft → confirm email arrives
 
 **v1 remaining to onboard first paying client:**
-- [ ] Confirm draft-notifier email delivery end-to-end
-- [ ] RLS audit — confirm clients cannot see each other's data
 - [ ] Facebook OAuth connect flow moved to portal
+- [ ] draft notifier email subject redesign (noted — pending)
 
 **3.2 — Content Analyst Agent** 🔲
-- [ ] Weekly report generation per client
-- [ ] Reads m.post_performance (requires 2.1 ✅)
-- [ ] Identifies top performing topics, content types, posting times
-- [ ] Plain-language recommendations written to client portal
-- [ ] Replaces manual monthly report until this is built
-
 **3.3 — Client Onboarding Flow** 🔲
-- [ ] Portal onboarding sequence:
-      Welcome → Connect Facebook → Connect LinkedIn → Brand voice review
-      → First content preview (3 drafts) → Go-live confirmation
-- [ ] Supabase setup SOP (you insert client rows before portal access granted)
-- [ ] First external client onboarded end-to-end
-
 **3.4 — Distribution Layer (Boost Agent)** 🔲
-- [ ] Facebook Ads API boost integration (four-step: campaign → adset → creative → ad)
-- [ ] boost-worker Edge Function, daily pg_cron
-- [ ] m.post_boost table: campaign_id, adset_id, ad_id, spend, reach, status
-- [ ] Boost rules per client: boost_enabled, budget, duration, objective,
-      targeting, score_threshold (all in c.client_publish_profile)
-- [ ] Standard Access graduation confirmed before enabling for clients
-- [ ] Meta Business Manager partner access required per client (separate from OAuth)
-- [ ] Email newsletter channel via Resend
-
 **3.5 — Meta App Review (permissions submission)** 🔲
-- [ ] OAuth screencast recorded using Care for Welfare page
-- [ ] All 3 permission screencasts uploaded to App Review
-- [ ] Data handling + reviewer instructions completed
-- [ ] Production permissions obtained (pages_manage_posts,
-      pages_read_engagement, pages_show_list)
-- [ ] All clients migrated to production API access
-
 **3.6 — Evergreen Content Type** 🔲
-- [ ] c.evergreen_post table + rotation scheduler
-- [ ] 10 evergreen posts per client seeded
-
-**3.7 — Client Portal v2 (operating features)** 🔲
-Builds on v1 foundation — scheduled after first client is live on v1:
-- [ ] Platform ticker on instant posts + series (requires 2.11)
-- [ ] Instant post / slot picker (brief → generation → slot selection → confirm)
-      Available slots calculated from publish profile throttle rules —
-      not a free datetime picker
-- [ ] AI cost transparency — posts generated, AI cost, included in plan
-      (requires 2.10 usage ledger)
-- [ ] Feedback signals — thumbs up/down per post, topic preferences,
-      free-text brief requests → feeds m.post_feedback → scoring weights
-- [ ] Performance dashboard — reach, engagement, follower growth
-      (requires 2.1 ✅ and meaningful data volume)
-- [ ] Monthly performance report — auto-delivered (requires 3.2)
-
+**3.7 — Client Portal v2** 🔲
 **3.8 — Content Series Planner in Portal** 🔲
-Requires Phase 2.4 campaigns to be built first:
-- [ ] Campaign brief form in portal
-- [ ] AI-generated post outline for client review
-- [ ] Approve/edit individual posts in series
-- [ ] Schedule full series with one action (start date + cadence)
-- [ ] Series progress view (published / pending / upcoming)
-
 **3.9 — Client Offboarding Flow** 🔲
-- [ ] Pause publishing (stops auto-publishing, keeps account)
-- [ ] Export content history (all published posts as CSV)
-- [ ] Disconnect pages (revoke OAuth tokens)
-- [ ] Account closure request → your offboarding checklist
 
 ### Phase 3 Done When
 1. First external paying client live and publishing for 4 weeks
 2. Portal v1 accessible and used by at least one client
-3. Content Analyst Agent delivering weekly reports (or manual report
-   substituting until 3.2 is built)
+3. Content Analyst Agent delivering weekly reports (or manual substitute)
 4. Meta App Review approved or in final review stage
 
 ---
 
 ## Phase 4 — Scale
 **Goal:** ICE serves 5-10 clients with minimal marginal effort
-per new client. Business model proven. Architecture supports
-growth without linear time increase.
+per new client. Business model proven.
 
 **Target start:** When Phase 3 done criteria are met
-**Target duration:** Ongoing
 
 ### Deliverables
-
-**4.1 — Multi-Client Operations**
-- [ ] Onboarding a new client takes under 2 hours
-- [ ] Per-client time cost under 30 minutes/week
-- [ ] Portal self-service for common requests
-- [ ] Billing and contract management process established
-
-**4.2 — Additional Signal Sources**
-- [ ] Reddit API (signal ingest only — not publishing)
-- [ ] YouTube trending topics via Data API
-- [ ] Email newsletter ingest full setup (D017)
-- [ ] Apify scrapers for non-RSS sources
-- [ ] Perplexity API for real-time synthesis and paywall bypass
-
-**4.3 — AI Model Abstraction**
-- [ ] Model router: ai-job → model_router → claude | openai | future
-- [ ] Per-client model preference in client_brand_profile
-- [ ] A/B testing for model quality comparison
-- [ ] Usage ledger (2.10) already tracking cost per model — use to inform decisions
-- [ ] Recent post history injection (last 7 posts) into system prompt
-      to prevent topic repetition
-
-**4.4 — Client Websites**
-- [ ] Next.js website template (config-driven)
-- [ ] Content flows ICE → Supabase → website automatically
-- [ ] NDIS Yarns + Property Pulse websites live
-
-**4.5 — Vertical Expansion**
-- [ ] Third vertical: Aged Care or Mental Health
-- [ ] Taxonomy rows added, at least one client in vertical
-
-**4.6 — SaaS Evaluation**
-- [ ] 10 clients served for 3+ months
-- [ ] Unit economics confirmed (usage ledger from 2.10 provides data)
-- [ ] Decide: continue managed service OR build self-serve platform
-
-**4.7 — Mobile Dashboard**
-- [ ] Ops dashboard responsive for mobile (internal tool — deferred)
-- [ ] Sidebar collapses to hamburger, touch targets 44px min
-
-**4.8 — TOTP Authenticator App for Portal**
-- [ ] Supabase Auth TOTP enabled for portal
-- [ ] Client can opt in via portal settings
-- [ ] For clients handling sensitive participant data who want stronger auth
-
-### Phase 4 Done When
-No fixed end. Success: 8-10 clients, under 10 hours/week total,
-positive unit economics, clear managed service vs SaaS decision made.
+4.1 Multi-Client Operations / 4.2 Additional Signal Sources /
+4.3 AI Model Abstraction / 4.4 Client Websites /
+4.5 Vertical Expansion / 4.6 SaaS Evaluation /
+4.7 Mobile Dashboard / 4.8 TOTP for Portal
 
 ---
 
@@ -348,7 +249,7 @@ positive unit economics, clear managed service vs SaaS decision made.
 | Platform | Phase | Status | Notes |
 |---|---|---|---|
 | Facebook | 1 | ✅ Live | Primary platform |
-| LinkedIn | 2 | ⏳ Blocked | Account recovery ticket open |
+| LinkedIn | 2 | 🔲 Ready to build | Account unblocked 18 Mar 2026 |
 | Instagram | 2+ | 🔲 Planned | Same Meta API sprint as LinkedIn |
 | Email newsletter | 3 | 🔲 Planned | Resend API, owned audience |
 | Reddit | 4 | 🔲 Signal ingest only | Not publishing |
@@ -356,71 +257,9 @@ positive unit economics, clear managed service vs SaaS decision made.
 | TikTok | Skip | ❌ | Wrong audience for NDIS vertical |
 | Twitter/X | Skip | ❌ | $100/month API, wrong audience |
 
-Video/shorts/reels (Instagram Reels, YouTube Shorts, TikTok) are handled
-by the platform targeting architecture (D022) — a new platform type gets
-a new client_platform_profile row with a script-generation prompt rather
-than a post-copy prompt. The platform ticker in the portal shows these
-as available once a client has video production set up.
-
 ---
 
-## Cross-Phase Dependencies
-
-```
-Facebook Insights (2.1) ✅
-→ required for Content Analyst Agent (3.2)
-→ required for Boost Agent (3.4)
-→ required for Public Proof Dashboard (2.6)
-→ required for feed scoring improvement
-
-Content Intelligence Profiles (2.8) ✅
-→ required for consistent brand voice at scale
-→ required before adding new clients
-
-AI Usage Ledger (2.10)
-→ required before portal cost transparency (3.7)
-→ required for unit economics confirmation (4.6)
-→ should run before first paying client so cost baseline is established
-
-Platform Targeting (2.11)
-→ required for platform ticker in portal (3.7, 3.8)
-→ required for token efficiency at scale
-→ required for video/reels content type (4+)
-
-Auto-Approval Agent (1.2) ✅
-→ required for under 2 hours/week target
-→ required before scaling to external clients
-
-Next.js Dashboard (2.5) ✅
-→ portal (3.1) scaffolded using same patterns
-
-Meta App Review (1.6) ← IN PROGRESS
-→ requires OAuth connect flow (D020 ✅)
-→ blocks ALL external client work (3.x)
-
-LinkedIn Publisher (2.3) ← BLOCKED
-→ required before Facebook is sole platform risk
-→ should complete before first external client onboards
-
-Campaigns (2.4)
-→ required before series planner in portal (3.8)
-
-Public Proof Dashboard (2.6)
-→ required as primary sales asset before first client conversation
-→ depends on Insights (2.1 ✅) and follower numbers (2.7)
-→ requires invegent-web repo + Vercel project (not yet created)
-
-Client Portal v1 (3.1) ← IN PROGRESS
-→ Magic link auth ✅ working (17 Mar 2026)
-→ Inbox + calendar ✅ working
-→ draft-notifier ⚠️ deployed, email delivery not yet confirmed
-→ RLS audit pending
-→ Facebook OAuth connect flow pending
-```
-
----
-
-## Infrastructure Status (17 March 2026)
+## Infrastructure Status (18 March 2026)
 
 ### Edge Functions (11 active)
 | Function | Version | Status |
@@ -442,7 +281,13 @@ Client Portal v1 (3.1) ← IN PROGRESS
 |---|---|---|
 | invegent-dashboard | dashboard.invegent.com | ✅ Live |
 | invegent-portal | portal.invegent.com | ✅ Live |
-| invegent-web | invegent.com | ❌ Not created yet — needed for 2.6 |
+| invegent-web | invegent.com | ✅ Deployed — DNS propagating 18 Mar |
+
+### LinkedIn Developer Apps (18 March 2026)
+| App | Client ID | Status |
+|---|---|---|
+| Invegent Publisher | 78npkxuir4z64j | ✅ Company verified, Share on LinkedIn added |
+| Invegent Community | 78im589pktk59k | ✅ Company verified (secondary, not used for publishing) |
 
 ### Email Infrastructure
 | Component | Status |
