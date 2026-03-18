@@ -893,28 +893,6 @@ ALTER TABLE m.post_draft ENABLE ROW LEVEL SECURITY;
 ALTER TABLE m.post_publish_queue ENABLE ROW LEVEL SECURITY;
 ALTER TABLE m.post_publish ENABLE ROW LEVEL SECURITY;
 ALTER TABLE m.post_performance ENABLE ROW LEVEL SECURITY;
-
--- post_draft: SELECT + UPDATE (approve/reject)
-CREATE POLICY "portal: read own client drafts"
-  ON m.post_draft FOR SELECT
-  USING (client_id = public.auth_client_id());
-
-CREATE POLICY "portal: update own client drafts"
-  ON m.post_draft FOR UPDATE
-  USING (client_id = public.auth_client_id());
-
--- post_publish_queue, post_publish, post_performance: SELECT only
-CREATE POLICY "portal: read own client queue"
-  ON m.post_publish_queue FOR SELECT
-  USING (client_id = public.auth_client_id());
-
-CREATE POLICY "portal: read own client published"
-  ON m.post_publish FOR SELECT
-  USING (client_id = public.auth_client_id());
-
-CREATE POLICY "portal: read own client performance"
-  ON m.post_performance FOR SELECT
-  USING (client_id = public.auth_client_id());
 ```
 
 **Data migration run simultaneously:**
@@ -928,16 +906,9 @@ AND pd.client_id IS NULL;
 -- Result: 482 rows updated. 7 orphaned published rows remain null (harmless).
 ```
 
-**Scope:**
-- Service role key (Edge Functions + ops dashboard) bypasses RLS entirely
-- Portal uses anon key + Supabase Auth JWT — RLS is enforced
-- 7 orphaned null-client_id published drafts are invisible to portal users
-  (null ≠ any client_id) — harmless
-
 **Rule going forward:**
 Every new post creation path must set `client_id` directly on
-`m.post_draft` at insert time. The manual_post_insert() and
-draft_approve_and_enqueue() functions already do this (D019).
+`m.post_draft` at insert time.
 
 ---
 
@@ -947,78 +918,122 @@ draft_approve_and_enqueue() functions already do this (D019).
 
 **Decision:**
 Client-facing thumbs up / thumbs down on individual feed sources
-in the portal is a confirmed feature but deliberately deferred
-until Phase 4. The full feedback loop — rating → Feed Intelligence
-Agent analysis → client-facing performance report — requires
-dependencies that do not yet exist.
-
-**Context:**
-The portal /feeds (Sources) page was built in Phase 3 (18 March 2026)
-giving clients read-only visibility into their active feed sources
-and a "Suggest a source" form. During the design discussion, the
-question of adding like/dislike feedback on individual feeds was raised.
+in the portal is confirmed but deferred until Phase 4.
 
 **What was agreed:**
-
-Client can thumbs-up or thumbs-down any feed source in the portal.
-Rating is stored as `client_rating` ('liked' / 'disliked' / null)
-on `c.client_source`. This is per-client, not global — one client
-disliking a feed does not affect another client using the same feed.
-
-When a rating is submitted (either direction), it triggers an
-analysis job queued for the Feed Intelligence Agent. The agent
-produces a plain-language report for that specific feed and client:
-- How many items this feed produced in the last 30 days
-- What percentage made it through to a published post
-- Which topics it typically covers
-- Whether other clients using the same feed have rated it differently
-- Recommendation: keep, deprioritise, or flag for removal
-
-This report surfaces in the portal under the rated feed as
-"Here's how this source has been performing for you."
-
-The client never sees raw pipeline metrics (give-up rates, fetch
-counts) — only the plain-language interpretation.
+Rating stored as `client_rating` on `c.client_source`. When rated,
+Feed Intelligence Agent produces a plain-language report for that
+feed and client — items produced, publish rate, topic coverage,
+recommendation. Client sees this in the portal under the rated feed.
 
 **Why deferred:**
-
-1. Feed Intelligence Agent (Phase 2.2) must be running and producing
-   reliable analysis before client-facing reports can be generated.
-   Currently the agent exists but output quality is not yet validated
-   against real client context.
-
-2. rss.app API access (requires plan upgrade) is needed before feed
-   management can be automated. Without it, acting on a disliked feed
-   is a manual step (remove from rss.app, update c.client_source).
-   The feedback loop is only complete when the action can be automated.
-
-3. No paying clients yet. Building a feedback system with nobody to
-   use it is premature — the first clients will tell you what they
-   actually want to see, which may differ from what was designed here.
+1. Feed Intelligence Agent output not yet validated against real client context
+2. rss.app API required before feed changes can be automated
+3. No paying clients yet to validate the UX
 
 **Schema when built:**
-
 ```sql
--- On c.client_source (already exists)
-ALTER TABLE c.client_source
-  ADD COLUMN client_rating TEXT
+ALTER TABLE c.client_source ADD COLUMN client_rating TEXT
   CHECK (client_rating IN ('liked', 'disliked'));
 
--- New: log of rating events for audit trail
 CREATE TABLE public.feed_rating_event (
-  event_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  client_id    UUID NOT NULL,
-  source_id    UUID NOT NULL,
-  rating       TEXT NOT NULL CHECK (rating IN ('liked', 'disliked', 'cleared')),
-  rated_by     TEXT NOT NULL,  -- portal user email
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  event_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id  UUID NOT NULL,
+  source_id  UUID NOT NULL,
+  rating     TEXT NOT NULL CHECK (rating IN ('liked', 'disliked', 'cleared')),
+  rated_by   TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 ```
 
-**Build trigger:**
-Build this when: (a) first paying client is live, (b) Feed Intelligence
-Agent output is validated, and (c) rss.app API access is active.
-All three must be true. None of these are true today.
+**Build trigger:** first paying client live + Feed Agent validated + rss.app API active.
+
+---
+
+## D026 — Email Architecture for feeds@invegent.com
+**Date:** 18 March 2026
+**Status:** Designed — label setup pending (PK manual action)
+
+**Decision:**
+The `feeds@invegent.com` Google Workspace account is the single
+email hub for all ICE inbound email processing. Two distinct
+purposes are served — signal ingest (newsletters) and client
+content submission — separated by a label namespace convention
+that makes routing unambiguous and prevents cross-contamination.
+
+**Context:**
+`feeds@invegent.com` is a full Workspace account (confirmed 18 Mar).
+It already has Gmail OAuth credentials stored in Supabase secrets
+and is polled every 2h by the email-ingest Edge Function.
+All routing is label-based — the Edge Function reads label names
+to determine which pipeline branch to use.
+
+**The two purposes are fundamentally different:**
+
+| Purpose | Direction | Audience | Routing |
+|---|---|---|---|
+| Signal ingest (newsletters) | ICE reads | Shared — one subscription serves all clients in a vertical | Vertical-based labels |
+| Client content submission | Client writes to ICE | Per-client — one client's submission must never reach another's pipeline | Client-based labels |
+
+**Label namespace convention:**
+
+```
+newsletter/ndis               ← NDIS vertical newsletters (shared)
+newsletter/property           ← Property vertical newsletters (shared)
+newsletter/aged-care          ← Future vertical (shared)
+newsletter/ndis-yarns/pub-name ← Client-specific newsletter (3 segments = per-client)
+
+submit/ndis-yarns             ← Client-submitted content for NDIS Yarns
+submit/property-pulse         ← Client-submitted content for Property Pulse
+submit/client-slug            ← Scales per client onboarded
+```
+
+Two-segment label = shared vertical resource.
+Three-segment label = client-specific resource.
+Edge Function reads label prefix to determine routing branch.
+
+**How client submission routing works:**
+
+Each client gets a dedicated alias on `feeds@invegent.com`:
+- `ndis-yarns@invegent.com` → Gmail filter → label `submit/ndis-yarns`
+- `property-pulse@invegent.com` → Gmail filter → label `submit/property-pulse`
+- Future client → `client-slug@invegent.com` → label `submit/client-slug`
+
+The alias address is the client's dedicated submission address.
+Emails arriving at that alias are auto-labelled by Gmail filter.
+The Edge Function reads `submit/*` labels and routes to the
+correct client pipeline without any manual intervention.
+
+Google Workspace allows 30 aliases per user — sufficient for
+current scale and expandable if needed.
+
+**Infrastructure facts confirmed 18 Mar 2026:**
+- `feeds@invegent.com` is a full Workspace account (not an alias on pk@)
+- Aliases are added via Google Workspace Admin → Users → feeds account → Alternate email addresses
+- No new OAuth credentials needed — aliases on the same account
+  are accessible via the existing Gmail API credentials
+- No new Edge Function needed — same email-ingest function,
+  new label → new routing branch
+
+**Image generation note (visual pipeline):**
+Sharp (npm) native binaries are unreliable in Supabase Deno Edge Functions.
+Recommended alternative: SVG template (pure TypeScript) → Resvg WASM
+(`npm:@resvg/resvg-wasm`) → PNG → Supabase Storage.
+This is the pattern Supabase's own OG image generation examples use.
+No native binary dependency, confirmed working in Deno.
+
+**Supabase Storage status (confirmed 18 Mar 2026):**
+Zero buckets exist. Storage is completely untouched.
+Bucket creation is part of the visual pipeline build (Fri 27 Mar).
+
+**Pending manual actions (PK):**
+1. Google Workspace Admin → Users → feeds@invegent.com → Add aliases:
+   - `ndis-yarns@invegent.com`
+   - `property-pulse@invegent.com`
+2. Gmail (logged in as feeds@invegent.com) → Settings → Filters:
+   - To: `ndis-yarns@invegent.com` → Apply label `submit/ndis-yarns`
+   - To: `property-pulse@invegent.com` → Apply label `submit/property-pulse`
+3. Future: repeat for each new client at onboarding
 
 ---
 
@@ -1031,8 +1046,8 @@ All three must be true. None of these are true today.
 | ai-worker update: capture tokens, write ledger | Fills usage ledger with live data | Phase 2.10 |
 | Schema migration: target_platforms + platform columns | Prerequisite for platform targeting (D022) | Phase 2.11 |
 | ai-worker update: loop per target platform | One draft per platform per source signal | Phase 2.11 |
-| Draft notifier email subject redesign | Current subject works but needs thought for multi-post / content-type variety | Next portal session |
-| Client feed feedback (D025) | Rating → Feed Agent analysis → client report. Blocked on paying clients + Feed Agent validation + rss.app API | Phase 4 |
+| Client feed feedback (D025) | Rating → Feed Agent analysis → client report | Phase 4 |
+| email-ingest Edge Function: add submit/* label routing | Reads submit/client-slug labels, routes to client pipeline | Visual pipeline build (Fri 27 Mar) |
 | Model router implementation | When AI costs become significant | Phase 4 |
 | Trigger.dev evaluation | When pg_cron job complexity demands it | Phase 4 |
 | SaaS vs managed service long-term | When 10 clients served for 3+ months | Phase 4 |
