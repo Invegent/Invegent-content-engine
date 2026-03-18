@@ -218,7 +218,7 @@ not at the application level.
 
 **Reasoning:**
 One project per client becomes unmanageable at 10+ clients.
-Application-level filtering is dangerous — a bug in filtering
+Application-layer filtering is dangerous — a bug in filtering
 logic could expose one client's data to another. RLS enforces
 isolation at the database level. Schema designed with client_id
 on every relevant table. This is the correct enterprise pattern
@@ -941,6 +941,87 @@ draft_approve_and_enqueue() functions already do this (D019).
 
 ---
 
+## D025 — Client Feed Feedback System: Deferred to Phase 4
+**Date:** 18 March 2026
+**Status:** Deferred — design agreed, build blocked on prerequisites
+
+**Decision:**
+Client-facing thumbs up / thumbs down on individual feed sources
+in the portal is a confirmed feature but deliberately deferred
+until Phase 4. The full feedback loop — rating → Feed Intelligence
+Agent analysis → client-facing performance report — requires
+dependencies that do not yet exist.
+
+**Context:**
+The portal /feeds (Sources) page was built in Phase 3 (18 March 2026)
+giving clients read-only visibility into their active feed sources
+and a "Suggest a source" form. During the design discussion, the
+question of adding like/dislike feedback on individual feeds was raised.
+
+**What was agreed:**
+
+Client can thumbs-up or thumbs-down any feed source in the portal.
+Rating is stored as `client_rating` ('liked' / 'disliked' / null)
+on `c.client_source`. This is per-client, not global — one client
+disliking a feed does not affect another client using the same feed.
+
+When a rating is submitted (either direction), it triggers an
+analysis job queued for the Feed Intelligence Agent. The agent
+produces a plain-language report for that specific feed and client:
+- How many items this feed produced in the last 30 days
+- What percentage made it through to a published post
+- Which topics it typically covers
+- Whether other clients using the same feed have rated it differently
+- Recommendation: keep, deprioritise, or flag for removal
+
+This report surfaces in the portal under the rated feed as
+"Here's how this source has been performing for you."
+
+The client never sees raw pipeline metrics (give-up rates, fetch
+counts) — only the plain-language interpretation.
+
+**Why deferred:**
+
+1. Feed Intelligence Agent (Phase 2.2) must be running and producing
+   reliable analysis before client-facing reports can be generated.
+   Currently the agent exists but output quality is not yet validated
+   against real client context.
+
+2. rss.app API access (requires plan upgrade) is needed before feed
+   management can be automated. Without it, acting on a disliked feed
+   is a manual step (remove from rss.app, update c.client_source).
+   The feedback loop is only complete when the action can be automated.
+
+3. No paying clients yet. Building a feedback system with nobody to
+   use it is premature — the first clients will tell you what they
+   actually want to see, which may differ from what was designed here.
+
+**Schema when built:**
+
+```sql
+-- On c.client_source (already exists)
+ALTER TABLE c.client_source
+  ADD COLUMN client_rating TEXT
+  CHECK (client_rating IN ('liked', 'disliked'));
+
+-- New: log of rating events for audit trail
+CREATE TABLE public.feed_rating_event (
+  event_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id    UUID NOT NULL,
+  source_id    UUID NOT NULL,
+  rating       TEXT NOT NULL CHECK (rating IN ('liked', 'disliked', 'cleared')),
+  rated_by     TEXT NOT NULL,  -- portal user email
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+**Build trigger:**
+Build this when: (a) first paying client is live, (b) Feed Intelligence
+Agent output is validated, and (c) rss.app API access is active.
+All three must be true. None of these are true today.
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target Date |
@@ -951,6 +1032,7 @@ draft_approve_and_enqueue() functions already do this (D019).
 | Schema migration: target_platforms + platform columns | Prerequisite for platform targeting (D022) | Phase 2.11 |
 | ai-worker update: loop per target platform | One draft per platform per source signal | Phase 2.11 |
 | Draft notifier email subject redesign | Current subject works but needs thought for multi-post / content-type variety | Next portal session |
+| Client feed feedback (D025) | Rating → Feed Agent analysis → client report. Blocked on paying clients + Feed Agent validation + rss.app API | Phase 4 |
 | Model router implementation | When AI costs become significant | Phase 4 |
 | Trigger.dev evaluation | When pg_cron job complexity demands it | Phase 4 |
 | SaaS vs managed service long-term | When 10 clients served for 3+ months | Phase 4 |
