@@ -1024,7 +1024,7 @@ No native binary dependency, confirmed working in Deno.
 
 **Supabase Storage status (confirmed 18 Mar 2026):**
 Zero buckets exist. Storage is completely untouched.
-Bucket creation is part of the visual pipeline build (Fri 27 Mar).
+Bucket creation is part of the visual pipeline build.
 
 **Pending manual actions (PK):**
 1. Google Workspace Admin → Users → feeds@invegent.com → Add aliases:
@@ -1034,6 +1034,284 @@ Bucket creation is part of the visual pipeline build (Fri 27 Mar).
    - To: `ndis-yarns@invegent.com` → Apply label `submit/ndis-yarns`
    - To: `property-pulse@invegent.com` → Apply label `submit/property-pulse`
 3. Future: repeat for each new client at onboarding
+
+---
+
+## D027 — Visual Pipeline Architecture
+**Date:** 19 March 2026
+**Status:** Confirmed — build in progress
+
+**Decision:**
+ICE generates branded visual assets (images and carousels) automatically
+for approved posts. Format selection is AI-driven at generation time,
+platform-gated per client profile, and rendered by a dedicated
+image-worker Edge Function. Video rendering is a separate Phase 3 layer
+using the same architecture.
+
+**Format spectrum (V1 → Phase 3):**
+
+| Format | Code | V1 | Phase 3 |
+|---|---|---|---|
+| Text only | `text` | ✅ | ✅ |
+| Branded quote card (single image) | `image_quote` | ✅ | ✅ |
+| Carousel (multi-slide swipe post) | `carousel` | ✅ | ✅ |
+| AI-generated contextual image | `image_ai` | ❌ | ✅ |
+| Animated slideshow video | `video_slideshow` | ❌ | ✅ |
+| Avatar video (stock or custom) | `video_avatar` | ❌ | ✅ |
+| Voiceover only (no face) | `video_voiceover` | ❌ | ✅ |
+
+**Why carousel is V1, not Phase 3:**
+Carousels are the highest-performing organic format on LinkedIn for B2B
+content — consistently 3-5x engagement vs single image posts. For NDIS
+providers explaining policies or OT practices breaking down service types
+across 5 slides, the carousel is the natural format. Creatomate handles
+multi-frame export natively. Facebook and LinkedIn both support carousel
+posts via their APIs. This belongs in V1, not deferred.
+
+**Format scoring — AI decides at generation time:**
+The ai-worker outputs `recommended_format` and `recommended_reason` as
+part of the standard generation call. No additional API call. ~30-50
+extra tokens. Logic:
+
+| Content signal | Recommended format |
+|---|---|
+| Strong single stat, quote, or insight | `image_quote` |
+| 4+ distinct structured points | `carousel` |
+| News reaction, opinion, commentary | `text` |
+| How-to or multi-step narrative | `video_slideshow` (Phase 3) |
+| Short conversational engagement post | `text` |
+
+**Platform gate — client profile controls execution:**
+Even if AI recommends `image_quote`, image-worker skips it if
+`image_generation_enabled = false` on the client's publish profile.
+Clients are never charged for renders they haven't enabled.
+
+**New columns on m.post_draft:**
+```sql
+recommended_format   text  -- 'text' | 'image_quote' | 'carousel' | 'video_slideshow' | 'video_avatar' | 'video_voiceover'
+recommended_reason   text  -- one sentence explanation, for operator audit
+image_headline       text  -- 10-15 word pull quote extracted at generation time (Option A)
+image_url            text  -- public Supabase Storage URL once rendered
+image_status         text  -- 'pending' | 'generated' | 'failed' | 'skipped'
+carousel_slides      jsonb -- [{headline, body, position}] for carousel format
+```
+
+**New columns on c.client_publish_profile:**
+```sql
+image_generation_enabled   boolean  default false
+video_generation_enabled   boolean  default false
+preferred_format_facebook  text     default null  -- overrides AI recommendation per platform
+preferred_format_linkedin  text     default null
+preferred_format_instagram text     default null
+```
+
+**New columns on c.client_brand_profile:**
+```sql
+brand_colour_primary    text  -- hex e.g. '#1B4F8A'
+brand_colour_secondary  text  -- hex e.g. '#F4A623'
+brand_logo_url          text  -- Supabase Storage URL for logo PNG
+image_style             text  -- 'quote_card' (v1), future: 'news_card', 'series_card'
+persona_type            text  -- 'custom_avatar' | 'stock_avatar' | 'cartoon' | 'voiceover_only'
+persona_avatar_id       text  -- HeyGen avatar ID (custom or stock)
+persona_dialogue_mode   boolean default false  -- two-character script format
+```
+
+**Rendering stack:**
+- Images (quote card, carousel): SVG template → Resvg WASM → PNG → Supabase Storage
+- Video (Phase 3): Creatomate REST API (slideshow) / HeyGen API (avatar)
+- AI-generated images (Phase 3): DALL-E 3 or Flux via Replicate
+
+**Supabase Storage bucket:** `post-images` (public)
+Path: `/{client_slug}/{post_draft_id}.png`
+Carousel frames: `/{client_slug}/{post_draft_id}/slide_{n}.png`
+
+**image-worker Edge Function:**
+- Runs every 15 min via pg_cron
+- Picks up: `approval_status = 'approved'` AND `image_status = 'pending'`
+  AND client has `image_generation_enabled = true`
+- Loads brand identity from `c.client_brand_profile`
+- Renders SVG → PNG via Resvg WASM
+- Uploads to Storage, updates `image_url` + `image_status = 'generated'`
+
+**Publisher update:**
+When publishing to Facebook or LinkedIn: if `image_url` is set,
+attach as `picture` parameter (single image) or as carousel attachment
+(multi-frame). Platform API handles embedding — no binary upload required
+for single images; carousel requires multi-step attachment API.
+
+**Content atomisation — future architecture:**
+`preferred_format_per_platform` config (stored in `c.client_publish_profile`)
+enables one signal → multiple format outputs simultaneously:
+- LinkedIn → carousel
+- Facebook → image_quote
+- Instagram → image_quote (square crop)
+This is the Phase 3 build. Schema supports it from day one.
+
+---
+
+## D028 — Canva: Design Tool Only, Not API Integration
+**Date:** 19 March 2026
+**Status:** Confirmed — no Canva API integration planned
+
+**Decision:**
+Canva is used by the operator and clients as a design tool for
+creating brand assets. It is not integrated into ICE via API.
+All programmatic image generation uses SVG templates and Resvg WASM
+within ICE's own pipeline.
+
+**Options Considered:**
+- Canva Connect API — programmatic brand template autofill
+- Canva as design tool only, assets exported and stored in Supabase
+- Custom SVG templates rendered via Resvg WASM
+
+**Choice:** Canva for design, SVG/Resvg for programmatic generation
+
+**Reasoning:**
+Canva's Autofill and Brand Templates APIs require Enterprise subscription
+(30+ person organisations, custom pricing, not publicly listed).
+This is not viable for a sole-trader managed service.
+The correct model for ICE: clients supply logo PNG + hex colours at
+onboarding (Canva is a good tool for creating/exporting these assets).
+ICE stores them in `c.client_brand_profile` and applies them to
+SVG templates programmatically. Clients never need to touch a design
+tool again after onboarding. For a managed service, this is a
+selling point — the operator handles all of it.
+
+**Brand kit onboarding (per client):**
+1. Client supplies logo PNG + primary/secondary hex colours
+2. Operator uploads logo to Supabase Storage, stores URL in brand profile
+3. image-worker uses these values in all SVG template renders
+4. No Canva account, no API keys, no Enterprise subscription required
+
+---
+
+## D029 — Video Generation Stack: Creatomate + HeyGen + ElevenLabs
+**Date:** 19 March 2026
+**Status:** Confirmed — Phase 3 build, architecture locked
+
+**Decision:**
+Three-layer video stack covering all client personas and format needs.
+Each layer is independently callable from a video-worker Edge Function
+via REST API. No server infrastructure required.
+
+**Stack:**
+
+| Layer | Tool | Use case |
+|---|---|---|
+| Slideshow / animated | Creatomate | Template-based video, no face, brand animations |
+| Avatar video | HeyGen | Presenter-to-camera video, stock or custom avatar |
+| Voiceover | ElevenLabs | Audio layer for any video format |
+
+**Why Creatomate over Remotion:**
+Remotion requires self-hosted rendering infrastructure (Puppeteer +
+AWS servers at $50-100/month each). ICE runs on Supabase Edge Functions
+with no server management. Creatomate is a cloud REST API — one HTTP
+call from an Edge Function, no infrastructure. Template editor handles
+design. Supports multi-frame carousel-to-video, animated transitions,
+brand overlays, and royalty-free music library.
+
+**Why HeyGen for avatars:**
+HeyGen supports both stock avatars (library of diverse presenters,
+no filming required) and custom avatars (client uploads 2-3 min video,
+HeyGen generates reusable likeness). Avatar ID stored in
+`c.client_brand_profile.persona_avatar_id`. One setup, used for
+every video series that client produces.
+
+**Persona types (stored in c.client_brand_profile.persona_type):**
+
+| Type | Code | Description | Client objection resolved |
+|---|---|---|---|
+| Real person avatar | `custom_avatar` | Client films once, HeyGen generates custom likeness | Wants personal brand |
+| Stock AI presenter | `stock_avatar` | Choose from HeyGen library, no filming | Camera shy / privacy concern |
+| Illustrated cartoon | `cartoon` | Flat-design characters in Creatomate layout | Wants fun/distinctive format |
+| Voiceover only | `voiceover_only` | ElevenLabs audio, no face shown | Professional, no gimmicks |
+
+**Dialogue mode (`persona_dialogue_mode = true`):**
+Series agent writes script as two-character exchange (Agent + Buyer,
+Practitioner + Participant, etc.) instead of monologue. Creatomate
+handles two-character layouts natively (left/right, speech bubbles).
+HeyGen supports multi-avatar video. Same content brief, different
+script structure output from ai-worker.
+
+**Illustrated cartoon path (no Vyond required):**
+V1 cartoon path uses Canva-designed character PNGs (flat illustration)
+stored in Supabase Storage + Creatomate for layout and animation.
+Characters are reusable across all episodes in a series. Static
+characters with speech bubble dialogue is the intended format —
+the writing does the humour work, not motion complexity.
+
+**Cost per video episode (approximate):**
+- Creatomate slideshow: ~$0.10-0.30 per render
+- HeyGen stock avatar (60-90 sec): ~$0.50-1.50 per video
+- ElevenLabs voiceover (90 sec): ~$0.05-0.10
+- Custom avatar setup (one-time): ~$30-50 per client
+
+**Build sequence (Phase 3):**
+1. Creatomate account + API key → Supabase secret
+2. video-worker Edge Function — picks up `recommended_format` starting with `video_`
+3. Stock avatar path first (HeyGen library, no client filming required)
+4. Voiceover-only path (ElevenLabs, no avatar)
+5. Cartoon character path (client supplies or Canva-designed characters)
+6. Custom avatar path (client filming + HeyGen custom likeness)
+7. Dialogue mode script structure in series agent
+
+**Platform routing for video:**
+
+| Format | Facebook | LinkedIn | Instagram Reels | Aspect ratio |
+|---|---|---|---|---|
+| Slideshow video | ✅ | ✅ | ✅ | 1:1 or 16:9 |
+| Avatar video | ✅ | ✅ | ✅ Reels | 9:16 for Reels, 1:1 for FB/LI |
+| Voiceover only | ✅ | ✅ | ✅ | Same as above |
+
+Creatomate and HeyGen both support rendering at multiple dimensions
+from the same template/avatar — one job can output Facebook (1:1)
+and Instagram Reels (9:16) simultaneously.
+
+---
+
+## D030 — Content Atomisation: One Signal, Multiple Format Outputs
+**Date:** 19 March 2026
+**Status:** Confirmed architecture — Phase 3 build
+
+**Decision:**
+ICE's content pipeline evolves from one-signal-one-post to
+one-signal-one-content-pack. The same source signal or campaign brief
+produces multiple format outputs simultaneously, each platform-native.
+
+**What this means in practice:**
+
+A single NDIS policy update produces:
+- LinkedIn: carousel (5 slides breaking down key changes)
+- Facebook: text post (plain language explanation for families)
+- Instagram: quote card (the single most important number)
+- Video: 60-second voiceover summary
+
+A single campaign brief (sensory toys series, 10 episodes) produces:
+- Facebook: text posts with image_quote
+- LinkedIn: carousel per episode
+- Instagram Reels: video_avatar or video_slideshow
+
+**Architecture:**
+`preferred_format_facebook`, `preferred_format_linkedin`,
+`preferred_format_instagram` columns in `c.client_publish_profile`
+define the default format per platform. These override or supplement
+the AI's `recommended_format` at render time.
+
+The ai-worker already generates platform-specific content (D022).
+The image-worker and video-worker already pick up by format type.
+Content atomisation is the combination of D022 + D027 + D029
+working together — no new pipeline logic, just new configuration.
+
+**Why this matters for the product:**
+This is what separates ICE from a scheduler. A client briefs once.
+ICE produces a platform-native content pack. Every platform gets
+content optimised for its format and audience. The client approves
+one brief, not five individual posts. This is the full realisation
+of the signal-centric architecture — signals don't produce posts,
+they produce content strategies executed across platforms.
+
+**Build trigger:** After visual pipeline V1 proven in production +
+LinkedIn API access confirmed + at least one paying client live.
 
 ---
 
@@ -1047,11 +1325,19 @@ Bucket creation is part of the visual pipeline build (Fri 27 Mar).
 | Schema migration: target_platforms + platform columns | Prerequisite for platform targeting (D022) | Phase 2.11 |
 | ai-worker update: loop per target platform | One draft per platform per source signal | Phase 2.11 |
 | Client feed feedback (D025) | Rating → Feed Agent analysis → client report | Phase 4 |
-| email-ingest Edge Function: add submit/* label routing | Reads submit/client-slug labels, routes to client pipeline | Visual pipeline build (Fri 27 Mar) |
+| email-ingest Edge Function: add submit/* label routing | Reads submit/client-slug labels, routes to client pipeline | Deferred — PK to confirm Gmail strategy |
+| Visual pipeline V1 schema migration | brand_colour, logo_url, recommended_format, image_headline, image_status, image_url, carousel_slides on post_draft; image_generation_enabled on publish_profile | Next build session |
+| image-worker Edge Function | SVG → Resvg WASM → PNG → Storage, quote card + carousel | Next build session |
+| ai-worker update: output recommended_format + image_headline | Part of existing generation call, ~50 extra tokens | Next build session |
+| publisher v1.3: attach image_url on publish | Facebook picture param + LinkedIn image attachment | Next build session |
+| Creatomate account + video-worker | Phase 3 video rendering | Phase 3 |
+| HeyGen stock avatar path | Phase 3 video, no filming required | Phase 3 |
+| ElevenLabs voiceover path | Phase 3 audio layer | Phase 3 |
+| AI-generated contextual images (DALL-E 3 / Flux) | Phase 3 image quality ceiling | Phase 3 |
+| Content atomisation build | D022 + D027 + D029 combined execution | Phase 3, post first paying client |
 | Model router implementation | When AI costs become significant | Phase 4 |
 | Trigger.dev evaluation | When pg_cron job complexity demands it | Phase 4 |
 | SaaS vs managed service long-term | When 10 clients served for 3+ months | Phase 4 |
 | Second market expansion | After NDIS vertical proven with 5+ clients | Phase 4 |
-| YouTube / video layer | When client demand justifies investment | Phase 4 |
 | Premium Services catalogue design | When 5 paying clients live | Phase 3+ |
 | Recent post history injection into ai-worker | Prevent topic repetition | Phase 4 |
