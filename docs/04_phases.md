@@ -22,7 +22,7 @@ of done. A phase does not end until ALL done criteria are met.
 
 **1.6 — Meta App Review** 🔄 IN PROGRESS
 - [x] Privacy Policy + Data Deletion URLs live
-- [x] Business verification submitted — In Review (~2 working days)
+- [x] Business verification submitted — In Review
 - [x] Correct permissions: pages_manage_posts, pages_read_engagement, pages_show_list
 - [x] pages_manage_posts API test calls: green tick
 - [x] Facebook OAuth connect flow built (D020, 16 Mar 2026)
@@ -47,14 +47,25 @@ of done. A phase does not end until ALL done criteria are met.
 - feed-intelligence v7, Sundays 2am UTC
 - Give-up rate analysis + recommendations to DB
 
-**2.3 LinkedIn Publisher** 🔲 READY TO BUILD
-- [x] New account: pk@invegent.com (18 Mar 2026)
-- [x] Invegent Company Page connected + verified
-- [x] Invegent Publisher app (Client ID: 78npkxuir4z64j)
-- [x] Share on LinkedIn (Default Tier) + OpenID Connect (Standard Tier) added
-- [ ] linkedin-publisher Edge Function
-- [ ] OAuth connect flow on portal (/connect, same pattern as D020)
-- [ ] c.client_channel rows for LinkedIn per client
+**2.3 LinkedIn Publisher** 🔄 IN PROGRESS — waiting on API approval
+- [x] LinkedIn account: pk@invegent.com (18 Mar 2026)
+- [x] NDIS Yarns LinkedIn Company Page created
+- [x] Property Pulse LinkedIn Company Page created (URL: property-pulse-au)
+- [x] Invegent Community app (Client ID: 78im589pktk59k) — correct app for org posting
+      NOTE: Invegent Publisher (78npkxuir4z64j) = personal posting only, wrong app
+- [x] Community Management API access form submitted (1-5 business days)
+      Use case: Page management + Page analytics
+- [x] linkedin-publisher Edge Function v1.1 deployed
+- [x] publisher_lock_queue_v2 updated with p_platform filter
+- [x] store_linkedin_org_token() SECURITY DEFINER function created
+- [x] pg_cron: linkedin-publisher-every-15m scheduled
+- [x] Dashboard /connect page updated — dual platform UI (Facebook + LinkedIn)
+- [x] /api/linkedin/auth + /api/linkedin/callback routes deployed
+- [x] Vercel LINKEDIN_CLIENT_ID/SECRET updated to Community app credentials
+- [x] Callback URL added to Invegent Community app Auth tab
+- [ ] Community Management API approval (pending — 1-5 business days)
+- [ ] OAuth connect flow tested end-to-end (blocked until approval)
+- [ ] client_publish_profile rows for LinkedIn (NDIS Yarns + Property Pulse)
 - [ ] Test posts verified on both clients
 
 **2.4 Campaigns** ⏸ DEFERRED to Phase 3
@@ -65,42 +76,32 @@ of done. A phase does not end until ALL done criteria are met.
 
 **2.6 Public Proof Dashboard** ✅ COMPLETE (18 Mar 2026)
 - [x] invegent-web repo created + deployed to Vercel
-- [x] invegent.com DNS configured (A record 76.76.21.21, www CNAME) — propagating
-- [x] /proof — summary page, platform cards, education layer
-- [x] /proof/facebook — full deep dive: volume, reach, impressions,
-      interactions, engagement rate, weekly chart, recent posts, top posts
-- [x] /proof/linkedin — placeholder with education layer + "coming soon"
-- [x] public.vw_proof_ndis_yarns view — live data feed (anon read)
-      Columns: total_posts_published, posts_this_month, posts_this_week,
-      first_published_at, total_reach, total_impressions, total_interactions,
-      total_reactions, total_comments, total_shares, avg_engagement_rate,
-      posts_with_insights, weekly_breakdown, recent_posts, top_posts
-- [ ] Follower count — needs page_fans from Facebook Graph API
-      (insights-worker update — next session)
-- [ ] invegent.com DNS fully propagated + green in Vercel
+- [x] invegent.com DNS configured (A record + www CNAME) — propagating
+- [x] /proof — summary, platform cards, education layer
+- [x] /proof/facebook — volume, reach, impressions, interactions,
+      engagement rate, weekly chart, recent posts, top posts
+- [x] /proof/linkedin — placeholder with education layer
+- [x] public.vw_proof_ndis_yarns — live data feed, anon read
+- [ ] Follower count (page_fans) — insights-worker update pending
+- [ ] invegent.com DNS confirmed green in Vercel
 
 **2.7 Audience Foundation** 🔲 ACTIVE
 - Distribution started 16 Mar 2026
+- NDIS Yarns + Property Pulse LinkedIn pages created 18 Mar 2026
 - Target: 500+ engaged NDIS Yarns followers before first client conversation
 
 **2.8 Content Intelligence Profiles** ✅ COMPLETE
-- claude-sonnet-4-6 primary, OpenAI silent fallback
-- ai-worker v2.1.0 with structured prompts
-
 **2.9 Post Studio** ✅ COMPLETE
-- End-to-end verified: Post Studio → Queue → Facebook
-
 **2.10 AI Usage Ledger** 🔲 PLANNED — see D021
-
 **2.11 Per-Post Platform Targeting** 🔲 PLANNED — see D022
 
 ### Phase 2 Done When
-1. Less than 2 hours/week total manual input ✅ (approaching)
-2. Performance data flowing back into scoring ✅
-3. LinkedIn publishing live 🔲 (unblocked — ready to build)
-4. Next.js dashboard live ✅
+1. Less than 2 hours/week manual input ✅
+2. Performance data flowing ✅
+3. LinkedIn publishing live 🔄 (waiting on Community Management API)
+4. Dashboard live ✅
 5. Usage ledger running (2.10)
-6. Platform targeting in pipeline (2.11)
+6. Platform targeting (2.11)
 
 ---
 
@@ -109,26 +110,15 @@ of done. A phase does not end until ALL done criteria are met.
 
 **3.1 Client Portal v1** 🔄 IN PROGRESS
 - [x] portal.invegent.com live
-- [x] Magic link auth — Resend SMTP, confirmed working (17-18 Mar 2026)
+- [x] Magic link auth — Resend SMTP confirmed working
 - [x] portal_user: email → client_id, user_id hydrated on first login
-- [x] PKCE flow: same-browser requirement documented
-- [x] Middleware: /callback excluded from auth guard
-- [x] Draft inbox — approve/reject → publish queue ✅
-- [x] Calendar — read-only ✅
-- [x] draft-notifier v2 — 30min cadence, email confirmed working ✅
-- [x] RLS on m.post_draft (SELECT+UPDATE), post_publish_queue, post_publish,
-      post_performance — confirmed working 18 Mar 2026
-- [ ] Facebook OAuth connect flow moved to portal (D020)
-- [ ] Draft notifier email subject redesign (pending)
+- [x] Draft inbox, calendar ✅
+- [x] draft-notifier v2 — 30min cadence ✅
+- [x] RLS on post_draft, post_publish_queue, post_publish, post_performance ✅
+- [ ] Facebook OAuth connect flow moved to portal
+- [ ] Draft notifier email subject redesign
 
-**3.2 Content Analyst Agent** 🔲
-**3.3 Client Onboarding Flow** 🔲
-**3.4 Distribution Layer (Boost Agent)** 🔲
-**3.5 Meta App Review (permissions submission)** 🔲
-**3.6 Evergreen Content Type** 🔲
-**3.7 Client Portal v2** 🔲
-**3.8 Content Series Planner** 🔲
-**3.9 Client Offboarding Flow** 🔲
+**3.2–3.9** 🔲 See previous version for full detail
 
 ### Phase 3 Done When
 1. First paying client live for 4 weeks
@@ -139,9 +129,7 @@ of done. A phase does not end until ALL done criteria are met.
 ---
 
 ## Phase 4 — Scale
-4.1 Multi-Client Ops / 4.2 Signal Sources / 4.3 AI Model Abstraction /
-4.4 Client Websites / 4.5 Vertical Expansion / 4.6 SaaS Evaluation /
-4.7 Mobile Dashboard / 4.8 TOTP for Portal
+4.1–4.8 deferred — see decisions log
 
 ---
 
@@ -150,7 +138,7 @@ of done. A phase does not end until ALL done criteria are met.
 | Platform | Phase | Status | Notes |
 |---|---|---|---|
 | Facebook | 1 | ✅ Live | Primary platform |
-| LinkedIn | 2 | 🔲 Ready to build | Unblocked 18 Mar 2026 |
+| LinkedIn | 2 | 🔄 In progress | Waiting Community Mgmt API approval |
 | Instagram | 2+ | 🔲 Planned | Same Meta API sprint |
 | Email newsletter | 3 | 🔲 Planned | Resend API |
 | Reddit | 4 | 🔲 Signal only | Not publishing |
@@ -162,13 +150,14 @@ of done. A phase does not end until ALL done criteria are met.
 
 ## Infrastructure Status (18 March 2026)
 
-### Edge Functions (11 active)
+### Edge Functions (12 active)
 | Function | Version | Status |
 |---|---|---|
 | ingest | v81 | ✅ |
 | content_fetch | v52 | ✅ |
 | ai-worker | v49 | ✅ |
 | publisher | v41 | ✅ |
+| linkedin-publisher | v2 | ✅ NEW |
 | auto-approver | v16 | ✅ |
 | insights-worker | v18 | ✅ |
 | feed-intelligence | v7 | ✅ |
@@ -184,47 +173,47 @@ of done. A phase does not end until ALL done criteria are met.
 | invegent-portal | portal.invegent.com | ✅ Live |
 | invegent-web | invegent.com | ✅ Deployed, DNS propagating |
 
-### LinkedIn Apps
-| App | Client ID | Status |
+### LinkedIn Setup
+| Item | Detail | Status |
 |---|---|---|
-| Invegent Publisher | 78npkxuir4z64j | ✅ Verified, Share on LinkedIn added |
-| Invegent Community | 78im589pktk59k | ✅ Verified (secondary) |
+| Account | pk@invegent.com | ✅ |
+| Invegent Publisher app | 78npkxuir4z64j — w_member_social only | ✅ (not used for ICE) |
+| Invegent Community app | 78im589pktk59k — org posting | ✅ correct app |
+| Community Management API | Access form submitted | ⏳ 1-5 days |
+| NDIS Yarns LinkedIn Page | Created 18 Mar | ✅ |
+| Property Pulse LinkedIn Page | property-pulse-au — Created 18 Mar | ✅ |
 
-### Supabase Public Views
-| View | Purpose | Status |
+### Supabase DB Functions
+| Function | Purpose | Status |
 |---|---|---|
-| public.vw_proof_ndis_yarns | Proof Dashboard data feed | ✅ Live, anon read granted |
-| public.auth_client_id() | RLS helper — portal client isolation | ✅ Live |
+| public.auth_client_id() | RLS helper — portal client isolation | ✅ |
+| public.store_linkedin_org_token() | Store LinkedIn org OAuth token | ✅ |
+| m.publisher_lock_queue_v2(p_platform) | Platform-filtered queue lock | ✅ |
+| public.vw_proof_ndis_yarns | Proof Dashboard data feed | ✅ |
 
 ### Email
 | Component | Status |
 |---|---|
-| Resend domain (invegent.com) | ✅ Verified 16 Mar |
+| Resend domain (invegent.com) | ✅ Verified |
 | Supabase Auth SMTP | ✅ smtp.resend.com:465 |
-| RESEND_API_KEY Edge Secret | ✅ Added 17 Mar |
-| Magic link delivery | ✅ Confirmed working |
+| RESEND_API_KEY Edge Secret | ✅ |
+| Magic link delivery | ✅ Confirmed |
 
 ---
 
 ## Next Session Priorities
 
-1. **invegent.com DNS** — confirm green in Vercel (should be done by morning)
-2. **Follower count on Proof Dashboard** — insights-worker update to pull
-   page_fans from Facebook Graph API → add to vw_proof_ndis_yarns
-3. **LinkedIn publisher (2.3)** — build linkedin-publisher Edge Function
-   using Invegent Publisher app (Client ID: 78npkxuir4z64j)
-4. **Meta App Review** — upload screencasts, complete data handling section,
-   await business verification approval, submit permissions review
-5. **Draft notifier subject redesign** — design before first real client
+1. **invegent.com DNS** — confirm green in Vercel
+2. **LinkedIn Community Management API approval** — check email, then
+   test OAuth connect flow on dashboard.invegent.com/connect
+3. **LinkedIn client_publish_profile rows** — insert for NDIS Yarns
+   and Property Pulse after OAuth connect confirmed
+4. **Follower count on Proof Dashboard** — insights-worker update
+5. **Meta App Review** — upload screencasts, complete submission
+   once business verification approval email arrives
 
 ---
 
 ## What Is Out of Scope
-
-- Native mobile app
-- Video production
-- Full ad campaign management (boost only)
-- CRM / lead management
-- Community management
-- White-label reseller platform
-- Platforms outside Australia initially
+- Native mobile app / Video production / Full ad campaigns
+- CRM / Community management / White-label / Non-AU initially
