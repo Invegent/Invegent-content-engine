@@ -4,7 +4,7 @@ It overrides Claude memory when there is a conflict.
 Updated at the end of every session. Read at the start of every session before doing anything else.
 
 Last updated: 18 March 2026
-Last session summary: Portal /performance, /calendar v2, /feeds + suggestions panel. D025 documented.
+Last session summary: Portal /performance, /calendar v2, /feeds + suggestions panel + email confirmation. D025 documented. 00_session_state.md created.
 
 ---
 
@@ -15,6 +15,7 @@ Administrator for Care for Welfare (mobile allied health OT practice, spouse's b
 Building ICE solo, AI-assisted. No traditional dev background.
 Communication style: direct, depth-oriented. Wants honest assessment, not validation.
 Starts sessions with "what's next task" — orient fast from this file.
+Confidence gate is platform validation, not client count. More platforms = more confidence system sustains itself.
 
 ---
 
@@ -42,7 +43,7 @@ Two internal test clients:
 | Frontend | Next.js 14 + Tailwind + shadcn/ui + Supabase Auth on Vercel |
 | Vercel team | `pk-2528s-projects` / team ID: `team_kYqCrehXYxW02AycsKVzwNrE` |
 | GitHub org | `github.com/Invegent` |
-| Docs repo | `Invegent-content-engine` — 8 markdown files in `/docs` |
+| Docs repo | `Invegent-content-engine` — 9 markdown files in `/docs` |
 
 **Vercel Project IDs:**
 - invegent-dashboard: `prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg` → `dashboard.invegent.com`
@@ -59,13 +60,12 @@ Two internal test clients:
 | Platform | Status | Notes |
 |---|---|---|
 | Facebook | ✅ Validated | Publishing live for both clients |
-| LinkedIn | 🔴 Blocked | Publisher built, pg_cron live. Community Management API form submitted. Status: "1 of 2 Access Form Review". May request docs within 10–14 business days. Calendar check: Wed 25 Mar |
+| LinkedIn | 🔴 Blocked | Publisher built, pg_cron live. Community Management API form submitted. Status: "1 of 2 Access Form Review". Calendar check: Wed 25 Mar |
 | Instagram | ⬜ Not built | Phase 3+ |
 | YouTube | ⬜ Not built | Phase 4 |
-| Email (Resend) | ✅ Configured | SMTP + magic link working. Not used for content publishing yet |
+| Email (Resend) | ✅ Configured | SMTP + magic link + feed suggestion confirmation emails working |
 
 **Platform validation is the confidence gate — not client count.**
-More platforms validated = more confidence in the system sustaining itself.
 
 ---
 
@@ -73,12 +73,12 @@ More platforms validated = more confidence in the system sustaining itself.
 
 - Privacy Policy URL: ✅ live
 - Data Deletion URL: ✅ live
-- Business verification: ✅ submitted, In Review (~2 working days)
+- Business verification: ✅ submitted, In Review
 - App icon: needs retry upload
-- Screencasts: ✅ recorded for all 3 permissions (pages_manage_posts, pages_read_engagement, pages_show_list)
-- **Next step:** Upload screencasts + complete data handling section in App Review dashboard → await business verification approval → submit permissions review
-- Calendar reminder set: Wed 1 Apr
-- Timeline after submission: 2–8 weeks for decision
+- Screencasts: ✅ recorded for all 3 permissions
+- **Next step:** Upload screencasts to App Review + complete data handling section → await business verification → submit permissions review
+- Calendar reminder: Wed 1 Apr
+- Timeline after submission: 2–8 weeks
 
 ---
 
@@ -93,7 +93,7 @@ More platforms validated = more confidence in the system sustaining itself.
 | Both clients publishing 5+ posts/week | ✅ Done |
 | Supabase Pro + daily backups | ✅ Done |
 | Dead letter queue | ✅ Done |
-| Meta App Review | 🟡 In progress — see above |
+| Meta App Review | 🟡 In progress |
 
 ### Phase 2 — Automate 🟡 MOSTLY COMPLETE
 | Deliverable | Status |
@@ -116,9 +116,10 @@ More platforms validated = more confidence in the system sustaining itself.
 | Portal /calendar v2 | ✅ Done (18 Mar) |
 | Portal /feeds (Sources) page | ✅ Done (18 Mar) |
 | Dashboard feed suggestions panel | ✅ Done (18 Mar) |
-| Brand visual identity in client profile | ⬜ Planned |
-| Image worker — sharp, 3 templates | ⬜ Planned — next build Fri 27 Mar |
-| Client-submitted content via email | ⬜ Planned — next build Fri 27 Mar |
+| Feed suggestion email confirmation | ✅ Done (18 Mar). Needs RESEND_API_KEY in portal Vercel env vars |
+| Brand visual identity in client profile | ⬜ Planned — Fri 27 Mar |
+| Image worker — sharp, 3 templates | ⬜ Planned — Fri 27 Mar |
+| Client-submitted content via email | ⬜ Planned — Fri 27 Mar |
 | Portal settings — roles (contributor/approver) | ⬜ Planned |
 | Client onboarding flow (5-step) | ⬜ Planned |
 | Boost agent — Facebook Ads API | ⬜ Planned |
@@ -128,6 +129,14 @@ More platforms validated = more confidence in the system sustaining itself.
 
 ### Phase 4 — Scale ⬜ PLANNED
 See `04_phases.md` for full deliverable list.
+
+---
+
+## Pending Manual Actions (PK to do)
+
+- [ ] Add `RESEND_API_KEY` to invegent-portal Vercel env vars (vercel.com/pk-2528s-projects/invegent-portal/settings/environment-variables). Same value as Supabase secret. Also add `NOTIFY_FROM=notifications@invegent.com`. Redeploy after.
+- [ ] Upload screencasts to Meta App Review + complete data handling section
+- [ ] Retry app icon upload in Meta App Review
 
 ---
 
@@ -156,6 +165,7 @@ Three pieces, build in this order:
 | insights-worker | — | ✅ Active, daily. 116 performance rows collected |
 | email-ingest | v2 | ✅ Active, every 2h. feeds@invegent.com. Gmail OAuth stored as Supabase secrets |
 | dead letter sweep | — | ✅ Active, daily 2am UTC |
+| draft-notifier | v1.1 | ✅ Active, every 30min |
 
 **Feed sources:** 26 active (all rss_app + email_newsletter). NDIS.gov.au tested and rejected.
 
@@ -169,9 +179,11 @@ Three pieces, build in this order:
 | Inbox | /inbox | ✅ Draft approve/reject |
 | Calendar | /calendar | ✅ Month/week/day drawer. Platform icons. Adjacent month preload |
 | Performance | /performance | ✅ Stats, weekly chart, top posts |
-| Sources | /feeds | ✅ Read-only feed list + suggest a source form |
+| Sources | /feeds | ✅ Read-only feed list + suggest a source + email confirmation |
 
 **Auth pattern:** `getPortalSession()` server-side → `createServiceClient()` with explicit `p_client_id` param on all SQL functions. Never use `auth_client_id()` with service role key — returns null.
+
+**Resend in portal:** direct fetch to Resend API (no npm package). Best-effort — suggestion saves regardless of email success. Requires `RESEND_API_KEY` in Vercel env vars.
 
 ---
 
@@ -194,9 +206,9 @@ Overview, Drafts, Queue, Clients, Feeds (+ suggestions panel), Failures, Post St
 ## Email & Notifications
 
 - Resend: ✅ verified and configured
-- draft-notifier v1.1: ✅ deployed. Root cause of spam bug fixed via `public.mark_drafts_notified(uuid[])` SECURITY DEFINER function
-- Portal magic link: ✅ confirmed working on mobile (same-browser PKCE requirement documented)
-- **Gap:** no email confirmation sent to client on feed suggestion submit — deferred, low priority vs first paying client
+- draft-notifier v1.1: ✅ deployed. Marks drafts after notification to prevent re-trigger
+- Feed suggestion confirmation: ✅ built (18 Mar). Needs `RESEND_API_KEY` in portal Vercel env vars
+- Portal magic link: ✅ confirmed working on mobile (same-browser PKCE requirement)
 
 ---
 
@@ -208,7 +220,7 @@ Overview, Drafts, Queue, Clients, Feeds (+ suggestions panel), Failures, Post St
 | AI usage ledger + cost attribution | D021 | Phase 2.10 |
 | Per-post platform targeting | D022 | Phase 2.11 |
 | Model router | — | Phase 4 / AI costs significant |
-| rss.app API upgrade | — | 3–4 paying clients, manual overhead becomes real friction |
+| rss.app API upgrade | — | 3–4 paying clients |
 | Retool folder rename (Ingest, Content_fetch → lowercase) | D013 | Next Claude Code session |
 
 ---
@@ -223,12 +235,11 @@ Overview, Drafts, Queue, Clients, Feeds (+ suggestions panel), Failures, Post St
 
 **Complex/iterative builds:**
 - Use Windows MCP PowerShell or Claude Code for local iteration
-- Vercel MCP reads build logs post-deploy
 
 **Session start protocol:**
 1. Read this file (`docs/00_session_state.md`) from GitHub
 2. Check for any corrections PK gives verbally at session start
-3. Orient to next task from "Next Scheduled Build" above
+3. Orient to next task from "Next Scheduled Build" or "Pending Manual Actions"
 4. Proceed
 
 **Session end protocol:**
