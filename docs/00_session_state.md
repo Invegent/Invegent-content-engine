@@ -3,8 +3,8 @@
 It overrides Claude memory when there is a conflict.
 Updated at the end of every session. Read at the start of every session before doing anything else.
 
-Last updated: 19 March 2026
-Last session summary: Night of Reckoning. Full day intensive + strategic review. Visual pipeline debugged and deployed. Taxonomy scorer v2, bundler v3, content type prompts fixed. Pipeline Doctor + health monitoring built. Timezone overhaul. Queue page fixed. Pipeline Log dashboard. Strategic reframe: ICE is an AI-operated business system. Personal businesses first — clients are a bonus application. YouTube is Phase 3, not Phase 4. Action plan and Night of Reckoning document produced.
+Last updated: 20 March 2026
+Last session summary: Night of Reckoning continued. AI Diagnostic Agent Tier 1 built and deployed (pipeline-ai-summary, hourly, Claude API). Signal clustering deployed (pg_trgm, cluster_digest_items_v1, bundle_client_v4, select_digest_items_v2 dedup fix). ICE build discipline added — docs/skills/ and docs/build-specs/ framework. D038 committed.
 
 ---
 
@@ -29,12 +29,29 @@ features as lower priority than client features.
 
 ---
 
+## Build Discipline
+
+ICE has a lightweight skills framework in `docs/skills/`. These are thinking prompts, not rules.
+Claude reads the relevant skill before starting a build, applies judgment, skips what doesn't apply.
+
+| Building... | Read... |
+|---|---|
+| Any Edge Function | `docs/skills/edge-function.md` |
+| Any SQL migration or DB function | `docs/skills/sql-migration.md` |
+| Any Next.js page or component | `docs/skills/dashboard-page.md` |
+| Any pipeline change | `docs/skills/pipeline-verification.md` |
+| Complex multi-part feature | `docs/build-specs/TEMPLATE.md` |
+
+**The core habit:** verify after deploying, not just after writing. Call the function. Check the rows. Don't declare done until the output is confirmed correct.
+
+---
+
 ## What ICE Is
 
 ICE is an AI-operated business system that produces content as its primary output.
 Not a content tool that uses AI — a system where AI runs the operation.
 
-Signal-centric pipeline: ingest → canonicalise → score → draft → approve → publish.
+Signal-centric pipeline: ingest → canonicalise → score → cluster → bundle → draft → approve → publish.
 AI layer: write content + run the system + diagnose failures + improve over time.
 
 Two internal test clients (personal businesses, not paying):
@@ -109,7 +126,8 @@ All deliverables done. Meta App Review in progress (ongoing, not a Phase 1 block
 | Visual pipeline — image-worker (2.7) | ✅ v1.4.0 deployed 19 Mar. Fonts from GitHub CDN. |
 | Content Studio (2.8) | ✅ Done — series + single post |
 | Pipeline Doctor (2.9) | ✅ v1.0.0 deployed 19 Mar. 7 checks. Auto-fixes. |
-| Pipeline Health Monitoring (2.10) | ✅ Snapshots every 30 min. Doctor every 30 min. Dashboard live. |
+| Pipeline Health Monitoring (2.10) | ✅ Snapshots + doctor log + AI summary + dashboard live. |
+| Signal clustering (2.11) | ✅ cluster_digest_items_v1 + bundle_client_v4 deployed 20 Mar |
 | Email newsletter ingest | ✅ Done |
 | Client portal (portal.invegent.com) | ✅ Done |
 
@@ -118,13 +136,11 @@ All deliverables done. Meta App Review in progress (ongoing, not a Phase 1 block
 ### Phase 3 — Expand + Personal Brand 🟡 IN PROGRESS
 | Deliverable | Status |
 |---|---|
-| Portal /performance | ✅ Done |
-| Portal /calendar v2 | ✅ Done |
-| Portal /feeds | ✅ Done |
+| Portal /performance + /calendar v2 + /feeds | ✅ Done |
 | Dashboard feed suggestions panel | ✅ Done |
-| AI Diagnostic Agent — Tier 1 | ⬜ Next build — 1 day |
-| Signal clustering (dedup at source) | ⬜ Planned — 2 days |
-| Compliance-aware NDIS system prompt | ⬜ Planned — 3 days |
+| AI Diagnostic Agent — Tier 1 | ✅ Done 20 Mar — pipeline-ai-summary, hourly, Claude API |
+| Signal clustering | ✅ Done 20 Mar |
+| Compliance-aware NDIS system prompt | ⬜ Next — 3 days |
 | LinkedIn publisher live | 🔴 Waiting on API |
 | Prospect demo generator | ⬜ Planned — 2 days |
 | Client health weekly report (email) | ⬜ Planned — 2 days |
@@ -139,60 +155,11 @@ See `04_phases.md` for full deliverable list.
 
 ---
 
-## What Was Built on 19 March 2026 — Full Log
-
-### Pipeline fixes
-- **Taxonomy scorer v2** (`score_digest_items_v2`) — proper multi-word phrases, category distribution. 981 items rescored from all-`interest_rates` to 7 categories.
-- **Bundler v3** (`bundle_client_v3`) — enforces `p_max_per_cat=2`. `run_pipeline_for_client` updated.
-- **Content type prompts** — all 6 `content_type_prompt` rows updated with `recommended_format`, `recommended_reason`, `image_headline` output fields. 6 drafts reset and requeued.
-- **image-worker v1.4.0** — fonts from GitHub raw CDN (rsms/inter v4.0). Non-fatal font loading. Fallback to system fonts if unavailable. WASM from Supabase Storage.
-- **Publisher v1.4.0** — `IMAGE_HOLD_MINUTES=30` gate. Holds image-format drafts up to 30 min waiting for image-worker before publishing as text.
-- **Episode scheduling fix** — `draft_approve_and_enqueue_scheduled()` reads `c.content_series_episode.scheduled_for`. `set_episode_schedule()` propagates to queue.
-
-### Timezone overhaul
-- UTC storage confirmed (unchanged). Display always in `c.client.timezone`. Input always interpreted as client timezone.
-- `lib/tz.ts` created: `utcToDatetimeLocal()`, `datetimeLocalToUtc()`, `formatAbsoluteInTz()`, `getTzAbbreviation()`
-- `EpisodeRow.tsx`, `SeriesDetail.tsx`, Queue page, Portal CalendarView all updated. AEDT labels showing.
-- `get_content_series_detail()` updated to return `client_timezone`.
-
-### Queue page improvements
-- Sort changed to ASC (earliest first)
-- Draft title column added
-- last_error notes column added (shows error reason)
-- Orphan queue row deleted
-
-### Pipeline health monitoring
-- `m.pipeline_health_log` table created — 30-min snapshots
-- `m.take_pipeline_health_snapshot()` function
-- pg_cron: `pipeline-health-snapshot-30m` at `*/30 * * * *`
-
-### Pipeline Doctor
-- `pipeline-doctor` Edge Function v1.0.0 deployed
-- `m.pipeline_doctor_log` table created
-- 7 checks: image_worker_health, stuck_running, past_due_queue, image_hold_timeouts, orphaned_ai_jobs, approved_images_due, dead_items
-- Auto-fixes: resets failed images, unsticks running items, requeues orphaned jobs, retries transient failures
-- pg_cron: `pipeline-doctor-every-30m` at `15,45 * * * *`
-
-### Dashboard updates
-- Pipeline Log page (`/pipeline-log`) — doctor findings + health snapshots combined
-- Sidebar updated with Pipeline Log nav item
-- Favicons uploaded and applied to dashboard + portal
-
-### Daily limit for testing
-- Both clients: `max_per_day = 100` (testing mode)
-
-### Strategic outputs
-- `ICE_Night_of_Reckoning_19Mar2026.docx` — strategic review document
-- Master action plan written (in session)
-- D032–D037 decisions recorded in 06_decisions.md
-
----
-
 ## Pending Manual Actions (PK to do)
 
 - [ ] Upload Inter-Bold.ttf + Inter-Regular.ttf to Supabase Storage → brand-assets/fonts/ via dashboard UI (drag/drop — 5 min)
 - [ ] Complete Meta App Review data handling + reviewer instructions section
-- [ ] Watch physio series posts tomorrow 5pm, 5:15pm, 5:30pm AEDT — confirm visual pipeline end-to-end
+- [ ] Watch physio series posts 5pm, 5:15pm, 5:30pm AEDT 20 Mar — confirm visual pipeline end-to-end
 - [ ] Google Workspace Admin → feeds@invegent.com → Add aliases: `ndis-yarns@invegent.com`, `property-pulse@invegent.com`
 - [ ] Gmail (as feeds@invegent.com) → Create filters for submit/* labels
 - [ ] Restore `max_per_day` to normal value (10-15) after testing is complete
@@ -201,18 +168,11 @@ See `04_phases.md` for full deliverable list.
 
 ## Next Scheduled Build
 
-**AI Diagnostic Agent — Tier 1** (highest priority, ~1 day)
+**Compliance-aware NDIS system prompt** (~3 days)
 
-What it does: Edge Function runs every hour, reads last 2 doctor logs + 4 health snapshots, calls Claude API, writes plain-English summary to `m.pipeline_ai_summary` table. Dashboard Pipeline Log gets one new section at top: "What happened overnight." No actions — diagnosis only.
+What it does: Research NDIS Code of Conduct + Practice Standards constraints. Rewrite NDIS Yarns `c.client_ai_profile` system prompt to embed compliance awareness at generation time, not post-generation checking. Test against 20 recent drafts. Document in 06_decisions.md.
 
-Why first: eliminates the daily cost of reading raw log tables. After tonight's session, this is the single highest-value build available.
-
-Next after that:
-1. Upload fonts to Storage (5 min, manual)
-2. Signal clustering (2 days)
-3. Compliance-aware NDIS system prompt (3 days)
-4. LinkedIn live when API approves (0.5 days)
-5. YouTube Shorts pipeline (Phase 3, 3-4 weeks)
+Why next: Core differentiator for NDIS client sales. Should be in place before any paying client conversation.
 
 ---
 
@@ -221,34 +181,23 @@ Next after that:
 | Worker | Version | Schedule | Status |
 |---|---|---|---|
 | ingest-worker | — | Every 6h | ✅ Active |
-| content-fetch | v2.5 | Every 10m | ✅ Active. TRUSTED_FREE_DOMAINS bypass |
-| ai-worker | v2.3.0 | Every 30m | ✅ Active. Claude primary, OpenAI fallback |
-| bundler | v3 | Every 2h | ✅ Active. max 2 per category |
-| publisher (Facebook) | v1.4.0 | Every 15m | ✅ Active. Image hold gate |
+| content-fetch | v2.5 | Every 10m | ✅ Active |
+| ai-worker | v2.3.0 | Every 5m | ✅ Active. Claude primary, OpenAI fallback |
+| bundler / scorer | v2/v4 | Hourly | ✅ Active. cluster_digest_items_v1 + bundle_client_v4 |
+| publisher (Facebook) | v1.4.0 | Every 5m | ✅ Active. Image hold gate |
 | linkedin-publisher | v1.1 | Every 15m | 🔴 Built, blocked on API |
 | auto-approver | v1.4.0 | Every 10m | ✅ Active. 9-phrase blocklist |
-| image-worker | v1.4.0 | Every 15m | ✅ Active. GitHub font CDN. |
+| image-worker | v1.4.0 | Every 15m | ✅ Active. GitHub font CDN |
 | insights-worker | — | Daily 3am UTC | ✅ Active |
 | feed-intelligence | v7 | Sundays 2am UTC | ✅ Active |
 | email-ingest | v2 | Every 2h | ✅ Active |
 | draft-notifier | v1.1 | Every 30m | ✅ Active |
 | dead letter sweep | — | Daily 2am UTC | ✅ Active |
-| pipeline-doctor | v1.0.0 | :15 and :45 each hour | ✅ NEW 19 Mar |
-| pipeline-health-snapshot | — | :00 and :30 each hour | ✅ NEW 19 Mar |
+| pipeline-doctor | v1.0.0 | :15 and :45 each hour | ✅ Active |
+| pipeline-health-snapshot | — | :00 and :30 each hour | ✅ Active |
+| pipeline-ai-summary | v1.0.0 | :55 each hour | ✅ NEW 20 Mar — Claude Tier 1 diagnosis |
 
 **Feed sources:** 26 active (rss_app + email_newsletter). NDIS.gov.au rejected.
-**Content series:** Physio in early childhood (3 eps, 5pm 20 Mar), SMSF (eps 2-5, 4pm 20-23 Mar)
-
----
-
-## Queue State (as of midnight 19 Mar 2026)
-
-| Client | Posts queued | Next publish |
-|---|---|---|
-| NDIS Yarns | 9 items | Physio ep1 5pm 20 Mar (image_quote) |
-| Property Pulse | 4 items | SMSF ep2 4pm 20 Mar (carousel, image generated) |
-
-All times AEDT. max_per_day = 100 for both (testing mode).
 
 ---
 
@@ -270,7 +219,7 @@ NEVER use `auth_client_id()` with service role key — returns null.
 ## Dashboard — Tabs Live
 
 Overview, Drafts, Queue, Content Studio, Clients, Feeds (+ suggestions panel),
-Failures, Pipeline Log (NEW), Client Profile, Connect, AI Costs, Roadmap.
+Failures, Pipeline Log (AI summary + doctor + health snapshots), Client Profile, Connect, AI Costs, Roadmap.
 All at `dashboard.invegent.com`.
 
 ---
@@ -282,6 +231,7 @@ All at `dashboard.invegent.com`.
 - **post_draft → client join:** via digest chain OR direct `client_id` on post_draft.
 - **Schemas not exposed via PostgREST:** `c` and `f`. Use `exec_sql` RPC or SECURITY DEFINER functions.
 - **Timezone:** UTC storage always. Display in `c.client.timezone`. Never browser local time.
+- **Signal dedup:** canonical_id dedup at selection + story_cluster_id dedup at bundling. Both layers needed.
 
 ---
 
@@ -297,7 +247,7 @@ AI writes the content AND runs, monitors, fixes, and improves the system.
 4. Personal YouTube / creative brand — Phase 3
 5. External NDIS clients — when engine proven on above
 
-**Confidence gate:** visual pipeline confirmed working (watch physio series 20 Mar) then AI Diagnostic Agent then signal clustering.
+**Confidence gate:** visual pipeline confirmed (watch physio series 20 Mar) → compliance prompt → first client conversation when ready.
 **Client conversation trigger:** when engine is demonstrably running well on PK's own businesses. No rush.
 **Key advantage:** CPA + NDIS Plan Manager + OT practice administrator. Insider credibility no agency can replicate.
 
@@ -308,7 +258,7 @@ AI writes the content AND runs, monitors, fixes, and improves the system.
 **Standard builds:** GitHub MCP + Supabase MCP + Vercel MCP directly in this chat.
 **Complex/iterative:** Windows MCP PowerShell or Claude Code.
 
-**Session start:** Read this file → check PK corrections → orient to Next Scheduled Build → proceed.
+**Session start:** Read this file → read relevant skill file if building → check PK corrections → proceed.
 **Session end:** Update this file → update 04_phases.md if phase changed → update 06_decisions.md for new decisions → update dashboard roadmap page → update memory.
 
 **STANDING RULE:** Whenever docs or memory are updated with ICE progress, ALSO update `app/(dashboard)/roadmap/page.tsx` in invegent-dashboard — specifically the PHASES array and lastUpdated date. Docs + memory + dashboard must stay in sync every session.
