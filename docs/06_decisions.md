@@ -573,10 +573,9 @@ See full label namespace architecture in the decisions log prior to 19 March.
 See full format spectrum, rendering stack, and column definitions in
 the decisions log prior to 19 March.
 
-Implementation note (19 Mar): image-worker v1.4.0 deployed with GitHub
-CDN font loading (rsms/inter v4.0) as workaround for font file upload
-failure. Fonts should be properly uploaded to Supabase Storage
-brand-assets/fonts/ when possible — PK pending manual action.
+Implementation note (20 Mar): image-worker v3.3.0 deployed. Switched
+from local WASM rendering (Resvg/Satori) to Creatomate cloud API.
+See D040 for full decision record.
 
 ---
 
@@ -729,49 +728,104 @@ AND NOT EXISTS (
 
 New column: `m.digest_item.story_cluster_id uuid` — items about the same story share a cluster_id.
 
-New function: `m.cluster_digest_items_v1(p_hours, p_threshold DEFAULT 0.35)`:
-- Processes selected items ordered by final_score DESC
-- For each unassigned item, checks if a higher-scored item has a similar title
-  (similarity threshold: 0.35 — validated on real data)
-- If similar match found: joins that item's cluster
-- If no match: owns a new cluster (generates UUID)
-- Greedy single-pass O(n²) — efficient at ICE's scale (100-300 items/window)
+New function: `m.cluster_digest_items_v1(p_hours, p_threshold DEFAULT 0.35)`.
 
-New bundler: `m.bundle_client_v4`:
-- DISTINCT ON changed from `(category, canonical_id)` to
-  `(category, COALESCE(story_cluster_id::text, canonical_id::text))`
-- Adds cluster check: skip items whose story_cluster_id is already bundled in last 30 days
-- All other logic unchanged from v3
+New bundler: `m.bundle_client_v4` — DISTINCT ON `COALESCE(story_cluster_id::text, canonical_id::text)`.
 
-`run_pipeline_for_client` updated:
-- Calls `cluster_digest_items_v1` between select and bundle steps
-- Uses `bundle_client_v4` instead of v3
+`run_pipeline_for_client` updated to call cluster step between select and bundle.
 
 **Validation:**
 - 264 items clustered in backlog run
-- 14 multi-item clusters found — largest: 78 items from 7 canonical_ids (same story, 7 feeds)
+- 14 multi-item clusters found
+- Similarity threshold 0.35 validated on live data
 - Both clients ran pipeline successfully after fix
-- Similarity threshold of 0.35 correctly separates related stories (0.35-0.44)
-  from unrelated stories (0.07)
 
-**Similarity threshold rationale:**
-- Exact same title: 1.0
-- Related stories, same event: 0.35-0.44
-- Unrelated content: 0.07
-- Threshold of 0.35 chosen to catch same-event clustering while avoiding
-  false positives between legitimately different stories
+---
 
-**Impact:**
-- Eliminates the most common form of content repetition at source
-- Reduces AI generation waste (fewer identical drafts generated)
-- Draft inbox diversity improves immediately
-- Works automatically on every pipeline run — no manual intervention
+## D039 — Two-Attempt Rule: Switch Tools, Not Implementations
+**Date:** 20 March 2026
+**Status:** Confirmed — added to build discipline docs
 
-**Pending improvement:**
-The greedy single-pass algorithm means cluster boundaries depend on
-processing order. A proper union-find algorithm would be more accurate
-but is not needed at current scale. Re-evaluate when digest pools exceed
-1,000 items per window.
+**Decision:**
+If a fix fails twice using the same underlying approach, stop.
+Question the tool, not the implementation. Switch to a different
+tool or approach before attempting a third fix.
+
+**Origin:**
+The Resvg font rendering issue consumed 10+ versions across three
+different implementation attempts (fontBuffers, @font-face base64,
+Satori+Yoga WASM). All failed for the same underlying reason:
+Deno Edge Function runtime does not support the WASM/font APIs
+these libraries require. The correct action after attempt 2 was
+to ask "Is this tool capable?" — not to continue iterating.
+
+**The rule:**
+Attempt 1 fails → diagnose the specific failure.
+Attempt 2 fails with same approach → stop.
+Before attempt 3: Is this library actually capable of what we're asking?
+Check type definitions (not README). If tool limitation confirmed → switch tools.
+
+**The right question:** "Is this tool capable?" not "What did I get wrong this time?"
+
+**Added to:** `docs/skills/edge-function.md` — Two-Attempt Rule section at top.
+
+---
+
+## D040 — Creatomate as Visual Pipeline Rendering Engine
+**Date:** 20 March 2026
+**Status:** Confirmed — production, image-worker v3.3.0
+
+**Decision:**
+Use Creatomate cloud API for all visual asset generation (images,
+animated GIFs, slideshows, short-form video) rather than local
+WASM rendering in Deno Edge Functions.
+
+**Options considered and eliminated (per D039):**
+- Resvg WASM v2.4.1: no font loading API in Deno runtime. Confirmed via
+  type definitions — fontBuffers property does not exist.
+- Satori + Yoga WASM: Yoga WASM initialisation fails in Deno Edge runtime.
+  500 error on every invocation. Two attempts, both failed.
+- next/og (Vercel API route): viable fallback, deferred in favour of
+  Creatomate's full pipeline coverage.
+
+**Why Creatomate over Shotstack and Placid:**
+- Shotstack: developer-infrastructure tool, requires full JSON timeline
+  construction with explicit timestamps. Right tool if building a video
+  product; wrong tool for a content pipeline. Also more expensive at scale.
+- Placid: strong for images, weak for video. No ElevenLabs integration.
+  No native carousel/multi-slide support. Would need a second tool for video.
+- Creatomate: covers the full ICE visual roadmap in one API:
+  static images ✅, animated GIFs ✅, slideshows ✅, short-form video ✅,
+  ElevenLabs voiceover built in ✅. One credential, one template system.
+
+**Implementation:**
+- API: `POST https://api.creatomate.com/v2/renders`
+- Approach: RenderScript (pure JSON, no template setup required)
+- Background colour: root-level `fill_color` on the composition object.
+  Shape element `fill_color` does NOT render in static PNG output —
+  this is a Creatomate-specific behaviour, not a bug.
+- Font: Montserrat (hosted by Creatomate, no upload required)
+- Logo: direct Supabase Storage public URL (data URIs rejected by Creatomate)
+- Poll pattern: submit → get render_id → poll every 1.5s → download PNG → upload to Storage
+- Images complete in 2-5 seconds on Essential plan
+
+**Key RenderScript lesson:**
+For static PNG output:
+- Background colour → `fill_color` at root composition level (NOT a shape element)
+- Text → `fill_color` on text element (works correctly)
+- Shapes for accent bars/lines → `fill_color` on shape element (works correctly)
+- The root-level `fill_color` is a Creatomate composition property, not CSS
+
+**Plan:** Essential — $54/month, 2,000 credits (1 credit = 1 image).
+At ~20 images/day ICE uses ~600 credits/month. Well within Essential.
+Upgrade trigger: when video pipeline Phase 3 starts (Growth = 10,000 credits).
+
+**Credentials:**
+- Creatomate project: `2f8d12c7-5149-4655-bef2-8f9b5587fd11`
+- API key: stored as Supabase secret `CREATOMATE_API_KEY` and Windows env var
+- Account: parveen@invegent.com
+
+**Deployed:** image-worker v3.3.0 (Supabase function version 16)
 
 ---
 
@@ -800,3 +854,4 @@ but is not needed at current scale. Re-evaluate when digest pools exceed
 | Premium Services catalogue design | When 5 paying clients live | Phase 3+ |
 | Knowledge base + embedding layer | Start collecting now, queryable later | Phase 4 |
 | AI agent Tiers 3-6 | After Tiers 1-2 validated | Phase 4 |
+| Upgrade Creatomate to Growth plan | When Phase 3 video pipeline starts | Phase 3 |
