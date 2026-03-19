@@ -3,8 +3,8 @@
 It overrides Claude memory when there is a conflict.
 Updated at the end of every session. Read at the start of every session before doing anything else.
 
-Last updated: 20 March 2026
-Last session summary: Night of Reckoning continued. AI Diagnostic Agent Tier 1 built and deployed (pipeline-ai-summary, hourly, Claude API). Signal clustering deployed (pg_trgm, cluster_digest_items_v1, bundle_client_v4, select_digest_items_v2 dedup fix). ICE build discipline added — docs/skills/ and docs/build-specs/ framework. D038 committed.
+Last updated: 20 March 2026 (post-breakfast tidy-up)
+Last session summary: Visual pipeline live — image-worker v3.3.0 with Creatomate API, 1080×1080 PNG confirmed. Two-Attempt Rule (D039) + Creatomate decision (D040) committed. pipeline-ai-summary v1.1.0 fix: SECURITY DEFINER parameterised insert replaces broken exec_sql string interpolation. All systems clean — 0 failed images, 0 stuck jobs, 18 posts queued.
 
 ---
 
@@ -42,6 +42,8 @@ Claude reads the relevant skill before starting a build, applies judgment, skips
 | Any pipeline change | `docs/skills/pipeline-verification.md` |
 | Complex multi-part feature | `docs/build-specs/TEMPLATE.md` |
 
+**The Two-Attempt Rule (D039):** If a fix fails twice using the same approach — stop. Question the tool, not the implementation. Switch approaches before attempt 3. Ask "Is this tool capable?" not "What did I get wrong?"
+
 **The core habit:** verify after deploying, not just after writing. Call the function. Check the rows. Don't declare done until the output is confirmed correct.
 
 ---
@@ -68,6 +70,7 @@ Two internal test clients (personal businesses, not paying):
 | Edge Functions | Deno/TypeScript. pg_cron scheduling |
 | AI primary | Anthropic `claude-sonnet-4-6` |
 | AI fallback | OpenAI `gpt-4o` (silent) |
+| Visual pipeline | Creatomate API. Project ID: `2f8d12c7-5149-4655-bef2-8f9b5587fd11`. Essential plan $54/mo. |
 | Frontend | Next.js 14 + Tailwind + shadcn/ui + Supabase Auth on Vercel |
 | Vercel team | `pk-2528s-projects` / team ID: `team_kYqCrehXYxW02AycsKVzwNrE` |
 | GitHub org | `github.com/Invegent` |
@@ -87,7 +90,7 @@ Two internal test clients (personal businesses, not paying):
 
 | Platform | Status | Notes |
 |---|---|---|
-| Facebook | ✅ Validated | Publishing live. Visual pipeline active. |
+| Facebook | ✅ Validated | Publishing live. Visual pipeline active with Creatomate images. |
 | LinkedIn | 🔴 Blocked | Publisher built + pg_cron live. Community Management API review in progress. Calendar: Wed 25 Mar |
 | Instagram | ⬜ Not built | After Meta App Review approved. 0.5 days effort. |
 | YouTube | 🟡 Phase 3 | Script generation ready. Video pipeline (Creatomate + ElevenLabs) Phase 3. NOT Phase 4. |
@@ -120,11 +123,11 @@ All deliverables done. Meta App Review in progress (ongoing, not a Phase 1 block
 | Facebook Insights back-feed (2.1) | ✅ Done |
 | Feed Intelligence agent (2.2) | ✅ Done |
 | LinkedIn publisher (2.3) | 🔴 Blocked — Community API pending |
-| Campaigns / Content Series (2.4) | ✅ Done — Content Series built and live |
+| Campaigns / Content Series (2.4) | ✅ Done |
 | Next.js dashboard (2.5) | ✅ Done. Retool cancelled |
 | Public proof dashboard (2.6) | ✅ Done |
-| Visual pipeline — image-worker (2.7) | ✅ v1.4.0 deployed 19 Mar. Fonts from GitHub CDN. |
-| Content Studio (2.8) | ✅ Done — series + single post |
+| Visual pipeline — image-worker (2.7) | ✅ v3.3.0 Creatomate. 1080×1080 PNG. Brand colours confirmed. 20 Mar. |
+| Content Studio (2.8) | ✅ Done |
 | Pipeline Doctor (2.9) | ✅ v1.0.0 deployed 19 Mar. 7 checks. Auto-fixes. |
 | Pipeline Health Monitoring (2.10) | ✅ Snapshots + doctor log + AI summary + dashboard live. |
 | Signal clustering (2.11) | ✅ cluster_digest_items_v1 + bundle_client_v4 deployed 20 Mar |
@@ -138,16 +141,15 @@ All deliverables done. Meta App Review in progress (ongoing, not a Phase 1 block
 |---|---|
 | Portal /performance + /calendar v2 + /feeds | ✅ Done |
 | Dashboard feed suggestions panel | ✅ Done |
-| AI Diagnostic Agent — Tier 1 | ✅ Done 20 Mar — pipeline-ai-summary, hourly, Claude API |
+| AI Diagnostic Agent — Tier 1 | ✅ Done 20 Mar. pipeline-ai-summary v1.1.0 (insert fix). Hourly. |
 | Signal clustering | ✅ Done 20 Mar |
-| Compliance-aware NDIS system prompt | ⬜ Next — 3 days |
+| Compliance-aware NDIS system prompt | ⬜ **NEXT — 3 days** |
 | LinkedIn publisher live | 🔴 Waiting on API |
 | Prospect demo generator | ⬜ Planned — 2 days |
 | Client health weekly report (email) | ⬜ Planned — 2 days |
 | YouTube Shorts pipeline | ⬜ Phase 3 — Creatomate + ElevenLabs |
 | Personal YouTube channel as ICE client | ⬜ Phase 3 — PK's personal brand |
 | Instagram publisher | ⬜ After Meta App Review |
-| Font upload to Supabase Storage | ⬜ 5 min — drag/drop via Supabase dashboard UI |
 | First external client (optional) | ⬜ When engine proven on personal businesses |
 
 ### Phase 4 — Scale ⬜ PLANNED
@@ -157,9 +159,7 @@ See `04_phases.md` for full deliverable list.
 
 ## Pending Manual Actions (PK to do)
 
-- [ ] Upload Inter-Bold.ttf + Inter-Regular.ttf to Supabase Storage → brand-assets/fonts/ via dashboard UI (drag/drop — 5 min)
 - [ ] Complete Meta App Review data handling + reviewer instructions section
-- [ ] Watch physio series posts 5pm, 5:15pm, 5:30pm AEDT 20 Mar — confirm visual pipeline end-to-end
 - [ ] Google Workspace Admin → feeds@invegent.com → Add aliases: `ndis-yarns@invegent.com`, `property-pulse@invegent.com`
 - [ ] Gmail (as feeds@invegent.com) → Create filters for submit/* labels
 - [ ] Restore `max_per_day` to normal value (10-15) after testing is complete
@@ -170,9 +170,12 @@ See `04_phases.md` for full deliverable list.
 
 **Compliance-aware NDIS system prompt** (~3 days)
 
-What it does: Research NDIS Code of Conduct + Practice Standards constraints. Rewrite NDIS Yarns `c.client_ai_profile` system prompt to embed compliance awareness at generation time, not post-generation checking. Test against 20 recent drafts. Document in 06_decisions.md.
+Research NDIS Code of Conduct + Practice Standards constraints. Rewrite NDIS Yarns
+`c.client_ai_profile` system prompt to embed compliance awareness at generation time,
+not post-generation checking. Test against 20 recent drafts. Document in `06_decisions.md`.
 
-Why next: Core differentiator for NDIS client sales. Should be in place before any paying client conversation.
+Why next: Core differentiator for NDIS client sales. Should be live before any
+paying client conversation.
 
 ---
 
@@ -181,13 +184,13 @@ Why next: Core differentiator for NDIS client sales. Should be in place before a
 | Worker | Version | Schedule | Status |
 |---|---|---|---|
 | ingest-worker | — | Every 6h | ✅ Active |
-| content-fetch | v2.5 | Every 10m | ✅ Active |
+| content-fetch | v2.5 | Every 10m | ✅ Active. TRUSTED_FREE_DOMAINS bypass. |
 | ai-worker | v2.3.0 | Every 5m | ✅ Active. Claude primary, OpenAI fallback |
 | bundler / scorer | v2/v4 | Hourly | ✅ Active. cluster_digest_items_v1 + bundle_client_v4 |
 | publisher (Facebook) | v1.4.0 | Every 5m | ✅ Active. Image hold gate |
 | linkedin-publisher | v1.1 | Every 15m | 🔴 Built, blocked on API |
 | auto-approver | v1.4.0 | Every 10m | ✅ Active. 9-phrase blocklist |
-| image-worker | v1.4.0 | Every 15m | ✅ Active. GitHub font CDN |
+| image-worker | **v3.3.0** | Every 15m | ✅ Active. **Creatomate API. Root fill_color for bg.** |
 | insights-worker | — | Daily 3am UTC | ✅ Active |
 | feed-intelligence | v7 | Sundays 2am UTC | ✅ Active |
 | email-ingest | v2 | Every 2h | ✅ Active |
@@ -195,9 +198,16 @@ Why next: Core differentiator for NDIS client sales. Should be in place before a
 | dead letter sweep | — | Daily 2am UTC | ✅ Active |
 | pipeline-doctor | v1.0.0 | :15 and :45 each hour | ✅ Active |
 | pipeline-health-snapshot | — | :00 and :30 each hour | ✅ Active |
-| pipeline-ai-summary | v1.0.0 | :55 each hour | ✅ NEW 20 Mar — Claude Tier 1 diagnosis |
+| pipeline-ai-summary | **v1.1.0** | :55 each hour | ✅ Active. **Insert bug fixed.** |
 
 **Feed sources:** 26 active (rss_app + email_newsletter). NDIS.gov.au rejected.
+
+**Creatomate RenderScript key lesson (D040):**
+- Background colour → root-level `fill_color` on the composition object
+- Shape element `fill_color` does NOT render in static PNG output
+- Text `fill_color` on text elements works correctly
+- Logo → direct Supabase Storage public URL (data URIs rejected by Creatomate)
+- Font: Montserrat (hosted by Creatomate, no upload needed)
 
 ---
 
@@ -232,6 +242,7 @@ All at `dashboard.invegent.com`.
 - **Schemas not exposed via PostgREST:** `c` and `f`. Use `exec_sql` RPC or SECURITY DEFINER functions.
 - **Timezone:** UTC storage always. Display in `c.client.timezone`. Never browser local time.
 - **Signal dedup:** canonical_id dedup at selection + story_cluster_id dedup at bundling. Both layers needed.
+- **exec_sql string interpolation:** NEVER use for text fields containing user content. Use SECURITY DEFINER + typed params.
 
 ---
 
@@ -247,7 +258,7 @@ AI writes the content AND runs, monitors, fixes, and improves the system.
 4. Personal YouTube / creative brand — Phase 3
 5. External NDIS clients — when engine proven on above
 
-**Confidence gate:** visual pipeline confirmed (watch physio series 20 Mar) → compliance prompt → first client conversation when ready.
+**Confidence gate:** compliance prompt → first client conversation when ready.
 **Client conversation trigger:** when engine is demonstrably running well on PK's own businesses. No rush.
 **Key advantage:** CPA + NDIS Plan Manager + OT practice administrator. Insider credibility no agency can replicate.
 
