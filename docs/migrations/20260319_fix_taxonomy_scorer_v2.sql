@@ -1,0 +1,30 @@
+-- ============================================================
+-- Fix: score_digest_items_v2 + bundle_client_v3 + pipeline wire
+-- Date: 19 March 2026
+-- Problem: interest_rates was matching 98% of all items because
+--   the word "rate" appeared in rental rate, price growth rate,
+--   vacancy rate, yield rate etc. Categories were useless.
+-- Fix:
+--   1. score_digest_items_v2: specific phrases before broad words,
+--      interest_rates only fires on RBA/monetary policy signals
+--   2. bundle_client_v3: enforces max 2 items per category per
+--      bundle window (p_max_per_cat=2 default)
+--   3. run_pipeline_for_client wired to v2 scorer + v3 bundler
+-- ============================================================
+
+-- See Supabase for full function bodies (applied via MCP)
+-- Functions created:
+--   m.score_digest_items_v2(p_hours int)
+--   m.bundle_client_v3(p_client_id, p_hours, p_bundle_size, p_min_unique, p_max_per_cat)
+--   m.run_pipeline_for_client (updated: now calls v2+v3)
+
+-- Category distribution before fix (30 days, Property Pulse):
+--   interest_rates: 981 items (98% of all items) — WRONG
+-- Category distribution after fix:
+--   rentals:        241
+--   house_prices:   199
+--   investment:     173
+--   general:        115
+--   construction:   102
+--   interest_rates:  60  (now only genuine RBA/monetary policy)
+--   policy:          36
