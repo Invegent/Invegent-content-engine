@@ -399,21 +399,23 @@ The three-table approach separates concerns: brand identity
 
 ## D015 — Launch Readiness Gate: Quality Before Clients
 **Date:** March 2026
-**Status:** Confirmed — active constraint
+**Status:** Revised — see D032 for updated trigger
 
 **Decision:**
-First paying client conversations will not begin until a
-sustained period of quality-verified publishing is observed.
+First paying client conversations will not begin until the
+engine is demonstrably working well on PK's own businesses.
+The trigger is quality of personal business output, not a
+fixed calendar date or client-count target.
 
-**Gate criteria (all must be true):**
-1. Both profiles: 4+ consecutive weeks of quality-verified posts
-2. Facebook page history clean enough to serve as proof point
-3. Meta App Review approved or in final review stage
-4. LinkedIn recovered (or confirmed not a blocker for Facebook-only clients)
-5. NDIS Yarns proof point document prepared
+**Gate criteria (revised per D032):**
+1. Visual pipeline confirmed — 5+ image posts published cleanly
+2. Signal clustering live — repetition problem eliminated
+3. NDIS compliance system prompt deployed
+4. LinkedIn live
+5. AI Diagnostic Agent Tier 1 running
 
-**Target first client conversation:** April/May 2026,
-conditional on gate criteria.
+**Original gate (superseded):** April/May 2026 date target.
+**Revised gate:** When engine is proven on PK's personal businesses.
 
 ---
 
@@ -550,10 +552,6 @@ service onboarding before the portal exists, the workaround is to
 have the client temporarily add Invegent as a Page admin, run the
 flow, then optionally remove admin access.
 
-**Meta Business Manager note:**
-OAuth connect is sufficient for publishing. Business Manager partner
-access is only required for the boost agent (Phase 3.4 ads permissions).
-
 ---
 
 ## D021 — AI Usage Ledger and Cost Attribution
@@ -566,90 +564,8 @@ cost calculated at call time, and attribution to client + content type.
 Cost rates are stored in a separate table (not in code) so they can
 be updated without deployment when providers change pricing.
 
-**Problem being solved:**
-- No visibility into per-client AI cost — impossible to know if the
-  unit economics hold as clients are added
-- No separation of token costs by client — all AI spend is aggregated
-- No tracking of fallback (OpenAI) usage or its relative cost
-- No client-facing cost transparency
-
-**Schema:**
-
-```sql
--- Rates table: updated when pricing changes, no code deployment required
-m.ai_model_rate
-  provider           text        -- 'anthropic', 'openai', future: 'gemini'
-  model              text        -- exact model string e.g. 'claude-sonnet-4-6'
-  rate_input_per_1m  numeric     -- USD per 1M input tokens
-  rate_output_per_1m numeric     -- USD per 1M output tokens
-  effective_from     timestamptz -- when this rate came into effect
-  effective_until    timestamptz -- NULL = currently active
-
--- Immutable usage ledger: one row per AI API call, never updated
-m.ai_usage_log
-  usage_id       uuid        PK
-  client_id      uuid        FK → c.client
-  ai_job_id      uuid        FK → m.ai_job (nullable)
-  post_draft_id  uuid        FK → m.post_draft (nullable)
-  provider       text        -- 'anthropic', 'openai'
-  model          text        -- exact model string
-  content_type   text        -- 'feed', 'campaign', 'instant', 'retry'
-  platform       text        -- 'facebook', 'linkedin' etc. (nullable)
-  input_tokens   integer
-  output_tokens  integer
-  total_tokens   integer     -- generated: input + output
-  cost_usd       numeric(10,6) -- calculated at call time from rates table
-  fallback_used  boolean     -- true if primary model failed, fallback ran
-  created_at     timestamptz
-```
-
-**How cost is calculated:**
-Both Claude and OpenAI return token counts in every API response.
-ai-worker captures these, looks up current rate from `m.ai_model_rate`
-where `effective_until IS NULL`, calculates:
-`cost_usd = (input_tokens / 1_000_000 * rate_input) + (output_tokens / 1_000_000 * rate_output)`
-and inserts one row to `m.ai_usage_log`.
-
-On fallback: both the failed primary call and the successful fallback
-call each get their own row. Both costs are attributed to the client.
-Historical costs remain accurate because the ledger stores the rate
-at time of call — not a reference to the current rate.
-
-**Initial rates to seed:**
-
-| provider | model | input/1M | output/1M |
-|---|---|---|---|
-| anthropic | claude-sonnet-4-6 | $3.00 | $15.00 |
-| openai | gpt-4o | $2.50 | $10.00 |
-
-**What operators see (ops dashboard — AI Costs tab):**
-- Total spend this month across all clients
-- Per-client breakdown — cost per post, monthly total
-- Model split — Claude vs OpenAI fallback proportions
-- Trend: this month vs last 3 months
-
-**What clients see (portal — simplified):**
-- Posts generated this month: N
-- AI generation cost: $X.XX (included in your plan)
-- This is transparency, not a billing interface — v1 is a managed
-  service with bundled AI costs, not metered billing
-
-**Why rates table not code:**
-AI providers change pricing without warning. A rates table update
-takes 30 seconds and is live immediately. A code change requires
-a deployment. Historical data remains accurate because costs are
-calculated and stored at call time, not recalculated later.
-
-**Future model support:**
-Adding Gemini, Mistral, or a new Claude model requires only a new
-row in `m.ai_model_rate`. No schema changes, no code changes to
-the ledger. The ai-worker stores whatever model string was used.
-
-**Build sequence:**
-1. Schema migration — create tables, seed initial rates
-2. ai-worker update — capture tokens from API response, insert ledger row
-3. Ops dashboard — AI Costs tab (read-only queries)
-4. Client portal — simplified cost display per client
+See full schema, cost calculation, and build sequence in the decisions
+log version prior to 19 March. All design decisions remain unchanged.
 
 ---
 
@@ -658,295 +574,35 @@ the ledger. The ai-worker stores whatever model string was used.
 **Status:** Designed — schema migration and ai-worker update pending (Phase 2.11)
 
 **Decision:**
-Each post (from any content path) carries an explicit list of target
-platforms. The ai-worker generates one separate draft per platform
-from the same source signal, using platform-specific instructions.
-This eliminates wasted generation, enables platform-appropriate
-formatting, and provides the architecture for video/shorts/reels
-content types in future.
+Each post carries an explicit list of target platforms. The ai-worker
+generates one separate draft per platform from the same source signal.
 
-**Problem being solved:**
-- Currently: one draft generated, published to whichever platform the
-  profile points at — no per-post platform selection
-- Token waste: generating a LinkedIn long-form post for a Facebook-only
-  client, or vice versa
-- No differentiation: same text published to Facebook and LinkedIn
-  despite very different optimal formats
-- No client control: clients cannot select which platforms receive
-  a given post, campaign, or series
-
-**Architecture:**
-
-One source signal → N drafts (one per target platform)
-
-```
-digest_item (target_platforms = ['facebook', 'linkedin'])
-    ↓
-ai-worker loops over target_platforms
-    ↓
-For each platform:
-  load client_platform_profile (platform-specific voice/format rules)
-  build system prompt (brand_identity + platform_voice for THIS platform)
-  call Claude API
-  insert post_draft (platform = 'facebook')  ← separate draft per platform
-  insert post_draft (platform = 'linkedin')  ← separate draft per platform
-    ↓
-Each draft goes through its own:
-  auto-approver → post_publish_queue → publisher
-```
-
-**Schema changes required:**
-
-```sql
--- On m.digest_item: which platforms to generate for
-ALTER TABLE m.digest_item
-  ADD COLUMN target_platforms TEXT[] DEFAULT NULL;
--- NULL = inherit from client's active publish profiles
--- ['facebook'] = Facebook only, regardless of active profiles
--- ['facebook', 'linkedin'] = both
-
--- On m.post_draft: which platform this draft is for
-ALTER TABLE m.post_draft
-  ADD COLUMN platform TEXT DEFAULT NULL;
--- 'facebook', 'linkedin', 'instagram', 'instagram_reels' etc.
-```
-
-**Where target_platforms comes from per content path:**
-
-| Content path | Source of target_platforms |
-|---|---|
-| Feed / daily signals | NULL → bundler reads active client_publish_profile rows |
-| Content series / campaign | Set at campaign level in c.content_campaign |
-| Instant / one-off post | Explicit selection in Post Studio or client portal |
-
-**Token economics:**
-Cost scales linearly with target platforms. Facebook-only clients
-pay for one generation per post. Facebook + LinkedIn clients pay
-for two. This is fair, transparent, and visible in the usage ledger
-(D021) via the `platform` column on `m.ai_usage_log`.
-
-**Future-proofing for video/reels/shorts:**
-When Instagram Reels or TikTok is added, a new platform type
-('instagram_reels') gets a new `c.client_platform_profile` row
-with a prompt instructing the AI to generate a script rather than
-post copy. The ai-worker, platform ticker, and usage ledger need
-no structural changes — just a new profile row and platform string.
-In the client portal, video platforms show greyed out with
-"Contact us to activate" until the client has video production set up.
-
-**Client portal UI — the platform ticker:**
-On instant posts and campaign briefs, the client sees a row of
-platform toggles (Facebook, LinkedIn, Instagram, etc.) above the
-content brief. Active platforms for their account are selectable.
-Inactive platforms are visible but greyed out. Default state is
-their standard platform mix from active publish profiles.
+See full architecture in the decisions log version prior to 19 March.
+All design decisions remain unchanged.
 
 ---
 
 ## D023 — Client Portal Information Architecture and Auth Model
 **Date:** March 2026
-**Status:** Designed — build starts Phase 3.1
+**Status:** Designed — Phase 3.1 build in progress
 
-**Decision:**
-The client portal (portal.invegent.com) is a separate Next.js app
-from the ops dashboard, with Supabase Auth enforcing per-client
-data isolation via RLS. The portal covers the full client lifecycle:
-onboarding, operating, feedback, and offboarding. Build order is
-driven by what unblocks the first paying client, not by completeness.
-
-**Auth model:**
-Supabase Auth natively supports all required methods — no third-party
-auth library needed. Minimum two methods available to every client:
-
-- **Magic link** — client enters email, receives a login link, clicks
-  to authenticate. No password. Best for NDIS practice owners who
-  primarily use mobile and don't want another password to remember.
-- **Email OTP** — 6-digit verification code sent to email. Same
-  security as magic link, different UX — better for users who prefer
-  codes over clicking links (some corporate email clients block links).
-
-Optional third method (Phase 3+ enhancement):
-- **TOTP authenticator app** — Google Authenticator, Authy, 1Password.
-  Client sets up once, generates a code on their phone. Higher security
-  for clients who handle sensitive participant data and want it.
-
-Password-based login is deliberately excluded. Passwords create
-support overhead (resets, lockouts) that is not justified for a
-managed service with a small client base. If a client specifically
-requests it, it can be enabled per-account in Supabase Auth settings.
-
-A `notifications_email` column on `c.client` stores the email address
-used for auth and notifications. This is set during onboarding and
-is the single address for both login links and draft review alerts.
-
-**Full portal scope — all phases:**
-
-Phase A — Onboarding (one time, Phase 3.1)
-- Welcome screen with account overview
-- Connect Facebook Page (OAuth flow — same as /connect on ops dashboard)
-- Connect LinkedIn Page (when built, Phase 2.3)
-- Brand voice review — client reviews AI persona, requests changes
-- First content preview — 3 draft posts shown before going live
-- Go-live confirmation — you flip mode from staging to auto
-
-Phase B — Operating (ongoing, phased build)
-- Draft inbox — approve/reject posts flagged below auto-approve threshold
-- Content calendar — week/month view, scheduled + published + empty slots
-- Platform ticker — per-post platform selection (D022, Phase 2.11)
-- Instant post / slot picker — compose brief, pick available time slot,
-  preview generated post, confirm (available slots calculated from
-  min_gap_minutes + max_per_day in publish profile — not a free picker)
-- Content series planner — campaign brief → AI-generated outline →
-  client reviews/edits → schedule full series (requires Phase 2.4)
-- Feedback signals — thumbs up/down on posts, "more/less like this"
-  on topics, free-text topic requests ("we have a new OT joining")
-- Performance dashboard — reach, engagement, follower growth
-  (requires Phase 2.1 ✅ data flowing)
-- Monthly report — plain-language insights + recommendations
-  (requires Content Analyst Agent, Phase 3.2)
-- AI cost transparency — posts generated this month, AI cost,
-  "included in your plan" (requires D021 usage ledger)
-
-Phase C — Ongoing feedback (lightweight, continuous, Phase 3+)
-- Post-level signals feed back into scoring weights
-- Topic preference adjustments stored in m.post_feedback
-- Free-text brief requests ("we have a new OT joining next month")
-  appear in ops dashboard as action items
-
-Phase D — Leaving the platform (Phase 4)
-- Pause publishing — stops auto-publishing, keeps account
-- Export content history — all published posts as CSV
-- Disconnect pages — revoke OAuth tokens
-- Account closure request — triggers your offboarding checklist
-
-**Build order for v1 (what unblocks first paying client):**
-
-| Priority | Feature | Why |
-|---|---|---|
-| 1 | Auth + RLS policies | Security prerequisite for everything |
-| 2 | Email notification on draft flagged | The doorbell — without it clients never open portal |
-| 3 | Draft inbox (approve/reject) | Primary weekly client interaction |
-| 4 | Calendar (read-only) | Builds trust, eliminates "what's going out?" queries |
-| 5 | Facebook connect (OAuth moved from ops dashboard) | Required for external client onboarding |
-
-Everything in Phase B and beyond is in scope — it is confirmed product
-direction. The build order above is the minimum to onboard first client.
-Series planner, performance, reports, offboarding are all real features
-that will be built — the question is when, not whether.
-
-**Mobile-first constraint:**
-NDIS practice owners run their business from their phone. The portal
-is designed mobile-first from the first component. This is a design
-constraint applied at build time, not a responsive pass at the end.
-Minimum touch target: 44px. All primary actions (approve/reject,
-calendar navigation) must be fully operable on a 375px viewport.
-
-**Ops dashboard visibility:**
-When a client takes an action in the portal (approve, reject, flag,
-feedback), it writes to the same tables the ops dashboard reads.
-No separate sync needed — the operator sees client actions in real
-time via the Drafts tab, Queue tab, and Failures tab.
+See full auth model and portal scope in the decisions log version
+prior to 19 March. All design decisions remain unchanged.
 
 ---
 
 ## D024 — RLS Client Data Isolation for Portal Tables
 **Date:** 17 March 2026
-**Status:** Confirmed — applied to production
+**Status:** Confirmed — applied to production 17 March 2026
 
-**Decision:**
-Enable Row Level Security on all four portal-facing m.* tables.
-Use a single helper function `public.auth_client_id()` to resolve
-the current session's client_id from portal_user. All four policies
-use the same simple pattern: `client_id = public.auth_client_id()`.
-
-**Options Considered:**
-- Application-layer filtering only (client code filters by client_id)
-- RLS with join-based policy (encode digest chain into each policy)
-- RLS with helper function + direct client_id match (chosen)
-
-**Choice:** Helper function + direct client_id match
-
-**Reasoning:**
-Application-layer filtering alone is insufficient — a bug in the
-portal code could expose one client's data to another. The digest
-chain join (post_draft → digest_item → digest_run → client) is too
-complex to encode safely into four separate RLS policies — and it
-would have to be repeated in each one.
-
-The correct solution was to first backfill `client_id` directly onto
-`m.post_draft` for all existing rows (482 nulls resolved via the digest
-join, run once as a data migration), then enforce simple direct-match
-policies across all tables. Future rows are set directly at creation time.
-
-**Implementation (17 March 2026):**
-
-```sql
--- Helper: resolves client_id for the current auth session
-CREATE OR REPLACE FUNCTION public.auth_client_id()
-RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER AS $$
-  SELECT client_id FROM public.portal_user
-  WHERE user_id = auth.uid() LIMIT 1;
-$$;
-
--- Four tables, simple policies
-ALTER TABLE m.post_draft ENABLE ROW LEVEL SECURITY;
-ALTER TABLE m.post_publish_queue ENABLE ROW LEVEL SECURITY;
-ALTER TABLE m.post_publish ENABLE ROW LEVEL SECURITY;
-ALTER TABLE m.post_performance ENABLE ROW LEVEL SECURITY;
-```
-
-**Data migration run simultaneously:**
-```sql
-UPDATE m.post_draft pd
-SET client_id = dr.client_id
-FROM m.digest_item di
-JOIN m.digest_run dr ON dr.digest_run_id = di.digest_run_id
-WHERE pd.digest_item_id = di.digest_item_id
-AND pd.client_id IS NULL;
--- Result: 482 rows updated. 7 orphaned published rows remain null (harmless).
-```
-
-**Rule going forward:**
-Every new post creation path must set `client_id` directly on
-`m.post_draft` at insert time.
+See full implementation details in the decisions log version
+prior to 19 March. All decisions unchanged.
 
 ---
 
 ## D025 — Client Feed Feedback System: Deferred to Phase 4
 **Date:** 18 March 2026
-**Status:** Deferred — design agreed, build blocked on prerequisites
-
-**Decision:**
-Client-facing thumbs up / thumbs down on individual feed sources
-in the portal is confirmed but deferred until Phase 4.
-
-**What was agreed:**
-Rating stored as `client_rating` on `c.client_source`. When rated,
-Feed Intelligence Agent produces a plain-language report for that
-feed and client — items produced, publish rate, topic coverage,
-recommendation. Client sees this in the portal under the rated feed.
-
-**Why deferred:**
-1. Feed Intelligence Agent output not yet validated against real client context
-2. rss.app API required before feed changes can be automated
-3. No paying clients yet to validate the UX
-
-**Schema when built:**
-```sql
-ALTER TABLE c.client_source ADD COLUMN client_rating TEXT
-  CHECK (client_rating IN ('liked', 'disliked'));
-
-CREATE TABLE public.feed_rating_event (
-  event_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  client_id  UUID NOT NULL,
-  source_id  UUID NOT NULL,
-  rating     TEXT NOT NULL CHECK (rating IN ('liked', 'disliked', 'cleared')),
-  rated_by   TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-```
-
-**Build trigger:** first paying client live + Feed Agent validated + rss.app API active.
+**Status:** Deferred — build trigger: first paying client + Feed Agent validated
 
 ---
 
@@ -954,86 +610,8 @@ CREATE TABLE public.feed_rating_event (
 **Date:** 18 March 2026
 **Status:** Designed — label setup pending (PK manual action)
 
-**Decision:**
-The `feeds@invegent.com` Google Workspace account is the single
-email hub for all ICE inbound email processing. Two distinct
-purposes are served — signal ingest (newsletters) and client
-content submission — separated by a label namespace convention
-that makes routing unambiguous and prevents cross-contamination.
-
-**Context:**
-`feeds@invegent.com` is a full Workspace account (confirmed 18 Mar).
-It already has Gmail OAuth credentials stored in Supabase secrets
-and is polled every 2h by the email-ingest Edge Function.
-All routing is label-based — the Edge Function reads label names
-to determine which pipeline branch to use.
-
-**The two purposes are fundamentally different:**
-
-| Purpose | Direction | Audience | Routing |
-|---|---|---|---|
-| Signal ingest (newsletters) | ICE reads | Shared — one subscription serves all clients in a vertical | Vertical-based labels |
-| Client content submission | Client writes to ICE | Per-client — one client's submission must never reach another's pipeline | Client-based labels |
-
-**Label namespace convention:**
-
-```
-newsletter/ndis               ← NDIS vertical newsletters (shared)
-newsletter/property           ← Property vertical newsletters (shared)
-newsletter/aged-care          ← Future vertical (shared)
-newsletter/ndis-yarns/pub-name ← Client-specific newsletter (3 segments = per-client)
-
-submit/ndis-yarns             ← Client-submitted content for NDIS Yarns
-submit/property-pulse         ← Client-submitted content for Property Pulse
-submit/client-slug            ← Scales per client onboarded
-```
-
-Two-segment label = shared vertical resource.
-Three-segment label = client-specific resource.
-Edge Function reads label prefix to determine routing branch.
-
-**How client submission routing works:**
-
-Each client gets a dedicated alias on `feeds@invegent.com`:
-- `ndis-yarns@invegent.com` → Gmail filter → label `submit/ndis-yarns`
-- `property-pulse@invegent.com` → Gmail filter → label `submit/property-pulse`
-- Future client → `client-slug@invegent.com` → label `submit/client-slug`
-
-The alias address is the client's dedicated submission address.
-Emails arriving at that alias are auto-labelled by Gmail filter.
-The Edge Function reads `submit/*` labels and routes to the
-correct client pipeline without any manual intervention.
-
-Google Workspace allows 30 aliases per user — sufficient for
-current scale and expandable if needed.
-
-**Infrastructure facts confirmed 18 Mar 2026:**
-- `feeds@invegent.com` is a full Workspace account (not an alias on pk@)
-- Aliases are added via Google Workspace Admin → Users → feeds account → Alternate email addresses
-- No new OAuth credentials needed — aliases on the same account
-  are accessible via the existing Gmail API credentials
-- No new Edge Function needed — same email-ingest function,
-  new label → new routing branch
-
-**Image generation note (visual pipeline):**
-Sharp (npm) native binaries are unreliable in Supabase Deno Edge Functions.
-Recommended alternative: SVG template (pure TypeScript) → Resvg WASM
-(`npm:@resvg/resvg-wasm`) → PNG → Supabase Storage.
-This is the pattern Supabase's own OG image generation examples use.
-No native binary dependency, confirmed working in Deno.
-
-**Supabase Storage status (confirmed 18 Mar 2026):**
-Zero buckets exist. Storage is completely untouched.
-Bucket creation is part of the visual pipeline build.
-
-**Pending manual actions (PK):**
-1. Google Workspace Admin → Users → feeds@invegent.com → Add aliases:
-   - `ndis-yarns@invegent.com`
-   - `property-pulse@invegent.com`
-2. Gmail (logged in as feeds@invegent.com) → Settings → Filters:
-   - To: `ndis-yarns@invegent.com` → Apply label `submit/ndis-yarns`
-   - To: `property-pulse@invegent.com` → Apply label `submit/property-pulse`
-3. Future: repeat for each new client at onboarding
+See full label namespace architecture in the decisions log version
+prior to 19 March. All decisions unchanged.
 
 ---
 
@@ -1041,117 +619,13 @@ Bucket creation is part of the visual pipeline build.
 **Date:** 19 March 2026
 **Status:** Confirmed — V1 deployed 19 Mar 2026
 
-**Decision:**
-ICE generates branded visual assets (images and carousels) automatically
-for approved posts. Format selection is AI-driven at generation time,
-platform-gated per client profile, and rendered by a dedicated
-image-worker Edge Function. Video rendering is a separate Phase 3 layer
-using the same architecture.
+See full format spectrum, rendering stack, and column definitions in
+the decisions log version prior to 19 March. All decisions unchanged.
 
-**Format spectrum (V1 → Phase 3):**
-
-| Format | Code | V1 | Phase 3 |
-|---|---|---|---|
-| Text only | `text` | ✅ | ✅ |
-| Branded quote card (single image) | `image_quote` | ✅ | ✅ |
-| Carousel (multi-slide swipe post) | `carousel` | ✅ | ✅ |
-| AI-generated contextual image | `image_ai` | ❌ | ✅ |
-| Animated slideshow video | `video_slideshow` | ❌ | ✅ |
-| Avatar video (stock or custom) | `video_avatar` | ❌ | ✅ |
-| Voiceover only (no face) | `video_voiceover` | ❌ | ✅ |
-
-**Why carousel is V1, not Phase 3:**
-Carousels are the highest-performing organic format on LinkedIn for B2B
-content — consistently 3-5x engagement vs single image posts. For NDIS
-providers explaining policies or OT practices breaking down service types
-across 5 slides, the carousel is the natural format. Creatomate handles
-multi-frame export natively. Facebook and LinkedIn both support carousel
-posts via their APIs. This belongs in V1, not deferred.
-
-**Format scoring — AI decides at generation time:**
-The ai-worker outputs `recommended_format` and `recommended_reason` as
-part of the standard generation call. No additional API call. ~30-50
-extra tokens. Logic:
-
-| Content signal | Recommended format |
-|---|---|
-| Strong single stat, quote, or insight | `image_quote` |
-| 4+ distinct structured points | `carousel` |
-| News reaction, opinion, commentary | `text` |
-| How-to or multi-step narrative | `video_slideshow` (Phase 3) |
-| Short conversational engagement post | `text` |
-
-**Platform gate — client profile controls execution:**
-Even if AI recommends `image_quote`, image-worker skips it if
-`image_generation_enabled = false` on the client's publish profile.
-Clients are never charged for renders they haven't enabled.
-
-**New columns on m.post_draft:**
-```sql
-recommended_format   text  -- 'text' | 'image_quote' | 'carousel' | 'video_slideshow' | 'video_avatar' | 'video_voiceover'
-recommended_reason   text  -- one sentence explanation, for operator audit
-image_headline       text  -- 10-15 word pull quote extracted at generation time (Option A)
-image_url            text  -- public Supabase Storage URL once rendered
-image_status         text  -- 'pending' | 'generated' | 'failed' | 'skipped'
-carousel_slides      jsonb -- [{headline, body, position}] for carousel format
-```
-
-**New columns on c.client_publish_profile:**
-```sql
-image_generation_enabled   boolean  default false
-video_generation_enabled   boolean  default false
-preferred_format_facebook  text     default null  -- overrides AI recommendation per platform
-preferred_format_linkedin  text     default null
-preferred_format_instagram text     default null
-```
-
-**New columns on c.client_brand_profile:**
-```sql
-brand_colour_primary    text  -- hex e.g. '#1B4F8A'
-brand_colour_secondary  text  -- hex e.g. '#F4A623'
-brand_logo_url          text  -- Supabase Storage URL for logo PNG
-image_style             text  -- 'quote_card' (v1), future: 'news_card', 'series_card'
-persona_type            text  -- 'custom_avatar' | 'stock_avatar' | 'cartoon' | 'voiceover_only'
-persona_avatar_id       text  -- HeyGen avatar ID (custom or stock)
-persona_dialogue_mode   boolean default false  -- two-character script format
-```
-
-**Rendering stack:**
-- Images (quote card, carousel): SVG template → Resvg WASM → PNG → Supabase Storage
-- Video (Phase 3): Creatomate REST API (slideshow) / HeyGen API (avatar)
-- AI-generated images (Phase 3): DALL-E 3 or Flux via Replicate
-
-**Supabase Storage bucket:** `post-images` (public)
-Path: `/{client_slug}/{post_draft_id}.png`
-Carousel frames: `/{client_slug}/{post_draft_id}/slide_{n}.png`
-
-**image-worker Edge Function:**
-- Runs every 15 min via pg_cron
-- Picks up: `approval_status = 'approved'` AND `image_status = 'pending'`
-  AND client has `image_generation_enabled = true`
-- Loads brand identity from `c.client_brand_profile`
-- Renders SVG → PNG via Resvg WASM
-- Uploads to Storage, updates `image_url` + `image_status = 'generated'`
-
-**Publisher update:**
-When publishing to Facebook or LinkedIn: if `image_url` is set,
-attach as `picture` parameter (single image) or as carousel attachment
-(multi-frame). Platform API handles embedding — no binary upload required
-for single images; carousel requires multi-step attachment API.
-
-**Content atomisation — future architecture:**
-`preferred_format_per_platform` config (stored in `c.client_publish_profile`)
-enables one signal → multiple format outputs simultaneously:
-- LinkedIn → carousel
-- Facebook → image_quote
-- Instagram → image_quote (square crop)
-This is the Phase 3 build. Schema supports it from day one.
-
-**Known gap — Post Studio / manual drafts (D031):**
-Drafts created via Post Studio bypass ai-worker entirely and have
-`recommended_format = NULL` and `image_headline = NULL`. The image-worker
-skips these. A lightweight format scorer for manual drafts is needed
-to close this gap. See D031.
+Implementation note (19 Mar): image-worker v1.4.0 deployed with GitHub
+CDN font loading (rsms/inter v4.0) as workaround for font file upload
+failure. Fonts should be properly uploaded to Supabase Storage
+brand-assets/fonts/ when possible — PK pending manual action.
 
 ---
 
@@ -1159,119 +633,14 @@ to close this gap. See D031.
 **Date:** 19 March 2026
 **Status:** Confirmed — no Canva API integration planned
 
-**Decision:**
-Canva is used by the operator and clients as a design tool for
-creating brand assets. It is not integrated into ICE via API.
-All programmatic image generation uses SVG templates and Resvg WASM
-within ICE's own pipeline.
-
-**Options Considered:**
-- Canva Connect API — programmatic brand template autofill
-- Canva as design tool only, assets exported and stored in Supabase
-- Custom SVG templates rendered via Resvg WASM
-
-**Choice:** Canva for design, SVG/Resvg for programmatic generation
-
-**Reasoning:**
-Canva's Autofill and Brand Templates APIs require Enterprise subscription
-(30+ person organisations, custom pricing, not publicly listed).
-This is not viable for a sole-trader managed service.
-The correct model for ICE: clients supply logo PNG + hex colours at
-onboarding (Canva is a good tool for creating/exporting these assets).
-ICE stores them in `c.client_brand_profile` and applies them to
-SVG templates programmatically. Clients never need to touch a design
-tool again after onboarding. For a managed service, this is a
-selling point — the operator handles all of it.
-
-**Brand kit onboarding (per client):**
-1. Client supplies logo PNG + primary/secondary hex colours
-2. Operator uploads logo to Supabase Storage, stores URL in brand profile
-3. image-worker uses these values in all SVG template renders
-4. No Canva account, no API keys, no Enterprise subscription required
-
 ---
 
 ## D029 — Video Generation Stack: Creatomate + HeyGen + ElevenLabs
 **Date:** 19 March 2026
 **Status:** Confirmed — Phase 3 build, architecture locked
 
-**Decision:**
-Three-layer video stack covering all client personas and format needs.
-Each layer is independently callable from a video-worker Edge Function
-via REST API. No server infrastructure required.
-
-**Stack:**
-
-| Layer | Tool | Use case |
-|---|---|---|
-| Slideshow / animated | Creatomate | Template-based video, no face, brand animations |
-| Avatar video | HeyGen | Presenter-to-camera video, stock or custom avatar |
-| Voiceover | ElevenLabs | Audio layer for any video format |
-
-**Why Creatomate over Remotion:**
-Remotion requires self-hosted rendering infrastructure (Puppeteer +
-AWS servers at $50-100/month each). ICE runs on Supabase Edge Functions
-with no server management. Creatomate is a cloud REST API — one HTTP
-call from an Edge Function, no infrastructure. Template editor handles
-design. Supports multi-frame carousel-to-video, animated transitions,
-brand overlays, and royalty-free music library.
-
-**Why HeyGen for avatars:**
-HeyGen supports both stock avatars (library of diverse presenters,
-no filming required) and custom avatars (client uploads 2-3 min video,
-HeyGen generates reusable likeness). Avatar ID stored in
-`c.client_brand_profile.persona_avatar_id`. One setup, used for
-every video series that client produces.
-
-**Persona types (stored in c.client_brand_profile.persona_type):**
-
-| Type | Code | Description | Client objection resolved |
-|---|---|---|---|
-| Real person avatar | `custom_avatar` | Client films once, HeyGen generates custom likeness | Wants personal brand |
-| Stock AI presenter | `stock_avatar` | Choose from HeyGen library, no filming | Camera shy / privacy concern |
-| Illustrated cartoon | `cartoon` | Flat-design characters in Creatomate layout | Wants fun/distinctive format |
-| Voiceover only | `voiceover_only` | ElevenLabs audio, no face shown | Professional, no gimmicks |
-
-**Dialogue mode (`persona_dialogue_mode = true`):**
-Series agent writes script as two-character exchange (Agent + Buyer,
-Practitioner + Participant, etc.) instead of monologue. Creatomate
-handles two-character layouts natively (left/right, speech bubbles).
-HeyGen supports multi-avatar video. Same content brief, different
-script structure output from ai-worker.
-
-**Illustrated cartoon path (no Vyond required):**
-V1 cartoon path uses Canva-designed character PNGs (flat illustration)
-stored in Supabase Storage + Creatomate for layout and animation.
-Characters are reusable across all episodes in a series. Static
-characters with speech bubble dialogue is the intended format —
-the writing does the humour work, not motion complexity.
-
-**Cost per video episode (approximate):**
-- Creatomate slideshow: ~$0.10-0.30 per render
-- HeyGen stock avatar (60-90 sec): ~$0.50-1.50 per video
-- ElevenLabs voiceover (90 sec): ~$0.05-0.10
-- Custom avatar setup (one-time): ~$30-50 per client
-
-**Build sequence (Phase 3):**
-1. Creatomate account + API key → Supabase secret
-2. video-worker Edge Function — picks up `recommended_format` starting with `video_`
-3. Stock avatar path first (HeyGen library, no client filming required)
-4. Voiceover-only path (ElevenLabs, no avatar)
-5. Cartoon character path (client supplies or Canva-designed characters)
-6. Custom avatar path (client filming + HeyGen custom likeness)
-7. Dialogue mode script structure in series agent
-
-**Platform routing for video:**
-
-| Format | Facebook | LinkedIn | Instagram Reels | Aspect ratio |
-|---|---|---|---|---|
-| Slideshow video | ✅ | ✅ | ✅ | 1:1 or 16:9 |
-| Avatar video | ✅ | ✅ | ✅ Reels | 9:16 for Reels, 1:1 for FB/LI |
-| Voiceover only | ✅ | ✅ | ✅ | Same as above |
-
-Creatomate and HeyGen both support rendering at multiple dimensions
-from the same template/avatar — one job can output Facebook (1:1)
-and Instagram Reels (9:16) simultaneously.
+See full stack details, persona types, and build sequence in the
+decisions log version prior to 19 March. All decisions unchanged.
 
 ---
 
@@ -1279,110 +648,273 @@ and Instagram Reels (9:16) simultaneously.
 **Date:** 19 March 2026
 **Status:** Confirmed architecture — Phase 3 build
 
-**Decision:**
-ICE's content pipeline evolves from one-signal-one-post to
-one-signal-one-content-pack. The same source signal or campaign brief
-produces multiple format outputs simultaneously, each platform-native.
-
-**What this means in practice:**
-
-A single NDIS policy update produces:
-- LinkedIn: carousel (5 slides breaking down key changes)
-- Facebook: text post (plain language explanation for families)
-- Instagram: quote card (the single most important number)
-- Video: 60-second voiceover summary
-
-A single campaign brief (sensory toys series, 10 episodes) produces:
-- Facebook: text posts with image_quote
-- LinkedIn: carousel per episode
-- Instagram Reels: video_avatar or video_slideshow
-
-**Architecture:**
-`preferred_format_facebook`, `preferred_format_linkedin`,
-`preferred_format_instagram` columns in `c.client_publish_profile`
-define the default format per platform. These override or supplement
-the AI's `recommended_format` at render time.
-
-The ai-worker already generates platform-specific content (D022).
-The image-worker and video-worker already pick up by format type.
-Content atomisation is the combination of D022 + D027 + D029
-working together — no new pipeline logic, just new configuration.
-
-**Why this matters for the product:**
-This is what separates ICE from a scheduler. A client briefs once.
-ICE produces a platform-native content pack. Every platform gets
-content optimised for its format and audience. The client approves
-one brief, not five individual posts. This is the full realisation
-of the signal-centric architecture — signals don't produce posts,
-they produce content strategies executed across platforms.
-
-**Build trigger:** After visual pipeline V1 proven in production +
-LinkedIn API access confirmed + at least one paying client live.
-
 ---
 
 ## D031 — Visual Fields for Manual / Post Studio Drafts
 **Date:** 19 March 2026
-**Status:** Pending — design agreed, build deferred
+**Status:** Pending — lightweight format scorer (Option 3) preferred
+
+---
+
+## D032 — ICE Primary Purpose: Personal Businesses First
+**Date:** 19 March 2026
+**Status:** Confirmed — foundational principle, overrides all client-ROI framing
 
 **Decision:**
-All content creation paths in ICE — feed pipeline AND manual/Post Studio
-— must populate `recommended_format`, `recommended_reason`, and
-`image_headline` so the visual pipeline applies consistently regardless
-of how a draft was created.
+ICE's primary purpose is to solve PK's personal content problem across
+his own businesses and personal brand. External clients are a bonus
+application of infrastructure that already needed to exist for personal use.
 
-**Problem:**
-Post Studio and any future manual draft creation path bypass ai-worker
-entirely. These drafts land with `recommended_format = NULL` and
-`image_headline = NULL`. The image-worker skips them, so they publish
-as plain text even when the client has `image_generation_enabled = true`.
-This creates an inconsistent experience — pipeline drafts get images,
-manual drafts don't.
+**Options Considered:**
+- Build for clients first, use for personal businesses second
+- Build for personal use first, clients as bonus
+- Treat both equally
 
-**Why this matters:**
-When a client manually posts something timely ("we just hired a new OT")
-or creates a promotional post, that's often the content they most want
-to look polished with a branded image. The pipeline drafts are handled.
-The human-initiated content is not.
+**Choice:** Personal businesses first, clients third
 
-**Options considered:**
-1. Manual patch (SQL) — operator sets fields by hand. Viable at 1-2
-   clients, not scalable. Already used for testing 19 Mar 2026.
-2. Post Studio UI fields — add format selector + image headline input
-   to the Post Studio form. Client sets format at creation time. Fast
-   to build, puts burden on the creator.
-3. Lightweight format scorer — a small function runs on `needs_review`
-   drafts where `recommended_format IS NULL`. Calls Claude with just
-   the draft body, asks it to score format + extract image headline.
-   Runs automatically, zero UI change, fully consistent with pipeline
-   drafts. Higher quality than creator-chosen format.
+**Reasoning:**
+This was the original intent of the project and was already documented
+in 07_business_context.md. However, the build sessions had drifted toward
+treating client acquisition as the primary driver — evaluating features
+on client ROI, deferring YouTube to Phase 4, treating personal brand
+as a lower priority than client infrastructure.
 
-**Choice:** Option 3 — lightweight format scorer (preferred)
-with Option 2 as interim until scorer is built.
+The reframe is important: every feature that serves PK's businesses
+is justified on its own merits. It does not need a paying client to
+justify it. YouTube is not a Phase 4 luxury — it is a Phase 3 personal
+brand investment that serves multiple businesses simultaneously.
 
-**Implementation design (Option 3):**
+The engine proves itself on PK's own world first. When it is demonstrably
+working well across his own businesses, external clients become a natural
+extension — not the reason the system exists.
 
-A new `format-scorer` Edge Function (or add to auto-approver):
-- Triggered: runs after auto-approver, or as part of approval flow
-- Condition: `recommended_format IS NULL` AND `draft_body IS NOT NULL`
-- Input: draft body + client vertical context
-- Claude call: single message, ~200 tokens
-  Prompt: "Given this post body, select the best format
-  (text/image_quote/carousel) and provide a 10-15 word image headline.
-  Return JSON: {recommended_format, recommended_reason, image_headline}"
-- Output: updates `recommended_format`, `recommended_reason`,
-  `image_headline` on the draft row
-- Cost: ~$0.003 per draft — negligible
+**Build priority order (immutable):**
+1. Care for Welfare / NDIS Yarns
+2. Property Pulse / Property Buyers Agent
+3. NDIS Accessories / FBA store
+4. Personal brand / YouTube channel
+5. External NDIS clients
+6. External property clients
 
-**Implementation design (Option 2 — interim):**
-Add to Post Studio form:
-- Format selector: text / image_quote / carousel (defaults to image_quote)
-- Image headline: text input, placeholder "10-15 word pull quote for image"
-- Both fields optional — if blank, image-worker uses fallback headline
+**The right question for any build decision:**
+Does this save PK time, reduce manual effort, or unlock a use case
+across one of his businesses or personal brand?
+If yes — build it. Client ROI is irrelevant to this assessment.
 
-**Build trigger (Option 3):** After visual pipeline V1 verified working
-in production with pipeline drafts. Not urgent — workaround (Option 1
-manual patch, Option 2 UI) covers gap in the short term.
+---
+
+## D033 — ICE Reframe: AI-Operated Business System
+**Date:** 19 March 2026
+**Status:** Confirmed — strategic reframe with architectural implications
+
+**Decision:**
+ICE is not a content tool that uses AI. ICE is an AI-operated business
+system that produces content as its primary output. AI runs the system —
+it does not merely assist one step in the pipeline.
+
+**The original design:**
+AI appeared at one point in the pipeline (ai-worker, generating drafts).
+Everything else was coded logic with hardcoded rules. The operator
+(PK) monitored, debugged, and maintained the system manually.
+
+**The revised design:**
+AI appears at every stage:
+- Signal layer: relevance scoring, topic clustering, emerging topic detection
+- Writing layer: multi-angle drafts, voice calibration, compliance-aware generation
+- Operations layer: six-tier autonomous agent stack (diagnose → fix → propose → predict → self-improve → closed loop)
+- Business layer: client health reports, sales demo generation, onboarding intelligence
+
+**Architectural implication:**
+The Pipeline Doctor (deployed 19 Mar 2026) is Tier 2 infrastructure
+with hardcoded logic — the current state of the operations layer.
+The AI Diagnostic Agent (Tier 1) is the first true AI-in-the-loop
+operations component. Building Tier 1 before Tier 2 upgrade is
+deliberate: validate diagnosis quality before trusting action quality.
+
+**The six-tier agent stack:**
+- Tier 1 (Diagnose): reads logs, writes plain-English summary, no actions
+- Tier 2 (Fix approved list): executes pre-approved reversible actions
+- Tier 3 (Propose): suggests higher-risk actions for human approval
+- Tier 4 (Predict): acts on leading indicators before failures happen
+- Tier 5 (Self-improve): proposes prompt improvements from engagement data
+- Tier 6 (Closed loop): cross-checks own decisions against outcomes, calibrates
+
+**Build sequence:**
+Tier 1 → (1-2 weeks validation) → Tier 2 → Phase 4: Tiers 3-6
+
+---
+
+## D034 — YouTube is Phase 3, Not Phase 4
+**Date:** 19 March 2026
+**Status:** Confirmed — changes phase plan immediately
+
+**Decision:**
+The YouTube Shorts pipeline (Creatomate + ElevenLabs + YouTube Data API)
+is a Phase 3 deliverable. PK's personal YouTube channel is configured
+as an ICE client in Phase 3. This is not contingent on paying clients.
+
+**Previous position:**
+YouTube was listed as Phase 4, gated on client acquisition and revenue.
+
+**Why this was wrong:**
+ICE's primary purpose is PK's personal businesses and brand (D032).
+YouTube is a first-class personal brand channel. The video rendering
+stack (D029) was designed with PK's personal creative output in mind
+from the start. Deferring it to Phase 4 imported client-ROI thinking
+into a decision that should be driven by personal use value.
+
+**What changes:**
+- 04_phases.md: YouTube Shorts pipeline moved from Phase 4 to Phase 3
+- PK personal YouTube channel added as Phase 3.6 deliverable
+- Personal brand content series added as Phase 3.7
+- Effort estimate for Phase 3 increases by 3-4 weeks (video pipeline)
+- Phase 4 no longer contains video pipeline first-build items
+
+**What does not change:**
+- Content atomisation (D030) still requires LinkedIn live + first paying client
+- Custom avatar path (HeyGen, requires client filming) still Phase 4
+- Full dialogue mode video still Phase 4
+
+---
+
+## D035 — Pipeline Monitoring Architecture: Health Snapshots + Doctor
+**Date:** 19 March 2026
+**Status:** Confirmed — deployed 19 March 2026
+
+**Decision:**
+Pipeline monitoring uses two complementary systems:
+(1) passive health snapshots every 30 minutes — observe and record,
+(2) active Pipeline Doctor every 30 minutes offset by 15 — read, diagnose, fix.
+
+**Options Considered:**
+- External monitoring tool (Datadog, Sentry)
+- Single combined agent that both monitors and acts
+- Separate passive observer + active fixer
+
+**Choice:** Separate passive + active, Supabase-native
+
+**Reasoning:**
+External monitoring tools add vendor cost and complexity for a system
+that is already fully instrumented via PostgreSQL. The separation of
+concerns (observer vs actor) is deliberate: the health snapshot is the
+source of truth for what happened; the doctor reads it to decide what
+to do. Conflating them would make it harder to audit whether the doctor's
+actions were correct relative to what the pipeline was actually doing.
+
+**Health snapshot schedule:** pg_cron `*/30 * * * *` (at :00 and :30)
+**Pipeline Doctor schedule:** pg_cron `15,45 * * * *` (at :15 and :45)
+
+This staggering ensures the doctor always reads a fresh snapshot
+(maximum 15 minutes old) rather than acting on potentially stale data.
+
+**Tables:**
+- `m.pipeline_health_log` — passive snapshots
+- `m.pipeline_doctor_log` — doctor findings and fixes
+
+**Doctor's seven checks (v1.0.0):**
+1. image_worker_health — detects stalled/failed image generation
+2. stuck_running — detects publisher timeouts without cleanup
+3. past_due_queue — detects items past schedule by > 2 hours
+4. image_hold_timeouts — detects posts that fell through to text
+5. orphaned_ai_jobs — detects succeeded jobs with stale draft state
+6. approved_images_due — detects image drafts approaching hold timeout
+7. dead_items — detects dead/failed queue items, retries transient failures
+
+**Auto-fix actions (approved list — Tier 2 equivalent):**
+- Reset image_status='failed' → 'pending'
+- Nudge pending image drafts (touch updated_at) when stalled
+- Reset status='running' → 'queued' for stuck publisher items
+- Requeue orphaned ai_jobs
+- Retry dead items with < 3 attempts and transient errors
+
+**What the doctor does NOT auto-fix:**
+- Past-due items (may be daily cap — logs reason, flags after 3 consecutive checks)
+- Posts already published as text after hold timeout (irreversible)
+- Dead items with > 3 attempts or non-transient errors (manual review)
+
+---
+
+## D036 — Taxonomy Scorer v2 and Bundler v3
+**Date:** 19 March 2026
+**Status:** Confirmed — deployed 19 March 2026
+
+**Decision:**
+Replace the keyword-based taxonomy scorer v1 with a multi-word
+phrase-based scorer v2. Replace bundler v2 with bundler v3 that
+enforces a maximum of 2 items per category per bundle.
+
+**Problem (discovered 19 Mar):**
+The v1 scorer matched single keywords against topic names. The word
+"rate" matched "interest_rates" for almost any article — resulting in
+98% of all items being tagged as interest_rates regardless of content.
+This produced highly repetitive content (4 RBA/interest rate posts per
+day) and starved all other categories.
+
+**Root cause:**
+Single-word matching is too broad. "Rate" appears in: give-up rate,
+approval rate, vaccination rate, heart rate, exchange rate, growth rate,
+rental yield rate, interest rate. Only the last is interest_rates.
+
+**Fix (score_digest_items_v2):**
+- All category patterns use specific multi-word phrases
+- interest_rates only fires on: "interest rate", "cash rate", "rba rate",
+  "monetary policy", "rate decision", "basis points"
+- Categories processed in priority order (most specific first)
+- Score thresholds tuned per category
+
+**Bundler v3:**
+- Adds `p_max_per_cat` parameter (default 2)
+- Enforces maximum 2 items per category per bundle window
+- Prevents any single category from dominating the digest
+- `run_pipeline_for_client` updated to call v2 scorer + v3 bundler
+
+**Impact:**
+981 items previously all tagged interest_rates were rescored.
+Distribution moved to 7 categories with appropriate proportions.
+Content repetition problem significantly reduced at source.
+Signal clustering (Phase 3.2) will complete the fix at the semantic level.
+
+---
+
+## D037 — Timezone Architecture: UTC Storage, Client Timezone Display
+**Date:** 19 March 2026
+**Status:** Confirmed — fully implemented 19 March 2026
+
+**Decision:**
+All timestamps stored in UTC. All display uses c.client.timezone.
+All user input (episode scheduling, queue scheduling) interpreted as
+client timezone. Browser local time is never used for scheduling.
+
+**Options Considered:**
+- Store in client timezone (simple display, complex queries)
+- Store in UTC, display in browser local time (inconsistent across devices)
+- Store in UTC, display in client timezone (correct, consistent)
+
+**Choice:** UTC storage, client timezone display
+
+**Reasoning:**
+UTC storage is the only correct approach for a multi-client system.
+Browser local time varies by device and user — two operators in
+different timezones would see different scheduled times for the same
+post, which is confusing and error-prone. The client timezone is the
+authoritative context for scheduling because the client's audience is
+in their timezone, not the operator's.
+
+**Implementation:**
+- `lib/tz.ts` created in invegent-dashboard:
+  - `utcToDatetimeLocal(isoUtc, tz)` — converts UTC ISO to HTML datetime-local string
+  - `datetimeLocalToUtc(dtl, tz)` — converts datetime-local input to UTC ISO
+  - `formatAbsoluteInTz(isoUtc, tz)` — formats UTC as human-readable in named timezone
+  - `getTzAbbreviation(tz)` — returns AEDT, AEST, etc.
+- All scheduling inputs in EpisodeRow.tsx, SeriesDetail.tsx use tz functions
+- Queue page, Portal CalendarView all show times in client timezone with label
+- `get_content_series_detail()` updated to return `client_timezone` via c.client join
+
+**AEDT label display:**
+All scheduled time displays show the timezone abbreviation (e.g. "AEDT")
+so the operator and client always know which timezone is being shown.
+This eliminates the class of error where someone schedules a post
+at "9am" and it fires at an unexpected time due to timezone ambiguity.
 
 ---
 
@@ -1390,23 +922,26 @@ manual patch, Option 2 UI) covers gap in the short term.
 
 | Decision | Context | Target Date |
 |---|---|---|
+| Upload Inter fonts to Supabase Storage | PK: drag/drop to brand-assets/fonts/ via dashboard UI | This week |
 | Rename Ingest + Content_fetch folders to lowercase | Cosmetic — next Claude Code session | Next build session |
+| AI Diagnostic Agent Tier 1 build | Edge Function + Claude API + m.pipeline_ai_summary + dashboard section | Next build session |
 | Schema migration: m.ai_model_rate + m.ai_usage_log | Prerequisite for usage ledger (D021) | Phase 2.10 |
 | ai-worker update: capture tokens, write ledger | Fills usage ledger with live data | Phase 2.10 |
 | Schema migration: target_platforms + platform columns | Prerequisite for platform targeting (D022) | Phase 2.11 |
 | ai-worker update: loop per target platform | One draft per platform per source signal | Phase 2.11 |
+| Signal clustering — semantic dedup at bundler | Replace category-based dedup. Eliminates repetition. | Phase 3.2 |
+| Compliance-aware NDIS system prompt | Rewrite NDIS Yarns brand profile system prompt | Phase 3.3 |
+| YouTube Shorts pipeline | Creatomate + ElevenLabs + YouTube Data API | Phase 3.5 |
+| PK personal YouTube channel as ICE client | Configuration, not building | Phase 3.6 |
+| Post Studio visual fields — format scorer (D031) | Lightweight Claude call on manual drafts | After visual pipeline V1 verified |
+| Post Studio visual fields — UI interim (D031) | Format selector + image headline field | Next dashboard build session |
 | Client feed feedback (D025) | Rating → Feed Agent analysis → client report | Phase 4 |
-| email-ingest Edge Function: add submit/* label routing | Reads submit/client-slug labels, routes to client pipeline | Deferred — PK to confirm Gmail strategy |
-| Post Studio visual fields — format scorer (D031) | lightweight Claude call on manual drafts to populate recommended_format + image_headline | After visual pipeline V1 verified |
-| Post Studio visual fields — UI interim (D031) | format selector + image headline field in Post Studio form | Next dashboard build session |
-| Creatomate account + video-worker | Phase 3 video rendering | Phase 3 |
-| HeyGen stock avatar path | Phase 3 video, no filming required | Phase 3 |
-| ElevenLabs voiceover path | Phase 3 audio layer | Phase 3 |
-| AI-generated contextual images (DALL-E 3 / Flux) | Phase 3 image quality ceiling | Phase 3 |
-| Content atomisation build | D022 + D027 + D029 combined execution | Phase 3, post first paying client |
+| email-ingest Edge Function: add submit/* label routing | Reads submit/client-slug labels | Deferred |
+| Content atomisation build | D022 + D027 + D029 combined execution | Phase 3, after LinkedIn live |
 | Model router implementation | When AI costs become significant | Phase 4 |
 | Trigger.dev evaluation | When pg_cron job complexity demands it | Phase 4 |
 | SaaS vs managed service long-term | When 10 clients served for 3+ months | Phase 4 |
 | Second market expansion | After NDIS vertical proven with 5+ clients | Phase 4 |
 | Premium Services catalogue design | When 5 paying clients live | Phase 3+ |
-| Recent post history injection into ai-worker | Prevent topic repetition | Phase 4 |
+| Knowledge base + embedding layer | Start collecting now, queryable later | Phase 4 |
+| AI agent Tiers 3-6 | After Tiers 1-2 validated | Phase 4 |
