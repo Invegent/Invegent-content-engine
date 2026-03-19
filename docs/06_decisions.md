@@ -713,18 +713,7 @@ Result: bundler picked the same story multiple times across different sources.
 
 Extension: pg_trgm enabled for title similarity scoring.
 
-`select_digest_items_v2` updated with Dedupe 2:
-```sql
-AND NOT EXISTS (
-  SELECT 1 FROM m.digest_item di2
-  JOIN m.digest_run dr2 ON dr2.digest_run_id = di2.digest_run_id
-  WHERE dr2.client_id = p_client_id
-    AND di2.canonical_id = di.canonical_id
-    AND di2.selection_state = 'selected'
-    AND di2.digest_item_id != di.digest_item_id
-    AND di2.created_at >= now() - make_interval(days => p_dedupe_days)
-)
-```
+`select_digest_items_v2` updated with Dedupe 2.
 
 New column: `m.digest_item.story_cluster_id uuid` — items about the same story share a cluster_id.
 
@@ -829,23 +818,103 @@ Upgrade trigger: when video pipeline Phase 3 starts (Growth = 10,000 credits).
 
 ---
 
+## D041 — NDIS Compliance Framework Architecture
+**Date:** 20 March 2026
+**Status:** Confirmed — infrastructure deployed, rules seeded, ai-worker v2.4.0 live
+
+**Decision:**
+Compliance rules live in the taxonomy layer (`t.5.7_compliance_rule`),
+not in individual client profiles. ai-worker fetches active rules for
+the client's content vertical(s) and prepends them to every system
+prompt before generation. Rules are never hardcoded in application code.
+
+**Options considered:**
+- Hardcode rules in system prompt per client — doesn't scale, manual updates
+- Store rules in `c.client_ai_profile` per client — same problem
+- Automated URL scraping → rule extraction → auto-update — too risky for compliance
+- Taxonomy layer with human-reviewed rules + change detection cron — chosen
+
+**Choice:** Taxonomy layer + human review
+
+**Reasoning:**
+Compliance rules must be human-verified before going into production.
+Automated extraction from policy documents introduces silent degradation
+risk — if Claude misreads a policy update, content becomes less compliant
+with no alert. The taxonomy approach means one UPDATE affects all clients
+in the vertical immediately, with a Git commit as the audit trail. The
+change detection cron (planned) alerts when source URLs change, so PK
+knows when to review — but never acts without human sign-off.
+
+**Architecture:**
+```
+t.5.7_compliance_rule (vertical_slug = 'ndis', is_active = true/false)
+       ↓
+ai-worker fetchComplianceBlock(clientId)
+  → queries client's vertical slugs via c.client_content_scope
+  → fetches active rules for those slugs
+  → formats as structured compliance block
+       ↓
+System prompt = [compliance block] + [brand identity] + [platform voice]
+```
+
+**Rule structure:**
+- `vertical_slug` — links rule to content vertical
+- `is_active` — controls injection (false = seeded but not yet active)
+- `sort_order` — controls ordering in the block
+- `enforcement` — `hard_block` (Claude returns `skip=true`) or `soft_warn`
+- `risk_level` — high / medium / low
+
+**Rules seeded (20 Mar 2026):**
+- 15 active rules across 6 groups: funding claims, clinical claims,
+  participant representation, disclaimer requirements, prohibited topics,
+  sector commentary
+- 4 inactive rules pending PK review: OT scope, early childhood claims,
+  plan management commentary, high-risk topics from practice
+
+**Compliance skip handling:**
+If Claude determines content violates a HARD_BLOCK rule, it returns
+`{"skip": true, "reason": "compliance_block: [rule name]"}`.
+ai-worker marks the draft as `approval_status = 'dead'` with the reason
+in `draft_format`. The job is marked `succeeded` — this is correct
+behaviour, not a failure.
+
+**Compliance rule tracking in drafts:**
+`draft_format.ai.compliance_rules_injected` records the count of rules
+active at generation time. Enables future analysis: did compliance rules
+affect output quality?
+
+**Source documents:**
+- NDIS Code of Conduct 2018 (ndiscommission.gov.au) — verified 20 Mar 2026
+- NDIS Practice Standards — structure only, content pending PK/Centro Assist review
+- PK operational experience — pending input on high-risk topics and plan management scope
+
+**Pending to complete the framework:**
+1. PK review of [PK REVIEW NEEDED] sections in `docs/compliance/ndis_content_rules.md`
+2. Centro Assist review for OT scope of practice (Rules 2.4, 2.5)
+3. Activate the 4 currently-inactive rules once reviewed
+4. Policy change detection cron (Option C from next session)
+5. Test against 20 recent drafts — confirm compliance without over-hedging
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target Date |
 |---|---|---|
-| Upload Inter fonts to Supabase Storage | PK: drag/drop to brand-assets/fonts/ via dashboard UI | This week |
 | Rename Ingest + Content_fetch folders to lowercase | Cosmetic — next Claude Code session | Next build session |
 | Schema migration: m.ai_model_rate + m.ai_usage_log | Prerequisite for usage ledger (D021) | Phase 2.10 |
 | ai-worker update: capture tokens, write ledger | Fills usage ledger with live data | Phase 2.10 |
 | Schema migration: target_platforms + platform columns | Prerequisite for platform targeting (D022) | Phase 2.11 |
 | ai-worker update: loop per target platform | One draft per platform per source signal | Phase 2.11 |
-| Compliance-aware NDIS system prompt | Rewrite NDIS Yarns brand profile system prompt | Phase 3.3 |
+| PK review of compliance rules in docs/compliance/ | Activate 4 inactive rules once reviewed | This week |
+| Centro Assist OT scope review | Rules 2.4 + 2.5 in ndis_content_rules.md | This week |
+| Policy change detection cron | Monthly URL hash check → compliance_review_queue alert | Option C, next session |
+| Test compliance against 20 recent drafts | Confirm no over-hedging | After PK review complete |
 | YouTube Shorts pipeline | Creatomate + ElevenLabs + YouTube Data API | Phase 3.5 |
 | PK personal YouTube channel as ICE client | Configuration, not building | Phase 3.6 |
+| Prospect demo generator | Input prospect name → sample week of posts | Option B, next session |
 | Post Studio visual fields — format scorer (D031) | Lightweight Claude call on manual drafts | After visual pipeline V1 verified |
-| Post Studio visual fields — UI interim (D031) | Format selector + image headline field | Next dashboard build session |
 | Client feed feedback (D025) | Rating → Feed Agent analysis → client report | Phase 4 |
-| email-ingest Edge Function: add submit/* label routing | Reads submit/client-slug labels | Deferred |
 | Content atomisation build | D022 + D027 + D029 combined execution | Phase 3, after LinkedIn live |
 | Model router implementation | When AI costs become significant | Phase 4 |
 | Trigger.dev evaluation | When pg_cron job complexity demands it | Phase 4 |
