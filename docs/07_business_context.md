@@ -3,10 +3,33 @@
 ## What This Document Is
 
 This is not a business plan. It is the strategic context
-that ICE operates within — the three businesses it serves,
-the people it is built for, how it makes money, and what
-success looks like at each stage. It should be updated
-when direction changes, not annually.
+that ICE operates within — why it was built, what it
+serves, and how external clients fit in. It should be
+updated when direction changes, not annually.
+
+---
+
+## Why ICE Was Built — The Real Reason
+
+ICE exists because of a personal problem: Parveen Kumar
+runs multiple businesses, has a full-time job, wants to
+build a personal brand and pursue creative projects, and
+has no time to produce content for any of them.
+
+The problem is not "I don't know what to post."
+The problem is "I have the knowledge and the ideas
+but zero hours in the week to turn them into content."
+
+ICE is the solution to that problem — built for personal
+use first, across every current and future endeavour.
+
+External clients are a bonus application of infrastructure
+that already needed to exist. They are not the reason
+ICE was built, and justifying build decisions purely
+on client ROI misses the point.
+
+**This principle overrides any framing in these docs
+that treats client acquisition as the primary goal.**
 
 ---
 
@@ -14,336 +37,183 @@ when direction changes, not annually.
 
 **Parveen Kumar — pk@invegent.com**
 
-**Professional background:**
-- Qualified CPA with 20 years experience across financial
-  accounting, tax accounting, and management accounting
-- Most recently: Senior Analyst roles in fashion retail
-  and Aldi grocery retail — data-driven decision making,
-  demand signals, performance analytics at scale
-- NDIS Plan Manager — operational understanding of the
-  NDIS ecosystem from the provider and participant side
-- Business administrator for Care for Welfare — a mobile
-  allied health NDIS practice (OT, founded by spouse)
+- Qualified CPA, 20 years across financial accounting,
+  tax, and management accounting
+- Senior Analyst roles at fashion retail and Aldi —
+  data-driven decision making at scale
+- NDIS Plan Manager — deep operational knowledge of
+  the NDIS ecosystem
+- Business administrator for Care for Welfare —
+  mobile allied health NDIS practice (OT)
+- Full-time employed — content has always been the
+  thing that falls off the list first
 
-**Why this background matters for ICE:**
-The combination of financial analysis discipline, NDIS
-operational knowledge, and retail analytics experience
-is the exact foundation ICE is built on. The scoring
-system, the feedback loop, the performance analytics,
-the unit economics thinking — these come from 20 years
-of professional analysis, not from reading about startups.
-
-ICE was not built by a developer looking for a market.
-It was built by a finance professional and NDIS operator
-solving a problem they personally experience running a
-real allied health practice. This is a competitive
-advantage that cannot be replicated by a generic
-marketing agency or a developer without equivalent
-domain immersion.
+ICE is not built by a developer looking for a market.
+It is built by someone with genuine domain knowledge
+across multiple fields, solving their own real problem.
 
 ---
 
-## The Businesses ICE Serves
+## The Businesses and Projects ICE Serves
 
-### Business 1 — Care for Welfare (existing)
+ICE is infrastructure for everything PK wants to build,
+publish, and grow — with or without paying clients.
+
+### 1 — Care for Welfare (existing, active)
 Mobile allied health NDIS practice. Occupational therapy.
-Founder handles all business administration including
-marketing, compliance, and operations.
 
-ICE role: NDIS Yarns Facebook page runs on autopilot
-building digital authority, generating referrals,
-and growing the practice's online presence without
-consuming founder time.
+ICE role: NDIS Yarns runs autonomously, building digital
+authority and generating referrals without consuming
+time. This is already working.
 
-### Business 2 — Invegent (ICE platform)
-The content engine business itself. Managed content
-service for NDIS providers and property professionals.
-Built on ICE infrastructure.
+### 2 — Property Buyers Agent (future business)
+CPA background + active investor + content authority
+= credible positioning as a buyers agent or property
+advisor in the Australian market.
 
-ICE role: The product being sold.
+ICE role: Property Pulse builds the audience and
+establishes domain authority before the business
+formally launches. Content runs without manual effort.
 
-### Business 3 — Property Investment (personal)
-Active property investor. Property Pulse Facebook page
-validates the property vertical and builds personal
-brand authority in the property space as a foundation
-for a potential property business pivot.
+### 3 — NDIS Accessories / Equipment Store (future)
+Amazon FBA or Shopify store selling NDIS-related
+accessories and adaptive equipment. This is a
+product business that benefits from an existing
+NDIS audience and content presence.
 
-ICE role: Property Pulse runs on autopilot. Traction
-on the page over 6-12 months validates whether the
-property pivot is worth pursuing.
+ICE role: NDIS Yarns audience becomes a warm market
+for product launches. Signal ingest tracks what NDIS
+participants and providers are actually asking about —
+which informs product selection.
 
----
+### 4 — Personal Brand / YouTube (creative, ongoing)
+PK has ideas, observations, and a sense of humour
+that deserves an audience. A YouTube channel covering
+jokes, ideas, life observations, and visual content
+series is a long-term personal project.
 
-## The Three Strategic Directions
+ICE role: Script generation, content series planning,
+and eventually video production pipeline (Creatomate +
+ElevenLabs + HeyGen) to turn ideas into published
+content without requiring a film crew or production
+budget.
 
-In any 90-day period, one direction gets primary focus.
-The others continue in the background but do not receive
-active decision-making energy.
+### 5 — External Clients (bonus, not primary)
+NDIS providers, property professionals, and other
+domain-specific businesses who need what ICE already
+does for PK's own businesses.
 
-### Direction A — Care for Welfare Growth
-ICE as marketing infrastructure for the existing practice.
-
-**What success looks like:**
-- NDIS Yarns reaches 1,000+ engaged followers
-- Inbound referrals from support coordinators
-  who follow the page
-- Practice grows without additional marketing spend
-- Time cost: under 2 hours per week
-
-**What it requires:**
-No new decisions. Execute Phase 1. Let ICE run.
-
-**Status:** Active in background at all times.
-
----
-
-### Direction B — NDIS Content Service ← PRIMARY FOCUS
-ICE as a revenue-generating managed content service
-for other NDIS providers.
-
-**The pitch:**
-"I'm a CPA who manages an NDIS allied health practice,
-has done plan management, and built this system to solve
-our own content problem. I know what NDIS providers can
-and cannot say publicly. I know the compliance requirements.
-I know the sector. Your content will be accurate,
-compliant, and consistent — without you spending any time
-on it."
-
-No marketing agency can make this pitch. It is only
-credible coming from someone operating inside the sector.
-
-**Target client:**
-- NDIS providers: OT practices, physiotherapy, speech
-  therapy, support coordination, plan management
-- 2-20 staff, founder-led
-- Know they need social presence, have no time
-- Fear compliance mistakes in public content
-- Already spending $0 on content — this is new budget,
-  not displaced budget
-- Location: Australia, any state
-
-**Pricing:**
-- Starter: $500/month — 3 posts per week, Facebook only
-- Standard: $800/month — 5 posts per week, Facebook + LinkedIn
-- Premium: $1,500/month — daily posts, all platforms,
-  monthly performance report, campaign series included
-
-**Sales channel:**
-- Personal network (OT colleagues, plan manager contacts)
-- NDIS provider Facebook groups (organic presence)
-- LinkedIn outreach to practice owners and directors
-- NDIS Yarns page as proof of concept / lead magnet
-- Referrals from existing clients
-
-**What success looks like at each stage:**
-3 months:  3 paying clients, $2,000-3,000/month
-6 months:  6 paying clients, $5,000-8,000/month
-12 months: 10 paying clients, $8,000-15,000/month
-
-**What it requires:**
-- Phase 1 complete (ICE stable, auto-approver running)
-- NDIS Yarns proof point document prepared
-- 5 specific providers identified for first conversations
-- Price decided before first conversation (done above)
-
-**Current status:** Preparation phase. First conversation
-target: when Phase 1 done criteria are all met.
+ICE role: The same engine that serves the above
+businesses can serve paying clients with minimal
+marginal effort once the infrastructure is solid.
+Client revenue validates the build and funds further
+development. But the build does not depend on clients
+existing — it depends on PK's own businesses needing it.
 
 ---
 
-### Direction C — Property Business Pivot
-Property Pulse as validation tool for a future property
-business. CPA background + investor experience + content
-authority = credible positioning as a property advisor,
-buyers agent, or property educator.
+## What This Means for Build Decisions
 
-**What it requires to pursue:**
-- Property Pulse achieving meaningful traction
-  (500+ engaged followers, strong engagement rates)
-- A specific property business model decided
-  (advisory? buyers agency? education?)
-- Separate business planning outside ICE scope
+Any feature that makes ICE better for PK's own
+businesses is justified on its own. It does not need
+a paying client to justify it.
 
-**Validation trigger:**
-If Property Pulse reaches 1,000 followers with consistent
-engagement within 12 months → the pivot has market
-validation and deserves a dedicated planning session.
+The right question is never:
+"Will a client pay for this?"
 
-**Current status:** Passive validation. No active decisions
-required until validation trigger is met.
+The right question is:
+"Does this save PK time, reduce manual effort, or
+unlock a use case across one of the businesses above?"
+
+If yes — build it.
+
+External client readiness is a byproduct of building
+well for personal use, not a prerequisite for building.
 
 ---
 
-## The Cross-Promotion Network Strategy
+## The Businesses in Priority Order
 
-Every client ICE onboards strengthens every other client.
-NDIS Yarns (hub page, growing)
-↓
-Client A onboards (OT practice, Brisbane)
-↓
-NDIS Yarns features Client A — welcome post + spotlight
-↓
-Client A shares feature to their audience
-↓
-Their followers discover NDIS Yarns
-↓
-NDIS Yarns followers discover Client A
-↓
-Both pages grow from one post
+At any point in time, ICE is actively serving these
+in roughly this order of immediate value:
 
-This network effect means:
-- Each new client adds value to all existing clients
-- Clients don't leave because leaving means losing
-  access to the network reach
-- NDIS Yarns grows faster as more clients join
-- The page becomes the hub of an NDIS provider
-  content community
+**Active now:**
+1. Care for Welfare / NDIS Yarns — running, producing content
+2. Property Pulse — running, building audience
 
-This is built into client onboarding as a formal process:
-- Week 1: Welcome post featuring new client
-- Month 1: Spotlight post with their story
-- Ongoing: Cross-tag in relevant content
+**Building toward:**
+3. Property Buyers Agent — content authority being built now
+4. NDIS Accessories Store — audience being built now
+5. Personal Brand / YouTube — needs video pipeline (Phase 4)
+
+**Bonus layer:**
+6. External NDIS clients — viable once personal use is solid
+7. External property clients — viable once PP traction confirmed
 
 ---
 
-## Distribution Strategy
+## The YouTube / Video Layer
 
-### The Cold Start Problem
-A new Facebook page with zero followers reaches nobody
-organically. Every client ICE onboards faces this.
-The distribution strategy addresses each phase:
+This is a first-class use case for ICE, not a Phase 4
+afterthought. The video pipeline (Creatomate for
+slideshow rendering, ElevenLabs for voiceover, HeyGen
+for avatar persona) exists to serve PK's personal
+creative output — jokes, observations, ideas, visual
+series — as much as it serves client video content.
 
-**Phase 1 — Seed (free, week 1-2)**
-- Client's existing network: staff, colleagues, current clients
-- Founder's personal profile share
-- Cross-promotion from NDIS Yarns (if client is NDIS)
+The persona system in ICE (`persona_type`, `persona_avatar_id`,
+`persona_dialogue_mode`) is designed for this. A
+`custom_avatar` persona for PK's personal YouTube
+channel is a legitimate configuration alongside
+`stock_avatar` for client accounts.
 
-**Phase 2 — Community (free, ongoing)**
-- Genuine participation in NDIS Facebook groups
-- Answer questions as a practitioner, not a promoter
-- Mention client page when directly relevant
-- LinkedIn presence for B2B referral channel
-
-**Phase 3 — Paid Boost (small budget, month 1 onward)**
-- $200-400/month Facebook ads per client
-- Target by job title: Support Coordinator, Plan Manager,
-  OT, Physio, Disability Worker
-- Boost top 2 posts per week at $10-20 per post
-- ICE auto-boost agent handles this once Insights
-  feedback loop is live
-
-**Phase 4 — Network Flywheel (ongoing)**
-- Cross-promotion between ICE clients compounds over time
-- Each client's audience becomes reachable by all clients
-- No ad spend required once network effect kicks in
-
-### Email Lists and Public Directories
-NDIS provider register, school directories, and similar
-public lists are valuable for:
-- Facebook Custom Audiences (upload email list →
-  Meta matches to profiles → show ads to NDIS providers)
-- Personalised outreach (5-10 per week, not bulk email)
-- Market sizing and targeting research
-
-NOT for bulk unsolicited email — this violates
-Australia's Spam Act 2003 and damages reputation
-in a small professional community.
+Timeline: video pipeline in Phase 3-4. It is not gated
+on client acquisition — it is gated on the core
+pipeline being stable enough to add a rendering layer.
 
 ---
 
-## Phase 1 Finish Line
+## Strategic Directions
 
-Phase 1 is complete when ALL four criteria are true
-simultaneously. Not three of four. All four.
-□ 1. Auto-approval agent running
-Less than 2 hours/week manual draft review
-□ 2. Both clients publishing consistently
-5+ posts/week for 4 consecutive weeks
-NDIS Yarns AND Property Pulse
-□ 3. Feed quality above threshold
-Success rate above 50% across active feeds
-272 give-up URLs addressed
-□ 4. Dashboard stable
-Daily operations in under 30 minutes
-No debugging sessions required for routine use
+These are not mutually exclusive. They run in parallel
+at different energy levels.
 
-When all four boxes are checked — stop building features
-and start the first client acquisition conversation.
+### Direction A — Personal Brand Foundation (always on)
+NDIS Yarns + Property Pulse publishing consistently.
+This serves businesses 1, 2, 3, 4 simultaneously.
+Requires: ICE pipeline stable and autonomous.
+Status: Active.
 
----
+### Direction B — Video / YouTube (Phase 3-4 build)
+Script generation → voiceover → avatar → publish.
+Serves: personal brand, property education content,
+NDIS awareness content, creative projects.
+Requires: video pipeline built.
+Status: Designed (D029). Build pending.
 
-## 90-Day Action Plan (from March 2026)
+### Direction C — NDIS Accessories / FBA (future)
+Content signals what products to stock.
+NDIS Yarns audience becomes launch market.
+Requires: audience size (500+ engaged), product research.
+Status: Passive. No active decisions yet.
 
-### Week 1-2 (Do immediately)
-- [ ] Upgrade Supabase to Pro — enable daily backups
-- [ ] Rotate GitHub Personal Access Token (done)
-- [ ] Write down which direction gets next 90 days
-      (answer: Direction B)
-- [ ] Identify 5 specific NDIS providers for first
-      conversations — write their names down
-- [ ] Fix Retool tab navigation (Clients + Feeds tabs)
-- [ ] Join 3 NDIS provider Facebook groups as yourself
-
-### Weeks 3-6
-- [ ] Build auto-approval agent (Phase 1.2)
-- [ ] Fix feed quality — replace give-up sources (Phase 1.1)
-- [ ] Both clients at 5+ posts/week consistently
-
-### Weeks 7-10
-- [ ] Facebook Insights back-feed (Phase 2.1)
-- [ ] LinkedIn publisher (Phase 2.3)
-- [ ] Start Next.js dashboard migration
-- [ ] Start Meta App Review process
-
-### Weeks 11-12
-- [ ] Phase 1 criteria check — are all four boxes ticked?
-- [ ] If yes: prepare NDIS Yarns proof point document
-- [ ] If yes: first client conversation this month
-- [ ] Property Pulse traction review — is Direction C
-      worth accelerating?
-
----
-
-## Unit Economics
-
-**Per client (Standard tier — $800/month)**
-Revenue:              $800/month
-Direct costs:
-AI generation:      ~$15/month (Claude API)
-Facebook Ads:       ~$200/month (client's budget,
-passed through or separate)
-Platform costs:     ~$5/month (Supabase, Vercel share)
-Gross margin:         ~$780/month per client (97%)
-(excluding founder time)
-Founder time:
-Current (manual):   ~3-4 hours/week per client
-Target (automated): ~30 minutes/week per client
-At 30 min/week target:
-10 clients = 5 hours/week operational
-Revenue = $8,000/month
-Effective hourly rate = $1,600/hour of operational work
-
-The unit economics only work at scale if the automation
-targets are met. The auto-approval agent and feed
-intelligence agent are not nice-to-haves — they are
-what makes the business model viable at 10 clients.
+### Direction D — External Clients (bonus)
+NDIS providers + property professionals.
+Requires: ICE stable, Meta App Review approved.
+Status: Available when ready. Not the primary driver.
 
 ---
 
 ## What ICE Is Not Trying To Be
 
-- A horizontal tool for any business in any industry
-- A SaaS platform with hundreds of self-serve customers
-  (in the next 12 months)
-- A social media scheduling tool (Buffer, Hootsuite already exist)
 - A content agency with a team of writers
+- A SaaS platform racing to 100 customers
 - A technology company raising venture capital
+- A tool that only makes sense if clients exist
 
-ICE is a specialist content intelligence engine for
-regulated and domain-specific industries, operated as
-a managed service by a CPA and NDIS operator with
-20 years of analytical discipline, built for the
-Australian market with genuine vertical depth.
+ICE is personal automation infrastructure for a
+CPA and multi-business operator who wants to produce
+content across every domain he operates in — without
+the content work consuming the time he doesn't have.
 
-That specificity is the moat. Defend it.
+Everything else is upside.
