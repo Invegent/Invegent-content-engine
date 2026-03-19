@@ -1039,7 +1039,7 @@ Bucket creation is part of the visual pipeline build.
 
 ## D027 — Visual Pipeline Architecture
 **Date:** 19 March 2026
-**Status:** Confirmed — build in progress
+**Status:** Confirmed — V1 deployed 19 Mar 2026
 
 **Decision:**
 ICE generates branded visual assets (images and carousels) automatically
@@ -1146,6 +1146,12 @@ enables one signal → multiple format outputs simultaneously:
 - Facebook → image_quote
 - Instagram → image_quote (square crop)
 This is the Phase 3 build. Schema supports it from day one.
+
+**Known gap — Post Studio / manual drafts (D031):**
+Drafts created via Post Studio bypass ai-worker entirely and have
+`recommended_format = NULL` and `image_headline = NULL`. The image-worker
+skips these. A lightweight format scorer for manual drafts is needed
+to close this gap. See D031.
 
 ---
 
@@ -1315,6 +1321,71 @@ LinkedIn API access confirmed + at least one paying client live.
 
 ---
 
+## D031 — Visual Fields for Manual / Post Studio Drafts
+**Date:** 19 March 2026
+**Status:** Pending — design agreed, build deferred
+
+**Decision:**
+All content creation paths in ICE — feed pipeline AND manual/Post Studio
+— must populate `recommended_format`, `recommended_reason`, and
+`image_headline` so the visual pipeline applies consistently regardless
+of how a draft was created.
+
+**Problem:**
+Post Studio and any future manual draft creation path bypass ai-worker
+entirely. These drafts land with `recommended_format = NULL` and
+`image_headline = NULL`. The image-worker skips them, so they publish
+as plain text even when the client has `image_generation_enabled = true`.
+This creates an inconsistent experience — pipeline drafts get images,
+manual drafts don't.
+
+**Why this matters:**
+When a client manually posts something timely ("we just hired a new OT")
+or creates a promotional post, that's often the content they most want
+to look polished with a branded image. The pipeline drafts are handled.
+The human-initiated content is not.
+
+**Options considered:**
+1. Manual patch (SQL) — operator sets fields by hand. Viable at 1-2
+   clients, not scalable. Already used for testing 19 Mar 2026.
+2. Post Studio UI fields — add format selector + image headline input
+   to the Post Studio form. Client sets format at creation time. Fast
+   to build, puts burden on the creator.
+3. Lightweight format scorer — a small function runs on `needs_review`
+   drafts where `recommended_format IS NULL`. Calls Claude with just
+   the draft body, asks it to score format + extract image headline.
+   Runs automatically, zero UI change, fully consistent with pipeline
+   drafts. Higher quality than creator-chosen format.
+
+**Choice:** Option 3 — lightweight format scorer (preferred)
+with Option 2 as interim until scorer is built.
+
+**Implementation design (Option 3):**
+
+A new `format-scorer` Edge Function (or add to auto-approver):
+- Triggered: runs after auto-approver, or as part of approval flow
+- Condition: `recommended_format IS NULL` AND `draft_body IS NOT NULL`
+- Input: draft body + client vertical context
+- Claude call: single message, ~200 tokens
+  Prompt: "Given this post body, select the best format
+  (text/image_quote/carousel) and provide a 10-15 word image headline.
+  Return JSON: {recommended_format, recommended_reason, image_headline}"
+- Output: updates `recommended_format`, `recommended_reason`,
+  `image_headline` on the draft row
+- Cost: ~$0.003 per draft — negligible
+
+**Implementation design (Option 2 — interim):**
+Add to Post Studio form:
+- Format selector: text / image_quote / carousel (defaults to image_quote)
+- Image headline: text input, placeholder "10-15 word pull quote for image"
+- Both fields optional — if blank, image-worker uses fallback headline
+
+**Build trigger (Option 3):** After visual pipeline V1 verified working
+in production with pipeline drafts. Not urgent — workaround (Option 1
+manual patch, Option 2 UI) covers gap in the short term.
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target Date |
@@ -1326,10 +1397,8 @@ LinkedIn API access confirmed + at least one paying client live.
 | ai-worker update: loop per target platform | One draft per platform per source signal | Phase 2.11 |
 | Client feed feedback (D025) | Rating → Feed Agent analysis → client report | Phase 4 |
 | email-ingest Edge Function: add submit/* label routing | Reads submit/client-slug labels, routes to client pipeline | Deferred — PK to confirm Gmail strategy |
-| Visual pipeline V1 schema migration | brand_colour, logo_url, recommended_format, image_headline, image_status, image_url, carousel_slides on post_draft; image_generation_enabled on publish_profile | Next build session |
-| image-worker Edge Function | SVG → Resvg WASM → PNG → Storage, quote card + carousel | Next build session |
-| ai-worker update: output recommended_format + image_headline | Part of existing generation call, ~50 extra tokens | Next build session |
-| publisher v1.3: attach image_url on publish | Facebook picture param + LinkedIn image attachment | Next build session |
+| Post Studio visual fields — format scorer (D031) | lightweight Claude call on manual drafts to populate recommended_format + image_headline | After visual pipeline V1 verified |
+| Post Studio visual fields — UI interim (D031) | format selector + image headline field in Post Studio form | Next dashboard build session |
 | Creatomate account + video-worker | Phase 3 video rendering | Phase 3 |
 | HeyGen stock avatar path | Phase 3 video, no filming required | Phase 3 |
 | ElevenLabs voiceover path | Phase 3 audio layer | Phase 3 |
