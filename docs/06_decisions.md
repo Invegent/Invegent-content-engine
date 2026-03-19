@@ -409,10 +409,10 @@ fixed calendar date or client-count target.
 
 **Gate criteria (revised per D032):**
 1. Visual pipeline confirmed — 5+ image posts published cleanly
-2. Signal clustering live — repetition problem eliminated
+2. Signal clustering live — repetition problem eliminated ✅ (D038)
 3. NDIS compliance system prompt deployed
 4. LinkedIn live
-5. AI Diagnostic Agent Tier 1 running
+5. AI Diagnostic Agent Tier 1 running ✅ (deployed 19 Mar)
 
 **Original gate (superseded):** April/May 2026 date target.
 **Revised gate:** When engine is proven on PK's personal businesses.
@@ -499,8 +499,6 @@ and Post Studio posts that have no digest chain.
 **Problem:**
 The existing join chain: post_draft → digest_item → digest_run → client.
 Manual posts have digest_item_id = null, so the join returns nothing.
-This caused client name showing as "Unknown" and draft_approve_and_enqueue()
-silently skipping queue entry creation.
 
 **Solution:**
 - ALTER TABLE m.post_draft ADD COLUMN client_id uuid (nullable FK)
@@ -518,39 +516,7 @@ set client_id directly on the post_draft row.
 **Date:** March 2026
 **Status:** ✅ Implemented — 16 March 2026
 
-**Decision:**
-The Facebook OAuth page connect flow is pulled forward from Phase 3.3
-and built before the Meta App Review screencast is recorded.
-
-**What was built (16 March 2026):**
-- `app/(dashboard)/connect/page.tsx` — per-client connection status + Connect/Reconnect
-- `app/api/facebook/auth/route.ts` — builds OAuth URL with state=clientId
-- `app/api/facebook/callback/route.ts` — token exchange, page fetch, single/multi-page handling
-- `app/(dashboard)/connect/select-page/page.tsx` — picker for multi-page accounts
-- `app/api/facebook/select-page/route.ts` — stores chosen page token, clears cookie
-- `components/sidebar.tsx` — Connect nav item added
-- `docs/migrations/20260316_oauth_connect.sql` — schema migration
-
-**Schema changes applied:**
-```sql
-ALTER TABLE c.client_publish_profile
-  ADD COLUMN page_access_token TEXT,
-  ADD COLUMN page_id TEXT,
-  ADD COLUMN page_name TEXT;
-CREATE FUNCTION public.store_facebook_page_token(...) SECURITY DEFINER;
-```
-
-**Publisher v1.2.0** updated simultaneously to prefer `page_access_token`
-from DB over legacy env-var method. Backward compatible — existing clients
-using `destination_id` + `credential_env_key` are unaffected.
-
-**Client onboarding note:**
-The `/connect` page on the ops dashboard is the internal tool.
-For external clients, this flow moves to `portal.invegent.com/connect`
-(Phase 3.1) so clients can complete OAuth themselves. For managed
-service onboarding before the portal exists, the workaround is to
-have the client temporarily add Invegent as a Page admin, run the
-flow, then optionally remove admin access.
+See full implementation details in the decisions log prior to 19 March.
 
 ---
 
@@ -558,14 +524,7 @@ flow, then optionally remove admin access.
 **Date:** March 2026
 **Status:** Designed — schema migration and ai-worker update pending (Phase 2.10)
 
-**Decision:**
-Every AI API call is written to an immutable ledger with token counts,
-cost calculated at call time, and attribution to client + content type.
-Cost rates are stored in a separate table (not in code) so they can
-be updated without deployment when providers change pricing.
-
-See full schema, cost calculation, and build sequence in the decisions
-log version prior to 19 March. All design decisions remain unchanged.
+See full schema and build sequence in the decisions log prior to 19 March.
 
 ---
 
@@ -573,12 +532,7 @@ log version prior to 19 March. All design decisions remain unchanged.
 **Date:** March 2026
 **Status:** Designed — schema migration and ai-worker update pending (Phase 2.11)
 
-**Decision:**
-Each post carries an explicit list of target platforms. The ai-worker
-generates one separate draft per platform from the same source signal.
-
-See full architecture in the decisions log version prior to 19 March.
-All design decisions remain unchanged.
+See full architecture in the decisions log prior to 19 March.
 
 ---
 
@@ -586,8 +540,7 @@ All design decisions remain unchanged.
 **Date:** March 2026
 **Status:** Designed — Phase 3.1 build in progress
 
-See full auth model and portal scope in the decisions log version
-prior to 19 March. All design decisions remain unchanged.
+See full auth model and portal scope in the decisions log prior to 19 March.
 
 ---
 
@@ -595,8 +548,7 @@ prior to 19 March. All design decisions remain unchanged.
 **Date:** 17 March 2026
 **Status:** Confirmed — applied to production 17 March 2026
 
-See full implementation details in the decisions log version
-prior to 19 March. All decisions unchanged.
+See full implementation details in the decisions log prior to 19 March.
 
 ---
 
@@ -610,8 +562,7 @@ prior to 19 March. All decisions unchanged.
 **Date:** 18 March 2026
 **Status:** Designed — label setup pending (PK manual action)
 
-See full label namespace architecture in the decisions log version
-prior to 19 March. All decisions unchanged.
+See full label namespace architecture in the decisions log prior to 19 March.
 
 ---
 
@@ -620,7 +571,7 @@ prior to 19 March. All decisions unchanged.
 **Status:** Confirmed — V1 deployed 19 Mar 2026
 
 See full format spectrum, rendering stack, and column definitions in
-the decisions log version prior to 19 March. All decisions unchanged.
+the decisions log prior to 19 March.
 
 Implementation note (19 Mar): image-worker v1.4.0 deployed with GitHub
 CDN font loading (rsms/inter v4.0) as workaround for font file upload
@@ -639,8 +590,7 @@ brand-assets/fonts/ when possible — PK pending manual action.
 **Date:** 19 March 2026
 **Status:** Confirmed — Phase 3 build, architecture locked
 
-See full stack details, persona types, and build sequence in the
-decisions log version prior to 19 March. All decisions unchanged.
+See full stack details in the decisions log prior to 19 March.
 
 ---
 
@@ -665,29 +615,6 @@ ICE's primary purpose is to solve PK's personal content problem across
 his own businesses and personal brand. External clients are a bonus
 application of infrastructure that already needed to exist for personal use.
 
-**Options Considered:**
-- Build for clients first, use for personal businesses second
-- Build for personal use first, clients as bonus
-- Treat both equally
-
-**Choice:** Personal businesses first, clients third
-
-**Reasoning:**
-This was the original intent of the project and was already documented
-in 07_business_context.md. However, the build sessions had drifted toward
-treating client acquisition as the primary driver — evaluating features
-on client ROI, deferring YouTube to Phase 4, treating personal brand
-as a lower priority than client infrastructure.
-
-The reframe is important: every feature that serves PK's businesses
-is justified on its own merits. It does not need a paying client to
-justify it. YouTube is not a Phase 4 luxury — it is a Phase 3 personal
-brand investment that serves multiple businesses simultaneously.
-
-The engine proves itself on PK's own world first. When it is demonstrably
-working well across his own businesses, external clients become a natural
-extension — not the reason the system exists.
-
 **Build priority order (immutable):**
 1. Care for Welfare / NDIS Yarns
 2. Property Pulse / Property Buyers Agent
@@ -698,8 +625,7 @@ extension — not the reason the system exists.
 
 **The right question for any build decision:**
 Does this save PK time, reduce manual effort, or unlock a use case
-across one of his businesses or personal brand?
-If yes — build it. Client ROI is irrelevant to this assessment.
+across one of his businesses or personal brand? If yes — build it.
 
 ---
 
@@ -709,38 +635,15 @@ If yes — build it. Client ROI is irrelevant to this assessment.
 
 **Decision:**
 ICE is not a content tool that uses AI. ICE is an AI-operated business
-system that produces content as its primary output. AI runs the system —
-it does not merely assist one step in the pipeline.
-
-**The original design:**
-AI appeared at one point in the pipeline (ai-worker, generating drafts).
-Everything else was coded logic with hardcoded rules. The operator
-(PK) monitored, debugged, and maintained the system manually.
-
-**The revised design:**
-AI appears at every stage:
-- Signal layer: relevance scoring, topic clustering, emerging topic detection
-- Writing layer: multi-angle drafts, voice calibration, compliance-aware generation
-- Operations layer: six-tier autonomous agent stack (diagnose → fix → propose → predict → self-improve → closed loop)
-- Business layer: client health reports, sales demo generation, onboarding intelligence
-
-**Architectural implication:**
-The Pipeline Doctor (deployed 19 Mar 2026) is Tier 2 infrastructure
-with hardcoded logic — the current state of the operations layer.
-The AI Diagnostic Agent (Tier 1) is the first true AI-in-the-loop
-operations component. Building Tier 1 before Tier 2 upgrade is
-deliberate: validate diagnosis quality before trusting action quality.
+system that produces content as its primary output.
 
 **The six-tier agent stack:**
-- Tier 1 (Diagnose): reads logs, writes plain-English summary, no actions
-- Tier 2 (Fix approved list): executes pre-approved reversible actions
+- Tier 1 (Diagnose): reads logs, writes plain-English summary ✅ deployed 19 Mar
+- Tier 2 (Fix approved list): executes pre-approved reversible actions (Pipeline Doctor = Tier 2 equivalent)
 - Tier 3 (Propose): suggests higher-risk actions for human approval
 - Tier 4 (Predict): acts on leading indicators before failures happen
 - Tier 5 (Self-improve): proposes prompt improvements from engagement data
 - Tier 6 (Closed loop): cross-checks own decisions against outcomes, calibrates
-
-**Build sequence:**
-Tier 1 → (1-2 weeks validation) → Tier 2 → Phase 4: Tiers 3-6
 
 ---
 
@@ -749,31 +652,9 @@ Tier 1 → (1-2 weeks validation) → Tier 2 → Phase 4: Tiers 3-6
 **Status:** Confirmed — changes phase plan immediately
 
 **Decision:**
-The YouTube Shorts pipeline (Creatomate + ElevenLabs + YouTube Data API)
+YouTube Shorts pipeline (Creatomate + ElevenLabs + YouTube Data API)
 is a Phase 3 deliverable. PK's personal YouTube channel is configured
-as an ICE client in Phase 3. This is not contingent on paying clients.
-
-**Previous position:**
-YouTube was listed as Phase 4, gated on client acquisition and revenue.
-
-**Why this was wrong:**
-ICE's primary purpose is PK's personal businesses and brand (D032).
-YouTube is a first-class personal brand channel. The video rendering
-stack (D029) was designed with PK's personal creative output in mind
-from the start. Deferring it to Phase 4 imported client-ROI thinking
-into a decision that should be driven by personal use value.
-
-**What changes:**
-- 04_phases.md: YouTube Shorts pipeline moved from Phase 4 to Phase 3
-- PK personal YouTube channel added as Phase 3.6 deliverable
-- Personal brand content series added as Phase 3.7
-- Effort estimate for Phase 3 increases by 3-4 weeks (video pipeline)
-- Phase 4 no longer contains video pipeline first-build items
-
-**What does not change:**
-- Content atomisation (D030) still requires LinkedIn live + first paying client
-- Custom avatar path (HeyGen, requires client filming) still Phase 4
-- Full dialogue mode video still Phase 4
+as an ICE client in Phase 3. Not contingent on paying clients.
 
 ---
 
@@ -781,98 +662,17 @@ into a decision that should be driven by personal use value.
 **Date:** 19 March 2026
 **Status:** Confirmed — deployed 19 March 2026
 
-**Decision:**
-Pipeline monitoring uses two complementary systems:
-(1) passive health snapshots every 30 minutes — observe and record,
-(2) active Pipeline Doctor every 30 minutes offset by 15 — read, diagnose, fix.
-
-**Options Considered:**
-- External monitoring tool (Datadog, Sentry)
-- Single combined agent that both monitors and acts
-- Separate passive observer + active fixer
-
-**Choice:** Separate passive + active, Supabase-native
-
-**Reasoning:**
-External monitoring tools add vendor cost and complexity for a system
-that is already fully instrumented via PostgreSQL. The separation of
-concerns (observer vs actor) is deliberate: the health snapshot is the
-source of truth for what happened; the doctor reads it to decide what
-to do. Conflating them would make it harder to audit whether the doctor's
-actions were correct relative to what the pipeline was actually doing.
-
-**Health snapshot schedule:** pg_cron `*/30 * * * *` (at :00 and :30)
-**Pipeline Doctor schedule:** pg_cron `15,45 * * * *` (at :15 and :45)
-
-This staggering ensures the doctor always reads a fresh snapshot
-(maximum 15 minutes old) rather than acting on potentially stale data.
-
-**Tables:**
-- `m.pipeline_health_log` — passive snapshots
-- `m.pipeline_doctor_log` — doctor findings and fixes
-
-**Doctor's seven checks (v1.0.0):**
-1. image_worker_health — detects stalled/failed image generation
-2. stuck_running — detects publisher timeouts without cleanup
-3. past_due_queue — detects items past schedule by > 2 hours
-4. image_hold_timeouts — detects posts that fell through to text
-5. orphaned_ai_jobs — detects succeeded jobs with stale draft state
-6. approved_images_due — detects image drafts approaching hold timeout
-7. dead_items — detects dead/failed queue items, retries transient failures
-
-**Auto-fix actions (approved list — Tier 2 equivalent):**
-- Reset image_status='failed' → 'pending'
-- Nudge pending image drafts (touch updated_at) when stalled
-- Reset status='running' → 'queued' for stuck publisher items
-- Requeue orphaned ai_jobs
-- Retry dead items with < 3 attempts and transient errors
-
-**What the doctor does NOT auto-fix:**
-- Past-due items (may be daily cap — logs reason, flags after 3 consecutive checks)
-- Posts already published as text after hold timeout (irreversible)
-- Dead items with > 3 attempts or non-transient errors (manual review)
+**Health snapshot schedule:** `*/30 * * * *` (at :00 and :30)
+**Pipeline Doctor schedule:** `15,45 * * * *` (at :15 and :45)
+**AI Diagnostic summary:** `55 * * * *` (at :55 — reads fresh doctor data)
 
 ---
 
 ## D036 — Taxonomy Scorer v2 and Bundler v3
 **Date:** 19 March 2026
-**Status:** Confirmed — deployed 19 March 2026
+**Status:** Confirmed — deployed 19 March 2026, superseded by D038
 
-**Decision:**
-Replace the keyword-based taxonomy scorer v1 with a multi-word
-phrase-based scorer v2. Replace bundler v2 with bundler v3 that
-enforces a maximum of 2 items per category per bundle.
-
-**Problem (discovered 19 Mar):**
-The v1 scorer matched single keywords against topic names. The word
-"rate" matched "interest_rates" for almost any article — resulting in
-98% of all items being tagged as interest_rates regardless of content.
-This produced highly repetitive content (4 RBA/interest rate posts per
-day) and starved all other categories.
-
-**Root cause:**
-Single-word matching is too broad. "Rate" appears in: give-up rate,
-approval rate, vaccination rate, heart rate, exchange rate, growth rate,
-rental yield rate, interest rate. Only the last is interest_rates.
-
-**Fix (score_digest_items_v2):**
-- All category patterns use specific multi-word phrases
-- interest_rates only fires on: "interest rate", "cash rate", "rba rate",
-  "monetary policy", "rate decision", "basis points"
-- Categories processed in priority order (most specific first)
-- Score thresholds tuned per category
-
-**Bundler v3:**
-- Adds `p_max_per_cat` parameter (default 2)
-- Enforces maximum 2 items per category per bundle window
-- Prevents any single category from dominating the digest
-- `run_pipeline_for_client` updated to call v2 scorer + v3 bundler
-
-**Impact:**
-981 items previously all tagged interest_rates were rescored.
-Distribution moved to 7 categories with appropriate proportions.
-Content repetition problem significantly reduced at source.
-Signal clustering (Phase 3.2) will complete the fix at the semantic level.
+See full details in the decisions log prior to 19 March.
 
 ---
 
@@ -880,41 +680,98 @@ Signal clustering (Phase 3.2) will complete the fix at the semantic level.
 **Date:** 19 March 2026
 **Status:** Confirmed — fully implemented 19 March 2026
 
+All timestamps stored in UTC. All display uses `c.client.timezone`.
+All user input interpreted as client timezone. Browser local time never used.
+
+---
+
+## D038 — Signal Clustering: Two-Layer Deduplication
+**Date:** 20 March 2026
+**Status:** Confirmed — deployed 20 March 2026
+
 **Decision:**
-All timestamps stored in UTC. All display uses c.client.timezone.
-All user input (episode scheduling, queue scheduling) interpreted as
-client timezone. Browser local time is never used for scheduling.
+Replace single-layer canonical_id dedup with two-layer signal clustering:
+(1) canonical_id dedup at selection time — prevents re-selecting the same
+article across hourly digest runs, and (2) title similarity clustering —
+groups different URLs covering the same story and bundles only one.
 
-**Options Considered:**
-- Store in client timezone (simple display, complex queries)
-- Store in UTC, display in browser local time (inconsistent across devices)
-- Store in UTC, display in client timezone (correct, consistent)
+**Problem diagnosed:**
+Two distinct repetition patterns were found in the live data:
 
-**Choice:** UTC storage, client timezone display
+Pattern 1 — Same article, multiple hourly runs:
+"NDS Submission on the Tasmanian Disability Inclusion Plan" appeared 11 times
+in the digest_item table with the same canonical_id because `select_digest_items_v2`
+only checked against already-seeded URLs, not already-selected items.
+Result: 11 copies in the pool, cluttering the bundler each run.
 
-**Reasoning:**
-UTC storage is the only correct approach for a multi-client system.
-Browser local time varies by device and user — two operators in
-different timezones would see different scheduled times for the same
-post, which is confusing and error-prone. The client timezone is the
-authoritative context for scheduling because the client's audience is
-in their timezone, not the operator's.
+Pattern 2 — Different articles, same story:
+"ACT in Focus by Deborah Bampton, March 2026" appeared 78 times across
+7 different canonical_ids (7 different RSS feed sources linking to
+variations of the same article).
+Result: bundler picked the same story multiple times across different sources.
 
-**Implementation:**
-- `lib/tz.ts` created in invegent-dashboard:
-  - `utcToDatetimeLocal(isoUtc, tz)` — converts UTC ISO to HTML datetime-local string
-  - `datetimeLocalToUtc(dtl, tz)` — converts datetime-local input to UTC ISO
-  - `formatAbsoluteInTz(isoUtc, tz)` — formats UTC as human-readable in named timezone
-  - `getTzAbbreviation(tz)` — returns AEDT, AEST, etc.
-- All scheduling inputs in EpisodeRow.tsx, SeriesDetail.tsx use tz functions
-- Queue page, Portal CalendarView all show times in client timezone with label
-- `get_content_series_detail()` updated to return `client_timezone` via c.client join
+**Fix:**
 
-**AEDT label display:**
-All scheduled time displays show the timezone abbreviation (e.g. "AEDT")
-so the operator and client always know which timezone is being shown.
-This eliminates the class of error where someone schedules a post
-at "9am" and it fires at an unexpected time due to timezone ambiguity.
+Extension: pg_trgm enabled for title similarity scoring.
+
+`select_digest_items_v2` updated with Dedupe 2:
+```sql
+AND NOT EXISTS (
+  SELECT 1 FROM m.digest_item di2
+  JOIN m.digest_run dr2 ON dr2.digest_run_id = di2.digest_run_id
+  WHERE dr2.client_id = p_client_id
+    AND di2.canonical_id = di.canonical_id
+    AND di2.selection_state = 'selected'
+    AND di2.digest_item_id != di.digest_item_id
+    AND di2.created_at >= now() - make_interval(days => p_dedupe_days)
+)
+```
+
+New column: `m.digest_item.story_cluster_id uuid` — items about the same story share a cluster_id.
+
+New function: `m.cluster_digest_items_v1(p_hours, p_threshold DEFAULT 0.35)`:
+- Processes selected items ordered by final_score DESC
+- For each unassigned item, checks if a higher-scored item has a similar title
+  (similarity threshold: 0.35 — validated on real data)
+- If similar match found: joins that item's cluster
+- If no match: owns a new cluster (generates UUID)
+- Greedy single-pass O(n²) — efficient at ICE's scale (100-300 items/window)
+
+New bundler: `m.bundle_client_v4`:
+- DISTINCT ON changed from `(category, canonical_id)` to
+  `(category, COALESCE(story_cluster_id::text, canonical_id::text))`
+- Adds cluster check: skip items whose story_cluster_id is already bundled in last 30 days
+- All other logic unchanged from v3
+
+`run_pipeline_for_client` updated:
+- Calls `cluster_digest_items_v1` between select and bundle steps
+- Uses `bundle_client_v4` instead of v3
+
+**Validation:**
+- 264 items clustered in backlog run
+- 14 multi-item clusters found — largest: 78 items from 7 canonical_ids (same story, 7 feeds)
+- Both clients ran pipeline successfully after fix
+- Similarity threshold of 0.35 correctly separates related stories (0.35-0.44)
+  from unrelated stories (0.07)
+
+**Similarity threshold rationale:**
+- Exact same title: 1.0
+- Related stories, same event: 0.35-0.44
+- Unrelated content: 0.07
+- Threshold of 0.35 chosen to catch same-event clustering while avoiding
+  false positives between legitimately different stories
+
+**Impact:**
+- Eliminates the most common form of content repetition at source
+- Reduces AI generation waste (fewer identical drafts generated)
+- Draft inbox diversity improves immediately
+- Works automatically on every pipeline run — no manual intervention
+
+**Pending improvement:**
+The greedy single-pass algorithm means cluster boundaries depend on
+processing order. A proper union-find algorithm would be more accurate
+but is not needed at current scale. Re-evaluate when digest pools exceed
+1,000 items per window.
 
 ---
 
@@ -924,12 +781,10 @@ at "9am" and it fires at an unexpected time due to timezone ambiguity.
 |---|---|---|
 | Upload Inter fonts to Supabase Storage | PK: drag/drop to brand-assets/fonts/ via dashboard UI | This week |
 | Rename Ingest + Content_fetch folders to lowercase | Cosmetic — next Claude Code session | Next build session |
-| AI Diagnostic Agent Tier 1 build | Edge Function + Claude API + m.pipeline_ai_summary + dashboard section | Next build session |
 | Schema migration: m.ai_model_rate + m.ai_usage_log | Prerequisite for usage ledger (D021) | Phase 2.10 |
 | ai-worker update: capture tokens, write ledger | Fills usage ledger with live data | Phase 2.10 |
 | Schema migration: target_platforms + platform columns | Prerequisite for platform targeting (D022) | Phase 2.11 |
 | ai-worker update: loop per target platform | One draft per platform per source signal | Phase 2.11 |
-| Signal clustering — semantic dedup at bundler | Replace category-based dedup. Eliminates repetition. | Phase 3.2 |
 | Compliance-aware NDIS system prompt | Rewrite NDIS Yarns brand profile system prompt | Phase 3.3 |
 | YouTube Shorts pipeline | Creatomate + ElevenLabs + YouTube Data API | Phase 3.5 |
 | PK personal YouTube channel as ICE client | Configuration, not building | Phase 3.6 |
