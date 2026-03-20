@@ -694,40 +694,11 @@ Replace single-layer canonical_id dedup with two-layer signal clustering:
 article across hourly digest runs, and (2) title similarity clustering —
 groups different URLs covering the same story and bundles only one.
 
-**Problem diagnosed:**
-Two distinct repetition patterns were found in the live data:
-
-Pattern 1 — Same article, multiple hourly runs:
-"NDS Submission on the Tasmanian Disability Inclusion Plan" appeared 11 times
-in the digest_item table with the same canonical_id because `select_digest_items_v2`
-only checked against already-seeded URLs, not already-selected items.
-Result: 11 copies in the pool, cluttering the bundler each run.
-
-Pattern 2 — Different articles, same story:
-"ACT in Focus by Deborah Bampton, March 2026" appeared 78 times across
-7 different canonical_ids (7 different RSS feed sources linking to
-variations of the same article).
-Result: bundler picked the same story multiple times across different sources.
-
 **Fix:**
-
-Extension: pg_trgm enabled for title similarity scoring.
-
-`select_digest_items_v2` updated with Dedupe 2.
-
-New column: `m.digest_item.story_cluster_id uuid` — items about the same story share a cluster_id.
-
-New function: `m.cluster_digest_items_v1(p_hours, p_threshold DEFAULT 0.35)`.
-
-New bundler: `m.bundle_client_v4` — DISTINCT ON `COALESCE(story_cluster_id::text, canonical_id::text)`.
-
+Extension: pg_trgm enabled. `select_digest_items_v2` updated with Dedupe 2.
+New column: `m.digest_item.story_cluster_id uuid`. New function:
+`m.cluster_digest_items_v1`. New bundler: `m.bundle_client_v4`.
 `run_pipeline_for_client` updated to call cluster step between select and bundle.
-
-**Validation:**
-- 264 items clustered in backlog run
-- 14 multi-item clusters found
-- Similarity threshold 0.35 validated on live data
-- Both clients ran pipeline successfully after fix
 
 ---
 
@@ -735,165 +706,83 @@ New bundler: `m.bundle_client_v4` — DISTINCT ON `COALESCE(story_cluster_id::te
 **Date:** 20 March 2026
 **Status:** Confirmed — added to build discipline docs
 
-**Decision:**
-If a fix fails twice using the same underlying approach, stop.
-Question the tool, not the implementation. Switch to a different
-tool or approach before attempting a third fix.
-
-**Origin:**
-The Resvg font rendering issue consumed 10+ versions across three
-different implementation attempts (fontBuffers, @font-face base64,
-Satori+Yoga WASM). All failed for the same underlying reason:
-Deno Edge Function runtime does not support the WASM/font APIs
-these libraries require. The correct action after attempt 2 was
-to ask "Is this tool capable?" — not to continue iterating.
-
-**The rule:**
-Attempt 1 fails → diagnose the specific failure.
-Attempt 2 fails with same approach → stop.
-Before attempt 3: Is this library actually capable of what we're asking?
-Check type definitions (not README). If tool limitation confirmed → switch tools.
-
-**The right question:** "Is this tool capable?" not "What did I get wrong this time?"
-
-**Added to:** `docs/skills/edge-function.md` — Two-Attempt Rule section at top.
+If a fix fails twice using the same approach, stop and question the tool.
+The right question: "Is this tool capable?" not "What did I get wrong this time?"
 
 ---
 
 ## D040 — Creatomate as Visual Pipeline Rendering Engine
 **Date:** 20 March 2026
-**Status:** Confirmed — production, image-worker v3.3.0
+**Status:** Confirmed — production, image-worker v3.3.0+
 
-**Decision:**
-Use Creatomate cloud API for all visual asset generation (images,
-animated GIFs, slideshows, short-form video) rather than local
-WASM rendering in Deno Edge Functions.
-
-**Options considered and eliminated (per D039):**
-- Resvg WASM v2.4.1: no font loading API in Deno runtime. Confirmed via
-  type definitions — fontBuffers property does not exist.
-- Satori + Yoga WASM: Yoga WASM initialisation fails in Deno Edge runtime.
-  500 error on every invocation. Two attempts, both failed.
-- next/og (Vercel API route): viable fallback, deferred in favour of
-  Creatomate's full pipeline coverage.
-
-**Why Creatomate over Shotstack and Placid:**
-- Shotstack: developer-infrastructure tool, requires full JSON timeline
-  construction with explicit timestamps. Right tool if building a video
-  product; wrong tool for a content pipeline. Also more expensive at scale.
-- Placid: strong for images, weak for video. No ElevenLabs integration.
-  No native carousel/multi-slide support. Would need a second tool for video.
-- Creatomate: covers the full ICE visual roadmap in one API:
-  static images ✅, animated GIFs ✅, slideshows ✅, short-form video ✅,
-  ElevenLabs voiceover built in ✅. One credential, one template system.
-
-**Implementation:**
-- API: `POST https://api.creatomate.com/v2/renders`
-- Approach: RenderScript (pure JSON, no template setup required)
-- Background colour: root-level `fill_color` on the composition object.
-  Shape element `fill_color` does NOT render in static PNG output —
-  this is a Creatomate-specific behaviour, not a bug.
-- Font: Montserrat (hosted by Creatomate, no upload required)
-- Logo: direct Supabase Storage public URL (data URIs rejected by Creatomate)
-- Poll pattern: submit → get render_id → poll every 1.5s → download PNG → upload to Storage
-- Images complete in 2-5 seconds on Essential plan
-
-**Key RenderScript lesson:**
-For static PNG output:
-- Background colour → `fill_color` at root composition level (NOT a shape element)
-- Text → `fill_color` on text element (works correctly)
-- Shapes for accent bars/lines → `fill_color` on shape element (works correctly)
-- The root-level `fill_color` is a Creatomate composition property, not CSS
-
-**Plan:** Essential — $54/month, 2,000 credits (1 credit = 1 image).
-At ~20 images/day ICE uses ~600 credits/month. Well within Essential.
-Upgrade trigger: when video pipeline Phase 3 starts (Growth = 10,000 credits).
-
-**Credentials:**
-- Creatomate project: `2f8d12c7-5149-4655-bef2-8f9b5587fd11`
-- API key: stored as Supabase secret `CREATOMATE_API_KEY` and Windows env var
-- Account: parveen@invegent.com
-
-**Deployed:** image-worker v3.3.0 (Supabase function version 16)
+Use Creatomate cloud API for all visual asset generation.
+Background colour: root-level `fill_color` on composition (NOT shape element).
+Font: Montserrat. Logo: direct Supabase Storage URL.
+Plan: Essential $54/month, 2,000 credits.
 
 ---
 
 ## D041 — NDIS Compliance Framework Architecture
 **Date:** 20 March 2026
-**Status:** Confirmed — infrastructure deployed, rules seeded, ai-worker v2.4.0 live
+**Status:** Confirmed — 20 active rules, ai-worker v2.4.0 injecting live
+
+Rules in `t.5.7_compliance_rule` (vertical_slug = 'ndis').
+ai-worker fetches and prepends compliance block to every system prompt.
+HARD_BLOCK violations → draft marked dead. SOFT_WARN → included with
+disclaimer guidance. All rules sourced from official NDIS documents only.
+Monthly policy change detection cron running (compliance-monitor v1.2.0).
+
+---
+
+## D042 — Carousel Pipeline: Content Advisor + Organic Multi-Photo
+**Date:** 20 March 2026
+**Status:** Confirmed — deployed image-worker v3.5.0, publisher v1.6.0
 
 **Decision:**
-Compliance rules live in the taxonomy layer (`t.5.7_compliance_rule`),
-not in individual client profiles. ai-worker fetches active rules for
-the client's content vertical(s) and prepends them to every system
-prompt before generation. Rules are never hardcoded in application code.
+Carousel posts use a two-stage pipeline: (1) Claude content advisor
+generates a precise slide spec from the post body, (2) Creatomate renders
+one 1080×1080px PNG per slide, (3) publisher uploads slides as unpublished
+photos then posts a multi-photo feed update (organic carousel).
 
-**Options considered:**
-- Hardcode rules in system prompt per client — doesn't scale, manual updates
-- Store rules in `c.client_ai_profile` per client — same problem
-- Automated URL scraping → rule extraction → auto-update — too risky for compliance
-- Taxonomy layer with human-reviewed rules + change detection cron — chosen
+**Option 1 (implemented): Organic multi-photo gallery**
+Uses existing page access token. Each slide uploaded to `/{page-id}/photos`
+with `published=false` → returns photo_id. Then `/{page-id}/feed` posted
+with `attached_media[]` array of all photo_ids. No additional permissions
+required beyond `pages_manage_posts` (already in App Review queue).
 
-**Choice:** Taxonomy layer + human review
+**Option 2 (future): Meta Ads API carousel**
+Requires `ads_management` permission — deferred until Meta App Review
+approves advertising permissions and boosting is active. At that point,
+carousel posts can also be boosted as paid carousel ads. The slide images
+stored in `m.post_carousel_slide` will be reused — no regeneration needed.
 
-**Reasoning:**
-Compliance rules must be human-verified before going into production.
-Automated extraction from policy documents introduces silent degradation
-risk — if Claude misreads a policy update, content becomes less compliant
-with no alert. The taxonomy approach means one UPDATE affects all clients
-in the vertical immediately, with a Git commit as the audit trail. The
-change detection cron (planned) alerts when source URLs change, so PK
-knows when to review — but never acts without human sign-off.
+**Content Advisor:**
+Claude (claude-sonnet-4-6, temperature 0.3) reads post body + brand profile
++ content vertical. Returns structured JSON: slide count (3-6), slide type
+(hook/point/cta), headline (max 55 chars), sub_text (max 90 chars, null
+for hook/cta). No hardcoded rules — Claude decides structure per content.
 
-**Architecture:**
-```
-t.5.7_compliance_rule (vertical_slug = 'ndis', is_active = true/false)
-       ↓
-ai-worker fetchComplianceBlock(clientId)
-  → queries client's vertical slugs via c.client_content_scope
-  → fetches active rules for those slugs
-  → formats as structured compliance block
-       ↓
-System prompt = [compliance block] + [brand identity] + [platform voice]
-```
+**Slide templates:**
+- hook: large centred headline, "Swipe →" top right, left accent line
+- point: numbered badge (slide_index-1), headline, horizontal divider, sub_text
+- cta: large "?" watermark, centred question, "Follow [client] for more" footer
 
-**Rule structure:**
-- `vertical_slug` — links rule to content vertical
-- `is_active` — controls injection (false = seeded but not yet active)
-- `sort_order` — controls ordering in the block
-- `enforcement` — `hard_block` (Claude returns `skip=true`) or `soft_warn`
-- `risk_level` — high / medium / low
+**Schema:**
+`m.post_carousel_slide` — one row per slide. Fields: slide_id, post_draft_id,
+slide_index, slide_type, headline, sub_text, image_url, image_status,
+creatomate_render_id. Slides stored permanently — reusable for Option 2.
 
-**Rules seeded (20 Mar 2026):**
-- 15 active rules across 6 groups: funding claims, clinical claims,
-  participant representation, disclaimer requirements, prohibited topics,
-  sector commentary
-- 4 inactive rules pending PK review: OT scope, early childhood claims,
-  plan management commentary, high-risk topics from practice
+**Carousel gate:**
+Publisher holds carousel posts until image_status = 'generated'.
+image-worker only processes image_quote (single PNG) — carousel has its
+own separate path within image-worker.
 
-**Compliance skip handling:**
-If Claude determines content violates a HARD_BLOCK rule, it returns
-`{"skip": true, "reason": "compliance_block: [rule name]"}`.
-ai-worker marks the draft as `approval_status = 'dead'` with the reason
-in `draft_format`. The job is marked `succeeded` — this is correct
-behaviour, not a failure.
-
-**Compliance rule tracking in drafts:**
-`draft_format.ai.compliance_rules_injected` records the count of rules
-active at generation time. Enables future analysis: did compliance rules
-affect output quality?
-
-**Source documents:**
-- NDIS Code of Conduct 2018 (ndiscommission.gov.au) — verified 20 Mar 2026
-- NDIS Practice Standards — structure only, content pending PK/Centro Assist review
-- PK operational experience — pending input on high-risk topics and plan management scope
-
-**Pending to complete the framework:**
-1. PK review of [PK REVIEW NEEDED] sections in `docs/compliance/ndis_content_rules.md`
-2. Centro Assist review for OT scope of practice (Rules 2.4, 2.5)
-3. Activate the 4 currently-inactive rules once reviewed
-4. Policy change detection cron (Option C from next session)
-5. Test against 20 recent drafts — confirm compliance without over-hedging
+**Previous bug fixed:**
+image-worker v3.3.0 was processing carousel posts and generating a single
+PNG (same as image_quote). 9 incorrectly generated PNGs cleared.
+image-worker v3.4.0 excluded carousel from image_quote query.
+publisher v1.5.0 added carousel gate (hold if image not ready).
+image-worker v3.5.0 + publisher v1.6.0 = full carousel pipeline.
 
 ---
 
@@ -904,23 +793,14 @@ affect output quality?
 | Rename Ingest + Content_fetch folders to lowercase | Cosmetic — next Claude Code session | Next build session |
 | Schema migration: m.ai_model_rate + m.ai_usage_log | Prerequisite for usage ledger (D021) | Phase 2.10 |
 | ai-worker update: capture tokens, write ledger | Fills usage ledger with live data | Phase 2.10 |
-| Schema migration: target_platforms + platform columns | Prerequisite for platform targeting (D022) | Phase 2.11 |
-| ai-worker update: loop per target platform | One draft per platform per source signal | Phase 2.11 |
-| PK review of compliance rules in docs/compliance/ | Activate 4 inactive rules once reviewed | This week |
-| Centro Assist OT scope review | Rules 2.4 + 2.5 in ndis_content_rules.md | This week |
-| Policy change detection cron | Monthly URL hash check → compliance_review_queue alert | Option C, next session |
-| Test compliance against 20 recent drafts | Confirm no over-hedging | After PK review complete |
+| Test compliance injection against 20 recent drafts | Confirm no over-hedging | After PK review complete |
 | YouTube Shorts pipeline | Creatomate + ElevenLabs + YouTube Data API | Phase 3.5 |
 | PK personal YouTube channel as ICE client | Configuration, not building | Phase 3.6 |
-| Prospect demo generator | Input prospect name → sample week of posts | Option B, next session |
-| Post Studio visual fields — format scorer (D031) | Lightweight Claude call on manual drafts | After visual pipeline V1 verified |
-| Client feed feedback (D025) | Rating → Feed Agent analysis → client report | Phase 4 |
+| Prospect demo generator (Option B) | Needs proper scoping conversation before building | When ready |
+| Option 2 carousel (Meta Ads API) | When ads_management permission approved + boosting active | Phase 3+ |
+| Post Studio visual fields — format scorer (D031) | Lightweight Claude call on manual drafts | After visual pipeline verified |
 | Content atomisation build | D022 + D027 + D029 combined execution | Phase 3, after LinkedIn live |
 | Model router implementation | When AI costs become significant | Phase 4 |
-| Trigger.dev evaluation | When pg_cron job complexity demands it | Phase 4 |
 | SaaS vs managed service long-term | When 10 clients served for 3+ months | Phase 4 |
 | Second market expansion | After NDIS vertical proven with 5+ clients | Phase 4 |
-| Premium Services catalogue design | When 5 paying clients live | Phase 3+ |
-| Knowledge base + embedding layer | Start collecting now, queryable later | Phase 4 |
-| AI agent Tiers 3-6 | After Tiers 1-2 validated | Phase 4 |
 | Upgrade Creatomate to Growth plan | When Phase 3 video pipeline starts | Phase 3 |
