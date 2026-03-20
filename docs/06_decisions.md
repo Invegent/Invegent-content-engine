@@ -321,83 +321,102 @@ Stored in `m.post_carousel_slide`. Schema: 11 slides verified in first run.
 **Date:** 20 March 2026
 **Status:** Confirmed — all schema deployed
 
+**What was built:**
+- `t.5.3_content_format` upgraded with ICE pipeline fields
+- `c.client_brand_asset`, `c.client_format_config` tables
+- `m.post_render_log`, `m.post_visual_spec`, `m.post_format_performance` tables
+- SECURITY DEFINER RPCs: write_visual_spec, write_render_log, upsert_format_performance
+- Content advisor promoted upstream into ai-worker v2.5.0
+- Animated formats: animated_text_reveal + animated_data (image-worker v3.8.0)
+
+---
+
+## D044 — YouTube Shorts Pipeline Stage A: Silent MP4 via Creatomate
+**Date:** 20 March 2026
+**Status:** Confirmed — deployed
+
 **Decision:**
-Before building animated formats or promoting the content advisor upstream,
-establish the full infrastructure foundation that makes the visual pipeline
-scalable, observable, and commercially sound.
+Implement YouTube Shorts pipeline in three stages to ship value
+at each step without blocking on credentials:
+- Stage A (this): Silent MP4 via Creatomate. No ElevenLabs, no YouTube OAuth needed.
+  Formats: video_short_kinetic, video_short_stat. Gated off (is_enabled=false)
+  in c.client_format_config until credentials are ready.
+- Stage B: Add ElevenLabs voiceover + YouTube Data API upload.
+  Credentials required: ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID_NDIS,
+  ELEVENLABS_VOICE_ID_PP, YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET,
+  YOUTUBE_REFRESH_TOKEN_NDIS, YOUTUBE_REFRESH_TOKEN_PP.
+- Stage C: HeyGen avatar, long-form explainer, podcast clip.
 
-**The gap identified:**
-The existing pipeline had format decisions hardcoded in Edge Functions,
-no cost visibility per client, no record of why the advisor made a
-format choice, no per-client billing gate for formats, and a stale
-`carousel_slides` jsonb column conflicting with the proper slide table.
-As formats multiply (animated, video), each of these gaps compounds.
+**Why this order:**
+Stage A builds and validates the full render pipeline (script → Creatomate →
+Storage) without any external credential setup. It means Stage B is a
+2-3 hour wire-up once credentials are confirmed, not a full build.
+narrtion_text is pre-generated in Stage A and stored in draft_format.video_script —
+it's ready for ElevenLabs in Stage B with no ai-worker changes needed.
 
-**What was built (20 Mar 2026):**
+**What was built (Stage A — 20 Mar 2026):**
 
-**Step 1 — `t.5.3_content_format` upgraded**
-Added ICE pipeline fields: `is_buildable`, `requires_build`, `render_engine`,
-`output_mime_type`, `ice_format_key`, `advisor_description`, `best_for`,
-`min_content_signals`, `platform_support`.
-`advisor_description` is what Claude reads to understand when to recommend
-each format. `is_buildable = false` formats are visible to the advisor
-but will not be recommended.
+Schema:
+- `m.post_draft`: video_url + video_status columns added
+- `recommended_format` constraint expanded to include all 7 video subformats
+- `t.5.3_content_format`: 7 video format rows seeded:
+  - Stage A buildable: video_short_kinetic, video_short_stat
+  - Stage B (is_buildable=false): video_short_kinetic_voice, video_short_stat_voice
+  - Stage C (is_buildable=false): video_short_avatar, video_long_explainer, video_long_podcast_clip
+- `c.client_format_config`: Stage A formats seeded with is_enabled=false
+- `c.client_channel`: YouTube stub rows for both clients (disabled)
+- `public.set_draft_video_script()` SECURITY DEFINER RPC
+- `post-videos` Storage bucket (public)
+- pg_cron job 33: video-worker every 30 min
 
-Format registry as of 20 Mar:
-| ice_format_key | is_buildable | engine |
-|---|---|---|
-| text | ✅ | none |
-| image_quote | ✅ | creatomate |
-| carousel | ✅ | creatomate |
-| animated_text_reveal | ⬜ requires_build | creatomate |
-| animated_data | ⬜ requires_build | creatomate |
-| video_short | ⬜ requires_build | creatomate+elevenlabs |
+ai-worker v2.6.0:
+- `VIDEO_FORMATS` set
+- `generateVideoScript()`: mini Claude call (temp 0.25) after format decision
+  - kinetic_text: produces scenes array (hook/point/cta) + narration_text
+  - stat_reveal: extracts stat_value, stat_label, context_line, cta_text + narration_text
+- Stored via `set_draft_video_script()` RPC (merges into draft_format, sets video_status=pending)
+- `video_script_generated` flag in result payload
 
-**Step 2 — `c.client_brand_asset`**
-Proper brand asset registry. Fields: asset_type, asset_url, asset_meta,
-platform_scope. Replaces scattered brand fields on client_brand_profile
-for anything beyond primary/secondary colour and logo. Future animated
-formats and video use this for intros, voiceovers, fonts, music.
+video-worker v1.0.0:
+- `buildKineticTextScript()`: 9:16 (1080×1920) MP4, 30fps, scene-timed elements
+  - hook: large centred headline + "↓ Keep watching" nudge
+  - point: accent bar + headline + divider + body, scene counter top-right
+  - cta: question mark watermark + cta headline + follow text
+- `buildStatRevealVideoScript()`: 9:16 (1080×1920) MP4, 20s, stat scale-bounce at 1.5s
+- `pollRender()`: 2.5s interval, 48 attempts (2 min max for MP4)
+- `renderUploadAndLog()`: submit + poll + upload post-videos + write_render_log
+- Reads approved drafts with video_status=pending
+- Writes video_url + video_status=generated on success
+- Auth: x-video-worker-key header (reuses PUBLISHER_API_KEY secret)
 
-**Step 3 — `c.client_format_config`**
-Per-client format eligibility gate. One row per client × format.
-Content advisor checks this before recommending. Also billing gate —
-only formats in the service agreement should be enabled.
-Both NDIS Yarns and Property Pulse seeded with current buildable formats.
-Adding a new format to a client = one INSERT, no code change.
+**Multi-channel ownership model:**
+- pk@invegent.com owns NDIS Yarns + Property Pulse channels
+- One OAuth app, one refresh token per channel
+- External clients: Channel Manager access + their own YOUTUBE_REFRESH_TOKEN_CLIENT_SLUG secret
+  + client_channel row — no code changes needed per new client
 
-**Step 4 — Resolved `carousel_slides` jsonb conflict**
-`post_draft.carousel_slides` (zero rows of data) dropped.
-`m.post_carousel_slide` is the canonical carousel storage.
+**Podcast client model (future):**
+ICE ingests client RSS podcast feed as signal source, generates Shorts
+referencing each episode, publishes autonomously. Client controls
+their own long-form; ICE handles the Short-form layer.
 
-**Step 5 — `m.post_render_log`**
-Central Creatomate render audit. Every render attempt logged: render_id,
-credits_used, render_duration_ms, output_url, storage_url, render_spec.
-Enables per-client credit cost attribution, retry history, debugging.
+**To activate Stage A formats:**
+```sql
+UPDATE c.client_format_config
+SET is_enabled = true
+WHERE ice_format_key IN ('video_short_kinetic', 'video_short_stat')
+  AND client_id = '<client_id>';
+```
+Do this after confirming Creatomate plan covers MP4 output.
 
-**Step 6 — `m.post_visual_spec`**
-Stores content advisor's full structured output before rendering.
-Fields: post_draft_id, ice_format_key, advisor_model, advisor_prompt_key,
-spec (jsonb), generation_ms.
-`advisor_prompt_key` is the versioning field — when the advisor prompt
-changes, increment this key so decisions trace to the prompt that made them.
-
-**Step 7 — `m.post_format_performance`**
-Format-level engagement aggregation per client.
-Fields: client_id, ice_format_key, rolling_window_days, avg_reach,
-avg_engagement_rate, best_post_draft_id, computed_at.
-Populated by insights-worker. Content advisor reads this when performing
-format recommendations — if image_quote consistently outperforms text
-for a client, the advisor learns to recommend it more. This is the
-feedback loop that makes the advisor genuinely intelligent over time.
-
-**What's next in the visual pipeline build order:**
-1. ✅ Schema foundation (this decision)
-2. Promote content advisor upstream into ai-worker (reads format table + client_format_config)
-3. Write to m.post_visual_spec and m.post_render_log in image-worker
-4. Build animated_text_reveal (flip is_buildable, add render path in image-worker)
-5. Build animated_data
-6. Phase 3: video_short
+**To advance to Stage B:**
+1. Add 7 Supabase secrets (ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID_NDIS,
+   ELEVENLABS_VOICE_ID_PP, YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET,
+   YOUTUBE_REFRESH_TOKEN_NDIS, YOUTUBE_REFRESH_TOKEN_PP)
+2. Build youtube-publisher Edge Function
+3. Add ElevenLabs TTS call in video-worker between script + Creatomate render
+4. Flip is_buildable=true for voice format rows in t.5.3_content_format
+5. Update c.client_channel with real channel IDs
 
 ---
 
@@ -405,19 +424,16 @@ feedback loop that makes the advisor genuinely intelligent over time.
 
 | Decision | Context | Target Date |
 |---|---|---|
-| Promote content advisor upstream into ai-worker | Reads t.5.3_content_format + c.client_format_config | Next build session |
-| Wire m.post_visual_spec write into image-worker | Store advisor spec before rendering | Next build session |
-| Wire m.post_render_log write into image-worker | Cost transparency per render | Next build session |
-| Build animated_text_reveal | Flip is_buildable, add GIF render path | After advisor promotion |
-| Build animated_data | Flip is_buildable, add counting number animation | After animated_text_reveal |
-| Rename Ingest + Content_fetch folders to lowercase | Cosmetic — next Claude Code session | Next build session |
-| Test compliance injection against 20 recent drafts | Confirm no over-hedging | After PK review complete |
-| YouTube Shorts pipeline | Creatomate + ElevenLabs + YouTube Data API | Phase 3.5 |
-| PK personal YouTube channel as ICE client | Configuration, not building | Phase 3.6 |
-| Prospect demo generator (Option B) | Needs proper scoping conversation | When ready |
-| Option 2 carousel (Meta Ads API) | When ads_management approved + boosting active | Phase 3+ |
-| m.post_format_performance population | insights-worker update to write per-format aggregates | Phase 2.1 completion |
-| Content atomisation build | D022 + D027 + D029 combined execution | Phase 3 |
+| YouTube Stage B wire-up | When 7 secrets confirmed in Supabase | Next session after PK setup |
+| Activate Stage A formats | Confirm Creatomate MP4 plan covers → flip is_enabled=true | Before first video test |
+| youtube-publisher Edge Function | YouTube Data API v3 upload (OAuth token refresh) | Stage B |
+| ElevenLabs TTS in video-worker | Between script and Creatomate render | Stage B |
+| m.post_format_performance population | Update insights-worker per-format engagement aggregates | Phase 2.1 completion |
+| AI Diagnostic Agent — Tier 2 | After ~1-2 weeks of Tier 1 validation | ~1 Apr 2026 |
+| Instagram publisher | 0.5 days after Meta App Review approved | Phase 3 |
+| Prospect demo generator | Needs scoping conversation | Phase 3 |
+| Client health weekly report (email) | 2 days. Retention driver. | Phase 3 |
+| Rename Ingest + Content_fetch folders to lowercase | Cosmetic — next Claude Code session | Phase 3 |
 | Model router implementation | When AI costs become significant | Phase 4 |
 | SaaS vs managed service long-term | When 10 clients served for 3+ months | Phase 4 |
 | Upgrade Creatomate to Growth plan | When Phase 3 video pipeline starts | Phase 3 |
