@@ -1,156 +1,133 @@
 # NDIS Code of Conduct — Extracted Obligations
 
-**Source:** National Disability Insurance Scheme (Code of Conduct) Rules 2018
+**Source:** National Disability Insurance Scheme (Code of Conduct) Rules 2018; Code of Conduct Provider Guidance April 2024
+**Files:** C:\Users\parve\Downloads\NDIS docs\Code-of-Conduct-Provider-Guidance.pdf
 **URL:** https://www.ndiscommission.gov.au/rules-and-standards/ndis-code-conduct
 **Legislation:** https://www.legislation.gov.au/F2018L00629/latest/text
 **Last verified:** 20 March 2026
-**Next review:** 20 June 2026
+**Document version:** Provider Guidance April 2024 (updated December 2023 for key personnel and fair pricing)
 
 ---
 
-## Who Must Comply
+## The Eight Obligations (Section 6, Rules 2018)
 
-- Registered NDIS providers, their key personnel and workers
-- Unregistered NDIS providers, their key personnel and workers
-- ILC (Information, Linkages and Capacity Building) providers
-- Commonwealth Continuity of Support Programme providers (65+)
+1. Act with respect for individual rights to freedom of expression, self-determination, and decision-making
+2. Respect the privacy of people with disability
+3. Provide supports and services in a safe and competent manner with care and skill
+4. Act with integrity, honesty and transparency
+5. Promptly take steps to raise and act on concerns about quality and safety
+6. Take all reasonable steps to prevent and respond to violence, exploitation, neglect and abuse
+7. Take all reasonable steps to prevent and respond to sexual misconduct
+8. Not engage in unfair pricing when supplying or promoting goods for NDIS participants
 
-**Relevance to ICE:** Any content published on behalf of an NDIS provider is
-generated under the provider's brand and must not expose them to Code of Conduct
-breaches. Content that makes false, misleading, or exploitative claims on a
-provider's Facebook page falls on the provider — not on ICE.
-
----
-
-## The Eight Obligations (Section 6)
-
-### 1. Individual Rights
-> Act with respect for individual rights to freedom of expression,
-> self-determination, and decision-making in accordance with relevant laws
-> and conventions.
-
-**Content implication:** Do not write content that implies providers make
-decisions for participants, or that frames participants as passive recipients
-rather than active decision-makers. Avoid paternalistic framing.
-
-**Examples:**
-- ❌ "We help clients get the most out of their NDIS plan"
-- ✅ "Participants can use their NDIS funding to access OT supports that
-  align with their goals"
+**December 2023 update:** Key personnel now explicitly covered by the Code at the same standard as providers and workers. Fair pricing/price differentiation prohibition added as Rule 8.
 
 ---
 
-### 2. Privacy
-> Respect the privacy of people with disability.
+## Element 3 — Safe and Competent Manner
+*(Provider Guidance paras 46-50)*
 
-**Content implication:** Never use real participant details, case studies, or
-situations that could identify a participant — even anonymised. Any participant
-story used in content requires explicit written consent from the participant.
-ICE does not have access to consent records and therefore must never generate
-participant story content.
+Factors relevant to compliance include:
+- Ensuring workers have "the necessary training, competence and qualifications for the supports and services delivered" (para 47)
+- **"Provide services consistent with relevant professional codes"** (para 47)
+- Meeting relevant work health and safety requirements
+- Maintaining appropriate and accurate records
 
-**Examples:**
-- ❌ "One of our participants recently achieved their goal of..."
-- ❌ "A 7-year-old in our early intervention program..."
-- ✅ "NDIS participants accessing OT services may work toward goals like..."
-
----
-
-### 3. Safe and Competent Manner
-> Provide supports and services in a safe and competent manner with care
-> and skill.
-
-**Content implication:** Do not make clinical efficacy claims that overstate
-provider capability or imply guaranteed outcomes. All therapeutic or clinical
-claims must be framed as evidence-based possibilities, not certainties.
-
-**Examples:**
-- ❌ "OT helps children with autism develop independence"
-- ✅ "Research supports the use of OT approaches to help some children
-  develop skills related to independence"
-- ❌ "Our therapy will improve your child's sensory processing"
-- ✅ "OT may support children in developing strategies for sensory regulation"
+**Content relevance (Rule 2.4):** Allied health providers are subject to AHPRA
+registration and professional body codes (OT Australia, Speech Pathology Australia,
+APA). Content must not imply services are offered outside the provider's registered
+scope. Where professional codes require specific clinical framing, content must
+reflect that standard.
 
 ---
 
-### 4. Integrity, Honesty, and Transparency
-> Act with integrity, honesty, and transparency.
+## Element 4 — Integrity, Honesty and Transparency
+*(Provider Guidance paras 52-65)*
 
-**Content implication:** Do not make claims about funding, NDIS processes, or
-provider capabilities that cannot be substantiated. Do not imply NDIS will
-fund specific items or supports for specific individuals. All statements about
-funding must use probabilistic language.
+### Recommending appropriate supports (paras 52-57)
+Providers must "recommend and provide supports and services appropriate to the
+needs of the participant." This includes not providing "services or expending
+funds contrary to a person with disability's approved plan."
 
-**Examples:**
-- ❌ "NDIS will fund assistive technology for your child"
-- ❌ "Get your AT funded through the NDIS"
-- ✅ "Assistive technology may be funded through NDIS where it is
-  considered reasonable and necessary for a participant's goals"
+### Conflicts of interest (paras 58-60)
+Providers must ensure workers "are aware of their obligation to declare a conflict
+of interest and inform people with disability when they have an interest that may
+impact supports and services."
 
----
+Scenario in guidance: A support coordinator recommended a service run by her own
+employer without disclosing the relationship. The Commission found this a conflict
+of interest breach. (Provider Guidance pp.22-23.)
 
-### 5. Raise Concerns
-> Promptly take steps to raise and act on concerns about matters that
-> might have an impact on the quality and safety of supports.
+**Content relevance (Rule 4.2):** This same principle applies to content that
+recommends providers — public recommendations carry the same conflict of interest
+obligations as direct service recommendations.
 
-**Content implication:** Content that downplays safety concerns, dismisses
-complaint processes, or suggests providers are infallible is inconsistent
-with this obligation. Not a common content risk but relevant to tone.
+### Sharp practices (paras 61-64)
+The Provider Guidance defines sharp practices as "a range of practices involving
+unfair treatment or taking advantage of people, including over-servicing, high
+pressure sales and inducements."
 
----
+Providers must not:
+- Provide services contrary to the participant's approved plan
+- Ask for or accept additional fees
+- Offer inducements with no link to the participant's NDIS plan
+- **Engage in high-pressure sales**
+- Charge participants more than others without justification
+- **"Promote, advertise and publish higher prices for substantially the same products, supports or services for participants as compared with other people without reasonable justification"** (para 62f)
 
-### 6. Prevent Violence, Exploitation, Neglect and Abuse
-> Take all reasonable steps to prevent and respond to all forms of
-> violence against, exploitation, neglect, and abuse.
+The Guidance notes sharp practices may also breach the Australian Consumer Law,
+enforced by the ACCC. (Para 64.)
 
-**Content implication:** Content must not use language, imagery, or framing
-that depicts participants in vulnerable or disempowering ways. Avoid
-"vulnerable" as a noun or primary descriptor.
-
-**Examples:**
-- ❌ "Providing care for vulnerable NDIS participants"
-- ✅ "Supporting people with disability to live the life they choose"
-
----
-
-### 7. Prevent Sexual Misconduct
-> Take all reasonable steps to prevent and respond to sexual misconduct.
-
-**Content implication:** Not typically a content risk in sector news publishing.
-Relevant only if generating content about workforce conduct or complaints.
+**Content relevance (Rules 5.3, 1.2):** Urgency language, limited-time offers,
+inducements, and any implied price differentiation for NDIS participants are
+sharp practices under the Code.
 
 ---
 
-### 8. Fair Pricing
-> Not charge or represent higher prices for NDIS participants without
-> reasonable justification.
+## Element 8 — Fair Pricing / Price Differentiation
+*(Price Differentiation Guide for Providers and Participants, NDIS Commission; Fair Pricing Factsheet)*
 
-**Content implication:** Do not reference pricing in a way that implies
-different rates for NDIS participants vs private clients without explanation.
-Do not reference NDIS price limits in a way that could be read as price-fixing
-or coordination.
+Added to the Code in December 2023. Providers must not:
+- Charge NDIS participants more than other customers for the same product or service without justification
+- Advertise or publish higher prices for NDIS participants without justification
 
----
+The Price Differentiation Guide gives examples of clear violations:
+- Shower chair sold for $1,200 to NDIS participant, $120 to others
+- Therapist charging $300/hr for NDIS participant, $80/hr for others
 
-## Fair Pricing — Additional Context
+If a price difference cannot be justified, it may be "a breach of the Code of
+Conduct and considered a sharp practice."
 
-Fair pricing means no significant price difference between NDIS participants
-and other customers for the same goods/services without reasonable justification.
+The NDIS Commission can remove provider registration and impose fines for breaches.
 
-The NDIS Pricing Arrangements and Price Limits (formerly Price Guide) sets
-maximum prices registered providers can charge for most support categories.
-Content must not reference specific dollar amounts as guaranteed or fixed,
-as prices are reviewed annually and vary by support category and state.
+**Content relevance (Rule 5.3):** Any reference to pricing in content must not
+imply NDIS participants pay different rates without an explicit, justified reason.
 
 ---
 
-## Notes for Content Review
+## Fraud
+*(NDIS Fraud Factsheet November 2024)*
 
-The Code of Conduct is primarily about *conduct* in service delivery, not
-marketing. However, misleading or exploitative marketing content can constitute
-a breach under Obligation 4 (honesty/transparency) and potentially Obligation 1
-(decision-making rights) if content is designed to manipulate participant choices.
+Fraud includes "providing false or misleading information to the NDIA." Key
+elements: dishonesty, intentional activity, gaining a benefit.
 
-The NDIS Commission has taken action against providers for misleading advertising
-about funding, outcomes, and eligibility. Content published on provider social
-pages is the provider's responsibility.
+Relevant to content: Content that implies a provider can obtain funding the
+NDIA would not otherwise approve, or that has special influence over planning
+decisions, is misleading and may constitute fraud facilitation.
+
+**Content relevance (Rule 5.4):** "We know how to maximise your NDIS plan"
+and similar framing is inconsistent with the Code and the fraud factsheet.
+
+---
+
+## Breaches and Consequences
+*(Provider Guidance Part 3, paras 113-120)*
+
+The NDIS Commission takes a proportionate approach. Consequences include:
+- Notices of non-compliance
+- Conditions on registration
+- Suspension or cancellation of registration
+- Banning orders
+- Civil penalties (for serious breaches)
+
+Breaches that also breach Australian Consumer Law may result in ACCC action.

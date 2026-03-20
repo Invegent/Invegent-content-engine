@@ -9,40 +9,42 @@
       "url": "https://www.ndiscommission.gov.au/rules-and-standards/ndis-code-conduct",
       "legislation_url": "https://www.legislation.gov.au/F2018L00629/latest/text",
       "last_known_update": "2026-01-27",
-      "content_hash": null,
-      "notes": "Core obligations stable since 2018. Fair pricing clause added 2023."
+      "notes": "Core obligations updated December 2023 to add key personnel coverage and fair pricing prohibition (Rule 8)."
     },
     {
       "id": "ndis_practice_standards_core",
       "name": "NDIS Practice Standards — Core Modules",
       "url": "https://www.ndiscommission.gov.au/rules-and-standards/ndis-practice-standards",
       "last_known_update": null,
-      "content_hash": null,
-      "notes": "Multiple modules. Monitor parent page for changes."
+      "notes": "Version 4, November 2021. Reform program underway 2024-2026 — monitor for new standards."
     },
     {
       "id": "ndis_pricing_arrangements",
       "name": "NDIS Pricing Arrangements and Price Limits",
       "url": "https://www.ndis.gov.au/providers/pricing-arrangements",
       "last_known_update": null,
-      "content_hash": null,
-      "notes": "Updated annually (typically July). Monitor for major revisions."
+      "notes": "Updated annually (typically July). Monitor for major revisions affecting content rules."
     },
     {
       "id": "ndis_practice_standards_reform",
       "name": "NDIS Practice Standards Reform",
-      "url": "https://www.ndiscommission.gov.au/about-us/ndis-regulatory-reform/ndis-practice-standards-reform",
+      "url": "https://www.ndiscommission.gov.au/about-us/ndis-commission-reform-hub/mandatory-registration",
       "last_known_update": null,
-      "content_hash": null,
-      "notes": "Reform program underway 2024-2026. Monitor for new standards."
+      "notes": "Reform program underway 2024-2026. Monitor for new standards affecting registered providers."
     },
     {
       "id": "ndis_commission_regulatory_priorities",
       "name": "NDIS Commission Regulatory Priorities",
       "url": "https://www.ndiscommission.gov.au/about-us/compliance-and-enforcement/our-regulatory-priorities",
       "last_known_update": null,
-      "content_hash": null,
-      "notes": "Signals where Commission is focusing enforcement. Useful for Rule Group 5 updates."
+      "notes": "Signals where Commission is focusing enforcement. Informs Rule Group 5 updates."
+    },
+    {
+      "id": "ndis_code_of_conduct_fraud",
+      "name": "NDIS Code of Conduct — Fraud",
+      "url": "https://www.ndiscommission.gov.au/rules-and-standards/ndis-code-conduct/fraud",
+      "last_known_update": null,
+      "notes": "Fraud definitions and obligations. Source for Rule 5.4 (no implied special access to NDIA processes)."
     }
   ]
 }

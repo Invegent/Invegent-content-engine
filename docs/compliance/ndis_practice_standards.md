@@ -1,89 +1,140 @@
 # NDIS Practice Standards — Content-Relevant Sections
 
-**Source:** NDIS Practice Standards (Quality Indicators)
+**Source:** NDIS Practice Standards and Quality Indicators, Version 4, November 2021
+**File:** C:\Users\parve\Downloads\NDIS docs\ndis-practice-standards-and-quality-indicators.pdf
 **URL:** https://www.ndiscommission.gov.au/rules-and-standards/ndis-practice-standards
-**Last verified:** 20 March 2026 (structure only — content pending)
-**Next review:** 20 June 2026
+**Last verified:** 20 March 2026
 
 ---
 
-## Status
+## What Practice Standards Are
 
-This document is a work in progress. The NDIS Practice Standards contain
-multiple modules. Only sections directly relevant to social media content
-generation are included here.
+The NDIS Practice Standards create benchmarks for registered providers to
+assess performance and demonstrate how they provide safe and quality supports.
+They consist of a Core Module and supplementary modules. Each module has
+outcomes and quality indicators used by auditors.
 
-**PK INPUT NEEDED:** PK has access to Centro Assist (scope of practice standards
-for OT and allied health). Relevant sections to add:
-- OT scope of practice limitations (what OTs can and cannot claim)
-- Allied health clinical claims standards
-- Early childhood intervention quality indicators
-- Support coordination scope (what support coordinators can and cannot claim
-  about funding or participant eligibility)
+Only sections relevant to content generation are included here.
 
 ---
 
-## Core Modules Relevant to Content
+## Core Module: Rights and Responsibilities
 
-### Rights and Responsibilities
-URL: https://www.ndiscommission.gov.au/rules-and-standards/ndis-practice-standards/core-module-rights-and-responsibilities
+### Person-Centred Supports
+Outcome: Each participant accesses supports that promote, uphold and respect
+their legal and human rights and is enabled to exercise informed choice and
+control.
 
-Key quality indicators for content:
-- Participants are treated with dignity and respect
-- Participants are supported to exercise choice and control
-- Participants are not subject to restrictive practices unless authorised
+**Content relevance:** All content must frame participant agency as central.
+The quality indicators state communication must be "responsive to their needs
+and provided in the language, mode of communication and terms that the
+participant is most likely to understand."
 
-**Content rule derived:** All content must frame participant agency as central.
-Providers facilitate — participants decide.
+### Privacy and Dignity
+Outcome: Each participant accesses supports that respect and protect their
+dignity and right to privacy.
 
----
-
-### Provision of Supports
-URL: https://www.ndiscommission.gov.au/rules-and-standards/ndis-practice-standards/core-module-provision-supports
-
-Key quality indicators for content:
-- Supports are delivered in accordance with the participant's NDIS plan
-- Supports reflect evidence-informed practice
-- Outcomes are tracked and reviewed collaboratively with participants
-
-**Content rule derived:** Clinical outcome claims must reference evidence base,
-not assert certainty. Outcome framing must be goal-directed, not provider-directed.
+**Content relevance:** Participant information — including disability or health
+details — must not appear in content without verified consent. See Rule 3.4.
 
 ---
 
-## Specialist Module: Early Childhood Supports
-URL: https://www.ndiscommission.gov.au/rules-and-standards/ndis-practice-standards/supplementary-module-early-childhood-supports
+## Core Module: Provision of Supports
 
-**[PK INPUT NEEDED]** — OT and allied health early childhood content is
-high-volume for NDIS provider pages. What are the specific claim limitations
-for early childhood intervention? What can/cannot be claimed about developmental
-outcomes for children under 7?
+### Responsive Support Provision
+Outcome: Supports are provided in a manner consistent with relevant legislation,
+good practice, and the needs of each participant.
 
----
+Quality indicators include that supports are delivered in a manner that
+"reflects evidence-informed practice."
 
-## Specialist Module: Support Coordination
-URL: https://www.ndiscommission.gov.au/rules-and-standards/ndis-practice-standards/supplementary-module-specialist-support-coordination
-
-**[PK INPUT NEEDED]** — Support coordinators are a primary ICE client type.
-What are the scope limitations on what a support coordinator can claim or
-recommend publicly? Can a support coordinator's page make statements about
-what funding categories are available for specific disabilities?
+**Content relevance:** All clinical claims in content must reflect that practice
+is evidence-informed. Assertions of certainty about outcomes are inconsistent
+with evidence-informed practice standards. See Rules 2.1 and 2.2.
 
 ---
 
-## Centro Assist — Scope of Practice
+## Supplementary Module: Early Childhood Supports
+*(Applies to providers registered to deliver early childhood supports)*
 
-**[PK ACTION REQUIRED]**
+### Evidence-Informed Practice
+Outcome: Each participant receives evidence-informed supports from providers
+with quality standards and validated practice.
 
-PK has access to Centro Assist through Care for Welfare. This provides
-OT-specific scope of practice standards that are more specific than the
-NDIS Commission's general Practice Standards.
+Quality indicators:
+- "Intervention strategies are based on explicit principles, validated
+  practices, best available research and relevant laws and regulations."
+- "Appropriate information, knowledge, skills and expertise are in place to
+  deliver quality supports to each participant's support network."
 
-Review needed:
-1. OT scope of practice limitations relevant to social media claims
-2. Clinical assessment claim standards (what OTs can claim about assessment)
-3. Therapeutic outcome claim standards (what can be said about therapy outcomes)
-4. Allied health assistant supervision claims (who can claim what)
+**Content relevance (Rule 2.5):** Content about early childhood supports must
+reflect that interventions are grounded in validated practice. Outcome claims
+must be framed as possibilities consistent with evidence — not certainties.
 
-Once reviewed, add the relevant rules to `ndis_content_rules.md` under
-the "Clinical and Therapeutic Claims" section.
+### Capacity Building
+Outcome: Each participant receives supports that build the knowledge, skills
+and abilities of the family and other collaborating providers.
+
+Quality indicators:
+- "Each family's confidence is built to understand how their family routines
+  and everyday activities can support their child's development."
+- "The strengths of the family are promoted and developed... with recognition
+  that positive outcomes for children do not rely solely on therapeutic
+  child-focused programs."
+
+**Content relevance:** Content must not position the provider as the sole
+pathway to a child's development. Family capacity and everyday routines
+are recognised as central by the Practice Standards.
+
+### The Family
+Outcome: Each family receives family-centred supports that are culturally
+inclusive, responsive, and focus on their strengths.
+
+**Content relevance:** Early childhood content must acknowledge families as
+partners, not passive recipients.
+
+---
+
+## Supplementary Module: Specialist Support Coordination
+*(Applies to providers registered to deliver specialist support coordination)*
+
+### Management of a Participant's NDIS Supports
+Outcome: Each participant exercises meaningful choice and control over their
+supports and maximises the value for money they receive.
+
+Quality indicators:
+- "Supports and services are arranged using the participant's NDIS amounts
+  as directed by the participant and for the purposes intended by the participant."
+- "Each participant has been provided with information about their support
+  options using the language, mode of communication and terms that the
+  participant is most likely to understand."
+
+**Content relevance:** Support coordination content must frame the coordinator's
+role as facilitating participant choice — not directing it.
+
+### Conflict of Interest
+Outcome: Each participant receives transparent, factual advice about their
+support options which promotes choice and control.
+
+Quality indicators:
+- "Conflict of interest policies are provided or explained to each participant."
+- "Each participant is supported to understand the distinction between the
+  provision of specialised support coordination and other reasonable and
+  necessary supports funded under a participant's plan."
+- **"If the provider has an interest in any support option available to the
+  participant, the participant is aware of this interest."
+- "Referrals to and from other providers are documented for each participant."
+
+**Content relevance (Rule 4.2):** A support coordinator's content must not
+recommend specific providers without disclosing any organisational or financial
+interest. The Practice Standards require this disclosure in direct service
+delivery — public content that recommends providers creates the same risk.
+
+---
+
+## Reform Context (2024-2026)
+
+The NDIS Commission has a practice standards reform program underway.
+Monitored via compliance-monitor monthly cron (source key:
+`ndis_practice_standards_reform`). Any significant changes will appear
+in `m.compliance_review_queue` and trigger a review of these rules.
