@@ -36,9 +36,9 @@ A phase does not end until ALL done criteria are met.
 **2.2 Feed Intelligence Agent** ✅ — feed-intelligence v7, Sundays 2am UTC
 **2.3 LinkedIn Publisher** 🔴 BLOCKED — Community Management API under review (~25 Mar)
 **2.4 Content Series** ✅ — series-writer, series-outline, Content Studio UI all live
-**2.5 Next.js Dashboard** ✅ — all tabs live, Retool cancelled
+**2.5 Next.js Dashboard** ✅ — all tabs live, Retool cancelled. Nav restructured 21 Mar 2026: 5 items (Inbox/Create/Clients/Monitor/Roadmap), sticky sidebar, section tabs.
 **2.6 Public Proof Dashboard** ✅ — invegent.com/proof live
-**2.7 Visual Pipeline V1** ✅ — image-worker v3.3.0, Creatomate API, 1080×1080 PNG, brand colours confirmed (20 Mar 2026)
+**2.7 Visual Pipeline V1** ✅ — image-worker v3.3.0, Creatomate API, 1080×1080 PNG, brand colours (20 Mar 2026)
 **2.8 Content Intelligence Profiles** ✅ — structured prompts, platform profiles, content_type_prompt
 **2.9 Pipeline Doctor** ✅ — v1.0.0, 7 checks, auto-fixes, every 30min (19 Mar 2026)
 **2.10 Pipeline Health Monitoring** ✅ — snapshots + doctor log + dashboard page (19 Mar 2026)
@@ -66,13 +66,13 @@ Personal brand and YouTube pipeline built. First external client optional.
 - pipeline-ai-summary Edge Function running at :55 past every hour
 - Reads last 8 health snapshots + 4 doctor logs → Claude API
 - Writes plain-English paragraph to m.pipeline_ai_summary
-- Dashboard Pipeline Log page: AI Summary section at top
+- Dashboard Monitor → Pipeline page: AI Summary section at top
 
-**3.2 — Compliance-Aware NDIS System Prompt**
-- [ ] Research NDIS Code of Conduct + Practice Standards constraints
-- [ ] Rewrite NDIS Yarns brand profile system prompt
-- [ ] Test against 20 recent drafts — compare output quality
-- **Effort:** 3 days. Core differentiator for client sales.
+**3.2 — Compliance-Aware NDIS System Prompt** ✅ DEPLOYED 20 Mar 2026
+- 20 active rules in t.5.7_compliance_rule (HARD_BLOCK + SOFT_WARN)
+- ai-worker v2.5.1 injects rules into every NDIS draft
+- compliance-monitor v1.2.0 watches 5 policy URLs monthly (SHA-256 hash)
+- Compliance test: 0/20 HARD_BLOCK, 3/20 SOFT_WARN on 20 published drafts ✅
 
 **3.3 — AI Diagnostic Agent (Tier 2)**
 - [ ] Upgrade to action-capable (pre-approved action list)
@@ -81,55 +81,65 @@ Personal brand and YouTube pipeline built. First external client optional.
 
 ### Deliverables — Personal Brand + YouTube
 
-**3.4 — YouTube Shorts Pipeline**
-- [ ] video-worker Edge Function (Creatomate + ElevenLabs)
-- [ ] Script generation format in ai-worker (60-90s Shorts)
-- [ ] YouTube Data API v3 OAuth + upload endpoint
-- [ ] Voiceover-only path first, stock avatar second
-- **Effort:** 3-4 weeks.
+**3.4 — YouTube Shorts Pipeline Stage A — Silent MP4** ✅ DEPLOYED 20 Mar 2026
+- video-worker v1.0.0: video_short_kinetic + video_short_stat formats
+- ai-worker v2.6.0: video script generation (hook → points → CTA)
+- Creatomate renders 9:16 1080×1920 MP4 via template
 
-**3.5 — PK Personal YouTube Channel as ICE Client**
-- [ ] New client record: PK Personal Brand
-- [ ] Content scope: personal observations, NDIS, property, life
-- **Effort:** 1 day (config).
+**3.5 — YouTube Shorts Pipeline Stage B — Voice + Upload** ✅ DEPLOYED 21 Mar 2026
+- ElevenLabs Creator plan: NDIS Yarns voice AU female, PP voice confident male
+- video-worker v2.0.0: generateAndUploadVoice() → audio injected into Creatomate render
+- youtube-publisher v1.0.0: OAuth 2.0, multipart upload, unlisted by default
+- Both client YouTube channels connected (NDIS Yarns + Property Pulse)
+- 4 video formats enabled for both clients: kinetic, stat, kinetic_voice, stat_voice
 
-**3.6 — Personal Brand Content Series**
-- [ ] ICE-generated content for PK as a person
-- [ ] Facebook + LinkedIn + YouTube targeted
-- **Effort:** 1 day (config).
+**3.6 — Cowork Automation Tasks** ✅ LIVE 21 Mar 2026
+- Weekly reconciliation: Monday 7am AEST — docs sync, roadmap sync, pending decisions review. GitHub-only. Opus 4.6 1M context.
+- Nightly pipeline health task: planned — Supabase health check only, alert to docs/alerts/ if issues.
+
+**3.7 — YouTube Stage C — AI Avatar**
+- [ ] HeyGen API integration (video_short_avatar format)
+- [ ] Client records 3 minutes of footage → reusable likeness
+- [ ] Long-form explainer + podcast clip formats
+- **Effort:** Phase 4.
 
 ### Deliverables — Platform Expansion
 
-**3.7 — Instagram Publisher**
+**3.8 — Instagram Publisher**
 - [ ] Meta App Review permissions include instagram_content_publish
 - [ ] publisher update — Instagram carousel endpoint
 - **Effort:** 0.5 days. After Meta App Review approved.
 
-**3.8 — LinkedIn Live**
+**3.9 — LinkedIn Live**
 - [ ] OAuth connect tested once API approves
 - [ ] client_publish_profile rows for both clients
 - **Effort:** 0.5 days. Waiting on Community Management API.
 
 ### Deliverables — Client Sales Readiness
 
-**3.9 — Prospect Demo Generator**
+**3.10 — Prospect Demo Generator**
 - [ ] Input prospect name + practice type → sample week of posts
 - **Effort:** 2 days.
 
-**3.10 — Client Health Weekly Report (email)**
+**3.11 — Client Health Weekly Report (email)**
 - [ ] Sunday night Edge Function, plain-English summary via Claude
 - [ ] Delivered via Resend email
 - **Effort:** 2 days.
 
-**3.11 — First External Client (Optional)**
+**3.12 — m.post_format_performance Population**
+- [ ] Update insights-worker to write per-format engagement aggregates
+- [ ] Closes format advisor feedback loop
+- **Effort:** Medium.
+
+**3.13 — First External Client (Optional)**
 - [ ] When visual pipeline confirmed + NDIS system prompt done + proof strong
 
 ### Phase 3 Done When
 1. AI Diagnostic Agent Tier 1 running and producing accurate summaries ✅
-2. Visual pipeline confirmed with 5+ image posts published successfully (in progress)
-3. YouTube Shorts pipeline live with at least one personal brand video published
-4. LinkedIn publishing live
-5. NDIS compliance system prompt deployed
+2. Visual pipeline confirmed with 5+ image posts published successfully ✅ (in progress)
+3. YouTube Shorts pipeline live — Stage B deployed ✅
+4. LinkedIn publishing live ← waiting on API
+5. NDIS compliance system prompt deployed ✅
 
 ---
 
@@ -145,12 +155,11 @@ First external clients generating revenue. AI autonomy stack building.
 - Tier 3: Propose — suggests higher-risk actions for approval
 - Tier 4: Predict — acts on leading indicators before failure
 - Tier 5: Self-improve — reads approval + engagement patterns, proposes prompt improvements
-- Tier 6: Closed loop — cross-checks own decisions against outcomes
+- Tier 6: Closed loop — cross-checks own decisions against outcomes, calibrates autonomously
 
 **4.2 — Knowledge Base + Embedding Layer**
 - Embeds all ingested articles + generated posts into vector store
 - Queryable: "What has the NDIS sector discussed about housing in Q1?"
-- NDIS Accessories research use case enabled
 
 **4.3 — Video Pipeline Phase 2**
 - Custom avatar (HeyGen — client films 3 min, generates reusable likeness)
@@ -194,7 +203,7 @@ First external clients generating revenue. AI autonomy stack building.
 
 1. Facebook ✅ — primary platform, proven
 2. LinkedIn 🔴 — blocked on API, code done
-3. YouTube 🟡 — Phase 3, personal brand driver
+3. YouTube 🟡 — Stage B deployed 21 Mar, uploads unlisted
 4. Instagram ⬜ — after Meta App Review, 0.5 days
 5. Email newsletter ⬜ — Phase 4
 6. TikTok ⬜ — not prioritised
