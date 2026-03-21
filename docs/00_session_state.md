@@ -3,8 +3,8 @@
 It overrides Claude memory when there is a conflict.
 Updated at the end of every session. Read at the start of every session before doing anything else.
 
-Last updated: 20 March 2026 (post-breakfast tidy-up)
-Last session summary: Visual pipeline live — image-worker v3.3.0 with Creatomate API, 1080×1080 PNG confirmed. Two-Attempt Rule (D039) + Creatomate decision (D040) committed. pipeline-ai-summary v1.1.0 fix: SECURITY DEFINER parameterised insert replaces broken exec_sql string interpolation. All systems clean — 0 failed images, 0 stuck jobs, 18 posts queued.
+Last updated: 21 March 2026
+Last session summary: Content studio bugs fixed (Facebook unchecked still generating, YouTube error). D046–D050 committed — onboarding architecture, two-path flow, chatbot vs voice, package source allocation concept, Invegent pages as acquisition channel (not NDIS Yarns/Property Pulse). GitHub Vercel permissions approved. Client tab redesign discussed (items 3–7) — no build yet. Compliance-aware NDIS system prompt remains next build.
 
 ---
 
@@ -93,7 +93,7 @@ Two internal test clients (personal businesses, not paying):
 | Facebook | ✅ Validated | Publishing live. Visual pipeline active with Creatomate images. |
 | LinkedIn | 🔴 Blocked | Publisher built + pg_cron live. Community Management API review in progress. Calendar: Wed 25 Mar |
 | Instagram | ⬜ Not built | After Meta App Review approved. 0.5 days effort. |
-| YouTube | 🟡 Phase 3 | Script generation ready. Video pipeline (Creatomate + ElevenLabs) Phase 3. NOT Phase 4. |
+| YouTube | 🟡 Phase 3 | Stage A + B built. Voice formats ready to activate. |
 | Email (Resend) | ✅ Configured | SMTP + magic link + notifications live |
 
 ---
@@ -122,12 +122,12 @@ All deliverables done. Meta App Review in progress (ongoing, not a Phase 1 block
 |---|---|
 | Facebook Insights back-feed (2.1) | ✅ Done |
 | Feed Intelligence agent (2.2) | ✅ Done |
-| LinkedIn publisher (2.3) | 🔴 Blocked — Community API pending |
+| LinkedIn publisher (2.3) | 🔴 Blocked — Community API pending. Calendar: Wed 25 Mar |
 | Campaigns / Content Series (2.4) | ✅ Done |
 | Next.js dashboard (2.5) | ✅ Done. Retool cancelled |
 | Public proof dashboard (2.6) | ✅ Done |
-| Visual pipeline — image-worker (2.7) | ✅ v3.3.0 Creatomate. 1080×1080 PNG. Brand colours confirmed. 20 Mar. |
-| Content Studio (2.8) | ✅ Done |
+| Visual pipeline — image-worker (2.7) | ✅ v3.3.0 Creatomate. 1080×1080 PNG. |
+| Content Studio (2.8) | ✅ Done. Bugs fixed 21 Mar (platform filter + YouTube exclusion). |
 | Pipeline Doctor (2.9) | ✅ v1.0.0 deployed 19 Mar. 7 checks. Auto-fixes. |
 | Pipeline Health Monitoring (2.10) | ✅ Snapshots + doctor log + AI summary + dashboard live. |
 | Signal clustering (2.11) | ✅ cluster_digest_items_v1 + bundle_client_v4 deployed 20 Mar |
@@ -141,16 +141,20 @@ All deliverables done. Meta App Review in progress (ongoing, not a Phase 1 block
 |---|---|
 | Portal /performance + /calendar v2 + /feeds | ✅ Done |
 | Dashboard feed suggestions panel | ✅ Done |
-| AI Diagnostic Agent — Tier 1 | ✅ Done 20 Mar. pipeline-ai-summary v1.1.0 (insert fix). Hourly. |
+| AI Diagnostic Agent — Tier 1 | ✅ Done 20 Mar. pipeline-ai-summary v1.1.0 |
 | Signal clustering | ✅ Done 20 Mar |
+| YouTube Stage A + B | ✅ Done 20 Mar. Voice formats ready to activate. |
 | Compliance-aware NDIS system prompt | ⬜ **NEXT — 3 days** |
+| Client tab redesign (items 3–7) | ⬜ Discussed 21 Mar. Build after compliance prompt. |
 | LinkedIn publisher live | 🔴 Waiting on API |
-| Prospect demo generator | ⬜ Planned — 2 days |
-| Client health weekly report (email) | ⬜ Planned — 2 days |
-| YouTube Shorts pipeline | ⬜ Phase 3 — Creatomate + ElevenLabs |
-| Personal YouTube channel as ICE client | ⬜ Phase 3 — PK's personal brand |
+| AI Diagnostic Tier 2 | ⬜ ~1 Apr 2026 |
+| Prospect demo generator | ⬜ Planned |
+| Client health weekly report (email) | ⬜ Planned |
 | Instagram publisher | ⬜ After Meta App Review |
-| First external client (optional) | ⬜ When engine proven on personal businesses |
+| Invegent brand pages (FB/IG/LI/YT) | ⬜ Phase 3 — Invegent as its own ICE client |
+| Website onboarding flow (D046/D047) | ⬜ Phase 3 — invegent.com/onboard, two-path |
+| Website chatbot (D048) | ⬜ Phase 3 |
+| Pre-recorded onboarding video | ⬜ Phase 3 — script → Creatomate + ElevenLabs |
 
 ### Phase 4 — Scale ⬜ PLANNED
 See `04_phases.md` for full deliverable list.
@@ -160,9 +164,20 @@ See `04_phases.md` for full deliverable list.
 ## Pending Manual Actions (PK to do)
 
 - [ ] Complete Meta App Review data handling + reviewer instructions section
+- [ ] Restore `max_per_day` to normal value (10-15) after testing is complete
 - [ ] Google Workspace Admin → feeds@invegent.com → Add aliases: `ndis-yarns@invegent.com`, `property-pulse@invegent.com`
 - [ ] Gmail (as feeds@invegent.com) → Create filters for submit/* labels
-- [ ] Restore `max_per_day` to normal value (10-15) after testing is complete
+- [ ] Activate video formats: `UPDATE c.client_format_config SET is_enabled=true WHERE ice_format_key IN ('video_short_kinetic_voice','video_short_stat_voice')` — SQL ready, PK to run
+- [ ] Add real YouTube channel IDs to c.client_channel + OAuth refresh tokens
+- [ ] Check c.client_format_config for NDIS Yarns — image formats may be is_enabled=false (explains last 5 posts being text-only)
+
+---
+
+## Content Studio — Known Behaviour (post 21 Mar fix)
+
+- YouTube is excluded from platform checkboxes — YouTube Shorts go through video-worker, not content_type_prompt
+- Platform checkboxes are now respected by the API — unchecking Facebook stops generation for Facebook
+- Format dropdown shows text/image/animated options only (video formats removed from studio)
 
 ---
 
@@ -177,6 +192,23 @@ not post-generation checking. Test against 20 recent drafts. Document in `06_dec
 Why next: Core differentiator for NDIS client sales. Should be live before any
 paying client conversation.
 
+**After that:** Client tab redesign (items 3–7 from 21 Mar) — client picker, routing fix,
+overview hub, schedule tab combining config + predictive queue view.
+
+---
+
+## Client Tab Redesign — Decisions from 21 Mar Discussion (no build yet)
+
+Items discussed, approved for future build:
+- **Item 3:** Connect and Feeds lose top menu — routing bug, needs embedding as tabs within /clients layout
+- **Item 4:** Client picker at top drives all tabs — shared context provider or URL param
+- **Item 5:** Overview as hub — summary cards linking to other tabs (feed count → feeds, token status → connect)
+- **Item 6:** Schedule tab — shows config (max per day, posting windows) + predictive queue (next 48–72h)
+- **Item 7:** Predictive queue — 48–72h lookahead from post_publish_queue + approved drafts + needs_review drafts
+  split into: confirmed (in queue with scheduled_for) / likely (approved not yet queued) / possible (pending auto-approve)
+
+Build order when ready: item 4 → item 3 → item 5 → items 6+7 combined. One session.
+
 ---
 
 ## Active Pipeline Details
@@ -190,7 +222,9 @@ paying client conversation.
 | publisher (Facebook) | v1.4.0 | Every 5m | ✅ Active. Image hold gate |
 | linkedin-publisher | v1.1 | Every 15m | 🔴 Built, blocked on API |
 | auto-approver | v1.4.0 | Every 10m | ✅ Active. 9-phrase blocklist |
-| image-worker | **v3.3.0** | Every 15m | ✅ Active. **Creatomate API. Root fill_color for bg.** |
+| image-worker | v3.3.0 | Every 15m | ✅ Active. Creatomate API. Root fill_color for bg. |
+| video-worker | v2.0.0 | Every 30m | ✅ Built. Formats gated off pending channel IDs. |
+| youtube-publisher | v1.0.0 | :15 and :45 each hour | ✅ Built. Uploads unlisted. Gated off. |
 | insights-worker | — | Daily 3am UTC | ✅ Active |
 | feed-intelligence | v7 | Sundays 2am UTC | ✅ Active |
 | email-ingest | v2 | Every 2h | ✅ Active |
@@ -198,16 +232,9 @@ paying client conversation.
 | dead letter sweep | — | Daily 2am UTC | ✅ Active |
 | pipeline-doctor | v1.0.0 | :15 and :45 each hour | ✅ Active |
 | pipeline-health-snapshot | — | :00 and :30 each hour | ✅ Active |
-| pipeline-ai-summary | **v1.1.0** | :55 each hour | ✅ Active. **Insert bug fixed.** |
+| pipeline-ai-summary | v1.1.0 | :55 each hour | ✅ Active. Insert bug fixed. |
 
 **Feed sources:** 26 active (rss_app + email_newsletter). NDIS.gov.au rejected.
-
-**Creatomate RenderScript key lesson (D040):**
-- Background colour → root-level `fill_color` on the composition object
-- Shape element `fill_color` does NOT render in static PNG output
-- Text `fill_color` on text elements works correctly
-- Logo → direct Supabase Storage public URL (data URIs rejected by Creatomate)
-- Font: Montserrat (hosted by Creatomate, no upload needed)
 
 ---
 
@@ -243,6 +270,7 @@ All at `dashboard.invegent.com`.
 - **Timezone:** UTC storage always. Display in `c.client.timezone`. Never browser local time.
 - **Signal dedup:** canonical_id dedup at selection + story_cluster_id dedup at bundling. Both layers needed.
 - **exec_sql string interpolation:** NEVER use for text fields containing user content. Use SECURITY DEFINER + typed params.
+- **Content Studio platforms:** YouTube excluded from picker — goes through video-worker not content_type_prompt.
 
 ---
 
@@ -258,8 +286,16 @@ AI writes the content AND runs, monitors, fixes, and improves the system.
 4. Personal YouTube / creative brand — Phase 3
 5. External NDIS clients — when engine proven on above
 
+**Client acquisition architecture (D046–D050):**
+- Platform forms (FB/IG/LI/Invegent pages) → capture leads → redirect to invegent.com/onboard
+- Website handles all onboarding: two-path (ready-now form vs needs-call calendar booking)
+- Onboarding form: Option A + Hybrid — captures brand voice + platform preferences, PK does technical config
+- AI acquisition: chatbot on website first (Phase 3), voice assistant future (Phase 4)
+- Invegent gets its own brand pages (runs on ICE) — NDIS Yarns + Property Pulse stay pure sector pages
+- Package design: standard tiers + custom option; source allocation (feeds per client) is the ICE differentiator
+
 **Confidence gate:** compliance prompt → first client conversation when ready.
-**Client conversation trigger:** when engine is demonstrably running well on PK's own businesses. No rush.
+**Client conversation trigger:** when engine is demonstrably running well on PK's own businesses.
 **Key advantage:** CPA + NDIS Plan Manager + OT practice administrator. Insider credibility no agency can replicate.
 
 ---
