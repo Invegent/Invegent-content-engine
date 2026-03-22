@@ -265,6 +265,47 @@ Identified and documented during weekly reconciliation 22 March 2026.
 
 ---
 
+## D052 — 00_sync_state.md: Machine-Written Live State File for Session Handoff
+**Date:** 22 March 2026 | **Status:** ✅ Deployed
+
+**Decision:**
+Introduce `docs/00_sync_state.md` as a machine-written, automatically overwritten
+file that captures the true live deployed state of ICE at any point in time.
+Claude's custom instructions now require reading this file before any technical
+work begins. If this file contradicts memory or `04_phases.md`, this file wins.
+
+**Problem solved:**
+Session-to-session context loss was causing ICE work sessions to start from stale
+or incorrect assumptions about deployed state. `04_phases.md` and `06_decisions.md`
+describe intent and history — they do not describe the live deployed state reliably.
+A human-maintained state file is always at risk of falling behind the actual
+deployed system.
+
+**Implementation:**
+- File location: `docs/00_sync_state.md` in `Invegent-content-engine`.
+- Overwritten every 12 hours by the Cowork pulse task (separate from the
+  weekly reconciliation task).
+- Contents: current phase, all 23 Edge Function versions + deploy numbers,
+  pg_cron schedule (22 active jobs), Vercel frontend status, GitHub latest commit
+  SHAs, known active issues, client pipeline status (queue depth + last published),
+  credentials status, and the "what is next" build queue.
+- First written: 2026-03-22 05:30 UTC.
+
+**Session start protocol (enforced via custom instructions):**
+At the start of every session involving ICE technical work, Claude reads
+`docs/00_sync_state.md` via the GitHub MCP `get_file_contents` tool before
+answering any question or writing any code. If the GitHub MCP is unavailable,
+this must be stated explicitly before proceeding.
+
+**Why machine-written beats human-maintained:**
+A human-maintained state file is only as current as the last time a human
+updated it. The Cowork pulse task writes the state directly from Supabase
+and GitHub API data, meaning the file reflects what is actually deployed —
+not what was planned or remembered. The 12-hour cadence ensures the file
+is never more than half a day stale.
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target Date |
