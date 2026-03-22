@@ -2,7 +2,7 @@
 
 > **This file is machine-written. Do not edit manually.**
 > Overwritten every 12 hours by the Cowork pulse task.
-> Last written: 2026-03-22 05:00 UTC (16:00 AEST)
+> Last written: 2026-03-22 07:48 UTC (18:48 AEST)
 > Written by: Claude reconciliation — session 22 Mar 2026
 
 ---
@@ -38,10 +38,10 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2) | 23 active functions
 | pipeline-doctor | v9 | pipeline-doctor-v1.0.0 | 2026-03-19 |
 | series-writer | v12 | series-writer-v1.2.0 | 2026-03-19 |
 | series-outline | v11 | series-outline-v1.2.0 | 2026-03-19 |
+| content_fetch | v61 | content-fetch-v2.5 | stable |
 | auto-approver | v25 | auto-approver-v1.4.0 | stable |
 | insights-worker | v28 | insights-worker-v18 | stable |
 | ingest | v90 | ingest-worker | stable |
-| content_fetch | v61 | content-fetch-v2.5 | stable |
 | linkedin-publisher | v11 | linkedin-publisher-v1.1.0 | stable |
 | email-ingest | v11 | email-ingest-v2 | stable |
 | draft-notifier | v12 | draft-notifier-v1.1 | stable |
@@ -85,8 +85,8 @@ before the format advisor call. Deployed ~21 Mar 2026. See D051.
 | App | URL | Last deploy | Commit | Status |
 |---|---|---|---|---|
 | invegent-dashboard | dashboard.invegent.com | 2026-03-22 | chore: roadmap sync 2026-03-22 | READY |
-| invegent-portal | portal.invegent.com | 2026-03-18 | portal /performance + calendar v2 | READY |
-| invegent-web | invegent.com | 2026-03-18 | public proof dashboard | READY |
+| invegent-portal | portal.invegent.com | 2026-03-19 | fix: portal calendar shows client timezone label | READY |
+| invegent-web | invegent.com | 2026-03-18 | feat: add audience and engagement metrics to Facebook proof page | READY |
 
 Team: `pk-2528s-projects` | `team_kYqCrehXYxW02AycsKVzwNrE`
 Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu5wGbiSJr1SA3CmjVlAa`, web=`prj_tXhG43iaqHBtVZpvU3osyG7dLLDZ`
@@ -97,10 +97,8 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 
 | Repo | SHA | Date | Message |
 |---|---|---|---|
-| Invegent-content-engine | d1887f5 | 2026-03-22 | chore: weekly reconciliation 2026-03-22 — D051 |
+| Invegent-content-engine | 2255fca | 2026-03-22 | feat: add docs/00_sync_state.md — machine-written live state file |
 | invegent-dashboard | ec58325 | 2026-03-22 | chore: roadmap sync 2026-03-22 |
-| invegent-portal | ~2026-03-18 | 2026-03-18 | portal /performance + calendar v2 |
-| invegent-web | ~2026-03-18 | 2026-03-18 | public proof dashboard |
 
 ---
 
@@ -122,8 +120,8 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 - Action: clear 24 zombie approved drafts to unblock image-format generation
 
 **Property Pulse** (`4036a6b5-b4a3-406e-998d-c2fe14a8bbdd`)
-- Last published: 2026-03-21 05:00 UTC
-- Queued: 7 posts for 2026-03-23
+- Last published: 2026-03-22 05:00 UTC
+- Queued: 10 posts
 - Status: HEALTHY — no action needed
 
 ---
