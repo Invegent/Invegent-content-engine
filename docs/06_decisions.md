@@ -225,6 +225,46 @@ The Invegent pages are the acquisition channel. The client pages remain pure.
 
 ---
 
+## D051 — ai-worker v2.6.1: Format Advisor Seed Extraction Fix
+**Date:** 22 March 2026 | **Status:** ✅ Deployed
+
+**Decision:**
+Fix the format advisor's seed extraction so it reads from the correct nested
+location within each job type's payload, enabling non-text visual formats to
+be selected for new drafts.
+
+**Root cause:**
+`seedTitle` and `seedBody` were read from the top level of `input_payload`
+(`payload.title`, `payload.body`). Both pipeline job types nest content one level deeper:
+- `rewrite_v1`: `input_payload.digest_item.{title, body_text}`
+- `synth_bundle_v1`: `input_payload.items[0].title` + concatenated `items[].body_text`
+
+The format advisor received empty strings, saw no content signals, and always
+responded: *"No content has been provided in the seed — a plain text post is the
+only appropriate default when there is nothing to build from."*
+`image_headline` was still being written correctly (the full payload was passed
+to `assemblePrompts`), creating a confusing state: `image_headline` populated
+but `format_decided = 'text'` and no image generated.
+
+**Fix (ai-worker v2.6.1):**
+Added job-type-aware extraction before the format advisor call:
+1. Attempt top-level `title`/`body` extraction first (legacy/unknown job types)
+2. If both empty AND `job_type = 'rewrite_v1'` → read from `digest_item`
+3. If both empty AND `job_type = 'synth_bundle_v1'` → read from `items[]`
+
+The `seed` variable passed to `assemblePrompts` remains the full `rawPayload`
+(unchanged) — only the format advisor extraction was affected.
+
+**Side effect discovered during diagnosis:**
+24 backlogged NDIS approved drafts (all text-only, pre-visual-pipeline, from
+February 2026) were occupying the approved state and preventing the bundler
+from generating fresh drafts. These were cleared separately.
+
+**Deployed:** ~21 March 2026 (via direct Supabase deploy).
+Identified and documented during weekly reconciliation 22 March 2026.
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target Date |
