@@ -2,7 +2,7 @@
 
 > **This file is machine-written. Do not edit manually.**
 > Overwritten every 12 hours by the Cowork pulse task.
-> Last written: 2026-03-30 11:00 UTC (22:00 AEST)
+> Last written: 2026-03-30 13:00 UTC (midnight AEST)
 > Written by: Claude Desktop — session 30 Mar 2026
 
 ---
@@ -29,34 +29,34 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2) — 23 active functions
 
 | Function | Deploy# | App version | Last changed |
 |---|---|---|---|
-| ai-worker | v64 | ai-worker-v2.6.1 | 2026-03-22 |
-| publisher | v54 | publisher-v1.3.x | 2026-03-21 |
-| video-worker | v9 | video-worker-v2.0.0 | 2026-03-21 |
-| youtube-publisher | v6 | youtube-publisher-v1.0.0 | 2026-03-21 |
-| image-worker | v30 | image-worker-v3.3.0 | 2026-03-20 |
-| compliance-monitor | v10 | compliance-monitor-v1.2.0 | 2026-03-20 |
-| pipeline-ai-summary | v10 | pipeline-ai-summary | 2026-03-20 |
-| pipeline-doctor | v9 | pipeline-doctor-v1.0.0 | 2026-03-19 |
-| series-writer | v12 | series-writer-v1.2.0 | 2026-03-19 |
-| series-outline | v11 | series-outline-v1.2.0 | 2026-03-19 |
-| auto-approver | v25 | auto-approver-v1.4.0 | stable |
-| insights-worker | v28 | insights-worker-v18 | stable |
-| ingest | v90 | ingest-worker | stable |
-| content_fetch | v61 | content-fetch-v2.5 | stable |
-| linkedin-publisher | v11 | linkedin-publisher-v1.1.0 | stable |
-| email-ingest | v11 | email-ingest-v2 | stable |
-| draft-notifier | v12 | draft-notifier-v1.1 | stable |
-| feed-intelligence | v16 | feed-intelligence-v7 | stable |
-| inspector | v78 | — | util |
-| inspector_sql_ro | v33 | — | util |
-| wasm-bootstrap | v9 | — | util |
-| tts-test | v7 | — | util |
-| youtube-token-test | v1 | — | util |
+| ai-worker | v65 | ai-worker-v2.6.1 | 2026-03-30 |
+| publisher | v55 | publisher-v1.3.x | 2026-03-30 |
+| video-worker | v10 | video-worker-v2.0.0 | 2026-03-30 |
+| youtube-publisher | v7 | youtube-publisher-v1.0.0 | 2026-03-30 |
+| image-worker | v31 | image-worker-v3.3.0 | 2026-03-30 |
+| compliance-monitor | v11 | compliance-monitor-v1.2.0 | 2026-03-30 |
+| pipeline-ai-summary | v11 | pipeline-ai-summary | 2026-03-30 |
+| pipeline-doctor | v10 | pipeline-doctor-v1.0.0 | 2026-03-30 |
+| series-writer | v13 | series-writer-v1.2.0 | 2026-03-30 |
+| series-outline | v12 | series-outline-v1.2.0 | 2026-03-30 |
+| auto-approver | v26 | auto-approver-v1.4.0 | 2026-03-30 |
+| insights-worker | v29 | insights-worker-v18 | 2026-03-30 |
+| ingest | v91 | ingest-worker | 2026-03-30 |
+| content_fetch | v62 | content-fetch-v2.5 | 2026-03-30 |
+| linkedin-publisher | v12 | linkedin-publisher-v1.1.0 | stable |
+| email-ingest | v12 | email-ingest-v2 | 2026-03-30 |
+| draft-notifier | v13 | draft-notifier-v1.1 | 2026-03-30 |
+| feed-intelligence | v17 | feed-intelligence-v7 | 2026-03-30 |
+| inspector | v79 | — | util |
+| inspector_sql_ro | v34 | — | util |
+| wasm-bootstrap | v10 | — | util |
+| tts-test | v8 | — | util |
+| youtube-token-test | v2 | — | util |
 
-**Key recent changes:**
-- `ai-worker v2.6.1` — format advisor seed extraction fix (22 Mar 2026, D051).
-- `video-worker v2.0.0` — ElevenLabs TTS voice added (21 Mar 2026, D045).
-- `youtube-publisher v1.0.0` — OAuth 2.0 YouTube upload, unlisted by default (21 Mar 2026, D045).
+**Key recent changes (30 Mar 2026 — Claude Code session):**
+- 16 functions bumped by Claude Code session. Exact nature of changes TBC — action plan work in progress.
+- `pipeline-ai-summary` — 500 error fix attempted (status: verify)
+- `publisher`, `image-worker`, `ai-worker` — visual format publishing fix attempted (status: verify)
 
 ---
 
@@ -86,7 +86,7 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2) — 23 active functions
 
 | App | URL | Last deploy | Status |
 |---|---|---|---|
-| invegent-dashboard | dashboard.invegent.com | 2026-03-22 | READY |
+| invegent-dashboard | dashboard.invegent.com | 2026-03-23 | READY |
 | invegent-portal | portal.invegent.com | 2026-03-18 | READY |
 | invegent-web | invegent.com | 2026-03-18 | READY |
 
@@ -99,8 +99,8 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 
 | Repo | SHA | Date | Message |
 |---|---|---|---|
-| Invegent-content-engine | 30 Mar 2026 | 2026-03-30 | chore: sync state update 2026-03-30 |
-| invegent-dashboard | ec58325 | 2026-03-22 | chore: roadmap sync 2026-03-22 |
+| Invegent-content-engine | — | 2026-03-30 | chore: sync state 30 Mar 2026 — post Claude Code session |
+| invegent-dashboard | fc9a778 | 2026-03-23 | chore: roadmap sync 2026-03-23 |
 | invegent-portal | ~2026-03-18 | 2026-03-18 | portal /performance + calendar v2 |
 | invegent-web | ~2026-03-18 | 2026-03-18 | public proof dashboard |
 
@@ -110,10 +110,10 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 
 | Issue | Status | Action needed |
 |---|---|---|
-| NDIS draft queue empty | ⚠️ NEEDS ACTION | 24 zombie approved drafts from Feb 2026 blocking fresh generation. SQL ready to run on PK confirmation. |
-| pipeline-ai-summary | 🔴 500 errors | Unresolved — needs investigation |
-| Visual format publishing | 🔴 Both clients text-only | Format advisor thresholds + image-worker gate + publisher hold logic all need fixes |
-| Cowork scheduled task UUID | ⚠️ STALE | Still pointing at old Max plan project UUID — sync state not auto-updated since 22 Mar |
+| pipeline-ai-summary | 🟡 Fix attempted 30 Mar | Verify 500 errors resolved — check next :55 run |
+| Visual format publishing | 🟡 Fix attempted 30 Mar | Verify both clients generating non-text formats |
+| Property Pulse 61 approved drafts | ⚠️ NOT QUEUING | 61 approved drafts stuck — enqueue logic or publish_mode issue. Check c.client_publish_profile |
+| Cowork scheduled task UUID | ⚠️ STALE | Still pointing at old Max plan project UUID — sync state not auto-updated. Fix needed. |
 | LinkedIn publisher | 🔵 External blocker | Community Management API review in progress |
 | Meta App Review | 🔵 External blocker | Business verification In Review. Data handling section still to complete. Calendar: 1 Apr |
 
@@ -122,11 +122,22 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 ## CLIENT PIPELINE STATUS
 
 **NDIS Yarns** (`fb98a472-ae4d-432d-8738-2273231c1ef4`)
-- Queue: 0 posts — BLOCKED by zombie backlog
-- Action: confirm and run zombie draft SQL to unblock
+- Zombie drafts: ✅ CLEARED (24 dead, 0 approved blocking queue)
+- Queue: 0 posts — pipeline should now generate fresh drafts
+- 1 draft in needs_review as of 30 Mar 07:05 UTC
 
 **Property Pulse** (`4036a6b5-b4a3-406e-998d-c2fe14a8bbdd`)
-- Status: HEALTHY (7 posts queued as of 22 Mar — verify current state)
+- 61 approved drafts, 0 in publish queue — INVESTIGATE
+- Check: `c.client_publish_profile` publish_mode, enqueue-publish-queue logic
+
+---
+
+## CLAUDE DESKTOP MCP CONFIG
+
+Updated 30 Mar 2026 (D053). Both npx -y @latest calls replaced with global npm installs:
+- Supabase: `C:\Users\parve\AppData\Roaming\npm\mcp-server-supabase.cmd`
+- Xero: `C:\Users\parve\AppData\Roaming\npm\xero-mcp-server.cmd`
+- GitHub: `C:\Users\parve\github-mcp-server\github-mcp-server.exe` (unchanged)
 
 ---
 
@@ -134,7 +145,7 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 
 | Credential | Status |
 |---|---|
-| Anthropic API | Active — primary AI provider |
+| Anthropic API | Active — primary AI provider. No fallback in last 24h. |
 | OpenAI API | Active — fallback only |
 | Facebook page tokens | Active — both clients |
 | LinkedIn org tokens | Stored — publisher code ready, API approval pending |
@@ -143,16 +154,20 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 | Creatomate Essential | Active — $54/mo |
 | Resend | Active — magic link + draft notifier |
 | Gmail OAuth (email-ingest) | Active — feeds@invegent.com |
+| Supabase access token | ⚠️ ROTATE — was exposed in Claude Code session 30 Mar |
+| GitHub PAT | ⚠️ ROTATE — was exposed in Claude Code session 30 Mar |
+| Xero client secret | ⚠️ ROTATE — was exposed in Claude Code session 30 Mar |
 
 ---
 
 ## WHAT IS NEXT
 
-**Priority order (from ICE_Action_Plan_29Mar2026):**
-1. Fix pipeline-ai-summary 500 errors
-2. Fix visual format publishing (format advisor + image-worker gate + publisher hold)
-3. Fix Cowork scheduled task UUID — resume auto sync state writes
-4. Clear NDIS zombie drafts — confirm with PK then run SQL
+**Priority order (ICE action plan 30 Mar):**
+1. Verify pipeline-ai-summary 500 fix — check next :55 run logs
+2. Verify visual format publishing — check next draft generation cycle
+3. Investigate PP 61 approved drafts not queuing
+4. Fix Cowork scheduled task UUID — resume auto sync state writes
+5. Rotate exposed credentials (Supabase token, GitHub PAT, Xero secret)
 
 **Phase 3 build queue:**
 1. AI Diagnostic Agent Tier 2 (~1 Apr)
@@ -160,4 +175,4 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 3. Prospect demo generator (2 days)
 4. Client health weekly report email (2 days)
 
-Decisions D044–D051 in `docs/06_decisions.md`. Last decision: D051 (22 Mar 2026).
+Decisions D044–D053 in `docs/06_decisions.md`. Last decision: D053 (30 Mar 2026).

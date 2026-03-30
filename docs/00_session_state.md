@@ -3,8 +3,8 @@
 It overrides Claude memory when there is a conflict.
 Updated at the end of every session. Read at the start of every session before doing anything else.
 
-Last updated: 21 March 2026
-Last session summary: Content studio bugs fixed (Facebook unchecked still generating, YouTube error). D046–D050 committed — onboarding architecture, two-path flow, chatbot vs voice, package source allocation concept, Invegent pages as acquisition channel (not NDIS Yarns/Property Pulse). GitHub Vercel permissions approved. Client tab redesign discussed (items 3–7) — no build yet. Compliance-aware NDIS system prompt remains next build.
+Last updated: 30 March 2026
+Last session summary: Python 3.12 installed. Claude Desktop MCP timeout fixed — Supabase and Xero MCP servers switched from `npx -y @latest` to globally installed npm packages (D053). NDIS zombie drafts confirmed cleared (24 dead via Claude Code, 0 approved remaining). PP has 61 approved drafts not queuing — needs investigation. Action plan work in progress: pipeline-ai-summary 500 fix and visual format fix both attempted by Claude Code, verification pending. 16 Edge Functions bumped. Credentials exposed in Claude Code session — Supabase token, GitHub PAT, Xero secret should be rotated.
 
 ---
 
@@ -86,12 +86,26 @@ Two internal test clients (personal businesses, not paying):
 
 ---
 
+## Claude Desktop MCP Config (updated 30 Mar 2026 — D053)
+
+Config: `C:/Users/parve/AppData/Roaming/Claude/claude_desktop_config.json`
+
+| Server | Command | Notes |
+|---|---|---|
+| supabase | `C:\Users\parve\AppData\Roaming\npm\mcp-server-supabase.cmd` | Global install. Was npx @latest (caused timeouts). |
+| github | `C:\Users\parve\github-mcp-server\github-mcp-server.exe` | Unchanged. |
+| xero-care-for-welfare | `C:\Users\parve\AppData\Roaming\npm\xero-mcp-server.cmd` | Global install. Was npx @latest (caused timeouts). |
+
+⚠️ **Credentials to rotate:** Supabase access token, GitHub PAT, and Xero client secret were exposed in a Claude Code session on 30 Mar 2026.
+
+---
+
 ## Platform Publishing Status
 
 | Platform | Status | Notes |
 |---|---|---|
 | Facebook | ✅ Validated | Publishing live. Visual pipeline active with Creatomate images. |
-| LinkedIn | 🔴 Blocked | Publisher built + pg_cron live. Community Management API review in progress. Calendar: Wed 25 Mar |
+| LinkedIn | 🔴 Blocked | Publisher built + pg_cron live. Community Management API review in progress. |
 | Instagram | ⬜ Not built | After Meta App Review approved. 0.5 days effort. |
 | YouTube | 🟡 Phase 3 | Stage A + B built. Voice formats ready to activate. |
 | Email (Resend) | ✅ Configured | SMTP + magic link + notifications live |
@@ -118,16 +132,17 @@ Two internal test clients (personal businesses, not paying):
 All deliverables done. Meta App Review in progress (ongoing, not a Phase 1 blocker).
 
 ### Phase 2 — Automate 🟡 MOSTLY COMPLETE
+
 | Deliverable | Status |
 |---|---|
 | Facebook Insights back-feed (2.1) | ✅ Done |
 | Feed Intelligence agent (2.2) | ✅ Done |
-| LinkedIn publisher (2.3) | 🔴 Blocked — Community API pending. Calendar: Wed 25 Mar |
+| LinkedIn publisher (2.3) | 🔴 Blocked — Community API pending |
 | Campaigns / Content Series (2.4) | ✅ Done |
 | Next.js dashboard (2.5) | ✅ Done. Retool cancelled |
 | Public proof dashboard (2.6) | ✅ Done |
 | Visual pipeline — image-worker (2.7) | ✅ v3.3.0 Creatomate. 1080×1080 PNG. |
-| Content Studio (2.8) | ✅ Done. Bugs fixed 21 Mar (platform filter + YouTube exclusion). |
+| Content Studio (2.8) | ✅ Done. Platform filter + YouTube exclusion fixed 21 Mar. |
 | Pipeline Doctor (2.9) | ✅ v1.0.0 deployed 19 Mar. 7 checks. Auto-fixes. |
 | Pipeline Health Monitoring (2.10) | ✅ Snapshots + doctor log + AI summary + dashboard live. |
 | Signal clustering (2.11) | ✅ cluster_digest_items_v1 + bundle_client_v4 deployed 20 Mar |
@@ -137,24 +152,29 @@ All deliverables done. Meta App Review in progress (ongoing, not a Phase 1 block
 **Phase 2 blocked only by LinkedIn API approval.**
 
 ### Phase 3 — Expand + Personal Brand 🟡 IN PROGRESS
+
 | Deliverable | Status |
 |---|---|
 | Portal /performance + /calendar v2 + /feeds | ✅ Done |
 | Dashboard feed suggestions panel | ✅ Done |
-| AI Diagnostic Agent — Tier 1 | ✅ Done 20 Mar. pipeline-ai-summary v1.1.0 |
+| AI Diagnostic Agent — Tier 1 | ✅ Done 20 Mar. pipeline-ai-summary. |
 | Signal clustering | ✅ Done 20 Mar |
 | YouTube Stage A + B | ✅ Done 20 Mar. Voice formats ready to activate. |
-| Compliance-aware NDIS system prompt | ⬜ **NEXT — 3 days** |
-| Client tab redesign (items 3–7) | ⬜ Discussed 21 Mar. Build after compliance prompt. |
+| Dashboard nav restructure | ✅ Done 21 Mar — 5 nav items, section tabs, Inbox/Monitor |
+| Content Studio platform filter + YouTube exclusion | ✅ Done 21 Mar |
+| Timezone handling across dashboard | ✅ Done — UTC storage, display in client.timezone |
+| pipeline-ai-summary 500 fix | 🟡 Attempted 30 Mar — verify |
+| Visual format publishing fix | 🟡 Attempted 30 Mar — verify |
+| Compliance-aware NDIS system prompt | ⬜ Next major build (~3 days) |
 | LinkedIn publisher live | 🔴 Waiting on API |
 | AI Diagnostic Tier 2 | ⬜ ~1 Apr 2026 |
 | Prospect demo generator | ⬜ Planned |
 | Client health weekly report (email) | ⬜ Planned |
 | Instagram publisher | ⬜ After Meta App Review |
-| Invegent brand pages (FB/IG/LI/YT) | ⬜ Phase 3 — Invegent as its own ICE client |
-| Website onboarding flow (D046/D047) | ⬜ Phase 3 — invegent.com/onboard, two-path |
+| Invegent brand pages (FB/IG/LI/YT) | ⬜ Phase 3 |
+| Website onboarding flow (D046/D047) | ⬜ Phase 3 |
 | Website chatbot (D048) | ⬜ Phase 3 |
-| Pre-recorded onboarding video | ⬜ Phase 3 — script → Creatomate + ElevenLabs |
+| Pre-recorded onboarding video | ⬜ Phase 3 |
 
 ### Phase 4 — Scale ⬜ PLANNED
 See `04_phases.md` for full deliverable list.
@@ -163,51 +183,13 @@ See `04_phases.md` for full deliverable list.
 
 ## Pending Manual Actions (PK to do)
 
-- [ ] Complete Meta App Review data handling + reviewer instructions section
-- [ ] Restore `max_per_day` to normal value (10-15) after testing is complete
-- [ ] Google Workspace Admin → feeds@invegent.com → Add aliases: `ndis-yarns@invegent.com`, `property-pulse@invegent.com`
-- [ ] Gmail (as feeds@invegent.com) → Create filters for submit/* labels
-- [ ] Activate video formats: `UPDATE c.client_format_config SET is_enabled=true WHERE ice_format_key IN ('video_short_kinetic_voice','video_short_stat_voice')` — SQL ready, PK to run
+- [ ] **ROTATE CREDENTIALS** — Supabase access token, GitHub PAT, Xero client secret exposed in Claude Code session 30 Mar
+- [ ] Complete Meta App Review data handling + reviewer instructions section (calendar: 1 Apr)
+- [ ] Activate video formats: `UPDATE c.client_format_config SET is_enabled=true WHERE ice_format_key IN ('video_short_kinetic_voice','video_short_stat_voice')` — SQL ready
 - [ ] Add real YouTube channel IDs to c.client_channel + OAuth refresh tokens
-- [ ] Check c.client_format_config for NDIS Yarns — image formats may be is_enabled=false (explains last 5 posts being text-only)
-
----
-
-## Content Studio — Known Behaviour (post 21 Mar fix)
-
-- YouTube is excluded from platform checkboxes — YouTube Shorts go through video-worker, not content_type_prompt
-- Platform checkboxes are now respected by the API — unchecking Facebook stops generation for Facebook
-- Format dropdown shows text/image/animated options only (video formats removed from studio)
-
----
-
-## Next Scheduled Build
-
-**Compliance-aware NDIS system prompt** (~3 days)
-
-Research NDIS Code of Conduct + Practice Standards constraints. Rewrite NDIS Yarns
-`c.client_ai_profile` system prompt to embed compliance awareness at generation time,
-not post-generation checking. Test against 20 recent drafts. Document in `06_decisions.md`.
-
-Why next: Core differentiator for NDIS client sales. Should be live before any
-paying client conversation.
-
-**After that:** Client tab redesign (items 3–7 from 21 Mar) — client picker, routing fix,
-overview hub, schedule tab combining config + predictive queue view.
-
----
-
-## Client Tab Redesign — Decisions from 21 Mar Discussion (no build yet)
-
-Items discussed, approved for future build:
-- **Item 3:** Connect and Feeds lose top menu — routing bug, needs embedding as tabs within /clients layout
-- **Item 4:** Client picker at top drives all tabs — shared context provider or URL param
-- **Item 5:** Overview as hub — summary cards linking to other tabs (feed count → feeds, token status → connect)
-- **Item 6:** Schedule tab — shows config (max per day, posting windows) + predictive queue (next 48–72h)
-- **Item 7:** Predictive queue — 48–72h lookahead from post_publish_queue + approved drafts + needs_review drafts
-  split into: confirmed (in queue with scheduled_for) / likely (approved not yet queued) / possible (pending auto-approve)
-
-Build order when ready: item 4 → item 3 → item 5 → items 6+7 combined. One session.
+- [ ] Investigate PP 61 approved drafts not entering publish queue — check c.client_publish_profile publish_mode
+- [ ] Fix Cowork scheduled task UUID (pointing at old Max plan project)
+- [ ] Google Workspace Admin → feeds@invegent.com → Add aliases: `ndis-yarns@invegent.com`, `property-pulse@invegent.com`
 
 ---
 
@@ -215,26 +197,48 @@ Build order when ready: item 4 → item 3 → item 5 → items 6+7 combined. One
 
 | Worker | Version | Schedule | Status |
 |---|---|---|---|
-| ingest-worker | — | Every 6h | ✅ Active |
-| content-fetch | v2.5 | Every 10m | ✅ Active. TRUSTED_FREE_DOMAINS bypass. |
-| ai-worker | v2.3.0 | Every 5m | ✅ Active. Claude primary, OpenAI fallback |
-| bundler / scorer | v2/v4 | Hourly | ✅ Active. cluster_digest_items_v1 + bundle_client_v4 |
-| publisher (Facebook) | v1.4.0 | Every 5m | ✅ Active. Image hold gate |
-| linkedin-publisher | v1.1 | Every 15m | 🔴 Built, blocked on API |
-| auto-approver | v1.4.0 | Every 10m | ✅ Active. 9-phrase blocklist |
-| image-worker | v3.3.0 | Every 15m | ✅ Active. Creatomate API. Root fill_color for bg. |
-| video-worker | v2.0.0 | Every 30m | ✅ Built. Formats gated off pending channel IDs. |
-| youtube-publisher | v1.0.0 | :15 and :45 each hour | ✅ Built. Uploads unlisted. Gated off. |
-| insights-worker | — | Daily 3am UTC | ✅ Active |
-| feed-intelligence | v7 | Sundays 2am UTC | ✅ Active |
-| email-ingest | v2 | Every 2h | ✅ Active |
-| draft-notifier | v1.1 | Every 30m | ✅ Active |
+| ingest-worker | v91 | Every 6h | ✅ Active |
+| content-fetch | v62 | Every 10m | ✅ Active |
+| ai-worker | v65 | Every 5m | ✅ Active. Claude primary, no fallback in last 24h |
+| bundler / scorer | — | Hourly | ✅ Active |
+| publisher (Facebook) | v55 | Every 5m | ✅ Active |
+| linkedin-publisher | v12 | Every 15m | 🔴 Built, blocked on API |
+| auto-approver | v26 | Every 10m | ✅ Active |
+| image-worker | v31 | Every 15m | ✅ Active |
+| video-worker | v10 | Every 30m | ✅ Built. Formats gated off pending channel IDs. |
+| youtube-publisher | v7 | :15 and :45 | ✅ Built. Uploads unlisted. Gated off. |
+| insights-worker | v29 | Daily 3am UTC | ✅ Active |
+| feed-intelligence | v17 | Sundays 2am UTC | ✅ Active |
+| email-ingest | v12 | Every 2h | ✅ Active |
+| draft-notifier | v13 | Every 30m | ✅ Active |
 | dead letter sweep | — | Daily 2am UTC | ✅ Active |
-| pipeline-doctor | v1.0.0 | :15 and :45 each hour | ✅ Active |
-| pipeline-health-snapshot | — | :00 and :30 each hour | ✅ Active |
-| pipeline-ai-summary | v1.1.0 | :55 each hour | ✅ Active. Insert bug fixed. |
+| pipeline-doctor | v10 | :15 and :45 | ✅ Active |
+| pipeline-health-snapshot | — | :00 and :30 | ✅ Active |
+| pipeline-ai-summary | v11 | :55 each hour | 🟡 500 fix attempted 30 Mar — verify |
+| series-writer | v13 | On demand | ✅ Active |
+| series-outline | v12 | On demand | ✅ Active |
+| compliance-monitor | v11 | 1st of month | ✅ Active |
 
-**Feed sources:** 26 active (rss_app + email_newsletter). NDIS.gov.au rejected.
+---
+
+## Key Schema Patterns
+
+- **m/c schema writes:** SECURITY DEFINER functions + `.rpc()`. Never direct PostgREST.
+- **Portal data fetch:** server API route → `getPortalSession()` → `createServiceClient()` → SQL fn with `p_client_id`.
+- **post_draft → client join:** `post_draft → digest_item (digest_item_id) → digest_run (digest_run_id) → client (client_id)`. No direct client_id on post_draft.
+- **Schemas not exposed via PostgREST:** `c` and `f`. Use `exec_sql` RPC or SECURITY DEFINER functions.
+- **Timezone:** UTC storage always. Display in `c.client.timezone`. Never browser local time.
+- **Signal dedup:** canonical_id dedup at selection + story_cluster_id dedup at bundling. Both layers needed.
+- **digest_item PK:** `digest_item_id` (not `id`). `c.client` PK: `client_id` (not `id`).
+- **Content Studio platforms:** YouTube excluded from picker — goes through video-worker not content_type_prompt.
+
+---
+
+## Content Studio — Known Behaviour
+
+- YouTube excluded from platform checkboxes — YouTube Shorts go through video-worker, not content_type_prompt
+- Platform checkboxes are respected by the API — unchecking Facebook stops generation for Facebook
+- Format dropdown shows text/image/animated options only (video formats removed from studio)
 
 ---
 
@@ -253,24 +257,17 @@ NEVER use `auth_client_id()` with service role key — returns null.
 
 ---
 
-## Dashboard — Tabs Live
+## Dashboard — Structure
 
-Overview, Drafts, Queue, Content Studio, Clients, Feeds (+ suggestions panel),
-Failures, Pipeline Log (AI summary + doctor + health snapshots), Client Profile, Connect, AI Costs, Roadmap.
+5 nav items: **Inbox / Create / Clients / Monitor / Roadmap**
+
+- Inbox: Drafts + Queue + Failures tabs
+- Create: Content Studio (platform filter respected, YouTube excluded)
+- Clients: Overview / Profile / Connect / Feeds tabs
+- Monitor: Pipeline / Visuals / Compliance / AI Costs tabs
+- Roadmap: Phase + deliverable view, progress bars, external blockers
+
 All at `dashboard.invegent.com`.
-
----
-
-## Key Schema Patterns
-
-- **m/c schema writes:** SECURITY DEFINER functions + `.rpc()`. Never direct PostgREST.
-- **Portal data fetch:** server API route → `getPortalSession()` → `createServiceClient()` → SQL fn with `p_client_id`.
-- **post_draft → client join:** via digest chain OR direct `client_id` on post_draft.
-- **Schemas not exposed via PostgREST:** `c` and `f`. Use `exec_sql` RPC or SECURITY DEFINER functions.
-- **Timezone:** UTC storage always. Display in `c.client.timezone`. Never browser local time.
-- **Signal dedup:** canonical_id dedup at selection + story_cluster_id dedup at bundling. Both layers needed.
-- **exec_sql string interpolation:** NEVER use for text fields containing user content. Use SECURITY DEFINER + typed params.
-- **Content Studio platforms:** YouTube excluded from picker — goes through video-worker not content_type_prompt.
 
 ---
 
@@ -287,16 +284,12 @@ AI writes the content AND runs, monitors, fixes, and improves the system.
 5. External NDIS clients — when engine proven on above
 
 **Client acquisition architecture (D046–D050):**
-- Platform forms (FB/IG/LI/Invegent pages) → capture leads → redirect to invegent.com/onboard
+- Platform forms → capture leads → redirect to invegent.com/onboard
 - Website handles all onboarding: two-path (ready-now form vs needs-call calendar booking)
 - Onboarding form: Option A + Hybrid — captures brand voice + platform preferences, PK does technical config
 - AI acquisition: chatbot on website first (Phase 3), voice assistant future (Phase 4)
 - Invegent gets its own brand pages (runs on ICE) — NDIS Yarns + Property Pulse stay pure sector pages
-- Package design: standard tiers + custom option; source allocation (feeds per client) is the ICE differentiator
-
-**Confidence gate:** compliance prompt → first client conversation when ready.
-**Client conversation trigger:** when engine is demonstrably running well on PK's own businesses.
-**Key advantage:** CPA + NDIS Plan Manager + OT practice administrator. Insider credibility no agency can replicate.
+- Package design: standard tiers + custom; source allocation (feeds per client) is the ICE differentiator
 
 ---
 
@@ -305,7 +298,7 @@ AI writes the content AND runs, monitors, fixes, and improves the system.
 **Standard builds:** GitHub MCP + Supabase MCP + Vercel MCP directly in this chat.
 **Complex/iterative:** Windows MCP PowerShell or Claude Code.
 
-**Session start:** Read this file → read relevant skill file if building → check PK corrections → proceed.
-**Session end:** Update this file → update 04_phases.md if phase changed → update 06_decisions.md for new decisions → update dashboard roadmap page → update memory.
+**Session start:** Read `00_sync_state.md` first → read `00_session_state.md` → read relevant skill file if building → proceed.
+**Session end:** Update both state files → update 04_phases.md if phase changed → update 06_decisions.md for new decisions → update dashboard roadmap page → update memory.
 
 **STANDING RULE:** Whenever docs or memory are updated with ICE progress, ALSO update `app/(dashboard)/roadmap/page.tsx` in invegent-dashboard — specifically the PHASES array and lastUpdated date. Docs + memory + dashboard must stay in sync every session.
