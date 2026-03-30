@@ -4,7 +4,7 @@ It overrides Claude memory when there is a conflict.
 Updated at the end of every session. Read at the start of every session before doing anything else.
 
 Last updated: 30 March 2026
-Last session summary: Python 3.12 installed. Claude Desktop MCP timeout fixed — Supabase and Xero MCP servers switched from `npx -y @latest` to globally installed npm packages (D053). NDIS zombie drafts confirmed cleared (24 dead via Claude Code, 0 approved remaining). PP has 61 approved drafts not queuing — needs investigation. Action plan work in progress: pipeline-ai-summary 500 fix and visual format fix both attempted by Claude Code, verification pending. 16 Edge Functions bumped. Credentials exposed in Claude Code session — Supabase token, GitHub PAT, Xero secret should be rotated.
+Last session summary: Python 3.12 installed. Claude Desktop MCP timeout fixed — Supabase and Xero MCP servers switched from `npx -y @latest` to globally installed npm packages (D053). NDIS zombie drafts confirmed cleared (24 dead via Claude Code, 0 approved remaining). PP has 61 approved drafts not queuing — needs investigation. Action plan work in progress: pipeline-ai-summary 500 fix and visual format fix both attempted by Claude Code, verification pending. 16 Edge Functions bumped. Credentials exposed in Claude Code session — Supabase token, GitHub PAT, Xero secret to be rotated 31 Mar.
 
 ---
 
@@ -96,7 +96,7 @@ Config: `C:/Users/parve/AppData/Roaming/Claude/claude_desktop_config.json`
 | github | `C:\Users\parve\github-mcp-server\github-mcp-server.exe` | Unchanged. |
 | xero-care-for-welfare | `C:\Users\parve\AppData\Roaming\npm\xero-mcp-server.cmd` | Global install. Was npx @latest (caused timeouts). |
 
-⚠️ **Credentials to rotate:** Supabase access token, GitHub PAT, and Xero client secret were exposed in a Claude Code session on 30 Mar 2026.
+⚠️ **Credentials to rotate (scheduled 31 Mar):** Supabase access token, GitHub PAT, and Xero client secret were exposed in a Claude Code session on 30 Mar 2026. After rotating, update the values in `claude_desktop_config.json`.
 
 ---
 
@@ -183,7 +183,7 @@ See `04_phases.md` for full deliverable list.
 
 ## Pending Manual Actions (PK to do)
 
-- [ ] **ROTATE CREDENTIALS** — Supabase access token, GitHub PAT, Xero client secret exposed in Claude Code session 30 Mar
+- [ ] **ROTATE CREDENTIALS (31 Mar)** — Supabase access token, GitHub PAT, Xero client secret exposed in Claude Code session 30 Mar. After rotating, update `claude_desktop_config.json` values and restart Claude Desktop.
 - [ ] Complete Meta App Review data handling + reviewer instructions section (calendar: 1 Apr)
 - [ ] Activate video formats: `UPDATE c.client_format_config SET is_enabled=true WHERE ice_format_key IN ('video_short_kinetic_voice','video_short_stat_voice')` — SQL ready
 - [ ] Add real YouTube channel IDs to c.client_channel + OAuth refresh tokens
