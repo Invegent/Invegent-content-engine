@@ -1,6 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// series-writer v1.2.0 — multi-platform: one draft per platform per episode
+// series-writer v1.2.0
 const VERSION = "series-writer-v1.2.0";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type, apikey, authorization, x-series-key", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" };
@@ -57,9 +57,7 @@ Deno.serve(async (req: Request) => {
           if (insertErr) throw new Error(`series_post_insert_failed: ${insertErr.message}`);
           successCount++; episodeResults.push({ platform, post_draft_id: insertResult?.post_draft_id, status: "draft_ready", title: written.title });
         } catch (platErr: any) {
-          const msg = (platErr?.message ?? String(platErr)).slice(0, 800);
-          console.error(`[series-writer] ep ${ep.position} / ${platform} failed:`, msg);
-          failCount++; episodeResults.push({ platform, status: "failed", error: msg });
+          failCount++; episodeResults.push({ platform, status: "failed", error: (platErr?.message ?? String(platErr)).slice(0, 800) });
         }
       }
       results.push({ episode_id: ep.episode_id, position: ep.position, platforms: episodeResults });
@@ -68,7 +66,7 @@ Deno.serve(async (req: Request) => {
     await supabase.rpc("update_series_status", { p_series_id: seriesId, p_status: newStatus });
     return jsonResponse({ ok: true, version: VERSION, series_id: seriesId, series_status: newStatus, platforms_used: platforms, drafts_written: successCount, drafts_failed: failCount, results });
   } catch (e: any) {
-    const msg = e?.message ?? String(e); console.error("[series-writer] error:", msg);
+    const msg = e?.message ?? String(e);
     await supabase.rpc("update_series_status", { p_series_id: seriesId, p_status: "approved" });
     return jsonResponse({ ok: false, error: msg, version: VERSION }, 500);
   }

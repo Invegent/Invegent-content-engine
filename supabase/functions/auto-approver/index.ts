@@ -28,10 +28,6 @@ function getServiceClient() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-// ---------------------------------------------------------------------------
-// Blocklists
-// ---------------------------------------------------------------------------
-
 const PROPERTY_BLOCKLIST = [
   "fraud", "scam", "money laundering", "criminal", "arrested", "charged",
   "class action", "lawsuit", "court", "tribunal",
@@ -86,10 +82,6 @@ function getClientConfig(client_id: string): ClientApprovalConfig {
     blocklist: [...PROPERTY_BLOCKLIST, ...NDIS_BLOCKLIST],
   };
 }
-
-// ---------------------------------------------------------------------------
-// Gate evaluation
-// ---------------------------------------------------------------------------
 
 interface GateResult { gate: string; reason: string; }
 
@@ -148,16 +140,11 @@ function evaluateGates(
   return { passed: true, gates };
 }
 
-// ---------------------------------------------------------------------------
-// Fetch via RPC (bypasses PostgREST schema exposure requirement)
-// ---------------------------------------------------------------------------
-
 async function fetchDraftsViaRpc(
   supabase: ReturnType<typeof getServiceClient>,
   limit: number,
   filterClientId: string | null
 ): Promise<DraftRow[]> {
-
   const { data, error } = await supabase
     .schema("m")
     .rpc("auto_approver_fetch_drafts", { p_limit: limit });
@@ -169,10 +156,6 @@ async function fetchDraftsViaRpc(
   if (filterClientId) return rows.filter((r) => r.client_id === filterClientId);
   return rows;
 }
-
-// ---------------------------------------------------------------------------
-// Process one draft
-// ---------------------------------------------------------------------------
 
 interface ApprovalResult {
   post_draft_id: string;
@@ -219,10 +202,6 @@ async function processOneDraft(
     return { post_draft_id: draft.post_draft_id, client_id: draft.client_id, outcome: "skipped", reason: failed_gate?.reason, gates };
   }
 }
-
-// ---------------------------------------------------------------------------
-// Routes
-// ---------------------------------------------------------------------------
 
 app.options("*", () => new Response(null, { status: 204, headers: corsHeaders }));
 

@@ -1,7 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 // series-outline v1.2.0
-// Uses .rpc() for all c schema reads/writes (D018 — c schema not exposed via PostgREST)
 const VERSION = "series-outline-v1.2.0";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type, apikey, authorization, x-series-key", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" };
@@ -52,7 +51,7 @@ Deno.serve(async (req: Request) => {
     if (saveErr) throw new Error(`save_series_outline_failed: ${saveErr.message}`);
     return jsonResponse({ ok: true, version: VERSION, series_id: seriesId, series_summary: outline.series_summary, episode_count: episodes.length, episodes: episodeRows });
   } catch (e: any) {
-    const msg = e?.message ?? String(e); console.error("[series-outline] error:", msg);
+    const msg = e?.message ?? String(e);
     await supabase.rpc("update_series_status", { p_series_id: seriesId, p_status: "draft" });
     return jsonResponse({ ok: false, error: msg, version: VERSION }, 500);
   }
