@@ -2,8 +2,8 @@
 
 > **This file is machine-written. Do not edit manually.**
 > Overwritten every 12 hours by the Cowork pulse task.
-> Last written: 2026-03-31 06:45 UTC (4:45pm AEST)
-> Written by: Claude.ai web session — 31 Mar 2026
+> Last written: 2026-03-31 07:10 UTC (5:10pm AEST)
+> Written by: Claude.ai web session — 31 Mar 2026 (end of day)
 
 ---
 
@@ -53,8 +53,8 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2) — 23 active functions
 | tts-test | v8 | — | util |
 | youtube-token-test | v2 | — | util |
 
-ai-worker v2.6.1 source committed to GitHub (31 Mar 2026).
-image-worker v3.9.1 deployed and committed (31 Mar 2026) — carousel image_url bug fix.
+**ai-worker v2.6.1** source committed to GitHub (commit 5377922, 31 Mar 2026).
+**image-worker v3.9.1** deployed and committed (31 Mar 2026) — carousel image_url null bug fixed.
 
 ---
 
@@ -89,6 +89,17 @@ image-worker v3.9.1 deployed and committed (31 Mar 2026) — carousel image_url 
 | weekly Sunday 0 2 UTC | feed-intelligence |
 | 1st of month 0 9 UTC | compliance-monitor |
 
+## COWORK SCHEDULED TASKS — ACTIVE (3 tasks, Max plan)
+
+| Task | Schedule | Next run |
+|---|---|---|
+| Nightly Reconciler | Daily 12:01 AM AEST | Tomorrow 12:08 AM |
+| Nightly Auditor | Daily 2:00 AM AEST | Tomorrow 2:01 AM |
+| Weekly Reconciliation | Weekly Monday 7:00 AM AEST | Apr 5, 7:04 AM |
+
+Tasks recreated under Max plan (31 Mar 2026). Previous Team plan tasks deleted.
+SKILL.md files: `C:\Users\parve\OneDrive\Documents\Claude\Scheduled\ice-*\SKILL.md`
+
 ---
 
 ## VERCEL FRONTENDS — LIVE
@@ -97,11 +108,11 @@ image-worker v3.9.1 deployed and committed (31 Mar 2026) — carousel image_url 
 |---|---|---|---|
 | invegent-dashboard | dashboard.invegent.com | 2026-03-23 | READY |
 | invegent-portal | portal.invegent.com | 2026-03-18 | READY |
-| invegent-web | invegent.com | 2026-03-31 | READY ✅ NEW |
+| invegent-web | invegent.com | 2026-03-31 | READY |
 
-invegent-web: Full landing page now live (homepage with pricing, how it works, ABN, Privacy Policy).
-Previous deploy showed "Coming soon" — root cause was Geist font import (Next.js 15 only) in layout.tsx.
-Fixed: replaced with Inter. Meta business verification resubmitted against invegent.com.
+invegent-web: Full landing page live. Previous "Coming soon" was caused by Geist font import
+(Next.js 15 only) in layout.tsx — fixed to Inter. Meta business verification resubmitted
+against invegent.com on 31 Mar.
 
 Team: `pk-2528s-projects` (`team_kYqCrehXYxW02AycsKVzwNrE`)
 Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu5wGbiSJr1SA3CmjVlAa`, web=`prj_tXhG43iaqHBtVZpvU3osyG7dLLDZ`
@@ -112,10 +123,15 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 
 | Repo | SHA | Date | Message |
 |---|---|---|---|
-| Invegent-content-engine | 424e91f | 2026-03-31 | docs: add D054 + D055 to decisions log |
+| Invegent-content-engine | see below | 2026-03-31 | Multiple commits — see below |
 | invegent-dashboard | fc9a778 | 2026-03-23 | chore: roadmap sync 2026-03-23 |
 | invegent-portal | ~2026-03-18 | 2026-03-18 | portal /performance + calendar v2 |
-| invegent-web | a580c26 | 2026-03-31 | fix: replace Geist font with Inter (Next.js 14 compat) |
+| invegent-web | a580c26 | 2026-03-31 | fix: replace Geist font with Inter |
+
+**Invegent-content-engine commits today (31 Mar):**
+- `5377922` — feat: commit ai-worker v2.6.1 source (downloaded from Supabase)
+- `424e91f` — docs: add D054 + D055 to decisions log
+- `c03720d` — chore: sync state update — 31 Mar 2026 session
 
 ---
 
@@ -123,52 +139,51 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 
 | Issue | Status | Action needed |
 |---|---|---|
-| Visual format publishing — trigger deployed | ✅ Confirmed | D055 trigger live (BEFORE INSERT/UPDATE). No video-format drafts produced yet — will remap on next run. |
-| Carousel image_url = null | ✅ Fixed | image-worker v3.9.1 deployed. 5 drafts backfilled via SQL. Bug: carousel path set status without URL. |
-| ai-worker v2.6.1 source not in GitHub | ✅ Fixed | Downloaded via `supabase functions download` and committed 31 Mar 2026. |
-| LinkedIn publisher | 🔵 External blocker | Community Management API review in progress |
-| Meta App Review | 🔵 External blocker | Business verification resubmitted 31 Mar. invegent.com now live. |
-| Cowork tasks | ✅ Live | 3 tasks created manually: Reconciler (midnight AEST), Auditor (2am), Weekly (Mon 7am) |
+| Visual format publishing | 🟡 Trigger live, awaiting test | D055 `trg_remap_video_format` confirmed active. No video-format draft since deploy — will auto-remap on next one. Monitor Visuals tab. |
+| Carousel image_url = null | ✅ Fixed | image-worker v3.9.1. 5 drafts backfilled. Root cause: carousel path set `image_status` without writing `image_url`. |
+| ai-worker source in GitHub | ✅ Fixed | v2.6.1 committed 31 Mar (commit 5377922). |
+| LinkedIn publisher | 🔵 External blocker | Community Management API review in progress. |
+| Meta App Review | 🔵 External blocker | Business verification resubmitted 31 Mar. Calendar reminder: 10 Apr. |
+| Cowork tasks | ✅ Live (Max plan) | Reconciler 12am, Auditor 2am, Weekly Mon 7am. First runs tonight. |
 
 ---
 
 ## CLIENT PIPELINE STATUS
 
 **NDIS Yarns** (`fb98a472-ae4d-432d-8738-2273231c1ef4`)
-- Zombie drafts: ✅ CLEARED (24 dead)
-- PP zombie drafts: ✅ CLEARED (61 dead, 31 Mar 2026)
-- 1 new draft generated 31 Mar (text format, approved) — in publish queue
-- Pipeline flowing. Dedup 14-day window active. Fresh content expected next ingest cycle.
+- Zombies: ✅ Cleared (24 dead 30 Mar)
+- 1 draft generated 31 Mar (text, approved) — in publish queue
+- Pipeline: flowing. 14-day dedup window active.
 
 **Property Pulse** (`4036a6b5-b4a3-406e-998d-c2fe14a8bbdd`)
-- Zombie drafts: ✅ CLEARED (61 dead, 31 Mar 2026)
-- 1 new draft generated 31 Mar (text format, needs_review)
-- Ghost queue item killed (734 failed attempts, 5 Mar–31 Mar)
-- Pipeline flowing. Dedup 14-day window active.
+- Zombies: ✅ Cleared (61 dead 31 Mar)
+- Ghost queue item: ✅ Killed (734 attempts)
+- 1 draft generated 31 Mar (text, needs_review)
+- Pipeline: flowing. 14-day dedup window active.
 
-**Publish queue depth:** 2 (NDIS approved, PP needs_review pending auto-approver)
-**Last published:** 2026-03-30 13:15 UTC — queue ran dry during pipeline stall
+**Publish queue depth:** 2 | **Last published:** 2026-03-30 13:15 UTC
 
 ---
 
-## CLAUDE DESKTOP MCP CONFIG
+## CLAUDE DESKTOP / CLAUDE CODE CONFIG
 
-Updated 30 Mar 2026 (D053). Credentials rotated 31 Mar 2026.
+MCP config updated 30 Mar (D053). Credentials rotated 31 Mar.
 - Supabase: `C:\Users\parve\AppData\Roaming\npm\mcp-server-supabase.cmd`
 - Xero: `C:\Users\parve\AppData\Roaming\npm\xero-mcp-server.cmd`
 - GitHub: `C:\Users\parve\github-mcp-server\github-mcp-server.exe`
 
-**Claude Code note:** Always `cd` to the repo directory before launching Claude Code.
-Correct: `cd C:\Users\parve\Invegent-content-engine && claude`
-Wrong: launching from `C:\Users\parve` (home dir — no project context)
+**Claude Code — always launch from repo directory:**
+```
+cd C:\Users\parve\Invegent-content-engine && claude
+```
 
 ---
 
 ## CREDENTIALS STATUS
 
 | Credential | Status |
-|---|---------|
-| Anthropic API | ✅ Active — primary AI provider |
+|---|---|
+| Anthropic API | ✅ Active |
 | OpenAI API | ✅ Active — fallback only |
 | Facebook page tokens | ✅ Active — both clients |
 | LinkedIn org tokens | ✅ Stored — API approval pending |
@@ -185,21 +200,24 @@ Wrong: launching from `C:\Users\parve` (home dir — no project context)
 
 ## WHAT IS NEXT
 
-**Completed (31 Mar 2026 Claude Code session):**
-1. ~~ai-worker v2.6.1 source committed to GitHub~~ ✅
-2. ~~Carousel image_url=null bug fixed in image-worker v3.9.1~~ ✅ (deployed + 5 drafts backfilled)
-3. ~~D055 trg_remap_video_format trigger confirmed~~ ✅ (active, awaiting first video-format draft)
-
 **Next session priorities:**
-1. Meta App Review — complete data handling + reviewer instructions section (overdue 1 Apr)
-2. AI Diagnostic Agent Tier 2
-3. m.post_format_performance population
-4. Prospect demo generator
-5. Client health weekly report email
+1. AI Diagnostic Agent Tier 2
+2. m.post_format_performance population
+3. Prospect demo generator
+4. Client health weekly report email
+
+**Monitor tonight:**
+- Cowork Nightly Reconciler (midnight AEST) — first automated run
+- Cowork Nightly Auditor (2am AEST) — first automated run
+- Visuals tab — watch for first image_quote render (confirms D055 working end-to-end)
 
 **Phase 3 build queue:**
 - Compliance-aware NDIS system prompt (pre-sales gate)
 - Invegent own brand pages
 - Client acquisition + onboarding flow (invegent.com/onboard)
 
-Decisions through D055 in `docs/06_decisions.md`. Last decision: D055 (31 Mar 2026).
+**External blockers (nothing to action):**
+- Meta App Review: business verification in progress — next check 10 Apr
+- LinkedIn Community Management API: review in progress
+
+Decisions through D055 in `docs/06_decisions.md`.
