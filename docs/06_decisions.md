@@ -288,12 +288,67 @@ Python 3.12.10 was installed via winget (`winget install Python.Python.3.12`).
 
 **Credential exposure:**
 The Claude Code session that performed this fix displayed the raw
-`claude_desktop_config.json` in the conversation, exposing:
-- Supabase access token (`sbp_...`)
-- GitHub PAT (`ghp_...`)
-- Xero client secret
+`claude_desktop_config.json` in the conversation, exposing Supabase, GitHub,
+and Xero secrets. All three were rotated on 31 March 2026.
 
-These should be rotated as soon as possible.
+---
+
+## D054 — Bundle Dedup Windows: 30 Days → 14 Days, min_unique: 2 → 1
+**Date:** 31 March 2026 | **Status:** ✅ Deployed
+
+**Problem:**
+Both clients had 0 ai_jobs queued for 24+ hours. Diagnosis showed exactly 1 eligible
+item per client in the 72-hour bundle window — below the `min_unique = 2` threshold
+required to form a bundle. Three stacked 30-day dedup windows in `bundle_client_v4`
+were blocking all but the most recently ingested content.
+
+**Root cause:**
+With limited NDIS/property feed volume and a 30-day window across three checks
+(bundled, seeded, published), fresh content appearing in the feed was nearly always
+blocked by a prior occurrence within the last month.
+
+**Changes (SQL migrations applied 31 Mar 2026):**
+1. `bundle_client_v4` — dedup windows reduced from 30 → 14 days (all three checks).
+   Default `p_min_unique` changed from 2 → 1.
+2. `run_pipeline_for_client` — `p_min_unique` default changed from 2 → 1.
+3. `seed_client_to_ai_v2` — `HAVING COUNT(*) >= 2` changed to `>= 1`.
+
+**Trade-off accepted:**
+Single-item bundles produce single-source synthesis posts rather than multi-source
+analysis. Quality is slightly lower than 2+ item bundles, but content keeps flowing.
+The feed intelligence agent (weekly) will flag thin sources for replacement.
+
+**Result:**
+Both clients immediately produced `seeds: 1, drafts: 1, jobs_queued: 1` on next
+manual pipeline run. ai-worker processed both within 3 minutes.
+
+---
+
+## D055 — Video Format Remap Trigger: video_short_* → image_quote
+**Date:** 31 March 2026 | **Status:** ✅ Deployed
+
+**Problem:**
+Format advisor in deployed ai-worker v2.6.1 correctly identifies content suited for
+kinetic/stat video. However, video-worker is gated off (no YouTube channel IDs
+configured for either client). image-worker only processes `image_quote` and `carousel`
+formats. Result: `video_short_kinetic` and `video_short_stat` drafts published as
+text-only — no visual generated despite visual intent.
+
+**Fix:**
+BEFORE INSERT/UPDATE trigger `trg_remap_video_format` on `m.post_draft`.
+When `recommended_format IN ('video_short_kinetic', 'video_short_stat', 'video_short_voice')`,
+remaps to `image_quote` before the row is stored.
+Original format intent written to `draft_format.original_format` for future reference.
+
+**Activation path for video-worker:**
+When YouTube channel IDs are confirmed and video-worker is activated:
+1. Drop trigger `trg_remap_video_format`
+2. Video-format drafts will flow through to video-worker as intended
+3. image-worker continues handling `image_quote` and `carousel`
+
+**Note:**
+ai-worker v2.6.1 source was built in Supabase directly and has not been committed
+to GitHub. Outstanding task: `supabase functions download ai-worker` → commit source.
 
 ---
 
@@ -301,7 +356,7 @@ These should be rotated as soon as possible.
 
 | Decision | Context | Target Date |
 |---|---|---|
-| Activate video formats for clients | `UPDATE c.client_format_config SET is_enabled=true` for desired formats | Now ready |
+| Activate video formats for clients | Drop D055 trigger, configure YouTube channel IDs | When YouTube channels ready |
 | Update c.client_channel with real YouTube channel IDs | OAuth Playground to get refresh tokens | Stage B setup |
 | YouTube Stage C — HeyGen avatar, long-form | `video_short_avatar`, `video_long_explainer` | Phase 4 |
 | m.post_format_performance population | insights-worker per-format engagement aggregates | Phase 2.1 completion |
@@ -318,4 +373,5 @@ These should be rotated as soon as possible.
 | Invegent brand pages setup | Facebook, Instagram, LinkedIn, YouTube for Invegent itself | Phase 3 |
 | Pre-recorded onboarding video | Script → Creatomate + ElevenLabs | Phase 3 |
 | AI voice assistant | Future Phase 4 — after chatbot proven | Phase 4 |
-| Fix Cowork scheduled task UUID | Resume auto 00_sync_state.md writes | Now |
+| Commit ai-worker v2.6.1 source to GitHub | `supabase functions download ai-worker` in Claude Code | Next Claude Code session |
+| Fix carousel image_url = null bug | 5 carousel posts generated with no image URL | Next Claude Code session |
