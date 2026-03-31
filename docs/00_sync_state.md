@@ -1,17 +1,14 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Overwritten every 12 hours by the Cowork pulse task.
-> Last written: 2026-03-31 07:10 UTC (5:10pm AEST)
+> Last written: 2026-03-31 08:05 UTC (6:05pm AEST)
 > Written by: Claude.ai web session — 31 Mar 2026 (end of day)
 
 ---
 
 ## HOW TO USE THIS FILE
 
-At the start of every session involving ICE technical work, read this file
-before answering any question or writing any code. It tells you what is
-actually deployed right now — not what the docs say should be deployed.
+Read this file before any ICE work session. It tells you what is actually deployed.
 If this file contradicts memory or 04_phases.md, this file wins.
 
 ---
@@ -25,7 +22,7 @@ Phase 1 complete. Phase 2 mostly complete — LinkedIn API blocked externally.
 
 ## SUPABASE EDGE FUNCTIONS — LIVE
 
-Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2) — 23 active functions
+Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
 | Function | Deploy# | App version | Last changed |
 |---|---|---|---|
@@ -34,6 +31,7 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2) — 23 active functions
 | video-worker | v10 | video-worker-v2.0.0 | 2026-03-30 |
 | youtube-publisher | v7 | youtube-publisher-v1.0.0 | 2026-03-30 |
 | image-worker | v32 | image-worker-v3.9.1 | 2026-03-31 |
+| pipeline-fixer | v2 | pipeline-fixer-v1.1.0 | 2026-03-31 ✅ NEW |
 | compliance-monitor | v11 | compliance-monitor-v1.2.0 | 2026-03-30 |
 | pipeline-ai-summary | v11 | pipeline-ai-summary | 2026-03-30 |
 | pipeline-doctor | v10 | pipeline-doctor-v1.0.0 | 2026-03-30 |
@@ -50,55 +48,24 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2) — 23 active functions
 | inspector | v79 | — | util |
 | inspector_sql_ro | v34 | — | util |
 | wasm-bootstrap | v10 | — | util |
-| tts-test | v8 | — | util |
-| youtube-token-test | v2 | — | util |
-
-**ai-worker v2.6.1** source committed to GitHub (commit 5377922, 31 Mar 2026).
-**image-worker v3.9.1** deployed and committed (31 Mar 2026) — carousel image_url null bug fixed.
 
 ---
 
-## SQL FUNCTIONS — CHANGES 31 MAR 2026 (D054 + D055)
+## SQL CHANGES — 31 MAR 2026
 
-| Function | Change | Migration |
-|---|---|---|
-| `m.bundle_client_v4` | dedup windows 30→14 days, min_unique default 2→1 | reduce_bundle_dedup_windows_and_min_unique |
-| `m.run_pipeline_for_client` | p_min_unique default 2→1 | reduce_run_pipeline_min_unique_default |
-| `m.seed_client_to_ai_v2` | HAVING COUNT(*) >= 2 → >= 1 | seed_client_to_ai_v2_min_group_size_1 |
-| trigger `trg_remap_video_format` | NEW — remaps video_short_* → image_quote on draft write | remap_video_format_to_image_quote_trigger |
-
----
-
-## PG_CRON — ACTIVE (22 jobs)
-
-| Schedule | Job |
+| Change | Detail |
 |---|---|
-| every 5 min | ai-worker (limit 5), publisher (limit 2), enqueue-publish-queue |
-| every 10 min | content_fetch, sweep-stale, seed-and-enqueue-facebook, auto-approver |
-| every 15 min | linkedin-publisher, image-worker |
-| every 30 min | draft-notifier, pipeline-health-snapshot, video-worker |
-| :15 :45 | pipeline-doctor, youtube-publisher |
-| :55 | pipeline-ai-summary |
-| hourly :00 | planner (create_digest_run) |
-| hourly :05 | run_pipeline_for_client (property) |
-| every 2h | email-ingest |
-| every 6h | ingest (RSS) |
-| daily 0 21 UTC (8am AEDT) | run_pipeline_for_client (NDIS), token-health-write |
-| daily 0 2 UTC | dead-letter-sweep |
-| daily 0 3 UTC | insights-worker |
-| weekly Sunday 0 2 UTC | feed-intelligence |
-| 1st of month 0 9 UTC | compliance-monitor |
+| D054 | bundle_client_v4 dedup 30→14d, min_unique 2→1; run_pipeline_for_client + seed_client_to_ai_v2 same |
+| D055 | trg_remap_video_format trigger — video_short_* → image_quote on post_draft write |
+| D056 | NDIS Yarns brand_identity_prompt updated — full compliance rules embedded (7,625 chars) |
+| D057 | m.pipeline_fixer_log table created; pipeline-fixer pg_cron job #36 (:25 and :55 every hour) |
 
-## COWORK SCHEDULED TASKS — ACTIVE (3 tasks, Max plan)
+---
 
-| Task | Schedule | Next run |
-|---|---|---|
-| Nightly Reconciler | Daily 12:01 AM AEST | Tomorrow 12:08 AM |
-| Nightly Auditor | Daily 2:00 AM AEST | Tomorrow 2:01 AM |
-| Weekly Reconciliation | Weekly Monday 7:00 AM AEST | Apr 5, 7:04 AM |
+## PG_CRON — ACTIVE (23 jobs)
 
-Tasks recreated under Max plan (31 Mar 2026). Previous Team plan tasks deleted.
-SKILL.md files: `C:\Users\parve\OneDrive\Documents\Claude\Scheduled\ice-*\SKILL.md`
+Previous 22 jobs unchanged. Added:
+- Job #36: pipeline-fixer at :25 and :55 every hour
 
 ---
 
@@ -106,118 +73,82 @@ SKILL.md files: `C:\Users\parve\OneDrive\Documents\Claude\Scheduled\ice-*\SKILL.
 
 | App | URL | Last deploy | Status |
 |---|---|---|---|
-| invegent-dashboard | dashboard.invegent.com | 2026-03-23 | READY |
+| invegent-dashboard | dashboard.invegent.com | 2026-03-31 | READY (pipeline flow diagram + ReactFlow) |
 | invegent-portal | portal.invegent.com | 2026-03-18 | READY |
 | invegent-web | invegent.com | 2026-03-31 | READY |
-
-invegent-web: Full landing page live. Previous "Coming soon" was caused by Geist font import
-(Next.js 15 only) in layout.tsx — fixed to Inter. Meta business verification resubmitted
-against invegent.com on 31 Mar.
-
-Team: `pk-2528s-projects` (`team_kYqCrehXYxW02AycsKVzwNrE`)
-Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu5wGbiSJr1SA3CmjVlAa`, web=`prj_tXhG43iaqHBtVZpvU3osyG7dLLDZ`
 
 ---
 
 ## GITHUB — LATEST COMMITS
 
-| Repo | SHA | Date | Message |
-|---|---|---|---|
-| Invegent-content-engine | see below | 2026-03-31 | Multiple commits — see below |
-| invegent-dashboard | fc9a778 | 2026-03-23 | chore: roadmap sync 2026-03-23 |
-| invegent-portal | ~2026-03-18 | 2026-03-18 | portal /performance + calendar v2 |
-| invegent-web | a580c26 | 2026-03-31 | fix: replace Geist font with Inter |
+| Repo | Latest | Message |
+|---|---|---|
+| Invegent-content-engine | e938f6a | docs: AI Diagnostic Tier 2 build spec |
+| invegent-dashboard | (pipeline diagram commit) | feat: pipeline flow diagram — ReactFlow 3-layer live diagram |
+| invegent-portal | ~2026-03-18 | portal /performance + calendar v2 |
+| invegent-web | a580c26 | fix: replace Geist font with Inter |
 
-**Invegent-content-engine commits today (31 Mar):**
-- `5377922` — feat: commit ai-worker v2.6.1 source (downloaded from Supabase)
-- `424e91f` — docs: add D054 + D055 to decisions log
-- `c03720d` — chore: sync state update — 31 Mar 2026 session
+**Build specs saved:**
+- `docs/build-specs/visual-pipeline-v1.md` — image rendering (done)
+- `docs/build-specs/pipeline-diagram-v1.md` — pipeline flow diagram (dashboard done, website next)
+- `docs/build-specs/ai-diagnostic-tier2-v1.md` — Tier 2 agent (done)
 
 ---
 
 ## KNOWN ACTIVE ISSUES
 
-| Issue | Status | Action needed |
-|---|---|---|
-| Visual format publishing | 🟡 Trigger live, awaiting test | D055 `trg_remap_video_format` confirmed active. No video-format draft since deploy — will auto-remap on next one. Monitor Visuals tab. |
-| Carousel image_url = null | ✅ Fixed | image-worker v3.9.1. 5 drafts backfilled. Root cause: carousel path set `image_status` without writing `image_url`. |
-| ai-worker source in GitHub | ✅ Fixed | v2.6.1 committed 31 Mar (commit 5377922). |
-| LinkedIn publisher | 🔵 External blocker | Community Management API review in progress. |
-| Meta App Review | 🔵 External blocker | Business verification resubmitted 31 Mar. Calendar reminder: 10 Apr. |
-| Cowork tasks | ✅ Live (Max plan) | Reconciler 12am, Auditor 2am, Weekly Mon 7am. First runs tonight. |
+| Issue | Status |
+|---|---|
+| Visual format (D055 trigger) | 🟡 Live, awaiting first video-format draft to confirm remap |
+| LinkedIn publisher | 🔵 External — Community API review in progress |
+| Meta App Review | 🔵 External — Business verification resubmitted 31 Mar. Next check 10 Apr. |
+| invegent.com pipeline diagram | ⬜ Next Claude Code session — replace static 3-step with 5-stage animated flow |
+| NDIS compliance prompt review | ⬜ Calendar reminder 2 Apr — check first drafts under D056 |
 
 ---
 
 ## CLIENT PIPELINE STATUS
 
-**NDIS Yarns** (`fb98a472-ae4d-432d-8738-2273231c1ef4`)
-- Zombies: ✅ Cleared (24 dead 30 Mar)
-- 1 draft generated 31 Mar (text, approved) — in publish queue
-- Pipeline: flowing. 14-day dedup window active.
-
-**Property Pulse** (`4036a6b5-b4a3-406e-998d-c2fe14a8bbdd`)
-- Zombies: ✅ Cleared (61 dead 31 Mar)
-- Ghost queue item: ✅ Killed (734 attempts)
-- 1 draft generated 31 Mar (text, needs_review)
-- Pipeline: flowing. 14-day dedup window active.
-
-**Publish queue depth:** 2 | **Last published:** 2026-03-30 13:15 UTC
+**Both clients:** Pipeline flowing. 14-day dedup window active. 2 recent drafts generated (text format).
+**Last published:** 2026-03-30 13:15 UTC
+**NDIS compliance prompt (D056):** Live since 07:33 UTC 31 Mar — next NDIS draft will use new rules.
 
 ---
 
-## CLAUDE DESKTOP / CLAUDE CODE CONFIG
+## COWORK SCHEDULED TASKS — ACTIVE (3 tasks, Max plan)
 
-MCP config updated 30 Mar (D053). Credentials rotated 31 Mar.
-- Supabase: `C:\Users\parve\AppData\Roaming\npm\mcp-server-supabase.cmd`
-- Xero: `C:\Users\parve\AppData\Roaming\npm\xero-mcp-server.cmd`
-- GitHub: `C:\Users\parve\github-mcp-server\github-mcp-server.exe`
+| Task | Schedule | First run |
+|---|---|---|
+| Nightly Reconciler | Daily 12:01 AM AEST | Tonight |
+| Nightly Auditor | Daily 2:00 AM AEST | Tonight |
+| Weekly Reconciliation | Weekly Monday 7:00 AM AEST | Apr 5 |
 
-**Claude Code — always launch from repo directory:**
-```
-cd C:\Users\parve\Invegent-content-engine && claude
-```
+Recreated under Max plan 31 Mar. Team plan to be cancelled.
 
 ---
 
 ## CREDENTIALS STATUS
 
-| Credential | Status |
-|---|---|
-| Anthropic API | ✅ Active |
-| OpenAI API | ✅ Active — fallback only |
-| Facebook page tokens | ✅ Active — both clients |
-| LinkedIn org tokens | ✅ Stored — API approval pending |
-| ElevenLabs Creator | ✅ Active — both voices confirmed |
-| YouTube OAuth | ✅ Active — both channels |
-| Creatomate Essential | ✅ Active — $54/mo |
-| Resend | ✅ Active |
-| Gmail OAuth (email-ingest) | ✅ Active |
-| Supabase access token | ✅ Rotated 31 Mar 2026 |
-| GitHub PAT | ✅ Rotated 31 Mar 2026 |
-| Xero client secret | ✅ Rotated 31 Mar 2026 |
+All active. Supabase, GitHub PAT, Xero all rotated 31 Mar 2026.
 
 ---
 
 ## WHAT IS NEXT
 
-**Next session priorities:**
-1. AI Diagnostic Agent Tier 2
-2. m.post_format_performance population
-3. Prospect demo generator
-4. Client health weekly report email
+**Next Claude Code session:**
+1. invegent.com pipeline diagram — brief in `docs/build-specs/pipeline-diagram-v1.md`
+   Paste: `Read docs/build-specs/pipeline-diagram-v1.md from Invegent-content-engine.
+   Build the WEBSITE version (Surface 2). Replace the static 3-step 'How it works'
+   section in app/page.tsx (Invegent-web repo) with an animated 5-stage pipeline flow.`
 
-**Monitor tonight:**
-- Cowork Nightly Reconciler (midnight AEST) — first automated run
-- Cowork Nightly Auditor (2am AEST) — first automated run
-- Visuals tab — watch for first image_quote render (confirms D055 working end-to-end)
-
-**Phase 3 build queue:**
-- Compliance-aware NDIS system prompt (pre-sales gate)
-- Invegent own brand pages
-- Client acquisition + onboarding flow (invegent.com/onboard)
+**After that:**
+- Compliance-aware Property Pulse system prompt (financial advice rules, different from NDIS)
+- Client health weekly report email
+- Prospect demo generator
+- Invegent brand pages (own ICE client setup)
 
 **External blockers (nothing to action):**
-- Meta App Review: business verification in progress — next check 10 Apr
-- LinkedIn Community Management API: review in progress
+- Meta App Review: next check 10 Apr
+- LinkedIn: waiting on API
 
-Decisions through D055 in `docs/06_decisions.md`.
+Decisions through D057 in `docs/06_decisions.md`.
