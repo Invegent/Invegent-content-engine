@@ -2,8 +2,8 @@
 
 > **This file is machine-written. Do not edit manually.**
 > Overwritten every 12 hours by the Cowork pulse task.
-> Last written: 2026-03-30 13:00 UTC (midnight AEST)
-> Written by: Claude Desktop — session 30 Mar 2026
+> Last written: 2026-03-31 03:37 UTC (1:37pm AEST)
+> Written by: Claude Desktop — session 31 Mar 2026
 
 ---
 
@@ -53,11 +53,6 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2) — 23 active functions
 | tts-test | v8 | — | util |
 | youtube-token-test | v2 | — | util |
 
-**Key recent changes (30 Mar 2026 — Claude Code session):**
-- 16 functions bumped by Claude Code session. Exact nature of changes TBC — action plan work in progress.
-- `pipeline-ai-summary` — 500 error fix attempted (status: verify)
-- `publisher`, `image-worker`, `ai-worker` — visual format publishing fix attempted (status: verify)
-
 ---
 
 ## PG_CRON — ACTIVE (22 jobs)
@@ -99,7 +94,7 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 
 | Repo | SHA | Date | Message |
 |---|---|---|---|
-| Invegent-content-engine | — | 2026-03-30 | chore: sync state 30 Mar 2026 — post Claude Code session |
+| Invegent-content-engine | — | 2026-03-31 | chore: mark credentials rotated 31 Mar 2026 |
 | invegent-dashboard | fc9a778 | 2026-03-23 | chore: roadmap sync 2026-03-23 |
 | invegent-portal | ~2026-03-18 | 2026-03-18 | portal /performance + calendar v2 |
 | invegent-web | ~2026-03-18 | 2026-03-18 | public proof dashboard |
@@ -110,10 +105,10 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 
 | Issue | Status | Action needed |
 |---|---|---|
-| pipeline-ai-summary | 🟡 Fix attempted 30 Mar | Verify 500 errors resolved — check next :55 run |
-| Visual format publishing | 🟡 Fix attempted 30 Mar | Verify both clients generating non-text formats |
-| Property Pulse 61 approved drafts | ⚠️ NOT QUEUING | 61 approved drafts stuck — enqueue logic or publish_mode issue. Check c.client_publish_profile |
-| Cowork scheduled task UUID | ⚠️ STALE | Still pointing at old Max plan project UUID — sync state not auto-updated. Fix needed. |
+| Visual format publishing | 🔴 Unresolved | 0 image posts in 7 days. Fix needed in Claude Code. |
+| PP zombie drafts (61) | ⚠️ NOT QUEUING | 61 approved drafts from Feb — null format. Clear with SQL (confirm with PK). |
+| post_draft_not_found publisher error | 🔴 Active | PP posts entering queue but publisher can't find draft. Flagged every pipeline-ai-summary run. |
+| Cowork scheduled task UUID | ⚠️ STALE | Still pointing at old Max plan UUID — sync state not auto-updated. Fix in Cowork settings. |
 | LinkedIn publisher | 🔵 External blocker | Community Management API review in progress |
 | Meta App Review | 🔵 External blocker | Business verification In Review. Data handling section still to complete. Calendar: 1 Apr |
 
@@ -123,56 +118,57 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 
 **NDIS Yarns** (`fb98a472-ae4d-432d-8738-2273231c1ef4`)
 - Zombie drafts: ✅ CLEARED (24 dead, 0 approved blocking queue)
-- Queue: 0 posts — pipeline should now generate fresh drafts
 - 1 draft in needs_review as of 30 Mar 07:05 UTC
+- Pipeline generating fresh drafts
 
 **Property Pulse** (`4036a6b5-b4a3-406e-998d-c2fe14a8bbdd`)
-- 61 approved drafts, 0 in publish queue — INVESTIGATE
-- Check: `c.client_publish_profile` publish_mode, enqueue-publish-queue logic
+- 61 approved drafts from Feb (null format) — not queuing, need zombie clear
+- publish_mode: auto, publish_enabled: true, max_per_day: 15 — config is correct
+- post_draft_not_found errors on publisher — separate issue
 
 ---
 
 ## CLAUDE DESKTOP MCP CONFIG
 
-Updated 30 Mar 2026 (D053). Both npx -y @latest calls replaced with global npm installs:
+Updated 30 Mar 2026 (D053). Credentials rotated 31 Mar 2026.
 - Supabase: `C:\Users\parve\AppData\Roaming\npm\mcp-server-supabase.cmd`
 - Xero: `C:\Users\parve\AppData\Roaming\npm\xero-mcp-server.cmd`
-- GitHub: `C:\Users\parve\github-mcp-server\github-mcp-server.exe` (unchanged)
+- GitHub: `C:\Users\parve\github-mcp-server\github-mcp-server.exe`
 
 ---
 
 ## CREDENTIALS STATUS
 
 | Credential | Status |
-|---|---|
-| Anthropic API | Active — primary AI provider. No fallback in last 24h. |
-| OpenAI API | Active — fallback only |
-| Facebook page tokens | Active — both clients |
-| LinkedIn org tokens | Stored — publisher code ready, API approval pending |
-| ElevenLabs Creator | Active — NDIS + PP voices confirmed |
-| YouTube OAuth | Active — both channels, uploads unlisted by default |
-| Creatomate Essential | Active — $54/mo |
-| Resend | Active — magic link + draft notifier |
-| Gmail OAuth (email-ingest) | Active — feeds@invegent.com |
-| Supabase access token | ⚠️ ROTATE — was exposed in Claude Code session 30 Mar |
-| GitHub PAT | ⚠️ ROTATE — was exposed in Claude Code session 30 Mar |
-| Xero client secret | ⚠️ ROTATE — was exposed in Claude Code session 30 Mar |
+|---|---------|
+| Anthropic API | ✅ Active — primary AI provider |
+| OpenAI API | ✅ Active — fallback only |
+| Facebook page tokens | ✅ Active — both clients |
+| LinkedIn org tokens | ✅ Stored — API approval pending |
+| ElevenLabs Creator | ✅ Active — both voices confirmed |
+| YouTube OAuth | ✅ Active — both channels |
+| Creatomate Essential | ✅ Active — $54/mo |
+| Resend | ✅ Active |
+| Gmail OAuth (email-ingest) | ✅ Active |
+| Supabase access token | ✅ Rotated 31 Mar 2026 |
+| GitHub PAT | ✅ Rotated 31 Mar 2026 |
+| Xero client secret | ✅ Rotated 31 Mar 2026 |
 
 ---
 
 ## WHAT IS NEXT
 
-**Priority order (ICE action plan 30 Mar):**
-1. Verify pipeline-ai-summary 500 fix — check next :55 run logs
-2. Verify visual format publishing — check next draft generation cycle
-3. Investigate PP 61 approved drafts not queuing
-4. Fix Cowork scheduled task UUID — resume auto sync state writes
-5. Rotate exposed credentials (Supabase token, GitHub PAT, Xero secret)
+**Priority order (31 Mar):**
+1. Clear PP zombie drafts (61 from Feb — confirm with PK then run SQL)
+2. Fix visual format publishing — Claude Code session
+3. Fix post_draft_not_found publisher error
+4. Fix Cowork scheduled task UUID
+5. Build nightly reconciler + auditor (Task 1 midnight AEST, Task 2 2am AEST → docs/00_audit_report.md)
 
 **Phase 3 build queue:**
-1. AI Diagnostic Agent Tier 2 (~1 Apr)
+1. AI Diagnostic Agent Tier 2
 2. m.post_format_performance population
-3. Prospect demo generator (2 days)
-4. Client health weekly report email (2 days)
+3. Prospect demo generator
+4. Client health weekly report email
 
 Decisions D044–D053 in `docs/06_decisions.md`. Last decision: D053 (30 Mar 2026).
