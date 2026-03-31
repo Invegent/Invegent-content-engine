@@ -1,14 +1,17 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-03-31 08:05 UTC (6:05pm AEST)
-> Written by: Claude.ai web session — 31 Mar 2026 (end of day)
+> Overwritten every night at midnight AEST by the Cowork reconciliation task.
+> Last written: 2026-03-31 14:00 UTC (midnight AEST 2026-04-01)
+> Written by: Cowork nightly reconciliation
 
 ---
 
 ## HOW TO USE THIS FILE
 
-Read this file before any ICE work session. It tells you what is actually deployed.
+At the start of every session involving ICE technical work, read this file
+before answering any question or writing any code. It tells you what is
+actually deployed right now — not what the docs say should be deployed.
 If this file contradicts memory or 04_phases.md, this file wins.
 
 ---
@@ -24,30 +27,35 @@ Phase 1 complete. Phase 2 mostly complete — LinkedIn API blocked externally.
 
 Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
-| Function | Deploy# | App version | Last changed |
+| Function | Deploy# | Status | Last updated |
 |---|---|---|---|
-| ai-worker | v65 | ai-worker-v2.6.1 | 2026-03-30 |
-| publisher | v55 | publisher-v1.3.x | 2026-03-30 |
-| video-worker | v10 | video-worker-v2.0.0 | 2026-03-30 |
-| youtube-publisher | v7 | youtube-publisher-v1.0.0 | 2026-03-30 |
-| image-worker | v32 | image-worker-v3.9.1 | 2026-03-31 |
-| pipeline-fixer | v2 | pipeline-fixer-v1.1.0 | 2026-03-31 ✅ NEW |
-| compliance-monitor | v11 | compliance-monitor-v1.2.0 | 2026-03-30 |
-| pipeline-ai-summary | v11 | pipeline-ai-summary | 2026-03-30 |
-| pipeline-doctor | v10 | pipeline-doctor-v1.0.0 | 2026-03-30 |
-| series-writer | v13 | series-writer-v1.2.0 | 2026-03-30 |
-| series-outline | v12 | series-outline-v1.2.0 | 2026-03-30 |
-| auto-approver | v26 | auto-approver-v1.4.0 | 2026-03-30 |
-| insights-worker | v29 | insights-worker-v18 | 2026-03-30 |
-| ingest | v91 | ingest-worker | 2026-03-30 |
-| content_fetch | v62 | content-fetch-v2.5 | 2026-03-30 |
-| linkedin-publisher | v12 | linkedin-publisher-v1.1.0 | stable |
-| email-ingest | v12 | email-ingest-v2 | 2026-03-30 |
-| draft-notifier | v13 | draft-notifier-v1.1 | 2026-03-30 |
-| feed-intelligence | v17 | feed-intelligence-v7 | 2026-03-30 |
-| inspector | v79 | — | util |
-| inspector_sql_ro | v34 | — | util |
-| wasm-bootstrap | v10 | — | util |
+| inspector | v80 | ACTIVE | 2026-02-02 |
+| ingest | v92 | ACTIVE | 2026-01-26 |
+| content_fetch | v63 | ACTIVE | 2026-03-10 |
+| ai-worker | v66 | ACTIVE | 2026-03-21 |
+| publisher | v56 | ACTIVE | 2026-03-19 |
+| inspector_sql_ro | v35 | ACTIVE | 2026-02-22 |
+| auto-approver | v27 | ACTIVE | 2026-03-11 |
+| insights-worker | v30 | ACTIVE | 2026-03-20 |
+| feed-intelligence | v18 | ACTIVE | 2026-03-07 |
+| email-ingest | v13 | ACTIVE | 2026-03-11 |
+| draft-notifier | v14 | ACTIVE | 2026-03-18 |
+| linkedin-publisher | v13 | ACTIVE | 2026-03-18 |
+| image-worker | v34 | ACTIVE | 2026-03-31 |
+| series-outline | v13 | ACTIVE | 2026-03-19 |
+| series-writer | v14 | ACTIVE | 2026-03-20 |
+| wasm-bootstrap | v11 | ACTIVE | 2026-03-19 |
+| pipeline-doctor | v11 | ACTIVE | 2026-03-19 |
+| pipeline-ai-summary | v12 | ACTIVE | 2026-03-19 |
+| compliance-monitor | v12 | ACTIVE | 2026-03-19 |
+| video-worker | v11 | ACTIVE | 2026-03-20 |
+| tts-test | v9 | ACTIVE | 2026-03-20 |
+| youtube-publisher | v8 | ACTIVE | 2026-03-20 |
+| youtube-token-test | v3 | ACTIVE | 2026-03-20 |
+| series-outline | v13 | ACTIVE | 2026-03-19 |
+| pipeline-fixer | v2 | ACTIVE | 2026-03-31 |
+
+All 25 functions ACTIVE. No degraded or inactive functions detected.
 
 ---
 
@@ -69,29 +77,108 @@ Previous 22 jobs unchanged. Added:
 
 ---
 
-## VERCEL FRONTENDS — LIVE
+## PIPELINE STATE
 
-| App | URL | Last deploy | Status |
+### Queue Depths
+
+| Client | Queued | Published (total) | Last published at |
 |---|---|---|---|
-| invegent-dashboard | dashboard.invegent.com | 2026-03-31 | READY (pipeline flow diagram + ReactFlow) |
-| invegent-portal | portal.invegent.com | 2026-03-18 | READY |
-| invegent-web | invegent.com | 2026-03-31 | READY |
+| NDIS-Yarns | 0 | 39 | 2026-03-01 02:10 UTC |
+| Property Pulse | 0 | 2 | 2026-03-05 06:45 UTC |
+
+⚠️ **Anomaly:** NDIS-Yarns queue shows last_published_at as 2026-03-01 but post_draft table shows 11 NDIS posts published in the last 7 days. Possible that publisher marks drafts 'published' without updating post_publish_queue updated_at, or queue records are cleared after publish. Needs investigation.
+
+### Draft State — Last 7 Days
+
+| Client | Status | Format | Count |
+|---|---|---|---|
+| NDIS-Yarns | draft | (null) | 1 |
+| NDIS-Yarns | published | text | 11 |
+| NDIS-Yarns | published | (null) | 1 |
+| Property Pulse | published | image_quote | 1 |
+| Property Pulse | published | text | 1 |
+| Property Pulse | published | video_short_kinetic | 1 |
+| Property Pulse | published | video_short_stat | 1 |
+
+Total published last 7 days: 16 posts (12 NDIS, 4 PP). 1 NDIS draft still in draft state.
+
+### Image Generation
+
+No drafts currently in approved/needs_review state — image generation queue is clear.
+Last Creatomate render: 2026-03-20 13:00 UTC — format: carousel — status: succeeded — no error.
+
+### Client Publish Profiles (Facebook)
+
+| Client | publish_enabled | paused_until | paused_reason | auto_approve | image_gen | video_gen |
+|---|---|---|---|---|---|---|
+| Property Pulse | true | — | — | true | true | false |
+| NDIS-Yarns | true | 2026-03-01 01:34 UTC | Manual pause from ICE Control Room | true | true | false |
+
+⚠️ **Note:** NDIS-Yarns paused_until (2026-03-01) is in the past — pause has technically expired. Publishing appears to be proceeding normally based on draft state (11 published in 7 days). The stale paused_until value may be a cleanup item for the ICE Control Room UI.
+
+### AI Usage — Last 24h
+
+| Provider | Model | Fallback | Calls | Cost (USD) |
+|---|---|---|---|---|
+| anthropic | claude-sonnet-4-6 | false | 4 | $0.1165 |
+
+No OpenAI fallback calls. All calls via Anthropic primary.
+
+### AI Usage — This Month (April 2026)
+
+Total calls: 0 | Total cost: $0.00 | Fallback calls: 0
+
+(Month just rolled over at midnight AEST — no April calls yet at time of reconciliation.)
+
+### Last Pipeline AI Summary
+
+- Generated: 2026-03-31 12:55 UTC
+- health_ok: **true**
+- action_needed: null
+- Preview: "The pipeline processed 1 Property Pulse post in the last 2 hours, published at 9:55 PM with an image quote format, though the image is still pending generation. Queue depth dropped from 3 items at 8:00 PM to empty by 9:30 PM, indicating normal processing flow. Today's totals show 2 NDIS Yarns posts..."
+
+### Dead Letter — Last 7 Days
+
+| Dead reason | Count |
+|---|---|
+| pre-visual-pipeline backlog cleared 2026-03-31 | 61 |
+
+This is a deliberate bulk cleanup of old backlog drafts on 31 Mar — not an error condition.
 
 ---
 
 ## GITHUB — LATEST COMMITS
 
-| Repo | Latest | Message |
-|---|---|---|
-| Invegent-content-engine | e938f6a | docs: AI Diagnostic Tier 2 build spec |
-| invegent-dashboard | (pipeline diagram commit) | feat: pipeline flow diagram — ReactFlow 3-layer live diagram |
-| invegent-portal | ~2026-03-18 | portal /performance + calendar v2 |
-| invegent-web | a580c26 | fix: replace Geist font with Inter |
+| Repo | SHA | Date | Message |
+|---|---|---|---|
+| Invegent-content-engine | 9b810f0 | 2026-03-31 | docs: add D056 (NDIS compliance prompt) + D057 (pipeline-fixer Tier 2) |
+| Invegent-content-engine | e4f94fd | 2026-03-31 | chore: final sync state — 31 Mar 2026 full day |
+| Invegent-content-engine | 42e991d | 2026-03-31 | feat: pipeline-fixer v1.1.0 — Tier 2 AI diagnostic auto-fixer (D057) |
+| invegent-dashboard | 0f84150 | 2026-03-31 | chore: roadmap sync 2026-03-31 — 6 Phase 3 items updated |
+| invegent-dashboard | 233dfd5 | 2026-03-31 | fix: Monitor nav routing, pipeline-stats SQL bug, add SectionTabs to flow diagram page |
+| invegent-dashboard | 4613417 | 2026-03-31 | feat: pipeline flow diagram — live system monitor with ReactFlow |
+| invegent-portal | b734abe | 2026-03-19 | fix: portal calendar shows client timezone label |
+| invegent-portal | 63008ef | 2026-03-19 | feat: add Invegent favicon to portal tab |
+| invegent-portal | be5632b | 2026-03-18 | feat: send Resend confirmation email on feed suggestion submit |
+| Invegent-web | 3f98799 | 2026-03-31 | feat: replace static 3-step how-it-works with animated 5-stage pipeline flow |
+| Invegent-web | a580c26 | 2026-03-31 | fix: replace Geist font (Next.js 15 only) with Inter for Next.js 14 compatibility |
+| Invegent-web | 26c782d | 2026-03-31 | feat: homepage — professional landing page for Invegent |
 
-**Build specs saved:**
-- `docs/build-specs/visual-pipeline-v1.md` — image rendering (done)
-- `docs/build-specs/pipeline-diagram-v1.md` — pipeline flow diagram (dashboard done, website next)
-- `docs/build-specs/ai-diagnostic-tier2-v1.md` — Tier 2 agent (done)
+---
+
+## VERCEL FRONTENDS — LIVE
+
+| App | URL | Last deploy | Status |
+|---|---|---|---|
+| invegent-dashboard | dashboard.invegent.com | 2026-03-31 | READY |
+| invegent-portal | portal.invegent.com | 2026-03-19 | READY |
+| invegent-web | invegent.com | 2026-03-31 | READY |
+
+Team: pk-2528s-projects (team_kYqCrehXYxW02AycsKVzwNrE)
+
+Latest dashboard commit on Vercel: `0f84150` — "chore: roadmap sync 2026-03-31 — 6 Phase 3 items updated"
+Latest web commit on Vercel: `3f98799` — animated 5-stage pipeline flow (Phase 3 website build done ✅)
+Portal unchanged since 2026-03-19.
 
 ---
 
@@ -99,53 +186,65 @@ Previous 22 jobs unchanged. Added:
 
 | Issue | Status |
 |---|---|
-| Visual format (D055 trigger) | 🟡 Live, awaiting first video-format draft to confirm remap |
-| LinkedIn publisher | 🔵 External — Community API review in progress |
-| Meta App Review | 🔵 External — Business verification resubmitted 31 Mar. Next check 10 Apr. |
-| invegent.com pipeline diagram | ⬜ Next Claude Code session — replace static 3-step with 5-stage animated flow |
-| NDIS compliance prompt review | ⬜ Calendar reminder 2 Apr — check first drafts under D056 |
+| NDIS queue last_published_at discrepancy | 🟡 Queue shows 2026-03-01 but draft table shows 11 posts published in 7 days — possible tracking gap |
+| NDIS paused_until stale value | 🟡 2026-03-01 (past) — pause technically expired, publishing proceeding. Stale value in DB |
+| LinkedIn publisher | 🔵 External — Community Management API review in progress |
+| Meta App Review | 🔵 External — Business verification In Review. Calendar: check 10 Apr 2026 |
+| 1 NDIS draft in 'draft' status | ⬜ 1 draft in m.post_draft without approval_status progress — monitor next run |
+
+No stuck queue items (0). No Edge Function errors. All Vercel frontends READY.
 
 ---
 
 ## CLIENT PIPELINE STATUS
 
-**Both clients:** Pipeline flowing. 14-day dedup window active. 2 recent drafts generated (text format).
-**Last published:** 2026-03-30 13:15 UTC
-**NDIS compliance prompt (D056):** Live since 07:33 UTC 31 Mar — next NDIS draft will use new rules.
+**NDIS Yarns** (fb98a472-ae4d-432d-8738-2273231c1ef4)
+Pipeline active. 11 posts published in last 7 days (text format). 1 new NDIS compliance prompt (D056) live since 2026-03-31 07:33 UTC — next NDIS drafts will use full compliance rules. image_generation_enabled=true, video_generation_enabled=false. paused_until value is stale (past date, publishing proceeding normally).
 
----
-
-## COWORK SCHEDULED TASKS — ACTIVE (3 tasks, Max plan)
-
-| Task | Schedule | First run |
-|---|---|---|
-| Nightly Reconciler | Daily 12:01 AM AEST | Tonight |
-| Nightly Auditor | Daily 2:00 AM AEST | Tonight |
-| Weekly Reconciliation | Weekly Monday 7:00 AM AEST | Apr 5 |
-
-Recreated under Max plan 31 Mar. Team plan to be cancelled.
+**Property Pulse** (4036a6b5-b4a3-406e-998d-c2fe14a8bbdd)
+4 posts published in last 7 days across formats (image_quote, text, video_short_kinetic, video_short_stat). auto_approve=true, image_gen=true, video_gen=false. Not paused.
 
 ---
 
 ## CREDENTIALS STATUS
 
-All active. Supabase, GitHub PAT, Xero all rotated 31 Mar 2026.
+| Credential | Status |
+|---|---|
+| Anthropic API | Active — primary AI provider |
+| OpenAI API | Active — fallback only |
+| Facebook page tokens | Active — both clients |
+| LinkedIn org tokens | Stored — API approval pending |
+| ElevenLabs Creator | Active — NDIS + PP voices confirmed |
+| YouTube OAuth | Active — both channels, uploads unlisted |
+| Creatomate Essential | Active — $54/mo |
+| Resend | Active — magic link + draft notifier |
+| Gmail OAuth (email-ingest) | Active — feeds@invegent.com |
+| Supabase access token | ✅ Rotated 31 Mar 2026 |
+| GitHub PAT | ✅ Rotated 31 Mar 2026 |
+| Xero client secret | ✅ Rotated 31 Mar 2026 |
+
+---
+
+## EXTERNAL BLOCKERS
+
+- LinkedIn publisher: Community Management API review in progress
+- Meta App Review: Business verification In Review — next check 10 Apr 2026
 
 ---
 
 ## WHAT IS NEXT
 
-**Next Claude Code session:**
-1. invegent.com pipeline diagram — brief in `docs/build-specs/pipeline-diagram-v1.md`
-   Paste: `Read docs/build-specs/pipeline-diagram-v1.md from Invegent-content-engine.
-   Build the WEBSITE version (Surface 2). Replace the static 3-step 'How it works'
-   section in app/page.tsx (Invegent-web repo) with an animated 5-stage pipeline flow.`
+**✅ DONE since last sync (confirmed by GitHub commits 2026-03-31):**
+- invegent.com pipeline diagram — animated 5-stage pipeline flow live (`3f98799` in Invegent-web) ✅
+- Dashboard pipeline flow diagram (ReactFlow /monitor page) — live (`4613417` in invegent-dashboard) ✅
 
-**After that:**
+**Next Claude Code session:**
 - Compliance-aware Property Pulse system prompt (financial advice rules, different from NDIS)
 - Client health weekly report email
 - Prospect demo generator
 - Invegent brand pages (own ICE client setup)
+- Investigate NDIS queue last_published_at discrepancy (queue tracking gap?)
+- Clear stale NDIS paused_until value in client_publish_profile if no longer needed
 
 **External blockers (nothing to action):**
 - Meta App Review: next check 10 Apr
