@@ -2,8 +2,8 @@
 
 > **This file is machine-written. Do not edit manually.**
 > Overwritten every 12 hours by the Cowork pulse task.
-> Last written: 2026-03-31 03:37 UTC (1:37pm AEST)
-> Written by: Claude Desktop — session 31 Mar 2026
+> Last written: 2026-03-31 06:45 UTC (4:45pm AEST)
+> Written by: Claude.ai web session — 31 Mar 2026
 
 ---
 
@@ -53,6 +53,21 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2) — 23 active functions
 | tts-test | v8 | — | util |
 | youtube-token-test | v2 | — | util |
 
+**NOTE — ai-worker v2.6.1 source not committed to GitHub.**
+Local `supabase/functions/ai-worker/index.ts` shows stub (v2.2.0).
+Real deployed source lives only in Supabase. Outstanding: `supabase functions download ai-worker` → commit.
+
+---
+
+## SQL FUNCTIONS — CHANGES 31 MAR 2026 (D054 + D055)
+
+| Function | Change | Migration |
+|---|---|---|
+| `m.bundle_client_v4` | dedup windows 30→14 days, min_unique default 2→1 | reduce_bundle_dedup_windows_and_min_unique |
+| `m.run_pipeline_for_client` | p_min_unique default 2→1 | reduce_run_pipeline_min_unique_default |
+| `m.seed_client_to_ai_v2` | HAVING COUNT(*) >= 2 → >= 1 | seed_client_to_ai_v2_min_group_size_1 |
+| trigger `trg_remap_video_format` | NEW — remaps video_short_* → image_quote on draft write | remap_video_format_to_image_quote_trigger |
+
 ---
 
 ## PG_CRON — ACTIVE (22 jobs)
@@ -83,7 +98,11 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2) — 23 active functions
 |---|---|---|---|
 | invegent-dashboard | dashboard.invegent.com | 2026-03-23 | READY |
 | invegent-portal | portal.invegent.com | 2026-03-18 | READY |
-| invegent-web | invegent.com | 2026-03-18 | READY |
+| invegent-web | invegent.com | 2026-03-31 | READY ✅ NEW |
+
+invegent-web: Full landing page now live (homepage with pricing, how it works, ABN, Privacy Policy).
+Previous deploy showed "Coming soon" — root cause was Geist font import (Next.js 15 only) in layout.tsx.
+Fixed: replaced with Inter. Meta business verification resubmitted against invegent.com.
 
 Team: `pk-2528s-projects` (`team_kYqCrehXYxW02AycsKVzwNrE`)
 Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu5wGbiSJr1SA3CmjVlAa`, web=`prj_tXhG43iaqHBtVZpvU3osyG7dLLDZ`
@@ -94,10 +113,10 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 
 | Repo | SHA | Date | Message |
 |---|---|---|---|
-| Invegent-content-engine | — | 2026-03-31 | chore: mark credentials rotated 31 Mar 2026 |
+| Invegent-content-engine | 424e91f | 2026-03-31 | docs: add D054 + D055 to decisions log |
 | invegent-dashboard | fc9a778 | 2026-03-23 | chore: roadmap sync 2026-03-23 |
 | invegent-portal | ~2026-03-18 | 2026-03-18 | portal /performance + calendar v2 |
-| invegent-web | ~2026-03-18 | 2026-03-18 | public proof dashboard |
+| invegent-web | a580c26 | 2026-03-31 | fix: replace Geist font with Inter (Next.js 14 compat) |
 
 ---
 
@@ -105,26 +124,31 @@ Project IDs: dashboard=`prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg`, portal=`prj_EpPsX7gCu
 
 | Issue | Status | Action needed |
 |---|---|---|
-| Visual format publishing | 🔴 Unresolved | 0 image posts in 7 days. Fix needed in Claude Code. |
-| PP zombie drafts (61) | ⚠️ NOT QUEUING | 61 approved drafts from Feb — null format. Clear with SQL (confirm with PK). |
-| post_draft_not_found publisher error | 🔴 Active | PP posts entering queue but publisher can't find draft. Flagged every pipeline-ai-summary run. |
-| Cowork scheduled task UUID | ⚠️ STALE | Still pointing at old Max plan UUID — sync state not auto-updated. Fix in Cowork settings. |
+| Visual format publishing — trigger deployed | 🟡 Awaiting test | D055 trigger live. Will remap video→image_quote on next video-format draft. Monitor Visuals tab. |
+| Carousel image_url = null | ⚠️ Minor bug | 5 carousel drafts have image_status=generated but image_url=null. Claude Code fix pending. |
+| ai-worker v2.6.1 source not in GitHub | ⚠️ Debt | Local file is stub v2.2.0. Run `supabase functions download ai-worker` in Claude Code. |
 | LinkedIn publisher | 🔵 External blocker | Community Management API review in progress |
-| Meta App Review | 🔵 External blocker | Business verification In Review. Data handling section still to complete. Calendar: 1 Apr |
+| Meta App Review | 🔵 External blocker | Business verification resubmitted 31 Mar. invegent.com now live. |
+| Cowork tasks | ✅ Live | 3 tasks created manually: Reconciler (midnight AEST), Auditor (2am), Weekly (Mon 7am) |
 
 ---
 
 ## CLIENT PIPELINE STATUS
 
 **NDIS Yarns** (`fb98a472-ae4d-432d-8738-2273231c1ef4`)
-- Zombie drafts: ✅ CLEARED (24 dead, 0 approved blocking queue)
-- 1 draft in needs_review as of 30 Mar 07:05 UTC
-- Pipeline generating fresh drafts
+- Zombie drafts: ✅ CLEARED (24 dead)
+- PP zombie drafts: ✅ CLEARED (61 dead, 31 Mar 2026)
+- 1 new draft generated 31 Mar (text format, approved) — in publish queue
+- Pipeline flowing. Dedup 14-day window active. Fresh content expected next ingest cycle.
 
 **Property Pulse** (`4036a6b5-b4a3-406e-998d-c2fe14a8bbdd`)
-- 61 approved drafts from Feb (null format) — not queuing, need zombie clear
-- publish_mode: auto, publish_enabled: true, max_per_day: 15 — config is correct
-- post_draft_not_found errors on publisher — separate issue
+- Zombie drafts: ✅ CLEARED (61 dead, 31 Mar 2026)
+- 1 new draft generated 31 Mar (text format, needs_review)
+- Ghost queue item killed (734 failed attempts, 5 Mar–31 Mar)
+- Pipeline flowing. Dedup 14-day window active.
+
+**Publish queue depth:** 2 (NDIS approved, PP needs_review pending auto-approver)
+**Last published:** 2026-03-30 13:15 UTC — queue ran dry during pipeline stall
 
 ---
 
@@ -134,6 +158,10 @@ Updated 30 Mar 2026 (D053). Credentials rotated 31 Mar 2026.
 - Supabase: `C:\Users\parve\AppData\Roaming\npm\mcp-server-supabase.cmd`
 - Xero: `C:\Users\parve\AppData\Roaming\npm\xero-mcp-server.cmd`
 - GitHub: `C:\Users\parve\github-mcp-server\github-mcp-server.exe`
+
+**Claude Code note:** Always `cd` to the repo directory before launching Claude Code.
+Correct: `cd C:\Users\parve\Invegent-content-engine && claude`
+Wrong: launching from `C:\Users\parve` (home dir — no project context)
 
 ---
 
@@ -158,17 +186,21 @@ Updated 30 Mar 2026 (D053). Credentials rotated 31 Mar 2026.
 
 ## WHAT IS NEXT
 
-**Priority order (31 Mar):**
-1. Clear PP zombie drafts (61 from Feb — confirm with PK then run SQL)
-2. Fix visual format publishing — Claude Code session
-3. Fix post_draft_not_found publisher error
-4. Fix Cowork scheduled task UUID
-5. Build nightly reconciler + auditor (Task 1 midnight AEST, Task 2 2am AEST → docs/00_audit_report.md)
+**Immediate (next Claude Code session):**
+1. `supabase functions download ai-worker` → commit source to GitHub (outstanding debt)
+2. Fix carousel image_url = null bug in image-worker
+3. Monitor Visuals tab — confirm D055 trigger produces image_quote renders on next video-format draft
+
+**Next session priorities:**
+1. Meta App Review — complete data handling + reviewer instructions section (overdue 1 Apr)
+2. AI Diagnostic Agent Tier 2
+3. m.post_format_performance population
+4. Prospect demo generator
+5. Client health weekly report email
 
 **Phase 3 build queue:**
-1. AI Diagnostic Agent Tier 2
-2. m.post_format_performance population
-3. Prospect demo generator
-4. Client health weekly report email
+- Compliance-aware NDIS system prompt (pre-sales gate)
+- Invegent own brand pages
+- Client acquisition + onboarding flow (invegent.com/onboard)
 
-Decisions D044–D053 in `docs/06_decisions.md`. Last decision: D053 (30 Mar 2026).
+Decisions through D055 in `docs/06_decisions.md`. Last decision: D055 (31 Mar 2026).
