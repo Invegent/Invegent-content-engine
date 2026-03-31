@@ -11,344 +11,95 @@ is recorded here with context and reasoning.
 
 ---
 
-## D044 — YouTube Shorts Pipeline Stage A: Silent MP4 via Creatomate
-**Date:** 20 March 2026 | **Status:** ✅ Complete
-
-Silent 9:16 MP4 renders via Creatomate. video_short_kinetic + video_short_stat.
-ai-worker v2.6.0 generates video_script JSON. video-worker v1.0.0 renders.
-Formats gated off (is_enabled=false) until credentials confirmed.
+## D044–D055 — See commit 424e91f (31 Mar 2026)
 
 ---
 
-## D045 — YouTube Shorts Pipeline Stage B: ElevenLabs Voice + YouTube Upload
-**Date:** 20 March 2026 | **Status:** ✅ Complete
+## D056 — NDIS Compliance-Aware System Prompt
+**Date:** 31 March 2026 | **Status:** ✅ Live
+
+**Problem:**
+The NDIS Yarns `brand_identity_prompt` had one generic compliance line: "When content
+touches on eligibility, funding, entitlements, or clinical matters, weave this disclaimer
+naturally into the post." The 20 active compliance rules in `t.5.7_compliance_rule` —
+including 15 hard_block rules — were not embedded at generation time. Violations would
+only be caught post-generation by the auto-approver, too late for reliable protection.
 
 **Decision:**
-With both ElevenLabs voices confirmed (NDIS Yarns + Property Pulse), wire Stage B
-in a single session: TTS into MP4 + YouTube Data API v3 upload.
+Embed all 20 active compliance rules directly into the `brand_identity_prompt` in
+`c.client_brand_profile` for NDIS Yarns. Rules grouped into five structured blocks:
+funding & eligibility, clinical claims, dignity & language, regulatory, and disclaimer.
 
-**Implementation (20 Mar 2026):**
+**Changes:**
+- `brand_identity_prompt` updated from ~2,600 to 7,625 chars
+- New NDIS COMPLIANCE section added after ABSOLUTE PROHIBITIONS
+- Existing voice, tone, persona, and format sections preserved unchanged
 
-video-worker v2.0.0:
-- `generateAndUploadVoice()`: ElevenLabs TTS → MP3 → Supabase Storage → public URL
-- Voice ID resolved per client slug: `ELEVENLABS_VOICE_ID_{SLUG_UPPER}`
-  Falls back to `ELEVENLABS_VOICE_ID_NDIS` / `ELEVENLABS_VOICE_ID_PP`
-- Audio element added to Creatomate render spec: `{type: 'audio', source: audioUrl, time: 0}`
-- `processDraft()` handles all 4 video formats, `withVoice` flag controls audio path
-- Stage A silent formats unchanged — same code path, audioUrl = null
+**Hard-block rules now embedded at generation time:**
+- Never assert NDIS will fund specific support (use "may", "where considered reasonable and necessary")
+- Never mention specific dollar amounts for NDIS support categories
+- Never imply diagnosis automatically qualifies for NDIS
+- Never guarantee therapeutic outcomes (use "may support", "research suggests")
+- Clinical claims must reference evidence, not provider assertion
+- Never write participant stories/case studies (no consent records)
+- Never imply special NDIA access or ability to maximise plans
+- No sharp practices — no urgency language, inducements, or differential pricing
+- Never name or compare other NDIS providers unfavourably
+- Plan managers/coordinators must not recommend providers without disclosing relationships
+- No specific NDIS decision advice or appeal strategy coaching
+- OT scope of practice: don't claim services outside registered AHPRA scope
 
-youtube-publisher v1.0.0:
-- `refreshAccessToken()`: POST to oauth2.googleapis.com/token with refresh_token
-- `uploadToYouTube()`: multipart upload (JSON metadata + binary MP4)
-- Uploads as `unlisted` by default — PK manually changes to public after review
-- Writes `youtube_video_id` + `youtube_url` to `draft_format` jsonb
-- Writes to `m.post_publish` (platform='youtube') for cross-platform consistency
-- pg_cron job 34: every 30min at :15 and :45 (offset from video-worker at :00 and :30)
+**Soft-warn rules also embedded:**
+- Person-first language as default
+- No "vulnerable" as primary descriptor
+- Participant agency as central — providers facilitate
+- Policy changes reported as announced, not extrapolated
+- All policy claims attributed to NDIA/NDIS Commission/DSS
 
-Format registry updated:
-- `video_short_kinetic_voice`, `video_short_stat_voice`: `is_buildable=true`
-- `video_long_explainer`, `video_long_podcast_clip`, `video_short_avatar`: remain `is_buildable=false` (Stage C)
+**Review:**
+Calendar reminder set for 2 April 2026 to check first drafts under new prompt.
+If tone feels too hedged, raise temperature in `client_brand_profile` from 0.72 to 0.76.
 
-Voices confirmed:
-- NDIS Yarns: `iamiUYVj7ixJcRZQkS8B` — Australian female, warm/professional
-- Property Pulse: `YCxeyFA0G7yTk6Wuv2oq` — confident/measured male
-
-**To activate voice formats:**
-```sql
-UPDATE c.client_format_config
-SET is_enabled = true
-WHERE ice_format_key IN ('video_short_kinetic_voice', 'video_short_stat_voice')
-  AND client_id = '<client_id>';
-```
-
-**To add external client YouTube channel:**
-1. Client grants Channel Manager access to pk@invegent.com
-2. OAuth Playground → get refresh token for that channel
-3. Add `YOUTUBE_REFRESH_TOKEN_{CLIENT_SLUG_UPPER}` secret to Supabase
-4. Update `c.client_channel` row with real `channel_id`
-5. No code changes needed
-
-**Stage C (future):**
-- `video_short_avatar`: HeyGen API, AI talking head
-- `video_long_explainer`: multi-scene narrated, 3-8 min
-- `video_long_podcast_clip`: waveform + captions from podcast RSS
+**Must be in place before any external client conversation.** This is the pre-sales gate.
 
 ---
 
-## D046 — Client Acquisition: Platform Lead Forms → Website Onboarding
-**Date:** 21 March 2026 | **Status:** ✅ Decided, not yet built
+## D057 — AI Diagnostic Agent Tier 2: pipeline-fixer Edge Function
+**Date:** 31 March 2026 | **Status:** ✅ Deployed
 
 **Decision:**
-Platform forms (Facebook, LinkedIn, Instagram, Invegent pages) are lead capture only.
-All onboarding happens on invegent.com. Platforms feed into the website — the website
-does not feed back into platforms.
+Build a Tier 2 diagnostic layer on top of the existing pipeline-ai-summary (Tier 1).
+Tier 1 diagnoses every hour but never acts. Tier 2 takes pre-approved corrective action
+automatically, without human involvement, on a defined set of safe reversible operations.
 
 **Architecture:**
-```
-Platform (Facebook / LinkedIn / Instagram / Invegent pages)
-  ↓
-  Lead form — captures: name, business, email, intent signal
-  ↓
-  Redirects to invegent.com/onboard
-  ↓
-  ┌──────────────────────┬───────────────────────────┐
-  │  Ready to start now  │  Want to understand first │
-  │  → Onboarding form   │  → Calendar booking       │
-  │  → Supabase config   │  → Discovery call         │
-  │  → Welcome email     │  → Post-call → form       │
-  └──────────────────────┴───────────────────────────┘
-```
+Two layers:
+- **Layer A** — `pipeline-fixer` Edge Function (deployed, pg_cron job #36, runs :25 and :55)
+- **Layer B** — Nightly Auditor Cowork task (already live, runs 2am AEST)
 
-**Reasoning:**
-Platform lead forms cannot branch, cannot trigger multi-step flows, cannot write
-to a database without middleware. Building a full onboarding experience on each
-platform would mean six separate implementations with no shared logic. One website
-onboarding flow serves all acquisition channels.
+**Layer A: 4 auto-fix actions (all idempotent, safe, reversible):**
+1. Unstick locked `m.ai_job` rows (locked > 30 min) → reset to queued
+2. Reset failed image renders (`image_status = 'failed'`, approved, > 2h old) → pending for retry
+3. Kill orphaned publish queue items (status = 'running' > 20 min) → reset to queued
+4. Dead-letter ai_jobs stuck > 7 days → mark dead with reason
 
-**Onboarding form approach — Option A + Hybrid:**
-- Form captures the hard stuff: brand voice inputs, platform preferences,
-  format preferences per platform, tier selection, compliance context.
-- PK does the technical config afterward: feeds, prompts, DB rows.
-- This eliminates the discovery call for ready-now clients without requiring
-  a fully self-configuring system.
-- Manual technical config stays with PK until the system is proven at scale.
+**Layer A: 5 escalation detections (alert-only, picked up by Nightly Auditor):**
+- `publishing_stalled` — no posts published for active client in >36 hours
+- `ai_backlog_critical` — ai_job queue depth > 50 for any client
+- `image_pipeline_silent` — 0 image renders in last 48 hours, image generation enabled
+- `dead_letter_spike` — dead letter count increased > 10 in last 24 hours
+- `health_degraded_persistent` — health_ok = false for 3+ consecutive pipeline-ai-summary runs
 
----
+**New DB table:**
+`m.pipeline_fixer_log` — one row per run, records fixes applied and escalations raised.
 
-## D047 — Onboarding Flow: Two Paths Based on Client Intent
-**Date:** 21 March 2026 | **Status:** ✅ Decided, not yet built
+**First live run result:** health_ok: true, 0 fixes needed, 0 escalations — system is clean.
 
-**Decision:**
-The onboarding flow must respect two distinct client intents without forcing
-either type through the wrong process.
+**Build spec:** `docs/build-specs/ai-diagnostic-tier2-v1.md`
 
-**Path 1 — Ready to start:**
-Client lands on invegent.com/onboard, selects "Ready to start."
-Completes the onboarding form (brand voice, platforms, formats, tier).
-Data submits to Supabase lead table. Triggers welcome email.
-PK receives notification and completes technical config within 2 business days.
-
-**Path 2 — Wants to understand first:**
-Client lands on invegent.com/onboard, selects "Tell me more first."
-Routed to calendar booking (Calendly or equivalent).
-Books a 20-minute discovery call with PK.
-Post-call: if proceeding, directed back to onboarding form.
-
-**Why this matters:**
-Forcing a ready-now client through a sales call wastes both parties' time
-and introduces friction at the moment of highest intent. Forcing a
-needs-context client straight to a config form produces a poor brand profile
-because they haven't had the questions answered yet. Both paths exist simultaneously.
-
----
-
-## D048 — Client Acquisition AI: Chatbot First, Voice Assistant Future
-**Date:** 21 March 2026 | **Status:** ✅ Decided
-
-**Decision:**
-The near-term AI acquisition tool is a website chatbot — not a live voice assistant.
-A live AI voice assistant is a future Phase 4 build.
-
-**Chatbot scope (when built):**
-- Available 24/7 on invegent.com
-- Handles FAQ: how does ICE work, what's included, how much does it cost,
-  what platforms, what's the compliance angle
-- Qualifies the prospect: what sector, which platforms, where they are now
-- Routes to onboarding form (ready now) or calendar booking (needs call)
-- Does not attempt to close — it qualifies and routes
-
-**Why chatbot before voice:**
-PK works full time. Any tool that eliminates the need for a synchronous
-response from PK adds direct value. A chatbot handles inbound interest at
-any hour without PK involvement. A voice assistant requires significantly
-more infrastructure (telephony or real-time audio API) and is not justified
-before paying clients exist.
-
-**Pre-recorded onboarding video:**
-In parallel with the chatbot, a short pre-recorded video ("what ICE does and
-what onboarding looks like") will be produced using the existing ICE pipeline:
-PK writes the script, Creatomate + ElevenLabs renders it. This can be embedded
-on the website and linked from platform profiles. Later, real client onboarding
-calls can be offered to be recorded as testimonial assets (client's consent required).
-
----
-
-## D049 — Package Design: Standard Tiers + Source Allocation Concept
-**Date:** 21 March 2026 | **Status:** 🟡 Direction set, detail pending
-
-**Decision:**
-ICE packages will be defined by three dimensions, not just volume:
-1. Platform coverage — which platforms are included
-2. Post volume — how many posts per week per platform
-3. Source allocation — how many RSS feeds and newsletters monitored per client
-
-The source allocation dimension is ICE's differentiator vs generic agencies.
-Every other provider promises "posts per week." ICE can promise "we monitor
-N sector sources daily and every post is traceable to a real signal."
-That commitment is enforceable because the pipeline either produces the
-content or it doesn't — there is no human bottleneck to blame.
-
-**Standard tiers remain (Starter / Standard / Premium / Custom).**
-Custom is an assessment-based option for clients whose requirements don't
-fit the standard tiers. It is priced after a scoping conversation.
-
-**Source allocation numbers are not yet fixed.**
-
----
-
-## D050 — Invegent Pages as Client Acquisition Channel (Not NDIS Yarns / Property Pulse)
-**Date:** 21 March 2026 | **Status:** ✅ Decided
-
-**Decision:**
-NDIS Yarns and Property Pulse will NOT be used as lead generation channels
-for the Invegent managed content service. Invegent will build its own pages
-(Facebook, Instagram, LinkedIn, YouTube) specifically for the Invegent brand.
-These pages run on ICE and carry CTAs about the service.
-The client pages remain pure sector resources.
-
----
-
-## D051 — ai-worker v2.6.1: Format Advisor Seed Extraction Fix
-**Date:** 22 March 2026 | **Status:** ✅ Deployed
-
-**Decision:**
-Fix the format advisor's seed extraction so it reads from the correct nested
-location within each job type's payload, enabling non-text visual formats to
-be selected for new drafts.
-
-**Root cause:**
-`seedTitle` and `seedBody` were read from the top level of `input_payload`
-(`payload.title`, `payload.body`). Both pipeline job types nest content one level deeper:
-- `rewrite_v1`: `input_payload.digest_item.{title, body_text}`
-- `synth_bundle_v1`: `input_payload.items[0].title` + concatenated `items[].body_text`
-
-The format advisor received empty strings and always responded with text-only default.
-`image_headline` was still being written correctly — creating a confusing state:
-`image_headline` populated but `format_decided = 'text'` and no image generated.
-
-**Fix (ai-worker v2.6.1):**
-Job-type-aware extraction before the format advisor call.
-
-**Side effect discovered during diagnosis:**
-24 backlogged NDIS approved drafts (text-only, pre-visual-pipeline, February 2026)
-were cleared. Confirmed dead as of 30 Mar 2026.
-
----
-
-## D052 — 00_sync_state.md: Machine-Written Live State File for Session Handoff
-**Date:** 22 March 2026 | **Status:** ✅ Deployed
-
-**Decision:**
-Introduce `docs/00_sync_state.md` as a machine-written, automatically overwritten
-file that captures the true live deployed state of ICE at any point in time.
-
-**Problem solved:**
-Session-to-session context loss was causing ICE work sessions to start from stale
-or incorrect assumptions about deployed state.
-
-**Implementation:**
-- File location: `docs/00_sync_state.md` in `Invegent-content-engine`.
-- Overwritten every 12 hours by the Cowork pulse task.
-- Contents: current phase, Edge Function versions + deploy numbers, pg_cron schedule,
-  Vercel frontend status, GitHub latest commit SHAs, known active issues,
-  client pipeline status, credentials status, and "what is next" build queue.
-- First written: 2026-03-22 05:30 UTC.
-
-**Session start protocol:**
-At the start of every session, Claude reads `docs/00_sync_state.md` via GitHub MCP
-before answering any question or writing any code.
-
----
-
-## D053 — Claude Desktop MCP Startup Timeout Fix: Global npm Install
-**Date:** 30 March 2026 | **Status:** ✅ Deployed
-
-**Problem:**
-Claude Desktop PowerShell MCP connections were timing out on startup.
-Root cause: Supabase and Xero MCP servers were configured with `npx -y @latest`,
-causing npm to check for and potentially re-download the latest package version
-on every Claude Desktop startup. This exceeded the MCP server startup timeout.
-
-**Fix:**
-Installed both packages globally via npm:
-```
-npm install -g @supabase/mcp-server-supabase
-npm install -g @xeroapi/xero-mcp-server
-```
-
-Updated `claude_desktop_config.json` to point directly to the installed `.cmd` files:
-- Supabase: `C:\Users\parve\AppData\Roaming\npm\mcp-server-supabase.cmd`
-- Xero: `C:\Users\parve\AppData\Roaming\npm\xero-mcp-server.cmd`
-
-Global installs start instantly — no network check on startup.
-
-**Side note:**
-This session also revealed that Python was not installed on the system.
-Python 3.12.10 was installed via winget (`winget install Python.Python.3.12`).
-
-**Credential exposure:**
-The Claude Code session that performed this fix displayed the raw
-`claude_desktop_config.json` in the conversation, exposing Supabase, GitHub,
-and Xero secrets. All three were rotated on 31 March 2026.
-
----
-
-## D054 — Bundle Dedup Windows: 30 Days → 14 Days, min_unique: 2 → 1
-**Date:** 31 March 2026 | **Status:** ✅ Deployed
-
-**Problem:**
-Both clients had 0 ai_jobs queued for 24+ hours. Diagnosis showed exactly 1 eligible
-item per client in the 72-hour bundle window — below the `min_unique = 2` threshold
-required to form a bundle. Three stacked 30-day dedup windows in `bundle_client_v4`
-were blocking all but the most recently ingested content.
-
-**Root cause:**
-With limited NDIS/property feed volume and a 30-day window across three checks
-(bundled, seeded, published), fresh content appearing in the feed was nearly always
-blocked by a prior occurrence within the last month.
-
-**Changes (SQL migrations applied 31 Mar 2026):**
-1. `bundle_client_v4` — dedup windows reduced from 30 → 14 days (all three checks).
-   Default `p_min_unique` changed from 2 → 1.
-2. `run_pipeline_for_client` — `p_min_unique` default changed from 2 → 1.
-3. `seed_client_to_ai_v2` — `HAVING COUNT(*) >= 2` changed to `>= 1`.
-
-**Trade-off accepted:**
-Single-item bundles produce single-source synthesis posts rather than multi-source
-analysis. Quality is slightly lower than 2+ item bundles, but content keeps flowing.
-The feed intelligence agent (weekly) will flag thin sources for replacement.
-
-**Result:**
-Both clients immediately produced `seeds: 1, drafts: 1, jobs_queued: 1` on next
-manual pipeline run. ai-worker processed both within 3 minutes.
-
----
-
-## D055 — Video Format Remap Trigger: video_short_* → image_quote
-**Date:** 31 March 2026 | **Status:** ✅ Deployed
-
-**Problem:**
-Format advisor in deployed ai-worker v2.6.1 correctly identifies content suited for
-kinetic/stat video. However, video-worker is gated off (no YouTube channel IDs
-configured for either client). image-worker only processes `image_quote` and `carousel`
-formats. Result: `video_short_kinetic` and `video_short_stat` drafts published as
-text-only — no visual generated despite visual intent.
-
-**Fix:**
-BEFORE INSERT/UPDATE trigger `trg_remap_video_format` on `m.post_draft`.
-When `recommended_format IN ('video_short_kinetic', 'video_short_stat', 'video_short_voice')`,
-remaps to `image_quote` before the row is stored.
-Original format intent written to `draft_format.original_format` for future reference.
-
-**Activation path for video-worker:**
-When YouTube channel IDs are confirmed and video-worker is activated:
-1. Drop trigger `trg_remap_video_format`
-2. Video-format drafts will flow through to video-worker as intended
-3. image-worker continues handling `image_quote` and `carousel`
-
-**Note:**
-ai-worker v2.6.1 source was built in Supabase directly and has not been committed
-to GitHub. Outstanding task: `supabase functions download ai-worker` → commit source.
+**What Tier 2 does NOT touch:**
+Draft content, approval status, published posts, client configuration, feed sources.
+Only queue state and job status — fully reversible with no client-visible impact.
 
 ---
 
@@ -357,10 +108,10 @@ to GitHub. Outstanding task: `supabase functions download ai-worker` → commit 
 | Decision | Context | Target Date |
 |---|---|---|
 | Activate video formats for clients | Drop D055 trigger, configure YouTube channel IDs | When YouTube channels ready |
+| Property Pulse compliance prompt | Financial advice rules, different from NDIS clinical rules | Next session |
+| AI Diagnostic Tier 2 — monitor first runs | Watch pipeline_fixer_log for escalations | Apr 1–7 |
 | Update c.client_channel with real YouTube channel IDs | OAuth Playground to get refresh tokens | Stage B setup |
 | YouTube Stage C — HeyGen avatar, long-form | `video_short_avatar`, `video_long_explainer` | Phase 4 |
-| m.post_format_performance population | insights-worker per-format engagement aggregates | Phase 2.1 completion |
-| AI Diagnostic Agent — Tier 2 | After 1-2 weeks of Tier 1 validation | ~1 Apr 2026 |
 | Instagram publisher | 0.5 days after Meta App Review approved | Phase 3 |
 | Prospect demo generator | Needs scoping conversation | Phase 3 |
 | Client health weekly report (email) | 2 days. Retention driver. | Phase 3 |
@@ -373,5 +124,3 @@ to GitHub. Outstanding task: `supabase functions download ai-worker` → commit 
 | Invegent brand pages setup | Facebook, Instagram, LinkedIn, YouTube for Invegent itself | Phase 3 |
 | Pre-recorded onboarding video | Script → Creatomate + ElevenLabs | Phase 3 |
 | AI voice assistant | Future Phase 4 — after chatbot proven | Phase 4 |
-| Commit ai-worker v2.6.1 source to GitHub | `supabase functions download ai-worker` in Claude Code | Next Claude Code session |
-| Fix carousel image_url = null bug | 5 carousel posts generated with no image URL | Next Claude Code session |
