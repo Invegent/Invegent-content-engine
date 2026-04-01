@@ -1,11 +1,17 @@
-// youtube-publisher v1.0.0
+// youtube-publisher v1.3.0
 // Uploads approved video drafts (video_status=generated) to YouTube via Data API v3.
-// OAuth 2.0 token refresh per client. Writes youtube_video_id to m.post_draft.
+// OAuth 2.0 token refresh per client.
+//
+// Refresh token resolution order:
+//   1. c.client_channel.config->>'refresh_token'  (set by dashboard OAuth flow)
+//   2. env var named by c.client_publish_profile.credential_env_key (legacy Supabase secret)
+//
+// Writes youtube_video_id to m.post_draft.
 // Adds youtube_publish row to m.post_publish.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'youtube-publisher-v1.2.0';
+const VERSION = 'youtube-publisher-v1.3.0';
 const YOUTUBE_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
 const YOUTUBE_UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status';
 
@@ -26,8 +32,9 @@ function getServiceClient() {
 }
 
 // ─── OAuth token refresh ──────────────────────────────────────────────────────────────────
-// Reads credential_env_key from c.client_publish_profile for the client's YouTube row,
-// then fetches the refresh token from the corresponding env var.
+// Resolution order:
+//   1. c.client_channel.config->>'refresh_token'  ← set by dashboard OAuth flow
+//   2. env var from c.client_publish_profile.credential_env_key  ← legacy secrets
 
 async function refreshAccessToken(
   supabase: ReturnType<typeof getServiceClient>,
@@ -37,18 +44,37 @@ async function refreshAccessToken(
   const clientSecret  = Deno.env.get('YOUTUBE_CLIENT_SECRET');
   if (!oauthClientId || !clientSecret) throw new Error('YOUTUBE_CLIENT_ID or YOUTUBE_CLIENT_SECRET not set');
 
-  const { data: profile } = await supabase.schema('c').from('client_publish_profile')
-    .select('credential_env_key')
-    .eq('client_id', clientId_)
-    .eq('platform', 'youtube')
-    .limit(1)
-    .maybeSingle();
+  // ── Attempt 1: DB config (set by dashboard OAuth flow) ──────────────────
+  const { data: channelRows } = await supabase.rpc('exec_sql', {
+    query: `SELECT config FROM c.client_channel WHERE client_id = '${clientId_}' AND platform = 'youtube' LIMIT 1`,
+  });
+  const dbRefreshToken: string | null = (channelRows as any)?.[0]?.config?.refresh_token ?? null;
 
-  const envKey = profile?.credential_env_key;
-  if (!envKey) throw new Error(`No credential_env_key in client_publish_profile for client ${clientId_}, platform=youtube`);
+  // ── Attempt 2: Legacy env var ────────────────────────────────────────────
+  let refreshToken: string | null = dbRefreshToken;
+  if (!refreshToken) {
+    const { data: profile } = await supabase.schema('c').from('client_publish_profile')
+      .select('credential_env_key')
+      .eq('client_id', clientId_)
+      .eq('platform', 'youtube')
+      .limit(1)
+      .maybeSingle();
 
-  const refreshToken = Deno.env.get(envKey);
-  if (!refreshToken) throw new Error(`Env var ${envKey} is not set (from client_publish_profile)`);
+    const envKey = profile?.credential_env_key;
+    if (envKey) {
+      refreshToken = Deno.env.get(envKey) ?? null;
+      if (refreshToken) {
+        console.log(`[youtube-publisher] using legacy env var ${envKey} for client ${clientId_} — reconnect via dashboard to migrate`);
+      }
+    }
+  }
+
+  if (!refreshToken) {
+    throw new Error(
+      `No refresh token found for client ${clientId_}. ` +
+      `Connect via dashboard (Clients → Connect → YouTube) or set credential_env_key in client_publish_profile.`
+    );
+  }
 
   const params = new URLSearchParams({
     client_id:     oauthClientId,
@@ -77,14 +103,14 @@ async function uploadToYouTube(opts: {
   title:        string;
   description:  string;
   tags:         string[];
-  categoryId:   string;  // 22 = People & Blogs, 27 = Education, 28 = Science & Tech
+  categoryId:   string;
   privacyStatus: 'public' | 'private' | 'unlisted';
 }): Promise<string> {
   const { accessToken, videoBuffer, title, description, tags, categoryId, privacyStatus } = opts;
 
   const metadata = {
     snippet: {
-      title: title.slice(0, 100),  // YouTube title limit
+      title: title.slice(0, 100),
       description: description.slice(0, 5000),
       tags: tags.slice(0, 30),
       categoryId,
@@ -92,7 +118,6 @@ async function uploadToYouTube(opts: {
     status: { privacyStatus },
   };
 
-  // Multipart upload: JSON metadata + binary video
   const boundary = `yt_boundary_${Date.now()}`;
   const metaStr  = JSON.stringify(metadata);
   const enc      = new TextEncoder();
@@ -127,15 +152,16 @@ async function uploadToYouTube(opts: {
 
 // ─── Build video metadata from draft ───────────────────────────────────────────────────
 
-function buildVideoMetadata(draft: { draft_title: string; draft_body: string; recommended_format: string; }, vertical: string): { title: string; description: string; tags: string[]; categoryId: string } {
+function buildVideoMetadata(
+  draft: { draft_title: string; draft_body: string; recommended_format: string },
+  vertical: string
+): { title: string; description: string; tags: string[]; categoryId: string } {
   const isNdis = vertical.toLowerCase().includes('ndis') || vertical.toLowerCase().includes('disability');
-  const categoryId = isNdis ? '27' : '27';  // 27 = Education for both
+  const categoryId = '27'; // Education
 
-  // YouTube title: append format hint for discoverability
   const formatHint = draft.recommended_format.includes('stat') ? ' #data' : '';
   const title = (draft.draft_title + formatHint).slice(0, 100);
 
-  // Description: post body + mandatory YouTube boilerplate
   const description = [
     draft.draft_body.slice(0, 4000),
     '',
@@ -159,7 +185,6 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method === 'GET') return jsonResponse({ ok: true, function: 'youtube-publisher', version: VERSION });
 
-  // Auth: reuse PUBLISHER_API_KEY with a youtube-specific header
   const expected = Deno.env.get('PUBLISHER_API_KEY');
   const provided  = req.headers.get('x-youtube-publisher-key');
   if (!expected) return jsonResponse({ ok: false, error: 'PUBLISHER_API_KEY_not_set' }, 500);
@@ -168,13 +193,11 @@ Deno.serve(async (req: Request) => {
   const supabase = getServiceClient();
   const results: any[] = [];
 
-  // Pick drafts: video_status=generated, youtube_video_id IS NULL, approval_status=approved
-  // Using video_url presence as proxy for ready-to-publish
   const { data: drafts } = await supabase.schema('m').from('post_draft')
     .select('post_draft_id, client_id, draft_title, draft_body, recommended_format, video_url, draft_format')
     .eq('approval_status', 'approved')
     .eq('video_status', 'generated')
-    .is('draft_format->youtube_video_id', null)  // not yet uploaded
+    .is('draft_format->youtube_video_id', null)
     .not('video_url', 'is', null)
     .in('recommended_format', ['video_short_kinetic','video_short_stat','video_short_kinetic_voice','video_short_stat_voice'])
     .limit(2);
@@ -182,40 +205,29 @@ Deno.serve(async (req: Request) => {
   for (const draft of (drafts ?? [])) {
     const startMs = Date.now();
     try {
-      // Fetch brand + vertical
-      const { data: brand } = await supabase.schema('c').from('client_brand_profile')
-        .select('brand_name').eq('client_id', draft.client_id).limit(1).maybeSingle();
-      const { data: cl } = await supabase.schema('c').from('client')
-        .select('client_slug').eq('client_id', draft.client_id).limit(1).maybeSingle();
       const { data: scope } = await supabase.rpc('exec_sql', {
         query: `SELECT cv.vertical_name FROM c.client_content_scope ccs JOIN t.content_vertical cv ON cv.vertical_id = ccs.vertical_id WHERE ccs.client_id = '${draft.client_id}' AND ccs.is_primary = true LIMIT 1`
       });
-      const clientSlug = cl?.client_slug ?? draft.client_id;
-      const vertical   = (scope as any)?.[0]?.vertical_name ?? 'professional services';
+      const vertical = (scope as any)?.[0]?.vertical_name ?? 'professional services';
 
-      // Refresh OAuth token via credential_env_key from client_publish_profile
       const accessToken = await refreshAccessToken(supabase, draft.client_id);
 
-      // Download video from Storage
       const videoResp = await fetch(draft.video_url);
       if (!videoResp.ok) throw new Error(`Failed to download video: ${videoResp.status}`);
       const videoBuffer = await videoResp.arrayBuffer();
       const videoSizeMb = Math.round(videoBuffer.byteLength / 1024 / 1024 * 10) / 10;
       console.log(`[youtube-publisher] uploading ${videoSizeMb}MB for ${draft.post_draft_id}`);
 
-      // Build metadata
       const { title, description, tags, categoryId } = buildVideoMetadata(draft, vertical);
 
-      // Upload to YouTube — start as unlisted, manually change to public once reviewed
       const youtubeVideoId = await uploadToYouTube({
         accessToken, videoBuffer, title, description, tags, categoryId,
-        privacyStatus: 'unlisted',  // unlisted by default — manual publish once reviewed
+        privacyStatus: 'unlisted',
       });
 
       const youtubeUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
       const durationMs = Date.now() - startMs;
 
-      // Write youtube_video_id into draft_format and video_status = 'published'
       const updatedFormat = {
         ...(draft.draft_format ?? {}),
         youtube_video_id:  youtubeVideoId,
@@ -228,15 +240,14 @@ Deno.serve(async (req: Request) => {
         updated_at:   nowIso(),
       }).eq('post_draft_id', draft.post_draft_id);
 
-      // Write to m.post_publish for cross-platform consistency
       await supabase.schema('m').from('post_publish').insert({
-        post_draft_id:   draft.post_draft_id,
-        client_id:       draft.client_id,
-        platform:        'youtube',
+        post_draft_id:    draft.post_draft_id,
+        client_id:        draft.client_id,
+        platform:         'youtube',
         platform_post_id: youtubeVideoId,
-        published_at:    nowIso(),
-        status:          'published',
-        publish_meta:    { youtube_url: youtubeUrl, privacy_status: 'unlisted', video_size_mb: videoSizeMb, duration_ms: durationMs },
+        published_at:     nowIso(),
+        status:           'published',
+        publish_meta:     { youtube_url: youtubeUrl, privacy_status: 'unlisted', video_size_mb: videoSizeMb, duration_ms: durationMs },
       });
 
       results.push({ post_draft_id: draft.post_draft_id, status: 'published', youtube_video_id: youtubeVideoId, youtube_url: youtubeUrl, video_size_mb: videoSizeMb, duration_ms: durationMs });
@@ -245,8 +256,6 @@ Deno.serve(async (req: Request) => {
     } catch (e: any) {
       const msg = (e?.message ?? String(e)).slice(0, 2000);
       console.error(`[youtube-publisher] failed ${draft.post_draft_id}:`, msg);
-      // Mark video_status='failed' so this draft isn't retried indefinitely.
-      // pipeline-fixer will reset failed items after 2h if appropriate.
       await supabase.schema('m').from('post_draft').update({
         video_status: 'failed',
         draft_format: { ...(draft.draft_format ?? {}), youtube_upload_error: msg, youtube_upload_attempted: nowIso() },
