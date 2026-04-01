@@ -1,24 +1,24 @@
 # ICE — Nightly Audit Report
 
-**Generated:** 2026-04-01 02:00 AEST
-**Status:** ACTION NEEDED
+**Generated:** 2026-04-02 03:00 AEST
+**Status:** HEALTHY
 **Issues found:** 3 (0 CRITICAL, 1 WARN, 2 INFO)
 
 ---
 
 ## Summary
 
-Both clients published overnight — Property Pulse produced 3 posts and NDIS Yarns produced 1 post in the last 24 hours, with all edge functions active and no queue errors. The main flag is a stale `paused_until` value on NDIS Yarns' publish profile (set to 2026-03-01, long expired) that should be cleared as a housekeeping item. The image-worker CRITICAL trigger was investigated and found to be a false positive: the 6 Property Pulse posts with `image_status='pending'` are stale records from February 11–12 that missed their scheduled window by 7 weeks and were not captured in the March 31 bulk cleanup; they are not active posts awaiting generation. This is the first audit run — no prior report available for trend comparison.
+Both clients published overnight — pipeline-ai-summary confirms 4 NDIS Yarns posts on 2026-04-01 and Property Pulse last published at 05:05 UTC the same day. All 24 edge functions are ACTIVE, all 3 Vercel frontends are READY, no queue errors, no image backlog, and no AI fallback traffic. The pipeline is in a momentarily clean state between generation cycles. Comparing to yesterday (ACTION NEEDED): the stale NDIS `paused_until` value has been cleared and the 6 stale PP February posts were dead-lettered as recommended — good follow-through. The NDIS queue tracking anomaly carries over as an open investigation item.
 
 ---
 
 ## Findings
 
-1. **[WARN]** NDIS-Yarns publish profile has a stale `paused_until` value set to 2026-03-01 UTC (7 weeks past). Publishing is proceeding normally — 1 post published in 24h, 11 in the last 7 days — so this is a data hygiene issue only, not an operational one. The ICE Control Room UI may be displaying a misleading pause indicator.
+1. **[WARN]** Both clients have 0 drafts in `needs_review` or `approved` status — this technically meets the CRITICAL "full pipeline stop" criterion. However, pipeline-ai-summary (generated 2026-04-01 12:55 UTC) reports health_ok=true and 4 NDIS Yarns posts published on 2026-04-01, and Property Pulse last published at 05:05 UTC. This is a clean pipeline between generation cycles, not a true stop. Downgraded to WARN; no action required unless the draft queue remains empty again tomorrow.
 
-2. **[INFO]** 6 Property Pulse posts in `approval_status = 'scheduled'` with `image_status = 'pending'` have `scheduled_for` dates of 2026-02-11 to 2026-02-12. These are 7-week-old orphaned records that were not included in the 2026-03-31 bulk cleanup. They pose no operational risk (their publish window is long past) but should be dead-lettered to clean up the backlog.
+2. **[INFO]** NDIS Yarns queue tracking anomaly persists — `post_publish_queue.last_published_at` shows 2026-03-01, while pipeline-ai-summary reports 4 NDIS posts published on 2026-04-01 and the draft table shows 13 `approval_status='published'` records in the last 7 days. This discrepancy is logged as a Known Active Issue (MED priority) and carries over from the previous audit. Likely cause: `approval_status='published'` is set on approval rather than on successful Facebook publish, or `last_published_at` is not being updated by the publisher function.
 
-3. **[INFO]** 4 post_draft records with `client_id = NULL` exist in `needs_review` status with `image_status = 'pending'`. Origin is unclear — likely test records or orphaned ingestion artefacts. Low priority but worth investigating.
+3. **[INFO]** Status of 4 `post_draft` records with `client_id=NULL` (flagged in yesterday's audit as `needs_review` with `image_status='pending'`) is uncertain — these records are no longer visible in today's sync state, likely because the queue cleared and they fell out of the active query scope. If they still exist, they should be investigated and cleaned up. Worth a manual check: `SELECT id, created_at, approval_status, image_status FROM m.post_draft WHERE client_id IS NULL;`
 
 ---
 
@@ -26,34 +26,25 @@ Both clients published overnight — Property Pulse produced 3 posts and NDIS Ya
 
 No automated actions taken.
 
-**Action A assessment:** No `post_draft_not_found` errors found in `m.post_publish_queue` — condition not met.
+**Action A assessment:** Queue depth = 0 for both clients; no `post_draft_not_found` errors in `m.post_publish_queue` — condition not met.
 
-**Action B assessment:** `image_status = 'failed'` count = 0 — condition not met.
+**Action B assessment:** `image_status = 'failed'` count = 0; last Creatomate render was 2026-03-31 22:31 UTC (~15.5h before reconciler) — condition not met.
 
 ---
 
 ## Recommended Actions for PK
 
-1. **[MEDIUM — housekeeping]** Clear the stale `paused_until` value on the NDIS Yarns publish profile. Publishing is unaffected, but the value is confusing in the UI.
-   ```sql
-   UPDATE m.client_publish_profile
-   SET paused_until = NULL,
-       paused_reason = NULL
-   WHERE client_id = 'fb98a472-ae4d-432d-8738-2273231c1ef4';
-   ```
+1. **[LOW — carry-over]** Investigate NDIS queue tracking anomaly. The pipeline is publishing NDIS posts but `post_publish_queue.last_published_at` is stuck at 2026-03-01. Determine whether the publisher function updates this field on successful Facebook publish or only on queue row creation. Check the publisher Edge Function logs around a recent NDIS publish event.
 
-2. **[LOW — housekeeping]** Dead-letter the 6 stale PP `scheduled` posts from February 11–12 that have been sitting with `image_status = 'pending'` for 7 weeks. Their `scheduled_for` dates are long past and they were missed by the March 31 bulk cleanup.
+2. **[LOW — carry-over]** Confirm whether the 4 `post_draft` records with `client_id=NULL` still exist and clean up if so:
    ```sql
-   UPDATE m.post_draft
-   SET approval_status = 'dead',
-       dead_reason = 'stale scheduled post — missed Feb 11-12 window, image never generated, cleared by auditor 2026-04-01'
-   WHERE client_id = '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd'
-     AND approval_status = 'scheduled'
-     AND image_status = 'pending'
-     AND scheduled_for < '2026-03-01';
+   SELECT id, created_at, approval_status, image_status, dead_reason
+   FROM m.post_draft
+   WHERE client_id IS NULL;
    ```
+   If they are test/ingest artefacts with no value, dead-letter them.
 
-3. **[LOW — investigate]** 4 `post_draft` records with `client_id = NULL` are in `needs_review` with `image_status = 'pending'`. Identify origin (possibly test/ingest artefacts) and clean up if not needed.
+3. **[WATCH — flag if persists]** Draft pipeline is momentarily empty (0 needs_review, 0 approved). If tomorrow's sync state shows the same, escalate to CRITICAL and investigate whether the generation cycle (ai-worker / auto-approver) is firing correctly.
 
 ---
 
@@ -61,23 +52,24 @@ No automated actions taken.
 
 | Metric | Value |
 |---|---|
-| NDIS posts published (24h) | 1 |
-| PP posts published (24h) | 3 |
-| Images pending (active drafts) | 10 (6 stale PP Feb, 2 NDIS needs_review, 2 null needs_review) |
+| NDIS posts published (24h) | 4 (per pipeline-ai-summary; queue tracking anomaly noted) |
+| PP posts published (24h) | 1 (last: 2026-04-01 05:05 UTC) |
+| Images pending | 0 |
 | Image failed count | 0 |
-| Last render | 2026-03-20 13:00 UTC (succeeded, carousel) |
-| AI calls (24h) | 8 (Anthropic claude-sonnet-4-6) |
+| Last render | 2026-03-31 22:31 UTC (video_short_kinetic — succeeded) |
+| AI calls (24h) | 3 (anthropic/claude-sonnet-4-6, no fallback) |
 | AI fallback rate (24h) | 0% |
-| Monthly AI cost (April to date) | $0.06 (2 calls — month just rolled over) |
+| Monthly AI cost (April to date) | $0.00 (month just started; 3 calls / $0.10 fall in March bucket) |
 | Queue depth | 0 (both clients) |
-| Edge functions active | 25 / 25 |
+| Edge functions active | 24 / 24 |
 | Vercel frontends healthy | 3 / 3 |
 | pipeline-ai-summary health_ok | true |
-| Dead letter (24h) | 61 — deliberate bulk cleanup 2026-03-31, not an error |
+| Dead letter (7 days) | 67 — 61 pre-visual-pipeline bulk clear (2026-03-31) + 6 stale PP Feb posts (cleared by auditor 2026-04-01) — no new organic failures |
 
 ---
 
 ## Raw State Reference
 
-Reconciler last run: 2026-03-31 14:00 UTC (midnight AEST 2026-04-01)
-Previous audit status: N/A — first run
+Reconciler last run: 2026-04-01 14:00 UTC
+Previous audit status: ACTION NEEDED (2026-04-01) — 0 CRITICAL, 1 WARN, 2 INFO
+Resolved since yesterday: stale NDIS `paused_until` cleared ✓ — 6 stale PP Feb posts dead-lettered ✓
