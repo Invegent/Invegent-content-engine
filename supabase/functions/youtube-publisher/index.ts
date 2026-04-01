@@ -5,7 +5,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'youtube-publisher-v1.1.0';
+const VERSION = 'youtube-publisher-v1.2.0';
 const YOUTUBE_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
 const YOUTUBE_UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status';
 
@@ -26,25 +26,32 @@ function getServiceClient() {
 }
 
 // ─── OAuth token refresh ──────────────────────────────────────────────────────────────────
-// Refreshes access token from stored refresh token.
-// Refresh tokens don't expire (unless revoked), so one per channel is sufficient.
+// Reads credential_env_key from c.client_publish_profile for the client's YouTube row,
+// then fetches the refresh token from the corresponding env var.
 
-async function refreshAccessToken(clientSlug: string): Promise<string> {
-  const clientId     = Deno.env.get('YOUTUBE_CLIENT_ID');
-  const clientSecret = Deno.env.get('YOUTUBE_CLIENT_SECRET');
-  if (!clientId || !clientSecret) throw new Error('YOUTUBE_CLIENT_ID or YOUTUBE_CLIENT_SECRET not set');
+async function refreshAccessToken(
+  supabase: ReturnType<typeof getServiceClient>,
+  clientId_: string,
+): Promise<string> {
+  const oauthClientId = Deno.env.get('YOUTUBE_CLIENT_ID');
+  const clientSecret  = Deno.env.get('YOUTUBE_CLIENT_SECRET');
+  if (!oauthClientId || !clientSecret) throw new Error('YOUTUBE_CLIENT_ID or YOUTUBE_CLIENT_SECRET not set');
 
-  // Try exact slug match first, then fallback pattern
-  const slugUpper = clientSlug.toUpperCase().replace(/-/g, '_');
-  let refreshToken = Deno.env.get(`YOUTUBE_REFRESH_TOKEN_${slugUpper}`);
-  if (!refreshToken) {
-    if (clientSlug.toLowerCase().includes('ndis')) refreshToken = Deno.env.get('YOUTUBE_REFRESH_TOKEN_NDIS');
-    else if (clientSlug.toLowerCase().includes('property') || clientSlug.toLowerCase().includes('pp')) refreshToken = Deno.env.get('YOUTUBE_REFRESH_TOKEN_PP');
-  }
-  if (!refreshToken) throw new Error(`No YouTube refresh token found for client: ${clientSlug}`);
+  const { data: profile } = await supabase.schema('c').from('client_publish_profile')
+    .select('credential_env_key')
+    .eq('client_id', clientId_)
+    .eq('platform', 'youtube')
+    .limit(1)
+    .maybeSingle();
+
+  const envKey = profile?.credential_env_key;
+  if (!envKey) throw new Error(`No credential_env_key in client_publish_profile for client ${clientId_}, platform=youtube`);
+
+  const refreshToken = Deno.env.get(envKey);
+  if (!refreshToken) throw new Error(`Env var ${envKey} is not set (from client_publish_profile)`);
 
   const params = new URLSearchParams({
-    client_id:     clientId,
+    client_id:     oauthClientId,
     client_secret: clientSecret,
     refresh_token: refreshToken,
     grant_type:    'refresh_token',
@@ -186,8 +193,8 @@ Deno.serve(async (req: Request) => {
       const clientSlug = cl?.client_slug ?? draft.client_id;
       const vertical   = (scope as any)?.[0]?.vertical_name ?? 'professional services';
 
-      // Refresh OAuth token
-      const accessToken = await refreshAccessToken(clientSlug);
+      // Refresh OAuth token via credential_env_key from client_publish_profile
+      const accessToken = await refreshAccessToken(supabase, draft.client_id);
 
       // Download video from Storage
       const videoResp = await fetch(draft.video_url);
