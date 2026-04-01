@@ -11,95 +11,91 @@ is recorded here with context and reasoning.
 
 ---
 
-## D044–D055 — See commit 424e91f (31 Mar 2026)
+## D044–D057 — See commit 9b810f0 (31 Mar 2026)
 
 ---
 
-## D056 — NDIS Compliance-Aware System Prompt
+## D058 — Property Pulse Compliance-Aware System Prompt
 **Date:** 31 March 2026 | **Status:** ✅ Live
 
-**Problem:**
-The NDIS Yarns `brand_identity_prompt` had one generic compliance line: "When content
-touches on eligibility, funding, entitlements, or clinical matters, weave this disclaimer
-naturally into the post." The 20 active compliance rules in `t.5.7_compliance_rule` —
-including 15 hard_block rules — were not embedded at generation time. Violations would
-only be caught post-generation by the auto-approver, too late for reliable protection.
-
 **Decision:**
-Embed all 20 active compliance rules directly into the `brand_identity_prompt` in
-`c.client_brand_profile` for NDIS Yarns. Rules grouped into five structured blocks:
-funding & eligibility, clinical claims, dignity & language, regulatory, and disclaimer.
+Embed financial compliance rules directly into the PP `brand_identity_prompt`.
+PP is investment/property content — key regulatory framework is ASIC/AFSL rules,
+NCCP for credit, and general financial advice prohibition for unlicensed operators.
 
-**Changes:**
-- `brand_identity_prompt` updated from ~2,600 to 7,625 chars
-- New NDIS COMPLIANCE section added after ABSOLUTE PROHIBITIONS
-- Existing voice, tone, persona, and format sections preserved unchanged
-
-**Hard-block rules now embedded at generation time:**
-- Never assert NDIS will fund specific support (use "may", "where considered reasonable and necessary")
-- Never mention specific dollar amounts for NDIS support categories
-- Never imply diagnosis automatically qualifies for NDIS
-- Never guarantee therapeutic outcomes (use "may support", "research suggests")
-- Clinical claims must reference evidence, not provider assertion
-- Never write participant stories/case studies (no consent records)
-- Never imply special NDIA access or ability to maximise plans
-- No sharp practices — no urgency language, inducements, or differential pricing
-- Never name or compare other NDIS providers unfavourably
-- Plan managers/coordinators must not recommend providers without disclosing relationships
-- No specific NDIS decision advice or appeal strategy coaching
-- OT scope of practice: don't claim services outside registered AHPRA scope
-
-**Soft-warn rules also embedded:**
-- Person-first language as default
-- No "vulnerable" as primary descriptor
-- Participant agency as central — providers facilitate
-- Policy changes reported as announced, not extrapolated
-- All policy claims attributed to NDIA/NDIS Commission/DSS
-
-**Review:**
-Calendar reminder set for 2 April 2026 to check first drafts under new prompt.
-If tone feels too hedged, raise temperature in `client_brand_profile` from 0.72 to 0.76.
-
-**Must be in place before any external client conversation.** This is the pre-sales gate.
+**Five hard-block groups added:**
+- Investment returns — no specific return projections, past performance disclaimer, no market timing directives
+- Credit and lending — no loan product recommendations, no borrowing capacity advice
+- Tax and depreciation — concepts fine, specific advice not; especially CGT timing and SMSF
+- Product promotion — no unlicensed financial products, schemes, or syndicates
+- Disclaimer rule — when to include (investment/tax/lending content) vs when not (pure data reporting)
 
 ---
 
-## D057 — AI Diagnostic Agent Tier 2: pipeline-fixer Edge Function
-**Date:** 31 March 2026 | **Status:** ✅ Deployed
+## D059 — m.post_format_performance Aggregation
+**Date:** 31 March 2026 | **Status:** ✅ Live
 
 **Decision:**
-Build a Tier 2 diagnostic layer on top of the existing pipeline-ai-summary (Tier 1).
-Tier 1 diagnoses every hour but never acts. Tier 2 takes pre-approved corrective action
-automatically, without human involvement, on a defined set of safe reversible operations.
+Create `public.refresh_post_format_performance()` SQL function to aggregate
+`m.post_performance` by `ice_format_key` per client for 7-day, 30-day, and all-time windows.
+Runs via pg_cron daily at 3:15am UTC (after insights-worker at 3:00am).
+Unique constraint on `(client_id, ice_format_key, rolling_window_days)` for upsert.
+Initial run: 20 rows populated. Data sparse (new pages) but infrastructure ready.
 
-**Architecture:**
-Two layers:
-- **Layer A** — `pipeline-fixer` Edge Function (deployed, pg_cron job #36, runs :25 and :55)
-- **Layer B** — Nightly Auditor Cowork task (already live, runs 2am AEST)
+---
 
-**Layer A: 4 auto-fix actions (all idempotent, safe, reversible):**
-1. Unstick locked `m.ai_job` rows (locked > 30 min) → reset to queued
-2. Reset failed image renders (`image_status = 'failed'`, approved, > 2h old) → pending for retry
-3. Kill orphaned publish queue items (status = 'running' > 20 min) → reset to queued
-4. Dead-letter ai_jobs stuck > 7 days → mark dead with reason
+## D060 — YouTube Pipeline Activation (Both Clients)
+**Date:** 1 April 2026 | **Status:** ✅ Live
 
-**Layer A: 5 escalation detections (alert-only, picked up by Nightly Auditor):**
-- `publishing_stalled` — no posts published for active client in >36 hours
-- `ai_backlog_critical` — ai_job queue depth > 50 for any client
-- `image_pipeline_silent` — 0 image renders in last 48 hours, image generation enabled
-- `dead_letter_spike` — dead letter count increased > 10 in last 24 hours
-- `health_degraded_persistent` — health_ok = false for 3+ consecutive pipeline-ai-summary runs
+**Problem:**
+D055 remap trigger was blocking all video formats for both clients.
+YouTube OAuth tokens were identical (both pointing to same Google account, not channel-scoped).
+youtube-publisher was using brittle slug-based env var name construction instead of DB lookup.
 
-**New DB table:**
-`m.pipeline_fixer_log` — one row per run, records fixes applied and escalations raised.
+**Sequence of fixes:**
+1. Generated fresh PP OAuth token via OAuth Playground (Property Pulse Brand Account)
+2. Generated fresh NDIS OAuth token via OAuth Playground (pk@invegent.com — owns NDIS Yarns channel)
+3. Created `client_publish_profile` rows for YouTube — both clients
+4. Set `video_generation_enabled = true` on both clients' Facebook profiles
+5. Dropped `trg_remap_video_format` trigger (D055) — no longer needed
+6. youtube-publisher v1.1.0: fixed silent failure bug — `video_status` now set to `failed` on upload error instead of remaining `generated`
+7. youtube-publisher v1.2.0: replaced brittle slug-based env var name construction with DB-driven `credential_env_key` lookup from `c.client_publish_profile`. Adding a new YouTube client now requires only a DB row, no code change.
 
-**First live run result:** health_ok: true, 0 fixes needed, 0 escalations — system is clean.
+**Credential naming:**
+- PP: `YOUTUBE_REFRESH_TOKEN_PP` stored in Supabase secrets + password manager
+- NDIS: `YOUTUBE_REFRESH_TOKEN_NDIS` stored in Supabase secrets + password manager
 
-**Build spec:** `docs/build-specs/ai-diagnostic-tier2-v1.md`
+**YouTube channels:**
+- NDIS Yarns: `UCqCTvPSR1BwhIi5Cui9_9Mw`
+- Property Pulse: `UCudcAtOaVbYNc-9mXvou7Wg`
 
-**What Tier 2 does NOT touch:**
-Draft content, approval status, published posts, client configuration, feed sources.
-Only queue state and job status — fully reversible with no client-visible impact.
+**Outstanding:** PP test video (Gold Coast housing, 28s kinetic) is rendered and queued.
+YouTube upload pending secret propagation confirmation.
+
+**Source committed:** `supabase/functions/youtube-publisher/index.ts` now in GitHub.
+
+---
+
+## D061 — OpenClaw Installed (Telegram Remote Control)
+**Date:** 1 April 2026 | **Status:** ✅ Live
+
+**Decision:**
+Install OpenClaw as a Telegram-based remote control interface for ICE operations.
+Allows querying pipeline status and issuing commands from phone via Telegram.
+
+**Setup:**
+- OpenClaw version: 2026.3.31
+- Telegram bot: @InvegentICEbot (token in password manager)
+- Model: `anthropic/claude-sonnet-4-6` via Max plan (`claude setup-token` auth)
+- Gateway: Windows login item (auto-starts on boot)
+- Auth profile: `anthropic:anthropic-max` (setup-token method)
+
+**Runtime requirement:**
+Gateway starts automatically but `openclaw tui` must be run manually after each restart.
+One PowerShell window running `openclaw tui` must stay open for the bot to respond.
+
+**Future:** Scope a SOUL.md for the ICE operations context so the agent understands
+the pipeline and can answer questions about draft counts, publish status, etc.
 
 ---
 
@@ -107,20 +103,15 @@ Only queue state and job status — fully reversible with no client-visible impa
 
 | Decision | Context | Target Date |
 |---|---|---|
-| Activate video formats for clients | Drop D055 trigger, configure YouTube channel IDs | When YouTube channels ready |
-| Property Pulse compliance prompt | Financial advice rules, different from NDIS clinical rules | Next session |
-| AI Diagnostic Tier 2 — monitor first runs | Watch pipeline_fixer_log for escalations | Apr 1–7 |
-| Update c.client_channel with real YouTube channel IDs | OAuth Playground to get refresh tokens | Stage B setup |
-| YouTube Stage C — HeyGen avatar, long-form | `video_short_avatar`, `video_long_explainer` | Phase 4 |
+| YouTube secrets propagation | Supabase CLI set command fails with // in token — use dashboard edit or find CLI workaround | Next session |
+| YouTube upload test confirm | Reset and test after secrets confirmed | Next session |
+| OpenClaw SOUL.md | Define ICE context for the agent so it understands the pipeline | Phase 3 |
+| Cowork → Supabase conversion | Move nightly reconciler + auditor to Edge Functions (laptop independence) | Next session |
+| AI Diagnostic Tier 2 — auditor improvements | Add 3 new checks: config completeness, post-publish verification, video staleness | Phase 3 |
 | Instagram publisher | 0.5 days after Meta App Review approved | Phase 3 |
-| Prospect demo generator | Needs scoping conversation | Phase 3 |
-| Client health weekly report (email) | 2 days. Retention driver. | Phase 3 |
+| Prospect demo generator | ~2 days Claude Code | Phase 3 |
+| Client health weekly report (email) | ~2 days Claude Code | Phase 3 |
+| Invegent brand pages setup | Own ICE client | Phase 3 |
 | Model router implementation | When AI costs become significant | Phase 4 |
 | SaaS vs managed service long-term | When 10 clients served for 3+ months | Phase 4 |
-| Upgrade Creatomate to Growth plan | When Phase 3 video pipeline starts | Phase 3 |
-| Package source allocation numbers | Define RSS feeds + newsletters per tier | Phase 3 |
-| Website chatbot build | Qualifies prospects, routes to form or calendar | Phase 3 |
-| Onboarding form build (invegent.com/onboard) | Two-path flow: ready-now vs needs-call | Phase 3 |
-| Invegent brand pages setup | Facebook, Instagram, LinkedIn, YouTube for Invegent itself | Phase 3 |
-| Pre-recorded onboarding video | Script → Creatomate + ElevenLabs | Phase 3 |
-| AI voice assistant | Future Phase 4 — after chatbot proven | Phase 4 |
+| YouTube Stage C — HeyGen avatar | Phase 4 | Phase 4 |
