@@ -219,9 +219,10 @@ A support worker gets 19 rules (16 universal + 3 global). No clinical rules.
   INSERT into t.5.7_compliance_rule
 - Zero code changes required
 
-**Outstanding:** get_compliance_rules() is built and tested but NOT YET wired into
-ai-worker. Content generation currently loads all rules for the vertical regardless
-of client profession. Wire this in next session.
+**Completed 2 Apr 2026:** ai-worker v2.7.0 deployed with profession-scoped
+compliance rule loading. fetchComplianceBlock now loads rules filtered by
+client profession_slug. Also extended t.profession with ANZSCO occupation codes,
+ANZSIC class codes, code_of_conduct_url, and regulator_website for all 12 professions.
 
 ---
 
@@ -229,7 +230,7 @@ of client profession. Wire this in next session.
 
 | Decision | Context | Target Date |
 |---|---|---|
-| Wire get_compliance_rules() into ai-worker | Profession-scoped content generation — function built, not yet called by ai-worker | Next session |
+| ~~Wire get_compliance_rules() into ai-worker~~ | ✅ Done 2 Apr 2026 — ai-worker v2.7.0 deployed | Resolved |
 | AI Diagnostic Tier 2 | Prerequisites met (doctor log live 12+ records). Build: pre-approved action list, Claude reasons about which action | Next session |
 | NDIS Yarns YouTube | Convert channel to Brand Account, then connect via dashboard | Next session |
 | Compliance queue review | 5 items with AI analysis — mark reviewed in dashboard | Next session |
