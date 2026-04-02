@@ -7,54 +7,16 @@ is recorded here with context and reasoning.
 
 ---
 
-## D001–D043 — See previous commits
-
----
-
-## D044–D057 — See commit 9b810f0 (31 Mar 2026)
-
----
-
-## D058 — Property Pulse Compliance-Aware System Prompt
-**Date:** 31 March 2026 | **Status:** ✅ Live
-
-Embedded ASIC/AFSL financial compliance rules into PP brand_identity_prompt.
-Five hard-block groups: investment returns, credit/lending, tax/depreciation,
-product promotion, disclaimer rule.
-
----
-
-## D059 — m.post_format_performance Aggregation
-**Date:** 31 March 2026 | **Status:** ✅ Live
-
-refresh_post_format_performance() SQL function. Aggregates post_performance
-by ice_format_key per client, 7/30/all-time windows. pg_cron daily 3:15am UTC.
-
----
-
-## D060 — YouTube Pipeline Activation (Both Clients)
-**Date:** 1 April 2026 | **Status:** ✅ Live
-
-youtube-publisher v1.2.0 — DB-driven credential_env_key lookup.
-OAuth tokens for both channels. PP YouTube connected and first Short published.
-NDIS Yarns YouTube pending Brand Account conversion.
-
----
-
-## D061 — OpenClaw Installed (Telegram Remote Control)
-**Date:** 1 April 2026 | **Status:** ✅ Live
-
-OpenClaw v2026.3.31. @InvegentICEbot. anthropic/claude-sonnet-4-6 via Max plan.
-Gateway auto-starts on boot. Run `openclaw tui` after each restart.
+## D001–D061 — See earlier commits
 
 ---
 
 ## D062 — post_seed Platform Column + Constraint Fix
 **Date:** 2 April 2026 | **Status:** ✅ Live
 
-Added `platform text` column to `m.post_seed`. Replaced `post_seed_uniq_run_item`
-constraint with `post_seed_uniq_run_item_platform` on (digest_run_id, digest_item_id, platform).
-Updated `seed_client_to_ai_v2` to exclude YouTube from text pipeline.
+Added `platform` column to `m.post_seed`. New constraint `post_seed_uniq_run_item_platform`
+on (digest_run_id, digest_item_id, platform). YouTube excluded from text pipeline.
+Fixes CROSS JOIN duplicate conflict bug in seed_client_to_ai_v2.
 
 ---
 
@@ -62,7 +24,8 @@ Updated `seed_client_to_ai_v2` to exclude YouTube from text pipeline.
 **Date:** 2 April 2026 | **Status:** ✅ Live
 
 `m.harvest_pipeline_doctor_log()` SECURITY DEFINER function reads doctor HTTP response
-from `net._http_response` and writes to log. pg_cron at :17/:47. 37 records in log.
+from `net._http_response`, writes structured results to `m.pipeline_doctor_log`.
+pg_cron at :17/:47 (2 min after doctor at :15/:45). 37 records in log at session end.
 
 ---
 
@@ -71,6 +34,7 @@ from `net._http_response` and writes to log. pg_cron at :17/:47. 37 records in l
 
 Added `acknowledged_at` + `acknowledged_by` to `m.post_publish_queue`.
 Doctor harvester skips acknowledged dead items from issues_found count.
+Enables formal closure of known-bad items without deletion.
 
 ---
 
@@ -88,97 +52,106 @@ First run: 5/5 NDIS items analysed, 4/5 action required.
 ## D066 — Profession Dimension for Compliance + Content
 **Date:** 2 April 2026 | **Status:** ✅ Live
 
-t.profession table (12 professions). profession_slugs[] on compliance rules.
+t.profession table (12 professions: 7 NDIS, 5 property).
+profession_slugs[] on t.5.7_compliance_rule (4 rules scoped).
 profession_slug on m.compliance_policy_source, m.compliance_review_queue, c.client.
 Care for Welfare = occupational_therapy.
 get_compliance_rules(vertical, profession) SECURITY DEFINER function.
-OT gets 22 rules. Support worker gets 19. No false positives.
+OT gets 22 rules (16 universal + 3 OT-specific + 3 global).
+Support worker gets 19 (16 + 3 global). No false positives.
+
+t.profession also stores: anzsco_occupation_id, anzsic_class_code,
+code_of_conduct_url, code_of_conduct_name, regulator_website.
+All 12 professions backfilled. code_of_conduct_url is the input for
+the future AI compliance rule generator — fetched fresh via Jina when needed.
+Storing URL (not text) is correct — avoids stale copies, uses existing fetch infrastructure.
 
 ---
 
 ## D067 — Claude Code Agentic Loop — First Autonomous Execution
 **Date:** 2 April 2026 | **Status:** ✅ Proven
 
-**Decision:**
-Establish the Claude Code agentic loop as the standard execution pattern
-for well-scoped ICE build tasks that do not require human decision-making.
+Establish the Claude Code agentic loop as the standard pattern for
+well-scoped ICE build tasks that don't require mid-execution human judgment.
 
-**What happened:**
-A detailed brief (`docs/briefs/2026-04-02-profession-compliance-wire.md`) was written
-in chat, committed to GitHub, then Claude Code was pointed at it from
-`C:\Users\parve\Invegent-content-engine`. All 4 tasks completed autonomously:
-
-1. ai-worker v2.7.0 deployed — profession-scoped compliance rules (22 for OT, 19 for support worker)
-2. t.profession extended — 5 columns added, all 12 professions backfilled
-3. k.table_registry — 7 tables updated from TODO to full documentation
-4. Cowork token alert task created + token health log initialised
-
-Claude Code handled one data discrepancy correctly: ANZSIC code 8699 didn't exist
-in the DB, so it used NULL rather than forcing an invalid FK. No human intervention.
-
-**The brief format that works:**
-- Current state check query at the start of each task (idempotent)
+Brief format that works:
+- Current state check query per task (idempotent)
 - Exact SQL/code with no ambiguity
 - Verification query with explicit expected result
-- Error handling instructions (skip and log, don't guess)
-- Completion protocol (write progress file)
+- Error handling: skip and log, don't guess
+- Completion protocol: write progress file
 
-**Pattern going forward:**
-Any task that is: well-scoped + has clear verification criteria + doesn't require
-human judgment mid-execution → write a brief, commit it, run Claude Code.
-Complex or ambiguous tasks stay in the chat interface.
+First execution: 4 tasks, no human intervention, completed in minutes.
+Claude Code handled ANZSIC 8699 not existing → used NULL (correct).
 
-**Directory:** `C:\Users\parve\Invegent-content-engine`
-**MCPs needed:** Supabase MCP + GitHub MCP (both in claude_desktop_config.json)
+Directory: `C:\Users\parve\Invegent-content-engine`
+MCPs needed: Supabase MCP + GitHub MCP (both in claude_desktop_config.json)
+Proven tasks: ai-worker deploy, schema migration, k registry updates, Cowork file creation.
 
 ---
 
-## D068 — k Schema as Primary Navigation Tool for AI Sessions
+## D068 — k Schema as Primary Navigation Tool
 **Date:** 2 April 2026 | **Status:** ✅ Adopted
 
-**Decision:**
-Replace ad-hoc `information_schema.columns` discovery queries with structured
-nav queries against `k.vw_table_summary` and `k.vw_db_columns` at session start.
+Replace ad-hoc `information_schema.columns` discovery with structured nav
+against `k.vw_table_summary` and `k.vw_db_columns` at session start.
 
-**Rationale:**
-Every session was spending 3-5 tool calls discovering column names and FK relationships
-that already exist in the k schema registry. The k schema was built for exactly this
-purpose but was not being used by Claude.
+Rationale: Every session was spending 3-5 tool calls rediscovering column
+names and FK relationships already in the k registry.
 
-**Standard session startup pattern:**
+Standard pattern:
 ```sql
--- Before working with any table, run:
 SELECT schema_name, table_name, purpose, columns_list, fk_edges
 FROM k.vw_table_summary
 WHERE schema_name = 'x' AND table_name = 'y';
 ```
 
-**Known k schema gaps (to be fixed in next Claude Code brief):**
-- `c` and `f` schemas excluded from `refresh_column_registry()` — their columns not synced
-- `sync_registries()` has a bug: references `object_type` but view has `object_kind`
-- No pg_cron job for `refresh_catalog()` — only fires on CREATE TABLE, not ALTER TABLE
-- 23 tables still have TODO purpose; 358 columns undocumented
-- Manually-coded purpose entries preserved on refresh (correct) but no AI-assisted
-  generation for new tables
+---
 
-**See:** `docs/briefs/2026-04-02-k-schema-repair.md` for the repair brief.
+## D069 — k Schema Full Repair
+**Date:** 2 April 2026 | **Status:** ✅ Complete
+
+**Problem:** k schema governance catalog had three bugs and was partially non-functional.
+
+**Bugs fixed:**
+1. `refresh_table_registry()` — hardcoded schema list excluded `c` and `f`
+2. `refresh_column_registry()` — same exclusion of `c` and `f` schemas
+3. `sync_registries()` — referenced `vw_db_objects.object_type` but column is `object_kind`
+
+**Infrastructure added:**
+- Weekly pg_cron: `k-schema-refresh-weekly` every Sunday 3am UTC
+- `refresh_catalog()` now covers all 8 registered schemas
+
+**Documentation completed:**
+- c schema: 14 tables, 207 columns now registered and documented
+- f schema: 12 tables, 149 columns now registered and documented
+- m schema: all 19 remaining TODO tables documented
+- Total: 117 tables fully documented across all schemas — zero TODO entries
+
+**Key principle confirmed:**
+Manually-coded purpose/join_keys/advisory entries are preserved on every
+refresh (ON CONFLICT only updates structural fields). Safe to re-run at any time.
+
+**code_of_conduct_url decision (same session):**
+Storing URL on t.profession (not text) is correct. The compliance-reviewer
+already fetches URLs via Jina — same infrastructure handles code of conduct
+fetching when the AI rule generator is built. Stored text would go stale;
+fetched-on-demand text is always current.
 
 ---
 
 ## Decisions Pending
 
-| Decision | Context | Target Date |
+| Decision | Context | Target |
 |---|---|---|
-| k schema repair | Fix refresh_column_registry (add c+f schemas), fix sync_registries bug, add pg_cron schedule, AI-assisted purpose generation for TODO tables | Next Claude Code brief |
-| Wire ai-worker profession scoping | **DONE by Claude Code 2 Apr 2026** | ✅ Complete |
-| AI Diagnostic Tier 2 | Prerequisites met (doctor log 37 records). Build: pre-approved action list | Next session |
-| NDIS Yarns YouTube | Convert channel to Brand Account, then connect via dashboard | Next session |
-| Compliance queue review | 5 items with AI analysis — mark reviewed in dashboard | Next session |
+| AI Diagnostic Tier 2 | Prerequisites met (37 doctor log records). Build pre-approved action list + Claude reasoning loop | Next session |
 | Prospect demo generator | ~1 day. Needed before first external client conversation | Phase 3 |
-| Client health weekly report (email) | ~2 days. Sunday night Edge Function via Resend | Phase 3 |
-| Invegent brand pages setup | Own ICE client | Phase 3 |
-| OpenClaw SOUL.md | Define ICE context for @InvegentICEbot | Phase 3 |
-| Instagram publisher | 0.5 days after Meta App Review approved | Phase 3 |
-| YouTube Stage C — HeyGen avatar | Phase 4 | Phase 4 |
-| Model router implementation | When AI costs become significant | Phase 4 |
-| SaaS vs managed service long-term | When 10 clients served for 3+ months | Phase 4 |
+| Client health weekly report email | ~2 days. Sunday night Edge Function via Resend | Phase 3 |
+| NDIS Yarns YouTube | Convert channel to Brand Account, connect via dashboard | Next session |
+| AI compliance rule generator | Use ANZSCO tasks + code_of_conduct_url → Claude generates draft rules | Phase 3 |
+| Content vertical → topic mapping | Map 13 verticals to relevant topics for bundler precision | Phase 3 |
+| Populate t.5.8 + t.5.9 | Compliance rule × platform × use case scoping | Phase 3 |
+| OpenClaw SOUL.md | ICE context for @InvegentICEbot | Phase 3 |
+| Instagram publisher | After Meta App Review approved | Phase 3 |
+| Model router | When AI costs become significant | Phase 4 |
+| SaaS vs managed service | When 10 clients served 3+ months | Phase 4 |
