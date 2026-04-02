@@ -1,9 +1,8 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Overwritten every night at midnight AEST by the Cowork reconciliation task.
-> Last written: 2026-04-01 14:00 UTC
-> Written by: Cowork nightly reconciliation
+> Last written: 2026-04-02 (manual reconciliation — end of session)
+> Next automated overwrite: midnight AEST by Cowork nightly reconciler
 
 ---
 
@@ -27,140 +26,118 @@ Phase 1 complete. Phase 2 mostly complete — LinkedIn API blocked externally.
 
 Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
-| Function | Deploy# | Status | Last updated |
+| Function | Version | Status | Notes |
 |---|---|---|---|
-| inspector | 82 | ACTIVE | 2026-02-02 |
-| ingest | 94 | ACTIVE | 2026-01-26 |
-| content_fetch | 65 | ACTIVE | 2026-03-10 |
-| ai-worker | 68 | ACTIVE | 2026-03-22 |
-| publisher | 58 | ACTIVE | 2026-03-20 |
-| inspector_sql_ro | 37 | ACTIVE | 2026-02-23 |
-| auto-approver | 29 | ACTIVE | 2026-03-11 |
-| insights-worker | 32 | ACTIVE | 2026-03-20 |
-| feed-intelligence | 20 | ACTIVE | 2026-03-07 |
-| email-ingest | 15 | ACTIVE | 2026-03-11 |
-| draft-notifier | 16 | ACTIVE | 2026-03-18 |
-| linkedin-publisher | 15 | ACTIVE | 2026-03-18 |
-| image-worker | 36 | ACTIVE | 2026-03-31 |
-| series-outline | 15 | ACTIVE | 2026-03-19 |
-| series-writer | 16 | ACTIVE | 2026-03-20 |
-| wasm-bootstrap | 13 | ACTIVE | 2026-03-19 |
-| pipeline-doctor | 13 | ACTIVE | 2026-03-19 |
-| pipeline-ai-summary | 14 | ACTIVE | 2026-03-19 |
-| compliance-monitor | 14 | ACTIVE | 2026-03-19 |
-| video-worker | 13 | ACTIVE | 2026-03-20 |
-| tts-test | 11 | ACTIVE | 2026-03-20 |
-| youtube-publisher | 13 | ACTIVE | 2026-04-01 |
-| youtube-token-test | 5 | ACTIVE | 2026-03-20 |
-| pipeline-fixer | 4 | ACTIVE | 2026-03-31 |
+| inspector | 82 | ACTIVE | |
+| ingest | 94 | ACTIVE | |
+| content_fetch | 65 | ACTIVE | |
+| ai-worker | 68 | ACTIVE | Uses compliance rules — profession scoping via get_compliance_rules() NOT YET wired |
+| publisher | 58 | ACTIVE | |
+| inspector_sql_ro | 37 | ACTIVE | |
+| auto-approver | 29 | ACTIVE | v1.4.0, 9-gate logic |
+| insights-worker | 32 | ACTIVE | |
+| feed-intelligence | 20 | ACTIVE | |
+| email-ingest | 15 | ACTIVE | |
+| draft-notifier | 16 | ACTIVE | |
+| linkedin-publisher | 15 | ACTIVE | Code done, API approval pending |
+| image-worker | 36 | ACTIVE | v3.9.1 |
+| series-outline | 15 | ACTIVE | |
+| series-writer | 16 | ACTIVE | |
+| wasm-bootstrap | 13 | ACTIVE | |
+| pipeline-doctor | 13 | ACTIVE | Runs at :15/:45 — now writing to log via harvester |
+| pipeline-ai-summary | 14 | ACTIVE | Hourly at :55 |
+| compliance-monitor | 14 | ACTIVE | Monthly 1st, 9:00 UTC |
+| compliance-reviewer | 4 | ACTIVE | v1.3.0 — NEW 2 Apr 2026. Vertical + profession scoped AI analysis |
+| video-worker | 13 | ACTIVE | |
+| tts-test | 11 | ACTIVE | |
+| youtube-publisher | 13 | ACTIVE | v1.2.0 — DB-driven credential lookup |
+| youtube-token-test | 5 | ACTIVE | |
+| pipeline-fixer | 4 | ACTIVE | v1.1.0, runs at :25/:55 |
 
-All 24 functions ACTIVE. No functions in error state.
+25 functions ACTIVE. No functions in error state.
 
 ---
 
 ## PIPELINE STATE
 
-### Queue Depths
+### Client Status
 
-| Client | Queued | Published (total) | Last published at |
-|---|---|---|---|
-| Property Pulse | 0 | 3 | 2026-04-01 05:05 UTC |
-| NDIS-Yarns | 0 | 39 | 2026-03-01 02:10 UTC |
-
-⚠️ **ANOMALY — NDIS queue last_published_at**: post_publish_queue shows NDIS last published via queue on 2026-03-01, yet the pipeline-ai-summary (generated 2026-04-01 12:55 UTC) references "4 NDIS Yarns posts today". The draft state also shows 13 NDIS-Yarns drafts with approval_status='published' in the last 7 days. Discrepancy likely means: (a) approval_status='published' in post_draft is set on approval, not on successful Facebook publish, OR (b) the NDIS queue updated_at is not being refreshed on publish. Requires investigation.
-
-### Draft State — Last 7 Days
-
-| Client | Approval status | Format | Count |
-|---|---|---|---|
-| NDIS-Yarns | published | text | 12 |
-| NDIS-Yarns | published | (null) | 1 |
-| Property Pulse | published | image_quote | 1 |
-| Property Pulse | published | text | 1 |
-| Property Pulse | published | video_short_kinetic | 1 |
-| Property Pulse | published | video_short_stat | 1 |
-
-No drafts in needs_review, approved, or pending states (queue is empty, all clear).
-
-### Image Generation
-
-No rows returned for approved/needs_review drafts with image_status — queue is empty, no backlog.
-
-Last Creatomate render: 2026-03-31 22:31 UTC — `video_short_kinetic` — **succeeded** — no error.
-
-### Client Publish Profiles (Facebook)
-
-| Client | publish_enabled | paused_until | auto_approve | image_gen | video_gen |
-|---|---|---|---|---|---|
-| Property Pulse | true | — | true | true | true |
-| NDIS-Yarns | true | — | true | true | true |
-
-Both clients active, not paused, all generation types enabled.
-
-### AI Usage — Last 24h
-
-| Provider | Model | Fallback | Calls | Cost (USD) |
+| Client | Platform | Publishing | Token expires | profession_slug |
 |---|---|---|---|---|
-| anthropic | claude-sonnet-4-6 | false | 3 | $0.1007 |
+| NDIS Yarns | Facebook | ✅ Active | 31 May 2026 | occupational_therapy |
+| NDIS Yarns | YouTube | ⏳ Pending Brand Account conversion | — | occupational_therapy |
+| Property Pulse | Facebook | ✅ Active | — (env var) | NULL |
+| Property Pulse | YouTube | ✅ Active | 5yr (stored in DB) | NULL |
 
-No fallback calls. All AI traffic on primary Anthropic provider.
+### Key Pipeline Numbers (as of 2 Apr 2026)
 
-### AI Usage — This Month (April 2026)
+- Queue depth: 0 (both clients)
+- NDIS Yarns: publishing daily via Facebook, 5+ posts/week
+- Property Pulse: publishing, first YouTube Short live
+- Doctor: 7 checks running every 30 min, all passing, now logged
+- AI Diagnostic: hourly summaries generating, health_ok = true
 
-| Total cost | Total calls | Fallback calls |
-|---|---|---|
-| $0.0000 | 0 | 0 |
+### Compliance Queue
 
-Month just started (April 1 AEST = March 31 14:00 UTC). The 3 calls shown in last 24h occurred on March 31 AEST and fall within the March monthly bucket. April cost will accumulate from today.
+5 NDIS policy URLs flagged as changed (1 Apr 2026 detection).
+All 5 now have AI analysis written by compliance-reviewer v1.3.0:
+- NDIS Pricing: HIGH relevance, action required (new 2025-26 pricing)
+- NDIS Commission Regulatory Priorities: HIGH relevance, action required
+- NDIS Practice Standards Reform: HIGH relevance, action required (mandatory registration July 2026)
+- NDIS Practice Standards Core Modules: MEDIUM relevance, action required
+- NDIS Code of Conduct: HIGH relevance, no action required
 
-### Last Pipeline AI Summary
-
-- Generated: 2026-04-01 12:55 UTC
-- health_ok: **true**
-- action_needed: null
-- Preview: "The pipeline has been quiet over the last 2 hours with no publishing activity, which is normal for late evening hours. The system shows 0 items in queue and no recent publications, with consistent readings across all health snapshots. Today's total stands at 4 NDIS Yarns posts and 0 Property Pulse p[osts]..."
-
-### Dead Letter — Last 7 Days
-
-| Dead reason | Count |
-|---|---|
-| pre-visual-pipeline backlog cleared 2026-03-31 | 61 |
-| stale scheduled post — missed Feb 11-12 window, image never generated, cleared by auditor 2026-04-01 | 6 |
-
-Both dead letter batches are intentional auditor/manual clears — not organic pipeline failures.
+All 5 still status='pending' — awaiting your manual mark-reviewed.
 
 ---
 
-## GITHUB — LATEST COMMITS
+## SCHEMA — NEW TABLES / COLUMNS (2 Apr 2026)
 
-| Repo | SHA | Date | Message |
-|---|---|---|---|
-| Invegent-content-engine | ef61c06 | 2026-04-01 | chore: sync state 1 Apr 2026 — YouTube activated, OpenClaw live, inbox fixes |
-| Invegent-content-engine | 4111cd7 | 2026-04-01 | docs: add D058-D061 (PP compliance, format perf, YouTube activation, OpenClaw) |
-| Invegent-content-engine | a72f1b5 | 2026-04-01 | fix: youtube-publisher v1.2.0 — read credential_env_key from DB |
-| invegent-dashboard | dbd9784 | 2026-04-01 | fix: hide ClientProfileShell picker when called from clients hub; swap inbox pills before tabs |
-| invegent-dashboard | a6196bf | 2026-04-01 | feat: unified clients hub — client picker first, sub-tabs second, connect includes YouTube |
-| invegent-dashboard | 2cb5f8d | 2026-04-01 | chore: roadmap sync 1 Apr 2026 — YouTube activated, OpenClaw live, inbox fixes |
-| invegent-portal | b734abe | 2026-03-19 | fix: portal calendar shows client timezone label |
-| invegent-portal | 63008ef | 2026-03-19 | feat: add Invegent favicon to portal tab |
-| invegent-portal | be5632b | 2026-03-18 | feat: send Resend confirmation email on feed suggestion submit |
-| Invegent-web | 3f98799 | 2026-03-31 | feat: replace static 3-step how-it-works with animated 5-stage pipeline flow |
-| Invegent-web | a580c26 | 2026-03-31 | fix: replace Geist font (Next.js 15 only) with Inter for Next.js 14 compatibility |
-| Invegent-web | 26c782d | 2026-03-31 | feat: homepage — professional landing page for Invegent |
+| Table | Change | Notes |
+|---|---|---|
+| `m.post_seed` | Added `platform text` column | Constraint `post_seed_uniq_run_item_platform` on (digest_run_id, digest_item_id, platform) replaces old (digest_run_id, digest_item_id) |
+| `m.post_publish_queue` | Added `acknowledged_at`, `acknowledged_by` | Items with acknowledged_at set are skipped by doctor alerting |
+| `m.compliance_review_queue` | Added `ai_analysis`, `ai_confidence`, `ai_reviewed_at`, `ai_error` | Written by compliance-reviewer |
+| `m.compliance_policy_source` | Added `profession_slug`, `vertical_context` | Profession scope for URLs; vertical description for AI prompt |
+| `t.profession` | New table | 12 professions: 7 NDIS, 5 property |
+| `t.5.7_compliance_rule` | Added `profession_slugs text[]` | NULL = universal; array = scoped professions |
+| `c.client` | Added `profession_slug` | Care for Welfare = occupational_therapy |
+
+## SCHEMA — NEW FUNCTIONS
+
+| Function | Purpose |
+|---|---|
+| `public.get_compliance_rules(vertical, profession)` | Load scoped rules: universal + profession-matching. Used by compliance-reviewer and (next) ai-worker |
+| `public.store_compliance_ai_analysis(review_id, analysis, confidence, error)` | SECURITY DEFINER write to m.compliance_review_queue ai_* columns |
+| `m.harvest_pipeline_doctor_log()` | Reads doctor HTTP response from net._http_response, writes to m.pipeline_doctor_log |
+
+## PG_CRON — NEW JOBS
+
+| Job | Schedule | Name |
+|---|---|---|
+| compliance-reviewer-monthly | 5 9 1 * * | Fires 5 min after compliance-monitor on 1st of month |
+| pipeline-doctor-log-harvester | 17,47 * * * * | 2 min after each doctor run |
+
+---
+
+## GITHUB — LATEST COMMITS (2 Apr 2026)
+
+| Repo | Message |
+|---|---|
+| Invegent-content-engine | feat: compliance-reviewer v1.3.0 — vertical + profession scoped rule loading |
+| Invegent-content-engine | docs: D062-D066 — pipeline fix, doctor log, compliance reviewer, profession dimension |
+| invegent-dashboard | feat: compliance page — AI analysis panel, confidence badges, Run AI Review button |
+| invegent-dashboard | fix: monitor nav — Flow tab on all sub-pages, publisher health, client pills on pipeline |
 
 ---
 
 ## VERCEL FRONTENDS — LIVE
 
-| App | URL | Last deploy | Status | SHA |
-|---|---|---|---|---|
-| invegent-dashboard | dashboard.invegent.com | 2026-04-01 07:41 UTC | READY | dbd9784 |
-| invegent-portal | portal.invegent.com | 2026-03-19 07:24 UTC | READY | b734abe |
-| invegent-web | invegent.com | 2026-03-31 08:40 UTC | READY | 3f98799 |
-
-Team: pk-2528s-projects (team_kYqCrehXYxW02AycsKVzwNrE)
-
-All 3 frontends READY. No ERROR states on current production deploys.
+| App | URL | Status |
+|---|---|---|
+| invegent-dashboard | dashboard.invegent.com | READY |
+| invegent-portal | portal.invegent.com | READY |
+| invegent-web | invegent.com | READY |
 
 ---
 
@@ -168,22 +145,12 @@ All 3 frontends READY. No ERROR states on current production deploys.
 
 | Issue | Priority | Action |
 |---|---|---|
-| YouTube upload not confirmed (PP) | HIGH | Fix YOUTUBE_REFRESH_TOKEN_PP secret propagation: Supabase dashboard → Settings → Edge Functions → Secrets → edit → Save (no change needed). Reset queue and test on next :15/:45 run. |
-| NDIS queue last_published_at anomaly | MED | post_publish_queue.last_published_at for NDIS shows 2026-03-01 but AI summary reports publishing today. Investigate whether approval_status='published' in post_draft is set on approval vs. actual Facebook publish. |
-| OpenClaw SOUL.md not written | MED | Define ICE context for agent — pipeline-aware responses |
-| Cowork → Supabase conversion | MED | Nightly reconciler + auditor are laptop-dependent — convert to Edge Functions |
-| Meta App Review | 🔵 External | Business verification In Review — next check 10 Apr 2026 (calendar set) |
-| LinkedIn API | 🔵 External | Community Management API "1 of 2. Access Form Review" in progress |
-
----
-
-## CLIENT PIPELINE STATUS
-
-**NDIS Yarns** (fb98a472-ae4d-432d-8738-2273231c1ef4)
-publish_enabled, auto_approve, image+video generation all on. Queue empty, 0 queued. 39 lifetime published via queue (last queue publish recorded 2026-03-01 — see anomaly above). 13 drafts with approval_status='published' in last 7 days (12× text, 1× null format). Pipeline AI summary reports 4 posts today.
-
-**Property Pulse** (4036a6b5-b4a3-406e-998d-c2fe14a8bbdd)
-publish_enabled, auto_approve, image+video generation all on. Queue empty, 0 queued. 3 lifetime published via queue, last published 2026-04-01 05:05 UTC. 4 drafts with approval_status='published' in last 7 days (image_quote, text, video_short_kinetic, video_short_stat). YouTube test post (video_short_kinetic) awaiting upload confirmation — see known issues.
+| NDIS Yarns YouTube | MED | Convert channel to Brand Account in Google settings, then connect via dashboard Connect tab |
+| ai-worker profession scoping | MED | get_compliance_rules() built but not yet wired into ai-worker. Content generation currently loads all NDIS rules regardless of profession. Wire in next session. |
+| Compliance queue pending | LOW | 5 items with AI analysis written — mark reviewed in dashboard Monitor → Compliance |
+| OpenClaw SOUL.md not written | LOW | Define ICE context for @InvegentICEbot |
+| Meta App Review | 🔵 External | Business verification In Review — next check 10 Apr 2026 |
+| LinkedIn API | 🔵 External | Community Management API review in progress |
 
 ---
 
@@ -193,16 +160,17 @@ publish_enabled, auto_approve, image+video generation all on. Queue empty, 0 que
 |---|---|
 | Anthropic API | Active — primary AI provider |
 | OpenAI API | Active — fallback only |
-| Facebook page tokens | Active — both clients |
+| NDIS Yarns Facebook token | Active — expires 31 May 2026, tracked in DB |
+| Property Pulse Facebook | Active — env var |
 | LinkedIn org tokens | Stored — API approval pending |
-| ElevenLabs Creator | Active — NDIS + PP voices confirmed |
-| YouTube OAuth | Active — both channels, uploads unlisted |
+| ElevenLabs Creator | Active — NDIS + PP voices |
+| YouTube OAuth — PP | Active — refresh token stored in DB (c.client_channel) |
+| YouTube OAuth — NDIS | Pending — needs Brand Account conversion first |
 | Creatomate Essential | Active — $54/mo |
-| Resend | Active — magic link + draft notifier |
+| Resend | Active |
 | Gmail OAuth (email-ingest) | Active — feeds@invegent.com |
 | Supabase access token | ✅ Rotated 31 Mar 2026 |
 | GitHub PAT | ✅ Rotated 31 Mar 2026 |
-| Xero client secret | ✅ Rotated 31 Mar 2026 |
 
 ---
 
@@ -210,14 +178,11 @@ publish_enabled, auto_approve, image+video generation all on. Queue empty, 0 que
 
 | Item | Value |
 |---|---|
-| Version | 2026.3.31 |
 | Telegram bot | @InvegentICEbot |
 | Model | anthropic/claude-sonnet-4-6 (Max plan) |
-| Auth method | setup-token (anthropic:anthropic-max profile) |
 | Gateway | Windows login item — auto-starts on boot |
 | TUI | Must be launched manually: `openclaw tui` |
-| Pairing | PK's Telegram account paired (code U36F5PNA approved) |
-| Status | ✅ WORKING — bot responds to Telegram messages |
+| Status | ✅ WORKING |
 
 **CRITICAL:** After any laptop restart, run `openclaw tui` in PowerShell and leave open.
 
@@ -226,23 +191,21 @@ publish_enabled, auto_approve, image+video generation all on. Queue empty, 0 que
 ## EXTERNAL BLOCKERS
 
 - LinkedIn publisher: Community Management API review in progress
-- Meta App Review: Business verification In Review — next check 10 Apr 2026 (calendar set)
+- Meta App Review: Business verification In Review — next check 10 Apr 2026
 
 ---
 
 ## WHAT IS NEXT
 
 **Immediate (next session):**
-1. Fix YouTube secret propagation (Supabase dashboard → edit secret → save)
-2. Confirm PP YouTube upload works end-to-end
-3. Write OpenClaw SOUL.md for ICE context
-4. Convert Cowork nightly tasks to Supabase Edge Functions (laptop independence)
-5. Investigate NDIS queue last_published_at anomaly (March 1 vs. AI summary saying publishing today)
+1. Wire `get_compliance_rules(vertical, profession)` into ai-worker — profession-scoped content generation
+2. AI Diagnostic Tier 2 — prerequisites met (doctor log live, 12+ records)
+3. NDIS Yarns YouTube — convert to Brand Account, then connect via dashboard
+4. Review compliance queue — 5 items have AI analysis, mark reviewed
 
 **Phase 3 build queue:**
-- Client health weekly report email (~2 days Claude Code)
-- Prospect demo generator (~1 day Claude Code)
-- Invegent brand pages (own ICE client setup)
-- Auditor improvements (3 new checks: config completeness, post-publish verification, video staleness)
+- Prospect demo generator (~1 day) — needed before first client conversation
+- Client health weekly report email (~2 days)
+- Invegent brand pages as own ICE client
 
-Decisions through D061 in `docs/06_decisions.md`.
+Decisions through D066 in `docs/06_decisions.md`.
