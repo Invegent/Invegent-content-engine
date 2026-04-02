@@ -15,6 +15,51 @@ If this file contradicts memory or 04_phases.md, this file wins.
 
 ---
 
+## SESSION STARTUP PROTOCOL
+
+**Do this at the start of every session, in order:**
+
+1. Read this file (`docs/00_sync_state.md`)
+2. For any table you are about to work with, query the k schema BEFORE running information_schema:
+   ```sql
+   SELECT schema_name, table_name, purpose, columns_list, fk_edges, allowed_ops
+   FROM k.vw_table_summary
+   WHERE schema_name = 'x' AND table_name = 'y';
+   ```
+3. For column-level detail on any table:
+   ```sql
+   SELECT column_name, data_type, column_purpose, value_semantics, is_foreign_key, fk_ref_schema, fk_ref_table
+   FROM k.vw_db_columns
+   WHERE schema_name = 'x' AND table_name = 'y';
+   ```
+4. Do NOT fall into discovery mode. k.vw_table_summary is the single-stop navigation layer.
+
+**Why k schema:**
+- 7+ hours of taxonomy + DB documentation work by PK went into the k schema
+- Querying information_schema re-discovers what k already knows
+- k.vw_table_summary has: purpose, columns_list (all columns with types), FK edges, allowed ops, refresh cadence
+- k.vw_column_enrichment_context has: full schema + table + column context in one row
+
+**k schema known gaps (as of 2 Apr 2026):**
+- c and f schemas excluded from column auto-sync — use information_schema for those columns
+- 23 tables still have TODO purpose; 358 columns undocumented
+- sync_registries() function has a bug (object_type vs object_kind) — do not call it
+- Repair brief: docs/briefs/k-schema-repair.md
+
+---
+
+## CLAUDE CODE AGENTIC LOOP
+
+For well-scoped build tasks that don't require human judgment mid-execution:
+1. Write a brief in `docs/briefs/YYYY-MM-DD-task-name.md`
+2. Run Claude Code from `C:\Users\parve\Invegent-content-engine`
+3. Point it at the brief: "Read docs/briefs/... and execute all tasks autonomously"
+4. MCPs needed: Supabase MCP + GitHub MCP (both in claude_desktop_config.json)
+
+Proven 2 Apr 2026 — 4 tasks, no human intervention, completed in minutes. (D067)
+
+---
+
 ## CURRENT PHASE
 
 **Phase 3 — Expand + Personal Brand** (active)
@@ -28,31 +73,18 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
 | Function | Version | Status | Notes |
 |---|---|---|---|
-| inspector | 82 | ACTIVE | |
-| ingest | 94 | ACTIVE | |
-| content_fetch | 65 | ACTIVE | |
-| ai-worker | 68 | ACTIVE | Uses compliance rules — profession scoping via get_compliance_rules() NOT YET wired |
-| publisher | 58 | ACTIVE | |
-| inspector_sql_ro | 37 | ACTIVE | |
-| auto-approver | 29 | ACTIVE | v1.4.0, 9-gate logic |
-| insights-worker | 32 | ACTIVE | |
-| feed-intelligence | 20 | ACTIVE | |
-| email-ingest | 15 | ACTIVE | |
-| draft-notifier | 16 | ACTIVE | |
-| linkedin-publisher | 15 | ACTIVE | Code done, API approval pending |
-| image-worker | 36 | ACTIVE | v3.9.1 |
-| series-outline | 15 | ACTIVE | |
-| series-writer | 16 | ACTIVE | |
-| wasm-bootstrap | 13 | ACTIVE | |
-| pipeline-doctor | 13 | ACTIVE | Runs at :15/:45 — now writing to log via harvester |
-| pipeline-ai-summary | 14 | ACTIVE | Hourly at :55 |
+| ai-worker | v2.7.0 | ACTIVE | Profession-scoped compliance rules (D066). OT = 22 rules, support worker = 19. |
+| compliance-reviewer | v1.3.0 | ACTIVE | Vertical + profession scoped AI analysis |
 | compliance-monitor | 14 | ACTIVE | Monthly 1st, 9:00 UTC |
-| compliance-reviewer | 4 | ACTIVE | v1.3.0 — NEW 2 Apr 2026. Vertical + profession scoped AI analysis |
-| video-worker | 13 | ACTIVE | |
-| tts-test | 11 | ACTIVE | |
-| youtube-publisher | 13 | ACTIVE | v1.2.0 — DB-driven credential lookup |
-| youtube-token-test | 5 | ACTIVE | |
-| pipeline-fixer | 4 | ACTIVE | v1.1.0, runs at :25/:55 |
+| pipeline-doctor | 13 | ACTIVE | :15/:45 — logging via harvester |
+| pipeline-fixer | v1.1.0 | ACTIVE | :25/:55 |
+| youtube-publisher | v1.2.0 | ACTIVE | DB-driven credential lookup |
+| publisher | 58 | ACTIVE | |
+| auto-approver | v1.4.0 | ACTIVE | |
+| image-worker | v3.9.1 | ACTIVE | |
+| pipeline-ai-summary | 14 | ACTIVE | Hourly :55 |
+| linkedin-publisher | 15 | ACTIVE | Code done, API blocked |
+| All others | various | ACTIVE | See Supabase dashboard |
 
 25 functions ACTIVE. No functions in error state.
 
@@ -60,63 +92,45 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
 ## PIPELINE STATE
 
-### Client Status
-
-| Client | Platform | Publishing | Token expires | profession_slug |
+| Client | Platform | Status | Token expires | Profession |
 |---|---|---|---|---|
-| NDIS Yarns | Facebook | ✅ Active | 31 May 2026 | occupational_therapy |
-| NDIS Yarns | YouTube | ⏳ Pending Brand Account conversion | — | occupational_therapy |
-| Property Pulse | Facebook | ✅ Active | — (env var) | NULL |
-| Property Pulse | YouTube | ✅ Active | 5yr (stored in DB) | NULL |
+| NDIS Yarns | Facebook | ✅ Active | 31 May 2026 (43 days) | occupational_therapy |
+| NDIS Yarns | YouTube | ⏳ Needs Brand Account conversion | — | — |
+| Property Pulse | Facebook | ✅ Active | Not tracked (env var) | NULL |
+| Property Pulse | YouTube | ✅ Active | 5yr stored in DB | NULL |
 
-### Key Pipeline Numbers (as of 2 Apr 2026)
-
-- Queue depth: 0 (both clients)
-- NDIS Yarns: publishing daily via Facebook, 5+ posts/week
-- Property Pulse: publishing, first YouTube Short live
-- Doctor: 7 checks running every 30 min, all passing, now logged
-- AI Diagnostic: hourly summaries generating, health_ok = true
-
-### Compliance Queue
-
-5 NDIS policy URLs flagged as changed (1 Apr 2026 detection).
-All 5 now have AI analysis written by compliance-reviewer v1.3.0:
-- NDIS Pricing: HIGH relevance, action required (new 2025-26 pricing)
-- NDIS Commission Regulatory Priorities: HIGH relevance, action required
-- NDIS Practice Standards Reform: HIGH relevance, action required (mandatory registration July 2026)
-- NDIS Practice Standards Core Modules: MEDIUM relevance, action required
-- NDIS Code of Conduct: HIGH relevance, no action required
-
-All 5 still status='pending' — awaiting your manual mark-reviewed.
+**Pipeline health:** Queue depth 0. Doctor log 37 records. All 7 checks green.
+Compliance queue: 5 NDIS items with AI analysis, status=pending (awaiting manual review).
 
 ---
 
-## SCHEMA — NEW TABLES / COLUMNS (2 Apr 2026)
+## KEY SCHEMA CHANGES (2 Apr 2026)
 
-| Table | Change | Notes |
-|---|---|---|
-| `m.post_seed` | Added `platform text` column | Constraint `post_seed_uniq_run_item_platform` on (digest_run_id, digest_item_id, platform) replaces old (digest_run_id, digest_item_id) |
-| `m.post_publish_queue` | Added `acknowledged_at`, `acknowledged_by` | Items with acknowledged_at set are skipped by doctor alerting |
-| `m.compliance_review_queue` | Added `ai_analysis`, `ai_confidence`, `ai_reviewed_at`, `ai_error` | Written by compliance-reviewer |
-| `m.compliance_policy_source` | Added `profession_slug`, `vertical_context` | Profession scope for URLs; vertical description for AI prompt |
-| `t.profession` | New table | 12 professions: 7 NDIS, 5 property |
-| `t.5.7_compliance_rule` | Added `profession_slugs text[]` | NULL = universal; array = scoped professions |
-| `c.client` | Added `profession_slug` | Care for Welfare = occupational_therapy |
+| Table | Change |
+|---|---|
+| `m.post_seed` | Added `platform` column. Constraint: post_seed_uniq_run_item_platform |
+| `m.post_publish_queue` | Added `acknowledged_at`, `acknowledged_by` |
+| `m.compliance_review_queue` | Added `ai_analysis`, `ai_confidence`, `ai_reviewed_at`, `ai_error` |
+| `m.compliance_policy_source` | Added `profession_slug`, `vertical_context` |
+| `t.profession` | NEW TABLE — 12 professions. Added `anzsco_occupation_id`, `anzsic_class_code`, `code_of_conduct_url`, `code_of_conduct_name`, `regulator_website` |
+| `t.5.7_compliance_rule` | Added `profession_slugs text[]` |
+| `c.client` | Added `profession_slug` |
 
-## SCHEMA — NEW FUNCTIONS
+## KEY FUNCTIONS
 
 | Function | Purpose |
 |---|---|
-| `public.get_compliance_rules(vertical, profession)` | Load scoped rules: universal + profession-matching. Used by compliance-reviewer and (next) ai-worker |
-| `public.store_compliance_ai_analysis(review_id, analysis, confidence, error)` | SECURITY DEFINER write to m.compliance_review_queue ai_* columns |
-| `m.harvest_pipeline_doctor_log()` | Reads doctor HTTP response from net._http_response, writes to m.pipeline_doctor_log |
+| `public.get_compliance_rules(vertical, profession)` | Load scoped rules. Used by compliance-reviewer AND ai-worker |
+| `public.store_compliance_ai_analysis(...)` | SECURITY DEFINER write to compliance queue |
+| `m.harvest_pipeline_doctor_log()` | Reads doctor HTTP response, writes to log |
 
-## PG_CRON — NEW JOBS
+## PG_CRON ADDITIONS
 
 | Job | Schedule | Name |
 |---|---|---|
-| compliance-reviewer-monthly | 5 9 1 * * | Fires 5 min after compliance-monitor on 1st of month |
+| compliance-reviewer-monthly | 5 9 1 * * | After compliance-monitor on 1st of month |
 | pipeline-doctor-log-harvester | 17,47 * * * * | 2 min after each doctor run |
+| weekly-token-alert | 0 22 * * 4 | Friday 8am AEST (D067/Cowork) |
 
 ---
 
@@ -124,10 +138,10 @@ All 5 still status='pending' — awaiting your manual mark-reviewed.
 
 | Repo | Message |
 |---|---|
-| Invegent-content-engine | feat: compliance-reviewer v1.3.0 — vertical + profession scoped rule loading |
-| Invegent-content-engine | docs: D062-D066 — pipeline fix, doctor log, compliance reviewer, profession dimension |
-| invegent-dashboard | feat: compliance page — AI analysis panel, confidence badges, Run AI Review button |
-| invegent-dashboard | fix: monitor nav — Flow tab on all sub-pages, publisher health, client pills on pipeline |
+| Invegent-content-engine | docs: reconciliation + D062-D068, Claude Code agentic loop proven |
+| Invegent-content-engine | docs: Claude Code brief — profession compliance wire |
+| invegent-dashboard | chore: roadmap sync 2 Apr 2026 |
+| invegent-dashboard | feat: compliance page — AI analysis panel, Run AI Review button |
 
 ---
 
@@ -145,12 +159,12 @@ All 5 still status='pending' — awaiting your manual mark-reviewed.
 
 | Issue | Priority | Action |
 |---|---|---|
-| NDIS Yarns YouTube | MED | Convert channel to Brand Account in Google settings, then connect via dashboard Connect tab |
-| ai-worker profession scoping | MED | get_compliance_rules() built but not yet wired into ai-worker. Content generation currently loads all NDIS rules regardless of profession. Wire in next session. |
-| Compliance queue pending | LOW | 5 items with AI analysis written — mark reviewed in dashboard Monitor → Compliance |
-| OpenClaw SOUL.md not written | LOW | Define ICE context for @InvegentICEbot |
-| Meta App Review | 🔵 External | Business verification In Review — next check 10 Apr 2026 |
-| LinkedIn API | 🔵 External | Community Management API review in progress |
+| NDIS Yarns YouTube | MED | Convert channel to Brand Account, connect via dashboard |
+| k schema repair | MED | See docs/briefs/k-schema-repair.md — Claude Code brief ready to run |
+| Compliance queue pending | LOW | 5 items with AI analysis — mark reviewed in dashboard |
+| OpenClaw SOUL.md | LOW | Define ICE context for @InvegentICEbot |
+| Meta App Review | 🔵 External | Next check 10 Apr 2026 |
+| LinkedIn API | 🔵 External | Community Management API in review |
 
 ---
 
@@ -158,54 +172,47 @@ All 5 still status='pending' — awaiting your manual mark-reviewed.
 
 | Credential | Status |
 |---|---|
-| Anthropic API | Active — primary AI provider |
-| OpenAI API | Active — fallback only |
-| NDIS Yarns Facebook token | Active — expires 31 May 2026, tracked in DB |
-| Property Pulse Facebook | Active — env var |
-| LinkedIn org tokens | Stored — API approval pending |
-| ElevenLabs Creator | Active — NDIS + PP voices |
-| YouTube OAuth — PP | Active — refresh token stored in DB (c.client_channel) |
-| YouTube OAuth — NDIS | Pending — needs Brand Account conversion first |
+| Anthropic API | Active — primary |
+| NDIS Yarns Facebook | Active — expires 31 May 2026 (43 days) |
+| Property Pulse Facebook | Active — env var, not tracked |
+| Property Pulse YouTube | Active — DB stored |
+| NDIS Yarns YouTube | Pending Brand Account conversion |
+| ElevenLabs Creator | Active |
 | Creatomate Essential | Active — $54/mo |
 | Resend | Active |
-| Gmail OAuth (email-ingest) | Active — feeds@invegent.com |
-| Supabase access token | ✅ Rotated 31 Mar 2026 |
-| GitHub PAT | ✅ Rotated 31 Mar 2026 |
 
 ---
 
-## OPENCLAW — LIVE
+## OPENCLAW
 
 | Item | Value |
 |---|---|
 | Telegram bot | @InvegentICEbot |
-| Model | anthropic/claude-sonnet-4-6 (Max plan) |
-| Gateway | Windows login item — auto-starts on boot |
-| TUI | Must be launched manually: `openclaw tui` |
-| Status | ✅ WORKING |
+| Model | claude-sonnet-4-6 (Max plan) |
+| Status | ✅ Working |
 
-**CRITICAL:** After any laptop restart, run `openclaw tui` in PowerShell and leave open.
+**After any laptop restart:** run `openclaw tui` in PowerShell and leave open.
 
 ---
 
 ## EXTERNAL BLOCKERS
 
-- LinkedIn publisher: Community Management API review in progress
+- LinkedIn: Community Management API review in progress
 - Meta App Review: Business verification In Review — next check 10 Apr 2026
 
 ---
 
 ## WHAT IS NEXT
 
-**Immediate (next session):**
-1. Wire `get_compliance_rules(vertical, profession)` into ai-worker — profession-scoped content generation
-2. AI Diagnostic Tier 2 — prerequisites met (doctor log live, 12+ records)
-3. NDIS Yarns YouTube — convert to Brand Account, then connect via dashboard
-4. Review compliance queue — 5 items have AI analysis, mark reviewed
+**Immediate:**
+1. Run k-schema-repair Claude Code brief (docs/briefs/k-schema-repair.md)
+2. AI Diagnostic Tier 2 build (doctor log has 37 records — prerequisites met)
+3. NDIS Yarns YouTube — Brand Account conversion
+4. Mark compliance queue reviewed
 
 **Phase 3 build queue:**
-- Prospect demo generator (~1 day) — needed before first client conversation
+- Prospect demo generator (~1 day)
 - Client health weekly report email (~2 days)
-- Invegent brand pages as own ICE client
+- Three Cowork auditor checks (1 hour)
 
-Decisions through D066 in `docs/06_decisions.md`.
+Decisions through D068 in `docs/06_decisions.md`.
