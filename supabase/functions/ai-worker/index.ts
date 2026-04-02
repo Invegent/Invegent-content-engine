@@ -9,7 +9,12 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.6.1";
+const VERSION = "ai-worker-v2.7.0";
+// v2.7.0 — Profession-scoped compliance rule loading (D066)
+//   fetchComplianceBlock now loads rules filtered by client profession_slug
+//   An OT client gets OT-specific rules; a support worker gets only universal rules
+//   Global rules (vertical_slug IS NULL) now correctly included for all clients
+//
 // v2.6.1 — Fix format advisor seed extraction
 // seedTitle/seedBody were reading seed.title and seed.body (top-level) but
 // rewrite_v1 payload nests content in seed.digest_item.{title,body_text}
@@ -174,26 +179,89 @@ async function writeVisualSpec(supabase: ReturnType<typeof getServiceClient>, po
   } catch (e: any) { console.error('[ai-worker] writeVisualSpec threw:', e?.message); }
 }
 
-async function fetchComplianceBlock(supabase: ReturnType<typeof getServiceClient>, clientId: string): Promise<string> {
+async function fetchComplianceBlock(
+  supabase: ReturnType<typeof getServiceClient>,
+  clientId: string
+): Promise<string> {
   try {
-    const { data: scopeRows } = await supabase.rpc('exec_sql', { query: `SELECT DISTINCT cv.vertical_slug FROM c.client_content_scope ccs JOIN t.content_vertical cv ON cv.vertical_id = ccs.vertical_id WHERE ccs.client_id = '${clientId}' AND cv.is_active = true AND cv.vertical_slug IS NOT NULL` });
+    // Step 1: Get client's verticals and profession
+    const { data: scopeRows } = await supabase.rpc('exec_sql', {
+      query: `
+        SELECT DISTINCT cv.vertical_slug
+        FROM c.client_content_scope ccs
+        JOIN t.content_vertical cv ON cv.vertical_id = ccs.vertical_id
+        WHERE ccs.client_id = '${clientId}'
+          AND cv.is_active = true
+          AND cv.vertical_slug IS NOT NULL
+      `
+    });
     const slugs: string[] = (scopeRows ?? []).map((r: any) => r.vertical_slug).filter(Boolean);
     if (!slugs.length) return '';
+
+    // Step 2: Get client's profession_slug (may be null)
+    const { data: clientRow } = await supabase.rpc('exec_sql', {
+      query: `SELECT profession_slug FROM c.client WHERE client_id = '${clientId}'`
+    });
+    const professionSlug: string | null = (clientRow as any[])?.[0]?.profession_slug ?? null;
+
+    // Step 3: Load scoped compliance rules
+    // Loads:
+    //   a) Vertical-specific rules where profession_slugs IS NULL (universal for all professions)
+    //   b) Vertical-specific rules where client's profession is in profession_slugs[]
+    //   c) Global rules where vertical_slug IS NULL (apply to all clients always)
     const slugList = slugs.map(s => `'${s}'`).join(',');
-    const { data: ruleRows } = await supabase.rpc('exec_sql', { query: `SELECT rule_name, rule_text, risk_level, enforcement, examples_good, examples_bad FROM "t"."5.7_compliance_rule" WHERE vertical_slug IN (${slugList}) AND is_active = true ORDER BY sort_order ASC` });
+    const professionFilter = professionSlug
+      ? `OR '${professionSlug}' = ANY(profession_slugs)`
+      : '';
+
+    const { data: ruleRows } = await supabase.rpc('exec_sql', {
+      query: `
+        SELECT DISTINCT ON (rule_key)
+          rule_name, rule_text, risk_level, enforcement, examples_good, examples_bad, sort_order
+        FROM t."5.7_compliance_rule"
+        WHERE is_active = true
+          AND (
+            -- Vertical-specific rules (universal or profession-matched)
+            (
+              vertical_slug IN (${slugList})
+              AND (profession_slugs IS NULL ${professionFilter})
+            )
+            -- Global rules: vertical_slug IS NULL — always apply
+            OR vertical_slug IS NULL
+          )
+        ORDER BY rule_key, sort_order ASC
+      `
+    });
+
     const rules: any[] = ruleRows ?? [];
     if (!rules.length) return '';
-    const lines: string[] = ['=== COMPLIANCE REQUIREMENTS ===', 'HARD_BLOCK: if violated, return {"skip": true, "reason": "compliance_block: [rule_name]"}.', 'SOFT_WARN: apply best judgment.', ''];
+
+    // Step 4: Build compliance block text (same format as before)
+    const lines: string[] = [
+      '=== COMPLIANCE REQUIREMENTS ===',
+      'HARD_BLOCK: if violated, return {"skip": true, "reason": "compliance_block: [rule_name]"}.',
+      'SOFT_WARN: apply best judgment.',
+      '',
+    ];
     for (const rule of rules) {
       lines.push(`RULE: ${rule.rule_name} [${rule.risk_level.toUpperCase()} \u2014 ${rule.enforcement}]`);
       lines.push(rule.rule_text);
-      if (rule.examples_bad && !rule.examples_bad.startsWith('TBD')) lines.push(`  PROHIBITED: ${rule.examples_bad}`);
-      if (rule.examples_good && !rule.examples_good.startsWith('TBD')) lines.push(`  PREFERRED: ${rule.examples_good}`);
+      if (rule.examples_bad && !rule.examples_bad.startsWith('TBD'))
+        lines.push(`  PROHIBITED: ${rule.examples_bad}`);
+      if (rule.examples_good && !rule.examples_good.startsWith('TBD'))
+        lines.push(`  PREFERRED: ${rule.examples_good}`);
       lines.push('');
+    }
+    if (professionSlug) {
+      lines.push(`[Rules loaded for vertical(s): ${slugs.join(', ')} | profession: ${professionSlug}]`);
     }
     lines.push('=== END COMPLIANCE ===', '');
     return lines.join('\n');
-  } catch (e: any) { console.error('[ai-worker] fetchComplianceBlock failed:', e?.message); return ''; }
+
+  } catch (e: any) {
+    console.error('[ai-worker] fetchComplianceBlock failed:', e?.message);
+    return '';
+  }
 }
 
 async function calculateCostUsd(supabase: ReturnType<typeof getServiceClient>, provider: string, model: string, inputTokens: number, outputTokens: number): Promise<number> {
