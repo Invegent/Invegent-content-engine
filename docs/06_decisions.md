@@ -158,6 +158,85 @@ ai-diagnostic provides the human-facing scored daily report, trend view, and for
 
 ---
 
+## D071 — IAE Strategic Decision — Do Not Build Yet
+**Date:** April 2026 | **Status:** ✅ Decided — concept stage only
+
+**Decision:**
+IAE (Invegent Advertising Engine) is recognised as a legitimate future
+product extension of ICE. The decision is explicitly NOT to build it yet.
+
+**Context:**
+Brainstorming session identified IAE as the paid amplification layer of ICE —
+the engine that activates audience assets built organically by ICE against
+confirmed ad spend. The strategic logic is sound. The timing is wrong.
+
+**Reasons not to build yet:**
+- ICE has zero external paying clients — operational foundation not proven
+- Phase 1 not complete — auto-approver not running, consistent publishing not achieved
+- Meta Standard Access not confirmed — required before any third-party boosting
+- Facebook Insights back-feed (Phase 2.1) not built — IAE boost scoring has no data
+- Content format layer not built — IAE has no signal variation to learn from
+- Client demand not validated — no paying client has confirmed they want paid amplification
+- Compliance framework for paid content not defined — AHPRA + NDIS Code of Conduct
+  + Meta health advertising policies apply simultaneously to paid content
+
+**What IAE is (for the record):**
+The amplification layer of ICE. Not a standalone ads product.
+Works because ICE has already built organic engagement pools, Custom Audiences,
+and social proof on content before a dollar of paid spend is committed.
+The core insight: ICE tests with organic, IAE amplifies what's already proven.
+No competitor builds both sides simultaneously for NDIS providers.
+
+**Build trigger:**
+- 2-3 paying ICE clients confirmed
+- Client demand for paid amplification explicitly validated (asked directly, not assumed)
+- All prerequisites in docs/iae/01_iae_prerequisites.md met
+
+**Interim approach:**
+Phase 3.4 Meta boost (within ICE) tests whether clients respond to paid amplification.
+This is an ICE feature, not IAE. Build Phase 3.4 when Phase 3 arrives.
+If client demand confirmed via Phase 3.4 results → scope IAE Phase A.
+
+**Documentation:**
+Full strategic thinking committed to docs/iae/ as reference for future build.
+
+---
+
+## D072 — Audience as Asset — Schema Pattern
+**Date:** April 2026 | **Status:** ✅ Decided — schema designed, not built
+
+**Decision:**
+Audience data has a dual nature — fact and configuration-linked.
+The correct schema pattern follows existing ICE conventions.
+
+**The dual nature:**
+- As fact: an audience exists, has a size, was built by pipeline activity → m schema
+- As configuration: which platforms and audience types to build per client → c schema
+- As intelligence: what the system knows about audience state → k views
+
+**Schema resolution:**
+
+```
+c.client_audience_policy  — operator's decision about what to build (configuration)
+    ↓ FK (client_id)
+m.audience_asset          — what the pipeline built (fact)
+    ↓ self-referential FK (seed_audience_id for lookalikes)
+m.audience_asset          — lookalike child
+    ↓ FK (audience_id)
+m.audience_performance    — how it performed when used in IAE
+    ↑
+k.vw_audience_summary     — synthesises above into intelligence view
+```
+
+**k schema principle confirmed:**
+k gains views, not tables. The guru got smarter, not fatter.
+Every new capability adds rows to k views derived from m and c.
+k never stores operational data directly.
+
+**Full schema spec:** docs/iae/01_iae_prerequisites.md
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target |
@@ -170,5 +249,8 @@ ai-diagnostic provides the human-facing scored daily report, trend view, and for
 | Populate t.5.8 + t.5.9 | Compliance rule × platform × use case scoping | Phase 3 |
 | OpenClaw SOUL.md | ICE context for @InvegentICEbot | Phase 3 |
 | Instagram publisher | After Meta App Review approved | Phase 3 |
+| Content format layer | Five format types with prompt variants and rotation schedule | Phase 2 |
+| m.audience_asset schema | Deploy now — start tracking audience growth even before IAE | Phase 2 |
+| IAE Phase A build | Meta boost only — after all prerequisites in docs/iae/01 are met | Phase 3+ |
 | Model router | When AI costs become significant | Phase 4 |
 | SaaS vs managed service | When 10 clients served 3+ months | Phase 4 |
