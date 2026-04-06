@@ -172,10 +172,8 @@ confirmed ad spend. The strategic logic is sound. The timing is wrong.
 
 **Reasons not to build yet:**
 - ICE has zero external paying clients — operational foundation not proven
-- Phase 1 not complete — auto-approver not running, consistent publishing not achieved
 - Meta Standard Access not confirmed — required before any third-party boosting
-- Facebook Insights back-feed (Phase 2.1) not built — IAE boost scoring has no data
-- Content format layer not built — IAE has no signal variation to learn from
+- Facebook Insights back-feed running but low volume — IAE boost scoring needs more data
 - Client demand not validated — no paying client has confirmed they want paid amplification
 - Compliance framework for paid content not defined — AHPRA + NDIS Code of Conduct
   + Meta health advertising policies apply simultaneously to paid content
@@ -237,6 +235,51 @@ k never stores operational data directly.
 
 ---
 
+## D073 — Publisher Asset Gate — Image/Video Must Be Ready Before Facebook Publish
+**Date:** 6 April 2026 | **Status:** ✅ Live
+
+**Problem:**
+Non-text posts (image_quote, carousel, video_short_*) were publishing to Facebook
+as text-only. Root cause: a timing race between image-worker and publisher.
+
+Race sequence:
+1. Draft approved → queue item created with `scheduled_for = NOW()`
+2. Publisher runs (every 15 min) → picks up queue item → `image_url` is null → publishes text-only
+3. `approval_status` flips to `'published'`
+4. Image-worker queries `approval_status = 'approved'` → finds nothing → image never generated
+
+Result: image/carousel/video posts arrive on Facebook with no visual. Confirmed
+via `request_payload` audit — `has_image: false` on all non-text published posts.
+
+**Fix: two DB triggers, zero publisher code changes**
+
+`trg_gate_queue_on_asset_status` — BEFORE INSERT on `m.post_publish_queue`:
+- For image formats (image_quote, carousel, animated_text_reveal, animated_data):
+  if `image_status = 'pending'`, push `scheduled_for` to `NOW() + 4 hours`
+- For video formats (video_short_kinetic, video_short_stat, voice variants):
+  if `video_status = 'pending'`, push `scheduled_for` to `NOW() + 4 hours`
+- Text format: no gate, publishes immediately as before
+
+`trg_release_queue_on_asset_ready` — AFTER UPDATE OF image_status, video_status on `m.post_draft`:
+- When `image_status` leaves 'pending' (generated, failed, skipped — all release):
+  UPDATE queue `scheduled_for = NOW()` for held items
+- When `video_status` leaves 'pending': same release
+- Only releases items held > 30 min (avoids double-firing on unrelated updates)
+
+**Flow after fix:**
+Approve → queue INSERT → gate holds to +4h → image-worker generates → release trigger fires
+→ `scheduled_for = NOW()` → next publisher cycle picks up with `image_url` populated → publishes with image ✅
+
+If asset generation fails or is skipped, the release trigger still fires and the post
+publishes as text-only fallback rather than being held forever.
+
+**Also fixed:** 2 PP carousel queue items with `scheduled_for` already in the past
+updated to `NOW() + 4 hours` to prevent them publishing as text before image-worker runs.
+
+**Migration:** `publisher_asset_gate_v1`
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target |
@@ -249,7 +292,6 @@ k never stores operational data directly.
 | Populate t.5.8 + t.5.9 | Compliance rule × platform × use case scoping | Phase 3 |
 | OpenClaw SOUL.md | ICE context for @InvegentICEbot | Phase 3 |
 | Instagram publisher | After Meta App Review approved | Phase 3 |
-| Content format layer | Five format types with prompt variants and rotation schedule | Phase 2 |
 | m.audience_asset schema | Deploy now — start tracking audience growth even before IAE | Phase 2 |
 | IAE Phase A build | Meta boost only — after all prerequisites in docs/iae/01 are met | Phase 3+ |
 | Model router | When AI costs become significant | Phase 4 |
