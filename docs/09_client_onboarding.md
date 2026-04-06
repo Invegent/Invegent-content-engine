@@ -3,7 +3,7 @@
 ## Purpose
 
 This document is the step-by-step process for taking a new client
-from "yes" to publishing. Follow it in order. Do not skip steps.
+from “yes” to publishing. Follow it in order. Do not skip steps.
 Every skipped step creates a problem that takes longer to fix later
 than it would have taken to do correctly at the start.
 
@@ -91,7 +91,7 @@ weak content. Do not rush it.
 **Information to gather from the client (discovery call or written brief):**
 
 - Business name and how they refer to themselves
-- Who is the "voice" behind the page — the founder, a named persona,
+- Who is the “voice” behind the page — the founder, a named persona,
   or the business as a whole?
 - How do they describe their audience? Who follows this page?
 - What 3–5 words describe their communication style?
@@ -259,7 +259,101 @@ Target: minimum 8 active feeds at onboarding. 12 is the operational target.
 
 ---
 
-## Step 7 — Facebook Page Connection
+## Step 7 — Tracking Infrastructure Setup (NEW — mandatory)
+**Timeline:** Day 1 | Owner: Invegent (guided setup with client)
+
+This step must happen on Day 1, before any content is published.
+Without it, audience building does not occur and the paid amplification
+pipeline (Phase 3.4+) has nothing to activate against.
+
+### 7a — Meta Pixel
+
+The Meta Pixel captures everyone who visits the client's website
+after clicking through from a Facebook or Instagram post.
+These people form the website visitor Custom Audience — the warmest
+retargeting pool available. Every day without the pixel is a day
+of audience data permanently lost.
+
+**What to do:**
+1. In the client's Meta Business Manager, locate or create their Pixel
+   (Events Manager → Datasets → Web)
+2. Get the Pixel ID
+3. Install on the client's website:
+   - WordPress: use Meta Pixel plugin or add to header via theme settings
+   - Squarespace: Settings → Advanced → Code Injection
+   - Wix: Marketing & SEO → Marketing Integrations → Facebook Pixel
+   - Custom site: add base code to `<head>` on every page
+4. Verify installation: use Meta Pixel Helper Chrome extension
+   (should show green “Pixel Found” on client website)
+5. Record Pixel ID in client notes
+
+**Minimum requirement:** Pixel fires on homepage and contact/enquiry page.
+**Ideal:** Pixel fires on all pages with PageView event + Contact event
+on enquiry form submission.
+
+### 7b — Google Analytics 4 Pixel
+
+GA4 captures website visitors independently of Meta.
+This means a single website click from a Facebook post simultaneously
+builds the Meta pixel audience AND the Google audience.
+One click, two platforms.
+
+**What to do:**
+1. Create or access the client's GA4 property in Google Analytics
+2. Get the Measurement ID (format: G-XXXXXXXXXX)
+3. Install on client's website (same locations as Meta Pixel)
+4. Verify: check Realtime report in GA4 shows activity
+5. Record Measurement ID in client notes
+
+**Minimum requirement:** GA4 fires on homepage.
+
+### 7c — Email Capture
+
+Email is the only platform-independent audience asset.
+Meta Custom Audiences can be revoked. Google can change.
+An email list belongs to the client permanently and can seed
+audiences on every ad platform that exists or will exist.
+
+**What to do:**
+1. Confirm client has an email capture mechanism on their website
+   (newsletter signup, free resource download, contact form)
+2. If they do not: recommend adding a simple form with a lead magnet
+   (e.g. “Free NDIS plan review checklist” — ICE can help write this)
+3. Confirm which email platform they use (Mailchimp, Klaviyo, etc.)
+4. Record their email platform and current list size in client notes
+5. Add a standing agenda item: monthly email list export for cross-platform
+   audience seeding (Google Customer Match, LinkedIn Matched Audiences)
+
+**Minimum requirement:** at least one active email capture form on website.
+
+### 7d — Audience Policy Configuration
+
+Once tracking is confirmed live, create the client's audience policy:
+
+```sql
+INSERT INTO c.client_audience_policy (
+  client_id,
+  platforms_enabled,
+  audience_types_enabled,
+  min_boost_audience_size,
+  email_capture_enabled,
+  lookalike_auto_create
+) VALUES (
+  '[client_id]',
+  ARRAY['meta'],                          -- add 'linkedin', 'google' when ready
+  ARRAY['page_engagers', 'video_viewers', 'website_visitors', 'email_list'],
+  500,                                    -- don't boost until 500 in engagement pool
+  true,
+  false                                   -- manual lookalike creation initially
+);
+```
+
+**Deliverable:** Meta Pixel verified. GA4 verified. Email capture confirmed.
+Audience policy row inserted. All four items checked before proceeding.
+
+---
+
+## Step 8 — Facebook Page Connection
 **Timeline:** Day 5–7 | Owner: Client (guided by Invegent)
 
 This step requires action from the client. Handle it carefully —
@@ -311,7 +405,7 @@ Mode switched to 'auto'. Token expiry reminder set.
 
 ---
 
-## Step 8 — Auto-Approval Configuration
+## Step 9 — Auto-Approval Configuration
 **Timeline:** Day 5–6 | Owner: Invegent
 
 Configure the auto-approver settings for this client in c.client_ai_profile
@@ -329,7 +423,7 @@ consistent, enable auto-approval and drop to the weekly review routine.
 
 ---
 
-## Step 9 — Publishing Profile Configuration
+## Step 10 — Publishing Profile Configuration
 **Timeline:** Day 7 | Owner: Invegent
 
 Configure the client's digest policy (how content is selected for them):
@@ -356,7 +450,7 @@ Set posts per week target: default 5 for Standard tier, 3 for Starter.
 
 ---
 
-## Step 10 — Welcome and First Week Review
+## Step 11 — Welcome and First Week Review
 **Timeline:** Day 7–14 | Owner: Invegent
 
 **Day 7:** Send client a welcome message with:
@@ -378,8 +472,8 @@ Adjust the brand profile or content type prompts if needed.
 This is the calibration window — use it.
 
 **Day 14:** Switch to standard weekly review.
-Send client a brief check-in: "First two weeks live — here's what we
-published, any feedback?"
+Send client a brief check-in: “First two weeks live — here's what we
+published, any feedback?”
 
 **Deliverable:** first 14 days reviewed and calibrated.
 Client received and acknowledged welcome message.
@@ -387,15 +481,15 @@ Any feedback addressed.
 
 ---
 
-## Step 11 — Cross-Promotion Setup (NDIS clients only)
+## Step 12 — Cross-Promotion Setup (NDIS clients only)
 **Timeline:** Day 14 | Owner: Invegent
 
 For NDIS clients, initiate the cross-promotion network protocol:
 
 1. Welcome post on NDIS Yarns featuring the new client:
-   "Welcome to [Client Name] — [brief description of their service
+   “Welcome to [Client Name] — [brief description of their service
    and who they help]. We're excited to share their page with
-   the NDIS community. Follow them at [link]."
+   the NDIS community. Follow them at [link].”
 
 2. Ask client to share the NDIS Yarns welcome post to their page.
 
@@ -411,7 +505,7 @@ service model and creates the audience flywheel that grows both pages.
 
 ---
 
-## Step 12 — Steady State Handover
+## Step 13 — Steady State Handover
 **Timeline:** Day 14 | Owner: Invegent
 
 Once the calibration window is complete:
@@ -447,6 +541,8 @@ Once a client is in steady state, the weekly routine is:
 - Check performance data — what's working?
 - Any feed recommendations from the feed intelligence agent?
 - Client check-in if on Premium tier (monthly report)
+- Export email list and upload to Google Customer Match + LinkedIn
+  Matched Audiences (audience cross-platform seeding)
 
 ---
 
@@ -455,6 +551,7 @@ Once a client is in steady state, the weekly routine is:
 | Day | Step | Owner |
 |-----|------|-------|
 | 1 | Client record created | Invegent |
+| 1 | Tracking infrastructure (Pixel, GA4, email capture) | Invegent + Client |
 | 1–2 | Content scope configured | Invegent |
 | 2–3 | Brand profile built | Invegent + Client |
 | 3 | Platform profiles configured | Invegent |
@@ -477,7 +574,7 @@ Total Invegent time investment at onboarding: approximately 4–6 hours.
 **Brand profile too generic — output sounds like every other page**
 Cause: not enough client-specific input in brand profile.
 Fix: schedule a 30-minute discovery call specifically about voice.
-Ask: "Read me three posts from your page that you're proud of."
+Ask: “Read me three posts from your page that you're proud of.”
 That language goes into the profile.
 
 **Token authorisation fails**
@@ -500,3 +597,14 @@ brand_voice_keywords. One real example beats five adjective lists.
 **Publishing stalls after a few days**
 Cause: usually a token issue or a locked queue item.
 Fix: check m.vw_ops_token_health and m.vw_ops_failures_24h in the dashboard.
+
+**Pixel not firing**
+Cause: installation on wrong location, or client's website platform
+requires a specific integration method.
+Fix: use Meta Pixel Helper Chrome extension to diagnose.
+Common fix: clear cache after installation (cached pages may not show pixel).
+
+**Email list not growing**
+Cause: no lead magnet or capture form is visible and compelling.
+Fix: work with client to create a simple free resource ICE can help write.
+A checklist, guide, or template relevant to their audience converts well.
