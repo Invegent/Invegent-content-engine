@@ -1,7 +1,12 @@
-// youtube-publisher v1.3.0
-// Uploads approved video drafts (video_status=generated) to YouTube via Data API v3.
-// OAuth 2.0 token refresh per client.
+// youtube-publisher v1.4.0
+// Fix: removed approval_status = 'approved' constraint from draft query.
+// Previously youtube-publisher and facebook publisher raced at :45 past every hour —
+// if facebook publisher set approval_status = 'published' first, youtube-publisher
+// found nothing and the video was never uploaded to YouTube.
+// Now queries only on video_status = 'generated' + video_url IS NOT NULL + youtube_video_id IS NULL.
+// Facebook's publish status is irrelevant to YouTube — both platforms are independent.
 //
+// OAuth 2.0 token refresh per client.
 // Refresh token resolution order:
 //   1. c.client_channel.config->>'refresh_token'  (set by dashboard OAuth flow)
 //   2. env var named by c.client_publish_profile.credential_env_key (legacy Supabase secret)
@@ -11,7 +16,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'youtube-publisher-v1.3.0';
+const VERSION = 'youtube-publisher-v1.4.0';
 const YOUTUBE_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
 const YOUTUBE_UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status';
 
@@ -193,9 +198,11 @@ Deno.serve(async (req: Request) => {
   const supabase = getServiceClient();
   const results: any[] = [];
 
+  // v1.4.0: No longer gates on approval_status = 'approved'.
+  // Facebook publish timing is independent of YouTube upload — both platforms are separate concerns.
+  // Gate only on: video rendered (video_status = 'generated') + video file exists + not yet on YouTube.
   const { data: drafts } = await supabase.schema('m').from('post_draft')
     .select('post_draft_id, client_id, draft_title, draft_body, recommended_format, video_url, draft_format')
-    .eq('approval_status', 'approved')
     .eq('video_status', 'generated')
     .is('draft_format->youtube_video_id', null)
     .not('video_url', 'is', null)
