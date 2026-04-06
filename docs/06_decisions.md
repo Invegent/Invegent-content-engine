@@ -132,12 +132,6 @@ WHERE schema_name = 'x' AND table_name = 'y';
 Manually-coded purpose/join_keys/advisory entries are preserved on every
 refresh (ON CONFLICT only updates structural fields). Safe to re-run at any time.
 
-**code_of_conduct_url decision (same session):**
-Storing URL on t.profession (not text) is correct. The compliance-reviewer
-already fetches URLs via Jina — same infrastructure handles code of conduct
-fetching when the AI rule generator is built. Stored text would go stale;
-fetched-on-demand text is always current.
-
 ---
 
 ## D070 — AI Diagnostic Agent v1.0.0 — Tier 2 Daily Health Report
@@ -153,9 +147,6 @@ New `ai-diagnostic` Edge Function providing a Tier 2 daily health report for the
 
 **Dashboard:** `/diagnostics` page and `/api/diagnostics` Next.js route live in invegent-dashboard.
 
-Complements pipeline-fixer (D057): fixer auto-executes pre-approved reversible fixes;
-ai-diagnostic provides the human-facing scored daily report, trend view, and forward-looking recommendations.
-
 ---
 
 ## D071 — IAE Strategic Decision — Do Not Build Yet
@@ -165,118 +156,125 @@ ai-diagnostic provides the human-facing scored daily report, trend view, and for
 IAE (Invegent Advertising Engine) is recognised as a legitimate future
 product extension of ICE. The decision is explicitly NOT to build it yet.
 
-**Context:**
-Brainstorming session identified IAE as the paid amplification layer of ICE —
-the engine that activates audience assets built organically by ICE against
-confirmed ad spend. The strategic logic is sound. The timing is wrong.
-
-**Reasons not to build yet:**
-- ICE has zero external paying clients — operational foundation not proven
-- Meta Standard Access not confirmed — required before any third-party boosting
-- Facebook Insights back-feed running but low volume — IAE boost scoring needs more data
-- Client demand not validated — no paying client has confirmed they want paid amplification
-- Compliance framework for paid content not defined — AHPRA + NDIS Code of Conduct
-  + Meta health advertising policies apply simultaneously to paid content
-
-**What IAE is (for the record):**
-The amplification layer of ICE. Not a standalone ads product.
-Works because ICE has already built organic engagement pools, Custom Audiences,
-and social proof on content before a dollar of paid spend is committed.
-The core insight: ICE tests with organic, IAE amplifies what's already proven.
-No competitor builds both sides simultaneously for NDIS providers.
-
 **Build trigger:**
 - 2-3 paying ICE clients confirmed
-- Client demand for paid amplification explicitly validated (asked directly, not assumed)
+- Client demand for paid amplification explicitly validated
 - All prerequisites in docs/iae/01_iae_prerequisites.md met
 
-**Interim approach:**
-Phase 3.4 Meta boost (within ICE) tests whether clients respond to paid amplification.
-This is an ICE feature, not IAE. Build Phase 3.4 when Phase 3 arrives.
-If client demand confirmed via Phase 3.4 results → scope IAE Phase A.
-
-**Documentation:**
-Full strategic thinking committed to docs/iae/ as reference for future build.
+**Documentation:** docs/iae/
 
 ---
 
 ## D072 — Audience as Asset — Schema Pattern
-**Date:** April 2026 | **Status:** ✅ Decided — schema designed, not built
+**Date:** April 2026 | **Status:** ✅ Live — deployed 7 Apr 2026
 
 **Decision:**
 Audience data has a dual nature — fact and configuration-linked.
-The correct schema pattern follows existing ICE conventions.
-
-**The dual nature:**
-- As fact: an audience exists, has a size, was built by pipeline activity → m schema
-- As configuration: which platforms and audience types to build per client → c schema
-- As intelligence: what the system knows about audience state → k views
-
-**Schema resolution:**
 
 ```
-c.client_audience_policy  — operator's decision about what to build (configuration)
-    ↓ FK (client_id)
-m.audience_asset          — what the pipeline built (fact)
-    ↓ self-referential FK (seed_audience_id for lookalikes)
-m.audience_asset          — lookalike child
-    ↓ FK (audience_id)
-m.audience_performance    — how it performed when used in IAE
-    ↑
-k.vw_audience_summary     — synthesises above into intelligence view
+c.client_audience_policy  — what to build (configuration)
+m.audience_asset          — what got built (fact, FK to c.client)
+m.audience_performance    — how it performed in IAE
+k.vw_audience_summary     — intelligence view (synthesises above)
 ```
 
-**k schema principle confirmed:**
-k gains views, not tables. The guru got smarter, not fatter.
-Every new capability adds rows to k views derived from m and c.
-k never stores operational data directly.
-
-**Full schema spec:** docs/iae/01_iae_prerequisites.md
+k gains views, not tables. Guru got smarter, not fatter.
+3 tables deployed. 6 seed rows (3 per client). k catalog updated.
 
 ---
 
-## D073 — Publisher Asset Gate — Image/Video Must Be Ready Before Facebook Publish
-**Date:** 6 April 2026 | **Status:** ✅ Live
+## D073 — External AI Agents Strategy — n8n for Client Success, Internal First
+**Date:** 7 April 2026 | **Status:** ✅ Decided
 
-**Problem:**
-Non-text posts (image_quote, carousel, video_short_*) were publishing to Facebook
-as text-only. Root cause: a timing race between image-worker and publisher.
+**Decision:**
+ICE's Supabase-internal agent architecture handles 80% of what external agent
+frameworks would do, and does it more reliably because it is closer to the data.
+External agent tooling is deferred until ICE has paying clients and specific
+gaps the internal architecture cannot fill.
 
-Race sequence:
-1. Draft approved → queue item created with `scheduled_for = NOW()`
-2. Publisher runs (every 15 min) → picks up queue item → `image_url` is null → publishes text-only
-3. `approval_status` flips to `'published'`
-4. Image-worker queries `approval_status = 'approved'` → finds nothing → image never generated
+**Context:**
+Research conducted across CrewAI, LangGraph, AutoGen, n8n, Make, Zapier.
+All are technically capable. The question for ICE is whether the remaining gaps
+justify the added complexity and operational overhead of an external layer.
 
-Result: image/carousel/video posts arrive on Facebook with no visual. Confirmed
-via `request_payload` audit — `has_image: false` on all non-text published posts.
+**The three-layer landscape:**
+- Agentic frameworks (CrewAI, LangGraph, AutoGen) — code-level, production-grade,
+  best for stateful multi-agent workflows. LangGraph for durability and human-in-loop.
+  CrewAI for intuitive role-based team modelling. AutoGen for conversational agents.
+- Workflow automation platforms (n8n, Make, Zapier) — visual, lower code,
+  n8n leads for technical teams with native Supabase + Anthropic + LangChain
+  integration. Self-hosted n8n = unlimited executions for ~$10/month server cost.
+- Browser agents (Claude in Chrome / Cowork) — already configured in ICE,
+  usable immediately for dashboard monitoring tasks.
 
-**Fix: two DB triggers, zero publisher code changes**
+**What ICE already covers internally (no external agent needed):**
+- Pipeline health monitoring — pipeline-doctor, ai-diagnostic, m.run_system_audit()
+- Content generation and approval — ai-worker, auto-approver
+- Publishing — publisher Edge Function
+- Compliance review — compliance-reviewer, compliance-monitor
+- Weekly system audit — m.run_system_audit() + cron (deployed 7 Apr)
 
-`trg_gate_queue_on_asset_status` — BEFORE INSERT on `m.post_publish_queue`:
-- For image formats (image_quote, carousel, animated_text_reveal, animated_data):
-  if `image_status = 'pending'`, push `scheduled_for` to `NOW() + 4 hours`
-- For video formats (video_short_kinetic, video_short_stat, voice variants):
-  if `video_status = 'pending'`, push `scheduled_for` to `NOW() + 4 hours`
-- Text format: no gate, publishes immediately as before
+**The two external agent use cases worth pursuing:**
 
-`trg_release_queue_on_asset_ready` — AFTER UPDATE OF image_status, video_status on `m.post_draft`:
-- When `image_status` leaves 'pending' (generated, failed, skipped — all release):
-  UPDATE queue `scheduled_for = NOW()` for held items
-- When `video_status` leaves 'pending': same release
-- Only releases items held > 30 min (avoids double-firing on unrelated updates)
+1. Dashboard Monitor — build as Claude in Chrome / Cowork task when B5
+   (weekly email report) is not yet live. Once B5 exists, the email covers this
+   and the Cowork task is redundant. Not a priority.
 
-**Flow after fix:**
-Approve → queue INSERT → gate holds to +4h → image-worker generates → release trigger fires
-→ `scheduled_for = NOW()` → next publisher cycle picks up with `image_url` populated → publishes with image ✅
+2. Client Success Agent — once paying clients exist and C1 (Insights back-feed)
+   is live. An n8n workflow that: triggers weekly per client → queries Supabase
+   for publishing + engagement data → calls Claude API for plain-language summary
+   → sends to client portal or PK for approval. n8n is the right tool here because
+   it bridges Supabase data with client communication outside Supabase's scope.
 
-If asset generation fails or is skipped, the release trigger still fires and the post
-publishes as text-only fallback rather than being held forever.
+**Virtual employee hierarchy mapping:**
+| Role | Tool | When |
+|---|---|---|
+| Pipeline Monitor | Internal (audit + B5 email) | B5 build |
+| Dashboard Reviewer | Claude in Chrome / Cowork | Bridge until B5 |
+| Content QA Officer | Internal (auto-approver) | Live |
+| Client Success Manager | n8n → Supabase → Claude | Post C1 + paying clients |
+| Audience Analyst | insights-worker extension (D4) | Post C1 |
+| Compliance Officer | Internal (compliance-monitor) | Live |
 
-**Also fixed:** 2 PP carousel queue items with `scheduled_for` already in the past
-updated to `NOW() + 4 hours` to prevent them publishing as text before image-worker runs.
+**Build sequence:**
+1. B5 (weekly email) — solves dashboard monitoring gap internally
+2. n8n client success workflow — when paying clients confirmed and C1 live
+3. CrewAI/LangGraph portfolio intelligence — when 5+ clients demand it
 
-**Migration:** `publisher_asset_gate_v1`
+**Key principle:**
+Don't add agent frameworks for the sake of having them. External agents should
+solve problems the internal architecture genuinely cannot — primarily client
+communication and cross-system workflows that span beyond Supabase's boundary.
+
+---
+
+## D074 — QA Framework — Four-Layer Approach
+**Date:** 7 April 2026 | **Status:** ✅ Partially live
+
+**Decision:**
+ICE adopts a four-layer quality assurance framework to move from reactive
+error discovery to proactive verification.
+
+**Layer 1 — Developer verification** (B1, B2): docs/quality/01 and 02 committed.
+Checklist every build must pass before production deploy. No more deploy-and-see.
+
+**Layer 2 — Automated test runner** (B3): not yet built.
+m.pipeline_test_expectation table + test-runner Edge Function.
+Runs every 30 min. Pass/fail against documented expected ranges.
+Brief ready: docs/briefs/2026-04-07-qa-framework-phase2.md
+
+**Layer 3 — System audit function** (B4): LIVE as of 7 Apr 2026.
+m.run_system_audit() — 12 invariant checks across operational, data integrity,
+compliance, structural categories. First run: 12/12 pass.
+Weekly cron: ice-system-audit-weekly, Sunday 13:00 UTC.
+
+**Layer 4 — Weekly manager report** (B5): not yet built.
+Extends ai-diagnostic to deliver structured email every Sunday night.
+Brief ready: docs/briefs/2026-04-07-qa-framework-phase2.md
+
+**Principle:**
+The goal is proactive confidence — verified system state — not reactive hope.
+"The test suite ran 47 minutes ago and all 12 checks passed" vs "I hope this is working."
 
 ---
 
@@ -285,14 +283,13 @@ updated to `NOW() + 4 hours` to prevent them publishing as text before image-wor
 | Decision | Context | Target |
 |---|---|---|
 | Prospect demo generator | ~1 day. Needed before first external client conversation | Phase 3 |
-| Client health weekly report email | ~2 days. Sunday night Edge Function via Resend | Phase 3 |
-| NDIS Yarns YouTube | Convert channel to Brand Account, connect via dashboard | Next session |
-| AI compliance rule generator | Use ANZSCO tasks + code_of_conduct_url → Claude generates draft rules | Phase 3 |
+| Client health weekly report email (B5) | ~2 days. Sunday Edge Function via Resend | Phase 2 |
+| NDIS Yarns YouTube | Convert channel to Brand Account, connect via dashboard | This session |
+| AI compliance rule generator | ANZSCO tasks + code_of_conduct_url → Claude generates draft rules | Phase 3 |
 | Content vertical → topic mapping | Map 13 verticals to relevant topics for bundler precision | Phase 3 |
-| Populate t.5.8 + t.5.9 | Compliance rule × platform × use case scoping | Phase 3 |
 | OpenClaw SOUL.md | ICE context for @InvegentICEbot | Phase 3 |
 | Instagram publisher | After Meta App Review approved | Phase 3 |
-| m.audience_asset schema | Deploy now — start tracking audience growth even before IAE | Phase 2 |
+| n8n client success workflow | After C1 live + first paying client | Phase 3 |
 | IAE Phase A build | Meta boost only — after all prerequisites in docs/iae/01 are met | Phase 3+ |
 | Model router | When AI costs become significant | Phase 4 |
 | SaaS vs managed service | When 10 clients served 3+ months | Phase 4 |
