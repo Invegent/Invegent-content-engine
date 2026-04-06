@@ -140,11 +140,28 @@ fetched-on-demand text is always current.
 
 ---
 
+## D070 — AI Diagnostic Agent v1.0.0 — Tier 2 Daily Health Report
+**Date:** 2 April 2026 | **Status:** ✅ Live
+
+New `ai-diagnostic` Edge Function providing a Tier 2 daily health report for the ICE pipeline.
+
+**Capabilities:**
+- Trend analysis across pipeline health snapshots
+- Per-client scoring — NDIS Yarns and Property Pulse assessed separately
+- AI-generated recommendations based on detected patterns
+- Predictive warnings for emerging pipeline risks
+
+**Dashboard:** `/diagnostics` page and `/api/diagnostics` Next.js route live in invegent-dashboard.
+
+Complements pipeline-fixer (D057): fixer auto-executes pre-approved reversible fixes;
+ai-diagnostic provides the human-facing scored daily report, trend view, and forward-looking recommendations.
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target |
 |---|---|---|
-| AI Diagnostic Tier 2 | Prerequisites met (37 doctor log records). Build pre-approved action list + Claude reasoning loop | Next session |
 | Prospect demo generator | ~1 day. Needed before first external client conversation | Phase 3 |
 | Client health weekly report email | ~2 days. Sunday night Edge Function via Resend | Phase 3 |
 | NDIS Yarns YouTube | Convert channel to Brand Account, connect via dashboard | Next session |

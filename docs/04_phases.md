@@ -74,10 +74,12 @@ Personal brand and YouTube pipeline built. First external client optional.
 - compliance-monitor v1.2.0 watches 5 policy URLs monthly (SHA-256 hash)
 - Compliance test: 0/20 HARD_BLOCK, 3/20 SOFT_WARN ✅
 
-**3.3 — AI Diagnostic Agent (Tier 2)** ⏳ NEXT BUILD
-- Prerequisites now met: doctor log live (12+ records), health log 650+ snapshots
-- Upgrade to action-capable: pre-approved action list, Claude reasons about which action
-- Effort: 1 day
+**3.3 — AI Diagnostic Agent (Tier 2)** ✅ DEPLOYED 2 Apr 2026
+- ai-diagnostic v1.0.0 Edge Function
+- Daily health report with trend analysis, per-client scoring (NDIS Yarns + Property Pulse)
+- AI-generated recommendations and predictive warnings via Claude API
+- Dashboard /diagnostics page + /api/diagnostics route live
+- (D070)
 
 **3.14 — AI Compliance Reviewer** ✅ DEPLOYED 2 Apr 2026
 - compliance-reviewer v1.3.0 Edge Function
@@ -202,7 +204,7 @@ First external clients generating revenue. AI autonomy stack building.
 | Tier | Name | Actions | Status |
 |---|---|---|---|
 | 1 | Diagnose | Read logs → plain English summary. No actions. | ✅ Deployed 19 Mar |
-| 2 | Fix (approved list) | Execute pre-approved reversible actions. | ⏳ Next build — prerequisites met |
+| 2 | Fix + Recommend | pipeline-fixer: pre-approved auto-fixes (D057). ai-diagnostic v1.0.0: daily scored report, trend, recommendations, predictions (D070). | ✅ Deployed 2 Apr 2026 |
 | 3 | Propose | Suggests higher-risk actions, awaits approval. | Phase 4 |
 | 4 | Predict | Acts on leading indicators before failure. | Phase 4 |
 | 5 | Self-improve | Proposes prompt improvements from engagement data. | Phase 4 |
