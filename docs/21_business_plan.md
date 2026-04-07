@@ -45,12 +45,13 @@ The differentiator: ICE was built by an OT and NDIS Plan Manager. The compliance
 - Target: those building a personal brand or referral practice
 - Addressable: 2,000–4,000
 
-**Future market — Creator/Entertainment tier (Global)**
-- Aspirant YouTube channel operators who want to build an audience without knowing how to start
-- The creator economy is estimated at $191 billion in 2026 (ALM Corp / Goldman Sachs data)
-- ICE's position: managed service for channel setup and content production, not a self-serve tool
-- Pricing: different tier ($99–299/month), different cost structure (higher AI render cost), different sales channel (digital)
-- This market is not the current focus. It is a 24-month build target.
+**Creator/Entertainment tier (Global) — a core ICE output tier, not aspirational**
+- Aspirant YouTube channel operators, personal brand builders, faceless channel creators
+- The creator economy is estimated at $191 billion in 2026
+- ICE's position: managed service for channel setup and video content production
+- Pricing: separate tier ($99–299/month), different cost structure (higher AI render cost via HeyGen)
+- Build sequence: video pipeline layers (short-form → avatar → long-form episode)
+- This tier runs on the same infrastructure as professional services with different pricing
 
 **Future market — Regulated verticals beyond NDIS (Australia, then global)**
 - Aged care, mental health, legal services, accounting, financial planning
@@ -132,23 +133,31 @@ The unit economics only work at this margin if the automation targets are met. T
 
 ---
 
-## Revenue Milestones
+## Revenue Position — Prove First, Then Forecast
 
-**3 months (Q3 2026):** 3 paying clients, $2,000–3,000/month
-- Gate: Phase 1 and 2 proven, NDIS Yarns proof document ready, Meta Standard Access confirmed
-- Action: 5 specific NDIS providers identified for conversations
+Revenue targets have deliberately not been set for 12+ months out. The reason is honest: forecasting subscription revenue before the product has been tested with paying external clients produces numbers that feel certain but are not. A forecast made before proof is marketing, not planning.
 
-**12 months (Q1 2027):** 8–10 paying clients, $8,000–15,000/month
-- Gate: Self-service onboarding working, portal analytics meaningful, client retention proven
-- Action: LinkedIn channel live, first content series for an external client delivered
+**The current position:**
+- Zero external revenue. Two internal test clients (NDIS Yarns, Property Pulse) running on the pipeline.
+- The pipeline works. The product is not yet proven with paying clients.
+- The 12-month goal is product proof, not a revenue number.
 
-**24 months (Q1 2028):** 20+ clients, $20,000–40,000/month OR SaaS transition underway
-- Gate: SaaS transition decision made (see criteria below)
-- Action: Second vertical fully live, compliance rule generator built for automated profession expansion
+**What "product proven" means:**
+- 3+ paying external clients retained for 3+ consecutive months
+- Operational time genuinely under 2 hours/week total across all clients
+- At least one client who can provide a reference
+- Performance data showing the content is producing page growth (even modest growth)
 
-**36 months (Q1 2029):** Platform mode OR $50,000+/month managed service
-- If managed service: team hire required (1 part-time virtual assistant at minimum)
-- If SaaS: self-serve onboarding live, creator tier launched
+**When to set revenue targets:**
+Once the product is proven by the above criteria, revenue targets will be set based on actual retention rates, actual client acquisition velocity, and actual operational capacity — not modelled assumptions.
+
+**The near-term gate (next 3 months):**
+- Meta App Review Standard Access confirmed
+- NDIS Yarns proof document ready (whatever data exists at that point)
+- 5 specific NDIS providers identified for first conversations
+- First client conversation happens
+
+Everything beyond that is determined by what the market tells us, not what a spreadsheet says.
 
 ---
 

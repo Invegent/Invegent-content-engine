@@ -25,7 +25,7 @@ Mobile allied health NDIS practice. OT-led. ICE runs NDIS Yarns on autopilot —
 YouTube presence, personal content series, property investment content through Property Pulse. ICE proves itself on PK's own world before asking anyone else to trust it. Property Pulse is also the validator for a potential property business pivot — if the page reaches meaningful traction within 12 months, the pivot has market proof.
 
 **Priority 3 — Invegent (ICE as a product)**
-The managed content service for external clients. NDIS providers first. Property professionals second. The entertainment/creator tier third. External clients benefit from everything proved on PK's own businesses first.
+The managed content service for external clients. NDIS providers first. Property professionals second. The creator/entertainment tier in parallel as a built-in capability, not a future add-on.
 
 **This priority order never reverses.** A decision that adds complexity to ICE without serving the priority 1 and 2 use cases is the wrong decision at the current stage.
 
@@ -33,11 +33,27 @@ The managed content service for external clients. NDIS providers first. Property
 
 ## What the World Looks Like When Invegent Succeeds
 
-**At 12 months:** A solo CPA with no development background has built and operates an AI content system serving 8–10 paying clients, generating $8,000–15,000/month, with less than 10 hours/week of operational time. The system is proven on his own businesses first. The first external clients are NDIS providers who would not trust a generic content agency but will trust someone who operates inside their sector.
+**At 12 months:** The product is proven on PK's own businesses. NDIS Yarns has meaningful reach and engagement data. Property Pulse has validated the property vertical. The first external NDIS clients are live and publishing. The video pipeline — short-form, avatar, YouTube channel management — is operational. ICE is producing real results that can be shown to the next prospect.
 
 **At 3 years:** Invegent has transitioned from a managed service to a self-serve platform for regulated industries. Any GP, OT, physiotherapist, accountant, financial planner, or support coordinator in Australia can sign up, connect their social accounts, select their profession, and ICE generates compliant content from day one — without PK being in the loop. The compliance rule generator (AI reads the code of conduct, generates the rules) makes each new profession a one-day extension, not months of manual research.
 
-**At 5 years:** The creator/entertainment tier is live. Aspirant YouTube channel operators — people who want to build a following but don't know where to start — use ICE as their full production pipeline: subscribe to channels that inspire them, let ICE analyse what works, generate scripts in their voice, render in their avatar, publish to YouTube automatically. The regulated professional market and the creator market run on the same infrastructure with different pricing.
+**At 5 years:** ICE is serving regulated professionals and aspirant creators on the same infrastructure with different pricing tiers. The video pipeline (avatar video, long-form episodes, YouTube channel inspiration and recreation) is a core part of the product, not a bolt-on — available to any client who wants to build a YouTube presence, whether they're an NDIS OT or an aspirant entertainment channel operator.
+
+---
+
+## The Video Pipeline Is Core, Not Optional
+
+Video is not a future aspiration. It is part of what makes ICE a complete content intelligence engine rather than a text-and-image publisher.
+
+The full output layer ICE must eventually cover:
+- Text and image posts (Facebook, LinkedIn, Instagram) — **working**
+- Short-form kinetic and stat videos (YouTube Shorts, Reels) — **working**
+- Avatar presenter videos (HeyGen, 1–30 min talking head) — **next build**
+- Video analyser (paste a URL → transcript + analysis + recreate brief) — **next build**
+- YouTube channel subscriptions as inspiration signal source — **next build**
+- Long-form episode pipeline (structured scripts, HeyGen rendering) — **Phase 4**
+
+Every client ICE eventually serves — whether an NDIS provider, a property professional, or an aspirant YouTube creator — needs some or all of this. The video capability is what separates ICE from a social media scheduling tool permanently.
 
 ---
 
@@ -89,7 +105,6 @@ Revenue and client count are lag indicators. Operational efficiency is the lead 
 This document is reviewed quarterly. It changes when:
 - A new business direction is confirmed (e.g. Property Pulse validates the property pivot)
 - The SaaS transition decision is made
-- The creator tier moves from vision to active build
 - External market conditions change the competitive landscape significantly
 
 It does not change because of a single conversation or a single idea. It changes when there is evidence.
