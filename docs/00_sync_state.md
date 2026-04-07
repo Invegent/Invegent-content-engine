@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-07 (session close)
+> Last written: 2026-04-08 (session close)
 > Written by: PK + Claude reconciliation
 
 ---
@@ -12,6 +12,8 @@ At the start of every session involving ICE technical work, read this file
 before answering any question or writing any code. It tells you what is
 actually deployed right now — not what the docs say should be deployed.
 If this file contradicts memory or 04_phases.md, this file wins.
+
+For the full document map, see `docs/00_docs_index.md`.
 
 ---
 
@@ -34,7 +36,7 @@ If this file contradicts memory or 04_phases.md, this file wins.
 
 **k schema status (fully repaired, 2 Apr 2026):**
 - 117 tables documented across a, c, f, k, m, t schemas — zero TODO entries
-- New tables added 7 Apr: c.client_audience_policy, m.audience_asset, m.audience_performance, c.client_publish_schedule, m.system_audit_log
+- New tables added 7–8 Apr: c.client_audience_policy, m.audience_asset, m.audience_performance, c.client_publish_schedule, m.system_audit_log
 - Weekly pg_cron: `k-schema-refresh-weekly` every Sunday 3am UTC — safe to re-run
 
 ---
@@ -63,7 +65,8 @@ Phase 2 mostly complete — LinkedIn API blocked externally.
 - 26 active feeds (13 per client) ✔
 - Dashboard stable (system audit 12/12 pass) ✔
 
-**Gate to first external client conversation is open.**
+**Gate to first external client conversation is OPEN.**
+**Legal review required before first external client is signed — see docs/23_legal_register.md.**
 
 ---
 
@@ -83,7 +86,7 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 | feed-intelligence | 20 | ACTIVE | |
 | image-worker | **37** | ACTIVE | **v3.9.2** — carousel deadlock fix (7 Apr) |
 | ingest | 94 | ACTIVE | |
-| insights-worker | 32 | ACTIVE | |
+| insights-worker | 32 | ACTIVE | **v14.0.0** — metric names fixed, C1 complete |
 | inspector | 82 | ACTIVE | |
 | inspector_sql_ro | 37 | ACTIVE | |
 | linkedin-publisher | 15 | ACTIVE | waiting on API approval |
@@ -101,111 +104,78 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
 25 functions deployed. All ACTIVE.
 
-**Version changes this session:**
-- image-worker: 36 → 37 (v3.9.2 — carousel approval_status deadlock fixed)
-- youtube-publisher: 13 → 15 (v1.5.0 — publish_meta → response_payload, attempt_no added)
-
 ---
 
 ## PIPELINE STATE
 
-### Publishing (confirmed working — 7 Apr 2026)
+### Publishing (confirmed working)
 
 | Format | NDIS-Yarns | Property Pulse |
 |---|---|---|
 | facebook text | ✅ publishing daily | ✅ publishing daily |
-| facebook video_short_kinetic | ❓ none generated | ✅ confirmed |
-| facebook video_short_stat | ❓ none generated | ✅ confirmed |
-| facebook image_quote | ❓ pending | ✅ confirmed once (31 Mar) |
-| facebook carousel | ⏳ unblocked 7 Apr | ⏳ unblocked 7 Apr |
+| facebook video_short_kinetic | ❌ none generated | ✅ confirmed |
+| facebook video_short_stat | ❌ none generated | ✅ confirmed |
+| facebook image_quote | ✅ generating | ✅ confirmed |
+| facebook carousel | ✅ unblocked 7 Apr | ✅ unblocked 7 Apr |
 | youtube | ❌ no video drafts generated | ✅ 4 videos uploaded |
-
-**Carousel status:** 2 PP carousels unblocked this session. image-worker v3.9.2 will generate slides at next :00/:15/:30/:45 cron. Publisher will post within 10 min of image generation.
-
-**YouTube PP status:** 4 videos live on channel (IDs: l-kkoFkZ6A4, qCs9fula6qU, Oxs18VJKzNg, KvBzUZIpwTA). Post_publish audit rows were missing (bug fixed in v1.5.0). Future videos will have correct audit rows. Existing 4 can be backfilled if needed.
-
-**NDIS Yarns YouTube:** Brand Account conversion done 7 Apr. Token valid until 7 Apr 2031. No video format drafts are generated for NDIS-Yarns — text-only vertical in practice despite video_generation_enabled=true. Root cause: ai-worker doesn't assign video formats to NDIS content. Not a priority bug — NDIS content works better as text.
 
 ### Token Calendar
 
 | Platform | Client | Expiry | Days remaining |
 |---|---|---|---|
-| YouTube | NDIS-Yarns | 7 Apr 2031 | 1,825d |
-| YouTube | Property Pulse | 2 Apr 2031 | 1,820d |
-| Facebook | Property Pulse | 6 Jun 2026 | 59d |
-| Facebook | NDIS-Yarns | 1 Jun 2026 | 54d |
+| YouTube | NDIS-Yarns | 7 Apr 2031 | ~1,825d |
+| YouTube | Property Pulse | 2 Apr 2031 | ~1,820d |
+| Facebook | Property Pulse | 6 Jun 2026 | ~59d |
+| Facebook | NDIS-Yarns | 1 Jun 2026 | ~54d |
 
-Facebook tokens need refreshing in ~50 days.
+⚠️ Facebook tokens need refreshing in ~50 days.
 
-### Client Publish Profiles
+### Performance Data (C1 — COMPLETE 8 Apr 2026)
 
-| Client | Publish Enabled | Auto Approve | Image Gen | Video Gen | Max/Day | Min Gap |
-|---|---|---|---|---|---|---|
-| Property Pulse | true | true | true | true | 2 | 360 min |
-| NDIS-Yarns | true | true | true | true | 2 | 360 min |
+- insights-worker v14.0.0 deployed: fixed metric names (`post_impressions_unique_28d` was invalid, replaced with `post_impressions`, `post_engaged_users`, `post_clicks`)
+- 148 rows in m.post_performance
+- Performance dashboard live at dashboard.invegent.com/monitor (Performance tab)
+- `/api/performance` server action + `/performance` page deployed
 
-Max per day dropped 15 → 2, min gap raised to 360 min (burst publishing stopped).
+### Publishing Schedule
 
-### Publishing Schedule (seeded 7 Apr)
-
-`c.client_publish_schedule` table live. 12 rows seeded. Schedule UI live at dashboard.invegent.com/clients (Schedule tab).
-
-| Client | Schedule | Days |
-|---|---|---|
-| NDIS-Yarns | 8am Mon, 12pm Tue, 7pm Wed, 8am Thu, 12pm Fri, 10am Sat AEST | Mon–Sat |
-| Property Pulse | 7:30am Mon, 12pm Tue, 7:30am Wed, 12pm Thu, 5pm Fri, 10am Sat AEST | Mon–Sat |
-
-⚠️ Publisher assignment logic (reading schedule to set `scheduled_for`) is not yet wired. Data and UI are live; publisher still uses its own timing. This is the next build step after C1.
+`c.client_publish_schedule` — 12 rows seeded. Schedule UI live.
+⚠️ Publisher assignment not yet wired (reads schedule, doesn't use it to set `scheduled_for`). Next build.
 
 ### System Audit (B4) — Live
 
-`m.run_system_audit(p_triggered_by)` deployed. 12 checks across operational, data_integrity, compliance, structural. Last run 7 Apr: 12/12 pass. Weekly cron: `ice-system-audit-weekly` every Sunday 13:00 UTC.
-
-### AI Usage — This Month (April 2026)
-
-| Total Cost (USD) | Total Calls | Fallback |
-|---|---|---|
-| ~$0.56 | ~14 | 0 |
-
-Zero fallback to OpenAI. Anthropic primary only.
-
----
-
-## NEW SCHEMA — 7 APR 2026
-
-| Table | Schema | Purpose |
-|---|---|---|
-| client_audience_policy | c | Per-client audience build config (platforms, pixel IDs) |
-| audience_asset | m | Fact table — built audiences per client (6 rows seeded) |
-| audience_performance | m | IAE campaign results (future) |
-| client_publish_schedule | c | Per-client per-platform day/time schedule (12 rows seeded) |
-| system_audit_log | m | B4 audit run results |
-
-All 5 tables registered in k catalog.
-
-`public.save_publish_schedule()` SECURITY DEFINER function deployed for schedule saves.
+12 checks, 12/12 pass. Weekly cron Sunday 13:00 UTC.
 
 ---
 
 ## DASHBOARD — invegent-dashboard
 
-Last deploy: 7 Apr 2026 (multiple deploys this session)
+Last deploy: 8 Apr 2026
 
-**Changes this session:**
-- Monitor/Flow: Publisher health fixed (`queueOverdue` not `queueQueued`)
-- Monitor/Flow: Client selector tabs added (All / NDIS-Yarns / PP via `?client=` param)
-- Monitor/AI Costs: Flow tab restored (was missing)
+**Changes 8 Apr 2026:**
+- Content Studio / Single Post: All platforms now shown (Facebook ✅, LinkedIn greyed “API approval pending”, Instagram greyed “Coming after Meta App Review”)
+- Content Studio / Content Series: Clicking tab now opens new series form directly (not history). History moved to “My Series” link top-right. Platform selector added to series form.
+- Roadmap: “By Layer” section added above “By Phase” — 8 layers with % bars, what works, what's missing. Overall ~65%.
+- Monitor / Performance tab: live performance data from m.post_performance
+
+**Changes 7 Apr 2026:**
+- Monitor/Flow: Publisher health fixed, client selector tabs added
 - Clients: Schedule tab built — 7-day grid, tier enforcement, capacity bar, save
+- image-worker v3.9.2, youtube-publisher v1.5.0
 
 ---
 
-## GITHUB — LATEST COMMITS (7 Apr 2026)
+## GITHUB — LATEST COMMITS (8 Apr 2026)
 
-| Repo | SHA | Message |
-|---|---|---|
-| Invegent-content-engine | 40982b9 | fix: youtube-publisher v1.5.0 + image-worker v3.9.2 |
-| Invegent-content-engine | 3c9df4a | docs: add D075 OpenClaw learnings |
-| Invegent-content-engine | (migration) | fix_stuck_carousel_approval_status |
+| Repo | Message |
+|---|---|
+| Invegent-content-engine | docs: business document suite — vision, business plan, product charter, legal register, risk register rewrite |
+| Invegent-content-engine | docs: video is core not aspirational; revenue targets deferred until product proven |
+| Invegent-content-engine | docs: ICE video pipeline deep research — April 2026 |
+| Invegent-content-engine | docs: independent consultant audit — product, business, legal, technology |
+| invegent-dashboard | fix: Content Studio — platform visibility, series UX, roadmap by-layer view |
+| invegent-dashboard | feat: add platform selector to Content Series form |
+| invegent-dashboard | feat: C1 performance dashboard — actions/performance.ts + /performance page |
 
 ---
 
@@ -223,15 +193,35 @@ Team: pk-2528s-projects (team_kYqCrehXYxW02AycsKVzwNrE)
 
 ## DECISIONS LOG — CURRENT
 
-D001–D069: See earlier commits.
+D001–D069: See `docs/06_decisions.md`.
 D070: AI Diagnostic Tier 2 — /diagnostics page live.
 D071: IAE — do not build yet.
 D072: Audience as asset schema — live.
 D073: External AI agents — n8n for client success post-C1.
-D074: QA framework — four layers, L1-L3 live.
+D074: QA framework — four layers, L1–L3 live.
 D075: OpenClaw learnings — 6 gaps identified for ICE roadmap.
 
-Full log: `docs/06_decisions.md`
+---
+
+## DOCUMENT SUITE (NEW — 8 Apr 2026)
+
+Five business documents created and committed:
+
+| File | Purpose |
+|---|---|
+| `docs/20_vision.md` | Vision, north star, what ICE will never become |
+| `docs/21_business_plan.md` | Market, model, economics, SaaS transition criteria |
+| `docs/22_product_charter.md` | Scope boundaries, video layers, vertical rules, decision framework |
+| `docs/23_legal_register.md` | L001–L008 legal issues tracked with owner and deadline |
+| `docs/05_risks.md` | Full rewrite — 9 risks, current status, monthly checklist |
+| `docs/00_docs_index.md` | Map of all 20+ docs in /docs with reading order |
+
+**Key positions confirmed in these documents:**
+- Video pipeline is CORE to ICE, not optional or aspirational
+- Revenue targets deliberately not set — prove the product works in 12 months, then forecast
+- Legal review ($2,000–5,000 AUD) required before first external client signs
+- Avatar consent workflow must exist before HeyGen integration is built (L005)
+- Meta Standard Access is a hard gate before any external client is onboarded to Facebook
 
 ---
 
@@ -239,25 +229,29 @@ Full log: `docs/06_decisions.md`
 
 | Issue | Priority | Status |
 |---|---|---|
-| Carousel never published | RESOLVED | image-worker v3.9.2 + migration (7 Apr) |
-| youtube post_publish missing rows | RESOLVED | youtube-publisher v1.5.0 (7 Apr) |
 | Facebook tokens expiring ~50 days | MED | Refresh early June 2026 |
-| Publisher schedule not wired | LOW | Table+UI live, publisher reads own timing. Wire after C1. |
-| NDIS Yarns no video drafts | LOW | Text-only vertical in practice. Not a priority. |
+| Publisher schedule not wired | LOW | Table+UI live, publisher reads own timing |
+| NDIS Yarns no video drafts | LOW | Text-only vertical in practice. Not priority. |
 | Meta App Review | 🔴 External | Business verification In Review. Next check: 14 Apr. |
-| LinkedIn API | 🔴 External | Community Management API review in progress. Next check: 14 Apr. |
-| 4 PP YouTube videos missing post_publish rows | LOW | Can backfill manually. Videos are live on YouTube. Fixed for future. |
+| LinkedIn API | 🔴 External | Community Management API review. Next check: 14 Apr. |
+| Avatar consent workflow | 🔴 Legal gate | Must build before HeyGen integration. See L005. |
+| Legal review | 🔴 Business gate | $2–5k AUD. Initiate when Meta Standard Access confirmed. |
 
 ---
 
 ## WHAT IS NEXT
 
 **Immediate — in order:**
-1. **C1 — Facebook Insights back-feed** (Phase 2.1) — highest priority. Gates B3, D4, client success workflow, IAE. Brief: insights-worker Edge Function + m.post_performance table.
-2. **B5 — Weekly manager report email** — brief ready at `docs/briefs/2026-04-07-qa-framework-phase2.md`. ~2 days. Claude Code candidate.
-3. **F5 — OpenClaw SOUL.md** — bumped in priority per D075. Low effort, high leverage for @InvegentICEbot.
-4. **F1 — Prospect demo generator** — needed before first external client conversation.
-5. **Publisher schedule wiring** — c.client_publish_schedule → publisher assigns `scheduled_for` from table.
+1. **B5 — Weekly manager report email** — Sunday Edge Function via Resend. ~2 sessions. Claude Code candidate.
+2. **Video visibility tracker** — Video tab in Content Studio showing production status, ETA, draft cards. No schema changes. ~1 session.
+3. **Publisher schedule wiring** — `c.client_publish_schedule` → publisher assigns `scheduled_for`. Half session.
+4. **F5 — OpenClaw SOUL.md** — low effort, high leverage for @InvegentICEbot.
+5. **F1 — Prospect demo generator** — needed before first external client conversation.
+
+**Near-term (next 2–4 sessions):**
+- Video analyser tool — paste URL → transcript + analysis + recreate brief. Supadata + Apify + Claude.
+- YouTube channel ingest — source_type_code = 'youtube_channel', YouTube Data API polling.
+- HeyGen avatar integration — after avatar consent workflow and legal review.
 
 **External blockers (check 14 Apr):**
 - Meta App Review: business verification In Review
