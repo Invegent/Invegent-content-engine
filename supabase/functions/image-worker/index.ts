@@ -1,17 +1,15 @@
-// image-worker v3.9.1
-// Fix 1: Resolve client_id from digest join chain when post_draft.client_id is null.
-//         Drafts generated via seed-and-enqueue-facebook path have null client_id.
-//         Without this fix, isImageEnabled() returns false and all such drafts are skipped.
-// Fix 2: Add image_quote fallback renderer for video-format drafts (video_short_kinetic,
-//         video_short_stat, video_short_kinetic_voice, video_short_stat_voice) when
-//         video_generation_enabled = false on the client publish profile.
-//         These drafts were sitting permanently in image_status='pending' with no worker
-//         picking them up, causing 0 image posts since 21 Mar 2026.
-// Fix 3: Carousel path was setting image_status='generated' without writing image_url.
+// image-worker v3.9.2
+// Fix: carousel deadlock — image-worker was gating carousel on approval_status='approved',
+// but carousel images must be generated BEFORE auto-approver can score them.
+// Result: neither image-worker nor auto-approver would act — infinite hold.
+// Fix: carousel query now uses image_status='pending' only (no approval_status gate).
+// Other formats (image_quote, animated_text_reveal, animated_data) retain approval gate.
+//
+// v3.9.1 context: client_id resolve fix, video fallback renderer, carousel image_url write fix.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'image-worker-v3.9.1';
+const VERSION = 'image-worker-v3.9.2';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -35,10 +33,6 @@ function getServiceClient() {
 }
 function sleep(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-// ─── resolveClientId ──────────────────────────────────────────────────────────
-// When post_draft.client_id is null (drafts from seed-and-enqueue-facebook path),
-// resolve via: post_draft -> digest_item -> digest_run -> client
-
 async function resolveClientId(
   supabase: ReturnType<typeof getServiceClient>,
   postDraftId: string,
@@ -58,8 +52,6 @@ async function resolveClientId(
   return (data as any)?.[0]?.client_id ?? null;
 }
 
-// ─── pollRender ────────────────────────────────────────────────────────────────
-
 async function pollRender(renderId: string, apiKey: string, startMs: number): Promise<{ url: string; creditsUsed: number | null; durationMs: number }> {
   for (let i = 0; i < POLL_MAX_ATTEMPTS; i++) {
     await sleep(POLL_INTERVAL_MS);
@@ -75,8 +67,6 @@ async function pollRender(renderId: string, apiKey: string, startMs: number): Pr
   }
   throw new Error('Render timed out');
 }
-
-// ─── renderUploadAndLog ────────────────────────────────────────────────────────
 
 async function renderUploadAndLog(opts: {
   supabase: ReturnType<typeof getServiceClient>;
@@ -140,8 +130,6 @@ async function renderUploadAndLog(opts: {
   }
 }
 
-// ─── animated_data stat extractor ────────────────────────────────────────────
-
 type StatSpec = { stat_value: string; stat_label: string; context_line: string; };
 
 async function extractStatSpec(opts: { anthropicKey: string; postBody: string; imageHeadline: string; clientName: string; }): Promise<StatSpec> {
@@ -158,8 +146,6 @@ async function extractStatSpec(opts: { anthropicKey: string; postBody: string; i
   if (!parsed?.stat_value) throw new Error('stat_extractor_missing_stat_value');
   return parsed;
 }
-
-// ─── render script builders ───────────────────────────────────────────────────
 
 function buildAnimatedDataScript(opts: { statValue: string; statLabel: string; contextLine: string; clientName: string; primaryColour: string; secondaryColour: string; logoUrl: string | null; }): object {
   const { statValue, statLabel, contextLine, clientName, primaryColour, secondaryColour, logoUrl } = opts;
@@ -254,8 +240,6 @@ function buildCarouselSlideScript(opts: { slide: SlideSpec; slideIndex: number; 
   return { output_format: 'png', width: W, height: H, fill_color: primaryColour, elements };
 }
 
-// ─── main handler ─────────────────────────────────────────────────────────────
-
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method === 'GET') return jsonResponse({ ok: true, function: 'image-worker', version: VERSION });
@@ -326,15 +310,25 @@ Deno.serve(async (req: Request) => {
       if (!(await isImageEnabled(clientId))) { await supabase.schema('m').from('post_draft').update({ image_status: 'skipped', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'animated_data', status: 'skipped' }); continue; }
       const b = await getBrandAndSlug(clientId);
       const spec = await extractStatSpec({ anthropicKey, postBody: draft.draft_body ?? '', imageHeadline: draft.image_headline ?? '', clientName: b.clientName });
-      console.log(`[image-worker] animated_data: ${spec.stat_value} — ${spec.stat_label}`);
       const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildAnimatedDataScript({ statValue: spec.stat_value, statLabel: spec.stat_label, contextLine: spec.context_line, ...b }), storagePath: `${b.clientSlug}/${draft.post_draft_id}.gif`, mimeType: 'image/gif', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'animated_data' });
       await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
       results.push({ post_draft_id: draft.post_draft_id, format: 'animated_data', status: 'generated', stat_value: spec.stat_value, image_url: imageUrl });
-    } catch (e: any) { const msg = (e?.message ?? String(e)).slice(0, 2000); console.error('[image-worker] animated_data failed:', msg); await supabase.schema('m').from('post_draft').update({ image_status: 'failed', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'animated_data', status: 'failed', error: msg }); }
+    } catch (e: any) { const msg = (e?.message ?? String(e)).slice(0, 2000); await supabase.schema('m').from('post_draft').update({ image_status: 'failed', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'animated_data', status: 'failed', error: msg }); }
   }
 
   // ── carousel ────────────────────────────────────────────────────────────────
-  const { data: carouselDrafts } = await supabase.schema('m').from('post_draft').select('post_draft_id, client_id, draft_title, draft_body').eq('approval_status', 'approved').eq('image_status', 'pending').eq('recommended_format', 'carousel').limit(2);
+  // v3.9.2 fix: NO approval_status gate for carousel.
+  // Carousel images must be generated BEFORE auto-approver can score the draft.
+  // Gating on approval_status='approved' caused deadlock:
+  //   - auto-approver won't approve without seeing the image
+  //   - image-worker won't generate without approval
+  // Now: pick up any carousel with image_status='pending', regardless of approval_status.
+  // After image generation, auto-approver runs normally on the now-imageable draft.
+  const { data: carouselDrafts } = await supabase.schema('m').from('post_draft')
+    .select('post_draft_id, client_id, draft_title, draft_body')
+    .eq('image_status', 'pending')
+    .eq('recommended_format', 'carousel')
+    .limit(2);
   for (const draft of (carouselDrafts ?? [])) {
     try {
       const clientId = await resolveClientId(supabase, draft.post_draft_id, draft.client_id);
@@ -369,8 +363,6 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── video format fallback: render image_quote when video_generation_enabled=false
-  // Picks up video_short_kinetic / video_short_stat / voice variants that would
-  // otherwise sit in image_status='pending' indefinitely when video-worker is gated.
   const { data: videoFallbackDrafts } = await supabase.schema('m').from('post_draft')
     .select('post_draft_id, client_id, image_headline, recommended_format')
     .eq('approval_status', 'approved')
@@ -381,9 +373,7 @@ Deno.serve(async (req: Request) => {
     try {
       const clientId = await resolveClientId(supabase, draft.post_draft_id, draft.client_id);
       if (!clientId) { results.push({ post_draft_id: draft.post_draft_id, format: draft.recommended_format, status: 'skipped', reason: 'client_id_unresolvable' }); continue; }
-      // Only apply fallback when video is disabled
       if (await isVideoEnabled(clientId)) {
-        // video-worker will handle it — skip here
         results.push({ post_draft_id: draft.post_draft_id, format: draft.recommended_format, status: 'deferred_to_video_worker' });
         continue;
       }
@@ -394,7 +384,6 @@ Deno.serve(async (req: Request) => {
       }
       const b = await getBrandAndSlug(clientId);
       const headline = (draft.image_headline ?? '').trim() || 'Insights for providers and professionals';
-      console.log(`[image-worker] video fallback -> image_quote for ${draft.recommended_format} draft ${draft.post_draft_id}`);
       const imageUrl = await renderUploadAndLog({
         supabase, creatomateKey,
         renderScript: buildImageQuoteScript({ headline, ...b }),

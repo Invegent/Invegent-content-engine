@@ -1,22 +1,21 @@
-// youtube-publisher v1.4.0
-// Fix: removed approval_status = 'approved' constraint from draft query.
-// Previously youtube-publisher and facebook publisher raced at :45 past every hour —
-// if facebook publisher set approval_status = 'published' first, youtube-publisher
-// found nothing and the video was never uploaded to YouTube.
-// Now queries only on video_status = 'generated' + video_url IS NOT NULL + youtube_video_id IS NULL.
-// Facebook's publish status is irrelevant to YouTube — both platforms are independent.
+// youtube-publisher v1.5.0
+// Fix: INSERT into m.post_publish was silently failing.
+// Bug 1: column was 'publish_meta' (does not exist) — correct column is 'response_payload'.
+// Bug 2: 'attempt_no' is NOT NULL with no default — was not included in INSERT.
+// This caused youtube_video_id to be written to draft_format JSONB correctly
+// but no audit row appearing in m.post_publish. Videos were reaching YouTube
+// but the ICE record trail was broken.
 //
+// v1.4.0 context preserved below:
+// Fix: removed approval_status = 'approved' constraint from draft query.
 // OAuth 2.0 token refresh per client.
 // Refresh token resolution order:
-//   1. c.client_channel.config->>'refresh_token'  (set by dashboard OAuth flow)
-//   2. env var named by c.client_publish_profile.credential_env_key (legacy Supabase secret)
-//
-// Writes youtube_video_id to m.post_draft.
-// Adds youtube_publish row to m.post_publish.
+//   1. c.client_channel.config->>'refresh_token'
+//   2. env var named by c.client_publish_profile.credential_env_key
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'youtube-publisher-v1.4.0';
+const VERSION = 'youtube-publisher-v1.5.0';
 const YOUTUBE_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
 const YOUTUBE_UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status';
 
@@ -36,11 +35,6 @@ function getServiceClient() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-// ─── OAuth token refresh ──────────────────────────────────────────────────────────────────
-// Resolution order:
-//   1. c.client_channel.config->>'refresh_token'  ← set by dashboard OAuth flow
-//   2. env var from c.client_publish_profile.credential_env_key  ← legacy secrets
-
 async function refreshAccessToken(
   supabase: ReturnType<typeof getServiceClient>,
   clientId_: string,
@@ -49,13 +43,11 @@ async function refreshAccessToken(
   const clientSecret  = Deno.env.get('YOUTUBE_CLIENT_SECRET');
   if (!oauthClientId || !clientSecret) throw new Error('YOUTUBE_CLIENT_ID or YOUTUBE_CLIENT_SECRET not set');
 
-  // ── Attempt 1: DB config (set by dashboard OAuth flow) ──────────────────
   const { data: channelRows } = await supabase.rpc('exec_sql', {
     query: `SELECT config FROM c.client_channel WHERE client_id = '${clientId_}' AND platform = 'youtube' LIMIT 1`,
   });
   const dbRefreshToken: string | null = (channelRows as any)?.[0]?.config?.refresh_token ?? null;
 
-  // ── Attempt 2: Legacy env var ────────────────────────────────────────────
   let refreshToken: string | null = dbRefreshToken;
   if (!refreshToken) {
     const { data: profile } = await supabase.schema('c').from('client_publish_profile')
@@ -69,7 +61,7 @@ async function refreshAccessToken(
     if (envKey) {
       refreshToken = Deno.env.get(envKey) ?? null;
       if (refreshToken) {
-        console.log(`[youtube-publisher] using legacy env var ${envKey} for client ${clientId_} — reconnect via dashboard to migrate`);
+        console.log(`[youtube-publisher] using legacy env var ${envKey} for client ${clientId_}`);
       }
     }
   }
@@ -77,7 +69,7 @@ async function refreshAccessToken(
   if (!refreshToken) {
     throw new Error(
       `No refresh token found for client ${clientId_}. ` +
-      `Connect via dashboard (Clients → Connect → YouTube) or set credential_env_key in client_publish_profile.`
+      `Connect via dashboard (Clients → Connect → YouTube).`
     );
   }
 
@@ -98,9 +90,6 @@ async function refreshAccessToken(
   if (!data.access_token) throw new Error('No access_token in token response');
   return data.access_token;
 }
-
-// ─── YouTube upload ───────────────────────────────────────────────────────────────────────
-// Returns YouTube video ID (e.g. "dQw4w9WgXcQ")
 
 async function uploadToYouTube(opts: {
   accessToken: string;
@@ -155,8 +144,6 @@ async function uploadToYouTube(opts: {
   return data.id;
 }
 
-// ─── Build video metadata from draft ───────────────────────────────────────────────────
-
 function buildVideoMetadata(
   draft: { draft_title: string; draft_body: string; recommended_format: string },
   vertical: string
@@ -177,14 +164,12 @@ function buildVideoMetadata(
   ].join('\n');
 
   const baseTags = ['#Shorts', 'Short'];
-  const ndisTag  = isNdis ? ['NDIS', 'disability services', 'allied health', 'NDIS update', 'NDIS 2025'] : [];
+  const ndisTag  = isNdis ? ['NDIS', 'disability services', 'allied health', 'NDIS update'] : [];
   const propTag  = !isNdis ? ['property investment', 'Australian property', 'real estate Australia', 'property market'] : [];
   const tags = [...baseTags, ...ndisTag, ...propTag].slice(0, 30);
 
   return { title, description, tags, categoryId };
 }
-
-// ─── Main ────────────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
@@ -198,9 +183,6 @@ Deno.serve(async (req: Request) => {
   const supabase = getServiceClient();
   const results: any[] = [];
 
-  // v1.4.0: No longer gates on approval_status = 'approved'.
-  // Facebook publish timing is independent of YouTube upload — both platforms are separate concerns.
-  // Gate only on: video rendered (video_status = 'generated') + video file exists + not yet on YouTube.
   const { data: drafts } = await supabase.schema('m').from('post_draft')
     .select('post_draft_id, client_id, draft_title, draft_body, recommended_format, video_url, draft_format')
     .eq('video_status', 'generated')
@@ -241,23 +223,34 @@ Deno.serve(async (req: Request) => {
         youtube_url:       youtubeUrl,
         youtube_published: nowIso(),
       };
+
+      // Update draft
       await supabase.schema('m').from('post_draft').update({
         draft_format: updatedFormat,
         video_status: 'published',
         updated_at:   nowIso(),
       }).eq('post_draft_id', draft.post_draft_id);
 
-      await supabase.schema('m').from('post_publish').insert({
+      // v1.5.0 fix: correct column names for m.post_publish
+      // 'publish_meta' does not exist -> use 'response_payload'
+      // 'attempt_no' is NOT NULL -> must be provided
+      const { error: insertErr } = await supabase.schema('m').from('post_publish').insert({
         post_draft_id:    draft.post_draft_id,
         client_id:        draft.client_id,
         platform:         'youtube',
         platform_post_id: youtubeVideoId,
         published_at:     nowIso(),
         status:           'published',
-        publish_meta:     { youtube_url: youtubeUrl, privacy_status: 'unlisted', video_size_mb: videoSizeMb, duration_ms: durationMs },
+        attempt_no:       1,
+        response_payload: { youtube_url: youtubeUrl, privacy_status: 'unlisted', video_size_mb: videoSizeMb, duration_ms: durationMs },
       });
 
-      results.push({ post_draft_id: draft.post_draft_id, status: 'published', youtube_video_id: youtubeVideoId, youtube_url: youtubeUrl, video_size_mb: videoSizeMb, duration_ms: durationMs });
+      if (insertErr) {
+        console.error(`[youtube-publisher] post_publish INSERT failed for ${youtubeVideoId}:`, insertErr.message);
+        // Don't throw — video is on YouTube, just log the audit trail failure
+      }
+
+      results.push({ post_draft_id: draft.post_draft_id, status: 'published', youtube_video_id: youtubeVideoId, youtube_url: youtubeUrl, video_size_mb: videoSizeMb, duration_ms: durationMs, audit_row_inserted: !insertErr });
       console.log(`[youtube-publisher] ${VERSION} done: ${youtubeVideoId} in ${durationMs}ms`);
 
     } catch (e: any) {
