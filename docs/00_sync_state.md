@@ -1,9 +1,8 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Overwritten every night at midnight AEST by the Cowork reconciliation task.
-> Last written: 2026-04-06 14:00 UTC
-> Written by: Cowork nightly reconciliation
+> Last written: 2026-04-07 (session close)
+> Written by: PK + Claude reconciliation
 
 ---
 
@@ -17,8 +16,6 @@ If this file contradicts memory or 04_phases.md, this file wins.
 ---
 
 ## SESSION STARTUP PROTOCOL
-
-**Do this at the start of every session, in order:**
 
 1. Read this file (`docs/00_sync_state.md`)
 2. For any table you are about to work with, query k schema FIRST:
@@ -35,12 +32,10 @@ If this file contradicts memory or 04_phases.md, this file wins.
    ```
 4. Do NOT fall into discovery mode. k.vw_table_summary is the single-stop navigation layer.
 
-**k schema status (as of 2 Apr 2026 — FULLY REPAIRED):**
+**k schema status (fully repaired, 2 Apr 2026):**
 - 117 tables documented across a, c, f, k, m, t schemas — zero TODO entries
-- c and f schemas now fully registered and column-synced (207 + 149 columns)
-- Weekly pg_cron: `k-schema-refresh-weekly` every Sunday 3am UTC
-- `sync_registries()` and `refresh_column_registry()` bugs fixed
-- Manually-coded purpose entries are preserved on every refresh — safe to re-run
+- New tables added 7 Apr: c.client_audience_policy, m.audience_asset, m.audience_performance, c.client_publish_schedule, m.system_audit_log
+- Weekly pg_cron: `k-schema-refresh-weekly` every Sunday 3am UTC — safe to re-run
 
 ---
 
@@ -52,14 +47,23 @@ For well-scoped build tasks that don't require human judgment mid-execution:
 3. Prompt: "Read docs/briefs/... and execute all tasks autonomously"
 4. MCPs needed: Supabase MCP + GitHub MCP
 
-Proven 2 Apr 2026 — 4 tasks, no human intervention, minutes not hours. (D067)
+Proven 2 Apr 2026 — 4 tasks, no human intervention. (D067)
 
 ---
 
 ## CURRENT PHASE
 
+**Phase 1 — COMPLETE** (all 4 criteria verified 7 Apr 2026)
 **Phase 3 — Expand + Personal Brand** (active)
-Phase 1 complete. Phase 2 mostly complete — LinkedIn API blocked externally.
+Phase 2 mostly complete — LinkedIn API blocked externally.
+
+**Phase 1 done criteria — verified with live data:**
+- Auto-approver: 0 manual backlog both clients ✔
+- Both clients: 5+ posts/week for 6+ consecutive weeks ✔
+- 26 active feeds (13 per client) ✔
+- Dashboard stable (system audit 12/12 pass) ✔
+
+**Gate to first external client conversation is open.**
 
 ---
 
@@ -67,219 +71,194 @@ Phase 1 complete. Phase 2 mostly complete — LinkedIn API blocked externally.
 
 Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
-| Function | Deploy# | Status | Last updated |
+| Function | Deploy# | Status | Notes |
 |---|---|---|---|
-| ai-worker | 68 | ACTIVE | 2026-03-22 04:54 UTC |
-| auto-approver | 29 | ACTIVE | 2026-03-11 04:33 UTC |
-| compliance-monitor | 14 | ACTIVE | 2026-03-19 21:55 UTC |
-| compliance-reviewer | 4 | ACTIVE | 2026-04-02 11:01 UTC |
-| content_fetch | 65 | ACTIVE | 2026-03-10 18:14 UTC |
-| draft-notifier | 16 | ACTIVE | 2026-03-18 02:43 UTC |
-| email-ingest | 15 | ACTIVE | 2026-03-11 00:03 UTC |
-| feed-intelligence | 20 | ACTIVE | 2026-03-07 07:37 UTC |
-| image-worker | 36 | ACTIVE | 2026-03-31 07:11 UTC |
-| ingest | 94 | ACTIVE | 2026-01-26 06:28 UTC |
-| insights-worker | 32 | ACTIVE | 2026-03-20 08:00 UTC |
-| inspector | 82 | ACTIVE | 2026-02-02 22:07 UTC |
-| inspector_sql_ro | 37 | ACTIVE | 2026-02-23 22:34 UTC |
-| linkedin-publisher | 15 | ACTIVE | 2026-03-18 00:06 UTC |
-| pipeline-ai-summary | 14 | ACTIVE | 2026-03-19 20:38 UTC |
-| pipeline-doctor | 13 | ACTIVE | 2026-03-19 09:52 UTC |
-| pipeline-fixer | 4 | ACTIVE | 2026-03-31 08:01 UTC |
-| publisher | 58 | ACTIVE | 2026-03-20 04:21 UTC |
-| series-outline | 15 | ACTIVE | 2026-03-19 02:40 UTC |
-| series-writer | 16 | ACTIVE | 2026-03-20 12:31 UTC |
-| tts-test | 11 | ACTIVE | 2026-03-20 10:43 UTC |
-| video-worker | 13 | ACTIVE | 2026-03-20 10:46 UTC |
-| wasm-bootstrap | 13 | ACTIVE | 2026-03-19 06:00 UTC |
-| youtube-publisher | 13 | ACTIVE | 2026-04-01 01:01 UTC |
-| youtube-token-test | 5 | ACTIVE | 2026-03-20 12:00 UTC |
+| ai-worker | 68 | ACTIVE | v2.7.0, profession-scoped compliance |
+| auto-approver | 29 | ACTIVE | v1.4.0, 9-gate logic |
+| compliance-monitor | 14 | ACTIVE | monthly hash check |
+| compliance-reviewer | 4 | ACTIVE | v1.3.0, AI analysis |
+| content_fetch | 65 | ACTIVE | |
+| draft-notifier | 16 | ACTIVE | |
+| email-ingest | 15 | ACTIVE | |
+| feed-intelligence | 20 | ACTIVE | |
+| image-worker | **37** | ACTIVE | **v3.9.2** — carousel deadlock fix (7 Apr) |
+| ingest | 94 | ACTIVE | |
+| insights-worker | 32 | ACTIVE | |
+| inspector | 82 | ACTIVE | |
+| inspector_sql_ro | 37 | ACTIVE | |
+| linkedin-publisher | 15 | ACTIVE | waiting on API approval |
+| pipeline-ai-summary | 14 | ACTIVE | |
+| pipeline-doctor | 13 | ACTIVE | |
+| pipeline-fixer | 4 | ACTIVE | |
+| publisher | 58 | ACTIVE | |
+| series-outline | 15 | ACTIVE | |
+| series-writer | 16 | ACTIVE | |
+| tts-test | 11 | ACTIVE | |
+| video-worker | 13 | ACTIVE | |
+| wasm-bootstrap | 13 | ACTIVE | |
+| youtube-publisher | **15** | ACTIVE | **v1.5.0** — post_publish INSERT fix (7 Apr) |
+| youtube-token-test | 5 | ACTIVE | |
 
-25 functions deployed. All ACTIVE. No version changes since last reconcile (2026-04-03).
+25 functions deployed. All ACTIVE.
+
+**Version changes this session:**
+- image-worker: 36 → 37 (v3.9.2 — carousel approval_status deadlock fixed)
+- youtube-publisher: 13 → 15 (v1.5.0 — publish_meta → response_payload, attempt_no added)
 
 ---
 
 ## PIPELINE STATE
 
-### Queue Depths
+### Publishing (confirmed working — 7 Apr 2026)
 
-| Client | Queued | Published Total | Last Published At |
+| Format | NDIS-Yarns | Property Pulse |
+|---|---|---|
+| facebook text | ✅ publishing daily | ✅ publishing daily |
+| facebook video_short_kinetic | ❓ none generated | ✅ confirmed |
+| facebook video_short_stat | ❓ none generated | ✅ confirmed |
+| facebook image_quote | ❓ pending | ✅ confirmed once (31 Mar) |
+| facebook carousel | ⏳ unblocked 7 Apr | ⏳ unblocked 7 Apr |
+| youtube | ❌ no video drafts generated | ✅ 4 videos uploaded |
+
+**Carousel status:** 2 PP carousels unblocked this session. image-worker v3.9.2 will generate slides at next :00/:15/:30/:45 cron. Publisher will post within 10 min of image generation.
+
+**YouTube PP status:** 4 videos live on channel (IDs: l-kkoFkZ6A4, qCs9fula6qU, Oxs18VJKzNg, KvBzUZIpwTA). Post_publish audit rows were missing (bug fixed in v1.5.0). Future videos will have correct audit rows. Existing 4 can be backfilled if needed.
+
+**NDIS Yarns YouTube:** Brand Account conversion done 7 Apr. Token valid until 7 Apr 2031. No video format drafts are generated for NDIS-Yarns — text-only vertical in practice despite video_generation_enabled=true. Root cause: ai-worker doesn't assign video formats to NDIS content. Not a priority bug — NDIS content works better as text.
+
+### Token Calendar
+
+| Platform | Client | Expiry | Days remaining |
 |---|---|---|---|
-| Property Pulse | 2 | 3 | 2026-04-01 05:05 UTC |
-| NDIS-Yarns | 0 | 39 | 2026-03-01 02:10 UTC |
+| YouTube | NDIS-Yarns | 7 Apr 2031 | 1,825d |
+| YouTube | Property Pulse | 2 Apr 2031 | 1,820d |
+| Facebook | Property Pulse | 6 Jun 2026 | 59d |
+| Facebook | NDIS-Yarns | 1 Jun 2026 | 54d |
 
-⚠️ Property Pulse has 2 items in queue (up from 0 at last reconcile). Pipeline AI summary confirms 1 PP post published today and a carousel currently processing.
-
-### Draft State — Last 7 Days
-
-| Client | Approval Status | Format | Count |
-|---|---|---|---|
-| NDIS-Yarns | published | text | 6 |
-| Property Pulse | needs_review | carousel | 2 |
-| Property Pulse | published | image_quote | 1 |
-| Property Pulse | published | text | 1 |
-| Property Pulse | published | video_short_kinetic | 2 |
-| Property Pulse | published | video_short_stat | 1 |
-
-**Summary:** 11 drafts published in the last 7 days (6 NDIS Yarns text, 5 Property Pulse mixed formats). 2 Property Pulse carousels are currently in `needs_review` status awaiting approval.
-
-### Image Generation
-
-| Image Status | Count |
-|---|---|
-| pending | 2 |
-
-2 images pending generation in `approved`/`needs_review` drafts — likely associated with the 2 Property Pulse carousels in needs_review.
-
-**Last Creatomate render:** 2026-03-31 22:31 UTC — `video_short_kinetic` — succeeded (no error)
-_(Note: m.post_render_log query failed — column `client_name` does not exist in that table. Previous value retained. Query in SKILL.md needs updating to join c.client.)_
+Facebook tokens need refreshing in ~50 days.
 
 ### Client Publish Profiles
 
-| Client | Publish Enabled | Paused Until | Paused Reason | Auto Approve | Image Gen | Video Gen |
+| Client | Publish Enabled | Auto Approve | Image Gen | Video Gen | Max/Day | Min Gap |
 |---|---|---|---|---|---|---|
-| Property Pulse | true | — | — | true | true | true |
-| NDIS-Yarns | true | — | — | true | true | true |
+| Property Pulse | true | true | true | true | 2 | 360 min |
+| NDIS-Yarns | true | true | true | true | 2 | 360 min |
 
-Both clients fully enabled. No pauses active.
+Max per day dropped 15 → 2, min gap raised to 360 min (burst publishing stopped).
 
-### AI Usage — Last 24h
+### Publishing Schedule (seeded 7 Apr)
 
-| Provider | Model | Fallback Used | Calls | Cost (USD) |
-|---|---|---|---|---|
-| anthropic | claude-sonnet-4-6 | false | 4 | $0.1159 |
+`c.client_publish_schedule` table live. 12 rows seeded. Schedule UI live at dashboard.invegent.com/clients (Schedule tab).
+
+| Client | Schedule | Days |
+|---|---|---|
+| NDIS-Yarns | 8am Mon, 12pm Tue, 7pm Wed, 8am Thu, 12pm Fri, 10am Sat AEST | Mon–Sat |
+| Property Pulse | 7:30am Mon, 12pm Tue, 7:30am Wed, 12pm Thu, 5pm Fri, 10am Sat AEST | Mon–Sat |
+
+⚠️ Publisher assignment logic (reading schedule to set `scheduled_for`) is not yet wired. Data and UI are live; publisher still uses its own timing. This is the next build step after C1.
+
+### System Audit (B4) — Live
+
+`m.run_system_audit(p_triggered_by)` deployed. 12 checks across operational, data_integrity, compliance, structural. Last run 7 Apr: 12/12 pass. Weekly cron: `ice-system-audit-weekly` every Sunday 13:00 UTC.
 
 ### AI Usage — This Month (April 2026)
 
-| Total Cost (USD) | Total Calls | Fallback Calls |
+| Total Cost (USD) | Total Calls | Fallback |
 |---|---|---|
-| $0.5595 | 14 | 0 |
+| ~$0.56 | ~14 | 0 |
 
 Zero fallback to OpenAI. Anthropic primary only.
 
-### Last Pipeline AI Summary
+---
 
-- **Generated at:** 2026-04-06 06:55 UTC
-- **Health OK:** true
-- **Action needed:** none
-- **Preview:** Pipeline has been stable over the last 2 hours with 2 items consistently queued and no publishing activity since 1:30pm when 1 post went live. Today's output shows 2 NDIS Yarns posts and 1 Property Pulse post successfully published. The system is currently processing a Property Pulse carousel about...
+## NEW SCHEMA — 7 APR 2026
 
-### Orphaned Queue Items
+| Table | Schema | Purpose |
+|---|---|---|
+| client_audience_policy | c | Per-client audience build config (platforms, pixel IDs) |
+| audience_asset | m | Fact table — built audiences per client (6 rows seeded) |
+| audience_performance | m | IAE campaign results (future) |
+| client_publish_schedule | c | Per-client per-platform day/time schedule (12 rows seeded) |
+| system_audit_log | m | B4 audit run results |
 
-0 stuck queue items (no `post_draft_not_found` errors).
+All 5 tables registered in k catalog.
 
-### Dead Letter — Last 7 Days
-
-| Dead Reason | Count |
-|---|---|
-| pre-visual-pipeline backlog cleared 2026-03-31 | 61 |
-| stale scheduled post — missed Feb 11-12 window, image never generated, cleared by auditor 2026-04-01 | 6 |
-
-67 total dead-lettered drafts — all from housekeeping cleanup, not pipeline failures. Unchanged from last reconcile.
+`public.save_publish_schedule()` SECURITY DEFINER function deployed for schedule saves.
 
 ---
 
-## GITHUB — LATEST COMMITS
+## DASHBOARD — invegent-dashboard
 
-| Repo | SHA | Date | Message |
-|---|---|---|---|
-| Invegent-content-engine | e231b52 | 2026-04-02 | feat: ai-diagnostic v1.0.0 — Tier 2 daily health report with trend, per-client scoring, recommendations, predictions |
-| Invegent-content-engine | f3e789d | 2026-04-02 | chore: nightly reconcile 2026-04-03 |
-| Invegent-content-engine | d86a1d7 | 2026-04-02 | audit: nightly report 2026-04-03 — 3 WARN, 2 INFO |
-| invegent-dashboard | 0439f73 | 2026-04-02 | feat: AI Diagnostic Tier 2 — /diagnostics page + /api/diagnostics route |
-| invegent-dashboard | a27220f | 2026-04-02 | fix: compliance PATCH — use SECURITY DEFINER rpc instead of exec_sql for m schema DML |
-| invegent-dashboard | f88a4df | 2026-04-02 | chore: roadmap sync 2 Apr 2026 — k schema repair done, wire-up corrected to done, D069 |
-| invegent-portal | b734abe | 2026-03-19 | fix: portal calendar shows client timezone label |
-| invegent-portal | 63008ef | 2026-03-19 | feat: add Invegent favicon to portal tab |
-| invegent-portal | be5632b | 2026-03-18 | feat: send Resend confirmation email on feed suggestion submit |
-| Invegent-web | 3f98799 | 2026-03-31 | feat: replace static 3-step how-it-works with animated 5-stage pipeline flow |
-| Invegent-web | a580c26 | 2026-03-31 | fix: replace Geist font (Next.js 15 only) with Inter for Next.js 14 compatibility |
-| Invegent-web | 26c782d | 2026-03-31 | feat: homepage — professional landing page for Invegent |
+Last deploy: 7 Apr 2026 (multiple deploys this session)
+
+**Changes this session:**
+- Monitor/Flow: Publisher health fixed (`queueOverdue` not `queueQueued`)
+- Monitor/Flow: Client selector tabs added (All / NDIS-Yarns / PP via `?client=` param)
+- Monitor/AI Costs: Flow tab restored (was missing)
+- Clients: Schedule tab built — 7-day grid, tier enforcement, capacity bar, save
+
+---
+
+## GITHUB — LATEST COMMITS (7 Apr 2026)
+
+| Repo | SHA | Message |
+|---|---|---|
+| Invegent-content-engine | 40982b9 | fix: youtube-publisher v1.5.0 + image-worker v3.9.2 |
+| Invegent-content-engine | 3c9df4a | docs: add D075 OpenClaw learnings |
+| Invegent-content-engine | (migration) | fix_stuck_carousel_approval_status |
 
 ---
 
 ## VERCEL FRONTENDS — LIVE
 
-| App | URL | Last deploy | Status | Commit SHA |
-|---|---|---|---|---|
-| invegent-dashboard | dashboard.invegent.com | 2026-04-02 20:32 UTC | READY | 0439f73 |
-| invegent-portal | portal.invegent.com | 2026-03-19 07:24 UTC | READY | b734abe |
-| invegent-web | invegent.com | 2026-03-31 08:40 UTC | READY | 3f98799 |
+| App | URL | Status |
+|---|---|---|
+| invegent-dashboard | dashboard.invegent.com | READY |
+| invegent-portal | portal.invegent.com | READY |
+| invegent-web | invegent.com | READY |
 
 Team: pk-2528s-projects (team_kYqCrehXYxW02AycsKVzwNrE)
 
-Note: invegent-dashboard updated since last reconcile — now at 0439f73 (AI Diagnostic Tier 2 page deployed).
+---
+
+## DECISIONS LOG — CURRENT
+
+D001–D069: See earlier commits.
+D070: AI Diagnostic Tier 2 — /diagnostics page live.
+D071: IAE — do not build yet.
+D072: Audience as asset schema — live.
+D073: External AI agents — n8n for client success post-C1.
+D074: QA framework — four layers, L1-L3 live.
+D075: OpenClaw learnings — 6 gaps identified for ICE roadmap.
+
+Full log: `docs/06_decisions.md`
 
 ---
 
 ## KNOWN ACTIVE ISSUES
 
-| Issue | Priority | Action |
+| Issue | Priority | Status |
 |---|---|---|
-| NDIS Yarns last publish 2026-03-01 — now 36 days ago | MED | Investigate if pipeline is generating new NDIS content |
-| 2 Property Pulse carousels in needs_review | INFO | Awaiting approval — auto-approve is on, may process automatically |
-| 2 images pending in approved/needs_review drafts | INFO | Image-worker should pick these up; monitor |
-| Dead letter: 67 items cleared in last 7 days (housekeeping) | INFO | No action — planned cleanup, not pipeline failures |
-| Meta App Review | 🔴 External | Business verification In Review — data handling section pending |
-| LinkedIn API | 🔴 External | Community Management API review in progress |
-| m.post_render_log query schema error | LOW | `client_name` column does not exist — SKILL.md query needs a JOIN to c.client |
-
----
-
-## CLIENT PIPELINE STATUS
-
-**NDIS Yarns** (fb98a472-ae4d-432d-8738-2273231c1ef4)
-- Facebook: publishing enabled, auto-approve on, image+video generation on
-- Queue: 0 queued, 39 published total (last publish 2026-03-01 — 36 days ago)
-- Last 7 days: 6 text drafts published
-- Pipeline AI summary confirms 2 NDIS posts published today (2026-04-06)
-- No pauses active. No stuck items.
-
-**Property Pulse** (4036a6b5-b4a3-406e-998d-c2fe14a8bbdd)
-- Facebook: publishing enabled, auto-approve on, image+video generation on
-- Queue: 2 queued, 3 published total (last publish 2026-04-01)
-- Last 7 days: 5 drafts published (1 image_quote, 1 text, 2 video_short_kinetic, 1 video_short_stat); 2 carousels in needs_review
-- Pipeline AI summary confirms 1 PP post published today; carousel processing
-- No pauses active. No stuck items.
-
----
-
-## CREDENTIALS STATUS
-
-| Credential | Status |
-|---|---|
-| Anthropic API | Active — primary AI provider |
-| OpenAI API | Active — fallback only (0 fallback calls this month) |
-| Facebook page tokens | Active — both clients |
-| LinkedIn org tokens | Stored — API approval pending |
-| ElevenLabs Creator | Active — NDIS + PP voices confirmed |
-| YouTube OAuth | Active — both channels, uploads unlisted |
-| Creatomate Essential | Active — $54/mo |
-| Resend | Active — magic link + draft notifier |
-| Gmail OAuth (email-ingest) | Active — feeds@invegent.com |
-| Supabase access token | ✅ Rotated 31 Mar 2026 |
-| GitHub PAT | ✅ Rotated 31 Mar 2026 |
-| Xero client secret | ✅ Rotated 31 Mar 2026 |
-
----
-
-## EXTERNAL BLOCKERS
-
-- LinkedIn publisher: Community Management API review in progress
-- Meta App Review: Business verification In Review — data handling section pending (calendar: 1 Apr 2026)
+| Carousel never published | RESOLVED | image-worker v3.9.2 + migration (7 Apr) |
+| youtube post_publish missing rows | RESOLVED | youtube-publisher v1.5.0 (7 Apr) |
+| Facebook tokens expiring ~50 days | MED | Refresh early June 2026 |
+| Publisher schedule not wired | LOW | Table+UI live, publisher reads own timing. Wire after C1. |
+| NDIS Yarns no video drafts | LOW | Text-only vertical in practice. Not a priority. |
+| Meta App Review | 🔴 External | Business verification In Review. Next check: 14 Apr. |
+| LinkedIn API | 🔴 External | Community Management API review in progress. Next check: 14 Apr. |
+| 4 PP YouTube videos missing post_publish rows | LOW | Can backfill manually. Videos are live on YouTube. Fixed for future. |
 
 ---
 
 ## WHAT IS NEXT
 
-**Immediate (next session):**
-1. AI Diagnostic Tier 2 — prerequisites met (doctor log 37 records). ~half day build.
-2. NDIS Yarns YouTube — Brand Account conversion then connect.
-3. Mark compliance queue reviewed (10 min in dashboard).
+**Immediate — in order:**
+1. **C1 — Facebook Insights back-feed** (Phase 2.1) — highest priority. Gates B3, D4, client success workflow, IAE. Brief: insights-worker Edge Function + m.post_performance table.
+2. **B5 — Weekly manager report email** — brief ready at `docs/briefs/2026-04-07-qa-framework-phase2.md`. ~2 days. Claude Code candidate.
+3. **F5 — OpenClaw SOUL.md** — bumped in priority per D075. Low effort, high leverage for @InvegentICEbot.
+4. **F1 — Prospect demo generator** — needed before first external client conversation.
+5. **Publisher schedule wiring** — c.client_publish_schedule → publisher assigns `scheduled_for` from table.
 
-**Phase 3 build queue:**
-- Prospect demo generator (~1 day) — needed before first client conversation
-- Client health weekly report email (~2 days)
-- Three Cowork auditor checks (1 hour)
-
-Decisions through D069 in `docs/06_decisions.md`.
+**External blockers (check 14 Apr):**
+- Meta App Review: business verification In Review
+- LinkedIn API: Community Management API review in progress
