@@ -192,41 +192,12 @@ frameworks would do, and does it more reliably because it is closer to the data.
 External agent tooling is deferred until ICE has paying clients and specific
 gaps the internal architecture cannot fill.
 
-**Context:**
-Research conducted across CrewAI, LangGraph, AutoGen, n8n, Make, Zapier.
-All are technically capable. The question for ICE is whether the remaining gaps
-justify the added complexity and operational overhead of an external layer.
+**Build sequence:**
+1. B5 (weekly email) — solves dashboard monitoring gap internally
+2. n8n client success workflow — when paying clients confirmed and C1 live
+3. CrewAI/LangGraph portfolio intelligence — when 5+ clients demand it
 
-**The three-layer landscape:**
-- Agentic frameworks (CrewAI, LangGraph, AutoGen) — code-level, production-grade,
-  best for stateful multi-agent workflows. LangGraph for durability and human-in-loop.
-  CrewAI for intuitive role-based team modelling. AutoGen for conversational agents.
-- Workflow automation platforms (n8n, Make, Zapier) — visual, lower code,
-  n8n leads for technical teams with native Supabase + Anthropic + LangChain
-  integration. Self-hosted n8n = unlimited executions for ~$10/month server cost.
-- Browser agents (Claude in Chrome / Cowork) — already configured in ICE,
-  usable immediately for dashboard monitoring tasks.
-
-**What ICE already covers internally (no external agent needed):**
-- Pipeline health monitoring — pipeline-doctor, ai-diagnostic, m.run_system_audit()
-- Content generation and approval — ai-worker, auto-approver
-- Publishing — publisher Edge Function
-- Compliance review — compliance-reviewer, compliance-monitor
-- Weekly system audit — m.run_system_audit() + cron (deployed 7 Apr)
-
-**The two external agent use cases worth pursuing:**
-
-1. Dashboard Monitor — build as Claude in Chrome / Cowork task when B5
-   (weekly email report) is not yet live. Once B5 exists, the email covers this
-   and the Cowork task is redundant. Not a priority.
-
-2. Client Success Agent — once paying clients exist and C1 (Insights back-feed)
-   is live. An n8n workflow that: triggers weekly per client → queries Supabase
-   for publishing + engagement data → calls Claude API for plain-language summary
-   → sends to client portal or PK for approval. n8n is the right tool here because
-   it bridges Supabase data with client communication outside Supabase's scope.
-
-**Virtual employee hierarchy mapping:**
+**Virtual employee hierarchy:**
 | Role | Tool | When |
 |---|---|---|
 | Pipeline Monitor | Internal (audit + B5 email) | B5 build |
@@ -236,45 +207,94 @@ justify the added complexity and operational overhead of an external layer.
 | Audience Analyst | insights-worker extension (D4) | Post C1 |
 | Compliance Officer | Internal (compliance-monitor) | Live |
 
-**Build sequence:**
-1. B5 (weekly email) — solves dashboard monitoring gap internally
-2. n8n client success workflow — when paying clients confirmed and C1 live
-3. CrewAI/LangGraph portfolio intelligence — when 5+ clients demand it
-
-**Key principle:**
-Don't add agent frameworks for the sake of having them. External agents should
-solve problems the internal architecture genuinely cannot — primarily client
-communication and cross-system workflows that span beyond Supabase's boundary.
-
 ---
 
 ## D074 — QA Framework — Four-Layer Approach
 **Date:** 7 April 2026 | **Status:** ✅ Partially live
 
-**Decision:**
-ICE adopts a four-layer quality assurance framework to move from reactive
-error discovery to proactive verification.
+**Layer 1** (B1, B2): Developer verification docs committed.
+**Layer 2** (B3): Automated test runner — not yet built.
+**Layer 3** (B4): m.run_system_audit() LIVE — 12/12 pass on first run, weekly cron active.
+**Layer 4** (B5): Weekly manager report — not yet built.
 
-**Layer 1 — Developer verification** (B1, B2): docs/quality/01 and 02 committed.
-Checklist every build must pass before production deploy. No more deploy-and-see.
+---
 
-**Layer 2 — Automated test runner** (B3): not yet built.
-m.pipeline_test_expectation table + test-runner Edge Function.
-Runs every 30 min. Pass/fail against documented expected ranges.
-Brief ready: docs/briefs/2026-04-07-qa-framework-phase2.md
+## D075 — OpenClaw Architecture Learnings — ICE Roadmap Gaps Identified
+**Date:** 7 April 2026 | **Status:** ✅ Recorded — informs Phase 3/4 roadmap
 
-**Layer 3 — System audit function** (B4): LIVE as of 7 Apr 2026.
-m.run_system_audit() — 12 invariant checks across operational, data integrity,
-compliance, structural categories. First run: 12/12 pass.
-Weekly cron: ice-system-audit-weekly, Sunday 13:00 UTC.
+**Context:**
+Analysis of a detailed OpenClaw use-case video (Matt Wolfe / similar creator) against
+ICE's current architecture. Honest gap assessment conducted to inform roadmap priorities.
 
-**Layer 4 — Weekly manager report** (B5): not yet built.
-Extends ai-diagnostic to deliver structured email every Sunday night.
-Brief ready: docs/briefs/2026-04-07-qa-framework-phase2.md
+**What ICE already does better:**
+- Multi-client architecture with RLS isolation — his setup is purely personal/single-user
+- Structured ingest → score → draft → approve → publish pipeline with dead letter queue
+- NDIS profession-scoped compliance (22 rules, monthly monitoring) — no regulated industry layer in his system
+- Operations dashboard + client portal architecture
+- Billing/tier enforcement built in
+- Multi-platform publishing with OAuth token management
 
-**Principle:**
-The goal is proactive confidence — verified system state — not reactive hope.
-"The test suite ran 47 minutes ago and all 12 checks passed" vs "I hope this is working."
+**Gaps ICE should close — in priority order:**
+
+**Gap 1 — Vector search / natural language queries (Phase 3)**
+His entire system is built on SQLite + vector embeddings allowing natural language
+queries across years of data ("what did I discuss with John?", "show all articles about X").
+ICE has no vector layer. This is what unlocks: audience intelligence, content performance
+queries in plain English, and eventually IAE audience matching.
+Build path: pgvector extension (already available in Supabase) on post_publish,
+canonical_content_item, and eventually audience_asset tables.
+
+**Gap 2 — Parallel agent execution (Phase 3/4)**
+His "business advisory council" runs 8 specialist agents simultaneously against 14 data
+sources nightly. ICE agents run sequentially. For ICE this means: when B5 weekly manager
+report is built, it should run multiple specialist sub-analyses in parallel rather than
+a single linear summary. Supabase Edge Functions support concurrent HTTP calls — this
+is an architectural pattern change, not a new vendor.
+
+**Gap 3 — Self-improving prompts (Phase 3)**
+When he rejects an extracted action item, his system learns and updates its own prompt.
+ICE equivalent: when auto-approver rejects a draft, the rejection reason should feed back
+to update the client_ai_profile scoring thresholds over time. Currently rejections are
+logged but thresholds never update automatically. Build after B5 is live.
+
+**Gap 4 — SOUL.md / ICE identity files for OpenClaw (F5 — near term)**
+He gets significant leverage from identity.md and soul.md giving his bot personality,
+context switching (formal in Slack vs casual in DM), and institutional knowledge.
+OpenClaw SOUL.md for @InvegentICEbot is already on the action register as F5.
+This should be prioritised — it gives the Telegram bot the same leverage at near zero cost.
+Content: ICE architecture overview, all 12 client professions, NDIS compliance context,
+PK's communication preferences, when to escalate vs handle autonomously.
+
+**Gap 5 — Nightly parallel intelligence council (Phase 4)**
+His nightly business council (8 agents, 14 data sources) is inspiring. ICE equivalent
+post-C1 (Insights back-feed): a nightly cross-client intelligence run that looks at
+all client performance data together, identifies patterns, and surfaces recommendations.
+This is the long-term form of the B5 weekly report — not a replacement but an evolution.
+Build trigger: 3+ paying clients with 3+ months of Insights data.
+
+**Gap 6 — Security council (Phase 3)**
+Nightly codebase audit by 4 specialist security agents (offensive, defensive, data
+privacy, operational realism). ICE has compliance monitoring but no automated security
+review of its own codebase. Given ICE handles client Facebook tokens and NDIS data,
+this matters. Simple version: a monthly Claude Code run against the Edge Functions
+checking for exposed secrets, SQL injection risks, token handling issues.
+Add to Phase 3 deliverables.
+
+**What NOT to copy:**
+- Local SQLite / MacBook-first architecture — ICE's Supabase-cloud architecture
+  is correct for a multi-client managed service. His local-first approach serves a
+  solo personal assistant. Don't change this.
+- Personal CRM / Fathom meeting pipeline — not relevant to ICE's use case.
+- Food journal / personal life tracking — obviously not relevant.
+- Video/image generation via VO and NanoBanana — ICE has Creatomate for images.
+  Video generation is a Phase 4 consideration when YouTube content demand justifies it.
+
+**Key principle extracted:**
+Every piece of his system feeds every other piece — CRM informs the business council,
+knowledge base informs video ideas, social stats inform the business council.
+ICE should apply this same cross-pollination: Insights data should feed auto-approver
+thresholds, feed scoring, and the audience asset layer simultaneously.
+The pipeline should learn from what it publishes, not just publish and forget.
 
 ---
 
@@ -284,12 +304,15 @@ The goal is proactive confidence — verified system state — not reactive hope
 |---|---|---|
 | Prospect demo generator | ~1 day. Needed before first external client conversation | Phase 3 |
 | Client health weekly report email (B5) | ~2 days. Sunday Edge Function via Resend | Phase 2 |
-| NDIS Yarns YouTube | Convert channel to Brand Account, connect via dashboard | This session |
 | AI compliance rule generator | ANZSCO tasks + code_of_conduct_url → Claude generates draft rules | Phase 3 |
 | Content vertical → topic mapping | Map 13 verticals to relevant topics for bundler precision | Phase 3 |
-| OpenClaw SOUL.md | ICE context for @InvegentICEbot | Phase 3 |
+| OpenClaw SOUL.md (F5) | ICE context for @InvegentICEbot — bump priority per D075 | Near term |
+| pgvector layer | Natural language queries on post_publish + content items | Phase 3 |
+| Self-improving auto-approver thresholds | Rejection feedback → threshold update loop | Phase 3 |
+| Security council (nightly codebase audit) | Automated monthly Edge Function security review | Phase 3 |
 | Instagram publisher | After Meta App Review approved | Phase 3 |
 | n8n client success workflow | After C1 live + first paying client | Phase 3 |
 | IAE Phase A build | Meta boost only — after all prerequisites in docs/iae/01 are met | Phase 3+ |
 | Model router | When AI costs become significant | Phase 4 |
+| Nightly parallel intelligence council | 8-agent cross-client nightly analysis | Phase 4 (3+ clients + C1 data) |
 | SaaS vs managed service | When 10 clients served 3+ months | Phase 4 |
