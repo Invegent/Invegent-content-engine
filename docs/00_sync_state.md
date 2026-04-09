@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-08 (session close — video pipeline session)
+> Last written: 2026-04-09 (session close — avatar pipeline milestone)
 > Written by: PK + Claude reconciliation
 
 ---
@@ -26,29 +26,7 @@ For the full document map, see `docs/00_docs_index.md`.
    FROM k.vw_table_summary
    WHERE schema_name = 'x' AND table_name = 'y';
    ```
-3. For column-level detail:
-   ```sql
-   SELECT column_name, data_type, column_purpose, is_foreign_key, fk_ref_schema, fk_ref_table
-   FROM k.vw_db_columns
-   WHERE schema_name = 'x' AND table_name = 'y';
-   ```
-4. Do NOT fall into discovery mode. k.vw_table_summary is the single-stop navigation layer.
-
-**k schema status:** New tables added this session — f.video_analysis, c.client_avatar_profile. Run k schema refresh before accessing these.
-
----
-
-## CLAUDE CODE AGENTIC LOOP
-
-For well-scoped build tasks that don't require human judgment mid-execution:
-1. Write brief in `docs/briefs/YYYY-MM-DD-task-name.md`
-2. Run Claude Code from `C:\Users\parve\Invegent-content-engine`
-3. Prompt: "Read docs/briefs/... and execute all tasks autonomously"
-4. MCPs needed: Supabase MCP + GitHub MCP
-
-Proven: 2 Apr 2026 (D067), 8 Apr 2026 (YouTube channel ingest brief — 5 tasks, 17 min)
-
-**IMPORTANT:** Claude Code sometimes completes Supabase/GitHub MCP tasks but fails to push the final dashboard commit. Always verify GitHub after Claude Code completes by checking the latest commit SHA matches.
+3. Do NOT fall into discovery mode. k.vw_table_summary is the single-stop navigation layer.
 
 ---
 
@@ -59,7 +37,7 @@ Proven: 2 Apr 2026 (D067), 8 Apr 2026 (YouTube channel ingest brief — 5 tasks,
 Phase 2 mostly complete — LinkedIn API blocked externally.
 
 **Gate to first external client conversation is OPEN.**
-**Legal review required before first external client is signed — see docs/23_legal_register.md.**
+**Legal review required before first external client is signed.**
 
 ---
 
@@ -67,20 +45,23 @@ Phase 2 mostly complete — LinkedIn API blocked externally.
 
 Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
-| Function | Deploy# | Status | Notes |
+| Function | Version | Status | Notes |
 |---|---|---|---|
-| ai-worker | 68 | ACTIVE | v2.7.0, profession-scoped compliance |
-| auto-approver | 29 | ACTIVE | v1.4.0, 9-gate logic |
+| ai-worker | 71 | ACTIVE | **v2.7.1** — video_short_avatar support added |
+| auto-approver | 29 | ACTIVE | v1.4.0 |
 | compliance-monitor | 14 | ACTIVE | monthly hash check |
-| compliance-reviewer | 4 | ACTIVE | v1.3.0, AI analysis |
+| compliance-reviewer | 4 | ACTIVE | v1.3.0 |
 | content_fetch | 65 | ACTIVE | |
 | draft-notifier | 16 | ACTIVE | |
 | email-ingest | 15 | ACTIVE | |
 | feed-intelligence | 20 | ACTIVE | |
-| heygen-test | **1** | ACTIVE | **NEW** — validates ICE_HEYGEN_API_KEY, lists avatars |
-| image-worker | 37 | ACTIVE | v3.9.2 — carousel deadlock fix |
-| ingest | **95** | ACTIVE | **v8-youtube-channel** — runYouTubeChannelSource() added |
-| insights-worker | 32 | ACTIVE | v14.0.0 — C1 complete |
+| heygen-intro | 2 | ACTIVE | one-shot test function |
+| heygen-test | 6 | ACTIVE | API health check + video status |
+| heygen-worker | **2** | ACTIVE | **v1.1.0** — reads stakeholder_role from video_script |
+| heygen-youtube-upload | 1 | ACTIVE | one-shot direct upload test |
+| image-worker | 37 | ACTIVE | v3.9.2 |
+| ingest | 95 | ACTIVE | v8-youtube-channel |
+| insights-worker | 32 | ACTIVE | v14.0.0 |
 | inspector | 82 | ACTIVE | |
 | inspector_sql_ro | 37 | ACTIVE | |
 | linkedin-publisher | 15 | ACTIVE | waiting on API approval |
@@ -91,160 +72,165 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 | series-outline | 15 | ACTIVE | |
 | series-writer | 16 | ACTIVE | |
 | tts-test | 11 | ACTIVE | |
-| video-analyser | **4** | ACTIVE | **v1.2.0** — oEmbed + timedtext + Data API + Claude |
-| video-worker | **14** | ACTIVE | **v2.1.0** — approval_status bug fixed |
+| video-analyser | 4 | ACTIVE | v1.2.0 |
+| video-worker | 14 | ACTIVE | v2.1.0 |
 | wasm-bootstrap | 13 | ACTIVE | |
 | youtube-publisher | 15 | ACTIVE | v1.5.0 |
 | youtube-token-test | 5 | ACTIVE | |
 
-27 functions deployed. All ACTIVE.
+29 functions deployed. All ACTIVE.
 
 ---
 
-## PIPELINE STATE
+## AVATAR PIPELINE — MILESTONE COMPLETE (9 Apr 2026)
 
-### Publishing (confirmed working)
+The full AI avatar video pipeline is live and automated. No human steps required.
 
-| Format | NDIS-Yarns | Property Pulse |
-|---|---|---|
-| facebook text | ✅ publishing daily | ✅ publishing daily |
-| facebook video_short_kinetic | ❌ none generated | ✅ confirmed |
-| facebook video_short_stat | ❌ none generated | ✅ confirmed |
-| facebook image_quote | ✅ generating | ✅ confirmed |
-| facebook carousel | ✅ unblocked 7 Apr | ✅ unblocked 7 Apr |
-| youtube | ❌ no video drafts | ✅ 4 videos uploaded |
+### Flow
+```
+Signal arrives → ingest → bundler → ai_job created
+  → ai-worker v2.7.1:
+      - format advisor selects video_short_avatar for conversational/educational content
+      - generateVideoScript() runs:
+          - queries c.brand_avatar for active stakeholder roles
+          - generates narration_text + stakeholder_role + render_style
+          - writes to draft_format.video_script via set_draft_video_script
+          - sets video_status = 'pending'
+  → auto-approver approves
+  → heygen-worker v1.1.0 (every 30 min):
+      - reads narration_text from draft_format.video_script
+      - reads stakeholder_role → looks up c.brand_avatar → gets talking_photo_id + voice_id
+      - submits HeyGen job (POST /v2/video/generate)
+      - polls until complete (~70 seconds)
+      - downloads MP4 → uploads to post-videos storage bucket
+      - sets video_url (storage URL), video_status = 'generated'
+  → youtube-publisher (every 15 min):
+      - uploads to YouTube
+      - sets video_status = 'published'
+```
 
-### Video pipeline — bug fixed 8 Apr 2026
+### Timing benchmarks (proven 9 Apr 2026)
+- HeyGen render: ~70 seconds for a 10-12 second talking photo video
+- Full pipeline (script → YouTube): under 5 minutes when workers are running
+- Credit cost: ~2-4 credits per minute of video
 
-video-worker v2.1.0 root bug: was only querying `approval_status = 'approved'`. Publisher marks drafts 'published' before video-worker runs every 30 min, causing all video drafts to be permanently skipped. Fix: now queries `approval_status IN ('approved', 'published')`.
+### Avatar cast — NDIS Yarns (fb98a472...)
 
-7 drafts with `video_status = 'pending'` should process in the next few cron runs.
-
-### Video analyser — live 8 Apr 2026
-
-- video-analyser v1.2.0 deployed
-- Uses YouTube oEmbed (title/channel/thumbnail) — no auth needed
-- Uses YouTube Data API v3 (duration/views/description) — `ICE_YOUTUBE_DATA_API_KEY` secret active
-- Tries timedtext API for transcript (works for public caption videos)
-- Claude analysis: video_type, production_style, content_structure, key_hooks, ICE format suggestion, recreate brief
-- Saves to `f.video_analysis` via SECURITY DEFINER function `public.insert_video_analysis`
-- History accessible via `public.get_video_analyses`
-
-### YouTube channel subscriptions — live 8 Apr 2026
-
-- ingest-worker v95 handles `source_type_code = 'youtube_channel'`
-- 2 active channels in f.feed_source:
-  - Australian Property Mastery with PK Gupta (UCgpRs29idEHwGEXkIikpzXg)
-  - Rask Australia (UCBtkIHFJGFVzB-kHEUGzELA)
-- Picks up new videos every 6h via existing rss-ingest-run-all-hourly cron
-- Analyses up to 3 new videos per run via video-analyser
-- Skip-if-already-seen check against f.video_analysis
-- Add new channels via Content Studio → Analyse → Channel Subscriptions
-
-### HeyGen — connected 8 Apr 2026
-
-- `ICE_HEYGEN_API_KEY` (named ICE_HEYGEN_API_KEY in vault) — tested, working
-- 600 credits available (200 plan + free credits)
-- 1,281 stock avatars available immediately
-- heygen-test Edge Function deployed for health checks
-- `c.client_avatar_profile` table created — ready for avatar IDs
-- Avatar consent form: `docs/consent/avatar_consent_template.md` v1.0
-- Legal gate L005 SATISFIED — consent form committed
-- **Next: PK creates avatar in HeyGen UI tomorrow, then heygen-worker Edge Function**
-
-### Token Calendar
-
-| Platform | Client | Expiry | Days remaining |
+| Role | Realistic | Animated | Voice |
 |---|---|---|---|
-| YouTube | NDIS-Yarns | 7 Apr 2031 | ~1,825d |
-| YouTube | Property Pulse | 2 Apr 2031 | ~1,820d |
-| Facebook | Property Pulse | 6 Jun 2026 | ~59d |
-| Facebook | NDIS-Yarns | 1 Jun 2026 | ~54d |
+| NDIS Participant (Alex) | `b3a7e888d11843d79cd66f61a8f941f4` ✅ | `9b8b0b70f8934bdeb0488100cb3ae864` ✅ | `WaFYykjEkTFpHMit8egg` |
+| Support Coordinator | not assigned | not assigned | — |
+| Local Area Coordinator | not assigned | not assigned | — |
+| Allied Health Provider | not assigned | not assigned | — |
+| Plan Manager | not assigned | not assigned | — |
+| Support Worker | not assigned | not assigned | — |
+| Family / Carer | not assigned | not assigned | — |
 
-⚠️ Facebook tokens need refreshing in ~50 days.
+### Avatar cast — Property Pulse (4036a6b5...)
+All 7 roles unassigned — to be built after NDIS Yarns cast is complete.
 
-### Performance Data (C1 — COMPLETE)
+### YouTube test videos (unlisted)
+- Realistic Alex: https://www.youtube.com/watch?v=mJNe1EjnwKw
+- Animated Alex: https://www.youtube.com/watch?v=ZuD-_XWRGBw
 
-- 148 rows in m.post_performance
-- Performance dashboard live at dashboard.invegent.com/monitor (Performance tab)
-
-### Publishing Schedule
-
-`c.client_publish_schedule` — 12 rows seeded. Schedule UI live.
-⚠️ Publisher assignment not yet wired.
+### Known issue: smile expression
+Both Alex avatars have an overly broad smile (from the photo generation prompt).
+Fix for next avatar: add "neutral, composed expression — not smiling broadly" to the
+"Describe your avatar" field in HeyGen. Doesn't affect pipeline functionality.
 
 ---
 
-## NEW TABLES — 8 Apr 2026
+## SCHEMA — NEW TABLES (9 Apr 2026)
 
 | Table | Schema | Purpose |
 |---|---|---|
-| `video_analysis` | f | Stores YouTube video analysis results. Keyed by youtube_video_id. |
-| `client_avatar_profile` | c | HeyGen avatar ID + ElevenLabs voice ID + consent record per client. |
+| `brand_stakeholder` | c | Cast of roles per brand (7 roles each for NDIS Yarns + PP) |
+| `brand_avatar` | c | Avatar assignment per stakeholder × render_style. Replaces client_avatar_profile. |
+| `video_analysis` | f | YouTube video analysis results |
 
-**New SECURITY DEFINER functions:**
-- `public.insert_video_analysis(...)` — DML bypass for f schema
-- `public.get_video_analyses(p_client_id, p_limit)` — read f.video_analysis
-- `public.insert_feed_source_youtube_channel(...)` — DML bypass for f schema
+**New SECURITY DEFINER functions (9 Apr 2026):**
+- `public.get_brand_stakeholders(p_client_id)` — returns stakeholder list with avatar counts
+- `public.get_brand_avatars(p_client_id)` — returns avatar assignments with role info
+- `public.assign_brand_avatar(id, avatar_id, voice_id, name)` — assigns avatar to slot
+- `public.clear_brand_avatar(id)` — clears an avatar assignment
+
+**Note:** `c.client_avatar_profile` is superseded by `c.brand_stakeholder` + `c.brand_avatar`.
+Do not use `client_avatar_profile` in new code.
+
+---
+
+## FORMAT PALETTE UPDATE (9 Apr 2026)
+
+`video_short_avatar` in `t.5.3_content_format`:
+- `is_buildable = true` (was false)
+- `advisor_description` updated — format advisor will now select it for conversational/educational content
+- `best_for` = conversational education, participant guides, stakeholder Q&A, advocacy
+
+---
+
+## PG_CRON JOBS — ALL ACTIVE
+
+| Job | Schedule | Function |
+|---|---|---|
+| rss-ingest-run-all-hourly | every 6h | ingest /run-all |
+| video-worker-every-30min | every 30 min | video-worker |
+| **heygen-worker-every-30min** | **every 30 min** | **heygen-worker (NEW)** |
+| youtube-publisher (15 min) | every 15 min | youtube-publisher |
+| auto-approver | every 30 min | auto-approver |
+| k-schema-refresh-weekly | Sunday 3am UTC | k schema refresh |
+| system-audit-weekly | Sunday 13:00 UTC | B4 health check |
+| compliance-monitor-monthly | 1st of month | compliance hash check |
 
 ---
 
 ## DASHBOARD — invegent-dashboard
 
-Last deploy: 8 Apr 2026 (multiple deploys)
+Last deploy: 9 Apr 2026
 
-**New this session:**
-- Content Studio / Videos tab: human durations (35h not 2122min), Dismiss button for stalled videos, inline video modal (Play button no longer opens new tab)
-- Content Studio / Analyse tab (NEW): YouTube URL paste → analysis → recreate brief, history panel, Channel Subscriptions (add/list/run-now)
-- ModeToggle: Single Post | Content Series | Videos | **Analyse** (4 tabs now)
-
-**Fixes this session:**
-- Video tracker: Set spread → Array.from (tsconfig TS target fix)
-- Video tracker action: createClient → createServiceClient
-- runChannelIngestNow: reads ingest key from Supabase vault (no Vercel env var needed)
+**Changes 9 Apr 2026:**
+- Clients page: **Avatars tab** — stakeholder cast grid, realistic + animated slots per role,
+  assign/clear flow with inline form, A/B test explanation, Browse HeyGen avatars link
+- Roadmap: Avatar cast UI added to Phase 3, `is_buildable` for video_short_avatar updated,
+  date bumped to 9 Apr 2026
+- Newlines fix: roadmap/page.tsx had literal \n corruption — fixed
+- `actions/avatars.ts` — getBrandStakeholders, getBrandAvatars, assignAvatar, clearAvatar
+- `components/clients/AvatarTab.tsx` — full avatar management UI
 
 ---
 
-## NEW SECRETS — 8 Apr 2026
+## PIPELINE STATE
 
-| Secret name | Where | Purpose |
+### Publishing
+
+| Format | NDIS-Yarns | Property Pulse |
 |---|---|---|
-| `ICE_YOUTUBE_DATA_API_KEY` | Supabase vault | YouTube Data API v3 — duration, views, description, captions |
-| `ICE_HEYGEN_API_KEY` | Supabase vault | HeyGen API — avatar video generation |
-| `INGEST_API_KEY` | Vercel env vars | Allows dashboard Run Now to call ingest Edge Function |
+| facebook text | ✅ daily | ✅ daily |
+| facebook image_quote | ✅ | ✅ |
+| facebook carousel | ✅ | ✅ |
+| facebook video_short_kinetic | ❌ | ✅ |
+| facebook video_short_stat | ❌ | ✅ |
+| youtube video_short_* | ❌ | ✅ 4 videos |
+| youtube video_short_avatar | ✅ 2 test videos | ❌ |
 
----
+### Token Calendar
 
-## GITHUB — LATEST COMMITS (8 Apr 2026)
-
-| Repo | Message |
-|---|---|
-| Invegent-content-engine | docs: AI avatar consent form v1.0 — satisfies legal gate L005 |
-| Invegent-content-engine | brief: YouTube channel subscription ingest — Claude Code task |
-| invegent-dashboard | fix: runChannelIngestNow reads ingest key from Supabase vault |
-| invegent-dashboard | feat: channel subscriptions UI — add/list/run-now in Analyse tab |
-| invegent-dashboard | feat: video analyser — Analyse tab, YouTube URL → Claude brief |
-| invegent-dashboard | fix: video tracker — human durations, dismiss, inline modal |
-
----
-
-## VERCEL FRONTENDS — LIVE
-
-| App | URL | Status |
+| Platform | Client | Expiry |
 |---|---|---|
-| invegent-dashboard | dashboard.invegent.com | READY |
-| invegent-portal | portal.invegent.com | READY |
-| invegent-web | invegent.com | READY |
+| YouTube | NDIS-Yarns | 7 Apr 2031 |
+| YouTube | Property Pulse | 2 Apr 2031 |
+| Facebook | Property Pulse | ~6 Jun 2026 (~58d) |
+| Facebook | NDIS-Yarns | ~1 Jun 2026 (~53d) |
 
-Team: pk-2528s-projects (team_kYqCrehXYxW02AycsKVzwNrE)
+⚠️ Facebook tokens need refreshing in ~50 days.
 
 ---
 
-## DECISIONS LOG — CURRENT
+## DECISIONS LOG
 
-D001–D075: See `docs/06_decisions.md`.
-D076: YouTube page scraping abandoned — blocked by bot detection. Use oEmbed + timedtext + Data API instead.
-D077: Ingest key read from Supabase vault at runtime — no duplication to Vercel env vars.
+D001–D077: see docs/06_decisions.md.
+D078: video_short_avatar is_buildable=true — format advisor may now select avatar format automatically.
+D079: heygen-worker reads narration_text + stakeholder_role from draft_format.video_script (set by ai-worker via set_draft_video_script RPC). Top-level draft_format fields also supported as override.
+D080: Alex avatar smile issue noted — next avatar brief to include "neutral, not smiling broadly".
 
 ---
 
@@ -254,29 +240,32 @@ D077: Ingest key read from Supabase vault at runtime — no duplication to Verce
 |---|---|---|
 | Facebook tokens expiring ~50 days | MED | Refresh early June 2026 |
 | Publisher schedule not wired | LOW | Table+UI live, publisher reads own timing |
-| NDIS Yarns no video drafts | LOW | Text-only vertical in practice. Not priority. |
+| NDIS Yarns no kinetic/stat video drafts | LOW | Text vertical. Not priority. |
 | Meta App Review | 🔴 External | Business verification In Review. Next check: 14 Apr. |
 | LinkedIn API | 🔴 External | Community Management API review. Next check: 14 Apr. |
-| HeyGen avatar — no custom avatar yet | MED | PK creating avatar tomorrow. heygen-worker not built yet. |
+| Alex avatar — smile expression | LOW | Cosmetic only. Fix on next avatar creation. |
 | Legal review | 🔴 Business gate | $2–5k AUD. Initiate when Meta Standard Access confirmed. |
+| Support Coordinator avatar not assigned | MED | Needed for conversational pair with Participant. |
+| PP avatar cast not assigned | LOW | NDIS Yarns first, PP second. |
 
 ---
 
 ## WHAT IS NEXT
 
 **Immediate — in order:**
-1. **HeyGen avatar integration** — PK creates avatar tomorrow. Then heygen-worker Edge Function. Avatar consent form done ✅. c.client_avatar_profile table live ✅.
-2. **B5 — Weekly manager report email** — Sunday Edge Function via Resend. ~2 sessions. Claude Code candidate.
-3. **Publisher schedule wiring** — `c.client_publish_schedule` → publisher assigns `scheduled_for`. Half session.
-4. **F5 — OpenClaw SOUL.md** — low effort, high leverage.
-5. **F1 — Prospect demo generator** — needed before first external client conversation.
+1. **Create Support Coordinator avatar in HeyGen** — pair with Alex (Participant) for first
+   conversational dual-avatar scene. Use "neutral, composed" expression in prompt.
+2. **B5 — Weekly manager report email** — Sunday Edge Function via Resend.
+3. **Publisher schedule wiring** — c.client_publish_schedule → publisher assigns scheduled_for.
+4. **F1 — Prospect demo generator** — before first external client conversation.
+5. **Check Meta App Review + LinkedIn (14 Apr)** — both are external blockers.
+
+**Avatar pipeline next steps:**
+- Create Support Coordinator avatar (HeyGen UI) → assign in dashboard Avatars tab
+- ai-worker will start generating dual-stakeholder narration scripts automatically
+- heygen-worker will render and upload to YouTube
+- Monitor first auto-generated avatar videos for quality
 
 **External blockers (check 14 Apr):**
 - Meta App Review: business verification In Review
 - LinkedIn API: Community Management API review in progress
-
-**HeyGen next steps specifically:**
-- PK records 2-5 min footage in HeyGen UI → gets Avatar ID
-- Set `ICE_HEYGEN_API_KEY` already done ✅
-- Build heygen-worker Edge Function: script → HeyGen API → poll → download → storage → video_status = 'generated' → youtube-publisher picks up
-- Dashboard: Avatar tab in Clients page showing avatar_status, consent_signed_at
