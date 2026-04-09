@@ -298,12 +298,146 @@ The pipeline should learn from what it publishes, not just publish and forget.
 
 ---
 
+## D076 — Video Tracker + Video Analyser (Phase 3 Video Pipeline)
+**Date:** 8 April 2026 | **Status:** ✅ Live
+
+video-worker v2.1.0 bug fixed. video-analyser v1.2.0 + YouTube Data API live
+(ICE_YOUTUBE_DATA_API_KEY). Channel subscriptions (ingest v95, 2 channels, 6h cron).
+Analyse tab live in dashboard Monitor section.
+
+---
+
+## D077 — HeyGen Avatar Pipeline — Architecture
+**Date:** 8 April 2026 | **Status:** ✅ Live
+
+HeyGen API key tested (600 credits). c.client_avatar_profile table, consent form v1.0
+(L005 satisfied). ICE_HEYGEN_API_KEY in Edge Function secrets. heygen-intro and
+heygen-test one-shot functions deployed.
+
+---
+
+## D078 — video_short_avatar is_buildable = true
+**Date:** 9 April 2026 | **Status:** ✅ Live
+
+video_short_avatar in t.5.3_content_format set is_buildable=true.
+Format advisor will now select it for conversational/educational content.
+advisor_description updated. best_for: conversational education, participant guides,
+stakeholder Q&A, advocacy.
+
+---
+
+## D079 — heygen-worker Script Resolution Pattern
+**Date:** 9 April 2026 | **Status:** ✅ Live
+
+heygen-worker reads narration_text + stakeholder_role from draft_format.video_script
+(set by ai-worker via set_draft_video_script RPC). Top-level draft_format fields
+also supported as override. Stakeholder_role → c.brand_avatar lookup for avatar ID
+and voice ID.
+
+---
+
+## D080 — Alex Avatar Smile Issue
+**Date:** 9 April 2026 | **Status:** ✅ Noted — cosmetic only
+
+Both Alex avatars (realistic and animated) have an overly broad smile from the
+photo generation prompt. Fix for next avatar: add "neutral, composed expression —
+not smiling broadly" to the "Describe your avatar" field in HeyGen.
+Does not affect pipeline functionality. Applied to all subsequent avatar briefs.
+
+---
+
+## D081 — Character Maturity Principle — Solo Videos Before Conversations
+**Date:** 9 April 2026 | **Status:** ✅ Decided — governs avatar content strategy
+
+**Decision:**
+Each avatar character must establish its own identity through solo videos before
+participating in dual-character conversations. Dual-character conversation format
+is explicitly not available to a character until they have reached a minimum solo
+video threshold.
+
+**Rationale:**
+An audience cannot care about a conversation between two characters they do not
+yet recognise. Character identity — voice, perspective, tone, subject matter
+expertise — is built through repeated individual appearances. A conversation
+between two unknown characters has no narrative weight because there is no prior
+relationship between the character and the viewer.
+
+This mirrors how effective serialised content works: Alex appears in 10 solo videos
+as an NDIS Participant explaining his experience → the audience knows who Alex is
+→ a conversation between Alex and Sarah the Support Coordinator now has stakes,
+familiarity, and emotional resonance.
+
+**Threshold (tentative — review after first 30 days of avatar content):**
+- Minimum solo videos published per character before conversation eligibility: **10**
+- Both characters in a proposed conversation must independently meet the threshold
+- Threshold is per-character, not per-role — if two different Realistic avatars
+  are assigned the same role in future, they each build their own count
+
+**System implication for dual-character build (D082):**
+When video_short_avatar_conversation format is eventually built, the format advisor
+must check `c.brand_avatar.solo_video_count` (or equivalent) before selecting it.
+If either character in the proposed pair has fewer than 10 published solo videos,
+the format advisor falls back to a solo format for the more established character.
+
+**Content strategy implication:**
+The format advisor should currently favour the most established character for any
+given signal. As more characters accumulate solo video history, the advisor naturally
+diversifies across the cast. Character rotation should be signal-driven, not
+round-robin — the best character for the topic gets the video.
+
+**Current cast maturity — NDIS Yarns (as of 9 Apr 2026):**
+
+| Character | Role | Solo videos published | Conversation eligible |
+|---|---|---|---|
+| Alex (Realistic) | NDIS Participant | 1 (test) | ❌ |
+| Alex (Animated) | NDIS Participant | 1 (test) | ❌ |
+| Sarah | Support Coordinator | 0 | ❌ |
+| Marcus | Local Area Coordinator | 0 | ❌ |
+| Priya | Allied Health Provider | 0 | ❌ |
+| James | Plan Manager | 0 | ❌ |
+| Caleb | Support Worker | 0 | ❌ |
+| Diane | Family / Carer | 0 | ❌ |
+
+All characters start at zero. The pipeline begins building character identity now.
+Review conversation eligibility at 60-day mark (approximately June 2026).
+
+---
+
+## D082 — Dual-Character Conversation Format — Deferred to Phase 4
+**Date:** 9 April 2026 | **Status:** ✅ Decided — deferred, not cancelled
+
+**Decision:**
+video_short_avatar_conversation format is deferred to Phase 4.
+Single-character avatar videos run first. Conversations unlock when characters
+are mature per D081 threshold.
+
+**What it requires when built:**
+- New script structure: `turns[]` array with role + text per turn
+- ai-worker: new `generateConversationScript()` branch for this format
+- heygen-worker: sequential per-turn rendering — separate HeyGen job per turn
+- Video stitching: ffmpeg-wasm Edge Function or Creatomate video composition API
+- New `ice_format_key`: `video_short_avatar_conversation` in t.5.3_content_format
+- Format advisor: D081 maturity gate — checks solo_video_count before selecting
+
+**Build trigger:**
+- Both characters in a proposed pair have ≥ 10 published solo videos (D081)
+- Single-character avatar format is proven — engagement data exists
+- Stitching solution validated (ffmpeg-wasm vs Creatomate video composition)
+
+**Not building this now because:**
+Character identity must precede character interaction. Content value of a
+conversation is conditional on the audience knowing both participants.
+See D081.
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target |
 |---|---|---|
-| Prospect demo generator | ~1 day. Needed before first external client conversation | Phase 3 |
+| Prospect demo generator (F1) | ~1 day. Needed before first external client conversation | Phase 3 |
 | Client health weekly report email (B5) | ~2 days. Sunday Edge Function via Resend | Phase 2 |
+| Publisher schedule wiring | c.client_publish_schedule → publisher assigns scheduled_for | Phase 3 |
 | AI compliance rule generator | ANZSCO tasks + code_of_conduct_url → Claude generates draft rules | Phase 3 |
 | Content vertical → topic mapping | Map 13 verticals to relevant topics for bundler precision | Phase 3 |
 | OpenClaw SOUL.md (F5) | ICE context for @InvegentICEbot — bump priority per D075 | Near term |
@@ -314,5 +448,6 @@ The pipeline should learn from what it publishes, not just publish and forget.
 | n8n client success workflow | After C1 live + first paying client | Phase 3 |
 | IAE Phase A build | Meta boost only — after all prerequisites in docs/iae/01 are met | Phase 3+ |
 | Model router | When AI costs become significant | Phase 4 |
+| video_short_avatar_conversation | D082 — after D081 maturity threshold met for both characters | Phase 4 |
 | Nightly parallel intelligence council | 8-agent cross-client nightly analysis | Phase 4 (3+ clients + C1 data) |
 | SaaS vs managed service | When 10 clients served 3+ months | Phase 4 |
