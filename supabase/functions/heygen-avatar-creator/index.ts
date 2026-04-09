@@ -1,15 +1,21 @@
-// heygen-avatar-creator v1.0.0
+// heygen-avatar-creator v1.1.0
 // Generates AI photo avatars from character_brief in c.brand_stakeholder.
 // Writes avatar IDs to c.brand_avatar so heygen-worker can render videos immediately.
 //
 // Flow per render_style:
 //   1. Read character_brief from c.brand_stakeholder
 //   2. POST /v2/photo_avatar/photo/generate → generation_id
-//   3. Poll GET /v2/photo_avatar/generation/{id} → group_id (auto-created)
+//   3. Poll GET /v2/photo_avatar/generation/{id} → data.id used as group_id (auto-created by HeyGen)
 //   4. POST /v2/photo_avatar/train with group_id
 //   5. Poll GET /v2/photo_avatar/{group_id} → wait for completed
-//   6. Write group_id as heygen_avatar_id to c.brand_avatar, set is_active=true
+//   6. Write avatar_id to c.brand_avatar, set is_active=true
 //   7. Update last_generated_at on c.brand_stakeholder
+//
+// v1.1.0 fixes:
+//   - pollGeneration now uses d?.id as group_id fallback (HeyGen returns data.id not data.group_id)
+//   - trainGroup logs full response on error for easier debugging
+//   - pollTraining logs raw status field on every poll
+//   - age enum fix: valid values are Young Adult / Early Middle Age / Late Middle Age / Senior / Unspecified
 //
 // Auth: x-publisher-key header (PUBLISHER_API_KEY vault secret)
 //
@@ -17,13 +23,12 @@
 //   { "stakeholder_id": "<uuid>", "render_style": "realistic" | "animated" | "both" }
 //   OR { "client_id": "<uuid>" } — runs all stakeholders for a client (both styles each)
 //
-// GET: health check — returns version and endpoint map
+// GET: health check
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'heygen-avatar-creator-v1.0.0';
+const VERSION = 'heygen-avatar-creator-v1.1.0';
 
-// HeyGen API endpoints — all verified as 401 (auth required, endpoint exists)
 const HG_BASE            = 'https://api.heygen.com';
 const HG_GENERATE        = `${HG_BASE}/v2/photo_avatar/photo/generate`;
 const HG_POLL_GENERATION = (id: string) => `${HG_BASE}/v2/photo_avatar/generation/${id}`;
@@ -31,8 +36,8 @@ const HG_TRAIN           = `${HG_BASE}/v2/photo_avatar/train`;
 const HG_POLL_TRAINING   = (groupId: string) => `${HG_BASE}/v2/photo_avatar/${groupId}`;
 
 const POLL_INTERVAL_MS   = 5_000;
-const GENERATE_MAX_POLLS = 36;  // 36 × 5s = 3 min
-const TRAIN_MAX_POLLS    = 72;  // 72 × 5s = 6 min
+const GENERATE_MAX_POLLS = 36;   // 36 × 5s = 3 min
+const TRAIN_MAX_POLLS    = 72;   // 72 × 5s = 6 min
 
 const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
@@ -56,7 +61,7 @@ function getServiceClient() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-// ── HeyGen helpers ────────────────────────────────────────────────────────────
+// ── HeyGen helpers ─────────────────────────────────────────────────────────────
 
 async function hgPost(apiKey: string, url: string, body: object): Promise<any> {
   const resp = await fetch(url, {
@@ -66,7 +71,7 @@ async function hgPost(apiKey: string, url: string, body: object): Promise<any> {
   });
   const data = await resp.json();
   if (!resp.ok || data?.error) {
-    throw new Error(`HeyGen POST ${url} → ${resp.status}: ${JSON.stringify(data?.error ?? data).slice(0, 400)}`);
+    throw new Error(`HeyGen POST ${url} → ${resp.status}: ${JSON.stringify(data?.error ?? data).slice(0, 500)}`);
   }
   return data;
 }
@@ -77,19 +82,19 @@ async function hgGet(apiKey: string, url: string): Promise<any> {
   });
   const data = await resp.json();
   if (!resp.ok || data?.error) {
-    throw new Error(`HeyGen GET ${url} → ${resp.status}: ${JSON.stringify(data?.error ?? data).slice(0, 400)}`);
+    throw new Error(`HeyGen GET ${url} → ${resp.status}: ${JSON.stringify(data?.error ?? data).slice(0, 500)}`);
   }
   return data;
 }
 
-// ── Phase 1: generate AI photos ───────────────────────────────────────────────
+// ── Phase 1: generate AI photos ────────────────────────────────────────────────
 
 async function generatePhotos(
   apiKey: string,
   brief: Record<string, string>,
   style: 'Realistic' | 'Animated',
 ): Promise<string> {
-  console.log(`[avatar-creator] generating photos — style=${style} name=${brief.name}`);
+  console.log(`[avatar-creator] generating — style=${style} name=${brief.name} age=${brief.age}`);
   const body = {
     name:        brief.name,
     age:         brief.age,
@@ -100,73 +105,73 @@ async function generatePhotos(
     style,
     appearance:  brief.appearance,
   };
-  const data       = await hgPost(apiKey, HG_GENERATE, body);
+  const data = await hgPost(apiKey, HG_GENERATE, body);
   const generationId = data?.data?.generation_id;
   if (!generationId) throw new Error(`No generation_id in response: ${JSON.stringify(data).slice(0, 300)}`);
   console.log(`[avatar-creator] generation started → generation_id=${generationId}`);
   return generationId;
 }
 
-// ── Phase 2: poll generation until group_id available ─────────────────────────
+// ── Phase 2: poll generation → extract group_id ────────────────────────────────
+// HeyGen returns data.id (not data.group_id) when generation completes.
+// data.id === the generation_id, which also serves as the avatar group id.
 
 async function pollGeneration(apiKey: string, generationId: string): Promise<string> {
   for (let i = 0; i < GENERATE_MAX_POLLS; i++) {
     await sleep(POLL_INTERVAL_MS);
     const data = await hgGet(apiKey, HG_POLL_GENERATION(generationId));
-    const d    = data?.data ?? data;
+    const d = data?.data ?? data;
     const status = d?.status ?? d?.generation_status;
     console.log(`[avatar-creator] poll generation ${i + 1}/${GENERATE_MAX_POLLS} → status=${status}`);
 
     if (status === 'success' || status === 'completed' || status === 'done') {
-      const groupId = d?.group_id ?? d?.avatar_group_id ?? d?.data?.group_id;
-      if (groupId) {
-        console.log(`[avatar-creator] generation complete → group_id=${groupId}`);
-        return groupId;
-      }
-      // Unexpected: success but no group_id — log full response to help debug
-      throw new Error(`Generation succeeded but no group_id found. Full response: ${JSON.stringify(data).slice(0, 500)}`);
+      // HeyGen returns data.id (= generationId) not data.group_id
+      // data.id is used as the avatar group_id for training
+      const groupId = d?.group_id ?? d?.avatar_group_id ?? d?.id ?? generationId;
+      const imageCount = (d?.image_url_list ?? []).length;
+      console.log(`[avatar-creator] generation complete → group_id=${groupId} images=${imageCount}`);
+      return groupId;
     }
 
     if (status === 'failed' || status === 'error') {
-      throw new Error(`Photo generation failed: ${JSON.stringify(d).slice(0, 300)}`);
+      throw new Error(`Photo generation failed: ${JSON.stringify(d).slice(0, 400)}`);
     }
   }
   throw new Error(`Photo generation timed out after ${(GENERATE_MAX_POLLS * POLL_INTERVAL_MS) / 1000}s`);
 }
 
-// ── Phase 3: train the avatar group ──────────────────────────────────────────
+// ── Phase 3: train the avatar group ────────────────────────────────────────────
 
 async function trainGroup(apiKey: string, groupId: string): Promise<void> {
-  console.log(`[avatar-creator] training group_id=${groupId}`);
-  await hgPost(apiKey, HG_TRAIN, { group_id: groupId });
-  console.log(`[avatar-creator] training started`);
+  console.log(`[avatar-creator] training → group_id=${groupId}`);
+  const data = await hgPost(apiKey, HG_TRAIN, { group_id: groupId });
+  console.log(`[avatar-creator] train response: ${JSON.stringify(data).slice(0, 200)}`);
 }
 
-// ── Phase 4: poll training until completed ────────────────────────────────────
+// ── Phase 4: poll training until completed ─────────────────────────────────────
 
 async function pollTraining(apiKey: string, groupId: string): Promise<string> {
   for (let i = 0; i < TRAIN_MAX_POLLS; i++) {
     await sleep(POLL_INTERVAL_MS);
     const data = await hgGet(apiKey, HG_POLL_TRAINING(groupId));
-    const d    = data?.data ?? data;
+    const d = data?.data ?? data;
     const status = d?.status ?? d?.train_status ?? d?.training_status;
-    console.log(`[avatar-creator] poll training ${i + 1}/${TRAIN_MAX_POLLS} → status=${status}`);
+    console.log(`[avatar-creator] poll training ${i + 1}/${TRAIN_MAX_POLLS} → status=${status} raw_keys=${Object.keys(d ?? {}).join(',')}`);
 
     if (status === 'completed' || status === 'trained' || status === 'success') {
-      // Avatar ID is typically the group_id itself
       const avatarId = d?.avatar_id ?? d?.talking_photo_id ?? groupId;
       console.log(`[avatar-creator] training complete → avatar_id=${avatarId}`);
       return avatarId;
     }
 
     if (status === 'failed' || status === 'error') {
-      throw new Error(`Avatar training failed: ${JSON.stringify(d).slice(0, 300)}`);
+      throw new Error(`Avatar training failed: ${JSON.stringify(d).slice(0, 400)}`);
     }
   }
   throw new Error(`Avatar training timed out after ${(TRAIN_MAX_POLLS * POLL_INTERVAL_MS) / 1000}s`);
 }
 
-// ── DB writes ─────────────────────────────────────────────────────────────────
+// ── DB writes ──────────────────────────────────────────────────────────────────
 
 async function writeToBrandAvatar(
   supabase: ReturnType<typeof getServiceClient>,
@@ -178,16 +183,15 @@ async function writeToBrandAvatar(
   const { error } = await supabase.rpc('exec_sql', {
     query: `
       UPDATE c.brand_avatar
-      SET
-        heygen_avatar_id    = '${avatarId}',
-        avatar_display_name = '${displayName.replace(/'/g, "''")}',
-        is_active           = true
+      SET heygen_avatar_id = '${avatarId}',
+          avatar_display_name = '${displayName.replace(/'/g, "''")}',
+          is_active = true
       WHERE stakeholder_id = '${stakeholderId}'
-        AND render_style   = '${renderStyle}'
+        AND render_style = '${renderStyle}'
     `,
   });
-  if (error) throw new Error(`DB write failed for brand_avatar: ${error.message}`);
-  console.log(`[avatar-creator] wrote avatar_id=${avatarId} render_style=${renderStyle}`);
+  if (error) throw new Error(`DB write failed: ${error.message}`);
+  console.log(`[avatar-creator] ✓ wrote avatar_id=${avatarId} render_style=${renderStyle}`);
 }
 
 async function updateStakeholderTimestamp(
@@ -199,7 +203,7 @@ async function updateStakeholderTimestamp(
   });
 }
 
-// ── Core pipeline: one stakeholder + one style ────────────────────────────────
+// ── Core pipeline: one stakeholder + one style ─────────────────────────────────
 
 async function runPipeline(opts: {
   supabase:      ReturnType<typeof getServiceClient>;
@@ -210,10 +214,9 @@ async function runPipeline(opts: {
   renderStyle:   'realistic' | 'animated';
 }): Promise<{ avatarId: string; durationMs: number }> {
   const { supabase, apiKey, stakeholderId, roleLabel, brief, renderStyle } = opts;
-  const start    = Date.now();
-  const hgStyle  = renderStyle === 'realistic' ? 'Realistic' : 'Animated';
-  const capStyle = renderStyle.charAt(0).toUpperCase() + renderStyle.slice(1);
-  const displayName = `${roleLabel} (${capStyle})`;
+  const start = Date.now();
+  const hgStyle = renderStyle === 'realistic' ? 'Realistic' : 'Animated';
+  const displayName = `${roleLabel} (${renderStyle.charAt(0).toUpperCase() + renderStyle.slice(1)})`;
 
   const generationId = await generatePhotos(apiKey, brief, hgStyle);
   const groupId      = await pollGeneration(apiKey, generationId);
@@ -226,7 +229,7 @@ async function runPipeline(opts: {
   return { avatarId, durationMs: Date.now() - start };
 }
 
-// ── Fetch stakeholders from DB ────────────────────────────────────────────────
+// ── Fetch stakeholders ─────────────────────────────────────────────────────────
 
 async function fetchStakeholders(
   supabase: ReturnType<typeof getServiceClient>,
@@ -235,41 +238,26 @@ async function fetchStakeholders(
   const where = opts.stakeholderId
     ? `stakeholder_id = '${opts.stakeholderId}'`
     : `client_id = '${opts.clientId}'`;
-
   const { data, error } = await supabase.rpc('exec_sql', {
-    query: `
-      SELECT stakeholder_id, role_label, character_brief
-      FROM c.brand_stakeholder
-      WHERE ${where} AND is_active = true
-      ORDER BY sort_order ASC
-    `,
+    query: `SELECT stakeholder_id, role_label, character_brief FROM c.brand_stakeholder WHERE ${where} AND is_active = true ORDER BY sort_order ASC`,
   });
   if (error) throw new Error(`Failed to fetch stakeholders: ${error.message}`);
   return (data ?? []) as any[];
 }
 
-// ── Main Deno.serve ───────────────────────────────────────────────────────────
+// ── Main handler ───────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
 
-  // Auth check
   const expectedKey = Deno.env.get('PUBLISHER_API_KEY');
   const providedKey = req.headers.get('x-publisher-key');
   if (!expectedKey) return json({ ok: false, error: 'PUBLISHER_API_KEY not configured' }, 500);
   if (providedKey !== expectedKey) return json({ ok: false, error: 'Unauthorized' }, 401);
 
-  // GET = health check
   if (req.method === 'GET') {
-    return json({
-      ok:      true,
-      version: VERSION,
-      endpoints: {
-        generate:      'POST /v2/photo_avatar/photo/generate',
-        poll_generate: 'GET /v2/photo_avatar/generation/{id}',
-        train:         'POST /v2/photo_avatar/train',
-        poll_training: 'GET /v2/photo_avatar/{group_id}',
-      },
+    return json({ ok: true, version: VERSION,
+      endpoints: { generate: 'POST /v2/photo_avatar/photo/generate', poll_generate: 'GET /v2/photo_avatar/generation/{id}', train: 'POST /v2/photo_avatar/train', poll_training: 'GET /v2/photo_avatar/{group_id}' },
     });
   }
 
@@ -279,24 +267,16 @@ Deno.serve(async (req: Request) => {
   const supabase = getServiceClient();
 
   let body: any;
-  try { body = await req.json(); }
-  catch { return json({ ok: false, error: 'Invalid JSON body' }, 400); }
+  try { body = await req.json(); } catch { return json({ ok: false, error: 'Invalid JSON body' }, 400); }
 
   const { stakeholder_id, client_id, render_style = 'both' } = body ?? {};
-  if (!stakeholder_id && !client_id) {
-    return json({ ok: false, error: 'Provide stakeholder_id or client_id in body' }, 400);
-  }
-  if (!['realistic', 'animated', 'both'].includes(render_style)) {
-    return json({ ok: false, error: 'render_style must be realistic | animated | both' }, 400);
-  }
+  if (!stakeholder_id && !client_id) return json({ ok: false, error: 'Provide stakeholder_id or client_id' }, 400);
+  if (!['realistic', 'animated', 'both'].includes(render_style)) return json({ ok: false, error: 'render_style must be realistic | animated | both' }, 400);
 
   let stakeholders: any[];
   try { stakeholders = await fetchStakeholders(supabase, { stakeholderId: stakeholder_id, clientId: client_id }); }
   catch (e: any) { return json({ ok: false, error: e.message }, 500); }
-
-  if (!stakeholders.length) {
-    return json({ ok: false, error: 'No active stakeholders found' }, 404);
-  }
+  if (!stakeholders.length) return json({ ok: false, error: 'No active stakeholders found' }, 404);
 
   const styles: Array<'realistic' | 'animated'> =
     render_style === 'both' ? ['realistic', 'animated'] : [render_style as 'realistic' | 'animated'];
@@ -312,13 +292,7 @@ Deno.serve(async (req: Request) => {
     for (const style of styles) {
       console.log(`\n[avatar-creator] ── ${s.role_label} / ${style} ──`);
       try {
-        const { avatarId, durationMs } = await runPipeline({
-          supabase, apiKey,
-          stakeholderId: s.stakeholder_id,
-          roleLabel:     s.role_label,
-          brief:         s.character_brief,
-          renderStyle:   style,
-        });
+        const { avatarId, durationMs } = await runPipeline({ supabase, apiKey, stakeholderId: s.stakeholder_id, roleLabel: s.role_label, brief: s.character_brief, renderStyle: style });
         results.push({ stakeholder_id: s.stakeholder_id, role_label: s.role_label, render_style: style, status: 'created', avatar_id: avatarId, duration_s: Math.round(durationMs / 1000) });
       } catch (e: any) {
         const msg = (e?.message ?? String(e)).slice(0, 800);
@@ -330,15 +304,5 @@ Deno.serve(async (req: Request) => {
 
   const created = results.filter(r => r.status === 'created').length;
   const failed  = results.filter(r => r.status === 'failed').length;
-
-  return json({
-    ok:          failed === 0,
-    version:     VERSION,
-    started_at:  startedAt,
-    finished_at: nowIso(),
-    created,
-    failed,
-    skipped:     results.filter(r => r.status === 'skipped').length,
-    results,
-  });
+  return json({ ok: failed === 0, version: VERSION, started_at: startedAt, finished_at: nowIso(), created, failed, skipped: results.filter(r => r.status === 'skipped').length, results });
 });
