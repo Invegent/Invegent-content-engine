@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-11 (session close — portal/onboarding/compliance/audit design session)
+> Last written: 2026-04-12 (full reconciliation — Brief 011 verified, all checks pass)
 > Written by: PK + Claude reconciliation
 
 ---
@@ -76,6 +76,37 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
 ---
 
+## PIPELINE HEALTH — VERIFIED 12 Apr 2026
+
+| Metric | Value | Status |
+|---|---|---|
+| Posts published last 7 days | 26 | ✅ Healthy |
+| Drafts needing review | 5 | ✅ Normal |
+| Queue pending | 2 | ✅ Normal |
+| Dead drafts | 91 | ⚠️ Backlog (historic, non-blocking) |
+| Stuck AI jobs (>2h) | 0 | ✅ Clean |
+| k tables documented | 144 | ✅ |
+
+---
+
+## BRIEF 011 — VERIFIED COMPLETE ✅ (12 Apr 2026)
+
+All 7 DB checks passed against live database:
+
+| Check | Expected | Found | Status |
+|---|---|---|---|
+| m.post_draft audit trail cols | 4 | 4 | ✅ |
+| c.client NDIS fields | 2 | 2 | ✅ |
+| c.client_publish_profile approval col | 1 | 1 | ✅ |
+| c.client_brand_profile extraction cols | 6 | 6 | ✅ |
+| NDIS taxonomy tables | 4 | 4 | ✅ |
+| Immutable delete triggers | 2 | 2 | ✅ |
+| CFW NDIS status set | 1 | 1 | ✅ |
+
+Portal callback fix confirmed in invegent-portal: last redirect is `${origin}/` not `/inbox`.
+
+---
+
 ## NDIS YARNS AVATAR CAST — COMPLETE ✅
 
 All 7 roles × 2 styles = 14 slots assigned.
@@ -120,7 +151,7 @@ Prospect → portal.invegent.com/onboard (public, 7-step form)
   → PK reviews at dashboard.invegent.com/onboarding
       - Request Info: flag fields → client gets update link
       - Approve: creates c.client + portal_user + agreement + sends magic link
-  → Client receives magic link → portal.invegent.com
+  → Client receives magic link → portal.invegent.com (now lands on / home)
 ```
 
 ### TEST CLIENT — CARE FOR WELFARE ✅
@@ -132,6 +163,8 @@ Prospect → portal.invegent.com/onboard (public, 7-step form)
 | status | active |
 | portal_email | parveenkumar11@hotmail.com |
 | package | Starter $500/mo |
+| serves_ndis_participants | true |
+| ndis_registration_status | registered |
 
 ---
 
@@ -173,10 +206,10 @@ Prospect → portal.invegent.com/onboard (public, 7-step form)
 |---|---|---|
 | YouTube | NDIS-Yarns | 7 Apr 2031 |
 | YouTube | Property Pulse | 2 Apr 2031 |
-| Facebook | Property Pulse | ~6 Jun 2026 (~56d) |
-| Facebook | NDIS-Yarns | ~1 Jun 2026 (~51d) |
+| Facebook | Property Pulse | ~6 Jun 2026 (~55d) |
+| Facebook | NDIS-Yarns | ~1 Jun 2026 (~50d) |
 
-⚠️ Facebook tokens need refreshing in ~50 days.
+⚠️ Facebook tokens need refreshing in ~50 days. Diarise for early June 2026.
 
 ---
 
@@ -184,16 +217,16 @@ Prospect → portal.invegent.com/onboard (public, 7-step form)
 
 | Issue | Priority | Status |
 |---|---|---|
-| Portal callback → /inbox instead of / | HIGH | In Brief 011 |
-| approved_by + compliance_flags missing from m.post_draft | HIGH | In Brief 011 |
-| serves_ndis_participants + ndis_registration_status missing from c.client | HIGH | In Brief 011 |
-| c.client_brand_profile table does not exist | HIGH | In Brief 011 |
-| Published post immutable policy not enforced | MED | In Brief 011 |
-| Platform OAuth connection page missing | HIGH | Designed (D088), not built |
-| Portal sidebar redesign | MED | Designed (D088), not built |
-| Resend SMTP for magic links (unreliable to Hotmail) | P0 | Configure in Supabase dashboard |
-| brand-scanner Edge Function | MED | Designed (D087), not built |
-| AI profile bootstrap Edge Function | MED | Designed (D087), not built |
+| Resend SMTP for magic links (unreliable to Hotmail) | P0 | Configure in Supabase Auth dashboard — manual, 5 min |
+| Platform OAuth connection page missing | HIGH | Designed (D088) — next build session |
+| Portal sidebar redesign | HIGH | Designed (D088) — next build session |
+| brand-scanner Edge Function | MED | Designed (D087) — next build session |
+| AI profile bootstrap Edge Function | MED | Designed (D087) — next build session |
+| Onboarding form updates (logo upload, service list, objectives) | MED | Designed (D087) — next build session |
+| Dashboard onboarding checklist panel + Run Scans button | MED | Designed (D087) — next build session |
+| NDIS Support Catalogue data load | MED | Tables exist — needs NDIA Excel file |
+| ai-worker: write compliance_flags on generation | MED | Edge Function update — separate brief |
+| auto-approver: write approved_by + scores | MED | Edge Function update — separate brief |
 | Facebook tokens expiring ~50 days | MED | Refresh early June 2026 |
 | Meta App Review | 🔴 External | Business verification In Review. Check 14 Apr. |
 | LinkedIn API | 🔴 External | Community Management API review. Check 14 Apr. |
@@ -203,20 +236,22 @@ Prospect → portal.invegent.com/onboard (public, 7-step form)
 
 ## WHAT IS NEXT
 
-**Immediate — Claude Code Brief 011 (ready to run):**
-See `docs/briefs/brief_011_db_foundations.md`
-Tasks: portal callback fix, audit trail columns, NDIS client fields,
-brand profile table, immutable post trigger, k registry update.
+**Immediate (this week):**
+1. ⭐ Configure Resend SMTP in Supabase Auth — P0, manual, 5 minutes. Supabase dashboard → Auth → Settings → Custom SMTP → enter Resend credentials.
+2. Check Meta App Review + LinkedIn API status — 14 Apr (Monday)
 
-**After Brief 011:**
-1. Configure Resend SMTP in Supabase Auth (manual, dashboard only, P0)
-2. Check Meta App Review + LinkedIn API (14 Apr)
-3. Build Portal sidebar redesign (D088)
-4. Build Platform OAuth connect page (D088)
-5. Build brand-scanner Edge Function (D087)
-6. Build AI profile bootstrap Edge Function (D087)
-7. Load NDIS Support Catalogue data into t.ndis_registration_group + t.ndis_support_item
-8. Legal review service agreement (L001)
+**Next build session (Portal + Onboarding):**
+3. Portal sidebar redesign (D088) — collapsible left sidebar, client identity in footer
+4. Platform OAuth connect page /connect (D088) — Facebook + LinkedIn
+5. Onboarding form updates — logo upload, service list, content objectives (D087)
+6. Dashboard checklist panel + Run Scans button (D087)
+7. brand-scanner Edge Function — async website → logo → colours (D087)
+8. AI profile bootstrap Edge Function — website+Facebook → Claude draft (D087)
+
+**Ongoing:**
+9. NDIS Support Catalogue data load — requires NDIA Excel (separate task)
+10. Legal review service agreement L001 — engage solicitor
+11. ai-worker + auto-approver Edge Function updates for audit trail columns
 
 **Decisions pending:**
 See docs/06_decisions.md Decisions Pending table.
