@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-11 (session close — onboarding pipeline live, portal end-to-end tested)
+> Last written: 2026-04-11 (session close — portal/onboarding/compliance/audit design session)
 > Written by: PK + Claude reconciliation
 
 ---
@@ -37,7 +37,7 @@ For the full document map, see `docs/00_docs_index.md`.
 Phase 2 mostly complete — LinkedIn API blocked externally.
 
 **Gate to first external client conversation is OPEN.**
-**Legal review required before first external client is signed.**
+**Legal review required before first external client is signed (L001).**
 
 ---
 
@@ -64,7 +64,7 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 | inspector | 82 | ACTIVE | |
 | inspector_sql_ro | 37 | ACTIVE | |
 | linkedin-publisher | 15 | ACTIVE | waiting on API approval |
-| onboarding-notifier | 2 | ACTIVE | v2.0.0 — handles new_submission, needs_info, approved |
+| onboarding-notifier | 2 | ACTIVE | v2.0.0 |
 | pipeline-ai-summary | 14 | ACTIVE | |
 | pipeline-doctor | 13 | ACTIVE | |
 | publisher | 58 | ACTIVE | |
@@ -78,7 +78,7 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
 ## NDIS YARNS AVATAR CAST — COMPLETE ✅
 
-All 7 roles × 2 styles = 14 slots assigned with avatar_id + voice_id.
+All 7 roles × 2 styles = 14 slots assigned.
 
 | Role | Realistic | Animated | Voice |
 |---|---|---|---|
@@ -94,99 +94,36 @@ All 7 roles × 2 styles = 14 slots assigned with avatar_id + voice_id.
 
 ## PROPERTY PULSE AVATAR CAST — COMPLETE ✅ (11 Apr 2026)
 
-All 7 roles × 2 styles = 14 slots. Created manually in HeyGen UI (not via API —
-training requirement makes API approach too expensive). All assigned in dashboard.
+All 7 roles × 2 styles = 14 slots. Created manually in HeyGen UI.
 
 | Role | Character | Realistic | Animated |
 |---|---|---|---|
-| First Home Buyer | Jordan (South East Asian, Young Adult, Man) | ✅ | ✅ |
-| Property Investor | Michael (South Asian, Early Middle Age, Man) | ✅ | ✅ |
-| Mortgage Broker | Rachel (White, Late Middle Age, Woman) | ✅ | ✅ |
-| Buyer's Agent | Daniel (Middle Eastern, Early Middle Age, Man) | ✅ | ✅ |
-| Real Estate Agent | Lisa (White, Early Middle Age, Woman) | ✅ | ✅ |
-| Landlord | Robert (White, Late Middle Age, Man) | ✅ | ✅ |
-| Tenant | Aisha (Black, Young Adult, Woman) | ✅ | ✅ |
-
-**Key learning:** HeyGen photo avatar training (20 credits each) is required to get
-talking_photo_id from UI-created avatars. API approach (generate → upload → createGroup)
-works without training but groups return empty avatar list until trained.
-Stock library avatars (like NDIS Yarns) require no training and are free to use.
+| First Home Buyer | Jordan | ✅ | ✅ |
+| Property Investor | Michael | ✅ | ✅ |
+| Mortgage Broker | Rachel | ✅ | ✅ |
+| Buyer's Agent | Daniel | ✅ | ✅ |
+| Real Estate Agent | Lisa | ✅ | ✅ |
+| Landlord | Robert | ✅ | ✅ |
+| Tenant | Aisha | ✅ | ✅ |
 
 ---
 
 ## CLIENT ONBOARDING PIPELINE — LIVE ✅ (11 Apr 2026)
 
-Full end-to-end client onboarding is operational and tested with Care for Welfare.
+Full end-to-end tested with Care for Welfare.
 
 ### Flow
 ```
 Prospect → portal.invegent.com/onboard (public, 7-step form)
   → Submit → c.onboarding_submission created (status: pending)
-  → onboarding-notifier fires:
-      - Operator email to onboarding@invegent.com
-      - Client confirmation email
+  → onboarding-notifier fires (operator + client emails)
   → PK reviews at dashboard.invegent.com/onboarding
-      - Detail panel: all 7 sections, operator notes
-      - Request Info: flag specific fields + write message → client gets email with update link
-      - Client updates at portal.invegent.com/onboard/update?id=...&token=...
-      - Approve: creates c.client + portal_user + c.client_service_agreement + sends magic link
+      - Request Info: flag fields → client gets update link
+      - Approve: creates c.client + portal_user + agreement + sends magic link
   → Client receives magic link → portal.invegent.com
-  → Portal homepage: stats, recent posts, upcoming queue, drafts banner
 ```
 
-### DB tables (all live)
-| Table | Purpose |
-|---|---|
-| `c.platform_channel` | 8 channel types seeded |
-| `c.service_package` | 4 packages (starter/standard/growth/professional) v1 |
-| `c.service_package_channel` | channel/package mappings |
-| `c.onboarding_submission` | client form submissions |
-| `c.client_service_agreement` | agreements locked at signing |
-| `c.client_channel_allocation` | per-client custom overrides |
-
-### Service packages (v1, current)
-| Package | Price | Platforms | Posts/week |
-|---|---|---|---|
-| Starter | $500/mo | Facebook | 10 (5 auto + 5 series) |
-| Standard | $900/mo | Facebook + LinkedIn | 13 |
-| Growth | $1,500/mo | Facebook + LinkedIn + Instagram | 18 |
-| Professional | $2,000/mo | All + YouTube + Email | 22 |
-
-### SECURITY DEFINER functions (all live)
-- `public.submit_onboarding(JSONB)` — anon callable, inserts to c.onboarding_submission
-- `public.get_onboarding_submissions(TEXT)` — list with package details
-- `public.get_onboarding_submission_detail(UUID)` — full detail for review
-- `public.request_onboarding_info(UUID, JSONB, TEXT, UUID)` — flags fields, sets update_token
-- `public.approve_onboarding(UUID, TEXT)` — creates client + portal_user + agreement
-- `public.reject_onboarding(UUID, TEXT, TEXT)` — marks rejected
-- `public.update_onboarding_submission(UUID, UUID, JSONB)` — anon callable, client updates
-- `public.validate_update_token(UUID, UUID)` — anon callable, returns missing_fields + operator_notes
-- `public.get_portal_dashboard(UUID)` — portal homepage stats
-- `public.get_portal_recent_posts(UUID, INTEGER)` — recent published posts
-- `public.get_portal_upcoming(UUID, INTEGER)` — upcoming queue
-- `public.get_portal_weekly_performance(UUID)` — chart data
-
-### Legal
-- Service agreement v1.0: `docs/legal/service_agreement_v1.md`
-- Clauses marked [LEGAL REVIEW REQUIRED]: NDIS compliance, limitation of liability
-- Must be reviewed by solicitor before first external client signs
-
-### Known issues / next session
-1. **Portal callback redirects to /inbox instead of /**
-   Fix: update `app/(auth)/callback/route.ts` to redirect to `/` not `/inbox`
-2. **Platform OAuth connection page missing**
-   Clients need to connect Facebook/LinkedIn pages on first login
-   This gives ICE permission tokens to publish on their behalf
-   Blocked for external Facebook clients until Meta Standard Access confirmed
-3. **Publishing schedule view missing from portal**
-   Clients should see when content is scheduled per platform
-4. **Magic link via Supabase default email unreliable to Hotmail**
-   Should route magic links through Resend (same as all other emails)
-   Fix: configure custom SMTP in Supabase Auth → use Resend SMTP credentials
-
----
-
-## TEST CLIENT — CARE FOR WELFARE ✅
+### TEST CLIENT — CARE FOR WELFARE ✅
 
 | Field | Value |
 |---|---|
@@ -195,17 +132,12 @@ Prospect → portal.invegent.com/onboard (public, 7-step form)
 | status | active |
 | portal_email | parveenkumar11@hotmail.com |
 | package | Starter $500/mo |
-| agreement | active |
-| submission_id | 730049b9-937a-4032-b284-e40cd626ffa1 |
-
-Portal login tested and confirmed working (11 Apr 2026).
-Next step: connect Facebook page via OAuth on first login.
 
 ---
 
-## SUPABASE AUTH CONFIG (updated 11 Apr 2026)
+## SUPABASE AUTH CONFIG
 
-- **Site URL:** `https://portal.invegent.com` (changed from dashboard.invegent.com)
+- **Site URL:** `https://portal.invegent.com`
 - **Redirect URLs:** dashboard.invegent.com/**, portal.invegent.com/**, portal.invegent.com/callback
 
 ---
@@ -217,10 +149,6 @@ Next step: connect Facebook page via OAuth on first login.
 | invegent-dashboard | prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg | dashboard.invegent.com | ACTIVE |
 | invegent-portal | prj_EpPsX7gCu5wGbiSJr1SA3CmjVlAa | portal.invegent.com | ACTIVE |
 | invegent-web | prj_tXhG43iaqHBtVZpvU3osyG7dLLDZ | invegent.com | ACTIVE |
-
-**Dashboard fix (11 Apr 2026):** ChannelSubscriptions.tsx was not committed to git —
-all API routes with module-level createClient() calls fixed (force-dynamic + getSupabase()).
-vercel.json added with NODE_VERSION: "20" as safeguard.
 
 ---
 
@@ -236,8 +164,6 @@ vercel.json added with NODE_VERSION: "20" as safeguard.
 | k-schema-refresh-weekly | Sunday 3am UTC | k schema refresh |
 | system-audit-weekly | Sunday 13:00 UTC | B4 health check |
 | compliance-monitor-monthly | 1st of month | compliance hash check |
-
-Note: heygen-avatar-poller-every-60s was paused — PP avatars now assigned manually.
 
 ---
 
@@ -258,31 +184,39 @@ Note: heygen-avatar-poller-every-60s was paused — PP avatars now assigned manu
 
 | Issue | Priority | Status |
 |---|---|---|
-| Portal callback → /inbox instead of / | HIGH | Fix next session |
-| Platform OAuth connection page missing | HIGH | Build next session |
-| Portal publishing schedule view | MED | Build next session |
-| Magic link email via Supabase unreliable | MED | Configure Resend SMTP |
+| Portal callback → /inbox instead of / | HIGH | In Brief 011 |
+| approved_by + compliance_flags missing from m.post_draft | HIGH | In Brief 011 |
+| serves_ndis_participants + ndis_registration_status missing from c.client | HIGH | In Brief 011 |
+| c.client_brand_profile table does not exist | HIGH | In Brief 011 |
+| Published post immutable policy not enforced | MED | In Brief 011 |
+| Platform OAuth connection page missing | HIGH | Designed (D088), not built |
+| Portal sidebar redesign | MED | Designed (D088), not built |
+| Resend SMTP for magic links (unreliable to Hotmail) | P0 | Configure in Supabase dashboard |
+| brand-scanner Edge Function | MED | Designed (D087), not built |
+| AI profile bootstrap Edge Function | MED | Designed (D087), not built |
 | Facebook tokens expiring ~50 days | MED | Refresh early June 2026 |
 | Meta App Review | 🔴 External | Business verification In Review. Check 14 Apr. |
 | LinkedIn API | 🔴 External | Community Management API review. Check 14 Apr. |
-| Legal review | 🔴 Business gate | $2–5k AUD before first external client signs |
-| Vercel MCP auth | LOW | Token expires — reconnect via Claude Desktop settings |
+| Legal review service agreement | 🔴 Business gate | $2–5k AUD before first external client signs |
 
 ---
 
 ## WHAT IS NEXT
 
-**Immediate — next session:**
-1. Fix portal callback redirect (/ not /inbox) — 5 min fix
-2. Build platform OAuth connection page in portal
-   - Shows platforms selected at onboarding
-   - Connect button per platform initiates OAuth
-   - Stores tokens in c.client_channel / publish profile
-   - Note: Facebook OAuth for external clients blocked until Meta Standard Access
-3. Build portal publishing schedule view
-4. Configure Resend SMTP in Supabase Auth for reliable magic link delivery
-5. Check Meta App Review + LinkedIn (14 Apr)
+**Immediate — Claude Code Brief 011 (ready to run):**
+See `docs/briefs/brief_011_db_foundations.md`
+Tasks: portal callback fix, audit trail columns, NDIS client fields,
+brand profile table, immutable post trigger, k registry update.
+
+**After Brief 011:**
+1. Configure Resend SMTP in Supabase Auth (manual, dashboard only, P0)
+2. Check Meta App Review + LinkedIn API (14 Apr)
+3. Build Portal sidebar redesign (D088)
+4. Build Platform OAuth connect page (D088)
+5. Build brand-scanner Edge Function (D087)
+6. Build AI profile bootstrap Edge Function (D087)
+7. Load NDIS Support Catalogue data into t.ndis_registration_group + t.ndis_support_item
+8. Legal review service agreement (L001)
 
 **Decisions pending:**
-- D084: Platform OAuth connection — use existing Facebook connect flow or new portal-specific flow?
-- D085: Magic link delivery — Resend SMTP vs Supabase custom SMTP config
+See docs/06_decisions.md Decisions Pending table.
