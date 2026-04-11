@@ -238,63 +238,34 @@ ICE's current architecture. Honest gap assessment conducted to inform roadmap pr
 
 **Gap 1 — Vector search / natural language queries (Phase 3)**
 His entire system is built on SQLite + vector embeddings allowing natural language
-queries across years of data ("what did I discuss with John?", "show all articles about X").
-ICE has no vector layer. This is what unlocks: audience intelligence, content performance
-queries in plain English, and eventually IAE audience matching.
-Build path: pgvector extension (already available in Supabase) on post_publish,
-canonical_content_item, and eventually audience_asset tables.
+queries across years of data. ICE has no vector layer. This is what unlocks:
+audience intelligence, content performance queries in plain English, and eventually
+IAE audience matching. Build path: pgvector on post_publish + canonical_content_item.
 
 **Gap 2 — Parallel agent execution (Phase 3/4)**
-His "business advisory council" runs 8 specialist agents simultaneously against 14 data
-sources nightly. ICE agents run sequentially. For ICE this means: when B5 weekly manager
-report is built, it should run multiple specialist sub-analyses in parallel rather than
-a single linear summary. Supabase Edge Functions support concurrent HTTP calls — this
-is an architectural pattern change, not a new vendor.
+When B5 weekly manager report is built, it should run multiple specialist
+sub-analyses in parallel rather than a single linear summary.
 
 **Gap 3 — Self-improving prompts (Phase 3)**
-When he rejects an extracted action item, his system learns and updates its own prompt.
-ICE equivalent: when auto-approver rejects a draft, the rejection reason should feed back
-to update the client_ai_profile scoring thresholds over time. Currently rejections are
-logged but thresholds never update automatically. Build after B5 is live.
+Rejection reason → feed back to update client_ai_profile scoring thresholds over time.
 
 **Gap 4 — SOUL.md / ICE identity files for OpenClaw (F5 — near term)**
-He gets significant leverage from identity.md and soul.md giving his bot personality,
-context switching (formal in Slack vs casual in DM), and institutional knowledge.
-OpenClaw SOUL.md for @InvegentICEbot is already on the action register as F5.
-This should be prioritised — it gives the Telegram bot the same leverage at near zero cost.
-Content: ICE architecture overview, all 12 client professions, NDIS compliance context,
-PK's communication preferences, when to escalate vs handle autonomously.
+ICE context for @InvegentICEbot — already on action register as F5.
 
 **Gap 5 — Nightly parallel intelligence council (Phase 4)**
-His nightly business council (8 agents, 14 data sources) is inspiring. ICE equivalent
-post-C1 (Insights back-feed): a nightly cross-client intelligence run that looks at
-all client performance data together, identifies patterns, and surfaces recommendations.
-This is the long-term form of the B5 weekly report — not a replacement but an evolution.
-Build trigger: 3+ paying clients with 3+ months of Insights data.
+Cross-client intelligence run post-C1. Build trigger: 3+ paying clients.
 
 **Gap 6 — Security council (Phase 3)**
-Nightly codebase audit by 4 specialist security agents (offensive, defensive, data
-privacy, operational realism). ICE has compliance monitoring but no automated security
-review of its own codebase. Given ICE handles client Facebook tokens and NDIS data,
-this matters. Simple version: a monthly Claude Code run against the Edge Functions
-checking for exposed secrets, SQL injection risks, token handling issues.
-Add to Phase 3 deliverables.
+Monthly Claude Code run against Edge Functions: exposed secrets, SQL injection,
+token handling. ICE handles client Facebook tokens and NDIS data — this matters.
 
 **What NOT to copy:**
-- Local SQLite / MacBook-first architecture — ICE's Supabase-cloud architecture
-  is correct for a multi-client managed service. His local-first approach serves a
-  solo personal assistant. Don't change this.
-- Personal CRM / Fathom meeting pipeline — not relevant to ICE's use case.
-- Food journal / personal life tracking — obviously not relevant.
-- Video/image generation via VO and NanoBanana — ICE has Creatomate for images.
-  Video generation is a Phase 4 consideration when YouTube content demand justifies it.
+Local SQLite architecture, personal CRM, food journal, VO/NanoBanana video gen.
 
 **Key principle extracted:**
-Every piece of his system feeds every other piece — CRM informs the business council,
-knowledge base informs video ideas, social stats inform the business council.
-ICE should apply this same cross-pollination: Insights data should feed auto-approver
-thresholds, feed scoring, and the audience asset layer simultaneously.
-The pipeline should learn from what it publishes, not just publish and forget.
+Every piece should feed every other piece — Insights → auto-approver thresholds,
+feed scoring, and audience asset layer simultaneously. The pipeline should learn
+from what it publishes, not just publish and forget.
 
 ---
 
@@ -355,35 +326,9 @@ participating in dual-character conversations. Dual-character conversation forma
 is explicitly not available to a character until they have reached a minimum solo
 video threshold.
 
-**Rationale:**
-An audience cannot care about a conversation between two characters they do not
-yet recognise. Character identity — voice, perspective, tone, subject matter
-expertise — is built through repeated individual appearances. A conversation
-between two unknown characters has no narrative weight because there is no prior
-relationship between the character and the viewer.
-
-This mirrors how effective serialised content works: Alex appears in 10 solo videos
-as an NDIS Participant explaining his experience → the audience knows who Alex is
-→ a conversation between Alex and Sarah the Support Coordinator now has stakes,
-familiarity, and emotional resonance.
-
 **Threshold (tentative — review after first 30 days of avatar content):**
 - Minimum solo videos published per character before conversation eligibility: **10**
 - Both characters in a proposed conversation must independently meet the threshold
-- Threshold is per-character, not per-role — if two different Realistic avatars
-  are assigned the same role in future, they each build their own count
-
-**System implication for dual-character build (D082):**
-When video_short_avatar_conversation format is eventually built, the format advisor
-must check `c.brand_avatar.solo_video_count` (or equivalent) before selecting it.
-If either character in the proposed pair has fewer than 10 published solo videos,
-the format advisor falls back to a solo format for the more established character.
-
-**Content strategy implication:**
-The format advisor should currently favour the most established character for any
-given signal. As more characters accumulate solo video history, the advisor naturally
-diversifies across the cast. Character rotation should be signal-driven, not
-round-robin — the best character for the topic gets the video.
 
 **Current cast maturity — NDIS Yarns (as of 9 Apr 2026):**
 
@@ -391,15 +336,7 @@ round-robin — the best character for the topic gets the video.
 |---|---|---|---|
 | Alex (Realistic) | NDIS Participant | 1 (test) | ❌ |
 | Alex (Animated) | NDIS Participant | 1 (test) | ❌ |
-| Sarah | Support Coordinator | 0 | ❌ |
-| Marcus | Local Area Coordinator | 0 | ❌ |
-| Priya | Allied Health Provider | 0 | ❌ |
-| James | Plan Manager | 0 | ❌ |
-| Caleb | Support Worker | 0 | ❌ |
-| Diane | Family / Carer | 0 | ❌ |
-
-All characters start at zero. The pipeline begins building character identity now.
-Review conversation eligibility at 60-day mark (approximately June 2026).
+| All others | Various | 0 | ❌ |
 
 ---
 
@@ -411,23 +348,60 @@ video_short_avatar_conversation format is deferred to Phase 4.
 Single-character avatar videos run first. Conversations unlock when characters
 are mature per D081 threshold.
 
-**What it requires when built:**
-- New script structure: `turns[]` array with role + text per turn
-- ai-worker: new `generateConversationScript()` branch for this format
-- heygen-worker: sequential per-turn rendering — separate HeyGen job per turn
-- Video stitching: ffmpeg-wasm Edge Function or Creatomate video composition API
-- New `ice_format_key`: `video_short_avatar_conversation` in t.5.3_content_format
-- Format advisor: D081 maturity gate — checks solo_video_count before selecting
-
 **Build trigger:**
 - Both characters in a proposed pair have ≥ 10 published solo videos (D081)
 - Single-character avatar format is proven — engagement data exists
 - Stitching solution validated (ffmpeg-wasm vs Creatomate video composition)
 
-**Not building this now because:**
-Character identity must precede character interaction. Content value of a
-conversation is conditional on the audience knowing both participants.
-See D081.
+---
+
+## D083 — Client Onboarding Pipeline Architecture
+**Date:** 11 April 2026 | **Status:** ✅ Live
+
+**Decision:**
+Client onboarding follows a multi-step public form → dashboard review → atomic approve
+pattern. All functions are SECURITY DEFINER in public schema to support anon callers
+and service role restrictions on c/m schema DML.
+
+**What was built:**
+- 7-step public onboarding form at `portal.invegent.com/onboard` (no auth required)
+- `c.onboarding_submission` table — captures all 7 sections as JSONB
+- `c.client_service_agreement` table — agreement locked at approval time
+- `c.service_package` + `c.service_package_channel` — 4 packages seeded
+- `c.platform_channel` — 8 channel types seeded
+- onboarding-notifier v2.0.0 — handles new_submission, needs_info, approved events
+
+**SECURITY DEFINER functions (all anon/service-role callable):**
+- `public.submit_onboarding(JSONB)` — anon callable, inserts to c.onboarding_submission
+- `public.get_onboarding_submissions(TEXT)` — list with package details
+- `public.get_onboarding_submission_detail(UUID)` — full detail for review
+- `public.request_onboarding_info(UUID, JSONB, TEXT, UUID)` — flags fields, sets update_token
+- `public.approve_onboarding(UUID, TEXT)` — creates client + portal_user + agreement atomically
+- `public.reject_onboarding(UUID, TEXT, TEXT)` — marks rejected
+- `public.update_onboarding_submission(UUID, UUID, JSONB)` — anon callable, client updates
+- `public.validate_update_token(UUID, UUID)` — anon callable, returns missing_fields + operator_notes
+
+**Dashboard flows:**
+- Onboarding tab: submission list → detail panel with 7 sections
+- Request Info: flag fields + write message → client email with update link
+- Approve: atomic creation of client, portal_user, agreement → magic link sent
+
+**Atomic approval pattern:**
+`approve_onboarding()` creates c.client + auth.users portal_user + c.client_service_agreement
+in a single transaction. If any step fails, nothing is created. Prevents partial state.
+
+**Key learnings:**
+- `approve_onboarding` needed `client_slug` not `client_name` — fixed
+- `validate_update_token` must return `operator_notes` so client knows what to fix
+- Auth Site URL must be `portal.invegent.com` (not dashboard) for magic link callbacks
+- PostgREST cannot be used for c/f schema DML — SECURITY DEFINER pattern is the only path
+
+**First client onboarded:** Care for Welfare (client_id: 3eca32aa-e460-462f-a846-3f6ace6a3cae)
+Portal login confirmed working 11 Apr 2026.
+
+**Pending decisions (not yet made):**
+- D084: Platform OAuth connection — use existing Facebook connect flow or new portal-specific flow?
+- D085: Magic link delivery — Resend SMTP vs Supabase custom SMTP config
 
 ---
 
@@ -435,8 +409,10 @@ See D081.
 
 | Decision | Context | Target |
 |---|---|---|
+| D084: Platform OAuth connection | Portal page for clients to connect Facebook/LinkedIn — use existing flow or new portal-specific? | Next session |
+| D085: Magic link delivery | Resend SMTP vs Supabase custom SMTP — magic link via Supabase default unreliable to Hotmail | Next session |
 | Prospect demo generator (F1) | ~1 day. Needed before first external client conversation | Phase 3 |
-| Client health weekly report email (B5) | ~2 days. Sunday Edge Function via Resend | Phase 2 |
+| Client health weekly report email (B5) | ~2 days. Sunday Edge Function via Resend | Phase 3 |
 | Publisher schedule wiring | c.client_publish_schedule → publisher assigns scheduled_for | Phase 3 |
 | AI compliance rule generator | ANZSCO tasks + code_of_conduct_url → Claude generates draft rules | Phase 3 |
 | Content vertical → topic mapping | Map 13 verticals to relevant topics for bundler precision | Phase 3 |

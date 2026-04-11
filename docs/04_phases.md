@@ -25,7 +25,7 @@ A phase does not end until ALL done criteria are met.
 **1.4 Both Clients Publishing** ✅ — 5+ posts/week
 **1.5 Security & Backups** ✅ — Supabase Pro, daily backups
 **1.6 Meta App Review** 🔄 — Screencasts + icon uploaded. Business verification In Review.
-  Next check: 10 Apr 2026 (calendar set).
+  Next check: 14 Apr 2026 (calendar set).
 **1.7 Dead Letter Queue** ✅ — deployed
 
 ---
@@ -138,6 +138,25 @@ Personal brand and YouTube pipeline built. First external client optional.
 **3.9 — LinkedIn Live**
 - [ ] 0.5 days when API approves. Code done.
 
+### Deliverables — Client Onboarding
+
+**3.16 — Client Onboarding Pipeline** ✅ DEPLOYED 11 Apr 2026 (D083)
+- 7-step public onboarding form at portal.invegent.com/onboard
+- Dashboard review panel: all 7 sections, operator notes, Request Info flow
+- Request Info: flags specific fields, writes message → client gets email with update link
+- Client updates at portal.invegent.com/onboard/update?id=...&token=...
+- Approve flow: creates c.client + portal_user + c.client_service_agreement atomically
+- onboarding-notifier v2.0.0: operator email + client confirmation email
+- 4 service packages: Starter $500 / Standard $900 / Growth $1,500 / Professional $2,000
+- Auth Site URL changed to portal.invegent.com
+- Care for Welfare onboarded as first test client (client_id: 3eca32aa) — end-to-end verified
+
+**Known gaps (next session):**
+- Portal callback redirects to /inbox instead of / — fix needed
+- Platform OAuth connection page missing — clients cannot yet connect Facebook/LinkedIn pages
+- Portal publishing schedule view missing
+- Magic link delivery unreliable via Supabase default — needs Resend SMTP
+
 ### Deliverables — Client Sales Readiness
 
 **3.10 — Prospect Demo Generator**
@@ -152,7 +171,7 @@ Personal brand and YouTube pipeline built. First external client optional.
 - refresh_post_format_performance() running daily, data flowing
 
 **3.13 — First External Client (Optional)**
-- [ ] When prospect demo ready + NDIS proof doc prepared
+- [ ] When prospect demo ready + NDIS proof doc prepared + legal review complete
 
 ### Phase 3 Done When
 1. AI Diagnostic Agent Tier 1 running ✅
@@ -162,6 +181,7 @@ Personal brand and YouTube pipeline built. First external client optional.
 5. NDIS compliance system prompt ✅
 6. AI Compliance Reviewer live ✅ (D065)
 7. Profession dimension deployed ✅ (D066)
+8. Client onboarding pipeline live ✅ (D083)
 
 ---
 

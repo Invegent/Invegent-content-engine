@@ -1,5 +1,5 @@
 # ICE — Documentation Index
-## Last updated: 8 April 2026
+## Last updated: 11 April 2026
 
 This is the reading map for the `/docs` folder. Every document is listed with its purpose and when to read it. The folder has grown to 20+ files — this index prevents getting lost.
 
@@ -31,7 +31,7 @@ This is the reading map for the `/docs` folder. Every document is listed with it
 |---|---|
 | `03_blueprint.md` | Full technical architecture — stack, schema map, pipeline flow, the four agents |
 | `04_phases.md` | Phase deliverables with status — what is done, what is planned, done criteria |
-| `06_decisions.md` | Architecture decisions log — D001–D075+. Every significant decision recorded here with reasoning |
+| `06_decisions.md` | Architecture decisions log — D001–D083+. Every significant decision recorded here with reasoning |
 | `02_scope.md` | Product scope — the four content types, signal sources, platforms, what ICE does not do |
 
 ---

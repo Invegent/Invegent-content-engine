@@ -1,5 +1,5 @@
 # ICE — Risk Register
-## Last updated: April 2026 (full rewrite — previous version was Phase 1 era, now superseded)
+## Last updated: 11 April 2026
 
 ---
 
@@ -111,6 +111,7 @@ A risk with no mitigation in progress is an unacceptable gap.
 - Auto-approver v1.4 running — reduces manual draft review significantly
 - Dead letter queue — pipeline failures are visible without manual monitoring
 - Dashboard monitoring — operational checks in under 30 minutes/day
+- Client onboarding pipeline live — new client setup is now a structured self-service flow, not manual configuration
 
 **Action required:** Measure actual operational hours per client weekly. If approaching 2 hours/week per client, prioritise the automation backlog before new client conversations.
 
@@ -183,9 +184,9 @@ A risk with no mitigation in progress is an unacceptable gap.
 
 ## Risk 8 — Avatar Consent Failure
 **Category:** Legal / Trust
-**Likelihood:** Low (if consent workflow is built), High (if it isn't)
+**Likelihood:** Low (consent form live), Medium (if portal workflow not built before external clients)
 **Impact:** High — legal action, reputational damage, platform account suspension
-**Status:** 🔴 OPEN — consent workflow not yet built
+**Status:** 🟡 PARTIALLY MITIGATED — Consent form v1.0 live (L005 satisfied). No automated in-portal workflow yet.
 
 **Description:** HeyGen avatar creation requires biometric data (video footage). Creating an avatar without explicit written consent, or using it for purposes beyond what was consented to, creates serious legal exposure under Australian privacy law and HeyGen's own ToS.
 
@@ -193,7 +194,9 @@ A risk with no mitigation in progress is an unacceptable gap.
 
 **Response:** Immediate suspension of avatar video production for that client. Legal counsel consulted immediately.
 
-**Action required:** Build consent workflow before HeyGen integration is built. No avatar is ever created without signed consent stored in ICE's database. See L005 in legal register.
+**Current state:** Consent form v1.0 is live and was used for all existing avatar builds (NDIS Yarns cast + Property Pulse cast). L005 is satisfied for current internal clients. The gap is that there is no automated consent gate in the client portal — an external client's avatar could theoretically be built without consent being formally collected through the system.
+
+**Action required:** Before any external client avatar build, ensure the consent form is collected and stored in the database against that client. Build a formal consent gate into the portal onboarding flow when the platform OAuth connection page is built. See L005 in legal register.
 
 ---
 
@@ -231,7 +234,7 @@ A risk with no mitigation in progress is an unacceptable gap.
 | Performance feedback loop | Active | Medium | 🟡 Partial | Keep insights-worker running daily |
 | Copyright / content provenance | Low | Medium | 🟡 Monitoring | Include in legal review |
 | pg_cron concurrency at scale | Low now | Medium | 🟡 Monitoring | Revisit at 10+ clients |
-| Avatar consent | Low (if workflow built) | High | 🔴 Open | Build before HeyGen integration |
+| Avatar consent | Low (form live) | High | 🟡 Partial | Build portal consent gate before external client avatars |
 | Cold start / slow growth | Medium | High | 🟡 Active | Network seeding + proof document |
 
 ---
@@ -247,6 +250,6 @@ Run on the first Monday of each month:
 - [ ] AI costs — check Anthropic usage dashboard
 - [ ] Operational hours — did last month stay under 15 hours total?
 - [ ] Legal register — any new issues to add?
-- [ ] Avatar consent — is the workflow built before HeyGen is integrated?
+- [ ] Avatar consent — is consent collected and stored for every client with active avatars?
 - [ ] Any risks resolved? Update status above.
 - [ ] Any new risks identified? Add above.
