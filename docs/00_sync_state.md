@@ -1,19 +1,8 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-12 (full reconciliation — Brief 011 verified, all checks pass)
+> Last written: 2026-04-12 (session close — 6 briefs executed, full onboarding pipeline live)
 > Written by: PK + Claude reconciliation
-
----
-
-## HOW TO USE THIS FILE
-
-At the start of every session involving ICE technical work, read this file
-before answering any question or writing any code. It tells you what is
-actually deployed right now — not what the docs say should be deployed.
-If this file contradicts memory or 04_phases.md, this file wins.
-
-For the full document map, see `docs/00_docs_index.md`.
 
 ---
 
@@ -47,16 +36,18 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
 | Function | Version | Status | Notes |
 |---|---|---|---|
+| ai-profile-bootstrap | 1 | ACTIVE | v1.0.0 — NEW 12 Apr |
 | ai-worker | 71 | ACTIVE | v2.7.1 |
 | auto-approver | 29 | ACTIVE | v1.4.0 |
+| brand-scanner | 1 | ACTIVE | v1.0.0 — NEW 12 Apr |
 | compliance-monitor | 14 | ACTIVE | monthly hash check |
 | compliance-reviewer | 4 | ACTIVE | v1.3.0 |
 | content_fetch | 65 | ACTIVE | |
 | draft-notifier | 16 | ACTIVE | |
 | email-ingest | 15 | ACTIVE | |
 | feed-intelligence | 20 | ACTIVE | |
-| heygen-avatar-creator | ACTIVE | v2.2.0 | fire-and-forget photo avatar generation |
-| heygen-avatar-poller | ACTIVE | v2.0.0 | state machine, tries api2 endpoints |
+| heygen-avatar-creator | ACTIVE | v2.2.0 | |
+| heygen-avatar-poller | ACTIVE | v2.0.0 | |
 | heygen-worker | 2 | ACTIVE | v1.1.0 |
 | image-worker | 37 | ACTIVE | v3.9.2 |
 | ingest | 95 | ACTIVE | v8-youtube-channel |
@@ -80,91 +71,72 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
 | Metric | Value | Status |
 |---|---|---|
-| Posts published last 7 days | 26 | ✅ Healthy |
-| Drafts needing review | 5 | ✅ Normal |
-| Queue pending | 2 | ✅ Normal |
-| Dead drafts | 91 | ⚠️ Backlog (historic, non-blocking) |
+| Posts published last 7 days | 29 | ✅ Healthy |
 | Stuck AI jobs (>2h) | 0 | ✅ Clean |
 | k tables documented | 144 | ✅ |
 
 ---
 
-## BRIEF 011 — VERIFIED COMPLETE ✅ (12 Apr 2026)
+## FULL ONBOARDING PIPELINE — LIVE ✅ (12 Apr 2026)
 
-All 7 DB checks passed against live database:
-
-| Check | Expected | Found | Status |
-|---|---|---|---|
-| m.post_draft audit trail cols | 4 | 4 | ✅ |
-| c.client NDIS fields | 2 | 2 | ✅ |
-| c.client_publish_profile approval col | 1 | 1 | ✅ |
-| c.client_brand_profile extraction cols | 6 | 6 | ✅ |
-| NDIS taxonomy tables | 4 | 4 | ✅ |
-| Immutable delete triggers | 2 | 2 | ✅ |
-| CFW NDIS status set | 1 | 1 | ✅ |
-
-Portal callback fix confirmed in invegent-portal: last redirect is `${origin}/` not `/inbox`.
-
----
-
-## NDIS YARNS AVATAR CAST — COMPLETE ✅
-
-All 7 roles × 2 styles = 14 slots assigned.
-
-| Role | Realistic | Animated | Voice |
-|---|---|---|---|
-| NDIS Participant (Alex) | ✅ | ✅ | WaFYykjEkTFpHMit8egg |
-| Support Coordinator | ✅ | ✅ | P2AIevlJPypjV8xL6zXE |
-| Local Area Coordinator | ✅ | ✅ | tweVhPmvCaH9FHkXStKT |
-| Allied Health Provider | ✅ | ✅ | wzGb1z85RFicc4sA2pQ8 |
-| Plan Manager | ✅ | ✅ | gmGBcI4Ay4BqAUa6viFq |
-| Support Worker | ✅ | ✅ | IAfCHMRVp9GOvZIE0GSv |
-| Family / Carer | ✅ | ✅ | zSyIsT1kTH7ds4r1Jf7N |
-
----
-
-## PROPERTY PULSE AVATAR CAST — COMPLETE ✅ (11 Apr 2026)
-
-All 7 roles × 2 styles = 14 slots. Created manually in HeyGen UI.
-
-| Role | Character | Realistic | Animated |
-|---|---|---|---|
-| First Home Buyer | Jordan | ✅ | ✅ |
-| Property Investor | Michael | ✅ | ✅ |
-| Mortgage Broker | Rachel | ✅ | ✅ |
-| Buyer's Agent | Daniel | ✅ | ✅ |
-| Real Estate Agent | Lisa | ✅ | ✅ |
-| Landlord | Robert | ✅ | ✅ |
-| Tenant | Aisha | ✅ | ✅ |
-
----
-
-## CLIENT ONBOARDING PIPELINE — LIVE ✅ (11 Apr 2026)
-
-Full end-to-end tested with Care for Welfare.
-
-### Flow
 ```
-Prospect → portal.invegent.com/onboard (public, 7-step form)
-  → Submit → c.onboarding_submission created (status: pending)
-  → onboarding-notifier fires (operator + client emails)
-  → PK reviews at dashboard.invegent.com/onboarding
-      - Request Info: flag fields → client gets update link
-      - Approve: creates c.client + portal_user + agreement + sends magic link
-  → Client receives magic link → portal.invegent.com (now lands on / home)
+Prospect → portal.invegent.com/onboard
+  Step 1: Contact + logo upload (optional base64)
+  Step 2: Business + service list + NDIS questions
+  Step 4: Content objectives multi-select
+  → Submit → c.onboarding_submission (form_data JSONB stores ALL fields)
+  → onboarding-notifier fires
+
+PK reviews at dashboard.invegent.com/onboarding
+  → Sees: Services, NDIS, Objectives, Logo preview sections
+  → Sees: 9-item ReadinessChecklist
+  → Clicks "Run Scans" (violet button):
+      brand-scanner: website scrape → logo → colours → submission JSONB
+      ai-profile-bootstrap: Jina + Claude → persona + system prompt → submission JSONB
+  → Checklist shows brand + AI results
+  → PK approves:
+      c.client created
+      c.client_brand_profile created (from brand_scan_result)
+      c.client_ai_profile created (status='draft', from ai_profile_scan_result)
+      portal_user created, magic link sent
+
+Client logs in → portal.invegent.com
+  → Left sidebar (desktop) + bottom tab bar (mobile)
+  → Amber banner if platforms not connected
+  → /connect page: Facebook card (coming soon until Meta approval)
+
+PK activates AI profile (status: draft → active) → content generation starts
 ```
 
-### TEST CLIENT — CARE FOR WELFARE ✅
+### Critical fix (12 Apr):
+`c.onboarding_submission` had no `form_data` JSONB column.
+Added column + updated `submit_onboarding()` to store full payload.
+All new submissions now preserve logo, services, NDIS, objectives data.
 
-| Field | Value |
-|---|---|
-| client_id | 3eca32aa-e460-462f-a846-3f6ace6a3cae |
-| client_name | Care For Welfare Pty Ltd |
-| status | active |
-| portal_email | parveenkumar11@hotmail.com |
-| package | Starter $500/mo |
-| serves_ndis_participants | true |
-| ndis_registration_status | registered |
+---
+
+## PORTAL ARCHITECTURE — LIVE (12 Apr 2026)
+
+- **invegent-portal** (`portal.invegent.com`)
+  - Left collapsible sidebar (desktop) + bottom tab bar (mobile)
+  - Client name + plan + avatar in sidebar footer
+  - Inbox badge (pending drafts count)
+  - /connect page: platform cards, connected/not connected, OAuth routes built
+  - Facebook OAuth: built, gated by `FACEBOOK_OAUTH_ENABLED=true` env var
+  - LinkedIn OAuth: built, gated by `LINKEDIN_OAUTH_ENABLED=true` env var
+  - Connect banner on home if platforms unconnected
+
+## ENV VARS NEEDED IN VERCEL (invegent-portal) — NOT YET SET
+
+```
+NEXT_PUBLIC_PORTAL_URL=https://portal.invegent.com
+FACEBOOK_OAUTH_ENABLED=false  ← set true when Meta Standard Access confirmed
+FACEBOOK_APP_ID=<from Meta App dashboard>
+FACEBOOK_APP_SECRET=<secret>
+LINKEDIN_OAUTH_ENABLED=false  ← set true when LinkedIn API approved
+LINKEDIN_CLIENT_ID=78im589pktk59k
+LINKEDIN_CLIENT_SECRET=<secret>
+```
 
 ---
 
@@ -172,6 +144,7 @@ Prospect → portal.invegent.com/onboard (public, 7-step form)
 
 - **Site URL:** `https://portal.invegent.com`
 - **Redirect URLs:** dashboard.invegent.com/**, portal.invegent.com/**, portal.invegent.com/callback
+- **SMTP:** Resend configured (noreply@invegent.com, port 465) ✅
 
 ---
 
@@ -209,7 +182,7 @@ Prospect → portal.invegent.com/onboard (public, 7-step form)
 | Facebook | Property Pulse | ~6 Jun 2026 (~55d) |
 | Facebook | NDIS-Yarns | ~1 Jun 2026 (~50d) |
 
-⚠️ Facebook tokens need refreshing in ~50 days. Diarise for early June 2026.
+⚠️ Facebook tokens need refreshing early June 2026.
 
 ---
 
@@ -217,41 +190,29 @@ Prospect → portal.invegent.com/onboard (public, 7-step form)
 
 | Issue | Priority | Status |
 |---|---|---|
-| Resend SMTP for magic links (unreliable to Hotmail) | P0 | Configure in Supabase Auth dashboard — manual, 5 min |
-| Platform OAuth connection page missing | HIGH | Designed (D088) — next build session |
-| Portal sidebar redesign | HIGH | Designed (D088) — next build session |
-| brand-scanner Edge Function | MED | Designed (D087) — next build session |
-| AI profile bootstrap Edge Function | MED | Designed (D087) — next build session |
-| Onboarding form updates (logo upload, service list, objectives) | MED | Designed (D087) — next build session |
-| Dashboard onboarding checklist panel + Run Scans button | MED | Designed (D087) — next build session |
-| NDIS Support Catalogue data load | MED | Tables exist — needs NDIA Excel file |
-| ai-worker: write compliance_flags on generation | MED | Edge Function update — separate brief |
-| auto-approver: write approved_by + scores | MED | Edge Function update — separate brief |
-| Facebook tokens expiring ~50 days | MED | Refresh early June 2026 |
+| Facebook token expiry ~50 days | MED | Refresh early June 2026 |
+| Portal CSS custom properties per client | LOW | Not yet built — reads c.client_brand_profile, applies colours |
+| ai-worker: write compliance_flags on generation | MED | Edge Function update needed |
+| auto-approver: write approved_by + scores | MED | Edge Function update needed |
+| NDIS Support Catalogue data load | MED | Tables exist, need NDIA Excel from ndia.gov.au |
 | Meta App Review | 🔴 External | Business verification In Review. Check 14 Apr. |
 | LinkedIn API | 🔴 External | Community Management API review. Check 14 Apr. |
-| Legal review service agreement | 🔴 Business gate | $2–5k AUD before first external client signs |
+| Legal review (L001) | 🔴 Business gate | $2–5k AUD before first external client signs |
 
 ---
 
 ## WHAT IS NEXT
 
-**Immediate (this week):**
-1. ⭐ Configure Resend SMTP in Supabase Auth — P0, manual, 5 minutes. Supabase dashboard → Auth → Settings → Custom SMTP → enter Resend credentials.
-2. Check Meta App Review + LinkedIn API status — 14 Apr (Monday)
+**Tomorrow (Mon 14 Apr):**
+1. Check Meta App Review status — if Standard Access confirmed, set FACEBOOK_OAUTH_ENABLED=true in Vercel
+2. Check LinkedIn API status — if approved, set LINKEDIN_OAUTH_ENABLED=true in Vercel
 
-**Next build session (Portal + Onboarding):**
-3. Portal sidebar redesign (D088) — collapsible left sidebar, client identity in footer
-4. Platform OAuth connect page /connect (D088) — Facebook + LinkedIn
-5. Onboarding form updates — logo upload, service list, content objectives (D087)
-6. Dashboard checklist panel + Run Scans button (D087)
-7. brand-scanner Edge Function — async website → logo → colours (D087)
-8. AI profile bootstrap Edge Function — website+Facebook → Claude draft (D087)
-
-**Ongoing:**
-9. NDIS Support Catalogue data load — requires NDIA Excel (separate task)
-10. Legal review service agreement L001 — engage solicitor
-11. ai-worker + auto-approver Edge Function updates for audit trail columns
+**Next build session options:**
+3. Portal CSS custom properties (Brief 018) — client brand colours/logo in portal. Small, ~2hrs.
+4. ai-worker update — write compliance_flags on draft generation
+5. auto-approver update — write approved_by + auto_approval_scores
+6. NDIS Support Catalogue load — requires NDIA Excel file
+7. Legal review engagement — find solicitor, brief them
 
 **Decisions pending:**
 See docs/06_decisions.md Decisions Pending table.
