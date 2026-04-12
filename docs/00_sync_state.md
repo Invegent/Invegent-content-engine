@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-12 (session close — 7 briefs executed, portal fully personalised)
+> Last written: 2026-04-12 (doc review — cron jobs corrected, decisions log cleaned)
 > Written by: PK + Claude reconciliation
 
 ---
@@ -72,7 +72,9 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 | Metric | Value | Status |
 |---|---|---|
 | Posts published last 7 days | 29 | ✅ Healthy |
+| Drafts needing review | 1 | ✅ Normal |
 | Stuck AI jobs (>2h) | 0 | ✅ Clean |
+| Clients active | 3 | Property Pulse, NDIS-Yarns, Care For Welfare |
 | k tables documented | 144 | ✅ |
 
 ---
@@ -101,29 +103,24 @@ PK reviews at dashboard.invegent.com/onboarding
       portal_user created, magic link sent
 
 Client logs in → portal.invegent.com
-  → Left sidebar with CLIENT BRAND COLOURS + LOGO
-  → Active nav items in brand primary colour
-  → Mobile bottom tab bar in brand colour
+  → Left sidebar with CLIENT BRAND COLOURS + LOGO (CSS custom properties)
   → Amber connect banner if platforms unconnected
-  → /connect page: Facebook card (coming soon until Meta approval)
+  → /connect page: platform cards, OAuth routes built, gated by env vars
 
 PK activates AI profile (status: draft → active) → content generation starts
 ```
 
-### Critical fix (12 Apr):
-`c.onboarding_submission` had no `form_data` JSONB column.
-Added column + updated `submit_onboarding()` to store full payload.
+Critical fix (12 Apr): c.onboarding_submission had no form_data JSONB column — added.
 
 ---
 
 ## PORTAL ARCHITECTURE — FULLY LIVE (12 Apr 2026)
 
 - Left collapsible sidebar (desktop) + bottom tab bar (mobile)
-- Client logo in sidebar top badge (fallback to "I" if no logo)
-- Active nav items in brand primary colour via CSS custom properties
-- Avatar circle in brand colour
-- Fallback: `#06b6d4` (cyan-500) — zero visual regression for clients without brand profile
-- Brand colours appear automatically on next login after brand-scanner runs on approval
+- Client logo in sidebar top badge (fallback to "I")
+- Active nav items + avatar circle in brand primary colour (CSS vars)
+- Brand colours appear automatically on next login after brand-scanner runs
+- Fallback: #06b6d4 (cyan-500) — zero visual regression without brand profile
 
 ## ENV VARS NEEDED IN VERCEL (invegent-portal) — NOT YET SET
 
@@ -147,41 +144,88 @@ LINKEDIN_CLIENT_SECRET=<secret>
 
 ---
 
-## VERCEL DEPLOYMENTS
+## STORAGE BUCKETS
 
-| App | Project ID | Domain | Status |
-|---|---|---|---|
-| invegent-dashboard | prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg | dashboard.invegent.com | ACTIVE |
-| invegent-portal | prj_EpPsX7gCu5wGbiSJr1SA3CmjVlAa | portal.invegent.com | ACTIVE |
-| invegent-web | prj_tXhG43iaqHBtVZpvU3osyG7dLLDZ | invegent.com | ACTIVE |
+| Bucket | Public | Purpose |
+|---|---|---|
+| brand-assets | true | Brand visual assets (pre-existing) |
+| client-assets | false | Logo uploads per submission — NEW 12 Apr |
+| post-images | true | Generated post images |
+| post-videos | true | Generated post videos |
 
 ---
 
-## PG_CRON JOBS — ALL ACTIVE
+## VERCEL DEPLOYMENTS
 
-| Job | Schedule | Function |
+| App | Project ID | Domain | Status | Last deploy |
+|---|---|---|---|---|
+| invegent-dashboard | prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg | dashboard.invegent.com | READY | `550cb549` |
+| invegent-portal | prj_EpPsX7gCu5wGbiSJr1SA3CmjVlAa | portal.invegent.com | READY | `8b4b54b8` |
+| invegent-web | prj_tXhG43iaqHBtVZpvU3osyG7dLLDZ | invegent.com | ACTIVE | — |
+
+---
+
+## PG_CRON JOBS — 33 ACTIVE (verified 12 Apr 2026)
+
+The sync state previously listed a simplified 8-job summary. Actual count is 33.
+Full list always available via:
+```sql
+SELECT jobname, schedule, active FROM cron.job ORDER BY jobname;
+```
+
+Key jobs for operational awareness:
+
+| Job | Schedule | Notes |
 |---|---|---|
-| rss-ingest-run-all-hourly | every 6h | ingest /run-all |
-| video-worker-every-30min | every 30 min | video-worker |
-| heygen-worker-every-30min | every 30 min | heygen-worker |
-| youtube-publisher (15 min) | every 15 min | youtube-publisher |
-| auto-approver | every 30 min | auto-approver |
-| k-schema-refresh-weekly | Sunday 3am UTC | k schema refresh |
-| system-audit-weekly | Sunday 13:00 UTC | B4 health check |
-| compliance-monitor-monthly | 1st of month | compliance hash check |
+| ai-worker-every-5m | every 5 min | Content generation |
+| auto-approver-sweep | every 10 min | Draft approval |
+| publisher-every-10m | every 5 min | Facebook + LinkedIn publish |
+| content_fetch_every_10min | every 10 min | Full text extraction |
+| image-worker-15min | every 15 min | Image/carousel generation |
+| draft-notifier-every-30m | every 30 min | Portal inbox notifications |
+| video-worker-every-30min | every 30 min | Video generation |
+| heygen-worker-every-30min | every 30 min | HeyGen avatar builds |
+| rss-ingest-run-all-hourly | every 6h | Feed ingestion |
+| insights-worker-daily | 3am UTC daily | Facebook performance data |
+| ai-diagnostic-daily | 8pm UTC daily (6am AEST) | Pipeline health report |
+| dead-letter-sweep-daily | 2am UTC daily | Stale item cleanup |
+| compliance-monitor-monthly | 9am UTC 1st of month | Policy URL hash check |
+| k-schema-refresh-weekly | 3am UTC Sunday | k catalog refresh |
+| ice-system-audit-weekly | 1pm UTC Sunday | 12-gate system audit |
+| token-health-daily-7am-sydney | 9pm UTC daily (7am AEST) | Token expiry check |
+
+Note: `seed-and-enqueue-facebook-every-10m`, `planner-hourly`, `pipeline-doctor-every-30m`,
+`pipeline-fixer-30min`, `pipeline-health-snapshot-30m` and others also active.
 
 ---
 
 ## TOKEN CALENDAR
 
-| Platform | Client | Expiry |
-|---|---|---|
-| YouTube | NDIS-Yarns | 7 Apr 2031 |
-| YouTube | Property Pulse | 2 Apr 2031 |
-| Facebook | Property Pulse | ~6 Jun 2026 (~55d) |
-| Facebook | NDIS-Yarns | ~1 Jun 2026 (~50d) |
+| Platform | Client | Expiry | Days remaining |
+|---|---|---|---|
+| YouTube | NDIS-Yarns | 7 Apr 2031 | ~1821d |
+| YouTube | Property Pulse | 2 Apr 2031 | ~1816d |
+| Facebook | NDIS-Yarns | 31 May 2026 | ~49d |
+| Facebook | Property Pulse | 5 Jun 2026 | ~54d |
 
 ⚠️ Facebook tokens need refreshing early June 2026.
+
+---
+
+## CRITICAL DB FUNCTIONS — ALL CONFIRMED LIVE (12 Apr 2026)
+
+| Function | Purpose |
+|---|---|
+| approve_onboarding | Creates client + brand profile + AI profile + portal user atomically |
+| auth_client_id | RLS helper — resolves portal session to client_id |
+| exec_sql | Generic SQL execution for cross-schema reads |
+| get_client_connect_status | Returns platforms allocated to client via service agreement |
+| get_onboarding_submissions | Lists submissions for dashboard review panel |
+| request_onboarding_info | Sends info request to client, flags submission |
+| store_platform_token | Upserts OAuth token to c.client_publish_profile |
+| submit_onboarding | Inserts new submission with full form_data JSONB |
+| update_submission_ai_scan | Writes AI profile scan result to submission JSONB |
+| update_submission_brand_scan | Writes brand scan result to submission JSONB |
 
 ---
 
@@ -190,27 +234,26 @@ LINKEDIN_CLIENT_SECRET=<secret>
 | Issue | Priority | Status |
 |---|---|---|
 | Facebook token expiry ~50 days | MED | Refresh early June 2026 |
-| ai-worker: write compliance_flags on draft generation | MED | Edge Function update needed |
-| auto-approver: write approved_by + auto_approval_scores | MED | Edge Function update needed |
-| NDIS Support Catalogue data load | MED | Tables exist, need NDIA Excel from ndia.gov.au |
-| Meta App Review | 🔴 External | Business verification In Review. Check 14 Apr. |
-| LinkedIn API | 🔴 External | Community Management API review. Check 14 Apr. |
-| Legal review (L001) | 🔴 Business gate | $2–5k AUD before first external client signs |
+| ai-worker: compliance_flags not written on generation | MED | Column exists, Edge Function not updated yet |
+| auto-approver: approved_by + scores not written | MED | Columns exist, Edge Function not updated yet |
+| NDIS Support Catalogue data load | MED | Tables exist. Needs NDIA Excel from ndia.gov.au |
+| Meta App Review | 🔴 External | Business verification In Review. No progress 12 Apr. |
+| LinkedIn API | 🔴 External | Community Management API review. No progress 12 Apr. |
+| Legal review (L001) | 🔴 Business gate | $2–5k AUD. Before first external client signs. |
 
 ---
 
 ## WHAT IS NEXT
 
-**Tomorrow (Mon 14 Apr):**
-1. Check Meta App Review — if Standard Access confirmed, set FACEBOOK_OAUTH_ENABLED=true + FACEBOOK_APP_ID + FACEBOOK_APP_SECRET in Vercel invegent-portal
-2. Check LinkedIn API — if approved, set LINKEDIN_OAUTH_ENABLED=true + LINKEDIN_CLIENT_SECRET in Vercel
-
 **Next build session:**
-3. ai-worker update — write compliance_flags on every draft generated (column exists, not being written)
-4. auto-approver update — write approved_by + approved_at + auto_approval_scores on every approval
-5. Weekly manager report email (B5) — Sunday Edge Function via Resend
-6. NDIS Support Catalogue data load — requires NDIA Excel from ndia.gov.au
-7. Legal review (L001) — engage solicitor
+1. ai-worker update — write compliance_flags on every draft (column exists, not written)
+2. auto-approver update — write approved_by + approved_at + auto_approval_scores
+3. Weekly manager report email (B5) — Sunday Edge Function via Resend
+4. NDIS Support Catalogue data load — requires NDIA Excel
+5. Legal review (L001) — engage solicitor when product confidence reached
 
-**Decisions pending:**
-See docs/06_decisions.md Decisions Pending table.
+**External gates (no action possible on our side):**
+- Meta Standard Access → then set FACEBOOK_OAUTH_ENABLED=true + app credentials in Vercel
+- LinkedIn API approval → then set LINKEDIN_OAUTH_ENABLED=true + secret in Vercel
+
+**Decisions pending:** See docs/06_decisions.md
