@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-12 (session close — 6 briefs executed, full onboarding pipeline live)
+> Last written: 2026-04-12 (session close — 7 briefs executed, portal fully personalised)
 > Written by: PK + Claude reconciliation
 
 ---
@@ -101,8 +101,10 @@ PK reviews at dashboard.invegent.com/onboarding
       portal_user created, magic link sent
 
 Client logs in → portal.invegent.com
-  → Left sidebar (desktop) + bottom tab bar (mobile)
-  → Amber banner if platforms not connected
+  → Left sidebar with CLIENT BRAND COLOURS + LOGO
+  → Active nav items in brand primary colour
+  → Mobile bottom tab bar in brand colour
+  → Amber connect banner if platforms unconnected
   → /connect page: Facebook card (coming soon until Meta approval)
 
 PK activates AI profile (status: draft → active) → content generation starts
@@ -111,20 +113,17 @@ PK activates AI profile (status: draft → active) → content generation starts
 ### Critical fix (12 Apr):
 `c.onboarding_submission` had no `form_data` JSONB column.
 Added column + updated `submit_onboarding()` to store full payload.
-All new submissions now preserve logo, services, NDIS, objectives data.
 
 ---
 
-## PORTAL ARCHITECTURE — LIVE (12 Apr 2026)
+## PORTAL ARCHITECTURE — FULLY LIVE (12 Apr 2026)
 
-- **invegent-portal** (`portal.invegent.com`)
-  - Left collapsible sidebar (desktop) + bottom tab bar (mobile)
-  - Client name + plan + avatar in sidebar footer
-  - Inbox badge (pending drafts count)
-  - /connect page: platform cards, connected/not connected, OAuth routes built
-  - Facebook OAuth: built, gated by `FACEBOOK_OAUTH_ENABLED=true` env var
-  - LinkedIn OAuth: built, gated by `LINKEDIN_OAUTH_ENABLED=true` env var
-  - Connect banner on home if platforms unconnected
+- Left collapsible sidebar (desktop) + bottom tab bar (mobile)
+- Client logo in sidebar top badge (fallback to "I" if no logo)
+- Active nav items in brand primary colour via CSS custom properties
+- Avatar circle in brand colour
+- Fallback: `#06b6d4` (cyan-500) — zero visual regression for clients without brand profile
+- Brand colours appear automatically on next login after brand-scanner runs on approval
 
 ## ENV VARS NEEDED IN VERCEL (invegent-portal) — NOT YET SET
 
@@ -191,9 +190,8 @@ LINKEDIN_CLIENT_SECRET=<secret>
 | Issue | Priority | Status |
 |---|---|---|
 | Facebook token expiry ~50 days | MED | Refresh early June 2026 |
-| Portal CSS custom properties per client | LOW | Not yet built — reads c.client_brand_profile, applies colours |
-| ai-worker: write compliance_flags on generation | MED | Edge Function update needed |
-| auto-approver: write approved_by + scores | MED | Edge Function update needed |
+| ai-worker: write compliance_flags on draft generation | MED | Edge Function update needed |
+| auto-approver: write approved_by + auto_approval_scores | MED | Edge Function update needed |
 | NDIS Support Catalogue data load | MED | Tables exist, need NDIA Excel from ndia.gov.au |
 | Meta App Review | 🔴 External | Business verification In Review. Check 14 Apr. |
 | LinkedIn API | 🔴 External | Community Management API review. Check 14 Apr. |
@@ -204,15 +202,15 @@ LINKEDIN_CLIENT_SECRET=<secret>
 ## WHAT IS NEXT
 
 **Tomorrow (Mon 14 Apr):**
-1. Check Meta App Review status — if Standard Access confirmed, set FACEBOOK_OAUTH_ENABLED=true in Vercel
-2. Check LinkedIn API status — if approved, set LINKEDIN_OAUTH_ENABLED=true in Vercel
+1. Check Meta App Review — if Standard Access confirmed, set FACEBOOK_OAUTH_ENABLED=true + FACEBOOK_APP_ID + FACEBOOK_APP_SECRET in Vercel invegent-portal
+2. Check LinkedIn API — if approved, set LINKEDIN_OAUTH_ENABLED=true + LINKEDIN_CLIENT_SECRET in Vercel
 
-**Next build session options:**
-3. Portal CSS custom properties (Brief 018) — client brand colours/logo in portal. Small, ~2hrs.
-4. ai-worker update — write compliance_flags on draft generation
-5. auto-approver update — write approved_by + auto_approval_scores
-6. NDIS Support Catalogue load — requires NDIA Excel file
-7. Legal review engagement — find solicitor, brief them
+**Next build session:**
+3. ai-worker update — write compliance_flags on every draft generated (column exists, not being written)
+4. auto-approver update — write approved_by + approved_at + auto_approval_scores on every approval
+5. Weekly manager report email (B5) — Sunday Edge Function via Resend
+6. NDIS Support Catalogue data load — requires NDIA Excel from ndia.gov.au
+7. Legal review (L001) — engage solicitor
 
 **Decisions pending:**
 See docs/06_decisions.md Decisions Pending table.
