@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-12 (doc review — cron jobs corrected, decisions log cleaned)
+> Last written: 2026-04-12 (session close — 11 briefs executed, full audit trail + B5 weekly report live)
 > Written by: PK + Claude reconciliation
 
 ---
@@ -36,10 +36,10 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
 | Function | Version | Status | Notes |
 |---|---|---|---|
-| ai-profile-bootstrap | 1 | ACTIVE | v1.0.0 — NEW 12 Apr |
-| ai-worker | 71 | ACTIVE | v2.7.1 |
-| auto-approver | 29 | ACTIVE | v1.4.0 |
-| brand-scanner | 1 | ACTIVE | v1.0.0 — NEW 12 Apr |
+| ai-profile-bootstrap | 1 | ACTIVE | v1.0.0 — 12 Apr |
+| ai-worker | 72 | ACTIVE | v2.7.1 — writes compliance_flags |
+| auto-approver | 30 | ACTIVE | v1.4.0 — writes auto_approval_scores |
+| brand-scanner | 1 | ACTIVE | v1.0.0 — 12 Apr |
 | compliance-monitor | 14 | ACTIVE | monthly hash check |
 | compliance-reviewer | 4 | ACTIVE | v1.3.0 |
 | content_fetch | 65 | ACTIVE | |
@@ -63,6 +63,7 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 | series-writer | 16 | ACTIVE | |
 | video-analyser | 4 | ACTIVE | v1.2.0 |
 | video-worker | 14 | ACTIVE | v2.1.0 |
+| weekly-manager-report | 1 | ACTIVE | v1.0.0 — NEW 12 Apr |
 | youtube-publisher | 15 | ACTIVE | v1.5.0 |
 
 ---
@@ -76,6 +77,22 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 | Stuck AI jobs (>2h) | 0 | ✅ Clean |
 | Clients active | 3 | Property Pulse, NDIS-Yarns, Care For Welfare |
 | k tables documented | 144 | ✅ |
+| pg_cron jobs active | 34 | +1 from B5 |
+
+---
+
+## AUDIT TRAIL — FULLY COMPLETE (12 Apr 2026)
+
+All four D088 audit columns now written on every draft from 12 Apr:
+
+| Column | Written by | What |
+|---|---|---|
+| `approved_by` | auto-approver v1.4.0 | 'auto-agent-v1' or portal_user_id |
+| `approved_at` | auto-approver v1.4.0 | Timestamp of approval |
+| `auto_approval_scores` | auto-approver v1.4.0 | Full gate results JSONB |
+| `compliance_flags` | ai-worker v2.7.1 | [] on pass, [{rule, severity, triggered}] on HARD_BLOCK |
+
+Existing drafts (before 12 Apr) have NULL for auto_approval_scores and compliance_flags. Correct.
 
 ---
 
@@ -87,40 +104,40 @@ Prospect → portal.invegent.com/onboard
   Step 2: Business + service list + NDIS questions
   Step 4: Content objectives multi-select
   → Submit → c.onboarding_submission (form_data JSONB stores ALL fields)
-  → onboarding-notifier fires
 
 PK reviews at dashboard.invegent.com/onboarding
-  → Sees: Services, NDIS, Objectives, Logo preview sections
-  → Sees: 9-item ReadinessChecklist
-  → Clicks "Run Scans" (violet button):
-      brand-scanner: website scrape → logo → colours → submission JSONB
-      ai-profile-bootstrap: Jina + Claude → persona + system prompt → submission JSONB
-  → Checklist shows brand + AI results
-  → PK approves:
-      c.client created
-      c.client_brand_profile created (from brand_scan_result)
-      c.client_ai_profile created (status='draft', from ai_profile_scan_result)
-      portal_user created, magic link sent
+  → Clicks "Run Scans":
+      brand-scanner → logo + colours → submission JSONB
+      ai-profile-bootstrap → Claude persona + system prompt → submission JSONB
+  → PK approves → client + brand profile + AI profile (draft) created atomically
 
 Client logs in → portal.invegent.com
-  → Left sidebar with CLIENT BRAND COLOURS + LOGO (CSS custom properties)
-  → Amber connect banner if platforms unconnected
-  → /connect page: platform cards, OAuth routes built, gated by env vars
+  → Left sidebar with CLIENT BRAND COLOURS + LOGO
+  → /connect page: OAuth routes built (gated by env vars)
 
-PK activates AI profile (status: draft → active) → content generation starts
+PK activates AI profile (draft → active) → content generation starts
 ```
 
-Critical fix (12 Apr): c.onboarding_submission had no form_data JSONB column — added.
+---
+
+## WEEKLY MANAGER REPORT — LIVE ✅ (12 Apr 2026)
+
+- **Function:** weekly-manager-report v1.0.0
+- **Schedule:** Monday 7am AEST (Sunday 21:00 UTC) — pg_cron job ID 47
+- **Recipient:** pk@invegent.com via Resend
+- **Test email confirmed:** 12 Apr 2026 — "ICE Weekly — 29 posts published"
+  - Showed 2 alerts (Facebook token expiry warnings for both clients)
+- **Next automated report:** Monday 14 Apr 2026 at 7am AEST
+- **Alerts trigger:** token expiry <60 days, stuck jobs >0, needs_review >3
 
 ---
 
 ## PORTAL ARCHITECTURE — FULLY LIVE (12 Apr 2026)
 
-- Left collapsible sidebar (desktop) + bottom tab bar (mobile)
-- Client logo in sidebar top badge (fallback to "I")
-- Active nav items + avatar circle in brand primary colour (CSS vars)
-- Brand colours appear automatically on next login after brand-scanner runs
-- Fallback: #06b6d4 (cyan-500) — zero visual regression without brand profile
+- Left sidebar + mobile bottom bar
+- Client logo + brand colours from c.client_brand_profile (CSS custom properties)
+- Fallback: #06b6d4 (cyan-500)
+- /connect page: OAuth routes built, gated by env vars
 
 ## ENV VARS NEEDED IN VERCEL (invegent-portal) — NOT YET SET
 
@@ -136,96 +153,43 @@ LINKEDIN_CLIENT_SECRET=<secret>
 
 ---
 
-## SUPABASE AUTH CONFIG
+## SUPABASE AUTH + STORAGE
 
 - **Site URL:** `https://portal.invegent.com`
-- **Redirect URLs:** dashboard.invegent.com/**, portal.invegent.com/**, portal.invegent.com/callback
-- **SMTP:** Resend configured (noreply@invegent.com, port 465) ✅
-
----
-
-## STORAGE BUCKETS
-
-| Bucket | Public | Purpose |
-|---|---|---|
-| brand-assets | true | Brand visual assets (pre-existing) |
-| client-assets | false | Logo uploads per submission — NEW 12 Apr |
-| post-images | true | Generated post images |
-| post-videos | true | Generated post videos |
+- **SMTP:** Resend (noreply@invegent.com, port 465) ✅
+- **Buckets:** brand-assets (public), client-assets (private), post-images (public), post-videos (public)
 
 ---
 
 ## VERCEL DEPLOYMENTS
 
-| App | Project ID | Domain | Status | Last deploy |
-|---|---|---|---|---|
-| invegent-dashboard | prj_iLsaEFCAqeuQjSdlbtfpfXC3jhxg | dashboard.invegent.com | READY | `550cb549` |
-| invegent-portal | prj_EpPsX7gCu5wGbiSJr1SA3CmjVlAa | portal.invegent.com | READY | `8b4b54b8` |
-| invegent-web | prj_tXhG43iaqHBtVZpvU3osyG7dLLDZ | invegent.com | ACTIVE | — |
-
----
-
-## PG_CRON JOBS — 33 ACTIVE (verified 12 Apr 2026)
-
-The sync state previously listed a simplified 8-job summary. Actual count is 33.
-Full list always available via:
-```sql
-SELECT jobname, schedule, active FROM cron.job ORDER BY jobname;
-```
-
-Key jobs for operational awareness:
-
-| Job | Schedule | Notes |
-|---|---|---|
-| ai-worker-every-5m | every 5 min | Content generation |
-| auto-approver-sweep | every 10 min | Draft approval |
-| publisher-every-10m | every 5 min | Facebook + LinkedIn publish |
-| content_fetch_every_10min | every 10 min | Full text extraction |
-| image-worker-15min | every 15 min | Image/carousel generation |
-| draft-notifier-every-30m | every 30 min | Portal inbox notifications |
-| video-worker-every-30min | every 30 min | Video generation |
-| heygen-worker-every-30min | every 30 min | HeyGen avatar builds |
-| rss-ingest-run-all-hourly | every 6h | Feed ingestion |
-| insights-worker-daily | 3am UTC daily | Facebook performance data |
-| ai-diagnostic-daily | 8pm UTC daily (6am AEST) | Pipeline health report |
-| dead-letter-sweep-daily | 2am UTC daily | Stale item cleanup |
-| compliance-monitor-monthly | 9am UTC 1st of month | Policy URL hash check |
-| k-schema-refresh-weekly | 3am UTC Sunday | k catalog refresh |
-| ice-system-audit-weekly | 1pm UTC Sunday | 12-gate system audit |
-| token-health-daily-7am-sydney | 9pm UTC daily (7am AEST) | Token expiry check |
-
-Note: `seed-and-enqueue-facebook-every-10m`, `planner-hourly`, `pipeline-doctor-every-30m`,
-`pipeline-fixer-30min`, `pipeline-health-snapshot-30m` and others also active.
+| App | Domain | Status | Last deploy |
+|---|---|---|---|
+| invegent-dashboard | dashboard.invegent.com | READY | `550cb549` (roadmap update) |
+| invegent-portal | portal.invegent.com | READY | `8b4b54b8` (brand colours) |
+| invegent-web | invegent.com | ACTIVE | — |
 
 ---
 
 ## TOKEN CALENDAR
 
-| Platform | Client | Expiry | Days remaining |
+| Platform | Client | Expiry | Days |
 |---|---|---|---|
 | YouTube | NDIS-Yarns | 7 Apr 2031 | ~1821d |
 | YouTube | Property Pulse | 2 Apr 2031 | ~1816d |
-| Facebook | NDIS-Yarns | 31 May 2026 | ~49d |
-| Facebook | Property Pulse | 5 Jun 2026 | ~54d |
+| Facebook | NDIS-Yarns | 31 May 2026 | ~49d ⚠️ |
+| Facebook | Property Pulse | 5 Jun 2026 | ~54d ⚠️ |
 
-⚠️ Facebook tokens need refreshing early June 2026.
+⚠️ Both Facebook tokens under 60 days. Will show in Monday manager report. Refresh early June.
 
 ---
 
-## CRITICAL DB FUNCTIONS — ALL CONFIRMED LIVE (12 Apr 2026)
+## PG_CRON — 34 ACTIVE JOBS (verified 12 Apr)
 
-| Function | Purpose |
-|---|---|
-| approve_onboarding | Creates client + brand profile + AI profile + portal user atomically |
-| auth_client_id | RLS helper — resolves portal session to client_id |
-| exec_sql | Generic SQL execution for cross-schema reads |
-| get_client_connect_status | Returns platforms allocated to client via service agreement |
-| get_onboarding_submissions | Lists submissions for dashboard review panel |
-| request_onboarding_info | Sends info request to client, flags submission |
-| store_platform_token | Upserts OAuth token to c.client_publish_profile |
-| submit_onboarding | Inserts new submission with full form_data JSONB |
-| update_submission_ai_scan | Writes AI profile scan result to submission JSONB |
-| update_submission_brand_scan | Writes brand scan result to submission JSONB |
+Full list: `SELECT jobname, schedule FROM cron.job ORDER BY jobname;`
+
+Key additions since last sync:
+- `weekly-manager-report-monday-7am-aest` — new, job ID 47
 
 ---
 
@@ -233,27 +197,30 @@ Note: `seed-and-enqueue-facebook-every-10m`, `planner-hourly`, `pipeline-doctor-
 
 | Issue | Priority | Status |
 |---|---|---|
-| Facebook token expiry ~50 days | MED | Refresh early June 2026 |
-| ai-worker: compliance_flags not written on generation | MED | Column exists, Edge Function not updated yet |
-| auto-approver: approved_by + scores not written | MED | Columns exist, Edge Function not updated yet |
-| NDIS Support Catalogue data load | MED | Tables exist. Needs NDIA Excel from ndia.gov.au |
-| Meta App Review | 🔴 External | Business verification In Review. No progress 12 Apr. |
-| LinkedIn API | 🔴 External | Community Management API review. No progress 12 Apr. |
-| Legal review (L001) | 🔴 Business gate | $2–5k AUD. Before first external client signs. |
+| Facebook token expiry ~50 days | MED | Will appear in Monday report. Refresh early June. |
+| NDIS Support Catalogue data load | MED | Tables exist. Needs NDIA Excel from ndia.gov.au. |
+| Care For Welfare not in auto-approver CLIENT_CONFIGS | LOW | Falls to default config — non-blocking |
+| Meta App Review | 🔴 External | No progress 12 Apr. Business verification still In Review. |
+| LinkedIn API | 🔴 External | No progress 12 Apr. Community Management API review ongoing. |
+| Legal review (L001) | 🔴 Business gate | When product confidence reached. Before first external client signs. |
 
 ---
 
 ## WHAT IS NEXT
 
-**Next build session:**
-1. ai-worker update — write compliance_flags on every draft (column exists, not written)
-2. auto-approver update — write approved_by + approved_at + auto_approval_scores
-3. Weekly manager report email (B5) — Sunday Edge Function via Resend
-4. NDIS Support Catalogue data load — requires NDIA Excel
-5. Legal review (L001) — engage solicitor when product confidence reached
+**Near term (this week):**
+- Monday 14 Apr: first automated manager report arrives
+- Download NDIA Support Catalogue Excel from ndia.gov.au for data load task
 
-**External gates (no action possible on our side):**
-- Meta Standard Access → then set FACEBOOK_OAUTH_ENABLED=true + app credentials in Vercel
-- LinkedIn API approval → then set LINKEDIN_OAUTH_ENABLED=true + secret in Vercel
+**Next build session options:**
+1. NDIS Support Catalogue data load — requires Excel file
+2. Care For Welfare added to auto-approver CLIENT_CONFIGS (30 min patch)
+3. F1 Prospect demo generator — hold until NDIS Yarns has more data (~early May)
+4. Publisher schedule wiring — c.client_publish_schedule → publisher reads it
+
+**External gates:**
+- Meta Standard Access → set FACEBOOK_OAUTH_ENABLED=true + app credentials in Vercel
+- LinkedIn API approval → set LINKEDIN_OAUTH_ENABLED=true + secret in Vercel
+- Legal review → first external client can sign
 
 **Decisions pending:** See docs/06_decisions.md
