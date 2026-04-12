@@ -2,7 +2,10 @@ import { Hono } from "jsr:@hono/hono";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const app = new Hono();
-const VERSION = "auto-approver-v1.3.0";
+const VERSION = "auto-approver-v1.4.0";
+// v1.4.0 — Write auto_approval_scores to m.post_draft (D088)
+//   approved: auto_approval_scores = {gates, checked_at, agent, passed: true}
+//   skipped:  auto_approval_scores = {gates, checked_at, agent, passed: false, failed_gate}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -182,6 +185,7 @@ async function processOneDraft(
         approval_status: "approved",
         approved_by: "auto-agent-v1",
         approved_at: checkedAt,
+        auto_approval_scores: { gates, passed: true, checked_at: checkedAt, agent: VERSION },
         draft_format: { ...existingFormat, auto_review: { passed: true, gates, checked_at: checkedAt, agent: VERSION } },
         updated_at: checkedAt,
       })
@@ -194,6 +198,7 @@ async function processOneDraft(
       .schema("m")
       .from("post_draft")
       .update({
+        auto_approval_scores: { gates, passed: false, failed_gate: failed_gate?.gate, reason: failed_gate?.reason, checked_at: checkedAt, agent: VERSION },
         draft_format: { ...existingFormat, auto_review: { passed: false, failed_gate: failed_gate?.gate, reason: failed_gate?.reason, gates, checked_at: checkedAt, agent: VERSION } },
         updated_at: checkedAt,
       })

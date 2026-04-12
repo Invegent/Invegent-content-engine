@@ -9,7 +9,10 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.7.0";
+const VERSION = "ai-worker-v2.7.1";
+// v2.7.1 — Write compliance_flags to m.post_draft (D088)
+//   Skip (HARD_BLOCK): compliance_flags = [{rule, severity: 'HARD_BLOCK', triggered: true, at}]
+//   Success: compliance_flags = [] (rules checked, none triggered)
 // v2.7.0 — Profession-scoped compliance rule loading (D066)
 //   fetchComplianceBlock now loads rules filtered by client profession_slug
 //   An OT client gets OT-specific rules; a support worker gets only universal rules
@@ -478,7 +481,12 @@ app.post('*', async (c) => {
 
       if (result.skip) {
         const skipReason = result.skipReason || 'compliance_block';
-        await supabase.schema('m').from('post_draft').update({ approval_status: 'dead', draft_format: { compliance_skip: true, reason: skipReason, at: nowIso() }, updated_at: nowIso() }).eq('post_draft_id', job.post_draft_id);
+        await supabase.schema('m').from('post_draft').update({
+          approval_status: 'dead',
+          draft_format: { compliance_skip: true, reason: skipReason, at: nowIso() },
+          compliance_flags: [{ rule: skipReason, severity: 'HARD_BLOCK', triggered: true, at: nowIso() }],
+          updated_at: nowIso(),
+        }).eq('post_draft_id', job.post_draft_id);
         await supabase.schema('m').from('ai_job').update({ status: 'succeeded', output_payload: { skipped: true, reason: skipReason }, error: null, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
         results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'compliance_skip', reason: skipReason }); continue;
       }
@@ -487,9 +495,14 @@ app.post('*', async (c) => {
       const draftMeta = { ...(typeof result.meta === 'object' && result.meta ? result.meta : {}), ai: { provider: fallbackUsed ? 'openai' : primaryProvider, model: fallbackUsed ? 'gpt-4o' : model, fallback_used: fallbackUsed, legacy_profile: usedLegacy, compliance_rules_injected: complianceRuleCount, format_advisor_key: FORMAT_ADVISOR_PROMPT_KEY, format_decided: decidedFormat, format_reason: advisorReason, worker_id: workerId, ai_job_id: jobId, at: nowIso(), input_tokens: result.inputTokens, output_tokens: result.outputTokens } };
 
       const baseUpdate: any = {
-        draft_title: result.title, draft_body: result.body, draft_format: draftMeta,
-        approval_status: 'needs_review', recommended_format: decidedFormat,
-        recommended_reason: advisorReason, image_headline: finalImageHeadline,
+        draft_title: result.title,
+        draft_body: result.body,
+        draft_format: draftMeta,
+        approval_status: 'needs_review',
+        recommended_format: decidedFormat,
+        recommended_reason: advisorReason,
+        image_headline: finalImageHeadline,
+        compliance_flags: [],  // rules were checked, none triggered a skip
         updated_at: nowIso(),
       };
 
