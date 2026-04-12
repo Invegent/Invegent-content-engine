@@ -2,10 +2,9 @@ import { Hono } from "jsr:@hono/hono";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const app = new Hono();
-const VERSION = "auto-approver-v1.4.0";
+const VERSION = "auto-approver-v1.4.1";
+// v1.4.1 — Add Care For Welfare to CLIENT_CONFIGS (NDIS blocklist, same thresholds as NDIS Yarns)
 // v1.4.0 — Write auto_approval_scores to m.post_draft (D088)
-//   approved: auto_approval_scores = {gates, checked_at, agent, passed: true}
-//   skipped:  auto_approval_scores = {gates, checked_at, agent, passed: false, failed_gate}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,6 +67,14 @@ const CLIENT_CONFIGS: Record<string, ClientApprovalConfig> = {
   "fb98a472-ae4d-432d-8738-2273231c1ef4": {
     client_id: "fb98a472-ae4d-432d-8738-2273231c1ef4",
     name: "NDIS Yarns",
+    min_score: 5,
+    min_body_chars: 80,
+    max_body_chars: 1800,
+    blocklist: NDIS_BLOCKLIST,
+  },
+  "3eca32aa-e460-462f-a846-3f6ace6a3cae": {
+    client_id: "3eca32aa-e460-462f-a846-3f6ace6a3cae",
+    name: "Care For Welfare",
     min_score: 5,
     min_body_chars: 80,
     max_body_chars: 1800,
