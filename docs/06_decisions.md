@@ -7,274 +7,183 @@ is recorded here with context and reasoning.
 
 ---
 
-## D001–D061 — See earlier commits
+## D001–D088 — See earlier commits
 
 ---
 
-## D062 — post_seed Platform Column + Constraint Fix
-**Date:** 2 April 2026 | **Status:** ✅ Live
+## D089 — Agent Intelligence Architecture — Three-Layer Self-Healing
+**Date:** 13 April 2026 | **Status:** ✅ Live
 
-Added `platform` column to `m.post_seed`. New constraint `post_seed_uniq_run_item_platform`
-on (digest_run_id, digest_item_id, platform). YouTube excluded from text pipeline.
-Fixes CROSS JOIN duplicate conflict bug in seed_client_to_ai_v2.
+**Decision:** Build a three-layer autonomous intelligence system: Sentinel (proactive detection) → Diagnostician (root cause analysis) → Healer (safe auto-remediation).
 
----
+**Reasoning:** At 3 clients, manual monitoring is manageable. At 10 it is a full-time job. The agent layer must catch and fix common failures without human involvement. Self-healing rate is the metric that matters — not "we built an AI system" but "84% of incidents resolved autonomously".
 
-## D063 — Pipeline Doctor Log Harvester
-**Date:** 2 April 2026 | **Status:** ✅ Live
+**Governance boundary:** Healer may only reset status fields (stuck jobs, stuck queue). It never touches tokens, external APIs, client configuration, or data. Every action logged to m.pipeline_incident with resolved_by='healer-auto'.
 
-`m.harvest_pipeline_doctor_log()` SECURITY DEFINER function reads doctor HTTP response
-from `net._http_response`, writes structured results to `m.pipeline_doctor_log`.
-pg_cron at :17/:47 (2 min after doctor at :15/:45). 37 records in log at session end.
-
----
-
-## D064 — post_publish_queue acknowledged_at Pattern
-**Date:** 2 April 2026 | **Status:** ✅ Live
-
-Added `acknowledged_at` + `acknowledged_by` to `m.post_publish_queue`.
-Doctor harvester skips acknowledged dead items from issues_found count.
-Enables formal closure of known-bad items without deletion.
+**What was built:**
+- pipeline-sentinel v1.0.0: 5 checks per client every 15min. Writes to m.pipeline_incident. Telegram alert on CRITICAL.
+- pipeline-diagnostician v1.0.0: Claude-powered RCA. Returns finding, probable_cause, recommended_fix, auto_fixable.
+- pipeline-healer v1.0.0: Executes reset_stuck_ai_jobs and reset_stuck_queue. Runs 2 min after Sentinel.
+- m.pipeline_incident: Immutable table. Delete trigger prevents removal.
 
 ---
 
-## D065 — AI Compliance Reviewer (Phase 3.14)
-**Date:** 2 April 2026 | **Status:** ✅ Live
+## D090 — Client Portal Content Strategy — 5-Second Rule
+**Date:** 13 April 2026 | **Status:** ✅ Live
 
-compliance-reviewer v1.3.0. Fetches changed pages via Jina, loads scoped rules
-via get_compliance_rules(), sends to Claude with vertical+profession context.
-Writes structured ai_analysis JSONB to m.compliance_review_queue.
-pg_cron 9:05 UTC 1st of month. Dashboard AI panel live.
-First run: 5/5 NDIS items analysed, 4/5 action required.
+**Decision:** The portal Home page must answer within 5 seconds: "How many posts went out this week? Is everything working?" Everything else is secondary.
 
----
+**Reasoning:** A client who logs in and sees nothing cancels. A client who sees posts published, a count going up, and a platform status green stays. The portal is a retention tool, not an approval screen.
 
-## D066 — Profession Dimension for Compliance + Content
-**Date:** 2 April 2026 | **Status:** ✅ Live
-
-t.profession table (12 professions: 7 NDIS, 5 property).
-profession_slugs[] on t.5.7_compliance_rule (4 rules scoped).
-profession_slug on m.compliance_policy_source, m.compliance_review_queue, c.client.
-Care for Welfare = occupational_therapy.
-get_compliance_rules(vertical, profession) SECURITY DEFINER function.
-OT gets 22 rules (16 universal + 3 OT-specific + 3 global).
-Support worker gets 19 (16 + 3 global). No false positives.
-
-t.profession also stores: anzsco_occupation_id, anzsic_class_code,
-code_of_conduct_url, code_of_conduct_name, regulator_website.
-All 12 professions backfilled. code_of_conduct_url is the input for
-the future AI compliance rule generator — fetched fresh via Jina when needed.
-Storing URL (not text) is correct — avoids stale copies, uses existing fetch infrastructure.
+**What was built:** 5 sections on portal Home: week stats (3 cards), platform status row, recent posts (last 5), quick actions, coming up next 7 days. Inbox: full approve/reject workflow with inline expand. Performance: engagement data + top posts. All served via SECURITY DEFINER functions with explicit client_id param.
 
 ---
 
-## D067 — Claude Code Agentic Loop — First Autonomous Execution
-**Date:** 2 April 2026 | **Status:** ✅ Proven
+## D091 — invegent.com Positioning — NDIS-First, Founder-Led
+**Date:** 13 April 2026 | **Status:** ✅ Live
 
-Establish the Claude Code agentic loop as the standard pattern for
-well-scoped ICE build tasks that don't require mid-execution human judgment.
+**Decision:** The invegent.com website leads with the moat: built by a CPA who manages an NDIS practice and holds plan management registration. No competitor can make this claim. It must appear on the hero, not buried in an About section.
 
-Brief format that works:
-- Current state check query per task (idempotent)
-- Exact SQL/code with no ambiguity
-- Verification query with explicit expected result
-- Error handling: skip and log, don't guess
-- Completion protocol: write progress file
+**Reasoning:** Generic AI content tools already exist. The only defensible position is vertical depth + insider credibility. "Your NDIS practice posts every day. Without you touching it." is the headline because it speaks directly to the specific anxiety of an NDIS provider founder.
 
-First execution: 4 tasks, no human intervention, completed in minutes.
-Claude Code handled ANZSIC 8699 not existing → used NULL (correct).
+**Pricing shown publicly:** $500/$800/$1,500/mo. No "contact for pricing." NDIS providers are used to NDIA price guides and respect transparency.
 
-Directory: `C:\Users\parve\Invegent-content-engine`
-MCPs needed: Supabase MCP + GitHub MCP (both in claude_desktop_config.json)
-Proven tasks: ai-worker deploy, schema migration, k registry updates, Cowork file creation.
+**What was built:** 8-section Next.js page. Hero with live NDIS Yarns proof stats from Supabase. Founder section (PK: CPA + Plan Manager + OT administrator). Pricing table. FAQ. Single CTA: mailto:hello@invegent.com.
 
 ---
 
-## D068 — k Schema as Primary Navigation Tool
-**Date:** 2 April 2026 | **Status:** ✅ Adopted
+## D092 — External Client Token Workaround — Pre-App Review
+**Date:** 13 April 2026 | **Status:** ✅ Decided
 
-Replace ad-hoc `information_schema.columns` discovery with structured nav
-against `k.vw_table_summary` and `k.vw_db_columns` at session start.
+**Decision:** First 1–3 external clients can be onboarded before Meta Standard Access and LinkedIn API approval using a manual token workaround. Client generates their own Page Access Token, PK inserts it directly into c.client_publish_profile.page_access_token. ICE publishes with client’s own token immediately.
 
-Standard pattern:
-```sql
-SELECT schema_name, table_name, purpose, columns_list, fk_edges
-FROM k.vw_table_summary
-WHERE schema_name = 'x' AND table_name = 'y';
-```
+**Reasoning:** This is exactly how NDIS Yarns and Property Pulse work today. The token is the client’s own — no third-party permission required. Standard Access is only needed for ICE to manage pages it doesn’t own via OAuth. The manual workaround is viable for a managed service with 1–3 clients where PK handles onboarding directly.
+
+**Limitation:** Tokens expire in ~60 days. Renewal is manual. Not scalable beyond ~5 clients. Full OAuth flow required at scale.
+
+**For LinkedIn:** Same approach. Client generates LinkedIn access token. PK inserts into publish profile. linkedin-publisher uses it.
 
 ---
 
-## D069 — k Schema Full Repair
-**Date:** 2 April 2026 | **Status:** ✅ Complete
+## D093 — LinkedIn API Strategy — Monitor + Middleware Evaluation
+**Date:** 13 April 2026 | **Status:** ✅ Decided
 
-All 8 schemas covered. 117 → 144 tables documented. Weekly pg_cron refresh active.
-See earlier commit for full details.
+**Decision:** Continue waiting for LinkedIn Community Management API approval. Evaluate Late.dev (or equivalent pre-approved middleware) if still pending by 13 May 2026.
 
----
+**Reasoning:** LinkedIn’s Community Management API approval is notoriously difficult for small/new businesses. Documented cases of 2+ months stuck In Review with no response. Late.dev and similar services already hold pre-approved API access and expose a unified REST endpoint — ICE could call their API instead of LinkedIn directly. Cost ~$50–200/month depending on volume.
 
-## D070 — AI Diagnostic Agent v1.0.0 — Tier 2 Daily Health Report
-**Date:** 2 April 2026 | **Status:** ✅ Live
-
-ai-diagnostic Edge Function. Trend analysis, per-client scoring, AI recommendations.
-/diagnostics page in dashboard.
+**Review trigger:** 13 May 2026 — if still no approval, evaluate middleware route. Decision D093-B to be logged at that point.
 
 ---
 
-## D071 — IAE Strategic Decision — Do Not Build Yet
-**Date:** April 2026 | **Status:** ✅ Decided
+## D094 — CFW Wipe and Restart as Acceptance Test
+**Date:** 13 April 2026 | **Status:** ✅ Decided — pending execution
 
-Build trigger: 2-3 paying clients confirmed + demand validated + prerequisites met.
-Documentation: docs/iae/
+**Decision:** Care for Welfare (3eca32aa) is an empty shell — no AI profile, no publish profile, no feeds, no content scope. Rather than patching it, wipe the client record and run it through the full onboarding flow from scratch. The output is the acceptance test: if every step from prospect → portal login → content generating → published works without manual intervention, ICE is ready for the first external client.
 
----
+**Timing:** After all pipeline issues (NDIS Yarns image formats, PP video re-queue) are resolved. Next dedicated build session.
 
-## D072 — Audience as Asset — Schema Pattern
-**Date:** April 2026 | **Status:** ✅ Live — deployed 7 Apr 2026
-
-c.client_audience_policy, m.audience_asset, m.audience_performance, k.vw_audience_summary.
-3 tables deployed. 6 seed rows.
-
----
-
-## D073 — External AI Agents Strategy — n8n for Client Success, Internal First
-**Date:** 7 April 2026 | **Status:** ✅ Decided
-
-Internal Supabase agent architecture first. n8n deferred until paying clients confirmed.
-
----
-
-## D074 — QA Framework — Four-Layer Approach
-**Date:** 7 April 2026 | **Status:** ✅ Partially live
-
-Layer 3 (B4): m.run_system_audit() LIVE. Layer 2 (B3) + Layer 4 (B5) not yet built.
+**What the test must prove:**
+1. Onboarding form submits cleanly
+2. Run Scans: brand-scanner extracts logo + colours
+3. Run Scans: ai-profile-bootstrap generates persona
+4. PK approves → client + brand + AI profile created atomically
+5. Client logs in → brand colours + logo appear
+6. Client connects Facebook
+7. Pipeline generates first draft within 24h
+8. Auto-approver evaluates draft
+9. Post published to CFW Facebook page
+10. Portal Home shows: 1 post published, next post scheduled, Facebook connected
+11. Client weekly email arrives next Monday
 
 ---
 
-## D075 — OpenClaw Architecture Learnings
-**Date:** 7 April 2026 | **Status:** ✅ Recorded
+## D095 — Performance Feedback Loop Architecture
+**Date:** 13 April 2026 | **Status:** ✅ Partially live
 
-Gaps: vector search, parallel agents, self-improving prompts, nightly council.
-Key principle: every piece feeds every other piece.
+**Decision:** Wire engagement data from m.post_performance back into digest scoring via per-client per-topic weight multipliers. Topics that perform well get boosted; topics that underperform decay. No manual tuning required.
 
----
+**What was built:**
+- m.topic_score_weight table: per-client, per-topic weight (clamped 0.3–2.5). Requires 3+ posts on a topic for a real weight; fewer = neutral 1.0.
+- recalculate_topic_weights() SECURITY DEFINER function: runs against last 90 days of engagement data. Global average as baseline. ON CONFLICT UPSERT.
+- insights-feedback Edge Function v1.0.0: daily at 3:30am UTC (30min after insights-worker). Calls recalculate for all active clients.
+- 2 topic weights seeded for NDIS Yarns from live data.
 
-## D076 — Video Tracker + Video Analyser
-**Date:** 8 April 2026 | **Status:** ✅ Live
-
-video-worker v2.1.0, video-analyser v1.2.0, YouTube Data API, channel subscriptions.
-
----
-
-## D077 — HeyGen Avatar Pipeline — Architecture
-**Date:** 8 April 2026 | **Status:** ✅ Live
-
-ICE_HEYGEN_API_KEY, c.client_avatar_profile, consent form v1.0.
+**Pending:** Bundler function not found during build — needs wiring so final_score is multiplied by topic_weight_multiplier. Wire when bundler is next touched.
 
 ---
 
-## D078 — video_short_avatar is_buildable = true
-**Date:** 9 April 2026 | **Status:** ✅ Live
+## D096 — GitHub Pages Kill — Source to GitHub Actions
+**Date:** 13 April 2026 | **Status:** ✅ Resolved
+
+**Problem:** GitHub Pages was accidentally enabled on Invegent-content-engine repo (a non-website repo of Edge Functions + SQL migrations). Every push to main triggered the pages build and deployment workflow, which failed and sent an email. 753 unread emails accumulated over the session.
+
+**Resolution:** Changed Source in Settings → Pages from "Deploy from a branch" to "GitHub Actions". Since no .github/workflows file exists in the repo, no workflow fires. Emails stop.
+
+**Why Unpublish site alone didn’t work:** Unpublishing removes the live site but leaves the build trigger active. Only changing Source removes the trigger.
 
 ---
 
-## D079 — heygen-worker Script Resolution Pattern
-**Date:** 9 April 2026 | **Status:** ✅ Live
+## D097 — Client Weekly Email Pattern
+**Date:** 13 April 2026 | **Status:** ✅ Live
+
+**Decision:** Send each active client a weekly summary email Monday 7:30am AEST (30 minutes after the B5 manager report). Content: posts published this week, upcoming queued, drafts to review (if require_client_approval=true). Sent via Resend.
+
+**Reasoning:** Clients who don’t log in still see proof of value every Monday morning. Keeps ICE top of mind. Reduces churn by maintaining perceived activity even during low-engagement periods.
+
+**Pattern:** B5 at 7:00am (PK’s view), client email at 7:30am (client’s view). Both generated from same Supabase data layer.
 
 ---
 
-## D080 — Alex Avatar Smile Issue
-**Date:** 9 April 2026 | **Status:** ✅ Noted — cosmetic only
+## D098 — Dashboard Three-Zone Navigation Architecture
+**Date:** 13 April 2026 | **Status:** ✅ Live
+
+**Decision:** Restructure the dashboard from a flat 20+ route nav into three clear zones matching the operator’s three real intents: (1) Is everything working? (2) What needs my attention today? (3) Let me configure something.
+
+**What was built:**
+- StatusStrip: persistent top bar on every page. Green/amber/red. Shows open criticals, stuck jobs, posts this week, inbox count.
+- 6-zone nav: TODAY (Overview, Inbox, Queue) / MONITOR (Flow, Pipeline log, Diagnostics, Failures) / CONTENT (Content Studio, Visuals, Performance, Costs) / CONFIGURATION (Clients, Feeds, Compliance, Onboarding, Connect) / SYSTEM (Roadmap).
+- Overview page rebuilt as operator briefing: status bar, drafts+incidents 2-column, today’s schedule, 4 stat cards.
 
 ---
 
-## D081 — Character Maturity Principle — Solo Videos Before Conversations
-**Date:** 9 April 2026 | **Status:** ✅ Decided
+## D099 — Platform Gating Strategy for External Clients
+**Date:** 13 April 2026 | **Status:** ✅ Decided
 
-Minimum 10 solo videos per character before conversation eligibility. Review ~June 2026.
+**Current platform status for external clients:**
+- Facebook (own pages): ✅ Working. No gating.
+- Facebook (client pages via OAuth): 🔴 Requires Meta Standard Access. Gate: FACEBOOK_OAUTH_ENABLED env var.
+- LinkedIn (own pages): ✅ Working (manual token).
+- LinkedIn (client pages): 🔴 Requires Community Management API. Gate: LINKEDIN_OAUTH_ENABLED env var.
+- YouTube: ✅ Working (manual token). No OAuth flow built — PK inserts token manually.
 
----
-
-## D082 — Dual-Character Conversation Format — Deferred to Phase 4
-**Date:** 9 April 2026 | **Status:** ✅ Decided — deferred
-
-Build trigger: both characters ≥10 solo videos + stitching solution validated.
-
----
-
-## D083 — Client Onboarding Pipeline Architecture
-**Date:** 11 April 2026 | **Status:** ✅ Live
-
-7-step public form → dashboard review → atomic approve. All functions SECURITY DEFINER.
-First client: Care for Welfare (3eca32aa). Portal confirmed working.
+**Decision:** For first 1–3 external clients, use the manual token workaround for both Facebook and LinkedIn. PK walks client through generating their own Page Access Token. Token inserted directly into c.client_publish_profile. Full OAuth gated behind env vars until approvals clear.
 
 ---
 
-## D084 — NDIS Support Item Taxonomy — Reference Tables
-**Date:** 11 April 2026 | **Status:** ✅ Tables built — data load pending (needs NDIA Excel)
+## D100 — Publish Pipeline Format Audit — Known Gaps
+**Date:** 13 April 2026 | **Status:** ⚠️ Active issues
 
-4 tables created: t.ndis_registration_group, t.ndis_support_item,
-c.client_registration_group, c.client_support_item.
-Data source: NDIA Support Catalogue Excel (annual July FY publish).
-Load task pending — requires Excel file from ndia.gov.au.
+**Findings from live data audit:**
 
----
+1. NDIS Yarns — image formats stopped ~20 March:
+   - image_quote published: 7 (last: 20 Mar). carousel published: 7 (last: 20 Mar).
+   - Zero image ai_jobs created in the last 30 days for NDIS Yarns.
+   - preferred_format_facebook = 'image_quote' is set on publish profile.
+   - Root cause: unknown. ai-worker not generating image format jobs. Investigation needed.
 
-## D085 — ICE Compliance Philosophy — Medium Not Enforcer
-**Date:** 11 April 2026 | **Status:** ✅ Decided and implemented
+2. Property Pulse — 3 approved video drafts with no queue items:
+   - video_short_kinetic (2 drafts, Apr 3 and Apr 5) and video_short_stat (1 draft, Apr 2).
+   - queue_id = null — draft_approve_and_enqueue() did not create queue items.
+   - Likely timing issue with video worker state at time of approval.
+   - Fix: manually call enqueue function for these 3 draft IDs, or re-approve.
 
-ICE is a content publishing medium, not a compliance enforcement service.
-92% of NDIS providers are unregistered. Code of Conduct applies equally to both.
-One HARD_BLOCK only: content that demeans or exploits people with disability.
-All other rules are SOFT_WARN (flag for human review, client decides).
-Self-declared fields only (serves_ndis_participants, ndis_registration_status).
+3. NDIS Yarns YouTube — 2 avatar videos stuck pending:
+   - video_short_avatar × 2 (Alex Intro — Realistic + Animated). Approved Apr 9.
+   - Queue items in 'pending' status — waiting for HeyGen avatar builds.
+   - Not a pipeline bug. Avatar build is the blocker.
 
----
-
-## D086 — Provider Type on c.client — Two Fields, Self-Declared
-**Date:** 11 April 2026 | **Status:** ✅ Live
-
-serves_ndis_participants BOOL + ndis_registration_status TEXT on c.client.
-Both self-declared, never enforced. CFW set to serves_ndis=true, registered.
-
----
-
-## D087 — Onboarding Content Strategy Layer
-**Date:** 11 April 2026 | **Status:** ✅ FULLY LIVE (12 Apr 2026 — Briefs 014–017)
-
-All components built and deployed:
-- Onboarding form: logo upload (Step 1), service list + NDIS questions (Step 2),
-  content objectives multi-select (Step 4). Brief 014.
-- Dashboard checklist: 9-item ReadinessChecklist, Run Scans button (violet). Brief 015.
-- brand-scanner Edge Function v1.0.0: website scrape → logo → colours
-  → submission JSONB pre-approval → copied to c.client_brand_profile on approval. Brief 016.
-- ai-profile-bootstrap Edge Function v1.0.0: Jina + Claude → persona + system prompt
-  → submission JSONB pre-approval → copied to c.client_ai_profile (status=draft) on approval. Brief 017.
-- Portal CSS custom properties: layout reads c.client_brand_profile, injects
-  --brand-primary/secondary/accent on root div. Sidebar shows client logo.
-  Fallback: #06b6d4 (cyan-500). Brief 018.
-
-Critical fix (12 Apr): c.onboarding_submission had no form_data JSONB column.
-Added column + updated submit_onboarding() to preserve all new fields.
-
----
-
-## D088 — Audit Trail Hardening + Portal Architecture
-**Date:** 11 April 2026 | **Status:** ✅ FULLY LIVE (12 Apr 2026 — Briefs 012–013, 015)
-
-All components built and deployed:
-- m.post_draft: approved_by, approved_at, auto_approval_scores, compliance_flags added.
-- Immutable triggers: cannot delete published drafts or post_publish records.
-- require_client_approval on c.client_publish_profile.
-- Portal sidebar: left collapsible sidebar, client identity footer, mobile bottom bar. Brief 012.
-- Platform OAuth connect page /connect: Facebook + LinkedIn routes built,
-  gated by FACEBOOK_OAUTH_ENABLED / LINKEDIN_OAUTH_ENABLED env vars. Brief 013.
-- Connect banner on portal home if any platform unconnected.
-- Resend SMTP configured for reliable magic link delivery.
-
-Pending (external gates):
-- FACEBOOK_OAUTH_ENABLED=true: set when Meta Standard Access confirmed
-- LINKEDIN_OAUTH_ENABLED=true: set when LinkedIn API approved
+**Actions required:** Brief to Claude Code for items 1 and 2. Item 3 awaits avatar build.
 
 ---
 
@@ -284,16 +193,14 @@ Pending (external gates):
 |---|---|---|
 | NDIS Support Catalogue data load | Tables exist. Needs NDIA Excel from ndia.gov.au | Phase 3 |
 | Legal review of service agreement | L001 — hard gate before external client #1 | Before C1 |
-| Prospect demo generator (F1) | ~1 day. Needed before first external client conversation | Phase 3 |
-| Client health weekly report email (B5) | ~2 days. Sunday Edge Function via Resend | Phase 3 |
-| Publisher schedule wiring | c.client_publish_schedule → publisher assigns scheduled_for | Phase 3 |
-| AI compliance rule generator | ANZSCO tasks + code_of_conduct_url → Claude generates draft rules | Phase 3 |
-| OpenClaw SOUL.md (F5) | ICE context for @InvegentICEbot | Near term |
-| pgvector layer | Natural language queries on post_publish + content items | Phase 3 |
-| Self-improving auto-approver thresholds | Rejection feedback → threshold update loop | Phase 3 |
-| Instagram publisher | After Meta App Review approved | Phase 3 |
-| IAE Phase A build | After all prerequisites in docs/iae/01 are met | Phase 3+ |
+| F1 Prospect demo generator | Hold until NDIS Yarns has 60+ days data | ~mid-June 2026 |
+| LinkedIn middleware evaluation | Late.dev or equivalent if API still pending | 13 May 2026 |
+| Bundler topic weight wiring | recalculate_topic_weights() built, bundler not reading it | When bundler next touched |
+| NDIS Yarns image format fix | ai-worker not generating image jobs since 20 Mar | Next build session |
+| PP video re-queue | 3 approved drafts with no queue item | Next build session |
+| CFW acceptance test | Wipe + full onboarding flow end-to-end | Next build session |
+| Cowork daily inbox task | Gmail MCP — archive noise, surface actions | Phase 4 |
+| AI compliance rule generator | ANZSCO tasks + code_of_conduct_url → Claude draft rules | Phase 4 |
 | Model router | When AI costs become significant | Phase 4 |
 | video_short_avatar_conversation | After D081 maturity threshold met | Phase 4 |
-| Nightly parallel intelligence council | 8-agent cross-client nightly analysis | Phase 4 |
 | SaaS vs managed service | When 10 clients served 3+ months | Phase 4 |
