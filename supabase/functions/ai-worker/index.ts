@@ -9,7 +9,11 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.7.1";
+const VERSION = "ai-worker-v2.8.0";
+// v2.8.0 — Format advisor preferred format bias
+//   fetchFormatContext reads preferred_format_facebook from publish profile
+//   callFormatAdvisor receives preferredFormat and biases toward it when content is borderline
+//   Softened image_quote threshold: declarative insights qualify, not just hard stats
 // v2.7.1 — Write compliance_flags to m.post_draft (D088)
 //   Skip (HARD_BLOCK): compliance_flags = [{rule, severity: 'HARD_BLOCK', triggered: true, at}]
 //   Success: compliance_flags = [] (rules checked, none triggered)
@@ -114,7 +118,7 @@ async function generateVideoScript(opts: {
 
 type FormatInfo = { ice_format_key: string; format_name: string; advisor_description: string; best_for: string; min_content_signals: string; };
 
-async function fetchFormatContext(supabase: ReturnType<typeof getServiceClient>, clientId: string, platform: string): Promise<{ formats: FormatInfo[]; perfSummary: string }> {
+async function fetchFormatContext(supabase: ReturnType<typeof getServiceClient>, clientId: string, platform: string): Promise<{ formats: FormatInfo[]; perfSummary: string; preferredFormat: string | null }> {
   try {
     const { data: formatRows } = await supabase.rpc("exec_sql", {
       query: `
@@ -146,18 +150,32 @@ async function fetchFormatContext(supabase: ReturnType<typeof getServiceClient>,
       const perf: any[] = perfRows ?? [];
       if (perf.length > 0) perfSummary = `\nPerformance data (last 30 days):\n${perf.map((p: any) => `  ${p.ice_format_key}: ${(Number(p.avg_engagement_rate ?? 0) * 100).toFixed(1)}% avg engagement (${p.post_count} posts)`).join('\n')}\n`;
     } catch { }
-    return { formats, perfSummary };
+    // Fetch preferred format from publish profile
+    let preferredFormat: string | null = null;
+    try {
+      const { data: publishProfile } = await supabase.rpc('exec_sql', {
+        query: `SELECT preferred_format_facebook FROM c.client_publish_profile
+                WHERE client_id = '${clientId}' AND platform = '${platform}'
+                AND status = 'active' LIMIT 1`
+      });
+      preferredFormat = (publishProfile as any[])?.[0]?.preferred_format_facebook ?? null;
+    } catch { }
+
+    return { formats, perfSummary, preferredFormat };
   } catch (e: any) {
     console.error('[ai-worker] fetchFormatContext failed:', e?.message);
-    return { formats: [{ ice_format_key: 'text', format_name: 'Text post', advisor_description: 'Plain text.', best_for: 'General', min_content_signals: 'Any' }], perfSummary: '' };
+    return { formats: [{ ice_format_key: 'text', format_name: 'Text post', advisor_description: 'Plain text.', best_for: 'General', min_content_signals: 'Any' }], perfSummary: '', preferredFormat: null };
   }
 }
 
-async function callFormatAdvisor(opts: { anthropicKey: string; seedTitle: string; seedBody: string; clientName: string; vertical: string; formats: FormatInfo[]; perfSummary: string; }): Promise<{ formatKey: string; reason: string; imageHeadline: string; durationMs: number }> {
-  const { anthropicKey, seedTitle, seedBody, clientName, vertical, formats, perfSummary } = opts;
+async function callFormatAdvisor(opts: { anthropicKey: string; seedTitle: string; seedBody: string; clientName: string; vertical: string; formats: FormatInfo[]; perfSummary: string; preferredFormat?: string | null; }): Promise<{ formatKey: string; reason: string; imageHeadline: string; durationMs: number }> {
+  const { anthropicKey, seedTitle, seedBody, clientName, vertical, formats, perfSummary, preferredFormat } = opts;
   const startMs = Date.now();
   const formatPalette = formats.map(f => `FORMAT: ${f.ice_format_key} (${f.format_name})\n${f.advisor_description}\nBest for: ${f.best_for}\nMinimum signals: ${f.min_content_signals}`).join('\n\n');
-  const systemPrompt = `You are a content format advisor for ${clientName}, a ${vertical} sector social media presence.\n\nYour task: read a content seed and select the optimal format from the available palette.\n\nAVAILABLE FORMATS:\n${formatPalette}\n${perfSummary}\nDECISION RULES:\n- Choose the format that best serves the content's natural structure\n- Default to text if the content is conversational, reactive, or opinionated\n- carousel requires 3+ distinct structured points and minimum 200 words\n- image_quote requires one genuinely striking stat or insight that stands alone\n- video_short_kinetic requires 3+ distinct points expressible in 60 chars each\n- video_short_stat requires one striking numeric stat that anchors the story\n- Never choose a visual format to add interest if the content doesn't support it\n\nReturn ONLY valid JSON: {"format_key": string, "reason": string, "image_headline": string}`;
+  const preferredFormatInstruction = preferredFormat
+    ? `\n\nCLIENT FORMAT PREFERENCE:\nThis client prefers ${preferredFormat} format. When the content quality is borderline (e.g., has one reasonably interesting insight but not a definitive standout stat), bias toward ${preferredFormat} over text. Only fall back to text if the content is genuinely conversational/reactive with no visual potential whatsoever.`
+    : '';
+  const systemPrompt = `You are a content format advisor for ${clientName}, a ${vertical} sector social media presence.\n\nYour task: read a content seed and select the optimal format from the available palette.\n\nAVAILABLE FORMATS:\n${formatPalette}\n${perfSummary}\nDECISION RULES:\n- Choose the format that best serves the content's natural structure\n- Default to text if the content is conversational, reactive, or opinionated\n- carousel requires 3+ distinct structured points and minimum 200 words\n- image_quote requires one interesting stat, insight, or key message that works as a visual headline — it doesn't need to be a hard number, a clear declarative statement about a sector development works\n- video_short_kinetic requires 3+ distinct points expressible in 60 chars each\n- video_short_stat requires one striking numeric stat that anchors the story\n- Never choose a visual format to add interest if the content doesn't support it${preferredFormatInstruction}\n\nReturn ONLY valid JSON: {"format_key": string, "reason": string, "image_headline": string}`;
   const userPrompt = `Content seed:\nTitle: ${seedTitle || '(no title)'}\nBody preview: ${seedBody.slice(0, 600)}${seedBody.length > 600 ? '...' : ''}\n\nSelect the optimal format.`;
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -400,7 +418,7 @@ app.post('*', async (c) => {
 
     try {
       // Step 1: Format palette
-      const { formats, perfSummary } = await fetchFormatContext(supabase, job.client_id, platform);
+      const { formats, perfSummary, preferredFormat } = await fetchFormatContext(supabase, job.client_id, platform);
 
       // Step 2: Extract seed content — must handle nested payload structure
       // rewrite_v1:      input_payload.digest_item.{title, body_text}
@@ -438,7 +456,7 @@ app.post('*', async (c) => {
       let decidedFormat = 'text', advisorReason = '', advisorImageHeadline = '', advisorDurationMs = 0;
       if (anthropicKey && formats.length > 0) {
         try {
-          const advised = await callFormatAdvisor({ anthropicKey, seedTitle, seedBody, clientName, vertical, formats, perfSummary });
+          const advised = await callFormatAdvisor({ anthropicKey, seedTitle, seedBody, clientName, vertical, formats, perfSummary, preferredFormat });
           decidedFormat = advised.formatKey; advisorReason = advised.reason; advisorImageHeadline = advised.imageHeadline; advisorDurationMs = advised.durationMs;
           console.log(`[ai-worker] ${VERSION} — job ${jobId}: advisor chose ${decidedFormat} (${advisorDurationMs}ms) seedTitle="${seedTitle.slice(0, 60)}"`);
         } catch (advisorErr: any) {
