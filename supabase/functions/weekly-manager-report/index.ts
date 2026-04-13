@@ -1,6 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const VERSION = "weekly-manager-report-v1.0.0";
+const VERSION = "weekly-manager-report-v1.1.0";
 const RESEND_API_URL = "https://api.resend.com/emails";
 
 function getServiceClient() {
@@ -108,11 +108,38 @@ async function gatherStats(supabase: ReturnType<typeof getServiceClient>) {
   const totalNeedsReview = clientStats.reduce((s, c) => s + c.needs_review, 0);
   const totalDead = clientStats.reduce((s, c) => s + c.dead_7d, 0);
 
-  return { clientStats, stuckJobs, tokenWarnings, totalPosts, totalNeedsReview, totalDead };
+  // Incident summary
+  let incidentSummary = { total: 0, auto_healed: 0, manually_resolved: 0, still_open: 0, avg_mttr_minutes: null as number | null };
+  try {
+    const { data: incidentRows } = await supabase.rpc('exec_sql', {
+      query: `
+        SELECT
+          COUNT(*) AS total,
+          COUNT(*) FILTER (WHERE auto_healed = true) AS auto_healed,
+          COUNT(*) FILTER (WHERE auto_healed = false AND resolved_at IS NOT NULL) AS manually_resolved,
+          COUNT(*) FILTER (WHERE resolved_at IS NULL) AS still_open,
+          ROUND(AVG(EXTRACT(EPOCH FROM (resolved_at - detected_at)) / 60) FILTER (WHERE resolved_at IS NOT NULL), 1) AS avg_mttr_minutes
+        FROM m.pipeline_incident
+        WHERE detected_at > NOW() - INTERVAL '7 days'
+      `
+    });
+    const row = (incidentRows as any[])?.[0];
+    if (row) {
+      incidentSummary = {
+        total: Number(row.total ?? 0),
+        auto_healed: Number(row.auto_healed ?? 0),
+        manually_resolved: Number(row.manually_resolved ?? 0),
+        still_open: Number(row.still_open ?? 0),
+        avg_mttr_minutes: row.avg_mttr_minutes != null ? Number(row.avg_mttr_minutes) : null,
+      };
+    }
+  } catch {}
+
+  return { clientStats, stuckJobs, tokenWarnings, totalPosts, totalNeedsReview, totalDead, incidentSummary };
 }
 
 function buildEmail(stats: Awaited<ReturnType<typeof gatherStats>>): { subject: string; html: string } {
-  const { clientStats, stuckJobs, tokenWarnings, totalPosts, totalNeedsReview, totalDead } = stats;
+  const { clientStats, stuckJobs, tokenWarnings, totalPosts, totalNeedsReview, totalDead, incidentSummary } = stats;
 
   const now = new Date();
   const weekLabel = now.toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Sydney" });
@@ -201,6 +228,25 @@ function buildEmail(stats: Awaited<ReturnType<typeof gatherStats>>): { subject: 
       <tbody>${clientRowsHtml}</tbody>
     </table>
   </div>
+
+  <!-- Incidents -->
+  ${incidentSummary.total === 0
+    ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 20px;margin-bottom:16px;">
+        <p style="font-size:14px;color:#166534;margin:0;">\u2705 No pipeline incidents this week.</p>
+      </div>`
+    : `<div style="background:white;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:16px;">
+        <div style="padding:12px 16px;border-bottom:1px solid #f1f5f9;">
+          <p style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin:0;">Pipeline incidents this week</p>
+        </div>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:10px 16px;font-size:13px;color:#334155;">Total incidents</td><td style="padding:10px 16px;font-size:13px;font-weight:700;text-align:right;">${incidentSummary.total}</td></tr>
+          <tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:13px;color:#334155;">\u2705 Auto-healed</td><td style="padding:10px 16px;font-size:13px;font-weight:700;color:#16a34a;text-align:right;">${incidentSummary.auto_healed}</td></tr>
+          <tr><td style="padding:10px 16px;font-size:13px;color:#334155;">\uD83D\uDC64 Manually resolved</td><td style="padding:10px 16px;font-size:13px;font-weight:700;text-align:right;">${incidentSummary.manually_resolved}</td></tr>
+          <tr style="background:#f8fafc;"><td style="padding:10px 16px;font-size:13px;color:#334155;">\u23F3 Still open</td><td style="padding:10px 16px;font-size:13px;font-weight:700;${incidentSummary.still_open > 0 ? 'color:#dc2626;' : ''}text-align:right;">${incidentSummary.still_open}</td></tr>
+          ${incidentSummary.avg_mttr_minutes != null ? `<tr><td style="padding:10px 16px;font-size:13px;color:#334155;">Avg time to resolve</td><td style="padding:10px 16px;font-size:13px;font-weight:700;text-align:right;">${incidentSummary.avg_mttr_minutes} min</td></tr>` : ''}
+        </table>
+      </div>`
+  }
 
   <!-- Footer -->
   <p style="color:#94a3b8;font-size:12px;text-align:center;margin-top:16px;">
