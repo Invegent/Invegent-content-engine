@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-13 (Phase A/B/C complete — 10 briefs, 6 sessions)
+> Last written: 2026-04-13 (Phase A/B/C/D complete — 13 briefs, all sessions done)
 > Written by: PK + Claude reconciliation
 
 ---
@@ -21,13 +21,13 @@
 
 ## CURRENT PHASE
 
-**Phase 1 — COMPLETE** (all 4 criteria verified 7 Apr 2026)
+**Phase 1 — COMPLETE** (verified 7 Apr 2026)
 **Phase 3 — Expand + Personal Brand** (active)
-Phase A/B/C builds complete 13 Apr 2026.
+**Phases A/B/C/D — ALL COMPLETE** (13 Apr 2026)
 
 **Gate to first external client conversation is OPEN.**
-**Legal review required before first external client is signed (L001).**
-**CFW is an empty shell — acceptance test after Phase D complete.**
+**Legal review (L001) required before first external client signs.**
+**CFW is an empty shell — acceptance test is the next build milestone.**
 
 ---
 
@@ -35,9 +35,9 @@ Phase A/B/C builds complete 13 Apr 2026.
 
 | App | Domain | Status | Last deploy | Commit |
 |---|---|---|---|---|
-| invegent-dashboard | dashboard.invegent.com | READY | 13 Apr | `a84a64f0` operator briefing |
-| invegent-portal | portal.invegent.com | READY | 13 Apr | `cdeb4761` upcoming queue view |
-| invegent-web | invegent.com | READY | 13 Apr | `bf71fe48` full NDIS landing page |
+| invegent-dashboard | dashboard.invegent.com | READY | 13 Apr | `2e2d04b` nav restructure |
+| invegent-portal | portal.invegent.com | READY | 13 Apr | `cdeb4761` queue view |
+| invegent-web | invegent.com | READY | 13 Apr | `bf71fe48` NDIS landing page |
 
 ---
 
@@ -45,41 +45,42 @@ Phase A/B/C builds complete 13 Apr 2026.
 
 Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
-| Function | Status | Notes |
-|---|---|---|
-| ai-profile-bootstrap | ACTIVE | v1.0.0 |
-| ai-worker | ACTIVE | v2.7.1 — writes compliance_flags |
-| auto-approver | ACTIVE | v1.4.1 — CFW config added |
-| brand-scanner | ACTIVE | v1.0.0 |
-| client-weekly-summary | ACTIVE | v1.0.0 — NEW 13 Apr, Mon 7:30am AEST |
-| compliance-monitor | ACTIVE | monthly hash check |
-| compliance-reviewer | ACTIVE | v1.3.0 |
-| content_fetch | ACTIVE | |
-| draft-notifier | ACTIVE | |
-| email-ingest | ACTIVE | |
-| feed-intelligence | ACTIVE | |
-| heygen-avatar-creator | ACTIVE | v2.2.0 |
-| heygen-avatar-poller | ACTIVE | v2.0.0 |
-| heygen-worker | ACTIVE | v1.1.0 |
-| image-worker | ACTIVE | v3.9.2 |
-| ingest | ACTIVE | v8-youtube-channel |
-| insights-worker | ACTIVE | v14.0.0 |
-| inspector | ACTIVE | |
-| inspector_sql_ro | ACTIVE | |
-| linkedin-publisher | ACTIVE | waiting on API approval |
-| onboarding-notifier | ACTIVE | v2.0.0 |
-| pipeline-ai-summary | ACTIVE | |
-| pipeline-diagnostician | ACTIVE | v1.0.0 — NEW 13 Apr |
-| pipeline-doctor | ACTIVE | |
-| pipeline-healer | ACTIVE | v1.0.0 — NEW 13 Apr |
-| pipeline-sentinel | ACTIVE | v1.0.0 — NEW 13 Apr, every 15min |
-| publisher | ACTIVE | |
-| series-outline | ACTIVE | |
-| series-writer | ACTIVE | |
-| video-analyser | ACTIVE | v1.2.0 |
-| video-worker | ACTIVE | v2.1.0 |
-| weekly-manager-report | ACTIVE | v1.0.0 — Mon 7am AEST |
-| youtube-publisher | ACTIVE | v1.5.0 |
+| Function | Version | Status | Notes |
+|---|---|---|---|
+| ai-profile-bootstrap | 1 | ACTIVE | v1.0.0 |
+| ai-worker | 72 | ACTIVE | v2.7.1 — writes compliance_flags |
+| auto-approver | 30 | ACTIVE | v1.4.1 — CFW config added |
+| brand-scanner | 1 | ACTIVE | v1.0.0 |
+| client-weekly-summary | 1 | ACTIVE | v1.0.0 — Mon 7:30am AEST |
+| compliance-monitor | 14 | ACTIVE | monthly |
+| compliance-reviewer | 4 | ACTIVE | v1.3.0 |
+| content_fetch | 65 | ACTIVE | |
+| draft-notifier | 16 | ACTIVE | |
+| email-ingest | 15 | ACTIVE | |
+| feed-intelligence | 20 | ACTIVE | |
+| heygen-avatar-creator | ACTIVE | v2.2.0 | |
+| heygen-avatar-poller | ACTIVE | v2.0.0 | |
+| heygen-worker | 2 | ACTIVE | v1.1.0 |
+| image-worker | 37 | ACTIVE | v3.9.2 |
+| ingest | 95 | ACTIVE | v8-youtube-channel |
+| insights-feedback | 1 | ACTIVE | v1.0.0 — NEW 13 Apr, daily 3:30am UTC |
+| insights-worker | 32 | ACTIVE | v14.0.0 |
+| inspector | 82 | ACTIVE | |
+| inspector_sql_ro | 37 | ACTIVE | |
+| linkedin-publisher | 15 | ACTIVE | waiting on API approval |
+| onboarding-notifier | 2 | ACTIVE | v2.0.0 |
+| pipeline-ai-summary | 14 | ACTIVE | |
+| pipeline-diagnostician | 1 | ACTIVE | v1.0.0 |
+| pipeline-doctor | 13 | ACTIVE | |
+| pipeline-healer | 1 | ACTIVE | v1.0.0 — every 15min offset |
+| pipeline-sentinel | 1 | ACTIVE | v1.0.0 — every 15min |
+| publisher | 58 | ACTIVE | |
+| series-outline | 15 | ACTIVE | |
+| series-writer | 16 | ACTIVE | |
+| video-analyser | 4 | ACTIVE | v1.2.0 |
+| video-worker | 14 | ACTIVE | v2.1.0 |
+| weekly-manager-report | 1 | ACTIVE | v1.1.0 — now includes incident summary |
+| youtube-publisher | 15 | ACTIVE | v1.5.0 |
 
 ---
 
@@ -90,125 +91,61 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 | Posts published last 7 days | 28 | ✅ Healthy |
 | Drafts needing review | 0 | ✅ Clean |
 | Stuck AI jobs (>2h) | 0 | ✅ Clean |
-| Clients active | 3 | NDIS-Yarns, Property Pulse, Care For Welfare |
-| Open incidents (CRITICAL) | 1 | CFW no_drafts_48h — expected (empty shell) |
-| pg_cron jobs active | 37 | +3 from Phase B/C |
+| Open incidents (CRITICAL) | 1 | CFW no_drafts_48h — expected |
+| Active cron jobs | 38 | +4 from Phase B/C/D |
+| Topic score weights | 2 | NDIS Yarns — seeded from live perf data |
 
 ---
 
-## AGENT INTELLIGENCE LAYER — LIVE (13 Apr 2026)
+## ALL DB TABLES + FUNCTIONS ADDED TODAY (13 Apr)
 
-### Sentinel (pipeline-sentinel v1.0.0)
-- Every 15 minutes via pg_cron
-- 5 checks per active client: no_drafts_48h, no_posts_48h, ai_queue_depth, stuck_ai_jobs, feed_ingest_stalled (global)
-- Writes to m.pipeline_incident on failure
-- Duplicate suppression: 4h/2h/1h lookback windows
-- Telegram alert on CRITICAL severity
-- **Already caught:** CFW no_drafts_48h CRITICAL at 09:03 UTC 13 Apr
+### New tables
+- `m.pipeline_incident` — immutable incident log, delete trigger
+- `m.topic_score_weight` — per-client per-topic engagement weight multipliers
 
-### Diagnostician (pipeline-diagnostician v1.0.0)
-- On-demand via dashboard "Run Diagnosis" button
-- Gathers 10 state fields per client
-- Claude-powered root cause analysis
-- Returns: finding, probable_cause, recommended_fix, auto_fixable
-- Writes finding back to pipeline_incident.context
-
-### Healer (pipeline-healer v1.0.0)
-- Every 15 minutes (offset 2 min after Sentinel)
-- Safe auto-remediation only: reset_stuck_ai_jobs, reset_stuck_queue
-- Logs every action via resolve_pipeline_incident()
-- Governance boundary: never touches tokens, external APIs, or client config
+### New functions (SECURITY DEFINER)
+- `insert_pipeline_incident()` `resolve_pipeline_incident()`
+- `heal_reset_stuck_ai_jobs()` `heal_reset_stuck_queue()`
+- `get_portal_home_stats()` `get_portal_recent_posts()` (published_at IS NOT NULL fix applied)
+- `get_portal_inbox_drafts()` `portal_approve_draft()` `portal_reject_draft()`
+- `get_portal_performance()` `get_portal_upcoming_queue()`
+- `recalculate_topic_weights()` — daily weight recalculation from engagement data
 
 ---
 
-## NEW DB TABLE
+## NEW CRON JOBS (13 Apr)
 
-### m.pipeline_incident
-- Columns: incident_id, client_id, detected_at, check_name, severity, description, context, auto_healable, auto_healed, action_taken, resolved_at, resolved_by
-- Immutable: delete trigger prevents row deletion
-- Indexes: client_id, detected_at DESC, severity (WHERE resolved_at IS NULL)
-- 1 row as of 13 Apr (CFW no_drafts_48h)
-
----
-
-## NEW DB FUNCTIONS (13 Apr 2026)
-
-| Function | Purpose |
-|---|---|
-| insert_pipeline_incident() | Sentinel writes incidents |
-| resolve_pipeline_incident() | Healer resolves incidents |
-| heal_reset_stuck_ai_jobs() | Healer: reset pending>2h ai_jobs |
-| heal_reset_stuck_queue() | Healer: reset stuck queue items |
-| get_portal_home_stats() | Portal home: week stats, platforms |
-| get_portal_recent_posts() | Portal home: last 5 published posts (published_at IS NOT NULL filter applied 13 Apr) |
-| get_portal_inbox_drafts() | Portal inbox: needs_review drafts |
-| portal_approve_draft() | Portal: approve + enqueue draft |
-| portal_reject_draft() | Portal: reject draft with reason |
-| get_portal_performance() | Portal: engagement data from m.post_performance |
-| get_portal_upcoming_queue() | Portal: next 7 days scheduled posts |
+| Job | Schedule | Function |
+|---|---|---|
+| pipeline-sentinel-every-15m | */15 * * * * | pipeline-sentinel |
+| pipeline-healer-every-15m | 2,17,32,47 * * * * | pipeline-healer |
+| client-weekly-summary-monday-730am-aest | 30 21 * * 0 | client-weekly-summary |
+| insights-feedback-daily | 30 3 * * * | insights-feedback (job 52) |
 
 ---
 
-## PORTAL ARCHITECTURE — COMPLETE (13 Apr 2026)
+## WHAT WAS BUILT TODAY — FULL SUMMARY
 
-```
-Portal Home (/home):
-  • Week stats: posts this week, next scheduled, drafts to review
-  • Platform status: per connected platform, health dot
-  • Recent posts: last 5 published (title, body preview, date)
-  • Quick actions: inbox badge if drafts pending
-  • Coming up: next 7 days queue view
+### Phase A — Revenue Readiness
+- **024** Portal Home: week stats, platform status, recent posts, quick actions
+- **025** Portal Inbox: draft approval workflow, approve/reject, inbox badge
+- **026** invegent.com: full NDIS landing page, live proof stats, 8 sections, pricing
 
-Portal Inbox (/inbox):
-  • Draft cards: title, body, platform, format badge
-  • Expand to full body
-  • Approve: calls portal_approve_draft() → draft_approve_and_enqueue()
-  • Reject: optional reason → calls portal_reject_draft()
-  • Sidebar badge count from layout.tsx
+### Phase B — System Intelligence  
+- **027** Sentinel: proactive 5-check health monitor every 15min, already caught CFW CRITICAL
+- **028** Diagnostician: Claude-powered root cause analysis on-demand
+- **029** Healer: auto-remediation for stuck jobs, logs every action
+- **030** Dashboard operator briefing: status bar, today’s drafts+incidents+schedule
 
-Portal Performance (/performance):
-  • Summary cards: posts tracked, avg engagement %, total reach
-  • Top 3 posts by engagement
-  • Empty state if no m.post_performance data yet
+### Phase C — Client Experience
+- **031** Portal Performance tab: engagement data, top posts, reach
+- **032** Portal queue view: next 7 days on Home page
+- **033** Client weekly summary email: Mon 7:30am AEST per client
 
-Portal Connect (/connect):
-  • Platform OAuth routes (gated by env vars)
-```
-
----
-
-## WEBSITE — invegent.com LIVE (13 Apr 2026)
-
-Full NDIS-focused landing page. 8 sections:
-1. Hero — "Your NDIS practice posts every day. Without you touching it."
-2. The problem
-3. How it works (3 steps)
-4. Live proof (NDIS Yarns live post counts)
-5. Who built this (PK — CPA + Plan Manager + OT practice admin)
-6. Pricing (3 tiers: $500/$800/$1,500/mo)
-7. FAQ (5 questions)
-8. Final CTA — mailto:hello@invegent.com
-
----
-
-## DASHBOARD — OPERATOR BRIEFING (13 Apr 2026)
-
-Overview page rebuilt as daily operator briefing:
-- Zone 1: System status bar (green/amber/red)
-- Zone 2: Drafts to review + open incidents (2-column)
-- Zone 3: Today's publishing schedule
-- Zone 4: 4 quick stat cards
-
-Diagnostics page: "Run Diagnosis" button → pipeline-diagnostician
-
----
-
-## WEEKLY EMAILS — BOTH LIVE
-
-| Email | Recipient | Schedule | Function |
-|---|---|---|---|
-| Manager report (B5) | pk@invegent.com | Mon 7:00am AEST | weekly-manager-report |
-| Client summary | Each active client | Mon 7:30am AEST | client-weekly-summary |
+### Phase D — Intelligence
+- **034** Performance → scoring feedback loop: topic_score_weight, recalculate_topic_weights(), insights-feedback daily
+- **035** Incident summary in B5 report: weekly-manager-report v1.1.0
+- **037** Dashboard nav restructure: StatusStrip + 6-zone nav (Today/Monitor/Content/Config/System)
 
 ---
 
@@ -223,28 +160,34 @@ Diagnostics page: "Run Diagnosis" button → pipeline-diagnostician
 
 ---
 
+## EXTERNAL GATES
+
+| Gate | Status | Action |
+|---|---|---|
+| Meta App Review | Business verification "In Review" | Do NOT edit BM. Contact developer support if stuck >2 more weeks. |
+| LinkedIn Community Management API | "1 of 2. Access Form Review" | Waiting. Consider Late.dev middleware if still pending in 4 weeks. |
+| Legal review (L001) | Not started | Hard gate before first external client signs. |
+
+---
+
 ## KNOWN ACTIVE ISSUES
 
 | Issue | Priority | Status |
 |---|---|---|
-| CFW empty shell | EXPECTED | Acceptance test — wipe and onboard after Phase D |
-| Facebook token expiry ~50 days | MED | Will appear in Monday report. Refresh early June. |
-| 2 HeyGen intro items stuck pending (Apr 9) | LOW | Waiting on avatar builds — non-blocking |
-| Meta App Review | 🔴 External | Business verification In Review. No progress 13 Apr. |
-| LinkedIn API | 🔴 External | Community Management API review. No progress 13 Apr. |
-| Legal review (L001) | 🔴 Business gate | Before first external client signs. |
+| CFW empty shell | EXPECTED | Acceptance test — next build milestone after rest |
+| Facebook tokens expiring ~48-53 days | MED | Refresh early June |
+| 2 HeyGen intro items stuck pending (Apr 9) | LOW | Waiting on avatar builds |
+| Bundler topic weight wiring | LOW | recalculate_topic_weights() built but bundler function not found — wire when bundler is next touched |
+| GitHub Pages emails | RESOLVED | Unpublished 13 Apr |
 
 ---
 
-## WHAT IS NEXT — PHASE D
+## WHAT IS NEXT
 
-1. **Brief 034** — Performance → scoring feedback loop (~3h)
-2. **Brief 035** — Incident summary in B5 manager report (~1h)
-3. **Brief 036** — F1 Prospect demo generator — HOLD until NDIS Yarns has 60+ days data (~mid-June)
-4. **Brief 037** — Dashboard restructure (three-zone nav) — after Portal complete
-5. **CFW wipe and restart** — acceptance test after Phase D complete
-
-**External gates:**
-- Meta Standard Access → FACEBOOK_OAUTH_ENABLED=true in Vercel portal
-- LinkedIn API → LINKEDIN_OAUTH_ENABLED=true in Vercel portal
-- Legal review → first external client signs
+1. **CFW wipe and restart** — run through full onboarding flow as acceptance test
+2. **First external client conversation** — gate is open, legal review before signing
+3. **Cowork daily inbox task** — Gmail MCP, archives noise, surfaces actions (backlog)
+4. **LinkedIn middleware evaluation** — Late.dev if API still pending in 4 weeks
+5. **Facebook token refresh** — early June
+6. **Bundler wiring for topic weights** — when bundler is next updated
+7. **F1 prospect demo generator** (Brief 036) — hold until ~mid-June (60 days NDIS Yarns data)
