@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-13 (Phase A/B/C/D complete — 13 briefs, all sessions done)
+> Last written: 2026-04-14 (Briefs 038-039 complete, 040-041 pending manual tokens)
 > Written by: PK + Claude reconciliation
 
 ---
@@ -23,11 +23,9 @@
 
 **Phase 1 — COMPLETE** (verified 7 Apr 2026)
 **Phase 3 — Expand + Personal Brand** (active)
-**Phases A/B/C/D — ALL COMPLETE** (13 Apr 2026)
-
 **Gate to first external client conversation is OPEN.**
 **Legal review (L001) required before first external client signs.**
-**CFW is an empty shell — acceptance test is the next build milestone.**
+**CFW is the first client. All 4 platforms required: Facebook, LinkedIn, Instagram, YouTube.**
 
 ---
 
@@ -48,10 +46,10 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 | Function | Version | Status | Notes |
 |---|---|---|---|
 | ai-profile-bootstrap | 1 | ACTIVE | v1.0.0 |
-| ai-worker | 72 | ACTIVE | v2.7.1 — writes compliance_flags |
-| auto-approver | 30 | ACTIVE | v1.4.1 — CFW config added |
+| ai-worker | 73 | ACTIVE | v2.8.0 — format advisor preferred format bias |
+| auto-approver | 30 | ACTIVE | v1.4.1 |
 | brand-scanner | 1 | ACTIVE | v1.0.0 |
-| client-weekly-summary | 1 | ACTIVE | v1.0.0 — Mon 7:30am AEST |
+| client-weekly-summary | 1 | ACTIVE | v1.0.0 |
 | compliance-monitor | 14 | ACTIVE | monthly |
 | compliance-reviewer | 4 | ACTIVE | v1.3.0 |
 | content_fetch | 65 | ACTIVE | |
@@ -63,89 +61,86 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 | heygen-worker | 2 | ACTIVE | v1.1.0 |
 | image-worker | 37 | ACTIVE | v3.9.2 |
 | ingest | 95 | ACTIVE | v8-youtube-channel |
-| insights-feedback | 1 | ACTIVE | v1.0.0 — NEW 13 Apr, daily 3:30am UTC |
+| insights-feedback | 1 | ACTIVE | v1.0.0 — daily 3:30am UTC |
 | insights-worker | 32 | ACTIVE | v14.0.0 |
+| instagram-publisher | 1 | ACTIVE | v1.0.0 — NEW 14 Apr — no profiles yet |
 | inspector | 82 | ACTIVE | |
 | inspector_sql_ro | 37 | ACTIVE | |
-| linkedin-publisher | 15 | ACTIVE | waiting on API approval |
+| linkedin-publisher | 15 | ACTIVE | waiting on API approval + publish profiles |
 | onboarding-notifier | 2 | ACTIVE | v2.0.0 |
 | pipeline-ai-summary | 14 | ACTIVE | |
 | pipeline-diagnostician | 1 | ACTIVE | v1.0.0 |
 | pipeline-doctor | 13 | ACTIVE | |
-| pipeline-healer | 1 | ACTIVE | v1.0.0 — every 15min offset |
-| pipeline-sentinel | 1 | ACTIVE | v1.0.0 — every 15min |
-| publisher | 58 | ACTIVE | |
+| pipeline-healer | 1 | ACTIVE | v1.0.0 |
+| pipeline-sentinel | 1 | ACTIVE | v1.0.0 |
+| publisher | 58 | ACTIVE | Facebook only |
 | series-outline | 15 | ACTIVE | |
 | series-writer | 16 | ACTIVE | |
 | video-analyser | 4 | ACTIVE | v1.2.0 |
 | video-worker | 14 | ACTIVE | v2.1.0 |
-| weekly-manager-report | 1 | ACTIVE | v1.1.0 — now includes incident summary |
-| youtube-publisher | 15 | ACTIVE | v1.5.0 |
+| weekly-manager-report | 1 | ACTIVE | v1.1.0 |
+| youtube-publisher | 15 | ACTIVE | v1.5.0 (verify deployed — post_publish bug fix) |
 
 ---
 
-## PIPELINE HEALTH — VERIFIED 13 Apr 2026
+## PLATFORM STATUS — LIVE
+
+| Platform | Publisher | Ever published | Profiles exist | Notes |
+|---|---|---|---|---|
+| Facebook | ✅ | ✅ 374 posts | NY + PP | Working end-to-end |
+| YouTube | ✅ v1.5.0 | ⚠️ 1 post | NY + PP | post_publish bug in deployed version — confirm v1.5.0 deployed |
+| LinkedIn | ✅ deployed | ❌ never | ❌ none | No publish profiles. Manual tokens needed. Community Mgmt API pending |
+| Instagram | ✅ v1.0.0 | ❌ never | ❌ none | FB pages not linked to IG Business accounts — fix in FB Business Manager |
+
+---
+
+## PIPELINE HEALTH — VERIFIED 14 Apr 2026
 
 | Metric | Value | Status |
 |---|---|---|
-| Posts published last 7 days | 28 | ✅ Healthy |
+| Posts published last 7 days | 25 | ✅ Healthy |
 | Drafts needing review | 0 | ✅ Clean |
 | Stuck AI jobs (>2h) | 0 | ✅ Clean |
 | Open incidents (CRITICAL) | 1 | CFW no_drafts_48h — expected |
-| Active cron jobs | 38 | +4 from Phase B/C/D |
-| Topic score weights | 2 | NDIS Yarns — seeded from live perf data |
+| Active cron jobs | 39 | +1 instagram-publisher |
+| Topic score weights | 2 | NDIS Yarns — seeded |
 
 ---
 
-## ALL DB TABLES + FUNCTIONS ADDED TODAY (13 Apr)
+## BRIEF STATUS — 14 Apr 2026
 
-### New tables
-- `m.pipeline_incident` — immutable incident log, delete trigger
-- `m.topic_score_weight` — per-client per-topic engagement weight multipliers
-
-### New functions (SECURITY DEFINER)
-- `insert_pipeline_incident()` `resolve_pipeline_incident()`
-- `heal_reset_stuck_ai_jobs()` `heal_reset_stuck_queue()`
-- `get_portal_home_stats()` `get_portal_recent_posts()` (published_at IS NOT NULL fix applied)
-- `get_portal_inbox_drafts()` `portal_approve_draft()` `portal_reject_draft()`
-- `get_portal_performance()` `get_portal_upcoming_queue()`
-- `recalculate_topic_weights()` — daily weight recalculation from engagement data
-
----
-
-## NEW CRON JOBS (13 Apr)
-
-| Job | Schedule | Function |
+| Brief | Status | Notes |
 |---|---|---|
-| pipeline-sentinel-every-15m | */15 * * * * | pipeline-sentinel |
-| pipeline-healer-every-15m | 2,17,32,47 * * * * | pipeline-healer |
-| client-weekly-summary-monday-730am-aest | 30 21 * * 0 | client-weekly-summary |
-| insights-feedback-daily | 30 3 * * * | insights-feedback (job 52) |
+| 038 — format advisor bias | ✅ COMPLETE | ai-worker v2.8.0 deployed |
+| 039 — instagram-publisher | ✅ BUILT, ⚠️ BLOCKED | Publisher deployed, cron active. BLOCKED: FB pages not linked to IG Business accounts |
+| 040 — YouTube fix + LinkedIn | 🔲 PENDING | PK gathering manual tokens. Run after tokens collected |
+| 041 — CFW all 4 platforms | 🔲 PENDING | Run after 040 complete and tokens gathered |
 
 ---
 
-## WHAT WAS BUILT TODAY — FULL SUMMARY
+## MANUAL ACTIONS REQUIRED (PK)
 
-### Phase A — Revenue Readiness
-- **024** Portal Home: week stats, platform status, recent posts, quick actions
-- **025** Portal Inbox: draft approval workflow, approve/reject, inbox badge
-- **026** invegent.com: full NDIS landing page, live proof stats, 8 sections, pricing
+### Priority 1 — Instagram Business account linking
+Neither NDIS Yarns nor Property Pulse Facebook pages have a linked Instagram Business account.
+The instagram-publisher is ready but cannot publish without these links.
 
-### Phase B — System Intelligence  
-- **027** Sentinel: proactive 5-check health monitor every 15min, already caught CFW CRITICAL
-- **028** Diagnostician: Claude-powered root cause analysis on-demand
-- **029** Healer: auto-remediation for stuck jobs, logs every action
-- **030** Dashboard operator briefing: status bar, today’s drafts+incidents+schedule
+**Steps:**
+1. Go to [business.facebook.com](https://business.facebook.com)
+2. Select NDIS Yarns Facebook Page → Settings → Instagram → Connect Account
+3. Repeat for Property Pulse Facebook Page
+4. Once linked, the Graph API will return `instagram_business_account.id`
+5. Re-run Brief 039 Task 1a to retrieve IDs and insert publish profiles
 
-### Phase C — Client Experience
-- **031** Portal Performance tab: engagement data, top posts, reach
-- **032** Portal queue view: next 7 days on Home page
-- **033** Client weekly summary email: Mon 7:30am AEST per client
+### Priority 2 — LinkedIn tokens (for Brief 040)
+See Brief 040 Task 4 for exact steps. Need for NDIS Yarns, Property Pulse, CFW.
 
-### Phase D — Intelligence
-- **034** Performance → scoring feedback loop: topic_score_weight, recalculate_topic_weights(), insights-feedback daily
-- **035** Incident summary in B5 report: weekly-manager-report v1.1.0
-- **037** Dashboard nav restructure: StatusStrip + 6-zone nav (Today/Monitor/Content/Config/System)
+### Priority 3 — CFW tokens (for Brief 041)
+Facebook, LinkedIn, Instagram, YouTube tokens for CFW.
+See Brief 041 MANUAL SETUP section.
+
+### Priority 4 — LinkedIn portal OAuth fix
+- Set `LINKEDIN_OAUTH_ENABLED=false` in portal Vercel env (currently true, causing OAuth errors)
+- Update redirect URI in LinkedIn Developer Portal from `dashboard.invegent.com` → `portal.invegent.com`
 
 ---
 
@@ -155,8 +150,8 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 |---|---|---|---|
 | YouTube | NDIS-Yarns | 7 Apr 2031 | ~1821d |
 | YouTube | Property Pulse | 2 Apr 2031 | ~1816d |
-| Facebook | NDIS-Yarns | 31 May 2026 | ~48d ⚠️ |
-| Facebook | Property Pulse | 5 Jun 2026 | ~53d ⚠️ |
+| Facebook | NDIS-Yarns | 31 May 2026 | ~47d ⚠️ |
+| Facebook | Property Pulse | 5 Jun 2026 | ~52d ⚠️ |
 
 ---
 
@@ -164,9 +159,9 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
 | Gate | Status | Action |
 |---|---|---|
-| Meta App Review | Business verification "In Review" | Do NOT edit BM. Contact developer support if stuck >2 more weeks. |
-| LinkedIn Community Management API | "1 of 2. Access Form Review" | Waiting. Consider Late.dev middleware if still pending in 4 weeks. |
-| Legal review (L001) | Not started | Hard gate before first external client signs. |
+| Meta App Review | Business verification "In Review" | Do NOT edit BM. Contact developer support if stuck after 27 Apr |
+| LinkedIn Community Management API | "1 of 2. Access Form Review" | Evaluate Late.dev middleware if still pending 13 May 2026 |
+| Legal review (L001) | Not started | Hard gate before first external client signs |
 
 ---
 
@@ -174,20 +169,23 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
 | Issue | Priority | Status |
 |---|---|---|
-| CFW empty shell | EXPECTED | Acceptance test — next build milestone after rest |
-| Facebook tokens expiring ~48-53 days | MED | Refresh early June |
+| IG Business accounts not linked to FB pages | HIGH | PK action required in Facebook Business Manager |
+| LinkedIn OAUTH_ENABLED=true in portal but API not approved | MED | Set to false in Vercel portal env |
+| LinkedIn redirect URI wrong in dev portal | MED | Update to portal.invegent.com |
+| CFW empty shell | EXPECTED | Acceptance test after platform tokens configured |
+| Facebook tokens expiring ~47-52 days | MED | Refresh early June |
+| YouTube post_publish bug | LOW | Confirm v1.5.0 deployed (Brief 040 Task 1) |
 | 2 HeyGen intro items stuck pending (Apr 9) | LOW | Waiting on avatar builds |
-| Bundler topic weight wiring | LOW | recalculate_topic_weights() built but bundler function not found — wire when bundler is next touched |
-| GitHub Pages emails | RESOLVED | Unpublished 13 Apr |
+| Bundler topic weight wiring | LOW | Wire when bundler next touched |
 
 ---
 
 ## WHAT IS NEXT
 
-1. **CFW wipe and restart** — run through full onboarding flow as acceptance test
-2. **First external client conversation** — gate is open, legal review before signing
-3. **Cowork daily inbox task** — Gmail MCP, archives noise, surfaces actions (backlog)
-4. **LinkedIn middleware evaluation** — Late.dev if API still pending in 4 weeks
-5. **Facebook token refresh** — early June
-6. **Bundler wiring for topic weights** — when bundler is next updated
-7. **F1 prospect demo generator** (Brief 036) — hold until ~mid-June (60 days NDIS Yarns data)
+1. **PK: Link Instagram Business accounts** to NDIS Yarns + Property Pulse Facebook pages in Business Manager
+2. **PK: Generate LinkedIn tokens** for NY, PP, CFW (Brief 040 Task 4 instructions)
+3. **Run Brief 040** — YouTube post_publish fix + LinkedIn profiles
+4. **PK: Gather CFW tokens** for all 4 platforms (Brief 041 MANUAL SETUP)
+5. **Run Brief 041** — CFW platform configuration + acceptance test
+6. **Fix portal LinkedIn OAuth** — set LINKEDIN_OAUTH_ENABLED=false in Vercel + fix redirect URI
+7. **Facebook token refresh** — early June
