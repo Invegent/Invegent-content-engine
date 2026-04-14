@@ -7,183 +7,97 @@ is recorded here with context and reasoning.
 
 ---
 
-## D001–D088 — See earlier commits
+## D001–D100 — See earlier commits
 
 ---
 
-## D089 — Agent Intelligence Architecture — Three-Layer Self-Healing
-**Date:** 13 April 2026 | **Status:** ✅ Live
+## D101 — Instagram Publishing via Graph API — Cross-post Pattern
+**Date:** 14 April 2026 | **Status:** ✅ Live
 
-**Decision:** Build a three-layer autonomous intelligence system: Sentinel (proactive detection) → Diagnostician (root cause analysis) → Healer (safe auto-remediation).
+**Decision:** Build instagram-publisher as a cross-post function (queries post_draft directly, not queue-based). Uses same Facebook Page Access Token to publish to linked Instagram Business Account via Graph API.
 
-**Reasoning:** At 3 clients, manual monitoring is manageable. At 10 it is a full-time job. The agent layer must catch and fix common failures without human involvement. Self-healing rate is the metric that matters — not "we built an AI system" but "84% of incidents resolved autonomously".
+**Key finding:** Instagram Business account must be linked to the Facebook Page in Facebook Business Manager before the Graph API returns an `instagram_business_account` field. The Graph API token also needs `instagram_basic` and `instagram_content_publish` permissions — added via "API setup with Facebook login" use case, not "API setup with Instagram login".
 
-**Governance boundary:** Healer may only reset status fields (stuck jobs, stuck queue). It never touches tokens, external APIs, client configuration, or data. Every action logged to m.pipeline_incident with resolved_by='healer-auto'.
+**Format routing:** image_quote/carousel → image post. video_short_* → Reels. text → skipped (Instagram does not support text-only).
 
-**What was built:**
-- pipeline-sentinel v1.0.0: 5 checks per client every 15min. Writes to m.pipeline_incident. Telegram alert on CRITICAL.
-- pipeline-diagnostician v1.0.0: Claude-powered RCA. Returns finding, probable_cause, recommended_fix, auto_fixable.
-- pipeline-healer v1.0.0: Executes reset_stuck_ai_jobs and reset_stuck_queue. Runs 2 min after Sentinel.
-- m.pipeline_incident: Immutable table. Delete trigger prevents removal.
+**What was built:** instagram-publisher v1.0.0. Cron job 53 every 15min. Publish profiles for NDIS Yarns, Property Pulse, CFW, Invegent.
 
 ---
 
-## D090 — Client Portal Content Strategy — 5-Second Rule
-**Date:** 13 April 2026 | **Status:** ✅ Live
+## D102 — LinkedIn Publishing via Zapier Webhook Bridge
+**Date:** 14 April 2026 | **Status:** ✅ Live
 
-**Decision:** The portal Home page must answer within 5 seconds: "How many posts went out this week? Is everything working?" Everything else is secondary.
+**Decision:** Route LinkedIn posts through Zapier as a temporary bridge while Community Management API (`w_organization_social`) is pending approval. ICE sends approved draft content to a Zapier webhook. Zapier posts to LinkedIn Company Pages using its own pre-approved OAuth.
 
-**Reasoning:** A client who logs in and sees nothing cancels. A client who sees posts published, a count going up, and a platform status green stays. The portal is a retention tool, not an approval screen.
+**Architecture:** ICE linkedin-zapier-publisher → crosspost_facebook_to_linkedin() copies approved FB drafts to LinkedIn queue → publisher picks up queue items → POSTs to Zapier webhook URL (stored in page_access_token field) → Zapier fires → post appears on LinkedIn page.
 
-**What was built:** 5 sections on portal Home: week stats (3 cards), platform status row, recent posts (last 5), quick actions, coming up next 7 days. Inbox: full approve/reject workflow with inline expand. Performance: engagement data + top posts. All served via SECURITY DEFINER functions with explicit client_id param.
+**Token storage pattern:** page_access_token on linkedin profiles = Zapier webhook URL (not a real OAuth token). Detected by checking if value starts with `https://hooks.zapier.com`.
 
----
+**Rollback:** When Community Management API approved → replace webhook URLs with real tokens → disable zapier cron → existing linkedin-publisher cron takes over automatically.
 
-## D091 — invegent.com Positioning — NDIS-First, Founder-Led
-**Date:** 13 April 2026 | **Status:** ✅ Live
+**Key fix:** `m.post_publish_queue` unique index widened from `(post_draft_id)` to `(post_draft_id, platform)` to support one draft being queued for multiple platforms.
 
-**Decision:** The invegent.com website leads with the moat: built by a CPA who manages an NDIS practice and holds plan management registration. No competitor can make this claim. It must appear on the hero, not buried in an About section.
-
-**Reasoning:** Generic AI content tools already exist. The only defensible position is vertical depth + insider credibility. "Your NDIS practice posts every day. Without you touching it." is the headline because it speaks directly to the specific anxiety of an NDIS provider founder.
-
-**Pricing shown publicly:** $500/$800/$1,500/mo. No "contact for pricing." NDIS providers are used to NDIA price guides and respect transparency.
-
-**What was built:** 8-section Next.js page. Hero with live NDIS Yarns proof stats from Supabase. Founder section (PK: CPA + Plan Manager + OT administrator). Pricing table. FAQ. Single CTA: mailto:hello@invegent.com.
+**Zap configuration:**
+- NDIS Yarns: org 112982689, webhook u7nkjq3
+- Property Pulse: org 112999127, webhook u7nav0s
+- Care For Welfare: org 74152188, webhook u7ngjbh
+- Invegent: org 111966452, webhook u7nws8p
 
 ---
 
-## D092 — External Client Token Workaround — Pre-App Review
-**Date:** 13 April 2026 | **Status:** ✅ Decided
+## D103 — Invegent as ICE Client
+**Date:** 14 April 2026 | **Status:** ✅ Live
 
-**Decision:** First 1–3 external clients can be onboarded before Meta Standard Access and LinkedIn API approval using a manual token workaround. Client generates their own Page Access Token, PK inserts it directly into c.client_publish_profile.page_access_token. ICE publishes with client’s own token immediately.
+**Decision:** Create Invegent as a full ICE client with its own content pipeline, AI profile, and publish profiles. Invegent publishes about AI-driven content marketing, social media strategy, and automation for small business.
 
-**Reasoning:** This is exactly how NDIS Yarns and Property Pulse work today. The token is the client’s own — no third-party permission required. Standard Access is only needed for ICE to manage pages it doesn’t own via OAuth. The manual workaround is viable for a managed service with 1–3 clients where PK handles onboarding directly.
+**client_id:** `93494a09-cc89-41d1-b364-cb63983063a6`
 
-**Limitation:** Tokens expire in ~60 days. Renewal is manual. Not scalable beyond ~5 clients. Full OAuth flow required at scale.
+**New verticals created:** AI & Automation (15, domain 13), Social Media Strategy (16, domain 13), Content Marketing (17, domain 5).
 
-**For LinkedIn:** Same approach. Client generates LinkedIn access token. PK inserts into publish profile. linkedin-publisher uses it.
+**New feed sources:** TechCrunch AI, The Verge AI, Marketing AI Institute, Social Media Examiner, Content Marketing Institute.
 
----
+**AI profile tone:** Conversational, practical, curious. Writes like a knowledgeable friend explaining something interesting. Never self-promotional. Ends with a genuine question that invites engagement.
 
-## D093 — LinkedIn API Strategy — Monitor + Middleware Evaluation
-**Date:** 13 April 2026 | **Status:** ✅ Decided
-
-**Decision:** Continue waiting for LinkedIn Community Management API approval. Evaluate Late.dev (or equivalent pre-approved middleware) if still pending by 13 May 2026.
-
-**Reasoning:** LinkedIn’s Community Management API approval is notoriously difficult for small/new businesses. Documented cases of 2+ months stuck In Review with no response. Late.dev and similar services already hold pre-approved API access and expose a unified REST endpoint — ICE could call their API instead of LinkedIn directly. Cost ~$50–200/month depending on volume.
-
-**Review trigger:** 13 May 2026 — if still no approval, evaluate middleware route. Decision D093-B to be logged at that point.
+**Platforms:** Facebook, Instagram, LinkedIn (Zapier). YouTube is future.
 
 ---
 
-## D094 — CFW Wipe and Restart as Acceptance Test
-**Date:** 13 April 2026 | **Status:** ✅ Decided — pending execution
+## D104 — Care For Welfare Full Pipeline Setup
+**Date:** 14 April 2026 | **Status:** ✅ Live
 
-**Decision:** Care for Welfare (3eca32aa) is an empty shell — no AI profile, no publish profile, no feeds, no content scope. Rather than patching it, wipe the client record and run it through the full onboarding flow from scratch. The output is the acceptance test: if every step from prospect → portal login → content generating → published works without manual intervention, ICE is ready for the first external client.
+**Decision:** Configure CFW as a full ICE client: clone NDIS Yarns content scope and feed sources (same vertical), create OT-specific AI profile, set profession_slug = occupational_therapy so compliance rules load correctly.
 
-**Timing:** After all pipeline issues (NDIS Yarns image formats, PP video re-queue) are resolved. Next dedicated build session.
+**AI profile differentiation from NDIS Yarns:** CFW writes as a caring OT practitioner to participants, families, and allied health professionals. Warmer tone than NDIS Yarns. Includes CFW-specific disclaimer. Explicitly identifies as a registered NDIS provider.
 
-**What the test must prove:**
-1. Onboarding form submits cleanly
-2. Run Scans: brand-scanner extracts logo + colours
-3. Run Scans: ai-profile-bootstrap generates persona
-4. PK approves → client + brand + AI profile created atomically
-5. Client logs in → brand colours + logo appear
-6. Client connects Facebook
-7. Pipeline generates first draft within 24h
-8. Auto-approver evaluates draft
-9. Post published to CFW Facebook page
-10. Portal Home shows: 1 post published, next post scheduled, Facebook connected
-11. Client weekly email arrives next Monday
+**Platforms:** Facebook, Instagram, LinkedIn (Zapier). YouTube future.
 
 ---
 
-## D095 — Performance Feedback Loop Architecture
-**Date:** 13 April 2026 | **Status:** ✅ Partially live
+## D105 — WordPress Publishing for CFW Website SEO
+**Date:** 14 April 2026 | **Status:** ✅ Live
 
-**Decision:** Wire engagement data from m.post_performance back into digest scoring via per-client per-topic weight multipliers. Topics that perform well get boosted; topics that underperform decay. No manual tuning required.
+**Decision:** Publish approved CFW drafts to careforwelfare.com.au/ndis-news/ via WordPress REST API. Cross-post pattern — max 3 posts per 6-hour run for SEO-friendly pacing. Yoast SEO plugin (already installed) handles meta titles, descriptions, and structured data automatically.
 
-**What was built:**
-- m.topic_score_weight table: per-client, per-topic weight (clamped 0.3–2.5). Requires 3+ posts on a topic for a real weight; fewer = neutral 1.0.
-- recalculate_topic_weights() SECURITY DEFINER function: runs against last 90 days of engagement data. Global average as baseline. ON CONFLICT UPSERT.
-- insights-feedback Edge Function v1.0.0: daily at 3:30am UTC (30min after insights-worker). Calls recalculate for all active clients.
-- 2 topic weights seeded for NDIS Yarns from live data.
+**Rationale:** Social posts disappear in feeds. Website posts get indexed permanently. NDIS is a low-competition niche — even 150-280 word posts rank for long-tail searches. Free organic traffic from people searching for exactly what CFW offers.
 
-**Pending:** Bundler function not found during build — needs wiring so final_score is multiplied by topic_weight_multiplier. Wire when bundler is next touched.
+**Key technical finding:** careforwelfare.com.au runs Mod_Security which blocks API requests without a browser-like User-Agent header (returns HTTP 406). Fixed by adding `User-Agent: Mozilla/5.0` to all fetch calls in the wordpress-publisher Edge Function.
 
----
+**Credentials:** Username `admin`, Application Password stored as Supabase secret `CFW_WP_APP_PASSWORD`, NDIS News category ID 20.
 
-## D096 — GitHub Pages Kill — Source to GitHub Actions
-**Date:** 13 April 2026 | **Status:** ✅ Resolved
+**WordPress situation:** Site is on Crazy Domains Linux Hosting (cPanel). Database is `careforw_wp2`. Developer had changed admin username and email — PK recovered access via phpMyAdmin password reset.
 
-**Problem:** GitHub Pages was accidentally enabled on Invegent-content-engine repo (a non-website repo of Edge Functions + SQL migrations). Every push to main triggered the pages build and deployment workflow, which failed and sent an email. 753 unread emails accumulated over the session.
-
-**Resolution:** Changed Source in Settings → Pages from "Deploy from a branch" to "GitHub Actions". Since no .github/workflows file exists in the repo, no workflow fires. Emails stop.
-
-**Why Unpublish site alone didn’t work:** Unpublishing removes the live site but leaves the build trigger active. Only changing Source removes the trigger.
+**Extensibility:** Any client with `website_publish_enabled: true` and `wp_site_url` in `c.client.profile` JSONB will be picked up automatically. Each client needs their own `{CLIENT}_WP_APP_PASSWORD` secret.
 
 ---
 
-## D097 — Client Weekly Email Pattern
-**Date:** 13 April 2026 | **Status:** ✅ Live
+## D106 — Platform Connections Dashboard — Dynamic Rendering
+**Date:** 14 April 2026 | **Status:** ✅ Live
 
-**Decision:** Send each active client a weekly summary email Monday 7:30am AEST (30 minutes after the B5 manager report). Content: posts published this week, upcoming queued, drafts to review (if require_client_approval=true). Sent via Resend.
+**Decision:** Both `/connect` page and Clients → Connect tab now render platforms dynamically from `c.client_publish_profile` — no hardcoded platform columns. New platforms appear automatically.
 
-**Reasoning:** Clients who don’t log in still see proof of value every Monday morning. Keeps ICE top of mind. Reduces churn by maintaining perceived activity even during low-engagement periods.
+**Zapier detection:** LinkedIn profiles with page_access_token starting with `https://hooks.zapier.com` show a purple "Active — Zapier bridge" badge instead of token expiry info.
 
-**Pattern:** B5 at 7:00am (PK’s view), client email at 7:30am (client’s view). Both generated from same Supabase data layer.
-
----
-
-## D098 — Dashboard Three-Zone Navigation Architecture
-**Date:** 13 April 2026 | **Status:** ✅ Live
-
-**Decision:** Restructure the dashboard from a flat 20+ route nav into three clear zones matching the operator’s three real intents: (1) Is everything working? (2) What needs my attention today? (3) Let me configure something.
-
-**What was built:**
-- StatusStrip: persistent top bar on every page. Green/amber/red. Shows open criticals, stuck jobs, posts this week, inbox count.
-- 6-zone nav: TODAY (Overview, Inbox, Queue) / MONITOR (Flow, Pipeline log, Diagnostics, Failures) / CONTENT (Content Studio, Visuals, Performance, Costs) / CONFIGURATION (Clients, Feeds, Compliance, Onboarding, Connect) / SYSTEM (Roadmap).
-- Overview page rebuilt as operator briefing: status bar, drafts+incidents 2-column, today’s schedule, 4 stat cards.
-
----
-
-## D099 — Platform Gating Strategy for External Clients
-**Date:** 13 April 2026 | **Status:** ✅ Decided
-
-**Current platform status for external clients:**
-- Facebook (own pages): ✅ Working. No gating.
-- Facebook (client pages via OAuth): 🔴 Requires Meta Standard Access. Gate: FACEBOOK_OAUTH_ENABLED env var.
-- LinkedIn (own pages): ✅ Working (manual token).
-- LinkedIn (client pages): 🔴 Requires Community Management API. Gate: LINKEDIN_OAUTH_ENABLED env var.
-- YouTube: ✅ Working (manual token). No OAuth flow built — PK inserts token manually.
-
-**Decision:** For first 1–3 external clients, use the manual token workaround for both Facebook and LinkedIn. PK walks client through generating their own Page Access Token. Token inserted directly into c.client_publish_profile. Full OAuth gated behind env vars until approvals clear.
-
----
-
-## D100 — Publish Pipeline Format Audit — Known Gaps
-**Date:** 13 April 2026 | **Status:** ⚠️ Active issues
-
-**Findings from live data audit:**
-
-1. NDIS Yarns — image formats stopped ~20 March:
-   - image_quote published: 7 (last: 20 Mar). carousel published: 7 (last: 20 Mar).
-   - Zero image ai_jobs created in the last 30 days for NDIS Yarns.
-   - preferred_format_facebook = 'image_quote' is set on publish profile.
-   - Root cause: unknown. ai-worker not generating image format jobs. Investigation needed.
-
-2. Property Pulse — 3 approved video drafts with no queue items:
-   - video_short_kinetic (2 drafts, Apr 3 and Apr 5) and video_short_stat (1 draft, Apr 2).
-   - queue_id = null — draft_approve_and_enqueue() did not create queue items.
-   - Likely timing issue with video worker state at time of approval.
-   - Fix: manually call enqueue function for these 3 draft IDs, or re-approve.
-
-3. NDIS Yarns YouTube — 2 avatar videos stuck pending:
-   - video_short_avatar × 2 (Alex Intro — Realistic + Animated). Approved Apr 9.
-   - Queue items in 'pending' status — waiting for HeyGen avatar builds.
-   - Not a pipeline bug. Avatar build is the blocker.
-
-**Actions required:** Brief to Claude Code for items 1 and 2. Item 3 awaits avatar build.
+**Shared util:** `lib/platform-status.ts` in invegent-dashboard exports `PLATFORM_CONFIG`, `PLATFORM_ORDER`, `getTokenStatus()`, `PlatformIcon`, and `PlatformProfile` type — used by both pages.
 
 ---
 
@@ -194,13 +108,12 @@ is recorded here with context and reasoning.
 | NDIS Support Catalogue data load | Tables exist. Needs NDIA Excel from ndia.gov.au | Phase 3 |
 | Legal review of service agreement | L001 — hard gate before external client #1 | Before C1 |
 | F1 Prospect demo generator | Hold until NDIS Yarns has 60+ days data | ~mid-June 2026 |
-| LinkedIn middleware evaluation | Late.dev or equivalent if API still pending | 13 May 2026 |
+| LinkedIn middleware evaluation | Late.dev if API still pending | 13 May 2026 |
 | Bundler topic weight wiring | recalculate_topic_weights() built, bundler not reading it | When bundler next touched |
-| NDIS Yarns image format fix | ai-worker not generating image jobs since 20 Mar | Next build session |
-| PP video re-queue | 3 approved drafts with no queue item | Next build session |
-| CFW acceptance test | Wipe + full onboarding flow end-to-end | Next build session |
+| NDIS Yarns image format fix | ai-worker v2.8.0 may resolve — monitor 24-48h | Next session |
+| invegent.com blog section | Brief 046 — Supabase → Next.js ISR pattern | Next session |
+| Subscription register dashboard | Brief 043 — ready to run | Next session |
+| CFW acceptance test | Full onboarding flow end-to-end | Next session |
 | Cowork daily inbox task | Gmail MCP — archive noise, surface actions | Phase 4 |
-| AI compliance rule generator | ANZSCO tasks + code_of_conduct_url → Claude draft rules | Phase 4 |
 | Model router | When AI costs become significant | Phase 4 |
-| video_short_avatar_conversation | After D081 maturity threshold met | Phase 4 |
 | SaaS vs managed service | When 10 clients served 3+ months | Phase 4 |
