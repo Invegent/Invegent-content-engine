@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-14 (Briefs 038-039 complete, 040-041 pending manual tokens)
+> Last written: 2026-04-14 (Major platform expansion day — Facebook, Instagram, LinkedIn all configured)
 > Written by: PK + Claude reconciliation
 
 ---
@@ -9,33 +9,27 @@
 ## SESSION STARTUP PROTOCOL
 
 1. Read this file (`docs/00_sync_state.md`)
-2. For any table you are about to work with, query k schema FIRST:
-   ```sql
-   SELECT schema_name, table_name, purpose, columns_list, fk_edges, allowed_ops
-   FROM k.vw_table_summary
-   WHERE schema_name = 'x' AND table_name = 'y';
-   ```
-3. Do NOT fall into discovery mode. k.vw_table_summary is the single-stop navigation layer.
+2. Query k schema before working on any table: `SELECT * FROM k.vw_table_summary WHERE schema_name='x' AND table_name='y'`
+3. Do NOT fall into discovery mode.
 
 ---
 
 ## CURRENT PHASE
 
-**Phase 1 — COMPLETE** (verified 7 Apr 2026)
+**Phase 1 — COMPLETE** (7 Apr 2026)
 **Phase 3 — Expand + Personal Brand** (active)
 **Gate to first external client conversation is OPEN.**
-**Legal review (L001) required before first external client signs.**
-**CFW is the first client. All 4 platforms required: Facebook, LinkedIn, Instagram, YouTube.**
+**CFW is the first client. All 4 platforms required.**
 
 ---
 
 ## VERCEL DEPLOYMENTS
 
-| App | Domain | Status | Last deploy | Commit |
-|---|---|---|---|---|
-| invegent-dashboard | dashboard.invegent.com | READY | 13 Apr | `2e2d04b` nav restructure |
-| invegent-portal | portal.invegent.com | READY | 13 Apr | `cdeb4761` queue view |
-| invegent-web | invegent.com | READY | 13 Apr | `bf71fe48` NDIS landing page |
+| App | Domain | Status | Last deploy |
+|---|---|---|---|
+| invegent-dashboard | dashboard.invegent.com | READY | 13 Apr |
+| invegent-portal | portal.invegent.com | READY | 13 Apr |
+| invegent-web | invegent.com | READY | 13 Apr |
 
 ---
 
@@ -45,7 +39,6 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 
 | Function | Version | Status | Notes |
 |---|---|---|---|
-| ai-profile-bootstrap | 1 | ACTIVE | v1.0.0 |
 | ai-worker | 73 | ACTIVE | v2.8.0 — format advisor preferred format bias |
 | auto-approver | 30 | ACTIVE | v1.4.1 |
 | brand-scanner | 1 | ACTIVE | v1.0.0 |
@@ -56,91 +49,67 @@ Project: `mbkmaxqhsohbtwsqolns` (ap-southeast-2)
 | draft-notifier | 16 | ACTIVE | |
 | email-ingest | 15 | ACTIVE | |
 | feed-intelligence | 20 | ACTIVE | |
-| heygen-avatar-creator | ACTIVE | v2.2.0 | |
-| heygen-avatar-poller | ACTIVE | v2.0.0 | |
 | heygen-worker | 2 | ACTIVE | v1.1.0 |
 | image-worker | 37 | ACTIVE | v3.9.2 |
-| ingest | 95 | ACTIVE | v8-youtube-channel |
+| ingest | 95 | ACTIVE | |
 | insights-feedback | 1 | ACTIVE | v1.0.0 — daily 3:30am UTC |
 | insights-worker | 32 | ACTIVE | v14.0.0 |
-| instagram-publisher | 1 | ACTIVE | v1.0.0 — NEW 14 Apr — no profiles yet |
-| inspector | 82 | ACTIVE | |
-| inspector_sql_ro | 37 | ACTIVE | |
-| linkedin-publisher | 15 | ACTIVE | waiting on API approval + publish profiles |
-| onboarding-notifier | 2 | ACTIVE | v2.0.0 |
-| pipeline-ai-summary | 14 | ACTIVE | |
+| instagram-publisher | 1 | ACTIVE | v1.0.0 — cron job 53, every 15min |
+| linkedin-publisher | 15 | ACTIVE | dormant — no direct profiles, waiting on API |
+| linkedin-zapier-publisher | 1 | ACTIVE | v1.0.0 — NEW 14 Apr — cron every 20min |
 | pipeline-diagnostician | 1 | ACTIVE | v1.0.0 |
-| pipeline-doctor | 13 | ACTIVE | |
 | pipeline-healer | 1 | ACTIVE | v1.0.0 |
 | pipeline-sentinel | 1 | ACTIVE | v1.0.0 |
-| publisher | 58 | ACTIVE | Facebook only |
+| publisher | 58 | ACTIVE | Facebook |
 | series-outline | 15 | ACTIVE | |
 | series-writer | 16 | ACTIVE | |
 | video-analyser | 4 | ACTIVE | v1.2.0 |
 | video-worker | 14 | ACTIVE | v2.1.0 |
 | weekly-manager-report | 1 | ACTIVE | v1.1.0 |
-| youtube-publisher | 15 | ACTIVE | v1.5.0 (verify deployed — post_publish bug fix) |
+| youtube-publisher | 15 | ACTIVE | v1.5.0 — post_publish bug fixed |
 
 ---
 
-## PLATFORM STATUS — LIVE
+## PLATFORM STATUS — ALL CLIENTS
 
-| Platform | Publisher | Ever published | Profiles exist | Notes |
+| Platform | NDIS Yarns | Property Pulse | Care For Welfare | Notes |
 |---|---|---|---|---|
-| Facebook | ✅ | ✅ 374 posts | NY + PP | Working end-to-end |
-| YouTube | ✅ v1.5.0 | ⚠️ 1 post | NY + PP | post_publish bug in deployed version — confirm v1.5.0 deployed |
-| LinkedIn | ✅ deployed | ❌ never | ❌ none | No publish profiles. Manual tokens needed. Community Mgmt API pending |
-| Instagram | ✅ v1.0.0 | ❌ never | ❌ none | FB pages not linked to IG Business accounts — fix in FB Business Manager |
+| Facebook | ✅ token set | ✅ token set | ✅ token set | All updated with IG-capable tokens |
+| Instagram | ✅ IG ID set | ✅ IG ID set | ✅ IG ID set | instagram-publisher running every 15min |
+| LinkedIn | ✅ Zapier | ✅ Zapier | ✅ Zapier | linkedin-zapier-publisher running every 20min |
+| YouTube | ✅ OAuth | ✅ OAuth | ❌ needs token | CFW needs YouTube OAuth setup |
 
 ---
 
-## PIPELINE HEALTH — VERIFIED 14 Apr 2026
+## PIPELINE HEALTH — 14 Apr 2026
 
 | Metric | Value | Status |
 |---|---|---|
 | Posts published last 7 days | 25 | ✅ Healthy |
-| Drafts needing review | 0 | ✅ Clean |
-| Stuck AI jobs (>2h) | 0 | ✅ Clean |
-| Open incidents (CRITICAL) | 1 | CFW no_drafts_48h — expected |
-| Active cron jobs | 39 | +1 instagram-publisher |
-| Topic score weights | 2 | NDIS Yarns — seeded |
+| LinkedIn queue items ready | 3 | ✅ Will fire on next cron cycle |
+| Stuck AI jobs | 0 | ✅ Clean |
+| Active cron jobs | 40 | +1 linkedin-zapier-publisher |
 
 ---
 
-## BRIEF STATUS — 14 Apr 2026
+## KEY SCHEMA CHANGES TODAY
 
-| Brief | Status | Notes |
-|---|---|---|
-| 038 — format advisor bias | ✅ COMPLETE | ai-worker v2.8.0 deployed |
-| 039 — instagram-publisher | ✅ BUILT, ⚠️ BLOCKED | Publisher deployed, cron active. BLOCKED: FB pages not linked to IG Business accounts |
-| 040 — YouTube fix + LinkedIn | 🔲 PENDING | PK gathering manual tokens. Run after tokens collected |
-| 041 — CFW all 4 platforms | 🔲 PENDING | Run after 040 complete and tokens gathered |
+- `m.post_publish_queue` unique index widened from `(post_draft_id)` to `(post_draft_id, platform)` — enables multi-platform queue items per draft
+- `public.crosspost_facebook_to_linkedin()` SECURITY DEFINER function created — copies approved FB drafts to LinkedIn queue
+- `public.upsert_publish_profile()` SECURITY DEFINER function created — reusable profile upsert helper
 
 ---
 
-## MANUAL ACTIONS REQUIRED (PK)
+## ZAPIER LINKEDIN BRIDGE
 
-### Priority 1 — Instagram Business account linking
-Neither NDIS Yarns nor Property Pulse Facebook pages have a linked Instagram Business account.
-The instagram-publisher is ready but cannot publish without these links.
+| Brand | Webhook URL | Org URN | Zap status |
+|---|---|---|---|
+| NDIS Yarns | hooks.zapier.com/.../u7nkjq3/ | urn:li:organization:112982689 | Published ✅ |
+| Property Pulse | hooks.zapier.com/.../u7nav0s/ | urn:li:organization:112999127 | Published ✅ |
+| Care For Welfare | hooks.zapier.com/.../u7ngjbh/ | urn:li:organization:74152188 | Published ✅ |
+| Invegent | hooks.zapier.com/.../u7nws8p/ | urn:li:organization:111966452 | Published ✅ — no client record yet |
 
-**Steps:**
-1. Go to [business.facebook.com](https://business.facebook.com)
-2. Select NDIS Yarns Facebook Page → Settings → Instagram → Connect Account
-3. Repeat for Property Pulse Facebook Page
-4. Once linked, the Graph API will return `instagram_business_account.id`
-5. Re-run Brief 039 Task 1a to retrieve IDs and insert publish profiles
-
-### Priority 2 — LinkedIn tokens (for Brief 040)
-See Brief 040 Task 4 for exact steps. Need for NDIS Yarns, Property Pulse, CFW.
-
-### Priority 3 — CFW tokens (for Brief 041)
-Facebook, LinkedIn, Instagram, YouTube tokens for CFW.
-See Brief 041 MANUAL SETUP section.
-
-### Priority 4 — LinkedIn portal OAuth fix
-- Set `LINKEDIN_OAUTH_ENABLED=false` in portal Vercel env (currently true, causing OAuth errors)
-- Update redirect URI in LinkedIn Developer Portal from `dashboard.invegent.com` → `portal.invegent.com`
+**Rollback:** When Community Management API approved → replace webhook URLs with real tokens → disable zapier cron → direct linkedin-publisher takes over.
 
 ---
 
@@ -152,6 +121,7 @@ See Brief 041 MANUAL SETUP section.
 | YouTube | Property Pulse | 2 Apr 2031 | ~1816d |
 | Facebook | NDIS-Yarns | 31 May 2026 | ~47d ⚠️ |
 | Facebook | Property Pulse | 5 Jun 2026 | ~52d ⚠️ |
+| Facebook | Care For Welfare | ~Jun 2026 | ~52d ⚠️ |
 
 ---
 
@@ -159,9 +129,20 @@ See Brief 041 MANUAL SETUP section.
 
 | Gate | Status | Action |
 |---|---|---|
-| Meta App Review | Business verification "In Review" | Do NOT edit BM. Contact developer support if stuck after 27 Apr |
-| LinkedIn Community Management API | "1 of 2. Access Form Review" | Evaluate Late.dev middleware if still pending 13 May 2026 |
+| Meta App Review | Business verification In Review | Do NOT edit BM. Contact dev support if stuck after 27 Apr |
+| LinkedIn Community Management API | In Review | Evaluate Late.dev if still pending 13 May 2026 |
 | Legal review (L001) | Not started | Hard gate before first external client signs |
+
+---
+
+## WHAT IS NEXT
+
+1. **Check LinkedIn pages** — 3 queue items will fire on next cron (~20min). Verify posts appear on NDIS Yarns, PP, CFW LinkedIn pages.
+2. **CFW + Invegent brand setup** — one session. Create client records, content scope, AI profiles, feeds, YouTube token for CFW. Then CFW acceptance test.
+3. **Brief 043 — Subscription register** — dashboard page for all paid services. Run after CFW live.
+4. **Facebook token refresh** — NDIS Yarns + PP + CFW all expiring ~May/Jun. Refresh early June.
+5. **LinkedIn OAuth redirect URI** — update in LinkedIn dev portal from dashboard.invegent.com to portal.invegent.com.
+6. **Set LINKEDIN_OAUTH_ENABLED=false** in portal Vercel env (currently true, shows broken button).
 
 ---
 
@@ -169,23 +150,8 @@ See Brief 041 MANUAL SETUP section.
 
 | Issue | Priority | Status |
 |---|---|---|
-| IG Business accounts not linked to FB pages | HIGH | PK action required in Facebook Business Manager |
-| LinkedIn OAUTH_ENABLED=true in portal but API not approved | MED | Set to false in Vercel portal env |
-| LinkedIn redirect URI wrong in dev portal | MED | Update to portal.invegent.com |
-| CFW empty shell | EXPECTED | Acceptance test after platform tokens configured |
-| Facebook tokens expiring ~47-52 days | MED | Refresh early June |
-| YouTube post_publish bug | LOW | Confirm v1.5.0 deployed (Brief 040 Task 1) |
-| 2 HeyGen intro items stuck pending (Apr 9) | LOW | Waiting on avatar builds |
-| Bundler topic weight wiring | LOW | Wire when bundler next touched |
-
----
-
-## WHAT IS NEXT
-
-1. **PK: Link Instagram Business accounts** to NDIS Yarns + Property Pulse Facebook pages in Business Manager
-2. **PK: Generate LinkedIn tokens** for NY, PP, CFW (Brief 040 Task 4 instructions)
-3. **Run Brief 040** — YouTube post_publish fix + LinkedIn profiles
-4. **PK: Gather CFW tokens** for all 4 platforms (Brief 041 MANUAL SETUP)
-5. **Run Brief 041** — CFW platform configuration + acceptance test
-6. **Fix portal LinkedIn OAuth** — set LINKEDIN_OAUTH_ENABLED=false in Vercel + fix redirect URI
-7. **Facebook token refresh** — early June
+| CFW YouTube token missing | HIGH | Setup in CFW+Invegent session |
+| LinkedIn portal OAuth enabled but broken | MED | Set LINKEDIN_OAUTH_ENABLED=false in Vercel |
+| LinkedIn redirect URI wrong | MED | Update to portal.invegent.com in LinkedIn dev portal |
+| Bundler not reading topic weights | LOW | Wire when bundler next touched |
+| HeyGen avatar builds pending | LOW | PK to trigger builds |
