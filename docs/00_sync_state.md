@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-14 (Session close — all 4 clients fully configured)
+> Last written: 2026-04-14 (End of day reconciliation — biggest build day in ICE history)
 > Written by: PK + Claude reconciliation
 
 ---
@@ -19,35 +19,124 @@
 **Phase 1 — COMPLETE** (7 Apr 2026)
 **Phase 3 — Expand + Personal Brand** (active)
 **Gate to first external client conversation is OPEN.**
-**All 4 clients configured and publishing. Content accumulating across Facebook, Instagram, LinkedIn.**
+**4 clients, 14 publish profiles, 5 platforms, 41 cron jobs. Pipeline fully autonomous.**
 
 ---
 
 ## ALL CLIENTS — FULL STATE
 
-| Client | client_id | Verticals | Feeds | AI Profile | Platforms |
-|---|---|---|---|---|---|
-| NDIS Yarns | fb98a472 | NDIS, AU Disability Policy | 17 | active | FB, IG, LI, YT |
-| Property Pulse | 4036a6b5 | AU Property ×3 | 20 | active | FB, IG, LI, YT |
-| Care For Welfare | 3eca32aa | NDIS, AU Disability Policy | 17 | active | FB, IG, LI |
-| Invegent | 93494a09 | AI & Automation, Social Media, Content Marketing | 5 | active | FB, IG, LI |
-
-**New today:** Care For Welfare + Invegent fully configured. Invegent client_id: `93494a09-cc89-41d1-b364-cb63983063a6`
+| Client | client_id | Verticals | Feeds | AI | Platforms | Website |
+|---|---|---|---|---|---|---|
+| NDIS Yarns | fb98a472 | NDIS, AU Disability Policy | 17 | active | FB ✅ IG ✅ LI ✅ YT ✅ | none |
+| Property Pulse | 4036a6b5 | AU Property ×3 | 20 | active | FB ✅ IG ✅ LI ✅ YT ✅ | none |
+| Care For Welfare | 3eca32aa | NDIS, AU Disability Policy | 17 | active | FB ✅ IG ✅ LI ✅ | careforwelfare.com.au |
+| Invegent | 93494a09 | AI & Automation, Social Media, Content Marketing | 5 | active | FB ✅ IG ✅ LI ✅ | invegent.com (blog pending) |
 
 ---
 
-## PLATFORM STATUS
+## PLATFORM STATUS — ALL CLIENTS
 
-| Platform | Publisher | NY | PP | CFW | Invegent |
-|---|---|---|---|---|---|
-| Facebook | publisher v1.3.x | ✅ 374 posts | ✅ working | ✅ configured | ✅ configured |
-| Instagram | instagram-publisher v1.0.0 | ✅ configured | ✅ configured | ✅ configured | ✅ configured |
-| LinkedIn | linkedin-zapier-publisher v1.0.0 | ✅ Zapier | ✅ Zapier | ✅ Zapier | ✅ Zapier |
-| YouTube | youtube-publisher v1.5.0 | ✅ OAuth | ✅ OAuth | ❌ future | ❌ future |
+| Platform | Publisher | NDIS Yarns | Property Pulse | CFW | Invegent | Published |
+|---|---|---|---|---|---|---|
+| Facebook | publisher v1.3.x | ✅ | ✅ | ✅ | ✅ | 374 posts |
+| Instagram | instagram-publisher v1.0.0 | ✅ | ✅ | ✅ | ✅ | 0 — needs approved image drafts |
+| LinkedIn | linkedin-zapier-publisher v1.0.0 | ✅ Zapier | ✅ Zapier | ✅ Zapier | ✅ Zapier | 0 — queue fired, check pages |
+| YouTube | youtube-publisher v1.5.0 | ✅ OAuth | ✅ OAuth | ❌ future | ❌ future | 1 (post_publish now backfilled) |
+| Website/WP | wordpress-publisher v1.0.0 | ❌ n/a | ❌ n/a | ✅ ACTIVE | ❌ brief 046 pending | 0 — CFW pipeline not yet generating |
 
-**Instagram:** No posts yet — needs approved drafts with image_url. NDIS Yarns image generation stopped ~20 Mar (ai-worker v2.8.0 fix in progress). PP image formats working.
-**LinkedIn:** 3 queue items loaded, first posts expected within 20min of session end.
-**Instagram + LinkedIn zero published** — both pipelines started today, content needs to flow through.
+---
+
+## ACTIVE CRON JOBS — 41 TOTAL
+
+| Job | Schedule | Function |
+|---|---|---|
+| ai-worker-every-5m | */5 * * * * | ai-worker |
+| auto-approver-sweep | */10 * * * * | auto-approver |
+| content_fetch_every_10min | */10 * * * * | content-fetch |
+| enqueue-publish-queue-every-5m | */5 * * * * | publisher |
+| image-worker-15min | */15 * * * * | image-worker |
+| instagram-publisher-every-15m | */15 * * * * | instagram-publisher |
+| pipeline-sentinel-every-15m | */15 * * * * | pipeline-sentinel |
+| pipeline-healer-every-15m | 2,17,32,47 * * * * | pipeline-healer |
+| linkedin-publisher-every-15m | */15 * * * * | linkedin-publisher (dormant) |
+| linkedin-zapier-publisher-every-20m | */20 * * * * | linkedin-zapier-publisher |
+| publisher-every-10m | */5 * * * * | publisher |
+| seed-and-enqueue-facebook-every-10m | */10 * * * * | bundler/seeder |
+| sweep-stale-running-every-10m | */10 * * * * | healer |
+| video-worker-every-30min | */30 * * * * | video-worker |
+| heygen-worker-every-30min | */30 * * * * | heygen-worker |
+| youtube-publisher-every-30min | 15,45 * * * * | youtube-publisher |
+| pipeline-doctor-every-30m | 15,45 * * * * | pipeline-doctor |
+| draft-notifier-every-30m | */30 * * * * | draft-notifier |
+| rss-ingest-run-all-hourly | 0 */6 * * * | ingest |
+| email-ingest-every-2h | 0 */2 * * * | email-ingest |
+| pipeline-ai-summary-hourly | 55 * * * * | pipeline-ai-summary |
+| planner-hourly | 0 * * * * | planner |
+| wordpress-publisher-every-6h | 0 */6 * * * | wordpress-publisher (NEW) |
+| insights-worker-daily | 0 3 * * * | insights-worker |
+| insights-feedback-daily | 30 3 * * * | insights-feedback |
+| refresh-format-performance-daily | 15 3 * * * | format-performance |
+| dead-letter-sweep-daily | 0 2 * * * | healer |
+| ai-diagnostic-daily | 0 20 * * * | ai-diagnostic |
+| token-health-daily-7am-sydney | 0 21 * * * | token health |
+| weekly-manager-report-monday-7am-aest | 0 21 * * 0 | weekly-manager-report |
+| client-weekly-summary-monday-730am-aest | 30 21 * * 0 | client-weekly-summary |
+| feed-intelligence-weekly | 0 2 * * 0 | feed-intelligence |
+| ice-system-audit-weekly | 0 13 * * 0 | system audit |
+| k-schema-refresh-weekly | 0 3 * * 0 | k schema refresh |
+| compliance-monitor-monthly | 0 9 1 * * | compliance-monitor |
+| compliance-reviewer-monthly | 5 9 1 * * | compliance-reviewer |
+| + 5 others (pipeline health, doctor harvester, etc) | various | monitoring |
+
+---
+
+## SUPABASE EDGE FUNCTIONS — LIVE
+
+| Function | Version | Status |
+|---|---|---|
+| ai-worker | 73 | ACTIVE — v2.8.0 format advisor bias |
+| auto-approver | 30 | ACTIVE — v1.4.1 |
+| brand-scanner | 1 | ACTIVE — v1.0.0 |
+| client-weekly-summary | 1 | ACTIVE — v1.0.0 |
+| compliance-monitor | 14 | ACTIVE — monthly |
+| compliance-reviewer | 4 | ACTIVE — v1.3.0 |
+| content_fetch | 65 | ACTIVE |
+| draft-notifier | 16 | ACTIVE |
+| email-ingest | 15 | ACTIVE |
+| feed-intelligence | 20 | ACTIVE |
+| heygen-worker | 2 | ACTIVE — v1.1.0 |
+| image-worker | 37 | ACTIVE — v3.9.2 |
+| ingest | 95 | ACTIVE |
+| insights-feedback | 1 | ACTIVE — v1.0.0 |
+| insights-worker | 32 | ACTIVE — v14.0.0 |
+| instagram-publisher | 1 | ACTIVE — v1.0.0 |
+| linkedin-publisher | 15 | ACTIVE — dormant (no direct profiles) |
+| linkedin-zapier-publisher | 1 | ACTIVE — v1.0.0 |
+| pipeline-diagnostician | 1 | ACTIVE — v1.0.0 |
+| pipeline-healer | 1 | ACTIVE — v1.0.0 |
+| pipeline-sentinel | 1 | ACTIVE — v1.0.0 |
+| publisher | 58 | ACTIVE — Facebook |
+| series-outline | 15 | ACTIVE |
+| series-writer | 16 | ACTIVE |
+| video-analyser | 4 | ACTIVE — v1.2.0 |
+| video-worker | 14 | ACTIVE — v2.1.0 |
+| weekly-manager-report | 1 | ACTIVE — v1.1.0 |
+| wordpress-publisher | 1 | ACTIVE — v1.0.0 (NEW) |
+| youtube-publisher | 15 | ACTIVE — v1.5.0 |
+
+---
+
+## KEY SCHEMA FACTS
+
+- `m.post_publish_queue` unique index: `(post_draft_id, platform)` — multi-platform support
+- `public.crosspost_facebook_to_linkedin()` — copies approved FB drafts to LinkedIn queue
+- `public.upsert_publish_profile()` — reusable profile upsert helper
+- `public.crosspost_facebook_to_linkedin()` — runs inside linkedin-zapier-publisher
+- 3 new verticals: AI & Automation (15), Social Media Strategy (16), Content Marketing (17)
+- Invegent client_id: `93494a09-cc89-41d1-b364-cb63983063a6`
+- CFW WordPress: careforwelfare.com.au, username admin, secret CFW_WP_APP_PASSWORD, category ID 20
+- CFW wp_options stored in c.client.profile JSONB
+- Mod_Security on careforwelfare.com.au requires User-Agent header on all API calls — handled in wordpress-publisher
 
 ---
 
@@ -60,79 +149,35 @@
 | Care For Welfare | urn:li:organization:74152188 | hooks.zapier.com/.../u7ngjbh/ |
 | Invegent | urn:li:organization:111966452 | hooks.zapier.com/.../u7nws8p/ |
 
-**Rollback plan:** When Community Management API approved → replace webhook URLs with real tokens → disable zapier cron → direct linkedin-publisher takes over automatically.
+Rollback: when Community Management API approved → replace webhook URLs with real tokens → disable zapier cron.
 
 ---
 
-## NEW VERTICALS CREATED TODAY
+## WORDPRESS PUBLISHER
 
-| vertical_id | vertical_name | vertical_slug | domain |
-|---|---|---|---|
-| 15 | AI & Automation | ai-automation | Technology (13) |
-| 16 | Social Media Strategy | social-media-strategy | Technology (13) |
-| 17 | Content Marketing | content-marketing | Business & Finance (5) |
+| Client | Site | Username | Secret | Category ID | Status |
+|---|---|---|---|---|---|
+| Care For Welfare | careforwelfare.com.au | admin | CFW_WP_APP_PASSWORD | 20 (NDIS News) | ACTIVE |
+| Invegent | invegent.com | — | — | — | Brief 046 pending |
 
----
-
-## NEW FEED SOURCES CREATED TODAY (Invegent)
-
-| source_id | source_name |
-|---|---|
-| fe33f1c7 | TechCrunch AI |
-| c498af1c | The Verge AI |
-| e5f1dc41 | Marketing AI Institute |
-| 35e0fe3a | Social Media Examiner |
-| a70085c9 | Content Marketing Institute |
+Publishes max 3 posts per 6-hour run. Yoast SEO handles meta/sitemaps automatically.
 
 ---
 
-## KEY SCHEMA CHANGES TODAY
-
-- `m.post_publish_queue` unique index widened: `(post_draft_id)` → `(post_draft_id, platform)` — enables multi-platform queue per draft
-- `public.crosspost_facebook_to_linkedin()` SECURITY DEFINER — copies approved FB drafts to LinkedIn queue (runs inside linkedin-zapier-publisher)
-- `public.upsert_publish_profile()` SECURITY DEFINER — reusable profile upsert helper
-- 3 new content verticals (AI/Social/Content)
-- Invegent client record created: `93494a09-cc89-41d1-b364-cb63983063a6`
-
----
-
-## SUPABASE EDGE FUNCTIONS — LIVE
-
-| Function | Version | Status | Notes |
-|---|---|---|---|
-| ai-worker | 73 | ACTIVE | v2.8.0 — format advisor preferred format bias |
-| auto-approver | 30 | ACTIVE | v1.4.1 |
-| instagram-publisher | 1 | ACTIVE | v1.0.0 — every 15min |
-| linkedin-publisher | 15 | ACTIVE | dormant — waiting on Community Mgmt API |
-| linkedin-zapier-publisher | 1 | ACTIVE | v1.0.0 — every 20min — NEW |
-| publisher | 58 | ACTIVE | Facebook |
-| youtube-publisher | 15 | ACTIVE | v1.5.0 |
-| pipeline-sentinel | 1 | ACTIVE | every 15min |
-| pipeline-healer | 1 | ACTIVE | every 15min offset |
-| pipeline-diagnostician | 1 | ACTIVE | on-demand |
-| weekly-manager-report | 1 | ACTIVE | Mon 7am AEST |
-| client-weekly-summary | 1 | ACTIVE | Mon 7:30am AEST |
-| insights-feedback | 1 | ACTIVE | daily 3:30am UTC |
-| insights-worker | 32 | ACTIVE | v14.0.0 |
-| image-worker | 37 | ACTIVE | v3.9.2 |
-| video-worker | 14 | ACTIVE | v2.1.0 |
-| ingest | 95 | ACTIVE | every 6h |
-| content_fetch | 65 | ACTIVE | every 10min |
-
-**Active cron jobs: 40**
-
----
-
-## PIPELINE HEALTH — 14 Apr 2026
+## PIPELINE HEALTH — EOD 14 Apr 2026
 
 | Metric | Value | Status |
 |---|---|---|
-| Posts last 7 days | 24 | ✅ |
+| Posts last 7 days | 23 | ✅ |
 | Needs review | 0 | ✅ |
 | Stuck AI jobs | 0 | ✅ |
-| Open CRITICAL incidents | 1 | CFW no_drafts_48h — will clear once content flows |
-| LinkedIn published | 0 | Expected — just started |
-| Instagram published | 0 | Expected — needs image_url on drafts |
+| Open CRITICAL incidents | 1 | CFW no_drafts — will clear ~12-24h |
+| LinkedIn published | 0 | Queue fired, check pages manually |
+| Instagram published | 0 | Waiting for image drafts |
+| Website published | 0 | CFW pipeline not yet generating |
+| Active cron jobs | 41 | ✅ |
+| Active clients | 4 | ✅ |
+| Active publish profiles | 14 | ✅ |
 
 ---
 
@@ -159,13 +204,26 @@
 
 ---
 
-## WHAT IS NEXT
+## WHAT IS NEXT (PRIORITY ORDER)
 
-1. **Monitor LinkedIn + Instagram** — check all 4 brand pages over next 24-48h. Confirm posts appear.
-2. **Iron out publication issues** — watch for stuck jobs, failed queue items, Zapier errors. Use Sentinel + dashboard.
-3. **NDIS Yarns image generation** — ai-worker v2.8.0 format advisor fix deployed. Monitor if image_quote drafts now appear for NDIS Yarns.
-4. **Brief 043 — Subscription register** — dashboard page for all paid services.
+1. **Morning check** — verify LinkedIn posts fired on all 4 pages, Instagram posted for PP/NY
+2. **CFW first drafts** — should generate within 12-24h. Watch for CRITICAL incident to clear.
+3. **Brief 043** — Subscription register dashboard page. Run via Claude Code.
+4. **Brief 046** — invegent.com blog section (Supabase → Next.js ISR). Write and run.
 5. **Portal LinkedIn OAuth fix** — set LINKEDIN_OAUTH_ENABLED=false in Vercel portal env.
-6. **LinkedIn redirect URI** — update in LinkedIn dev portal from dashboard.invegent.com → portal.invegent.com.
+6. **LinkedIn redirect URI** — update in LinkedIn dev portal from dashboard → portal.invegent.com.
 7. **Facebook token refresh** — all 4 clients expiring May/Jun. Refresh early June.
-8. **CFW CRITICAL incident** — will auto-resolve once first draft generates for CFW (within 24h).
+8. **NDIS Yarns image generation** — monitor if v2.8.0 format advisor fix generates image_quote drafts.
+
+---
+
+## KNOWN ACTIVE ISSUES
+
+| Issue | Priority | Status |
+|---|---|---|
+| LinkedIn portal OAuth enabled but broken | MED | Set LINKEDIN_OAUTH_ENABLED=false in Vercel |
+| LinkedIn redirect URI wrong | MED | Update to portal.invegent.com in LinkedIn dev portal |
+| NDIS Yarns image formats | LOW | Monitor — v2.8.0 may fix this over next 24-48h |
+| Bundler not reading topic weights | LOW | Wire when bundler next touched |
+| HeyGen avatar builds pending | LOW | PK to trigger stock avatar builds |
+| CFW WordPress admin account | LOW | Consider changing username from 'admin' to something specific |
