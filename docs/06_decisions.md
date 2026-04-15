@@ -27,146 +27,107 @@ is recorded here with context and reasoning.
 ## D102 — LinkedIn Publishing via Zapier Webhook Bridge
 **Date:** 14 April 2026 | **Status:** ✅ Live
 
-**Decision:** Route LinkedIn posts through Zapier as a temporary bridge while Community Management API (`w_organization_social`) is pending approval. ICE sends approved draft content to a Zapier webhook. Zapier posts to LinkedIn Company Pages using its own pre-approved OAuth.
+**Decision:** Route LinkedIn posts through Zapier as a temporary bridge while Community Management API (`w_organization_social`) is pending approval.
 
-**Architecture:** ICE linkedin-zapier-publisher → crosspost_facebook_to_linkedin() copies approved FB drafts to LinkedIn queue → publisher picks up queue items → POSTs to Zapier webhook URL (stored in page_access_token field) → Zapier fires → post appears on LinkedIn page.
-
-**Token storage pattern:** page_access_token on linkedin profiles = Zapier webhook URL (not a real OAuth token). Detected by checking if value starts with `https://hooks.zapier.com`.
-
-**Rollback:** When Community Management API approved → replace webhook URLs with real tokens → disable zapier cron → existing linkedin-publisher cron takes over automatically.
+**Rollback:** When Community Management API approved → replace webhook URLs with real tokens → linkedin-zapier-publisher detects non-Zapier URL and routes correctly.
 
 **Key fix:** `m.post_publish_queue` unique index widened from `(post_draft_id)` to `(post_draft_id, platform)` to support one draft being queued for multiple platforms.
 
-**Zap configuration:**
-- NDIS Yarns: org 112982689, webhook u7nkjq3
-- Property Pulse: org 112999127, webhook u7nav0s
-- Care For Welfare: org 74152188, webhook u7ngjbh
-- Invegent: org 111966452, webhook u7nws8p
+**Zap configuration:** NDIS Yarns: u7nkjq3 | Property Pulse: u7nav0s | Care For Welfare: u7ngjbh | Invegent: u7nws8p
 
 ---
 
 ## D103 — Invegent as ICE Client
 **Date:** 14 April 2026 | **Status:** ✅ Live
 
-**Decision:** Create Invegent as a full ICE client with its own content pipeline, AI profile, and publish profiles. Invegent publishes about AI-driven content marketing, social media strategy, and automation for small business.
-
-**client_id:** `93494a09-cc89-41d1-b364-cb63983063a6`
-
-**New verticals created:** AI & Automation (15, domain 13), Social Media Strategy (16, domain 13), Content Marketing (17, domain 5).
-
-**New feed sources:** TechCrunch AI, The Verge AI, Marketing AI Institute, Social Media Examiner, Content Marketing Institute.
-
-**AI profile tone:** Conversational, practical, curious. Writes like a knowledgeable friend explaining something interesting. Never self-promotional. Ends with a genuine question that invites engagement.
-
-**Platforms:** Facebook, Instagram, LinkedIn (Zapier). YouTube is future.
+**Decision:** Create Invegent as a full ICE client. client_id: `93494a09-cc89-41d1-b364-cb63983063a6`. New verticals: AI & Automation, Social Media Strategy, Content Marketing. AI tone: conversational, practical, curious. Platforms: FB, IG, LI (Zapier).
 
 ---
 
 ## D104 — Care For Welfare Full Pipeline Setup
 **Date:** 14 April 2026 | **Status:** ✅ Live
 
-**Decision:** Configure CFW as a full ICE client: clone NDIS Yarns content scope and feed sources (same vertical), create OT-specific AI profile, set profession_slug = occupational_therapy so compliance rules load correctly.
-
-**AI profile differentiation from NDIS Yarns:** CFW writes as a caring OT practitioner to participants, families, and allied health professionals. Warmer tone than NDIS Yarns. Includes CFW-specific disclaimer. Explicitly identifies as a registered NDIS provider.
-
-**Platforms:** Facebook, Instagram, LinkedIn (Zapier). YouTube future.
+**Decision:** Configure CFW as a full ICE client. Clone NDIS Yarns content scope, create OT-specific AI profile, set profession_slug = occupational_therapy. Warmer tone than NDIS Yarns. Platforms: FB, IG, LI (Zapier), WP.
 
 ---
 
 ## D105 — WordPress Publishing for CFW Website SEO
 **Date:** 14 April 2026 | **Status:** ✅ Live
 
-**Decision:** Publish approved CFW drafts to careforwelfare.com.au/ndis-news/ via WordPress REST API. Cross-post pattern — max 3 posts per 6-hour run for SEO-friendly pacing. Yoast SEO plugin (already installed) handles meta titles, descriptions, and structured data automatically.
+**Decision:** Publish approved CFW drafts to careforwelfare.com.au/ndis-news/ via WordPress REST API. Max 3 posts per 6-hour run. Yoast SEO handles meta. Mod_Security requires User-Agent: Mozilla/5.0 header.
 
-**Rationale:** Social posts disappear in feeds. Website posts get indexed permanently. NDIS is a low-competition niche — even 150-280 word posts rank for long-tail searches. Free organic traffic from people searching for exactly what CFW offers.
-
-**Key technical finding:** careforwelfare.com.au runs Mod_Security which blocks API requests without a browser-like User-Agent header (returns HTTP 406). Fixed by adding `User-Agent: Mozilla/5.0` to all fetch calls in the wordpress-publisher Edge Function.
-
-**Credentials:** Username `admin`, Application Password stored as Supabase secret `CFW_WP_APP_PASSWORD`, NDIS News category ID 20.
-
-**Extensibility:** Any client with `website_publish_enabled: true` and `wp_site_url` in `c.client.profile` JSONB will be picked up automatically.
+**Credentials:** Username `admin`, secret `CFW_WP_APP_PASSWORD`, category ID 20.
 
 ---
 
 ## D106 — Platform Connections Dashboard — Dynamic Rendering
 **Date:** 14 April 2026 | **Status:** ✅ Live
 
-**Decision:** Both `/connect` page and Clients → Connect tab now render platforms dynamically from `c.client_publish_profile` — no hardcoded platform columns. New platforms appear automatically.
-
-**Zapier detection:** LinkedIn profiles with page_access_token starting with `https://hooks.zapier.com` show a purple "Active — Zapier bridge" badge instead of token expiry info.
-
-**Shared util:** `lib/platform-status.ts` in invegent-dashboard exports `PLATFORM_CONFIG`, `PLATFORM_ORDER`, `getTokenStatus()`, `PlatformIcon`, and `PlatformProfile` type — used by both pages.
+**Decision:** Both `/connect` page and Clients → Connect tab render platforms dynamically from `c.client_publish_profile`. LinkedIn profiles with page_access_token starting `https://hooks.zapier.com` show purple Zapier bridge badge.
 
 ---
 
 ## D107 — Full Pipeline Audit Methodology
 **Date:** 15 April 2026 | **Status:** ✅ Complete
 
-**Decision:** Conduct a systematic read-only audit of all 40 crons and 46 Edge Functions before any further feature work. Audit saved as `docs/ICE_Pipeline_Audit_Apr2026.md`.
-
-**Findings summary:** 10 issues found — 2 broken (NULL URL crons), 5 suspect (hardcoded values, legacy bundlers), 3 informational. Core pipeline rated 8/10 as a developer, 7/10 as a CTO. Maintainability rated 5/10 due to auth fragmentation and cron sprawl.
-
-**Outcome:** All 10 issues addressed in the same session. System is now cleaner and more maintainable than before the audit.
-
-**Key principle confirmed:** The architecture (signal-centric pipeline, clean schema separation, platform abstraction) is sound. The debt was operational, not structural. Targeted cleanup is the right approach — not architectural overhaul.
+**Decision:** Systematic read-only audit of all 40 crons and 46 Edge Functions before further feature work. 10 issues found, all fixed same session. Architecture confirmed sound — debt was operational, not structural.
 
 ---
 
 ## D108 — Auth Standardisation: No-Verify-JWT + Vault Pattern
 **Date:** 15 April 2026 | **Status:** ✅ Complete
 
-**Decision:** Standardise all Edge Functions called by crons to use `verify_jwt: false` (deployed with `--no-verify-jwt` flag). Security is enforced instead by internal API key checks within each function (`x-publisher-key`, `x-ai-worker-key` etc).
-
-**Problem:** 11 functions had `verify_jwt: true` but their crons sent no Authorization header — causing 401s on every cycle. ai-worker, auto-approver, instagram-publisher, pipeline-sentinel, pipeline-healer, pipeline-diagnostician, linkedin-zapier-publisher, wordpress-publisher, weekly-manager-report, client-weekly-summary, insights-feedback were all silently failing.
-
-**Fix:** Redeployed all 11 with `--no-verify-jwt`. Functions already had internal key validation so security posture is unchanged.
-
-**Remaining:** `content_fetch` still 401 — needs same redeploy next session.
-
-**Standard pattern going forward:** All cron-called Edge Functions → `verify_jwt: false` + internal API key check. Portal/dashboard-called functions may use either pattern depending on whether they need RLS context.
+**Decision:** All cron-called Edge Functions use `verify_jwt: false` + internal API key check. 12 functions redeployed --no-verify-jwt including content_fetch. Security posture unchanged — internal key validation still in place.
 
 ---
 
 ## D109 — Publisher Platform Filter (publisher_lock_queue_v1)
 **Date:** 15 April 2026 | **Status:** ✅ Fixed
 
-**Decision:** Drop the old 3-argument overload of `m.publisher_lock_queue_v1` so only the 4-argument version with `p_platform DEFAULT 'facebook'` remains.
-
-**Problem:** The Facebook publisher was calling publisher_lock_queue_v1 without a platform parameter. With two overloads, PostgreSQL resolved to the 3-arg overload (no platform filter), causing the Facebook publisher to lock AND process LinkedIn, Instagram, and YouTube queue items. LinkedIn has never published because of this — the Facebook publisher consumed all LinkedIn items first, failed token validation (Zapier URL ≠ Facebook token), and pushed them back with 6-hour backoff.
-
-**Fix:** Dropped old overload. PostgreSQL now resolves all calls to the 4-arg version, which defaults to `p_platform = 'facebook'`. LinkedIn Zapier publisher uses `publisher_lock_queue_v2` directly with `p_platform = 'linkedin'` — unaffected.
-
-**Result:** LinkedIn published its first ever post within 20 minutes of this fix.
+**Decision:** Drop old 3-arg overload of `m.publisher_lock_queue_v1`. Only 4-arg version with `p_platform DEFAULT 'facebook'` remains. Root cause of LinkedIn never publishing: Facebook publisher was stealing all LinkedIn queue items via the unfiltered 3-arg overload.
 
 ---
 
 ## D110 — Token Expiry Alerter
 **Date:** 15 April 2026 | **Status:** ✅ Live
 
-**Decision:** Build automated token expiry alerting rather than relying on calendar reminders. A daily cron calls `public.check_token_expiry()` which writes rows to `m.token_expiry_alert`. Dashboard Overview page shows warning (amber) and critical (red) banners.
-
-**Thresholds:** Warning at 30 days remaining. Critical at 14 days remaining.
-
-**Auto-resolution:** When a token is refreshed (token_expires_at pushed past 30 days), the alert row is auto-resolved via resolved_at timestamp.
-
-**Initial scope:** Facebook tokens only (the only platform with near-term expiry). Platform-agnostic fix pending — change `WHERE pp.platform = 'facebook'` to `WHERE pp.token_expires_at IS NOT NULL`.
-
-**Cron:** `token-expiry-alert-daily` at 5 22 * * * UTC (8:05am AEST).
+**Decision:** `public.check_token_expiry()` runs daily 8:05am AEST. Writes to `m.token_expiry_alert`. Dashboard banners at 30d warning / 14d critical. Currently Facebook only — platform-agnostic fix pending.
 
 ---
 
 ## D111 — Feed Management: Shared Signal Model
 **Date:** 15 April 2026 | **Status:** ✅ Live
 
-**Decision:** Feeds are shared signals, not client-owned assets. A single DSS feed can serve both NDIS Yarns and Care For Welfare simultaneously. The dashboard now exposes this correctly via a feed assignment modal.
+**Decision:** Feeds are shared signals, not client-owned. Any feed can serve multiple clients simultaneously. `c.client_source` rows are NEVER deleted — only `is_enabled = false`. Feed status values: `active`, `paused`, `deprecated` only.
 
-**c.client_source rules:**
-- NEVER delete rows — only set `is_enabled = false`
-- `weight` defaults to 1.0
-- Any feed can be assigned to any number of clients
-- Unassigning = `is_enabled = false`, not deletion
+---
 
-**Feed intelligence:** `k.vw_feed_intelligence` view aggregates ingest runs, raw items, give-up rates, and client assignments per feed. Surfaced in dashboard as expandable per-feed panel.
+## D112 — Feed DML via SECURITY DEFINER Functions
+**Date:** 15 April 2026 | **Status:** ✅ Live
+
+**Decision:** All feed write operations (assign, unassign, deactivate) go through SECURITY DEFINER functions in the public schema, called via `.rpc()`. Direct `exec_sql` DML on `c` and `f` schemas silently fails — returns no error, writes nothing.
+
+**Functions created:**
+- `public.feed_assign_client(p_source_id uuid, p_client_id uuid, p_enabled boolean, p_weight numeric)` — upsert client_source row
+- `public.feed_unassign_from_client(p_source_id uuid, p_client_id uuid)` — sets is_enabled=false for one client
+- `public.feed_deactivate(p_source_id uuid)` — sets feed status='deprecated' + disables all client_source rows
+
+**Key constraint:** `f.feed_source.status` only accepts `'active'`, `'paused'`, `'deprecated'`. Using `'inactive'` throws check constraint violation.
+
+**Pattern to remember:** exec_sql = SELECT only on c/f/t schemas. Any write → SECURITY DEFINER function in public schema.
+
+---
+
+## D113 — Feed UI Page Separation
+**Date:** 15 April 2026 | **Status:** ✅ Live
+
+**Decision:** Two pages, two distinct roles for feed management:
+- `/feeds` (global Feeds page) — manage the full feed pool. Vertical grouping. Assign to multiple clients. Deactivate globally. Uses `k.vw_feed_intelligence` which includes `assigned_clients` array per feed.
+- Clients → Feeds tab (specific client selected) — manage one client’s feeds. Flat list. Unassign only. Uses INNER JOIN query filtered by that client with `is_enabled = true`.
+
+**"All clients" on Clients → Feeds tab** — shows a prompt to select a client with a link to /feeds. Does NOT attempt to show all feeds (the query does not include the `assigned_clients` array needed for vertical grouping).
+
+**handleUnassign** uses `feed.client_id` (actual assignment from DB row), not `clientContext.clientId` (which defaults to clients[0] when no specific client selected and could point to the wrong client).
 
 ---
 
@@ -174,8 +135,8 @@ is recorded here with context and reasoning.
 
 | Decision | Context | Target |
 |---|---|---|
-| content_fetch JWT fix | Redeploy --no-verify-jwt | Next session |
 | Token alert platform-agnostic | Change facebook filter to token_expires_at IS NOT NULL | Next session |
+| Deprecated feeds stale cleanup | 15 deprecated feeds still have is_enabled=true | Low priority |
 | NDIS Support Catalogue data load | Tables exist. Needs NDIA Excel from ndia.gov.au | Phase 3 |
 | Legal review of service agreement | L001 — hard gate before external client #1 | Before C1 |
 | F1 Prospect demo generator | Hold until NDIS Yarns has 60+ days data | ~mid-June 2026 |
