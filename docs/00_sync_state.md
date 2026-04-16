@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-15 (Full session close — feed management complete)
+> Last written: 2026-04-16 (Memory + docs reconciliation — 10-session audit complete)
 > Written by: PK + Claude reconciliation
 
 ---
@@ -46,41 +46,41 @@
 
 ---
 
-## TODAY’S SESSION — 15 Apr 2026 (FULL DAY)
+## RECENT SESSIONS — KEY BUILDS
 
-### Morning: Pipeline Audit + Cleanup Sprint
-- Full audit of 40 crons + 46 Edge Functions → 10 issues found, all fixed
-- 46 → 40 Edge Functions, 40 → 39 crons
-- Auth standardised: 12 functions redeployed --no-verify-jwt (incl. content_fetch — done manually by PK)
+### 16 Apr 2026 — Dashboard fixes + docs reconciliation
+- Overview approve/reject bug fixed: `<form method="POST">` → client component using `fetch` with JSON body (`DraftActionButtons.tsx`)
+- Schedule grid redesigned: unified all-platform grid (one view, platform icons per cell) replacing per-platform tab switcher
+- Memory + docs full reconciliation: 10-session audit, D114–D117 added, stale entries corrected
+
+### 15 Apr 2026 — Pipeline audit + feed management
+- Full audit: 40 Edge Functions, 39 crons (corrected from 41 — 6 dead crons removed)
+- Auth standardised: 12 functions redeployed --no-verify-jwt
 - publisher_lock_queue_v1 platform filter fixed → LinkedIn live
-- Token expiry alerter built (m.token_expiry_alert, check_token_expiry(), daily cron)
+- Token expiry alerter: `public.check_token_expiry()` daily 8:05am AEST → `m.token_expiry_alert`
 - PP Facebook token refreshed (expires 14 Jun 2026)
+- Feed management UI complete (Briefs 049–052): global /feeds + client context Feeds tab
+- Feed DML fixed: 3 SECURITY DEFINER functions (feed_assign_client, feed_deactivate, feed_unassign_from_client)
+- First PP LinkedIn post published
 
-### Afternoon: Feed Management UI (Briefs 049–052)
-- Brief 049: k.vw_feed_intelligence view, feed assignment modal, intelligence panel
-- Brief 050: Health halos, client allocation badge, add/delete, inactive toggle
-- Brief 051: Feed UX redesign — client context mode, unassign, pool picker, process guidance
-- Brief 052: Feed bug fixes — vertical grouping, deduplication, exec_sql → SECURITY DEFINER
+### 14 Apr 2026 — Biggest build day
+- 4 clients, 5 platforms fully live
+- instagram-publisher v1.0.0, linkedin-zapier-publisher v1.0.0, wordpress-publisher v1.0.0
+- CFW careforwelfare.com.au SEO publishing active
+- Invegent brand client created (93494a09)
+- D101–D113 logged
+- Subscription register decision made: Brief 043 = k.subscription_register table + dashboard page (D114)
 
-### Evening: Feed API Bugs (all fixed)
-**Root cause of all feed write failures:** `exec_sql` silently ignores DML on `c` and `f` schemas.
-**Fix:** 3 SECURITY DEFINER functions created in public schema:
-- `public.feed_assign_client(p_source_id, p_client_id, p_enabled, p_weight)`
-- `public.feed_deactivate(p_source_id)` — sets status = 'deprecated' (not 'inactive' — check constraint)
-- `public.feed_unassign_from_client(p_source_id, p_client_id)`
+### 2 Apr 2026 — AI Diagnostic + compliance fix + k schema
+- `ai-diagnostic` Edge Function: daily 6am AEST cron, reads 7-day metrics, calls Claude Sonnet
+- `m.ai_diagnostic_report` table, `/diagnostics` dashboard page, health gauge + Run Now button
+- **Deploy note:** `npx supabase functions deploy ai-diagnostic --project-ref mbkmaxqhsohbtwsqolns` (manual — Windows MCP times out)
+- `public.mark_compliance_review()` SECURITY DEFINER fix — compliance tab mark-as-reviewed now works
+- k schema: 117 tables documented across 5 schemas, zero TODO entries, weekly pg_cron refresh established
 
-**Additional fixes:**
-- `getFeeds` query: LEFT JOIN → INNER JOIN with `cs.is_enabled = true` — unassigned feeds now disappear after unassign
-- `handleUnassign` uses `feed.client_id` not `clientContext.clientId` (was pointing at wrong client)
-- Clients → Feeds tab: only loads feeds when a specific client is selected; "All clients" shows prompt with link to /feeds
-- Error visibility added to all feed modals
-- f.feed_source status check constraint: only `'active'`, `'paused'`, `'deprecated'` allowed (not 'inactive')
-
-**Verified working:**
-- ✅ Assign/unassign feeds from global Feeds page
-- ✅ Unassign from Clients → Feeds tab (specific client selected)
-- ✅ Deactivate feed globally (sets deprecated + disables all client_source rows)
-- ✅ "Every Australian Counts" — deprecated, 0 enabled assignments confirmed in DB
+### 6 Apr 2026 — Facebook format bug + YouTube publisher fix
+- D073: database triggers gate non-text queue items to NOW()+4h on INSERT; release trigger fires when image-worker marks asset ready
+- youtube-publisher v1.4.0: queries only on video_status='generated' + video_url IS NOT NULL + youtube_video_id IS NULL — fully independent of Facebook publisher
 
 ---
 
@@ -100,11 +100,11 @@
 
 **Two pages, two roles:**
 - `/feeds` — global feed pool management. Vertical grouping (Disability & NDIS / Property & Finance / AI & Marketing / Shared / Unassigned). Assign to multiple clients. Deactivate globally. Uses `k.vw_feed_intelligence`.
-- Clients → Feeds tab (specific client selected) — manage one client’s feeds. Flat list. Unassign only. Uses INNER JOIN query filtered by client.
+- Clients → Feeds tab (specific client selected) — manage one client's feeds. Flat list. Unassign only. Uses INNER JOIN query filtered by client.
 
 **Key rules:**
 - `c.client_source` rows are NEVER deleted — only `is_enabled = false`
-- Feed status: `active`, `paused`, `deprecated` (not inactive — check constraint)
+- Feed status: `active`, `paused`, `deprecated` (not 'inactive' — check constraint)
 - All feed DML goes through SECURITY DEFINER functions in public schema
 - exec_sql is READ-ONLY on c and f schemas — silently ignores DML
 
@@ -136,12 +136,13 @@
 |---|---|---|---|
 | YouTube | NDIS Yarns | 7 Apr 2031 | ✅ |
 | YouTube | Property Pulse | 2 Apr 2031 | ✅ |
-| Facebook | NDIS Yarns | 31 May 2026 | ⚠️ Auto-alert at 30d |
+| Facebook | NDIS Yarns | 31 May 2026 | ⚠️ Auto-alert fires ~1 May |
 | Facebook | Property Pulse | 14 Jun 2026 | ✅ Refreshed 15 Apr |
 | Facebook | Care For Welfare | ~Jun 2026 | ⚠️ Auto-alert at 30d |
 | Facebook | Invegent | ~Jun 2026 | ⚠️ Auto-alert at 30d |
 
 `public.check_token_expiry()` runs daily 8:05am AEST. Writes to `m.token_expiry_alert`. Dashboard banners auto-show at 30d warning / 14d critical.
+**Pending fix:** currently filters `WHERE pp.platform = 'facebook'` — change to `WHERE pp.token_expires_at IS NOT NULL` to cover all platforms.
 
 ---
 
@@ -157,14 +158,16 @@
 
 ## WHAT IS NEXT (PRIORITY ORDER)
 
-1. **CFW content session** — review first drafts, tune AI profile. Independent pipeline — no cloning from NDIS Yarns.
-2. **Content strategy session** — schedule + series plan for all 4 brands
-3. **Brief 043** — Subscription register dashboard page
+1. **Brief 043** — Subscription register: `k.subscription_register` table + dashboard Costs page (D114 — schema decided, ready to build)
+2. **CFW content session** — review first drafts, tune AI profile. Independent pipeline — no cloning from NDIS Yarns.
+3. **Content strategy session** — schedule + series plan for all 4 brands
 4. **Brief 046** — invegent.com blog section (Supabase → Next.js ISR)
 5. **Token alert platform-agnostic** — change `WHERE pp.platform = 'facebook'` to `WHERE pp.token_expires_at IS NOT NULL`
 6. **Portal LinkedIn OAuth fix** — set LINKEDIN_OAUTH_ENABLED=false in Vercel portal env
-7. **Deprecated feeds cleanup** — 15 deprecated feeds still have is_enabled=true in c.client_source. Low priority.
-8. **Facebook token refresh** — NY, CFW, Invegent tokens expiring May/Jun. Auto-alerter will notify.
+7. **Support Coordinator HeyGen avatar** — immediate, pairs with Alex for conversational scenes
+8. **B5 — Weekly manager report email** — Sunday cron via Resend
+9. **Publisher schedule wiring** — `c.client_publish_schedule` → publisher assigns `scheduled_for`
+10. **Facebook token refresh** — NY, CFW, Invegent tokens expiring May/Jun. Auto-alerter will notify.
 
 ---
 
