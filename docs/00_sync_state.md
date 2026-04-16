@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-16 (D118/D119/D122 build session)
+> Last written: 2026-04-16 (End-of-session full reconciliation — 16 Apr evening session)
 > Written by: PK + Claude reconciliation
 
 ---
@@ -19,7 +19,7 @@
 **Phase 1 — COMPLETE** (7 Apr 2026)
 **Phase 3 — Expand + Personal Brand** (active)
 **Gate to first external client conversation is OPEN.**
-**4 clients, 14 publish profiles, 5 platforms, 39 cron jobs, 40 Edge Functions.**
+**4 clients, 14 publish profiles, 5 platforms, 40 cron jobs, 41 Edge Functions.**
 
 ---
 
@@ -27,10 +27,10 @@
 
 | Client | client_id | Verticals | Feeds | AI | Platforms | Website |
 |---|---|---|---|---|---|---|
-| NDIS Yarns | fb98a472 | NDIS, AU Disability Policy | 17 | active | FB ✅ IG ✅ LI ✅ YT ✅ | none |
+| NDIS Yarns | fb98a472 | NDIS, AU Disability Policy | 17+ | active | FB ✅ IG ✅ LI ✅ YT ✅ | none |
 | Property Pulse | 4036a6b5 | AU Property ×3 | 20+ | active | FB ✅ IG ✅ LI ✅ YT ✅ | none |
 | Care For Welfare | 3eca32aa | NDIS, AU Disability Policy | 15 | active | FB ✅ IG ✅ LI ✅ WP ✅ | careforwelfare.com.au |
-| Invegent | 93494a09 | AI & Automation, Social Media, Content Marketing | 5 | active | FB ✅ IG ✅ LI ✅ | invegent.com (brief 046 pending) |
+| Invegent | 93494a09 | AI & Automation, Social Media, Content Marketing | 5 | active | FB ✅ IG ✅ LI ✅ | invegent.com ✅ blog live |
 
 ---
 
@@ -38,24 +38,22 @@
 
 | Platform | Publisher | NY | PP | CFW | Invegent | Notes |
 |---|---|---|---|---|---|---|
-| Facebook | publisher v1.6.0 | ✅ | ✅ | ✅ | ✅ | 375+ posts. |
-| Instagram | instagram-publisher v1.0.0 | ✅ | ✅ | ✅ | ✅ | 0 published — content_type_prompts now live, first drafts imminent |
-| LinkedIn | linkedin-zapier-publisher v1.0.0 | ✅ | ✅ | ✅ | ✅ | LIVE. First PP post published 15 Apr. Prompts now live. |
-| YouTube | youtube-publisher v1.5.0 | ✅ | ✅ | ❌ future | ❌ future | content_type_prompts now live, first video drafts imminent |
-| WordPress | wordpress-publisher v1.0.0 | ❌ | ❌ | ✅ active | ❌ brief 046 | CFW pipeline generating |
+| Facebook | publisher v1.7.0 | ✅ | ✅ | ✅ | ✅ | 375+ posts. Schedule wiring live. |
+| Instagram | instagram-publisher v1.0.0 | ✅ | ✅ | ✅ | ✅ | 0 published — prompts live, first drafts imminent |
+| LinkedIn | linkedin-zapier-publisher v1.0.0 | ✅ | ✅ | ✅ | ✅ | LIVE. First PP post published 15 Apr. |
+| YouTube | youtube-publisher v1.5.0 | ✅ | ✅ | ❌ future | ❌ future | prompts live, first video drafts imminent |
+| WordPress | wordpress-publisher v1.0.0 | ❌ | ❌ | ✅ active | ❌ | CFW pipeline generating |
 
 ---
 
 ## CONTENT TYPE PROMPTS — COVERAGE STATE (as of 16 Apr 2026)
 
-All 3 job types (rewrite_v1, synth_bundle_v1, promo_v1) now exist for all active platforms for NDIS Yarns and Property Pulse.
-
 | Platform | NDIS Yarns | Property Pulse | CFW | Invegent |
 |---|---|---|---|---|
-| Facebook | ✅ 3 job types (updated — video formats added) | ✅ 3 job types (updated) | ❌ pending | ❌ pending |
-| Instagram | ✅ 3 job types (NEW 16 Apr) | ✅ 3 job types (NEW 16 Apr) | ❌ pending | ❌ pending |
-| LinkedIn | ✅ 3 job types (NEW 16 Apr — professional angle) | ✅ 3 job types (NEW 16 Apr — CPA/investor angle) | ❌ pending | ❌ pending |
-| YouTube | ✅ 3 job types (NEW 16 Apr — video script format) | ✅ 3 job types (NEW 16 Apr) | ❌ future | ❌ future |
+| Facebook | ✅ 3 job types | ✅ 3 job types | ❌ pending | ❌ pending |
+| Instagram | ✅ 3 job types | ✅ 3 job types | ❌ pending | ❌ pending |
+| LinkedIn | ✅ 3 job types | ✅ 3 job types | ❌ pending | ❌ pending |
+| YouTube | ✅ 3 job types | ✅ 3 job types | ❌ future | ❌ future |
 
 **CFW and Invegent content_type_prompts:** Pending — needs a dedicated content session per client before writing prompts.
 
@@ -68,57 +66,63 @@ Clients page tabs: `overview | profile | voice | digest | connect | feeds | sche
 | Tab | Status | Description |
 |---|---|---|
 | overview | ✅ Live | Platform publish profiles per client |
-| profile | ✅ Live | Brand profile + platform profiles + legacy prompt view |
-| voice | ✅ NEW 16 Apr | Voice & Formats — prompt editor per platform/job type, avatar roster |
-| digest | ✅ NEW 16 Apr | Digest Policy — mode, volume, permissiveness toggles |
+| profile | ✅ Live | Brand profile + platform profiles |
+| voice | ✅ BUILT 16 Apr | Voice & Formats — prompt editor per platform/job type + avatar roster |
+| digest | ✅ BUILT 16 Apr | Digest Policy — mode, volume, permissiveness toggles |
 | connect | ✅ Live | OAuth connection management |
 | feeds | ✅ Live | Per-client feed assignment |
 | schedule | ✅ Live | Unified all-platform schedule grid |
-| avatars | ✅ Live (enhanced 16 Apr) | Avatar cast — gen_status badges, deactivate toggle, Poll HeyGen button |
+| avatars | ✅ ENHANCED 16 Apr | Avatar cast — gen_status badges, deactivate toggle, Poll HeyGen button |
 
-**New Supabase functions (16 Apr build):**
-- `public.upsert_content_type_prompt()` — SECURITY DEFINER INSERT/UPDATE for `c.content_type_prompt`
-- `public.toggle_brand_stakeholder_active()` — SECURITY DEFINER toggle for `c.brand_stakeholder.is_active`
-- `public.upsert_client_digest_policy()` — SECURITY DEFINER UPSERT for `c.client_digest_policy`
-- `public.get_brand_avatars()` — patched to return `avatar_gen_status` (DROP + recreate required)
+---
+
+## DASHBOARD — OTHER PAGES (as of 16 Apr 2026)
+
+| Page | Location | Status |
+|---|---|---|
+| Approval Patterns | Performance → Approval Patterns tab | ✅ BUILT 16 Apr |
+| Compliance Rules | Compliance → Rules tab | ✅ BUILT 16 Apr |
+| Format Library | System → Format Library | ✅ BUILT 16 Apr |
+| Subscriptions | System → Subscriptions | ✅ Live |
+| Diagnostics | /diagnostics | ✅ Live |
+| Weekly Manager Report | Email via Resend, Sunday 7am AEST | ✅ BUILT 16 Apr (B5) |
 
 ---
 
 ## RECENT SESSIONS — KEY BUILDS
 
-### 16 Apr 2026 — D118 / D119 / D122 dashboard build
-- **D118 Voice & Formats tab** ✅ BUILT — platform coverage grid (green/amber/grey dots per platform), job type tabs (Rewrite/Synthesis/Promo), monospace prompt editor with save + version tracking, output schema hint collapsible, avatar roster reference panel
-- **D119 Avatar Management enhancements** ✅ BUILT — gen_status badges on each avatar slot (ready/generating/empty/failed), deactivate/reactivate toggle on each stakeholder role, Poll HeyGen status button invokes heygen-worker Edge Function
-- **D122 Digest Policy tab** ✅ BUILT — strict/lenient mode selector, max/min items + window_hours number inputs, allow_paywalled / allow_blocked / allow_missing_body toggles, UPSERT handles clients with no existing policy row (CFW, Invegent show defaults)
-- Operational/build split: CFW content session, content strategy, Brief 046 logged as operational (not build) work
+### 16 Apr 2026 — Evening: RSS.app discovery pipeline
+- **D125 — RSS.app Discovery Pipeline** ✅ LIVE
+- `f.feed_discovery_seed` table created with migrations
+- `feed-discovery` Edge Function v1.0.0 deployed (job #61, daily 8am AEST)
+- RSSAPP_API_KEY stored in vault (format: `c_key:s_secret`)
+- 9 seeds seeded and all provisioned: 5 NDIS keyword feeds + 3 property keyword feeds + 1 NDIS.gov.au URL feed
+- 9 new rows in `f.feed_source` with `source_type_code = 'rss_app'`, all active
+- Ingest-worker picks up new feeds automatically on next 6-hour run
+- **Next step:** Assign new feeds to clients via Feeds page in dashboard
 
-### 16 Apr 2026 — Issues cleanup + prompts + Meta + strategic review (earlier)
-**Issues resolved:**
+### 16 Apr 2026 — Afternoon: Dashboard UI gaps + pipeline builds
+- **D118 Voice & Formats tab** ✅ — platform coverage grid, prompt editor, avatar roster
+- **D119 Avatar enhancements** ✅ — gen_status badges, deactivate toggle, Poll HeyGen button
+- **D120 Approval Patterns tab** ✅ — gate failures, per-client pass rates, weekly trend
+- **D121 Compliance Rules UI** ✅ — view/edit/add rules, activate/deactivate toggle
+- **D122 Digest Policy tab** ✅ — mode, volume, permissiveness — UPSERT handles missing rows
+- **D123 Format Library** ✅ — buildable status, advisor descriptions, is_buildable toggle, conflict detection
+- **B5 Weekly manager report** ✅ — Sunday 7am AEST via Resend, 10 parallel queries
+- **Publisher schedule wiring** ✅ — publisher v1.7.0, `get_next_publish_slot()` live, verified with 2 queue items
+- **Brief 046 invegent.com blog** ✅ — already existed, verified clean
+- Operational/build split documented in sync state
+
+### 16 Apr 2026 — Morning: Issues cleanup + prompts + Meta
 - Token alert platform-agnostic ✅
-- Deprecated feeds stale is_enabled ✅
-- PP LinkedIn logo ✅, NDIS Yarns LinkedIn logo ✅
-- LinkedIn portal OAuth ✅, LinkedIn redirect URI ✅
+- Deprecated feeds stale is_enabled ✅ (15 rows cleaned)
+- 24 content_type_prompt changes: video formats + IG/LI/YT prompts for NY + PP
+- Meta business verification unblocked, In Review
 
-**Content type prompts — 24 changes:**
-- Facebook video formats added to schema hints for both clients
-- 18 new rows: Instagram (3 × 2), LinkedIn (3 × 2), YouTube (3 × 2) for NDIS Yarns and Property Pulse
-
-**Meta business verification progress:**
-- 2FA block cleared. Shrishti invited as backup admin. invegent.com domain in Meta — DNS TXT propagating.
-- Business verification + App Review: In Review.
-
-### 16 Apr 2026 — Dashboard fixes + subscription register (earlier)
-- Overview approve/reject bug fixed
-- Schedule grid unified all-platform view
-- `k.subscription_register` + `/system/subscriptions` ✅
-
-### 15 Apr 2026 — Pipeline audit + feed management
-- Full audit: 40 Edge Functions, 39 crons (6 dead crons removed)
-- Auth standardised, LinkedIn cron conflict fixed, token alerter live
-- Feed management UI complete (Briefs 049–052), first PP LinkedIn post published
-
-### 14 Apr 2026 — Biggest build day
-- 4 clients, 5 platforms fully live, D101–D113 logged
+### 15 Apr 2026 — Pipeline audit
+- 40 Edge Functions, 39 crons audited (6 dead removed)
+- Auth standardised, LinkedIn cron conflict fixed
+- Feed management UI complete (Briefs 049–052)
 
 ---
 
@@ -126,30 +130,54 @@ Clients page tabs: `overview | profile | voice | digest | connect | feeds | sche
 
 | Metric | Value |
 |---|---|
-| Edge Functions | 40 |
-| Active cron jobs | 39 |
-| Active feeds | 31 |
+| Edge Functions | 41 (feed-discovery added) |
+| Active cron jobs | 40 (feed-discovery-daily job #61 added) |
+| Active feeds | 40 (31 existing + 9 new rss_app discovery feeds) |
 | Deprecated feeds | 20 |
 | content_type_prompt rows | 24 (NY + PP across 4 platforms × 3 job types) |
+| f.feed_discovery_seed rows | 9 (all provisioned) |
+
+---
+
+## RSS.APP DISCOVERY PIPELINE STATE
+
+| Seed | Type | Vertical | Status | RSS.app Feed ID |
+|---|---|---|---|---|
+| NDIS Australia news | keyword | ndis | ✅ provisioned | toiBx3ZzzIKGId2L |
+| NDIS policy updates | keyword | ndis | ✅ provisioned | tLgTnwFWGtaS0nyZ |
+| NDIS funding news | keyword | ndis | ✅ provisioned | t785oYEIjEIy96ar |
+| OT NDIS news | keyword | ndis | ✅ provisioned | t6PK2zcCG1nNnFUz |
+| Disability support AU | keyword | ndis | ✅ provisioned | tBd3HCOMITfZkYkA |
+| AU property market | keyword | property | ✅ provisioned | tMmfW7sCTutlGntE |
+| RBA rates news | keyword | property | ✅ provisioned | tF5mt5p84ebf0PTY |
+| AU real estate 2026 | keyword | property | ✅ provisioned | tj7kacCeDv797d7j |
+| NDIS.gov.au news | url | ndis | ✅ provisioned | RIGrXDAHuYBRnDcT |
+
+**To add more seeds:** `INSERT INTO f.feed_discovery_seed (seed_type, seed_value, region, vertical_slug, label) VALUES (...)`
+Daily cron picks up `status = 'pending'` rows automatically at 8am AEST.
+
+**RSSAPP_API_KEY format:** `c_key:s_secret` (key and secret joined with colon, stored as single vault secret)
 
 ---
 
 ## AVATAR STATE — NDIS YARNS + PROPERTY PULSE
 
-All 28 avatar rows have `avatar_gen_status = 'empty'`. HeyGen IDs are assigned correctly. Status 'empty' does NOT block heygen-worker — worker uses heygen_avatar_id directly. Real blocker was missing prompts (fixed 16 Apr). First video drafts expected within next ai-worker run.
+All 28 avatar rows have `avatar_gen_status = 'empty'`. HeyGen IDs assigned correctly. Status 'empty' does NOT block heygen-worker. Real blocker was missing prompts (fixed 16 Apr). First video drafts expected within next ai-worker run.
 
 ---
 
 ## FEED MANAGEMENT ARCHITECTURE
 
-**Two pages, two roles:**
-- `/feeds` — global feed pool. Vertical grouping. Assign to multiple clients. Deactivate globally.
-- Clients → Feeds tab — per-client. Flat list. Unassign only.
+**Three feed types now active:**
+- Native RSS feeds — direct RSS/Atom URLs from publisher sites
+- RSS.app feeds (`source_type_code = 'rss_app'`) — generated by RSS.app from keywords/URLs
+- YouTube channel feeds — YouTube RSS via public RSS URL
 
 **Key rules:**
 - `c.client_source` rows are NEVER deleted — only `is_enabled = false`
 - Feed status: `active`, `paused`, `deprecated` only
-- All feed DML → SECURITY DEFINER functions in public schema. exec_sql is READ-ONLY on c/f schemas.
+- All feed DML → SECURITY DEFINER functions in public schema
+- `f.feed_discovery_seed` seeds → provisioned → `f.feed_source` → ingest-worker
 
 ---
 
@@ -169,7 +197,7 @@ All 28 avatar rows have `avatar_gen_status = 'empty'`. HeyGen IDs are assigned c
 | Client | Site | Username | Secret | Category ID | Status |
 |---|---|---|---|---|---|
 | Care For Welfare | careforwelfare.com.au | admin | CFW_WP_APP_PASSWORD | 20 (NDIS News) | ACTIVE |
-| Invegent | invegent.com | — | — | — | Brief 046 pending |
+| Invegent | invegent.com | — | — | — | blog live via Next.js ISR |
 
 ---
 
@@ -216,35 +244,34 @@ All 28 avatar rows have `avatar_gen_status = 'empty'`. HeyGen IDs are assigned c
 | Creatomate Essential | ~$85 | ✅ Active |
 | Zapier | ~$30 | ✅ Active |
 | Google Workspace (2 users) | $74 | ✅ Active |
+| RSS.app Pro | ~$100 | ✅ Active (upgraded 16 Apr) |
 | Resend | $0 (free tier) | ✅ Active |
 | GitHub | $0 (free) | ✅ Active |
 | Vercel | TBC | ❓ Confirm plan |
 | HeyGen | TBC | ❓ Confirm plan |
 | Claude Max | TBC | ❓ Confirm cost |
 | OpenAI ChatGPT | TBC | ❓ Confirm status |
-| **Confirmed fixed total** | **~$214 AUD/mo** | 4 TBC items unresolved |
+| **Confirmed fixed total** | **~$314 AUD/mo** | 4 TBC items + RSS.app added |
 
 ---
 
 ## WHAT IS NEXT
 
 ### OPERATIONAL WORK (human-led, not build sessions)
-1. **Click "Verify domain"** on Meta → Brand Safety → invegent.com once DNS TXT propagates
-2. **Shrishti to accept** Meta Business invite and set up 2FA
-3. **CFW content session** — review first CFW drafts, tune AI profile, write content_type_prompts
-4. **Content strategy session** — schedule + series plan for all 4 brands
-5. **Confirm 4 TBC subscription costs** — Vercel, HeyGen, Claude Max, OpenAI ChatGPT
-6. **Facebook token refresh** — NY, CFW, Invegent tokens expiring May/Jun (auto-alerter will fire ~1 May)
+1. **Assign 9 new RSS.app feeds** to clients via Feeds page (NDIS feeds → NY + CFW, property → PP)
+2. **Fix advisor description conflicts** — Format Library page → animated_data + animated_text_reveal → edit out "NOT YET BUILDABLE" text
+3. **Click "Verify domain"** on Meta → Brand Safety → invegent.com once DNS TXT propagates
+4. **Shrishti to accept** Meta Business invite and set up 2FA
+5. **CFW content session** — review first CFW drafts, tune AI profile, write content_type_prompts
+6. **Content strategy session** — schedule + series plan for all 4 brands
+7. **Confirm 4 TBC subscription costs** — Vercel, HeyGen, Claude Max, OpenAI ChatGPT (update subscription register)
+8. **Facebook token refresh** — NY, CFW, Invegent tokens expiring May/Jun (auto-alerter will fire ~1 May)
 
 ### BUILD WORK (priority order)
-1. **B5 — Weekly manager report email** — Sunday cron via Resend
-2. **Publisher schedule wiring** — `c.client_publish_schedule` → publisher assigns `scheduled_for`
-3. **Brief 046** — invegent.com blog section (Supabase → Next.js ISR)
-4. **D120 — Auto-Approval Patterns** (Performance tab)
-5. **D121 — Compliance Rules UI** (Compliance tab)
-6. **D123 — Format Library UI** (System tab)
-7. **D124 — Boost Configuration UI** (Phase 3.4 — Meta Standard Access dependency)
-8. **RSS.app discovery pipeline** — trigger: first external client or new vertical
+1. **D124 — Boost Config UI** — hard dependency on Meta Standard Access. Not yet.
+2. **Additional RSS.app seeds** — add more discovery seeds as new verticals or clients onboard
+3. **RSS.app discovery dashboard page** — manage seeds, view provisioning status, add new seeds without SQL
+4. **Cowork daily inbox task** — Gmail MCP inbox management (Phase 4)
 
 ---
 
@@ -259,6 +286,8 @@ All 28 avatar rows have `avatar_gen_status = 'empty'`. HeyGen IDs are assigned c
 | CFW + Invegent content_type_prompts missing | MED | Needs CFW content session (operational) |
 | 4 TBC subscription costs | LOW | Vercel, HeyGen, Claude Max, OpenAI ChatGPT |
 | NDIS Yarns 30 followers | HIGH (strategic) | Distribution problem — needs active seeding strategy |
+| animated_data + animated_text_reveal advisor conflict | MED | is_buildable=true but description says NOT YET BUILDABLE — fix in Format Library page |
+| 9 new RSS.app feeds unassigned | MED | Assign to clients via Feeds page |
 
 ---
 
@@ -266,15 +295,15 @@ All 28 avatar rows have `avatar_gen_status = 'empty'`. HeyGen IDs are assigned c
 
 See `docs/06_decisions.md` for full detail.
 
-**D118 / D119 / D122** — ✅ BUILT 16 Apr
+**D118–D123** — ✅ ALL BUILT 16 Apr
+**B5, Publisher schedule, Brief 046** — ✅ ALL BUILT 16 Apr
+**D125 RSS.app Discovery Pipeline** — ✅ LIVE 16 Apr
 
-**Phase 3 dashboard builds (remaining):**
-- D120 — Auto-Approval Patterns (Performance tab)
-- D121 — Compliance Rules UI (Compliance tab)
-- D123 — Format Library UI (System tab)
-
-**Phase 3.4:**
+**Remaining Phase 3 builds:**
 - D124 — Boost Configuration UI (Meta Standard Access dependency)
+- RSS.app discovery dashboard page (seed management UI)
 
-**RSS.app discovery pipeline:**
-- Concept fully designed. Pro plan ($100 AUD/mo). 3 DB tables + 1 Edge Function + 1 cron. Trigger: first external client or new vertical.
+**Phase 4:**
+- Cowork daily inbox task
+- Model router
+- SaaS vs managed service evaluation

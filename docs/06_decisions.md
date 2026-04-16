@@ -70,223 +70,169 @@ is recorded here with context and reasoning.
 ## D107 — Full Pipeline Audit Methodology
 **Date:** 15 April 2026 | **Status:** ✅ Complete
 
-**Decision:** Systematic read-only audit of all 40 crons and 46 Edge Functions before further feature work. 10 issues found, all fixed same session. Architecture confirmed sound — debt was operational, not structural.
-
 ---
 
 ## D108 — Auth Standardisation: No-Verify-JWT + Vault Pattern
 **Date:** 15 April 2026 | **Status:** ✅ Complete
 
-**Decision:** All cron-called Edge Functions use `verify_jwt: false` + internal API key check. 12 functions redeployed --no-verify-jwt including content_fetch. Security posture unchanged — internal key validation still in place.
+**Decision:** All cron-called Edge Functions use `verify_jwt: false` + internal API key check. 12 functions redeployed --no-verify-jwt. Security posture unchanged.
 
 ---
 
 ## D109 — Publisher Platform Filter (publisher_lock_queue_v1)
 **Date:** 15 April 2026 | **Status:** ✅ Fixed
 
-**Decision:** Drop old 3-arg overload of `m.publisher_lock_queue_v1`. Only 4-arg version with `p_platform DEFAULT 'facebook'` remains. Root cause of LinkedIn never publishing: Facebook publisher was stealing all LinkedIn queue items via the unfiltered 3-arg overload.
+**Decision:** Drop old 3-arg overload of `m.publisher_lock_queue_v1`. Only 4-arg version with `p_platform DEFAULT 'facebook'` remains.
 
 ---
 
 ## D110 — Token Expiry Alerter
 **Date:** 15 April 2026 | **Status:** ✅ Live — platform-agnostic fix applied 16 Apr
 
-**Decision:** `public.check_token_expiry()` runs daily 8:05am AEST. Writes to `m.token_expiry_alert`. Dashboard banners at 30d warning / 14d critical. Fixed 16 Apr: `WHERE pp.token_expires_at IS NOT NULL` now covers all platforms, not just Facebook.
+**Decision:** `public.check_token_expiry()` runs daily 8:05am AEST. Writes to `m.token_expiry_alert`. Dashboard banners at 30d warning / 14d critical.
 
 ---
 
 ## D111 — Feed Management: Shared Signal Model
 **Date:** 15 April 2026 | **Status:** ✅ Live
 
-**Decision:** Feeds are shared signals, not client-owned. Any feed can serve multiple clients simultaneously. `c.client_source` rows are NEVER deleted — only `is_enabled = false`. Feed status values: `active`, `paused`, `deprecated` only.
+**Decision:** Feeds are shared signals. `c.client_source` rows NEVER deleted — only `is_enabled = false`. Feed status: `active`, `paused`, `deprecated` only.
 
 ---
 
 ## D112 — Feed DML via SECURITY DEFINER Functions
 **Date:** 15 April 2026 | **Status:** ✅ Live
 
-**Decision:** All feed write operations go through SECURITY DEFINER functions in the public schema. Direct `exec_sql` DML on `c` and `f` schemas silently fails.
-
 **Functions:** `public.feed_assign_client()`, `public.feed_unassign_from_client()`, `public.feed_deactivate()`
 
-**Pattern to remember:** exec_sql = SELECT only on c/f/t schemas. Any write → SECURITY DEFINER function in public schema.
+**Pattern:** exec_sql = SELECT only on c/f/t schemas. Any write → SECURITY DEFINER function in public schema.
 
 ---
 
 ## D113 — Feed UI Page Separation
 **Date:** 15 April 2026 | **Status:** ✅ Live
 
-**Decision:** `/feeds` = global feed pool management. Clients → Feeds tab = per-client feed assignment only.
+**Decision:** `/feeds` = global pool. Clients → Feeds tab = per-client assignment only.
 
 ---
 
-## D114 — Subscription Register: Manual Dashboard Page
-**Date:** 14 April 2026 | **Status:** ✅ Built
+## D114 — Subscription Register
+**Date:** 14 April 2026 | **Status:** ✅ Live
 
-`k.subscription_register` + `/system/subscriptions` page live. Starting data seeded: Supabase, Vercel, Creatomate, Zapier, Claude API, OpenAI, Resend, HeyGen, GitHub, Google Workspace.
+`k.subscription_register` + `/system/subscriptions`. RSS.app Pro added 16 Apr.
 
 ---
 
 ## D115 — AI Diagnostic System
 **Date:** 2 April 2026 | **Status:** ✅ Live
 
-Daily AI-powered diagnostic at 20:00 UTC (6am AEST). Reads 7 days of metrics → Claude Sonnet → structured health report in `m.ai_diagnostic_report`. `/diagnostics` dashboard page with health gauge and Run Now button.
+Daily 6am AEST. `m.ai_diagnostic_report`. `/diagnostics` page.
 
 ---
 
 ## D116 — Compliance Review DML Fix
 **Date:** 2 April 2026 | **Status:** ✅ Fixed
 
-`public.mark_compliance_review()` SECURITY DEFINER function. Compliance tab "mark as reviewed" now writes correctly via `.rpc()`.
-
 ---
 
 ## D117 — k Schema Fully Documented
 **Date:** 2 April 2026 | **Status:** ✅ Complete
 
-All 117 tables across 5 schemas documented to zero TODO entries. `k.vw_table_summary` is the first stop for any table/schema navigation in any session.
-
 ---
 
 ## D118 — Voice & Formats Dashboard Page
-**Date:** 16 April 2026 | **Status:** 🔲 Brief pending
+**Date:** 16 April 2026 | **Status:** ✅ BUILT
 
-**Decision:** Build a dedicated dashboard page for managing `c.content_type_prompt` per client. Named "Voice & Formats" — not "Prompts."
-
-**Trigger:** Instagram, LinkedIn, and YouTube had zero prompts for months — completely invisible without SQL. Content type prompts are now 24 rows across 4 platforms × 3 job types × 2 clients and grow with every new client. SQL is not a viable management interface at scale.
-
-**What the page must include:**
-1. **Platform grid** — four cards (Facebook, Instagram, LinkedIn, YouTube) per client. Green tick if all 3 job types have prompts. Amber warning if any missing. Gap is immediately visible.
-2. **Prompt editor** — editable textarea for task_prompt, read-only/collapsible panel for output_schema_hint. Save via SECURITY DEFINER function.
-3. **Test capability** — "Test this prompt" button. Sample article → runs through prompt → returns draft JSON in 10-15 seconds. Makes prompt tuning immediate rather than waiting 30 minutes for a pipeline run. Highest-value feature on this page.
-4. **Prompt performance panel** — from `m.post_draft`: format distribution (what formats is this prompt actually selecting), auto-approval rate, most common compliance flags per prompt.
-5. **Avatar roster inline** — which stakeholder roles have active avatars (from `c.brand_avatar` + `c.brand_stakeholder`). Prevents writing prompts referencing roles with no avatar assigned.
-6. **Version history** — store prior prompt text on save using existing `version` column. Allow rollback when a prompt change makes draft quality worse.
-7. **Cross-client copy** — "Copy from client" to seed a new client's prompts from an existing client's set. Reduces new client onboarding from 12 SQL inserts to a single click + adaptation.
-
-**Dashboard location:** Clients page → new "Voice & Formats" tab
-
-**DB dependency:** SECURITY DEFINER function `public.upsert_content_type_prompt()` needed for write side.
-
-**Build estimate:** 6-8 hours Claude Code (MVP: editor + platform grid + avatar roster). Test capability and version history are Phase 2 of this brief.
+**What was built:** Clients page → Voice & Formats tab. Platform coverage grid (4 cards, green/amber/grey dots), job type tabs (Rewrite/Synthesis/Promo), monospace prompt editor with version tracking, output schema hint collapsible, avatar roster reference panel. `public.upsert_content_type_prompt()` SECURITY DEFINER function.
 
 ---
 
 ## D119 — Avatar Management Dashboard Page
-**Date:** 16 April 2026 | **Status:** 🔲 Brief pending
+**Date:** 16 April 2026 | **Status:** ✅ BUILT
 
-**Decision:** Build a dashboard page for `c.brand_avatar` and `c.brand_stakeholder`. Currently zero UI — all avatar data SQL-only.
-
-**Trigger:** All 28 avatar rows for NDIS Yarns and Property Pulse showed `avatar_gen_status = 'empty'` — invisible without SQL. Video production visibility is completely blind without this page. This would have been caught immediately with a dashboard page.
-
-**What the page must show:**
-- Stakeholder roster per client — role_code, role_label, character brief summary, is_active
-- Per role: render styles (realistic/animated), HeyGen avatar ID, voice ID, avatar_gen_status with visual indicators (ready=green, empty=amber, failed=red)
-- Action: manually trigger heygen-avatar-poller for a specific avatar
-- Action: deactivate/reactivate a role for a client
-
-**Dashboard location:** Clients page → new "Avatars" tab
-
-**Build estimate:** 3-4 hours Claude Code.
+**What was built:** AvatarTab enhanced — `avatar_gen_status` badges (ready/empty/failed), deactivate/reactivate toggle per stakeholder, Poll HeyGen button invokes heygen-worker. `public.toggle_brand_stakeholder_active()` function. `get_brand_avatars()` patched to return gen_status.
 
 ---
 
 ## D120 — Auto-Approval Patterns Dashboard
-**Date:** 16 April 2026 | **Status:** 🔲 Brief pending
+**Date:** 16 April 2026 | **Status:** ✅ BUILT
 
-**Decision:** Surface auto-approver performance data from `m.auto_approval_scores` and `compliance_flags` on `m.post_draft`.
-
-**Trigger:** Cannot currently answer "what percentage of drafts are auto-approved, what are the most common rejection reasons, is the compliance checker calibrated correctly" without SQL. This is the feedback loop that validates whether the auto-approver is working as intended.
-
-**What must be surfaced:**
-- Auto-approval rate per client per week (approved / total)
-- Format distribution of approved vs rejected drafts
-- Top 5 most common rejection reasons (from auto_approval_scores)
-- Top compliance flags by frequency (from compliance_flags jsonb on post_draft)
-- Trend over time — is the system getting better or worse at first-pass approval
-- Per-client breakdown — which clients have the highest rejection rates and why
-
-**Dashboard location:** Performance page → new "Approval Patterns" tab
-
-**Build estimate:** 4-5 hours Claude Code. Read-only queries, no complex write side.
+**What was built:** Performance page → Approval Patterns tab (`?view=approvals`). Gate failure bar chart, per-client pass rate progress bars, weekly trend table, calibration note. Key finding: 100% of failures are `body_length` — prompts generating posts over the 1800 char limit.
 
 ---
 
 ## D121 — Compliance Rules Viewer/Editor
-**Date:** 16 April 2026 | **Status:** 🔲 Brief pending
+**Date:** 16 April 2026 | **Status:** ✅ BUILT
 
-**Decision:** Build a dashboard UI for viewing and editing `t.5.7_compliance_rule` — the 20 rules driving compliance checking on every draft.
-
-**Trigger:** NDIS regulations change regularly. ICE's compliance claim — "built by an OT who knows the rules" — degrades over time if the rules cannot be maintained without SQL. Pricing updates, policy shifts, new guidance all require rule updates.
-
-**What the page must include:**
-- List all active rules: rule_text, severity (HARD_BLOCK / SOFT_WARN), applicable_verticals, is_active
-- Edit rule text inline — regulation wording changes, rule text must change with it
-- Add new rule — when a new NDIS policy drops, add without SQL
-- Activate/deactivate rules without deleting
-- Rule test: paste a draft body → run against all active rules → see which fire. Makes compliance debugging immediate.
-
-**Dashboard location:** Compliance page → Rules tab (alongside existing compliance review queue)
-
-**DB dependency:** SECURITY DEFINER functions needed — t schema is global taxonomy, not writable via exec_sql. Changes here affect all clients.
-
-**Build estimate:** 4-5 hours Claude Code. Rule test panel adds ~2 hours.
+**What was built:** Compliance page → Rules inner tab. 23 rules grouped by vertical. Expand/collapse per rule. Inline edit for rule_name + rule_text. Activate/deactivate toggle. Add new rule form. `public.toggle_compliance_rule_active()` + `public.upsert_compliance_rule()` functions.
 
 ---
 
 ## D122 — Client Digest Policy UI
-**Date:** 16 April 2026 | **Status:** 🔲 Brief pending
+**Date:** 16 April 2026 | **Status:** ✅ BUILT
 
-**Decision:** Expose `c.client_digest_policy` in the dashboard. Controls content volume and job type mix per client — the most common operational lever when drafts are too many, too few, or wrong type.
-
-**What must be editable:**
-- max_items_per_run — how many digest items the bundler selects per run
-- active_job_types — which job types are enabled (checkboxes: rewrite_v1, synth_bundle_v1, promo_v1)
-- topic_match_mode — strict (exact vertical match) or lenient (broader topic matching)
-- min_body_word_count — minimum article length before content is considered
-- enabled — master on/off switch per client
-
-**Dashboard location:** Clients page → AI Profile tab (digest policy logically belongs alongside AI generation config) or dedicated Settings tab
-
-**Build estimate:** 2-3 hours Claude Code. Simple form, no complex logic.
+**What was built:** Clients page → Digest Policy tab. Strict/lenient mode selector, max/min items + window_hours inputs, three permissiveness toggles. UPSERT handles CFW + Invegent which have no existing policy row. `public.upsert_client_digest_policy()` function.
 
 ---
 
 ## D123 — Format Library UI
-**Date:** 16 April 2026 | **Status:** 🔲 Brief pending
+**Date:** 16 April 2026 | **Status:** ✅ BUILT
 
-**Decision:** Build a read-only (initially) dashboard page for `t.5.3_content_format` — the format library the ai-worker format advisor uses.
+**What was built:** System → Format Library page. 21 formats grouped by category. is_buildable toggle, advisor description inline edit. Conflict detection: `animated_data` and `animated_text_reveal` flagged red — is_buildable=true but advisor text still says "NOT YET BUILDABLE". Fix in dashboard. `public.update_content_format()` function.
 
-**Trigger:** `animated_data` and `animated_text_reveal` have `is_buildable = true` in the database but their `advisor_description` still says "NOT YET BUILDABLE — do not recommend." This inconsistency can mis-instruct the format advisor. No way to see or fix without SQL. As formats graduate from Phase 2 to Phase 3, the `is_buildable` flag and advisor descriptions must stay in sync.
-
-**What the page must show:**
-- All formats: name, ice_format_key, is_buildable status (green=buildable, amber=not yet, grey=deprecated), render_engine, platform_support matrix
-- advisor_description text visible — the instructions sent to the format advisor
-- Edit: is_buildable toggle and advisor_description — when a format graduates to buildable, a dashboard toggle not a SQL update
-
-**Dashboard location:** System section → new "Formats" page
-
-**Build estimate:** 2-3 hours read-only. +1-2 hours for edit capability.
+**Immediate action required:** Fix advisor descriptions for `animated_data` and `animated_text_reveal` via Format Library page.
 
 ---
 
 ## D124 — Boost Configuration UI
-**Date:** 16 April 2026 | **Status:** 🔲 Brief pending — Phase 3.4 dependency
+**Date:** 16 April 2026 | **Status:** 🔲 Pending — Meta Standard Access dependency
 
-**Decision:** Build UI for boost configuration fields in `c.client_publish_profile`: boost_enabled, boost_budget_aud, boost_duration_days, boost_objective, boost_targeting (jsonb), boost_score_threshold.
+**Decision:** Build UI for boost config fields in `c.client_publish_profile`. Hard dependency: Meta Standard Access graduation required. Phase 3.4 item.
 
-**Trigger:** The auto-boost agent (Phase 3.4) requires these fields configured per client before it can run. Currently SQL-only. boost_targeting is a jsonb audience definition — too complex for raw JSON editing, needs a structured form.
+---
 
-**What must be editable:**
-- boost_enabled toggle per client
-- boost_budget_aud, boost_duration_days, boost_objective, boost_score_threshold
-- boost_targeting — structured form for job_title, location, age_min/max (not raw JSON editing)
+## D125 — RSS.app Discovery Pipeline
+**Date:** 16 April 2026 | **Status:** ✅ LIVE
 
-**Dashboard location:** Clients page → new "Boost" tab. Only visible/active when Meta Standard Access confirmed.
+**Decision:** Build a feed discovery pipeline using RSS.app Pro API to programmatically generate RSS feeds from keywords and URLs, and auto-provision them into `f.feed_source` for the existing ingest-worker to pick up.
 
-**Hard dependency:** Meta Standard Access graduation required before this feature is live. Phase 3.4 item.
+**Architecture:**
+- `f.feed_discovery_seed` table — seed entries (url OR keyword, vertical_slug, status, rssapp_feed_id)
+- `feed-discovery` Edge Function v1.0.0 — calls RSS.app API, inserts into f.feed_source via SECURITY DEFINER, marks seeds provisioned
+- pg_cron job #61 — daily 8am AEST (`0 20 * * *`)
+- RSSAPP_API_KEY in vault — format `c_key:s_secret` (key and secret joined with colon)
 
-**Build estimate:** 4-5 hours Claude Code including structured targeting UI.
+**RSS.app API:**
+- Base: `https://api.rss.app/v1/feeds`
+- Auth: `Authorization: Bearer KEY:SECRET`
+- Create by keyword: `{ "keyword": "NDIS Australia", "region": "AU:en" }`
+- Create by URL: `{ "url": "https://ndis.gov.au/news" }`
+- Returns `rss_feed_url` which goes directly into `f.feed_source.config.url`
+
+**First run results:** 9/9 seeds provisioned. All active in f.feed_source.
+
+**To add more seeds:**
+```sql
+INSERT INTO f.feed_discovery_seed (seed_type, seed_value, region, vertical_slug, label)
+VALUES ('keyword', 'NDIS news 2026', 'AU:en', 'ndis', 'NDIS news 2026');
+```
+Daily cron picks up `status = 'pending'` rows automatically.
+
+**SECURITY DEFINER functions created:** `public.create_feed_source_rss()`, `public.update_feed_discovery_seed()`
+
+---
+
+## B5 — Weekly Manager Report Email
+**Date:** 16 April 2026 | **Status:** ✅ BUILT
+
+**Decision:** weekly-manager-report Edge Function v2.0.0. Sunday 21:00 UTC (Monday 7am AEST). Sends to pk@invegent.com via Resend. 10 parallel queries: pipeline health, per-client summary, token expiry warnings, feed health, pipeline incidents, AI costs. HTML email, mobile-readable.
+
+---
+
+## Publisher Schedule Wiring
+**Date:** 16 April 2026 | **Status:** ✅ BUILT
+
+**Decision:** publisher v1.7.0. `public.get_next_publish_slot(client_id, platform)` SECURITY DEFINER function. Reads `c.client_publish_schedule`, finds next slot after NOW() in client timezone, wraps to next week if needed. Returns NULL if no schedule configured (= publish immediately). publisher_lock_queue_v2 already had the `scheduled_for IS NULL OR scheduled_for <= NOW()` filter. Verified live — two queue items correctly assigned schedule slots.
 
 ---
 
@@ -294,28 +240,18 @@ All 117 tables across 5 schemas documented to zero TODO entries. `k.vw_table_sum
 
 | Decision | Context | Target |
 |---|---|---|
-| Token alert platform-agnostic | ✅ Fixed 16 Apr — check_token_expiry() now covers all platforms | Done |
-| Deprecated feeds stale cleanup | ✅ Fixed 16 Apr — 15 rows set is_enabled=false | Done |
-| Content type prompts all platforms | ✅ Done 16 Apr — 24 rows across FB/IG/LI/YT for NY + PP | Done |
 | NDIS Support Catalogue data load | Tables exist. Needs NDIA Excel from ndia.gov.au | Phase 3 |
 | Legal review of service agreement | L001 — hard gate before external client #1 | Before C1 |
 | F1 Prospect demo generator | Hold until NDIS Yarns has 60+ days data | ~mid-June 2026 |
-| LinkedIn middleware evaluation | Late.dev if Community Management API still pending | 13 May 2026 |
-| Bundler topic weight wiring | Blocked — all weights 1.0 until insights feedback loop verified | When insights-feedback confirmed live |
-| invegent.com blog section | Brief 046 — Supabase → Next.js ISR pattern | Phase 3 |
-| B5 — Weekly manager report email | Sunday cron via Resend | Phase 3 |
-| Publisher schedule wiring | c.client_publish_schedule → publisher assigns scheduled_for | Phase 3 |
-| Support Coordinator HeyGen avatar | Pairs with Alex for conversational scenes | Next session |
-| CFW content session | Review first drafts, tune AI profile | Next session |
-| Cowork daily inbox task | Gmail MCP — archive noise, surface actions. Build after Phase D complete | Phase 4 |
-| Model router | ai-job → model_router → claude OR openai. When AI costs become significant | Phase 4 |
+| LinkedIn Community Management API | Evaluate Late.dev if still pending 13 May 2026 | 13 May 2026 |
+| Bundler topic weight wiring | Blocked — all weights 1.0 until insights feedback loop verified | When live |
+| D124 — Boost Configuration UI | Meta Standard Access dependency | Phase 3.4 |
+| RSS.app discovery dashboard page | Seed management UI — add/view/manage without SQL | Phase 3 |
+| Cowork daily inbox task | Gmail MCP — archive noise, surface actions | Phase 4 |
+| Model router | ai-job → model_router → claude OR openai | Phase 4 |
 | SaaS vs managed service | When 10 clients served 3+ months | Phase 4 |
-| D118 — Voice & Formats page | Clients → Voice & Formats tab. Editor + platform grid + test capability + avatar roster + version history + cross-client copy | Next build session |
-| D119 — Avatar Management page | Clients → Avatars tab. Roster + status + gen state + poller trigger | Next build session |
-| D120 — Auto-Approval Patterns | Performance → Approval Patterns tab. Rates, rejection reasons, compliance flag frequency | Phase 3 |
-| D121 — Compliance Rules UI | Compliance → Rules tab. View/edit/add rules + rule test panel | Phase 3 |
-| D122 — Client Digest Policy UI | Clients → AI Profile or Settings tab. Volume and job type controls | Next build session |
-| D123 — Format Library UI | System → Formats page. Buildable status, advisor descriptions, is_buildable toggle | Phase 3 |
-| D124 — Boost Configuration UI | Clients → Boost tab. All boost fields + structured targeting form | Phase 3.4 |
-| Meta App Review | Business verification in review. Contact dev support if stuck after 27 Apr 2026 | Waiting |
-| LinkedIn Community Management API | Evaluate Late.dev if still pending 13 May 2026 | Waiting |
+| Meta App Review | In Review. Contact dev support if stuck after 27 Apr 2026 | Waiting |
+| animated_data advisor conflict | Fix in Format Library page — remove NOT YET BUILDABLE text | Immediate |
+| Assign 9 RSS.app feeds to clients | Via Feeds page in dashboard | Immediate |
+| CFW content session | Review first drafts, tune AI profile, write prompts | Next session |
+| Confirm TBC subscription costs | Vercel, HeyGen, Claude Max, OpenAI — update subscription register | Next session |
