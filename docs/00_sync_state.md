@@ -231,22 +231,28 @@ All 28 avatar rows have `avatar_gen_status = 'empty'`. HeyGen IDs are assigned c
 
 ---
 
-## WHAT IS NEXT (PRIORITY ORDER)
+## WHAT IS NEXT
 
-1. **Click "Verify domain"** on Meta → Brand Safety → invegent.com once DNS TXT propagates (CrazyDomains)
+### OPERATIONAL WORK (human-led, not build sessions)
+1. **Click "Verify domain"** on Meta → Brand Safety → invegent.com once DNS TXT propagates
 2. **Shrishti to accept** Meta Business invite and set up 2FA
-3. **CFW content session** — review first CFW drafts, tune AI profile
-4. **Content type prompts for CFW + Invegent** — needs dedicated content session per client first
-5. **Content strategy session** — schedule + series plan for all 4 brands
-6. **D118 — Voice & Formats page** — Clients → Voice & Formats tab (highest priority dashboard build)
-7. **D119 — Avatar Management page** — Clients → Avatars tab
-8. **D122 — Client Digest Policy UI** — Clients → AI Profile tab
-9. **Brief 046** — invegent.com blog section (Supabase → Next.js ISR)
-10. **B5 — Weekly manager report email** — Sunday cron via Resend
-11. **Publisher schedule wiring** — `c.client_publish_schedule` → publisher assigns `scheduled_for`
-12. **Facebook token refresh** — NY, CFW, Invegent tokens expiring May/Jun. Auto-alerter will fire.
-13. **Confirm 4 TBC subscription costs** — Vercel, HeyGen, Claude Max, OpenAI ChatGPT
-14. **RSS.app Pro plan + discovery pipeline** — trigger when first external client or new vertical needed
+3. **CFW content session** — review first CFW drafts, tune AI profile, write content_type_prompts
+4. **Content strategy session** — schedule + series plan for all 4 brands
+5. **Confirm 4 TBC subscription costs** — Vercel, HeyGen, Claude Max, OpenAI ChatGPT
+6. **Facebook token refresh** — NY, CFW, Invegent tokens expiring May/Jun (auto-alerter will fire ~1 May)
+
+### BUILD WORK (priority order)
+1. **D118 — Voice & Formats page** ← NEXT BUILD SESSION
+2. **D119 — Avatar Management page**
+3. **D122 — Client Digest Policy UI**
+4. **B5 — Weekly manager report email** — Sunday cron via Resend
+5. **Publisher schedule wiring** — `c.client_publish_schedule` → publisher assigns `scheduled_for`
+6. **Brief 046** — invegent.com blog section (Supabase → Next.js ISR)
+7. **D120 — Auto-Approval Patterns** (Performance tab)
+8. **D121 — Compliance Rules UI** (Compliance tab)
+9. **D123 — Format Library UI** (System tab)
+10. **D124 — Boost Configuration UI** (Phase 3.4 — Meta Standard Access dependency)
+11. **RSS.app discovery pipeline** — trigger: first external client or new vertical
 
 ---
 
@@ -258,7 +264,7 @@ All 28 avatar rows have `avatar_gen_status = 'empty'`. HeyGen IDs are assigned c
 | Bundler not reading topic weights | LOW | Deferred — all weights 1.0, no insights data yet. Wire when insights-feedback loop verified. |
 | invegent.com domain verification | MED | DNS TXT propagating — click Verify domain when resolved |
 | Shrishti backup admin pending | LOW | She needs to accept invite and enable 2FA |
-| CFW + Invegent content_type_prompts missing | MED | Needs CFW content session before writing prompts |
+| CFW + Invegent content_type_prompts missing | MED | Needs CFW content session (operational) before writing prompts |
 | 4 TBC subscription costs | LOW | Vercel, HeyGen, Claude Max, OpenAI ChatGPT — confirm and update register |
 | NDIS Yarns 30 followers | HIGH (strategic) | Distribution problem not content quality — needs active seeding strategy |
 
