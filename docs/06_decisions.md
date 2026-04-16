@@ -91,7 +91,7 @@ is recorded here with context and reasoning.
 ## D110 — Token Expiry Alerter
 **Date:** 15 April 2026 | **Status:** ✅ Live
 
-**Decision:** `public.check_token_expiry()` runs daily 8:05am AEST. Writes to `m.token_expiry_alert`. Dashboard banners at 30d warning / 14d critical. Currently Facebook only — platform-agnostic fix pending.
+**Decision:** `public.check_token_expiry()` runs daily 8:05am AEST. Writes to `m.token_expiry_alert`. Dashboard banners at 30d warning / 14d critical. Currently Facebook only — platform-agnostic fix pending (change `WHERE pp.platform = 'facebook'` to `WHERE pp.token_expires_at IS NOT NULL`).
 
 ---
 
@@ -123,7 +123,7 @@ is recorded here with context and reasoning.
 
 **Decision:** Two pages, two distinct roles for feed management:
 - `/feeds` (global Feeds page) — manage the full feed pool. Vertical grouping. Assign to multiple clients. Deactivate globally. Uses `k.vw_feed_intelligence` which includes `assigned_clients` array per feed.
-- Clients → Feeds tab (specific client selected) — manage one client’s feeds. Flat list. Unassign only. Uses INNER JOIN query filtered by that client with `is_enabled = true`.
+- Clients → Feeds tab (specific client selected) — manage one client's feeds. Flat list. Unassign only. Uses INNER JOIN query filtered by that client with `is_enabled = true`.
 
 **"All clients" on Clients → Feeds tab** — shows a prompt to select a client with a link to /feeds. Does NOT attempt to show all feeds (the query does not include the `assigned_clients` array needed for vertical grouping).
 
@@ -131,20 +131,92 @@ is recorded here with context and reasoning.
 
 ---
 
+## D114 — Subscription Register: Manual Dashboard Page
+**Date:** 14 April 2026 | **Status:** 🔲 Brief 043 — ready to build
+
+**Decision:** Build a subscription/service cost register as a dashboard page backed by a single Supabase table. Manual entry only — no Gmail scraping, no API polling. PK maintains it, updates when services are added or cancelled.
+
+**Why not Gmail-based:** Gmail would return raw invoices and renewal notices requiring parse and dedup logic. That is the Cowork inbox task (separate backlog item). The register solves a different problem — a persistent single view of what ICE depends on and what it costs.
+
+**Schema:** `k.subscription_register` (governance schema, appropriate for operational metadata)
+
+**Fields:**
+- `subscription_id` uuid PK
+- `service_name` text — e.g. "Supabase Pro"
+- `category` text — Infrastructure / AI / Hosting / Integration / Video / Email / Dev
+- `monthly_cost_aud` numeric — fixed monthly cost; NULL for variable/usage-based
+- `billing_currency` text — AUD or USD (convert to AUD for display)
+- `use_case` text — one sentence on what ICE uses this for
+- `renewal_frequency` text — Monthly / Annual / Usage
+- `next_renewal_date` date — nullable
+- `status` text — active / paused / cancelled
+- `notes` text — nullable
+- `created_at` timestamptz
+- `updated_at` timestamptz
+
+**Starting data to seed:**
+Supabase Pro ($39 AUD/mo), Vercel (Hobby/Pro), Creatomate Essential ($54 USD/mo), Zapier Starter (~$30 AUD/mo), Claude API (variable), OpenAI API (variable), Resend (variable), HeyGen (variable), GitHub (free).
+
+**Dashboard location:** Monitor section → new "Costs" tab, alongside AI Costs.
+
+---
+
+## D115 — AI Diagnostic System
+**Date:** 2 April 2026 | **Status:** ✅ Live
+
+**Decision:** Build a daily AI-powered diagnostic system that fills the gap between Tier 1 (30-min pipeline-doctor point-in-time checks) and the existing 2-hourly pipeline-ai-summary narrative. Tier 2 reads 7 days of historical metrics and calls Claude Sonnet to produce a structured health report.
+
+**What was built:**
+- `m.ai_diagnostic_report` table — stores daily reports with health score, trend direction, per-client findings, recommendations, predicted issues
+- `public.insert_ai_diagnostic_report()` SECURITY DEFINER function
+- `ai-diagnostic` Edge Function — aggregates 7 metrics (doctor logs, per-client cadence, pipeline funnel, token expiry, feed ingest, dead drafts, AI job throughput) → Claude Sonnet → structured JSON
+- pg_cron schedule: daily 20:00 UTC (6am AEST)
+- `/api/diagnostics` Next.js route
+- `/diagnostics` dashboard page — health gauge, expandable report cards, "Run now" button
+
+**Deploy note:** Edge Function deploy via Windows MCP times out. Must run manually: `npx supabase functions deploy ai-diagnostic --project-ref mbkmaxqhsohbtwsqolns` from repo directory.
+
+---
+
+## D116 — Compliance Review DML Fix
+**Date:** 2 April 2026 | **Status:** ✅ Fixed
+
+**Decision:** Compliance tab "mark as reviewed" had no visible effect — root cause was `exec_sql` silently failing for DML on `m` schema (established pattern). Fix: `public.mark_compliance_review(p_review_id uuid)` SECURITY DEFINER function created. `/api/compliance` PATCH handler updated to call `.rpc('mark_compliance_review', ...)` instead of `exec_sql`.
+
+---
+
+## D117 — k Schema Fully Documented
+**Date:** 2 April 2026 | **Status:** ✅ Complete
+
+**Decision:** Complete the k schema governance catalog to zero TODO entries. All 117 tables across 5 schemas (m, c, f, t, k) documented with purpose, join keys, and advisory notes.
+
+**What was fixed:** Two schema exclusion bugs in refresh functions, one column name mismatch, `c` and `f` schemas added to all sync functions, weekly pg_cron refresh job established.
+
+**Key views:**
+- `k.vw_table_summary` — first stop for any table/schema navigation in any session
+- `k.vw_doc_backlog_tables` — surfaces tables with TODO purpose entries
+
+**Standing rule:** Query `k.vw_table_summary` before `information_schema` in any session. Faster, more informative.
+
+---
+
 ## Decisions Pending
 
 | Decision | Context | Target |
 |---|---|---|
-| Token alert platform-agnostic | Change facebook filter to token_expires_at IS NOT NULL | Next session |
-| Deprecated feeds stale cleanup | 15 deprecated feeds still have is_enabled=true | Low priority |
+| Token alert platform-agnostic | Change `WHERE pp.platform = 'facebook'` to `WHERE pp.token_expires_at IS NOT NULL` | Next session |
+| Deprecated feeds stale cleanup | 15 deprecated feeds still have is_enabled=true in c.client_source | Low priority |
 | NDIS Support Catalogue data load | Tables exist. Needs NDIA Excel from ndia.gov.au | Phase 3 |
 | Legal review of service agreement | L001 — hard gate before external client #1 | Before C1 |
 | F1 Prospect demo generator | Hold until NDIS Yarns has 60+ days data | ~mid-June 2026 |
-| LinkedIn middleware evaluation | Late.dev if API still pending | 13 May 2026 |
+| LinkedIn middleware evaluation | Late.dev if Community Management API still pending | 13 May 2026 |
 | Bundler topic weight wiring | recalculate_topic_weights() built, bundler not reading it | When bundler next touched |
-| invegent.com blog section | Brief 046 — Supabase → Next.js ISR pattern | Next session |
-| Subscription register dashboard | Brief 043 — ready to run | Next session |
-| CFW content session | Review first drafts, tune AI profile | Next session |
-| Cowork daily inbox task | Gmail MCP — archive noise, surface actions | Phase 4 |
-| Model router | When AI costs become significant | Phase 4 |
+| invegent.com blog section | Brief 046 — Supabase → Next.js ISR pattern | Phase 3 |
+| Brief 043 — Subscription register | D114 decided. Table + dashboard page. Ready to build | Next session |
+| B5 — Weekly manager report email | Sunday cron via Resend | Phase 3 |
+| Publisher schedule wiring | c.client_publish_schedule → publisher assigns scheduled_for at publish time | Phase 3 |
+| Support Coordinator HeyGen avatar | Pairs with Alex for conversational scenes. Immediate priority | Next session |
+| CFW content session | Review first drafts, tune AI profile — independent pipeline, not cloned from NDIS Yarns | Next session |
+| Cowork daily inbox task | Gmail MCP — archive noise, surface actions. Build after Phase D complete | Phase 4 |
+| Model router | ai-job → model_router → claude OR openai. When AI costs become significant | Phase 4 |
 | SaaS vs managed service | When 10 clients served 3+ months | Phase 4 |
