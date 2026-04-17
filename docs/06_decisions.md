@@ -28,137 +28,154 @@ is recorded here with context and reasoning.
 **Root cause:** `insert_pipeline_incident` had no deduplication — inserted a new row every time it was called regardless of existing open incidents for same client + check_name. No auto-resolution when condition cleared.
 
 **Fixes applied:**
-- `insert_pipeline_incident` patched to check for existing open incident (client_id + check_name) before inserting — idempotent, returns existing ID if found
-- `public.auto_resolve_pipeline_incidents()` created — resolves no_drafts_48h when new drafts exist, resolves no_posts_48h when posts published. Cron #63, every 30 min.
-- `public.bulk_resolve_stale_incidents()` created — used to bulk-clear 52 stale incidents on 17 Apr
-- 52 stale incidents resolved immediately
+- `insert_pipeline_incident` patched — idempotent, returns existing ID if found
+- `public.auto_resolve_pipeline_incidents()` — cron #63, every 30 min
+- `public.bulk_resolve_stale_incidents()` — used to bulk-clear 52 stale incidents 17 Apr
 
 ---
 
 ## D128 — Token Expiry Badge Fix
 **Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief C)
 
-**Root cause:** 12 of 14 publish profiles have `token_expires_at = NULL` — Instagram, LinkedIn, YouTube don't return expiry dates from their APIs. Dashboard was showing amber "expiry unknown" which implies actionable warning.
-
-**Fix:** NULL + has token → grey "Expiry not tracked" badge with tooltip. Only NY Facebook (31 May) and PP Facebook (14 Jun) show actual expiry dates with colour-coded urgency (green > 30d, amber 14-30d, red < 14d).
+NULL + has token → grey "Expiry not tracked". NY/PP Facebook show real expiry dates with colour-coded urgency.
 
 ---
 
 ## D129 — Pipeline Health Card on Overview
 **Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief B)
 
-**Decision:** Surface Pipeline AI summary from /pipeline-log directly onto Overview page as a collapsible card. Queries m.ai_diagnostic_report latest row. Shows health score badge, AI narrative (truncated 3 sentences, expand toggle), amber action box if action_item exists, link to full diagnostics page. Compresses daily workflow from 5 pages to 2.
+Pipeline AI summary surfaced on Overview page. Compresses daily workflow from 5 pages to 2.
 
 ---
 
 ## D130 — Collapse Engagement Tables Behind Dev-Tier Banner
 **Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief A)
 
-**Decision:** Performance → Engagement tab: when dev tier banner active, hide "Performance by format" and "Posts ranked by reach" tables (data is meaningless at reach 1-2). Replace with single line: "Full post-level data will appear here once Meta Standard Access is approved." Summary stat cards remain visible.
+Tables hidden when dev tier active. Summary stats remain.
 
 ---
 
 ## D131 — Sidebar Reorganisation
 **Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief A)
 
-**Decision:** Performance + AI Costs moved from CONTENT → MONITOR. Compliance moved from CONFIGURATION → MONITOR. CONTENT now contains only: Content Studio, Visuals. Routes unchanged — navigation only.
+Performance + AI Costs + Compliance moved to MONITOR. CONTENT now: Content Studio, Visuals only.
 
 ---
 
 ## D132 — Clickable Overview Stat Cards
 **Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief A)
 
-**Decision:** Published today + Overdue queue → /queue. Stuck jobs + Open incidents → /monitor. Hover: cyan border + shadow.
-
 ---
 
 ## D133 — Cost Page Projections
 **Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief B)
 
-**Decision:** Two new stat cards on AI Costs page: (1) Projected monthly total = (cost so far / days elapsed) × days in month. Shows "Insufficient data" if < 3 days elapsed. (2) Cost per post = total cost / posts published this month. Grid changed from 4 to 3 columns, 2 rows of 3.
+Projected monthly total + cost per post added as stat cards.
 
 ---
 
 ## D134 — Onboarding Moved to Clients Tab
 **Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief C)
 
-**Decision:** Onboarding removed from sidebar Configuration section. Added as 9th tab in Clients page, renders existing OnboardingPage component inline. /onboarding route preserved.
-
 ---
 
 ## D135 — Pipeline Selection Gap Fixed
 **Date:** 17 April 2026 | **Status:** ✅ FIXED (migration)
 
-**Root cause:** `populate_digest_items_v1` (planner) creates digest items as `selection_state = 'candidate'`. `seed_and_enqueue_ai_jobs_v1` requires `selection_state = 'selected' AND bundled = true`. Nothing was promoting candidates to selected — the old bundler Edge Function's selection step was dropped when the planner was introduced. Gap open since 13 April 2026. 4+ days of content stalled.
-
-**Fix applied:**
-- `public.select_digest_candidates()` SECURITY DEFINER function — promotes eligible candidates (body_fetch_status = 'success', last 7 days) to selected + bundled = true
-- `digest-selector-every-30m` cron #62 — runs every 30 min permanently
-- 550 candidates promoted immediately on 17 Apr. Pipeline unblocked.
-- 20 active ai_jobs, 10 new drafts generated within first hour.
+`public.select_digest_candidates()` + cron #62 every 30 min. 550 candidates promoted, pipeline unblocked 17 Apr.
 
 ---
 
 ## D136 — Schedule Grid Icon Fix
 **Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief A)
 
-**Decision:** Schedule tab platform icons were cramped at viewport width. SVG icons enlarged (w-3/h-3 → w-4/h-4 min-w-[16px]), button size increased, column min-width 72px → 90px, gap increased with flex-nowrap. Container already had overflow-x-auto.
-
 ---
 
 ## D137 — Onboarding Run Scans + Activation Flow
 **Date:** 17 April 2026 | **Status:** 🔲 Brief E (Claude Code)
 
-**Decision:** Build the missing operator onboarding workflow:
-
-1. **Run Scans button** — triggers brand-scanner + ai-profile-bootstrap Edge Functions sequentially from the operator onboarding panel. Both take `{ submission_id }`. Brand-scanner scrapes website for logo/colours and writes to `form_data.brand_scan_result`. AI-profile-bootstrap scrapes website + Facebook via Jina, calls Claude to generate persona/brand_voice/style_notes/system_prompt, writes to `form_data.ai_profile_scan_result`.
-
-2. **Scan Results panel** — displays after scans run: logo thumbnail, colour swatches (primary/secondary/accent), confidence %, AI persona description, brand voice tags, profession slug, collapsible system prompt.
-
-3. **Activate Client button** — calls `public.activate_client_from_submission(submission_id, client_id)` which reads scan results from form_data and writes to c.client_brand_profile. Sets submission status to 'approved'.
-
-**Backend function applied:** `public.activate_client_from_submission(UUID, UUID)` — migration applied 17 Apr. Maps brand_scan_result → brand colours/logo. Maps ai_scan_result → persona, brand_voice_keywords, brand_identity_prompt (system prompt). Sets submission to approved.
-
-**Checklist items made dynamic:** brand scan ✅/❌ and AI profile scan ✅/❌ now read from form_data in real time.
+Run Scans button (brand-scanner + ai-profile-bootstrap), scan results panel, Activate Client button.
+`public.activate_client_from_submission(UUID, UUID)` migration applied 17 Apr.
 
 ---
 
 ## D138 — YouTube Discovery Route in Feed Discovery Pipeline
 **Date:** 17 April 2026 | **Status:** 🔲 Planned — Phase 3
 
-**Decision (design):** Extend `feed-discovery` Edge Function to support a third seed_type: `youtube_keyword`. When a seed has this type, the function routes to the YouTube Data API (search.list, type=channel) instead of RSS.app, preserving RSS.app quota.
+New `seed_type = 'youtube_keyword'` routes to YouTube Data API search instead of RSS.app.
+Three routes: url→RSS.app, keyword→RSS.app, youtube_keyword→YouTube Data API.
+Uses ICE_YOUTUBE_DATA_API_KEY (already in vault). ingest-worker already handles youtube_channel type.
 
-**Architecture:**
+---
+
+## D139 — Feed Source Taxonomy: Content Origin + Provenance
+**Date:** 17 April 2026 | **Status:** 🔲 Planned — Phase 3
+
+**Problem:** The Feeds page currently shows a feed name and what clients are assigned. It has no
+indication of where the content actually originates (Facebook page vs government website vs YouTube
+channel vs newsletter) or how the feed got into ICE (auto-discovered vs manually added vs client
+suggested). This makes the feed pool opaque at a glance.
+
+**Three distinct concepts currently conflated or missing:**
+
+**1. Delivery mechanism** (`source_type_code` — already exists, inconsistently used)
+How ICE physically receives the content.
+Values: `rss_app`, `rss_native`, `youtube_channel`, `email_newsletter`
+
+**2. Content origin** (`content_origin` — NEW FIELD needed on `f.feed_source`)
+Where the content actually lives before ICE picks it up.
+Values: `facebook`, `youtube`, `website`, `government`, `industry_body`,
+`newsletter`, `news_media`, `social_media`, `research`, `other`
+
+**3. Provenance** (`added_by` — NEW FIELD needed on `f.feed_source`)
+How the feed entered ICE.
+Values: `discovery_pipeline`, `operator`, `client_suggestion`
+
+**What the Feeds page should show per feed:**
 ```
-seed_type = 'url'             → RSS.app API (existing)
-seed_type = 'keyword'         → RSS.app API (existing)
-seed_type = 'youtube_keyword' → YouTube Data API search (new route)
+NDIS Australia news
+RSS_APP  ·  Web/News  ·  Discovery pipeline
+
+RBA - Media Releases
+RSS_NATIVE  ·  Government  ·  Operator
+
+NDIS Newsletter Feed
+EMAIL_NEWSLETTER  ·  Newsletter  ·  Operator
+
+[Future] Some Facebook Page
+RSS_APP  ·  Facebook  ·  Discovery pipeline
 ```
 
-**YouTube route:**
-- Calls YouTube Data API search.list with `q={seed_value}`, `type=channel`, `regionCode=AU`
-- Uses ICE_YOUTUBE_DATA_API_KEY (already in vault)
-- Returns channel IDs from search results
-- Inserts each channel as `source_type_code = 'youtube_channel'` in f.feed_source
-- Config: `{ "channel_id": "UCxxxxxx", "channel_name": "...", "max_videos_per_run": 5 }`
-- Uses existing YouTube public RSS: `https://youtube.com/feeds/videos.xml?channel_id={ID}`
-- ingest-worker already handles youtube_channel type — no changes needed there
-
-**Why separate from RSS.app:**
-- RSS.app keyword search finds web articles, not YouTube channels
-- RSS.app Pro has monthly operation limits — no point burning them on YouTube discovery
-- YouTube Data API has its own quota (10,000 units/day free) — completely independent
-
-**To add YouTube discovery seeds:**
+**Schema changes needed:**
 ```sql
-INSERT INTO f.feed_discovery_seed
-  (seed_type, seed_value, region, vertical_slug, label)
-VALUES
-  ('youtube_keyword', 'NDIS Australia occupational therapy', 'AU', 'ndis', 'YT: NDIS OT channels'),
-  ('youtube_keyword', 'Australian property investment 2026',  'AU', 'property', 'YT: AU property channels');
+ALTER TABLE f.feed_source
+  ADD COLUMN content_origin  TEXT,   -- facebook | youtube | website | government | etc.
+  ADD COLUMN added_by        TEXT DEFAULT 'operator'
+    CHECK (added_by IN ('discovery_pipeline', 'operator', 'client_suggestion'));
 ```
 
-**Build when:** Phase 3 — after current onboarding and dashboard work is stable.
+**Backfill logic:**
+- All existing `source_type_code = 'youtube_channel'` → `content_origin = 'youtube'`
+- All existing `source_type_code = 'email_newsletter'` → `content_origin = 'newsletter'`
+- All `feed_discovery_seed` linked rows → `added_by = 'discovery_pipeline'`
+- `f.feed_suggestion` linked rows → `added_by = 'client_suggestion'`
+- Everything else → `added_by = 'operator'`
+- `content_origin` for remaining rows: operator sets manually via Feeds page
+
+**Feed discovery pipeline changes (D138 + D139 together):**
+- When `feed-discovery` provisions a feed → set `added_by = 'discovery_pipeline'`
+- When youtube_keyword route provisions a channel → also set `content_origin = 'youtube'`
+- When RSS.app URL route targets a Facebook page → set `content_origin = 'facebook'`
+
+**Dashboard changes:**
+- Feeds page: show content_origin + added_by as small badges on each feed card
+- Feed add/edit form: dropdown for content_origin, auto-set added_by = 'operator'
+- Filter options: filter by content_origin or added_by
+- Feeds page category grouping could eventually use content_origin as the grouping
+  dimension instead of the current manual category system
+
+**Build when:** Phase 3. Do schema migration first, then dashboard update.
+Can be done in one Claude Code brief + one migration.
 
 ---
 
@@ -166,8 +183,9 @@ VALUES
 
 | Decision | Context | Target |
 |---|---|---|
-| D137 — Onboarding Run Scans + Activate | Brief E (Claude Code) — ready to paste | Next Claude Code session |
-| D138 — YouTube discovery route | Extend feed-discovery with youtube_keyword seed_type | Phase 3 |
+| D137 — Onboarding Run Scans + Activate | Brief E ready to paste into Claude Code | Next Claude Code session |
+| D138 — YouTube discovery route | feed-discovery + youtube_keyword seed_type | Phase 3 |
+| D139 — Feed source taxonomy | content_origin + added_by fields + Feeds page display | Phase 3 |
 | NDIS Support Catalogue data load | Tables exist. Needs NDIA Excel from ndia.gov.au | Phase 3 |
 | Legal review of service agreement | L001 — hard gate before external client #1 | Before C1 |
 | F1 Prospect demo generator | Hold until NDIS Yarns has 60+ days data | ~mid-June 2026 |
@@ -181,5 +199,5 @@ VALUES
 | animated_data advisor conflict | Fix in Format Library page — remove NOT YET BUILDABLE text | Immediate |
 | Assign 12 unassigned feeds to clients | Via Feeds page — 9 discovery + 3 legacy | Immediate |
 | CFW content session | Review first drafts, tune AI profile, write prompts | Next session |
-| Confirm TBC subscription costs | Vercel, HeyGen, Claude Max, OpenAI — update subscription register | Next session |
+| Confirm TBC subscription costs | Vercel, HeyGen, Claude Max, OpenAI | Next session |
 | Voice & Formats prompt length fix | Add 250-word constraint to NY + PP prompts — fixes 0% auto-approver | Immediate |
