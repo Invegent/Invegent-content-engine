@@ -104,6 +104,23 @@
 - **D146** — Feed pipeline score + intelligent retirement (GATED — 60 days data)
 - **D140** — Digest item scoring (GATED — Phase 3)
 
+### End-of-day validation (Claude Browser)
+- Auto-approver: 50% pass rate ✅
+- Client switch all tabs: ✅ fixed
+- CFW onboarding Run Scans + Activate: ✅
+- Feed badges (Auto-discovered, YouTube, Newsletter): ✅
+- CFW logo: ❌ broken — client-assets Supabase bucket is private (public: false)
+- CFW colours: ❌ null — no theme-color meta tag on site (manual entry needed)
+- NDIS-Yarns accent: ❌ null — minor, not urgent
+
+---
+
+## ⚠️ FIRST THING NEXT SESSION
+
+**Make client-assets storage bucket public:**
+Supabase dashboard → Storage → client-assets → make bucket Public
+This will fix the broken CFW logo image immediately. No code change needed.
+
 ---
 
 ## INFRASTRUCTURE STATE
@@ -138,7 +155,7 @@
 | Top gate failure | body_too_long — 100% of failures |
 | Score gate | disabled (min_score=0) — D140 pending |
 
-**PP at 26.3% — body_too_long is the remaining tuning task.** PP prompts may need stricter length constraints than NY.
+**PP at 26.3% — body_too_long is the remaining tuning task.**
 
 ---
 
@@ -165,20 +182,17 @@
 | Brand name | Care For Welfare Pty Ltd |
 | Brand bio | Full NDIS allied health persona paragraph |
 | Brand voice | educational, informative, compassionate, empowering, plain-English |
-| Presenter identity | Full persona paragraph (backfilled) |
-| System prompt | Full content writer prompt for CFW |
-| Logo | ✅ Extracted from OG image (70% confidence) |
-| Primary colour | ❌ NULL — site has no theme-color meta tag |
-| Secondary colour | ❌ NULL |
-| Accent colour | ❌ NULL |
+| Presenter identity | Full persona paragraph (backfilled) ✅ |
+| System prompt | Full content writer prompt for CFW ✅ |
+| Logo URL | ✅ Stored — broken in browser (bucket private — fix first thing) |
+| Primary colour | ❌ NULL — manual entry needed |
+| Secondary colour | ❌ NULL — manual entry needed |
+| Accent colour | ❌ NULL — manual entry needed |
 | Profession | occupational_therapy ✅ |
-| Notes | Colours need manual entry in Profile tab |
 
 ---
 
 ## PUBLISH PROFILE THROTTLE STATE (17 Apr 2026)
-
-All profiles now have throttle set. No platform can spam.
 
 | Client | Platform | Mode | Max/day | Min gap |
 |---|---|---|---|---|
@@ -239,22 +253,24 @@ Invegent has no content_type_prompts — no drafts can generate (correct).
 
 ## WHAT IS NEXT
 
+### IMMEDIATE (first thing next session)
+1. **Make client-assets bucket public** — Supabase → Storage → client-assets → Public. Fixes CFW logo.
+2. **CFW colours** — enter Primary / Secondary / Accent manually in Clients → CFW → Profile → Brand Identity
+
 ### OPERATIONAL (you, no build needed)
-1. **CFW colours** — enter Primary / Secondary / Accent manually in Clients → CFW → Profile → Brand Identity
-2. **CFW content session** — write content_type_prompts for Facebook, Instagram, LinkedIn
-3. **Invegent content session** — write content_type_prompts
-4. **Assign 12 unassigned feeds** to clients via Feeds page
-5. **PP prompt length** — check PP prompts have 250-word constraint (body_too_long at 26.3% pass rate)
-6. **Fix animated_data advisor conflict** — Format Library page, remove "NOT YET BUILDABLE" text
-7. **Meta domain verify** — click when DNS propagates
-8. **Confirm TBC subscriptions** — Vercel, HeyGen, Claude Max, OpenAI
+3. **CFW content session** — write content_type_prompts for Facebook, Instagram, LinkedIn
+4. **Invegent content session** — write content_type_prompts
+5. **Assign 12 unassigned feeds** to clients via Feeds page
+6. **PP prompt length** — check PP prompts have 250-word constraint (body_too_long at 26.3%)
+7. **Fix animated_data advisor conflict** — Format Library page, remove "NOT YET BUILDABLE" text
+8. **Meta domain verify** — click when DNS propagates
+9. **Confirm TBC subscriptions** — Vercel, HeyGen, Claude Max, OpenAI
 
 ### BUILD (priority order, next sessions)
 1. **Phase 2.1 — Insights-worker** — collect engagement data. Gates D143–D146.
 2. **Phase 2.6 — Proof dashboard** — live metrics page for first client conversation
 3. **D140 — Digest item scoring** — final_score computation on digest_item
 4. **D124 — Boost Config UI** — gated on Meta Standard Access
-5. **D142 benchmark research** — research Hootsuite/Sprout Social benchmarks for D145 table
 
 ### GATED — DO NOT BUILD (60 days data required)
 - D143 Signal classifier
@@ -268,7 +284,8 @@ Invegent has no content_type_prompts — no drafts can generate (correct).
 
 | Issue | Priority | Status |
 |---|---|---|
-| CFW colours missing | MED | Manual entry needed — site has no meta colour tags |
+| client-assets bucket private | HIGH | Fix first — Supabase Storage → make public |
+| CFW colours missing | MED | Manual entry needed |
 | CFW + Invegent prompts missing | HIGH | Content session needed |
 | PP auto-approver 26.3% | MED | body_too_long — check prompt length constraints |
 | Invegent no_drafts_48h incident | LOW | Correct — no prompts written |
