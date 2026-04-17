@@ -1,6 +1,6 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const VERSION = "brand-scanner-v1.0.0";
+const VERSION = "brand-scanner-v1.0.1";
 
 function getServiceClient() {
   const url = Deno.env.get("SUPABASE_URL");
@@ -113,7 +113,11 @@ Deno.serve(async (req: Request) => {
 
     const submission = rows[0];
     const formData = submission.form_data ?? {};
-    const websiteUrl: string | null = formData.website_url ?? submission.website_url ?? null;
+    let websiteUrl: string | null = formData.website_url ?? submission.website_url ?? null;
+    // Normalise URL — prepend https:// if no protocol present
+    if (websiteUrl && !websiteUrl.startsWith('http')) {
+      websiteUrl = 'https://' + websiteUrl;
+    }
     const logoDataUrl: string | null = formData.logo_data_url ?? null;
     const logoFileName: string | null = formData.logo_file_name ?? null;
 
