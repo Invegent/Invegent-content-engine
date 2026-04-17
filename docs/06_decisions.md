@@ -11,228 +11,154 @@ is recorded here with context and reasoning.
 
 ---
 
-## D101 — Instagram Publishing via Graph API — Cross-post Pattern
-**Date:** 14 April 2026 | **Status:** ✅ Live
-
-**Decision:** Build instagram-publisher as a cross-post function (queries post_draft directly, not queue-based). Uses same Facebook Page Access Token to publish to linked Instagram Business Account via Graph API.
-
-**Key finding:** Instagram Business account must be linked to the Facebook Page in Facebook Business Manager before the Graph API returns an `instagram_business_account` field. The Graph API token also needs `instagram_basic` and `instagram_content_publish` permissions — added via "API setup with Facebook login" use case, not "API setup with Instagram login".
-
-**Format routing:** image_quote/carousel → image post. video_short_* → Reels. text → skipped (Instagram does not support text-only).
-
-**What was built:** instagram-publisher v1.0.0. Cron job 53 every 15min. Publish profiles for NDIS Yarns, Property Pulse, CFW, Invegent.
+## D101–D125 — See 16 Apr 2026 commits
 
 ---
 
-## D102 — LinkedIn Publishing via Zapier Webhook Bridge
-**Date:** 14 April 2026 | **Status:** ✅ Live
+## D126 — Topbar Critical Count Fix
+**Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief C)
 
-**Decision:** Route LinkedIn posts through Zapier as a temporary bridge while Community Management API (`w_organization_social`) is pending approval.
-
-**Rollback:** When Community Management API approved → replace webhook URLs with real tokens → linkedin-zapier-publisher detects non-Zapier URL and routes correctly.
-
-**Key fix:** `m.post_publish_queue` unique index widened from `(post_draft_id)` to `(post_draft_id, platform)` to support one draft being queued for multiple platforms.
-
-**Zap configuration:** NDIS Yarns: u7nkjq3 | Property Pulse: u7nav0s | Care For Welfare: u7ngjbh | Invegent: u7nws8p
+**Decision:** Topbar was showing raw row count (42) from m.pipeline_incident. Overview was showing a different subset (10). Fixed by changing topbar to COUNT(DISTINCT client_id) among open CRITICAL incidents — "N clients with critical alerts". Overview incidents grouped by client + check_name with first/last detected timestamps and "recurring" badge when firing > 24h.
 
 ---
 
-## D103 — Invegent as ICE Client
-**Date:** 14 April 2026 | **Status:** ✅ Live
+## D127 — Incident Deduplication + Auto-Resolution
+**Date:** 17 April 2026 | **Status:** ✅ BUILT (migration)
 
-**Decision:** Create Invegent as a full ICE client. client_id: `93494a09-cc89-41d1-b364-cb63983063a6`. New verticals: AI & Automation, Social Media Strategy, Content Marketing. AI tone: conversational, practical, curious. Platforms: FB, IG, LI (Zapier).
+**Root cause:** `insert_pipeline_incident` had no deduplication — inserted a new row every time it was called regardless of existing open incidents for same client + check_name. No auto-resolution when condition cleared.
 
----
-
-## D104 — Care For Welfare Full Pipeline Setup
-**Date:** 14 April 2026 | **Status:** ✅ Live
-
-**Decision:** Configure CFW as a full ICE client. Clone NDIS Yarns content scope, create OT-specific AI profile, set profession_slug = occupational_therapy. Warmer tone than NDIS Yarns. Platforms: FB, IG, LI (Zapier), WP.
-
----
-
-## D105 — WordPress Publishing for CFW Website SEO
-**Date:** 14 April 2026 | **Status:** ✅ Live
-
-**Decision:** Publish approved CFW drafts to careforwelfare.com.au/ndis-news/ via WordPress REST API. Max 3 posts per 6-hour run. Yoast SEO handles meta. Mod_Security requires User-Agent: Mozilla/5.0 header.
-
-**Credentials:** Username `admin`, secret `CFW_WP_APP_PASSWORD`, category ID 20.
+**Fixes applied:**
+- `insert_pipeline_incident` patched to check for existing open incident (client_id + check_name) before inserting — idempotent, returns existing ID if found
+- `public.auto_resolve_pipeline_incidents()` created — resolves no_drafts_48h when new drafts exist, resolves no_posts_48h when posts published. Cron #63, every 30 min.
+- `public.bulk_resolve_stale_incidents()` created — used to bulk-clear 52 stale incidents on 17 Apr
+- 52 stale incidents resolved immediately
 
 ---
 
-## D106 — Platform Connections Dashboard — Dynamic Rendering
-**Date:** 14 April 2026 | **Status:** ✅ Live
+## D128 — Token Expiry Badge Fix
+**Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief C)
 
-**Decision:** Both `/connect` page and Clients → Connect tab render platforms dynamically from `c.client_publish_profile`. LinkedIn profiles with page_access_token starting `https://hooks.zapier.com` show purple Zapier bridge badge.
+**Root cause:** 12 of 14 publish profiles have `token_expires_at = NULL` — Instagram, LinkedIn, YouTube don't return expiry dates from their APIs. Dashboard was showing amber "expiry unknown" which implies actionable warning.
 
----
-
-## D107 — Full Pipeline Audit Methodology
-**Date:** 15 April 2026 | **Status:** ✅ Complete
+**Fix:** NULL + has token → grey "Expiry not tracked" badge with tooltip. Only NY Facebook (31 May) and PP Facebook (14 Jun) show actual expiry dates with colour-coded urgency (green > 30d, amber 14-30d, red < 14d).
 
 ---
 
-## D108 — Auth Standardisation: No-Verify-JWT + Vault Pattern
-**Date:** 15 April 2026 | **Status:** ✅ Complete
+## D129 — Pipeline Health Card on Overview
+**Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief B)
 
-**Decision:** All cron-called Edge Functions use `verify_jwt: false` + internal API key check. 12 functions redeployed --no-verify-jwt. Security posture unchanged.
-
----
-
-## D109 — Publisher Platform Filter (publisher_lock_queue_v1)
-**Date:** 15 April 2026 | **Status:** ✅ Fixed
-
-**Decision:** Drop old 3-arg overload of `m.publisher_lock_queue_v1`. Only 4-arg version with `p_platform DEFAULT 'facebook'` remains.
+**Decision:** Surface Pipeline AI summary from /pipeline-log directly onto Overview page as a collapsible card. Queries m.ai_diagnostic_report latest row. Shows health score badge, AI narrative (truncated 3 sentences, expand toggle), amber action box if action_item exists, link to full diagnostics page. Compresses daily workflow from 5 pages to 2.
 
 ---
 
-## D110 — Token Expiry Alerter
-**Date:** 15 April 2026 | **Status:** ✅ Live — platform-agnostic fix applied 16 Apr
+## D130 — Collapse Engagement Tables Behind Dev-Tier Banner
+**Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief A)
 
-**Decision:** `public.check_token_expiry()` runs daily 8:05am AEST. Writes to `m.token_expiry_alert`. Dashboard banners at 30d warning / 14d critical.
-
----
-
-## D111 — Feed Management: Shared Signal Model
-**Date:** 15 April 2026 | **Status:** ✅ Live
-
-**Decision:** Feeds are shared signals. `c.client_source` rows NEVER deleted — only `is_enabled = false`. Feed status: `active`, `paused`, `deprecated` only.
+**Decision:** Performance → Engagement tab: when dev tier banner active, hide "Performance by format" and "Posts ranked by reach" tables (data is meaningless at reach 1-2). Replace with single line: "Full post-level data will appear here once Meta Standard Access is approved." Summary stat cards remain visible.
 
 ---
 
-## D112 — Feed DML via SECURITY DEFINER Functions
-**Date:** 15 April 2026 | **Status:** ✅ Live
+## D131 — Sidebar Reorganisation
+**Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief A)
 
-**Functions:** `public.feed_assign_client()`, `public.feed_unassign_from_client()`, `public.feed_deactivate()`
-
-**Pattern:** exec_sql = SELECT only on c/f/t schemas. Any write → SECURITY DEFINER function in public schema.
+**Decision:** Performance + AI Costs moved from CONTENT → MONITOR. Compliance moved from CONFIGURATION → MONITOR. CONTENT now contains only: Content Studio, Visuals. Routes unchanged — navigation only.
 
 ---
 
-## D113 — Feed UI Page Separation
-**Date:** 15 April 2026 | **Status:** ✅ Live
+## D132 — Clickable Overview Stat Cards
+**Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief A)
 
-**Decision:** `/feeds` = global pool. Clients → Feeds tab = per-client assignment only.
-
----
-
-## D114 — Subscription Register
-**Date:** 14 April 2026 | **Status:** ✅ Live
-
-`k.subscription_register` + `/system/subscriptions`. RSS.app Pro added 16 Apr.
+**Decision:** Published today + Overdue queue → /queue. Stuck jobs + Open incidents → /monitor. Hover: cyan border + shadow.
 
 ---
 
-## D115 — AI Diagnostic System
-**Date:** 2 April 2026 | **Status:** ✅ Live
+## D133 — Cost Page Projections
+**Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief B)
 
-Daily 6am AEST. `m.ai_diagnostic_report`. `/diagnostics` page.
-
----
-
-## D116 — Compliance Review DML Fix
-**Date:** 2 April 2026 | **Status:** ✅ Fixed
+**Decision:** Two new stat cards on AI Costs page: (1) Projected monthly total = (cost so far / days elapsed) × days in month. Shows "Insufficient data" if < 3 days elapsed. (2) Cost per post = total cost / posts published this month. Grid changed from 4 to 3 columns, 2 rows of 3.
 
 ---
 
-## D117 — k Schema Fully Documented
-**Date:** 2 April 2026 | **Status:** ✅ Complete
+## D134 — Onboarding Moved to Clients Tab
+**Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief C)
+
+**Decision:** Onboarding removed from sidebar Configuration section. Added as 9th tab in Clients page, renders existing OnboardingPage component inline. /onboarding route preserved.
 
 ---
 
-## D118 — Voice & Formats Dashboard Page
-**Date:** 16 April 2026 | **Status:** ✅ BUILT
+## D135 — Pipeline Selection Gap Fixed
+**Date:** 17 April 2026 | **Status:** ✅ FIXED (migration)
 
-**What was built:** Clients page → Voice & Formats tab. Platform coverage grid (4 cards, green/amber/grey dots), job type tabs (Rewrite/Synthesis/Promo), monospace prompt editor with version tracking, output schema hint collapsible, avatar roster reference panel. `public.upsert_content_type_prompt()` SECURITY DEFINER function.
+**Root cause:** `populate_digest_items_v1` (planner) creates digest items as `selection_state = 'candidate'`. `seed_and_enqueue_ai_jobs_v1` requires `selection_state = 'selected' AND bundled = true`. Nothing was promoting candidates to selected — the old bundler Edge Function's selection step was dropped when the planner was introduced. Gap open since 13 April 2026. 4+ days of content stalled.
 
----
-
-## D119 — Avatar Management Dashboard Page
-**Date:** 16 April 2026 | **Status:** ✅ BUILT
-
-**What was built:** AvatarTab enhanced — `avatar_gen_status` badges (ready/empty/failed), deactivate/reactivate toggle per stakeholder, Poll HeyGen button invokes heygen-worker. `public.toggle_brand_stakeholder_active()` function. `get_brand_avatars()` patched to return gen_status.
-
----
-
-## D120 — Auto-Approval Patterns Dashboard
-**Date:** 16 April 2026 | **Status:** ✅ BUILT
-
-**What was built:** Performance page → Approval Patterns tab (`?view=approvals`). Gate failure bar chart, per-client pass rate progress bars, weekly trend table, calibration note. Key finding: 100% of failures are `body_length` — prompts generating posts over the 1800 char limit.
+**Fix applied:**
+- `public.select_digest_candidates()` SECURITY DEFINER function — promotes eligible candidates (body_fetch_status = 'success', last 7 days) to selected + bundled = true
+- `digest-selector-every-30m` cron #62 — runs every 30 min permanently
+- 550 candidates promoted immediately on 17 Apr. Pipeline unblocked.
+- 20 active ai_jobs, 10 new drafts generated within first hour.
 
 ---
 
-## D121 — Compliance Rules Viewer/Editor
-**Date:** 16 April 2026 | **Status:** ✅ BUILT
+## D136 — Schedule Grid Icon Fix
+**Date:** 17 April 2026 | **Status:** ✅ BUILT (Brief A)
 
-**What was built:** Compliance page → Rules inner tab. 23 rules grouped by vertical. Expand/collapse per rule. Inline edit for rule_name + rule_text. Activate/deactivate toggle. Add new rule form. `public.toggle_compliance_rule_active()` + `public.upsert_compliance_rule()` functions.
-
----
-
-## D122 — Client Digest Policy UI
-**Date:** 16 April 2026 | **Status:** ✅ BUILT
-
-**What was built:** Clients page → Digest Policy tab. Strict/lenient mode selector, max/min items + window_hours inputs, three permissiveness toggles. UPSERT handles CFW + Invegent which have no existing policy row. `public.upsert_client_digest_policy()` function.
+**Decision:** Schedule tab platform icons were cramped at viewport width. SVG icons enlarged (w-3/h-3 → w-4/h-4 min-w-[16px]), button size increased, column min-width 72px → 90px, gap increased with flex-nowrap. Container already had overflow-x-auto.
 
 ---
 
-## D123 — Format Library UI
-**Date:** 16 April 2026 | **Status:** ✅ BUILT
+## D137 — Onboarding Run Scans + Activation Flow
+**Date:** 17 April 2026 | **Status:** 🔲 Brief E (Claude Code)
 
-**What was built:** System → Format Library page. 21 formats grouped by category. is_buildable toggle, advisor description inline edit. Conflict detection: `animated_data` and `animated_text_reveal` flagged red — is_buildable=true but advisor text still says "NOT YET BUILDABLE". Fix in dashboard. `public.update_content_format()` function.
+**Decision:** Build the missing operator onboarding workflow:
 
-**Immediate action required:** Fix advisor descriptions for `animated_data` and `animated_text_reveal` via Format Library page.
+1. **Run Scans button** — triggers brand-scanner + ai-profile-bootstrap Edge Functions sequentially from the operator onboarding panel. Both take `{ submission_id }`. Brand-scanner scrapes website for logo/colours and writes to `form_data.brand_scan_result`. AI-profile-bootstrap scrapes website + Facebook via Jina, calls Claude to generate persona/brand_voice/style_notes/system_prompt, writes to `form_data.ai_profile_scan_result`.
+
+2. **Scan Results panel** — displays after scans run: logo thumbnail, colour swatches (primary/secondary/accent), confidence %, AI persona description, brand voice tags, profession slug, collapsible system prompt.
+
+3. **Activate Client button** — calls `public.activate_client_from_submission(submission_id, client_id)` which reads scan results from form_data and writes to c.client_brand_profile. Sets submission status to 'approved'.
+
+**Backend function applied:** `public.activate_client_from_submission(UUID, UUID)` — migration applied 17 Apr. Maps brand_scan_result → brand colours/logo. Maps ai_scan_result → persona, brand_voice_keywords, brand_identity_prompt (system prompt). Sets submission to approved.
+
+**Checklist items made dynamic:** brand scan ✅/❌ and AI profile scan ✅/❌ now read from form_data in real time.
 
 ---
 
-## D124 — Boost Configuration UI
-**Date:** 16 April 2026 | **Status:** 🔲 Pending — Meta Standard Access dependency
+## D138 — YouTube Discovery Route in Feed Discovery Pipeline
+**Date:** 17 April 2026 | **Status:** 🔲 Planned — Phase 3
 
-**Decision:** Build UI for boost config fields in `c.client_publish_profile`. Hard dependency: Meta Standard Access graduation required. Phase 3.4 item.
-
----
-
-## D125 — RSS.app Discovery Pipeline
-**Date:** 16 April 2026 | **Status:** ✅ LIVE
-
-**Decision:** Build a feed discovery pipeline using RSS.app Pro API to programmatically generate RSS feeds from keywords and URLs, and auto-provision them into `f.feed_source` for the existing ingest-worker to pick up.
+**Decision (design):** Extend `feed-discovery` Edge Function to support a third seed_type: `youtube_keyword`. When a seed has this type, the function routes to the YouTube Data API (search.list, type=channel) instead of RSS.app, preserving RSS.app quota.
 
 **Architecture:**
-- `f.feed_discovery_seed` table — seed entries (url OR keyword, vertical_slug, status, rssapp_feed_id)
-- `feed-discovery` Edge Function v1.0.0 — calls RSS.app API, inserts into f.feed_source via SECURITY DEFINER, marks seeds provisioned
-- pg_cron job #61 — daily 8am AEST (`0 20 * * *`)
-- RSSAPP_API_KEY in vault — format `c_key:s_secret` (key and secret joined with colon)
-
-**RSS.app API:**
-- Base: `https://api.rss.app/v1/feeds`
-- Auth: `Authorization: Bearer KEY:SECRET`
-- Create by keyword: `{ "keyword": "NDIS Australia", "region": "AU:en" }`
-- Create by URL: `{ "url": "https://ndis.gov.au/news" }`
-- Returns `rss_feed_url` which goes directly into `f.feed_source.config.url`
-
-**First run results:** 9/9 seeds provisioned. All active in f.feed_source.
-
-**To add more seeds:**
-```sql
-INSERT INTO f.feed_discovery_seed (seed_type, seed_value, region, vertical_slug, label)
-VALUES ('keyword', 'NDIS news 2026', 'AU:en', 'ndis', 'NDIS news 2026');
 ```
-Daily cron picks up `status = 'pending'` rows automatically.
+seed_type = 'url'             → RSS.app API (existing)
+seed_type = 'keyword'         → RSS.app API (existing)
+seed_type = 'youtube_keyword' → YouTube Data API search (new route)
+```
 
-**SECURITY DEFINER functions created:** `public.create_feed_source_rss()`, `public.update_feed_discovery_seed()`
+**YouTube route:**
+- Calls YouTube Data API search.list with `q={seed_value}`, `type=channel`, `regionCode=AU`
+- Uses ICE_YOUTUBE_DATA_API_KEY (already in vault)
+- Returns channel IDs from search results
+- Inserts each channel as `source_type_code = 'youtube_channel'` in f.feed_source
+- Config: `{ "channel_id": "UCxxxxxx", "channel_name": "...", "max_videos_per_run": 5 }`
+- Uses existing YouTube public RSS: `https://youtube.com/feeds/videos.xml?channel_id={ID}`
+- ingest-worker already handles youtube_channel type — no changes needed there
 
----
+**Why separate from RSS.app:**
+- RSS.app keyword search finds web articles, not YouTube channels
+- RSS.app Pro has monthly operation limits — no point burning them on YouTube discovery
+- YouTube Data API has its own quota (10,000 units/day free) — completely independent
 
-## B5 — Weekly Manager Report Email
-**Date:** 16 April 2026 | **Status:** ✅ BUILT
+**To add YouTube discovery seeds:**
+```sql
+INSERT INTO f.feed_discovery_seed
+  (seed_type, seed_value, region, vertical_slug, label)
+VALUES
+  ('youtube_keyword', 'NDIS Australia occupational therapy', 'AU', 'ndis', 'YT: NDIS OT channels'),
+  ('youtube_keyword', 'Australian property investment 2026',  'AU', 'property', 'YT: AU property channels');
+```
 
-**Decision:** weekly-manager-report Edge Function v2.0.0. Sunday 21:00 UTC (Monday 7am AEST). Sends to pk@invegent.com via Resend. 10 parallel queries: pipeline health, per-client summary, token expiry warnings, feed health, pipeline incidents, AI costs. HTML email, mobile-readable.
-
----
-
-## Publisher Schedule Wiring
-**Date:** 16 April 2026 | **Status:** ✅ BUILT
-
-**Decision:** publisher v1.7.0. `public.get_next_publish_slot(client_id, platform)` SECURITY DEFINER function. Reads `c.client_publish_schedule`, finds next slot after NOW() in client timezone, wraps to next week if needed. Returns NULL if no schedule configured (= publish immediately). publisher_lock_queue_v2 already had the `scheduled_for IS NULL OR scheduled_for <= NOW()` filter. Verified live — two queue items correctly assigned schedule slots.
+**Build when:** Phase 3 — after current onboarding and dashboard work is stable.
 
 ---
 
@@ -240,11 +166,12 @@ Daily cron picks up `status = 'pending'` rows automatically.
 
 | Decision | Context | Target |
 |---|---|---|
+| D137 — Onboarding Run Scans + Activate | Brief E (Claude Code) — ready to paste | Next Claude Code session |
+| D138 — YouTube discovery route | Extend feed-discovery with youtube_keyword seed_type | Phase 3 |
 | NDIS Support Catalogue data load | Tables exist. Needs NDIA Excel from ndia.gov.au | Phase 3 |
 | Legal review of service agreement | L001 — hard gate before external client #1 | Before C1 |
 | F1 Prospect demo generator | Hold until NDIS Yarns has 60+ days data | ~mid-June 2026 |
 | LinkedIn Community Management API | Evaluate Late.dev if still pending 13 May 2026 | 13 May 2026 |
-| Bundler topic weight wiring | Blocked — all weights 1.0 until insights feedback loop verified | When live |
 | D124 — Boost Configuration UI | Meta Standard Access dependency | Phase 3.4 |
 | RSS.app discovery dashboard page | Seed management UI — add/view/manage without SQL | Phase 3 |
 | Cowork daily inbox task | Gmail MCP — archive noise, surface actions | Phase 4 |
@@ -252,6 +179,7 @@ Daily cron picks up `status = 'pending'` rows automatically.
 | SaaS vs managed service | When 10 clients served 3+ months | Phase 4 |
 | Meta App Review | In Review. Contact dev support if stuck after 27 Apr 2026 | Waiting |
 | animated_data advisor conflict | Fix in Format Library page — remove NOT YET BUILDABLE text | Immediate |
-| Assign 9 RSS.app feeds to clients | Via Feeds page in dashboard | Immediate |
+| Assign 12 unassigned feeds to clients | Via Feeds page — 9 discovery + 3 legacy | Immediate |
 | CFW content session | Review first drafts, tune AI profile, write prompts | Next session |
 | Confirm TBC subscription costs | Vercel, HeyGen, Claude Max, OpenAI — update subscription register | Next session |
+| Voice & Formats prompt length fix | Add 250-word constraint to NY + PP prompts — fixes 0% auto-approver | Immediate |
