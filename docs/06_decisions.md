@@ -108,66 +108,201 @@ Feeds page shows content origin badges + "Auto-discovered" teal provenance badge
 ## D140 — Digest Item Scoring Disabled — Pending Future Build
 **Date:** 17 April 2026 | **Status:** 🔲 Future build — Phase 3
 
-**Problem discovered:** QA on 17 Apr 2026 revealed auto-approver pass rate was 6.7% overall
-and 0% per-client. Root cause: `m.digest_item.final_score = 0.0` on all drafts.
-
-**Why all scores are 0:**
-The old bundler Edge Function computed `final_score` on `digest_item` during the scoring/selection
-step. When D135 (Pipeline Selection Gap) was fixed on 17 Apr, `select_digest_candidates()` was
-introduced to promote candidates — but it does not compute scores. The scoring logic was inside
-the old bundler which was no longer running. Result: every digest_item has `final_score = 0`.
-
-**Immediate fix applied (17 Apr):**
-`auto-approver v1.5.0` deployed with `min_score = 0` for all clients. The score gate is now a
-no-op. The auto-approver now only blocks on:
-1. `auto_approve_enabled = false`
-2. `approval_status = 'rejected'` (human previously rejected)
-3. `body_length` — too short (< 80 chars) or too long (> 1800/2000 chars)
-4. `sensitive_keywords` — blocklist match
-
-**Future build required — Digest Item Scoring:**
-`select_digest_candidates()` or a new `score-worker` needs to compute `final_score` on
-`m.digest_item` based on:
-- Source weight (`c.client_source.weight`) — already on the table, just not being used
-- Content recency — days since published
-- Fetch quality — did Jina get the full text or give up?
-- Relevance — topic match to client vertical scope
-
-**When to build:** Phase 3, after CFW content session and auto-approver pass rate is stable.
-Scoring is a quality improvement, not a blocking issue. The body_length and keyword gates
-are sufficient to catch the worst drafts in the interim.
-
-**Decision:** Keep `min_score = 0` until scoring is implemented. Do not raise it until
-`final_score` is actually being computed on new digest items.
+Root cause: old bundler computed `final_score`; replaced by `select_digest_candidates()` (D135)
+which doesn't score. All digest items have `final_score = 0`. Auto-approver v1.5.0 sets
+`min_score = 0` as temporary fix. Future build: score-worker computes score from source weight,
+recency, fetch quality, vertical relevance. Do not raise min_score until scoring is live.
 
 ---
 
-## D138+D139 — Client Switch Stale State Fix
-**Date:** 17 April 2026 | **Status:** ✅ FIXED
+## D141 — Pipeline Synthesis & Demand-Aware Seeding
+**Date:** 17 April 2026 | **Status:** 🔲 Future decision — do not build until prerequisites met
 
-`VoiceFormatsTab`, `DigestPolicyTab`, `AvatarTab` all now get `key={activeClientId}`.
-Forces React remount on client switch — no hard refresh needed.
+### Background — the conversation that led here
+
+On 17 April 2026, a deep analysis of the pipeline revealed a fundamental mismatch between
+ICE's stated philosophy and its actual behaviour. This decision records the full analysis,
+the options considered, and the agreed path forward. It is intentionally detailed because
+the decision has significant downstream implications.
 
 ---
 
-## Decisions Pending
+### The philosophical gap
 
-| Decision | Context | Target |
+ICE was designed as signal-centric: "signals first, posts second." Every piece of content
+should be traceable to a real-world signal. The pipeline was intended to ingest many signals,
+synthesise the best ones, and produce a small number of high-quality posts matching each
+client's publishing schedule.
+
+**What was actually built:** A 1:1 pipeline. One signal → one AI job → one draft → one post.
+The synthesis step was designed in the blueprint but never implemented. The throttle at the
+publisher end (max_per_day) was acting as a waste bin — discarding most of what the AI generated.
+
+**Evidence (17 Apr 2026, last 7 days):**
+
+| Client | Signals selected | AI jobs created | Drafts generated | Published |
+|---|---|---|---|---|
+| NDIS-Yarns | 332 | 147 | 147 | 1 |
+| Property Pulse | 1,402 | 63 | 63 | 3 |
+| Care For Welfare | 36 | 24 | 24 | 0 |
+
+NDIS-Yarns has a 6-post/week schedule. It generated 147 drafts to produce 1 published post.
+Token waste rate: ~93%. Every wasted draft consumed a full Claude API call.
+
+---
+
+### The full pipeline — what was audited
+
+```
+INGEST (every 6h)
+  ingest Edge Function → f.canonical_content_item
+
+CONTENT FETCH (every 10m)
+  content_fetch Edge Function → f.canonical_content_body (Jina)
+
+PLANNER (every 1h)
+  planner cron → m.digest_item (selection_state = 'candidate')
+
+SELECTOR (every 30m) [added D135, 17 Apr]
+  select_digest_candidates() → promotes to selected + bundled = true
+  ⚠ Does NOT compute final_score — all scores remain 0 (D140)
+
+SEEDER (every 10m) ← THE PROBLEM POINT
+  seed_and_enqueue_ai_jobs_v1('facebook', 10)
+  → picks any 10 selected+bundled items with body_fetch_status = 'success'
+  → creates post_seed + post_draft stub + ai_job (1 per signal, no demand awareness)
+  → no concept of "how many does this client need this week"
+  → no client-level limit
+
+AI WORKER (every 5m, limit=5)
+  ai-worker v2.8.0
+  → format advisor (1 Claude call)
+  → content generator (1 Claude call)
+  → 2 Claude calls per draft = high token burn
+
+AUTO APPROVER (every 10m)
+  auto-approver v1.5.0
+  → body length + keyword gates only (score gate disabled, D140)
+
+ENQUEUE (every 5m)
+  DISTINCT ON (client_id, platform) — only 1 draft per client per platform per run
+
+PUBLISHER (every 5m)
+  max_per_day + min_gap_minutes throttle
+  → most approved drafts sit in queue indefinitely
+```
+
+---
+
+### Options considered
+
+**Option A — True synthesis (N signals → 1 post)**
+Pass multiple signals to one AI call. Ask Claude: "Here are 8 signals about NDIS this week.
+Write one Facebook post synthesising the most important insight." One Claude call produces one
+post. Ratio: many signals → few posts.
+
+Pros: Realises the original design intent. Most token-efficient. Posts are editorially richer.
+Cons: Requires scoring to work first (D140) — otherwise synthesis picks random signals.
+     Provenance becomes "came from these 5 signals" — harder to audit.
+     Unknown whether synthesised posts perform better than 1:1 posts.
+     Requires new `synth_bundle_v1` seeder path (though ai-worker already handles this job_type).
+     Cannot validate until engagement data exists (Phase 2.1 not yet built).
+
+**Option B — Demand-aware seeding (1 signal → 1 post, but only as many as needed)**
+Keep the 1:1 structure completely. Change only the seeder.
+Instead of "seed 10 items every 10 minutes always," ask:
+"How many posts does this client need this week? Seed that many + a buffer."
+
+Example: NY has 6 slots/week. Seed 9 items (6 × 1.5 buffer). Not 147.
+Token waste drops from 93% to ~20-30% overnight. Zero architectural change downstream.
+
+Pros: Minimal risk. One function change. All downstream code unchanged.
+     Delivers 90% of the token saving with 5% of the complexity.
+     Correct regardless of whether synthesis is ever built.
+Cons: Doesn't deliver the synthesis vision. Still 1:1 ratio.
+
+---
+
+### Decision — agreed 17 April 2026
+
+**Do not build synthesis (Option A) yet.**
+
+The prerequisites are not met:
+1. `final_score = 0` on all digest items (D140 not yet built). Synthesis requires ranked inputs.
+2. No engagement data exists (Phase 2.1 insights-worker not yet tracking post performance).
+   Cannot know whether synthesised posts perform better without a baseline.
+3. The pipeline only became stable on 17 Apr (D135 pipeline gap fix). Layering synthesis
+   on an unstable foundation creates compounded debugging complexity.
+
+**Build Option B (demand-aware seeder) as the next pipeline improvement.**
+This is the correct intermediate state: supply is capped to demand, token waste is solved,
+architecture stays simple, and the path to synthesis remains fully open.
+
+**Build Option A (synthesis) only after:**
+1. D140 — scoring is live and final_score is non-zero
+2. Phase 2.1 — insights-worker is collecting engagement data
+3. 60+ days of 1:1 baseline data exists to compare against
+4. Explicit decision to proceed after reviewing baseline engagement rates
+
+**The synthesis path remains fully open.** The ai-worker already contains `synth_bundle_v1`
+handling code. The schema supports it. When the prerequisites are met, synthesis can be enabled
+for one client as a 4-week experiment, compared against baseline, and adopted or abandoned
+based on evidence — not theory.
+
+---
+
+### What demand-aware seeding means end-to-end
+
+See D142 for the detailed design of the demand-aware seeder. This decision establishes
+the direction; D142 records the implementation design.
+
+---
+
+### Key architectural principles confirmed by this analysis
+
+1. **Ingest broadly, seed narrowly.** Many signals in is correct — it gives ICE awareness.
+   The problem was never too many signals. It was converting too many signals into AI jobs.
+   The fix is at the seeder, not the ingest layer.
+
+2. **The throttle is a safety net, not a production mechanism.** `max_per_day` and `min_gap_minutes`
+   exist to prevent accidents. The seeder should produce the right volume, not rely on the
+   throttle to discard excess.
+
+3. **Supply should match demand.** Each client has a known weekly post requirement from their
+   schedule. The seeder should produce exactly enough candidates to fill that schedule plus a
+   rejection buffer. Everything else is waste.
+
+4. **Token cost scales with seeder output, not ingest volume.** Fixing ingest volume does
+   nothing for costs. Fixing seeder output directly reduces the Claude API bill.
+
+---
+
+### Dependency map — what must change vs what must not change
+
+For demand-aware seeding (Option B):
+
+| Component | Change required? | Notes |
 |---|---|---|
-| D140 — Digest item scoring | Build score-worker or extend select_digest_candidates | Phase 3 |
-| D138 — YouTube discovery route | ✅ Built | Done |
-| D139 — Feed source taxonomy | ✅ Built | Done |
-| NDIS Support Catalogue data load | Tables exist. Needs NDIA Excel from ndia.gov.au | Phase 3 |
-| Legal review of service agreement | L001 — hard gate before external client #1 | Before C1 |
-| F1 Prospect demo generator | Hold until NDIS Yarns has 60+ days data | ~mid-June 2026 |
-| LinkedIn Community Management API | Evaluate Late.dev if still pending 13 May 2026 | 13 May 2026 |
-| D124 — Boost Configuration UI | Meta Standard Access dependency | Phase 3.4 |
-| RSS.app discovery dashboard page | Seed management UI — add/view/manage without SQL | Phase 3 |
-| Cowork daily inbox task | Gmail MCP — archive noise, surface actions | Phase 4 |
-| Model router | ai-job → model_router → claude OR openai | Phase 4 |
-| SaaS vs managed service | When 10 clients served 3+ months | Phase 4 |
-| Meta App Review | In Review. Contact dev support if stuck after 27 Apr 2026 | Waiting |
-| animated_data advisor conflict | Fix in Format Library page | Immediate |
-| Assign 12 unassigned feeds to clients | Via Feeds page — 9 discovery + 3 legacy | Immediate |
-| CFW content session | Review first CFW drafts, tune AI profile, write prompts | Next session |
-| Confirm TBC subscription costs | Vercel, HeyGen, Claude Max, OpenAI | Next session |
+| `seed_and_enqueue_ai_jobs_v1` | Yes — add demand calculation | The only change |
+| `m.post_seed` schema | No | Same structure |
+| `m.post_draft` schema | No | Same structure |
+| `m.ai_job` schema | No | Same job_type |
+| `ai-worker` Edge Function | No | Unchanged |
+| `auto-approver` Edge Function | No | Unchanged |
+| `enqueue-publish-queue` cron | No | Unchanged |
+| `publisher` Edge Function | No | Unchanged |
+| Dashboard Inbox | No | Unchanged |
+| `c.client_publish_schedule` | Read-only dependency | Used to count demand |
+| `c.client_publish_profile` | Read-only dependency | Used as fallback if no schedule |
+
+For synthesis (Option A — future):
+
+| Component | Change required? | Notes |
+|---|---|---|
+| `seed_and_enqueue_ai_jobs_v1` | Yes | New `synth_bundle_v1` path |
+| `m.post_seed.seed_payload` | Yes | `{items: [...]}` instead of `{digest_item: {...}}` |
+| `m.ai_job.job_type` | New value | `synth_bundle_v1` — ai-worker already handles it |
+| `ai-worker` | No | Already has synth_bundle_v1 code |
+| Everything downstream | No | Unchanged |
+
+---
