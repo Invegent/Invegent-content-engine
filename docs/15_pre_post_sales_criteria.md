@@ -1,8 +1,8 @@
 # ICE — Pre-Sales / Post-Sales Classification
 
-## Generated: 2026-04-18 (v1 morning, v2 afternoon reflecting PK Q&A)
+## Generated: 2026-04-18 (v1 morning, v2 afternoon, v3 late evening reflecting Saturday closures + D155/D156 fallout)
 ## Type: Classification document — supersedes `docs/14_pre_sales_audit_inventory.md` Section 12
-## Inputs: audit inventory (38 items + 13 open questions), 3-clock framework, consultant audit (8 Apr), legal register L001–L008, PK answers 18 Apr, decisions D147–D151
+## Inputs: audit inventory (38 items + 13 open questions), 3-clock framework, consultant audit (8 Apr), legal register L001–L008, PK answers 18 Apr, decisions D147–D156, Saturday evening continuity brief
 
 ---
 
@@ -14,19 +14,31 @@ This is the definitive pre-sales gate document until superseded. When all Sectio
 
 ---
 
-## v2 changes from v1 (morning → afternoon)
+## v3 changes from v2 (afternoon → late evening)
 
-- **A1 reframed** — solicitor engagement descoped per D147. Replaced with pilot structure + liability waiver.
-- **A5 sharpened** — buyer-risk clause form set to "50% off next month on KPI miss" per D148.
-- **A9 reframed** — orphan drafts are not a pipeline bug; they are drafts from unassigned feeds (PK H6). Action becomes feed-assignment, not code fix.
-- **A10 confirmed pre-sales** — Instagram fix for v1 (PK H12).
-- **A11 confirmed pre-sales + scope expanded** — CFW and Invegent both activated in Clock A scope (PK H11). Tokens + prompts for both.
-- **A12 confirmed resolved** — portal code search shows zero HeyGen / avatar references. Already satisfied at code level.
-- **A13 confirmed resolved** — portal code search shows zero video-analyser references. Confirmed internal-only per PK H15.
-- **A18 new — promoted from C2** — 8 source-less Edge Functions promoted from Tier 2 to pre-sales (PK H16: "requires a full on investigation to ensure why there is error, I think these are presales").
-- **C1 reframed** — auto-approver math clarified. PK raised correct framing: supply-ratio × pass-rate = demand met. The target is demand-met ratio, not pass-rate absolute.
-- **New Section I — Advisor Layer Plan** — references D149.
-- **Section H updated** — 12 of 16 open questions resolved; 4 remain.
+**Closures:**
+- **A9 closed** ✅ — reframed once more and resolved. Path was not feed-assignment (v2 direction) but 307-row backfill plus D152 seeder fix preventing recurrence.
+- **A10 split** — A10a (IG config: tokens + mode + destination_id for all 4) closed ✅. A10b (first IG post actually publishes) remains open for Sunday morning verification.
+- **A11 split** — A11a (CFW + Invegent FB/IG tokens activated) closed ✅. A11b (CFW + Invegent content_type_prompts across 3 platforms × 3 job types) remains open.
+- **A12 + A13** — remain confirmed.
+- **A15 closed** ✅ — publisher and weekly-manager-report committed + pushed Saturday.
+- **A18 reduced** — 7 source-less EFs remaining (was 8). One recovered during Saturday investigation.
+
+**New pre-sales items surfaced Saturday (A19–A26):**
+
+From D155 fallout (the 7-day silent stall):
+- **A19** — FB token refresh (now a formalised audit record). Closed ✅ — all 4 clients refreshed Saturday.
+- **A20** — Pipeline liveness monitoring (ai_job stall alert + last-success freshness alert per client × platform).
+- **A21** — Trigger ON CONFLICT audit across all 10+ triggers (same class of bug as D155 may exist elsewhere).
+- **A22** — Ai-worker error surfacing (UPDATE rollbacks currently fail silently).
+- **A23** — D153 live `/debug_token` cron (replace the sentinel expiry approach).
+
+From D156 strategic direction (external epistemic diversity layer):
+- **A24** — Stage 1 external multi-model review layer. MVP: Architect Reviewer (Gemini 2.5 Pro, per-commit) + Sceptic (GPT-4, weekly).
+- **A25** — Stage 2 bank reconciliation layer. MVP: Meta reconciliation + GitHub + Vercel + Supabase.
+- **A26** — Review discipline mechanism (unread-blocks-dashboard + weekly block).
+
+**Section H update:** 3 of 4 remaining open questions addressed or reframed.
 
 ---
 
@@ -52,63 +64,90 @@ Clock A + B + C all green = gate to first external sales conversation.
 
 ---
 
-## Headline finding
+## Headline finding (v3)
 
-**You are not cleared to start counting the 14-day Clock A window today.** Three conditions block the window start (same as v1):
+**Still not cleared to start the 14-day Clock A window.** Saturday's work closed four blockers (A9, A10a, A11a, A15) plus one new item (A19) but the landscape shifted materially — D155 fallout plus D156 strategic direction added 7 new pre-sales items (A20–A26), only one of which (A19) is closed.
 
-- A9 — drafts from unassigned feeds hitting post_draft with NULL client_id (not a bug, a scoping gap — fixable in ~30 min by assigning feeds)
-- A10 — Instagram 0 posts published in 7 days across all 4 clients
-- A11 — CFW + Invegent have no platform tokens and no content_type_prompts
+**Current blocking items:**
 
-Resolve these first, then start the clock. Advisor layer (D149) can build in parallel — not on the critical path.
+Remaining from v2:
+- A10b — first IG post actually publishes (Sunday morning verify)
+- A11b — CFW + Invegent content_type_prompts (9 rows × 2 clients)
+- A14, A16, A17, A18 — unchanged from v2, open
+- A1–A8 (legal, proof, platform, economics) — unchanged from v2, open
 
----
+New hard blockers from Saturday:
+- A20, A21, A22, A23 — D155-class prevention (liveness monitoring, trigger audit, error surfacing, live token cron)
+- A24, A25, A26 — D156 external epistemic layer (Stages 1+2 MVP + discipline)
 
-## Item count summary (v2)
-
-| Classification | Count |
-|---|---|
-| Pre-sales (Section A) | 18 |
-| Post-sales Tier 1 (Section B) | 8 |
-| Post-sales Tier 2 (Section C) | 6 |
-| Post-sales Tier 3 (Section D) | 12 |
-| Parked (Section E) | 4 |
-| **Total** | **48** |
+Per D156: the external layer items (A24–A26) are not optional. A managed service where the pipeline silently fails for 7 days without alerting is commercially fatal. These must exist before a paying pilot signs.
 
 ---
 
-## Section A — Pre-sales items (18)
+## Item count summary (v3)
+
+| Classification | Count | Change from v2 |
+|---|---|---|
+| Pre-sales (Section A) | 28 | +10 (2 splits, 8 new) |
+| Pre-sales closed / confirmed | 7 | A9, A10a, A11a, A12, A13, A15, A19 |
+| Pre-sales open | 21 | |
+| Post-sales Tier 1 (Section B) | 8 | 0 |
+| Post-sales Tier 2 (Section C) | 6 | 0 |
+| Post-sales Tier 3 (Section D) | 12 | 0 |
+| Parked (Section E) | 4 | 0 |
+| **Total** | **58** | +10 |
+
+---
+
+## Section A — Pre-sales items (28, 7 closed / confirmed, 21 open)
 
 **Definition: must be closed before first external sales conversation. Each item has a named deliverable and a completion test.**
 
-| # | Item | Rationale | Concrete action | Audit ref |
-|---|---|---|---|---|
-| A1 | Pilot structure with liability waiver (supersedes solicitor engagement) | Per D147: solicitor is deferred until first pilot revenue. Pre-sales deliverable becomes a clean pilot agreement with explicit waiver language rather than a solicitor-reviewed productised agreement. | Draft pilot terms: half-priced service (or 3-month free trial), waiver clause (experimental service, client solely responsible for published content, limited warranties). Keep to one page. PK-drafted; no solicitor needed at this gate. | Audit #2 (reframed), D147 |
-| A2 | Meta App Review — status resolved OR pilot workaround documented | Standard Access is the productised gate. Pilot-mode (1–2 clients where PK is added as admin on their Business Manager) is defensible under Meta Developer Policies. | Two parallel tracks: (a) await Meta decision, escalate via dev support on 27 Apr if no movement; (b) draft pilot-mode doc specifying first 1–2 clients run under their Business Manager access, time-boxed to Standard Access confirmation. | Audit #1, Sec 4 Gate 1, Sec 6 L002 |
-| A3 | One-page proof document | Single most important sales asset. Without it, no artefact to open a conversation with. | 1-page PDF / URL at invegent.com/proof. Content: NDIS Yarns posts published, reach trend, top-3 performing posts with numbers, compliance rules enforced, time saved vs manual. One before/after snapshot. | Audit #6, Consultant Audit 1 |
-| A4 | NDIS Yarns numbers worth showing | A3 depends on this. Consultant audit said 4–8 weeks of organic growth needed. Now ~10 weeks in. | Extract NY metrics end of week. If numbers support proof doc → produce A3. If thin → identify what would make them credible and close that gap. | Audit #9, Consultant Audit 1 |
-| A5 | Buyer-risk clause — "50% off next month on KPI miss" | Per D148: capital-preserving form of the consultant's 90-day money-back recommendation. Month-on-month cadence, KPI-triggered. | Define 2–3 measurable KPIs (minimum posts/week, engagement rate, follower growth) with thresholds. Include clause in A1 pilot terms. | Audit #8, D148 |
-| A6 | Unit economics confirmed — all subscription costs known | Cannot price a service without cost base. 4 TBC rows in subscription register. | Check invoices: Vercel, HeyGen, Claude Max, OpenAI. Update `k.subscription_register`. Confirm firm monthly number. | Audit #32 |
-| A7 | Privacy policy updated — YouTube + HeyGen + video-analyser | Policy dated 4 March. Capabilities added after: YouTube Data API (D138), 5 HeyGen functions, video-analyser. L006 gate. | Add three paragraphs: (1) YouTube public data for feed discovery; (2) HeyGen avatar — only with explicit consent; (3) video transcript analysis — transcripts not retained beyond 24h. Re-host. | Audit #4, Sec 1.13, L006 |
-| A8 | AI content disclosure clause in service agreement / pilot terms | L007 gate. Contractual clause pre-sales; per-post labelling infrastructure is Tier 2. | Draft clause: "Content generated by ICE is AI-assisted under compliance-aware editorial rules. Client agrees to disclose AI assistance where required by platform policy or regulatory framework." Include in A1. | Audit #5, L007 |
-| A9 | Assign 12 unassigned feeds to clients (resolves orphan drafts) | Per PK H6: orphan drafts are not a pipeline bug — they are drafts from RSS feeds and YouTube channels that have no client assignment. Assigning feeds removes the 300 NULL client_id drafts per week at source. | Open dashboard Feeds page. For each of the 12 unassigned feeds: identify correct client (NY / PP / CFW / Invegent) based on feed domain/topic. Assign via the existing UI. ~30 minutes. | Audit #22, PK H6 |
-| A10 | Instagram publishing — fix for v1 | PK H12: fix for v1. 0 posts published in 7 days across 4 clients despite publisher v6 deployed and NY/PP prompts live. | Investigate: are IG drafts being generated? Do they reach post_publish_queue? Is `instagram-publisher-every-15m` cron picking them up? Patch whatever breaks. | Audit #27, PK H12 |
-| A11 | CFW + Invegent activation — tokens + prompts | PK H11: both in Clock A scope. Currently counted as active clients but producing nothing. Clock A cannot start with them in this state. | (a) Collect FB / IG tokens for CFW (Brief 041 is blocked on PK doing this). (b) Collect FB / IG / LI tokens for Invegent. (c) Write content_type_prompts for CFW × 3 platforms × 3 job types (9 rows). (d) Write content_type_prompts for Invegent × 3 platforms × 3 job types (9 rows). | Audit #15, #16, PK H11 |
-| A12 | HeyGen not exposed in v1 client portal — ✅ CONFIRMED | Code search of `invegent-portal` shows zero HeyGen / avatar / consent references. HeyGen is backend-only. L005 gate not violated at the portal level. | Verified 18 Apr via GitHub code search. If any client-facing route is added later that exposes HeyGen, consent flow must be built first (D149 Legal Advisor is a fit for that gate check). | Audit #24, L005 |
-| A13 | video-analyser not exposed to clients — ✅ CONFIRMED | Code search + PK H15: video-analyser is part of feed inflow, processing YouTube video transcripts for signal extraction. Backend-only. Not client-facing. L004 gate not violated. | Verified. No action needed. | Audit #25, L004, PK H15 |
-| A14 | RLS audit — confirm no portal route bypasses SECURITY DEFINER | Only 10 of 138 tables have RLS enabled. If all portal queries go through SECURITY DEFINER RPCs, RLS-off is missing defence-in-depth but not exploitable. If any portal page queries tables directly, client could read another client's data. | Grep `invegent-portal` codebase for direct Supabase queries (not via `.rpc()` calls). Confirm every query is either (a) RLS-enforced, or (b) SECURITY DEFINER RPC. Flag exceptions. Verification only — may not require building. | Audit #23 |
-| A15 | Commit publisher/index.ts and weekly-manager-report/index.ts | Both had uncommitted changes at audit start. Production code differs from repo. Any push will clobber. | `cd` to working dir, `git status`, review diffs, commit, push. ~5 min. Then re-run the verify step (D150). | Audit #36 |
-| A16 | Clock A dashboard — exists and measures schedule adherence | Cannot declare "95% adherence" without a dashboard showing it. Does not exist currently. | Build `/continuity` page in dashboard. Data source: compare `c.client_publish_schedule` expected slots vs `m.post_publish` actual. Rolling 14-day per client × platform with miss reasons. Simple — just correct, not beautiful. | Audit #37, new from framework |
-| A17 | Clock C seven items — each explicitly defined and lived | The 7 items are listed but none have a written definition of "done." | New doc `docs/16_client_handling.md`. One paragraph per item: what it is, what ready looks like, where it lives, SLA. Inbound + SLA + routing can share one section; testimonial capture and billing automation need actual build. | New from framework |
-| A18 | 8 source-less Edge Functions — full investigation | Per PK H16: "this requires a full on investigation to ensure why there is error, I think these are presales." Recovery / rollback blind spot on: `ingest`, `pipeline-doctor`, `pipeline-ai-summary`, `compliance-monitor`, `video-worker`, `video-analyser`, `heygen-intro`, `heygen-youtube-upload`. | For each: check Supabase function logs for error rates, extract deployed source via Supabase dashboard, commit to `supabase/functions/`, add to deployment pipeline. Identify any showing unhealthy error signals — those get priority. | Audit #18, promoted per PK H16 |
+### A-items from v2 (status updated)
 
-### Section A completion test
+| # | Status | Item | Rationale | Concrete action | Audit ref |
+|---|---|---|---|---|---|
+| A1 | 🔲 Open | Pilot structure with liability waiver (supersedes solicitor engagement) | Per D147: solicitor is deferred until first pilot revenue. Pre-sales deliverable becomes a clean pilot agreement with explicit waiver language rather than a solicitor-reviewed productised agreement. | Draft pilot terms: half-priced service (or 3-month free trial), waiver clause (experimental service, client solely responsible for published content, limited warranties). Keep to one page. PK-drafted; no solicitor needed at this gate. | Audit #2 (reframed), D147 |
+| A2 | 🔲 Open | Meta App Review — status resolved OR pilot workaround documented | Standard Access is the productised gate. Pilot-mode (1–2 clients where PK is added as admin on their Business Manager) is defensible under Meta Developer Policies. | Two parallel tracks: (a) await Meta decision, escalate via dev support on 27 Apr if no movement; (b) draft pilot-mode doc specifying first 1–2 clients run under their Business Manager access, time-boxed to Standard Access confirmation. | Audit #1, Sec 4 Gate 1, Sec 6 L002 |
+| A3 | 🔲 Open | One-page proof document | Single most important sales asset. Without it, no artefact to open a conversation with. | 1-page PDF / URL at invegent.com/proof. Content: NDIS Yarns posts published, reach trend, top-3 performing posts with numbers, compliance rules enforced, time saved vs manual. One before/after snapshot. | Audit #6, Consultant Audit 1 |
+| A4 | 🔲 Open | NDIS Yarns numbers worth showing | A3 depends on this. Consultant audit said 4–8 weeks of organic growth needed. Now ~10 weeks in. | Extract NY metrics end of week. If numbers support proof doc → produce A3. If thin → identify what would make them credible and close that gap. | Audit #9, Consultant Audit 1 |
+| A5 | 🔲 Open | Buyer-risk clause — "50% off next month on KPI miss" | Per D148: capital-preserving form of the consultant's 90-day money-back recommendation. Month-on-month cadence, KPI-triggered. | Define 2–3 measurable KPIs (minimum posts/week, engagement rate, follower growth) with thresholds. Include clause in A1 pilot terms. | Audit #8, D148 |
+| A6 | 🔲 Open | Unit economics confirmed — all subscription costs known | Cannot price a service without cost base. 4 TBC rows in subscription register. | Check invoices: Vercel, HeyGen, Claude Max, OpenAI. Update `k.subscription_register`. Confirm firm monthly number. | Audit #32 |
+| A7 | 🔲 Open | Privacy policy updated — YouTube + HeyGen + video-analyser | Policy dated 4 March. Capabilities added after: YouTube Data API (D138), 5 HeyGen functions, video-analyser. L006 gate. | Add three paragraphs: (1) YouTube public data for feed discovery; (2) HeyGen avatar — only with explicit consent; (3) video transcript analysis — transcripts not retained beyond 24h. Re-host. | Audit #4, Sec 1.13, L006 |
+| A8 | 🔲 Open | AI content disclosure clause in service agreement / pilot terms | L007 gate. Contractual clause pre-sales; per-post labelling infrastructure is Tier 2. | Draft clause: "Content generated by ICE is AI-assisted under compliance-aware editorial rules. Client agrees to disclose AI assistance where required by platform policy or regulatory framework." Include in A1. | Audit #5, L007 |
+| A9 | ✅ Closed | Orphan drafts resolved (reframe #2) | v2 reframed this as feed-assignment per H6. The actual Saturday resolution was different: 307 rows backfilled to correct client_id, D152 seeder fix prevents recurrence at source. No feed-assignment work needed — the orphans weren't from unassigned feeds, they were from the D142 seeder writing NULL. | **Done 18 Apr afternoon.** 307 rows backfilled. D152 applied to seeder. | Audit #22, D152 |
+| A10a | ✅ Closed | Instagram config — tokens + mode + destination_id for all 4 clients | Was A10 in v2. Split because "config live" and "first post actually publishes" are different confirmations. | **Done 18 Apr afternoon.** All 4 IG profiles activated, IG Business Account IDs populated. | Audit #27, PK H12 |
+| A10b | 🔲 Open | Instagram — first post actually publishes successfully | Config existing ≠ content flowing. Must see at least one IG post land for at least one client before declaring IG publishing live. | Sunday morning verification (step 4 of the 6-indicator check). If green, close A10b. If red, regression investigation per red-path playbook in continuity brief. | PK H12, 18 Apr evening split |
+| A11a | ✅ Closed | CFW + Invegent FB/IG tokens activated | Split from A11 because tokens and prompts are two independent workstreams. Tokens done Saturday; prompts still pending. | **Done 18 Apr afternoon.** All 4 FB tokens refreshed to permanent; all 4 IG profiles activated. | Audit #15, #16, PK H11 |
+| A11b | 🔲 Open | CFW + Invegent content_type_prompts — 9 rows × 2 clients | Table shows 0/0/0 for both. Without prompts, ai-worker has no template to generate against for these two clients — Clock A cannot start with them producing nothing. | Content strategy session: write prompts for CFW × (Facebook, Instagram, LinkedIn) × (3 job types) = 9 rows. Same for Invegent. Friday 24 Apr per continuity brief plan. | Audit #15, #16, split v3 |
+| A12 | ✅ Confirmed | HeyGen not exposed in v1 client portal | Code search of `invegent-portal` shows zero HeyGen / avatar / consent references. HeyGen is backend-only. L005 gate not violated at the portal level. | Verified 18 Apr morning via GitHub code search. If any client-facing route is added later that exposes HeyGen, consent flow must be built first (D149 Legal Advisor is a fit for that gate check). | Audit #24, L005 |
+| A13 | ✅ Confirmed | video-analyser not exposed to clients | Code search + PK H15: video-analyser is part of feed inflow, processing YouTube video transcripts for signal extraction. Backend-only. Not client-facing. L004 gate not violated. | Verified. No action needed. | Audit #25, L004, PK H15 |
+| A14 | 🔲 Open | RLS audit — confirm no portal route bypasses SECURITY DEFINER | Only 10 of 138 tables have RLS enabled. If all portal queries go through SECURITY DEFINER RPCs, RLS-off is missing defence-in-depth but not exploitable. If any portal page queries tables directly, client could read another client's data. | Grep `invegent-portal` codebase for direct Supabase queries (not via `.rpc()` calls). Confirm every query is either (a) RLS-enforced, or (b) SECURITY DEFINER RPC. Flag exceptions. Verification only — may not require building. | Audit #23 |
+| A15 | ✅ Closed | Publisher + weekly-manager-report committed | Both had uncommitted changes at audit start. Production code differed from repo. | **Done 18 Apr afternoon.** Both committed and pushed. | Audit #36 |
+| A16 | 🔲 Open | Clock A dashboard — exists and measures schedule adherence | Cannot declare "95% adherence" without a dashboard showing it. Does not exist currently. | Build `/continuity` page in dashboard. Data source: compare `c.client_publish_schedule` expected slots vs `m.post_publish` actual. Rolling 14-day per client × platform with miss reasons. Simple — just correct, not beautiful. | Audit #37, new from framework |
+| A17 | 🔲 Open | Clock C seven items — each explicitly defined and lived | The 7 items are listed but none have a written definition of "done." | New doc `docs/16_client_handling.md`. One paragraph per item: what it is, what ready looks like, where it lives, SLA. Inbound + SLA + routing can share one section; testimonial capture and billing automation need actual build. | New from framework |
+| A18 | 🔲 Open | 7 source-less Edge Functions — full investigation (was 8) | Per PK H16: "this requires a full on investigation to ensure why there is error, I think these are presales." Recovery / rollback blind spot. One of the original 8 recovered Saturday; 7 remain. | For each of the 7: check Supabase function logs for error rates, extract deployed source via Supabase dashboard, commit to `supabase/functions/`, add to deployment pipeline. Identify any showing unhealthy error signals — those get priority. | Audit #18, PK H16, 18 Apr update |
 
-All 18 items marked done. Then and only then: Clock A + B + C 14-day window starts. No external sales conversation before window completes with metrics in range.
+### New A-items surfaced 18 April (A19–A26)
+
+| # | Status | Item | Rationale | Concrete action | Source |
+|---|---|---|---|---|---|
+| A19 | ✅ Closed | FB token refresh — formalised audit record | 3 of 4 FB tokens had been dead since 13 Apr PDT. Stored `token_expires_at` was stale. Token-expiry alerter was trusting the sentinel field, not reality. Refresh done Saturday; formalising here as a logged A-item rather than an ad-hoc action. | **Done 18 Apr afternoon.** All 4 FB tokens refreshed to permanent (`expires_at: 0`). Verified via `/debug_token`. D153 (A23 below) is the durable fix for the underlying trust-the-sentinel problem. | D155 session, 18 Apr evening |
+| A20 | 🔲 Open | Pipeline liveness monitoring — ai_job stall + last-success freshness per client × platform | D155 root cause went undetected for 7 days because no alert watched for "ai_jobs accumulating in queued state" or "no successful publish per client × platform in >24h." Both are single-query checks. Their absence is what made the stall silent. | (a) pg_cron daily: SELECT client × platform combinations where last `m.post_publish.published_at` > NOW() - 48h AND expected_posts > 0, write to `m.liveness_alert`. (b) pg_cron every 4h: ai_job stall check — queued > succeeded growth rate over 24h, write to same table. Dashboard banner surfaces unresolved alerts. | D155 fallout, continuity brief |
+| A21 | 🔲 Open | Trigger ON CONFLICT audit — all triggers, not just enqueue | D155 was an ON CONFLICT clause mismatch on one trigger. The same class of bug may exist on other triggers. Proof-by-audit required, not just assertion. | Query pg_trigger → for each trigger function, grep the body for ON CONFLICT clauses. For each, verify clause columns exactly match a unique constraint on the target table. Write findings to `docs/briefs/2026-04-XX-trigger-on-conflict-audit.md`. | D155 fallout, continuity brief |
+| A22 | 🔲 Open | Ai-worker error surfacing — UPDATE rollbacks currently fail silently | The D155 symptom was ai_worker UPDATE silently rolled back by the faulty trigger. The function didn't check the UPDATE's effect count. Pattern may exist in other EFs. | Audit all EFs that do UPDATE against pipeline tables. Each must check rowcount and surface a failure (log line + row in a failures table) if 0. Patch in single commit. | D155 fallout, continuity brief |
+| A23 | 🔲 Open | D153 — live `/debug_token` cron (replaces sentinel approach) | Current token-expiry alerter trusts `token_expires_at` which is stale when Meta revokes mid-cycle. Fix per D153: cron calls Meta's live `/debug_token` endpoint daily per FB token, writes real status to `m.token_expiry_alert`. | Spec Wednesday 22 Apr per continuity brief. Build Thursday or Friday. | D153, D155 fallout, continuity brief |
+| A24 | 🔲 Open | Stage 1 external multi-model review layer — MVP | Per D156: ICE's monitoring shares Claude's epistemic foundation. MVP is Architect Reviewer (Gemini per-commit) + Sceptic (GPT-4 weekly). These catch classes of failure Claude-only monitoring cannot see. Commercially load-bearing per D156. | Build Monday 20 Apr (Architect Reviewer) per continuity brief. Sceptic follows in week 2. Full spec in `docs/briefs/2026-04-19-epistemic-diversity-layer.md` (written Sunday). | D156, continuity brief |
+| A25 | 🔲 Open | Stage 2 bank reconciliation layer — MVP | Per D156: external system is authoritative when it disagrees with ICE's DB. MVP is Meta Graph API reconciliation (catches the D155 symptom platform-side), followed by GitHub + Vercel + Supabase reconciliation for deploy drift. | Build Tuesday 21 Apr (Meta reconciliation) per continuity brief. GitHub + Vercel + Supabase follow as pattern validates. Full spec Sunday. | D156, continuity brief |
+| A26 | 🔲 Open | Review discipline mechanism — unread-blocks-dashboard + weekly block | A24 + A25 outputs are theatre without structural reading-discipline. PK identified this as the missed angle Saturday evening. Unread items in `m.external_review_queue` block dashboard home until acknowledged. Weekly scheduled Monday review block. | Build Wednesday 22 Apr per continuity brief. | D156, continuity brief |
+
+### Section A completion test (v3)
+
+All 28 items marked closed or confirmed. Then and only then: Clock A + B + C 14-day window starts. No external sales conversation before window completes with metrics in range.
 
 ---
 
-## Section B — Post-sales Tier 1 (8)
+## Section B — Post-sales Tier 1 (8, unchanged from v2)
 
 **Definition: within 7 days of first signed pilot. Required for service delivery to the first client.**
 
@@ -125,13 +164,13 @@ All 18 items marked done. Then and only then: Clock A + B + C 14-day window star
 
 ---
 
-## Section C — Post-sales Tier 2 (6)
+## Section C — Post-sales Tier 2 (6, unchanged from v2)
 
 **Definition: within 30–60 days of first sale.**
 
 | # | Item | Rationale | Concrete action |
 |---|---|---|---|
-| C1 | Auto-approver — define target demand-met ratio and raise to target | **Reframed per PK H9.** Correct math: supply-ratio × pass-rate = demand met. 23% pass rate is acceptable if supply is 4× demand (D142 seeder targets supply ratio 1.5× — combined: at 1.5× × 23% = 35% of demand met; below target). Target = demand met ratio ≥ 100% with acceptable PK review burden. | Set demand-met target. Diagnose top rejection reasons per client (PP is body_too_long dominant — prompt length fix). Measure combined supply × pass-rate = demand met. Adjust either lever. |
+| C1 | Auto-approver — define target demand-met ratio and raise to target | Reframed per PK H9. Correct math: supply-ratio × pass-rate = demand met. 23% pass rate is acceptable if supply is 4× demand (D142 seeder targets supply ratio 1.5× — combined: at 1.5× × 23% = 35% of demand met; below target). Target = demand met ratio ≥ 100% with acceptable PK review burden. | Set demand-met target. Diagnose top rejection reasons per client (PP is body_too_long dominant — prompt length fix). Measure combined supply × pass-rate = demand met. Adjust either lever. |
 | C2 | Clear compliance review queue + set SLA | 4 items AI-reviewed, pending human review since 1 Apr (17 days stale). | Review the 4. Set SLA: human review within 7 days of AI confidence score. Wire nag if >7 days. |
 | C3 | Per-post AI disclosure labelling | Contract clause (A8) is pre-sales. Per-post label infrastructure is best practice. | Column `m.post_draft.ai_disclosure_text`. Configurable per client profile. Include in publisher output. |
 | C4 | Fix cron schedule fragility (Audit 4 Gap 3) | 42 active crons firing into one Supabase instance. At 10 clients → concurrency-contended. | Move from time-based firing to queue-table reads. Per-client concurrency guards. Critical between clients 5–10. |
@@ -140,7 +179,7 @@ All 18 items marked done. Then and only then: Clock A + B + C 14-day window star
 
 ---
 
-## Section D — Post-sales Tier 3 (12)
+## Section D — Post-sales Tier 3 (12, unchanged from v2)
 
 **Definition: ongoing doc / governance / hygiene.**
 
@@ -161,23 +200,23 @@ All 18 items marked done. Then and only then: Clock A + B + C 14-day window star
 
 ---
 
-## Section E — Parked (4)
+## Section E — Parked (4, unchanged from v2)
 
 **Definition: do not work on until specific trigger fires.**
 
 | # | Item | Trigger to unpark |
 |---|---|---|
-| E1 | CFW brand colours NULL | When CFW reaches full production (after A11 completion). |
+| E1 | CFW brand colours NULL | When CFW reaches full production (after A11b completion). |
 | E2 | HeyGen productisation for clients | L005 consent flow shipped end-to-end + C6 decision to include avatar in client packaging. |
 | E3 | Self-serve SaaS onboarding | After 5+ pilot / managed service clients retained for 3+ months each. |
 | E4 | Creator / entertainment tier | After self-serve SaaS layer exists. Not before. |
 
 ---
 
-## Section F — Fresh-eyes pushback on the framework session (unchanged from v1)
+## Section F — Fresh-eyes pushback on the framework session (unchanged from v1/v2)
 
 ### F1 — You cannot start the 14-day Clock A window today
-Audit flagged stability defects but not as Clock A blockers. See Section A items A9, A10, A11. Fix first, then start clock.
+Audit flagged stability defects but not as Clock A blockers. See Section A items A10b, A11b, A18, A20–A26. Fix first, then start clock.
 
 ### F2 — Auto-approver 23% is not necessarily a problem
 50% was a one-day snapshot miscoded as a benchmark. Define target first. Classed as Tier 2 (C1).
@@ -191,9 +230,12 @@ Pilot clients where PK is admin on their Business Manager is defensible. Capture
 ### F5 — The sync_state handoff protocol has a trust-but-verify hole
 Resolved per D150 — verify-commit-landed step added to session-close SOP.
 
+### F6 (new v3) — The first D155-class silent failure surfaces an epistemic problem, not a monitoring problem
+Adding more Claude-written monitors to watch Claude-written pipelines compounds the blind spot. D156 sets external layer as the correct response — A24–A26 are not optional, they are the commercial viability gate for a managed content service. Documented here so future-PK reading this section doesn't relitigate it.
+
 ---
 
-## Section G — Pre-sales gate checklist (go / no-go)
+## Section G — Pre-sales gate checklist (go / no-go, v3)
 
 This is the single list PK pulls up before opening a sales conversation.
 
@@ -211,16 +253,30 @@ Proof
 Platform
 [ ] A2  Meta App Review resolved OR pilot workaround documented
 
-Stability
-[ ] A9  12 unassigned feeds assigned to clients
-[ ] A10 Instagram publishing live across NY + PP
-[ ] A11 CFW + Invegent tokens + prompts complete
+Stability — original (Saturday closures ticked)
+[x] A9  Orphan drafts resolved (307 backfilled + D152 prevents recurrence)
+[x] A10a Instagram config done for all 4 clients
+[ ] A10b First IG post actually publishes (Sunday verify)
+[x] A11a CFW + Invegent FB/IG tokens activated
+[ ] A11b CFW + Invegent content_type_prompts (9 rows × 2 clients)
 [x] A12 HeyGen not exposed in v1 portal (confirmed via code search)
 [x] A13 video-analyser internal-only (confirmed)
 [ ] A14 RLS verification — no portal route bypasses SECURITY DEFINER
-[ ] A15 Publisher + weekly-manager-report committed (5 min task)
+[x] A15 Publisher + weekly-manager-report committed
 [ ] A16 Clock A dashboard live
-[ ] A18 8 source-less Edge Functions investigated + source pulled
+[ ] A18 7 source-less Edge Functions investigated + source pulled
+
+Stability — D155 fallout (new v3)
+[x] A19 FB token refresh across 4 clients
+[ ] A20 Pipeline liveness monitoring (ai_job stall + last-success freshness)
+[ ] A21 Trigger ON CONFLICT audit across all triggers
+[ ] A22 Ai-worker error surfacing (UPDATE rowcount checks)
+[ ] A23 D153 live /debug_token cron
+
+External epistemic layer (new v3, per D156)
+[ ] A24 Stage 1 multi-model review layer MVP (Architect Reviewer + Sceptic)
+[ ] A25 Stage 2 bank reconciliation layer MVP (Meta + GitHub + Vercel + Supabase)
+[ ] A26 Review discipline (unread-blocks-dashboard + weekly block)
 
 Clock C
 [ ] A17 All 7 client-handling items defined and documented
@@ -236,41 +292,45 @@ Timebox
 First external sales conversation authorised only when every box above is ticked.
 ```
 
+Current score: **7 of 28 closed. 21 open.** Plus 3 timebox windows not yet startable.
+
 ---
 
-## Section H — Open questions still requiring PK input (remaining 4 of 16)
+## Section H — Open questions still requiring PK input (1 of 16 remaining)
 
-12 of 16 resolved in PK Q&A. Remaining:
+12 of 16 resolved in PK Q&A on 18 Apr morning. 3 of the remaining 4 addressed Saturday:
 
-| # | Question | Blocking item | PK to answer |
+| # | Question | Blocking item | Status |
 |---|---|---|---|
-| H1 | Vercel deployment state | A16 | Run `vercel login` in your terminal once. Caches a token the MCP can use. No new permissions to give — one-time 5-second action. |
-| H2 | Last commit dates for dashboard / portal / web repos | A14, A16 | I checked `invegent-portal` this session — will check dashboard + web next session and add results here. |
-| H3 | Meta App Review status change since 14 Apr | A2 | Blocked on (a) Shrishti 2FA + passkey — you to chase; (b) invegent.com DNS TXT — needs investigation. |
-| H16 | 8 source-less Edge Functions — any showing unhealthy error signals | A18 | Now pre-sales per your answer. Investigation happens in A18 execution, not as a standalone question. |
+| H1 | Vercel deployment state | A16 | Still open — PK to run `vercel login` once in terminal, caches a token the MCP can use. One-time 5-second action. |
+| H2 | Last commit dates for dashboard / portal / web repos | A14, A16 | Resolving through actual use — A24 Stage 1 + A25 Stage 2 will surface deploy drift automatically once built. Can close once A25 priority 3 (Vercel reconciliation) is live. |
+| H3 | Meta App Review status change since 14 Apr | A2 | Partially addressed: invegent.com DNS TXT verified 18 Apr ✅. Shrishti 2FA + passkey still pending — PK to chase. 27 Apr escalation trigger locked in. |
+| H16 | 8 source-less EFs — any showing unhealthy error signals | A18 | Resolved as standalone question — investigation happens inside A18 execution, not separately. |
 
-**Resolved this session:**
+**Resolved in v2 or earlier (unchanged):**
 - H4 → D147 (pilot + waiver, defer solicitor)
 - H5 → portal code search: zero avatar/consent/HeyGen references (A12 satisfied)
-- H6 → orphan drafts = unassigned feeds (A9 reframed)
+- H6 → orphan drafts reframed twice; ultimately resolved via D152 backfill not feed-assignment (A9 closed)
 - H7 → no proof doc elsewhere (A3 stands)
 - H8 → Tier 1 to validate / rebuild client dashboard (B2)
 - H9 → auto-approver math clarified: supply × pass-rate = demand met (C1 reframed)
 - H10 → D148 (50% off next month on KPI miss)
-- H11 → CFW + Invegent in Clock A scope (A11 confirmed)
-- H12 → Instagram fix for v1 (A10 confirmed)
+- H11 → CFW + Invegent in Clock A scope (A11a closed, A11b open)
+- H12 → Instagram fix for v1 (A10a closed, A10b open)
 - H13 → D151 (universal table purpose rule)
 - H14 → keep vw_feed_intelligence + document (C5)
 - H15 → video-analyser internal-only (A13 confirmed)
 
 ---
 
-## Section I — Advisor Layer Plan (new, per D149)
+## Section I — Advisor Layer Plan (per D149, unchanged substantively from v2)
 
 Parallel track to pre-sales work. Not on the critical path — does not gate any Section A item. But highest-leverage long-term investment because it transfers to every future project.
 
+**v3 note:** per D156, the Stage 1 Devil's Advocate (Gemini 2.5 Pro reading any D149 advisor output within 2 hours) is now the external counterpart to this layer. Build order stands, but every Claude-based advisor gets a Gemini counter-voice from Thursday 23 Apr onwards.
+
 ### Build order
-1. **Sales Advisor (this week)** — Claude Project, custom instruction defining persona + scope + escalation rules, GitHub repo connected for docs access. Ask three real questions (pre-sales gate closure, first client target, half-priced pilot structure). Validate over two weeks.
+1. **Sales Advisor (this week — Thursday 23 Apr per continuity brief)** — Claude Project, custom instruction defining persona + scope + escalation rules, GitHub repo connected for docs access. Ask three real questions (pre-sales gate closure, first client target, half-priced pilot structure). Validate over two weeks. Devil's Advocate (Gemini) runs in parallel from day one.
 2. **Legal/Risk Advisor (week 3 if Sales Advisor validates)** — same template. Particularly valuable given D147 defers solicitor; Legal Advisor reads proposed pilot terms and flags exposure.
 3. **Ops Discipline Advisor (week 4)** — reads Clock B metrics, catches overcommitment.
 4. **Product Strategy Advisor (week 5)** — separate voice from session-active Claude to avoid executor-reviewing-own-work.
@@ -278,12 +338,13 @@ Parallel track to pre-sales work. Not on the critical path — does not gate any
 ### Validation criteria (after 2 weeks with Sales Advisor)
 - Did PK read advisor responses and change any decision based on them?
 - Did the advisor catch anything PK would not have caught alone?
+- Did Devil's Advocate surface counter-angles the advisor missed?
 - Are the responses specific to ICE context (good) or generic consulting platitudes (bad)?
 
-If yes to first two, proceed to next advisor. If no, tighten brief and retry once before abandoning the pattern.
+If yes to first three, proceed to next advisor. If no, tighten brief and retry once before abandoning the pattern.
 
 ### Audit infrastructure (build before first consultation)
-`m.advisor_log` table per D149. Log every question + response. Retrospective verdict filled in after 6 weeks. After a quarter: advisors with poor retrospective scores get rewritten or retired.
+`m.advisor_log` table per D149. `m.external_review_queue` per D156 (Devil's Advocate outputs go here). Retrospective verdict filled in after 6 weeks. After a quarter: advisors with poor retrospective scores get rewritten or retired.
 
 ### What this does NOT replace
 - PK's strategic commitments (decisions stay with PK)
@@ -296,7 +357,8 @@ If yes to first two, proceed to next advisor. If no, tighten brief and retry onc
 
 - **2026-04-18 morning** — v1 initial classification. Produced in Claude.ai session following Claude Code audit.
 - **2026-04-18 afternoon** — v2 reflecting PK answers to 16 open questions. Material changes: A1 reframed (D147), A5 sharpened (D148), A9 reframed (feed assignment), A11 confirmed + expanded, A18 promoted from C2, C1 reframed (demand-met math), new Section I (advisor layer per D149). 12 of 16 open questions resolved; 4 remain.
+- **2026-04-18 late evening** — v3 reflecting Saturday afternoon/evening closures + D155 fallout + D156 strategic direction. Closures: A9 (via D152 backfill, not feed assignment), A10 split (A10a closed, A10b open), A11 split (A11a closed, A11b open), A15, A19. New items: A19 (formalised), A20–A23 (D155 class prevention), A24–A26 (D156 external layer). Item count: 18 → 28 pre-sales. 7 of 28 closed or confirmed; 21 open. Pushed after sanity-read of continuity brief (commit 04eb1d4).
 
 ---
 
-*End of classification v2. PK to action Section G checklist.*
+*End of classification v3. PK to action Section G checklist starting with A10b Sunday morning verification + A11b content strategy session Friday.*
