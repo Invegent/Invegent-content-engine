@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-18 LATE EVENING (session-close after strategic external-layer design + continuity brief committed)
+> Last written: 2026-04-18 VERY LATE EVENING (session-close after docs/15 v3 pulled forward from Sunday)
 > Written by: PK + Claude session sync
 
 ---
@@ -13,7 +13,7 @@
 That brief captures Saturday night's strategic reasoning on the external epistemic diversity layer (Stages 1-4). It is load-bearing for the next 7 days. If fresh-Claude on Sunday suggests a direction that contradicts it, pause and re-read the brief first.
 
 The brief lives on three independent surfaces to survive memory decay:
-1. `docs/briefs/2026-04-19-session-continuity.md` (narrative)
+1. `docs/briefs/2026-04-19-session-continuity.md` (narrative) — patched Saturday evening per sanity-read (commit 04eb1d4)
 2. This file's next section (operational)
 3. `docs/06_decisions.md` D156 (strategic direction recorded)
 
@@ -23,15 +23,15 @@ The brief lives on three independent surfaces to survive memory decay:
 
 1. Read the 19 April continuity brief above
 2. Read this file (`docs/00_sync_state.md`)
-3. Read `docs/15_pre_post_sales_criteria.md` — authoritative pre-sales gate (NOTE: currently v2, Sunday morning task is to update to v3)
+3. Read `docs/15_pre_post_sales_criteria.md` — **v3 now live (commit 96b1051)**. Authoritative pre-sales gate reflecting Saturday closures + D155/D156 fallout. 28 pre-sales items, 7 closed, 21 open.
 4. Query `k.vw_table_summary` before working on any table
 5. **Session-close SOP (D150):** verify every commit with `git ls-remote origin main | grep <sha>` before asserting it in sync_state
 
 ---
 
-## SUNDAY 19 APRIL — COMMITTED PLAN (from continuity brief)
+## SUNDAY 19 APRIL — COMMITTED PLAN (updated: docs/15 v3 pulled forward Saturday night)
 
-**Three commitments only. Full details in continuity brief.**
+**Two commitments now (was three). Full details in continuity brief.**
 
 ### 1. Morning verification (25 min) — before any action
 Verify six pipeline indicators from Saturday's work:
@@ -42,10 +42,10 @@ Verify six pipeline indicators from Saturday's work:
 - `m.post_publish_queue` not accumulating dead rows
 - No new trigger errors in Supabase logs
 
-**If any fail:** regression investigation is the priority, rest of plan deferred.
+**If any fail:** regression investigation is the priority, rest of plan deferred. Red-path playbook lives in the continuity brief (5 investigation starting points mapped to the 6 indicators, added Saturday evening).
 
-### 2. Update docs/15 to v3 (30-45 min)
-Reflect Saturday's closures (A9, A15) and add 8 new pre-sales items (A19-A26) per brief. Push + verify per D150.
+### 2. ~~Update docs/15 to v3~~ ✅ DONE Saturday night (commit 96b1051)
+Pulled forward from Sunday. Reflects A9/A10a/A11a/A15/A19 closures + A20–A26 new items. No Sunday action needed on this. **Read the file for Sunday context** — do not re-update.
 
 ### 3. Write the epistemic diversity build spec (2-3 hours)
 `docs/briefs/2026-04-19-epistemic-diversity-layer.md` — design doc for Stages 1+2. No building on Sunday. Spec must exist before any code.
@@ -60,7 +60,7 @@ From continuity brief. Adjust each evening.
 
 | Day | Focus |
 |---|---|
-| Mon 20 Apr | Build Architect Reviewer (Stage 1 role 1) — Gemini 2.5 Pro on commit diffs. 4-6h. Retroactive test on 16 Apr commit — should catch D155. |
+| Mon 20 Apr | Build Architect Reviewer (Stage 1 role 1) — Gemini 2.5 Pro on commit diffs. 4-6h. Retroactive test on the commit that introduced the faulty ON CONFLICT clause (on or before 11 April — find via `git log -p -S 'ON CONFLICT' -- supabase/`). Per corrected brief. |
 | Tue 21 Apr | Build Meta reconciliation (Stage 2 system 1) — daily 6am Sydney. 2-3h. Retroactive test on 15-17 Apr — should show NY silence. |
 | Wed 22 Apr | Build discipline layer (unread-blocks-dashboard) + spec D153 live /debug_token. 3h. |
 | Thu 23 Apr | Sales Advisor (D149) + Gemini Devil's Advocate in parallel. First real consultation. |
@@ -94,13 +94,17 @@ From continuity brief. Adjust each evening.
 - D156 logged (strategic direction)
 - Continuity brief written + committed as triple-redundancy against memory decay
 
+### Very late evening: sanity-read + docs/15 v3 pulled forward
+- Sanity-read of continuity brief flagged 2 issues: Monday retroactive test target (wrong D-number, wrong date) + no red-path playbook for Sunday verification. Both patched (commit 04eb1d4).
+- docs/15 v3 pulled forward from Sunday morning task (commit 96b1051). Reflects Saturday closures (A9, A10a, A11a, A15, A19) + D155 fallout new items (A20-A23) + D156 strategic items (A24-A26). 18 → 28 pre-sales items; 7 closed, 21 open.
+
 ---
 
 ## CURRENT PHASE
 
 **Phase 1 — COMPLETE** (7 Apr 2026)
 **Phase 3 — Expand + Personal Brand** (active)
-**Gate status:** pre-sales gate NOT CLEARED. External layer (Stages 1+2) now a hard dependency before first pilot per D156.
+**Gate status:** pre-sales gate NOT CLEARED. External layer (Stages 1+2) now a hard dependency before first pilot per D156. Current docs/15 v3 state: 7 of 28 items closed.
 
 ---
 
@@ -113,7 +117,7 @@ From continuity brief. Adjust each evening.
 | Care For Welfare | 3eca32aa | ✅ permanent | ⚠ mode=null | ⚠ mode=null | 0/0/0 (A11b) |
 | Invegent | 93494a09 | ✅ permanent | ⚠ mode=null | ⚠ mode=null | 0/0/0 (A11b) |
 
-All 4 FB tokens permanent (`expires_at: 0`). D153 pending for live revocation detection.
+All 4 FB tokens permanent (`expires_at: 0`). D153 (A23) pending for live revocation detection.
 
 ---
 
@@ -168,7 +172,7 @@ Total active crons: 42.
 |---|---|
 | 2FA block on PK admin | ✅ Cleared |
 | Shrishti admin 2FA + passkey | ⏳ Pending — PK to chase |
-| invegent.com DNS TXT verify | ✅ Verified today |
+| invegent.com DNS TXT verify | ✅ Verified |
 | Business verification | ⏳ In Review |
 | App Review | ⏳ In Review — 27 Apr escalation trigger = 9 days |
 
@@ -183,22 +187,25 @@ Total active crons: 42.
 | Facebook | All 4 clients | 2099-12-31 (permanent) | ✅ verified via /debug_token Saturday |
 | Instagram | All 4 clients | 2099-12-31 (shared FB token) | ✅ |
 
-Sentinel is temporary until D153 live /debug_token alerter is built.
+Sentinel is temporary until D153/A23 live /debug_token alerter is built.
 
 ---
 
-## PRE-SALES SECTION A — CURRENT STATE
+## PRE-SALES SECTION A — V3 SNAPSHOT
 
-**NOTE: Sunday's first build task is docs/15 v3 update — this list is Saturday-end snapshot, not yet v3.**
+**See `docs/15_pre_post_sales_criteria.md` v3 (commit 96b1051) for full detail. This is a summary only.**
 
-### Closed Saturday
-- ✅ A9 — orphan drafts (307 backfilled, D152 prevents recurrence)
+### Closed / confirmed (7 of 28)
+- ✅ A9 — orphan drafts (307 backfilled, D152)
 - ✅ A10a — Instagram config (tokens + mode + destination_id for all 4)
+- ✅ A11a — CFW + Invegent FB/IG tokens
+- ✅ A12 — HeyGen not exposed in v1 portal (code search)
+- ✅ A13 — video-analyser internal-only (code search + PK H15)
 - ✅ A15 — publisher + weekly-report committed
-- ✅ A19 (new) — FB token refresh across 4 clients
-- ✅ A12, A13 (verified)
+- ✅ A19 — FB token refresh across 4 clients (formalised)
 
-### Still open pre-sales (to be reclassified v3)
+### Open (21 of 28)
+**Original (v2, still open):**
 - A1 pilot terms + waiver
 - A2 Meta App Review status
 - A3 one-page proof doc
@@ -208,20 +215,22 @@ Sentinel is temporary until D153 live /debug_token alerter is built.
 - A7 privacy policy refresh
 - A8 AI disclosure clause
 - A10b first IG post actually publishes (Sunday verify)
-- A11b CFW + Invegent content_type_prompts
+- A11b CFW + Invegent content_type_prompts (9 × 2)
 - A14 RLS verification
 - A16 Clock A dashboard
 - A17 Clock C 7 items
-- A18 (was 8, now 7) source-less Edge Functions
+- A18 7 source-less Edge Functions (was 8)
 
-### New pre-sales surfaced Saturday (to be added in v3)
-- A20 — Pipeline liveness monitoring (ai_job stall + last-success freshness)
-- A21 — Trigger ON CONFLICT audit across all 10+ triggers
-- A22 — Ai-worker error surfacing (unchecked UPDATE rollbacks)
-- A23 — D153 live /debug_token cron
-- A24 — Stage 1 external multi-model review layer
-- A25 — Stage 2 bank reconciliation layer
-- A26 — Review discipline (unread-blocks-dashboard + weekly block)
+**New v3 — D155 fallout:**
+- A20 Pipeline liveness monitoring (ai_job stall + last-success freshness)
+- A21 Trigger ON CONFLICT audit across all 10+ triggers
+- A22 Ai-worker error surfacing (UPDATE rowcount checks)
+- A23 D153 live /debug_token cron
+
+**New v3 — D156 external layer:**
+- A24 Stage 1 multi-model review MVP (Architect Reviewer + Sceptic)
+- A25 Stage 2 bank reconciliation MVP (Meta + GitHub + Vercel + Supabase)
+- A26 Review discipline (unread-blocks-dashboard + weekly block)
 
 ---
 
@@ -233,3 +242,4 @@ Sentinel is temporary until D153 live /debug_token alerter is built.
 - Empty-stub drain rate: should be draining 5 jobs every 5 min ≈ 60/hour. 434 stubs ≈ 7.2 hours to drain.
 - First native LinkedIn post content quality (not just that it published)
 - First Instagram post goes through successfully
+- Sunday morning 6-indicator verification — red-path playbook in continuity brief
