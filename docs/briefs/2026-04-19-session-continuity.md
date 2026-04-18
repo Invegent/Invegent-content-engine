@@ -160,6 +160,13 @@ All weekdays corrected — today is Saturday 18 April, Sunday 19 April is tomorr
 
 **If any fail:** that regression becomes the priority investigation. Rest of Sunday plan deferred.
 
+**Investigation starting points by failure mode** (use these before reasoning from first principles — they're mapped to the actual failure shapes we know about):
+- `ai_job.succeeded` count flat vs 634 baseline → Supabase EF logs for trigger errors on `enqueue_post_publish` or for ai-worker UPDATE rollbacks. This is the D155 signature.
+- FB silent despite queue populated → `m.post_publish_queue` for accumulating locked/dead rows; fresh rows in `m.token_expiry_alert`; re-run `/debug_token` manually on all 4 FB tokens.
+- LinkedIn still publishing FB-styled content → D154 didn't hold. Inspect `m.post_draft.platform` → `m.post_publish` join and the native-LI prompt selection logic in ai-worker.
+- IG silent → destination_id misconfiguration on the 4 clients, OR publisher doesn't yet route on IG platform code. Check `c.client_channel` rows for IG + publisher version.
+- New trigger errors in logs → likely regression of D155 fix. Verify enqueue trigger's `ON CONFLICT` clause still matches the unique constraint `(post_draft_id, platform)`.
+
 **If all green (midday 30-45 min):** Update `docs/15_pre_post_sales_criteria.md` to v3. Reflect:
 - A9 closed ✅
 - A15 closed ✅
@@ -198,7 +205,7 @@ Build Stage 1 role 1 (Architect Reviewer). Single highest-ROI external component
 - Write findings to `m.external_review_queue`
 - Discipline: dashboard home surfaces unread count
 
-**Retroactive validation:** point it at the 16 April D135 commit. Expected output: flag on ON CONFLICT (post_draft_id) given the unique constraint is (post_draft_id, platform). If it catches that, the pattern is validated. If it doesn't, tune the prompt.
+**Retroactive validation:** point it at the commit that introduced the malformed `ON CONFLICT (post_draft_id)` clause on the enqueue trigger. Per sync_state the stall began 11 April, so the commit lives on or before 11 April — NOT mid-April as an earlier draft of this brief stated. Find it via `git log -p -S 'ON CONFLICT' -- supabase/` and identify the commit that introduced the single-column form. Expected output: Gemini flags the ON CONFLICT mismatch (unique constraint is `(post_draft_id, platform)`, not `(post_draft_id)`). If it catches that, the pattern is validated. If it doesn't, tune the prompt before moving on. If the retroactive test comes back clean, do not assume the reviewer doesn't work — first verify you pointed it at the right commit.
 
 ### Tuesday 21 April — Meta reconciliation build (2-3 hours)
 
@@ -285,3 +292,9 @@ Three surfaces. Any one can decay. At least two will hold.
 Close the laptop. Good work today.
 
 — PK + Claude, Saturday 18 April 2026, 22:30 Sydney.
+
+---
+
+## Patch log
+
+- 2026-04-18 22:55 Sydney — Patches #1 + #2 applied after sanity-read. Monday retroactive validation target corrected (was "16 April D135", now git-log discovery per actual 11 April bug date). Sunday morning red-path playbook added (5 investigation starting points mapped to the 6 indicators). Three-surface redundancy re-verified aligned.
