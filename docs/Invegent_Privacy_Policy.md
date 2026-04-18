@@ -6,7 +6,7 @@ Privacy Policy
 
 Invegent Publisher Application
 
-Effective Date: 4 March 2026 \| Last Updated: 4 March 2026
+Effective Date: 4 March 2026 \| Last Updated: 18 April 2026
 
 1\. About This Policy
 
@@ -101,12 +101,68 @@ For operators and administrators using the App, we may collect:
 - Usage logs --- actions taken within the App for audit and debugging
   purposes
 
-4.3 Content Data
+4.3 Content Signal Data
 
 The App processes content sourced from publicly available industry news
-feeds, RSS feeds, and other public sources. This content is used to
-generate social media posts. We do not collect personal information from
-these sources.
+feeds, RSS feeds, YouTube public channels, and other public sources.
+This content is used to identify topics, generate social media posts,
+and inform editorial decisions. We do not collect personal information
+from these sources beyond what is already publicly published at the
+source itself (for example, author by-lines on public blog posts).
+
+For YouTube public data specifically, the App uses the YouTube Data API
+v3 to retrieve channel and video metadata (channel lists, video lists,
+video titles, publish dates, public captions) for the purpose of feed
+discovery and content signal identification. Only publicly available
+videos from publicly accessible channels are accessed. Private videos,
+age-restricted videos, and content requiring authentication are not
+accessed.
+
+4.4 Video Transcript Processing
+
+The App includes a video analysis capability that processes transcripts
+from publicly available YouTube videos to extract content signals
+(topics, themes, and subject references) that may inform social media
+content generation. This process:
+
+- Retrieves transcripts only from videos that are publicly available
+
+- Processes transcripts to identify topics and signals, not to store
+  their full text beyond the processing window
+
+- Does not retain transcript text beyond 24 hours of processing
+
+- Does not associate transcript data with any personal identifier
+
+- Does not process any video that is private, restricted, or requires
+  authentication to access
+
+Only the derived topic and signal metadata --- not the transcript text
+itself --- is retained in our systems beyond the 24-hour processing
+window.
+
+4.5 Avatar Generation Capability
+
+The App includes an integration with HeyGen (heygen.com), an AI avatar
+and video generation service. At the current version of the App this
+capability is used only for internal product development and is not
+exposed to clients or their audiences.
+
+Before any avatar-generated content becomes part of client-facing
+services, we will:
+
+- Obtain explicit, informed consent from the relevant client prior to
+  generating any avatar content in their business context
+
+- Not include any personal likeness, voice, or biometric data without
+  separate, specific, written consent
+
+- Disclose on any published content that AI avatar generation was used,
+  where platform policy or regulatory framework requires disclosure
+
+Until such consent has been obtained, HeyGen integration remains a
+backend-only development capability and does not process or output
+content associated with any client, participant, or individual.
 
 5\. How We Use Data
 
@@ -147,7 +203,8 @@ We apply the following measures to protect data:
 
 We retain publishing records, logs, and performance data for up to 24
 months. Access tokens are rotated in accordance with Meta\'s token
-expiry requirements.
+expiry requirements. Video transcript text is retained for no more than
+24 hours following processing (see Section 4.4).
 
 7\. Third-Party Services
 
@@ -165,6 +222,15 @@ source signals. Privacy Policy: anthropic.com/privacy
 
 **OpenAI API** --- AI model used as a fallback for content generation.
 Privacy Policy: openai.com/policies/privacy-policy
+
+**Google (YouTube Data API)** --- used to retrieve publicly available
+YouTube channel and video metadata for feed discovery and content signal
+identification. Privacy Policy: policies.google.com/privacy
+
+**HeyGen** --- AI avatar and video generation service. Currently used
+only as a backend development capability and not exposed in
+client-facing services at the current version of the App. Privacy
+Policy: heygen.com/privacy
 
 We do not share personal data with these services beyond what is
 necessary for the App to function.
@@ -230,6 +296,19 @@ are material, we will notify active users by email.
 
 Continued use of the App following any update constitutes acceptance of
 the revised policy.
+
+Revision history:
+
+**4 March 2026** --- Initial publication.
+
+**18 April 2026** --- Expanded Section 4.3 (Content Signal Data) to
+cover YouTube public data used for feed discovery. Added Section 4.4
+(Video Transcript Processing) covering the 24-hour retention limit for
+transcript text. Added Section 4.5 (Avatar Generation Capability)
+covering HeyGen integration and the explicit-consent requirement before
+any client-facing use. Updated Section 6 retention note to reflect
+Section 4.4. Updated Section 7 to include Google (YouTube Data API) and
+HeyGen as third-party service providers.
 
 12\. Contact Us
 
