@@ -17,262 +17,144 @@ is recorded here with context and reasoning.
 
 ## D147–D151 — See 18 Apr 2026 afternoon commit (pilot structure, buyer-risk form, advisor layer, session-close SOP, table-purpose rule)
 
----
-
-## D152 — Seeder post_draft.client_id Fix
-**Date:** 18 April 2026 evening | **Status:** ✅ APPLIED
-
-### Context
-
-On 17 April 02:10–07:00 UTC, D142 demand-aware seeder created 300 `post_draft` rows with `client_id = NULL`. The bug: the `ins_draft` CTE inside `m.seed_and_enqueue_ai_jobs_v1` INSERTs into `m.post_draft` without providing `client_id`, even though the upstream `ins_seed` CTE correctly carried client_id through.
-
-Discovered during A9 investigation (18 Apr evening) after PK correctly challenged the dashboard-says-all-feeds-assigned evidence.
-
-### The fix
-
-```sql
-ins_draft as (
-  insert into m.post_draft (
-    post_draft_id,
-    client_id,                  -- ADDED
-    digest_item_id,
-    ...
-  )
-  select
-    gen_random_uuid(),
-    s.client_id,                -- ADDED (already carried by ins_seed)
-    s.digest_item_id,
-    ...
-  from ins_seed s
-  ...
-)
-```
-
-Version string bumped to `demand-aware-v2-d152`.
-
-### Backfill
-
-Two backfills executed:
-- 300 orphans → client_id from `digest_run.client_id` via `digest_item` join
-- 7 legacy manual-studio orphans → client_id from `m.post_publish.client_id` (different class, no digest_item)
-
-**Zero NULL client_id rows remain across all time.**
-
-### Verification
-
-Manual seeder invocation post-fix created 5 new drafts, all with `client_id` populated. Verified.
-
-### Related
-
-This fix made the A10 (Instagram) seeder safe to deploy — otherwise new IG drafts would have inherited the same orphan problem.
+## D152–D155 — See 18 Apr 2026 evening commit (seeder client_id fix, token-health live direction, native LinkedIn flow, ON CONFLICT root-cause fix)
 
 ---
 
-## D153 — Token-Health Cron Should Call Meta /debug_token Live
-**Date:** 18 April 2026 evening | **Status:** 🔲 BUILD NEXT — gap identified, not yet addressed
+## D156 — External Epistemic Diversity Layer (Four-Stage, Progressively Revenue-Gated)
+**Date:** 18 April 2026 late evening | **Status:** ✅ STRATEGIC DIRECTION SET — build Stages 1+2 during pre-sales
 
-### Context
+### The problem this decides
 
-18 April investigation revealed that 3 of 4 Facebook page access tokens had been dead since 13 April PDT. The DB's `token_expires_at` field showed NY expiring 31 May 2026 — but Meta had invalidated the token independently 4 days earlier. No alert fired because the token-expiry alerter trusts the DB field only.
+D155 investigation revealed that ICE's entire monitoring/advisor/audit layer shares one epistemic foundation: Claude-assisted reasoning over Claude-written artefacts interpreting Claude-generated outputs. When Claude is wrong in a systematic way, the whole system is wrong in a correlated way. PK is the only external node.
 
-Meta can invalidate tokens for multiple reasons disconnected from the stored expiry timestamp:
-- User removes app permissions in Facebook settings
-- Meta detects anomalous use and revokes
-- App-level policy change
-- Password change
-- Business verification lapses
+Three silent failures on 18 April (D152, D154, D155, plus 5-day token death across 3 clients) were all caught by accident during investigation of a different visible symptom. None were caught by ICE's own monitoring. Not because the monitors were badly built — because they shared the blind spots of the systems they were watching.
 
-Any of these creates a silent-publisher-failure window that can run for days before detection via user complaint.
+PK reframed the problem (verbatim): *"In a company environment where there are team members, the competitiveness between employees is what catches errors. Everybody is on their own. The hierarchy takes decisions respecting each individual's contributions. That basic structure always works within companies. I want not just an internalised solution but something external that we can build — AI elements or different agents which are not just Claude-specific."*
 
-### The fix (not yet built)
+### The decision
 
-Replace the stored-field trust with a live call to Meta's debug endpoint:
+Build a four-stage external verification layer, progressively gated by revenue. Each stage uses agents with incentives **not aligned with "ICE looks good."**
 
-```
-GET https://graph.facebook.com/debug_token
-  ?input_token={stored_token}
-  &access_token={stored_token}
-```
+### Stage 1 — Multi-model adversarial AI review
+**Timing:** build during pre-sales. This week.
+**Cost:** ~$75/year total at current volume.
 
-Response fields to check:
-- `is_valid` — must be true
-- `expires_at` — update `c.client_publish_profile.token_expires_at` from this
-- `data_access_expires_at` — new field to track (some APIs deprecate token 60d before full expiry)
+Four roles, assigned by model strength (not by role-per-vendor):
 
-Frequency: daily is enough. This is not performance-critical.
+- **Sceptic** (GPT-4 / GPT-4.1) — weekly reads sync_state + decisions log, finds unsupported claims
+- **Architect Reviewer** (Gemini 2.5 Pro) — per-commit reads diffs touching EFs/triggers/migrations, finds structural bugs (would have caught D155)
+- **Compliance Auditor** (GPT-4) — weekly reads 5 published posts/client + privacy policy + service agreement, finds drift
+- **Devil's Advocate** (Gemini 2.5 Pro) — within 2h of any D149 advisor output, argues against
 
-### Implementation sketch
+Output: `m.external_review_queue` table. Dashboard surface. Each item has `action_taken` field.
 
-New Edge Function `token-health-live`:
-1. Read all active publish profiles with `page_access_token IS NOT NULL`
-2. Call `/debug_token` via fetch
-3. If `is_valid = false` or `expires_at` differs from DB by > 24h: UPDATE DB + insert alert row into `m.token_health_alert` (new table)
-4. Cron: daily at 7am Sydney (superseding `token-health-daily-7am-sydney` which currently calls `publisher/token-health-write`)
+**Discipline layer is part of this stage, not optional.** Unread items block dashboard home until acknowledged. Weekly review is a scheduled Monday-morning block. Without discipline, output is theatre.
 
-Small build (~45 min). High pre-sales value — closes the silent-failure blind spot.
+**Build sequence:** Architect Reviewer first (Monday 20 Apr), others added as pattern validates.
 
-### Gate
+### Stage 2 — Bank reconciliation against external platforms
+**Timing:** parallel to Stage 1. This week.
+**Cost:** marginal (platform API calls).
 
-None. Build next session.
+Eight systems, four priority:
 
-### Related
+1. Meta Graph API — posts per page vs `m.post_publish`
+2. GitHub API — commit SHA + push timestamps vs sync_state
+3. Vercel deploy API — last deploy SHA per project vs main
+4. Supabase management API — EF list + timestamps vs repo
+5. LinkedIn via Zapier logs (priority 2)
+6. Meta Insights API (priority 2 — serves dual purpose with Phase 2.1)
+7. YouTube Data API (priority 2)
+8. Xero API (priority 3 — once billing set up)
 
-The `2099-12-31` sentinel currently stored in `token_expires_at` for all 4 FB + 4 IG profiles is a stopgap. This fix replaces the stopgap with live verification.
+Output: `m.external_reconciliation_result` table. Dashboard shows green/amber/red per system.
 
----
+**Key discipline:** external system is authoritative when it disagrees with ICE's DB. Investigate the discrepancy, don't explain it away.
 
-## D154 — Native LinkedIn Draft Flow (End Facebook Fan-Out)
-**Date:** 18 April 2026 evening | **Status:** ✅ APPLIED
+**Build sequence:** Meta reconciliation first (Tuesday 21 Apr), others added as pattern validates.
 
-### Context
+### Stage 3 — External human review (tiered)
+**Timing:** Tier A after Stages 1+2 stable (~6 weeks). Tier B after revenue. Tier C = Stage 4.
 
-Pre-existing architecture: `public.crosspost_facebook_to_linkedin()` fanned out every approved Facebook draft into a LinkedIn queue row pointing back to the **same Facebook draft**. The `linkedin-zapier-publisher` read `draft_title + draft_body` from the FB draft and sent it to Zapier → LinkedIn. Result: LinkedIn received Facebook-styled content, platform voice mismatch, wasted LinkedIn-specific `content_type_prompt` rows.
+- **Tier A — Public sanitised brief** ($50/finding, no NDA) — r/supabase / Claude Devs Discord / Hacker News. Architecture-only, no code, no tokens, no prompts. Also marketing collateral.
+- **Tier B — Signed brief on Upwork/Fiverr** ($200-500/engagement, NDA required) — Australian freelancer preferred. Test with small engagement first. Rotate Supabase service-role key afterwards.
+- **Tier C — Agency retainer** — see Stage 4.
 
-This was a temporary bridge designed before the LinkedIn pipeline was native. Time to replace it.
+### Stage 4 — Australian boutique agency retainer (revenue-gated)
+**Timing:** 5+ clients OR $5k MRR. NOT before.
+**Cost:** $10-15k AUD/year.
 
-### The fix
+Profile: Australian (NSW preferred), Supabase + Next.js specialists, NDIS-adjacent experience, small team, fixed retainer not T&M. Buy: monthly 90-min architecture review + quarterly deep audit + emergency response SLA + security review checklist access.
 
-Four changes:
+**Solicitor engagement trigger refined:** when EITHER first pilot converts to full-price OR second pilot signs cleanly after 90 days. Revenue is the trigger, not confidence (per tonight's refinement to D147).
 
-**1. Activate LinkedIn publish profiles for NY + PP**
+### Dual purpose framing (strategic positioning, not just defence)
 
-```sql
-UPDATE c.client_publish_profile
-SET mode = 'auto',
-    token_expires_at = '2099-12-31'::timestamptz,
-    paused_until = NULL, paused_reason = NULL, paused_at = NULL
-WHERE platform = 'linkedin'
-  AND client_id IN (NY, PP);
-```
+Every external layer component has two purposes:
+1. **Catch failures** that internal monitoring can't see
+2. **Sales differentiator** — AI-audits-AI positioning that no generic content agency can replicate
 
-(CFW + Invegent stay mode=NULL because they have no LinkedIn content_type_prompts — A11.)
+Customer-facing pitch eventually:
+> "ICE is built on an AI-audited AI stack. We run GPT-4 against Claude's outputs weekly. We reconcile against Meta's own API daily. We publish our architecture for external review. Your content is safer because of it."
 
-**2. Extend `m.enqueue_publish_from_ai_job_v1()` trigger** to handle `platform IN ('facebook','linkedin')` with per-platform cadence. Original logic was `platform = 'facebook'` only.
+This is the most defensible positioning a solo founder can build. The same infrastructure that gives sales differentiation is the infrastructure that would have caught D155 on day one.
 
-LinkedIn cadence:
-- PP: 240min gap, 8 max queued (≈4–6 posts/day peak)
-- NY: 360min gap, 6 max queued (≈3–4 posts/day peak)
-- Default: 360min gap, 6 max queued
+### Cost profile
 
-**3. Create `seed-and-enqueue-linkedin-every-10m` cron** (jobid 65) — mirrors FB/IG cadence.
+| Stage | Cost | When |
+|---|---|---|
+| 1 | ~$75/year | Pre-sales — build this week |
+| 2 | Marginal | Pre-sales — build this week |
+| 3A | $50/finding (bounded) | After 6 weeks |
+| 3B | $200-500/engagement | After first revenue |
+| 4 | $10-15k/year | 5+ clients or $5k MRR |
+| Solicitor | $2-5k | First pilot conversion OR second pilot signed |
 
-**4. Neutralise `public.crosspost_facebook_to_linkedin`** to a no-op that returns `{queued_for_linkedin: 0}`. Kept signature so `linkedin-zapier-publisher` RPC call still succeeds. Reversible.
+### What this does NOT replace
 
-### Why this works without touching the publisher
+- PK's strategic judgement (decisions stay with PK)
+- The D149 Claude-based advisor layer (runs in parallel — Devil's Advocate is the Stage 1 counterpart to D149)
+- Professional indemnity insurance (a separate Stage 4-adjacent item noted: underwriting process itself forces clarification)
 
-The `linkedin-zapier-publisher` Edge Function reads `draft_title + draft_body` from whatever `post_draft_id` the queue row points to. It does not care about `draft.platform`. So pointing queue rows at native LinkedIn drafts (not fanned-out Facebook drafts) gives it LinkedIn content to publish unchanged.
+### What this explicitly defers
 
-### Verification (at config-level)
+- Do NOT build more internal Claude-only monitoring as a substitute
+- Do NOT skip the Stage 1 discipline layer — output without reading is theatre
+- Do NOT start Stage 3B until revenue exists
+- Do NOT start Stage 4 until $5k MRR
+- Do NOT engage solicitor until pilot revenue
 
-- Manual LinkedIn seeder invocation: 3 seeds, 3 drafts, 3 jobs queued with `platform='linkedin'` and `client_id` populated.
-- Crosspost function returns `{queued_for_linkedin: 0, note: 'disabled_d154_native_linkedin_seeding_active'}`.
-- End-to-end publish verification deferred to next morning check (ai-worker processing backlog).
+### Follow-on items promoted to pre-sales
 
-### Caveat surfaced immediately after
+From this decision, the following become Section A items in docs/15 v3:
 
-D154 appeared to work but native LI drafts stayed queued. Investigation led to **D155** (below).
+- A24 — Stage 1 external multi-model review layer (MVP: Architect Reviewer + Sceptic)
+- A25 — Stage 2 bank reconciliation layer (MVP: Meta + GitHub + Vercel + Supabase)
+- A26 — Review discipline mechanism (unread-blocks-dashboard + weekly block)
 
-### Related
+These are not optional for pre-sales closure. A managed service with 1 client where the pipeline silently fails for 7 days because there's no alert is commercially fatal. These must exist before a paying pilot signs.
 
-A11 remains open: CFW + Invegent need LinkedIn `content_type_prompt` rows before their LI profiles can be activated.
+### Reasoning on why this is right today
 
----
+- Capital constraint: PK is pre-revenue. Expensive options (agency, solicitor) correctly parked until revenue justifies them.
+- Epistemic constraint: Claude-only solutions can't protect against Claude's blind spots. Different vendors with different training data genuinely surface different things.
+- Positioning opportunity: every defensive layer doubles as sales differentiation. The AI-audits-AI framing is defensible and not easily imitated.
+- Discipline constraint: output without reading is worse than no output (creates false confidence). Dashboard-surface + acknowledge-to-dismiss is how to close this.
+- Sequencing: Stage 1+2 pay for themselves in D155-class prevention. Stage 3+4 layer in as revenue permits.
 
-## D155 — Enqueue Trigger ON CONFLICT Clause Mismatch (Root Cause of 11 Apr Silent Pipeline Stall)
-**Date:** 18 April 2026 evening | **Status:** ✅ APPLIED — THE FIX OF THE DAY
+### Gate to proceed
 
-### The 7-day silent failure
+None. Stage 1+2 have no external dependencies. Build starts Monday 20 April per the continuity brief.
 
-Investigation into why native LinkedIn drafts stayed queued revealed a much larger issue:
+### Related decisions
 
-- **Last `ai_job.status = 'succeeded'` was 11 April 13:10 UTC.** Seven days ago.
-- **2,718 successful Claude API calls** in 3 days per `m.ai_usage_log`. Worker was generating content.
-- **Post-draft bodies populated** (1,800+ char real content).
-- **But every ai_job stayed `running` or `queued`.**
-- **441 jobs stuck by end of investigation.**
-
-Control observation: FB posts did publish 12–15 April because they drew from a pre-11-April backlog that had already been marked succeeded. The last FB publish was 15 April. After that, zero genuinely new posts made it to the publisher.
-
-### The bug
-
-AI-worker's final step writes `ai_job.status = 'succeeded'`. The AFTER-UPDATE trigger `trg_enqueue_publish_from_ai_job_v1` fires, calling:
-
-```sql
-INSERT INTO m.post_publish_queue (...)
-VALUES (...)
-ON CONFLICT (post_draft_id) DO NOTHING;
-```
-
-But the actual unique index on `m.post_publish_queue` is:
-
-```sql
-CREATE UNIQUE INDEX uq_post_publish_queue_post_draft_platform
-  ON m.post_publish_queue (post_draft_id, platform);
-```
-
-PostgreSQL throws error 42P10: `there is no unique or exclusion constraint matching the ON CONFLICT specification`.
-
-The error propagates up. The AFTER trigger's failure rolls back the ai_job UPDATE. The worker's `.update(...)` call was not awaited with error handling (typical `await supabase.from().update()` returns result silently). So the worker swallows the rollback, marks the response as processed, and returns. Ten minutes later the `sweep-stale-running-every-10m` cron unlocks the job back to `queued`. Worker picks it up again, regenerates, same outcome.
-
-### The fix
-
-One-line change:
-
-```sql
--- BEFORE
-on conflict (post_draft_id) do nothing;
-
--- AFTER
-on conflict (post_draft_id, platform) do nothing;
-```
-
-Applied via migration `d155_fix_enqueue_trigger_on_conflict_clause`. Also folded `platform = 'instagram'` into the trigger at the same time (previously only `facebook` and `linkedin`).
-
-### Also applied: Instagram cadence in trigger
-
-```
-Instagram:
-- PP: 360min gap, 6 max queued
-- NY: 360min gap, 6 max queued
-- Default: 480min gap, 4 max queued
-```
-
-### Unblock executed
-
-35 stuck FB ai_jobs with real content (>100 char body) manually set to `status='succeeded'` post-fix. Triggers fired cleanly; 36 queue rows created across CFW (7), NY (10), PP (19), scheduled through 21 April.
-
-Manual ai-worker invocation test: 3 new jobs processed end-to-end with `status='succeeded'` properly written, no trigger errors. Pipeline is now genuinely flowing for the first time in 7 days.
-
-### What was salvaged vs lost
-
-- **Salvaged:** All 36 already-generated FB drafts with real content now scheduled to publish.
-- **Lost:** None — drafts were never deleted, just stuck.
-- **Deferred:** 434 empty stubs (350 FB + 42 IG + 42 LI) will re-process through ai-worker at 5/run every 5 min over the next ~7 hours. Clean drain.
-
-### Why this wasn't caught earlier
-
-The failure was invisible from every normal monitoring angle:
-- No errors in Edge Function logs (error was downstream of the worker's last observed line)
-- No failed ai_jobs (they stayed at `running`, not `failed`)
-- `ai_usage_log` showed healthy API use
-- Draft bodies were populated (content generation was succeeding)
-- FB posts kept publishing (from pre-existing queue depth) until 15 April
-- By the time the queue drained, attention was on other issues (Instagram config, token expiry, LinkedIn fan-out)
-
-Monitoring gap: no alert fires when `ai_job.status` distribution shifts toward `running`/`queued` over time. This gap is the highest-value follow-on item from D155.
-
-### Follow-on items
-
-1. Add monitoring: alert when ai_job queued depth > 100 for > 2 hours.
-2. Add monitoring: alert when `last_successful_ai_job_at > NOW() - 3 hours` (right now that condition was true for 7 days).
-3. Review every trigger's ON CONFLICT clause against current unique constraints.
-4. Review ai-worker's UPDATE calls for unchecked errors (surface swallowed rollbacks).
-
-All four go into `docs/15` as new pre-sales items next session (likely A20–A23).
-
-### Related
-
-D154 (native LinkedIn flow) did not actually break anything new — the trigger was already broken for FB-only and would have been for LinkedIn too. D154 would have silently failed had D155 not been diagnosed in the same session.
+- D147 (pilot + waiver): solicitor deferred, but Stage 1+2 accelerate the readiness that makes the waiver credible
+- D149 (four advisor layer): Stage 1 Devil's Advocate is the external counter to D149's Claude-based advisors
+- D150 (session-close verify protocol): D156 is the scalable version of D150 — verify against external systems, not just internal Git state
+- D151 (universal table-purpose rule): Stage 1 Sceptic will enforce this by flagging any NULL-purpose table that appears
+- D153 (live /debug_token cron): specific instance of Stage 2 pattern applied to tokens
+- D155 (ON CONFLICT fix): the bug D156 exists to catch before it happens next time
 
 ---
 
@@ -280,31 +162,23 @@ D154 (native LinkedIn flow) did not actually break anything new — the trigger 
 
 | Decision | Status | Gate |
 |---|---|---|
-| D142 — Demand-aware seeder | ✅ Live (now as v2-d152 post patch) | — |
 | D143 — Signal content type classifier | 🔲 Gated | D142 stable + 60 days data |
 | D144 — Signal router (platform × format) | 🔲 Gated | D143 + D140 + D145 + 60 days data |
 | D145 — Benchmark table | 🔲 Research now, build with D144 | Research immediate |
 | D146 — Feed pipeline score + retirement | 🔲 Gated | Phase 2.1 + 60 days data |
 | D140 — Digest item scoring | 🔲 Phase 3 | After CFW stable + auto-approver healthy |
-| D149 — Advisor Layer MVP (Sales Advisor Project) | 🔲 Build this week | None — ready now |
-| D151 — Table purpose backlog sweep (22 rows) | 🔲 Post-pre-sales | Non-blocking; batch job later |
-| D153 — Token-health live /debug_token cron | 🔲 Build next session | None — ready now, high priority |
-| Phase 2.1 — Insights-worker | 🔲 Next major build after D142 stable | Meta Standard Access |
-| Phase 2.6 — Proof dashboard | 🔲 After Phase 2.1 | Needs engagement data |
-| NDIS Support Catalogue data load | 🔲 Phase 3 | Tables exist |
-| Solicitor engagement | 🔲 Parked per D147 | First pilot revenue OR $2k MRR |
-| F1 Prospect demo generator | 🔲 ~mid-June 2026 | 60+ days NDIS Yarns data |
-| LinkedIn Community Management API | 🔲 13 May 2026 | Evaluate Late.dev if pending |
-| D124 — Boost Configuration UI | 🔲 Phase 3.4 | Meta Standard Access |
-| RSS.app discovery dashboard page | 🔲 Phase 3 | No urgency |
-| Cowork daily inbox task | 🔲 Phase 4 | Gmail MCP |
+| D149 — Advisor Layer MVP (Sales Advisor Project) | 🔲 Build this week (Thu 23 Apr per brief) | None — ready |
+| D151 — Table purpose backlog sweep (22 rows) | 🔲 Post-pre-sales | Batch job later |
+| D153 — Token-health live /debug_token cron | 🔲 Spec Wed 22 Apr, build after | None — high priority |
+| D156 — External epistemic layer Stage 1 (Architect Reviewer) | 🔲 Build Mon 20 Apr | None — first build of new direction |
+| D156 — External epistemic layer Stage 2 (Meta reconciliation) | 🔲 Build Tue 21 Apr | None — parallel to Stage 1 |
+| Phase 2.1 — Insights-worker | 🔲 Next major build | Meta Standard Access |
+| Phase 2.6 — Proof dashboard | 🔲 After Phase 2.1 | Engagement data |
+| Solicitor engagement | 🔲 Parked per D147 + D156 refinement | First pilot revenue OR second pilot signed |
 | Meta App Review | ⏳ In Review | Contact dev support if stuck after 27 Apr |
-| animated_data advisor conflict | 🔲 Immediate | Format Library page fix |
-| CFW content session + Invegent content session | 🔲 A11 pre-sales | PK tokens acquired today; needs prompt writing |
-| Confirm TBC subscription costs | 🔲 A6 pre-sales | Invoice check — Vercel, HeyGen, Claude Max, OpenAI |
-| CFW profession fix ('other' → 'occupational_therapy') | 🔲 Immediate | Change in Profile |
-| Auto-approver target pass rate decision | 🔲 C1 | Single PK decision |
-| Monitoring: ai_job stall alert (follow-on from D155) | 🔲 New pre-sales item | Build next session |
-| Monitoring: last_successful_ai_job freshness alert | 🔲 New pre-sales item | Build next session |
-| All triggers: review ON CONFLICT clauses against current constraints | 🔲 New pre-sales item | Due-diligence sweep |
-| ai-worker: surface swallowed UPDATE rollbacks | 🔲 New pre-sales item | Code-level fix |
+| CFW + Invegent content prompts | 🔲 A11b pre-sales | PK prompt-writing session |
+| TBC subscription costs | 🔲 A6 pre-sales | Invoice check |
+| CFW profession fix | 🔲 Immediate | Change in Profile |
+| Auto-approver target pass rate | 🔲 C1 | Single PK decision |
+| Monitoring items A20-A22 (D155 follow-on) | 🔲 New pre-sales | Build after Stage 1+2 up |
+| Professional indemnity insurance | 🔲 Pre-pilot | Underwriting forces clarification |
