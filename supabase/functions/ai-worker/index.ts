@@ -9,7 +9,31 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.8.0";
+const VERSION = "ai-worker-v2.9.0";
+// v2.9.0 — ID003 remediation (D157)
+//   Three-part fix landed in one release:
+//   1. PAYLOAD DIET (trimSeedPayload): for rewrite_v1 and synth_bundle_v1, replace
+//      digest_item.body_text with body_excerpt when available; strip raw_html /
+//      full_content fields; cap any remaining body_text to 3000/2000 chars.
+//      Reduces input tokens 3-5x for a typical scraped article.
+//   2. IDEMPOTENCY GUARD: before calling the LLM, check m.ai_usage_log for any
+//      prior non-error row tied to this ai_job_id. If one exists AND the
+//      post_draft already has draft_title + draft_body, mark ai_job succeeded
+//      without re-calling the LLM. Prevents the ID003 failure mode where a
+//      timed-out ai_job update caused sweep-stale-running to requeue jobs whose
+//      LLM call had already completed + billed.
+//      Rationale for "any prior successful log" (vs time-windowed): sweep-stale-running
+//      fires every 10 min but only requeues jobs locked > 20 min. Any time window
+//      shorter than 20 min would miss the actual re-run. Using the log-existence
+//      check is strictly stronger — error_call=true rows do not trigger skip,
+//      so legitimate retries after genuine errors still work.
+//   3. FETCH TIMEOUTS: explicit 120s AbortController on both Anthropic and
+//      OpenAI calls. Prevents indefinite hangs that previously consumed the
+//      Edge Function response timeout window.
+//   Paired with SQL migration d157_id003_ai_job_retry_cap:
+//     - m.ai_job gains attempts INT DEFAULT 0
+//     - sweep-stale-running-every-10m (jobid 9): attempts++ on each requeue;
+//       attempts >= 3 promotes job to status='failed' + dead_reason='exceeded_retry_limit'
 // v2.8.0 — Format advisor preferred format bias
 //   fetchFormatContext reads preferred_format_facebook from publish profile
 //   callFormatAdvisor receives preferredFormat and biases toward it when content is borderline
@@ -41,6 +65,11 @@ const VIDEO_FORMATS = new Set([
   'video_short_avatar', 'video_long_explainer', 'video_long_podcast_clip',
 ]);
 
+// D157 ID003: hard fetch timeout applied to both LLM providers.
+// Generous enough for large responses, tight enough to prevent indefinite hangs
+// that previously burned the Edge Function's own response timeout window.
+const LLM_FETCH_TIMEOUT_MS = 120_000;
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -61,6 +90,50 @@ function getServiceClient() {
 }
 
 function nowIso() { return new Date().toISOString(); }
+
+// D157 ID003 fix 1 — PAYLOAD DIET
+// Produces a lean copy of the input payload that the LLM sees via assemblePrompts.
+// The incident root cause: seed_payload.digest_item.body_text carried the full
+// scraped page (nav/footer/sidebar/cookie banners) ~ 10K input tokens/call.
+// The same JSON object already has body_excerpt populated correctly upstream —
+// it was simply never consumed by the prompt builder.
+//
+// Strategy:
+//   - rewrite_v1: digest_item.body_text <- body_excerpt (if present), else cap body_text
+//   - synth_bundle_v1: same treatment applied per item in items[]
+//   - drop known-bloat fields: raw_html, full_content
+function trimSeedPayload(raw: any, jobType: string): any {
+  if (!raw || typeof raw !== 'object') return raw;
+  const lean = { ...raw };
+
+  if (jobType === 'rewrite_v1' && lean.digest_item && typeof lean.digest_item === 'object') {
+    const di = { ...lean.digest_item };
+    if (typeof di.body_excerpt === 'string' && di.body_excerpt.trim().length > 0) {
+      di.body_text = di.body_excerpt;
+    } else if (typeof di.body_text === 'string' && di.body_text.length > 3000) {
+      di.body_text = di.body_text.slice(0, 3000);
+    }
+    delete di.body_excerpt;
+    delete di.raw_html;
+    delete di.full_content;
+    lean.digest_item = di;
+  } else if (jobType === 'synth_bundle_v1' && Array.isArray(lean.items)) {
+    lean.items = lean.items.map((it: any) => {
+      if (!it || typeof it !== 'object') return it;
+      const trimmed = { ...it };
+      if (typeof trimmed.body_excerpt === 'string' && trimmed.body_excerpt.trim().length > 0) {
+        trimmed.body_text = trimmed.body_excerpt;
+      } else if (typeof trimmed.body_text === 'string' && trimmed.body_text.length > 2000) {
+        trimmed.body_text = trimmed.body_text.slice(0, 2000);
+      }
+      delete trimmed.body_excerpt;
+      delete trimmed.raw_html;
+      delete trimmed.full_content;
+      return trimmed;
+    });
+  }
+  return lean;
+}
 
 async function generateVideoScript(opts: {
   anthropicKey: string;
@@ -301,35 +374,65 @@ async function writeUsageLog(supabase: ReturnType<typeof getServiceClient>, opts
 
 async function callClaude(opts: { apiKey: string; model: string; systemPrompt: string; userPrompt: string; temperature: number; maxOutputTokens: number; }) {
   const { apiKey, model, systemPrompt, userPrompt, temperature, maxOutputTokens } = opts;
-  const resp = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model, max_tokens: maxOutputTokens, temperature, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }) });
-  const text = await resp.text();
-  if (!resp.ok) throw new Error(`anthropic_http_${resp.status}: ${text.slice(0, 1200)}`);
-  const outer = safeParseJson<any>(text);
-  if (!outer.ok) throw new Error(`anthropic_bad_json: ${outer.error}`);
-  const content = outer.value?.content?.[0]?.text;
-  if (!content) throw new Error('anthropic_empty_content');
-  const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
-  const parsed = safeParseJson<any>(cleaned);
-  if (!parsed.ok) throw new Error(`anthropic_non_json: ${parsed.error} | raw: ${cleaned.slice(0, 400)}`);
-  if (!parsed.value?.title || !parsed.value?.body) throw new Error('anthropic_missing_title_or_body');
-  const usage = outer.value?.usage ?? {};
-  return { title: String(parsed.value.title).trim(), body: String(parsed.value.body).trim(), imageHeadline: String(parsed.value.image_headline ?? '').trim(), meta: parsed.value.meta ?? {}, skip: parsed.value.skip === true, skipReason: parsed.value.reason ?? '', inputTokens: Number(usage.input_tokens ?? 0), outputTokens: Number(usage.output_tokens ?? 0) };
+  // D157 ID003 fix 3 — hard fetch timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), LLM_FETCH_TIMEOUT_MS);
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model, max_tokens: maxOutputTokens, temperature, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
+      signal: controller.signal,
+    });
+    const text = await resp.text();
+    if (!resp.ok) throw new Error(`anthropic_http_${resp.status}: ${text.slice(0, 1200)}`);
+    const outer = safeParseJson<any>(text);
+    if (!outer.ok) throw new Error(`anthropic_bad_json: ${outer.error}`);
+    const content = outer.value?.content?.[0]?.text;
+    if (!content) throw new Error('anthropic_empty_content');
+    const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    const parsed = safeParseJson<any>(cleaned);
+    if (!parsed.ok) throw new Error(`anthropic_non_json: ${parsed.error} | raw: ${cleaned.slice(0, 400)}`);
+    if (!parsed.value?.title || !parsed.value?.body) throw new Error('anthropic_missing_title_or_body');
+    const usage = outer.value?.usage ?? {};
+    return { title: String(parsed.value.title).trim(), body: String(parsed.value.body).trim(), imageHeadline: String(parsed.value.image_headline ?? '').trim(), meta: parsed.value.meta ?? {}, skip: parsed.value.skip === true, skipReason: parsed.value.reason ?? '', inputTokens: Number(usage.input_tokens ?? 0), outputTokens: Number(usage.output_tokens ?? 0) };
+  } catch (e: any) {
+    if (e?.name === 'AbortError') throw new Error(`anthropic_fetch_timeout_${LLM_FETCH_TIMEOUT_MS}ms`);
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function callOpenAI(opts: { apiKey: string; model: string; systemPrompt: string; userPrompt: string; temperature: number; maxOutputTokens: number; }) {
   const { apiKey, model, systemPrompt, userPrompt, temperature, maxOutputTokens } = opts;
-  const resp = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model, temperature, max_tokens: maxOutputTokens, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }) });
-  const text = await resp.text();
-  if (!resp.ok) throw new Error(`openai_http_${resp.status}: ${text.slice(0, 1200)}`);
-  const outer = safeParseJson<any>(text);
-  if (!outer.ok) throw new Error(`openai_bad_json_outer: ${outer.error}`);
-  const content = outer.value?.choices?.[0]?.message?.content;
-  if (!content) throw new Error('openai_empty_content');
-  const parsed = safeParseJson<any>(content);
-  if (!parsed.ok) throw new Error(`openai_non_json: ${parsed.error}`);
-  if (!parsed.value?.title || !parsed.value?.body) throw new Error('openai_missing_title_or_body');
-  const usage = outer.value?.usage ?? {};
-  return { title: String(parsed.value.title).trim(), body: String(parsed.value.body).trim(), imageHeadline: String(parsed.value.image_headline ?? '').trim(), meta: parsed.value.meta ?? {}, skip: parsed.value.skip === true, skipReason: parsed.value.reason ?? '', inputTokens: Number(usage.prompt_tokens ?? 0), outputTokens: Number(usage.completion_tokens ?? 0) };
+  // D157 ID003 fix 3 — hard fetch timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), LLM_FETCH_TIMEOUT_MS);
+  try {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model, temperature, max_tokens: maxOutputTokens, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }] }),
+      signal: controller.signal,
+    });
+    const text = await resp.text();
+    if (!resp.ok) throw new Error(`openai_http_${resp.status}: ${text.slice(0, 1200)}`);
+    const outer = safeParseJson<any>(text);
+    if (!outer.ok) throw new Error(`openai_bad_json_outer: ${outer.error}`);
+    const content = outer.value?.choices?.[0]?.message?.content;
+    if (!content) throw new Error('openai_empty_content');
+    const parsed = safeParseJson<any>(content);
+    if (!parsed.ok) throw new Error(`openai_non_json: ${parsed.error}`);
+    if (!parsed.value?.title || !parsed.value?.body) throw new Error('openai_missing_title_or_body');
+    const usage = outer.value?.usage ?? {};
+    return { title: String(parsed.value.title).trim(), body: String(parsed.value.body).trim(), imageHeadline: String(parsed.value.image_headline ?? '').trim(), meta: parsed.value.meta ?? {}, skip: parsed.value.skip === true, skipReason: parsed.value.reason ?? '', inputTokens: Number(usage.prompt_tokens ?? 0), outputTokens: Number(usage.completion_tokens ?? 0) };
+  } catch (e: any) {
+    if (e?.name === 'AbortError') throw new Error(`openai_fetch_timeout_${LLM_FETCH_TIMEOUT_MS}ms`);
+    throw e;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function buildFormatOutputSchema(decidedFormat: string, advisorImageHeadline: string): string {
@@ -417,13 +520,71 @@ app.post('*', async (c) => {
     const jobType = job.job_type ?? 'rewrite_v1';
 
     try {
+      // D157 ID003 fix 2 — IDEMPOTENCY GUARD
+      // Check for any prior successful LLM call tied to this ai_job. If one exists
+      // AND the post_draft already has content, mark the ai_job succeeded without
+      // re-calling the LLM. Protects against the ID003 failure mode: ai_job UPDATE
+      // to 'succeeded' is interrupted post-LLM-completion, sweep-stale-running
+      // requeues, next iteration would otherwise call the LLM again and re-bill.
+      {
+        const { data: priorSuccessLog } = await supabase
+          .schema('m')
+          .from('ai_usage_log')
+          .select('id, provider, model, input_tokens, output_tokens, cost_usd, fallback_used, created_at')
+          .eq('ai_job_id', jobId)
+          .eq('error_call', false)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (priorSuccessLog) {
+          const { data: existingDraft } = await supabase
+            .schema('m')
+            .from('post_draft')
+            .select('draft_title, draft_body, approval_status')
+            .eq('post_draft_id', job.post_draft_id)
+            .maybeSingle();
+
+          if (existingDraft && typeof existingDraft.draft_body === 'string' && existingDraft.draft_body.length > 0
+              && typeof existingDraft.draft_title === 'string' && existingDraft.draft_title.length > 0) {
+            await supabase.schema('m').from('ai_job').update({
+              status: 'succeeded',
+              output_payload: {
+                idempotency_skip: true,
+                reason: 'prior_llm_call_succeeded_draft_already_populated',
+                prior_log_id: priorSuccessLog.id,
+                prior_provider: priorSuccessLog.provider,
+                prior_model: priorSuccessLog.model,
+                prior_call_at: priorSuccessLog.created_at,
+                recovered_at: nowIso(),
+              },
+              error: null,
+              locked_by: null,
+              locked_at: null,
+              updated_at: nowIso(),
+            }).eq('ai_job_id', jobId);
+
+            console.log(`[ai-worker] ${VERSION} — job ${jobId}: IDEMPOTENCY SKIP (prior call ${priorSuccessLog.created_at})`);
+            results.push({
+              ai_job_id: jobId,
+              post_draft_id: job.post_draft_id,
+              status: 'idempotency_skip',
+              reason: 'prior_llm_call_succeeded_draft_already_populated',
+              prior_log_id: priorSuccessLog.id,
+            });
+            continue;
+          }
+        }
+      }
+
       // Step 1: Format palette
       const { formats, perfSummary, preferredFormat } = await fetchFormatContext(supabase, job.client_id, platform);
 
       // Step 2: Extract seed content — must handle nested payload structure
-      // rewrite_v1:      input_payload.digest_item.{title, body_text}
-      // synth_bundle_v1: input_payload.items[].{title, body_text}
+      // rewrite_v1:      input_payload.digest_item.{title, body_text|body_excerpt}
+      // synth_bundle_v1: input_payload.items[].{title, body_text|body_excerpt}
       // Legacy/other:    input_payload.{title, body, content, excerpt, summary}
+      // D157: prefer body_excerpt over body_text (payload diet)
       const rawPayload = job.input_payload ?? {};
       let seedTitle = String(rawPayload.title ?? rawPayload.headline ?? '');
       let seedBody  = String(rawPayload.body ?? rawPayload.content ?? rawPayload.excerpt ?? rawPayload.summary ?? '');
@@ -432,18 +593,19 @@ app.post('*', async (c) => {
         if (jobType === 'rewrite_v1' && rawPayload.digest_item) {
           const di = rawPayload.digest_item;
           seedTitle = String(di.title ?? di.url ?? '');
-          seedBody  = String(di.body_text ?? di.content ?? di.excerpt ?? '');
+          seedBody  = String(di.body_excerpt ?? di.body_text ?? di.content ?? di.excerpt ?? '');
         } else if (jobType === 'synth_bundle_v1' && Array.isArray(rawPayload.items) && rawPayload.items.length > 0) {
           seedTitle = String(rawPayload.items[0].title ?? rawPayload.items[0].url ?? '');
           seedBody  = rawPayload.items
-            .map((it: any) => String(it.body_text ?? it.content ?? it.excerpt ?? ''))
+            .map((it: any) => String(it.body_excerpt ?? it.body_text ?? it.content ?? it.excerpt ?? ''))
             .filter(Boolean)
             .join('\n\n---\n\n');
         }
       }
 
-      // seed passed to assemblePrompts — full payload for generation context
-      const seed = rawPayload;
+      // D157: payload diet — lean seed passed to assemblePrompts for LLM generation.
+      // Replaces body_text with body_excerpt, strips raw_html/full_content, caps length.
+      const seed = trimSeedPayload(rawPayload, jobType);
 
       let clientName = '', vertical = 'professional services';
       try {
