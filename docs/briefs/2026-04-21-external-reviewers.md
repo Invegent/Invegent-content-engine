@@ -36,12 +36,24 @@ The session-of-21-Apr discussion considered four approaches:
 
 ## The two reviewers
 
-| Role | Model | Prompt | Fires on |
-|---|---|---|---|
-| **Strategist** | Gemini 2.5 Pro | "Is this the right thing to be building? Is the direction defensible?" | Every qualifying commit to main |
-| **Engineer Reviewer** | GPT-4.1 | "Does this implementation match the brief? Any over-engineering? Missing simplification?" | Every qualifying commit to main |
+| Role | Model | Context window | Prompt | Fires on |
+|---|---|---|---|---|
+| **Strategist** | Gemini 2.5 Pro | Full repo (500k–700k tokens) | "Is this the right thing to be building? Is the direction defensible?" | Every qualifying commit to main |
+| **Engineer Reviewer** | GPT-4o | Focused commit context (~100k tokens) | "Does this implementation match the brief? Any over-engineering? Missing simplification?" | Every qualifying commit to main |
 
 Both are advisory. Neither gates commits. Both write to the same queue table. Both outputs surface in the same weekly digest and the same on-demand digest.
+
+**Context split rationale (corrected after v1.0.0 first-run):** Strategist reads everything — the architectural / direction lens wants the whole repo. Engineer Reviewer reads the commit + its immediate context — code review is about the commit and its surroundings, not the whole codebase; a 500k-token engineering review is mostly wasted tokens on noise. The original brief specified GPT-4.1 with full repo context; first-run retroactive testing hit OpenAI's organisation-level TPM ceiling on the long-context variant (500k tokens > tier limit). Rather than a tier bump, the honest design is different windows per role. Strategist at 2M context, Engineer at focused 100k — two different lenses.
+
+**Engineer Reviewer focused-context priority order (from top, fill ~400k chars / ~100k tokens):**
+1. Commit diff + full post-change state of files the commit touched
+2. Briefs in `docs/briefs/` referenced in commit message or sharing a date prefix with changed files
+3. `docs/06_decisions.md` entries dated in the last 30 days (fallback: last 200 lines)
+4. `docs/00_sync_state.md` (current snapshot)
+5. Last 10 commit messages from same repo preceding this one
+6. Top-up remaining budget with `docs/15_pre_post_sales_criteria.md` + `docs/03_blueprint.md`
+
+If the budget is exhausted before item 6, the most relevant material is already included — by design.
 
 ---
 
