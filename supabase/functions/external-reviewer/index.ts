@@ -10,7 +10,13 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "external-reviewer-v1.2.0";
+const VERSION = "external-reviewer-v1.2.1";
+// v1.2.1 — add docs/00_sync_state.md to QUALIFYING_PATH_PATTERNS.
+//   Discovered 21 Apr when the first live webhook-triggered commit (4801c92d)
+//   touched only sync_state and was skipped by the path filter. sync_state is
+//   where session narrative + asserted state lives — it deserves the
+//   adversarial lens most of all. The brief specified sync_state as CONTEXT
+//   reviewers should read; it should also be a trigger surface.
 // v1.2.0 — Risk Reviewer added (xAI Grok 4.1 Fast Reasoning). Three voices:
 //   Strategist  (Gemini 2.5 Pro) — full repo, direction / architecture lens
 //   Engineer    (GPT-4o)         — focused ~100k-token context, implementation lens
@@ -30,6 +36,7 @@ const QUALIFYING_PATH_PATTERNS = [
   /^docs\/03_blueprint\.md$/,
   /^docs\/05_risks\.md$/,
   /^docs\/07_business_context\.md$/,
+  /^docs\/00_sync_state\.md$/,
   /^app\/.+\.tsx?$/,
 ];
 
