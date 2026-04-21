@@ -10,7 +10,19 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "system-auditor-v1.0.1";
+const VERSION = "system-auditor-v1.0.2";
+// v1.0.2 — exclude docs/archive/** from the docs blob.
+//   First live audit (v1.0.1, 21 Apr 05:21Z) returned severity:critical with
+//   a misleading top finding ("nightly reconciler missed 3 runs since
+//   2026-04-03; pipeline data 3 days stale") because the EF fed Grok every
+//   .md file under docs/, including docs/00_audit_report.md (a 6 Apr frozen
+//   snapshot). Grok had no signal that docs were of different ages and
+//   regurgitated the snapshot's CRITICAL framing as today's finding.
+//   Mitigation: those snapshots have been moved to docs/archive/ in commits
+//   0229699..453ca49 with stale-warning headers, and this EF now skips that
+//   path entirely. Authority hierarchy + severity calibration is in the
+//   system_auditor row's system_prompt (updated separately via SQL — not
+//   touched here because it's DB content, not EF code).
 // v1.0.1 — fix: .catch() on supabase.rpc() builder throws
 //   "supabase.rpc(...).catch is not a function" because PostgrestBuilder
 //   doesn't expose Promise.catch() directly. Wrap in try/catch instead.
@@ -23,6 +35,10 @@ const VERSION = "system-auditor-v1.0.1";
 
 const RELEVANT_EXTS = new Set([".md"]);
 const EXCLUDE_DIRS = ["node_modules/", ".next/", ".vercel/", "dist/", "build/", ".git/"];
+// Archive subfolders inside docs/ that contain superseded snapshots.
+// These exist on disk for historical reference but must not be sent to the
+// auditor — they confuse "what's current" with "what was once current".
+const EXCLUDE_DOCS_SUBPATHS = ["docs/archive/"];
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -38,8 +54,9 @@ function getServiceClient() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-// Only fetch docs/ from the repo — no source code, keeps context focused on claims
-async function fetchDocsBlob(owner: string, repo: string, sha: string, pat: string): Promise<{ blob: string; fileCount: number; bytes: number }> {
+// Only fetch docs/ from the repo — no source code, keeps context focused on claims.
+// Excludes docs/archive/** which contains superseded historical snapshots.
+async function fetchDocsBlob(owner: string, repo: string, sha: string, pat: string): Promise<{ blob: string; fileCount: number; bytes: number; skippedArchive: number }> {
   const tarballUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${sha}`;
   const ctl = new AbortController();
   const timeoutId = setTimeout(() => ctl.abort(), 120_000);
@@ -62,6 +79,7 @@ async function fetchDocsBlob(owner: string, repo: string, sha: string, pat: stri
     const parts: string[] = [];
     let fileCount = 0;
     let bytes = 0;
+    let skippedArchive = 0;
 
     for await (const entry of entries) {
       const rawPath = entry.path;
@@ -70,6 +88,13 @@ async function fetchDocsBlob(owner: string, repo: string, sha: string, pat: stri
 
       if (!relPath || !relPath.startsWith("docs/")) {
         await entry.readable?.cancel();
+        continue;
+      }
+      // Skip archived snapshots — these are kept on disk for history but
+      // would mislead the auditor if treated as current state.
+      if (EXCLUDE_DOCS_SUBPATHS.some((p) => relPath.startsWith(p))) {
+        await entry.readable?.cancel();
+        skippedArchive++;
         continue;
       }
       if (EXCLUDE_DIRS.some((d) => relPath.includes(d))) {
@@ -104,7 +129,7 @@ async function fetchDocsBlob(owner: string, repo: string, sha: string, pat: stri
       bytes += text.length;
     }
 
-    return { blob: parts.join("\n"), fileCount, bytes };
+    return { blob: parts.join("\n"), fileCount, bytes, skippedArchive };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -348,6 +373,7 @@ app.post("*", async (c) => {
       `AUDIT TIMESTAMP: ${new Date().toISOString()}`,
       `REPO HEAD: Invegent/Invegent-content-engine @ ${headSha}`,
       `DOCS INCLUDED: ${docs.fileCount} files, ${docs.bytes} chars`,
+      `DOCS EXCLUDED FROM ARCHIVE: ${docs.skippedArchive} files (in docs/archive/, intentionally skipped)`,
       "",
       "========== DOCS BLOB ==========",
       docs.blob,
@@ -403,6 +429,7 @@ app.post("*", async (c) => {
       head_sha: headSha,
       docs_files: docs.fileCount,
       docs_bytes: docs.bytes,
+      docs_skipped_archive: docs.skippedArchive,
       db_snapshot_bytes: dbSnapshot.length,
       state_package_bytes: statePackage.length,
       severity: result.severity,
