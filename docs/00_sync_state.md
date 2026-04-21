@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-21 22:15 Sydney (UTC 12:15) — end-of-day reconciliation
+> Last written: 2026-04-21 evening — Q1 closure increment (post end-of-day reconciliation)
 > Written by: PK + Claude session sync
 
 ---
@@ -30,7 +30,7 @@ WHERE reviewer_key IN ('strategist', 'risk', 'system_auditor');
 ```
 (Leave `engineer` paused until OpenAI Tier 2 unlocks organically at $50 cumulative spend.)
 
-### Sprint mode active — 21 open pre-sales items
+### Sprint mode active — 20 open pre-sales items (was 21 this morning; Q1 closed this evening, but Q1 is a sprint item, not an A-item)
 
 PK's rationale (verbatim 21 Apr evening):
 
@@ -43,6 +43,7 @@ Target sequence: close as many Section A items as possible. At ~18-19 of 28 clos
 - **Morning:** ID003 three-part fix (ai-worker v2.9.0, commit `d12a52c`); three-voice external reviewer layer built + webhooks verified; pilot agreement template v1 drafted; D158 + D159 + D160 documented.
 - **Afternoon:** system-auditor EF built (v1.0.0 → v1.0.1 → v1.0.2 over three commits); first audit run produced misleading severity:critical from stale snapshot content.
 - **Evening:** Root-caused to stale docs in auditor context. Fix: 4 snapshots moved to `docs/archive/`, docs index rebuilt with freshness taxonomy, EF v1.0.2 adds archive exclusion, system_auditor prompt v2 adds authority hierarchy + severity anchors + suppress list. Second audit produced severity:warn with 4 real findings. Reviewer layer judged useful but noisy-during-sprint — all reviewers paused. Role library brief extended with consumption-model addendum.
+- **Later evening:** Q1 sprint item closed — 13 failed ai_jobs marked dead after surfacing that the pre-approved SQL's CHECK-constraint widening was untested. Phase 1.7 DLQ foundation scoped via inspection to just `m.ai_job` (D163); `f.canonical_content_body` intentionally left unchanged (different terminal-state model); `m.post_publish_queue` deferred (needs a new CHECK constraint, not a widening — surfaced to backlog). Real finding: failures weren't ID003 timeout-loop but gpt-4o TPM saturation on concurrent rewrite jobs — separate brief parked for pick-up when pipeline resumes.
 
 ---
 
@@ -52,7 +53,7 @@ Target sequence: close as many Section A items as possible. At ~18-19 of 28 clos
 2. Check `c.external_reviewer` — confirm reviewers still paused (`is_active=false` on all four rows)
 3. Check file 15 Section G — pick next item from the sprint board
 4. Check `m.external_review_queue` for any findings that landed before the pause (most recent 5 rows)
-5. Read `docs/06_decisions.md` D156–D162 for today's decision trail
+5. Read `docs/06_decisions.md` D156–D163 for today's decision trail
 6. Read `docs/incidents/2026-04-19-cost-spike.md` — ID003 still the dominant operational context
 7. Query `k.vw_table_summary` before working on any table
 8. **Session-close SOP (D150):** verify every commit with `git ls-remote origin main | grep <sha>` before asserting it in sync_state
@@ -175,7 +176,7 @@ SQL update to `c.external_reviewer` row for `reviewer_key='system_auditor'`. Pro
 - 312,388 input tokens (18k less), 1,308 output tokens (20% tighter), cost $0.063
 - **Severity: warn** (correctly calibrated, down from spurious critical)
 - Four findings, all real and actionable:
-  - 13 failed ai_jobs from ID003 (with proposed SQL)
+  - 13 failed ai_jobs from ID003 (with proposed SQL) — **addressed in later-evening Q1 closure; actually TPM saturation not ID003, see D163 + brief**
   - CFW schedule save bug (sync_state Watch List item, matches known bug)
   - Discovery pipeline `config.url` vs `config.feed_url` mismatch (sync_state Watch List item)
   - A7 privacy policy stale for YouTube + HeyGen + video-analyser
@@ -203,13 +204,31 @@ PK reframed the layer's value prop: not "insurance against Claude blind spots" (
 - `external-reviewer` EF will return "no_active_reviewers" error for any webhook; no cost
 - `system-auditor` EF is manual-invoke only; dormant by default
 
-### 12:15 UTC — End-of-day reconciliation (this update)
+### 12:15 UTC — End-of-day reconciliation (morning of this day's record)
 
-- sync_state rewritten (this file)
+- sync_state rewritten
 - file 15 updated to v4 — A24 closed
 - decisions log appended with D161 + D162
 - dashboard roadmap refreshed
 - memory updated to reflect reviewer layer shipped + paused
+
+### Later evening (21 Apr) — Q1 closure + D163 scoping
+
+First Claude-Desktop sprint item picked and closed. Steps:
+
+1. Inspected `m.ai_job` — 13 failed rows confirmed, all from 18 Apr 07:20 UTC within a 40-minute window, `attempts=0` (pre-D157 retry-cap era).
+2. Peeked at sample errors — NOT the ID003 timeout-loop pattern the sync_state framed, but `openai_http_429` TPM saturation on concurrent `rewrite_v1` jobs (6 LinkedIn + 7 Instagram, all NDIS Yarns, all within one minute, gpt-4o 30k TPM ceiling hit).
+3. Attempted the pre-approved `UPDATE m.ai_job SET status='dead'` — blocked by CHECK constraint. Pre-approved SQL was untested; constraint didn't allow `'dead'`.
+4. 5-minute inspection of all four Phase 1.7 tables' CHECK constraints to decide scope. Findings:
+   - `m.post_draft.approval_status` — already includes `'dead'` (no work needed)
+   - `f.canonical_content_body.resolution_status` — has `give_up_paywalled/blocked/timeout/error` semantics; adding generic `'dead'` would duplicate vocabulary. Intentionally NOT changed.
+   - `m.post_publish_queue.status` — NO CHECK constraint at all (anomaly); already has `'dead'` in data. Needs a deliberate new constraint with full vocabulary, deferred.
+   - `m.ai_job.status` — missing `'dead'`; widen it.
+5. Migration `phase_1_7_ai_job_add_dead_status` applied: CHECK constraint widened to include `'dead'`.
+6. UPDATE ran: 13 rows → `status='dead'`, `dead_reason='openai_tpm_rate_limit_2026-04-18'` (corrected label from the erroneous pre-approved `id003_cleanup_2026-04-21`).
+7. Verified: 0 rows at `failed`, 13 at `dead` with correct reason.
+
+Decision logged as **D163**. New brief parked at `docs/briefs/2026-04-21-tpm-saturation-staggered-rewrite.md` for the concurrency design issue.
 
 ---
 
@@ -243,7 +262,7 @@ PK reframed the layer's value prop: not "insurance against Claude blind spots" (
 
 **Phase 1 — COMPLETE** (7 Apr 2026)
 **Phase 3 — Expand + Personal Brand** (active, external client expansion still gated on pre-sales criteria)
-**Gate status:** Pre-sales gate NOT CLEARED. **8 of 28 Section A items closed, 20 open.** (A24 closed today.)
+**Gate status:** Pre-sales gate NOT CLEARED. **8 of 28 Section A items closed, 20 open.** (A24 closed this morning.) Q1 is a sprint item, not an A-item — its closure does not change the A-count but does unblock A22's evidence base and ships the first chunk of Phase 1.7 foundation work (see D163).
 
 **Today's movement on the gate:**
 - A1 (pilot terms) — template drafted, pricing deferred. Awaits A7 privacy policy update.
@@ -276,9 +295,9 @@ Primary objective: close pre-sales items from file 15 Section A without reviewer
 
 | # | Item | Notes |
 |---|---|---|
-| Q1 | **13 failed ai_jobs SQL cleanup** | Pre-approved; `UPDATE m.ai_job SET status='dead', dead_reason='id003_cleanup_2026-04-21' WHERE status='failed' AND created_at < '2026-04-15'` |
+| Q1 | ✅ **13 failed ai_jobs SQL cleanup — DONE 21 Apr evening** | Migration `phase_1_7_ai_job_add_dead_status` widened `m.ai_job.status` CHECK to include `'dead'`. 13 rows updated to `dead_reason='openai_tpm_rate_limit_2026-04-18'`. Surfaced two errors in the pre-approved SQL: CHECK constraint didn't allow `'dead'`, and date cutoff `< 2026-04-15` was wrong (failures from 18 Apr). Real failure mode was gpt-4o TPM saturation on concurrent rewrite jobs, not ID003 timeout-loop. Scoping decision at D163. Concurrency brief at `docs/briefs/2026-04-21-tpm-saturation-staggered-rewrite.md`. |
 | Q2 | **Discovery pipeline one-liner** | `config.feed_url ?? config.url` in ingest-worker |
-| Q3 | **A24 → closed in file 15** | Done in this reconciliation |
+| Q3 | **A24 → closed in file 15** | Done in this morning's reconciliation |
 | Q4 | **A7 privacy policy update** | Three paragraphs: YouTube + HeyGen + video-analyser; re-host |
 
 ### Medium (1-3 hours)
@@ -286,7 +305,7 @@ Primary objective: close pre-sales items from file 15 Section A without reviewer
 | # | Item | Notes |
 |---|---|---|
 | M1 | **A11b CFW + Invegent content_type_prompts** | 9 rows × 2 clients = 18 prompts; content strategy session |
-| M2 | **CFW schedule save bug** | UI says "Saved ✓" but DB empty; server action error surfacing needed |
+| M2 | **CFW schedule save bug** | UI says "Saved ✓" but DB empty; server action error surfacing needed. **Dispatched to Claude Code 21 Apr evening.** |
 | M3 | **A14 RLS verification** | Grep invegent-portal for direct Supabase queries vs `.rpc()` |
 | M4 | **A18 — 7 source-less EFs investigation** | Read-only, time-consuming |
 
@@ -334,18 +353,19 @@ Act on any genuine findings before first pilot conversation.
 
 ## WATCH LIST
 
-- **Tomorrow** — Q1 (SQL cleanup), Q3 (file 15 closure of A24 — done in THIS commit), Q2 (discovery pipeline fix), Q4 (A7 privacy policy)
+- **Tomorrow** — Q2 (discovery pipeline fix), Q4 (A7 privacy policy)
 - **Thu 23 Apr** — A7 (if not done Tuesday); A1+A5+A8 pilot document drafting
 - **Fri 24 Apr** — A11b content prompt session for CFW + Invegent
 - **Mon 27 Apr** — Meta App Review escalation trigger; first weekly digest would have landed if reviewers weren't paused
 - **Sat 2 May** — original reviewer calibration cycle trigger; defer until reviewers resume
 
-### Backlog (discovered today, not yet addressed)
+### Backlog (open, not yet addressed)
+- **`m.post_publish_queue.status` has NO CHECK constraint** — currently accepts any string; `queued/pending/published/dead` all in use, with 1 row already `'dead'` without a constraint. Phase 1.7 continuation: design full vocabulary (current + likely-future: `queued, pending, published, dead, failed, cancelled`) and add CHECK. Not urgent (pipeline works) but a real pipeline-hygiene item. Tracked under D163.
+- **TPM saturation on concurrent platform rewrites** — brief parked at `docs/briefs/2026-04-21-tpm-saturation-staggered-rewrite.md`. A digest burst on a multi-platform client fires concurrent `rewrite_v1` jobs that saturate gpt-4o's 30k TPM ceiling within one minute. Will recur on first burst after pipeline resumes from drain. Five design options captured in brief. Gate to pick up: pipeline resumes AND fresh digest has fired through rewrite step.
 - **docs/archive 5th-file mystery** — `docs_skipped_archive: 5` but we only archived 4 files. Worth a 30-second investigation. Nothing breaking.
 - **Per-commit external-reviewer pollution** — before reviewer pause, the per-commit EF was iterating all rows in `c.external_reviewer` including system_auditor, producing ~$0.0007 hallucinated "system_auditor" rows on every qualifying commit. Now dormant due to reviewer pause; worth a `per_commit_enabled` column or filter when reviewers resume to prevent recurrence.
-- **CFW schedule save bug** — UI shows "Saved ✓" but DB empty. Server action swallows error silently.
+- **CFW schedule save bug** — UI shows "Saved ✓" but DB empty. Server action swallows error silently. **Dispatched to Claude Code (M2).**
 - **Discovery pipeline ingest bug** — 9 feeds provisioned but zero items ingested due to `config.url` vs `config.feed_url` mismatch.
-- 13 failed ai_jobs from ID003 — still in `failed`, Q1 above
 - Shrishti 2FA + passkey (Meta admin redundancy) — PK to chase
 
 ---
@@ -388,27 +408,33 @@ Afternoon/evening:
 - `cda4ab7d` — feat(system-auditor): v1.0.2 — exclude docs/archive/** from context
 - `60e51518` — docs(briefs): role library brief addendum — consumption model
 
-End-of-day reconciliation (this session):
-- THIS COMMIT — docs: sync_state end-of-day reconciliation
-- (follow-on) — docs: file 15 v4 — close A24
-- (follow-on) — docs(decisions): D161 + D162
+End-of-day reconciliation (morning-of-next-day record):
+- docs: sync_state end-of-day reconciliation
+- docs: file 15 v4 — close A24
+- docs(decisions): D161 + D162
+
+Later evening — Q1 closure + D163 scoping:
+- migration `phase_1_7_ai_job_add_dead_status` applied (Supabase direct)
+- UPDATE on 13 failed ai_jobs (Supabase direct)
+- THIS COMMIT: docs: Q1 closure + D163 + TPM brief + file 15 change log
 
 **invegent-dashboard (main):**
 
 - `202037c` — feat(roadmap): three-tab layout + by-sales-stage view (morning)
 - `1a7aabf` — feat(reviews): /reviews page + API route + sidebar link (morning)
 - (follow-on this session) — feat(roadmap): 21 Apr end-of-day refresh — A24 closed + reviewer pause note
+- (follow-on this session) — feat(roadmap): Q1 closure banner update + D163 reference
 
 ---
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-Today produced ~30 commits across two repos. Reviewer layer shipped, validated on 2 runs ($8 spend, no novel findings), paused for sprint. 21 pre-sales items ahead. Sprint board above is the source of truth for tomorrow's first pick.
+Today produced ~30 commits across two repos plus the later-evening Q1 increment. Reviewer layer shipped, validated on 2 runs ($8 spend, no novel findings), paused for sprint. 20 A-items still ahead (Q1 was a sprint item, not an A-item, so A-count unchanged). Sprint board above is the source of truth for tomorrow's first pick.
+
+D163 is the one architectural nugget from the later-evening session: Phase 1.7 DLQ foundation is partially done (m.ai_job only); `m.post_publish_queue` needs a considered CHECK constraint in a later session; `f.canonical_content_body` should NOT be changed. Keep this in mind when any future work touches pipeline terminal states.
 
 The honest data point from today: the external layer hasn't earned its keep yet against Claude-only review. The value case is still plausible but shifts from "insurance" to "continuous overnight feedback" — see role library brief addendum for the refined framing.
 
 When reviewers resume, the first thing worth doing is re-invoke system audit on the near-complete pre-sales state. Fresh eyes on a stable codebase produce higher signal than fresh eyes on a moving target.
-
-Do not open this session again expecting it to resume tonight's context. Start the next session with a clean read of this file, file 15, and the decisions log. Pick one sprint item. Close it. Move to the next.
 
 PK is also doing a full-time job. Respect that. The reviewer pause is also partly a noise reduction for PK's attention — less morning reading during the sprint.

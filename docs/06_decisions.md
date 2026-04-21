@@ -19,659 +19,71 @@ is recorded here with context and reasoning.
 
 ## D152–D155 — See 18 Apr 2026 evening commit (seeder client_id fix, token-health live direction, native LinkedIn flow, ON CONFLICT root-cause fix)
 
----
-
-## D156 — External Epistemic Diversity Layer (Four-Stage, Progressively Revenue-Gated)
-**Date:** 18 April 2026 late evening | **Status:** ✅ STRATEGIC DIRECTION SET — Stage 1 shipped 21 Apr 2026 (pulled forward from 27 Apr)
-
-### The problem this decides
-
-D155 investigation revealed that ICE's entire monitoring/advisor/audit layer shares one epistemic foundation: Claude-assisted reasoning over Claude-written artefacts interpreting Claude-generated outputs. When Claude is wrong in a systematic way, the whole system is wrong in a correlated way. PK is the only external node.
-
-Three silent failures on 18 April (D152, D154, D155, plus 5-day token death across 3 clients) were all caught by accident during investigation of a different visible symptom. None were caught by ICE's own monitoring. Not because the monitors were badly built — because they shared the blind spots of the systems they were watching.
-
-PK reframed the problem (verbatim): *"In a company environment where there are team members, the competitiveness between employees is what catches errors. Everybody is on their own. The hierarchy takes decisions respecting each individual's contributions. That basic structure always works within companies. I want not just an internalised solution but something external that we can build — AI elements or different agents which are not just Claude-specific."*
-
-### The decision
-
-Build a four-stage external verification layer, progressively gated by revenue. Each stage uses agents with incentives **not aligned with "ICE looks good."**
-
-### Stage 1 — Multi-model adversarial AI review
-**Timing:** build during pre-sales. Originally this week; resumed week of 27 Apr per ID003.
-**Cost:** ~$75/year total at current volume.
-
-Four roles, assigned by model strength (not by role-per-vendor):
-
-- **Sceptic** (GPT-4 / GPT-4.1) — weekly reads sync_state + decisions log, finds unsupported claims
-- **Architect Reviewer** (Gemini 2.5 Pro) — per-commit reads diffs touching EFs/triggers/migrations, finds structural bugs (would have caught D155 — and likely the ID003 timeout pattern)
-- **Compliance Auditor** (GPT-4) — weekly reads 5 published posts/client + privacy policy + service agreement, finds drift
-- **Devil's Advocate** (Gemini 2.5 Pro) — within 2h of any D149 advisor output, argues against
-
-Output: `m.external_review_queue` table. Dashboard surface. Each item has `action_taken` field.
-
-**Discipline layer is part of this stage, not optional.** Unread items block dashboard home until acknowledged. Weekly review is a scheduled Monday-morning block. Without discipline, output is theatre.
-
-**Build sequence:** Architect Reviewer first, others added as pattern validates.
-
-### Stage 2 — Bank reconciliation against external platforms
-**Timing:** parallel to Stage 1.
-**Cost:** marginal (platform API calls).
-
-Eight systems, four priority:
-
-1. Meta Graph API — posts per page vs `m.post_publish`
-2. GitHub API — commit SHA + push timestamps vs sync_state
-3. Vercel deploy API — last deploy SHA per project vs main
-4. Supabase management API — EF list + timestamps vs repo
-5. LinkedIn via Zapier logs (priority 2)
-6. Meta Insights API (priority 2 — serves dual purpose with Phase 2.1)
-7. YouTube Data API (priority 2)
-8. Xero API (priority 3 — once billing set up)
-
-**Post-ID003 addition:** a ninth reconciliation system is now implied — Anthropic console usage vs `m.ai_usage_log`. Handled in D157 Stop 2 infrastructure rather than here. Noted for completeness.
-
-Output: `m.external_reconciliation_result` table. Dashboard shows green/amber/red per system.
-
-**Key discipline:** external system is authoritative when it disagrees with ICE's DB. Investigate the discrepancy, don't explain it away.
-
-**Build sequence:** Meta reconciliation first, others added as pattern validates.
-
-### Stage 3 — External human review (tiered)
-**Timing:** Tier A after Stages 1+2 stable (~6 weeks). Tier B after revenue. Tier C = Stage 4.
-
-- **Tier A — Public sanitised brief** ($50/finding, no NDA) — r/supabase / Claude Devs Discord / Hacker News. Architecture-only, no code, no tokens, no prompts. Also marketing collateral.
-- **Tier B — Signed brief on Upwork/Fiverr** ($200-500/engagement, NDA required) — Australian freelancer preferred. Test with small engagement first. Rotate Supabase service-role key afterwards.
-- **Tier C — Agency retainer** — see Stage 4.
-
-### Stage 4 — Australian boutique agency retainer (revenue-gated)
-**Timing:** 5+ clients OR $5k MRR. NOT before.
-**Cost:** $10-15k AUD/year.
-
-Profile: Australian (NSW preferred), Supabase + Next.js specialists, NDIS-adjacent experience, small team, fixed retainer not T&M. Buy: monthly 90-min architecture review + quarterly deep audit + emergency response SLA + security review checklist access.
-
-**Solicitor engagement trigger refined:** when EITHER first pilot converts to full-price OR second pilot signs cleanly after 90 days. Revenue is the trigger, not confidence (per tonight's refinement to D147).
-
-### Dual purpose framing (strategic positioning, not just defence)
-
-Every external layer component has two purposes:
-1. **Catch failures** that internal monitoring can't see
-2. **Sales differentiator** — AI-audits-AI positioning that no generic content agency can replicate
-
-Customer-facing pitch eventually:
-> "ICE is built on an AI-audited AI stack. We run GPT-4 against Claude's outputs weekly. We reconcile against Meta's own API daily. We publish our architecture for external review. Your content is safer because of it."
-
-This is the most defensible positioning a solo founder can build. The same infrastructure that gives sales differentiation is the infrastructure that would have caught D155 on day one.
-
-### Cost profile
-
-| Stage | Cost | When |
-|---|---|---|
-| 1 | ~$75/year | Pre-sales — shipped 21 Apr |
-| 2 | Marginal | Pre-sales — build next |
-| 3A | $50/finding (bounded) | After 6 weeks |
-| 3B | $200-500/engagement | After first revenue |
-| 4 | $10-15k/year | 5+ clients or $5k MRR |
-| Solicitor | $2-5k | First pilot conversion OR second pilot signed |
-
-### What this does NOT replace
-
-- PK's strategic judgement (decisions stay with PK)
-- The D149 Claude-based advisor layer (runs in parallel — Devil's Advocate is the Stage 1 counterpart to D149)
-- Professional indemnity insurance (a separate Stage 4-adjacent item noted: underwriting process itself forces clarification)
-
-### What this explicitly defers
-
-- Do NOT build more internal Claude-only monitoring as a substitute
-- Do NOT skip the Stage 1 discipline layer — output without reading is theatre
-- Do NOT start Stage 3B until revenue exists
-- Do NOT start Stage 4 until $5k MRR
-- Do NOT engage solicitor until pilot revenue
-
-### Follow-on items promoted to pre-sales
-
-From this decision, the following became Section A items in docs/15 v3:
-
-- A24 — Stage 1 external multi-model review layer (MVP: Architect Reviewer + Sceptic)
-- A25 — Stage 2 bank reconciliation layer (MVP: Meta + GitHub + Vercel + Supabase)
-- A26 — Review discipline mechanism (unread-blocks-dashboard + weekly block)
-
-These are not optional for pre-sales closure. A managed service with 1 client where the pipeline silently fails for 7 days because there's no alert is commercially fatal. These must exist before a paying pilot signs.
-
-### Reasoning on why this is right today
-
-- Capital constraint: PK is pre-revenue. Expensive options (agency, solicitor) correctly parked until revenue justifies them.
-- Epistemic constraint: Claude-only solutions can't protect against Claude's blind spots. Different vendors with different training data genuinely surface different things.
-- Positioning opportunity: every defensive layer doubles as sales differentiation. The AI-audits-AI framing is defensible and not easily imitated.
-- Discipline constraint: output without reading is worse than no output (creates false confidence). Dashboard-surface + acknowledge-to-dismiss is how to close this.
-- Sequencing: Stage 1+2 pay for themselves in D155-class prevention. Stage 3+4 layer in as revenue permits.
-
-### Gate to proceed
-
-None. Stage 1+2 have no external dependencies. Deferred from 20 Apr to 27 Apr due to ID003 intervention — ID003 remediation must complete first because it is actively bleeding money.
-
-**UPDATE 21 Apr:** Stage 1 pulled forward and shipped today (commits `495216f`, `a437a6a`). See D160 for implementation detail. **Further UPDATE 21 Apr evening:** Stage 1 now dormant pending pre-sales sprint completion. See D162.
-
-### Related decisions
-
-- D147 (pilot + waiver): solicitor deferred, but Stage 1+2 accelerate the readiness that makes the waiver credible
-- D149 (four advisor layer): Stage 1 Devil's Advocate is the external counter to D149's Claude-based advisors
-- D150 (session-close verify protocol): D156 is the scalable version of D150 — verify against external systems, not just internal Git state
-- D151 (universal table-purpose rule): Stage 1 Sceptic will enforce this by flagging any NULL-purpose table that appears
-- D153 (live /debug_token cron): specific instance of Stage 2 pattern applied to tokens
-- D155 (ON CONFLICT fix): the bug D156 exists to catch before it happens next time
-- **D157 (two-stop budget enforcement): ID003's equivalent outcome for cost failures — Stop 2 is a specific instance of Stage-2-style reconciliation applied to Anthropic console vs ICE's usage log**
-- **D158 — Approach C (full repo + caching) chosen over RAG for the reviewer layer's context strategy**
-- **D159 — ai-worker idempotency implementation detail via log-existence not time-window**
-- **D160 — Three-voice implementation detail + role-library deferred**
-- **D161 — System Auditor role + docs archive pattern + freshness taxonomy (extension of the Stage 1 infrastructure)**
-- **D162 — Sprint-mode pause for the reviewer layer; re-enable at 80-90% pre-sales gate closure**
+## D156–D162 — See 21 Apr 2026 commits (external reviewer layer shipped + paused, cost guardrails architecture, reviewer implementation details)
 
 ---
 
-## D157 — Two-Stop Budget Enforcement (ICE Internal + Anthropic Console Hard Cap)
-**Date:** 20 April 2026 | **Status:** ✅ ARCHITECTURAL DIRECTION SET — ai-worker fix shipped 21 Apr (commit `d12a52c`); Stop 2 infrastructure deferred pending external reviewer
+## D163 — Phase 1.7 Dead Letter Queue Foundation: `m.ai_job` Only, Scoped by Inspection
+**Date:** 21 April 2026 evening | **Status:** ✅ IMPLEMENTED (migration `phase_1_7_ai_job_add_dead_status` + Q1 data cleanup applied same session)
 
 ### The problem this decides
 
-ID003 (cost retry loop, 15–19 April 2026, ~$155 AUD lost) surfaced that ICE has:
-- No internal cost monitoring, anomaly detection, or throttling
-- No Anthropic-side spend cap prior to the incident
-- No surface in the dashboard showing cost per published post, LLM calls per ai_job, or retry patterns
-- Inbox billing receipts as the only alerting mechanism
+Sprint item Q1 required updating 13 failed ai_jobs from the ID003 window to a terminal "dead" state so they stopped being flagged by `system_auditor`. The pre-approved SQL in sync_state was `UPDATE m.ai_job SET status='dead', dead_reason='id003_cleanup_2026-04-21' WHERE status='failed' AND created_at < '2026-04-15'`. On execution, two errors surfaced:
 
-The incident could have been catastrophic at 10× scale. The loop consumed ~$40/day at 2-client volume. At 10 clients, the same bug would have consumed ~$200/day, potentially $6,000 before detection. A single-founder operation with personal-budget-tier API spend cannot tolerate that failure mode structurally.
+1. The `m.ai_job.status` CHECK constraint rejected `'dead'`. The allowed set was `{queued, running, succeeded, failed, cancelled}`. The pre-approved UPDATE was untested.
+2. The date cutoff `< 2026-04-15` missed all the target rows — the failures were from 18 Apr within the ID003 window (15–19 Apr), not before it.
+
+This surfaced a broader question: `docs/04_phases.md` Phase 1.7 (Dead Letter Queue) prescribes adding `status='dead'` across four pipeline tables — `m.ai_job`, `m.post_draft`, `m.post_publish_queue`, `f.canonical_content_body`. Should Q1 be handled as an isolated one-off CHECK widen, or should the full Phase 1.7 foundation sweep happen today?
 
 ### The decision
 
-Implement budget enforcement at **two independent stops**:
+**Scope today: `m.ai_job` only.** Widen its CHECK constraint to include `'dead'`. Run the cleanup UPDATE on the 13 rows with a corrected `dead_reason`. Defer the other three tables to a dedicated Phase 1.7 sprint session, with explicit handling for each.
 
-**Stop 1 — Anthropic console monthly spend cap.**
-- Dumb, blunt, authoritative. Enforced at Anthropic's billing side.
-- Doesn't know anything about ICE.
-- Only job: **absolute worst-case financial ceiling**.
-- Trade-off: when hit, ALL Claude API calls stop across all callers — no discrimination between a runaway loop and a legitimate high-volume day.
+### What inspection found that changed the framing
 
-**Stop 2 — ICE internal budget controls.**
-- Smart, detailed, early-warning.
-- Enforced inside the pipeline by a new `ai-cost-tracker` Edge Function + `m.cost_expectation` table.
-- Knows expected cost per job type, per client, per caller.
-- Job: **catch anomalies before they become expensive; throttle gracefully rather than hard-stop; preserve essential publishing while pausing advisory functions**.
-- Trade-off: only as good as the budget model; only works if monitoring fires before damage is done.
+Before committing to a four-table sweep, a 5-minute inspection of all four current CHECK constraints revealed that the `04_phases.md` Phase 1.7 spec doesn't match current reality uniformly:
 
-**The key constraint:** Stop 2's thresholds must be well below Stop 1, with enough gap between them that Stop 2 provides meaningful early warning before Stop 1 becomes necessary.
-
-### Why two stops, not one
-
-One alone is insufficient:
-- Stop 1 only = no graceful degradation; no per-caller visibility; only triggers after money is already spent
-- Stop 2 only = if it has a bug, nothing protects PK financially; same vulnerability as the system it monitors
-
-Two stops = defence in depth. Stop 2 catches 99% of issues gracefully. Stop 1 catches the edge cases where Stop 2 itself has failed.
-
-### Stop 2 architecture
-
-**`m.cost_expectation` table** — expected spend per (caller, day), calibrated weekly from `m.ai_usage_log`.
-
-**`ai-cost-tracker` Edge Function** — daily cron:
-- Reads prior day's actual spend from `m.ai_usage_log`
-- Compares to `m.cost_expectation`
-- Writes `m.cost_alert` row if actual > 1.5× expected
-- Writes daily summary to `m.cost_daily_summary`
-
-**Dashboard tile** — Monitor tab:
-- 7-day rolling spend per caller
-- Expected line vs actual line
-- Red flag if any day > 2× expected or month-to-date > 80% of monthly budget
-
-**Throttle rules (pg_cron function):**
-- If daily spend > `daily_throttle_threshold` (e.g. $10 USD):
-  - Disable non-essential LLM-calling crons: `pipeline-ai-summary`, `ai-diagnostic`, `weekly-manager-report`, `client-weekly-summary`
-  - Keep essential: `ai-worker`, `auto-approver`
-  - Write to `m.cost_throttle_log`
-- If daily spend > `daily_halt_threshold` (e.g. $30 USD):
-  - Disable ALL LLM-calling crons
-  - Alert via Telegram + email
-- Re-enable automatically at next UTC midnight unless manually blocked
-
-### Provisional numbers (calibrate after fix ships + 1 week data)
-
-These numbers are Sunday 19 Apr estimates based on the limited clean data available. They must be refined after the ai-worker fix is shipped and 7 days of post-fix data accumulates.
-
-| Level | Threshold (USD) | Threshold (AUD approx) | Action |
+| Table | Column | Current CHECK vocabulary | Verdict |
 |---|---|---|---|
-| Green baseline | ≤ $0.50/day | ≤ $0.75/day | Normal |
-| Soft alert (Stop 2a) | > $1.50/day | > $2.25/day | Email alert; no throttle |
-| Throttle (Stop 2b) | > $5/day | > $7.50/day | Disable advisory crons; Telegram alert |
-| Halt (Stop 2c) | > $15/day | > $22/day | Disable all LLM crons; urgent alert |
-| Hard cap (Stop 1, Anthropic console) | $30/month | $45/month | API returns 429 for all ICE calls |
+| `m.ai_job` | `status` | `queued / running / succeeded / failed / cancelled` | Widen to add `'dead'` ✅ applied |
+| `m.post_draft` | `approval_status` | Already includes `'dead'` in the ANY array | **Done already — no change needed** |
+| `m.post_publish_queue` | `status` | **NO CHECK constraint at all** — any string accepted. Current values in use: `published` (91 rows) / `queued` (12) / `pending` (2) / `dead` (1). One row already using `'dead'` without a constraint protecting it. | Add a NEW CHECK constraint — different work from widening an existing one; needs deliberate vocabulary design |
+| `f.canonical_content_body` | `resolution_status` | `active / success / give_up_paywalled / give_up_blocked / give_up_timeout / give_up_error` | **Leave alone** — `give_up_*` IS the dead-letter semantics for this table. Adding generic `'dead'` duplicates vocabulary |
 
-**Target monthly baseline:** $10–15 USD = $15–22 AUD.
+The Phase 1.7 spec was written before these actual semantics were visible. Per D161's authority hierarchy rule — trust the live DB over older doc specs when they conflict — the decision follows what the DB shows, not what the spec says.
 
-**PK's pain threshold:** target + 25% = maximum the system should be allowed to reach if everything is working correctly. Anything above this is evidence of malfunction.
+### Why not do the full sweep today
 
-**Provisional Anthropic cap (after fix ships):** $30 USD/month, to be reviewed after 2 weeks of post-fix operation. Currently held at $200 USD for remainder of April billing cycle as emergency ceiling.
+Three reasons:
 
-### Why this approach, not alternatives
+1. **`m.post_draft` is already done.** No work needed. The Phase 1.7 spec overstated the scope.
+2. **`f.canonical_content_body` should NOT be changed.** Adding `'dead'` alongside the existing `give_up_*` states creates two ways to say the same thing, actively muddying pipeline semantics. Future writers would have to decide "do I mark this give_up_paywalled or dead?" — that's a worse place to land than just having one vocabulary.
+3. **`m.post_publish_queue` needs a CHECK constraint designed from scratch** (currently absent), with a considered vocabulary covering current use (`queued, pending, published, dead`) plus likely-future values (`failed, cancelled`). That's a deliberate design exercise, not a quick-win bolt-on — and sprint discipline favours closing the Q1 scope and moving on rather than expanding.
 
-Alternatives considered:
-- **"Just set the Anthropic cap and call it done"** — insufficient. When the cap is hit, ALL ICE AI capability dies with zero graceful degradation. Clients publishing stops. Loop-detection stops. Alerting stops.
-- **"Per-API-key caps"** — Anthropic doesn't support per-key monthly caps in the console. Only org-level.
-- **"Rate limit by tokens per minute"** — Anthropic does support TPM limits but they're per-model and awkward to tune. Not the right tool for "monthly budget" — that's what spend caps are for.
-- **"Switch to a cheaper model like Haiku"** — doesn't solve the structural problem. A retry loop on Haiku at 152× multiplier still hurts, just more slowly.
-- **"Let the incident happen and learn from it"** — that WAS the status quo. Cost $155 and confidence.
+### What stays open after this decision
 
-### What this does NOT do
+A new backlog item (tracked in sync_state Backlog): add a CHECK constraint to `m.post_publish_queue.status` covering the full intended vocabulary. Not an A-item; prerequisite for a proper Phase 1.7 full DLQ sprint that also adds the pg_cron sweep + dashboard Failures panel + requeue action from `04_phases.md` 1.7 deliverable list.
 
-- **Does not prevent the underlying retry loop bug.** Cost guardrails catch the *symptom* (cost anomaly). The fix for the cause (payload diet + idempotency guard + retry cap) is separate, in the immediate-fix brief.
-- **Does not replace the need for the external reconciliation layer (D156).** D156 catches architectural failures that don't show up in cost patterns. D157 catches cost anomalies even when architecture looks fine.
-- **Does not eliminate surprise.** A cleverly-designed future bug that stays below all thresholds could still cause a 14-day slow leak. The inbox anomaly monitor (separate brief) catches that vector.
+### Real operational finding preserved (separate from this decision)
 
-### Order of operations (critical)
+The 13 failed ai_jobs weren't ID003 timeout-loop failures as the sync_state framing implied. They were **gpt-4o TPM saturation events on 18 Apr 07:20 UTC** — a single digest burst on NDIS Yarns fired 13 concurrent `rewrite_v1` jobs (6 LinkedIn + 7 Instagram) against gpt-4o, saturating the 30k TPM ceiling within one minute. All returned `openai_http_429`. `attempts=0` on all 13 because the D157 retry-cap `attempts` column was added today, after these failures occurred.
 
-This matters for preventing re-ignition of the current incident:
+`dead_reason` labelled accurately as `'openai_tpm_rate_limit_2026-04-18'`, not the originally-proposed `'id003_cleanup_2026-04-21'` which would have misrepresented the failure mode.
 
-1. **Ship the ai-worker fix first** (payload diet + idempotency + retry cap). Do NOT rely on guardrails to protect a known-broken worker. ✅ Done 21 Apr.
-2. **Verify 24 hours of clean operation** post-fix. ⏳ In progress.
-3. **Build Stop 2 infrastructure** (`m.cost_expectation`, `ai-cost-tracker`, dashboard tile). 🔲 Deferred pending external reviewer layer bedding in.
-4. **Calibrate numbers against 1 week of post-fix data.**
-5. **Raise Anthropic console cap** from current $200/month (emergency ceiling) to calibrated Stop 1 figure. Do NOT raise before step 4 — raising the cap before the fix is shipped is an invitation to re-leak.
-
-### Related decisions and pre-sales items
-
-- **D156** — external epistemic diversity layer. Stage 2 bank reconciliation could one day reconcile Anthropic console usage against ICE's `m.ai_usage_log`, as a ninth reconciliation system. Deferred.
-- **D159** — this decision's `ai-worker` implementation uses log-existence idempotency not time-window. Deviation from original spec, rationale captured separately.
-- **A27** — LLM-caller Edge Function audit (new pre-sales item). All ~8 callers beyond ai-worker need the same idempotency + retry-cap pattern.
-- **A28** — Cost-guardrails infrastructure live (new pre-sales item). Directly implements D157 Stop 2.
-- **A29** — Inbox anomaly monitor live (new pre-sales item). Complementary to D157 but independent; catches vendor-billing drift outside ICE's own tables.
-
-### Gate to proceed
-
-1. ai-worker three-part fix shipped and verified ✅ Done 21 Apr (commit `d12a52c` + migration `d157_id003_ai_job_retry_cap`)
-2. 7 days of clean post-fix data available — in progress
-3. PK confirms provisional numbers feel right for personal budget constraints
-
-### Why this is right today
-
-- **Incident is fresh** — the evidence base for why this matters is irrefutable and undocumented at the system level before now.
-- **Capital constraint real** — PK is pre-revenue. $155/month loss cannot repeat.
-- **Pre-sales gate relevance** — a service that charges clients cannot have silent runaway costs. A27/A28/A29 make this a pre-sales criterion.
-- **Infrastructure reusable** — `m.ai_usage_log` already exists and has rich per-call data. Stop 2 builds cheaply on top of existing instrumentation.
-
----
-
-## D158 — External Reviewer Architecture: Approach C (Full Repo + Prompt Caching) over RAG
-**Date:** 21 April 2026 morning | **Status:** ✅ ARCHITECTURAL DIRECTION SET — implemented in commits `495216f` + `a437a6a`
-
-### The problem this decides
-
-D156 Stage 1 committed to building an external reviewer layer. It left open HOW the reviewers access the repo context they need to review. Two candidate approaches:
-
-- **Approach C (full repo + caching):** each review call sends the entire relevant repo as context, with prompt caching to keep costs bounded across repeated calls touching the same files
-- **RAG approach:** embed the repo into a vector store, retrieve relevant chunks per review, send only those chunks
-
-RAG is the conventional "efficient" answer. Approach C is the conventional "brute force" answer. The question was which fits ICE's reality.
-
-### The decision
-
-**Approach C — full repo context with prompt caching.** Not RAG.
-
-### Why Approach C, not RAG
-
-**Repo size fits modern context windows.** The Invegent-content-engine repo is currently 400-700k tokens. Gemini 2.5 Pro has a 2M context window. Grok 4.1 Fast has a 2M context window. Both can swallow the full repo and still have headroom for the commit diff plus rules. RAG is a solution to "my context doesn't fit" — we don't have that problem.
-
-**RAG adds silent failure modes.** Retrieval misses, chunking boundaries, embedding drift, reranker quirks. Each is a failure surface where the reviewer sees incomplete context and doesn't know it. A reviewer operating on incomplete context with no signal that it's incomplete is worse than one that complains about token limits. ICE has already demonstrated it struggles with silent failures (ID003, D155, CFW schedule, discovery pipeline ingest on 21 Apr). Adding RAG to the reviewer layer adds another silent-failure surface to the exact system built to catch silent failures.
-
-**Cost is acceptable.** At ~$1/commit for Strategist (Gemini) and ~$0.01/commit for Risk (Grok with prompt caching), the three-voice layer runs at roughly $30-50/month total. That is not a number worth optimising against when the alternative introduces silent-failure risk.
-
-**Bridge is documented, not closed.** If the repo grows past 1M tokens in the future (likely around 2-3 years of continued development at current pace), the bridge forward is either (a) shard by scope — reviewers see only their relevant scope — or (b) introduce RAG at that point. Today: Approach C. Tomorrow: revisit.
-
-### PK verbatim
-
-When presented with the two options, PK's position was: *"I don't see any value we are developing a system within a system within a system."*
-
-Translation: the reviewer layer exists to catch failures in the main system. Introducing its own substantial internal complexity (vector store, embedding pipeline, retrieval tuning) contradicts its purpose. The reviewer must be simpler than what it reviews, not a second system of equal complexity.
+Separate brief at `docs/briefs/2026-04-21-tpm-saturation-staggered-rewrite.md` captures the concurrency design issue for pick-up when the pipeline resumes from drain — this is a latent bug that will recur on first burst.
 
 ### What this does NOT decide
 
-- Does not rule out RAG permanently — if repo exceeds context window, revisit
-- Does not apply to other AI uses inside ICE (content generation, etc.) — those are separate decisions
-- Does not say RAG is bad — says RAG is wrong for THIS use case at THIS scale
+- Does not resolve the TPM saturation pattern. That's design work deferred to the brief; this decision is just the DLQ scoping.
+- Does not commit to a timeline for `m.post_publish_queue` CHECK. Backlog item, no trigger yet.
+- Does not retroactively "fix" the pre-approved SQL process — that's a separate improvement opportunity (probably: test pre-approved SQL before approving it, or flag as untested in sync_state when it's structural DDL).
 
 ### Related decisions
 
-- D156 — parent decision establishing the reviewer layer
-- D157 — the cost-guardrails layer Approach C depends on (without caching, Approach C is expensive; with caching, it's negligible)
-- D160 — the three-voice implementation that this context strategy underpins
-
----
-
-## D159 — ai-worker ID003 Idempotency via Log-Existence, Not Time-Window
-**Date:** 21 April 2026 morning | **Status:** ✅ IMPLEMENTED in ai-worker v2.9.0 (commit `d12a52c`)
-
-### The problem this decides
-
-The ID003 incident post-mortem (`docs/incidents/2026-04-19-cost-spike.md`) proposed an idempotency guard for ai-worker to prevent retry-loop cost spirals. The specific mechanism in the original spec: *"skip LLM call if already-logged in last 5 minutes."*
-
-When implementing this in v2.9.0, the five-minute window was reviewed and rejected in favour of log-existence checking.
-
-### The decision
-
-The idempotency guard in ai-worker v2.9.0 checks for **any prior non-error `m.ai_usage_log` entry tied to this `ai_job_id` AND a populated `post_draft.draft_body`**. Not bounded by any time window.
-
-If a prior successful call exists, the new invocation:
-- Does NOT call the LLM
-- Marks the `ai_job` as `succeeded`
-- Logs the fact of skipping (for observability)
-
-### Why log-existence, not time-window
-
-**The time window from the spec was shorter than the sweep interval that caused the original bug.** `sweep-stale-running` runs every 10 minutes and requeues "stuck" jobs. A 5-minute idempotency window would have missed exactly the failure case it was supposed to prevent. A job completes successfully at T+0, sweep-stale-running requeues at T+20 thinking it was stuck (because the status was written non-atomically with the LLM call), idempotency guard checks "any call in last 5 minutes" and finds none, calls LLM again. Cost doubles. This is ID003 in miniature.
-
-**Log-existence has no window. It's strictly stronger.** If a log row for this ai_job exists and the draft body is populated, the work is done. Period. No matter how long ago.
-
-**Draft body check ensures partial completions don't block re-attempts.** If the LLM call succeeded but the draft-write transaction failed, the `draft_body` would be null, and the idempotency guard would allow the retry. This is correct — we want to retry partial failures, but never retry full successes.
-
-### What this does NOT decide
-
-- Does not make retries impossible. `m.ai_job.attempts` column (added in migration `d157_id003_ai_job_retry_cap`) still caps retries at 3. Idempotency protects completed work; retry cap protects legitimate failures.
-- Does not apply retroactively to pre-v2.9.0 behaviour. ID003 is sealed history; v2.9.0 is forward-looking protection.
-- Does not eliminate ALL cost leakage. A net-new job with a genuinely broken external API could still retry up to 3 times. The retry cap limits the blast radius.
-
-### Related decisions
-
-- D157 — the cost-guardrails architecture this implements in detail
-- D156 — the external reviewer layer that will catch similar design mistakes earlier in future
-
----
-
-## D160 — External Reviewer: Three-Voice Design with Role Library Deferred
-**Date:** 21 April 2026 evening | **Status:** ✅ IMPLEMENTED (commits `495216f`, `a437a6a`); role-library reframe captured for future execution
-
-### The problem this decides
-
-D156 established that external review was needed. Implementation produced three successive architectural questions today:
-
-1. How many voices? (one, two, or three reviewers)
-2. What roles do they play? (scope, engineering, risk, other)
-3. How coupled are roles to models? (fixed binding, or rotatable, or fully independent)
-
-Each question had a cost-vs-value trade-off. PK and Claude worked through them iteratively across the session. This decision captures the final architecture and the deliberate parking of the more ambitious role-library design.
-
-### The decision
-
-**What ships today — three voices, fixed roles for now, rotation by SQL if needed.**
-
-| Role | Lens | Model | Status |
-|---|---|---|---|
-| Strategist | "Is this the right thing to build?" | Gemini 2.5 Pro | ✅ Active |
-| Engineer | "Is this built well?" | GPT-4o | ⏸ Paused (OpenAI Tier 1 TPM block) |
-| Risk | "How does this fail?" | Grok 4.1 Fast Reasoning | ✅ Active in DB (xAI credits pending) |
-
-**Rules belong to the role, not the model.** If a model is rotated into a different role, it inherits the new role's rules automatically.
-
-**Rotation is a DB update, not a code change.** `UPDATE c.external_reviewer SET model = 'X' WHERE role_code = 'Y'` is all that's needed. No redeploy.
-
-**What is deferred — the role library reframe.**
-
-PK raised a broader design during implementation: roles should not be fixed. They should be a *library* — any of Claude's uses (content writer, engineer, salesman, risk reviewer, compliance auditor, future-maintainer, drift detector) can be invoked on-demand against any commit set, using any of the three models. The architecture would separate: roles (the lens), models (the voice), invocations (the moment of asking).
-
-This reframe is architecturally sound but defers to a future brief. Reasons:
-
-- Today's three-voice deployment has zero commits of real data. Building the library before knowing whether even two voices produce useful findings is optimising the machine before confirming it works.
-- PK's explicit honesty: *"I'm not very excited with these ideas because these ideas are becoming burdensome."* Respect the signal. Build what's needed now; revisit when evidence justifies more.
-- Today had five substantial outputs. Adding a sixth would have been throughput for its own sake.
-
-### Why three voices (not two or one)
-
-- One voice = single provider dependency, single epistemic regime. Defeats D156's purpose.
-- Two voices = adequate for scope + engineering coverage. What today's design started as before PK introduced the third lens.
-- Three voices = adds adversarial lens that neither Strategist nor Engineer ask. Directly addresses the pattern demonstrated today (three silent failures found in one session across three subsystems). Risk Reviewer's four rules — silent failure detection, worst-case production scenario, missing guardrails, hidden assumptions — target the exact failure mode.
-
-### Why Grok over GPT for Risk
-
-- OpenAI Tier 1 TPM (30k) blocks full-context review of ICE commits (commits + brief + decisions often exceed 100k tokens).
-- Raising to Tier 2 requires $50 cumulative API spend plus 7-day wait. Blocks today.
-- Grok has 500k TPM default on Tier 1 and 2M context window.
-- Grok is structurally further from Claude's cultural/methodological orbit than GPT (different org, different training regime, different alignment decisions). Better third voice for D156's stated purpose — epistemic diversity, not just provider diversity.
-
-### Why all three models are "top tier" (PK constraint)
-
-PK's explicit rule: only use top-tier AI models from major providers. No DeepSeek, Qwen, or other open-source/Chinese models regardless of benchmarks. Three reasons:
-
-- NDIS compliance concerns — Chinese-hosted infrastructure is a live issue for regulated clients
-- Reputation risk for a solo founder pitching NDIS providers — using Chinese AI in the review layer would need explanation
-- Fewer moving parts in vendor relationships — Anthropic, Google, xAI already cover adversarial diversity adequately
-
-### Architectural components live after commits `495216f` + `a437a6a`
-
-- Tables: `c.external_reviewer` (3 rows), `c.external_reviewer_rule` (12 rules total, 4 per reviewer)
-- Migration: applied
-- Edge Function: `external-reviewer` v1.2.0 (dispatches by provider; full context for Gemini and xAI, focused 100k for OpenAI)
-- Edge Function: `external-reviewer-digest` v1.1.0 (assembles weekly digest, emails to pk@invegent.com, commits to `docs/reviews/`)
-- Cron: `external-reviewer-digest-weekly` (jobid 66, Mon 7am AEST)
-- Dashboard: `/reviews` page + API route + sidebar link (dashboard repo commit `1a7aabf`)
-- Retroactive reviews of `d12a52c`, `202037c`, `495216f`, `1a7aabf` executed via Strategist. Grok retroactively unable to run due to zero xAI credits at time of deployment.
-
-### Gate criteria for evaluating the layer ("earned its keep" definition)
-
-After 3 weekly digests and/or first live-commit cycle:
-- **Layer earns its keep if:** (a) at least 2 findings changed what was about to be built, OR (b) at least 1 finding prevented a silent failure from shipping, OR (c) enough "aligned" reviews on risky commits that PK stops double-checking
-- **Layer has NOT earned its keep if:** (a) all findings are info-severity and PK ignores all of them, (b) PK finds themself fixing things the reviewers said were fine, (c) the digest sits unread for a week
-
-If layer does NOT earn its keep by this gate, options are: (i) rotate role→model assignments per the flexibility built into the design, (ii) tune rule prompts to be stricter or narrower, (iii) retire the layer and recover the monthly cost.
-
-### What is explicitly deferred to a future brief
-
-`docs/briefs/2026-04-21-reviewer-role-library.md` captures the role-library reframe for future execution. Gate: at least 2 weekly digests of current three-voice output, plus a concrete use case for a role not currently in the library.
-
-### PK context that informed this decision
-
-PK's framing, captured verbatim from the session:
-
-> "The idea should be to have as many roles that we want as a file. So when we say, look, yes, we have run this rule with the Grok or with the ChatGPT, and next review that we want maybe we can simply run a salesman kind of pitch for all the three models and have a look at it. Or maybe we can run engineering question that what risk do we have when we commit all of these changes that we have made in next three to four weeks. So we can run the same questions to all three. So the thing is, you know, the ocean is as big as it is. And by defining more roles, it doesn't hurt us we can run them anytime."
-
-And later:
-
-> "I'm not very excited with these ideas because these ideas are becoming burdensome. But the thing is, I have to get this project going with very limited resources, and I cannot hire any person. So having these roles will be help, especially coming out of different models. So therefore, yes, we have to build it. At some point of time. And at this point of time, we can go ahead with what we have."
-
-Both quotes are preserved because they capture the honest tension: the reviewer architecture substitutes for a team PK can't hire, so it genuinely serves him, but it is also meta-work that competes with content work for scarce solo-founder time. The correct rhythm is build-when-needed, not build-speculatively.
-
-### Related decisions
-
-- D156 — parent decision (external epistemic diversity layer)
-- D158 — the context strategy (Approach C) that this layer uses
-- D157 — the cost guardrails that make running three models affordable
-- D161 — the System Auditor role + docs archive pattern that extends this layer
-- D162 — the sprint-mode pause applied to the D160 layer
-
----
-
-## D161 — System Auditor EF + Docs Archive Pattern + Freshness Taxonomy
-**Date:** 21 April 2026 afternoon/evening | **Status:** ✅ IMPLEMENTED (commits `f7e6a776`, `b24e40e6`, `cda4ab7d`, archive commits `0229699d` through `453ca493`, `3109cd65`, system_auditor prompt v2 via SQL)
-
-### The problem this decides
-
-After D160's three-voice layer shipped, PK asked for a different kind of review: "Have Grok review all the live state of docs and advise what is missing / what's not working." This is NOT the per-commit lens. Per-commit review asks "is this change good?"; system audit asks "what does the whole system look like right now and where is it drifting?"
-
-The two lenses have different requirements:
-- Per-commit: triggered by webhook, needs recent diff + repo blob, writes one finding per reviewer per commit
-- System audit: triggered manually on demand, needs all docs + live DB snapshot + recent activity, writes one comprehensive finding
-
-Building both into one EF was considered and rejected — the invocation patterns, auth, and rate-of-firing differ too much. A second EF was cleaner.
-
-Implementing the system audit surfaced a second problem: **docs staleness pollutes AI reviewer context**. The first audit run (v1.0.1, 05:21 UTC) produced a spurious severity:critical finding based on `docs/00_audit_report.md` — a 6 April frozen snapshot that was never overwritten because the reconciler it complained about had stopped running. Grok had no way to know this doc was stale, treated it as current state, and regurgitated its CRITICAL framing as today's finding.
-
-Fixing this required a systematic answer, not a one-off patch.
-
-### The decision
-
-Three coupled implementations:
-
-#### 1. System Auditor as a separate Edge Function
-
-New EF `system-auditor` (commits `f7e6a776` v1.0.0 → `b24e40e6` v1.0.1 → `cda4ab7d` v1.0.2), auth via `x-ai-worker-key`, no webhook. Assembles:
-- All `.md` files under `docs/` (from GitHub HEAD of main) — but NOT `docs/archive/**`
-- Live DB snapshot across 11 queries (clients, cron, ai_job health, publish queue, channels, reviewer queue, digests, rules, AI usage, etc.) — each wrapped in try/catch for graceful degradation
-- Recent commit activity
-
-Sends to Grok 4.1 Fast Reasoning (via a new `system_auditor` row in `c.external_reviewer`) configured with a prompt asking for structured JSON output: headline / what's working / what's broken or drifting / what's missing / pre-sales gate reality check / not-enough-context-to-judge.
-
-Writes result to `m.external_review_queue` with synthetic `commit_sha = 'system-audit-{ISO-timestamp}'` so the row is clearly distinguishable from per-commit reviews.
-
-#### 2. Docs archive pattern
-
-Create `docs/archive/` as a canonical location for superseded snapshots. Rules:
-- A doc moves to `docs/archive/` when it is superseded by a living doc OR when its frozen timestamp makes it misleading
-- The file gets a stale-warning header explaining when and why it was archived and where the canonical equivalent lives
-- Originals are git-rm'd from their root location (git history preserves them)
-- Future AI reviewers are told `docs/archive/**` is intentionally excluded — "if you can't see something you want to cite, that's deliberate, not an oversight"
-
-Four files archived 21 Apr:
-- `00_audit_report.md` — frozen 6 Apr snapshot; cause of the v1.0.1 false critical
-- `10_consultant_audit_april_2026.md` — 8 Apr 4-lens audit; findings absorbed into file 15 Section A
-- `ICE_Pipeline_Audit_Apr2026.md` — mid-April pipeline audit; superseded by live DB queries
-- `14_pre_sales_audit_inventory.md` — 18 Apr reconciliation; explicitly superseded by file 15 per file 15's own header
-
-#### 3. Freshness taxonomy in `docs/00_docs_index.md`
-
-Every doc in the index gets a freshness marker:
-- 🟢 **living** — updated continuously, authoritative for current state
-- 🔵 **reference** — stable semantics, may be updated for new decisions
-- 🟡 **snapshot** — point-in-time, keep for historical context only
-- ⚫ **archived** — moved to `docs/archive/`; read only for historical trace
-
-Authority rule stated at top of the index: "When living and snapshot disagree, trust living. When DB and doc disagree, trust DB."
-
-Index maintenance rule: a living doc that hasn't been updated in 30+ days AND where the system has changed materially gets downgraded to snapshot or archived.
-
-#### 4. system_auditor prompt v2
-
-Prompt extended from 3,500 to 5,938 chars (SQL-applied, not committed since it's DB content). Four additions beyond the original:
-
-- **Authority hierarchy explicit** — "live DB snapshot > docs/00_sync_state.md > all other living docs. `docs/archive/**` has been intentionally excluded from your context."
-- **5-step precheck before writing any finding** — is the DB consistent with the claim? is this already acknowledged in sync_state Watch List? is it parked in a brief with a trigger? is it closed by a recent commit? can this be verified or is it extrapolation?
-- **Severity anchors with 2+ concrete examples per level** — critical / warn / info each with examples showing the expected calibration. "If uncertain between two levels, choose the lower one. Severity inflation costs trust."
-- **"Do not report" suppress list** — known open items in sync_state, parked briefs, recent-commit-closed items, unverifiable inferences, polite framing.
-
-### Effectiveness (2 runs of data)
-
-v1.0.1 (05:21 UTC, archive unfixed, prompt v1): severity:critical, top finding spurious (reconciler false alarm from stale snapshot).
-
-v1.0.2 + prompt v2 (07:30 UTC, archive excluded, prompt v2): severity:warn, 4 findings all real and actionable — but all 4 were already in sync_state's Watch List, which the prompt explicitly told Grok NOT to re-surface. Partial failure of the suppress directive.
-
-**Verdict: B+.** Real improvement; infrastructure earned its place; prompt v2 still needs calibration. Retained as infrastructure for D156 Stage 1 completeness, but the assessment feeds into D162.
-
-### Why this is infrastructure, not theatre
-
-Three reasons the pattern is worth preserving even though novel findings rate is zero after 2 runs:
-
-1. **Docs archive + freshness taxonomy protects every future AI reviewer.** Any AI tool reading ICE's docs — not just system-auditor — benefits. It's a context discipline, not a system-auditor-specific hack.
-2. **Separate EF for different invocation pattern is the right shape.** When the role-library refactor happens (parked brief 2026-04-21-reviewer-role-library.md), this shape generalises cleanly — role-specific EFs can share a common invocation pattern.
-3. **Second audit after sprint reactivation is the actual test.** A fresh audit against a near-complete pre-sales gate, looking for "anything we haven't surfaced ourselves", is the genuinely high-value use. Today's runs happened against a mid-sprint state where Claude has already surfaced everything.
-
-### What this does NOT decide
-
-- Does not claim the external reviewer layer has earned its keep yet — that assessment is separate and is the topic of D162.
-- Does not make `system_auditor` a per-commit reviewer — it remains manual-invoke.
-- Does not rule out revisiting the prompt further. If sprint-end reactivation produces a third run that still just echoes Watch List, prompt v3 is warranted.
-
-### Related decisions
-
-- D156 — parent decision establishing the external reviewer layer
-- D160 — three-voice per-commit reviewer; this is the system-audit complement
-- D162 — the sprint-mode pause applied equally to system_auditor
-- D151 — universal table-purpose rule (system_auditor's precheck #1 extends D151's spirit to docs)
-
----
-
-## D162 — Pause External Reviewer Layer During Pre-Sales Sprint
-**Date:** 21 April 2026 evening | **Status:** ✅ IMPLEMENTED — all four rows in `c.external_reviewer` set to `is_active=false` at 21 Apr 07:56 UTC
-
-### The problem this decides
-
-With D160 three-voice + D161 System Auditor shipped, ICE has a live external reviewer layer. It also has ~20 open pre-sales items needing a sprint to close. The two don't combine well.
-
-Running the reviewer layer during sprint work creates a **review-loop recursion**:
-- Sprint fixes something (commit lands)
-- Reviewer fires on the commit
-- Reviewer produces a finding that's already in sync_state's Watch List OR that's already being worked on in the next sprint item
-- Sprint item gets done (next commit lands)
-- Reviewer fires again
-- Repeat
-
-This is precisely what today's two system audits demonstrated. Both runs produced findings that were already known — because Claude had already surfaced them when working on the sprint. The external layer adds value against a stable target, not a moving one.
-
-PK's reasoning verbatim (21 Apr evening):
-
-> "once we achieve 80-90% of the presales, then we can turn the reviewer on. Because till then, it'll be just going in loop because we are fixing things and then review and it'll just keep going. So rather than running these reviewer, we should sprint through the whole presale items, and then we'll start running it by the time we are about to reach the completion of presales."
-
-### The decision
-
-Pause all four reviewer rows for the duration of the pre-sales sprint. Re-enable when ~18-19 of 28 Section A items are closed (roughly 65-70% done, heading into final stretch).
-
-**Implementation:**
-
-```sql
-UPDATE c.external_reviewer
-SET is_active = false, updated_at = NOW()
-WHERE reviewer_key IN ('strategist', 'risk', 'system_auditor');
-```
-
-(`engineer` was already `is_active=false` pending OpenAI Tier 2 unlock.)
-
-The `external-reviewer` EF filters on `is_active=true` (verified in source). With all four rows inactive, the EF returns `no_active_reviewers` error for any webhook invocation. GitHub webhooks still fire but produce 500 responses — cosmetic noise in the webhook panel, no cost, no pipeline impact.
-
-The `system-auditor` EF is manual-invoke only; it does not fire unattended, so "pausing" it means simply not invoking it.
-
-### Re-enable ceremony
-
-When pre-sales gate reaches ~18-19 of 28 closed:
-
-1. SQL:
-   ```sql
-   UPDATE c.external_reviewer
-   SET is_active = true, updated_at = NOW()
-   WHERE reviewer_key IN ('strategist', 'risk', 'system_auditor');
-   ```
-2. Leave `engineer` paused until OpenAI Tier 2 unlocks organically at $50 cumulative API spend.
-3. Manually invoke system-auditor once to get a fresh whole-system audit of the near-complete state.
-4. Act on any genuine findings (the suppress-list directive should produce cleaner output now because the Watch List will have moved).
-5. Close the remaining Section A items informed by the fresh audit.
-
-### Why pause ≠ retire
-
-Three reasons this is a pause and not a removal:
-
-1. **Infrastructure is good.** Today validated the webhook flow, HMAC signing, retroactive review path, Gemini + Grok integration, queue table, digest EF, dashboard `/reviews` page. That work is kept, just dormant.
-
-2. **The value proposition hasn't been fairly tested.** Today's runs happened mid-sprint with Watch List already populated. The layer's actual test is fresh eyes on a stable codebase. That test only exists post-sprint. Killing now would be evaluating on the wrong data.
-
-3. **Reactivation cost is zero.** One SQL statement. No re-deployment, no new secrets, no schema change. The pause/resume cycle is cheap; commit to it as a discipline.
-
-### Why not kill completely after 2 runs of no-novel-findings
-
-PK's "keep the flow worth" framing (21 Apr evening) is correct: infrastructure that's already built and cheaply dormant is worth preserving against the possibility that fresh-eyes review against a stable state produces the first genuine novel finding. Binary kill after 2 runs on moving-target data is a false-negative risk. Binary kill after a sprint-end audit that still produces only Watch List items is a genuine verdict.
-
-### What this does NOT decide
-
-- Does not commit to the consumption-model reframe in the role-library brief addendum. That's aspirational. Re-evaluate after the post-sprint audit.
-- Does not affect the weekly digest cron (`external-reviewer-digest-weekly`, jobid 66). The cron will run on Mondays but find no new queue rows; it will produce empty digests until reviewers resume. Cost: zero (no LLM calls from the digest EF when nothing new to summarise). If the empty-Monday-digest creates inbox noise, disable the cron explicitly.
-- Does not suggest the per-commit external-reviewer EF has a bug — but today did surface one: before pause, the EF was iterating all rows in `c.external_reviewer` including `system_auditor`, producing tiny hallucinated system_auditor rows on every qualifying commit. Fix this (e.g. add a `per_commit_enabled` boolean or filter explicitly by reviewer_key) before reactivation.
-
-### Gate to reactivate
-
-Quantitative: ~18-19 of 28 Section A items closed in file 15.
-
-Qualitative: codebase velocity has slowed (no more than 1-2 commits per day on pre-sales items). Reviewer value is proportional to stability of target.
-
-Check-in: at each 5-item closure, ask "are we 18-19 yet?" rather than waiting for a single milestone.
-
-### Related decisions
-
-- D156 — parent decision (Stage 1 external review layer)
-- D160 — three-voice implementation
-- D161 — System Auditor + archive pattern
-- D162 is the pause applied to D160 + D161 until sprint completes
+- **D157** — added the `dead_reason` column to `m.ai_job` in migration `d157_id003_ai_job_retry_cap`. D163 adds `'dead'` to the status vocabulary so the column has something to pair with semantically.
+- **D161** — the authority hierarchy (live DB > older doc specs) applied to resolve the `04_phases.md` spec mismatch.
+- **Phase 1.7** (`docs/04_phases.md`) — partially implemented now; remaining tables tracked as future sprint work.
+- **Q1 (sprint item)** — the proximate cause of this inspection. Closed in this same session.
 
 ---
 
@@ -703,9 +115,11 @@ Check-in: at each 5-item closure, ask "are we 18-19 yet?" rather than waiting fo
 | Professional indemnity insurance | 🔲 Pre-pilot | Underwriting forces clarification |
 | A27 — LLM-caller Edge Function audit (ID003 follow-on) | 🔲 After ai-worker fix establishes pattern | Pattern proven |
 | **Reviewer role-library rebuild (post-D160)** | 🔲 Captured as brief with consumption-model addendum; execute when evidence justifies | 2+ weekly digests post-sprint + concrete use case for a role not in current library |
-| **CFW schedule save bug investigation** | 🔲 Sprint item (M2 in sprint board) | During sprint |
-| **Discovery pipeline ingest bug fix** | 🔲 Sprint item (Q2 in sprint board) | During sprint |
-| **13 failed ai_jobs cleanup SQL** | 🔲 Sprint item (Q1 — pre-approved) | During sprint |
+| **CFW schedule save bug investigation** | 🔲 Sprint item (M2) — dispatched to Claude Code 21 Apr evening | During sprint |
+| **Discovery pipeline ingest bug fix** | 🔲 Sprint item (Q2) | During sprint |
+| **13 failed ai_jobs cleanup SQL** | ✅ Closed 21 Apr evening — see D163 | — |
 | **A7 privacy policy update** | 🔲 Sprint item (Q4) | During sprint |
 | **External reviewer resume** | 🔲 Paused per D162 | ~18-19 of 28 Section A items closed |
 | **Per-commit reviewer iteration bug** | 🔲 Before reviewer resume | Add filter for per_commit_enabled or explicit reviewer_key IN list |
+| **Phase 1.7 DLQ continuation — `m.post_publish_queue` CHECK** | 🔲 Backlog per D163 | Dedicated Phase 1.7 full-sprint session |
+| **TPM saturation on concurrent rewrites** | 🔲 Brief parked per D163 | Pipeline resumes from drain + fresh digest fires through rewrite |

@@ -1,8 +1,8 @@
 # ICE — Pre-Sales / Post-Sales Classification
 
-## Generated: 2026-04-18 (v1 morning, v2 afternoon, v3 late evening) · v4 update 2026-04-21 (A24 closed)
+## Generated: 2026-04-18 (v1 morning, v2 afternoon, v3 late evening) · v4 update 2026-04-21 (A24 closed) · v4.1 update 2026-04-21 evening (Q1 sprint item closed, D163 scoping documented)
 ## Type: Classification document — supersedes `docs/14_pre_sales_audit_inventory.md` Section 12
-## Inputs: audit inventory (38 items + 13 open questions), 3-clock framework, consultant audit (8 Apr), legal register L001–L008, PK answers 18 Apr, decisions D147–D162, 21 Apr reviewer-layer work
+## Inputs: audit inventory (38 items + 13 open questions), 3-clock framework, consultant audit (8 Apr), legal register L001–L008, PK answers 18 Apr, decisions D147–D163, 21 Apr reviewer-layer work + Q1 closure
 
 ---
 
@@ -11,6 +11,20 @@
 This document converts the audit's Section 12 findings into an actionable pre-sales gate. Every audit item is classified as pre-sales, post-sales tier 1/2/3, or parked. The rationale for each classification is explicit. Fresh-eyes pushback on the framework session is in Section F.
 
 This is the definitive pre-sales gate document until superseded. When all Section A items are closed AND Clock A/B/C windows complete green, PK may begin first external sales conversations.
+
+---
+
+## v4.1 changes from v4 (21 Apr later evening)
+
+**Sprint item closures (not A-items, but tracked for completeness):**
+- **Q1 closed ✅** — 13 failed ai_jobs marked terminal dead. Migration `phase_1_7_ai_job_add_dead_status` widened `m.ai_job.status` CHECK constraint to include `'dead'`. Dead reason: `openai_tpm_rate_limit_2026-04-18`. See **D163** for the Phase 1.7 DLQ foundation scoping decision. A-count unchanged (still 8 of 28 closed, 20 open) because Q1 is a sprint item, not an A-item — but its closure ships the first increment of Phase 1.7 DLQ foundation and unblocks evidence for A22.
+- **M2 dispatched** — CFW schedule save bug handed to Claude Code for investigation (local dev + iterative fix cycle).
+
+**New backlog items surfaced during Q1 (tracked in sync_state Backlog, not Section A):**
+- `m.post_publish_queue.status` has no CHECK constraint at all — needs one with deliberate vocabulary design. Phase 1.7 DLQ continuation work, not a quick win.
+- TPM saturation on concurrent platform rewrites — brief parked at `docs/briefs/2026-04-21-tpm-saturation-staggered-rewrite.md`. Will recur on first digest burst after pipeline resumes from drain. Gate to pick up in brief.
+
+**No new A-items surfaced.** Q1 cleanup was mechanical; D163 scoping is architectural but doesn't change the pre-sales gate composition.
 
 ---
 
@@ -77,9 +91,9 @@ Clock A + B + C all green = gate to first external sales conversation.
 
 ---
 
-## Headline finding (v4)
+## Headline finding (v4.1)
 
-**Still not cleared to start the 14-day Clock A window.** A24 closure (three-voice reviewer layer + System Auditor) is the only Section A movement since 18 Apr. The 20 remaining open items require a sprint, which is what D162 locks in.
+**Still not cleared to start the 14-day Clock A window.** A24 closure (this morning) + Q1 sprint item closure (this evening) are the only movement since 18 Apr. Q1 is not an A-item, so the A-count remains 8 of 28 closed, 20 open. The remaining open items require a sprint, which is what D162 locks in.
 
 **Current blocking items (20 open):**
 
@@ -96,19 +110,19 @@ From ID003 / D157 (18 Apr):
 
 ### Sprint order recommendation
 
-Quick wins first: A7, Q1 (13 failed ai_jobs cleanup — not a numbered A-item but unblocks A22 evidence), discovery pipeline one-liner (not numbered). Then pilot document (A1 + A5 + A8 together). Then medium items (A11b, A14, A16). Larger builds last (A20-A23, A25-A26).
+Quick wins first: A7, Q2 (discovery pipeline one-liner). Q1 closed this session ✅. Then pilot document (A1 + A5 + A8 together). Then medium items (A11b, A14, A16). Larger builds last (A20-A23, A25-A26).
 
 Full sprint board maintained in `docs/00_sync_state.md`.
 
 ---
 
-## Item count summary (v4)
+## Item count summary (v4.1)
 
-| Classification | Count | Change from v3 |
+| Classification | Count | Change from v4 |
 |---|---|---|
 | Pre-sales (Section A) | 28 | 0 |
-| Pre-sales closed / confirmed | **8** | +1 (A24 closed) |
-| Pre-sales open | **20** | −1 |
+| Pre-sales closed / confirmed | **8** | 0 (Q1 is sprint item, not A-item) |
+| Pre-sales open | **20** | 0 |
 | Post-sales Tier 1 (Section B) | 8 | 0 |
 | Post-sales Tier 2 (Section C) | 6 | 0 |
 | Post-sales Tier 3 (Section D) | 12 | 0 |
@@ -161,7 +175,7 @@ A27, A28, A29 (ID003 follow-ons surfaced 18 Apr in D157) are tracked in the dash
 | A25 | 🔲 Open | Stage 2 bank reconciliation layer — MVP | Per D156: external system is authoritative when it disagrees with ICE's DB. MVP is Meta Graph API reconciliation (catches the D155 symptom platform-side), followed by GitHub + Vercel + Supabase reconciliation for deploy drift. | Sequencing pushed back — original plan was Tue 21 Apr, but session focused on Stage 1 hardening. Build when Stage 1 proven to earn its keep post-sprint reactivation. | D156, continuity brief |
 | A26 | 🔲 Open | Review discipline mechanism — unread-blocks-dashboard + weekly block | A24 + A25 outputs are theatre without structural reading-discipline. PK identified this as the missed angle Saturday evening. Unread items in `m.external_review_queue` block dashboard home until acknowledged. Weekly scheduled Monday review block. | Build when reviewers resume post-sprint. Currently moot — reviewers paused, no unread output accumulating. | D156, continuity brief |
 
-### Section A completion test (v4)
+### Section A completion test (v4.1)
 
 All 28 items marked closed or confirmed. A27–A29 (from D157, tracked in dashboard roadmap) must also close. Then and only then: Clock A + B + C 14-day window starts. No external sales conversation before window completes with metrics in range.
 
@@ -256,9 +270,12 @@ Adding more Claude-written monitors to watch Claude-written pipelines compounds 
 ### F7 (new v4) — Reviewer layer paused during sprint is not "giving up on D156"
 The sprint pause (D162) is a noise-reduction decision, not a reversal. Reviewer layer is useful against a stable target, not a moving target. Re-enable at ~18-19 of 28 Section A items closed. The two runs done today produced zero novel findings but the infrastructure proved itself — see D161 evaluation.
 
+### F8 (new v4.1) — Pre-approved SQL should be flagged when it's DDL
+Q1 closure surfaced that the sync_state's pre-approved `UPDATE SET status='dead'` was untested — CHECK constraint rejected `'dead'`. The pre-approval process works fine for idempotent data cleanups, but any SQL that assumes a schema shape (especially status vocabularies, column existence, or index availability) should be flagged as "pre-approved pending inspection" until verified against live schema. D163's reasoning captures the scoping but the process improvement is procedural: when writing pre-approved SQL, verify it runs on a DB snapshot first, not just that it reads well.
+
 ---
 
-## Section G — Pre-sales gate checklist (go / no-go, v4)
+## Section G — Pre-sales gate checklist (go / no-go, v4.1)
 
 This is the single list PK pulls up before opening a sales conversation.
 
@@ -320,7 +337,9 @@ Timebox
 First external sales conversation authorised only when every box above is ticked.
 ```
 
-Current score: **8 of 28 closed, 20 open** (A24 closed 21 Apr). Plus A27–A29 tracked separately (3 open). Plus 3 timebox windows not yet startable.
+Current score: **8 of 28 closed, 20 open** (A24 closed 21 Apr morning; Q1 closed 21 Apr evening — Q1 is a sprint item not an A-item, count unchanged). Plus A27–A29 tracked separately (3 open). Plus 3 timebox windows not yet startable.
+
+Sprint item wins this session: **Q1 ✅ closed.** Next targets: Q2, Q4, then L1 pilot document.
 
 ---
 
@@ -389,7 +408,8 @@ If yes to first three, proceed to next advisor. If no, tighten brief and retry o
 - **2026-04-18 afternoon** — v2 reflecting PK answers to 16 open questions. A1 reframed (D147), A5 sharpened (D148), A9 reframed, A11 confirmed + expanded, A18 promoted from C2, C1 reframed, new Section I (advisor layer per D149). 12 of 16 open questions resolved; 4 remain.
 - **2026-04-18 late evening** — v3 reflecting Saturday afternoon/evening closures + D155 fallout + D156 strategic direction. Closures: A9, A10a, A11a, A15, A19. New items: A19 (formalised), A20–A23 (D155 class prevention), A24–A26 (D156 external layer). Item count: 18 → 28 pre-sales. 7 of 28 closed or confirmed; 21 open.
 - **2026-04-21 end-of-day** — v4. **A24 closed** (Stage 1 external multi-model review layer shipped + exceeded MVP — three-voice + System Auditor). D161 documents the implementation shape. D162 documents the sprint-mode pause (all reviewers `is_active=false` until ~80-90% gate closure). 8 of 28 closed; 20 open. New Section F7 explains the sprint pause. Advisor layer build deferred to post-sprint (same rationale as reviewer pause). A27–A29 (ID003 follow-ons from D157) tracked separately — treated as 3 additional functional pre-sales items.
+- **2026-04-21 later evening** — v4.1. Sprint item **Q1 closed** (13 failed ai_jobs → dead via `phase_1_7_ai_job_add_dead_status` migration). **D163** documents the Phase 1.7 DLQ foundation scoping (only `m.ai_job` today; `f.canonical_content_body` intentionally not changed; `m.post_publish_queue` needs a new CHECK constraint, deferred to sprint backlog). New Section F8 captures a procedural lesson about pre-approved DDL SQL. A-count unchanged (Q1 is a sprint item, not an A-item) — still 8 of 28 closed, 20 open.
 
 ---
 
-*End of classification v4. Next pickup: sprint board in `docs/00_sync_state.md`. First recommended items: A7 (privacy policy), Q1 (13-job cleanup SQL), discovery pipeline one-liner, then pilot document finalisation (A1 + A5 + A8).*
+*End of classification v4.1. Next pickup: sprint board in `docs/00_sync_state.md`. First recommended items: Q2 (discovery pipeline one-liner), A7 (privacy policy), then pilot document finalisation (A1 + A5 + A8).*
