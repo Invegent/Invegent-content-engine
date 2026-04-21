@@ -1,8 +1,8 @@
 # ICE — Pre-Sales / Post-Sales Classification
 
-## Generated: 2026-04-18 (v1 morning, v2 afternoon, v3 late evening reflecting Saturday closures + D155/D156 fallout)
+## Generated: 2026-04-18 (v1 morning, v2 afternoon, v3 late evening) · v4 update 2026-04-21 (A24 closed)
 ## Type: Classification document — supersedes `docs/14_pre_sales_audit_inventory.md` Section 12
-## Inputs: audit inventory (38 items + 13 open questions), 3-clock framework, consultant audit (8 Apr), legal register L001–L008, PK answers 18 Apr, decisions D147–D156, Saturday evening continuity brief
+## Inputs: audit inventory (38 items + 13 open questions), 3-clock framework, consultant audit (8 Apr), legal register L001–L008, PK answers 18 Apr, decisions D147–D162, 21 Apr reviewer-layer work
 
 ---
 
@@ -11,6 +11,19 @@
 This document converts the audit's Section 12 findings into an actionable pre-sales gate. Every audit item is classified as pre-sales, post-sales tier 1/2/3, or parked. The rationale for each classification is explicit. Fresh-eyes pushback on the framework session is in Section F.
 
 This is the definitive pre-sales gate document until superseded. When all Section A items are closed AND Clock A/B/C windows complete green, PK may begin first external sales conversations.
+
+---
+
+## v4 changes from v3 (21 Apr end-of-day)
+
+**Closures:**
+- **A24 closed ✅** — Stage 1 external multi-model review layer shipped 21 Apr. Original MVP spec was Architect Reviewer (Gemini per-commit) + Sceptic (GPT-4 weekly). Actual shipment exceeded MVP: three-voice layer (Strategist Gemini + Engineer GPT paused + Risk Grok) plus standalone System Auditor EF for whole-system audits. Webhooks verified on both repos, full infrastructure live. See D160 + D161. Layer is currently dormant (reviewers paused for sprint, see D162) — infrastructure is live, activation is a one-line SQL.
+
+**Sprint decision (D162):** All four reviewers (`strategist`, `engineer`, `risk`, `system_auditor`) set to `is_active=false` on 21 Apr evening. Rationale: external review of sprint work creates review-loop recursion (we fix something, reviewer fires, finding is already known, we fix next, reviewer fires again…). Re-enable target: ~18-19 of 28 Section A items closed — fresh eyes on a near-stable state before first pilot signing.
+
+**No new A-items surfaced.** Items A27, A28, A29 remain the open items surfaced 18 Apr from D157 (cost guardrails). Today's reviewer work did not add new pre-sales blockers.
+
+**Change log moved to new entries at bottom.**
 
 ---
 
@@ -64,42 +77,49 @@ Clock A + B + C all green = gate to first external sales conversation.
 
 ---
 
-## Headline finding (v3)
+## Headline finding (v4)
 
-**Still not cleared to start the 14-day Clock A window.** Saturday's work closed four blockers (A9, A10a, A11a, A15) plus one new item (A19) but the landscape shifted materially — D155 fallout plus D156 strategic direction added 7 new pre-sales items (A20–A26), only one of which (A19) is closed.
+**Still not cleared to start the 14-day Clock A window.** A24 closure (three-voice reviewer layer + System Auditor) is the only Section A movement since 18 Apr. The 20 remaining open items require a sprint, which is what D162 locks in.
 
-**Current blocking items:**
+**Current blocking items (20 open):**
 
-Remaining from v2:
-- A10b — first IG post actually publishes (Sunday morning verify)
-- A11b — CFW + Invegent content_type_prompts (9 rows × 2 clients)
-- A14, A16, A17, A18 — unchanged from v2, open
-- A1–A8 (legal, proof, platform, economics) — unchanged from v2, open
+From v2/v3:
+- A1, A2, A3, A4, A5, A6, A7, A8 (legal, proof, platform, economics) — 8 items
+- A10b — first IG post actually publishes (verify)
+- A11b — CFW + Invegent content_type_prompts
+- A14, A16, A17, A18 — stability/readiness
+- A20, A21, A22, A23 — D155-class prevention
+- A25, A26 — remaining D156 work
 
-New hard blockers from Saturday:
-- A20, A21, A22, A23 — D155-class prevention (liveness monitoring, trigger audit, error surfacing, live token cron)
-- A24, A25, A26 — D156 external epistemic layer (Stages 1+2 MVP + discipline)
+From ID003 / D157 (18 Apr):
+- A27, A28, A29 — LLM-caller audit, cost guardrails, inbox anomaly monitor
 
-Per D156: the external layer items (A24–A26) are not optional. A managed service where the pipeline silently fails for 7 days without alerting is commercially fatal. These must exist before a paying pilot signs.
+### Sprint order recommendation
+
+Quick wins first: A7, Q1 (13 failed ai_jobs cleanup — not a numbered A-item but unblocks A22 evidence), discovery pipeline one-liner (not numbered). Then pilot document (A1 + A5 + A8 together). Then medium items (A11b, A14, A16). Larger builds last (A20-A23, A25-A26).
+
+Full sprint board maintained in `docs/00_sync_state.md`.
 
 ---
 
-## Item count summary (v3)
+## Item count summary (v4)
 
-| Classification | Count | Change from v2 |
+| Classification | Count | Change from v3 |
 |---|---|---|
-| Pre-sales (Section A) | 28 | +10 (2 splits, 8 new) |
-| Pre-sales closed / confirmed | 7 | A9, A10a, A11a, A12, A13, A15, A19 |
-| Pre-sales open | 21 | |
+| Pre-sales (Section A) | 28 | 0 |
+| Pre-sales closed / confirmed | **8** | +1 (A24 closed) |
+| Pre-sales open | **20** | −1 |
 | Post-sales Tier 1 (Section B) | 8 | 0 |
 | Post-sales Tier 2 (Section C) | 6 | 0 |
 | Post-sales Tier 3 (Section D) | 12 | 0 |
 | Parked (Section E) | 4 | 0 |
-| **Total** | **58** | +10 |
+| **Total** | **58** | 0 |
+
+A27, A28, A29 (ID003 follow-ons surfaced 18 Apr in D157) are tracked in the dashboard roadmap but not in the A1-A26 numbering of this file's Section A. Treating them as a separate group of 3 makes the actual open count 20 in A1-A26 plus 3 in A27-A29 = 23 functional pre-sales items still open, plus the 3 timebox windows. Keeping the main count at 28 to preserve v3 comparability.
 
 ---
 
-## Section A — Pre-sales items (28, 7 closed / confirmed, 21 open)
+## Section A — Pre-sales items (28, 8 closed / confirmed, 20 open)
 
 **Definition: must be closed before first external sales conversation. Each item has a named deliverable and a completion test.**
 
@@ -107,14 +127,14 @@ Per D156: the external layer items (A24–A26) are not optional. A managed servi
 
 | # | Status | Item | Rationale | Concrete action | Audit ref |
 |---|---|---|---|---|---|
-| A1 | 🔲 Open | Pilot structure with liability waiver (supersedes solicitor engagement) | Per D147: solicitor is deferred until first pilot revenue. Pre-sales deliverable becomes a clean pilot agreement with explicit waiver language rather than a solicitor-reviewed productised agreement. | Draft pilot terms: half-priced service (or 3-month free trial), waiver clause (experimental service, client solely responsible for published content, limited warranties). Keep to one page. PK-drafted; no solicitor needed at this gate. | Audit #2 (reframed), D147 |
+| A1 | 🔲 Open | Pilot structure with liability waiver (supersedes solicitor engagement) | Per D147: solicitor is deferred until first pilot revenue. Pre-sales deliverable becomes a clean pilot agreement with explicit waiver language rather than a solicitor-reviewed productised agreement. | Draft pilot terms: half-priced service (or 3-month free trial), waiver clause (experimental service, client solely responsible for published content, limited warranties). Keep to one page. PK-drafted; no solicitor needed at this gate. Template v1 drafted 21 Apr morning. | Audit #2 (reframed), D147 |
 | A2 | 🔲 Open | Meta App Review — status resolved OR pilot workaround documented | Standard Access is the productised gate. Pilot-mode (1–2 clients where PK is added as admin on their Business Manager) is defensible under Meta Developer Policies. | Two parallel tracks: (a) await Meta decision, escalate via dev support on 27 Apr if no movement; (b) draft pilot-mode doc specifying first 1–2 clients run under their Business Manager access, time-boxed to Standard Access confirmation. | Audit #1, Sec 4 Gate 1, Sec 6 L002 |
 | A3 | 🔲 Open | One-page proof document | Single most important sales asset. Without it, no artefact to open a conversation with. | 1-page PDF / URL at invegent.com/proof. Content: NDIS Yarns posts published, reach trend, top-3 performing posts with numbers, compliance rules enforced, time saved vs manual. One before/after snapshot. | Audit #6, Consultant Audit 1 |
 | A4 | 🔲 Open | NDIS Yarns numbers worth showing | A3 depends on this. Consultant audit said 4–8 weeks of organic growth needed. Now ~10 weeks in. | Extract NY metrics end of week. If numbers support proof doc → produce A3. If thin → identify what would make them credible and close that gap. | Audit #9, Consultant Audit 1 |
-| A5 | 🔲 Open | Buyer-risk clause — "50% off next month on KPI miss" | Per D148: capital-preserving form of the consultant's 90-day money-back recommendation. Month-on-month cadence, KPI-triggered. | Define 2–3 measurable KPIs (minimum posts/week, engagement rate, follower growth) with thresholds. Include clause in A1 pilot terms. | Audit #8, D148 |
+| A5 | 🔲 Open | Buyer-risk clause — "50% off next month on KPI miss" | Per D148: capital-preserving form of the consultant's 90-day money-back recommendation. Month-on-month cadence, KPI-triggered. | Define 2–3 measurable KPIs (minimum posts/week, engagement rate, follower growth) with thresholds. Include clause in A1 pilot terms. Drafted within pilot template v1. | Audit #8, D148 |
 | A6 | 🔲 Open | Unit economics confirmed — all subscription costs known | Cannot price a service without cost base. 4 TBC rows in subscription register. | Check invoices: Vercel, HeyGen, Claude Max, OpenAI. Update `k.subscription_register`. Confirm firm monthly number. | Audit #32 |
 | A7 | 🔲 Open | Privacy policy updated — YouTube + HeyGen + video-analyser | Policy dated 4 March. Capabilities added after: YouTube Data API (D138), 5 HeyGen functions, video-analyser. L006 gate. | Add three paragraphs: (1) YouTube public data for feed discovery; (2) HeyGen avatar — only with explicit consent; (3) video transcript analysis — transcripts not retained beyond 24h. Re-host. | Audit #4, Sec 1.13, L006 |
-| A8 | 🔲 Open | AI content disclosure clause in service agreement / pilot terms | L007 gate. Contractual clause pre-sales; per-post labelling infrastructure is Tier 2. | Draft clause: "Content generated by ICE is AI-assisted under compliance-aware editorial rules. Client agrees to disclose AI assistance where required by platform policy or regulatory framework." Include in A1. | Audit #5, L007 |
+| A8 | 🔲 Open | AI content disclosure clause in service agreement / pilot terms | L007 gate. Contractual clause pre-sales; per-post labelling infrastructure is Tier 2. | Draft clause: "Content generated by ICE is AI-assisted under compliance-aware editorial rules. Client agrees to disclose AI assistance where required by platform policy or regulatory framework." Include in A1. Drafted within pilot template v1. | Audit #5, L007 |
 | A9 | ✅ Closed | Orphan drafts resolved (reframe #2) | v2 reframed this as feed-assignment per H6. The actual Saturday resolution was different: 307 rows backfilled to correct client_id, D152 seeder fix prevents recurrence at source. No feed-assignment work needed — the orphans weren't from unassigned feeds, they were from the D142 seeder writing NULL. | **Done 18 Apr afternoon.** 307 rows backfilled. D152 applied to seeder. | Audit #22, D152 |
 | A10a | ✅ Closed | Instagram config — tokens + mode + destination_id for all 4 clients | Was A10 in v2. Split because "config live" and "first post actually publishes" are different confirmations. | **Done 18 Apr afternoon.** All 4 IG profiles activated, IG Business Account IDs populated. | Audit #27, PK H12 |
 | A10b | 🔲 Open | Instagram — first post actually publishes successfully | Config existing ≠ content flowing. Must see at least one IG post land for at least one client before declaring IG publishing live. | Sunday morning verification (step 4 of the 6-indicator check). If green, close A10b. If red, regression investigation per red-path playbook in continuity brief. | PK H12, 18 Apr evening split |
@@ -137,13 +157,13 @@ Per D156: the external layer items (A24–A26) are not optional. A managed servi
 | A21 | 🔲 Open | Trigger ON CONFLICT audit — all triggers, not just enqueue | D155 was an ON CONFLICT clause mismatch on one trigger. The same class of bug may exist on other triggers. Proof-by-audit required, not just assertion. | Query pg_trigger → for each trigger function, grep the body for ON CONFLICT clauses. For each, verify clause columns exactly match a unique constraint on the target table. Write findings to `docs/briefs/2026-04-XX-trigger-on-conflict-audit.md`. | D155 fallout, continuity brief |
 | A22 | 🔲 Open | Ai-worker error surfacing — UPDATE rollbacks currently fail silently | The D155 symptom was ai_worker UPDATE silently rolled back by the faulty trigger. The function didn't check the UPDATE's effect count. Pattern may exist in other EFs. | Audit all EFs that do UPDATE against pipeline tables. Each must check rowcount and surface a failure (log line + row in a failures table) if 0. Patch in single commit. | D155 fallout, continuity brief |
 | A23 | 🔲 Open | D153 — live `/debug_token` cron (replaces sentinel approach) | Current token-expiry alerter trusts `token_expires_at` which is stale when Meta revokes mid-cycle. Fix per D153: cron calls Meta's live `/debug_token` endpoint daily per FB token, writes real status to `m.token_expiry_alert`. | Spec Wednesday 22 Apr per continuity brief. Build Thursday or Friday. | D153, D155 fallout, continuity brief |
-| A24 | 🔲 Open | Stage 1 external multi-model review layer — MVP | Per D156: ICE's monitoring shares Claude's epistemic foundation. MVP is Architect Reviewer (Gemini per-commit) + Sceptic (GPT-4 weekly). These catch classes of failure Claude-only monitoring cannot see. Commercially load-bearing per D156. | Build Monday 20 Apr (Architect Reviewer) per continuity brief. Sceptic follows in week 2. Full spec in `docs/briefs/2026-04-19-epistemic-diversity-layer.md` (written Sunday). | D156, continuity brief |
-| A25 | 🔲 Open | Stage 2 bank reconciliation layer — MVP | Per D156: external system is authoritative when it disagrees with ICE's DB. MVP is Meta Graph API reconciliation (catches the D155 symptom platform-side), followed by GitHub + Vercel + Supabase reconciliation for deploy drift. | Build Tuesday 21 Apr (Meta reconciliation) per continuity brief. GitHub + Vercel + Supabase follow as pattern validates. Full spec Sunday. | D156, continuity brief |
-| A26 | 🔲 Open | Review discipline mechanism — unread-blocks-dashboard + weekly block | A24 + A25 outputs are theatre without structural reading-discipline. PK identified this as the missed angle Saturday evening. Unread items in `m.external_review_queue` block dashboard home until acknowledged. Weekly scheduled Monday review block. | Build Wednesday 22 Apr per continuity brief. | D156, continuity brief |
+| A24 | ✅ Closed | Stage 1 external multi-model review layer — MVP exceeded | Per D156: ICE's monitoring shares Claude's epistemic foundation. MVP was Architect Reviewer (Gemini per-commit) + Sceptic (GPT-4 weekly). Actual shipment: three-voice layer + System Auditor EF. | **Done 21 Apr.** Three-voice (Strategist Gemini active, Engineer GPT paused, Risk Grok active) + System Auditor separate EF + webhooks on both repos + weekly digest cron + /reviews dashboard. Currently dormant (D162 sprint pause) — infrastructure live, reactivation is one SQL statement. See D160 + D161. | D156, D160, D161 |
+| A25 | 🔲 Open | Stage 2 bank reconciliation layer — MVP | Per D156: external system is authoritative when it disagrees with ICE's DB. MVP is Meta Graph API reconciliation (catches the D155 symptom platform-side), followed by GitHub + Vercel + Supabase reconciliation for deploy drift. | Sequencing pushed back — original plan was Tue 21 Apr, but session focused on Stage 1 hardening. Build when Stage 1 proven to earn its keep post-sprint reactivation. | D156, continuity brief |
+| A26 | 🔲 Open | Review discipline mechanism — unread-blocks-dashboard + weekly block | A24 + A25 outputs are theatre without structural reading-discipline. PK identified this as the missed angle Saturday evening. Unread items in `m.external_review_queue` block dashboard home until acknowledged. Weekly scheduled Monday review block. | Build when reviewers resume post-sprint. Currently moot — reviewers paused, no unread output accumulating. | D156, continuity brief |
 
-### Section A completion test (v3)
+### Section A completion test (v4)
 
-All 28 items marked closed or confirmed. Then and only then: Clock A + B + C 14-day window starts. No external sales conversation before window completes with metrics in range.
+All 28 items marked closed or confirmed. A27–A29 (from D157, tracked in dashboard roadmap) must also close. Then and only then: Clock A + B + C 14-day window starts. No external sales conversation before window completes with metrics in range.
 
 ---
 
@@ -233,18 +253,21 @@ Resolved per D150 — verify-commit-landed step added to session-close SOP.
 ### F6 (new v3) — The first D155-class silent failure surfaces an epistemic problem, not a monitoring problem
 Adding more Claude-written monitors to watch Claude-written pipelines compounds the blind spot. D156 sets external layer as the correct response — A24–A26 are not optional, they are the commercial viability gate for a managed content service. Documented here so future-PK reading this section doesn't relitigate it.
 
+### F7 (new v4) — Reviewer layer paused during sprint is not "giving up on D156"
+The sprint pause (D162) is a noise-reduction decision, not a reversal. Reviewer layer is useful against a stable target, not a moving target. Re-enable at ~18-19 of 28 Section A items closed. The two runs done today produced zero novel findings but the infrastructure proved itself — see D161 evaluation.
+
 ---
 
-## Section G — Pre-sales gate checklist (go / no-go, v3)
+## Section G — Pre-sales gate checklist (go / no-go, v4)
 
 This is the single list PK pulls up before opening a sales conversation.
 
 ```
 Legal (no solicitor required at pilot stage per D147)
-[ ] A1  Pilot terms + liability waiver drafted
-[ ] A5  50% off KPI miss clause with defined KPIs
+[ ] A1  Pilot terms + liability waiver drafted (template v1 done, final pending)
+[ ] A5  50% off KPI miss clause with defined KPIs (drafted within A1)
 [ ] A7  Privacy policy updated (YouTube + HeyGen + video-analyser)
-[ ] A8  AI disclosure clause in pilot terms
+[ ] A8  AI disclosure clause in pilot terms (drafted within A1)
 
 Proof
 [ ] A3  One-page proof document written and hosted
@@ -253,10 +276,10 @@ Proof
 Platform
 [ ] A2  Meta App Review resolved OR pilot workaround documented
 
-Stability — original (Saturday closures ticked)
+Stability — original (18 Apr closures ticked)
 [x] A9  Orphan drafts resolved (307 backfilled + D152 prevents recurrence)
 [x] A10a Instagram config done for all 4 clients
-[ ] A10b First IG post actually publishes (Sunday verify)
+[ ] A10b First IG post actually publishes
 [x] A11a CFW + Invegent FB/IG tokens activated
 [ ] A11b CFW + Invegent content_type_prompts (9 rows × 2 clients)
 [x] A12 HeyGen not exposed in v1 portal (confirmed via code search)
@@ -266,15 +289,15 @@ Stability — original (Saturday closures ticked)
 [ ] A16 Clock A dashboard live
 [ ] A18 7 source-less Edge Functions investigated + source pulled
 
-Stability — D155 fallout (new v3)
+Stability — D155 fallout (v3)
 [x] A19 FB token refresh across 4 clients
 [ ] A20 Pipeline liveness monitoring (ai_job stall + last-success freshness)
 [ ] A21 Trigger ON CONFLICT audit across all triggers
 [ ] A22 Ai-worker error surfacing (UPDATE rowcount checks)
 [ ] A23 D153 live /debug_token cron
 
-External epistemic layer (new v3, per D156)
-[ ] A24 Stage 1 multi-model review layer MVP (Architect Reviewer + Sceptic)
+External epistemic layer (v3 → updated v4)
+[x] A24 Stage 1 multi-model review MVP — EXCEEDED (three-voice + System Auditor + webhooks + dashboard)
 [ ] A25 Stage 2 bank reconciliation layer MVP (Meta + GitHub + Vercel + Supabase)
 [ ] A26 Review discipline (unread-blocks-dashboard + weekly block)
 
@@ -284,6 +307,11 @@ Clock C
 Economics
 [ ] A6  All TBC subscription costs resolved
 
+ID003 follow-ons (surfaced 18 Apr via D157)
+[ ] A27 LLM-caller Edge Function audit (idempotency + retry-cap patterns)
+[ ] A28 Cost guardrails infrastructure live (D157 Stop 2)
+[ ] A29 Inbox anomaly monitor live
+
 Timebox
 [ ] Clock A window complete — 14 consecutive days ≥95% adherence
 [ ] Clock B window complete — avg <2 hrs/day ops time
@@ -292,7 +320,7 @@ Timebox
 First external sales conversation authorised only when every box above is ticked.
 ```
 
-Current score: **7 of 28 closed. 21 open.** Plus 3 timebox windows not yet startable.
+Current score: **8 of 28 closed, 20 open** (A24 closed 21 Apr). Plus A27–A29 tracked separately (3 open). Plus 3 timebox windows not yet startable.
 
 ---
 
@@ -327,13 +355,15 @@ Current score: **7 of 28 closed. 21 open.** Plus 3 timebox windows not yet start
 
 Parallel track to pre-sales work. Not on the critical path — does not gate any Section A item. But highest-leverage long-term investment because it transfers to every future project.
 
-**v3 note:** per D156, the Stage 1 Devil's Advocate (Gemini 2.5 Pro reading any D149 advisor output within 2 hours) is now the external counterpart to this layer. Build order stands, but every Claude-based advisor gets a Gemini counter-voice from Thursday 23 Apr onwards.
+**v3 note:** per D156, the Stage 1 Devil's Advocate (Gemini 2.5 Pro reading any D149 advisor output within 2 hours) is now the external counterpart to this layer.
+
+**v4 note:** advisor layer build (Sales Advisor, Thu 23 Apr) is deferred until sprint completes — no new Claude-assisted layers during sprint for the same reason reviewers are paused (noise during fast iteration).
 
 ### Build order
-1. **Sales Advisor (this week — Thursday 23 Apr per continuity brief)** — Claude Project, custom instruction defining persona + scope + escalation rules, GitHub repo connected for docs access. Ask three real questions (pre-sales gate closure, first client target, half-priced pilot structure). Validate over two weeks. Devil's Advocate (Gemini) runs in parallel from day one.
-2. **Legal/Risk Advisor (week 3 if Sales Advisor validates)** — same template. Particularly valuable given D147 defers solicitor; Legal Advisor reads proposed pilot terms and flags exposure.
+1. **Sales Advisor** — Claude Project, custom instruction, GitHub repo connected. Ask three real questions. Validate over two weeks. Devil's Advocate (Gemini) runs in parallel from day one. **Now deferred until sprint nears completion.**
+2. **Legal/Risk Advisor (week 3 if Sales Advisor validates)** — same template.
 3. **Ops Discipline Advisor (week 4)** — reads Clock B metrics, catches overcommitment.
-4. **Product Strategy Advisor (week 5)** — separate voice from session-active Claude to avoid executor-reviewing-own-work.
+4. **Product Strategy Advisor (week 5)** — separate voice from session-active Claude.
 
 ### Validation criteria (after 2 weeks with Sales Advisor)
 - Did PK read advisor responses and change any decision based on them?
@@ -355,10 +385,11 @@ If yes to first three, proceed to next advisor. If no, tighten brief and retry o
 
 ## Change log
 
-- **2026-04-18 morning** — v1 initial classification. Produced in Claude.ai session following Claude Code audit.
-- **2026-04-18 afternoon** — v2 reflecting PK answers to 16 open questions. Material changes: A1 reframed (D147), A5 sharpened (D148), A9 reframed (feed assignment), A11 confirmed + expanded, A18 promoted from C2, C1 reframed (demand-met math), new Section I (advisor layer per D149). 12 of 16 open questions resolved; 4 remain.
-- **2026-04-18 late evening** — v3 reflecting Saturday afternoon/evening closures + D155 fallout + D156 strategic direction. Closures: A9 (via D152 backfill, not feed assignment), A10 split (A10a closed, A10b open), A11 split (A11a closed, A11b open), A15, A19. New items: A19 (formalised), A20–A23 (D155 class prevention), A24–A26 (D156 external layer). Item count: 18 → 28 pre-sales. 7 of 28 closed or confirmed; 21 open. Pushed after sanity-read of continuity brief (commit 04eb1d4).
+- **2026-04-18 morning** — v1 initial classification.
+- **2026-04-18 afternoon** — v2 reflecting PK answers to 16 open questions. A1 reframed (D147), A5 sharpened (D148), A9 reframed, A11 confirmed + expanded, A18 promoted from C2, C1 reframed, new Section I (advisor layer per D149). 12 of 16 open questions resolved; 4 remain.
+- **2026-04-18 late evening** — v3 reflecting Saturday afternoon/evening closures + D155 fallout + D156 strategic direction. Closures: A9, A10a, A11a, A15, A19. New items: A19 (formalised), A20–A23 (D155 class prevention), A24–A26 (D156 external layer). Item count: 18 → 28 pre-sales. 7 of 28 closed or confirmed; 21 open.
+- **2026-04-21 end-of-day** — v4. **A24 closed** (Stage 1 external multi-model review layer shipped + exceeded MVP — three-voice + System Auditor). D161 documents the implementation shape. D162 documents the sprint-mode pause (all reviewers `is_active=false` until ~80-90% gate closure). 8 of 28 closed; 20 open. New Section F7 explains the sprint pause. Advisor layer build deferred to post-sprint (same rationale as reviewer pause). A27–A29 (ID003 follow-ons from D157) tracked separately — treated as 3 additional functional pre-sales items.
 
 ---
 
-*End of classification v3. PK to action Section G checklist starting with A10b Sunday morning verification + A11b content strategy session Friday.*
+*End of classification v4. Next pickup: sprint board in `docs/00_sync_state.md`. First recommended items: A7 (privacy policy), Q1 (13-job cleanup SQL), discovery pipeline one-liner, then pilot document finalisation (A1 + A5 + A8).*
