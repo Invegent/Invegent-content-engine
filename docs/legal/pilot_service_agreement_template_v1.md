@@ -7,7 +7,7 @@
 > **Per L006:** References current Privacy Policy (which itself needs A7 update before this template goes live to a client).
 >
 > **PK actions before this template is used:**
-> 1. Decide pilot pricing model: half-price ($400/mo) OR 3-month free trial. Lock the choice or offer both as alternatives in conversation.
+> 1. **Pricing model: deliberately deferred.** To be decided closer to first sales conversation, based on assessment of product strength/weakness at that point. Section 2 below holds both candidate options as placeholders. Do NOT lock in pricing prematurely.
 > 2. Confirm KPI thresholds (Section 2 below) — current values are conservative starting proposals.
 > 3. Update Privacy Policy (A7) — current policy dated 4 March 2026 is missing YouTube + HeyGen + video-analyser paragraphs.
 > 4. Pick one client to pilot. Adapt this template (replace `[BRACKETED]` placeholders).
@@ -44,10 +44,13 @@ Invegent will operate a managed content service for the Client's nominated socia
 
 ### 2. Pilot pricing and KPI guarantee
 
-**Pilot fee:** [CHOOSE ONE]
+**Pilot fee — TO BE DECIDED CLOSER TO FIRST SALES CONVERSATION.**
 
-- **Option A — Half-price pilot:** AUD $400 per month (50% of standard managed service rate of $800/month). Payable monthly in advance.
-- **Option B — Free trial pilot:** No fee for the first 3 months. From month 4 onwards, standard fee of AUD $800/month applies if Client chooses to continue.
+Pricing is deliberately not locked in this template. PK will reassess based on product strength and weakness at the time of the first sales conversation. Current candidate options held here for future consideration:
+
+- **Option A — Half-price pilot:** AUD $400 per month (50% of standard managed service rate of $800/month). Payable monthly in advance. Signals confidence; filters for clients who already see value.
+- **Option B — Free trial pilot:** No fee for the first 3 months. From month 4 onwards, standard fee of AUD $800/month applies if Client chooses to continue. Lower friction; converts better; risk of cheapening perception.
+- **Option C — Other.** A different structure (lower flat fee, success-based, performance-tiered, etc.) may be appropriate depending on the specific client and product maturity at the time.
 
 **KPI guarantee — 50% off next month on miss:**
 
@@ -205,4 +208,4 @@ For transparency. Subject to change with notice.
 
 ---
 
-*End of pilot service agreement template. PK to refine before first client send.*
+*End of pilot service agreement template. PK to refine before first client send. Pricing decision deferred to first sales conversation.*
