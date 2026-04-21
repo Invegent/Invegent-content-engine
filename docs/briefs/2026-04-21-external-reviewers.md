@@ -34,16 +34,19 @@ The session-of-21-Apr discussion considered four approaches:
 
 ---
 
-## The two reviewers
+## The three reviewers
 
-| Role | Model | Context window | Prompt | Fires on |
-|---|---|---|---|---|
-| **Strategist** | Gemini 2.5 Pro | Full repo (500k–700k tokens) | "Is this the right thing to be building? Is the direction defensible?" | Every qualifying commit to main |
-| **Engineer Reviewer** | GPT-4o | Focused commit context (~100k tokens) | "Does this implementation match the brief? Any over-engineering? Missing simplification?" | Every qualifying commit to main |
+| Role | Model | Provider | Context window | Prompt | Fires on |
+|---|---|---|---|---|---|
+| **Strategist** | Gemini 2.5 Pro | Google | Full repo (500k–700k tokens) | "Is this the right thing to be building? Is the direction defensible?" | Every qualifying commit to main |
+| **Engineer Reviewer** | GPT-4o | OpenAI | Focused commit context (~100k tokens) | "Does this implementation match the brief? Any over-engineering? Missing simplification?" | Every qualifying commit to main |
+| **Risk Reviewer** | Grok 4.1 Fast Reasoning | xAI | Full repo | "What breaks? What silently succeeds without working? What is this quietly assuming?" | Every qualifying commit to main |
 
-Both are advisory. Neither gates commits. Both write to the same queue table. Both outputs surface in the same weekly digest and the same on-demand digest.
+Three distinct voices, three distinct providers. No one vendor sees the whole review surface alone. All are advisory. None gate commits. All write to the same queue table. All outputs surface in the same weekly digest and the same on-demand digest.
 
-**Context split rationale (corrected after v1.0.0 first-run):** Strategist reads everything — the architectural / direction lens wants the whole repo. Engineer Reviewer reads the commit + its immediate context — code review is about the commit and its surroundings, not the whole codebase; a 500k-token engineering review is mostly wasted tokens on noise. The original brief specified GPT-4.1 with full repo context; first-run retroactive testing hit OpenAI's organisation-level TPM ceiling on the long-context variant (500k tokens > tier limit). Rather than a tier bump, the honest design is different windows per role. Strategist at 2M context, Engineer at focused 100k — two different lenses.
+**Why three voices, not two.** The original brief specified two. First-week testing surfaced that the most painful failures in April 2026 (D155 7-day silent stall, ID003 silent cost loop, three silent failures in one day) were not "wrong direction" and not "poor implementation" — they were **silent failures in the gap between what the code said it did and what actually happened**. Neither Strategist nor Engineer is naturally oriented to look for that. A dedicated adversarial lens is. Added 2026-04-21.
+
+**Context split rationale.** Strategist and Risk get full repo — direction lens wants scope, adversarial lens needs to see cross-file interactions (silent failures often hide in upstream/downstream coupling the commit doesn't touch). Engineer gets focused ~100k — code review is about the commit and its immediate context; also OpenAI's default org TPM (30k) forces this. When OpenAI tier is bumped, Engineer stays on focused context by design, not workaround.
 
 **Engineer Reviewer focused-context priority order (from top, fill ~400k chars / ~100k tokens):**
 1. Commit diff + full post-change state of files the commit touched

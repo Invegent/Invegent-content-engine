@@ -10,15 +10,14 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "external-reviewer-v1.1.0";
-// v1.1.0 — corrected design after first-run OpenAI rate-limit discovery:
-//   Strategist (Gemini 2.5 Pro) — full repo context, wide architectural lens.
-//   Engineer Reviewer (GPT-4o) — focused commit context (~400k chars = ~100k
-//   tokens): changed files' post-change state, directly-referenced briefs,
-//   recent decisions, sync_state, last 10 commit messages, then top-up from
-//   docs/15 + docs/03. This is the honest role split, not a workaround:
-//   code review is about the commit and its immediate context, not the whole
-//   codebase.
+const VERSION = "external-reviewer-v1.2.0";
+// v1.2.0 — Risk Reviewer added (xAI Grok 4.1 Fast Reasoning). Three voices:
+//   Strategist  (Gemini 2.5 Pro) — full repo, direction / architecture lens
+//   Engineer    (GPT-4o)         — focused ~100k-token context, implementation lens
+//   Risk        (Grok 4.1 Fast)  — full repo, adversarial / silent-failure lens
+//   Provider dispatch: gemini + xai get full repo (both 2M windows, xAI has no
+//   OpenAI-org TPM constraint); openai gets focused context.
+// v1.1.0 — Engineer corrected to focused context after OpenAI TPM rate limit.
 
 const QUALIFYING_PATH_PATTERNS = [
   /^supabase\/functions\/.+\.ts$/,
@@ -450,6 +449,48 @@ async function callGemini(model: string, prompt: string, apiKey: string): Promis
   };
 }
 
+async function callXai(model: string, prompt: string, apiKey: string): Promise<ReviewResult> {
+  const url = "https://api.x.ai/v1/chat/completions";
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+    }),
+  });
+  const raw = await resp.text();
+  if (!resp.ok) throw new Error(`xai_http_${resp.status}: ${raw.slice(0, 800)}`);
+  const data = JSON.parse(raw);
+  const text = data?.choices?.[0]?.message?.content ?? "";
+  const usage = data?.usage ?? {};
+  const ti = usage.prompt_tokens ?? 0;
+  const to = usage.completion_tokens ?? 0;
+  const cached = usage.prompt_tokens_details?.cached_tokens ?? 0;
+  // Grok 4.1 Fast Reasoning pricing (per 1M tokens, approximate — confirm at
+  // https://docs.x.ai/docs/models for exact rates at your tier):
+  // input ~$0.20, cached ~$0.05, output ~$0.50.
+  const uncachedIn = ti - cached;
+  const cost = (uncachedIn / 1_000_000) * 0.20 + (cached / 1_000_000) * 0.05 + (to / 1_000_000) * 0.50;
+  const parsed = extractJson(text);
+  return {
+    severity: parsed.overall_severity ?? "info",
+    summary: (parsed.summary ?? "").slice(0, 200),
+    detail: parsed.detail ?? "",
+    referenced_rules: parsed.referenced_rules ?? [],
+    referenced_artifacts: parsed.referenced_artifacts ?? [],
+    tokens_input: ti,
+    tokens_output: to,
+    cost_usd: Number(cost.toFixed(6)),
+    cache_hit: cached > 0,
+  };
+}
+
 async function callOpenAI(model: string, prompt: string, apiKey: string): Promise<ReviewResult> {
   const url = "https://api.openai.com/v1/chat/completions";
   const resp = await fetch(url, {
@@ -504,6 +545,8 @@ async function runReview(
 
   const result = reviewer.provider === "gemini"
     ? await callGemini(reviewer.model, prompt, apiKey)
+    : reviewer.provider === "xai"
+    ? await callXai(reviewer.model, prompt, apiKey)
     : await callOpenAI(reviewer.model, prompt, apiKey);
 
   const { error: insertErr } = await supabase.schema("m").from("external_review_queue").insert({
@@ -583,7 +626,9 @@ async function processCommit(commit: CommitContext) {
 
   const results: any[] = [];
   for (const reviewer of reviewers) {
-    const contextBlob = reviewer.provider === "gemini" ? fullBlob : focused.blob;
+    // Full repo context for providers with large windows + no TPM issue (gemini, xai).
+    // Focused ~100k-token context for openai (TPM ceiling on default org tier).
+    const contextBlob = (reviewer.provider === "gemini" || reviewer.provider === "xai") ? fullBlob : focused.blob;
     try {
       const r = await runReview(supabase, reviewer, commit, diff, contextBlob);
       results.push(r);
