@@ -193,4 +193,122 @@ Execution risk: the refactor touches the only external-review system in producti
 
 ---
 
+## ADDENDUM — Consumption Model (21 Apr evening)
+
+**Context:** This addendum was added after the first v1.0.2 + prompt v2 system audit run. The findings from the first two audits were all items already present in `sync_state.md`'s Watch List — not novel, not missed-by-Claude. PK initially asked whether the external layer was worth keeping. The conversation surfaced a clearer value prop that the original brief had not articulated, and one missing infrastructure piece.
+
+### The honest data point after 2 runs
+
+- System audit v1.0.1 (05:21Z) produced 4 findings — one spurious (stale doc), three already in Watch List.
+- System audit v1.0.2 (07:30Z) produced 4 findings — all four real and actionable, but all four also already in Watch List.
+- Per-commit Risk Reviewer (Grok) has produced ~4 concerns across the day's commits — all framings Claude could plausibly have arrived at unprompted.
+- Total spend to date across the layer: ~$8. Total findings Claude-wouldn't-have-surfaced: **0**.
+
+This is preserved here as an honest record. The conclusion is NOT that the layer is useless — it's that the initial framing ("insurance against Claude blind spots") was too narrow and too binary. The reframe below is what makes the architecture worth building.
+
+### The reframe PK articulated (preserved verbatim)
+
+> "every night, the work that we have done for the day gets evaluated by this cron jobs. And in night in the morning time when we are convening to work back on it, then we take all this feedback in consideration. And keep working through that and the new day task. So then the less scope of making any mistakes. And the future more we proceed with it, the better the system becomes and the clearer pipeline becomes."
+
+This is **not** insurance against a catastrophic blind spot. It's a **continuous overnight feedback loop** that preps the morning session. The value compounds over time, not per-incident. The correct evaluation horizon is 3+ months of accumulated learning, not 2 audits.
+
+### Architectural implications
+
+**1. Storage: Supabase table, not email.**
+
+Rejected pattern: findings arrive as email. PK has to triage them. They become another inbox task competing for morning attention.
+
+Accepted pattern: findings write to `m.external_review_queue` (already built). The row persists indefinitely with full finding_detail as TEXT. PostgreSQL TEXT has no practical size limit (up to 1GB per value). Zero storage concern even at 9 roles × 2,000 words nightly.
+
+Already shipped — no additional work required.
+
+**2. Reading surface: morning digest committed to the repo.**
+
+Risk identified: 5–9 roles running nightly produce 10,000–15,000 words of reviewer output. If every morning starts with reading 9 markdown bodies from the DB, that's 20+ minutes of meta-reading before real work begins. That friction would eventually kill the ritual.
+
+Solution: a **consolidation digest role**. Runs last in the overnight chain (say 5am AEST after all other roles complete). Reads all the night's other role outputs from `m.external_review_queue`. Produces a single morning-ready markdown file:
+
+```
+docs/reviews/YYYY-MM-DD-overnight.md
+
+## Must-action today
+(1–3 items, if any)
+
+## Worth knowing
+(context but not blocking)
+
+## Full reviewer outputs
+- [Strategist / Gemini]: link to m.external_review_queue row
+- [Engineer / GPT-4o]: link to m.external_review_queue row
+- ... etc
+```
+
+File gets committed to the repo automatically by the consolidation EF. Session-start protocol extends from "read sync_state" to "read sync_state + today's overnight digest." One new file to read, maximum 500 words. Full reviewer outputs remain drillable in the queue for anything that looks worth investigating.
+
+Schema implication: one more role in the library (`morning_digest`) with `default_context = 'previous_night_findings'`. No new tables needed.
+
+**3. Role × task composition: flat library, not a separate task-templates table.**
+
+PK raised a third dimension during the conversation: "roles × analytical tasks." Risk assessment, impact analysis, compliance review, pilot pitch rehearsal, objection analysis — these are task-templates that any role could theoretically apply.
+
+Tempting design: a third table for task templates, joined to roles. Rejected. Two reasons:
+
+1. It multiplies combinatorial complexity without clear payoff — a "Sales Advisor running Pilot Pitch Rehearsal" is behaviourally different from "Sales Advisor running Objection Analysis," not just the same role wearing a different hat.
+2. Roles-as-distinct-rows are cheaper to iterate. Want a new role/task combo? Insert a row. Want to deprecate? Flip `is_active`.
+
+Keep the library flat. One row per (persona × task) combination. `role_code` values become compound: `sales_pilot_pitch`, `sales_objection_analysis`, `engineering_risk_assessment`, `compliance_ndis_audit`, etc. Prefix discipline provides organization; database structure stays simple.
+
+### Cost tolerance confirmed
+
+PK stated $1–2 per night is acceptable. At full library of 5–9 nightly roles + 1 consolidation digest, at Grok Fast Reasoning pricing with cache hits, realistic range is **$1–3/night = $30–90/month**. Carves out as a separate budget line from the D157 Anthropic cap; not deducted from that $200/month ceiling.
+
+Hard cap at $60/month recommended for first 3 months. If cost trends higher, some roles rotate to weekly cadence instead of nightly.
+
+### Revised kill/keep criterion
+
+Original draft criterion: "kill the layer at 4 weeks if no novel findings." That criterion was binary and tied to a frame (insurance) that doesn't match the value prop.
+
+Revised criterion for when the library is built: **per-role 8-week calibration checkpoint.**
+
+Every 8 weeks, for each role, ask:
+- How many findings did this role produce?
+- Of those, how many were tagged `valid` via the outcome tagging infrastructure?
+- What's the cost per valid finding for this role?
+- Is there a pattern of this role catching things other roles miss, or is it redundant with a cheaper role?
+
+Actions at checkpoint:
+- Role with 0 valid findings in 8 weeks → **pause** (`is_active = false`), not delete. Preserves the prompt for future revisit.
+- Role with high cost per valid finding → swap to cheaper model (Grok instead of Gemini) and re-evaluate.
+- Role with high valid rate → increase cadence or expand target scope.
+
+This creates selection pressure toward productive roles without the binary "kill everything" failure mode.
+
+### Morning session protocol (added when library ships)
+
+Current session-start protocol:
+1. Read `docs/00_sync_state.md` via GitHub MCP.
+2. Pick up where we left off.
+
+Post-library session-start protocol:
+1. Read `docs/00_sync_state.md`.
+2. Read `docs/reviews/YYYY-MM-DD-overnight.md` (today's digest). If empty / no file, skip.
+3. Factor any "Must-action today" items into session planning.
+4. Pick up where we left off.
+
+This addition is the point of the whole architecture. Without step 2, the overnight findings are just a database of unread analyses. With step 2, the findings shape the day's decisions. The loop closes.
+
+### What this addendum does NOT change
+
+- Gate for execution: unchanged. Still requires (a) 2 weekly digests proving the simpler three-voice layer produces useful findings, (b) one concrete use case for a role not in the library.
+- Build order and migration sequence: unchanged.
+- The core table design (`c.external_reviewer_role`, `c.external_reviewer_model`, `m.external_review_job`): unchanged.
+
+Addendum additions to the execution checklist:
+- [ ] `morning_digest` role seeded in `c.external_reviewer_role` at migration time
+- [ ] `consolidation-digest-nightly-5am-aest` pg_cron entry wired after other roles complete
+- [ ] Session-start protocol doc updated in `docs/00_sync_state.md` to include step 2
+- [ ] Cost budget line for external review layer separated from Anthropic budget
+
+---
+
 *End of brief. Parked. Revisit when gate conditions are met.*
