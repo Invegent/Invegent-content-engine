@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-21 evening — Q1 closure increment (post end-of-day reconciliation)
+> Last written: 2026-04-21 late evening — M2 closure (CFW schedule save bug)
 > Written by: PK + Claude session sync
 
 ---
@@ -30,7 +30,7 @@ WHERE reviewer_key IN ('strategist', 'risk', 'system_auditor');
 ```
 (Leave `engineer` paused until OpenAI Tier 2 unlocks organically at $50 cumulative spend.)
 
-### Sprint mode active — 20 open pre-sales items (was 21 this morning; Q1 closed this evening, but Q1 is a sprint item, not an A-item)
+### Sprint mode active — 20 open pre-sales items (Q1 + M2 closed this evening — both sprint items, not A-items; M5 opened)
 
 PK's rationale (verbatim 21 Apr evening):
 
@@ -44,6 +44,7 @@ Target sequence: close as many Section A items as possible. At ~18-19 of 28 clos
 - **Afternoon:** system-auditor EF built (v1.0.0 → v1.0.1 → v1.0.2 over three commits); first audit run produced misleading severity:critical from stale snapshot content.
 - **Evening:** Root-caused to stale docs in auditor context. Fix: 4 snapshots moved to `docs/archive/`, docs index rebuilt with freshness taxonomy, EF v1.0.2 adds archive exclusion, system_auditor prompt v2 adds authority hierarchy + severity anchors + suppress list. Second audit produced severity:warn with 4 real findings. Reviewer layer judged useful but noisy-during-sprint — all reviewers paused. Role library brief extended with consumption-model addendum.
 - **Later evening:** Q1 sprint item closed — 13 failed ai_jobs marked dead after surfacing that the pre-approved SQL's CHECK-constraint widening was untested. Phase 1.7 DLQ foundation scoped via inspection to just `m.ai_job` (D163); `f.canonical_content_body` intentionally left unchanged (different terminal-state model); `m.post_publish_queue` deferred (needs a new CHECK constraint, not a widening — surfaced to backlog). Real finding: failures weren't ID003 timeout-loop but gpt-4o TPM saturation on concurrent rewrite jobs — separate brief parked for pick-up when pipeline resumes.
+- **Even later evening:** M2 sprint item closed — CFW schedule save bug. Two-commit path on `fix/cfw-schedule-save-silent-error`: Claude Code's `fb08305` surfaced RPC errors the old silent-swallow was hiding; Claude Desktop's `a9169ef` fixed the underlying `p_slots` double-serialisation that showed up once errors were visible. DB reconciliation during diagnosis revealed the bug affected all 4 clients since at least 6 Apr — NY/PP had masking seed-migration rows; CFW/Invegent had none, making CFW the reproducible case. Squash-merged to main as `64e3daa`. End-to-end verified via Vercel preview: 21-row weekly schedule lands correctly for CFW with UI counter matching DB enabled-slot count. M5 opened for `getPublishSchedule` `exec_sql` + raw-interpolation hardening. New backlog item: publisher schedule-source audit.
 
 ---
 
@@ -177,7 +178,7 @@ SQL update to `c.external_reviewer` row for `reviewer_key='system_auditor'`. Pro
 - **Severity: warn** (correctly calibrated, down from spurious critical)
 - Four findings, all real and actionable:
   - 13 failed ai_jobs from ID003 (with proposed SQL) — **addressed in later-evening Q1 closure; actually TPM saturation not ID003, see D163 + brief**
-  - CFW schedule save bug (sync_state Watch List item, matches known bug)
+  - CFW schedule save bug (sync_state Watch List item, matches known bug) — **addressed in even-later-evening M2 closure**
   - Discovery pipeline `config.url` vs `config.feed_url` mismatch (sync_state Watch List item)
   - A7 privacy policy stale for YouTube + HeyGen + video-analyser
 - Self-correcting "don't have context to judge" section correctly called out LinkedIn status, full cron list, queue join chain
@@ -230,6 +231,30 @@ First Claude-Desktop sprint item picked and closed. Steps:
 
 Decision logged as **D163**. New brief parked at `docs/briefs/2026-04-21-tpm-saturation-staggered-rewrite.md` for the concurrency design issue.
 
+### Even later evening (21 Apr) — M2 closure (CFW schedule save bug)
+
+Second Claude-Desktop sprint item closed after dispatching M2 to Claude Code. Full path:
+
+1. **Claude Code dispatch** — M2 brief authored in Claude Desktop with investigation steps, ranked root-cause hypotheses, fix criteria, verification gates. Claude Code worked for ~7 min, pushed branch `fix/cfw-schedule-save-silent-error` commit `fb08305`: destructured `{ error }` in `actions/schedule.ts`, added try/catch in `ScheduleTab.tsx`, red "Save failed" UI state with error detail. Noted but didn't fix: `getPublishSchedule` still uses `exec_sql` with raw string interpolation (SQL injection surface + mirror silent-swallow on read path — deferred to M5).
+
+2. **Vercel preview test — first pass** — PK opened preview URL, saved schedule, saw **red "Save failed"** banner with Next.js production error-redaction message. NOT a regression — the error-surfacing fix worked perfectly, exposing an underlying bug the old silent-swallow had been hiding for weeks.
+
+3. **DB reconciliation during diagnosis** — `c.client_publish_schedule` state: CFW 0 rows, Invegent 0 rows, NY 6 rows (all `updated_at = 2026-04-06 23:59:54`), PP 6 rows (same timestamp). NY/PP rows came from a 6 April seed migration, not UI saves. **The save-via-UI path had never worked for any client.** CFW was the reproducible case because it had no masking seed data.
+
+4. **Root cause found** — `save_publish_schedule` RPC exists with correct signature (`p_client_id uuid, p_platform text, p_slots jsonb`, `SECURITY DEFINER`, `search_path TO 'public'`). Function body iterates `jsonb_array_elements(p_slots)`. Direct SQL call with jsonb array literal worked and inserted the row. Direct SQL call with jsonb scalar (a JSON-encoded string, simulating what supabase-js was sending) threw Postgres error **22023 "cannot extract elements from a scalar"** — the exact error the UI was catching and reporting. Cause: `savePublishSchedule` was calling `JSON.stringify(slots.map(...))` before passing to `supabase.rpc()`. supabase-js already serialises the whole params object once when building the HTTP body — pre-stringifying caused PostgREST to receive `p_slots` as a JSON string, which cast to a jsonb scalar.
+
+5. **Fix pushed** — Commit `a9169ef` on the same feature branch. Removed the `JSON.stringify` wrapper. Passed the slots array directly. supabase-js now serialises once, PostgREST receives a proper jsonb array, `jsonb_array_elements` iterates correctly.
+
+6. **Vercel preview test — second pass** — PK hard-refreshed preview, saved a multi-platform weekly schedule for CFW, saw **green "Saved ✓"**. DB verification showed 21 rows (7 days × 3 platforms) with 5 enabled slots exactly matching UI counter: Facebook 2/5 (Mon, Thu), Instagram 2/5 (Fri, Sat), LinkedIn 1/5 (Tue). All 9:06 AM. Clustered creation timestamps within 3 seconds confirming batched-per-platform INSERT.
+
+7. **Merged** — PR #1 squash-merged to `main` as commit `64e3daa`. Vercel auto-deploys to `dashboard.invegent.com` in ~60s.
+
+8. **M5 opened** — `getPublishSchedule` hardening: replace `exec_sql` + raw string interpolation with `public.get_publish_schedule(p_client_id UUID, p_platform TEXT)` SECURITY DEFINER RPC; destructure `{ data, error }`; surface errors same pattern as M2. Medium sprint item (30-60 min). Closes SQL injection surface + read-path silent-swallow. Claude-Code-appropriate when dispatched.
+
+**Verification-gap lesson:** Claude Code's original verification loop tested `save_publish_schedule` via direct SQL (`SELECT save_publish_schedule(...)` with a jsonb array literal), which bypassed the supabase-js → PostgREST serialisation path where the actual bug lived. The 22023 only manifested when the call goes through the client library. Lesson for future verification: a client-library-using code path MUST be exercised through the actual client library, not just the DB function in isolation. Captured as Section F9 in file 15.
+
+**Follow-up flagged as new backlog item:** If `c.client_publish_schedule` has been effectively empty for CFW + Invegent for weeks, what has the `publisher` Edge Function been using to schedule those clients' posts? Two hypotheses: (a) reads the same table → those clients have been posting on defaults/fallback, or (b) reads a different source → the UI has been pure theatre disconnected from publishing. Half-day investigation. Gate: when sprint has capacity.
+
 ---
 
 ## THE EXTERNAL REVIEWER LAYER — CURRENT STATE
@@ -262,7 +287,7 @@ Decision logged as **D163**. New brief parked at `docs/briefs/2026-04-21-tpm-sat
 
 **Phase 1 — COMPLETE** (7 Apr 2026)
 **Phase 3 — Expand + Personal Brand** (active, external client expansion still gated on pre-sales criteria)
-**Gate status:** Pre-sales gate NOT CLEARED. **8 of 28 Section A items closed, 20 open.** (A24 closed this morning.) Q1 is a sprint item, not an A-item — its closure does not change the A-count but does unblock A22's evidence base and ships the first chunk of Phase 1.7 foundation work (see D163).
+**Gate status:** Pre-sales gate NOT CLEARED. **8 of 28 Section A items closed, 20 open.** (A24 closed this morning.) Q1 and M2 are sprint items, not A-items — their closures do not change the A-count but Q1 shipped the first chunk of Phase 1.7 DLQ foundation (D163) and M2 fixed a production bug affecting all 4 clients' schedule configuration since 6 April.
 
 **Today's movement on the gate:**
 - A1 (pilot terms) — template drafted, pricing deferred. Awaits A7 privacy policy update.
@@ -285,6 +310,8 @@ Decision logged as **D163**. New brief parked at `docs/briefs/2026-04-21-tpm-sat
 
 All 4 FB tokens permanent (`expires_at: 0`).
 
+**NEW:** CFW now has 21 real schedule rows in `c.client_publish_schedule` from PK's M2-verification save (5 enabled slots: Mon-FB, Tue-LI, Thu-FB, Fri-IG, Sat-IG at 09:06 AEST). First real UI-saved schedule for any client. Publisher behaviour against this data not yet observed (pipeline dormant; and publisher-schedule-source audit is an open backlog item — what does the publisher actually read?).
+
 ---
 
 ## SPRINT MODE — THE BOARD
@@ -295,7 +322,7 @@ Primary objective: close pre-sales items from file 15 Section A without reviewer
 
 | # | Item | Notes |
 |---|---|---|
-| Q1 | ✅ **13 failed ai_jobs SQL cleanup — DONE 21 Apr evening** | Migration `phase_1_7_ai_job_add_dead_status` widened `m.ai_job.status` CHECK to include `'dead'`. 13 rows updated to `dead_reason='openai_tpm_rate_limit_2026-04-18'`. Surfaced two errors in the pre-approved SQL: CHECK constraint didn't allow `'dead'`, and date cutoff `< 2026-04-15` was wrong (failures from 18 Apr). Real failure mode was gpt-4o TPM saturation on concurrent rewrite jobs, not ID003 timeout-loop. Scoping decision at D163. Concurrency brief at `docs/briefs/2026-04-21-tpm-saturation-staggered-rewrite.md`. |
+| Q1 | ✅ **13 failed ai_jobs SQL cleanup — DONE 21 Apr evening** | Migration `phase_1_7_ai_job_add_dead_status` widened `m.ai_job.status` CHECK to include `'dead'`. 13 rows updated to `dead_reason='openai_tpm_rate_limit_2026-04-18'`. Real failure mode was gpt-4o TPM saturation on concurrent rewrite jobs, not ID003 timeout-loop. Scoping decision at D163. Concurrency brief at `docs/briefs/2026-04-21-tpm-saturation-staggered-rewrite.md`. |
 | Q2 | **Discovery pipeline one-liner** | `config.feed_url ?? config.url` in ingest-worker |
 | Q3 | **A24 → closed in file 15** | Done in this morning's reconciliation |
 | Q4 | **A7 privacy policy update** | Three paragraphs: YouTube + HeyGen + video-analyser; re-host |
@@ -305,9 +332,10 @@ Primary objective: close pre-sales items from file 15 Section A without reviewer
 | # | Item | Notes |
 |---|---|---|
 | M1 | **A11b CFW + Invegent content_type_prompts** | 9 rows × 2 clients = 18 prompts; content strategy session |
-| M2 | **CFW schedule save bug** | UI says "Saved ✓" but DB empty; server action error surfacing needed. **Dispatched to Claude Code 21 Apr evening.** |
+| M2 | ✅ **CFW schedule save bug — DONE 21 Apr late evening** | Two-commit fix on `fix/cfw-schedule-save-silent-error` (`fb08305` Claude Code surfaced errors + `a9169ef` Claude Desktop fixed p_slots serialisation), squash-merged as `64e3daa`. Bug affected all 4 clients since 6 Apr, not CFW-specific. End-to-end verified: 21-row schedule lands correctly. See "Even later evening" chronology entry. |
 | M3 | **A14 RLS verification** | Grep invegent-portal for direct Supabase queries vs `.rpc()` |
 | M4 | **A18 — 7 source-less EFs investigation** | Read-only, time-consuming |
+| M5 | **NEW — `getPublishSchedule` hardening** | Replace `exec_sql` + raw string interpolation in invegent-dashboard/actions/schedule.ts with SECURITY DEFINER RPC `public.get_publish_schedule(p_client_id UUID, p_platform TEXT)`. Destructure `{ data, error }`, surface errors using same pattern as M2 save-side fix. Closes (a) SQL injection surface on operator dashboard (pattern would propagate to portal), (b) read-path silent-swallow where errors currently manifest as empty arrays masquerading as "no slots configured". 30-60 min, Claude-Code-appropriate. Adjacent to A14 code-quality family. |
 
 ### Larger (half-day+)
 
@@ -353,19 +381,19 @@ Act on any genuine findings before first pilot conversation.
 
 ## WATCH LIST
 
-- **Tomorrow** — Q2 (discovery pipeline fix), Q4 (A7 privacy policy)
+- **Tomorrow** — Q2 (discovery pipeline fix), Q4 (A7 privacy policy). M5 is Claude-Code-appropriate if dispatched in parallel.
 - **Thu 23 Apr** — A7 (if not done Tuesday); A1+A5+A8 pilot document drafting
 - **Fri 24 Apr** — A11b content prompt session for CFW + Invegent
 - **Mon 27 Apr** — Meta App Review escalation trigger; first weekly digest would have landed if reviewers weren't paused
 - **Sat 2 May** — original reviewer calibration cycle trigger; defer until reviewers resume
 
 ### Backlog (open, not yet addressed)
+- **Publisher schedule source audit — NEW** — if `c.client_publish_schedule` has been empty for CFW + Invegent for weeks (confirmed via DB reconciliation during M2 diagnosis), what is the `publisher` Edge Function actually using to schedule those clients' posts? Two hypotheses: (a) reads same table → those clients post on defaults/fallback, (b) reads different source → UI has been pure theatre disconnected from publishing. Either way, a real finding worth confirming. Half-day investigation. Gate: when sprint has capacity.
 - **`m.post_publish_queue.status` has NO CHECK constraint** — currently accepts any string; `queued/pending/published/dead` all in use, with 1 row already `'dead'` without a constraint. Phase 1.7 continuation: design full vocabulary (current + likely-future: `queued, pending, published, dead, failed, cancelled`) and add CHECK. Not urgent (pipeline works) but a real pipeline-hygiene item. Tracked under D163.
 - **TPM saturation on concurrent platform rewrites** — brief parked at `docs/briefs/2026-04-21-tpm-saturation-staggered-rewrite.md`. A digest burst on a multi-platform client fires concurrent `rewrite_v1` jobs that saturate gpt-4o's 30k TPM ceiling within one minute. Will recur on first burst after pipeline resumes from drain. Five design options captured in brief. Gate to pick up: pipeline resumes AND fresh digest has fired through rewrite step.
 - **docs/archive 5th-file mystery** — `docs_skipped_archive: 5` but we only archived 4 files. Worth a 30-second investigation. Nothing breaking.
 - **Per-commit external-reviewer pollution** — before reviewer pause, the per-commit EF was iterating all rows in `c.external_reviewer` including system_auditor, producing ~$0.0007 hallucinated "system_auditor" rows on every qualifying commit. Now dormant due to reviewer pause; worth a `per_commit_enabled` column or filter when reviewers resume to prevent recurrence.
-- **CFW schedule save bug** — UI shows "Saved ✓" but DB empty. Server action swallows error silently. **Dispatched to Claude Code (M2).**
-- **Discovery pipeline ingest bug** — 9 feeds provisioned but zero items ingested due to `config.url` vs `config.feed_url` mismatch.
+- **Discovery pipeline ingest bug** — 9 feeds provisioned but zero items ingested due to `config.url` vs `config.feed_url` mismatch. Sprint item Q2.
 - Shrishti 2FA + passkey (Meta admin redundancy) — PK to chase
 
 ---
@@ -408,7 +436,7 @@ Afternoon/evening:
 - `cda4ab7d` — feat(system-auditor): v1.0.2 — exclude docs/archive/** from context
 - `60e51518` — docs(briefs): role library brief addendum — consumption model
 
-End-of-day reconciliation (morning-of-next-day record):
+End-of-day reconciliation:
 - docs: sync_state end-of-day reconciliation
 - docs: file 15 v4 — close A24
 - docs(decisions): D161 + D162
@@ -416,25 +444,36 @@ End-of-day reconciliation (morning-of-next-day record):
 Later evening — Q1 closure + D163 scoping:
 - migration `phase_1_7_ai_job_add_dead_status` applied (Supabase direct)
 - UPDATE on 13 failed ai_jobs (Supabase direct)
-- THIS COMMIT: docs: Q1 closure + D163 + TPM brief + file 15 change log
+- docs: Q1 closure + D163 + TPM brief + file 15 v4.1
 
-**invegent-dashboard (main):**
+Even later evening — M2 closure (this sync update):
+- THIS COMMIT — docs: sync_state + file 15 v4.2 reflecting M2 closure + M5 opening
 
+**invegent-dashboard:**
+
+main branch:
 - `202037c` — feat(roadmap): three-tab layout + by-sales-stage view (morning)
 - `1a7aabf` — feat(reviews): /reviews page + API route + sidebar link (morning)
-- (follow-on this session) — feat(roadmap): 21 Apr end-of-day refresh — A24 closed + reviewer pause note
-- (follow-on this session) — feat(roadmap): Q1 closure banner update + D163 reference
+- `ac67257e` — feat(roadmap): 21 Apr end-of-day refresh — A24 closed + reviewer pause
+- `1ddbd29` — feat(roadmap): Q1 closure increment — D163 Phase 1.7 DLQ foundation
+- `64e3daa` — **fix(schedule): surface RPC errors + fix p_slots double-serialisation (M2)** — squash-merge of fix/cfw-schedule-save-silent-error
+
+fix/cfw-schedule-save-silent-error branch (squashed into 64e3daa above):
+- `fb08305` — fix(schedule): surface RPC errors — CFW schedule save silently failing (Claude Code)
+- `a9169ef` — fix(schedule): pass p_slots as array not JSON.stringify'd — fixes 22023 scalar error (Claude Desktop)
 
 ---
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-Today produced ~30 commits across two repos plus the later-evening Q1 increment. Reviewer layer shipped, validated on 2 runs ($8 spend, no novel findings), paused for sprint. 20 A-items still ahead (Q1 was a sprint item, not an A-item, so A-count unchanged). Sprint board above is the source of truth for tomorrow's first pick.
+Today produced ~30 commits across two repos plus the later-evening Q1 increment and the even-later-evening M2 closure. Reviewer layer shipped, validated on 2 runs ($8 spend, no novel findings), paused for sprint. 20 A-items still ahead (Q1 and M2 were sprint items, not A-items, so A-count unchanged). Sprint board above is the source of truth for tomorrow's first pick.
 
-D163 is the one architectural nugget from the later-evening session: Phase 1.7 DLQ foundation is partially done (m.ai_job only); `m.post_publish_queue` needs a considered CHECK constraint in a later session; `f.canonical_content_body` should NOT be changed. Keep this in mind when any future work touches pipeline terminal states.
+Two architectural nuggets from the evening:
+- **D163** — Phase 1.7 DLQ foundation is partially done (m.ai_job only); `m.post_publish_queue` needs a considered CHECK constraint in a later session; `f.canonical_content_body` should NOT be changed. Keep in mind for any future pipeline-terminal-state work.
+- **M2 verification-gap lesson (Section F9 in file 15)** — direct-SQL RPC tests bypass the supabase-js → PostgREST serialisation path. When fixing code that calls a DB function through a client library, verification MUST exercise the actual client library. Applies to all future Claude Code briefs.
 
-The honest data point from today: the external layer hasn't earned its keep yet against Claude-only review. The value case is still plausible but shifts from "insurance" to "continuous overnight feedback" — see role library brief addendum for the refined framing.
+One real production finding worth keeping visible: **the CFW/Invegent schedule UI has been disconnected from the DB for weeks.** M2 fixes the save path going forward, but the historical behaviour means: (a) any CFW/Invegent schedule anyone "set" in the UI before today was lost, and (b) the publisher Edge Function has been scheduling those clients using SOMETHING — either the empty table's fallback path or a different source entirely. That audit is a new backlog item, gated on sprint capacity.
 
-When reviewers resume, the first thing worth doing is re-invoke system audit on the near-complete pre-sales state. Fresh eyes on a stable codebase produce higher signal than fresh eyes on a moving target.
+The honest data point from the reviewer layer: still hasn't earned its keep against Claude-only review after 2 runs ($8, zero novel findings). Value case shifts from "insurance" to "continuous overnight feedback" — see role library brief addendum. Resume after ~18-19 of 28 A-items closed.
 
 PK is also doing a full-time job. Respect that. The reviewer pause is also partly a noise reduction for PK's attention — less morning reading during the sprint.

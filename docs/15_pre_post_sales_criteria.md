@@ -1,8 +1,8 @@
 # ICE — Pre-Sales / Post-Sales Classification
 
-## Generated: 2026-04-18 (v1 morning, v2 afternoon, v3 late evening) · v4 update 2026-04-21 (A24 closed) · v4.1 update 2026-04-21 evening (Q1 sprint item closed, D163 scoping documented)
+## Generated: 2026-04-18 (v1 morning, v2 afternoon, v3 late evening) · v4 update 2026-04-21 (A24 closed) · v4.1 update 2026-04-21 evening (Q1 sprint item closed, D163 scoping documented) · v4.2 update 2026-04-21 late evening (M2 closed — CFW schedule save bug fixed, M5 opened)
 ## Type: Classification document — supersedes `docs/14_pre_sales_audit_inventory.md` Section 12
-## Inputs: audit inventory (38 items + 13 open questions), 3-clock framework, consultant audit (8 Apr), legal register L001–L008, PK answers 18 Apr, decisions D147–D163, 21 Apr reviewer-layer work + Q1 closure
+## Inputs: audit inventory (38 items + 13 open questions), 3-clock framework, consultant audit (8 Apr), legal register L001–L008, PK answers 18 Apr, decisions D147–D163, 21 Apr reviewer-layer work + Q1 closure + M2 closure
 
 ---
 
@@ -14,11 +14,28 @@ This is the definitive pre-sales gate document until superseded. When all Sectio
 
 ---
 
+## v4.2 changes from v4.1 (21 Apr late evening)
+
+**Sprint item closures (not A-items, but tracked for completeness):**
+- **M2 closed ✅** — CFW schedule save bug fixed. Full chronology in sync_state "Even later evening" section. Two-commit fix on `fix/cfw-schedule-save-silent-error`: `fb08305` (Claude Code) surfaced RPC errors the old silent-swallow was hiding; `a9169ef` (Claude Desktop) fixed the underlying `p_slots` double-serialisation that showed up once errors were visible. Squash-merged to `main` as `64e3daa`. DB reconciliation during diagnosis revealed the bug affected all 4 clients since at least 6 April, not CFW-specific — NY + PP had masking seed-migration rows; CFW + Invegent had nothing, making CFW the reproducible case. End-to-end verified via Vercel preview: 21-row weekly schedule lands correctly with UI counter matching DB enabled-slot count.
+
+**New sprint item surfaced:**
+- **M5 opened** — `getPublishSchedule` hardening in `invegent-dashboard/actions/schedule.ts`. Replace `exec_sql` + raw string interpolation with SECURITY DEFINER RPC `public.get_publish_schedule(p_client_id UUID, p_platform TEXT)`. Destructure `{ data, error }` and surface errors using same pattern as the M2 save-side fix. Closes (a) SQL injection surface on operator dashboard (low exploitability today but pattern would propagate to portal), (b) read-path silent-swallow where the function currently returns `[]` on any PostgrestError, masquerading as "no slots configured" (a latent bug that would itself have been mistaken for the save bug). Medium sprint item (30-60 min). Claude-Code-appropriate. Adjacent to A14 code-quality family.
+
+**New backlog item surfaced:**
+- **Publisher schedule source audit** — if `c.client_publish_schedule` has been effectively empty for CFW + Invegent for weeks (confirmed via DB reconciliation during M2 diagnosis), what is the `publisher` Edge Function actually using to schedule those clients' posts? Two hypotheses: (a) reads same table → those clients post on defaults/fallback, (b) reads different source → UI has been disconnected from publishing. Half-day investigation. Tracked in sync_state backlog. Gate: when sprint has capacity.
+
+**New Section F9** captures a verification-scope lesson surfaced by M2: a client-library-using code path must be exercised through the actual client library, not just the DB function in isolation. Claude Code's direct SQL verification of `save_publish_schedule` bypassed the supabase-js → PostgREST serialisation path where the actual bug lived.
+
+**No new A-items surfaced.** A-count unchanged at 8 of 28 closed, 20 open. Both Q1 and M2 are sprint items, not A-items.
+
+---
+
 ## v4.1 changes from v4 (21 Apr later evening)
 
 **Sprint item closures (not A-items, but tracked for completeness):**
 - **Q1 closed ✅** — 13 failed ai_jobs marked terminal dead. Migration `phase_1_7_ai_job_add_dead_status` widened `m.ai_job.status` CHECK constraint to include `'dead'`. Dead reason: `openai_tpm_rate_limit_2026-04-18`. See **D163** for the Phase 1.7 DLQ foundation scoping decision. A-count unchanged (still 8 of 28 closed, 20 open) because Q1 is a sprint item, not an A-item — but its closure ships the first increment of Phase 1.7 DLQ foundation and unblocks evidence for A22.
-- **M2 dispatched** — CFW schedule save bug handed to Claude Code for investigation (local dev + iterative fix cycle).
+- **M2 dispatched** — CFW schedule save bug handed to Claude Code for investigation (local dev + iterative fix cycle). *(Subsequently closed — see v4.2 above.)*
 
 **New backlog items surfaced during Q1 (tracked in sync_state Backlog, not Section A):**
 - `m.post_publish_queue.status` has no CHECK constraint at all — needs one with deliberate vocabulary design. Phase 1.7 DLQ continuation work, not a quick win.
@@ -91,9 +108,9 @@ Clock A + B + C all green = gate to first external sales conversation.
 
 ---
 
-## Headline finding (v4.1)
+## Headline finding (v4.2)
 
-**Still not cleared to start the 14-day Clock A window.** A24 closure (this morning) + Q1 sprint item closure (this evening) are the only movement since 18 Apr. Q1 is not an A-item, so the A-count remains 8 of 28 closed, 20 open. The remaining open items require a sprint, which is what D162 locks in.
+**Still not cleared to start the 14-day Clock A window.** A24 closure (this morning) + Q1 sprint item closure (this evening) + M2 sprint item closure (late evening) are the closures since 18 Apr. Q1 and M2 are not A-items, so the A-count remains 8 of 28 closed, 20 open. The remaining open items require a sprint, which is what D162 locks in.
 
 **Current blocking items (20 open):**
 
@@ -110,18 +127,18 @@ From ID003 / D157 (18 Apr):
 
 ### Sprint order recommendation
 
-Quick wins first: A7, Q2 (discovery pipeline one-liner). Q1 closed this session ✅. Then pilot document (A1 + A5 + A8 together). Then medium items (A11b, A14, A16). Larger builds last (A20-A23, A25-A26).
+Quick wins first: Q2, Q4 (A7 privacy policy). Q1 closed this session ✅. M2 closed this session ✅. M5 opened and Claude-Code-appropriate in parallel. Then pilot document (A1 + A5 + A8 together). Then remaining medium items (A11b, A14). Larger builds last (A16, A20-A23, A25-A26).
 
 Full sprint board maintained in `docs/00_sync_state.md`.
 
 ---
 
-## Item count summary (v4.1)
+## Item count summary (v4.2)
 
-| Classification | Count | Change from v4 |
+| Classification | Count | Change from v4.1 |
 |---|---|---|
 | Pre-sales (Section A) | 28 | 0 |
-| Pre-sales closed / confirmed | **8** | 0 (Q1 is sprint item, not A-item) |
+| Pre-sales closed / confirmed | **8** | 0 (Q1, M2, and M5 are sprint items, not A-items) |
 | Pre-sales open | **20** | 0 |
 | Post-sales Tier 1 (Section B) | 8 | 0 |
 | Post-sales Tier 2 (Section C) | 6 | 0 |
@@ -156,9 +173,9 @@ A27, A28, A29 (ID003 follow-ons surfaced 18 Apr in D157) are tracked in the dash
 | A11b | 🔲 Open | CFW + Invegent content_type_prompts — 9 rows × 2 clients | Table shows 0/0/0 for both. Without prompts, ai-worker has no template to generate against for these two clients — Clock A cannot start with them producing nothing. | Content strategy session: write prompts for CFW × (Facebook, Instagram, LinkedIn) × (3 job types) = 9 rows. Same for Invegent. Friday 24 Apr per continuity brief plan. | Audit #15, #16, split v3 |
 | A12 | ✅ Confirmed | HeyGen not exposed in v1 client portal | Code search of `invegent-portal` shows zero HeyGen / avatar / consent references. HeyGen is backend-only. L005 gate not violated at the portal level. | Verified 18 Apr morning via GitHub code search. If any client-facing route is added later that exposes HeyGen, consent flow must be built first (D149 Legal Advisor is a fit for that gate check). | Audit #24, L005 |
 | A13 | ✅ Confirmed | video-analyser not exposed to clients | Code search + PK H15: video-analyser is part of feed inflow, processing YouTube video transcripts for signal extraction. Backend-only. Not client-facing. L004 gate not violated. | Verified. No action needed. | Audit #25, L004, PK H15 |
-| A14 | 🔲 Open | RLS audit — confirm no portal route bypasses SECURITY DEFINER | Only 10 of 138 tables have RLS enabled. If all portal queries go through SECURITY DEFINER RPCs, RLS-off is missing defence-in-depth but not exploitable. If any portal page queries tables directly, client could read another client's data. | Grep `invegent-portal` codebase for direct Supabase queries (not via `.rpc()` calls). Confirm every query is either (a) RLS-enforced, or (b) SECURITY DEFINER RPC. Flag exceptions. Verification only — may not require building. | Audit #23 |
+| A14 | 🔲 Open | RLS audit — confirm no portal route bypasses SECURITY DEFINER | Only 10 of 138 tables have RLS enabled. If all portal queries go through SECURITY DEFINER RPCs, RLS-off is missing defence-in-depth but not exploitable. If any portal page queries tables directly, client could read another client's data. | Grep `invegent-portal` codebase for direct Supabase queries (not via `.rpc()` calls). Confirm every query is either (a) RLS-enforced, or (b) SECURITY DEFINER RPC. Flag exceptions. Verification only — may not require building. Related to M5 — same code-quality family; findings may overlap. | Audit #23 |
 | A15 | ✅ Closed | Publisher + weekly-manager-report committed | Both had uncommitted changes at audit start. Production code differed from repo. | **Done 18 Apr afternoon.** Both committed and pushed. | Audit #36 |
-| A16 | 🔲 Open | Clock A dashboard — exists and measures schedule adherence | Cannot declare "95% adherence" without a dashboard showing it. Does not exist currently. | Build `/continuity` page in dashboard. Data source: compare `c.client_publish_schedule` expected slots vs `m.post_publish` actual. Rolling 14-day per client × platform with miss reasons. Simple — just correct, not beautiful. | Audit #37, new from framework |
+| A16 | 🔲 Open | Clock A dashboard — exists and measures schedule adherence | Cannot declare "95% adherence" without a dashboard showing it. Does not exist currently. | Build `/continuity` page in dashboard. Data source: compare `c.client_publish_schedule` expected slots vs `m.post_publish` actual. Rolling 14-day per client × platform with miss reasons. Simple — just correct, not beautiful. NOTE: M2 resolution means `c.client_publish_schedule` will now actually reflect reality for clients who set schedules post-21 Apr; pre-21 Apr schedules were lost. A16 should be built assuming schedule data starts accruing from 21 Apr onward. | Audit #37, new from framework |
 | A17 | 🔲 Open | Clock C seven items — each explicitly defined and lived | The 7 items are listed but none have a written definition of "done." | New doc `docs/16_client_handling.md`. One paragraph per item: what it is, what ready looks like, where it lives, SLA. Inbound + SLA + routing can share one section; testimonial capture and billing automation need actual build. | New from framework |
 | A18 | 🔲 Open | 7 source-less Edge Functions — full investigation (was 8) | Per PK H16: "this requires a full on investigation to ensure why there is error, I think these are presales." Recovery / rollback blind spot. One of the original 8 recovered Saturday; 7 remain. | For each of the 7: check Supabase function logs for error rates, extract deployed source via Supabase dashboard, commit to `supabase/functions/`, add to deployment pipeline. Identify any showing unhealthy error signals — those get priority. | Audit #18, PK H16, 18 Apr update |
 
@@ -169,13 +186,13 @@ A27, A28, A29 (ID003 follow-ons surfaced 18 Apr in D157) are tracked in the dash
 | A19 | ✅ Closed | FB token refresh — formalised audit record | 3 of 4 FB tokens had been dead since 13 Apr PDT. Stored `token_expires_at` was stale. Token-expiry alerter was trusting the sentinel field, not reality. Refresh done Saturday; formalising here as a logged A-item rather than an ad-hoc action. | **Done 18 Apr afternoon.** All 4 FB tokens refreshed to permanent (`expires_at: 0`). Verified via `/debug_token`. D153 (A23 below) is the durable fix for the underlying trust-the-sentinel problem. | D155 session, 18 Apr evening |
 | A20 | 🔲 Open | Pipeline liveness monitoring — ai_job stall + last-success freshness per client × platform | D155 root cause went undetected for 7 days because no alert watched for "ai_jobs accumulating in queued state" or "no successful publish per client × platform in >24h." Both are single-query checks. Their absence is what made the stall silent. | (a) pg_cron daily: SELECT client × platform combinations where last `m.post_publish.published_at` > NOW() - 48h AND expected_posts > 0, write to `m.liveness_alert`. (b) pg_cron every 4h: ai_job stall check — queued > succeeded growth rate over 24h, write to same table. Dashboard banner surfaces unresolved alerts. | D155 fallout, continuity brief |
 | A21 | 🔲 Open | Trigger ON CONFLICT audit — all triggers, not just enqueue | D155 was an ON CONFLICT clause mismatch on one trigger. The same class of bug may exist on other triggers. Proof-by-audit required, not just assertion. | Query pg_trigger → for each trigger function, grep the body for ON CONFLICT clauses. For each, verify clause columns exactly match a unique constraint on the target table. Write findings to `docs/briefs/2026-04-XX-trigger-on-conflict-audit.md`. | D155 fallout, continuity brief |
-| A22 | 🔲 Open | Ai-worker error surfacing — UPDATE rollbacks currently fail silently | The D155 symptom was ai_worker UPDATE silently rolled back by the faulty trigger. The function didn't check the UPDATE's effect count. Pattern may exist in other EFs. | Audit all EFs that do UPDATE against pipeline tables. Each must check rowcount and surface a failure (log line + row in a failures table) if 0. Patch in single commit. | D155 fallout, continuity brief |
+| A22 | 🔲 Open | Ai-worker error surfacing — UPDATE rollbacks currently fail silently | The D155 symptom was ai_worker UPDATE silently rolled back by the faulty trigger. The function didn't check the UPDATE's effect count. Pattern may exist in other EFs. M2 closure provides additional evidence of the "swallow error, lie to caller" anti-pattern — A22 scope could usefully extend beyond `UPDATE` rowcount checks to "any RPC call that doesn't destructure `{ error }`". | Audit all EFs that do UPDATE against pipeline tables. Each must check rowcount and surface a failure (log line + row in a failures table) if 0. Patch in single commit. Consider widening scope to include rpc() calls without `{ error }` destructuring based on M2 pattern. | D155 fallout, continuity brief, M2 pattern |
 | A23 | 🔲 Open | D153 — live `/debug_token` cron (replaces sentinel approach) | Current token-expiry alerter trusts `token_expires_at` which is stale when Meta revokes mid-cycle. Fix per D153: cron calls Meta's live `/debug_token` endpoint daily per FB token, writes real status to `m.token_expiry_alert`. | Spec Wednesday 22 Apr per continuity brief. Build Thursday or Friday. | D153, D155 fallout, continuity brief |
 | A24 | ✅ Closed | Stage 1 external multi-model review layer — MVP exceeded | Per D156: ICE's monitoring shares Claude's epistemic foundation. MVP was Architect Reviewer (Gemini per-commit) + Sceptic (GPT-4 weekly). Actual shipment: three-voice layer + System Auditor EF. | **Done 21 Apr.** Three-voice (Strategist Gemini active, Engineer GPT paused, Risk Grok active) + System Auditor separate EF + webhooks on both repos + weekly digest cron + /reviews dashboard. Currently dormant (D162 sprint pause) — infrastructure live, reactivation is one SQL statement. See D160 + D161. | D156, D160, D161 |
 | A25 | 🔲 Open | Stage 2 bank reconciliation layer — MVP | Per D156: external system is authoritative when it disagrees with ICE's DB. MVP is Meta Graph API reconciliation (catches the D155 symptom platform-side), followed by GitHub + Vercel + Supabase reconciliation for deploy drift. | Sequencing pushed back — original plan was Tue 21 Apr, but session focused on Stage 1 hardening. Build when Stage 1 proven to earn its keep post-sprint reactivation. | D156, continuity brief |
 | A26 | 🔲 Open | Review discipline mechanism — unread-blocks-dashboard + weekly block | A24 + A25 outputs are theatre without structural reading-discipline. PK identified this as the missed angle Saturday evening. Unread items in `m.external_review_queue` block dashboard home until acknowledged. Weekly scheduled Monday review block. | Build when reviewers resume post-sprint. Currently moot — reviewers paused, no unread output accumulating. | D156, continuity brief |
 
-### Section A completion test (v4.1)
+### Section A completion test (v4.2)
 
 All 28 items marked closed or confirmed. A27–A29 (from D157, tracked in dashboard roadmap) must also close. Then and only then: Clock A + B + C 14-day window starts. No external sales conversation before window completes with metrics in range.
 
@@ -247,7 +264,7 @@ All 28 items marked closed or confirmed. A27–A29 (from D157, tracked in dashbo
 
 ---
 
-## Section F — Fresh-eyes pushback on the framework session (unchanged from v1/v2)
+## Section F — Fresh-eyes pushback on the framework session
 
 ### F1 — You cannot start the 14-day Clock A window today
 Audit flagged stability defects but not as Clock A blockers. See Section A items A10b, A11b, A18, A20–A26. Fix first, then start clock.
@@ -273,9 +290,19 @@ The sprint pause (D162) is a noise-reduction decision, not a reversal. Reviewer 
 ### F8 (new v4.1) — Pre-approved SQL should be flagged when it's DDL
 Q1 closure surfaced that the sync_state's pre-approved `UPDATE SET status='dead'` was untested — CHECK constraint rejected `'dead'`. The pre-approval process works fine for idempotent data cleanups, but any SQL that assumes a schema shape (especially status vocabularies, column existence, or index availability) should be flagged as "pre-approved pending inspection" until verified against live schema. D163's reasoning captures the scoping but the process improvement is procedural: when writing pre-approved SQL, verify it runs on a DB snapshot first, not just that it reads well.
 
+### F9 (new v4.2) — Verification scope must match the actual call path, not a proxy
+M2 closure surfaced that Claude Code's direct-SQL RPC verification passed cleanly but missed the actual bug. Claude Code ran `SELECT save_publish_schedule(...)` with a jsonb array literal, confirmed a row inserted, and called the fix verified. But the bug only manifested via the supabase-js → PostgREST path where pre-stringified JSON becomes a jsonb scalar. The direct SQL path bypasses that serialisation entirely, so it cannot surface the bug.
+
+**Lesson:** when a fix touches a code path that uses a client library to call a DB function, verification MUST exercise the actual client library call, not the DB function in isolation. SQL-level tests are necessary but insufficient for verifying client-integration correctness.
+
+**Applies to:**
+- Future Claude Code briefs — briefs should specify the verification MUST include a through-client-library test, not just a direct-SQL test, when the fix touches client-library-calling code.
+- Human verification — PK's instinct to "run it through the UI on preview" was correct; that's what caught the bug. Any time a PR claims "direct tests passed," the through-app verification is not redundant, it's essential.
+- Future-M5 and similar fixes — when replacing `exec_sql` with RPCs in `getPublishSchedule`, the verification must exercise the actual read path through the UI, not just confirm the new RPC works in SQL.
+
 ---
 
-## Section G — Pre-sales gate checklist (go / no-go, v4.1)
+## Section G — Pre-sales gate checklist (go / no-go, v4.2)
 
 This is the single list PK pulls up before opening a sales conversation.
 
@@ -310,7 +337,7 @@ Stability — D155 fallout (v3)
 [x] A19 FB token refresh across 4 clients
 [ ] A20 Pipeline liveness monitoring (ai_job stall + last-success freshness)
 [ ] A21 Trigger ON CONFLICT audit across all triggers
-[ ] A22 Ai-worker error surfacing (UPDATE rowcount checks)
+[ ] A22 Ai-worker error surfacing (UPDATE rowcount checks + M2-pattern widening)
 [ ] A23 D153 live /debug_token cron
 
 External epistemic layer (v3 → updated v4)
@@ -337,9 +364,9 @@ Timebox
 First external sales conversation authorised only when every box above is ticked.
 ```
 
-Current score: **8 of 28 closed, 20 open** (A24 closed 21 Apr morning; Q1 closed 21 Apr evening — Q1 is a sprint item not an A-item, count unchanged). Plus A27–A29 tracked separately (3 open). Plus 3 timebox windows not yet startable.
+Current score: **8 of 28 closed, 20 open** (A24 closed 21 Apr morning; Q1 closed 21 Apr evening; M2 closed 21 Apr late evening — Q1 and M2 are sprint items not A-items, count unchanged). Plus A27–A29 tracked separately (3 open). Plus 3 timebox windows not yet startable.
 
-Sprint item wins this session: **Q1 ✅ closed.** Next targets: Q2, Q4, then L1 pilot document.
+Sprint item wins this session: **Q1 ✅ closed, M2 ✅ closed, M5 opened.** Next targets: Q2, Q4, then L1 pilot document, with M5 Claude-Code-appropriate in parallel.
 
 ---
 
@@ -409,7 +436,8 @@ If yes to first three, proceed to next advisor. If no, tighten brief and retry o
 - **2026-04-18 late evening** — v3 reflecting Saturday afternoon/evening closures + D155 fallout + D156 strategic direction. Closures: A9, A10a, A11a, A15, A19. New items: A19 (formalised), A20–A23 (D155 class prevention), A24–A26 (D156 external layer). Item count: 18 → 28 pre-sales. 7 of 28 closed or confirmed; 21 open.
 - **2026-04-21 end-of-day** — v4. **A24 closed** (Stage 1 external multi-model review layer shipped + exceeded MVP — three-voice + System Auditor). D161 documents the implementation shape. D162 documents the sprint-mode pause (all reviewers `is_active=false` until ~80-90% gate closure). 8 of 28 closed; 20 open. New Section F7 explains the sprint pause. Advisor layer build deferred to post-sprint (same rationale as reviewer pause). A27–A29 (ID003 follow-ons from D157) tracked separately — treated as 3 additional functional pre-sales items.
 - **2026-04-21 later evening** — v4.1. Sprint item **Q1 closed** (13 failed ai_jobs → dead via `phase_1_7_ai_job_add_dead_status` migration). **D163** documents the Phase 1.7 DLQ foundation scoping (only `m.ai_job` today; `f.canonical_content_body` intentionally not changed; `m.post_publish_queue` needs a new CHECK constraint, deferred to sprint backlog). New Section F8 captures a procedural lesson about pre-approved DDL SQL. A-count unchanged (Q1 is a sprint item, not an A-item) — still 8 of 28 closed, 20 open.
+- **2026-04-21 late evening** — v4.2. Sprint item **M2 closed** (CFW schedule save bug — two-commit fix on `fix/cfw-schedule-save-silent-error` squash-merged as `64e3daa`). DB reconciliation revealed bug affected all 4 clients since at least 6 April, not CFW-specific — NY/PP had masking seed rows; CFW/Invegent had none. End-to-end Vercel preview verification: 21-row schedule lands correctly. **M5 opened** for `getPublishSchedule` hardening (exec_sql + raw-string interpolation + read-path silent-swallow). New Section F9 captures verification-scope lesson (direct SQL RPC test missed the supabase-js serialisation bug; real client path must be exercised). New backlog item "Publisher schedule source audit" tracked in sync_state. A22 rationale lightly expanded to reference M2 pattern (RPC calls without `{ error }` destructuring). A-count unchanged (Q1 and M2 are sprint items).
 
 ---
 
-*End of classification v4.1. Next pickup: sprint board in `docs/00_sync_state.md`. First recommended items: Q2 (discovery pipeline one-liner), A7 (privacy policy), then pilot document finalisation (A1 + A5 + A8).*
+*End of classification v4.2. Next pickup: sprint board in `docs/00_sync_state.md`. First recommended items: Q2 (discovery pipeline one-liner), A7 (privacy policy), then pilot document finalisation (A1 + A5 + A8). M5 is Claude-Code-appropriate if dispatched in parallel.*
