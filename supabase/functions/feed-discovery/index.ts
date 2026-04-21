@@ -199,9 +199,11 @@ Deno.serve(async (req: Request) => {
 
           const feed = await createRSSAppFeed(rssappApiKey, seed);
 
-          // Check if feed_source already has this rss_feed_url
+          // Q2 fix: ingest EF reads config.feed_url. Pre-Q2 this dedup query
+          // looked at config.url, so it stayed consistent with the INSERT below —
+          // but both keys were wrong per the ingest contract. Renamed both.
           const { data: existing } = await supabase.rpc("exec_sql", {
-            query: `SELECT source_id FROM f.feed_source WHERE config->>'url' = '${feed.rss_feed_url.replace(/'/g, "''")}' LIMIT 1`,
+            query: `SELECT source_id FROM f.feed_source WHERE config->>'feed_url' = '${feed.rss_feed_url.replace(/'/g, "''")}' LIMIT 1`,
           });
 
           let feedSourceId: string | null = null;
@@ -211,8 +213,10 @@ Deno.serve(async (req: Request) => {
             summary.skipped++;
           } else {
             const sourceName = seed.label || feed.title || seed.seed_value;
+            // Q2 fix: ingest EF reads config.feed_url. Pre-Q2 this was 'url' which
+            // caused 14 historical feeds to silently fail every ingest cron.
             const config: Record<string, unknown> = {
-              url: feed.rss_feed_url,
+              feed_url: feed.rss_feed_url,
               rssapp_feed_id: feed.id,
               seed_type: seed.seed_type,
               seed_value: seed.seed_value,
