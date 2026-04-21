@@ -44,7 +44,7 @@ Target sequence: close as many Section A items as possible. At ~18-19 of 28 clos
 - **Afternoon:** system-auditor EF built (v1.0.0 → v1.0.1 → v1.0.2 over three commits); first audit run produced misleading severity:critical from stale snapshot content.
 - **Evening:** Root-caused to stale docs in auditor context. Fix: 4 snapshots moved to `docs/archive/`, docs index rebuilt with freshness taxonomy, EF v1.0.2 adds archive exclusion, system_auditor prompt v2 adds authority hierarchy + severity anchors + suppress list. Second audit produced severity:warn with 4 real findings. Reviewer layer judged useful but noisy-during-sprint — all reviewers paused. Role library brief extended with consumption-model addendum.
 - **Later evening:** Q1 sprint item closed — 13 failed ai_jobs marked dead after surfacing that the pre-approved SQL's CHECK-constraint widening was untested. Phase 1.7 DLQ foundation scoped via inspection to just `m.ai_job` (D163); `f.canonical_content_body` intentionally left unchanged (different terminal-state model); `m.post_publish_queue` deferred (needs a new CHECK constraint, not a widening — surfaced to backlog). Real finding: failures weren't ID003 timeout-loop but gpt-4o TPM saturation on concurrent rewrite jobs — separate brief parked for pick-up when pipeline resumes.
-- **Even later evening:** M2 sprint item closed — CFW schedule save bug. Two-commit path on `fix/cfw-schedule-save-silent-error`: Claude Code's `fb08305` surfaced RPC errors the old silent-swallow was hiding; Claude Desktop's `a9169ef` fixed the underlying `p_slots` double-serialisation that showed up once errors were visible. DB reconciliation during diagnosis revealed the bug affected all 4 clients since at least 6 Apr — NY/PP had masking seed-migration rows; CFW/Invegent had none, making CFW the reproducible case. Squash-merged to main as `64e3daa`. End-to-end verified via Vercel preview: 21-row weekly schedule lands correctly for CFW with UI counter matching DB enabled-slot count. M5 opened for `getPublishSchedule` `exec_sql` + raw-interpolation hardening. New backlog item: publisher schedule-source audit.
+- **Even later evening:** M2 sprint item closed — CFW schedule save bug. Two-commit path on `fix/cfw-schedule-save-silent-error`: Claude Code's `fb08305` surfaced RPC errors the old silent-swallow was hiding; Claude Desktop's `a9169ef` fixed the underlying `p_slots` double-serialisation that showed up once errors were visible. DB reconciliation during diagnosis revealed the bug affected all 4 clients since at least 6 Apr — NY/PP had masking seed-migration rows; CFW/Invegent had none, making CFW the reproducible case. Squash-merged to main as `a1d7dc01`. End-to-end verified via Vercel preview: 21-row weekly schedule lands correctly for CFW with UI counter matching DB enabled-slot count. M5 opened for `getPublishSchedule` `exec_sql` + raw-interpolation hardening. New backlog item: publisher schedule-source audit.
 
 ---
 
@@ -247,7 +247,7 @@ Second Claude-Desktop sprint item closed after dispatching M2 to Claude Code. Fu
 
 6. **Vercel preview test — second pass** — PK hard-refreshed preview, saved a multi-platform weekly schedule for CFW, saw **green "Saved ✓"**. DB verification showed 21 rows (7 days × 3 platforms) with 5 enabled slots exactly matching UI counter: Facebook 2/5 (Mon, Thu), Instagram 2/5 (Fri, Sat), LinkedIn 1/5 (Tue). All 9:06 AM. Clustered creation timestamps within 3 seconds confirming batched-per-platform INSERT.
 
-7. **Merged** — PR #1 squash-merged to `main` as commit `64e3daa`. Vercel auto-deploys to `dashboard.invegent.com` in ~60s.
+7. **Merged** — PR #2 squash-merged to `main` as commit `a1d7dc01`. Vercel auto-deploys to `dashboard.invegent.com` in ~60s.
 
 8. **M5 opened** — `getPublishSchedule` hardening: replace `exec_sql` + raw string interpolation with `public.get_publish_schedule(p_client_id UUID, p_platform TEXT)` SECURITY DEFINER RPC; destructure `{ data, error }`; surface errors same pattern as M2. Medium sprint item (30-60 min). Closes SQL injection surface + read-path silent-swallow. Claude-Code-appropriate when dispatched.
 
@@ -332,7 +332,7 @@ Primary objective: close pre-sales items from file 15 Section A without reviewer
 | # | Item | Notes |
 |---|---|---|
 | M1 | **A11b CFW + Invegent content_type_prompts** | 9 rows × 2 clients = 18 prompts; content strategy session |
-| M2 | ✅ **CFW schedule save bug — DONE 21 Apr late evening** | Two-commit fix on `fix/cfw-schedule-save-silent-error` (`fb08305` Claude Code surfaced errors + `a9169ef` Claude Desktop fixed p_slots serialisation), squash-merged as `64e3daa`. Bug affected all 4 clients since 6 Apr, not CFW-specific. End-to-end verified: 21-row schedule lands correctly. See "Even later evening" chronology entry. |
+| M2 | ✅ **CFW schedule save bug — DONE 21 Apr late evening** | Two-commit fix on `fix/cfw-schedule-save-silent-error` (`fb08305` Claude Code surfaced errors + `a9169ef` Claude Desktop fixed p_slots serialisation), squash-merged as `a1d7dc01`. Bug affected all 4 clients since 6 Apr, not CFW-specific. End-to-end verified: 21-row schedule lands correctly. See "Even later evening" chronology entry. |
 | M3 | **A14 RLS verification** | Grep invegent-portal for direct Supabase queries vs `.rpc()` |
 | M4 | **A18 — 7 source-less EFs investigation** | Read-only, time-consuming |
 | M5 | **NEW — `getPublishSchedule` hardening** | Replace `exec_sql` + raw string interpolation in invegent-dashboard/actions/schedule.ts with SECURITY DEFINER RPC `public.get_publish_schedule(p_client_id UUID, p_platform TEXT)`. Destructure `{ data, error }`, surface errors using same pattern as M2 save-side fix. Closes (a) SQL injection surface on operator dashboard (pattern would propagate to portal), (b) read-path silent-swallow where errors currently manifest as empty arrays masquerading as "no slots configured". 30-60 min, Claude-Code-appropriate. Adjacent to A14 code-quality family. |
@@ -447,7 +447,7 @@ Later evening — Q1 closure + D163 scoping:
 - docs: Q1 closure + D163 + TPM brief + file 15 v4.1
 
 Even later evening — M2 closure (this sync update):
-- THIS COMMIT — docs: sync_state + file 15 v4.2 reflecting M2 closure + M5 opening
+- THIS COMMIT — docs: sync_state SHA corrections — actual squash-merge is `a1d7dc01` not `64e3daa` (pre-written-in-anticipation placeholder)
 
 **invegent-dashboard:**
 
@@ -456,9 +456,9 @@ main branch:
 - `1a7aabf` — feat(reviews): /reviews page + API route + sidebar link (morning)
 - `ac67257e` — feat(roadmap): 21 Apr end-of-day refresh — A24 closed + reviewer pause
 - `1ddbd29` — feat(roadmap): Q1 closure increment — D163 Phase 1.7 DLQ foundation
-- `64e3daa` — **fix(schedule): surface RPC errors + fix p_slots double-serialisation (M2)** — squash-merge of fix/cfw-schedule-save-silent-error
+- `a1d7dc01` — **fix(schedule): surface RPC errors + fix p_slots double-serialisation (M2)** — squash-merge of fix/cfw-schedule-save-silent-error (PR #2)
 
-fix/cfw-schedule-save-silent-error branch (squashed into 64e3daa above):
+fix/cfw-schedule-save-silent-error branch (squashed into a1d7dc01 above):
 - `fb08305` — fix(schedule): surface RPC errors — CFW schedule save silently failing (Claude Code)
 - `a9169ef` — fix(schedule): pass p_slots as array not JSON.stringify'd — fixes 22023 scalar error (Claude Desktop)
 
