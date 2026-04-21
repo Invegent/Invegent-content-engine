@@ -10,7 +10,10 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "system-auditor-v1.0.0";
+const VERSION = "system-auditor-v1.0.1";
+// v1.0.1 — fix: .catch() on supabase.rpc() builder throws
+//   "supabase.rpc(...).catch is not a function" because PostgrestBuilder
+//   doesn't expose Promise.catch() directly. Wrap in try/catch instead.
 // v1.0.0 — One-shot system audit invocation.
 //   Assembles docs (from GitHub main) + live DB state (clients, crons, pipeline
 //   health, reviewer queue, etc.) + recent commits, sends to a single reviewer
@@ -112,87 +115,130 @@ async function assembleDbSnapshot(supabase: ReturnType<typeof getServiceClient>)
   parts.push(`========== LIVE DB SNAPSHOT (as of ${new Date().toISOString()}) ==========\n`);
 
   // 1. Clients
-  const { data: clients } = await supabase.schema("c").from("client")
-    .select("client_id, client_name, client_slug, status, timezone, profession_slug, serves_ndis_participants, ndis_registration_status, notifications_email, portal_enabled, created_at");
-  parts.push("### c.client\n```json\n" + JSON.stringify(clients, null, 2) + "\n```\n");
+  try {
+    const { data: clients } = await supabase.schema("c").from("client")
+      .select("client_id, client_name, client_slug, status, timezone, profession_slug, serves_ndis_participants, ndis_registration_status, notifications_email, portal_enabled, created_at");
+    parts.push("### c.client\n```json\n" + JSON.stringify(clients, null, 2) + "\n```\n");
+  } catch (e: any) {
+    parts.push(`### c.client — query failed: ${e?.message ?? String(e)}\n`);
+  }
 
-  // 2. Cron jobs (active only)
-  const { data: crons } = await supabase.rpc("exec_sql", { sql: "SELECT jobname, schedule, active FROM cron.job WHERE active = true ORDER BY jobname" }).catch(() => ({ data: null }));
-  if (crons) {
-    parts.push("### cron.job (active only)\n```json\n" + JSON.stringify(crons, null, 2) + "\n```\n");
-  } else {
-    parts.push("### cron.job — query failed (exec_sql may be unavailable under service role), skipped\n");
+  // 2. Cron jobs (active only) — exec_sql may fail under service role; wrap in try/catch
+  try {
+    const { data: crons } = await supabase.rpc("exec_sql", { sql: "SELECT jobname, schedule, active FROM cron.job WHERE active = true ORDER BY jobname" });
+    if (crons) {
+      parts.push("### cron.job (active only)\n```json\n" + JSON.stringify(crons, null, 2) + "\n```\n");
+    } else {
+      parts.push("### cron.job — exec_sql returned no data\n");
+    }
+  } catch (e: any) {
+    parts.push(`### cron.job — exec_sql failed (expected under service role): ${e?.message ?? String(e)}\n`);
   }
 
   // 3. ai_job pipeline health summary
-  const { data: aiJobStats } = await supabase.schema("m").from("ai_job")
-    .select("status", { count: "exact", head: false });
-  // Aggregate ourselves since schema doesn't allow group-by directly
-  const aiJobAgg: Record<string, number> = {};
-  (aiJobStats ?? []).forEach((r: any) => {
-    aiJobAgg[r.status] = (aiJobAgg[r.status] ?? 0) + 1;
-  });
-  parts.push("### m.ai_job (status counts, all-time)\n```json\n" + JSON.stringify(aiJobAgg, null, 2) + "\n```\n");
+  try {
+    const { data: aiJobStats } = await supabase.schema("m").from("ai_job")
+      .select("status", { count: "exact", head: false });
+    const aiJobAgg: Record<string, number> = {};
+    (aiJobStats ?? []).forEach((r: any) => {
+      aiJobAgg[r.status] = (aiJobAgg[r.status] ?? 0) + 1;
+    });
+    parts.push("### m.ai_job (status counts, all-time)\n```json\n" + JSON.stringify(aiJobAgg, null, 2) + "\n```\n");
+  } catch (e: any) {
+    parts.push(`### m.ai_job status counts — query failed: ${e?.message ?? String(e)}\n`);
+  }
 
   // 4. Recent ai_job activity
-  const { data: recentAiJobs } = await supabase.schema("m").from("ai_job")
-    .select("ai_job_id, status, attempts, created_at, updated_at")
-    .order("created_at", { ascending: false })
-    .limit(20);
-  parts.push("### m.ai_job (last 20, most recent first)\n```json\n" + JSON.stringify(recentAiJobs, null, 2) + "\n```\n");
+  try {
+    const { data: recentAiJobs } = await supabase.schema("m").from("ai_job")
+      .select("ai_job_id, status, attempts, created_at, updated_at")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    parts.push("### m.ai_job (last 20, most recent first)\n```json\n" + JSON.stringify(recentAiJobs, null, 2) + "\n```\n");
+  } catch (e: any) {
+    parts.push(`### m.ai_job recent — query failed: ${e?.message ?? String(e)}\n`);
+  }
 
   // 5. Publish queue
-  const { data: publishQueue } = await supabase.schema("m").from("post_publish_queue")
-    .select("client_id, platform, status", { count: "exact" })
-    .in("status", ["pending", "scheduled", "running", "failed"])
-    .limit(100);
-  parts.push("### m.post_publish_queue (active states, up to 100 rows)\n```json\n" + JSON.stringify(publishQueue, null, 2) + "\n```\n");
+  try {
+    const { data: publishQueue } = await supabase.schema("m").from("post_publish_queue")
+      .select("client_id, platform, status", { count: "exact" })
+      .in("status", ["pending", "scheduled", "running", "failed"])
+      .limit(100);
+    parts.push("### m.post_publish_queue (active states, up to 100 rows)\n```json\n" + JSON.stringify(publishQueue, null, 2) + "\n```\n");
+  } catch (e: any) {
+    parts.push(`### m.post_publish_queue — query failed: ${e?.message ?? String(e)}\n`);
+  }
 
   // 6. Published posts last 7d by client
-  const sevenDaysAgo = new Date(Date.now() - 7 * 86400_000).toISOString();
-  const { data: recentPublishes } = await supabase.schema("m").from("post_publish")
-    .select("client_id, platform, published_at")
-    .gt("published_at", sevenDaysAgo);
-  const publishAgg: Record<string, Record<string, number>> = {};
-  (recentPublishes ?? []).forEach((r: any) => {
-    const k = r.client_id ?? "null";
-    if (!publishAgg[k]) publishAgg[k] = {};
-    publishAgg[k][r.platform] = (publishAgg[k][r.platform] ?? 0) + 1;
-  });
-  parts.push("### m.post_publish (last 7 days, grouped by client_id x platform)\n```json\n" + JSON.stringify(publishAgg, null, 2) + "\n```\n");
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400_000).toISOString();
+    const { data: recentPublishes } = await supabase.schema("m").from("post_publish")
+      .select("client_id, platform, published_at")
+      .gt("published_at", sevenDaysAgo);
+    const publishAgg: Record<string, Record<string, number>> = {};
+    (recentPublishes ?? []).forEach((r: any) => {
+      const k = r.client_id ?? "null";
+      if (!publishAgg[k]) publishAgg[k] = {};
+      publishAgg[k][r.platform] = (publishAgg[k][r.platform] ?? 0) + 1;
+    });
+    parts.push("### m.post_publish (last 7 days, grouped by client_id x platform)\n```json\n" + JSON.stringify(publishAgg, null, 2) + "\n```\n");
+  } catch (e: any) {
+    parts.push(`### m.post_publish 7d — query failed: ${e?.message ?? String(e)}\n`);
+  }
 
   // 7. Channel / token state
-  const { data: channels } = await supabase.schema("c").from("client_channel")
-    .select("client_id, platform, active, token_expires_at, connected_page_id, updated_at")
-    .order("client_id");
-  parts.push("### c.client_channel\n```json\n" + JSON.stringify(channels, null, 2) + "\n```\n");
+  try {
+    const { data: channels } = await supabase.schema("c").from("client_channel")
+      .select("client_id, platform, active, token_expires_at, connected_page_id, updated_at")
+      .order("client_id");
+    parts.push("### c.client_channel\n```json\n" + JSON.stringify(channels, null, 2) + "\n```\n");
+  } catch (e: any) {
+    parts.push(`### c.client_channel — query failed: ${e?.message ?? String(e)}\n`);
+  }
 
   // 8. Existing reviewer queue (what's been reviewed to date)
-  const { data: reviews } = await supabase.schema("m").from("external_review_queue")
-    .select("reviewer_key, commit_sha, commit_repo, severity, finding_summary, cost_usd, created_at")
-    .order("created_at", { ascending: false });
-  parts.push("### m.external_review_queue (all rows to date)\n```json\n" + JSON.stringify(reviews, null, 2) + "\n```\n");
+  try {
+    const { data: reviews } = await supabase.schema("m").from("external_review_queue")
+      .select("reviewer_key, commit_sha, commit_repo, severity, finding_summary, cost_usd, created_at")
+      .order("created_at", { ascending: false });
+    parts.push("### m.external_review_queue (all rows to date)\n```json\n" + JSON.stringify(reviews, null, 2) + "\n```\n");
+  } catch (e: any) {
+    parts.push(`### m.external_review_queue — query failed: ${e?.message ?? String(e)}\n`);
+  }
 
   // 9. Recent digests
-  const { data: digests } = await supabase.schema("m").from("external_review_digest")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(5);
-  parts.push("### m.external_review_digest (last 5)\n```json\n" + JSON.stringify(digests, null, 2) + "\n```\n");
+  try {
+    const { data: digests } = await supabase.schema("m").from("external_review_digest")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(5);
+    parts.push("### m.external_review_digest (last 5)\n```json\n" + JSON.stringify(digests, null, 2) + "\n```\n");
+  } catch (e: any) {
+    parts.push(`### m.external_review_digest — query failed: ${e?.message ?? String(e)}\n`);
+  }
 
   // 10. Reviewer rules (what the other reviewers are checking against — Grok as System Auditor should know what peers cover)
-  const { data: rules } = await supabase.schema("c").from("external_reviewer_rule")
-    .select("reviewer_key, rule_key, category, rule_text, is_active")
-    .eq("is_active", true)
-    .order("reviewer_key");
-  parts.push("### c.external_reviewer_rule (active rules, grouped by reviewer)\n```json\n" + JSON.stringify(rules, null, 2) + "\n```\n");
+  try {
+    const { data: rules } = await supabase.schema("c").from("external_reviewer_rule")
+      .select("reviewer_key, rule_key, category, rule_text, is_active")
+      .eq("is_active", true)
+      .order("reviewer_key");
+    parts.push("### c.external_reviewer_rule (active rules, grouped by reviewer)\n```json\n" + JSON.stringify(rules, null, 2) + "\n```\n");
+  } catch (e: any) {
+    parts.push(`### c.external_reviewer_rule — query failed: ${e?.message ?? String(e)}\n`);
+  }
 
   // 11. Recent AI usage log — pipeline cost visibility
-  const { data: usage } = await supabase.schema("m").from("ai_usage_log")
-    .select("provider, model, content_type, input_tokens, output_tokens, cost_usd, created_at")
-    .order("created_at", { ascending: false })
-    .limit(50);
-  parts.push("### m.ai_usage_log (last 50 calls)\n```json\n" + JSON.stringify(usage, null, 2) + "\n```\n");
+  try {
+    const { data: usage } = await supabase.schema("m").from("ai_usage_log")
+      .select("provider, model, content_type, input_tokens, output_tokens, cost_usd, created_at")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    parts.push("### m.ai_usage_log (last 50 calls)\n```json\n" + JSON.stringify(usage, null, 2) + "\n```\n");
+  } catch (e: any) {
+    parts.push(`### m.ai_usage_log — query failed: ${e?.message ?? String(e)}\n`);
+  }
 
   return parts.join("\n");
 }
@@ -337,15 +383,19 @@ app.post("*", async (c) => {
     if (insertErr) throw new Error(`queue_insert_failed: ${insertErr.message}`);
 
     // 7. Also log to ai_usage_log
-    await supabase.schema("m").from("ai_usage_log").insert({
-      provider: reviewer.provider,
-      model: reviewer.model,
-      input_tokens: result.tokens_input,
-      output_tokens: result.tokens_output,
-      total_tokens: result.tokens_input + result.tokens_output,
-      cost_usd: result.cost_usd,
-      content_type: "system_audit",
-    }).then(() => {}).catch((e: any) => console.error(`ai_usage_log_insert_failed: ${e?.message ?? e}`));
+    try {
+      await supabase.schema("m").from("ai_usage_log").insert({
+        provider: reviewer.provider,
+        model: reviewer.model,
+        input_tokens: result.tokens_input,
+        output_tokens: result.tokens_output,
+        total_tokens: result.tokens_input + result.tokens_output,
+        cost_usd: result.cost_usd,
+        content_type: "system_audit",
+      });
+    } catch (e: any) {
+      console.error(`ai_usage_log_insert_failed: ${e?.message ?? e}`);
+    }
 
     return jsonResponse({
       ok: true,
