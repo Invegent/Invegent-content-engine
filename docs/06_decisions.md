@@ -149,7 +149,7 @@ These are not optional for pre-sales closure. A managed service with 1 client wh
 
 None. Stage 1+2 have no external dependencies. Deferred from 20 Apr to 27 Apr due to ID003 intervention — ID003 remediation must complete first because it is actively bleeding money.
 
-**UPDATE 21 Apr:** Stage 1 pulled forward and shipped today (commits `495216f`, `a437a6a`). See D160 for implementation detail.
+**UPDATE 21 Apr:** Stage 1 pulled forward and shipped today (commits `495216f`, `a437a6a`). See D160 for implementation detail. **Further UPDATE 21 Apr evening:** Stage 1 now dormant pending pre-sales sprint completion. See D162.
 
 ### Related decisions
 
@@ -163,6 +163,8 @@ None. Stage 1+2 have no external dependencies. Deferred from 20 Apr to 27 Apr du
 - **D158 — Approach C (full repo + caching) chosen over RAG for the reviewer layer's context strategy**
 - **D159 — ai-worker idempotency implementation detail via log-existence not time-window**
 - **D160 — Three-voice implementation detail + role-library deferred**
+- **D161 — System Auditor role + docs archive pattern + freshness taxonomy (extension of the Stage 1 infrastructure)**
+- **D162 — Sprint-mode pause for the reviewer layer; re-enable at 80-90% pre-sales gate closure**
 
 ---
 
@@ -479,6 +481,197 @@ Both quotes are preserved because they capture the honest tension: the reviewer 
 - D156 — parent decision (external epistemic diversity layer)
 - D158 — the context strategy (Approach C) that this layer uses
 - D157 — the cost guardrails that make running three models affordable
+- D161 — the System Auditor role + docs archive pattern that extends this layer
+- D162 — the sprint-mode pause applied to the D160 layer
+
+---
+
+## D161 — System Auditor EF + Docs Archive Pattern + Freshness Taxonomy
+**Date:** 21 April 2026 afternoon/evening | **Status:** ✅ IMPLEMENTED (commits `f7e6a776`, `b24e40e6`, `cda4ab7d`, archive commits `0229699d` through `453ca493`, `3109cd65`, system_auditor prompt v2 via SQL)
+
+### The problem this decides
+
+After D160's three-voice layer shipped, PK asked for a different kind of review: "Have Grok review all the live state of docs and advise what is missing / what's not working." This is NOT the per-commit lens. Per-commit review asks "is this change good?"; system audit asks "what does the whole system look like right now and where is it drifting?"
+
+The two lenses have different requirements:
+- Per-commit: triggered by webhook, needs recent diff + repo blob, writes one finding per reviewer per commit
+- System audit: triggered manually on demand, needs all docs + live DB snapshot + recent activity, writes one comprehensive finding
+
+Building both into one EF was considered and rejected — the invocation patterns, auth, and rate-of-firing differ too much. A second EF was cleaner.
+
+Implementing the system audit surfaced a second problem: **docs staleness pollutes AI reviewer context**. The first audit run (v1.0.1, 05:21 UTC) produced a spurious severity:critical finding based on `docs/00_audit_report.md` — a 6 April frozen snapshot that was never overwritten because the reconciler it complained about had stopped running. Grok had no way to know this doc was stale, treated it as current state, and regurgitated its CRITICAL framing as today's finding.
+
+Fixing this required a systematic answer, not a one-off patch.
+
+### The decision
+
+Three coupled implementations:
+
+#### 1. System Auditor as a separate Edge Function
+
+New EF `system-auditor` (commits `f7e6a776` v1.0.0 → `b24e40e6` v1.0.1 → `cda4ab7d` v1.0.2), auth via `x-ai-worker-key`, no webhook. Assembles:
+- All `.md` files under `docs/` (from GitHub HEAD of main) — but NOT `docs/archive/**`
+- Live DB snapshot across 11 queries (clients, cron, ai_job health, publish queue, channels, reviewer queue, digests, rules, AI usage, etc.) — each wrapped in try/catch for graceful degradation
+- Recent commit activity
+
+Sends to Grok 4.1 Fast Reasoning (via a new `system_auditor` row in `c.external_reviewer`) configured with a prompt asking for structured JSON output: headline / what's working / what's broken or drifting / what's missing / pre-sales gate reality check / not-enough-context-to-judge.
+
+Writes result to `m.external_review_queue` with synthetic `commit_sha = 'system-audit-{ISO-timestamp}'` so the row is clearly distinguishable from per-commit reviews.
+
+#### 2. Docs archive pattern
+
+Create `docs/archive/` as a canonical location for superseded snapshots. Rules:
+- A doc moves to `docs/archive/` when it is superseded by a living doc OR when its frozen timestamp makes it misleading
+- The file gets a stale-warning header explaining when and why it was archived and where the canonical equivalent lives
+- Originals are git-rm'd from their root location (git history preserves them)
+- Future AI reviewers are told `docs/archive/**` is intentionally excluded — "if you can't see something you want to cite, that's deliberate, not an oversight"
+
+Four files archived 21 Apr:
+- `00_audit_report.md` — frozen 6 Apr snapshot; cause of the v1.0.1 false critical
+- `10_consultant_audit_april_2026.md` — 8 Apr 4-lens audit; findings absorbed into file 15 Section A
+- `ICE_Pipeline_Audit_Apr2026.md` — mid-April pipeline audit; superseded by live DB queries
+- `14_pre_sales_audit_inventory.md` — 18 Apr reconciliation; explicitly superseded by file 15 per file 15's own header
+
+#### 3. Freshness taxonomy in `docs/00_docs_index.md`
+
+Every doc in the index gets a freshness marker:
+- 🟢 **living** — updated continuously, authoritative for current state
+- 🔵 **reference** — stable semantics, may be updated for new decisions
+- 🟡 **snapshot** — point-in-time, keep for historical context only
+- ⚫ **archived** — moved to `docs/archive/`; read only for historical trace
+
+Authority rule stated at top of the index: "When living and snapshot disagree, trust living. When DB and doc disagree, trust DB."
+
+Index maintenance rule: a living doc that hasn't been updated in 30+ days AND where the system has changed materially gets downgraded to snapshot or archived.
+
+#### 4. system_auditor prompt v2
+
+Prompt extended from 3,500 to 5,938 chars (SQL-applied, not committed since it's DB content). Four additions beyond the original:
+
+- **Authority hierarchy explicit** — "live DB snapshot > docs/00_sync_state.md > all other living docs. `docs/archive/**` has been intentionally excluded from your context."
+- **5-step precheck before writing any finding** — is the DB consistent with the claim? is this already acknowledged in sync_state Watch List? is it parked in a brief with a trigger? is it closed by a recent commit? can this be verified or is it extrapolation?
+- **Severity anchors with 2+ concrete examples per level** — critical / warn / info each with examples showing the expected calibration. "If uncertain between two levels, choose the lower one. Severity inflation costs trust."
+- **"Do not report" suppress list** — known open items in sync_state, parked briefs, recent-commit-closed items, unverifiable inferences, polite framing.
+
+### Effectiveness (2 runs of data)
+
+v1.0.1 (05:21 UTC, archive unfixed, prompt v1): severity:critical, top finding spurious (reconciler false alarm from stale snapshot).
+
+v1.0.2 + prompt v2 (07:30 UTC, archive excluded, prompt v2): severity:warn, 4 findings all real and actionable — but all 4 were already in sync_state's Watch List, which the prompt explicitly told Grok NOT to re-surface. Partial failure of the suppress directive.
+
+**Verdict: B+.** Real improvement; infrastructure earned its place; prompt v2 still needs calibration. Retained as infrastructure for D156 Stage 1 completeness, but the assessment feeds into D162.
+
+### Why this is infrastructure, not theatre
+
+Three reasons the pattern is worth preserving even though novel findings rate is zero after 2 runs:
+
+1. **Docs archive + freshness taxonomy protects every future AI reviewer.** Any AI tool reading ICE's docs — not just system-auditor — benefits. It's a context discipline, not a system-auditor-specific hack.
+2. **Separate EF for different invocation pattern is the right shape.** When the role-library refactor happens (parked brief 2026-04-21-reviewer-role-library.md), this shape generalises cleanly — role-specific EFs can share a common invocation pattern.
+3. **Second audit after sprint reactivation is the actual test.** A fresh audit against a near-complete pre-sales gate, looking for "anything we haven't surfaced ourselves", is the genuinely high-value use. Today's runs happened against a mid-sprint state where Claude has already surfaced everything.
+
+### What this does NOT decide
+
+- Does not claim the external reviewer layer has earned its keep yet — that assessment is separate and is the topic of D162.
+- Does not make `system_auditor` a per-commit reviewer — it remains manual-invoke.
+- Does not rule out revisiting the prompt further. If sprint-end reactivation produces a third run that still just echoes Watch List, prompt v3 is warranted.
+
+### Related decisions
+
+- D156 — parent decision establishing the external reviewer layer
+- D160 — three-voice per-commit reviewer; this is the system-audit complement
+- D162 — the sprint-mode pause applied equally to system_auditor
+- D151 — universal table-purpose rule (system_auditor's precheck #1 extends D151's spirit to docs)
+
+---
+
+## D162 — Pause External Reviewer Layer During Pre-Sales Sprint
+**Date:** 21 April 2026 evening | **Status:** ✅ IMPLEMENTED — all four rows in `c.external_reviewer` set to `is_active=false` at 21 Apr 07:56 UTC
+
+### The problem this decides
+
+With D160 three-voice + D161 System Auditor shipped, ICE has a live external reviewer layer. It also has ~20 open pre-sales items needing a sprint to close. The two don't combine well.
+
+Running the reviewer layer during sprint work creates a **review-loop recursion**:
+- Sprint fixes something (commit lands)
+- Reviewer fires on the commit
+- Reviewer produces a finding that's already in sync_state's Watch List OR that's already being worked on in the next sprint item
+- Sprint item gets done (next commit lands)
+- Reviewer fires again
+- Repeat
+
+This is precisely what today's two system audits demonstrated. Both runs produced findings that were already known — because Claude had already surfaced them when working on the sprint. The external layer adds value against a stable target, not a moving one.
+
+PK's reasoning verbatim (21 Apr evening):
+
+> "once we achieve 80-90% of the presales, then we can turn the reviewer on. Because till then, it'll be just going in loop because we are fixing things and then review and it'll just keep going. So rather than running these reviewer, we should sprint through the whole presale items, and then we'll start running it by the time we are about to reach the completion of presales."
+
+### The decision
+
+Pause all four reviewer rows for the duration of the pre-sales sprint. Re-enable when ~18-19 of 28 Section A items are closed (roughly 65-70% done, heading into final stretch).
+
+**Implementation:**
+
+```sql
+UPDATE c.external_reviewer
+SET is_active = false, updated_at = NOW()
+WHERE reviewer_key IN ('strategist', 'risk', 'system_auditor');
+```
+
+(`engineer` was already `is_active=false` pending OpenAI Tier 2 unlock.)
+
+The `external-reviewer` EF filters on `is_active=true` (verified in source). With all four rows inactive, the EF returns `no_active_reviewers` error for any webhook invocation. GitHub webhooks still fire but produce 500 responses — cosmetic noise in the webhook panel, no cost, no pipeline impact.
+
+The `system-auditor` EF is manual-invoke only; it does not fire unattended, so "pausing" it means simply not invoking it.
+
+### Re-enable ceremony
+
+When pre-sales gate reaches ~18-19 of 28 closed:
+
+1. SQL:
+   ```sql
+   UPDATE c.external_reviewer
+   SET is_active = true, updated_at = NOW()
+   WHERE reviewer_key IN ('strategist', 'risk', 'system_auditor');
+   ```
+2. Leave `engineer` paused until OpenAI Tier 2 unlocks organically at $50 cumulative API spend.
+3. Manually invoke system-auditor once to get a fresh whole-system audit of the near-complete state.
+4. Act on any genuine findings (the suppress-list directive should produce cleaner output now because the Watch List will have moved).
+5. Close the remaining Section A items informed by the fresh audit.
+
+### Why pause ≠ retire
+
+Three reasons this is a pause and not a removal:
+
+1. **Infrastructure is good.** Today validated the webhook flow, HMAC signing, retroactive review path, Gemini + Grok integration, queue table, digest EF, dashboard `/reviews` page. That work is kept, just dormant.
+
+2. **The value proposition hasn't been fairly tested.** Today's runs happened mid-sprint with Watch List already populated. The layer's actual test is fresh eyes on a stable codebase. That test only exists post-sprint. Killing now would be evaluating on the wrong data.
+
+3. **Reactivation cost is zero.** One SQL statement. No re-deployment, no new secrets, no schema change. The pause/resume cycle is cheap; commit to it as a discipline.
+
+### Why not kill completely after 2 runs of no-novel-findings
+
+PK's "keep the flow worth" framing (21 Apr evening) is correct: infrastructure that's already built and cheaply dormant is worth preserving against the possibility that fresh-eyes review against a stable state produces the first genuine novel finding. Binary kill after 2 runs on moving-target data is a false-negative risk. Binary kill after a sprint-end audit that still produces only Watch List items is a genuine verdict.
+
+### What this does NOT decide
+
+- Does not commit to the consumption-model reframe in the role-library brief addendum. That's aspirational. Re-evaluate after the post-sprint audit.
+- Does not affect the weekly digest cron (`external-reviewer-digest-weekly`, jobid 66). The cron will run on Mondays but find no new queue rows; it will produce empty digests until reviewers resume. Cost: zero (no LLM calls from the digest EF when nothing new to summarise). If the empty-Monday-digest creates inbox noise, disable the cron explicitly.
+- Does not suggest the per-commit external-reviewer EF has a bug — but today did surface one: before pause, the EF was iterating all rows in `c.external_reviewer` including `system_auditor`, producing tiny hallucinated system_auditor rows on every qualifying commit. Fix this (e.g. add a `per_commit_enabled` boolean or filter explicitly by reviewer_key) before reactivation.
+
+### Gate to reactivate
+
+Quantitative: ~18-19 of 28 Section A items closed in file 15.
+
+Qualitative: codebase velocity has slowed (no more than 1-2 commits per day on pre-sales items). Reviewer value is proportional to stability of target.
+
+Check-in: at each 5-item closure, ask "are we 18-19 yet?" rather than waiting for a single milestone.
+
+### Related decisions
+
+- D156 — parent decision (Stage 1 external review layer)
+- D160 — three-voice implementation
+- D161 — System Auditor + archive pattern
+- D162 is the pause applied to D160 + D161 until sprint completes
 
 ---
 
@@ -491,24 +684,28 @@ Both quotes are preserved because they capture the honest tension: the reviewer 
 | D145 — Benchmark table | 🔲 Research now, build with D144 | Research immediate |
 | D146 — Feed pipeline score + retirement | 🔲 Gated | Phase 2.1 + 60 days data |
 | D140 — Digest item scoring | 🔲 Phase 3 | After CFW stable + auto-approver healthy |
-| D149 — Advisor Layer MVP (Sales Advisor Project) | 🔲 Late this week or next week | None — deferred from 23 Apr due to ID003 |
+| D149 — Advisor Layer MVP (Sales Advisor Project) | 🔲 Deferred post-sprint | Same rationale as D162 |
 | D151 — Table purpose backlog sweep (22 rows) | 🔲 Post-pre-sales | Batch job later |
 | D153 — Token-health live /debug_token cron | 🔲 Spec this week, build after | None — high priority |
-| D156 Stage 2 — Meta reconciliation | 🔲 Next external-layer build | Stage 1 verified earning its keep |
-| D157 — Cost guardrails Stop 2 infrastructure | 🔲 Deferred until external reviewer beds in | ai-worker fix verified ✅ + external reviewer stable |
+| D156 Stage 2 — Meta reconciliation | 🔲 Post-sprint | Stage 1 verified earning its keep after reactivation |
+| D157 — Cost guardrails Stop 2 infrastructure | 🔲 Post-sprint | ai-worker fix verified ✅ + sprint complete |
 | D157 — Raise Anthropic cap to calibrated Stop 1 | 🔲 Week of 5 May | 7 days post-fix clean data + weekly calibration |
-| Inbox anomaly monitor | 🔲 Build Fri 24 Apr | Separate brief TBW |
+| Inbox anomaly monitor | 🔲 Post-sprint | Separate brief TBW |
 | Phase 2.1 — Insights-worker | 🔲 Next major build | Meta Standard Access |
 | Phase 2.6 — Proof dashboard | 🔲 After Phase 2.1 | Engagement data |
 | Solicitor engagement | 🔲 Parked per D147 + D156 refinement | First pilot revenue OR second pilot signed |
 | Meta App Review | ⏳ In Review | Contact dev support if stuck after 27 Apr |
-| CFW + Invegent content prompts | 🔲 A11b pre-sales | PK prompt-writing session |
+| CFW + Invegent content prompts | 🔲 A11b pre-sales | PK prompt-writing session Fri 24 Apr |
 | TBC subscription costs | 🔲 A6 pre-sales | Invoice check |
 | CFW profession fix | 🔲 Immediate | Change in Profile |
 | Auto-approver target pass rate | 🔲 C1 | Single PK decision |
-| Monitoring items A20–A22 (D155 follow-on) | 🔲 Build after Stage 1+2 up | Stage 1+2 live |
+| Monitoring items A20–A22 (D155 follow-on) | 🔲 Sprint items | Sprint priority per D162 |
 | Professional indemnity insurance | 🔲 Pre-pilot | Underwriting forces clarification |
 | A27 — LLM-caller Edge Function audit (ID003 follow-on) | 🔲 After ai-worker fix establishes pattern | Pattern proven |
-| **Reviewer role-library rebuild (post-D160)** | 🔲 Captured as brief; execute when evidence justifies | 2+ weekly digests + concrete use case for a role not in current library |
-| **CFW schedule save bug investigation** | 🔲 Discovered 21 Apr — UI shows "Saved ✓" but DB has zero rows | Triage after external reviewer stable |
-| **Discovery pipeline ingest bug fix** | 🔲 Discovered 21 Apr — config.url vs config.feed_url mismatch; 9 discovery feeds never ingested anything | Simple one-line fix; triage with CFW bug |
+| **Reviewer role-library rebuild (post-D160)** | 🔲 Captured as brief with consumption-model addendum; execute when evidence justifies | 2+ weekly digests post-sprint + concrete use case for a role not in current library |
+| **CFW schedule save bug investigation** | 🔲 Sprint item (M2 in sprint board) | During sprint |
+| **Discovery pipeline ingest bug fix** | 🔲 Sprint item (Q2 in sprint board) | During sprint |
+| **13 failed ai_jobs cleanup SQL** | 🔲 Sprint item (Q1 — pre-approved) | During sprint |
+| **A7 privacy policy update** | 🔲 Sprint item (Q4) | During sprint |
+| **External reviewer resume** | 🔲 Paused per D162 | ~18-19 of 28 Section A items closed |
+| **Per-commit reviewer iteration bug** | 🔲 Before reviewer resume | Add filter for per_commit_enabled or explicit reviewer_key IN list |
