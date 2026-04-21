@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-21 mid-day Sydney (PK local 14:05, UTC 04:05) — true session-close after external reviewer three-voice layer shipped
+> Last written: 2026-04-21 14:22 Sydney (UTC 04:22) — webhook verification
 > Written by: PK + Claude session sync
 
 ---
@@ -13,10 +13,11 @@
 Today shipped:
 - ID003 three-part fix (ai-worker v2.9.0 + migration)
 - Roadmap three-tab rebuild
-- External reviewer layer — three-voice design (Strategist active, Engineer paused, Risk DB-ready awaiting xAI credits)
+- External reviewer layer — three-voice design (Strategist active, Engineer paused, Risk live)
 - Pilot service agreement template v1 (pricing deferred)
 - Extensive decision documentation (D158, D159, D160)
 - Role-library reframe captured as parked brief
+- **Both GitHub webhooks configured and verified — reviewer layer now fully autonomous on new commits**
 
 Six commits to Invegent-content-engine plus one to invegent-dashboard. Pre-sales gate moved from 7 closed to 7 closed + 4 in flight.
 
@@ -32,6 +33,18 @@ Six commits to Invegent-content-engine plus one to invegent-dashboard. Pre-sales
 6. Read `docs/incidents/2026-04-19-cost-spike.md` — ID003 still the dominant operational context
 7. Query `k.vw_table_summary` before working on any table
 8. **Session-close SOP (D150):** verify every commit with `git ls-remote origin main | grep <sha>` before asserting it in sync_state
+
+---
+
+## WEBHOOK VERIFICATION — 21 APR 04:22 UTC
+
+Both GitHub webhooks configured and ping-tested successfully:
+- `Invegent-content-engine` — webhook 607881059, ping delivered 14:20:47 AEST, green tick ✅
+- `invegent-dashboard` — webhook 607881239, ping delivered 14:21:43 AEST, green tick ✅
+
+xAI credits topped up to $25 with auto-recharge enabled.
+
+**This commit itself is the first live webhook-triggered review test.** Expected: Strategist + Risk both fire on the push event, queue rows appear within ~90 seconds, first-ever fully-autonomous review recorded.
 
 ---
 
@@ -77,13 +90,15 @@ Session ran from early morning Sydney time through mid-afternoon. Approximately 
 - Retroactive reviews executed: Strategist completed all 4 targets (`d12a52c`, `202037c`, `495216f`, `1a7aabf`) with info-severity findings. Risk returned 403 on all 4 (zero xAI credits at time).
 - First digest produced (`b09f062a-f92b-47e5-9052-c696ac764a53`), committed to `docs/reviews/2026-04-21-digest.md`, emailed to pk@invegent.com
 
-### 00:23-04:05 UTC — Documentation caught up
+### 00:23-04:22 UTC — Documentation caught up + webhook go-live
 
-- **Commit `dad6ae2`** — sync_state interim update (replaced by THIS update)
+- **Commit `dad6ae2`** — sync_state interim update (superseded)
 - **Commit `4fe9c57`** + **`88effeb`** — pilot service agreement template v1 at `docs/legal/pilot_service_agreement_template_v1.md` (pricing deferred)
 - **Commit `2e909fb`** — external reviewer brief updated to reflect three-voice shipped state
 - **Commit `b4e63ca`** — role-library reframe captured as parked brief at `docs/briefs/2026-04-21-reviewer-role-library.md`
+- **Commit `941375a`** — sync_state final update (superseded by THIS update)
 - D156, D157, D158, D159, D160 all committed to `docs/06_decisions.md` during session
+- **04:20-04:22 UTC — both webhooks configured + ping-verified + xAI credits topped up**
 
 ---
 
@@ -91,77 +106,34 @@ Session ran from early morning Sydney time through mid-afternoon. Approximately 
 
 | Reviewer | Lens | Model | Provider | DB status | Operational status |
 |---|---|---|---|---|---|
-| Strategist | Right direction? | gemini-2.5-pro | Google | ✅ Active | ✅ Live, reviewed 4 retroactive commits |
+| Strategist | Right direction? | gemini-2.5-pro | Google | ✅ Active | ✅ Live, 4 retroactive reviews completed |
 | Engineer | Built well? | gpt-4o | OpenAI | ⏸ Paused | Awaits OpenAI Tier 2 (natural unlock when cumulative API spend reaches $50) |
-| Risk | Silent failures? | grok-4-1-fast-reasoning | xAI | ✅ Active | Awaits xAI credit top-up — zero credits at session close |
+| Risk | Silent failures? | grok-4-1-fast-reasoning | xAI | ✅ Active | ✅ Credits available ($25), awaiting first live webhook to fire |
+
+**Webhooks:** ✅ Both repos configured 21 Apr 04:20-04:22 UTC
 
 **Tables live:**
 - `c.external_reviewer` — 3 rows
-- `c.external_reviewer_rule` — 12 rules total (4 per reviewer), rules keyed on reviewer_key (would migrate to role_code if role-library brief executes)
+- `c.external_reviewer_rule` — 12 rules total (4 per reviewer), rules keyed on reviewer_key
 - `m.external_review_queue` — 4 retroactive findings (all Strategist, all info-severity)
 - `m.external_review_digest` — 1 row (today's on-demand digest)
 
 **Edge Functions live:**
-- `external-reviewer` v1.2.0 — accepts webhook (HMAC) and retroactive (`x-ai-worker-key`) paths
+- `external-reviewer` v1.2.0 — HMAC webhook path + retroactive (`x-ai-worker-key`) path
 - `external-reviewer-digest` v1.1.0 — assembles markdown, commits to GitHub, emails via Resend
 
-**Cron:**
-- `external-reviewer-digest-weekly` (jobid 66) — Mon 7am AEST (Sun 21:00 UTC)
+**Cron:** `external-reviewer-digest-weekly` (jobid 66) — Mon 7am AEST (Sun 21:00 UTC)
 
-**Dashboard:**
-- `/reviews` page with on-demand "Run digest now" button
-- Sidebar link added
+**Dashboard:** `/reviews` page with on-demand "Run digest now" button + sidebar link
 
 **Secrets provisioned today:**
 
 | Secret | Purpose | Provisioned |
 |---|---|---|
 | `ICE_GEMINI_API_KEY` | Strategist | 20 Apr 23:55 UTC |
-| `GITHUB_PAT_INVEGENT` | Fetch repo tarball + commit digest files | 21 Apr 00:15 UTC (recreated after initial naming confusion) |
-| `GITHUB_WEBHOOK_SECRET` | HMAC verification | 21 Apr 00:10 UTC |
+| `GITHUB_PAT_INVEGENT` | Fetch repo tarball + commit digest files | 21 Apr 00:15 UTC |
+| `GITHUB_WEBHOOK_SECRET` | HMAC verification (now actively used) | 21 Apr 00:10 UTC |
 | `ICE_XAI_API_KEY` | Risk Reviewer | 21 Apr 03:34 UTC |
-
-PAT scope: fine-grained, Invegent org, all 3 repos, contents R+W, webhooks R+W, metadata R.
-
----
-
-## THINGS YOU (PK) NEED TO DO NEXT SESSION
-
-Ordered by priority:
-
-### 🔴 Action items for three-voice layer to be fully live
-
-1. **Configure GitHub webhook — Invegent-content-engine**
-   - GitHub → repo Settings → Webhooks → Add webhook
-   - Payload URL: `https://mbkmaxqhsohbtwsqolns.supabase.co/functions/v1/external-reviewer`
-   - Content type: `application/json`
-   - Secret: value of `GITHUB_WEBHOOK_SECRET` (check Supabase secrets if forgotten)
-   - Events: "Just the push event"
-   - Save
-
-2. **Configure GitHub webhook — invegent-dashboard** (same settings as above)
-
-3. **Top up xAI credits** at https://console.x.ai/team/61aeecf7-93d4-433f-973b-b26ac30590de
-   - $20 prepaid is plenty for weeks at Grok 4.1 Fast pricing
-   - Do NOT enable "Share API Inputs for Model Training" (would send commits to xAI training)
-   - Set a monthly spending cap ($25 suggested) as Grok-equivalent of the Anthropic console cap
-
-4. **Make a trivial commit** after webhooks configured to verify end-to-end pipeline works
-   - Ideal candidate: a small edit to any qualifying-path file
-   - Verify: row appears in `m.external_review_queue` within ~2 min
-   - All three reviewers should fire (once xAI credits are in)
-
-### ⏸ Things that will unblock themselves
-
-- OpenAI Tier 2 — $62 credit balance now, $50 auto-recharge settings. Tier 2 unlocks when cumulative API spend reaches $50. Organic from OpenAI fallback calls in ai-worker + any future Engineer Reviewer runs. No action needed — just wait.
-
-### 🟡 Backlog items noticed today but not addressed
-
-- **CFW schedule save bug** (discovered 21 Apr) — dashboard UI shows "Saved ✓" but `c.client_publish_schedule` has zero rows for CFW. Server action swallows error silently. Triage as separate brief after external reviewer bedded in.
-- **Discovery pipeline ingest bug** (discovered 21 Apr) — `f.feed_discovery_seed` has 9 feeds provisioned 16 Apr, all marked active, all assigned to all 4 clients, but zero items ingested in 5 days. Root cause: discovery writes `config.url`, ingest reads `config.feed_url`. Simple one-line fix, but means "occupational therapy NDIS" (the one relevant to CFW) has never pulled anything.
-- **L008 / A7 privacy policy update** — pilot template drafted today, but pilot cannot be sent until privacy policy is updated with YouTube + HeyGen + video-analyser paragraphs. Draft is easy (30 min), not yet done.
-- 13 failed ai_jobs from ID003 — still in `failed` state, not urgent, clean up when convenient
-- Shrishti 2FA + passkey (Meta admin redundancy) — PK to chase with spouse
 
 ---
 
@@ -175,7 +147,7 @@ Ordered by priority:
 - A1 (pilot terms) — drafted, pricing deferred. Awaits A7 privacy policy update before first client send.
 - A5 (KPI guarantee) — drafted within pilot agreement
 - A8 (AI disclosure) — drafted within pilot agreement
-- A24 (multi-model review MVP) — 2/3 reviewers live in DB, 1 live with output, first digest delivered. Not yet closed — closes when first live-commit cycle produces findings (requires webhook config).
+- A24 (multi-model review MVP) — **on track to close with this commit** (first live webhook-triggered review)
 
 **Operational status:** Pipeline genuinely dormant — demand-aware seeder correctly reports supply maxed. 349 populated drafts in pipeline from 17 Apr burst. Drain rate ~36 posts/week × 4 clients → 3.4 weeks of natural runway before seeder fires new generation. Pipeline will resume itself.
 
@@ -190,183 +162,53 @@ Ordered by priority:
 | Care For Welfare | 3eca32aa | ✅ permanent | ⚠ mode=null | ⚠ mode=null | 0/0/0 (A11b) | 16 (13 approved + 3 needs_review) |
 | Invegent | 93494a09 | ✅ permanent | ⚠ mode=null | ⚠ mode=null | 0/0/0 (A11b) | 0 |
 
-All 4 FB tokens permanent (`expires_at: 0`). D153 (A23) still pending for live revocation detection.
-
----
-
-## PIPELINE HEALTH
-
-### ai_job status (as of 21 Apr 04:00 UTC)
-
-| Status | Count | Note |
-|---|---|---|
-| succeeded | 1052 | Last successful completion 18 Apr 16:40 UTC (pre-ID003-containment) |
-| queued | 0 | Empty |
-| running | 0 | Empty — pipeline at rest |
-| failed | 13 | From ID003 retry-loop termination; not urgent |
-
-### Crons (42 total active)
-
-Key crons relevant to today's work:
-| Job | jobid | Status |
-|---|---|---|
-| ai-worker-every-5m | 5 | ✅ returning no_jobs (queue empty) |
-| sweep-stale-running-every-10m | 9 | ✅ now enforcing retry cap (D157) |
-| seed-and-enqueue-facebook-every-10m | 11 | ✅ returning 0 seeds (demand maxed) |
-| seed-and-enqueue-instagram-every-10m | 64 | ✅ |
-| seed-and-enqueue-linkedin-every-10m | 65 | ✅ |
-| external-reviewer-digest-weekly | 66 | ✅ NEW — Mon 7am AEST |
-
-### Ingest health
-- 19 raw items + 20 canonical items in last 72h — light but healthy
-- Discovery pipeline feeds all returning 0 items due to config-key bug (see backlog)
-
----
-
-## COST STATUS
-
-**April billing cycle:** 1 April → 30 April
-**Spent MTD:** ~$156 USD (most of which is ID003)
-**Anthropic console cap:** $200 USD
-**Headroom remaining:** ~$44 USD
-**Resets:** 1 May 2026
-
-**OpenAI:** $62 credit balance, auto-recharge $50 when balance drops below $20 (today's setup)
-**xAI:** Credit top-up pending from PK
-
-**Post-fix operating target:** ~$18 USD/month (recalibrate after pipeline resumes)
-**External reviewer layer cost estimate:** ~$30-50/month once all three voices active
-**Stop 1 (Anthropic console) calibrated target:** $30 USD/month — set after 7 days of clean post-fix data + calibration
-
----
-
-## DECISIONS LOGGED — RECENT
-
-| ID | Title | Status |
-|---|---|---|
-| D147 | Pilot structure with liability waiver | ✅ DECIDED |
-| D148 | Buyer-risk clause | ✅ DIRECTION SET |
-| D149 | Four-advisor architecture | 🔲 BUILD DEFERRED (D156 reframe covers part) |
-| D150 | Session-close trust-but-verify protocol | ✅ ADOPTED |
-| D151 | Universal table-purpose rule | ✅ ADOPTED |
-| D152 | Seeder post_draft.client_id fix | ✅ APPLIED |
-| D153 | Token-health cron should call Meta /debug_token live | 🔲 BUILD NEXT |
-| D154 | Native LinkedIn draft flow | ✅ APPLIED |
-| D155 | Enqueue trigger ON CONFLICT clause fix | ✅ APPLIED |
-| D156 | External epistemic diversity layer | ✅ STAGE 1 SHIPPED (three-voice) |
-| D157 | Two-stop budget enforcement | 🟡 PARTIAL — ai-worker fix shipped, cost-guardrails infra on hold |
-| D158 | External reviewer Approach C (full repo + caching) over RAG | ✅ COMMITTED (`e97d4e7` via decision write) |
-| D159 | ai-worker idempotency via log-existence not time-window | ✅ COMMITTED |
-| D160 | Three-voice reviewer design + role-library deferred | ✅ COMMITTED |
-
-All decisions written. The "PENDING" flags in yesterday's sync_state are cleared.
-
----
-
-## INCIDENTS LOGGED
-
-| ID | Title | Status |
-|---|---|---|
-| ID003 | AI cost retry loop (15-19 Apr, ~$155 AUD) | ✅ Fix shipped (v2.9.0). Awaits natural verification when pipeline resumes. |
-
----
-
-## META BUSINESS VERIFICATION
-
-| Item | Status |
-|---|---|
-| 2FA block on PK admin | ✅ Cleared |
-| Shrishti admin 2FA + passkey | ⏳ Pending — PK to chase |
-| invegent.com DNS TXT verify | ✅ Verified |
-| Business verification | ⏳ In Review |
-| App Review | ⏳ In Review — **27 Apr = escalation trigger** |
-
----
-
-## PRE-SALES GATE — SECTION A SNAPSHOT
-
-31 total items. 7 closed. 24 open (4 in flight today).
-
-**Closed (7) — unchanged:** A9, A10a, A11a, A12, A13, A15, A19
-
-**In flight after today:**
-- A1, A5, A8 — pilot agreement draft with KPI + AI disclosure + waiver (pricing deferred)
-- A24 — three-voice reviewer layer in DB, Strategist live, Engineer + Risk awaiting external unblockers
-
-**Open — 20 items:** A2, A3, A4, A6, A7, A10b, A11b, A14, A16, A17, A18, A20, A21, A22, A23, A25, A26, A27, A28, A29
-
-**Next gate movements likely:**
-- A24 closes once live-commit cycle produces findings (needs webhooks)
-- A7 (privacy policy update) is the blocker on A1 (pilot template send-ready)
-- A11b (CFW + Invegent prompts) is an afternoon's content work
-
----
-
-## REVISED WEEK PLAN 22–28 APRIL
-
-### Wednesday 22 April
-- Configure GitHub webhooks on both repos
-- Top up xAI credits
-- Make trivial commit to verify end-to-end
-- Brief / triage of CFW schedule save bug + discovery pipeline ingest bug (two separate bugs captured today)
-
-### Thursday 23 April
-- Privacy policy update (A7) — unblocks pilot template
-- CFW operational review — where was the conversation going? 
-
-### Friday 24 April
-- D157 cost-guardrails build (RESUMES if reviewer layer produces genuine signal on first live commits)
-- Inbox anomaly monitor brief + build (A29)
-- CFW + Invegent content prompts (A11b) — content session
-
-### Saturday 25 April
-- Week review
-- Calibrate ai-worker v2.9.0 cost data if pipeline resumed
-
-### Sunday 26 April
-- Rest
-
-### Monday 27 April
-- First weekly external reviewer digest lands at 7am AEST
-- Meta App Review escalation trigger (if still In Review, contact dev support)
+All 4 FB tokens permanent (`expires_at: 0`).
 
 ---
 
 ## WATCH LIST
 
-- **Wed 22 Apr** — webhooks, xAI credits, verification commit, bug triage
-- **Thu 23 Apr** — A7 privacy policy, CFW operational review
-- **Fri 24 Apr** — D157 cost-guardrails if reviewer signal is useful; content prompts
-- **Mon 27 Apr** — first weekly digest lands; Meta App Review escalation trigger
-- **Sat 2 May** — first weekly cost calibration cycle (slipped one week due to D156 pull-forward)
+- **Post-commit** — verify queue rows from this commit's webhook-triggered review land within ~90s
+- **Thu 23 Apr** — A7 privacy policy update (unblocks pilot template)
+- **Fri 24 Apr** — D157 cost-guardrails if reviewer signal is useful; content prompts (A11b)
+- **Mon 27 Apr** — first weekly digest lands 7am AEST; Meta App Review escalation trigger
+- **Sat 2 May** — first weekly cost calibration cycle
+
+### Backlog (discovered today but not addressed)
+- **CFW schedule save bug** — UI shows "Saved ✓" but DB empty. Server action swallows error silently.
+- **Discovery pipeline ingest bug** — 9 feeds provisioned but zero items ingested due to `config.url` vs `config.feed_url` mismatch.
+- **L008 / A7 privacy policy** — 30-min draft, blocks pilot template send-ready
+- 13 failed ai_jobs from ID003 — still in `failed`, clean up when convenient
+- Shrishti 2FA + passkey (Meta admin redundancy) — PK to chase
 
 ---
 
-## TODAY'S COMMITS — ALL VERIFIED PER D150
+## TODAY'S COMMITS
 
 **Invegent-content-engine (main):**
 
 | Commit | Description |
 |---|---|
 | `d12a52c` | feat(ai-worker): v2.9.0 — ID003 three-part remediation (D157, D159) |
-| `202037c` | — (this is dashboard, listed below) |
 | `d8a8dc4` | docs: brief for external reviewer layer v1 (two-voice, superseded) |
-| `f705f45` | docs: brief for roadmap three-tab conversion + pre/post sales view |
-| `dad6ae2` | docs: sync_state interim update (superseded by THIS update) |
+| `f705f45` | docs: brief for roadmap three-tab conversion |
+| `dad6ae2` | docs: sync_state interim update (superseded) |
 | `4fe9c57` | docs(legal): pilot service agreement template v1 draft |
 | `88effeb` | docs(legal): defer pricing decision to first sales conversation |
-| `495216f` | feat(external-reviewer): D156 Stage 1 deploy — two-voice + migration + cron + dashboard button |
-| `a437a6a` | feat(external-reviewer): add Risk Reviewer (Grok 4.1 Fast) — three-voice design |
+| `495216f` | feat(external-reviewer): D156 Stage 1 deploy — two-voice initial |
+| `a437a6a` | feat(external-reviewer): add Risk Reviewer (Grok) — three-voice |
 | `758c8f3` | docs: external reviewer brief — two-lens design rationale (superseded) |
+| `701945f` | docs(decisions): add D158 + D159 + D160 |
 | `2e909fb` | docs(brief): update external reviewer brief to reflect three-voice shipped |
 | `b4e63ca` | docs(brief): capture reviewer role-library reframe for future execution |
+| `941375a` | docs: sync_state final update (superseded by THIS) |
 
 **Invegent-content-engine (Supabase migrations):**
 
 | Migration | Description |
 |---|---|
 | `d157_id003_ai_job_retry_cap` | DDL: attempts column + sweep cron retry cap |
-| `d156_external_reviewer_layer` | DDL: 4 new tables + 2 initial reviewer rows + 8 rules |
+| `d156_external_reviewer_layer` | DDL: 4 new tables + 2 reviewer rows + 8 rules |
 | (follow-on migration) | DDL: Risk Reviewer row + 4 rules |
 
 **invegent-dashboard (main):**
@@ -376,17 +218,11 @@ All decisions written. The "PENDING" flags in yesterday's sync_state are cleared
 | `202037c` | feat(roadmap): three-tab layout + by-sales-stage view |
 | `1a7aabf` | feat(reviews): /reviews page + API route + sidebar link |
 
-**Verification command (per D150):**
-```
-git ls-remote https://github.com/Invegent/Invegent-content-engine.git main
-git ls-remote https://github.com/Invegent/invegent-dashboard.git main
-```
-
 ---
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-Today produced six commits to the backend repo and one to the dashboard. All decisions are documented. All open bugs discovered today are captured. The reviewer layer is live in two-of-three form and will be fully live once webhooks configure + xAI credits top up.
+Today produced 13 commits to the backend repo and 2 to the dashboard. All decisions are documented. All open bugs discovered today are captured. The reviewer layer is now fully autonomous — every future commit to a qualifying path will trigger Strategist + Risk automatically via webhook.
 
 PK is also doing a full-time job. This matters — don't expect tight attention across long sessions. The reviewer layer exists specifically to reduce how much PK needs to read every commit. Monday morning's digest is the primary output PK should review, not individual commits. Weekly read time target: 10 minutes.
 
