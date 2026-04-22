@@ -14,7 +14,7 @@
 
 **Morning:** Closed M5 getPublishSchedule RPC, M6 portal exec_sql (5 RPCs), M7 dashboard feeds/create exec_sql, M8 bundler draft multiplication (D164), M9 client-switch staleness + Schedule platform display, M11 8-day silent cron outage (2,258 silent failures). Applied D165 cleanup: 120 FB drafts + 41 queue items marked dead, IG publisher cron paused until M12 ships. Dev workflow rule changed to direct-push-to-main default.
 
-**Evening:** Vercel webhook verified healthy (Claude Code roadmap sync's "webhook didn't fire" claim was wrong — two deploys existed for commit `150f1e5`). Deep code read revealed M12 surgical was polish on code the router replaces entirely, prompting D166 — skip M12, build D144 router MVP instead. 2-3 hour research pass recovered D142-D146 specs from past chats and produced `docs/research/platform_format_mix_defaults.md` covering Buffer 2026 (45M+ posts) + Hootsuite 2026 + YouTube Shorts data. Two migrations shipped: `t.platform_format_mix_default` (23 seed rows, all platforms sum to 100), `c.client_format_mix_override` (empty), `m.build_weekly_demand_grid()` SQL function. Tested against NDIS Yarns — demand grid produces expected output with known rounding artefacts (accepted MVP trade-off per D167).
+**Evening:** Vercel webhook verified healthy (Claude Code roadmap sync's "webhook didn't fire" claim was wrong — two deploys existed for commit `150f1e5`). Deep code read revealed M12 surgical was polish on code the router replaces entirely, prompting D166 — skip M12, build D144 router MVP instead. 2-3 hour research pass recovered D142-D146 specs from past chats and produced `docs/research/platform_format_mix_defaults.md` covering Buffer 2026 (45M+ posts) + Hootsuite 2026 + YouTube Shorts data. Two migrations shipped: `t.platform_format_mix_default` (22 seed rows, all platforms sum to 100), `c.client_format_mix_override` (empty), `m.build_weekly_demand_grid()` SQL function. Tested against NDIS Yarns — demand grid produces expected output with known rounding artefacts (accepted MVP trade-off per D167).
 
 ### Critical state awareness for next session
 
@@ -219,7 +219,7 @@ Applied migration `create_platform_format_mix_default_d145_seed`:
 - `t.platform_format_mix_default` (UUID PK, versioning columns, platform CHECK, FK to `t."5.3_content_format"(ice_format_key)`, composite unique on platform + format + effective_from)
 - `t.platform_format_mix_default_check` validation view
 - Index on `(platform) WHERE is_current = true`
-- 23 seed rows (FB 6, IG 6, LI 5, YT 5) — all platforms sum to exactly 100.00
+- 22 seed rows (FB 6, IG 6, LI 5, YT 5) — all platforms sum to exactly 100.00
 
 Validation view confirms: all 4 platforms status='ok', total_share=100.00.
 
@@ -240,6 +240,10 @@ PK extended session past the "close the day" point to complete the sync-out prop
 1. **Research doc committed** to `docs/research/platform_format_mix_defaults.md`
 2. **D166 + D167 decision entries** added to `docs/06_decisions.md`
 3. **Sprint board updates** in `docs/15_pre_post_sales_criteria.md` v4.3 — M12 marked superseded, D145 partially closed
+
+### ~22:15 UTC — Session-close verification discovered 23→22 seed row drift
+
+PK applied F11 (external-agent claims need through-verification) to this Claude's own session-close claims. Live DB query revealed 22 seed rows, not 23 as documented. INSERT statement has 22 rows (correct); only the prose summary in 4 files incorrectly said 23. Corrected across sync_state + file 15 + research doc + 06_decisions.md D167 entry in a fifth round of commits.
 
 ---
 
@@ -266,7 +270,7 @@ All still paused. Re-enable ceremony at ~18-19 of 28 Section A items closed.
 **Today's movement on the gate:**
 - A7 (privacy policy update) — ✅ **CLOSED 22 Apr morning.** invegent.com/privacy-policy canonical + live.
 - Sprint items closed morning: M5, M6, M7, M8, M9, M11 — 6 PRs shipped, 161 draft/queue rows cleaned, IG hijack isolated behind paused cron.
-- Sprint items closed evening: **D145 (mix defaults portion)** via D167 — 23 seed rows in `t.platform_format_mix_default`. Benchmark table portion still deferred.
+- Sprint items closed evening: **D145 (mix defaults portion)** via D167 — 22 seed rows in `t.platform_format_mix_default`. Benchmark table portion still deferred.
 - **M12 superseded** (not closed) by router build per D166.
 
 **Operational status:** Pipeline clean. Bundler M8 dedup active. FB queue enqueue M11 fix live. IG publishing paused until router integration (ex-M12). LI / YouTube / WordPress publishing unaffected. Router shadow infrastructure live but unconnected to hot path.
@@ -319,7 +323,7 @@ Source of truth: `docs/15_pre_post_sales_criteria.md` Section G. Today's snapsho
 
 | # | Item | Status |
 |---|---|---|
-| R1 | `t.platform_format_mix_default` + 23 seed rows + validation view | ✅ CLOSED 22 Apr evening — D167 |
+| R1 | `t.platform_format_mix_default` + 22 seed rows + validation view | ✅ CLOSED 22 Apr evening — D167 |
 | R2 | `c.client_format_mix_override` (empty, ready) | ✅ CLOSED 22 Apr evening — D167 |
 | R3 | `m.build_weekly_demand_grid()` SQL function | ✅ CLOSED 22 Apr evening — D167 (MVP rounding trade-offs accepted) |
 | R4 | D143 classifier — spec on paper (6 content types × rule patterns) | 🔲 Next sprint work — writing exercise, no production risk |
@@ -413,7 +417,9 @@ Evening:
 - Migration `create_client_format_mix_override_and_demand_grid_router` applied (same)
 - `6df8ff2e` — docs: D166+D167 router pivot (09:24 UTC) — decisions file updated; sync_state + file 15 in the same commit message did NOT actually push in that commit (file SHAs unchanged); carried into the subsequent commits below
 - `b59138d0` — docs(research): add platform format mix defaults research (D167 companion, 22 Apr 09:33 UTC)
-- THIS COMMIT — docs(sync_state): evening router-build update (completing the sync_state the 09:24 commit message referenced but did not actually include)
+- `8091cab8` — docs(sync_state): evening router-build update (22 Apr 10:17 UTC, superseded by this commit)
+- `69ba2c42` — docs(file-15): v4.3 (22 Apr 10:25 UTC, superseded by later 23→22 correction)
+- THIS COMMIT — docs: correct 23→22 seed row count drift across sync_state (F11 applied)
 
 **invegent-dashboard (main):**
 
@@ -434,7 +440,7 @@ Evening:
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-Very long day. Morning closed 6 M-numbered items + A7 + D164 + D165 + workflow reset. Evening shifted direction — M12 superseded by router build decision (D166), D145 research shipped as `docs/research/platform_format_mix_defaults.md`, D167 landed shadow router infrastructure (2 tables + 1 function + validation view + 23 seed rows).
+Very long day. Morning closed 6 M-numbered items + A7 + D164 + D165 + workflow reset. Evening shifted direction — M12 superseded by router build decision (D166), D145 research shipped as `docs/research/platform_format_mix_defaults.md`, D167 landed shadow router infrastructure (2 tables + 1 function + validation view + 22 seed rows).
 
 **Pipeline state UNCHANGED from morning close.** Router infrastructure is shadow-only — `seed_and_enqueue_ai_jobs_v1` untouched, all crons unchanged, all publishers unchanged, IG publisher still paused per D165. The router can be inspected via `m.build_weekly_demand_grid()` but is not called by anything else in the system.
 
@@ -450,6 +456,6 @@ PK is at office Thursday (dead day). Realistic next building session is Friday. 
 
 The M11 finding — 2,258 silent cron failures over 8 days undetected — remains the biggest systemic lesson. "Cron failure-rate monitoring" is still HIGH priority. Not blocking first pilot but would be embarrassing with a paying client's pipeline.
 
-PK extended today's session past multiple "close the day" checkpoints. Session ended with proper sync-out rather than abrupt stop — good discipline. Respect that PK is also doing a full-time job. Friday should be narrower: pick 1-2 low-risk items, close them cleanly.
+PK extended today's session past multiple "close the day" checkpoints. Session ended with proper sync-out + F11 verification round (23→22 drift caught and corrected). Respect that PK is also doing a full-time job. Friday should be narrower: pick 1-2 low-risk items, close them cleanly.
 
 **Fresh-eyes test for next session:** does the router output still make sense? Look at `SELECT * FROM m.build_weekly_demand_grid((SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns'));` — should show 20 rows, 4 platforms, shares 5-40%, slot counts 1-2. If that's not what you see, something drifted overnight and needs diagnosis before new work.
