@@ -1,8 +1,8 @@
 # ICE — Pre-Sales / Post-Sales Classification
 
-## Generated: 2026-04-18 (v1 morning, v2 afternoon, v3 late evening) · v4 update 2026-04-21 (A24 closed) · v4.1 update 2026-04-21 evening (Q1 sprint item closed, D163 scoping documented) · v4.2 update 2026-04-21 late evening (M2 closed — CFW schedule save bug fixed, M5 opened)
+## Generated: 2026-04-18 (v1 morning, v2 afternoon, v3 late evening) · v4 update 2026-04-21 (A24 closed) · v4.1 update 2026-04-21 evening (Q1 sprint item closed, D163 scoping documented) · v4.2 update 2026-04-21 late evening (M2 closed — CFW schedule save bug fixed, M5 opened) · v4.3 update 2026-04-22 evening (full sprint day + evening router-build pivot)
 ## Type: Classification document — supersedes `docs/14_pre_sales_audit_inventory.md` Section 12
-## Inputs: audit inventory (38 items + 13 open questions), 3-clock framework, consultant audit (8 Apr), legal register L001–L008, PK answers 18 Apr, decisions D147–D163, 21 Apr reviewer-layer work + Q1 closure + M2 closure
+## Inputs: audit inventory (38 items + 13 open questions), 3-clock framework, consultant audit (8 Apr), legal register L001–L008, PK answers 18 Apr, decisions D147–D167, 22 Apr full sprint day + evening router build
 
 ---
 
@@ -11,6 +11,39 @@
 This document converts the audit's Section 12 findings into an actionable pre-sales gate. Every audit item is classified as pre-sales, post-sales tier 1/2/3, or parked. The rationale for each classification is explicit. Fresh-eyes pushback on the framework session is in Section F.
 
 This is the definitive pre-sales gate document until superseded. When all Section A items are closed AND Clock A/B/C windows complete green, PK may begin first external sales conversations.
+
+---
+
+## v4.3 changes from v4.2 (22 Apr full day)
+
+**Morning sprint-day closures (A7 is an A-item; M-items are sprint items):**
+- **A7 closed ✅** — privacy policy updated and canonicalised at invegent.com/privacy-policy. 12 sections including YouTube Data API, HeyGen avatar disclosure, 24h video transcript retention. Meta App Review URL field to be updated to new canonical. GitHub Pages 404 that surfaced the issue is now irrelevant. L006 gate cleared. Commits `683b3c9` + `85052af` on invegent-web.
+- **M5 closed ✅** — `getPublishSchedule` hardened: SECURITY DEFINER RPC `public.get_publish_schedule`, exec_sql removed, read-path silent-swallow eliminated. PR #3 merged `737d150`.
+- **M6 closed ✅** — Portal exec_sql eradication: 5 SECURITY DEFINER RPCs (verify_draft_ownership, get_client_name_by_id, get_client_brand_profile, get_portal_drafts_count, get_packages_for_form). PR #1 portal `9c00b5a`.
+- **M7 closed ✅** — Dashboard `feeds/create` exec_sql replaced with `public.create_feed_source` RPC. PR #5 dashboard `eda95ce`. Audit during M7 revealed 30+ additional exec_sql sites in dashboard — honest framing preserved in commit body.
+- **M8 closed ✅** — Bundler draft multiplication root cause fix: `NOT EXISTS` guard in `m.populate_digest_items_v1` CTE prevents same canonical re-bundling for same client within 7 days. 7-day window rationale in **D164**. PR #1 content-engine `ffc767d`.
+- **M9 closed ✅** — ScheduleTab + FeedsClient client-switch staleness sweep (missing `key={activeClientId}` remount pattern). Schedule now always displays all 4 platforms (greyed if not configured). PR #4 dashboard `293f876`.
+- **M11 closed ✅** — FB-vs-IG publish disparity root cause: `enqueue-publish-queue-every-5m` had wrong ON CONFLICT target (post_draft_id only, actual index post_draft_id+platform). 2,258 silent cron failures over 8 days from 14 Apr onward. PR #2 content-engine `583cf17`. Cleanup discipline captured in **D165** (120 FB drafts + 41 queue items marked dead; IG publisher cron paused).
+
+**Evening router-build pivot:**
+- **D166** — Router sequencing reversed. M12 surgical fix superseded by D144 router MVP build. M12 is polish on code the router replaces entirely. App Review waiting window funds the work. Pipeline is uniquely clean — zero risk moment to build shadow infrastructure.
+- **D167** — Router MVP shadow infrastructure shipped:
+  - `t.platform_format_mix_default` — 23 seed rows, all platforms sum to 100, validation view `t.platform_format_mix_default_check` confirms integrity
+  - `c.client_format_mix_override` — empty table ready for future per-client overrides
+  - `m.build_weekly_demand_grid(p_client_id, p_week_start)` — SQL function producing demand grid for any client any week
+  - Research basis committed as `docs/research/platform_format_mix_defaults.md` — Buffer 2026 (45M+ posts) + Hootsuite 2026 + YouTube Shorts data, 10 source citations
+- **D145 partially closed** — the mix-defaults research portion is shipped via D167. The content_type × format benchmark table portion (matching-layer data) remains deferred, still gated on D143 classifier.
+
+**A-count change:** A7 closed → **9 of 28 Section A items closed, 19 open.** All morning M-items and evening router work are sprint-track, not A-items, so the numbering of Section A is unchanged.
+
+**Sprint item change on the board:**
+- **M12 status: SUPERSEDED (not closed)** — per D166. If router build stalls, M12 remains fallback to safely resume IG publishing. Kept on the board for visibility.
+- **New track opened: R1-R8** — router build items. R1-R3 closed this evening (shadow infrastructure). R4-R8 remain — R4 (classifier spec) is safe low-risk writing work; R6 (`seed_and_enqueue` rewrite) is HIGH RISK hot-path change, Friday+ only.
+
+**Process lessons for v4.3:**
+- **Vercel webhook verified healthy** — Claude Code's confident claim that webhook didn't fire for commit `150f1e5` was wrong. Two deploys existed (webhook + manual). Calibration note: verify Claude Code's infrastructure claims before acting.
+- **Past chats recovery via `conversation_search`** surfaced D142-D146 full specs from 17 Apr + 20 Apr chats. `docs/06_decisions.md` has pointers-only for these; full specs live in git history + past chats.
+- **Pipeline state at session close is documentation-worthy asset.** Tonight's router build landed safely because pipeline was uniquely clean (0 orphaned drafts, 0 queue items, M8+M11 active, IG paused). This was D167's permission to proceed — explicit in the decision entry.
 
 ---
 
@@ -108,15 +141,15 @@ Clock A + B + C all green = gate to first external sales conversation.
 
 ---
 
-## Headline finding (v4.2)
+## Headline finding (v4.3)
 
-**Still not cleared to start the 14-day Clock A window.** A24 closure (this morning) + Q1 sprint item closure (this evening) + M2 sprint item closure (late evening) are the closures since 18 Apr. Q1 and M2 are not A-items, so the A-count remains 8 of 28 closed, 20 open. The remaining open items require a sprint, which is what D162 locks in.
+**Still not cleared to start the 14-day Clock A window.** A7 closed this morning (privacy policy) is the first A-item closure since 21 Apr; remaining closures (M5, M6, M7, M8, M9, M11 + D164 + D165 + D166 + D167) are all sprint-track, not A-items. A-count moves from 8/28 → 9/28 closed. The remaining 19 open A-items require a sprint, which is what D162 locks in.
 
-**Current blocking items (20 open):**
+**Current blocking items (19 open):**
 
 From v2/v3:
-- A1, A2, A3, A4, A5, A6, A7, A8 (legal, proof, platform, economics) — 8 items
-- A10b — first IG post actually publishes (verify)
+- A1, A2, A3, A4, A5, A6, A8 (legal, proof, platform, economics) — 7 items (A7 now closed)
+- A10b — first IG post actually publishes (verify — gated on router integration per D166, IG publisher still paused)
 - A11b — CFW + Invegent content_type_prompts
 - A14, A16, A17, A18 — stability/readiness
 - A20, A21, A22, A23 — D155-class prevention
@@ -125,32 +158,39 @@ From v2/v3:
 From ID003 / D157 (18 Apr):
 - A27, A28, A29 — LLM-caller audit, cost guardrails, inbox anomaly monitor
 
-### Sprint order recommendation
+### Sprint order recommendation (v4.3)
 
-Quick wins first: Q2, Q4 (A7 privacy policy). Q1 closed this session ✅. M2 closed this session ✅. M5 opened and Claude-Code-appropriate in parallel. Then pilot document (A1 + A5 + A8 together). Then remaining medium items (A11b, A14). Larger builds last (A16, A20-A23, A25-A26).
+Friday-forward priorities given PK dead-day Thursday:
+1. **R4 (classifier spec on paper)** — low-risk writing work, builds momentum for router matching layer, zero production touch
+2. **A11b content prompts** — CFW + Invegent × 3 platforms × 3 job types = 18 rows. PK-session needed.
+3. **L1 pilot document (A1 + A5 + A8)** — drafted template exists, needs final pass
+4. **M4 A18 source-less EFs investigation** — pick up when PK has 3+ hours
+5. **Larger builds last:** A16 Clock A dashboard, A20-A23 monitoring, A25-A26 external layer
+
+**Deliberately deferred:** R6 (`seed_and_enqueue_ai_jobs_v1` rewrite) — HIGH RISK hot-path change. Needs explicit planning session + verification gates. Not suitable for casual picking-up.
 
 Full sprint board maintained in `docs/00_sync_state.md`.
 
 ---
 
-## Item count summary (v4.2)
+## Item count summary (v4.3)
 
-| Classification | Count | Change from v4.1 |
+| Classification | Count | Change from v4.2 |
 |---|---|---|
 | Pre-sales (Section A) | 28 | 0 |
-| Pre-sales closed / confirmed | **8** | 0 (Q1, M2, and M5 are sprint items, not A-items) |
-| Pre-sales open | **20** | 0 |
+| Pre-sales closed / confirmed | **9** | +1 (A7 privacy policy closed 22 Apr morning) |
+| Pre-sales open | **19** | -1 |
 | Post-sales Tier 1 (Section B) | 8 | 0 |
 | Post-sales Tier 2 (Section C) | 6 | 0 |
 | Post-sales Tier 3 (Section D) | 12 | 0 |
 | Parked (Section E) | 4 | 0 |
 | **Total** | **58** | 0 |
 
-A27, A28, A29 (ID003 follow-ons surfaced 18 Apr in D157) are tracked in the dashboard roadmap but not in the A1-A26 numbering of this file's Section A. Treating them as a separate group of 3 makes the actual open count 20 in A1-A26 plus 3 in A27-A29 = 23 functional pre-sales items still open, plus the 3 timebox windows. Keeping the main count at 28 to preserve v3 comparability.
+A27, A28, A29 (ID003 follow-ons surfaced 18 Apr in D157) are tracked in the dashboard roadmap but not in the A1-A26 numbering of this file's Section A. Treating them as a separate group of 3 makes the actual open count 19 in A1-A26 plus 3 in A27-A29 = 22 functional pre-sales items still open, plus the 3 timebox windows. Keeping the main count at 28 to preserve v3 comparability.
 
 ---
 
-## Section A — Pre-sales items (28, 8 closed / confirmed, 20 open)
+## Section A — Pre-sales items (28, 9 closed / confirmed, 19 open)
 
 **Definition: must be closed before first external sales conversation. Each item has a named deliverable and a completion test.**
 
@@ -164,16 +204,16 @@ A27, A28, A29 (ID003 follow-ons surfaced 18 Apr in D157) are tracked in the dash
 | A4 | 🔲 Open | NDIS Yarns numbers worth showing | A3 depends on this. Consultant audit said 4–8 weeks of organic growth needed. Now ~10 weeks in. | Extract NY metrics end of week. If numbers support proof doc → produce A3. If thin → identify what would make them credible and close that gap. | Audit #9, Consultant Audit 1 |
 | A5 | 🔲 Open | Buyer-risk clause — "50% off next month on KPI miss" | Per D148: capital-preserving form of the consultant's 90-day money-back recommendation. Month-on-month cadence, KPI-triggered. | Define 2–3 measurable KPIs (minimum posts/week, engagement rate, follower growth) with thresholds. Include clause in A1 pilot terms. Drafted within pilot template v1. | Audit #8, D148 |
 | A6 | 🔲 Open | Unit economics confirmed — all subscription costs known | Cannot price a service without cost base. 4 TBC rows in subscription register. | Check invoices: Vercel, HeyGen, Claude Max, OpenAI. Update `k.subscription_register`. Confirm firm monthly number. | Audit #32 |
-| A7 | 🔲 Open | Privacy policy updated — YouTube + HeyGen + video-analyser | Policy dated 4 March. Capabilities added after: YouTube Data API (D138), 5 HeyGen functions, video-analyser. L006 gate. | Add three paragraphs: (1) YouTube public data for feed discovery; (2) HeyGen avatar — only with explicit consent; (3) video transcript analysis — transcripts not retained beyond 24h. Re-host. | Audit #4, Sec 1.13, L006 |
+| A7 | ✅ Closed | Privacy policy updated — YouTube + HeyGen + video-analyser | Closed 22 Apr morning. New canonical at invegent.com/privacy-policy with 12 sections including YouTube Data API, HeyGen consent, 24h video transcript retention. `invegent.com/privacy` 301-redirects. L006 cleared. Meta App Review URL field to be updated. | **Done 22 Apr.** Commits `683b3c9` + `85052af` on invegent-web. | Audit #4, Sec 1.13, L006 |
 | A8 | 🔲 Open | AI content disclosure clause in service agreement / pilot terms | L007 gate. Contractual clause pre-sales; per-post labelling infrastructure is Tier 2. | Draft clause: "Content generated by ICE is AI-assisted under compliance-aware editorial rules. Client agrees to disclose AI assistance where required by platform policy or regulatory framework." Include in A1. Drafted within pilot template v1. | Audit #5, L007 |
 | A9 | ✅ Closed | Orphan drafts resolved (reframe #2) | v2 reframed this as feed-assignment per H6. The actual Saturday resolution was different: 307 rows backfilled to correct client_id, D152 seeder fix prevents recurrence at source. No feed-assignment work needed — the orphans weren't from unassigned feeds, they were from the D142 seeder writing NULL. | **Done 18 Apr afternoon.** 307 rows backfilled. D152 applied to seeder. | Audit #22, D152 |
 | A10a | ✅ Closed | Instagram config — tokens + mode + destination_id for all 4 clients | Was A10 in v2. Split because "config live" and "first post actually publishes" are different confirmations. | **Done 18 Apr afternoon.** All 4 IG profiles activated, IG Business Account IDs populated. | Audit #27, PK H12 |
-| A10b | 🔲 Open | Instagram — first post actually publishes successfully | Config existing ≠ content flowing. Must see at least one IG post land for at least one client before declaring IG publishing live. | Sunday morning verification (step 4 of the 6-indicator check). If green, close A10b. If red, regression investigation per red-path playbook in continuity brief. | PK H12, 18 Apr evening split |
+| A10b | 🔲 Open | Instagram — first post actually publishes successfully | Config existing ≠ content flowing. Must see at least one IG post land for at least one client before declaring IG publishing live. **22 Apr update: IG publisher cron paused per D165 and is awaiting router integration per D166 (sprint track R6). A10b cannot close until router-driven IG pipeline ships.** | Originally Sunday morning verification; now gated on R6 completion. Timeline: Friday+ onwards once router matching layer is designed. | PK H12, 18 Apr evening split; D165/D166 22 Apr |
 | A11a | ✅ Closed | CFW + Invegent FB/IG tokens activated | Split from A11 because tokens and prompts are two independent workstreams. Tokens done Saturday; prompts still pending. | **Done 18 Apr afternoon.** All 4 FB tokens refreshed to permanent; all 4 IG profiles activated. | Audit #15, #16, PK H11 |
 | A11b | 🔲 Open | CFW + Invegent content_type_prompts — 9 rows × 2 clients | Table shows 0/0/0 for both. Without prompts, ai-worker has no template to generate against for these two clients — Clock A cannot start with them producing nothing. | Content strategy session: write prompts for CFW × (Facebook, Instagram, LinkedIn) × (3 job types) = 9 rows. Same for Invegent. Friday 24 Apr per continuity brief plan. | Audit #15, #16, split v3 |
 | A12 | ✅ Confirmed | HeyGen not exposed in v1 client portal | Code search of `invegent-portal` shows zero HeyGen / avatar / consent references. HeyGen is backend-only. L005 gate not violated at the portal level. | Verified 18 Apr morning via GitHub code search. If any client-facing route is added later that exposes HeyGen, consent flow must be built first (D149 Legal Advisor is a fit for that gate check). | Audit #24, L005 |
 | A13 | ✅ Confirmed | video-analyser not exposed to clients | Code search + PK H15: video-analyser is part of feed inflow, processing YouTube video transcripts for signal extraction. Backend-only. Not client-facing. L004 gate not violated. | Verified. No action needed. | Audit #25, L004, PK H15 |
-| A14 | 🔲 Open | RLS audit — confirm no portal route bypasses SECURITY DEFINER | Only 10 of 138 tables have RLS enabled. If all portal queries go through SECURITY DEFINER RPCs, RLS-off is missing defence-in-depth but not exploitable. If any portal page queries tables directly, client could read another client's data. | Grep `invegent-portal` codebase for direct Supabase queries (not via `.rpc()` calls). Confirm every query is either (a) RLS-enforced, or (b) SECURITY DEFINER RPC. Flag exceptions. Verification only — may not require building. Related to M5 — same code-quality family; findings may overlap. | Audit #23 |
+| A14 | 🔲 Open | RLS audit — confirm no portal route bypasses SECURITY DEFINER | Only 10 of 138 tables have RLS enabled. If all portal queries go through SECURITY DEFINER RPCs, RLS-off is missing defence-in-depth but not exploitable. If any portal page queries tables directly, client could read another client's data. | Grep `invegent-portal` codebase for direct Supabase queries (not via `.rpc()` calls). Confirm every query is either (a) RLS-enforced, or (b) SECURITY DEFINER RPC. Flag exceptions. Verification only — may not require building. Related to M5 — same code-quality family; findings may overlap. Audit partially complete 22 Apr (M3) — 2 HS OAuth findings + 5 MS exec_sql findings (MS closed via M6). | Audit #23 |
 | A15 | ✅ Closed | Publisher + weekly-manager-report committed | Both had uncommitted changes at audit start. Production code differed from repo. | **Done 18 Apr afternoon.** Both committed and pushed. | Audit #36 |
 | A16 | 🔲 Open | Clock A dashboard — exists and measures schedule adherence | Cannot declare "95% adherence" without a dashboard showing it. Does not exist currently. | Build `/continuity` page in dashboard. Data source: compare `c.client_publish_schedule` expected slots vs `m.post_publish` actual. Rolling 14-day per client × platform with miss reasons. Simple — just correct, not beautiful. NOTE: M2 resolution means `c.client_publish_schedule` will now actually reflect reality for clients who set schedules post-21 Apr; pre-21 Apr schedules were lost. A16 should be built assuming schedule data starts accruing from 21 Apr onward. | Audit #37, new from framework |
 | A17 | 🔲 Open | Clock C seven items — each explicitly defined and lived | The 7 items are listed but none have a written definition of "done." | New doc `docs/16_client_handling.md`. One paragraph per item: what it is, what ready looks like, where it lives, SLA. Inbound + SLA + routing can share one section; testimonial capture and billing automation need actual build. | New from framework |
@@ -184,15 +224,15 @@ A27, A28, A29 (ID003 follow-ons surfaced 18 Apr in D157) are tracked in the dash
 | # | Status | Item | Rationale | Concrete action | Source |
 |---|---|---|---|---|---|
 | A19 | ✅ Closed | FB token refresh — formalised audit record | 3 of 4 FB tokens had been dead since 13 Apr PDT. Stored `token_expires_at` was stale. Token-expiry alerter was trusting the sentinel field, not reality. Refresh done Saturday; formalising here as a logged A-item rather than an ad-hoc action. | **Done 18 Apr afternoon.** All 4 FB tokens refreshed to permanent (`expires_at: 0`). Verified via `/debug_token`. D153 (A23 below) is the durable fix for the underlying trust-the-sentinel problem. | D155 session, 18 Apr evening |
-| A20 | 🔲 Open | Pipeline liveness monitoring — ai_job stall + last-success freshness per client × platform | D155 root cause went undetected for 7 days because no alert watched for "ai_jobs accumulating in queued state" or "no successful publish per client × platform in >24h." Both are single-query checks. Their absence is what made the stall silent. | (a) pg_cron daily: SELECT client × platform combinations where last `m.post_publish.published_at` > NOW() - 48h AND expected_posts > 0, write to `m.liveness_alert`. (b) pg_cron every 4h: ai_job stall check — queued > succeeded growth rate over 24h, write to same table. Dashboard banner surfaces unresolved alerts. | D155 fallout, continuity brief |
-| A21 | 🔲 Open | Trigger ON CONFLICT audit — all triggers, not just enqueue | D155 was an ON CONFLICT clause mismatch on one trigger. The same class of bug may exist on other triggers. Proof-by-audit required, not just assertion. | Query pg_trigger → for each trigger function, grep the body for ON CONFLICT clauses. For each, verify clause columns exactly match a unique constraint on the target table. Write findings to `docs/briefs/2026-04-XX-trigger-on-conflict-audit.md`. | D155 fallout, continuity brief |
+| A20 | 🔲 Open | Pipeline liveness monitoring — ai_job stall + last-success freshness per client × platform | D155 root cause went undetected for 7 days because no alert watched for "ai_jobs accumulating in queued state" or "no successful publish per client × platform in >24h." Both are single-query checks. Their absence is what made the stall silent. **22 Apr: M11 was a second instance of the same class — 2,258 silent cron failures over 8 days. A20 scope should include `cron.job_run_details` failure_rate watch.** | (a) pg_cron daily: SELECT client × platform combinations where last `m.post_publish.published_at` > NOW() - 48h AND expected_posts > 0, write to `m.liveness_alert`. (b) pg_cron every 4h: ai_job stall check — queued > succeeded growth rate over 24h, write to same table. (c) NEW: pg_cron daily sweep of `cron.job_run_details` looking for failure_rate > 0.5 over past 24h per job — alert if any job has been failing silently. Dashboard banner surfaces unresolved alerts. | D155 fallout, M11 confirms, continuity brief |
+| A21 | 🔲 Open | Trigger ON CONFLICT audit — all triggers, not just enqueue | D155 was an ON CONFLICT clause mismatch on one trigger. The same class of bug may exist on other triggers. **22 Apr update: M11 proved the class recurs (enqueue cron had wrong ON CONFLICT target for 8 days).** Proof-by-audit required, not just assertion. | Query pg_trigger → for each trigger function, grep the body for ON CONFLICT clauses. For each, verify clause columns exactly match a unique constraint on the target table. Write findings to `docs/briefs/2026-04-XX-trigger-on-conflict-audit.md`. | D155 fallout, M11, continuity brief |
 | A22 | 🔲 Open | Ai-worker error surfacing — UPDATE rollbacks currently fail silently | The D155 symptom was ai_worker UPDATE silently rolled back by the faulty trigger. The function didn't check the UPDATE's effect count. Pattern may exist in other EFs. M2 closure provides additional evidence of the "swallow error, lie to caller" anti-pattern — A22 scope could usefully extend beyond `UPDATE` rowcount checks to "any RPC call that doesn't destructure `{ error }`". | Audit all EFs that do UPDATE against pipeline tables. Each must check rowcount and surface a failure (log line + row in a failures table) if 0. Patch in single commit. Consider widening scope to include rpc() calls without `{ error }` destructuring based on M2 pattern. | D155 fallout, continuity brief, M2 pattern |
 | A23 | 🔲 Open | D153 — live `/debug_token` cron (replaces sentinel approach) | Current token-expiry alerter trusts `token_expires_at` which is stale when Meta revokes mid-cycle. Fix per D153: cron calls Meta's live `/debug_token` endpoint daily per FB token, writes real status to `m.token_expiry_alert`. | Spec Wednesday 22 Apr per continuity brief. Build Thursday or Friday. | D153, D155 fallout, continuity brief |
 | A24 | ✅ Closed | Stage 1 external multi-model review layer — MVP exceeded | Per D156: ICE's monitoring shares Claude's epistemic foundation. MVP was Architect Reviewer (Gemini per-commit) + Sceptic (GPT-4 weekly). Actual shipment: three-voice layer + System Auditor EF. | **Done 21 Apr.** Three-voice (Strategist Gemini active, Engineer GPT paused, Risk Grok active) + System Auditor separate EF + webhooks on both repos + weekly digest cron + /reviews dashboard. Currently dormant (D162 sprint pause) — infrastructure live, reactivation is one SQL statement. See D160 + D161. | D156, D160, D161 |
 | A25 | 🔲 Open | Stage 2 bank reconciliation layer — MVP | Per D156: external system is authoritative when it disagrees with ICE's DB. MVP is Meta Graph API reconciliation (catches the D155 symptom platform-side), followed by GitHub + Vercel + Supabase reconciliation for deploy drift. | Sequencing pushed back — original plan was Tue 21 Apr, but session focused on Stage 1 hardening. Build when Stage 1 proven to earn its keep post-sprint reactivation. | D156, continuity brief |
 | A26 | 🔲 Open | Review discipline mechanism — unread-blocks-dashboard + weekly block | A24 + A25 outputs are theatre without structural reading-discipline. PK identified this as the missed angle Saturday evening. Unread items in `m.external_review_queue` block dashboard home until acknowledged. Weekly scheduled Monday review block. | Build when reviewers resume post-sprint. Currently moot — reviewers paused, no unread output accumulating. | D156, continuity brief |
 
-### Section A completion test (v4.2)
+### Section A completion test (v4.3)
 
 All 28 items marked closed or confirmed. A27–A29 (from D157, tracked in dashboard roadmap) must also close. Then and only then: Clock A + B + C 14-day window starts. No external sales conversation before window completes with metrics in range.
 
@@ -300,9 +340,19 @@ M2 closure surfaced that Claude Code's direct-SQL RPC verification passed cleanl
 - Human verification — PK's instinct to "run it through the UI on preview" was correct; that's what caught the bug. Any time a PR claims "direct tests passed," the through-app verification is not redundant, it's essential.
 - Future-M5 and similar fixes — when replacing `exec_sql` with RPCs in `getPublishSchedule`, the verification must exercise the actual read path through the UI, not just confirm the new RPC works in SQL.
 
+### F10 (new v4.3) — Superseded is not closed
+M12 was an active sprint item with a specific surgical fix scoped. Evening deep-read revealed the fix is polish on code the router replaces. D166 supersedes M12 with router build instead — but the discipline is to NOT mark M12 as closed. It remains on the board as "superseded, fallback available." This matters because if router build stalls for any reason (scope creep, hot-path risk materialising, priority change), M12 surgical is the fast path to resume IG publishing safely. Closing M12 would delete that option from the board.
+
+**Lesson:** when a bigger piece of work supersedes a smaller one, the smaller item moves to SUPERSEDED status with the decision reference, not CLOSED status. Closing it erases the fallback pathway. Keep fallbacks visible.
+
+### F11 (new v4.3) — External-agent claims about infrastructure need through-verification
+Claude Code's morning roadmap-sync report asserted Vercel GitHub auto-deploy didn't fire for commit `150f1e5`. This was wrong — Vercel showed two deployments for that commit (webhook + manual). Claude Code didn't have access to Vercel MCP in the sync context and generated the claim from what it could see (commit on main, time elapsed) rather than verified infrastructure state.
+
+**Lesson:** infrastructure claims from external agents (Claude Code, other MCP tools) should be verified through the authoritative source (Vercel dashboard, Supabase logs, pg_cron tables) before acting. This is consistent with D161's authority hierarchy (trust the live state over documentation over inference). Applies to any agent output asserting deployment state, cron health, token expiry, or similar.
+
 ---
 
-## Section G — Pre-sales gate checklist (go / no-go, v4.2)
+## Section G — Pre-sales gate checklist (go / no-go, v4.3)
 
 This is the single list PK pulls up before opening a sales conversation.
 
@@ -310,7 +360,7 @@ This is the single list PK pulls up before opening a sales conversation.
 Legal (no solicitor required at pilot stage per D147)
 [ ] A1  Pilot terms + liability waiver drafted (template v1 done, final pending)
 [ ] A5  50% off KPI miss clause with defined KPIs (drafted within A1)
-[ ] A7  Privacy policy updated (YouTube + HeyGen + video-analyser)
+[x] A7  Privacy policy updated (YouTube + HeyGen + video-analyser) — invegent.com/privacy-policy live
 [ ] A8  AI disclosure clause in pilot terms (drafted within A1)
 
 Proof
@@ -320,10 +370,10 @@ Proof
 Platform
 [ ] A2  Meta App Review resolved OR pilot workaround documented
 
-Stability — original (18 Apr closures ticked)
+Stability — original (22 Apr closures ticked)
 [x] A9  Orphan drafts resolved (307 backfilled + D152 prevents recurrence)
 [x] A10a Instagram config done for all 4 clients
-[ ] A10b First IG post actually publishes
+[ ] A10b First IG post actually publishes — GATED on R6 router integration per D166
 [x] A11a CFW + Invegent FB/IG tokens activated
 [ ] A11b CFW + Invegent content_type_prompts (9 rows × 2 clients)
 [x] A12 HeyGen not exposed in v1 portal (confirmed via code search)
@@ -335,7 +385,7 @@ Stability — original (18 Apr closures ticked)
 
 Stability — D155 fallout (v3)
 [x] A19 FB token refresh across 4 clients
-[ ] A20 Pipeline liveness monitoring (ai_job stall + last-success freshness)
+[ ] A20 Pipeline liveness monitoring (ai_job stall + last-success freshness + cron failure-rate)
 [ ] A21 Trigger ON CONFLICT audit across all triggers
 [ ] A22 Ai-worker error surfacing (UPDATE rowcount checks + M2-pattern widening)
 [ ] A23 D153 live /debug_token cron
@@ -364,9 +414,16 @@ Timebox
 First external sales conversation authorised only when every box above is ticked.
 ```
 
-Current score: **8 of 28 closed, 20 open** (A24 closed 21 Apr morning; Q1 closed 21 Apr evening; M2 closed 21 Apr late evening — Q1 and M2 are sprint items not A-items, count unchanged). Plus A27–A29 tracked separately (3 open). Plus 3 timebox windows not yet startable.
+Current score: **9 of 28 closed, 19 open** (A7 closed 22 Apr morning; A24 closed 21 Apr morning; Q1 closed 21 Apr evening; M2 closed 21 Apr late evening; M5/M6/M7/M8/M9/M11 closed 22 Apr morning sprint day as sprint items; D166/D167 router MVP shadow infrastructure shipped 22 Apr evening as sprint items). Plus A27–A29 tracked separately (3 open). Plus 3 timebox windows not yet startable.
 
-Sprint item wins this session: **Q1 ✅ closed, M2 ✅ closed, M5 opened.** Next targets: Q2, Q4, then L1 pilot document, with M5 Claude-Code-appropriate in parallel.
+Sprint item wins 22 Apr: **6 M-items closed (M5, M6, M7, M8, M9, M11) + A-item A7 + decisions D164, D165, D166, D167.** Router MVP shadow infrastructure is shipped; integration with hot path (R6 `seed_and_enqueue` rewrite) remains HIGH RISK and deferred to Friday+.
+
+Realistic next-session targets (Friday+, given PK dead-day Thursday):
+- **R4 classifier spec on paper** — low-risk writing work, builds momentum for router matching layer
+- **A11b content prompt session** — PK-gated, CFW + Invegent × 3 × 3 = 18 rows
+- **L1 pilot document (A1 + A5 + A8)** — final-pass drafting, template v1 already exists
+- **M4 A18 source-less EFs** — when PK has 3+ hours
+- **NOT R6 yet** — hot-path `seed_and_enqueue_ai_jobs_v1` rewrite needs deliberate planning session first
 
 ---
 
@@ -376,9 +433,9 @@ Sprint item wins this session: **Q1 ✅ closed, M2 ✅ closed, M5 opened.** Next
 
 | # | Question | Blocking item | Status |
 |---|---|---|---|
-| H1 | Vercel deployment state | A16 | Still open — PK to run `vercel login` once in terminal, caches a token the MCP can use. One-time 5-second action. |
+| H1 | Vercel deployment state | A16 | Still open — PK to run `vercel login` once in terminal, caches a token the MCP can use. One-time 5-second action. Partially addressed 22 Apr: Vercel webhook confirmed healthy for main branch via screenshot evidence; MCP access still pending. |
 | H2 | Last commit dates for dashboard / portal / web repos | A14, A16 | Resolving through actual use — A24 Stage 1 + A25 Stage 2 will surface deploy drift automatically once built. Can close once A25 priority 3 (Vercel reconciliation) is live. |
-| H3 | Meta App Review status change since 14 Apr | A2 | Partially addressed: invegent.com DNS TXT verified 18 Apr ✅. Shrishti 2FA + passkey still pending — PK to chase. 27 Apr escalation trigger locked in. |
+| H3 | Meta App Review status change since 14 Apr | A2 | Partially addressed: invegent.com DNS TXT verified 18 Apr ✅. Shrishti 2FA + passkey still pending — PK to chase. 27 Apr escalation trigger locked in. Privacy policy URL should be updated in Meta App Review form to new canonical `https://invegent.com/privacy-policy` (22 Apr A7 closure). |
 | H16 | 8 source-less EFs — any showing unhealthy error signals | A18 | Resolved as standalone question — investigation happens inside A18 execution, not separately. |
 
 **Resolved in v2 or earlier (unchanged):**
@@ -390,7 +447,7 @@ Sprint item wins this session: **Q1 ✅ closed, M2 ✅ closed, M5 opened.** Next
 - H9 → auto-approver math clarified: supply × pass-rate = demand met (C1 reframed)
 - H10 → D148 (50% off next month on KPI miss)
 - H11 → CFW + Invegent in Clock A scope (A11a closed, A11b open)
-- H12 → Instagram fix for v1 (A10a closed, A10b open)
+- H12 → Instagram fix for v1 (A10a closed, A10b gated on R6)
 - H13 → D151 (universal table purpose rule)
 - H14 → keep vw_feed_intelligence + document (C5)
 - H15 → video-analyser internal-only (A13 confirmed)
@@ -404,6 +461,8 @@ Parallel track to pre-sales work. Not on the critical path — does not gate any
 **v3 note:** per D156, the Stage 1 Devil's Advocate (Gemini 2.5 Pro reading any D149 advisor output within 2 hours) is now the external counterpart to this layer.
 
 **v4 note:** advisor layer build (Sales Advisor, Thu 23 Apr) is deferred until sprint completes — no new Claude-assisted layers during sprint for the same reason reviewers are paused (noise during fast iteration).
+
+**v4.3 note:** router build (D166/D167) has taken sprint attention that would otherwise have advanced advisor layer. Sales Advisor build now realistically post-R6 completion or post-pilot-signing, whichever comes first.
 
 ### Build order
 1. **Sales Advisor** — Claude Project, custom instruction, GitHub repo connected. Ask three real questions. Validate over two weeks. Devil's Advocate (Gemini) runs in parallel from day one. **Now deferred until sprint nears completion.**
@@ -437,7 +496,8 @@ If yes to first three, proceed to next advisor. If no, tighten brief and retry o
 - **2026-04-21 end-of-day** — v4. **A24 closed** (Stage 1 external multi-model review layer shipped + exceeded MVP — three-voice + System Auditor). D161 documents the implementation shape. D162 documents the sprint-mode pause (all reviewers `is_active=false` until ~80-90% gate closure). 8 of 28 closed; 20 open. New Section F7 explains the sprint pause. Advisor layer build deferred to post-sprint (same rationale as reviewer pause). A27–A29 (ID003 follow-ons from D157) tracked separately — treated as 3 additional functional pre-sales items.
 - **2026-04-21 later evening** — v4.1. Sprint item **Q1 closed** (13 failed ai_jobs → dead via `phase_1_7_ai_job_add_dead_status` migration). **D163** documents the Phase 1.7 DLQ foundation scoping (only `m.ai_job` today; `f.canonical_content_body` intentionally not changed; `m.post_publish_queue` needs a new CHECK constraint, deferred to sprint backlog). New Section F8 captures a procedural lesson about pre-approved DDL SQL. A-count unchanged (Q1 is a sprint item, not an A-item) — still 8 of 28 closed, 20 open.
 - **2026-04-21 late evening** — v4.2. Sprint item **M2 closed** (CFW schedule save bug — two-commit fix on `fix/cfw-schedule-save-silent-error` squash-merged via PR #2 as `a1d7dc01`). DB reconciliation revealed bug affected all 4 clients since at least 6 April, not CFW-specific — NY/PP had masking seed rows; CFW/Invegent had none. End-to-end Vercel preview verification: 21-row schedule lands correctly. **M5 opened** for `getPublishSchedule` hardening (exec_sql + raw-string interpolation + read-path silent-swallow). New Section F9 captures verification-scope lesson (direct SQL RPC test missed the supabase-js serialisation bug; real client path must be exercised). New backlog item "Publisher schedule source audit" tracked in sync_state. A22 rationale lightly expanded to reference M2 pattern (RPC calls without `{ error }` destructuring). A-count unchanged (Q1 and M2 are sprint items).
+- **2026-04-22 full day + evening** — v4.3. Biggest sprint day since M2 close. Morning closed 6 M-items + A-item A7: **M5** getPublishSchedule RPC (PR #3 `737d150`), **M6** portal exec_sql eradication (PR #1 `9c00b5a`), **M7** dashboard feeds/create exec_sql (PR #5 `eda95ce`), **M8** bundler draft multiplication (PR #1 content-engine `ffc767d` + **D164** 7-day dedup window), **M9** client-switch staleness + Schedule platform display (PR #4 `293f876`), **M11** 8-day silent cron outage (PR #2 content-engine `583cf17` + **D165** bloat-window cleanup discipline), **A7** privacy policy canonicalised at invegent.com/privacy-policy. Dev workflow reset: direct-push-to-main default (D165 context), orphan sweep now at session start. Evening router-build pivot: **D166** reverses D141 sequencing (router before first revenue given App Review gate), **D167** lands router MVP shadow infrastructure (2 tables + 1 function + research doc `docs/research/platform_format_mix_defaults.md`). M12 status **SUPERSEDED** (not closed) — kept as fallback. New router build track R1-R8 added (R1-R3 shipped this session; R4-R8 open; R6 HIGH RISK hot-path Friday+ only). A-count: 9/28 closed (was 8), 19 open (was 20). New sections F10 (superseded ≠ closed), F11 (external-agent claims need through-verification). PK dead-day Thursday; realistic next build Friday.
 
 ---
 
-*End of classification v4.2. Next pickup: sprint board in `docs/00_sync_state.md`. First recommended items: Q2 (discovery pipeline one-liner), A7 (privacy policy), then pilot document finalisation (A1 + A5 + A8). M5 is Claude-Code-appropriate if dispatched in parallel.*
+*End of classification v4.3. Next pickup: sprint board in `docs/00_sync_state.md`. Realistic Friday+ targets: R4 classifier spec on paper (low-risk writing), A11b content prompts (PK session), L1 pilot document drafting. R6 `seed_and_enqueue` rewrite is HIGH RISK hot-path change — deliberate planning needed before dispatch.*
