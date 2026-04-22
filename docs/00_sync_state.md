@@ -1,43 +1,50 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-22 13:37 AEST (03:37 UTC) — End-of-session close after full sprint day
+> Last written: 2026-04-22 ~22:00 AEST (12:00 UTC) — End-of-session close, evening router-build continuation
 > Written by: PK + Claude session sync
 
 ---
 
 ## ⚠️ FIRST THING NEXT SESSION
 
-**Read this entire file before doing anything else.** Today was a major day — 7 sprint items closed (M5, M6, M7, M8, M9, M11 via PRs + D165 decision/cleanup), workflow rule changed, IG publisher paused.
+**Read this entire file before doing anything else.** Today was a very long day — morning sprint closed 7 sprint items (M5, M6, M7, M8, M9, M11 via PRs + D165 decision/cleanup), evening continued into router MVP build (D166 + D167 — shadow infrastructure only, hot path unchanged).
 
 ### Today's outcomes in one paragraph
 
-Closed M2 verification follow-ons (M5 getPublishSchedule RPC; M9 client-switch staleness sweep + Schedule platform display), eradicated exec_sql in portal (M6) and dashboard feeds/create (M7), fixed bundler draft multiplication (M8, D164 backing), fixed 8-day silent cron outage (M11) — the trifecta of M8 + M11 + pending M12 was the complete root cause of the NDIS Yarns IG embarrassment. Applied D165 cleanup: 120 FB drafts + 41 queue items marked dead, IG publisher cron paused until M12 ships. Dev workflow rule changed: **direct-push-to-main is default, branch+PR only for risky/multi-repo work** (fix after Opus 4.7 PR-by-default drift created 3 orphan branches unmerged for hours).
+**Morning:** Closed M5 getPublishSchedule RPC, M6 portal exec_sql (5 RPCs), M7 dashboard feeds/create exec_sql, M8 bundler draft multiplication (D164), M9 client-switch staleness + Schedule platform display, M11 8-day silent cron outage (2,258 silent failures). Applied D165 cleanup: 120 FB drafts + 41 queue items marked dead, IG publisher cron paused until M12 ships. Dev workflow rule changed to direct-push-to-main default.
+
+**Evening:** Vercel webhook verified healthy (Claude Code roadmap sync's "webhook didn't fire" claim was wrong — two deploys existed for commit `150f1e5`). Deep code read revealed M12 surgical was polish on code the router replaces entirely, prompting D166 — skip M12, build D144 router MVP instead. 2-3 hour research pass recovered D142-D146 specs from past chats and produced `docs/research/platform_format_mix_defaults.md` covering Buffer 2026 (45M+ posts) + Hootsuite 2026 + YouTube Shorts data. Two migrations shipped: `t.platform_format_mix_default` (23 seed rows, all platforms sum to 100), `c.client_format_mix_override` (empty), `m.build_weekly_demand_grid()` SQL function. Tested against NDIS Yarns — demand grid produces expected output with known rounding artefacts (accepted MVP trade-off per D167).
 
 ### Critical state awareness for next session
 
-1. **`instagram-publisher-every-15m` (jobid 53) is PAUSED** (`active=false`). Resume only AFTER M12 ships + verifies. A single new approved FB draft with image_url will be hijacked by IG again if cron resumes before M12.
+1. **`instagram-publisher-every-15m` (jobid 53) is PAUSED** (`active=false`). Unchanged from morning. Resume only AFTER router integration ships + verifies. Single approved FB draft with image_url will be hijacked by IG again if cron resumes prematurely.
 
-2. **Pipeline is clean:** 0 approved-but-unpublished FB drafts, 0 queue items. Bundler will produce fresh drafts on next planner-hourly tick; cron will queue them.
+2. **Pipeline is clean:** 0 approved-but-unpublished FB drafts, 0 queue items. `enqueue-publish-queue-every-5m` cron healthy post-M11 (last checked ~40 min at session close, 8 successes / 0 failures). Bundler M8 dedup active.
 
-3. **Reviewer layer still paused** (all 4 rows `c.external_reviewer.is_active=false`). Unchanged from 21 Apr. Resume ceremony at ~18-19 of 28 Section A items closed.
+3. **Reviewer layer still paused** (all 4 rows `c.external_reviewer.is_active=false`). Unchanged. Resume ceremony at ~18-19 of 28 Section A items closed.
 
-4. **M8 Gate 4 — 24h regression check due today (23 Apr Sydney)** — pre-approved query ready to run. Expected zero rows.
+4. **M8 Gate 4 — 24h regression check due today** — 23 Apr 00:43 UTC / 10:43 AEST. Pre-approved query in D164. Expected zero rows.
 
-5. **Dev workflow rule: direct-push-to-main by default.** No branch+PR ceremony unless risky or multi-repo coordinated. Session start: sweep non-main branches across 3 repos, flag orphans before new work.
+5. **Dev workflow rule: direct-push-to-main by default.** Session start: sweep non-main branches across 3 repos, flag orphans before new work.
+
+6. **NEW — Router MVP shadow infrastructure live.** No integration with hot path. Validate with `SELECT * FROM t.platform_format_mix_default_check;` (expect 4 rows, all status='ok', total_share=100.00) and `SELECT COUNT(*) FROM m.build_weekly_demand_grid((SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns'));` (expect 20 rows). See D167.
+
+7. **NEW — M12 superseded.** Router build track replaces the surgical fix approach per D166. M12 is not closed — it's *superseded*. If router build stalls, M12 remains fallback to resume IG publishing safely.
 
 ---
 
 ## SESSION STARTUP PROTOCOL (UPDATED 22 APR)
 
 1. Read this file (`docs/00_sync_state.md`)
-2. **NEW — Orphan branch sweep:** query all 3 repos for non-main branches; flag any whose tip is not reachable from main BEFORE starting work
+2. **Orphan branch sweep:** query all 3 repos for non-main branches; flag any whose tip is not reachable from main BEFORE starting work
 3. Check `c.external_reviewer` — confirm reviewers still paused (`is_active=false` on all four rows)
-4. Check IG publisher cron state — confirm `instagram-publisher-every-15m` (jobid 53) still paused, DO NOT resume before M12 verifies
-5. Check file 15 Section G — pick next item from the sprint board
-6. Check `m.external_review_queue` for any findings that landed before the pause (most recent 5 rows)
-7. Read `docs/06_decisions.md` D156–D165 for accumulated decision trail
-8. Query `k.vw_table_summary` before working on any table
+4. Check IG publisher cron state — confirm `instagram-publisher-every-15m` (jobid 53) still paused, DO NOT resume before router integration verifies
+5. **NEW — Validate router shadow infrastructure:** `SELECT * FROM t.platform_format_mix_default_check;` — expect 4 rows, status='ok' on all
+6. Check file 15 Section G — pick next item from the sprint board
+7. Check `m.external_review_queue` for any findings that landed before the pause (most recent 5 rows)
+8. Read `docs/06_decisions.md` D156–D167 for accumulated decision trail
+9. Query `k.vw_table_summary` before working on any table
 
 ---
 
@@ -158,7 +165,81 @@ Post-merge state check revealed 120 FB-intended drafts from 17 Apr bloat window 
 
 **D165 decision entry** captures the three-part bloat-window cleanup discipline (mark dead at source, clear queue, pause broken consumer) committed as `cb9eb9c`.
 
-### 13:37 UTC — Session close (this file)
+### 13:37 UTC — Morning sync committed (sync_state update)
+
+Morning session end-of-day sync committed. PK took a break.
+
+---
+
+### 09:00-12:00 UTC EVENING — Vercel webhook verification, M12 deep-read, D166 decision, router research pass
+
+Session resumed mid-afternoon Sydney time. First task: verify Claude Code's roadmap sync report that Vercel GitHub auto-deploy didn't fire for commit `150f1e5`.
+
+**Vercel webhook — healthy.** Screenshots showed TWO deployments for `150f1e5`: webhook deploy `4EnNRm7nX` (by Invegent, fired 33m ago) + manual deploy `2wA147unN` (by pk-2528, fired 9m ago). Claude Code's confident claim was wrong. D165 direct-push-to-main workflow remains safe. Calibration note: verify Claude Code's infrastructure claims before acting on them.
+
+**Deep code read of the M12 surgical scope** (original plan: 3-bug fix to instagram-publisher pd.platform filter + enqueue NOT EXISTS platform-scoping + exec_sql removal) surfaced that the fix is polish on code the router replaces. See D166 for full reasoning.
+
+Key findings:
+- IG publisher bypasses the queue entirely (reads `m.post_draft` directly via exec_sql)
+- FB publisher is queue-driven with full throttle/token/schedule logic
+- `m.post_draft` DOES have a `platform` column (populated by `seed_and_enqueue_ai_jobs_v1`)
+- No `seed-and-enqueue-instagram` cron exists — only FB. **No real IG content pipeline.** IG publisher was hijacking FB-intended drafts.
+- The enqueue NOT EXISTS "bug" is not a correctness bug given one-draft-per-platform model (defensive hardening only, no live failure mode)
+
+**Decision: D166 — skip M12, build D144 router MVP instead.** Reverses D141 sequencing recommendation. Binding constraint today is Meta + LinkedIn App Review time, not engineering time.
+
+### 12:00-13:00 UTC — Past chats recovery
+
+Ran `conversation_search` for D142-D146 specs to confirm understanding matched prior architectural decisions. Recovered from 17 Apr chat (`485ce039-98a7-445a-969a-2dc69838d20b`) and 20 Apr chat (`5d25e5ea-4ff8-4057-aaa2-b913ed68fda4`):
+
+- **D142** — Demand-aware seeder (IMPLEMENTED 18 Apr+; NDIS Yarns went from 147 drafts/wk to ~9)
+- **D143** — Signal content type classifier (6 types: stat_heavy, multi_point, timely_breaking, educational_evergreen, human_story, analytical — rule-based, zero AI cost, GATED)
+- **D144** — Signal router (5-step demand-grid algorithm, GATED on D143+D140+D145+60d data)
+- **D145** — Platform format benchmark table (research-phase)
+- **D146** — Feed pipeline score + retirement (GATED on Phase 2.1)
+
+`docs/06_decisions.md` confirmed pointers-only for D142-D146 ("See 17 Apr 2026 evening commits"); full specs live in git history.
+
+### 13:00-16:00 UTC — Deep research pass on platform format mix defaults
+
+~3 hours of web searches + fetches + doc drafting. Primary source: Buffer 2026 "Best Content Format on Social Platforms" analysing 45M+ posts. Cross-checked: Hootsuite 2026 benchmarks (nonprofits, healthcare, financial services, government), Rival IQ 2025, Socialinsider NGO, multiple YouTube Shorts sources.
+
+Key findings (informed the mix defaults):
+- FB format-agnostic (all within 1% — images 5.20%, video 4.84%, text 4.76%, links 4.43%)
+- IG carousels dominate engagement 6.9%; Reels get 2.25× reach
+- LinkedIn carousels 21.77% (dominant — 196% more than video, 585% more than text)
+- YouTube Shorts 5.91% engagement (highest of any short-form platform)
+- Industry nuances exist (nonprofit/healthcare/FinServ) but point same direction
+
+**Research doc committed as `docs/research/platform_format_mix_defaults.md`** — includes visual summary matrix table, full per-platform rationale, schema design, vertical adjustments for future, and 10 source citations.
+
+### 16:00-17:00 UTC — Migration 1: Defaults table + seed
+
+Applied migration `create_platform_format_mix_default_d145_seed`:
+- `t.platform_format_mix_default` (UUID PK, versioning columns, platform CHECK, FK to `t."5.3_content_format"(ice_format_key)`, composite unique on platform + format + effective_from)
+- `t.platform_format_mix_default_check` validation view
+- Index on `(platform) WHERE is_current = true`
+- 23 seed rows (FB 6, IG 6, LI 5, YT 5) — all platforms sum to exactly 100.00
+
+Validation view confirms: all 4 platforms status='ok', total_share=100.00.
+
+### 17:00-18:00 UTC — Migration 2: Override table + demand grid function
+
+Applied migration `create_client_format_mix_override_and_demand_grid_router`:
+- `c.client_format_mix_override` (same shape as defaults, plus client_id FK ON DELETE CASCADE; empty for all 4 clients)
+- `m.build_weekly_demand_grid(p_client_id UUID, p_week_start DATE DEFAULT CURRENT_DATE)` SQL function
+
+Test run against NDIS Yarns produced coherent demand grid for all 4 platforms — 20 rows total, each platform showing 5 formats with slot counts 1-2 totalling 6 (one over the schedule's 5 slots due to naive rounding, accepted MVP trade-off per D167).
+
+**`animated_text_reveal` at 5% × 5 slots = 0.25 rounds to 0** — format vanishes from 5-slot demand grids. Expected. At 20+ slots it reappears. Documented in D167.
+
+### 18:00-22:00 UTC — Stopping-point conversation, full sync
+
+PK extended session past the "close the day" point to complete the sync-out properly. Three housekeeping items committed alongside tonight's work:
+
+1. **Research doc committed** to `docs/research/platform_format_mix_defaults.md`
+2. **D166 + D167 decision entries** added to `docs/06_decisions.md`
+3. **Sprint board updates** in `docs/15_pre_post_sales_criteria.md` v4.3 — M12 marked superseded, D145 partially closed
 
 ---
 
@@ -180,13 +261,15 @@ All still paused. Re-enable ceremony at ~18-19 of 28 Section A items closed.
 **Phase 1 — COMPLETE** (7 Apr 2026)
 **Phase 3 — Expand + Personal Brand** — active, external client expansion gated on pre-sales criteria
 
-**Pre-sales gate status:** 9 of 28 Section A items closed, 19 open.
+**Pre-sales gate status:** 9 of 28 Section A items closed, 19 open. **Unchanged from morning.** Router MVP work is sprint-track, not A-items.
 
 **Today's movement on the gate:**
-- A7 (privacy policy update) — ✅ **CLOSED 22 Apr.** invegent.com/privacy-policy canonical + live.
-- Sprint items closed (non-A, but strong signal on Clock B — Ops): M5, M6, M7, M8, M9, M11 — 6 PRs shipped, 161 draft/queue rows cleaned, IG hijack isolated behind paused cron.
+- A7 (privacy policy update) — ✅ **CLOSED 22 Apr morning.** invegent.com/privacy-policy canonical + live.
+- Sprint items closed morning: M5, M6, M7, M8, M9, M11 — 6 PRs shipped, 161 draft/queue rows cleaned, IG hijack isolated behind paused cron.
+- Sprint items closed evening: **D145 (mix defaults portion)** via D167 — 23 seed rows in `t.platform_format_mix_default`. Benchmark table portion still deferred.
+- **M12 superseded** (not closed) by router build per D166.
 
-**Operational status:** Pipeline clean. Bundler M8 dedup active. FB queue enqueue M11 fix live (cron healthy, last 40 min shows 8 successes / 0 failures). IG publishing paused until M12. LI / YouTube / WordPress publishing unaffected.
+**Operational status:** Pipeline clean. Bundler M8 dedup active. FB queue enqueue M11 fix live. IG publishing paused until router integration (ex-M12). LI / YouTube / WordPress publishing unaffected. Router shadow infrastructure live but unconnected to hot path.
 
 ---
 
@@ -203,7 +286,7 @@ All 4 FB tokens permanent (`expires_at: 0`).
 
 ---
 
-## SPRINT MODE — THE BOARD (22 APR END-OF-DAY)
+## SPRINT MODE — THE BOARD (22 APR END-OF-DAY, EVENING UPDATE)
 
 Source of truth: `docs/15_pre_post_sales_criteria.md` Section G. Today's snapshot:
 
@@ -230,7 +313,20 @@ Source of truth: `docs/15_pre_post_sales_criteria.md` Section G. Today's snapsho
 | M8 | Bundler draft multiplication | ✅ CLOSED 22 Apr — PR #1 content-engine `ffc767d`, D164 |
 | M9 | Client-switch staleness + Schedule platform display | ✅ CLOSED 22 Apr — PR #4 `293f876` |
 | M11 | FB-vs-IG publish disparity (8-day silent cron) | ✅ CLOSED 22 Apr — PR #2 content-engine `583cf17` |
-| **M12** | **IG publisher `pd.platform` filter + enqueue NOT EXISTS platform-scoped** | **🔴 HIGH — IG publisher paused until ships** |
+| **M12** | IG publisher `pd.platform` filter + enqueue NOT EXISTS platform-scoped | **🟡 SUPERSEDED per D166 — router build track replaces this approach. M12 remains fallback if router work stalls.** |
+
+### Router build track (NEW — evening 22 Apr, per D166 + D167)
+
+| # | Item | Status |
+|---|---|---|
+| R1 | `t.platform_format_mix_default` + 23 seed rows + validation view | ✅ CLOSED 22 Apr evening — D167 |
+| R2 | `c.client_format_mix_override` (empty, ready) | ✅ CLOSED 22 Apr evening — D167 |
+| R3 | `m.build_weekly_demand_grid()` SQL function | ✅ CLOSED 22 Apr evening — D167 (MVP rounding trade-offs accepted) |
+| R4 | D143 classifier — spec on paper (6 content types × rule patterns) | 🔲 Next sprint work — writing exercise, no production risk |
+| R5 | Matching layer design (demand row → signal selection) | 🔲 Depends on R4 |
+| R6 | `m.seed_and_enqueue_ai_jobs_v1` rewrite to call router | 🔲 **HIGH RISK — hot path change.** Friday+ work with fresh head |
+| R7 | ai-worker platform-awareness (skip format advisor when seed has format_key) | 🔲 Depends on R6 |
+| R8 | Cron changes — new IG/LI/YT seeding crons OR consolidate to one router-driven | 🔲 Depends on R6 |
 
 ### Larger (half-day+) — unchanged since 21 Apr
 
@@ -247,11 +343,11 @@ Source of truth: `docs/15_pre_post_sales_criteria.md` Section G. Today's snapsho
 | L9 | A25 — Stage 2 bank reconciliation | 🔲 |
 | L10 | A26 — Review discipline mechanism | 🔲 |
 
-### New HIGH priority items surfaced today (need briefs)
+### HIGH priority items remaining
 
 | # | Item | Why HIGH |
 |---|---|---|
-| **M12** | IG publisher `pd.platform` filter + enqueue NOT EXISTS platform-scoped | IG publisher cron is currently paused; can only resume after M12 verifies |
+| **R6** | `seed_and_enqueue_ai_jobs_v1` rewrite (supersedes M12) | IG publisher paused until router integration verifies |
 | **Cron failure-rate monitoring** | `system-auditor` or pg_cron sweep watching `cron.job_run_details` failure_rate | 2,258 silent failures over 8 days should never recur undetected |
 
 ### Blocked / external
@@ -264,7 +360,7 @@ Source of truth: `docs/15_pre_post_sales_criteria.md` Section G. Today's snapsho
 ### Exec_sql eradication state
 
 Today's M5/M6/M7 closed the highest-severity operator-facing write-path exec_sql sites. **But 30+ exec_sql sites remain in dashboard alone** (discovered during M7 audit, listed honestly in M7 commit body). Read paths + actions/ layer + server components all still use `exec_sql`. Also:
-- `instagram-publisher` EF uses exec_sql with raw interpolation — can fold into M12
+- `instagram-publisher` EF uses exec_sql with raw interpolation — will be retired or rewritten as part of router integration (was going to fold into M12; now folds into R6)
 - `facebook-publisher` not yet audited
 
 **Recommendation:** do NOT claim "exec_sql sweep complete" anywhere. "M5/M6/M7 closed the known operator-facing write-path sites" is the honest framing.
@@ -275,12 +371,12 @@ Today's M5/M6/M7 closed the highest-severity operator-facing write-path exec_sql
 
 ### Due this session / tomorrow
 - **M8 Gate 4 — 24h regression check** — run post-deploy variant of D164 regression query after 22 Apr 00:43 UTC + 24h = **23 Apr 00:43 UTC / 10:43 AEST Sydney**. Expected: zero rows.
-- **M12 brief** — needs authoring before IG publisher can resume
-- **Dashboard roadmap sync** — NOT done in this session (PK time-pressured); today's closures (M5, M6, M7, M8, M9, M11) + D164 + D165 need reflecting in `app/(dashboard)/roadmap/page.tsx`
+- **Router shadow infrastructure validation** — `SELECT * FROM t.platform_format_mix_default_check;` expect status='ok' on all 4 rows; `SELECT COUNT(*) FROM m.build_weekly_demand_grid(...)` against NDIS Yarns expect 20 rows
+- **Dashboard roadmap sync** — NOT done in this session; today's closures (M5, M6, M7, M8, M9, M11, D164, D165, D166, D167) need reflecting in `app/(dashboard)/roadmap/page.tsx`
 
 ### Due week of 22-27 Apr
-- **Thu 23 Apr** — M8 gate 4 check + A1+A5+A8 pilot document drafting (PK)
-- **Fri 24 Apr** — A11b content prompt session for CFW + Invegent (PK session)
+- **Thu 23 Apr** — PK at office (dead day for building); M8 gate 4 check runs; A1+A5+A8 pilot document drafting if PK has downtime
+- **Fri 24 Apr** — A11b content prompt session for CFW + Invegent (PK session) + potential R4 classifier spec drafting (low-risk writing work, not production)
 - **Mon 27 Apr** — Meta App Review escalation trigger if no movement
 - **Sat 2 May** — original reviewer calibration cycle trigger (defer until reviewers resume)
 
@@ -292,7 +388,7 @@ Today's M5/M6/M7 closed the highest-severity operator-facing write-path exec_sql
 - **Per-commit external-reviewer pollution** — before reviewers resume
 - **Property Pulse Schedule Facebook 6/5 tier violation** — save-side validation missing
 - **30+ remaining exec_sql sites in dashboard** — major cleanup arc
-- **`instagram-publisher` exec_sql + raw interpolation** — fold into M12
+- **`facebook-publisher` EF audit** — not yet reviewed
 - **Shrishti 2FA + passkey** — Meta admin redundancy
 
 ---
@@ -301,6 +397,7 @@ Today's M5/M6/M7 closed the highest-severity operator-facing write-path exec_sql
 
 **Invegent-content-engine (main):**
 
+Morning:
 - `9cca6e5` — feat(db): public.get_publish_schedule SECURITY DEFINER RPC (M5)
 - `4d6fa16` — docs: A14 portal RLS audit findings (M3, audit-only)
 - `2ec25f9` — feat(db): M6 portal exec_sql eradication — 5 SECURITY DEFINER RPCs
@@ -309,7 +406,14 @@ Today's M5/M6/M7 closed the highest-severity operator-facing write-path exec_sql
 - `a2f4a67` — docs(decisions): add D164 — bundler per-client canonical dedup window 7d hardcoded
 - `583cf17` — fix(cron): enqueue-publish-queue ON CONFLICT target — 8-day silent outage (M11 — FB-vs-IG root cause) (#2)
 - `cb9eb9c` — docs(decisions): add D165 — bloat-window cleanup discipline
-- THIS COMMIT — docs(sync_state): end-of-session close 22 Apr
+- `034ab9f0` — docs(sync_state): end-of-session close 22 Apr (morning close, 03:44 UTC)
+
+Evening:
+- Migration `create_platform_format_mix_default_d145_seed` applied (via apply_migration, not via repo commit — lives in DB migration history)
+- Migration `create_client_format_mix_override_and_demand_grid_router` applied (same)
+- `6df8ff2e` — docs: D166+D167 router pivot (09:24 UTC) — decisions file updated; sync_state + file 15 in the same commit message did NOT actually push in that commit (file SHAs unchanged); carried into the subsequent commits below
+- `b59138d0` — docs(research): add platform format mix defaults research (D167 companion, 22 Apr 09:33 UTC)
+- THIS COMMIT — docs(sync_state): evening router-build update (completing the sync_state the 09:24 commit message referenced but did not actually include)
 
 **invegent-dashboard (main):**
 
@@ -330,18 +434,22 @@ Today's M5/M6/M7 closed the highest-severity operator-facing write-path exec_sql
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-Biggest session since M2 close. Closed 6 M-numbered items + A7 + D164 + D165 + workflow reset. Pipeline state is genuinely clean (0 orphaned drafts, 0 queue items, M8+M11 fixes active) — best baseline in weeks.
+Very long day. Morning closed 6 M-numbered items + A7 + D164 + D165 + workflow reset. Evening shifted direction — M12 superseded by router build decision (D166), D145 research shipped as `docs/research/platform_format_mix_defaults.md`, D167 landed shadow router infrastructure (2 tables + 1 function + validation view + 23 seed rows).
 
-Two things that MUST happen tomorrow before any new work:
-1. **Session-start orphan sweep** — confirms no new orphans accumulated overnight
+**Pipeline state UNCHANGED from morning close.** Router infrastructure is shadow-only — `seed_and_enqueue_ai_jobs_v1` untouched, all crons unchanged, all publishers unchanged, IG publisher still paused per D165. The router can be inspected via `m.build_weekly_demand_grid()` but is not called by anything else in the system.
+
+Three things that MUST happen Thursday/Friday before any new hot-path work:
+1. **Session-start orphan sweep** — confirms no new orphans accumulated
 2. **M8 Gate 4 regression query** — 24h post-deploy, confirm zero duplicate digest_items for same canonical in same client
+3. **Router shadow infrastructure validation** — confirm tables still intact, demand grid still produces coherent output
 
-Two things waiting in the wings:
-3. **M12 brief** — IG publisher needs the platform filter + enqueue NOT EXISTS scoping before `instagram-publisher-every-15m` cron resumes. Same EF still uses exec_sql so fold both into one PR.
-4. **Dashboard roadmap sync** — today's 8 commits' worth of closures haven't been reflected on the dashboard roadmap page yet
+PK is at office Thursday (dead day). Realistic next building session is Friday. Recommended Friday scope:
+- R4 classifier spec on paper (low-risk writing work, no production touch)
+- OR A11b content prompts (gated anyway, needs PK session)
+- NOT R6 (seed_and_enqueue rewrite) — hot-path change, needs deliberate planning
 
-Operational status for the Meta App Review demo: if reviewer loads NDIS Yarns IG or FB now, they see clean-looking pages with no new spam (IG cleanup was manual via PK; no stale-backlog drain risk because D165 killed it at the source). Better posture than this morning when 120 drafts were pending.
+The M11 finding — 2,258 silent cron failures over 8 days undetected — remains the biggest systemic lesson. "Cron failure-rate monitoring" is still HIGH priority. Not blocking first pilot but would be embarrassing with a paying client's pipeline.
 
-The M11 finding — 2,258 silent cron failures over 8 days undetected — is the biggest systemic lesson of the week. D155/D157 monitoring infrastructure should have surfaced this class of failure. "Cron failure-rate monitoring" is now a HIGH priority item on the board. Not blocking first pilot but would be embarrassing to have happen again with a paying client's pipeline.
+PK extended today's session past multiple "close the day" checkpoints. Session ended with proper sync-out rather than abrupt stop — good discipline. Respect that PK is also doing a full-time job. Friday should be narrower: pick 1-2 low-risk items, close them cleanly.
 
-PK is also doing a full-time job. Respect that. Sprint pace today was aggressive — next session can afford to be narrower (pick 1-2 items, close them cleanly, rest).
+**Fresh-eyes test for next session:** does the router output still make sense? Look at `SELECT * FROM m.build_weekly_demand_grid((SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns'));` — should show 20 rows, 4 platforms, shares 5-40%, slot counts 1-2. If that's not what you see, something drifted overnight and needs diagnosis before new work.
