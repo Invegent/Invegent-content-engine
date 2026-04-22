@@ -11,9 +11,9 @@ is recorded here with context and reasoning.
 
 ## D101–D125 — See 16 Apr 2026 commits
 
-## D126–D141 — See 17 Apr 2026 commits (pipeline analysis, synthesis decision, demand-aware seeding direction)
+## D126–D141 — See 17 Apr 2026 commits (pipeline analysis, synthesis decision, demand-aware seeding direction). **D141 sequencing recommendation reversed by D166 — see below.**
 
-## D142–D146 — See 17 Apr 2026 evening commits (demand-aware seeder, classifier, router, benchmark, feed score — all but D142 gated on 60d data)
+## D142–D146 — See 17 Apr 2026 evening commits (demand-aware seeder, classifier, router, benchmark, feed score — all but D142 gated on 60d data). **D144 MVP shadow infrastructure shipped via D167. D145 research portion shipped via D167.**
 
 ## D147–D151 — See 18 Apr 2026 afternoon commit (pilot structure, buyer-risk form, advisor layer, session-close SOP, table-purpose rule)
 
@@ -279,12 +279,193 @@ SELECT cron.alter_job(job_id := 53::bigint, active := false);
 - **D164** — Bundler per-client dedup window. D165 is the downstream cleanup that D164's fix made safe (once bundler stops producing bloat, it's safe to nuke the historical bloat without fear of immediate reproduction).
 - **M8 PR** — `ffc767d` — bundler fix
 - **M11 PR** — `583cf17` — cron ON CONFLICT fix
-- **M12 (pending)** — IG publisher `pd.platform` filter + enqueue NOT EXISTS scoping. Brief needed.
+- **M12 (pending)** — IG publisher `pd.platform` filter + enqueue NOT EXISTS scoping. Brief needed. **Superseded by D166 — see below.**
 
 ### Sprint pending items opened by D165
 
-- **M12** — instagram-publisher platform-filter + enqueue platform-scoped NOT EXISTS. **HIGH priority** because IG publisher is paused until this ships.
+- **M12** — instagram-publisher platform-filter + enqueue platform-scoped NOT EXISTS. **HIGH priority** because IG publisher is paused until this ships. **Status: SUPERSEDED by D166/D167 router build track. Kept as fallback if router work stalls.**
 - **Cron failure-rate monitoring** — `system-auditor` or a new pg_cron sweep should watch `cron.job_run_details` failure rate. 2,258 silent failures over 8 days should never happen undetected.
+
+---
+
+## D166 — Router Sequencing Reversal: Build D144 Router MVP Instead of M12 Surgical Fix
+**Date:** 22 April 2026 evening | **Status:** ✅ APPLIED (D167 covers the shipped infrastructure)
+
+### The problem this decides
+
+After M8 + M11 + D165 cleanup closed the morning sprint, the next obvious item on the board was **M12** — a surgical three-bug fix to `instagram-publisher` (add `pd.platform` filter) + `enqueue_publish_queue` (platform-scoped NOT EXISTS) + remove two exec_sql sites. Estimated 2-3 hours. IG publisher cron (jobid 53) is paused until it ships.
+
+A deep read of the relevant code during evening session scoping revealed the framing was wrong. M12 is not a clean surgical fix — it's polish on code the router replaces entirely.
+
+### What the code review surfaced
+
+1. **IG publisher bypasses the queue entirely.** Reads `m.post_draft` directly via `exec_sql`. FB publisher is queue-driven (`publisher_lock_queue_v1`) with schedule/throttle/token-validation. The two publishers have completely different ingestion shapes.
+
+2. **No `seed-and-enqueue-instagram` cron exists.** Only `seed-and-enqueue-facebook-every-10m` (jobid 11). There is **no real IG content pipeline.** IG publisher was hijacking FB-intended drafts because `m.seed_and_enqueue_ai_jobs_v1` fans out drafts only to Facebook.
+
+3. **`m.post_draft` DOES have a `platform` column** (populated by `seed_and_enqueue_ai_jobs_v1`). The M12 "IG publisher filter by `pd.platform`" fix would work — but it's fixing a filter that shouldn't exist because the IG publisher shouldn't be reading the queue-bypass path in the first place.
+
+4. **The enqueue `NOT EXISTS` "bug"** PK remembered from morning is not actually a correctness bug given the current one-draft-per-platform model. The platform-scoped version is defensive hardening only — no live failure mode.
+
+### What the router replaces
+
+Per D142/D143/D144 (recovered from past chats during session), the router's job is exactly the thing `seed_and_enqueue_ai_jobs_v1` does wrong today:
+
+- Current: blind fan-out to Facebook only → no IG/LinkedIn/YouTube pipeline → hijacking pattern
+- Router: demand-grid per (client, platform, format) → signal matching → seed jobs with platform and format pre-assigned → ai-worker generates exactly the content each slot needs
+
+Once the router is live, `seed_and_enqueue_ai_jobs_v1` is rewritten to call the router. The IG publisher either becomes queue-driven (same as FB) or reads the router's seeded output directly. Either way, the M12 "filter by `pd.platform`" fix becomes moot — the publisher never sees an FB-intended draft because the seed path produces platform-specific drafts to begin with.
+
+### The decision
+
+**Skip M12 surgical. Build D144 router MVP instead.**
+
+This reverses the sequencing D141 recommended ("router after first client revenue") on three specific grounds:
+
+1. **App Review waiting window funds the work.** Meta App Review + LinkedIn App Review are pending. External go-to-market is gated regardless. The "do revenue-producing work first" argument in D141 assumed time was the constraint; right now platform approval is the constraint.
+
+2. **M12 is wasted work.** 2-3 hours of polish on code that gets replaced entirely. The router makes the IG publisher's platform filter irrelevant.
+
+3. **Pipeline is uniquely clean.** 0 approved-unpublished FB drafts, 0 queue items, IG publisher paused. Zero risk from pausing the surgical-fix track. This window won't exist in the same way after first client signs.
+
+### What this does NOT change
+
+- **IG publisher remains paused** — jobid 53 `active=false`. The router MVP ships shadow-only tonight; integration with the hot path happens Friday+ when fresh.
+- **FB publishing continues uninterrupted** — router is additive infrastructure; `seed_and_enqueue_ai_jobs_v1` unchanged tonight; enqueue cron healthy; FB/LinkedIn/YouTube publishing paths untouched.
+- **M12 is not closed** — it's *superseded*. If the router build stalls for any reason, M12 surgical fix remains the fallback to resume IG publishing safely.
+- **Sprint item count is unchanged on Section A** — router work is sprint-track, not pre-sales-gate work. A-count still 9 of 28 closed.
+
+### The sequencing reversal, explicit
+
+D141 said: *"Multi-perspective review recommending sequence routing AFTER first client revenue."* The reasoning was sound at the time — don't over-invest in infrastructure before revenue validates demand. D166 supersedes this specifically because the binding constraint changed: today it's platform approval time, not engineering time. When App Review clears, revenue-first thinking reapplies.
+
+### Related decisions
+
+- **D141** — the sequencing recommendation now reversed
+- **D142** — demand-aware seeder (already implemented; consumes D144 output once router is live)
+- **D143** — classifier (prerequisite for router's matching layer; deferred)
+- **D144** — router spec (this is the decision to start building the MVP)
+- **D145** — benchmark table (research phase; partially covered by D167 mix defaults research)
+- **D165** — bloat-window cleanup discipline (D166 preserves that cleanup; router work is pure-additive)
+- **D167** — the actual infrastructure shipped (companion decision recording what landed)
+
+---
+
+## D167 — Router MVP Shadow Infrastructure Shipped: Defaults Table + Override Table + Demand Grid Function
+**Date:** 22 April 2026 evening | **Status:** ✅ IMPLEMENTED (two migrations + research doc drafted same session — research doc to be committed next session)
+
+### The problem this decides
+
+D166 committed to building the D144 router MVP. This entry records what actually landed, with the specific trade-offs accepted as MVP, so next session knows exactly what works and what is still wrong by design.
+
+### What landed in this session
+
+Three production changes + one research document (not yet committed) + one validation view, all applied to the live database in one evening:
+
+1. **Migration `create_platform_format_mix_default_d145_seed`** — created `t.platform_format_mix_default` table + 23 seed rows covering FB/IG/LI/YouTube. All platforms sum to exactly 100.00 verified via `t.platform_format_mix_default_check`. Seeded from Buffer 2026 (45M+ posts) + Hootsuite 2026 industry benchmarks.
+
+2. **Migration `create_client_format_mix_override_and_demand_grid_router`** — created `c.client_format_mix_override` (same shape as defaults table, plus `client_id` FK; empty for every client) + created `m.build_weekly_demand_grid(p_client_id UUID, p_week_start DATE DEFAULT CURRENT_DATE)` SQL function.
+
+3. **Research document draft** at `/home/claude/research_platform_format_mix_defaults.md` (362 lines) — full methodology, per-platform rationale, and 10 source citations. Drafted but **not yet committed to repo** in this session's sync push; to be added next session. The core reasoning (matrix + methodology summary + sources list) is preserved in this decision entry so the audit trail is intact even before the standalone doc lands.
+
+### The defaults mix, for reference
+
+| Format | Facebook | Instagram | LinkedIn | YouTube |
+|---|---:|---:|---:|---:|
+| text | 20 | — | 20 | — |
+| image_quote | 30 | 20 | 15 | — |
+| carousel | **25** | **30** | **40** | — |
+| animated_text_reveal | 5 | 5 | — | — |
+| animated_data | — | 10 | — | — |
+| video_short_kinetic | 10 | 20 | 15 | 30 |
+| video_short_kinetic_voice | 10 | — | — | **25** |
+| video_short_stat | — | — | — | 20 |
+| video_short_stat_voice | — | 15 | 10 | 15 |
+| video_short_avatar | — | — | — | 10 |
+| **Total** | **100** | **100** | **100** | **100** |
+
+### Research sources summary (from research doc draft)
+
+- **Primary source:** Buffer 2026 "Best Content Format on Social Platforms" — analysed 45M+ posts across platforms
+- **Cross-checks:** Hootsuite 2026 benchmarks (nonprofits, healthcare, financial services, government), Rival IQ 2025 social benchmark report, Socialinsider NGO analysis, multiple YouTube Shorts sources
+- **Key findings that informed the mix:** FB format-agnostic (all formats within 1% engagement); IG carousels dominate engagement at 6.9%, Reels get 2.25× reach; LinkedIn carousels 21.77% engagement (196% more than video, 585% more than text); YouTube Shorts 5.91% engagement (highest of any short-form platform); vertical nuances exist for nonprofit/healthcare/FinServ but point same direction
+
+### MVP trade-offs explicitly accepted (worth preserving in case they bite later)
+
+The demand-grid function uses naive `ROUND()` on `slot_count × share / 100`. This has four known behaviours that are fine for MVP but will need revisiting:
+
+1. **Rounding overflow.** For NDIS Yarns (5 scheduled slots per platform), the function produces 6 demand rows summing to 6 slots on every platform — one over the schedule. This is expected from independent per-format rounding. The matching layer (future work) will need a policy: cap at scheduled slots and drop lowest-share overflow, or accept overproduction and reject surplus at approval time.
+
+2. **Low-share vanishing.** Formats at 5% share × 5 slots = 0.25 → rounds to 0. `animated_text_reveal` disappears entirely for 5-slot schedules on all platforms. At 20+ slot volumes this stops being a problem.
+
+3. **No override rebalancing.** When an override row exists for `(client, platform, format)`, its share replaces the default for that cell — but the other formats' shares are NOT rebalanced. If operator sets `linkedin.carousel` override from 40% to 60%, platform total becomes 120%. Visible (via the validation view), not silent, but still operator responsibility to reconcile. Three options were discussed (absolute+rebalance, delta, full override) — deferred per PK's "problem of distant future" call.
+
+4. **No enablement filter.** The router emits formats regardless of `c.client_format_config.is_enabled` or consent flags (`video_short_avatar` requires `c.client_avatar_profile.consent_signed_at`). The caller (future matching layer) is responsible for filtering at selection time. This keeps the router pure and lets the consent/enablement logic live where it's contextual.
+
+### What this does NOT include (still ahead)
+
+- **D143 classifier** — rule-based SQL tagging `m.digest_item` with content_type labels (stat_heavy, multi_point, timely_breaking, educational_evergreen, human_story, analytical). Prerequisite for the matching layer.
+- **Matching layer** — for each demand row, find the best signal. Depends on D143.
+- **`m.seed_and_enqueue_ai_jobs_v1` integration** — currently still blind FB fan-out. Rewriting this to call the router is the HIGH-RISK hot-path change. Friday+ work.
+- **ai-worker platform-awareness** — once seeds arrive with `format_key` preassigned, ai-worker should skip its format advisor. Backwards-compatible change per D144 notes.
+- **Cron changes** — new cron for IG/LinkedIn/YouTube seeding, OR consolidate to one router-driven cron replacing jobid 11.
+- **Research doc committed to repo** — drafted in `/home/claude/` but sync-push for this session only covers decisions + sync_state + file 15. Research doc to be committed next session as `docs/research/platform_format_mix_defaults.md`.
+
+### Pipeline hot path UNCHANGED
+
+The entire router MVP is shadow infrastructure. `seed_and_enqueue_ai_jobs_v1` is untouched. `enqueue-publish-queue-every-5m` (jobid 48) is untouched. All four publishers are untouched. IG publisher cron (jobid 53) remains paused per D165 — regardless of D166/D167, it stays paused until the router integration work on Friday.
+
+The router can be inspected at any time by running:
+
+```sql
+SELECT * FROM m.build_weekly_demand_grid(
+  (SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns')
+);
+```
+
+Nothing else in the system calls this function today.
+
+### Why research + migration in one session was safe
+
+Multiple structural guardrails kept this from being risky evening work:
+
+- **No hot path touched.** Pure-additive. If the tables were empty or the function broken, nothing else would notice.
+- **Validation view runs on demand.** `SELECT * FROM t.platform_format_mix_default_check;` returns 4 rows, all status='ok' now; any mutation can be checked the same way.
+- **PK explicitly approved structure, not values.** "Numbers are config, changeable via UPDATE" was PK's framing. Any share can be updated anytime without schema work.
+- **Versioning built in.** `effective_from` + `superseded_by` + `is_current` columns support future research refreshes without data loss.
+- **Research doc audit trail.** The `evidence_source` column on every seed row points at `docs/research/platform_format_mix_defaults.md` (path pre-registered; file commits next session).
+
+### What changed on the sprint board
+
+- **M12 marked superseded** by router build track (per D166). IG publisher remains paused regardless.
+- **D145 partially closed** — the mix defaults portion is shipped. The content_type × format benchmark table portion (matching-layer data) remains deferred, still gated on D143.
+- **New open items** — D143 classifier spec, matching layer design, `seed_and_enqueue_ai_jobs_v1` rewrite, cron changes. Friday+ work.
+
+### Related decisions
+
+- **D142** — demand-aware seeder (already implemented 18 Apr+; consumes router output once integration lands)
+- **D143** — classifier (spec exists in prior chat history; implementation deferred)
+- **D144** — router master spec (this decision is its MVP realisation)
+- **D145** — benchmark table (mix-defaults portion shipped via D167; matching-benchmarks portion deferred)
+- **D146** — feed pipeline score + retirement (still gated on Phase 2.1 + 60d data)
+- **D165** — bloat-window cleanup (the pipeline-clean state that made evening work safe)
+- **D166** — the sequencing reversal that authorised this work
+
+### Validation command for next session
+
+To confirm nothing drifted overnight:
+
+```sql
+-- All four platforms should show total_share = 100.00 and status = 'ok'
+SELECT * FROM t.platform_format_mix_default_check;
+
+-- Demand grid for NDIS Yarns should return 20 rows (5 platforms × avg 4 formats, minus zeros)
+SELECT COUNT(*) FROM m.build_weekly_demand_grid(
+  (SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns')
+);
+```
+
+Expected output recorded: 4 platforms × total_share 100.00, 20 demand rows for NDIS Yarns.
 
 ---
 
@@ -293,8 +474,8 @@ SELECT cron.alter_job(job_id := 53::bigint, active := false);
 | Decision | Status | Gate |
 |---|---|---|
 | D143 — Signal content type classifier | 🔲 Gated | D142 stable + 60 days data |
-| D144 — Signal router (platform × format) | 🔲 Gated | D143 + D140 + D145 + 60 days data |
-| D145 — Benchmark table | 🔲 Research now, build with D144 | Research immediate |
+| D144 — Signal router (platform × format) | 🟡 MVP shadow infrastructure shipped via D167 22 Apr; matching layer still gated | D143 + 60d data for matching layer |
+| D145 — Benchmark table | 🟡 Mix defaults shipped via D167 22 Apr; content_type × format benchmark still gated | D143 |
 | D146 — Feed pipeline score + retirement | 🔲 Gated | Phase 2.1 + 60 days data |
 | D140 — Digest item scoring | 🔲 Phase 3 | After CFW stable + auto-approver healthy |
 | D149 — Advisor Layer MVP (Sales Advisor Project) | 🔲 Deferred post-sprint | Same rationale as D162 |
@@ -304,8 +485,16 @@ SELECT cron.alter_job(job_id := 53::bigint, active := false);
 | D157 — Cost guardrails Stop 2 infrastructure | 🔲 Post-sprint | ai-worker fix verified ✅ + sprint complete |
 | D157 — Raise Anthropic cap to calibrated Stop 1 | 🔲 Week of 5 May | 7 days post-fix clean data + weekly calibration |
 | D164 — Per-client canonical dedup window column | 🔲 When trigger fires | Vertical/cadence mismatch OR client request OR operator-suppression complaint |
-| **D165 — M12 IG publisher platform-filter (HIGH)** | 🔲 Next sprint | IG publisher is paused until this ships |
+| **D165 — M12 IG publisher platform-filter** | 🟡 SUPERSEDED by D166/D167 router track; kept as fallback | If router build stalls, M12 resumes as surgical path |
 | **D165 — Cron failure-rate monitoring** | 🔲 Sprint item TBD | 2,258 silent failures over 8 days must not recur |
+| **D166 — Router sequencing reversal** | ✅ APPLIED 22 Apr evening | Companion to D167 |
+| **D167 — Router MVP shadow infrastructure** | ✅ APPLIED 22 Apr evening | Integration (R6 seed_and_enqueue rewrite) still ahead — HIGH RISK Friday+ |
+| **R4 — D143 classifier spec on paper (6 content types × rules)** | 🔲 Friday+ (low-risk writing) | Start of matching layer design |
+| **R5 — Matching layer design (demand row → signal selection)** | 🔲 Depends on R4 | R4 complete |
+| **R6 — `m.seed_and_enqueue_ai_jobs_v1` rewrite to call router** | 🔲 **HIGH RISK hot-path change** — Friday+ only | R4 + R5 complete + deliberate planning session |
+| **R7 — ai-worker platform-awareness (skip format advisor when seed has format_key)** | 🔲 Depends on R6 | R6 complete + verified |
+| **R8 — Cron changes (new IG/LI/YT seeding OR consolidate to router-driven)** | 🔲 Depends on R6 | R6 complete + verified |
+| **Research doc commit to repo** | 🔲 Next session | Drafted at /home/claude/; sync-push for 22 Apr evening only covered 3 files |
 | Inbox anomaly monitor | 🔲 Post-sprint | Separate brief TBW |
 | Phase 2.1 — Insights-worker | 🔲 Next major build | Meta Standard Access |
 | Phase 2.6 — Proof dashboard | 🔲 After Phase 2.1 | Engagement data |
@@ -334,6 +523,6 @@ SELECT cron.alter_job(job_id := 53::bigint, active := false);
 | **M8 Gate 4 — 24h regression check** | 🔲 23 Apr | Re-run regression query against runs > M8 merge timestamp |
 | **Bundler dedup weekly regression check** | 🔲 Ongoing | Weekly Mon — query in D164 |
 | **FB-vs-IG publish disparity** | ✅ Closed M11 PR #2 commit `583cf17` — root cause 8-day silent cron outage; bloat cleanup applied per D165 | — |
-| **`instagram-publisher` platform filter (M12)** | 🔲 HIGH — IG publisher paused until ships | D165 mandates this before IG publishing resumes |
-| **`instagram-publisher` exec_sql + raw interpolation** | 🔲 Sprint item TBD — can fold into M12 | — |
+| **`instagram-publisher` platform filter (ex-M12)** | 🟡 SUPERSEDED by D166/D167 router track — kept as fallback | Router integration (R6) preferred path; M12 surgical fallback if R6 stalls |
+| **`instagram-publisher` exec_sql + raw interpolation** | 🔲 Folds into R6 router integration | R6 complete |
 | **PP Schedule Facebook 6/5 over-tier-limit** | 🔲 Sprint item TBD | Surfaced in M5 verification — investigate save-side validation |
