@@ -96,3 +96,7 @@ V2 confirmed ~10% success / 70% paywalled+blocked ratio matches pre-outage norms
 - **D168** — response-layer sentinel to prevent this class of silent outage recurring.
 - **Care For Welfare provisioning gap** — CFW exists in `c.client` (slug `care-for-welfare-pty-ltd`) but has no `c.client_source` rows, no `c.client_digest_policy` row, and is not in the planner loop. Separate backlog ticket.
 - **Invegent 0 at 10:00** — 11:00 belt-and-braces check appended as footnote below once data is in.
+
+---
+
+**11:00 UTC belt-and-braces (23 Apr):** Invegent still zero at 11:00 — requires scope-depth investigation, tracked separately.
