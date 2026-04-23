@@ -50,29 +50,33 @@
 
 ## ⚠️ FIRST THING NEXT SESSION
 
-**Read this entire file before doing anything else.** Today was a very long day — morning sprint closed 7 sprint items (M5, M6, M7, M8, M9, M11 via PRs + D165 decision/cleanup), evening continued into router MVP build (D166 + D167 — shadow infrastructure only, hot path unchanged).
+**Read this entire file before doing anything else.** Tonight's 23 Apr session resolved ID004 (9-day content-fetch silent outage). 22 Apr's router-build state (D166, D167) is unchanged and picks up Friday+.
 
-### Today's outcomes in one paragraph
+### Today's outcomes in one paragraph (23 Apr mid-session)
 
-**Morning:** Closed M5 getPublishSchedule RPC, M6 portal exec_sql (5 RPCs), M7 dashboard feeds/create exec_sql, M8 bundler draft multiplication (D164), M9 client-switch staleness + Schedule platform display, M11 8-day silent cron outage (2,258 silent failures). Applied D165 cleanup: 120 FB drafts + 41 queue items marked dead, IG publisher cron paused until M12 ships. Dev workflow rule changed to direct-push-to-main default.
-
-**Evening:** Vercel webhook verified healthy (Claude Code roadmap sync's "webhook didn't fire" claim was wrong — two deploys existed for commit `150f1e5`). Deep code read revealed M12 surgical was polish on code the router replaces entirely, prompting D166 — skip M12, build D144 router MVP instead. 2-3 hour research pass recovered D142-D146 specs from past chats and produced `docs/research/platform_format_mix_defaults.md` covering Buffer 2026 (45M+ posts) + Hootsuite 2026 + YouTube Shorts data. Two migrations shipped: `t.platform_format_mix_default` (22 seed rows, all platforms sum to 100), `c.client_format_mix_override` (empty), `m.build_weekly_demand_grid()` SQL function. Tested against NDIS Yarns — demand grid produces expected output with known rounding artefacts (accepted MVP trade-off per D167).
+Diagnosed and fixed ID004 — case-sensitive vault secret lookup in cron jobid 4 (`name='INGEST_API_KEY'` vs actual `ingest_api_key`). 9 days of 401s invisible because pg_cron reports `net.http_post` scheduling success, not HTTP response. Fix: single `cron.alter_job` lowercasing the filter. All four verification gates passed by 10:01 UTC (V1 fresh run, V2 fresh body successes, V3 backlog draining, downstream NDIS 2 new digest_items). Decision D168 scopes a response-layer sentinel to prevent this failure class (implementation deferred, tracked as A-item). 22 Apr content — router MVP shadow infrastructure (D166, D167), M12 superseded — unchanged.
 
 ### Critical state awareness for next session
 
-1. **`instagram-publisher-every-15m` (jobid 53) is PAUSED** (`active=false`). Unchanged from morning. Resume only AFTER router integration ships + verifies. Single approved FB draft with image_url will be hijacked by IG again if cron resumes prematurely.
+1. **ID004 closed.** Content-fetch cron is fetching bodies normally. Incident write-up at `docs/incidents/2026-04-23-content-fetch-casing-drift.md`.
 
-2. **Pipeline is clean:** 0 approved-but-unpublished FB drafts, 0 queue items. `enqueue-publish-queue-every-5m` cron healthy post-M11 (last checked ~40 min at session close, 8 successes / 0 failures). Bundler M8 dedup active.
+2. **Priority 1 — verify Invegent digest_items flowing.** A 11:00 UTC belt-and-braces check on 23 Apr will append a one-line footnote to the ID004 incident doc with Invegent's digest_item count at that tick. First thing next session: open the incident doc, read the footnote. Non-zero → recovery complete, move on. Zero → scope-depth investigation (likely feed-scope intersection, not a fix regression).
 
-3. **Reviewer layer still paused** (all 4 rows `c.external_reviewer.is_active=false`). Unchanged. Resume ceremony at ~18-19 of 28 Section A items closed.
+3. **Priority 2 — M8 Gate 4 regression check.** Deferred from 23 Apr (the ID004 emergency displaced it). Still on schedule — re-run the post-deploy variant of D164's regression query against digest_runs > M8 merge timestamp. Expected: zero rows.
 
-4. **M8 Gate 4 — 24h regression check due today** — 23 Apr 00:43 UTC / 10:43 AEST. Pre-approved query in D164. Expected zero rows.
+4. **Priority 3 — router work R4/R6 resumes Friday with fresh head.** Router MVP shadow infrastructure from 22 Apr (D166, D167) is untouched. Resume the matching-layer + `seed_and_enqueue_ai_jobs_v1` rewrite on Friday 25 Apr — not tonight, not tomorrow.
 
-5. **Dev workflow rule: direct-push-to-main by default.** Session start: sweep non-main branches across 3 repos, flag orphans before new work.
+5. **`instagram-publisher-every-15m` (jobid 53) remains PAUSED** (`active=false`). Unchanged. Resume only AFTER router integration ships + verifies.
 
-6. **NEW — Router MVP shadow infrastructure live.** No integration with hot path. Validate with `SELECT * FROM t.platform_format_mix_default_check;` (expect 4 rows, all status='ok', total_share=100.00) and `SELECT COUNT(*) FROM m.build_weekly_demand_grid((SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns'));` (expect 20 rows). See D167.
+6. **Pipeline is clean.** 0 approved-but-unpublished FB drafts, 0 queue items. Content-fetch healthy (post-ID004). Bundler M8 dedup active. Reviewer layer still paused.
 
-7. **NEW — M12 superseded.** Router build track replaces the surgical fix approach per D166. M12 is not closed — it's *superseded*. If router build stalls, M12 remains fallback to resume IG publishing safely.
+7. **Dev workflow rule: direct-push-to-main by default.** Session start: sweep non-main branches across 3 repos, flag orphans before new work.
+
+8. **Router MVP shadow infrastructure validation:** `SELECT * FROM t.platform_format_mix_default_check;` (expect 4 rows, all status='ok', total_share=100.00) + `SELECT COUNT(*) FROM m.build_weekly_demand_grid((SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns'));` (expect 20 rows). See D167.
+
+9. **M12 still superseded** (per D166). Router build track replaces the surgical fix. If router stalls, M12 remains fallback.
+
+10. **D168 sentinel implementation deferred to its own sprint item.** Tracked as A-item in backlog. Not a priority next session unless PK chooses to lift it.
 
 ---
 
@@ -83,10 +87,11 @@
 3. Check `c.external_reviewer` — confirm reviewers still paused (`is_active=false` on all four rows)
 4. Check IG publisher cron state — confirm `instagram-publisher-every-15m` (jobid 53) still paused, DO NOT resume before router integration verifies
 5. **NEW — Validate router shadow infrastructure:** `SELECT * FROM t.platform_format_mix_default_check;` — expect 4 rows, status='ok' on all
-6. Check file 15 Section G — pick next item from the sprint board
-7. Check `m.external_review_queue` for any findings that landed before the pause (most recent 5 rows)
-8. Read `docs/06_decisions.md` D156–D167 for accumulated decision trail
-9. Query `k.vw_table_summary` before working on any table
+6. **NEW — Check ID004 recovery status:** confirm `f.canonical_content_body` pending-backlog fully drained (expect 0 or near-0); confirm NDIS and Invegent producing digest_items at expected daily rate over last 24h. If either check fails, read the footnote section at the bottom of `docs/incidents/2026-04-23-content-fetch-casing-drift.md` (appended by the 11:00 UTC belt-and-braces poll on 23 Apr) before diagnosing.
+7. Check file 15 Section G — pick next item from the sprint board
+8. Check `m.external_review_queue` for any findings that landed before the pause (most recent 5 rows)
+9. Read `docs/06_decisions.md` D156–D168 for accumulated decision trail
+10. Query `k.vw_table_summary` before working on any table
 
 ---
 
@@ -462,7 +467,13 @@ Evening:
 - `b59138d0` — docs(research): add platform format mix defaults research (D167 companion, 22 Apr 09:33 UTC)
 - `8091cab8` — docs(sync_state): evening router-build update (22 Apr 10:17 UTC, superseded by this commit)
 - `69ba2c42` — docs(file-15): v4.3 (22 Apr 10:25 UTC, superseded by later 23→22 correction)
-- THIS COMMIT — docs: correct 23→22 seed row count drift across sync_state (F11 applied)
+- `310b0b7` — docs(sync_state): correct 23→22 seed row count drift (F11 applied)
+
+23 Apr:
+- `9094d75` — docs(incident): add ID004 — content-fetch silent outage (14-23 Apr)
+- `7ccf5df` — docs(decisions): add D168 — response-layer sentinel for silent-outage class
+- `33efcb6` — docs(sync_state): 23 Apr mid-session — ID004 resolved, D168 scoped
+- THIS COMMIT — docs(sync_state): 23 Apr post-ID004 forward state — FIRST THING rewrite, protocol step, commits list
 
 **invegent-dashboard (main):**
 
