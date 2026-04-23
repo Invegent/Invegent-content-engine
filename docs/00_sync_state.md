@@ -1,8 +1,50 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-22 ~22:00 AEST (12:00 UTC) — End-of-session close, evening router-build continuation
+> Last written: 2026-04-23 20:10 AEST (10:10 UTC) — Mid-session ID004 content-fetch outage resolved
 > Written by: PK + Claude session sync
+
+---
+
+## 🟢 23 APR SESSION UPDATE — ID004 RESOLVED
+
+### In one paragraph
+
+9-day silent outage in content-fetch cron resolved. Cron jobid 4 (`content_fetch_every_10min`) queried `vault.decrypted_secrets` with filter `name='INGEST_API_KEY'` (uppercase), but the actual vault entry is `name='ingest_api_key'` (lowercase). Case-sensitive string comparison → NULL subquery → null `x-ingest-key` HTTP header → EF 401. Every cron invocation since ~14 Apr 00:10 UTC failed identically, but `pg_cron.job_run_details.status` kept reporting `succeeded` because it measures `net.http_post` scheduling, not HTTP response. Fix: single `cron.alter_job` changing uppercase to lowercase. Applied 09:30 UTC; all four verification gates passed by 10:01 UTC. Root-cause diagnosis + fix + verification + incident doc + decision entry all landed this session.
+
+**Full incident:** `docs/incidents/2026-04-23-content-fetch-casing-drift.md` (ID004)
+**Decision:** D168 in `docs/06_decisions.md` — response-layer sentinel to catch this failure class. Scope defined, implementation deferred.
+
+### Verification gates (all passed)
+
+| Gate | Result | Evidence |
+|---|---|---|
+| V1 — fresh cron run post-apply | ✅ | jobid 4 status=succeeded at 09:30:00 UTC |
+| V2 — bodies actually fetching | ✅ | 3 fresh successes in 15-min window (first since 14 Apr) |
+| V3 — backlog trending down | ✅ | 353 → 307 → 272 pending (−81 in ~35 min, ~140 rows/hour drain rate) |
+| Downstream — strict-policy client recovery | ✅ | NDIS Yarns 2 new digest_items at 10:00 UTC planner-hourly tick |
+
+### What stays untouched tonight (per PK)
+
+- `instagram-publisher-every-15m` (jobid 53) **remains paused** — M12 still the blocker. Do not resume until M12 verifies.
+- All four external reviewers remain paused (no change).
+- Cowork tasks unchanged. **Router MVP (R6) remains Fri+ schedule.**
+- No re-wiring of anything else this session.
+
+### Side-findings (separate tickets, parked)
+
+- **CFW provisioning gap** — `care-for-welfare-pty-ltd` has no `c.client_source` rows, no `c.client_digest_policy` row, not in planner loop. Never wired into the pipeline. Separate backlog ticket, not part of ID004.
+- **No sister casing bugs** — scan confirmed all 19 vault-secret references across 7 cron jobs are exact-match. ID004 was isolated to jobid 4.
+
+### Optional belt-and-braces pending
+
+11:00 UTC planner-hourly check for Invegent (zero at 10:00 tick — plausibly scope-specific given only 5 enabled `client_source` rows vs NDIS's 15). One-line footnote to be appended to ID004 incident doc post-11:00.
+
+### 23 Apr commits
+
+- THIS COMMIT — docs(incident): add ID004 content-fetch silent outage
+- Immediately preceding — docs(decisions): add D168 — response-layer sentinel
+- Immediately preceding — fix(cron): jobid 4 vault secret filter uppercase→lowercase (applied via `cron.alter_job`, not a migration file — live DB state only)
 
 ---
 
@@ -385,6 +427,7 @@ Today's M5/M6/M7 closed the highest-severity operator-facing write-path exec_sql
 - **Sat 2 May** — original reviewer calibration cycle trigger (defer until reviewers resume)
 
 ### Backlog (open, not yet addressed)
+- **ID004 sentinel (D168) — cron HTTP response health table + dashboard tile** — NEW 23 Apr. Scope defined in D168. Table `m.cron_http_health` + SQL refresh function + 15-min cron + dashboard tile. Prevents the pg_cron-scheduling-succeeded-but-HTTP-failed class of silent outage.
 - **Publisher schedule source audit** — open since 21 Apr
 - **`m.post_publish_queue.status` has NO CHECK constraint** — D163 continuation
 - **TPM saturation on concurrent platform rewrites** — brief parked
