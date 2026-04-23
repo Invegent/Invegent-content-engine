@@ -469,6 +469,74 @@ Expected output recorded: 4 platforms × total_share 100.00, 20 demand rows for 
 
 ---
 
+## D168 — Detect Silent Outages at the Response Layer, Not the Scheduler Layer
+**Date:** 23 April 2026 | **Status:** 🟡 SCOPE DEFINED (implementation deferred — tracked as A-item in sync_state backlog)
+
+### The problem this decides
+
+ID004 is the third consecutive silent outage detected by PK investigating downstream starvation rather than by any automated check:
+
+- **ID003** — cost retry loop invisible because `ai_job.status='running'` was sweeper-requeued with no attempt cap
+- **M11** — 8-day publish-queue outage invisible because `ON CONFLICT` target silently swallowed inserts
+- **ID004** — 9-day content-fetch outage invisible because pg_cron reports *scheduling* success, not *HTTP* success
+
+All three ran on cron, reported `succeeded` throughout, and were only caught by data-starvation symptoms. Three in three weeks is structural, not coincidence.
+
+### The decision
+
+**Add a response-layer sentinel: one cron job + one table + one dashboard tile that monitors `net._http_response` for EF-triggering cron commands and flags any job whose 2xx rate drops below threshold over a rolling window.**
+
+Not a monitoring platform. Minimal viable coverage using infrastructure already in place.
+
+### Why this class of fix, not others
+
+| Alternative | Verdict |
+|---|---|
+| Case-insensitive vault lookups | ❌ Paper-over. Changes shared infra semantics, breaks the identifier-matching principle, makes sibling (correctly-lowercase) jobs silently tolerant of typos |
+| Pre-flight dry-run of cron commands that checks secret lookups | ⚠️ Helps for casing, not for expired keys, revoked keys, changed EF URLs, network failures, EF auth-header changes. Doesn't generalize |
+| Alert on zero writes to downstream tables | ⚠️ Worth doing as a complementary check, but reactive — waits for data starvation before firing. Response-layer detection fires at the moment of failure |
+| Convention: all vault names lowercase-with-underscores | ✅ Worth codifying as a side-rule (low cost, prevents one class of typo) but doesn't substitute for response monitoring |
+| **Response-layer sentinel (chosen)** | ✅ Catches the whole class — 401, 500, timeout, DNS, revoked auth — regardless of root cause |
+
+### Scope of the sentinel
+
+Minimal viable version:
+
+1. Table `m.cron_http_health` — one row per monitored jobid per day: `jobid, day, total_calls, n_2xx, n_non_2xx, last_non_2xx_status, last_non_2xx_at`
+2. SQL function `m.refresh_cron_http_health()` reading `net._http_response` for the last 24h, joined against a whitelist of EF-triggering jobs
+3. Cron `cron-http-health-every-15m` calling the function
+4. Dashboard tile showing the table, red highlight when 2xx_rate < 95% over last 24h
+5. (Optional stretch) email notifier when a monitored jobid crosses threshold — scope-out today
+
+Not doing: Prometheus/Grafana, retention > 30 days, `job_run_details` failure alerts (those are already visible; this fills the gap *between* job_run_details and actual work).
+
+### What stays open after this decision
+
+Implementation deferred to a dedicated sprint item. Rationale:
+
+1. Today's session is already long (9-day outage diagnosis + fix apply + verification). Adding implementation widens scope past what's prudent tonight.
+2. The ID004 fix itself is in place. Sentinel is preventative for the *next* outage.
+3. Scope review needed before coding — notably whether dashboard-only is enough or PK wants push/email delivery. That conversation is separate.
+
+Tracked in `00_sync_state.md` Backlog as **A-item: "ID004 sentinel — cron HTTP response health table + dashboard tile"**.
+
+### What this does NOT decide
+
+- Vault naming convention (case-by-standard is a separate improvement proposal if wanted)
+- pg_cron or Supabase infrastructure changes
+- External monitoring service adoption
+- Alert delivery mechanism — part of the deferred implementation
+
+### Retrospective reference
+
+The three outages this decision addresses:
+
+- ID003 — `docs/incidents/2026-04-19-cost-spike.md`
+- M11 — commit `583cf17`, PR #2
+- ID004 — `docs/incidents/2026-04-23-content-fetch-casing-drift.md` (this incident)
+
+---
+
 ## Decisions Pending
 
 | Decision | Status | Gate |
