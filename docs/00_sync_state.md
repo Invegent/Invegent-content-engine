@@ -1,8 +1,62 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-23 20:10 AEST (10:10 UTC) — Mid-session ID004 content-fetch outage resolved
+> Last written: 2026-04-24 AM AEST — 24 Apr session-start housekeeping: orphan sweep + M8 Gate 4 pass + CFW finding correction
 > Written by: PK + Claude session sync
+
+---
+
+## 🟢 24 APR SESSION-START UPDATE — MORNING HOUSEKEEPING
+
+### In one paragraph
+
+Three housekeeping items closed at session start. (1) **Orphan branch sweep** across 3 repos — 8 pre-existing stale branches from 21-22 Apr squash-merged work, zero new orphans overnight, all safe to delete via GitHub UI when convenient. (2) **M8 Gate 4 regression check — PASSED** — zero duplicate canonicals across digest_runs for same client since 22 Apr 00:43 UTC merge; 24h+ of production data confirms D164 7-day NOT EXISTS guard is holding. (3) **CFW overnight digest_items anomaly investigated** — turned out to be correct behaviour, but uncovered that **yesterday's "CFW never wired into the pipeline" side-finding was wrong.** Reality: CFW has 26 `c.client_source` rows (2 enabled), 2 `c.client_content_scope` rows, runs hourly in jobid 12 `planner-hourly` loop, and has been producing drafts for weeks (13 drafts dead as `m8_m11_bloat` prove it). The 2 overnight items were the first successful selection since ID004 unstuck content-fetch — fresh canonicals at 11:00 UTC tick became IG drafts by 11:40 UTC. They're sitting in `needs_review` and won't publish (IG cron paused per D165).
+
+### 24 Apr session-start checks
+
+| Check | Result | Evidence |
+|---|---|---|
+| Orphan branch sweep (3 repos) | ✅ No new orphans | 8 stale branches pre-existing, all squash-merged 21-22 Apr |
+| M8 Gate 4 regression | ✅ PASSED | Zero rows across 24h+ of post-deploy digest_runs |
+| CFW overnight "anomaly" | ✅ Correct behaviour | Drafts landed legitimately at 11:40 UTC post-ID004 recovery |
+| ID004 recovery (phone-checked AM) | ✅ All clients | NDIS 15, Invegent 1, PP 40, CFW 2 overnight |
+| External reviewers | ✅ Still paused | 4 rows, `is_active=false` |
+| IG publisher cron | ✅ Still paused | jobid 53, `active=false` |
+| Router shadow | ✅ Clean | 4 rows status='ok', total_share=100.00 |
+
+### Real CFW provisioning state (corrected — yesterday's claim was wrong)
+
+- `c.client_source` — 26 rows, 2 enabled (`1122d89d-9406-42b7-abdf-9e6f02ccc436` and `7a012356-4eee-48b9-8102-7a38117a74ae`)
+- `c.client_content_scope` — 2 rows (vertical 11 primary, vertical 12 secondary)
+- `c.client_digest_policy` — **0 rows** ← this is the actual and only gap
+- Planner participation — runs every hour in jobid 12 (`planner-hourly`), same loop as NDIS/PP/Invegent
+- Consequence of missing policy — `run_type` defaults to `'daily'` in `create_digest_run_for_client()` (naming quirk, NOT a separate cron path)
+- Throughput — low because only 2 of 26 sources enabled, not because "not wired"
+
+Backlog item: add `c.client_digest_policy` row for CFW when convenient. Not blocking; CFW produces drafts without it.
+
+### 2 new CFW IG drafts in `needs_review`
+
+Added for awareness:
+- `post_draft_id = 2d8204ac-e02c-4693-a6dd-7a4c3e8d09ed` — "Research Study: Early-career OTs transitioning to specialty practice"
+- `post_draft_id = fdb1ff8a-d344-4a05-9a33-2771f62e99bd` — "Policy and Advocacy update"
+
+Both `platform='instagram'`, both created 23 Apr 11:40 UTC from seed → ai_job (`instagram/rewrite_v1`, `succeeded`) → draft. IG cron paused → they won't publish. Left alone until router ships (ex-M12) or PK decides to mark dead / reassign platform.
+
+### Calibration note
+
+Yesterday's "CFW never wired" assertion was made from side-finding speed, not structured verification. Correct framing would have been: *"CFW has no `c.client_digest_policy` row and only 2 of 26 sources enabled, so digest throughput is near-zero."* That's defensible. "Never wired" wasn't — and it was in the sync_state for 14+ hours before being caught. Adds weight to the F11-style verification discipline already applied in 23 Apr close.
+
+### 24 Apr commits (morning)
+
+- THIS COMMIT — docs(sync_state): 24 Apr morning housekeeping — orphan sweep + M8 Gate 4 pass + CFW finding correction
+
+### What's next this session
+
+Decision point open with PK. Board candidates:
+- **R4** — classifier spec on paper (low-risk writing work, Friday-appropriate)
+- **A11b** — CFW + Invegent content prompts (gated on PK prompt session, scheduled for today)
+- **Cron failure-rate monitoring** — HIGH priority per 22 Apr board; production-touching
 
 ---
 
@@ -33,12 +87,12 @@
 
 ### Side-findings (separate tickets, parked)
 
-- **CFW provisioning gap** — `care-for-welfare-pty-ltd` has no `c.client_source` rows, no `c.client_digest_policy` row, not in planner loop. Never wired into the pipeline. Separate backlog ticket, not part of ID004.
+- **CFW provisioning gap** — ~~`care-for-welfare-pty-ltd` has no `c.client_source` rows, no `c.client_digest_policy` row, not in planner loop. Never wired into the pipeline.~~ **[CORRECTED 24 Apr — see top section.]** Actual state: 26 source rows (2 enabled), 2 content_scope rows, runs hourly in planner loop; only gap is missing `c.client_digest_policy`. Correction committed 24 Apr morning housekeeping.
 - **No sister casing bugs** — scan confirmed all 19 vault-secret references across 7 cron jobs are exact-match. ID004 was isolated to jobid 4.
 
 ### Optional belt-and-braces pending
 
-11:00 UTC planner-hourly check for Invegent (zero at 10:00 tick — plausibly scope-specific given only 5 enabled `client_source` rows vs NDIS's 15). One-line footnote to be appended to ID004 incident doc post-11:00.
+11:00 UTC planner-hourly check for Invegent (zero at 10:00 tick — plausibly scope-specific given only 5 enabled `client_source` rows vs NDIS's 15). One-line footnote to be appended to ID004 incident doc post-11:00. **[Confirmed 24 Apr AM from PK phone check: Invegent produced 1 digest_item overnight — recovery complete.]**
 
 ### 23 Apr commits
 
@@ -50,33 +104,35 @@
 
 ## ⚠️ FIRST THING NEXT SESSION
 
-**Read this entire file before doing anything else.** Tonight's 23 Apr session resolved ID004 (9-day content-fetch silent outage). 22 Apr's router-build state (D166, D167) is unchanged and picks up Friday+.
+**Read this entire file before doing anything else.** 24 Apr morning housekeeping closed three items from the 23 Apr wrap (orphan sweep, M8 Gate 4, CFW finding correction). 22 Apr's router-build state (D166, D167) is unchanged and picks up Friday+.
 
-### Today's outcomes in one paragraph (23 Apr mid-session)
+### Today's outcomes in one paragraph (24 Apr AM — carries forward; update at session close)
 
-Diagnosed and fixed ID004 — case-sensitive vault secret lookup in cron jobid 4 (`name='INGEST_API_KEY'` vs actual `ingest_api_key`). 9 days of 401s invisible because pg_cron reports `net.http_post` scheduling success, not HTTP response. Fix: single `cron.alter_job` lowercasing the filter. All four verification gates passed by 10:01 UTC (V1 fresh run, V2 fresh body successes, V3 backlog draining, downstream NDIS 2 new digest_items). Decision D168 scopes a response-layer sentinel to prevent this failure class (implementation deferred, tracked as A-item). 22 Apr content — router MVP shadow infrastructure (D166, D167), M12 superseded — unchanged.
+Orphan sweep across 3 repos — zero new orphans, 8 stale from 21-22 Apr merges (cosmetic cleanup pending). M8 Gate 4 regression PASSED (zero duplicate canonicals post-22 Apr 00:43 UTC merge). CFW overnight digest_items confirmed as correct behaviour, and yesterday's "CFW never wired" claim corrected — CFW has always been in the planner loop; actual gap is the missing `c.client_digest_policy` row and only 2 of 26 sources enabled. 2 new CFW IG drafts in `needs_review` from the 11:40 UTC post-ID004-recovery tick; IG cron paused so no publish risk.
 
 ### Critical state awareness for next session
 
 1. **ID004 closed.** Content-fetch cron is fetching bodies normally. Incident write-up at `docs/incidents/2026-04-23-content-fetch-casing-drift.md`.
 
-2. **Priority 1 — verify Invegent digest_items flowing.** A 11:00 UTC belt-and-braces check on 23 Apr will append a one-line footnote to the ID004 incident doc with Invegent's digest_item count at that tick. First thing next session: open the incident doc, read the footnote. Non-zero → recovery complete, move on. Zero → scope-depth investigation (likely feed-scope intersection, not a fix regression).
+2. **M8 Gate 4 CLOSED — 24 Apr AM.** Zero duplicate canonicals across digest_runs post-merge. D164 7-day guard is holding.
 
-3. **Priority 2 — M8 Gate 4 regression check.** Deferred from 23 Apr (the ID004 emergency displaced it). Still on schedule — re-run the post-deploy variant of D164's regression query against digest_runs > M8 merge timestamp. Expected: zero rows.
+3. **CFW "never wired" finding CORRECTED — 24 Apr AM.** CFW is wired; real gap is missing `c.client_digest_policy` row + low source enablement. Small backlog ticket to add the policy row when convenient.
 
-4. **Priority 3 — router work R4/R6 resumes Friday with fresh head.** Router MVP shadow infrastructure from 22 Apr (D166, D167) is untouched. Resume the matching-layer + `seed_and_enqueue_ai_jobs_v1` rewrite on Friday 25 Apr — not tonight, not tomorrow.
+4. **Router work R4/R6 — still Friday+ with fresh head.** Router MVP shadow infrastructure from 22 Apr (D166, D167) is untouched. Resume matching-layer + `seed_and_enqueue_ai_jobs_v1` rewrite deliberately with fresh head.
 
 5. **`instagram-publisher-every-15m` (jobid 53) remains PAUSED** (`active=false`). Unchanged. Resume only AFTER router integration ships + verifies.
 
 6. **Pipeline is clean.** 0 approved-but-unpublished FB drafts, 0 queue items. Content-fetch healthy (post-ID004). Bundler M8 dedup active. Reviewer layer still paused.
 
-7. **Dev workflow rule: direct-push-to-main by default.** Session start: sweep non-main branches across 3 repos, flag orphans before new work.
+7. **Dev workflow rule: direct-push-to-main by default.** Session start: sweep non-main branches across 3 repos, flag orphans before new work. Confirmed clean 24 Apr AM.
 
 8. **Router MVP shadow infrastructure validation:** `SELECT * FROM t.platform_format_mix_default_check;` (expect 4 rows, all status='ok', total_share=100.00) + `SELECT COUNT(*) FROM m.build_weekly_demand_grid((SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns'));` (expect 20 rows). See D167.
 
 9. **M12 still superseded** (per D166). Router build track replaces the surgical fix. If router stalls, M12 remains fallback.
 
 10. **D168 sentinel implementation deferred to its own sprint item.** Tracked as A-item in backlog. Not a priority next session unless PK chooses to lift it.
+
+11. **2 CFW IG drafts in `needs_review`** (post_draft_ids `2d8204ac...` and `fdb1ff8a...`). Paused-cron isolation, no publish risk. Decision TBD — mark dead, reassign platform, or let router sort out on Friday.
 
 ---
 
@@ -237,7 +293,7 @@ Key findings:
 
 ### 12:00-13:00 UTC — Past chats recovery
 
-Ran `conversation_search` for D142-D146 specs to confirm understanding matched prior architectural decisions. Recovered from 17 Apr chat (`485ce039-98a7-445a-969a-2dc69838d20b`) and 20 Apr chat (`5d25e5ea-4ff8-4057-aaa2-b913ed68fda4`):
+Ran `conversation_search` for D142-D146 specs to confirm understanding matched prior architectural decisions. Recovered from 17 Apr chat (`485ce039-978a-445a-969a-2dc69838d20b`) and 20 Apr chat (`5d25e5ea-4ff8-4057-aaa2-b913ed68fda4`):
 
 - **D142** — Demand-aware seeder (IMPLEMENTED 18 Apr+; NDIS Yarns went from 147 drafts/wk to ~9)
 - **D143** — Signal content type classifier (6 types: stat_heavy, multi_point, timely_breaking, educational_evergreen, human_story, analytical — rule-based, zero AI cost, GATED)
@@ -330,7 +386,7 @@ All still paused. Re-enable ceremony at ~18-19 of 28 Section A items closed.
 |---|---|---|---|---|---|---|---|
 | NDIS Yarns | fb98a472 | ✅ | ⏸ IG publisher paused | ✅ | 6 rows (seed) | 0 approved unpublished FB (D165 cleanup) | 63 drafts dead as m8_m11_bloat |
 | Property Pulse | 4036a6b5 | ✅ | ⏸ IG publisher paused | ✅ | 6 rows + 6/5 tier violation | 0 approved unpublished FB | 44 drafts dead as m8_m11_bloat |
-| Care For Welfare | 3eca32aa | ✅ | ⏸ IG publisher paused | ⚠ mode=null | 21 rows (first real UI save) | 0 approved unpublished FB | 13 drafts dead as m8_m11_bloat |
+| Care For Welfare | 3eca32aa | ✅ | ⏸ IG publisher paused | ⚠ mode=null | 21 rows (first real UI save) | 2 IG drafts in needs_review (24 Apr AM) | 13 drafts dead as m8_m11_bloat; `c.client_digest_policy` missing (backlog) |
 | Invegent | 93494a09 | ✅ | ⏸ IG publisher paused | ⚠ mode=null | 0 rows | 0 | A11b blocked |
 
 All 4 FB tokens permanent (`expires_at: 0`).
@@ -361,7 +417,7 @@ Source of truth: `docs/15_pre_post_sales_criteria.md` Section G. Today's snapsho
 | M5 | `getPublishSchedule` RPC hardening | ✅ CLOSED 22 Apr — PR #3 `737d150` |
 | M6 | Portal exec_sql eradication | ✅ CLOSED 22 Apr — PR #1 `9c00b5a` |
 | M7 | Dashboard `feeds/create` exec_sql | ✅ CLOSED 22 Apr — PR #5 `eda95ce` |
-| M8 | Bundler draft multiplication | ✅ CLOSED 22 Apr — PR #1 content-engine `ffc767d`, D164 |
+| M8 | Bundler draft multiplication | ✅ CLOSED 22 Apr — PR #1 content-engine `ffc767d`, D164 — Gate 4 PASSED 24 Apr AM |
 | M9 | Client-switch staleness + Schedule platform display | ✅ CLOSED 22 Apr — PR #4 `293f876` |
 | M11 | FB-vs-IG publish disparity (8-day silent cron) | ✅ CLOSED 22 Apr — PR #2 content-engine `583cf17` |
 | **M12** | IG publisher `pd.platform` filter + enqueue NOT EXISTS platform-scoped | **🟡 SUPERSEDED per D166 — router build track replaces this approach. M12 remains fallback if router work stalls.** |
@@ -421,18 +477,21 @@ Today's M5/M6/M7 closed the highest-severity operator-facing write-path exec_sql
 ## WATCH LIST
 
 ### Due this session / tomorrow
-- **M8 Gate 4 — 24h regression check** — run post-deploy variant of D164 regression query after 22 Apr 00:43 UTC + 24h = **23 Apr 00:43 UTC / 10:43 AEST Sydney**. Expected: zero rows.
-- **Router shadow infrastructure validation** — `SELECT * FROM t.platform_format_mix_default_check;` expect status='ok' on all 4 rows; `SELECT COUNT(*) FROM m.build_weekly_demand_grid(...)` against NDIS Yarns expect 20 rows
-- **Dashboard roadmap sync** — NOT done in this session; today's closures (M5, M6, M7, M8, M9, M11, D164, D165, D166, D167) need reflecting in `app/(dashboard)/roadmap/page.tsx`
+- ~~**M8 Gate 4 — 24h regression check** — run post-deploy variant of D164 regression query after 22 Apr 00:43 UTC + 24h = **23 Apr 00:43 UTC / 10:43 AEST Sydney**. Expected: zero rows.~~ ✅ **PASSED 24 Apr AM** (~33h post-deploy); zero rows.
+- **Router shadow infrastructure validation** — `SELECT * FROM t.platform_format_mix_default_check;` expect status='ok' on all 4 rows; `SELECT COUNT(*) FROM m.build_weekly_demand_grid(...)` against NDIS Yarns expect 20 rows ✅ confirmed 24 Apr AM
+- **Dashboard roadmap sync** — NOT done in 22 Apr session; today's closures (M5, M6, M7, M8, M9, M11, D164, D165, D166, D167) still need reflecting in `app/(dashboard)/roadmap/page.tsx`
 
 ### Due week of 22-27 Apr
 - **Thu 23 Apr** — PK at office (dead day for building); M8 gate 4 check runs; A1+A5+A8 pilot document drafting if PK has downtime
-- **Fri 24 Apr** — A11b content prompt session for CFW + Invegent (PK session) + potential R4 classifier spec drafting (low-risk writing work, not production)
+- **Fri 24 Apr** — **TODAY.** A11b content prompt session for CFW + Invegent (PK session) + potential R4 classifier spec drafting (low-risk writing work, not production). Morning housekeeping closed 3 items; afternoon TBD.
 - **Mon 27 Apr** — Meta App Review escalation trigger if no movement
 - **Sat 2 May** — original reviewer calibration cycle trigger (defer until reviewers resume)
 
 ### Backlog (open, not yet addressed)
-- **ID004 sentinel (D168) — cron HTTP response health table + dashboard tile** — NEW 23 Apr. Scope defined in D168. Table `m.cron_http_health` + SQL refresh function + 15-min cron + dashboard tile. Prevents the pg_cron-scheduling-succeeded-but-HTTP-failed class of silent outage.
+- **CFW `c.client_digest_policy` row missing** — NEW 24 Apr. Small provisioning ticket. Not blocking; CFW produces drafts without it. Adding the row will make `run_type` report `'hourly'` instead of default `'daily'` and enable scope/window/strict controls.
+- **2 CFW IG drafts in needs_review from 24 Apr AM** — `2d8204ac...` and `fdb1ff8a...`. Isolated by paused IG cron. Decision (mark dead / reassign / let router handle) TBD with PK.
+- **Stale non-main branches — 8 total across 3 repos** — all squash-merged, cosmetic cleanup via GitHub UI.
+- **ID004 sentinel (D168) — cron HTTP response health table + dashboard tile** — 23 Apr. Scope defined in D168. Table `m.cron_http_health` + SQL refresh function + 15-min cron + dashboard tile. Prevents the pg_cron-scheduling-succeeded-but-HTTP-failed class of silent outage.
 - **Publisher schedule source audit** — open since 21 Apr
 - **`m.post_publish_queue.status` has NO CHECK constraint** — D163 continuation
 - **TPM saturation on concurrent platform rewrites** — brief parked
@@ -449,7 +508,7 @@ Today's M5/M6/M7 closed the highest-severity operator-facing write-path exec_sql
 
 **Invegent-content-engine (main):**
 
-Morning:
+Morning (22 Apr):
 - `9cca6e5` — feat(db): public.get_publish_schedule SECURITY DEFINER RPC (M5)
 - `4d6fa16` — docs: A14 portal RLS audit findings (M3, audit-only)
 - `2ec25f9` — feat(db): M6 portal exec_sql eradication — 5 SECURITY DEFINER RPCs
@@ -460,7 +519,7 @@ Morning:
 - `cb9eb9c` — docs(decisions): add D165 — bloat-window cleanup discipline
 - `034ab9f0` — docs(sync_state): end-of-session close 22 Apr (morning close, 03:44 UTC)
 
-Evening:
+Evening (22 Apr):
 - Migration `create_platform_format_mix_default_d145_seed` applied (via apply_migration, not via repo commit — lives in DB migration history)
 - Migration `create_client_format_mix_override_and_demand_grid_router` applied (same)
 - `6df8ff2e` — docs: D166+D167 router pivot (09:24 UTC) — decisions file updated; sync_state + file 15 in the same commit message did NOT actually push in that commit (file SHAs unchanged); carried into the subsequent commits below
@@ -473,7 +532,10 @@ Evening:
 - `9094d75` — docs(incident): add ID004 — content-fetch silent outage (14-23 Apr)
 - `7ccf5df` — docs(decisions): add D168 — response-layer sentinel for silent-outage class
 - `33efcb6` — docs(sync_state): 23 Apr mid-session — ID004 resolved, D168 scoped
-- THIS COMMIT — docs(sync_state): 23 Apr post-ID004 forward state — FIRST THING rewrite, protocol step, commits list
+- (23 Apr close commit) — docs(sync_state): 23 Apr post-ID004 forward state — FIRST THING rewrite, protocol step, commits list
+
+24 Apr:
+- THIS COMMIT — docs(sync_state): 24 Apr morning housekeeping — orphan sweep clean, M8 Gate 4 passed, CFW "never wired" finding corrected, 2 new CFW IG drafts flagged
 
 **invegent-dashboard (main):**
 
@@ -494,22 +556,22 @@ Evening:
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-Very long day. Morning closed 6 M-numbered items + A7 + D164 + D165 + workflow reset. Evening shifted direction — M12 superseded by router build decision (D166), D145 research shipped as `docs/research/platform_format_mix_defaults.md`, D167 landed shadow router infrastructure (2 tables + 1 function + validation view + 22 seed rows).
+Very long day 22 Apr. Morning closed 6 M-numbered items + A7 + D164 + D165 + workflow reset. Evening shifted direction — M12 superseded by router build decision (D166), D145 research shipped as `docs/research/platform_format_mix_defaults.md`, D167 landed shadow router infrastructure (2 tables + 1 function + validation view + 22 seed rows). 23 Apr resolved ID004 (content-fetch 9-day silent outage, case-sensitive vault lookup). 24 Apr AM closed 3 more housekeeping items.
 
-**Pipeline state UNCHANGED from morning close.** Router infrastructure is shadow-only — `seed_and_enqueue_ai_jobs_v1` untouched, all crons unchanged, all publishers unchanged, IG publisher still paused per D165. The router can be inspected via `m.build_weekly_demand_grid()` but is not called by anything else in the system.
+**Pipeline state UNCHANGED from 22 Apr evening close.** Router infrastructure is shadow-only — `seed_and_enqueue_ai_jobs_v1` untouched, all crons unchanged, all publishers unchanged, IG publisher still paused per D165. The router can be inspected via `m.build_weekly_demand_grid()` but is not called by anything else in the system.
 
-Three things that MUST happen Thursday/Friday before any new hot-path work:
-1. **Session-start orphan sweep** — confirms no new orphans accumulated
-2. **M8 Gate 4 regression query** — 24h post-deploy, confirm zero duplicate digest_items for same canonical in same client
-3. **Router shadow infrastructure validation** — confirm tables still intact, demand grid still produces coherent output
+Three things that MUST happen each session before any new hot-path work:
+1. **Session-start orphan sweep** — confirms no new orphans accumulated (confirmed clean 24 Apr AM)
+2. ~~**M8 Gate 4 regression query**~~ ✅ PASSED 24 Apr AM
+3. **Router shadow infrastructure validation** — confirm tables still intact, demand grid still produces coherent output (confirmed 24 Apr AM)
 
-PK is at office Thursday (dead day). Realistic next building session is Friday. Recommended Friday scope:
+Realistic next building scope for 24 Apr afternoon:
 - R4 classifier spec on paper (low-risk writing work, no production touch)
-- OR A11b content prompts (gated anyway, needs PK session)
+- OR A11b content prompts (PK session)
 - NOT R6 (seed_and_enqueue rewrite) — hot-path change, needs deliberate planning
 
 The M11 finding — 2,258 silent cron failures over 8 days undetected — remains the biggest systemic lesson. "Cron failure-rate monitoring" is still HIGH priority. Not blocking first pilot but would be embarrassing with a paying client's pipeline.
 
-PK extended today's session past multiple "close the day" checkpoints. Session ended with proper sync-out + F11 verification round (23→22 drift caught and corrected). Respect that PK is also doing a full-time job. Friday should be narrower: pick 1-2 low-risk items, close them cleanly.
+**Calibration discipline for future sessions:** the CFW "never wired" claim from 23 Apr sat in sync_state for 14+ hours before 24 Apr's digest_item anomaly flagged it. Side-findings get the same verification rigour as main findings — a wrong side-finding in a canonical doc is still a wrong claim in a canonical doc.
 
 **Fresh-eyes test for next session:** does the router output still make sense? Look at `SELECT * FROM m.build_weekly_demand_grid((SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns'));` — should show 20 rows, 4 platforms, shares 5-40%, slot counts 1-2. If that's not what you see, something drifted overnight and needs diagnosis before new work.
