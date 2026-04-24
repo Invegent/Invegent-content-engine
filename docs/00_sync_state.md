@@ -390,7 +390,8 @@ All 4 FB tokens permanent. All 4 clients have explicit `c.client_digest_policy` 
 - PK review of R4 v1 seed rules before Step 3 ships
 - PK review of R5 + D168 specs (14 open questions total)
 - PK choose CC-TASK-02 fix: Option A vs B
-- CC-TASK-03 (frontend format vocab audit) — whenever PK runs it
+- PK review CC-TASK-03 brief — decide whether to schedule `usePlatformVocab` + `useFormatVocab` hook rollout as a focused frontend PR, or adopt cleanup-on-touch
+- PK decide whether M9 (`'email'` in STUDIO_SUPPORTED_PLATFORMS — not in catalog) is a promptly-fix or cleanup-on-touch
 
 ### Due week of 22-27 Apr
 
@@ -401,6 +402,11 @@ All 4 FB tokens permanent. All 4 clients have explicit `c.client_digest_policy` 
 
 **New 25 Apr (from CC-TASK-02):**
 - **CC-TASK-02 HIGH fix** — see Sprint Board HIGH priority section
+
+**New 25 Apr (from CC-TASK-03):**
+- **CC-TASK-03 H1 fix** — `invegent-dashboard/app/(dashboard)/actions/video-tracker.ts:52` — replace dead format values `'video_avatar'` + `'video_episode'` in SELECT filter with current active video-format vocabulary (or switch to catalog-driven subquery). 10-min fix, zero risk. Brief: `docs/briefs/2026-04-25-frontend-format-vocab-audit.md`. Currently silent (zero rows in DB use those values); latent trap for future editors or if the pattern gets copied to a write path.
+- **CC-TASK-03 M9 fix** — `invegent-dashboard/app/api/client-profile/preview/[clientId]/route.ts:48` — `STUDIO_SUPPORTED_PLATFORMS` references `'email'` which is NOT in `t."5.0_social_platform"`. Likely meant `'newsletter'`. Single-word change; worth doing promptly since route writes could trigger FK rejection.
+- **CC-TASK-03 usePlatformVocab + useFormatVocab hook rollout** — 7 MEDIUM findings + 3 LOW findings across dashboard all solve with the same pattern (dropdowns and label maps fetched from catalog tables, not hardcoded). Estimated 3-4 hours as a focused frontend-only PR, or cleanup-on-touch as files are edited. Zero hot-path / R6 blockers.
 
 **24 Apr Invegent close:**
 - **Invegent FB + IG activation** (requires v0.2 positioning + platform_rules additions first)
@@ -486,7 +492,10 @@ Evening (Track B):
 - `59bfe66` (dashboard) — docs(roadmap): 22 + 24 Apr closures synced (CC-TASK-01)
 - `be6082e` — docs(sync_state): CC-TASK-01 CLOSED line
 - `23ed4c1` — docs(briefs): EF .upsert() audit — CC-TASK-02 CLOSED (1 HIGH / 0 MED / 1 LOW)
-- THIS COMMIT — docs(sync_state): Invegent v0.1 prompt stack closure + CC-TASK-02 integration
+- `e9897d2` — docs(sync_state): CC-TASK-02 CLOSED line
+- `708421e` — docs(sync_state): Invegent v0.1 prompt stack closure + CC-TASK-02 integration
+- `4f1ff5d` — docs(briefs): frontend format + platform vocab audit — CC-TASK-03 CLOSED (1 HIGH / 9 MEDIUM / 3 LOW). HIGH = video-tracker.ts dead vocab in SELECT filter; 9 MEDIUM = platform dropdowns constrained to 4-7 of 17 catalog platforms + 1 email-vs-newsletter drift; 3 LOW = FORMAT_LABELS maps missing active catalog entries.
+- THIS COMMIT — docs(sync_state): CC-TASK-03 closure + backlog additions
 
 **Migrations (DB-only, 20 total):**
 
