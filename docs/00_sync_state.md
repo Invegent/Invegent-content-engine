@@ -357,6 +357,7 @@ All 4 FB tokens permanent. All 4 clients have explicit `c.client_digest_policy`.
 | Invegent v0.1 content_type_prompt stack | LI+YT configured scope | ✅ |
 | CC-TASK-02 EF upsert audit | 1 HIGH finding identified | ✅ (audit) — fix TBD |
 | **CC-TASK-03 frontend vocab audit** | **1 HIGH / 9 MED / 3 LOW** | **✅ (audit) — fixes TBD** |
+| **CC-TASK-04 dead vocab + email typo cleanup** | H1 + M9 shipped (dashboard `4861b56`) | **✅** |
 
 ### Router track
 
@@ -419,15 +420,15 @@ All 4 FB tokens permanent. All 4 clients have explicit `c.client_digest_policy`.
 ### Backlog (open)
 
 **New 25 Apr late-morning (from CC-TASK-03 + R4 Step 3):**
-- **Proposed CC-TASK-04** — Dead vocab + email typo cleanup bundle: CC-TASK-03 H1 + M9. ~15 min single commit. Deferred until PK approves.
+- ~~**Proposed CC-TASK-04** — Dead vocab + email typo cleanup bundle~~ ✅ CLOSED (dashboard `4861b56`)
 - **R4 distribution monitoring** — check after backfill completes + at 1 week + at 1 month. Tune rules in place via UPDATE if: educational_evergreen <2%, analytical >60% on success-only, timely_breaking <2% while fresh signals exist.
 
 **25 Apr morning (from CC-TASK-02):**
 - CC-TASK-02 HIGH fix — see Sprint Board HIGH priority
 
 **25 Apr morning (from CC-TASK-03):**
-- CC-TASK-03 H1 fix — video-tracker.ts dead vocab (HIGH priority)
-- CC-TASK-03 M9 fix — email→newsletter (HIGH priority)
+- ~~CC-TASK-03 H1 fix — video-tracker.ts dead vocab~~ ✅ CLOSED via CC-TASK-04 (dashboard `4861b56`)
+- ~~CC-TASK-03 M9 fix — email→newsletter~~ ✅ CLOSED via CC-TASK-04 (dashboard `4861b56`)
 - CC-TASK-03 usePlatformVocab + useFormatVocab hook rollout — 3-4h focused PR or cleanup-on-touch
 
 **24 Apr Invegent close:**
@@ -526,6 +527,7 @@ Mid-day (5) + Afternoon (4) + Late afternoon (3) + Evening router-catalog (5) + 
 
 **invegent-dashboard (main):**
 - `59bfe66` — docs(roadmap): sync 22 + 24 Apr (CC-TASK-01)
+- `4861b56` — fix: removed dead format vocab (H1) + email→newsletter (M9) — CC-TASK-04 CLOSED
 
 *(invegent-portal / invegent-web: no 24-25 Apr commits)*
 
@@ -538,25 +540,23 @@ Mid-day (5) + Afternoon (4) + Late afternoon (3) + Evening router-catalog (5) + 
 **Final tally:**
 - **20 commits** on Invegent-content-engine
 - **21 DB migrations** applied
-- **13 briefs** committed (3 CC task briefs + 2 CC findings briefs)
+- **13 briefs** committed (4 CC task briefs + 2 CC findings briefs)
 - **7 sprint items closed**
-- **3 Claude Code tasks closed** (roadmap sync + EF upsert audit + frontend vocab audit)
+- **4 Claude Code tasks closed** (roadmap sync + EF upsert audit + frontend vocab audit + dead-vocab/email-typo cleanup)
 - **R4 classifier LIVE** and auto-running every 5m
 - **Invegent v0.1 prompt stack SHIPPED** (6/6 configured scope)
 - **CFW at full prompt parity** (6→12 rows)
 - **1 live production bug caught + fixed same session**
 - **2 orphaned v1 seed functions removed**
 - **1 latent infrastructure bug fixed** (k.refresh_column_registry)
-- **11 audit findings produced, 6 closed** (2 HIGH + M9 remain as fixes)
+- **11 audit findings produced, 8 closed** (CC-TASK-04 shipped H1 + M9; CC-TASK-02 HIGH remains)
 
-**Pipeline state:** Router infrastructure is no longer purely shadow — R4 is LIVE and classifying every 5m. Still no hot-path integration (R5/R6/R7/R8 ahead). IG publisher remains paused per D165. HIGH-priority fixes (CC-TASK-02, CC-TASK-03 H1, CC-TASK-03 M9) are all currently dormant/silent — no user-facing impact today.
+**Pipeline state:** Router infrastructure is no longer purely shadow — R4 is LIVE and classifying every 5m. Still no hot-path integration (R5/R6/R7/R8 ahead). IG publisher remains paused per D165. Remaining HIGH-priority fix (CC-TASK-02) is currently dormant/silent — no user-facing impact today.
 
 **Remaining HIGH-priority items:**
 - R5 impl (after PK spec review; ~2-3h)
 - R6 (after R5; ~3-4h with Findings 1+4+6 bundled)
 - CC-TASK-02 fix (PK chooses Option A vs B)
-- CC-TASK-03 H1 fix (10 min — dead vocab)
-- CC-TASK-03 M9 fix (single-word change — email→newsletter)
 
 **Not HIGH (defence-in-depth):**
 - D168 Layer 2 implementation (spec ready)
