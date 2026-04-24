@@ -1,17 +1,83 @@
 # Claude Code task briefs
 
-Briefs in this folder are self-contained tasks for Claude Code to pick up via Telegram (`@InvegentICEbot` / OpenClaw).
+Briefs in this folder are self-contained tasks for Claude Code to pick up directly in the terminal.
 
 ## How to use
 
-**PK triggers a task:** send the brief path to `@InvegentICEbot`. Example message:
-```
-Please complete docs/briefs/claude-code/2026-04-25-cc-task-01-dashboard-roadmap-sync.md
-```
+**PK triggers a task:** open Claude Code in the `Invegent-content-engine` working directory and paste one of the prompts from the next section. Claude Code reads the brief from disk and executes autonomously.
 
 **Claude Code executes:** reads the brief, follows the SETUP / OBJECTIVE / METHOD / DELIVERABLES sections, commits direct to main per standing workflow rule.
 
 **Closure loop:** CC must update `docs/00_sync_state.md` under "TODAY'S COMMITS" with a one-line summary + commit SHA. This is how Claude Desktop sees the work on the next session.
+
+## Ready-to-paste prompts
+
+Each of the current task briefs can be triggered by pasting the prompt below into Claude Code.
+
+### CC-TASK-01 — Dashboard roadmap sync
+
+```
+Please read and complete the task described in
+docs/briefs/claude-code/2026-04-25-cc-task-01-dashboard-roadmap-sync.md
+
+This task lives in a DIFFERENT repo (invegent-dashboard). Clone or cd into
+that repo before editing. The brief file itself stays in this repo; the commit
+with the dashboard changes goes to invegent-dashboard.
+
+Follow all SETUP, OBJECTIVE, METHOD, DELIVERABLES, VERIFICATION sections.
+Before starting, read docs/00_sync_state.md in full (this repo).
+Direct-push to main per the standing dev workflow rule.
+
+When complete, update docs/00_sync_state.md in THIS repo under
+"TODAY'S COMMITS" with a closure line + commit SHA per the
+COMMIT BACK TO SYNC_STATE section.
+```
+
+### CC-TASK-02 — EF `.upsert()` audit
+
+```
+Please read and complete the task described in
+docs/briefs/claude-code/2026-04-25-cc-task-02-ef-upsert-audit.md
+
+This is an audit-only task. Do NOT fix anything. Produce the findings brief
+at the exact path specified in the DELIVERABLES section.
+
+Follow all SETUP, OBJECTIVE, METHOD, DELIVERABLES, VERIFICATION sections.
+Before starting, read docs/00_sync_state.md in full and
+docs/briefs/2026-04-24-a21-on-conflict-audit.md (it's the methodology template).
+
+The cross-referencing step requires querying pg_constraint + pg_indexes
+via Supabase MCP (project_id: mbkmaxqhsohbtwsqolns). If Supabase MCP is not
+configured in this Claude Code environment, stop and ask before proceeding —
+the audit is not valuable without the cross-reference step.
+
+When complete, update docs/00_sync_state.md under "TODAY'S COMMITS" with a
+closure line including finding counts + commit SHA.
+```
+
+### CC-TASK-03 — Frontend format/platform vocab audit
+
+```
+Please read and complete the task described in
+docs/briefs/claude-code/2026-04-25-cc-task-03-frontend-format-vocab-audit.md
+
+This is a CROSS-REPO audit. Sweep both invegent-dashboard AND invegent-portal.
+The findings brief itself gets committed to THIS repo (Invegent-content-engine)
+under docs/briefs/.
+
+Follow all SETUP, OBJECTIVE, METHOD, DELIVERABLES, VERIFICATION sections.
+Read docs/00_sync_state.md,
+docs/briefs/2026-04-24-router-catalog-unification-shipped.md,
+and docs/briefs/2026-04-24-router-hardcoded-values-audit.md first.
+
+Audit-only. Do NOT fix anything. Focus especially on the 4 dead format values
+(image_ai, video_slideshow, video_avatar, video_voiceover) — any reference to
+these in production code paths is now a bug waiting to bite since FKs enforce
+the vocabulary.
+
+When complete, update docs/00_sync_state.md under "TODAY'S COMMITS" with
+finding counts + commit SHA.
+```
 
 ## Brief structure (template)
 
