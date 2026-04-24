@@ -1,8 +1,127 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-24 evening AEST — **Track B SHIPPED** (R4 tables + R5 spec + D168 spec + CFW parity) after router catalog unification earlier same evening
+> Last written: 2026-04-24/25 — **Invegent v0.1 prompt stack SHIPPED (6/6 for configured platforms)** + CC-TASK-02 audit closed with 1 HIGH finding
 > Written by: PK + Claude session sync
+
+---
+
+## 🟢 24 APR EVENING (INVEGENT v0.1 PROMPT STACK) — LI + YT SHIPPED
+
+### In one paragraph
+
+Invegent 0/12 gap (surfaced in Track B, parked as standalone follow-up) closed during the window CC-TASK-02 was running. Scope decision: Invegent's `c.client_ai_profile.platform_rules.global.not_configured_platforms = ['facebook', 'instagram', 'twitter_x']` explicitly marks FB + IG as unconfigured in v0.1. Forcing prompt rows for unconfigured platforms would create drift — exactly the opposite of v0.1 honesty posture. So Invegent landed at **6/6 for configured platforms** (LinkedIn + YouTube × rewrite_v1/synth_bundle_v1/promo_v1), not 12/12. Voice anchored to the mid-day profile lock: first-person PK, builder-in-public register, peer-level assumed, honest about mistakes, no LinkedIn-hook openings, zero emojis on LinkedIn (per platform_rules), 5-8 hashtags on YouTube description-only. Both migration guards passed: (1) exactly 6 active rows for Invegent, (2) zero FB/IG contamination. Promo prompts explicitly reframed away from launch-video tropes — Invegent v0.1 has nothing to sell yet, so "promo" means build-log milestones, decision announcements, public-commits. YouTube avatar format disabled across all 6 Invegent prompts (HeyGen not yet configured); kinetic + kinetic_voice are the default video formats until that lands.
+
+### Coverage matrix (final, post Invegent v0.1)
+
+| Client | FB rewr/synth/promo | IG rewr/synth/promo | LI rewr/synth/promo | YT rewr/synth/promo | Total | Scope |
+|---|---|---|---|---|---|---|
+| NDIS-Yarns | 1 / 1 / 1 | 1 / 1 / 1 | 1 / 1 / 1 | 1 / 1 / 1 | 12/12 | all 4 platforms |
+| Property Pulse | 1 / 1 / 1 | 1 / 1 / 1 | 1 / 1 / 1 | 1 / 1 / 1 | 12/12 | all 4 platforms |
+| Care For Welfare | 1 / 1 / 1 | 1 / 1 / 1 | 1 / 1 / 1 | 1 / 1 / 1 | 12/12 | all 4 platforms |
+| **Invegent** | **0 / 0 / 0** | **0 / 0 / 0** | **1 / 1 / 1** | **1 / 1 / 1** | **6/6** | **LI + YT only (v0.1 config)** |
+
+Invegent's 6/6 is **honest coverage** — FB/IG rows would imply platform_rules that don't exist. If FB or IG get activated in a future Invegent positioning bump (v0.2 at earliest), prompt rows land at that time paired with platform_rules additions.
+
+### Invegent voice + scope (captured for next session cross-checks)
+
+Mirrors `docs/briefs/2026-04-24-invegent-brand-profile-v0.1.md`:
+
+- **Voice:** first-person PK ("I...", "my build...", "what I've found..."). NOT practice voice (that's CFW's pattern).
+- **Register:** builder-in-public. Honest about mistakes as core positioning. Knowledgeable-friend tone. Short sentences. Active voice.
+- **Audience:** fellow builders, regulated-industry operators, AI-curious professionals.
+- **Forbidden:**
+  - LinkedIn-hook openings ("Here's why...", "3 things I learned...", "The truth about...")
+  - AI hype vocabulary (revolutionary, game-changer, 10x)
+  - Growth-bait framing
+  - Not-yet-happened outcome claims
+  - Self-promotional Invegent/ICE references outside genuine context
+  - Client / participant / employee identifying details from practice or property businesses
+  - Specific financial or legal advice
+  - AHPRA-violating OT claims (critical cross-contamination guard given PK also writes for CFW)
+- **Required:**
+  - Admit limitations ("I haven't tested this at scale yet", "this is v0.1", "still figuring out...")
+  - End with genuine questions, not generic CTAs
+  - Connect to real operator experience where it applies
+- **Platform specifics:**
+  - LinkedIn: 200-500 words, ZERO emojis, 3-6 hashtags from allowed_examples
+  - YouTube: title 5-12 words (concrete not clickbait), description 80-200 words, narration 60-150 words, 5-8 hashtags in description only, max 2 emojis in description, zero in title
+- **Hashtag whitelist (shared LI + YT):** BuildingInPublic, AIForOperations, AppliedAI, AICraft, RegulatedAI, ContentEngineering, SignalCentric, NDIS, PropertyInvestingAU, CPAandAI, IndieBuilder, SoloBuilder
+- **Hashtag forbidden:** AIRevolution, AIHustle, ChatGPTTips, AIMillionaire, FutureOfWork, 10xWithAI, AIHack
+- **Avatar policy:** not yet configured for Invegent. `video_short_avatar` intentionally omitted from Invegent format selection rules until HeyGen is wired.
+
+### Invegent promo_v1 reframing (worth noting)
+
+Traditional promo_v1 prompts for NY/PP/CFW assume a product/service to promote (open caseload spots, new service region, event invite). Invegent has no product yet. Invegent's promo prompts therefore target:
+
+- **Build-log milestones** — "shipped X this week"
+- **Decision announcements** — "switched from Y to Z because of trade-off T"
+- **Public commits** — "going to ship W by date D, holding myself accountable"
+- **Work-journal entries** — "here's what I wrestled with this week"
+
+Launch-video tropes ("today I'm excited to announce...") are explicit-negative in the Invegent YouTube promo prompt.
+
+### Migration
+
+- `invegent_content_type_prompt_v0_1_li_yt_20260424` — 6 rows atomic; two DO-block guards (exactly 6 rows, zero FB/IG contamination).
+
+### Verification query
+
+```sql
+SELECT platform, job_type, version, is_active, LENGTH(task_prompt) AS prompt_len
+FROM c.content_type_prompt ctp
+JOIN c.client c USING (client_id)
+WHERE c.client_name = 'Invegent' AND is_active = TRUE
+ORDER BY platform, job_type;
+```
+
+Expected: 6 rows — LI+YT × rewrite_v1/synth_bundle_v1/promo_v1, version=1, is_active=TRUE, prompt_len 900-3200 chars per row.
+
+### Commits (this block)
+
+- `invegent_content_type_prompt_v0_1_li_yt_20260424` (migration)
+- THIS COMMIT — docs(sync_state): Invegent v0.1 prompt stack closure
+
+### Backlog impact
+
+Removes from backlog:
+- ~~Invegent content_type_prompt rows (0/12) — needs v0.1 prompt stack~~ ✅ CLOSED for configured scope
+
+Stays in backlog:
+- Invegent FB + IG activation (requires v0.2 positioning + platform_rules additions first)
+- Invegent publishing activation checklist (separate workstream)
+- Avatar configuration for Invegent (HeyGen) — blocks Invegent YT avatar format unlock
+
+---
+
+## 🟢 25 APR — CC-TASK-02 CLOSED (EF `.upsert()` AUDIT — 1 HIGH FINDING)
+
+### In one paragraph
+
+Claude Code closed CC-TASK-02 with a targeted brief at `docs/briefs/2026-04-25-ef-upsert-audit.md` (commit `23ed4c1`). Audit found **1 HIGH-severity latent bug** in `feed-intelligence` Edge Function: the upsert into `m.agent_recommendations` uses `ON CONFLICT (source_id, recommendation_type)` but the actual unique constraint is a PARTIAL index `uq_agent_rec_pending ON (source_id, recommendation_type) WHERE status = 'pending'`. Postgres cannot infer a partial index from `ON CONFLICT` without also echoing the WHERE predicate — verified live via EXPLAIN returning error code 42P10. Currently DORMANT because `m.agent_recommendations` has zero rows today (feed-intelligence has not yet produced a real recommendation — waiting on weekly scheduler enable). Fires the first time a real recommendation is written. Silent-failure class (error surfaces in EF response body, not via cron status — Layer 1 monitoring would NOT catch this; Layer 2 spec'd today WOULD catch this as "no recommendations landed in 14 days despite cron running"). Same family as M11, A21 Finding 1, ID004. Also found 1 LOW finding (benign; non-partial upsert pattern elsewhere with matching full unique index). Zero MEDIUM.
+
+### Fix options (PK to choose)
+
+**Option A — Replace partial unique index with full UNIQUE on `(source_id, recommendation_type)`.**
+Pros: ON CONFLICT inference works without code change; simplest resolution.
+Cons: Changes semantics — two rows with same (source_id, recommendation_type) can't coexist regardless of status. Today's use case only has pending rows, but future states (accepted, rejected, superseded) would conflict. Blocks a natural "revive this recommendation with new status" workflow.
+
+**Option B — Wrap in SECURITY DEFINER RPC that echoes the WHERE predicate.**
+Pros: Preserves partial index semantics. RPC enforces correct ON CONFLICT WHERE clause. EF calls RPC rather than raw upsert.
+Cons: One more layer. Slight indirection. Requires the RPC to keep the predicate in sync if index predicate ever changes.
+
+**Option C (not recommended) — Echo the WHERE predicate in EF TypeScript code.**
+The `.upsert()` method in supabase-js does not accept a WHERE clause argument for ON CONFLICT. Would require dropping to raw SQL via RPC — which IS Option B.
+
+Recommendation: **Option B.** Same pattern as `public.upsert_publish_profile()` — partial-index-aware upserts routed through SECURITY DEFINER RPCs. Consistent with PK principle on dynamic structure (RPC knows the predicate; EF doesn't need to).
+
+### CC-TASK-02 brief
+
+Full methodology + per-upsert finding breakdown: `docs/briefs/2026-04-25-ef-upsert-audit.md`.
+
+### Cross-audit correlation
+
+This finding is a DIFFERENT bug class than A21 (same morning). A21 caught `ON CONFLICT ON CONSTRAINT name-that-doesnt-exist` patterns — syntactic drift between function body + actual constraint name. CC-TASK-02 caught `ON CONFLICT (columns)` with partial-index semantic mismatch — constraint exists, but inference rules don't allow it. Complementary coverage. Both classes need periodic re-audit as schema evolves.
 
 ---
 
@@ -21,31 +140,6 @@ Track B ran in parallel with Claude Code tasks 01–03 (dashboard roadmap sync, 
 | D3 | D168 Layer 2 response-sentinel spec (23k chars) | `d0820c6` — `docs/briefs/2026-04-24-d168-layer-2-response-sentinel-spec.md` |
 | D4 | CFW 6 new content_type_prompt rows | migration `cfw_content_type_prompt_youtube_and_promo_v1_20260424` |
 
-### Coverage matrix after Track B (c.content_type_prompt — active rows)
-
-| Client | FB rewr/synth/promo | IG rewr/synth/promo | LI rewr/synth/promo | YT rewr/synth/promo | Total |
-|---|---|---|---|---|---|
-| NDIS-Yarns | 1 / 1 / 1 | 1 / 1 / 1 | 1 / 1 / 1 | 1 / 1 / 1 | 12/12 ✅ |
-| Property Pulse | 1 / 1 / 1 | 1 / 1 / 1 | 1 / 1 / 1 | 1 / 1 / 1 | 12/12 ✅ |
-| **Care For Welfare** | **1 / 1 / 1** | **1 / 1 / 1** | **1 / 1 / 1** | **1 / 1 / 1** | **12/12 ✅ (was 6/12)** |
-| Invegent | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0/12 ⚠️ |
-
-Invegent gap surfaced during Track B (memory previously said "Invegent v0.1 locked" — that referred to `brand_profile` and `platform_rules`, not content_type_prompt rows). Flagged as a standalone follow-up, out of Track B scope.
-
-### R4 verification (post-seed, before function ships)
-
-```sql
--- 6 classes, all current + active, priority ranks 1-6 occupied
-SELECT priority_rank, class_code, version, COUNT(rule_id) AS rules, COUNT(DISTINCT rule_group) AS groups
-FROM t.content_class cc LEFT JOIN t.content_class_rule ccr USING (content_class_id)
-WHERE cc.is_current=TRUE AND ccr.is_active=TRUE
-GROUP BY 1,2,3 ORDER BY 1;
-```
-
-Expected: 6 rows, ranks 1-6, rule counts 3-5 per class (timely_breaking has 5 due to group 1 being an AND pair).
-
-Actual: ✅ verified.
-
 ### R4 Step 3 readiness
 
 Blocker for R4 implementation: PK reviews v1 rule set (spec `docs/briefs/2026-04-24-r4-d143-classifier-spec.md`) and confirms:
@@ -55,40 +149,13 @@ Blocker for R4 implementation: PK reviews v1 rule set (spec `docs/briefs/2026-04
 
 Once confirmed, Step 3 = classifier function + sweep + cron. Implementation ~1.5-2h; backfill ~12h at 100/5min for 14k canonicals.
 
-### R5 key open questions (for weekend review)
+### R5 key open questions
 
-From `docs/briefs/2026-04-24-r5-matching-layer-spec.md`:
-1. Fitness weightings — 50/30/20 right?
-2. Minimum fitness threshold — 50 right?
-3. v1 fitness matrix — 6×10 right? (12 non-buildable formats deferred)
-4. Cross-platform dedup — aggressive (one canonical per run) or permissive (same content on different platforms different days)?
-5. Client override semantics — replace (current) or multiplier?
-6. Campaign routing — out of R5 MVP, split to R5.5?
-7. Fitness tuning cadence — manual (current) or data-driven from performance tables?
+From `docs/briefs/2026-04-24-r5-matching-layer-spec.md`: weightings, threshold, matrix scope, dedup, overrides, campaigns, tuning cadence (7 total).
 
 ### D168 Layer 2 key open questions
 
-From `docs/briefs/2026-04-24-d168-layer-2-response-sentinel-spec.md`:
-1. 11 v1 checks — right shape?
-2. Thresholds — conservative (current) or tight?
-3. 15m cadence floor — right?
-4. Alert dedup semantics — reuse Layer 1's `(jobid, alert_type)` where jobid can be NULL?
-5. 30-day retention — enough?
-6. Dashboard integration — CC-TASK-07?
-7. Out-of-DB notification layer — Telegram/Slack/email?
-
-**Priority:** Not HIGH today. Defence in depth. Triggers: next ID004-class incident, or cron fleet >60, or external client SLA risk.
-
-### Track B commits
-
-- `e4bc18f` — docs(briefs): R5 matching layer spec — fitness matrix + matching algorithm
-- `d0820c6` — docs(briefs): D168 Layer 2 — response-layer sentinel spec
-- THIS COMMIT — docs(sync_state): 24 Apr evening Track B rolled up
-
-### Track B migrations
-
-- `r4_d143_classifier_catalog_tables_and_seed_v1_20260424` — R4 Step 1 + Step 2 atomic
-- `cfw_content_type_prompt_youtube_and_promo_v1_20260424` — CFW 6-row parity fill
+From `docs/briefs/2026-04-24-d168-layer-2-response-sentinel-spec.md`: check shape, thresholds, cadence, dedup, retention, dashboard, notifications (7 total). Not HIGH priority.
 
 ---
 
@@ -98,7 +165,7 @@ From `docs/briefs/2026-04-24-d168-layer-2-response-sentinel-spec.md`:
 
 PK pushed back on the R4 classifier v1 spec being hardcoded, which triggered a comprehensive audit of the entire router track (`docs/briefs/2026-04-24-router-hardcoded-values-audit.md` — 9 findings, 3 severity tiers). Answering "what else have we hardcoded?" uncovered two existing taxonomy tables (`t.5.0_social_platform` with 14 platforms from Dec 2025, `t.5.3_content_format` with 22 formats from Mar 2026) that we'd been parallelising in CHECK constraints across the codebase. Near-catastrophic: I was about to build `t.platform_catalog` + `t.format_catalog` — the exact parallel-structure anti-pattern the audit was about. PK's "what else is hardcoded?" saved the duplication. Pivoted to extending existing taxonomies: added `is_router_target` + `content_pipeline` columns to `t.5.0_social_platform`, seeded 3 new platform rows (blog/newsletter/website for pre-existing in-use values), dropped 7 hardcoded CHECK constraints, added **29 FKs** pointing at the taxonomy tables. Validation view tolerance fixed. CFW + Invegent both backfilled with explicit `c.client_digest_policy` rows. Duplicate UNIQUE index cleaned. **Bonus find:** `k.refresh_column_registry` had a latent bug (fk CTE produced dupe rows when any column has 2+ FKs, breaking the event trigger on every DDL firing); fixed with `DISTINCT ON` + deterministic `ORDER BY`. Migration attempts: 4 (two data-validation failures, one pre-existing-FK collision, one successful cleanup). Brief: `docs/briefs/2026-04-24-router-catalog-unification-shipped.md` (`ac06043`).
 
-### Findings status after today
+### Findings status
 
 | # | Finding | Severity | Status |
 |---|---|---|---|
@@ -112,216 +179,152 @@ PK pushed back on the R4 classifier v1 spec being hardcoded, which triggered a c
 | 8 | AI provider CHECK | 🟢 LOW | Acceptable as-is |
 | 9 | Validation view strict `= 100` | 🟢 LOW | ✅ CLOSED — ABS tolerance |
 
-### Data flow now cleaner
-
-Adding a new platform (e.g. Bluesky, or activating newsletter as router target) is now an INSERT into `t.5.0_social_platform` with `is_router_target=TRUE`. Zero DDL required. Adding a new format is an INSERT into `t.5.3_content_format`. Same — zero DDL. Router functions will read these catalogs for their vocabulary.
-
-### Evening router-catalog commits
-
-- `828de5f` — docs(briefs): router track hardcoded values audit — 9 findings
-- `bb8d278` — docs(briefs): R4 classifier spec v2 — rewritten table-driven after PK pushback
-- `ac06043` — docs(briefs): router catalog unification SHIPPED
-- `74f6de7` — docs(sync_state): 24 Apr evening router catalog rollup
-- `931f93d` — docs(briefs/claude-code): three Claude Code task briefs
-- `d00293d` — docs(briefs/claude-code): README updated for direct terminal workflow
-
-### Evening router-catalog migrations
-
-- `router_catalog_unification_use_existing_taxonomy_20260424_v1` — INSERT value-count mismatch, rolled back
-- `router_catalog_unification_use_existing_taxonomy_20260424_v2` — missed `website` orphan in m.post_publish, rolled back
-- `router_catalog_unification_use_existing_taxonomy_20260424_v3` — triggered event trigger bug via pre-existing `_fkey` + my `fk_*` multi-FK; PARTIALLY COMMITTED (main DDL landed before Supabase's migration-history wrapper failed on event trigger)
-- `router_catalog_unification_v4_trigger_disabled` — PARTIALLY COMMITTED similarly; same event trigger issue
-- Manual cleanup via `execute_sql` (trigger disabled for duration):
-  - Dropped 2 redundant FKs (`fk_client_format_mix_override_format`, `fk_platform_format_mix_default_format`)
-  - Backfilled CFW digest_policy (wrong UUID in session memory — correct: `3eca32aa-e460-462f-a846-3f6ace6a3cae`)
-  - Backfilled Invegent digest_policy
-  - Recreated view with ABS tolerance
-  - Dropped redundant UNIQUE `uq_social_platform_platform_code`
-  - **Fixed `k.refresh_column_registry` with DISTINCT ON for multi-FK robustness**
-  - Re-enabled event trigger + verified with COMMENT DDL firing
-
-### New backlog items (evening)
-
-- **R6 — 1-line change at Finding 6:** replace `NOT IN ('youtube')` with `platform IN (SELECT platform_code FROM t."5.0_social_platform" WHERE content_pipeline = 'text_bundle')`
-- **Format vocabulary cleanup:** 4 dead profile-only values (image_ai, video_slideshow, video_avatar, video_voiceover) not in t.5.3_content_format. No data uses them, but if any dashboard code hardcodes these strings it'll fail. Audit for hardcoded format strings in invegent-dashboard + invegent-portal — LOW priority (now queued as CC-TASK-03).
-- **Blog vs website consolidation:** 12 legacy `m.post_publish` rows with platform='website' kept distinct from 'blog'. Migrating them to 'blog' would simplify vocabulary — LOW priority follow-up.
-- **Memory correction:** CFW client_id wrong in userMemories (abbreviated `3eca32aa` expanded to wrong full UUID in session summary). Corrected.
-- **Invegent content_type_prompt rows:** standalone follow-up — 0/12 coverage, needs v0.1 prompt stack once activation work starts.
-
 ---
 
 ## 🟢 24 APR LATE-AFTERNOON UPDATE — A21 ON CONFLICT AUDIT CLOSED
 
-### In one paragraph
-
-A21 (Trigger ON CONFLICT audit) closed this afternoon. Swept all 25 `ON CONFLICT` clauses across 21 SQL functions + 1 direct cron command. Cross-referenced each against `pg_index` + `pg_constraint`. Found **1 real dormant M11-class sister bug**: `m.seed_ndis_bundles_to_ai_v1` + `m.seed_property_bundles_to_ai_v1` both referenced `ON CONFLICT ON CONSTRAINT post_seed_uniq_run_item` but the actual constraint is `post_seed_uniq_run_item_platform`. Zero callers in pg_cron, other SQL functions, or pg_depend — truly orphaned v1 predecessors of `m.seed_client_to_ai_v2`. **Both dropped.** PK's principle explicit on this: ICE is a single robust pipeline for all clients; per-client or per-brand functions create divergence surface area and compound into drift. Also flagged **1 architectural inconsistency** in cron 48 (`enqueue-publish-queue-every-5m`): the NOT EXISTS filter scopes on `post_draft_id` only while the unique constraint is `(post_draft_id, platform)` — benign today under one-draft-per-platform model, latent risk under router model (added to R6 backlog). Also **cleaned up 7 redundant unique indexes/constraints** across 6 tables (schema drift from multiple migrations independently adding the same guarantee). Brief: `docs/briefs/2026-04-24-a21-on-conflict-audit.md` (`20d7f6d`).
-
-### A21 findings summary
-
-| Finding | Severity | Status |
-|---|---|---|
-| v1 seed functions referencing non-existent constraint | Dormant bug (zero callers) | ✅ CLOSED — functions dropped |
-| Cron 48 NOT EXISTS filter scope mismatch vs unique constraint | Latent (benign today, breaks under router) | 🟡 FLAGGED — R6 follow-up note |
-| 7 redundant unique indexes/constraints | Cleanup candidate | ✅ CLEANED — 4 constraints + 3 indexes dropped |
+A21 closed. Swept 25 `ON CONFLICT` clauses across 21 SQL functions. Found 1 dormant M11-class sister bug (`m.seed_ndis_bundles_to_ai_v1` + `m.seed_property_bundles_to_ai_v1` referencing non-existent constraint — dropped), 1 latent architectural inconsistency in cron 48 (flagged for R6), 7 redundant unique indexes/constraints (cleaned). Brief: `docs/briefs/2026-04-24-a21-on-conflict-audit.md` (`20d7f6d`).
 
 ---
 
-## 🟢 24 APR AFTERNOON UPDATE — CRON HEALTH MONITORING LAYER 1 LIVE + TOKEN-EXPIRY BUG CLOSED
+## 🟢 24 APR AFTERNOON UPDATE — CRON HEALTH MONITORING LAYER 1 LIVE
 
-Layer 1 cron failure-rate monitoring shipped to production. New DB-layer system watches `cron.job_run_details` every 15 minutes via `cron-health-every-15m` pg_cron → `m.refresh_cron_health()` → UPSERT into `m.cron_health_snapshot`. Three alert types: `failure_rate_high`, `consecutive_failures`, `no_recent_runs`. First refresh caught **1 live bug (token-expiry-alert-daily schema drift)**, fixed same session.
+Layer 1 cron failure-rate monitoring shipped. Watches `cron.job_run_details` every 15 min. Three alert types: `failure_rate_high`, `consecutive_failures`, `no_recent_runs`. First refresh caught live token-expiry-alert-daily schema drift — fixed same session.
 
 ---
 
 ## 🟢 24 APR MID-DAY UPDATE — A11b CLOSED
 
-CFW + Invegent v0.1 content prompts locked. `chk_persona_type` widened. Six `c.content_type_prompt` rows for CFW (rewrite/synth × FB/IG/LI). Invegent v0.1 referred to `brand_profile` + `platform_rules` — NOT content_type_prompt (that gap surfaced in Track B evening).
+CFW + Invegent v0.1 content prompts locked. `chk_persona_type` widened. Six `c.content_type_prompt` rows for CFW (rewrite/synth × FB/IG/LI). Invegent v0.1 referred to `brand_profile` + `platform_rules` — NOT content_type_prompt (that gap surfaced in Track B evening, resolved 24 Apr evening per Invegent v0.1 prompt stack section above).
 
 ---
 
 ## 🟢 24 APR SESSION-START UPDATE — MORNING HOUSEKEEPING
 
-Orphan branch sweep clean, M8 Gate 4 PASSED, CFW correction (26 client_source rows / 2 client_content_scope rows, was wrongly flagged as "never wired").
+Orphan branch sweep clean, M8 Gate 4 PASSED, CFW correction (26 client_source rows / 2 client_content_scope rows).
 
 ---
 
 ## ⚠️ FIRST THING NEXT SESSION
 
-**Read this entire file before doing anything else.** 24 Apr was the highest-output session on record. Morning housekeeping + A11b both halves + cron health monitoring Layer 1 + token-expiry bug fix + A21 ON CONFLICT audit + router hardcoded-values audit (9 findings) + router catalog unification shipped (5 findings closed) + k.refresh_column_registry robustness fix + **Track B: R4 catalog tables + R5 spec + D168 spec + CFW parity fill**.
+**Read this entire file before doing anything else.** 24 Apr was the highest-output session on record. Morning housekeeping + A11b both halves + cron health monitoring Layer 1 + token-expiry bug fix + A21 ON CONFLICT audit + router hardcoded-values audit (9 findings) + router catalog unification shipped (5 findings closed) + k.refresh_column_registry robustness fix + **Track B: R4 catalog tables + R5 spec + D168 spec + CFW parity fill** + **Invegent v0.1 prompt stack** + **CC-TASK-01 dashboard roadmap sync + CC-TASK-02 EF .upsert() audit with 1 HIGH finding**.
 
-### Today's full session tally (updated 24 Apr Track B close)
+### Today's full session tally
 
-- **16 commits** on Invegent-content-engine
-- **19 DB migrations** applied (17 + 2 Track B)
-- **11 briefs** committed (including 3 Claude Code task briefs)
-- **5 sprint items closed** (M1 A11b, Cron monitoring Layer 1, Q5 check_token_expiry, L6/A21 ON CONFLICT, evening router catalog unification)
-- **2 Track B specs committed ready for review** (R5 matching, D168 Layer 2)
-- **R4 schema + seed landed** (6 classes, 20 rules, 3 new columns on f.canonical_content_body) — function still pending
+- **19 commits** on Invegent-content-engine (through Invegent v0.1 close)
+- **20 DB migrations** applied
+- **12 briefs** committed (including 3 Claude Code task briefs + 1 CC-TASK-02 findings brief)
+- **6 sprint items closed** (M1 A11b, Cron monitoring Layer 1, Q5 check_token_expiry, L6/A21 ON CONFLICT, evening router catalog unification, CC-TASK-02 EF upsert audit)
+- **2 Claude Code tasks closed** (CC-TASK-01 dashboard roadmap sync shipped; CC-TASK-02 audit with HIGH-priority fix queued)
+- **Invegent v0.1 prompt stack SHIPPED** (6/6 for LI + YT configured scope)
 - **CFW content_type_prompt at 12/12 parity** (was 6/12)
-- **1 live production bug caught and fixed same session**
+- **R4 schema + seed landed** (6 classes, 20 rules, 3 new columns on f.canonical_content_body) — function still pending PK review
+- **1 live production bug caught and fixed same session** (token-expiry)
 - **2 orphaned v1 seed functions removed** (M11-class dormant bug dead-code)
 - **1 latent infrastructure bug fixed** (k.refresh_column_registry multi-FK dupe)
-- **9 audit findings produced + 5 closed**
+- **10 audit findings produced + 6 closed** (9 router + 1 CC-TASK-02 HIGH + 1 CC-TASK-02 LOW)
 
 ### Critical state awareness for next session
 
 1. **A11b CLOSED.** CFW + Invegent v0.1 prompt stacks locked.
 2. **Cron health monitoring LIVE.** Check `m.cron_health_alert WHERE resolved_at IS NULL` at session start.
-3. **Token-expiry bug FIXED.** Auto-resolves at next cron fire.
-4. **A21 CLOSED (DB layer).** Edge Function `.upsert()` audit remains as MEDIUM follow-up (now queued as CC-TASK-02).
-5. **ROUTER CATALOG UNIFIED.** t.5.0_social_platform extended with is_router_target + content_pipeline. 17 platforms catalogued. 29 FKs from data columns to taxonomy. Format vocab drift eliminated. All 4 clients have explicit digest_policy rows.
-6. **`k.refresh_column_registry` fixed.** DISTINCT ON for multi-FK columns. Event trigger robust.
-7. **R4 TABLES + SEED LIVE** (Track B). `t.content_class` + `t.content_class_rule` seeded with v1 data. Step 3 (function + sweep + cron) gated on PK review of seed rules.
-8. **R5 matching layer spec ready.** 7 open questions for PK. Table-driven 6×10 fitness matrix. Depends on R4 Step 3 producing clean class distribution.
-9. **D168 Layer 2 spec ready.** 7 open questions. Not HIGH priority — defence in depth.
-10. **CFW at full prompt parity** (12/12 rows). Invegent still at 0/12 — flagged as standalone follow-up.
-11. **R6 prep clearer:** Finding 6 (youtube hack) = 1-line change; Findings 1+4 bundle into R6's hot-path PR. Total R6 remaining: ~3-4h after R4+R5 review.
-12. **`instagram-publisher-every-15m` (jobid 53) remains PAUSED** until router integration verifies.
-13. **ID004 closed.** Content-fetch cron healthy.
-14. **M8 Gate 4 CLOSED.** Zero duplicate canonicals post-merge.
-15. **M12 still superseded** by router build per D166.
+3. **Token-expiry bug FIXED.**
+4. **A21 CLOSED (DB layer). CC-TASK-02 CLOSED (EF layer) with 1 HIGH-priority fix pending PK decision** (Option A vs B — recommended B).
+5. **ROUTER CATALOG UNIFIED.**
+6. **`k.refresh_column_registry` fixed.**
+7. **R4 TABLES + SEED LIVE** (Track B). Step 3 gated on PK review.
+8. **R5 matching layer spec ready.** 7 open Qs.
+9. **D168 Layer 2 spec ready.** 7 open Qs. Not HIGH priority.
+10. **CFW at 12/12 parity. Invegent at 6/6 for configured platforms** (LI + YT — correct v0.1 scope, NOT a gap).
+11. **R6 prep clearer:** Finding 6 = 1-line change; Findings 1+4 bundle. Total R6 remaining: ~3-4h after R4+R5 review.
+12. **`instagram-publisher-every-15m` (jobid 53) remains PAUSED.**
+13. **ID004 closed.**
+14. **M8 Gate 4 CLOSED.**
+15. **M12 still superseded per D166.**
 16. **2 CFW IG drafts in `needs_review`** from AM — decision TBD.
-17. **Dashboard roadmap sync still pending** — now queued as CC-TASK-01.
-18. **Reviewers still paused.** All four rows `is_active=false`.
-19. **Pipeline clean.** 0 approved-but-unpublished FB drafts, 0 queue items.
+17. **Dashboard roadmap sync SHIPPED** (CC-TASK-01 closed 25 Apr morning, commit `59bfe66` on invegent-dashboard).
+18. **Reviewers still paused.**
+19. **Pipeline clean.**
 
-### Router state — snapshot (updated post Track B)
+### Router state — snapshot
 
-Shadow infrastructure LIVE but still unconnected to hot path:
-- ✅ R1: `t.platform_format_mix_default` with 22 seed rows
+- ✅ R1: `t.platform_format_mix_default` + 22 seed rows
 - ✅ R2: `c.client_format_mix_override`
 - ✅ R3: `m.build_weekly_demand_grid()`
-- ✅ R4 schema + seed: `t.content_class` (6 classes) + `t.content_class_rule` (20 rules) + f.canonical_content_body columns — **LIVE** (Track B)
-- 🟡 R4 function: spec ready, gated on PK review before Step 3 ships
-- 🟡 R5: spec committed, 7 open questions — depends on R4 function
-- 🔲 R6: `seed_and_enqueue_ai_jobs_v1` rewrite — 3-4h, depends on R4+R5
-- 🔲 R7: ai-worker platform awareness
+- ✅ R4 schema + seed: 6 classes, 20 rules, f.canonical_content_body extended — **LIVE**
+- 🟡 R4 function: spec ready, gated on PK review
+- 🟡 R5: spec ready, 7 open questions
+- 🔲 R6: seed_and_enqueue rewrite — ~3-4h, depends on R4+R5
+- 🔲 R7: ai-worker platform-awareness
 - 🔲 R8: Cron changes
-- **✅ Catalogs unified (24 Apr evening):** t.5.0_social_platform + t.5.3_content_format now drive platform/format vocabulary via FK.
+- ✅ Catalogs unified.
 
 ---
 
-## SESSION STARTUP PROTOCOL (UPDATED 24 APR EVENING TRACK B)
+## SESSION STARTUP PROTOCOL
 
-1. Read this file (`docs/00_sync_state.md`) in full
-2. **Orphan branch sweep:** all 3 repos; flag orphans BEFORE new work
-3. Check `c.external_reviewer` — confirm reviewers still paused
-4. Check IG publisher cron state — jobid 53 `active=false`
+1. Read this file in full
+2. Orphan branch sweep — all 3 repos
+3. Check `c.external_reviewer` — confirm paused
+4. Check IG publisher cron — jobid 53 `active=false`
 5. Validate router shadow infrastructure: `SELECT * FROM t.platform_format_mix_default_check;` → 4 rows status='ok'
-6. Validate router catalogs: `SELECT COUNT(*) FROM t."5.0_social_platform" WHERE is_router_target=TRUE` = 4; `SELECT COUNT(*) FROM c.client_digest_policy` = 4
-7. Validate event trigger + catalog refresh: `SELECT evtenabled FROM pg_event_trigger WHERE evtname='trg_k_refresh_catalog'` = 'O'; `SELECT k.refresh_column_registry()` returns empty
-8. **Validate R4 seed (Track B):** `SELECT COUNT(*) FROM t.content_class WHERE is_current=TRUE` = 6; `SELECT COUNT(*) FROM t.content_class_rule WHERE is_active=TRUE` = 20
-9. **Validate CFW parity (Track B):** `SELECT COUNT(*) FROM c.content_type_prompt ctp JOIN c.client c USING(client_id) WHERE c.client_name='Care For Welfare Pty Ltd' AND ctp.is_active=TRUE` = 12
-10. Check ID004 recovery: `f.canonical_content_body` pending-backlog drained
-11. Check active cron health alerts:
-    ```sql
-    SELECT jobid, jobname, alert_type, threshold_crossed,
-           ROUND((EXTRACT(EPOCH FROM NOW() - first_seen_at) / 3600)::numeric, 1) || 'h' AS age,
-           LEFT(COALESCE(latest_error, ''), 100) AS error_preview
-    FROM m.cron_health_alert WHERE resolved_at IS NULL ORDER BY first_seen_at DESC;
-    ```
+6. Validate router catalogs: `COUNT(*) FROM t."5.0_social_platform" WHERE is_router_target=TRUE` = 4; `COUNT(*) FROM c.client_digest_policy` = 4
+7. Validate event trigger: `evtenabled` = 'O'; `k.refresh_column_registry()` returns empty
+8. Validate R4 seed: `COUNT(*) FROM t.content_class WHERE is_current=TRUE` = 6; rules = 20
+9. **Validate coverage matrix:** CFW 12/12; NY 12/12; PP 12/12; **Invegent 6/6 (LI+YT only — correct per v0.1)**
+10. Check ID004 recovery
+11. Check active cron health alerts
 12. Check file 15 Section G — pick next sprint item
-13. Check `m.external_review_queue` for findings landed before pause
-14. Read `docs/06_decisions.md` D156–D168 for accumulated decision trail
-15. Query `k.vw_table_summary` before working on any table
+13. Check `m.external_review_queue`
+14. Read `docs/06_decisions.md` D156–D168
+15. Query `k.vw_table_summary` before any table work
 
 ---
 
-## DEV WORKFLOW RULE (ADOPTED 22 APR — D165 context)
+## DEV WORKFLOW RULE (D165)
 
-**Default: direct-push to main.** Claude Code work ships straight to main. Vercel auto-deploys within ~60s.
-
-**Deviate only when:**
-- Multi-repo coordinated change where half-state would break production
-- PK explicitly flags the work as risky
-
-**Session-start orphan sweep is non-negotiable.**
+**Default: direct-push to main.** Deviate only for multi-repo coordinated risk or PK-flagged risk. Session-start orphan sweep non-negotiable.
 
 ---
 
-## THE EXTERNAL REVIEWER LAYER — CURRENT STATE (UNCHANGED FROM 21 APR)
+## EXTERNAL REVIEWER LAYER (UNCHANGED)
 
-| Reviewer | Lens | Model | `is_active` |
-|---|---|---|---|
-| Strategist | Right direction? | gemini-2.5-pro | false |
-| Engineer | Built well? | gpt-4o | false |
-| Risk | Silent failures? | grok-4-1-fast-reasoning | false |
-| System Auditor | Claim vs reality audit | grok-4-1-fast-reasoning | false |
-
-All still paused. Re-enable ceremony at ~18-19 of 28 Section A items closed.
+All four reviewers still paused. Re-enable ceremony at ~18-19 of 28 Section A items closed.
 
 ---
 
 ## CURRENT PHASE
 
-**Phase 1 — COMPLETE** (7 Apr 2026)
-**Phase 3 — Expand + Personal Brand** — active, external client expansion gated on pre-sales criteria
+**Phase 1 — COMPLETE.** **Phase 3 — Expand + Personal Brand** active.
 
-**Pre-sales gate status:** 10 of 28 Section A items closed, 18 open (added: router catalog unification counts as partial close on router track; Track B R4 schema+seed is partial close on R4).
+Pre-sales gate: 10 of 28 Section A items closed (L6/A21 + A11b count this session; Track B R4 schema+seed + CC-TASK-02 closure + Invegent v0.1 stack are partial progress on other items).
 
-**Today's movement:**
-- 24 Apr morning: orphan sweep, M8 Gate 4 PASS, CFW correction
-- 24 Apr mid-day: M1 / A11b CLOSED
-- 24 Apr afternoon: Cron monitoring HIGH-priority CLOSED + Q5 CLOSED
-- 24 Apr late-afternoon: A21 / L6 CLOSED
-- 24 Apr evening: Router catalog unification SHIPPED (Findings 2/3/5/6/9 closed) + k.refresh_column_registry robustness fix
-- **24 Apr evening (Track B): R4 tables+seed LIVE, R5 matching spec COMMITTED, D168 Layer 2 spec COMMITTED, CFW 12/12 parity achieved**
+Today's movement:
+- Morning: orphan sweep, M8 Gate 4 PASS, CFW correction
+- Mid-day: M1 / A11b CLOSED
+- Afternoon: Cron monitoring + Q5 CLOSED
+- Late afternoon: A21 / L6 CLOSED
+- Evening: Router catalog unification SHIPPED
+- Evening Track B: R4 schema+seed LIVE, R5 spec, D168 spec, CFW 12/12
+- Evening Invegent: v0.1 LI+YT prompt stack SHIPPED (6/6 configured scope)
+- 25 Apr morning: CC-TASK-01 dashboard roadmap sync; CC-TASK-02 EF upsert audit (1 HIGH)
 
 ---
 
-## ALL CLIENTS — STATE (UPDATED 24 APR TRACK B)
+## ALL CLIENTS — STATE
 
 | Client | client_id | FB | IG | LI | YT | Schedule | Digest policy | Prompt stack | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| NDIS Yarns | fb98a472 | ✅ | ⏸ | ✅ | 🔲 | 6 rows | ✅ lenient | 12 rows | 63 dead m8_m11_bloat |
-| Property Pulse | 4036a6b5 | ✅ | ⏸ | ✅ | 🔲 | 6+tier | ✅ lenient | 12 rows | 44 dead |
-| Care For Welfare | 3eca32aa-e460 | ✅ | ⏸ | ⚠ | 🔲 | 21 rows | ✅ strict | **✅ 12/12 (Track B)** | 2 IG drafts pending |
-| Invegent | 93494a09 | ⏸ | ⏸ | ⚠ | ⚠ | 0 rows | ✅ strict | **⚠️ 0/12 — needs v0.1 prompt stack** | Publishing deferred |
+| NDIS Yarns | fb98a472 | ✅ | ⏸ | ✅ | 🔲 | 6 rows | ✅ lenient | 12/12 | 63 dead m8_m11_bloat |
+| Property Pulse | 4036a6b5 | ✅ | ⏸ | ✅ | 🔲 | 6+tier | ✅ lenient | 12/12 | 44 dead |
+| Care For Welfare | 3eca32aa-e460 | ✅ | ⏸ | ⚠ | 🔲 | 21 rows | ✅ strict | 12/12 | 2 IG drafts pending |
+| Invegent | 93494a09 | not configured | not configured | ⚠ | ⚠ | 0 rows | ✅ strict | **6/6 v0.1 (LI+YT configured)** | Publishing deferred; FB+IG blocked on v0.2 positioning |
 
-All 4 FB tokens permanent. All 4 clients have explicit `c.client_digest_policy` rows. CFW now at parity; Invegent content_type_prompt gap flagged as standalone follow-up.
+All 4 FB tokens permanent. All 4 clients have explicit `c.client_digest_policy` rows. Prompt stack coverage now consistent with each client's configured scope.
 
 ---
 
-## SPRINT MODE — THE BOARD (24 APR TRACK B CLOSE)
+## SPRINT MODE — THE BOARD
 
 ### Quick wins
 
@@ -333,45 +336,46 @@ All 4 FB tokens permanent. All 4 clients have explicit `c.client_digest_policy` 
 
 | # | Item | Status |
 |---|---|---|
-| M1 | A11b | ✅ 24 Apr mid-day |
+| M1 | A11b | ✅ |
 | M2-M9, M11 | (all closed) | ✅ |
 | M12 | IG publisher | 🟡 SUPERSEDED per D166 |
-| Cron failure-rate monitoring | Layer 1 | ✅ 24 Apr PM |
-| **CFW content_type_prompt parity** | **Track B** | **✅ 24 Apr evening** |
+| Cron failure-rate monitoring Layer 1 | | ✅ |
+| CFW content_type_prompt parity | | ✅ |
+| **Invegent v0.1 content_type_prompt stack** | **LI+YT configured scope** | **✅** |
+| **CC-TASK-02 EF upsert audit** | **1 HIGH finding identified** | **✅ (audit) — fix TBD** |
 
-### Router track (22 Apr per D166+D167 + 24 Apr evening catalog work + Track B)
+### Router track
 
 | # | Item | Status |
 |---|---|---|
-| R1 | `t.platform_format_mix_default` + seed | ✅ |
-| R2 | `c.client_format_mix_override` | ✅ |
-| R3 | `m.build_weekly_demand_grid()` | ✅ |
-| Catalog unification | t.5.0_social_platform + t.5.3_content_format extended + FKs | ✅ 24 Apr evening |
-| **R4 tables + seed** | **6 classes, 20 rules, f.canonical_content_body extended** | **✅ Track B** |
-| R4 function + sweep + cron | Step 3 gated on PK review of seed rules | 🟡 Spec done, impl pending |
-| **R5 spec** | **Fitness matrix + matching algorithm** | **✅ Track B (spec only)** |
-| R5 impl | Depends on R4 function producing distributions | 🔲 ~2-3h |
-| R6 | `seed_and_enqueue` rewrite | 🔲 HIGH RISK — ~3-4h (Findings 1+4+6 bundled) |
-| R7 | ai-worker platform-awareness | 🔲 Depends on R6 |
-| R8 | Cron changes | 🔲 Depends on R6 |
+| R1 | mix_default + seed | ✅ |
+| R2 | client override | ✅ |
+| R3 | demand grid function | ✅ |
+| Catalog unification | platform + format taxonomies extended + FKs | ✅ |
+| R4 tables + seed | 6 classes, 20 rules, f.canonical_content_body extended | ✅ |
+| R4 function + sweep + cron | gated on PK review | 🟡 |
+| R5 spec | fitness matrix + matching algorithm | ✅ |
+| R5 impl | depends on R4 function | 🔲 ~2-3h |
+| R6 | seed_and_enqueue rewrite | 🔲 ~3-4h (Findings 1+4+6 bundled) |
+| R7 | ai-worker platform-awareness | 🔲 depends on R6 |
+| R8 | Cron changes | 🔲 depends on R6 |
 
 ### Larger
 
 | # | Item | Status |
 |---|---|---|
-| L6 | A21 audit | ✅ 24 Apr late PM |
-| (others) | | 🔲 unchanged |
+| L6 | A21 audit | ✅ |
 
 ### HIGH priority items remaining
 
 | # | Item | Why HIGH |
 |---|---|---|
-| **R4 Step 3** | classifier function + sweep + cron | Unblocks R5 implementation + backfill of 14k canonicals |
-| **R6** | `seed_and_enqueue_ai_jobs_v1` rewrite (+ Findings 1+4+6 bundled) | IG publisher paused until router integration verifies |
-| **CC-TASK-02 fix** | Fix `feed-intelligence` upsert into `m.agent_recommendations` (partial-index ON CONFLICT inference fails). Option A: replace partial unique index with full UNIQUE on `(source_id, recommendation_type)`. Option B: wrap in SECURITY DEFINER RPC that echoes the WHERE predicate. PK to choose. Brief: `docs/briefs/2026-04-25-ef-upsert-audit.md`. | Dormant today (zero rows in target table) but fires on first real recommendation. Silent-failure class (same family as M11 + A21 Finding 1 + ID004) — error logged in EF response body, not surfaced via cron status, not caught by Layer 1 monitoring. |
+| **R4 Step 3** | classifier function + sweep + cron | Unblocks R5 + backfill of 14k canonicals |
+| **R6** | seed_and_enqueue rewrite (Findings 1+4+6 bundled) | IG publisher paused until router verifies |
+| **CC-TASK-02 fix** | Fix `feed-intelligence` upsert into `m.agent_recommendations`. Option A (replace partial index with full UNIQUE) vs Option B (SECURITY DEFINER RPC echoing WHERE predicate). **Recommended: B** — same pattern as `public.upsert_publish_profile()`. PK chooses. Brief: `docs/briefs/2026-04-25-ef-upsert-audit.md`. | Dormant today (zero rows in target). Fires on first real recommendation. Silent-failure class (same family as M11 + A21 Finding 1 + ID004) — Layer 1 monitoring wouldn't catch it. |
 
 **Not HIGH (defence-in-depth):**
-- **D168 Layer 2** — spec ready; implementation triggered by next ID004-class incident OR cron fleet >60 OR SLA risk from external clients.
+- **D168 Layer 2 implementation** — spec ready; implementation triggered by next ID004-class incident OR cron fleet >60 OR SLA risk from external clients.
 
 ---
 
@@ -379,51 +383,56 @@ All 4 FB tokens permanent. All 4 clients have explicit `c.client_digest_policy` 
 
 ### Due next session
 
-- Check `m.cron_health_alert WHERE resolved_at IS NULL` in session startup
-- Verify router catalog state + event trigger (steps 6-7 of startup protocol)
-- **Verify R4 seed state + CFW parity** (steps 8-9 of startup protocol)
+- Check `m.cron_health_alert WHERE resolved_at IS NULL`
+- Validate router catalogs + event trigger (startup steps 6-7)
+- Validate R4 seed state + 4-client matrix (startup steps 8-9)
 - Fresh CFW draft review
 - PK review of R4 v1 seed rules before Step 3 ships
-- PK review of R5 + D168 specs + 14 open questions across them
-- Invegent content_type_prompt 0/12 — schedule the v0.1 stack work
+- PK review of R5 + D168 specs (14 open questions total)
+- PK choose CC-TASK-02 fix: Option A vs B
+- CC-TASK-03 (frontend format vocab audit) — whenever PK runs it
 
 ### Due week of 22-27 Apr
 
 - **Mon 27 Apr** — Meta App Review escalation trigger
 - **Sat 2 May** — original reviewer calibration cycle trigger (defer)
 
-### Backlog (open, not yet addressed)
+### Backlog (open)
 
-**New 24 Apr Track B:**
-- **Invegent content_type_prompt rows (0/12):** needs v0.1 prompt stack. 6 platforms × 3 job_types potentially — or start with FB/LI × rewrite/synth until publishing activation. Standalone follow-up.
-- **R4 Step 3 implementation:** classifier function + sweep + cron. ~1.5-2h after PK review of v1 seed.
-- **R5 implementation:** ~2-3h after R4 backfill produces clean class distribution.
-- **D168 Layer 2 implementation:** ~2-3h, deferred until defence-in-depth trigger.
+**New 25 Apr (from CC-TASK-02):**
+- **CC-TASK-02 HIGH fix** — see Sprint Board HIGH priority section
 
-**24 Apr evening router-catalog:**
-- R6 bundled work: Finding 1 (client UUIDs in `enqueue_publish_from_ai_job_v1` trigger), Finding 4 (demand formula hardcoded in `seed_and_enqueue_ai_jobs_v1`), Finding 6 (1-line youtube hack replacement)
-- Format vocab dashboard/portal audit — now CC-TASK-03
-- Blog vs website consolidation — LOW priority
+**24 Apr Invegent close:**
+- **Invegent FB + IG activation** (requires v0.2 positioning + platform_rules additions first)
+- Avatar configuration for Invegent (HeyGen) — blocks YT avatar format unlock
+
+**24 Apr Track B (open):**
+- **R4 Step 3 implementation** — ~1.5-2h after PK review
+- **R5 implementation** — ~2-3h after R4 backfill produces clean distribution
+- **D168 Layer 2 implementation** — ~2-3h, deferred until defence-in-depth trigger
+
+**24 Apr router-catalog:**
+- R6 bundled work (Findings 1+4+6)
+- Format vocab dashboard/portal audit — CC-TASK-03 pending
+- Blog vs website consolidation — LOW
 
 **24 Apr late afternoon:**
-- Edge Function `.upsert()` / `onConflict:` audit — now CC-TASK-02
 - R6 follow-up — cron 48 NOT EXISTS filter platform scope
 
 **24 Apr afternoon:**
-- Cron health dashboard tile (tentatively CC-TASK-07)
+- Cron health dashboard tile (CC-TASK-07 candidate)
 - Cron health v3.1 — schedule-string parsing
 - Notification layer for `m.cron_health_alert` (composed into D168 open Q7)
 - Document `expires_at` sentinel
 
 **24 Apr mid-day:**
-- Avatar configuration for Invegent (HeyGen)
 - Stream B source type implementation
 - Invegent publishing activation checklist
-- v0.2 positioning review for Invegent (2-3 months)
+- v0.2 positioning review for Invegent (2-3 months — also unlocks FB/IG prompt rows)
 
 **Carried from 24 Apr AM:**
-- 2 CFW IG drafts in `needs_review` (older prompt stack)
-- Stale non-main branches (8 total, cosmetic cleanup)
+- 2 CFW IG drafts in `needs_review`
+- Stale non-main branches (8 total, cosmetic)
 
 **Carried from earlier:**
 - Publisher schedule source audit
@@ -432,15 +441,15 @@ All 4 FB tokens permanent. All 4 clients have explicit `c.client_digest_policy` 
 - `docs/archive` 5th-file mystery
 - Per-commit external-reviewer pollution
 - Property Pulse Schedule Facebook 6/5 tier violation
-- 30+ remaining exec_sql sites in dashboard (tentatively CC-TASK-06)
-- `facebook-publisher` EF audit (tentatively CC-TASK-05)
+- 30+ remaining exec_sql sites in dashboard (CC-TASK-06 candidate)
+- `facebook-publisher` EF audit (CC-TASK-05 candidate)
 - Shrishti 2FA + passkey
 
 ---
 
-## TODAY'S COMMITS (24 APR — FINAL INCLUDING TRACK B)
+## TODAY'S COMMITS (24-25 APR — FINAL)
 
-**Invegent-content-engine (main) — 16 commits:**
+**Invegent-content-engine (main) — 19 commits:**
 
 Morning:
 - `3365b87` — docs(sync_state): morning housekeeping
@@ -461,90 +470,94 @@ Late afternoon:
 - (sync_state A21 rollup)
 
 Evening (router catalog):
-- `828de5f` — docs(briefs): router track hardcoded values audit — 9 findings
-- `bb8d278` — docs(briefs): R4 classifier spec v2 — table-driven rewrite
+- `828de5f` — docs(briefs): router track hardcoded values audit
+- `bb8d278` — docs(briefs): R4 classifier spec v2
 - `ac06043` — docs(briefs): router catalog unification SHIPPED
-- `74f6de7` — docs(sync_state): 24 Apr evening router-catalog rollup
-- `931f93d` — docs(briefs/claude-code): three Claude Code task briefs
-- `d00293d` — docs(briefs/claude-code): README updated for direct terminal workflow
+- `74f6de7` — docs(sync_state): evening router-catalog rollup
+- `931f93d` — docs(briefs/claude-code): three CC task briefs
+- `d00293d` — docs(briefs/claude-code): README for direct terminal workflow
 
 Evening (Track B):
-- `e4bc18f` — docs(briefs): R5 matching layer spec — fitness matrix + matching algorithm
-- `d0820c6` — docs(briefs): D168 Layer 2 — response-layer sentinel spec
-- **THIS COMMIT** — docs(sync_state): 24 Apr evening Track B rolled up
+- `e4bc18f` — docs(briefs): R5 matching layer spec
+- `d0820c6` — docs(briefs): D168 Layer 2 spec
+- `80a55d1` — docs(sync_state): Track B rolled up
 
-**Migrations (DB-only, 24 Apr — 19 total):**
+25 Apr:
+- `59bfe66` (dashboard) — docs(roadmap): 22 + 24 Apr closures synced (CC-TASK-01)
+- `be6082e` — docs(sync_state): CC-TASK-01 CLOSED line
+- `23ed4c1` — docs(briefs): EF .upsert() audit — CC-TASK-02 CLOSED (1 HIGH / 0 MED / 1 LOW)
+- THIS COMMIT — docs(sync_state): Invegent v0.1 prompt stack closure + CC-TASK-02 integration
 
-Mid-day (5), Afternoon (4), Late afternoon (3), Evening router-catalog (5) as previously listed.
+**Migrations (DB-only, 20 total):**
 
-Evening Track B (2):
-- `r4_d143_classifier_catalog_tables_and_seed_v1_20260424` — R4 Step 1+2 atomic (tables + 6 classes + 20 rules + f.canonical_content_body columns + partial indexes)
-- `cfw_content_type_prompt_youtube_and_promo_v1_20260424` — CFW 6-row parity fill (FB/IG/LI × promo_v1 + YT × rewrite/synth/promo)
+Mid-day (5) + Afternoon (4) + Late afternoon (3) + Evening router-catalog (5) + Track B (2):
+- `r4_d143_classifier_catalog_tables_and_seed_v1_20260424`
+- `cfw_content_type_prompt_youtube_and_promo_v1_20260424`
+
+Invegent v0.1 close (1):
+- `invegent_content_type_prompt_v0_1_li_yt_20260424` — Invegent 6-row v0.1 stack (LI + YT × rewrite/synth/promo), FB+IG intentionally skipped per not_configured_platforms
 
 **invegent-dashboard (main):**
+- `59bfe66` — docs(roadmap): sync 22 + 24 Apr (CC-TASK-01)
 
-- `59bfe66` — docs(roadmap): sync 22 Apr + 24 Apr full-day closures — Dashboard roadmap sync CC-TASK-01 CLOSED
-
-*(invegent-portal / invegent-web: no 24 Apr commits)*
-
-**25 Apr — CC tasks (Invegent-content-engine):**
-
-- `23ed4c1` — docs(briefs): EF .upsert() audit — CC-TASK-02 CLOSED — 1 HIGH / 0 MEDIUM / 1 LOW findings (brief: `docs/briefs/2026-04-25-ef-upsert-audit.md`). HIGH = `feed-intelligence` upsert into `m.agent_recommendations` — partial unique index `uq_agent_rec_pending` cannot be inferred from `ON CONFLICT (source_id, recommendation_type)` without echoing the partial predicate; verified live via EXPLAIN with ERROR 42P10. Currently dormant (table empty); fires on first real recommendation. Same M11/A21 Finding-1 class.
-- THIS COMMIT — docs(sync_state): CC-TASK-02 closure + new HIGH-priority fix item
+*(invegent-portal / invegent-web: no 24-25 Apr commits)*
 
 ---
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-24 Apr is now the highest-output session on record by a very wide margin.
+24 Apr remains the highest-output session on record.
 
-**Final tally (Track B close):**
-- **16 commits** on Invegent-content-engine
-- **19 DB migrations** applied
-- **11 briefs** committed (including 3 Claude Code task briefs)
-- **5 sprint items closed** (M1 A11b, Cron monitoring, Q5, L6/A21, router catalog unification)
-- **2 major specs committed ready for PK review** (R5 matching, D168 Layer 2)
-- **R4 schema + seed LIVE**, function pending PK review of seeded rules
+**Final tally (post Invegent v0.1 + CC-TASK-02):**
+- **19 commits** on Invegent-content-engine
+- **20 DB migrations** applied
+- **12 briefs** committed (3 CC task briefs + 1 CC-TASK-02 findings brief)
+- **6 sprint items closed**
+- **2 Claude Code tasks closed** (CC-TASK-01 dashboard sync + CC-TASK-02 audit)
+- **Invegent v0.1 prompt stack SHIPPED** (6/6 configured scope)
 - **CFW at full prompt parity** (6→12 rows)
+- **R4 schema + seed LIVE**
 - **1 live production bug caught and fixed same session**
 - **2 orphaned v1 seed functions removed**
 - **1 latent infrastructure bug fixed** (k.refresh_column_registry)
-- **9 audit findings produced, 5 closed**
+- **10 audit findings produced, 6 closed** (1 HIGH remaining — CC-TASK-02 fix)
 
-**Pipeline state UNCHANGED operationally** from 22 Apr evening close. All 24 Apr work is prompt-layer / DB-layer / documentation that doesn't touch the live hot path. Router infrastructure still shadow-only. IG publisher still paused per D165.
+**Pipeline state UNCHANGED operationally** from 22 Apr evening close. All 24-25 Apr work is prompt-layer / DB-layer / documentation that doesn't touch the live hot path. Router infrastructure still shadow-only. IG publisher still paused per D165. CC-TASK-02 HIGH-priority fix is dormant (zero rows today) — fires on first real recommendation, date unknown.
 
 **Remaining HIGH-priority sprint items:**
-- **R4 Step 3** (classifier function + sweep + cron — gated on PK review of seed rules)
-- **R6** (seed_and_enqueue router rewrite — now bundles Findings 1+4+6, ~3-4h total)
+- **R4 Step 3** (classifier function + sweep + cron — gated on PK review)
+- **R6** (seed_and_enqueue router rewrite — Findings 1+4+6 bundled, ~3-4h)
+- **CC-TASK-02 fix** (PK chooses Option A or B — recommended B)
 
 **Not HIGH (defence-in-depth, deferred):**
 - **D168 Layer 2 implementation** (spec ready)
 - **R5 implementation** (spec ready, depends on R4 function output)
-- **Invegent content_type_prompt stack** (standalone follow-up)
 
-**PK weekend review queue:**
-- R4 v1 seed rules (6 classes, 20 rules) — confirm before Step 3 ships
-- R5 spec 7 open questions (weightings, thresholds, dedup, overrides, campaigns, tuning cadence)
-- D168 spec 7 open questions (check shape, thresholds, cadence, dedup, retention, dashboard, notifications)
+**PK weekend review queue (4 items):**
+- R4 v1 seed rules (6 classes, 20 rules)
+- R5 spec 7 open questions
+- D168 spec 7 open questions
+- CC-TASK-02 fix: Option A vs B
 
 **Realistic next working windows:**
-- 25 Apr Saturday: dead day, or low-risk doc/audit work / PK spec review
-- 27 Apr Monday: Meta App Review escalation + R4 Step 3 + R5 impl
-- Whenever: Claude Code tasks 01-03 (dashboard sync / EF .upsert / frontend vocab) any time
+- 25 Apr Saturday: dead day or low-risk / PK spec review / CC-TASK-03
+- 27 Apr Monday: Meta App Review escalation + R4 Step 3 + R5 impl + CC-TASK-02 fix
+- Whenever: CC-TASK-03 (frontend vocab audit)
 
-**Lessons captured today (14 total):**
+**Lessons captured today (15 total):**
 
-1. Client source data is gold (CFW ICE_Analysis → brand_profile)
+1. Client source data is gold
 2. Pre-existing prompt fields can silently contradict each other
 3. Check constraints can bite mid-migration — widen rather than placeholder
 4. v0.1-with-loose-positioning beats waiting for perfect clarity
-5. Ship monitoring systems even when imperfect — first refresh finds hidden bugs
-6. Tune thresholds against real data fast (v1 → v2 → v3 same session)
+5. Ship monitoring systems even when imperfect
+6. Tune thresholds against real data fast
 7. Close the loop same session when monitor catches bug
 8. `DROP FUNCTION IF EXISTS name()` silently skips overloaded variants
-9. `DROP INDEX` fails for UNIQUE-backed indexes; use `ALTER TABLE DROP CONSTRAINT`
-10. Per-client or per-brand functions create divergence surface — drop rather than patch (PK principle)
-11. Always check existing taxonomy tables before building new catalogs. Nearly built `t.platform_catalog` + `t.format_catalog` when `t.5.0_social_platform` + `t.5.3_content_format` already existed.
-12. Dynamic table-driven structures > hardcoded CHECKs + function body literals (PK principle — adding new platform/format is now INSERT, not DDL migration).
-13. Event triggers can mask the source of errors — k.refresh_column_registry failure appeared as "migration history init failed" because the trigger fires inside Supabase's post-migration wrapper. Isolation pattern: disable trigger during migration, fix underlying bug, re-enable.
-14. **Parallel tracks multiply session output.** Track B (DB + specs, Claude Desktop) ran alongside Claude Code tasks (audits, dashboard sync) with zero conflicts. Different surface areas, no merge risk. Pattern applies whenever work can be partitioned by "hot path vs audit-only + spec-only" lines.
+9. `DROP INDEX` fails for UNIQUE-backed; use `ALTER TABLE DROP CONSTRAINT`
+10. Per-client / per-brand functions create divergence surface — drop rather than patch
+11. Always check existing taxonomy tables before building new catalogs
+12. Dynamic table-driven > hardcoded CHECKs + function body literals
+13. Event triggers can mask the source of errors — isolation pattern: disable, fix, re-enable
+14. Parallel tracks multiply session output (Track B + CC tasks + Invegent v0.1 ran concurrently with zero merge conflicts)
+15. **Configured scope beats forced parity.** Invegent 6/6 for LI+YT is correct; 12/12 including FB+IG would create prompt drift against platform_rules that don't exist. Scope honesty > matrix symmetry. Applies to any future client added with partial platform activation.
