@@ -14,7 +14,7 @@ Briefs in this folder are self-contained tasks for Claude Code to pick up direct
 
 Each of the current task briefs can be triggered by pasting the prompt below into Claude Code.
 
-### CC-TASK-01 — Dashboard roadmap sync
+### CC-TASK-01 — Dashboard roadmap sync (✅ closed 25 Apr)
 
 ```
 Please read and complete the task described in
@@ -33,7 +33,7 @@ When complete, update docs/00_sync_state.md in THIS repo under
 COMMIT BACK TO SYNC_STATE section.
 ```
 
-### CC-TASK-02 — EF `.upsert()` audit
+### CC-TASK-02 — EF `.upsert()` audit (✅ closed 25 Apr, 1 HIGH / 0 MED / 1 LOW)
 
 ```
 Please read and complete the task described in
@@ -55,7 +55,7 @@ When complete, update docs/00_sync_state.md under "TODAY'S COMMITS" with a
 closure line including finding counts + commit SHA.
 ```
 
-### CC-TASK-03 — Frontend format/platform vocab audit
+### CC-TASK-03 — Frontend format/platform vocab audit (✅ closed 25 Apr, 1 HIGH / 9 MED / 3 LOW)
 
 ```
 Please read and complete the task described in
@@ -79,6 +79,32 @@ When complete, update docs/00_sync_state.md under "TODAY'S COMMITS" with
 finding counts + commit SHA.
 ```
 
+### CC-TASK-04 — Dead vocab + email typo cleanup (new, P1 fix)
+
+```
+Please read and complete the task described in
+docs/briefs/claude-code/2026-04-25-cc-task-04-dead-vocab-email-typo-cleanup.md
+
+This is a FIX task, not an audit. Bundle of 2 mechanical fixes addressing
+CC-TASK-03 findings H1 (dead vocab in video-tracker.ts SELECT filter) and
+M9 (email→newsletter typo in STUDIO_SUPPORTED_PLATFORMS).
+
+Target repo: invegent-dashboard (clone or cd in). The brief itself lives in
+Invegent-content-engine; the code commit goes to invegent-dashboard main.
+Direct-push per D165.
+
+Follow all SETUP, OBJECTIVE, METHOD, DELIVERABLES, VERIFICATION sections.
+Before starting, read the full findings brief at
+docs/briefs/2026-04-25-frontend-format-vocab-audit.md — it has the exact
+file paths and line references for both fixes.
+
+Expected scale: 5-15 lines changed, 1 commit, ~15 min wall time. If it's
+taking more than 30 min, stop and flag — scope creep is the failure mode.
+
+When complete, update docs/00_sync_state.md per the COMMIT BACK TO SYNC_STATE
+section (commit SHA + sprint board + backlog cleanup).
+```
+
 ## Brief structure (template)
 
 Every CC task brief must include:
@@ -93,22 +119,22 @@ Every CC task brief must include:
 8. **EXPECTED SCALE** — rough size expectations so CC knows if it's drifting
 9. **COMMIT BACK TO SYNC_STATE** — closure protocol
 
-## Current briefs (as of 24 Apr 2026)
+## Current briefs (as of 25 Apr 2026)
 
-| ID | Title | Priority | Effort | Risk |
-|---|---|---|---|---|
-| CC-TASK-01 | Dashboard roadmap sync | P1 | 20-30 min | LOW |
-| CC-TASK-02 | EF .upsert() audit | P2 | 60-90 min | LOW |
-| CC-TASK-03 | Frontend format/platform vocab audit | P3 | 45-60 min | LOW |
-
-All three are LOW risk (no hot path, no DB schema changes). Can be triggered in any order.
+| ID | Title | Priority | Effort | Risk | Status |
+|---|---|---|---|---|---|
+| CC-TASK-01 | Dashboard roadmap sync | P1 | 20-30 min | LOW | ✅ closed |
+| CC-TASK-02 | EF .upsert() audit | P2 | 60-90 min | LOW | ✅ closed |
+| CC-TASK-03 | Frontend format/platform vocab audit | P3 | 45-60 min | LOW | ✅ closed |
+| **CC-TASK-04** | **Dead vocab + email typo cleanup (H1 + M9 fix)** | **P1** | **~15 min** | **LOW** | **🔲 pending** |
 
 ## Future CC tasks (ideas for when needed)
 
-- CC-TASK-04 — publisher schedule source audit (L5 follow-up)
-- CC-TASK-05 — `facebook-publisher` EF audit
-- CC-TASK-06 — exec_sql eradication sweep (30+ remaining sites in dashboard)
-- CC-TASK-07 — cron health dashboard tile (requires UI design work — pair task, not CC solo)
+- CC-TASK-05 — publisher schedule source audit (L5 follow-up)
+- CC-TASK-06 — `facebook-publisher` EF audit
+- CC-TASK-07 — exec_sql eradication sweep (30+ remaining sites in dashboard)
+- CC-TASK-08 — cron health dashboard tile (requires UI design work — pair task, not CC solo)
+- CC-TASK-09 — `usePlatformVocab` + `useFormatVocab` hook rollout (3-4h focused frontend PR; solves 7 MED + 3 LOW from CC-TASK-03 in one pattern)
 
 ## What makes a GOOD CC task
 
