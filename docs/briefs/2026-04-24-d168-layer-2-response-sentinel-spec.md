@@ -1,7 +1,7 @@
 # D168 Layer 2 — Response-layer sentinel spec
 
-**Draft date:** 24 Apr 2026 evening (Track B)
-**Status:** 🔲 SPEC COMPLETE — awaiting PK review before implementation
+**Draft date:** 24 Apr 2026 evening (Track B) — **v2 feedback integrated 25 Apr**
+**Status:** 🟢 **SPEC v2 — READY FOR BUILD** (feedback from external model review integrated; implementation still deferred to ID004-class incident trigger per defence-in-depth posture)
 **Decision ref:** D168 (response-layer sentinel — scope defined 23 Apr, implementation deferred)
 **Composes with:** Layer 1 cron failure-rate monitoring (shipped 24 Apr afternoon)
 **Incident origin:** ID004 (content-fetch 9-day silent outage, 14-23 Apr)
@@ -10,7 +10,21 @@
 
 ## Purpose in one paragraph
 
-Layer 1 (shipped today) watches `cron.job_run_details` and alerts when crons fail, fail consecutively, or stop running. It catches **errors**. ID004 was a different class of bug: the cron ran successfully every single firing for 9 days, but produced zero downstream effect because the vault secret casing was wrong and the HTTP call returned 401 (which Postgres records as successful completion of the http_post call itself). Layer 2 answers a different question: **"did this cron actually do something useful?"** Rather than checking status, Layer 2 samples downstream metrics (canonical bodies fetched per day, ai_jobs succeeded per hour, posts published during active hours) and alerts when those metrics fall outside expected ranges. The two layers compose: Layer 1 catches loud failures, Layer 2 catches silent ones. Both feed into the same `m.cron_health_alert` surface for a unified operator view.
+Layer 1 (shipped today) watches `cron.job_run_details` and alerts when crons fail, fail consecutively, or stop running. It catches **errors**. ID004 was a different class of bug: the cron ran successfully every single firing for 9 days, but produced zero downstream effect because the vault secret casing was wrong and the HTTP call returned 401 (which Postgres records as successful completion of the http_post call itself). Layer 2 answers a different question: **"did this cron actually do something useful?"** Rather than checking status, Layer 2 samples downstream metrics (canonical bodies fetched per day, ai_jobs succeeded per hour, posts published during active hours) and alerts when those metrics fall outside expected ranges. The two layers compose: Layer 1 catches loud failures, Layer 2 catches silent ones. Both feed into the same `m.cron_health_alert` surface for a unified operator view — now with severity and entity_scope columns added to make graduated alerts and multi-cron dedup work correctly.
+
+---
+
+## v2 feedback integration summary
+
+Original spec shipped 24 Apr with 7 open questions. External model review (25 Apr) resolved 6 of 7 with substantive changes and kept 1 for runtime decision. Full resolution log in **Questions resolved** section below. Net additions from v2:
+- `severity_default` column on `m.liveness_check` — warning | critical per-check severity
+- `severity` column on `m.cron_health_alert` — cross-layer change, enables graduated alerting for both layers
+- `entity_scope` column on `m.cron_health_alert` — cross-layer change, replaces `(jobid, alert_type)` dedup key with `(entity_scope, alert_type)` for multi-cron and system-wide checks
+- `check_cadence_seconds` + `jitter_seconds` on `m.liveness_check` — finer cadence granularity + randomization to prevent synchronized cron spikes
+- New table `m.liveness_aggregate_daily` — 90-day daily rollups for drift/seasonality detection without raw-sample bloat
+- 12th v1 check — median_pipeline_stage_duration_24h (catches slow degradation)
+- 2 feedback suggestions declined with rationale (covered elsewhere or duplicate signal)
+- Staged notifier layer rollout defined: Resend daily digest first, Telegram critical-only second, skip Slack
 
 ---
 
@@ -40,9 +54,46 @@ Layer 2 watches THIS — the downstream effect. Different question, different so
 
 ---
 
+## Cross-layer changes to `m.cron_health_alert`
+
+v2 adds two columns to the existing Layer 1 table. Migration in D168 Step 1 back-fills Layer 1 alerts so the unified surface works from day one.
+
+```sql
+ALTER TABLE m.cron_health_alert
+  ADD COLUMN severity TEXT NOT NULL DEFAULT 'warning'
+    CHECK (severity IN ('warning', 'critical')),
+  ADD COLUMN entity_scope TEXT;
+
+-- Back-fill Layer 1 alerts to use entity_scope structure:
+UPDATE m.cron_health_alert
+SET entity_scope = 'job:' || COALESCE(jobid::text, 'unknown')
+WHERE entity_scope IS NULL;
+
+-- New partial unique index for cross-layer dedup:
+CREATE UNIQUE INDEX uq_cron_health_alert_open_by_scope
+  ON m.cron_health_alert (entity_scope, alert_type)
+  WHERE resolved_at IS NULL;
+
+-- Keep old (jobid, alert_type) index as non-unique for backwards-compat queries:
+DROP INDEX IF EXISTS uq_cron_health_alert_open;
+CREATE INDEX idx_cron_health_alert_jobid_type
+  ON m.cron_health_alert (jobid, alert_type)
+  WHERE resolved_at IS NULL;
+```
+
+**entity_scope values by convention:**
+- `'job:<jobid>'` — single-cron alerts (Layer 1 default + most Layer 2 checks)
+- `'pipeline:<stage>'` — multi-cron pipeline checks (e.g. `'pipeline:ingestion'`, `'pipeline:transformation'`)
+- `'system:<component>'` — system-wide checks (e.g. `'system:publishing'`, `'system:vault'`)
+- `'platform:<name>'` — platform-specific checks (e.g. `'platform:facebook'`, `'platform:instagram'`)
+
+Layer 1's sweep function (`m.refresh_cron_health`) gets a 2-line patch to populate entity_scope as `'job:' || jobid::text` on each alert insert/update.
+
+---
+
 ## Architecture
 
-### Two new tables
+### Two new tables (plus one aggregate)
 
 ```sql
 -- Definitions: which metrics to sample, how often, expected ranges
@@ -50,122 +101,122 @@ CREATE TABLE m.liveness_check (
   check_id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   check_name            TEXT NOT NULL UNIQUE,
   description           TEXT,
-  attributed_cron_jobid INT,              -- optional link to specific cron for alert attribution
-  attributed_ef_name    TEXT,             -- optional link to Edge Function
-  metric_query          TEXT NOT NULL,    -- SQL returning a single NUMERIC value
-  expected_min          NUMERIC NOT NULL, -- alert if sample < this
-  expected_max          NUMERIC,          -- optional (null = no upper bound)
+  entity_scope          TEXT NOT NULL,
+  attributed_cron_jobid INT,
+  attributed_ef_name    TEXT,
+  metric_query          TEXT NOT NULL,
+  expected_min          NUMERIC,
+  expected_max          NUMERIC,
   measurement_window    INTERVAL NOT NULL DEFAULT interval '24 hours',
-  check_cadence_minutes INT NOT NULL DEFAULT 60,
-  consecutive_breach_threshold INT NOT NULL DEFAULT 2,  -- how many samples below min before alert
+  check_cadence_seconds INT NOT NULL DEFAULT 900,
+  jitter_seconds        INT NOT NULL DEFAULT 60 CHECK (jitter_seconds >= 0 AND jitter_seconds <= 300),
+  consecutive_breach_threshold INT NOT NULL DEFAULT 2,
+  severity_default      TEXT NOT NULL DEFAULT 'warning'
+    CHECK (severity_default IN ('warning', 'critical')),
+  last_sampled_at       TIMESTAMPTZ,
   is_active             BOOLEAN NOT NULL DEFAULT TRUE,
   notes                 TEXT,
   created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT liveness_check_bounds CHECK (
+    expected_min IS NOT NULL OR expected_max IS NOT NULL
+  )
 );
 
 CREATE INDEX idx_liveness_check_active
-  ON m.liveness_check (is_active, check_cadence_minutes);
+  ON m.liveness_check (is_active, check_cadence_seconds);
 
--- Samples: every sample gets a row, retained for trend analysis
+-- Raw samples: every sample gets a row, retained 30 days
 CREATE TABLE m.liveness_sample (
-  sample_id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  check_id              UUID NOT NULL REFERENCES m.liveness_check(check_id) ON DELETE CASCADE,
-  sampled_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  sample_value          NUMERIC NOT NULL,
-  within_expected_range BOOLEAN NOT NULL,
+  sample_id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  check_id               UUID NOT NULL REFERENCES m.liveness_check(check_id) ON DELETE CASCADE,
+  sampled_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sample_value           NUMERIC NOT NULL,
+  within_expected_range  BOOLEAN NOT NULL,
   expected_min_at_sample NUMERIC,
   expected_max_at_sample NUMERIC,
-  breach_direction      TEXT,  -- 'below_min' | 'above_max' | NULL
-  notes                 TEXT,
-  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  breach_direction       TEXT,
+  notes                  TEXT,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_liveness_sample_check_time
   ON m.liveness_sample (check_id, sampled_at DESC);
 
--- Retain 30 days of samples, older are deleted by retention job
+-- Daily aggregates: 90-day retention for drift/seasonality detection
+CREATE TABLE m.liveness_aggregate_daily (
+  aggregate_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  check_id       UUID NOT NULL REFERENCES m.liveness_check(check_id) ON DELETE CASCADE,
+  date           DATE NOT NULL,
+  sample_count   INT NOT NULL,
+  min_value      NUMERIC NOT NULL,
+  max_value      NUMERIC NOT NULL,
+  avg_value      NUMERIC NOT NULL,
+  p50_value      NUMERIC,
+  p95_value      NUMERIC,
+  breach_count   INT NOT NULL DEFAULT 0,
+  alert_count    INT NOT NULL DEFAULT 0,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT liveness_aggregate_daily_uniq UNIQUE (check_id, date)
+);
+
+CREATE INDEX idx_liveness_agg_daily_check_date
+  ON m.liveness_aggregate_daily (check_id, date DESC);
 ```
 
-### One sweep function
+### One sweep function + one rollup function + two crons
 
-```
-FUNCTION m.evaluate_liveness()
-  RETURNS TABLE (check_name TEXT, sample_value NUMERIC, within_range BOOLEAN, alert_raised BOOLEAN)
-  LANGUAGE plpgsql
+Sweep function `m.evaluate_liveness()` logic:
+- Advisory lock prevents overlapping sweeps (`pg_try_advisory_xact_lock(hashtext('m.evaluate_liveness'))`)
+- Per-row BEGIN/EXCEPTION wrap so one bad query doesn't halt batch
+- Eligibility check applies jittered cadence: `last_sampled_at < NOW() - (check_cadence_seconds * interval '1 second') + ((floor(random() * jitter_seconds * 2) - jitter_seconds) * interval '1 second')`
+- On each sample: INSERT into `m.liveness_sample`, UPDATE `last_sampled_at`
+- Consecutive breach check: `COUNT(*) WHERE NOT within_expected_range` over last N samples (N = consecutive_breach_threshold)
+- If breach threshold hit: UPSERT into `m.cron_health_alert` with severity + entity_scope from check definition
+- Auto-resolve: if sample is back in range, UPDATE open alert WHERE entity_scope + alert_type match
 
-  FOR v_check IN SELECT * FROM m.liveness_check WHERE is_active = TRUE
-                 AND (last_sampled_at IS NULL OR last_sampled_at < NOW() - (check_cadence_minutes * interval '1 minute'))
-  LOOP
-    -- Dynamically execute metric_query, expect single NUMERIC result
-    EXECUTE v_check.metric_query INTO v_sample_value;
+Rollup function `m.rollup_liveness_daily(p_date DATE DEFAULT (CURRENT_DATE - 1))`:
+- One row per (check_id, date) summarising the day's samples
+- Runs daily at 03:00 UTC
+- After rollup, deletes samples older than 30 days
 
-    v_within := (v_sample_value >= v_check.expected_min)
-                AND (v_check.expected_max IS NULL OR v_sample_value <= v_check.expected_max);
-    v_direction := CASE
-      WHEN v_sample_value < v_check.expected_min THEN 'below_min'
-      WHEN v_check.expected_max IS NOT NULL AND v_sample_value > v_check.expected_max THEN 'above_max'
-      ELSE NULL END;
-
-    INSERT INTO m.liveness_sample (check_id, sample_value, within_expected_range, breach_direction, ...)
-    VALUES (v_check.check_id, v_sample_value, v_within, v_direction, ...);
-
-    UPDATE m.liveness_check SET last_sampled_at = NOW() WHERE check_id = v_check.check_id;
-
-    -- Check consecutive breaches:
-    SELECT COUNT(*) INTO v_breach_count
-    FROM (
-      SELECT within_expected_range FROM m.liveness_sample
-      WHERE check_id = v_check.check_id
-      ORDER BY sampled_at DESC
-      LIMIT v_check.consecutive_breach_threshold
-    ) s WHERE s.within_expected_range = FALSE;
-
-    IF v_breach_count >= v_check.consecutive_breach_threshold THEN
-      -- Raise alert via existing m.cron_health_alert (reuse Layer 1 surface)
-      INSERT INTO m.cron_health_alert (
-        jobid, jobname, alert_type,
-        threshold_crossed, latest_error, first_seen_at
-      ) VALUES (
-        v_check.attributed_cron_jobid,
-        COALESCE(v_check.attributed_ef_name, v_check.check_name),
-        'liveness_anomaly',
-        v_sample_value,
-        format('Check %s: sampled %s, expected [%s, %s]',
-               v_check.check_name, v_sample_value,
-               v_check.expected_min, COALESCE(v_check.expected_max::text, 'no_max')),
-        NOW()
-      )
-      ON CONFLICT (jobid, alert_type) WHERE resolved_at IS NULL DO UPDATE
-      SET threshold_crossed = EXCLUDED.threshold_crossed,
-          latest_error = EXCLUDED.latest_error,
-          last_seen_at = NOW();
-    END IF;
-
-    -- Auto-resolve when back in range:
-    IF v_within THEN
-      UPDATE m.cron_health_alert
-      SET resolved_at = NOW()
-      WHERE COALESCE(jobid, 0) = COALESCE(v_check.attributed_cron_jobid, 0)
-        AND alert_type = 'liveness_anomaly'
-        AND resolved_at IS NULL;
-    END IF;
-
-    RETURN NEXT (v_check.check_name, v_sample_value, v_within, v_breach_count >= v_check.consecutive_breach_threshold);
-  END LOOP;
-```
-
-### One cron
+### Two crons
 
 ```sql
 SELECT cron.schedule(
-  'liveness-check-every-15m',
-  '*/15 * * * *',
+  'liveness-check-every-5m',
+  '*/5 * * * *',
   $$SELECT m.evaluate_liveness();$$
+);
+
+SELECT cron.schedule(
+  'liveness-aggregate-daily',
+  '0 3 * * *',
+  $$SELECT m.rollup_liveness_daily();
+    DELETE FROM m.liveness_sample WHERE sampled_at < NOW() - interval '30 days';$$
 );
 ```
 
-15-minute cadence is the floor — individual checks set their own `check_cadence_minutes` and the sweep respects that via the `last_sampled_at` filter. Fast checks can run every 15 min; expensive ones can run hourly or daily.
+---
+
+## Cadence strategy — tiered with jitter (v2)
+
+Original draft had a 15-minute sweep cadence floor with per-check `check_cadence_minutes`. v2 changes this to:
+- Finer granularity via `check_cadence_seconds` — 60s minimum, tiers at 300s / 900s / 3600s / 86400s
+- Sweep cron itself runs every 5 minutes (not 15) — enables the 5-min tier for queue checks
+- `jitter_seconds` (0-300, default 60) randomizes eligibility within each tier to prevent synchronized cron spikes
+
+**Why jitter matters:** multiple crons firing on :00 boundaries create contention spikes and wasted CPU. Jittered eligibility spreads load naturally.
+
+**Tier defaults for v1 checks:**
+| Tier | `check_cadence_seconds` | Which checks |
+|---|---|---|
+| Queue / stuck jobs | 300 (5 min) | checks 6, 7 — queue_depth_total, ai_jobs_stuck_running |
+| Liveness / ingest | 900 (15 min) | checks 1, 2, 3, 9, 10, 12 — main pipeline health |
+| Ratio / auth | 3600 (60 min) | checks 4, 5, 8 — publisher_active_hours, publish_queue_drain_rate, expired_tokens |
+| Daily / trend | 86400 (24 hr) | check 11 — fb_to_ig_publish_ratio_7d |
 
 ---
 
@@ -174,29 +225,30 @@ SELECT cron.schedule(
 ### Critical path checks (catch ID004-class bugs)
 
 **1. content-fetch liveness**
-- `check_name`: `canonical_bodies_fetched_24h`
+- `entity_scope`: `'job:4'`
 - `metric_query`: `SELECT COUNT(*)::numeric FROM f.canonical_content_body WHERE fetch_status IS NOT NULL AND updated_at > now() - interval '24 hours'`
-- `expected_min`: 20 (baseline post-ID004 recovery rate)
-- `expected_max`: NULL
-- `cadence`: 60 min
-- `rationale`: ID004 original catch. At active ingest rate of 40/day, 20 is half the baseline — anomaly threshold.
+- `expected_min`: 20
+- `check_cadence_seconds`: 900
+- `severity_default`: `'critical'`
+- rationale: ID004 original catch. Critical because 9-day recurrence would re-cause original incident.
 
 **2. ingest-worker liveness**
-- `check_name`: `raw_items_ingested_24h`
+- `entity_scope`: `'pipeline:ingestion'`
 - `metric_query`: `SELECT COUNT(*)::numeric FROM f.raw_content_item WHERE created_at > now() - interval '24 hours'`
 - `expected_min`: 50
-- `cadence`: 60 min
-- `rationale`: Upstream of content-fetch; if this hits zero, ingest itself is broken.
+- `check_cadence_seconds`: 900
+- `severity_default`: `'critical'`
+- rationale: Upstream of content-fetch; if zero, ingest itself is broken.
 
 **3. ai-worker liveness**
-- `check_name`: `ai_jobs_succeeded_24h`
+- `entity_scope`: `'pipeline:transformation'`
 - `metric_query`: `SELECT COUNT(*)::numeric FROM m.ai_job WHERE status = 'succeeded' AND updated_at > now() - interval '24 hours'`
 - `expected_min`: 10
-- `cadence`: 30 min
-- `rationale`: At current 4-client × ~5-post/day rate, should see 20+ succeeded jobs per day. 10 = half. Catches AI outages, token exhaustion, rate limit accidents.
+- `check_cadence_seconds`: 900
+- `severity_default`: `'critical'`
 
 **4. publisher liveness (active hours)**
-- `check_name`: `posts_published_business_hours`
+- `entity_scope`: `'system:publishing'`
 - `metric_query`:
   ```sql
   SELECT COUNT(*)::numeric FROM m.post_publish
@@ -204,11 +256,11 @@ SELECT cron.schedule(
     AND EXTRACT(hour FROM created_at AT TIME ZONE 'Australia/Sydney') BETWEEN 6 AND 20
   ```
 - `expected_min`: 1
-- `cadence`: 60 min
-- `rationale`: During 6am-8pm Sydney hours, at least one post should publish across all 4 clients over any 12-hour window. Zero = publisher broken silently.
+- `check_cadence_seconds`: 3600
+- `severity_default`: `'critical'`
 
 **5. publisher-enqueue-to-execute ratio**
-- `check_name`: `publish_queue_drain_rate`
+- `entity_scope`: `'system:publishing'`
 - `metric_query`:
   ```sql
   SELECT CASE
@@ -218,33 +270,34 @@ SELECT cron.schedule(
     ELSE 1.0
   END
   ```
-- `expected_min`: 0.3  (if succeeded jobs exist, at least 30% should reach publish within 6h)
-- `expected_max`: 1.5  (publish count shouldn't massively exceed AI job success — suggests retry loop)
-- `cadence`: 30 min
-- `rationale`: Detects "AI works, publisher stuck" pattern (the M11 bug class) AND "infinite retry" pattern (the ID003 bug class).
+- `expected_min`: 0.3
+- `expected_max`: 1.5
+- `check_cadence_seconds`: 3600
+- `severity_default`: `'warning'`
+- rationale: Detects M11 (AI works, publisher stuck) AND ID003 (infinite retry) patterns. Warning because transient breach expected during load spikes.
 
-### Queue state checks (catch stuck pipelines)
+### Queue state checks
 
-**6. post_publish_queue not growing without bound**
-- `check_name`: `queue_depth_total`
+**6. post_publish_queue bounded**
+- `entity_scope`: `'system:publishing'`
 - `metric_query`: `SELECT COUNT(*)::numeric FROM m.post_publish_queue WHERE status IN ('queued', 'running')`
-- `expected_min`: 0
-- `expected_max`: 100  (all 4 clients × ~25 each = 100 is absolute ceiling)
-- `cadence`: 15 min
-- `rationale`: If queue grows >100, publisher is stuck or enqueue logic is duplicating. M11 class.
+- `expected_min`: 0, `expected_max`: 100
+- `check_cadence_seconds`: 300
+- `severity_default`: `'warning'`
+- rationale: If queue grows >100, publisher stuck or enqueue duplicating. Fast tier because runaway compounds.
 
 **7. ai_job stuck in running**
-- `check_name`: `ai_jobs_stuck_running_gt_30min`
+- `entity_scope`: `'pipeline:transformation'`
 - `metric_query`: `SELECT COUNT(*)::numeric FROM m.ai_job WHERE status = 'running' AND updated_at < now() - interval '30 minutes'`
-- `expected_min`: 0
-- `expected_max`: 2
-- `cadence`: 15 min
-- `rationale`: ID003 class. A job stuck running >30min is almost certainly a timeout that didn't write final status.
+- `expected_min`: 0, `expected_max`: 2
+- `check_cadence_seconds`: 300
+- `severity_default`: `'warning'`
+- rationale: ID003 class. Stuck running >30min = timeout that didn't write final status.
 
-### Token & auth health checks
+### Token & auth
 
-**8. no expired tokens actively in use**
-- `check_name`: `expired_tokens_actively_scheduled`
+**8. no expired tokens actively scheduled**
+- `entity_scope`: `'system:vault'`
 - `metric_query`:
   ```sql
   SELECT COUNT(*)::numeric FROM m.post_publish_queue q
@@ -254,162 +307,188 @@ SELECT cron.schedule(
     AND cpp.token_expires_at IS NOT NULL
     AND cpp.token_expires_at < now()
   ```
-- `expected_min`: 0
-- `expected_max`: 0
-- `cadence`: 60 min
-- `rationale`: If token already expired and queue still has items targeting it, they'll all fail. Catch before publisher tick.
+- `expected_min`: 0, `expected_max`: 0
+- `check_cadence_seconds`: 3600
+- `severity_default`: `'critical'`
 
-### Signal quality checks
+### Signal quality
 
 **9. digest_item population rate**
-- `check_name`: `digest_items_created_24h`
+- `entity_scope`: `'pipeline:bundling'`
 - `metric_query`: `SELECT COUNT(*)::numeric FROM m.digest_item WHERE created_at > now() - interval '24 hours'`
 - `expected_min`: 20
-- `cadence`: 120 min
-- `rationale`: If digest_item drops to zero, bundler is broken. Downstream starvation.
+- `check_cadence_seconds`: 900
+- `severity_default`: `'critical'`
 
 **10. canonical ageing**
-- `check_name`: `oldest_unclassified_canonical_hours`
+- `entity_scope`: `'pipeline:classification'`
 - `metric_query`:
   ```sql
-  SELECT EXTRACT(EPOCH FROM (now() - MIN(updated_at)))/3600::numeric
+  SELECT (EXTRACT(EPOCH FROM (now() - MIN(updated_at)))/3600)::numeric
   FROM f.canonical_content_body
-  WHERE content_class IS NULL
+  WHERE content_class IS NULL AND fetch_status IS NOT NULL
   ```
-- `expected_max`: 4 (R4 classifier should keep backlog under 4 hours)
-- `expected_min`: NULL (zero is fine)
-- `cadence`: 60 min
-- `rationale`: If R4 classifier stops running, this metric grows linearly. Catches the "classifier cron paused" case that Layer 1 only catches as `no_recent_runs`. Layer 2 catches it as "backlog building up" which is more actionable.
+- `expected_max`: 4
+- `check_cadence_seconds`: 900
+- `severity_default`: `'warning'`
+- rationale: If R4 classifier stops, metric grows linearly. Catches "classifier cron paused" that Layer 1 only catches as `no_recent_runs`.
 
-### Publisher disparity checks (multi-platform M11 class)
+### Publisher disparity (M11 class)
 
 **11. per-platform publish ratio**
-- `check_name`: `fb_to_ig_publish_ratio_7d`
+- `entity_scope`: `'platform:instagram'`
 - `metric_query`:
   ```sql
   SELECT CASE
     WHEN (SELECT COUNT(*) FROM m.post_publish WHERE platform='instagram' AND created_at > now() - interval '7 days') > 0
     THEN (SELECT COUNT(*) FROM m.post_publish WHERE platform='facebook' AND created_at > now() - interval '7 days')::numeric
          / (SELECT COUNT(*) FROM m.post_publish WHERE platform='instagram' AND created_at > now() - interval '7 days')
-    ELSE 99  -- poison value if IG is at zero
+    ELSE 99
   END
   ```
-- `expected_min`: 0.3
-- `expected_max`: 5
-- `cadence`: daily (1440 min)
-- `rationale`: FB posts should be 3-5× IG posts given current cadence. Ratio >5 or poison value = IG publisher broken; ratio <0.3 = FB publisher broken. Catches M11 cleanly.
+- `expected_min`: 0.3, `expected_max`: 5
+- `check_cadence_seconds`: 86400
+- `severity_default`: `'warning'`
+
+### Pipeline-continuity (v2 feedback accept)
+
+**12. median pipeline stage duration (v2 new)**
+- `entity_scope`: `'pipeline:transformation'`
+- `metric_query`:
+  ```sql
+  SELECT (EXTRACT(EPOCH FROM percentile_cont(0.5) WITHIN GROUP (
+    ORDER BY (aj.updated_at - ps.created_at)
+  )) / 60)::numeric
+  FROM m.post_seed ps
+  JOIN m.ai_job aj ON aj.seed_id = ps.seed_id
+  WHERE aj.status = 'succeeded'
+    AND aj.updated_at > now() - interval '24 hours'
+  ```
+- `expected_max`: 60 (median under 60 min seed → succeeded ai_job)
+- `check_cadence_seconds`: 900
+- `severity_default`: `'warning'`
+- rationale: Catches slow degradation that failure-count checks miss. If P50 seed→succeeded time doubles from 10min to 20min to 40min, publisher or AI worker is silently slowing long before failures surface.
+
+### Declined suggestions (v2 feedback)
+
+**"New sources discovered in last 24h" — declined as Layer 2 check.**
+Belongs to feed-intelligence agent (Phase 2.2), not pipeline-health monitoring. Dead-feed detection is covered by ingest-worker liveness (check 2) + feed-intelligence's planned recommendation layer. Layer 2 is about "the pipeline ran or didn't", not "the business is discovering new content".
+
+**"% items transformed → published" — declined as duplicate signal.**
+Already covered by check 5 (publish_queue_drain_rate) and check 10 (oldest_unclassified_canonical_hours). Adding as separate check duplicates without adding detection capability.
 
 ---
 
 ## Alert surface — unified with Layer 1
 
-Both Layer 1 and Layer 2 alerts land in `m.cron_health_alert`. Same table, different `alert_type`:
-- Layer 1: `failure_rate_high`, `consecutive_failures`, `no_recent_runs`
-- Layer 2: `liveness_anomaly` (may split into per-check_name later)
+Both Layer 1 and Layer 2 alerts land in `m.cron_health_alert`. Same table, different `alert_type` + different `entity_scope` patterns.
 
-Operator query stays simple:
+Operator query now includes severity:
 ```sql
-SELECT jobid, jobname, alert_type, threshold_crossed, latest_error,
+SELECT entity_scope, jobname, alert_type, severity, threshold_crossed, latest_error,
        EXTRACT(EPOCH FROM (NOW() - first_seen_at))/3600 AS age_hours
 FROM m.cron_health_alert
 WHERE resolved_at IS NULL
-ORDER BY first_seen_at DESC;
+ORDER BY
+  CASE severity WHEN 'critical' THEN 0 ELSE 1 END,
+  first_seen_at DESC;
 ```
 
-Returns both Layer 1 and Layer 2 active alerts in one list. Dashboard tile at `/monitoring/cron-health` (future CC-TASK-07) shows both.
+Returns both layers' active alerts in one list, criticals first. Dashboard tile at `/monitoring/cron-health` (CC-TASK-08 candidate) shows both.
 
 ---
 
-## Why `metric_query` as free-form SQL, not a structured check type
+## Notifier layer — staged rollout (v2 feedback)
 
-The naive design would have a fixed set of check_types (`row_count`, `time_since`, `ratio`) each with their own config. But ICE's liveness patterns are varied (11 examples above use 4-5 different SQL shapes; the 20th check will use another shape).
+Alerts sitting in a DB are not alerts. v2 commits to a staged rollout sequence instead of deferring indefinitely.
 
-Storing raw SQL in `metric_query` means:
-- Any check imaginable
-- No function rewrite to add a new type
-- Same "data-not-code" principle as R4 rules + R5 fitness
+**Stage 1 — Resend daily digest (when first real Layer 2 alert fires in anger)**
+One email per day to `pk@invegent.com` listing all `resolved_at IS NULL` alerts ordered by severity. Delivered via Resend (already configured, `feeds@invegent.com` sender). New Edge Function + once-daily cron. Zero surprise.
 
-Cost: operators editing `metric_query` can insert bad SQL. Mitigation:
-- Never expose `metric_query` to non-admin UI (start + stay CLI/SQL-only for edits)
-- `expected_min` / `expected_max` NUMERIC constraints catch query shape errors fast (if query returns non-numeric, evaluate_liveness catches TypeError on INTO)
-- A bad check only fails ITS OWN sample — doesn't propagate to other checks
+**Stage 2 — Telegram critical-only alerts (when Stage 1 operationally comfortable)**
+Route `severity='critical'` alerts through `@InvegentICEbot` via OpenClaw bridge. Per-alert message with entity_scope + latest_error + suggested action. New on critical, silent on resolution.
 
-Trade accepted: power over safety, matches ICE's overall operator-trust posture.
+**Stage 3 — skipped (Slack)**
+Not in operational flow for PK. Skipping saves complexity.
+
+**Cadence gate:** no notifier ships until Layer 2 has produced at least one real alert Layer 1 didn't catch. Self-justifying trigger — pain creates signal, signal creates alert, alert creates the case for notification infra.
 
 ---
 
 ## Migration plan
 
-### Step 1 — Schema
+### Step 1 — Schema + Layer 1 back-fill
 
-Create `m.liveness_check` + `m.liveness_sample`. One atomic migration.
+One atomic migration:
+- ALTER `m.cron_health_alert` to add `severity` + `entity_scope`
+- Back-fill existing Layer 1 alerts with `entity_scope = 'job:' || jobid::text`
+- Drop old `uq_cron_health_alert_open` index, replace with `uq_cron_health_alert_open_by_scope`
+- Patch `m.refresh_cron_health()` to populate entity_scope on insert/update
+- Create `m.liveness_check` + `m.liveness_sample` + `m.liveness_aggregate_daily`
 
-### Step 2 — Seed the 11 v1 checks
+### Step 2 — Seed the 12 v1 checks
 
-INSERT 11 rows into `m.liveness_check` with the definitions above. One atomic migration.
+INSERT 12 rows into `m.liveness_check`. One atomic migration.
 
 ### Step 3 — Function + cron
 
-Ship `m.evaluate_liveness()` + `liveness-check-every-15m` cron. Function immediately starts sampling.
+Ship `m.evaluate_liveness()` + `m.rollup_liveness_daily()` + both crons.
 
 ### Step 4 — Tune after first 48 hours
 
-After 2 days of baseline samples, review `m.liveness_sample` for any check where:
-- 90th percentile value < expected_min → threshold too high, tune down
-- 10th percentile value > expected_max → threshold too low, tune up
-- Consistent oscillation around threshold → adjust `consecutive_breach_threshold`
+Review `m.liveness_sample` baselines, tune thresholds via UPDATE. No schema/function change.
 
-Done via UPDATE. No schema or function change.
+### Step 5 — First notifier (Resend digest)
 
-### Step 5 — Retention job
-
-Add pg_cron job to delete old samples:
-```sql
-SELECT cron.schedule('liveness-sample-retention-daily', '0 3 * * *', $$
-  DELETE FROM m.liveness_sample WHERE sampled_at < NOW() - interval '30 days';
-$$);
-```
-
-30 days retention. Adjustable per-check later if needed.
+Triggered by first real Layer 2 alert. Not part of initial build.
 
 ---
 
-## Integration with existing infrastructure
+## Questions resolved (25 Apr feedback)
 
-| Existing | How Layer 2 uses it |
-|---|---|
-| `m.cron_health_alert` (Layer 1) | Layer 2 INSERTs `liveness_anomaly` rows. Same table, same lifecycle. Operator sees unified view. |
-| `m.refresh_cron_health()` (Layer 1 sweep) | Not directly used, but mental model: Layer 1 + Layer 2 = two independent sweepers both writing to one alert table. |
-| `cron.job_run_details` | Not used by Layer 2 — that's Layer 1's domain. Layer 2 sources evidence from app tables (f.*, m.*, c.*). |
-| `m.cron_health_snapshot` | Parallel to `m.liveness_sample` conceptually; both are time-series sample stores. |
+External review resolved 6 of 7 open questions.
 
----
+### 1. Check shape — RESOLVED ✅
+**Decision:** 12 v1 checks (11 originals + 1 new median processing time per stage). 2 suggestions declined with rationale.
 
-## Open questions for PK review
+### 2. Thresholds — RESOLVED ✅
+**Decision:** Start conservative with `severity_default` column on `m.liveness_check` (warning | critical). Tune based on 48h baseline.
+**Rationale:** Graduated severity prevents alert fatigue. Some checks (content-fetch liveness) critical; others (median duration) warning.
 
-1. **11 v1 checks — right shape?** Hand-picked based on incident history (ID003, ID004, M11). If PK has other concerns (e.g. feed-discovery working, visual pipeline healthy), add checks for those.
+### 3. Cadence — RESOLVED ✅
+**Decision:** Finer granularity via `check_cadence_seconds` (tiers 300/900/3600/86400) + 0-300s `jitter_seconds` (default 60). Sweep cron runs every 5 minutes.
+**Rationale:** 5-min floor enables fast-tier queue checks. Jitter prevents synchronized spikes.
 
-2. **Thresholds — calibrated tight or loose?** Current draft is conservative (e.g. `expected_min=20` for canonical_bodies_fetched_24h; could be 30 for tighter detection). Conservative risk: false positives frustrating. Tight risk: misses borderline slowdowns. Default conservative; tune in Step 4.
+### 4. Alert dedup — RESOLVED ✅
+**Decision:** Entity-scope based, not jobid-based. Structured `'job:<id>'`, `'pipeline:<stage>'`, `'system:<component>'`, `'platform:<name>'`. Cross-layer migration — Layer 1 back-fills in same migration.
+**Rationale:** jobid was too narrow for multi-cron and system-wide checks. entity_scope extensibility is cheap now.
 
-3. **Check cadence — is 15m floor right?** Some checks (queue_depth_total) warrant 5m. Some (fb_to_ig_publish_ratio_7d) only need daily. Per-check cadence already supported; 15m floor is sweep granularity, not minimum check interval.
+### 5. Retention — RESOLVED ✅
+**Decision:** 30d raw samples + 90d daily aggregates via `m.liveness_aggregate_daily` + daily rollup cron.
+**Rationale:** Aggregate daily rollup table is free storage for trend detection. 30d raw for incident response + 90d aggregate for drift/seasonality.
 
-4. **Alert dedup — ok to reuse Layer 1's `(jobid, alert_type)` unique?** Multiple liveness checks could attribute to the same `jobid` (e.g. content-fetch livenss + content-fetch consecutive-failures both target jobid 4). Current design uses `attributed_cron_jobid` which may be NULL for checks that span multiple crons (e.g. ratio checks). Alert table's unique on `(jobid, alert_type)` where jobid can be NULL will need careful treatment — partial unique where `resolved_at IS NULL` already handles this.
+### 6. Dashboard — DEFERRED BUT TRACKED ✅
+**Decision:** Not MVP but not speculative either. Tracked as CC-TASK-08 (minimal page: current alerts + last-24h failures + 7d sparkline per key metric). Build when paired UI time available.
+**Rationale:** UI becomes necessary at 20+ crons / alerts per week, not before.
 
-5. **Retention period — 30 days enough?** Longer retention helps identify slow drift over months. 30 days is MVP; extend to 90 if disk usage allows.
+### 7. Notification layer — STAGED ROLLOUT ✅
+**Decision:** Resend daily digest → Telegram critical-only via `@InvegentICEbot`. Skip Slack. Trigger: first real Layer 2 alert fires.
+**Rationale:** Alerts sitting in DB aren't alerts. But notifier infra ahead of pain is also wrong.
 
-6. **Dashboard integration — CC-TASK-07?** A `/monitoring/cron-health` page could show Layer 1 + Layer 2 side-by-side, with the 30-day sample chart per check. Nice-to-have, not MVP.
+### Still open
 
-7. **Notification layer — push alerts out of the DB?** Currently alerts sit in `m.cron_health_alert`. Operator has to query. Future: Telegram push via OpenClaw bot, email digest via Resend, or Slack webhook. Not MVP; backlog item.
+**None structurally.** One runtime question: **which specific check fires the first real alert?** Answer reveals itself when it happens.
 
 ---
 
 ## What's out of scope for v1
 
-- Anomaly detection (ML-style) — thresholds are static, not adaptive
-- Per-client liveness checks (11 checks above are system-wide; per-client is possible but explodes check count)
-- Cross-check correlation (e.g. "content-fetch liveness drops AND ingest liveness drops → upstream outage") — manual analysis only
-- Dashboard — backlog
-- Notifications out of DB — backlog
+- Anomaly detection (ML-style) — thresholds static, not adaptive
+- Per-client liveness checks (explodes check count)
+- Cross-check correlation — manual analysis only
+- Dashboard — CC-TASK-08 candidate
+- Per-sample severity grades (upgrade path documented in Q2)
+- Notifier infrastructure — staged by trigger
 
 ---
 
@@ -417,71 +496,62 @@ $$);
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| A `metric_query` has a SQL error — evaluate_liveness throws, blocks all other checks | Medium | Layer 2 stops sampling until fix | Wrap each check in BEGIN...EXCEPTION in the sweep function; failures logged but don't block next check |
-| Metric queries collectively too expensive (slow Layer 2 sweep) | Low (queries are simple COUNT) | Sweep runs over 15m cadence, alerts delayed | Monitor sweep duration; if > 30s, stagger check cadence or split into two sweeps |
-| False positive alerts from over-tight thresholds | Medium | Alert fatigue; operator ignores real alerts | Step 4 tuning based on 48h baseline; start conservative |
-| Missed bugs outside the 11 checks | High | Silent bug classes not yet seen | Philosophy: every novel incident becomes a new check. Incident → check → permanent coverage. |
-| Concurrent sweep runs (if check takes >15m) | Low | Duplicate samples, duplicate alerts | Add advisory lock (`pg_try_advisory_lock(hashtext('evaluate_liveness'))`) in function |
-| `m.liveness_sample` growth (30 days × 11 checks × 4 samples/hour = ~100k rows) | Low | Disk usage at current scale negligible | Retention job + index strategy |
+| `metric_query` SQL error halts sweep | Medium | Layer 2 stops | **v2: per-row BEGIN/EXCEPTION wrap** — failures logged but don't block next check |
+| Metric queries too expensive | Low | Alerts delayed | Monitor sweep duration; split if > 30s |
+| False positives from tight thresholds | Medium | Alert fatigue | **v2: warning/critical split** + Step 4 tuning |
+| Missed bugs outside 12 checks | High | Silent bug classes unknown | Every novel incident becomes a new check |
+| Concurrent sweep runs | Low | Duplicate samples/alerts | **v2: advisory lock** |
+| Sample growth | Low | Disk negligible | **v2: daily rollup + retention** |
+| Cross-layer back-fill breaks Layer 1 | Low | Brief silence | Step 1 atomic — back-fill + ALTER + function patch same migration |
+| entity_scope convention drift | Medium (12mo) | Messier queries | Document convention; revisit enum at 20+ checks |
 
 ---
 
 ## When to implement
 
-**Not HIGH priority.** Layer 1 is live and monitors the existing fleet. ID004 was caught and fixed; the cron 4 casing drift is unlikely to recur (same bug caught by ID004 repair won't occur again).
+**Not HIGH priority.** Layer 1 is live. ID004 was caught and fixed.
 
-Layer 2 is **defence in depth** — guards against the NEXT class of silent bug we haven't identified yet.
+Layer 2 is **defence in depth** — guards against the NEXT class of silent bug.
 
-Recommended trigger: another ID004-class incident occurs (cron runs clean but produces no effect). That's the evidence Layer 2 pays for itself.
+Recommended trigger: another ID004-class incident occurs (cron runs clean, produces no effect). OR: cron count past ~60 (currently ~46). OR: onboarding external clients where silent-failure SLA breach is contractual risk.
 
-OR: when cron count grows past ~60 (currently 46) and human ability to spot-check downstream effects erodes.
-
-OR: when onboarding external clients and a silent-failure SLA breach becomes a contractual risk.
-
-**Effort:** 2-3 hours for the full build:
-- Schema: 30 min
-- Seed 11 checks: 30 min
-- Function + cron: 1 hour
-- Tuning (Step 4): 30 min spread over 48h
+**Effort:** 3-4 hours full v2 build:
+- Step 1 schema + cross-layer migration: 60 min
+- Step 2 seed 12 checks: 30 min
+- Step 3 function + rollup + 2 crons: 90 min
+- Step 4 tuning (48h passive): included in ops
+- Step 5 notifier: deferred to trigger
 
 ---
 
 ## Related
 
 - **Incident:** `docs/incidents/2026-04-23-content-fetch-casing-drift.md` (ID004)
-- **Decision:** D168 — scope definition
+- **Decision:** D168
 - **Layer 1:** `docs/briefs/2026-04-24-cron-health-monitoring-layer-1.md`
-- **Sibling audits:** A21 ON CONFLICT (DB layer), CC-TASK-02 EF `.upsert()` (app layer) — both catch different drift classes
+- **Sibling audits:** A21 ON CONFLICT (DB), CC-TASK-02 EF `.upsert()` (app)
 - **Backlog item:** "D168 — ID004-class response-layer sentinel" in `docs/00_sync_state.md`
+- **Related spec:** R5 v2 spec also integrates same-day feedback, shares revision pattern
 
 ---
 
-## Summary — the two-layer model
+## Changelog
 
-```
-┌──────────────────────────────────────┐
-│ Layer 1 — Status monitoring          │  Already shipped (24 Apr PM)
-│ Source: cron.job_run_details         │
-│ Catches: errors, consecutive fails   │
-│ Limitation: can't see past exit code │
-└──────────────────────────────────────┘
-         │
-         │ Compose into one alert table
-         ▼
-┌──────────────────────────────────────┐
-│ m.cron_health_alert (unified)        │
-│ Operator queries once. One list.     │
-└──────────────────────────────────────┘
-         ▲
-         │ Compose into one alert table
-         │
-┌──────────────────────────────────────┐
-│ Layer 2 — Response monitoring        │  This spec
-│ Source: app tables (f.*, m.*, c.*)   │
-│ Catches: silent no-ops               │
-│ Complement: sees the downstream      │
-│             effect, not the status   │
-└──────────────────────────────────────┘
-```
+**v2 — 25 Apr 2026** — feedback integration from external model review
+- Cross-layer change: added `severity` + `entity_scope` columns to `m.cron_health_alert` with Layer 1 back-fill
+- Changed alert dedup key from `(jobid, alert_type)` to `(entity_scope, alert_type)` partial unique
+- Renamed `check_cadence_minutes` → `check_cadence_seconds` for finer granularity; tiered defaults (300/900/3600/86400)
+- Added `jitter_seconds` to `m.liveness_check`
+- Added `severity_default` column to `m.liveness_check` (warning | critical)
+- Added `m.liveness_aggregate_daily` table + `m.rollup_liveness_daily()` + daily cron for 90-day drift view
+- Added per-row BEGIN/EXCEPTION wrap in evaluate_liveness sweep function
+- Added 12th check: median_pipeline_stage_duration_24h
+- Declined 2 feedback suggestions with rationale
+- Staged notifier rollout spec: Resend digest → Telegram critical → skip Slack
+- Resolved 6 of 7 open questions; 1 remains as runtime observation
+- Sweep cron cadence moved from 15m to 5m floor (enables fast-tier queue checks)
+- Added advisory lock to evaluate_liveness (prevents concurrent sweep overlap)
+- Updated effort estimate to 3-4h for full build
 
-Between them, every ID003/ID004/M11-class bug has a detection surface. New incidents get new checks. The monitoring fleet grows as the system learns.
+**v1 — 24 Apr 2026 evening** — initial spec (Track B)
+- Original 2 tables, 11 v1 checks, 7 open questions
