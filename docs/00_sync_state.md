@@ -366,7 +366,11 @@ Evening (5):
 - `router_catalog_unification_v4_trigger_disabled` — partial commit
 - Manual cleanup via execute_sql — dropped 2 redundant FKs, backfilled CFW+Invegent digest_policy, recreated view with tolerance, dropped duplicate UNIQUE, fixed `k.refresh_column_registry`
 
-*(invegent-dashboard / invegent-portal / invegent-web: no 24 Apr commits)*
+**invegent-dashboard (main):**
+
+- `59bfe66` — docs(roadmap): sync 22 Apr + 24 Apr full-day closures — Dashboard roadmap sync CC-TASK-01 CLOSED
+
+*(invegent-portal / invegent-web: no 24 Apr commits)*
 
 ---
 
