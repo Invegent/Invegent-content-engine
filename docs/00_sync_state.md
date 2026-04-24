@@ -1,8 +1,103 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-24 AM AEST — 24 Apr session-start housekeeping: orphan sweep + M8 Gate 4 pass + CFW finding correction
+> Last written: 2026-04-24 mid-day AEST — A11b CFW full lock + Invegent v0.1 lock + chk_persona_type widened + 2 briefs committed
 > Written by: PK + Claude session sync
+
+---
+
+## 🟢 24 APR MID-DAY UPDATE — A11b CLOSED (CFW FULL + INVEGENT v0.1)
+
+### In one paragraph
+
+A11b (CFW + Invegent content prompts) functionally closed this session. For **CFW**: `c.client_brand_profile` all 8 empty fields filled + `brand_identity_prompt` rewritten (2,671 chars, aligned with system_prompt); `c.client_ai_profile.platform_rules` populated with structured JSONB for FB + IG + LI (word counts, emoji allowed/forbidden, hashtag allowed/forbidden, voice rule); `c.client_ai_profile.system_prompt` refactored from 2,119 → 2,860 chars (cleaner separation of concerns — points to brand_identity_prompt for voice, platform_rules for specifics); 6 `c.content_type_prompt` rows created (`rewrite_v1` + `synth_bundle_v1` × FB/IG/LI). For **Invegent**: `c.client_brand_profile` INSERTED (row didn't exist) with v0.1 dual-stream framing (Stream A external + Stream B internal work-journal); `system_prompt` refactored 1,866 → 4,370 chars; `platform_rules` populated for LinkedIn + YouTube only (no FB/IG/X); `persona_type = 'hybrid_operator_and_avatar'` after widening `chk_persona_type` constraint to support mixed PK-recorded + avatar-delivered content. Three briefs committed: CFW profile (`2029383`), Invegent v0.1 profile (`53fb86c`), Invegent work-journal source-type scope (`f1b4c36`).
+
+### What's locked in DB for CFW
+
+| Table | Field | Before | After |
+|---|---|---|---|
+| `c.client_brand_profile` | presenter_identity | corporate 201 chars | practice-voice 247 chars |
+| `c.client_brand_profile` | core_expertise | empty | 556 chars (paed-heavy + adult OT + service modes) |
+| `c.client_brand_profile` | audience_description | empty | 863 chars, platform-differentiated |
+| `c.client_brand_profile` | brand_voice_keywords | 5 items | 9 items |
+| `c.client_brand_profile` | brand_values | null | 347 chars |
+| `c.client_brand_profile` | brand_never_do | null | **10 items** |
+| `c.client_brand_profile` | compliance_context | null | 794 chars (AHPRA + NDIS) |
+| `c.client_brand_profile` | disclaimer_template | null | 220 chars |
+| `c.client_brand_profile` | brand_identity_prompt | 1,413 chars (conflicted with system_prompt) | 2,671 chars (aligned) |
+| `c.client_brand_profile` | model / temp / tokens | null / null / null | claude-sonnet-4-6 / 0.70 / 900 |
+| `c.client_ai_profile` | platform_rules | null | JSONB: facebook + instagram + linkedin + global |
+| `c.client_ai_profile` | system_prompt | 2,119 chars duplicated brand content | 2,860 chars cleaner separation |
+| `c.content_type_prompt` | rows for CFW | 0 | **6** (rewrite_v1 + synth_bundle_v1 × FB/IG/LI) |
+
+**CFW platform rules summary:**
+- FB: word count 150-280, emoji max 1, hashtag 2-4
+- IG: word count 100-220, emoji max 3, hashtag 5-10
+- LinkedIn: word count 150-400, emoji 0, hashtag 3-5
+- Global voice rule: practice voice + "our therapist" second person, never first-person I, never named
+
+**CFW deferred (can add later):** promo_v1 prompts × 3 platforms, YouTube prompts × 3 job_types, avatar configuration.
+
+### What's locked in DB for Invegent
+
+| Table | Field | Before | After |
+|---|---|---|---|
+| `c.client_brand_profile` | entire row | **didn't exist** | **created** (v0.1) |
+| `c.client_brand_profile` | brand_identity_prompt | n/a | 4,206 chars with dual-stream framing |
+| `c.client_brand_profile` | brand_never_do | n/a | 10 items |
+| `c.client_brand_profile` | model / temp / tokens | n/a | claude-sonnet-4-6 / 0.75 / 1100 |
+| `c.client_brand_profile` | persona_type | n/a | `hybrid_operator_and_avatar` (constraint widened — see below) |
+| `c.client_ai_profile` | platform_rules | null | JSONB: linkedin + youtube + global; FB/IG/X explicitly marked `not_configured_platforms` |
+| `c.client_ai_profile` | system_prompt | 1,866 chars with positioning contradiction | 4,370 chars with dual-stream framing |
+
+**Invegent positioning (v0.1):** holding brand for PK's AI-assisted builds across NDIS / property / accounting; ICE is first product; pre-product-clarity is part of the frame, not hidden.
+**Voice:** first-person PK, builder-in-public, honest about mistakes as brand positioning, peer-level register.
+**Platforms:** LinkedIn primary (word count 200-500, 0 emoji, hashtags 3-6), YouTube secondary (title 5-12 words, description 80-200, narration 60-150; emoji max 2 in description, hashtags 5-8 in description, avatar-aware). FB / IG / X explicitly deferred.
+
+**Invegent deferred (explicit v0.1 scope):** all 6 `c.content_type_prompt` rows (no content flowing yet); `c.client_source`; `c.client_digest_policy`; `c.client_schedule`; `c.client_channel` for LinkedIn + YouTube; Stream B source type implementation (scoped in separate brief).
+
+### Schema change — chk_persona_type widened
+
+Added `hybrid_operator_and_avatar` and `hybrid_operator_only` to the allowed values on `c.client_brand_profile.persona_type`. Before: 4 values (custom_avatar, stock_avatar, cartoon, voiceover_only). After: 6 values. Applied via `apply_migration` as `widen_chk_persona_type_add_hybrid_values_20260424`. CFW row unchanged (still `voiceover_only`). Invegent updated to `hybrid_operator_and_avatar` as intended.
+
+### Decisions made this session (noted for future D-entry batching)
+
+- **Dual-stream content model for Invegent** — Stream A (external signals, existing ICE plumbing) + Stream B (internal work journal, new source type required). Documented in `docs/briefs/2026-04-24-invegent-brand-profile-v0.1.md`. Worth a formal D-entry at next session close if PK wants cross-referencing.
+- **Invegent publishing deliberately deferred** — brand profile is forward-compatible but no feeds, schedule, or content_type_prompt rows. Gate checklist documented for when publishing is wanted.
+- **persona_type constraint widened** — small DDL adjustment, not a strategic decision; noted in migration comments only.
+
+### New backlog items added
+
+- **Avatar configuration for Invegent** — HeyGen avatar creation, consent signing, voice cloning. Not urgent; prompts handle absence gracefully. Will need `c.brand_avatar` + `c.brand_stakeholder` rows when actioned.
+- **Stream B source type implementation** — `source_type_code='git_work_journal'` + ingest adapters + scoring profile. Scope-only brief at `docs/briefs/2026-04-24-invegent-work-journal-source-type.md`. ~9-11 hours effort estimate. Priority LOW-MEDIUM. Not blocking CFW/NDIS Yarns/Property Pulse.
+- **Invegent publishing activation checklist** — 8 steps documented in v0.1 brief. ~2-3 hours of config work when PK decides to publish.
+- **v0.2 positioning review for Invegent** — v0.1 is deliberately loose on product positioning. Reassess in 2-3 months with accumulated learnings.
+
+### What's NOT closed from the morning watch list
+
+- **Dashboard roadmap sync** — still pending. Today's additional closures (CFW/Invegent profiles) push more behind. Small catch-up job whenever convenient.
+- **2 CFW IG drafts in needs_review** — still sitting (`2d8204ac...` and `fdb1ff8a...`). Paused-cron isolation still holds. Decision deferred.
+- **CFW `c.client_digest_policy` row missing** — still missing. Not blocking CFW publishing but makes `run_type` report `'daily'` instead of `'hourly'`.
+
+### 24 Apr mid-day commits (beyond morning)
+
+- `2029383` — docs(briefs): CFW brand profile + platform_rules lock — 24 Apr A11b session
+- `53fb86c` — docs(briefs): Invegent brand profile v0.1 + platform_rules lock — 24 Apr A11b session
+- `f1b4c36` — docs(briefs): scope Invegent work-journal source type (Stream B) — follow-up
+- Migration `cfw_lock_brand_profile_and_platform_rules_20260424` (DB-only)
+- Migration `cfw_align_system_prompt_with_brand_and_platform_rules_20260424` (DB-only)
+- Migration `cfw_seed_content_type_prompts_rewrite_and_synth_20260424` (DB-only)
+- Migration `invegent_create_brand_profile_v01_and_refactor_ai_profile_20260424_v2` (DB-only)
+- Migration `widen_chk_persona_type_add_hybrid_values_20260424` (DB-only)
+- THIS COMMIT — docs(sync_state): 24 Apr mid-day A11b close + Invegent v0.1
+
+### Next item options for the rest of 24 Apr afternoon
+
+1. **Dashboard roadmap sync** — overdue, now even more overdue; 20-30 min; clean content update
+2. **Cron failure-rate monitoring design** — HIGH priority per 22 Apr board; spec-only today; 30-60 min
+3. **A21 — Trigger ON CONFLICT audit** — read-only audit using M11 as template; 60-90 min
+4. **CFW drafting end-to-end verification** — natural wait, observe first fresh draft with new prompts
+5. **Close the session** — today has been substantial; end-of-day is also fine
 
 ---
 
@@ -49,14 +144,7 @@ Yesterday's "CFW never wired" assertion was made from side-finding speed, not st
 
 ### 24 Apr commits (morning)
 
-- THIS COMMIT — docs(sync_state): 24 Apr morning housekeeping — orphan sweep + M8 Gate 4 pass + CFW finding correction
-
-### What's next this session
-
-Decision point open with PK. Board candidates:
-- **R4** — classifier spec on paper (low-risk writing work, Friday-appropriate)
-- **A11b** — CFW + Invegent content prompts (gated on PK prompt session, scheduled for today)
-- **Cron failure-rate monitoring** — HIGH priority per 22 Apr board; production-touching
+- `3365b87` — docs(sync_state): 24 Apr morning housekeeping — orphan sweep + M8 Gate 4 pass + CFW finding correction
 
 ---
 
@@ -96,43 +184,48 @@ Decision point open with PK. Board candidates:
 
 ### 23 Apr commits
 
-- THIS COMMIT — docs(incident): add ID004 content-fetch silent outage
-- Immediately preceding — docs(decisions): add D168 — response-layer sentinel
-- Immediately preceding — fix(cron): jobid 4 vault secret filter uppercase→lowercase (applied via `cron.alter_job`, not a migration file — live DB state only)
+- `9094d75` — docs(incident): add ID004 content-fetch silent outage
+- `7ccf5df` — docs(decisions): add D168 — response-layer sentinel
+- `33efcb6` — docs(sync_state): 23 Apr mid-session — ID004 resolved, D168 scoped
+- fix(cron): jobid 4 vault secret filter uppercase→lowercase (applied via `cron.alter_job`, not a migration file — live DB state only)
 
 ---
 
 ## ⚠️ FIRST THING NEXT SESSION
 
-**Read this entire file before doing anything else.** 24 Apr morning housekeeping closed three items from the 23 Apr wrap (orphan sweep, M8 Gate 4, CFW finding correction). 22 Apr's router-build state (D166, D167) is unchanged and picks up Friday+.
+**Read this entire file before doing anything else.** 24 Apr was a big day — morning housekeeping closed 3 items, mid-day closed A11b for both CFW (full) and Invegent (v0.1). 22 Apr's router-build state (D166, D167) is unchanged and resumes Monday+.
 
-### Today's outcomes in one paragraph (24 Apr AM — carries forward; update at session close)
+### Today's outcomes in one paragraph (24 Apr end-of-mid-day)
 
-Orphan sweep across 3 repos — zero new orphans, 8 stale from 21-22 Apr merges (cosmetic cleanup pending). M8 Gate 4 regression PASSED (zero duplicate canonicals post-22 Apr 00:43 UTC merge). CFW overnight digest_items confirmed as correct behaviour, and yesterday's "CFW never wired" claim corrected — CFW has always been in the planner loop; actual gap is the missing `c.client_digest_policy` row and only 2 of 26 sources enabled. 2 new CFW IG drafts in `needs_review` from the 11:40 UTC post-ID004-recovery tick; IG cron paused so no publish risk.
+**Morning:** orphan sweep clean, M8 Gate 4 PASSED, CFW "never wired" finding from 23 Apr corrected. **Mid-day:** A11b CFW closed (brand_profile 8 fields filled, brand_identity_prompt rewritten, system_prompt refactored, platform_rules populated, 6 content_type_prompt rows created) + A11b Invegent v0.1 closed (brand_profile created with dual-stream framing, system_prompt refactored 1,866 → 4,370 chars, platform_rules populated for LinkedIn + YouTube only) + `chk_persona_type` constraint widened to support `hybrid_operator_and_avatar` for Invegent's avatar-aware positioning. Three briefs committed. Pipeline state unchanged operationally — all this is prompt-layer work that affects future drafts, not currently-flowing drafts.
 
 ### Critical state awareness for next session
 
-1. **ID004 closed.** Content-fetch cron is fetching bodies normally. Incident write-up at `docs/incidents/2026-04-23-content-fetch-casing-drift.md`.
+1. **A11b functionally CLOSED — 24 Apr mid-day.** M1 sprint item can be marked closed on the board. CFW is ready to generate drafts with the new prompt stack on next `ai-worker` cron run after next CFW digest_item arrives. Invegent has v0.1 profile + platform rules but no content flowing yet — deliberately deferred.
 
-2. **M8 Gate 4 CLOSED — 24 Apr AM.** Zero duplicate canonicals across digest_runs post-merge. D164 7-day guard is holding.
+2. **Verification opportunity for next session:** read one fresh CFW draft produced with the new stack (any draft created post-24 Apr 00:36 UTC — the brand_profile migration timestamp). Compare voice, format, and platform-rule adherence to intent. If the draft feels off, tune specific fields.
 
-3. **CFW "never wired" finding CORRECTED — 24 Apr AM.** CFW is wired; real gap is missing `c.client_digest_policy` row + low source enablement. Small backlog ticket to add the policy row when convenient.
+3. **ID004 closed.** Content-fetch cron is fetching bodies normally.
 
-4. **Router work R4/R6 — still Friday+ with fresh head.** Router MVP shadow infrastructure from 22 Apr (D166, D167) is untouched. Resume matching-layer + `seed_and_enqueue_ai_jobs_v1` rewrite deliberately with fresh head.
+4. **M8 Gate 4 CLOSED — 24 Apr AM.** Zero duplicate canonicals across digest_runs post-merge.
 
-5. **`instagram-publisher-every-15m` (jobid 53) remains PAUSED** (`active=false`). Unchanged. Resume only AFTER router integration ships + verifies.
+5. **CFW "never wired" finding CORRECTED — 24 Apr AM.** Real gap is missing `c.client_digest_policy` row (still open — small backlog).
 
-6. **Pipeline is clean.** 0 approved-but-unpublished FB drafts, 0 queue items. Content-fetch healthy (post-ID004). Bundler M8 dedup active. Reviewer layer still paused.
+6. **Router work R4/R6 — still Monday+ with fresh head.** Router MVP shadow infrastructure from 22 Apr (D166, D167) is untouched.
 
-7. **Dev workflow rule: direct-push-to-main by default.** Session start: sweep non-main branches across 3 repos, flag orphans before new work. Confirmed clean 24 Apr AM.
+7. **`instagram-publisher-every-15m` (jobid 53) remains PAUSED** (`active=false`). Unchanged. Resume only AFTER router integration ships + verifies.
 
-8. **Router MVP shadow infrastructure validation:** `SELECT * FROM t.platform_format_mix_default_check;` (expect 4 rows, all status='ok', total_share=100.00) + `SELECT COUNT(*) FROM m.build_weekly_demand_grid((SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns'));` (expect 20 rows). See D167.
+8. **Pipeline is clean.** 0 approved-but-unpublished FB drafts, 0 queue items. Content-fetch healthy (post-ID004). Bundler M8 dedup active. Reviewer layer still paused.
 
-9. **M12 still superseded** (per D166). Router build track replaces the surgical fix. If router stalls, M12 remains fallback.
+9. **Dev workflow rule: direct-push-to-main by default.** Session start: sweep non-main branches across 3 repos. Confirmed clean 24 Apr AM.
 
-10. **D168 sentinel implementation deferred to its own sprint item.** Tracked as A-item in backlog. Not a priority next session unless PK chooses to lift it.
+10. **Router MVP shadow infrastructure validation:** `SELECT * FROM t.platform_format_mix_default_check;` (expect 4 rows, all status='ok', total_share=100.00) + `SELECT COUNT(*) FROM m.build_weekly_demand_grid((SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns'));` (expect 20 rows). See D167.
 
-11. **2 CFW IG drafts in `needs_review`** (post_draft_ids `2d8204ac...` and `fdb1ff8a...`). Paused-cron isolation, no publish risk. Decision TBD — mark dead, reassign platform, or let router sort out on Friday.
+11. **M12 still superseded** (per D166). Router build track replaces the surgical fix.
+
+12. **2 CFW IG drafts in `needs_review`** (post_draft_ids `2d8204ac...` and `fdb1ff8a...`) — older-prompt-stack drafts, paused-cron isolated. Decision TBD.
+
+13. **Dashboard roadmap sync still pending** — now covering 22 Apr closures (M5/M6/M7/M8/M9/M11/D164/D165/D166/D167) AND 24 Apr A11b closures. Low-risk content job when convenient.
 
 ---
 
@@ -142,12 +235,13 @@ Orphan sweep across 3 repos — zero new orphans, 8 stale from 21-22 Apr merges 
 2. **Orphan branch sweep:** query all 3 repos for non-main branches; flag any whose tip is not reachable from main BEFORE starting work
 3. Check `c.external_reviewer` — confirm reviewers still paused (`is_active=false` on all four rows)
 4. Check IG publisher cron state — confirm `instagram-publisher-every-15m` (jobid 53) still paused, DO NOT resume before router integration verifies
-5. **NEW — Validate router shadow infrastructure:** `SELECT * FROM t.platform_format_mix_default_check;` — expect 4 rows, status='ok' on all
-6. **NEW — Check ID004 recovery status:** confirm `f.canonical_content_body` pending-backlog fully drained (expect 0 or near-0); confirm NDIS and Invegent producing digest_items at expected daily rate over last 24h. If either check fails, read the footnote section at the bottom of `docs/incidents/2026-04-23-content-fetch-casing-drift.md` (appended by the 11:00 UTC belt-and-braces poll on 23 Apr) before diagnosing.
+5. Validate router shadow infrastructure: `SELECT * FROM t.platform_format_mix_default_check;` — expect 4 rows, status='ok' on all
+6. Check ID004 recovery status: confirm `f.canonical_content_body` pending-backlog fully drained; confirm NDIS and Invegent producing digest_items at expected daily rate over last 24h
 7. Check file 15 Section G — pick next item from the sprint board
 8. Check `m.external_review_queue` for any findings that landed before the pause (most recent 5 rows)
 9. Read `docs/06_decisions.md` D156–D168 for accumulated decision trail
 10. Query `k.vw_table_summary` before working on any table
+11. **NEW 24 Apr:** if a fresh CFW draft has been produced since 24 Apr 00:36 UTC, compare voice/format/platform-rule adherence to intent. Tune specific brand_profile or platform_rules fields if off.
 
 ---
 
@@ -159,194 +253,13 @@ Orphan sweep across 3 repos — zero new orphans, 8 stale from 21-22 Apr merges 
 - Multi-repo coordinated change where half-state would break production (e.g. route change requiring an EF that hasn't deployed yet)
 - PK explicitly flags the work as risky
 
-**Why this rule exists:** 22 Apr session discovered 3 orphan branches (M6 portal, M7 dashboard, Q2 dashboard) sitting with Vercel Preview deploys but never merged to main — code sat 4+ hours while state appeared "shipped." Claude Code's "Shipped — github.com/.../pull/new/..." URL is a create-a-PR landing page, not an opened PR. Without a sweep, orphans are silent.
-
 **Session-start orphan sweep is non-negotiable.**
 
 ---
 
 ## TODAY'S FULL RUN (22 APR)
 
-Chronology in UTC.
-
-### Overnight 01:00-02:00 UTC — M5 + M6 + M7 + Q2 dispatched
-
-Early-morning sprint picking up from 21 Apr's M2 close:
-- **Q2** — Discovery pipeline `config.feed_url` normalisation, dispatched + merged (14 rows corrected, ingest EF sourced, dashboard route fixed)
-- **M3** — A14 RLS audit of invegent-portal (2 HS OAuth findings, 5 MS exec_sql findings in `docs/briefs/2026-04-22-a14-rls-audit-findings.md`)
-- **M5** — `getPublishSchedule` SECURITY DEFINER RPC dispatched; Claude Code shipped to branch; PR #3 opened
-
-### 02:00-03:00 UTC — Privacy policy migration
-
-Major discovery: Meta App Review URL for privacy policy (`invegent.github.io/Invegent-content-engine/Invegent_Privacy_Policy`) was 404 — GitHub Pages was never enabled.
-
-Resolution:
-- New canonical privacy policy at `invegent.com/privacy-policy` on `invegent-web` repo
-- 12 sections including 4.3 YouTube / 4.4 24h transcript retention / 4.5 HeyGen / revision history
-- `/privacy` path 301-redirects via `next.config.mjs`
-- Old GitHub Pages URL decommissioned as link target
-- **Closes A7** — privacy policy update sprint item
-- PK to update Meta App Review URL field + User Data Deletion URL to `https://invegent.com/privacy-policy`
-
-### 03:00-04:00 UTC — M5 verification + side-finds
-
-PK ran Vercel preview gates on M5:
-- CFW Schedule renders — 5 enabled cells (FB 2/5, IG 2/5, LI 1/5) ✅
-- Property Pulse Schedule renders cleanly ✅
-- Invegent (empty schedule) renders "No time slots yet" ✅
-
-Side-finds during verification:
-- ScheduleTab + FeedsClient missing the `key={activeClientId}` remount pattern that 17-Apr commits `7f43b80` + `d67ddcd` added elsewhere → dispatched as **M9**
-- Property Pulse Schedule shows Facebook 6/5 — over tier limit → flagged as pending sprint item
-
-M5 squash-merged: `737d1501d3404710898985dbddedf4de2b40b2d2` (PR #3).
-
-### 04:00-06:00 UTC — NDIS Yarns IG incident diagnosis (M8)
-
-PK screenshot showed ~100 visually identical posts on NDIS Yarns IG. Actually 18 distinct `post_draft_ids` × ~5 news signals = clusters of near-duplicates.
-
-Diagnostic cascade:
-- `m.post_publish` is clean — 1 publish per draft, all distinct platform_post_ids. Publisher was NOT duplicating.
-- `m.post_draft` had 100+ `image_quote` drafts for NDIS Yarns created between 17 Apr 02:20-03:20 UTC across 5 canonical news topics.
-- 97 drafts : 97 digest_items : 13 canonicals : 15 digest_runs → ~7-8 digest_items per canonical per hour
-
-**Root cause:** `m.populate_digest_items_v1` had `ON CONFLICT (digest_run_id, canonical_id)` — only deduped within a single run. Hourly planner cron re-selected same fresh canonicals into fresh digest_items. 14-17 Apr pipeline block (D135) held 97 bloated digest_items; 17 Apr unblock produced 1-hour burst; 18 published to IG on 19 Apr.
-
-**M8 fix:** `NOT EXISTS` guard in candidates CTE — skip canonicals already in a digest_item for the same client within 7 days, excluding current run for idempotency. Applied via `apply_migration` as `20260422_m8_populate_digest_items_v1_dedup_per_client_7d`. 7-day window backing captured as **D164**.
-
-M8 squash-merged: `ffc767d07b715c3a1540c847a73baa7d32ebe0d5` (PR #1 on content-engine).
-
-### 06:00-08:00 UTC — M6 portal + dashboard exec_sql eradication (M7)
-
-Claude Code ran in parallel:
-- **M6** — 5 RPCs created for portal exec_sql sites (verify_draft_ownership, get_client_name_by_id, get_client_brand_profile, get_portal_drafts_count, get_packages_for_form). Content-engine migrations merged as `2ec25f9`. Portal code changes pushed to branch.
-- **M7** — `app/api/feeds/create/route.ts` exec_sql → `public.create_feed_source` SECURITY DEFINER RPC. Content-engine migration merged as `de20847`. Dashboard code change pushed to branch.
-
-**Key finding in M7:** the "last known exec_sql site" framing was wrong. Audit revealed **30+ additional exec_sql sites** in the dashboard alone (siblings: `app/api/feeds/available/route.ts`, `app/api/diagnostics/route.ts`; actions/ layer: 5+ files; server components: ~12 sites; `lib/supabase/sql.ts` is a wrapper helper many import). Brief claim corrected honestly in M7 commit body. Follow-on sweep item tracked.
-
-### 08:00-10:00 UTC — M9 dispatch + FB-vs-IG investigation (M11)
-
-- **M9** dispatched: client-switch staleness sweep + Schedule platform display. Claude Code audited all 9 client tabs, found 2 missing the pattern (Schedule + Feeds). Also implemented the "always show all 4 platforms greyed-out-if-not-configured" spec.
-- **M11** dispatched: FB-vs-IG publish disparity surfaced in M8 diagnostic (FB got 0 drafts when IG got 18). Claude Code worked ~15 min.
-
-### 10:00-12:00 UTC — Orphan branch discovery + workflow reset
-
-PK spotted Vercel showing many Preview deploys rather than Production-only (which was the historical pattern). Investigation:
-
-| Repo | Branch | Status |
-|---|---|---|
-| invegent-dashboard | `fix/m7-dashboard-feeds-create-exec-sql` | Preview only, no PR opened, Claude Code shipped overnight |
-| invegent-dashboard | `fix/q2-dashboard-feeds-create-key` | Superseded by M7 but never cleaned up |
-| invegent-portal | `fix/m6-portal-exec-sql-eradication` | Preview only, no PR opened — portal production was still running pre-M6 exec_sql code |
-
-Root cause: under Opus 4.7 adaptive, briefs defaulted to branch+PR workflow. Claude Code's "Shipped — github.com/.../pull/new/..." URL is a create-a-PR landing page, not an opened PR. Without an explicit sweep, orphans were silent for hours.
-
-**Workflow reset:**
-- Default changed to direct-push-to-main (see "DEV WORKFLOW RULE" section above)
-- Session-start orphan sweep added to protocol
-- Memory entry #30 replaced with the standing rule
-- 3 orphan PRs opened + squash-merged immediately via MCP:
-  - **M9** merged as `293f8764bcfeaa18096f3976386d98fdee9138e4` (dashboard PR #4)
-  - **M6 portal** merged as `9c00b5a7fe901ff46a344f96a3d97f4b848c5de9` (portal PR #1)
-  - **M7** merged as `eda95ce001809f06992639eb11f23831b348c689` (dashboard PR #5)
-- Q2 dashboard branch left for manual delete (GitHub MCP has no delete-branch tool; harmless cosmetic clutter)
-
-### 12:00-13:00 UTC — M11 merge + D165 bloat cleanup
-
-M11 headline finding: the FB-vs-IG disparity was an 8-day silent cron outage, not a publisher/config/token issue. `enqueue-publish-queue-every-5m` (jobid 48) had `ON CONFLICT (post_draft_id)` but the actual unique index was `(post_draft_id, platform)`. Postgres raised `ERROR: there is no unique or exclusion constraint matching` on every 5-min run from 14 Apr 05:20 UTC — 2,258 silent failures over 8 days. FB queue writes stopped entirely. IG publisher kept working because it bypasses the queue.
-
-Secondary finding (M12, not fixed): `instagram-publisher` reads `m.post_draft` directly with NO `pd.platform` filter. Grabs any approved draft with image_url regardless of intended platform. The 18 "IG duplicates" were actually FB-intended drafts hijacked by IG.
-
-M11 squash-merged: `583cf176c57fdf76c4ae00214f85144d7c7bf593` (content-engine PR #2).
-
-Post-merge state check revealed 120 FB-intended drafts from 17 Apr bloat window still pending (19 newly queued by M11 fix + 101 awaiting queue). **PK decision: delete not drain.** Rationale verbatim: *"rather than just spamming the pages... if we spam, we put 100 posts or you know 50 or 20 posts in one day, people will have different expectations or they will not take the page seriously... maybe the Facebook will tag the page as spam."*
-
-**D165 cleanup applied (13:30 UTC):**
-1. 120 FB drafts marked dead with `dead_reason='m8_m11_bloat_window_2026-04-17'` (NDIS Yarns 63, PP 44, CFW 13)
-2. 41 queue items cleared (FB 27, IG 12 from 18 Apr, YouTube 2 from 9 Apr)
-3. `instagram-publisher-every-15m` (jobid 53) paused via `cron.alter_job` — `active=false`
-
-**D165 decision entry** captures the three-part bloat-window cleanup discipline (mark dead at source, clear queue, pause broken consumer) committed as `cb9eb9c`.
-
-### 13:37 UTC — Morning sync committed (sync_state update)
-
-Morning session end-of-day sync committed. PK took a break.
-
----
-
-### 09:00-12:00 UTC EVENING — Vercel webhook verification, M12 deep-read, D166 decision, router research pass
-
-Session resumed mid-afternoon Sydney time. First task: verify Claude Code's roadmap sync report that Vercel GitHub auto-deploy didn't fire for commit `150f1e5`.
-
-**Vercel webhook — healthy.** Screenshots showed TWO deployments for `150f1e5`: webhook deploy `4EnNRm7nX` (by Invegent, fired 33m ago) + manual deploy `2wA147unN` (by pk-2528, fired 9m ago). Claude Code's confident claim was wrong. D165 direct-push-to-main workflow remains safe. Calibration note: verify Claude Code's infrastructure claims before acting on them.
-
-**Deep code read of the M12 surgical scope** (original plan: 3-bug fix to instagram-publisher pd.platform filter + enqueue NOT EXISTS platform-scoping + exec_sql removal) surfaced that the fix is polish on code the router replaces. See D166 for full reasoning.
-
-Key findings:
-- IG publisher bypasses the queue entirely (reads `m.post_draft` directly via exec_sql)
-- FB publisher is queue-driven with full throttle/token/schedule logic
-- `m.post_draft` DOES have a `platform` column (populated by `seed_and_enqueue_ai_jobs_v1`)
-- No `seed-and-enqueue-instagram` cron exists — only FB. **No real IG content pipeline.** IG publisher was hijacking FB-intended drafts.
-- The enqueue NOT EXISTS "bug" is not a correctness bug given one-draft-per-platform model (defensive hardening only, no live failure mode)
-
-**Decision: D166 — skip M12, build D144 router MVP instead.** Reverses D141 sequencing recommendation. Binding constraint today is Meta + LinkedIn App Review time, not engineering time.
-
-### 12:00-13:00 UTC — Past chats recovery
-
-Ran `conversation_search` for D142-D146 specs to confirm understanding matched prior architectural decisions. Recovered from 17 Apr chat (`485ce039-978a-445a-969a-2dc69838d20b`) and 20 Apr chat (`5d25e5ea-4ff8-4057-aaa2-b913ed68fda4`):
-
-- **D142** — Demand-aware seeder (IMPLEMENTED 18 Apr+; NDIS Yarns went from 147 drafts/wk to ~9)
-- **D143** — Signal content type classifier (6 types: stat_heavy, multi_point, timely_breaking, educational_evergreen, human_story, analytical — rule-based, zero AI cost, GATED)
-- **D144** — Signal router (5-step demand-grid algorithm, GATED on D143+D140+D145+60d data)
-- **D145** — Platform format benchmark table (research-phase)
-- **D146** — Feed pipeline score + retirement (GATED on Phase 2.1)
-
-`docs/06_decisions.md` confirmed pointers-only for D142-D146 ("See 17 Apr 2026 evening commits"); full specs live in git history.
-
-### 13:00-16:00 UTC — Deep research pass on platform format mix defaults
-
-~3 hours of web searches + fetches + doc drafting. Primary source: Buffer 2026 "Best Content Format on Social Platforms" analysing 45M+ posts. Cross-checked: Hootsuite 2026 benchmarks (nonprofits, healthcare, financial services, government), Rival IQ 2025, Socialinsider NGO, multiple YouTube Shorts sources.
-
-Key findings (informed the mix defaults):
-- FB format-agnostic (all within 1% — images 5.20%, video 4.84%, text 4.76%, links 4.43%)
-- IG carousels dominate engagement 6.9%; Reels get 2.25× reach
-- LinkedIn carousels 21.77% (dominant — 196% more than video, 585% more than text)
-- YouTube Shorts 5.91% engagement (highest of any short-form platform)
-- Industry nuances exist (nonprofit/healthcare/FinServ) but point same direction
-
-**Research doc committed as `docs/research/platform_format_mix_defaults.md`** — includes visual summary matrix table, full per-platform rationale, schema design, vertical adjustments for future, and 10 source citations.
-
-### 16:00-17:00 UTC — Migration 1: Defaults table + seed
-
-Applied migration `create_platform_format_mix_default_d145_seed`:
-- `t.platform_format_mix_default` (UUID PK, versioning columns, platform CHECK, FK to `t."5.3_content_format"(ice_format_key)`, composite unique on platform + format + effective_from)
-- `t.platform_format_mix_default_check` validation view
-- Index on `(platform) WHERE is_current = true`
-- 22 seed rows (FB 6, IG 6, LI 5, YT 5) — all platforms sum to exactly 100.00
-
-Validation view confirms: all 4 platforms status='ok', total_share=100.00.
-
-### 17:00-18:00 UTC — Migration 2: Override table + demand grid function
-
-Applied migration `create_client_format_mix_override_and_demand_grid_router`:
-- `c.client_format_mix_override` (same shape as defaults, plus client_id FK ON DELETE CASCADE; empty for all 4 clients)
-- `m.build_weekly_demand_grid(p_client_id UUID, p_week_start DATE DEFAULT CURRENT_DATE)` SQL function
-
-Test run against NDIS Yarns produced coherent demand grid for all 4 platforms — 20 rows total, each platform showing 5 formats with slot counts 1-2 totalling 6 (one over the schedule's 5 slots due to naive rounding, accepted MVP trade-off per D167).
-
-**`animated_text_reveal` at 5% × 5 slots = 0.25 rounds to 0** — format vanishes from 5-slot demand grids. Expected. At 20+ slots it reappears. Documented in D167.
-
-### 18:00-22:00 UTC — Stopping-point conversation, full sync
-
-PK extended session past the "close the day" point to complete the sync-out properly. Three housekeeping items committed alongside tonight's work:
-
-1. **Research doc committed** to `docs/research/platform_format_mix_defaults.md`
-2. **D166 + D167 decision entries** added to `docs/06_decisions.md`
-3. **Sprint board updates** in `docs/15_pre_post_sales_criteria.md` v4.3 — M12 marked superseded, D145 partially closed
-
-### ~22:15 UTC — Session-close verification discovered 23→22 seed row drift
-
-PK applied F11 (external-agent claims need through-verification) to this Claude's own session-close claims. Live DB query revealed 22 seed rows, not 23 as documented. INSERT statement has 22 rows (correct); only the prose summary in 4 files incorrectly said 23. Corrected across sync_state + file 15 + research doc + 06_decisions.md D167 entry in a fifth round of commits.
+*(22 Apr narrative preserved verbatim from prior sync_state — chronology in UTC, closes M5/M6/M7/M8/M9/M11, privacy policy migration, D166/D167 router pivot. Not re-duplicated here for file length; see prior commits for detail.)*
 
 ---
 
@@ -368,34 +281,36 @@ All still paused. Re-enable ceremony at ~18-19 of 28 Section A items closed.
 **Phase 1 — COMPLETE** (7 Apr 2026)
 **Phase 3 — Expand + Personal Brand** — active, external client expansion gated on pre-sales criteria
 
-**Pre-sales gate status:** 9 of 28 Section A items closed, 19 open. **Unchanged from morning.** Router MVP work is sprint-track, not A-items.
+**Pre-sales gate status:** 9 of 28 Section A items closed, 19 open. Router MVP work is sprint-track, not A-items.
 
 **Today's movement on the gate:**
-- A7 (privacy policy update) — ✅ **CLOSED 22 Apr morning.** invegent.com/privacy-policy canonical + live.
-- Sprint items closed morning: M5, M6, M7, M8, M9, M11 — 6 PRs shipped, 161 draft/queue rows cleaned, IG hijack isolated behind paused cron.
-- Sprint items closed evening: **D145 (mix defaults portion)** via D167 — 22 seed rows in `t.platform_format_mix_default`. Benchmark table portion still deferred.
-- **M12 superseded** (not closed) by router build per D166.
+- A7 (privacy policy update) — ✅ CLOSED 22 Apr morning
+- Sprint items closed morning of 22 Apr: M5, M6, M7, M8, M9, M11
+- Sprint items closed evening of 22 Apr: D145 (mix defaults portion) via D167
+- 24 Apr morning: orphan sweep clean, M8 Gate 4 PASSED, CFW "never wired" finding corrected
+- 24 Apr mid-day: **M1 / A11b CLOSED** (CFW full + Invegent v0.1) — the gate item for content-prompt work
+- M12 superseded (not closed) by router build per D166
 
-**Operational status:** Pipeline clean. Bundler M8 dedup active. FB queue enqueue M11 fix live. IG publishing paused until router integration (ex-M12). LI / YouTube / WordPress publishing unaffected. Router shadow infrastructure live but unconnected to hot path.
+**Operational status:** Pipeline clean. Bundler M8 dedup active. FB queue enqueue M11 fix live. IG publishing paused until router integration. LI / YouTube / WordPress publishing unaffected. Router shadow infrastructure live but unconnected to hot path. **CFW now has full prompt stack locked; Invegent has v0.1 prompt stack locked (publishing deliberately deferred).**
 
 ---
 
-## ALL CLIENTS — STATE
+## ALL CLIENTS — STATE (UPDATED 24 APR MID-DAY)
 
-| Client | client_id | FB | IG | LI | Schedule rows | Pending drafts | Notes |
-|---|---|---|---|---|---|---|---|
-| NDIS Yarns | fb98a472 | ✅ | ⏸ IG publisher paused | ✅ | 6 rows (seed) | 0 approved unpublished FB (D165 cleanup) | 63 drafts dead as m8_m11_bloat |
-| Property Pulse | 4036a6b5 | ✅ | ⏸ IG publisher paused | ✅ | 6 rows + 6/5 tier violation | 0 approved unpublished FB | 44 drafts dead as m8_m11_bloat |
-| Care For Welfare | 3eca32aa | ✅ | ⏸ IG publisher paused | ⚠ mode=null | 21 rows (first real UI save) | 2 IG drafts in needs_review (24 Apr AM) | 13 drafts dead as m8_m11_bloat; `c.client_digest_policy` missing (backlog) |
-| Invegent | 93494a09 | ✅ | ⏸ IG publisher paused | ⚠ mode=null | 0 rows | 0 | A11b blocked |
+| Client | client_id | FB | IG | LI | YT | Schedule rows | Pending drafts | Prompt stack | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| NDIS Yarns | fb98a472 | ✅ | ⏸ paused | ✅ | 🔲 | 6 rows (seed) | 0 | 12 content_type_prompt rows | 63 drafts dead as m8_m11_bloat |
+| Property Pulse | 4036a6b5 | ✅ | ⏸ paused | ✅ | 🔲 | 6 rows + 6/5 tier violation | 0 | 12 content_type_prompt rows | 44 drafts dead as m8_m11_bloat |
+| Care For Welfare | 3eca32aa | ✅ | ⏸ paused | ⚠ mode=null | 🔲 | 21 rows | 2 IG drafts in needs_review (older stack) | **✅ FULL STACK LOCKED 24 Apr: brand_profile + platform_rules + system_prompt + 6 content_type_prompt rows** | 13 drafts dead as m8_m11_bloat; `c.client_digest_policy` missing (backlog) |
+| Invegent | 93494a09 | ⏸ not configured | ⏸ not configured | ⚠ mode=null | ⚠ mode=null | 0 rows | 0 | **🟡 v0.1 LOCKED 24 Apr: brand_profile + platform_rules + system_prompt; content_type_prompt deliberately deferred** | Publishing deferred; dual-stream content model; Stream B source type scoped for future |
 
 All 4 FB tokens permanent (`expires_at: 0`).
 
 ---
 
-## SPRINT MODE — THE BOARD (22 APR END-OF-DAY, EVENING UPDATE)
+## SPRINT MODE — THE BOARD (24 APR MID-DAY UPDATE)
 
-Source of truth: `docs/15_pre_post_sales_criteria.md` Section G. Today's snapshot:
+Source of truth: `docs/15_pre_post_sales_criteria.md` Section G. Board snapshot:
 
 ### Quick wins (<1 hour each)
 
@@ -410,7 +325,7 @@ Source of truth: `docs/15_pre_post_sales_criteria.md` Section G. Today's snapsho
 
 | # | Item | Status |
 |---|---|---|
-| M1 | A11b CFW + Invegent content prompts | 🔲 Gated on PK prompt session Fri 24 Apr |
+| **M1** | **A11b CFW + Invegent content prompts** | **✅ CLOSED 24 Apr mid-day — CFW full stack + Invegent v0.1. Briefs `2029383`, `53fb86c`, `f1b4c36`.** |
 | M2 | CFW schedule save bug | ✅ CLOSED 21 Apr |
 | M3 | A14 RLS verification | 🟡 Audit complete; 2 HS + (5 MS→0) findings — HS-1/HS-2 OAuth state signing remain |
 | M4 | A18 — 7 source-less EFs | 🔲 Not yet picked |
@@ -420,20 +335,20 @@ Source of truth: `docs/15_pre_post_sales_criteria.md` Section G. Today's snapsho
 | M8 | Bundler draft multiplication | ✅ CLOSED 22 Apr — PR #1 content-engine `ffc767d`, D164 — Gate 4 PASSED 24 Apr AM |
 | M9 | Client-switch staleness + Schedule platform display | ✅ CLOSED 22 Apr — PR #4 `293f876` |
 | M11 | FB-vs-IG publish disparity (8-day silent cron) | ✅ CLOSED 22 Apr — PR #2 content-engine `583cf17` |
-| **M12** | IG publisher `pd.platform` filter + enqueue NOT EXISTS platform-scoped | **🟡 SUPERSEDED per D166 — router build track replaces this approach. M12 remains fallback if router work stalls.** |
+| M12 | IG publisher `pd.platform` filter + enqueue NOT EXISTS platform-scoped | 🟡 SUPERSEDED per D166 — router build track replaces this approach |
 
-### Router build track (NEW — evening 22 Apr, per D166 + D167)
+### Router build track (22 Apr evening per D166 + D167)
 
 | # | Item | Status |
 |---|---|---|
 | R1 | `t.platform_format_mix_default` + 22 seed rows + validation view | ✅ CLOSED 22 Apr evening — D167 |
 | R2 | `c.client_format_mix_override` (empty, ready) | ✅ CLOSED 22 Apr evening — D167 |
-| R3 | `m.build_weekly_demand_grid()` SQL function | ✅ CLOSED 22 Apr evening — D167 (MVP rounding trade-offs accepted) |
+| R3 | `m.build_weekly_demand_grid()` SQL function | ✅ CLOSED 22 Apr evening — D167 |
 | R4 | D143 classifier — spec on paper (6 content types × rule patterns) | 🔲 Next sprint work — writing exercise, no production risk |
 | R5 | Matching layer design (demand row → signal selection) | 🔲 Depends on R4 |
-| R6 | `m.seed_and_enqueue_ai_jobs_v1` rewrite to call router | 🔲 **HIGH RISK — hot path change.** Friday+ work with fresh head |
-| R7 | ai-worker platform-awareness (skip format advisor when seed has format_key) | 🔲 Depends on R6 |
-| R8 | Cron changes — new IG/LI/YT seeding crons OR consolidate to one router-driven | 🔲 Depends on R6 |
+| R6 | `m.seed_and_enqueue_ai_jobs_v1` rewrite to call router | 🔲 HIGH RISK — hot path change, Monday+ fresh head |
+| R7 | ai-worker platform-awareness | 🔲 Depends on R6 |
+| R8 | Cron changes (consolidate seeding crons or add new ones) | 🔲 Depends on R6 |
 
 ### Larger (half-day+) — unchanged since 21 Apr
 
@@ -443,7 +358,7 @@ Source of truth: `docs/15_pre_post_sales_criteria.md` Section G. Today's snapsho
 | L2 | A3 + A4 — One-page proof doc | 🔲 Needs A4 first |
 | L3 | A16 — Clock A dashboard | 🔲 |
 | L4 | A17 — Clock C seven items | 🔲 |
-| L5 | A20 — Pipeline liveness monitoring | 🔲 D155 fallout; M11 finding suggests this should include `cron.job_run_details` failure-rate watch |
+| L5 | A20 — Pipeline liveness monitoring | 🔲 D155 fallout; includes `cron.job_run_details` failure-rate watch |
 | L6 | A21 — Trigger ON CONFLICT audit | 🔲 M11 is a live example of the class |
 | L7 | A22 — ai-worker error surfacing | 🔲 |
 | L8 | A23 — Live /debug_token cron | 🔲 D153 |
@@ -464,114 +379,103 @@ Source of truth: `docs/15_pre_post_sales_criteria.md` Section G. Today's snapsho
 | A2 | Meta App Review | In Review; escalate 27 Apr if no movement; Shrishti 2FA pending |
 | A6 | Unit economics (TBC subs) | Invoice check |
 
-### Exec_sql eradication state
+### Exec_sql eradication state (unchanged)
 
-Today's M5/M6/M7 closed the highest-severity operator-facing write-path exec_sql sites. **But 30+ exec_sql sites remain in dashboard alone** (discovered during M7 audit, listed honestly in M7 commit body). Read paths + actions/ layer + server components all still use `exec_sql`. Also:
-- `instagram-publisher` EF uses exec_sql with raw interpolation — will be retired or rewritten as part of router integration (was going to fold into M12; now folds into R6)
-- `facebook-publisher` not yet audited
-
-**Recommendation:** do NOT claim "exec_sql sweep complete" anywhere. "M5/M6/M7 closed the known operator-facing write-path sites" is the honest framing.
+M5/M6/M7 closed the highest-severity operator-facing write-path exec_sql sites. 30+ exec_sql sites remain in dashboard alone. `instagram-publisher` EF folds into R6. `facebook-publisher` not yet audited.
 
 ---
 
 ## WATCH LIST
 
 ### Due this session / tomorrow
-- ~~**M8 Gate 4 — 24h regression check** — run post-deploy variant of D164 regression query after 22 Apr 00:43 UTC + 24h = **23 Apr 00:43 UTC / 10:43 AEST Sydney**. Expected: zero rows.~~ ✅ **PASSED 24 Apr AM** (~33h post-deploy); zero rows.
-- **Router shadow infrastructure validation** — `SELECT * FROM t.platform_format_mix_default_check;` expect status='ok' on all 4 rows; `SELECT COUNT(*) FROM m.build_weekly_demand_grid(...)` against NDIS Yarns expect 20 rows ✅ confirmed 24 Apr AM
-- **Dashboard roadmap sync** — NOT done in 22 Apr session; today's closures (M5, M6, M7, M8, M9, M11, D164, D165, D166, D167) still need reflecting in `app/(dashboard)/roadmap/page.tsx`
+
+- ~~M8 Gate 4 regression check~~ ✅ PASSED 24 Apr AM
+- **Dashboard roadmap sync** — NOT done in 22 Apr session OR 24 Apr session; today's closures (22 Apr sprint + 24 Apr A11b) accumulating. Low-risk content update in `app/(dashboard)/roadmap/page.tsx`.
 
 ### Due week of 22-27 Apr
-- **Thu 23 Apr** — PK at office (dead day for building); M8 gate 4 check runs; A1+A5+A8 pilot document drafting if PK has downtime
-- **Fri 24 Apr** — **TODAY.** A11b content prompt session for CFW + Invegent (PK session) + potential R4 classifier spec drafting (low-risk writing work, not production). Morning housekeeping closed 3 items; afternoon TBD.
+
+- **Thu 23 Apr** — PK at office; M8 Gate 4 natural window; A1+A5+A8 drafting opportunity
+- **Fri 24 Apr** — **TODAY.** A11b CFW + Invegent content prompts — **✅ CLOSED mid-day**. Remaining afternoon scope: roadmap sync / cron failure-rate monitoring / A21 audit / close-session.
 - **Mon 27 Apr** — Meta App Review escalation trigger if no movement
 - **Sat 2 May** — original reviewer calibration cycle trigger (defer until reviewers resume)
 
 ### Backlog (open, not yet addressed)
-- **CFW `c.client_digest_policy` row missing** — NEW 24 Apr. Small provisioning ticket. Not blocking; CFW produces drafts without it. Adding the row will make `run_type` report `'hourly'` instead of default `'daily'` and enable scope/window/strict controls.
-- **2 CFW IG drafts in needs_review from 24 Apr AM** — `2d8204ac...` and `fdb1ff8a...`. Isolated by paused IG cron. Decision (mark dead / reassign / let router handle) TBD with PK.
-- **Stale non-main branches — 8 total across 3 repos** — all squash-merged, cosmetic cleanup via GitHub UI.
-- **ID004 sentinel (D168) — cron HTTP response health table + dashboard tile** — 23 Apr. Scope defined in D168. Table `m.cron_http_health` + SQL refresh function + 15-min cron + dashboard tile. Prevents the pg_cron-scheduling-succeeded-but-HTTP-failed class of silent outage.
-- **Publisher schedule source audit** — open since 21 Apr
-- **`m.post_publish_queue.status` has NO CHECK constraint** — D163 continuation
-- **TPM saturation on concurrent platform rewrites** — brief parked
-- **docs/archive 5th-file mystery** — 30-sec investigation, not blocking
-- **Per-commit external-reviewer pollution** — before reviewers resume
-- **Property Pulse Schedule Facebook 6/5 tier violation** — save-side validation missing
-- **30+ remaining exec_sql sites in dashboard** — major cleanup arc
-- **`facebook-publisher` EF audit** — not yet reviewed
-- **Shrishti 2FA + passkey** — Meta admin redundancy
+
+**New 24 Apr mid-day:**
+- **Avatar configuration for Invegent** — HeyGen avatar creation, consent signing, voice cloning. Prompts handle absence gracefully. Will need `c.brand_avatar` + `c.brand_stakeholder` rows.
+- **Stream B source type implementation** — `source_type_code='git_work_journal'` + ingest adapters + scoring profile. Scope-only brief at `docs/briefs/2026-04-24-invegent-work-journal-source-type.md`. ~9-11 hours estimate. Priority LOW-MEDIUM.
+- **Invegent publishing activation checklist** — 8 steps documented in v0.1 brief. ~2-3 hours of config work when PK decides to publish.
+- **v0.2 positioning review for Invegent** — v0.1 is deliberately loose. Reassess in 2-3 months with accumulated learnings.
+- **CFW — consider adding promo_v1 content_type_prompt rows** — currently only rewrite_v1 + synth_bundle_v1 × FB/IG/LI. promo_v1 for operator-brief flow if/when CFW wants it.
+- **CFW — YouTube content_type_prompt rows** — if/when CFW expands to YouTube.
+
+**Carried from 24 Apr AM:**
+- CFW `c.client_digest_policy` row missing — small provisioning ticket
+- 2 CFW IG drafts in needs_review from 24 Apr AM — `2d8204ac...` and `fdb1ff8a...` — decision TBD
+- Stale non-main branches — 8 total across 3 repos — cosmetic cleanup via GitHub UI
+
+**Carried from earlier:**
+- ID004 sentinel (D168) — cron HTTP response health table + dashboard tile
+- Publisher schedule source audit
+- `m.post_publish_queue.status` has NO CHECK constraint — D163 continuation
+- TPM saturation on concurrent platform rewrites — brief parked
+- `docs/archive` 5th-file mystery — 30-sec investigation, not blocking
+- Per-commit external-reviewer pollution — before reviewers resume
+- Property Pulse Schedule Facebook 6/5 tier violation — save-side validation missing
+- 30+ remaining exec_sql sites in dashboard — major cleanup arc
+- `facebook-publisher` EF audit — not yet reviewed
+- Shrishti 2FA + passkey — Meta admin redundancy
 
 ---
 
-## TODAY'S COMMITS
+## TODAY'S COMMITS (24 APR)
 
 **Invegent-content-engine (main):**
 
-Morning (22 Apr):
-- `9cca6e5` — feat(db): public.get_publish_schedule SECURITY DEFINER RPC (M5)
-- `4d6fa16` — docs: A14 portal RLS audit findings (M3, audit-only)
-- `2ec25f9` — feat(db): M6 portal exec_sql eradication — 5 SECURITY DEFINER RPCs
-- `de20847` — feat(db): M7 create_feed_source RPC — dashboard feeds/create replacement
-- `ffc767d` — fix(bundler): eliminate draft multiplication on shared signals (M8 — NDIS Yarns IG incident) (#1)
-- `a2f4a67` — docs(decisions): add D164 — bundler per-client canonical dedup window 7d hardcoded
-- `583cf17` — fix(cron): enqueue-publish-queue ON CONFLICT target — 8-day silent outage (M11 — FB-vs-IG root cause) (#2)
-- `cb9eb9c` — docs(decisions): add D165 — bloat-window cleanup discipline
-- `034ab9f0` — docs(sync_state): end-of-session close 22 Apr (morning close, 03:44 UTC)
+Morning:
+- `3365b87` — docs(sync_state): 24 Apr morning housekeeping — orphan sweep clean, M8 Gate 4 passed, CFW "never wired" finding corrected, 2 new CFW IG drafts flagged
 
-Evening (22 Apr):
-- Migration `create_platform_format_mix_default_d145_seed` applied (via apply_migration, not via repo commit — lives in DB migration history)
-- Migration `create_client_format_mix_override_and_demand_grid_router` applied (same)
-- `6df8ff2e` — docs: D166+D167 router pivot (09:24 UTC) — decisions file updated; sync_state + file 15 in the same commit message did NOT actually push in that commit (file SHAs unchanged); carried into the subsequent commits below
-- `b59138d0` — docs(research): add platform format mix defaults research (D167 companion, 22 Apr 09:33 UTC)
-- `8091cab8` — docs(sync_state): evening router-build update (22 Apr 10:17 UTC, superseded by this commit)
-- `69ba2c42` — docs(file-15): v4.3 (22 Apr 10:25 UTC, superseded by later 23→22 correction)
-- `310b0b7` — docs(sync_state): correct 23→22 seed row count drift (F11 applied)
+Mid-day:
+- `2029383` — docs(briefs): CFW brand profile + platform_rules lock — 24 Apr A11b session
+- `53fb86c` — docs(briefs): Invegent brand profile v0.1 + platform_rules lock — 24 Apr A11b session
+- `f1b4c36` — docs(briefs): scope Invegent work-journal source type (Stream B) — follow-up
+- Migration `cfw_lock_brand_profile_and_platform_rules_20260424` (DB-only)
+- Migration `cfw_align_system_prompt_with_brand_and_platform_rules_20260424` (DB-only)
+- Migration `cfw_seed_content_type_prompts_rewrite_and_synth_20260424` (DB-only)
+- Migration `invegent_create_brand_profile_v01_and_refactor_ai_profile_20260424_v2` (DB-only)
+- Migration `widen_chk_persona_type_add_hybrid_values_20260424` (DB-only)
+- THIS COMMIT — docs(sync_state): 24 Apr mid-day A11b close + Invegent v0.1
 
-23 Apr:
-- `9094d75` — docs(incident): add ID004 — content-fetch silent outage (14-23 Apr)
-- `7ccf5df` — docs(decisions): add D168 — response-layer sentinel for silent-outage class
-- `33efcb6` — docs(sync_state): 23 Apr mid-session — ID004 resolved, D168 scoped
-- (23 Apr close commit) — docs(sync_state): 23 Apr post-ID004 forward state — FIRST THING rewrite, protocol step, commits list
-
-24 Apr:
-- THIS COMMIT — docs(sync_state): 24 Apr morning housekeeping — orphan sweep clean, M8 Gate 4 passed, CFW "never wired" finding corrected, 2 new CFW IG drafts flagged
-
-**invegent-dashboard (main):**
-
-- `737d150` — fix(schedule): replace exec_sql with SECURITY DEFINER RPC + surface read errors (M5) (#3)
-- `293f876` — fix(dashboard): client-switch staleness sweep + Schedule platform display consistency (M9) (#4)
-- `eda95ce` — fix(dashboard): eradicate exec_sql in feeds/create — RPC + boundary validation (M7) (#5)
-
-**invegent-portal (main):**
-
-- `9c00b5a` — fix(portal): eradicate exec_sql — 5 sites replaced with SECURITY DEFINER RPCs (M6) (#1)
-
-**invegent-web (main):**
-
-- `683b3c9` — add canonical privacy policy at /privacy-policy (closes A7)
-- `85052af` — delete superseded /privacy route; 301 redirect via next.config.mjs
+*(invegent-dashboard / invegent-portal / invegent-web: no 24 Apr commits)*
 
 ---
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-Very long day 22 Apr. Morning closed 6 M-numbered items + A7 + D164 + D165 + workflow reset. Evening shifted direction — M12 superseded by router build decision (D166), D145 research shipped as `docs/research/platform_format_mix_defaults.md`, D167 landed shadow router infrastructure (2 tables + 1 function + validation view + 22 seed rows). 23 Apr resolved ID004 (content-fetch 9-day silent outage, case-sensitive vault lookup). 24 Apr AM closed 3 more housekeeping items.
+22 Apr was a long sprint day (6 M-items + A7 + D164 + D165 + workflow reset + D166 + D167). 23 Apr resolved ID004. 24 Apr closed 3 morning items and both halves of A11b mid-day.
 
-**Pipeline state UNCHANGED from 22 Apr evening close.** Router infrastructure is shadow-only — `seed_and_enqueue_ai_jobs_v1` untouched, all crons unchanged, all publishers unchanged, IG publisher still paused per D165. The router can be inspected via `m.build_weekly_demand_grid()` but is not called by anything else in the system.
+**Pipeline state UNCHANGED operationally** from 22 Apr evening close — all 24 Apr work is prompt-layer / documentation / schema constraint work that doesn't touch the live hot path. Router infrastructure is still shadow-only. All publishers unchanged. IG publisher still paused per D165.
 
-Three things that MUST happen each session before any new hot-path work:
-1. **Session-start orphan sweep** — confirms no new orphans accumulated (confirmed clean 24 Apr AM)
-2. ~~**M8 Gate 4 regression query**~~ ✅ PASSED 24 Apr AM
-3. **Router shadow infrastructure validation** — confirm tables still intact, demand grid still produces coherent output (confirmed 24 Apr AM)
+The prompt-layer work DOES affect future drafts though — next CFW digest_item that arrives (typically within 1-24 hours) will be drafted with the new CFW stack. That's the first verification signal we'll see. Read the first fresh draft with intent; compare voice, format, platform-rule adherence to spec.
 
-Realistic next building scope for 24 Apr afternoon:
-- R4 classifier spec on paper (low-risk writing work, no production touch)
-- OR A11b content prompts (PK session)
-- NOT R6 (seed_and_enqueue rewrite) — hot-path change, needs deliberate planning
+Three things that must happen at each session start (protocol reaffirmed):
+1. Session-start orphan sweep
+2. Router shadow infrastructure validation
+3. Read sync_state in full before starting work
+
+Realistic next working windows:
+- 24 Apr afternoon (if continuing): dashboard roadmap sync + cron failure-rate monitoring design (spec-only) + maybe A21 trigger audit
+- 25 Apr Saturday: possibly dead day for building; R4 classifier spec is low-risk writing option
+- 27 Apr Monday: Meta App Review escalation day if no movement; also good day for R5/R6 router work with fresh head
 
 The M11 finding — 2,258 silent cron failures over 8 days undetected — remains the biggest systemic lesson. "Cron failure-rate monitoring" is still HIGH priority. Not blocking first pilot but would be embarrassing with a paying client's pipeline.
 
-**Calibration discipline for future sessions:** the CFW "never wired" claim from 23 Apr sat in sync_state for 14+ hours before 24 Apr's digest_item anomaly flagged it. Side-findings get the same verification rigour as main findings — a wrong side-finding in a canonical doc is still a wrong claim in a canonical doc.
+**Calibration reminder:** the CFW "never wired" claim from 23 Apr sat in sync_state for 14+ hours before 24 Apr's digest_item anomaly flagged it. Side-findings get the same verification rigour as main findings.
 
 **Fresh-eyes test for next session:** does the router output still make sense? Look at `SELECT * FROM m.build_weekly_demand_grid((SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns'));` — should show 20 rows, 4 platforms, shares 5-40%, slot counts 1-2. If that's not what you see, something drifted overnight and needs diagnosis before new work.
+
+**A11b lessons (for future content-prompt work on other clients):**
+1. Client source data (like the `ICE_Analysis` folder for CFW) is gold — never skip reading it before drafting. Without those 3,262 pages of clinical notes, the CFW profile would have been generic "NDIS OT practice" instead of specifically paed-heavy + adult-home-mods.
+2. Pre-existing prompt fields can contradict each other silently (CFW had `brand_identity_prompt` mandating bullets and hashtags while `system_prompt` forbade them). Always read both before rewriting either.
+3. Check constraints can bite mid-migration. `chk_persona_type` only allowed 4 values; the intent required a 5th. Widen the constraint in the same session if the intent justifies it, don't leave a placeholder that'll be forgotten.
+4. For brand-new clients (like Invegent's missing `client_brand_profile`), v0.1-with-loose-positioning is better than waiting for perfect clarity. Tight voice + compliance + format rules survive any positioning change.
