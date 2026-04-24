@@ -1,30 +1,47 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-24 late-afternoon AEST — cron health Layer 1 LIVE + A11b CFW/Invegent closed + 4 briefs today
+> Last written: 2026-04-24 late-afternoon AEST — cron health Layer 1 LIVE + token-expiry bug fixed end-to-end
 > Written by: PK + Claude session sync
 
 ---
 
-## 🟢 24 APR AFTERNOON UPDATE — CRON HEALTH MONITORING LAYER 1 LIVE
+## 🟢 24 APR AFTERNOON UPDATE — CRON HEALTH MONITORING LAYER 1 LIVE + TOKEN-EXPIRY BUG CLOSED
 
 ### In one paragraph
 
-Layer 1 cron failure-rate monitoring shipped to production. New DB-layer system watches `cron.job_run_details` every 15 minutes via a new `cron-health-every-15m` pg_cron job calling `m.refresh_cron_health()` (SECURITY DEFINER). Results UPSERT into `m.cron_health_snapshot` (one row per jobid × window), with threshold crossings creating lifecycle-tracked rows in `m.cron_health_alert` (partial-unique index on `(jobid, alert_type) WHERE resolved_at IS NULL`). Three alert types: `failure_rate_high` (≥ 20% in 24h with 3+ runs), `consecutive_failures` (≥ 3 in a row), `no_recent_runs` (schedule-aware: historical median × 2 with 2h floor / 32d ceiling; jobs with 0 runs and active=true alert immediately). Tuned through v1 → v2 → v3 same session (v2 added schedule-awareness, v3 lowered `min_runs_for_cadence` from 3 to 1 to handle young-system weekly/monthly crons with only 1-2 runs of history). First refresh caught **1 live bug and 17 false positives**; v3 cleared 11 of the false positives, 3 remain as acceptable bootstrap transients. Catches M11-class; does NOT catch ID004-class (that's D168 domain, not yet built). Brief at `docs/briefs/2026-04-24-cron-health-monitoring-layer-1.md` (`0a60756`). **Sprint-board "Cron failure-rate monitoring" HIGH-priority item CLOSED.**
+Layer 1 cron failure-rate monitoring shipped to production. New DB-layer system watches `cron.job_run_details` every 15 minutes via a new `cron-health-every-15m` pg_cron job calling `m.refresh_cron_health()` (SECURITY DEFINER). Results UPSERT into `m.cron_health_snapshot` (one row per jobid × window), with threshold crossings creating lifecycle-tracked rows in `m.cron_health_alert` (partial-unique index on `(jobid, alert_type) WHERE resolved_at IS NULL`). Three alert types: `failure_rate_high` (≥ 20% in 24h with 3+ runs), `consecutive_failures` (≥ 3 in a row), `no_recent_runs` (schedule-aware: historical median × 2 with 2h floor / 32d ceiling; jobs with 0 runs and active=true alert immediately). Tuned through v1 → v2 → v3 same session (v2 added schedule-awareness, v3 lowered `min_runs_for_cadence` from 3 to 1 to handle young-system weekly/monthly crons with only 1-2 runs of history). First refresh caught **1 live bug and 17 false positives**; v3 cleared 11 of the false positives, 3 remain as acceptable bootstrap transients. Catches M11-class; does NOT catch ID004-class (that's D168 domain, not yet built). Brief at `docs/briefs/2026-04-24-cron-health-monitoring-layer-1.md` (`0a60756`). **Sprint-board "Cron failure-rate monitoring" HIGH-priority item CLOSED.** The live bug caught by the monitor (token-expiry-alert-daily schema drift) was then fixed and verified end-to-end in the same session — function now runs clean, belt-and-braces check on all 12 non-permanent tokens confirmed none were in a warning window during the 8-day outage.
 
-### Live bug caught on first refresh
+### Live bug caught AND FIXED on first refresh
 
-`token-expiry-alert-daily` (jobid 60) — 8 consecutive daily failures with `ERROR: column "checked_at" does not exist`. Root cause is schema drift: `public.check_token_expiry()` function was written against an older version of `m.token_expiry_alert` that had a `checked_at` column. The current table has `created_at` instead. The function also references `client_name` in its INSERT column list but the table doesn't have that column either. Classic drift — table was rebuilt at some point without updating the consuming function. **Current severity: LOW** because all 4 FB tokens are permanent (`expires_at: 0`), so the token-expiry monitor has no real work to do today; the bug is pure noise. But it's been silently erroring daily since at least 16 Apr. Nothing else in the system was surfacing this. Now tracked as an explicit backlog ticket (see watch list below).
+`token-expiry-alert-daily` (jobid 60) — 8 consecutive daily failures with `ERROR: column "checked_at" does not exist`. Root cause was schema drift: `public.check_token_expiry()` function was written against an older version of `m.token_expiry_alert` that had a `checked_at` column. The current table has `created_at` instead. The function also referenced `client_name` in its INSERT column list but the table doesn't have that column. Classic drift — table was rebuilt at some point without updating the consuming function. **Severity was LOW** because all 4 FB tokens are permanent (`expires_at: 0`), so the token-expiry monitor has had no real work to do; the bug was pure noise. But it had been silently erroring daily since at least 16 Apr, and nothing else in the system was surfacing this.
 
-This is the primary validation that the monitor is worth the 1.5 hours it cost to build. The first time we turned it on, it found a bug that had been silent for 8+ days.
+**Fix applied in same session** (migration `fix_check_token_expiry_schema_drift_20260424`):
+- DELETE predicate: `checked_at` → `created_at`
+- INSERT column list: removed `client_name` (not in table), removed `checked_at` (not in table); `created_at` has a `NOW()` default so omitting is fine
+- SELECT: removed corresponding `c.client_name` and `NOW() AS checked_at`
+- Added belt-and-braces filter: `token_expires_at > TO_TIMESTAMP(0)` to skip epoch-sentinel "permanent" tokens explicitly
 
-### Current `m.cron_health_alert` state (7 active, 8 auto-resolved this session)
+**Verification:**
+- Manually invoked `SELECT public.check_token_expiry();` post-fix → executed without error (was failing 100% before)
+- `m.token_expiry_alert` row count = 0 (expected — no tokens in warning window)
+- Belt-and-braces: queried all 12 profiles with non-null non-epoch `token_expires_at` → all classified `fine` (earliest expiry is 1 Apr 2031 for YouTube tokens; remaining 10 use `2099-12-31` as "permanent" sentinel). **No warnings were missed during the 8-day outage.**
 
-**True positives (4 alerts, keep):**
-- `token-expiry-alert-daily` — `consecutive_failures` × 8 (real bug above)
+**Alert lifecycle:** the `consecutive_failures` alert on jobid 60 is still active because `cron.job_run_details` only records actual cron invocations, not manual function calls. The alert will auto-resolve at 22:05 UTC tonight (8:05am AEST Saturday) when the cron next fires and succeeds — `consecutive_failures_at_end` will reset to 0 at that point, and the next `m.refresh_cron_health()` cycle will flip `resolved_at`. Fresh-eyes check for next session: `m.cron_health_alert WHERE resolved_at IS NULL` should show the alert cleared.
+
+**Side-finding:** sync_state historically said "all 4 FB tokens permanent (`expires_at: 0`)" but the actual sentinel used is `2099-12-31`, not epoch 0. Minor doc drift, not operationally significant. Function handles both correctly.
+
+This is the primary validation that the monitor is worth the 1.5 hours it cost to build. The first time we turned it on, it found a bug that had been silent for 8+ days, and we fixed it in the same session. Monitoring + fix + verify, textbook loop.
+
+### Current `m.cron_health_alert` state (7 active at time of writing)
+
+**True positives (3 alerts, keep for now):**
+- `token-expiry-alert-daily` — `consecutive_failures` × 8 (**bug fixed; will auto-resolve at 22:05 UTC**)
 - `compliance-reviewer-monthly` — `no_recent_runs` (never-ran-ever, active=true)
 - `external-reviewer-digest-weekly` — `no_recent_runs` (never-ran-ever, reviewer-pause context)
-- `cron-health-every-15m` (self) — `no_recent_runs` (bootstrap transient; will auto-resolve on next 15-min tick)
+
+**Transient (1 alert):**
+- `cron-health-every-15m` (self) — `no_recent_runs` (bootstrap; auto-resolves on first 15-min tick)
 
 **Bootstrap false positives (3 alerts, self-resolve on next natural run):**
 - `compliance-monitor-monthly` — only 1 historical run; next expected 1 May
@@ -35,25 +52,28 @@ These 3 have `sample_size = 0` (only 1 run in history = 0 intervals), so they fa
 
 ### Sprint-board state
 
-The "Cron failure-rate monitoring" HIGH-priority item that's been on the board since 22 Apr M11 close is **CLOSED**. Remaining HIGH-priority: **R6** (seed_and_enqueue_ai_jobs_v1 rewrite — blocks IG publisher resume). D168 (ID004-class sentinel) still scoped but not built.
+The "Cron failure-rate monitoring" HIGH-priority item that's been on the board since 22 Apr M11 close is **CLOSED**. The `Fix public.check_token_expiry()` item that was briefly on the board this afternoon is also **CLOSED**. Remaining HIGH-priority: **R6** (seed_and_enqueue_ai_jobs_v1 rewrite — blocks IG publisher resume) and **D168** (ID004-class sentinel — composes with Layer 1).
 
 ### 24 Apr afternoon commits + migrations
 
 **Commits (Invegent-content-engine main):**
 - `0a60756` — docs(briefs): cron failure-rate monitoring Layer 1 — live in production
-- THIS COMMIT — docs(sync_state): 24 Apr afternoon — cron health Layer 1 live
+- `5e55c27` — docs(sync_state): 24 Apr afternoon — cron health Layer 1 live + M1/cron-monitoring sprint items closed
+- THIS COMMIT — docs(sync_state): token-expiry bug fix + end-of-day close
 
 **Migrations (DB-only):**
 - `cron_health_monitoring_layer_1_schema_and_refresh_20260424` — v1 schema + function + `cron-health-every-15m` cron job
 - `cron_health_schedule_aware_no_run_threshold_20260424` — v2 function replacement (schedule-aware no_recent_runs)
 - `cron_health_lower_cadence_sample_size_min_20260424` — v3 function replacement (v_min_runs_for_cadence 3 → 1)
+- `fix_check_token_expiry_schema_drift_20260424` — corrected `public.check_token_expiry()` after cron-health surfaced the bug
 
 ### New backlog items (afternoon)
 
-- **Fix `public.check_token_expiry()`** — schema drift. Replace `checked_at` → `created_at` in DELETE predicate; remove `client_name` from INSERT column list (or restore to table if dropped unintentionally). Small fix, ~15 min. Low priority operationally but should happen before any non-permanent tokens hit production.
+- ~~**Fix `public.check_token_expiry()`**~~ ✅ **CLOSED 24 Apr afternoon** — migration `fix_check_token_expiry_schema_drift_20260424` applied and verified.
 - **Cron health dashboard tile** — UI surface for `m.cron_health_alert`. Proposed route `/monitoring/cron-health` on `invegent-dashboard`. ~2-3h when warranted. Not building yet — query-direct is fine while system is small.
 - **Cron health v3.1 — schedule-string parsing** — parse `cron.job.schedule` strings (patterns like `*/N * * * *`, `M H * * 0-6`) to derive expected interval when historical sample_size insufficient. ~1h. Eliminates the 3 remaining bootstrap false positives. Nice-to-have, not urgent.
 - **Notification layer for `m.cron_health_alert`** — weekly digest email OR push to `@InvegentICEbot` Telegram. Deferred until alert volume warrants it. Currently query-direct at session start is adequate.
+- **Document `expires_at` sentinel convention** — `2099-12-31` is the "permanent" sentinel in actual use; earlier sync_state docs referred to epoch 0. Minor; update any docs that mention it next time they're touched.
 
 ### Operational check for next session start
 
@@ -68,7 +88,13 @@ WHERE resolved_at IS NULL
 ORDER BY first_seen_at DESC;
 ```
 
-Expected at next session start (assuming no new bugs): `token-expiry-alert-daily` still active + `compliance-reviewer-monthly` + `external-reviewer-digest-weekly` still active. The `cron-health-every-15m` self-alert should have auto-resolved. The 3 bootstrap false positives should have either auto-resolved (if 26 Apr passed) or still be active (if next session is before 26 Apr).
+**Expected at next session start (assuming 22:05 UTC has passed):**
+- `token-expiry-alert-daily` → **RESOLVED** (consecutive_failures cleared when cron next succeeds)
+- `cron-health-every-15m` self-alert → **RESOLVED** (auto-resolved within 15 min of creation)
+- `compliance-reviewer-monthly` + `external-reviewer-digest-weekly` → still active (legitimately never-ran)
+- 3 bootstrap false positives → still active (until their natural cadence fires)
+
+**If `token-expiry-alert-daily` is still active at next session start**, that means the cron didn't run at 22:05 UTC (or ran and still failed — which would indicate the fix was insufficient). Investigate by querying `cron.job_run_details` for jobid 60 ordered by start_time DESC.
 
 ---
 
@@ -145,17 +171,17 @@ Yesterday's "CFW never wired" assertion sat in sync_state for 14+ hours before b
 
 ## ⚠️ FIRST THING NEXT SESSION
 
-**Read this entire file before doing anything else.** 24 Apr was a full day — morning housekeeping + A11b both halves + cron health monitoring shipped. Four briefs committed, 8 DB migrations applied.
+**Read this entire file before doing anything else.** 24 Apr was a full day — morning housekeeping + A11b both halves + cron health monitoring shipped + live bug caught AND fixed. Four briefs committed, 9 DB migrations applied, 8 commits to main.
 
 ### Today's outcomes in one paragraph (24 Apr end-of-day)
 
-Morning: orphan sweep clean, M8 Gate 4 PASSED, CFW "never wired" side-finding corrected. Mid-day: A11b CFW FULL STACK LOCKED (brand_profile + brand_identity_prompt + system_prompt + platform_rules + 6 content_type_prompt rows), A11b Invegent v0.1 LOCKED (brand_profile CREATED with dual-stream framing + system_prompt + platform_rules for LI+YT only), `chk_persona_type` constraint widened. Afternoon: Cron failure-rate monitoring Layer 1 LIVE (schema + refresh function + 15-min cron); first refresh caught a silent schema-drift bug in `public.check_token_expiry()`. Pipeline state unchanged operationally; all today's work is prompt-layer / DB-layer / documentation that doesn't touch the live hot path.
+Morning: orphan sweep clean, M8 Gate 4 PASSED, CFW "never wired" side-finding corrected. Mid-day: A11b CFW FULL STACK LOCKED (brand_profile + brand_identity_prompt + system_prompt + platform_rules + 6 content_type_prompt rows), A11b Invegent v0.1 LOCKED (brand_profile CREATED with dual-stream framing + system_prompt + platform_rules for LI+YT only), `chk_persona_type` constraint widened. Afternoon: Cron failure-rate monitoring Layer 1 LIVE (schema + refresh function + 15-min cron); first refresh caught a silent schema-drift bug in `public.check_token_expiry()`; bug fixed in the same session and verified end-to-end. Pipeline state unchanged operationally; all today's work is prompt-layer / DB-layer / documentation that doesn't touch the live hot path.
 
 ### Critical state awareness for next session
 
 1. **A11b CLOSED.** CFW has full prompt stack; Invegent has v0.1 prompt stack.
-2. **Cron health monitoring LIVE.** Check `m.cron_health_alert WHERE resolved_at IS NULL` at session start as part of protocol. Expect ~4-7 active alerts (true + bootstrap transients).
-3. **Live `token-expiry-alert-daily` bug caught.** Fix `public.check_token_expiry()` when convenient — schema drift, low operational severity.
+2. **Cron health monitoring LIVE.** Check `m.cron_health_alert WHERE resolved_at IS NULL` at session start. Expect ~3-5 active alerts (token-expiry should have auto-resolved; 2 legitimate never-ran + up to 3 bootstrap transients depending on whether 26 Apr Sunday has passed).
+3. **Token-expiry bug FIXED.** `public.check_token_expiry()` migration applied + manually verified. Alert will auto-resolve at 22:05 UTC when next cron fires. If alert is still active next session, investigate jobid 60 in `cron.job_run_details`.
 4. **Router work R4/R6 — still Monday+ with fresh head.** Shadow infrastructure (D166, D167) untouched.
 5. **`instagram-publisher-every-15m` (jobid 53) remains PAUSED.** Do not resume until router integration verifies.
 6. **ID004 closed.** Content-fetch cron healthy.
@@ -236,9 +262,9 @@ All still paused. Re-enable ceremony at ~18-19 of 28 Section A items closed.
 **Today's movement:**
 - 24 Apr morning: orphan sweep, M8 Gate 4 PASS, CFW correction
 - 24 Apr mid-day: **M1 / A11b CLOSED** (CFW full + Invegent v0.1)
-- 24 Apr afternoon: **"Cron failure-rate monitoring" HIGH-priority sprint item CLOSED** (Layer 1 shipped)
+- 24 Apr afternoon: **"Cron failure-rate monitoring" HIGH-priority sprint item CLOSED** (Layer 1 shipped) + token-expiry bug fixed in same afternoon
 
-**Operational status:** Pipeline clean. Bundler M8 dedup active. FB queue enqueue M11 fix live. IG publishing paused until router integration. LI / YouTube / WordPress publishing unaffected. Router shadow infrastructure live but unconnected to hot path. **CFW full prompt stack locked; Invegent v0.1 locked; cron health monitoring watching 46 crons every 15 minutes.**
+**Operational status:** Pipeline clean. Bundler M8 dedup active. FB queue enqueue M11 fix live. IG publishing paused until router integration. LI / YouTube / WordPress publishing unaffected. Router shadow infrastructure live but unconnected to hot path. **CFW full prompt stack locked; Invegent v0.1 locked; cron health monitoring watching 46 crons every 15 minutes; check_token_expiry function restored.**
 
 ---
 
@@ -251,7 +277,7 @@ All still paused. Re-enable ceremony at ~18-19 of 28 Section A items closed.
 | Care For Welfare | 3eca32aa | ✅ | ⏸ paused | ⚠ mode=null | 🔲 | 21 rows | 2 IG drafts (older stack) | **✅ FULL STACK LOCKED 24 Apr** | 13 drafts dead; `c.client_digest_policy` missing (backlog) |
 | Invegent | 93494a09 | ⏸ not configured | ⏸ not configured | ⚠ mode=null | ⚠ mode=null | 0 rows | 0 | **🟡 v0.1 LOCKED 24 Apr** | Publishing deferred; dual-stream content model; Stream B source type scoped |
 
-All 4 FB tokens permanent (`expires_at: 0`).
+All 4 FB tokens permanent (sentinel `2099-12-31` in `token_expires_at`).
 
 ---
 
@@ -267,6 +293,7 @@ Source of truth: `docs/15_pre_post_sales_criteria.md` Section G.
 | Q2 | Discovery pipeline `config.feed_url` | ✅ CLOSED 22 Apr overnight |
 | Q3 | A24 → closed in file 15 | ✅ CLOSED 21 Apr morning |
 | Q4 | A7 privacy policy update | ✅ CLOSED 22 Apr |
+| **Q5** | Fix `public.check_token_expiry()` schema drift | **✅ CLOSED 24 Apr afternoon** — caught by cron health Layer 1, fixed same session |
 
 ### Medium (1-3 hours)
 
@@ -334,6 +361,7 @@ Source of truth: `docs/15_pre_post_sales_criteria.md` Section G.
 ### Due next session
 
 - **Check `m.cron_health_alert WHERE resolved_at IS NULL`** as part of session startup protocol — NEW
+- **Verify token-expiry-alert-daily auto-resolved** (cron should have fired at 22:05 UTC; alert condition clears on first successful run)
 - **Fresh CFW draft review** — read first draft produced with new A11b stack; compare to intent
 - **Dashboard roadmap sync** — covers 22 Apr closures + 24 Apr A11b + 24 Apr cron health. Low-risk content job in `app/(dashboard)/roadmap/page.tsx`.
 
@@ -345,10 +373,10 @@ Source of truth: `docs/15_pre_post_sales_criteria.md` Section G.
 ### Backlog (open, not yet addressed)
 
 **New 24 Apr afternoon:**
-- **Fix `public.check_token_expiry()`** — schema drift (checked_at → created_at, remove client_name). Low priority operationally (FB tokens permanent) but queue it before LI/YT refresh-token flows arrive. ~15 min fix.
 - **Cron health dashboard tile** — `/monitoring/cron-health` route on invegent-dashboard. ~2-3h when warranted.
 - **Cron health v3.1 — schedule-string parsing** — eliminates bootstrap false positives for crons with only 1 historical run. ~1h enhancement.
 - **Notification layer for `m.cron_health_alert`** — weekly digest or Telegram push. Deferred until volume warrants.
+- **Document `expires_at` sentinel** — `2099-12-31` (not epoch 0) is actual convention. Update docs next time they're touched.
 
 **New 24 Apr mid-day:**
 - Avatar configuration for Invegent (HeyGen)
@@ -391,9 +419,10 @@ Mid-day:
 
 Afternoon:
 - `0a60756` — docs(briefs): cron failure-rate monitoring Layer 1 — live in production
-- THIS COMMIT — docs(sync_state): 24 Apr afternoon — cron health Layer 1 live + M1/cron-monitoring sprint items closed
+- `5e55c27` — docs(sync_state): 24 Apr afternoon — cron health Layer 1 live + sprint items closed
+- THIS COMMIT — docs(sync_state): token-expiry bug fix + end-of-day close
 
-**Migrations (DB-only, 24 Apr):**
+**Migrations (DB-only, 24 Apr — 9 total):**
 - `cfw_lock_brand_profile_and_platform_rules_20260424`
 - `cfw_align_system_prompt_with_brand_and_platform_rules_20260424`
 - `cfw_seed_content_type_prompts_rewrite_and_synth_20260424`
@@ -402,6 +431,7 @@ Afternoon:
 - `cron_health_monitoring_layer_1_schema_and_refresh_20260424`
 - `cron_health_schedule_aware_no_run_threshold_20260424`
 - `cron_health_lower_cadence_sample_size_min_20260424`
+- `fix_check_token_expiry_schema_drift_20260424`
 
 *(invegent-dashboard / invegent-portal / invegent-web: no 24 Apr commits)*
 
@@ -409,13 +439,13 @@ Afternoon:
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-24 Apr was a full productive day. Morning: 3 housekeeping items. Mid-day: A11b both halves + 2 briefs + 1 constraint widening. Afternoon: cron failure-rate monitoring Layer 1 shipped to production + 1 live bug caught + 1 brief. Total today: 6 commits on Invegent-content-engine, 8 DB migrations applied, 4 briefs committed.
+24 Apr was a full productive day. Morning: 3 housekeeping items. Mid-day: A11b both halves + 3 briefs + 1 constraint widening. Afternoon: cron failure-rate monitoring Layer 1 shipped to production + 1 live bug caught AND fixed + 1 brief + 2 sync_state updates. Total today: **8 commits on Invegent-content-engine, 9 DB migrations applied, 4 briefs committed, 3 HIGH/MEDIUM-priority sprint items closed (M1 A11b, Cron monitoring, Q5 check_token_expiry fix).**
 
-**Two sprint HIGH-priority items closed today:** M1 (A11b content prompts) + "Cron failure-rate monitoring." Remaining HIGH: R6 (seed_and_enqueue router rewrite — Monday+ fresh-head work) and D168 (ID004-class sentinel — composes with Layer 1).
+**Closed HIGH-priority sprint items today:** M1 (A11b content prompts) + "Cron failure-rate monitoring." Remaining HIGH: R6 (seed_and_enqueue router rewrite — Monday+ fresh-head work) and D168 (ID004-class sentinel — composes with Layer 1).
 
 **Pipeline state UNCHANGED operationally** from 22 Apr evening close. All 24 Apr work is prompt-layer / DB-layer / documentation that doesn't touch the live hot path. Router infrastructure still shadow-only. IG publisher still paused per D165.
 
-Next CFW digest_item (typically within 1-24 hours) will be drafted with the new A11b stack — that's the first verification signal we'll see. Read it with intent.
+Next CFW digest_item (typically within 1-24 hours) will be drafted with the new A11b stack — that's the first verification signal. The token-expiry-alert-daily auto-resolution at 22:05 UTC tonight is the second verification signal — confirms the fix and confirms the monitor's resolve-lifecycle works end-to-end.
 
 **Session startup protocol now includes:**
 1. Orphan branch sweep
@@ -425,14 +455,15 @@ Next CFW digest_item (typically within 1-24 hours) will be drafted with the new 
 **Realistic next working windows:**
 - 25 Apr Saturday: dead day or R4 classifier spec (low-risk writing)
 - 27 Apr Monday: Meta App Review escalation day + R5/R6 router work with fresh head
-- Afternoon-if-continuing-today: Dashboard roadmap sync (20-30 min) + D168 Layer 2 design (30-60 min spec)
+- Whenever convenient: dashboard roadmap sync (20-30 min) + D168 Layer 2 design (30-60 min spec)
 
 **Calibration reminder:** side-findings get the same verification rigour as main findings. The CFW "never wired" claim from 23 Apr sat in sync_state for 14+ hours before 24 Apr's anomaly surfaced it. Structured verification beats speed.
 
-**A11b + cron health lessons:**
+**A11b + cron health + bug fix lessons:**
 1. Client source data is gold — the CFW `ICE_Analysis` folder (3,262 pages) shaped the entire brand_profile; Invegent had no equivalent and that's why v0.1 is deliberately loose
 2. Pre-existing prompt fields can silently contradict each other (CFW brand_identity_prompt vs system_prompt)
 3. Check constraints can bite mid-migration — widen rather than leave placeholders
 4. v0.1-with-loose-positioning beats waiting for perfect clarity when tight voice+compliance+format rules are locked
 5. Ship monitoring systems even when imperfect — the first refresh found a bug that had been silent for 8+ days; that alone justified the 1.5h cost
 6. Tune thresholds against real data fast — v1 → v2 → v3 same session was cheaper than over-designing upfront
+7. Close the loop the same session — monitor caught bug, bug fixed, verification ran, backlog item closed. Full cycle in one afternoon.
