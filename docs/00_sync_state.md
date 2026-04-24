@@ -368,6 +368,7 @@ All 4 FB tokens permanent. All 4 clients have explicit `c.client_digest_policy` 
 |---|---|---|
 | **R4 Step 3** | classifier function + sweep + cron | Unblocks R5 implementation + backfill of 14k canonicals |
 | **R6** | `seed_and_enqueue_ai_jobs_v1` rewrite (+ Findings 1+4+6 bundled) | IG publisher paused until router integration verifies |
+| **CC-TASK-02 fix** | Fix `feed-intelligence` upsert into `m.agent_recommendations` (partial-index ON CONFLICT inference fails). Option A: replace partial unique index with full UNIQUE on `(source_id, recommendation_type)`. Option B: wrap in SECURITY DEFINER RPC that echoes the WHERE predicate. PK to choose. Brief: `docs/briefs/2026-04-25-ef-upsert-audit.md`. | Dormant today (zero rows in target table) but fires on first real recommendation. Silent-failure class (same family as M11 + A21 Finding 1 + ID004) — error logged in EF response body, not surfaced via cron status, not caught by Layer 1 monitoring. |
 
 **Not HIGH (defence-in-depth):**
 - **D168 Layer 2** — spec ready; implementation triggered by next ID004-class incident OR cron fleet >60 OR SLA risk from external clients.
@@ -485,6 +486,11 @@ Evening Track B (2):
 - `59bfe66` — docs(roadmap): sync 22 Apr + 24 Apr full-day closures — Dashboard roadmap sync CC-TASK-01 CLOSED
 
 *(invegent-portal / invegent-web: no 24 Apr commits)*
+
+**25 Apr — CC tasks (Invegent-content-engine):**
+
+- `23ed4c1` — docs(briefs): EF .upsert() audit — CC-TASK-02 CLOSED — 1 HIGH / 0 MEDIUM / 1 LOW findings (brief: `docs/briefs/2026-04-25-ef-upsert-audit.md`). HIGH = `feed-intelligence` upsert into `m.agent_recommendations` — partial unique index `uq_agent_rec_pending` cannot be inferred from `ON CONFLICT (source_id, recommendation_type)` without echoing the partial predicate; verified live via EXPLAIN with ERROR 42P10. Currently dormant (table empty); fires on first real recommendation. Same M11/A21 Finding-1 class.
+- THIS COMMIT — docs(sync_state): CC-TASK-02 closure + new HIGH-priority fix item
 
 ---
 
