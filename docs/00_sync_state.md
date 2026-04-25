@@ -422,7 +422,7 @@ Pre-sales gate: 12 of 28 Section A items closed. A10b (first IG post publishes) 
 **New 25 Apr afternoon (M12 closure):**
 - ~~**PK action: deploy v2.0.0**~~ ✅ Deployed with `--no-verify-jwt`; platform discipline verified 25 Apr 08:15 UTC live tick.
 - **Meta restriction recovery sequence** (replaces "PK action: run cleanup script" — same first step, expanded into the full sequence to actually close A10b):
-  - (a) PK runs `scripts/delete_ny_ig_crosspost_cleanup_20260419.sh` with `$NY_IG_TOKEN` to delete the 18 NY IG cross-posts from 19 April
+  - (a) ~~PK runs `scripts/delete_ny_ig_crosspost_cleanup_20260419.sh` with `$NY_IG_TOKEN`~~ — **Meta Graph API does not support DELETE of published IG media** (test on `18059807273476954` 25 Apr returned generic `code:1 unknown error`; verify-GET confirmed the post is still present). Replace with manual deletion via the Instagram app, OR accept that Meta's 24-48h auto-clearance will lift the restriction regardless of whether the cross-posts are removed. Script docstring should be updated with this finding.
   - (b) Wait 24-48h for Meta to auto-clear the App restriction (error subcode 2207051; typical recovery window per Meta Graph API docs)
   - (c) Manual `curl` test to `/instagram-publisher` with `dry_run=false` and `limit=1` against a known-clean PP draft, using `sb_publishable_*` apikey and `x-publisher-key` from vault — expect HTTP 200 with `status:"published"` and a non-null `platform_post_id`
   - (d) If 200 + published cleanly: `SELECT cron.alter_job(53, active := true)` to unpause the cron
