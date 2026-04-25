@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-25 Saturday ~5:20pm AEST — **M12 CLOSED via instagram-publisher v2.0.0 queue-based refactor; deploy pending PK action**
+> Last written: 2026-04-25 Saturday evening AEST — **M12 cross-post bug VERIFIED FIXED via instagram-publisher v2.0.0 (deployed --no-verify-jwt, platform discipline confirmed in production); A10b deferred on Meta API restriction**
 > Written by: PK + Claude session sync
 
 ---
@@ -16,7 +16,7 @@ After the morning R6 cutover, PK approved Invegent IG drafts and unpaused IG cro
 
 | Artefact | Location | Status |
 |---|---|---|
-| **instagram-publisher v2.0.0** | `supabase/functions/instagram-publisher/index.ts` (commit `562ab3e`) | Code on main; **EF NOT YET DEPLOYED** |
+| **instagram-publisher v2.0.0** | `supabase/functions/instagram-publisher/index.ts` (commit `562ab3e`) | ✅ Deployed with `--no-verify-jwt` (deployment version 17). Platform discipline VERIFIED 25 Apr 08:15 UTC live tick: failed-publish row `m.post_publish.platforms_match = TRUE` proves the EF correctly identified the locked queue row's draft as IG-platform. Cross-post bug FIXED. Cron 53 currently `active=false` while Meta-side restriction clears — see backlog "Meta restriction recovery sequence". |
 | **Cron command updated** | jobid 53, migration `update_ig_publisher_cron_for_v2_20260425` | Applied; cron stays `active=false` |
 | **D169 decision** | `docs/decisions/D169_instagram_publisher_v2_queue_refactor.md` (commit `7d8c8b5`) | ✅ |
 | **Cleanup script for 18 cross-posts** | `scripts/delete_ny_ig_crosspost_cleanup_20260419.sh` (commit `f0c34f3`) | ✅ Awaits PK action with `$NY_IG_TOKEN` |
@@ -304,7 +304,7 @@ GROUP BY pd.platform = pp.platform;
 - ✅ LI publisher (linkedin-zapier-publisher) — healthy but **PP cap breach today needs investigation**
 - ✅ YouTube publisher (youtube-publisher v1.5.0) — healthy
 - ✅ WordPress publisher (wordpress-publisher v1.0.0) — healthy
-- ⏸ **Instagram publisher (instagram-publisher v2.0.0) — code shipped, deploy pending PK action**
+- ⏸ **Instagram publisher (instagram-publisher v2.0.0) — deployed + platform discipline verified; cron 53 `active=false` until Meta restriction (error 2207051) clears**
 
 ---
 
@@ -395,7 +395,7 @@ Pre-sales gate: 12 of 28 Section A items closed. A10b (first IG post publishes) 
 **Not HIGH but actionable next session:**
 - LI publisher audit (does it have an M12-class bug? PP cap breach root cause)
 - R7 build
-- A10b verification once v2.0.0 IG publish lands
+- A10b — blocked by Meta API restriction (error subcode 2207051) on the FB App credentials, likely caused by the 18 NY IG cross-posts on 19 April plus 4 rapid Invegent publishes 25 April morning under v1.0.0. Resolves after PK runs cleanup script + Meta auto-clears (typical 24-48h). v2.0.0 platform discipline already verified independently — A10b is gated only on the external clearance, not on any v2.0.0 code work.
 - R6 performance optimisation
 - m.post_publish_queue.status CHECK with 'dead' (D163 backlog)
 - Carousel verification (v2.0.0 untested for carousel format in production)
@@ -420,12 +420,17 @@ Pre-sales gate: 12 of 28 Section A items closed. A10b (first IG post publishes) 
 ### Backlog (open)
 
 **New 25 Apr afternoon (M12 closure):**
-- **PK action: deploy v2.0.0** via `supabase functions deploy instagram-publisher` from local
-- **PK action: run cleanup script** for 18 NY IG cross-posts
+- ~~**PK action: deploy v2.0.0**~~ ✅ Deployed with `--no-verify-jwt`; platform discipline verified 25 Apr 08:15 UTC live tick.
+- **Meta restriction recovery sequence** (replaces "PK action: run cleanup script" — same first step, expanded into the full sequence to actually close A10b):
+  - (a) PK runs `scripts/delete_ny_ig_crosspost_cleanup_20260419.sh` with `$NY_IG_TOKEN` to delete the 18 NY IG cross-posts from 19 April
+  - (b) Wait 24-48h for Meta to auto-clear the App restriction (error subcode 2207051; typical recovery window per Meta Graph API docs)
+  - (c) Manual `curl` test to `/instagram-publisher` with `dry_run=false` and `limit=1` against a known-clean PP draft, using `sb_publishable_*` apikey and `x-publisher-key` from vault — expect HTTP 200 with `status:"published"` and a non-null `platform_post_id`
+  - (d) If 200 + published cleanly: `SELECT cron.alter_job(53, active := true)` to unpause the cron
+  - (e) Close A10b in `docs/15_pre_post_sales_criteria.md` and update Pre-sales gate count from 12 → 13
 - **LI publisher audit** — does it bypass the queue like IG v1.0.0 did?
 - **PP LinkedIn race condition** — 3 published vs cap=2 root cause
 - **m.post_publish_queue.status CHECK** — add 'dead' (D163 backlog)
-- **Carousel verification** — first real IG carousel publish observation
+- **Carousel verification** — first real IG carousel publish observation (deferred until cron resumes post-restriction)
 - **`deleted_from_platform_at` column** — optional reconciliation column for the 18 deletions
 
 **New 25 Apr morning (R6):**
