@@ -23,409 +23,173 @@ is recorded here with context and reasoning.
 
 ## D163–D168 — See 21–23 Apr 2026 commits (DLQ scoping, bundler dedup, bloat cleanup, router sequencing reversal, router MVP shadow infrastructure, ID004 sentinel scope)
 
+## D170–D176 — See 26 Apr 2026 morning commits (slot-driven Phase A: MCP-applied migrations, pre-flight as gate, architectural revision authority, two-trigger chain, thin-pool signal, versioned ref FK pattern, state-change rollback discipline)
+
 ---
 
-## D170 — Slot-Driven Architecture v4 Build Plan: Stage-Gated Migrations Applied via Supabase MCP, Not CLI
-**Date:** 26 April 2026 morning | **Status:** ✅ APPLIED through Phase A (Stages 1–6 deployed; pattern locked for Phase B)
+## D177 — `m.signal_pool.fitness_score_max` Scale Is 0..100, Not 0..1
+**Date:** 26 April 2026 afternoon | **Status:** ✅ APPLIED in Stage 7.032 (production, commit `2f447cf`)
 
 ### The problem this decides
 
-V4 build plan (commit `26d88b8`) committed Saturday evening defaulted to `supabase db push` for migration application. The first attempt at Stage 1 surfaced two CLI-shaped blockers:
+V3/v4 architectural docs treated fitness as a 0..1 normalised score. Stage 7 brief writing assumed the same. Pre-flight sample query during V4 verification of `m.compute_slot_confidence` returned slot_confidence values exceeding 1.0 (e.g. 9.31), revealing the mismatch.
 
-1. CLI not linked to project — fixed by `supabase link`.
-2. After link, `supabase db push` failed at history reconciliation pre-check: ~280 remote migrations in `supabase_migrations.schema_migrations` don't exist as files in `supabase/migrations/` locally. CLI refused to push until reconciled.
+Production sample distribution:
 
-The ~280 migrations are the standing pattern of this repo: changes applied via Supabase SQL editor, MCP `apply_migration`, or direct SQL since project inception. Reconciling means either `migration repair --status reverted <280 IDs>` (papers over the gap, recurring problem on every future stage as new MCP migrations land) or `supabase db pull` (pollutes the diff with 280 files).
+| Statistic | Value |
+|---|---|
+| Min fitness_score_max | ~30 |
+| Median fitness_score_max | ~80 |
+| Max fitness_score_max | ~98 |
+| Distribution | bell curve in 50–98 range |
+
+The 0..100 scale is set by the classifier output (R4) and inherited by `m.signal_pool.fitness_score_max` via the Stage 3 trigger chain.
 
 ### The decision
 
-**Migrations applied via Supabase MCP `apply_migration`, NOT via Supabase CLI `db push`.** Source-of-truth files live in `supabase/migrations/` in the repo (committed by Claude Code on the feature branch). Application happens via Supabase MCP from chat. Pattern locked for all 19 stages of the slot-driven build.
+**Treat `m.signal_pool.fitness_score_max` as a 0..100 integer-ish numeric. All slot-driven functions that consume it must internally normalise to 0..1 where the LD10 confidence weights expect.**
 
-### What this means in practice
+Concretely:
 
-Per-stage workflow:
+- `m.compute_slot_confidence(numeric, integer, numeric, integer)` — first argument is fitness on 0..100 scale; function divides by 100 internally before applying the 0.50 LD10 weight.
+- `m.check_pool_health(integer)` — fitness gating dropped (vacuous on >=0.65 because 100% of pool meets >=65 fitness on 0..100 scale). High_fitness threshold raised to >=90 informational only.
+- `t.format_quality_policy.min_fitness_threshold` — values are 0..100 (e.g. `image_quote=70`, `video_short_avatar=85`).
+- `t.reuse_penalty_curve.fitness_multiplier` — multiplicative on the 0..100 scale.
 
-1. Claude (chat) writes Stage N brief at `docs/briefs/cc-stage-NN.md` with full SQL for each migration file
-2. PK runs Claude Code (CC) against the brief
-3. CC creates source-of-truth files in `supabase/migrations/20260426_NNN_*.sql`, commits on `feature/slot-driven-v3-build`, pushes
-4. CC reports commit SHA back to chat
-5. Claude (chat) applies each migration via Supabase MCP `apply_migration` using exact SQL from the file
-6. Claude (chat) runs verification queries (V1–VN per stage)
-7. PK approves → next stage
-
-CC never runs SQL. Claude (chat) never edits files. Each session of work has one role per turn — clean responsibility boundaries.
-
-### Why MCP over CLI repair
+### Why not migrate to 0..1
 
 Three reasons:
 
-1. **Whack-a-mole avoidance.** Every future MCP migration applied between stages would force another `migration repair` to land the next stage's CLI push. The MCP-only pattern eliminates the loop.
-2. **Standing pattern continuity.** This is how every other migration in the repo got applied. Switching to CLI mid-project would have created two divergent patterns.
-3. **Idempotent workflow.** MCP `apply_migration` registers a row in `supabase_migrations.schema_migrations` exactly like CLI push would. End-state in production is identical.
+1. **Backward compatibility.** R4 classifier writes 0..100 to ~3,000 existing canonicals. Migration would require recomputing all of them.
+2. **Sub-percent precision unnecessary.** Pool fitness is a coarse signal; 0..100 with one decimal place is plenty.
+3. **Display-friendly.** Operators reading the dashboard see fitness=87 immediately as "high quality" without mental conversion from 0.87.
 
-CLI link remains useful for `supabase functions deploy` (Stage 11 onward, when ai-worker refactor needs deployment).
-
-### What this does NOT change
-
-- Files in `supabase/migrations/` remain source of truth. PRs review them.
-- The `feature/slot-driven-v3-build` branch strategy is preserved (per v4 §5 default).
-- CC's role of creating files + committing + pushing is unchanged.
-- Direct push to `main` for non-build work continues per D165.
-
-### Related decisions
-
-- **D165** — Dev workflow rule (default direct-push to main, deviate for multi-repo coordinated risk). D170 extends: feature branches are appropriate for the 28-migration coordinated change of Phase A; main remains the default for everything else.
-- **v4 build plan** (commit `26d88b8`) — original specified `supabase db push`. D170 supersedes that specifically.
-
----
-
-## D171 — Pre-Flight Schema Verification as a Per-Stage Gate
-**Date:** 26 April 2026 morning | **Status:** ✅ APPLIED for all 6 Phase A stages, locked for Phase B
-
-### The problem this decides
-
-V4 SQL was written from architectural intent, not from production schema introspection. Stage 1 pre-flight queries surfaced 5 mismatches between v4's assumed shape and actual production:
-
-1. `f.canonical_vertical_map` did not exist (v4 §A.5 trigger was specced to fire on it)
-2. `vertical_id` is integer, not uuid (v4 query Q1 used `content_vertical_id uuid`)
-3. `canonical_title` not `title` on `f.canonical_content_item` (v4 Stage 2 trigram index targeted wrong column)
-4. `ai_job_id` not `id` on `m.ai_job` (v4 §11 referenced wrong PK column)
-5. `t.content_class.class_code` is not globally unique (versioned table; partial-unique can't FK)
-
-Caught in 30 minutes of pre-flight before any SQL was written. Each would have cost hours mid-stage if discovered at apply time.
-
-### The decision
-
-**Every stage brief begins with pre-flight schema verification queries against the live production database.** Mismatches are folded into the brief's SQL before CC sees it.
-
-Pre-flight covers:
-- Column names + data types for every table referenced
-- FK target uniqueness (especially against versioned tables)
-- Existence of any referenced view, function, or extension
-- Sample data shape (e.g. how many rows in t.content_class, what class_codes exist)
-- Recent operational state (e.g. cron states, queue depths, R6 paused)
-
-The brief's SQL is written against verified shape, not against v4's theoretical specs.
-
-### Why this earns its keep
-
-Each Phase A stage had pre-flight findings that changed the SQL:
-
-- Stage 1: 5 mismatches above; added Migration 008 (`f.canonical_vertical_map`)
-- Stage 2: 10 ice_format_keys in production (not 6 v4 specced); seed expanded
-- Stage 3: classifier writes to `f.canonical_content_body.content_class`, not a separate table; trigger architecture revised
-- Stage 4: 1,804 classified canonicals total, 647 in last 7 days; backfill batch sizing confirmed
-- Stage 5: client timezone all `Australia/Sydney`, schedule columns `enabled`/`schedule_id`/`day_of_week`/`publish_time`; materialiser SQL written against actual shape
-- Stage 6: pg_cron extension confirmed available, existing cron command patterns inspected to match
-
-Without pre-flight, each stage would have shipped broken SQL and required mid-stage diagnostics + fix-up commits.
+Normalising at use-site (in confidence computation) keeps storage simple and computation explicit.
 
 ### What this requires
 
-A fast feedback loop between chat and live DB. Supabase MCP `execute_sql` provides this. Pre-flight queries are typically:
+Every slot-driven function that combines fitness with other dimensions must:
 
-- `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema=X AND table_name=Y`
-- `SELECT constraint_name, constraint_type FROM information_schema.table_constraints WHERE ...`
-- `SELECT * FROM <table> WHERE <relevant filter> LIMIT 5` (sample data)
-- `SELECT proname, pg_get_function_arguments(oid) FROM pg_proc WHERE ...` (existing functions)
-
-Run before SQL is written. Folded into brief as "Pre-flight findings" section so CC + future readers see what changed and why.
-
-### What this does NOT decide
-
-- Doesn't dictate which queries — those are stage-specific
-- Doesn't formalise as a SOP document; the rhythm is captured here as the precedent
-- Doesn't apply to non-build sessions; pre-flight is a build-stage discipline, not a general session protocol
+1. Document the input scale in the function comment
+2. Divide by 100 before combining with 0..1-scaled inputs (recency, etc.)
+3. Threshold checks against fitness use 0..100 values (>=70, >=85, >=90)
 
 ### Related decisions
 
-- **D161** — authority hierarchy: live DB > older doc specs. D171 operationalises this for build stages: pre-flight is the act of consulting the live DB authority before writing the spec.
-- **D170** — MCP-applied migrations. D171 leverages the same MCP path for read-side verification before write-side application.
+- **D171** — pre-flight schema verification (D177 caught by sample-data pre-flight)
+- **LD10** — confidence weights (0.50 fitness / 0.20 pool log-sat / 0.20 recency / 0.10 diversity log-sat). The 0..1 normalisation happens at the fitness input layer.
 
 ---
 
-## D172 — Architectural Revision Authority: Chat Can Revise v4 Specs During Build, Captures in Sync_State + Decision Log
-**Date:** 26 April 2026 morning | **Status:** ✅ APPLIED via R-A through R-E in Phase A
+## D178 — `m.ai_job.slot_id` FK = ON DELETE CASCADE
+**Date:** 26 April 2026 evening | **Status:** ✅ APPLIED in Stage 9.039 (production, commit `c4c610a`)
 
 ### The problem this decides
 
-Pre-flight findings forced 5 architectural revisions to v4 that couldn't be deferred:
+Stage 8.036 added FK `fk_ai_job_slot` with `ON DELETE SET NULL`. Caught during Stage 8 cleanup when deleting a synthetic test slot:
 
-| Revision | Original v4 spec | Revised in production |
+```
+ERROR: 23514: new row for relation "ai_job" violates check constraint "ai_job_origin_check"
+```
+
+FK action `SET NULL` set `slot_id=NULL` on the linked ai_job, leaving all three origin columns (`digest_run_id`, `post_seed_id`, `slot_id`) NULL. This violates `ai_job_origin_check` which requires at least one origin pair populated.
+
+Three options considered:
+
+| Option | Behaviour | Trade-off |
 |---|---|---|
-| R-A | Trigger fires on assumed-existing `f.canonical_vertical_map` | Table added as Stage 1 Migration 008; trigger re-architected |
-| R-B | Single trigger on canonical_vertical_map | Two-trigger chain (classifier→vertical_map→pool) |
-| R-C | `supabase db push` for migration application | Supabase MCP `apply_migration` (D170) |
-| R-D | `class_code REFERENCES t.content_class(class_code)` FK | FK dropped + orphan-check DO block |
-| R-E | 6 ice_format_keys in `format_synthesis_policy` and `format_quality_policy` | 10 (matches production) |
-
-These weren't optional polish — without them, Stage 1+ couldn't apply cleanly.
+| `ON DELETE CASCADE` | Deleting a slot deletes its ai_jobs | Loses historical ai_job state |
+| `ON DELETE RESTRICT` | Refuse to delete slots with referenced ai_jobs | Blocks legitimate cleanup |
+| Loosen `ai_job_origin_check` | Allow fully-null origin for terminal jobs | Defeats the constraint's purpose |
 
 ### The decision
 
-**Claude (chat) has authority to revise v4 specs mid-build when pre-flight or apply-time findings demand it.** Revisions are captured in two places:
+**`ON DELETE CASCADE`.**
 
-1. **`docs/00_sync_state.md`** — under an "Architectural Revisions vs v4" section, dated and listed by revision letter (R-A, R-B, etc.)
-2. **`docs/06_decisions.md`** — as a D-series entry summarising the revisions with rationale
+### Why CASCADE is the correct semantic
 
-PK approval is not required for revisions that:
-- Resolve a pre-flight mismatch with production schema
-- Make v4's intent applicable when the literal v4 SQL would fail
-- Maintain v4's architectural goals while adapting to production reality
+Historical ai_jobs for a deleted slot have no useful state. The slot they referenced is gone — there's no parent context to interpret the job against. Three concrete reasons:
 
-PK approval IS required for revisions that:
-- Change the architectural goals of v4 (e.g. moving from vertical-scoped to client-scoped pool)
-- Skip v4-locked decisions (LD1–LD20)
-- Defer scope to a later phase that v4 placed in current phase
+1. **No parent context.** An ai_job exists to do work for a specific slot. Without the slot, the job has no operational meaning. CASCADE makes this explicit.
+2. **Cleanup discipline.** Operator-driven slot deletion (e.g. canceling a misconfigured schedule) should leave a clean state, not orphan rows that fail FK checks elsewhere. CASCADE delivers this.
+3. **Audit trail preserved elsewhere.** `m.slot_fill_attempt` rows survive slot deletion (no FK cascade there) — the audit of *what fill attempts were made* persists even when the slot itself is purged.
 
-### Why this works
+RESTRICT was rejected because it would block legitimate operator actions like cancelling future slots when a schedule rule changes. Loosening the origin check was rejected because the check exists specifically to prevent fully-null ai_jobs, which would break the synthesis pipeline silently.
 
-V4 was a build plan written from architectural intent. Live production has details v4 couldn't anticipate (versioned tables, exact column names, existing data shapes, CLI compatibility). The 5 Phase A revisions all preserved v4's architectural goals while adapting to production reality.
+### What this changes
 
-R-A example: v4's intent was a vertical-scoped pool fed by classifier output. The literal v4 trigger spec assumed a mapping table that didn't exist. R-A added the mapping table — preserving the intent while making the trigger applicable. PK approval would have been a delay with no upside; the revision was a correctness fix, not a design change.
+- `m.ai_job.slot_id` FK behaviour: `ON DELETE SET NULL` → `ON DELETE CASCADE`
+- No data migration required; constraint change only
+- Verified via V2 test in Stage 9: insert slot + ai_job, delete slot, confirm ai_job auto-removed
 
-### What this does NOT decide
+### What this does NOT change
 
-- Doesn't extend revision authority to architectural goal changes — those still need PK in the loop
-- Doesn't bypass the decision-log requirement — revisions must be captured in writing for future sessions
-- Doesn't apply to non-build sessions or non-v4 work
+- R6-era ai_jobs (digest_run_id + post_seed_id + post_draft_id all populated) are untouched
+- `ai_job_origin_check` remains strict; CASCADE prevents the violation rather than relaxing the rule
 
 ### Related decisions
 
-- **D161** — authority hierarchy. D172 extends: when live-DB authority forces a v4 spec change, chat acts and documents.
-- **D170** — MCP-applied migrations (R-C codified). 
-- **D171** — pre-flight as a per-stage gate (the discipline that surfaces revision-worthy findings).
+- **Stage 8.036** — added the FK with the original (incorrect) ON DELETE behaviour
+- **D171** — pre-flight as gate. D178 was caught at apply-time during cleanup, not pre-flight — a class of finding (incompatible constraint actions) that's hard to detect without exercising the delete path
 
 ---
 
-## D173 — Two-Trigger Chain Pattern for Classifier-Driven Pool Population
-**Date:** 26 April 2026 morning | **Status:** ✅ APPLIED in Stage 3 production
+## D179 — Stage 10/11 Ordering: Stage 10 Includes Minimal ai-worker Patch (Option B)
+**Date:** 26 April 2026 evening | **Status:** ✅ LOCKED for Stage 10 brief
 
 ### The problem this decides
 
-V4 §A.5 specified a single trigger on `f.canonical_vertical_map` (which didn't exist). Pre-flight found classifier output lands in `f.canonical_content_body.content_class`, with no canonical→vertical mapping anywhere.
+Stage 10 wires four Phase B crons including the fill cron (`m.fill_pending_slots`). The fill function produces shadow ai_jobs with `is_shadow=true`. The existing R6 ai-worker (cron jobid 5 `ai-worker-every-5m`) actively polls `m.ai_job` regardless of `is_shadow` flag — it picks up shadow jobs and tries to process them via R6 logic. Caught during Stage 8 V2 testing: a shadow ai_job was picked up within ~70 seconds and marked `status=failed` with `error='openai_missing_title_or_body'` (because slot-driven jobs have no R6 origin columns).
 
-Two paths to wire pool population:
+Without addressing this before the fill cron fires:
+- Shadow drafts created by the fill function would be marked failed by the R6 ai-worker
+- The 5–7 day Gate B observation period would be polluted by ai-worker errors
+- `m.ai_job` would fill with thousands of `failed` rows obscuring real signal
 
-**Option A — single trigger** on `f.canonical_content_body` AFTER UPDATE OF content_class. Inline the vertical resolution + pool population in one trigger function. Functional but bloats the function.
+Two paths considered:
 
-**Option B — two-trigger chain.** Trigger 1 on `f.canonical_content_body` resolves verticals + INSERTs canonical_vertical_map rows. Trigger 2 on `f.canonical_vertical_map` AFTER INSERT calls pool refresh per row.
+**Option A:** Land Stage 11 (full ai-worker refactor with LD18 idempotency + LD7 prompt caching + slot-driven shape) BEFORE Stage 10 (fill cron). Properly sequenced but inverts v4's order. Stage 11 is a substantial Edge Function deploy; one-shot bigger change.
+
+**Option B:** Stage 10 includes a minimal ai-worker patch (skip `is_shadow=true` rows OR `job_type='slot_fill_synthesis_v1'`). Stage 11 then does full refactor (idempotency + caching + slot-driven processing) as a separate, focused stage.
 
 ### The decision
 
-**Option B — two-trigger chain.**
+**Option B.**
 
-### Why two triggers, not one
+### Why Option B over Option A
 
 Three reasons:
 
-1. **Independent testability.** Trigger 1 can be debugged via direct INSERT/UPDATE on `f.canonical_content_body`. Trigger 2 can be debugged via direct INSERT on `f.canonical_vertical_map`. Stage 4 backfill exploits this — it INSERTs vertical_map rows directly, which fires Trigger 2 organically without needing to touch the classifier path.
+1. **Smaller per-stage blast radius.** Stage 10's minimal patch is a one-line filter on the ai-worker's SELECT. Risk is confined to that filter. Stage 11's full refactor involves prompt caching changes, idempotency redesign, slot-driven payload shape — each higher-risk than the filter alone. Sequencing them as separate stages matches Phase A's pattern of small, verifiable increments.
 
-2. **Audit trail.** `f.canonical_vertical_map.mapping_source` distinguishes `classifier_auto` (Trigger 1) from `backfill` (Stage 4 direct insert) from future `manual` overrides. Single-trigger version would have no equivalent audit surface.
+2. **Preserves observation signal.** With Option B in place during Gate B, shadow ai_jobs accumulate as `status=queued` (untouched by ai-worker filter). Operators can directly observe the *fill function's decision quality* without conflating it with ai-worker behaviour. With Option A, the full ai-worker refactor would change two variables at once.
 
-3. **Reclassification handling without complexity.** When classifier reclassifies an existing canonical, ON CONFLICT DO NOTHING on the vertical_map insert means Trigger 2 doesn't fire (no new row). Trigger 1 explicitly handles this with a separate `PERFORM m.refresh_signal_pool_for_pair(...)` loop over existing mappings. This is clearer than threading reclassification logic through a single trigger.
+3. **Defers EF deploy complexity.** Option B keeps Stage 10 as a SQL-only stage (registering crons + minimal SQL change to ai-worker — actually the patch is in the EF code, but the change is small enough to deploy on a focused day). Stage 11 becomes the first dedicated EF refactor of Phase B with its own pre-flight, deploy verification, and rollback plan.
 
-### When NOT to use this pattern
+### What Option B requires
 
-Two-trigger chains are over-engineering when:
+Stage 10 brief includes:
+- Cron registrations for fill, recovery, breaking, critical-scan (4 new crons)
+- Minimal ai-worker code patch: `WHERE NOT (is_shadow = true)` added to the queued-job SELECT
+- Verification that R6 ai-worker still processes R6 jobs correctly (regression check)
+- Verification that shadow ai_jobs accumulate with `status=queued` and are NOT touched
 
-- Both layers always fire together (no independent invocation path)
-- No audit-trail value in distinguishing the layers
-- The single-trigger version is short enough to read in one screen
-
-This pattern earns its keep when at least one of: independent invocation matters (Stage 4 backfill), audit trail is operationally valuable, or the single-trigger version exceeds ~80 lines.
-
-### Related decisions
-
-- **D172** — architectural revision authority (D173 is the R-B revision in concrete terms)
-- **v4 §A.5** — original single-trigger spec (superseded for this implementation)
-
----
-
-## D174 — Vertical-Scoped Pool Produces Per-Client Asymmetry; Operational Implication for Phase E Evergreen Seeding
-**Date:** 26 April 2026 afternoon | **Status:** Empirical observation; no action required Phase A; informs Phase E priority
-
-### The observation
-
-After Stage 4 backfill, `m.signal_pool` per-vertical depth:
-
-| Vertical | Pool size | Active for clients |
-|---|---|---|
-| 11 NDIS | 279 | NY + CFW |
-| 12 AU Disability Policy | 279 | NY + CFW |
-| 7 AU Residential Property | 271 | PP |
-| 9 AU Property Investment | 271 | PP |
-| 10 AU Mortgage & Lending | 271 | PP |
-| 17 Content Marketing | 99 | Invegent |
-| 16 Social Media Strategy | 99 | Invegent |
-| 15 AI & Automation | 99 | Invegent |
-
-Invegent's pool is approximately **3× thinner** than NY/PP across its three verticals.
-
-### Why the asymmetry exists
-
-Pool population goes through `m.resolve_canonical_verticals(canonical_id)` which joins canonical → content_item → c.client_source (where `is_enabled=TRUE`) → c.client_content_scope. The constraint is enabled-source breadth per vertical:
-
-- **NY + CFW (NDIS, ADP):** 14+ active enabled feed sources between them (DSS, OT Australia, Inclusion Australia, NDIS Quality and Safeguards Commission, etc.)
-- **PP (Residential Property, Investment, Mortgage):** Similarly 14+ sources (CoreLogic, RBA, REIA, PropTrack, etc.)
-- **Invegent (AI, Social, Content):** 2 enabled sources (Social Media Examiner, plus one other)
-
-Pool depth scales with enabled-source breadth. Vertical-scoped design is correct (avoids duplicate entries for clients sharing verticals — NY+CFW share entries; PP gets all property entries) but exposes any client with a thin source list to thin-pool conditions.
-
-### The operational implication
-
-Per LD3, the slot-driven architecture has an evergreen-library fallback for thin-pool moments. Phase E is the parallel content work that hand-curates ~50 evergreen items.
-
-**Phase E priority should weight Invegent's verticals (AI/Social/Content) higher than NY/PP verticals (NDIS/ADP/Property).** Without this weighting, Invegent will hit thin-pool conditions far more often than NY or PP and over-rely on evergreen fallback — degrading content variety for that client specifically.
-
-Not a build problem. Not an emergency. Just a heads-up that Phase E's ~50-item budget should not split evenly across 8 verticals (12% each = 6 items per vertical). Better split is something like 30% to Invegent's three verticals (15 items, ~5 per vertical) and 70% to NY+PP (~5 verticals at ~7 items each).
+Stage 11 brief (separate, later) includes:
+- LD18 DB-enforced idempotency (UPSERT pattern on ai_job processing)
+- LD7 prompt caching adoption (60–80% cost savings on repeat synthesis patterns)
+- Slot-driven payload handling (read from `input_payload->'canonical_ids'`, etc.)
+- UPDATE auto-created post_visual_spec rather than INSERT (the trigger on m.post_draft INSERT handles this)
+- Removal of the temporary `is_shadow` filter (now handled correctly by full processor)
 
 ### What this does NOT decide
 
-- Specific evergreen item counts per vertical — that's Phase E's planning work
-- Whether to add more sources to Invegent — could rebalance the pool but adds source-management overhead; decision deferred until Invegent's actual content needs are clearer
-- Whether other clients should add evergreens too — yes, but proportionally lower
+- Doesn't dictate Stage 11's exact deploy mechanism (Windows MCP times out on `supabase functions deploy`; Stage 11 likely runs from PowerShell per the standing pattern)
+- Doesn't pre-commit to any specific Gate B observation duration; 5–7 days is the planning window but actual go/no-go depends on what Gate B reveals
 
 ### Related decisions
 
-- **LD3** — evergreen library as fallback (the architectural commitment Phase E delivers on)
-- **v4 Phase E** — evergreen seeding (parallel content work, 3-4 hours, ~50 items)
-
----
-
-## D175 — `t.content_class` Versioning Pattern: Drop FK, Use PK + Application-Layer Validation
-**Date:** 26 April 2026 morning | **Status:** ✅ APPLIED in Stage 2.009 (production, commit `130a559`)
-
-### The problem this decides
-
-`t.class_freshness_rule` was specified with `class_code text REFERENCES t.content_class(class_code)`. Apply-time error:
-
-> ERROR: 42830: there is no unique constraint matching given keys for referenced table "content_class"
-
-Investigation: `t.content_class` is a versioned table. `class_code` is unique only per `(class_code, version)` (composite PK) and via partial-unique index `WHERE is_current=true`. PostgreSQL won't accept a partial unique as an FK target.
-
-This is a structural property of versioned reference tables, not a one-off schema oddity.
-
-### The decision
-
-**For lookup tables that reference a versioned source table, drop the FK and use PK + application-layer validation.** Pattern:
-
-```sql
-CREATE TABLE t.lookup_table (
-  class_code text PRIMARY KEY,           -- no FK
-  ...
-);
-
--- Seed with values verified against current+active source rows
-INSERT INTO t.lookup_table (class_code, ...) VALUES (...);
-
--- Validate: every seed value exists as a current+active row in source
-DO $$
-DECLARE v_orphans integer;
-BEGIN
-  SELECT COUNT(*) INTO v_orphans
-  FROM t.lookup_table cfr
-  WHERE NOT EXISTS (
-    SELECT 1 FROM t.<source_versioned_table> cc
-    WHERE cc.class_code = cfr.class_code 
-      AND cc.is_current = true 
-      AND cc.is_active = true
-  );
-  IF v_orphans > 0 THEN
-    RAISE EXCEPTION '<table> has % orphan class_codes', v_orphans;
-  END IF;
-END $$;
-```
-
-### Why drop the FK is correct, not a workaround
-
-Three reasons:
-
-1. **Postgres semantics.** Partial unique indexes (`WHERE is_current=true`) intentionally don't satisfy FK constraints because the uniqueness depends on a predicate that the FK enforcement engine doesn't evaluate. This is by design.
-2. **Versioning intent.** A versioned source table preserves history. An FK to it would prevent rotating versions (you couldn't supersede a `is_current=false` row that the lookup table references). The lookup table only cares about *currently active* values.
-3. **Application-layer validation is sufficient.** Seed inserts are admin-controlled. Application reads (e.g. trigger functions) join against `is_current=true AND is_active=true` filters. The "missing" FK enforcement happens at write time (DO block check) and read time (filter clause), where it actually matters.
-
-### When this pattern applies
-
-Whenever a new lookup/config/policy table needs to reference a versioned table:
-
-- `t.content_class` (this case)
-- `t.content_vertical` (versioned via `is_global` + jurisdiction-specific rows)
-- `t.5.6_brand_voice` (versioned)
-- `t.5.7_compliance_rule` (versioned)
-
-For any of these, default to PK + DO-block validation, not FK.
-
-### What this does NOT decide
-
-- Doesn't change the FK semantics of any existing table — only the pattern for new lookup tables
-- Doesn't migrate existing FKs that may exist incorrectly elsewhere — that's a separate audit
-- Doesn't override FK use against non-versioned tables — those stay normal FKs
-
-### Related decisions
-
-- **D161** — authority hierarchy (live DB > older doc specs). D175 operationalises: when source table has versioning semantics that conflict with FK, trust the live DB shape.
-- **D172** — architectural revision authority. D175 is R-D in concrete terms.
-
----
-
-## D176 — F8 Buffer (10-Min Lookahead) and Manual State-Change Function Hygiene
-**Date:** 26 April 2026 afternoon | **Status:** Operational pattern locked
-
-### The problem this decides
-
-`m.promote_slots_to_pending()` (Stage 5.028) uses an F8 buffer:
-
-```sql
-WHERE status = 'future'
-  AND fill_window_opens_at <= now() + interval '10 minutes'
-```
-
-The +10 minutes is intentional — once Stage 6's cron fires every 5 minutes, this lookahead means slots transition to `pending_fill` slightly before their fill window opens, so the fill cron can pick them up on its very next tick.
-
-During Stage 5 verification (manual function call before Stage 6 cron existed), the function correctly promoted 12 slots — but these slots had no consumer (Stage 8 fill function not yet built). Left untouched, they would have sat in `pending_fill` for days/weeks until Stage 8 shipped.
-
-### The decision
-
-**State-changing functions tested manually during incremental builds must be rolled back to clean state if their consumer doesn't exist yet.**
-
-Concretely for promote_slots_to_pending: after manual verification confirmed it worked, ran:
-
-```sql
-UPDATE m.slot SET status = 'future', updated_at = now() 
-WHERE status = 'pending_fill';
-```
-
-When Stage 6 cron started firing 06:10 UTC, the same 12 slots re-promoted naturally. They'll sit in pending_fill harmlessly until Stage 10 wires the fill cron — at which point they become the first input the fill function processes.
-
-### Why this matters
-
-Three failure modes prevented:
-
-1. **Stranded state.** Slots in pending_fill with no consumer accumulate forever. If Stage 8 takes a week to ship, those slots are a week stale by the time anything reads them.
-2. **Test signal pollution.** The 12 stranded slots would skew Stage 6's first-tick verification (cron promotes 0, not 12, because they were already promoted manually).
-3. **Recovery cron triggering on test data.** Stage 9's `recover_stuck_slots` will eventually classify >1h pending_fill as stuck and try to recover. Test data triggering recovery logic is noise, not signal.
-
-### Pattern for future stages
-
-Before manually invoking a state-changing function during build verification:
-
-1. Note the pre-state (count of rows in each relevant status)
-2. Invoke the function and verify the state transition worked
-3. **If the consumer of the new state doesn't yet exist, roll back to pre-state**
-4. Document in stage report what was rolled back and why
-
-This applies to any function that writes status/lifecycle columns where downstream automation isn't yet wired.
-
-### What this does NOT decide
-
-- Doesn't apply to read-only functions (verify-and-leave is fine)
-- Doesn't apply to functions whose consumers DO exist (just let the state propagate)
-- Doesn't apply to test data that's distinguishable from prod (e.g. a `test_synthetic_jobname` heartbeat row — those self-clean via test cleanup)
-
-### Related decisions
-
-- None directly. This is a build-discipline pattern surfaced by Phase A's incremental nature.
+- **D170** — MCP-applied migrations (Stage 10 SQL portion follows this; Stage 11 EF deploy is the first PowerShell-via-CLI deploy of Phase B)
+- **Stage 8 V2 test finding** — the empirical surface that triggered this decision
 
 ---
 
@@ -450,17 +214,21 @@ This applies to any function that writes status/lifecycle columns where downstre
 | **D166 — Router sequencing reversal** | ✅ APPLIED 22 Apr evening — superseded by slot-driven build (D170+) | — |
 | **D167 — Router MVP shadow infrastructure** | ✅ APPLIED 22 Apr evening — preserved as shadow infrastructure; slot-driven Phase D decommissions | Phase D Stage 19 |
 | **D168 — ID004 sentinel** | 🔲 Backlog A-item | Spec defined; implementation deferred |
-| **D170 — MCP-applied migrations pattern** | ✅ LOCKED through Phase A; applies for all 19 stages | — |
-| **D171 — Pre-flight schema verification per stage** | ✅ LOCKED through Phase A; applies for all 19 stages | — |
+| **D170 — MCP-applied migrations pattern** | ✅ LOCKED through Phase A+B7-9; applies for all 19 stages | — |
+| **D171 — Pre-flight schema verification per stage** | ✅ LOCKED; sharpened by Lesson #32 (query every directly-touched table) | — |
 | **D172 — Architectural revision authority** | ✅ LOCKED; R-A through R-E applied in Phase A | — |
 | **D173 — Two-trigger chain pattern** | ✅ APPLIED Stage 3 | — |
 | **D174 — Invegent thin-pool operational signal** | ✅ Observed; informs Phase E priority | Phase E content work |
 | **D175 — Versioned reference table pattern** | ✅ APPLIED Stage 2.009 | Apply to future lookup tables referencing versioned sources |
 | **D176 — State-change rollback discipline** | ✅ APPLIED Stage 5 | Build-stage pattern |
-| **Slot-driven Phase A — Gate A passed** | ✅ COMPLETE 26 Apr | Phase B begins next session |
-| **Slot-driven Phase B — Stages 7-11 + Gate B** | 🔲 NEXT | Stage 7 brief next session |
+| **D177 — fitness_score_max scale 0..100** | ✅ APPLIED Stage 7.032 | Apply at every fitness consumer |
+| **D178 — ai_job.slot_id FK = ON DELETE CASCADE** | ✅ APPLIED Stage 9.039 | — |
+| **D179 — Stage 10/11 ordering: Option B** | ✅ LOCKED for Stage 10 brief | Stage 10 next session |
+| **Slot-driven Phase A** | ✅ COMPLETE 26 Apr morning | — |
+| **Slot-driven Phase B Stages 7-9** | ✅ COMPLETE 26 Apr afternoon–evening | — |
+| **Slot-driven Phase B Stages 10-11 + Gate B** | 🔲 NEXT | Stage 10 brief next session (D179 Option B) |
 | **Slot-driven Phase C — Cutover (Stages 12-18)** | 🔲 After Gate B | 5-7 days shadow observation post-Phase B |
-| **Slot-driven Phase D — Stage 19 decommission R6** | 🔲 After Phase C | All client-platforms cut over |
+| **Slot-driven Phase D Stage 19 decommission R6** | 🔲 After Phase C | All client-platforms cut over |
 | **Slot-driven Phase E — Evergreen seeding** | 🔲 Parallel | Prioritise Invegent verticals per D174 |
 | Inbox anomaly monitor | 🔲 Post-sprint | Separate brief TBW |
 | Phase 2.1 — Insights-worker | 🔲 Next major build | Meta Standard Access |
@@ -475,21 +243,12 @@ This applies to any function that writes status/lifecycle columns where downstre
 | Professional indemnity insurance | 🔲 Pre-pilot | Underwriting forces clarification |
 | A27 — LLM-caller Edge Function audit (ID003 follow-on) | 🔲 After ai-worker fix establishes pattern | Pattern proven |
 | **Reviewer role-library rebuild (post-D160)** | 🔲 Captured as brief with consumption-model addendum; execute when evidence justifies | 2+ weekly digests post-sprint + concrete use case for a role not in current library |
-| **CFW schedule save bug investigation** | ✅ Closed M2 PR #2 commit `a1d7dc01` | — |
-| **getPublishSchedule exec_sql + silent-swallow** | ✅ Closed M5 PR #3 commit `737d150` | — |
-| **M6 portal exec_sql eradication** | ✅ Closed M6 PR #1 commit `9c00b5a` | — |
-| **M7 dashboard feeds/create exec_sql** | ✅ Closed M7 PR #5 commit `eda95ce` | — |
-| **M9 ScheduleTab + FeedsClient client-switch staleness + Schedule platform display** | ✅ Closed M9 PR #4 commit `293f876` | — |
-| **Discovery pipeline ingest bug fix** | ✅ Closed Q2 | — |
-| **13 failed ai_jobs cleanup SQL** | ✅ Closed 21 Apr evening — see D163 | — |
-| **A7 privacy policy update** | ✅ Closed 22 Apr morning — invegent.com/privacy-policy live + canonical | — |
 | **External reviewer resume** | 🔲 Paused per D162 | ~18-19 of 28 Section A items closed |
 | **Per-commit reviewer iteration bug** | 🔲 Before reviewer resume | Add filter for per_commit_enabled or explicit reviewer_key IN list |
 | **Phase 1.7 DLQ continuation — `m.post_publish_queue` CHECK** | 🔲 Backlog per D163 | Dedicated Phase 1.7 full-sprint session |
 | **TPM saturation on concurrent rewrites** | 🔲 Brief parked per D163 | Pipeline resumes from drain + fresh digest fires through rewrite |
 | **M8 Gate 4 — 24h regression check** | 🔲 23 Apr | Re-run regression query against runs > M8 merge timestamp |
 | **Bundler dedup weekly regression check** | 🔲 Ongoing | Weekly Mon — query in D164 |
-| **FB-vs-IG publish disparity** | ✅ Closed M11 PR #2 commit `583cf17` — root cause 8-day silent cron outage; bloat cleanup applied per D165 | — |
-| **`instagram-publisher` platform filter (ex-M12)** | 🟡 Superseded by slot-driven build | Phase C cutover phases out legacy publishers; Phase D decommissions |
 | **`instagram-publisher` exec_sql + raw interpolation** | 🔲 Folds into slot-driven Phase B Stage 11 ai-worker refactor | Stage 11 |
 | **PP Schedule Facebook 6/5 over-tier-limit** | 🔲 Sprint item TBD | Surfaced in M5 verification — investigate save-side validation |
+| **Stage 12+ refinement: try_urgent_breaking_fills per-platform variance** | 🔲 After Gate B | Currently picks same top breaking item across all platforms for a client; fill function's LD15 dedup masks it. Refine to pick different item per platform within client. |

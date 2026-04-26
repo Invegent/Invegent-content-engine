@@ -1,550 +1,302 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-26 Sunday ~17:00 AEST — **Phase A COMPLETE: Gate A passed; final audit pass added Stage 7 navigation aids + pending_fill protection note**
+> Last written: 2026-04-26 Sunday late evening — **Phase B Stages 7-9 COMPLETE; Stage 10 next**
 > Written by: PK + Claude session sync
 
 ---
 
-## ⏸ 26 APR SUNDAY ~17:00 AEST — PHASE A COMPLETE (FINAL AUDIT PASS)
+## ⏸ 26 APR SUNDAY LATE EVENING — PHASE B STAGES 7-9 COMPLETE
 
 ### In one paragraph
 
-Sunday 26 Apr was the second consecutive long-form session. Started with v4 pre-flight schema verification, which surfaced a structural gap (`f.canonical_vertical_map` did not exist in production despite v4 §A.5 assuming it), four schema mismatches with v4 SQL (vertical_id integer not uuid, canonical_title not title, ai_job_id not id, t.content_class versioned so partial-unique can't FK), and the standing-pattern blocker (`supabase db push` is incompatible with this repo's MCP-applied DB-only migration history). Architecture revised to add `f.canonical_vertical_map` as a structural piece (Migration 008), trigger split into a two-trigger chain (classifier→vertical_map→pool), and migration application standardised on Supabase MCP `apply_migration`. **All 6 Phase A stages deployed, 31 migrations applied, Gate A verified at ~06:11 UTC** (16:11 AEST). Phase A pipeline is now autonomous: pool stays fresh, slots auto-materialise nightly, slots auto-promote every 5 minutes. R6 still paused. Old pipeline still untouched. Anthropic spend still essentially zero.
+Sunday 26 Apr was the third consecutive long-form session. Started post-Phase-A (commit `2799253`, Gate A passed earlier in the day). Built Phase B Stages 7, 8, and 9 end-to-end with full V1–V6 verification per stage. Total 16 new migrations (032–045) on `feature/slot-driven-v3-build`: scoring helpers (LD10 confidence + LD12 evergreen ratio), the fill function (heart of v3, slot-driven origin path with full pool query / dedup / quality gates / pool-health relaxation / evergreen fallback), rejection trigger, FK CASCADE for `m.ai_job.slot_id` (D178), stuck-slot recovery (LD13/F10), critical-window scan (§B.11), hot-breaking pool view + urgent slot inserter with LD20 replaceable check (§B.12). Three architectural decisions captured: D177 (fitness scale 0..100), D178 (FK CASCADE), D179 (Stage 10/11 Option B). Three pre-flight gaps caught and fixed in-stage: Stage 7 fitness scale, Stage 8 `c.client_content_scope` columns + `m.post_draft.draft_body` NOT NULL, Stage 9 `m.slot_fill_attempt.decision` CHECK. All callable. **No Phase B crons wired yet** — fill, recovery, breaking, critical-scan all live as functions but not auto-fired (Stage 10's job). Anthropic spend still essentially zero from build pipeline.
 
 ### Critical state right now
 
-1. **Phase A COMPLETE** — Gate A passed. All 6 Phase A crons firing on schedule. Pool + slots running autonomously.
-2. **Pool: 1,694 active rows** in `m.signal_pool` across 8 verticals, 6 classes, 648 distinct canonicals. Growing organically (+26 since Stage 5 close).
-3. **Slots: 70 total** (58 future, 12 pending_fill). Pending_fill slots are Mon 27 Apr — they'll wait for Stage 8 fill function. **DO NOT touch them next session — see "DO NOT TOUCH" list below.**
-4. **6 new Phase A crons active** (jobid 69-74). 9 cron ticks captured this session, all `succeeded`, zero failed, zero `slot_alerts`.
-5. **R6 seed crons all paused** (jobid 11, 64, 65 active=false) — unchanged.
-6. **All 14 publish profiles** still have destination_id populated. Throttle bypass class CLOSED.
-7. **FB and LI publishers healthy** (jobid 7, 54). 145 queued, 91 published, 42 dead — same shape as session start.
-8. **All 4 external reviewers paused** per D162 — unchanged.
-9. **Repo:** `feature/slot-driven-v3-build` branch — 7 commits Stage 1→Stage 6 (including 2.5 fix-up), 31 migration files, ahead of main by 31 migrations + the merge of Stage 1's 8 + Stage 2's 9 + Stage 3's 3 + Stage 4's 3 + Stage 5's 5 + Stage 6's 3 = 31. Branch sweep next session: confirm no other repos have orphaned branches.
+1. **Phase B Stages 7-9 COMPLETE.** All migrations applied via Supabase MCP, all V1–V6 verifications passed.
+2. **Phase A still autonomous.** 6 Phase A crons (jobid 69-74) still firing on schedule, no failures, no alerts.
+3. **Pool: 1,694 active rows** unchanged across 8 verticals. (Will continue to grow organically via Stage 3 trigger chain.)
+4. **Slots: 70 total** (56 future, 14 pending_fill). Pending_fill slots still waiting for Stage 10 to wire the fill cron.
+5. **R6 still paused** (jobid 11, 64, 65 active=false). Anthropic spend still essentially zero.
+6. **R6 ai-worker (jobid 5) still polling.** Important: this poller is independent of R6 seed crons. It runs every 5 min and processes any queued ai_job. Stage 10 must add the minimal `is_shadow=true` filter (D179) BEFORE the fill cron is wired, otherwise shadow ai_jobs would be picked up and marked failed.
+7. **FB and LI publishers healthy** (jobid 7, 54). IG cron (jobid 53) still paused awaiting Meta restriction clear. All 4 external reviewers paused per D162.
+8. **Repo:** `feature/slot-driven-v3-build` at `ca1e022` — 11 commits ahead of main (Stages 1-9 + 3 fix-ups). 47 migration files (31 Phase A + 16 Phase B Stages 7-9). Branch sweep next session: confirm no orphans on other repos.
 
-### Today's deltas (26 Apr)
+### Today's deltas (26 Apr afternoon–evening)
 
 | Item | Status |
 |---|---|
-| Stage 1 (extension + 7 tables, including canonical_vertical_map) | ✅ commit `b4c8308` (8 migrations applied via MCP) |
-| Stage 2 (5 config tables + 2 helpers + post_draft cols + trigram index) | ✅ commit `d132a83`, fix-up `130a559` (FK on versioned class_code dropped) |
-| Stage 3 (two-trigger chain — classifier→vertical_map→pool) | ✅ commit `80d7b4b` (3 migrations + V6 functional test passed) |
-| Stage 4 (expire/reconcile/backfill maintenance + initial 1,666-row backfill) | ✅ commit `a8b0c1f` |
-| Stage 5 (slot materialiser + promoter + rule-change trigger + 70-slot materialisation) | ✅ commit `8a072aa` |
-| Stage 6 (heartbeat infrastructure + 6 cron registrations + Gate A) | ✅ commit `2799253` |
-| Gate A verification | ✅ all 11 checks passed; first cron tick at 06:10:00 UTC succeeded in 81ms |
-| Final audit pass — sync_state + decisions + roadmap + memory | ✅ commits `3f3f226` + `58cfff5` + `a55a3a2` + this commit |
+| Stage 7 brief | ✅ commit `7825eb1` (Phase B opening) |
+| Stage 7 execution (4 scoring helpers) | ✅ commit `7825eb1` + fix-up `2f447cf` (fitness scale 0..100 + check_pool_health gating) |
+| Stage 8 brief | ✅ commit `2fecd5f` |
+| Stage 8 execution (3 migrations: ALTER ai_job + fill function + rejection trigger) | ✅ commit `95c85c0` + fix-up `8cf4978` (c.client_content_scope cols + draft_body NOT NULL) |
+| Stage 9 brief | ✅ commit `18f6451` |
+| Stage 9 execution (6 migrations: FK CASCADE + recovery + critical window + breaking news) | ✅ commit `c4c610a` + fix-up `ca1e022` (slot_fill_attempt.decision CHECK extension) |
+| All V1–V6 verifications across Stages 7-9 | ✅ PASSED |
+| D177-D179 captured in decisions log | ✅ this commit |
+| Memory entries updated (#14 + Lesson #32 in #27) | ✅ |
+| Dashboard roadmap updated | ✅ next commit (separate repo) |
 
 ---
 
-## 🟢 PHASE A — DEPLOYED STATE
+## 🟢 PHASE B STAGES 7-9 — DEPLOYED STATE
 
-### Migrations applied (31 total this session)
+### Migrations applied this session (16 total: 032–045)
 
-| # | Migration | Notes |
-|---|---|---|
-| 001 | `install_pg_trgm_extension` | For Stage 2 trigram index |
-| 002 | `create_signal_pool_table` | Vertical-scoped materialised pool |
-| 003 | `create_slot_table` | Slot state machine (8 states per LD13) |
-| 004 | `create_slot_fill_attempt_table` | Audit trail per fill attempt |
-| 005 | `create_evergreen_library_table` | LD3 fallback (Phase E populates) |
-| 006 | `create_slot_alerts_table` | Operational alerts surface |
-| 007 | `create_cron_health_check_table` | Heartbeat tracking, 10 jobnames seeded |
-| 008 | `create_canonical_vertical_map_table` | **NEW vs v4** — closes structural gap |
-| 009 | `create_class_freshness_rule_table` | 6 seeds; FK to t.content_class dropped due to versioning |
-| 010 | `create_format_synthesis_policy_table` | 10 seeds (one per ice_format_key in production) |
-| 011 | `create_format_quality_policy_table` | 10 seeds with per-format min_fitness_threshold |
-| 012 | `create_reuse_penalty_curve_table` | 4 seeds (LD9 soft penalty buckets) |
-| 013 | `create_dedup_policy_table` | 3 seeds (default/strict/lenient — LD16) |
-| 014 | `alter_post_draft_add_slot_id_is_shadow` | Slot linkage + shadow flag |
-| 015 | `create_title_similarity_function` | pg_trgm wrapper, IMMUTABLE |
-| 016 | `create_keyword_overlap_function` | Jaccard on tokenised sets, IMMUTABLE |
-| 017 | `create_canonical_title_trgm_index` | GiST on canonical_title (not title — corrected) |
-| 018 | `create_resolve_canonical_verticals_function` | canonical → vertical chain |
-| 019 | `create_refresh_signal_pool_for_pair_function` | UPSERT helper, F9-correct |
-| 020 | `create_pool_population_triggers` | Two-trigger chain |
-| 021 | `create_expire_signal_pool_function` | Hourly cleanup |
-| 022 | `create_reconcile_signal_pool_function` | Daily 3-pass drift correction |
-| 023 | `create_backfill_missing_pool_entries_function` | LD19 batch-bounded |
-| 024 | `create_compute_rule_slot_times_function` | Per-rule future timestamp generator |
-| 025 | `create_slot_unique_constraint` | Partial unique for ON CONFLICT |
-| 026 | `create_materialise_slots_function` | Main materialiser |
-| 027 | `create_handle_schedule_rule_change_trigger` | Auto-reflow on schedule edits |
-| 028 | `create_promote_slots_to_pending_function` | F8 10-min lookahead |
-| 029 | `create_heartbeat_infrastructure` | Heartbeat helper + view + check fn |
-| 030 | `register_phase_a_crons` | 6 cron.schedule() calls |
-| 031 | `seed_heartbeat_check_row` | 11th seed for self-monitor |
-
-All migrations applied via Supabase MCP `apply_migration`. CC's role was creating source-of-truth migration files in the repo (`supabase/migrations/`), committing, and pushing. CLI `supabase db push` is incompatible with the repo's existing 280-migration history (CLI fails at history reconciliation pre-check) and was abandoned for this session and all future stages.
-
-### Phase A crons registered (6 total)
-
-| jobid | name | schedule (UTC) | what it does |
+| # | Migration | Stage | Notes |
 |---|---|---|---|
-| 69 | `expire-signal-pool-hourly` | `5 * * * *` | Marks pool entries past pool_expires_at as is_active=false |
-| 70 | `reconcile-signal-pool-daily` | `30 16 * * *` | 3-pass class/fitness/orphan drift correction (~02:30 AEST) |
-| 71 | `backfill-missing-pool-entries-every-15m` | `*/15 * * * *` | LD19 batch-bounded race-miss safety net |
-| 72 | `materialise-slots-nightly` | `0 15 * * *` | Adds the 8th day forward to slot horizon (~01:00 AEST) |
-| 73 | `promote-slots-to-pending-every-5m` | `*/5 * * * *` | future → pending_fill at fill_window_opens_at |
-| 74 | `cron-heartbeat-check-hourly` | `45 * * * *` | Self-monitor; raises slot_alerts on missed heartbeats |
+| 032 | `create_compute_slot_confidence_function` | 7 | LD10 weights (0.50 fitness / 0.20 pool log-sat / 0.20 recency / 0.10 diversity log-sat). Fitness divided by 100 internally (D177). |
+| 033 | `create_check_pool_health_function` | 7 | Per-vertical green/yellow/red. Health gates on depth + source diversity (fitness gating dropped — vacuous). |
+| 034 | `create_evergreen_ratio_7d_view` | 7 | LD12 per-client live+shadow ratio split via `post_draft.is_shadow`. |
+| 035 | `create_check_evergreen_threshold_function` | 7 | LD12 threshold 0.30. |
+| 036 | `alter_ai_job_for_slot_driven` | 8 | ADD slot_id (FK), is_shadow boolean, DROP NOT NULL on digest_run_id+post_seed_id, ADD ai_job_origin_check, 2 indexes. |
+| 037 | `create_fill_pending_slots_function` | 8 | **THE FILL FUNCTION (heart of v3).** ~280 lines after fix-ups. Pool query + dedup + quality gates + pool-health relaxation + evergreen fallback + audit + skeleton draft + ai_job + slot transition. |
+| 038 | `create_handle_draft_rejection_trigger` | 8 | §B.9 — 1st rejection resets to pending_fill, 2nd rejection skips. |
+| 039 | `alter_ai_job_slot_fk_cascade` | 9 | D178: ON DELETE SET NULL → ON DELETE CASCADE. |
+| 040 | `create_recover_stuck_slots_function` | 9 | LD13/F10 — stale=30m, max_attempts=3 default. |
+| 041 | `create_slots_in_critical_window_view` | 9 | §B.11 — slots in next 4h, urgency tagged. |
+| 042 | `create_scan_critical_windows_function` | 9 | §B.11 — raises slot_critical_window alerts, rate-limited 30m/slot. |
+| 043 | `create_hot_breaking_pool_view` | 9 | §B.12, H3 — timely_breaking, fitness>=80, first_seen<24h, reuse_count=0. |
+| 044 | `create_try_urgent_breaking_fills_function` | 9 | §B.12, F6/LD17 + LD20 replaceable check. |
+| 045 | `extend_slot_fill_attempt_decision_check` | 9 fix-up | Extended CHECK to allow failed (Stage 8 latent), recovered_to_pending + marked_failed (Stage 9 recovery). |
 
-Each cron command pattern: `SELECT m.heartbeat('<jobname>'); SELECT m.<function>();` so heartbeats happen on every tick.
+All migrations applied via Supabase MCP `apply_migration`. Three fix-up commits in-repo (`2f447cf`, `8cf4978`, `ca1e022`) for in-place corrections caught during verification.
 
-Confirmed firing in production this session: 9 ticks captured, all `succeeded` in `cron.job_run_details`, all <300ms duration. Pool grew +26 rows from organic activity. The hourly+daily crons (`expire`, `reconcile`, `materialise`, `cron-heartbeat-check`) await their first scheduled tick — first occurrences expected at 06:35 UTC (expire), 06:45 UTC (heartbeat-check), 15:00 UTC tomorrow (materialise), 16:30 UTC tomorrow (reconcile).
+### Phase B objects in production (NOT auto-fired)
 
-### Pool composition (post-Gate A)
+| Object | Type | Purpose |
+|---|---|---|
+| `m.compute_slot_confidence(numeric, integer, numeric, integer)` | Function (IMMUTABLE) | LD10 confidence score for a slot fill |
+| `m.check_pool_health(integer)` | Function (STABLE) | Per-vertical green/yellow/red |
+| `m.evergreen_ratio_7d` | View | Per-client live+shadow ratio |
+| `m.check_evergreen_threshold(uuid)` | Function (STABLE) | LD12 alert threshold check |
+| `m.fill_pending_slots(integer, boolean)` | Function | THE FILL FUNCTION |
+| `m.handle_draft_rejection()` | Trigger function | Rejection retry policy |
+| `trg_handle_draft_rejection` | Trigger | Fires on m.post_draft UPDATE OF approval_status |
+| `m.recover_stuck_slots(integer, integer)` | Function | Stuck fill_in_progress recovery |
+| `m.slots_in_critical_window` | View | Slots in next 4h with urgency tier |
+| `m.scan_critical_windows()` | Function | Raise critical-window alerts |
+| `m.hot_breaking_pool` | View | Hot breaking news per client |
+| `m.try_urgent_breaking_fills(integer, numeric)` | Function | LD20 replaceable check + urgent slot insert |
 
-| Vertical | Pool size |
-|---|---|
-| 11 NDIS | 279 |
-| 12 AU Disability Policy | 279 |
-| 7 AU Residential Property | 271 |
-| 9 AU Property Investment | 271 |
-| 10 AU Mortgage & Lending | 271 |
-| 17 Content Marketing | 99 |
-| 16 Social Media Strategy | 99 |
-| 15 AI & Automation | 99 |
+### Verification summary across Stages 7-9
 
-NDIS+ADP and PP-verticals are equal pairs because clients sharing those verticals (NY+CFW share 11+12; PP gets 7+9+10 for every property canonical) share pool entries — exactly v3's vertical-scoped design intent.
+| Stage | Phase | Result |
+|---|---|---|
+| 7 | V1 Structural / V2 Confidence calc / V3 Health gating / V4 Threshold check / V5 Regression | All passed (after fix-ups for fitness scale + health gating) |
+| 8 | V1 Structural / V2 End-to-end synthetic slot / V3 Rejection trigger / V4 Regression | All passed (after fix-ups for c.client_content_scope cols + draft_body NOT NULL) |
+| 9 | V1 Structural / V2 FK CASCADE / V3 Recovery (reset + marked_failed) / V4 Critical scan / V5 Breaking news shape / V6 Regression | All passed (after fix-up for slot_fill_attempt.decision CHECK) |
 
-**Operational signal:** Invegent's globals (15/16/17) at 99 each vs AU verticals at 271–279 — Invegent's pool is roughly 3× thinner than NY/PP. Phase E evergreen seeding for Invegent should be prioritised over the others.
+### Three architectural decisions captured this session
 
-### Slots materialised
+- **D177** — `m.signal_pool.fitness_score_max` is 0..100, not 0..1. All fitness consumers normalise at use-site. Fix-up applied at Stage 7.
+- **D178** — `m.ai_job.slot_id` FK = ON DELETE CASCADE. Caught at Stage 8 cleanup time when SET NULL violated `ai_job_origin_check`. Resolved via Stage 9.039.
+- **D179** — Stage 10/11 ordering = Option B. Stage 10 includes a minimal ai-worker patch (`is_shadow=true` filter) so the existing R6 ai-worker doesn't process shadow jobs. Stage 11 then does the full ai-worker refactor (LD18 idempotency + LD7 prompt caching + slot-driven payload shape).
 
-70 slots over Mon 27 Apr → Fri 1 May, distributed:
+### Pre-flight gaps caught this session (Lesson #32)
 
-| Client | FB | IG | LI | YT | Total |
-|---|---|---|---|---|---|
-| NDIS-Yarns | 5 | 5 | 5 | 5 | 20 |
-| Property Pulse | 5 | 5 | 5 | 5 | 20 |
-| Care For Welfare | 5 | 5 | 5 | — | 15 |
-| Invegent | 5 | 5 | 5 | — | 15 |
+Three gaps from the same root cause: assuming column names, types, or constraints from related tables instead of querying the directly-touched table.
 
-12 slots are already in `pending_fill` status (Mon 27 Apr slots whose fill window has already opened — within 24h of now). They will wait there until Stage 8 fill function exists and Stage 10 wires its cron.
+| Stage | Gap | Resolution |
+|---|---|---|
+| 7 | Assumed `fitness_score_max` was 0..1 normalised; it's 0..100. | Fix-up: divide by 100 inside `compute_slot_confidence`. Drop fitness gating from `check_pool_health` (vacuous on actual scale). D177 captures the architectural fact. |
+| 8 | Assumed `c.client_content_scope` had `content_vertical_id` (it's `vertical_id`) and `is_active` column (doesn't exist). Also assumed `m.post_draft.draft_body` was nullable (NOT NULL with no default). | Fix-up: replace 5 column refs, drop 5 `is_active` filters, use empty string placeholder for `draft_body`. |
+| 9 | Assumed `m.slot_fill_attempt.decision` was free-text. It has a CHECK limiting values to `('filled','evergreen','skipped','error')`. Stage 9 needed `'recovered_to_pending'`, `'marked_failed'`. Stage 8's `'failed'` (latent path) also caught here. | Migration 045: extend CHECK ARRAY to include all four new values. |
 
-### Format preferences resolved at materialisation
-
-- All FB slots: `image_quote` (set on c.client_publish_profile.preferred_format_facebook for all 4 clients)
-- NY YT, PP YT slots: `video_short_avatar` (hardcoded default — no preferred_format_youtube column exists)
-- All IG slots: NULL (preferred_format_instagram not set on any profile)
-- All LI slots: NULL (preferred_format_linkedin not set on any profile)
-
-**Note:** IG and LI NULL is acceptable — Stage 8 fill function falls back to "any viable format" when format_preference is empty. But it's a tuning opportunity — if PK wants IG and LI to default-prefer something specific, set those columns post-Phase B.
+**Lesson #32 (memory + decisions log):** Pre-flight schema verification must query EVERY directly-touched table for column names + types + CHECK constraints + NOT NULL — not infer from related tables.
 
 ---
 
 ## ⛔ DO NOT TOUCH NEXT SESSION
 
-Three things are in deliberate intermediate states. **Leave them alone:**
+1. **The 14 pending_fill slots.** Same as before — still waiting for Stage 10 to wire the fill cron. Now that Stage 9's recovery function exists, IT TOO must NOT be invoked manually against these slots. They are not stuck — they're waiting. Recovery's `stale_threshold_minutes=30` AND `status='fill_in_progress'` filter means they're naturally excluded (status=pending_fill, not fill_in_progress).
 
-1. **The 12 pending_fill slots.** These are Mon 27 Apr slots that re-promoted automatically after Stage 5 manual-test rollback. They'll continue to sit in pending_fill until Stage 10 wires the fill cron. Do NOT manually promote them, do NOT reset to future, do NOT trigger any recovery-style sweep against them. Stage 8 fill function is their consumer; they'll be the first input it sees. If Stage 9 recovery function gets built before fill is wired, ensure recovery's "stuck > 1h pending_fill" rule excludes slots whose `scheduled_publish_at` is still in the future (they're not stuck, they're patiently waiting).
+2. **R6 seed crons (jobid 11, 64, 65) AND R6 ai-worker (jobid 5).** All still paused at the seed crons. The ai-worker (jobid 5) IS still active and polling, but with no R6 seed activity it sees only legacy queued items draining naturally. **CRITICAL: do NOT re-enable R6 seed crons before Stage 10's ai-worker `is_shadow` filter ships, otherwise R6 logic and Phase B logic will both produce ai_jobs that the unrefactored ai-worker will conflate.**
 
-2. **R6 seed crons (jobid 11, 64, 65).** Paused for cost. They get decommissioned in Phase D Stage 19, not earlier. Do NOT re-enable them to "test something" or "let the queue drain a bit" — every minute they run costs money. The 145 queued drafts are draining at FB+LI cadence; that's adequate.
+3. **IG cron (jobid 53).** Paused awaiting Meta restriction clear (24-48h auto-recovery typical from 25 Apr morning). Check Meta status before unpausing.
 
-3. **IG cron (jobid 53).** Paused awaiting Meta restriction clear. Auto-recovery typical 24-48h from 25 Apr morning. Check Meta status before unpausing — don't unpause prematurely if the restriction is still active or you'll just trigger another error. v2.0.0 platform discipline already verified separately.
+4. **All 4 external reviewers paused per D162.**
+
+---
+
+## 🟢 NEXT SESSION — STAGE 10
+
+### Stage 10 scope (Phase B crons + minimal ai-worker shadow filter)
+
+Stage 10 wires four Phase B crons AND adds the minimal ai-worker patch (Option B per D179). Estimated 60-90 min build + 30-60 min verification.
+
+**Migrations (4 cron registrations):**
+
+| Cron | Schedule | What it calls |
+|---|---|---|
+| fill cron | every 5 min | `SELECT m.heartbeat('fill-pending-slots'); SELECT m.fill_pending_slots(p_max_slots := 5, p_shadow := true);` |
+| recovery cron | every 30 min | `SELECT m.heartbeat('recover-stuck-slots'); SELECT m.recover_stuck_slots();` |
+| breaking cron | every 15 min | `SELECT m.heartbeat('try-urgent-breaking-fills'); SELECT m.try_urgent_breaking_fills();` |
+| critical-window scan | every 10 min | `SELECT m.heartbeat('scan-critical-windows'); SELECT m.scan_critical_windows();` |
+
+Heartbeat seeds for these 4 jobnames need to be inserted to `m.cron_health_check`. Heartbeat-check cron (jobid 74) will then alert on missed ticks.
+
+**ai-worker EF patch (minimal):**
+
+Add `is_shadow=false` filter to the queued-job SELECT. Single-line change. Deploy via PowerShell from `C:\Users\parve\Invegent-content-engine` (Windows MCP times out on `supabase functions deploy`).
+
+Verification checklist:
+- All 4 new crons firing on schedule
+- Heartbeat records appearing for new jobnames
+- Shadow ai_jobs accumulating with `status=queued` (NOT being picked up by ai-worker)
+- Existing R6-era ai_jobs continuing to process correctly (regression)
+- Slot transitions firing correctly (pending_fill → fill_in_progress → ...)
+- No new `slot_alerts` rows except expected ones (e.g. critical-window alerts when slots cross the 1h threshold)
+
+### Then Stage 11 (full ai-worker refactor)
+
+- LD18 DB-enforced idempotency
+- LD7 prompt caching adoption
+- Slot-driven payload handling (read `input_payload->'canonical_ids'` etc.)
+- UPDATE auto-created `m.post_visual_spec` rather than INSERT
+- Removal of the temporary `is_shadow=false` filter
+
+First dedicated EF deploy of Phase B. Higher-risk per-stage; budget extra time for verification + rollback prep.
+
+### Then Gate B
+
+5–7 days shadow observation. Watch:
+
+- Pool health per vertical (m.check_pool_health)
+- Evergreen ratio per client (m.evergreen_ratio_7d)
+- Slot confidence distribution (m.slot_fill_attempt aggregations)
+- Recovery action counts (recovered_to_pending vs marked_failed)
+- Critical-window alert frequency
+- Breaking news urgent-slot insertion rate
+- ai-worker cost per shadow draft (proves Stage 11's prompt caching delivers the expected savings)
+
+Gate B exit criteria (to be specified more precisely in Stage 11 brief):
+- Decision quality: shadow drafts indistinguishable from R6 drafts on PK's manual review
+- Cost predictability: ai-worker spend in line with target ($18-30/month at full Phase B scale)
+- Stability: no untriaged alerts; recovery rate <5% of slots
+- Performance: p95 fill_pending_slots latency under acceptable bounds (TBD)
 
 ---
 
 ## ARCHITECTURAL REVISIONS vs v4 (LOCKED IN PRODUCTION)
 
-### R-A — `f.canonical_vertical_map` added as Stage 1 Migration 008
+From Phase A: R-A through R-E (canonical_vertical_map, two-trigger chain, MCP-applied migrations, FK on versioned class_code, 10 ice_format_keys).
 
-v4 §A.5 assumed this table existed. Pre-flight discovered it didn't. The actual classifier output writes `content_class` to `f.canonical_content_body.content_class` — there was no canonical→vertical mapping anywhere in production.
+From Phase B Stages 7-9: three new revisions captured as decisions D177-D179 (see decisions log).
 
-**Resolution:** Added `f.canonical_vertical_map` as a 7th Stage 1 table (canonical_id + vertical_id PK). Populated by the Trigger 1 chain on classifier output. Stage 4 backfill seeded the existing 648 canonicals × ~2.6 verticals = 1,668 rows. Mapping_source column distinguishes `classifier_auto` vs `backfill` for audit.
-
-### R-B — Two-trigger chain replaces v4's single trigger
-
-v4 §A.5 proposed one trigger on `f.canonical_vertical_map`. Stage 3 split this into:
-
-1. **Trigger 1** — `f.canonical_content_body` AFTER UPDATE OF content_class OR INSERT — resolves verticals via `canonical → content_item → client_source → client_content_scope`, INSERTs vertical_map rows (ON CONFLICT DO NOTHING).
-2. **Trigger 2** — `f.canonical_vertical_map` AFTER INSERT — calls `m.refresh_signal_pool_for_pair(canonical_id, vertical_id)` per row.
-
-Reclassification handled by explicit refresh loop in Trigger 1 (the ON CONFLICT path doesn't fire Trigger 2 on existing mappings, so we manually refresh existing pool entries when class changes).
-
-Functionally equivalent to v4's intent; testable in isolation; better audit trail.
-
-### R-C — Migrations applied via Supabase MCP, NOT `supabase db push`
-
-CLI `supabase db push` fails at history reconciliation pre-check because the repo has ~280 DB-only migration entries on the remote (applied via SQL editor, MCP, or direct SQL — the standing pattern) that don't exist as files in `supabase/migrations/` locally. Two CLI fixes were rejected: `migration repair --status reverted` (papers over the gap), `db pull` (pollutes the diff with 280 files).
-
-**Pattern locked for all future stages:** CC creates source-of-truth files in `supabase/migrations/`, commits, pushes. Claude (chat) applies via Supabase MCP `apply_migration`. CLI link is still useful for `supabase functions deploy` (Stage 11) but never for `db push`.
-
-### R-D — FK on `t.class_freshness_rule.class_code` dropped
-
-`t.content_class` is a versioned table — `class_code` is unique only per (`class_code`, `version`) and via a partial-unique index `WHERE is_current=true`. PostgreSQL won't accept a partial unique as an FK target. Resolution: dropped the FK, added a `DO $$ ... $$` orphan check that validates seed values exist as `is_current=true AND is_active=true` rows. Application-level integrity. CC was instructed to amend the migration file to match the applied SQL (commit `130a559`).
-
-### R-E — 10 ice_format_keys, not 6
-
-v4 §C.1.5 specced 6 `format_synthesis_policy` and `format_quality_policy` rows. Production has 10 distinct `ice_format_key` values in `t.class_format_fitness`. Both seeds expanded to 10 rows.
-
----
-
-## 🟢 NEXT SESSION — PHASE B BEGINS
-
-### Phase B overview (Stages 7-11, ~5-7 hours engineering + 5-7 days observation)
-
-| Stage | Goal |
-|---|---|
-| 7 | Confidence + pool health + ratio functions (LD10, LD12) |
-| 8 | **THE FILL FUNCTION** — heart of v3, longest single migration |
-| 9 | Recovery (stuck fill_in_progress) + breaking news (LD17, LD20) |
-| 10 | Phase B crons + shadow mode wiring |
-| 11 | ai-worker idempotency (LD18) |
-| Gate B | 5-7 days shadow observation before any cutover |
-
-### Stage 7 prerequisites
-
-- 12 slots already in `pending_fill` waiting for fill function (do not touch)
-- 1,694 active pool rows already present
-- All Phase A maintenance running autonomously (pool stays fresh, new slots materialise)
-
-### Stage brief navigation aids (from this session)
-
-The 6 Phase A stage briefs at `docs/briefs/cc-stage-NN.md` are the template for Stage 7's brief. Each brief follows the same structure:
-
-1. Stage goal + estimated duration
-2. Context for CC
-3. Pre-flight findings (folded into the brief from chat-side schema verification)
-4. Files to create (with full SQL content, not summaries)
-5. Code changes (typically "None" for SQL-only stages)
-6. Commands to run (git status / branch / pull / add / commit / push)
-7. CC report-back template
-8. Verification queries Claude (chat) will run via Supabase MCP
-9. Rollback plan (if any verification fails)
-10. Notes for after the stage verifies
-
-**Recommended starting point for Stage 7 brief:** copy `docs/briefs/cc-stage-06.md` structure, adjust §1-§4 for confidence/health/ratio functions, adjust verification queries.
-
-### Critical questions deferred
-
-None outstanding. v4 §5 questions answered:
-
-- **Branch strategy:** feature branch `feature/slot-driven-v3-build` — confirmed working through Stages 1-6
-- **First cutover target:** NY Facebook (Stage 13, expected default) — to be re-confirmed at Phase C entry
-- **CC execution mechanism:** brief committed to `docs/briefs/cc-stage-NN.md`, PK runs CC against the file locally, CC reports back to chat — confirmed working through Stages 1-6
-
-### Defaults reconfirmed for Phase B
-
-- Migrations applied via Supabase MCP, NOT `supabase db push`
-- Each stage = brief commit → CC creates files → CC commits + pushes → Claude (chat) applies via MCP → Claude (chat) verifies → PK approves → next stage
-- R6 stays paused throughout Phase B
-- Old pipeline (digest_run, ai_job, post_seed, post_publish_queue from R6 era) untouched — Phase B is shadow-only
-- **Branch convention exception logged:** D165 default = direct-push to main. Phase A used feature branch by exception per v4 §5 default. **Phase B continues on `feature/slot-driven-v3-build`.** When Phase D Stage 19 ships and the slot-driven build is fully cut over, the feature branch merges back to main in one PR (or fast-forwards if no main commits diverged) and the pattern returns to direct-push for everything else.
-
----
-
-## ⚠️ FIRST THING NEXT SESSION
-
-**Read this entire file before doing anything else.**
-
-### Priority 1 — Stage 7 brief
-
-1. Read this sync_state file (which captures all 31 Phase A migrations + 6 architectural revisions + DO NOT TOUCH list)
-2. Read v4 brief `docs/briefs/2026-04-25-slot-driven-architecture-build-plan-v4.md` for Phase B specs (§B)
-3. Read `docs/briefs/cc-stage-06.md` as the most recent template (and 01-05 for full pattern visibility)
-4. Run pre-flight Supabase MCP queries against any Stage 7-specific schema (LD10 confidence inputs, LD12 evergreen ratio over `m.post_draft.is_shadow` + `m.evergreen_library.evergreen_id` references)
-5. Write Stage 7 brief at `docs/briefs/cc-stage-07.md` following the established structure
-6. Commit the brief to `main` (briefs go to main; stage execution to feature branch)
-7. Hand to PK; PK runs CC; CC reports; Claude (chat) applies via MCP; Claude (chat) verifies; PK approves → Stage 8
-
-### Priority 2 — Verify Phase A crons survived overnight
-
-Confirm at session start:
-- Cron ticks accumulated overnight (look at `cron.job_run_details` for jobid 69-74)
-- expire-signal-pool fired at hourly intervals (should see ~24 ticks for daily session-to-session cadence)
-- Materialise nightly fired at 15:00 UTC = 01:00 AEST (added the 8th day forward to slots — slot horizon should now be Tue 28 Apr → Sat 3 May, ~14 new slots inserted by ON CONFLICT bypass of existing 70)
-- Reconcile daily fired at 16:30 UTC = 02:30 AEST — should see clean zeros (no class/fitness drift since Stage 4 backfill completed)
-- cron-heartbeat-check-hourly fired hourly — should see `cron-heartbeat-check-hourly` heartbeat captured + `alerted_count: 0`
-- Pool growth from organic classifier activity (1,694 → 1,750+ expected over 12-15 hours)
-- No `cron_heartbeat_missing` alerts in `m.slot_alerts` (any alert here = missed cron)
-- The 12 pending_fill slots from Mon 27 Apr ALL still in pending_fill — no one promoted/recovered/cleared them
-
-### Priority 3 — Cowork weekly task (Mon 7am AEST)
-
-Cowork's weekly reconciliation task runs Mon 7am AEST. Tomorrow IS Monday. Memory entry #23 says "Cowork docs sync, roadmap sync, pending decisions review". Expect:
-- Cowork to flag the 7 new commits on `feature/slot-driven-v3-build`
-- Cowork to flag the 31 new migration files
-- Cowork to flag the 6 new D-series decisions
-- Cowork to potentially comment on the dashboard roadmap update
-
-This is not a problem — Cowork is doing its job. Just be aware that Cowork output may be in your inbox when you start the next session.
-
-### Priority 4 — A10b (waiting on external)
-
-⏸ Meta restriction clearance. No active work. Re-test Mon 27 Apr if no auto-recovery. Don't unpause IG cron prematurely.
-
-### Priority 5 — Meta App Review escalation trigger
-
-Mon 27 Apr is the trigger date. If still showing "In Review" after that date, contact Meta dev support per the standing protocol.
-
-### Critical state awareness
-
-1. **R6 paused, cost stopped.** ~145-draft buffer covers ~4.5 days publishing.
-2. **Phase A pipeline autonomous and healthy.** 6 crons firing, 1,694-row pool, 70 slots, 0 alerts.
-3. **Old pipeline untouched.** Publishers still draining the 145 R6-era queued drafts at normal cadence.
-4. **All reviewers paused** per D162.
-5. **IG cron paused** awaiting Meta restriction clear.
-6. **12 slots in pending_fill** — DO NOT TOUCH (see DO NOT TOUCH list above).
-7. **Anthropic spend zero from R6 perspective** — Phase A is all SQL functions, no LLM calls. (Phase B Stage 8 fill function will start consuming Claude API tokens once it ships and Stage 10 wires the cron.)
+No additional v4 architectural goals changed. All revisions are correctness fixes or sequencing decisions — v4's intent preserved.
 
 ---
 
 ## SESSION STARTUP PROTOCOL
 
 1. Read this file in full
-2. Read v4 brief Phase B sections (`docs/briefs/2026-04-25-slot-driven-architecture-build-plan-v4.md`)
-3. Read most recent stage brief (`docs/briefs/cc-stage-06.md`) as template for Stage 7
-4. Orphan branch sweep — all 3 repos:
-   - `Invegent-content-engine`: `feature/slot-driven-v3-build` should exist + be ahead of main by 31 migrations + 7 stage commits. Other branches: flag and confirm with PK.
-   - `invegent-dashboard`: should be on main with `a55a3a2` (roadmap update) at HEAD. No feature branches expected.
-   - `invegent-portal`: should be on main, no feature branches expected.
+2. Read v4 brief Phase B sections (`docs/briefs/2026-04-25-slot-driven-architecture-build-plan-v4.md` §B.13-B.15 for crons + ai-worker)
+3. Read most recent stage brief (`docs/briefs/cc-stage-09.md`) as template for Stage 10
+4. Orphan branch sweep — all 3 repos
 5. Check `c.external_reviewer` — confirm all paused
 6. Check R6 seed crons — confirm jobid 11, 64, 65 active=false
 7. Check IG cron jobid 53 — confirm active=false (Meta restriction)
 8. Check FB+LI publisher crons — confirm active=true (jobid 7, 54)
 9. Check Phase A crons — jobid 69-74 all active=true, recent firing
-10. Check `cron.job_run_details` for jobid 69-74: ALL ticks succeeded, no failures
-11. Check `m.signal_pool` row counts vs end-of-26-Apr: 1,694 (will have grown organically — 1,750-1,900 expected after 12-15h)
-12. Check `m.slot` distribution — 70 + ~14 from overnight materialise = ~84 total (12 pending_fill, ~72 future)
+10. Check `cron.job_run_details` for jobid 5 (R6 ai-worker): should still be polling, processing only legacy R6 jobs
+11. Check `m.signal_pool` row counts vs end-of-session: 1,694 (will have grown organically overnight to ~1,750-1,900)
+12. Check `m.slot` distribution — should still be ~70 + nightly materialise additions
 13. Check `m.slot_alerts` — should have ZERO `cron_heartbeat_missing` rows
-14. Run pre-flight queries for Stage 7 (LD10 confidence, LD12 evergreen ratio)
-15. Begin Stage 7 brief
+14. Check that no shadow ai_jobs accumulated (Stage 10 hasn't fired yet, so any shadow ai_job in `m.ai_job` would be unexpected)
+15. Run pre-flight queries for Stage 10 (check existing cron command patterns, ai-worker EF source location, verify Edge Function deploy environment)
+16. Begin Stage 10 brief
 
 ---
 
-## DEV WORKFLOW RULE (D165 + Phase A reality)
+## DEV WORKFLOW RULE (D165 + Phase A reality + D179)
 
 **Default for Phase A/B build: feature branch `feature/slot-driven-v3-build`.**
 
-Direct push to main is the standing rule for non-build work. The 28-migration coordinated change of Phase A justified the branch (per v4 §5 default + practical experience over 6 stages).
+Direct push to main is the standing rule for non-build work. The 47-migration coordinated change of Phases A + B Stages 7-9 justified the branch.
 
-**Stage briefs go to main** (`docs/briefs/cc-stage-NN.md`). **Stage execution goes to feature branch** (`supabase/migrations/20260426_NNN_*.sql`). This separation lets PK + future readers see the full build narrative on main without merging the feature branch first.
+**Stage briefs go to main** (`docs/briefs/cc-stage-NN.md`). **Stage execution goes to feature branch** (`supabase/migrations/20260426_NNN_*.sql`).
 
-**Migrations applied via Supabase MCP, NOT `supabase db push`** (R-C above). Use Supabase MCP `apply_migration` for all schema changes.
+**Migrations applied via Supabase MCP, NOT `supabase db push`** (R-C / D170).
 
-**EF deploys remain manual via PowerShell** (Windows MCP times out on `supabase functions deploy`). Stage 11 (ai-worker refactor) will be the first EF deploy of Phase B.
-
----
-
-## EXTERNAL REVIEWER LAYER
-
-All four reviewers paused per D162. No activations this session.
+**EF deploys (Stage 11+) via PowerShell from `C:\Users\parve\Invegent-content-engine`** — Windows MCP times out on `supabase functions deploy`.
 
 ---
 
 ## CURRENT PHASE
 
-**Phase 1 — COMPLETE.** **Phase 3 — Expand + Personal Brand** active.
+**Phase 3 — Expand + Personal Brand** active.
 
 **Sub-phase 3.x — Slot-Driven Architecture build:**
-- Phase A — **COMPLETE 26 Apr** — Foundation (Stages 1-6, 31 migrations, 6 crons, Gate A passed)
-- Phase B — **NEXT** — Fill function in shadow (Stages 7-11)
-- Gate B — 5-7 days shadow observation
-- Phase C — Cutover per-client-platform (Stages 12-18)
-- Phase D — Decommission old R6 (Stage 19)
-- Phase E — Evergreen seeding (parallel content work, ~50 items, prioritise Invegent verticals)
+- Phase A — ✅ **COMPLETE 26 Apr morning** — Foundation (Stages 1-6, 31 migrations, 6 crons, Gate A passed)
+- Phase B Stages 7-9 — ✅ **COMPLETE 26 Apr afternoon–evening** — Scoring helpers + fill function + defensive layer (16 migrations, 0 crons yet)
+- Phase B Stages 10-11 — 🔲 **NEXT** — Phase B crons + minimal ai-worker shadow filter (Stage 10) then full ai-worker refactor (Stage 11)
+- Gate B — 🔲 5-7 days shadow observation
+- Phase C — 🔲 Cutover per-client-platform (Stages 12-18)
+- Phase D — 🔲 Decommission old R6 (Stage 19)
+- Phase E — 🔲 Evergreen seeding (parallel content work, ~50 items, prioritise Invegent verticals)
 
 Pre-sales gate: 12 of 28 Section A items closed. A10b waiting on Meta restriction clear.
 
 ---
 
-## ALL CLIENTS — STATE
-
-| Client | client_id | FB | IG | LI | YT | Adequacy | r6_enabled | Notes |
-|---|---|---|---|---|---|---|---|---|
-| NDIS Yarns | fb98a472 | ✅ | ⏸ Meta restr | ✅ | 🔲 | **A** | ✅ all (R6 paused) | 18 cross-posts to delete via IG app or auto-clear. Pool: 279 (NDIS) + 279 (ADP). Slots: 20. |
-| Property Pulse | 4036a6b5 | ✅ | ⏸ Meta restr | ✅ | 🔲 | **A** | ✅ all (R6 paused) | LI throttle armed. Pool: 271×3 (Resi/Investment/Mortgage). Slots: 20. |
-| Care For Welfare | 3eca32aa | ✅ | ⏸ Meta restr | ✅ | 🔲 | **B** | ❌ all | Awaiting feed activation. Pool shared with NY (279+279). Slots: 15. |
-| Invegent | 93494a09 | — | ⏸ Meta restr | ✅ | ✅ | **D** | ❌ all | 4 IG publishes Sat morning on v1.0.0 (clean). Pool: 99×3 (AI/Social/Content) — thinnest. Slots: 15. |
-
----
-
-## SPRINT MODE — THE BOARD
-
-### Slot-Driven Architecture track
-
-| # | Item | Status |
-|---|---|---|
-| Architecture v1-v4 | 7 LLM reviews across 3 rounds | ✅ COMPLETE |
-| v4 build plan | commit `26d88b8` | ✅ READY |
-| Stage 1 (extension + 7 tables, including canonical_vertical_map) | Phase A | ✅ commit `b4c8308` |
-| Stage 2 (config tables + helpers + post_draft cols + trigram) | Phase A | ✅ commit `d132a83`, fix `130a559` |
-| Stage 3 (two-trigger chain) | Phase A | ✅ commit `80d7b4b` |
-| Stage 4 (maintenance + backfill) | Phase A | ✅ commit `a8b0c1f` |
-| Stage 5 (slot materialiser + promoter) | Phase A | ✅ commit `8a072aa` |
-| Stage 6 (Phase A crons + heartbeat) | Phase A | ✅ commit `2799253` |
-| **Gate A** | Phase A verification | ✅ **PASSED 26 Apr ~16:11 AEST** |
-| Stage 7 (confidence + pool health + ratio) | Phase B | 🔲 NEXT SESSION |
-| Stage 8 (fill function — biggest migration) | Phase B | 🔲 |
-| Stage 9 (recovery + breaking news) | Phase B | 🔲 |
-| Stage 10 (Phase B crons + shadow mode) | Phase B | 🔲 |
-| Stage 11 (ai-worker idempotency, LD18) | Phase B | 🔲 |
-| Gate B | Phase B 5-7 days shadow observation | 🔲 |
-| Stages 12-18 | Phase C cutover per-client-platform | 🔲 |
-| Stage 19 | Phase D decommission old R6 | 🔲 |
-| Phase E | Evergreen seeding (~50 items hand-curated) | 🔲 (parallel) |
-
-### Router track (legacy — being superseded)
-
-| # | Item | Status |
-|---|---|---|
-| R1-R5 | shadow infrastructure + classifier + matching | ✅ LIVE (classifier cron 68 still feeding new pool entries via Stage 3 trigger chain) |
-| R6 seed_and_enqueue | v1.0.1 | ⏸ PAUSED — to be DECOMMISSIONED in slot-driven Phase D Stage 19 |
-| M12 IG publisher refactor | v2.0.0 | ✅ DEPLOYED |
-| R7 ai-worker platform-awareness | — | OBSOLETE (refactored in Stage 11) |
-| R8 cron changes | — | OBSOLETE (replaced by Phase A/B cron set) |
-
-### HIGH priority items remaining
-
-| # | Item | Status |
-|---|---|---|
-| **Slot-driven Stage 7** | Begin Phase B | NEXT SESSION |
-| Manual deletion of 18 NY IG cross-posts | OR wait 24-48h Meta auto-clear | PK action when convenient |
-| **CC-TASK-02 fix** | Feed-intelligence upsert | Dormant — orthogonal to slot-driven build |
-
-### Not HIGH but actionable
-
-- LI publisher audit (deferred — root cause of Sat cap breach now known via destination_id fix)
-- m.post_publish_queue.status CHECK with 'dead' (D163 backlog)
-- Carousel verification (v2.0.0 untested in production for carousel format)
-- Meta App Review escalation (Mon 27 Apr trigger)
-- IG and LI default format preferences (set `preferred_format_instagram` and `preferred_format_linkedin` post-Phase B if desired)
-
----
-
-## WATCH LIST
-
-### Due next session (Mon 27 Apr or later)
-
-- Stage 7 begin (Phase B kickoff)
-- Verify Phase A crons survived overnight (check `cron.job_run_details` for jobid 69-74 — all ticks should be `succeeded`)
-- Verify pool growth (~1,750-1,900 rows expected vs 1,694 at session close)
-- Check `m.slot_alerts` for any cron_heartbeat_missing rows (should be 0)
-- Verify nightly materialise + reconcile fired (jobid 72, 70)
-- Verify destination_id backfill held (no LI over-publish in 24h)
-- Check IG Meta restriction status
-
-### Due week of 26 Apr - 2 May
-
-- **Sun 26 Apr** ✅ DONE — Phase A complete
-- **Mon 27 Apr - Wed 29 Apr** — Phase B target window (Stages 7-11)
-- **Mon 27 Apr** — Cowork weekly task runs 7am AEST (expect output in inbox)
-- **Mon 27 Apr** — Meta App Review escalation trigger (independent track)
-- **Thu 30 Apr - Wed 6 May** — Phase B shadow phase observation
-- **Sat 2 May** — original reviewer calibration cycle trigger (defer)
-
-### Backlog (open)
-
-**Top of list — slot-driven Phase B:**
-- Stage 7: Confidence + pool health + ratio functions (LD10, LD12)
-- Stage 8: Fill function (longest single migration; ~150 lines per v3 §B.4-B.8)
-- Stage 9: Recovery + breaking news (LD17, LD20)
-- Stage 10: Phase B crons + shadow mode wiring
-- Stage 11: ai-worker idempotency (LD18) — **first EF deploy of Phase B**
-- Gate B: 5-7 days shadow observation
-- Phase E: Evergreen seeding (parallel; prioritise Invegent given thin pool)
-
-**Carried forward (orthogonal):**
-- Manual IG cross-post deletion or wait for auto-clear
-- m.post_publish_queue.status CHECK with 'dead'
-- LI publisher audit (low priority — root cause known)
-- Carousel verification (deferred until IG cron resumes)
-- CC-TASK-02 HIGH (PK to choose Option A vs B)
-- Cron health v3.1 schedule-string parsing (Phase A heartbeat is independent of this)
-- D168 Layer 2 implementation
-- Avatar configuration for Invegent (HeyGen)
-- Invegent FB + IG activation (v0.2 positioning required)
-- TPM saturation, docs/archive 5th file, reviewer pollution
-- PP Schedule FB 6/5 violation, exec_sql sweep
-- facebook-publisher EF audit, Shrishti 2FA
-- IG/LI default format preferences (tuning, Phase B+)
-
----
-
-## TODAY'S COMMITS (26 APR)
+## TODAY'S COMMITS (26 APR — EVENING SESSION)
 
 **Invegent-content-engine `feature/slot-driven-v3-build` branch:**
 
 Stage briefs (committed to `main`):
-- `7dfdcfd` — docs(briefs): Stage 1 CC brief
-- `45c5e40` — docs(briefs): Stage 2 CC brief
-- `24904bb` — docs(briefs): Stage 3 CC brief
-- `dd20b83` — docs(briefs): Stage 4 CC brief
-- `9e6903c` — docs(briefs): Stage 5 CC brief
-- `44cb81e` — docs(briefs): Stage 6 CC brief
+- `7825eb1` — docs(briefs): Stage 7 CC brief (also includes execution — Stage 7 was a single round trip)
+- `2fecd5f` — docs(briefs): Stage 8 CC brief
+- `18f6451` — docs(briefs): Stage 9 CC brief
 
-Stage execution (committed to `feature/slot-driven-v3-build`):
-- `b4c8308` — Stage 1: extension + 7 tables (DDL only)
-- `d132a83` — Stage 2: config tables + helpers + post_draft cols + trigram
-- `130a559` — Stage 2 fix-up: drop FK on versioned class_code
-- `80d7b4b` — Stage 3: pool population trigger chain
-- `a8b0c1f` — Stage 4: pool maintenance + backfill
-- `8a072aa` — Stage 5: slot materialiser + promoter + rule-change trigger
-- `2799253` — Stage 6: Phase A crons + heartbeat → Gate A passed
+Stage execution + fix-ups (committed to `feature/slot-driven-v3-build`):
+- `7825eb1` — Stage 7: scoring helpers + Stage 7 fix-up amendments
+- `2f447cf` — Stage 7 fix-up: fitness scale 0..100 + check_pool_health gating
+- `95c85c0` — Stage 8: ALTER ai_job + fill function + rejection trigger
+- `8cf4978` — Stage 8 fix-up: c.client_content_scope cols + draft_body NOT NULL
+- `c4c610a` — Stage 9: FK CASCADE + recovery + critical window + breaking news
+- `ca1e022` — Stage 9 fix-up: slot_fill_attempt.decision CHECK extension
 
 **Reconciliation (committed to `main`):**
-- `3f3f226` — docs(sync_state): Phase A complete
-- `58cfff5` — docs(decisions): D170-D176
-- `a55a3a2` — feat(roadmap): Phase A complete (invegent-dashboard repo)
-- **THIS COMMIT** — docs(sync_state): final audit pass
+- THIS COMMIT — docs(decisions): D177-D179
+- THIS COMMIT — docs(sync_state): Phase B Stages 7-9 complete
+- (Next commit, separate repo) feat(roadmap): Phase B Stages 7-9 complete
 
-**Migrations (DB-only, all via Supabase MCP):** 31 total — see migrations table above.
+**Migrations (DB-only, all via Supabase MCP):** 16 total this evening (032-045) — see migrations table above. Total Phase A + B Stages 7-9: 47 migrations.
 
 ---
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-Sunday 26 Apr was the second consecutive long-form session. Phase A — the foundation of the slot-driven architecture inversion — is complete and running autonomously in production.
+Sunday 26 Apr was three sessions in one day: Phase A morning (Stages 1-6), Phase A audit pass mid-afternoon, Phase B Stages 7-9 afternoon–evening. The slot-driven build is now structurally complete except for cron wiring and ai-worker refactor.
 
 **State at close:**
 
-- **Phase A crons firing** (6 registered, 9 ticks captured this session, all succeeded)
-- **Pool growing organically** (1,694 active rows; classifier cron 68 + backfill cron 71 + Stage 3 trigger chain compounding new entries every 5 minutes)
-- **Slots populated** (70 total; 12 pending_fill awaiting Stage 8 fill function — DO NOT TOUCH)
-- **R6 still paused, publishing untouched** (FB + LI draining the existing 145-row queue at normal cadence)
-- **Old pipeline still functional** (the Phase A pipeline runs alongside, neither blocking the other)
-- **Anthropic spend zero from R6 + Phase A** (Phase A is all SQL; no LLM calls until Stage 8 fill function ships and Stage 10 wires its cron)
-- **All reconciliation artefacts committed** (sync_state at `3f3f226`, decisions D170-D176 at `58cfff5`, dashboard roadmap at `a55a3a2`, this final-audit commit, memory entries 14/26/28/29 updated)
+- **Phase A still autonomous** (6 crons firing, 1,694-row pool, 70 slots, 0 alerts)
+- **Phase B scoring + fill + defensive layer all live as functions** (callable, no crons yet)
+- **R6 still paused, publishing untouched** (FB + LI draining the existing queue at normal cadence)
+- **R6 ai-worker (jobid 5) still polling** but seeing only legacy R6 work — critical to add `is_shadow` filter in Stage 10 BEFORE wiring the fill cron
+- **Anthropic spend zero from R6 + Phase A + Phase B Stages 7-9** (all SQL functions; no LLM calls until Stage 10 wires the fill cron AND Stage 11 enables the ai-worker to process slot-driven jobs)
+- **All reconciliation artefacts in flight this commit** (sync_state + decisions + memory + dashboard roadmap)
 
 **Realistic next working windows:**
 
-- Mon 27 Apr morning: Stage 7 (confidence + pool health + ratio)
-- Mon 27 Apr midday: Stage 8 (fill function — biggest single migration)
-- Tue 28 Apr: Stage 9 (recovery + breaking news)
-- Wed 29 Apr: Stage 10 (Phase B crons + shadow mode wiring)
-- Thu 30 Apr: Stage 11 (ai-worker idempotency, first EF deploy of Phase B)
-- Thu 30 Apr - Wed 6 May: Gate B observation (5-7 days)
+- Mon 27 Apr morning: Stage 10 (Phase B crons + minimal ai-worker patch)
+- Mon 27 Apr afternoon–evening or Tue 28 Apr: Stage 11 (full ai-worker refactor + first EF deploy of Phase B)
+- Wed 29 Apr – Mon 5 May: Gate B observation (5–7 days)
+- Tue 6 May onward: Phase C cutover decisions per Gate B findings
 
-**Lessons captured 26 Apr (31 total, 6 new from Sunday session):**
+**Lessons captured 26 Apr (32 total — 6 from morning + 1 from evening):**
 
-1-25. (See prior commits.)
+26–31. (See morning's Phase A close commit `2799253` and the Phase A audit-pass commit.)
 
-26. **Supabase CLI `supabase db push` is incompatible with this repo's standing pattern.** The repo has ~280 DB-only migrations applied via SQL editor, MCP, or direct SQL — not via the local migrations folder. CLI fails at history reconciliation pre-check before reaching any new migration SQL. Two CLI fixes were rejected (migration repair papers over the gap; db pull pollutes the diff with 280 files). **Pattern locked: CC creates source-of-truth files in `supabase/migrations/`, commits, pushes. Claude (chat) applies via Supabase MCP `apply_migration`.** CLI link is still useful for `supabase functions deploy` (Stage 11 onwards).
-
-27. **`t.content_class` is a versioned table — never FK to its `class_code`.** Versioning means class_code is unique only per (`class_code`, `version`) and via partial-unique index `WHERE is_current=true`. PostgreSQL won't accept a partial unique as an FK target. Pattern: drop the FK, keep PK on the lookup column, validate seeds via `DO $$ ... $$` orphan-check block referencing `is_current=true AND is_active=true`. Same pattern applies to any other versioned reference table in the schema.
-
-28. **Pre-flight schema verification catches 4 v4 SQL mismatches in 30 minutes that would have cost hours mid-stage.** Issues found: `f.canonical_vertical_map` didn't exist (added as Stage 1 Migration 008); `vertical_id` is integer not uuid; `canonical_title` not `title` on `f.canonical_content_item`; `ai_job_id` not `id` on `m.ai_job`. The pattern matters for Phase B too — every stage brief should start with pre-flight queries against the live DB before SQL is written.
-
-29. **Vertical-scoped pool design produces dramatic asymmetry across clients.** Post-Stage 4 backfill: NY+CFW shared verticals (NDIS=11, ADP=12) have 279 entries each; PP verticals (Resi=7, Investment=9, Mortgage=10) have 271 each; Invegent globals (AI=15, Social=16, Content=17) have 99 each. Invegent's pool is 3× thinner because Invegent has 2 enabled feed sources vs 14+ for the AU clients. **Operational implication for Phase E:** evergreen seeding must prioritise Invegent's verticals, otherwise Invegent will hit thin-pool conditions far more often than NY/PP and over-rely on the LD3 fallback.
-
-30. **F8 buffer (10-min lookahead in promote_slots_to_pending) interacts with manual function calls during build.** When Stage 5's promote function is called manually before Stage 8's fill function exists, slots correctly transition future → pending_fill but then have no consumer. Solution: roll back to `future` after manual verification (don't leave slots stranded for the days/weeks until Stage 8 ships). When Stage 6 cron starts firing every 5 minutes, the 12 Mon 27 Apr slots re-promoted naturally — and they'll wait there harmlessly until Stage 10 wires the fill cron. **Pattern: state-changing functions should be tested with rollback in mind during incremental builds.**
-
-31. **Two-trigger chain is more debuggable than one trigger doing two jobs.** v4 originally specified one trigger on `f.canonical_vertical_map`. Splitting into Trigger 1 (classifier_output → vertical_map) and Trigger 2 (vertical_map → signal_pool) means each can be tested independently, has its own audit table (`canonical_vertical_map.mapping_source` records `classifier_auto` vs `backfill`), and supports backfill via direct vertical_map INSERT (Stage 4 Phase 1) without needing to touch the classifier path. Pattern for future trigger work: if a trigger does two distinct jobs that could conceivably be invoked separately, split it.
+32. **Pre-flight schema verification must query EVERY directly-touched table.** Three Phase B gaps caught this session shared a single root cause: assuming column names, types, or constraints from related tables instead of querying the directly-touched table. Stage 7 fitness scale (assumed 0..1, was 0..100). Stage 8 `c.client_content_scope` columns (assumed `content_vertical_id` from convention; was `vertical_id`. Assumed `is_active` filter was needed; column doesn't exist). Stage 9 `m.slot_fill_attempt.decision` (assumed free-text; had CHECK). Pattern for future stages: pre-flight queries `information_schema.columns`, `pg_constraint`, and `pg_proc` for EVERY directly-touched table, not just the table at the centre of the new feature.
 
 ---
 
-## END OF SUNDAY SESSION (FINAL AUDIT PASS)
+## END OF SUNDAY EVENING SESSION
 
-Next session priority: Stage 7 (Phase B begins). v4 brief Phase B sections are the spec; this sync_state captures everything Phase A established.
-
-Final audit additions (this commit):
-- DO NOT TOUCH list (12 pending_fill slots, R6 crons, IG cron)
-- Stage brief navigation aids (template at cc-stage-06.md)
-- Cowork Mon 7am AEST awareness note
-- Branch convention exception logged with merge-back plan
-- Session startup protocol expanded from 13 steps to 15 steps with explicit ranges
+Next session priority: Stage 10. Phase B Stages 10-11 wraps the build; Gate B observation begins.
 
 R6 paused, Phase A autonomous, publishing healthy, Anthropic spend zero from build pipeline. Solid handover state.
