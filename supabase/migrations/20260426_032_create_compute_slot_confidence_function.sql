@@ -1,9 +1,13 @@
 -- Stage 7.032 — Slot confidence composite (LD10)
 --
 -- Inputs (per LD10):
---   p_best_fitness       — chosen format's fitness for the bundle (0..1)
+--   p_best_fitness       — chosen format's fitness on 0..100 scale
+--                          (matches m.signal_pool.fitness_score_max which derives
+--                           from t.class_format_fitness, range observed 20-98).
+--                          Function normalises to 0..1 internally.
 --   p_pool_size          — count of pool entries that were viable for this slot
---   p_top_recency_score  — recency of selected content (0..1; 1.0 = just published)
+--   p_top_recency_score  — recency of selected content (0..1; caller-computed,
+--                          e.g. 1.0 - hours_since_publish / freshness_window_hours)
 --   p_source_diversity   — distinct source_domain count in the bundle (1+ for single-item)
 --
 -- Composite weights (sum to 1.00):
@@ -33,8 +37,9 @@ DECLARE
   v_diversity numeric;
   v_score     numeric;
 BEGIN
-  -- Defensive clamp + null-safety on the two 0..1 inputs
-  v_fitness := GREATEST(0.0, LEAST(1.0, COALESCE(p_best_fitness, 0.0)));
+  -- Fitness: 0..100 input, normalise to 0..1
+  v_fitness := GREATEST(0.0, LEAST(1.0, COALESCE(p_best_fitness, 0.0) / 100.0));
+  -- Recency: already 0..1 at call site
   v_recency := GREATEST(0.0, LEAST(1.0, COALESCE(p_top_recency_score, 0.0)));
 
   -- Pool size: log-scaled, saturates at 10 viable items.
@@ -60,4 +65,4 @@ END;
 $$;
 
 COMMENT ON FUNCTION m.compute_slot_confidence(numeric, integer, numeric, integer) IS
-  'LD10 composite slot confidence in 0..1. Weights: 0.50 fitness, 0.20 pool (log-saturated at 10), 0.20 recency, 0.10 diversity (log-saturated at 3). IMMUTABLE. Stage 7.032.';
+  'LD10 composite slot confidence in 0..1. Inputs: fitness 0..100 (normalised internally; matches m.signal_pool.fitness_score_max), pool_size integer, recency 0..1 (caller-computed), diversity integer. Weights: 0.50 fitness, 0.20 pool (log-saturated 10), 0.20 recency, 0.10 diversity (log-saturated 3). IMMUTABLE. Stage 7.032 (fix-up: fitness 0..100 contract).';
