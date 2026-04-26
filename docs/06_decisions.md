@@ -21,519 +21,411 @@ is recorded here with context and reasoning.
 
 ## D156–D162 — See 21 Apr 2026 commits (external reviewer layer shipped + paused, cost guardrails architecture, reviewer implementation details)
 
+## D163–D168 — See 21–23 Apr 2026 commits (DLQ scoping, bundler dedup, bloat cleanup, router sequencing reversal, router MVP shadow infrastructure, ID004 sentinel scope)
+
 ---
 
-## D163 — Phase 1.7 Dead Letter Queue Foundation: `m.ai_job` Only, Scoped by Inspection
-**Date:** 21 April 2026 evening | **Status:** ✅ IMPLEMENTED (migration `phase_1_7_ai_job_add_dead_status` + Q1 data cleanup applied same session)
+## D170 — Slot-Driven Architecture v4 Build Plan: Stage-Gated Migrations Applied via Supabase MCP, Not CLI
+**Date:** 26 April 2026 morning | **Status:** ✅ APPLIED through Phase A (Stages 1–6 deployed; pattern locked for Phase B)
 
 ### The problem this decides
 
-Sprint item Q1 required updating 13 failed ai_jobs from the ID003 window to a terminal "dead" state so they stopped being flagged by `system_auditor`. The pre-approved SQL in sync_state was `UPDATE m.ai_job SET status='dead', dead_reason='id003_cleanup_2026-04-21' WHERE status='failed' AND created_at < '2026-04-15'`. On execution, two errors surfaced:
+V4 build plan (commit `26d88b8`) committed Saturday evening defaulted to `supabase db push` for migration application. The first attempt at Stage 1 surfaced two CLI-shaped blockers:
 
-1. The `m.ai_job.status` CHECK constraint rejected `'dead'`. The allowed set was `{queued, running, succeeded, failed, cancelled}`. The pre-approved UPDATE was untested.
-2. The date cutoff `< 2026-04-15` missed all the target rows — the failures were from 18 Apr within the ID003 window (15–19 Apr), not before it.
+1. CLI not linked to project — fixed by `supabase link`.
+2. After link, `supabase db push` failed at history reconciliation pre-check: ~280 remote migrations in `supabase_migrations.schema_migrations` don't exist as files in `supabase/migrations/` locally. CLI refused to push until reconciled.
 
-This surfaced a broader question: `docs/04_phases.md` Phase 1.7 (Dead Letter Queue) prescribes adding `status='dead'` across four pipeline tables — `m.ai_job`, `m.post_draft`, `m.post_publish_queue`, `f.canonical_content_body`. Should Q1 be handled as an isolated one-off CHECK widen, or should the full Phase 1.7 foundation sweep happen today?
+The ~280 migrations are the standing pattern of this repo: changes applied via Supabase SQL editor, MCP `apply_migration`, or direct SQL since project inception. Reconciling means either `migration repair --status reverted <280 IDs>` (papers over the gap, recurring problem on every future stage as new MCP migrations land) or `supabase db pull` (pollutes the diff with 280 files).
 
 ### The decision
 
-**Scope today: `m.ai_job` only.** Widen its CHECK constraint to include `'dead'`. Run the cleanup UPDATE on the 13 rows with a corrected `dead_reason`. Defer the other three tables to a dedicated Phase 1.7 sprint session, with explicit handling for each.
+**Migrations applied via Supabase MCP `apply_migration`, NOT via Supabase CLI `db push`.** Source-of-truth files live in `supabase/migrations/` in the repo (committed by Claude Code on the feature branch). Application happens via Supabase MCP from chat. Pattern locked for all 19 stages of the slot-driven build.
 
-### What inspection found that changed the framing
+### What this means in practice
 
-Before committing to a four-table sweep, a 5-minute inspection of all four current CHECK constraints revealed that the `04_phases.md` Phase 1.7 spec doesn't match current reality uniformly:
+Per-stage workflow:
 
-| Table | Column | Current CHECK vocabulary | Verdict |
-|---|---|---|---|
-| `m.ai_job` | `status` | `queued / running / succeeded / failed / cancelled` | Widen to add `'dead'` ✅ applied |
-| `m.post_draft` | `approval_status` | Already includes `'dead'` in the ANY array | **Done already — no change needed** |
-| `m.post_publish_queue` | `status` | **NO CHECK constraint at all** — any string accepted. Current values in use: `published` (91 rows) / `queued` (12) / `pending` (2) / `dead` (1). One row already using `'dead'` without a constraint protecting it. | Add a NEW CHECK constraint — different work from widening an existing one; needs deliberate vocabulary design |
-| `f.canonical_content_body` | `resolution_status` | `active / success / give_up_paywalled / give_up_blocked / give_up_timeout / give_up_error` | **Leave alone** — `give_up_*` IS the dead-letter semantics for this table. Adding generic `'dead'` duplicates vocabulary |
+1. Claude (chat) writes Stage N brief at `docs/briefs/cc-stage-NN.md` with full SQL for each migration file
+2. PK runs Claude Code (CC) against the brief
+3. CC creates source-of-truth files in `supabase/migrations/20260426_NNN_*.sql`, commits on `feature/slot-driven-v3-build`, pushes
+4. CC reports commit SHA back to chat
+5. Claude (chat) applies each migration via Supabase MCP `apply_migration` using exact SQL from the file
+6. Claude (chat) runs verification queries (V1–VN per stage)
+7. PK approves → next stage
 
-The Phase 1.7 spec was written before these actual semantics were visible. Per D161's authority hierarchy rule — trust the live DB over older doc specs when they conflict — the decision follows what the DB shows, not what the spec says.
+CC never runs SQL. Claude (chat) never edits files. Each session of work has one role per turn — clean responsibility boundaries.
 
-### Why not do the full sweep today
+### Why MCP over CLI repair
 
 Three reasons:
 
-1. **`m.post_draft` is already done.** No work needed. The Phase 1.7 spec overstated the scope.
-2. **`f.canonical_content_body` should NOT be changed.** Adding `'dead'` alongside the existing `give_up_*` states creates two ways to say the same thing, actively muddying pipeline semantics. Future writers would have to decide "do I mark this give_up_paywalled or dead?" — that's a worse place to land than just having one vocabulary.
-3. **`m.post_publish_queue` needs a CHECK constraint designed from scratch** (currently absent), with a considered vocabulary covering current use (`queued, pending, published, dead`) plus likely-future values (`failed, cancelled`). That's a deliberate design exercise, not a quick-win bolt-on — and sprint discipline favours closing the Q1 scope and moving on rather than expanding.
-
-### What stays open after this decision
-
-A new backlog item (tracked in sync_state Backlog): add a CHECK constraint to `m.post_publish_queue.status` covering the full intended vocabulary. Not an A-item; prerequisite for a proper Phase 1.7 full DLQ sprint that also adds the pg_cron sweep + dashboard Failures panel + requeue action from `04_phases.md` 1.7 deliverable list.
-
-### Real operational finding preserved (separate from this decision)
-
-The 13 failed ai_jobs weren't ID003 timeout-loop failures as the sync_state framing implied. They were **gpt-4o TPM saturation events on 18 Apr 07:20 UTC** — a single digest burst on NDIS Yarns fired 13 concurrent `rewrite_v1` jobs (6 LinkedIn + 7 Instagram) against gpt-4o, saturating the 30k TPM ceiling within one minute. All returned `openai_http_429`. `attempts=0` on all 13 because the D157 retry-cap `attempts` column was added today, after these failures occurred.
-
-`dead_reason` labelled accurately as `'openai_tpm_rate_limit_2026-04-18'`, not the originally-proposed `'id003_cleanup_2026-04-21'` which would have misrepresented the failure mode.
-
-Separate brief at `docs/briefs/2026-04-21-tpm-saturation-staggered-rewrite.md` captures the concurrency design issue for pick-up when the pipeline resumes from drain — this is a latent bug that will recur on first burst.
-
-### What this does NOT decide
-
-- Does not resolve the TPM saturation pattern. That's design work deferred to the brief; this decision is just the DLQ scoping.
-- Does not commit to a timeline for `m.post_publish_queue` CHECK. Backlog item, no trigger yet.
-- Does not retroactively "fix" the pre-approved SQL process — that's a separate improvement opportunity (probably: test pre-approved SQL before approving it, or flag as untested in sync_state when it's structural DDL).
-
-### Related decisions
-
-- **D157** — added the `dead_reason` column to `m.ai_job` in migration `d157_id003_ai_job_retry_cap`. D163 adds `'dead'` to the status vocabulary so the column has something to pair with semantically.
-- **D161** — the authority hierarchy (live DB > older doc specs) applied to resolve the `04_phases.md` spec mismatch.
-- **Phase 1.7** (`docs/04_phases.md`) — partially implemented now; remaining tables tracked as future sprint work.
-- **Q1 (sprint item)** — the proximate cause of this inspection. Closed in this same session.
-
----
-
-## D164 — Bundler Per-Client Canonical Dedup Window: 7 Days, Hardcoded
-**Date:** 22 April 2026 morning | **Status:** ✅ IMPLEMENTED (migration `20260422_m8_populate_digest_items_v1_dedup_per_client_7d`, M8 PR `ffc767d`)
-
-### The problem this decides
-
-The M8 fix to `m.populate_digest_items_v1` adds a `NOT EXISTS` guard preventing the same `canonical_id` from being re-bundled for the same client within a time window. The window length is the load-bearing parameter — too short and the bundler keeps multiplying drafts (the failure mode that produced 18 visually identical Instagram posts on NDIS Yarns); too long and legitimately recurring news stories get suppressed when they shouldn't.
-
-### The decision
-
-**Window: 7 days. Hardcoded in the SQL function. Same value for every client.**
-
-### Backing — why 7 days, why hardcoded for now
-
-**The candidate windows weighed:**
-
-| Window | What this means in practice | Verdict |
-|---|---|---|
-| **24 hours** | Same canonical can be re-bundled into a fresh digest_item every day. Hourly cron firings would still produce ~24 digest_items per canonical per day until the canonical drops out of the freshness window. | ❌ Reproduces the IG bloat at lower magnitude. Doesn't actually solve the multiplication. |
-| **3 days** | Cuts most of the bloat. Allows a real story re-coverage at day 4. Mid-week-news → end-of-week recap pattern works. | ⚠️ Defensible alternative. Slightly tighter than NDIS news cycle observation suggests is needed. |
-| **7 days** | One canonical → one digest_item per client per week. Aligns with the actual NDIS news cadence (most stories have a weekly attention cycle: Mon/Tue announcement → Wed/Thu analysis → Fri/Sat reaction). | ✅ Chosen. |
-| **14 days** | Aligns with longer NDIS reform cycles (consultation announcement → submission window → response). | ⚠️ Acceptable but suppresses the "follow-up post a week later" pattern that PK uses for engagement. |
-| **30 days** | A real story like an NDIS pricing announcement at week 1, then a peak-body response at week 3, would be deduped out. Bad for the product — peak-body responses are some of the most engageable content. | ❌ Over-suppresses. |
-
-7 days is the sweet spot **for NDIS-vertical news cadence specifically**. It works for property too based on observation but is not specifically tuned to it.
-
-**Why hardcoded (not configurable per client) for now:**
-
-1. **All four current clients are in NDIS or Australian property verticals** with similar news cadences. There is no observable demand right now for per-client tuning.
-2. **The configurable version is more code, not less.** A `c.client_digest_policy.canonical_dedup_window_days` column needs the column added, the function signature changed, the seeder/policy resolver updated, and a default behaviour for unset values. That's worth building when there's a use case, not as speculative flexibility.
-3. **The 7-day choice is provably better than the status quo (no dedup at all).** Any reasonable value is a strict improvement. Starting hardcoded gets the structural protection in place fast; tunability can follow when a client's pattern actually conflicts with the default.
-4. **Changing a hardcoded value later is cheap.** It's a one-line migration. Treating this as "fixed forever" would be wrong, but treating it as "fixed until evidence demands otherwise" is correct discipline.
-
-### When to revisit
-
-Revisit if **any** of these signals appear:
-
-- A client's vertical demonstrably has a different news cadence (e.g. weekly aged-care policy bulletins vs daily property pricing data) and content is being suppressed inappropriately.
-- A client requests posts on the same canonical at sub-7-day intervals (e.g. a daily news briefing service) and the suppression actively prevents the product they're paying for.
-- Two or more clients want different windows and the simplest fix becomes adding the column.
-- A regression query (below) shows the dedup is suppressing content that the operator manually wants to see published.
-
-### Future enhancement — per-client tunability spec
-
-When the trigger fires, the work to make the window per-client:
-
-1. Add `c.client_digest_policy.canonical_dedup_window_days INT NOT NULL DEFAULT 7` (one migration).
-2. Update `m.populate_digest_items_v1` to read the value from the policy row (already loaded in the function) and use `INTERVAL '%s days' % v_dedup_window_days` instead of the hardcoded `INTERVAL '7 days'`.
-3. Surface the value in the dashboard Digest Policy tab so operator can see + edit per client.
-4. No data migration needed — the DEFAULT 7 preserves current behaviour for every existing client.
-
-Estimated work: 30-45 min when the trigger fires. Tracked in Decisions Pending below.
-
-### Regression — re-runnable query for weekly check
-
-Documented in the M8 PR body. Re-quoted here for the decision-log record (re-runnable weekly to confirm dedup is holding):
-
-```sql
-SELECT
-  dr.client_id,
-  di.canonical_id,
-  COUNT(*) AS digest_item_count,
-  COUNT(DISTINCT di.digest_run_id) AS distinct_runs,
-  MIN(di.created_at) AS first_seen,
-  MAX(di.created_at) AS last_seen
-FROM m.digest_item di
-JOIN m.digest_run dr ON dr.digest_run_id = di.digest_run_id
-WHERE di.created_at > NOW() - INTERVAL '7 days'
-GROUP BY dr.client_id, di.canonical_id
-HAVING COUNT(*) > 1
-ORDER BY digest_item_count DESC;
-```
-
-For runs created strictly AFTER the M8 deploy timestamp (variant for verifying the fix specifically):
-
-```sql
-SELECT dr.client_id, di.canonical_id, COUNT(*) AS cnt
-FROM m.digest_item di
-JOIN m.digest_run dr ON dr.digest_run_id = di.digest_run_id
-WHERE di.created_at > '2026-04-22 00:00 UTC'   -- M8 merge timestamp
-GROUP BY dr.client_id, di.canonical_id
-HAVING COUNT(*) > 1;
--- Expected: zero rows.
-```
-
-PK to re-run on 23 Apr (24h post-deploy gate 4) and weekly thereafter.
-
-### What this does NOT decide
-
-- Does not address content-similarity dedup (two distinct canonicals with near-identical content). That's an embedding / classification problem for a future sprint, not a structural dedup problem.
-- Does not address the FB-vs-IG publish disparity flagged during M8 diagnosis (FB got 0 of those drafts, IG got 18). Separate item.
-- Does not address the existing bloat in the digest queue from before the fix — natural age-out within 7 days.
-
-### Related decisions
-
-- **D135** — pipeline block 14-17 Apr (the historical context that created the 1-hour publish burst on 17 Apr that produced the visible IG duplicates).
-- **D142** — demand-aware seeder (caps drafts/week per client; correctly capped count, but couldn't prevent duplicate content from filling the cap — exactly the failure D164 fixes upstream).
-- **M8 PR** — `ffc767d` — the implementation.
-
----
-
-## D165 — Bloat-Window Cleanup Discipline: Mark Dead at Source, Clear Queue, Pause Broken Consumers
-**Date:** 22 April 2026 afternoon | **Status:** ✅ APPLIED (120 FB drafts + 41 queue items marked dead; `instagram-publisher-every-15m` cron paused)
-
-### The problem this decides
-
-The 17-19 April NDIS Yarns Instagram visible-duplicates incident turned out to have three compounding root causes, each discovered by the next sprint item:
-
-1. **M8 — bundler multiplication.** `m.populate_digest_items_v1` ON CONFLICT scoped to `(digest_run_id, canonical_id)` only. Hourly cron firings re-selected same canonicals into new digest_items. Produced 13 canonicals × ~7-8 runs = 97 bloated drafts on 17 Apr.
-
-2. **M11 — 8-day silent cron outage.** `enqueue-publish-queue-every-5m` had `ON CONFLICT (post_draft_id)` but the actual unique index was `(post_draft_id, platform)`. Postgres raised *"no unique or exclusion constraint matching the ON CONFLICT specification"* every 5-min run from 14 Apr 05:20 onward. 2,258 silent failures. FB queue writes stopped entirely; IG publisher kept working because it bypasses the queue.
-
-3. **M12 — instagram-publisher platform hijacking.** `instagram-publisher` reads `m.post_draft` directly with **no `pd.platform` filter** — grabs any approved draft with an image_url regardless of intended platform. The 18 "IG duplicates" were actually FB-intended drafts hijacked by IG. Not scoped in M11. Proposed as M12 sprint item.
-
-Once M8 + M11 fixed, the immediate question: what do we do with 120 approved FB-intended drafts from 17 Apr (19 newly-queued by M11 fix + 101 still-waiting-to-be-queued) that were generated by the bloated bundler window? Spam them over 4 weeks as FB throttle drains them, or clean up and reset?
-
-### The decision — three-part cleanup discipline
-
-**When a multi-system bug produces a bloat window:**
-
-1. **Mark dead at the source, not at consumers.** `UPDATE m.post_draft SET approval_status='dead', dead_reason='<bug>_bloat_window_<date>'` for every draft in the bloat window. Preserves audit trail (per Phase 1.7 DLQ semantics D163). Stops consumers from ever picking them up again.
-
-2. **Clear every downstream queue item in any non-terminal state.** `UPDATE m.post_publish_queue SET status='dead', dead_reason='<bug>_bloat_window_<date>'` for queued/pending rows. Once the source is dead, queue entries pointing at it are orphans. Don't leave them to fail one-by-one at publish time.
-
-3. **Pause any broken consumer defensively.** Even after upstream cleanup, if a consumer has a known bug (M12 IG hijacking), pause its cron. A single future approved draft on the wrong platform path is enough to trigger the hijack again. `SELECT cron.alter_job(job_id := <id>, active := false)`. Resume only after the consumer fix ships and verifies.
-
-### Why mark dead instead of delete
-
-- Audit trail — `dead_reason` column documents what happened and why, visible forever in the DLQ view
-- Reversibility — if any draft turns out to be evergreen worth publishing, one-line UPDATE restores it
-- Phase 1.7 alignment — the Dead Letter Queue pattern is the standing approach (D163); this honours it
-- Operational discipline — DELETE is destructive and precedent-setting; `dead` is idempotent and reviewable
-
-### Why clear the queue AND the source
-
-- Queue items point at source drafts by FK. If source is dead but queue is still "queued", publisher will either crash or silently skip — both are worse signals than a clean `dead` state.
-- One cleanup operation per layer is cheaper than debugging "why is the publisher erroring on a draft that doesn't exist" three days later.
-
-### Why pause the consumer, not just trust the fix
-
-Timeline reality: the M12 fix isn't built yet. Between "clean slate now" and "M12 ships", the IG publisher would pick up the very first new FB-intended approved draft with an image and publish it to IG again. Same embarrassment, fresh cause. Pausing jobid 53 closes that window for zero cost — FB publishing continues, LinkedIn continues, YouTube continues. Only IG is offline until M12 lands.
-
-### The real-world embarrassment cost this avoids
-
-PK framing, verbatim: *"rather than just spamming the pages... if we spam, we put 100 posts or you know 50 or 20 posts in one day, people will have different expectations or they will not take the page seriously. If they go back or maybe the Facebook will tag the page as spam or something."*
-
-The throttle was 2/day per client. 120 drafts across 3 clients at 2/day = 20-40 days of publishing 17 April-dated news. By mid-May, NDIS reform "pre-Federal Budget" content would be reading as stale 30+ days after the actual Budget. That's an audience trust cost AND a Meta reputation cost (spam signal), well beyond the sunk cost of the 120 drafts.
-
-### The applied cleanup (22 Apr afternoon)
-
-```sql
--- Step 1: Mark source drafts dead
-UPDATE m.post_draft
-SET approval_status = 'dead',
-    dead_reason = 'm8_m11_bloat_window_2026-04-17',
-    updated_at = NOW()
-WHERE platform = 'facebook'
-  AND approval_status = 'approved'
-  AND created_at >= '2026-04-17 00:00 UTC'
-  AND created_at <  '2026-04-18 00:00 UTC'
-  AND NOT EXISTS (SELECT 1 FROM m.post_publish pp WHERE pp.post_draft_id = post_draft.post_draft_id AND pp.platform = 'facebook');
--- Result: 120 drafts marked dead (NDIS Yarns 63, PP 44, CFW 13)
-
--- Step 2: Clear queue items
-UPDATE m.post_publish_queue
-SET status = 'dead',
-    dead_reason = CASE
-      WHEN platform = 'facebook'  THEN 'm8_m11_bloat_window_2026-04-17'
-      WHEN platform = 'instagram' THEN 'm8_m11_bloat_window_2026-04-17'
-      WHEN platform = 'youtube'   THEN 'pre_m8_stale_2026-04-09'
-      ELSE 'stale_pre_m8_m11_cleanup'
-    END,
-    updated_at = NOW()
-WHERE status IN ('queued', 'pending');
--- Result: 41 queue rows marked dead (FB 27, IG 12, YouTube 2)
-
--- Step 3: Pause broken consumer
-SELECT cron.alter_job(job_id := 53::bigint, active := false);
--- Result: instagram-publisher-every-15m paused. Will resume post-M12.
-```
-
-### What this does NOT decide
-
-- Does not fix M12 — that's a follow-on sprint item (IG publisher `pd.platform` filter + enqueue NOT EXISTS platform-scoping)
-- Does not commit to a monitoring fix for silent cron failures — flagged as separate sprint item (D155/D157 should have surfaced this)
-- Does not define a SOP for "when to mark dead vs delete" — this decision applies the pattern once; a formal SOP would be a future systems-doc if the pattern recurs
-
-### Related decisions
-
-- **D163** — Phase 1.7 DLQ foundation on `m.ai_job`. D165 extends the DLQ vocabulary to `m.post_draft` (via `dead_reason`) and `m.post_publish_queue` (via `dead_reason`) for a real operational cleanup, not just a constraint widen.
-- **D164** — Bundler per-client dedup window. D165 is the downstream cleanup that D164's fix made safe (once bundler stops producing bloat, it's safe to nuke the historical bloat without fear of immediate reproduction).
-- **M8 PR** — `ffc767d` — bundler fix
-- **M11 PR** — `583cf17` — cron ON CONFLICT fix
-- **M12 (pending)** — IG publisher `pd.platform` filter + enqueue NOT EXISTS scoping. Brief needed. **Superseded by D166 — see below.**
-
-### Sprint pending items opened by D165
-
-- **M12** — instagram-publisher platform-filter + enqueue platform-scoped NOT EXISTS. **HIGH priority** because IG publisher is paused until this ships. **Status: SUPERSEDED by D166/D167 router build track. Kept as fallback if router work stalls.**
-- **Cron failure-rate monitoring** — `system-auditor` or a new pg_cron sweep should watch `cron.job_run_details` failure rate. 2,258 silent failures over 8 days should never happen undetected.
-
----
-
-## D166 — Router Sequencing Reversal: Build D144 Router MVP Instead of M12 Surgical Fix
-**Date:** 22 April 2026 evening | **Status:** ✅ APPLIED (D167 covers the shipped infrastructure)
-
-### The problem this decides
-
-After M8 + M11 + D165 cleanup closed the morning sprint, the next obvious item on the board was **M12** — a surgical three-bug fix to `instagram-publisher` (add `pd.platform` filter) + `enqueue_publish_queue` (platform-scoped NOT EXISTS) + remove two exec_sql sites. Estimated 2-3 hours. IG publisher cron (jobid 53) is paused until it ships.
-
-A deep read of the relevant code during evening session scoping revealed the framing was wrong. M12 is not a clean surgical fix — it's polish on code the router replaces entirely.
-
-### What the code review surfaced
-
-1. **IG publisher bypasses the queue entirely.** Reads `m.post_draft` directly via `exec_sql`. FB publisher is queue-driven (`publisher_lock_queue_v1`) with schedule/throttle/token-validation. The two publishers have completely different ingestion shapes.
-
-2. **No `seed-and-enqueue-instagram` cron exists.** Only `seed-and-enqueue-facebook-every-10m` (jobid 11). There is **no real IG content pipeline.** IG publisher was hijacking FB-intended drafts because `m.seed_and_enqueue_ai_jobs_v1` fans out drafts only to Facebook.
-
-3. **`m.post_draft` DOES have a `platform` column** (populated by `seed_and_enqueue_ai_jobs_v1`). The M12 "IG publisher filter by `pd.platform`" fix would work — but it's fixing a filter that shouldn't exist because the IG publisher shouldn't be reading the queue-bypass path in the first place.
-
-4. **The enqueue `NOT EXISTS` "bug"** PK remembered from morning is not actually a correctness bug given the current one-draft-per-platform model. The platform-scoped version is defensive hardening only — no live failure mode.
-
-### What the router replaces
-
-Per D142/D143/D144 (recovered from past chats during session), the router's job is exactly the thing `seed_and_enqueue_ai_jobs_v1` does wrong today:
-
-- Current: blind fan-out to Facebook only → no IG/LinkedIn/YouTube pipeline → hijacking pattern
-- Router: demand-grid per (client, platform, format) → signal matching → seed jobs with platform and format pre-assigned → ai-worker generates exactly the content each slot needs
-
-Once the router is live, `seed_and_enqueue_ai_jobs_v1` is rewritten to call the router. The IG publisher either becomes queue-driven (same as FB) or reads the router's seeded output directly. Either way, the M12 "filter by `pd.platform`" fix becomes moot — the publisher never sees an FB-intended draft because the seed path produces platform-specific drafts to begin with.
-
-### The decision
-
-**Skip M12 surgical. Build D144 router MVP instead.**
-
-This reverses the sequencing D141 recommended ("router after first client revenue") on three specific grounds:
-
-1. **App Review waiting window funds the work.** Meta App Review + LinkedIn App Review are pending. External go-to-market is gated regardless. The "do revenue-producing work first" argument in D141 assumed time was the constraint; right now platform approval is the constraint.
-
-2. **M12 is wasted work.** 2-3 hours of polish on code that gets replaced entirely. The router makes the IG publisher's platform filter irrelevant.
-
-3. **Pipeline is uniquely clean.** 0 approved-unpublished FB drafts, 0 queue items, IG publisher paused. Zero risk from pausing the surgical-fix track. This window won't exist in the same way after first client signs.
+1. **Whack-a-mole avoidance.** Every future MCP migration applied between stages would force another `migration repair` to land the next stage's CLI push. The MCP-only pattern eliminates the loop.
+2. **Standing pattern continuity.** This is how every other migration in the repo got applied. Switching to CLI mid-project would have created two divergent patterns.
+3. **Idempotent workflow.** MCP `apply_migration` registers a row in `supabase_migrations.schema_migrations` exactly like CLI push would. End-state in production is identical.
+
+CLI link remains useful for `supabase functions deploy` (Stage 11 onward, when ai-worker refactor needs deployment).
 
 ### What this does NOT change
 
-- **IG publisher remains paused** — jobid 53 `active=false`. The router MVP ships shadow-only tonight; integration with the hot path happens Friday+ when fresh.
-- **FB publishing continues uninterrupted** — router is additive infrastructure; `seed_and_enqueue_ai_jobs_v1` unchanged tonight; enqueue cron healthy; FB/LinkedIn/YouTube publishing paths untouched.
-- **M12 is not closed** — it's *superseded*. If the router build stalls for any reason, M12 surgical fix remains the fallback to resume IG publishing safely.
-- **Sprint item count is unchanged on Section A** — router work is sprint-track, not pre-sales-gate work. A-count still 9 of 28 closed.
-
-### The sequencing reversal, explicit
-
-D141 said: *"Multi-perspective review recommending sequence routing AFTER first client revenue."* The reasoning was sound at the time — don't over-invest in infrastructure before revenue validates demand. D166 supersedes this specifically because the binding constraint changed: today it's platform approval time, not engineering time. When App Review clears, revenue-first thinking reapplies.
+- Files in `supabase/migrations/` remain source of truth. PRs review them.
+- The `feature/slot-driven-v3-build` branch strategy is preserved (per v4 §5 default).
+- CC's role of creating files + committing + pushing is unchanged.
+- Direct push to `main` for non-build work continues per D165.
 
 ### Related decisions
 
-- **D141** — the sequencing recommendation now reversed
-- **D142** — demand-aware seeder (already implemented; consumes D144 output once router is live)
-- **D143** — classifier (prerequisite for router's matching layer; deferred)
-- **D144** — router spec (this is the decision to start building the MVP)
-- **D145** — benchmark table (research phase; partially covered by D167 mix defaults research)
-- **D165** — bloat-window cleanup discipline (D166 preserves that cleanup; router work is pure-additive)
-- **D167** — the actual infrastructure shipped (companion decision recording what landed)
+- **D165** — Dev workflow rule (default direct-push to main, deviate for multi-repo coordinated risk). D170 extends: feature branches are appropriate for the 28-migration coordinated change of Phase A; main remains the default for everything else.
+- **v4 build plan** (commit `26d88b8`) — original specified `supabase db push`. D170 supersedes that specifically.
 
 ---
 
-## D167 — Router MVP Shadow Infrastructure Shipped: Defaults Table + Override Table + Demand Grid Function
-**Date:** 22 April 2026 evening | **Status:** ✅ IMPLEMENTED (two migrations + research doc drafted same session — research doc to be committed next session)
+## D171 — Pre-Flight Schema Verification as a Per-Stage Gate
+**Date:** 26 April 2026 morning | **Status:** ✅ APPLIED for all 6 Phase A stages, locked for Phase B
 
 ### The problem this decides
 
-D166 committed to building the D144 router MVP. This entry records what actually landed, with the specific trade-offs accepted as MVP, so next session knows exactly what works and what is still wrong by design.
+V4 SQL was written from architectural intent, not from production schema introspection. Stage 1 pre-flight queries surfaced 5 mismatches between v4's assumed shape and actual production:
 
-### What landed in this session
+1. `f.canonical_vertical_map` did not exist (v4 §A.5 trigger was specced to fire on it)
+2. `vertical_id` is integer, not uuid (v4 query Q1 used `content_vertical_id uuid`)
+3. `canonical_title` not `title` on `f.canonical_content_item` (v4 Stage 2 trigram index targeted wrong column)
+4. `ai_job_id` not `id` on `m.ai_job` (v4 §11 referenced wrong PK column)
+5. `t.content_class.class_code` is not globally unique (versioned table; partial-unique can't FK)
 
-Three production changes + one research document (not yet committed) + one validation view, all applied to the live database in one evening:
-
-1. **Migration `create_platform_format_mix_default_d145_seed`** — created `t.platform_format_mix_default` table + 23 seed rows covering FB/IG/LI/YouTube. All platforms sum to exactly 100.00 verified via `t.platform_format_mix_default_check`. Seeded from Buffer 2026 (45M+ posts) + Hootsuite 2026 industry benchmarks.
-
-2. **Migration `create_client_format_mix_override_and_demand_grid_router`** — created `c.client_format_mix_override` (same shape as defaults table, plus `client_id` FK; empty for every client) + created `m.build_weekly_demand_grid(p_client_id UUID, p_week_start DATE DEFAULT CURRENT_DATE)` SQL function.
-
-3. **Research document draft** at `/home/claude/research_platform_format_mix_defaults.md` (362 lines) — full methodology, per-platform rationale, and 10 source citations. Drafted but **not yet committed to repo** in this session's sync push; to be added next session. The core reasoning (matrix + methodology summary + sources list) is preserved in this decision entry so the audit trail is intact even before the standalone doc lands.
-
-### The defaults mix, for reference
-
-| Format | Facebook | Instagram | LinkedIn | YouTube |
-|---|---:|---:|---:|---:|
-| text | 20 | — | 20 | — |
-| image_quote | 30 | 20 | 15 | — |
-| carousel | **25** | **30** | **40** | — |
-| animated_text_reveal | 5 | 5 | — | — |
-| animated_data | — | 10 | — | — |
-| video_short_kinetic | 10 | 20 | 15 | 30 |
-| video_short_kinetic_voice | 10 | — | — | **25** |
-| video_short_stat | — | — | — | 20 |
-| video_short_stat_voice | — | 15 | 10 | 15 |
-| video_short_avatar | — | — | — | 10 |
-| **Total** | **100** | **100** | **100** | **100** |
-
-### Research sources summary (from research doc draft)
-
-- **Primary source:** Buffer 2026 "Best Content Format on Social Platforms" — analysed 45M+ posts across platforms
-- **Cross-checks:** Hootsuite 2026 benchmarks (nonprofits, healthcare, financial services, government), Rival IQ 2025 social benchmark report, Socialinsider NGO analysis, multiple YouTube Shorts sources
-- **Key findings that informed the mix:** FB format-agnostic (all formats within 1% engagement); IG carousels dominate engagement at 6.9%, Reels get 2.25× reach; LinkedIn carousels 21.77% engagement (196% more than video, 585% more than text); YouTube Shorts 5.91% engagement (highest of any short-form platform); vertical nuances exist for nonprofit/healthcare/FinServ but point same direction
-
-### MVP trade-offs explicitly accepted (worth preserving in case they bite later)
-
-The demand-grid function uses naive `ROUND()` on `slot_count × share / 100`. This has four known behaviours that are fine for MVP but will need revisiting:
-
-1. **Rounding overflow.** For NDIS Yarns (5 scheduled slots per platform), the function produces 6 demand rows summing to 6 slots on every platform — one over the schedule. This is expected from independent per-format rounding. The matching layer (future work) will need a policy: cap at scheduled slots and drop lowest-share overflow, or accept overproduction and reject surplus at approval time.
-
-2. **Low-share vanishing.** Formats at 5% share × 5 slots = 0.25 → rounds to 0. `animated_text_reveal` disappears entirely for 5-slot schedules on all platforms. At 20+ slot volumes this stops being a problem.
-
-3. **No override rebalancing.** When an override row exists for `(client, platform, format)`, its share replaces the default for that cell — but the other formats' shares are NOT rebalanced. If operator sets `linkedin.carousel` override from 40% to 60%, platform total becomes 120%. Visible (via the validation view), not silent, but still operator responsibility to reconcile. Three options were discussed (absolute+rebalance, delta, full override) — deferred per PK's "problem of distant future" call.
-
-4. **No enablement filter.** The router emits formats regardless of `c.client_format_config.is_enabled` or consent flags (`video_short_avatar` requires `c.client_avatar_profile.consent_signed_at`). The caller (future matching layer) is responsible for filtering at selection time. This keeps the router pure and lets the consent/enablement logic live where it's contextual.
-
-### What this does NOT include (still ahead)
-
-- **D143 classifier** — rule-based SQL tagging `m.digest_item` with content_type labels (stat_heavy, multi_point, timely_breaking, educational_evergreen, human_story, analytical). Prerequisite for the matching layer.
-- **Matching layer** — for each demand row, find the best signal. Depends on D143.
-- **`m.seed_and_enqueue_ai_jobs_v1` integration** — currently still blind FB fan-out. Rewriting this to call the router is the HIGH-RISK hot-path change. Friday+ work.
-- **ai-worker platform-awareness** — once seeds arrive with `format_key` preassigned, ai-worker should skip its format advisor. Backwards-compatible change per D144 notes.
-- **Cron changes** — new cron for IG/LinkedIn/YouTube seeding, OR consolidate to one router-driven cron replacing jobid 11.
-- **Research doc committed to repo** — drafted in `/home/claude/` but sync-push for this session only covers decisions + sync_state + file 15. Research doc to be committed next session as `docs/research/platform_format_mix_defaults.md`.
-
-### Pipeline hot path UNCHANGED
-
-The entire router MVP is shadow infrastructure. `seed_and_enqueue_ai_jobs_v1` is untouched. `enqueue-publish-queue-every-5m` (jobid 48) is untouched. All four publishers are untouched. IG publisher cron (jobid 53) remains paused per D165 — regardless of D166/D167, it stays paused until the router integration work on Friday.
-
-The router can be inspected at any time by running:
-
-```sql
-SELECT * FROM m.build_weekly_demand_grid(
-  (SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns')
-);
-```
-
-Nothing else in the system calls this function today.
-
-### Why research + migration in one session was safe
-
-Multiple structural guardrails kept this from being risky evening work:
-
-- **No hot path touched.** Pure-additive. If the tables were empty or the function broken, nothing else would notice.
-- **Validation view runs on demand.** `SELECT * FROM t.platform_format_mix_default_check;` returns 4 rows, all status='ok' now; any mutation can be checked the same way.
-- **PK explicitly approved structure, not values.** "Numbers are config, changeable via UPDATE" was PK's framing. Any share can be updated anytime without schema work.
-- **Versioning built in.** `effective_from` + `superseded_by` + `is_current` columns support future research refreshes without data loss.
-- **Research doc audit trail.** The `evidence_source` column on every seed row points at `docs/research/platform_format_mix_defaults.md` (path pre-registered; file commits next session).
-
-### What changed on the sprint board
-
-- **M12 marked superseded** by router build track (per D166). IG publisher remains paused regardless.
-- **D145 partially closed** — the mix defaults portion is shipped. The content_type × format benchmark table portion (matching-layer data) remains deferred, still gated on D143.
-- **New open items** — D143 classifier spec, matching layer design, `seed_and_enqueue_ai_jobs_v1` rewrite, cron changes. Friday+ work.
-
-### Related decisions
-
-- **D142** — demand-aware seeder (already implemented 18 Apr+; consumes router output once integration lands)
-- **D143** — classifier (spec exists in prior chat history; implementation deferred)
-- **D144** — router master spec (this decision is its MVP realisation)
-- **D145** — benchmark table (mix-defaults portion shipped via D167; matching-benchmarks portion deferred)
-- **D146** — feed pipeline score + retirement (still gated on Phase 2.1 + 60d data)
-- **D165** — bloat-window cleanup (the pipeline-clean state that made evening work safe)
-- **D166** — the sequencing reversal that authorised this work
-
-### Validation command for next session
-
-To confirm nothing drifted overnight:
-
-```sql
--- All four platforms should show total_share = 100.00 and status = 'ok'
-SELECT * FROM t.platform_format_mix_default_check;
-
--- Demand grid for NDIS Yarns should return 20 rows (5 platforms × avg 4 formats, minus zeros)
-SELECT COUNT(*) FROM m.build_weekly_demand_grid(
-  (SELECT client_id FROM c.client WHERE client_slug = 'ndis-yarns')
-);
-```
-
-Expected output recorded: 4 platforms × total_share 100.00, 20 demand rows for NDIS Yarns.
-
----
-
-## D168 — Detect Silent Outages at the Response Layer, Not the Scheduler Layer
-**Date:** 23 April 2026 | **Status:** 🟡 SCOPE DEFINED (implementation deferred — tracked as A-item in sync_state backlog)
-
-### The problem this decides
-
-ID004 is the third consecutive silent outage detected by PK investigating downstream starvation rather than by any automated check:
-
-- **ID003** — cost retry loop invisible because `ai_job.status='running'` was sweeper-requeued with no attempt cap
-- **M11** — 8-day publish-queue outage invisible because `ON CONFLICT` target silently swallowed inserts
-- **ID004** — 9-day content-fetch outage invisible because pg_cron reports *scheduling* success, not *HTTP* success
-
-All three ran on cron, reported `succeeded` throughout, and were only caught by data-starvation symptoms. Three in three weeks is structural, not coincidence.
+Caught in 30 minutes of pre-flight before any SQL was written. Each would have cost hours mid-stage if discovered at apply time.
 
 ### The decision
 
-**Add a response-layer sentinel: one cron job + one table + one dashboard tile that monitors `net._http_response` for EF-triggering cron commands and flags any job whose 2xx rate drops below threshold over a rolling window.**
+**Every stage brief begins with pre-flight schema verification queries against the live production database.** Mismatches are folded into the brief's SQL before CC sees it.
 
-Not a monitoring platform. Minimal viable coverage using infrastructure already in place.
+Pre-flight covers:
+- Column names + data types for every table referenced
+- FK target uniqueness (especially against versioned tables)
+- Existence of any referenced view, function, or extension
+- Sample data shape (e.g. how many rows in t.content_class, what class_codes exist)
+- Recent operational state (e.g. cron states, queue depths, R6 paused)
 
-### Why this class of fix, not others
+The brief's SQL is written against verified shape, not against v4's theoretical specs.
 
-| Alternative | Verdict |
-|---|---|
-| Case-insensitive vault lookups | ❌ Paper-over. Changes shared infra semantics, breaks the identifier-matching principle, makes sibling (correctly-lowercase) jobs silently tolerant of typos |
-| Pre-flight dry-run of cron commands that checks secret lookups | ⚠️ Helps for casing, not for expired keys, revoked keys, changed EF URLs, network failures, EF auth-header changes. Doesn't generalize |
-| Alert on zero writes to downstream tables | ⚠️ Worth doing as a complementary check, but reactive — waits for data starvation before firing. Response-layer detection fires at the moment of failure |
-| Convention: all vault names lowercase-with-underscores | ✅ Worth codifying as a side-rule (low cost, prevents one class of typo) but doesn't substitute for response monitoring |
-| **Response-layer sentinel (chosen)** | ✅ Catches the whole class — 401, 500, timeout, DNS, revoked auth — regardless of root cause |
+### Why this earns its keep
 
-### Scope of the sentinel
+Each Phase A stage had pre-flight findings that changed the SQL:
 
-Minimal viable version:
+- Stage 1: 5 mismatches above; added Migration 008 (`f.canonical_vertical_map`)
+- Stage 2: 10 ice_format_keys in production (not 6 v4 specced); seed expanded
+- Stage 3: classifier writes to `f.canonical_content_body.content_class`, not a separate table; trigger architecture revised
+- Stage 4: 1,804 classified canonicals total, 647 in last 7 days; backfill batch sizing confirmed
+- Stage 5: client timezone all `Australia/Sydney`, schedule columns `enabled`/`schedule_id`/`day_of_week`/`publish_time`; materialiser SQL written against actual shape
+- Stage 6: pg_cron extension confirmed available, existing cron command patterns inspected to match
 
-1. Table `m.cron_http_health` — one row per monitored jobid per day: `jobid, day, total_calls, n_2xx, n_non_2xx, last_non_2xx_status, last_non_2xx_at`
-2. SQL function `m.refresh_cron_http_health()` reading `net._http_response` for the last 24h, joined against a whitelist of EF-triggering jobs
-3. Cron `cron-http-health-every-15m` calling the function
-4. Dashboard tile showing the table, red highlight when 2xx_rate < 95% over last 24h
-5. (Optional stretch) email notifier when a monitored jobid crosses threshold — scope-out today
+Without pre-flight, each stage would have shipped broken SQL and required mid-stage diagnostics + fix-up commits.
 
-Not doing: Prometheus/Grafana, retention > 30 days, `job_run_details` failure alerts (those are already visible; this fills the gap *between* job_run_details and actual work).
+### What this requires
 
-### What stays open after this decision
+A fast feedback loop between chat and live DB. Supabase MCP `execute_sql` provides this. Pre-flight queries are typically:
 
-Implementation deferred to a dedicated sprint item. Rationale:
+- `SELECT column_name, data_type FROM information_schema.columns WHERE table_schema=X AND table_name=Y`
+- `SELECT constraint_name, constraint_type FROM information_schema.table_constraints WHERE ...`
+- `SELECT * FROM <table> WHERE <relevant filter> LIMIT 5` (sample data)
+- `SELECT proname, pg_get_function_arguments(oid) FROM pg_proc WHERE ...` (existing functions)
 
-1. Today's session is already long (9-day outage diagnosis + fix apply + verification). Adding implementation widens scope past what's prudent tonight.
-2. The ID004 fix itself is in place. Sentinel is preventative for the *next* outage.
-3. Scope review needed before coding — notably whether dashboard-only is enough or PK wants push/email delivery. That conversation is separate.
-
-Tracked in `00_sync_state.md` Backlog as **A-item: "ID004 sentinel — cron HTTP response health table + dashboard tile"**.
+Run before SQL is written. Folded into brief as "Pre-flight findings" section so CC + future readers see what changed and why.
 
 ### What this does NOT decide
 
-- Vault naming convention (case-by-standard is a separate improvement proposal if wanted)
-- pg_cron or Supabase infrastructure changes
-- External monitoring service adoption
-- Alert delivery mechanism — part of the deferred implementation
+- Doesn't dictate which queries — those are stage-specific
+- Doesn't formalise as a SOP document; the rhythm is captured here as the precedent
+- Doesn't apply to non-build sessions; pre-flight is a build-stage discipline, not a general session protocol
 
-### Retrospective reference
+### Related decisions
 
-The three outages this decision addresses:
+- **D161** — authority hierarchy: live DB > older doc specs. D171 operationalises this for build stages: pre-flight is the act of consulting the live DB authority before writing the spec.
+- **D170** — MCP-applied migrations. D171 leverages the same MCP path for read-side verification before write-side application.
 
-- ID003 — `docs/incidents/2026-04-19-cost-spike.md`
-- M11 — commit `583cf17`, PR #2
-- ID004 — `docs/incidents/2026-04-23-content-fetch-casing-drift.md` (this incident)
+---
+
+## D172 — Architectural Revision Authority: Chat Can Revise v4 Specs During Build, Captures in Sync_State + Decision Log
+**Date:** 26 April 2026 morning | **Status:** ✅ APPLIED via R-A through R-E in Phase A
+
+### The problem this decides
+
+Pre-flight findings forced 5 architectural revisions to v4 that couldn't be deferred:
+
+| Revision | Original v4 spec | Revised in production |
+|---|---|---|
+| R-A | Trigger fires on assumed-existing `f.canonical_vertical_map` | Table added as Stage 1 Migration 008; trigger re-architected |
+| R-B | Single trigger on canonical_vertical_map | Two-trigger chain (classifier→vertical_map→pool) |
+| R-C | `supabase db push` for migration application | Supabase MCP `apply_migration` (D170) |
+| R-D | `class_code REFERENCES t.content_class(class_code)` FK | FK dropped + orphan-check DO block |
+| R-E | 6 ice_format_keys in `format_synthesis_policy` and `format_quality_policy` | 10 (matches production) |
+
+These weren't optional polish — without them, Stage 1+ couldn't apply cleanly.
+
+### The decision
+
+**Claude (chat) has authority to revise v4 specs mid-build when pre-flight or apply-time findings demand it.** Revisions are captured in two places:
+
+1. **`docs/00_sync_state.md`** — under an "Architectural Revisions vs v4" section, dated and listed by revision letter (R-A, R-B, etc.)
+2. **`docs/06_decisions.md`** — as a D-series entry summarising the revisions with rationale
+
+PK approval is not required for revisions that:
+- Resolve a pre-flight mismatch with production schema
+- Make v4's intent applicable when the literal v4 SQL would fail
+- Maintain v4's architectural goals while adapting to production reality
+
+PK approval IS required for revisions that:
+- Change the architectural goals of v4 (e.g. moving from vertical-scoped to client-scoped pool)
+- Skip v4-locked decisions (LD1–LD20)
+- Defer scope to a later phase that v4 placed in current phase
+
+### Why this works
+
+V4 was a build plan written from architectural intent. Live production has details v4 couldn't anticipate (versioned tables, exact column names, existing data shapes, CLI compatibility). The 5 Phase A revisions all preserved v4's architectural goals while adapting to production reality.
+
+R-A example: v4's intent was a vertical-scoped pool fed by classifier output. The literal v4 trigger spec assumed a mapping table that didn't exist. R-A added the mapping table — preserving the intent while making the trigger applicable. PK approval would have been a delay with no upside; the revision was a correctness fix, not a design change.
+
+### What this does NOT decide
+
+- Doesn't extend revision authority to architectural goal changes — those still need PK in the loop
+- Doesn't bypass the decision-log requirement — revisions must be captured in writing for future sessions
+- Doesn't apply to non-build sessions or non-v4 work
+
+### Related decisions
+
+- **D161** — authority hierarchy. D172 extends: when live-DB authority forces a v4 spec change, chat acts and documents.
+- **D170** — MCP-applied migrations (R-C codified). 
+- **D171** — pre-flight as a per-stage gate (the discipline that surfaces revision-worthy findings).
+
+---
+
+## D173 — Two-Trigger Chain Pattern for Classifier-Driven Pool Population
+**Date:** 26 April 2026 morning | **Status:** ✅ APPLIED in Stage 3 production
+
+### The problem this decides
+
+V4 §A.5 specified a single trigger on `f.canonical_vertical_map` (which didn't exist). Pre-flight found classifier output lands in `f.canonical_content_body.content_class`, with no canonical→vertical mapping anywhere.
+
+Two paths to wire pool population:
+
+**Option A — single trigger** on `f.canonical_content_body` AFTER UPDATE OF content_class. Inline the vertical resolution + pool population in one trigger function. Functional but bloats the function.
+
+**Option B — two-trigger chain.** Trigger 1 on `f.canonical_content_body` resolves verticals + INSERTs canonical_vertical_map rows. Trigger 2 on `f.canonical_vertical_map` AFTER INSERT calls pool refresh per row.
+
+### The decision
+
+**Option B — two-trigger chain.**
+
+### Why two triggers, not one
+
+Three reasons:
+
+1. **Independent testability.** Trigger 1 can be debugged via direct INSERT/UPDATE on `f.canonical_content_body`. Trigger 2 can be debugged via direct INSERT on `f.canonical_vertical_map`. Stage 4 backfill exploits this — it INSERTs vertical_map rows directly, which fires Trigger 2 organically without needing to touch the classifier path.
+
+2. **Audit trail.** `f.canonical_vertical_map.mapping_source` distinguishes `classifier_auto` (Trigger 1) from `backfill` (Stage 4 direct insert) from future `manual` overrides. Single-trigger version would have no equivalent audit surface.
+
+3. **Reclassification handling without complexity.** When classifier reclassifies an existing canonical, ON CONFLICT DO NOTHING on the vertical_map insert means Trigger 2 doesn't fire (no new row). Trigger 1 explicitly handles this with a separate `PERFORM m.refresh_signal_pool_for_pair(...)` loop over existing mappings. This is clearer than threading reclassification logic through a single trigger.
+
+### When NOT to use this pattern
+
+Two-trigger chains are over-engineering when:
+
+- Both layers always fire together (no independent invocation path)
+- No audit-trail value in distinguishing the layers
+- The single-trigger version is short enough to read in one screen
+
+This pattern earns its keep when at least one of: independent invocation matters (Stage 4 backfill), audit trail is operationally valuable, or the single-trigger version exceeds ~80 lines.
+
+### Related decisions
+
+- **D172** — architectural revision authority (D173 is the R-B revision in concrete terms)
+- **v4 §A.5** — original single-trigger spec (superseded for this implementation)
+
+---
+
+## D174 — Vertical-Scoped Pool Produces Per-Client Asymmetry; Operational Implication for Phase E Evergreen Seeding
+**Date:** 26 April 2026 afternoon | **Status:** Empirical observation; no action required Phase A; informs Phase E priority
+
+### The observation
+
+After Stage 4 backfill, `m.signal_pool` per-vertical depth:
+
+| Vertical | Pool size | Active for clients |
+|---|---|---|
+| 11 NDIS | 279 | NY + CFW |
+| 12 AU Disability Policy | 279 | NY + CFW |
+| 7 AU Residential Property | 271 | PP |
+| 9 AU Property Investment | 271 | PP |
+| 10 AU Mortgage & Lending | 271 | PP |
+| 17 Content Marketing | 99 | Invegent |
+| 16 Social Media Strategy | 99 | Invegent |
+| 15 AI & Automation | 99 | Invegent |
+
+Invegent's pool is approximately **3× thinner** than NY/PP across its three verticals.
+
+### Why the asymmetry exists
+
+Pool population goes through `m.resolve_canonical_verticals(canonical_id)` which joins canonical → content_item → c.client_source (where `is_enabled=TRUE`) → c.client_content_scope. The constraint is enabled-source breadth per vertical:
+
+- **NY + CFW (NDIS, ADP):** 14+ active enabled feed sources between them (DSS, OT Australia, Inclusion Australia, NDIS Quality and Safeguards Commission, etc.)
+- **PP (Residential Property, Investment, Mortgage):** Similarly 14+ sources (CoreLogic, RBA, REIA, PropTrack, etc.)
+- **Invegent (AI, Social, Content):** 2 enabled sources (Social Media Examiner, plus one other)
+
+Pool depth scales with enabled-source breadth. Vertical-scoped design is correct (avoids duplicate entries for clients sharing verticals — NY+CFW share entries; PP gets all property entries) but exposes any client with a thin source list to thin-pool conditions.
+
+### The operational implication
+
+Per LD3, the slot-driven architecture has an evergreen-library fallback for thin-pool moments. Phase E is the parallel content work that hand-curates ~50 evergreen items.
+
+**Phase E priority should weight Invegent's verticals (AI/Social/Content) higher than NY/PP verticals (NDIS/ADP/Property).** Without this weighting, Invegent will hit thin-pool conditions far more often than NY or PP and over-rely on evergreen fallback — degrading content variety for that client specifically.
+
+Not a build problem. Not an emergency. Just a heads-up that Phase E's ~50-item budget should not split evenly across 8 verticals (12% each = 6 items per vertical). Better split is something like 30% to Invegent's three verticals (15 items, ~5 per vertical) and 70% to NY+PP (~5 verticals at ~7 items each).
+
+### What this does NOT decide
+
+- Specific evergreen item counts per vertical — that's Phase E's planning work
+- Whether to add more sources to Invegent — could rebalance the pool but adds source-management overhead; decision deferred until Invegent's actual content needs are clearer
+- Whether other clients should add evergreens too — yes, but proportionally lower
+
+### Related decisions
+
+- **LD3** — evergreen library as fallback (the architectural commitment Phase E delivers on)
+- **v4 Phase E** — evergreen seeding (parallel content work, 3-4 hours, ~50 items)
+
+---
+
+## D175 — `t.content_class` Versioning Pattern: Drop FK, Use PK + Application-Layer Validation
+**Date:** 26 April 2026 morning | **Status:** ✅ APPLIED in Stage 2.009 (production, commit `130a559`)
+
+### The problem this decides
+
+`t.class_freshness_rule` was specified with `class_code text REFERENCES t.content_class(class_code)`. Apply-time error:
+
+> ERROR: 42830: there is no unique constraint matching given keys for referenced table "content_class"
+
+Investigation: `t.content_class` is a versioned table. `class_code` is unique only per `(class_code, version)` (composite PK) and via partial-unique index `WHERE is_current=true`. PostgreSQL won't accept a partial unique as an FK target.
+
+This is a structural property of versioned reference tables, not a one-off schema oddity.
+
+### The decision
+
+**For lookup tables that reference a versioned source table, drop the FK and use PK + application-layer validation.** Pattern:
+
+```sql
+CREATE TABLE t.lookup_table (
+  class_code text PRIMARY KEY,           -- no FK
+  ...
+);
+
+-- Seed with values verified against current+active source rows
+INSERT INTO t.lookup_table (class_code, ...) VALUES (...);
+
+-- Validate: every seed value exists as a current+active row in source
+DO $$
+DECLARE v_orphans integer;
+BEGIN
+  SELECT COUNT(*) INTO v_orphans
+  FROM t.lookup_table cfr
+  WHERE NOT EXISTS (
+    SELECT 1 FROM t.<source_versioned_table> cc
+    WHERE cc.class_code = cfr.class_code 
+      AND cc.is_current = true 
+      AND cc.is_active = true
+  );
+  IF v_orphans > 0 THEN
+    RAISE EXCEPTION '<table> has % orphan class_codes', v_orphans;
+  END IF;
+END $$;
+```
+
+### Why drop the FK is correct, not a workaround
+
+Three reasons:
+
+1. **Postgres semantics.** Partial unique indexes (`WHERE is_current=true`) intentionally don't satisfy FK constraints because the uniqueness depends on a predicate that the FK enforcement engine doesn't evaluate. This is by design.
+2. **Versioning intent.** A versioned source table preserves history. An FK to it would prevent rotating versions (you couldn't supersede a `is_current=false` row that the lookup table references). The lookup table only cares about *currently active* values.
+3. **Application-layer validation is sufficient.** Seed inserts are admin-controlled. Application reads (e.g. trigger functions) join against `is_current=true AND is_active=true` filters. The "missing" FK enforcement happens at write time (DO block check) and read time (filter clause), where it actually matters.
+
+### When this pattern applies
+
+Whenever a new lookup/config/policy table needs to reference a versioned table:
+
+- `t.content_class` (this case)
+- `t.content_vertical` (versioned via `is_global` + jurisdiction-specific rows)
+- `t.5.6_brand_voice` (versioned)
+- `t.5.7_compliance_rule` (versioned)
+
+For any of these, default to PK + DO-block validation, not FK.
+
+### What this does NOT decide
+
+- Doesn't change the FK semantics of any existing table — only the pattern for new lookup tables
+- Doesn't migrate existing FKs that may exist incorrectly elsewhere — that's a separate audit
+- Doesn't override FK use against non-versioned tables — those stay normal FKs
+
+### Related decisions
+
+- **D161** — authority hierarchy (live DB > older doc specs). D175 operationalises: when source table has versioning semantics that conflict with FK, trust the live DB shape.
+- **D172** — architectural revision authority. D175 is R-D in concrete terms.
+
+---
+
+## D176 — F8 Buffer (10-Min Lookahead) and Manual State-Change Function Hygiene
+**Date:** 26 April 2026 afternoon | **Status:** Operational pattern locked
+
+### The problem this decides
+
+`m.promote_slots_to_pending()` (Stage 5.028) uses an F8 buffer:
+
+```sql
+WHERE status = 'future'
+  AND fill_window_opens_at <= now() + interval '10 minutes'
+```
+
+The +10 minutes is intentional — once Stage 6's cron fires every 5 minutes, this lookahead means slots transition to `pending_fill` slightly before their fill window opens, so the fill cron can pick them up on its very next tick.
+
+During Stage 5 verification (manual function call before Stage 6 cron existed), the function correctly promoted 12 slots — but these slots had no consumer (Stage 8 fill function not yet built). Left untouched, they would have sat in `pending_fill` for days/weeks until Stage 8 shipped.
+
+### The decision
+
+**State-changing functions tested manually during incremental builds must be rolled back to clean state if their consumer doesn't exist yet.**
+
+Concretely for promote_slots_to_pending: after manual verification confirmed it worked, ran:
+
+```sql
+UPDATE m.slot SET status = 'future', updated_at = now() 
+WHERE status = 'pending_fill';
+```
+
+When Stage 6 cron started firing 06:10 UTC, the same 12 slots re-promoted naturally. They'll sit in pending_fill harmlessly until Stage 10 wires the fill cron — at which point they become the first input the fill function processes.
+
+### Why this matters
+
+Three failure modes prevented:
+
+1. **Stranded state.** Slots in pending_fill with no consumer accumulate forever. If Stage 8 takes a week to ship, those slots are a week stale by the time anything reads them.
+2. **Test signal pollution.** The 12 stranded slots would skew Stage 6's first-tick verification (cron promotes 0, not 12, because they were already promoted manually).
+3. **Recovery cron triggering on test data.** Stage 9's `recover_stuck_slots` will eventually classify >1h pending_fill as stuck and try to recover. Test data triggering recovery logic is noise, not signal.
+
+### Pattern for future stages
+
+Before manually invoking a state-changing function during build verification:
+
+1. Note the pre-state (count of rows in each relevant status)
+2. Invoke the function and verify the state transition worked
+3. **If the consumer of the new state doesn't yet exist, roll back to pre-state**
+4. Document in stage report what was rolled back and why
+
+This applies to any function that writes status/lifecycle columns where downstream automation isn't yet wired.
+
+### What this does NOT decide
+
+- Doesn't apply to read-only functions (verify-and-leave is fine)
+- Doesn't apply to functions whose consumers DO exist (just let the state propagate)
+- Doesn't apply to test data that's distinguishable from prod (e.g. a `test_synthetic_jobname` heartbeat row — those self-clean via test cleanup)
+
+### Related decisions
+
+- None directly. This is a build-discipline pattern surfaced by Phase A's incremental nature.
 
 ---
 
@@ -542,7 +434,7 @@ The three outages this decision addresses:
 | Decision | Status | Gate |
 |---|---|---|
 | D143 — Signal content type classifier | 🔲 Gated | D142 stable + 60 days data |
-| D144 — Signal router (platform × format) | 🟡 MVP shadow infrastructure shipped via D167 22 Apr; matching layer still gated | D143 + 60d data for matching layer |
+| D144 — Signal router (platform × format) | 🟡 Superseded by slot-driven build (D170+); shadow infrastructure shipped via D167 retained as historical context | Slot-driven Phase D Stage 19 decommissions D144 router |
 | D145 — Benchmark table | 🟡 Mix defaults shipped via D167 22 Apr; content_type × format benchmark still gated | D143 |
 | D146 — Feed pipeline score + retirement | 🔲 Gated | Phase 2.1 + 60 days data |
 | D140 — Digest item scoring | 🔲 Phase 3 | After CFW stable + auto-approver healthy |
@@ -553,16 +445,23 @@ The three outages this decision addresses:
 | D157 — Cost guardrails Stop 2 infrastructure | 🔲 Post-sprint | ai-worker fix verified ✅ + sprint complete |
 | D157 — Raise Anthropic cap to calibrated Stop 1 | 🔲 Week of 5 May | 7 days post-fix clean data + weekly calibration |
 | D164 — Per-client canonical dedup window column | 🔲 When trigger fires | Vertical/cadence mismatch OR client request OR operator-suppression complaint |
-| **D165 — M12 IG publisher platform-filter** | 🟡 SUPERSEDED by D166/D167 router track; kept as fallback | If router build stalls, M12 resumes as surgical path |
+| **D165 — M12 IG publisher platform-filter** | 🟡 Superseded by slot-driven Phase B (Stage 11 ai-worker refactor handles platform discipline at synthesis layer) | Slot-driven Phase C cutover phases out the legacy IG publisher path |
 | **D165 — Cron failure-rate monitoring** | 🔲 Sprint item TBD | 2,258 silent failures over 8 days must not recur |
-| **D166 — Router sequencing reversal** | ✅ APPLIED 22 Apr evening | Companion to D167 |
-| **D167 — Router MVP shadow infrastructure** | ✅ APPLIED 22 Apr evening | Integration (R6 seed_and_enqueue rewrite) still ahead — HIGH RISK Friday+ |
-| **R4 — D143 classifier spec on paper (6 content types × rules)** | 🔲 Friday+ (low-risk writing) | Start of matching layer design |
-| **R5 — Matching layer design (demand row → signal selection)** | 🔲 Depends on R4 | R4 complete |
-| **R6 — `m.seed_and_enqueue_ai_jobs_v1` rewrite to call router** | 🔲 **HIGH RISK hot-path change** — Friday+ only | R4 + R5 complete + deliberate planning session |
-| **R7 — ai-worker platform-awareness (skip format advisor when seed has format_key)** | 🔲 Depends on R6 | R6 complete + verified |
-| **R8 — Cron changes (new IG/LI/YT seeding OR consolidate to router-driven)** | 🔲 Depends on R6 | R6 complete + verified |
-| **Research doc commit to repo** | 🔲 Next session | Drafted at /home/claude/; sync-push for 22 Apr evening only covered 3 files |
+| **D166 — Router sequencing reversal** | ✅ APPLIED 22 Apr evening — superseded by slot-driven build (D170+) | — |
+| **D167 — Router MVP shadow infrastructure** | ✅ APPLIED 22 Apr evening — preserved as shadow infrastructure; slot-driven Phase D decommissions | Phase D Stage 19 |
+| **D168 — ID004 sentinel** | 🔲 Backlog A-item | Spec defined; implementation deferred |
+| **D170 — MCP-applied migrations pattern** | ✅ LOCKED through Phase A; applies for all 19 stages | — |
+| **D171 — Pre-flight schema verification per stage** | ✅ LOCKED through Phase A; applies for all 19 stages | — |
+| **D172 — Architectural revision authority** | ✅ LOCKED; R-A through R-E applied in Phase A | — |
+| **D173 — Two-trigger chain pattern** | ✅ APPLIED Stage 3 | — |
+| **D174 — Invegent thin-pool operational signal** | ✅ Observed; informs Phase E priority | Phase E content work |
+| **D175 — Versioned reference table pattern** | ✅ APPLIED Stage 2.009 | Apply to future lookup tables referencing versioned sources |
+| **D176 — State-change rollback discipline** | ✅ APPLIED Stage 5 | Build-stage pattern |
+| **Slot-driven Phase A — Gate A passed** | ✅ COMPLETE 26 Apr | Phase B begins next session |
+| **Slot-driven Phase B — Stages 7-11 + Gate B** | 🔲 NEXT | Stage 7 brief next session |
+| **Slot-driven Phase C — Cutover (Stages 12-18)** | 🔲 After Gate B | 5-7 days shadow observation post-Phase B |
+| **Slot-driven Phase D — Stage 19 decommission R6** | 🔲 After Phase C | All client-platforms cut over |
+| **Slot-driven Phase E — Evergreen seeding** | 🔲 Parallel | Prioritise Invegent verticals per D174 |
 | Inbox anomaly monitor | 🔲 Post-sprint | Separate brief TBW |
 | Phase 2.1 — Insights-worker | 🔲 Next major build | Meta Standard Access |
 | Phase 2.6 — Proof dashboard | 🔲 After Phase 2.1 | Engagement data |
@@ -591,6 +490,6 @@ The three outages this decision addresses:
 | **M8 Gate 4 — 24h regression check** | 🔲 23 Apr | Re-run regression query against runs > M8 merge timestamp |
 | **Bundler dedup weekly regression check** | 🔲 Ongoing | Weekly Mon — query in D164 |
 | **FB-vs-IG publish disparity** | ✅ Closed M11 PR #2 commit `583cf17` — root cause 8-day silent cron outage; bloat cleanup applied per D165 | — |
-| **`instagram-publisher` platform filter (ex-M12)** | 🟡 SUPERSEDED by D166/D167 router track — kept as fallback | Router integration (R6) preferred path; M12 surgical fallback if R6 stalls |
-| **`instagram-publisher` exec_sql + raw interpolation** | 🔲 Folds into R6 router integration | R6 complete |
+| **`instagram-publisher` platform filter (ex-M12)** | 🟡 Superseded by slot-driven build | Phase C cutover phases out legacy publishers; Phase D decommissions |
+| **`instagram-publisher` exec_sql + raw interpolation** | 🔲 Folds into slot-driven Phase B Stage 11 ai-worker refactor | Stage 11 |
 | **PP Schedule Facebook 6/5 over-tier-limit** | 🔲 Sprint item TBD | Surfaced in M5 verification — investigate save-side validation |
