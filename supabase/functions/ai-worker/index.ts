@@ -9,7 +9,15 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.10.0";
+const VERSION = "ai-worker-v2.10.1";
+// v2.10.1 — Fix-up: column-name correction for f.canonical_content_body
+//   Brief 11 specified body_text/body_excerpt; actual columns are
+//   extracted_text/extracted_excerpt. All 5 first-tick shadow jobs failed
+//   with `canonical_body_fetch:column ... does not exist`.
+//   Single fix in slot_fill_synthesis_v1 translation step. Plus fail-fast
+//   check if all canonicals have empty bodies.
+//   No other behaviour change. LD7 caching / LD18 / slot transitions all
+//   unchanged from v2.10.0.
 // v2.10.0 — Slot-driven payload + LD7 prompt caching + LD18 + slot status transitions (Stage 11)
 //   1. SLOT-DRIVEN PAYLOAD HANDLER (slot_fill_synthesis_v1):
 //      Translate the slot-driven payload into a digest_item-shaped seed
@@ -642,7 +650,7 @@ app.post('*', async (c) => {
           const { data: bodies, error: bodiesErr } = await supabase
             .schema('f')
             .from('canonical_content_body')
-            .select('canonical_id, body_text, body_excerpt')
+            .select('canonical_id, extracted_text, extracted_excerpt, fetch_status')
             .in('canonical_id', canonicalIds);
           if (bodiesErr) throw new Error(`canonical_body_fetch:${bodiesErr.message}`);
 
@@ -660,10 +668,21 @@ app.post('*', async (c) => {
               canonical_id: cid,
               title: item?.canonical_title ?? '',
               url: item?.canonical_url ?? '',
-              body_text: body?.body_text ?? '',
-              body_excerpt: body?.body_excerpt ?? '',
+              // f.canonical_content_body uses extracted_text/extracted_excerpt (not body_text/body_excerpt).
+              // The translated payload still uses body_text/body_excerpt downstream — those names are
+              // the digest_item shape the rest of the EF expects, NOT the f.canonical_content_body schema.
+              body_text: body?.extracted_text ?? '',
+              body_excerpt: body?.extracted_excerpt ?? '',
             };
           });
+
+          // Fail-fast: if every canonical has empty body content, this would produce an
+          // empty-seed LLM call. A signal pool entry should only exist for canonicals with
+          // successful body fetches; enforce that at the consumer too (defence in depth).
+          const hasAnyBody = merged.some((m) => (m.body_text && m.body_text.length > 0) || (m.body_excerpt && m.body_excerpt.length > 0));
+          if (!hasAnyBody) {
+            throw new Error(`slot_fill_no_body_content: ${canonicalIds.length} canonicals all have empty extracted_text/extracted_excerpt`);
+          }
 
           if (synthesisMode === 'single_item') {
             const m0 = merged[0];
