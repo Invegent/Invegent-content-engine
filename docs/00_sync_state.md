@@ -14,14 +14,14 @@ Monday 27 Apr was a single long session that took Phase B from "callable functio
 
 ### Critical state right now
 
-1. **Phase B Stages 10–12 COMPLETE.** All migrations applied (4 from Stage 10, 1 from Stage 11, 4 from Stage 12 — total 9 new). ai-worker deployed at v2.11.0. Five Phase B crons firing autonomously.
+1. **Phase B Stages 10–12 COMPLETE.** All migrations applied (2 from Stage 10, 2 from Stage 11, 4 from Stage 12 — total 8 new). ai-worker deployed at v2.11.0. Five Phase B crons firing autonomously.
 2. **Phase A still autonomous.** 6 Phase A crons (jobids 69–74) still firing on schedule, no failures, no alerts.
 3. **Phase B running in shadow mode.** 35 shadow ai_jobs succeeded, 2 failed (content-quality, not architectural), 35 slots in `filled` state, 29 in `pending_fill`, 2 in `fill_in_progress`.
 4. **Cost today: ~$0.78 USD** for ~46 LLM calls (mostly Claude Sonnet 4-6, 1–2 OpenAI fallbacks). Anthropic monthly cap $200 with 4 days to month-end reset.
 5. **R6 paused** (jobids 11, 64, 65 active=false). FB + LI publishers still draining legacy queue normally (jobids 7, 54).
 6. **R6 ai-worker (jobid 5) shared with Phase B.** Now processes BOTH live and shadow jobs (filter dropped in 12.052). v2.11.0 handles `slot_fill_synthesis_v1` natively + R6's existing `rewrite_v1` path.
 7. **IG cron (jobid 53) paused** awaiting Meta restriction clear. All 4 external reviewers paused per D162.
-8. **Repo state:** `feature/slot-driven-v3-build` at `6d66312f` (Stage 12.053 ai_job UPSERT). 56 migration files total (31 Phase A + 16 Phase B Stages 7-9 + 4 Stage 10 + 1 Stage 11 + 4 Stage 12). ai-worker EF at v2.11.0.
+8. **Repo state:** `feature/slot-driven-v3-build` at `6d66312f` (Stage 12.053 ai_job UPSERT). **53 migration files total** (31 Phase A + 14 Phase B Stages 7-9 + 2 Stage 10 + 2 Stage 11 + 4 Stage 12). ai-worker EF at v2.11.0.
 
 ### Today's deltas (27 Apr morning–afternoon)
 
@@ -48,7 +48,7 @@ Monday 27 Apr was a single long session that took Phase B from "callable functio
 
 ## 🟢 PHASE B STAGES 10–12 — DEPLOYED STATE
 
-### Migrations applied this session (9 total: 046–053)
+### Migrations applied this session (8 total: 046–053)
 
 | # | Migration | Stage | Notes |
 |---|---|---|---|
@@ -61,7 +61,7 @@ Monday 27 Apr was a single long session that took Phase B from "callable functio
 | 052 | `stage_12_052_drop_shadow_filter` | 12 | Drop emergency-readded shadow filter post Stage 12 architectural fixes |
 | 053 | `stage_12_053_fill_pending_slots_ai_job_upsert` | 12 | ai_job INSERT → UPSERT with `ON CONFLICT (post_draft_id, job_type) DO UPDATE` for architectural symmetry with 051 |
 
-All migrations applied via Supabase MCP `apply_migration`. Two paired in-EF version bumps: v2.10.0 (Stage 11) and v2.11.0 (Stage 12).
+All migrations applied via Supabase MCP `apply_migration`. Three paired in-EF version bumps: v2.10.0 (Stage 11), v2.10.1 (Stage 11 fix-up), and v2.11.0 (Stage 12).
 
 ### Phase B objects in production (auto-firing)
 
@@ -153,6 +153,7 @@ Captured for backlog, NOT for immediate action:
 - **Duplicate unique-index cleanup.** `ux_ai_job_unique` and `ux_ai_job_post_draft_job_type` enforce the same constraint on `m.ai_job(post_draft_id, job_type)`. Drop one for hygiene. Not blocking.
 - **Grants audit pass on m.* schema.** 34 of 43 m.* tables have zero `service_role` grants. Stage 12 fixed only `m.slot` (the table that actively bit). Lesson #33 (`{ error }` destructuring) defends against future grant gaps generically — when the next EF hits a missing grant, it'll throw with a clear PostgREST error. We'll add grants reactively as needed. A blanket sweep would be tempting but risks granting more than necessary.
 - **`cron.alter_job` reliability investigation.** If the phantom-pause issue recurs, dig into Supabase MCP's transaction handling for `cron` schema operations. Maybe direct `psql` via Windows for emergency pauses.
+- **Branch sweep follow-up.** 9 orphan fix branches across the three repos can be deleted once PK confirms each is fully merged: `Invegent-content-engine` (3): `fix/m11-fb-ig-publish-disparity`, `fix/m8-ai-worker-draft-multiplication`, `fix/q2-normalise-feed-config-url`; `invegent-dashboard` (5): `fix/cfw-schedule-save-silent-error`, `fix/m5-rpc-get-publish-schedule`, `fix/m7-dashboard-feeds-create-exec-sql`, `fix/m9-client-switch-staleness-and-platform-display`, `fix/q2-dashboard-feeds-create-key`; `invegent-portal` (1): `fix/m6-portal-exec-sql-eradication`. All are M-series or Q-series fixes whose work is documented as merged in main.
 
 ### Phase B reactivation doc (pre-sales follow-up)
 
@@ -213,14 +214,14 @@ From Phase B Stages 10–12: NO new architectural revisions to v4. Stage 12 was 
 
 **Sub-phase 3.x — Slot-Driven Architecture build:**
 - Phase A — ✅ **COMPLETE 26 Apr morning** — Foundation (Stages 1-6, 31 migrations, 6 crons, Gate A passed)
-- Phase B Stages 7-9 — ✅ **COMPLETE 26 Apr afternoon–evening** — Scoring helpers + fill function + defensive layer (16 migrations)
-- Phase B Stages 10-12 — ✅ **COMPLETE 27 Apr** — Crons wired + ai-worker refactor (v2.10 → v2.11) + grants + UPSERT idempotency end-to-end (9 migrations + 2 EF deploys)
+- Phase B Stages 7-9 — ✅ **COMPLETE 26 Apr afternoon–evening** — Scoring helpers + fill function + defensive layer (14 migrations)
+- Phase B Stages 10-12 — ✅ **COMPLETE 27 Apr** — Crons wired + ai-worker refactor (v2.10 → v2.11) + grants + UPSERT idempotency end-to-end (8 migrations + 3 EF deploys)
 - Gate B — 🟡 **STARTS NOW** — 5-7 days shadow observation
 - Phase C — 🔲 Cutover per-client-platform (Stages 13–18, post Gate B)
 - Phase D — 🔲 Decommission old R6 (Stage 19)
 - Phase E — 🔲 Evergreen seeding (parallel content work, ~50 items, prioritise Invegent verticals)
 
-Pre-sales gate: 12 of 28 Section A items closed. A10b unblocks tomorrow (Phase B running gate now passed).
+Pre-sales gate: **14 of 30** Section A items closed (A11b + A21 24 Apr; A22 + A27 + A28 27 Apr — see `docs/15_pre_post_sales_criteria.md` v4.4 drift notice). A10b unblocks tomorrow (Phase B running gate now passed).
 
 ---
 
@@ -248,10 +249,11 @@ Stage execution + fix-ups (committed to `feature/slot-driven-v3-build`):
 - `6d66312f` — feat(db): Stage 12.053 fill_pending_slots ai_job UPSERT (architectural symmetry)
 
 **Reconciliation (committed to `main`):**
-- THIS COMMIT — docs(sync_state): Phase B Stages 10–12 complete, Gate B starts
-- (Next commit, separate repo) feat(roadmap): Phase B complete, Gate B observation
+- `6107e790` — docs(sync_state): Phase B Stages 10–12 complete, Gate B starts (initial)
+- `71bb329b` — feat(roadmap): Phase A + B COMPLETE 27 Apr; Gate B observation in progress (invegent-dashboard)
+- THIS COMMIT — docs(sync_state): full reconciliation pass — arithmetic corrections, branch sweep, pre-sales cross-reference
 
-**Migrations (DB-only, all via Supabase MCP):** 9 total this session (046–053). Total Phase A + B end-to-end: 56 migrations.
+**Migrations (DB-only, all via Supabase MCP):** **8 total this session (046–053). Total Phase A + B end-to-end: 53 migrations** (31 Phase A + 14 Phase B Stages 7-9 + 2 Stage 10 + 2 Stage 11 + 4 Stage 12).
 
 **EF deploys this session:** 3 — ai-worker v2.10.0 (Stage 11), v2.10.1 (Stage 11 fix-up), v2.11.0 (Stage 12). All deployed by PK from PowerShell.
 
@@ -271,6 +273,7 @@ Monday 27 Apr was the longest single ICE build session yet. Started ~11pm Sunday
 - **R6 ai-worker (jobid 5) shared between R6 and Phase B paths** (filter dropped, v2.11.0 handles both job types)
 - **Anthropic spend today: ~$0.78** for Phase B observation; well within $200 monthly cap (4 days to reset)
 - **All three architectural Stage 12 fixes deployed and verified** (grants, post_draft UPSERT, ai_job UPSERT)
+- **Branch sweep done.** 9 orphan fix branches identified across 3 repos (3+5+1) — listed under Stage 13 backlog above for PK to delete via `git push origin --delete <branch>`.
 
 **Realistic next working windows:**
 
@@ -282,7 +285,7 @@ Monday 27 Apr was the longest single ICE build session yet. Started ~11pm Sunday
 
 33. **Every Supabase JS write must destructure `{ error }`.** PostgREST permission errors and constraint violations pass silently when `error` is not read. Throw on non-null for must-succeed writes; `console.error` for best-effort writes. This rule applies to `.insert()`, `.update()`, `.upsert()`, `.delete()`, `.rpc()` — both with and without `.schema()` prefix. Codified in v2.11.0; standing rule for all future EF code.
 
-34. **Recovery systems must own dependent state.** `m.recover_stuck_slots()` resets the slot but leaves orphaned `m.post_draft` and `m.ai_job` rows. The fix here was to make the downstream fill function idempotent via UPSERT rather than have recovery delete dependents (preserves audit trail). Future recovery-style functions: enumerate every row that points back at the primary entity and either delete it or design the next-stage function to refresh it.
+34. **Recovery systems must own dependent state.** `m.recover_stuck_slots()` resets the slot but leaves orphaned `m.post_draft` and `m.ai_job` rows. The fix here was to make the downstream fill function idempotent via UPSERT rather than have recovery delete dependents (preserves audit trail). Future recovery-style functions: enumerate every row that points back at the primary entity and design the next-stage function to refresh it.
 
 (Lesson #32 logged third instance this session — column-name assumption — with no new content but reinforcing severity. Three instances in three weeks crystallises the standing rule: pre-flight queries hit every directly-touched table.)
 
