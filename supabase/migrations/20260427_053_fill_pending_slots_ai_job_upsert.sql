@@ -1,27 +1,32 @@
--- Stage 12.053 — fill_pending_slots ai_job UPSERT (parallel to 12.051 post_draft UPSERT)
+-- Stage 12.053 — fill_pending_slots ai_job UPSERT (architectural symmetry with 051)
 --
--- Pre-flight on Stage 12.051 caught the post_draft duplicate-key issue but
--- missed the parallel issue on m.ai_job. Both ux_ai_job_unique and
--- ux_ai_job_post_draft_job_type are full unique indexes on (post_draft_id, job_type).
--- After post_draft UPSERT reuses the existing post_draft_id, the new ai_job
--- INSERT conflicts with the previous run's ai_job for the same draft+job_type.
+-- Stage 12.051 made the post_draft INSERT idempotent via ON CONFLICT (slot_id).
+-- This migration applies the same pattern to the ai_job INSERT one block below.
 --
--- First fill tick after Stage 12.051 reactivation (04:30 UTC 27 Apr 2026)
--- failed with: "duplicate key value violates unique constraint ux_ai_job_unique"
--- Same Lesson #34 pattern as post_draft: recovery resets slot, leaves orphan
--- ai_job tied to the post_draft. Fix: UPSERT ai_job too. Resets to queued
--- status with new input_payload, clears output_payload/error/locked_*/attempts,
--- and preserves m.ai_usage_log (which holds the financial cost trail per
--- LLM call — independent of ai_job lifecycle).
+-- Why this matters:
+-- Recovery cron (m.recover_stuck_slots) resets a slot to pending_fill. It clears
+-- slot.filled_draft_id but does NOT delete the dependent post_draft and ai_job
+-- rows. After 12.051, fill_pending_slots refreshes the post_draft via UPSERT.
+-- But the ai_job INSERT immediately after still uses bare INSERT — and the
+-- existing m.ai_job row (left behind by the prior fill attempt) blocks the
+-- INSERT via the unique index on (post_draft_id, job_type).
 --
--- Lesson #32 update: pre-flight every table the function INSERTs into,
--- not just the table whose INSERT block you're explicitly modifying.
--- The post_draft brief covered post_draft indexes thoroughly but did not
--- query indexes on the OTHER table the same function INSERTs into (ai_job).
+-- Live evidence: fill cron tick at 04:30 UTC on 2026-04-27 failed with
+--   ERROR: duplicate key value violates unique constraint "ux_ai_job_unique"
+-- Subsequent ticks succeeded only because they happened to pick different
+-- slots (FOR UPDATE SKIP LOCKED). Until this UPSERT lands, every recovered
+-- slot is a future dup-key landmine.
 --
--- Note: there are TWO redundant unique indexes on m.ai_job(post_draft_id, job_type):
--- ux_ai_job_unique and ux_ai_job_post_draft_job_type. Cleanup of the redundant
--- one is deferred to a separate migration to keep this hotfix focused.
+-- Pre-flight verified at author time:
+--   - No user triggers on m.ai_job (CREATE OR REPLACE without trigger concern)
+--   - Two unique indexes exist on (post_draft_id, job_type):
+--     ux_ai_job_unique and ux_ai_job_post_draft_job_type (duplicates).
+--     ON CONFLICT (post_draft_id, job_type) targets either correctly.
+--   - All NOT NULL columns honoured in DO UPDATE SET
+--   - created_at NOT touched (preserves original creation timestamp)
+--   - ai_job_id NOT touched (PK stable across re-fills)
+--
+-- Function body byte-identical to 12.051 EXCEPT for the ai_job INSERT block.
 
 CREATE OR REPLACE FUNCTION m.fill_pending_slots(p_max_slots integer DEFAULT 5, p_shadow boolean DEFAULT true)
  RETURNS jsonb
@@ -343,7 +348,7 @@ BEGIN
     ) RETURNING attempt_id INTO v_attempt_id;
 
     IF v_decision IN ('filled','evergreen') THEN
-      -- Stage 12.051 post_draft UPSERT
+      -- Stage 12.051 UPSERT: post_draft refresh (LD18 conflict path)
       INSERT INTO m.post_draft (
         post_draft_id, client_id, platform, slot_id, is_shadow,
         approval_status, draft_title, draft_body, version, created_by, created_at, updated_at
@@ -375,12 +380,11 @@ BEGIN
         updated_at           = NOW()
       RETURNING post_draft_id INTO v_skeleton_draft_id;
 
-      -- Stage 12.053 ai_job UPSERT — same Lesson #34 pattern as post_draft.
-      -- Old succeeded ai_job (from prior fill+ai-worker run that was then
-      -- recovery-reset on the slot side) blocks new INSERT via
-      -- ux_ai_job_unique on (post_draft_id, job_type). UPSERT resets to
-      -- queued with new input_payload; m.ai_usage_log preserves the cost
-      -- trail of the previous LLM call independently.
+      -- Stage 12.053 UPSERT: ai_job refresh (ux_ai_job_unique conflict path).
+      -- Recovery loop can leave an existing m.ai_job for this (post_draft_id, job_type).
+      -- ON CONFLICT re-queues the existing row with fresh payload, clears prior locks
+      -- and error/output state. ai_job_id is stable; created_at preserves original
+      -- creation; attempts resets to 0 (a recovered slot is conceptually a new fill cycle).
       INSERT INTO m.ai_job (
         ai_job_id, client_id, platform, slot_id, post_draft_id,
         digest_run_id, post_seed_id,
@@ -409,10 +413,10 @@ BEGIN
         '{}'::jsonb, NOW(), NOW(), 0
       )
       ON CONFLICT (post_draft_id, job_type) DO UPDATE SET
-        is_shadow      = EXCLUDED.is_shadow,
         slot_id        = EXCLUDED.slot_id,
+        is_shadow      = EXCLUDED.is_shadow,
         status         = 'queued',
-        priority       = EXCLUDED.priority,
+        priority       = 100,
         input_payload  = EXCLUDED.input_payload,
         output_payload = '{}'::jsonb,
         error          = NULL,
@@ -498,4 +502,4 @@ END;
 $function$;
 
 COMMENT ON FUNCTION m.fill_pending_slots(integer, boolean) IS
-  'Fill pending_fill slots from the materialised pool. Stage 12.051+053: post_draft AND ai_job INSERTs are now UPSERTs to handle recovery-loop case (orphan rows left by m.recover_stuck_slots). post_draft ON CONFLICT (slot_id) matches LD18 partial unique index. ai_job ON CONFLICT (post_draft_id, job_type) matches ux_ai_job_unique full unique index.';
+  'Fill pending_fill slots from the materialised pool. Stage 12.053: ai_job INSERT also became UPSERT (ON CONFLICT (post_draft_id, job_type) DO UPDATE) for symmetry with 12.051. Recovery cycle is now fully idempotent end-to-end.';
