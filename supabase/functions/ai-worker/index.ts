@@ -9,7 +9,23 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.10.1";
+const VERSION = "ai-worker-v2.11.0";
+// v2.11.0 — Lesson #33: explicit error destructuring on every Supabase JS write
+//   Stage 11 silent-UPDATE bug surfaced because writes used the unchecked pattern
+//     await supabase.schema('m').from('slot').update({...}).eq(...);
+//   PostgREST permission errors and constraint violations passed silently through
+//   the JS client because { error } was never destructured. Result: 19 of 20
+//   shadow ai_jobs succeeded LLM-side but their slots stayed in pending_fill
+//   because the UPDATE was no-oped by missing service_role grants.
+//   Fix: every .insert() / .update() / .upsert() / .delete() / .rpc() now
+//   destructures { error } and throws on non-null. The per-job catch block
+//   surfaces the error into m.ai_job.error and marks status='failed'.
+//   No behaviour change on the success path. Catches future grant gaps,
+//   constraint violations, and any other PostgREST-level errors.
+//   Paired with Stage 12.050 (m.slot grants for service_role).
+//   Per-job catch's own ai_job UPDATE is warn-and-continue (already in
+//   catch — don't throw past it). writeUsageLog stays best-effort
+//   (console.error, no throw — logging gap shouldn't fail the job).
 // v2.10.1 — Fix-up: column-name correction for f.canonical_content_body
 //   Brief 11 specified body_text/body_excerpt; actual columns are
 //   extracted_text/extracted_excerpt. All 5 first-tick shadow jobs failed
@@ -415,7 +431,10 @@ async function calculateCostUsd(supabase: ReturnType<typeof getServiceClient>, p
 
 async function writeUsageLog(supabase: ReturnType<typeof getServiceClient>, opts: { clientId: string; aiJobId?: string | null; postDraftId?: string | null; provider: string; model: string; contentType: string; platform: string; inputTokens: number; outputTokens: number; costUsd: number; fallbackUsed: boolean; errorCall: boolean; }): Promise<void> {
   try {
-    await supabase.schema('m').from('ai_usage_log').insert({ client_id: opts.clientId, ai_job_id: opts.aiJobId ?? null, post_draft_id: opts.postDraftId ?? null, provider: opts.provider, model: opts.model, content_type: opts.contentType, platform: opts.platform, input_tokens: opts.inputTokens, output_tokens: opts.outputTokens, cost_usd: opts.costUsd, fallback_used: opts.fallbackUsed, error_call: opts.errorCall });
+    const { error: usageErr } = await supabase.schema('m').from('ai_usage_log').insert({ client_id: opts.clientId, ai_job_id: opts.aiJobId ?? null, post_draft_id: opts.postDraftId ?? null, provider: opts.provider, model: opts.model, content_type: opts.contentType, platform: opts.platform, input_tokens: opts.inputTokens, output_tokens: opts.outputTokens, cost_usd: opts.costUsd, fallback_used: opts.fallbackUsed, error_call: opts.errorCall });
+    if (usageErr) console.error('[ai_usage_log] write failed:', usageErr.message);
+    // v2.11.0: best-effort — no throw. ai_usage_log is observability;
+    // logging gap shouldn't fail the LLM job.
   } catch (e) { console.error('[ai_usage_log] write failed:', e); }
 }
 
@@ -713,7 +732,7 @@ app.post('*', async (c) => {
 
       // Evergreen render: skip LLM, write template body directly, mark slot filled, continue.
       if (isEvergreenRender && evergreenContent) {
-        await supabase.schema('m').from('post_draft').update({
+        const { error: evergreenDraftErr } = await supabase.schema('m').from('post_draft').update({
           draft_title: evergreenContent.title,
           draft_body: evergreenContent.body,
           draft_format: { ai: { evergreen_render: true, evergreen_id: job.input_payload?.evergreen_id ?? null, ai_job_id: jobId, at: nowIso() } },
@@ -723,15 +742,17 @@ app.post('*', async (c) => {
           compliance_flags: [],
           updated_at: nowIso(),
         }).eq('post_draft_id', job.post_draft_id);
+        if (evergreenDraftErr) throw new Error(`evergreen_post_draft_update_failed:${evergreenDraftErr.message}`);
 
         if (job.slot_id) {
-          await supabase.schema('m').from('slot').update({
+          const { error: evergreenSlotErr } = await supabase.schema('m').from('slot').update({
             status: 'filled',
             updated_at: nowIso(),
           }).eq('slot_id', job.slot_id);
+          if (evergreenSlotErr) throw new Error(`evergreen_slot_update_failed:${evergreenSlotErr.message}`);
         }
 
-        await supabase.schema('m').from('ai_job').update({
+        const { error: evergreenJobErr } = await supabase.schema('m').from('ai_job').update({
           status: 'succeeded',
           output_payload: { evergreen_render: true, evergreen_id: job.input_payload?.evergreen_id ?? null },
           error: null,
@@ -739,6 +760,7 @@ app.post('*', async (c) => {
           locked_at: null,
           updated_at: nowIso(),
         }).eq('ai_job_id', jobId);
+        if (evergreenJobErr) throw new Error(`evergreen_ai_job_update_failed:${evergreenJobErr.message}`);
 
         results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'succeeded', evergreen_render: true });
         continue;
@@ -771,7 +793,7 @@ app.post('*', async (c) => {
 
           if (existingDraft && typeof existingDraft.draft_body === 'string' && existingDraft.draft_body.length > 0
               && typeof existingDraft.draft_title === 'string' && existingDraft.draft_title.length > 0) {
-            await supabase.schema('m').from('ai_job').update({
+            const { error: idempotencyJobErr } = await supabase.schema('m').from('ai_job').update({
               status: 'succeeded',
               output_payload: {
                 idempotency_skip: true,
@@ -787,6 +809,7 @@ app.post('*', async (c) => {
               locked_at: null,
               updated_at: nowIso(),
             }).eq('ai_job_id', jobId);
+            if (idempotencyJobErr) throw new Error(`idempotency_ai_job_update_failed:${idempotencyJobErr.message}`);
 
             console.log(`[ai-worker] ${VERSION} — job ${jobId}: IDEMPOTENCY SKIP (prior call ${priorSuccessLog.created_at})`);
             results.push({
@@ -888,21 +911,24 @@ app.post('*', async (c) => {
 
       if (result.skip) {
         const skipReason = result.skipReason || 'compliance_block';
-        await supabase.schema('m').from('post_draft').update({
+        const { error: complianceDraftErr } = await supabase.schema('m').from('post_draft').update({
           approval_status: 'dead',
           draft_format: { compliance_skip: true, reason: skipReason, at: nowIso() },
           compliance_flags: [{ rule: skipReason, severity: 'HARD_BLOCK', triggered: true, at: nowIso() }],
           updated_at: nowIso(),
         }).eq('post_draft_id', job.post_draft_id);
+        if (complianceDraftErr) throw new Error(`compliance_post_draft_update_failed:${complianceDraftErr.message}`);
         // Stage 11: slot-driven jobs propagate compliance skip to slot status.
         if (job.slot_id) {
-          await supabase.schema('m').from('slot').update({
+          const { error: complianceSlotErr } = await supabase.schema('m').from('slot').update({
             status: 'skipped',
             skip_reason: `compliance_skip:${skipReason}`.slice(0, 200),
             updated_at: nowIso(),
           }).eq('slot_id', job.slot_id);
+          if (complianceSlotErr) throw new Error(`compliance_slot_update_failed:${complianceSlotErr.message}`);
         }
-        await supabase.schema('m').from('ai_job').update({ status: 'succeeded', output_payload: { skipped: true, reason: skipReason }, error: null, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
+        const { error: complianceJobErr } = await supabase.schema('m').from('ai_job').update({ status: 'succeeded', output_payload: { skipped: true, reason: skipReason }, error: null, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
+        if (complianceJobErr) throw new Error(`compliance_ai_job_update_failed:${complianceJobErr.message}`);
         results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'compliance_skip', reason: skipReason }); continue;
       }
 
@@ -947,16 +973,18 @@ app.post('*', async (c) => {
         updated_at: nowIso(),
       };
 
-      await supabase.schema('m').from('post_draft').update(baseUpdate).eq('post_draft_id', job.post_draft_id);
+      const { error: successDraftErr } = await supabase.schema('m').from('post_draft').update(baseUpdate).eq('post_draft_id', job.post_draft_id);
+      if (successDraftErr) throw new Error(`success_post_draft_update_failed:${successDraftErr.message}`);
 
       // Stage 11: slot-driven jobs transition the slot to 'filled' on success.
       // Hard errors fall through to the catch block and leave the slot at
       // fill_in_progress for m.recover_stuck_slots() to pick up (per brief §2c).
       if (job.slot_id) {
-        await supabase.schema('m').from('slot').update({
+        const { error: successSlotErr } = await supabase.schema('m').from('slot').update({
           status: 'filled',
           updated_at: nowIso(),
         }).eq('slot_id', job.slot_id);
+        if (successSlotErr) throw new Error(`success_slot_update_failed:${successSlotErr.message}`);
       }
 
       // Step 6: Video script — non-fatal
@@ -972,13 +1000,18 @@ app.post('*', async (c) => {
         } catch (vsErr: any) { console.error('[ai-worker] generateVideoScript threw:', vsErr?.message); }
       }
 
-      await supabase.schema('m').from('ai_job').update({ status: 'succeeded', output_payload: { title: result.title, body: result.body, meta: draftMeta }, error: null, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
+      const { error: successJobErr } = await supabase.schema('m').from('ai_job').update({ status: 'succeeded', output_payload: { title: result.title, body: result.body, meta: draftMeta }, error: null, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
+      if (successJobErr) throw new Error(`success_ai_job_update_failed:${successJobErr.message}`);
 
       results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'succeeded', provider: fallbackUsed ? 'openai_fallback' : primaryProvider, model: fallbackUsed ? 'gpt-4o' : model, format_decided: decidedFormat, format_reason: advisorReason, compliance_rules_injected: complianceRuleCount, video_script_generated: videoScriptGenerated, input_tokens: result.inputTokens, output_tokens: result.outputTokens });
 
     } catch (e: any) {
       const msg = (e?.message ?? String(e)).slice(0, 4000);
-      await supabase.schema('m').from('ai_job').update({ status: 'failed', error: msg, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
+      // v2.11.0: warn-and-continue — already inside the catch, so don't throw past it.
+      // If this UPDATE itself errors, sweep-stale-running will requeue the orphaned
+      // running job after 20 min.
+      const { error: failureJobErr } = await supabase.schema('m').from('ai_job').update({ status: 'failed', error: msg, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
+      if (failureJobErr) console.error(`[ai-worker] failure_ai_job_update_failed for ${jobId}:`, failureJobErr.message);
       results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'failed', error: msg });
     }
   }
