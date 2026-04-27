@@ -9,7 +9,46 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.9.0";
+const VERSION = "ai-worker-v2.10.0";
+// v2.10.0 — Slot-driven payload + LD7 prompt caching + LD18 + slot status transitions (Stage 11)
+//   1. SLOT-DRIVEN PAYLOAD HANDLER (slot_fill_synthesis_v1):
+//      Translate the slot-driven payload into a digest_item-shaped seed
+//      (single_item) or items[] (bundle) so the existing format-advisor →
+//      assemblePrompts → callClaude/callOpenAI flow runs unchanged. Fetches
+//      canonical title/url/body via f.canonical_content_item +
+//      f.canonical_content_body. Bodies pass through trimSeedPayload's
+//      payload-diet rules. Strategy is Option A from the brief — minimum
+//      surface area; legacy R6 paths (rewrite_v1, synth_bundle_v1) untouched.
+//   2. EVERGREEN RENDER (synthesis_mode='evergreen'):
+//      Skips the LLM entirely. Reads t.evergreen_library, writes title+body
+//      directly to m.post_draft, marks slot 'filled' and ai_job 'succeeded'.
+//      Continues the loop without compliance check (templates pre-vetted).
+//   3. SLOT STATUS TRANSITIONS:
+//      For slot-driven jobs (job.slot_id non-null):
+//        success         → m.slot.status = 'filled'
+//        compliance skip → m.slot.status = 'skipped' + skip_reason
+//        hard error      → leave at 'fill_in_progress' (recover_stuck_slots
+//                          handles, brief §2c)
+//   4. LD7 PROMPT CACHING (Anthropic only):
+//      assemblePrompts now returns systemBlocks: Array<{type:'text',
+//      text:string, cache_control?:{type:'ephemeral'}}> in addition to the
+//      flat systemPrompt string. Block order matches v2.9.0:
+//      compliance → brand → platform_voice. Each is marked
+//      cache_control:{type:'ephemeral'} (3 of 4 allowed breakpoints).
+//      callClaude sends system: systemBlocks (array shape). Per Anthropic
+//      docs the cache feature graduated from beta in 2025; no anthropic-beta
+//      header needed. Cache token deltas are pulled from
+//      usage.cache_creation_input_tokens / usage.cache_read_input_tokens
+//      and surfaced into m.post_draft.draft_format.ai (V7 lives here since
+//      m.ai_usage_log doesn't yet have cache columns — verified at author
+//      time). callOpenAI unchanged; the OpenAI fallback uses the flat
+//      systemPrompt string and pays full input-token cost.
+//   5. LD18 PARTIAL UNIQUE INDEX (migration 048):
+//      DB-enforced "one draft per slot" invariant. Complementary to v2.9.0's
+//      idempotency guard — the guard catches the post-LLM-completion race;
+//      the unique index catches the pre-LLM duplicate-draft race.
+//   Migration sequencing per D179: 048 (LD18) → ai-worker deploy → 049
+//   (drop the Stage 10.046 shadow filter in f.ai_worker_lock_jobs_v1).
 // v2.9.0 — ID003 remediation (D157)
 //   Three-part fix landed in one release:
 //   1. PAYLOAD DIET (trimSeedPayload): for rewrite_v1 and synth_bundle_v1, replace
@@ -372,8 +411,13 @@ async function writeUsageLog(supabase: ReturnType<typeof getServiceClient>, opts
   } catch (e) { console.error('[ai_usage_log] write failed:', e); }
 }
 
-async function callClaude(opts: { apiKey: string; model: string; systemPrompt: string; userPrompt: string; temperature: number; maxOutputTokens: number; }) {
-  const { apiKey, model, systemPrompt, userPrompt, temperature, maxOutputTokens } = opts;
+async function callClaude(opts: { apiKey: string; model: string; systemPrompt: string; systemBlocks?: SystemBlock[]; userPrompt: string; temperature: number; maxOutputTokens: number; }) {
+  const { apiKey, model, systemPrompt, systemBlocks, userPrompt, temperature, maxOutputTokens } = opts;
+  // LD7 caching: if systemBlocks is provided, send the array shape so
+  // cache_control:ephemeral on each block engages prompt caching. Otherwise
+  // fall back to the flat string (backward-compat for any callers that
+  // haven't been updated to the array shape).
+  const systemPayload: any = (systemBlocks && systemBlocks.length > 0) ? systemBlocks : systemPrompt;
   // D157 ID003 fix 3 — hard fetch timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), LLM_FETCH_TIMEOUT_MS);
@@ -381,7 +425,7 @@ async function callClaude(opts: { apiKey: string; model: string; systemPrompt: s
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model, max_tokens: maxOutputTokens, temperature, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
+      body: JSON.stringify({ model, max_tokens: maxOutputTokens, temperature, system: systemPayload, messages: [{ role: 'user', content: userPrompt }] }),
       signal: controller.signal,
     });
     const text = await resp.text();
@@ -395,7 +439,18 @@ async function callClaude(opts: { apiKey: string; model: string; systemPrompt: s
     if (!parsed.ok) throw new Error(`anthropic_non_json: ${parsed.error} | raw: ${cleaned.slice(0, 400)}`);
     if (!parsed.value?.title || !parsed.value?.body) throw new Error('anthropic_missing_title_or_body');
     const usage = outer.value?.usage ?? {};
-    return { title: String(parsed.value.title).trim(), body: String(parsed.value.body).trim(), imageHeadline: String(parsed.value.image_headline ?? '').trim(), meta: parsed.value.meta ?? {}, skip: parsed.value.skip === true, skipReason: parsed.value.reason ?? '', inputTokens: Number(usage.input_tokens ?? 0), outputTokens: Number(usage.output_tokens ?? 0) };
+    return {
+      title: String(parsed.value.title).trim(),
+      body: String(parsed.value.body).trim(),
+      imageHeadline: String(parsed.value.image_headline ?? '').trim(),
+      meta: parsed.value.meta ?? {},
+      skip: parsed.value.skip === true,
+      skipReason: parsed.value.reason ?? '',
+      inputTokens: Number(usage.input_tokens ?? 0),
+      outputTokens: Number(usage.output_tokens ?? 0),
+      cacheCreationInputTokens: Number(usage.cache_creation_input_tokens ?? 0),
+      cacheReadInputTokens: Number(usage.cache_read_input_tokens ?? 0),
+    };
   } catch (e: any) {
     if (e?.name === 'AbortError') throw new Error(`anthropic_fetch_timeout_${LLM_FETCH_TIMEOUT_MS}ms`);
     throw e;
@@ -426,7 +481,18 @@ async function callOpenAI(opts: { apiKey: string; model: string; systemPrompt: s
     if (!parsed.ok) throw new Error(`openai_non_json: ${parsed.error}`);
     if (!parsed.value?.title || !parsed.value?.body) throw new Error('openai_missing_title_or_body');
     const usage = outer.value?.usage ?? {};
-    return { title: String(parsed.value.title).trim(), body: String(parsed.value.body).trim(), imageHeadline: String(parsed.value.image_headline ?? '').trim(), meta: parsed.value.meta ?? {}, skip: parsed.value.skip === true, skipReason: parsed.value.reason ?? '', inputTokens: Number(usage.prompt_tokens ?? 0), outputTokens: Number(usage.completion_tokens ?? 0) };
+    return {
+      title: String(parsed.value.title).trim(),
+      body: String(parsed.value.body).trim(),
+      imageHeadline: String(parsed.value.image_headline ?? '').trim(),
+      meta: parsed.value.meta ?? {},
+      skip: parsed.value.skip === true,
+      skipReason: parsed.value.reason ?? '',
+      inputTokens: Number(usage.prompt_tokens ?? 0),
+      outputTokens: Number(usage.completion_tokens ?? 0),
+      cacheCreationInputTokens: 0,  // OpenAI fallback path: no caching
+      cacheReadInputTokens: 0,
+    };
   } catch (e: any) {
     if (e?.name === 'AbortError') throw new Error(`openai_fetch_timeout_${LLM_FETCH_TIMEOUT_MS}ms`);
     throw e;
@@ -450,7 +516,7 @@ function buildFormatOutputSchema(decidedFormat: string, advisorImageHeadline: st
   return `${formatInstruction}\n\nReturn ONLY valid JSON:\n{\n  "title": string,\n  "body": string,\n  "image_headline": string,\n  "meta": object\n}\nIf the source content violates a HARD_BLOCK compliance rule:\n{"skip": true, "reason": "compliance_block: [rule name]"}\n\nField rules:\n- title: 8-12 word headline\n- body: full post body text optimised for ${decidedFormat} format\n${imageHeadlineInstruction}\n- meta: any extra metadata as object`;
 }
 
-async function assemblePrompts(supabase: ReturnType<typeof getServiceClient>, clientId: string, platform: string, jobType: string, seedPayload: any, decidedFormat: string, advisorImageHeadline: string): Promise<{ systemPrompt: string; userPrompt: string; model: string; temperature: number; maxOutputTokens: number; usedLegacy: boolean; complianceRuleCount: number; }> {
+async function assemblePrompts(supabase: ReturnType<typeof getServiceClient>, clientId: string, platform: string, jobType: string, seedPayload: any, decidedFormat: string, advisorImageHeadline: string): Promise<{ systemPrompt: string; systemBlocks: SystemBlock[]; userPrompt: string; model: string; temperature: number; maxOutputTokens: number; usedLegacy: boolean; complianceRuleCount: number; }> {
   const complianceBlock = await fetchComplianceBlock(supabase, clientId);
   const complianceRuleCount = complianceBlock ? (complianceBlock.match(/^RULE:/gm) ?? []).length : 0;
   const { data: brand } = await supabase.schema('c').from('client_brand_profile').select('*').eq('client_id', clientId).eq('is_active', true).limit(1).maybeSingle();
@@ -460,23 +526,45 @@ async function assemblePrompts(supabase: ReturnType<typeof getServiceClient>, cl
     const model = (brand.model ?? 'claude-sonnet-4-6').toString();
     const temperature = Number(brand.temperature ?? 0.72);
     const maxOutputTokens = Number(brand.max_output_tokens ?? 1200);
-    const systemPrompt = [complianceBlock, brand.brand_identity_prompt ?? '', platProfile?.platform_voice_prompt ?? ''].filter(Boolean).join('\n\n');
+    // LD7 cache blocks. Order matches v2.9.0 string-concat order:
+    // compliance → brand → platform_voice. Each gets cache_control:ephemeral.
+    // Anthropic engages caching only when a block is >=1024 tokens; shorter
+    // blocks pass through with no cache benefit but no harm.
+    const blocks: SystemBlock[] = [];
+    if (complianceBlock) blocks.push({ type: 'text', text: complianceBlock, cache_control: { type: 'ephemeral' } });
+    if (brand.brand_identity_prompt) blocks.push({ type: 'text', text: String(brand.brand_identity_prompt), cache_control: { type: 'ephemeral' } });
+    if (platProfile?.platform_voice_prompt) blocks.push({ type: 'text', text: String(platProfile.platform_voice_prompt), cache_control: { type: 'ephemeral' } });
+    const systemPrompt = blocks.map(b => b.text).join('\n\n');
     const outputSchema = ctPrompt?.output_schema_hint ?? buildFormatOutputSchema(decidedFormat, advisorImageHeadline);
     const taskInstruction = ctPrompt?.task_prompt ?? 'Rewrite the seed content into a valuable, engaging post for the target platform.';
     const userPrompt = [taskInstruction, `\nSeed content (JSON):\n${JSON.stringify(seedPayload)}`, `\n${outputSchema}`].join('\n');
-    return { systemPrompt, userPrompt, model, temperature, maxOutputTokens, usedLegacy: false, complianceRuleCount };
+    return { systemPrompt, systemBlocks: blocks, userPrompt, model, temperature, maxOutputTokens, usedLegacy: false, complianceRuleCount };
   }
   const { data: legacyProfile } = await supabase.schema('c').from('client_ai_profile').select('system_prompt, model, generation, persona, guidelines, platform_rules').eq('client_id', clientId).eq('status', 'active').order('is_default', { ascending: false }).limit(1).maybeSingle();
   if (!legacyProfile) throw new Error('no_client_profile_found');
   const model = (legacyProfile.model ?? 'claude-sonnet-4-6').toString();
   const gen = legacyProfile.generation ?? {};
-  const systemPrompt = [complianceBlock, legacyProfile.system_prompt ?? '', 'Persona: ' + JSON.stringify(legacyProfile.persona ?? {}), 'Guidelines: ' + JSON.stringify(legacyProfile.guidelines ?? {}), 'Platform rules: ' + JSON.stringify(legacyProfile.platform_rules ?? {}), `Return ONLY valid JSON: {"title": string, "body": string, "image_headline": string, "meta": object}. If source violates HARD_BLOCK rule, return {"skip": true, "reason": "compliance_block: [rule name]"}`].filter(Boolean).join('\n\n');
+  // Legacy path: keep as a single non-cached block. Legacy profiles vary too
+  // much per call to benefit from caching reliably.
+  const legacySystemText = [complianceBlock, legacyProfile.system_prompt ?? '', 'Persona: ' + JSON.stringify(legacyProfile.persona ?? {}), 'Guidelines: ' + JSON.stringify(legacyProfile.guidelines ?? {}), 'Platform rules: ' + JSON.stringify(legacyProfile.platform_rules ?? {}), `Return ONLY valid JSON: {"title": string, "body": string, "image_headline": string, "meta": object}. If source violates HARD_BLOCK rule, return {"skip": true, "reason": "compliance_block: [rule name]"}`].filter(Boolean).join('\n\n');
+  const legacyBlocks: SystemBlock[] = [{ type: 'text', text: legacySystemText }];
   const userPrompt = `Rewrite this seed into a platform-appropriate post optimised for ${decidedFormat} format.\n\nSeed:\n${JSON.stringify(seedPayload)}\n\nReturn ONLY JSON: {"title": string, "body": string, "image_headline": string, "meta": object}`;
-  return { systemPrompt, userPrompt, model, temperature: Number(gen.temperature ?? 0.72), maxOutputTokens: Number(gen.max_output_tokens ?? 1200), usedLegacy: true, complianceRuleCount };
+  return { systemPrompt: legacySystemText, systemBlocks: legacyBlocks, userPrompt, model, temperature: Number(gen.temperature ?? 0.72), maxOutputTokens: Number(gen.max_output_tokens ?? 1200), usedLegacy: true, complianceRuleCount };
 }
 
 type WorkerRequest = { limit?: number; worker_id?: string; lock_seconds?: number; };
-type AiJobRow = { ai_job_id: string; client_id: string; post_draft_id: string; platform: string; job_type: string; input_payload: any; };
+type AiJobRow = {
+  ai_job_id: string;
+  client_id: string;
+  post_draft_id: string;
+  platform: string;
+  job_type: string;
+  input_payload: any;
+  slot_id: string | null;        // Stage 11: slot-driven path
+  is_shadow: boolean;            // Stage 11: shadow vs live ai_job
+};
+
+type SystemBlock = { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } };
 
 app.options('*', () => new Response(null, { status: 204, headers: corsHeaders }));
 
@@ -519,7 +607,124 @@ app.post('*', async (c) => {
     const platform = job.platform ?? 'facebook';
     const jobType = job.job_type ?? 'rewrite_v1';
 
+    // Stage 11: slot_fill_synthesis_v1 translation. Defaults below are the
+    // R6 path (effectiveJobType=jobType, effectivePayload=job.input_payload).
+    // For slot_fill_synthesis_v1 the translation overrides them with a
+    // digest_item (single_item) or items[] (bundle) shape so the existing
+    // seed-extraction + format-advisor + assemblePrompts pipeline runs unchanged.
+    let effectiveJobType = jobType;
+    let effectivePayload: any = job.input_payload ?? {};
+    let isEvergreenRender = false;
+    let evergreenContent: { title: string; body: string } | null = null;
+
     try {
+      if (jobType === 'slot_fill_synthesis_v1') {
+        const sp = job.input_payload ?? {};
+        const synthesisMode: string = sp.synthesis_mode ?? 'single_item';
+
+        if (synthesisMode === 'evergreen' && sp.evergreen_id) {
+          const { data: evergreen } = await supabase
+            .schema('t')
+            .from('evergreen_library')
+            .select('title, body, format_keys')
+            .eq('evergreen_id', sp.evergreen_id)
+            .maybeSingle();
+          if (!evergreen) throw new Error(`evergreen_not_found:${sp.evergreen_id}`);
+          isEvergreenRender = true;
+          evergreenContent = {
+            title: String(evergreen.title ?? '').trim(),
+            body: String(evergreen.body ?? '').trim(),
+          };
+        } else {
+          const canonicalIds: string[] = Array.isArray(sp.canonical_ids) ? sp.canonical_ids : [];
+          if (!canonicalIds.length) throw new Error('slot_fill_no_canonical_ids');
+
+          const { data: bodies, error: bodiesErr } = await supabase
+            .schema('f')
+            .from('canonical_content_body')
+            .select('canonical_id, body_text, body_excerpt')
+            .in('canonical_id', canonicalIds);
+          if (bodiesErr) throw new Error(`canonical_body_fetch:${bodiesErr.message}`);
+
+          const { data: items, error: itemsErr } = await supabase
+            .schema('f')
+            .from('canonical_content_item')
+            .select('canonical_id, canonical_title, canonical_url, first_seen_at')
+            .in('canonical_id', canonicalIds);
+          if (itemsErr) throw new Error(`canonical_item_fetch:${itemsErr.message}`);
+
+          const merged = canonicalIds.map((cid) => {
+            const body = (bodies ?? []).find((b: any) => b.canonical_id === cid);
+            const item = (items ?? []).find((i: any) => i.canonical_id === cid);
+            return {
+              canonical_id: cid,
+              title: item?.canonical_title ?? '',
+              url: item?.canonical_url ?? '',
+              body_text: body?.body_text ?? '',
+              body_excerpt: body?.body_excerpt ?? '',
+            };
+          });
+
+          if (synthesisMode === 'single_item') {
+            const m0 = merged[0];
+            effectivePayload = {
+              digest_item: {
+                title: m0.title,
+                body_text: m0.body_text,
+                body_excerpt: m0.body_excerpt,
+                url: m0.url,
+              },
+              slot_meta: { slot_id: sp.slot_id, format: sp.format, fitness_score: sp.fitness_score },
+            };
+            effectiveJobType = 'rewrite_v1';
+          } else {
+            effectivePayload = {
+              items: merged.map((m) => ({
+                title: m.title,
+                body_text: m.body_text,
+                body_excerpt: m.body_excerpt,
+                url: m.url,
+              })),
+              slot_meta: { slot_id: sp.slot_id, format: sp.format, fitness_score: sp.fitness_score },
+            };
+            effectiveJobType = 'synth_bundle_v1';
+          }
+        }
+      }
+
+      // Evergreen render: skip LLM, write template body directly, mark slot filled, continue.
+      if (isEvergreenRender && evergreenContent) {
+        await supabase.schema('m').from('post_draft').update({
+          draft_title: evergreenContent.title,
+          draft_body: evergreenContent.body,
+          draft_format: { ai: { evergreen_render: true, evergreen_id: job.input_payload?.evergreen_id ?? null, ai_job_id: jobId, at: nowIso() } },
+          approval_status: 'needs_review',
+          recommended_format: job.input_payload?.format ?? 'text',
+          image_headline: '',
+          compliance_flags: [],
+          updated_at: nowIso(),
+        }).eq('post_draft_id', job.post_draft_id);
+
+        if (job.slot_id) {
+          await supabase.schema('m').from('slot').update({
+            status: 'filled',
+            updated_at: nowIso(),
+          }).eq('slot_id', job.slot_id);
+        }
+
+        await supabase.schema('m').from('ai_job').update({
+          status: 'succeeded',
+          output_payload: { evergreen_render: true, evergreen_id: job.input_payload?.evergreen_id ?? null },
+          error: null,
+          locked_by: null,
+          locked_at: null,
+          updated_at: nowIso(),
+        }).eq('ai_job_id', jobId);
+
+        results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'succeeded', evergreen_render: true });
+        continue;
+      }
+
       // D157 ID003 fix 2 — IDEMPOTENCY GUARD
       // Check for any prior successful LLM call tied to this ai_job. If one exists
       // AND the post_draft already has content, mark the ai_job succeeded without
@@ -585,16 +790,19 @@ app.post('*', async (c) => {
       // synth_bundle_v1: input_payload.items[].{title, body_text|body_excerpt}
       // Legacy/other:    input_payload.{title, body, content, excerpt, summary}
       // D157: prefer body_excerpt over body_text (payload diet)
-      const rawPayload = job.input_payload ?? {};
+      // Stage 11: rawPayload + jobType replaced by effectivePayload + effectiveJobType
+      // so slot_fill_synthesis_v1 (translated above to digest_item / items[] shape)
+      // flows through the existing extraction logic without further branching.
+      const rawPayload = effectivePayload;
       let seedTitle = String(rawPayload.title ?? rawPayload.headline ?? '');
       let seedBody  = String(rawPayload.body ?? rawPayload.content ?? rawPayload.excerpt ?? rawPayload.summary ?? '');
 
       if (!seedTitle && !seedBody) {
-        if (jobType === 'rewrite_v1' && rawPayload.digest_item) {
+        if (effectiveJobType === 'rewrite_v1' && rawPayload.digest_item) {
           const di = rawPayload.digest_item;
           seedTitle = String(di.title ?? di.url ?? '');
           seedBody  = String(di.body_excerpt ?? di.body_text ?? di.content ?? di.excerpt ?? '');
-        } else if (jobType === 'synth_bundle_v1' && Array.isArray(rawPayload.items) && rawPayload.items.length > 0) {
+        } else if (effectiveJobType === 'synth_bundle_v1' && Array.isArray(rawPayload.items) && rawPayload.items.length > 0) {
           seedTitle = String(rawPayload.items[0].title ?? rawPayload.items[0].url ?? '');
           seedBody  = rawPayload.items
             .map((it: any) => String(it.body_excerpt ?? it.body_text ?? it.content ?? it.excerpt ?? ''))
@@ -605,7 +813,7 @@ app.post('*', async (c) => {
 
       // D157: payload diet — lean seed passed to assemblePrompts for LLM generation.
       // Replaces body_text with body_excerpt, strips raw_html/full_content, caps length.
-      const seed = trimSeedPayload(rawPayload, jobType);
+      const seed = trimSeedPayload(rawPayload, effectiveJobType);
 
       let clientName = '', vertical = 'professional services';
       try {
@@ -630,8 +838,8 @@ app.post('*', async (c) => {
       await writeVisualSpec(supabase, job.post_draft_id, decidedFormat, advisorReason, advisorImageHeadline, advisorDurationMs);
 
       // Step 4: Assemble prompts
-      const { systemPrompt, userPrompt, model, temperature, maxOutputTokens, usedLegacy, complianceRuleCount } =
-        await assemblePrompts(supabase, job.client_id, platform, jobType, seed, decidedFormat, advisorImageHeadline);
+      const { systemPrompt, systemBlocks, userPrompt, model, temperature, maxOutputTokens, usedLegacy, complianceRuleCount } =
+        await assemblePrompts(supabase, job.client_id, platform, effectiveJobType, seed, decidedFormat, advisorImageHeadline);
       if (complianceRuleCount > 0) console.log(`[ai-worker] ${jobId}: ${complianceRuleCount} compliance rules injected`);
 
       // Step 5: Generate
@@ -641,20 +849,20 @@ app.post('*', async (c) => {
       let fallbackUsed = false, primaryError: string | null = null;
 
       if (isPrimary && anthropicKey) {
-        try { result = await callClaude({ apiKey: anthropicKey, model, systemPrompt, userPrompt, temperature, maxOutputTokens }); }
-        catch (e: any) { primaryError = e?.message ?? String(e); console.error(`[ai-worker] Claude failed for ${jobId}:`, primaryError); await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: 'anthropic', model, contentType: jobType, platform, inputTokens: 0, outputTokens: 0, costUsd: 0, fallbackUsed: false, errorCall: true }); }
+        try { result = await callClaude({ apiKey: anthropicKey, model, systemPrompt, systemBlocks, userPrompt, temperature, maxOutputTokens }); }
+        catch (e: any) { primaryError = e?.message ?? String(e); console.error(`[ai-worker] Claude failed for ${jobId}:`, primaryError); await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: 'anthropic', model, contentType: effectiveJobType, platform, inputTokens: 0, outputTokens: 0, costUsd: 0, fallbackUsed: false, errorCall: true }); }
       } else if (!isPrimary && openaiKey) {
         try { result = await callOpenAI({ apiKey: openaiKey, model, systemPrompt, userPrompt, temperature, maxOutputTokens }); }
-        catch (e: any) { primaryError = e?.message ?? String(e); await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: 'openai', model, contentType: jobType, platform, inputTokens: 0, outputTokens: 0, costUsd: 0, fallbackUsed: false, errorCall: true }); }
+        catch (e: any) { primaryError = e?.message ?? String(e); await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: 'openai', model, contentType: effectiveJobType, platform, inputTokens: 0, outputTokens: 0, costUsd: 0, fallbackUsed: false, errorCall: true }); }
       }
 
       if (!result && primaryError && openaiKey) {
         fallbackUsed = true;
         const fallbackModel = 'gpt-4o';
         result = await callOpenAI({ apiKey: openaiKey, model: fallbackModel, systemPrompt, userPrompt, temperature, maxOutputTokens });
-        await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: 'openai', model: fallbackModel, contentType: jobType, platform, inputTokens: result.inputTokens, outputTokens: result.outputTokens, costUsd: await calculateCostUsd(supabase, 'openai', fallbackModel, result.inputTokens, result.outputTokens), fallbackUsed: true, errorCall: false });
+        await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: 'openai', model: fallbackModel, contentType: effectiveJobType, platform, inputTokens: result.inputTokens, outputTokens: result.outputTokens, costUsd: await calculateCostUsd(supabase, 'openai', fallbackModel, result.inputTokens, result.outputTokens), fallbackUsed: true, errorCall: false });
       } else if (result) {
-        await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: primaryProvider, model, contentType: jobType, platform, inputTokens: result.inputTokens, outputTokens: result.outputTokens, costUsd: await calculateCostUsd(supabase, primaryProvider, model, result.inputTokens, result.outputTokens), fallbackUsed: false, errorCall: false });
+        await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: primaryProvider, model, contentType: effectiveJobType, platform, inputTokens: result.inputTokens, outputTokens: result.outputTokens, costUsd: await calculateCostUsd(supabase, primaryProvider, model, result.inputTokens, result.outputTokens), fallbackUsed: false, errorCall: false });
       }
 
       if (!result) throw new Error(primaryError ?? 'all_providers_failed');
@@ -667,12 +875,46 @@ app.post('*', async (c) => {
           compliance_flags: [{ rule: skipReason, severity: 'HARD_BLOCK', triggered: true, at: nowIso() }],
           updated_at: nowIso(),
         }).eq('post_draft_id', job.post_draft_id);
+        // Stage 11: slot-driven jobs propagate compliance skip to slot status.
+        if (job.slot_id) {
+          await supabase.schema('m').from('slot').update({
+            status: 'skipped',
+            skip_reason: `compliance_skip:${skipReason}`.slice(0, 200),
+            updated_at: nowIso(),
+          }).eq('slot_id', job.slot_id);
+        }
         await supabase.schema('m').from('ai_job').update({ status: 'succeeded', output_payload: { skipped: true, reason: skipReason }, error: null, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
         results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'compliance_skip', reason: skipReason }); continue;
       }
 
       const finalImageHeadline = result.imageHeadline || advisorImageHeadline;
-      const draftMeta = { ...(typeof result.meta === 'object' && result.meta ? result.meta : {}), ai: { provider: fallbackUsed ? 'openai' : primaryProvider, model: fallbackUsed ? 'gpt-4o' : model, fallback_used: fallbackUsed, legacy_profile: usedLegacy, compliance_rules_injected: complianceRuleCount, format_advisor_key: FORMAT_ADVISOR_PROMPT_KEY, format_decided: decidedFormat, format_reason: advisorReason, worker_id: workerId, ai_job_id: jobId, at: nowIso(), input_tokens: result.inputTokens, output_tokens: result.outputTokens } };
+      const draftMeta = {
+        ...(typeof result.meta === 'object' && result.meta ? result.meta : {}),
+        ai: {
+          provider: fallbackUsed ? 'openai' : primaryProvider,
+          model: fallbackUsed ? 'gpt-4o' : model,
+          fallback_used: fallbackUsed,
+          legacy_profile: usedLegacy,
+          compliance_rules_injected: complianceRuleCount,
+          format_advisor_key: FORMAT_ADVISOR_PROMPT_KEY,
+          format_decided: decidedFormat,
+          format_reason: advisorReason,
+          worker_id: workerId,
+          ai_job_id: jobId,
+          at: nowIso(),
+          input_tokens: result.inputTokens,
+          output_tokens: result.outputTokens,
+          // Stage 11 / LD7: cache token deltas. Lives here because m.ai_usage_log
+          // does not yet have cache columns (verified at author time).
+          cache_creation_input_tokens: result.cacheCreationInputTokens,
+          cache_read_input_tokens: result.cacheReadInputTokens,
+          // Stage 11: slot-driven provenance for V5/V6 verification + Gate B observability.
+          slot_id: job.slot_id ?? null,
+          job_type_input: jobType,
+          job_type_effective: effectiveJobType,
+          is_shadow: job.is_shadow,
+        },
+      };
 
       const baseUpdate: any = {
         draft_title: result.title,
@@ -687,6 +929,16 @@ app.post('*', async (c) => {
       };
 
       await supabase.schema('m').from('post_draft').update(baseUpdate).eq('post_draft_id', job.post_draft_id);
+
+      // Stage 11: slot-driven jobs transition the slot to 'filled' on success.
+      // Hard errors fall through to the catch block and leave the slot at
+      // fill_in_progress for m.recover_stuck_slots() to pick up (per brief §2c).
+      if (job.slot_id) {
+        await supabase.schema('m').from('slot').update({
+          status: 'filled',
+          updated_at: nowIso(),
+        }).eq('slot_id', job.slot_id);
+      }
 
       // Step 6: Video script — non-fatal
       let videoScriptGenerated = false;
