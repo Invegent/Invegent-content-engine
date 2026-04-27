@@ -1,7 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const VERSION = "1.1.0";
+// v1.2.0 (2026-04-28): config jsonb key `url` → `feed_url` to match convention
+//   used by every other rss_app feed in f.feed_source. Drift between this
+//   committed source and the deployed EF was discovered when the dedupe
+//   check on `config->>'url'` was found to never match (deployed version
+//   writes `feed_url`, ingest pipeline reads `feed_url`). This commit
+//   aligns the committed source with the deployed convention so a fresh
+//   `supabase functions deploy feed-discovery` from main is safe.
+const VERSION = "1.2.0";
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -199,9 +206,13 @@ Deno.serve(async (req: Request) => {
 
           const feed = await createRSSAppFeed(rssappApiKey, seed);
 
-          // Check if feed_source already has this rss_feed_url
+          // Check if feed_source already has this rss_feed_url.
+          // Note: convention key is `feed_url`. We also probe `url` for any
+          // legacy rows written before v1.2.0 (none expected as of 28 Apr 2026,
+          // but cheap to keep the OR for forward-compat).
+          const escapedUrl = feed.rss_feed_url.replace(/'/g, "''");
           const { data: existing } = await supabase.rpc("exec_sql", {
-            query: `SELECT source_id FROM f.feed_source WHERE config->>'url' = '${feed.rss_feed_url.replace(/'/g, "''")}' LIMIT 1`,
+            query: `SELECT source_id FROM f.feed_source WHERE config->>'feed_url' = '${escapedUrl}' OR config->>'url' = '${escapedUrl}' LIMIT 1`,
           });
 
           let feedSourceId: string | null = null;
@@ -212,7 +223,7 @@ Deno.serve(async (req: Request) => {
           } else {
             const sourceName = seed.label || feed.title || seed.seed_value;
             const config: Record<string, unknown> = {
-              url: feed.rss_feed_url,
+              feed_url: feed.rss_feed_url,  // v1.2.0: was `url:` — breaks ingest if reverted
               rssapp_feed_id: feed.id,
               seed_type: seed.seed_type,
               seed_value: seed.seed_value,
