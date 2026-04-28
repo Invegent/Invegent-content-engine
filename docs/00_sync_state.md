@@ -1,45 +1,49 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-28 Tuesday end of day — **Audit loop built end-to-end + F-002 P1 applied + slice 1 prevention live + Gate B Day 1 healthy**
+> Last written: 2026-04-28 Tuesday end of day — **Audit cycle 1 COMPLETE end-to-end same day. F-001/F-002/F-003 all closed-action-taken. F-002 closure spanned 3 phases (P1 + P2 + P3) all applied this evening.**
 > Written by: PK + Claude session sync
 
 ---
 
-## 🟢 28 APR TUESDAY — FULL DAY (~8 hours total)
+## 🟢 28 APR TUESDAY — FULL DAY (~12 hours total across morning, afternoon, evening)
 
-Two distinct workstreams ran today. Morning was infrastructure repair (feed-discovery EF + Brief A). Afternoon was audit loop standup end-to-end, including the first cycle of findings closing same day, plus F-002 Phase A applied with the ChatGPT review pattern proven.
+Three distinct workstreams ran today. Morning was infrastructure repair (feed-discovery EF + Brief A). Afternoon was audit loop standup end-to-end and F-002 Phase A. Evening was F-002 Phase B + Phase C — completing the first full audit cycle entirely within one day.
 
 ### Critical state right now
 
-**Track 1 — Gate B observation, Day 1 of 5–7 healthy:**
+**Track 1 — Gate B observation, end of Day 1 of 5–7 healthy:**
 - Phase B Stages 10–12 still running autonomously in shadow mode
-- 70 slots filled, 52 future, 2 failed (both shadow, content-quality issues)
-- Pool: 295–304 active rows per NDIS/property vertical, 110 per Invegent vertical
-- 95 successful fills last 24h, 25 stuck-job recoveries (auto-recovery cron working), 0 threshold-relaxed fills
-- Cost: $1.20 USD shadow burn last 24h (~$36/mo run rate, well under $30 Stop 1)
-- 32 pre-Gate-B critical alerts acknowledged with audit trail
+- Slot distribution: 71 filled past + 13 already-filled in next 24h + 43 future in next 7d = 56 forward, 71 historical
+- 3 failed slots total (`exceeded_recovery_attempts`): 2 from yesterday, 1 from this morning (PP Instagram, 02:00 UTC). Stage 9 recovery feature working as designed (bounded retries vs infinite loops). Surface in Day 2 obs but not breaking.
+- Pool: 1,983 active signals (healthy)
+- 19 ai_jobs succeeded last 24h, 1 failed (5% rate, acceptable)
+- 16 posts published last 24h
+- 0 ai_jobs stuck running, 0 pending publish queue items
 - Earliest Gate B exit: Sat 2 May
+- Cost burn through evening modest (audit work was DB-only, no AI generation)
 
 **Track 2 — Concrete-pipeline:**
-- Section 1 Discovery 1.1 ✅ (yesterday). Stage 1.2 brief design pending (likely merges into Stage 2.2 scope per D180)
+- Section 1 Discovery 1.1 ✅ (yesterday). Stages 1.2–1.5 pending
 - Section 2 Publisher 2.1 ✅ (yesterday). Stages 2.2–2.5 pending
-- 2.3 jumps queue if no posts in 48h of yesterday's mode=auto flip; current state has legacy publisher producing posts for CFW + Invegent so trigger NOT activated yet
+- 2.3 jumps queue if no posts in 48h of yesterday's mode=auto flip; current state has 16 posts in last 24h so trigger NOT activated
 
-**Track 3 — Audit loop (NEW today):**
+**Track 3 — Audit loop (NEW today, COMPLETE first cycle):**
 - D181 — 3-layer architecture (k inventory + GitHub snapshots + markdown findings) locked and built same day
 - Data Auditor (Role 1) live. Other roles (Security, Operations, Financial, Compliance) deferred
-- First cycle complete: 3 findings raised, all closed same session
+- **First cycle complete:** 3 findings raised, all 3 closed `action-taken` same day
 - Slice 1 (audit recurrence prevention) live: PENDING_DOCUMENTATION sentinel, 14-day grace window, DEFERRED escape hatch, F-003 detector function
 - Slices 2 (snapshot automation) and 3 (API auditor pass) deferred to future sessions
-- Three new lessons captured: #35, #36, #37
+- **5 new lessons captured:** #35, #36, #37, #38, #39
 
-**Track 4 — F-002 closure in progress:**
-- Phase A (P1 = booleans/enums) ✅ APPLIED. 79 column purposes written. Coverage c+f: 0% → 11.7%
-- Phase B (P2 = numeric thresholds) prompt sent to CC. Awaiting CC output
-- Phase C (P3 = JSONB configs) pending
-- 4 LOW-confidence rows from CC's draft deferred — backlog at `docs/audit/decisions/f002_p1_low_confidence_followup.md`
-- ChatGPT review pattern proven (caught 5 safety issues in CC draft) — Lesson #37
+**Track 4 — F-002 closure COMPLETE (3 phases this evening):**
+- Phase A (P1 = booleans/enums) ✅ APPLIED. 79 column purposes. Coverage c+f: 0% → 11.7%
+- Phase B (P2 = numeric thresholds) ✅ APPLIED. 30 column purposes. Coverage c+f: 11.7% → 16.2%
+- Phase C (P3 = JSONB configs) ✅ APPLIED. 27 column purposes. Coverage c+f: 16.2% → 20.2%
+- **Final coverage of c+f: 0% → 20.2% (136/674 columns)** — c at 22.3%, f at 14.9%
+- F-002 transitions to **closed-action-taken** at end of evening
+- 6 LOW rows deferred across 3 followup files (4+1+1 by phase)
+- 7 ARRAY columns missed by P3 regex — Phase D mop-up tracked separately
 
 ### What today did — morning (~3 hours)
 
@@ -58,14 +62,31 @@ Two distinct workstreams ran today. Morning was infrastructure repair (feed-disc
 - Audit loop architecture designed and built end-to-end:
   - Design doc, register, role definition, first snapshot, first run file all committed
   - 3 findings raised by ChatGPT: F-001 (HIGH, 31 Phase B tables undocumented), F-002 (MEDIUM, 0% column coverage in c+f), F-003 (MEDIUM, migration naming violation)
-  - All 3 findings closed same session
-- F-001 closure: extended scope to 56 tables (operator-initiated). k.table_registry coverage 72.0% → 100.0% (200/200 ICE tables)
-- F-003 closure: forward naming discipline locked. `k.fn_check_migration_naming_discipline()` detector built
-- F-002 closure: 3-phase plan locked, Phase A applied with ChatGPT review (79 corrections from CC's 83-row draft)
+  - F-001 closure: extended scope to 56 tables (operator-initiated). k.table_registry coverage 72.0% → 100.0% (200/200 ICE tables)
+  - F-003 closure: forward naming discipline locked. `k.fn_check_migration_naming_discipline()` detector built
+  - F-002 closure: 3-phase plan locked, Phase A applied with ChatGPT review (79 corrections from CC's 83-row draft)
 - Slice 1 prevention: PENDING_DOCUMENTATION sentinel + 14-day grace + DEFERRED escape hatch + F-003 detector. Migration applied + role updated + committed
 - CC Phase B prompt sent for P2 work
 
-### Production state — end of day
+### What today did — evening (~4 hours)
+
+- F-002 Phase B (P2 numerics) applied:
+  - CC produced 31 P2 proposals (1 LOW correctly self-isolated to Deferred)
+  - ChatGPT review caught 14 row wording issues — same patterns as Phase A (external/stale platform claims, precedence assertions, unverified arithmetic, code-path claims)
+  - Migration `audit_f002_p2_column_purposes_corrected` applied (commit `0299c9a`)
+  - **Lesson #38 captured:** count-delta verification beats time-window (refresh_column_registry's ON CONFLICT bumps `updated_at` regardless)
+- F-002 Phase C (P3 JSONB) applied:
+  - CC produced 29 P3 proposals (1 LOW correctly self-isolated)
+  - **Chat-side sanity SQL caught 3 of 4 of CC's stated JSONB observations were wrong** — single-row sampling missed cross-row diversity:
+    - `c.client_channel.config` had YouTube OAuth credentials in 2 of 4 rows (CC: empty)
+    - `c.client.profile` had WordPress credentials too (CC: only `{ ai: ... }`)
+    - `f.video_analysis.raw_metadata` had 2 keys not 1 (CC: single thumbnailUrl)
+    - audit `old/new_value` had mixed scalars (CC: top-type string)
+  - ChatGPT review on top added 4 more wording edits (feed_source.config polled-by claim, raw_content_item.payload append-only assertion, content_series.outline_json element shape, output_fields meta inference)
+  - Migration `audit_f002_p3_column_purposes_corrected` applied (commit `0520b53`)
+  - **Lesson #39 captured:** JSONB shape verification must sample across rows, not single row
+
+### Production state — end of evening
 
 **Feeds:**
 - 68 active feed sources visible on /feeds
@@ -76,15 +97,18 @@ Two distinct workstreams ran today. Morning was infrastructure repair (feed-disc
 - Dashboard /feeds + /clients?tab=feeds: URLs clickable, dual-URL displayed, friendly source_name
 
 **Publishing pipeline:**
-- All 4 clients publishing on legacy R6 path (verified via 72h `m.post_publish` lookback)
+- All 4 clients publishing on legacy R6 path (16 posts in last 24h)
 - CFW + Invegent flipped to mode=auto + r6=true yesterday (legacy publisher healthy producing posts)
 - NDIS-Yarns + Property Pulse: continuing as before
 - R6 still paused on slot-driven path — Gate B observation continues
+- Slot-driven shadow: 56 forward slots, 71 historical filled, 3 failed (exceeded_recovery_attempts — bounded by design)
 
 **Registry coverage:**
-- k.table_registry: 100% (200/200 ICE tables documented)
-- k.column_registry: c+f at 11.7% (79/674); other schemas pre-existing coverage unchanged
-- k.refresh_table_registry + k.refresh_column_registry now write `PENDING_DOCUMENTATION` sentinel for new objects (was `'TODO: ...'` and NULL respectively)
+- k.table_registry: **100% (200/200 ICE tables documented)** — all 7 schemas at 100%
+- k.column_registry c+f: **20.2% (136/674)** — c at 22.3%, f at 14.9%
+- k.refresh_table_registry + k.refresh_column_registry write `PENDING_DOCUMENTATION` sentinel for new objects
+- 6 LOW-confidence column rows deferred across 3 followup files (awaiting joint operator+chat session)
+- 7 pure-ARRAY columns deferred to Phase D mop-up (missed by P3 regex)
 
 **New utilities:**
 - `k.fn_check_migration_naming_discipline()` — returns same-name-different-SQL violations. Currently returns 1 row (the historical `stage_12_053` violation) — accepted as historical per F-003 closure.
@@ -99,7 +123,8 @@ Two distinct workstreams ran today. Morning was infrastructure repair (feed-disc
 - `f.feed_discovery_seed` table — auto-link trigger lives here; don't add competing triggers
 - Migration 005's wrapper of `create_feed_source_rss` (5-param) — production discovery EF depends on it
 - The historical F-003 violation (`stage_12_053` applied twice) — accept as historical; future audit cycles close as `closed-redundant` referencing F-003 closure
-- The 4 LOW-confidence column rows in `docs/audit/decisions/f002_p1_low_confidence_followup.md` — awaiting joint operator+chat session, do not auto-write purposes
+- The 6 LOW-confidence column rows in `docs/audit/decisions/f002_p*_low_confidence_followup.md` — awaiting joint operator+chat session, do not auto-write purposes
+- The 7 ARRAY columns in `docs/audit/decisions/f002_phase_d_missing_array_columns.md` — small mop-up batch in a future session, not blocking
 
 ---
 
@@ -107,16 +132,15 @@ Two distinct workstreams ran today. Morning was infrastructure repair (feed-disc
 
 ### Required
 
-1. **Gate B Day 2 obs** (~10 min) — same checks as Day 1. Cost trend, fill recovery rate, no new criticals beyond acknowledged 32, ai_job failure rate <5%.
-2. **CC Phase B output review** — CC is producing P2 proposals + draft migration. When delivered, follow the Phase A pattern: ChatGPT reviews proposals → corrections applied via Supabase MCP.
-3. **After P2 applies, send CC Phase C prompt** — P3 = JSONB configs, same V1–V8 cycle.
-4. **F-002 final closure** — once P3 applies, change finding from `closed-action-pending` to `closed-action-taken`.
+1. **Gate B Day 2 obs** (~10 min) — same checks as Day 1. Cost trend, fill recovery rate, ai_job failure rate <5%. Surface the 3 `exceeded_recovery_attempts` slots: PP Instagram (today 02:00 UTC), PP YouTube (yesterday), CFW LinkedIn (yesterday).
+2. **CC Phase C final report file** — was the next CC step after Phase C apply per the original F-002 brief. CC will produce a one-pager summarising the 3-phase closure when prompted.
+3. **Branch hygiene sweep** — Invegent-content-engine has 5 non-main branches (feature/discovery-stage-1.1, feature/slot-driven-v3-build, fix/m8/m11/q2). invegent-dashboard has 6 non-main (feature/discovery-stage-1.1, fix/cfw-schedule, fix/m5/m7/m9, fix/q2). invegent-portal has 1 (fix/m6). Most likely already-merged via squash; confirm + delete.
 
 ### Backlog from today
 
-- 4 LOW-confidence column followups (`docs/audit/decisions/f002_p1_low_confidence_followup.md`) — joint session to write purposes manually
+- 6 LOW-confidence column followups across 3 markdown files — joint operator+chat session to write purposes manually
+- 7 ARRAY columns Phase D mop-up — small CC brief, low priority
 - Stage 1.2 brief design — likely merges into Stage 2.2 scope per D180
-- Branch sweep — invegent-dashboard (7 stale branches: feature/discovery-stage-1.1 + 6 fix/* branches)
 
 ### Parallel pre-sales work (any time)
 
@@ -127,7 +151,7 @@ Two distinct workstreams ran today. Morning was infrastructure repair (feed-disc
 
 ### Stage 2.3 trigger condition
 
-If posts don't flow for CFW or Invegent within 48h of yesterday's mode=auto flip (so by ~end of Wed 29 Apr), Stage 2.3 (slot outcome resolver) jumps the queue to give us reason codes per missed slot. Current state: legacy publisher IS producing posts for both, so trigger appears NOT activated.
+If posts don't flow for CFW or Invegent within 48h of yesterday's mode=auto flip (so by ~end of Wed 29 Apr), Stage 2.3 (slot outcome resolver) jumps the queue. Current state at close: legacy publisher IS producing posts (16 in last 24h), so trigger appears NOT activated.
 
 ### Gate B exit
 
@@ -141,7 +165,7 @@ If posts don't flow for CFW or Invegent within 48h of yesterday's mode=auto flip
 
 **Invegent-content-engine — `main`:**
 
-Morning:
+Morning (10 commits):
 - `5c302f5` docs(briefs): Brief A — feeds tab discovery context
 - `95abfa30` fix(feed-discovery): migration 005, 5-param overload
 - `7834d3a` feat(discovery): migration 006, auto-link client-scoped seeds + backfill
@@ -151,7 +175,7 @@ Morning:
 - `023893b` docs(decisions): D180
 - `47ad2eb`, `02574c5` doc syncs
 
-Afternoon:
+Afternoon (~15 commits):
 - `cbfabed` migration 009 — f_url_to_friendly_name + backfill
 - `a222cbf` docs(briefs): Brief 2 — feeds tab clickability + dual-URL
 - `b900357` Brief 2 result
@@ -169,7 +193,15 @@ Afternoon:
 - `47c63d7` (CC) F-002 Phase A draft proposals + draft migration
 - `27ff3b3` audit slice 1: PENDING_DOCUMENTATION sentinel + F-003 detector + role update
 - `4e12cab` F-002 Phase A applied (corrected, 79 updates) + supersession marker + LOW followup
-- THIS COMMIT — sync state + decisions log D181 + run file F-002 addendum
+- `352f721` sync state + decisions log D181 + run file F-002 addendum (Phase A only)
+
+Evening (4 commits):
+- `c670b38` (CC) F-002 Phase B draft proposals + draft migration
+- `0299c9a` F-002 Phase B applied (corrected, 30 updates) + supersession marker + Phase B LOW followup
+- `3f684bb` run file F-002 Phase B addendum + Lesson #38
+- `609ad5c` (CC) F-002 Phase C draft proposals + draft migration
+- `0520b53` F-002 Phase C applied (corrected, 27 updates) + supersession marker + Phase C LOW followup + Phase D missing-ARRAY note + run file Phase C addendum + Summary updated (cycle 1 complete)
+- THIS COMMIT — sync state final reconciliation
 
 **invegent-dashboard — `main`:**
 
@@ -183,16 +215,22 @@ Morning (Brief A):
 Afternoon (Brief 2):
 - `81f1c1b`, `eca8b80` Brief 2 dashboard commits
 
-**Migrations applied today (11 total):**
+(no evening commits — audit work was content-engine only)
+
+**Migrations applied today (13 total):**
 
 Morning (4): 005, 006, 007, 008
 
-Afternoon (7):
+Afternoon (5):
 - 009 (f_url_to_friendly_name + backfill)
 - F-001 Phase B table backfill (31 tables, version 20260428040000)
 - F-001 follow-up older table backfill (25 tables, version 20260428043000)
 - audit slice 1 (PENDING_DOCUMENTATION sentinel + naming discipline detector, version 20260428054222)
 - F-002 Phase A corrected (79 column purposes, version 20260428055331)
+
+Evening (2):
+- F-002 Phase B corrected (30 column purposes, version 20260428064115)
+- F-002 Phase C corrected (27 column purposes, version 20260428080943)
 
 **Production state changes:**
 
@@ -201,8 +239,8 @@ Afternoon (7):
 - Feed source naming corrected (8 rows renamed from `'client-onboarding'` to seed_value)
 - Dashboard /feeds + /clients?tab=feeds now show URLs and discovery context
 - k.table_registry: 100% coverage (200/200 ICE tables)
-- k.column_registry: c+f schemas at 11.7% (79/674)
-- Audit loop infrastructure live (3 findings registered, all closed)
+- k.column_registry c+f schemas: 20.2% (136/674) — was 0% start of day
+- Audit loop infrastructure live (3 findings registered, all closed action-taken)
 - New rule for k.refresh_*: PENDING_DOCUMENTATION sentinel for new objects
 - New utility function: `k.fn_check_migration_naming_discipline()`
 
@@ -210,37 +248,41 @@ Afternoon (7):
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-Two-shift day. Morning fixed a broken cron and locked an architecture decision (D180). Afternoon stood up an audit loop end-to-end and produced its first cycle of findings, all closed same session. Three new operating lessons captured (#35, #36, #37).
+Three-shift day. Morning fixed a broken cron and locked an architecture decision (D180). Afternoon stood up an audit loop end-to-end and produced its first cycle of findings, with all 3 closed same session and Phase A of F-002 applied. Evening completed F-002 with Phase B and Phase C, closing out audit cycle 1 entirely within one day.
 
-**The pattern that worked:**
+**The pattern that worked across 3 phases:**
 
-Both shifts followed the same shape: chat lane runs sequentially (diagnostics → migrations → architecture decisions → docs), CC lane runs in parallel on briefs that don't need step-locking. Worked twice today (Brief A morning, Brief 2 afternoon). Audit closure and slice 1 prevention were done by chat alone (no CC) since the work was small migrations + role definition writing.
+CC drafts proposals + migration → chat sanity-checks against live DB (Phase C revealed the value of this layer) → ChatGPT reviews proposals (READ-ONLY) → chat applies corrected version via Supabase MCP. Caught distinct safety issues at each phase:
+- Phase A: 5 issues (LOW-row discipline, consent semantics, transient state, code-path overstatement)
+- Phase B: 14 issues (external/stale platform claims, precedence assertions, unverified arithmetic, code-path claims, interpretation in column purposes)
+- Phase C: 8 issues (3 from chat sanity catching CC's single-row JSONB sampling errors + 4 from ChatGPT review catching code-path / element-shape / inference issues)
 
-**The ChatGPT review pattern that emerged:**
-
-F-002 Phase A demonstrated a third lane: CC drafts proposals + migration → ChatGPT reviews proposals (READ-ONLY) → chat applies corrected version via Supabase MCP. Caught 5 real safety issues in CC's draft (LOW rows in migration; consent semantics; transient state; pipeline-specificity). This is now a reusable pattern for any registry-data documentation pass where wording precision matters — Lesson #37.
+**Lessons captured today:** #35 (new tables ship with docs at creation), #36 (migration names are permanent — _corrected suffix; F-003 detector), #37 (ChatGPT external review of CC proposals before apply), #38 (count-delta verification beats time-window because refresh bumps updated_at), #39 (chat sanity samples JSONB shape across rows; single-row sampling missed 3 of 4 P3 claims).
 
 **What to bring to next session:**
 
-- Gate B Day 2 obs (~10 min)
-- CC Phase B (P2) output review when delivered — same review + apply pattern as Phase A
-- After P2 applies, kick CC for Phase C (P3 = JSONB configs)
-- Pre-sales register parallel work if energy allows
+- Gate B Day 2 obs (~10 min) — surface the 3 exceeded_recovery_attempts slots
+- CC Phase C final report file when prompted (one-pager summary of 3-phase closure)
+- Branch hygiene sweep across 3 repos (12 non-main branches — most likely already-merged squashes)
+- Optional: parallel pre-sales work (A11b/A4/A18 if energy)
+- Optional: Phase D mop-up batch (7 ARRAY columns) — small CC brief
+- Optional: 6 LOW-row joint resolution session (across 3 followup files)
 
 **State at close (28 Apr Tuesday end of day):**
 
-- Phase B autonomous, Gate B Day 1 healthy
+- Phase B autonomous, Gate B Day 1 healthy, 3 bounded-recovery failures observed (not breaking)
 - Discovery EF working, auto-link trigger live, dual-URL display live
 - CFW pool 10 active feeds (was 2 morning of)
-- Audit loop infrastructure live, first cycle complete
-- F-002 Phase A applied (79 columns); P2 + P3 pending
-- 11 migrations applied today + 17+ commits across 2 repos
-- Anthropic cap $200, May 1 reset (3 days), today's burn ~$1.20
+- Audit loop infrastructure live, **first cycle COMPLETE end-to-end**
+- F-002 closed-action-taken (P1 + P2 + P3 all applied; c+f coverage 0% → 20.2%)
+- 13 migrations applied today + 22+ commits across 2 repos
+- Anthropic cap $200, May 1 reset (3 days), evening burn modest (audit work was DB-only)
+- 5 lessons captured (#35–#39)
 
-**Realistic ambition for next session:** light. Wed 29 Apr is a check-in day: Gate B Day 2 obs + review CC's P2 output + kick P3 if clean.
+**Realistic ambition for next session:** light. Wed 29 Apr is a check-in day: Gate B Day 2 obs + branch hygiene + optional follow-ups.
 
 ---
 
 ## END OF TUESDAY 28 APR FULL DAY SESSION
 
-Next session: Gate B Day 2 obs + CC P2 output review + P3 prompt + Stage 1.2 design (light).
+Next session: Gate B Day 2 obs + branch hygiene + CC final report file + (optional) Phase D mop-up + (optional) LOW-row joint session.
