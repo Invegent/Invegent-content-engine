@@ -1,3 +1,19 @@
+> **STATUS UPDATE 2026-04-28 evening (4th shift): RESOLVED via joint operator+chat session.**
+>
+> Migration applied: `20260428100257_audit_f002_low_confidence_joint_resolution`.
+>
+> **Resolution:**
+> - `c.client_match_weights.quality_weight` → **B** — quality is a separate scoring dimension, not freshness. The R5 matching spec uses `fitness / quality / recency` as the three weights.
+>
+> **Side-effects of this decision (applied in same migration):**
+> - Updated `c.client_match_weights` table_purpose from "vertical fit / recency / freshness" to "fitness / quality / recency" — corrects mismatch with R5 matching spec
+> - Tightened `fitness_weight` purpose: removed the "fitness/vertical-fit" conflation
+> - Tightened `recency_weight` purpose: replaced "bundler signal scoring" reference with "R5 matching layer" for consistency
+>
+> File kept as historical record per operator instruction. Original deferral content below.
+>
+> ---
+
 # F-002 Phase B — LOW-confidence column followup
 
 **Status:** Backlog — awaiting joint operator + chat session

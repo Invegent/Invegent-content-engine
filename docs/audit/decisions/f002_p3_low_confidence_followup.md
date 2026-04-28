@@ -1,3 +1,18 @@
+> **STATUS UPDATE 2026-04-28 evening (4th shift): RESOLVED via joint operator+chat session — SPLIT decision** for the 3 payload_hash columns.
+>
+> Migration applied: `20260428100257_audit_f002_low_confidence_joint_resolution`.
+>
+> **Resolutions (SPLIT):**
+> - `f.raw_content_item.payload_hash` → **DEPRECATED.** DEFERRED until 2027-04-30, schedule column-drop in future schema cleanup pass. Rationale: 0 of 2,124+ rows populated; ingest-worker never implemented payload-hash dedup; deduplication is achieved via `url_hash` and downstream `content_hash` on `f.canonical_content_body`.
+> - `f.raw_metric_point.payload_hash` → **KEEP** as designed-but-unimplemented. Tightened existing purpose to add "currently unwritten — designed but not implemented; reassess when analytics ingestion activates and Phase 2.1 insights-worker begins populating raw_metric_point". Empty table (0 rows); reassess at Phase 2.1 activation.
+> - `f.raw_timeseries_point.payload_hash` → **KEEP** as designed-but-unimplemented. Same treatment as raw_metric_point. Empty table; reassess when time-series infrastructure activates.
+>
+> **Why split:** raw_content_item has 2,124+ rows that demonstrate the dedup design wasn't implemented. raw_metric_point and raw_timeseries_point are empty future analytics infrastructure where the dedup design might still be implemented when the tables go live.
+>
+> File kept as historical record of the split decision per operator instruction. Original deferral content below.
+>
+> ---
+
 # F-002 Phase C — LOW-confidence column followup
 
 **Status:** Backlog — awaiting joint operator + chat session

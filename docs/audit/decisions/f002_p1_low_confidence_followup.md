@@ -1,3 +1,17 @@
+> **STATUS UPDATE 2026-04-28 evening (4th shift): RESOLVED via joint operator+chat session.**
+>
+> Migration applied: `20260428100257_audit_f002_low_confidence_joint_resolution`.
+>
+> **Resolutions:**
+> - `c.brand_avatar.avatar_gen_status` → A — reserved-infra framing (HeyGen lifecycle, all rows currently `'empty'`)
+> - `c.client_avatar_profile.avatar_status` → B — DEFERRED until 2026-10-31 (state machine pending first video-content client)
+> - `c.client_brand_asset.asset_type` → A — reserved-infra framing (planned asset-management UI; not currently consumed by image-worker)
+> - `f.raw_metric_point.entity_type` → A — reserved-infra framing (Phase 2.1 insights-worker activation)
+>
+> File kept as historical record per operator instruction ("do not remove"). Original deferral content below.
+>
+> ---
+
 # F-002 Phase A — LOW-confidence column followup
 
 **Status:** Backlog — awaiting joint operator + chat session
