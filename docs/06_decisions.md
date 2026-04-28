@@ -193,6 +193,77 @@ Stage 11 brief (separate, later) includes:
 
 ---
 
+## D180 — Discovery Decides Assignment, Intelligence Decides Retention
+**Date:** 28 April 2026 morning | **Status:** ✅ APPLIED via migration `006`, trigger `tg_auto_link_seed_to_client` (production)
+
+### The problem this decides
+
+Migration `005` (this morning's hotfix to the 5-param `create_feed_source_rss` overload) unblocked the feed-discovery EF, but PK noticed a follow-on gap: when a client-scoped seed (e.g. a CFW keyword "paediatric occupational therapy") was provisioned into `f.feed_source`, the EF did NOT create a corresponding row in `c.client_source` linking the new feed to the client that asked for it.
+
+Result: 8 newly-discovered CFW feeds existed but were not surfaced to CFW. They sat in the dashboard's "Unassigned — N feeds" bucket, requiring manual operator review and a click-through "Assign" action per feed before content from those feeds would surface in CFW drafts.
+
+Two architectures considered:
+
+**Option A — Quarantine-and-review (status quo before migration 006):** Every newly-discovered feed lands in the unassigned bucket. Operator reviews each one (URL, sample content) and clicks Assign to link it to the originally-requesting client. The unassigned bucket is the quality gate.
+
+**Option B — Auto-link-on-provisioning:** When a `f.feed_discovery_seed` row transitions to `status='provisioned'` and `client_id` is non-null, automatically insert into `c.client_source` linking the feed to the client. Quality control happens downstream via `feed-intelligence` (deployed v1.0.0) which scores all active feeds weekly and writes recommendations to `m.agent_recommendations` (`type='deprecate'/'review'/'watch'`).
+
+### The decision
+
+**Option B.** A trigger `tg_auto_link_seed_to_client` on `f.feed_discovery_seed` AFTER UPDATE OF status, feed_source_id auto-links when:
+- New status = 'provisioned'
+- `client_id IS NOT NULL` (operator-exploration seeds with NULL client_id are NOT auto-linked — they continue to land in the unassigned bucket as before)
+- `feed_source_id IS NOT NULL`
+
+Idempotent via `ON CONFLICT (client_id, source_id) DO NOTHING`. Backfill applied to the 8 existing CFW provisioned seeds; CFW pool went from 2 → 10 active feeds.
+
+### Why Option B over Option A
+
+Three reasons, articulated by PK in the design call:
+
+1. **The keyword belongs to the client. The feed belongs to the client.** When PK enters "paediatric occupational therapy" via the per-client onboarding form (Stage 1.1), the intent is unambiguous: I want this content on CFW. Forcing manual re-confirmation of that intent at the assignment step is friction without value.
+
+2. **Quality control already has a dedicated layer.** `feed-intelligence` is the function for "is this feed producing rubbish or not". It runs weekly, applies precise rules (≥70% give-up over 14d → deprecate; zero-successes over 30d → review; ≥50% give-up → watch), and writes recommendations the operator can act on. Putting a manual review gate in front of the assignment step is duplicating work the intelligence layer is built to do better.
+
+3. **The unassigned bucket retains a real purpose.** It's NOT becoming dead UI. It now surfaces only:
+   - Operator-exploration seeds (`client_id IS NULL` — for vertical research without a specific client in mind)
+   - Orphaned feeds (where an operator removed all client assignments but the underlying `f.feed_source` row stays alive — these need attention because ingest continues, content piles up unused, and RSS.app quota is consumed)
+   - Operator-added feeds via the global "Add feed" modal that haven't been assigned yet
+
+The bucket is valuable specifically as an audit view of "what's running but unused", not as a pre-assignment quality gate.
+
+### What this requires
+
+- Trigger fires on `f.feed_discovery_seed` AFTER UPDATE OF status, feed_source_id
+- Trigger function uses `SECURITY DEFINER` (writes to `c.client_source`)
+- Default values for new links: `is_enabled=TRUE`, `weight=1.0`, `notes='auto-linked by feed-discovery'`
+- `ON CONFLICT (client_id, source_id) DO NOTHING` — idempotent on re-processing
+
+### What this does NOT change
+
+- `f.feed_discovery_seed` rows with `client_id IS NULL` (operator-exploration) are NOT auto-linked. They still go through the manual Assign flow. Brief A's Feeds-tab UX upgrade (commits `27e83f3` / `f9aac5e` / `a3f392b`) makes that flow easier by surfacing the seed_value, the URL, and an "Auto-discovered" badge per row.
+- `feed-intelligence` retention logic is unchanged. It already operates on every active feed regardless of how it was added.
+- The legacy "Add feed" modal (operator-added feeds) is untouched. Operator-added feeds still go through the existing "pick clients to assign to" step in that modal.
+
+### Related decisions
+
+- **D170** — MCP-applied migrations (D180 migration 006 follows this pattern; chat applied via Supabase MCP `apply_migration`, then committed file to GitHub)
+- **D171** — Pre-flight as gate. Migration 006 pre-flight queries verified the existing `c.client_source` weight/is_enabled defaults and the trigger filter conditions before authoring the SQL.
+- **Brief A (commit `5c302f5`)** — Feeds-tab UX upgrade. Made the unassigned bucket genuinely useful by surfacing seed_value, URL, and origin badges. Brief A and D180 are complementary: D180 reduces what lands in the unassigned bucket; Brief A makes what does land there easier to triage.
+- **D175** — Versioned reference table pattern. D180's trigger on `f.feed_discovery_seed` does not touch versioned ref data, but uses the same MCP-apply migrations pattern.
+
+### Latent bugs uncovered en route to D180
+
+Migration 005 + 006 + 007 + 008 work this morning surfaced three side findings, captured here for future cleanup but not blocking:
+
+1. **Overload B of `create_feed_source_rss`** (6-param) has a latent NOT NULL bug — its INSERT omits `output_kind` and `refresh_cadence` (both NOT NULL columns with no defaults). It has never executed successfully against PostgREST because the schema-cache miss prevented any call from reaching it. Recommend dropping or fixing in a follow-up. Migration 005 deliberately did NOT touch it (additive-only, lowest-risk hotfix).
+
+2. **GitHub source vs deployed EF drift** — `feed-discovery/index.ts` on `main` built config jsonb with key `url:`, but the deployed EF v1.1.0 actually wrote `feed_url:` (the convention used by every other `rss_app` row in `f.feed_source`, and the key the ingest pipeline reads). If anyone had run `supabase functions deploy feed-discovery` from main without realising, the EF would have started writing `url:` and silently broken ingest. Source aligned in commit `d1b6469` (v1.2.0). Deployed EF unchanged — already correct.
+
+3. **Migration 005's wrapper dedupe also read the wrong key** — fixed in migration 008 (`2f261a4`) by COALESCE on both `feed_url` and `url` at both input and lookup.
+
+---
+
 ## Decisions Pending
 
 | Decision | Status | Gate |
@@ -214,7 +285,7 @@ Stage 11 brief (separate, later) includes:
 | **D166 — Router sequencing reversal** | ✅ APPLIED 22 Apr evening — superseded by slot-driven build (D170+) | — |
 | **D167 — Router MVP shadow infrastructure** | ✅ APPLIED 22 Apr evening — preserved as shadow infrastructure; slot-driven Phase D decommissions | Phase D Stage 19 |
 | **D168 — ID004 sentinel** | 🔲 Backlog A-item | Spec defined; implementation deferred |
-| **D170 — MCP-applied migrations pattern** | ✅ LOCKED through Phase A+B7-9; applies for all 19 stages | — |
+| **D170 — MCP-applied migrations pattern** | ✅ LOCKED through Phase A+B7-9 + concrete-pipeline track; applies for all 19 stages | — |
 | **D171 — Pre-flight schema verification per stage** | ✅ LOCKED; sharpened by Lesson #32 (query every directly-touched table) | — |
 | **D172 — Architectural revision authority** | ✅ LOCKED; R-A through R-E applied in Phase A | — |
 | **D173 — Two-trigger chain pattern** | ✅ APPLIED Stage 3 | — |
@@ -224,19 +295,24 @@ Stage 11 brief (separate, later) includes:
 | **D177 — fitness_score_max scale 0..100** | ✅ APPLIED Stage 7.032 | Apply at every fitness consumer |
 | **D178 — ai_job.slot_id FK = ON DELETE CASCADE** | ✅ APPLIED Stage 9.039 | — |
 | **D179 — Stage 10/11 ordering: Option B** | ✅ LOCKED for Stage 10 brief | Stage 10 next session |
+| **D180 — Discovery decides assignment, intelligence decides retention** | ✅ APPLIED via migration 006 trigger; backfill ran for 8 CFW seeds | Apply to any future discovery channel (YouTube channel discovery, email-newsletter discovery, etc.) |
 | **Slot-driven Phase A** | ✅ COMPLETE 26 Apr morning | — |
 | **Slot-driven Phase B Stages 7-9** | ✅ COMPLETE 26 Apr afternoon–evening | — |
-| **Slot-driven Phase B Stages 10-11 + Gate B** | 🔲 NEXT | Stage 10 brief next session (D179 Option B) |
-| **Slot-driven Phase C — Cutover (Stages 12-18)** | 🔲 After Gate B | 5-7 days shadow observation post-Phase B |
+| **Slot-driven Phase B Stages 10-12** | ✅ COMPLETE 27 Apr | — |
+| **Gate B observation** | 🔄 IN PROGRESS — Day 1 healthy. Earliest exit Sat 2 May | 5-7 days post-Stage 12 |
+| **Concrete-pipeline track** | 🔄 IN PROGRESS — Discovery Stage 1.1 ✅, Publisher Stage 2.1 ✅, Brief A ✅. Stages 1.2-1.5 + 2.2-2.5 pending | Parallel to Gate B |
+| **Slot-driven Phase C — Cutover (Stages 12-18)** | 🔲 After Gate B exit | Gate B exit |
 | **Slot-driven Phase D Stage 19 decommission R6** | 🔲 After Phase C | All client-platforms cut over |
 | **Slot-driven Phase E — Evergreen seeding** | 🔲 Parallel | Prioritise Invegent verticals per D174 |
+| **Overload B of `create_feed_source_rss` cleanup** | 🔲 Backlog | Drop or fix in follow-up; latent NOT NULL bug uncovered by D180 work |
+| **Feeds-tab URL clickability follow-up** | 🔲 Next CC brief | Captured 28 Apr — assigned-bucket URL clickable + dual-URL display (rss.app feed URL + original site URL) for URL-type seeds |
 | Inbox anomaly monitor | 🔲 Post-sprint | Separate brief TBW |
 | Phase 2.1 — Insights-worker | 🔲 Next major build | Meta Standard Access |
 | Phase 2.6 — Proof dashboard | 🔲 After Phase 2.1 | Engagement data |
 | Solicitor engagement | 🔲 Parked per D147 + D156 refinement | First pilot revenue OR second pilot signed |
 | Meta App Review | ⏳ In Review | Contact dev support if stuck after 27 Apr |
 | CFW + Invegent content prompts | 🔲 A11b pre-sales | PK prompt-writing session Fri 24 Apr |
-| TBC subscription costs | 🔲 A6 pre-sales | Invoice check |
+| TBC subscription costs | 🔲 A6 pre-sales | PK said 28 Apr morning: deferred until product evaluation + outside conversations complete |
 | CFW profession fix | 🔲 Immediate | Change in Profile |
 | Auto-approver target pass rate | 🔲 C1 | Single PK decision |
 | Monitoring items A20–A22 (D155 follow-on) | 🔲 Sprint items | Sprint priority per D162 |
@@ -252,3 +328,4 @@ Stage 11 brief (separate, later) includes:
 | **`instagram-publisher` exec_sql + raw interpolation** | 🔲 Folds into slot-driven Phase B Stage 11 ai-worker refactor | Stage 11 |
 | **PP Schedule Facebook 6/5 over-tier-limit** | 🔲 Sprint item TBD | Surfaced in M5 verification — investigate save-side validation |
 | **Stage 12+ refinement: try_urgent_breaking_fills per-platform variance** | 🔲 After Gate B | Currently picks same top breaking item across all platforms for a client; fill function's LD15 dedup masks it. Refine to pick different item per platform within client. |
+| **Branch sweep — invegent-dashboard (7 stale branches)** | 🔲 Next session | feature/discovery-stage-1.1 + 6 fix/* branches; cleanup with `git push origin --delete` |
