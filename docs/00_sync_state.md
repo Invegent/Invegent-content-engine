@@ -1,192 +1,209 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-27 Monday late evening — **Stage 2.1 SHIPPED, publishing pipeline turned on for CFW + Invegent**
+> Last written: 2026-04-28 Tuesday morning — **Discovery EF unblocked, CFW pool 2→10, Brief A shipped, Day 1 of Gate B healthy**
 > Written by: PK + Claude session sync
 
 ---
 
-## 🟢 27 APR MONDAY LATE EVENING — STAGE 2.1 SHIPPED + FULL FLEET MODE=AUTO
+## 🟢 28 APR TUESDAY MORNING — DISCOVERY UNBLOCKED + AUTO-LINK ARCHITECTURE LOCKED + BRIEF A SHIPPED
 
-### What changed in the final hour
+### What this session did
 
-PK accelerated through Stage 2.1 V8 in a single sitting and did something the brief did not anticipate: rather than test-and-revert, PK used the new toggles to **deliberately enable mode=auto + r6_enabled=true + publish_enabled=true + auto_approve_enabled=true across all 13 client × platform rows in production**.
-
-CFW Facebook, CFW LinkedIn, CFW Instagram, Invegent Facebook, Invegent Instagram, Invegent LinkedIn (last one initially missed and corrected in browser) all now have a complete publishing config matching NDIS-Yarns and Property Pulse. The 4 mode-NULL rows + 5 r6_enabled-false rows are gone. Every change captured in `c.client_publish_profile_audit` with `changed_by='dashboard'`.
-
-This is a meaningful operational state change beyond what Stage 2.1 was specified to deliver, and it is exactly what we wanted from Section 2 — PK regained control through the UI without a single SQL UPDATE.
+A 3-hour morning session that turned a broken overnight discovery cron into a thicker CFW pool, locked in an architectural decision about discovery quality control, and shipped one CC brief end-to-end while doing it.
 
 ### Critical state right now
 
-**Track 1 — Gate B observation (autonomous, 5-7 days):**
+**Track 1 — Gate B observation (Day 1, healthy):**
 
-1. Phase B Stages 10-12 COMPLETE (53 migrations on `feature/slot-driven-v3-build`, ai-worker v2.11.0).
-2. Phase A still autonomous (6 crons, 1,694+ pool).
-3. Phase B running in shadow mode (5 crons firing, 35+ shadow drafts, 2 content-quality failures).
-4. R6 paused; FB+LI legacy publishing healthy.
-5. Earliest Gate B exit: Sat 2 May.
+- Phase B Stages 10-12 still running autonomously in shadow mode
+- 70 slots filled, 52 future, 2 failed (both shadow, content-quality issues)
+- Pool: 295-304 active rows per NDIS/property vertical, 110 per Invegent vertical
+- 95 successful fills last 24h, 25 stuck-job recoveries (auto-recovery cron working), 0 threshold-relaxed fills (no quality compromises)
+- Cost: $1.20 USD shadow burn last 24h (~$36/mo run rate, well under $30 Stop 1)
+- 32 pre-Gate-B critical alerts acknowledged with audit trail (`pk-via-chat-pre-gate-b-cleanup`) so tomorrow's check starts from clean baseline
+- Earliest Gate B exit: Sat 2 May
 
-**Track 2 — Concrete-the-pipeline (Section 2 Stage 2.1 ✅ DONE):**
+**Track 2 — Concrete-pipeline (3 stages shipped today):**
 
-- **Section 1 — Discovery & Onboarding** ← Stage 1.1 ✅ DONE 27 Apr afternoon. 9 CFW seeds awaiting tonight's 8pm UTC firing (V7 tomorrow morning). Stages 1.2-1.5 pending.
-- **Section 2 — Publisher Observability** ← Charter committed; **Stage 2.1 ✅ SHIPPED 27 Apr evening**. Stages 2.2-2.5 pending.
+- **Section 1 — Discovery & Onboarding** ← Stage 1.1 ✅ (yesterday). Stage 1.2-1.5 still pending. **Brief A (Feeds-tab discovery context) ✅ SHIPPED today**.
+- **Section 2 — Publisher Observability** ← Stage 2.1 ✅ (yesterday). Stages 2.2-2.5 pending.
 
-### Today's Section 1 deltas (afternoon)
-
-| Item | Status |
-|---|---|
-| Discovery Stage 1.1 brief | ✅ commit (chat) |
-| Stage 1.1 migrations 001 + 002 | ✅ applied via Supabase MCP, V1-V6 passed |
-| Stage 1.1 frontend (Form + List + clients/page wire-up) | ✅ commits `afc1727` (001), `741f3bc` (002), `57e7da9` (frontend), `c32aaf9` (component split) |
-| Stage 1.1 V8 browser test | ✅ PK confirmed in Vercel preview |
-| Stage 1.1 merge to main | ✅ both repos merged |
-| 9 CFW seeds in `f.feed_discovery_seed` | ✅ status=pending, vertical=ndis, awaiting tonight's 8pm UTC firing |
-
-### Today's Section 2 deltas (evening)
+### Today's morning deltas
 
 | Item | Status |
 |---|---|
-| Publishing audit (5 root causes identified) | ✅ chat |
-| CFW feed cleanup (24 inherited NDIS-Yarns assignments removed) | ✅ via Supabase MCP — only 2 OT-aligned feeds remain |
-| Section 2 charter committed | ✅ `0ba0b03f` |
-| Stage 2.1 brief committed | ✅ `32e7fab7` |
-| Stage 2.1 migrations 003 + 004 applied | ✅ V1 passed |
-| Stage 2.1 V2-V7 RPC verification | ✅ all passed |
-| Stage 2.1 frontend (server action + toggle component + Overview wire-up) | ✅ on `feature/publisher-stage-2.1` |
-| Stage 2.1 V8 browser test | ✅ PK ran through 13 rows, audit captured every click |
-| Stage 2.1 merge to main | ✅ both repos merged: content-engine `cee982a..f10c18b`, dashboard `c32aaf9..fb23a09` |
-| Feature branches deleted (local + remote) | ✅ |
-| **Production state change**: 13 rows now mode=auto + r6_enabled=true + publish_enabled=true + auto_approve_enabled=true | ✅ deliberate via UI |
+| **V7 — Discovery cron pickup check** | ❌ 9 of 9 seeds failed at 06:00 UTC |
+| **Diagnosis: 8 of 9 = function-signature mismatch + latent NOT NULL bug** | ✅ via Supabase MCP pre-flight queries |
+| **Migration 005 — 5-param overload of `create_feed_source_rss`** | ✅ APPLIED + committed `95abfa30` |
+| **Manual EF retrigger via vault credentials** | ✅ 8 of 9 seeds provisioned (1 legit RSS.app "Feed not found" remains) |
+| **Side finding 1: Overload B (6-param) latent NOT NULL bug** | ⚠️ Logged, deferred |
+| **Side finding 2: GitHub source vs deployed EF drift (`url:` vs `feed_url:`)** | ✅ Source aligned `d1b6469` (EF unchanged — already correct) |
+| **Side finding 3: Migration 005 dedupe used wrong key** | ✅ Fixed in migration 008 (`2f261a4`) |
+| **Architectural decision call: auto-link vs review queue** | ✅ Auto-link (D180) |
+| **Migration 006 — `tg_auto_link_seed_to_client` trigger + backfill** | ✅ APPLIED + committed `7834d3a` |
+| **CFW pool: 2 → 10 active feeds** | ✅ via backfill |
+| **Migration 007 — seed label uses seed_value (not hardcoded `'client-onboarding'`)** | ✅ APPLIED + committed `e8a79a8` |
+| **Brief A — Feeds tab discovery context + unassigned visibility** | ✅ Written, committed `5c302f5` |
+| **CC executes Brief A — 4.1 + 4.2 + 4.3 + 4.4** | ✅ commits `27e83f3`, `f9aac5e`, `a3f392b` to invegent-dashboard main |
+| **Brief A V8 production browser test (dashboard.invegent.com/feeds)** | ✅ PK confirmed |
+| **Brief A result file** | ✅ CC writing now |
+| **Daily Gate B observation sweep** | ✅ Day 1 healthy |
+| **32 pre-Gate-B critical alerts acknowledged** | ✅ |
+| **D180 added to decisions log** | ✅ commit `023893b` |
 
-### Stage 1.1 architectural addition
+### Architecture decision — D180
 
-`f.feed_discovery_seed` now has `client_id uuid` column (FK to `c.client`, ON DELETE SET NULL, partial index `ix_feed_discovery_seed_client_id WHERE client_id IS NOT NULL`). Existing 9 seeds remain with NULL client_id (operator-submitted). New seeds carry the client_id. RPC `public.add_client_discovery_seeds(p_client_id, p_keywords, p_example_urls)` derives `vertical_slug` from `c.client_content_scope.is_primary` + weight, falls back to `'general'`. Idempotent on `(client_id, lower(seed_value))` per type.
+**Discovery decides assignment, intelligence decides retention.**
 
-### Stage 2.1 architectural additions
+When `f.feed_discovery_seed.status` transitions to `'provisioned'` and `client_id IS NOT NULL`, trigger `tg_auto_link_seed_to_client` automatically inserts into `c.client_source` linking the new feed to the requesting client. Idempotent via `ON CONFLICT (client_id, source_id) DO NOTHING`.
 
-- **`c.client_publish_profile_audit`** table — append-only audit of every toggle change. Columns: `audit_id, client_id, platform, field, old_value::jsonb, new_value::jsonb, changed_by, changed_at`. Index on `(client_id, platform, changed_at DESC)`.
-- **`public.update_publish_profile_toggle(uuid, text, text, jsonb, text)`** RPC — `SECURITY DEFINER`, validates field against allowed set (`mode`, `publish_enabled`, `r6_enabled`, `auto_approve_enabled`), validates value type per field, updates row + writes audit row in same transaction. RPC enforces allowed mode values (`'auto'`, `'manual'`, `'staging'`, or NULL only) since DB has no CHECK constraint on `mode`.
-- **`PublishProfileToggles`** client component in invegent-dashboard. Mode 3-button group (Auto/Manual/Staging) + 3 boolean pill toggles (Publishing, R6 enabled, Auto-approve). Optimistic UI with rollback on RPC error. Lesson #33 destructuring throughout.
+Quality control deferred to `feed-intelligence` (deployed v1.0.0, runs weekly) — scores all active feeds, writes recommendations to `m.agent_recommendations` (`type='deprecate'/'review'/'watch'`).
 
-### Section 2 charter
+The unassigned bucket on the Feeds tab retains a real purpose:
+- Operator-exploration seeds (`client_id IS NULL`)
+- Orphaned feeds (operator unlinked all clients but underlying `f.feed_source` row stays alive)
+- Operator-added feeds via the global "Add feed" modal not yet assigned
 
-5 stages planned, ~16-20 hrs CC + several chat sessions:
+Bucket is now an audit view of "what's running but unused", not a pre-assignment quality gate.
 
-- **2.1** ✅ DONE — Per-platform toggles on Overview tab
-- **2.2** Assigned-but-disabled feed visibility on Feeds tab
-- **2.3** Slot outcome resolver function — reason codes per scheduled slot
-- **2.4** Schedule adherence view using 2.3
-- **2.5** YouTube root-cause drill-down + Instagram per-client surface
+### Production state — refreshed
 
-Section 2 done = no SQL needed to diagnose missed publishing, every slot resolves to a reason code visible in dashboard.
+**Feeds:**
+- 68 active feed sources visible on /feeds
+- CFW pool: 10 (was 2 before this morning)
+- Invegent pool: unchanged (no discovery seeds yet)
+- 9 NULL-client operator-exploration seeds remain in unassigned bucket
+- 4 non-rss_app rows still without URL (email_newsletter + youtube_channel, out of Brief A scope)
 
-### Publishing pipeline state — newly ENABLED for 4 of 4 clients
+**Brief A surfaced:**
+- COALESCE on `feed_url`/`url` config keys → 44 of 48 active feeds now resolve URL
+- LATERAL join to `f.feed_discovery_seed` → discovery_seed_value + discovery_client_name on every FeedRow
+- Unassigned bucket render upgrade: clickable URL, Auto-discovered badge, "for {client}" chip
+- `classifyOrigin(feed)` helper
 
-All 13 active client × platform rows now configured for autonomous publishing:
-
-| Client | Platforms with mode=auto + r6=true | Notes |
-|---|---|---|
-| **Care for Welfare** | facebook, linkedin, instagram (3) | NEW — was 0 of 3 in mode=auto until tonight |
-| **Invegent** | facebook, linkedin, instagram (3) | NEW — was 0 of 3 in mode=auto until tonight |
-| **NDIS-Yarns** | facebook, linkedin, instagram, youtube (4) | unchanged from prior state |
-| **Property Pulse** | facebook, linkedin, instagram, youtube (4) | unchanged from prior state |
-
-Whether posts actually start flowing for CFW + Invegent depends on the chain: discovery → ingest → bundler → ai-worker → auto-approve → queue → publisher. Tonight's 8pm UTC discovery cron is the next link to fire. V7 tomorrow morning surfaces whether RSS.app provisioned the 9 CFW seeds. Subsequent 24-48h of pipeline data tells us whether CFW + Invegent actually publish.
-
-If posts don't start flowing within 48h, **Stage 2.3 (slot outcome resolver) becomes urgent** — we need reason codes per missed slot to diagnose without another publishing audit session.
+**Publishing pipeline:**
+- All 4 clients publishing on legacy R6 path (verified via 72h `m.post_publish` lookback)
+- CFW: 1 FB + 1 LinkedIn post overnight (legacy publisher healthy)
+- Invegent: 1 FB + 1 LinkedIn post overnight (legacy publisher healthy)
+- NDIS-Yarns + Property Pulse: continuing as before
+- R6 still paused on slot-driven path — Gate B observation continues
 
 ---
 
 ## ⛔ DO NOT TOUCH NEXT SESSION
 
-(Phase B Gate B items unchanged.)
-
-Plus:
-
-- The 9 CFW seeds in `f.feed_discovery_seed` (`status='pending'`, awaiting tonight's 8pm UTC firing). V7 tomorrow morning checks for transitions.
-- The newly-enabled CFW + Invegent publishing rows (13 total in mode=auto + r6=true). Let the pipeline run, observe, fix via UI if anything misbehaves.
-- The `c.client_publish_profile_audit` table — append-only by design. Don't truncate, don't add triggers, don't reformat.
+- All Phase B Gate B items (unchanged from yesterday — Phase B autonomous)
+- The newly-enabled CFW + Invegent publishing config (13 client × platform rows)
+- The 8 newly-auto-linked CFW feeds in `c.client_source` (let bundler discover them naturally)
+- `f.feed_discovery_seed` table — auto-link trigger now lives on this; don't add competing triggers
+- Migration 005's wrapper of `create_feed_source_rss` (5-param) — production discovery EF depends on it
 
 ---
 
-## 🟡 NEXT SESSION (Tue 28 Apr)
+## 🟡 NEXT SESSION (Tue 28 Apr afternoon OR Wed 29 Apr)
 
-### Morning order of operations
+### Carryover from morning
 
-1. **V7 — Discovery cron pickup check** (~7am Sydney). Run from chat:
-```sql
-SELECT seed_value, status, feed_source_id IS NOT NULL AS has_feed, error_message
-FROM f.feed_discovery_seed
-WHERE client_id = '3eca32aa-e460-462f-a846-3f6ace6a3cae'::uuid
-ORDER BY created_at DESC;
-```
-Expect ≥1 of the 9 CFW seeds transitioned `pending → provisioned` (or `failed` with error_message). RSS.app may not provision every seed — that's expected and Stage 1.2 review-queue territory.
+1. **Daily Gate B observation check (~10 min)** — quick repeat of this morning's sweep. Watch for: cost trend (were last 24h sustained?), slot fill recovery rate stable, no new critical alerts beyond the acknowledged 32, ai_job failure rate stays <5%.
 
-2. **Stage 2.1 post-deploy reality check.** Did anything publish for CFW or Invegent overnight? If yes, the chain works end-to-end and we're in observe-mode. If no, run a quick diagnostic on which stage of the chain is the new blocker (likely: feed pool too thin → no relevant content → no draft → no queue item).
+2. **Stage 1.2 brief design** — operator-exploration seed handling. Now narrower scope after D180:
+   - The remaining unassigned bucket purpose: operator-exploration seeds (NULL client_id), orphaned feeds, operator-added feeds awaiting assignment
+   - Brief A Feeds-tab UX upgrade is already done — surfaces seed_value, URL, origin badges
+   - Stage 1.2 may not need to be its own stage anymore; consider merging into Stage 2.2 (assigned-but-disabled feed visibility) since both are Feeds-tab UX
 
-3. **Chat writes Stage 1.2 brief.** Based on what V7 shows.
-
-4. **Daily Gate B observation check (~10 min).** Pool health, evergreen ratio, slot confidence, recovery rate, ai_job failure trend, cost per draft.
+3. **Next CC brief — Feeds-tab URL clickability + dual-URL display**:
+   - Make assigned-bucket URL clickable (mirror unassigned `<a target="_blank">` pattern)
+   - For URL-type seeds, show BOTH the rss.app feed URL AND the original site URL the feed was generated from. Original site URL is in `f.feed_discovery_seed.seed_value` for URL seeds; for keyword seeds only rss.app URL exists.
+   - Operator-added rss_app feeds (not from discovery) — only have rss.app URL in current data; backfill via rss.app `/feeds/{id}` API to capture source URL would be nice-to-have.
+   - Keep brief small — single CC session.
 
 ### Parallel pre-sales work (any time)
 
-A11b content prompts × 18 rows, A6 subscription costs (genuinely 1-hour task), A4→A3 proof doc, A18 source-less EFs.
+- **A6 subscription costs** — DEFERRED per PK's 28 Apr morning call. PK wants to see the product working + have outside conversations before deciding.
+- A11b content prompts × 18 rows
+- A4→A3 proof doc
+- A18 source-less EFs audit
+
+### Stage 2.3 trigger condition
+
+If posts don't flow for CFW or Invegent within 48h **of yesterday's mode=auto flip** (so by ~end of Wed 29 Apr), Stage 2.3 (slot outcome resolver) jumps the queue to give us reason codes per missed slot. Current state: legacy publisher IS producing posts for CFW + Invegent, so this trigger appears NOT activated yet.
+
+### Gate B exit window
+
+- Earliest exit: Sat 2 May
+- Conditions: 5-7 days clean shadow data, no critical alerts (other than known acknowledged ones), cost stays under Stop 1 ($30/mo), ai_job failure rate <5%
+- If exit goes well: Phase C cutover (Stages 12-18) — production traffic shifts to slot-driven
 
 ---
 
-## TODAY'S FINAL COMMITS (27 APR LATE EVENING)
+## TODAY'S FINAL COMMITS (28 APR MORNING)
 
 **Invegent-content-engine — `main`:**
 
-- `0ba0b03f` — docs(briefs): Section 2 charter — Publisher Observability
-- `32e7fab7` — docs(briefs): Publisher Stage 2.1 — per-platform toggles on Overview
-- `cee982a` — docs(sync_state): Section 1 done, Section 2 charter, publishing audit findings
-- `f10c18b` — Stage 2.1 migrations 003 + 004 (audit table + toggle RPC)
-- THIS COMMIT — docs(sync_state): Stage 2.1 SHIPPED + full fleet enabled
+- `5c302f5` — docs(briefs): Brief A — feeds tab discovery context
+- `95abfa30` — fix(feed-discovery): migration 005, 5-param overload
+- `7834d3a` — feat(discovery): migration 006, auto-link client-scoped seeds + backfill
+- `e8a79a8` — fix(discovery): migration 007, seed label uses seed_value
+- `d1b6469` — fix(feed-discovery): align committed EF source with deployed convention
+- `2f261a4` — fix(create_feed_source_rss): migration 008, dedupe key-tolerant
+- `023893b` — docs(decisions): D180 — discovery decides assignment, intelligence decides retention
+- THIS COMMIT — docs(sync_state): 28 Apr morning close
 
 **invegent-dashboard — `main`:**
 
-- `57e7da9` — feat: Discovery Stage 1.1 frontend
-- `c32aaf9` — refactor: Discovery component split + router.refresh()
-- `fb23a09` — feat: Stage 2.1 publisher profile toggles
+- `27e83f3` — feat(feeds): 4.1 COALESCE feed_url|url
+- `f9aac5e` — feat(feeds): 4.2 LATERAL discovery join + 3 FeedRow fields
+- `a3f392b` — feat(feeds): 4.3 + 4.4 — origin classification + unassigned render upgrade
+- (CC will add result file after V8 — likely no dashboard commit)
 
 **Migrations applied this session (4 total):**
 
-- 001 — `f.feed_discovery_seed.client_id` column + partial index
-- 002 — `public.add_client_discovery_seeds` RPC
-- 003 — `c.client_publish_profile_audit` table
-- 004 — `public.update_publish_profile_toggle` RPC
+- 005 — `create_feed_source_rss(text, text, jsonb, text, text)` 5-param overload
+- 006 — `tg_auto_link_seed_to_client` trigger + 8-row backfill
+- 007 — `add_client_discovery_seeds` label fix + 9-seed backfill + 8-feed_source rename
+- 008 — `create_feed_source_rss` dedupe key-tolerance
 
-(Plus 53 from earlier Phase A + B work, captured in prior versions of this file.)
+**Production state changes:**
+
+- Discovery EF unblocked (was 100% failure since 27 Apr 06:00 UTC discovery cron)
+- 8 new RSS.app feeds provisioned + auto-linked to CFW (CFW pool 2 → 10)
+- Feed source naming corrected (8 rows renamed from `'client-onboarding'` to seed_value)
+- Dashboard /feeds + /clients?tab=feeds now show URLs and discovery context
 
 ---
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-27 Apr was a 12+ hour session that closed with:
+This was a focused 3-hour morning session that did exactly what good ICE work should do: turn a broken cron into a thicker pool while locking in an architectural pattern that scales beyond this specific case.
 
-- Phase A + B in production, Gate B observation running autonomously
-- Discovery Stage 1.1 shipped, 9 CFW seeds queued for overnight discovery cron
-- Section 2 charter + Stage 2.1 brief written, executed, shipped, deployed all in one day
-- **Publishing pipeline turned on for CFW + Invegent for the first time** — they were sitting in mode-NULL no-man's-land for unknown duration; UI surfaced the gap, PK fixed it deliberately
-- Audit table captured 11+ deliberate config changes via dashboard
-- 0 SQL UPDATEs to fix configuration. Every change went through the UI.
+**The work split that worked:**
 
-That is exactly the operational pattern Section 2 was designed to deliver. The remaining stages (2.2-2.5) extend it: feed visibility, slot reason codes, schedule adherence view, YouTube/IG drill-down.
+- **Chat lane** (sequential): diagnostics → migrations → architecture decision → daily Gate B obs → docs
+- **CC lane** (parallel, briefed): Brief A end-to-end execution while chat did everything else
 
-**State at close (27 Apr ~midnight Sydney):**
+Both lanes finished with chat sequencing slightly faster than CC. Brief A's V1-V8 cycle is a clean reference for the lane pattern going forward.
 
-- Phase A still autonomous, Phase B autonomous in shadow
-- Discovery Stage 1.1 in production
-- Stage 2.1 in production
-- 13 client × platform publishing configs all green (mode=auto, r6=true, publish_enabled=true, auto_approve_enabled=true)
-- Tonight's 8pm UTC = first overnight test of: do CFW seeds provision? does new pipeline produce drafts for CFW/Invegent overnight?
-- Pre-sales register: 14 of 30 closed (no change tonight)
+**What to bring to next session:**
 
-**Realistic ambition for Tue 28 Apr:** V7 + Stage 1.2 brief + observe Stage 2.1 outcomes. If anything publishes for CFW or Invegent overnight, Stage 2.3 (slot resolver) can wait. If nothing publishes, Stage 2.3 jumps the queue.
+- Gate B Day 2 obs (~10 min)
+- Stage 1.2 brief design — likely merges into Stage 2.2 scope
+- Next CC brief — clickable URLs + dual-URL display (small, 1 page)
+- Pre-sales register parallel work if energy allows
+
+**State at close (28 Apr ~10:30am Sydney):**
+
+- Phase A + B autonomous, Gate B Day 1 healthy
+- Discovery EF working, auto-link trigger live
+- CFW pool 10 active feeds (was 2)
+- Brief A shipped to dashboard.invegent.com/feeds
+- 8 new migrations + 1 EF source change + 4 invegent-dashboard commits + 2 doc commits
+- Anthropic cap $200, May 1 reset (3 days), today's burn ~$1.20
+
+**Realistic ambition for next session:** Stage 1.2 design call → next CC brief written → CC executes → Gate B Day 2 obs. Light session by today's standards.
 
 ---
 
-## END OF MONDAY 27 APR SESSION (FINAL)
+## END OF TUESDAY 28 APR MORNING SESSION
 
-Next session: V7 + post-deploy observation + Stage 1.2 brief.
+Next session: Gate B Day 2 obs + Stage 1.2/2.2 design call + next CC brief.
