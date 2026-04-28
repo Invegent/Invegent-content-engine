@@ -1,14 +1,14 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-28 Tuesday end of day — **Audit cycle 1 COMPLETE end-to-end same day. F-001/F-002/F-003 all closed-action-taken. F-002 closure spanned 3 phases (P1 + P2 + P3) all applied this evening.**
+> Last written: 2026-04-28 Tuesday end of day — **Audit cycle 1 closed-action-taken same day. F-001/F-002/F-003 all closed-action-taken. F-002 closure spanned 3 phases (P1 + P2 + P3) all applied this evening. Closed ≠ done: Gate B observation, Phase D ARRAY mop-up, LOW-row joint resolution, CC Phase C final report, and branch hygiene remain open follow-ups.**
 > Written by: PK + Claude session sync
 
 ---
 
 ## 🟢 28 APR TUESDAY — FULL DAY (~12 hours total across morning, afternoon, evening)
 
-Three distinct workstreams ran today. Morning was infrastructure repair (feed-discovery EF + Brief A). Afternoon was audit loop standup end-to-end and F-002 Phase A. Evening was F-002 Phase B + Phase C — completing the first full audit cycle entirely within one day.
+Three distinct workstreams ran today. Morning was infrastructure repair (feed-discovery EF + Brief A). Afternoon was audit loop standup end-to-end and F-002 Phase A. Evening was F-002 Phase B + Phase C — closing audit cycle 1 entirely within one day.
 
 ### Critical state right now
 
@@ -28,21 +28,21 @@ Three distinct workstreams ran today. Morning was infrastructure repair (feed-di
 - Section 2 Publisher 2.1 ✅ (yesterday). Stages 2.2–2.5 pending
 - 2.3 jumps queue if no posts in 48h of yesterday's mode=auto flip; current state has 16 posts in last 24h so trigger NOT activated
 
-**Track 3 — Audit loop (NEW today, COMPLETE first cycle):**
+**Track 3 — Audit loop (NEW today, first cycle CLOSED-ACTION-TAKEN):**
 - D181 — 3-layer architecture (k inventory + GitHub snapshots + markdown findings) locked and built same day
 - Data Auditor (Role 1) live. Other roles (Security, Operations, Financial, Compliance) deferred
-- **First cycle complete:** 3 findings raised, all 3 closed `action-taken` same day
+- **First cycle closed:** 3 findings raised, all 3 closed `action-taken` same day. Closed ≠ done — Gate B observation continues, follow-up files (LOW rows, Phase D ARRAY, Phase C report) all open
 - Slice 1 (audit recurrence prevention) live: PENDING_DOCUMENTATION sentinel, 14-day grace window, DEFERRED escape hatch, F-003 detector function
 - Slices 2 (snapshot automation) and 3 (API auditor pass) deferred to future sessions
 - **5 new lessons captured:** #35, #36, #37, #38, #39
 
-**Track 4 — F-002 closure COMPLETE (3 phases this evening):**
+**Track 4 — F-002 closure CLOSED-ACTION-TAKEN (3 phases this evening):**
 - Phase A (P1 = booleans/enums) ✅ APPLIED. 79 column purposes. Coverage c+f: 0% → 11.7%
 - Phase B (P2 = numeric thresholds) ✅ APPLIED. 30 column purposes. Coverage c+f: 11.7% → 16.2%
 - Phase C (P3 = JSONB configs) ✅ APPLIED. 27 column purposes. Coverage c+f: 16.2% → 20.2%
 - **Final coverage of c+f: 0% → 20.2% (136/674 columns)** — c at 22.3%, f at 14.9%
 - F-002 transitions to **closed-action-taken** at end of evening
-- 6 LOW rows deferred across 3 followup files (4+1+1 by phase)
+- 6 LOW rows deferred across 3 followup files (4+1+1 by phase) — joint operator session pending
 - 7 ARRAY columns missed by P3 regex — Phase D mop-up tracked separately
 
 ### What today did — morning (~3 hours)
@@ -85,6 +85,7 @@ Three distinct workstreams ran today. Morning was infrastructure repair (feed-di
   - ChatGPT review on top added 4 more wording edits (feed_source.config polled-by claim, raw_content_item.payload append-only assertion, content_series.outline_json element shape, output_fields meta inference)
   - Migration `audit_f002_p3_column_purposes_corrected` applied (commit `0520b53`)
   - **Lesson #39 captured:** JSONB shape verification must sample across rows, not single row
+- End-of-day reconciliation pass across DB / GitHub (3 repos) / sync state / decisions log / memory / dashboard roadmap. **Layer-level reconciliation only**: counts, commits, statuses, and closure state verified. Not a semantic re-audit of every applied column purpose row — that belongs in next audit cycle's snapshot phase, not in same-session reconciliation. Two-layer review (chat sanity + ChatGPT) handled the per-row safety check before each apply.
 
 ### Production state — end of evening
 
@@ -141,6 +142,7 @@ Three distinct workstreams ran today. Morning was infrastructure repair (feed-di
 - 6 LOW-confidence column followups across 3 markdown files — joint operator+chat session to write purposes manually
 - 7 ARRAY columns Phase D mop-up — small CC brief, low priority
 - Stage 1.2 brief design — likely merges into Stage 2.2 scope per D180
+- **Migration filename hygiene — Phase B file mismatch.** The Phase B applied migration is `schema_migrations.version = 20260428064115` (UTC, real apply time) but the GitHub file is `supabase/migrations/20260428163000_audit_f002_p2_column_purposes_corrected.sql` (16:30 written in AEST framing during apply). Cosmetic only because PK uses Supabase MCP not `supabase db push`, BUT migration filenames are permanent audit artefacts (Lesson #36) so worth a small fix-up: rename the file to match the DB version, push as a doc-only commit. Phase A and Phase C filenames already match their DB versions correctly.
 
 ### Parallel pre-sales work (any time)
 
@@ -162,6 +164,8 @@ If posts don't flow for CFW or Invegent within 48h of yesterday's mode=auto flip
 ---
 
 ## TODAY'S COMMITS — END OF DAY
+
+**Note on time framing:** This file is written from PK's AEST operating-day perspective. "Today" = Tuesday 28 Apr AEST = roughly 27 Apr 14:00 UTC through 28 Apr 14:00 UTC. Migration count is AEST-session framed; `supabase_migrations.schema_migrations.version` timestamps are UTC and may carry `20260427xxxxxx` for the morning's work that landed late-27 UTC.
 
 **Invegent-content-engine — `main`:**
 
@@ -195,13 +199,14 @@ Afternoon (~15 commits):
 - `4e12cab` F-002 Phase A applied (corrected, 79 updates) + supersession marker + LOW followup
 - `352f721` sync state + decisions log D181 + run file F-002 addendum (Phase A only)
 
-Evening (4 commits):
+Evening (5 commits):
 - `c670b38` (CC) F-002 Phase B draft proposals + draft migration
 - `0299c9a` F-002 Phase B applied (corrected, 30 updates) + supersession marker + Phase B LOW followup
 - `3f684bb` run file F-002 Phase B addendum + Lesson #38
 - `609ad5c` (CC) F-002 Phase C draft proposals + draft migration
-- `0520b53` F-002 Phase C applied (corrected, 27 updates) + supersession marker + Phase C LOW followup + Phase D missing-ARRAY note + run file Phase C addendum + Summary updated (cycle 1 complete)
-- THIS COMMIT — sync state final reconciliation
+- `0520b53` F-002 Phase C applied (corrected, 27 updates) + supersession marker + Phase C LOW followup + Phase D missing-ARRAY note + run file Phase C addendum + Summary updated (cycle 1 closed-action-taken)
+- `9c78fa0` sync state EOD reconciliation
+- THIS COMMIT — sync state framing tightening per operator feedback (closed ≠ done; UTC/AEST note; Phase B filename hygiene; reconciliation scope acknowledgment)
 
 **invegent-dashboard — `main`:**
 
@@ -215,16 +220,17 @@ Morning (Brief A):
 Afternoon (Brief 2):
 - `81f1c1b`, `eca8b80` Brief 2 dashboard commits
 
-(no evening commits — audit work was content-engine only)
+Evening:
+- `a7570a8` roadmap EOD reconciliation (audit cycle 1 closed-action-taken, new Registry layer, 3-shift banner)
 
-**Migrations applied today (13 total):**
+**Migrations applied today (13 total — AEST framing; see Note above):**
 
-Morning (4): 005, 006, 007, 008
+Morning (4): 005, 006, 007, 008 — UTC versions in the `20260427xxxxxx` band
 
 Afternoon (5):
-- 009 (f_url_to_friendly_name + backfill)
-- F-001 Phase B table backfill (31 tables, version 20260428040000)
-- F-001 follow-up older table backfill (25 tables, version 20260428043000)
+- 009 (f_url_to_friendly_name + backfill, version 20260428021857)
+- F-001 Phase B table backfill (31 tables, version 20260428042734)
+- F-001 follow-up older table backfill (25 tables, version 20260428043916)
 - audit slice 1 (PENDING_DOCUMENTATION sentinel + naming discipline detector, version 20260428054222)
 - F-002 Phase A corrected (79 column purposes, version 20260428055331)
 
@@ -248,7 +254,11 @@ Evening (2):
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-Three-shift day. Morning fixed a broken cron and locked an architecture decision (D180). Afternoon stood up an audit loop end-to-end and produced its first cycle of findings, with all 3 closed same session and Phase A of F-002 applied. Evening completed F-002 with Phase B and Phase C, closing out audit cycle 1 entirely within one day.
+Three-shift day. Morning fixed a broken cron and locked an architecture decision (D180). Afternoon stood up an audit loop end-to-end and produced its first cycle of findings, with all 3 closed `action-taken` same session and Phase A of F-002 applied. Evening completed F-002 with Phase B and Phase C, closing audit cycle 1 within one day.
+
+**Audit cycle 1 is closed-action-taken. Wider system observation continues through Gate B.** The closure is real but bounded: 3 findings closed, registry coverage materially improved, prevention layer deployed. Open follow-ups remain (Gate B Day 2-7 obs, 6 LOW-row joint resolution, 7 ARRAY column Phase D mop-up, CC Phase C final report, branch hygiene sweep, Phase B filename hygiene). Closed ≠ done; closed ≠ no further work.
+
+**Tonight's reconciliation scope:** layer-level only — DB state, GitHub state across 3 repos, sync state doc, decisions log, memory entry 27, dashboard roadmap, audit run file, pipeline health, and branch state all cross-checked for consistency. **NOT a semantic re-audit of every applied column purpose row.** That responsibility belongs to the snapshot phase of the next audit cycle. The two-layer review (chat sanity SQL + ChatGPT external review) handled per-row safety before each migration applied; the reconciliation verified the closure happened, not whether the wording is now perfect.
 
 **The pattern that worked across 3 phases:**
 
@@ -264,6 +274,7 @@ CC drafts proposals + migration → chat sanity-checks against live DB (Phase C 
 - Gate B Day 2 obs (~10 min) — surface the 3 exceeded_recovery_attempts slots
 - CC Phase C final report file when prompted (one-pager summary of 3-phase closure)
 - Branch hygiene sweep across 3 repos (12 non-main branches — most likely already-merged squashes)
+- Phase B filename hygiene (rename `20260428163000_*.sql` to match DB version `20260428064115`)
 - Optional: parallel pre-sales work (A11b/A4/A18 if energy)
 - Optional: Phase D mop-up batch (7 ARRAY columns) — small CC brief
 - Optional: 6 LOW-row joint resolution session (across 3 followup files)
@@ -273,9 +284,9 @@ CC drafts proposals + migration → chat sanity-checks against live DB (Phase C 
 - Phase B autonomous, Gate B Day 1 healthy, 3 bounded-recovery failures observed (not breaking)
 - Discovery EF working, auto-link trigger live, dual-URL display live
 - CFW pool 10 active feeds (was 2 morning of)
-- Audit loop infrastructure live, **first cycle COMPLETE end-to-end**
+- Audit loop infrastructure live, **first cycle closed-action-taken (observation continues through Gate B)**
 - F-002 closed-action-taken (P1 + P2 + P3 all applied; c+f coverage 0% → 20.2%)
-- 13 migrations applied today + 22+ commits across 2 repos
+- 13 migrations applied today (AEST framing) + 22+ commits across 2 repos
 - Anthropic cap $200, May 1 reset (3 days), evening burn modest (audit work was DB-only)
 - 5 lessons captured (#35–#39)
 
@@ -285,4 +296,4 @@ CC drafts proposals + migration → chat sanity-checks against live DB (Phase C 
 
 ## END OF TUESDAY 28 APR FULL DAY SESSION
 
-Next session: Gate B Day 2 obs + branch hygiene + CC final report file + (optional) Phase D mop-up + (optional) LOW-row joint session.
+Audit cycle 1 closed-action-taken. Gate B observation continues. Next session: Gate B Day 2 obs + branch hygiene + Phase B filename hygiene + CC final report file + (optional) Phase D mop-up + (optional) LOW-row joint session.
