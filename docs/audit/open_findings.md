@@ -32,9 +32,13 @@ _No open findings. All 3 from 2026-04-28 Data Auditor pass were closed in the sa
 ## Recently closed (last 30 days)
 
 ### F-2026-04-28-D-001  ·  HIGH  ·  closed-action-taken
-**Role:** Data Auditor · **Closed:** 2026-04-28
+**Role:** Data Auditor · **Closed:** 2026-04-28 · **Scope expanded mid-closure**
 **Issue:** Phase B / slot-driven tables created 22-27 Apr 2026 had no purpose registered in `k.table_registry` (31 tables across c, f, m, t schemas).
-**Action taken:** Backfilled all 31 table purposes via migration `20260428040000_audit_f001_phase_b_table_purposes_backfill` (commit `491e157`). Coverage: 72.0% → 87.5% overall; t schema now 100%, m schema 88.7%.
+**Action taken:** Backfilled ALL 56 ICE tables that were missing purpose — original scope was 31 Phase B tables, operator extended to also close the 25 older entries (pre-22 Apr) in the same session.
+- Migration 1: `20260428040000_audit_f001_phase_b_table_purposes_backfill` (commit `491e157`) — 31 Phase B tables.
+- Migration 2: `20260428043000_audit_f001_followup_older_table_purposes_backfill` (commit `8b2d669`) — 25 older tables.
+- **Coverage: 72.0% → 100.0% across all 7 ICE schemas (200/200 ICE tables documented).**
+- Schema verification performed on uncertain entries (`c.brand_stakeholder` / `c.brand_avatar` / `c.client_avatar_profile` chain, `c.platform_channel`).
 **Forward discipline:** New tables ship with purpose registered at creation, not retroactively (Lesson #35).
 **Run file:** `runs/2026-04-28-data.md`
 
