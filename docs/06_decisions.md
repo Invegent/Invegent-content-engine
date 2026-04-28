@@ -264,6 +264,90 @@ Migration 005 + 006 + 007 + 008 work this morning surfaced three side findings, 
 
 ---
 
+## D181 — Audit Loop as Three-Layer Architecture
+**Date:** 28 April 2026 afternoon | **Status:** ✅ BUILT — first cycle complete same day, three findings closed
+
+### The problem this decides
+
+ICE has reached a complexity (200 tables, 674 columns in c+f alone, ~80 Edge Functions, ~40 crons, multiple shipping pipelines) where periodic external audit is more valuable than continued visual review. The question: how to structure that audit loop such that it (a) operates on real production state without requiring DB write access for the auditor, (b) produces findings the operator can review and close in batch, (c) protects against the auditor missing things or rediscovering already-fixed gaps each cycle, and (d) extends to multiple audit roles (data, security, operations, financial, compliance) without bloating each role.
+
+### The decision
+
+**Three-layer architecture, with ChatGPT as the read-only auditor and operator + Claude as the closure team.**
+
+**Layer 1 — `k.*` registry (already exists).** Structured catalogue of tables, columns, edge functions, crons, decisions. Ongoing curation by Claude. Source of truth for what *should* exist.
+
+**Layer 2 — GitHub snapshots.** Markdown documents committed to `docs/audit/snapshots/{date}.md`. Generated from production via SQL queries against `k.*` plus targeted `f.*` and `m.*` extracts. Currently run manually; Cowork automation deferred until format stabilises. Excludes content bodies (no canonical text), secrets (no tokens), full DB dumps. Sized to fit a ChatGPT context window (~30k chars).
+
+**Layer 3 — Markdown findings.** ChatGPT auditor reads the latest snapshot + `open_findings.md` (history) and produces `docs/audit/runs/YYYY-MM-DD-{role}.md`. Each finding follows a fixed format (issue / evidence / recommended action / resolution placeholder). Operator + Claude process closures in chat, commit closure notes back to the run file. Closures are explicit and batched at end of session.
+
+### What gets locked alongside the architecture
+
+Eight sub-decisions that came up during the design call:
+
+1. **5-tier severity:** Critical / High / Medium / Low / Info. Inflation is a known failure mode; the role definition reminds the auditor to be honest about severity.
+2. **Snapshot scope:** structured queries over `k.*` and a few targeted `f.*`/`m.*` tables; no content bodies, no secrets, no full DB dumps. Size-bounded to one ChatGPT context.
+3. **Snapshot format:** markdown wrapper with JSON blocks for tabular sections. Preserves both readability and machinability.
+4. **Cowork automation deferred:** for V1, snapshots are generated manually via a chat session. Cowork can later run the snapshot SQL on a schedule once the format is stable.
+5. **ChatGPT mechanism:** project paste, not connector. ChatGPT reads the snapshot from a project file, produces the run file as text, operator commits.
+6. **Role 1 = Data Auditor only.** Other roles (Security, Operations, Financial, Compliance) come later. Don't generalise the role contract until at least one role has run for 5 cycles.
+7. **Closure flow:** operator + Claude work through findings in chat at the end of a session. Closures are explicit and batched. No per-finding commits.
+8. **Finding ID format:** `F-YYYY-MM-DD-{role-letter}-NNN`. Role letter is `D` for Data, `S` for Security, etc. Numbering resets per day per role.
+
+### Why this architecture over alternatives
+
+Three alternatives were considered:
+
+**Alternative A — Continued visual review by operator.** Worked at 30 tables and ~20 EFs. At current scale (200/80/40), the operator cannot reliably notice every drift. Manual review's failure mode is not "wrong findings" but "missed findings."
+
+**Alternative B — Build a custom audit dashboard in Next.js.** Would surface coverage stats, missing FKs, etc. Costs ~3–5 days of build work. Doesn't actually audit; just displays. Decided against — the auditing intelligence (ChatGPT reading and applying judgement to a snapshot) is the value, not the visualisation.
+
+**Alternative C — Real-time integration: ChatGPT connected directly to Supabase via MCP.** Theoretically possible. Rejected for two reasons: (a) gives an external service production read access, (b) makes findings ephemeral. The snapshot approach keeps state versioned in git.
+
+The three-layer architecture chosen because it: keeps production read-only from ChatGPT's perspective; produces durable, version-controlled findings; scales to multiple roles by adding role definition files without touching infrastructure; and the snapshot approach defers automation to when it's worth doing.
+
+### What this requires
+
+- `docs/audit/00_audit_loop_design.md` — full design document (committed `e6f40ee`)
+- `docs/audit/open_findings.md` — register tracking open + closed findings (committed `bd0b241`)
+- `docs/audit/roles/data_auditor.md` — Data role definition (committed `2678a08`, updated `27ff3b3` for slice 1)
+- `docs/audit/snapshots/YYYY-MM-DD.md` — daily snapshot artifact
+- `docs/audit/runs/YYYY-MM-DD-{role}.md` — per-cycle finding artifact
+- `docs/audit/decisions/*.md` — locked-during-closure documentation rules
+
+### What this does NOT decide
+
+- The cadence (daily? weekly? Tuesday-only? per-cycle?). Default Tuesday rotation. Refine with experience.
+- Other roles. They follow when Data Auditor has run for 5+ cycles successfully.
+- Snapshot automation. Stays manual until format is stable; Cowork is the natural automation venue when it is.
+
+### First-cycle validation (same day)
+
+The architecture was tested end-to-end the same afternoon:
+
+- Snapshot generated: `docs/audit/snapshots/2026-04-28.md` (33k chars, 19 sections, 8 pre-flagged observations)
+- ChatGPT read the snapshot + role definition and raised 3 findings: F-2026-04-28-D-001 (HIGH, 31 Phase B tables undocumented), F-2026-04-28-D-002 (MEDIUM, 0% column coverage in c+f), F-2026-04-28-D-003 (MEDIUM, same-name-different-SQL migration violation)
+- All 3 findings closed same session: F-001 closed-action-taken (extended scope to 56 tables, registry now 100%), F-003 closed-action-taken (forward discipline locked, automated detector built), F-002 closed-action-pending then Phase A applied via P1–P3 plan
+- Loop produced three new lessons: #35 (document at creation, not retroactively), #36 (migration name permanent once applied), #37 (ChatGPT review of CC proposals before apply)
+
+### Slice 1 — Audit recurrence prevention (committed same day)
+
+A structural addition that protects the loop against rediscovering the same gap each cycle:
+
+- `k.refresh_table_registry` and `k.refresh_column_registry` now write `'PENDING_DOCUMENTATION'` sentinel for new objects (was `'TODO: ...'` for tables and NULL for columns).
+- `k.fn_check_migration_naming_discipline()` returns same-name-different-SQL violations on demand. Currently returns 1 row (the historical F-003 violation) — accepted as historical, closed-redundant in future cycles.
+- Data Auditor role definition updated with the 14-day grace window for PENDING_DOCUMENTATION items (younger than 14d = not a finding) and the DEFERRED escape hatch (`purpose = 'DEFERRED until YYYY-MM-DD: reason'` recognises operator-acknowledged gaps with deadlines).
+
+Migration committed at `supabase/migrations/20260428054222_audit_slice1_pending_documentation_sentinel.sql` (commit `27ff3b3`).
+
+### Related decisions
+
+- **D170** — MCP-applied migrations. Closure migrations follow this pattern.
+- **D175** — Versioned reference table FK pattern. Detected and validated in audit context.
+- **D177** — fitness_score_max scale. Pre-flight discipline that Lesson #32 sharpened, audit cycle now reinforces.
+
+---
+
 ## Decisions Pending
 
 | Decision | Status | Gate |
@@ -274,7 +358,7 @@ Migration 005 + 006 + 007 + 008 work this morning surfaced three side findings, 
 | D146 — Feed pipeline score + retirement | 🔲 Gated | Phase 2.1 + 60 days data |
 | D140 — Digest item scoring | 🔲 Phase 3 | After CFW stable + auto-approver healthy |
 | D149 — Advisor Layer MVP (Sales Advisor Project) | 🔲 Deferred post-sprint | Same rationale as D162 |
-| D151 — Table purpose backlog sweep (22 rows) | 🔲 Post-pre-sales | Batch job later |
+| D151 — Table purpose backlog sweep (22 rows) | ✅ SUPERSEDED — closed via F-2026-04-28-D-001 (registry now 100%) | — |
 | D153 — Token-health live /debug_token cron | 🔲 Spec this week, build after | None — high priority |
 | D156 Stage 2 — Meta reconciliation | 🔲 Post-sprint | Stage 1 verified earning its keep after reactivation |
 | D157 — Cost guardrails Stop 2 infrastructure | 🔲 Post-sprint | ai-worker fix verified ✅ + sprint complete |
@@ -296,16 +380,20 @@ Migration 005 + 006 + 007 + 008 work this morning surfaced three side findings, 
 | **D178 — ai_job.slot_id FK = ON DELETE CASCADE** | ✅ APPLIED Stage 9.039 | — |
 | **D179 — Stage 10/11 ordering: Option B** | ✅ LOCKED for Stage 10 brief | Stage 10 next session |
 | **D180 — Discovery decides assignment, intelligence decides retention** | ✅ APPLIED via migration 006 trigger; backfill ran for 8 CFW seeds | Apply to any future discovery channel (YouTube channel discovery, email-newsletter discovery, etc.) |
+| **D181 — Audit loop as three-layer architecture** | ✅ BUILT — first cycle complete same day; slice 1 prevention live | Apply to future audit roles (Security, Operations, Financial, Compliance) when added |
 | **Slot-driven Phase A** | ✅ COMPLETE 26 Apr morning | — |
 | **Slot-driven Phase B Stages 7-9** | ✅ COMPLETE 26 Apr afternoon–evening | — |
 | **Slot-driven Phase B Stages 10-12** | ✅ COMPLETE 27 Apr | — |
 | **Gate B observation** | 🔄 IN PROGRESS — Day 1 healthy. Earliest exit Sat 2 May | 5-7 days post-Stage 12 |
-| **Concrete-pipeline track** | 🔄 IN PROGRESS — Discovery Stage 1.1 ✅, Publisher Stage 2.1 ✅, Brief A ✅. Stages 1.2-1.5 + 2.2-2.5 pending | Parallel to Gate B |
+| **Concrete-pipeline track** | 🔄 IN PROGRESS — Discovery Stage 1.1 ✅, Publisher Stage 2.1 ✅, Brief A ✅, Brief 2 ✅. Stages 1.2-1.5 + 2.2-2.5 pending | Parallel to Gate B |
+| **F-002 closure** | 🔄 P1 applied; P2 + P3 pending | After CC delivers P2 → review → apply, repeat for P3 |
+| **Audit loop slice 2 (snapshot automation)** | 🔲 Deferred | Format stable for 5+ cycles |
+| **Audit loop slice 3 (API auditor pass via Cowork+OpenAI)** | 🔲 Deferred | Slice 2 first |
 | **Slot-driven Phase C — Cutover (Stages 12-18)** | 🔲 After Gate B exit | Gate B exit |
 | **Slot-driven Phase D Stage 19 decommission R6** | 🔲 After Phase C | All client-platforms cut over |
 | **Slot-driven Phase E — Evergreen seeding** | 🔲 Parallel | Prioritise Invegent verticals per D174 |
 | **Overload B of `create_feed_source_rss` cleanup** | 🔲 Backlog | Drop or fix in follow-up; latent NOT NULL bug uncovered by D180 work |
-| **Feeds-tab URL clickability follow-up** | 🔲 Next CC brief | Captured 28 Apr — assigned-bucket URL clickable + dual-URL display (rss.app feed URL + original site URL) for URL-type seeds |
+| **Feeds-tab URL clickability follow-up** | ✅ SHIPPED 28 Apr afternoon (Brief 2) | — |
 | Inbox anomaly monitor | 🔲 Post-sprint | Separate brief TBW |
 | Phase 2.1 — Insights-worker | 🔲 Next major build | Meta Standard Access |
 | Phase 2.6 — Proof dashboard | 🔲 After Phase 2.1 | Engagement data |
