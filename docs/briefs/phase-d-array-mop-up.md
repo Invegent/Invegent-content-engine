@@ -1,6 +1,6 @@
 ---
 brief_id: phase-d-array-mop-up
-status: ready
+status: running
 risk_tier: 1
 owner: cowork
 created_by: PK
