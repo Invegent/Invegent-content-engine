@@ -12,7 +12,7 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 
 | brief_id | risk_tier | status | owner | created | latest run |
 |---|---|---|---|---|---|
-| `phase-d-array-mop-up` | 1 | ready | cowork | 2026-04-29 | (none) |
+| `phase-d-array-mop-up` | 1 | review_required | cowork | 2026-04-29 | 2026-04-29T102956Z |
 
 ## Recently completed
 
