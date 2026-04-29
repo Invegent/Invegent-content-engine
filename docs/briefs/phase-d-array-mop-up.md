@@ -10,6 +10,8 @@ allowed_paths:
   - supabase/migrations/**
   - docs/runtime/runs/**
   - docs/runtime/claude_questions.md
+  - docs/briefs/queue.md
+  - docs/briefs/phase-d-array-mop-up.md
 forbidden_actions:
   - apply_migration
   - update_production_data
@@ -20,7 +22,7 @@ idempotency_check: migration_file_absent
 idempotency_pattern: "supabase/migrations/*audit_f002_phase_d_array*.sql"
 success_output:
   - supabase/migrations/{YYYYMMDDHHMMSS}_audit_f002_phase_d_array_columns.sql
-  - docs/runtime/runs/phase-d-array-mop-up-{timestamp}.md
+  - docs/runtime/runs/phase-d-array-mop-up-{YYYY-MM-DDTHHMMSSZ}.md
 estimated_questions: 3
 estimated_runtime_minutes: 20
 related_decisions:
@@ -123,7 +125,7 @@ Do NOT use `WHERE column_purpose IS NULL` as the guard — the count-delta verif
 ## Critical reminders
 
 - **Lesson #32** — `k.column_registry` does NOT have `schema_name` directly. Join via `table_id` to `k.table_registry`. The pre-flight done by PK uses this pattern; mirror it.
-- **Lesson #36** — the migration filename is permanent once applied. Pick one filename and stick with it. Suggested: `{YYYYMMDDHHMMSS}_audit_f002_phase_d_array_columns.sql` where the timestamp is the moment Cowork commits the file.
+- **Lesson #36** — the migration filename is permanent once applied. Pick one filename and stick with it. Suggested: `{YYYYMMDDHHMMSS}_audit_f002_phase_d_array_columns.sql` where the timestamp is the moment Cowork commits the file (numeric format, no separators).
 - **Lesson #38** — verify with COUNT delta, not time-window. The `refresh_column_registry` function bumps `updated_at` on every row when run, so a window-based check is unreliable.
 - **Lesson #39** — only relevant to JSONB columns. Not applicable here, but if Cowork notices an ARRAY column with shape variation across rows, flag it in the state file rather than assuming uniformity.
 
@@ -136,7 +138,7 @@ Match P2's style:
 - State the unit or shape ("Unit: characters", "text[] of platform keys")
 - Cite observed range or representative sample ("Observed: 6-element arrays of single-word descriptors")
 - For unpopulated columns, say so explicitly ("No populated rows yet — table not exercised")
-- Where the column reads downstream (e.g. ai-worker, publisher), name the consumer
+- Where the column reads downstream (e.g. ai-worker, publisher), name the consumer with appropriate hedging if not verified
 
 Keep total length ≤ 400 chars per row. Don't speculate beyond pre-flight evidence.
 
@@ -156,7 +158,7 @@ Keep total length ≤ 400 chars per row. Don't speculate beyond pre-flight evide
 
 ### Q3: For `c.client_brand_profile.brand_never_do` and `brand_voice_keywords` — do these get baked into the LLM prompt?
 
-**Default:** State the consumer cautiously. Sample data shows these are voice-discipline lists, but I have NOT verified the prompt-assembly code path. Use "Used by ai-worker brand voice prompt assembly (consumer not verified in pre-flight)." Avoid claiming a specific function name.
+**Default:** State the consumer cautiously without asserting a specific code path. Sample data shows these are voice-discipline lists, but the prompt-assembly code path was NOT verified during pre-flight. Use wording like "Intended for brand-voice prompt context; exact downstream consumer not verified in pre-flight." Avoid claiming a specific function name. Don't write "Used by ai-worker" alongside "consumer not verified" — it contradicts itself.
 
 **Escalate if:** the wording would mislead PK about how the column is consumed. P2 corrected wording softened similar claims (`max_output_tokens` removed `assemblePrompts()` reference).
 
@@ -180,9 +182,10 @@ At end of run:
 2. **DO block** with `expected_delta := 7`, `before_count`, `after_count`, count-delta verification
 3. **Seven UPDATE statements**, one per column from the table above
 4. **All 7 wordings** match the style guidance and stay ≤ 400 chars
-5. **State file** at `docs/runtime/runs/phase-d-array-mop-up-{ISO-timestamp}.md` per `state_file_template.md`
+5. **State file** at `docs/runtime/runs/phase-d-array-mop-up-{YYYY-MM-DDTHHMMSSZ}.md` per `state_file_template.md`
 6. **Zero production writes** (no `apply_migration`, no `execute_sql` UPDATE/INSERT/DELETE)
 7. **Status** ends as `review_required`
+8. **Queue file** `docs/briefs/queue.md` updated with new brief status + run timestamp
 
 ## Out of scope
 
@@ -195,7 +198,7 @@ At end of run:
 
 ## State file expectations
 
-Write `docs/runtime/runs/phase-d-array-mop-up-{ISO-timestamp}.md` per `state_file_template.md`. Specifically:
+Write `docs/runtime/runs/phase-d-array-mop-up-{YYYY-MM-DDTHHMMSSZ}.md` per `state_file_template.md`. Specifically:
 
 - **Status:** end at `review_required`
 - **Risk tier:** 1
@@ -203,7 +206,7 @@ Write `docs/runtime/runs/phase-d-array-mop-up-{ISO-timestamp}.md` per `state_fil
 - **Questions asked:** any Qs written to `claude_questions.md` (with IDs)
 - **Answers received:** N/A unless an OpenAI API run happened first
 - **Corrections applied:** N/A on first pass
-- **Validation results:** N/A until GitHub Actions runs (Phase 4 of D182)
+- **Validation results:** N/A until GitHub Actions runs (Phase 4b of D182)
 - **Stop conditions:** none if successful; `ESCALATION_REQUIRED` if any Q5-style safety concern arose
 - **Needs PK approval:** "Apply migration `{filename}` after review of 7 wordings"
 - **Issues encountered:** anything unexpected, even if recovered

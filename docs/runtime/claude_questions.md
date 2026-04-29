@@ -4,9 +4,9 @@
 
 **Writer:** Claude Cowork (or chat session) when executing a brief and hitting a decision point.
 
-**Reader:** OpenAI API (overnight) or PK (morning).
+**Reader:** OpenAI API (overnight, when Phase 4c lands) or PK (morning).
 
-**Discipline:** Append-only. Never edit existing entries. Use new question IDs for follow-ups.
+**Discipline:** Append-only. Never edit existing entries. Never delete entries. Never move entries between sections. To resolve a question, append a resolution block under "Closed (resolution refs)" referencing the original Q-ID.
 
 ---
 
@@ -41,6 +41,16 @@ Impact if wrong:
 
 ---
 
-## Closed questions
+## Closed (resolution refs)
 
-*(answers move questions here once resolved — see `claude_answers.md`)*
+When a question is resolved, append a resolution block here referencing the original Q-ID. Do NOT move the original question entry from the Open section — leave it where it was written. The resolution block here is a back-pointer.
+
+```
+## Resolved Q-{brief-slug}-{nnn}
+
+Resolved by: <Q-{...}-{nnn} answer in claude_answers.md | PK chat | obsolete>
+Resolved at: {YYYY-MM-DDTHHMMSSZ}
+Outcome: <decision A/B/C/custom + one-line summary>
+```
+
+*(none yet)*
