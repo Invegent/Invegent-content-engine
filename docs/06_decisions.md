@@ -348,6 +348,186 @@ Migration committed at `supabase/migrations/20260428054222_audit_slice1_pending_
 
 ---
 
+## D182 — Non-Blocking Execution Model (Five-Rule System)
+**Date:** 28 April 2026 evening | **Status:** ✅ LOCKED — v1 spec committed at `docs/runtime/automation_v1_spec.md`. Phase 1+2 (files + decision + memory) complete this commit. Phase 3+ (first brief, Cowork scheduled task, GitHub Actions validation, first overnight test) sequenced for next sessions.
+
+### The problem this decides
+
+PK is the bottleneck in three-way decision flow between Claude Chat, Claude Code, and ChatGPT. Today's audit cycle 1 closure made the pattern explicit: PK relays every question, every clarification, every correction. Five to ten cycles per session. Real velocity loss.
+
+Worse, ICE has reached a stage where **the operator's working hours are the binding constraint on system progress.** PK has to be awake and attentive for the system to make progress. Phase D ARRAY mop-up sits in the backlog because PK doesn't have a clean 60-minute slot to walk Claude through 7 mechanical column purposes. LOW-row resolution sits because it needs PK's domain knowledge in real time. Audit cycle 2 won't start until PK has time to sit through it.
+
+The question: how to structure execution such that PK becomes scheduler + reviewer instead of synchronous executor — without introducing production risk.
+
+### The decision
+
+**A five-rule non-blocking execution system, with phased build sequence over 4-6 sessions.**
+
+The system has five rules that work together. Each rule individually is small; the combination is what makes velocity unlock without losing safety:
+
+#### Rule 1 — Default-and-continue
+
+Claude NEVER blocks on questions. When Claude hits a decision point during brief execution:
+1. Writes structured question to `docs/runtime/claude_questions.md`
+2. Proceeds with the documented default immediately
+3. Later checks `docs/runtime/claude_answers.md` for response
+4. If answer differs from default, applies correction per the correction-handling rules below
+
+The win is not the question file. The win is that Claude doesn't sit waiting for PK. Work continues; the answer arrives async; corrections are small.
+
+#### Rule 2 — Answer-key pattern
+
+Every brief MUST include a "Likely questions and defaults" section that pre-answers the most predictable decisions. Format:
+
+```
+Q: <expected question>
+Default: <what Claude proceeds with>
+Escalate if: <condition under which the default is wrong>
+```
+
+This is the **real** velocity lever. Without answer-keys, Claude writes too many questions because it has nowhere to encode operator judgment upfront. With answer-keys, 60% of questions are pre-answered and don't even need to be written. The Q&A inbox handles only the genuinely novel remaining 40%.
+
+#### Rule 3 — One AI per question
+
+Decisions go to one AI, not three. If Claude Code is executing the brief, Claude Code makes the call (with the answer-key as guidance). If Claude Chat is executing, Claude Chat makes the call. ChatGPT (via OpenAI API) becomes the answer source for the Q&A inbox — not a parallel reviewer of every decision Claude already made.
+
+This eliminates the failure mode where today's session had CC + chat + ChatGPT all reasoning about the same JSONB shapes (P3 phase). Each had different blind spots; the safety net was real but the duplication was wasteful. Going forward: one AI executes; one AI answers async; PK adjudicates judgment.
+
+#### Rule 4 — Escalation rules
+
+The OpenAI API (or whoever answers questions in the inbox) MUST escalate (not auto-decide) when the question involves:
+
+- Brand voice or public wording
+- Client-facing content
+- Legal/compliance implications
+- Migrations or production writes
+- Secrets/tokens
+- High-impact ambiguity (multiple valid options + irreversible consequences)
+- Low confidence with high impact
+
+Response format: `Correction needed: stop and ask PK`. Claude reads this and pauses only that scope, documenting the escalation in the state file.
+
+#### Rule 5 — No production writes from automation
+
+Scripts and scheduled tasks may read files and write markdown. They MUST NOT:
+- Apply migrations to Supabase
+- Update production data
+- Delete branches
+- Auto-close audit findings
+- Merge PRs
+- Change live system state without explicit PK approval
+
+Production writes are PK's gate. Automation produces ready-to-approve artifacts; PK reviews and applies in the morning.
+
+### v1 architecture (compressed pipeline)
+
+```
+Daytime  — PK writes brief with frontmatter, marks status: ready
+10pm-1am — Cowork executes one brief, asks questions, applies corrections
+1am-2am  — OpenAI API answers questions (cloud-side, laptop-independent)
+2am-3am  — GitHub Actions validates outputs (cloud-side, laptop-independent)
+Morning  — PK reviews report, approves or requests changes
+```
+
+Compressed from ChatGPT's original 8-hour spec (three Cowork sessions per night). Cost discipline + lower laptop-awake burden. One Cowork window only.
+
+### Risk-tier system (4 tiers)
+
+Every brief carries a `risk_tier` in frontmatter:
+
+- **Tier 0** — docs/reports → safe auto-commit. Narrowly defined: observation reports, sync summaries, audit run drafts, reconciliation logs, non-decision status files. Default if uncertain: Tier 1.
+- **Tier 1** — drafts (code/migration) → PR only. Output goes through PK morning review before any apply.
+- **Tier 2** — production-affecting → STOP for PK. Cowork writes `ESCALATION_REQUIRED` in state file and halts that scope.
+- **Tier 3** — judgment-heavy → escalate immediately. Brand voice, client-facing wording, legal/compliance, secrets/tokens. Same halt as Tier 2 but flagged as "judgment escalation" in morning report.
+
+### Default-and-continue correction handling
+
+When API answer arrives AFTER Claude has proceeded:
+
+| Scenario | Behaviour |
+|---|---|
+| Before commit | Revise inline, no extra commit |
+| After commit but before apply | Amend in single follow-up commit |
+| After apply (live change) | Do NOT auto-revert. Log divergence. Flag for PK decision. |
+| Multiple corrections | Apply in dependency order, group into minimal commits |
+| Stop condition mid-flight | Pause only affected scope, document state, escalate to PK |
+
+### Status flow
+
+```
+ready → running → questions_pending → validation_pending → review_required → done | failed | blocked
+```
+
+Failed briefs do NOT auto-retry. PK manually resets to `ready` if appropriate.
+
+### Why this architecture over alternatives
+
+**Alternative A — GitHub Actions cron + Node.js script + Supabase MCP credentials in GitHub secrets.** This was the v3 plan. ChatGPT's deep-research pivot identified a better tool: Cowork. Already paid for in PK's Max 5x subscription. Full MCP access already configured. Scheduled tab already exists. Built-in safety scaffolding (Anthropic-managed runtime, not custom script). GitHub Actions retained as the cloud-side validation layer (laptop-independent) but no longer the orchestrator.
+
+**Alternative B — Continue PK-as-relay forever.** Doesn't scale. Already at 5-10 cycles per session as the binding constraint. Adding more sessions/clients/briefs makes it worse, not better.
+
+**Alternative C — Build a custom orchestration agent (LangChain, CrewAI, etc).** Rejected. Adds infrastructure complexity for a problem that doesn't need it. The five rules above + Cowork scheduling + GitHub Actions validation cover the real workflow.
+
+### What this requires (Phase 1+2, this commit)
+
+- `docs/runtime/automation_v1_spec.md` — full v1 spec with all rules, frontmatter, status flow, correction handling, success thresholds
+- `docs/runtime/claude_questions.md` — empty Q inbox with format reference
+- `docs/runtime/claude_answers.md` — empty A outbox with format reference
+- `docs/runtime/state_file_template.md` — per-run state file template
+- `docs/runtime/runs/.gitkeep` — placeholder for state files
+- `docs/runtime/README.md` — directory orientation
+
+### What this requires (Phase 3+, next sessions)
+
+- Phase 3: First brief authored in v1 frontmatter format. Recommended first test: Phase D ARRAY mop-up. Tier 1, draft-only, mechanical, finite scope.
+- Phase 4: Cowork scheduled task configured via `/schedule`. GitHub Actions validation workflow built (lint + diff + filename check).
+- Phase 5: First overnight test. Observe against success thresholds. Iterate.
+
+### Success thresholds (first test = Phase D ARRAY mop-up)
+
+| Metric | Good | Re-evaluate |
+|---|---|---|
+| Questions asked | ≤ 10 | > 20 |
+| Defaults overridden | ≤ 20% | > 50% |
+| Cowork run completes | yes | no |
+| GitHub Actions validation passes | yes | no |
+| Production writes | 0 (mandatory) | any > 0 |
+| PK morning approval time | ≤ 10 min | > 30 min |
+
+If 5+ thresholds in "Good" column: scale up (add more briefs).
+If 2+ thresholds in "Re-evaluate" column: redesign before next run.
+
+### Constraints accepted
+
+1. **Cowork desktop-must-be-awake.** Same constraint as `openclaw tui`. PK accepts: skip nights laptop is off. v2 considers always-on workstation.
+2. **Usage limits, not dollar costs.** Cowork on Max 5x bundled in subscription. Real constraint is Max plan usage, not API spend. Daily Cowork run = within budget. Hourly = potentially hits usage limits.
+3. **No human-in-the-loop for scheduled tasks.** Mitigated by Tier 2/3 escalation, scoped permissions, idempotency checks.
+
+### What this does NOT decide
+
+- The exact Cowork scheduled-task prompt (locked in Phase 4 brief)
+- The GitHub Actions validation workflow contents (locked in Phase 4 brief)
+- Cadence beyond v1 (daily, weekly, weekday-only — TBD after first 5 runs)
+- Whether to build the `ice-brief-runner` plugin per ChatGPT's suggestion (deferred until v1 proves valuable)
+- Audit loop automation (D181 slice 2 + 3 — deferred until snapshot format stable)
+
+### Sunset clause
+
+Review effectiveness after 2 weeks (by 12 May 2026). If question count is not declining or correction commits are not minimal, re-evaluate the model tiering, brief template, or whole approach. The five-rule system stays only if it's measurably better than the relay model.
+
+### Related decisions
+
+- **D170** — MCP-applied migrations. The discipline of pre-flight + apply via MCP applies inside scheduled tasks too — Cowork would invoke the same Supabase MCP path.
+- **D171** — Pre-flight as gate. Briefs that involve schema changes still pre-flight; the difference is Cowork executes the pre-flight, not Claude Chat.
+- **D175** — Versioned reference table FK pattern. Future scheduled briefs touching versioned data must include this discipline in the answer-key.
+- **D181** — Audit loop architecture. D181 is the predecessor in the "reduce PK as bottleneck" line. D181 made the audit produce findings async; D182 makes brief execution async. Different parts of the same shift.
+- **Lesson #32** — Pre-flight every directly-touched table. Reinforced in Cowork briefs (the answer-key should include "use Supabase MCP to verify schema before writing SQL").
+- **Lesson #36** — Migration names are permanent. Brief idempotency check `migration_file_absent` directly applies this lesson.
+- **Lesson #38** — Count-delta verification beats time-window. GitHub Actions validation must follow this for any verification step.
+- **Lesson #39** — JSONB shape verification samples across rows. If a future brief touches JSONB, the answer-key includes this rule.
+
+---
+
 ## Decisions Pending
 
 | Decision | Status | Gate |
@@ -381,12 +561,15 @@ Migration committed at `supabase/migrations/20260428054222_audit_slice1_pending_
 | **D179 — Stage 10/11 ordering: Option B** | ✅ LOCKED for Stage 10 brief | Stage 10 next session |
 | **D180 — Discovery decides assignment, intelligence decides retention** | ✅ APPLIED via migration 006 trigger; backfill ran for 8 CFW seeds | Apply to any future discovery channel (YouTube channel discovery, email-newsletter discovery, etc.) |
 | **D181 — Audit loop as three-layer architecture** | ✅ BUILT — first cycle complete same day; slice 1 prevention live | Apply to future audit roles (Security, Operations, Financial, Compliance) when added |
+| **D182 — Non-blocking execution model (five-rule system)** | ✅ LOCKED — v1 spec committed at `docs/runtime/automation_v1_spec.md`; Phase 1+2 done; Phase 3-5 sequenced for next sessions; sunset review 12 May 2026 | — |
 | **Slot-driven Phase A** | ✅ COMPLETE 26 Apr morning | — |
 | **Slot-driven Phase B Stages 7-9** | ✅ COMPLETE 26 Apr afternoon–evening | — |
 | **Slot-driven Phase B Stages 10-12** | ✅ COMPLETE 27 Apr | — |
 | **Gate B observation** | 🔄 IN PROGRESS — Day 1 healthy. Earliest exit Sat 2 May | 5-7 days post-Stage 12 |
 | **Concrete-pipeline track** | 🔄 IN PROGRESS — Discovery Stage 1.1 ✅, Publisher Stage 2.1 ✅, Brief A ✅, Brief 2 ✅. Stages 1.2-1.5 + 2.2-2.5 pending | Parallel to Gate B |
-| **F-002 closure** | 🔄 P1 applied; P2 + P3 pending | After CC delivers P2 → review → apply, repeat for P3 |
+| **F-002 closure** | ✅ CLOSED-ACTION-TAKEN — P1 + P2 + P3 all applied 28 Apr same day. c+f coverage 0% → 20.2% (136/674). 6 LOW rows + 7 ARRAY columns deferred to followups. | — |
+| **Phase D ARRAY mop-up (first test for D182 system)** | 🔲 Next session | First brief in v1 frontmatter format |
+| **6 LOW-row joint resolution session** | 🔲 Backlog | PK + chat session, ~30 min |
 | **Audit loop slice 2 (snapshot automation)** | 🔲 Deferred | Format stable for 5+ cycles |
 | **Audit loop slice 3 (API auditor pass via Cowork+OpenAI)** | 🔲 Deferred | Slice 2 first |
 | **Slot-driven Phase C — Cutover (Stages 12-18)** | 🔲 After Gate B exit | Gate B exit |
@@ -416,4 +599,5 @@ Migration committed at `supabase/migrations/20260428054222_audit_slice1_pending_
 | **`instagram-publisher` exec_sql + raw interpolation** | 🔲 Folds into slot-driven Phase B Stage 11 ai-worker refactor | Stage 11 |
 | **PP Schedule Facebook 6/5 over-tier-limit** | 🔲 Sprint item TBD | Surfaced in M5 verification — investigate save-side validation |
 | **Stage 12+ refinement: try_urgent_breaking_fills per-platform variance** | 🔲 After Gate B | Currently picks same top breaking item across all platforms for a client; fill function's LD15 dedup masks it. Refine to pick different item per platform within client. |
-| **Branch sweep — invegent-dashboard (7 stale branches)** | 🔲 Next session | feature/discovery-stage-1.1 + 6 fix/* branches; cleanup with `git push origin --delete` |
+| **Branch sweep — invegent-content-engine + invegent-dashboard + invegent-portal (12 stale branches)** | 🔲 Next session | content-engine 5, dashboard 6, portal 1; cleanup with `git push origin --delete` |
+| **Phase B filename hygiene** | 🔲 Next session | Rename `supabase/migrations/20260428163000_audit_f002_p2_column_purposes_corrected.sql` to match DB version `20260428064115` per Lesson #36 |
