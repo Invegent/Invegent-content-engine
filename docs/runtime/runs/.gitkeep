@@ -1,0 +1,3 @@
+# Per-run state files live here.
+# See docs/runtime/state_file_template.md for format.
+# See docs/runtime/automation_v1_spec.md for the system spec (D182).
