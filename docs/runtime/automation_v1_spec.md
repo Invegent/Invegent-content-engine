@@ -1,8 +1,9 @@
 # ICE Automation v1 — Locked Spec
 
-**Status:** LOCKED 28 Apr 2026 evening · patched 29 Apr Wed late evening per ChatGPT review
+**Status:** LOCKED 28 Apr 2026 evening · patched 29 Apr Wed late evening per ChatGPT review · first run validated 29 Apr Wed evening · build path updated 30 Apr Thu morning per D183 + D184
 **Decision:** D182 — Non-blocking execution model (five-rule system)
 **Predecessor:** D181 (audit loop architecture)
+**Follow-on decisions:** D183 (build-when-evidence-demands), D184 (audit slicing)
 
 ---
 
@@ -42,6 +43,8 @@ Morning         PK reviews report, approves or requests changes
 Compressed from ChatGPT's original 8-hour spec (three Cowork sessions per night). Cost discipline + lower laptop-awake burden. The correction pass closes the gap between API answers and validation — without it, GH Actions would validate pre-correction artefacts.
 
 If Cowork cannot run a correction pass after 01:00 (e.g. machine sleeping), API answers become advisory for morning review only — Cowork's first-pass output stays as-is and PK applies any corrections in the morning.
+
+**Note (30 Apr per D183):** Phase 4b (GH Actions validation) and Phase 4c (OpenAI answer step + Cowork correction pass) are DEFERRED until briefs demand them. The pipeline above describes the target architecture; the system currently operates with manual one-shot Cowork runs and PK morning review only. First run on 29 Apr proved this is sufficient for mechanical Tier 1 briefs.
 
 ---
 
@@ -85,7 +88,7 @@ Notes:
 
 ### Tier 0 — Safe auto-commit
 
-**Allowed:** observation reports, sync summaries, audit run drafts, reconciliation logs, non-decision status files. Markdown only.
+**Allowed:** observation reports, sync summaries, audit run drafts, reconciliation logs, non-decision status files, audit snapshots (per D184). Markdown only.
 
 **Not allowed:** decision logs, roadmap updates, migrations, production data, client-facing wording.
 
@@ -145,6 +148,7 @@ Examples:
 |---|---|
 | Migration draft | `migration_file_absent` (file matching `idempotency_pattern` doesn't exist) |
 | Report | `report_file_absent` (output file doesn't exist in `docs/runtime/runs/`) |
+| Audit snapshot | `snapshot_file_absent` (file at `docs/audit/snapshots/{YYYY-MM-DD}.md` doesn't exist) |
 | Branch task | `branch_exists` (branch still present in remote) |
 | Column documentation | `target_columns_unpopulated` (registry rows still have NULL or PENDING_DOCUMENTATION) |
 
@@ -249,10 +253,33 @@ If 2+ thresholds in "Re-evaluate" column: redesign before next run.
 
 ---
 
-## Constraints accepted
+## First-run learnings (29 Apr Wed evening)
+
+First test: Phase D ARRAY mop-up brief, Tier 1, mechanical, 7 columns to document.
+
+**Hit 5/5 thresholds:**
+
+| Metric | Threshold | Actual |
+|---|---|---|
+| Questions asked | ≤ 10 | **0** |
+| Defaults overridden | ≤ 20% | **0%** |
+| Cowork run completes | yes | **yes** |
+| Production writes from automation | 0 (mandatory) | **0** |
+| PK approval time | ≤ 10 min | **yes** (~5 min) |
+
+**Key observations to inform future briefs (per D183):**
+
+1. **Pre-loaded pre-flight data eliminates ~5 SQL re-query loops.** PK ran row counts + sample values + registry baseline + table_id JOIN pattern before authoring; brief embedded findings as authoritative. Cowork did not re-query Supabase. Worth keeping as a discipline.
+2. **Answer-key pattern works completely when scope is tight.** All 5 anticipated decision points pre-answered with defaults. 0 questions written to `claude_questions.md`. Future briefs should aim for similar pre-flight depth before run.
+3. **3-commit run pattern emerged organically.** ready→running, work, running→review_required+queue update. Clean transitions, easy audit trail. Future executor-prompt revision can codify this.
+4. **Runtime ~5 min vs estimated 20 min.** First brief was tighter than predicted. May need to set tighter estimates for similar mop-up briefs.
+5. **Token burn ~45k.** Modest on Max 5x bundled. No per-run dollar cost concern.
+6. **Two minor wording observations during PK review accepted as-is** — (a) `f.video_analysis.key_hooks` claimed producer "video-analysis worker extracted..." — real per A13 closure but goes slightly beyond pre-flight evidence; (b) `c.client_brand_asset.platform_scope` had shape speculation hedged with "no observed sample available to confirm" — useful future-reader hint. Neither was safety-impacting.
+
+**Constraints accepted (carried forward):**
 
 1. **Cowork desktop-must-be-awake.** Same constraint as `openclaw tui`. PK accepts: skip nights laptop is off. v2 considers always-on workstation.
-2. **Usage limits, not dollar costs.** Cowork on Max 5x bundled in subscription. Real constraint is Max plan usage, not API spend. Daily Cowork run = within budget. Hourly = potentially hits usage limits.
+2. **Usage limits, not dollar costs.** Cowork on Max 5x bundled in subscription. Real constraint is Max plan usage, not API spend.
 3. **No human-in-the-loop for scheduled tasks.** Mitigated by Tier 2/3 escalation, scoped permissions, idempotency checks.
 
 ---
@@ -284,10 +311,11 @@ If 2+ thresholds in "Re-evaluate" column: redesign before next run.
 | 2 | D182 in decisions log + standing memory | 15 min | DONE 28 Apr |
 | 3 | First Cowork-executable brief (Phase D ARRAY) | 30 min | DONE 29 Apr |
 | 4a | Cowork executor prompt | 15 min | DONE 29 Apr |
-| 4b | GitHub Actions validation workflow | 1 hour | Next session |
-| 4c | OpenAI API answer step + Cowork correction pass wiring | 1 hour | Next session |
-| 5 | First overnight test (or first manual test) | overnight or 1 hour | After 4b/c, OR manual one-shot now |
-| 6 | Audit loop automation (Data Auditor) | deferred | After 5+ successful runs |
+| 4b | GitHub Actions validation workflow | 1 hour | **DEFERRED per D183** — first run inline DO block sufficient. Build when a brief demands cloud-side validation. |
+| 4c | OpenAI API answer step + Cowork correction pass wiring | 1 hour | **DEFERRED per D183** — first run produced 0 questions. Build when a brief actually generates real questions PK cannot trivially answer. |
+| 5 | First overnight test (or first manual test) | overnight or 1 hour | **DONE 29 Apr** — 5/5 thresholds. Phase D ARRAY mop-up applied via Supabase MCP per D170. |
+| 6 | Audit loop automation — Slice 2 (snapshot generation) | 30 min | **NEXT as Tier 0 D182 brief per D184**. Reads `k.*` registry + targeted `f.*`/`m.*` extracts, writes `docs/audit/snapshots/{YYYY-MM-DD}.md`. |
+| 7 | Audit loop automation — Slice 3 (auditor pass) | TBD | **DEFERRED per D184 + D181** — wait for 5+ manual cycles before automating auditor judgment. |
 
 ---
 
@@ -300,10 +328,12 @@ If 2+ thresholds in "Re-evaluate" column: redesign before next run.
 - `docs/runtime/runs/` — per-run state files
 - `docs/briefs/queue.md` — operator-facing queue
 - `docs/briefs/` — brief queue
-- `.github/workflows/` — GitHub Actions validation (when Phase 4b lands)
+- `docs/briefs/phase-d-array-mop-up.md` — first brief (status: done)
+- `docs/briefs/audit-snapshot-cycle-2.md` — next brief (to be authored, per D184)
+- `.github/workflows/` — GitHub Actions validation (deferred per D183)
 
 ---
 
 ## Final principle
 
-Default first, ask rarely, correct safely. Run it, observe failures, refine.
+Default first, ask rarely, correct safely. Run it, observe failures, refine. **Don't pre-build infrastructure for problems you haven't seen yet** (D183).

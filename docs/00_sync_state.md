@@ -1,154 +1,136 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-29 Wednesday late evening — **D182 non-blocking execution model: Phase 1+2+3+4a SHIPPED tonight.** Spec locked, runtime infrastructure committed, decisions log updated, memory updated, dashboard synced, first brief authored in v1 frontmatter format, queue file created, Cowork executor prompt paste-ready. Phase 4b/c (GitHub Actions validation + OpenAI API answer step) and Phase 5 (first overnight test) remain. From 28 Apr: audit cycle 1 closed-action-taken, F-001/F-002/F-003 all closed, c+f registry coverage 20.2%. Closed ≠ done: Gate B observation continues, follow-ups remain.
+> Last written: 2026-04-30 Thursday morning — **D182 v1 first run COMPLETE 29 Apr Wed evening, 5/5 thresholds hit. F-002 Phase D ARRAY mop-up closed-action-taken.** Two new decisions captured (D183 + D184) to lock the build-when-evidence-demands principle and the audit-workflow slicing. Phase 4b (GH Actions validation) and Phase 4c (Q&A pipeline) DEFERRED per D183 — system earned its first run without them. Audit Slice 2 (snapshot generation) authored as next D182 Tier 0 brief per D184.
 > Written by: PK + Claude session sync
 
 ---
 
-## 🟢 29 APR WEDNESDAY LATE EVENING — D182 PHASE 1-4a SHIPPED (~1.5 hours focused)
+## 🟢 30 APR THU MORNING — END-OF-SESSION RECONCILIATION
 
-PK had 1 hour after morning routine. Shipped Phase 1-4a of D182 build. System is now nearly complete for first manual test run.
+Everything captured. PK can start fresh next session against an accurate state file.
 
-### What shipped tonight
+### What landed since the previous sync_state (`27cce27`)
 
-**Five commits across 2 repos:**
+**Two pre-first-run commits:**
 
-1. `ba52c04` (Invegent-content-engine) — D182 Phase 1+2: runtime infrastructure
-   - `docs/runtime/README.md` — directory orientation
-   - `docs/runtime/automation_v1_spec.md` — locked v1 spec (full)
-   - `docs/runtime/claude_questions.md` — async Q inbox (empty + format)
-   - `docs/runtime/claude_answers.md` — async A outbox (empty + format)
-   - `docs/runtime/state_file_template.md` — per-run state template
-   - `docs/runtime/runs/.gitkeep` — placeholder
+1. `0a9d5f6` (29 Apr Wed late evening) — ChatGPT review patches
+   - Hard blocker fix: `docs/runtime/cowork_prompt.md` was malformed (literal `\n`/`\u2014` + JSON metadata bleed). Rewritten as clean Markdown.
+   - 5 spec issues fixed: correction-pass timing window, API escalation distinction (may answer Tier 1 draft inside allowed_paths vs must escalate apply/destructive/Tier 3), Tier 1 draft files allowed inside allowed_paths, frontmatter timestamp format, YYYY-MM-DDTHHMMSSZ standardised.
+   - 3 file-specific fixes: `claude_questions.md` append-only discipline, `claude_answers.md` Question ID + Default matched fields, brief allowed_paths extended.
 
-2. `f9a142e` (Invegent-content-engine) — D182 Phase 2: decisions log
-   - D182 added to `docs/06_decisions.md` with full rationale, five rules, v1 architecture, 4-tier risk system, correction handling, success thresholds, sunset clause
-   - Decisions Pending updated: F-002 marked closed-action-taken, D182 LOCKED row added, Phase D ARRAY mop-up + Phase B filename hygiene + branch sweep refreshed
+**First Cowork run produced 3 commits (`87c5425` + `af7eb16` + `2c12482`):**
 
-3. `5d414d9` (invegent-dashboard) — D182 dashboard sync
-   - LAST_UPDATED bumped to 29 Apr Wed late evening
-   - Phase 3 subtitle expanded to mention D182 lock
-   - Three new Phase 3 deliverables (D182 lock done, Phase 3-5 planned)
-   - New layer "Automation substrate (D182)" at 25%
-   - External blockers updated, big banner rewritten, strategic principle extended
+   - Brief frontmatter ready → running → review_required
+   - `supabase/migrations/20260429102956_audit_f002_phase_d_array_columns.sql` drafted (DO block, expected_delta=7, count-delta verification per Lesson #38)
+   - `docs/runtime/runs/phase-d-array-mop-up-2026-04-29T102956Z.md` per state_file_template
+   - `docs/briefs/queue.md` updated to review_required
 
-4. `d4aa6c3` (Invegent-content-engine) — D182 Phase 3: first brief + queue
-   - `docs/briefs/queue.md` — operator-facing queue file
-   - `docs/briefs/phase-d-array-mop-up.md` — first brief in v1 frontmatter format
-   - Brief is Tier 1 (draft only), idempotency_check=migration_file_absent, success_output specified
-   - Pre-flight findings embedded: row counts + sample values + registry baseline for all 7 ARRAY columns
-   - 5 likely questions pre-answered with defaults
-   - Pattern pointer to `20260428064115_audit_f002_p2_column_purposes_corrected.sql` template
-   - Critical reminders: Lessons #32, #36, #38, #39
+**One closing-artifacts commit:**
 
-5. `48561d2` (Invegent-content-engine) — D182 Phase 4a: Cowork executor prompt
-   - `docs/runtime/cowork_prompt.md` — paste-ready prompt PK drops into Cowork
-   - Handles both manual one-shot runs (recommended for first test) and scheduled tasks
-   - Pick first ready brief, only one per run, verify frontmatter, idempotency check first, allowed_paths/forbidden_actions enforced, default-and-continue on decisions, Tier 2/3 escalation halts, direct-push to main per D165
-   - Success thresholds for first run included inline
+4. `3a2130f` (29 Apr Wed evening) — D182 first run COMPLETE
+   - Migration applied via Supabase MCP per D170: c+f registry coverage 142 → 149 (22.1%, 7 ARRAY columns documented).
+   - `docs/briefs/queue.md`: phase-d-array-mop-up moved to Recently completed with 5/5 success note
+   - `docs/briefs/phase-d-array-mop-up.md`: status review_required → done; closure note section added
+   - `docs/audit/decisions/f002_phase_d_missing_array_columns.md`: Status Backlog → CLOSED-ACTION-TAKEN with full closure section + D182 first-run findings captured
 
-### Memory edit
+### D182 v1 first-run thresholds — 5/5 hit
 
-- Entry 14 replaced (was Phase B 27 Apr completion already durable in 06_decisions.md and 00_sync_state.md). New entry: D182 five-rule summary at 30/30 cap.
+| Metric | Threshold | Actual |
+|---|---|---|
+| Questions asked | ≤ 10 | **0** |
+| Defaults overridden | ≤ 20% | **0%** |
+| Cowork run completes | yes | **yes** |
+| Production writes from automation | 0 (mandatory) | **0** |
+| PK approval time | ≤ 10 min | **yes** (~5 min) |
+
+Per the v1 spec's threshold-scoring rule (5+ green = scale up), D182 is cleared to take on more briefs.
+
+### Two new decisions captured this morning
+
+**D183 — D182 v1 first-run learnings + Phase 4b/4c deferral principle.**
+   - Phase 4b (GitHub Actions validation): DEFERRED until a brief actually demands cloud-side validation. First run's inline count-delta DO block was sufficient for mechanical Tier 1 briefs.
+   - Phase 4c (OpenAI API answer step): DEFERRED until a brief actually generates real questions PK cannot trivially answer. First run produced 0 questions.
+   - Standing principle: build automation infrastructure when observation under load demands it, not pre-emptively.
+
+**D184 — Audit workflow automation slicing.**
+   - Slice 2 (snapshot generation — read `k.*` registry + targeted `f.*`/`m.*` extracts, write `docs/audit/snapshots/{YYYY-MM-DD}.md`): authored as the next D182 Tier 0 brief. Validates D182 across a different brief shape (markdown gen, not migration drafting).
+   - Slice 3 (auditor pass — OpenAI reads snapshot, writes findings): still waits per D181 standing rule (5+ manual cycles before automating the auditor itself). Currently at cycle 1.
+   - Operationalises how D181 (audit loop) + D182 (non-blocking execution) compose.
+
+### Stage 2.3 trigger check — NOT met
+
+Posts continued through 28-29 Apr night. Last 24h:
+
+| Client | Posts (24h) | Posts (48h) | Last published |
+|---|---|---|---|
+| Care For Welfare Pty Ltd | 2 | 6 | 2026-04-29 07:20 UTC |
+| Invegent | 2 | 4 | 2026-04-29 07:00 UTC |
+| NDIS-Yarns | 3 | 6 | 2026-04-29 06:10 UTC |
+| Property Pulse | 5 | 10 | 2026-04-29 06:05 UTC |
+
+12-hour gap reflects normal scheduling cluster, not a stop. Stage 2.3 (slot outcome resolver) does NOT jump the queue.
 
 ### Standing memory rule honoured (entry 11)
 
 Three-way sync verified:
 - ✅ docs/00_sync_state.md (THIS COMMIT)
-- ✅ docs/06_decisions.md (D182 added, F-002 marked closed-action-taken)
-- ✅ docs/runtime/automation_v1_spec.md + supporting files
-- ✅ invegent-dashboard roadmap page.tsx
-- ✅ Standing memory entry 14
-
-### Critical state right now
-
-**D182 Phase status:**
-- Phase 1 ✅ runtime infrastructure
-- Phase 2 ✅ D182 in decisions log + standing memory
-- Phase 3 ✅ first brief in v1 frontmatter (phase-d-array-mop-up.md) + queue.md
-- Phase 4a ✅ Cowork executor prompt
-- Phase 4b 🔲 GitHub Actions validation workflow (next session)
-- Phase 4c 🔲 OpenAI API answer step (next session)
-- Phase 5 🔲 first overnight test (after 4b/c, or first MANUAL test before that)
-
-**The path to first test:**
-
-PK can run the first test MANUALLY without Phase 4b/c built — Cowork prompt + brief + queue are sufficient for a one-shot manual run during the day with PK observing. The brief has inline count-delta verification (the migration's DO block raises EXCEPTION if delta ≠ 7), so GitHub Actions validation is nice-to-have but not blocking for first run.
-
-**Recommended first-test path:**
-
-1. Open Claude Desktop → Cowork tab
-2. New task → paste contents of `docs/runtime/cowork_prompt.md` (the prompt block)
-3. Run during a window PK is at the laptop (don't schedule overnight on first run)
-4. Cowork picks up `phase-d-array-mop-up`, runs, produces migration file + state file
-5. PK reviews state file (status=review_required, work completed, questions asked, issues encountered)
-6. PK reviews migration file (7 UPDATEs, count-delta DO block, wordings)
-7. If clean: PK applies migration via Supabase MCP per D170
-8. PK marks brief as `done` in queue.md, moves to "Recently completed" section
-9. Observe: did questions stay ≤10, defaults overrides ≤20%, PK approval ≤10 min, 0 production writes
-
-If first run hits all thresholds, schedule task in Cowork for nightly. Phase 4b/c can land next session.
-
-### From 28 Apr (still active)
-
-- Gate B Day 1 healthy at end of 28 Apr. Day 2 obs pending tomorrow.
-- Audit cycle 1 closed-action-taken. F-001/F-002/F-003 all closed.
-- c+f registry coverage 20.2% (136/674)
-- 6 LOW-confidence column rows + 7 ARRAY columns deferred
-- Phase B filename hygiene pending (rename to match DB version per Lesson #36)
-- Branch sweep pending across 3 repos (12 non-main)
-- Anthropic cap $200, May 1 reset (2 days)
+- ✅ docs/06_decisions.md (D183 + D184 added; Decisions Pending updated)
+- ✅ docs/runtime/automation_v1_spec.md (build path table updated; first-run learnings section added)
+- ✅ invegent-dashboard roadmap page.tsx (separate commit this session)
+- ✅ Standing memory entry 14 (D182 summary updated to reflect first-run validation)
 
 ---
 
 ## ⛔ DO NOT TOUCH NEXT SESSION
 
-- The newly-committed D182 runtime infrastructure (`docs/runtime/*` and `docs/briefs/*`) — system is ready for first test, not for further refactoring before first run produces real signal
-- The `phase-d-array-mop-up.md` brief itself — this is the first test; mutating it before it runs would defeat the experiment
-- The Cowork executor prompt — likewise, lock until first run produces feedback
-- All Phase B Gate B items (Phase B autonomous through Sat 2 May earliest exit)
-- The newly-enabled CFW + Invegent publishing config (13 client × platform rows)
-- The 8 newly-auto-linked CFW feeds in `c.client_source` (let bundler discover them naturally)
-- `f.feed_discovery_seed` table — auto-link trigger lives here; don't add competing triggers
-- The 6 LOW-confidence column rows in `docs/audit/decisions/f002_p*_low_confidence_followup.md` — awaiting joint operator+chat session
-- The 7 ARRAY columns in `docs/audit/decisions/f002_phase_d_missing_array_columns.md` — these ARE the brief's target; don't pre-emptively write purposes outside the brief
+- The applied F-002 Phase D ARRAY column purposes (149 c+f rows now documented) — future audit cycles surface drift if changed.
+- The D182 v1 spec at `docs/runtime/automation_v1_spec.md` — system has earned its first run; let next 2-3 briefs run against the locked spec before changing anything.
+- The Cowork executor prompt (`docs/runtime/cowork_prompt.md`) — worked first time; freezing until a future brief surfaces a specific need.
+- All Phase B Gate B items — Phase B autonomous through Sat 2 May earliest exit.
+- The 8 newly-auto-linked CFW feeds in `c.client_source` — let bundler discover them naturally.
+- `f.feed_discovery_seed` table auto-link trigger — don't add competing triggers.
+- The 6 LOW-confidence column rows in `docs/audit/decisions/f002_p*_low_confidence_followup.md` — awaiting joint operator+chat session.
 
 ---
 
-## 🟡 NEXT SESSION (Thu 30 Apr or later)
+## 🟡 NEXT SESSION (Thu 30 Apr afternoon or later)
 
 ### Required
 
-1. **Gate B Day 2 obs** (~10 min) — same checks as Day 1. Cost trend, fill recovery rate, ai_job failure rate <5%. Surface the 3 `exceeded_recovery_attempts` slots from yesterday's observation.
+1. **Stage 2.3 trigger re-check** (~2 min) — same query as today's check; confirm posts continued overnight.
 
-2. **D182 first manual test** — PK opens Cowork, pastes `cowork_prompt.md` contents into a new task, runs `phase-d-array-mop-up` brief during observed window. Reviews state file + migration file. If clean, applies migration via Supabase MCP. Logs success thresholds against the table in the spec.
+2. **Gate B Day 2 obs** (~10 min) — Day 1 healthy at end of 28 Apr. Day 2 was due 29 Apr but slipped; verify cost trend, fill recovery rate, ai_job failure rate <5%, surface the 3 `exceeded_recovery_attempts` slots.
+
+3. **Anthropic cap reset** — May 1 = tomorrow. No action needed; just be aware $200 cap resets and Stop 1 ($30/mo) target stays.
 
 ### Optional (in priority order if energy)
 
-3. **D182 Phase 4b — GitHub Actions validation workflow.** `.github/workflows/d182-validation.yml` running on PR or push to `supabase/migrations/**` after a brief run. Lint check, frontmatter check, filename match check. ~30-45 min build.
+4. **Author audit Slice 2 brief** (~30 min) — D184 designated this as the next D182 brief. Tier 0 (markdown generation only, no DB writes). Reads `k.*` registry + targeted `f.*`/`m.*` extracts via Supabase MCP, writes `docs/audit/snapshots/{YYYY-MM-DD}.md` per the format established 28 Apr (33k chars, ChatGPT-context-sized).
 
-4. **D182 Phase 4c — OpenAI API answer step.** Cloud-side script reading `claude_questions.md` and writing to `claude_answers.md` per the escalation rules. ~45-60 min build.
+5. **Run brief #2 via Cowork** (~30 min observed) — second D182 test on different brief shape. If 5/5 again on Tier 0, system is validated across two shapes. If it generates 2-3 real questions, that's the signal Q&A flow infrastructure has earned its build.
 
-5. **CC Phase C final report file** — was the next CC step after 28 Apr Phase C apply per the original F-002 brief. Not blocking.
-
-6. **Branch hygiene sweep** — 12 non-main branches across 3 repos. Most likely already-merged squashes; confirm + delete.
-
-7. **Phase B filename hygiene** — rename `20260428163000_audit_f002_p2_column_purposes_corrected.sql` to match DB version `20260428064115_*` per Lesson #36. Cosmetic.
+6. **Audit cycle 2 manual run** (~30 min) — once Slice 2 brief produces a snapshot, ChatGPT can read it and produce Run 2 findings. This is cycle 2 of D181's manual loop; cycle 5+ is when auto-auditor (Slice 3) earns build.
 
 ### Backlog
 
-- 6 LOW-confidence column followups across 3 markdown files — joint operator+chat session
+- 6 LOW-confidence column followups across 3 markdown files — joint operator+chat session (likely synchronous, not Cowork — needs PK domain knowledge)
 - Stage 1.2 brief design — likely merges into Stage 2.2 scope per D180
+- Branch hygiene sweep — 10 stale branches across 3 repos (content-engine 4, dashboard 5, portal 1; 2 less than prior estimate of 12, possibly already swept)
+  - content-engine: archive/slot-driven-v3-build, fix/m8-ai-worker-draft-multiplication, fix/m11-fb-ig-publish-disparity, fix/q2-normalise-feed-config-url
+  - dashboard: fix/cfw-schedule-save-silent-error, fix/m5-rpc-get-publish-schedule, fix/m7-dashboard-feeds-create-exec-sql, fix/m9-client-switch-staleness-and-platform-display, fix/q2-dashboard-feeds-create-key
+  - portal: fix/m6-portal-exec-sql-eradication
+- Phase B filename hygiene — rename `supabase/migrations/20260428163000_audit_f002_p2_column_purposes_corrected.sql` to match DB version `20260428064115` per Lesson #36 (cosmetic; no functional impact)
+- CC Phase C final report file (Tier 0 doc generation)
 - Parallel pre-sales: A11b content prompts × 18 rows, A4→A3 proof doc, A18 source-less EFs audit, A6 subscription costs
 
-### Stage 2.3 trigger condition
+### Stage 2.3 trigger condition (re-stated for clarity)
 
-Yesterday legacy publisher produced 16 posts in 24h. If posts STOP flowing for CFW or Invegent within 48h of yesterday's mode=auto flip (so by ~end of Wed 29 Apr UTC), Stage 2.3 (slot outcome resolver) jumps the queue. Check tomorrow morning whether posts continued through 28-29 Apr night.
+If posts STOP flowing for CFW or Invegent within any 24h window from now until Phase C cutover, Stage 2.3 (slot outcome resolver) jumps the queue. Today's 24h window is healthy.
 
 ### Gate B exit
 
-- Earliest exit: Sat 2 May
+- Earliest exit: Sat 2 May (3 days from now)
 - Conditions: 5–7 days clean shadow data, no critical alerts (other than known acknowledged 32), cost stays under Stop 1 ($30/mo), ai_job failure rate <5%
 - If exit clean: Phase C cutover (Stages 12–18) — production traffic shifts to slot-driven
 
@@ -156,44 +138,30 @@ Yesterday legacy publisher produced 16 posts in 24h. If posts STOP flowing for C
 
 ## D182 sunset review reminder
 
-If D182 system is not measurably reducing question count or correction commits by 12 May 2026, re-evaluate. Do not let the system persist out of sunk-cost momentum. The five-rule structure stays only if it earns its place against the relay model.
+If D182 system is not measurably reducing question count or correction commits by 12 May 2026, re-evaluate. **First run produced 0 questions / 0 corrections — strong early signal.** But one run with a heavily-pre-flighted brief is not a trend; need 3-5 runs across different brief shapes before declaring validated.
 
 ---
 
-## TONIGHT'S COMMITS — END OF EVENING
+## SESSION COMMITS — 30 APR THU MORNING
 
 **Invegent-content-engine — `main`:**
-
-- `ba52c04` D182 v1 spec + runtime infrastructure files (Phase 1+2)
-- `f9a142e` D182 — Non-blocking execution model locked in 06_decisions.md (Phase 2)
-- `d4aa6c3` D182 Phase 3 — first brief in v1 frontmatter format + queue.md (Phase 3)
-- `48561d2` D182 Phase 4a — Cowork executor prompt paste-ready (Phase 4a)
-- THIS COMMIT — sync state update for D182 Phase 1-4a completion
+- THIS COMMIT — sync_state + decisions log (D183 + D184) + spec build-path update
 
 **invegent-dashboard — `main`:**
+- Roadmap LAST_UPDATED + automation-substrate layer + banner refresh + Phase 3 D182 deliverables (separate push this session)
 
-- `5d414d9` roadmap — D182 non-blocking execution model lock + Phase 1+2 shipped
-
-**Memory:** entry 14 replaced (Phase B → D182 five-rule summary).
+**Memory:** entry 14 updated (D182 first-run validation captured).
 
 ---
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-D182 went from "locked spec at end of 28 Apr" to "system nearly ready for first test" in ~90 min tonight. Phase 1+2 (infrastructure) + Phase 3 (first brief authored with concrete pre-flight) + Phase 4a (Cowork executor prompt) shipped as 5 commits across 2 repos.
+D182 went from "locked spec, system not yet tested" to "first run validated 5/5 + 2 follow-on decisions captured" in two sessions. The build-when-evidence-demands principle (D183) means future infrastructure builds wait for actual observed need rather than predicted need. The audit slicing decision (D184) wires D181 + D182 together so the next test of D182 also extends the audit loop's automation.
 
-**The system is now waiting for its first imperfect run.** Per ChatGPT's call: "You don't need a better plan — you need your first imperfect run." The next high-leverage action is PK running the first manual test of the Phase D ARRAY brief, observing where defaults broke down, and refining from real signal rather than predicted signal.
-
-**What's deliberately NOT shipped tonight:**
-
-- Phase 4b (GitHub Actions validation workflow) — adds complexity to first run; brief has inline count-delta verification that does the safety job for a first-run smoke test
-- Phase 4c (OpenAI API overnight answer step) — first run can have PK answer Cowork's questions in the morning; validating the question-asking discipline matters more than the answering automation on first run
-- Multi-brief queue processing — explicitly disabled in the prompt ("stop after one brief"); observation > throughput on early runs
-
-**Realistic ambition for next session:** light if PK is doing first manual test. Just Gate B Day 2 obs + paste Cowork prompt + observe + review + apply if clean. Phase 4b/c can wait for after first-run signal.
+Standing rule: PK personal businesses come first when next session opens. ICE work is bonus, not driver.
 
 ---
 
-## END OF WEDNESDAY 29 APR LATE EVENING SESSION
+## END OF THURSDAY 30 APR MORNING SESSION
 
-D182 Phase 1-4a shipped. System ready for first manual test. Gate B Day 2 obs pending. Audit cycle 1 closure (28 Apr) still standing. Anthropic cap reset 2 days.
+Full reconciliation complete. Everything captured. Fresh start ready.
