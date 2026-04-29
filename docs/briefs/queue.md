@@ -12,11 +12,13 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 
 | brief_id | risk_tier | status | owner | created | latest run |
 |---|---|---|---|---|---|
-| `phase-d-array-mop-up` | 1 | review_required | cowork | 2026-04-29 | 2026-04-29T102956Z |
+| *(none)* | | | | | |
 
 ## Recently completed
 
-*(none yet — D182 system is at Phase 1+2 completion; first run pending Phase 4)*
+| brief_id | risk_tier | status | owner | created | run | completed | notes |
+|---|---|---|---|---|---|---|---|
+| `phase-d-array-mop-up` | 1 | done | cowork | 2026-04-29 | 2026-04-29T102956Z | 2026-04-29 | 🎉 First D182 run — 5/5 success thresholds. 7 ARRAY columns documented (c+f 142→149, 22.1%). Cowork run — 0 questions, 0 corrections, 0 production writes from automation, ~5 min runtime, ~45k token burn. Migration applied by PK via Supabase MCP per D170. |
 
 ## Failed / blocked
 

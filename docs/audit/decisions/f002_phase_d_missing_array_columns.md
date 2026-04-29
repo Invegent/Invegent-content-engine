@@ -1,43 +1,58 @@
 # F-002 Phase D mop-up — missing pure-ARRAY columns
 
-**Status:** Backlog — small follow-up batch
+**Status:** ✅ CLOSED-ACTION-TAKEN — 29 Apr 2026 evening (first D182 v1 brief executed end-to-end)
 **Source:** scope discovery during Phase C apply, 28 Apr 2026 evening
 **Originating finding:** F-2026-04-28-D-002 (closed-action-taken)
 **Discovery context:** while verifying Phase C inventory against `k.column_registry`, chat noticed CC's P3 regex captured all 23 jsonb columns + 3 hash columns in c+f, but missed 7 pure pg ARRAY columns. Phase A captured 2 ARRAY columns (`c.client_audience_policy.audience_types_enabled`, `platforms_enabled`) because they were enumerated explicitly in P1 scope; the 7 below slipped between P1 and P3.
 
 ---
 
-## What's missing
+## Closure (29 Apr 2026)
 
-7 ARRAY columns in c+f schemas with no `column_purpose`:
+**All 7 ARRAY columns documented.** First brief executed under D182 v1 non-blocking automation:
 
-| Schema.table | Column | Element type | Notes |
-|---|---|---|---|
-| c.client_brand_asset | `platform_scope` | text[] | Likely the platforms this asset applies to (e.g. `{facebook,instagram}`) |
-| c.client_brand_profile | `brand_never_do` | text[] | Operator-curated list of phrases or behaviours the brand must avoid |
-| c.client_brand_profile | `brand_voice_keywords` | text[] | Operator-curated list of brand-voice descriptors |
-| c.content_series | `platforms` | text[] | Platforms this series targets |
-| c.onboarding_submission | `content_topics` | text[] | Topics the prospective client wants to cover |
-| c.onboarding_submission | `desired_platforms` | text[] | Platforms the prospective client wants to publish on |
-| f.video_analysis | `key_hooks` | text[] | Extracted hook phrases or moments from the analysed video |
+- **Brief:** `docs/briefs/phase-d-array-mop-up.md` (status: `done`)
+- **Cowork run:** 2026-04-29T102956Z, 0 questions asked, all 5 likely-Q defaults applied, 0 corrections, ~5 min runtime, ~45k tokens, 0 production writes from automation
+- **Run state:** `docs/runtime/runs/phase-d-array-mop-up-2026-04-29T102956Z.md`
+- **Migration:** `supabase/migrations/20260429102956_audit_f002_phase_d_array_columns.sql`
+- **Applied by PK:** 29 Apr 2026 evening via Supabase MCP per D170. count-delta verification passed (142 → 149 documented c+f rows; expected delta 7).
+- **Coverage delta:** c+f schemas 21.1% → 22.1% (149 of 674 columns)
+- **D182 v1 result:** 5/5 success thresholds. System earned its first run.
 
 ---
 
-## Why this isn't blocking F-002 closure
+## What was missing (now closed)
+
+7 ARRAY columns in c+f schemas with no `column_purpose` — all now documented:
+
+| Schema.table | Column | Element type | Notes | Status |
+|---|---|---|---|---|
+| c.client_brand_asset | `platform_scope` | text[] | Likely the platforms this asset applies to (e.g. `{facebook,instagram}`) | ✅ documented |
+| c.client_brand_profile | `brand_never_do` | text[] | Operator-curated list of phrases or behaviours the brand must avoid | ✅ documented |
+| c.client_brand_profile | `brand_voice_keywords` | text[] | Operator-curated list of brand-voice descriptors | ✅ documented |
+| c.content_series | `platforms` | text[] | Platforms this series targets | ✅ documented |
+| c.onboarding_submission | `content_topics` | text[] | Topics the prospective client wants to cover | ✅ documented |
+| c.onboarding_submission | `desired_platforms` | text[] | Platforms the prospective client wants to publish on | ✅ documented |
+| f.video_analysis | `key_hooks` | text[] | Extracted hook phrases or moments from the analysed video | ✅ documented |
+
+---
+
+## Why this wasn't blocking F-002 closure
 
 F-002's brief target was "high-leverage business-control coverage of c+f schemas." The applied phases hit that target:
 
 - Phase A (P1): 79 booleans/enums — the toggles that gate pipeline behaviour
 - Phase B (P2): 30 numerics — the thresholds, limits, weights, counts
 - Phase C (P3): 27 JSONB — the structured configs and payloads
+- **Phase D (this batch): 7 ARRAYs — the enumerated string lists**
 
-Result: **136 of 674 c+f columns documented (20.2%)**. The 7 missing ARRAYs are simple enumerated lists; their column purposes will be one-line, mostly self-evident, and not safety-sensitive in the way Phase A toggles or Phase B thresholds were. They get a Phase D mop-up in a future small batch.
+Result: **149 of 674 c+f columns documented (22.1%)**. Phase D didn't change F-002's closure status (already closed-action-taken via P1+P2+P3 on 28 Apr); it just added the small mop-up batch.
 
 ---
 
-## Phase D scope (when ready)
+## Phase D scope (executed)
 
-A small CC brief asking for 7 column purposes against the actual current data shape. Sample data:
+A small CC brief asking for 7 column purposes against the actual current data shape. Sample data was confirmed during pre-flight on 29 Apr morning by chat:
 
 ```sql
 -- Quick sanity checks before writing purposes
@@ -48,14 +63,12 @@ SELECT content_topics, desired_platforms FROM c.onboarding_submission WHERE cont
 SELECT key_hooks FROM f.video_analysis WHERE key_hooks IS NOT NULL LIMIT 5;
 ```
 
-Apply pattern:
-1. CC writes 7 column purposes in a small proposals file
-2. ChatGPT reviews
-3. Chat applies via Supabase MCP with count-delta verification (Lesson #38)
-4. F-002's c+f coverage moves from 20.2% to ~21.2% (143/674)
-5. Phase D doesn't change F-002's closure status (already closed-action-taken via P1+P2+P3)
-
-This is small enough to combine with another mop-up batch in a future session.
+Apply pattern (executed):
+1. ✅ PK pre-flighted 7 columns + sample values + registry baseline (29 Apr morning)
+2. ✅ Brief authored at `docs/briefs/phase-d-array-mop-up.md` with all pre-flight findings embedded as answer-key (Phase 3 of D182)
+3. ✅ Cowork executed brief via paste-in prompt (`docs/runtime/cowork_prompt.md`); produced migration + state file with 0 questions, all 5 defaults applied as documented (Phase 5 manual one-shot)
+4. ✅ Chat applied via Supabase MCP per D170 with count-delta verification (Lesson #38). Migration's internal RAISE EXCEPTION on delta != 7 acted as primary safety check.
+5. ✅ Coverage moved 21.1% → 22.1% on c+f (142 → 149)
 
 ---
 
@@ -71,3 +84,17 @@ WHERE cr.data_type IN ('jsonb', 'json', 'ARRAY')
 ```
 
 This becomes part of the standing brief template once documented in the F-002 closure final report.
+
+---
+
+## D182 first-run findings
+
+Closure also serves as the first-run report for the D182 v1 system. Key observations to inform Phase 4b/4c build and future briefs:
+
+- **Answer-key pattern works.** All 5 likely-Q defaults applied without needing to write a single question to `claude_questions.md`. Either the brief was over-specified for this scope, or future briefs should aim for similar pre-flight depth. Both are useful signals.
+- **Pre-loaded pre-flight data eliminates re-query loop.** Saved ~5 SQL calls vs Cowork starting cold. Worth keeping as a discipline.
+- **3-commit run pattern emerged organically:** ready→running, migration+state, running→review_required+queue. Clean transitions, easy audit trail.
+- **Runtime ~5 min vs estimated 20 min.** First brief was tighter than I thought. May need to set tighter estimates for similar mop-up briefs.
+- **Token burn ~45k.** Modest. On Max 5x bundled, no per-run cost concern.
+- **Two minor wording considerations PK observed during review:** (1) `f.video_analysis.key_hooks` has a producer claim ("video-analysis worker extracted...") not pre-flight verified — accepted as-is because producer is real per A13 closure; (2) `c.client_brand_asset.platform_scope` has shape speculation ("Shape expected to mirror lowercase platform_key values...") — accepted because hedged with "no observed sample available to confirm". Neither was safety-impacting; both are useful future-reader hints.
+- **Phase 4b/4c not blocking for first run.** Brief's inline count-delta DO block did the safety job for a smoke test. GH Actions validation + OpenAI overnight answer step can land when there's a real need for them.

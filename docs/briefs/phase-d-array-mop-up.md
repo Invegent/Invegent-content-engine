@@ -1,10 +1,13 @@
 ---
 brief_id: phase-d-array-mop-up
-status: review_required
+status: done
 risk_tier: 1
 owner: cowork
 created_by: PK
 created_at: 2026-04-29
+completed_at: 2026-04-29
+migration_applied: supabase/migrations/20260429102956_audit_f002_phase_d_array_columns.sql
+run_state: docs/runtime/runs/phase-d-array-mop-up-2026-04-29T102956Z.md
 default_action: draft_only
 allowed_paths:
   - supabase/migrations/**
@@ -38,6 +41,24 @@ related_lessons:
 ---
 
 # Brief: Phase D ARRAY mop-up — 7 missing column purposes
+
+## Closure note (29 Apr 2026)
+
+**✅ DONE.** First D182 v1 brief executed end-to-end successfully.
+
+- **Cowork run:** 2026-04-29T102956Z, ~5 min runtime, 0 questions asked, all 5 likely-Q defaults applied as documented, 0 corrections, 0 production writes from automation, ~45k token burn.
+- **Migration drafted:** `supabase/migrations/20260429102956_audit_f002_phase_d_array_columns.sql` (3 commits across `87c5425`, `af7eb16`, `2c12482`).
+- **PK applied:** via Supabase MCP per D170. count-delta verification passed cleanly (142 → 149 documented c+f rows; expected delta 7).
+- **Coverage delta:** c+f schemas 21.1% → 22.1% (149 of 674 columns).
+- **Success thresholds:** 5/5 hit. Questions ≤ 10 (actual 0); defaults overridden ≤ 20% (actual 0%); Cowork run completes (yes); production writes 0 (mandatory hit); PK approval time ≤ 10 min (yes).
+
+**System verdict:** D182 v1 has earned its first run. Scale up.
+
+**Run state file:** `docs/runtime/runs/phase-d-array-mop-up-2026-04-29T102956Z.md`
+
+The rest of this file is the original brief, kept as historical context.
+
+---
 
 ## Context
 
