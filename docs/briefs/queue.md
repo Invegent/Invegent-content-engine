@@ -10,7 +10,9 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 
 ## Active queue
 
-*(none — queue idle)*
+| brief_id | risk_tier | status | owner | created | latest run |
+|---|---|---|---|---|---|
+| `post-publish-observability-column-purposes` | 1 | ready | cc | 2026-04-30 | — |
 
 ## Recently completed
 
