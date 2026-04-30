@@ -10,7 +10,9 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 
 ## Active queue
 
-*(none — queue idle)*
+| brief_id | risk_tier | status | owner | created | notes |
+|---|---|---|---|---|---|
+| `pipeline-health-pair-column-purposes` | 1 | ready | cc | 2026-04-30 | R06 from action list. Two tables: `m.pipeline_health_log` (21 cols) + `m.cron_health_snapshot` (16 cols). Expected_delta=37. Pre-flight by chat confirmed counts + table_purpose presence. Zero JSONB. Expected 0–5 LOW. Strategic value: operator-alerting/observability bedrock; m schema 26.2% → ~31.6%. Phase B +24h obs window untouched. |
 
 ## Recently completed
 
