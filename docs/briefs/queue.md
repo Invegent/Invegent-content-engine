@@ -10,7 +10,9 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 
 ## Active queue
 
-*(none — queue idle)*
+| brief_id | risk_tier | status | owner | created | notes |
+|---|---|---|---|---|---|
+| `operator-alerting-trio-column-purposes` | 1 | ready | cc | 2026-04-30 | R05 from action list. Three tables: `m.external_review_queue` (21, paused per D162) + `m.compliance_review_queue` (19, active) + `m.external_review_digest` (17, paused per D162). Expected_delta=57. Pre-flight by chat confirmed counts + table_purpose presence (including pause markers). Strict JSONB rule applies to `ai_analysis` on compliance_review_queue — must trace to `compliance-reviewer` Edge Function. Expected 0–8 LOW. Strategic value: closes operator-review surface; m schema 31.6% → ~40.0% (crosses 40% mark). Phase B +24h obs window untouched. CC may apply overnight; chat picks up tomorrow after T01+T02 resolved. |
 
 ## Recently completed
 
