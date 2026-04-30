@@ -12,12 +12,13 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 
 | brief_id | risk_tier | status | owner | created | latest run |
 |---|---|---|---|---|---|
-| `slot-core-column-purposes` | 1 | review_required | cc | 2026-04-30 | 2026-04-30T020151Z |
+| `phase-b-patch-image-quote-body-health-gate` | 2 | ready | cc | 2026-04-30 | — |
 
 ## Recently completed
 
 | brief_id | risk_tier | status | owner | created | run | completed | notes |
 |---|---|---|---|---|---|---|---|
+| `slot-core-column-purposes` | 1 | done | cc | 2026-04-30 | 2026-04-30T020151Z | 2026-04-30 | 56 columns populated across m.slot (20), m.slot_fill_attempt (16), m.ai_job (20) — each at 100% documented. m schema coverage 9.2% → 17.3% (63 → 119 of 686). All HIGH confidence (4 JSONB sourced from production data + check_pool_health function body, 10 enum columns enumerated from observed value distributions, 42 from FK + name + table_purpose signals); zero LOW-confidence escalations. Atomic DO block self-verified pre/post count delta = 56. Migration applied by chat via Supabase MCP per D170. |
 | `phase-d-array-mop-up` | 1 | done | cowork | 2026-04-29 | 2026-04-29T102956Z | 2026-04-29 | 🎉 First D182 run — 5/5 success thresholds. 7 ARRAY columns documented (c+f 142→149, 22.1%). Cowork run — 0 questions, 0 corrections, 0 production writes from automation, ~5 min runtime, ~45k token burn. Migration applied by PK via Supabase MCP per D170. |
 
 ## Failed / blocked
