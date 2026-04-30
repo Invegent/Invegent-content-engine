@@ -12,7 +12,7 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 
 | brief_id | risk_tier | status | owner | created | latest run |
 |---|---|---|---|---|---|
-| *(none)* | | | | | |
+| `slot-core-column-purposes` | 1 | review_required | cc | 2026-04-30 | 2026-04-30T020151Z |
 
 ## Recently completed
 
