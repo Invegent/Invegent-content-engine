@@ -50,12 +50,17 @@ This brief is markdown-generation Tier 0 — different shape. If Cowork
 hits 5/5 thresholds again on this shape, the D182 system is validated
 across two distinct brief shapes.
 
+**Update post first run (30 Apr 2026):** First run succeeded (5/5
+thresholds). D182 v1 now validated across two brief shapes. This brief
+is preserved as the canonical daily-snapshot brief — re-run any future
+day without modification.
+
 Strategic value:
 
 - Closes the build path step 6 from `docs/runtime/automation_v1_spec.md`
   (the only v1 build step remaining; step 7 is deferred per D184).
 - Produces today's snapshot as input for cycle 2 of the D181 manual
-  audit loop (R04 in the action list — runs *after* this snapshot lands).
+  audit loop (R03 in the action list — runs *after* this snapshot lands).
 - Establishes the daily snapshot cadence — once Slice 2 lands, the
   brief can be re-run any future day by changing only the date stamp.
 - Enables reasoning about D182 generalisability: does the system work
@@ -151,7 +156,7 @@ WITH
     WHERE tr.schema_name IN ('a','c','f','k','m','r','t')
   ),
   active_clients AS (SELECT COUNT(*)::int AS n FROM c.client WHERE status='active'),
-  active_feeds AS (SELECT COUNT(*)::int AS n FROM f.feed_source WHERE active=true),
+  active_feeds AS (SELECT COUNT(*)::int AS n FROM f.feed_source WHERE status='active'),
   cron_count AS (SELECT COUNT(*)::int AS n FROM cron.job),
   rls_count AS (
     SELECT COUNT(*)::int AS n FROM pg_policies WHERE schemaname IN ('a','c','f','k','m','r','t')
@@ -236,7 +241,7 @@ SELECT json_agg(
   json_build_object(
     'schema', schema_name,
     'table', table_name,
-    'kind', object_kind,
+    'kind', table_kind,
     'created_on', to_char(created_at, 'YYYY-MM-DD'),
     'state', 'TODO'
   )
@@ -350,12 +355,12 @@ SELECT json_agg(
   ORDER BY client_name, platform, status
 ) AS section_7
 FROM (
-  SELECT c.name AS client_name, s.platform, s.status, COUNT(*)::int AS slots
+  SELECT c.client_name, s.platform, s.status, COUNT(*)::int AS slots
   FROM m.slot s
   JOIN c.client c ON c.client_id = s.client_id
   WHERE s.scheduled_publish_at >= NOW() - INTERVAL '7 days'
      OR s.scheduled_publish_at >= NOW()
-  GROUP BY c.name, s.platform, s.status
+  GROUP BY c.client_name, s.platform, s.status
 ) g;
 ```
 
@@ -402,14 +407,14 @@ SELECT json_agg(
 ) AS section_9
 FROM (
   SELECT
-    v.slug AS vertical_slug,
+    v.vertical_slug,
     COUNT(*) FILTER (WHERE sp.is_active)::int AS active_pool,
     ROUND(AVG(sp.fitness_score_max) FILTER (WHERE sp.is_active), 1) AS avg_fitness,
-    COUNT(*) FILTER (WHERE sp.is_active AND sp.use_count = 0)::int AS never_used,
-    COUNT(*) FILTER (WHERE sp.is_active AND sp.use_count > 0)::int AS reused
+    COUNT(*) FILTER (WHERE sp.is_active AND sp.reuse_count = 0)::int AS never_used,
+    COUNT(*) FILTER (WHERE sp.is_active AND sp.reuse_count > 0)::int AS reused
   FROM m.signal_pool sp
   JOIN t.content_vertical v ON v.vertical_id = sp.vertical_id
-  GROUP BY v.slug
+  GROUP BY v.vertical_slug
   HAVING COUNT(*) FILTER (WHERE sp.is_active) > 0
 ) g;
 ```
@@ -441,6 +446,9 @@ FROM (
 
 ### Section 11 — Recent publishing (last 7 days)
 
+**Primary query** (refreshed 30 Apr — `m.post_draft.client_id` exists
+directly; cycle 1's `post_seed` indirection was incorrect):
+
 ```sql
 SELECT json_agg(
   json_build_object(
@@ -455,7 +463,7 @@ SELECT json_agg(
 ) AS section_11
 FROM (
   SELECT
-    c.name AS client_name,
+    c.client_name,
     pp.platform,
     pp.status,
     COUNT(*)::int AS posts,
@@ -464,15 +472,14 @@ FROM (
   FROM m.post_publish pp
   JOIN m.post_publish_queue pq ON pq.queue_id = pp.queue_id
   JOIN m.post_draft pd ON pd.post_draft_id = pq.post_draft_id
-  JOIN m.post_seed ps ON ps.post_seed_id = pd.post_seed_id
-  JOIN c.client c ON c.client_id = ps.client_id
+  JOIN c.client c ON c.client_id = pd.client_id
   WHERE pp.created_at >= NOW() - INTERVAL '7 days'
-  GROUP BY c.name, pp.platform, pp.status
+  GROUP BY c.client_name, pp.platform, pp.status
 ) g;
 ```
 
-If the join chain above fails (schema drift since cycle 1), fall back
-to a simpler version:
+**Defensive fallback** (use only if the primary join chain fails on
+future schema drift):
 
 ```sql
 SELECT json_agg(
@@ -487,7 +494,7 @@ FROM (
 ) g;
 ```
 
-If using the fallback, write a snapshot note: *"Section 11 used the
+If the fallback fires, write a snapshot note: *"Section 11 used the
 fallback query — client-level join chain unavailable. Auditor should
 correlate with section 7 slot status if needed."*
 
@@ -569,19 +576,20 @@ For each of these four tables, list its indexes verbatim:
 
 ```sql
 SELECT
-  schemaname || '.' || tablename AS qual_name,
-  indexname,
-  pg_get_indexdef(indexrelid) AS indexdef
+  pi.schemaname || '.' || pi.tablename AS qual_name,
+  pi.indexname,
+  pg_get_indexdef(c.oid) AS indexdef
 FROM pg_indexes pi
 JOIN pg_class c ON c.relname = pi.indexname
-WHERE schemaname = 'm'
-  AND tablename IN ('slot','ai_job','signal_pool','post_publish_queue')
-ORDER BY tablename, indexname;
+JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = pi.schemaname
+WHERE pi.schemaname = 'm'
+  AND pi.tablename IN ('slot','ai_job','signal_pool','post_publish_queue')
+ORDER BY pi.tablename, pi.indexname;
 ```
 
 Format under each table heading (`### m.slot`, `### m.ai_job`, etc.) as
 a JSON array of strings. Each string is a compact form of the index
-definition: `"{indexname} ({columns or condition})"`. Cycle 1 cycle 1
+definition: `"{indexname} ({columns or condition})"`. Cycle 1
 showed e.g. `"idx_slot_pending_fill (fill_window_opens_at, scheduled_publish_at) WHERE status='pending_fill'"`.
 
 If the compact form is hard to derive mechanically, use the full
@@ -600,12 +608,12 @@ SELECT json_agg(
 ) AS section_16
 FROM (
   SELECT
-    c.name AS client_name,
+    c.client_name,
     cpp.platform,
     to_char(cpp.token_expires_at, 'YYYY-MM-DD') AS expires_on
   FROM c.client_publish_profile cpp
   JOIN c.client c ON c.client_id = cpp.client_id
-  WHERE c.status = 'active' AND cpp.enabled = true
+  WHERE c.status = 'active'
 ) g;
 ```
 
@@ -633,10 +641,10 @@ Format as:
 }
 ```
 
-If `docs/audit/roles/data_auditor.md` does not exist (this brief is
-authored before the role file is verified), use commit `unknown` for
-that key and write a snapshot note: *"data_auditor_role file not found —
-auditor should use latest available role file in `docs/audit/roles/`."*
+If `docs/audit/roles/data_auditor.md` does not exist, use commit
+`unknown` for that key and write a snapshot note: *"data_auditor_role
+file not found — auditor should use latest available role file in
+`docs/audit/roles/`."*
 
 ### Section 18 — DELIBERATELY OMITTED in v1
 
@@ -673,11 +681,12 @@ Per D182 v1 § "Answer-key pattern" — Cowork pre-answers these without asking:
 | What date format for the filename? | UTC date `YYYY-MM-DD` (today, computed once at start) | Cycle 1 used UTC; YYYY-MM-DD is filesystem-safe |
 | What if today's snapshot already exists? | Write `already_applied`, STOP | Idempotency rule |
 | What if a section's query returns no rows? | Output `[]` or `{}` empty — write a snapshot note "no data returned in query window" | Empty is the answer; an exception is not |
-| What if a section's query errors (schema drift)? | For section 11, use the documented fallback. For other sections, write the error message in the section body and a snapshot note "section query failed: {error}; auditor please confirm" | Don't crash the entire run for one section |
+| What if a query's column has been renamed since the brief was authored? | Substitute the closest-match column from current schema and write a snapshot note documenting the substitution. Document the substitution in the run state's "Corrections applied" section. The first run (30 Apr) hit 6 such drifts; all 6 were resolved by direct substitution and the brief was refreshed. Future drift is expected to be rarer but should still be handled gracefully. | Schema drift is a fact of life; halting on it would be brittle |
+| What if a query errors structurally (e.g. references a column the view doesn't expose, like `pg_get_indexdef(indexrelid)` on `pg_indexes`)? | Substitute the structurally-correct equivalent (e.g. join `pg_class` to expose `oid`) and add a snapshot note describing the fix | Fixed in 30 Apr brief refresh; this rule is residual safety |
+| What if a section's query errors otherwise? | Write the error message in the section body and a snapshot note "section query failed: {error}; auditor please confirm" | Don't crash the entire run for one section |
 | Should I include the cycle 1 snapshot's "snapshot notes" verbatim? | NO. Re-evaluate freshly — only include a note if the current data shows something factual. Don't copy notes from cycle 1. | Cycle 2 must produce its own observations or none |
 | Should I add a Section 18? | NO. See Section 18 instructions above. | Explicitly out of scope in v1 |
 | Should I add new sections beyond cycle 1's? | NO. v1 mirrors cycle 1's 17 mechanical sections + 19. No additions. | Scope discipline |
-| What if `c.client_publish_profile` doesn't have an `enabled` column? | Drop the `enabled` filter — query just `c.status='active'`. Add snapshot note. | Schema drift fallback |
 
 ## Acceptance criteria
 
@@ -690,7 +699,7 @@ Per D182 v1 § "Answer-key pattern" — Cowork pre-answers these without asking:
 - Run state file written at `docs/runtime/runs/audit-slice-2-snapshot-generation-{ISO timestamp}.md` per `state_file_template.md`.
 - Queue.md row updated: ready → running (during run) → review_required (when snapshot file written).
 - Zero `apply_migration` calls. Zero DML. Zero DDL. (Tier 0 forbids all of these.)
-- Zero questions written to `claude_questions.md` (target — per D182 first-run benchmark of 0/10).
+- Zero questions written to `claude_questions.md` (target — per D182 first-run benchmark of 0/10; note: 30 Apr first run wrote 1 question due to schema drift, all defaults were correct).
 
 ## Stop conditions
 
@@ -705,7 +714,7 @@ Cowork halts and writes `ESCALATION_REQUIRED` if:
 ## Out of scope
 
 - **Findings.** This brief produces input material for the auditor.
-  Cycle 2 manual run by ChatGPT (R04 in action list) produces findings.
+  Cycle 2 manual run by ChatGPT (R03 in action list) produces findings.
   Slice 3 (deferred per D184 + D181 cycle 5+ rule) eventually produces
   auto-findings.
 - **Closing open findings.** Belongs in `docs/audit/open_findings.md`,
@@ -723,25 +732,43 @@ Cowork halts and writes `ESCALATION_REQUIRED` if:
 
 ## Brief authorship context
 
-Authored 2026-04-30 ~16:30 Sydney / 06:30Z by chat. Fourth brief
-authored this session (after R06 pipeline-health-pair, R05
-operator-alerting trio, and updates to R01 pilot decision). This is the
-first Tier 0 D182 brief — the four prior 30 Apr briefs were Tier 1
-column-purpose migrations. Designed as the second-shape D182
-durability test per D184 + automation_v1_spec build path step 6.
+Authored 2026-04-30 ~16:30 Sydney / 06:30Z by chat. **Refreshed 2026-04-30
+~17:35 Sydney / 07:35Z** after the first run (Cowork) hit 6 schema-drift
+fallbacks. The refresh fixed all 6 query bugs:
 
-The brief is intentionally long (~25KB) because Tier 0 brief
-authorship's job is to give Cowork a complete deterministic
-specification that produces 0 questions on the first run. The
-column-purpose briefs were shorter because they delegated table-by-table
-inference to CC; this brief specifies every section's query verbatim.
+1. Section 1 / `f.feed_source.active` → `status='active'`
+2. Section 3.1 / `k.table_registry.object_kind` → `table_kind`
+3. Sections 7, 11, 16 / `c.client.name` → `client_name`
+4. Section 9 / `t.content_vertical.slug` → `vertical_slug`
+5. Section 9 / `m.signal_pool.use_count` → `reuse_count`
+6. Section 11 / removed `post_seed` indirection (`m.post_draft.client_id`
+   exists directly)
+7. Section 15 / `pg_get_indexdef(indexrelid)` against `pg_indexes` →
+   join `pg_class` properly, pass `c.oid`
+8. Section 16 / removed `cpp.enabled = true` filter (column doesn't exist)
+
+Full schema verification of all substitutions documented in
+`docs/runtime/runs/audit-slice-2-snapshot-generation-2026-04-30T071532Z.md`.
+Root cause: brief was authored from memory of cycle 1's data shape
+rather than from cycle 1's actual SQL. Lesson for future briefs: when a
+brief specifies verbatim queries against schemas the brief author
+doesn't own, run each query against current schema before the brief
+lands.
+
+**First run results (30 Apr 2026):**
+
+| Threshold | Target | Actual |
+|---|---|---|
+| Questions asked | ≤ 10 | 1 |
+| Defaults overridden | ≤ 20% | 0 |
+| Run completes | yes | yes |
+| Production writes | 0 (mandatory) | 0 |
+| PK approval time | ≤ 10 min | yes |
+
+**5/5 thresholds hit.** D182 v1 now validated across two distinct brief
+shapes (Tier 1 migration drafting + Tier 0 markdown generation). This
+feeds into the D182 sunset review (12 May 2026).
 
 Cowork can run this brief any future day by re-reading the YAML
 frontmatter — the date stamp is computed at execution time, so the
 brief is intrinsically date-agnostic.
-
-If Slice 2 hits 5/5 D182 first-run thresholds (questions ≤ 10, defaults
-overridden ≤ 20%, run completes, zero production writes, PK approval
-≤ 10 min), the system is validated across two distinct brief shapes
-(migration drafting + markdown generation). That validation feeds into
-the D182 sunset review (12 May 2026) per userMemories.

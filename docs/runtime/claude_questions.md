@@ -79,4 +79,8 @@ Resolved at: {YYYY-MM-DDTHHMMSSZ}
 Outcome: <decision A/B/C/custom + one-line summary>
 ```
 
-*(none yet)*
+## Resolved Q-audit-slice-2-snapshot-generation-001
+
+Resolved by: PK chat (2026-04-30 ~17:35 Sydney / 07:35Z)
+Resolved at: 2026-04-30T07:35:00Z
+Outcome: **Option A** — chat verified all 6 substitutions against `information_schema` (every claim was factually correct: `f.feed_source.active`, `k.table_registry.object_kind`, `c.client.name`, `t.content_vertical.slug`, `m.signal_pool.use_count` all confirmed missing; `status`, `table_kind`, `client_name`, `vertical_slug`, `reuse_count` all confirmed present; `c.client_publish_profile.enabled` and `m.post_draft.post_seed_id` both confirmed missing). Snapshot at `docs/audit/snapshots/2026-04-30.md` accepted as-is. Brief refreshed at the same commit to fix all 6 schema-drift queries + the `pg_indexes.indexrelid` view-shape bug + Section 11 simplification (drop the `post_seed` indirection — `m.post_draft.client_id` exists directly, no hop needed). Tomorrow's daily run targets 0 fallbacks. Sections that were affected but are now correct: 1, 3.1, 7, 9, 11, 15, 16.

@@ -6,7 +6,7 @@
 > Updated inline as state changes (not just end-of-session) so it doesn't go stale.
 >
 > Created: 2026-04-30 Thursday evening Sydney.
-> Last updated: 2026-04-30 Friday late afternoon Sydney (v1.6 — R05 done & removed; R02 in queue ready for Cowork; F04 promoted to Active; T05 added: Meta business verification failed; R07 PK-deferred; m schema 39.94%).
+> Last updated: 2026-04-30 Friday late afternoon Sydney (v1.7 — R02 closed; D182 v1 validated across two brief shapes; brief refreshed; R03 manual ChatGPT cycle 2 audit pass now triggerable; B17+B18 still wait-window work).
 
 ## How this file works
 
@@ -35,19 +35,17 @@
 
 ## ⭐ Today / Next 5 — REBUILD AT EVERY SESSION START
 
-> **This section is curated, not maintained.** Chat regenerates the table below at every session start by selecting from Time-bound, Active, Personal Businesses, Ready, and Pending Decisions sections. Maximum 5 rows. If you're asking "what should I do next," this is the answer.
+> **This section is curated, not maintained.** Chat regenerates the table below at every session start. Maximum 5 rows. If you're asking "what should I do next," this is the answer.
 >
-> **How to rebuild:** (1) include any P0 items unconditionally, (2) include any P1 items with calendar pressure, (3) include the highest-priority Personal Business item if PK has flagged any, (4) include the highest-leverage Ready/Strategic item, (5) cap at 5.
->
-> **Last rebuilt:** 2026-04-30 Friday late afternoon Sydney (post R05 close + R02 queued + F04 brief authored; PK kicking off R02 Cowork run; B17 + docs/06 numbering reconciliation = next-up while waiting).
+> **Last rebuilt:** 2026-04-30 Friday late afternoon Sydney (post R02 close + brief refresh; B17+B18 wait-window work next; tomorrow gate-driven).
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
 | 1 | Personal businesses check-in | P0 (per standing rule entry 19) | ICE is bonus, not driver — personal comes first | Cleared at session open — PK confirmed nothing live in CFW / Property / NDIS FBA today |
 | 2 | Phase B +24h observation checkpoint | P0 | Due Fri 1 May ~5pm AEST / 03:48 UTC (24h after deploy) | Open `docs/runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md`, copy the 4 obs SQL queries (deploy_timestamp `'2026-04-30 03:48:25.383415+00'` already substituted), run them via Supabase MCP, paste results |
-| 3 | Gate B exit decision | P0 | Sat 2 May, gated on rank 2 result | If +24h obs clean (zero new exceeded_recovery_attempts, shadow ai_job <5%, no new slot_fill_no_body_content) → exit Gate B Sat 2 May; if not → fork to extend Gate B 5–7 days OR temporarily disable image_quote at format-mix layer |
-| 4 | **R02 — Audit Slice 2 snapshot generation** (Cowork in flight, PK kicking off now) | P1 | Brief authored + queued ready; PK running Cowork manually | PK pastes Cowork prompt → Cowork executes 16 SQL queries + git op + writes today's snapshot → review_required → chat reviews + closes |
-| 5 | **B17 polish + docs/06 numbering reconciliation** (during Cowork wait window) | P3 + P2 | While Cowork runs R02 (~10 min); these are the two hygiene items PK chose | (B17) Single Supabase MCP UPDATE to `latest_run_status` purpose. (docs/06) Add formal log entries for D170, D181, D182, D183, D184; reserve D185 for red-team-review ratification |
+| 3 | Gate B exit decision | P0 | Sat 2 May, gated on rank 2 result | If +24h obs clean → exit Gate B Sat 2 May; if not → fork to extend Gate B 5–7 days OR temporarily disable image_quote at format-mix layer |
+| 4 | **B17 + B18 — wait-window work** (in progress) | P3 + P2 | PK chose these as the things to do while CC works overnight on F04 | (B17) Single Supabase MCP UPDATE on `m.cron_health_snapshot.latest_run_status` purpose. (B18) docs/06_decisions.md numbering reconciliation — add formal entries for D170, D181, D182, D183, D184; reserve D185 for future red-team-review ratification |
+| 5 | **R03 — Manual ChatGPT cycle 2 audit pass** (now triggerable) | P2 | Snapshot at `docs/audit/snapshots/2026-04-30.md` ready for auditor consumption; R03 is no longer gated | When PK has bandwidth (next deliberate work item per PK 30 Apr): hand the snapshot to ChatGPT in Data Auditor role; ChatGPT writes findings to `docs/audit/runs/2026-04-30-data.md`; chat captures findings as cycle 2 output |
 
 ---
 
@@ -70,11 +68,11 @@ Run these every session open before deciding what to work on. Most take <2 min.
 
 | ID | Item | Priority | Due | Owner | Next action | Source |
 |---|---|---|---|---|---|---|
-| T01 | **Phase B +24h observation checkpoint** | P0 | Fri 1 May ~5pm AEST / 03:48 UTC | chat | Run the 4 obs SQL queries from the Phase B run state file (deploy_timestamp already substituted in queries) via Supabase MCP | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md) (queries verbatim) |
+| T01 | **Phase B +24h observation checkpoint** | P0 | Fri 1 May ~5pm AEST / 03:48 UTC | chat | Run the 4 obs SQL queries from the Phase B run state file (deploy_timestamp already substituted) via Supabase MCP | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md) (queries verbatim) |
 | T02 | **Gate B exit decision** | P0 | Sat 2 May (gated on T01 result) | PK + chat | Read T01 result; if clean apply decision rule (exit on schedule); if not, choose between extend Gate B 5–7 days OR disable image_quote at format-mix layer | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md) — decision rule documented |
 | T03 | Anthropic $200 cap reset | P3 | Fri 1 May | passive | None — awareness only; cap resets automatically | calendar; no action required |
 | T04 | **R01 calibration session** | P1 | Sun 3 May or Mon 4 May (after Gate B exit known) | PK + chat | 90min hard cap. ChatGPT first. Test on original pre-revision Phase B brief + first CC migration draft. If reconstruction hard → skip calibration, defer to Phase C live pilot | [proposal w/ pilot decision](runtime/structured_red_team_review_v1_proposal.md) |
-| T05 | **Meta business verification failed** (PK confirmed 30 Apr morning) | P1 | ASAP — pre-weekend ideally | PK | PK contacts Meta dev support per `docs/05_risks.md` Risk 1 + Risk 3. Login required, business interaction. Was "In Review" per userMemories entry 4; now failed. **Phase 1.6 deliverable from Phase 1 plan; blocks all Standard Access graduation work and external client onboarding.** Memory entry 4 stale — needs update to "verification failed 30 Apr" once support contact is logged | [docs/05_risks.md](05_risks.md) Risk 1 + Risk 3, [docs/04_phases.md](04_phases.md) Phase 1.6 |
+| T05 | **Meta business verification failed** (PK confirmed 30 Apr morning) | P1 | ASAP — pre-weekend ideally | PK | PK contacts Meta dev support per `docs/05_risks.md` Risk 1 + Risk 3. Login required, business interaction. **Phase 1.6 deliverable; blocks all Standard Access graduation work and external client onboarding.** Memory entry 4 stale — needs update once support contact is logged | [docs/05_risks.md](05_risks.md) Risk 1 + Risk 3, [docs/04_phases.md](04_phases.md) Phase 1.6 |
 
 ---
 
@@ -83,7 +81,6 @@ Run these every session open before deciding what to work on. Most take <2 min.
 | ID | Item | Priority | Status | Owner | Next action | Source |
 |---|---|---|---|---|---|---|
 | F04→Active | **post_render_log column-purposes** (16 cols on `m.post_render_log`) | P2 | brief authored + queue ready | chat (authored) → CC (drafts) → chat (applies) | Awaiting CC pre-flight + migration draft + push (likely overnight). Single table, smallest brief of the run. Strict JSONB rule applies to `render_spec` (image-worker / video-worker EF source must be cited) | [brief](briefs/post-render-log-column-purposes.md) (commit `24fb53d7`); [queue](briefs/queue.md) |
-| R02 | **Audit Slice 2 — snapshot generation** (Cowork Tier 0; second-shape D182 test) | P1 | ready in queue | Cowork (PK kicking off) | PK pastes the tailored prompt I provided into Cowork; Cowork executes 16 SQL queries + 1 git op + writes today's snapshot at `docs/audit/snapshots/2026-04-30.md` matching cycle 1 structure (sections 1-17 + 19, NO section 18). Idempotency check FIRST. Output is input material for cycle 2 manual ChatGPT auditor pass (R04). | [brief](briefs/audit-slice-2-snapshot-generation.md) (commit `e7247966`); [queue](briefs/queue.md) |
 
 ---
 
@@ -102,9 +99,9 @@ Per standing memory rule (entry 19): PK personal businesses come first. ICE is b
 | ID | Item | Priority | Owner | Estimated time | Next action | Source |
 |---|---|---|---|---|---|---|
 | ~~R01~~ | ~~Decide on `structured_red_team_review_v1` pilot~~ | — | — | — | **DECIDED 30 Apr — see T04 (calibration scheduled) and proposal PILOT DECISION header.** | [proposal](runtime/structured_red_team_review_v1_proposal.md) (commit `4d6a0fba`) |
-| ~~R02~~ | ~~Author audit Slice 2 brief~~ | — | — | — | **DONE — brief authored at commit `e7247966`. Promoted to Active (queue ready, Cowork running).** | — |
-| R03 | **Audit cycle 2 manual run** (after Slice 2 produces snapshot) | P2 | ChatGPT + chat | 30min | Once R02 (Cowork) produces a snapshot file, hand it to ChatGPT for findings; chat captures findings as cycle 2 output. Renumbered from old R04 — no longer gated on R03 because R03 (run brief #2 via Cowork) was conflated with R02 itself | D181 manual loop, cycle 2 of 5 |
-| ~~R05~~ | ~~Operator-alerting trio brief~~ | — | — | — | **CLOSED 2026-04-30 — see queue.md Recently completed and run state. m schema 31.6% → 39.94%. F04 promoted to Active in its place.** | — |
+| ~~R02~~ | ~~Author audit Slice 2 brief~~ | — | — | — | **CLOSED 2026-04-30 17:30 Sydney — snapshot at `docs/audit/snapshots/2026-04-30.md` accepted as-is; brief refreshed at same commit (6 query bugs fixed). D182 v1 validated across 2 brief shapes (Tier 0 markdown gen + Tier 1 migration drafting). 5/5 first-run thresholds.** | — |
+| R03 | **Manual ChatGPT cycle 2 audit pass** (now triggerable — snapshot ready) | P2 | ChatGPT + chat | 30min | Snapshot at `docs/audit/snapshots/2026-04-30.md` is ready for the auditor. Hand it to ChatGPT in Data Auditor role per `docs/audit/roles/data_auditor.md`; ChatGPT writes findings to `docs/audit/runs/2026-04-30-data.md`; chat captures findings + closures committed to `docs/audit/open_findings.md`. Renumbered from old R03 (Cowork run R02 brief) which was conflated with R02 itself | D181 manual loop, cycle 2 of 5 |
+| ~~R05~~ | ~~Operator-alerting trio brief~~ | — | — | — | **CLOSED 2026-04-30 — see queue.md Recently completed and run state. m schema 31.6% → 39.94%.** | — |
 | ~~R06~~ | ~~Pipeline-health pair brief~~ | — | — | — | **CLOSED 2026-04-30 — see queue.md Recently completed.** | — |
 | R07 | Update `invegent-dashboard` roadmap milestone | P3 | chat | 10min | **PK 30 Apr afternoon: explicitly delayed.** Will reflect ~42% m schema once F04 lands; bundle into a single dashboard update covering today's full ~9.2 → 42% sweep | standing rule entry 11 |
 | R08 | **Meta App Review status check** | P1 | PK | 5min | **OVERLAPS WITH T05** — when PK contacts dev support for business verification, also captures App Review status in the same conversation | userMemories entry 4 — past 27 Apr deadline |
@@ -142,13 +139,13 @@ Per standing memory rule (entry 19): PK personal businesses come first. ICE is b
 | B09 | Pre-sales: A11b prompts ×18 rows + A4→A3 proof doc + A18 source-less EFs audit + A6 subscription costs | P2 | Next focused pre-sales session | [docs/14_pre_sales_audit_inventory.md](14_pre_sales_audit_inventory.md) |
 | B10 | YouTube channel ingest activation | P2 | When YouTube layer earns build (per D183 build-when-evidence) | [docs/briefs/2026-04-08-youtube-channel-ingest.md](briefs/2026-04-08-youtube-channel-ingest.md) |
 | B11 | Manual newsletter subscription setup for `feeds@invegent.com` | P3 | When PK has 30min for subscription form-filling | userMemories entry 8 |
-| B12 | Nightly pipeline health Cowork task | P2 | After D182 second run confirms Cowork reliability across brief shapes (R02 outcome will determine) | userMemories entry 23 |
+| B12 | Nightly pipeline health Cowork task | P2 | **Trigger met today: D182 second run confirmed Cowork reliability across brief shapes (R02 hit 5/5 thresholds on Tier 0 markdown shape).** Promote to Ready when bandwidth allows | userMemories entry 23 |
 | B13 | Telegram channels + `claude rc` Remote Control + Opus 4.6 1M context integration | P3 | When useful trigger emerges | userMemories entry 23 |
 | B14 | `docs/15_pre_post_sales_criteria.md` classification of 38 audit items | P2 | Next focused pre-sales session | [docs/14_pre_sales_audit_inventory.md](14_pre_sales_audit_inventory.md) |
 | B15 | Phase E — Invegent vertical signal weighting | P2 | After thin-pool decision (D-04) is made | userMemories entry 29, D174 |
 | B16 | **Red-team review v1 — ratification call (proposal → standing rule)** | P1 | After R10 (Phase C cutover live pilot) completes | [proposal w/ pilot decision](runtime/structured_red_team_review_v1_proposal.md) |
-| B17 | **`m.cron_health_snapshot.latest_run_status` purpose polish** | P3 | **PK 30 Apr afternoon: do this evening during R02 Cowork wait** | [pipeline-health-pair run state](runtime/runs/pipeline-health-pair-purposes-2026-04-30T060202Z.md) chat-applied closure note |
-| B18 | **`docs/06_decisions.md` numbering reconciliation** | P2 | **PK 30 Apr afternoon: do this evening during R02 Cowork wait** | Formal log visibly stops at D011 but operational decisions reference D170, D181, D182, D183, D184. Add formal entries for the most-cited operational decisions; reserve D185 for future red-team-review ratification |
+| B17 | **`m.cron_health_snapshot.latest_run_status` purpose polish** | P3 | **PK 30 Apr afternoon: do this evening during R02 wait window — now imminent** | [pipeline-health-pair run state](runtime/runs/pipeline-health-pair-purposes-2026-04-30T060202Z.md) chat-applied closure note |
+| B18 | **`docs/06_decisions.md` numbering reconciliation** | P2 | **PK 30 Apr afternoon: do this evening during R02 wait window — now imminent** | Formal log visibly stops at D011 but operational decisions reference D170, D181, D182, D183, D184. Add formal entries for the most-cited operational decisions; reserve D185 for future red-team-review ratification |
 
 ---
 
@@ -159,13 +156,13 @@ These are **intentionally** deferred with documented triggers. Do not promote to
 | ID | Item | Trigger to revisit | Source |
 |---|---|---|---|
 | F01 | D182 Phase 4b — GitHub Actions validation | When a brief actually demands cloud-side validation | D183 |
-| F02 | D182 Phase 4c — OpenAI API answer step | When a brief generates real questions PK cannot trivially answer | D183 |
-| F03 | Audit Slice 3 — auto-auditor (OpenAI reads snapshot, writes findings) | Manual cycle 5+ per D181 (currently cycle 1; cycle 2 in flight via R02) | D181, D184 |
+| F02 | D182 Phase 4c — OpenAI API answer step | When a brief generates real questions PK cannot trivially answer (Q-001 today was a structured question; was answerable without external lookup. Revisit if a future brief produces an unanswerable question) | D183 |
+| F03 | Audit Slice 3 — auto-auditor (OpenAI reads snapshot, writes findings) | Manual cycle 5+ per D181 (currently cycle 1; cycle 2 ready to run as R03) | D181, D184 |
 | ~~F04~~ | ~~`m.post_render_log` (16 cols)~~ | — | **PROMOTED to Active 2026-04-30 17:10 — see Active section.** |
 | F05 | D156 (deferred to 27 Apr per the original ID003 fix scope) | Pending completion when ICE has bandwidth | userMemories entry 5 |
 | F06 | LinkedIn publisher (Phase 2.3) | LinkedIn Community Management API approval — evaluate Late.dev if unresolved by 13 May 2026 | userMemories entry 2 |
-| F07 | **Grok red-team agent evaluation** | Only if T04 ChatGPT calibration is noisy / misses obvious risks, or if second-model comparison wanted before Phase C | [proposal w/ pilot decision](runtime/structured_red_team_review_v1_proposal.md) |
-| F08 | **Large m-schema tables column-purpose work** (m.post_draft 100+ cols, m.post_seed, etc.) | When m-schema small-tables sweep complete (after F04→Active lands tomorrow) AND a coherent brief shape designed for tables of this size | After today's 5-brief Tier 1 column-purpose sweep |
+| F07 | **Grok red-team agent evaluation** | Only if T04 ChatGPT calibration is noisy / misses obvious risks | [proposal w/ pilot decision](runtime/structured_red_team_review_v1_proposal.md) |
+| F08 | **Large m-schema tables column-purpose work** (m.post_draft 100+ cols, m.post_seed, etc.) | When m-schema small-tables sweep complete (after F04 lands tomorrow) AND a coherent brief shape designed for tables of this size | After today's 5-brief Tier 1 column-purpose sweep |
 
 ---
 
@@ -183,7 +180,7 @@ This file's accuracy depends on disciplined updates. The rules:
    - Item moves Backlog → Ready when its trigger fires (gains Next action when promoted)
    - Item moves Ready → Active when work starts
    - Item moves Active → (removed) when done; closure summary in commit message
-   - New items added with full row when identified — never deferred to "I'll add it at end of session"
+   - New items added with full row when identified
 
 3. **At session end (chat reconciles):**
    - Verify nothing in Active was missed
@@ -194,7 +191,6 @@ This file's accuracy depends on disciplined updates. The rules:
 4. **Removal vs done:**
    - Done items are removed from this file (active-action-index principle)
    - The audit trail lives in: commit messages, run state files, decisions log, sync_state
-   - This file is the **active backlog**, not the historical record
 
 5. **No silent additions:**
    - Every new item references its source
@@ -207,7 +203,7 @@ This file's accuracy depends on disciplined updates. The rules:
 
 ---
 
-## v1.6 honest limitations
+## v1.7 honest limitations
 
 - **Personal businesses section is empty** — chat asks PK at every session open; populated by PK
 - **Standing checks not yet automated** — S1-S6 manual until a session-start preamble script earns build
@@ -215,8 +211,9 @@ This file's accuracy depends on disciplined updates. The rules:
 - **Today / Next 5 is human-curated each session** — there's no algorithm; chat applies the rebuild heuristic at session start
 - **Reconciliation v2 not yet implemented** — R09 captures the work to author the brief tomorrow.
 - **Two-step graduation for red-team review v1** — calibration → pilot → standing rule.
-- **Tier 1 column-purpose pattern at 5× repetition today** — Phase D + slot-core + post-publish + pipeline-health-pair + operator-alerting-trio. F04 (post_render_log) tomorrow makes 6×. After F04, the column-purpose work shifts to other schemas (k 36 cols at 83.6%, t 170 cols at 74.3%, c 479 cols at 0%, f 195 cols at 0%) or to large m-schema tables (F08 frozen) — different brief shape.
-- **Meta business verification failure** — T05 added; this is now a Phase 1.6 blocker per docs/04_phases.md and Risk 3 per docs/05_risks.md. The userMemories entry 4 says "In Review (unblocked 16 Apr)" which is now stale — memory needs updating once PK has support contact logged.
+- **Tier 1 column-purpose pattern at 5× repetition today** — Phase D + slot-core + post-publish + pipeline-health-pair + operator-alerting-trio. F04 (post_render_log) tomorrow makes 6×. After F04, the column-purpose work shifts to other schemas (k 36 cols at 83.6%, t 170 cols at 74.3%, c 479 cols at 24.4%, f 195 cols at 16.4%) or to large m-schema tables (F08 frozen) — different brief shape.
+- **Meta business verification failure** — T05 added; this is now a Phase 1.6 blocker per docs/04_phases.md and Risk 3 per docs/05_risks.md.
+- **Brief-author bug discipline** — today's R02 first run revealed that a brief specifying verbatim queries against schemas the brief author doesn't own should run each query against current schema before the brief lands. The schema-drift fallback rule in the refreshed brief is residual safety, not first-line defence.
 
 If after 2 weeks this file is consistently stale or PK is still asking "what's next" because the file isn't being read, the experiment failed. Falsifiable.
 
@@ -230,4 +227,5 @@ If after 2 weeks this file is consistently stale or PK is still asking "what's n
 - **v1.3** (30 Apr Fri afternoon, 15:51 Sydney): R06 brief authored
 - **v1.4** (30 Apr Fri afternoon, 16:10 Sydney): R01 pilot decision committed
 - **v1.5** (30 Apr Fri afternoon, 16:20 Sydney): R06 closed; R05 brief authored
-- **v1.6** (30 Apr Fri late afternoon, 17:10 Sydney): **R05 closed (m schema 31.6% → 39.94%, 274/686).** F04 (post_render_log brief) authored at commit `24fb53d7` and promoted from Frozen to Active. R02 (audit Slice 2 brief) added to queue ready for Cowork — PK running it manually now. **T05 added: Meta business verification failed (PK confirmed 30 Apr morning) — Phase 1.6 blocker.** R07 marked PK-deferred. R08 noted to overlap with T05 (single PK contact event). New B17 + B18 (B17 polish + docs/06 numbering reconciliation — PK chose these as wait-window work). New F08 (large m-schema tables column-purpose work — explicitly frozen until appropriate brief shape designed). Today/Next 5 rebuilt — R02 in flight at rank 4, B17+B18 wait-window work at rank 5.
+- **v1.6** (30 Apr Fri late afternoon, 17:10 Sydney): R05 closed; F04 brief authored; R02 brief queued for Cowork; T05 added
+- **v1.7** (30 Apr Fri evening, 17:35 Sydney): **R02 closed (D182 v1 validated across 2 brief shapes; first Tier 0 brief shipped clean — 5/5 thresholds).** R02 brief refreshed at same commit (6 query bugs fixed: column renames + view-shape bug + Section 11 simplification). Q-001 resolved Option A. R03 (manual ChatGPT cycle 2 audit pass) renumbered + promoted to Ready (now triggerable). B12 trigger met (Cowork reliability across brief shapes confirmed; awaits bandwidth). Today/Next 5 rebuilt with B17+B18 wait-window work at rank 4 and R03 at rank 5.
