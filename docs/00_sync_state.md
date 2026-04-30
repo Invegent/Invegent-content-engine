@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-30 Thursday 14:43 Sydney / 04:43 UTC, **revised twice** in the evening: (1) added explicit path reference for the `structured_red_team_review_v1` proposal, (2) added pointer to the new `docs/00_action_list.md` running action list — **End-of-Thursday-afternoon session reconciliation. Three briefs shipped (slot-core column-purposes, Phase B body-health gate patch, post-publish observability column-purposes); m schema coverage 9.2% → 26.2%; all 10 open alerts acknowledged; image_quote cascade root-caused and fixed in production. Phase B +24h observation window running, due ~5pm AEST Fri 1 May. structured_red_team_review_v1 proposal committed at `docs/runtime/structured_red_team_review_v1_proposal.md` (commit `ddf3d7ab`) — under PK consideration for next session. Active queue idle.**
+> Last written: 2026-04-30 Thursday late evening Sydney / 12:30 UTC — **End-of-Thursday-late-evening session reconciliation. SUPERSEDES the afternoon reconciliation as the canonical session log.** Six briefs shipped today (Phase B body-health gate Tier 2 + slot-core + post-publish-obs + pipeline-health-pair + operator-alerting-trio + audit-slice-2-snapshot-generation Tier 0); m schema coverage 9.2% → **39.94%** (274/686); audit cycle 2 ChatGPT pass produced 4 findings all closed same day (F-001 dropped redundant `m.ux_ai_job_post_draft_job_type` index, F-002 → B19 row-count trigger, F-003+F-004 → brief refresh); B17 + B18 closed; PK ad-hoc publisher operational audit found YT broken since 11 Apr (OAuth refresh tokens expired, NOT a missing trigger entry — ChatGPT cross-check halted wrong production migration) and IG cron disabled 25 Apr after Property Pulse hit Meta anti-spam block (`subcode 2207051`); T07 step 1 applied at 12:02:25 UTC (PP IG `publish_enabled=false`); **OTL — Operational Truth Layer** captured as new strategic stream (O-01 through O-06); **Lesson #46** promoted to canonical: "Cron health is not system health. Source-of-truth must be verified at the consumer, not inferred from the producer." Phase B +24h observation window running, due ~5pm AEST Fri 1 May. action_list at v2.2.
 > Written by: PK + Claude session sync
 
 > ⚠️ **Session-start reading order (per memory entry 1):**
@@ -12,80 +12,134 @@
 
 ---
 
-## 🟢 30 APR THU AFTERNOON — END-OF-SESSION RECONCILIATION
+## 🟢 30 APR THU LATE EVENING — END-OF-SESSION RECONCILIATION
 
-This rewrites the morning sync_state (which ended after first-Cowork-run reconciliation). The afternoon session was a heavy operational day: image_quote root-cause investigation, production patch, two column-purpose briefs, alert hygiene.
+This rewrites the Thursday afternoon sync_state. Thursday evening continued the work without a session boundary: morning/afternoon shipped 3 briefs + Phase B patch + alerts cleared + red-team proposal + action_list v1.0; evening shipped 3 more briefs + audit cycle 2 + B17/B18 + an unplanned publisher operational audit that exposed the cron-vs-business-truth gap and surfaced the OTL strategic stream. Single continuous Thursday session.
 
-### Sequence of work this afternoon
+### Sequence of evening work (post-afternoon-reconciliation)
 
-**1. Gate B Day 2 observations + Stage 2.3 re-check (~11:32–12:30 Sydney / 01:32–02:30 UTC)**
-   - Stage 2.3 trigger NOT met — CFW/Invegent had posts within 24h window.
-   - Gate B Day 2 surfaced 4 image_quote slot recovery exhaustion failures + 2 open `slot_recovery_exhausted` alerts (later expanded to 10 unack'd alerts on closer look).
-   - April Anthropic spend $131.68 (66% of $200 cap). Last 3 days $1.75 → annualised ~$17.50/mo, well under Stop 1 ($30/mo). $200 cap resets tomorrow 1 May.
-   - Image_quote root cause: 9 of 12 canonicals selected across 3 fill cycles per failed slot had no usable body content (7 unfetched, 2 navigation chrome stubs). Selector queries `m.signal_pool` joined to `f.canonical_content_item` only — never joins `f.canonical_content_body`, so `fetch_status`/`extracted_text`/`word_count` invisible at fill time. Misleading error string `openai_missing_title_or_body` was actually Anthropic errors per `m.ai_usage_log` (provider not falling back to OpenAI despite `error_call=true`).
+**8. R06 pipeline-health pair brief (~16:02 Sydney / 06:02 UTC)**
+   - Tier 1, expected_delta=37 (`m.pipeline_health_log` 21 + `m.cron_health_snapshot` 16). Brief authored by chat ~15:51 Sydney; CC pre-flight clean.
+   - 37/37 HIGH columns populated, **0 LOW** (cleanest of the three Tier 1 briefs today).
+   - Producer code in hand for both tables: `m.take_pipeline_health_snapshot` and `m.refresh_cron_health`. Every brief-flagged risk item resolved with code evidence: `_today` TZ = AEST (verified in function), `failure_rate` = 0..1 ratio, `pub_held` vs `pub_throttled` distinguished by error-substring filters. Two-client vestiges (`ndis_/pp_published_today`) documented with hardcoded UUIDs + refactor-needed flag.
+   - Migration `20260430061242_audit_pipeline_health_pair_column_purposes` applied via Supabase MCP per D170 at 06:13:30 UTC.
+   - m schema coverage 26.2% → **31.6%** (180 → 217 of 686).
+   - Run state captured note: `latest_run_status` purpose narrowed to observed value only (canonical enum is wider) — promoted to **B17** for follow-up.
 
-**2. Slot-core column-purposes brief (~11:50–14:18 Sydney / 01:50–04:18 UTC)**
-   - Tier 1, expected_delta=56, brief authored ~12:00 UTC, CC pre-flight clean (matched 56/56), CC drafted + pushed `20260430020151_audit_slot_core_column_purposes.sql`, chat applied via Supabase MCP per D170 at 02:17 UTC.
-   - All 56 columns HIGH confidence; zero LOW escalations.
-   - Outcome: `m.slot` 20/20, `m.slot_fill_attempt` 16/16, `m.ai_job` 20/20 documented (each 100%). m schema coverage 9.2% → 17.3% (63 → 119 of 686).
-   - Atomic DO block self-verified pre/post count delta = 56.
+**9. R05 operator-alerting trio brief (~16:20 Sydney / 06:20 UTC)**
+   - Tier 1, expected_delta=57 (`m.compliance_review_queue` 19 + `m.external_review_queue` 21 + `m.external_review_digest` 17). Brief authored by chat ~16:10 Sydney; CC pre-flight clean.
+   - 57/57 HIGH columns populated, **0 LOW** (second consecutive zero-LOW result; cleanest result on JSONB-bearing brief to date).
+   - Strict JSONB rule satisfied for `ai_analysis`: producer code cited at `supabase/functions/compliance-reviewer/index.ts:200-244` + canonical writer RPC `public.store_compliance_ai_analysis`; all 8 top-level keys + array element sub-shapes documented.
+   - Pause-context handled correctly — column purposes describe semantics without repeating "(paused per D162)".
+   - Migration `20260430070207_audit_operator_alerting_trio_column_purposes` applied at 07:08:00 UTC.
+   - m schema coverage 31.6% → **39.94%** (217 → 274 of 686).
 
-**3. Phase B body-health gate patch (~13:14–13:53 Sydney / 03:14–03:53 UTC)**
-   - Tier 2 production patch. Brief authored at 03:14 UTC. CC pre-flight clean (1 overload, 0 dependents on `m.fill_pending_slots(integer, boolean)` and `m.hot_breaking_pool` view).
-   - CC drafted with embedded `BEGIN/COMMIT` (instruction missed before drafting). Path A acceptance — chat analysed risk under Supabase MCP `apply_migration` outer transaction; both DDL replacements would land cleanly. No surfaced warning on apply.
-   - Migration `20260430033748_phase_b_patch_image_quote_body_health_gate` applied at 03:48:25 UTC.
-   - **Four-step rollback test passed end-to-end** (per Lesson #34):
-     1. Apply patch (03:48:25Z) — function=2 body-health clauses, view=1 ✅
-     2. Apply rollback from migration's `-- ROLLBACK SQL:` header (03:50:23Z) — function=0, view=0 ✅
-     3. Re-apply patch (03:52:04Z) — function=2, view=1 ✅
-     4. Confirm patched is final live state (03:52:50Z) — function=2, view=1 ✅
-   - Reproducibility: 12/12 known canonicals correctly classified (3 PASS / 9 EXCLUDE).
-   - Pool retention exact match to brief expectation: CFW 132 / NDIS-Yarns 132 / PP 64 / Invegent 13. All above `min_pool_size_for_format = 2`.
-   - Body-health filter enforced in 3 places: `candidate_pool` CTE + `relaxed_pool` CTE inside `m.fill_pending_slots`, plus `m.hot_breaking_pool` view's WHERE.
+**10. R02 audit Slice 2 — first Tier 0 D182 brief (~17:15–17:35 Sydney / 07:15–07:35 UTC)**
+   - First Tier 0 (markdown generation) brief shape — D182 v1 durability test across 2nd brief shape. Brief authored at `docs/briefs/audit-slice-2-snapshot-generation.md`.
+   - **First-run results (Cowork): 5/5 first-run thresholds.** Questions=1 (≤10), defaults overridden=0 (≤20%), run completes=yes, production writes=0 (mandatory), PK approval ≤10min.
+   - Output written: `docs/audit/snapshots/2026-04-30.md` (17 mechanical sections + Section 19 footer; **Section 18 deliberately absent** — load-bearing rule honored).
+   - 6 schema-drift fallbacks were Cowork's correct application of the default-and-continue rule (brief author bug not Cowork bug). Brief refreshed at the same closure commit fixing all 6:
+     1. Section 1 / `f.feed_source.active` → `status='active'`
+     2. Section 3.1 / `k.table_registry.object_kind` → `table_kind`
+     3. Sections 7, 11, 16 / `c.client.name` → `client_name`
+     4. Section 9 / `t.content_vertical.slug` → `vertical_slug`
+     5. Section 9 / `m.signal_pool.use_count` → `reuse_count`
+     6. Section 11 / removed `post_seed` indirection (`m.post_draft.client_id` exists directly)
+     7. Section 15 / `pg_get_indexdef(indexrelid)` against `pg_indexes` → join `pg_class` properly
+     8. Section 16 / removed `cpp.enabled = true` filter (column doesn't exist)
+   - Q-001 (`m.cron_health_snapshot.latest_run_status` filter scope) resolved Option A — chat verified all 6 substitutions vs `information_schema`; all factually correct.
+   - **D182 v1 now validated across two distinct brief shapes** (Tier 1 migration drafting + Tier 0 markdown generation) — feeds into D182 sunset review (12 May 2026).
 
-**4. Post-publish observability column-purposes brief (~14:00–14:32 Sydney / 04:00–04:32 UTC)**
-   - Tier 1, expected_delta=64, brief authored at 04:03 UTC. CC pre-flight clean (matched 64/64).
-   - Code grep confirmed JSONB schema sources: `insights-worker/index.ts:240-244` for `m.post_performance.raw_payload`; `publisher/index.ts` for queue state machine; `docs/briefs/2026-04-24-r5-matching-layer-spec.md` for empty `m.post_format_performance_per_publish` table.
-   - Classification: 61 HIGH + 3 LOW. The 3 LOW (`last_error_code`, `last_error_subcode`, `err_368_streak` on `m.post_publish_queue`) are designed-but-unwired FB Graph error tracking columns escalated to `docs/audit/decisions/post_publish_observability_low_confidence_followup.md` for joint session.
-   - Migration `20260430041924_audit_post_publish_observability_column_purposes` applied at 04:30:55 UTC.
-   - Outcome: `m.post_format_performance_per_publish` 26/26, `m.post_performance` 18/18, `m.post_publish_queue` 17/20 (3 LOW per design). m schema coverage 17.3% → **26.2%** (119 → 180 of 686).
+**11. B17 closed (~17:55 Sydney / 07:55 UTC)**
+   - `m.cron_health_snapshot.latest_run_status` purpose polish — applied via Supabase MCP migration `audit_b17_polish_cron_health_latest_run_status_purpose` per D170.
+   - New purpose at 678 chars (up from ~280): documents canonical filter `('succeeded','failed')`, all stored values (succeeded/failed/NULL), pg_cron transitional statuses excluded, and currently observed reality.
+   - **Lesson #32 violation logged**: chat's first apply_migration attempt failed because chat assumed `k.table_registry.table_id` was UUID; it's BIGINT. Pre-flight via `k.vw_table_summary` per Lesson #32 — even for one-line column-comment polish work. Fix took 1 retry.
 
-**5. Alert hygiene (~14:08–14:21 Sydney / 04:08–04:21 UTC)**
-   - 10 unack'd alerts surfaced (the morning Day 2 obs filter "last 48h" had only shown 2; full unack'd count was 10).
-   - 4× `slot_recovery_exhausted` (all image_quote, all 4 failed slots) acked with note `chat:pk:phase-b-patch-superseded`.
-   - 6× `cron_heartbeat_missing` from 27 Apr 02:00–04:45 UTC investigated via `cron.job_run_details`. Two distinct root causes:
-     - **Real bug pattern**: `fill-pending-slots-every-10m` failed 6 consecutive runs on `uq_post_draft_slot_id` 02:20–03:10 UTC, plus a final 04:30 failure on `ux_ai_job_unique`, then resolved at 04:40. Function has `ON CONFLICT (slot_id)` and `ON CONFLICT (post_draft_id, job_type)` handlers but the 27 Apr conflict pattern bypassed them. 3 days clean since. Acked with note `chat:pk:27apr-fill-slots-constraint-race-resolved`. Logged as follow-up candidate in Phase B run state.
-     - **Cron infrastructure pause**: 3 crons silent in lockstep ~03:15–04:15 UTC, recovered at 04:30 UTC, plausibly Phase B 10-12 deploy window. Acked with note `chat:pk:27apr-cron-infra-pause-phase-b-deploy`. Logged as informational follow-up.
-   - All 0 alerts open at end of session.
+**12. B18 closed — decisions log reconciliation (commit `5775929f`)**
+   - Full prose entries added to `docs/06_decisions.md` for D170 (MCP-applied migrations), D181 (audit loop architecture), D182 (non-blocking execution model). D183/D184 unchanged.
+   - **D185 reserved** for `structured_red_team_review_v1` ratification (sunset 31 May 2026 if R10 doesn't run).
+   - Status table footer entries cross-link to new prose.
 
-**6. structured_red_team_review_v1 proposal (✅ COMMITTED at session close)**
-   - **File:** `docs/runtime/structured_red_team_review_v1_proposal.md` (12.7KB)
-   - **Commit:** `ddf3d7ab` — pushed 30 Apr 05:00:27 UTC, end of Thursday afternoon session
-   - ChatGPT-original proposal "fast-track via Grok" was reframed by Claude pushback + ChatGPT revision into `structured_red_team_review_v1` — a calibrated risk-control experiment, not a fast-track tool.
-   - Refined plan captured in the proposal doc: 13-item red-team checklist (with items 10/11/12/13 tightened or new vs ChatGPT's original 12), unprompted calibration pass on the original (pre-revision) Phase B brief + migration, then with-checklist calibration pass as the actual go/no-go.
-   - Strengthened success criteria: 3/3 known + 0–2 valid new issues = strong adopt; 3/3 + many noise = noise problem; 2/3 + new issues = useful; 0/3 = reject. Valid new issues surfaced is the load-bearing measure (distinguishes working red-team from regurgitation).
-   - Sequencing change vs original: unprompted pass first (informs checklist), then write checklist, then with-checklist pass as the actual decision. Two passes.
-   - Status: PK to consider next session; bench work, not session work.
-   - Hard constraint preserved: must not interfere with Phase B +24h obs checkpoint.
+**13. R03 cycle 2 audit closure (commit `bbfc4944`) — manual ChatGPT audit pass**
+   - Snapshot at `docs/audit/snapshots/2026-04-30.md` handed to ChatGPT in Data Auditor role per `docs/audit/roles/data_auditor.md`.
+   - ChatGPT raised 4 findings (2 MEDIUM, 2 LOW). Chat verified each claim against live MCP before deciding action.
+   - **F-2026-04-30-D-001 closed-action-taken** — `m.ai_job` had two redundant UNIQUE indexes on `(post_draft_id, job_type)`. Verified via `pg_constraint` neither backed a constraint. Migration `audit_drop_redundant_ai_job_unique_index` applied: dropped `ux_ai_job_post_draft_job_type`, kept `ux_ai_job_unique` as canonical. UPSERT path preserved (resolves on column tuple). Index count 6→5. **Severity-honest note**: should have been HIGH given explicit deferral note in 27 Apr migration; auditor's MEDIUM rating was conservative.
+   - **F-2026-04-30-D-002 closed-action-pending** — `m.slot.filled_draft_id` no index. Verified production functions DO use lookup pattern (`m.fill_pending_slots`, `m.handle_draft_rejection`, `m.recover_stuck_slots`). But `m.slot` has only 159 live tuples; 97.1% idx_scan_pct already; planner correctly chooses seq scan. Captured as **B19** with row-count trigger 5,000 tuples. Standing check **S7** added.
+   - **F-2026-04-30-D-003 closed-action-taken** — Section 15 omitted `f.canonical_content_body`. Verified all expected indexes exist (PK, idx_ccb_status, idx_ccb_active_pick partial composite). No DDL needed. **Brief Section 15 expanded** to include `f.canonical_content_body` as 5th hot table.
+   - **F-2026-04-30-D-004 closed-action-taken** — Section 13 itemised public functions (162 funcs, 157 distinct names, 5 overloaded, ~43 RPC-likely). **Brief Section 13 refresh** emits JSON array of `{name, args, returns}`. Classification deferred to future iteration.
+   - **O-003 captured** — Brief Section 5 Part B added emitting `k.fn_check_migration_naming_discipline()` output.
+   - Two candidate Lessons captured: **#41** row-count-aware role expectations; **#42** briefs mirror role hot-table sets. Cycle 2 of 5 manual cycles complete; cycle 3 captured as **R11**.
 
-**7. Running action list created (✅ COMMITTED at session close)**
-   - **File:** `docs/00_action_list.md` (13.4KB)
-   - **Commit:** `00857ef6` — pushed 30 Apr 05:14 UTC
-   - Why: PK observed that every session start they had to ask "what's next" and chat had to dig across sync_state, run states, followup files, and queue. Single source of truth needed.
-   - Categories: 🔄 Standing session-start checks, 🔴 Time-bound, 🟡 Active, 💼 Personal businesses (PK confirms at start), 🟢 Ready/Strategic, 🤝 Pending decisions, 📌 Backlog, 🧊 Frozen/Deferred.
-   - Initial population: 3 time-bound items (Phase B obs, Gate B exit, Anthropic cap reset), 0 active (queue idle), 8 ready/strategic, 5 pending decisions, 15 backlog, 6 frozen.
-   - Update protocol: chat updates inline as state changes (not retrospectively); items move Backlog → Ready → Active → removed; new items captured at moment of identification with source link.
-   - Standing memory rule (entry 11) updated to **4-way sync**: docs/00_sync_state.md + docs/00_action_list.md + memory + invegent-dashboard roadmap.
-   - Memory entry 1 updated to instruct session-start reads of BOTH 00_sync_state.md AND 00_action_list.md.
-   - Falsifiable test: 2 weeks. If PK still asking "what's next" at session start, experiment failed; revert to sync_state-only with clearer NEXT SESSION section.
+**14. F04 brief authored (post_render_log column-purposes)**
+   - F04 promoted from Frozen to Active. Brief authored at `docs/briefs/post-render-log-column-purposes.md` (commit `24fb53d7`). Single table, 16 cols, smallest brief of the run. Strict JSONB rule applies to `render_spec` (image-worker / video-worker EF source must be cited).
+   - Queue.md status: ready, awaiting CC pre-flight + migration draft + push (likely overnight). Will close m-schema small-tables sweep (m schema 39.94% → ~42.3%).
 
-### Today's three migrations summary
+**15. T05 added — Meta business verification failed**
+   - PK confirmed Thu morning that Meta business verification failed at the verification step. T05 added as P1 time-bound. Phase 1.6 deliverable; blocks Standard Access graduation work and external client onboarding. Memory entry 4 stale — needs update once support contact is logged.
 
-| Migration | Type | Delta | Applied |
+**16. PK ad-hoc publisher operational audit ("why aren't YouTube and Instagram working?") (~21:15 Sydney / 11:15 UTC)**
+
+   First-pass framing was wrong on YouTube. ChatGPT cross-check halted a production migration that would have been useless. See **F-PUB-001 corrigendum** in `docs/audit/runs/2026-04-30-publishers-operational.md`.
+   
+   **YouTube — F-PUB-001 (HIGH, open):**
+   - Wrong first-pass framing: "trigger function `m.enqueue_publish_from_ai_job_v1` excludes 'youtube' from platform whitelist; add it to fix."
+   - Correct framing: `youtube-publisher` v1.5.0 reads `m.post_draft` directly (`video_status='generated'` AND `video_url IS NOT NULL` AND `recommended_format IN (4 video formats)`), NOT `m.post_publish_queue`. The trigger exclusion is correct architecture per R6 implementation spec ("No YouTube in R6 v1") + EF source confirmation.
+   - **Real root cause: OAuth refresh tokens expired/revoked**. 17 of 18 attempted YT uploads failed at `refreshAccessToken` since 11 Apr 2026 with `invalid_grant` (12× "Bad Request" + 5× "Token has been expired or revoked"). Invegent has never had a refresh token configured (1× "No refresh token found for client 93494a09").
+   - 0 successful YT uploads in 21 days. 18 drafts in `video_status='failed'` with `youtube_upload_error` populated. 16 drafts in `video_status='pending'` (render not done yet).
+   - **T06 reframed**: PK dashboard action (Clients → Connect → YouTube for NDIS-Yarns + Property Pulse + Invegent), NOT a migration. Verification via successful upload + `m.post_publish` audit row written.
+
+   **Instagram — F-PUB-002 (MEDIUM, open):**
+   - IG publisher cron (jobid 53) disabled since 2026-04-25 08:15 UTC — exactly when 796th run hit Meta API 403 error on Property Pulse: `code=4, error_subcode=2207051, "Action is blocked", "Application request limit reached", is_transient=false`. Per-IG-account anti-automation flag.
+   - 92 IG queue items piled up across 4 clients (PP 53, NDIS-Yarns 24, CFW 10, Invegent 5).
+   - FB unaffected (42 posts published 18-30 Apr through and after the block, zero spam errors). Block is per-IG-account, not per-Meta-app.
+   - **T07 6-step sequence locked** per ChatGPT cross-check on sequencing (must exclude PP via `publish_enabled=false` BEFORE re-enabling cron, not after).
+
+   **F-PUB-003 (LOW, observation):** YT AI synthesis + 18 video renders sunk while OAuth was broken. B21 captures: after PK reconnects OAuth + verified upload, audit whether already-rendered drafts can be retried via `video_status='failed' → 'generated'` reset (no re-render needed).
+
+   **OTHER FINDINGS:**
+   - Three legacy `seed-and-enqueue-*` crons (jobid 11/64/65) inactive — all hit `statement timeout` errors before being disabled. These are LEGACY paths replaced by the slot-driven trigger for FB/IG/LI; YouTube was always on a separate path (per F-PUB-001 corrigendum). Inactivity is correct.
+   - Tokens shown as 2099-12-31 in snapshot Section 16 are placeholder "never-tracked" sentinels in `token_expires_at`, not real expiry. Out-of-scope for Data Auditor (Security/Ops Auditor scope when those roles exist).
+
+**17. T07 step 1 applied (~22:02 Sydney / 12:02 UTC)**
+   - `UPDATE c.client_publish_profile SET publish_enabled=false, paused_reason='meta_subcode_2207051_block_25_apr_pp_ig_anti_spam', paused_at=now(), updated_at=now() WHERE client_publish_profile_id='b44167f3-...' AND publish_enabled=true RETURNING ...` — applied at 12:02:25 UTC.
+   - Single-row data UPDATE (not migration). Safety guard `AND publish_enabled=true` prevents idempotent re-apply churning `paused_at`.
+   - **Step 2 verified**: post-check on all 4 IG profiles. Only PP shows `publish_enabled=false`; CFW/Invegent/NDIS-Yarns unchanged with `publish_enabled=true` and queue depths 10 / 5 / 24.
+   - **Step 3 skipped**: IG publisher v2.0.0 source (`supabase/functions/instagram-publisher/index.ts`) already proves `if (profile.publish_enabled === false) { mark queue row 'skipped'; continue }`. Belt-and-braces dry_run not needed.
+   - **Steps 4-6 await**: PK re-enables cron jobid 53 via dashboard (step 4); chat monitors 30-60min (step 5); PK contacts Meta dev support for PP recovery via T05 (step 6).
+
+**18. Operational Truth Layer captured (OTL — strategic stream, ~22:30 Sydney / 12:30 UTC)**
+   
+   PK's framing tonight: tonight's audit isn't about YT and IG specifically — it's evidence ICE has been operating with cron-layer monitoring while business-layer truth was unmonitored. Captured as new strategic stream in `docs/00_action_list.md` v2.2:
+   - **O-01** Platform-source-of-truth map (P1, most enabling — all other O items reference it). Author `docs/operations/platform_source_of_truth.md` next session.
+   - **O-02** Per-client/platform circuit breakers (auto-trip on N OAuth failures). Tonight's manual `publish_enabled=false` proved the pattern; auto-trip is the natural extension.
+   - **O-03** Business-outcome monitors (NOT cron monitors). S10 standing check is the manual prototype.
+   - **O-04** Pre-DDL verification gate (formal checklist). Captures Lesson #43 + #45.
+   - **O-05** External-account health checks (daily matrix). Expanded version of S9.
+   - **O-06** Recovery playbooks by failure class. Starting with the 3 we hit tonight.
+   - **R12** added — define `docs/audit/roles/operations_auditor.md` once OTL items in place. Analogous to Data Auditor under D181.
+
+   **Lesson #46 promoted to canonical**: *"Cron health is not system health. Source-of-truth must be verified at the consumer, not inferred from the producer."* Operationalized as standing checks S8 (cron-level), S9 (OAuth/token-level), S10 (business-outcome-level) — three distinct health surfaces. Supersedes candidate Lessons #43-#45 as their parent abstraction.
+
+   Strong evidence accumulating for **D-01 / D185** (red-team review v1 ratification). Tonight's ChatGPT cross-check on the publisher audit caught a wrong production migration before it landed — non-Phase-C, real-stakes, high-value catch. Captured for D185 ratification consideration when R10 (Phase C cutover live pilot) completes.
+
+**19. action_list updated through v2.2**
+   - v1.7 (R02 closed) → v1.8 (B17+B18 closed) → v1.9 (R03 cycle 2 closed) → v2.0 (publisher operational audit) → v2.1 (ChatGPT cross-check halted wrong YT fix) → v2.2 (T07 step 1 applied + OTL captured + Lesson #46 promoted + S10 added + R12 added).
+   - One observation captured in v2.2 honest-limitations: PK's pasted ChatGPT message had a `[DEVELOPER MODE](#settings/Connectors/Advanced)` markdown link tail (likely auto-appended by paste path / external agent UI, not part of PK's actual content). Chat ignored it per standard injection-defense rules. Behavior unchanged. Flagged inline in chat response.
+
+### Today's six migrations summary (was 3 in afternoon snapshot)
+
+| Migration | Type | Delta | Applied UTC |
 |---|---|---|---|
-| `20260430020151_audit_slot_core_column_purposes` | k.column_registry UPDATE | +56 docs | 02:17 UTC |
-| `20260430033748_phase_b_patch_image_quote_body_health_gate` | DDL: function + view replace | +body-health gate in 3 places | 03:48 UTC |
-| `20260430041924_audit_post_publish_observability_column_purposes` | k.column_registry UPDATE | +61 docs (3 LOW retained) | 04:30 UTC |
+| `20260430020151_audit_slot_core_column_purposes` | k.column_registry UPDATE | +56 docs | 02:17 |
+| `20260430033748_phase_b_patch_image_quote_body_health_gate` | DDL: function + view replace | body-health gate in 3 places | 03:48:25 |
+| `20260430041924_audit_post_publish_observability_column_purposes` | k.column_registry UPDATE | +61 docs (3 LOW retained) | 04:30:55 |
+| `20260430061242_audit_pipeline_health_pair_column_purposes` | k.column_registry UPDATE | +37 docs | 06:13:30 |
+| `20260430070207_audit_operator_alerting_trio_column_purposes` | k.column_registry UPDATE | +57 docs | 07:08:00 |
+| `audit_b17_polish_cron_health_latest_run_status_purpose` | k.column_registry UPDATE | +1 polish (678 chars) | ~07:55 (B17 close) |
+| `audit_drop_redundant_ai_job_unique_index` | DDL: DROP INDEX | -1 redundant index | ~18:30 (R03 close) |
+
+Plus **1 single-row DML** applied late evening:
+- `UPDATE c.client_publish_profile SET publish_enabled=false ...` for PP IG (T07 step 1) — 12:02:25 UTC
 
 ### m schema documentation progress
 
@@ -93,153 +147,160 @@ This rewrites the morning sync_state (which ended after first-Cowork-run reconci
 |---|---|---|---|---|
 | Before today | 63 | 686 | 9.2% | — |
 | After slot-core | 119 | 686 | 17.3% | +56 |
-| After post-publish obs | 180 | 686 | **26.2%** | +61 |
+| After post-publish obs | 180 | 686 | 26.2% | +61 |
+| After pipeline-health pair | 217 | 686 | 31.6% | +37 |
+| After operator-alerting trio | 274 | 686 | **39.94%** | +57 |
 
-**Net session impact: +117 documented columns. m schema documentation crossed 25% threshold for the first time.**
+**Net session impact: +211 documented columns. m schema crossed 25% AND 35% thresholds same day. F04 (post_render_log, +16 cols) overnight will take it to ~42.3%.**
 
-### Today's commits
+### Today's commits — Invegent-content-engine `main`
 
-**Invegent-content-engine — `main`:**
+(Afternoon commits omitted — see prior afternoon reconciliation. Evening additions:)
 
 | Commit | Author | What |
 |---|---|---|
-| `e074f069` | chat | Phase B patch brief authored |
-| `54685fc` (CC) | CC | slot-core CC draft + queue update |
-| `2fb375cb` | chat | slot-core close: queue updated |
-| `95449412` | chat | slot-core run state closed |
-| `3c4933b` (CC) | CC | Phase B patch CC draft + queue + run state |
-| `a7d50b79` | chat | Phase B patch run state closed |
-| `917679df` | chat | Phase B patch queue closed |
-| `44d09746` | chat | post-publish obs brief authored |
-| `d41538cd` | chat | post-publish obs queued |
-| `9ca9de2` (CC) | CC | post-publish obs CC draft + queue + run state + LOW followup |
-| `d550556f` | chat | Phase B run state — 27 Apr alert root causes added as follow-ups |
-| `f4104515` | chat | post-publish obs run state closed |
-| `5a5ec724` | chat | post-publish obs queue closed |
-| `cf743f49` | chat | sync_state — end-of-Thursday-afternoon reconciliation |
-| `ddf3d7ab` | chat | **structured_red_team_review_v1 proposal committed** |
-| `ce314b00` | chat | sync_state revised to add explicit proposal path |
-| `00857ef6` | chat | **docs/00_action_list.md created** (running backlog) |
+| (CC) | CC | pipeline-health pair CC draft + queue + run state |
+| (chat) | chat | pipeline-health pair run state closed |
+| `5775929f` | chat | **B18 closed** — D170+D181+D182 prose entries; D185 reserved |
+| (CC) | CC | operator-alerting trio CC draft + queue + run state |
+| (chat) | chat | operator-alerting trio run state closed |
+| (Cowork) | cowork | **R02 first Tier 0 D182 brief** — audit-slice-2-snapshot-generation done; snapshot at `docs/audit/snapshots/2026-04-30.md` |
+| `782fdf43` | chat | R02 closure batch — Q-001 resolved Option A; brief refreshed (6 query bugs) |
+| (Supabase MCP) | chat | **B17 closed** — `audit_b17_polish_cron_health_latest_run_status_purpose` migration applied |
+| `1113cee9` | chat | action_list v1.8 — B17+B18 closed |
+| `bbfc4944` | chat | **R03 cycle 2 audit closure** — 4 findings closed (F-001 dropped redundant index, F-002→B19, F-003+F-004 brief refresh) |
+| `d6fd6aca` | chat | action_list v1.9 — R03 closed; B19+S7+R11 added |
+| `46d59dab` | chat | **action_list v2.0 + publisher operational audit** — F-PUB-001/002/003; T06+T07+B20+B21+S8 added |
+| `1c79df92` | chat | action_list v2.1 + F-PUB-001 corrigendum — ChatGPT cross-check halted wrong YT trigger fix; T06 reframed to OAuth reconnect; T07 6-step sequence; S9 added |
+| (Supabase) | chat | **T07 step 1 applied** — PP IG `publish_enabled=false` at 12:02:25 UTC |
+| `25d37486` | chat | action_list v2.2 — T07 step 1+2 done; **OTL captured (O-01..O-06)**; **Lesson #46 promoted**; S10 added; R12 added |
+| (this commit) | chat | sync_state — late-evening reconciliation |
 
-**invegent-dashboard — `main`:** none this session (afternoon session was DB + docs only — coverage update worth a roadmap refresh next session if PK wants visible dashboard reflection of 26.2% milestone).
+**invegent-dashboard — `main`:** none this session (R07 explicitly deferred per PK; bundle into one update covering today's full ~9.2 → ~42% sweep once F04 lands).
 
-### Standing memory rule honoured (entry 11 — now 4-way sync)
+### Standing memory rule honoured (entry 11 — 4-way sync)
 
-- ✅ docs/00_sync_state.md — THIS COMMIT (revised again to add action list pointer)
-- ✅ **docs/00_action_list.md — created at commit `00857ef6`** (new addition to standing rule)
-- ✅ docs/runtime/runs/* — three new run-state files closed (slot-core, Phase B patch, post-publish obs)
-- ✅ docs/audit/decisions/post_publish_observability_low_confidence_followup.md — 3 LOW rows captured for joint session
-- ✅ docs/briefs/queue.md — 3 briefs moved to Recently completed; Active queue idle
-- ✅ docs/runtime/structured_red_team_review_v1_proposal.md — proposal committed at `ddf3d7ab`
-- ⚠️ docs/06_decisions.md — no new decisions today; structured_red_team_review_v1 is **decision pending** (next session item, not ratified)
-- ⚠️ invegent-dashboard roadmap page.tsx — not updated this session; m schema 26.2% milestone could be reflected next session if PK wants visible
-- ✅ Memory entries — entries 1, 11, 14 updated to reflect today's afternoon work, action list creation, and four-way sync rule
+- ✅ docs/00_sync_state.md — THIS COMMIT (late-evening reconciliation)
+- ✅ docs/00_action_list.md — at v2.2 (commit `25d37486`)
+- ✅ docs/runtime/runs/* — three new run-state files (pipeline-health pair, operator-alerting trio, audit-slice-2-snapshot-generation), plus updated post-Phase-B run state with 27-Apr alert root causes
+- ✅ docs/audit/runs/2026-04-30-data.md — cycle 2 ChatGPT findings + closure annotations
+- ✅ docs/audit/runs/2026-04-30-publishers-operational.md — operational audit for YT + IG (with F-PUB-001 corrigendum)
+- ✅ docs/audit/open_findings.md — cycle 2 findings closed; cycle 3 history row added; candidate Lessons #41+#42 captured
+- ✅ docs/audit/snapshots/2026-04-30.md — first Tier 0 D182 brief output
+- ✅ docs/briefs/audit-slice-2-snapshot-generation.md — refreshed twice (6 query bugs first refresh; cycle 2 closure refresh added Section 5 Part B + Section 13 inventory + Section 15 5 hot tables)
+- ✅ docs/06_decisions.md — D170+D181+D182 prose entries committed at B18 closure (`5775929f`); D185 reserved for `structured_red_team_review_v1` ratification (sunset 31 May 2026)
+- ✅ docs/briefs/queue.md — F04 (post_render_log) ready; 6 today briefs in Recently completed
+- ⚠️ invegent-dashboard roadmap page.tsx — explicitly deferred per R07; will reflect ~42% m schema after F04 lands; bundle into single dashboard update covering full Thu sweep
+- ✅ Memory entries — auto-regenerate from chat history overnight; no `memory_user_edits` directives changed this session
 
 ---
 
 ## ⛔ DO NOT TOUCH NEXT SESSION
 
-- The applied F-002 Phase D ARRAY column purposes (149 c+f rows now documented).
-- The applied slot-core column purposes (56 m rows now documented). Future audit cycles surface drift if changed.
-- The applied post-publish observability column purposes (61 m rows). 3 LOW rows in `docs/audit/decisions/post_publish_observability_low_confidence_followup.md` are awaiting joint operator+chat session — do not pre-emptively guess them.
+- The applied F-002 Phase D ARRAY column purposes (149 c+f rows).
+- The applied slot-core column purposes (56 m rows).
+- The applied post-publish observability column purposes (61 m rows). 3 LOW rows in `docs/audit/decisions/post_publish_observability_low_confidence_followup.md` awaiting joint operator+chat session.
+- The applied pipeline-health pair column purposes (37 m rows).
+- The applied operator-alerting trio column purposes (57 m rows).
+- The B17 polish on `m.cron_health_snapshot.latest_run_status` (678 chars).
 - **The Phase B body-health gate patch.** `m.fill_pending_slots(integer, boolean)` and `m.hot_breaking_pool` view both carry the `EXISTS (...)` body-health filter from migration `20260430033748`. Do not modify either object until +24h obs checkpoint completes.
-- The D182 v1 spec at `docs/runtime/automation_v1_spec.md` — system has now executed 3 briefs successfully; let next 1-2 briefs run against the locked spec before changing anything.
+- **The dropped `m.ux_ai_job_post_draft_job_type` index** (R03 F-001 closure). `ux_ai_job_unique` is canonical. UPSERT path resolves on column tuple `(post_draft_id, job_type)`.
+- **The PP IG `publish_enabled=false` row state** (T07 step 1 apply). Do not flip back to `true` until T07 step 6 (Meta dev support outcome) decides the PP recovery path.
+- The D182 v1 spec at `docs/runtime/automation_v1_spec.md` — system has now executed 7 briefs successfully (including Tier 2 production patch + Tier 0 markdown gen).
 - The Cowork executor prompt (`docs/runtime/cowork_prompt.md`) — still frozen.
 - The 6 LOW-confidence column rows in `docs/audit/decisions/f002_p*_low_confidence_followup.md` AND the 3 LOW rows in `post_publish_observability_low_confidence_followup.md` — joint operator+chat session work.
-- The 8 newly-auto-linked CFW feeds in `c.client_source` — let bundler discover them naturally.
 - All Phase B Gate B items — Phase B autonomous through Sat 2 May earliest exit gated on +24h obs.
+- The audit Slice 2 snapshot at `docs/audit/snapshots/2026-04-30.md` — cycle 1 baseline snapshot for the day; cycle 3 will produce a fresh snapshot on a future date.
+- The cycle 2 audit run file at `docs/audit/runs/2026-04-30-data.md` — closures committed; reference only.
+- The publisher operational audit run file at `docs/audit/runs/2026-04-30-publishers-operational.md` — F-PUB-001 corrigendum is the load-bearing version.
 
 ---
 
 ## 🟡 NEXT SESSION (Fri 1 May or later)
 
-> **All next-session items are also in `docs/00_action_list.md` with priorities and triggers.** Read that file alongside this one for the active backlog view.
+> **All next-session items are also in `docs/00_action_list.md` v2.2 with priorities and triggers.** Read that file alongside this one for the active backlog view.
 
 ### Required (time-bound)
 
-1. **Phase B +24h observation checkpoint** — due ~5pm AEST Fri 1 May / 03:48 UTC Fri 1 May (24h from 30 Apr 03:48:25Z deploy). The four observation queries are already written verbatim in `docs/runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md` with deploy timestamp `'2026-04-30 03:48:25.383415+00'` substituted. Targets:
+1. **Personal businesses check-in** — per standing rule entry 19 (P0). Ask PK at session open: "Anything live in CFW / Property / NDIS FBA that jumps the queue today?"
+
+2. **PK: T07 step 4** — re-enable IG cron jobid 53 via Supabase dashboard (1-2 min PK action). After that, chat monitors 30-60 min (T07 step 5) for NDIS+CFW+Invegent backlog clearing. Throttle math: 2 posts/day × 3 active clients = max 6 IG posts in first 24h; the 39-row safe backlog clears over ~7 days. PP rows (53) stay `'skipped'` until Meta dev support outcome (T05).
+
+3. **PK: T06** — reconnect YouTube OAuth via Supabase dashboard (Clients → Connect → YouTube for NDIS-Yarns + Property Pulse + Invegent). 5-15 min PK action across 3 clients. Verification via 30-min cron tick OR manual `youtube-publisher` invocation post-reconnect: successful upload + `m.post_publish` audit row + `draft_format->>youtube_video_id` populated.
+
+4. **Phase B +24h observation checkpoint** — due ~5pm AEST Fri 1 May / 03:48 UTC Fri 1 May (24h from 30 Apr 03:48:25Z deploy). Four observation queries already written verbatim in `docs/runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md` with deploy timestamp substituted. Targets:
    - Zero new `exceeded_recovery_attempts`
    - Shadow `ai_job` failure rate <5%
    - Zero new `slot_fill_no_body_content` errors
    - `pool_thin` skip rate not spiking (especially Invegent — thin-pool signal already known)
 
-2. **Gate B exit decision** (~5min after obs checkpoint result is in):
+5. **Gate B exit decision** (~5min after obs checkpoint result is in):
    - **If +24h obs clean** → Gate B exits Sat 2 May on schedule → Phase C cutover (Stages 12–18) begins planning
-   - **If patch did not hold** → fork between extending Gate B 5–7 days OR temporarily disabling image_quote at format-mix layer for Phase C
+   - **If patch did not hold** → fork between extending Gate B 5–7 days OR temporarily disabling image_quote at format-mix layer
 
-3. **Stage 2.3 trigger re-check** (~2 min) — only if posts have stopped flowing for any client in the 24h window before next session opens. Today's afternoon session cleared this; only revisit if symptoms reappear.
+### Strategic — ready to start whenever bandwidth allows
 
-### Optional — strategic / planning
+6. **O-01: Author Platform-Source-of-Truth map** (~30 min chat work) — most enabling OTL piece. Author `docs/operations/platform_source_of_truth.md` with one row per platform: source table, queue path (or "direct"), publisher EF + version, success marker, failure marker, token location, recovery owner. Every other OTL item references this map.
 
-4. **Decide on `structured_red_team_review_v1` pilot** — full proposal at **`docs/runtime/structured_red_team_review_v1_proposal.md`** (commit `ddf3d7ab`). Read this file first if continuing the discussion. Three things to decide:
-   - Whether to invest the bench time (estimated 60–90 min for unprompted calibration + checklist authorship + with-checklist calibration)
-   - Whether the agent is Grok specifically (proposal didn't justify) or any sufficiently capable LLM
-   - Whether to do this *before* Phase C cutover (when it would be most useful) or after (when Phase B is fully exited and bandwidth opens)
-   - Recommendation: time-box the calibration to one focused session within the next 7–10 days; do not let it become a long-running thread.
+7. **R09: Author reconciliation v2 brief** (~30-45 min) — after T01 + T02 + personal businesses check.
 
-5. **Author audit Slice 2 brief** (~30 min) — D184 designated this as the next D182 Tier 0 brief. Tier 0 markdown gen, reads `k.*` registry + targeted `f.*`/`m.*` extracts, writes `docs/audit/snapshots/{YYYY-MM-DD}.md`. Validates D182 across a different brief shape (markdown gen, not migration drafting). This was the morning sync_state's optional item; remains open.
+8. **R01 calibration session** — Sun 3 May or Mon 4 May (T04, after Gate B exit known). 90min hard cap. ChatGPT first.
 
-6. **Run brief #2 via Cowork** (~30 min observed, after Slice 2 brief authored) — second D182 test on different brief shape. If 5/5 again, system is validated across two shapes. If it generates 2-3 real questions, Q&A flow infrastructure has earned its build.
-
-7. **Audit cycle 2 manual run** (~30 min, after Slice 2 produces a snapshot) — ChatGPT reads snapshot, produces Run 2 findings. Cycle 2 of D181's manual loop; cycle 5+ is when auto-auditor (Slice 3) earns build.
-
-### Optional — column-purpose continuation
-
-8. **Next column-purpose Tier 1 brief candidates** (`m` schema still ~73.8% undocumented). Most-undocumented remaining tables, in descending order: `pipeline_health_log` (21 cols), `external_review_queue` (21), `compliance_review_queue` (19), `external_review_digest` (17), `cron_health_snapshot` (16), `post_render_log` (16). Logical next slice options:
-   - **Operator-alerting trio**: `external_review_queue` + `compliance_review_queue` + `external_review_digest` = 57 cols. Adjacent to professional-compliance work.
-   - **Pipeline-health pair**: `pipeline_health_log` + `cron_health_snapshot` = 37 cols. Adjacent to today's Phase B work.
-   - Either runs cleanly at Tier 1 with the proven pattern.
+9. **Meta dev support contact** — T05, P1. Single Meta conversation covering: business verification, PP IG `subcode 2207051` block recovery, App Review status (R08).
 
 ### Backlog (no specific deadline)
 
-See `docs/00_action_list.md` 📌 Backlog section for the full list with triggers.
+See `docs/00_action_list.md` v2.2 📌 Backlog and 🏗 Operational Truth Layer sections for the full lists with triggers.
 
 ---
 
 ## D182 sunset review reminder
 
-If D182 system is not measurably reducing question count or correction commits by 12 May 2026, re-evaluate. **Three runs now: Phase D ARRAY (5/5), slot-core (clean), post-publish obs (3 LOW correctly escalated, no false HIGHs).** Trend strong but heterogeneity matters — three Tier 1 column-purpose runs is one shape. Slice 2 (Tier 0 markdown gen) or a different-shape brief is the next durability test.
+D182 system has now executed **7 briefs** clean: Phase D ARRAY (5/5), slot-core, Phase B Tier 2 patch (with 4-step rollback test), post-publish-obs, pipeline-health-pair, operator-alerting-trio, audit-slice-2-snapshot-generation Tier 0 (5/5). **Now validated across two distinct brief shapes** (Tier 1 migration drafting + Tier 0 markdown generation). Strong trend toward sustained adoption. Sunset review still 12 May 2026 per D183 — no action pre-cycle.
 
 ---
 
-## SESSION COMMITS — 30 APR THU AFTERNOON
+## SESSION COMMITS — 30 APR THU FULL DAY
 
-**Invegent-content-engine — `main` (this session):**
+**Invegent-content-engine — `main`:**
 
-17 commits as listed above. Three migrations, three run-state files, one LOW-confidence followup file, queue updated 6 times, structured red-team review proposal committed, action list created.
+Afternoon: 17 commits (per afternoon reconciliation).
+Evening: ~13 additional commits (briefs, run states, queue updates, action_list v1.7→v2.2, B17 migration, R03 closure batch with audit run + open_findings + brief refresh, F-001 index drop migration, publisher operational audit run, T07 step 1 SQL).
+
+**Total today: ~30 commits, 7 production migrations + 1 single-row DML, +211 documented columns, +1 Tier 2 production patch, +1 strategic proposal, +6 strategic OTL items captured, +1 canonical Lesson promoted (#46), +3 standing checks added (S7, S8, S9 — S10 added v2.2), +1 candidate Operations Auditor role definition (R12).**
 
 **invegent-dashboard — `main`:** none.
 
-**Memory:** entries 1, 11, and 14 updated. Entry 1 adds 00_action_list.md to session-start reads. Entry 11 extended to 4-way sync (sync_state + action_list + memory + dashboard). Entry 14 reflects today's afternoon work and proposal path.
+**Memory:** entries 1, 11, 14 still reflect afternoon state. Auto-regeneration overnight will incorporate evening work.
 
 ---
 
 ## STRATEGIC POSTURE
 
-**Today's session was productive**: 3 briefs shipped, 1 production patch with full rollback test, +117 documented columns, all alerts cleared, 1 strategic proposal committed, 1 process improvement (action list) shipped. **Tomorrow's session is gate-driven**: the +24h obs checkpoint determines whether Phase C cutover stays on track for Sat 2 May, and that's the dominant priority.
+Today was a heavy session. The afternoon shipped 3 briefs + Phase B production patch + alerts cleared + red-team proposal + action_list v1.0 — already a very productive day. The evening added 3 more briefs + audit cycle 2 closure + B17/B18 + an unplanned publisher operational audit that exposed a 3+ week silent break on YouTube + a 5+ day backlog on Instagram.
 
-**The structured red-team review proposal** at **`docs/runtime/structured_red_team_review_v1_proposal.md`** is the most strategic non-time-bound item. It's bench work — not "do alongside the +24h obs" — but worth a focused 90-min slot once Phase B Gate B is confirmed exited cleanly. The proposal's value depends on the calibration test outcome, not on intuition about whether red-teaming "helps".
+The unplanned audit was the most strategically valuable work tonight, not because YT and IG matter most, but because it exposed the **structural gap** in ICE's monitoring: cron-layer health was watched, business-layer truth wasn't. ChatGPT's cross-check on the first-pass YT framing halted a wrong production migration. Both events were captured as **Lesson #46** and operationalized as the **OTL — Operational Truth Layer** strategic stream.
 
-**Standing memory rule reminder for next session opening**: PK personal businesses come first when next session opens. ICE work is bonus, not driver. CFW / Property / NDIS FBA — anything live there jumps the queue. **Action list at `docs/00_action_list.md` includes a 💼 Personal businesses section that chat asks PK to populate at session start.**
+**Tomorrow's session is gate-driven** by Phase B +24h obs and Gate B exit Sat. The PK actions (T06 OAuth reconnect, T07 step 4 cron re-enable) are short and high-impact — every hour they sit unfixed is more queue backlog and more days of zero YT publishing.
 
-**Meta App Review status check**: standing memory note says contact Meta dev support if still stuck after 27 Apr 2026 (3 days ago today). Worth checking review state in next session opening. **In action list as R08, P1.**
+**The strategic non-time-bound thread** continues to be `structured_red_team_review_v1` (D-01 / D185). Tonight's evidence (ChatGPT halt of wrong production migration) is non-Phase-C, real-stakes, high-value validation of the pattern. The pilot path remains R10 (Phase C cutover) → B16 ratification → D185 entered formally.
+
+**Standing memory rule reminder for next session opening**: PK personal businesses come first. ICE work is bonus, not driver. Action list at `docs/00_action_list.md` v2.2 includes a 💼 Personal businesses section that chat asks PK to populate at session start.
 
 ---
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-This morning we crossed the 5/5 first-run threshold on D182. This afternoon we doubled m schema documentation coverage AND shipped a production patch with a clean rollback test AND cleared the alert backlog AND committed a strategic proposal AND shipped the action list as a process improvement. The system is in a strong state.
+Today was the day cron-vs-business-truth became visible. The publisher audit exposed the gap; ChatGPT's red-team halt prevented a wrong fix; the OTL stream is the durable answer. Tomorrow's PK actions (T06 + T07 step 4) close the immediate operational holes; the OTL items O-01 through O-06 close the structural one.
 
-**Read `docs/00_action_list.md` at the start of the next session.** The action list captures every queued item with priority, owner, trigger, and source — so the question "what's next" has a single answer. The standing memory rule (entry 11) now requires 4-way sync: sync_state + action_list + memory + dashboard.
+**Read `docs/00_action_list.md` v2.2 at the start of the next session.** The action list captures every queued item with priority, owner, trigger, and source. Standing checks now S1-S10. Tomorrow's Today/Next 5 already rebuilt: personal businesses → T07 step 4 → T06 → +24h obs → O-01.
 
-The single biggest forward risk is whether the body-health filter alone is sufficient to hold the image_quote success rate. The +24h obs checkpoint tomorrow ~5pm AEST is the test. The `docs/runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md` file has the four queries verbatim, ready to paste-and-run.
+The Phase B body-health filter has held through 24 hours so far on the data we've seen. The +24h obs checkpoint tomorrow ~5pm AEST is the test. The four queries are paste-ready in the Phase B run state file.
 
-The strategic non-time-bound item is the **structured_red_team_review_v1** pilot — full plan at **`docs/runtime/structured_red_team_review_v1_proposal.md`**. Read this file before continuing the discussion in any new session.
-
-Beyond that, every open item is either (a) time-bound and waiting for its checkpoint (Phase B obs, Gate B exit), (b) bench work needing focused attention (red-team review calibration, Slice 2 brief), or (c) backlog (LOW followups, branch hygiene). All sorted by priority in `docs/00_action_list.md`. Pick the one with highest strategic ROI for the next session's energy budget.
+Beyond that, every open item is either (a) PK action (T06 OAuth, T07 step 4, T05 Meta contact) — quick wins, do them first; (b) strategic stream (OTL O-01 through O-06) — start with O-01; or (c) backlog (F08, B-items) waiting for triggers. All sorted by priority in `docs/00_action_list.md`. Pick the one with highest strategic ROI for the next session's energy budget.
 
 ---
 
-## END OF THURSDAY 30 APR AFTERNOON SESSION
+## END OF THURSDAY 30 APR LATE EVENING SESSION
 
-Full reconciliation complete. All today's work captured. Active queue idle. Phase B observation window running. Action list shipped with v1 protocol. Fresh start ready.
+Full reconciliation complete. All today's work captured. F04 (post_render_log) Active for CC overnight. Phase B observation window running. Action list at v2.2. Lesson #46 canonical. OTL stream captured. T07 step 1 applied. T06 + T07 step 4 await PK. Fresh start ready.
