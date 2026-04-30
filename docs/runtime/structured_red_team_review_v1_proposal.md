@@ -1,9 +1,51 @@
 # structured_red_team_review_v1 — Proposal
 
-**Status:** PROPOSAL — pending PK decision (authored 30 Apr Thu afternoon, captured 30 Apr Thu evening)
+**Status:** PILOT APPROVED — pre-pilot calibration scheduled (decided 30 Apr Fri afternoon)
 **Authored:** PK + ChatGPT + Claude collaborative session, 30 Apr 2026
-**Decision deadline:** None — bench work, takes priority slot when PK chooses
+**Pilot decision:** PK + Claude session, 30 Apr 2026 ~16:10 Sydney
 **Hard constraint:** Must not interfere with Phase B +24h obs checkpoint (~5pm AEST Fri 1 May) or Gate B exit decision (Sat 2 May)
+
+---
+
+## ⭐ PILOT DECISION (30 Apr Fri afternoon)
+
+**Decision:** Proceed with `structured_red_team_review_v1` as a **time-boxed pilot, not a standing rule.**
+
+**Graduation gates (falsifiable, two-step):**
+
+```
+PROPOSAL → PILOT          if pre-pilot calibration is useful
+PILOT    → STANDING RULE  if it proves value during Phase C cutover review
+```
+
+A passing calibration does NOT ratify a standing rule. It only approves use on one Phase C cutover review. After Phase C, re-evaluate: useful / noisy / unnecessary.
+
+**Plan:**
+
+| Item | Decision |
+|---|---|
+| When | Sun 3 May or Mon 4 May, after Gate B exit is known |
+| Hard cap | 90 minutes — no extension |
+| Agent | ChatGPT first, not Grok |
+| Test material | Original pre-revision Phase B brief + first CC migration draft, if reconstructable |
+| Fallback if not reconstructable | Skip the artificial calibration. Use the first Phase C cutover brief as the **live pilot** instead. |
+| Adoption criterion | None — passing calibration approves Phase C pilot use only |
+| Ratification gate | Phase C pilot result determines proposal → standing rule decision |
+
+**Why ChatGPT first, not Grok:**
+- Lowest setup friction — already in the loop daily
+- Different enough from Claude / CC to catch different blind spots
+- The proposal itself states the checklist is the durable asset, not the agent
+
+**Use Grok later if and only if:** ChatGPT calibration is noisy, misses obvious risks, or a second-model comparison is wanted before Phase C cutover.
+
+**Hard constraint preserved:** Pilot calibration must not touch Gate B obs or exit decision. Calibration is bench work, scheduled after Gate B exit is known.
+
+**Remaining open decisions** (per the action list):
+- D-01: Adoption ratification — deferred until after Phase C pilot, NOT after calibration
+- D-04: (separate — Invegent thin-pool resolution path, unrelated)
+
+This decision was made in PK + Claude session 30 Apr ~16:10 Sydney following Claude's honest-concerns review (reconstruction cost, n=1 underpower, slow learning loop, validation circularity). PK explicitly accepted the n=1 concern and reframed the success criterion from "adoption" to "approved for one Phase C pilot, then re-evaluate."
 
 ---
 
@@ -44,9 +86,11 @@ The reasons the original is the right test material:
 
 If reconstructing the original is genuinely hard, fall back to using the final versions and tracking only "novel issues surfaced" (not "known issues caught" — there's nothing left to catch).
 
+**Pilot decision update (30 Apr):** if reconstruction is hard, the cleaner fallback is to **skip the artificial calibration entirely** and use the first Phase C cutover brief as the live pilot. This avoids running a calibration whose load-bearing signal (3/3 known issues caught) is already gone. Live pilot is riskier but more honest.
+
 ### Step 2 — Unprompted red-team pass
 
-Hand the agent (Grok if PK has access; any sufficiently capable LLM otherwise) the original brief + original migration with this prompt only:
+Hand the agent (**ChatGPT — pilot decision 30 Apr; Grok deferred**) the original brief + original migration with this prompt only:
 
 > "Red-team this brief and migration. Surface contradictions, missing guardrails, unsafe scope, rollback gaps, weak acceptance criteria, blast radius. One pass — no debate. Output structured JSON."
 
@@ -106,19 +150,21 @@ Items 10 and 11 are tightened from ChatGPT's original. Item 13 is new.
 
 Run the red-team pass again on the same original artefacts, with the checklist provided as part of the system prompt. Same JSON output format.
 
-This is the actual go/no-go test.
+This is the actual go/no-go test for **calibration → pilot** transition. Pilot → standing rule transition is a separate gate, evaluated after Phase C cutover use.
 
 ### Step 6 — Decide based on combined results
 
-| Outcome | Decision |
+| Outcome | Decision (per pilot framing) |
 |---|---|
-| 3/3 known + 0–2 valid new issues surfaced | **Strong adopt.** Pilot for next Tier 2+ brief. |
-| 3/3 known + many flags, mostly noise | **Noise problem.** Checklist needs work or agent isn't right. Do not adopt yet — refine and re-test. |
-| 2/3 known + 1+ valid new issues | **Useful, adopt cautiously.** Pilot but watch for false positives in early runs. |
-| 2/3 known + only the issues already known | **Suspicious.** Agent may be reading context not red-teaming. Do not adopt yet. |
-| 0/3 known | **Reject this iteration.** Either checklist or agent (or both) is wrong. |
+| 3/3 known + 0–2 valid new issues surfaced | **Approved for one Phase C pilot.** Re-evaluate after Phase C. |
+| 3/3 known + many flags, mostly noise | **Noise problem.** Refine checklist or change agent before Phase C use. Do not run on Phase C with current state. |
+| 2/3 known + 1+ valid new issues | **Approved for Phase C pilot, watch closely.** Be ready to drop in Phase C if false positive rate hurts throughput. |
+| 2/3 known + only the issues already known | **Suspicious.** Agent may be reading context not red-teaming. Try ChatGPT with explicit blind-test framing, or escalate to Grok before Phase C. |
+| 0/3 known | **Reject this iteration.** Proposal stays as proposal. Phase C runs without the layer. |
 
 The "valid new issues surfaced" measure is the load-bearing one. It's the only signal that distinguishes a working red-team layer from a sophisticated regurgitation engine.
+
+**Critical reminder (per pilot decision):** any "approved" outcome above is approved for **one Phase C pilot**, not for adoption as a standing rule. The standing rule decision happens after Phase C, not after this calibration. n=1 is too small for adoption.
 
 ---
 
@@ -144,13 +190,13 @@ Do NOT use for:
 
 ## Open decisions PK needs to make
 
-1. **When to invest the calibration time** — proposal recommends time-boxing to one focused 60–90 min session within the next 7–10 days, after Phase B Gate B is confirmed exited cleanly.
+1. ~~**When to invest the calibration time**~~ — RESOLVED 30 Apr: Sun 3 May or Mon 4 May, 90min hard cap, after Gate B exit is known.
 
-2. **Which agent to use** — Grok (proposal author's preference, different model family / different blind spots argument) vs another Claude instance in red-team mode vs any sufficiently capable LLM. The proposal's refinement notes the **agent is secondary to the checklist**; the durable asset is the checklist itself.
+2. ~~**Which agent to use**~~ — RESOLVED 30 Apr: ChatGPT first. Grok deferred — used only if ChatGPT calibration is noisy or misses obvious risks, or for a second-model comparison before Phase C.
 
-3. **Whether to ratify a decision (e.g. D185)** if calibration passes — formalise the layer as a standing rule, or keep it informal and revisit periodically.
+3. **Whether to ratify a decision (e.g. D185)** if calibration passes — DEFERRED. Calibration outcome only approves Phase C pilot. Standing-rule ratification (D185 or later) decided after Phase C, not after calibration.
 
-4. **Whether to reflect this in `invegent-dashboard` roadmap** — the layer is operational discipline, not a feature, but it might warrant a "Quality controls" section if adopted.
+4. **Whether to reflect this in `invegent-dashboard` roadmap** — STANDING NO (for now). The layer is operational discipline, not a roadmap-visible feature. Re-evaluate if it becomes a standing rule.
 
 ---
 
@@ -159,7 +205,8 @@ Do NOT use for:
 - Must not interfere with Phase B +24h obs checkpoint (~5pm AEST Fri 1 May)
 - Must not interfere with Gate B exit decision (Sat 2 May)
 - Calibration is bench work — does not happen in the same session as ICE operational work
-- If Grok or any agent introduces noise that disrupts D182 / Cowork throughput, restrict layer to Gate/cutover decisions only (do not extend to Tier 2+ briefs)
+- If ChatGPT or any agent introduces noise that disrupts D182 / Cowork throughput, restrict layer to Gate/cutover decisions only (do not extend to Tier 2+ briefs)
+- 90 minute hard cap on calibration session — no extension. If reconstruction or analysis bleeds past 90min, abort calibration and use Phase C as the live pilot instead.
 
 ---
 
@@ -195,6 +242,16 @@ Three turns of refinement landed at this proposal:
 
 This document captures Turn 4's consolidated state.
 
+**Turn 5 — Pilot decision (30 Apr Fri afternoon, PK + Claude)**
+- PK + Claude reviewed the proposal end-to-end
+- Claude raised four honest concerns the proposal underweighted: reconstruction cost (possibly fatal to calibration), n=1 underpower, slow learning loop (1-2 Tier 2+ briefs/month), validation circularity (PK + chat judging novelty are the same brief authors)
+- PK accepted the n=1 concern and reframed: "passing calibration ≠ adoption; passing calibration = approved for one Phase C pilot only"
+- PK chose ChatGPT over Grok on lowest-friction grounds
+- PK chose Sun 3 / Mon 4 May (after Gate B exit known)
+- PK added the "if reconstruction is hard, skip artificial calibration and use Phase C as live pilot" fallback — cleaner than running a calibration with no load-bearing signal
+
+This document's PILOT DECISION header (top of file) captures Turn 5's resolved position.
+
 ---
 
 ## Where this fits in the broader system
@@ -206,10 +263,10 @@ If adopted, `structured_red_team_review_v1` would sit alongside `docs/runtime/au
 
 Both follow D183's principle: build automation infrastructure when observation under load demands it, not pre-emptively. The Phase B near-misses are the observation that motivates building this; calibration is the test that confirms the build is justified.
 
-If calibration passes and the layer is adopted, expect to:
+If the layer graduates to standing rule (after Phase C pilot, NOT after calibration), expect to:
 - Add a new decision (D185 or later) ratifying the rule
 - Move this file from `docs/runtime/structured_red_team_review_v1_proposal.md` to `docs/runtime/structured_red_team_review_v1_spec.md`
 - Update sync_state to reference the active spec
 - Update memory accordingly
 
-If calibration fails, this file stays as a proposal and the experiment is documented for future reference.
+If calibration fails or Phase C pilot fails, this file stays as a proposal and the experiment is documented for future reference.
