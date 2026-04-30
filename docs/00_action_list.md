@@ -6,7 +6,7 @@
 > Updated inline as state changes (not just end-of-session) so it doesn't go stale.
 >
 > Created: 2026-04-30 Thursday evening Sydney.
-> Last updated: 2026-04-30 Friday evening Sydney (v1.8 — B17 + B18 closed; R03 manual ChatGPT cycle 2 audit pass remains the next deliberate work item per PK).
+> Last updated: 2026-04-30 Friday evening Sydney (v1.9 — R03 closed; cycle 2 audit findings all closed same day; F-001 dropped redundant index; F-003+F-004 surfaced as brief refresh; B19 added with row-count trigger).
 
 ## How this file works
 
@@ -37,15 +37,15 @@
 
 > **This section is curated, not maintained.** Chat regenerates the table below at every session start. Maximum 5 rows. If you're asking "what should I do next," this is the answer.
 >
-> **Last rebuilt:** 2026-04-30 Friday evening Sydney (post B17 + B18 close; R03 is the next deliberate work item per PK; tomorrow gate-driven).
+> **Last rebuilt:** 2026-04-30 Friday evening Sydney (post R03 close + cycle 2 audit closures; tomorrow gate-driven).
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
 | 1 | Personal businesses check-in | P0 (per standing rule entry 19) | ICE is bonus, not driver — personal comes first | Cleared at session open — PK confirmed nothing live in CFW / Property / NDIS FBA today; reconfirm next session |
 | 2 | Phase B +24h observation checkpoint | P0 | Due Fri 1 May ~5pm AEST / 03:48 UTC (24h after deploy) | Open `docs/runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md`, copy the 4 obs SQL queries (deploy_timestamp `'2026-04-30 03:48:25.383415+00'` already substituted), run them via Supabase MCP, paste results |
 | 3 | Gate B exit decision | P0 | Sat 2 May, gated on rank 2 result | If +24h obs clean → exit Gate B Sat 2 May; if not → fork to extend Gate B 5–7 days OR temporarily disable image_quote at format-mix layer |
-| 4 | **R03 — Manual ChatGPT cycle 2 audit pass** (next deliberate work item per PK 30 Apr) | P2 | Snapshot at `docs/audit/snapshots/2026-04-30.md` ready for auditor consumption; no longer gated; PK said this is the next deliberate work item AFTER the closure/refresh is clean (which it now is) | When PK has bandwidth: hand the snapshot to ChatGPT in Data Auditor role per `docs/audit/roles/data_auditor.md`; ChatGPT writes findings to `docs/audit/runs/2026-04-30-data.md`; chat captures findings + closures committed to `docs/audit/open_findings.md` |
-| 5 | F04 post_render_log column-purposes (in Active — CC overnight) | P2 | Likely lands overnight; chat picks up tomorrow after T01+T02 resolved | Awaiting CC pre-flight + migration draft + push. Will close m-schema small-tables sweep (m schema 39.94% → ~42.3%) |
+| 4 | F04 post_render_log column-purposes (in Active — CC overnight) | P2 | Likely lands overnight; chat picks up tomorrow after T01+T02 resolved | Awaiting CC pre-flight + migration draft + push. Will close m-schema small-tables sweep (m schema 39.94% → ~42.3%) |
+| 5 | T05 Meta business verification — escalation path | P1 | Phase 1.6 blocker; PK to contact Meta dev support pre-weekend if possible | PK contacts Meta dev support per `docs/05_risks.md` Risk 1 + Risk 3 |
 
 ---
 
@@ -61,6 +61,7 @@ Run these every session open before deciding what to work on. Most take <2 min.
 | S4 | Failed slots last 7d | `SELECT COUNT(*) FROM m.slot WHERE status='failed' AND scheduled_publish_at >= NOW() - INTERVAL '7 days'` | New failures since last session → investigate |
 | S5 | Anthropic spend trend | Query `m.ai_usage_log` cost since 1st of month | Approaching Stop 1 ($30/mo) → review |
 | S6 | sync_state freshness | Last-written timestamp on `docs/00_sync_state.md` | >12h old → re-read full file before assuming state |
+| S7 | **B19 trigger check (added 30 Apr v1.9)** | `SELECT n_live_tup FROM pg_stat_user_tables WHERE schemaname='m' AND relname='slot'` | n_live_tup > 5000 → promote B19 to Ready |
 
 ---
 
@@ -100,13 +101,14 @@ Per standing memory rule (entry 19): PK personal businesses come first. ICE is b
 |---|---|---|---|---|---|---|
 | ~~R01~~ | ~~Decide on `structured_red_team_review_v1` pilot~~ | — | — | — | **DECIDED 30 Apr — see T04 (calibration scheduled) and proposal PILOT DECISION header.** | [proposal](runtime/structured_red_team_review_v1_proposal.md) (commit `4d6a0fba`) |
 | ~~R02~~ | ~~Author audit Slice 2 brief~~ | — | — | — | **CLOSED 2026-04-30 17:30 Sydney — snapshot at `docs/audit/snapshots/2026-04-30.md` accepted as-is; brief refreshed at same commit (6 query bugs fixed). D182 v1 validated across 2 brief shapes (Tier 0 markdown gen + Tier 1 migration drafting). 5/5 first-run thresholds.** | — |
-| R03 | **Manual ChatGPT cycle 2 audit pass** (next deliberate work item per PK 30 Apr) | P2 | ChatGPT + chat | 30min | Snapshot at `docs/audit/snapshots/2026-04-30.md` is ready for the auditor. Hand it to ChatGPT in Data Auditor role per `docs/audit/roles/data_auditor.md`; ChatGPT writes findings to `docs/audit/runs/2026-04-30-data.md`; chat captures findings + closures committed to `docs/audit/open_findings.md` | D181 manual loop, cycle 2 of 5 |
+| ~~R03~~ | ~~Manual ChatGPT cycle 2 audit pass~~ | — | — | — | **CLOSED 2026-04-30 evening (commit `bbfc4944`) — 4 findings raised by ChatGPT, all closed same day. F-001 dropped redundant `m.ux_ai_job_post_draft_job_type` index (action-taken via Supabase MCP migration). F-002 deferred to B19 with row-count trigger 5k tuples on `m.slot`. F-003+F-004 closed as brief refresh — Section 15 expanded to 5 hot tables (added `f.canonical_content_body`), Section 13 expanded to itemise public functions, Section 5 Part B added (naming-discipline detector output per O-003). Cycle 2 of 5 manual cycles done. Next snapshot will validate the brief refresh.** | — |
 | ~~R05~~ | ~~Operator-alerting trio brief~~ | — | — | — | **CLOSED 2026-04-30 — see queue.md Recently completed and run state. m schema 31.6% → 39.94%.** | — |
 | ~~R06~~ | ~~Pipeline-health pair brief~~ | — | — | — | **CLOSED 2026-04-30 — see queue.md Recently completed.** | — |
 | R07 | Update `invegent-dashboard` roadmap milestone | P3 | chat | 10min | **PK 30 Apr afternoon: explicitly delayed.** Will reflect ~42% m schema once F04 lands; bundle into a single dashboard update covering today's full ~9.2 → 42% sweep | standing rule entry 11 |
 | R08 | **Meta App Review status check** | P1 | PK | 5min | **OVERLAPS WITH T05** — when PK contacts dev support for business verification, also captures App Review status in the same conversation | userMemories entry 4 — past 27 Apr deadline |
 | R09 | **Author reconciliation v2 brief** | P1 | PK + chat | 30-45min brief authorship + ~45-60min implementation later | **AFTER T01 + T02 + personal businesses check complete tomorrow** | [spec capture](briefs/reconciliation-v2-spec.md) (commit `5837342`) |
 | R10 | **Phase C cutover live pilot — apply red-team review** (gated on T04 outcome OR T04 skipped) | P1 | PK + ChatGPT (red-team) + chat | ~30min added to Phase C cutover review process | When Phase C cutover brief is drafted: hand brief + draft migration to ChatGPT in red-team mode | [proposal w/ pilot decision](runtime/structured_red_team_review_v1_proposal.md) |
+| R11 | **Cycle 3 audit run** (next deliberate audit work item) | P3 | chat (snapshot) + ChatGPT (auditor) | 5min snapshot + 30min audit + closure session | Run the refreshed brief on a future day; ChatGPT validates the brief refresh by surfacing the new sections (Section 5 Part B detector output + Section 13 function inventory + Section 15 expanded hot tables). Counts toward the 5+ manual cycles before Slice 3 automation | D181 manual loop, cycle 3 of 5 |
 
 ---
 
@@ -146,6 +148,7 @@ Per standing memory rule (entry 19): PK personal businesses come first. ICE is b
 | B16 | **Red-team review v1 — ratification call (proposal → standing rule)** | P1 | After R10 (Phase C cutover live pilot) completes; D185 reserved for the ratification | [proposal w/ pilot decision](runtime/structured_red_team_review_v1_proposal.md), [D185 reservation](06_decisions.md) |
 | ~~B17~~ | ~~`m.cron_health_snapshot.latest_run_status` purpose polish~~ | — | — | **CLOSED 2026-04-30 evening — applied via Supabase MCP migration `audit_b17_polish_cron_health_latest_run_status_purpose` per D170. New purpose at 678 chars (up from ~280): documents canonical filter `('succeeded','failed')`, all stored values (succeeded/failed/NULL), pg_cron transitional statuses excluded, and currently observed reality.** |
 | ~~B18~~ | ~~`docs/06_decisions.md` numbering reconciliation~~ | — | — | **CLOSED 2026-04-30 evening (commit `5775929f`) — full prose entries added for D170, D181, D182. D183/D184 unchanged. D185 reserved for `structured_red_team_review_v1` ratification (sunset 31 May 2026 if R10 doesn't run). Status table footer entries cross-link to the new prose.** |
+| **B19 (new)** | **Add `idx_slot_filled_draft_id` on `m.slot`** | P3 | `m.slot.n_live_tup > 5000` (currently 159) OR EXPLAIN-evidenced seq scan with measurable cost — whichever fires first. Standing check S7 added to surface this trigger at session start | F-2026-04-30-D-002 closure (deferred from MEDIUM finding) |
 
 ---
 
@@ -157,7 +160,7 @@ These are **intentionally** deferred with documented triggers. Do not promote to
 |---|---|---|---|
 | F01 | D182 Phase 4b — GitHub Actions validation | When a brief actually demands cloud-side validation | D183 |
 | F02 | D182 Phase 4c — OpenAI API answer step | When a brief generates real questions PK cannot trivially answer (Q-001 today was a structured question; was answerable without external lookup. Revisit if a future brief produces an unanswerable question) | D183 |
-| F03 | Audit Slice 3 — auto-auditor (OpenAI reads snapshot, writes findings) | Manual cycle 5+ per D181 (currently cycle 1; cycle 2 ready to run as R03) | D181, D184 |
+| F03 | Audit Slice 3 — auto-auditor (OpenAI reads snapshot, writes findings) | Manual cycle 5+ per D181 (currently cycle 2 done; cycle 3 ready as R11) | D181, D184 |
 | ~~F04~~ | ~~`m.post_render_log` (16 cols)~~ | — | **PROMOTED to Active 2026-04-30 17:10 — see Active section.** |
 | F05 | D156 (deferred to 27 Apr per the original ID003 fix scope) | Pending completion when ICE has bandwidth | userMemories entry 5 |
 | F06 | LinkedIn publisher (Phase 2.3) | LinkedIn Community Management API approval — evaluate Late.dev if unresolved by 13 May 2026 | userMemories entry 2 |
@@ -172,7 +175,7 @@ This file's accuracy depends on disciplined updates. The rules:
 
 1. **At session start (chat reads first):**
    - **Rebuild the Today / Next 5 view** by selecting from the categories below
-   - Run 🔄 Standing checks (S1–S6)
+   - Run 🔄 Standing checks (S1–S7)
    - Surface any 🔴 Time-bound items due today or tomorrow
    - Ask PK about 💼 Personal businesses (per standing rule)
 
@@ -203,10 +206,10 @@ This file's accuracy depends on disciplined updates. The rules:
 
 ---
 
-## v1.8 honest limitations
+## v1.9 honest limitations
 
 - **Personal businesses section is empty** — chat asks PK at every session open; populated by PK
-- **Standing checks not yet automated** — S1-S6 manual until a session-start preamble script earns build
+- **Standing checks not yet automated** — S1-S7 manual until a session-start preamble script earns build
 - **No automated freshness check** — chat must remember to update Last updated timestamp AND rebuild Today / Next 5
 - **Today / Next 5 is human-curated each session** — there's no algorithm; chat applies the rebuild heuristic at session start
 - **Reconciliation v2 not yet implemented** — R09 captures the work to author the brief tomorrow.
@@ -215,6 +218,7 @@ This file's accuracy depends on disciplined updates. The rules:
 - **Meta business verification failure** — T05 added; this is now a Phase 1.6 blocker per docs/04_phases.md and Risk 3 per docs/05_risks.md.
 - **Brief-author bug discipline** — today's R02 first run revealed that a brief specifying verbatim queries against schemas the brief author doesn't own should run each query against current schema before the brief lands. The schema-drift fallback rule in the refreshed brief is residual safety, not first-line defence.
 - **Lesson #32 reminder during B17** — chat's first apply_migration attempt failed because chat assumed `k.table_registry.table_id` was UUID; it's BIGINT. Fix took 1 retry. Pre-flight every directly-touched table via `k.vw_table_summary` per Lesson #32 — even for one-line column-comment polish work.
+- **R03 cycle 2 audit closure pattern** — ChatGPT's auditor pass produced 4 findings; chat's closure pattern was: (1) verify each claim against live MCP before deciding action (caught that F-001 was correct + actionable, F-002 correct-but-not-urgent at current row count, F-003+F-004 were brief defects not DB defects), (2) take immediate action where production impact is real and verified safe (F-001 drop), (3) defer with explicit triggers where production impact is row-count-dependent (F-002→B19), (4) close as brief refresh where the audit caught process gaps not data gaps (F-003+F-004). Same closure session committed 5 docs simultaneously. Captured candidate Lessons #41 (row-count-aware role expectations) and #42 (briefs mirror role hot-table sets) for next role-definition refinement.
 
 If after 2 weeks this file is consistently stale or PK is still asking "what's next" because the file isn't being read, the experiment failed. Falsifiable.
 
@@ -231,3 +235,4 @@ If after 2 weeks this file is consistently stale or PK is still asking "what's n
 - **v1.6** (30 Apr Fri late afternoon, 17:10 Sydney): R05 closed; F04 brief authored; R02 brief queued for Cowork; T05 added
 - **v1.7** (30 Apr Fri evening, 17:35 Sydney): **R02 closed (D182 v1 validated across 2 brief shapes; first Tier 0 brief shipped clean — 5/5 thresholds).** R02 brief refreshed at same commit (6 query bugs fixed: column renames + view-shape bug + Section 11 simplification). Q-001 resolved Option A. R03 (manual ChatGPT cycle 2 audit pass) renumbered + promoted to Ready (now triggerable). B12 trigger met (Cowork reliability across brief shapes confirmed; awaits bandwidth). Today/Next 5 rebuilt with B17+B18 wait-window work at rank 4 and R03 at rank 5.
 - **v1.8** (30 Apr Fri evening, ~17:55 Sydney): **B17 closed** (cron_health_snapshot.latest_run_status purpose refreshed to 678 chars via apply_migration `audit_b17_polish_cron_health_latest_run_status_purpose`; canonical filter + all stored values + observed reality documented). **B18 closed** (commit `5775929f` — full prose entries added for D170, D181, D182; D185 reserved for red-team review v1 ratification with sunset 31 May 2026). Today/Next 5 rebuilt with R03 promoted to rank 4 as the next deliberate work item per PK; F04 at rank 5 (CC overnight). New honest-limitation entry capturing Lesson #32 reminder from B17 first attempt.
+- **v1.9** (30 Apr Fri evening, ~18:35 Sydney): **R03 closed (commit `bbfc4944`)** — cycle 2 ChatGPT audit pass produced 4 findings; all closed same day. F-001 (HIGH-worthy MEDIUM, dropped redundant `m.ux_ai_job_post_draft_job_type` index via Supabase MCP migration `audit_drop_redundant_ai_job_unique_index` per D170; canonical `ux_ai_job_unique` retained). F-002 (MEDIUM, deferred to **B19** with row-count trigger 5,000 tuples on `m.slot`; current 159). F-003+F-004 (LOW × 2, closed as brief refresh — Section 15 expanded to 5 hot tables, Section 13 itemises public functions, Section 5 Part B adds naming-discipline detector output per O-003). Standing check **S7** added (B19 trigger). Cycle 2 of 5 manual cycles done; cycle 3 captured as R11. Two candidate Lessons (#41 row-count-aware role expectations, #42 briefs mirror role hot-table sets) appended to forward-discipline section in `docs/audit/open_findings.md`. Today/Next 5 rebuilt with T05 promoted to rank 5 since R03 is closed.
