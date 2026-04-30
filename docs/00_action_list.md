@@ -6,7 +6,7 @@
 > Updated inline as state changes (not just end-of-session) so it doesn't go stale.
 >
 > Created: 2026-04-30 Thursday evening Sydney.
-> Last updated: 2026-04-30 Thursday evening Sydney (v1.1 — patched per ChatGPT review).
+> Last updated: 2026-04-30 Thursday evening Sydney (v1.2 — added R09 reconciliation v2 brief authorship).
 
 ## How this file works
 
@@ -106,6 +106,7 @@ Per standing memory rule (entry 19): PK personal businesses come first. ICE is b
 | R06 | Alternative Tier 1 brief — pipeline-health pair (pipeline_health_log + cron_health_snapshot, ~37 cols) | P2 | chat → CC | 60min total | Same shape as R05, alternative target tables | [slot-core run state](runtime/runs/slot-core-purposes-2026-04-30T020151Z.md) follow-ups |
 | R07 | Update `invegent-dashboard` roadmap for 26.2% m schema milestone | P3 | chat | 10min | Edit `app/(dashboard)/roadmap/page.tsx`, update PHASES array + lastUpdated; push to main; Vercel auto-deploys | standing rule entry 11 |
 | R08 | **Meta App Review status check** | P1 | PK | 5min | PK opens Meta App Review dashboard, captures state; if stuck >27 Apr 2026, contact Meta dev support | userMemories entry 4 — past 27 Apr deadline |
+| R09 | **Author reconciliation v2 brief** | P1 | PK + chat | 30-45min brief authorship + ~45-60min implementation later | **AFTER T01 + T02 + personal businesses check complete tomorrow:** read `docs/briefs/reconciliation-v2-spec.md` and turn it into a formal brief at `docs/briefs/reconciliation-v2.md`. Spec is the agreed A+B+C+D plan: append-only sync_state with compact top "Current State Snapshot", three reconciliation templates (Bookmark/Goodnight/Full), default tier = Bookmark, action_list owns task board / sync_state owns state snapshot + narrative. Defer automation script. Falsifiable test: 10 sessions, avg <20min, no content loss → if >35min or content loss, revise | [spec capture](briefs/reconciliation-v2-spec.md) (commit `5837342`); 30 Apr Thu evening discussion + ChatGPT review |
 
 ---
 
@@ -200,13 +201,14 @@ This file's accuracy depends on disciplined updates. The rules:
 
 ---
 
-## v1.1 honest limitations
+## v1.2 honest limitations
 
 - **Personal businesses section is empty** — chat asks PK at every session open; populated by PK
 - **Standing checks not yet automated** — S1-S6 manual until a session-start preamble script earns build
 - **No automated freshness check** — chat must remember to update Last updated timestamp AND rebuild Today / Next 5
 - **Today / Next 5 is human-curated each session** — there's no algorithm; chat applies the rebuild heuristic at session start
-- **Categories may evolve** — if 🟢 Ready and 📌 Backlog blur over time, consider merging or sub-categorising. Try v1.1 for 2 weeks before changing the shape.
+- **Categories may evolve** — if 🟢 Ready and 📌 Backlog blur over time, consider merging or sub-categorising. Try v1.x for 2 weeks before changing the shape.
+- **Reconciliation v2 not yet implemented** — R09 captures the work to author the brief tomorrow. Until v2 lands, sessions still use freeform reconciliation; default-Bookmark rule does NOT apply yet.
 
 If after 2 weeks this file is consistently stale or PK is still asking "what's next" because the file isn't being read, the experiment failed and we go back to sync_state-only with a clearer NEXT SESSION section. Falsifiable.
 
@@ -220,3 +222,4 @@ If after 2 weeks this file is consistently stale or PK is still asking "what's n
   2. Added ⭐ Today / Next 5 section at top — rebuilt every session start, max 5 rows, the curated "what to do now" view
   3. Added Next action column to 🔴 Time-bound, 🟡 Active, 🟢 Ready, 🤝 Pending decisions tables (the difference between a label and an executable task)
   4. Wording fix: "3-tier priority" → "4-level priority" (P0–P3 is 4 levels)
+- **v1.2** (30 Apr Thu evening): added R09 reconciliation v2 brief authorship, P1, gated on T01+T02+personal-businesses-check completing tomorrow first; spec captured at `docs/briefs/reconciliation-v2-spec.md`
