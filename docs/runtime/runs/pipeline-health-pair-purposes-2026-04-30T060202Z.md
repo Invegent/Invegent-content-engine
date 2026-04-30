@@ -1,9 +1,10 @@
 # Run State: pipeline-health-pair-column-purposes
 
-Status: review_required
+Status: done
 Risk tier: 1
 Started: 2026-04-30T06:02:02Z
-Finished: 2026-04-30T06:02:02Z (drafted; awaiting chat to apply via Supabase MCP per D170)
+Finished: 2026-04-30T06:02:02Z (CC drafted)
+Applied: 2026-04-30T06:13:30Z (chat applied via Supabase MCP per D170)
 
 ## Work completed
 
@@ -56,11 +57,11 @@ Finished: 2026-04-30T06:02:02Z (drafted; awaiting chat to apply via Supabase MCP
 
 Per D170, chat (with PK oversight) takes the next steps. CC does not apply migrations.
 
-1. Apply `supabase/migrations/20260430060202_audit_pipeline_health_pair_column_purposes.sql` via Supabase MCP `apply_migration`.
-2. Verify the DO block's `RAISE NOTICE` reports `delta 37 (pre=37, post=0, ...)`.
-3. Verify post-state: `m.pipeline_health_log` 0% → 100% documented; `m.cron_health_snapshot` 0% → 100% documented.
-4. Verify m-schema coverage: 26.2% (180/686) → 31.6% (217/686) — 37 new documented rows.
-5. Update queue.md row from `review_required` → `done` and add the closure note row to "Recently completed".
+1. ✅ Applied `supabase/migrations/20260430060202_audit_pipeline_health_pair_column_purposes.sql` via Supabase MCP `apply_migration`.
+2. ✅ DO block executed cleanly. Supabase MCP returned `{"success":true}` indicating the `RAISE EXCEPTION` branch did NOT fire — i.e. `pre_count - post_count = 37` held.
+3. ✅ Verified post-state independently (count-delta not time-window per Lesson #38): `m.pipeline_health_log` 0/21 → 21/21 documented; `m.cron_health_snapshot` 0/16 → 16/16 documented.
+4. ✅ Verified m-schema coverage: **26.2% (180/686) → 31.6% (217/686)** — exact match to brief's projection.
+5. ✅ Will update queue.md row from `review_required` → `done` and add closure note row to "Recently completed".
 
 ## Token usage (optional)
 
@@ -72,11 +73,7 @@ Per D170, chat (with PK oversight) takes the next steps. CC does not apply migra
 
 ## Next step
 
-Chat applies the migration, verifies the `RAISE NOTICE` delta, then closes:
-
-- Update queue.md to move `pipeline-health-pair-column-purposes` row from Active queue to Recently completed.
-- Append closure paragraph to this run state recording the apply timestamp and the post-apply m-schema coverage number.
-- Optional follow-up surfaced in column purposes: `ndis_published_today` and `pp_published_today` are explicitly flagged as two-client-era hardcoded vestiges. When adding external clients, both columns will need refactoring (likely into a separate per-client counter table or a JSONB by-client-id structure); CC has not refactored — only documented.
+Closure complete.
 
 ## Follow-up candidates (for separate briefs)
 
@@ -85,3 +82,39 @@ Per the brief's "Out of scope" section, the next slice candidates are other m.* 
 - `compliance_review_queue` (19 cols)
 - `external_review_digest` (17 cols)
 - `post_render_log` (16 cols)
+
+---
+
+## Chat-applied closure (2026-04-30T06:13:30Z)
+
+Migration applied successfully via Supabase MCP `apply_migration`. Tool returned `{"success":true}` — meaning the atomic DO block's `RAISE EXCEPTION` branch did not fire, i.e. the `pre_count - post_count = 37` invariant held. The `RAISE NOTICE` ("delta 37 (pre=37, post=0, ...)") would have been emitted but Supabase MCP does not surface NOTICE output back to chat; the success return is the load-bearing signal.
+
+**Independent post-state verification (count-delta per Lesson #38):**
+
+| table | total | documented (post) | undocumented (post) |
+|---|---|---|---|
+| `m.cron_health_snapshot` | 16 | 16 | 0 |
+| `m.pipeline_health_log` | 21 | 21 | 0 |
+
+**m-schema coverage delta:**
+
+- Pre: 180 / 686 (26.2%)
+- Post: **217 / 686 (31.6%)**
+- Delta: +37 documented columns (exact match to brief expected_delta)
+
+**One polish note for a future hygiene window (not blocking):**
+
+- `m.cron_health_snapshot.latest_run_status` (column_id 2813596): the column purpose says *"Observed value in current production: succeeded; NULL if the job has never run."* This is factually accurate to the current production sample, but the source query in `m.refresh_cron_health` filters to `status IN ('succeeded','failed')`, so the canonical enum is `succeeded | failed | NULL`. CC noted only the observed value; a tighter purpose would say *"enum: succeeded | failed (currently only succeeded observed in production); NULL if the job has never run."* Worth a one-line revision the next time someone touches this row, but not worth a separate migration.
+
+**Cumulative impact across the three Tier 1 column-purpose briefs shipped today (slot-core + post-publish-obs + pipeline-health-pair):**
+
+| Snapshot | Documented | Total | % |
+|---|---|---|---|
+| Start of day (before slot-core) | 63 | 686 | 9.2% |
+| After slot-core (+56) | 119 | 686 | 17.3% |
+| After post-publish-obs (+61) | 180 | 686 | 26.2% |
+| After pipeline-health-pair (+37) | **217** | 686 | **31.6%** |
+
+**Net session impact: +154 documented columns. m schema documentation crossed 30% threshold.**
+
+Closure complete. Brief queue updated to `done`; row moved to Recently completed. Action list R06 closed and removed from Active.
