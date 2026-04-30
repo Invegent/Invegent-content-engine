@@ -12,7 +12,7 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 
 | brief_id | risk_tier | status | owner | created | latest run |
 |---|---|---|---|---|---|
-| `phase-b-patch-image-quote-body-health-gate` | 2 | ready | cc | 2026-04-30 | — |
+| `phase-b-patch-image-quote-body-health-gate` | 2 | review_required | cc | 2026-04-30 | 2026-04-30T033748Z |
 
 ## Recently completed
 
