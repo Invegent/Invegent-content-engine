@@ -37,7 +37,33 @@ Impact if wrong:
 
 ## Open questions
 
-*(none yet)*
+## Q-audit-slice-2-snapshot-generation-001
+
+Context:
+Executing `audit-slice-2-snapshot-generation` brief on 2026-04-30 (Cowork run, Tier 0). Six brief-verbatim SQL queries hit schema drift since the brief was authored on the same day:
+
+- Section 1 / `f.feed_source.active=true` → `active` column does not exist. Substituted `status='active'` (returned 48 rows).
+- Section 3.1 / `k.table_registry.object_kind` → renamed to `table_kind`. Substituted; result was zero rows regardless (no missing-purpose tables).
+- Sections 7, 11, 16 / `c.client.name` → renamed to `client_name`. Substituted everywhere.
+- Section 9 / `t.content_vertical.slug` → renamed to `vertical_slug`. Substituted.
+- Section 9 / `m.signal_pool.use_count` → renamed to `reuse_count`. Substituted.
+- Section 15 / `pg_get_indexdef(indexrelid)` against `pg_indexes` — `indexrelid` not exposed by that view. Joined `pg_class` and passed `oid` instead. Output unchanged.
+
+Sections 11 (brief's documented fallback) and 16 (brief's pre-answered `cpp.enabled` default) are explicitly handled by the brief.
+
+Question:
+Are the six column-rename / view-shape substitutions above correct, and should the brief itself be refreshed with the new column names so future daily runs don't need this fallback handling?
+
+Options:
+A. Defaults are correct — accept this snapshot as-is and refresh the brief's verbatim queries for tomorrow's run.
+B. Defaults are correct — accept this snapshot as-is and leave the brief unchanged (defaults will continue to apply).
+C. One or more substitutions are wrong — I'll re-run with the corrected mapping you provide.
+
+Default:
+Proceeded with the substitutions listed above. Run is complete; snapshot written; not blocked.
+
+Impact if wrong:
+Re-run snapshot generation with corrected column names. The wrong substitution would only affect the four sections whose JSON consumed the renamed column (1, 3.1, 7, 9, 11, 16) — Sections 2, 4, 5, 6, 8, 10, 12, 13, 14, 15, 17 are independent of these renames.
 
 ---
 
