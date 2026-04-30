@@ -1,7 +1,7 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-30 Thursday 14:43 Sydney / 04:43 UTC — **End-of-Thursday-afternoon session reconciliation. Three briefs shipped (slot-core column-purposes, Phase B body-health gate patch, post-publish observability column-purposes); m schema coverage 9.2% → 26.2%; all 10 open alerts acknowledged; image_quote cascade root-caused and fixed in production. Phase B +24h observation window running, due ~5pm AEST Fri 1 May. Structured red-team review proposal under PK consideration for next session. Active queue idle.**
+> Last written: 2026-04-30 Thursday 14:43 Sydney / 04:43 UTC, **revised 2026-04-30 evening** to add explicit path reference for the structured_red_team_review_v1 proposal which was committed at end of session — **End-of-Thursday-afternoon session reconciliation. Three briefs shipped (slot-core column-purposes, Phase B body-health gate patch, post-publish observability column-purposes); m schema coverage 9.2% → 26.2%; all 10 open alerts acknowledged; image_quote cascade root-caused and fixed in production. Phase B +24h observation window running, due ~5pm AEST Fri 1 May. structured_red_team_review_v1 proposal committed at `docs/runtime/structured_red_team_review_v1_proposal.md` (commit `ddf3d7ab`) — under PK consideration for next session. Active queue idle.**
 > Written by: PK + Claude session sync
 
 ---
@@ -52,12 +52,14 @@ This rewrites the morning sync_state (which ended after first-Cowork-run reconci
      - **Cron infrastructure pause**: 3 crons silent in lockstep ~03:15–04:15 UTC, recovered at 04:30 UTC, plausibly Phase B 10-12 deploy window. Acked with note `chat:pk:27apr-cron-infra-pause-phase-b-deploy`. Logged as informational follow-up.
    - All 0 alerts open at end of session.
 
-**6. Structured red-team review proposal (no commit yet — pending PK decision)**
+**6. structured_red_team_review_v1 proposal (✅ COMMITTED at session close)**
+   - **File:** `docs/runtime/structured_red_team_review_v1_proposal.md` (12.7KB)
+   - **Commit:** `ddf3d7ab` — pushed 30 Apr 05:00:27 UTC, end of Thursday afternoon session
    - ChatGPT-original proposal "fast-track via Grok" was reframed by Claude pushback + ChatGPT revision into `structured_red_team_review_v1` — a calibrated risk-control experiment, not a fast-track tool.
-   - Refined plan: write red-team checklist (12 items, two of which Claude flagged for tightening), run unprompted calibration test on the original (pre-revision) Phase B brief + migration, then run with-checklist calibration as the actual go/no-go.
-   - Strengthened success criteria: 3/3 known + 0–2 valid new issues = strong adopt; 3/3 + many noise = noise problem; 2/3 + new issues = useful; 0/3 = reject.
-   - Sequencing change: unprompted pass first (informs checklist), then write checklist, then with-checklist pass as the actual decision. Two passes.
-   - Status: PK to consider next session; no commitment made today; bench work, not session work.
+   - Refined plan captured in the proposal doc: 13-item red-team checklist (with items 10/11/12/13 tightened or new vs ChatGPT's original 12), unprompted calibration pass on the original (pre-revision) Phase B brief + migration, then with-checklist calibration pass as the actual go/no-go.
+   - Strengthened success criteria: 3/3 known + 0–2 valid new issues = strong adopt; 3/3 + many noise = noise problem; 2/3 + new issues = useful; 0/3 = reject. Valid new issues surfaced is the load-bearing measure (distinguishes working red-team from regurgitation).
+   - Sequencing change vs original: unprompted pass first (informs checklist), then write checklist, then with-checklist pass as the actual decision. Two passes.
+   - Status: PK to consider next session; bench work, not session work.
    - Hard constraint preserved: must not interfere with Phase B +24h obs checkpoint.
 
 ### Today's three migrations summary
@@ -97,18 +99,21 @@ This rewrites the morning sync_state (which ended after first-Cowork-run reconci
 | `d550556f` | chat | Phase B run state — 27 Apr alert root causes added as follow-ups |
 | `f4104515` | chat | post-publish obs run state closed |
 | `5a5ec724` | chat | post-publish obs queue closed |
+| `cf743f49` | chat | sync_state — end-of-Thursday-afternoon reconciliation |
+| `ddf3d7ab` | chat | **structured_red_team_review_v1 proposal committed** |
 
 **invegent-dashboard — `main`:** none this session (afternoon session was DB + docs only — coverage update worth a roadmap refresh next session if PK wants visible dashboard reflection of 26.2% milestone).
 
 ### Standing memory rule honoured (entry 11 — three-way sync)
 
-- ✅ docs/00_sync_state.md — THIS COMMIT
+- ✅ docs/00_sync_state.md — THIS COMMIT (revised evening to add path reference)
 - ✅ docs/runtime/runs/* — three new run-state files closed (slot-core, Phase B patch, post-publish obs)
 - ✅ docs/audit/decisions/post_publish_observability_low_confidence_followup.md — 3 LOW rows captured for joint session
 - ✅ docs/briefs/queue.md — 3 briefs moved to Recently completed; Active queue idle
+- ✅ **docs/runtime/structured_red_team_review_v1_proposal.md — proposal committed at `ddf3d7ab`** (was the missing pointer that made the next session unable to find the proposal)
 - ⚠️ docs/06_decisions.md — no new decisions today; structured_red_team_review_v1 is **decision pending** (next session item, not ratified)
 - ⚠️ invegent-dashboard roadmap page.tsx — not updated this session; m schema 26.2% milestone could be reflected next session if PK wants visible
-- ✅ Memory entries — recent_updates updated to reflect today's afternoon work
+- ✅ Memory entries — entry 14 updated to reflect today's afternoon work and path to the proposal doc
 
 ---
 
@@ -144,7 +149,7 @@ This rewrites the morning sync_state (which ended after first-Cowork-run reconci
 
 ### Optional — strategic / planning
 
-4. **Decide on `structured_red_team_review_v1` pilot** — Claude+ChatGPT-revised proposal awaiting PK call. Three things to decide:
+4. **Decide on `structured_red_team_review_v1` pilot** — full proposal at **`docs/runtime/structured_red_team_review_v1_proposal.md`** (commit `ddf3d7ab`). Read this file first if continuing the discussion. Three things to decide:
    - Whether to invest the bench time (estimated 60–90 min for unprompted calibration + checklist authorship + with-checklist calibration)
    - Whether the agent is Grok specifically (proposal didn't justify) or any sufficiently capable LLM
    - Whether to do this *before* Phase C cutover (when it would be most useful) or after (when Phase B is fully exited and bandwidth opens)
@@ -190,11 +195,11 @@ If D182 system is not measurably reducing question count or correction commits b
 
 **Invegent-content-engine — `main` (this session):**
 
-13 commits as listed above plus this sync_state commit. Three migrations, three run-state files, one LOW-confidence followup file, queue updated 6 times.
+15 commits as listed above (13 listed earlier + sync_state cf743f49 + structured_red_team_review_v1 proposal ddf3d7ab + this revision). Three migrations, three run-state files, one LOW-confidence followup file, queue updated 6 times, structured red-team review proposal committed.
 
 **invegent-dashboard — `main`:** none.
 
-**Memory:** recent_updates updated to reflect Phase B patch shipped + image_quote root cause + m schema coverage 26.2% + 3 alert acks + structured red-team review proposal pending.
+**Memory:** entry 14 updated to reflect Phase B patch shipped + image_quote root cause + m schema coverage 26.2% + 3 alert acks + path to structured_red_team_review_v1 proposal.
 
 ---
 
@@ -202,7 +207,7 @@ If D182 system is not measurably reducing question count or correction commits b
 
 **Today's session was productive**: 3 briefs shipped, 1 production patch with full rollback test, +117 documented columns, all alerts cleared. **Tomorrow's session is gate-driven**: the +24h obs checkpoint determines whether Phase C cutover stays on track for Sat 2 May, and that's the dominant priority.
 
-**The structured red-team review proposal is the most strategic non-time-bound item.** It's bench work — not "do alongside the +24h obs" — but worth a focused 90-min slot once Phase B Gate B is confirmed exited cleanly. The proposal's value depends on the calibration test outcome, not on intuition about whether red-teaming "helps".
+**The structured red-team review proposal** at **`docs/runtime/structured_red_team_review_v1_proposal.md`** is the most strategic non-time-bound item. It's bench work — not "do alongside the +24h obs" — but worth a focused 90-min slot once Phase B Gate B is confirmed exited cleanly. The proposal's value depends on the calibration test outcome, not on intuition about whether red-teaming "helps".
 
 **Standing memory rule reminder for next session opening**: PK personal businesses come first when next session opens. ICE work is bonus, not driver. CFW / Property / NDIS FBA — anything live there jumps the queue.
 
@@ -215,6 +220,8 @@ If D182 system is not measurably reducing question count or correction commits b
 This morning we crossed the 5/5 first-run threshold on D182. This afternoon we doubled m schema documentation coverage AND shipped a production patch with a clean rollback test AND cleared the alert backlog. The system is in a strong state.
 
 The single biggest forward risk is whether the body-health filter alone is sufficient to hold the image_quote success rate. The +24h obs checkpoint tomorrow ~5pm AEST is the test. The `docs/runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md` file has the four queries verbatim, ready to paste-and-run.
+
+The strategic non-time-bound item is the **structured_red_team_review_v1** pilot — full plan at **`docs/runtime/structured_red_team_review_v1_proposal.md`**. Read this file before continuing the discussion in any new session.
 
 Beyond that, every open item is either (a) time-bound and waiting for its checkpoint (Phase B obs, Gate B exit), (b) bench work needing focused attention (red-team review calibration, Slice 2 brief), or (c) backlog (LOW followups, branch hygiene). Pick the one with highest strategic ROI for the next session's energy budget.
 
