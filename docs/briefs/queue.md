@@ -12,7 +12,7 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 
 | brief_id | risk_tier | status | owner | created | notes |
 |---|---|---|---|---|---|
-| `pipeline-health-pair-column-purposes` | 1 | ready | cc | 2026-04-30 | R06 from action list. Two tables: `m.pipeline_health_log` (21 cols) + `m.cron_health_snapshot` (16 cols). Expected_delta=37. Pre-flight by chat confirmed counts + table_purpose presence. Zero JSONB. Expected 0–5 LOW. Strategic value: operator-alerting/observability bedrock; m schema 26.2% → ~31.6%. Phase B +24h obs window untouched. |
+| `pipeline-health-pair-column-purposes` | 1 | review_required | cc | 2026-04-30 | R06 from action list. CC drafted 2026-04-30T060202Z — 37/37 HIGH, **0 LOW** (clean run, matches slot-core outcome). Producer code in hand for both tables: `m.take_pipeline_health_snapshot` for `pipeline_health_log` (every column constructed there, ~30-min cadence) and `m.refresh_cron_health` for `cron_health_snapshot` (full schema spec also in `docs/briefs/2026-04-24-cron-health-monitoring-layer-1.md`). Brief-flagged risk items resolved: `_today` TZ = AEST (not UTC), `failure_rate` = 0..1 ratio (not %), `pub_held` ↔ `pub_throttled` distinct via `image_pending` vs `throttled` error-substring filters. `ndis_/pp_published_today` documented explicitly as hardcoded two-client-era vestiges. Awaiting chat MCP apply. |
 
 ## Recently completed
 
