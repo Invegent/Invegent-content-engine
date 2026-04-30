@@ -6,7 +6,7 @@
 > Updated inline as state changes (not just end-of-session) so it doesn't go stale.
 >
 > Created: 2026-04-30 Thursday evening Sydney.
-> Last updated: 2026-04-30 Friday afternoon Sydney (v1.4 — R01 pilot decision: pilot-not-adoption, ChatGPT, Sun3/Mon4; D-02 + D-03 resolved; D-01 reframed; new R10 + B16 added).
+> Last updated: 2026-04-30 Friday afternoon Sydney (v1.5 — R06 done & removed; R05 promoted to Active; F04 trimmed; Today/Next 5 rebuilt for R02 next-in-session).
 
 ## How this file works
 
@@ -39,15 +39,15 @@
 >
 > **How to rebuild:** (1) include any P0 items unconditionally, (2) include any P1 items with calendar pressure, (3) include the highest-priority Personal Business item if PK has flagged any, (4) include the highest-leverage Ready/Strategic item, (5) cap at 5.
 >
-> **Last rebuilt:** 2026-04-30 Friday afternoon Sydney (post R01 pilot decision; R06 in flight, R01 calibration scheduled Sun3/Mon4).
+> **Last rebuilt:** 2026-04-30 Friday afternoon Sydney (post R06 close + R05 brief authoring; PK explicitly said "then r02 here" — R02 is the next in-session item).
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
 | 1 | Personal businesses check-in | P0 (per standing rule entry 19) | ICE is bonus, not driver — personal comes first | Cleared at session open — PK confirmed nothing live in CFW / Property / NDIS FBA today |
 | 2 | Phase B +24h observation checkpoint | P0 | Due Fri 1 May ~5pm AEST / 03:48 UTC (24h after deploy) | Open `docs/runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md`, copy the 4 obs SQL queries (deploy_timestamp `'2026-04-30 03:48:25.383415+00'` already substituted), run them via Supabase MCP, paste results |
 | 3 | Gate B exit decision | P0 | Sat 2 May, gated on rank 2 result | If +24h obs clean (zero new exceeded_recovery_attempts, shadow ai_job <5%, no new slot_fill_no_body_content) → exit Gate B Sat 2 May; if not → fork to extend Gate B 5–7 days OR temporarily disable image_quote at format-mix layer |
-| 4 | **R06 — Pipeline-health pair brief** (in flight) | P2 | Brief authored + queued ready for CC; chat awaits CC pre-flight + draft + push | Wait for CC pre-flight clean confirmation → CC drafts migration → chat applies via Supabase MCP per D170 + verifies count-delta |
-| 5 | **R01 — `structured_red_team_review_v1` pre-pilot calibration** (scheduled) | P1 | Pilot decision made 30 Apr; calibration scheduled Sun 3 / Mon 4 May after Gate B exit known | Calibration session: 90min hard cap, ChatGPT (not Grok), original Phase B brief + first CC migration draft as test material. If reconstruction is hard, skip artificial calibration and use first Phase C cutover as live pilot. **Passing calibration approves Phase C pilot use only — NOT standing rule adoption.** |
+| 4 | **R05 — Operator-alerting trio brief** (in flight) | P2 | Brief authored + queued ready for CC; chat awaits CC pre-flight + draft + push (likely overnight) | Wait for CC pre-flight clean confirmation → CC drafts migration → chat applies via Supabase MCP per D170 + verifies count-delta TOMORROW after T01+T02 resolved |
+| 5 | **R02 — Author audit Slice 2 brief** (this session next) | P1 | PK's stated intent: do R02 in this session after R06 close + next-CC-brief authored | Chat drafts brief at `docs/briefs/audit-slice-2-snapshot-generation.md` per D184 spec; defines `docs/audit/snapshots/{YYYY-MM-DD}.md` output format; pushes to ready queue. Different shape from today's column-purpose briefs (Tier 0 markdown gen, not migration drafting) — the second-shape D182 durability test |
 
 ---
 
@@ -81,7 +81,7 @@ Run these every session open before deciding what to work on. Most take <2 min.
 
 | ID | Item | Priority | Status | Owner | Next action | Source |
 |---|---|---|---|---|---|---|
-| R06 | **Pipeline-health pair column-purposes** (37 cols across `m.pipeline_health_log` 21 + `m.cron_health_snapshot` 16) | P2 | brief authored + queue ready | chat (authored) → CC (drafts) → chat (applies) | Awaiting CC pre-flight + migration draft + push. When CC pushes, chat applies via Supabase MCP per D170 + verifies count-delta DO block | [brief](briefs/pipeline-health-pair-column-purposes.md) (commit `1b53de6b`); [queue](briefs/queue.md) |
+| R05 | **Operator-alerting trio column-purposes** (57 cols across `m.external_review_queue` 21 + `m.compliance_review_queue` 19 + `m.external_review_digest` 17) | P2 | brief authored + queue ready | chat (authored) → CC (drafts) → chat (applies) | Awaiting CC pre-flight + migration draft + push. When CC pushes, chat applies via Supabase MCP per D170 + verifies count-delta DO block TOMORROW after T01+T02 resolved | [brief](briefs/operator-alerting-trio-column-purposes.md) (commit `996dfc43`); [queue](briefs/queue.md) |
 
 ---
 
@@ -100,12 +100,12 @@ Per standing memory rule (entry 19): PK personal businesses come first. ICE is b
 | ID | Item | Priority | Owner | Estimated time | Next action | Source |
 |---|---|---|---|---|---|---|
 | ~~R01~~ | ~~Decide on `structured_red_team_review_v1` pilot~~ | — | — | — | **DECIDED 30 Apr — see T04 (calibration scheduled) and proposal PILOT DECISION header. R01 the decision is closed; R01 the calibration work is scheduled in Time-bound as T04.** | [proposal](runtime/structured_red_team_review_v1_proposal.md) (commit `4d6a0fba`) |
-| R02 | **Author audit Slice 2 brief** | P1 | PK + chat | 30min | Chat drafts brief at `docs/briefs/audit-slice-2-snapshot-generation.md` per D184 spec; defines `docs/audit/snapshots/{YYYY-MM-DD}.md` output format; pushes to ready queue | D184; [morning sync_state](00_sync_state.md) optional item 4 |
+| R02 | **Author audit Slice 2 brief** | P1 | PK + chat | 30min | **THIS SESSION (per PK 30 Apr 16:25):** Chat drafts brief at `docs/briefs/audit-slice-2-snapshot-generation.md` per D184 spec; defines `docs/audit/snapshots/{YYYY-MM-DD}.md` output format; pushes to ready queue | D184; [morning sync_state](00_sync_state.md) optional item 4 |
 | R03 | **Run brief #2 via Cowork** (after R02) | P2 | Cowork | 30min observed | Once R02's brief lands ready, kick off Cowork; observe whether 5/5 thresholds hit on a different brief shape | D182 v1 second-shape test |
 | R04 | **Audit cycle 2 manual run** (after Slice 2 produces snapshot) | P2 | ChatGPT + chat | 30min | Once R03 produces a snapshot file, hand it to ChatGPT for findings; chat captures findings as cycle 2 output | D181 manual loop, cycle 2 of 5 |
-| R05 | Next column-purpose Tier 1 brief — operator-alerting trio (external_review_queue + compliance_review_queue + external_review_digest, ~57 cols) | P2 | chat → CC | 60min total | Chat authors brief same shape as slot-core/post-publish/pipeline-health-pair briefs, hands to CC | [slot-core run state](runtime/runs/slot-core-purposes-2026-04-30T020151Z.md) follow-ups |
-| ~~R06~~ | ~~Alternative Tier 1 brief — pipeline-health pair~~ | — | — | — | **PROMOTED to Active 2026-04-30 — see Active section above** | — |
-| R07 | Update `invegent-dashboard` roadmap for 26.2% m schema milestone (will become ~31.6% after R06 lands) | P3 | chat | 10min | Edit `app/(dashboard)/roadmap/page.tsx`, update PHASES array + lastUpdated; push to main; Vercel auto-deploys | standing rule entry 11 |
+| ~~R05~~ | ~~Next column-purpose Tier 1 brief — operator-alerting trio~~ | — | — | — | **PROMOTED to Active 2026-04-30 16:18 — see Active section above** | — |
+| ~~R06~~ | ~~Pipeline-health pair brief~~ | — | — | — | **CLOSED 2026-04-30 — see queue.md Recently completed and run state. m schema 26.2% → 31.6%.** | — |
+| R07 | Update `invegent-dashboard` roadmap for 31.6% m schema milestone (will become ~40.0% after R05 lands) | P3 | chat | 10min | Edit `app/(dashboard)/roadmap/page.tsx`, update PHASES array + lastUpdated; push to main; Vercel auto-deploys | standing rule entry 11 |
 | R08 | **Meta App Review status check** | P1 | PK | 5min | PK opens Meta App Review dashboard, captures state; if stuck >27 Apr 2026, contact Meta dev support | userMemories entry 4 — past 27 Apr deadline |
 | R09 | **Author reconciliation v2 brief** | P1 | PK + chat | 30-45min brief authorship + ~45-60min implementation later | **AFTER T01 + T02 + personal businesses check complete tomorrow:** read `docs/briefs/reconciliation-v2-spec.md` and turn it into a formal brief at `docs/briefs/reconciliation-v2.md`. Spec is the agreed A+B+C+D plan: append-only sync_state with compact top "Current State Snapshot", three reconciliation templates (Bookmark/Goodnight/Full), default tier = Bookmark, action_list owns task board / sync_state owns state snapshot + narrative. Defer automation script. Falsifiable test: 10 sessions, avg <20min, no content loss → if >35min or content loss, revise | [spec capture](briefs/reconciliation-v2-spec.md) (commit `5837342`); 30 Apr Thu evening discussion + ChatGPT review |
 | R10 | **Phase C cutover live pilot — apply red-team review** (gated on T04 outcome OR T04 skipped) | P1 | PK + ChatGPT (red-team) + chat | ~30min added to Phase C cutover review process | When Phase C cutover brief is drafted: hand brief + draft migration to ChatGPT in red-team mode using checklist from T04 (or unprompted pass if T04 skipped). Chat reconciles output once. Use whether-the-layer-helped result to feed into B16 ratification call | [proposal w/ pilot decision](runtime/structured_red_team_review_v1_proposal.md) |
@@ -130,7 +130,7 @@ Per standing memory rule (entry 19): PK personal businesses come first. ICE is b
 
 | ID | Item | Priority | Trigger to promote to Ready | Source |
 |---|---|---|---|---|
-| B01 | 9 LOW-confidence column rows joint session (3 post-publish + 6 F-002 P1/P2/P3 — possibly +0–5 from R06) | P2 | Joint operator+chat session scheduled | [post-publish followup](audit/decisions/post_publish_observability_low_confidence_followup.md), [F-002 followups](audit/decisions/f002_p1_low_confidence_followup.md) |
+| B01 | 9 LOW-confidence column rows joint session (3 post-publish + 6 F-002 P1/P2/P3 — possibly +0–8 from R05) | P2 | Joint operator+chat session scheduled | [post-publish followup](audit/decisions/post_publish_observability_low_confidence_followup.md), [F-002 followups](audit/decisions/f002_p1_low_confidence_followup.md) |
 | B02 | **27 Apr fill-pending-slots constraint race investigation** | P2 | Before Phase C cutover begins | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md) follow-up |
 | B03 | Provider diversification on retry (worker-side, separate code path) | P2 | After +24h obs window confirms body-health filter held alone | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md) follow-up |
 | B04 | Stub-content classifier improvements (`nds.org.au/news`, `ndis.gov.au/print/pdf/node/18` misclassified) | P3 | When upstream classifier work resumes | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md) follow-up |
@@ -146,6 +146,7 @@ Per standing memory rule (entry 19): PK personal businesses come first. ICE is b
 | B14 | `docs/15_pre_post_sales_criteria.md` classification of 38 audit items | P2 | Next focused pre-sales session | [docs/14_pre_sales_audit_inventory.md](14_pre_sales_audit_inventory.md) |
 | B15 | Phase E — Invegent vertical signal weighting (~30% of ~50-item budget = ~15 items, ~5/vertical) | P2 | After thin-pool decision (D-04 above) is made | userMemories entry 29, D174 |
 | B16 | **Red-team review v1 — ratification call (proposal → standing rule)** | P1 | After R10 (Phase C cutover live pilot) completes — evaluate useful / noisy / unnecessary | [proposal w/ pilot decision](runtime/structured_red_team_review_v1_proposal.md) |
+| B17 | **`m.cron_health_snapshot.latest_run_status` purpose polish** | P3 | Next time someone touches this row | [pipeline-health-pair run state](runtime/runs/pipeline-health-pair-purposes-2026-04-30T060202Z.md) chat-applied closure note — purpose narrowed to observed value only; canonical enum is wider |
 
 ---
 
@@ -158,7 +159,7 @@ These are **intentionally** deferred with documented triggers. Do not promote to
 | F01 | D182 Phase 4b — GitHub Actions validation | When a brief actually demands cloud-side validation | D183 |
 | F02 | D182 Phase 4c — OpenAI API answer step | When a brief generates real questions PK cannot trivially answer | D183 |
 | F03 | Audit Slice 3 — auto-auditor (OpenAI reads snapshot, writes findings) | Manual cycle 5+ per D181 (currently cycle 1) | D181, D184 |
-| F04 | Most-undocumented m table column-purpose slices: `external_review_digest` (17), `post_render_log` (16) | After R05 (operator-alerting trio) ships and proven | [slot-core run state](runtime/runs/slot-core-purposes-2026-04-30T020151Z.md) follow-ups |
+| F04 | `m.post_render_log` (16 cols) — last small-table column-purpose slice on the m schema | After R05 (operator-alerting trio) ships and proven | [slot-core run state](runtime/runs/slot-core-purposes-2026-04-30T020151Z.md) follow-ups |
 | F05 | D156 (deferred to 27 Apr per the original ID003 fix scope) | Pending completion when ICE has bandwidth | userMemories entry 5 |
 | F06 | LinkedIn publisher (Phase 2.3) | LinkedIn Community Management API approval — evaluate Late.dev if unresolved by 13 May 2026 | userMemories entry 2 |
 | F07 | **Grok red-team agent evaluation** | Only if T04 ChatGPT calibration is noisy / misses obvious risks, or if second-model comparison wanted before Phase C | [proposal w/ pilot decision](runtime/structured_red_team_review_v1_proposal.md) |
@@ -205,7 +206,7 @@ This file's accuracy depends on disciplined updates. The rules:
 
 ---
 
-## v1.4 honest limitations
+## v1.5 honest limitations
 
 - **Personal businesses section is empty** — chat asks PK at every session open; populated by PK
 - **Standing checks not yet automated** — S1-S6 manual until a session-start preamble script earns build
@@ -214,6 +215,7 @@ This file's accuracy depends on disciplined updates. The rules:
 - **Categories may evolve** — if 🟢 Ready and 📌 Backlog blur over time, consider merging or sub-categorising. Try v1.x for 2 weeks before changing the shape.
 - **Reconciliation v2 not yet implemented** — R09 captures the work to author the brief tomorrow. Until v2 lands, sessions still use freeform reconciliation; default-Bookmark rule does NOT apply yet.
 - **Two-step graduation for red-team review v1** — calibration → pilot → standing rule. Calibration result alone never ratifies a standing rule. Phase C use is the load-bearing test, not the calibration.
+- **Tier 1 column-purpose pattern at 4× repetition** — R05 will be the 5th Tier 1 column-purpose run. Repetition has compounded confidence in the pattern but also raises the question: at what point is repetition a cost rather than a benefit? F04 (post_render_log, 16 cols) is the last m schema target on the same shape; after R05 + F04, the column-purpose work shifts to other schemas (k, t, c) or to different brief shapes (R02 Slice 2).
 
 If after 2 weeks this file is consistently stale or PK is still asking "what's next" because the file isn't being read, the experiment failed and we go back to sync_state-only with a clearer NEXT SESSION section. Falsifiable.
 
@@ -226,3 +228,4 @@ If after 2 weeks this file is consistently stale or PK is still asking "what's n
 - **v1.2** (30 Apr Thu evening): added R09 reconciliation v2 brief authorship, P1, gated on T01+T02+personal-businesses-check completing tomorrow first; spec captured at `docs/briefs/reconciliation-v2-spec.md`
 - **v1.3** (30 Apr Fri afternoon, 15:51 Sydney): R06 brief authored at commit `1b53de6b` — moved from Ready to Active; queue.md updated; Today/Next 5 rebuilt to slot R06 at rank 4 and R01 at rank 5 per PK's stated next-step intent; F04 frozen list updated to remove pipeline-health pair (now active)
 - **v1.4** (30 Apr Fri afternoon, 16:10 Sydney): R01 pilot decision committed at proposal commit `4d6a0fba` — pilot-not-adoption framing with two-step graduation (calibration → pilot → standing rule). D-02 + D-03 resolved. D-01 reframed (deferred until after Phase C pilot, not after calibration). New T04 (calibration session Sun3/Mon4), R10 (Phase C live pilot), B16 (post-Phase-C ratification call), F07 (Grok deferred). Today/Next 5 rebuilt — R01 at rank 5 with calibration scheduled status.
+- **v1.5** (30 Apr Fri afternoon, 16:20 Sydney): R06 closed and removed (pipeline-health pair done; m schema 26.2% → 31.6%). R05 brief authored at commit `996dfc43` (operator-alerting trio); R05 promoted to Active. F04 frozen entry trimmed to just `post_render_log` (external_review_digest now in R05 scope). Today/Next 5 rebuilt — R05 at rank 4 (overnight wait), R02 at rank 5 (this session next per PK). New B17 (latest_run_status purpose polish from pipeline-health closure note).
