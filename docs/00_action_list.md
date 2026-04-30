@@ -1,19 +1,20 @@
 # ICE — Action List
 
-> **Single source of truth for what's queued, in flight, blocked, or frozen.**
+> **Single active action index for what's queued, in flight, blocked, or frozen.**
+> Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits — this file is the operational index that points at all of them.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 > Updated inline as state changes (not just end-of-session) so it doesn't go stale.
 >
 > Created: 2026-04-30 Thursday evening Sydney.
-> Last updated: 2026-04-30 Thursday evening Sydney.
+> Last updated: 2026-04-30 Thursday evening Sydney (v1.1 — patched per ChatGPT review).
 
 ## How this file works
 
-**At session start**, chat reads this file and surfaces:
-1. 🔄 Standing checks — verify at every session open
-2. 🔴 Time-bound — anything due today or tomorrow
-3. 💼 Personal businesses — ask PK if anything live there jumps the queue
-4. 🟡 Active — what's in flight right now
+**At session start**, chat reads this file and:
+1. **Rebuilds the Today / Next 5 view below** from the live state of categories — this is the curated "what to do now" view
+2. Runs 🔄 Standing checks (verify at every session open)
+3. Ask PK about 💼 Personal businesses (per standing rule — they come first)
+4. Surfaces any 🔴 Time-bound items due today or tomorrow
 
 **As work happens**, items move between categories:
 - Backlog → Ready → Active → (closed and removed)
@@ -22,13 +23,31 @@
 
 **At session end**, chat reconciles this file alongside `docs/00_sync_state.md` per standing memory rule. New action items captured during the session are added before the session closes — not retrospectively.
 
-**Per-item shape**: Title · Priority · Owner · Trigger or Due · Source · Brief context.
+**Per-item shape**: Title · Priority · Owner · Trigger or Due · Source · Brief context. Active and Ready items also have **Next action** — the concrete physical thing to do.
 
-**Priority scale**:
+**4-level priority scale** (P0–P3):
 - **P0** = blocks today's work or production-critical
 - **P1** = has a calendar deadline within 7 days OR is the most strategic open item
 - **P2** = should happen within 2-4 weeks OR is investigation work that informs a Phase decision
 - **P3** = nice-to-have, hygiene, or low-stakes cosmetic
+
+---
+
+## ⭐ Today / Next 5 — REBUILD AT EVERY SESSION START
+
+> **This section is curated, not maintained.** Chat regenerates the table below at every session start by selecting from Time-bound, Active, Personal Businesses, Ready, and Pending Decisions sections. Maximum 5 rows. If you're asking "what should I do next," this is the answer.
+>
+> **How to rebuild:** (1) include any P0 items unconditionally, (2) include any P1 items with calendar pressure, (3) include the highest-priority Personal Business item if PK has flagged any, (4) include the highest-leverage Ready/Strategic item, (5) cap at 5.
+>
+> **Last rebuilt:** 2026-04-30 Thursday evening Sydney (initial population).
+
+| Rank | Item | Priority | Why now | Next action |
+|---|---|---|---|---|
+| 1 | Personal businesses check-in | P0 (per standing rule entry 19) | ICE is bonus, not driver — personal comes first | Ask PK directly: "Anything live in CFW / Property buyers agent / NDIS FBA today that jumps the queue?" |
+| 2 | Phase B +24h observation checkpoint | P0 | Due Fri 1 May ~5pm AEST / 03:48 UTC (24h after deploy) | Open `docs/runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md`, copy the 4 obs SQL queries (deploy_timestamp `'2026-04-30 03:48:25.383415+00'` already substituted), run them via Supabase MCP, paste results |
+| 3 | Gate B exit decision | P0 | Sat 2 May, gated on rank 2 result | If +24h obs clean (zero new exceeded_recovery_attempts, shadow ai_job <5%, no new slot_fill_no_body_content) → exit Gate B Sat 2 May; if not → fork to extend Gate B 5–7 days OR temporarily disable image_quote at format-mix layer |
+| 4 | Decide on `structured_red_team_review_v1` pilot | P1 | Most strategic non-time-bound item | PK reads `docs/runtime/structured_red_team_review_v1_proposal.md` and decides: (a) when to invest 90min calibration slot, (b) which agent (Grok specifically vs any LLM), (c) before or after Phase C cutover |
+| 5 | Meta App Review status check | P1 | Past 27 Apr deadline (3 days ago today per memory entry 4) | PK opens Meta App Review dashboard, checks state, contacts Meta dev support if still stuck |
 
 ---
 
@@ -49,19 +68,19 @@ Run these every session open before deciding what to work on. Most take <2 min.
 
 ## 🔴 Time-bound (calendar-driven deadlines)
 
-| ID | Item | Priority | Due | Owner | Source |
-|---|---|---|---|---|---|
-| T01 | **Phase B +24h observation checkpoint** | P0 | Fri 1 May ~5pm AEST / 03:48 UTC | chat | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md) (queries verbatim) |
-| T02 | **Gate B exit decision** | P0 | Sat 2 May (gated on T01 result) | PK + chat | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md) — decision rule documented |
-| T03 | Anthropic $200 cap reset | P3 | Fri 1 May | passive | calendar; no action required, awareness only |
+| ID | Item | Priority | Due | Owner | Next action | Source |
+|---|---|---|---|---|---|---|
+| T01 | **Phase B +24h observation checkpoint** | P0 | Fri 1 May ~5pm AEST / 03:48 UTC | chat | Run the 4 obs SQL queries from the Phase B run state file (deploy_timestamp already substituted in queries) via Supabase MCP | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md) (queries verbatim) |
+| T02 | **Gate B exit decision** | P0 | Sat 2 May (gated on T01 result) | PK + chat | Read T01 result; if clean apply decision rule (exit on schedule); if not, choose between extend Gate B 5–7 days OR disable image_quote at format-mix layer | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md) — decision rule documented |
+| T03 | Anthropic $200 cap reset | P3 | Fri 1 May | passive | None — awareness only; cap resets automatically | calendar; no action required |
 
 ---
 
 ## 🟡 Active (in flight right now)
 
-| ID | Item | Priority | Status | Owner | Source |
-|---|---|---|---|---|---|
-| *(none)* | Active queue idle as of 30 Apr Thu evening | — | — | — | [briefs/queue.md](briefs/queue.md) |
+| ID | Item | Priority | Status | Owner | Next action | Source |
+|---|---|---|---|---|---|---|
+| *(none)* | Active queue idle as of 30 Apr Thu evening | — | — | — | — | [briefs/queue.md](briefs/queue.md) |
 
 ---
 
@@ -69,40 +88,42 @@ Run these every session open before deciding what to work on. Most take <2 min.
 
 Per standing memory rule (entry 19): PK personal businesses come first. ICE is bonus, not driver. **Chat asks PK at session start if anything is live; PK populates this section as needed.**
 
-| ID | Item | Priority | Trigger | Owner | Source |
-|---|---|---|---|---|---|
-| *(awaiting PK input next session)* | | | | | |
+| ID | Item | Priority | Trigger | Owner | Next action | Source |
+|---|---|---|---|---|---|---|
+| *(awaiting PK input next session)* | | | | | | |
 
 ---
 
 ## 🟢 Ready / Strategic (next-session candidates)
 
-| ID | Item | Priority | Owner | Estimated time | Source |
-|---|---|---|---|---|---|
-| R01 | **Decide on `structured_red_team_review_v1` pilot** | P1 | PK | 15min decision + 60-90min calibration | [proposal](runtime/structured_red_team_review_v1_proposal.md) (commit `ddf3d7ab`) |
-| R02 | **Author audit Slice 2 brief** | P1 | PK + chat | 30min | D184; [morning sync_state](00_sync_state.md) optional item 4 |
-| R03 | **Run brief #2 via Cowork** (after R02) | P2 | Cowork | 30min observed | D182 v1 second-shape test |
-| R04 | **Audit cycle 2 manual run** (after Slice 2 produces snapshot) | P2 | ChatGPT + chat | 30min | D181 manual loop, cycle 2 of 5 |
-| R05 | Next column-purpose Tier 1 brief (operator-alerting trio: external_review_queue + compliance_review_queue + external_review_digest, ~57 cols) | P2 | chat → CC | 60min total | [slot-core run state](runtime/runs/slot-core-purposes-2026-04-30T020151Z.md) follow-ups |
-| R06 | Alternative Tier 1 brief: pipeline-health pair (pipeline_health_log + cron_health_snapshot, ~37 cols) | P2 | chat → CC | 60min total | [slot-core run state](runtime/runs/slot-core-purposes-2026-04-30T020151Z.md) follow-ups |
-| R07 | Update `invegent-dashboard` roadmap for 26.2% m schema milestone | P3 | chat | 10min | standing rule entry 11 |
-| R08 | **Meta App Review status check** | P1 | PK | 5min | userMemories entry 4 — past 27 Apr deadline |
+| ID | Item | Priority | Owner | Estimated time | Next action | Source |
+|---|---|---|---|---|---|---|
+| R01 | **Decide on `structured_red_team_review_v1` pilot** | P1 | PK | 15min decision + 60-90min calibration | PK reads the proposal doc, makes 3 decisions: (a) when to invest the slot, (b) which agent, (c) before/after Phase C | [proposal](runtime/structured_red_team_review_v1_proposal.md) (commit `ddf3d7ab`) |
+| R02 | **Author audit Slice 2 brief** | P1 | PK + chat | 30min | Chat drafts brief at `docs/briefs/audit-slice-2-snapshot-generation.md` per D184 spec; defines `docs/audit/snapshots/{YYYY-MM-DD}.md` output format; pushes to ready queue | D184; [morning sync_state](00_sync_state.md) optional item 4 |
+| R03 | **Run brief #2 via Cowork** (after R02) | P2 | Cowork | 30min observed | Once R02's brief lands ready, kick off Cowork; observe whether 5/5 thresholds hit on a different brief shape | D182 v1 second-shape test |
+| R04 | **Audit cycle 2 manual run** (after Slice 2 produces snapshot) | P2 | ChatGPT + chat | 30min | Once R03 produces a snapshot file, hand it to ChatGPT for findings; chat captures findings as cycle 2 output | D181 manual loop, cycle 2 of 5 |
+| R05 | Next column-purpose Tier 1 brief — operator-alerting trio (external_review_queue + compliance_review_queue + external_review_digest, ~57 cols) | P2 | chat → CC | 60min total | Chat authors brief same shape as slot-core/post-publish briefs, hands to CC | [slot-core run state](runtime/runs/slot-core-purposes-2026-04-30T020151Z.md) follow-ups |
+| R06 | Alternative Tier 1 brief — pipeline-health pair (pipeline_health_log + cron_health_snapshot, ~37 cols) | P2 | chat → CC | 60min total | Same shape as R05, alternative target tables | [slot-core run state](runtime/runs/slot-core-purposes-2026-04-30T020151Z.md) follow-ups |
+| R07 | Update `invegent-dashboard` roadmap for 26.2% m schema milestone | P3 | chat | 10min | Edit `app/(dashboard)/roadmap/page.tsx`, update PHASES array + lastUpdated; push to main; Vercel auto-deploys | standing rule entry 11 |
+| R08 | **Meta App Review status check** | P1 | PK | 5min | PK opens Meta App Review dashboard, captures state; if stuck >27 Apr 2026, contact Meta dev support | userMemories entry 4 — past 27 Apr deadline |
 
 ---
 
 ## 🤝 Pending decisions (waiting on PK call)
 
-| ID | Decision | Priority | Notes | Source |
-|---|---|---|---|---|
-| D-01 | Adopt `structured_red_team_review_v1` after calibration? | P1 | Calibration runs first; this is the post-calibration ratification call | [proposal](runtime/structured_red_team_review_v1_proposal.md) |
-| D-02 | When to invest the 90min red-team calibration slot | P1 | Recommended within 7-10 days, after Phase B Gate B confirmed exited | [proposal](runtime/structured_red_team_review_v1_proposal.md) |
-| D-03 | Which agent runs the red-team review (Grok specifically vs any LLM) | P2 | Proposal didn't justify Grok specifically; any sufficiently capable LLM works | [proposal](runtime/structured_red_team_review_v1_proposal.md) |
-| D-04 | Invegent thin-pool resolution path | P2 | 142 of 155 Invegent canonicals had no body content. Either fix source mix or accept thin pool | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md), D174 |
-| D-05 | Stage 1.2 brief — merge into Stage 2.2 scope (per D180) or keep separate | P2 | Carry-over from morning sync_state | morning sync_state |
+| ID | Decision | Priority | Notes | Next action | Source |
+|---|---|---|---|---|---|
+| D-01 | Adopt `structured_red_team_review_v1` after calibration? | P1 | Calibration runs first; this is the post-calibration ratification call | Decide AFTER R01 calibration completes; ratify as D185 if adopted, archive as proposal-rejected if not | [proposal](runtime/structured_red_team_review_v1_proposal.md) |
+| D-02 | When to invest the 90min red-team calibration slot | P1 | Recommended within 7-10 days, after Phase B Gate B confirmed exited | PK picks calendar slot; chat blocks the time | [proposal](runtime/structured_red_team_review_v1_proposal.md) |
+| D-03 | Which agent runs the red-team review (Grok specifically vs any LLM) | P2 | Proposal didn't justify Grok specifically; any sufficiently capable LLM works | PK picks: Grok (different model family), another Claude instance (red-team mode), or whichever is most accessible | [proposal](runtime/structured_red_team_review_v1_proposal.md) |
+| D-04 | Invegent thin-pool resolution path | P2 | 142 of 155 Invegent canonicals had no body content. Either fix source mix or accept thin pool | PK decides: invest in source diversification (~3-5 new feeds per Invegent vertical) OR accept the asymmetry and weight Invegent verticals higher per Phase E | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md), D174 |
+| D-05 | Stage 1.2 brief — merge into Stage 2.2 scope (per D180) or keep separate | P2 | Carry-over from morning sync_state | PK confirms whether the merge actually simplifies vs splits, then chat updates the brief structure | morning sync_state |
 
 ---
 
 ## 📌 Backlog (known, not prioritised yet — awaits trigger)
+
+> Backlog items don't have a Next action column because the next action is "wait for the trigger to fire". When a trigger fires, the item moves to Ready and gains a Next action.
 
 | ID | Item | Priority | Trigger to promote to Ready | Source |
 |---|---|---|---|---|
@@ -144,13 +165,14 @@ These are **intentionally** deferred with documented triggers. Do not promote to
 This file's accuracy depends on disciplined updates. The rules:
 
 1. **At session start (chat reads first):**
-   - Run 🔄 Standing checks (S1–S6 above)
+   - **Rebuild the Today / Next 5 view** by selecting from the categories below
+   - Run 🔄 Standing checks (S1–S6)
    - Surface any 🔴 Time-bound items due today or tomorrow
-   - Ask PK about 💼 Personal businesses
-   - Show PK the 🟢 Ready section if open-ended on what to work on
+   - Ask PK about 💼 Personal businesses (per standing rule)
+   - Show PK the 🟢 Ready section if PK is open-ended on what to work on
 
 2. **As work happens (chat updates inline):**
-   - Item moves Backlog → Ready when its trigger fires
+   - Item moves Backlog → Ready when its trigger fires (gains Next action when promoted)
    - Item moves Ready → Active when work starts
    - Item moves Active → (removed) when done; closure summary in commit message
    - New items added with full row when identified — never deferred to "I'll add it at end of session"
@@ -162,7 +184,7 @@ This file's accuracy depends on disciplined updates. The rules:
    - Sync with `docs/00_sync_state.md` and memory entry 14
 
 4. **Removal vs done:**
-   - Done items are removed from this file (single-source-of-truth principle)
+   - Done items are removed from this file (active-action-index principle)
    - The audit trail lives in: commit messages, run state files, decisions log, sync_state
    - This file is the **active backlog**, not the historical record
 
@@ -178,11 +200,23 @@ This file's accuracy depends on disciplined updates. The rules:
 
 ---
 
-## v1 honest limitations
+## v1.1 honest limitations
 
 - **Personal businesses section is empty** — chat asks PK at every session open; populated by PK
 - **Standing checks not yet automated** — S1-S6 manual until a session-start preamble script earns build
-- **No automated freshness check** — chat must remember to update Last updated timestamp
-- **Categories may evolve** — if 🟢 Ready and 📌 Backlog blur over time, consider merging or sub-categorising. Try v1 for 2 weeks before changing the shape.
+- **No automated freshness check** — chat must remember to update Last updated timestamp AND rebuild Today / Next 5
+- **Today / Next 5 is human-curated each session** — there's no algorithm; chat applies the rebuild heuristic at session start
+- **Categories may evolve** — if 🟢 Ready and 📌 Backlog blur over time, consider merging or sub-categorising. Try v1.1 for 2 weeks before changing the shape.
 
 If after 2 weeks this file is consistently stale or PK is still asking "what's next" because the file isn't being read, the experiment failed and we go back to sync_state-only with a clearer NEXT SESSION section. Falsifiable.
+
+---
+
+## Changelog
+
+- **v1.0** (30 Apr Thu evening): initial creation — 8 categories, 4-level priority, update protocol, falsifiable 2-week test
+- **v1.1** (30 Apr Thu evening): patched per ChatGPT review:
+  1. Header rename: "single source of truth" → "single active action index" (sync_state, run states, decisions, briefs, commits retain authority)
+  2. Added ⭐ Today / Next 5 section at top — rebuilt every session start, max 5 rows, the curated "what to do now" view
+  3. Added Next action column to 🔴 Time-bound, 🟡 Active, 🟢 Ready, 🤝 Pending decisions tables (the difference between a label and an executable task)
+  4. Wording fix: "3-tier priority" → "4-level priority" (P0–P3 is 4 levels)
