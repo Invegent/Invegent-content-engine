@@ -141,6 +141,35 @@ format-mix layer for Phase C.
   Invegent canonicals had no successfully fetched body content and would
   never have produced usable image_quote output — the filter exposes
   the problem rather than creating it. Strategic question for PK.
+- **27 Apr constraint race on `m.fill_pending_slots` upserts** — surfaced
+  during alert acknowledgement at 2026-04-30T04:10Z. Cron `fill-pending-
+  slots-every-10m` failed 6 consecutive runs between 02:20–03:10 UTC on
+  27 Apr with `duplicate key value violates unique constraint
+  "uq_post_draft_slot_id"`, plus a final 04:30 run failing on
+  `ux_ai_job_unique`, before resolving on its own at 04:40. Function
+  has `ON CONFLICT (slot_id) WHERE (slot_id IS NOT NULL) DO UPDATE`
+  and `ON CONFLICT (post_draft_id, job_type) DO UPDATE` clauses, but
+  these evidently did not handle whatever conflict pattern occurred on
+  27 Apr. **3 days clean since 27 Apr 04:40 UTC** — race is not currently
+  recurring under normal load. Investigate before Phase C cutover when
+  production traffic shifts to slot-driven: are concurrent cron
+  invocations possible (despite `FOR UPDATE SKIP LOCKED` in the slot
+  cursor loop), or was the 27 Apr failure cluster purely a deploy-window
+  artefact? Worth a focused query to enumerate every constraint
+  violation on `m.post_draft` and `m.ai_job` since 1 Mar 2026 to confirm
+  the 27 Apr cluster is genuinely isolated. Alerts acked with note
+  `chat:pk:27apr-fill-slots-constraint-race-resolved`.
+- **27 Apr cron infrastructure pause (~03:15–04:15 UTC)** — surfaced at
+  the same time. Three crons (`try-urgent-breaking-fills-every-15m`,
+  `recover-stuck-fill-in-progress-every-15m`, `pool-health-check-hourly`)
+  all silent in lockstep for ~1h, last run 03:00 UTC, next run 04:30 UTC,
+  cleanly resumed across all three simultaneously. Consistent with
+  Phase B 10-12 deploy window in user memories ("53 migrations, 5 crons,
+  ai-worker v2.11.0"). No production damage — these are recovery/health
+  crons that catch up on next run. Logged for reference; no action
+  required unless the pause pattern recurs during a future migration
+  burst. Alerts acked with note
+  `chat:pk:27apr-cron-infra-pause-phase-b-deploy`.
 
 ## Token usage (optional)
 
