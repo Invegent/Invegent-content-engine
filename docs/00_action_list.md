@@ -6,7 +6,7 @@
 > Updated inline as state changes (not just end-of-session) so it doesn't go stale.
 >
 > Created: 2026-04-30 Thursday evening Sydney.
-> Last updated: 2026-04-30 Thursday evening Sydney (v1.2 — added R09 reconciliation v2 brief authorship).
+> Last updated: 2026-04-30 Friday afternoon Sydney (v1.3 — R06 brief authored + moved Backlog→Active; Today/Next 5 rebuilt for R01 next).
 
 ## How this file works
 
@@ -39,15 +39,15 @@
 >
 > **How to rebuild:** (1) include any P0 items unconditionally, (2) include any P1 items with calendar pressure, (3) include the highest-priority Personal Business item if PK has flagged any, (4) include the highest-leverage Ready/Strategic item, (5) cap at 5.
 >
-> **Last rebuilt:** 2026-04-30 Thursday evening Sydney (initial population).
+> **Last rebuilt:** 2026-04-30 Friday afternoon Sydney (post brief authorship for R06; PK's stated intent: complete R06 → move to R01).
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
-| 1 | Personal businesses check-in | P0 (per standing rule entry 19) | ICE is bonus, not driver — personal comes first | Ask PK directly: "Anything live in CFW / Property buyers agent / NDIS FBA today that jumps the queue?" |
+| 1 | Personal businesses check-in | P0 (per standing rule entry 19) | ICE is bonus, not driver — personal comes first | Cleared at session open — PK confirmed nothing live in CFW / Property / NDIS FBA today |
 | 2 | Phase B +24h observation checkpoint | P0 | Due Fri 1 May ~5pm AEST / 03:48 UTC (24h after deploy) | Open `docs/runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md`, copy the 4 obs SQL queries (deploy_timestamp `'2026-04-30 03:48:25.383415+00'` already substituted), run them via Supabase MCP, paste results |
 | 3 | Gate B exit decision | P0 | Sat 2 May, gated on rank 2 result | If +24h obs clean (zero new exceeded_recovery_attempts, shadow ai_job <5%, no new slot_fill_no_body_content) → exit Gate B Sat 2 May; if not → fork to extend Gate B 5–7 days OR temporarily disable image_quote at format-mix layer |
-| 4 | Decide on `structured_red_team_review_v1` pilot | P1 | Most strategic non-time-bound item | PK reads `docs/runtime/structured_red_team_review_v1_proposal.md` and decides: (a) when to invest 90min calibration slot, (b) which agent (Grok specifically vs any LLM), (c) before or after Phase C cutover |
-| 5 | Meta App Review status check | P1 | Past 27 Apr deadline (3 days ago today per memory entry 4) | PK opens Meta App Review dashboard, checks state, contacts Meta dev support if still stuck |
+| 4 | **R06 — Pipeline-health pair brief** (in flight, see Active) | P2 | Brief authored + queued ready for CC; chat awaits CC pre-flight + draft + push | Wait for CC pre-flight clean confirmation → CC drafts migration → chat applies via Supabase MCP per D170 + verifies count-delta |
+| 5 | **R01 — Decide on `structured_red_team_review_v1` pilot** (next after R06) | P1 | PK's stated intent: move to R01 after R06 ships | PK reads `docs/runtime/structured_red_team_review_v1_proposal.md` together with chat; makes 3 decisions: (a) when to invest 90min calibration slot, (b) which agent (Grok specifically vs any LLM), (c) before/after Phase C |
 
 ---
 
@@ -80,7 +80,7 @@ Run these every session open before deciding what to work on. Most take <2 min.
 
 | ID | Item | Priority | Status | Owner | Next action | Source |
 |---|---|---|---|---|---|---|
-| *(none)* | Active queue idle as of 30 Apr Thu evening | — | — | — | — | [briefs/queue.md](briefs/queue.md) |
+| R06 | **Pipeline-health pair column-purposes** (37 cols across `m.pipeline_health_log` 21 + `m.cron_health_snapshot` 16) | P2 | brief authored + queue ready | chat (authored) → CC (drafts) → chat (applies) | Awaiting CC pre-flight + migration draft + push. When CC pushes, chat applies via Supabase MCP per D170 + verifies count-delta DO block | [brief](briefs/pipeline-health-pair-column-purposes.md) (commit `1b53de6b`); [queue](briefs/queue.md) |
 
 ---
 
@@ -90,7 +90,7 @@ Per standing memory rule (entry 19): PK personal businesses come first. ICE is b
 
 | ID | Item | Priority | Trigger | Owner | Next action | Source |
 |---|---|---|---|---|---|---|
-| *(awaiting PK input next session)* | | | | | | |
+| *(none flagged this session)* | | | | | | |
 
 ---
 
@@ -102,9 +102,9 @@ Per standing memory rule (entry 19): PK personal businesses come first. ICE is b
 | R02 | **Author audit Slice 2 brief** | P1 | PK + chat | 30min | Chat drafts brief at `docs/briefs/audit-slice-2-snapshot-generation.md` per D184 spec; defines `docs/audit/snapshots/{YYYY-MM-DD}.md` output format; pushes to ready queue | D184; [morning sync_state](00_sync_state.md) optional item 4 |
 | R03 | **Run brief #2 via Cowork** (after R02) | P2 | Cowork | 30min observed | Once R02's brief lands ready, kick off Cowork; observe whether 5/5 thresholds hit on a different brief shape | D182 v1 second-shape test |
 | R04 | **Audit cycle 2 manual run** (after Slice 2 produces snapshot) | P2 | ChatGPT + chat | 30min | Once R03 produces a snapshot file, hand it to ChatGPT for findings; chat captures findings as cycle 2 output | D181 manual loop, cycle 2 of 5 |
-| R05 | Next column-purpose Tier 1 brief — operator-alerting trio (external_review_queue + compliance_review_queue + external_review_digest, ~57 cols) | P2 | chat → CC | 60min total | Chat authors brief same shape as slot-core/post-publish briefs, hands to CC | [slot-core run state](runtime/runs/slot-core-purposes-2026-04-30T020151Z.md) follow-ups |
-| R06 | Alternative Tier 1 brief — pipeline-health pair (pipeline_health_log + cron_health_snapshot, ~37 cols) | P2 | chat → CC | 60min total | Same shape as R05, alternative target tables | [slot-core run state](runtime/runs/slot-core-purposes-2026-04-30T020151Z.md) follow-ups |
-| R07 | Update `invegent-dashboard` roadmap for 26.2% m schema milestone | P3 | chat | 10min | Edit `app/(dashboard)/roadmap/page.tsx`, update PHASES array + lastUpdated; push to main; Vercel auto-deploys | standing rule entry 11 |
+| R05 | Next column-purpose Tier 1 brief — operator-alerting trio (external_review_queue + compliance_review_queue + external_review_digest, ~57 cols) | P2 | chat → CC | 60min total | Chat authors brief same shape as slot-core/post-publish/pipeline-health-pair briefs, hands to CC | [slot-core run state](runtime/runs/slot-core-purposes-2026-04-30T020151Z.md) follow-ups |
+| ~~R06~~ | ~~Alternative Tier 1 brief — pipeline-health pair~~ | ~~P2~~ | — | — | **PROMOTED to Active 2026-04-30 — see Active section above** | — |
+| R07 | Update `invegent-dashboard` roadmap for 26.2% m schema milestone (will become ~31.6% after R06 lands) | P3 | chat | 10min | Edit `app/(dashboard)/roadmap/page.tsx`, update PHASES array + lastUpdated; push to main; Vercel auto-deploys | standing rule entry 11 |
 | R08 | **Meta App Review status check** | P1 | PK | 5min | PK opens Meta App Review dashboard, captures state; if stuck >27 Apr 2026, contact Meta dev support | userMemories entry 4 — past 27 Apr deadline |
 | R09 | **Author reconciliation v2 brief** | P1 | PK + chat | 30-45min brief authorship + ~45-60min implementation later | **AFTER T01 + T02 + personal businesses check complete tomorrow:** read `docs/briefs/reconciliation-v2-spec.md` and turn it into a formal brief at `docs/briefs/reconciliation-v2.md`. Spec is the agreed A+B+C+D plan: append-only sync_state with compact top "Current State Snapshot", three reconciliation templates (Bookmark/Goodnight/Full), default tier = Bookmark, action_list owns task board / sync_state owns state snapshot + narrative. Defer automation script. Falsifiable test: 10 sessions, avg <20min, no content loss → if >35min or content loss, revise | [spec capture](briefs/reconciliation-v2-spec.md) (commit `5837342`); 30 Apr Thu evening discussion + ChatGPT review |
 
@@ -128,7 +128,7 @@ Per standing memory rule (entry 19): PK personal businesses come first. ICE is b
 
 | ID | Item | Priority | Trigger to promote to Ready | Source |
 |---|---|---|---|---|
-| B01 | 9 LOW-confidence column rows joint session (3 post-publish + 6 F-002 P1/P2/P3) | P2 | Joint operator+chat session scheduled | [post-publish followup](audit/decisions/post_publish_observability_low_confidence_followup.md), [F-002 followups](audit/decisions/f002_p1_low_confidence_followup.md) |
+| B01 | 9 LOW-confidence column rows joint session (3 post-publish + 6 F-002 P1/P2/P3 — possibly +0–5 from R06) | P2 | Joint operator+chat session scheduled | [post-publish followup](audit/decisions/post_publish_observability_low_confidence_followup.md), [F-002 followups](audit/decisions/f002_p1_low_confidence_followup.md) |
 | B02 | **27 Apr fill-pending-slots constraint race investigation** | P2 | Before Phase C cutover begins | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md) follow-up |
 | B03 | Provider diversification on retry (worker-side, separate code path) | P2 | After +24h obs window confirms body-health filter held alone | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md) follow-up |
 | B04 | Stub-content classifier improvements (`nds.org.au/news`, `ndis.gov.au/print/pdf/node/18` misclassified) | P3 | When upstream classifier work resumes | [Phase B run state](runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md) follow-up |
@@ -155,7 +155,7 @@ These are **intentionally** deferred with documented triggers. Do not promote to
 | F01 | D182 Phase 4b — GitHub Actions validation | When a brief actually demands cloud-side validation | D183 |
 | F02 | D182 Phase 4c — OpenAI API answer step | When a brief generates real questions PK cannot trivially answer | D183 |
 | F03 | Audit Slice 3 — auto-auditor (OpenAI reads snapshot, writes findings) | Manual cycle 5+ per D181 (currently cycle 1) | D181, D184 |
-| F04 | Most-undocumented m table column-purpose slices: `external_review_digest` (17), `cron_health_snapshot` (16), `post_render_log` (16) | After R05 or R06 ships and proven | [slot-core run state](runtime/runs/slot-core-purposes-2026-04-30T020151Z.md) follow-ups |
+| F04 | Most-undocumented m table column-purpose slices: `external_review_digest` (17), `post_render_log` (16) | After R05 (operator-alerting trio) ships and proven | [slot-core run state](runtime/runs/slot-core-purposes-2026-04-30T020151Z.md) follow-ups |
 | F05 | D156 (deferred to 27 Apr per the original ID003 fix scope) | Pending completion when ICE has bandwidth | userMemories entry 5 |
 | F06 | LinkedIn publisher (Phase 2.3) | LinkedIn Community Management API approval — evaluate Late.dev if unresolved by 13 May 2026 | userMemories entry 2 |
 
@@ -201,7 +201,7 @@ This file's accuracy depends on disciplined updates. The rules:
 
 ---
 
-## v1.2 honest limitations
+## v1.3 honest limitations
 
 - **Personal businesses section is empty** — chat asks PK at every session open; populated by PK
 - **Standing checks not yet automated** — S1-S6 manual until a session-start preamble script earns build
@@ -217,9 +217,6 @@ If after 2 weeks this file is consistently stale or PK is still asking "what's n
 ## Changelog
 
 - **v1.0** (30 Apr Thu evening): initial creation — 8 categories, 4-level priority, update protocol, falsifiable 2-week test
-- **v1.1** (30 Apr Thu evening): patched per ChatGPT review:
-  1. Header rename: "single source of truth" → "single active action index" (sync_state, run states, decisions, briefs, commits retain authority)
-  2. Added ⭐ Today / Next 5 section at top — rebuilt every session start, max 5 rows, the curated "what to do now" view
-  3. Added Next action column to 🔴 Time-bound, 🟡 Active, 🟢 Ready, 🤝 Pending decisions tables (the difference between a label and an executable task)
-  4. Wording fix: "3-tier priority" → "4-level priority" (P0–P3 is 4 levels)
+- **v1.1** (30 Apr Thu evening): patched per ChatGPT review — header rename, Today/Next 5 added, Next action column added, 4-level priority wording fix
 - **v1.2** (30 Apr Thu evening): added R09 reconciliation v2 brief authorship, P1, gated on T01+T02+personal-businesses-check completing tomorrow first; spec captured at `docs/briefs/reconciliation-v2-spec.md`
+- **v1.3** (30 Apr Fri afternoon, 15:51 Sydney): R06 brief authored at commit `1b53de6b` — moved from Ready to Active; queue.md updated; Today/Next 5 rebuilt to slot R06 at rank 4 and R01 at rank 5 per PK's stated next-step intent; F04 frozen list updated to remove pipeline-health pair (now active)
