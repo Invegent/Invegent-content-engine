@@ -1,8 +1,14 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-30 Thursday 14:43 Sydney / 04:43 UTC, **revised 2026-04-30 evening** to add explicit path reference for the structured_red_team_review_v1 proposal which was committed at end of session — **End-of-Thursday-afternoon session reconciliation. Three briefs shipped (slot-core column-purposes, Phase B body-health gate patch, post-publish observability column-purposes); m schema coverage 9.2% → 26.2%; all 10 open alerts acknowledged; image_quote cascade root-caused and fixed in production. Phase B +24h observation window running, due ~5pm AEST Fri 1 May. structured_red_team_review_v1 proposal committed at `docs/runtime/structured_red_team_review_v1_proposal.md` (commit `ddf3d7ab`) — under PK consideration for next session. Active queue idle.**
+> Last written: 2026-04-30 Thursday 14:43 Sydney / 04:43 UTC, **revised twice** in the evening: (1) added explicit path reference for the `structured_red_team_review_v1` proposal, (2) added pointer to the new `docs/00_action_list.md` running action list — **End-of-Thursday-afternoon session reconciliation. Three briefs shipped (slot-core column-purposes, Phase B body-health gate patch, post-publish observability column-purposes); m schema coverage 9.2% → 26.2%; all 10 open alerts acknowledged; image_quote cascade root-caused and fixed in production. Phase B +24h observation window running, due ~5pm AEST Fri 1 May. structured_red_team_review_v1 proposal committed at `docs/runtime/structured_red_team_review_v1_proposal.md` (commit `ddf3d7ab`) — under PK consideration for next session. Active queue idle.**
 > Written by: PK + Claude session sync
+
+> ⚠️ **Session-start reading order (per memory entry 1):**
+> 1. **`docs/00_sync_state.md`** (this file) — narrative log of last session
+> 2. **`docs/00_action_list.md`** — running queued/active/blocked/frozen backlog with priorities and triggers
+>
+> The two files are complementary: sync_state is the session log, action_list is the working backlog. Read both at every session open.
 
 ---
 
@@ -62,6 +68,17 @@ This rewrites the morning sync_state (which ended after first-Cowork-run reconci
    - Status: PK to consider next session; bench work, not session work.
    - Hard constraint preserved: must not interfere with Phase B +24h obs checkpoint.
 
+**7. Running action list created (✅ COMMITTED at session close)**
+   - **File:** `docs/00_action_list.md` (13.4KB)
+   - **Commit:** `00857ef6` — pushed 30 Apr 05:14 UTC
+   - Why: PK observed that every session start they had to ask "what's next" and chat had to dig across sync_state, run states, followup files, and queue. Single source of truth needed.
+   - Categories: 🔄 Standing session-start checks, 🔴 Time-bound, 🟡 Active, 💼 Personal businesses (PK confirms at start), 🟢 Ready/Strategic, 🤝 Pending decisions, 📌 Backlog, 🧊 Frozen/Deferred.
+   - Initial population: 3 time-bound items (Phase B obs, Gate B exit, Anthropic cap reset), 0 active (queue idle), 8 ready/strategic, 5 pending decisions, 15 backlog, 6 frozen.
+   - Update protocol: chat updates inline as state changes (not retrospectively); items move Backlog → Ready → Active → removed; new items captured at moment of identification with source link.
+   - Standing memory rule (entry 11) updated to **4-way sync**: docs/00_sync_state.md + docs/00_action_list.md + memory + invegent-dashboard roadmap.
+   - Memory entry 1 updated to instruct session-start reads of BOTH 00_sync_state.md AND 00_action_list.md.
+   - Falsifiable test: 2 weeks. If PK still asking "what's next" at session start, experiment failed; revert to sync_state-only with clearer NEXT SESSION section.
+
 ### Today's three migrations summary
 
 | Migration | Type | Delta | Applied |
@@ -101,19 +118,22 @@ This rewrites the morning sync_state (which ended after first-Cowork-run reconci
 | `5a5ec724` | chat | post-publish obs queue closed |
 | `cf743f49` | chat | sync_state — end-of-Thursday-afternoon reconciliation |
 | `ddf3d7ab` | chat | **structured_red_team_review_v1 proposal committed** |
+| `ce314b00` | chat | sync_state revised to add explicit proposal path |
+| `00857ef6` | chat | **docs/00_action_list.md created** (running backlog) |
 
 **invegent-dashboard — `main`:** none this session (afternoon session was DB + docs only — coverage update worth a roadmap refresh next session if PK wants visible dashboard reflection of 26.2% milestone).
 
-### Standing memory rule honoured (entry 11 — three-way sync)
+### Standing memory rule honoured (entry 11 — now 4-way sync)
 
-- ✅ docs/00_sync_state.md — THIS COMMIT (revised evening to add path reference)
+- ✅ docs/00_sync_state.md — THIS COMMIT (revised again to add action list pointer)
+- ✅ **docs/00_action_list.md — created at commit `00857ef6`** (new addition to standing rule)
 - ✅ docs/runtime/runs/* — three new run-state files closed (slot-core, Phase B patch, post-publish obs)
 - ✅ docs/audit/decisions/post_publish_observability_low_confidence_followup.md — 3 LOW rows captured for joint session
 - ✅ docs/briefs/queue.md — 3 briefs moved to Recently completed; Active queue idle
-- ✅ **docs/runtime/structured_red_team_review_v1_proposal.md — proposal committed at `ddf3d7ab`** (was the missing pointer that made the next session unable to find the proposal)
+- ✅ docs/runtime/structured_red_team_review_v1_proposal.md — proposal committed at `ddf3d7ab`
 - ⚠️ docs/06_decisions.md — no new decisions today; structured_red_team_review_v1 is **decision pending** (next session item, not ratified)
 - ⚠️ invegent-dashboard roadmap page.tsx — not updated this session; m schema 26.2% milestone could be reflected next session if PK wants visible
-- ✅ Memory entries — entry 14 updated to reflect today's afternoon work and path to the proposal doc
+- ✅ Memory entries — entries 1, 11, 14 updated to reflect today's afternoon work, action list creation, and four-way sync rule
 
 ---
 
@@ -132,6 +152,8 @@ This rewrites the morning sync_state (which ended after first-Cowork-run reconci
 ---
 
 ## 🟡 NEXT SESSION (Fri 1 May or later)
+
+> **All next-session items are also in `docs/00_action_list.md` with priorities and triggers.** Read that file alongside this one for the active backlog view.
 
 ### Required (time-bound)
 
@@ -170,18 +192,7 @@ This rewrites the morning sync_state (which ended after first-Cowork-run reconci
 
 ### Backlog (no specific deadline)
 
-- 3 LOW rows in `post_publish_observability_low_confidence_followup.md` — joint operator+chat session. Likely pairs with re-examining `m.post_publish_queue.locked_by` (also designed-but-unwired, classified HIGH because well-named).
-- 6 LOW-confidence rows across `f002_p*_low_confidence_followup.md` — same joint-session bucket.
-- **27 Apr `m.fill_pending_slots` constraint race** — investigate before Phase C cutover. Run focused query enumerating `uq_post_draft_slot_id` and `ux_ai_job_unique` violations since 1 Mar 2026 to confirm 27 Apr cluster was isolated. Logged as follow-up in Phase B patch run state.
-- **27 Apr cron infrastructure pause** — informational; only revisit if pattern recurs during a future migration burst.
-- **Provider diversification on retry** — `fallback_used=false` despite `error_call=true` on 6/6 failed CFW slot ai_usage_log entries. Worker-side patch (separate code path from slot fill resolver). Reconsider after +24h obs window confirms body-health filter held alone.
-- **Stub-content classifier improvements** — `nds.org.au/news` and `ndis.gov.au/print/pdf/node/18` were classified `stat_heavy` despite being navigation chrome. Upstream classifier issue.
-- **Invegent thin-pool resolution (D174 follow-up)** — 142 of 155 Invegent canonicals had no successfully fetched body content. Either fix the source mix or accept the thin pool. Strategic question.
-- Stage 1.2 brief design — likely merges into Stage 2.2 scope per D180.
-- Branch hygiene sweep — 10 stale branches across 3 repos (carry-over from morning).
-- Phase B filename hygiene — rename `supabase/migrations/20260428163000_audit_f002_p2_column_purposes_corrected.sql` to match DB version `20260428064115` per Lesson #36 (cosmetic).
-- CC Phase C final report file (Tier 0 doc generation).
-- Parallel pre-sales: A11b content prompts × 18 rows, A4→A3 proof doc, A18 source-less EFs audit, A6 subscription costs.
+See `docs/00_action_list.md` 📌 Backlog section for the full list with triggers.
 
 ---
 
@@ -195,38 +206,40 @@ If D182 system is not measurably reducing question count or correction commits b
 
 **Invegent-content-engine — `main` (this session):**
 
-15 commits as listed above (13 listed earlier + sync_state cf743f49 + structured_red_team_review_v1 proposal ddf3d7ab + this revision). Three migrations, three run-state files, one LOW-confidence followup file, queue updated 6 times, structured red-team review proposal committed.
+17 commits as listed above. Three migrations, three run-state files, one LOW-confidence followup file, queue updated 6 times, structured red-team review proposal committed, action list created.
 
 **invegent-dashboard — `main`:** none.
 
-**Memory:** entry 14 updated to reflect Phase B patch shipped + image_quote root cause + m schema coverage 26.2% + 3 alert acks + path to structured_red_team_review_v1 proposal.
+**Memory:** entries 1, 11, and 14 updated. Entry 1 adds 00_action_list.md to session-start reads. Entry 11 extended to 4-way sync (sync_state + action_list + memory + dashboard). Entry 14 reflects today's afternoon work and proposal path.
 
 ---
 
 ## STRATEGIC POSTURE
 
-**Today's session was productive**: 3 briefs shipped, 1 production patch with full rollback test, +117 documented columns, all alerts cleared. **Tomorrow's session is gate-driven**: the +24h obs checkpoint determines whether Phase C cutover stays on track for Sat 2 May, and that's the dominant priority.
+**Today's session was productive**: 3 briefs shipped, 1 production patch with full rollback test, +117 documented columns, all alerts cleared, 1 strategic proposal committed, 1 process improvement (action list) shipped. **Tomorrow's session is gate-driven**: the +24h obs checkpoint determines whether Phase C cutover stays on track for Sat 2 May, and that's the dominant priority.
 
 **The structured red-team review proposal** at **`docs/runtime/structured_red_team_review_v1_proposal.md`** is the most strategic non-time-bound item. It's bench work — not "do alongside the +24h obs" — but worth a focused 90-min slot once Phase B Gate B is confirmed exited cleanly. The proposal's value depends on the calibration test outcome, not on intuition about whether red-teaming "helps".
 
-**Standing memory rule reminder for next session opening**: PK personal businesses come first when next session opens. ICE work is bonus, not driver. CFW / Property / NDIS FBA — anything live there jumps the queue.
+**Standing memory rule reminder for next session opening**: PK personal businesses come first when next session opens. ICE work is bonus, not driver. CFW / Property / NDIS FBA — anything live there jumps the queue. **Action list at `docs/00_action_list.md` includes a 💼 Personal businesses section that chat asks PK to populate at session start.**
 
-**Meta App Review status check**: standing memory note says contact Meta dev support if still stuck after 27 Apr 2026 (3 days ago today). Worth checking review state in next session opening.
+**Meta App Review status check**: standing memory note says contact Meta dev support if still stuck after 27 Apr 2026 (3 days ago today). Worth checking review state in next session opening. **In action list as R08, P1.**
 
 ---
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-This morning we crossed the 5/5 first-run threshold on D182. This afternoon we doubled m schema documentation coverage AND shipped a production patch with a clean rollback test AND cleared the alert backlog. The system is in a strong state.
+This morning we crossed the 5/5 first-run threshold on D182. This afternoon we doubled m schema documentation coverage AND shipped a production patch with a clean rollback test AND cleared the alert backlog AND committed a strategic proposal AND shipped the action list as a process improvement. The system is in a strong state.
+
+**Read `docs/00_action_list.md` at the start of the next session.** The action list captures every queued item with priority, owner, trigger, and source — so the question "what's next" has a single answer. The standing memory rule (entry 11) now requires 4-way sync: sync_state + action_list + memory + dashboard.
 
 The single biggest forward risk is whether the body-health filter alone is sufficient to hold the image_quote success rate. The +24h obs checkpoint tomorrow ~5pm AEST is the test. The `docs/runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md` file has the four queries verbatim, ready to paste-and-run.
 
 The strategic non-time-bound item is the **structured_red_team_review_v1** pilot — full plan at **`docs/runtime/structured_red_team_review_v1_proposal.md`**. Read this file before continuing the discussion in any new session.
 
-Beyond that, every open item is either (a) time-bound and waiting for its checkpoint (Phase B obs, Gate B exit), (b) bench work needing focused attention (red-team review calibration, Slice 2 brief), or (c) backlog (LOW followups, branch hygiene). Pick the one with highest strategic ROI for the next session's energy budget.
+Beyond that, every open item is either (a) time-bound and waiting for its checkpoint (Phase B obs, Gate B exit), (b) bench work needing focused attention (red-team review calibration, Slice 2 brief), or (c) backlog (LOW followups, branch hygiene). All sorted by priority in `docs/00_action_list.md`. Pick the one with highest strategic ROI for the next session's energy budget.
 
 ---
 
 ## END OF THURSDAY 30 APR AFTERNOON SESSION
 
-Full reconciliation complete. All today's work captured. Active queue idle. Phase B observation window running. Fresh start ready.
+Full reconciliation complete. All today's work captured. Active queue idle. Phase B observation window running. Action list shipped with v1 protocol. Fresh start ready.
