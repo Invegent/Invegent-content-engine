@@ -34,7 +34,7 @@ matching the structure of the cycle 1 manual snapshot at
 `docs/audit/snapshots/2026-04-28.md`.
 
 The output is **input material for the auditor pass** (manual ChatGPT in
-cycle 2 per D181), not findings or judgments. Cowork executes 16
+cycle 2+ per D181), not findings or judgments. Cowork executes ~16-17
 read-only SQL queries + 1 git operation, formats each result into the
 specified JSON shape, and writes one markdown file.
 
@@ -43,28 +43,20 @@ auto-commit. Markdown only. No production writes. No SQL DML or DDL.
 
 ## Why now
 
-This is the **second-shape D182 durability test**. The first four
-Cowork-style runs today (Phase D ARRAY mop-up + slot-core + post-publish
-obs + pipeline-health pair) were all migration-drafting Tier 1 briefs.
-This brief is markdown-generation Tier 0 — different shape. If Cowork
-hits 5/5 thresholds again on this shape, the D182 system is validated
-across two distinct brief shapes.
-
-**Update post first run (30 Apr 2026):** First run succeeded (5/5
-thresholds). D182 v1 now validated across two brief shapes. This brief
-is preserved as the canonical daily-snapshot brief — re-run any future
-day without modification.
+First run (30 Apr) succeeded (5/5 thresholds). D182 v1 validated across
+two brief shapes. This brief is preserved as the canonical daily-snapshot
+brief — re-run any future day without modification.
 
 Strategic value:
 
 - Closes the build path step 6 from `docs/runtime/automation_v1_spec.md`
   (the only v1 build step remaining; step 7 is deferred per D184).
-- Produces today's snapshot as input for cycle 2 of the D181 manual
-  audit loop (R03 in the action list — runs *after* this snapshot lands).
-- Establishes the daily snapshot cadence — once Slice 2 lands, the
-  brief can be re-run any future day by changing only the date stamp.
-- Enables reasoning about D182 generalisability: does the system work
-  for non-migration shapes?
+- Produces today's snapshot as input for next cycle of the D181 manual
+  audit loop.
+- Establishes the daily snapshot cadence — re-run any future day by
+  changing only the date stamp.
+- Enables reasoning about D182 generalisability: validated for non-
+  migration shapes.
 
 ## Idempotency check (FIRST STEP — before doing any work)
 
@@ -93,7 +85,9 @@ implies environment misconfiguration).
 
 ## Output structure — 17 sections + footer
 
-The output file must follow the cycle 1 snapshot structure exactly:
+The output file must follow the cycle 1 snapshot structure, with the
+section refresh from cycle 2 closure (Section 5 detector output, Section
+13 function inventory, Section 15 expanded hot tables):
 
 - Header (title, generation timestamp, mechanism note, auditor target, snapshot SHA placeholder)
 - Sections 1 through 17 (mechanical query results + snapshot notes)
@@ -101,8 +95,8 @@ The output file must follow the cycle 1 snapshot structure exactly:
 
 **Section 18 (pre-flagged observations) is intentionally omitted** in v1.
 Section 18 is author-judgment work; producing it mechanically risks
-poisoning the auditor's findings. Cycle 2 auditor produces equivalent
-observations independently.
+poisoning the auditor's findings. Cycle 2 auditor produced equivalent
+observations independently; cycle 3 will continue this pattern.
 
 ### Header (verbatim template, fill in date and timestamp)
 
@@ -125,9 +119,8 @@ observations independently.
 
 For each section, run the SQL **exactly as given**, format the result as
 JSON (or table where specified), and write a "Snapshot note" line below
-the data only if the cycle 1 snapshot had one for the same section.
-Snapshot notes should be **factual observations only** — no
-interpretation. Skip the snapshot note if nothing factual stands out.
+the data only if something factual stands out.
+Snapshot notes should be **factual observations only** — no interpretation.
 
 ### Section 1 — Summary
 
@@ -300,7 +293,11 @@ SELECT json_agg(
 FROM (SELECT * FROM per_schema UNION ALL SELECT * FROM totals) combined;
 ```
 
-### Section 5 — Migration History (last 15)
+### Section 5 — Migration History (last 15) + naming discipline detector
+
+**Refreshed 30 Apr cycle 2 closure:** added detector output per role definition § 3 + cycle 2 observation O-003.
+
+**Part A — last 15 migrations:**
 
 ```sql
 SELECT json_agg(
@@ -320,6 +317,22 @@ FROM (
 ```
 
 Format header line: `**Total applied migrations:** {total_applied}` then the JSON array.
+
+**Part B — naming discipline detector:**
+
+```sql
+-- Lesson #36 detector — empty result = no naming discipline gaps.
+-- Non-empty rows are HIGH findings per docs/audit/roles/data_auditor.md § 3.
+SELECT COALESCE(
+  json_agg(row_to_json(d) ORDER BY d.migration_name),
+  '[]'::json
+) AS section_5_naming_violations
+FROM k.fn_check_migration_naming_discipline() d;
+```
+
+If the function does not exist (not yet shipped per Lesson #36 detector roll-out), substitute `'[]'::json` and add a snapshot note: *"Section 5 Part B — `k.fn_check_migration_naming_discipline()` not present in this database. Auditor please flag if expected."*
+
+Format header line: `**Migration naming discipline check (Lesson #36 detector):**` then the JSON array.
 
 ### Section 6 — Cron Job Inventory
 
@@ -524,6 +537,8 @@ Snapshot note: *"Out of scope for Data Auditor — flag concerns to Security Aud
 
 ### Section 13 — Public Schema Inventory
 
+**Refreshed 30 Apr cycle 2 closure (F-2026-04-30-D-004):** functions are now itemised, not just counted.
+
 ```sql
 SELECT json_build_object(
   'tables', (
@@ -538,13 +553,26 @@ SELECT json_build_object(
   ),
   'function_count', (
     SELECT COUNT(*)::int
-    FROM information_schema.routines
-    WHERE specific_schema = 'public' AND routine_type = 'FUNCTION'
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.prokind = 'f'
+  ),
+  'functions', (
+    SELECT COALESCE(json_agg(
+      json_build_object(
+        'name', proname,
+        'args', pg_get_function_identity_arguments(p.oid),
+        'returns', pg_get_function_result(p.oid)
+      ) ORDER BY proname, pg_get_function_identity_arguments(p.oid)
+    ), '[]'::json)
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.prokind = 'f'
   )
 ) AS section_13;
 ```
 
 Format header: `**Tables in public:** {count}\n**Views in public:** {count}\n**Functions in public:** {function_count}` then the JSON.
+
+The `functions` array is a flat inventory. Classification (`rpc_exposed | compatibility | legacy | unknown`) is **out of scope for Tier 0** — it requires either grep evidence from EF source or human judgment. Classification deferred to a future iteration.
 
 ### Section 14 — Trigger Counts on ICE Schemas
 
@@ -568,11 +596,14 @@ FROM (
 
 ### Section 15 — Index Coverage on Hot Tables
 
-For each of these four tables, list its indexes verbatim:
+**Refreshed 30 Apr cycle 2 closure (F-2026-04-30-D-003):** added `f.canonical_content_body` to match the role definition's full hot-table list.
+
+For each of these five tables, list its indexes verbatim:
 - `m.slot`
 - `m.ai_job`
 - `m.signal_pool`
 - `m.post_publish_queue`
+- `f.canonical_content_body`
 
 ```sql
 SELECT
@@ -582,12 +613,12 @@ SELECT
 FROM pg_indexes pi
 JOIN pg_class c ON c.relname = pi.indexname
 JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = pi.schemaname
-WHERE pi.schemaname = 'm'
-  AND pi.tablename IN ('slot','ai_job','signal_pool','post_publish_queue')
-ORDER BY pi.tablename, pi.indexname;
+WHERE (pi.schemaname = 'm' AND pi.tablename IN ('slot','ai_job','signal_pool','post_publish_queue'))
+   OR (pi.schemaname = 'f' AND pi.tablename = 'canonical_content_body')
+ORDER BY pi.schemaname, pi.tablename, pi.indexname;
 ```
 
-Format under each table heading (`### m.slot`, `### m.ai_job`, etc.) as
+Format under each table heading (`### m.slot`, `### m.ai_job`, `### m.signal_pool`, `### m.post_publish_queue`, `### f.canonical_content_body`) as
 a JSON array of strings. Each string is a compact form of the index
 definition: `"{indexname} ({columns or condition})"`. Cycle 1
 showed e.g. `"idx_slot_pending_fill (fill_window_opens_at, scheduled_publish_at) WHERE status='pending_fill'"`.
@@ -653,7 +684,7 @@ human snapshot generator. v1 Slice 2 omits this section by design:
 
 - Mechanical generation cannot produce author judgment without risking
   poisoning the auditor's findings.
-- The auditor (manual ChatGPT in cycle 2 per D181) produces equivalent
+- The auditor (manual ChatGPT in cycle 2+ per D181) produces equivalent
   observations independently as part of their findings pass.
 - Future Slice 3 (auto-auditor, deferred per D184 + D181 cycle 5+ rule)
   will subsume any need for Section 18.
@@ -681,17 +712,21 @@ Per D182 v1 § "Answer-key pattern" — Cowork pre-answers these without asking:
 | What date format for the filename? | UTC date `YYYY-MM-DD` (today, computed once at start) | Cycle 1 used UTC; YYYY-MM-DD is filesystem-safe |
 | What if today's snapshot already exists? | Write `already_applied`, STOP | Idempotency rule |
 | What if a section's query returns no rows? | Output `[]` or `{}` empty — write a snapshot note "no data returned in query window" | Empty is the answer; an exception is not |
-| What if a query's column has been renamed since the brief was authored? | Substitute the closest-match column from current schema and write a snapshot note documenting the substitution. Document the substitution in the run state's "Corrections applied" section. The first run (30 Apr) hit 6 such drifts; all 6 were resolved by direct substitution and the brief was refreshed. Future drift is expected to be rarer but should still be handled gracefully. | Schema drift is a fact of life; halting on it would be brittle |
-| What if a query errors structurally (e.g. references a column the view doesn't expose, like `pg_get_indexdef(indexrelid)` on `pg_indexes`)? | Substitute the structurally-correct equivalent (e.g. join `pg_class` to expose `oid`) and add a snapshot note describing the fix | Fixed in 30 Apr brief refresh; this rule is residual safety |
+| What if a query's column has been renamed since the brief was authored? | Substitute the closest-match column from current schema and write a snapshot note documenting the substitution. Document the substitution in the run state's "Corrections applied" section. | Schema drift is a fact of life; halting on it would be brittle |
+| What if a query errors structurally? | Substitute the structurally-correct equivalent and add a snapshot note describing the fix | Residual safety after the 30 Apr brief refresh |
+| What if `k.fn_check_migration_naming_discipline()` doesn't exist? | Use `'[]'::json` substitute + snapshot note | Detector function may not be deployed in all environments |
 | What if a section's query errors otherwise? | Write the error message in the section body and a snapshot note "section query failed: {error}; auditor please confirm" | Don't crash the entire run for one section |
-| Should I include the cycle 1 snapshot's "snapshot notes" verbatim? | NO. Re-evaluate freshly — only include a note if the current data shows something factual. Don't copy notes from cycle 1. | Cycle 2 must produce its own observations or none |
+| Should I include the cycle 1 snapshot's "snapshot notes" verbatim? | NO. Re-evaluate freshly — only include a note if the current data shows something factual. Don't copy notes from prior cycles. | Each cycle must produce its own observations or none |
 | Should I add a Section 18? | NO. See Section 18 instructions above. | Explicitly out of scope in v1 |
-| Should I add new sections beyond cycle 1's? | NO. v1 mirrors cycle 1's 17 mechanical sections + 19. No additions. | Scope discipline |
+| Should I add new sections beyond the 17 listed? | NO. v1 mirrors the 17 mechanical sections + 19. No additions. | Scope discipline |
 
 ## Acceptance criteria
 
 - File created at `docs/audit/snapshots/{YYYY-MM-DD}.md` (today's UTC date) — file did NOT exist before this run.
 - All 17 mechanical sections populated (1, 2, 3, 3.1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17) plus the footer (Section 19).
+- Section 5 Part B (naming discipline detector) populated.
+- Section 13 includes the public function inventory array.
+- Section 15 includes `f.canonical_content_body` indexes.
 - Section 18 NOT present.
 - All JSON in each section is syntactically valid (parseable as JSON).
 - File starts with the header template (with today's date substituted).
@@ -699,7 +734,6 @@ Per D182 v1 § "Answer-key pattern" — Cowork pre-answers these without asking:
 - Run state file written at `docs/runtime/runs/audit-slice-2-snapshot-generation-{ISO timestamp}.md` per `state_file_template.md`.
 - Queue.md row updated: ready → running (during run) → review_required (when snapshot file written).
 - Zero `apply_migration` calls. Zero DML. Zero DDL. (Tier 0 forbids all of these.)
-- Zero questions written to `claude_questions.md` (target — per D182 first-run benchmark of 0/10; note: 30 Apr first run wrote 1 question due to schema drift, all defaults were correct).
 
 ## Stop conditions
 
@@ -714,46 +748,39 @@ Cowork halts and writes `ESCALATION_REQUIRED` if:
 ## Out of scope
 
 - **Findings.** This brief produces input material for the auditor.
-  Cycle 2 manual run by ChatGPT (R03 in action list) produces findings.
+  Manual ChatGPT runs (cycle 2+ per D181) produce findings.
   Slice 3 (deferred per D184 + D181 cycle 5+ rule) eventually produces
   auto-findings.
 - **Closing open findings.** Belongs in `docs/audit/open_findings.md`,
   not this brief.
 - **Section 18 (pre-flagged observations).** Explicit out of scope.
-- **Snapshot notes that interpret rather than describe.** Cycle 1's
-  interpretive notes (e.g. "may be intentional, possibly a discipline gap")
-  are out of scope. Use only factual descriptive notes ("two rows have
-  similar names — auditor please confirm").
+- **Snapshot notes that interpret rather than describe.** Use only factual descriptive notes ("two rows have similar names — auditor please confirm").
+- **Public function classification.** Section 13 produces a flat inventory; classification (`rpc_exposed | compatibility | legacy | unknown`) is deferred — requires grep-of-EF-source evidence or human judgment.
 - **Backfilling missing previous days.** Today's snapshot only.
 - **Updating any registry table** (`k.table_registry`, `k.column_registry`).
   Read-only.
-- **Modifying the cycle 1 snapshot** at `docs/audit/snapshots/2026-04-28.md`.
-  That file is the cycle 1 baseline and must remain untouched.
+- **Modifying prior snapshots.** Each day's file is the baseline for that day; never amend retroactively.
 
 ## Brief authorship context
 
-Authored 2026-04-30 ~16:30 Sydney / 06:30Z by chat. **Refreshed 2026-04-30
-~17:35 Sydney / 07:35Z** after the first run (Cowork) hit 6 schema-drift
-fallbacks. The refresh fixed all 6 query bugs:
+Authored 2026-04-30 ~16:30 Sydney / 06:30Z by chat. Refreshed twice the same day:
+
+**Refresh 1 — 2026-04-30 ~17:35 Sydney / 07:35Z** — fixed 6 schema-drift query bugs surfaced by first run:
 
 1. Section 1 / `f.feed_source.active` → `status='active'`
 2. Section 3.1 / `k.table_registry.object_kind` → `table_kind`
 3. Sections 7, 11, 16 / `c.client.name` → `client_name`
 4. Section 9 / `t.content_vertical.slug` → `vertical_slug`
 5. Section 9 / `m.signal_pool.use_count` → `reuse_count`
-6. Section 11 / removed `post_seed` indirection (`m.post_draft.client_id`
-   exists directly)
-7. Section 15 / `pg_get_indexdef(indexrelid)` against `pg_indexes` →
-   join `pg_class` properly, pass `c.oid`
+6. Section 11 / removed `post_seed` indirection (`m.post_draft.client_id` exists directly)
+7. Section 15 / `pg_get_indexdef(indexrelid)` against `pg_indexes` → join `pg_class` properly, pass `c.oid`
 8. Section 16 / removed `cpp.enabled = true` filter (column doesn't exist)
 
-Full schema verification of all substitutions documented in
-`docs/runtime/runs/audit-slice-2-snapshot-generation-2026-04-30T071532Z.md`.
-Root cause: brief was authored from memory of cycle 1's data shape
-rather than from cycle 1's actual SQL. Lesson for future briefs: when a
-brief specifies verbatim queries against schemas the brief author
-doesn't own, run each query against current schema before the brief
-lands.
+**Refresh 2 — 2026-04-30 evening Sydney / cycle 2 closure** — addressed three audit findings + one observation:
+
+1. Section 5 — added Part B (Lesson #36 detector output) per O-2026-04-30-D-003.
+2. Section 13 — itemised public functions (was: count only) per F-2026-04-30-D-004.
+3. Section 15 — added `f.canonical_content_body` as 5th hot table per F-2026-04-30-D-003.
 
 **First run results (30 Apr 2026):**
 
@@ -768,6 +795,8 @@ lands.
 **5/5 thresholds hit.** D182 v1 now validated across two distinct brief
 shapes (Tier 1 migration drafting + Tier 0 markdown generation). This
 feeds into the D182 sunset review (12 May 2026).
+
+**Cycle 2 closure findings produced (30 Apr evening):** 4 findings — F-001 closed-action-taken (dropped redundant index), F-002 closed-action-pending (B19 backlog with row-count trigger), F-003 closed-action-taken (this brief refresh), F-004 closed-action-taken (this brief refresh). All 4 closed same day.
 
 Cowork can run this brief any future day by re-reading the YAML
 frontmatter — the date stamp is computed at execution time, so the
