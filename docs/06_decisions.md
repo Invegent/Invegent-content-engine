@@ -23,9 +23,122 @@ is recorded here with context and reasoning.
 
 ## D163–D168 — See 21–23 Apr 2026 commits (DLQ scoping, bundler dedup, bloat cleanup, router sequencing reversal, router MVP shadow infrastructure, ID004 sentinel scope)
 
-## D170–D176 — See 26 Apr 2026 morning commits (slot-driven Phase A: MCP-applied migrations, pre-flight as gate, architectural revision authority, two-trigger chain, thin-pool signal, versioned ref FK pattern, state-change rollback discipline)
+## D170–D176 — See 26 Apr 2026 morning commits (slot-driven Phase A: MCP-applied migrations, pre-flight as gate, architectural revision authority, two-trigger chain, thin-pool signal, versioned ref FK pattern, state-change rollback discipline). **D170 has a full prose entry below — it is the most-cited operational decision in ICE.**
 
-## D177–D182 — See 26–29 Apr 2026 commits (fitness scale, ai_job FK CASCADE, Stage 10/11 ordering, discovery decides assignment, audit loop architecture, non-blocking execution model)
+## D177–D182 — See 26–29 Apr 2026 commits (fitness scale, ai_job FK CASCADE, Stage 10/11 ordering, discovery decides assignment, audit loop architecture, non-blocking execution model). **D181 and D182 have full prose entries below.**
+
+---
+
+## D170 — MCP-applied migrations pattern (canonical DDL path)
+**Date:** 26 April 2026 morning | **Status:** ✅ LOCKED — applies for all 19 stages of slot-driven build, all D182 briefs, all column-purpose work. Reinforced by every subsequent migration session.
+
+### The problem this decides
+
+Supabase CLI (`supabase db push`) was originally the canonical path for applying migrations. But the CLI tries to reconcile against migration history — and this project's history contains ~280 DB-only migrations applied directly to production via earlier workflows that didn't write a corresponding file to `supabase/migrations/`. The CLI sees a history with files it doesn't have records of, treats this as drift, and errors out before applying anything new.
+
+The question this decision answers: what's the canonical path for applying migrations in this project, given that CLI is broken on this history?
+
+### The decision
+
+**Chat applies all migrations via the Supabase MCP `apply_migration` tool. CC drafts and pushes migration files to `supabase/migrations/`; chat applies them via MCP after pre-flight verification. The CLI is no longer used for production DDL on this project.**
+
+### Why MCP over CLI
+
+1. **MCP doesn't need to reconcile history.** It executes the SQL directly against the database; the migration file is a record artefact, not a reconciliation key.
+2. **Explicit success/failure with full Postgres error context.** MCP returns `{success: true}` or the full error message; CLI swallows specifics inside its reconciliation logic.
+3. **CLI's reconciliation step is the observed failure mode.** Trying to fix it = ~280 file backfills + ongoing risk of re-breakage. MCP avoids the entire failure surface.
+
+### What this requires
+
+- Every migration file must be idempotent or wrapped in a DO block with verification (matches Lesson #38: count-delta verification, not time-window).
+- Pre-flight per D171 + Lesson #32 — query `k.vw_table_summary` (and any directly-touched tables) before authoring DML.
+- Migration filename = draft timestamp; the apply-time version stamp in `supabase_migrations.schema_migrations` will differ. This is acceptable; Lesson #36 covers the rename pattern when filename hygiene matters.
+- CC's role is bounded: draft + push to `supabase/migrations/` only. Apply is chat's responsibility because chat has live MCP access to the database while CC operates on the file tree.
+
+### Related decisions
+
+- **D171** — pre-flight schema verification per stage. D170 specifies how to apply; D171 specifies what to verify before applying.
+- **D182** — non-blocking execution model. Tier 1+ briefs apply via D170 path (chat MCP); Tier 0 briefs don't touch the database at all.
+- **Lesson #38** — count-delta verification beats time-window. Embedded in DO blocks under D170.
+
+---
+
+## D181 — Audit loop as three-layer architecture
+**Date:** 28 April 2026 evening | **Status:** ✅ BUILT — Slice 1 live since 28 Apr; Slice 2 shipped 30 Apr (first run via D182 Tier 0 brief, 5/5 thresholds); Slice 3 manual cycle 1 closed 28 Apr, cycle 2 ready (R03).
+
+### The problem this decides
+
+How does ICE prevent recurring audit findings from re-occurring? The pattern observed across F-001 (table-purpose backfill) and F-002 (column-purpose backfill): the audit cycle would surface a class of finding (e.g. 22 tables missing purpose), PK + chat would apply a fix, then the next cycle would surface the same class of finding because nothing prevented re-introduction. Audit work that produces only point-fixes is Sisyphean — every newly-created table arrives undocumented, every refactor reintroduces the gap.
+
+The question this decision answers: what's the structural shape of an audit loop that prevents recurrence rather than just catching it?
+
+### The decision
+
+**The audit loop is structured as three layers, each addressing a distinct failure mode:**
+
+- **Slice 1 — recurrence prevention.** Encode the audit finding's negative space as a constraint that fires automatically on the act that would reintroduce the gap. Examples shipped: `PENDING_DOCUMENTATION` sentinel forcing every new table to have a non-empty purpose at create time; 14-day grace window for inferred purposes; F-003 detector flagging naming-discipline violations.
+- **Slice 2 — snapshot generation.** Produce the input material the auditor consumes. Mechanical SQL queries against `k.*` + targeted `f.*`/`m.*`, formatted as a 17-section markdown file at `docs/audit/snapshots/{YYYY-MM-DD}.md`. No judgment; only data.
+- **Slice 3 — auditor pass.** The judgment layer: read snapshot + role definition, write findings to `docs/audit/runs/{YYYY-MM-DD}-{role}.md`. Currently ChatGPT in role per `docs/audit/roles/`; auto-auditor (OpenAI API + role spec) deferred per D184 + the standing 5+ cycle rule.
+
+### What this requires
+
+- Audit roles defined in `docs/audit/roles/`: Data + Security + Operations + Financial + Compliance, each with its own slice 1+2+3 stack.
+- Findings format: `F-YYYY-MM-DD-{role-letter}-NNN`, severity enum (HIGH/MEDIUM/LOW), evidence chain (snapshot section + commit refs + reasoning).
+- Closure tracking: `docs/audit/open_findings.md` with closure type (`CLOSED-ACTION-TAKEN`, `CLOSED-NO-ACTION-WONTFIX`, `CLOSED-DUPLICATE`).
+- **5+ cycle rule:** don't automate Slice 3 for any role until 5+ manual cycles have validated findings format stability, judgment repeatability, and known failure modes.
+
+### Related decisions
+
+- **D184** — sequences D181's slices into D182's brief shapes. Slice 2 is a Tier 0 brief; Slice 3 stays manual.
+- **D182** — automation primitives. Slice 1 is encoded in migrations; Slice 2 in Tier 0 briefs; Slice 3 in roles + manual cycles.
+
+---
+
+## D182 — Non-blocking execution model (five-rule automation system)
+**Date:** 28 April 2026 evening (revised across 29–30 Apr after first runs) | **Status:** ✅ LOCKED v1 — `docs/runtime/automation_v1_spec.md` is canonical. Sunset review 12 May 2026. Validated across two brief shapes (Tier 1 migration drafting + Tier 0 markdown generation) as of 30 Apr.
+
+### The problem this decides
+
+Chat-driven work bottlenecks on PK's availability. Even mechanical work — column-purpose authoring, snapshot generation, refactor sweeps — requires PK to be present at every decision point because chat can't make the calls itself. The result: the rate at which ICE ships is bounded by PK's session count, not by the work itself. If automation infrastructure can earn its keep at lower complexity than chat (deterministic execution + paste-in prompts via Cowork), more work can ship per session.
+
+The question this decision answers: what's the minimal rule set that makes unattended automation safe enough to actually deploy?
+
+### The decision
+
+**Five rules govern the execution of automation briefs:**
+
+1. **Default-and-continue.** If a brief specifies a default for a question, automation applies the default and proceeds. No blocking on confirmation.
+2. **Answer-key pattern.** Brief authors enumerate likely questions and supply pre-answers in the brief itself. Target: 0 questions on first run.
+3. **One AI per question.** If automation does ask a question, PK answers once; the answer goes into the brief for future runs (single source of truth for resolved ambiguity).
+4. **Escalation.** Automation halts and surfaces to PK if scope exceeds brief authority — DML when forbidden, schema mismatch beyond stop conditions, ambiguous risk tier.
+5. **No production writes from automation.** Tier 0 (auto-commit, markdown only) is the absolute ceiling for unattended runs. Tier 1+ requires chat to apply via Supabase MCP per D170.
+
+**4-tier risk system:** Tier 0 (auto-commit, no DB), Tier 1 (DDL via chat MCP), Tier 2 (DDL with rollback gate), Tier 3 (escalation default).
+
+### Phase build path
+
+- Phase 1 (brief authoring + queue) — ✅ DONE 7 Apr
+- Phase 2 (Cowork integration) — ✅ DONE 28 Apr
+- Phase 3 (run state + claude_questions) — ✅ DONE 29 Apr
+- Phase 4a (executor prompt template) — ✅ DONE 29 Apr
+- Phase 4b (GitHub Actions cloud-side validation) — DEFERRED per D183
+- Phase 4c (OpenAI API answer step) — DEFERRED per D183
+- Phase 5 (first overnight test) — ✅ DONE 29 Apr (Phase D ARRAY mop-up, 5/5 thresholds)
+
+### Validation as of 30 Apr evening
+
+D182 v1 has run 6 briefs successfully: Phase D ARRAY, slot-core, post-publish-obs, pipeline-health-pair, operator-alerting-trio, audit Slice 2. Five were Tier 1 migration drafting; one was Tier 0 markdown generation. All hit 5/5 first-run thresholds. v1 is validated across two distinct brief shapes.
+
+### Sunset review
+
+12 May 2026. Decide: lock v1 as standing rule, iterate to v2, or retire. The decision is data-driven — if briefs are surfacing volumes of real questions or PK is repeatedly hand-validating outputs the system missed, that's the signal to build Phase 4b/4c (or step back). If briefs continue at current 5/5 cadence, v1 graduates to standing rule.
+
+### Related decisions
+
+- **D170** — apply path for Tier 1+ briefs.
+- **D181** — composes with D182 via D184 (Slice 2 is the second-shape D182 test).
+- **D183** — first-run learnings + Phase 4b/4c deferral principle.
+- **D184** — audit workflow slicing under D182.
 
 ---
 
@@ -151,6 +264,42 @@ When a future audit role (Security, Operations, etc.) is added per D181, it foll
 
 ---
 
+## D185 — RESERVED for `structured_red_team_review_v1` ratification
+**Date:** TBD — gated on R10 (Phase C cutover live pilot) outcome | **Status:** 🔲 RESERVED — placeholder only. Ratification (or rejection) decision held until pilot evidence arrives.
+
+### Reservation rationale
+
+The `structured_red_team_review_v1` proposal at `docs/runtime/structured_red_team_review_v1_proposal.md` proposes a standing rule: every Tier 2+ brief gets a structured red-team pass (ChatGPT in adversarial role) before chat applies. The proposal is currently at PILOT DECISION (committed 30 Apr); R10 in `docs/00_action_list.md` schedules the live pilot during Phase C cutover.
+
+D185 is reserved for the formal ratification call once R10 produces evidence. Three outcomes possible:
+
+- **Useful** — R10 surfaces real risk that a vanilla brief review missed. Lock as standing rule under D185.
+- **Noisy** — R10 produces redundant or speculative concerns relative to the cost (~30 min added to each Phase C cutover review). Reduce scope or kill under D185.
+- **Mixed** — R10 useful for some brief shapes, not others. Reduce scope to specific shapes (e.g. Tier 2+ only, or specific risk-tier categories) under D185.
+
+### Why reserve a number now
+
+Reserving D185 prevents accidental reuse of the number for an unrelated decision before R10 lands. The proposal is already committed; tying a placeholder decision number to it ensures the audit trail is clean when ratification arrives.
+
+### Sunset clause
+
+D185 placeholder expires if R10 hasn't completed by **31 May 2026** — at which point the reservation lapses, the proposal moves to F07 (frozen / deferred) status, and D185 becomes available for reassignment to the next decision needing a number.
+
+### What R10 requires (for reference)
+
+- Phase C cutover brief drafted (chat + PK).
+- ChatGPT runs structured red-team review pass per proposal § 3 (concrete role spec + checklist).
+- Outcome captured in run state file at `docs/runtime/runs/phase-c-cutover-{stage}-{timestamp}.md`.
+- D185 ratification commits to this file with the specific outcome.
+
+### Related decisions
+
+- **Proposal** — `docs/runtime/structured_red_team_review_v1_proposal.md` (PILOT DECISION committed 30 Apr).
+- **R10 in action_list** — Phase C cutover live pilot, gated on Phase B Gate B exit.
+- **T04 in action_list** — Sun 3 / Mon 4 May calibration session, 90 min hard cap; informs but does not gate R10.
+
+---
+
 ## Decisions Pending
 
 | Decision | Status | Gate |
@@ -172,7 +321,7 @@ When a future audit role (Security, Operations, etc.) is added per D181, it foll
 | **D166 — Router sequencing reversal** | ✅ APPLIED 22 Apr evening — superseded by slot-driven build (D170+) | — |
 | **D167 — Router MVP shadow infrastructure** | ✅ APPLIED 22 Apr evening — preserved as shadow infrastructure; slot-driven Phase D decommissions | Phase D Stage 19 |
 | **D168 — ID004 sentinel** | 🔲 Backlog A-item | Spec defined; implementation deferred |
-| **D170 — MCP-applied migrations pattern** | ✅ LOCKED through Phase A+B7-9 + concrete-pipeline track; applies for all 19 stages; reinforced by D182 first run (PK applied via Supabase MCP) | — |
+| **D170 — MCP-applied migrations pattern** | ✅ LOCKED through Phase A+B7-9 + concrete-pipeline track; applies for all 19 stages; reinforced by D182 first run (PK applied via Supabase MCP). **Full prose entry above.** | — |
 | **D171 — Pre-flight schema verification per stage** | ✅ LOCKED; sharpened by Lesson #32 (query every directly-touched table); reinforced by D182 brief pre-flight discipline | — |
 | **D172 — Architectural revision authority** | ✅ LOCKED; R-A through R-E applied in Phase A | — |
 | **D173 — Two-trigger chain pattern** | ✅ APPLIED Stage 3 | — |
@@ -183,10 +332,11 @@ When a future audit role (Security, Operations, etc.) is added per D181, it foll
 | **D178 — ai_job.slot_id FK = ON DELETE CASCADE** | ✅ APPLIED Stage 9.039 | — |
 | **D179 — Stage 10/11 ordering: Option B** | ✅ LOCKED for Stage 10 brief | Stage 10 next session |
 | **D180 — Discovery decides assignment, intelligence decides retention** | ✅ APPLIED via migration 006 trigger; backfill ran for 8 CFW seeds | Apply to any future discovery channel (YouTube channel discovery, email-newsletter discovery, etc.) |
-| **D181 — Audit loop as three-layer architecture** | ✅ BUILT — first cycle complete same day; slice 1 prevention live; D184 sequences Slice 2/3 | Apply to future audit roles (Security, Operations, Financial, Compliance) when added |
-| **D182 — Non-blocking execution model (five-rule system)** | ✅ LOCKED — v1 spec at `docs/runtime/automation_v1_spec.md`; Phase 1+2+3+4a+5 done; Phase 4b/4c DEFERRED per D183; sunset review 12 May 2026 | — |
+| **D181 — Audit loop as three-layer architecture** | ✅ BUILT — first cycle complete same day; slice 1 prevention live; D184 sequences Slice 2/3. **Full prose entry above.** | Apply to future audit roles (Security, Operations, Financial, Compliance) when added |
+| **D182 — Non-blocking execution model (five-rule system)** | ✅ LOCKED — v1 spec at `docs/runtime/automation_v1_spec.md`; Phase 1+2+3+4a+5 done; Phase 4b/4c DEFERRED per D183; sunset review 12 May 2026. **Full prose entry above.** | — |
 | **D183 — D182 v1 first-run learnings + Phase 4b/4c deferral** | ✅ LOCKED 30 Apr morning — build-when-evidence-demands principle | Build 4b when a brief demands cloud-side validation; build 4c when 2–3 briefs surface real questions |
-| **D184 — Audit workflow automation slicing** | ✅ LOCKED 30 Apr morning — Slice 2 next as D182 Tier 0 brief; Slice 3 waits 5+ cycles per D181 | Slice 2 brief authored next session; Slice 3 re-evaluation after cycle 5 |
+| **D184 — Audit workflow automation slicing** | ✅ LOCKED 30 Apr morning — Slice 2 next as D182 Tier 0 brief; Slice 3 waits 5+ cycles per D181. Slice 2 first run 30 Apr evening — 5/5 thresholds, second-shape D182 validation confirmed | Slice 2 brief authored next session; Slice 3 re-evaluation after cycle 5 |
+| **D185 — `structured_red_team_review_v1` ratification** | 🔲 RESERVED — gated on R10 (Phase C cutover live pilot). Sunset 31 May 2026 if R10 hasn't completed | R10 outcome |
 | **Slot-driven Phase A** | ✅ COMPLETE 26 Apr morning | — |
 | **Slot-driven Phase B Stages 7-9** | ✅ COMPLETE 26 Apr afternoon–evening | — |
 | **Slot-driven Phase B Stages 10-12** | ✅ COMPLETE 27 Apr | — |
@@ -195,7 +345,7 @@ When a future audit role (Security, Operations, etc.) is added per D181, it foll
 | **F-002 closure** | ✅ CLOSED-ACTION-TAKEN — P1 + P2 + P3 all applied 28 Apr same day. Phase D ARRAY mop-up applied 29 Apr via D182 first brief. c+f coverage 0% → 22.1% (149/674). 6 LOW rows deferred to followups. | — |
 | **Phase D ARRAY mop-up** | ✅ CLOSED-ACTION-TAKEN 29 Apr — first D182 brief, applied via Supabase MCP, 5/5 thresholds | — |
 | **6 LOW-row joint resolution session** | 🔲 Backlog | PK + chat session, ~30 min, likely synchronous (not Cowork) per D184 reasoning |
-| **Audit loop slice 2 (snapshot automation)** | 🟡 Next session as D182 Tier 0 brief per D184 | Brief authoring next session |
+| **Audit loop slice 2 (snapshot automation)** | ✅ FIRST RUN 30 Apr evening — 5/5 thresholds, brief refreshed at same closure commit. Brief at `docs/briefs/audit-slice-2-snapshot-generation.md` is now reusable daily | — |
 | **Audit loop slice 3 (API auditor pass via Cowork+OpenAI)** | 🔲 Deferred per D184 | After 5+ manual cycles of Slice 3 |
 | **Slot-driven Phase C — Cutover (Stages 12-18)** | 🔲 After Gate B exit | Gate B exit |
 | **Slot-driven Phase D Stage 19 decommission R6** | 🔲 After Phase C | All client-platforms cut over |
