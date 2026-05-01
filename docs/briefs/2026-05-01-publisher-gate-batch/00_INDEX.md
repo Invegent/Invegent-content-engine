@@ -4,55 +4,55 @@
 **Reviewer**: ChatGPT (red-team review required before deploy/apply)
 **Deployer**: PK (post-ChatGPT-approval)
 
-## B + C plan (PK confirmed v2.11)
-
-**Decoupled deploy**: ship cleared publisher gates without further delay; hold T08 for focused adversarial review.
-
-### Workstream 1 — Publisher gates (cleared by ChatGPT round-3)
-
-1. PK takes brief `11_round4_confirmation_publishers_independent.md` to ChatGPT for quick yes/no on independence
-2. If yes: deploy micro-staged — T17 → T18 (with go/no-go) → T13 (Zapier + direct repo patch)
-3. Post-deploy: smoke check S12 between each
-4. T10 disposition + T09 checklist follow per existing briefs
-
-### Workstream 2 — T08 adversarial review (parallel)
-
-1. PK takes brief `12_t08_adversarial_review_prompt.md` to ChatGPT for round-4-T08 with explicit adversarial framing (Q1–Q7)
-2. Live dry-run output included for inspection (639 candidates, 9 buckets, all eligible)
-3. PK confirms operator intent for CFW IG, Invegent IG, CFW FB before T08 deploys (Q5)
-4. If round-4-T08 finds HIGH issues: fold into T08 v5
-5. If clean: T08 deploys per existing staged-run protocol
-
-## Round status
+## Round status (v2.12)
 
 - **Round 1 complete** — 7 amendments folded
 - **Round 2 complete** — 2 amendments folded (1 HIGH-severity)
 - **Round 3 complete** — 1 HIGH-severity bypass + 1 observability note folded
-- **Round 4 — PUBLISHER track**: PK to share brief 11 with ChatGPT
-- **Round 4 — T08 track**: PK to share brief 12 with ChatGPT (adversarial framing)
+- **Round 4 publisher track** — ChatGPT cleared T17 / T18 / T13. **Ready to deploy now.**
+- **Round 4 T08 track** — 1 HIGH-severity adversarial catch + amendments folded into `13_amendments_round_4_t08.md`. Round-5 light review pending.
 
-**9 catches in this session**, 3 consecutive on T08-A. Pattern signal: terminal-decision authority requires extra scrutiny (Lesson #51 candidate).
+**10 catches in this session**, 4 consecutive on T08-A.
+
+## Workstream 1 — Publisher gates (CLEARED FOR DEPLOY)
+
+ChatGPT round-4 verdict: "YES — T17/T18/T13 are functionally independent of T08 and remain cleared."
+
+Deploy sequence:
+1. **T17 YouTube** (smallest; blocks T06/T11)
+2. **T18 Facebook** — RUN GO/NO-GO QUERY first; deploy as planned OR acknowledge intentional FB pause
+3. **T13 LinkedIn Zapier + LinkedIn direct repo patch** (Zapier deploys; direct is repo-only commit)
+
+Smoke check S12 between each. T10 disposition + T09 checklist follow per existing briefs.
+
+## Workstream 2 — T08 (HOLD pending round-5 + Path A/B + B28)
+
+ChatGPT round-4-T08 amendments per `13_amendments_round_4_t08.md`:
+1. v5 SQL with `client_publish_profile_id DESC` final tie-break
+2. Pre-deploy duplicate/ambiguity guard query
+3. Path B (RECOMMENDED): UPDATE NULL `is_default` to true on sole-active profiles
+4. Standing check S15 added
+
+Before T08 deploys:
+- PK takes round-4-T08 amendments to ChatGPT for round-5 light verification
+- PK chooses Path A or Path B
+- If Path B: pre-execution verification (expect 12 rows) → UPDATE → post-execution guard (expect 0 rows)
+- B28 operator intent confirmed for CFW IG, Invegent IG, CFW FB
+- Then T08 v5 migration + EF v1.6.0 deploy + staged `{limit: 5}` run
 
 ## Files in this batch
 
 | # | Brief | Status |
 |---|---|---|
-| 01 | `01_t17_youtube_publisher_gate.md` | Cleared — deploy first |
-| 02 | `02_t18_facebook_publisher_gate.md` | Cleared — deploy second (with go/no-go) |
-| 03 | `03_t13_linkedin_publishers_gate.md` | Cleared — deploy third |
-| 04 | `04_t08_auto_approver_stratify_cooldown.md` | **HOLD** — awaiting round-4-T08 adversarial verdict |
-| 05 | `05_t14_crosspost_rpc_audit.md` | Documentation only |
-| 06 | `06_t09_safe_to_resume_publisher_checklist.md` | Cleared — PK walks before cron flips |
-| 07 | `07_t10_pre_fix_queue_disposition.md` | Cleared — PK executes post-T08+T13+T18 |
-| 08 | `08_amendments_round_1.md` | Reference — round 1 |
-| 09 | `09_amendments_round_2.md` | Reference — round 2 |
-| 10 | `10_amendments_round_3.md` | Reference — round 3 |
-| **11** | `11_round4_confirmation_publishers_independent.md` | **NEW — round-4 publisher confirmation prompt** |
-| **12** | `12_t08_adversarial_review_prompt.md` | **NEW — round-4-T08 adversarial prompt with live dry-run** |
+| 01–07 | (unchanged from v2.10/v2.11) | T17/T18/T13/T09/T10/T14: cleared. T08: held. |
+| 08–10 | Round 1–3 amendments | Reference |
+| 11 | `11_round4_confirmation_publishers_independent.md` | Cleared by ChatGPT round 4 |
+| 12 | `12_t08_adversarial_review_prompt.md` | Reviewed by ChatGPT round 4-T08 |
+| **13** | `13_amendments_round_4_t08.md` | **NEW — round-4-T08 amendments awaiting round-5** |
 
-## Open items not blocking deploy
+## Open items not blocking publisher deploy
 
-- **B25**: `seed-and-enqueue-linkedin-every-10m` cron audit (post T13 deploy + 7d obs)
-- **B26**: audit other SQL functions / EFs for eligibility-vs-content gate conflation
-- **B27**: audit other lateral-join patterns for filter-in-WHERE vs authoritative-row-then-check
-- **B28 (NEW v2.11)**: verify operator intent for CFW IG, Invegent IG, CFW FB auto-approve config (per round-4-T08 Q5)
+- B25, B26, B27 (per v2.11)
+- **B28**: operator intent for CFW IG, Invegent IG, CFW FB — blocks T08 only
+- **B29 (NEW v2.12)**: partial unique constraint on `(client_id, platform) WHERE status='active' AND is_default=true` — long-term forward-defence; backlog
+- **B30 (NEW v2.12, Path A only)**: data hygiene UPDATE if PK chooses Path A tonight — backlog cleanup
