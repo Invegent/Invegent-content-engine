@@ -9,12 +9,17 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "publisher-v1.7.0";
-// v1.7.0 — Schedule-aware publishing: reads c.client_publish_schedule
-// via public.get_next_publish_slot(). Queue items with no scheduled_for get
-// assigned to the next available slot. Items with no schedule publish immediately.
-// v1.6.0 — Organic carousel (Option 1): upload N slide images unpublished,
-// then post to /{page-id}/feed with attached_media array of photo IDs.
+const VERSION = "publisher-v1.8.0";
+// v1.8.0 (T18, 1 May 2026): APPROVAL GATE added — mirror IG v2.0.0 per-row pattern.
+//   Previously selected approval_status from the draft but never checked it.
+//   F-PUB-005-class fix. Holds non-approved drafts in queue with 60min cooldown;
+//   no post_publish row written. ChatGPT-reviewed in 4 rounds; cleared by
+//   round-4 publisher track verdict + go/no-go pre-deploy query.
+//   Go/no-go finding: all 13 currently-queued FB rows reference 'needs_review'
+//   drafts; deployment will INTENTIONALLY PAUSE FB until T08 + auto-approver
+//   produce fresh approvals (or human review approves them).
+// v1.7.0 — Schedule-aware publishing.
+// v1.6.0 — Organic carousel.
 
 const IMAGE_HOLD_MINUTES = 30;
 
@@ -228,7 +233,7 @@ app.post("*", async (c) => {
   for (const q of rows) {
     const queueId = q.queue_id;
     try {
-      // ── SCHEDULE CHECK ────────────────────────────────────────────
+      // ── SCHEDULE CHECK ───────────────────────────────────────
       // If no scheduled_for yet, check c.client_publish_schedule for a slot.
       // The lock function already ensures items WITH scheduled_for are only
       // picked up when scheduled_for <= NOW(), so those are ready to publish.
@@ -251,7 +256,7 @@ app.post("*", async (c) => {
         }
         // null or past slot or error → publish immediately (no schedule configured)
       }
-      // ── END SCHEDULE CHECK ────────────────────────────────────────
+      // ── END SCHEDULE CHECK ──────────────────────────────────
 
       const { data: prof, error: profErr } = await supabase.schema("c").from("client_publish_profile")
         .select("*").eq("client_id", q.client_id).eq("platform", "facebook").eq("status", "active")
@@ -288,12 +293,27 @@ app.post("*", async (c) => {
       if (draftErr) throw new Error(`load_draft_failed: ${draftErr.message}`);
       if (!draft) throw new Error("post_draft_not_found");
 
+      // v1.8.0 (T18, 1 May 2026): APPROVAL GATE (mirror IG v2.0.0 per-row pattern).
+      // FB publisher previously had no gate — F-PUB-005-class fix.
+      // Holds non-approved drafts in queue with cooldown; no post_publish row created.
+      if (draft.approval_status !== 'approved') {
+        await supabase.schema("m").from("post_publish_queue").update({
+          status: "queued",
+          scheduled_for: new Date(Date.now() + 60 * 60_000).toISOString(),
+          last_error: `not_approved:${draft.approval_status}`,
+          locked_at: null, locked_by: null,
+          updated_at: nowIso(),
+        }).eq("queue_id", queueId);
+        results.push({ queue_id: queueId, status: "held", reason: "not_approved", draft_status: draft.approval_status });
+        continue;
+      }
+
       const title = (draft.draft_title ?? "").trim();
       const body  = (draft.draft_body  ?? "").trim();
       if (!title && !body) throw new Error("empty_draft");
       const msg = `${profile.mode === "staging" ? (profile.test_prefix ?? "[TEST] ") : ""}${title}${title && body ? "\n\n" : ""}${body}`.trim();
 
-      // ── CAROUSEL PATH ─────────────────────────────────────────────────────────────
+      // ── CAROUSEL PATH ──────────────────────────────────────────────
       if (draft.recommended_format === "carousel") {
         if (draft.image_status !== "generated") {
           const approvedAt = draft.approved_at ? new Date(draft.approved_at).getTime() : null;
@@ -367,9 +387,9 @@ app.post("*", async (c) => {
           continue;
         }
       }
-      // ── END CAROUSEL PATH ───────────────────────────────────────────────────────────
+      // ── END CAROUSEL PATH ──────────────────────────────────────────────
 
-      // ── IMAGE HOLD GATE (image_quote) ─────────────────────────────────────────────
+      // ── IMAGE HOLD GATE (image_quote) ─────────────────────────────────
       const wantsImage = !!(draft.recommended_format && draft.recommended_format !== "text");
       const imageReady = !!(draft.image_url && draft.image_status === "generated");
       if (wantsImage && draft.image_status === "pending" && !imageReady) {
@@ -382,7 +402,7 @@ app.post("*", async (c) => {
         }
         console.warn(`[publisher] image hold timeout ${q.post_draft_id} — publishing as text`);
       }
-      // ──────────────────────────────────────────────────────────────
+      // ────────────────────────────────────────────────────
 
       // Throttle
       const maxPerDay = Number(profile.max_per_day ?? 0);

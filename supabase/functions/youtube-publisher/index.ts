@@ -1,21 +1,17 @@
-// youtube-publisher v1.5.0
-// Fix: INSERT into m.post_publish was silently failing.
-// Bug 1: column was 'publish_meta' (does not exist) — correct column is 'response_payload'.
-// Bug 2: 'attempt_no' is NOT NULL with no default — was not included in INSERT.
-// This caused youtube_video_id to be written to draft_format JSONB correctly
-// but no audit row appearing in m.post_publish. Videos were reaching YouTube
-// but the ICE record trail was broken.
-//
-// v1.4.0 context preserved below:
-// Fix: removed approval_status = 'approved' constraint from draft query.
-// OAuth 2.0 token refresh per client.
-// Refresh token resolution order:
-//   1. c.client_channel.config->>'refresh_token'
-//   2. env var named by c.client_publish_profile.credential_env_key
+// youtube-publisher v1.6.0
+// v1.6.0 (T17, 1 May 2026): RESTORE APPROVAL GATE.
+//   Adds .eq('approval_status', 'approved') to draft SELECT.
+//   Mirrors WordPress publisher's fetch-time filter pattern (direct-read publisher).
+//   Previous v1.5.0 read m.post_draft with no approval check — would have
+//   uploaded any draft with video_status='generated' on next OAuth reconnect.
+//   T15 audit (1 May) confirmed gate was missing. F-PUB-005-class fix.
+//   ChatGPT-reviewed in 4 rounds; cleared by round-4 publisher track verdict.
+//   DEPLOYED via Supabase MCP 1 May 2026 evening (version 31).
+// v1.5.0: Fix INSERT into m.post_publish (column names + attempt_no).
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'youtube-publisher-v1.5.0';
+const VERSION = 'youtube-publisher-v1.6.0';
 const YOUTUBE_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
 const YOUTUBE_UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status';
 
@@ -56,34 +52,18 @@ async function refreshAccessToken(
       .eq('platform', 'youtube')
       .limit(1)
       .maybeSingle();
-
     const envKey = profile?.credential_env_key;
-    if (envKey) {
-      refreshToken = Deno.env.get(envKey) ?? null;
-      if (refreshToken) {
-        console.log(`[youtube-publisher] using legacy env var ${envKey} for client ${clientId_}`);
-      }
-    }
+    if (envKey) { refreshToken = Deno.env.get(envKey) ?? null; }
   }
 
-  if (!refreshToken) {
-    throw new Error(
-      `No refresh token found for client ${clientId_}. ` +
-      `Connect via dashboard (Clients → Connect → YouTube).`
-    );
-  }
+  if (!refreshToken) throw new Error(`No refresh token found for client ${clientId_}.`);
 
   const params = new URLSearchParams({
-    client_id:     oauthClientId,
-    client_secret: clientSecret,
-    refresh_token: refreshToken,
-    grant_type:    'refresh_token',
+    client_id: oauthClientId, client_secret: clientSecret,
+    refresh_token: refreshToken, grant_type: 'refresh_token',
   });
-
   const resp = await fetch(YOUTUBE_TOKEN_URL, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body:    params.toString(),
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString(),
   });
   if (!resp.ok) throw new Error(`Token refresh failed ${resp.status}: ${(await resp.text()).slice(0, 300)}`);
   const data = await resp.json();
@@ -92,83 +72,42 @@ async function refreshAccessToken(
 }
 
 async function uploadToYouTube(opts: {
-  accessToken: string;
-  videoBuffer:  ArrayBuffer;
-  title:        string;
-  description:  string;
-  tags:         string[];
-  categoryId:   string;
-  privacyStatus: 'public' | 'private' | 'unlisted';
+  accessToken: string; videoBuffer: ArrayBuffer; title: string;
+  description: string; tags: string[]; categoryId: string; privacyStatus: 'public' | 'private' | 'unlisted';
 }): Promise<string> {
   const { accessToken, videoBuffer, title, description, tags, categoryId, privacyStatus } = opts;
-
-  const metadata = {
-    snippet: {
-      title: title.slice(0, 100),
-      description: description.slice(0, 5000),
-      tags: tags.slice(0, 30),
-      categoryId,
-    },
-    status: { privacyStatus },
-  };
-
+  const metadata = { snippet: { title: title.slice(0, 100), description: description.slice(0, 5000), tags: tags.slice(0, 30), categoryId }, status: { privacyStatus } };
   const boundary = `yt_boundary_${Date.now()}`;
-  const metaStr  = JSON.stringify(metadata);
-  const enc      = new TextEncoder();
-
+  const metaStr = JSON.stringify(metadata);
+  const enc = new TextEncoder();
   const parts: Uint8Array[] = [
     enc.encode(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metaStr}\r\n`),
     enc.encode(`--${boundary}\r\nContent-Type: video/mp4\r\n\r\n`),
     new Uint8Array(videoBuffer),
     enc.encode(`\r\n--${boundary}--`),
   ];
-
   const totalLen = parts.reduce((s, p) => s + p.byteLength, 0);
   const body = new Uint8Array(totalLen);
   let offset = 0;
   for (const p of parts) { body.set(p, offset); offset += p.byteLength; }
-
   const resp = await fetch(YOUTUBE_UPLOAD_URL, {
     method: 'POST',
-    headers: {
-      'Authorization':   `Bearer ${accessToken}`,
-      'Content-Type':    `multipart/related; boundary=${boundary}`,
-      'Content-Length':  String(totalLen),
-    },
+    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': `multipart/related; boundary=${boundary}`, 'Content-Length': String(totalLen) },
     body,
   });
-
   if (!resp.ok) throw new Error(`YouTube upload ${resp.status}: ${(await resp.text()).slice(0, 500)}`);
   const data = await resp.json();
   if (!data.id) throw new Error('No video ID in YouTube response');
   return data.id;
 }
 
-function buildVideoMetadata(
-  draft: { draft_title: string; draft_body: string; recommended_format: string },
-  vertical: string
-): { title: string; description: string; tags: string[]; categoryId: string } {
+function buildVideoMetadata(draft: { draft_title: string; draft_body: string; recommended_format: string }, vertical: string) {
   const isNdis = vertical.toLowerCase().includes('ndis') || vertical.toLowerCase().includes('disability');
-  const categoryId = '27'; // Education
-
-  const formatHint = draft.recommended_format.includes('stat') ? ' #data' : '';
-  const title = (draft.draft_title + formatHint).slice(0, 100);
-
-  const description = [
-    draft.draft_body.slice(0, 4000),
-    '',
-    isNdis
-      ? '\ud83d\udccc Follow for NDIS updates, policy changes, and sector insights.'
-      : '\ud83d\udccc Follow for Australian property market insights and analysis.',
-    '#Shorts',
-  ].join('\n');
-
+  const title = (draft.draft_title + (draft.recommended_format.includes('stat') ? ' #data' : '')).slice(0, 100);
+  const description = [draft.draft_body.slice(0, 4000), '', isNdis ? '📌 Follow for NDIS updates, policy changes, and sector insights.' : '📌 Follow for Australian property market insights and analysis.', '#Shorts'].join('\n');
   const baseTags = ['#Shorts', 'Short'];
-  const ndisTag  = isNdis ? ['NDIS', 'disability services', 'allied health', 'NDIS update'] : [];
-  const propTag  = !isNdis ? ['property investment', 'Australian property', 'real estate Australia', 'property market'] : [];
-  const tags = [...baseTags, ...ndisTag, ...propTag].slice(0, 30);
-
-  return { title, description, tags, categoryId };
+  const topicTags = isNdis ? ['NDIS', 'disability services', 'allied health'] : ['property investment', 'Australian property', 'real estate Australia'];
+  return { title, description, tags: [...baseTags, ...topicTags].slice(0, 30), categoryId: '27' };
 }
 
 Deno.serve(async (req: Request) => {
@@ -176,16 +115,19 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'GET') return jsonResponse({ ok: true, function: 'youtube-publisher', version: VERSION });
 
   const expected = Deno.env.get('PUBLISHER_API_KEY');
-  const provided  = req.headers.get('x-youtube-publisher-key');
+  const provided = req.headers.get('x-youtube-publisher-key');
   if (!expected) return jsonResponse({ ok: false, error: 'PUBLISHER_API_KEY_not_set' }, 500);
   if (!provided || provided !== expected) return jsonResponse({ ok: false, error: 'Unauthorized' }, 401);
 
   const supabase = getServiceClient();
   const results: any[] = [];
 
+  // v1.6.0 (T17): added approval_status to SELECT and .eq('approval_status', 'approved') filter.
+  // Direct-read publisher — gate at fetch time, mirror WordPress pattern.
   const { data: drafts } = await supabase.schema('m').from('post_draft')
-    .select('post_draft_id, client_id, draft_title, draft_body, recommended_format, video_url, draft_format')
+    .select('post_draft_id, client_id, draft_title, draft_body, recommended_format, video_url, draft_format, approval_status')
     .eq('video_status', 'generated')
+    .eq('approval_status', 'approved')
     .is('draft_format->youtube_video_id', null)
     .not('video_url', 'is', null)
     .in('recommended_format', ['video_short_kinetic','video_short_stat','video_short_kinetic_voice','video_short_stat_voice'])
@@ -194,72 +136,33 @@ Deno.serve(async (req: Request) => {
   for (const draft of (drafts ?? [])) {
     const startMs = Date.now();
     try {
-      const { data: scope } = await supabase.rpc('exec_sql', {
-        query: `SELECT cv.vertical_name FROM c.client_content_scope ccs JOIN t.content_vertical cv ON cv.vertical_id = ccs.vertical_id WHERE ccs.client_id = '${draft.client_id}' AND ccs.is_primary = true LIMIT 1`
-      });
+      const { data: scope } = await supabase.rpc('exec_sql', { query: `SELECT cv.vertical_name FROM c.client_content_scope ccs JOIN t.content_vertical cv ON cv.vertical_id = ccs.vertical_id WHERE ccs.client_id = '${draft.client_id}' AND ccs.is_primary = true LIMIT 1` });
       const vertical = (scope as any)?.[0]?.vertical_name ?? 'professional services';
-
       const accessToken = await refreshAccessToken(supabase, draft.client_id);
-
       const videoResp = await fetch(draft.video_url);
       if (!videoResp.ok) throw new Error(`Failed to download video: ${videoResp.status}`);
       const videoBuffer = await videoResp.arrayBuffer();
       const videoSizeMb = Math.round(videoBuffer.byteLength / 1024 / 1024 * 10) / 10;
-      console.log(`[youtube-publisher] uploading ${videoSizeMb}MB for ${draft.post_draft_id}`);
-
       const { title, description, tags, categoryId } = buildVideoMetadata(draft, vertical);
-
-      const youtubeVideoId = await uploadToYouTube({
-        accessToken, videoBuffer, title, description, tags, categoryId,
-        privacyStatus: 'unlisted',
-      });
-
+      const youtubeVideoId = await uploadToYouTube({ accessToken, videoBuffer, title, description, tags, categoryId, privacyStatus: 'unlisted' });
       const youtubeUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
       const durationMs = Date.now() - startMs;
-
-      const updatedFormat = {
-        ...(draft.draft_format ?? {}),
-        youtube_video_id:  youtubeVideoId,
-        youtube_url:       youtubeUrl,
-        youtube_published: nowIso(),
-      };
-
-      // Update draft
       await supabase.schema('m').from('post_draft').update({
-        draft_format: updatedFormat,
-        video_status: 'published',
-        updated_at:   nowIso(),
+        draft_format: { ...(draft.draft_format ?? {}), youtube_video_id: youtubeVideoId, youtube_url: youtubeUrl, youtube_published: nowIso() },
+        video_status: 'published', updated_at: nowIso(),
       }).eq('post_draft_id', draft.post_draft_id);
-
-      // v1.5.0 fix: correct column names for m.post_publish
-      // 'publish_meta' does not exist -> use 'response_payload'
-      // 'attempt_no' is NOT NULL -> must be provided
       const { error: insertErr } = await supabase.schema('m').from('post_publish').insert({
-        post_draft_id:    draft.post_draft_id,
-        client_id:        draft.client_id,
-        platform:         'youtube',
-        platform_post_id: youtubeVideoId,
-        published_at:     nowIso(),
-        status:           'published',
-        attempt_no:       1,
+        post_draft_id: draft.post_draft_id, client_id: draft.client_id,
+        platform: 'youtube', platform_post_id: youtubeVideoId,
+        published_at: nowIso(), status: 'published', attempt_no: 1,
         response_payload: { youtube_url: youtubeUrl, privacy_status: 'unlisted', video_size_mb: videoSizeMb, duration_ms: durationMs },
       });
-
-      if (insertErr) {
-        console.error(`[youtube-publisher] post_publish INSERT failed for ${youtubeVideoId}:`, insertErr.message);
-        // Don't throw — video is on YouTube, just log the audit trail failure
-      }
-
-      results.push({ post_draft_id: draft.post_draft_id, status: 'published', youtube_video_id: youtubeVideoId, youtube_url: youtubeUrl, video_size_mb: videoSizeMb, duration_ms: durationMs, audit_row_inserted: !insertErr });
-      console.log(`[youtube-publisher] ${VERSION} done: ${youtubeVideoId} in ${durationMs}ms`);
-
+      if (insertErr) console.error(`[youtube-publisher] post_publish INSERT failed:`, insertErr.message);
+      results.push({ post_draft_id: draft.post_draft_id, status: 'published', youtube_video_id: youtubeVideoId, youtube_url: youtubeUrl, audit_row_inserted: !insertErr });
     } catch (e: any) {
       const msg = (e?.message ?? String(e)).slice(0, 2000);
-      console.error(`[youtube-publisher] failed ${draft.post_draft_id}:`, msg);
       await supabase.schema('m').from('post_draft').update({
-        video_status: 'failed',
-        draft_format: { ...(draft.draft_format ?? {}), youtube_upload_error: msg, youtube_upload_attempted: nowIso() },
-        updated_at: nowIso(),
+        video_status: 'failed', draft_format: { ...(draft.draft_format ?? {}), youtube_upload_error: msg, youtube_upload_attempted: nowIso() }, updated_at: nowIso(),
       }).eq('post_draft_id', draft.post_draft_id);
       results.push({ post_draft_id: draft.post_draft_id, status: 'failed', error: msg });
     }

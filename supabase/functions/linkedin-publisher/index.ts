@@ -1,7 +1,12 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// linkedin-publisher v1.1.0
-const VERSION = "linkedin-publisher-v1.1.0";
+// linkedin-publisher v1.2.0
+// v1.2.0 (T13, 1 May 2026): APPROVAL GATE added — mirror IG v2.0.0 per-row pattern.
+//   Repo-only EF; not deployed yet. Patched defensively so when B24/F06
+//   activates this EF (LinkedIn Community Management API approval), the gate
+//   is in place from day-1 — prevents reintroducing the F-PUB-005-class bug.
+// v1.1.0 (prior): direct LinkedIn API integration, repo-staged for B24/F06 future activation.
+const VERSION = "linkedin-publisher-v1.2.0";
 
 function nowIso() { return new Date().toISOString(); }
 function getServiceClient() {
@@ -64,9 +69,26 @@ Deno.serve(async (req: Request) => {
       if (!orgUrn) throw new Error("missing_org_urn");
       if (!accessToken) throw new Error("missing_access_token");
       if (prof.token_expires_at && new Date(prof.token_expires_at).getTime() < Date.now()) throw new Error(`linkedin_token_expired`);
-      const { data: draft, error: draftErr } = await supabase.schema("m").from("post_draft").select("post_draft_id, draft_title, draft_body").eq("post_draft_id", q.post_draft_id).maybeSingle();
+
+      // v1.2.0 (T13): added approval_status to SELECT for gate check below
+      const { data: draft, error: draftErr } = await supabase.schema("m").from("post_draft").select("post_draft_id, draft_title, draft_body, approval_status").eq("post_draft_id", q.post_draft_id).maybeSingle();
       if (draftErr) throw new Error(`load_draft_failed: ${draftErr.message}`);
       if (!draft) throw new Error("post_draft_not_found");
+
+      // v1.2.0 (T13): APPROVAL GATE (mirror IG v2.0.0 per-row pattern).
+      // Repo-only EF; not deployed yet. Patched defensively for B24/F06 activation
+      // so the gate is in place from day-1 of activation.
+      if (draft.approval_status !== 'approved') {
+        await supabase.schema("m").from("post_publish_queue").update({
+          status: "queued",
+          scheduled_for: new Date(Date.now() + 60 * 60_000).toISOString(),
+          last_error: `not_approved:${draft.approval_status}`,
+          locked_at: null, locked_by: null, updated_at: nowIso(),
+        }).eq("queue_id", queueId);
+        results.push({ queue_id: queueId, status: "held", reason: "not_approved", draft_status: draft.approval_status });
+        continue;
+      }
+
       const title = (draft.draft_title ?? "").trim();
       const draftBody = (draft.draft_body ?? "").trim();
       if (!title && !draftBody) throw new Error("empty_draft");

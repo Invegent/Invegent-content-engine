@@ -1,7 +1,11 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'linkedin-zapier-publisher-v1.0.0';
-// Temporary bridge: routes LinkedIn queue items to Zapier webhooks.
+const VERSION = 'linkedin-zapier-publisher-v1.1.0';
+// v1.1.0 (T13, 1 May 2026): APPROVAL GATE added — mirror IG v2.0.0 per-row pattern.
+//   v1.0.0 had NO approval gate (didn't even SELECT approval_status).
+//   28+ unreviewed posts published in 14d before this patch (T16 audit window).
+//   F-PUB-005-class fix. ChatGPT-reviewed in 4 rounds; cleared by round-4.
+// v1.0.0 (12 Mar 2026): Temporary bridge — routes LinkedIn queue items to Zapier webhooks.
 // Zapier posts to LinkedIn Company Pages using its own approved OAuth.
 // Replace with direct linkedin-publisher when Community Management API is approved.
 //
@@ -45,6 +49,7 @@ Deno.serve(async (req: Request) => {
   const dryRun = Boolean(body.dry_run ?? false);
 
   // Step 1: Cross-post approved FB drafts into LinkedIn queue
+  // (RPC disabled D154 18 Apr 2026 — returns no-op; native LinkedIn seeding via cron handles enqueue.)
   const { data: crossPostResult } = await supabase.rpc('crosspost_facebook_to_linkedin', {
     p_hours_lookback: 48,
     p_limit: 20,
@@ -99,14 +104,29 @@ Deno.serve(async (req: Request) => {
       }
 
       // Load draft
+      // v1.1.0 (T13): added approval_status to SELECT for gate check below
       const { data: draft } = await supabase
         .schema('m')
         .from('post_draft')
-        .select('post_draft_id, draft_title, draft_body')
+        .select('post_draft_id, draft_title, draft_body, approval_status')
         .eq('post_draft_id', q.post_draft_id)
         .maybeSingle();
 
       if (!draft) throw new Error('post_draft_not_found');
+
+      // v1.1.0 (T13): APPROVAL GATE (mirror IG v2.0.0 per-row pattern).
+      // Publisher previously had no gate — F-PUB-005-class fix.
+      // 28+ unreviewed posts published in 14d before this patch (T16 audit window).
+      if (draft.approval_status !== 'approved') {
+        await supabase.schema('m').from('post_publish_queue').update({
+          status: 'queued',
+          scheduled_for: new Date(Date.now() + 60 * 60_000).toISOString(),
+          last_error: `not_approved:${draft.approval_status}`,
+          locked_at: null, locked_by: null, updated_at: nowIso(),
+        }).eq('queue_id', queueId);
+        results.push({ queue_id: queueId, status: 'held', reason: 'not_approved', draft_status: draft.approval_status });
+        continue;
+      }
 
       const title = (draft.draft_title ?? '').trim();
       const draftBody = (draft.draft_body ?? '').trim();
