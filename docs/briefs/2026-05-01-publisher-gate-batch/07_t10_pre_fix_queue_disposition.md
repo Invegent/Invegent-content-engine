@@ -1,13 +1,27 @@
 # T10 — Pre-Fix Queue Disposition Queries + Decision Tree
 
-**Status**: Authored, awaiting ChatGPT round-2 review (round-1 amendments folded in)
+**Status**: Authored, awaiting ChatGPT round-3 review (round-1 + round-2 amendments folded in)
 **Type**: Disposition SQL + decision tree
 **Owner**: PK executes after T08 + T13 + T18 deploy
 
-## Round-1 amendments folded in
+## Round-2 amendment summary (NEW v2.9)
 
-- **P-A status**: `'skipped'` (preferred), with `'failed'` as fallback. NOT `'dead'`.
-- **P-A discovery**: counts split by `pd.approval_status` (separate `needs_review` from `rejected`) before applying disposition. Don't mix.
+ChatGPT round-2 recommended live constraint introspection BEFORE applying T10 disposition. **Done in chat session 1 May 2026 evening**:
+
+```sql
+-- Result of constraint introspection:
+-- (1) No CHECK constraint exists on m.post_publish_queue.status (column is unconstrained)
+-- (2) Distinct values currently observed: 'queued' (142), 'published' (91), 'dead' (42)
+-- (3) 'skipped' is NOT currently in production data — IG publisher source uses it but has
+--     never written it (no publish_disabled event has fired)
+```
+
+**Decision**: Use `'skipped'` as primary (no constraint blocks it; semantically right for pre-fix orphans). Fallback to `'dead'` if any downstream consumer breaks during smoke check. **Caveat**: this is the FIRST time `'skipped'` would be written to `m.post_publish_queue` in production.
+
+## Round-1 amendments (already folded in v2.8)
+
+- P-A status: `'skipped'` preferred (vs `'failed'`/`'dead'`)
+- P-A discovery: counts split by `pd.approval_status` before disposition
 
 ## Purpose
 
@@ -17,18 +31,21 @@ T08 fixes the auto-approver going forward. T13/T17/T18 fix the publishers going 
 
 | Pop | Description | Discovery query | Disposition |
 |---|---|---|---|
-| **P-A** | IG queue rows referencing non-approved drafts (created via F-PUB-005 trigger gap) | Query A1 below | Mark queue rows `'skipped'` (or `'failed'` fallback); leave drafts alone. **NEW v2.8**: split counts by approval_status before applying |
-| **P-B** | ~30 score-DESC drafts re-cycling in auto-approver fetch | Query B1 below | T08 handles via terminal rejection — no manual disposition. **NEW v2.8**: P-B snapshot in T08 brief captures these BEFORE T08 deploys |
+| **P-A** | IG queue rows referencing non-approved drafts (created via F-PUB-005 trigger gap) | Query A1 below | Mark queue rows `'skipped'`; leave drafts alone |
+| **P-B** | ~30 score-DESC drafts re-cycling in auto-approver fetch | Query B1 below | T08 handles via terminal rejection — no manual disposition |
 | **P-C** | LinkedIn AND FB queue rows referencing `needs_review` drafts not yet published | Query C1 below | Hold pending T13+T18 deploy; once gates active, drafts requeue with `not_approved`; operator decides per draft |
 
-**NOT in scope**: 64 pre-25-Apr LinkedIn `approved` queue rows. These are valid pre-starvation approvals; leave alone.
+**NOT in scope**: 64 pre-25-Apr LinkedIn `approved` queue rows.
+
+## Step 0 — Constraint introspection (NEW v2.9; already done)
+
+Already run in chat session. Result documented above. Confirms `'skipped'` is technically writable. Move to discovery queries.
 
 ## Discovery queries
 
-### Query A1 — P-A IG queue rows (split by approval_status, NEW v2.8)
+### Query A1 — P-A IG queue rows (split by approval_status)
 
 ```sql
--- Discovery first — do NOT apply disposition until counts are reviewed
 SELECT pd.approval_status AS draft_status,
        COUNT(*) AS queue_count,
        MIN(ppq.created_at) AS oldest_queue_row,
@@ -42,12 +59,7 @@ GROUP BY pd.approval_status
 ORDER BY queue_count DESC;
 ```
 
-Expected: rows mostly with `pd.approval_status='needs_review'`. Possibly some `'rejected'` from T08 deploy.
-
-**Decision per group**:
-- `needs_review` rows: dispose with `'skipped'` status (operator agrees these are pre-fix orphans)
-- `rejected` rows: dispose with `'skipped'` status (drafts are terminally rejected; queue row should follow)
-- Any other state: investigate before applying disposition
+Decision per group: dispose with `'skipped'` and explicit reason in `last_error`.
 
 ### Query A2 — P-A drill-down (sample for inspection)
 
@@ -66,11 +78,9 @@ ORDER BY ppq.created_at ASC
 LIMIT 50;
 ```
 
-Use this to spot-check before applying bulk disposition.
+Use to spot-check before applying bulk disposition.
 
-### Query B1 — P-B cycling drafts (already captured in T08 P-B snapshot)
-
-P-B snapshot is captured pre-T08-deploy per T08 brief. This query is informational only — disposition is automatic via T08 terminal rejection.
+### Query B1 — P-B cycling drafts (informational; already captured in T08 P-B snapshot)
 
 ```sql
 SELECT pd.post_draft_id, pd.client_id, pd.platform,
@@ -81,8 +91,7 @@ FROM m.post_draft pd
 JOIN c.client c ON c.client_id = pd.client_id
 WHERE pd.approval_status = 'needs_review'
   AND pd.created_at < NOW() - INTERVAL '5 days'
-ORDER BY pd.created_at ASC
-LIMIT 50;
+ORDER BY pd.created_at ASC LIMIT 50;
 ```
 
 ### Query C1 — P-C LinkedIn + FB pre-fix queue rows
@@ -99,15 +108,13 @@ GROUP BY 1, 2
 ORDER BY 1, queue_count DESC;
 ```
 
-Expected: rows that the new publisher gates would hold on next run.
-
 ## Decision tree
 
-### For P-A IG queue rows (REVISED v2.8)
+### For P-A IG queue rows
 
-**Step 1**: Run Query A1 to get counts split by approval_status. Document in audit run state.
+**Step 1**: Run Query A1 to get counts split by approval_status.
 
-**Step 2**: Apply disposition per group, using `'skipped'` status:
+**Step 2**: Apply disposition per group with `'skipped'`:
 
 ```sql
 -- Disposition for P-A rows referencing 'needs_review' drafts
@@ -141,43 +148,58 @@ WHERE queue_id IN (
 );
 ```
 
-**ChatGPT round-2 review point**: confirm `'skipped'` is in the legal `m.post_publish_queue.status` enum. Source-pull evidence (instagram-publisher v2.0.0) shows `'skipped'` is used for `publish_disabled` reason. Confirms membership in legal set. If round-2 review surfaces evidence to the contrary, fall back to `'failed'`.
+**Step 3 (NEW v2.9)** — Smoke check for `'skipped'` consumer compatibility:
 
-**Status semantic note**: `'skipped'` is preferred because these are not publisher failures — they are pre-fix contaminated rows intentionally removed from eligibility. `'failed'` would imply the publisher tried and failed; `'skipped'` correctly signals "won't process, by design".
+After dispositioning a small batch first (e.g. 10 rows), verify:
+- Dashboard / Retool / Next.js queues UI still loads correctly
+- No publisher EF crashes when reading queue (publishers should naturally ignore `status='skipped'`)
+- `m.worker_http_log` shows no errors related to `m.post_publish_queue` reads
+
+If clean: apply remainder. If a downstream consumer breaks: ROLLBACK affected rows to original `'queued'` state and switch disposition status to `'dead'`:
+
+```sql
+-- Fallback if 'skipped' breaks downstream
+UPDATE m.post_publish_queue
+SET status = 'dead',
+    last_error = 'pre_fix_disposition:non_approved_draft:fallback_dead'
+WHERE last_error LIKE 'pre_fix_disposition:%';
+```
 
 ### For P-B cycling drafts
 
-T08 handles via terminal rejection. **No manual disposition needed.** P-B snapshot in T08 brief captures the state pre-deploy for retrospective review.
+T08 handles via terminal rejection. **No manual disposition needed.** P-B snapshot in T08 brief captures the state pre-deploy.
 
 ### For P-C LinkedIn + FB pre-fix queue rows
 
-With T13/T18 deployed, these get held on next publisher run with `last_error='not_approved:<status>'`. Operator then has time to review each:
+With T13/T18 deployed, these get held on next publisher run with `last_error='not_approved:<status>'`. Operator review per draft:
 
-- If draft is acceptable quality: manually flip `approval_status` to `'approved'` (will be re-eligible on next publisher run)
-- If draft is unacceptable: leave at `'needs_review'`; T08 will eventually move to `'rejected'`
-- If draft is bulk-low-quality (e.g. all 17 Apr legacy FB stragglers): bulk dispose via similar `'skipped'` UPDATE on the queue
+- Acceptable quality: manually flip `approval_status='approved'`
+- Unacceptable: leave; T08 will eventually move to `'rejected'`
+- Bulk-low-quality: similar `'skipped'` UPDATE on the queue
 
-No bulk action required up-front. Operational time only.
+## ChatGPT round-3 review questions
 
-## ChatGPT round-2 review questions
-
-1. **`'skipped'` semantics confirmed?** Need definitive answer that `'skipped'` is in the legal `m.post_publish_queue.status` enum (we have weak evidence from IG publisher source).
-2. **Audit row in m.post_publish?** Should T10 disposition produce its own audit row in `m.post_publish` (`status='skipped'` + reason) for each row dispositioned, or is the queue-row `last_error` field sufficient?
-3. **P-C bulk vs individual?** Is per-draft operator review of P-C tractable given count? If count is large (>30), do we need a bulk-dispose-all-needs-review-older-than-N-days policy?
+1. After-deploy smoke check approach for `'skipped'` consumer compatibility (Step 3 above) — sufficient? Should we add anything?
+2. P-C bulk vs individual review — still open. Is per-draft review tractable?
+3. Audit row in `m.post_publish` for each disposition — needed, or queue-row `last_error` field sufficient?
 
 ## Audit trail
 
 Results to be captured in `docs/audit/runs/2026-05-01-t10-pre-fix-disposition.md` with:
-- Pre-execution counts per population AND per approval_status sub-group
+- Step 0 introspection result ✓ (already documented in this brief)
+- Pre-execution counts per population AND per approval_status
 - Disposition SQL applied (with timestamps)
+- Step 3 smoke check observations
 - Post-execution counts
 - Operator notes for any edge cases
 
 ## Acceptance criteria (T10 done when)
 
-1. **NEW v2.8**: All discovery queries run with results split by approval_status
-2. P-A bulk disposition applied with `pre_fix_disposition` reason and `'skipped'` status (or `'failed'` if round-2 review reveals `'skipped'` not legal)
-3. P-B observed rejecting on T08 next cycle (P-B snapshot already captured pre-T08-deploy)
-4. P-C orphan count trends to zero as operator approves/rejects each
-5. After 24h post-T08+T13+T18 deploy: zero queue rows referencing non-approved drafts on any platform
-6. Audit doc committed to `docs/audit/runs/`
+1. **NEW v2.9**: Step 0 constraint introspection ✓ (done in chat session)
+2. All discovery queries run with results split by approval_status
+3. P-A bulk disposition applied with `pre_fix_disposition` reason and `'skipped'` status
+4. **NEW v2.9**: Step 3 smoke check confirms downstream consumer compatibility (or fallback to `'dead'` applied)
+5. P-B observed rejecting on T08 next cycle (snapshot captured pre-T08-deploy)
+6. P-C orphan count trends to zero as operator approves/rejects each
+7. After 24h post-T08+T13+T18 deploy: zero queue rows referencing non-approved drafts on any platform
+8. Audit doc committed to `docs/audit/runs/`

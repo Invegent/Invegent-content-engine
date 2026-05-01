@@ -1,37 +1,44 @@
 # T08 — Auto-Approver Stratification + Reject-Cooldown (v1.6.0)
 
-**Status**: Authored, awaiting ChatGPT round-2 review (4 amendments folded in)
-**Pattern**: SQL function update (stratify) + EF source patch (terminal rejection)
-**Risk**: MEDIUM — biggest patch of the batch; affects core approval flow. **NEW v2.8**: 4 amendments from round-1 review.
+**Status**: Authored, awaiting ChatGPT round-3 review (round-1 + round-2 amendments folded in)
+**Pattern**: SQL function eligibility filter (round-2) + EF source patch (terminal rejection only for content gates)
+**Risk**: MEDIUM — biggest patch of the batch. **Round-2 caught a real semantic bug**: original amendment conflated eligibility-gate failures with content-gate failures, would have terminal-rejected drafts purely because operator hadn't enabled auto-approve.
 **Deploy order**: 4 of 4 (after publisher gates safe)
 
-## Round-1 amendments folded in
+## Round-2 amendment summary (NEW v2.9)
 
-- **T08-A**: Platform-scoped `auto_approve_enabled` lookup with `auto_approve_config_found` flag and EF Set-aggregated warnings (PK-confirmed semantics)
-- **T08-B**: Dual-field response (`auto_rejected` + deprecated `skipped_needs_human_review` alias) for backward compat
-- **T08-C**: Staged first run protocol (`{limit: 5}`, observe, escalate)
-- **T08-D**: P-B snapshot before deploy (must run BEFORE T08 deploy, captures cycling-30 state for retrospective review)
+ChatGPT round-2 caught: setting `approval_status='rejected'` on ALL gate failures (including the `auto_approve_enabled` gate) is wrong. "Operator hasn't enabled auto-approve" is not the same as "content quality is bad" — yet both would have hit `trg_handle_draft_rejection` and reset the slot.
+
+**Fix**: SQL function v3 now filters at fetch time — only drafts with an EXACT `(client_id, platform)` row in `c.client_publish_profile` AND `auto_approve_enabled=true` are returned. Drafts without explicit auto-approval eligibility stay invisible to this function (remain `needs_review`, never seen by gates).
+
+Visibility for config-gap drafts moves from per-draft EF warnings to standalone observation queries (S13/S14 standing checks in action_list).
+
+EF gets defence-in-depth: if `auto_approve_enabled` gate fires anyway (shouldn't, given SQL filter), `processOneDraft` returns `outcome='skipped'` and leaves draft at `needs_review`.
+
+## Round-1 amendments (already folded in v2.8)
+
+- ~~T08-A: Platform-scoped `auto_approve_enabled` lookup with `auto_approve_config_found` flag~~ → **superseded by round-2 SQL filter**
+- T08-B: Dual-field response (`auto_rejected` + deprecated `skipped_needs_human_review` alias) for backward compat
+- T08-C: Staged first run protocol (`{limit: 5}`, observe, escalate)
+- T08-D: P-B snapshot before deploy (must run BEFORE T08 deploy)
 
 ## Scope (D-08 narrow)
 
 Two changes ONLY, no length-cap or keyword changes:
 
 1. **Stratify fetch** by (client, platform) — fair-share across buckets, prevent score-DESC starvation
-2. **Add reject-cooldown** — failed-gate drafts move to terminal `'rejected'` state, instead of staying at `'needs_review'` and re-entering top-N every cycle
-
-No length cap changes. No keyword list changes. Those are upstream/per-client config concerns (B22).
+2. **Add reject-cooldown** — failed-CONTENT-gate drafts move to terminal `'rejected'` state. Eligibility-gate failures (operator config) leave drafts at `'needs_review'` (round-2 fix)
 
 ## Two artefacts
 
-1. **SQL migration**: `m.auto_approver_fetch_drafts` v2 — stratification + platform-scoped auto_approve lookup + config-found flag
-2. **EF source patch**: `auto-approver` v1.5.0 → v1.6.0 — platform field, terminal rejection, dual-field response, Set-aggregated config warnings
+1. **SQL migration**: `m.auto_approver_fetch_drafts` v3 — stratification + INNER JOIN LATERAL eligibility filter
+2. **EF source patch**: `auto-approver` v1.5.0 → v1.6.0 — platform field, content-gate terminal rejection, eligibility-gate skip safety net, dual-field response
 
-## Pre-deploy step — P-B snapshot (NEW v2.8)
+## Pre-deploy step — P-B snapshot (REQUIRED)
 
-**REQUIRED before deploying T08.** Captures the cycling-30 state for retrospective review.
+Captures the cycling-30 state for retrospective review BEFORE T08 auto-rejects them.
 
 ```sql
--- T08-D: P-B snapshot — the cycling drafts that T08 will auto-reject
 WITH cycling_drafts AS (
   SELECT pd.post_draft_id, pd.client_id, pd.platform,
     c.client_name, pd.created_at, pd.updated_at,
@@ -50,33 +57,64 @@ WITH cycling_drafts AS (
 SELECT * FROM cycling_drafts;
 ```
 
-Export result to `docs/audit/runs/2026-05-01-t08-pre-deploy-pb-snapshot.md` BEFORE deploying T08. Each draft retrievable later by `post_draft_id` if operator wants to review individually after T08 auto-rejects.
+Export result to `docs/audit/runs/2026-05-01-t08-pre-deploy-pb-snapshot.md` BEFORE deploying T08.
 
-## Artefact 1 — SQL migration (REVISED v2.8)
+## Pre-deploy step — config gap observation (NEW v2.9, S13 + S14)
 
-**Migration name**: `2026_05_01_t08_auto_approver_fetch_drafts_v2`
+Run BEFORE deploying T08 to understand which (client, platform) combos will become invisible to auto-approver:
 
 ```sql
--- T08 v2 (round-1 amendments): Stratified fetch + platform-scoped auto_approve lookup
---   + config-found flag for visible warnings on missing per-platform profile rows.
--- Replaces v1 which: (a) ordered by score-DESC + created_at ASC, causing F-PUB-004
---                       starvation (same 30 drafts cycling); (b) looked up auto_approve_enabled
---                       across all of a client's profiles indiscriminately, which after
---                       stratification by platform becomes unsafe (could pull arbitrary platform).
+-- S13: drafts where NO config row exists (config GAP — may need adding)
+SELECT pd.client_id, c.client_name, pd.platform, COUNT(*) AS needs_review_count
+FROM m.post_draft pd
+JOIN c.client c ON c.client_id = pd.client_id
+LEFT JOIN c.client_publish_profile cpp
+  ON cpp.client_id = pd.client_id
+ AND cpp.platform = pd.platform
+WHERE pd.approval_status = 'needs_review'
+  AND cpp.client_id IS NULL
+GROUP BY 1, 2, 3
+ORDER BY needs_review_count DESC;
+
+-- S14: drafts where config row exists BUT auto_approve_enabled=false (intentional)
+SELECT pd.client_id, c.client_name, pd.platform, COUNT(*) AS needs_review_count
+FROM m.post_draft pd
+JOIN c.client c ON c.client_id = pd.client_id
+JOIN c.client_publish_profile cpp
+  ON cpp.client_id = pd.client_id
+ AND cpp.platform = pd.platform
+WHERE pd.approval_status = 'needs_review'
+  AND COALESCE(cpp.auto_approve_enabled, false) = false
+GROUP BY 1, 2, 3
+ORDER BY needs_review_count DESC;
+```
+
+Expected interpretation:
+- S13 results: gaps where the operator hasn't yet configured auto-approve for that platform. Decide per case: add the config row (auto-approve eligible) OR document why platform stays human-review only.
+- S14 results: explicit operator decisions to keep human-review. No action needed; these stay at `needs_review` indefinitely until a human reviews them.
+
+## Artefact 1 — SQL migration (REVISED v2.9 round-2)
+
+**Migration name**: `2026_05_01_t08_auto_approver_fetch_drafts_v3`
+
+```sql
+-- T08 v3 (round-2 amendments): Eligibility filter at SQL level.
+--   v2 (round-1) used LEFT JOIN LATERAL + auto_approve_config_found flag, but the
+--   EF then terminal-rejected drafts that failed the auto_approve_enabled gate —
+--   conflating eligibility (operator decision) with content quality (system decision).
+--   Round-2 review caught this. Fix: only fetch drafts where exact (client, platform)
+--   config row exists AND auto_approve_enabled=true. Drafts without explicit
+--   eligibility stay invisible to this function.
 --
--- New behaviour:
---   - PARTITION BY (client_id, platform) for fair-share fetch
---   - LEFT JOIN LATERAL for platform-specific auto_approve_enabled (NULL = not configured)
---   - auto_approve_config_found boolean tells the EF whether config was missing
---     (so EF can emit one aggregated warning per (client, platform) per run)
+-- Removed: auto_approve_config_found column (no longer needed; eligibility binary at SQL).
+-- Stratification (round-1): unchanged.
 
 CREATE OR REPLACE FUNCTION m.auto_approver_fetch_drafts(p_limit integer DEFAULT 10)
  RETURNS TABLE(
    post_draft_id uuid, client_id uuid, draft_body text, draft_title text,
    draft_format jsonb, approval_status text, digest_item_id uuid,
    final_score numeric, auto_approve_enabled boolean,
-   platform text,
-   auto_approve_config_found boolean  -- NEW v2: TRUE if exact (client, platform) profile row exists
+   platform text
  )
  LANGUAGE sql
  SECURITY DEFINER
@@ -94,7 +132,6 @@ AS $function$
       di.final_score,
       pd.platform,
       cpp.auto_approve_enabled,
-      (cpp.client_id IS NOT NULL) AS auto_approve_config_found,
       ROW_NUMBER() OVER (
         PARTITION BY dr.client_id, pd.platform
         ORDER BY di.final_score DESC NULLS LAST, pd.created_at ASC
@@ -102,11 +139,12 @@ AS $function$
     FROM m.post_draft pd
     JOIN m.digest_item di ON di.digest_item_id = pd.digest_item_id
     JOIN m.digest_run dr ON dr.digest_run_id = di.digest_run_id
-    LEFT JOIN LATERAL (
-      SELECT cpp.client_id, cpp.auto_approve_enabled
+    JOIN LATERAL (
+      SELECT cpp.auto_approve_enabled
       FROM c.client_publish_profile cpp
       WHERE cpp.client_id = dr.client_id
         AND cpp.platform = pd.platform
+        AND cpp.auto_approve_enabled = true   -- v3 round-2: ELIGIBILITY filter
       ORDER BY cpp.is_default DESC NULLS LAST
       LIMIT 1
     ) cpp ON true
@@ -114,10 +152,7 @@ AS $function$
   )
   SELECT
     post_draft_id, client_id, draft_body, draft_title, draft_format,
-    approval_status, digest_item_id, final_score,
-    COALESCE(auto_approve_enabled, false) AS auto_approve_enabled,
-    platform,
-    auto_approve_config_found
+    approval_status, digest_item_id, final_score, auto_approve_enabled, platform
   FROM ranked
   ORDER BY bucket_rank ASC, final_score DESC NULLS LAST, post_draft_id
   LIMIT p_limit;
@@ -126,26 +161,31 @@ $function$;
 
 **Apply via**: Supabase MCP `apply_migration` (NOT `supabase db push`)
 
+**Note**: function signature changed from v2 (dropped `auto_approve_config_found` column). EF must be redeployed in same window to consume new signature. Apply migration THEN deploy EF — the order matters because v1.5.0 EF tries to read columns that v3 still returns (auto_approve_enabled, platform) but doesn't read the dropped column either way — so v1.5.0 happens to be forward-compatible. Still: deploy both in close succession.
+
 ## Artefact 2 — EF source patch (`supabase/functions/auto-approver/index.ts`)
 
 ### Change 1: VERSION + comment
 
 ```typescript
 const VERSION = "auto-approver-v1.6.0";
-// v1.6.0 (T08, 1 May 2026): NARROW PATCH (D-08) + round-1 amendments.
-//   (1) Stratified fetch via m.auto_approver_fetch_drafts v2 — fair-share
+// v1.6.0 (T08, 1 May 2026): NARROW PATCH (D-08) + round-1 + round-2 amendments.
+//   (1) Stratified fetch via m.auto_approver_fetch_drafts v3 — fair-share
 //       across (client, platform) buckets to prevent F-PUB-004 starvation.
-//   (2) Reject-cooldown: failed-gate drafts move to terminal 'rejected'
-//       state. Fires trg_handle_draft_rejection which resets the slot.
-//   (3) Platform-scoped auto_approve_enabled lookup (T08-A): SQL function v2
-//       returns auto_approve_enabled per (client, platform) only. If no exact
-//       config row, defaults false and emits one aggregated warning per run.
-//   (4) Dual-field response (T08-B): returns both auto_rejected and deprecated
+//   (2) Eligibility filter at SQL level (round-2): only drafts with explicit
+//       (client, platform) auto_approve_enabled=true are fetched. Removes the
+//       conflation between eligibility-gate fails and content-gate fails.
+//   (3) Reject-cooldown: failed-CONTENT-gate drafts move to terminal 'rejected'.
+//       Fires trg_handle_draft_rejection which resets the slot.
+//   (4) Defence-in-depth: if auto_approve_enabled gate fires (should not normally,
+//       given SQL filter), processOneDraft returns outcome='skipped' — NOT
+//       'rejected' — leaving draft at needs_review.
+//   (5) Dual-field response: returns both auto_rejected and deprecated
 //       skipped_needs_human_review alias for backward compat.
 //   No length-cap or keyword changes (D-08 narrow scope).
 ```
 
-### Change 2: DraftRow type — add platform + config-found
+### Change 2: DraftRow type — add platform; drop auto_approve_config_found
 
 ```typescript
 interface DraftRow {
@@ -157,13 +197,78 @@ interface DraftRow {
   approval_status: string;
   digest_item_id: string;
   final_score: number | null;
-  auto_approve_enabled: boolean | null;
+  auto_approve_enabled: boolean;       // always true post-v3 SQL filter; defence-in-depth
   platform: string;                    // NEW v1.6.0
-  auto_approve_config_found: boolean;  // NEW v1.6.0 (T08-A)
+  // auto_approve_config_found: REMOVED v2.9 round-2 — eligibility now binary at SQL
 }
 ```
 
-### Change 3: POST handler — Set-aggregated config warnings (T08-A)
+### Change 3: ApprovalResult outcome union
+
+```typescript
+interface ApprovalResult {
+  post_draft_id: string;
+  client_id: string;
+  outcome: "approved" | "rejected" | "skipped" | "failed";
+  // approved   - passed all gates, approval_status flipped to 'approved'
+  // rejected   - failed CONTENT gate, approval_status flipped to 'rejected' (terminal)
+  // skipped    - failed eligibility gate (defence-in-depth, should not normally fire)
+  // failed     - error state (DB error etc)
+  reason?: string;
+  gates?: Record<string, boolean | string>;
+}
+```
+
+### Change 4: processOneDraft — distinguish gate types (round-2 fix)
+
+Locate the existing else-branch and REPLACE WITH:
+
+```typescript
+  } else {
+    // v1.6.0 round-2 fix: distinguish ELIGIBILITY-gate failures (operator decision)
+    // from CONTENT-gate failures (system decision). Only content-gate failures
+    // terminal-reject. Eligibility-gate failures leave draft at needs_review and
+    // return outcome='skipped' as defence-in-depth (the SQL filter normally
+    // prevents these from being seen at all).
+    if (failed_gate?.gate === "auto_approve_enabled") {
+      // Defence-in-depth only: should not fire post-v3 SQL filter
+      console.warn(
+        `[auto-approver] eligibility_gate_safety_net_fired:${draft.client_id}:${draft.platform}:${draft.post_draft_id}`
+      );
+      return {
+        post_draft_id: draft.post_draft_id,
+        client_id: draft.client_id,
+        outcome: "skipped",
+        reason: "eligibility_safety_net",
+        gates,
+      };
+    }
+
+    // Content-quality gate failure — terminal reject (fires trg_handle_draft_rejection)
+    await supabase
+      .schema("m")
+      .from("post_draft")
+      .update({
+        approval_status: "rejected",  // terminal
+        auto_approval_scores: { gates, passed: false, failed_gate: failed_gate?.gate, reason: failed_gate?.reason, checked_at: checkedAt, agent: VERSION, auto_rejected: true },
+        draft_format: { ...existingFormat, auto_review: { passed: false, failed_gate: failed_gate?.gate, reason: failed_gate?.reason, gates, checked_at: checkedAt, agent: VERSION } },
+        updated_at: checkedAt,
+      })
+      .eq("post_draft_id", draft.post_draft_id);
+
+    return {
+      post_draft_id: draft.post_draft_id,
+      client_id: draft.client_id,
+      outcome: "rejected",
+      reason: failed_gate?.reason,
+      gates,
+    };
+  }
+```
+
+### Change 5: POST handler — simplified (no Set aggregation needed)
+
+Round-1 added a `missingConfigSet` for per-(client, platform) warnings. Round-2 removes that block because the SQL filter prevents these drafts from being fetched. Visibility moves to S13/S14 standing checks.
 
 ```typescript
 app.post("*", async (c) => {
@@ -184,19 +289,6 @@ app.post("*", async (c) => {
       return jsonResponse({ ok: true, version: VERSION, message: "no_drafts_to_review", processed: 0, results: [] });
     }
 
-    // T08-A: emit one aggregated warning per (client, platform) per run
-    // when auto_approve config row is missing for that combo.
-    const missingConfigSet = new Set<string>();
-    for (const draft of drafts) {
-      if (!draft.auto_approve_config_found) {
-        const key = `${draft.client_id}:${draft.platform}`;
-        if (!missingConfigSet.has(key)) {
-          console.warn(`[auto-approver] missing_auto_approve_profile:${draft.client_id}:${draft.platform}`);
-          missingConfigSet.add(key);
-        }
-      }
-    }
-
     const results: ApprovalResult[] = [];
     for (const draft of drafts) {
       results.push(await processOneDraft(supabase, draft));
@@ -207,10 +299,12 @@ app.post("*", async (c) => {
       version: VERSION,
       processed: results.length,
       approved: results.filter((r) => r.outcome === "approved").length,
-      auto_rejected: results.filter((r) => r.outcome === "rejected").length,                       // NEW v1.6.0 (T08-B)
-      skipped_needs_human_review: results.filter((r) => r.outcome === "rejected").length,         // T08-B: deprecated alias for backward compat; remove in v1.7.0
+      auto_rejected: results.filter((r) => r.outcome === "rejected").length,
+      // Deprecated alias: sums BOTH rejected + skipped because v1.5.0 used 'skipped'
+      // for any non-approval outcome. Preserves backward-compat semantic. Remove in v1.7.0.
+      skipped_needs_human_review: results.filter((r) => r.outcome === "rejected" || r.outcome === "skipped").length,
+      eligibility_safety_net_fires: results.filter((r) => r.outcome === "skipped").length,  // NEW v1.6.0 round-2: should be 0 in steady state
       errors: results.filter((r) => r.outcome === "failed").length,
-      missing_config_warnings: Array.from(missingConfigSet),                                       // T08-A: surfaces config gaps
       results,
     });
   } catch (err: unknown) {
@@ -220,139 +314,83 @@ app.post("*", async (c) => {
 });
 ```
 
-### Change 4: processOneDraft — terminal rejection on gate fail
-
-Locate the existing else-branch in `processOneDraft`:
-
-```typescript
-  } else {
-    await supabase
-      .schema("m")
-      .from("post_draft")
-      .update({
-        auto_approval_scores: { gates, passed: false, failed_gate: failed_gate?.gate, reason: failed_gate?.reason, checked_at: checkedAt, agent: VERSION },
-        draft_format: { ...existingFormat, auto_review: { passed: false, failed_gate: failed_gate?.gate, reason: failed_gate?.reason, gates, checked_at: checkedAt, agent: VERSION } },
-        updated_at: checkedAt,
-      })
-      .eq("post_draft_id", draft.post_draft_id);
-
-    return { post_draft_id: draft.post_draft_id, client_id: draft.client_id, outcome: "skipped", reason: failed_gate?.reason, gates };
-  }
-```
-
-REPLACE WITH:
-
-```typescript
-  } else {
-    // v1.6.0 (T08): set approval_status='rejected' (terminal) on gate fail.
-    // Previous behaviour kept draft at 'needs_review' which caused the same
-    // 30 drafts to re-cycle through fetch top-N every 10min — F-PUB-004 starvation.
-    // Setting 'rejected' fires trg_handle_draft_rejection which resets the slot
-    // to pending_fill so a fresh draft can be generated for that signal.
-    await supabase
-      .schema("m")
-      .from("post_draft")
-      .update({
-        approval_status: "rejected",  // NEW v1.6.0: terminal state
-        auto_approval_scores: { gates, passed: false, failed_gate: failed_gate?.gate, reason: failed_gate?.reason, checked_at: checkedAt, agent: VERSION, auto_rejected: true },
-        draft_format: { ...existingFormat, auto_review: { passed: false, failed_gate: failed_gate?.gate, reason: failed_gate?.reason, gates, checked_at: checkedAt, agent: VERSION } },
-        updated_at: checkedAt,
-      })
-      .eq("post_draft_id", draft.post_draft_id);
-
-    return { post_draft_id: draft.post_draft_id, client_id: draft.client_id, outcome: "rejected", reason: failed_gate?.reason, gates };
-  }
-```
-
-### Change 5: ApprovalResult outcome union
-
-Update the type to include `rejected`:
-
-```typescript
-interface ApprovalResult {
-  post_draft_id: string;
-  client_id: string;
-  outcome: "approved" | "rejected" | "failed";  // was "approved" | "skipped" | "failed"
-  reason?: string;
-  gates?: Record<string, boolean | string>;
-}
-```
-
 ## Pre-deploy verification
 
-### Step 1 — P-B snapshot (REQUIRED, see top of this brief)
+### Step 1 — P-B snapshot (REQUIRED, see top of brief)
 
-### Step 2 — Bucket query (informational)
+### Step 2 — Config-gap observation (NEW v2.9, S13 + S14 above)
+
+Run S13 + S14 and document results. Operator may need to add config rows for legitimate platforms before T08 deploys (otherwise those drafts become invisible).
+
+### Step 3 — Bucket query (informational)
 
 ```sql
 SELECT dr.client_id, pd.platform, COUNT(*) AS draft_count, MIN(pd.created_at) AS oldest
 FROM m.post_draft pd
 JOIN m.digest_item di ON di.digest_item_id = pd.digest_item_id
 JOIN m.digest_run dr ON dr.digest_run_id = di.digest_run_id
+JOIN c.client_publish_profile cpp
+  ON cpp.client_id = dr.client_id
+ AND cpp.platform = pd.platform
+ AND cpp.auto_approve_enabled = true
 WHERE pd.approval_status = 'needs_review'
 GROUP BY dr.client_id, pd.platform
 ORDER BY oldest ASC;
 ```
 
-Expected: multiple buckets, with oldest entries from before 25 Apr.
+This shows what the new fetch function will see. Buckets here are the AUTO-APPROVE-ELIGIBLE ones only.
 
-## Staged first-run protocol (T08-C)
+## Staged first-run protocol (T08-C, unchanged)
 
-**REQUIRED — do not invoke with full limit on first run.**
+Do not invoke with full limit on first run.
 
-1. Apply SQL migration via Supabase MCP `apply_migration`
-2. Deploy EF v1.6.0 via Supabase EF dashboard
-3. Hit `GET /auto-approver` — confirm version `v1.6.0`
-4. **First invocation: `POST {limit: 5}`** — NOT 30
-5. Capture response. Expected fields: `auto_rejected`, `skipped_needs_human_review` (deprecated alias), `missing_config_warnings`, `processed`, `approved`
-6. Run post-step queries below. Compare to expected ranges
-7. If clean: invoke with `{limit: 10}`. Run post-step queries again
-8. If still clean: let normal cron tick at full default limit
-9. Document staged-run observations in `docs/audit/runs/2026-05-01-t08-staged-deploy.md`
+1. Apply SQL migration via `apply_migration`
+2. Deploy EF v1.6.0
+3. `GET /auto-approver` — confirm version `v1.6.0`
+4. **First invocation: `POST {limit: 5}`**
+5. Verify response: `auto_rejected`, `skipped_needs_human_review` (deprecated), `eligibility_safety_net_fires` (should be 0), `processed`, `approved`
+6. Run post-step queries (Q1–Q3 below)
+7. If clean: invoke with `{limit: 10}`, then let cron tick at full default
+8. Document in `docs/audit/runs/2026-05-01-t08-staged-deploy.md`
 
 ## Post-step queries
 
 ### Q1 — Auto-rejection count by gate
 
 ```sql
-SELECT
-  pd.draft_format->'auto_review'->>'failed_gate' AS failed_gate,
-  pd.client_id, pd.platform,
-  COUNT(*) AS rejected_count
+SELECT pd.draft_format->'auto_review'->>'failed_gate' AS failed_gate,
+       pd.client_id, pd.platform, COUNT(*) AS rejected_count
 FROM m.post_draft pd
 WHERE pd.approval_status = 'rejected'
   AND pd.draft_format->'auto_review'->>'agent' = 'auto-approver-v1.6.0'
   AND pd.updated_at > NOW() - INTERVAL '15 minutes'
-GROUP BY 1, 2, 3
-ORDER BY rejected_count DESC;
+GROUP BY 1, 2, 3 ORDER BY rejected_count DESC;
 ```
 
-### Q2 — Slot churn observation
+Expected: rejections by content gates only (`body_length`, `sensitive_keywords`). Should NOT see `auto_approve_enabled` here (that was round-2's whole point).
+
+### Q2 — Slot churn
 
 ```sql
-SELECT
-  m.slot.status, m.slot.skip_reason,
-  COUNT(*) AS slot_count
+SELECT m.slot.status, m.slot.skip_reason, COUNT(*) AS slot_count
 FROM m.slot
 WHERE m.slot.updated_at > NOW() - INTERVAL '15 minutes'
-GROUP BY 1, 2
-ORDER BY slot_count DESC;
+GROUP BY 1, 2 ORDER BY slot_count DESC;
 ```
 
-Looking for: `pending_fill` (slot reset, refill incoming) vs `skipped` (2nd rejection, no further refill). Excessive `pending_fill` would indicate churn loop; B22 prioritisation signal.
-
-### Q3 — Fresh approvals across buckets (S11 standing check)
+### Q3 — Fresh approvals across buckets (S11)
 
 ```sql
 SELECT pd.platform, pd.client_id, COUNT(*) AS fresh_approval_count
 FROM m.post_draft pd
 WHERE pd.approval_status = 'approved'
   AND pd.updated_at > NOW() - INTERVAL '15 minutes'
-GROUP BY 1, 2
-ORDER BY fresh_approval_count DESC;
+GROUP BY 1, 2 ORDER BY fresh_approval_count DESC;
 ```
 
-Expected: non-zero counts across multiple (client, platform) buckets after stratification kicks in.
+### Q4 — Safety-net check (NEW v2.9)
+
+Response field `eligibility_safety_net_fires` should be 0 in steady state. Non-zero indicates the SQL filter is not working as intended.
 
 ## Rollback
 
@@ -361,12 +399,13 @@ Expected: non-zero counts across multiple (client, platform) buckets after strat
 
 ## Acceptance criteria (T08 done when)
 
-1. **NEW v2.8**: P-B snapshot exported to audit run state BEFORE deploy
-2. SQL migration applied via `apply_migration`
-3. EF v1.6.0 deployed
-4. `GET /auto-approver` returns version `v1.6.0`
-5. **NEW v2.8**: Staged first run with `{limit: 5}` documented; post-step queries clean
-6. **NEW v2.8**: `missing_config_warnings` field captured — if any (client, platform) appears, decide: add config row OR document why platform is intentionally not auto-approved
-7. After 1 cron cycle: S11 shows fresh approvals across multiple (client, platform) buckets
-8. After 24h: T10 P-B population (cycling-30) confirmed terminally rejected
-9. **NEW v2.8**: 24h churn observation captured: rejected-then-refilled-and-rejected-again rate. If high, prioritise B22
+1. P-B snapshot exported BEFORE deploy
+2. **NEW v2.9**: S13 + S14 observation queries run; config gaps documented; legitimate gaps closed (config rows added) before deploy
+3. SQL v3 migration applied via `apply_migration`
+4. EF v1.6.0 deployed
+5. `GET /auto-approver` returns version `v1.6.0`
+6. Staged first run with `{limit: 5}` documented; post-step queries clean
+7. **NEW v2.9**: `eligibility_safety_net_fires=0` confirmed in steady state
+8. After 1 cron cycle: S11 shows fresh approvals across multiple (client, platform) buckets
+9. After 24h: T10 P-B population confirmed terminally rejected
+10. 24h churn observation captured for B22 prioritisation
