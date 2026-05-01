@@ -1,8 +1,8 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-04-30 Thursday late evening Sydney / 12:30 UTC — **End-of-Thursday-late-evening session reconciliation. SUPERSEDES the afternoon reconciliation as the canonical session log.** Six briefs shipped today (Phase B body-health gate Tier 2 + slot-core + post-publish-obs + pipeline-health-pair + operator-alerting-trio + audit-slice-2-snapshot-generation Tier 0); m schema coverage 9.2% → **39.94%** (274/686); audit cycle 2 ChatGPT pass produced 4 findings all closed same day (F-001 dropped redundant `m.ux_ai_job_post_draft_job_type` index, F-002 → B19 row-count trigger, F-003+F-004 → brief refresh); B17 + B18 closed; PK ad-hoc publisher operational audit found YT broken since 11 Apr (OAuth refresh tokens expired, NOT a missing trigger entry — ChatGPT cross-check halted wrong production migration) and IG cron disabled 25 Apr after Property Pulse hit Meta anti-spam block (`subcode 2207051`); T07 step 1 applied at 12:02:25 UTC (PP IG `publish_enabled=false`); **OTL — Operational Truth Layer** captured as new strategic stream (O-01 through O-06); **Lesson #46** promoted to canonical: "Cron health is not system health. Source-of-truth must be verified at the consumer, not inferred from the producer." Phase B +24h observation window running, due ~5pm AEST Fri 1 May. action_list at v2.2.
-> Written by: PK + Claude session sync
+> Last written: 2026-05-01 Friday early morning UTC / Friday late evening Sydney — **End-of-PK-on-phone session reconciliation. APPENDS to the Thursday late-evening reconciliation as the canonical session log.** PK on phone tonight; T07 step 4 attempted+rolled-back; NDIS-Yarns IG also hit Meta anti-spam (subcode 2207051) on cron retry; F-PUB-004 (auto-approver starvation) discovered as the largest production breakage of the day; F-PUB-005 (trigger doesn't gate on approval) captured as design coupling problem; T01 +21h obs clean across all metrics including zero alerts since deploy; two ChatGPT cross-checks halted wrong-direction actions tonight (wrong YT trigger fix; wrong bulk-quarantine of legacy FB drafts). action_list now at v2.3.
+> Written by: PK (on phone) + Claude session sync
 
 > ⚠️ **Session-start reading order (per memory entry 1):**
 > 1. **`docs/00_sync_state.md`** (this file) — narrative log of last session
@@ -12,295 +12,211 @@
 
 ---
 
-## 🟢 30 APR THU LATE EVENING — END-OF-SESSION RECONCILIATION
+## 🟣 1 MAY EARLY MORNING UTC — PK ON PHONE — APPEND-ONLY SESSION (T07 STEP 4 ATTEMPT + ROLLBACK + AUTO-APPROVER STARVATION DISCOVERY)
 
-This rewrites the Thursday afternoon sync_state. Thursday evening continued the work without a session boundary: morning/afternoon shipped 3 briefs + Phase B patch + alerts cleared + red-team proposal + action_list v1.0; evening shipped 3 more briefs + audit cycle 2 + B17/B18 + an unplanned publisher operational audit that exposed the cron-vs-business-truth gap and surfaced the OTL strategic stream. Single continuous Thursday session.
+This section APPENDS to the Thursday late-evening reconciliation. PK was on phone (no laptop) for this session. Single continuous chat thread. Three rounds of work: (a) PK asked what chat could carry solo on phone; (b) chat applied T07 step 4 cron re-enable + monitored; (c) cron rolled back when NDIS-Yarns IG hit subcode 2207051; (d) deep investigation revealed the auto-approver starvation as the actual largest production issue; (e) ChatGPT cross-checks #1 (wrong YT trigger) and #2 (wrong bulk-quarantine) both halted by chat before harmful action; (f) T01 +21h obs run; (g) reconciliation.
 
-### Sequence of evening work (post-afternoon-reconciliation)
+### Sequence of events
 
-**8. R06 pipeline-health pair brief (~16:02 Sydney / 06:02 UTC)**
-   - Tier 1, expected_delta=37 (`m.pipeline_health_log` 21 + `m.cron_health_snapshot` 16). Brief authored by chat ~15:51 Sydney; CC pre-flight clean.
-   - 37/37 HIGH columns populated, **0 LOW** (cleanest of the three Tier 1 briefs today).
-   - Producer code in hand for both tables: `m.take_pipeline_health_snapshot` and `m.refresh_cron_health`. Every brief-flagged risk item resolved with code evidence: `_today` TZ = AEST (verified in function), `failure_rate` = 0..1 ratio, `pub_held` vs `pub_throttled` distinguished by error-substring filters. Two-client vestiges (`ndis_/pp_published_today`) documented with hardcoded UUIDs + refactor-needed flag.
-   - Migration `20260430061242_audit_pipeline_health_pair_column_purposes` applied via Supabase MCP per D170 at 06:13:30 UTC.
-   - m schema coverage 26.2% → **31.6%** (180 → 217 of 686).
-   - Run state captured note: `latest_run_status` purpose narrowed to observed value only (canonical enum is wider) — promoted to **B17** for follow-up.
+**20. T07 step 4 attempted (~23:?? UTC 30 Apr / ~9:?? AM Sydney 1 May)**
+   - PK on phone confirmed cron jobid 53 should be re-enabled per the v2.2 plan.
+   - Chat ran `cron.alter_job(53, true)` via Supabase MCP. Pre-flight verified (only PP IG had `publish_enabled=false`; other 3 profiles `publish_enabled=true`).
+   - **Discovered MCP role can't direct-UPDATE `cron.job`** — `cron.alter_job(jobid, active)` is the proper API. Used that.
 
-**9. R05 operator-alerting trio brief (~16:20 Sydney / 06:20 UTC)**
-   - Tier 1, expected_delta=57 (`m.compliance_review_queue` 19 + `m.external_review_queue` 21 + `m.external_review_digest` 17). Brief authored by chat ~16:10 Sydney; CC pre-flight clean.
-   - 57/57 HIGH columns populated, **0 LOW** (second consecutive zero-LOW result; cleanest result on JSONB-bearing brief to date).
-   - Strict JSONB rule satisfied for `ai_analysis`: producer code cited at `supabase/functions/compliance-reviewer/index.ts:200-244` + canonical writer RPC `public.store_compliance_ai_analysis`; all 8 top-level keys + array element sub-shapes documented.
-   - Pause-context handled correctly — column purposes describe semantics without repeating "(paused per D162)".
-   - Migration `20260430070207_audit_operator_alerting_trio_column_purposes` applied at 07:08:00 UTC.
-   - m schema coverage 31.6% → **39.94%** (217 → 274 of 686).
+**21. T07 step 5 first observation (00:18 UTC 1 May, ~12 min after re-enable)**
+   - 2 cron ticks fired (00:00 + 00:15 UTC), both `succeeded` at the cron layer.
+   - 4 IG publish attempts inside (cron command says `?limit=2`):
+     - **CFW × 2 attempts**: failed at publisher's pre-flight gate with `not_approved:needs_review`. Did NOT reach Meta API.
+     - **NDIS-Yarns × 2 attempts**: reached Meta API. 00:00 UTC: subcode 2207027 "Media ID is not available" (silent flag). 00:15 UTC: **subcode 2207051 "Action is blocked" — same anti-spam flag PP got 25 Apr**.
 
-**10. R02 audit Slice 2 — first Tier 0 D182 brief (~17:15–17:35 Sydney / 07:15–07:35 UTC)**
-   - First Tier 0 (markdown generation) brief shape — D182 v1 durability test across 2nd brief shape. Brief authored at `docs/briefs/audit-slice-2-snapshot-generation.md`.
-   - **First-run results (Cowork): 5/5 first-run thresholds.** Questions=1 (≤10), defaults overridden=0 (≤20%), run completes=yes, production writes=0 (mandatory), PK approval ≤10min.
-   - Output written: `docs/audit/snapshots/2026-04-30.md` (17 mechanical sections + Section 19 footer; **Section 18 deliberately absent** — load-bearing rule honored).
-   - 6 schema-drift fallbacks were Cowork's correct application of the default-and-continue rule (brief author bug not Cowork bug). Brief refreshed at the same closure commit fixing all 6:
-     1. Section 1 / `f.feed_source.active` → `status='active'`
-     2. Section 3.1 / `k.table_registry.object_kind` → `table_kind`
-     3. Sections 7, 11, 16 / `c.client.name` → `client_name`
-     4. Section 9 / `t.content_vertical.slug` → `vertical_slug`
-     5. Section 9 / `m.signal_pool.use_count` → `reuse_count`
-     6. Section 11 / removed `post_seed` indirection (`m.post_draft.client_id` exists directly)
-     7. Section 15 / `pg_get_indexdef(indexrelid)` against `pg_indexes` → join `pg_class` properly
-     8. Section 16 / removed `cpp.enabled = true` filter (column doesn't exist)
-   - Q-001 (`m.cron_health_snapshot.latest_run_status` filter scope) resolved Option A — chat verified all 6 substitutions vs `information_schema`; all factually correct.
-   - **D182 v1 now validated across two distinct brief shapes** (Tier 1 migration drafting + Tier 0 markdown generation) — feeds into D182 sunset review (12 May 2026).
+**22. Cron rolled back + NDIS-Yarns IG locked (00:19 UTC 1 May)**
+   - Chat applied `cron.alter_job(53, false)` immediately.
+   - Then `UPDATE c.client_publish_profile SET publish_enabled=false, paused_reason='meta_subcode_2207051_block_2026-05-01_ndis_yarns_ig_anti_spam', paused_at=now() WHERE platform='instagram' AND client_id='fb98a472-...' AND publish_enabled=true`.
+   - Final IG profile state: PP false, NDIS-Yarns false, CFW true, Invegent true. Cron jobid 53: false.
+   - Original v2.2 "only PP is flagged" model was wrong. Captured as **F-PUB-002 corrigendum** in `docs/audit/runs/2026-04-30-publishers-operational.md`.
 
-**11. B17 closed (~17:55 Sydney / 07:55 UTC)**
-   - `m.cron_health_snapshot.latest_run_status` purpose polish — applied via Supabase MCP migration `audit_b17_polish_cron_health_latest_run_status_purpose` per D170.
-   - New purpose at 678 chars (up from ~280): documents canonical filter `('succeeded','failed')`, all stored values (succeeded/failed/NULL), pg_cron transitional statuses excluded, and currently observed reality.
-   - **Lesson #32 violation logged**: chat's first apply_migration attempt failed because chat assumed `k.table_registry.table_id` was UUID; it's BIGINT. Pre-flight via `k.vw_table_summary` per Lesson #32 — even for one-line column-comment polish work. Fix took 1 retry.
+**23. Deep investigation: why did CFW fail with `not_approved:needs_review` and what does that imply?**
+   - Discovered: CFW IG queue rows reference drafts in `approval_status='needs_review'`, not `'approved'`.
+   - Pulled the trigger function `m.enqueue_publish_from_ai_job_v1` source — confirmed it does NOT check approval_status before inserting into queue. **F-PUB-005**: design coupling problem.
+   - Then asked: why aren't the drafts auto-approved?
+   - Discovered the auto-approver-sweep cron is healthy 144/144 in 24h, but its EF response shows `processed: 30, approved: 0, skipped_needs_human_review: 30` on every run.
+   - The fetch function `m.auto_approver_fetch_drafts(30)` returns the same 30 highest-scored drafts every cycle. Score-DESC ordering picks 17 Apr legacy FB stragglers + 25 Apr LinkedIn drafts (per-client length cap mismatch). All 30 fail body_length or sensitive_keywords gates. No reject-cooldown means rejected drafts re-enter top-30 next cycle. Lower-scored IG drafts never reached.
+   - **F-PUB-004 (HIGH, NEW)**: auto-approver starvation. 0 IG approvals + 0 LinkedIn approvals since 25 Apr 14:46 UTC. FB still works (different state-flow — drafts skip `'approved'` and go directly to `'published'`).
+   - LinkedIn pipeline still publishing 3 posts in last 24h despite zero new approvals — running on the 64 already-`approved` LinkedIn drafts in queue from before 25 Apr 14:16.
 
-**12. B18 closed — decisions log reconciliation (commit `5775929f`)**
-   - Full prose entries added to `docs/06_decisions.md` for D170 (MCP-applied migrations), D181 (audit loop architecture), D182 (non-blocking execution model). D183/D184 unchanged.
-   - **D185 reserved** for `structured_red_team_review_v1` ratification (sunset 31 May 2026 if R10 doesn't run).
-   - Status table footer entries cross-link to new prose.
+**24. ChatGPT cross-check #1 (replayed from earlier today)**
+   - On the publisher operational audit's first-pass YT framing ("add youtube to enqueue trigger whitelist") — chat had already executed this earlier. Confirmed correct read tonight: ChatGPT pulled R6 spec evidence chat had access to but didn't surface; pre-check via `youtube-publisher` v1.5.0 EF source proved the trigger exclusion was intentional architecture (YT reads `m.post_draft` directly, not the queue). Real cause: OAuth refresh-token expiry. **Lesson #45 application** (treat external red-team pre-checks as mandatory).
 
-**13. R03 cycle 2 audit closure (commit `bbfc4944`) — manual ChatGPT audit pass**
-   - Snapshot at `docs/audit/snapshots/2026-04-30.md` handed to ChatGPT in Data Auditor role per `docs/audit/roles/data_auditor.md`.
-   - ChatGPT raised 4 findings (2 MEDIUM, 2 LOW). Chat verified each claim against live MCP before deciding action.
-   - **F-2026-04-30-D-001 closed-action-taken** — `m.ai_job` had two redundant UNIQUE indexes on `(post_draft_id, job_type)`. Verified via `pg_constraint` neither backed a constraint. Migration `audit_drop_redundant_ai_job_unique_index` applied: dropped `ux_ai_job_post_draft_job_type`, kept `ux_ai_job_unique` as canonical. UPSERT path preserved (resolves on column tuple). Index count 6→5. **Severity-honest note**: should have been HIGH given explicit deferral note in 27 Apr migration; auditor's MEDIUM rating was conservative.
-   - **F-2026-04-30-D-002 closed-action-pending** — `m.slot.filled_draft_id` no index. Verified production functions DO use lookup pattern (`m.fill_pending_slots`, `m.handle_draft_rejection`, `m.recover_stuck_slots`). But `m.slot` has only 159 live tuples; 97.1% idx_scan_pct already; planner correctly chooses seq scan. Captured as **B19** with row-count trigger 5,000 tuples. Standing check **S7** added.
-   - **F-2026-04-30-D-003 closed-action-taken** — Section 15 omitted `f.canonical_content_body`. Verified all expected indexes exist (PK, idx_ccb_status, idx_ccb_active_pick partial composite). No DDL needed. **Brief Section 15 expanded** to include `f.canonical_content_body` as 5th hot table.
-   - **F-2026-04-30-D-004 closed-action-taken** — Section 13 itemised public functions (162 funcs, 157 distinct names, 5 overloaded, ~43 RPC-likely). **Brief Section 13 refresh** emits JSON array of `{name, args, returns}`. Classification deferred to future iteration.
-   - **O-003 captured** — Brief Section 5 Part B added emitting `k.fn_check_migration_naming_discipline()` output.
-   - Two candidate Lessons captured: **#41** row-count-aware role expectations; **#42** briefs mirror role hot-table sets. Cycle 2 of 5 manual cycles complete; cycle 3 captured as **R11**.
+**25. ChatGPT cross-check #2 (NEW tonight)**
+   - On chat's proposed fix for F-PUB-004: bulk-update legacy 17 Apr FB stragglers to `'dead'` to free up auto-approver fetch slots.
+   - ChatGPT pushed back: (a) `'needs_human_review'` value would VIOLATE the CHECK constraint (legal values are `draft, needs_review, approved, rejected, scheduled, published, dead`); (b) `'dead'` is destructive and could hide audit value — use reversible `'rejected'` quarantine instead; (c) stratification alone isn't enough — without reject-cooldown the same drafts re-enter top-30 every cycle.
+   - Chat verified ChatGPT's claims: confirmed CHECK constraint (legal values match exactly what ChatGPT said); confirmed scope was wrong (only 12 rows match the proposed criteria, not 87+); confirmed the cap mismatch is a synthesis-layer issue not a draft-layer issue.
+   - Chat halted before applying any UPDATE. Captured the corrected fix in T08 + D-08 + D-09. **Lesson #46 application** (Cron health is not system health — auto-approver is the same pattern, scoped differently).
 
-**14. F04 brief authored (post_render_log column-purposes)**
-   - F04 promoted from Frozen to Active. Brief authored at `docs/briefs/post-render-log-column-purposes.md` (commit `24fb53d7`). Single table, 16 cols, smallest brief of the run. Strict JSONB rule applies to `render_spec` (image-worker / video-worker EF source must be cited).
-   - Queue.md status: ready, awaiting CC pre-flight + migration draft + push (likely overnight). Will close m-schema small-tables sweep (m schema 39.94% → ~42.3%).
+**26. T01 Phase B +24h obs (T07 step 5 final + observations at 00:30 UTC)**
+   - Ran the 4 obs queries from `docs/runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md` verbatim, plus a defensive 5th query ("any alerts of any kind since deploy").
+   - All 5 targets pass:
+     - Zero new exceeded_recovery_attempts ✅
+     - Shadow ai_job 3/3 succeeded (100%, well below <5% target) ✅
+     - Zero new slot_fill_no_body_content ✅
+     - Zero new pool_thin (especially Invegent) ✅
+     - Bonus: zero alerts of ANY kind since deploy ✅
+   - Captured at `docs/audit/runs/2026-05-01-phase-b-+24h-obs.md`.
+   - **T01 ✅ done at +21h.** T02 (Gate B exit) defaults to "exit on schedule Sat 2 May." Final check at +24h (~03:48 UTC Sat 1 May) is formality; another 3h of clean window expected.
 
-**15. T05 added — Meta business verification failed**
-   - PK confirmed Thu morning that Meta business verification failed at the verification step. T05 added as P1 time-bound. Phase 1.6 deliverable; blocks Standard Access graduation work and external client onboarding. Memory entry 4 stale — needs update once support contact is logged.
+**27. S10 baseline established (00:30 UTC 1 May)**
+   - Last 24h IG: 0 published, 2 failed (the NDIS attempts at 00:00+00:15 UTC).
+   - Last 24h FB: 5 published. **Healthy.**
+   - Last 24h LinkedIn: 3 published. **Surprise — pipeline running on remainder of pre-25-Apr `approved` queue.**
+   - Last 24h YT: 0. Known broken (OAuth).
+   - This is the OTL S10 baseline going forward.
 
-**16. PK ad-hoc publisher operational audit ("why aren't YouTube and Instagram working?") (~21:15 Sydney / 11:15 UTC)**
+**28. action_list updated through v2.3**
+   - v2.2 → v2.3: T07 step 4 attempted+rolled-back; NDIS-Yarns IG also locked; T01 ✅; T08 added P0 (F-PUB-004 patch); D-08 + D-09 added; B22 + B23 added; S11 added; F-PUB-002 corrigendum committed; F-PUB-004 + F-PUB-005 captured.
 
-   First-pass framing was wrong on YouTube. ChatGPT cross-check halted a production migration that would have been useless. See **F-PUB-001 corrigendum** in `docs/audit/runs/2026-04-30-publishers-operational.md`.
-   
-   **YouTube — F-PUB-001 (HIGH, open):**
-   - Wrong first-pass framing: "trigger function `m.enqueue_publish_from_ai_job_v1` excludes 'youtube' from platform whitelist; add it to fix."
-   - Correct framing: `youtube-publisher` v1.5.0 reads `m.post_draft` directly (`video_status='generated'` AND `video_url IS NOT NULL` AND `recommended_format IN (4 video formats)`), NOT `m.post_publish_queue`. The trigger exclusion is correct architecture per R6 implementation spec ("No YouTube in R6 v1") + EF source confirmation.
-   - **Real root cause: OAuth refresh tokens expired/revoked**. 17 of 18 attempted YT uploads failed at `refreshAccessToken` since 11 Apr 2026 with `invalid_grant` (12× "Bad Request" + 5× "Token has been expired or revoked"). Invegent has never had a refresh token configured (1× "No refresh token found for client 93494a09").
-   - 0 successful YT uploads in 21 days. 18 drafts in `video_status='failed'` with `youtube_upload_error` populated. 16 drafts in `video_status='pending'` (render not done yet).
-   - **T06 reframed**: PK dashboard action (Clients → Connect → YouTube for NDIS-Yarns + Property Pulse + Invegent), NOT a migration. Verification via successful upload + `m.post_publish` audit row written.
+### Today's mutations (cumulative across both reconciliations)
 
-   **Instagram — F-PUB-002 (MEDIUM, open):**
-   - IG publisher cron (jobid 53) disabled since 2026-04-25 08:15 UTC — exactly when 796th run hit Meta API 403 error on Property Pulse: `code=4, error_subcode=2207051, "Action is blocked", "Application request limit reached", is_transient=false`. Per-IG-account anti-automation flag.
-   - 92 IG queue items piled up across 4 clients (PP 53, NDIS-Yarns 24, CFW 10, Invegent 5).
-   - FB unaffected (42 posts published 18-30 Apr through and after the block, zero spam errors). Block is per-IG-account, not per-Meta-app.
-   - **T07 6-step sequence locked** per ChatGPT cross-check on sequencing (must exclude PP via `publish_enabled=false` BEFORE re-enabling cron, not after).
+Thursday list per the previous reconciliation. Friday early morning UTC additions:
 
-   **F-PUB-003 (LOW, observation):** YT AI synthesis + 18 video renders sunk while OAuth was broken. B21 captures: after PK reconnects OAuth + verified upload, audit whether already-rendered drafts can be retried via `video_status='failed' → 'generated'` reset (no re-render needed).
+| When | Mutation | Type |
+|---|---|---|
+| ~23:?? UTC 30 Apr | `cron.alter_job(53, true)` — IG cron re-enabled | DML (data update on cron.job) |
+| 00:00 UTC 1 May | First IG cron tick after re-enable — 2 attempts (CFW+NDIS) — both failed in different ways | (cron run, not chat-driven) |
+| 00:15 UTC 1 May | Second IG cron tick — 2 attempts (CFW+NDIS) — both failed | (cron run, not chat-driven) |
+| 00:19 UTC 1 May | `cron.alter_job(53, false)` — IG cron rolled back | DML |
+| 00:19 UTC 1 May | `UPDATE c.client_publish_profile SET publish_enabled=false ... WHERE client_id=NDIS-Yarns` | DML (single row) |
 
-   **OTHER FINDINGS:**
-   - Three legacy `seed-and-enqueue-*` crons (jobid 11/64/65) inactive — all hit `statement timeout` errors before being disabled. These are LEGACY paths replaced by the slot-driven trigger for FB/IG/LI; YouTube was always on a separate path (per F-PUB-001 corrigendum). Inactivity is correct.
-   - Tokens shown as 2099-12-31 in snapshot Section 16 are placeholder "never-tracked" sentinels in `token_expires_at`, not real expiry. Out-of-scope for Data Auditor (Security/Ops Auditor scope when those roles exist).
+**No DDL applied tonight. No bulk UPDATEs. ChatGPT cross-check #2 stopped the proposed bulk-quarantine of legacy FB drafts.**
 
-**17. T07 step 1 applied (~22:02 Sydney / 12:02 UTC)**
-   - `UPDATE c.client_publish_profile SET publish_enabled=false, paused_reason='meta_subcode_2207051_block_25_apr_pp_ig_anti_spam', paused_at=now(), updated_at=now() WHERE client_publish_profile_id='b44167f3-...' AND publish_enabled=true RETURNING ...` — applied at 12:02:25 UTC.
-   - Single-row data UPDATE (not migration). Safety guard `AND publish_enabled=true` prevents idempotent re-apply churning `paused_at`.
-   - **Step 2 verified**: post-check on all 4 IG profiles. Only PP shows `publish_enabled=false`; CFW/Invegent/NDIS-Yarns unchanged with `publish_enabled=true` and queue depths 10 / 5 / 24.
-   - **Step 3 skipped**: IG publisher v2.0.0 source (`supabase/functions/instagram-publisher/index.ts`) already proves `if (profile.publish_enabled === false) { mark queue row 'skipped'; continue }`. Belt-and-braces dry_run not needed.
-   - **Steps 4-6 await**: PK re-enables cron jobid 53 via dashboard (step 4); chat monitors 30-60min (step 5); PK contacts Meta dev support for PP recovery via T05 (step 6).
+### Lesson #46 vindication
 
-**18. Operational Truth Layer captured (OTL — strategic stream, ~22:30 Sydney / 12:30 UTC)**
-   
-   PK's framing tonight: tonight's audit isn't about YT and IG specifically — it's evidence ICE has been operating with cron-layer monitoring while business-layer truth was unmonitored. Captured as new strategic stream in `docs/00_action_list.md` v2.2:
-   - **O-01** Platform-source-of-truth map (P1, most enabling — all other O items reference it). Author `docs/operations/platform_source_of_truth.md` next session.
-   - **O-02** Per-client/platform circuit breakers (auto-trip on N OAuth failures). Tonight's manual `publish_enabled=false` proved the pattern; auto-trip is the natural extension.
-   - **O-03** Business-outcome monitors (NOT cron monitors). S10 standing check is the manual prototype.
-   - **O-04** Pre-DDL verification gate (formal checklist). Captures Lesson #43 + #45.
-   - **O-05** External-account health checks (daily matrix). Expanded version of S9.
-   - **O-06** Recovery playbooks by failure class. Starting with the 3 we hit tonight.
-   - **R12** added — define `docs/audit/roles/operations_auditor.md` once OTL items in place. Analogous to Data Auditor under D181.
+F-PUB-004 (auto-approver starvation) is the most direct demonstration of Lesson #46 to date. The auto-approver-sweep cron returned 200 OK on every run (144/144 in 24h, last run 00:30 UTC) while the actual business outcome was zero approvals across IG and LinkedIn for 5+ days. Standing checks S8 (cron-level) and S9 (OAuth-level) and S10 (publish-output-level) all reported healthy or near-healthy for the auto-approver platform — but the *approvals* dimension wasn't being monitored. **S11 added tonight** to fill that gap.
 
-   **Lesson #46 promoted to canonical**: *"Cron health is not system health. Source-of-truth must be verified at the consumer, not inferred from the producer."* Operationalized as standing checks S8 (cron-level), S9 (OAuth/token-level), S10 (business-outcome-level) — three distinct health surfaces. Supersedes candidate Lessons #43-#45 as their parent abstraction.
-
-   Strong evidence accumulating for **D-01 / D185** (red-team review v1 ratification). Tonight's ChatGPT cross-check on the publisher audit caught a wrong production migration before it landed — non-Phase-C, real-stakes, high-value catch. Captured for D185 ratification consideration when R10 (Phase C cutover live pilot) completes.
-
-**19. action_list updated through v2.2**
-   - v1.7 (R02 closed) → v1.8 (B17+B18 closed) → v1.9 (R03 cycle 2 closed) → v2.0 (publisher operational audit) → v2.1 (ChatGPT cross-check halted wrong YT fix) → v2.2 (T07 step 1 applied + OTL captured + Lesson #46 promoted + S10 added + R12 added).
-   - One observation captured in v2.2 honest-limitations: PK's pasted ChatGPT message had a `[DEVELOPER MODE](#settings/Connectors/Advanced)` markdown link tail (likely auto-appended by paste path / external agent UI, not part of PK's actual content). Chat ignored it per standard injection-defense rules. Behavior unchanged. Flagged inline in chat response.
-
-### Today's six migrations summary (was 3 in afternoon snapshot)
-
-| Migration | Type | Delta | Applied UTC |
-|---|---|---|---|
-| `20260430020151_audit_slot_core_column_purposes` | k.column_registry UPDATE | +56 docs | 02:17 |
-| `20260430033748_phase_b_patch_image_quote_body_health_gate` | DDL: function + view replace | body-health gate in 3 places | 03:48:25 |
-| `20260430041924_audit_post_publish_observability_column_purposes` | k.column_registry UPDATE | +61 docs (3 LOW retained) | 04:30:55 |
-| `20260430061242_audit_pipeline_health_pair_column_purposes` | k.column_registry UPDATE | +37 docs | 06:13:30 |
-| `20260430070207_audit_operator_alerting_trio_column_purposes` | k.column_registry UPDATE | +57 docs | 07:08:00 |
-| `audit_b17_polish_cron_health_latest_run_status_purpose` | k.column_registry UPDATE | +1 polish (678 chars) | ~07:55 (B17 close) |
-| `audit_drop_redundant_ai_job_unique_index` | DDL: DROP INDEX | -1 redundant index | ~18:30 (R03 close) |
-
-Plus **1 single-row DML** applied late evening:
-- `UPDATE c.client_publish_profile SET publish_enabled=false ...` for PP IG (T07 step 1) — 12:02:25 UTC
-
-### m schema documentation progress
-
-| Snapshot | Documented | Total | % | Delta from prior |
-|---|---|---|---|---|
-| Before today | 63 | 686 | 9.2% | — |
-| After slot-core | 119 | 686 | 17.3% | +56 |
-| After post-publish obs | 180 | 686 | 26.2% | +61 |
-| After pipeline-health pair | 217 | 686 | 31.6% | +37 |
-| After operator-alerting trio | 274 | 686 | **39.94%** | +57 |
-
-**Net session impact: +211 documented columns. m schema crossed 25% AND 35% thresholds same day. F04 (post_render_log, +16 cols) overnight will take it to ~42.3%.**
+This would have been visible in S10 (zero IG publishes in 24h) had it existed a week ago. S10 was added in v2.2 yesterday. So tonight's discovery is consistent with the pattern Lesson #46 names — but it's also evidence that S10 alone is not enough; S11 (fresh approvals) is a stricter upstream check.
 
 ### Today's commits — Invegent-content-engine `main`
 
-(Afternoon commits omitted — see prior afternoon reconciliation. Evening additions:)
+(Thursday commits per previous reconciliation. Friday early morning UTC additions:)
 
 | Commit | Author | What |
 |---|---|---|
-| (CC) | CC | pipeline-health pair CC draft + queue + run state |
-| (chat) | chat | pipeline-health pair run state closed |
-| `5775929f` | chat | **B18 closed** — D170+D181+D182 prose entries; D185 reserved |
-| (CC) | CC | operator-alerting trio CC draft + queue + run state |
-| (chat) | chat | operator-alerting trio run state closed |
-| (Cowork) | cowork | **R02 first Tier 0 D182 brief** — audit-slice-2-snapshot-generation done; snapshot at `docs/audit/snapshots/2026-04-30.md` |
-| `782fdf43` | chat | R02 closure batch — Q-001 resolved Option A; brief refreshed (6 query bugs) |
-| (Supabase MCP) | chat | **B17 closed** — `audit_b17_polish_cron_health_latest_run_status_purpose` migration applied |
-| `1113cee9` | chat | action_list v1.8 — B17+B18 closed |
-| `bbfc4944` | chat | **R03 cycle 2 audit closure** — 4 findings closed (F-001 dropped redundant index, F-002→B19, F-003+F-004 brief refresh) |
-| `d6fd6aca` | chat | action_list v1.9 — R03 closed; B19+S7+R11 added |
-| `46d59dab` | chat | **action_list v2.0 + publisher operational audit** — F-PUB-001/002/003; T06+T07+B20+B21+S8 added |
-| `1c79df92` | chat | action_list v2.1 + F-PUB-001 corrigendum — ChatGPT cross-check halted wrong YT trigger fix; T06 reframed to OAuth reconnect; T07 6-step sequence; S9 added |
-| (Supabase) | chat | **T07 step 1 applied** — PP IG `publish_enabled=false` at 12:02:25 UTC |
-| `25d37486` | chat | action_list v2.2 — T07 step 1+2 done; **OTL captured (O-01..O-06)**; **Lesson #46 promoted**; S10 added; R12 added |
-| (this commit) | chat | sync_state — late-evening reconciliation |
+| (Supabase) | chat | T07 step 4 attempt — cron re-enabled |
+| (Supabase × 2) | chat | T07 step 4 rollback — cron disabled + NDIS-Yarns IG locked |
+| (this commit) | chat | sync_state late-evening reconciliation update + action_list v2.3 + 2026-05-01-phase-b-+24h-obs.md run state + 2026-04-30-publishers-operational.md corrigendum (F-PUB-002 update + F-PUB-004 + F-PUB-005) |
 
-**invegent-dashboard — `main`:** none this session (R07 explicitly deferred per PK; bundle into one update covering today's full ~9.2 → ~42% sweep once F04 lands).
+**invegent-dashboard — `main`:** none.
 
 ### Standing memory rule honoured (entry 11 — 4-way sync)
 
-- ✅ docs/00_sync_state.md — THIS COMMIT (late-evening reconciliation)
-- ✅ docs/00_action_list.md — at v2.2 (commit `25d37486`)
-- ✅ docs/runtime/runs/* — three new run-state files (pipeline-health pair, operator-alerting trio, audit-slice-2-snapshot-generation), plus updated post-Phase-B run state with 27-Apr alert root causes
-- ✅ docs/audit/runs/2026-04-30-data.md — cycle 2 ChatGPT findings + closure annotations
-- ✅ docs/audit/runs/2026-04-30-publishers-operational.md — operational audit for YT + IG (with F-PUB-001 corrigendum)
-- ✅ docs/audit/open_findings.md — cycle 2 findings closed; cycle 3 history row added; candidate Lessons #41+#42 captured
-- ✅ docs/audit/snapshots/2026-04-30.md — first Tier 0 D182 brief output
-- ✅ docs/briefs/audit-slice-2-snapshot-generation.md — refreshed twice (6 query bugs first refresh; cycle 2 closure refresh added Section 5 Part B + Section 13 inventory + Section 15 5 hot tables)
-- ✅ docs/06_decisions.md — D170+D181+D182 prose entries committed at B18 closure (`5775929f`); D185 reserved for `structured_red_team_review_v1` ratification (sunset 31 May 2026)
-- ✅ docs/briefs/queue.md — F04 (post_render_log) ready; 6 today briefs in Recently completed
-- ⚠️ invegent-dashboard roadmap page.tsx — explicitly deferred per R07; will reflect ~42% m schema after F04 lands; bundle into single dashboard update covering full Thu sweep
-- ✅ Memory entries — auto-regenerate from chat history overnight; no `memory_user_edits` directives changed this session
+- ✅ docs/00_sync_state.md — THIS COMMIT (PK-on-phone reconciliation appended)
+- ✅ docs/00_action_list.md — at v2.3
+- ✅ docs/audit/runs/2026-04-30-publishers-operational.md — corrigendum + F-PUB-004 + F-PUB-005
+- ✅ docs/audit/runs/2026-05-01-phase-b-+24h-obs.md — NEW (T01 result captured)
+- ✅ docs/06_decisions.md — no new decisions tonight (D185 was reserved yesterday; tonight's evidence reinforces the case)
+- ✅ docs/briefs/queue.md — F04 still ready; nothing changed
+- ⚠️ invegent-dashboard roadmap page.tsx — still deferred per R07
+- ✅ Memory entries — auto-regenerate from chat history; no `memory_user_edits` directives changed
 
 ---
 
-## ⛔ DO NOT TOUCH NEXT SESSION
+## ⛔ DO NOT TOUCH NEXT SESSION (UPDATED FROM PREVIOUS)
 
-- The applied F-002 Phase D ARRAY column purposes (149 c+f rows).
-- The applied slot-core column purposes (56 m rows).
-- The applied post-publish observability column purposes (61 m rows). 3 LOW rows in `docs/audit/decisions/post_publish_observability_low_confidence_followup.md` awaiting joint operator+chat session.
-- The applied pipeline-health pair column purposes (37 m rows).
-- The applied operator-alerting trio column purposes (57 m rows).
-- The B17 polish on `m.cron_health_snapshot.latest_run_status` (678 chars).
-- **The Phase B body-health gate patch.** `m.fill_pending_slots(integer, boolean)` and `m.hot_breaking_pool` view both carry the `EXISTS (...)` body-health filter from migration `20260430033748`. Do not modify either object until +24h obs checkpoint completes.
-- **The dropped `m.ux_ai_job_post_draft_job_type` index** (R03 F-001 closure). `ux_ai_job_unique` is canonical. UPSERT path resolves on column tuple `(post_draft_id, job_type)`.
-- **The PP IG `publish_enabled=false` row state** (T07 step 1 apply). Do not flip back to `true` until T07 step 6 (Meta dev support outcome) decides the PP recovery path.
-- The D182 v1 spec at `docs/runtime/automation_v1_spec.md` — system has now executed 7 briefs successfully (including Tier 2 production patch + Tier 0 markdown gen).
-- The Cowork executor prompt (`docs/runtime/cowork_prompt.md`) — still frozen.
-- The 6 LOW-confidence column rows in `docs/audit/decisions/f002_p*_low_confidence_followup.md` AND the 3 LOW rows in `post_publish_observability_low_confidence_followup.md` — joint operator+chat session work.
-- All Phase B Gate B items — Phase B autonomous through Sat 2 May earliest exit gated on +24h obs.
-- The audit Slice 2 snapshot at `docs/audit/snapshots/2026-04-30.md` — cycle 1 baseline snapshot for the day; cycle 3 will produce a fresh snapshot on a future date.
-- The cycle 2 audit run file at `docs/audit/runs/2026-04-30-data.md` — closures committed; reference only.
-- The publisher operational audit run file at `docs/audit/runs/2026-04-30-publishers-operational.md` — F-PUB-001 corrigendum is the load-bearing version.
+(All Thursday-late-evening protections still apply. Friday early-morning additions:)
+
+- **The NDIS-Yarns IG `publish_enabled=false` row state** (T07 step 4 rollback). Do not flip back to `true` until T08 (F-PUB-004 fix) lands AND T05 (Meta dev support outcome) decides recovery.
+- **The cron jobid 53 `active=false` state.** Do not re-enable until: (a) T08 patch deployed AND (b) at least one fresh CFW or Invegent IG draft observed reaching `approved` status. Then revisit with `?limit=1` only.
+- **The Phase B body-health gate** continues to hold per +21h observation. Final +24h checkpoint at ~03:48 UTC Sat 1 May. T02 exit decision Saturday.
 
 ---
 
-## 🟡 NEXT SESSION (Fri 1 May or later)
+## 🟡 NEXT SESSION (Sat 2 May or later)
 
-> **All next-session items are also in `docs/00_action_list.md` v2.2 with priorities and triggers.** Read that file alongside this one for the active backlog view.
+> **All next-session items are also in `docs/00_action_list.md` v2.3 with priorities and triggers.** Read that file alongside this one for the active backlog view.
 
 ### Required (time-bound)
 
-1. **Personal businesses check-in** — per standing rule entry 19 (P0). Ask PK at session open: "Anything live in CFW / Property / NDIS FBA that jumps the queue today?"
+1. **Personal businesses check-in** — per standing rule entry 19 (P0).
 
-2. **PK: T07 step 4** — re-enable IG cron jobid 53 via Supabase dashboard (1-2 min PK action). After that, chat monitors 30-60 min (T07 step 5) for NDIS+CFW+Invegent backlog clearing. Throttle math: 2 posts/day × 3 active clients = max 6 IG posts in first 24h; the 39-row safe backlog clears over ~7 days. PP rows (53) stay `'skipped'` until Meta dev support outcome (T05).
+2. **Re-check T01 obs at full +24h mark (~03:48 UTC Sat 1 May)** — verify no new alerts in the +21h→+24h window. Default verdict: exit Gate B on schedule.
 
-3. **PK: T06** — reconnect YouTube OAuth via Supabase dashboard (Clients → Connect → YouTube for NDIS-Yarns + Property Pulse + Invegent). 5-15 min PK action across 3 clients. Verification via 30-min cron tick OR manual `youtube-publisher` invocation post-reconnect: successful upload + `m.post_publish` audit row + `draft_format->>youtube_video_id` populated.
+3. **T02 — Gate B exit decision** — Saturday. Default exit on schedule per T01 result.
 
-4. **Phase B +24h observation checkpoint** — due ~5pm AEST Fri 1 May / 03:48 UTC Fri 1 May (24h from 30 Apr 03:48:25Z deploy). Four observation queries already written verbatim in `docs/runtime/runs/phase-b-patch-image-quote-body-health-2026-04-30T033748Z.md` with deploy timestamp substituted. Targets:
-   - Zero new `exceeded_recovery_attempts`
-   - Shadow `ai_job` failure rate <5%
-   - Zero new `slot_fill_no_body_content` errors
-   - `pool_thin` skip rate not spiking (especially Invegent — thin-pool signal already known)
+4. **T08 — Author auto-approver patch (F-PUB-004 fix)** (P0). Chat authors TypeScript patch. ChatGPT cross-check before deploy per Lesson #45. PK deploys via Supabase EF dashboard.
 
-5. **Gate B exit decision** (~5min after obs checkpoint result is in):
-   - **If +24h obs clean** → Gate B exits Sat 2 May on schedule → Phase C cutover (Stages 12–18) begins planning
-   - **If patch did not hold** → fork between extending Gate B 5–7 days OR temporarily disabling image_quote at format-mix layer
+5. **PK: T06** — reconnect YouTube OAuth via Supabase dashboard (3 clients). Runs in parallel with T08; doesn't block.
 
-### Strategic — ready to start whenever bandwidth allows
+6. **PK: T05** — Meta dev support contact, single conversation covering business verification + PP IG block + NDIS-Yarns IG block + App Review status (R08).
 
-6. **O-01: Author Platform-Source-of-Truth map** (~30 min chat work) — most enabling OTL piece. Author `docs/operations/platform_source_of_truth.md` with one row per platform: source table, queue path (or "direct"), publisher EF + version, success marker, failure marker, token location, recovery owner. Every other OTL item references this map.
+### Strategic — ready when bandwidth allows
 
-7. **R09: Author reconciliation v2 brief** (~30-45 min) — after T01 + T02 + personal businesses check.
+7. **O-01: Author Platform-Source-of-Truth map** (~30 min chat work) — most enabling OTL piece.
 
-8. **R01 calibration session** — Sun 3 May or Mon 4 May (T04, after Gate B exit known). 90min hard cap. ChatGPT first.
+8. **R09: Author reconciliation v2 brief** — after T01 + T02 done.
 
-9. **Meta dev support contact** — T05, P1. Single Meta conversation covering: business verification, PP IG `subcode 2207051` block recovery, App Review status (R08).
+9. **R01 calibration session** — Sun 3 May or Mon 4 May (T04, after Gate B exit known). 90min hard cap.
+
+### Strict ordering for IG re-enable
+
+T07 step 4 cannot be retried until ALL of:
+- T08 (F-PUB-004 patch) deployed
+- At least one fresh CFW or Invegent IG draft observed in `approval_status='approved'` (proves auto-approver patch works)
+- T05 Meta dev support outcome known for PP and NDIS-Yarns
+- Cron command updated to `?limit=1` (currently `?limit=2`) — chat can apply this when re-enable time comes
 
 ### Backlog (no specific deadline)
 
-See `docs/00_action_list.md` v2.2 📌 Backlog and 🏗 Operational Truth Layer sections for the full lists with triggers.
+See `docs/00_action_list.md` v2.3 📌 Backlog and 🏗 Operational Truth Layer sections for the full lists with triggers.
 
 ---
 
 ## D182 sunset review reminder
 
-D182 system has now executed **7 briefs** clean: Phase D ARRAY (5/5), slot-core, Phase B Tier 2 patch (with 4-step rollback test), post-publish-obs, pipeline-health-pair, operator-alerting-trio, audit-slice-2-snapshot-generation Tier 0 (5/5). **Now validated across two distinct brief shapes** (Tier 1 migration drafting + Tier 0 markdown generation). Strong trend toward sustained adoption. Sunset review still 12 May 2026 per D183 — no action pre-cycle.
-
----
-
-## SESSION COMMITS — 30 APR THU FULL DAY
-
-**Invegent-content-engine — `main`:**
-
-Afternoon: 17 commits (per afternoon reconciliation).
-Evening: ~13 additional commits (briefs, run states, queue updates, action_list v1.7→v2.2, B17 migration, R03 closure batch with audit run + open_findings + brief refresh, F-001 index drop migration, publisher operational audit run, T07 step 1 SQL).
-
-**Total today: ~30 commits, 7 production migrations + 1 single-row DML, +211 documented columns, +1 Tier 2 production patch, +1 strategic proposal, +6 strategic OTL items captured, +1 canonical Lesson promoted (#46), +3 standing checks added (S7, S8, S9 — S10 added v2.2), +1 candidate Operations Auditor role definition (R12).**
-
-**invegent-dashboard — `main`:** none.
-
-**Memory:** entries 1, 11, 14 still reflect afternoon state. Auto-regeneration overnight will incorporate evening work.
+No D182 brief work tonight (PK on phone). System still at 7 briefs validated across 2 brief shapes. F04 (post_render_log) remains queued for CC overnight. Sunset review still 12 May 2026.
 
 ---
 
 ## STRATEGIC POSTURE
 
-Today was a heavy session. The afternoon shipped 3 briefs + Phase B production patch + alerts cleared + red-team proposal + action_list v1.0 — already a very productive day. The evening added 3 more briefs + audit cycle 2 closure + B17/B18 + an unplanned publisher operational audit that exposed a 3+ week silent break on YouTube + a 5+ day backlog on Instagram.
+Tonight's session was unplanned: PK was on phone with no laptop, asked what chat could carry solo. The answer turned out to be much bigger than expected.
 
-The unplanned audit was the most strategically valuable work tonight, not because YT and IG matter most, but because it exposed the **structural gap** in ICE's monitoring: cron-layer health was watched, business-layer truth wasn't. ChatGPT's cross-check on the first-pass YT framing halted a wrong production migration. Both events were captured as **Lesson #46** and operationalized as the **OTL — Operational Truth Layer** strategic stream.
+The session escalated through three phases:
 
-**Tomorrow's session is gate-driven** by Phase B +24h obs and Gate B exit Sat. The PK actions (T06 OAuth reconnect, T07 step 4 cron re-enable) are short and high-impact — every hour they sit unfixed is more queue backlog and more days of zero YT publishing.
+1. **Routine T07 step 4 application** — chat re-enabled IG cron per yesterday's plan. Quick mobile-friendly action.
+2. **Surprise discovery** — NDIS-Yarns IG also flagged. Cron rolled back. T07 step 4 rollback noted as correctly handled.
+3. **Deeper investigation triggered by the rollback** — the CFW × 2 failures (`not_approved:needs_review`) led to discovery of F-PUB-004 (auto-approver starvation) — the largest production breakage of the day.
 
-**The strategic non-time-bound thread** continues to be `structured_red_team_review_v1` (D-01 / D185). Tonight's evidence (ChatGPT halt of wrong production migration) is non-Phase-C, real-stakes, high-value validation of the pattern. The pilot path remains R10 (Phase C cutover) → B16 ratification → D185 entered formally.
+The takeaway: tonight's session is **the most validating evidence yet for Lesson #46**. The auto-approver was returning 200 OK on every cron run while approving zero drafts for 5+ days. This is exactly the failure mode Lesson #46 names. S11 standing check added tonight to fill the specific gap.
 
-**Standing memory rule reminder for next session opening**: PK personal businesses come first. ICE work is bonus, not driver. Action list at `docs/00_action_list.md` v2.2 includes a 💼 Personal businesses section that chat asks PK to populate at session start.
+The takeaway is also **the most validating evidence yet for D-01 / D185 (red-team review v1 ratification)**. Two ChatGPT cross-checks tonight prevented two wrong-direction actions:
+- (1) Earlier today: wrong YT trigger fix migration (averted)
+- (2) Tonight: wrong bulk-quarantine of 87 legacy FB drafts (averted)
+
+Neither catch was Phase-C work. Both were real-stakes production. Both prevented harm.
+
+**Tomorrow's priority order is now reordered**: T08 (F-PUB-004 patch) is P0 because no IG re-enable is possible until it lands. T06 (YT OAuth) and T05 (Meta dev support) are P1 and run in parallel.
+
+**The strategic non-time-bound thread** continues to be `structured_red_team_review_v1` (D-01 / D185). Tonight's evidence accumulates further — when R10 (Phase C cutover live pilot) eventually runs and the ratification call happens, the case for adoption will be strong.
 
 ---
 
 ## CLOSING NOTE FOR NEXT SESSION
 
-Today was the day cron-vs-business-truth became visible. The publisher audit exposed the gap; ChatGPT's red-team halt prevented a wrong fix; the OTL stream is the durable answer. Tomorrow's PK actions (T06 + T07 step 4) close the immediate operational holes; the OTL items O-01 through O-06 close the structural one.
+Tonight made cron-vs-business-truth visible at a deeper layer than the YT/IG audit yesterday. The publisher audit discovered cron-layer monitoring missed YT broken since 11 Apr and IG queue piling up. Tonight's auto-approver investigation discovered cron-layer monitoring missed approvals starving since 25 Apr. Same pattern, different system, shorter time-to-detection thanks to S10 + S11 being on the radar already.
 
-**Read `docs/00_action_list.md` v2.2 at the start of the next session.** The action list captures every queued item with priority, owner, trigger, and source. Standing checks now S1-S10. Tomorrow's Today/Next 5 already rebuilt: personal businesses → T07 step 4 → T06 → +24h obs → O-01.
+**Read `docs/00_action_list.md` v2.3 at the start of the next session.** Standing checks now S1-S11. Tomorrow's Today/Next 5 already rebuilt: personal businesses → T08 → T06 → T02 → T05.
 
-The Phase B body-health filter has held through 24 hours so far on the data we've seen. The +24h obs checkpoint tomorrow ~5pm AEST is the test. The four queries are paste-ready in the Phase B run state file.
+The Phase B body-health filter has held through 21+ hours with zero alerts of any kind. T02 Gate B exit decision tomorrow is essentially pre-made (default: exit on schedule).
 
-Beyond that, every open item is either (a) PK action (T06 OAuth, T07 step 4, T05 Meta contact) — quick wins, do them first; (b) strategic stream (OTL O-01 through O-06) — start with O-01; or (c) backlog (F08, B-items) waiting for triggers. All sorted by priority in `docs/00_action_list.md`. Pick the one with highest strategic ROI for the next session's energy budget.
+Beyond that:
+- (a) PK actions: T06 OAuth, T05 Meta contact — quick wins, do them first
+- (b) Strategic + production: T08 F-PUB-004 patch (chat authors, ChatGPT reviews, PK deploys) — unblocks IG/LinkedIn and is the most consequential change of the week
+- (c) Strategic stream: OTL O-01 through O-06 — start with O-01
+- (d) Backlog: F08, B-items waiting for triggers
+
+All sorted by priority in `docs/00_action_list.md` v2.3.
 
 ---
 
-## END OF THURSDAY 30 APR LATE EVENING SESSION
+## END OF FRIDAY 1 MAY EARLY MORNING UTC SESSION
 
-Full reconciliation complete. All today's work captured. F04 (post_render_log) Active for CC overnight. Phase B observation window running. Action list at v2.2. Lesson #46 canonical. OTL stream captured. T07 step 1 applied. T06 + T07 step 4 await PK. Fresh start ready.
+Full reconciliation complete. T07 step 4 attempted+rolled-back. NDIS-Yarns IG locked. T01 ✅. F-PUB-004 + F-PUB-005 captured. Action list at v2.3. T08 P0 for tomorrow. PK ChatGPT cross-checks #1 + #2 both validated. Phase B obs clean. Fresh start ready.
