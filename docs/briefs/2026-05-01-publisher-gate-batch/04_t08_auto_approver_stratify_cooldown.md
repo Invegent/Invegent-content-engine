@@ -1,42 +1,77 @@
 # T08 — Auto-Approver Stratification + Reject-Cooldown (v1.6.0)
 
-**Status**: Authored, awaiting ChatGPT round-3 review (round-1 + round-2 amendments folded in)
-**Pattern**: SQL function eligibility filter (round-2) + EF source patch (terminal rejection only for content gates)
-**Risk**: MEDIUM — biggest patch of the batch. **Round-2 caught a real semantic bug**: original amendment conflated eligibility-gate failures with content-gate failures, would have terminal-rejected drafts purely because operator hadn't enabled auto-approve.
+**Status**: Authored, awaiting ChatGPT round-4 review (round-1 + round-2 + **round-3** amendments folded in)
+**Pattern**: SQL function authoritative-profile eligibility filter (round-3) + EF defence-in-depth (round-2) + reject-cooldown for content gates only
+**Risk**: MEDIUM — biggest patch of the batch. **Three consecutive HIGH-severity catches on T08-A across three review rounds** — see meta-pattern note below.
 **Deploy order**: 4 of 4 (after publisher gates safe)
 
-## Round-2 amendment summary (NEW v2.9)
+## Meta-pattern note (v2.10)
 
-ChatGPT round-2 caught: setting `approval_status='rejected'` on ALL gate failures (including the `auto_approve_enabled` gate) is wrong. "Operator hasn't enabled auto-approve" is not the same as "content quality is bad" — yet both would have hit `trg_handle_draft_rejection` and reset the slot.
+T08-A has had **three HIGH-severity catches in three review rounds**:
+- **Round 1**: platform-scoped lookup risk — `LIMIT 1` without platform filter could pull arbitrary platform's auto_approve setting after stratification
+- **Round 2**: eligibility-vs-content gate conflation — terminal-rejecting drafts on the operator-decision `auto_approve_enabled` gate would have caused churn loops
+- **Round 3**: authoritative-profile bypass — `auto_approve_enabled=true` filter inside lateral subquery WHERE could match a non-default/inactive profile, contradicting the publisher's actual selection logic
 
-**Fix**: SQL function v3 now filters at fetch time — only drafts with an EXACT `(client_id, platform)` row in `c.client_publish_profile` AND `auto_approve_enabled=true` are returned. Drafts without explicit auto-approval eligibility stay invisible to this function (remain `needs_review`, never seen by gates).
+Lesson signal: **"narrow" patches that touch terminal-decision authority (reject + slot-reset triggers) require extra scrutiny because any underlying bug gets amplified by the terminal action.** Captured as Lesson #51 candidate.
 
-Visibility for config-gap drafts moves from per-draft EF warnings to standalone observation queries (S13/S14 standing checks in action_list).
+## Round-3 amendment summary
 
-EF gets defence-in-depth: if `auto_approve_enabled` gate fires anyway (shouldn't, given SQL filter), `processOneDraft` returns `outcome='skipped'` and leaves draft at `needs_review`.
+ChatGPT round-3 found that v2.9 SQL had a bypass:
 
-## Round-1 amendments (already folded in v2.8)
+```sql
+-- v2.9 (BUGGY):
+JOIN LATERAL (
+  SELECT cpp.auto_approve_enabled
+  FROM c.client_publish_profile cpp
+  WHERE cpp.client_id = dr.client_id
+    AND cpp.platform = pd.platform
+    AND cpp.auto_approve_enabled = true   -- in inner WHERE: matches ANY enabled row
+  ORDER BY cpp.is_default DESC NULLS LAST
+  LIMIT 1
+) cpp ON true
+```
 
-- ~~T08-A: Platform-scoped `auto_approve_enabled` lookup with `auto_approve_config_found` flag~~ → **superseded by round-2 SQL filter**
-- T08-B: Dual-field response (`auto_rejected` + deprecated `skipped_needs_human_review` alias) for backward compat
+Bypass: if a client has multiple profile rows for the same (client, platform), this could match a non-default or non-active row that has `auto_approve_enabled=true`, even if the row the publisher would actually use has `auto_approve_enabled=false`.
+
+Fix (v3 → v4 SQL): select the authoritative active+default profile FIRST (matching publisher selection logic), then check the flag in JOIN ON:
+
+```sql
+-- v2.10 (FIXED):
+JOIN LATERAL (
+  SELECT cpp.client_publish_profile_id, cpp.auto_approve_enabled
+  FROM c.client_publish_profile cpp
+  WHERE cpp.client_id = dr.client_id
+    AND cpp.platform = pd.platform
+    AND cpp.status = 'active'    -- match publisher logic
+  ORDER BY cpp.is_default DESC NULLS LAST, cpp.created_at DESC NULLS LAST
+  LIMIT 1
+) cpp ON COALESCE(cpp.auto_approve_enabled, false) = true   -- check flag on AUTHORITATIVE row only
+```
+
+This aligns auto-approver eligibility source with publisher destination/profile source. Verified against publisher source (FB/IG/LinkedIn-Zapier all select profile by `status='active' ORDER BY is_default DESC LIMIT 1`).
+
+**Schema verified in chat session**: `c.client_publish_profile` has all required columns (`status` text, `is_default` boolean, `created_at` timestamptz, `auto_approve_enabled` boolean NOT NULL default false).
+
+## Round-1 + Round-2 amendments (already folded in v2.8/v2.9)
+
+- T08-B: Dual-field response (`auto_rejected` + deprecated `skipped_needs_human_review` alias)
 - T08-C: Staged first run protocol (`{limit: 5}`, observe, escalate)
-- T08-D: P-B snapshot before deploy (must run BEFORE T08 deploy)
+- T08-D: P-B snapshot before deploy
+- Round-2: SQL eligibility filter at fetch (no longer terminal-rejects on operator-decision gate); EF defence-in-depth `outcome='skipped'` for safety-net; visibility moves to S13/S14 standing checks; new response field `eligibility_safety_net_fires`
 
-## Scope (D-08 narrow)
+## Scope (D-08 narrow — with T08-A complexity acknowledgment)
 
 Two changes ONLY, no length-cap or keyword changes:
 
-1. **Stratify fetch** by (client, platform) — fair-share across buckets, prevent score-DESC starvation
-2. **Add reject-cooldown** — failed-CONTENT-gate drafts move to terminal `'rejected'` state. Eligibility-gate failures (operator config) leave drafts at `'needs_review'` (round-2 fix)
+1. **Stratify fetch** by (client, platform) — prevent score-DESC starvation
+2. **Reject-cooldown** — failed-CONTENT-gate drafts move to terminal `'rejected'`. Eligibility-gate failures don't terminate (round-2 fix; round-3 strengthens eligibility check to authoritative profile)
 
 ## Two artefacts
 
-1. **SQL migration**: `m.auto_approver_fetch_drafts` v3 — stratification + INNER JOIN LATERAL eligibility filter
-2. **EF source patch**: `auto-approver` v1.5.0 → v1.6.0 — platform field, content-gate terminal rejection, eligibility-gate skip safety net, dual-field response
+1. **SQL migration**: `m.auto_approver_fetch_drafts` v4 (round-3) — stratification + authoritative-profile eligibility filter
+2. **EF source patch**: `auto-approver` v1.5.0 → v1.6.0 (no changes from round-2 — EF design is unchanged; only SQL changed in round-3)
 
-## Pre-deploy step — P-B snapshot (REQUIRED)
-
-Captures the cycling-30 state for retrospective review BEFORE T08 auto-rejects them.
+## Pre-deploy step — P-B snapshot (REQUIRED, unchanged from v2.9)
 
 ```sql
 WITH cycling_drafts AS (
@@ -57,57 +92,57 @@ WITH cycling_drafts AS (
 SELECT * FROM cycling_drafts;
 ```
 
-Export result to `docs/audit/runs/2026-05-01-t08-pre-deploy-pb-snapshot.md` BEFORE deploying T08.
+Export to `docs/audit/runs/2026-05-01-t08-pre-deploy-pb-snapshot.md` BEFORE deploy.
 
-## Pre-deploy step — config gap observation (NEW v2.9, S13 + S14)
+## Pre-deploy step — config gap observation (S13 + S14)
 
-Run BEFORE deploying T08 to understand which (client, platform) combos will become invisible to auto-approver:
+Unchanged from v2.9. Run BEFORE deploy.
 
 ```sql
--- S13: drafts where NO config row exists (config GAP — may need adding)
+-- S13: drafts where NO config row exists
 SELECT pd.client_id, c.client_name, pd.platform, COUNT(*) AS needs_review_count
 FROM m.post_draft pd
 JOIN c.client c ON c.client_id = pd.client_id
 LEFT JOIN c.client_publish_profile cpp
-  ON cpp.client_id = pd.client_id
- AND cpp.platform = pd.platform
-WHERE pd.approval_status = 'needs_review'
-  AND cpp.client_id IS NULL
-GROUP BY 1, 2, 3
-ORDER BY needs_review_count DESC;
+  ON cpp.client_id = pd.client_id AND cpp.platform = pd.platform
+WHERE pd.approval_status = 'needs_review' AND cpp.client_id IS NULL
+GROUP BY 1, 2, 3 ORDER BY 4 DESC;
 
--- S14: drafts where config row exists BUT auto_approve_enabled=false (intentional)
+-- S14: drafts where authoritative active profile has auto_approve_enabled=false
+-- v2.10 round-3 amendment: aligns S14 with new eligibility logic (authoritative profile)
 SELECT pd.client_id, c.client_name, pd.platform, COUNT(*) AS needs_review_count
 FROM m.post_draft pd
 JOIN c.client c ON c.client_id = pd.client_id
-JOIN c.client_publish_profile cpp
-  ON cpp.client_id = pd.client_id
- AND cpp.platform = pd.platform
+JOIN LATERAL (
+  SELECT cpp.auto_approve_enabled
+  FROM c.client_publish_profile cpp
+  WHERE cpp.client_id = pd.client_id
+    AND cpp.platform = pd.platform
+    AND cpp.status = 'active'
+  ORDER BY cpp.is_default DESC NULLS LAST, cpp.created_at DESC NULLS LAST
+  LIMIT 1
+) auth_cpp ON true
 WHERE pd.approval_status = 'needs_review'
-  AND COALESCE(cpp.auto_approve_enabled, false) = false
-GROUP BY 1, 2, 3
-ORDER BY needs_review_count DESC;
+  AND COALESCE(auth_cpp.auto_approve_enabled, false) = false
+GROUP BY 1, 2, 3 ORDER BY 4 DESC;
 ```
 
-Expected interpretation:
-- S13 results: gaps where the operator hasn't yet configured auto-approve for that platform. Decide per case: add the config row (auto-approve eligible) OR document why platform stays human-review only.
-- S14 results: explicit operator decisions to keep human-review. No action needed; these stay at `needs_review` indefinitely until a human reviews them.
+## Artefact 1 — SQL migration v4 (REVISED v2.10 round-3)
 
-## Artefact 1 — SQL migration (REVISED v2.9 round-2)
-
-**Migration name**: `2026_05_01_t08_auto_approver_fetch_drafts_v3`
+**Migration name**: `2026_05_01_t08_auto_approver_fetch_drafts_v4`
 
 ```sql
--- T08 v3 (round-2 amendments): Eligibility filter at SQL level.
---   v2 (round-1) used LEFT JOIN LATERAL + auto_approve_config_found flag, but the
---   EF then terminal-rejected drafts that failed the auto_approve_enabled gate —
---   conflating eligibility (operator decision) with content quality (system decision).
---   Round-2 review caught this. Fix: only fetch drafts where exact (client, platform)
---   config row exists AND auto_approve_enabled=true. Drafts without explicit
---   eligibility stay invisible to this function.
+-- T08 v4 (round-3 amendments): Authoritative-profile eligibility filter.
+-- v3 (round-2) put auto_approve_enabled=true inside the lateral subquery WHERE,
+-- which could match any enabled row for the (client, platform) — not necessarily
+-- the active+default row the publisher would use. Round-3 catch.
 --
--- Removed: auto_approve_config_found column (no longer needed; eligibility binary at SQL).
--- Stratification (round-1): unchanged.
+-- v4 fix: select the authoritative profile first (status='active' ORDER BY
+-- is_default DESC, created_at DESC), then check auto_approve_enabled=true on
+-- THAT row in the JOIN ON clause. This aligns auto-approver eligibility source
+-- with publisher destination/profile source.
+--
+-- Stratification (round-1) and EF defence-in-depth (round-2): unchanged.
 
 CREATE OR REPLACE FUNCTION m.auto_approver_fetch_drafts(p_limit integer DEFAULT 10)
  RETURNS TABLE(
@@ -140,14 +175,16 @@ AS $function$
     JOIN m.digest_item di ON di.digest_item_id = pd.digest_item_id
     JOIN m.digest_run dr ON dr.digest_run_id = di.digest_run_id
     JOIN LATERAL (
-      SELECT cpp.auto_approve_enabled
+      -- v4 round-3: select AUTHORITATIVE profile first (matches publisher logic),
+      -- then check auto_approve_enabled in the JOIN ON clause
+      SELECT cpp.client_publish_profile_id, cpp.auto_approve_enabled
       FROM c.client_publish_profile cpp
       WHERE cpp.client_id = dr.client_id
         AND cpp.platform = pd.platform
-        AND cpp.auto_approve_enabled = true   -- v3 round-2: ELIGIBILITY filter
-      ORDER BY cpp.is_default DESC NULLS LAST
+        AND cpp.status = 'active'
+      ORDER BY cpp.is_default DESC NULLS LAST, cpp.created_at DESC NULLS LAST
       LIMIT 1
-    ) cpp ON true
+    ) cpp ON COALESCE(cpp.auto_approve_enabled, false) = true
     WHERE pd.approval_status = 'needs_review'
   )
   SELECT
@@ -159,253 +196,60 @@ AS $function$
 $function$;
 ```
 
-**Apply via**: Supabase MCP `apply_migration` (NOT `supabase db push`)
+**Apply via**: Supabase MCP `apply_migration`.
 
-**Note**: function signature changed from v2 (dropped `auto_approve_config_found` column). EF must be redeployed in same window to consume new signature. Apply migration THEN deploy EF — the order matters because v1.5.0 EF tries to read columns that v3 still returns (auto_approve_enabled, platform) but doesn't read the dropped column either way — so v1.5.0 happens to be forward-compatible. Still: deploy both in close succession.
+**Note on COALESCE**: `auto_approve_enabled` is `NOT NULL DEFAULT false` per schema verification, so the COALESCE is technically redundant. Kept as defence-in-depth against any future schema migration that relaxes the NOT NULL constraint. Cost is zero; clarity benefit is non-zero.
 
-## Artefact 2 — EF source patch (`supabase/functions/auto-approver/index.ts`)
+## Artefact 2 — EF source patch (UNCHANGED from v2.9 round-2)
 
-### Change 1: VERSION + comment
+The EF design is unchanged from round-2. Round-3 fix is SQL-only. EF v1.6.0 source includes:
 
-```typescript
-const VERSION = "auto-approver-v1.6.0";
-// v1.6.0 (T08, 1 May 2026): NARROW PATCH (D-08) + round-1 + round-2 amendments.
-//   (1) Stratified fetch via m.auto_approver_fetch_drafts v3 — fair-share
-//       across (client, platform) buckets to prevent F-PUB-004 starvation.
-//   (2) Eligibility filter at SQL level (round-2): only drafts with explicit
-//       (client, platform) auto_approve_enabled=true are fetched. Removes the
-//       conflation between eligibility-gate fails and content-gate fails.
-//   (3) Reject-cooldown: failed-CONTENT-gate drafts move to terminal 'rejected'.
-//       Fires trg_handle_draft_rejection which resets the slot.
-//   (4) Defence-in-depth: if auto_approve_enabled gate fires (should not normally,
-//       given SQL filter), processOneDraft returns outcome='skipped' — NOT
-//       'rejected' — leaving draft at needs_review.
-//   (5) Dual-field response: returns both auto_rejected and deprecated
-//       skipped_needs_human_review alias for backward compat.
-//   No length-cap or keyword changes (D-08 narrow scope).
-```
+- VERSION + comment block (round-2)
+- DraftRow type with `platform` field
+- `ApprovalResult.outcome` union: `"approved" | "rejected" | "skipped" | "failed"`
+- `processOneDraft` distinguishes content-gate (terminal reject) from eligibility-gate safety net (outcome `'skipped'`, no termination)
+- POST handler returns dual-field response + `eligibility_safety_net_fires` counter
 
-### Change 2: DraftRow type — add platform; drop auto_approve_config_found
+[Full EF source unchanged from v2.9 brief — see git history for `04_t08_auto_approver_stratify_cooldown.md` v2.9 commit `c4d5bb53`]
 
-```typescript
-interface DraftRow {
-  post_draft_id: string;
-  client_id: string;
-  draft_body: string;
-  draft_title: string | null;
-  draft_format: Record<string, unknown> | null;
-  approval_status: string;
-  digest_item_id: string;
-  final_score: number | null;
-  auto_approve_enabled: boolean;       // always true post-v3 SQL filter; defence-in-depth
-  platform: string;                    // NEW v1.6.0
-  // auto_approve_config_found: REMOVED v2.9 round-2 — eligibility now binary at SQL
-}
-```
+## Staged first-run protocol (round-3 addition: response capture)
 
-### Change 3: ApprovalResult outcome union
+Unchanged plan + new requirement to preserve full responses in audit run state:
 
-```typescript
-interface ApprovalResult {
-  post_draft_id: string;
-  client_id: string;
-  outcome: "approved" | "rejected" | "skipped" | "failed";
-  // approved   - passed all gates, approval_status flipped to 'approved'
-  // rejected   - failed CONTENT gate, approval_status flipped to 'rejected' (terminal)
-  // skipped    - failed eligibility gate (defence-in-depth, should not normally fire)
-  // failed     - error state (DB error etc)
-  reason?: string;
-  gates?: Record<string, boolean | string>;
-}
-```
-
-### Change 4: processOneDraft — distinguish gate types (round-2 fix)
-
-Locate the existing else-branch and REPLACE WITH:
-
-```typescript
-  } else {
-    // v1.6.0 round-2 fix: distinguish ELIGIBILITY-gate failures (operator decision)
-    // from CONTENT-gate failures (system decision). Only content-gate failures
-    // terminal-reject. Eligibility-gate failures leave draft at needs_review and
-    // return outcome='skipped' as defence-in-depth (the SQL filter normally
-    // prevents these from being seen at all).
-    if (failed_gate?.gate === "auto_approve_enabled") {
-      // Defence-in-depth only: should not fire post-v3 SQL filter
-      console.warn(
-        `[auto-approver] eligibility_gate_safety_net_fired:${draft.client_id}:${draft.platform}:${draft.post_draft_id}`
-      );
-      return {
-        post_draft_id: draft.post_draft_id,
-        client_id: draft.client_id,
-        outcome: "skipped",
-        reason: "eligibility_safety_net",
-        gates,
-      };
-    }
-
-    // Content-quality gate failure — terminal reject (fires trg_handle_draft_rejection)
-    await supabase
-      .schema("m")
-      .from("post_draft")
-      .update({
-        approval_status: "rejected",  // terminal
-        auto_approval_scores: { gates, passed: false, failed_gate: failed_gate?.gate, reason: failed_gate?.reason, checked_at: checkedAt, agent: VERSION, auto_rejected: true },
-        draft_format: { ...existingFormat, auto_review: { passed: false, failed_gate: failed_gate?.gate, reason: failed_gate?.reason, gates, checked_at: checkedAt, agent: VERSION } },
-        updated_at: checkedAt,
-      })
-      .eq("post_draft_id", draft.post_draft_id);
-
-    return {
-      post_draft_id: draft.post_draft_id,
-      client_id: draft.client_id,
-      outcome: "rejected",
-      reason: failed_gate?.reason,
-      gates,
-    };
-  }
-```
-
-### Change 5: POST handler — simplified (no Set aggregation needed)
-
-Round-1 added a `missingConfigSet` for per-(client, platform) warnings. Round-2 removes that block because the SQL filter prevents these drafts from being fetched. Visibility moves to S13/S14 standing checks.
-
-```typescript
-app.post("*", async (c) => {
-  try {
-    const supabase = getServiceClient();
-    let limit = 10;
-    let filterClientId: string | null = null;
-
-    try {
-      const body = await c.req.json();
-      if (typeof body?.limit === "number") limit = Math.min(body.limit, 50);
-      if (typeof body?.client_id === "string") filterClientId = body.client_id;
-    } catch { /* body optional */ }
-
-    const drafts = await fetchDraftsViaRpc(supabase, limit, filterClientId);
-
-    if (drafts.length === 0) {
-      return jsonResponse({ ok: true, version: VERSION, message: "no_drafts_to_review", processed: 0, results: [] });
-    }
-
-    const results: ApprovalResult[] = [];
-    for (const draft of drafts) {
-      results.push(await processOneDraft(supabase, draft));
-    }
-
-    return jsonResponse({
-      ok: true,
-      version: VERSION,
-      processed: results.length,
-      approved: results.filter((r) => r.outcome === "approved").length,
-      auto_rejected: results.filter((r) => r.outcome === "rejected").length,
-      // Deprecated alias: sums BOTH rejected + skipped because v1.5.0 used 'skipped'
-      // for any non-approval outcome. Preserves backward-compat semantic. Remove in v1.7.0.
-      skipped_needs_human_review: results.filter((r) => r.outcome === "rejected" || r.outcome === "skipped").length,
-      eligibility_safety_net_fires: results.filter((r) => r.outcome === "skipped").length,  // NEW v1.6.0 round-2: should be 0 in steady state
-      errors: results.filter((r) => r.outcome === "failed").length,
-      results,
-    });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return jsonResponse({ ok: false, error: msg, version: VERSION }, 500);
-  }
-});
-```
-
-## Pre-deploy verification
-
-### Step 1 — P-B snapshot (REQUIRED, see top of brief)
-
-### Step 2 — Config-gap observation (NEW v2.9, S13 + S14 above)
-
-Run S13 + S14 and document results. Operator may need to add config rows for legitimate platforms before T08 deploys (otherwise those drafts become invisible).
-
-### Step 3 — Bucket query (informational)
-
-```sql
-SELECT dr.client_id, pd.platform, COUNT(*) AS draft_count, MIN(pd.created_at) AS oldest
-FROM m.post_draft pd
-JOIN m.digest_item di ON di.digest_item_id = pd.digest_item_id
-JOIN m.digest_run dr ON dr.digest_run_id = di.digest_run_id
-JOIN c.client_publish_profile cpp
-  ON cpp.client_id = dr.client_id
- AND cpp.platform = pd.platform
- AND cpp.auto_approve_enabled = true
-WHERE pd.approval_status = 'needs_review'
-GROUP BY dr.client_id, pd.platform
-ORDER BY oldest ASC;
-```
-
-This shows what the new fetch function will see. Buckets here are the AUTO-APPROVE-ELIGIBLE ones only.
-
-## Staged first-run protocol (T08-C, unchanged)
-
-Do not invoke with full limit on first run.
-
-1. Apply SQL migration via `apply_migration`
+1. Apply SQL migration v4 via `apply_migration`
 2. Deploy EF v1.6.0
-3. `GET /auto-approver` — confirm version `v1.6.0`
-4. **First invocation: `POST {limit: 5}`**
-5. Verify response: `auto_rejected`, `skipped_needs_human_review` (deprecated), `eligibility_safety_net_fires` (should be 0), `processed`, `approved`
-6. Run post-step queries (Q1–Q3 below)
-7. If clean: invoke with `{limit: 10}`, then let cron tick at full default
-8. Document in `docs/audit/runs/2026-05-01-t08-staged-deploy.md`
+3. `GET /auto-approver` — confirm version
+4. **First invocation: `POST {limit: 5}`** — **NEW v2.10**: capture full response JSON to audit run state, specifically preserving `eligibility_safety_net_fires` value
+5. Run post-step queries (Q1–Q4)
+6. If clean: invoke with `{limit: 10}` — **NEW v2.10**: capture full response JSON
+7. If still clean: let cron tick
+8. Document in `docs/audit/runs/2026-05-01-t08-staged-deploy.md` with both response captures inline
 
-## Post-step queries
+**Why response capture matters**: Q1 catches content-gate regressions but the `auto_approve_enabled` safety-net path returns `skipped` (no rejected draft row written). Only the response field exposes safety-net fires. Both observability surfaces are needed.
 
-### Q1 — Auto-rejection count by gate
+## Post-step queries (unchanged from v2.9)
 
-```sql
-SELECT pd.draft_format->'auto_review'->>'failed_gate' AS failed_gate,
-       pd.client_id, pd.platform, COUNT(*) AS rejected_count
-FROM m.post_draft pd
-WHERE pd.approval_status = 'rejected'
-  AND pd.draft_format->'auto_review'->>'agent' = 'auto-approver-v1.6.0'
-  AND pd.updated_at > NOW() - INTERVAL '15 minutes'
-GROUP BY 1, 2, 3 ORDER BY rejected_count DESC;
-```
+Q1, Q2, Q3, Q4 as in v2.9 brief.
 
-Expected: rejections by content gates only (`body_length`, `sensitive_keywords`). Should NOT see `auto_approve_enabled` here (that was round-2's whole point).
+**Round-3 reinforcement of Q1**: must show ZERO `auto_approve_enabled` rejections in `m.post_draft.draft_format->'auto_review'->>'failed_gate'`. Any non-zero value indicates either:
+- defence-in-depth fired (also shows in `eligibility_safety_net_fires`), or
+- v2.9 logic regressed somehow (shouldn't be possible after v4 SQL but verify)
 
-### Q2 — Slot churn
-
-```sql
-SELECT m.slot.status, m.slot.skip_reason, COUNT(*) AS slot_count
-FROM m.slot
-WHERE m.slot.updated_at > NOW() - INTERVAL '15 minutes'
-GROUP BY 1, 2 ORDER BY slot_count DESC;
-```
-
-### Q3 — Fresh approvals across buckets (S11)
-
-```sql
-SELECT pd.platform, pd.client_id, COUNT(*) AS fresh_approval_count
-FROM m.post_draft pd
-WHERE pd.approval_status = 'approved'
-  AND pd.updated_at > NOW() - INTERVAL '15 minutes'
-GROUP BY 1, 2 ORDER BY fresh_approval_count DESC;
-```
-
-### Q4 — Safety-net check (NEW v2.9)
-
-Response field `eligibility_safety_net_fires` should be 0 in steady state. Non-zero indicates the SQL filter is not working as intended.
-
-## Rollback
+## Rollback (unchanged)
 
 1. EF: redeploy v1.5.0 from Supabase EF version history
-2. SQL: re-apply v1 function definition (preserved in audit run state)
+2. SQL: re-apply v1 function definition
 
 ## Acceptance criteria (T08 done when)
 
 1. P-B snapshot exported BEFORE deploy
-2. **NEW v2.9**: S13 + S14 observation queries run; config gaps documented; legitimate gaps closed (config rows added) before deploy
-3. SQL v3 migration applied via `apply_migration`
+2. S13 + S14 observation queries run; config gaps documented; legitimate gaps closed before deploy
+3. SQL v4 migration applied via `apply_migration`
 4. EF v1.6.0 deployed
 5. `GET /auto-approver` returns version `v1.6.0`
-6. Staged first run with `{limit: 5}` documented; post-step queries clean
-7. **NEW v2.9**: `eligibility_safety_net_fires=0` confirmed in steady state
-8. After 1 cron cycle: S11 shows fresh approvals across multiple (client, platform) buckets
-9. After 24h: T10 P-B population confirmed terminally rejected
-10. 24h churn observation captured for B22 prioritisation
+6. **NEW v2.10**: Full `{limit: 5}` and `{limit: 10}` responses captured in audit run state
+7. `eligibility_safety_net_fires=0` in steady state (any non-zero treated as alert)
+8. Q1 shows no `auto_approve_enabled` rejections in `m.post_draft.draft_format` (round-3 specific)
+9. After 1 cron cycle: S11 shows fresh approvals across multiple (client, platform) buckets
+10. After 24h: T10 P-B population confirmed terminally rejected
+11. 24h churn observation captured for B22 prioritisation

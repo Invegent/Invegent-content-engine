@@ -6,60 +6,55 @@
 
 ## Round status
 
-- **Round 1 complete** — 7 amendments captured in `08_amendments_round_1.md`. All folded into briefs.
-- **Round 2 complete** — 2 amendments (1 HIGH-severity) captured in `09_amendments_round_2.md`. Both folded in.
-- **Round 3 review pending** — PK shares folder URL with ChatGPT.
+- **Round 1 complete** — 7 amendments captured in `08_amendments_round_1.md`. Folded.
+- **Round 2 complete** — 2 amendments (1 HIGH-severity) captured in `09_amendments_round_2.md`. Folded.
+- **Round 3 complete** — 1 HIGH-severity bypass + 1 observability note captured in `10_amendments_round_3.md`. Folded.
+- **Round 4 review pending** — PK shares folder URL with ChatGPT.
+
+**9 catches in this session.** Three consecutive HIGH-severity catches on T08-A across three review rounds. Pattern signal captured as Lesson #51 candidate.
 
 ## Context
 
 Tonight's investigation surfaced that **three publishers (FB, LinkedIn, YT) are missing approval-status gates**. IG and WordPress correctly gate. Plus auto-approver starvation (F-PUB-004) is independently P0.
 
-Reference: `docs/00_action_list.md` v2.9 commit (latest on main).
+Reference: `docs/00_action_list.md` v2.10 commit (latest on main).
 
-**Eight catches in this session.** Structured red-team review v1 (D-01) is performing as designed. Each layer surfaces deeper issues:
-1. Wrong YT trigger fix averted (earlier today)
-2. Wrong bulk-quarantine of 87 legacy FB drafts averted (phone session)
-3. v2.3→v2.4 missing controls caught (T09/T10/T11/O-07/O-08/O-09/R13)
-4. D-09 reframing → T12 created
-5. Pre-DDL source pull → LinkedIn publisher gate-missing (F-PUB-005 reframed)
-6. ChatGPT v2.6 review → FB + YT publishers also missing gates
-7. ChatGPT round-1 review of v2.7 → T08-A HIGH severity catch + 6 other amendments
-8. **ChatGPT round-2 review of v2.8 → T08-A semantic bug (eligibility/content gate conflation) HIGH severity** + T10 constraint check
-
-## Deploy sequence (post round-3 review)
+## Deploy sequence (post round-4 review)
 
 Micro-staged in-session, smoke check between each:
 
-1. **T17** — `youtube-publisher` v1.6.0 (smallest; blocks T06/T11)
-2. **T18** — `publisher` (FB) v1.8.0 — gated on FB queue-status go/no-go
+1. **T17** — `youtube-publisher` v1.6.0
+2. **T18** — `publisher` (FB) v1.8.0 — gated on go/no-go
 3. **T13** — `linkedin-zapier-publisher` v1.1.0 + `linkedin-publisher` v1.2.0
-4. **T08** — `auto-approver` v1.6.0 + SQL migration v3 (round-2 revised). P-B snapshot first, then S13/S14 config-gap observation, then staged `{limit: 5}` first run
-5. **T10** — pre-fix queue disposition (round-2 amended): step 0 introspection ✓; step 3 smoke check on first batch
-6. **T09** — safe-to-resume publisher checklist (round-1 amended check 7 platform-specific)
-7. **T14** — crosspost RPC audit findings (no patch; documentation only)
+4. **T08** — `auto-approver` v1.6.0 + SQL migration v4 (round-3 revised)
+5. **T10** — disposition with `'skipped'` + 10-row smoke check first
+6. **T09** — safe-to-resume checklist walked
+7. **T14** — documentation closure
 
 ## Files in this batch
 
-| # | Brief | Type | Owner |
-|---|---|---|---|
-| 01 | `01_t17_youtube_publisher_gate.md` | EF source patch | PK deploys |
-| 02 | `02_t18_facebook_publisher_gate.md` | EF source patch + go/no-go | PK deploys |
-| 03 | `03_t13_linkedin_publishers_gate.md` | EF source patch (×2) | PK deploys |
-| 04 | `04_t08_auto_approver_stratify_cooldown.md` | SQL migration v3 + EF source patch | PK applies + deploys |
-| 05 | `05_t14_crosspost_rpc_audit.md` | Audit findings (no patch) | Documentation |
-| 06 | `06_t09_safe_to_resume_publisher_checklist.md` | Operational checklist | PK walks pre-cron-flip |
-| 07 | `07_t10_pre_fix_queue_disposition.md` | Disposition queries + step 0/3 | PK executes post-T08+T13+T18 |
-| 08 | `08_amendments_round_1.md` | Round-1 ChatGPT review amendments | Reference |
-| 09 | `09_amendments_round_2.md` | Round-2 ChatGPT review amendments (NEW) | Reference |
+| # | Brief | Status |
+|---|---|---|
+| 01 | `01_t17_youtube_publisher_gate.md` | Cleared by ChatGPT |
+| 02 | `02_t18_facebook_publisher_gate.md` | Cleared (with go/no-go gate) |
+| 03 | `03_t13_linkedin_publishers_gate.md` | Cleared |
+| 04 | `04_t08_auto_approver_stratify_cooldown.md` | **Round-3 amendments folded — awaiting round-4** |
+| 05 | `05_t14_crosspost_rpc_audit.md` | Cleared (no patch needed) |
+| 06 | `06_t09_safe_to_resume_publisher_checklist.md` | Cleared |
+| 07 | `07_t10_pre_fix_queue_disposition.md` | Cleared (with 10-row smoke check) |
+| 08 | `08_amendments_round_1.md` | Reference — round 1 |
+| 09 | `09_amendments_round_2.md` | Reference — round 2 |
+| 10 | `10_amendments_round_3.md` | Reference — round 3 (NEW) |
 
-## Round-3 ChatGPT review prompts
+## Round-4 review prompts (T08-specific)
 
-1. T08 SQL v3 + EF defence-in-depth design — are there any remaining ways for eligibility-gate failures to terminal-reject drafts?
-2. T08 Q1 post-step query catches regression if defence-in-depth fires — sufficient observability?
-3. T10 step 3 smoke check on first 10-row batch — sufficient to catch downstream breakage when `'skipped'` is first written to production?
-4. Any other patches in the batch that conflate "system decision" with "operator decision" the same way T08-A did?
+1. Does the v4 SQL have any remaining bypass paths? Could the lateral pick a row the publisher would NOT actually use?
+2. Is there any state where `cpp.status='active'` returns multiple rows after ORDER BY tie-break, with non-deterministic outcome?
+3. Are there other patches in the batch with similar "select from candidate set" logic that should be re-examined?
+4. Given 3 consecutive HIGH catches on T08, is there a higher-confidence verification step (unit test, verification probe) recommended before deploy?
 
-## New issues surfaced during authoring
+## Open items not blocking deploy
 
-- **B25 (in action_list backlog)**: `seed-and-enqueue-linkedin-every-10m` cron + extended trigger.
-- **S13 + S14 (NEW v2.9)**: standing observation queries for missing/disabled auto-approve config gaps.
+- **B25**: `seed-and-enqueue-linkedin-every-10m` cron audit (post T13 deploy + 7d obs)
+- **B26**: audit other SQL functions / EFs for eligibility-vs-content gate conflation
+- **B27 (NEW v2.10)**: audit other lateral-join patterns in the codebase for the v3 round-3 bypass class (filter inside inner WHERE vs JOIN ON authoritative selection)
