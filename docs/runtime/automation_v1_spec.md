@@ -1,6 +1,6 @@
 # ICE Automation v1 — Locked Spec
 
-**Status:** LOCKED 28 Apr 2026 evening · patched 29 Apr Wed late evening per ChatGPT review · first run validated 29 Apr Wed evening · build path updated 30 Apr Thu morning per D183 + D184
+**Status:** LOCKED 28 Apr 2026 evening · patched 29 Apr Wed late evening per ChatGPT review · first run validated 29 Apr Wed evening · build path updated 30 Apr Thu morning per D183 + D184 · after-run handover loop codified 2 May Sat afternoon
 **Decision:** D182 — Non-blocking execution model (five-rule system)
 **Predecessor:** D181 (audit loop architecture)
 **Follow-on decisions:** D183 (build-when-evidence-demands), D184 (audit slicing)
@@ -48,6 +48,57 @@ If Cowork cannot run a correction pass after 01:00 (e.g. machine sleeping), API 
 
 ---
 
+## After-run handover (chat ↔ Cowork) — NEW 2 May
+
+When a Cowork brief completes, all output is written to GitHub. The chat session does NOT need PK to paste findings. Pasting is redundant friction — the state file template captures everything chat needs in a structured shape.
+
+### The handover loop
+
+```
+PK fires Cowork (paste prompt once)
+  ↓
+Cowork executes brief, writes to GitHub:
+  • docs/runtime/runs/{brief_id}-{timestamp}.md   ← state file (full lifecycle, structured)
+  • docs/audit/.../{output}.md (or migrations/...)  ← output file per brief.success_output
+  • docs/runtime/claude_questions.md               ← any questions raised
+  • docs/briefs/queue.md                           ← row updated to review_required
+  • commits all changes to main
+  ↓
+PK signals completion to chat with a short message ("done", "result", or specific brief_id)
+  ↓
+Chat fetches via GitHub MCP:
+  1. queue.md — latest row state pointer
+  2. {brief_id}-{timestamp}.md — full lifecycle (status, work, questions, validation, next step)
+  3. output file (only if needed for triage)
+  ↓
+Chat synthesises, surfaces actionable findings, recommends next move
+```
+
+### Why this exists
+
+Early sessions developed the muscle memory of pasting Cowork's textual summary into chat. This is redundant — the state file template already captures: status, work completed, questions asked, answers received, corrections applied, validation results, stop conditions, **needs PK approval**, **next step**. That's the entire handover, structured for chat consumption.
+
+The loop closes WITHOUT pasting. Use only when GitHub MCP is unavailable, or to emphasise a specific signal that warrants attention.
+
+### Signal vocabulary
+
+Minimum signal PK gives chat to trigger fetch:
+- `"done"` or `"result"` — fetch latest run state file
+- `"{brief_id} done"` — fetch specifically that brief's most recent state file
+- A pasted summary — still works, but is redundant
+
+Chat behaviour on signal:
+- Read `docs/briefs/queue.md` (find Active row referencing the brief)
+- Read state file at the path listed in queue notes or constructed from `{brief_id}-{timestamp}.md` pattern (latest by mtime)
+- Read output file only if the state file's "Next step" section requires it for triage
+- Synthesise a short response covering: thresholds met, key findings, actionable items, recommended next move
+
+### Per-session minimum context
+
+Unchanged: chat reads `docs/00_sync_state.md` + `docs/00_action_list.md` at session start. The after-run loop above adds: state file on PK's signal.
+
+---
+
 ## Brief frontmatter (mandatory)
 
 Every brief MUST include this YAML frontmatter at the top:
@@ -83,12 +134,13 @@ Notes:
 
 - `allowed_paths` must include the brief's own file path and `queue.md` if the executor needs to update either (e.g. brief frontmatter status transitions, queue row updates).
 - Filename timestamp format is `YYYY-MM-DDTHHMMSSZ` (no colons — some filesystems reject them). Migration filenames keep the existing `YYYYMMDDHHMMSS` format already in use across the repo.
+- Optional `brief_version` field (e.g. `v2`, `v3`) tracks evolution of the same brief_id without forking the file. Use when a brief is patched after first-run learnings rather than replaced.
 
 ## Risk tier system (4 tiers)
 
 ### Tier 0 — Safe auto-commit
 
-**Allowed:** observation reports, sync summaries, audit run drafts, reconciliation logs, non-decision status files, audit snapshots (per D184). Markdown only.
+**Allowed:** observation reports, sync summaries, audit run drafts, reconciliation logs, non-decision status files, audit snapshots (per D184), pipeline-state digests (per nightly-health-check-v1). Markdown only.
 
 **Not allowed:** decision logs, roadmap updates, migrations, production data, client-facing wording.
 
@@ -149,6 +201,7 @@ Examples:
 | Migration draft | `migration_file_absent` (file matching `idempotency_pattern` doesn't exist) |
 | Report | `report_file_absent` (output file doesn't exist in `docs/runtime/runs/`) |
 | Audit snapshot | `snapshot_file_absent` (file at `docs/audit/snapshots/{YYYY-MM-DD}.md` doesn't exist) |
+| Health digest | `health_file_absent` (file at `docs/audit/health/{YYYY-MM-DD}.md` doesn't exist) |
 | Branch task | `branch_exists` (branch still present in remote) |
 | Column documentation | `target_columns_unpopulated` (registry rows still have NULL or PENDING_DOCUMENTATION) |
 
@@ -163,6 +216,8 @@ If no ready briefs exist when an executor runs, file goes at `docs/runtime/runs/
 Timestamp format: `YYYY-MM-DDTHHMMSSZ` (UTC, no colons). Example: `2026-04-29T094430Z`. Avoid colons because some filesystems and CLI tools reject them.
 
 Template at `docs/runtime/state_file_template.md`.
+
+The state file is the canonical handover format — see "After-run handover" section above. Chat reads it on PK's signal; no paste required.
 
 ---
 
@@ -235,6 +290,25 @@ Claude SHOULD ask:
 
 ---
 
+## Pre-flight discipline (Lesson #61 candidate — added 2 May)
+
+**Before authoring any brief that references database tables or columns:**
+
+1. Run `information_schema.columns` lookup on EVERY referenced table:
+   ```sql
+   SELECT table_name, string_agg(column_name, ', ' ORDER BY ordinal_position) AS columns 
+   FROM information_schema.columns 
+   WHERE table_schema = '...' AND table_name IN (...)
+   GROUP BY table_name;
+   ```
+2. Embed the verified column list in the brief's pre-flight section as authoritative.
+3. Quote producer-code semantics (function definitions, EF source) inline when relevant — not just "the function does X".
+4. Acknowledge known dual-shape patterns explicitly (e.g. cron_health_snapshot's `window_hours=1` vs `=24` rows; m schema's two-client vestiges in `ndis_/pp_published_today`).
+
+Schema drift on column names is the most common brief-author bug. Two consecutive Cowork runs (audit-slice-2 + nightly-health-check-v1 v1) recovered from this pattern via default-and-continue — surface signal that pre-flight was insufficient. The discipline above prevents the pattern at brief-authoring time.
+
+---
+
 ## Success thresholds (first test = Phase D ARRAY mop-up)
 
 | Metric | Good | Re-evaluate |
@@ -274,7 +348,7 @@ First test: Phase D ARRAY mop-up brief, Tier 1, mechanical, 7 columns to documen
 3. **3-commit run pattern emerged organically.** ready→running, work, running→review_required+queue update. Clean transitions, easy audit trail. Future executor-prompt revision can codify this.
 4. **Runtime ~5 min vs estimated 20 min.** First brief was tighter than predicted. May need to set tighter estimates for similar mop-up briefs.
 5. **Token burn ~45k.** Modest on Max 5x bundled. No per-run dollar cost concern.
-6. **Two minor wording observations during PK review accepted as-is** — (a) `f.video_analysis.key_hooks` claimed producer "video-analysis worker extracted..." — real per A13 closure but goes slightly beyond pre-flight evidence; (b) `c.client_brand_asset.platform_scope` had shape speculation hedged with "no observed sample available to confirm" — useful future-reader hint. Neither was safety-impacting.
+6. **Two minor wording observations during PK review accepted as-is.** Neither was safety-impacting.
 
 **Constraints accepted (carried forward):**
 
@@ -311,11 +385,13 @@ First test: Phase D ARRAY mop-up brief, Tier 1, mechanical, 7 columns to documen
 | 2 | D182 in decisions log + standing memory | 15 min | DONE 28 Apr |
 | 3 | First Cowork-executable brief (Phase D ARRAY) | 30 min | DONE 29 Apr |
 | 4a | Cowork executor prompt | 15 min | DONE 29 Apr |
-| 4b | GitHub Actions validation workflow | 1 hour | **DEFERRED per D183** — first run inline DO block sufficient. Build when a brief demands cloud-side validation. |
-| 4c | OpenAI API answer step + Cowork correction pass wiring | 1 hour | **DEFERRED per D183** — first run produced 0 questions. Build when a brief actually generates real questions PK cannot trivially answer. |
-| 5 | First overnight test (or first manual test) | overnight or 1 hour | **DONE 29 Apr** — 5/5 thresholds. Phase D ARRAY mop-up applied via Supabase MCP per D170. |
-| 6 | Audit loop automation — Slice 2 (snapshot generation) | 30 min | **NEXT as Tier 0 D182 brief per D184**. Reads `k.*` registry + targeted `f.*`/`m.*` extracts, writes `docs/audit/snapshots/{YYYY-MM-DD}.md`. |
-| 7 | Audit loop automation — Slice 3 (auditor pass) | TBD | **DEFERRED per D184 + D181** — wait for 5+ manual cycles before automating auditor judgment. |
+| 4b | GitHub Actions validation workflow | 1 hour | **DEFERRED per D183** |
+| 4c | OpenAI API answer step + Cowork correction pass wiring | 1 hour | **DEFERRED per D183** |
+| 5 | First overnight test (or first manual test) | overnight or 1 hour | **DONE 29 Apr** — 5/5 thresholds. |
+| 6 | Audit loop automation — Slice 2 (snapshot generation) | 30 min | **DONE 30 Apr** — 5/5 thresholds. |
+| 7 | Audit loop automation — Slice 3 (auditor pass) | TBD | **DEFERRED per D184 + D181** |
+| 8 | Pipeline-state digest brief (nightly-health-check) | 30 min | **DONE 2 May v1, v2 patched** — brief shape #3 validated |
+| 9 | After-run handover loop codified in spec | 10 min | **DONE 2 May** — this section added |
 
 ---
 
@@ -325,15 +401,14 @@ First test: Phase D ARRAY mop-up brief, Tier 1, mechanical, 7 columns to documen
 - `docs/runtime/claude_answers.md` — A outbox
 - `docs/runtime/state_file_template.md` — state file template
 - `docs/runtime/cowork_prompt.md` — paste-ready Cowork executor prompt
+- `docs/runtime/mcp_review_protocol.md` — ChatGPT Review MCP protocol (chat-side)
 - `docs/runtime/runs/` — per-run state files
 - `docs/briefs/queue.md` — operator-facing queue
 - `docs/briefs/` — brief queue
-- `docs/briefs/phase-d-array-mop-up.md` — first brief (status: done)
-- `docs/briefs/audit-snapshot-cycle-2.md` — next brief (to be authored, per D184)
 - `.github/workflows/` — GitHub Actions validation (deferred per D183)
 
 ---
 
 ## Final principle
 
-Default first, ask rarely, correct safely. Run it, observe failures, refine. **Don't pre-build infrastructure for problems you haven't seen yet** (D183).
+Default first, ask rarely, correct safely. Run it, observe failures, refine. **Don't pre-build infrastructure for problems you haven't seen yet** (D183). And: when output is in GitHub, chat reads it directly — no paste required.
