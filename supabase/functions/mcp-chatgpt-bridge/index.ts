@@ -1,9 +1,12 @@
-// mcp-chatgpt-bridge v1.2.1 — OAuth 2.1 + DCR + PKCE wrapper around the existing MCP server.
+// mcp-chatgpt-bridge v1.2.2 — OAuth 2.1 + DCR + PKCE wrapper, consent UI on Vercel.
 //
-// v1.2.1 patch: renderConsentPage uses Headers API explicitly instead of object-literal
-// headers. The object-literal pattern in Deno's Response constructor was apparently
-// not propagating Content-Type for HTML responses through the Supabase EF gateway,
-// causing the consent page to render as plain text in browsers.
+// v1.2.2 patch: removed in-EF HTML rendering. The Supabase EF gateway rewrites
+// Content-Type from text/html to text/plain regardless of how the Response is
+// constructed (verified via live Invoke-WebRequest in v1.2.1 testing — header
+// arrived as `Content-Type: text/plain` despite explicit Headers API setting).
+// Consent UI now hosted on dashboard.invegent.com (Vercel), which serves HTML
+// correctly. Bridge GET /authorize redirects there; POST /authorize stays put
+// to handle form submission, validate passphrase, and issue auth codes.
 //
 // Endpoints:
 //   GET  /                                                  — health check
@@ -11,16 +14,13 @@
 //   GET  /.well-known/oauth-authorization-server            — RFC 8414 metadata
 //   GET  /.well-known/oauth-protected-resource              — RFC 9728 metadata
 //   POST /register                                          — RFC 7591 Dynamic Client Registration
-//   GET  /authorize                                         — OAuth 2.1 auth endpoint (consent form)
-//   POST /authorize                                         — consent form submission
+//   GET  /authorize                                         — 302 to dashboard.invegent.com/mcp-consent
+//   POST /authorize                                         — consent form submission (still here, not on dashboard)
 //   POST /token                                             — OAuth 2.1 token endpoint (code or refresh)
 //
 // Auth on the MCP endpoint accepts EITHER:
 //   - Static bearer: Bearer <MCP_BRIDGE_BEARER_TOKEN>          (for PowerShell/internal/admin)
 //   - JWT bearer:    Bearer eyJ...                             (issued by /token after OAuth flow)
-//
-// The OAuth flow's consent step requires entering MCP_BRIDGE_BEARER_TOKEN as a passphrase.
-// This is the only human gate — once consent succeeds, claude.ai gets a 30-day JWT.
 
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -36,9 +36,10 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const WORKER_URL = `${SUPABASE_URL}/functions/v1/chatgpt-review-worker`;
 const BRIDGE_BASE_URL = `${SUPABASE_URL}/functions/v1/mcp-chatgpt-bridge`;
+const CONSENT_PAGE_URL = 'https://dashboard.invegent.com/mcp-consent';
 const MAX_CONTEXT_BYTES = 50_000;
 const PROTOCOL_VERSION = '2024-11-05';
-const SERVER_INFO = { name: 'mcp-chatgpt-bridge', version: '1.2.1' };
+const SERVER_INFO = { name: 'mcp-chatgpt-bridge', version: '1.2.2' };
 
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;   // 30 days
 const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 90;  // 90 days
@@ -96,8 +97,6 @@ function base64UrlDecode(s: string): Uint8Array {
 }
 
 async function getJwtKey(): Promise<CryptoKey> {
-  // Derive JWT signing key deterministically from the bridge bearer token + a label.
-  // Rotating MCP_BRIDGE_BEARER_TOKEN automatically invalidates all OAuth-issued JWTs.
   const seed = await sha256Bytes(BRIDGE_TOKEN + ':oauth-jwt-v1');
   return await crypto.subtle.importKey(
     'raw', seed, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']
@@ -163,13 +162,24 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
   });
 }
 
-function htmlResponse(html: string, status = 200): Response {
-  // Use Headers API explicitly — object-literal headers were not propagating
-  // Content-Type for HTML responses through the Supabase EF gateway in v1.2.0.
-  const headers = new Headers();
-  headers.set('Content-Type', 'text/html; charset=utf-8');
-  headers.set('Cache-Control', 'no-store');
-  return new Response(html, { status, headers });
+// ============================================================================
+// CONSENT REDIRECT
+// ============================================================================
+
+function redirectToConsent(params: Record<string, string>, error?: string): Response {
+  const url = new URL(CONSENT_PAGE_URL);
+  // Forward all OAuth params so the consent page can reflect them as hidden inputs.
+  // Skip passphrase (sensitive) and any pre-existing error param.
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && k !== 'passphrase' && k !== 'error') {
+      url.searchParams.set(k, String(v));
+    }
+  }
+  if (error) url.searchParams.set('error', error);
+  return new Response(null, {
+    status: 302,
+    headers: { ...CORS_HEADERS, 'Location': url.toString() }
+  });
 }
 
 // ============================================================================
@@ -249,77 +259,26 @@ async function handleRegister(req: Request): Promise<Response> {
   };
   if (clientSecret) {
     response.client_secret = clientSecret;
-    response.client_secret_expires_at = 0; // never
+    response.client_secret_expires_at = 0;
   }
   return jsonResponse(response, { status: 201 });
 }
 
 // ============================================================================
-// AUTHORIZE ENDPOINT (CONSENT)
+// AUTHORIZE ENDPOINT (CONSENT) — UI hosted on dashboard.invegent.com
 // ============================================================================
-
-function renderConsentPage(params: Record<string, string>, errorMsg?: string): Response {
-  const safeParams = Object.fromEntries(
-    Object.entries(params).map(([k, v]) => [k, String(v).replace(/[<>"'&]/g, c =>
-      ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '&': '&amp;' } as any)[c]
-    )])
-  );
-
-  const errorBlock = errorMsg
-    ? `<div style="color:#c00;background:#fee;padding:8px 12px;border-radius:4px;margin-bottom:12px;">${errorMsg.replace(/[<>]/g, '')}</div>`
-    : '';
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Authorize ChatGPT Review</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 440px; margin: 60px auto; padding: 0 20px; color: #222; }
-  h1 { font-size: 22px; margin-bottom: 8px; }
-  p { color: #555; line-height: 1.5; }
-  .card { border: 1px solid #ddd; border-radius: 8px; padding: 24px; }
-  label { display: block; font-weight: 500; margin: 16px 0 6px; }
-  input[type=password] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
-  button { background: #111; color: #fff; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-top: 16px; width: 100%; }
-  button:hover { background: #333; }
-  .meta { font-size: 12px; color: #888; margin-top: 16px; word-break: break-all; }
-</style>
-</head>
-<body>
-<div class="card">
-<h1>Authorize ChatGPT Review</h1>
-<p><strong>${safeParams.client_id || 'A client'}</strong> is requesting access to call the cross-check MCP on your behalf.</p>
-${errorBlock}
-<form method="POST">
-  <input type="hidden" name="client_id" value="${safeParams.client_id || ''}">
-  <input type="hidden" name="redirect_uri" value="${safeParams.redirect_uri || ''}">
-  <input type="hidden" name="state" value="${safeParams.state || ''}">
-  <input type="hidden" name="code_challenge" value="${safeParams.code_challenge || ''}">
-  <input type="hidden" name="code_challenge_method" value="${safeParams.code_challenge_method || 'S256'}">
-  <input type="hidden" name="scope" value="${safeParams.scope || 'mcp'}">
-  <input type="hidden" name="response_type" value="${safeParams.response_type || 'code'}">
-  <label for="passphrase">Bridge passphrase</label>
-  <input type="password" id="passphrase" name="passphrase" autocomplete="off" autofocus required>
-  <button type="submit">Authorize</button>
-</form>
-<div class="meta">Granting access issues a 30-day token to this client. Revoke by rotating MCP_BRIDGE_BEARER_TOKEN.</div>
-</div>
-</body>
-</html>`;
-  return htmlResponse(html);
-}
 
 async function handleAuthorizeGet(req: Request): Promise<Response> {
   const u = new URL(req.url);
   const params = Object.fromEntries(u.searchParams.entries());
 
+  // Validate params before redirecting — surface missing/invalid params on the
+  // consent page so PK doesn't have to dig through logs.
   if (params.response_type !== 'code') {
-    return jsonResponse({ error: 'unsupported_response_type' }, { status: 400 });
+    return redirectToConsent(params, 'invalid_request');
   }
   if (!params.client_id || !params.redirect_uri || !params.code_challenge) {
-    return jsonResponse({ error: 'invalid_request', error_description: 'client_id, redirect_uri, code_challenge required' }, { status: 400 });
+    return redirectToConsent(params, 'invalid_request');
   }
 
   // Validate client + redirect_uri
@@ -330,13 +289,13 @@ async function handleAuthorizeGet(req: Request): Promise<Response> {
     .maybeSingle();
 
   if (!client) {
-    return jsonResponse({ error: 'invalid_client' }, { status: 400 });
+    return redirectToConsent(params, 'invalid_client');
   }
   if (!(client.redirect_uris as string[]).includes(params.redirect_uri)) {
-    return jsonResponse({ error: 'invalid_redirect_uri' }, { status: 400 });
+    return redirectToConsent(params, 'invalid_redirect_uri');
   }
 
-  return renderConsentPage(params);
+  return redirectToConsent(params);
 }
 
 async function handleAuthorizePost(req: Request): Promise<Response> {
@@ -346,7 +305,7 @@ async function handleAuthorizePost(req: Request): Promise<Response> {
 
   const passphrase = params.passphrase ?? '';
   if (passphrase !== BRIDGE_TOKEN) {
-    return renderConsentPage(params, 'Incorrect passphrase. Try again.');
+    return redirectToConsent(params, 'bad_passphrase');
   }
 
   // Validate client again
@@ -357,7 +316,7 @@ async function handleAuthorizePost(req: Request): Promise<Response> {
     .maybeSingle();
 
   if (!client || !(client.redirect_uris as string[]).includes(params.redirect_uri)) {
-    return jsonResponse({ error: 'invalid_client_or_redirect' }, { status: 400 });
+    return redirectToConsent(params, 'invalid_client');
   }
 
   // Issue auth code
@@ -376,10 +335,10 @@ async function handleAuthorizePost(req: Request): Promise<Response> {
     });
 
   if (insertErr) {
-    return jsonResponse({ error: 'server_error', error_description: insertErr.message }, { status: 500 });
+    return redirectToConsent(params, 'server_error');
   }
 
-  // 302 redirect back to client
+  // 302 redirect back to client (claude.ai) with code + state
   const redirectUrl = new URL(params.redirect_uri);
   redirectUrl.searchParams.set('code', code);
   if (params.state) redirectUrl.searchParams.set('state', params.state);
@@ -404,7 +363,6 @@ async function handleToken(req: Request): Promise<Response> {
   } else if (contentType.includes('application/json')) {
     try { params = await req.json(); } catch { /* fall through */ }
   } else {
-    // Some clients omit/malformed content-type; try both
     try {
       const text = await req.text();
       try { params = JSON.parse(text); }
@@ -412,7 +370,6 @@ async function handleToken(req: Request): Promise<Response> {
     } catch { /* nothing */ }
   }
 
-  // Client credentials may be in body or in Basic auth header
   let clientId = params.client_id ?? '';
   let clientSecret = params.client_secret ?? '';
   const auth = req.headers.get('authorization');
@@ -429,7 +386,6 @@ async function handleToken(req: Request): Promise<Response> {
     return jsonResponse({ error: 'invalid_client' }, { status: 401 });
   }
 
-  // Look up client
   const { data: client } = await supabase
     .schema('m').from('mcp_oauth_client')
     .select('client_id, client_secret, token_endpoint_auth_method')
