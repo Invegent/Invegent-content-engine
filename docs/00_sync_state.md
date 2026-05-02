@@ -1,14 +1,139 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-05-01 Friday early morning UTC / Friday late evening Sydney — **End-of-PK-on-phone session reconciliation. APPENDS to the Thursday late-evening reconciliation as the canonical session log.** PK on phone tonight; T07 step 4 attempted+rolled-back; NDIS-Yarns IG also hit Meta anti-spam (subcode 2207051) on cron retry; F-PUB-004 (auto-approver starvation) discovered as the largest production breakage of the day; F-PUB-005 (trigger doesn't gate on approval) captured as design coupling problem; T01 +21h obs clean across all metrics including zero alerts since deploy; two ChatGPT cross-checks halted wrong-direction actions tonight (wrong YT trigger fix; wrong bulk-quarantine of legacy FB drafts). action_list now at v2.3.
-> Written by: PK (on phone) + Claude session sync
+> Last written: 2026-05-02 Saturday afternoon Sydney — **ChatGPT Review MCP shipped end-to-end; claude.ai connector connected at 03:16:48 UTC; Lesson #46 third vindication; Lesson #58 candidate raised.** Friday late-evening session (v2.14 work — Workstream 1 completion, T08 SQL v5, B28 + Path B applied) is captured in action_list v2.14 changelog only and does not have a corresponding sync_state section. That gap is known and not being backfilled here — focus this reconciliation is the Saturday afternoon Sydney session.
+> Written by: chat session sync
 
 > ⚠️ **Session-start reading order (per memory entry 1):**
 > 1. **`docs/00_sync_state.md`** (this file) — narrative log of last session
 > 2. **`docs/00_action_list.md`** — running queued/active/blocked/frozen backlog with priorities and triggers
 >
 > The two files are complementary: sync_state is the session log, action_list is the working backlog. Read both at every session open.
+
+---
+
+## 🟢 2 MAY SATURDAY AFTERNOON SYDNEY — CHATGPT REVIEW MCP BUILT AND CONNECTED — APPEND-ONLY SESSION
+
+Single-session build of the Claude→ChatGPT cross-check MCP. Idea conceived 1 May after the 4hr context-window incident (manual Claude↔PK↔ChatGPT shuttle for two cross-check rounds the same night). Built end-to-end Saturday afternoon Sydney; connected to claude.ai at 03:16:48 UTC. **The mechanism that automates the human-in-the-middle review pattern (D-01 standing rule) is now itself live and waiting on its first real-world fire.**
+
+### Sequence of events
+
+1. **Brief authored** as `docs/briefs/chatgpt-review-mcp-v1.md`. ChatGPT review round 1 caught: `json_object` → `json_schema` upgrade for production reliability; backend-enforced routing not model-enforced (so model can recommend escalation but EF is final arbiter); expanded audit table schema (provenance / cost / latency / idempotency / lifecycle).
+
+2. **ChatGPT review round 2** caught a real Postgres bug in v1.0 of the migration: `now()` inside a partial unique index predicate fails Postgres' IMMUTABLE function requirement. Brief patched to v1.1: added `idempotency_key` column + UTC-date-bucket pattern. Would have failed the migration outright in v1.0.
+
+3. **Three migrations applied via Supabase MCP per D170:**
+   - `create_chatgpt_review_table_v1` — `m.chatgpt_review` (31 cols, 5 indexes including unique on idempotency_key, 16 constraints)
+   - `grant_chatgpt_review_to_service_role` — INSERT/SELECT/UPDATE (matched `m.post_publish_queue` pattern; `m.ai_job` doesn't have service_role grants because it uses SECURITY DEFINER fns)
+   - `create_mcp_oauth_tables_v1` — `m.mcp_oauth_client` (DCR registrations) + `m.mcp_oauth_code` (10-min single-use auth codes)
+
+4. **OpenAI account setup**: project `ice-review`, service-account key `chatgpt-review-worker-v1`, $50/mo budget alert at $35 + 100%. Smoke test passed via `Invoke-RestMethod` (PowerShell `curl` had escaping issues; switched to native PS HTTP).
+
+5. **Three Supabase secrets set:**
+   - `OPENAI_REVIEW_API_KEY`
+   - `MCP_BRIDGE_BEARER_TOKEN` (also used as JWT signing seed via SHA-256 derivation — rotating it auto-invalidates all OAuth-issued JWTs)
+   - `INTERNAL_WORKER_TOKEN`
+
+6. **Two EFs deployed:**
+   - `chatgpt-review-worker` v1.0 — wraps OpenAI Responses API, gpt-4o-mini, 30s timeout, strict json_schema with REVIEW_SCHEMA + REVIEWER_SYSTEM_PROMPT, internal-only (INTERNAL_WORKER_TOKEN bearer required)
+   - `mcp-chatgpt-bridge` v1.2.2 — MCP JSON-RPC server + OAuth 2.1 + DCR (RFC 7591) + PKCE. Endpoints: `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource`, `/register`, `/authorize` GET+POST, `/token`, MCP root POST. Accepts EITHER static `MCP_BRIDGE_BEARER_TOKEN` OR OAuth-issued JWT.
+
+7. **End-to-end PowerShell tests passed** (5 runs):
+   - Run 1: Initialize handshake ✓
+   - Run 2: tools/list ✓ (returns `ask_chatgpt_review`)
+   - Run 3: tools/call agree-low ✓ — review_id `5cdc1d02-0b99-4cf1-9425-9cc3a4a2c795`, decision=proceed, verdict=agree, risk=low, confidence=high, 501+56 tokens, 3.6s latency, ~$0.0001 cost
+   - Run 4: Idempotency hit ✓ (same review_id returned, no new OpenAI call, no duplicate row)
+   - Run 5: One row in `m.chatgpt_review`, all fields populated correctly; static bearer auth still works after OAuth wrapper added
+
+8. **Hit Supabase EF gateway quirk**: `Content-Type: text/html` set in EF code arrives as `text/plain` at the browser, with `X-Content-Type-Options: nosniff` injected by the gateway. v1.2.0 used object-literal headers; v1.2.1 switched to `new Headers()` + `headers.set()` — neither worked. JSON responses through the same code paths return `application/json` correctly. **Confirmed via live `Invoke-WebRequest` headers inspection — gateway behaviour, not code bug.**
+
+9. **ChatGPT review round 3 (live)** pushed for live header inspection BEFORE another round of code patches. Lesson #46 in action — saved another wasted round of Headers API permutations.
+
+10. **Pivoted to host consent UI on Vercel**: `app/mcp-consent/page.tsx` in invegent-dashboard (Vercel auto-deploy ~60s per D170). Bridge GET/POST `/authorize` now redirects to `dashboard.invegent.com/mcp-consent`; Vercel renders the form correctly because that's its job; form posts back to bridge for validation + auth code issuance. Clean architecture — secrets and OAuth state stay on Supabase, HTML rendering on Vercel.
+
+11. **Connected to claude.ai at 03:16:48 UTC**:
+    - Client `mcp_69ff8298c1e006f509f104b30a0934d9` registered at 03:16:31 (DCR)
+    - Auth code created at 03:16:46 (PK clicked Authorize on the consent page)
+    - Auth code consumed at 03:16:48 (claude.ai `/token` exchange — 2-second turnaround; PKCE verification passed)
+    - JWT issued; `last_used_at` populated at 03:16:49
+    - Four prior failed clients (`mcp_c81c5496...`, `mcp_3223edb8...`, `mcp_3237c6a2...`, `mcp_d523f33d...`) all show `last_used_at: null` — those were the broken text/plain consent page period before the Vercel pivot
+
+### Today's mutations
+
+| When (UTC) | Mutation | Type |
+|---|---|---|
+| ~02:30 | `apply_migration` create m.chatgpt_review (31 cols, 5 idx, 16 constraints) | DDL |
+| ~02:32 | `apply_migration` grant chatgpt_review to service_role (INSERT/SELECT/UPDATE) | DDL |
+| ~02:35 | `apply_migration` create m.mcp_oauth_client + m.mcp_oauth_code | DDL |
+| ~02:50–03:09 | 4 client_id rows inserted via DCR (failed broken-consent attempts; `last_used_at: null`) | DML (auto by EF) |
+| 03:16:31 | client_id `mcp_69ff8298...` registered (DCR) | DML (auto by EF) |
+| 03:16:46 | auth_code created | DML (auto by EF) |
+| 03:16:48 | auth_code consumed (used_at set) | DML (auto by EF) |
+| 03:16:49 | client.last_used_at populated | DML (auto by EF) |
+
+**3 chat-driven DDL operations + ~6 EF-internal DML operations as part of the connector flow. Standing rule: no production DML run by chat in this session. Three Supabase secrets set via dashboard (not chat-mutating-DB).**
+
+### Today's commits
+
+**Invegent-content-engine `main`:**
+| Commit | What |
+|---|---|
+| `906a7ec` | docs/briefs/chatgpt-review-mcp-v1.md + queue.md — initial brief + queue add |
+| `b7c0543` | brief v1.1 — ChatGPT review round 2 patches (now() bug fix + json_schema + audit schema + alerting wording) |
+| `464c6a2` | EFs v1.0 — chatgpt-review-worker + mcp-chatgpt-bridge bearer-only |
+| `c8c4ab5` | mcp-chatgpt-bridge v1.2.0 — OAuth 2.1 + DCR + PKCE wrapper (~600 lines, 2 new tables) |
+| `7f90119` | mcp-chatgpt-bridge v1.2.1 — htmlResponse helper (didn't fix gateway quirk; gateway override confirmed) |
+| `aa6cded` | mcp-chatgpt-bridge v1.2.2 — removed in-EF HTML render; redirects to Vercel consent page |
+| (this commit) | sync_state Saturday-afternoon reconciliation + action_list v2.15 + queue.md update |
+
+**invegent-dashboard `main`:**
+| Commit | What |
+|---|---|
+| `828b06d` | feat(mcp-consent): app/mcp-consent/page.tsx — OAuth consent UI on Vercel |
+
+### Lesson #46 third vindication
+
+Three ChatGPT cross-check production saves now in the running tally:
+1. **30 Apr/1 May earlier**: Wrong YT trigger fix (averted)
+2. **1 May late evening**: Wrong bulk-quarantine of 87 legacy FB drafts (averted)
+3. **2 May this session**: Wasted patching of the Supabase EF gateway HTML quirk (averted) — would have spent another 30+ min on Headers API permutations without checking live response headers first
+
+The pattern Lesson #46 names — *verify the actual live state before patching the wrong layer* — is now established with 3 distinct production validations across 2 days. **The case for D-01 / D185 (red-team review v1 ratification) keeps strengthening with every session.**
+
+### Lesson #58 candidate (NEW)
+
+> *"When a platform's gateway misbehaves with a specific response type that you don't control, route around on a different surface rather than fighting the platform. Architecture simplicity (one project does everything) is not always worth the platform fights."*
+
+Surface evidence: Supabase EF gateway rewrites `text/html` responses to `text/plain` and injects `X-Content-Type-Options: nosniff`. Code-level fixes (object-literal headers, Headers API, explicit Content-Type, Cache-Control) cannot recover this — verified via live `Invoke-WebRequest`. The architectural fix was to move only the HTML-rendering surface to Vercel (which serves HTML correctly because that's its purpose) while keeping all secrets, OAuth state, and code-issuance logic on the Supabase EF (where it works for JSON). Outcome: clean two-surface architecture, each doing what it's best at.
+
+Captured as candidate in action_list v2.15; promote when seen in 2+ more sessions.
+
+### Standing rule honoured (memory entry 11 — 4-way sync)
+
+- ✅ docs/00_sync_state.md — THIS COMMIT (Saturday afternoon Sydney section)
+- ✅ docs/00_action_list.md — bumped to v2.15 in this same commit
+- ✅ docs/briefs/queue.md — chatgpt-review-mcp-v1 moved to Recently completed in this same commit
+- ✅ docs/briefs/chatgpt-review-mcp-v1.md — already on disk (v1.1 patched, no further edits this session)
+- ✅ docs/06_decisions.md — no new D-numbered decisions tonight (architecture decisions captured in brief; D-01 standing rule unchanged)
+- ⚠️ invegent-dashboard roadmap page.tsx — still deferred per R07 (this is meta-tooling, not a phase-deliverable)
+- ✅ Memory entries — auto-regenerate from chat history; no `memory_user_edits` directives required this session
+
+### Strategic posture
+
+The ChatGPT Review MCP is now operational. PK can use it from any new claude.ai chat session by invoking `ask_chatgpt_review` naturally during ICE work. Every successful tool call replaces what was previously a manual Claude↔PK↔ChatGPT shuttle through the chat window — saving the 4hr-style context-window incidents that originally motivated the build.
+
+**The standing rule from D-01** (every production patch and action_list version bump from v2.5 onward goes through ChatGPT cross-check) now has a one-tool-call mechanism instead of copy-paste back-and-forth. The very next patch — T08 EF v1.6.0 reconstruction (B31) — should be the first real-stakes production fire of the tool.
+
+**Cost discipline**: $50/mo budget alert at $35 + 100%. Each call burns ~$0.0001 at gpt-4o-mini (gpt-4o-mini Responses API, ~500 input + 50 output tokens, 3.6s latency). At 100 calls/day average, monthly burn ~$0.30. Headroom is enormous; cost concern is theoretical not real for v1.
+
+### Closing note for next session
+
+**The MCP tool only becomes available in NEW chat sessions** (claude.ai connectors load at session start, not retroactively into the active session). PK should:
+1. Open a fresh claude.ai chat (in this same Project to retain memory + project files)
+2. Validate the tool fires correctly on a real proposal — first call is the final acceptance test (T-MCP-01)
+3. Continue with B31 (auto-approver v1.6.0 EF reconstruction), T10 disposition execution, T02 Gate B exit decision (default: exit on schedule today) — and from this point onward, **use ChatGPT Review automatically before any production patch per D-01**
+
+T-MCP-03 (rotate `MCP_BRIDGE_BEARER_TOKEN` because it leaked in chat history during build) is P2 within 7 days — not urgent (the token only authorises bridge access; rotating it auto-invalidates all JWTs which is a clean reset).
 
 ---
 
@@ -74,41 +199,15 @@ This section APPENDS to the Thursday late-evening reconciliation. PK was on phon
 **28. action_list updated through v2.3**
    - v2.2 → v2.3: T07 step 4 attempted+rolled-back; NDIS-Yarns IG also locked; T01 ✅; T08 added P0 (F-PUB-004 patch); D-08 + D-09 added; B22 + B23 added; S11 added; F-PUB-002 corrigendum committed; F-PUB-004 + F-PUB-005 captured.
 
-### Today's mutations (cumulative across both reconciliations)
-
-Thursday list per the previous reconciliation. Friday early morning UTC additions:
-
-| When | Mutation | Type |
-|---|---|---|
-| ~23:?? UTC 30 Apr | `cron.alter_job(53, true)` — IG cron re-enabled | DML (data update on cron.job) |
-| 00:00 UTC 1 May | First IG cron tick after re-enable — 2 attempts (CFW+NDIS) — both failed in different ways | (cron run, not chat-driven) |
-| 00:15 UTC 1 May | Second IG cron tick — 2 attempts (CFW+NDIS) — both failed | (cron run, not chat-driven) |
-| 00:19 UTC 1 May | `cron.alter_job(53, false)` — IG cron rolled back | DML |
-| 00:19 UTC 1 May | `UPDATE c.client_publish_profile SET publish_enabled=false ... WHERE client_id=NDIS-Yarns` | DML (single row) |
-
-**No DDL applied tonight. No bulk UPDATEs. ChatGPT cross-check #2 stopped the proposed bulk-quarantine of legacy FB drafts.**
-
 ### Lesson #46 vindication
 
 F-PUB-004 (auto-approver starvation) is the most direct demonstration of Lesson #46 to date. The auto-approver-sweep cron returned 200 OK on every run (144/144 in 24h, last run 00:30 UTC) while the actual business outcome was zero approvals across IG and LinkedIn for 5+ days. Standing checks S8 (cron-level) and S9 (OAuth-level) and S10 (publish-output-level) all reported healthy or near-healthy for the auto-approver platform — but the *approvals* dimension wasn't being monitored. **S11 added tonight** to fill that gap.
 
 This would have been visible in S10 (zero IG publishes in 24h) had it existed a week ago. S10 was added in v2.2 yesterday. So tonight's discovery is consistent with the pattern Lesson #46 names — but it's also evidence that S10 alone is not enough; S11 (fresh approvals) is a stricter upstream check.
 
-### Today's commits — Invegent-content-engine `main`
-
-(Thursday commits per previous reconciliation. Friday early morning UTC additions:)
-
-| Commit | Author | What |
-|---|---|---|
-| (Supabase) | chat | T07 step 4 attempt — cron re-enabled |
-| (Supabase × 2) | chat | T07 step 4 rollback — cron disabled + NDIS-Yarns IG locked |
-| (this commit) | chat | sync_state late-evening reconciliation update + action_list v2.3 + 2026-05-01-phase-b-+24h-obs.md run state + 2026-04-30-publishers-operational.md corrigendum (F-PUB-002 update + F-PUB-004 + F-PUB-005) |
-
-**invegent-dashboard — `main`:** none.
-
 ### Standing memory rule honoured (entry 11 — 4-way sync)
 
-- ✅ docs/00_sync_state.md — THIS COMMIT (PK-on-phone reconciliation appended)
+- ✅ docs/00_sync_state.md — Friday-early-morning reconciliation appended
 - ✅ docs/00_action_list.md — at v2.3
 - ✅ docs/audit/runs/2026-04-30-publishers-operational.md — corrigendum + F-PUB-004 + F-PUB-005
 - ✅ docs/audit/runs/2026-05-01-phase-b-+24h-obs.md — NEW (T01 result captured)
@@ -119,104 +218,55 @@ This would have been visible in S10 (zero IG publishes in 24h) had it existed a 
 
 ---
 
-## ⛔ DO NOT TOUCH NEXT SESSION (UPDATED FROM PREVIOUS)
+## ⛔ DO NOT TOUCH NEXT SESSION (CARRIED FORWARD)
 
-(All Thursday-late-evening protections still apply. Friday early-morning additions:)
+(All prior protections still apply.)
 
 - **The NDIS-Yarns IG `publish_enabled=false` row state** (T07 step 4 rollback). Do not flip back to `true` until T08 (F-PUB-004 fix) lands AND T05 (Meta dev support outcome) decides recovery.
 - **The cron jobid 53 `active=false` state.** Do not re-enable until: (a) T08 patch deployed AND (b) at least one fresh CFW or Invegent IG draft observed reaching `approved` status. Then revisit with `?limit=1` only.
 - **The Phase B body-health gate** continues to hold per +21h observation. Final +24h checkpoint at ~03:48 UTC Sat 1 May. T02 exit decision Saturday.
+- **The four failed mcp_oauth_client rows** (`mcp_c81c5496...`, `mcp_3223edb8...`, `mcp_3237c6a2...`, `mcp_d523f33d...`) — leave them. They're audit trail of the consent-page-broken period and have no impact on the working `mcp_69ff8298...` client.
 
 ---
 
 ## 🟡 NEXT SESSION (Sat 2 May or later)
 
-> **All next-session items are also in `docs/00_action_list.md` v2.3 with priorities and triggers.** Read that file alongside this one for the active backlog view.
+> **All next-session items are also in `docs/00_action_list.md` v2.15 with priorities and triggers.** Read that file alongside this one for the active backlog view.
 
 ### Required (time-bound)
 
 1. **Personal businesses check-in** — per standing rule entry 19 (P0).
 
-2. **Re-check T01 obs at full +24h mark (~03:48 UTC Sat 1 May)** — verify no new alerts in the +21h→+24h window. Default verdict: exit Gate B on schedule.
+2. **T-MCP-01: Validate ChatGPT Review MCP from new chat** (P0) — open fresh claude.ai chat in this Project, request a real proposal review, confirm tool fires + writes correctly to `m.chatgpt_review`.
 
-3. **T02 — Gate B exit decision** — Saturday. Default exit on schedule per T01 result.
+3. **T02 — Gate B exit decision** — Saturday default: exit on schedule per T01 result.
 
-4. **T08 — Author auto-approver patch (F-PUB-004 fix)** (P0). Chat authors TypeScript patch. ChatGPT cross-check before deploy per Lesson #45. PK deploys via Supabase EF dashboard.
+4. **B31 — Reconstruct auto-approver v1.6.0 EF source** (P0). Chat authors TypeScript patch from v1.5.0 + brief 09 design + cooldown spec. **First real-stakes test of the new MCP review tool — use it before deploy.** PK deploys via Supabase EF dashboard.
 
-5. **PK: T06** — reconnect YouTube OAuth via Supabase dashboard (3 clients). Runs in parallel with T08; doesn't block.
+5. **PK: T06** — reconnect YouTube OAuth via Supabase dashboard (3 clients). Runs in parallel.
 
-6. **PK: T05** — Meta dev support contact, single conversation covering business verification + PP IG block + NDIS-Yarns IG block + App Review status (R08).
-
-### Strategic — ready when bandwidth allows
-
-7. **O-01: Author Platform-Source-of-Truth map** (~30 min chat work) — most enabling OTL piece.
-
-8. **R09: Author reconciliation v2 brief** — after T01 + T02 done.
-
-9. **R01 calibration session** — Sun 3 May or Mon 4 May (T04, after Gate B exit known). 90min hard cap.
+6. **PK: T05** — Meta dev support contact — single conversation covering business verification + PP IG block + NDIS-Yarns IG block + App Review status (R08).
 
 ### Strict ordering for IG re-enable
 
 T07 step 4 cannot be retried until ALL of:
-- T08 (F-PUB-004 patch) deployed
+- T08 (F-PUB-004 patch) deployed (B31 reconstruction → MCP review → PK deploy)
 - At least one fresh CFW or Invegent IG draft observed in `approval_status='approved'` (proves auto-approver patch works)
 - T05 Meta dev support outcome known for PP and NDIS-Yarns
 - Cron command updated to `?limit=1` (currently `?limit=2`) — chat can apply this when re-enable time comes
 
 ### Backlog (no specific deadline)
 
-See `docs/00_action_list.md` v2.3 📌 Backlog and 🏗 Operational Truth Layer sections for the full lists with triggers.
+See `docs/00_action_list.md` v2.15 sections for the full lists with triggers — including new B34 (estimated_cost_usd calc on chatgpt-review-worker) + B35 (m.chatgpt_review_daily telemetry view).
 
 ---
 
 ## D182 sunset review reminder
 
-No D182 brief work tonight (PK on phone). System still at 7 briefs validated across 2 brief shapes. F04 (post_render_log) remains queued for CC overnight. Sunset review still 12 May 2026.
+No D182 brief work this session (focus was meta-tooling). System still at 7 briefs validated across 2 brief shapes. F04 (post_render_log) remains queued for CC. **The chatgpt-review-mcp-v1 brief is the 8th validated brief — and the first Tier 2 brief that produced a deployed multi-component system end-to-end in a single session.** Sunset review still 12 May 2026.
 
 ---
 
-## STRATEGIC POSTURE
+## END OF SATURDAY 2 MAY AFTERNOON SYDNEY SESSION
 
-Tonight's session was unplanned: PK was on phone with no laptop, asked what chat could carry solo. The answer turned out to be much bigger than expected.
-
-The session escalated through three phases:
-
-1. **Routine T07 step 4 application** — chat re-enabled IG cron per yesterday's plan. Quick mobile-friendly action.
-2. **Surprise discovery** — NDIS-Yarns IG also flagged. Cron rolled back. T07 step 4 rollback noted as correctly handled.
-3. **Deeper investigation triggered by the rollback** — the CFW × 2 failures (`not_approved:needs_review`) led to discovery of F-PUB-004 (auto-approver starvation) — the largest production breakage of the day.
-
-The takeaway: tonight's session is **the most validating evidence yet for Lesson #46**. The auto-approver was returning 200 OK on every cron run while approving zero drafts for 5+ days. This is exactly the failure mode Lesson #46 names. S11 standing check added tonight to fill the specific gap.
-
-The takeaway is also **the most validating evidence yet for D-01 / D185 (red-team review v1 ratification)**. Two ChatGPT cross-checks tonight prevented two wrong-direction actions:
-- (1) Earlier today: wrong YT trigger fix migration (averted)
-- (2) Tonight: wrong bulk-quarantine of 87 legacy FB drafts (averted)
-
-Neither catch was Phase-C work. Both were real-stakes production. Both prevented harm.
-
-**Tomorrow's priority order is now reordered**: T08 (F-PUB-004 patch) is P0 because no IG re-enable is possible until it lands. T06 (YT OAuth) and T05 (Meta dev support) are P1 and run in parallel.
-
-**The strategic non-time-bound thread** continues to be `structured_red_team_review_v1` (D-01 / D185). Tonight's evidence accumulates further — when R10 (Phase C cutover live pilot) eventually runs and the ratification call happens, the case for adoption will be strong.
-
----
-
-## CLOSING NOTE FOR NEXT SESSION
-
-Tonight made cron-vs-business-truth visible at a deeper layer than the YT/IG audit yesterday. The publisher audit discovered cron-layer monitoring missed YT broken since 11 Apr and IG queue piling up. Tonight's auto-approver investigation discovered cron-layer monitoring missed approvals starving since 25 Apr. Same pattern, different system, shorter time-to-detection thanks to S10 + S11 being on the radar already.
-
-**Read `docs/00_action_list.md` v2.3 at the start of the next session.** Standing checks now S1-S11. Tomorrow's Today/Next 5 already rebuilt: personal businesses → T08 → T06 → T02 → T05.
-
-The Phase B body-health filter has held through 21+ hours with zero alerts of any kind. T02 Gate B exit decision tomorrow is essentially pre-made (default: exit on schedule).
-
-Beyond that:
-- (a) PK actions: T06 OAuth, T05 Meta contact — quick wins, do them first
-- (b) Strategic + production: T08 F-PUB-004 patch (chat authors, ChatGPT reviews, PK deploys) — unblocks IG/LinkedIn and is the most consequential change of the week
-- (c) Strategic stream: OTL O-01 through O-06 — start with O-01
-- (d) Backlog: F08, B-items waiting for triggers
-
-All sorted by priority in `docs/00_action_list.md` v2.3.
-
----
-
-## END OF FRIDAY 1 MAY EARLY MORNING UTC SESSION
-
-Full reconciliation complete. T07 step 4 attempted+rolled-back. NDIS-Yarns IG locked. T01 ✅. F-PUB-004 + F-PUB-005 captured. Action list at v2.3. T08 P0 for tomorrow. PK ChatGPT cross-checks #1 + #2 both validated. Phase B obs clean. Fresh start ready.
+Full reconciliation complete. ChatGPT Review MCP system shipped end-to-end. claude.ai connector connected. OAuth flow validated via DB inspection. Lesson #46 third vindication. Lesson #58 candidate raised. Standing rule from D-01 now has automated mechanism — first real-stakes fire pending in next session. Action list at v2.15. Queue updated. **The mechanism that automates the human-in-the-middle review pattern is now itself live. The next move is to use it.**
