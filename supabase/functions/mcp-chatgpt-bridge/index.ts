@@ -1,4 +1,9 @@
-// mcp-chatgpt-bridge v1.2 — OAuth 2.1 + DCR + PKCE wrapper around the existing MCP server.
+// mcp-chatgpt-bridge v1.2.1 — OAuth 2.1 + DCR + PKCE wrapper around the existing MCP server.
+//
+// v1.2.1 patch: renderConsentPage uses Headers API explicitly instead of object-literal
+// headers. The object-literal pattern in Deno's Response constructor was apparently
+// not propagating Content-Type for HTML responses through the Supabase EF gateway,
+// causing the consent page to render as plain text in browsers.
 //
 // Endpoints:
 //   GET  /                                                  — health check
@@ -33,7 +38,7 @@ const WORKER_URL = `${SUPABASE_URL}/functions/v1/chatgpt-review-worker`;
 const BRIDGE_BASE_URL = `${SUPABASE_URL}/functions/v1/mcp-chatgpt-bridge`;
 const MAX_CONTEXT_BYTES = 50_000;
 const PROTOCOL_VERSION = '2024-11-05';
-const SERVER_INFO = { name: 'mcp-chatgpt-bridge', version: '1.2.0' };
+const SERVER_INFO = { name: 'mcp-chatgpt-bridge', version: '1.2.1' };
 
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;   // 30 days
 const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 90;  // 90 days
@@ -156,6 +161,15 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
     status: init.status ?? 200,
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', ...(init.headers as Record<string,string> ?? {}) }
   });
+}
+
+function htmlResponse(html: string, status = 200): Response {
+  // Use Headers API explicitly — object-literal headers were not propagating
+  // Content-Type for HTML responses through the Supabase EF gateway in v1.2.0.
+  const headers = new Headers();
+  headers.set('Content-Type', 'text/html; charset=utf-8');
+  headers.set('Cache-Control', 'no-store');
+  return new Response(html, { status, headers });
 }
 
 // ============================================================================
@@ -294,7 +308,7 @@ ${errorBlock}
 </div>
 </body>
 </html>`;
-  return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  return htmlResponse(html);
 }
 
 async function handleAuthorizeGet(req: Request): Promise<Response> {
@@ -452,7 +466,6 @@ async function handleTokenAuthCode(params: Record<string, string>, clientId: str
     return jsonResponse({ error: 'invalid_request', error_description: 'code, code_verifier, redirect_uri required' }, { status: 400 });
   }
 
-  // Look up code
   const { data: codeRow } = await supabase
     .schema('m').from('mcp_oauth_code')
     .select('code, client_id, redirect_uri, code_challenge, code_challenge_method, expires_at, used_at, scope')
@@ -484,13 +497,11 @@ async function handleTokenAuthCode(params: Record<string, string>, clientId: str
     return jsonResponse({ error: 'invalid_grant', error_description: 'PKCE verification failed' }, { status: 400 });
   }
 
-  // Mark code used
   await supabase
     .schema('m').from('mcp_oauth_code')
     .update({ used_at: new Date().toISOString() })
     .eq('code', code);
 
-  // Update client last_used
   await supabase
     .schema('m').from('mcp_oauth_client')
     .update({ last_used_at: new Date().toISOString() })
@@ -554,10 +565,8 @@ async function authenticateMcpRequest(req: Request): Promise<{ ok: true; via: 's
   if (!auth.startsWith('Bearer ')) return { ok: false };
   const token = auth.slice('Bearer '.length).trim();
 
-  // Static bearer (admin / PowerShell / internal)
   if (token === BRIDGE_TOKEN) return { ok: true, via: 'static' };
 
-  // JWT (issued via OAuth)
   if (token.split('.').length === 3) {
     const payload = await jwtVerify(token);
     if (payload && payload.token_type === 'access') {
@@ -569,7 +578,6 @@ async function authenticateMcpRequest(req: Request): Promise<{ ok: true; via: 's
 }
 
 function unauthorizedResponse(): Response {
-  // Per RFC 6750 + MCP spec, signal where the OAuth metadata lives
   const wwwAuth = `Bearer resource_metadata="${BRIDGE_BASE_URL}/.well-known/oauth-protected-resource"`;
   return new Response(
     JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32000, message: 'Unauthorized' } }),
@@ -833,7 +841,6 @@ serve(async (req) => {
 
   const path = relativePath(req.url);
 
-  // OAuth metadata
   if (req.method === 'GET' && (path === '/.well-known/oauth-authorization-server' || path === '/.well-known/openid-configuration')) {
     return handleAuthServerMetadata();
   }
@@ -841,18 +848,15 @@ serve(async (req) => {
     return handleResourceMetadata();
   }
 
-  // OAuth flow
   if (req.method === 'POST' && path === '/register') return await handleRegister(req);
   if (req.method === 'GET'  && path === '/authorize') return await handleAuthorizeGet(req);
   if (req.method === 'POST' && path === '/authorize') return await handleAuthorizePost(req);
   if (req.method === 'POST' && path === '/token') return await handleToken(req);
 
-  // Health check
   if (req.method === 'GET' && (path === '/' || path === '')) {
     return jsonResponse({ ok: true, server: SERVER_INFO, oauth_metadata: `${BRIDGE_BASE_URL}/.well-known/oauth-authorization-server` });
   }
 
-  // MCP main endpoint
   if (req.method === 'POST' && (path === '/' || path === '')) return await handleMcpPost(req);
 
   return new Response('Not found', { status: 404, headers: CORS_HEADERS });
