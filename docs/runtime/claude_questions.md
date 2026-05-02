@@ -67,6 +67,36 @@ Re-run snapshot generation with corrected column names. The wrong substitution w
 
 ---
 
+## Q-nightly-health-check-v1-001
+
+Context:
+Executing `nightly-health-check-v1` brief on 2026-05-02 (Cowork run, Tier 0). Four brief-author schema bugs hit in Q7 and Q9:
+
+- Q7 / `m.post_publish.draft_id` and `m.post_draft.draft_id` → actual column on both tables is `post_draft_id`. Substituted.
+- Q7 / `c.client.slug` → actual column is `client_slug`. Substituted.
+- Q7 / `pp.status = 'success'` → actual `m.post_publish.status` enum is `{published, failed}`. Substituted `'published'`. Result: 6 rows, all routed to `property-pulse`. Matches `pipeline_health_log.pp_published_today = 6`.
+- Q9 / `m.slot_fill_attempt.outcome` → actual column is `decision`. Time filter switched from `created_at` to `attempted_at`. Substituted; query returned 0 rows (consistent with brief pre-flight noting `slot_fill_attempt at zero`).
+
+All substitutions verified against `information_schema.columns` before proceeding. All other queries (Q1–Q6, Q8, Q10–Q12) ran verbatim.
+
+Separately: `m.cron_health_snapshot` returns dual rows per jobid per `computed_at` (one for `window_hours=1`, one for `window_hours=24`). Brief Q3/Q4 did not filter on this dimension. Section 4 summary defaulted to the 24h window. Q4 returned zero rows in either window so output is unaffected.
+
+Question:
+Are the four substitutions above correct, and should the brief itself be refreshed with the verified column names + status enum + window_hours filter so future daily runs don't need fallback handling?
+
+Options:
+A. Substitutions are correct — accept this run as-is and refresh the brief queries (Q7, Q9, and add `AND window_hours = 24` to Q3/Q4) for tomorrow's run.
+B. Substitutions are correct — accept this run as-is and leave the brief unchanged (defaults will continue to apply).
+C. One or more substitutions are wrong — re-run with the corrected mapping you provide.
+
+Default:
+Proceeded with the substitutions listed above. Run is complete; health file written; not blocked.
+
+Impact if wrong:
+Re-run Q7 / Q9 with corrected mapping; only Sections 5 and 7 of `docs/audit/health/2026-05-02.md` would be affected.
+
+---
+
 ## Closed (resolution refs)
 
 When a question is resolved, append a resolution block here referencing the original Q-ID. Do NOT move the original question entry from the Open section — leave it where it was written. The resolution block here is a back-pointer.

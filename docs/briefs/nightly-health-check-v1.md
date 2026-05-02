@@ -1,6 +1,6 @@
 ---
 brief_id: nightly-health-check-v1
-status: ready
+status: review_required
 risk_tier: 0
 owner: cowork
 created_by: PK + chat session 2026-05-02 Saturday afternoon Sydney
