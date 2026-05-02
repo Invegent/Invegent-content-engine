@@ -300,6 +300,73 @@ D185 placeholder expires if R10 hasn't completed by **31 May 2026** — at which
 
 ---
 
+## D186 — Closure-First Discipline (Find/Fix Imbalance Constraint)
+**Date:** 2 May 2026 late evening | **Status:** ✅ LOCKED — applies from this session forward; reviewed against evidence at sunset 30 June 2026.
+
+### The problem this decides
+
+Across the 30 Apr–2 May window, ICE accumulated a structural imbalance: the rate at which audit cycles, nightly health checks, and ChatGPT reviews surface findings outpaces the rate at which those findings get closed. F-PUB-002, F-PUB-004, F-PUB-005, B-INV-LinkedIn-Queue-Stall, the cycling-30 starvation, the cron-success-but-zero-business-output pattern (Lesson #46) — all surfaced inside roughly 72 hours, and most were still open at session start tonight. PK named this directly: *"the existing pipeline has issues which we keep discovering, how do we close those... I want to focus on building."*
+
+The 2 May late-evening session attempted to author this decision and conceded twice in writing before running out of session-tail time. ChatGPT's review of the Slice 3 build proposal returned the same shape of pushback: *"You don't need more discovery yet. You need closure discipline + one minimal audit prototype."* The find-vs-fix imbalance was diagnosed three independent times in 48 hours; codifying the constraint is overdue.
+
+The question this decision answers: what's the structural shape of a constraint that prevents new finding-generation infrastructure from being built while existing findings sit open?
+
+### The decision
+
+**Closure work is allocated a hard time budget that takes precedence over new finding-generation infrastructure. The constraint has three rules:**
+
+1. **Open-finding inventory is bounded.** At any time, no more than **20 open findings + investigation threads** total may sit in `docs/audit/open_findings.md` plus the action_list `🟡 Active` and `📌 Backlog` sections combined (P0 + P1 items only — P2 and below are out of scope of this constraint). Discovery surfaces a 21st item → next session must close one before authoring/building anything new.
+
+2. **Fix-time minimum.** **At least 4 hours per ICE-active week** must be spent on closure work — applying queued migrations, executing planned UPDATEs, deploying patched EFs, walking T09-style safe-to-resume checklists. Sessions that are pure brief-authoring or pure exploratory build do not count. The 4h is a *floor not a ceiling*; the upper bound is implicit in standard session-allocation discipline.
+
+3. **Automation pause trigger.** **If fix-time falls behind by 2 weeks** (i.e. less than 8 cumulative closure hours across the trailing 14 days while ICE is active), no new automation infrastructure may be authored or built — including new D182 brief shapes, new audit-loop slices, new MCP tools, new monitoring layers — until closure catches up. Existing infrastructure runs as-is. Bug fixes to existing infrastructure are allowed (they're closure work). Doc-only spec authoring is allowed (it's not a build). Net new build is paused.
+
+### What this requires
+
+- **Per-session check at session start.** Read `docs/00_action_list.md` open-finding count + sum the trailing-14-day closure hours from sync_state session logs. If either constraint is breached, surface to PK before any new work begins.
+- **A new heading in sync_state**: each session-end reconciliation lists "Closure hours this session: N.NN h" alongside the standard mutations / commits / standing rule sections. Closure hours = wall-clock time spent on items that closed an open finding or shipped a fix. Estimation, not stopwatch precision; granularity 0.25h.
+- **The action_list bears the count.** Top section gains: `Open findings + investigations: N / 20 (P0+P1 only)` and `Trailing-14-day closure hours: N.N / 8.0`. Updated at every action_list version bump.
+- **The 21st-finding rule applies symmetrically.** Discovery during work is fine — the rule is about authorship/build escalation, not observation. Capturing a new finding in `docs/audit/open_findings.md` does not violate the rule; what violates the rule is starting net new infrastructure work after the count crosses 20.
+
+### Why these specific numbers
+
+- **20 open findings.** Tonight's count is roughly 14 active P0+P1 items across action_list + audit findings. 20 is a 40% headroom over current state — enough to absorb normal discovery without forcing artificial closures, tight enough to force prioritisation when a discovery wave hits.
+- **4h/week closure floor.** Average ICE-active week is 6-8 sessions of 1-3h each = 12-20 wall-clock hours. 4h closure floor is 20-30% of that — substantial but not dominant. Allows building to remain the primary activity while preventing the ratio drifting to zero (current observed ratio is well below 20%).
+- **2-week pause trigger.** 1 week is too noisy (a single deep-dive session on one finding can swallow the whole week's closure budget legitimately). 2 weeks gives the system room to absorb week-to-week variance while still firing the automation-pause before backlog explodes. 4 weeks would be too late — at that scale the find/fix imbalance has already calcified.
+
+### What this does NOT decide
+
+- **Which findings get closed first.** Priority within the closure budget remains a session-by-session call. The constraint is a quota, not a schedule.
+- **Whether existing automation gets rolled back.** Already-shipped infrastructure (D182 framework, ChatGPT Review MCP, audit slices 1+2, nightly-health-check) keeps running. The pause applies only to *new* authorship and build, not to maintenance of what's running.
+- **Whether closure work goes through ChatGPT review.** It can if it's a production patch (per D-01 standing rule), it doesn't have to if it's pure execution of an already-decided UPDATE. D-01 governs the patch decision, D186 governs the time allocation.
+- **Reserved decision number D185.** Independent. D185 is gated on R10 outcome; D186 applies regardless of D185's eventual ratification call.
+
+### Sunset clause
+
+**30 June 2026** — review the constraint against ~8 weeks of evidence. Three outcomes possible:
+- **Working** — find/fix ratio stabilised; pause trigger fired 0-1 times. Lock as standing rule.
+- **Too tight** — closure floor or 20-finding cap repeatedly forces deferral of legitimate build work. Loosen specific numbers.
+- **Too loose** — backlog continued to grow despite the constraint. Tighten pause trigger to 1-week or reduce open-finding cap.
+
+### What this does NOT change
+
+- D-01 standing rule (ChatGPT cross-check before production deploys) — unchanged.
+- D170 MCP-applied migration pattern — unchanged.
+- D181 audit loop architecture — unchanged. Slice 1+2 keep running.
+- D182 non-blocking execution model — unchanged. The pause trigger affects authoring of *new* brief shapes, not execution of existing ones.
+- D183 build-when-evidence-demands principle — reinforced. D186 is the time-allocation expression of the same principle.
+- D184 audit workflow slicing — Slice 3 deferral now has a second gate (closure trigger) on top of the existing 5+-cycles trigger from D181.
+
+### Related decisions
+
+- **D181** — three-layer audit loop. D186 governs the time allocation of all three layers.
+- **D183** — Phase 4b/4c deferral. D186 generalises the deferral logic to all new automation.
+- **D184** — Slice 3 deferral. D186 makes the deferral structural, not just calendar-bound.
+- **B36 (Slice 3 v0 spec authoring)** — gated on D186 + B31 + LinkedIn P1 closure + 1 month of nightly-health-check observation. D186 is the closure-budget half of that gate.
+- **Lesson #46** — *verify the actual live state before patching the wrong layer* — the discovery half of the loop. D186 governs the closure half.
+
+---
+
 ## Decisions Pending
 
 | Decision | Status | Gate |
@@ -337,6 +404,7 @@ D185 placeholder expires if R10 hasn't completed by **31 May 2026** — at which
 | **D183 — D182 v1 first-run learnings + Phase 4b/4c deferral** | ✅ LOCKED 30 Apr morning — build-when-evidence-demands principle | Build 4b when a brief demands cloud-side validation; build 4c when 2–3 briefs surface real questions |
 | **D184 — Audit workflow automation slicing** | ✅ LOCKED 30 Apr morning — Slice 2 next as D182 Tier 0 brief; Slice 3 waits 5+ cycles per D181. Slice 2 first run 30 Apr evening — 5/5 thresholds, second-shape D182 validation confirmed | Slice 2 brief authored next session; Slice 3 re-evaluation after cycle 5 |
 | **D185 — `structured_red_team_review_v1` ratification** | 🔲 RESERVED — gated on R10 (Phase C cutover live pilot). Sunset 31 May 2026 if R10 hasn't completed | R10 outcome |
+| **D186 — Closure-First Discipline (find/fix imbalance constraint)** | ✅ LOCKED 2 May late evening — 20-finding cap on P0+P1 + 4h/week closure floor + 2-week pause trigger on new automation. Sunset 30 June 2026. **Full prose entry above.** | Per-session check at session start; closure-hours line per session-end reconciliation; trailing-14-day total tracked in action_list header |
 | **Slot-driven Phase A** | ✅ COMPLETE 26 Apr morning | — |
 | **Slot-driven Phase B Stages 7-9** | ✅ COMPLETE 26 Apr afternoon–evening | — |
 | **Slot-driven Phase B Stages 10-12** | ✅ COMPLETE 27 Apr | — |
@@ -346,7 +414,11 @@ D185 placeholder expires if R10 hasn't completed by **31 May 2026** — at which
 | **Phase D ARRAY mop-up** | ✅ CLOSED-ACTION-TAKEN 29 Apr — first D182 brief, applied via Supabase MCP, 5/5 thresholds | — |
 | **6 LOW-row joint resolution session** | 🔲 Backlog | PK + chat session, ~30 min, likely synchronous (not Cowork) per D184 reasoning |
 | **Audit loop slice 2 (snapshot automation)** | ✅ FIRST RUN 30 Apr evening — 5/5 thresholds, brief refreshed at same closure commit. Brief at `docs/briefs/audit-slice-2-snapshot-generation.md` is now reusable daily | — |
-| **Audit loop slice 3 (API auditor pass via Cowork+OpenAI)** | 🔲 Deferred per D184 | After 5+ manual cycles of Slice 3 |
+| **Audit loop slice 3 (API auditor pass via Cowork+OpenAI)** | 🔲 Deferred per D184 + D186 | After 5+ manual cycles of Slice 3 AND closure-budget headroom per D186 |
+| **B31 — Reconstruct auto-approver v1.6.0 EF source** | ✅ CLOSED-ACTION-TAKEN 2 May late evening — deployed via Supabase MCP, version 53 LIVE. Run state at `docs/runtime/runs/2026-05-02-b31-auto-approver-v160-deploy.md` | — |
+| **B32 — Cooldown design decision** | ✅ CLOSED 2 May late evening — Path 3 chosen: Option B EF cooldown defence-in-depth, 4h window via `draft_format.auto_review.checked_at` JSONB | — |
+| **T08 — EF v1.6.0 deploy** | ✅ CLOSED-ACTION-TAKEN 2 May late evening via B31 | — |
+| **F04 — post_render_log column-purposes migration** | 🔲 Pending chat apply per D170 | Chat apply at next session |
 | **Slot-driven Phase C — Cutover (Stages 12-18)** | 🔲 After Gate B exit | Gate B exit |
 | **Slot-driven Phase D Stage 19 decommission R6** | 🔲 After Phase C | All client-platforms cut over |
 | **Slot-driven Phase E — Evergreen seeding** | 🔲 Parallel | Prioritise Invegent verticals per D174 |
