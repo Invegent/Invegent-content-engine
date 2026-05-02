@@ -5,6 +5,7 @@ risk_tier: 2
 owner: cc
 created_by: PK
 created: 2026-05-02
+patched: 2026-05-02 (v1.1 — second ChatGPT review applied)
 default_action: draft_only
 allowed_paths:
   - supabase/migrations/**
@@ -31,6 +32,11 @@ success_output:
 
 # Brief — ChatGPT Review MCP v1
 
+## Patch log
+
+- **v1.0 (2026-05-02 morning):** initial brief committed.
+- **v1.1 (2026-05-02 same day):** second ChatGPT review applied. Four changes — (1) Project rename `ice-chatgpt-review` → `ice-review`, (2) budget wording corrected (alerting threshold not hard cap), (3) `INTERNAL_WORKER_TOKEN` added to PK secret setup (was referenced in worker code but missing from setup steps), (4) **migration idempotency index fixed** — the v1.0 partial-unique index used `now()` in its predicate which would fail Postgres IMMUTABLE-predicate requirement; replaced with `idempotency_key text` column + unique index pattern.
+
 ## Goal
 
 Replace the manual Claude → PK → ChatGPT → PK → Claude shuttle with a single MCP tool Claude can call directly. ChatGPT receives the proposal, returns a structured review, and the bridge EF auto-routes based on backend rules. PK is escalated to only when the review verdict materially diverges from Claude's proposal or risk is high.
@@ -44,7 +50,7 @@ Claude (chat in claude.ai)
   ↓ MCP tool call: ask_chatgpt_review(proposal, context, action_type)
 mcp-chatgpt-bridge (Supabase Edge Function)
   ├─ verifies bearer token
-  ├─ context_hash idempotency check against m.chatgpt_review
+  ├─ idempotency_key check against m.chatgpt_review (UTC-day bucket)
   ├─ inserts pending row
   ├─ calls chatgpt-review-worker internally
   ├─ applies routing rules (backend-enforced, not model-enforced)
@@ -59,15 +65,22 @@ No tools exposed to ChatGPT in v1. Text in, structured text out. ChatGPT cannot 
 
 ## PK setup steps (do before deploy)
 
-1. **OpenAI Platform Project:** sign in at platform.openai.com → Projects → New project named `ice-chatgpt-review`. This is separate from the project ai-worker uses.
-2. **Hard spend limit:** Settings → Limits → Hard limit $30/mo, soft alert $20/mo on the new project.
-3. **API key:** API keys → Create → assign to `ice-chatgpt-review` project, name it `chatgpt-review-worker-v1`. Copy the `sk-proj-...` value once.
-4. **Supabase secret:** from PowerShell in `C:\Users\parve\Invegent-content-engine`:
+1. **OpenAI Platform Project:** sign in at platform.openai.com → Projects → New project named `ice-review`. This is separate from the project ai-worker uses. Name is generic on purpose — it will host multiple review-family workers over time (cross-check, audit, finding classification, manual CLI), all under one budget alert.
+
+2. **Budget alert (NOT a hard cap):** Settings → Limits → set monthly budget $50 with alert at $35 and at 100%. **Do not call this a hard spend cap.** OpenAI Project budgets are monitoring/alerting thresholds — API requests continue to succeed after the budget is exceeded. Real containment of runaway cost comes from: separate API keys per use case (revoke individually if leaked or runaway), Edge Function timeout (30s per call), the `idempotency_key` unique index (prevents duplicate paid calls within a UTC day), and PK monitoring the alert.
+
+3. **API key (only one created now):** API keys → Create → assign to `ice-review` project, name it `chatgpt-review-worker-v1`. Copy the `sk-proj-...` value once. Do not pre-create future keys (`audit-worker`, `finding-classifier`, `adhoc-cli`) — they are unnecessary attack surface until the corresponding workers are built.
+
+4. **Supabase secrets:** from PowerShell in `C:\Users\parve\Invegent-content-engine`:
    ```
    supabase secrets set OPENAI_REVIEW_API_KEY=sk-proj-...
    supabase secrets set MCP_BRIDGE_BEARER_TOKEN=$(openssl rand -hex 32)
+   supabase secrets set INTERNAL_WORKER_TOKEN=$(openssl rand -hex 32)
    ```
-   The bearer token is what claude.ai will send in the Authorization header. Save it locally — it'll be needed for the connector setup.
+   - `OPENAI_REVIEW_API_KEY` — used by `chatgpt-review-worker` to call OpenAI.
+   - `MCP_BRIDGE_BEARER_TOKEN` — used by claude.ai inbound to authenticate to the bridge. Save locally, needed for connector setup.
+   - `INTERNAL_WORKER_TOKEN` — used by the bridge to authenticate to the worker EF. Internal-only; never leaves the Supabase EF mesh.
+
 5. **Smoke test (PK runs before CC deploys EFs):**
    ```
    curl https://api.openai.com/v1/responses \
@@ -76,6 +89,20 @@ No tools exposed to ChatGPT in v1. Text in, structured text out. ChatGPT cannot 
      -d '{"model":"gpt-4o-mini","input":"Reply with JSON: {\"ok\": true}","text":{"format":{"type":"json_object"}}}'
    ```
    Confirms key works. `json_object` is fine for smoke test only — production worker uses `json_schema`.
+
+## Future keys (documented, NOT created in v1)
+
+When each downstream worker is built, add a sibling key under the same `ice-review` Project. Keep one Project for budget alerting; one key per use case for revocation isolation.
+
+| Future use case | Key name | Supabase secret |
+|---|---|---|
+| Audit loop worker | `chatgpt-audit-worker-v1` | `OPENAI_AUDIT_API_KEY` |
+| Finding classifier | `chatgpt-finding-classifier` | `OPENAI_FINDING_CLASSIFIER_API_KEY` |
+| Manual one-off CLI | `chatgpt-adhoc-cli` | `OPENAI_ADHOC_API_KEY` |
+
+**Do not pre-create.** Generate when the corresponding worker EF is being built.
+
+**Keep `ai-worker`'s OpenAI fallback on its existing separate Project.** Do not move it into `ice-review`. Reasons: different cost profile (content generation, not review), different failure modes, different escalation paths. Mixing content-generation budget with review budget makes runaway-cost incidents harder to diagnose (ID003 lesson).
 
 ## Build sequence — files CC writes
 
@@ -99,7 +126,8 @@ create table m.chatgpt_review (
   -- Request
   proposal text not null,
   context jsonb,
-  context_hash text not null,
+  context_hash text not null,        -- sha256(action_type|proposal|canonical_context_json) — diagnostic, no date
+  idempotency_key text not null,     -- sha256(action_type|proposal|canonical_context_json|utc_date_YYYY-MM-DD) — unique constraint target
   request_jsonb jsonb,
 
   -- OpenAI response provenance
@@ -151,10 +179,13 @@ create table m.chatgpt_review (
     ))
 );
 
--- Idempotency: same proposal + same context shouldn't double-charge OpenAI within 24h
-create unique index chatgpt_review_idempotency
-  on m.chatgpt_review (context_hash, action_type)
-  where created_at > now() - interval '24 hours';
+-- Idempotency: same proposal + same context within the same UTC day = same idempotency_key.
+-- IMMUTABLE constraint (no now() in predicate) so Postgres accepts the index.
+-- Bridge computes the key including utc_date_YYYY-MM-DD bucket; effective dedupe window is
+-- one calendar day UTC (not a rolling 24h). Acceptable for v1 — point is to prevent accidental
+-- double-charging on retries within a session, not to deduplicate across days.
+create unique index chatgpt_review_idempotency_key
+  on m.chatgpt_review (idempotency_key);
 
 create index chatgpt_review_status_created
   on m.chatgpt_review (status, created_at desc);
@@ -163,8 +194,12 @@ create index chatgpt_review_escalated
   on m.chatgpt_review (escalated_at)
   where escalated_at is not null and escalation_resolved_at is null;
 
+-- Diagnostic index — find all reviews of similar proposals across days
+create index chatgpt_review_context_hash
+  on m.chatgpt_review (context_hash, created_at desc);
+
 comment on table m.chatgpt_review is
-  'Canonical audit log of every Claude→ChatGPT cross-check via mcp-chatgpt-bridge. One row per ChatGPT call. Backend-enforced routing decisions captured in routing_decision column.';
+  'Canonical audit log of every Claude→ChatGPT cross-check via mcp-chatgpt-bridge. One row per ChatGPT call. Backend-enforced routing decisions captured in routing_decision column. idempotency_key prevents same proposal being charged twice within a UTC day; context_hash is the date-independent diagnostic hash for cross-day similarity queries.';
 ```
 
 PK applies via Supabase MCP per D170. CC drafts only.
@@ -386,18 +421,22 @@ export function routeReview(r: ReviewResult | null, error?: string): RoutingOutc
 
 ### File 5 — Bridge: `mcp-chatgpt-bridge/index.ts`
 
-MCP protocol layer. Implements one tool: `ask_chatgpt_review`. Bearer auth on inbound; context_hash idempotency; logs every call to `m.chatgpt_review`.
+MCP protocol layer. Implements one tool: `ask_chatgpt_review`. Bearer auth on inbound; idempotency_key dedupe; logs every call to `m.chatgpt_review`.
 
 Key responsibilities (CC fills in details):
 - Implement MCP HTTP/SSE server protocol per spec at https://spec.modelcontextprotocol.io/
 - Validate inbound bearer token equals `MCP_BRIDGE_BEARER_TOKEN` env var
-- Compute `context_hash = sha256(action_type + proposal + canonicalised_context_json)`
-- INSERT row into `m.chatgpt_review` with `status='pending'`. If unique-violation on `context_hash + action_type` within 24h, return the prior row's routing decision (idempotency)
-- Call `chatgpt-review-worker` EF internally with `INTERNAL_WORKER_TOKEN`
-- Apply `routeReview()` from routing.ts
-- UPDATE the row with verdict, risk, confidence, routing_decision, action_taken, costs, latency, status
-- If `escalate=true`, also UPDATE `escalated_at = now()` and `status='escalated'`
-- Return MCP-shaped response to Claude with: `{decision, escalate, reason, review (full), review_id (DB row uuid)}`
+- Compute two hashes:
+  - `context_hash = sha256(action_type + '|' + proposal + '|' + canonicalised_context_json)` — date-independent diagnostic hash
+  - `idempotency_key = sha256(action_type + '|' + proposal + '|' + canonicalised_context_json + '|' + utc_date_YYYY-MM-DD)` — UTC-day-bucketed dedupe key
+- Canonicalised context JSON: stable key ordering + UTF-8 encoding before hashing. Use a deterministic JSON serialiser, not `JSON.stringify` directly.
+- INSERT row into `m.chatgpt_review` with `status='pending'`. If unique-violation on `idempotency_key`, fetch the prior row and return its routing decision (idempotency hit — no new OpenAI call, no new charge).
+- If `context` exceeds 50KB, truncate before sending to worker; record truncation flag in `request_jsonb`.
+- Call `chatgpt-review-worker` EF internally with `INTERNAL_WORKER_TOKEN`.
+- Apply `routeReview()` from routing.ts.
+- UPDATE the row with verdict, risk, confidence, routing_decision, action_taken, costs, latency, status.
+- If `escalate=true`, also UPDATE `escalated_at = now()` and `status='escalated'`.
+- Return MCP-shaped response to Claude with: `{decision, escalate, reason, review (full), review_id (DB row uuid), idempotent (boolean — true if served from prior row)}`.
 
 ## Tool surface exposed to Claude
 
@@ -415,7 +454,8 @@ ask_chatgpt_review(
   escalate: boolean,
   reason: string,
   review: ReviewResult,    // full schema response from ChatGPT
-  review_id: uuid          // m.chatgpt_review row id for trace-back
+  review_id: uuid,         // m.chatgpt_review row id for trace-back
+  idempotent: boolean      // true if response was served from prior row (no new OpenAI call)
 }
 ```
 
@@ -426,43 +466,59 @@ Three test cases CC writes as bash scripts in `supabase/functions/mcp-chatgpt-br
 1. **Agree-low** — propose a safe SELECT-only query review. Expect `decision=proceed, escalate=false`.
 2. **Disagree-known** — replay last night's bulk-quarantine proposal verbatim. Expect `decision=escalate_disagree`. This is the regression test for the cross-check working.
 3. **Schema-invalid simulation** — inject malformed model output via a feature flag. Expect `decision=escalate_schema_invalid`.
+4. **Idempotency** — call test 1 twice in the same UTC day with identical inputs. Second call should return `idempotent=true` and the same `review_id` as the first; no new OpenAI charge.
 
-PK runs all three after deploy. Expected total cost: <$0.05.
+PK runs all four after deploy. Expected total cost: <$0.05.
 
 ## Acceptance criteria
 
-1. Migration file exists in `supabase/migrations/`, applies cleanly via `apply_migration`, table exists in `m.chatgpt_review` with all columns + constraints + indexes.
+1. Migration file exists in `supabase/migrations/`, applies cleanly via `apply_migration`, table exists in `m.chatgpt_review` with all columns + constraints + indexes. The unique index on `idempotency_key` exists (not the broken now()-predicate version).
 2. Both EF directories exist with index.ts + supporting files. Both deploy via `supabase functions deploy` without errors.
-3. Three smoke tests pass.
+3. All four smoke tests pass.
 4. Bridge URL added to claude.ai custom connectors with bearer token. Tool `ask_chatgpt_review` appears in Claude's tool list.
 5. End-to-end test: Claude calls `ask_chatgpt_review` with a real ICE audit proposal. Row appears in `m.chatgpt_review`. Routing decision matches expectation.
 
 ## Out of scope for v1
 
-- ChatGPT calling GitHub, Supabase, or any other tools. Pure text-in / text-out.
+- ChatGPT calling GitHub, Supabase, or any other tools. Pure text-in / text-out. **Adding tools later is real work** — the worker request body adds a `tools` array, the response loop has to handle multi-turn tool-call blocks, the strict structured-output constraint gets harder, the audit log has to record every tool call and result, and prompt-injection becomes a new attack surface. Plan ~50-70% more code in the worker EF when this lands.
 - Stateful multi-turn ChatGPT threads (`previous_response_id`). Each call is independent.
-- Per-tool variants (`ask_chatgpt_code_review`, `ask_chatgpt_audit_review`, etc.). One generic tool. Specialise later if needed.
+- Per-tool variants (`ask_chatgpt_code_review`, `ask_chatgpt_audit_review`, etc.). One generic tool. Specialise via sibling worker EFs behind the same bridge later if their output schemas diverge.
 - Auto-resolve of escalations. PK manually clears `escalation_resolved_at` for now.
 - Markdown logging to `docs/audit/runs/chatgpt-reviews/`. DB is canonical in v1; markdown digest is a v2 add.
 - Model upgrade to gpt-4o. Pilot stays on gpt-4o-mini; benchmark sample of 10–20 reviews against gpt-4o once 50+ reviews accumulated.
+
+## Future architecture (one bridge, multiple workers)
+
+When subsequent review use cases need different output schemas (e.g. audit needs `control_id`, `evidence_status`, `finding_severity`), the architecture extends like this:
+
+```
+mcp-chatgpt-bridge (one Claude-facing surface)
+  ├─ action_type='cross_check'         → chatgpt-review-worker     (this brief)
+  ├─ action_type='audit_finding'       → chatgpt-audit-worker      (future)
+  └─ action_type='finding_classify'    → chatgpt-finding-classifier (future)
+```
+
+Claude keeps calling one tool. The bridge routes by `action_type` to the appropriate worker, which has its own structured output schema. v1 only builds the cross-check worker; the bridge's routing layer should be written in a way that adding a new action_type → worker mapping is a one-line change.
 
 ## Known checks before deploy
 
 1. **Claude.ai custom connector auth model.** Confirm whether bearer-token works cleanly for self-hosted MCP servers in claude.ai consumer interface, or if OAuth wrapper is required. If OAuth needed, swap bridge auth middleware in a follow-up commit; business logic unaffected.
 2. **MCP HTTP/SSE spec compliance.** Bridge must implement the MCP server protocol correctly. CC consults https://spec.modelcontextprotocol.io/ during implementation.
 3. **Supabase EF cold-start latency.** Reviewer roundtrip target <8s end-to-end. If cold-start adds >3s on first call, consider keeping the worker EF warm with a cron ping.
+4. **Canonical JSON serialisation for hashes.** `JSON.stringify` is not deterministic across key orderings. Bridge must use a stable serialiser before hashing — otherwise `idempotency_key` collisions miss when the same logical context arrives with different key order.
 
 ## Likely questions and defaults (answer-key per D182)
 
 | Question | Default |
 |---|---|
 | MCP transport (HTTP vs SSE)? | HTTP for v1; SSE in v2 if Claude needs streaming |
-| Should context_hash include the model name? | No — same proposal + same context = same idempotency window regardless of model |
+| Should idempotency_key include the model name? | No — same proposal + same context = same key regardless of model. Model upgrade is a v2 concern. |
 | What if claude.ai connector requires OAuth? | Build bearer-first; PK adds OAuth wrapper as a v1.1 follow-up |
 | Should escalations send a notification (email, Slack)? | No — `m.chatgpt_review` query at session start surfaces unresolved escalations; no push channel in v1 |
 | What if `context` is huge (e.g. full schema dump)? | Bridge truncates `context` to 50KB before hashing + sending; logs truncation flag in `request_jsonb` |
 | Run_slug — auto-generate or required? | Optional; auto-generate `<action_type>-<short_hash>` if not provided |
 | Should this brief block T08? | No. Different surface, different EF, no shared deps. Run in parallel. |
+| Idempotency window — UTC day vs rolling 24h? | UTC day (calendar bucket). Simpler to reason about, IMMUTABLE constraint, 1-day window is sufficient for retry dedupe. Rolling 24h is a v2 concern if ever needed. |
 
 ## References
 
@@ -473,4 +529,5 @@ PK runs all three after deploy. Expected total cost: <$0.05.
 - D170 — apply_migration via Supabase MCP, not CLI
 - D182 — non-blocking automation execution model
 - OpenAI Responses API docs — https://platform.openai.com/docs/api-reference/responses
+- OpenAI Project budgets are alerting thresholds, not hard caps — verify in OpenAI Help Center before deploy
 - MCP spec — https://spec.modelcontextprotocol.io/
