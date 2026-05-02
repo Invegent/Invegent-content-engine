@@ -126,6 +126,31 @@ Re-run Q-true-stuck with corrected SQL; only Section 6b of `docs/audit/health/20
 
 ---
 
+## Q-post-render-log-column-purposes-001
+
+Context:
+Executing `post-render-log-column-purposes` brief on 2026-05-02T10:20:54Z (Cowork run, Tier 1, drafting only — chat applies). Brief expected 0-2 LOW-confidence rows on a 16-column surface. Two distinct decisions arose:
+
+1. **render_spec (jsonb) confidence judgement.** Brief's strict JSONB rule says HIGH ONLY if the schema is constructed/parsed by an EF source line, a SQL function/trigger body, or a markdown doc. Live producer-code reading shows `supabase/functions/image-worker/index.ts` v3.9.2 always passes `p_render_spec: null` on every render call (success and failure paths). The `public.write_render_log` RPC is a straight-through INSERT with no schema enforcement. Production sample is 0 of 932 rows populated. `supabase/functions/video-worker/` does not exist (only `heygen-worker/`, which does not write to this table). Brief's separate paragraph on render_spec suggested HIGH was achievable by citing the build*Script() functions + Creatomate API contract — but those construct the **Creatomate payload's** keys, not **render_spec's** keys (which are never written today). Defaulted to **LOW**, with a followup file at `docs/audit/decisions/post_render_log_low_confidence_followup.md` listing three resolution paths (image-worker patch, drop column, write markdown spec).
+
+2. **status enum reconciliation.** Brief carried "pending | rendering | succeeded | failed" verbatim from the table_purpose. Live image-worker code writes `{succeeded, failed, timeout}`; the column default `submitted` is never written. Production sample is 896 succeeded + 36 failed across 932 rows (no in-flight states observed). The column purpose I drafted documents the **observed/code-cited** values rather than the table_purpose verbatim list, and notes the unwritten default. Same pattern of brief-author bug as the v1 nightly-health-check-v1 Q7 status-enum mismatch on `m.post_publish` — the table_purpose appears to have been authored from intent, not from current code.
+
+Question:
+Are both defaults correct — render_spec deferred LOW, and the status column purpose documenting actual write set `succeeded|failed|timeout` (not the brief's verbatim `pending|rendering|succeeded|failed`)? And should the brief / table_purpose be patched so future audits don't repeat the divergence?
+
+Options:
+A. Both defaults correct — accept the migration draft as-is and refresh the brief / `k.table_registry.purpose` for `m.post_render_log` so the status enum reads `succeeded|failed|timeout` and the render_spec paragraph acknowledges current null-population.
+B. Both defaults correct — accept the migration draft as-is and leave the brief / table_purpose unchanged.
+C. One or both defaults wrong — re-run with corrected guidance.
+
+Default:
+Proceeded with both defaults above. Migration `supabase/migrations/20260502102054_audit_post_render_log_column_purposes.sql` drafted, committed, awaiting chat to apply via Supabase MCP per D170. LOW followup file written. Run not blocked.
+
+Impact if wrong:
+Re-draft the affected column purposes (status row at column_id 824265, and/or render_spec at column_id 824258) before chat applies the migration. Other 14 columns are independent of this judgement.
+
+---
+
 ## Closed (resolution refs)
 
 When a question is resolved, append a resolution block here referencing the original Q-ID. Do NOT move the original question entry from the Open section — leave it where it was written. The resolution block here is a back-pointer.

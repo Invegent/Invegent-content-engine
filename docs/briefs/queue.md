@@ -13,7 +13,7 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 | brief_id | risk_tier | status | owner | created | notes |
 |---|---|---|---|---|---|
 | `nightly-health-check-v1` (v2 patch) | 0 | review_required | cowork | 2026-05-02 | **v2 first run complete 2026-05-02T07:53:19Z. 6-of-7 measurable thresholds Good** (questions=1, overrides=0, schema bugs=0 — v2 patches fixed v1 mechanically, output produced 12.8KB, production writes=0, Section 10 Priority 1 auto-surfaced 5 linkedin × property-pulse true-stuck items matching B-investigation manual triage on v1). Run state `docs/runtime/runs/nightly-health-check-v1-2026-05-02T074828Z.md`. Output `docs/audit/health/2026-05-02.md`. **One open question: Q-nightly-health-check-v1-002** — Q-true-stuck `array_agg(... LIMIT 5)` is invalid Postgres; rewrote as correlated subquery (same semantic). Recommend Option A (patch brief). **Priority 1 surfacing**: 5 linkedin true-stuck items at property-pulse, earliest 16h+ overdue, publisher cron healthy — diagnosis required (separate brief). |
-| `post-render-log-column-purposes` | 1 | ready | cc | 2026-04-30 | F04 promoted from Frozen. Single table: `m.post_render_log` (16 cols). Expected_delta=16. Pre-flight by chat confirmed count + rich table_purpose (names 8 columns + enumerates status enum verbatim). Strict JSONB rule applies to `render_spec` — must trace to image-worker/video-worker EF source. Expected 0-2 LOW (smallest surface of the day). Strategic value: closes m-schema small-tables sweep; m schema 39.94% → ~42.3%. CC may apply overnight; chat picks up next session. |
+| `post-render-log-column-purposes` | 1 | review_required | cc/cowork | 2026-04-30 | **Cowork drafted 2026-05-02T10:20:54Z. 15/16 HIGH + 1/16 LOW deferred (render_spec)** — within brief's 0-2 LOW budget. Migration drafted at `supabase/migrations/20260502102054_audit_post_render_log_column_purposes.sql` (single atomic DO block, count-delta verification asserts pre-post=15 AND post=1). LOW followup at `docs/audit/decisions/post_render_log_low_confidence_followup.md` — render_spec stays NULL because image-worker passes p_render_spec=null on every call (success and fail paths); 0/932 production rows have it populated. Status enum reconciled vs brief: brief carried `pending\|rendering\|succeeded\|failed` from table_purpose, image-worker actually writes `succeeded\|failed\|timeout`; default `submitted` never written. video-worker/ directory does not exist (only heygen-worker/, which does not write to m.post_render_log). Run state `docs/runtime/runs/post-render-log-column-purposes-2026-05-02T102054Z.md`. **Open question: Q-post-render-log-column-purposes-001** — render_spec LOW judgement + status enum reconciliation. Recommend Option A. **Next:** chat applies migration via Supabase MCP per D170. |
 
 ## Recently completed
 
@@ -44,7 +44,7 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 - **review_required** — validation passed, awaiting PK morning approval
 - **done** — PK has approved and applied (move to Recently completed)
 - **failed** — something went wrong; PK to inspect state file and decide next step
-- **blocked** — Tier 2/3 escalation hit; PK must reset to ready manually
+- **blocked** — Tier 2/3 escalation hit; PK must manually reset to `ready`
 
 ## Adding a new brief
 

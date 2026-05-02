@@ -1,5 +1,5 @@
 ---
-status: ready
+status: review_required
 tier: 1
 allowed_paths:
   - supabase/migrations/
