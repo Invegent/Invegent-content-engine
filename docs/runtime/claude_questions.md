@@ -97,6 +97,35 @@ Re-run Q7 / Q9 with corrected mapping; only Sections 5 and 7 of `docs/audit/heal
 
 ---
 
+## Q-nightly-health-check-v1-002
+
+Context:
+Executing `nightly-health-check-v1` brief v2 on 2026-05-02T07:48:28Z (Cowork run, Tier 0, re-fire after PK pre-deleted `docs/audit/health/2026-05-02.md` for idempotency reset). v2 schema fixes for Q7 / Q9 / Q3 / Q4 all worked verbatim (the v2 patch closed Q-001 mechanically). The only fallback hit on this v2 run was a single SQL-syntax issue in **Q-true-stuck**:
+
+```sql
+array_agg(pd.post_draft_id ORDER BY ppq.scheduled_for LIMIT 5) AS sample_draft_ids
+```
+
+`LIMIT` is not valid syntax inside a `array_agg(...)` aggregate call in PostgreSQL — `ORDER BY` is supported per the SQL standard, but `LIMIT` is an SELECT-clause modifier and Postgres rejects it inside aggregate function calls. The literal brief query would have errored.
+
+Substituted with a correlated subquery that picks the 5 earliest-stuck draft IDs per `(platform, client_slug)` cluster (same semantic). Result: 1 cluster — linkedin × property-pulse, 5 items, sample_draft_ids returned correctly. All other v2 queries (Q1–Q12, Q-stuck) ran verbatim. **No schema drift this run** — only the SQL syntax issue.
+
+Question:
+Is the correlated-subquery rewrite correct (same intent: top-5-earliest sample IDs per cluster), and should the brief Q-true-stuck be patched (v3, or inline-edit) so tomorrow's run is verbatim-clean?
+
+Options:
+A. Rewrite is correct — accept this run as-is and refresh the Q-true-stuck SQL in the brief to use the correlated-subquery shape (or a Postgres-valid alternative like `(array_agg(pd.post_draft_id ORDER BY ppq.scheduled_for))[1:5]`).
+B. Rewrite is correct — accept this run as-is and leave the brief unchanged.
+C. Rewrite is wrong — re-run with corrected SQL.
+
+Default:
+Proceeded with the correlated-subquery rewrite. Output `docs/audit/health/2026-05-02.md` written; run not blocked.
+
+Impact if wrong:
+Re-run Q-true-stuck with corrected SQL; only Section 6b of `docs/audit/health/2026-05-02.md` would change. The Cat-C count (5) and the fact-of-the-cluster (linkedin × property-pulse) come from `count(*)` and `min/max(scheduled_for)` which are correct regardless — only the `sample_draft_ids` array would differ if the rewrite was wrong.
+
+---
+
 ## Closed (resolution refs)
 
 When a question is resolved, append a resolution block here referencing the original Q-ID. Do NOT move the original question entry from the Open section — leave it where it was written. The resolution block here is a back-pointer.
