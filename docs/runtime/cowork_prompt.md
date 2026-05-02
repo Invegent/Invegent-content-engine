@@ -1,30 +1,35 @@
-# Cowork Executor Prompt — D182 v1
+# Cowork Executor Prompt — D182 v1 (Prompt v2.1)
 
-**Purpose:** This is the prompt PK pastes into Claude Cowork to execute the next brief in the queue. Use either as a one-shot manual run (during the day, observed) or as a scheduled task via Cowork's `/schedule` UI (overnight, after first run is verified).
+**Purpose:** This is the prompt PK pastes into Claude Cowork to execute the next brief in the queue. Use either as a one-shot manual run (during the day, observed) or as a scheduled task via Cowork's `Scheduled` tab (overnight, after manual run is verified).
 
-**Spec reference:** `docs/runtime/automation_v1_spec.md` (D182 v1 locked)
+**Spec reference:** `docs/runtime/automation_v1_spec.md` (D182 v1 locked, after-run handover loop codified 2 May)
+
+**Prompt version history:**
+- **v1** (29 Apr) — first version, used for phase-d-array, audit-slice-2, nightly-health-check v1. Worked when session had pre-existing repo/MCP context.
+- **v2.1** (2 May) — patched after cold-start failure: explicit repo + Supabase project ID + infrastructure-already-exists warning + scaffolding-clarifier + Lesson #61 pre-flight discipline + after-run handover awareness. ChatGPT-reviewed (review_id `af420233-dd7e-4368-ad6f-6dd2ed76f2db`, decision `apply_corrected`).
 
 ---
 
 ## How to use this
 
-### Manual one-shot (recommended for first run)
+### Manual one-shot (recommended for first run of any new prompt version)
 
 1. Open Claude Desktop → Cowork tab
 2. Click "New task"
 3. Paste the executor prompt below into the task description
-4. Run it during the day so you can observe and intervene if needed
-5. Review the state file and migration file output
-6. If clean: apply the migration via Supabase MCP per D170
+4. Confirm GitHub MCP and Supabase MCP are connected (Cowork → Customize → Integrations)
+5. Run during a window when you're at the laptop
+6. Observe the run; review the state file and any output file
+7. If clean: brief is in `review_required` state and ready for PK action per the brief's "Next step" section
 
 ### Scheduled (after manual run is verified)
 
 1. Open Cowork → Scheduled tab
 2. Click "New scheduled task"
 3. Paste the same prompt below
-4. Set cadence (e.g. weekday-only, 22:00 local)
+4. Set cadence (e.g. daily 02:00 AEST per memory pattern)
 5. Save
-6. Laptop must be awake AND Claude Desktop open at the scheduled time — same constraint as `openclaw tui`
+6. Constraint: laptop must be awake AND Claude Desktop open at the scheduled time
 
 ---
 
@@ -33,84 +38,109 @@
 ```
 You are executing a brief from the ICE non-blocking execution system (D182 v1).
 
-Your job for this run:
+CONTEXT — read carefully:
 
-1. Read docs/briefs/queue.md from github.com/Invegent/Invegent-content-engine via GitHub MCP.
+- Repository: Invegent/Invegent-content-engine on GitHub. Use the GitHub MCP for all read/write to this repo.
+- Database: Supabase project mbkmaxqhsohbtwsqolns (ICE production). Use the Supabase MCP for read-only queries via execute_sql.
+- The system infrastructure ALREADY EXISTS in the repo. Do NOT create directories, queue files, brief files, or templates — everything is already there. The infrastructure is at:
+  • docs/briefs/queue.md — operator-facing brief queue
+  • docs/briefs/{brief_id}.md — individual briefs
+  • docs/runtime/automation_v1_spec.md — D182 v1 spec
+  • docs/runtime/state_file_template.md — state file format
+  • docs/runtime/runs/ — write per-run state files HERE (directory exists)
+  • docs/runtime/claude_questions.md — Q inbox (append, do not overwrite)
+  • docs/audit/health/, docs/audit/snapshots/, supabase/migrations/ — possible output paths (each brief specifies its own success_output)
 
-2. Find the FIRST row in the Active queue table with status: ready.
+Writing to the existing directories listed above is fine — that is NOT scaffolding creation. Scaffolding creation means making NEW directories or seed files that already exist. Don't do that.
 
-3. If no ready briefs exist, write a state file at docs/runtime/runs/no-ready-briefs-{YYYY-MM-DDTHHMMSSZ}.md noting that no ready briefs were found, the time you checked, and stop. Do not create a brief-specific state file in this case.
+YOUR JOB FOR THIS RUN:
 
-4. Read the matching brief at docs/briefs/{brief_id}.md — this is your full instruction set.
+1. Read docs/briefs/queue.md via GitHub MCP. Find the FIRST row in the Active queue table with status: ready.
 
-5. Verify the brief's frontmatter is complete: brief_id, status, risk_tier, owner, default_action, allowed_paths, forbidden_actions, idempotency_check, success_output. If any required field is missing, halt and report.
+2. If no ready briefs exist, write docs/runtime/runs/no-ready-briefs-{YYYY-MM-DDTHHMMSSZ}.md noting the time and stop.
 
-6. Run the brief's idempotency_check. If it indicates the work is already done, write a state file at docs/runtime/runs/{brief_id}-{YYYY-MM-DDTHHMMSSZ}.md noting "already_applied" and stop.
+3. Read docs/briefs/{brief_id}.md — your full instruction set including pre-flight data, queries, output format spec, and "Likely questions and defaults" answer-key.
 
-7. Execute the brief end-to-end per its instructions. Follow these rules without exception:
+4. Verify brief frontmatter is complete: brief_id, status, risk_tier, owner, default_action, allowed_paths, forbidden_actions, idempotency_check, success_output. If any field is missing, write a state file noting the gap and halt.
 
-   - You may write files only inside the paths listed in allowed_paths.
-   - You must NOT take any action listed in forbidden_actions. Specifically: never call apply_migration, never UPDATE/INSERT/DELETE production data, never delete branches, never merge PRs, never close audit findings.
-   - When you hit a decision point not pre-answered in the brief's "Likely questions and defaults" section, write the question to docs/runtime/claude_questions.md using the format in that file, document your default in the state file, and proceed with the default. Do NOT block waiting for an answer.
-   - When the brief's "Likely questions and defaults" pre-answers a decision, use the default unless evidence in the run contradicts the brief.
-   - For the first test run (Phase D ARRAY mop-up), the brief's pre-flight findings were captured by PK before authoring — do not re-query Supabase for data the brief already provides. If a value seems wrong, write a question and use the brief's data anyway.
-   - If you encounter a Tier 2 (production-affecting) or Tier 3 (judgment-heavy: brand voice, client-facing wording, legal/compliance, secrets) question, halt that scope, write ESCALATION_REQUIRED in the state file under "Stop conditions", and stop.
+5. Run the brief's idempotency_check. If already_applied, write a state file noting it and stop.
 
-8. Write the per-run state file at docs/runtime/runs/{brief_id}-{YYYY-MM-DDTHHMMSSZ}.md following docs/runtime/state_file_template.md. Use the format YYYY-MM-DDTHHMMSSZ (no colons in the timestamp — colons break some filesystems). Specifically:
+6. Execute the brief end-to-end per its instructions. Rules:
+   - Write files only inside the brief's allowed_paths.
+   - Never invoke any action listed in forbidden_actions. Specifically: never call apply_migration, never UPDATE/INSERT/DELETE production data, never delete branches, never merge PRs, never close audit findings.
+   - When you hit a decision point pre-answered in the brief's "Likely questions and defaults" section, USE the default unless live evidence contradicts the brief.
+   - When you hit a decision point NOT pre-answered, append the question to docs/runtime/claude_questions.md (format `Q-{brief-slug}-{nnn}: <one-line>`), document your default in the state file, and proceed with the default. Do NOT block waiting for an answer.
+   - If you encounter a Tier 2 (production-affecting) or Tier 3 (judgment-heavy: brand voice, client-facing wording, legal/compliance, secrets) question, halt that scope, write `ESCALATION_REQUIRED` in the state file under "Stop conditions", and stop.
 
-   - Status: end at review_required if work succeeded; failed if it didn't; blocked if Tier 2/3 escalation hit.
-   - Work completed: explicit list of files created or updated, with paths.
-   - Questions asked: every question ID written to claude_questions.md.
-   - Validation results: N/A on first run (Phase 4b/c of D182 not yet built).
-   - Stop conditions: ESCALATION_REQUIRED if Tier 2/3, otherwise none.
-   - Needs PK approval: explicit "PK does X to advance this brief".
-   - Token usage: report your started/ended token figures.
-   - Issues encountered: anything unexpected even if recovered.
-   - Next step: who handles what next.
+7. Pre-flight discipline: use the brief's pre-flight column lists verbatim — do NOT re-query for column existence. If a query fails with a column-name error, run `information_schema.columns` lookup against the affected table, substitute the correct column, document the divergence in the state file under "Corrections applied", and continue. This is default-and-continue applied to schema drift.
 
-9. Commit the brief output (migration file, state file, any answer-key follow-ups) directly to main with a clear commit message. Do not open a PR; D165 standing rule is direct-push to main for non-risky single-repo work.
+8. Write the per-run state file at docs/runtime/runs/{brief_id}-{YYYY-MM-DDTHHMMSSZ}.md following docs/runtime/state_file_template.md. Use timestamp format YYYY-MM-DDTHHMMSSZ (no colons). Populate every section:
+   - Status: review_required if work succeeded; failed if it didn't; blocked if Tier 2/3 escalation
+   - Work completed: explicit list of files created/updated with paths
+   - Questions asked: every question ID written to claude_questions.md
+   - Corrections applied: any default-and-continue substitutions, especially schema-drift recoveries
+   - Validation results: N/A (Phase 4b validation deferred per D183)
+   - Stop conditions: ESCALATION_REQUIRED if Tier 2/3, otherwise none
+   - Needs PK approval: explicit "PK does X to advance this brief"
+   - Token usage: started/ended figures
+   - Issues encountered: anything unexpected even if recovered
+   - Next step: who handles what next
 
-10. Update the brief's frontmatter status as you transition: ready → running → review_required (or failed/blocked). Use the GitHub MCP get_file_contents + create_or_update_file pattern with fresh SHA.
+9. Update the brief's frontmatter: status: ready → running → review_required (or failed/blocked). Use the GitHub MCP get_file_contents + create_or_update_file pattern with fresh SHA.
 
-11. Update docs/briefs/queue.md to reflect the new status of the brief and the latest run timestamp (in the same YYYY-MM-DDTHHMMSSZ format).
+10. Update docs/briefs/queue.md to reflect the brief's new status and run timestamp. For Tier 0 briefs that succeed and need no further PK action, move the row directly to "Recently completed".
 
-12. Stop. Do not start a second brief in the same run — even if another shows status: ready, stop after the first to keep observation signal clean.
+11. Commit all changes (state file + brief frontmatter + queue + output files) directly to main with a clear commit message. No PRs (D165 standing rule). Single commit preferred for Tier 0; up to 3 commits acceptable for Tier 1+.
 
-If at any point you are uncertain about whether an action is allowed:
-- If it touches production data, the answer is no. Stop and escalate.
-- If it's a configuration or text edit inside an allowed path, the answer is yes.
-- If it's between, write the question to claude_questions.md and proceed with the default-and-continue rule.
+12. Stop after one brief — even if another shows status: ready, do not start a second brief in the same run.
 
-Report back when done with: brief_id processed, status, files created, token usage. PK reviews in the morning.
+AFTER YOU FINISH:
+
+Report back briefly with: brief_id, final status, files created (paths only), token usage. PK signals "done" or "result" to a separate Chat session, which fetches your state file from GitHub for synthesis. The state file IS the handover — you do NOT need to send a long textual summary.
+
+IF UNCERTAIN whether an action is allowed:
+- Touches production data → NO. Write ESCALATION_REQUIRED, stop scope.
+- Config or text edit inside an allowed_path → YES.
+- Between → write the question to claude_questions.md, apply default-and-continue.
 ```
 
 ---
 
-## Notes on first run
+## Notes on first run of v2.1
 
-**Don't schedule it overnight first.** Run it manually during a window when you're at the laptop. Watch the run unfold. Note where defaults broke down, where questions surfaced, whether the migration file matches your judgment.
+**Don't schedule it overnight first.** Run it manually during a window when you're at the laptop. Watch the run unfold. Confirm:
+- Cowork picks up the first ready brief without asking clarifying questions
+- Idempotency check fires before work begins
+- State file ends up at the right path with all fields populated
+- Queue.md row transitions correctly (ready → review_required, or moved to Recently completed if Tier 0)
+- Output file lands at the brief's `success_output` path
+- All commits land on main with clear messages
 
-**Success thresholds for the first run** (from `automation_v1_spec.md`):
+**Success thresholds for the manual test run** (from `automation_v1_spec.md`):
 
 | Metric | Good | Re-evaluate |
 |---|---|---|
-| Questions asked | ≤ 10 | > 20 |
+| Cowork asks for missing context (repo, MCP) | NO — should fire cold | YES — v2.1 has a gap |
+| Questions asked (in `claude_questions.md`) | ≤ brief-specific threshold | exceeds it |
 | Defaults overridden | ≤ 20% | > 50% |
-| Cowork run completes | yes | no |
-| Production writes | 0 (mandatory) | any > 0 |
+| Run completes end-to-end | yes | no |
+| Production writes from automation | 0 (mandatory) | any > 0 |
 | PK morning approval time | ≤ 10 min | > 30 min |
 
-Note: cost-per-run is not a metric here. Cowork on Max 5x is bundled in the subscription, not metered per-run. The real constraint is Max plan usage limits, which are reported by Anthropic separately. If the first run feels heavy on usage, factor that observation into the sunset review.
+If all "Good" hit on manual run: schedule v2.1 in Cowork's `Scheduled` tab.
 
-If 5+ thresholds in "Good" column: scale up. If 2+ in "Re-evaluate": redesign before next run.
+If any "Re-evaluate" hit: iterate prompt before scheduling.
 
 ## What's deliberately NOT in this prompt
 
-- **GitHub Actions validation step.** Phase 4b of D182 build, deferred to next session. The brief's inline count-delta verification is the primary validation for the first run.
-- **OpenAI API answer step.** Phase 4c of D182 build. For the first run, any questions Cowork writes to `claude_questions.md` get answered by PK in the morning, not by an API overnight.
-- **Multi-brief queue processing.** Step 12 says stop after one brief. This is intentional — one variable changing per run is enough; observability matters more than throughput right now.
-- **Auto-retry on failure.** Failed briefs stay failed until PK manually resets to ready in queue.md. No silent retries.
+- **GitHub Actions validation step.** Phase 4b deferred per D183.
+- **OpenAI API answer step.** Phase 4c deferred per D183.
+- **Multi-brief queue processing.** Step 12 says stop after one brief — observation > throughput.
+- **Auto-retry on failure.** Failed briefs stay failed until PK manually resets in queue.md.
+- **MCP review call from inside the brief.** Tier 0 boundary — Cowork briefs do not call ask_chatgpt_review. Chat side handles review for plan/design changes; Cowork executes mechanically per the brief.
 
 ## Sunset review
 
-If this prompt is still in use unchanged on 12 May 2026, that's a smell. Either the system works and the prompt should evolve, or the system isn't being used and the model needs reconsideration. Per D182, the whole approach gets reviewed by 12 May.
+If this prompt is unchanged on 2026-06-02 (one-month review window), evaluate: (a) has it been used? (b) any persistent failure modes that need a v2.2? (c) ready to retire D182 v1 or extend the framework?
+
+Per D182, the whole approach gets reviewed by 12 May 2026.
