@@ -56,7 +56,7 @@ Single-session build of the Claude→ChatGPT cross-check MCP. Idea conceived 1 M
     - Auth code created at 03:16:46 (PK clicked Authorize on the consent page)
     - Auth code consumed at 03:16:48 (claude.ai `/token` exchange — 2-second turnaround; PKCE verification passed)
     - JWT issued; `last_used_at` populated at 03:16:49
-    - Four prior failed clients (`mcp_c81c5496...`, `mcp_3223edb8...`, `mcp_3237c6a2...`, `mcp_d523f33d...`) all show `last_used_at: null` — those were the broken text/plain consent page period before the Vercel pivot
+    - Four prior failed clients (`mcp_c81c5496...`, `mcp_3223edb8...`, `mcp_3237c6a2...`, `mcp_d523f33d...`) all show `last_used_at: null` — those were the broken text/plain consent page period before the Vercel pivot **[NOTE: post-reconciliation verification found this count was incomplete — see Addendum below]**
 
 ### Today's mutations
 
@@ -71,7 +71,7 @@ Single-session build of the Claude→ChatGPT cross-check MCP. Idea conceived 1 M
 | 03:16:48 | auth_code consumed (used_at set) | DML (auto by EF) |
 | 03:16:49 | client.last_used_at populated | DML (auto by EF) |
 
-**3 chat-driven DDL operations + ~6 EF-internal DML operations as part of the connector flow. Standing rule: no production DML run by chat in this session. Three Supabase secrets set via dashboard (not chat-mutating-DB).**
+**3 chat-driven DDL operations + ~6 EF-internal DML operations as part of the connector flow. Standing rule: no production DML run by chat in this session. Three Supabase secrets set via dashboard (not chat-mutating-DB).** **[NOTE: post-reconciliation verification found 2 more EF-internal DML operations than originally tracked — see Addendum.]**
 
 ### Today's commits
 
@@ -84,7 +84,8 @@ Single-session build of the Claude→ChatGPT cross-check MCP. Idea conceived 1 M
 | `c8c4ab5` | mcp-chatgpt-bridge v1.2.0 — OAuth 2.1 + DCR + PKCE wrapper (~600 lines, 2 new tables) |
 | `7f90119` | mcp-chatgpt-bridge v1.2.1 — htmlResponse helper (didn't fix gateway quirk; gateway override confirmed) |
 | `aa6cded` | mcp-chatgpt-bridge v1.2.2 — removed in-EF HTML render; redirects to Vercel consent page |
-| (this commit) | sync_state Saturday-afternoon reconciliation + action_list v2.15 + queue.md update |
+| `f07686e` | sync_state Saturday-afternoon reconciliation + action_list v2.15 + queue.md update (initial reconciliation commit) |
+| (this commit) | post-reconciliation verification addendum — corrects mcp_oauth_client row count |
 
 **invegent-dashboard `main`:**
 | Commit | What |
@@ -110,11 +111,11 @@ Captured as candidate in action_list v2.15; promote when seen in 2+ more session
 
 ### Standing rule honoured (memory entry 11 — 4-way sync)
 
-- ✅ docs/00_sync_state.md — THIS COMMIT (Saturday afternoon Sydney section)
-- ✅ docs/00_action_list.md — bumped to v2.15 in this same commit
-- ✅ docs/briefs/queue.md — chatgpt-review-mcp-v1 moved to Recently completed in this same commit
+- ✅ docs/00_sync_state.md — initial reconciliation in `f07686e`; addendum in this commit
+- ✅ docs/00_action_list.md — bumped to v2.15 in `f07686e`; meta-tooling row count corrected in this commit
+- ✅ docs/briefs/queue.md — chatgpt-review-mcp-v1 moved to Recently completed in `f07686e`
 - ✅ docs/briefs/chatgpt-review-mcp-v1.md — already on disk (v1.1 patched, no further edits this session)
-- ✅ docs/06_decisions.md — no new D-numbered decisions tonight (architecture decisions captured in brief; D-01 standing rule unchanged)
+- ✅ docs/06_decisions.md — no new D-numbered decisions this session (architecture decisions captured in brief; D-01 standing rule unchanged)
 - ⚠️ invegent-dashboard roadmap page.tsx — still deferred per R07 (this is meta-tooling, not a phase-deliverable)
 - ✅ Memory entries — auto-regenerate from chat history; no `memory_user_edits` directives required this session
 
@@ -134,6 +135,42 @@ The ChatGPT Review MCP is now operational. PK can use it from any new claude.ai 
 3. Continue with B31 (auto-approver v1.6.0 EF reconstruction), T10 disposition execution, T02 Gate B exit decision (default: exit on schedule today) — and from this point onward, **use ChatGPT Review automatically before any production patch per D-01**
 
 T-MCP-03 (rotate `MCP_BRIDGE_BEARER_TOKEN` because it leaked in chat history during build) is P2 within 7 days — not urgent (the token only authorises bridge access; rotating it auto-invalidates all JWTs which is a clean reset).
+
+### Addendum — post-reconciliation verification (PK requested 100% double-check)
+
+Full verification pass after the initial reconciliation commit `f07686e` found ONE inaccuracy in narrative counts. All functional state (deployed EFs, table shapes, OAuth flow, Vercel page serving) verified correct. Numbers reconciled below; original narrative left in place above for honest log of in-the-moment understanding.
+
+**Verified correct:**
+- `m.chatgpt_review` — 31 columns (matches docs)
+- `m.mcp_oauth_code` — 9 columns, 1 row consumed (matches docs)
+- `chatgpt-review-worker` EF — deployed v1.0 ACTIVE, source matches commit `464c6a2`
+- `mcp-chatgpt-bridge` EF — deployed v1.2.2 ACTIVE, source matches commit `aa6cded` (CONSENT_PAGE_URL = `https://dashboard.invegent.com/mcp-consent`)
+- `app/mcp-consent/page.tsx` — committed in invegent-dashboard `828b06d`
+- Vercel runtime logs — 3 GETs to `/mcp-consent` returning 200 (03:13:26, 03:13:37, 03:16:32 UTC)
+- `m.chatgpt_review` — 1 row, status=completed, the test review from PowerShell Run 3
+- `m.mcp_oauth_client` working row — `mcp_69ff8298c1e006f509f104b30a0934d9` with `last_used_at: 2026-05-02 03:16:49.019+00`
+
+**Corrected:**
+- `m.mcp_oauth_client` actual row count is **7 rows (1 working + 6 dead)**, not 5 as initially documented. The two earliest dead rows (`mcp_37bdbacd...` at 02:30:03 and `mcp_7a93d2e2...` at 02:31:19) were initial-bridge-deploy test registrations that PK or the build process attempted before the broken text/plain consent page period (02:47-02:50 captured the other 4 dead rows). All 6 dead rows have `last_used_at: null`. The original narrative omitted the 02:30/02:31 pair because they pre-dated the screenshot-captured failed-attempt window.
+
+Full dead-row inventory (chronological):
+| Created (UTC) | client_id | Phase |
+|---|---|---|
+| 02:30:03 | `mcp_37bdbacd2625008dcf1df87e8564098e` | initial bridge build / pre-consent-page |
+| 02:31:19 | `mcp_7a93d2e245b83590823f390dcb9d4140` | initial bridge build / pre-consent-page |
+| 02:47:16 | `mcp_d523f33d12c4d19060187cd051ceb062` | broken text/plain consent page period |
+| 02:47:36 | `mcp_3237c6a28ef1f961858128a7f73a45c7` | broken text/plain consent page period |
+| 02:48:58 | `mcp_3223edb8fe1e1d37ecab08617a2cfdaa` | broken text/plain consent page period |
+| 02:50:20 | `mcp_c81c5496fefa03a992567bf7650599d8` | broken text/plain consent page period |
+| 03:16:31 | `mcp_69ff8298c1e006f509f104b30a0934d9` | **WORKING — Vercel pivot succeeded** |
+
+All 6 dead rows: leave them. They're audit trail of the build period. They have no functional impact on the working `mcp_69ff8298...` client.
+
+EF-internal DML operation count revised: ~10 not ~6 (6 client inserts + 1 working client insert + 1 auth code insert + 1 auth code update + 1 client update = 10).
+
+`m.mcp_oauth_client` row count in action_list meta-tooling table corrected from "5 rows: 1 working + 4 dead" to "7 rows: 1 working + 6 dead" in this same commit.
+
+**Reconciliation now: 100%. No other discrepancies found.**
 
 ---
 
@@ -225,7 +262,7 @@ This would have been visible in S10 (zero IG publishes in 24h) had it existed a 
 - **The NDIS-Yarns IG `publish_enabled=false` row state** (T07 step 4 rollback). Do not flip back to `true` until T08 (F-PUB-004 fix) lands AND T05 (Meta dev support outcome) decides recovery.
 - **The cron jobid 53 `active=false` state.** Do not re-enable until: (a) T08 patch deployed AND (b) at least one fresh CFW or Invegent IG draft observed reaching `approved` status. Then revisit with `?limit=1` only.
 - **The Phase B body-health gate** continues to hold per +21h observation. Final +24h checkpoint at ~03:48 UTC Sat 1 May. T02 exit decision Saturday.
-- **The four failed mcp_oauth_client rows** (`mcp_c81c5496...`, `mcp_3223edb8...`, `mcp_3237c6a2...`, `mcp_d523f33d...`) — leave them. They're audit trail of the consent-page-broken period and have no impact on the working `mcp_69ff8298...` client.
+- **The six failed mcp_oauth_client rows** (`mcp_37bdbacd...` 02:30, `mcp_7a93d2e2...` 02:31, `mcp_d523f33d...` 02:47, `mcp_3237c6a2...` 02:47, `mcp_3223edb8...` 02:48, `mcp_c81c5496...` 02:50) — leave them. They're audit trail of the build-period registrations (initial bridge testing at 02:30-02:31; broken text/plain consent page at 02:47-02:50) and have no impact on the working `mcp_69ff8298...` client.
 
 ---
 
@@ -270,3 +307,5 @@ No D182 brief work this session (focus was meta-tooling). System still at 7 brie
 ## END OF SATURDAY 2 MAY AFTERNOON SYDNEY SESSION
 
 Full reconciliation complete. ChatGPT Review MCP system shipped end-to-end. claude.ai connector connected. OAuth flow validated via DB inspection. Lesson #46 third vindication. Lesson #58 candidate raised. Standing rule from D-01 now has automated mechanism — first real-stakes fire pending in next session. Action list at v2.15. Queue updated. **The mechanism that automates the human-in-the-middle review pattern is now itself live. The next move is to use it.**
+
+Post-reconciliation verification at PK request: 100%. One row-count inaccuracy found (`m.mcp_oauth_client`: 7 rows actual vs 5 documented) and corrected via addendum + action_list patch. All functional state verified correct. No other discrepancies.

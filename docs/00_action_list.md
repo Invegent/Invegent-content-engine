@@ -4,7 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-02 Saturday afternoon Sydney (v2.15 — **ChatGPT Review MCP system SHIPPED and CONNECTED**). Three migrations + two Edge Functions + one Vercel page + one OpenAI project + three Supabase secrets — all live. claude.ai connector connected at 2026-05-02 03:16:48 UTC; OAuth flow validated end-to-end via DB inspection (PKCE passed, JWT issued, last_used_at populated). Standing rule from D-01 now has automated mechanism. Lesson #46 vindicated for the third time; Lesson #58 candidate captured.
+> Last updated: 2026-05-02 Saturday afternoon Sydney (v2.15 — **ChatGPT Review MCP system SHIPPED and CONNECTED**). Three migrations + two Edge Functions + one Vercel page + one OpenAI project + three Supabase secrets — all live. claude.ai connector connected at 2026-05-02 03:16:48 UTC; OAuth flow validated end-to-end via DB inspection (PKCE passed, JWT issued, last_used_at populated). Standing rule from D-01 now has automated mechanism. Lesson #46 vindicated for the third time; Lesson #58 candidate captured. **Verification addendum applied: m.mcp_oauth_client row count corrected from 5 to 7 (1 working + 6 dead).**
 
 ## How this file works
 
@@ -75,12 +75,12 @@ Meta-infrastructure for the standing rule from D-01. **Status: LIVE.** All artef
 
 | Artefact | Where | Status |
 |---|---|---|
-| `m.chatgpt_review` table | Supabase | Live (31 cols, 5 idx, 16 constraints) |
-| `m.mcp_oauth_client` table | Supabase | Live (DCR registry — 5 rows: 1 working `mcp_69ff8298...`, 4 dead failed-consent-page rows) |
+| `m.chatgpt_review` table | Supabase | Live (31 cols, 5 idx, 16 constraints; 1 row from PowerShell test) |
+| `m.mcp_oauth_client` table | Supabase | Live (DCR registry — **7 rows: 1 working `mcp_69ff8298...` + 6 dead from build-period registrations**; corrected from initial doc count of 5) |
 | `m.mcp_oauth_code` table | Supabase | Live (auth code registry — 1 row, consumed) |
 | `chatgpt-review-worker` EF | Supabase | Live v1.0 (gpt-4o-mini, json_schema strict, 30s timeout, internal-only) |
 | `mcp-chatgpt-bridge` EF | Supabase | Live v1.2.2 (OAuth 2.1 + DCR + PKCE) |
-| `app/mcp-consent/page.tsx` | invegent-dashboard / Vercel | Live |
+| `app/mcp-consent/page.tsx` | invegent-dashboard / Vercel | Live (3 GETs returning 200 in production logs as of build session) |
 | OpenAI Project `ice-review` | OpenAI | Live ($50/mo alert at $35 + 100%) |
 | Service-account key `chatgpt-review-worker-v1` | OpenAI | Live (separate from ai-worker's project) |
 | Supabase secrets | Supabase | All 3 set: `OPENAI_REVIEW_API_KEY`, `MCP_BRIDGE_BEARER_TOKEN`, `INTERNAL_WORKER_TOKEN` |
@@ -186,10 +186,11 @@ Unchanged. Plus:
 - T-MCP-01 (validate tool fires in real session) is **mandatory before claiming the system is fully operational**. Connection works; tool invocation pending — connector tools only load at chat session start, so validation requires a fresh chat.
 - Bridge bearer token leaked in chat history during build session (T-MCP-03 captures rotation within 7 days; not urgent).
 - T-MCP-02 (capture first 5 production fires) is the empirical confidence-builder before declaring D-01 fully automated.
+- Initial reconciliation commit `f07686e` undercounted `m.mcp_oauth_client` rows by 2 (5 vs actual 7). Verification commit corrected this in both action_list and a sync_state addendum. The two missed rows (`mcp_37bdbacd...` 02:30, `mcp_7a93d2e2...` 02:31) were initial-bridge-deploy test registrations predating the broken text/plain consent-page period. No functional impact; documentation precision matter only.
 
 ---
 
 ## Changelog
 
 - v1.0–2.14: per previous changelog.
-- **v2.15 (2 May Saturday afternoon Sydney): ChatGPT Review MCP system SHIPPED.** Built end-to-end in single ~9hr session from problem statement (1 May 4hr context-window incident) through deployed working system. Three migrations applied via Supabase MCP per D170: `m.chatgpt_review` + `m.mcp_oauth_client` + `m.mcp_oauth_code`. Two EFs deployed: `chatgpt-review-worker` v1.0 + `mcp-chatgpt-bridge` v1.2.2 (OAuth 2.1 + DCR + PKCE). One Vercel page added: `app/mcp-consent/page.tsx` in invegent-dashboard. OpenAI project `ice-review` with $50/mo alert. Three Supabase secrets set. claude.ai connector connected at 2026-05-02 03:16:48 UTC; OAuth flow validated via DB inspection (PKCE passed, JWT issued, `last_used_at` populated 2 sec after auth code consumed). Two ChatGPT review rounds during build caught real bugs: `now()` in partial unique index would have failed Postgres IMMUTABLE requirement; alerting wording correction. Hit Supabase EF gateway quirk on text/html responses; diagnosed via live header inspection (Lesson #46 third vindication); routed around via Vercel-hosted consent page (Lesson #58 candidate). 6 commits in Invegent-content-engine + 1 in invegent-dashboard. New section "🛠 Meta-tooling — ChatGPT Review MCP" with 4 T-MCP items. New backlog: B34 (cost calc) + B35 (telemetry view). New standing check S17 (cost + idempotency rate). New Today/Next 5 rank-2 (validate tool from new chat). T08 status unchanged (still split: SQL v5 LIVE / EF v1.6.0 DEFERRED — B31 next session). **The mechanism that automates the human-in-the-middle review pattern is now itself live.**
+- **v2.15 (2 May Saturday afternoon Sydney): ChatGPT Review MCP system SHIPPED.** Built end-to-end in single ~9hr session from problem statement (1 May 4hr context-window incident) through deployed working system. Three migrations applied via Supabase MCP per D170: `m.chatgpt_review` + `m.mcp_oauth_client` + `m.mcp_oauth_code`. Two EFs deployed: `chatgpt-review-worker` v1.0 + `mcp-chatgpt-bridge` v1.2.2 (OAuth 2.1 + DCR + PKCE). One Vercel page added: `app/mcp-consent/page.tsx` in invegent-dashboard. OpenAI project `ice-review` with $50/mo alert. Three Supabase secrets set. claude.ai connector connected at 2026-05-02 03:16:48 UTC; OAuth flow validated via DB inspection (PKCE passed, JWT issued, `last_used_at` populated 2 sec after auth code consumed). Two ChatGPT review rounds during build caught real bugs: `now()` in partial unique index would have failed Postgres IMMUTABLE requirement; alerting wording correction. Hit Supabase EF gateway quirk on text/html responses; diagnosed via live header inspection (Lesson #46 third vindication); routed around via Vercel-hosted consent page (Lesson #58 candidate). 6 commits in Invegent-content-engine + 1 in invegent-dashboard. New section "🛠 Meta-tooling — ChatGPT Review MCP" with 4 T-MCP items. New backlog: B34 (cost calc) + B35 (telemetry view). New standing check S17 (cost + idempotency rate). New Today/Next 5 rank-2 (validate tool from new chat). T08 status unchanged (still split: SQL v5 LIVE / EF v1.6.0 DEFERRED — B31 next session). **The mechanism that automates the human-in-the-middle review pattern is now itself live.** **Verification addendum: m.mcp_oauth_client row count corrected from 5 to 7 (1 working + 6 dead). Initial reconciliation `f07686e` missed two earliest dead rows (02:30:03 + 02:31:19) which predated the broken-consent-page period. No functional impact; documentation precision only.**
