@@ -1,8 +1,8 @@
 # ICE — Live System State
 
 > **This file is machine-written. Do not edit manually.**
-> Last written: 2026-05-02 Saturday very late evening Sydney — **B31 / B32 / T08 closed end-to-end this session; auto-approver v1.6.0 LIVE; F-PUB-004 closure mechanically committed (4h cooldown window before first terminal rejections fire).**
-> Written by: chat session sync
+> Last written: 2026-05-03 Sunday morning Sydney CC pre-T01/T02 — **F-PUB-006 partial (Stage 1 drafted, Stage 2 halted on count drift); B-INV-LinkedIn investigation complete; F-PUB-005 trigger patch promoted to backlog as B38.**
+> Written by: chat session sync (prior segments) + claude-code (3 May Sunday morning addendum below)
 
 > ⚠️ **Session-start reading order (per memory entry 1):**
 > 1. **`docs/00_sync_state.md`** (this file) — narrative log of last session
@@ -395,3 +395,67 @@ Note: B31 was NOT a D182 brief — chat-driven directly with three MCP review fi
 ## END OF SATURDAY 2 MAY VERY LATE EVENING SYDNEY SESSION-SEGMENT
 
 B31 / B32 / T08 closed end-to-end. Auto-approver v1.6.0 LIVE on Supabase (version 53). First cron tick verified `eligibility_safety_net_fires=0`. F-PUB-004 closure mechanically committed; observable terminal rejections begin ~T+4h. D186 closure discipline locked. Lesson #61 promoted from candidate to canonical (third vindication). Lesson #62 candidate captured (v1.5.0-deployed-but-not-in-repo). T-MCP-02 quota at 7 of 5 (exceeded). Action list at v2.19. Closure hours this session: ~3.5h (recorded for D186 budget tracking).
+
+---
+
+## 🟢 3 MAY SUNDAY MORNING SYDNEY — F-PUB-006 PARTIAL + B-INV-LINKEDIN INVESTIGATION (CC) — APPEND-ONLY SEGMENT
+
+Session opened by claude-code (CC) per D170 boundary: CC drafts SQL + investigation; chat applies via Supabase MCP `execute_sql` after firing MCP review. Brief: `docs/briefs/2026-05-03-fpub006-zombie-cleanup-cc.md` (created 2026-05-03T22:15:00Z forward-dated; DB clock at execution = 2026-05-02 22:51 UTC = 2026-05-03 08:51 AEST).
+
+### Sequence (chronological)
+
+1. **Pre-flight (Lesson #61, mandatory)** — three read-only queries via Supabase MCP `execute_sql`:
+   - **Step 0a** (orphan rows: `status='queued' AND last_error='post_draft_not_found' AND post_draft missing`) → **4** ✓ exact match.
+   - **Step 0b** (not_approved zombies: `status='queued' AND last_error='not_approved:needs_review' AND draft.approval_status='needs_review'`) → **17** ⚠ deviation (expected 13). Outside abort range (0 OR > 25) but inside halt-Stage-2 branch (any ≠ 13) per failure-mode table. Stage 2 halted.
+   - **Step 0c** (5 named PP-LinkedIn queue_ids with `attempt_count IS NULL`, scheduled ≥12h ago) → **5** ✓ exact match.
+
+2. **Step 0b characterisation** — 17 rows broken down: 4 CFW-IG (created 2026-04-23/24, IG cron paused per separate Meta-block governance), 11 PP-FB (2026-04-27), 1 NDIS-FB (2026-04-28), 1 PP-FB (2026-04-28), 1 PP-FB (2026-04-29). The +4 delta vs brief's expected 13 is consistent with F-PUB-005 trigger gap continuing to produce ~4 zombies/day since brief authoring.
+
+3. **Stage 1 SQL drafted** at `supabase/sql/2026-05-03-fpub006-stage1-orphan-cleanup.sql` — predicate verbatim from brief; verification SELECT embedded; `dead_reason='post_draft_not_found_orphan_F-PUB-006_2026-05-03'`. Awaiting chat MCP review (`action_type=sql_destructive`, payload in brief Stage 1) + apply.
+
+4. **Stage 2 SQL NOT drafted** — halt honoured per failure-mode table. PK to triage 17-vs-13 drift: either authorise predicate-as-is (the predicate re-evaluates `pd.approval_status='needs_review'` at apply time so any drafts that have transitioned to approved are skipped) OR refresh brief with new expected count.
+
+5. **Stage 4 LinkedIn stall investigation (read-only, complete)**:
+   - Source-side: `linkedin-zapier-publisher/index.ts` (v1.1.0) delegates row selection to `m.publisher_lock_queue_v2(p_limit, p_worker_id, p_lock_seconds, p_platform='linkedin')`. The eligibility WHERE lives in the RPC, not the EF.
+   - RPC body retrieved via `pg_get_functiondef`. Filters: `q.status='queued'`, `q.scheduled_for <= v_now`, lock-timeout, `cpp.publish_enabled`, `cpp.paused_until`, NOT EXISTS running row, **`cpp.min_gap_minutes` (240) → last_published_at <= v_now - 4h**, **`cpp.max_per_day` (2) → published_today < 2**. Picker takes top-`p_limit` by `row_number() OVER (PARTITION BY client_id, platform ORDER BY scheduled_for ASC, created_at ASC)`.
+   - Data-side: 5 stuck rows have `attempt_count IS NULL` (RPC never picked them; RPC increments attempt_count on lock). All have `approval_status='approved'`, `publish_enabled=true`, `paused_until=NULL`, single cpp row per (client_id, platform) — eligibility-side noise filtered out.
+   - **Hypothesis (HIGH confidence with code + data evidence):** `cpp.max_per_day=2` filter excludes the 5 rows on every tick. PP-LinkedIn day-by-day: 2-3 publishes per UTC day, all packed into the first 4-14 hours of the day, exhausting the cap before the 5 stuck rows can be picked.
+   - **Striking secondary anomaly:** the 3 queue_ids referenced by today's `m.post_publish` records on PP-LinkedIn (`c2fdafe6-...`, `3785396b-...`, `2a117aa2-...`) **do not exist in `m.post_publish_queue` at all** — SELECT returns 0 rows in any status. Their `platform_post_id` format `zapier-li-{ms_epoch}` matches this EF's producer but the originating queue rows are gone. Possibilities: hard-deleted post-publish, non-standard code path, or stale `post_publish.queue_id`. Either way the publish records still feed `stats.published_today` in the eligibility CTE and continue to exclude the 5 stuck rows.
+   - Findings written to `docs/audit/runs/2026-05-03-fpub006-linkedin-investigation.md` with three proposed remediation paths (lead: identify phantom-publish source; surgical: temp-raise max_per_day; reset scheduled_for ineffective alone). **No remediation drafted, no DML proposed, no code changes — Stage 4e honoured.**
+
+6. **Handover artefacts** (4-way sync per memory entry 11):
+   - Run state: `docs/runtime/runs/2026-05-03-fpub006-cleanup.md`
+   - Investigation file: `docs/audit/runs/2026-05-03-fpub006-linkedin-investigation.md`
+   - Stage 1 SQL: `supabase/sql/2026-05-03-fpub006-stage1-orphan-cleanup.sql`
+   - Action list bump v2.19 → v2.20: F-PUB-006 partial active row, B-INV-LinkedIn updated to investigation-complete, B38 NEW (F-PUB-005 trigger patch backlog candidate)
+   - This sync_state addendum
+
+### Open items for chat / PK next session
+
+1. **Stage 1 apply** via Supabase MCP `execute_sql` (after MCP review). Expected dead-marked count: 4.
+2. **Stage 2 triage** of the 17-vs-13 count drift: authorise predicate-as-is OR refresh brief.
+3. **Stage 3 observability check** at +30min after Stage 2 apply (or after Stage 1 alone if Stage 2 deferred). Exit criteria: ≥1 fresh publish on NDIS-Yarns FB AND ≥1 on PP FB.
+4. **B-INV-LinkedIn remediation brief authoring** post-PK review of investigation findings. Lead candidate: identify the 3 phantom 00:00-UTC publish source.
+5. **B38 (F-PUB-005 trigger patch)** PK triage for priority — at ~4 zombies/day rate, every cleanup brief will face count drift on apply.
+
+### Closure budget impact (D186)
+
+CC closure work this session: ~0.8h (pre-flight + investigation + draft + writeup). Trailing-14-day estimate updated in action_list v2.20: ~3.5h (v2.19) + ~0.8h (this) = ~4.3h. Still below 8.0 floor; ~3.7h needed over next 13 days.
+
+### State-capture-bump exception
+
+No MCP review fired on this commit. CC is read-only (MCP `execute_sql` queries) + draft-only (SQL files + markdown). No production mutation. The MCP reviews fire when chat applies Stage 1 (and Stage 2 if PK clears).
+
+### Standing rule honoured
+
+D170 boundary: CC drafts, chat applies. ✓
+4-way sync: run state + investigation file + Stage 1 SQL + action_list v2.20 + sync_state addendum. ✓
+Brief Stage 4e (no remediation in this brief). ✓
+Failure-mode table on Step 0b (halt Stage 2). ✓
+Lesson #61 (pre-flight discipline before drafting). ✓
+
+---
+
+## END OF SUNDAY 3 MAY MORNING SYDNEY CC SESSION-SEGMENT
+
+F-PUB-006 partial: Stage 1 SQL drafted (4 orphans, exact match) awaiting chat MCP review + apply. Stage 2 halted on count drift (17 vs 13). Stage 4 LinkedIn investigation complete with HIGH-confidence hypothesis (`cpp.max_per_day=2` exhaustion via 3 phantom 00:00-UTC publishes whose queue_ids no longer exist in `m.post_publish_queue`). B-INV-LinkedIn remediation deferred to separate brief next session. Action list at v2.20. Closure hours this CC segment: ~0.8h. PK signals "morning check" or "done" → chat fetches state files from GitHub and proceeds with Stage 1 apply + Stage 2 triage + Stage 3 observability.
