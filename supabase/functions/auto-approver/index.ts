@@ -2,9 +2,41 @@ import { Hono } from "jsr:@hono/hono";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const app = new Hono();
-const VERSION = "auto-approver-v1.4.1";
+const VERSION = "auto-approver-v1.6.0";
+// v1.6.0 (B31, T08, F-PUB-004 fix) — closes auto-approver starvation cascade.
+//   Three coordinated changes from v1.5.0:
+//   (1) Eligibility filter at SQL: SQL v5 fetch fn already filters auto_approve_enabled=true
+//       via INNER JOIN LATERAL. Drafts without auto-approve config are not fetched.
+//   (2) Terminal rejection on content-gate failure: previously v1.4.1 only updated
+//       auto_approval_scores JSONB on failure, leaving approval_status='needs_review'.
+//       This caused the F-PUB-004 cycling-30 starvation. v1.6.0 sets approval_status='rejected'
+//       which fires trg_handle_draft_rejection and resets the slot.
+//   (3) Eligibility safety net: if the auto_approve_enabled or not_rejected gate fires anyway
+//       (SQL filter regression), return outcome='skipped' and leave draft at needs_review.
+//       Tracked via eligibility_safety_net_fires counter in response — should be 0 in steady state.
+//   Plus EF cooldown defence-in-depth (B32 Path 3): drafts auto-reviewed within COOLDOWN_HOURS
+//       are returned as outcome='skipped' (cooldown_active) without re-evaluating gates.
+//       Prevents log spam if eligibility safety net fires repeatedly; protects against rapid
+//       re-evaluation if a regression flips approval_status back to needs_review.
+//   Response shape extended:
+//       auto_rejected (new)              — count of terminal-rejected drafts
+//       skipped_needs_human_review       — DEPRECATED alias mirroring auto_rejected; v1.7.0 removes
+//       skipped (new)                    — count of cooldown + safety-net skips combined
+//       eligibility_safety_net_fires     — should be 0 in steady state
+//       cooldown_skips                   — count of cooldown_active outcomes
+//   DraftRow gains `platform` field per SQL v5 RETURNS TABLE signature.
+//   ELIGIBILITY_GATES = Set(["auto_approve_enabled", "not_rejected", "source_score"]) — explicit
+//       classification; new gates must be classified or default to content-gate-terminal-rejection.
+//       source_score included as defence-in-depth while scoring is no-op (v1.5.0 D135);
+//       remove from set when scoring is intentionally re-enabled.
+// v1.5.0 — Set min_score to 0 for all clients (final_score=0 on all drafts because old bundler
+//           scoring was removed with D135 pipeline fix; source_score gate is a no-op until
+//           proper scoring is implemented as a future build). Preserved in v1.6.0.
 // v1.4.1 — Add Care For Welfare to CLIENT_CONFIGS (NDIS blocklist, same thresholds as NDIS Yarns)
 // v1.4.0 — Write auto_approval_scores to m.post_draft (D088)
+
+const COOLDOWN_HOURS = 4;
+const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,7 +91,7 @@ const CLIENT_CONFIGS: Record<string, ClientApprovalConfig> = {
   "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd": {
     client_id: "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd",
     name: "Property Pulse",
-    min_score: 6,
+    min_score: 0,  // v1.5.0: scoring disabled — final_score=0 on all drafts (D135 bundler removed)
     min_body_chars: 80,
     max_body_chars: 2000,
     blocklist: PROPERTY_BLOCKLIST,
@@ -67,7 +99,7 @@ const CLIENT_CONFIGS: Record<string, ClientApprovalConfig> = {
   "fb98a472-ae4d-432d-8738-2273231c1ef4": {
     client_id: "fb98a472-ae4d-432d-8738-2273231c1ef4",
     name: "NDIS Yarns",
-    min_score: 5,
+    min_score: 0,  // v1.5.0: scoring disabled — final_score=0 on all drafts (D135 bundler removed)
     min_body_chars: 80,
     max_body_chars: 1800,
     blocklist: NDIS_BLOCKLIST,
@@ -75,7 +107,7 @@ const CLIENT_CONFIGS: Record<string, ClientApprovalConfig> = {
   "3eca32aa-e460-462f-a846-3f6ace6a3cae": {
     client_id: "3eca32aa-e460-462f-a846-3f6ace6a3cae",
     name: "Care For Welfare",
-    min_score: 5,
+    min_score: 0,  // v1.5.0: scoring disabled — final_score=0 on all drafts (D135 bundler removed)
     min_body_chars: 80,
     max_body_chars: 1800,
     blocklist: NDIS_BLOCKLIST,
@@ -86,7 +118,7 @@ function getClientConfig(client_id: string): ClientApprovalConfig {
   return CLIENT_CONFIGS[client_id] ?? {
     client_id,
     name: "unknown",
-    min_score: 6,
+    min_score: 0,  // v1.5.0: scoring disabled — final_score=0 on all drafts (D135 bundler removed)
     min_body_chars: 80,
     max_body_chars: 2000,
     blocklist: [...PROPERTY_BLOCKLIST, ...NDIS_BLOCKLIST],
@@ -105,7 +137,16 @@ interface DraftRow {
   digest_item_id: string;
   final_score: number | null;
   auto_approve_enabled: boolean | null;
+  platform: string;  // NEW v1.6.0 — SQL v5 RETURNS TABLE includes platform
 }
+
+// Eligibility/state gates: failure = safety net skip (DO NOT terminal-reject).
+// SQL v5 should filter these at fetch; if they fire here it's a regression signal.
+// source_score is included as defence-in-depth while scoring is a no-op (v1.5.0 D135:
+// min_score=0, final_score=0 always passes). A stray config change raising min_score
+// above 0 would otherwise cause unexpected terminal rejections. REMOVE source_score
+// from this set when scoring is INTENTIONALLY re-enabled in a future version.
+const ELIGIBILITY_GATES = new Set(["auto_approve_enabled", "not_rejected", "source_score"]);
 
 function evaluateGates(
   draft: DraftRow,
@@ -124,6 +165,7 @@ function evaluateGates(
     return { passed: false, failed_gate: { gate: "not_rejected", reason: "Draft was previously rejected by a human" }, gates };
   }
 
+  // score gate — min_score=0 disables this gate (v1.5.0 D135 — scoring not yet implemented post-bundler-removal)
   const score = draft.final_score ?? 0;
   gates["source_score"] = score >= config.min_score ? `pass (${score})` : `fail (${score} < ${config.min_score})`;
   if (score < config.min_score) {
@@ -150,6 +192,23 @@ function evaluateGates(
   return { passed: true, gates };
 }
 
+// NEW v1.6.0 — read prior auto_review timestamp from draft_format JSONB.
+// If within COOLDOWN_HOURS of last check, skip without re-evaluating gates.
+// Prevents log spam from repeated eligibility safety-net fires; protects against
+// rapid re-evaluation if a regression flips approval_status back to needs_review.
+function checkCooldown(draft: DraftRow): { active: boolean; checkedAt?: string; ageMs?: number } {
+  const draftFormat = (typeof draft.draft_format === "object" && draft.draft_format)
+    ? draft.draft_format as Record<string, unknown>
+    : {};
+  const autoReview = draftFormat["auto_review"] as Record<string, unknown> | undefined;
+  const checkedAtRaw = autoReview?.["checked_at"] as string | undefined;
+  if (!checkedAtRaw) return { active: false };
+  const checkedAtMs = new Date(checkedAtRaw).getTime();
+  if (Number.isNaN(checkedAtMs)) return { active: false };
+  const ageMs = Date.now() - checkedAtMs;
+  return { active: ageMs >= 0 && ageMs < COOLDOWN_MS, checkedAt: checkedAtRaw, ageMs };
+}
+
 async function fetchDraftsViaRpc(
   supabase: ReturnType<typeof getServiceClient>,
   limit: number,
@@ -170,7 +229,8 @@ async function fetchDraftsViaRpc(
 interface ApprovalResult {
   post_draft_id: string;
   client_id: string;
-  outcome: "approved" | "skipped" | "failed";
+  platform: string;
+  outcome: "approved" | "rejected" | "skipped" | "failed";
   reason?: string;
   gates?: Record<string, boolean | string>;
 }
@@ -179,11 +239,26 @@ async function processOneDraft(
   supabase: ReturnType<typeof getServiceClient>,
   draft: DraftRow
 ): Promise<ApprovalResult> {
+  // 1. Cooldown check (NEW v1.6.0). Skip without re-evaluation if recent auto_review.
+  const cooldown = checkCooldown(draft);
+  if (cooldown.active) {
+    const ageMin = Math.round((cooldown.ageMs ?? 0) / 60000);
+    return {
+      post_draft_id: draft.post_draft_id,
+      client_id: draft.client_id,
+      platform: draft.platform,
+      outcome: "skipped",
+      reason: `cooldown_active (last_checked ${ageMin}min ago, window ${COOLDOWN_HOURS}h)`,
+    };
+  }
+
+  // 2. Evaluate gates.
   const config = getClientConfig(draft.client_id);
   const { passed, failed_gate, gates } = evaluateGates(draft, config);
   const checkedAt = nowIso();
   const existingFormat = (typeof draft.draft_format === "object" && draft.draft_format) ? draft.draft_format : {};
 
+  // 3a. PASS — terminal approve.
   if (passed) {
     const { error } = await supabase
       .schema("m")
@@ -198,21 +273,57 @@ async function processOneDraft(
       })
       .eq("post_draft_id", draft.post_draft_id);
 
-    if (error) return { post_draft_id: draft.post_draft_id, client_id: draft.client_id, outcome: "failed", reason: error.message };
-    return { post_draft_id: draft.post_draft_id, client_id: draft.client_id, outcome: "approved", gates };
-  } else {
-    await supabase
+    if (error) {
+      return { post_draft_id: draft.post_draft_id, client_id: draft.client_id, platform: draft.platform, outcome: "failed", reason: error.message };
+    }
+    return { post_draft_id: draft.post_draft_id, client_id: draft.client_id, platform: draft.platform, outcome: "approved", gates };
+  }
+
+  // 3b. FAIL — split path: eligibility/state gate vs content gate.
+  const failedGateName = failed_gate?.gate ?? "unknown";
+  const isEligibilityGate = ELIGIBILITY_GATES.has(failedGateName);
+
+  if (isEligibilityGate) {
+    // ELIGIBILITY SAFETY NET — should not fire; SQL v5 filters auto_approve_enabled at fetch
+    // via INNER JOIN LATERAL, and approval_status='rejected' rows are excluded by WHERE clause.
+    // If this fires, it means the SQL contract is broken or there's a race. Log + skip + leave
+    // draft at needs_review (DO NOT terminal-reject — eligibility != content-bad).
+    console.warn(`[auto-approver] eligibility_safety_net_fired post_draft_id=${draft.post_draft_id} client_id=${draft.client_id} platform=${draft.platform} gate=${failedGateName}`);
+    const { error } = await supabase
       .schema("m")
       .from("post_draft")
       .update({
-        auto_approval_scores: { gates, passed: false, failed_gate: failed_gate?.gate, reason: failed_gate?.reason, checked_at: checkedAt, agent: VERSION },
-        draft_format: { ...existingFormat, auto_review: { passed: false, failed_gate: failed_gate?.gate, reason: failed_gate?.reason, gates, checked_at: checkedAt, agent: VERSION } },
+        // NB: approval_status NOT changed — draft stays at needs_review for human review.
+        auto_approval_scores: { gates, passed: false, failed_gate: failedGateName, reason: failed_gate?.reason, checked_at: checkedAt, agent: VERSION, eligibility_safety_net: true },
+        draft_format: { ...existingFormat, auto_review: { passed: false, failed_gate: failedGateName, reason: failed_gate?.reason, gates, checked_at: checkedAt, agent: VERSION, eligibility_safety_net: true } },
         updated_at: checkedAt,
       })
       .eq("post_draft_id", draft.post_draft_id);
 
-    return { post_draft_id: draft.post_draft_id, client_id: draft.client_id, outcome: "skipped", reason: failed_gate?.reason, gates };
+    if (error) {
+      return { post_draft_id: draft.post_draft_id, client_id: draft.client_id, platform: draft.platform, outcome: "failed", reason: error.message };
+    }
+    return { post_draft_id: draft.post_draft_id, client_id: draft.client_id, platform: draft.platform, outcome: "skipped", reason: `eligibility_safety_net:${failedGateName}`, gates };
   }
+
+  // CONTENT GATE FAILURE — terminal rejection (NEW v1.6.0; the F-PUB-004 fix).
+  // Sets approval_status='rejected' which fires trg_handle_draft_rejection,
+  // resetting the slot so a fresh draft can be generated.
+  const { error } = await supabase
+    .schema("m")
+    .from("post_draft")
+    .update({
+      approval_status: "rejected",
+      auto_approval_scores: { gates, passed: false, failed_gate: failedGateName, reason: failed_gate?.reason, checked_at: checkedAt, agent: VERSION },
+      draft_format: { ...existingFormat, auto_review: { passed: false, failed_gate: failedGateName, reason: failed_gate?.reason, gates, checked_at: checkedAt, agent: VERSION } },
+      updated_at: checkedAt,
+    })
+    .eq("post_draft_id", draft.post_draft_id);
+
+  if (error) {
+    return { post_draft_id: draft.post_draft_id, client_id: draft.client_id, platform: draft.platform, outcome: "failed", reason: error.message };
+  }
+  return { post_draft_id: draft.post_draft_id, client_id: draft.client_id, platform: draft.platform, outcome: "rejected", reason: failed_gate?.reason, gates };
 }
 
 app.options("*", () => new Response(null, { status: 204, headers: corsHeaders }));
@@ -243,7 +354,20 @@ app.post("*", async (c) => {
     const drafts = await fetchDraftsViaRpc(supabase, limit, filterClientId);
 
     if (drafts.length === 0) {
-      return jsonResponse({ ok: true, version: VERSION, message: "no_drafts_to_review", processed: 0, results: [] });
+      return jsonResponse({
+        ok: true,
+        version: VERSION,
+        message: "no_drafts_to_review",
+        processed: 0,
+        approved: 0,
+        auto_rejected: 0,
+        skipped: 0,
+        skipped_needs_human_review: 0, // deprecated alias; v1.7.0 removes
+        eligibility_safety_net_fires: 0,
+        cooldown_skips: 0,
+        errors: 0,
+        results: [],
+      });
     }
 
     const results: ApprovalResult[] = [];
@@ -251,13 +375,24 @@ app.post("*", async (c) => {
       results.push(await processOneDraft(supabase, draft));
     }
 
+    const approved = results.filter((r) => r.outcome === "approved").length;
+    const rejected = results.filter((r) => r.outcome === "rejected").length;
+    const skipped = results.filter((r) => r.outcome === "skipped").length;
+    const errors = results.filter((r) => r.outcome === "failed").length;
+    const eligibilitySafetyNetFires = results.filter((r) => r.outcome === "skipped" && (r.reason ?? "").startsWith("eligibility_safety_net:")).length;
+    const cooldownSkips = results.filter((r) => r.outcome === "skipped" && (r.reason ?? "").startsWith("cooldown_active")).length;
+
     return jsonResponse({
       ok: true,
       version: VERSION,
       processed: results.length,
-      approved: results.filter((r) => r.outcome === "approved").length,
-      skipped_needs_human_review: results.filter((r) => r.outcome === "skipped").length,
-      errors: results.filter((r) => r.outcome === "failed").length,
+      approved,
+      auto_rejected: rejected,
+      skipped,
+      skipped_needs_human_review: rejected, // DEPRECATED alias mirroring auto_rejected; v1.7.0 will remove
+      eligibility_safety_net_fires: eligibilitySafetyNetFires,
+      cooldown_skips: cooldownSkips,
+      errors,
       results,
     });
   } catch (err: unknown) {
