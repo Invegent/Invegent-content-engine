@@ -20,6 +20,7 @@ The two top-level files (sync_state + action_list) are complementary: this file 
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
+| 2026-05-03 | audit-readiness-completion-night | Migration 3 (audit views v2) applied; runbook v1→v2→v2.1 across 2 ChatGPT external audit cycles; F-HISTORIC-DEAD-CLEANUP retired as miscategorised (per Phase 1.7: dead rows are audit trail); T-MCP-11/12 lessons; 3-tier validation pattern logged for canonical promotion | `docs/runtime/sessions/2026-05-03-audit-readiness-completion-night.md` |
 | 2026-05-03 | pipeline-relief-apply-night | Pipeline relief Migration 1+2 applied: 16 dead queue rows swept (NDIS-FB preserved per F-PUB-005); audit schema + 2 views created; cap lift deferred (math error caught: cap=30 doesn't unblock streams already at 50-105 queued); PP-FB orphan/pending finding surfaced via new audit view | `docs/runtime/sessions/2026-05-03-pipeline-relief-apply-night.md` |
 | 2026-05-03 | pipeline-investigation-night | End-to-end pipeline investigation: 4 stalled streams diagnosed; 3 structural issues identified (F-AAP-001 backfill avalanche, F-PUB-010 cap collision, F-PUB-009 legacy spread); CFW LinkedIn recovery-loop pathology evidenced ×4 | `docs/runtime/sessions/2026-05-03-pipeline-investigation-night.md` |
 | 2026-05-03 | tmcp05-batch-closure | T-MCP-05 closed end-to-end via reusable SECURITY DEFINER function; post-apply ACL gap surfaced + closed via break-glass; T-MCP-08 3rd vindication; new lesson candidate (post-apply ACL verification) | `docs/runtime/sessions/2026-05-03-tmcp05-batch-closure.md` |
@@ -36,62 +37,66 @@ The two top-level files (sync_state + action_list) are complementary: this file 
 
 ## 🟢 Most recent session — inline summary
 
-### 2026-05-03 night Sydney — Pipeline relief apply + audit views v1
+### 2026-05-03 late night Sydney — Audit-readiness completion + 2-tier ChatGPT external validation
 
-~0.7h chat-side this apply session. Full detail: `docs/runtime/sessions/2026-05-03-pipeline-relief-apply-night.md`. Investigation prerequisite at `docs/runtime/sessions/2026-05-03-pipeline-investigation-night.md`.
+~1.5h chat-side this phase; ~2.25h combined with prior pipeline-relief-apply-night phase. Full detail: `docs/runtime/sessions/2026-05-03-audit-readiness-completion-night.md`. Prior phase: `docs/runtime/sessions/2026-05-03-pipeline-relief-apply-night.md`.
 
-**Trigger**: PK observation of LinkedIn silence on CFW / NDIS-Yarns / Invegent (3 days) + Facebook silence on CFW + Invegent. PK directed end-to-end pipeline investigation "tonight" with explicit priority.
+**Trigger**: PK directive "i want this to be in place so a free audit can be run by chatgpt" following the M1+M2 apply session. Continuous chat session covering both phases.
 
-**Investigation findings** (prior session): 4 stalled streams. Three structural issues colliding: F-AAP-001 backfill avalanche reapproved ~25 days of drafts × F-PUB-010 hard-cap blocking new entries × F-PUB-009 legacy spread function ignoring slot intent. Plus CFW LinkedIn recovery-loop pathology ×4 evidenced (`m.recover_stuck_slots` refilled failed slots with already-published drafts). Plus 10 (→17 by apply time) stale dead queue rows from F-AAP-001 outage era.
+**Migrations applied (this phase)**:
+- `audit_views_v2_matrix_and_success` — `audit.v_brand_platform_audit_matrix` (with `likely_bottleneck` enum across 14 possible values, computed via 7 CTEs) + `audit.v_publish_success_recent` (14d proof-of-published).
 
-**ChatGPT D-01 review fires**: 2 (review_ids `7228440f` plan-level, `cee17af5` apply-level). Both ESCALATED partial verdict. T-MCP-02 quota 18 → **20**.
+**Combined session migrations (3 total)**: M1 dead-queue sweep + M2 audit views v1 + M3 audit views v2.
 
-**Math correction caught at apply time**: original recommendation of uniform cap=30 doesn't unblock 3 of 4 over-cap streams (queue depths 50/72/105 all exceed 30). Pure future-ceiling change with zero immediate effect. Cap lift deferred entirely.
+**Audit infrastructure complete**: 4 `audit.*` views deployed + runbook v1→v2→v2.1 documenting the autonomous audit flow.
 
-**State drift caught at apply time**: Invegent-LI stuck pending_fill slot 32afbe4a SELF-HEALED in the 9h gap between investigation and apply (recovery loop filled it cleanly with draft 7802673f at 5-3 12:40 UTC). Removed from Fix 5 scope. Dead queue rows grew 10→17.
+**ChatGPT external validation cycles (2)**:
+- **Cycle 1**: ChatGPT audited runbook v1 → found 4 verified errors (worker_http_log doesn't capture publishers; cron health predicate vocabulary wrong; Fix 4 sweep narrower than full picture; cap=30 doesn't unblock queues already at 50-105). Chat verified each claim against ground truth and authored runbook v2.
+- **Cycle 2**: ChatGPT audited runbook v2 → substantively validated all corrections + matrix view classifications. Surfaced one nuance: `dead_reason` column (which v2.31 verification missed) shows every dead row already carries an explicit annotation. Chat verified, retired F-HISTORIC-DEAD-CLEANUP as miscategorised (per Phase 1.7 design: "Dead items are never deleted — they are an audit trail"), and authored v2.1 patch.
 
-**Migrations applied (2)**:
+**ChatGPT D-01 fires (3 this session)**: `7228440f` (initial pipeline-relief plan), `cee17af5` (apply-level after revisions), `648ae6a4` (audit views v2 plan). All ESCALATED partial verdict; all honoured per protocol; all 3 pushback sets classified weak/medium/weak per Lesson #62. T-MCP-02 quota 18 → **21**.
 
-1. `pipeline_relief_dead_queue_sweep_v2` — DELETE 16 dead queue rows from F-AAP-001 era (12 PP-FB + 4 CFW-IG; **1 NDIS-FB row preserved per F-PUB-005 carry-forward**). First attempt failed on `m.system_audit_log.triggered_by` check constraint (custom value rejected); v2 used `manual` and succeeded. Audit log row recorded.
+**New lesson candidates**:
+- **T-MCP-11**: pre-flight discipline includes verifying log/health table actually contains the data assumed; table existence ≠ usable; column references must be schema-verified.
+- **T-MCP-12**: query EVERY annotation column when verifying table contents (last_error, dead_reason, skip_reason, fail_reason, etc.) — not just the most obvious one.
+- **3-tier validation meta-pattern**: high-stakes documentation should pass through (1) author publishes, (2) external audit runs against doc, (3) author re-verifies external findings against ground truth. Worth promoting after 1-2 more cycles.
 
-2. `audit_schema_and_views_v1` — CREATE SCHEMA `audit` + 2 read-only views (`audit.v_publish_queue_summary` + `audit.v_slot_health_by_client_platform`). C2 view uses CORRECTED slot status vocab (`filled|future|failed|pending_fill`) per chat-side review of original ChatGPT audit-readiness proposal. Includes `orphan_filled_slots` column for the filled-but-NULL-draft pathology.
+**ChatGPT 2nd audit also reported pipeline drain progression**: PP-FB classification shifted `approved_not_queued_cap_blocked` → `slot_orphan_filled`. Migration 1 sweep + jobid 48 ticking allowed the cap-blocked drafts to enter queue. Pipeline producing 9 FB + 5 LI publishes in 48h. Healthier than morning state.
 
-**View paid for itself on first use**: `v_slot_health_by_client_platform` immediately surfaced **Property Pulse Facebook with 1 orphan_filled_slot + 1 pending_fill_slot** — not in tonight's original diagnosis. Logged as new finding `B-PP-FB-ORPHAN-PENDING-FILL` for next session investigation.
+**Standing rules honoured**: D-01 (3 reviews fired, all honoured; v2.32 doc updates following external review verification did NOT require additional D-01 fire), D-170 (chat applies migrations only via `apply_migration`), D-186 (closure +2.25h total session, trailing-14d 14.7→17.0h, well above 8.0h floor), Phase 1.7 design (dead rows are audit trail), G1 convention.
 
-**Standing rules honoured**: D-01 (2 reviews, both honoured per protocol on escalate=true — PK explicitly resolved option (a) on second), D-170 (chat applies migrations only), D-186 (closure +0.7h, trailing-14d 14.7→15.4h, well above 8.0h floor), F-PUB-005 carry-forward (1 NDIS-FB row preserved), G1 convention.
+**F-HISTORIC-DEAD-CLEANUP RETIRED**: 47 dead rows all carry explicit `dead_reason` annotations from prior named remediations (`m8_m11_bloat_window_2026-04-17`, `pre_m8_stale_2026-04-09`, `post_draft_not_found_orphan_F-PUB-006_2026-05-03`, `F-PUB-005_premature_enqueue_unblocks_F-PUB-006_2026-05-03`, hand-typed prose for the 734-attempt March row). Audit trail intact; no cleanup appropriate.
 
-**Pattern signals**:
-- Lesson #62 type-(a) reinforced: ChatGPT pushback correctly classified strong/medium/weak; strong objection (NDIS-FB exclusion) actioned, weak (view efficiency) declined.
-- **NEW lesson candidate**: state-snapshot age ≥ 4h requires re-verification before any DML/DDL. State drifted in 9h: 10→17 dead rows, 1 stuck slot self-healed.
-- Audit view validates the partial-adoption pattern from chat-side review of v1 audit-readiness report. C2's first query surfaced what ad-hoc SQL missed.
+**Closure budget**: +1.5h this phase, +0.7h prior phase = +2.25h total session. Trailing-14d 14.7 → ~17.0h. Above floor.
 
-**Closure budget**: +0.7h. Trailing-14d 14.7 → 15.4h. Above floor.
-
-**Net P0+P1 open findings**: unchanged (tonight's work was incident-relief + audit-infra; no P0/P1 closure or new P0/P1 logged).
+**Net P0+P1 open findings**: unchanged at ~9 (B-PIPELINE-INCIDENT-REMEDIATION P1 ongoing; structural fixes deferred to next session).
 
 ---
 
-## 🟡 Next session priorities (carry-forward from action_list v2.30)
+## 🟡 Next session priorities (carry-forward from action_list v2.32)
 
 1. Personal businesses check-in
 2. **T05 Meta dev support contact** (P1-urgent, unchanged from v2.29)
-3. **B-PIPELINE-INCIDENT-REMEDIATION** — deferred fixes from tonight: cap lift with revised per-stream targets (~80/100/130/30) paired with F-PUB-009 fix, Fix 3 recovery loop function patch, Fix 2 F-PUB-009 structural fix. Likely needs sequencing as: F-PUB-009 first → cap lift → Fix 3.
-4. **F-AAP-007 fix apply path** (brief committed; carry-forward from v2.29)
-5. **B-AUDIT-CHECK5-DRIFT fix apply path** (brief committed; carry-forward from v2.29)
+3. **B-PIPELINE-INCIDENT-REMEDIATION** — deferred fixes: cap lift with revised per-stream targets paired with F-PUB-009 fix, recovery loop patch. Sequence: F-PUB-009 first → cap lift → Fix 3.
+4. **F-AAP-007 fix apply path** (brief committed; carry-forward)
+5. **B-AUDIT-CHECK5-DRIFT fix apply path** (brief committed; carry-forward)
 
 ---
 
 ## ⛔ Carried-forward "do not touch" state
 
-- NDIS-Yarns IG `publish_enabled=false` (T07 step 4 rollback) — do not flip to `true` until T05 (Meta dev support) decides recovery
+- NDIS-Yarns IG `publish_enabled=false` (T07 step 4 rollback) — do not flip until T05 (Meta dev support) decides recovery
 - Cron jobid 53 `active=false` — do not re-enable until S16 fresh-approval verification + T05 + cron `?limit=1` update
 - The `m.chatgpt_review` row `1bae5068-c77a-40f1-a2a6-769fbc5988b9` (T-MCP-05-NEW) — escalated, awaits close-the-loop UPDATE in next session
-- The 5 over-cap (client, platform) combos hold their existing queue depth — by design, drains via publish rate. **NEW v2.30**: 1 NDIS-FB dead queue row preserved tonight per this carry-forward (status=`dead`, last_error LIKE 'not_approved:%'); next dead-row sweep should continue to exclude.
+- **T-MCP-05-NEW2 batch (4 review_ids)**: `1bae5068`, `7228440f`, `cee17af5`, `648ae6a4` — all awaiting close-the-loop UPDATE in next batch closure
+- The 5 over-cap (client, platform) combos hold their existing queue depth — by design, drains via publish rate. **1 NDIS-FB dead queue row preserved per F-PUB-005 carry-forward** (status=`dead`, last_error LIKE 'not_approved:%', `dead_reason='F-PUB-005_premature_enqueue_unblocks_F-PUB-006_2026-05-03'`)
+- **47 historic dead queue rows retained as audit trail** — all carry explicit `dead_reason` annotations per Phase 1.7 design ("Dead items are never deleted"). F-HISTORIC-DEAD-CLEANUP RETIRED v2.32 as miscategorised
 - C2-CAND-001 (Stage 12 migration filename audit-trail) — punted to Cycle 3
 - Cron jobid 11/64/65 (`seed-and-enqueue-{fb,ig,li}`) — paused per slot-driven v4 migration
 - Jobid 12 (`planner-hourly`) — still active despite v3 orphan production (B-CRON-V3-ORPHAN)
-- **NEW v2.30**: 4 CFW LinkedIn slots in `marked_failed: exceeded_recovery_attempts` state (slots `bd979865`, `f6e56cff`, `b1f55068`, `b6c77804`) — quiescent, do not reset until `m.recover_stuck_slots` patch is applied (Fix 3 deferred to next session)
-- **NEW v2.30**: NDIS-Yarns LinkedIn slot `8f9e5c57-d162-4f65-aaf2-85dbe8fddbd0` — orphan state (filled, NULL draft_id) since 4-27, do not touch pending Fix 5 review of recovery loop interaction
+- 4 CFW LinkedIn slots in `marked_failed: exceeded_recovery_attempts` state (slots `bd979865`, `f6e56cff`, `b1f55068`, `b6c77804`) — quiescent, do not reset until `m.recover_stuck_slots` patch applied (Fix 3 deferred)
+- NDIS-Yarns LinkedIn slot `8f9e5c57-d162-4f65-aaf2-85dbe8fddbd0` — orphan state (filled, NULL draft_id) since 4-27, do not touch pending Fix 5 review
+- Property Pulse Facebook 1 orphan slot (B-PP-FB-ORPHAN-PENDING-FILL P3) — surfaced v2.30, ChatGPT 2nd audit confirms still present
 
 ---
 
@@ -109,4 +114,4 @@ The two top-level files (sync_state + action_list) are complementary: this file 
 
 ---
 
-*Last updated: 2026-05-03 night Sydney — pipeline relief apply + audit views v1 (Migration 1+2 applied; cap lift / Fix 3 / Fix 2 deferred to next session).*
+*Last updated: 2026-05-03 late night Sydney — audit-readiness completion + 2-tier ChatGPT external validation (Migration 3 + runbook v1→v2→v2.1; F-HISTORIC-DEAD-CLEANUP retired; T-MCP-11/12 lessons logged).*
