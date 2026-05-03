@@ -180,3 +180,33 @@ Outcome: **Option A** — chat verified all 4 schema substitutions against `info
 Resolved by: PK chat (2026-05-02 ~20:30 Sydney / 10:30Z, then v2.1 brief patch at c726f232)
 Resolved at: 2026-05-02T10:42:49Z
 Outcome: **Option A** — Cowork's correlated-subquery rewrite was semantically correct. PK chat decision: patch the brief Q-true-stuck SQL using the slice-notation alternative `(array_agg(pd.post_draft_id ORDER BY ppq.scheduled_for))[1:5]` rather than the correlated subquery. Slice notation is more efficient (single aggregate evaluation per group) and idiomatic Postgres. Verified syntax: `array_agg()` accepts `ORDER BY` per SQL standard but rejects `LIMIT` (which is a SELECT-clause modifier); slice notation `[1:5]` applied to the resulting array picks the first 5 elements after ordering. Run output `docs/audit/health/2026-05-02.md` (v2 run) accepted as-is — Section 6b sample_draft_ids array values are correct. Brief refreshed at commit `c726f232` (v2.1 patch). Tomorrow's scheduled run targets 0 fallbacks. **Pattern note:** Two consecutive Cowork runs surfaced brief-author SQL bugs recovered via default-and-continue (Q7/Q9 schema bugs in v1; Q-true-stuck syntax bug in v2). Lesson #61 (pre-flight discipline) extends from `information_schema.columns` lookup to also include test-running every brief SQL block before authoring. **v2.1 is the locked brief shape — schedule candidate at Cowork → Scheduled → daily 02:00 AEST.**
+
+## Resolved Q-post-render-log-column-purposes-001
+
+Resolved by: PK chat (2026-05-03 ~12:00 Sydney / 02:00Z)
+Resolved at: 2026-05-03T02:00:00Z
+Outcome: **Option A** — chat verified Cowork's two design decisions against producer code by personally reading `supabase/functions/image-worker/index.ts` v3.9.2 line-by-line via github MCP. Cross-checked 12 material producer-code citations:
+- p_render_engine='creatomate' literal in both write_render_log calls ✓
+- p_render_spec=null literal in both calls (production: 0/932 populated) ✓
+- status write set: 'succeeded' (success path) / 'timeout' (errMsg.includes('timed out')) / 'failed' (else). Column default 'submitted' never written by code ✓
+- errMsg.slice(0, 500) truncation on error_message ✓
+- attempt_number not passed (column default 1 applies) ✓
+- render_duration_ms = Date.now() - startMs ✓
+- 5 ice_format_keys present (image_quote, animated_text_reveal, animated_data, carousel, image_quote_video_fallback) ✓
+- resolveClientId chain: direct → m.post_draft → m.digest_item → m.digest_run ✓
+- POLL_INTERVAL_MS=1500, POLL_MAX_ATTEMPTS=30 ✓
+- credits_used = data.credits != null ? Number(data.credits) : null ✓
+- storage path patterns for all 5 formats ✓
+- slide_id NULL for single-image, set for carousel ✓
+
+Migrations applied via Supabase MCP `apply_migration` per D170:
+1. `audit_post_render_log_column_purposes` — atomic DO block, 15 UPDATEs on `k.column_registry`, Lesson #38 verification (pre_count=16, post_count=1, delta=15). render_spec deferred LOW per `docs/audit/decisions/post_render_log_low_confidence_followup.md`.
+2. `refresh_post_render_log_table_purpose_to_match_code_cited_write_set` — single UPDATE on `k.table_registry.purpose` for table_id=81572 with ROW_COUNT verification. Aligns table-level enum with column-level code-cited values; closes the temporary inconsistency between `k.column_registry` (post-F04) and `k.table_registry`.
+
+MCP review fires: 2 fires (review_id `043e1831-ba73-4027-9f3c-90a646bcd99f` first-pass, `bbef4ace-bae8-4510-ad84-bc980e1b8a1e` second-pass). Both escalated despite Path B providing concrete producer-code verification. Pattern: **ChatGPT consistency-bias on sql_destructive** — `pushback_points` repeated verbatim from first-pass even when `verified_claims` body acknowledged Path B evidence cleared the originals. PK explicit override applied; both migrations applied. **Lesson #62 candidate refined to type-(c)** pattern.
+
+m schema docs coverage bump: 26.2% (180/686) → 28.4% (195/686).
+
+Closure-budget contribution: ~0.5h.
+
+Run state: `docs/runtime/runs/2026-05-03-f04-and-fpub007-fpub010-session.md`.
