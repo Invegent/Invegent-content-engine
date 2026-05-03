@@ -1,6 +1,6 @@
 ---
 id: publish-queue-and-publish-column-purposes
-status: ready
+status: failed
 risk_tier: 1
 owner: cc
 created: 2026-05-03T00:35:00Z
@@ -9,6 +9,11 @@ related-decisions: D170 (chat applies migrations), Lesson #61 (jsonb pre-flight)
 related-findings: F-PUB-004, F-PUB-005, F-PUB-006, F-PUB-007 (NEW candidate)
 related-patterns: slot-core-column-purposes, post-publish-observability-column-purposes, pipeline-health-pair-column-purposes, operator-alerting-trio-column-purposes, post-render-log-column-purposes
 ---
+
+<!-- Cowork halt 2026-05-03T160310Z: frontmatter missing 5 of 9 v1-spec-mandatory fields
+     (default_action, allowed_paths, forbidden_actions, idempotency_check, success_output).
+     See state file: docs/runtime/runs/publish-queue-and-publish-column-purposes-2026-05-03T160310Z.md
+     PK action: add the missing fields (suggested values in state file) and reset status to ready. -->
 
 # Publish Queue + Publish Column Purposes
 
