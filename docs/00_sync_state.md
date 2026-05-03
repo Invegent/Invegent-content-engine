@@ -20,6 +20,7 @@ The two top-level files (sync_state + action_list) are complementary: this file 
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
+| 2026-05-03 | t02-ratification | T02 Gate B body-health exit RATIFIED (5-signal panel + paused-cron hardening) | `docs/runtime/sessions/2026-05-03-t02-ratification.md` |
 | 2026-05-03 | fpub005-apply | F-PUB-005 + F-PUB-010 patch APPLIED (drop trigger + hard-cap cron) | `docs/runtime/sessions/2026-05-03-fpub005-apply.md` |
 | 2026-05-03 | mid-morning-chat-session-2 | F-PUB-007 closed not-real-bug + F-PUB-010 surfaced + F-PUB-005 brief v2 + F04 applied | `docs/runtime/sessions/2026-05-03-mid-morning-chat-session-2.md` |
 
@@ -29,33 +30,33 @@ The two top-level files (sync_state + action_list) are complementary: this file 
 
 ## 🟢 Most recent session — inline summary
 
-### 2026-05-03 mid-morning Sydney — F-PUB-005 apply
+### 2026-05-03 late-morning Sydney — T02 Gate B body-health exit ratified
 
-Apply work block, ~0.5h, immediately following session 2. Full detail: `docs/runtime/sessions/2026-05-03-fpub005-apply.md`.
+~0.5h chat-side, immediately following F-PUB-005 apply session. Full detail: `docs/runtime/sessions/2026-05-03-t02-ratification.md`.
 
-**Applied**: migration `fpub005_drop_trigger_and_add_hard_cap_to_enqueue_cron` at **2026-05-03 02:29:48 UTC**. Three steps in single transaction: (1) DROP TRIGGER `trg_enqueue_publish_from_ai_job_v1`; (2) DROP FUNCTION `m.enqueue_publish_from_ai_job_v1()`; (3) cron.alter_job replacing jobid=48 (`enqueue-publish-queue-every-5m`) command with cap-aware version (correlated-subquery cap check + COALESCE fallback default 10); (4) COMMENT ON COLUMN `c.client_publish_profile.max_queued_per_platform` documenting hard-cap semantics.
+**Closed**: T02 (Phase B image+quote body-health gate exit) at +71.3h post-deploy.
 
-**Closed**: F-PUB-005 (zombie origin) + F-PUB-010 candidate (asymmetric cap enforcement) in single migration.
+**5-signal panel**: S1 exceeded_recovery_attempts=0 PASS, S2 shadow ai_job 0 fail / 14 total PASS, S3 slot_fill_no_body_content=0 PASS, S4 pool_thin all=0 PASS, S4b pool_thin Invegent=0 PASS, S5 slot_alerts=0 PASS, **S5b cron_health_alert=1 FAIL → carved out**.
 
-**Verifications**: V1 (trigger gone) PASS, V2 (function gone) PASS, cron command updated PASS. Post-apply T+0 baseline matches pre-apply P4 across all 11 (client, platform) combos — zero queue growth in 6-min apply window. V3 (+10min backpressure diagnostic), V4 (+30min no-new-zombies), V5 (+60min queue-not-growing-past-cap) deferred to wait-based observation; V5 baseline captured in run state file.
+**S5b carve-out**: single failing row was alert_id `231c929c-...` for jobid 53 (`instagram-publisher-every-15m`), alert_type `no_recent_runs`, raised 2026-05-01 00:00:00 UTC, auto-resolved 15 min later. Jobid 53 is in the carried-forward "do not touch" set per T07 step 4 rollback. Heartbeat alert is the expected consequence of the cron being deliberately paused.
 
-**MCP review** (review_id `0862f3b6-1acb-475e-bd36-49ea5725f957`): proceed/agree/medium-risk/high-confidence/no pushback. **First sql_destructive fire today not to escalate on first pass** — Lesson #62 type-(c) consistency-bias did NOT trigger this time.
+**MCP review fire #14** (review_id `521628d0-57f6-44ff-a18a-5fca58b51fb1`): plan_review, escalate_explicit_flag, partial/medium/medium. Pushback separated: strong = judgement-call assertion of spec-author intent without evidence; weak = type-c flavour "override of escalation procedures" framing when the proposal IS the escalation. PK chose Path A.
 
-**Backpressure expectation (the new normal)**: over-cap (client, platform) combos (NDIS-Yarns × FB/IG/LI; PP × IG/LI) will NOT grow further. Existing 50-128 queued rows drain via `max_per_day` publish rate. Approvals over cap stay un-enqueued — surface as backpressure via the F-PUB-007 verification query.
+**Path A hardening (paused-cron enumeration)**: 4 paused crons total — jobid 11 (FB seed-enqueue), 53 (IG publisher), 64 (IG seed-enqueue), 65 (LI seed-enqueue). Lifetime cron_health_alert history: only jobid 53 has ever raised one (3 lifetime, 1 in T02 window). Jobs 11/64/65 zero lifetime alerts. S5b carve-out is structurally bounded.
 
-**Closure budget**: +0.5h. Trailing-14-day 8.3h → **8.8h** (comfortably above 8.0 floor).
+**T-MCP-02 quota**: 14 of 5 (was 13 of 5). Plan_review escalation rate ~6 of 7 (high). Sql_destructive ~50% (3 of 6) unchanged.
 
-**Rollback artefacts**: full pre-patch cron command verbatim + pointer to investigation file for trigger/function source — preserved in run state file.
+**Closure budget**: +0.5h. Trailing-14-day 8.8h → **9.3h** (comfortably above 8.0 floor).
 
 ---
 
-## 🟡 Next session priorities (carry-forward from action_list v2.23)
+## 🟡 Next session priorities (carry-forward from action_list v2.24)
 
 1. Personal businesses check-in
-2. V3-V5 wait-based verifications for F-PUB-005 patch (single query against post-apply T+0 baseline in run state file)
-3. publish-queue-and-publish CC brief execution (status: ready)
-4. B-INV-CFW-Invegent-Silent-Approver investigation (NDIS-Yarns firing all 4 platforms post-B31; CFW + Invegent silent across all platforms)
-5. B-INV-LinkedIn-PhantomPublishes investigation (daily 00:00 UTC phantom publishes confirmed reproducible)
+2. T04 R01 calibration session (90min hard cap, due Sun/Mon)
+3. T05 Meta dev support contact (PK external action, ASAP)
+4. V3-V5 wait-based verifications for F-PUB-005 patch (single query against post-apply T+0 baseline)
+5. publish-queue-and-publish CC brief execution (status: ready)
 
 ---
 
@@ -63,7 +64,7 @@ Apply work block, ~0.5h, immediately following session 2. Full detail: `docs/run
 
 - NDIS-Yarns IG `publish_enabled=false` (T07 step 4 rollback) — do not flip to `true` until T05 (Meta dev support) decides recovery
 - Cron jobid 53 `active=false` — do not re-enable until S16 fresh-approval verification + T05 + cron `?limit=1` update
-- The `m.chatgpt_review` row `2bab95d5-...` — status `escalated` per PK Path A choice; T-MCP-05 close-the-loop UPDATE pending
+- The `m.chatgpt_review` rows `2bab95d5-...` (T-MCP-01) and `521628d0-...` (T02 ratification) — status `escalated`, T-MCP-05 close-the-loop UPDATEs pending PK confirmation
 - The 5 over-cap (client, platform) combos (NDIS × FB/IG/LI, PP × IG/LI) hold their existing queue depth — by design, drains via publish rate. Don't manually clear or truncate.
 
 ---
@@ -72,7 +73,7 @@ Apply work block, ~0.5h, immediately following session 2. Full detail: `docs/run
 
 **Each session writes its own file** at `docs/runtime/sessions/YYYY-MM-DD-{slug}.md` where:
 - `YYYY-MM-DD` is the session date (Sydney local OK)
-- `{slug}` is a short topic identifier (e.g. `b31-deploy`, `f-pub-006-cleanup`, `mid-morning-chat-session-2`)
+- `{slug}` is a short topic identifier (e.g. `b31-deploy`, `f-pub-006-cleanup`, `t02-ratification`)
 
 **At session end, chat updates this file ONLY by:**
 1. Inserting one row into the `📚 Session index` table at the top
@@ -85,4 +86,4 @@ Apply work block, ~0.5h, immediately following session 2. Full detail: `docs/run
 
 ---
 
-*Last updated: 2026-05-03 Sunday mid-morning Sydney — F-PUB-005 + F-PUB-010 closed.*
+*Last updated: 2026-05-03 Sunday late-morning Sydney — T02 ratified.*
