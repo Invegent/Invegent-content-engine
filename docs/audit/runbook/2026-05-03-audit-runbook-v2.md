@@ -12,6 +12,8 @@
 > 3. Added explicit publisher cron jobid table for grounding
 > 4. Added row-list discipline section for any sweep-style migrations
 > 5. Re-verified every example query against live DB before committing
+>
+> **v2.1 patch (post-second-ChatGPT-audit, same night)**: added "Dead rows are audit trail, not hygiene candidates" subsection in Row-list Discipline. ChatGPT's second audit surfaced the `dead_reason` column (which v2 didn't reference) showing every dead row already carries an explicit annotation; F-HISTORIC-DEAD-CLEANUP was miscategorised and has been retired from backlog.
 
 ---
 
@@ -135,7 +137,7 @@ The `likely_bottleneck` enum maps to a drill-down query:
 | `slot_fill_failed` | Slots in terminal `failed` state in last 7d | `SELECT slot_id, scheduled_publish_at, fill_attempts, skip_reason FROM m.slot WHERE client_id = ... AND platform = ... AND status = 'failed' AND scheduled_publish_at >= NOW() - INTERVAL '7 days'`. If `skip_reason LIKE 'marked_failed:%exceeded_recovery_attempts%'`, recovery loop pathology — see CFW LinkedIn case study |
 | `slot_orphan_filled` | Slot `status='filled'` but `filled_draft_id IS NULL` | `SELECT slot_id, scheduled_publish_at, filled_at, fill_attempts FROM m.slot WHERE client_id = ... AND platform = ... AND status = 'filled' AND filled_draft_id IS NULL` |
 | `publish_queue_overdue` | Queue rows `status='queued'` but `scheduled_for < NOW()` | `SELECT * FROM audit.v_publish_queue_summary WHERE overdue_ready_items > 0`; check publisher cron heartbeat in Step 2 |
-| `publish_queue_failed_or_dead` | Rows with `status IN ('failed','dead')` | `SELECT scheduled_for, status, attempt_count, last_error_code, LEFT(last_error, 200), LEFT(dead_reason, 200) FROM m.post_publish_queue WHERE client_id = ... AND platform = ... AND status IN ('failed','dead') ORDER BY updated_at DESC LIMIT 20` |
+| `publish_queue_failed_or_dead` | Rows with `status IN ('failed','dead')` | `SELECT scheduled_for, status, attempt_count, last_error_code, LEFT(last_error, 200), LEFT(dead_reason, 200) FROM m.post_publish_queue WHERE client_id = ... AND platform = ... AND status IN ('failed','dead') ORDER BY updated_at DESC LIMIT 20`. **Important**: dead rows with a populated `dead_reason` are intentional audit trail (see "Dead rows are audit trail" subsection below); only `status='failed'` or dead rows with NULL `dead_reason` warrant investigation. |
 | `legacy_spread_mismatch` | Queue rows scheduled > 6h from underlying slot's `scheduled_publish_at` | F-PUB-009 manifestation. `SELECT s.slot_id, s.scheduled_publish_at AS slot_when, q.scheduled_for AS queue_when, q.scheduled_for - s.scheduled_publish_at AS drift FROM m.slot s JOIN m.post_publish_queue q ON q.post_draft_id = s.filled_draft_id WHERE s.client_id = ... AND s.platform = ... AND q.status = 'queued' ORDER BY drift DESC` |
 | `never_published_or_no_record` | No row in `m.post_publish` for this (client, platform) | New stream or never reached publish stage. Check that drafts are being created and slots are being filled |
 | `publishing_stale` | Last publish > 7 days ago | Investigate token, queue, recent errors per Steps 2/4/6 |
@@ -171,17 +173,45 @@ When a `likely_bottleneck` points at the publisher path, ground each diagnosis i
 
 ## Row-list discipline (for any sweep-style mutation)
 
-Tonight's apply session caught a planning failure: a proposed cap of 30 wouldn't have unblocked streams already at 50-105 queued. ChatGPT external audit also caught that a "10-row sweep" plan was actually 16+ rows in reality, with broader picture remaining (47 dead rows total post-sweep).
+### Dead rows are audit trail, not hygiene candidates
+
+**Per Phase 1.7 Dead Letter Queue design principle**: rows in `m.post_publish_queue` with `status='dead'` and a populated `dead_reason` annotation are **intentional audit trail**, not hygiene candidates. They were marked dead by a deliberate process — a named cleanup window (e.g. `m8_m11_bloat_window_2026-04-17`), an incident-tagged sweep (e.g. `post_draft_not_found_orphan_F-PUB-006_2026-05-03`), or a manual remediation with prose (e.g. `orphaned queue item — manually resolved 2 Apr 2026`). They should NOT be deleted.
+
+**Verify this is the case for any (client, platform, status='dead') group BEFORE proposing any cleanup**:
+
+```sql
+-- Confirm dead rows already have explicit dead_reason annotations
+SELECT
+  COALESCE(dead_reason, '<NULL>') AS dead_reason,
+  COALESCE(LEFT(last_error, 50), '<NULL>') AS last_error_head,
+  COUNT(*) AS rows,
+  MIN(updated_at) AS oldest, MAX(updated_at) AS newest
+FROM m.post_publish_queue
+WHERE status = 'dead'
+  AND client_id = ...  -- scope to specific stream
+  AND platform = ...
+GROUP BY dead_reason, last_error_head
+ORDER BY rows DESC;
+```
+
+If every group has a populated `dead_reason`: **the audit trail is intact, no action needed.**
+
+If any group has NULL `dead_reason`: that's the only case where investigation may lead to a sweep, and even then the sweep adds a `dead_reason` rather than deleting the row.
+
+### When sweep IS appropriate (e.g. tonight's F-AAP-001 cleanup)
+
+Tonight's apply session caught a planning failure: a proposed cap of 30 wouldn't have unblocked streams already at 50-105 queued. ChatGPT external audit also caught that a "10-row sweep" plan was actually 16+ rows in reality.
 
 **Rule**: any DML that deletes / modifies rows **must** include an explicit row-list dry-run inside the migration before the mutation. Pattern:
 
 ```sql
 -- Step 1: identify exact rows
 SELECT queue_id, client_id, platform, scheduled_for, created_at, updated_at,
-       last_error
+       last_error, dead_reason
 FROM m.post_publish_queue
 WHERE status = 'dead'
   AND last_error LIKE 'specific_error_pattern:%'
+  AND dead_reason IS NULL  -- only target rows lacking audit annotation
 ORDER BY updated_at;
 -- Document expected row count in migration comment
 
@@ -190,6 +220,7 @@ WITH deleted AS (
   DELETE FROM m.post_publish_queue
   WHERE status = 'dead'
     AND last_error LIKE 'specific_error_pattern:%'
+    AND dead_reason IS NULL
   RETURNING client_id, platform
 )
 INSERT INTO m.system_audit_log (triggered_by, ...)
@@ -197,7 +228,7 @@ INSERT INTO m.system_audit_log (triggered_by, ...)
 SELECT 'manual', ...;
 ```
 
-Selection rule must be explicit, narrow, and bounded. "Sweep all dead rows" is never acceptable without enumerating which conditions are actually targeted.
+Selection rule must be explicit, narrow, and bounded. "Sweep all dead rows" is never acceptable. Prefer **annotating dead rows with a `dead_reason`** over deleting them — deletion erases audit trail.
 
 ---
 
@@ -238,7 +269,8 @@ Selection rule must be explicit, narrow, and bounded. "Sweep all dead rows" is n
 | `slot_fill_failed` (recovery_attempts exceeded) | P1 | Within day |
 | `slot_pending_fill_overdue` | P2 | Within day |
 | `slot_orphan_filled` | P2 | Within day (manual unblock) |
-| `publish_queue_failed_or_dead` | P2 | Within day |
+| `publish_queue_failed_or_dead` (with NULL dead_reason) | P2 | Within day |
+| `publish_queue_failed_or_dead` (all rows have dead_reason) | INFO | None — audit trail intact |
 | `publish_queue_overdue` | P2 if not paused-stream | Within day |
 | `legacy_spread_mismatch` | P3 | Within week (structural fix) |
 | `publishing_stale` | P3 | Within week |
@@ -295,7 +327,7 @@ A consumer of this runbook should:
 4. **Step 4 (HTTP aggregate)** — flag failure-rate spikes; cannot attribute to specific publisher from here
 5. **Step 5 (per-publisher outcomes)** — proof-of-published reconciliation
 6. **Step 6 (system failure surface)** — catalogue recent failures, open incidents, doctor activity
-7. **Step 7 (drill-downs)** — for each non-`ok` matrix row, run the bottleneck-specific drill-down
+7. **Step 7 (drill-downs)** — for each non-`ok` matrix row, run the bottleneck-specific drill-down. **For `publish_queue_failed_or_dead`, always check `dead_reason` column first** — if every row has a populated annotation, the audit trail is intact and no further action is needed; the matrix is just surfacing the historical record.
 8. **Step 8 (audit log)** — note recent manual interventions
 9. Synthesise into a report with: (a) current state per (client, platform), (b) severity ranking, (c) cross-references to known pathologies / open findings, (d) suggested next actions.
 
@@ -306,6 +338,7 @@ The runbook + the `audit.*` views together should be sufficient. If the auditor 
 ## Versioning
 
 - **v1** (2026-05-03 evening) — initial. Found to have 4 verified errors via ChatGPT external audit. SUPERSEDED.
-- **v2** (2026-05-03 night) — corrects worker_http_log misuse, cron health vocabulary, adds publisher cron jobid reference, adds row-list discipline section. **CURRENT.**
+- **v2** (2026-05-03 night) — corrects worker_http_log misuse, cron health vocabulary, adds publisher cron jobid reference, adds row-list discipline section.
+- **v2.1** (2026-05-03 late night, this file) — adds "Dead rows are audit trail" subsection to Row-list Discipline; refines `publish_queue_failed_or_dead` severity guidance to distinguish annotated (audit trail) vs unannotated (investigate) rows; refines drill-down query to surface `dead_reason`. Triggered by ChatGPT's second external audit run which surfaced the `dead_reason` column we hadn't queried in v2 verification. **CURRENT.**
 
 Future revisions should bump version + date and note what changed.
