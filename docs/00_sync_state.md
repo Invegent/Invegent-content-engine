@@ -20,6 +20,7 @@ The two top-level files (sync_state + action_list) are complementary: this file 
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
+| 2026-05-03 | fpub005-apply | F-PUB-005 + F-PUB-010 patch APPLIED (drop trigger + hard-cap cron) | `docs/runtime/sessions/2026-05-03-fpub005-apply.md` |
 | 2026-05-03 | mid-morning-chat-session-2 | F-PUB-007 closed not-real-bug + F-PUB-010 surfaced + F-PUB-005 brief v2 + F04 applied | `docs/runtime/sessions/2026-05-03-mid-morning-chat-session-2.md` |
 
 **Pre-2026-05-03 history**: frozen at `docs/runtime/archive/sync_state-pre-2026-05-03.md`. Includes (newest first): 3 May morning chat (F-PUB-006 closed), 3 May morning CC (F-PUB-006 partial), 2 May very late evening (B31 deploy), 2 May late evening (session-end reconciliation), 2 May afternoon (ChatGPT Review MCP built), 1 May early morning UTC (T07 step 4 + auto-approver starvation discovery). Read the archive directly when deep historical context is needed.
@@ -28,35 +29,30 @@ The two top-level files (sync_state + action_list) are complementary: this file 
 
 ## 🟢 Most recent session — inline summary
 
-### 2026-05-03 mid-morning Sydney chat session 2
+### 2026-05-03 mid-morning Sydney — F-PUB-005 apply
 
-Single chat thread, ~1.5h, opened ~10:30 AEST. Full detail: `docs/runtime/sessions/2026-05-03-mid-morning-chat-session-2.md`.
+Apply work block, ~0.5h, immediately following session 2. Full detail: `docs/runtime/sessions/2026-05-03-fpub005-apply.md`.
 
-**Closed**: F-PUB-007 (not-real-bug — cron picks up "lost" approvals over time; 34 down from 44 yesterday, all NDIS-Yarns × Facebook at queue 92 vs cap 10), F04 Option A both parts (column_purposes migration + table_purpose refresh), Q-post-render-log-001.
+**Applied**: migration `fpub005_drop_trigger_and_add_hard_cap_to_enqueue_cron` at **2026-05-03 02:29:48 UTC**. Three steps in single transaction: (1) DROP TRIGGER `trg_enqueue_publish_from_ai_job_v1`; (2) DROP FUNCTION `m.enqueue_publish_from_ai_job_v1()`; (3) cron.alter_job replacing jobid=48 (`enqueue-publish-queue-every-5m`) command with cap-aware version (correlated-subquery cap check + COALESCE fallback default 10); (4) COMMENT ON COLUMN `c.client_publish_profile.max_queued_per_platform` documenting hard-cap semantics.
 
-**Surfaced**: F-PUB-010 candidate — asymmetric cap enforcement between trigger and cron (`enqueue-publish-queue-every-5m` has no cap check; trigger respects `max_queued_per_platform`, cron does not). PK directive: hard-cap semantics, surface over-cap as backpressure.
+**Closed**: F-PUB-005 (zombie origin) + F-PUB-010 candidate (asymmetric cap enforcement) in single migration.
 
-**Promoted**: F-PUB-005 patch brief v1→v2 (drop trigger + add hard cap to cron, ~30-line migration), status: draft → ready. Closes F-PUB-005 + F-PUB-010 in single migration.
+**Verifications**: V1 (trigger gone) PASS, V2 (function gone) PASS, cron command updated PASS. Post-apply T+0 baseline matches pre-apply P4 across all 11 (client, platform) combos — zero queue growth in 6-min apply window. V3 (+10min backpressure diagnostic), V4 (+30min no-new-zombies), V5 (+60min queue-not-growing-past-cap) deferred to wait-based observation; V5 baseline captured in run state file.
 
-**Coverage**: m schema docs 26.2% (180/686) → 28.4% (195/686).
+**MCP review** (review_id `0862f3b6-1acb-475e-bd36-49ea5725f957`): proceed/agree/medium-risk/high-confidence/no pushback. **First sql_destructive fire today not to escalate on first pass** — Lesson #62 type-(c) consistency-bias did NOT trigger this time.
 
-**Closure budget**: +1.5h. Trailing-14-day 6.3h → 7.8h (0.2h short of 8.0 floor; F-PUB-005 patch apply next session clears).
+**Backpressure expectation (the new normal)**: over-cap (client, platform) combos (NDIS-Yarns × FB/IG/LI; PP × IG/LI) will NOT grow further. Existing 50-128 queued rows drain via `max_per_day` publish rate. Approvals over cap stay un-enqueued — surface as backpressure via the F-PUB-007 verification query.
 
-**Pattern signals**: Lesson #62 candidate refined to type-(c) — ChatGPT consistency-bias on sql_destructive (escalate=true persists even after verified_claims body acknowledges Path B clearance). T-MCP-06 added: investigate sql_destructive escalation rate (~80% over 5 fires). Implication: chat reads `verified_claims` body, not just `escalate` boolean, when deciding Path B success.
+**Closure budget**: +0.5h. Trailing-14-day 8.3h → **8.8h** (comfortably above 8.0 floor).
 
-**Production state at session end**:
-- B31 live, F-PUB-004 closing in production
-- F-PUB-005 patch ready for next-session apply
-- m schema docs coverage 28.4%
-- NDIS-Yarns FB queue at 92 vs cap 10 (resolves via F-PUB-005 patch v2 hard-cap on apply)
-- T-MCP-02 quota at 12 of 5 (well exceeded)
+**Rollback artefacts**: full pre-patch cron command verbatim + pointer to investigation file for trigger/function source — preserved in run state file.
 
 ---
 
-## 🟡 Next session priorities (carry-forward from action_list v2.22)
+## 🟡 Next session priorities (carry-forward from action_list v2.23)
 
 1. Personal businesses check-in
-2. F-PUB-005 patch apply — closes F-PUB-005 + F-PUB-010 in single migration (next-session priority 1 closure work)
+2. V3-V5 wait-based verifications for F-PUB-005 patch (single query against post-apply T+0 baseline in run state file)
 3. publish-queue-and-publish CC brief execution (status: ready)
 4. B-INV-CFW-Invegent-Silent-Approver investigation (NDIS-Yarns firing all 4 platforms post-B31; CFW + Invegent silent across all platforms)
 5. B-INV-LinkedIn-PhantomPublishes investigation (daily 00:00 UTC phantom publishes confirmed reproducible)
@@ -68,7 +64,7 @@ Single chat thread, ~1.5h, opened ~10:30 AEST. Full detail: `docs/runtime/sessio
 - NDIS-Yarns IG `publish_enabled=false` (T07 step 4 rollback) — do not flip to `true` until T05 (Meta dev support) decides recovery
 - Cron jobid 53 `active=false` — do not re-enable until S16 fresh-approval verification + T05 + cron `?limit=1` update
 - The `m.chatgpt_review` row `2bab95d5-...` — status `escalated` per PK Path A choice; T-MCP-05 close-the-loop UPDATE pending
-- F-PUB-005 patch brief at `docs/briefs/2026-05-03-fpub005-trigger-patch-cc.md` is now `status: ready` (was `draft` until 3 May mid-morning); apply gates per the brief's pre-flight P1-P5
+- The 5 over-cap (client, platform) combos (NDIS × FB/IG/LI, PP × IG/LI) hold their existing queue depth — by design, drains via publish rate. Don't manually clear or truncate.
 
 ---
 
@@ -89,4 +85,4 @@ Single chat thread, ~1.5h, opened ~10:30 AEST. Full detail: `docs/runtime/sessio
 
 ---
 
-*Last updated: 2026-05-03 Sunday mid-morning Sydney (G1 restructure complete).*
+*Last updated: 2026-05-03 Sunday mid-morning Sydney — F-PUB-005 + F-PUB-010 closed.*
