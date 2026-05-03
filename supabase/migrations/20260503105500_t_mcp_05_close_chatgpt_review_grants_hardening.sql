@@ -1,0 +1,35 @@
+-- ============================================================================
+-- Migration: t_mcp_05_close_chatgpt_review_grants_hardening
+-- Applied: 2026-05-03 late evening Sydney session via Supabase MCP apply_migration
+-- Repo-side filename approximates the supabase_migrations.version timestamp.
+-- Sibling-and-corrective to: t_mcp_05_close_the_loop_v2_28_batch.
+--
+-- Purpose: Close privilege escalation gap on public.close_chatgpt_review
+--          left by parent migration. Parent ran REVOKE ALL FROM PUBLIC,
+--          but Supabase's default ACL grants EXECUTE individually to anon,
+--          authenticated, postgres, service_role — not via PUBLIC. So
+--          REVOKE FROM PUBLIC was a no-op against those individual grants.
+--          Post-apply verification (information_schema.routine_privileges)
+--          surfaced anon and authenticated still holding EXECUTE.
+--
+-- Risk closed: function is SECURITY DEFINER. Without this hardening, any
+--          anon/authenticated caller could close any pending escalated
+--          review row with arbitrary action_taken text. Idempotency guard
+--          prevents re-close, not first-close.
+--
+-- Honours: D-01 BREAK-GLASS EXCEPTION recorded explicit by PK. Pragmatic
+--          skip of MCP review for active security gap introduced in same
+--          session. Two-line REVOKE with no plan ambiguity. Recorded as
+--          session-local exception, not standing-rule erosion.
+--          Lesson #36 (forward-evolution naming, no _corrected suffix — 
+--          this is hardening, not bug correction in the original SQL).
+--
+-- Post-apply expected ACL state:
+--   postgres: EXECUTE (superuser, cannot revoke)
+--   service_role: EXECUTE (intended)
+--   anon: revoked
+--   authenticated: revoked
+-- ============================================================================
+
+REVOKE EXECUTE ON FUNCTION public.close_chatgpt_review(uuid, text, timestamptz, text, text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.close_chatgpt_review(uuid, text, timestamptz, text, text) FROM authenticated;
