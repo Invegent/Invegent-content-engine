@@ -1,7 +1,7 @@
 ---
 brief_id: nightly-health-check-v1
 brief_version: v2.1
-status: ready
+status: review_required
 risk_tier: 0
 owner: cowork
 created_by: PK + chat session 2026-05-02 Saturday afternoon Sydney (v1 first-run learnings + B investigation patches; v2.1 closes Q-002 SQL-syntax fix)
