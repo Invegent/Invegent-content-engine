@@ -4,7 +4,7 @@ Active briefs ready for execution by the D182 v1 non-blocking automation system.
 
 ## How this file works
 
-Briefs live as individual files in `docs/briefs/`. This file is the operator-facing queue showing what's ready, what's in flight, and what's done. Cowork (when scheduled in Phase 4) reads this file to find the next brief with `status: ready`.
+Briefs live as individual files in `docs/briefs/`. This file is the operator-facing queue showing what's ready, what's in flight, and what's done. Cowork reads this file to find the next brief with `status: ready` AND `owner` ∈ {`cowork`, `cc/cowork`, empty} (owner-gate convention added 2026-05-04 — see `docs/runtime/automation_v1_spec.md` Brief frontmatter notes).
 
 When a brief moves through the lifecycle, update the row here. Detailed state lives in `docs/runtime/runs/{brief_id}-{timestamp}.md`.
 
@@ -12,9 +12,9 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 
 | brief_id | risk_tier | status | owner | created | notes |
 |---|---|---|---|---|---|
-| `nightly-health-check-v1` (v2 patch) | 0 | review_required | cowork | 2026-05-02 | **v2 first run complete 2026-05-02T07:53:19Z. 6-of-7 measurable thresholds Good** (questions=1, overrides=0, schema bugs=0 — v2 patches fixed v1 mechanically, output produced 12.8KB, production writes=0, Section 10 Priority 1 auto-surfaced 5 linkedin × property-pulse true-stuck items matching B-investigation manual triage on v1). Run state `docs/runtime/runs/nightly-health-check-v1-2026-05-02T074828Z.md`. Output `docs/audit/health/2026-05-02.md`. **One open question: Q-nightly-health-check-v1-002** — Q-true-stuck `array_agg(... LIMIT 5)` is invalid Postgres; rewrote as correlated subquery (same semantic). Recommend Option A (patch brief). **Priority 1 surfacing**: 5 linkedin true-stuck items at property-pulse, earliest 16h+ overdue, publisher cron healthy — diagnosis required (separate brief). |
+| `nightly-health-check-v1` (v2.1) | 0 | ready | cowork | 2026-05-02 | **v2.1 patch applied** — Q-nightly-health-check-v1-002 closed (slice notation `(array_agg(...))[1:5]` replaces invalid LIMIT-inside-aggregate). Brief file frontmatter at `status: ready` since 2 May evening. **Queue row reset `review_required` → `ready` 2026-05-04** — was stale for 2 nights (3 May + 4 May runs missed; last clean output `docs/audit/health/2026-05-02.md`). Idempotent per-day via `health_file_absent` on `docs/audit/health/{YYYY-MM-DD}.md`. **Workflow gap surfaced**: recurring briefs need a daily reset-to-ready convention (currently manual after each `review_required` transition). |
 | `post-render-log-column-purposes` | 1 | review_required | cc/cowork | 2026-04-30 | **Cowork drafted 2026-05-02T10:20:54Z. 15/16 HIGH + 1/16 LOW deferred (render_spec)** — within brief's 0-2 LOW budget. Migration drafted at `supabase/migrations/20260502102054_audit_post_render_log_column_purposes.sql` (single atomic DO block, count-delta verification asserts pre-post=15 AND post=1). LOW followup at `docs/audit/decisions/post_render_log_low_confidence_followup.md` — render_spec stays NULL because image-worker passes p_render_spec=null on every call (success and fail paths); 0/932 production rows have it populated. Status enum reconciled vs brief: brief carried `pending\|rendering\|succeeded\|failed` from table_purpose, image-worker actually writes `succeeded\|failed\|timeout`; default `submitted` never written. video-worker/ directory does not exist (only heygen-worker/, which does not write to m.post_render_log). Run state `docs/runtime/runs/post-render-log-column-purposes-2026-05-02T102054Z.md`. **Open question: Q-post-render-log-column-purposes-001** — render_spec LOW judgement + status enum reconciliation. Recommend Option A. **Next:** chat applies migration via Supabase MCP per D170. |
-| `publish-queue-and-publish-column-purposes` | 1 | failed | cc | 2026-05-03 | **Cowork halt 2026-05-03T160310Z — frontmatter incomplete.** Missing 5 of 9 v1-spec-mandatory fields (`default_action`, `allowed_paths`, `forbidden_actions`, `idempotency_check`, `success_output`); brief body has prose equivalents but the v1 spec requires YAML and the executor instructions halt on any missing field. State file: `docs/runtime/runs/publish-queue-and-publish-column-purposes-2026-05-03T160310Z.md`. **PK action:** add the 5 missing fields (suggested values listed in state file) and reset `status: failed → ready`. Brief body otherwise pre-flight ready (Tier 1, 35 cols across `m.post_publish_queue` (20) + `m.post_publish` (15), follows the established column-purposes pattern, 0-2 LOW budget, F-PUB-006 work area context fresh; producer code map intact). Surfaces a recurring pattern: `post-render-log-column-purposes` had similar gaps and was executed anyway — see state file Issues section #2 for the v1-spec-vs-prose-frontmatter signal. |
+| `publish-queue-and-publish-column-purposes` | 1 | ready | cc | 2026-05-03 | **Frontmatter patched 2026-05-04** — added 5 missing v1-spec-mandatory fields (`default_action`, `allowed_paths`, `forbidden_actions`, `idempotency_check`, `success_output`) per halt-state-file suggestions; renamed `id` → `brief_id`. Brief now spec-compliant. **Owner remains `cc`** — under owner-gate convention (added 2026-05-04 to v1 spec + cowork prompt v2.2) Cowork SKIPS `owner: cc` rows. This brief awaits CC pickup, not Cowork. Tier 1, 35 cols across `m.post_publish_queue` (20) + `m.post_publish` (15), follows established column-purposes pattern, 0-2 LOW budget, F-PUB-006 work area context fresh. Last halt state file: `docs/runtime/runs/publish-queue-and-publish-column-purposes-2026-05-03T160310Z.md`. |
 
 ## Recently completed
 
@@ -32,7 +32,7 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 
 ## Failed / blocked
 
-*(none currently isolated here — `publish-queue-and-publish-column-purposes` is in Active queue with `status: failed` pending PK frontmatter fix.)*
+*(none currently isolated here — `publish-queue-and-publish-column-purposes` was failed 2026-05-03 → ready 2026-05-04 in Active queue.)*
 
 ---
 
@@ -52,9 +52,10 @@ When a brief moves through the lifecycle, update the row here. Detailed state li
 1. Create `docs/briefs/{brief-id}.md` with v1 frontmatter (see `docs/runtime/automation_v1_spec.md`)
 2. Add row to Active queue table above
 3. Set `status: ready` in the brief frontmatter
-4. Commit
+4. Set `owner` correctly per the owner-gate convention (`cowork` or `cc/cowork` for Cowork pickup; `cc` / `chat` / `PK` to gate out Cowork)
+5. Commit
 
-That's it. The brief is now visible to Cowork.
+That's it. The brief is now visible to Cowork (or routed to its intended executor).
 
 ## Workflow loop (post-run)
 

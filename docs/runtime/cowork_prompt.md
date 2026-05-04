@@ -1,12 +1,13 @@
-# Cowork Executor Prompt — D182 v1 (Prompt v2.1)
+# Cowork Executor Prompt — D182 v1 (Prompt v2.2)
 
 **Purpose:** This is the prompt PK pastes into Claude Cowork to execute the next brief in the queue. Use either as a one-shot manual run (during the day, observed) or as a scheduled task via Cowork's `Scheduled` tab (overnight, after manual run is verified).
 
-**Spec reference:** `docs/runtime/automation_v1_spec.md` (D182 v1 locked, after-run handover loop codified 2 May)
+**Spec reference:** `docs/runtime/automation_v1_spec.md` (D182 v1 locked, after-run handover loop codified 2 May, owner-gate convention added 4 May)
 
 **Prompt version history:**
 - **v1** (29 Apr) — first version, used for phase-d-array, audit-slice-2, nightly-health-check v1. Worked when session had pre-existing repo/MCP context.
 - **v2.1** (2 May) — patched after cold-start failure: explicit repo + Supabase project ID + infrastructure-already-exists warning + scaffolding-clarifier + Lesson #61 pre-flight discipline + after-run handover awareness. ChatGPT-reviewed (review_id `af420233-dd7e-4368-ad6f-6dd2ed76f2db`, decision `apply_corrected`).
+- **v2.2** (4 May) — owner-gate filter added to step 1: Cowork skips queue rows with `owner ∈ {cc, chat, PK}`, picks up only `owner ∈ {cowork, cc/cowork}` or empty/missing. Encoded after `publish-queue-and-publish-column-purposes` (owner: cc) was incorrectly picked up by Cowork on 3 May overnight, halting at frontmatter gate. The executor was filtering only on `status: ready` without owner consideration. Spec patched in parallel at `docs/runtime/automation_v1_spec.md` Brief frontmatter notes.
 
 ---
 
@@ -55,9 +56,13 @@ Writing to the existing directories listed above is fine — that is NOT scaffol
 
 YOUR JOB FOR THIS RUN:
 
-1. Read docs/briefs/queue.md via GitHub MCP. Find the FIRST row in the Active queue table with status: ready.
+1. Read docs/briefs/queue.md via GitHub MCP. Find the FIRST row in the Active queue table that satisfies BOTH:
+   (a) status: ready
+   (b) owner is one of: `cowork`, `cc/cowork`, or empty/missing
+   
+   Skip rows where owner is `cc`, `chat`, or `PK` — those are reserved for other executors (Claude Code, interactive chat, or PK manual respectively). If the first ready row has an excluded owner, scan downward for the next eligible ready row.
 
-2. If no ready briefs exist, write docs/runtime/runs/no-ready-briefs-{YYYY-MM-DDTHHMMSSZ}.md noting the time and stop.
+2. If no eligible ready briefs exist (all ready rows have excluded owners, or no ready rows at all), write docs/runtime/runs/no-ready-briefs-{YYYY-MM-DDTHHMMSSZ}.md noting the time AND the reason (e.g. "3 ready rows present but all owner: cc; Cowork skipped per owner-gate") and stop.
 
 3. Read docs/briefs/{brief_id}.md — your full instruction set including pre-flight data, queries, output format spec, and "Likely questions and defaults" answer-key.
 
@@ -106,28 +111,30 @@ IF UNCERTAIN whether an action is allowed:
 
 ---
 
-## Notes on first run of v2.1
+## Notes on first run of v2.2
 
-**Don't schedule it overnight first.** Run it manually during a window when you're at the laptop. Watch the run unfold. Confirm:
-- Cowork picks up the first ready brief without asking clarifying questions
-- Idempotency check fires before work begins
-- State file ends up at the right path with all fields populated
-- Queue.md row transitions correctly (ready → review_required, or moved to Recently completed if Tier 0)
-- Output file lands at the brief's `success_output` path
-- All commits land on main with clear messages
+The owner-gate filter is the only behaviour change vs v2.1. Risk: Cowork now skips a class of rows it previously picked up. Mitigation: tested mentally against current queue.md (4 May state):
+- `nightly-health-check-v1` owner: cowork → ELIGIBLE ✓
+- `post-render-log-column-purposes` owner: cc/cowork → ELIGIBLE (review_required, won't pick up anyway)
+- `publish-queue-and-publish-column-purposes` owner: cc → SKIPPED ✓ (this is the case that motivated the change)
 
-**Success thresholds for the manual test run** (from `automation_v1_spec.md`):
+First run of v2.2 tonight (4 May into 5 May) should pick up `nightly-health-check-v1` and produce `docs/audit/health/2026-05-05.md` (or whatever today's UTC date resolves to during execution).
+
+**Don't schedule it overnight first if any concern.** Run manually first and watch.
+
+**Success thresholds for the v2.2 manual test run** (from `automation_v1_spec.md`):
 
 | Metric | Good | Re-evaluate |
 |---|---|---|
-| Cowork asks for missing context (repo, MCP) | NO — should fire cold | YES — v2.1 has a gap |
+| Cowork picks up correct row (skips owner: cc rows) | YES | NO — owner-gate filter not enforced |
+| Cowork asks for missing context (repo, MCP) | NO — should fire cold | YES — v2.2 has a gap |
 | Questions asked (in `claude_questions.md`) | ≤ brief-specific threshold | exceeds it |
 | Defaults overridden | ≤ 20% | > 50% |
 | Run completes end-to-end | yes | no |
 | Production writes from automation | 0 (mandatory) | any > 0 |
 | PK morning approval time | ≤ 10 min | > 30 min |
 
-If all "Good" hit on manual run: schedule v2.1 in Cowork's `Scheduled` tab.
+If all "Good" hit on manual run: schedule v2.2 in Cowork's `Scheduled` tab (replace the v2.1 scheduled task).
 
 If any "Re-evaluate" hit: iterate prompt before scheduling.
 
@@ -138,9 +145,10 @@ If any "Re-evaluate" hit: iterate prompt before scheduling.
 - **Multi-brief queue processing.** Step 12 says stop after one brief — observation > throughput.
 - **Auto-retry on failure.** Failed briefs stay failed until PK manually resets in queue.md.
 - **MCP review call from inside the brief.** Tier 0 boundary — Cowork briefs do not call ask_chatgpt_review. Chat side handles review for plan/design changes; Cowork executes mechanically per the brief.
+- **Daily reset of recurring brief queue rows.** When `nightly-health-check-v1` finishes a run and lands at `review_required`, no auto-reset back to `ready` for tomorrow — currently manual via PK morning review. Workflow refinement candidate.
 
 ## Sunset review
 
-If this prompt is unchanged on 2026-06-02 (one-month review window), evaluate: (a) has it been used? (b) any persistent failure modes that need a v2.2? (c) ready to retire D182 v1 or extend the framework?
+If this prompt is unchanged on 2026-06-04 (one-month review window from v2.2), evaluate: (a) has it been used? (b) any persistent failure modes that need a v2.3? (c) ready to retire D182 v1 or extend the framework?
 
 Per D182, the whole approach gets reviewed by 12 May 2026.

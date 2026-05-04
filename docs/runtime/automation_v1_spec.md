@@ -1,6 +1,6 @@
 # ICE Automation v1 — Locked Spec
 
-**Status:** LOCKED 28 Apr 2026 evening · patched 29 Apr Wed late evening per ChatGPT review · first run validated 29 Apr Wed evening · build path updated 30 Apr Thu morning per D183 + D184 · after-run handover loop codified 2 May Sat afternoon
+**Status:** LOCKED 28 Apr 2026 evening · patched 29 Apr Wed late evening per ChatGPT review · first run validated 29 Apr Wed evening · build path updated 30 Apr Thu morning per D183 + D184 · after-run handover loop codified 2 May Sat afternoon · owner-gate convention added 4 May Mon evening
 **Decision:** D182 — Non-blocking execution model (five-rule system)
 **Predecessor:** D181 (audit loop architecture)
 **Follow-on decisions:** D183 (build-when-evidence-demands), D184 (audit slicing)
@@ -135,6 +135,15 @@ Notes:
 - `allowed_paths` must include the brief's own file path and `queue.md` if the executor needs to update either (e.g. brief frontmatter status transitions, queue row updates).
 - Filename timestamp format is `YYYY-MM-DDTHHMMSSZ` (no colons — some filesystems reject them). Migration filenames keep the existing `YYYYMMDDHHMMSS` format already in use across the repo.
 - Optional `brief_version` field (e.g. `v2`, `v3`) tracks evolution of the same brief_id without forking the file. Use when a brief is patched after first-run learnings rather than replaced.
+- **`owner` field gates which executor picks up the brief from `queue.md`** (convention added 4 May 2026 after `publish-queue-and-publish-column-purposes` (owner: cc) was incorrectly picked up by Cowork on 3 May overnight, halting at frontmatter gate). Recognised values:
+  - `owner: cowork` — Cowork picks up. Default for scheduled overnight automation.
+  - `owner: cc/cowork` — Cowork picks up; Claude Code may also (when launched manually).
+  - `owner: cc` — **Claude Code only. Cowork SKIPS these rows.** Use for briefs that need producer-code reads, multi-file edits, or longer execution windows than overnight automation supports.
+  - `owner: chat` — Interactive chat session only. Cowork skips. Use for briefs requiring real-time PK signal collection or chat-side MCP review calls.
+  - `owner: PK` — Manual / human-only. Cowork skips. Use for briefs requiring PK-only judgment (e.g. brand voice review, client-facing copy approval).
+  - Empty / missing — Cowork picks up (legacy default; new briefs should always specify owner explicitly).
+
+  Cowork executor enforces this via the queue scan in step 1 of `docs/runtime/cowork_prompt.md` v2.2+.
 
 ## Risk tier system (4 tiers)
 
@@ -187,6 +196,8 @@ Valid transitions:
 - `* → blocked` (Tier 2/3 escalation; PK must reset to ready)
 
 **Failed brief stays failed** until PK manually resets to `ready`. No automatic retries.
+
+**Recurring briefs** (idempotent per-day, e.g. `nightly-health-check-v1`): the lifecycle above terminates at `done` for one-shot briefs. For briefs that should re-fire daily, PK currently resets the queue row to `ready` manually after morning review (gap surfaced 4 May; workflow refinement candidate).
 
 ---
 
@@ -392,6 +403,7 @@ First test: Phase D ARRAY mop-up brief, Tier 1, mechanical, 7 columns to documen
 | 7 | Audit loop automation — Slice 3 (auditor pass) | TBD | **DEFERRED per D184 + D181** |
 | 8 | Pipeline-state digest brief (nightly-health-check) | 30 min | **DONE 2 May v1, v2 patched** — brief shape #3 validated |
 | 9 | After-run handover loop codified in spec | 10 min | **DONE 2 May** — this section added |
+| 10 | Owner-gate convention encoded in spec + executor | 10 min | **DONE 4 May** — Brief frontmatter notes + cowork_prompt.md v2.2 |
 
 ---
 

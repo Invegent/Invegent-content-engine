@@ -1,19 +1,44 @@
 ---
-id: publish-queue-and-publish-column-purposes
-status: failed
+brief_id: publish-queue-and-publish-column-purposes
+status: ready
 risk_tier: 1
 owner: cc
 created: 2026-05-03T00:35:00Z
+created_by: PK + chat session 2026-05-03 (post-F-PUB-006 cleanup window); frontmatter patched 2026-05-04 to add 5 missing v1-spec fields
+default_action: draft_only
+allowed_paths:
+  - supabase/migrations/**
+  - docs/audit/decisions/**
+  - docs/runtime/runs/**
+  - docs/runtime/claude_questions.md
+  - docs/briefs/queue.md
+  - docs/briefs/2026-05-03-publish-queue-and-publish-column-purposes.md
+forbidden_actions:
+  - apply_migration
+  - delete_branch
+  - merge_pr
+  - update_production_data
+  - close_audit_finding
+  - calling ask_chatgpt_review (chat-side per "Chat-side apply" section, not from inside this brief)
+idempotency_check: "migration_file_absent"
+idempotency_pattern: "supabase/migrations/*_audit_publish_queue_and_publish_column_purposes.sql"
+success_output:
+  - supabase/migrations/{YYYYMMDDHHMMSS}_audit_publish_queue_and_publish_column_purposes.sql
+  - docs/runtime/runs/publish-queue-and-publish-column-purposes-{YYYY-MM-DDTHHMMSSZ}.md
+  - docs/audit/decisions/publish_queue_and_publish_low_followup.md  # only if any LOW columns deferred
 sunset: 2026-05-10T00:35:00Z
 related-decisions: D170 (chat applies migrations), Lesson #61 (jsonb pre-flight)
 related-findings: F-PUB-004, F-PUB-005, F-PUB-006, F-PUB-007 (NEW candidate)
 related-patterns: slot-core-column-purposes, post-publish-observability-column-purposes, pipeline-health-pair-column-purposes, operator-alerting-trio-column-purposes, post-render-log-column-purposes
 ---
 
-<!-- Cowork halt 2026-05-03T160310Z: frontmatter missing 5 of 9 v1-spec-mandatory fields
-     (default_action, allowed_paths, forbidden_actions, idempotency_check, success_output).
-     See state file: docs/runtime/runs/publish-queue-and-publish-column-purposes-2026-05-03T160310Z.md
-     PK action: add the missing fields (suggested values in state file) and reset status to ready. -->
+<!-- Frontmatter patched 2026-05-04: added 5 missing v1-spec-mandatory fields
+     (default_action, allowed_paths, forbidden_actions, idempotency_check, success_output)
+     and renamed id -> brief_id. Original Cowork halt 2026-05-03T160310Z documented at:
+     docs/runtime/runs/publish-queue-and-publish-column-purposes-2026-05-03T160310Z.md
+     status: failed -> ready 2026-05-04. Owner remains 'cc' (CC pickup, not Cowork —
+     owner-gate added 2026-05-04 to v1 spec + cowork_prompt.md v2.2 makes Cowork skip
+     owner: cc rows). -->
 
 # Publish Queue + Publish Column Purposes
 
