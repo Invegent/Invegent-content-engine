@@ -4,7 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-03 late night Sydney session-end reconcile (v2.32 — **runbook v2 → v2.1 patch (dead-rows-are-audit-trail clarification); F-HISTORIC-DEAD-CLEANUP RETIRED as miscategorised; F-INVESTIGATE-DRAFT-NOT-FOUND closure note corrected; T-MCP-12 lesson candidate logged**). Closure budget: +2.25h this session, trailing-14-day 14.7 → ~17.0h.
+> Last updated: 2026-05-04 morning Sydney phone session (v2.33 — **B-AUDIT-CHECK5-DRIFT RETIRED (premise invalid against deployed reality); F-AAP-007 brief revised v1→v2 (Option B label-level fix); F-PUB-009 brief authored (P1 forward-only structural fix); F-AI-WORKER-PARSER-SKIP-BUG brief authored (P1 — single root cause for 3 prior findings, ~6-line EF patch); F-AAP-DRAFTS-STUCK subsumed; F-RECOVER-LOOP-001 demoted P1→P3; T-MCP-11/12 reinforced**). Closure budget: +1.5h this session, trailing-14-day ~17.0 → ~18.5h.
 
 ---
 
@@ -27,11 +27,11 @@
 
 | Metric | Current | Limit | Status |
 |---|---|---|---|
-| Open findings + investigations (P0+P1) | ~9 (B-PIPELINE-INCIDENT-REMEDIATION P1 ongoing) | 20 | ✅ within budget |
-| Trailing-14-day closure hours | ~17.0h | 8.0 floor | ✅ above floor |
+| Open findings + investigations (P0+P1) | ~7 (F-AI-WORKER-PARSER-SKIP-BUG P1 + F-PUB-009 P1 + 5 others; net dropped because F-AI-WORKER-PARSER-SKIP-BUG subsumes F-AAP-DRAFTS-STUCK and demotes F-RECOVER-LOOP-001 P1→P3) | 20 | ✅ within budget |
+| Trailing-14-day closure hours | ~18.5h | 8.0 floor | ✅ above floor |
 | Pause trigger active? | NO | — | New automation authoring still allowed |
 
-**This session's closure hours: ~2.25h** (Migration 1+2 + audit-readiness completion + runbook v2 + ChatGPT 2nd audit response + runbook v2.1 patch).
+**This session's closure hours: ~1.5h** (phone session: B-AUDIT-CHECK5-DRIFT retirement + F-AAP-007 v2 + F-PUB-009 brief + deep pipeline investigation + F-AI-WORKER-PARSER-SKIP-BUG diagnosis & brief).
 
 ---
 
@@ -44,9 +44,13 @@
 |---|---|---|---|---|
 | 1 | Personal businesses check-in | P0 | ICE is bonus | Ask at next session start |
 | 2 | **T05 Meta dev support contact** | **P1-urgent** | Unchanged | PK fills 2 placeholders and sends |
-| 3 | **B-PIPELINE-INCIDENT-REMEDIATION** — deferred fixes | **P1** | 4 cap-blocked streams + 2 CFW slot_fill_failed streams remain. ChatGPT 2nd audit confirms PP-FB drained from cap-blocked → slot_orphan_filled (healthy progression). | Next session: (a) cap targets, (b) F-PUB-009 fix forward-only, (c) `m.recover_stuck_slots` patch. Sequence: F-PUB-009 first → cap lift → Fix 3. |
-| 4 | **F-AAP-007 fix — apply path** | P2 | Brief committed at f793ddbf | Carry-forward |
-| 5 | **B-AUDIT-CHECK5-DRIFT fix — apply path** | P3 | Brief committed at f793ddbf | Carry-forward |
+| 3 | **F-AI-WORKER-PARSER-SKIP-BUG deploy** | **P1** | Single-root-cause fix; subsumes 3 prior findings (F-AAP-DRAFTS-STUCK, F-RECOVER-LOOP-001, CFW LI silence). Brief committed. ~6-line EF patch + raw-response logging bundle. | At home: CC patches ai-worker v2.11.0 → v2.11.1, chat fires D-01, PK approves, CC deploys via Supabase MCP. |
+| 4 | **F-AAP-007 fix — apply path (v2 brief, Option B)** | P2 | Pre-flight COMPLETE 2026-05-04. Brief revised. Ready for apply at home. | Next session: D-01 review on sql_destructive, then `apply_migration`. |
+| 5 | **F-PUB-009 fix — apply path (Pattern 1 preferred)** | P1 | Brief authored 2026-05-04. PF1 largely done in-session. | Next session: read PF result, D-01 review, apply, verify. Sequence after F-AI-WORKER-PARSER-SKIP-BUG. |
+
+**Demoted from prior Today/Next 5 in v2.32→v2.33 cycle:**
+- B-AUDIT-CHECK5-DRIFT **RETIRED v2.33** — brief premise invalid against deployed reality; no migration applied. See `docs/runtime/sessions/2026-05-04-baudit-check5-retired-faap007-revised.md`.
+- B-PIPELINE-INCIDENT-REMEDIATION superseded by F-AI-WORKER-PARSER-SKIP-BUG (which subsumes F-RECOVER-LOOP-001 urgency) + F-PUB-009 (cap-vs-throughput, separate axis). The umbrella entry is replaced by its constituent fixes.
 
 **Demoted from prior Today/Next 5 in v2.31→v2.32 cycle:**
 - C3 audit view rewrite ✅ DONE v2.31
@@ -146,6 +150,13 @@ Unchanged from v2.31 except:
 - **B39** — Drain over-cap queues (P3, by design)
 - **B-PP-FB-ORPHAN-PENDING-FILL (P3)** — PP Facebook 1 orphan + 1 pending_fill (NOTE: ChatGPT 2nd audit confirms still present — 1 orphan slot still blocking PP-FB classification)
 
+**v2.33 additions**:
+
+- **F-AAP-NEEDS-REVIEW-BACKLOG (P2)** — 28 drafts piled in `needs_review` status; CFW IG 15 (oldest 11 days), Invegent IG 10, CFW FB 2, CFW LI 1. Auto-approver flagging too cautious or human review path not running. Decide: ship a needs_review processor, change auto-approver thresholds, or trigger manual review session.
+- **B-TOKEN-HEALTH-EMPTY (P3)** — `m.platform_token_health` table is empty for all clients. Token monitoring isn't running. Same gap-shape as `m.worker_http_log` issue ChatGPT caught yesterday. Operational impact today: zero. Latent risk: token expiry blindness.
+- **F-CFW-LI-DUP-SLOTS (P3)** — 2 CFW LI failed slots both have `scheduled_publish_at = 2026-05-04 03:04:00`. Duplicate schedule generation; only 1 slot per (client, platform, scheduled_publish_at) should exist.
+- **B-AI-WORKER-NO-FAILURE-PAYLOAD-LOGGING (P3, bundled into F-AI-WORKER-PARSER-SKIP-BUG deploy)** — ai-worker discards the model's actual response on failure. `output_payload = {}` on failed jobs. Diagnostic gap that prevented surfacing F-AI-WORKER-PARSER-SKIP-BUG for 7+ days. Closes via raw-response capture in v2.11.1 deploy.
+
 ---
 
 ## 🧊 Frozen / Deferred
@@ -169,6 +180,9 @@ Unchanged.
 - T-MCP-11 lesson candidate: pre-flight discipline includes verifying log/health tables actually contain data (since v2.31)
 - **T-MCP-12 NEW lesson candidate v2.32**: query EVERY annotation column when verifying table contents — not just last_error but also dead_reason, skip_reason, fail_reason, etc. ChatGPT's 2nd audit caught a column I didn't query.
 - **Meta-pattern (3-tier validation, v2.32)**: high-stakes documentation should pass through (1) author publishes, (2) external audit runs against doc, (3) author re-verifies external findings against ground truth. Tonight ran all 3 tiers; (3) caught one more nuance beyond what (2) found. Worth promoting to canonical after 1-2 more applications.
+- **T-MCP-11 reinforced 2026-05-04**: 2nd vindication (pre-flight catch on B-AUDIT-CHECK5-DRIFT premise + F-AAP-007 fix-shape mismatch). Ready for canonical promotion after one more instance.
+- **T-MCP-12 reinforced 2026-05-04**: 2nd vindication (status vocab query Q4 caught `'locked'` never used; multi-column verification across multiple drilled tables). Ready for canonical promotion after one more instance.
+- **NEW lesson candidate (since v2.33)**: when investigating cascading symptoms across multiple findings, drill into the source code of the worker producing the symptom — DB-only inspection missed F-AI-WORKER-PARSER-SKIP-BUG for 7+ days, EF source-read found it in one query. Promote to canonical after one more vindication.
 
 ---
 
@@ -185,6 +199,23 @@ Unchanged.
 ## Changelog
 
 - v1.0–2.31: per previous changelog.
+- **v2.33 (2026-05-04 morning Sydney, phone-flow knock-out + deep pipeline investigation):**
+  - **Phase 1 — phone-flow knock of carry-forward briefs:**
+    - **B-AUDIT-CHECK5-DRIFT RETIRED** — brief authored from stale spec; deployed view `audit.v_publish_queue_summary.possibly_stuck_locked_items` already uses correct `locked_at IS NOT NULL` semantics with 30min threshold; applying brief would have been a regression. Same pattern as F-HISTORIC-DEAD-CLEANUP retirement v2.32.
+    - **F-AAP-007 brief revised v1→v2 (Option B, label-level fix).** Pre-flight ground-truth confirmed all 65 surfaced rows are cap-blocked false positives (Q6=65, Q7=0). Brief now targets matrix CASE statement, not column count.
+    - **F-PUB-009 brief authored** at `docs/briefs/2026-05-04-or-later-fpub009-fix.md` — forward-only structural fix (slot.scheduled_publish_at → post_draft.scheduled_for at fill time). Two pre-flight-determined fix patterns; Pattern 1 (function-internal) preferred. PF1 largely complete in-session.
+    - **T-MCP-11 + T-MCP-12 each reinforced with 2nd vindication.**
+  - **Phase 2 — deep pipeline investigation (PK directive):**
+    - End-to-end review of all 14 (client, platform) streams against the 70-posts/week target.
+    - Surfaced **F-AI-WORKER-PARSER-SKIP-BUG (P1)** as single root cause for F-AAP-DRAFTS-STUCK + F-RECOVER-LOOP-001 + CFW LI silence. Parser checks title/body before skip flag; misreads compliance skips as failures. CFW × LinkedIn × image_quote runs at 33% success rate vs 89-100% elsewhere. Brief authored at `docs/briefs/2026-05-04-or-later-fai-worker-parser-skip-bug.md`. CC deploys at home; ~6 lines per provider plus raw-response logging bundle.
+    - **F-RECOVER-LOOP-001 demoted P1 → P3** (defence-in-depth, no longer urgent — recovery loop only triggered because of F-AI-WORKER-PARSER-SKIP-BUG).
+    - **F-AAP-DRAFTS-STUCK subsumed** by F-AI-WORKER-PARSER-SKIP-BUG.
+    - **B-PIPELINE-INCIDENT-REMEDIATION** umbrella retired; replaced in Today/Next 5 by its constituent fixes (F-AI-WORKER-PARSER-SKIP-BUG, F-PUB-009).
+    - New backlog findings: **F-AAP-NEEDS-REVIEW-BACKLOG** (P2 — 28 drafts piled in needs_review; CFW IG 15 oldest 11 days), **B-TOKEN-HEALTH-EMPTY** (P3 — `m.platform_token_health` table not populated), **F-CFW-LI-DUP-SLOTS** (P3 — 2 CFW LI failed slots both for 5-4 03:04), **B-AI-WORKER-NO-FAILURE-PAYLOAD-LOGGING** (P3 — bundled into F-AI-WORKER-PARSER-SKIP-BUG deploy).
+    - **NEW canonical-lesson candidate**: when investigating cascading symptoms, drill into worker source code — DB-only inspection missed F-AI-WORKER-PARSER-SKIP-BUG for 7+ days, EF source-read found it in one query.
+  - **No D-01 fires this update**: corrective brief authoring + retirement do not qualify as production patch. T-MCP-02 quota remains 21.
+  - **Closure budget**: +1.5h this phase. Trailing-14d ~17.0 → ~18.5h. Above floor.
+  - **Net P0+P1 open**: 9 → 7 (F-AAP-DRAFTS-STUCK subsumed; F-RECOVER-LOOP-001 demoted out of P1).
 - **v2.32 (3 May Sunday late-night Sydney, post-2nd-ChatGPT-external-audit reconcile):**
   - **ChatGPT 2nd external audit** ran against runbook v2 and substantively validated all 4 v2 corrections + audit views + matrix classifications. Surfaced one new nuance: the `dead_reason` column (which v2.31 verification didn't query) shows every dead row already carries an explicit annotation.
   - **F-HISTORIC-DEAD-CLEANUP RETIRED as miscategorised**. Per Phase 1.7 Dead Letter Queue design principle (`docs/05_risks.md`): "Dead items are never deleted — they are an audit trail." The 47 dead rows are functioning as designed.

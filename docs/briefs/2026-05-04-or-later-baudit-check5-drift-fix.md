@@ -1,3 +1,13 @@
+> **STATUS: RETIRED 2026-05-04** — brief premise invalid against
+> deployed reality; no migration applied. Deployed view
+> `audit.v_publish_queue_summary.possibly_stuck_locked_items` already
+> uses correct `locked_at IS NOT NULL` semantics with a 30min
+> threshold. Applying this brief would have been a regression. See
+> `docs/runtime/sessions/2026-05-04-baudit-check5-retired-faap007-revised.md`.
+> T-MCP-11 + T-MCP-12 reinforcement logged.
+
+---
+
 # Brief: B-AUDIT-CHECK5-DRIFT fix — stuck_publish_queue_items lock vocabulary drift
 
 **Status**: ready-for-night-job (read-only + migration draft) | apply gated on MCP review next chat session
