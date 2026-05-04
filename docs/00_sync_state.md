@@ -18,6 +18,7 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
+| 2026-05-04 | dashboard-architecture-review-kickoff | ICE Dashboard Architecture Review formally kicked off — three foundational decisions locked (Strategic Renovation, Brief+alerts on Telegram only, lighter agent surface). 11-section review document agreed; doc location BOTH repos; ~9-10h estimate; §1 starts next session no-rush. Plus: Cowork night-task unblock (v1-spec owner-gate added; cowork_prompt v2.1→v2.2) and manual run of nightly-health-check-v1 v2.1 (clean pass; 5 stuck items in 3 clusters filed). | `docs/runtime/sessions/2026-05-04-dashboard-architecture-review-kickoff.md` |
 | 2026-05-04 | laptop-three-applies | Three queued items shipped: ai-worker v2.11.1 deployed (F-AI-WORKER-PARSER-SKIP-BUG); audit matrix CASE patch (F-AAP-007 v2); m.fill_pending_slots scheduled_for write (F-PUB-009). 2/3 D-01 reviews escalated type-(c); state-capture override with PK approval; both shipped clean. Lesson #62 type-(c) at 5+ vindications, ready for canonical promotion. | `docs/runtime/sessions/2026-05-04-laptop-three-applies.md` |
 | 2026-05-04 | baudit-check5-retired-faap007-revised | Phone-flow knock + deep pipeline investigation. B-AUDIT-CHECK5-DRIFT retired; F-AAP-007 brief v1→v2; F-PUB-009 brief authored; F-AI-WORKER-PARSER-SKIP-BUG diagnosed (single root cause for 3 prior P1 findings). T-MCP-11/12 each reinforced. F-AAP-DRAFTS-STUCK subsumed; F-RECOVER-LOOP-001 P1→P3. | `docs/runtime/sessions/2026-05-04-baudit-check5-retired-faap007-revised.md` |
 | 2026-05-03 | audit-readiness-completion-night | Migration 3 (audit views v2); runbook v1→v2→v2.1 across 2 ChatGPT external audits; F-HISTORIC-DEAD-CLEANUP retired (Phase 1.7); T-MCP-11/12 lessons. | `docs/runtime/sessions/2026-05-03-audit-readiness-completion-night.md` |
@@ -37,36 +38,44 @@
 
 ## 🟢 Most recent session — inline summary
 
-### 2026-05-04 laptop Sydney — Three applies in one chat
+### 2026-05-04 laptop Sydney evening — Dashboard Architecture Review kickoff + Cowork recovery
 
-~0.5h chat-side. Full detail: `docs/runtime/sessions/2026-05-04-laptop-three-applies.md`. Prior phase: `docs/runtime/sessions/2026-05-04-baudit-check5-retired-faap007-revised.md`.
+~3h chat-side. Full detail: `docs/runtime/sessions/2026-05-04-dashboard-architecture-review-kickoff.md`. Prior phase: `docs/runtime/sessions/2026-05-04-laptop-three-applies.md`.
 
-PK on laptop after morning phone session committed all 3 briefs. Chose Option B (chat handles entire flow including EF deploy via Supabase MCP, no CC handoff).
+**Three workstreams:**
 
-**Three actions in sequence per leverage**:
-1. **F-AI-WORKER-PARSER-SKIP-BUG** ✅ ai-worker v98→v99 via `deploy_edge_function`. Three changes bundled (callClaude+callOpenAI parser skip-check fix + new `AiParseError` carrying rawResponse + outer catch persists raw model response). D-01 `ba234fce`: clean, no escalation. Closes B-AI-WORKER-NO-FAILURE-PAYLOAD-LOGGING in same deploy.
-2. **F-AAP-007 v2 (Option B)** ✅ ONE CASE branch in `audit.v_brand_platform_audit_matrix` split into two (`approved_not_queued_cap_blocked` cap-verified + `approved_not_queued_genuine_gap` sibling). Pre-flight Q6=6, Q7=0. D-01 `e462597f` ESCALATED type-(c); state-capture override with PK approval. V1-V4 ✅. Bonus: de-conflates publishing_disabled from cap_blocked for IG streams.
-3. **F-PUB-009 (improved Pattern 1)** ✅ surgical edit to `m.fill_pending_slots` INSERT/UPSERT block (one block, atomic, no race window — cleaner than brief's original Pattern 1 with separate trailing UPDATE). PF6: 145/145 pre-existing scheduled_for NULL. D-01 `753930ad` ESCALATED type-(c); state-capture override with PK approval. V1+V2 ✅. V3-V5 pending next fill cycle.
+1. **Cowork night-task unblock** ✅ — diagnosis: Cowork did run at 02:03 AEST 4 May, but `nightly-health-check-v1` queue row was stuck at `review_required` since 2 May (brief never re-fired); next ready row was a cc-owned brief that Cowork picked up because executor had no owner-gate. Fix: 4-file commit `e2cecc6` flipping queue rows + adding 5 missing v1-spec fields to the cc brief + encoding owner-field semantics into v1 spec + cowork_prompt v2.1→v2.2 with owner-gate filter. Two nights of health checks lost (3 May + 4 May).
 
-**D-01 pattern of session**: 2 of 3 reviews escalated with identical Lesson #62 type-(c) signature: verified_claims affirm every substantive fact; pushback is generic-risk speculation without specific consumer-break / data-corruption evidence; corrected_action restates existing apply-path plan; unverified_claims either restate proposal's own caveats or hedge with "may not". Both overridden via state-capture exception with PK explicit approval. **Lesson #62 type-(c) at 5+ vindications now — ready for canonical promotion** with default-presumption framing.
+2. **Manual Cowork run** ✅ CLEAN — PK manually executed v2.2 prompt; Cowork ran `nightly-health-check-v1` v2.1 in ~4 min (~25.5k tokens), 5-of-7 thresholds hit, 0 questions, 0 corrections, 0 schema bugs, 0 production writes. v2.1 SQL fix held first time. Output `docs/audit/health/2026-05-04.md`. Cowork commits `40166245` + `24de9180`. Section 10 surfaced 5 true-stuck items in 3 clusters (LinkedIn-PP residual, YouTube-PP unexpected, YouTube-NY unexpected) — FILED for tomorrow's diagnosis. Queue row reset commit `46255fde` for next nightly fire ~02:00 AEST 5 May (real autonomous test of v2.2 owner-gate).
 
-**One ai_job already processed under v2.11.1**: NDIS-Yarns YouTube at 09:00 UTC, succeeded normally. Confirms success path no regression.
+3. **ICE Dashboard Architecture Review — KICKED OFF** ✅. Four rounds of review iteration with PK-supplied reviewer notes + external standards research + own market research (agency tools, modern admin, multi-tenant, editorial CMS, AI agent observability, content moderation UX). PK's three foundational decisions LOCKED:
 
-**V3-V5 verification window**: ~17h until next CFW LI fill cycle (2026-05-06 03:04 UTC). That cycle simultaneously tests parser fix skip-path + F-PUB-009 forward-only write.
+   - **Strategic renovation** — design from first principles, implement through staged migration. Existing pages as evidence/source material.
+   - **Multi-channel: Brief + alerts on Telegram only** — web is primary for everything else; non-web is the nudge.
+   - **Agents as status surface, not full colleague framing** — status cards + section, no calibration UI / threshold tuning / profile pages as MVP.
 
-**Standing rules honoured**: D-01 (3 reviews, 1 clean / 2 type-(c) overridden), D-170 (chat applied 2 migrations + 1 EF deploy via Supabase MCP — D-170 read as "chat may use Supabase MCP for both apply_migration AND deploy_edge_function"), D-186 (closure +0.5h, trailing-14d ~19.0h above 8.0 floor), Lesson #36 (source byte-identity preserved), Lesson #51 (PF1-PF6 honoured for F-PUB-009).
+   **Refreshed IA (6 sections, ~18 items):** NOW (Overview/Inbox/Pipeline) · CLIENTS (All-Clients/Feeds/Onboarding/Connect) · CREATE (Content-Studio/Formats) · INVESTIGATE (Flow/Pipeline-Log/Visual-Pipeline/Agents) · REPORTS (1 nav, 3 tabs: Performance/Costs/Calibration) · ADMIN (Reviews/Compliance-Rules/Subscriptions/Roadmap).
 
-**T-MCP-02 quota**: 21 → **24**. **Net P0+P1 open**: 7 → 4.
+   **Doc location LOCKED:** BOTH repos — review in `Invegent-content-engine/docs/dashboard-review-2026-05/`, link from `invegent-dashboard/docs/architecture-review/`.
+
+   **11-section structure adopted, ~9-10h estimate over 3 sessions.** §1 starts next session whenever PK signals — no rush.
+
+**Standing rules honoured**: D-01 (no production patches; no review fires this session), D-170 (no DB work), Lesson #51 (PF1-PF5 honoured for cowork commits), G1 convention (this session file IS the detail).
+
+**T-MCP-02 quota**: 24 (unchanged). **Net P0+P1 open**: 4 (unchanged). **Closure budget**: +0.5h cowork unblock; architecture work excluded from closure budget per standing rule. Trailing-14d ~19.0h above 8.0 floor.
 
 ---
 
-## 🟡 Next session priorities (carry-forward from action_list v2.34)
+## 🟡 Next session priorities (carry-forward from action_list v2.35)
 
 1. Personal businesses check-in
-2. **T05 Meta dev support contact** (P1-urgent)
-3. **CFW LI fill cycle V3-V5 acid test** when next CFW LI slot fires (~05-06 03:04 UTC) — tests parser fix + F-PUB-009 simultaneously
-4. **F-AAP-NEEDS-REVIEW-BACKLOG (P2)** — 28 drafts in `needs_review`; CFW IG 15 oldest 11 days
-5. **F-PUB-009 7-day flow check** — `legacy_spread_mismatch_count` decline trajectory after ~50 newly-filled slots
+2. **Tomorrow's autonomous Cowork run validation** — verify 2026-05-05 ~02:00 AEST run executed under v2.2 owner-gate; check `docs/audit/health/2026-05-05.md` exists and is clean
+3. **T05 Meta dev support contact** (P1-urgent)
+4. **CFW LI fill cycle V3-V5 acid test** when next CFW LI slot fires (~05-06 03:04 UTC) — tests parser fix + F-PUB-009 simultaneously
+5. **3 stuck-item clusters from health check** (P1-fast-investigation): LinkedIn-PP residual, YouTube-PP unexpected, YouTube-NY unexpected
+6. **F-AAP-NEEDS-REVIEW-BACKLOG (P2)** — 28 drafts in `needs_review`
+7. **F-PUB-009 7-day flow check** (P2)
+8. **Dashboard Architecture Review §1 (current-state inventory)** — when PK signals; ~1.5h estimated
 
 ---
 
@@ -76,7 +85,7 @@ PK on laptop after morning phone session committed all 3 briefs. Chose Option B 
 - Cron jobid 53 `active=false` — do not re-enable until S16 + T05 + cron `?limit=1` update
 - Cron jobid 11/64/65 (`seed-and-enqueue-{fb,ig,li}`) — paused per slot-driven v4
 - Jobid 12 (`planner-hourly`) — still active despite v3 orphan production (B-CRON-V3-ORPHAN)
-- **7 review_ids close-the-loop pending** (4 from prior batches + this session's `ba234fce`, `e462597f`, `753930ad`)
+- **7 review_ids close-the-loop pending** (4 from prior batches + v2.34's `ba234fce`, `e462597f`, `753930ad`)
 - **47 historic dead queue rows** retained as audit trail (Phase 1.7 design; F-HISTORIC-DEAD-CLEANUP RETIRED v2.32)
 - **6 CFW LinkedIn slots + 1 CFW Facebook slot in `exceeded_recovery_attempts`** — quiescent; F-AI-WORKER-PARSER-SKIP-BUG is forward-only, will not retroactively recover. Audit trail intact.
 - 1 NDIS-FB dead queue row preserved per F-PUB-005 carry-forward
@@ -101,4 +110,4 @@ PK on laptop after morning phone session committed all 3 briefs. Chose Option B 
 
 ---
 
-*Last updated: 2026-05-04 laptop Sydney — three applies in one chat.*
+*Last updated: 2026-05-04 laptop Sydney evening — dashboard architecture review kickoff + cowork recovery (v2.35).*
