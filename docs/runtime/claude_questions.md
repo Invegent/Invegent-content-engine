@@ -151,6 +151,39 @@ Re-draft the affected column purposes (status row at column_id 824265, and/or re
 
 ---
 
+## Q-nightly-health-check-v1-003
+
+Context:
+Executing `nightly-health-check-v1` brief v2.1 on 2026-05-04T16:08:46Z (Cowork run, Tier 0, second scheduled fire of the day). PK pre-reset the queue at 11:30 UTC and explicitly scheduled "Next nightly fire ~02:00 AEST 5 May = 16:00 UTC 4 May". Brief's output-format spec says verbatim: **"Use today's UTC date for the filename."** The idempotency_pattern is `docs/audit/health/{YYYY-MM-DD}.md` and idempotency_check is `health_file_absent`. Live evidence at run-time:
+
+- Bash UTC clock: `2026-05-04T16:08:46Z` → today's UTC date is `2026-05-04`.
+- Cowork env date (Sydney/AEST): `2026-05-05`.
+- File `docs/audit/health/2026-05-04.md` already exists from this morning's run at 2026-05-04T10:51:09Z (Sydney 20:51 4 May).
+- The schedule was set explicitly to fire at 02:00 AEST 5 May — i.e. PK *intended* a fresh "5 May" health snapshot at this fire. Strict UTC reading would have made this scheduled run an immediate no-op (already_applied), which contradicts the schedule's clear intent.
+
+Two competing interpretations:
+- **Strict UTC reading** (per brief verbatim): file should be `2026-05-04.md`; file exists; idempotency hit; write `already_applied` and stop.
+- **Operational/Sydney reading** (per env date + schedule intent): file should be `2026-05-05.md`; file does not exist; proceed with full run.
+
+Cowork chose the operational reading and produced `docs/audit/health/2026-05-05.md` so the schedule produced fresh data. Brief's `idempotency_check: health_file_absent` test passed against the `2026-05-05.md` filename. Run output produced 6 true-stuck items (4 clusters), including a NEW cluster (linkedin × ndis-yarns) that wouldn't have been surfaced under strict UTC interpretation.
+
+Question:
+Was the operational/Sydney filename interpretation correct, and how should the brief idempotency language be patched so future scheduled runs near the AEST→UTC date boundary are unambiguous?
+
+Options:
+A. Operational reading was correct — accept this run as-is and patch the brief to clarify the date convention (e.g. "Use today's AEST date for the filename" OR "Use the date from the run timestamp + 10h offset" OR "Use the env-provided today's date"). Pick one canonical phrasing and re-author Section "Output format" + Section "Idempotency".
+B. Operational reading was correct — accept this run as-is, leave the brief unchanged (Cowork will continue applying the same operational default near the AEST→UTC boundary).
+C. Strict UTC reading was correct — `docs/audit/health/2026-05-05.md` was written prematurely; PK should delete the file and the run state file, and the schedule should be re-tuned to fire after 00:00 UTC rolls over (10:00 AEST) so UTC-date and AEST-date agree.
+D. Both readings should be supported — patch the brief idempotency to check for either filename (today's UTC OR today's env-date) and prefer not-yet-existing filename; explicitly handle the boundary case.
+
+Default:
+Proceeded with operational reading. Output `docs/audit/health/2026-05-05.md` written; run not blocked. Documented divergence in run state file under "Corrections applied" + this Q-003.
+
+Impact if wrong:
+Under Option C: delete `docs/audit/health/2026-05-05.md` and the run state file at `docs/runtime/runs/nightly-health-check-v1-2026-05-04T160846Z.md`; re-tune the schedule. Under Option A or D: keep this run's output, refresh brief language. Under Option B: no immediate action — but the same boundary case will recur on every scheduled run that fires between 14:00 UTC (00:00 AEST next day) and 24:00 UTC. Roughly 10 hours of every 24h falls in this window; the schedule fires at 16:00 UTC = 02:00 AEST, so this divergence will repeat daily until resolved.
+
+---
+
 ## Closed (resolution refs)
 
 When a question is resolved, append a resolution block here referencing the original Q-ID. Do NOT move the original question entry from the Open section — leave it where it was written. The resolution block here is a back-pointer.
