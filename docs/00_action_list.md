@@ -4,7 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-05 Sydney late-evening session-end (v2.40 — **F-EF-DRIFT-PREVENTION Tier 2 LOCKED at 46/46 EFs. Option F APPROVED by PK as target prevention design (drift-check EF + m.ef_drift_log + CRLF-normalised body hashing + SECURITY DEFINER regression detector + dashboard drift panel + non-blocking safe-deploy.sh). Build effort ~4-5h split across two sessions — SEPARATE session, not this one. 13 drift cases triaged into priority buckets. M6 Phase A + F-YT-NY-FORMAT-SELECTION remain BLOCKED behind build close + P1 SECURITY-DEFINER triage.**). Closure budget: ~3h this session, day total ~10h, trailing-14-day ~28h.
+> Last updated: 2026-05-06 Sydney morning session-end (v2.41 — **F-EF-DRIFT-PREVENTION Stage 1 APPLIED. Backend foundation live: `m.ef_drift_log` (19 cols, 5 CHECK constraints, 5 indexes), `m.vw_ef_drift_current` view, `public.write_ef_drift_log(jsonb)` SECURITY DEFINER batch writer. Schema implements PK-directed clearer first-run semantics: `is_first_observation` boolean + NULL-tri-state `state_changed` (NULL on first obs; class-or-hash diff on later) + CHECK constraint enforcing consistency. 3 D-01 fires: Fire 1 escalated on real ambiguity (PK rejected Lesson #62 override → revise); Fire 2 + Fire 3 cleared. Live test verified 4 semantic cases. Stage 2a (drift-check EF + 90-day retention pg_cron) is top P1 next session. M6 Phase A + F-YT-NY-FORMAT-SELECTION remain BLOCKED behind build close + P1 SECURITY-DEFINER triage.**). Closure budget: ~2.5h this session, day total ~2.5h, trailing-14-day ~30h.
 
 ---
 
@@ -17,13 +17,15 @@
 4. Asks PK about Personal businesses
 5. Surfaces Time-bound items due today/tomorrow
 
-**Standing rule (D-01)**: every production patch and action_list version bump from v2.5 onward goes through ChatGPT cross-check before deploy/commit. **v2.40 application**: 0 D-01 fires this session (read-only inspection scope; no patches, no deploys, no DML).
+**Standing rule (D-01)**: every production patch and action_list version bump from v2.5 onward goes through ChatGPT cross-check before deploy/commit. **v2.41 application**: 3 D-01 fires this session (T-MCP-02 34 → 37). Fire 1 escalated, PK rejected Lesson #62 override → revise. Fire 2 + Fire 3 cleared.
 
 **Standing rule (D-186)**: closure work has a hard time budget. 20-finding cap on P0+P1 open items + 4h/week closure floor + 2-week pause trigger.
 
 **Standing rule (D-YT-OAUTH-1, v2.39)**: invegent-dashboard `/connect` first for FB/IG/LI/YT OAuth reconnects.
 
-**NEW STANDING RULE (D-PREV-16, v2.40)**: F-EF-DRIFT-PREVENTION Option F is the approved target design. Build is a separate session item. Until the drift-check infrastructure is live AND the 4 P1 triage cases are addressed (3 SECURITY-DEFINER syncs + insights-worker manual review), no further EF patching is safe — this includes M6 Phase A and F-YT-NY-FORMAT-SELECTION, both of which are explicitly BLOCKED.
+**Standing rule (D-PREV-16, v2.40)**: F-EF-DRIFT-PREVENTION Option F is the approved target design. Build is staged. Stage 1 closed v2.41. Stage 2a + 2b + 3 remain. Until Stage 2a is live AND the 4 P1 triage cases are addressed (3 SECURITY-DEFINER syncs + insights-worker manual review), no further EF patching is safe — this includes M6 Phase A and F-YT-NY-FORMAT-SELECTION, both of which are explicitly BLOCKED.
+
+**NEW STANDING RULE refinement (Lesson #62, v2.41)**: When ChatGPT MCP echoes Claude's self-disclosed weak evidence as objections, the default is NOT automatic state-capture override. If the underlying ambiguity is real (multiple defensible design answers), Claude should propose revision first. State-capture override is reserved for cases where the reviewer's pushback genuinely is generic and the verified_claims body has cleared the substantive concerns.
 
 ---
 
@@ -31,127 +33,141 @@
 
 | Metric | Current | Limit | Status |
 |---|---|---|---|
-| Open findings + investigations (P0+P1) | ~7 (T05 P1-urgent + F-EF-DRIFT-PREVENTION build pending + 3 P1 SECURITY-DEFINER triage + insights-worker P1 + F-YT-NY-FORMAT-SELECTION blocked + M6 Phase A blocked + 3 cluster diagnoses still active) | 20 | ✅ within budget |
-| Trailing-14-day closure hours | ~28h | 8.0 floor | ✅ above floor |
+| Open findings + investigations (P0+P1) | ~9 (T05 P1-urgent + F-EF-DRIFT-PREVENTION Stage 2a/2b/3 build pending + 3 P1 SECURITY-DEFINER triage + insights-worker P1 + F-YT-NY-FORMAT-SELECTION blocked + M6 Phase A blocked + 3 cluster diagnoses still active + 6 May health check follow-up) | 20 | ✅ within budget |
+| Trailing-14-day closure hours | ~30h | 8.0 floor | ✅ above floor |
 | Pause trigger active? | NO | — | New automation authoring still allowed |
 
-**This session's closure hours: ~3h** (Batch 4 + 5 inspection + taxonomy cleanup + recommendation lock + brief APPROVED status + 4-way sync).
+**This session's closure hours: ~2.5h** (Stage 1 design + 3 D-01 fires + 2 migrations applied + live test + 4-way sync).
 
-**Day total (5 May): ~10h** (Tier 1 morning ~3.5h + M4 ~1h + M5 ~1.5h + F-YT-OAUTH-PP ~1h + F-EF-DRIFT-PREVENTION batches ~3h).
+**Day total (6 May): ~2.5h** (single session today).
 
 ---
 
 ## ⭐ Today / Next 5 — REBUILD AT EVERY SESSION START
 
-> **Last rebuilt:** 2026-05-05 Sydney late-evening session-end (v2.40).
-> **This session: F-EF-DRIFT-PREVENTION Tier 2 LOCKED + Option F APPROVED + 4-way sync.**
+> **Last rebuilt:** 2026-05-06 Sydney morning session-end (v2.41).
+> **This session: F-EF-DRIFT-PREVENTION Stage 1 APPLIED + 4-way sync.**
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
 | 1 | Personal businesses check-in | P0 | ICE is bonus | Ask at next session start |
-| 2 | **F-EF-DRIFT-PREVENTION build phase — Option F** | **P1 (TOP next session)** | Approved as target design v2.40. Daily drift-check EF + `m.ef_drift_log` + dashboard panel + non-blocking deploy wrapper. Surfaces existing drift to PK at low friction; catches the highest-severity SECURITY-DEFINER regression-risk class via targeted regex. ~4-5h estimated, splittable. Until live, no further EF patching is safe. | Compose CC-stage briefs for the four components (drift-check EF, migration for `m.ef_drift_log`, dashboard panel, `safe-deploy.sh`). Apply migration via Supabase MCP per D170. Deploy drift-check via Windows CLI from `C:\Users\parve\Invegent-content-engine`. |
-| 3 | **P1 SECURITY-DEFINER regression-risk triage** | **P1** | Three cases (heygen-avatar-creator, heygen-avatar-poller, draft-notifier) where repo redeploy = silent production bug. Best sequenced AFTER drift-check infrastructure live so the sync commits show up green in the dashboard. | Sync repo → deployed via Windows CLI `npx supabase functions download` for each, commit as sync-only commits. Verify drift-check classifies each as Class A post-sync. |
-| 4 | **insights-worker P1 functional drift** | **P1** | Deployed v14.0.0 vs repo v1.6.0 — substantial drift. Per D-PREV-07, do NOT auto-sync; PK manually reviews deployed source for correctness first. | After drift-check live: PK reviews deployed source; if canonical, sync repo → deployed; if not, manual repair. |
-| 5 | **F-YT-NY-FORMAT-SELECTION** (P1) **BLOCKED** | P1 | Sequenced behind drift-check live + 3 SECURITY-DEFINER triage + insights-worker review. The drift-check infrastructure must be live before any further EF code work touches the v4 fix path. | After ranks 2-4 close: read v2.11.1 source, locate `format-advisor-v1` call site, decide between 4 candidate fix shapes from brief `ff5ae6ae`. |
+| 2 | **F-EF-DRIFT-PREVENTION Stage 2a — drift-check EF + retention pg_cron** | **P1 (TOP next session)** | Stage 1 backend foundation live as of 6 May. The drift-check EF is what produces actual rows in `m.ef_drift_log`; without it the table stays empty and the dashboard panel has nothing to render. ~2.25h estimated. | Compose CC-stage brief for the EF (slug `drift-check`). Apply 90-day retention pg_cron via Supabase MCP per D170. Deploy drift-check EF via Windows CLI from `C:\Users\parve\Invegent-content-engine`. First scheduled fire 03:00 AEST after deploy. Manual trigger to verify writes 46 rows to `m.ef_drift_log`. |
+| 3 | **F-EF-DRIFT-PREVENTION Stage 2b — dashboard drift panel** | **P1** | Reads `m.vw_ef_drift_current` + filtered queries on `m.ef_drift_log`. Surfaces drift to PK at low friction. ~1-2h. View shape may be revisited here once dashboard requirements are concrete. | After Stage 2a fires successfully and table has data: design panel; lists by class bucket, P1 SECURITY-DEFINER list highlighted, B-FD informational, state_changed=true badge, repo-only directories listed separately. |
+| 4 | **F-EF-DRIFT-PREVENTION Stage 3 — `scripts/safe-deploy.sh`** | **P1** | Wraps `npx supabase functions deploy <slug>`. Pre-deploy `git status` clean check + local-matches-`origin/main` check. Warns but does NOT refuse. ~30min. | Author script; commit; PK adopts on next manual deploy. Habit-builder. |
+| 5 | **P1 SECURITY-DEFINER regression-risk triage** | **P1** | Three cases (heygen-avatar-creator, heygen-avatar-poller, draft-notifier) where repo redeploy = silent production bug. Best sequenced AFTER Stage 2b live so the sync commits show up green in the dashboard. | Sync repo → deployed via Windows CLI `npx supabase functions download` for each, commit as sync-only commits. Verify drift-check classifies each as Class A post-sync. |
 
-**Demoted from prior Today/Next 5 in v2.39→v2.40 cycle:**
+**Demoted from prior Today/Next 5 in v2.40→v2.41 cycle:**
 
-- **RECONCILE-EF-DRIFT** — ALREADY CLOSED 2026-05-05 morning by sync commit `7ba441e2`. Was incorrectly carried as Active in v2.39; corrected v2.40.
-- **M6 Phase A** — demoted from Today/Next 5 (still Active, but explicitly BLOCKED behind F-EF-DRIFT-PREVENTION build close + P1 triage; was rank 4 in v2.39, now sequenced behind everything else).
-- **T05 Meta dev support contact** — still P1-urgent, demoted to standing-list because F-EF-DRIFT-PREVENTION displaced it.
+- **F-EF-DRIFT-PREVENTION build phase (Option F)** — split out: Stage 1 closed (this session). Stages 2a/2b/3 promoted as ranks 2-4.
+- **insights-worker P1 functional drift** — still Active P1 but sequenced after rank 5 (P1 SECURITY-DEFINER triage); was rank 4 in v2.40.
 
 ---
 
-## 🟢 F-EF-DRIFT-PREVENTION — STATUS BLOCK (NEW v2.40)
+## 🟢 F-EF-DRIFT-PREVENTION — STATUS BLOCK (v2.41 update)
 
 **Brief:** `docs/briefs/2026-05-05-f-ef-drift-prevention.md` (status APPROVED)
 **Parent:** RECONCILE-EF-DRIFT (CLOSED 2026-05-05 morning, commit `7ba441e2`)
 
-### Investigation phase: ✅ COMPLETE v2.40
+### Stage 1 — Backend foundation: ✅ COMPLETE 2026-05-06
 
-Tier 2 inventory locked at 46/46 deployed EFs + 2 repo-only directories.
+**Built:**
+- `m.ef_drift_log` table — 19 cols + 5 CHECK constraints + 5 indexes (3 plain + 2 partial)
+- `m.vw_ef_drift_current` view — latest-per-slug + derived `first_seen_in_class` + `last_resolved_at`
+- `public.write_ef_drift_log(jsonb)` — SECURITY DEFINER batch writer
+- GRANTs locked down: authenticated SELECT only on table + view; service_role only EXECUTE on writer fn
 
-Final classification:
-| Class | Count | % |
-|---|---|---|
-| A (clean) | 26 | 57% |
-|    byte-identical | 17 | |
-|    line-ending only (CRLF/LF) | 9 | |
-| B-RR (regression-risk; deployed > repo) | 5 | 11% |
-| B-FD (forward-drift; repo > deployed) | 1 | 2% |
-| C (banner-same body-differs trap) | 7 (current) / 8 (ever-observed) | 15% |
-| D (repo file missing) | 7 | 15% |
-| Repo-only directories | 2 | (separate state) |
+**Migrations applied:**
+- `f_ef_drift_prevention_stage1_v2_drift_log_table` (D-01 `10635f1d-...`)
+- `f_ef_drift_prevention_stage1_v2_fix_writer_fn_ambiguity` (D-01 `d2415cc4-...`)
 
-Three commits this session: `bec80b73` Batch 4, `7bb588fa` taxonomy cleanup, `0abd8ca5` Batch 5 + lock.
+**Schema highlights (per PK direction):**
+- Renamed `class` → `current_class` for symmetry with `previous_class`
+- Added `is_first_observation` boolean NOT NULL
+- `state_changed` is NULL-tri-state: NULL on first observation, false when no diff, true when class-or-hash diff vs prior row (`IS DISTINCT FROM` for NULL-safe comparison on deployed_hash_normalised + repo_hash_normalised)
+- CHECK constraint `ef_drift_log_first_obs_consistency` enforces invariants
+- Hash-aware change detection covers within-class redeploys
 
-### Approved design: Option F
+**Live test verified all 4 semantic cases.** Test rows cleaned. Table + view empty until Stage 2a EF runs.
+
+### Investigation phase: ✅ COMPLETE v2.40 (Tier 2 inventory locked at 46/46 EFs + 2 repo-only)
+
+### Stage 2a — drift-check EF + retention cron: ⏳ PENDING (next session, top P1)
 
 | # | Component | Detail | Effort |
 |---|---|---|---|
-| 1 | `drift-check` Edge Function | Daily 03:00 AEST pg_cron. Iterates 46 EFs. CRLF-normalised body hashing. Permissive banner parser. Classifies A/B-RR/B-FD/C/D. Targeted SECURITY-DEFINER pattern detector (regex catches `exec_sql` UPDATE on c/m/f/t schemas in repo when deployed has replaced with non-`exec_sql` rpc). Writes to `m.ef_drift_log`. Lists repo-only directories. | ~2h |
-| 2 | `m.ef_drift_log` table | Columns: slug, checked_at, class, direction, deploy_version, repo_version, deployed_hash, repo_hash, security_definer_regression_risk (boolean), previous_class, state_changed (boolean), notes. Indexes on (slug, checked_at) + (class, checked_at). 90-day retention. | ~15min |
-| 3 | Dashboard drift panel | Drift by class. P1 SECURITY-DEFINER regression-risk list (urgent). B-FD informational. Class C/D + repo-only lists. State_changed notification badge. | ~1-2h |
-| 4 | `scripts/safe-deploy.sh` | Pre-deploy `git status` clean check + local matches `origin/main` check. Warns but does NOT refuse. Habit-builder. PK retains hot-fix capability. | ~30min |
+| 1 | `drift-check` Edge Function | Daily 03:00 AEST pg_cron. Iterates 46 EFs via `Supabase:list_edge_functions`. For each: fetch deployed source via `get_edge_function`; fetch repo source from `supabase/functions/<slug>/index.ts` on `main`; CRLF-normalise both; compute body hashes; parse banner with permissive parser; classify A/A-LE/B-RR/B-FD/C/D; run targeted SECURITY-DEFINER regex detector; call `public.write_ef_drift_log()` once per run. Lists repo-only directories in returned summary. | ~2h |
+| 2 | pg_cron 90-day retention sweep | Daily DELETE on `m.ef_drift_log WHERE checked_at < now() - interval '90 days'` | ~15min |
 
-**Total: ~4-5h split across two sessions. Build is a SEPARATE session item, not this one.**
+### Stage 2b — Dashboard drift panel: ⏳ PENDING
 
-Not building: CI deploy policy (Option D — too friction-heavy for solo); real-time deploy hook (daily cadence sufficient); auto-backfill from deployed to repo (sync commits remain manual decisions).
+Reads `m.vw_ef_drift_current` + filtered queries on `m.ef_drift_log`. Drift by class. P1 SECURITY-DEFINER list highlighted. B-FD informational. State_changed badge. Repo-only directories listed separately. ~1-2h.
 
-### Build phase: ⏳ PENDING (separate session)
+### Stage 3 — `scripts/safe-deploy.sh`: ⏳ PENDING
 
-### Triage phase: ⏳ PENDING (after build phase)
+Pre-deploy `git status` + `origin/main` check. Warns but does NOT refuse. Habit-builder. ~30min.
 
-### 13 existing drift cases (priority buckets, action items)
+### Triage phase: ⏳ PENDING (after Stage 2b live, sequenced sensibly)
+
+### 13 existing drift cases (priority buckets, action items) — UNCHANGED FROM v2.40
 
 | Priority | Slug | Detail | Required action |
 |---|---|---|---|
-| **P1 SECURITY-DEFINER** | heygen-avatar-creator | Deployed v2.2.0 uses `save_avatar_generation()` SECURITY DEFINER fn; repo v2.0.0 uses broken `exec_sql` UPDATE on `c.brand_avatar`. **Repo redeploy = silent fail (c schema not writable via exec_sql).** | Sync repo → deployed (download deployed v2.2.0 source, commit). Best after drift-check live so commit shows green in dashboard. |
+| **P1 SECURITY-DEFINER** | heygen-avatar-creator | Deployed v2.2.0 uses `save_avatar_generation()` SECURITY DEFINER fn; repo v2.0.0 uses broken `exec_sql` UPDATE on `c.brand_avatar`. **Repo redeploy = silent fail.** | Sync repo → deployed. Best after Stage 2b live. |
 | **P1 SECURITY-DEFINER** | heygen-avatar-poller | Deployed v2.0.0 uses 4 SECURITY DEFINER fns + `api2.heygen.com/v2/avatar_group` endpoints; repo v1.0.0 uses broken `exec_sql` UPDATE + `api.heygen.com/v2/photo_avatar/train` endpoints. **Repo redeploy = silent fail + broken endpoints.** | Sync repo → deployed. |
 | **P1 SECURITY-DEFINER** | draft-notifier | Deployed v1.1.0 uses `mark_drafts_notified()` SECURITY DEFINER fn; repo v1.0.0 uses broken `exec_sql` UPDATE on `m.post_draft`. **Repo redeploy = drafts never marked notified → every 30min cron sends duplicate review-emails.** | Sync repo → deployed. |
 | **P1 functional drift** | insights-worker | Deployed v14.0.0 vs repo v1.6.0 — substantial functional drift. Per D-PREV-07, no auto-sync. | PK manually reviews deployed source for correctness; if canonical, sync; if not, manual repair. |
-| **P2 feature drift** | series-writer | Deployed v1.3.0 reads `c.content_series.source_material` and `format_preference` (added 20 Mar 2026); repo v1.2.0 doesn't. Repo redeploy would lose features but not corrupt data. | Sync repo → deployed. |
-| **P2 forward-drift (PK decision)** | feed-discovery | Repo v1.2.0 ahead of deployed v1.1.0 with explicit alignment-commit banner (`config.url`→`config.feed_url` + OR-fallback dedupe). Pending deploy state. | PK decides: deploy repo v1.2.0 to live OR leave deployed v1.1.0 in place. |
+| **P2 feature drift** | series-writer | Deployed v1.3.0 reads `c.content_series.source_material` and `format_preference` (added 20 Mar 2026); repo v1.2.0 doesn't. | Sync repo → deployed. |
+| **P2 forward-drift (PK decision)** | feed-discovery | Repo v1.2.0 ahead of deployed v1.1.0. Pending deploy state. | PK decides: deploy repo v1.2.0 OR leave deployed v1.1.0. |
 | **P3 Class C polish-sync** | image-worker | Deployed minified, repo formatted; functionally equivalent. | **Skip per D-PREV-05** (no sync needed). |
 | **P3 Class C polish-sync** | feed-intelligence | Repo has dead code removed; deployed still has it. | Sync repo → deployed (low priority). |
 | **P3 Class C polish-sync** | onboarding-notifier | Deployed has comments stripped + 1 type annotation added (Studio inline-edit signature). | Sync repo → deployed (low priority). |
 | **P3 Class C polish-sync** | ai-profile-bootstrap | Repo extracted slug as variable in `buildPrompt`. | Sync repo → deployed (low priority). |
 | **P3 Class C polish-sync** | series-outline | **Affects content quality.** Deployed has carousel guidance + narrative-arc instruction in prompt; repo doesn't. | Sync repo → deployed (medium priority). |
-| **P3 Class C polish-sync** | email-ingest | Deployed has section dividers + slightly different `console.warn` text; repo single-line compacted. Cosmetic only. | Sync repo → deployed (very low priority). |
-| **P3 Class C polish-sync** | compliance-reviewer | **Affects content quality.** Deployed has different system prompt and rules-scope label (`[Universal]` vs `[Universal — all professions in vertical]`). | Sync repo → deployed (medium priority). |
+| **P3 Class C polish-sync** | email-ingest | Deployed has section dividers + slightly different `console.warn` text. | Sync repo → deployed (very low priority). |
+| **P3 Class C polish-sync** | compliance-reviewer | **Affects content quality.** Deployed has different system prompt and rules-scope label. | Sync repo → deployed (medium priority). |
 | **P3 Class D** | ingest, pipeline-doctor, pipeline-ai-summary, compliance-monitor, video-analyser, heygen-intro, heygen-youtube-upload | Deployed but no repo file. | Per slug: commit deployed source to repo OR remove deployed EF. |
-| **Repo-only triage** | ai-diagnostic | Repo v1.0.0; no deployed slug. Project memory says it runs daily but no deployed evidence. | Investigate: deploy from repo OR remove dead repo file. |
-| **Repo-only triage** | linkedin-publisher | Repo v1.2.0; deliberate forward-staging for B24/F06 (LinkedIn Community Management API approval). Banner explicitly notes "not deployed yet." | Leave alone. |
+| **Repo-only triage** | ai-diagnostic | Repo v1.0.0; no deployed slug. | Investigate: deploy from repo OR remove dead repo file. |
+| **Repo-only triage** | linkedin-publisher | Repo v1.2.0; deliberate forward-staging for B24/F06. | Leave alone. |
 
 ---
 
 ## 🟢 Tier 1 + M4 + M5 + F-YT-OAUTH-PP queue integrity & stability remediation — STATUS BLOCK
 
-Unchanged from v2.39 — all migrations applied + verifications PASS. M6-M8 still pending; M6 Phase A explicitly BLOCKED behind F-EF-DRIFT-PREVENTION build close + P1 triage per v2.40.
+Unchanged from v2.40 — all migrations applied + verifications PASS. M6-M8 still pending; M6 Phase A explicitly BLOCKED behind F-EF-DRIFT-PREVENTION Stage 2a + 2b close + P1 triage per v2.41.
 
 ---
 
 ## 🔄 Standing session-start checks
 
-Unchanged from v2.39 (S1–S29).
+Unchanged from v2.40 (S1–S29).
 
 ---
 
 ## 🔴 Time-bound (calendar-driven deadlines)
 
-Unchanged from v2.31. **v2.40 status delta**: F-EF-DRIFT-PREVENTION investigation closed; build phase queued for separate session.
+Unchanged from v2.31. **v2.41 status delta**: F-EF-DRIFT-PREVENTION Stage 1 closed; Stage 2a is top P1 next session.
 
 ---
 
-## 🛠 Meta-tooling — ChatGPT Review MCP (T-MCP-02 quota at 34 of 5)
+## 🛠 Meta-tooling — ChatGPT Review MCP (T-MCP-02 quota at 37 of 5)
 
-Unchanged from v2.39. **v2.40 application: 0 D-01 fires** (read-only inspection scope). Cumulative: 34 fires total.
+**v2.41 application: 3 D-01 fires** (review IDs `2af1b03a-...`, `10635f1d-...`, `d2415cc4-...`).
+
+- Fire 1 (`2af1b03a-...`): partial verdict, escalated. Two pushback points were echoes of self-disclosed weak evidence. Initial chat read: looked like Lesson #62 type-(c) consistency-bias. **PK explicit override: NOT Lesson #62 — real design ambiguity. Revise.**
+- Fire 2 (`10635f1d-...`): agree, no pushback. Applied.
+- Fire 3 (`d2415cc4-...`): agree, low risk. Applied.
+
+**Lesson #62 boundary refined this session:** echoes of self-disclosed weak evidence by themselves do NOT classify as type-(c) consistency-bias. The substantive question is whether the underlying ambiguity is real (multiple defensible design answers) vs whether the reviewer is genuinely failing to recognise that Path B has cleared concerns. PK called this one correctly as design ambiguity. Future Claude default: propose revision first, escalate to PK for the call.
+
+**Cumulative T-MCP-02 quota: 37 of 5.** Quota of 5 was a v2.5 floor; well exceeded. Cost still well under $0.50 cumulative.
 
 ---
 
 ## 🤖 Cowork automation (D182)
 
-Unchanged from v2.39. Sunset review: 12 May 2026.
+**v2.41 status delta:** **`docs/audit/health/2026-05-06.md` did not push at 02:00 AEST 6 May.** Cowork ICE Nightly Health Check is part of D182 standing automation (per memory). Cron either ran late, didn't fire, or pushed to wrong location. Logged as follow-up. To investigate next session if not back online.
+
+Sunset review: 12 May 2026 (unchanged).
 
 ---
 
@@ -163,26 +179,30 @@ Unchanged. §1 (Current-state inventory) remains NEXT — when PK signals.
 
 ## 🟡 Active
 
-Per v2.39 except:
+Per v2.40 except:
 
 | ID | Item | Priority | Status | Owner | Next action |
 |---|---|---|---|---|---|
-| **NEW v2.40: F-EF-DRIFT-PREVENTION build phase** | Option F: drift-check EF + m.ef_drift_log + dashboard panel + safe-deploy.sh | **P1 (top next session)** | APPROVED 2026-05-05 v2.40; build separate session | chat → next session(s) | Compose CC-stage briefs for the 4 components; apply migration via Supabase MCP; deploy drift-check via Windows CLI. ~4-5h splittable. |
-| **NEW v2.40: P1 SECURITY-DEFINER triage** | heygen-avatar-creator + heygen-avatar-poller + draft-notifier | P1 | Sequenced after drift-check infrastructure live | PK + chat | `npx supabase functions download` from `C:\Users\parve\Invegent-content-engine` for each, commit as sync-only commits. |
-| **NEW v2.40: insights-worker P1 functional drift** | Deployed v14.0.0 vs repo v1.6.0 | P1 | D-PREV-07: no auto-sync; manual review first | PK | After drift-check live: PK reviews deployed source for correctness, then decides sync direction. |
-| **F-YT-NY-FORMAT-SELECTION** (carry-forward) | Brief committed `ff5ae6ae` | P1 | **BLOCKED behind F-EF-DRIFT-PREVENTION build close + P1 triage** | chat → future session | Read v2.11.1 source post-build/triage; locate `format-advisor-v1`; decide between 4 fix shapes. |
-| **M6 Phase A — 108 historical Bug 3 dead-letter** (carry-forward) | Clean up `queued` rows with Bug 3 fingerprint | P1 | **BLOCKED behind F-EF-DRIFT-PREVENTION build close + P1 triage** | PK → chat → future session | After F-YT-NY-FORMAT-SELECTION clears: PK directs start; chat composes brief + D-01 + pre-flight P1-P5; apply via Supabase MCP DML. |
+| **F-EF-DRIFT-PREVENTION Stage 2a** | drift-check EF + 90-day retention pg_cron | **P1 (top next session)** | PENDING | chat → next session | Compose CC-stage brief for EF; apply retention cron via Supabase MCP per D170; deploy EF via Windows CLI. ~2.25h. |
+| **F-EF-DRIFT-PREVENTION Stage 2b** | Dashboard drift panel | P1 | PENDING (sequenced after Stage 2a) | chat → future session | Read `m.vw_ef_drift_current` + filtered drift queries; class buckets; P1 SECURITY-DEFINER highlighted. ~1-2h. |
+| **F-EF-DRIFT-PREVENTION Stage 3** | `scripts/safe-deploy.sh` | P1 | PENDING | chat → future session | Author wrapper; commit; habit-builder. ~30min. |
+| **P1 SECURITY-DEFINER triage** | heygen-avatar-creator + heygen-avatar-poller + draft-notifier | P1 | Sequenced after Stage 2b live | PK + chat | `npx supabase functions download` from `C:\Users\parve\Invegent-content-engine` for each, commit as sync-only commits. |
+| **insights-worker P1 functional drift** | Deployed v14.0.0 vs repo v1.6.0 | P1 | D-PREV-07: no auto-sync; manual review first | PK | After Stage 2b live: PK reviews deployed source for correctness, then decides sync direction. |
+| **F-YT-NY-FORMAT-SELECTION** (carry-forward) | Brief committed `ff5ae6ae` | P1 | **BLOCKED behind F-EF-DRIFT-PREVENTION Stage 2b close + P1 triage** | chat → future session | After triage clears: read v2.11.1 source post-build; locate `format-advisor-v1`; decide between 4 fix shapes. |
+| **M6 Phase A — 108 historical Bug 3 dead-letter** (carry-forward) | Clean up `queued` rows with Bug 3 fingerprint | P1 | **BLOCKED behind F-EF-DRIFT-PREVENTION Stage 2b close + P1 triage** | PK → chat → future session | After F-YT-NY-FORMAT-SELECTION clears: PK directs start; chat composes brief + D-01 + pre-flight P1-P5; apply via Supabase MCP DML. |
 | **47 v4 mismatch queue rows** (M6 Phase B) | Pre-M4 legacy artifacts | P3 | Sequenced after M6 Phase A | Backlog | After M6 Phase A. |
 | **3 stuck-item clusters re-evaluation** | LinkedIn-PP residual + YouTube-PP unexpected + YouTube-NY unexpected | P1 | PP×YT cluster cleared by F-YT-OAUTH-PP; NY×YT cluster blocked on F-YT-NY-FORMAT-SELECTION | chat → next session | Re-query S21 audit matrix. |
 | **F-AI-WORKER-PARSER-SKIP-BUG V3-V5** | Forward acid-test of parser fix | P1 | DEPLOYED v2.34; awaiting CFW LI fill cycle | chat → next session | Query `m.ai_job` after 2026-05-06 03:04 UTC. |
 | **F-PUB-009 V3-V5 + 7-day flow** | Forward acid-test of slot intent write | P1 | APPLIED v2.34; combined forward-flow check | chat → next session | Query `m.post_draft` newly-filled rows. |
+| **`docs/audit/health/2026-05-06.md` follow-up** | Cowork 02:00 AEST cron 6 May did not push | P3 | NEW v2.41 | chat → next session if still absent | Investigate Cowork status; not derailing. |
 | **ICE Dashboard Architecture Review** | 11-section formal review | strategic-product | KICKOFF complete; §1 next | chat ↔ PK | PK signals start. |
-| (others) | per v2.39 | — | — | — | per v2.39 |
+| (others) | per v2.40 | — | — | — | per v2.40 |
 
-**Closed v2.40:**
+**Closed v2.41:**
 
-- **F-EF-DRIFT-PREVENTION investigation phase** ✅ — Tier 2 inventory locked at 46/46 EFs + 2 repo-only. Recommendation Option F APPROVED. Build phase + triage phase remain Active. Brief: `docs/briefs/2026-05-05-f-ef-drift-prevention.md` (status APPROVED). Traceability: `docs/runtime/sessions/2026-05-05-f-ef-drift-prevention-locked.md`.
+- **F-EF-DRIFT-PREVENTION Stage 1 — Backend foundation** ✅ — `m.ef_drift_log` + view + writer fn + indexes + grants live. 4 semantic cases verified by live test. Stage 2a top P1 next. Traceability: `docs/runtime/sessions/2026-05-06-f-ef-drift-prevention-stage1-applied.md`.
 
+**Closed v2.40:** F-EF-DRIFT-PREVENTION investigation phase.
 **Closed v2.39:** F-YT-OAUTH-PP for Property Pulse.
 **Closed v2.38:** M5.
 
@@ -190,21 +210,23 @@ Per v2.39 except:
 
 ## 💼 Personal businesses
 
-*(none flagged — PK to confirm at next session start)*
+*(none flagged at 6 May session start — PK confirmed nothing live today; ICE proceeded)*
 
 ---
 
 ## 📌 Backlog
 
-**v2.40 changes**:
+**v2.41 changes**:
 
-- **NEW v2.40**: F-EF-DRIFT-PREVENTION build phase (Active, P1 top next session).
-- **NEW v2.40**: 13 existing drift cases triaged into priority buckets (Active under STATUS BLOCK section above).
-- **NEW v2.40**: D-PREV-13/14/15/16 added to brief decisions log.
-- **NEW v2.40**: D-PREV-16 — PK approved Option F (target prevention design).
-- **Closed v2.40**: F-EF-DRIFT-PREVENTION investigation phase (build phase + triage phase remain Active).
-- M6 Phase A explicitly BLOCKED behind F-EF-DRIFT-PREVENTION build close + P1 triage (was Active P1 #4 in v2.39; still Active but blocked).
-- F-YT-NY-FORMAT-SELECTION explicitly BLOCKED behind same gate.
+- **NEW v2.41**: F-EF-DRIFT-PREVENTION Stages 2a, 2b, 3 (Active, all P1; Stage 2a top next session).
+- **NEW v2.41**: `docs/audit/health/2026-05-06.md` follow-up (P3, watch-only).
+- **NEW v2.41**: Lesson #62 boundary refinement — echoes of self-disclosed weak evidence ≠ automatic state-capture override; treat as design ambiguity unless reviewer's pushback is genuinely generic AND verified_claims body has cleared substantive concerns.
+- **Closed v2.41**: F-EF-DRIFT-PREVENTION Stage 1 (backend foundation).
+
+**v2.40 changes** (still active):
+
+- 13 existing drift cases triaged into priority buckets.
+- D-PREV-13/14/15/16 in brief decisions log.
 
 **v2.39 changes** (still active):
 
@@ -236,7 +258,7 @@ Per v2.39 except:
 
 - F-AAP-NEEDS-REVIEW-BACKLOG (P2), B-TOKEN-HEALTH-EMPTY (P3), F-CFW-LI-DUP-SLOTS (P3).
 
-**Carried from v2.31**: per v2.39.
+**Carried from v2.31**: per v2.40.
 
 ---
 
@@ -248,36 +270,37 @@ Unchanged.
 
 ## 🎓 Canonical Lessons
 
-Per v2.39 plus:
+Per v2.40 plus:
 
-- **F-EF-DRIFT-PREVENTION investigation pattern v2.40 — candidate canonical**: Tier 2 chunked-batch inventory (~10 EFs each) + structural/directional taxonomy + targeted pattern detection for the most-dangerous regression class is reproducible for any future cross-system audit (e.g. SQL function drift, dashboard component drift, migration-vs-deployed-schema drift). Surfaced v2.40; promote to canonical after 1 reuse.
-- **D-PREV-13 taxonomy split** (structural × directional axes) — candidate canonical for any drift/version audit work; promote after 1 reuse.
+- **Lesson #62 boundary refinement (v2.41)**: Echoes of self-disclosed weak evidence by themselves do NOT classify as type-(c) consistency-bias. The substantive question is whether the underlying ambiguity is real. Surfaced and validated 2026-05-06 morning. Update Lesson #62 docs at promotion.
+- **F-EF-DRIFT-PREVENTION investigation pattern v2.40 — candidate canonical**: still pending 1 reuse for promotion.
+- **D-PREV-13 taxonomy split** (structural × directional axes) — still pending 1 reuse for promotion.
 
 ---
 
-## v2.40 honest limitations
+## v2.41 honest limitations
 
-- All v2.31-v2.39 limitations apply.
-- **F-EF-DRIFT-PREVENTION investigation closed but build NOT done.** The 13 drift cases identified remain unchanged in production until the build phase ships. Most are benign; the 3 P1 SECURITY-DEFINER cases are the active risk — a redeploy of any of those repo files would silently break production. PK is aware; do not redeploy heygen-avatar-creator, heygen-avatar-poller, or draft-notifier from repo until sync’d.
-- **M6 Phase A and F-YT-NY-FORMAT-SELECTION are now explicitly blocked.** This is a deliberate sequencing choice (per D-PREV-16) so source-safety infrastructure is in place before further EF code work.
-- **The drift-check infrastructure does not exist yet.** Until it does, drift accumulation between sessions is invisible. The recommendation is to build it before any other EF deploy, but PK retains the call on sequencing.
-- **`ai-diagnostic` repo-only directory operational status remains unclear.** Project memory claims daily 6am AEST runs against `m.ai_diagnostic_report`; no deployed slug `ai-diagnostic` exists. Either functionality has been folded into another deployed EF, or the EF was authored but never deployed. Triage candidate, not yet investigated.
-- **12 close-the-loop UPDATEs still pending** (carry-over). v2.40 added 0. Combine in next batch closure.
-- **Closure budget remains well above floor** (~28h trailing-14-day). v2.40 added ~3h.
+- All v2.31-v2.40 limitations apply.
+- **F-EF-DRIFT-PREVENTION Stage 1 closed but Stages 2a/2b/3 NOT done.** The 13 drift cases identified in v2.40 remain unchanged in production until Stage 2b ships and triage runs. Most are benign; the 3 P1 SECURITY-DEFINER cases are the active risk — a redeploy of any of those repo files would silently break production. PK is aware; do not redeploy heygen-avatar-creator, heygen-avatar-poller, or draft-notifier from repo until sync'd.
+- **`m.ef_drift_log` is empty until Stage 2a EF runs.** Table is live but unpopulated. View returns 0 rows. Both correct.
+- **Stage 2a is the next critical step.** Without the drift-check EF firing, drift accumulation between sessions remains invisible. The recommendation is to ship Stage 2a before any other EF deploy work.
+- **`ai-diagnostic` repo-only directory operational status remains unclear** (carry-over from v2.40).
+- **12 close-the-loop UPDATEs still pending** (carry-over). v2.41 added 3 review_ids (`2af1b03a-...`, `10635f1d-...`, `d2415cc4-...`). Combine in next batch closure.
+- **`docs/audit/health/2026-05-06.md` did not push.** Cowork ICE Nightly Health Check 02:00 AEST cron status unknown. Logged as follow-up; investigate next session only if still absent. Do not manually re-run Cowork without PK direction.
+- **Closure budget remains well above floor** (~30h trailing-14-day). v2.41 added ~2.5h.
 
 ---
 
 ## Changelog
 
-- v1.0–2.39: per previous changelog.
-- **v2.40 (2026-05-05 Sydney late-evening session-end, F-EF-DRIFT-PREVENTION Tier 2 LOCKED + Option F APPROVED):**
-  - **F-EF-DRIFT-PREVENTION investigation phase CLOSED.** Tier 2 inventory locked at 46/46 deployed EFs + 2 repo-only directories surveyed. Final classification: 26 A (17 byte-identical + 9 line-ending-only) + 5 B-RR + 1 B-FD + 7 C (current; 8 ever-observed) + 7 D + 2 repo-only. Brief status updated to APPROVED.
-  - **Option F APPROVED by PK** as the target prevention design: daily drift-check EF at 03:00 AEST + `m.ef_drift_log` table + CRLF-normalised body hashing + SECURITY DEFINER regression detector + dashboard drift panel + non-blocking safe-deploy.sh wrapper. Build effort ~4-5h split across two sessions; explicitly NOT this session.
-  - **13 existing drift cases triaged into priority buckets:** P1 SECURITY-DEFINER (heygen-avatar-creator, heygen-avatar-poller, draft-notifier), P1 functional (insights-worker), P2 feature (series-writer), P2 forward-drift (feed-discovery), P3 Class C polish-sync ×7, P3 Class D ×7, repo-only triage ×2.
-  - **D-PREV-16 added**: PK approved Option F; build is separate session; M6 Phase A and F-YT-NY-FORMAT-SELECTION remain blocked behind build close + P1 SECURITY-DEFINER triage + insights-worker manual review.
-  - **Three commits this session prior to sync:** `bec80b73` Batch 4, `7bb588fa` taxonomy cleanup, `0abd8ca5` Batch 5 + Tier 2 lock.
-  - **D-01 fires this session: 0** (read-only inspection scope).
-  - **Net P0+P1 open: 5 → 7** (F-EF-DRIFT-PREVENTION build pending + 3 P1 SECURITY-DEFINER triage + insights-worker P1 promoted; F-EF-DRIFT-PREVENTION investigation closed). Within 20-finding cap.
-  - **Closure budget**: +~3h F-EF-DRIFT-PREVENTION batches 4+5 + lock + 4-way sync. Day total ~10h. Trailing-14-day ~28h. Above 8.0 floor.
-  - **No EF deploys.** **M6 untouched.** **No DML.**
-  - **RECONCILE-EF-DRIFT carry-forward correction**: was incorrectly listed as Active P1 in v2.39 (it was already closed by sync commit `7ba441e2` morning of 2026-05-05). Removed from Active in v2.40.
+- v1.0–2.40: per previous changelog.
+- **v2.41 (2026-05-06 Sydney morning session-end, F-EF-DRIFT-PREVENTION Stage 1 APPLIED):**
+  - **F-EF-DRIFT-PREVENTION Stage 1 (backend foundation) CLOSED.** `m.ef_drift_log` table (19 cols, 5 CHECK constraints, 5 indexes) + `m.vw_ef_drift_current` view + `public.write_ef_drift_log(jsonb)` SECURITY DEFINER batch writer + GRANTs all live.
+  - **3 D-01 fires this session** (T-MCP-02 34 → 37). Fire 1 escalated on real first-run `state_changed` ambiguity — PK explicitly rejected Lesson #62 state-capture override → revise. Fire 2 (revised v2 with `is_first_observation` boolean + NULL-tri-state `state_changed` + CHECK constraint enforcing consistency + hash-aware change detection) cleared agree, applied. Fire 3 (writer-fn ambiguity bug-fix via `#variable_conflict use_column` directive) cleared agree, applied.
+  - **Live test verified all 4 semantic cases:** first observation → NULL state_changed; no diff → false; class diff → true; hash diff within same class → true.
+  - **Lesson #62 boundary refined**: echoes of self-disclosed weak evidence by themselves do NOT classify as type-(c) consistency-bias if the underlying ambiguity is real. State-capture override is reserved for genuinely generic reviewer pushback that the verified_claims body has cleared.
+  - **`docs/audit/health/2026-05-06.md` absent at session start** — Cowork 02:00 AEST cron 6 May didn't push. Logged as P3 follow-up; not derailing.
+  - **Net P0+P1 open: 7 → 9** (F-EF-DRIFT-PREVENTION Stages 2a + 2b + 3 promoted to Active P1; Stage 1 closed; 6 May health check follow-up added P3). Within 20-finding cap.
+  - **Closure budget**: +~2.5h Stage 1 design + 2 migrations + live test + 4-way sync. Day total ~2.5h. Trailing-14-day ~30h. Well above 8.0 floor.
+  - **No EF deploys.** **M6 untouched.** **No DML beyond test inserts (cleaned up).**
+  - **Stage 2a is top P1 next session** (drift-check EF + 90-day retention pg_cron, ~2.25h). Stage 2b + Stage 3 sequenced behind. P1 SECURITY-DEFINER triage remains deferred until Stage 2b live.
