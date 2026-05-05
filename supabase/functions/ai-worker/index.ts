@@ -9,54 +9,38 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.9.0";
+const VERSION = "ai-worker-v2.11.1";
+// v2.11.1 — F-AI-WORKER-PARSER-SKIP-BUG fix + raw response capture on failure
+//   ROOT CAUSE: callClaude and callOpenAI parsers checked for {title, body}
+//   BEFORE checking the skip flag, throwing anthropic_missing_title_or_body
+//   when the model correctly returned a compliance-skip response
+//   ({skip: true, reason: "compliance_block: ..."}). Affected CFW × LinkedIn
+//   × image_quote with 33% success rate; cascade caused F-AAP-DRAFTS-STUCK
+//   + F-RECOVER-LOOP-001. Fix: check skip before title/body in both parsers.
+//   Plus: capture raw model response on parse failure into ai_job.output_payload
+//   for future diagnosis (closes B-AI-WORKER-NO-FAILURE-PAYLOAD-LOGGING).
+//   Implementation note: introduced AiParseError subclass that carries the
+//   raw cleaned response. Outer per-job catch reads err.rawResponse and
+//   writes it to ai_job.output_payload.error_response_raw on failure.
+//   Forward-only, non-skip paths and success paths unchanged.
+//   Diagnosed via Supabase MCP source-read + format-success-rate analysis,
+//   not via worker logs (which were silent on the bug). See:
+//   docs/briefs/2026-05-04-or-later-fai-worker-parser-skip-bug.md
+//   docs/runtime/sessions/2026-05-04-baudit-check5-retired-faap007-revised.md
+// v2.11.0 — Lesson #33: explicit error destructuring on every Supabase JS write
+// v2.10.1 — Fix-up: column-name correction for f.canonical_content_body
+// v2.10.0 — Slot-driven payload + LD7 prompt caching + LD18 + slot status transitions (Stage 11)
 // v2.9.0 — ID003 remediation (D157)
-//   Three-part fix landed in one release:
-//   1. PAYLOAD DIET (trimSeedPayload): for rewrite_v1 and synth_bundle_v1, replace
-//      digest_item.body_text with body_excerpt when available; strip raw_html /
-//      full_content fields; cap any remaining body_text to 3000/2000 chars.
-//      Reduces input tokens 3-5x for a typical scraped article.
-//   2. IDEMPOTENCY GUARD: before calling the LLM, check m.ai_usage_log for any
-//      prior non-error row tied to this ai_job_id. If one exists AND the
-//      post_draft already has draft_title + draft_body, mark ai_job succeeded
-//      without re-calling the LLM. Prevents the ID003 failure mode where a
-//      timed-out ai_job update caused sweep-stale-running to requeue jobs whose
-//      LLM call had already completed + billed.
-//      Rationale for "any prior successful log" (vs time-windowed): sweep-stale-running
-//      fires every 10 min but only requeues jobs locked > 20 min. Any time window
-//      shorter than 20 min would miss the actual re-run. Using the log-existence
-//      check is strictly stronger — error_call=true rows do not trigger skip,
-//      so legitimate retries after genuine errors still work.
-//   3. FETCH TIMEOUTS: explicit 120s AbortController on both Anthropic and
-//      OpenAI calls. Prevents indefinite hangs that previously consumed the
-//      Edge Function response timeout window.
-//   Paired with SQL migration d157_id003_ai_job_retry_cap:
-//     - m.ai_job gains attempts INT DEFAULT 0
-//     - sweep-stale-running-every-10m (jobid 9): attempts++ on each requeue;
-//       attempts >= 3 promotes job to status='failed' + dead_reason='exceeded_retry_limit'
 // v2.8.0 — Format advisor preferred format bias
-//   fetchFormatContext reads preferred_format_facebook from publish profile
-//   callFormatAdvisor receives preferredFormat and biases toward it when content is borderline
-//   Softened image_quote threshold: declarative insights qualify, not just hard stats
 // v2.7.1 — Write compliance_flags to m.post_draft (D088)
-//   Skip (HARD_BLOCK): compliance_flags = [{rule, severity: 'HARD_BLOCK', triggered: true, at}]
-//   Success: compliance_flags = [] (rules checked, none triggered)
 // v2.7.0 — Profession-scoped compliance rule loading (D066)
-//   fetchComplianceBlock now loads rules filtered by client profession_slug
-//   An OT client gets OT-specific rules; a support worker gets only universal rules
-//   Global rules (vertical_slug IS NULL) now correctly included for all clients
-//
 // v2.6.1 — Fix format advisor seed extraction
-// seedTitle/seedBody were reading seed.title and seed.body (top-level) but
-// rewrite_v1 payload nests content in seed.digest_item.{title,body_text}
-// and synth_bundle_v1 nests in seed.items[].{title,body_text}.
-// Both extracted as empty strings → format advisor saw empty seed → always
-// decided 'text' → no images generated.
-// Fix: extract from nested digest_item / items[] by job type.
-//
 // v2.6.0 — YouTube pipeline Stage A
 // v2.5.1 — Fix writeVisualSpec: destructure {error} from .rpc() call.
 // v2.5.0 — Content advisor promoted upstream (D043 Step 8)
+//
+// (Detailed v2.11.0 / v2.10.x / v2.9.0 changelog comments preserved in the original v2.11.0 source.
+//  Trimmed here for size; deployed binary is the patched source — full version history is in git.)
 
 const FORMAT_ADVISOR_PROMPT_KEY = "format-advisor-v1";
 const VIDEO_FORMATS = new Set([
@@ -69,6 +53,19 @@ const VIDEO_FORMATS = new Set([
 // Generous enough for large responses, tight enough to prevent indefinite hangs
 // that previously burned the Edge Function's own response timeout window.
 const LLM_FETCH_TIMEOUT_MS = 120_000;
+
+// v2.11.1 — Custom error class that carries the raw model response.
+// Thrown by callClaude/callOpenAI on parse failure so the outer per-job catch
+// can read err.rawResponse and persist it to ai_job.output_payload.error_response_raw
+// for forensic diagnosis. Closes B-AI-WORKER-NO-FAILURE-PAYLOAD-LOGGING.
+class AiParseError extends Error {
+  rawResponse: string;
+  constructor(message: string, rawResponse: string) {
+    super(message);
+    this.name = 'AiParseError';
+    this.rawResponse = rawResponse;
+  }
+}
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -91,17 +88,6 @@ function getServiceClient() {
 
 function nowIso() { return new Date().toISOString(); }
 
-// D157 ID003 fix 1 — PAYLOAD DIET
-// Produces a lean copy of the input payload that the LLM sees via assemblePrompts.
-// The incident root cause: seed_payload.digest_item.body_text carried the full
-// scraped page (nav/footer/sidebar/cookie banners) ~ 10K input tokens/call.
-// The same JSON object already has body_excerpt populated correctly upstream —
-// it was simply never consumed by the prompt builder.
-//
-// Strategy:
-//   - rewrite_v1: digest_item.body_text <- body_excerpt (if present), else cap body_text
-//   - synth_bundle_v1: same treatment applied per item in items[]
-//   - drop known-bloat fields: raw_html, full_content
 function trimSeedPayload(raw: any, jobType: string): any {
   if (!raw || typeof raw !== 'object') return raw;
   const lean = { ...raw };
@@ -146,7 +132,7 @@ async function generateVideoScript(opts: {
   const { anthropicKey, formatKey, postTitle, postBody, clientName, vertical } = opts;
 
   if (formatKey === 'video_short_kinetic' || formatKey === 'video_short_kinetic_voice') {
-    const systemPrompt = `You are a YouTube Shorts script writer for ${clientName}, a ${vertical} sector social media presence.\n\nYour task: take a social media post and convert it into a tight kinetic text video script.\n\nRules:\n- Produce exactly 3-5 scenes: one hook (first), one to three point scenes (middle), one cta (last)\n- hook: headline max 60 chars, no body, duration_s 5-7\n- point: headline max 55 chars, body max 100 chars (one supporting line), duration_s 6-9\n- cta: headline max 65 chars (engagement question), no body, duration_s 4-6\n- Total video: 25-40 seconds\n- narration_text: natural spoken version of all scenes in sequence (~60-80 words)\n- Headlines must be punchy standalone statements — someone reading them in 1 second must get the point\n- Body text provides the single most credible supporting fact or stat\n\nReturn ONLY valid JSON:\n{\n  "format": "kinetic_text",\n  "scenes": [\n    {"type": "hook", "headline": string, "body": null, "duration_s": number},\n    {"type": "point", "headline": string, "body": string, "duration_s": number},\n    {"type": "cta", "headline": string, "body": null, "duration_s": number}\n  ],\n  "total_duration_s": number,\n  "narration_text": string\n}`;
+    const systemPrompt = `You are a YouTube Shorts script writer for ${clientName}, a ${vertical} sector social media presence.\n\nYour task: take a social media post and convert it into a tight kinetic text video script.\n\nRules:\n- Produce exactly 3-5 scenes: one hook (first), one to three point scenes (middle), one cta (last)\n- hook: headline max 60 chars, no body, duration_s 5-7\n- point: headline max 55 chars, body max 100 chars (one supporting line), duration_s 6-9\n- cta: headline max 65 chars (engagement question), no body, duration_s 4-6\n- Total video: 25-40 seconds\n- narration_text: natural spoken version of all scenes in sequence (~60-80 words)\n- Headlines must be punchy standalone statements — someone reading them in 1 second must get the point\n- Body text provides the single most credible supporting fact or stat\n\nReturn ONLY valid JSON:\n{\n  \"format\": \"kinetic_text\",\n  \"scenes\": [\n    {\"type\": \"hook\", \"headline\": string, \"body\": null, \"duration_s\": number},\n    {\"type\": \"point\", \"headline\": string, \"body\": string, \"duration_s\": number},\n    {\"type\": \"cta\", \"headline\": string, \"body\": null, \"duration_s\": number}\n  ],\n  \"total_duration_s\": number,\n  \"narration_text\": string\n}`;
     const userPrompt = `Post title: ${postTitle || '(none)'}\n\nPost body:\n${postBody.slice(0, 1000)}\n\nGenerate the video script.`;
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -167,7 +153,7 @@ async function generateVideoScript(opts: {
   }
 
   if (formatKey === 'video_short_stat' || formatKey === 'video_short_stat_voice') {
-    const systemPrompt = `You are extracting data for an animated social media video for ${clientName}.\n\nIdentify the single most compelling numeric stat and build a 20-second video spec.\n\nRules:\n- stat_value: the number formatted for screen, max 12 chars (e.g. "$62.17/hr", "4.35%", "+3.7%"). Include unit/symbol.\n- stat_label: what the number IS, max 35 chars.\n- context_line: one sentence making the stat meaningful, max 75 chars.\n- cta_text: one engagement question, max 65 chars.\n- narration_text: spoken 20-second script (~45-55 words).\n\nReturn ONLY valid JSON:\n{\n  "format": "stat_reveal",\n  "stat_value": string,\n  "stat_label": string,\n  "context_line": string,\n  "cta_text": string,\n  "total_duration_s": 20,\n  "narration_text": string\n}`;
+    const systemPrompt = `You are extracting data for an animated social media video for ${clientName}.\n\nIdentify the single most compelling numeric stat and build a 20-second video spec.\n\nRules:\n- stat_value: the number formatted for screen, max 12 chars (e.g. \"$62.17/hr\", \"4.35%\", \"+3.7%\"). Include unit/symbol.\n- stat_label: what the number IS, max 35 chars.\n- context_line: one sentence making the stat meaningful, max 75 chars.\n- cta_text: one engagement question, max 65 chars.\n- narration_text: spoken 20-second script (~45-55 words).\n\nReturn ONLY valid JSON:\n{\n  \"format\": \"stat_reveal\",\n  \"stat_value\": string,\n  \"stat_label\": string,\n  \"context_line\": string,\n  \"cta_text\": string,\n  \"total_duration_s\": 20,\n  \"narration_text\": string\n}`;
     const userPrompt = `Post title: ${postTitle || '(none)'}\n\nPost body:\n${postBody.slice(0, 600)}\n\nExtract the video stat spec.`;
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -200,7 +186,7 @@ async function fetchFormatContext(supabase: ReturnType<typeof getServiceClient>,
           COALESCE(f.best_for,'') AS best_for,
           COALESCE(f.min_content_signals,'') AS min_content_signals,
           COALESCE(f.platform_support,'{}')::text AS platform_support_raw
-        FROM "t"."5.3_content_format" f
+        FROM \"t\".\"5.3_content_format\" f
         WHERE f.is_buildable = true AND f.ice_format_key IS NOT NULL
           AND (
             EXISTS (SELECT 1 FROM c.client_format_config cfc
@@ -223,7 +209,6 @@ async function fetchFormatContext(supabase: ReturnType<typeof getServiceClient>,
       const perf: any[] = perfRows ?? [];
       if (perf.length > 0) perfSummary = `\nPerformance data (last 30 days):\n${perf.map((p: any) => `  ${p.ice_format_key}: ${(Number(p.avg_engagement_rate ?? 0) * 100).toFixed(1)}% avg engagement (${p.post_count} posts)`).join('\n')}\n`;
     } catch { }
-    // Fetch preferred format from publish profile
     let preferredFormat: string | null = null;
     try {
       const { data: publishProfile } = await supabase.rpc('exec_sql', {
@@ -248,7 +233,7 @@ async function callFormatAdvisor(opts: { anthropicKey: string; seedTitle: string
   const preferredFormatInstruction = preferredFormat
     ? `\n\nCLIENT FORMAT PREFERENCE:\nThis client prefers ${preferredFormat} format. When the content quality is borderline (e.g., has one reasonably interesting insight but not a definitive standout stat), bias toward ${preferredFormat} over text. Only fall back to text if the content is genuinely conversational/reactive with no visual potential whatsoever.`
     : '';
-  const systemPrompt = `You are a content format advisor for ${clientName}, a ${vertical} sector social media presence.\n\nYour task: read a content seed and select the optimal format from the available palette.\n\nAVAILABLE FORMATS:\n${formatPalette}\n${perfSummary}\nDECISION RULES:\n- Choose the format that best serves the content's natural structure\n- Default to text if the content is conversational, reactive, or opinionated\n- carousel requires 3+ distinct structured points and minimum 200 words\n- image_quote requires one interesting stat, insight, or key message that works as a visual headline — it doesn't need to be a hard number, a clear declarative statement about a sector development works\n- video_short_kinetic requires 3+ distinct points expressible in 60 chars each\n- video_short_stat requires one striking numeric stat that anchors the story\n- Never choose a visual format to add interest if the content doesn't support it${preferredFormatInstruction}\n\nReturn ONLY valid JSON: {"format_key": string, "reason": string, "image_headline": string}`;
+  const systemPrompt = `You are a content format advisor for ${clientName}, a ${vertical} sector social media presence.\n\nYour task: read a content seed and select the optimal format from the available palette.\n\nAVAILABLE FORMATS:\n${formatPalette}\n${perfSummary}\nDECISION RULES:\n- Choose the format that best serves the content's natural structure\n- Default to text if the content is conversational, reactive, or opinionated\n- carousel requires 3+ distinct structured points and minimum 200 words\n- image_quote requires one interesting stat, insight, or key message that works as a visual headline — it doesn't need to be a hard number, a clear declarative statement about a sector development works\n- video_short_kinetic requires 3+ distinct points expressible in 60 chars each\n- video_short_stat requires one striking numeric stat that anchors the story\n- Never choose a visual format to add interest if the content doesn't support it${preferredFormatInstruction}\n\nReturn ONLY valid JSON: {\"format_key\": string, \"reason\": string, \"image_headline\": string}`;
   const userPrompt = `Content seed:\nTitle: ${seedTitle || '(no title)'}\nBody preview: ${seedBody.slice(0, 600)}${seedBody.length > 600 ? '...' : ''}\n\nSelect the optimal format.`;
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -278,7 +263,6 @@ async function fetchComplianceBlock(
   clientId: string
 ): Promise<string> {
   try {
-    // Step 1: Get client's verticals and profession
     const { data: scopeRows } = await supabase.rpc('exec_sql', {
       query: `
         SELECT DISTINCT cv.vertical_slug
@@ -292,17 +276,11 @@ async function fetchComplianceBlock(
     const slugs: string[] = (scopeRows ?? []).map((r: any) => r.vertical_slug).filter(Boolean);
     if (!slugs.length) return '';
 
-    // Step 2: Get client's profession_slug (may be null)
     const { data: clientRow } = await supabase.rpc('exec_sql', {
       query: `SELECT profession_slug FROM c.client WHERE client_id = '${clientId}'`
     });
     const professionSlug: string | null = (clientRow as any[])?.[0]?.profession_slug ?? null;
 
-    // Step 3: Load scoped compliance rules
-    // Loads:
-    //   a) Vertical-specific rules where profession_slugs IS NULL (universal for all professions)
-    //   b) Vertical-specific rules where client's profession is in profession_slugs[]
-    //   c) Global rules where vertical_slug IS NULL (apply to all clients always)
     const slugList = slugs.map(s => `'${s}'`).join(',');
     const professionFilter = professionSlug
       ? `OR '${professionSlug}' = ANY(profession_slugs)`
@@ -312,15 +290,13 @@ async function fetchComplianceBlock(
       query: `
         SELECT DISTINCT ON (rule_key)
           rule_name, rule_text, risk_level, enforcement, examples_good, examples_bad, sort_order
-        FROM t."5.7_compliance_rule"
+        FROM t.\"5.7_compliance_rule\"
         WHERE is_active = true
           AND (
-            -- Vertical-specific rules (universal or profession-matched)
             (
               vertical_slug IN (${slugList})
               AND (profession_slugs IS NULL ${professionFilter})
             )
-            -- Global rules: vertical_slug IS NULL — always apply
             OR vertical_slug IS NULL
           )
         ORDER BY rule_key, sort_order ASC
@@ -330,10 +306,9 @@ async function fetchComplianceBlock(
     const rules: any[] = ruleRows ?? [];
     if (!rules.length) return '';
 
-    // Step 4: Build compliance block text (same format as before)
     const lines: string[] = [
       '=== COMPLIANCE REQUIREMENTS ===',
-      'HARD_BLOCK: if violated, return {"skip": true, "reason": "compliance_block: [rule_name]"}.',
+      'HARD_BLOCK: if violated, return {\"skip\": true, \"reason\": \"compliance_block: [rule_name]\"}.',
       'SOFT_WARN: apply best judgment.',
       '',
     ];
@@ -368,20 +343,21 @@ async function calculateCostUsd(supabase: ReturnType<typeof getServiceClient>, p
 
 async function writeUsageLog(supabase: ReturnType<typeof getServiceClient>, opts: { clientId: string; aiJobId?: string | null; postDraftId?: string | null; provider: string; model: string; contentType: string; platform: string; inputTokens: number; outputTokens: number; costUsd: number; fallbackUsed: boolean; errorCall: boolean; }): Promise<void> {
   try {
-    await supabase.schema('m').from('ai_usage_log').insert({ client_id: opts.clientId, ai_job_id: opts.aiJobId ?? null, post_draft_id: opts.postDraftId ?? null, provider: opts.provider, model: opts.model, content_type: opts.contentType, platform: opts.platform, input_tokens: opts.inputTokens, output_tokens: opts.outputTokens, cost_usd: opts.costUsd, fallback_used: opts.fallbackUsed, error_call: opts.errorCall });
+    const { error: usageErr } = await supabase.schema('m').from('ai_usage_log').insert({ client_id: opts.clientId, ai_job_id: opts.aiJobId ?? null, post_draft_id: opts.postDraftId ?? null, provider: opts.provider, model: opts.model, content_type: opts.contentType, platform: opts.platform, input_tokens: opts.inputTokens, output_tokens: opts.outputTokens, cost_usd: opts.costUsd, fallback_used: opts.fallbackUsed, error_call: opts.errorCall });
+    if (usageErr) console.error('[ai_usage_log] write failed:', usageErr.message);
   } catch (e) { console.error('[ai_usage_log] write failed:', e); }
 }
 
-async function callClaude(opts: { apiKey: string; model: string; systemPrompt: string; userPrompt: string; temperature: number; maxOutputTokens: number; }) {
-  const { apiKey, model, systemPrompt, userPrompt, temperature, maxOutputTokens } = opts;
-  // D157 ID003 fix 3 — hard fetch timeout
+async function callClaude(opts: { apiKey: string; model: string; systemPrompt: string; systemBlocks?: SystemBlock[]; userPrompt: string; temperature: number; maxOutputTokens: number; }) {
+  const { apiKey, model, systemPrompt, systemBlocks, userPrompt, temperature, maxOutputTokens } = opts;
+  const systemPayload: any = (systemBlocks && systemBlocks.length > 0) ? systemBlocks : systemPrompt;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), LLM_FETCH_TIMEOUT_MS);
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model, max_tokens: maxOutputTokens, temperature, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
+      body: JSON.stringify({ model, max_tokens: maxOutputTokens, temperature, system: systemPayload, messages: [{ role: 'user', content: userPrompt }] }),
       signal: controller.signal,
     });
     const text = await resp.text();
@@ -392,10 +368,27 @@ async function callClaude(opts: { apiKey: string; model: string; systemPrompt: s
     if (!content) throw new Error('anthropic_empty_content');
     const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
     const parsed = safeParseJson<any>(cleaned);
-    if (!parsed.ok) throw new Error(`anthropic_non_json: ${parsed.error} | raw: ${cleaned.slice(0, 400)}`);
-    if (!parsed.value?.title || !parsed.value?.body) throw new Error('anthropic_missing_title_or_body');
+    if (!parsed.ok) throw new AiParseError(`anthropic_non_json: ${parsed.error} | raw: ${cleaned.slice(0, 400)}`, cleaned);
+    // v2.11.1 — F-AI-WORKER-PARSER-SKIP-BUG FIX
+    // Check skip flag BEFORE checking title/body. The model may legitimately
+    // return {skip: true, reason: "compliance_block: ..."} per the system
+    // prompt's instructions.
+    if (parsed.value?.skip !== true && (!parsed.value?.title || !parsed.value?.body)) {
+      throw new AiParseError('anthropic_missing_title_or_body', cleaned);
+    }
     const usage = outer.value?.usage ?? {};
-    return { title: String(parsed.value.title).trim(), body: String(parsed.value.body).trim(), imageHeadline: String(parsed.value.image_headline ?? '').trim(), meta: parsed.value.meta ?? {}, skip: parsed.value.skip === true, skipReason: parsed.value.reason ?? '', inputTokens: Number(usage.input_tokens ?? 0), outputTokens: Number(usage.output_tokens ?? 0) };
+    return {
+      title: parsed.value?.skip === true ? '' : String(parsed.value.title).trim(),
+      body:  parsed.value?.skip === true ? '' : String(parsed.value.body).trim(),
+      imageHeadline: String(parsed.value.image_headline ?? '').trim(),
+      meta: parsed.value.meta ?? {},
+      skip: parsed.value.skip === true,
+      skipReason: parsed.value.reason ?? '',
+      inputTokens: Number(usage.input_tokens ?? 0),
+      outputTokens: Number(usage.output_tokens ?? 0),
+      cacheCreationInputTokens: Number(usage.cache_creation_input_tokens ?? 0),
+      cacheReadInputTokens: Number(usage.cache_read_input_tokens ?? 0),
+    };
   } catch (e: any) {
     if (e?.name === 'AbortError') throw new Error(`anthropic_fetch_timeout_${LLM_FETCH_TIMEOUT_MS}ms`);
     throw e;
@@ -406,7 +399,6 @@ async function callClaude(opts: { apiKey: string; model: string; systemPrompt: s
 
 async function callOpenAI(opts: { apiKey: string; model: string; systemPrompt: string; userPrompt: string; temperature: number; maxOutputTokens: number; }) {
   const { apiKey, model, systemPrompt, userPrompt, temperature, maxOutputTokens } = opts;
-  // D157 ID003 fix 3 — hard fetch timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), LLM_FETCH_TIMEOUT_MS);
   try {
@@ -423,10 +415,24 @@ async function callOpenAI(opts: { apiKey: string; model: string; systemPrompt: s
     const content = outer.value?.choices?.[0]?.message?.content;
     if (!content) throw new Error('openai_empty_content');
     const parsed = safeParseJson<any>(content);
-    if (!parsed.ok) throw new Error(`openai_non_json: ${parsed.error}`);
-    if (!parsed.value?.title || !parsed.value?.body) throw new Error('openai_missing_title_or_body');
+    if (!parsed.ok) throw new AiParseError(`openai_non_json: ${parsed.error}`, content);
+    // v2.11.1 — F-AI-WORKER-PARSER-SKIP-BUG FIX (mirror of callClaude)
+    if (parsed.value?.skip !== true && (!parsed.value?.title || !parsed.value?.body)) {
+      throw new AiParseError('openai_missing_title_or_body', content);
+    }
     const usage = outer.value?.usage ?? {};
-    return { title: String(parsed.value.title).trim(), body: String(parsed.value.body).trim(), imageHeadline: String(parsed.value.image_headline ?? '').trim(), meta: parsed.value.meta ?? {}, skip: parsed.value.skip === true, skipReason: parsed.value.reason ?? '', inputTokens: Number(usage.prompt_tokens ?? 0), outputTokens: Number(usage.completion_tokens ?? 0) };
+    return {
+      title: parsed.value?.skip === true ? '' : String(parsed.value.title).trim(),
+      body:  parsed.value?.skip === true ? '' : String(parsed.value.body).trim(),
+      imageHeadline: String(parsed.value.image_headline ?? '').trim(),
+      meta: parsed.value.meta ?? {},
+      skip: parsed.value.skip === true,
+      skipReason: parsed.value.reason ?? '',
+      inputTokens: Number(usage.prompt_tokens ?? 0),
+      outputTokens: Number(usage.completion_tokens ?? 0),
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+    };
   } catch (e: any) {
     if (e?.name === 'AbortError') throw new Error(`openai_fetch_timeout_${LLM_FETCH_TIMEOUT_MS}ms`);
     throw e;
@@ -439,7 +445,7 @@ function buildFormatOutputSchema(decidedFormat: string, advisorImageHeadline: st
   const needsImage = ['image_quote', 'carousel', 'animated_text_reveal', 'animated_data'].includes(decidedFormat);
   const isVideo = VIDEO_FORMATS.has(decidedFormat);
   const imageHeadlineInstruction = needsImage
-    ? `- image_headline: 10-15 word pull quote for the visual overlay. Starting point: "${advisorImageHeadline}"`
+    ? `- image_headline: 10-15 word pull quote for the visual overlay. Starting point: \"${advisorImageHeadline}\"`
     : `- image_headline: empty string`;
   const formatInstruction = isVideo
     ? `This post will be published as a ${decidedFormat} YouTube Short. Write a structured, informative post with clear distinct points. The video scenes will be generated separately from this body.`
@@ -447,10 +453,10 @@ function buildFormatOutputSchema(decidedFormat: string, advisorImageHeadline: st
     : decidedFormat === 'image_quote' ? 'This post will be published with a branded image overlay. Write a post with one strong central insight.'
     : decidedFormat === 'carousel' ? 'This post will be published as a multi-slide carousel. Write a structured post with clearly distinct sections (3-5 strong points).'
     : `This post will be published as ${decidedFormat}. Write accordingly.`;
-  return `${formatInstruction}\n\nReturn ONLY valid JSON:\n{\n  "title": string,\n  "body": string,\n  "image_headline": string,\n  "meta": object\n}\nIf the source content violates a HARD_BLOCK compliance rule:\n{"skip": true, "reason": "compliance_block: [rule name]"}\n\nField rules:\n- title: 8-12 word headline\n- body: full post body text optimised for ${decidedFormat} format\n${imageHeadlineInstruction}\n- meta: any extra metadata as object`;
+  return `${formatInstruction}\n\nReturn ONLY valid JSON:\n{\n  \"title\": string,\n  \"body\": string,\n  \"image_headline\": string,\n  \"meta\": object\n}\nIf the source content violates a HARD_BLOCK compliance rule:\n{\"skip\": true, \"reason\": \"compliance_block: [rule name]\"}\n\nField rules:\n- title: 8-12 word headline\n- body: full post body text optimised for ${decidedFormat} format\n${imageHeadlineInstruction}\n- meta: any extra metadata as object`;
 }
 
-async function assemblePrompts(supabase: ReturnType<typeof getServiceClient>, clientId: string, platform: string, jobType: string, seedPayload: any, decidedFormat: string, advisorImageHeadline: string): Promise<{ systemPrompt: string; userPrompt: string; model: string; temperature: number; maxOutputTokens: number; usedLegacy: boolean; complianceRuleCount: number; }> {
+async function assemblePrompts(supabase: ReturnType<typeof getServiceClient>, clientId: string, platform: string, jobType: string, seedPayload: any, decidedFormat: string, advisorImageHeadline: string): Promise<{ systemPrompt: string; systemBlocks: SystemBlock[]; userPrompt: string; model: string; temperature: number; maxOutputTokens: number; usedLegacy: boolean; complianceRuleCount: number; }> {
   const complianceBlock = await fetchComplianceBlock(supabase, clientId);
   const complianceRuleCount = complianceBlock ? (complianceBlock.match(/^RULE:/gm) ?? []).length : 0;
   const { data: brand } = await supabase.schema('c').from('client_brand_profile').select('*').eq('client_id', clientId).eq('is_active', true).limit(1).maybeSingle();
@@ -460,23 +466,39 @@ async function assemblePrompts(supabase: ReturnType<typeof getServiceClient>, cl
     const model = (brand.model ?? 'claude-sonnet-4-6').toString();
     const temperature = Number(brand.temperature ?? 0.72);
     const maxOutputTokens = Number(brand.max_output_tokens ?? 1200);
-    const systemPrompt = [complianceBlock, brand.brand_identity_prompt ?? '', platProfile?.platform_voice_prompt ?? ''].filter(Boolean).join('\n\n');
+    const blocks: SystemBlock[] = [];
+    if (complianceBlock) blocks.push({ type: 'text', text: complianceBlock, cache_control: { type: 'ephemeral' } });
+    if (brand.brand_identity_prompt) blocks.push({ type: 'text', text: String(brand.brand_identity_prompt), cache_control: { type: 'ephemeral' } });
+    if (platProfile?.platform_voice_prompt) blocks.push({ type: 'text', text: String(platProfile.platform_voice_prompt), cache_control: { type: 'ephemeral' } });
+    const systemPrompt = blocks.map(b => b.text).join('\n\n');
     const outputSchema = ctPrompt?.output_schema_hint ?? buildFormatOutputSchema(decidedFormat, advisorImageHeadline);
     const taskInstruction = ctPrompt?.task_prompt ?? 'Rewrite the seed content into a valuable, engaging post for the target platform.';
     const userPrompt = [taskInstruction, `\nSeed content (JSON):\n${JSON.stringify(seedPayload)}`, `\n${outputSchema}`].join('\n');
-    return { systemPrompt, userPrompt, model, temperature, maxOutputTokens, usedLegacy: false, complianceRuleCount };
+    return { systemPrompt, systemBlocks: blocks, userPrompt, model, temperature, maxOutputTokens, usedLegacy: false, complianceRuleCount };
   }
   const { data: legacyProfile } = await supabase.schema('c').from('client_ai_profile').select('system_prompt, model, generation, persona, guidelines, platform_rules').eq('client_id', clientId).eq('status', 'active').order('is_default', { ascending: false }).limit(1).maybeSingle();
   if (!legacyProfile) throw new Error('no_client_profile_found');
   const model = (legacyProfile.model ?? 'claude-sonnet-4-6').toString();
   const gen = legacyProfile.generation ?? {};
-  const systemPrompt = [complianceBlock, legacyProfile.system_prompt ?? '', 'Persona: ' + JSON.stringify(legacyProfile.persona ?? {}), 'Guidelines: ' + JSON.stringify(legacyProfile.guidelines ?? {}), 'Platform rules: ' + JSON.stringify(legacyProfile.platform_rules ?? {}), `Return ONLY valid JSON: {"title": string, "body": string, "image_headline": string, "meta": object}. If source violates HARD_BLOCK rule, return {"skip": true, "reason": "compliance_block: [rule name]"}`].filter(Boolean).join('\n\n');
-  const userPrompt = `Rewrite this seed into a platform-appropriate post optimised for ${decidedFormat} format.\n\nSeed:\n${JSON.stringify(seedPayload)}\n\nReturn ONLY JSON: {"title": string, "body": string, "image_headline": string, "meta": object}`;
-  return { systemPrompt, userPrompt, model, temperature: Number(gen.temperature ?? 0.72), maxOutputTokens: Number(gen.max_output_tokens ?? 1200), usedLegacy: true, complianceRuleCount };
+  const legacySystemText = [complianceBlock, legacyProfile.system_prompt ?? '', 'Persona: ' + JSON.stringify(legacyProfile.persona ?? {}), 'Guidelines: ' + JSON.stringify(legacyProfile.guidelines ?? {}), 'Platform rules: ' + JSON.stringify(legacyProfile.platform_rules ?? {}), `Return ONLY valid JSON: {\"title\": string, \"body\": string, \"image_headline\": string, \"meta\": object}. If source violates HARD_BLOCK rule, return {\"skip\": true, \"reason\": \"compliance_block: [rule name]\"}`].filter(Boolean).join('\n\n');
+  const legacyBlocks: SystemBlock[] = [{ type: 'text', text: legacySystemText }];
+  const userPrompt = `Rewrite this seed into a platform-appropriate post optimised for ${decidedFormat} format.\n\nSeed:\n${JSON.stringify(seedPayload)}\n\nReturn ONLY JSON: {\"title\": string, \"body\": string, \"image_headline\": string, \"meta\": object}`;
+  return { systemPrompt: legacySystemText, systemBlocks: legacyBlocks, userPrompt, model, temperature: Number(gen.temperature ?? 0.72), maxOutputTokens: Number(gen.max_output_tokens ?? 1200), usedLegacy: true, complianceRuleCount };
 }
 
 type WorkerRequest = { limit?: number; worker_id?: string; lock_seconds?: number; };
-type AiJobRow = { ai_job_id: string; client_id: string; post_draft_id: string; platform: string; job_type: string; input_payload: any; };
+type AiJobRow = {
+  ai_job_id: string;
+  client_id: string;
+  post_draft_id: string;
+  platform: string;
+  job_type: string;
+  input_payload: any;
+  slot_id: string | null;
+  is_shadow: boolean;
+};
+
+type SystemBlock = { type: 'text'; text: string; cache_control?: { type: 'ephemeral' } };
 
 app.options('*', () => new Response(null, { status: 204, headers: corsHeaders }));
 
@@ -519,13 +541,126 @@ app.post('*', async (c) => {
     const platform = job.platform ?? 'facebook';
     const jobType = job.job_type ?? 'rewrite_v1';
 
+    let effectiveJobType = jobType;
+    let effectivePayload: any = job.input_payload ?? {};
+    let isEvergreenRender = false;
+    let evergreenContent: { title: string; body: string } | null = null;
+
     try {
-      // D157 ID003 fix 2 — IDEMPOTENCY GUARD
-      // Check for any prior successful LLM call tied to this ai_job. If one exists
-      // AND the post_draft already has content, mark the ai_job succeeded without
-      // re-calling the LLM. Protects against the ID003 failure mode: ai_job UPDATE
-      // to 'succeeded' is interrupted post-LLM-completion, sweep-stale-running
-      // requeues, next iteration would otherwise call the LLM again and re-bill.
+      if (jobType === 'slot_fill_synthesis_v1') {
+        const sp = job.input_payload ?? {};
+        const synthesisMode: string = sp.synthesis_mode ?? 'single_item';
+
+        if (synthesisMode === 'evergreen' && sp.evergreen_id) {
+          const { data: evergreen } = await supabase
+            .schema('t')
+            .from('evergreen_library')
+            .select('title, body, format_keys')
+            .eq('evergreen_id', sp.evergreen_id)
+            .maybeSingle();
+          if (!evergreen) throw new Error(`evergreen_not_found:${sp.evergreen_id}`);
+          isEvergreenRender = true;
+          evergreenContent = {
+            title: String(evergreen.title ?? '').trim(),
+            body: String(evergreen.body ?? '').trim(),
+          };
+        } else {
+          const canonicalIds: string[] = Array.isArray(sp.canonical_ids) ? sp.canonical_ids : [];
+          if (!canonicalIds.length) throw new Error('slot_fill_no_canonical_ids');
+
+          const { data: bodies, error: bodiesErr } = await supabase
+            .schema('f')
+            .from('canonical_content_body')
+            .select('canonical_id, extracted_text, extracted_excerpt, fetch_status')
+            .in('canonical_id', canonicalIds);
+          if (bodiesErr) throw new Error(`canonical_body_fetch:${bodiesErr.message}`);
+
+          const { data: items, error: itemsErr } = await supabase
+            .schema('f')
+            .from('canonical_content_item')
+            .select('canonical_id, canonical_title, canonical_url, first_seen_at')
+            .in('canonical_id', canonicalIds);
+          if (itemsErr) throw new Error(`canonical_item_fetch:${itemsErr.message}`);
+
+          const merged = canonicalIds.map((cid) => {
+            const body = (bodies ?? []).find((b: any) => b.canonical_id === cid);
+            const item = (items ?? []).find((i: any) => i.canonical_id === cid);
+            return {
+              canonical_id: cid,
+              title: item?.canonical_title ?? '',
+              url: item?.canonical_url ?? '',
+              body_text: body?.extracted_text ?? '',
+              body_excerpt: body?.extracted_excerpt ?? '',
+            };
+          });
+
+          const hasAnyBody = merged.some((m) => (m.body_text && m.body_text.length > 0) || (m.body_excerpt && m.body_excerpt.length > 0));
+          if (!hasAnyBody) {
+            throw new Error(`slot_fill_no_body_content: ${canonicalIds.length} canonicals all have empty extracted_text/extracted_excerpt`);
+          }
+
+          if (synthesisMode === 'single_item') {
+            const m0 = merged[0];
+            effectivePayload = {
+              digest_item: {
+                title: m0.title,
+                body_text: m0.body_text,
+                body_excerpt: m0.body_excerpt,
+                url: m0.url,
+              },
+              slot_meta: { slot_id: sp.slot_id, format: sp.format, fitness_score: sp.fitness_score },
+            };
+            effectiveJobType = 'rewrite_v1';
+          } else {
+            effectivePayload = {
+              items: merged.map((m) => ({
+                title: m.title,
+                body_text: m.body_text,
+                body_excerpt: m.body_excerpt,
+                url: m.url,
+              })),
+              slot_meta: { slot_id: sp.slot_id, format: sp.format, fitness_score: sp.fitness_score },
+            };
+            effectiveJobType = 'synth_bundle_v1';
+          }
+        }
+      }
+
+      if (isEvergreenRender && evergreenContent) {
+        const { error: evergreenDraftErr } = await supabase.schema('m').from('post_draft').update({
+          draft_title: evergreenContent.title,
+          draft_body: evergreenContent.body,
+          draft_format: { ai: { evergreen_render: true, evergreen_id: job.input_payload?.evergreen_id ?? null, ai_job_id: jobId, at: nowIso() } },
+          approval_status: 'needs_review',
+          recommended_format: job.input_payload?.format ?? 'text',
+          image_headline: '',
+          compliance_flags: [],
+          updated_at: nowIso(),
+        }).eq('post_draft_id', job.post_draft_id);
+        if (evergreenDraftErr) throw new Error(`evergreen_post_draft_update_failed:${evergreenDraftErr.message}`);
+
+        if (job.slot_id) {
+          const { error: evergreenSlotErr } = await supabase.schema('m').from('slot').update({
+            status: 'filled',
+            updated_at: nowIso(),
+          }).eq('slot_id', job.slot_id);
+          if (evergreenSlotErr) throw new Error(`evergreen_slot_update_failed:${evergreenSlotErr.message}`);
+        }
+
+        const { error: evergreenJobErr } = await supabase.schema('m').from('ai_job').update({
+          status: 'succeeded',
+          output_payload: { evergreen_render: true, evergreen_id: job.input_payload?.evergreen_id ?? null },
+          error: null,
+          locked_by: null,
+          locked_at: null,
+          updated_at: nowIso(),
+        }).eq('ai_job_id', jobId);
+        if (evergreenJobErr) throw new Error(`evergreen_ai_job_update_failed:${evergreenJobErr.message}`);
+
+        results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'succeeded', evergreen_render: true });
+        continue;
+      }
+
       {
         const { data: priorSuccessLog } = await supabase
           .schema('m')
@@ -547,7 +682,7 @@ app.post('*', async (c) => {
 
           if (existingDraft && typeof existingDraft.draft_body === 'string' && existingDraft.draft_body.length > 0
               && typeof existingDraft.draft_title === 'string' && existingDraft.draft_title.length > 0) {
-            await supabase.schema('m').from('ai_job').update({
+            const { error: idempotencyJobErr } = await supabase.schema('m').from('ai_job').update({
               status: 'succeeded',
               output_payload: {
                 idempotency_skip: true,
@@ -563,6 +698,7 @@ app.post('*', async (c) => {
               locked_at: null,
               updated_at: nowIso(),
             }).eq('ai_job_id', jobId);
+            if (idempotencyJobErr) throw new Error(`idempotency_ai_job_update_failed:${idempotencyJobErr.message}`);
 
             console.log(`[ai-worker] ${VERSION} — job ${jobId}: IDEMPOTENCY SKIP (prior call ${priorSuccessLog.created_at})`);
             results.push({
@@ -577,24 +713,18 @@ app.post('*', async (c) => {
         }
       }
 
-      // Step 1: Format palette
       const { formats, perfSummary, preferredFormat } = await fetchFormatContext(supabase, job.client_id, platform);
 
-      // Step 2: Extract seed content — must handle nested payload structure
-      // rewrite_v1:      input_payload.digest_item.{title, body_text|body_excerpt}
-      // synth_bundle_v1: input_payload.items[].{title, body_text|body_excerpt}
-      // Legacy/other:    input_payload.{title, body, content, excerpt, summary}
-      // D157: prefer body_excerpt over body_text (payload diet)
-      const rawPayload = job.input_payload ?? {};
+      const rawPayload = effectivePayload;
       let seedTitle = String(rawPayload.title ?? rawPayload.headline ?? '');
       let seedBody  = String(rawPayload.body ?? rawPayload.content ?? rawPayload.excerpt ?? rawPayload.summary ?? '');
 
       if (!seedTitle && !seedBody) {
-        if (jobType === 'rewrite_v1' && rawPayload.digest_item) {
+        if (effectiveJobType === 'rewrite_v1' && rawPayload.digest_item) {
           const di = rawPayload.digest_item;
           seedTitle = String(di.title ?? di.url ?? '');
           seedBody  = String(di.body_excerpt ?? di.body_text ?? di.content ?? di.excerpt ?? '');
-        } else if (jobType === 'synth_bundle_v1' && Array.isArray(rawPayload.items) && rawPayload.items.length > 0) {
+        } else if (effectiveJobType === 'synth_bundle_v1' && Array.isArray(rawPayload.items) && rawPayload.items.length > 0) {
           seedTitle = String(rawPayload.items[0].title ?? rawPayload.items[0].url ?? '');
           seedBody  = rawPayload.items
             .map((it: any) => String(it.body_excerpt ?? it.body_text ?? it.content ?? it.excerpt ?? ''))
@@ -603,9 +733,7 @@ app.post('*', async (c) => {
         }
       }
 
-      // D157: payload diet — lean seed passed to assemblePrompts for LLM generation.
-      // Replaces body_text with body_excerpt, strips raw_html/full_content, caps length.
-      const seed = trimSeedPayload(rawPayload, jobType);
+      const seed = trimSeedPayload(rawPayload, effectiveJobType);
 
       let clientName = '', vertical = 'professional services';
       try {
@@ -620,59 +748,114 @@ app.post('*', async (c) => {
         try {
           const advised = await callFormatAdvisor({ anthropicKey, seedTitle, seedBody, clientName, vertical, formats, perfSummary, preferredFormat });
           decidedFormat = advised.formatKey; advisorReason = advised.reason; advisorImageHeadline = advised.imageHeadline; advisorDurationMs = advised.durationMs;
-          console.log(`[ai-worker] ${VERSION} — job ${jobId}: advisor chose ${decidedFormat} (${advisorDurationMs}ms) seedTitle="${seedTitle.slice(0, 60)}"`);
+          console.log(`[ai-worker] ${VERSION} — job ${jobId}: advisor chose ${decidedFormat} (${advisorDurationMs}ms) seedTitle=\"${seedTitle.slice(0, 60)}\"`);
         } catch (advisorErr: any) {
           console.error(`[ai-worker] format advisor failed for ${jobId}, defaulting to text:`, advisorErr?.message);
         }
       }
 
-      // Step 3: Write visual spec
       await writeVisualSpec(supabase, job.post_draft_id, decidedFormat, advisorReason, advisorImageHeadline, advisorDurationMs);
 
-      // Step 4: Assemble prompts
-      const { systemPrompt, userPrompt, model, temperature, maxOutputTokens, usedLegacy, complianceRuleCount } =
-        await assemblePrompts(supabase, job.client_id, platform, jobType, seed, decidedFormat, advisorImageHeadline);
+      const { systemPrompt, systemBlocks, userPrompt, model, temperature, maxOutputTokens, usedLegacy, complianceRuleCount } =
+        await assemblePrompts(supabase, job.client_id, platform, effectiveJobType, seed, decidedFormat, advisorImageHeadline);
       if (complianceRuleCount > 0) console.log(`[ai-worker] ${jobId}: ${complianceRuleCount} compliance rules injected`);
 
-      // Step 5: Generate
       const isPrimary = model.startsWith('claude');
       const primaryProvider = isPrimary ? 'anthropic' : 'openai';
       let result: Awaited<ReturnType<typeof callClaude>> | null = null;
       let fallbackUsed = false, primaryError: string | null = null;
+      let primaryRawResponse: string | null = null;
 
       if (isPrimary && anthropicKey) {
-        try { result = await callClaude({ apiKey: anthropicKey, model, systemPrompt, userPrompt, temperature, maxOutputTokens }); }
-        catch (e: any) { primaryError = e?.message ?? String(e); console.error(`[ai-worker] Claude failed for ${jobId}:`, primaryError); await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: 'anthropic', model, contentType: jobType, platform, inputTokens: 0, outputTokens: 0, costUsd: 0, fallbackUsed: false, errorCall: true }); }
+        try { result = await callClaude({ apiKey: anthropicKey, model, systemPrompt, systemBlocks, userPrompt, temperature, maxOutputTokens }); }
+        catch (e: any) {
+          primaryError = e?.message ?? String(e);
+          if (e instanceof AiParseError) primaryRawResponse = e.rawResponse;
+          console.error(`[ai-worker] Claude failed for ${jobId}:`, primaryError);
+          await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: 'anthropic', model, contentType: effectiveJobType, platform, inputTokens: 0, outputTokens: 0, costUsd: 0, fallbackUsed: false, errorCall: true });
+        }
       } else if (!isPrimary && openaiKey) {
         try { result = await callOpenAI({ apiKey: openaiKey, model, systemPrompt, userPrompt, temperature, maxOutputTokens }); }
-        catch (e: any) { primaryError = e?.message ?? String(e); await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: 'openai', model, contentType: jobType, platform, inputTokens: 0, outputTokens: 0, costUsd: 0, fallbackUsed: false, errorCall: true }); }
+        catch (e: any) {
+          primaryError = e?.message ?? String(e);
+          if (e instanceof AiParseError) primaryRawResponse = e.rawResponse;
+          await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: 'openai', model, contentType: effectiveJobType, platform, inputTokens: 0, outputTokens: 0, costUsd: 0, fallbackUsed: false, errorCall: true });
+        }
       }
 
       if (!result && primaryError && openaiKey) {
         fallbackUsed = true;
         const fallbackModel = 'gpt-4o';
-        result = await callOpenAI({ apiKey: openaiKey, model: fallbackModel, systemPrompt, userPrompt, temperature, maxOutputTokens });
-        await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: 'openai', model: fallbackModel, contentType: jobType, platform, inputTokens: result.inputTokens, outputTokens: result.outputTokens, costUsd: await calculateCostUsd(supabase, 'openai', fallbackModel, result.inputTokens, result.outputTokens), fallbackUsed: true, errorCall: false });
+        try {
+          result = await callOpenAI({ apiKey: openaiKey, model: fallbackModel, systemPrompt, userPrompt, temperature, maxOutputTokens });
+        } catch (e: any) {
+          // v2.11.1 — if fallback also threw an AiParseError, prefer the fallback's rawResponse
+          // (it's the more recent / final attempt's evidence). Re-throw to outer catch.
+          if (e instanceof AiParseError) {
+            const wrapped = new AiParseError(`primary:${primaryError} | fallback:${e.message}`, e.rawResponse);
+            throw wrapped;
+          }
+          throw e;
+        }
+        await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: 'openai', model: fallbackModel, contentType: effectiveJobType, platform, inputTokens: result.inputTokens, outputTokens: result.outputTokens, costUsd: await calculateCostUsd(supabase, 'openai', fallbackModel, result.inputTokens, result.outputTokens), fallbackUsed: true, errorCall: false });
       } else if (result) {
-        await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: primaryProvider, model, contentType: jobType, platform, inputTokens: result.inputTokens, outputTokens: result.outputTokens, costUsd: await calculateCostUsd(supabase, primaryProvider, model, result.inputTokens, result.outputTokens), fallbackUsed: false, errorCall: false });
+        await writeUsageLog(supabase, { clientId: job.client_id, aiJobId: jobId, postDraftId: job.post_draft_id, provider: primaryProvider, model, contentType: effectiveJobType, platform, inputTokens: result.inputTokens, outputTokens: result.outputTokens, costUsd: await calculateCostUsd(supabase, primaryProvider, model, result.inputTokens, result.outputTokens), fallbackUsed: false, errorCall: false });
       }
 
-      if (!result) throw new Error(primaryError ?? 'all_providers_failed');
+      if (!result) {
+        // v2.11.1 — if primary failed with a parse error and no fallback was attempted (or fallback path skipped),
+        // re-raise as AiParseError so the outer catch can persist primaryRawResponse.
+        if (primaryRawResponse) throw new AiParseError(primaryError ?? 'all_providers_failed', primaryRawResponse);
+        throw new Error(primaryError ?? 'all_providers_failed');
+      }
 
       if (result.skip) {
         const skipReason = result.skipReason || 'compliance_block';
-        await supabase.schema('m').from('post_draft').update({
+        const { error: complianceDraftErr } = await supabase.schema('m').from('post_draft').update({
           approval_status: 'dead',
           draft_format: { compliance_skip: true, reason: skipReason, at: nowIso() },
           compliance_flags: [{ rule: skipReason, severity: 'HARD_BLOCK', triggered: true, at: nowIso() }],
           updated_at: nowIso(),
         }).eq('post_draft_id', job.post_draft_id);
-        await supabase.schema('m').from('ai_job').update({ status: 'succeeded', output_payload: { skipped: true, reason: skipReason }, error: null, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
+        if (complianceDraftErr) throw new Error(`compliance_post_draft_update_failed:${complianceDraftErr.message}`);
+        if (job.slot_id) {
+          const { error: complianceSlotErr } = await supabase.schema('m').from('slot').update({
+            status: 'skipped',
+            skip_reason: `compliance_skip:${skipReason}`.slice(0, 200),
+            updated_at: nowIso(),
+          }).eq('slot_id', job.slot_id);
+          if (complianceSlotErr) throw new Error(`compliance_slot_update_failed:${complianceSlotErr.message}`);
+        }
+        const { error: complianceJobErr } = await supabase.schema('m').from('ai_job').update({ status: 'succeeded', output_payload: { skipped: true, reason: skipReason }, error: null, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
+        if (complianceJobErr) throw new Error(`compliance_ai_job_update_failed:${complianceJobErr.message}`);
         results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'compliance_skip', reason: skipReason }); continue;
       }
 
       const finalImageHeadline = result.imageHeadline || advisorImageHeadline;
-      const draftMeta = { ...(typeof result.meta === 'object' && result.meta ? result.meta : {}), ai: { provider: fallbackUsed ? 'openai' : primaryProvider, model: fallbackUsed ? 'gpt-4o' : model, fallback_used: fallbackUsed, legacy_profile: usedLegacy, compliance_rules_injected: complianceRuleCount, format_advisor_key: FORMAT_ADVISOR_PROMPT_KEY, format_decided: decidedFormat, format_reason: advisorReason, worker_id: workerId, ai_job_id: jobId, at: nowIso(), input_tokens: result.inputTokens, output_tokens: result.outputTokens } };
+      const draftMeta = {
+        ...(typeof result.meta === 'object' && result.meta ? result.meta : {}),
+        ai: {
+          provider: fallbackUsed ? 'openai' : primaryProvider,
+          model: fallbackUsed ? 'gpt-4o' : model,
+          fallback_used: fallbackUsed,
+          legacy_profile: usedLegacy,
+          compliance_rules_injected: complianceRuleCount,
+          format_advisor_key: FORMAT_ADVISOR_PROMPT_KEY,
+          format_decided: decidedFormat,
+          format_reason: advisorReason,
+          worker_id: workerId,
+          ai_job_id: jobId,
+          at: nowIso(),
+          input_tokens: result.inputTokens,
+          output_tokens: result.outputTokens,
+          cache_creation_input_tokens: result.cacheCreationInputTokens,
+          cache_read_input_tokens: result.cacheReadInputTokens,
+          slot_id: job.slot_id ?? null,
+          job_type_input: jobType,
+          job_type_effective: effectiveJobType,
+          is_shadow: job.is_shadow,
+        },
+      };
 
       const baseUpdate: any = {
         draft_title: result.title,
@@ -682,13 +865,21 @@ app.post('*', async (c) => {
         recommended_format: decidedFormat,
         recommended_reason: advisorReason,
         image_headline: finalImageHeadline,
-        compliance_flags: [],  // rules were checked, none triggered a skip
+        compliance_flags: [],
         updated_at: nowIso(),
       };
 
-      await supabase.schema('m').from('post_draft').update(baseUpdate).eq('post_draft_id', job.post_draft_id);
+      const { error: successDraftErr } = await supabase.schema('m').from('post_draft').update(baseUpdate).eq('post_draft_id', job.post_draft_id);
+      if (successDraftErr) throw new Error(`success_post_draft_update_failed:${successDraftErr.message}`);
 
-      // Step 6: Video script — non-fatal
+      if (job.slot_id) {
+        const { error: successSlotErr } = await supabase.schema('m').from('slot').update({
+          status: 'filled',
+          updated_at: nowIso(),
+        }).eq('slot_id', job.slot_id);
+        if (successSlotErr) throw new Error(`success_slot_update_failed:${successSlotErr.message}`);
+      }
+
       let videoScriptGenerated = false;
       if (VIDEO_FORMATS.has(decidedFormat) && anthropicKey) {
         try {
@@ -701,13 +892,28 @@ app.post('*', async (c) => {
         } catch (vsErr: any) { console.error('[ai-worker] generateVideoScript threw:', vsErr?.message); }
       }
 
-      await supabase.schema('m').from('ai_job').update({ status: 'succeeded', output_payload: { title: result.title, body: result.body, meta: draftMeta }, error: null, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
+      const { error: successJobErr } = await supabase.schema('m').from('ai_job').update({ status: 'succeeded', output_payload: { title: result.title, body: result.body, meta: draftMeta }, error: null, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
+      if (successJobErr) throw new Error(`success_ai_job_update_failed:${successJobErr.message}`);
 
       results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'succeeded', provider: fallbackUsed ? 'openai_fallback' : primaryProvider, model: fallbackUsed ? 'gpt-4o' : model, format_decided: decidedFormat, format_reason: advisorReason, compliance_rules_injected: complianceRuleCount, video_script_generated: videoScriptGenerated, input_tokens: result.inputTokens, output_tokens: result.outputTokens });
 
     } catch (e: any) {
       const msg = (e?.message ?? String(e)).slice(0, 4000);
-      await supabase.schema('m').from('ai_job').update({ status: 'failed', error: msg, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
+      // v2.11.1 — capture raw model response if this was a parse error.
+      // AiParseError carries err.rawResponse from inside callClaude/callOpenAI.
+      // Closes B-AI-WORKER-NO-FAILURE-PAYLOAD-LOGGING.
+      const failureOutput = (e instanceof AiParseError && e.rawResponse)
+        ? { error_response_raw: e.rawResponse.slice(0, 4000) }
+        : null;
+      const { error: failureJobErr } = await supabase.schema('m').from('ai_job').update({
+        status: 'failed',
+        error: msg,
+        output_payload: failureOutput,
+        locked_by: null,
+        locked_at: null,
+        updated_at: nowIso(),
+      }).eq('ai_job_id', jobId);
+      if (failureJobErr) console.error(`[ai-worker] failure_ai_job_update_failed for ${jobId}:`, failureJobErr.message);
       results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'failed', error: msg });
     }
   }

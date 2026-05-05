@@ -1,29 +1,15 @@
-// heygen-worker v1.0.0
-// Renders video_short_avatar drafts via HeyGen talking photo API.
-// Flow: read pending draft -> lookup avatar IDs -> submit HeyGen job ->
-//       poll until complete -> download MP4 -> upload to post-videos bucket ->
-//       set video_status = 'generated' -> youtube-publisher picks up next cron.
-//
-// Runs every 30 min via pg_cron (heygen-worker-every-30min)
-// Auth: x-heygen-worker-key header (PUBLISHER_API_KEY from vault)
-// Max 3 drafts per run
-// Supported format: video_short_avatar
-//
-// draft_format fields read:
-//   talking_photo_id  - HeyGen photo avatar ID (or looked up from c.brand_avatar)
-//   voice_id          - HeyGen voice ID (or looked up from c.brand_avatar)
-//   narration_text    - text to speak
-//   render_style      - 'realistic' | 'animated' (default: 'realistic')
-//   stakeholder_role  - role_code for avatar lookup fallback
+// heygen-worker v1.1.0
+// Fix: also read stakeholder_role and render_style from draft_format.video_script
+// (ai-worker writes via set_draft_video_script which nests inside video_script)
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION           = 'heygen-worker-v1.0.0';
+const VERSION           = 'heygen-worker-v1.1.0';
 const HEYGEN_GENERATE   = 'https://api.heygen.com/v2/video/generate';
 const HEYGEN_STATUS     = 'https://api.heygen.com/v1/video_status.get';
 const MAX_DRAFTS        = 3;
 const POLL_INTERVAL_MS  = 5000;
-const POLL_MAX_ATTEMPTS = 24; // 24 x 5s = 120s max per render
+const POLL_MAX_ATTEMPTS = 24;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,9 +17,7 @@ const corsHeaders = {
 };
 
 function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 function nowIso() { return new Date().toISOString(); }
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
@@ -69,11 +53,8 @@ async function lookupAvatar(
 }
 
 async function submitHeyGenJob(opts: {
-  apiKey: string;
-  talkingPhotoId: string;
-  voiceId: string;
-  narrationText: string;
-  bgColour?: string;
+  apiKey: string; talkingPhotoId: string; voiceId: string;
+  narrationText: string; bgColour?: string;
 }): Promise<string> {
   const { apiKey, talkingPhotoId, voiceId, narrationText, bgColour = '#F0F4F8' } = opts;
   const payload = {
@@ -92,7 +73,7 @@ async function submitHeyGenJob(opts: {
   const data = await resp.json();
   if (!resp.ok || data.error) throw new Error(`HeyGen submit failed: ${JSON.stringify(data.error ?? data).slice(0, 300)}`);
   const videoId = data.data?.video_id;
-  if (!videoId) throw new Error(`No video_id in HeyGen response`);
+  if (!videoId) throw new Error('No video_id in HeyGen response');
   return videoId;
 }
 
@@ -101,7 +82,7 @@ async function pollHeyGenJob(apiKey: string, videoId: string): Promise<string> {
     await sleep(POLL_INTERVAL_MS);
     const resp = await fetch(`${HEYGEN_STATUS}?video_id=${videoId}`, { headers: { 'X-Api-Key': apiKey } });
     const data = await resp.json();
-    const status = data.data?.status;
+    const status   = data.data?.status;
     const videoUrl = data.data?.video_url;
     if (status === 'completed' && videoUrl) return videoUrl;
     if (status === 'failed') throw new Error(`HeyGen render failed: ${data.data?.error ?? 'unknown'}`);
@@ -128,14 +109,20 @@ async function processDraft(
   apiKey: string,
   draft: { post_draft_id: string; client_id: string; draft_format: any; recommended_format: string },
 ): Promise<object> {
-  const fmt = draft.draft_format ?? {};
-  const draftId = draft.post_draft_id;
+  const fmt     = draft.draft_format ?? {};
+  const vs      = fmt.video_script ?? {};    // ai-worker writes here via set_draft_video_script
+  const draftId  = draft.post_draft_id;
   const clientId = draft.client_id;
 
+  // Resolve IDs — check top-level fmt first, then video_script (written by ai-worker)
   let talkingPhotoId: string | null = fmt.talking_photo_id ?? fmt.avatar_id ?? null;
   let voiceId: string | null        = fmt.voice_id ?? null;
-  const renderStyle: string         = fmt.render_style ?? 'realistic';
-  const stakeholderRole: string | null = fmt.stakeholder_role ?? null;
+  const renderStyle: string         = fmt.render_style ?? vs.render_style ?? 'realistic';
+  const stakeholderRole: string | null = fmt.stakeholder_role ?? vs.stakeholder_role ?? null;
+
+  // Narration — check top-level, then video_script.narration_text (ai-worker path)
+  const narrationText: string = fmt.narration_text ?? vs.narration_text ?? '';
+  if (!narrationText) throw new Error(`narration_text missing for draft ${draftId}`);
 
   if (!talkingPhotoId) {
     const avatar = await lookupAvatar(supabase, clientId, stakeholderRole, renderStyle);
@@ -145,17 +132,14 @@ async function processDraft(
   }
   if (!voiceId) throw new Error(`No voice_id for draft ${draftId}`);
 
-  const narrationText: string = fmt.narration_text ?? fmt.video_script?.narration_text ?? '';
-  if (!narrationText) throw new Error(`narration_text missing for draft ${draftId}`);
-
   const { data: brandRows } = await supabase.rpc('exec_sql', {
     query: `SELECT brand_colour_primary, cl.client_slug FROM c.client_brand_profile cbp JOIN c.client cl ON cl.client_id = cbp.client_id WHERE cbp.client_id = '${clientId}' AND cbp.is_active = true LIMIT 1`,
   });
-  const brand = (brandRows as any)?.[0];
+  const brand      = (brandRows as any)?.[0];
   const bgColour   = brand?.brand_colour_primary ?? '#0A2A4A';
   const clientSlug = brand?.client_slug ?? clientId.substring(0, 8);
 
-  console.log(`[heygen-worker] submitting render for draft ${draftId} avatar=${talkingPhotoId} style=${renderStyle}`);
+  console.log(`[heygen-worker] rendering draft ${draftId} avatar=${talkingPhotoId} style=${renderStyle} role=${stakeholderRole ?? 'any'}`);
   const heygenVideoId  = await submitHeyGenJob({ apiKey, talkingPhotoId, voiceId, narrationText, bgColour });
   const heygenVideoUrl = await pollHeyGenJob(apiKey, heygenVideoId);
 
@@ -178,7 +162,15 @@ async function processDraft(
   }).eq('post_draft_id', draftId);
 
   console.log(`[heygen-worker] done: ${draftId} -> ${storageUrl}`);
-  return { post_draft_id: draftId, format: draft.recommended_format, render_style: renderStyle, heygen_video_id: heygenVideoId, storage_url: storageUrl, status: 'generated' };
+  return {
+    post_draft_id:   draftId,
+    format:          draft.recommended_format,
+    render_style:    renderStyle,
+    stakeholder_role: stakeholderRole,
+    heygen_video_id: heygenVideoId,
+    storage_url:     storageUrl,
+    status:          'generated',
+  };
 }
 
 Deno.serve(async (req: Request) => {

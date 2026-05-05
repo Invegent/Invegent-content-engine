@@ -6,7 +6,6 @@
 //   uploaded any draft with video_status='generated' on next OAuth reconnect.
 //   T15 audit (1 May) confirmed gate was missing. F-PUB-005-class fix.
 //   ChatGPT-reviewed in 4 rounds; cleared by round-4 publisher track verdict.
-//   DEPLOYED via Supabase MCP 1 May 2026 evening (version 31).
 // v1.5.0: Fix INSERT into m.post_publish (column names + attempt_no).
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
