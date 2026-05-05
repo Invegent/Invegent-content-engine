@@ -18,6 +18,7 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
+| 2026-05-05 | ice-yt-oauth-restoration | F-YT-OAUTH-PP RESTORED for Property Pulse. Dashboard reconnect at `dashboard.invegent.com/connect` superseded staged Template 1 SQL — refreshed both PP+NY YouTube tokens (103-char canonical Google refresh_tokens written via dashboard OAuth flow). Template 2 SQL (4-draft reset) D-01 cleared first-fire `91caf322`; applied via Supabase MCP. Both subsequent cron 34 firings (:15 + :45 UTC) published all 4 stuck PP×YT drafts cleanly. First PP×YT pipeline-driven publishes since 2026-04-01. F-YT-NY-FORMAT-SELECTION brief committed `ff5ae6ae` (queued behind RECONCILE-EF-DRIFT). RECONCILE-EF-DRIFT remains P1 blocker on EF patches. M6 untouched. T-MCP-02 33 → 34. | `docs/runtime/sessions/2026-05-05-ice-yt-oauth-restoration.md` |
 | 2026-05-05 | m5-applied-corrected-cascade-fix | M5 (`p_shadow` / `is_shadow` removal) APPLIED via `m5_remove_p_shadow_corrected_v2` after first attempt failed at view-rewrite (PostgreSQL `CREATE OR REPLACE VIEW` cannot drop columns). P3 dependency miss surfaced (`m.check_evergreen_threshold` reads view); corrected packet added cascade fix. 2 D-01 fires both clean first-fire proceed. 7/7 post-apply verifications PASS. M4 invariants intact. T-MCP-02 31→33. | `docs/runtime/sessions/2026-05-05-m5-applied-corrected-cascade-fix.md` |
 | 2026-05-05 | m4-applied-state-capture-override | M4 (Defect 5: enqueue scheduled_for source + 147-row slot backfill) APPLIED via Lesson #62 state-capture override after both D-01 reviews escalated with verbatim-identical generic pushback. 8/8 post-apply verifications PASS. Forward flow proven (2 new v4 queue rows aligned). Lesson #62 sixth vindication. T-MCP-02 quota 29 → 31. | `docs/runtime/sessions/2026-05-05-m4-applied-state-capture-override.md` |
 | 2026-05-05 | tier-1-queue-integrity-applied | Tier 1 queue integrity incident remediation applied: M1 (cleanup trigger filter by queue_id), M2 (publisher per-partition cap), M3 (get_next_scheduled_for NULL fallback + enqueue guards + 1-row dead-letter). All 8/8 post-apply verifications pass. T-MCP-08 vindicated twice. 108 historical anomalies intentionally untouched per scope item 5. | `docs/runtime/sessions/2026-05-05-tier-1-queue-integrity-applied.md` |
@@ -40,46 +41,36 @@
 
 ## 🟢 Most recent session — inline summary
 
-### 2026-05-05 Sydney late afternoon — M5 applied (corrected; cascade fix on m.check_evergreen_threshold)
+### 2026-05-05 Sydney evening — F-YT-OAUTH-PP RESTORED for Property Pulse
 
-~1.5h chat-side. Full detail: `docs/runtime/sessions/2026-05-05-m5-applied-corrected-cascade-fix.md`.
+~1h chat. Full detail: `docs/runtime/sessions/2026-05-05-ice-yt-oauth-restoration.md`.
 
-**Migration applied:** `m5_remove_p_shadow_corrected_v2` (~05:25 UTC). 7 atomic steps in one transaction:
+**Outcome:** Property Pulse YouTube has been dark since 2026-04-01 due to OAuth `invalid_grant` on the stored refresh_token. PK reconnected via `dashboard.invegent.com/connect` (superseded the staged Template 1 SQL). Verification of `c.client_channel.config.refresh_token` confirmed both PP and NY tokens refreshed at 09:02 / 09:03 UTC, both 103-char canonical length, both enabled. Template 2 SQL (UPDATE on `m.post_draft` flipping 4 specific UUIDs from `video_status='failed'` → `'generated'` + clearing `youtube_upload_error`/`youtube_upload_attempted` JSONB keys) was D-01 cleared first-fire (review_id `91caf322-213d-4994-b781-abb54acc70b9`) and applied via Supabase MCP. 4 rows returned; idempotent guards held.
 
-1. DROP VIEW `m.evergreen_ratio_7d` (CREATE OR REPLACE cannot drop columns — first attempt failed with `42P16` here)
-2. CREATE VIEW `m.evergreen_ratio_7d` with new minimal shape (no shadow_*, no live_* prefix)
-3. CREATE OR REPLACE `m.check_evergreen_threshold` to read new view shape; PRESERVE consumed keys `alert` + `ratio_used`
-4. CREATE OR REPLACE `m.fill_pending_slots(p_max_slots integer DEFAULT 5)` — drop p_shadow param + all is_shadow writes + JSONB keys
-5. DROP old 2-arg function signature
-6. cron.alter_job(75) — drop p_shadow := true argument
-7. DROP COLUMN `is_shadow` from `m.post_draft` and `m.ai_job` (cascade-drops 2 indexes)
+Both subsequent cron 34 firings published cleanly: `:15` UTC took 2 kinetic drafts (4f07da94 → `fD3_BmOegaY`, 2cc22fce → `FU6AwvULcAs`); `:45` UTC took 2 stat drafts (53b16d45 → `vRTXpKrf56k`, e59a561d → `1_YU6Yc_FfI`). All 4 `m.post_publish` rows created; `pp_status='published'`; no new `youtube_upload_error` written by publisher's catch handler. End-to-end pipeline confirmed: ai-worker v2.11.1 → video-worker v2.1.0 → Supabase Storage → youtube-publisher v1.6.0 → YouTube Data API → `m.post_publish`. First PP×YT pipeline-driven publishes in ~5 weeks.
 
-**D-01 fires this session: 2.** Both clean first-fire proceed (`b3609bc4-...` original packet, `713dc407-...` corrected packet adding cascade fix). Notable counter-pattern to recent `sql_destructive` escalation streak (T-MCP-06 elevated signal). Pattern observation: clean proceeds are possible when PK pre-approves + change is non-destructive at client-facing layer + evidence empirically grounded + rollback explicit.
+**Behavioural-only investigation A (read-only)** during the holding window between cron firings produced `docs/briefs/2026-05-05-f-yt-ny-format-selection.md` (commit `ff5ae6ae`) — frames the secondary YT blocker (NY×YT 100% text-format) as platform-agnostic format-advisor-v1 logic that picks based on content shape rather than platform. PP and NY YouTube configs are identical; format distribution differs purely by content-mix (NDIS opinion vs property news with stats). 4 candidate fix shapes listed; no fix attempted. Resolution requires `RECONCILE-EF-DRIFT` to close first. Storage sanity check B confirmed both `_stat.mp4` files existed in `post-videos` bucket (150KB / 155KB, mimetype video/mp4, paths matched `video_url`).
 
-**First apply attempt FAILED** at A1 with `42P16: cannot drop columns from view`. PostgreSQL `CREATE OR REPLACE VIEW` cannot drop columns; required explicit DROP + CREATE. Investigation revealed `m.check_evergreen_threshold` reads `live_*`/`shadow_*` columns and is called inside `m.fill_pending_slots` — original D-01 packet did not list it. PK directed re-fire with corrected packet. Atomic rollback meant zero production residue.
+**D-01 fires this session: 1.** Clean first-fire proceed on bounded `sql_destructive`. Reviewer: `verdict=agree`, `risk_level=medium`, `confidence=high`, no pushback. T-MCP-02 quota: 33 → 34. **Counter-pattern to Lesson #62 reinforced: 3-of-3 clean proceeds across recent sql_destructive D-01s (M5 original + M5 corrected v2.38 + Template 2 v2.39) when PK pre-approves + change is bounded + evidence empirically grounded + rollback explicit.**
 
-**Pre-flight P3 dependency miss**: touch-point inventory caught `m.check_evergreen_threshold` as "reporting reader" but didn't escalate to column-level dependency. Lesson candidate logged: P3 must trace transitive view→fn→fn dependencies, not just touch-points. Reinforces Lesson #61.
+**New finding logged:** `RECONCILE-EF-DRIFT` (P1) — repo missing source for ai-worker v2.11.1, heygen-worker v1.1.0, video-worker v2.1.0 (entire EF, no folder in repo); youtube-publisher v1.6.0 matches. Blocks ALL EF patching including the F-YT-NY-FORMAT-SELECTION fix. Resolution: PK runs `npx supabase functions download` × 4 locally and commits as sync-only commit.
 
-**7/7 post-apply verification PASS:** V1 (fn signature has no p_shadow), V2 (view columns clean), V3 (post_draft.is_shadow gone), V4 (ai_job.is_shadow gone), V5 (both indexes cascade-dropped), V6 (cron 75 has no p_shadow), V7 (`m.check_evergreen_threshold` for CFW returns `{alert:false, ratio_used:0, source:'live', filled_total:14, evergreen_ratio:0, recommendation:'healthy'}` — both consumed keys present, semantics correct).
+**Standing rules honoured:** D-01 (1 fire, clean), Lesson #61 (P1 state-capture immediately before apply, T-MCP-14 implicitly observed), G1 (separate session-detail file), D170 (DML via execute_sql, not migration), D186 (closure ~1h, day total ~7h, trailing-14d ~26h above 8.0 floor). **No EF deploys.** **M6 untouched.** **Old D-01 review `a80cf579-...` (superseded F-YT avatar Step 1 plan) never cited as cleared.**
 
-**M4 invariants intact post-M5:** S27 drift=0; aligned v4 queue=3 (no regression). Pending-fill slots = 0 at apply time (next cron 75 fire will be a clean smoke test).
-
-**Empirical proof flag was inert (driving Option A):** 37 records flagged `is_shadow=true` had already published live to all four real clients (CFW, Invegent, NDIS-Yarns, Property Pulse) on FB+LI between 27 Apr and 5 May. Removal changes zero observable behaviour.
-
-**Standing rules honoured:** D-01 (2 fires, no override needed), D-170 (apply via Supabase MCP), Lesson #61 (P1-P5 — P3 miss caught at apply-time, fully completed second pass), G1 (session-detail file separate). **T-MCP-02 quota:** 31 → 33. **Net P0+P1 open:** 4 → 4 (M5 closed → M6 promoted recommended-next). **Closure budget:** +~1.5h, day total ~6h, trailing-14d ~25h above 8.0 floor.
+**New standing rule (from this session):** invegent-dashboard `/connect` and `/clients?tab=connect` is the canonical reconnect path for FB/IG/LI/YT OAuth tokens. OAuth Playground / Google Cloud Console is fallback only. (Memory edit landed.)
 
 ---
 
-## 🟡 Next session priorities (carry-forward from action_list v2.38)
+## 🟡 Next session priorities (carry-forward from action_list v2.39)
 
 1. Personal businesses check-in
-2. **M6 Phase A (recommended next start)** — dead-letter the 108 historical Bug 3 fingerprint queue rows. Sequenced in v2.36 brief. Will not silently publish (most are Instagram on disabled profiles) but should be cleaned up. Pending separate D-01.
-3. **47 v4-origin queue mismatch rows** (M6 Phase B) — address after M6 Phase A.
-4. **T05 Meta dev support contact** (P1-urgent) — unchanged.
-5. **CFW LI fill cycle V3-V5 acid test** — ~05-06 03:04 UTC. Now QUINTUPLE-test window: parser fix + F-PUB-009 + M2 cap-tight + M4 slot-intent + M5 no-shadow signature.
-6. **3 stuck-item clusters from health check** (P1) — re-evaluate post-Tier 1 + M4 + M5.
+2. **RECONCILE-EF-DRIFT (P1, top priority next session)** — PK runs the four `npx supabase functions download` commands from `C:\Users\parve\Invegent-content-engine` (ai-worker, heygen-worker, video-worker, youtube-publisher) and commits as sync-only commit. Required precursor to F-YT-NY-FORMAT-SELECTION fix and any future EF code work.
+3. **F-YT-NY-FORMAT-SELECTION (P1)** — sequenced after RECONCILE-EF-DRIFT. Read newly-synced ai-worker v2.11.1 source, locate `format-advisor-v1`, decide between the 4 candidate fix shapes documented in the brief.
+4. **M6 Phase A — 108 historical Bug 3 dead-letter** — still ready (v2.36 brief reusable). Only if no live issue outranks RECONCILE-EF-DRIFT or NY×YT format-selection.
+5. **T05 Meta dev support contact** (P1-urgent) — unchanged.
+6. **3 stuck-item clusters from health check** (P1) — re-evaluate post-Tier 1 + M4 + M5 + F-YT-OAUTH-PP. The PP×YT cluster may now be cleared by today's fix; verify next session.
 7. **F-AAP-NEEDS-REVIEW-BACKLOG** (P2) — 28 drafts in `needs_review`.
-8. **F-PUB-009 7-day flow check** (P2) — combined with M4/M5 forward-flow check.
+8. **F-PUB-009 7-day flow check** (P2) — combined with M4/M5/F-YT-OAUTH-PP forward-flow expectation.
 9. **Dashboard Architecture Review §1** — when PK signals; ~1.5h estimated.
 
 ---
@@ -90,7 +81,7 @@
 - Cron jobid 53 `active=false` — do not re-enable until S16 + T05 + cron `?limit=1` update
 - Cron jobid 11/64/65 (`seed-and-enqueue-{fb,ig,li}`) — paused per slot-driven v4
 - Jobid 12 (`planner-hourly`) — still active despite v3 orphan production (B-CRON-V3-ORPHAN)
-- **9 review_ids close-the-loop pending** (carry-over)
+- **9 review_ids close-the-loop pending** (carry-over) — plus v2.38's `b3609bc4` + `713dc407`, plus v2.39's `91caf322` = 12 pending. Combine in next batch closure.
 - **47 historic dead queue rows** retained as audit trail (Phase 1.7 design)
 - **6 CFW LinkedIn slots + 1 CFW Facebook slot in `exceeded_recovery_attempts`** — quiescent
 - 1 NDIS-FB dead queue row preserved per F-PUB-005 carry-forward
@@ -101,7 +92,9 @@
 - **108 historical Bug 3 fingerprint queue rows** — intentionally retained as `queued`; M6 Phase A scope
 - **queue_id `ad573844-c44a-4aa1-a43a-7f222e5b912e`** — dead-lettered with `dead_reason='m3_bug3_fallback_artifact_2026-05-05'`; do not re-queue
 - **47 v4-origin queue rows still mismatch slot intent** — pre-M4 legacy artifacts; M6 Phase B address scope
-- **NEW v2.38: 160 records previously flagged is_shadow=true lost flag metadata** — acceptable, flag was inert; 37 had already published live regardless
+- **160 records previously flagged is_shadow=true lost flag metadata** (v2.38 carry-forward) — acceptable, flag was inert; 37 had already published live regardless
+- **NEW v2.39: 2 NY×YT avatar test drafts (a501aa6a, 80d8d2b7) from 2026-04-09 with expired HeyGen-hosted URLs (`?Expires=1776301302` ≈ 15 Apr 2026)** — latent, not actionable until heygen-worker column-vs-JSONB drift resolved post-source-sync; do not touch
+- **NEW v2.39: `is_shadow: true` JSONB residue persists in `m.post_draft.draft_format.ai`** despite M5 column drop — legacy code path still writes JSONB key; investigate post-RECONCILE-EF-DRIFT; do not retroactively clean
 
 ---
 
@@ -119,4 +112,4 @@
 
 ---
 
-*Last updated: 2026-05-05 Sydney late afternoon — M5 applied corrected cascade fix (v2.38).*
+*Last updated: 2026-05-05 Sydney evening — F-YT-OAUTH-PP restored for Property Pulse (v2.39).*
