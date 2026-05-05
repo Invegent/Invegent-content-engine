@@ -4,7 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-05 Sydney evening session-end (v2.39 — **F-YT-OAUTH-PP RESTORED for Property Pulse. PK reconnected PP+NY YouTube via `dashboard.invegent.com/connect` (superseded staged Template 1 SQL). Template 2 SQL (4-draft reset) D-01 cleared first-fire `91caf322`; applied via Supabase MCP. Both subsequent cron 34 firings (:15 + :45 UTC) published all 4 stuck PP×YT drafts cleanly. First PP×YT publishes since 2026-04-01. F-YT-NY-FORMAT-SELECTION brief committed `ff5ae6ae` (queued behind RECONCILE-EF-DRIFT). New finding RECONCILE-EF-DRIFT (P1) blocks all EF patches.**). Closure budget: ~1h this session, day total ~7h, trailing-14-day ~26h.
+> Last updated: 2026-05-05 Sydney late-evening session-end (v2.40 — **F-EF-DRIFT-PREVENTION Tier 2 LOCKED at 46/46 EFs. Option F APPROVED by PK as target prevention design (drift-check EF + m.ef_drift_log + CRLF-normalised body hashing + SECURITY DEFINER regression detector + dashboard drift panel + non-blocking safe-deploy.sh). Build effort ~4-5h split across two sessions — SEPARATE session, not this one. 13 drift cases triaged into priority buckets. M6 Phase A + F-YT-NY-FORMAT-SELECTION remain BLOCKED behind build close + P1 SECURITY-DEFINER triage.**). Closure budget: ~3h this session, day total ~10h, trailing-14-day ~28h.
 
 ---
 
@@ -12,16 +12,18 @@
 
 **At session start**, chat reads this file and:
 1. Rebuilds the Today / Next 5 view
-2. Runs Standing checks (S1–S28)
-3. **Verifies D186 closure budget** (per § "Closure budget tracking" below)
+2. Runs Standing checks (S1–S29)
+3. **Verifies D186 closure budget**
 4. Asks PK about Personal businesses
 5. Surfaces Time-bound items due today/tomorrow
 
-**Standing rule (D-01)**: every production patch and action_list version bump from v2.5 onward goes through ChatGPT cross-check before deploy/commit. **Mechanism**: `ask_chatgpt_review` MCP tool. **Procedure**: `docs/runtime/mcp_review_protocol.md` v2.17. **v2.39 application**: 1 D-01 review fired this session (Template 2 — PP×YT 4-draft reset). Cleared first-fire, no escalation, no pushback. T-MCP-02 quota now 34. **Counter-pattern to Lesson #62 reinforced (3-of-3 clean proceeds in 24h on bounded `sql_destructive` actions when PK pre-approves + scope tight + evidence empirically grounded + rollback explicit).**
+**Standing rule (D-01)**: every production patch and action_list version bump from v2.5 onward goes through ChatGPT cross-check before deploy/commit. **v2.40 application**: 0 D-01 fires this session (read-only inspection scope; no patches, no deploys, no DML).
 
-**Standing rule (D-186)**: closure work has a hard time budget. 20-finding cap on P0+P1 open items + 4h/week closure floor + 2-week pause trigger on new automation if closure falls behind.
+**Standing rule (D-186)**: closure work has a hard time budget. 20-finding cap on P0+P1 open items + 4h/week closure floor + 2-week pause trigger.
 
-**NEW STANDING RULE (D-YT-OAUTH-1, v2.39)**: Use invegent-dashboard `/connect` (or `/clients?tab=connect`) page first for any FB/IG/LI/YT OAuth reconnect. Dashboard handles full OAuth flow + writes new refresh_token into `c.client_channel.config` automatically. OAuth Playground / Google Cloud Console only as fallback if dashboard flow fails. Confirmed working 5 May 2026 for PP+NY YouTube. (Memory edit landed.)
+**Standing rule (D-YT-OAUTH-1, v2.39)**: invegent-dashboard `/connect` first for FB/IG/LI/YT OAuth reconnects.
+
+**NEW STANDING RULE (D-PREV-16, v2.40)**: F-EF-DRIFT-PREVENTION Option F is the approved target design. Build is a separate session item. Until the drift-check infrastructure is live AND the 4 P1 triage cases are addressed (3 SECURITY-DEFINER syncs + insights-worker manual review), no further EF patching is safe — this includes M6 Phase A and F-YT-NY-FORMAT-SELECTION, both of which are explicitly BLOCKED.
 
 ---
 
@@ -29,169 +31,160 @@
 
 | Metric | Current | Limit | Status |
 |---|---|---|---|
-| Open findings + investigations (P0+P1) | ~5 (T05 P1-urgent + RECONCILE-EF-DRIFT + F-YT-NY-FORMAT-SELECTION + M6 Phase A pending + 3 cluster diagnoses still active) | 20 | ✅ within budget |
-| Trailing-14-day closure hours | ~26h | 8.0 floor | ✅ above floor |
+| Open findings + investigations (P0+P1) | ~7 (T05 P1-urgent + F-EF-DRIFT-PREVENTION build pending + 3 P1 SECURITY-DEFINER triage + insights-worker P1 + F-YT-NY-FORMAT-SELECTION blocked + M6 Phase A blocked + 3 cluster diagnoses still active) | 20 | ✅ within budget |
+| Trailing-14-day closure hours | ~28h | 8.0 floor | ✅ above floor |
 | Pause trigger active? | NO | — | New automation authoring still allowed |
 
-**This session's closure hours: ~1h** (OAuth reconnect verification + scope confirmation + D-01 fire + Template 2 apply + 2 cron-firing verifications + storage sanity check + F-YT-NY-FORMAT-SELECTION brief authoring + 4-way sync).
+**This session's closure hours: ~3h** (Batch 4 + 5 inspection + taxonomy cleanup + recommendation lock + brief APPROVED status + 4-way sync).
 
-**Day total (5 May): ~7h** (Tier 1 morning ~3.5h + M4 ~1h + M5 ~1.5h + F-YT-OAUTH-PP ~1h).
+**Day total (5 May): ~10h** (Tier 1 morning ~3.5h + M4 ~1h + M5 ~1.5h + F-YT-OAUTH-PP ~1h + F-EF-DRIFT-PREVENTION batches ~3h).
 
 ---
 
 ## ⭐ Today / Next 5 — REBUILD AT EVERY SESSION START
 
-> **Last rebuilt:** 2026-05-05 Sydney evening session-end (v2.39).
-> **This session: F-YT-OAUTH-PP restored for PP + F-YT-NY-FORMAT-SELECTION brief committed + RECONCILE-EF-DRIFT new P1 + 4-way sync.**
+> **Last rebuilt:** 2026-05-05 Sydney late-evening session-end (v2.40).
+> **This session: F-EF-DRIFT-PREVENTION Tier 2 LOCKED + Option F APPROVED + 4-way sync.**
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
 | 1 | Personal businesses check-in | P0 | ICE is bonus | Ask at next session start |
-| 2 | **RECONCILE-EF-DRIFT — sync deployed EF source to repo** | **P1 (TOP next session)** | Repo missing source for ai-worker v2.11.1, heygen-worker v1.1.0, video-worker v2.1.0 (whole EF, no folder); youtube-publisher v1.6.0 matches. Surfaced as F-YT-ASSET-GEN-GAP precursor. Blocks ALL EF code patching including F-YT-NY-FORMAT-SELECTION fix. | PK runs `npx supabase functions download` × 4 locally from `C:\Users\parve\Invegent-content-engine` and commits as sync-only commit. Reply "synced" to unblock. |
-| 3 | **F-YT-NY-FORMAT-SELECTION — diagnose v2.11.1 + format-advisor-v1** | **P1** | NY×YT 100% text-format → 0% YouTube publishes. PP×YT 76% text → only 24% publish viable. Brief committed `ff5ae6ae` lists 4 candidate fix shapes. Sequenced after RECONCILE-EF-DRIFT. | After source synced: read `supabase/functions/ai-worker/index.ts` v2.11.1, locate `format-advisor-v1` call site, read prompt template + candidate format list, decide between the 4 fix shapes (advisor prompt extension / post-decision override / pre-filter candidates / per-client column). Compose CC-stage brief. |
-| 4 | **M6 Phase A — 108 historical Bug 3 fingerprint dead-letter** | **P1** | Sequenced item from v2.36 incident response. 108 queue rows currently sitting `queued` since `m3_bug3_fallback_artifact_2026-05-05`-style fingerprints. Will not silently publish (most Instagram on disabled profiles) but should be cleaned up. | PK directs start; chat composes brief + D-01 + pre-flight P1-P5; apply via Supabase MCP DML. Brief reuses v2.36 incident document. |
-| 5 | **T05 Meta dev support contact** | **P1-urgent** | Unchanged from v2.29 | PK fills 2 placeholders and sends |
+| 2 | **F-EF-DRIFT-PREVENTION build phase — Option F** | **P1 (TOP next session)** | Approved as target design v2.40. Daily drift-check EF + `m.ef_drift_log` + dashboard panel + non-blocking deploy wrapper. Surfaces existing drift to PK at low friction; catches the highest-severity SECURITY-DEFINER regression-risk class via targeted regex. ~4-5h estimated, splittable. Until live, no further EF patching is safe. | Compose CC-stage briefs for the four components (drift-check EF, migration for `m.ef_drift_log`, dashboard panel, `safe-deploy.sh`). Apply migration via Supabase MCP per D170. Deploy drift-check via Windows CLI from `C:\Users\parve\Invegent-content-engine`. |
+| 3 | **P1 SECURITY-DEFINER regression-risk triage** | **P1** | Three cases (heygen-avatar-creator, heygen-avatar-poller, draft-notifier) where repo redeploy = silent production bug. Best sequenced AFTER drift-check infrastructure live so the sync commits show up green in the dashboard. | Sync repo → deployed via Windows CLI `npx supabase functions download` for each, commit as sync-only commits. Verify drift-check classifies each as Class A post-sync. |
+| 4 | **insights-worker P1 functional drift** | **P1** | Deployed v14.0.0 vs repo v1.6.0 — substantial drift. Per D-PREV-07, do NOT auto-sync; PK manually reviews deployed source for correctness first. | After drift-check live: PK reviews deployed source; if canonical, sync repo → deployed; if not, manual repair. |
+| 5 | **F-YT-NY-FORMAT-SELECTION** (P1) **BLOCKED** | P1 | Sequenced behind drift-check live + 3 SECURITY-DEFINER triage + insights-worker review. The drift-check infrastructure must be live before any further EF code work touches the v4 fix path. | After ranks 2-4 close: read v2.11.1 source, locate `format-advisor-v1` call site, decide between 4 candidate fix shapes from brief `ff5ae6ae`. |
 
-**Demoted from prior Today/Next 5 in v2.38→v2.39 cycle** (closed/resolved):
+**Demoted from prior Today/Next 5 in v2.39→v2.40 cycle:**
 
-- **F-YT-OAUTH-PP — Property Pulse YouTube OAuth invalid_grant** ✅ RESTORED v2.39. Dashboard reconnect at `/connect` superseded Template 1; Template 2 reset 4 stuck drafts (D-01 `91caf322` cleared first-fire); both cron firings published cleanly. PP×YT first 4 publishes since 2026-04-01.
+- **RECONCILE-EF-DRIFT** — ALREADY CLOSED 2026-05-05 morning by sync commit `7ba441e2`. Was incorrectly carried as Active in v2.39; corrected v2.40.
+- **M6 Phase A** — demoted from Today/Next 5 (still Active, but explicitly BLOCKED behind F-EF-DRIFT-PREVENTION build close + P1 triage; was rank 4 in v2.39, now sequenced behind everything else).
+- **T05 Meta dev support contact** — still P1-urgent, demoted to standing-list because F-EF-DRIFT-PREVENTION displaced it.
 
-**Demoted from prior Today/Next 5 in v2.37→v2.38 cycle** (still active, just not Top 5):
+---
 
-- F-AAP-NEEDS-REVIEW-BACKLOG (P2) — 28 drafts in `needs_review`. Top P2 next-up.
-- F-PUB-009 7-day flow check (P2) — combined with M4/M5/F-YT-OAUTH-PP forward-flow expectation.
-- 3 stuck-item clusters re-evaluation (P1) — PP×YT cluster may now be cleared by F-YT-OAUTH-PP; verify next session.
-- CFW LI fill cycle V3-V5 acid test — ~05-06 03:04 UTC. Quintuple-test window: parser fix + F-PUB-009 + M2 cap-tight + M4 slot-intent + M5 no-shadow signature.
+## 🟢 F-EF-DRIFT-PREVENTION — STATUS BLOCK (NEW v2.40)
+
+**Brief:** `docs/briefs/2026-05-05-f-ef-drift-prevention.md` (status APPROVED)
+**Parent:** RECONCILE-EF-DRIFT (CLOSED 2026-05-05 morning, commit `7ba441e2`)
+
+### Investigation phase: ✅ COMPLETE v2.40
+
+Tier 2 inventory locked at 46/46 deployed EFs + 2 repo-only directories.
+
+Final classification:
+| Class | Count | % |
+|---|---|---|
+| A (clean) | 26 | 57% |
+|    byte-identical | 17 | |
+|    line-ending only (CRLF/LF) | 9 | |
+| B-RR (regression-risk; deployed > repo) | 5 | 11% |
+| B-FD (forward-drift; repo > deployed) | 1 | 2% |
+| C (banner-same body-differs trap) | 7 (current) / 8 (ever-observed) | 15% |
+| D (repo file missing) | 7 | 15% |
+| Repo-only directories | 2 | (separate state) |
+
+Three commits this session: `bec80b73` Batch 4, `7bb588fa` taxonomy cleanup, `0abd8ca5` Batch 5 + lock.
+
+### Approved design: Option F
+
+| # | Component | Detail | Effort |
+|---|---|---|---|
+| 1 | `drift-check` Edge Function | Daily 03:00 AEST pg_cron. Iterates 46 EFs. CRLF-normalised body hashing. Permissive banner parser. Classifies A/B-RR/B-FD/C/D. Targeted SECURITY-DEFINER pattern detector (regex catches `exec_sql` UPDATE on c/m/f/t schemas in repo when deployed has replaced with non-`exec_sql` rpc). Writes to `m.ef_drift_log`. Lists repo-only directories. | ~2h |
+| 2 | `m.ef_drift_log` table | Columns: slug, checked_at, class, direction, deploy_version, repo_version, deployed_hash, repo_hash, security_definer_regression_risk (boolean), previous_class, state_changed (boolean), notes. Indexes on (slug, checked_at) + (class, checked_at). 90-day retention. | ~15min |
+| 3 | Dashboard drift panel | Drift by class. P1 SECURITY-DEFINER regression-risk list (urgent). B-FD informational. Class C/D + repo-only lists. State_changed notification badge. | ~1-2h |
+| 4 | `scripts/safe-deploy.sh` | Pre-deploy `git status` clean check + local matches `origin/main` check. Warns but does NOT refuse. Habit-builder. PK retains hot-fix capability. | ~30min |
+
+**Total: ~4-5h split across two sessions. Build is a SEPARATE session item, not this one.**
+
+Not building: CI deploy policy (Option D — too friction-heavy for solo); real-time deploy hook (daily cadence sufficient); auto-backfill from deployed to repo (sync commits remain manual decisions).
+
+### Build phase: ⏳ PENDING (separate session)
+
+### Triage phase: ⏳ PENDING (after build phase)
+
+### 13 existing drift cases (priority buckets, action items)
+
+| Priority | Slug | Detail | Required action |
+|---|---|---|---|
+| **P1 SECURITY-DEFINER** | heygen-avatar-creator | Deployed v2.2.0 uses `save_avatar_generation()` SECURITY DEFINER fn; repo v2.0.0 uses broken `exec_sql` UPDATE on `c.brand_avatar`. **Repo redeploy = silent fail (c schema not writable via exec_sql).** | Sync repo → deployed (download deployed v2.2.0 source, commit). Best after drift-check live so commit shows green in dashboard. |
+| **P1 SECURITY-DEFINER** | heygen-avatar-poller | Deployed v2.0.0 uses 4 SECURITY DEFINER fns + `api2.heygen.com/v2/avatar_group` endpoints; repo v1.0.0 uses broken `exec_sql` UPDATE + `api.heygen.com/v2/photo_avatar/train` endpoints. **Repo redeploy = silent fail + broken endpoints.** | Sync repo → deployed. |
+| **P1 SECURITY-DEFINER** | draft-notifier | Deployed v1.1.0 uses `mark_drafts_notified()` SECURITY DEFINER fn; repo v1.0.0 uses broken `exec_sql` UPDATE on `m.post_draft`. **Repo redeploy = drafts never marked notified → every 30min cron sends duplicate review-emails.** | Sync repo → deployed. |
+| **P1 functional drift** | insights-worker | Deployed v14.0.0 vs repo v1.6.0 — substantial functional drift. Per D-PREV-07, no auto-sync. | PK manually reviews deployed source for correctness; if canonical, sync; if not, manual repair. |
+| **P2 feature drift** | series-writer | Deployed v1.3.0 reads `c.content_series.source_material` and `format_preference` (added 20 Mar 2026); repo v1.2.0 doesn't. Repo redeploy would lose features but not corrupt data. | Sync repo → deployed. |
+| **P2 forward-drift (PK decision)** | feed-discovery | Repo v1.2.0 ahead of deployed v1.1.0 with explicit alignment-commit banner (`config.url`→`config.feed_url` + OR-fallback dedupe). Pending deploy state. | PK decides: deploy repo v1.2.0 to live OR leave deployed v1.1.0 in place. |
+| **P3 Class C polish-sync** | image-worker | Deployed minified, repo formatted; functionally equivalent. | **Skip per D-PREV-05** (no sync needed). |
+| **P3 Class C polish-sync** | feed-intelligence | Repo has dead code removed; deployed still has it. | Sync repo → deployed (low priority). |
+| **P3 Class C polish-sync** | onboarding-notifier | Deployed has comments stripped + 1 type annotation added (Studio inline-edit signature). | Sync repo → deployed (low priority). |
+| **P3 Class C polish-sync** | ai-profile-bootstrap | Repo extracted slug as variable in `buildPrompt`. | Sync repo → deployed (low priority). |
+| **P3 Class C polish-sync** | series-outline | **Affects content quality.** Deployed has carousel guidance + narrative-arc instruction in prompt; repo doesn't. | Sync repo → deployed (medium priority). |
+| **P3 Class C polish-sync** | email-ingest | Deployed has section dividers + slightly different `console.warn` text; repo single-line compacted. Cosmetic only. | Sync repo → deployed (very low priority). |
+| **P3 Class C polish-sync** | compliance-reviewer | **Affects content quality.** Deployed has different system prompt and rules-scope label (`[Universal]` vs `[Universal — all professions in vertical]`). | Sync repo → deployed (medium priority). |
+| **P3 Class D** | ingest, pipeline-doctor, pipeline-ai-summary, compliance-monitor, video-analyser, heygen-intro, heygen-youtube-upload | Deployed but no repo file. | Per slug: commit deployed source to repo OR remove deployed EF. |
+| **Repo-only triage** | ai-diagnostic | Repo v1.0.0; no deployed slug. Project memory says it runs daily but no deployed evidence. | Investigate: deploy from repo OR remove dead repo file. |
+| **Repo-only triage** | linkedin-publisher | Repo v1.2.0; deliberate forward-staging for B24/F06 (LinkedIn Community Management API approval). Banner explicitly notes "not deployed yet." | Leave alone. |
 
 ---
 
 ## 🟢 Tier 1 + M4 + M5 + F-YT-OAUTH-PP queue integrity & stability remediation — STATUS BLOCK
 
-**Briefs:**
-- `docs/briefs/2026-05-05-queue-integrity-incident.md` v3 (commit `06510ff`)
-- `docs/briefs/2026-05-05-m5-p-shadow-removal.md`
-- `docs/briefs/2026-05-05-f-yt-ny-format-selection.md` (commit `ff5ae6ae`, NEW v2.39)
-
-**Tier 1 (M1-M3): ✅ COMPLETE v2.36** — all three migrations applied 2026-05-05 02:08-03:30 UTC, 8/8 post-apply checks PASS.
-
-**M4: ✅ COMPLETE v2.37** — applied 2026-05-05 ~04:14 UTC, 8/8 post-apply checks PASS.
-
-**M5: ✅ COMPLETE v2.38** — applied 2026-05-05 ~05:25 UTC, 7/7 post-apply checks PASS.
-
-**F-YT-OAUTH-PP: ✅ COMPLETE v2.39** — Template 2 applied 2026-05-05 ~09:11 UTC, 4/4 post-apply checks PASS, 4/4 drafts published via cron 34 at :15 + :45.
-
-| Migration / Patch | Status | Applied | D-01 review_ids |
-|---|---|---|---|
-| `m1_cleanup_trigger_filter_by_queue_id` | ✅ DONE | 02:08 UTC | `02557e30-...` (proceed first fire) |
-| `m2_publisher_lock_queue_v2_per_partition_cap` | ✅ DONE | 02:35 UTC | `5850dc5a-...` escalated → `e464d685-...` re-fire proceed |
-| `m3_get_next_scheduled_for_null_fallback_and_enqueue_guards` | ✅ DONE | 02:56 UTC | `ba0fe26f-...` escalated → `6657f70c-...` re-fire proceed |
-| `m4_enqueue_scheduled_for_slot_intent_and_backfill` | ✅ DONE | ~04:14 UTC | `b03eaf14-...` escalated → `602b0fb2-...` re-fire escalated → **Lesson #62 state-capture override** (PK approval) |
-| `m4_close_the_loop_d01_reviews` | ✅ DONE | ~04:21 UTC | (audit-trail-only DML; no review needed) |
-| `m5_remove_p_shadow_corrected_v2` | ✅ DONE | ~05:25 UTC | `b3609bc4-...` proceed → first apply failed (`42P16`) → `713dc407-...` corrected packet proceed → applied cleanly |
-| **F-YT-OAUTH-PP Template 2** (v2.39) | ✅ DONE | ~09:11 UTC | `91caf322-...` proceed first fire (clean) |
-
-**Cleanup performed:** v2.36 dead-lettered queue_id `ad573844`. v2.37 backfilled 147 rows of `m.post_draft.scheduled_for`. v2.38 dropped p_shadow / is_shadow + indexes; refactored view + `m.check_evergreen_threshold` + `m.fill_pending_slots`; updated cron 75. **v2.39 reset 4 specific PP×YT drafts (`4f07da94`, `2cc22fce`, `53b16d45`, `e59a561d`) from `video_status='failed'` → `'generated'`; cleared `youtube_upload_error` + `youtube_upload_attempted` JSONB keys.**
-
-**Tier 2-3 (M6-M8): pending separate D-01 reviews.**
-
-| Migration | Description | Status |
-|---|---|---|
-| M6 Phase A | Dead-letter 108 historical Bug 3 fingerprint anomalies | ⏳ pending PK call — recommended next AFTER RECONCILE-EF-DRIFT and F-YT-NY-FORMAT-SELECTION |
-| M6 Phase B | Address 47 v4 mismatch queue rows | ⏳ sequenced after M6 Phase A |
-| M7 | Promote v4 (atomic with M8) | ⏳ pending |
-| M8 | Disable legacy enqueue + remaining legacy futures | ⏳ pending |
-
-**T-MCP-08 vindicated 2x in v2.36 (M2 + M3 re-fires).** **Lesson #62 vindicated 1x in v2.37 (M4 re-fire); sixth vindication overall.** **v2.38 + v2.39 clean-proceed counter-pattern: 3-of-3 D-01 fires proceed first-time without escalation despite `sql_destructive` action_type.**
+Unchanged from v2.39 — all migrations applied + verifications PASS. M6-M8 still pending; M6 Phase A explicitly BLOCKED behind F-EF-DRIFT-PREVENTION build close + P1 triage per v2.40.
 
 ---
 
 ## 🔄 Standing session-start checks
 
-| # | Check | How | Threshold to act |
-|---|---|---|---|
-| S1–S15 | (per v2.13) | (see v2.13) | (see v2.13) |
-| S16 | Auto-approver fresh-approval rate | (per v2.30) | (per v2.30) |
-| S17 | ChatGPT Review MCP cost + idempotency rate | (per v2.25) | **v2.39 note**: 34 fires total (1 fire this session — Template 2, clean proceed). 7d escalation rate now 17/35 = 49% (T-MCP-06 signal trending lower as sql_destructive clean-proceed pattern accumulates). |
-| S18 | D186 closure budget (per session start) | (per v2.25) | **Currently at ~26h trailing-14-day — well above 8.0 floor.** |
-| S19 | R01 Data Auditor closure effectiveness | (per v2.30) | (per v2.30) |
-| S21 | Pipeline incident health | `SELECT * FROM audit.v_brand_platform_audit_matrix ORDER BY CASE likely_bottleneck WHEN 'ok_or_recently_active' THEN 99 ELSE 1 END, client_slug, platform;` | Watch for: classification shifts. v2.34 added `approved_not_queued_genuine_gap` label. **v2.39 note**: PP×YT cluster should now show as `ok_or_recently_active` post-F-YT-OAUTH-PP. |
-| S22 | Cron heartbeat health | `SELECT jobname, status, minutes_since_last, consecutive_misses FROM m.cron_health_status WHERE status != 'green';` | Empty result = all crons healthy. |
-| S23 | F-PUB-009 forward-flow check | `SELECT count(*) FROM m.post_draft d JOIN m.slot s ON s.filled_draft_id = d.post_draft_id WHERE d.created_at >= NOW() - INTERVAL '24 hours' AND d.scheduled_for IS NOT NULL` | Should be > 0 within 24h post-apply, growing. |
-| S24 | F-AI-WORKER-PARSER-SKIP-BUG forward verification | `SELECT count(*) FROM m.ai_job WHERE updated_at >= NOW() - INTERVAL '24 hours' AND status='succeeded' AND output_payload->>'skipped' = 'true'` | Should be > 0 within 24h post-apply when CFW LI fill cycles fire. |
-| S25 | Cowork autonomous run check | Verify `docs/audit/health/{today}.md` exists; check no cc-owned briefs were picked up by Cowork. | Empty health file or any cc-owned brief picked up = v2.2 owner-gate failure; investigate. |
-| S26 | Tier 1 fix forward verification | Check (a) cron 48 still uses CTE wrapper + IS NOT NULL filter; (b) `m.post_publish_queue` NULL `scheduled_for` count = 0; (c) publisher per-partition cap respected. | Any drift = regression. |
-| S27 | M4 forward verification | (1) `SELECT count(*) FROM m.post_draft pd JOIN m.slot s ON s.slot_id = pd.slot_id WHERE pd.slot_id IS NOT NULL AND pd.scheduled_for IS DISTINCT FROM s.scheduled_publish_at` — should remain 0. (2) Publisher-eligible aligned v4 queue rows growing. | Drift on (1) = M4 regression. **v2.39 verified: drift=0 (no regression post-F-YT-OAUTH-PP).** |
-| S28 | M5 forward verification | (1) `m.fill_pending_slots(p_max_slots integer)` exists, no p_shadow arg. (2) After cron 75 fires, no errors. (3) `m.evergreen_ratio_7d` returns rows on every call. (4) `m.check_evergreen_threshold` returns `alert` and `ratio_used` keys. | Any failure = M5 regression. |
-| **S29 NEW v2.39** | **F-YT-OAUTH-PP forward verification** | After 24-48h: `SELECT COUNT(*) FROM m.post_publish WHERE platform='youtube' AND client_id='4036a6b5-b4a3-406e-998d-c2fe14a8bbdd' AND published_at >= NOW() - INTERVAL '24 hours' AND status='published';` should grow as new PP×YT video drafts are auto-approved + auto-published. Plus: `m.post_draft` for PP×YT in last 24h with `video_status='failed'` AND `youtube_upload_error LIKE '%invalid_grant%'` should remain 0. | Either new invalid_grant errors OR zero new PP×YT publishes within 7 days = regression OR ai-worker still picking text only (latter is F-YT-NY-FORMAT-SELECTION territory, not F-YT-OAUTH-PP regression). |
+Unchanged from v2.39 (S1–S29).
 
 ---
 
 ## 🔴 Time-bound (calendar-driven deadlines)
 
-Unchanged from v2.31.
-
-**v2.39 status delta**: F-YT-OAUTH-PP closed for PP. RECONCILE-EF-DRIFT + F-YT-NY-FORMAT-SELECTION queued. M6-M8 still sequenced.
+Unchanged from v2.31. **v2.40 status delta**: F-EF-DRIFT-PREVENTION investigation closed; build phase queued for separate session.
 
 ---
 
 ## 🛠 Meta-tooling — ChatGPT Review MCP (T-MCP-02 quota at 34 of 5)
 
-| ID | Item | Priority | Trigger |
-|---|---|---|---|
-| T-MCP-01 | ✅ DONE | Closed | — |
-| T-MCP-02 | ✅ EXCEEDED 34 of 5 | — | — |
-| T-MCP-03 | Rotate `MCP_BRIDGE_BEARER_TOKEN` | P2 | Within 7 days |
-| T-MCP-04 | Operationalise D-01 standing rule | P1 | Half-codified v2.17 |
-| T-MCP-05 | ✅ DONE v2.29 | — | — |
-| T-MCP-05-NEW | Close-the-loop UPDATE on `1bae5068-...` | P3 | PK confirm |
-| T-MCP-05-NEW2 | Close-the-loop UPDATE on review_ids from v2.34 + v2.38 + v2.39 | P3 | Combine in next batch closure (7 carry-overs + v2.38's `b3609bc4` + `713dc407` + v2.39's `91caf322` = 10 pending) |
-| T-MCP-06 | Investigate plan_review + sql_destructive escalation rates | P3 | **v2.39 update**: sql_destructive clean-proceed pattern now 3-of-3 across v2.38 (M5 ×2) + v2.39 (Template 2). Counter-pattern to recent escalation streak is reproducible when PK pre-approves + bounded scope + empirical evidence + reversible. Track for canonical promotion of clean-proceed pattern. |
-| T-MCP-08 | ✅ PROMOTED canonical v2.29 | **REINFORCED 2x v2.36** | M2 + M3 re-fires |
-| T-MCP-09 | Lesson candidate: post-apply ACL verification | P3 | After 1-2 more instances |
-| T-MCP-10 | Lesson candidate: state-snapshot age ≥ 4h re-verification | P3 | After 1-2 more instances |
-| T-MCP-11 | Lesson candidate: pre-flight discipline includes verifying log/health table actually contains data | P3 | Bundle with T-MCP-12 for promotion |
-| T-MCP-12 | Lesson candidate: query EVERY annotation column when verifying table contents | P3 | Bundle with T-MCP-11 for promotion |
-| T-MCP-13 | Lesson candidate: pre-flight P3 must trace transitive view→fn→fn dependencies, not just touch-points | P2 | Surfaced v2.38. Promote to canonical after 1 more vindication. |
-| T-MCP-14 | Lesson candidate: destructive apply must re-snapshot state immediately before apply if >5min has passed since last capture | P2 | Surfaced v2.38 closeout. **v2.39 implicitly honoured** — Template 2 had ~2 min between final state-check and D-01 fire. Promote to canonical after 1 more vindication. |
-| **T-MCP-15 NEW v2.39** | **Lesson candidate: don't conclude a feature is missing from a 0-hit code search** | P3 | Surfaced v2.39 — `github:search_code` for `youtube oauth` against invegent-dashboard returned 0 hits despite the feature being live and in production use (PK's reconnect flow). Code search is not exhaustive across all repo paths. Always verify with PK before recommending external alternatives like OAuth Playground. Promote to canonical after 1 more vindication. |
+Unchanged from v2.39. **v2.40 application: 0 D-01 fires** (read-only inspection scope). Cumulative: 34 fires total.
 
 ---
 
 ## 🤖 Cowork automation (D182)
 
-**v2.39 update**: 2026-05-05 02:00 AEST autonomous run executed cleanly under v2.2 owner-gate (per v2.36). Sunset review: 12 May 2026 — unchanged.
+Unchanged from v2.39. Sunset review: 12 May 2026.
 
 ---
 
 ## 🧭 ICE Dashboard Architecture Review (v2.35)
 
-Unchanged from v2.35. §1 (Current-state inventory) remains NEXT — when PK signals.
+Unchanged. §1 (Current-state inventory) remains NEXT — when PK signals.
 
 ---
 
 ## 🟡 Active
 
-Per v2.31 except:
+Per v2.39 except:
 
 | ID | Item | Priority | Status | Owner | Next action |
 |---|---|---|---|---|---|
-| **NEW v2.39: RECONCILE-EF-DRIFT — sync deployed EF source to repo** | ai-worker v2.11.1, heygen-worker v1.1.0, video-worker v2.1.0 deployed but not in repo; youtube-publisher v1.6.0 matches | **P1 (top next session)** | Pending PK local | PK → repo → next session | Run `npx supabase functions download` × 4 from `C:\Users\parve\Invegent-content-engine`. Commit as sync-only commit. Reply "synced". Required precursor to F-YT-NY-FORMAT-SELECTION fix and ALL EF code patches. |
-| **NEW v2.39: F-YT-NY-FORMAT-SELECTION** | NY×YT 100% text-format → 0% YouTube publishes. PP×YT 76% text → only 24% publish viable. Format-advisor-v1 platform-agnostic logic. | P1 | Brief committed `ff5ae6ae`; sequenced after RECONCILE-EF-DRIFT | chat → next session | Read v2.11.1 source post-sync, locate `format-advisor-v1` call site, decide between 4 candidate fix shapes from brief, compose CC-stage brief, D-01, deploy. |
-| **M6 Phase A — 108 historical Bug 3 dead-letter** | Clean up `queued` rows with Bug 3 fingerprint | P1 | Pending PK call (carried from v2.38) | PK → chat → after RECONCILE-EF-DRIFT + F-YT-NY-FORMAT-SELECTION | PK directs start; chat composes brief + D-01 + pre-flight P1-P5; apply via Supabase MCP DML. |
-| **47 v4 mismatch queue rows** (M6 Phase B) | Pre-M4 legacy artifacts | P3 | Sequenced after M6 Phase A | Backlog | Address as part of M6 Phase B. |
-| **3 stuck-item clusters re-evaluation** | LinkedIn-PP residual + YouTube-PP unexpected + YouTube-NY unexpected | P1 | PP×YT cluster likely cleared by F-YT-OAUTH-PP; NY×YT cluster blocked on F-YT-NY-FORMAT-SELECTION | chat → next session | Re-query S21 audit matrix; verify PP×YT now `ok_or_recently_active`. |
-| **F-AI-WORKER-PARSER-SKIP-BUG V3-V5** | Forward acid-test of parser fix on CFW LI × image_quote | P1 | DEPLOYED v2.34; awaiting CFW LI fill cycle (~05-06 03:04 UTC) | chat → next session | Query `m.ai_job` after 2026-05-06 03:04 UTC for CFW LI rows with `output_payload->>'skipped' = 'true'` |
-| **F-PUB-009 V3-V5 + 7-day flow** | Forward acid-test of slot intent write | P1 | APPLIED v2.34; combined with M4/M5 forward-flow check | chat → next session | Query `m.post_draft` newly-filled rows for `scheduled_for IS NOT NULL` matching `slot.scheduled_publish_at` |
-| **ICE Dashboard Architecture Review** | 11-section formal review | strategic-product | KICKOFF complete v2.35; §1 next | chat ↔ PK | PK signals start, write §1 in `Invegent-content-engine/docs/dashboard-review-2026-05/01-current-state-inventory.md` (~1.5h) |
-| (others) | per v2.31 | — | — | — | per v2.31 |
+| **NEW v2.40: F-EF-DRIFT-PREVENTION build phase** | Option F: drift-check EF + m.ef_drift_log + dashboard panel + safe-deploy.sh | **P1 (top next session)** | APPROVED 2026-05-05 v2.40; build separate session | chat → next session(s) | Compose CC-stage briefs for the 4 components; apply migration via Supabase MCP; deploy drift-check via Windows CLI. ~4-5h splittable. |
+| **NEW v2.40: P1 SECURITY-DEFINER triage** | heygen-avatar-creator + heygen-avatar-poller + draft-notifier | P1 | Sequenced after drift-check infrastructure live | PK + chat | `npx supabase functions download` from `C:\Users\parve\Invegent-content-engine` for each, commit as sync-only commits. |
+| **NEW v2.40: insights-worker P1 functional drift** | Deployed v14.0.0 vs repo v1.6.0 | P1 | D-PREV-07: no auto-sync; manual review first | PK | After drift-check live: PK reviews deployed source for correctness, then decides sync direction. |
+| **F-YT-NY-FORMAT-SELECTION** (carry-forward) | Brief committed `ff5ae6ae` | P1 | **BLOCKED behind F-EF-DRIFT-PREVENTION build close + P1 triage** | chat → future session | Read v2.11.1 source post-build/triage; locate `format-advisor-v1`; decide between 4 fix shapes. |
+| **M6 Phase A — 108 historical Bug 3 dead-letter** (carry-forward) | Clean up `queued` rows with Bug 3 fingerprint | P1 | **BLOCKED behind F-EF-DRIFT-PREVENTION build close + P1 triage** | PK → chat → future session | After F-YT-NY-FORMAT-SELECTION clears: PK directs start; chat composes brief + D-01 + pre-flight P1-P5; apply via Supabase MCP DML. |
+| **47 v4 mismatch queue rows** (M6 Phase B) | Pre-M4 legacy artifacts | P3 | Sequenced after M6 Phase A | Backlog | After M6 Phase A. |
+| **3 stuck-item clusters re-evaluation** | LinkedIn-PP residual + YouTube-PP unexpected + YouTube-NY unexpected | P1 | PP×YT cluster cleared by F-YT-OAUTH-PP; NY×YT cluster blocked on F-YT-NY-FORMAT-SELECTION | chat → next session | Re-query S21 audit matrix. |
+| **F-AI-WORKER-PARSER-SKIP-BUG V3-V5** | Forward acid-test of parser fix | P1 | DEPLOYED v2.34; awaiting CFW LI fill cycle | chat → next session | Query `m.ai_job` after 2026-05-06 03:04 UTC. |
+| **F-PUB-009 V3-V5 + 7-day flow** | Forward acid-test of slot intent write | P1 | APPLIED v2.34; combined forward-flow check | chat → next session | Query `m.post_draft` newly-filled rows. |
+| **ICE Dashboard Architecture Review** | 11-section formal review | strategic-product | KICKOFF complete; §1 next | chat ↔ PK | PK signals start. |
+| (others) | per v2.39 | — | — | — | per v2.39 |
 
-**Closed v2.39:**
+**Closed v2.40:**
 
-- **F-YT-OAUTH-PP — Property Pulse YouTube OAuth invalid_grant** ✅ — PK reconnected via `dashboard.invegent.com/connect` (superseded Template 1 SQL); Template 2 reset 4 stuck PP×YT drafts; D-01 cleared first-fire `91caf322-213d-4994-b781-abb54acc70b9`; both cron 34 firings (:15 + :45) published cleanly: `4f07da94→fD3_BmOegaY`, `2cc22fce→FU6AwvULcAs`, `53b16d45→vRTXpKrf56k`, `e59a561d→1_YU6Yc_FfI`. First PP×YT pipeline-driven publishes since 2026-04-01 (~5 weeks dark). Traceability: `docs/runtime/sessions/2026-05-05-ice-yt-oauth-restoration.md`.
+- **F-EF-DRIFT-PREVENTION investigation phase** ✅ — Tier 2 inventory locked at 46/46 EFs + 2 repo-only. Recommendation Option F APPROVED. Build phase + triage phase remain Active. Brief: `docs/briefs/2026-05-05-f-ef-drift-prevention.md` (status APPROVED). Traceability: `docs/runtime/sessions/2026-05-05-f-ef-drift-prevention-locked.md`.
 
-**Closed v2.38:**
-
-- **M5 — `p_shadow` / `is_shadow` removal + cascade fix on `m.check_evergreen_threshold`** ✅
+**Closed v2.39:** F-YT-OAUTH-PP for Property Pulse.
+**Closed v2.38:** M5.
 
 ---
 
@@ -203,52 +196,47 @@ Per v2.31 except:
 
 ## 📌 Backlog
 
-**v2.39 changes**:
+**v2.40 changes**:
 
-- **NEW v2.39**: RECONCILE-EF-DRIFT (P1) — promoted to Active, top next-session.
-- **NEW v2.39**: F-YT-NY-FORMAT-SELECTION (P1) — promoted to Active, queued behind RECONCILE-EF-DRIFT.
-- **NEW v2.39**: T-MCP-15 lesson candidate — code-search 0-hits ≠ feature missing.
-- **NEW v2.39**: D-YT-OAUTH-1 standing rule — dashboard `/connect` first for OAuth reconnects.
-- **NEW v2.39**: S29 standing check — F-YT-OAUTH-PP forward verification.
-- **Closed v2.39**: F-YT-OAUTH-PP for Property Pulse.
+- **NEW v2.40**: F-EF-DRIFT-PREVENTION build phase (Active, P1 top next session).
+- **NEW v2.40**: 13 existing drift cases triaged into priority buckets (Active under STATUS BLOCK section above).
+- **NEW v2.40**: D-PREV-13/14/15/16 added to brief decisions log.
+- **NEW v2.40**: D-PREV-16 — PK approved Option F (target prevention design).
+- **Closed v2.40**: F-EF-DRIFT-PREVENTION investigation phase (build phase + triage phase remain Active).
+- M6 Phase A explicitly BLOCKED behind F-EF-DRIFT-PREVENTION build close + P1 triage (was Active P1 #4 in v2.39; still Active but blocked).
+- F-YT-NY-FORMAT-SELECTION explicitly BLOCKED behind same gate.
+
+**v2.39 changes** (still active):
+
+- T-MCP-15 lesson candidate — code-search 0-hits ≠ feature missing.
+- D-YT-OAUTH-1 standing rule.
+- S29 standing check.
 
 **v2.38 changes** (still active):
 
-- T-MCP-13 lesson candidate (pre-flight P3 transitive dependency mapping).
-- T-MCP-14 lesson candidate (re-snapshot rule for parallel-session safety).
-- M5 closed.
-- M6 Phase A promoted Active (still pending PK call; demoted from #2 to #4 in v2.39 due to RECONCILE-EF-DRIFT and F-YT-NY-FORMAT-SELECTION priorities).
+- T-MCP-13 + T-MCP-14 lesson candidates.
 
-**v2.37 changes** (still active):
+**v2.37 + v2.36 changes** (still active):
 
-- M6-M8 sequenced for Tier 2-3.
-- 108 historical Bug 3 fingerprint queue rows intentionally retained as `queued`; M6 Phase A address scope.
+- M6-M8 sequenced (now blocked).
+- 108 historical Bug 3 fingerprint queue rows retained.
 - queue_id `ad573844` dead-lettered.
-- 47 v4-origin queue rows still mismatch slot intent — M6 Phase B address scope.
-
-**v2.36 changes** (still active):
-
-- (M5 closed in v2.38; M6-M8 still sequenced)
+- 47 v4-origin queue rows mismatch slot intent.
 
 **v2.35 changes** (still active):
 
-- F-COWORK-OWNER-GATE-BUG ✅ CLOSED v2.35.
-- 3 stuck-item clusters from health check — Active P1; re-evaluated v2.36 + v2.37 + v2.38 + v2.39.
-- ICE Dashboard Architecture Review — Active strategic workstream.
+- 3 stuck-item clusters from health check.
+- ICE Dashboard Architecture Review.
 
 **v2.34 changes** (still active):
 
-- F-AI-WORKER-PARSER-SKIP-BUG, F-AAP-007 v2, F-PUB-009 — V3-V5 acid tests remain (Active rows). Quintuple-test window ~05-06 03:04 UTC.
+- F-AI-WORKER-PARSER-SKIP-BUG, F-AAP-007 v2, F-PUB-009 V3-V5 acid tests.
 
 **v2.33 additions** (still active):
 
-- **F-AAP-NEEDS-REVIEW-BACKLOG (P2)** — 28 drafts. Top P2 next-up.
-- **B-TOKEN-HEALTH-EMPTY (P3)** — `m.platform_token_health` empty for all clients.
-- **F-CFW-LI-DUP-SLOTS (P3)** — historic; part of 6 exceeded_recovery_attempts cluster.
+- F-AAP-NEEDS-REVIEW-BACKLOG (P2), B-TOKEN-HEALTH-EMPTY (P3), F-CFW-LI-DUP-SLOTS (P3).
 
-**Carried from v2.31**:
-
-- **B-WORKER-LOG-GAP (P3)**, **B-AUDIT-FRAMEWORK-PROPOSAL (P3)**, **B-CRON-BLOAT (P3)**, **F-AAP-003 (P3)**, **B-CRON-V3-ORPHAN (P3)**, **B-CRON-V3-ORPHAN-READERS (P3)**, **F-AAP-004/005/006 (P3-P4 dormant)**, **F-AAP-001 dead-join cleanup**, **B-AUDIT-CYCLE3**, **F-PUB-008** (NULL platform_post_id, P2), **B-INV-LinkedIn-PhantomPublishes** (P2), **B39** (Drain over-cap queues, P3 by design), **B-PP-FB-ORPHAN-PENDING-FILL (P3)**, **F-RECOVER-LOOP-001 (P3 demoted v2.33)**.
+**Carried from v2.31**: per v2.39.
 
 ---
 
@@ -260,52 +248,36 @@ Unchanged.
 
 ## 🎓 Canonical Lessons
 
-- Lesson #46 (PROMOTED, third vindication v2.15)
-- Lesson #51 (HONOURED v2.39 twenty-first — pre-flight P1-P5 honoured before Template 2 apply)
-- Lesson #58 candidate, #59 candidate, #60 candidate
-- Lesson #61 PROMOTED canonical (REINFORCED v2.25, seventh vindication; REINFORCED v2.38; **REINFORCED v2.39 — state-capture immediately before Template 2 apply, T-MCP-14 implicitly honoured**)
-- **Lesson #62 type-(c) — sixth vindication v2.37 (M4 re-fire). READY FOR CANONICAL PROMOTION.** v2.38 + v2.39 did not vindicate (3 clean proceeds in 24h); promotion still pending but counter-pattern accumulating evidence for distinct lesson.
-- G1 sync_state restructure (v2.23) — honoured through v2.39
-- Lessons #40, #41, #42 promoted canonical
-- T-MCP-08 PROMOTED canonical v2.29 — REINFORCED 2x v2.36
-- T-MCP-09 lesson candidate (post-apply ACL verification, since v2.29)
-- T-MCP-10 lesson candidate (state-snapshot age ≥ 4h re-verification, since v2.30)
-- T-MCP-11 lesson candidate (pre-flight log/health table content verification, since v2.31)
-- T-MCP-12 lesson candidate (query EVERY annotation column when verifying, since v2.32)
-- T-MCP-13 lesson candidate (pre-flight P3 transitive dependency mapping, since v2.38)
-- T-MCP-14 lesson candidate (state-freshness rule for destructive apply, since v2.38)
-- **T-MCP-15 NEW v2.39: code-search 0-hits ≠ feature missing.** GitHub MCP `search_code` returned 0 hits for `youtube oauth` against invegent-dashboard despite the feature being live. Promote to canonical after 1 more vindication.
-- **Clean-proceed counter-pattern on `sql_destructive`** — v2.38 (2 fires) + v2.39 (1 fire) = 3-of-3 clean proceeds when PK pre-approves + scope tight + evidence empirically grounded + rollback explicit. Distinct from Lesson #62; promote to canonical after 1-2 more vindications.
-- Lesson candidates v2.33-v2.36 retained.
+Per v2.39 plus:
+
+- **F-EF-DRIFT-PREVENTION investigation pattern v2.40 — candidate canonical**: Tier 2 chunked-batch inventory (~10 EFs each) + structural/directional taxonomy + targeted pattern detection for the most-dangerous regression class is reproducible for any future cross-system audit (e.g. SQL function drift, dashboard component drift, migration-vs-deployed-schema drift). Surfaced v2.40; promote to canonical after 1 reuse.
+- **D-PREV-13 taxonomy split** (structural × directional axes) — candidate canonical for any drift/version audit work; promote after 1 reuse.
 
 ---
 
-## v2.39 honest limitations
+## v2.40 honest limitations
 
-- All v2.31-v2.38 limitations apply.
-- **F-YT-OAUTH-PP closed for PP only.** NY×YT OAuth not verified end-to-end (NY has no historical YT publishes; only test data). Cannot prove NY's new refresh_token works for upload until ai-worker selects a video format for NY×YT — currently 0% per F-YT-NY-FORMAT-SELECTION.
-- **F-YT-NY-FORMAT-SELECTION fix path is unconfirmed.** Brief lists 4 candidate fix shapes; the actual implementation depends on `format-advisor-v1`'s architecture which is not visible without source sync. Blocks on RECONCILE-EF-DRIFT.
-- **`is_shadow: true` JSONB residue persists in `m.post_draft.draft_format.ai`** despite M5 column drop. Legacy code path still writes the JSONB key. Not a regression; investigate post-source-sync.
-- **2 NY×YT avatar test drafts** (a501aa6a, 80d8d2b7) from 2026-04-09 have HeyGen-hosted URLs that have already expired (`?Expires=1776301302` ≈ 15 Apr 2026). Latent issue; not actionable until heygen-worker column-vs-JSONB drift resolved post-source-sync.
-- **10 close-the-loop UPDATEs still pending** (carry-over 7 + v2.38's 2 + v2.39's `91caf322`). Combine in next batch closure.
-- **Closure budget remains well above floor** (~26h trailing-14-day). v2.39 added ~1h; rate continues high but justified by directly attributable production-defect closure.
-- **RECONCILE-EF-DRIFT identified as a blocker but not yet resolved.** PK runs the source-download commands locally when ready. Until then, no EF code patching is safe.
+- All v2.31-v2.39 limitations apply.
+- **F-EF-DRIFT-PREVENTION investigation closed but build NOT done.** The 13 drift cases identified remain unchanged in production until the build phase ships. Most are benign; the 3 P1 SECURITY-DEFINER cases are the active risk — a redeploy of any of those repo files would silently break production. PK is aware; do not redeploy heygen-avatar-creator, heygen-avatar-poller, or draft-notifier from repo until sync’d.
+- **M6 Phase A and F-YT-NY-FORMAT-SELECTION are now explicitly blocked.** This is a deliberate sequencing choice (per D-PREV-16) so source-safety infrastructure is in place before further EF code work.
+- **The drift-check infrastructure does not exist yet.** Until it does, drift accumulation between sessions is invisible. The recommendation is to build it before any other EF deploy, but PK retains the call on sequencing.
+- **`ai-diagnostic` repo-only directory operational status remains unclear.** Project memory claims daily 6am AEST runs against `m.ai_diagnostic_report`; no deployed slug `ai-diagnostic` exists. Either functionality has been folded into another deployed EF, or the EF was authored but never deployed. Triage candidate, not yet investigated.
+- **12 close-the-loop UPDATEs still pending** (carry-over). v2.40 added 0. Combine in next batch closure.
+- **Closure budget remains well above floor** (~28h trailing-14-day). v2.40 added ~3h.
 
 ---
 
 ## Changelog
 
-- v1.0–2.32: per previous changelog.
-- v2.33–2.37: per previous changelog.
-- v2.38: per previous changelog.
-- **v2.39 (2026-05-05 Sydney evening session-end, F-YT-OAUTH-PP restored for Property Pulse):**
-  - **F-YT-OAUTH-PP CLOSED for Property Pulse.** PK reconnected PP+NY YouTube via `dashboard.invegent.com/connect` (superseded staged Template 1 SQL). c.client_channel.config.refresh_token verified at 09:02 (NY) and 09:03 (PP) UTC, both 103-char canonical Google length, both is_enabled=true. Template 2 SQL — `UPDATE m.post_draft SET video_status='generated', draft_format = draft_format - 'youtube_upload_error' - 'youtube_upload_attempted'` for 4 specific UUIDs with state guards — D-01 cleared first-fire `91caf322`. Applied via Supabase MCP execute_sql. 4 rows returned, idempotent guards held. Both cron 34 firings published cleanly: 09:15 took kinetic drafts (4f07da94 → `fD3_BmOegaY`, 2cc22fce → `FU6AwvULcAs`); 09:45 took stat drafts (53b16d45 → `vRTXpKrf56k`, e59a561d → `1_YU6Yc_FfI`). All 4 m.post_publish rows created; pp_status='published'; no new youtube_upload_error.
-  - **NEW finding RECONCILE-EF-DRIFT (P1)**: ai-worker v2.11.1, heygen-worker v1.1.0, video-worker v2.1.0 (entire EF) deployed but not in repo; youtube-publisher v1.6.0 matches. Surfaced as F-YT-ASSET-GEN-GAP precursor. Blocks ALL EF code patching including F-YT-NY-FORMAT-SELECTION fix. Resolution: PK runs `npx supabase functions download` × 4 locally and commits as sync-only commit.
-  - **NEW finding F-YT-NY-FORMAT-SELECTION (P1)**: ai-worker v2.11.1 selects `recommended_format='text'` for 100% NY×YT (8/8) and 76% PP×YT (13/17). Format-advisor-v1 (visible in `draft_format.ai.format_advisor_key`) is a separate component making content-driven decisions; platform-agnostic in current logic. Brief committed `docs/briefs/2026-05-05-f-yt-ny-format-selection.md` (commit `ff5ae6ae`). Lists 4 candidate fix shapes; no fix attempted. Sequenced after RECONCILE-EF-DRIFT.
-  - **NEW STANDING RULE D-YT-OAUTH-1**: dashboard `/connect` and `/clients?tab=connect` is canonical reconnect path for FB/IG/LI/YT OAuth tokens; OAuth Playground is fallback. Memory edit landed.
-  - **NEW S29 standing check** added: F-YT-OAUTH-PP forward verification at 24-48h.
-  - **NEW T-MCP-15 lesson candidate**: code-search 0-hits ≠ feature missing. GitHub `search_code` for `youtube oauth` returned 0 hits despite the feature being live. Promote to canonical after 1 more vindication.
-  - **D-01 fires this session: 1 (Template 2, clean proceed, no escalation, no pushback).** review_id `91caf322-213d-4994-b781-abb54acc70b9`. T-MCP-02 quota: 33 → 34. Counter-pattern reinforced (3-of-3 clean proceeds across recent sql_destructive D-01s).
-  - **Net P0+P1 open**: 4 → 5 (F-YT-OAUTH-PP closed; RECONCILE-EF-DRIFT + F-YT-NY-FORMAT-SELECTION promoted). Within 20-finding cap.
-  - **Closure budget**: +~1h F-YT-OAUTH-PP. Day total ~7h. Trailing-14d ~26h. Above 8.0 floor.
-  - **No EF deploys.** **M6 untouched.** **Old D-01 review `a80cf579-...` remains superseded, never cited as cleared.**
+- v1.0–2.39: per previous changelog.
+- **v2.40 (2026-05-05 Sydney late-evening session-end, F-EF-DRIFT-PREVENTION Tier 2 LOCKED + Option F APPROVED):**
+  - **F-EF-DRIFT-PREVENTION investigation phase CLOSED.** Tier 2 inventory locked at 46/46 deployed EFs + 2 repo-only directories surveyed. Final classification: 26 A (17 byte-identical + 9 line-ending-only) + 5 B-RR + 1 B-FD + 7 C (current; 8 ever-observed) + 7 D + 2 repo-only. Brief status updated to APPROVED.
+  - **Option F APPROVED by PK** as the target prevention design: daily drift-check EF at 03:00 AEST + `m.ef_drift_log` table + CRLF-normalised body hashing + SECURITY DEFINER regression detector + dashboard drift panel + non-blocking safe-deploy.sh wrapper. Build effort ~4-5h split across two sessions; explicitly NOT this session.
+  - **13 existing drift cases triaged into priority buckets:** P1 SECURITY-DEFINER (heygen-avatar-creator, heygen-avatar-poller, draft-notifier), P1 functional (insights-worker), P2 feature (series-writer), P2 forward-drift (feed-discovery), P3 Class C polish-sync ×7, P3 Class D ×7, repo-only triage ×2.
+  - **D-PREV-16 added**: PK approved Option F; build is separate session; M6 Phase A and F-YT-NY-FORMAT-SELECTION remain blocked behind build close + P1 SECURITY-DEFINER triage + insights-worker manual review.
+  - **Three commits this session prior to sync:** `bec80b73` Batch 4, `7bb588fa` taxonomy cleanup, `0abd8ca5` Batch 5 + Tier 2 lock.
+  - **D-01 fires this session: 0** (read-only inspection scope).
+  - **Net P0+P1 open: 5 → 7** (F-EF-DRIFT-PREVENTION build pending + 3 P1 SECURITY-DEFINER triage + insights-worker P1 promoted; F-EF-DRIFT-PREVENTION investigation closed). Within 20-finding cap.
+  - **Closure budget**: +~3h F-EF-DRIFT-PREVENTION batches 4+5 + lock + 4-way sync. Day total ~10h. Trailing-14-day ~28h. Above 8.0 floor.
+  - **No EF deploys.** **M6 untouched.** **No DML.**
+  - **RECONCILE-EF-DRIFT carry-forward correction**: was incorrectly listed as Active P1 in v2.39 (it was already closed by sync commit `7ba441e2` morning of 2026-05-05). Removed from Active in v2.40.
