@@ -4,7 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-05 Sydney late afternoon session-end (v2.38 — **M5 (`p_shadow` / `is_shadow` removal + cascade fix on `m.check_evergreen_threshold`) APPLIED via `m5_remove_p_shadow_corrected_v2`. First apply failed at view-rewrite step (`42P16`); P3 dependency miss surfaced; corrected packet re-fired D-01 cleanly; 7/7 post-apply verifications PASS. M4 invariants intact. M6 Phase A promoted to recommended-next.**). Closure budget: +~1.5h this session, day total ~6h, trailing-14-day ~25h.
+> Last updated: 2026-05-05 Sydney late afternoon session-end (v2.38 — **M5 (`p_shadow` / `is_shadow` removal + cascade fix on `m.check_evergreen_threshold`) APPLIED via `m5_remove_p_shadow_corrected_v2`. First apply failed at view-rewrite step (`42P16`); P3 dependency miss surfaced; corrected packet re-fired D-01 cleanly; 7/7 post-apply verifications PASS. M4 invariants intact. M6 Phase A promoted to recommended-next. NEW T-MCP-14 lesson candidate added at closeout: re-snapshot rule for parallel-session safety.**). Closure budget: +~1.5h this session, day total ~6h, trailing-14-day ~25h.
 
 ---
 
@@ -12,7 +12,7 @@
 
 **At session start**, chat reads this file and:
 1. Rebuilds the Today / Next 5 view
-2. Runs Standing checks (S1–S27)
+2. Runs Standing checks (S1–S28)
 3. **Verifies D186 closure budget** (per § "Closure budget tracking" below)
 4. Asks PK about Personal businesses
 5. Surfaces Time-bound items due today/tomorrow
@@ -69,7 +69,7 @@
 
 **M4: ✅ COMPLETE v2.37** — applied 2026-05-05 ~04:14 UTC, 8/8 post-apply checks PASS.
 
-**M5: ✅ COMPLETE v2.38** — applied 2026-05-05 ~05:25 UTC, 7/7 post-apply checks PASS. First apply attempt failed at view-rewrite (`42P16`); corrected packet re-fired D-01 cleanly.
+**M5: ✅ COMPLETE v2.38** — applied 2026-05-05 ~05:25 UTC, 7/7 post-apply checks PASS. First apply attempt failed at view-rewrite (`42P16`); corrected packet re-fired D-01 cleanly. **Traceability brief**: `docs/briefs/2026-05-05-m5-p-shadow-removal.md`.
 
 | Migration | Status | Applied | D-01 review_ids |
 |---|---|---|---|
@@ -141,6 +141,7 @@ Unchanged from v2.31.
 | T-MCP-11 | Lesson candidate: pre-flight discipline includes verifying log/health table actually contains data | P3 | Bundle with T-MCP-12 for promotion |
 | T-MCP-12 | Lesson candidate: query EVERY annotation column when verifying table contents | P3 | Bundle with T-MCP-11 for promotion |
 | **T-MCP-13 NEW v2.38** | **Lesson candidate: pre-flight P3 must trace transitive view→fn→fn dependencies, not just touch-points** | P2 | Surfaced v2.38 (M5 first apply failed at `42P16`; `m.check_evergreen_threshold` not in original D-01 packet). Reinforces Lesson #61. Promote to canonical after 1 more vindication. |
+| **T-MCP-14 NEW v2.38** | **Lesson candidate: destructive apply must re-snapshot state immediately before apply if >5min has passed since last capture, especially when parallel sessions/windows may exist** | P2 | Surfaced v2.38 closeout (chat session B observed M5 already applied externally between snapshots; would have re-applied without state-freshness check; atomic transaction would have errored loudly on second column drop, but reliance on the database to catch parallel-actor conflicts is not a substitute for fresh state capture at apply-time minus zero). Reinforces Lesson #61 P1 (state-capture). Distinct from T-MCP-13 (which is about transitive dependency mapping in pre-flight); T-MCP-14 is about state-freshness in the moments before apply. Promote to canonical after 1 more vindication. |
 
 ---
 
@@ -172,7 +173,7 @@ Per v2.31 except:
 
 **Closed v2.38:**
 
-- **M5 — `p_shadow` / `is_shadow` removal + cascade fix on `m.check_evergreen_threshold`** ✅ — applied via `m5_remove_p_shadow_corrected_v2`; 7/7 verifications PASS; 2 clean D-01 proceeds.
+- **M5 — `p_shadow` / `is_shadow` removal + cascade fix on `m.check_evergreen_threshold`** ✅ — applied via `m5_remove_p_shadow_corrected_v2`; 7/7 verifications PASS; 2 clean D-01 proceeds. Traceability brief committed at `docs/briefs/2026-05-05-m5-p-shadow-removal.md`.
 
 ---
 
@@ -187,6 +188,7 @@ Per v2.31 except:
 **v2.38 changes**:
 
 - **NEW v2.38**: T-MCP-13 lesson candidate (pre-flight P3 transitive dependency mapping) — promoted to T-MCP table.
+- **NEW v2.38 closeout**: T-MCP-14 lesson candidate (re-snapshot rule for parallel-session safety) — promoted to T-MCP table.
 - **Closed v2.38**: M5 — applied + 7/7 verifications + 4-way sync.
 - **Promoted v2.38**: M6 Phase A → recommended next.
 
@@ -234,7 +236,7 @@ Unchanged.
 - Lesson #46 (PROMOTED, third vindication v2.15)
 - Lesson #51 (HONOURED v2.38 twentieth — pre-flight P1-P5 honoured before M5 apply, with P3 miss caught at apply-time)
 - Lesson #58 candidate, #59 candidate, #60 candidate
-- Lesson #61 PROMOTED canonical (REINFORCED v2.25, seventh vindication; **REINFORCED v2.38 — P3 dependency mapping miss surfaced as `42P16` view-rewrite error; lesson candidate T-MCP-13 added**)
+- Lesson #61 PROMOTED canonical (REINFORCED v2.25, seventh vindication; **REINFORCED v2.38 — P3 dependency mapping miss surfaced as `42P16` view-rewrite error; lesson candidates T-MCP-13 and T-MCP-14 added**)
 - **Lesson #62 type-(c) — sixth vindication v2.37 (M4 re-fire). READY FOR CANONICAL PROMOTION.** v2.38 did not vindicate (clean proceeds); promotion still pending.
 - G1 sync_state restructure (v2.23) — honoured through v2.38
 - Lessons #40, #41, #42 promoted canonical (R01 calibration v2 v2.25)
@@ -244,6 +246,7 @@ Unchanged.
 - T-MCP-11 lesson candidate: pre-flight discipline includes verifying log/health tables actually contain data (since v2.31, reinforced v2.33)
 - T-MCP-12 lesson candidate: query EVERY annotation column when verifying table contents (since v2.32, reinforced v2.33)
 - **T-MCP-13 NEW v2.38: pre-flight P3 must trace transitive view→fn→fn dependencies, not just touch-points.** Promote to canonical after 1 more vindication.
+- **T-MCP-14 NEW v2.38: destructive apply must re-snapshot state immediately before apply if >5min has passed since last capture, especially when parallel sessions/windows may exist.** Reinforces Lesson #61 P1. Distinct from T-MCP-13 — T-MCP-14 is about state-freshness in the moments before apply, not pre-flight dependency mapping. Promote to canonical after 1 more vindication.
 - **Lesson candidate (since v2.33, reinforced v2.34)**: when investigating cascading symptoms across multiple findings, drill into the source code of the worker producing the symptom.
 - **Lesson candidate v2.34 — improved-Pattern-1**: when the brief's original fix shape involves a separate trailing UPDATE, check the existing function/view body for an existing block that can be edited surgically.
 - **Lesson candidate v2.35 — owner-gate as v1-spec invariant**.
@@ -258,6 +261,7 @@ Unchanged.
 - **160 records lost their `is_shadow=true` marker.** Audit trail of which v4 records were originally flagged irretrievable. Acceptable: flag was inert (37 already published live regardless).
 - **`m.evergreen_ratio_7d` view lost the live/shadow split.** Any external dashboard query against the old column names (`live_filled_total`, `live_evergreen_ratio`, `shadow_*`) would break. None known to exist; GitHub TS search returned 0 hits.
 - **Pre-flight P3 dependency map should have caught `m.check_evergreen_threshold` before first apply.** Lesson candidate T-MCP-13 logged. First apply failure was atomic rollback with zero production residue, so cost was ~15 min of re-inspection + re-D-01 only.
+- **Parallel-actor risk surfaced.** Chat session B's independent inspection ran in parallel with the apply session and reached the same `42P16` failure independently. Only the fresh state re-snapshot (caught the migration log entry) prevented a re-apply attempt that would have errored loudly on the second column drop. Lesson candidate T-MCP-14 logged.
 - **M6 Phase A not yet started.** PK directs M6 next; chat composes brief and D-01 when PK signals.
 - **9 close-the-loop UPDATEs still pending** (carry-over 7 + v2.38's `b3609bc4` + `713dc407`). Combine in next batch closure.
 - **Closure budget remains well above floor** (~25h trailing-14-day). M5 added ~1.5h; rate continues high but justified by directly attributable production-defect closure.
@@ -278,7 +282,9 @@ Unchanged.
   - **M6 Phase A promoted** to Active P1 (recommended next). Brief reuses v2.36 incident document.
   - **160 records lost is_shadow=true marker** — carry-forward note. Acceptable; flag was inert.
   - **NEW T-MCP-13 lesson candidate**: pre-flight P3 must trace transitive view→fn→fn dependencies, not just touch-points. Reinforces Lesson #61.
+  - **NEW T-MCP-14 lesson candidate (added at closeout)**: destructive apply must re-snapshot state immediately before apply if >5min has passed since last capture, especially when parallel sessions/windows may exist. Surfaced via parallel-session observation of M5 already-applied state between this thread's pre-flight snapshots. Reinforces Lesson #61 P1 (state-capture). Distinct from T-MCP-13.
   - **NEW lesson candidate**: clean-proceed counter-pattern on `sql_destructive` when PK pre-approves + non-destructive client-side + empirically grounded + rollback explicit.
+  - **NEW traceability brief committed**: `docs/briefs/2026-05-05-m5-p-shadow-removal.md` covering inspection, sequence, verifications, and lessons.
   - **T-MCP-02 quota**: 31 → 33 (2 fires this session: M5 original + corrected, both clean proceed).
   - **Closure budget**: +~1.5h M5. Day total ~6h. Trailing-14d ~25h. Above 8.0 floor.
   - **Net P0+P1 open**: 4 → 4. M5 closed; M6 Phase A promoted Active.
