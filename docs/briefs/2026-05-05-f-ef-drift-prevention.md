@@ -6,7 +6,7 @@
 **Project:** mbkmaxqhsohbtwsqolns
 **Repo:** Invegent/Invegent-content-engine
 **Total deployed EFs:** **46** (per `Supabase:list_edge_functions`, 2026-05-05 ~22:00 UTC)
-**Tier 2 progress:** 31/46 surveyed (67%) — Batches 1+2+3 complete
+**Tier 2 progress:** 41/46 surveyed (89%) — Batches 1+2+3+4 complete
 
 ---
 
@@ -27,14 +27,24 @@ Batch 2 added the most consequential evidence yet:
 - **`insights-worker` is on deploy version v14.0.0 in production but the repo is still on v1.6.0.** Substantial functional drift.
 - **`image-worker` and `feed-intelligence` are both Class C (banner-match-body-diff)** — exactly the trap case.
 
-Batch 3 changed the picture again, but in the opposite direction:
+Batch 3 changed the picture in the opposite direction:
 
-- **All 10 EFs in Batch 3 came back Class A.** This is a relief and a useful counterweight: drift is real and consequential, but it is not universal. Critical infrastructure that has been built recently and deployed carefully (MCP bridges, pipeline observability/healing trio, inspector tooling, weekly reports) is in clean sync.
-- **MCP bridges and the ChatGPT review worker are clean.** PK specifically flagged these as high-priority because they affect review/repo tooling. They're fine.
-- **Inspector and inspector_sql_ro are clean.** PK flagged these because they affect read-only observability. They're fine.
-- **Pipeline-sentinel + pipeline-diagnostician + pipeline-healer are clean.** PK flagged these because they're autonomous operational tools. All three byte-identical with the repo.
+- **All 10 EFs in Batch 3 came back Class A.** Critical infrastructure that has been built recently and deployed carefully (MCP bridges, pipeline observability/healing trio, inspector tooling, weekly reports) is in clean sync.
 
-The investigation is now closing in on a clear prevention recommendation: **body-comparison must run periodically; banner-only checks are insufficient.** That conclusion is firm enough to lock for Section 8 even before the remaining ~15 EFs are surveyed. Batch 3's clean-sweep result also clarifies the prevention design tradeoff: the system isn't broken everywhere — it's broken at specific seams (older or hand-deployed EFs without a strong commit-deploy discipline).
+**Batch 4 (this update) brings the picture into sharp focus and is the most consequential batch since Batch 1 for diagnosing root cause.** Highlights:
+
+- **Three Class B cases all share the same architectural fix being undone in repo:** `heygen-avatar-creator` (v2.0.0 → v2.2.0), `heygen-avatar-poller` (v1.0.0 → v2.0.0), and `draft-notifier` (v1.0.0 → v1.1.0). In every one of these three, the deployed version replaces a broken `exec_sql` UPDATE on the `c` or `m` schema with a `SECURITY DEFINER` `rpc()` call. The repo source uses the broken pattern that we know from project memory does not work (`exec_sql` is read-only on `c`, `f`, `m`, `t` schemas — DML silently fails). **A repo redeploy of any of these three would silently re-introduce a known broken state in production.** This is the highest-severity drift pattern observed across the entire investigation so far.
+- **Two Class B cases bring real feature drift:** `series-writer` v1.3.0 deployed adds `source_material` and `format_preference` (per c.content_series schema migration on 20 Mar 2026); repo is still v1.2.0. `heygen-avatar-poller` adds an entirely different state-machine and switches HeyGen API host (api.heygen.com → api2.heygen.com endpoints "discovered via browser network inspection").
+- **First forward-drift case observed:** `feed-discovery` repo is at v1.2.0 with a banner explicitly documenting that the commit was authored to align repo with deployed convention (`config.feed_url` not `config.url`) and to add an OR-fallback dedupe query for legacy rows. Deployed is still at v1.1.0. This is the inverse failure mode of `youtube-publisher`: a known-good pending deploy that hasn't shipped. Forward-drift is benign in operational terms but it is a separate state the prevention recommendation must distinguish.
+- **Class C body-drift trap cases keep accumulating.** `onboarding-notifier`, `ai-profile-bootstrap`, `series-outline`, and `email-ingest` all have banner-equality and body-difference. The `series-outline` body-drift includes a real prompt enrichment difference (carousel guidance, narrative-arc instruction) that affects content generation quality.
+
+The investigation's prevention conclusion is now firm enough to lock for Section 8 even before the remaining 5 EFs are surveyed:
+
+- **Body-comparison must run periodically.**
+- **Banner-only checks are insufficient (Class C is the trap case, now demonstrated 6 times).**
+- **The most dangerous drift class is the SECURITY-DEFINER-vs-exec_sql pattern, because the repo source compiles and lints cleanly but does not function in production.** A drift detection script that surfaces this class as a special category would let PK triage these as urgent (they are the cases where a repo redeploy would actively break production).
+
+Batch 4's clean-sweep of an opposite-failure case (`feed-discovery`'s forward-drift) also clarifies that the prevention design must report TWO different states, not one: "deployed is ahead of repo" (the high-risk case) and "repo is ahead of deployed" (the benign-but-noteworthy case). Treating them as a single "drift" signal would create false-positive noise on every commit-before-deploy workflow PK uses.
 
 ---
 
@@ -51,7 +61,7 @@ The scope items, verbatim:
    - another agent or chat window deploying without coordinating with the primary repo
    - GitHub Actions / CI deploy pipeline absent or bypassed
 2. **Identify all Edge Functions where repo version differs from deployed version.**
-3. **Identify whether version banners inside EFs are reliable.** Cases to test: (a) banner present and matches deploy slug; (b) banner present but stale relative to deployed body; (c) banner absent; (d) banner matches both repo and deployed but bodies differ (the `youtube-publisher` trap case); (e) banner present and slug-prefix correct, but version field is a feature tag rather than a semver number; (f) banner is in a comment with no `VERSION` constant at all (heygen utility class); **(g) banner uses MCP-style `SERVER_INFO.version` constant rather than top-level `VERSION` constant.**
+3. **Identify whether version banners inside EFs are reliable.** Cases to test: (a) banner present and matches deploy slug; (b) banner present but stale relative to deployed body; (c) banner absent; (d) banner matches both repo and deployed but bodies differ (the `youtube-publisher` trap case); (e) banner present and slug-prefix correct, but version field is a feature tag rather than a semver number; (f) banner is in a comment with no `VERSION` constant at all (heygen utility class); (g) banner uses MCP-style `SERVER_INFO.version` constant rather than top-level `VERSION` constant; **(h) banner has version number but no slug prefix at all (feed-discovery `1.2.0`).**
 4. **Propose an automated prevention mechanism.** Candidate options:
    - drift-check script (cron-runnable, compares all 46 EF deployed sources against repo)
    - CI guard on PR (refuse merge if any local EF source disagrees with deployed)
@@ -70,7 +80,7 @@ The scope items, verbatim:
 The investigation proceeds in three tiers, each producing evidence the next builds on.
 
 **Tier 1 — Inventory map (cheap reads)** — DONE.
-**Tier 2 — Body-level comparison (in batches of ~10)** — IN PROGRESS (31/46 surveyed).
+**Tier 2 — Body-level comparison (in batches of ~10)** — IN PROGRESS (41/46 surveyed).
 **Tier 3 — Hypothesis matrix and recommendation** — partial (matrix updating after each batch; Section 8 will firm up after Batch 5).
 
 Body-comparison protocol per EF:
@@ -78,18 +88,18 @@ Body-comparison protocol per EF:
 - `github:get_file_contents` returns the corresponding repo file when the directory exists.
 - Five classes recorded per EF:
   - **CLASS A — clean**: deployed banner matches deploy slug AND repo body byte-equals deployed body. Subclass: **A (line-ending only)** — bodies differ only in CRLF vs LF.
-  - **CLASS B — banner-drift**: deployed banner differs from repo banner. Banner check would catch this.
-  - **CLASS C — body-drift trap**: deployed banner equals repo banner BUT body differs (the `youtube-publisher` case, also `image-worker` and `feed-intelligence`).
+  - **CLASS B — banner-drift**: deployed banner differs from repo banner. Banner check would catch this. Subclass: **B (forward-drift)** — repo version is AHEAD of deployed (pending deploy, not stale source).
+  - **CLASS C — body-drift trap**: deployed banner equals repo banner BUT body differs (the `youtube-publisher` case, also `image-worker`, `feed-intelligence`, `onboarding-notifier`, `ai-profile-bootstrap`, `series-outline`, `email-ingest`).
   - **CLASS D — missing**: repo directory absent.
   - **REVERSE-DRIFT** — repo directory exists but no deployed counterpart.
 
 ---
 
-## 4. Tier 1 baseline — deployed inventory (post-Batch 3)
+## 4. Tier 1 baseline — deployed inventory (post-Batch 4)
 
 Captured from `Supabase:list_edge_functions` 2026-05-05 ~22:00 UTC. **46 EFs**, all `ACTIVE` status. Repo-presence column resolved through the sync work + Tier 2 batches.
 
-| # | Slug | Deploy version | Repo dir? | Class (post-Batch 3) |
+| # | Slug | Deploy version | Repo dir? | Class (post-Batch 4) |
 |---|---|---|---|---|
 | 1 | inspector | 104 | ✓ | **A line-ending** (Batch 3) |
 | 2 | ingest | 117 | ✗ | **D** (Batch 1) |
@@ -100,11 +110,11 @@ Captured from `Supabase:list_edge_functions` 2026-05-05 ~22:00 UTC. **46 EFs**, 
 | 7 | auto-approver | 57 | ✓ | A (Batch 1) |
 | 8 | insights-worker | 55 | ✓ | **B** (Batch 2) |
 | 9 | feed-intelligence | 42 | ✓ | **C** (Batch 2) |
-| 10 | email-ingest | 37 | ✓ | TBD |
-| 11 | draft-notifier | 38 | ✓ | TBD |
+| 10 | email-ingest | 37 | ✓ | **C cosmetic** (Batch 4) |
+| 11 | draft-notifier | 38 | ✓ | **B** (Batch 4) |
 | 12 | image-worker | 59 | ✓ | **C** (Batch 2) |
-| 13 | series-outline | 37 | ✓ | TBD |
-| 14 | series-writer | 38 | ✓ | TBD |
+| 13 | series-outline | 37 | ✓ | **C** (Batch 4) |
+| 14 | series-writer | 38 | ✓ | **B** (Batch 4) |
 | 15 | pipeline-doctor | 35 | ✗ | **D** (Batch 1) |
 | 16 | pipeline-ai-summary | 36 | ✗ | **D** (Batch 1) |
 | 17 | compliance-monitor | 36 | ✗ | **D** (Batch 1) |
@@ -116,11 +126,11 @@ Captured from `Supabase:list_edge_functions` 2026-05-05 ~22:00 UTC. **46 EFs**, 
 | 23 | heygen-intro | 22 | ✗ | **D** (Batch 2) |
 | 24 | heygen-youtube-upload | 21 | ✗ | **D** (Batch 2) |
 | 25 | heygen-worker | 22 | ✓ | A (synced) |
-| 26 | heygen-avatar-creator | 28 | ✓ | TBD |
-| 27 | heygen-avatar-poller | 31 | ✓ | TBD |
-| 28 | onboarding-notifier | 22 | ✓ | TBD |
-| 29 | brand-scanner | 22 | ✓ | TBD |
-| 30 | ai-profile-bootstrap | 21 | ✓ | TBD |
+| 26 | heygen-avatar-creator | 28 | ✓ | **B** (Batch 4) |
+| 27 | heygen-avatar-poller | 31 | ✓ | **B** (Batch 4) |
+| 28 | onboarding-notifier | 22 | ✓ | **C** (Batch 4) |
+| 29 | brand-scanner | 22 | ✓ | **A line-ending** (Batch 4) |
+| 30 | ai-profile-bootstrap | 21 | ✓ | **C** (Batch 4) |
 | 31 | weekly-manager-report | 25 | ✓ | **A** (Batch 3) |
 | 32 | pipeline-sentinel | 22 | ✓ | **A** (Batch 3) |
 | 33 | pipeline-diagnostician | 22 | ✓ | **A** (Batch 3) |
@@ -130,7 +140,7 @@ Captured from `Supabase:list_edge_functions` 2026-05-05 ~22:00 UTC. **46 EFs**, 
 | 37 | instagram-publisher | 24 | ✓ | **A line-ending** (Batch 2) |
 | 38 | linkedin-zapier-publisher | 24 | ✓ | A (Batch 1) |
 | 39 | wordpress-publisher | 21 | ✓ | **A** (Batch 2) |
-| 40 | feed-discovery | 22 | ✓ | TBD |
+| 40 | feed-discovery | 22 | ✓ | **B forward-drift** (Batch 4) |
 | 41 | external-reviewer | 13 | ✓ | TBD |
 | 42 | external-reviewer-digest | 11 | ✓ | TBD |
 | 43 | system-auditor | 11 | ✓ | TBD |
@@ -138,13 +148,13 @@ Captured from `Supabase:list_edge_functions` 2026-05-05 ~22:00 UTC. **46 EFs**, 
 | 45 | mcp-chatgpt-bridge | 8 | ✓ | **A line-ending** (Batch 3) |
 | 46 | mcp-github-bridge | 4 | ✓ | **A** (Batch 3) |
 
-Repo-only directories (reverse-drift candidates): `ai-diagnostic` and `linkedin-publisher`.
+Repo-only directories (reverse-drift candidates): `ai-diagnostic` and `linkedin-publisher` (still pending Batch 5 verification).
 
-**Cumulative class distribution across 31 surveyed EFs (Batches 1+2+3):** A=21 (68%), B=1 (3%), C=2 (6%), D=7 (23%).
+**Cumulative class distribution across 41 surveyed EFs (Batches 1+2+3+4):** A=22 (54%), B=6 (15%, of which 1 forward-drift), C=6 (15%), D=7 (17%).
 
 ---
 
-## 5. Tier 2 — per-EF drift inventory (Batches 1+2+3 complete)
+## 5. Tier 2 — per-EF drift inventory (Batches 1+2+3+4 complete)
 
 ### Batch 1 (2026-05-05)
 
@@ -198,9 +208,30 @@ Repo-only directories (reverse-drift candidates): `ai-diagnostic` and `linkedin-
 
 **Batch 3 totals:** A=10, B=0, C=0, D=0. Cleanest batch so far.
 
-### Cumulative across Batches 1+2+3 (31 EFs surveyed)
+### Batch 4 (2026-05-05) — onboarding + drafts + feed support
 
-A=21 (68%), B=1 (3%), C=2 (6%), D=7 (23%).
+| # | Slug | Deploy ver | Banner | Banner conv | Repo SHA | Body match | Class | Op importance |
+|---|---|---|---|---|---|---|---|---|
+| 1 | onboarding-notifier | 22 | `onboarding-notifier-v2.0.0` | ✓ semver | `f69b51a3` | **NO — comments stripped + 1 `(c: string)` type annotation added in deployed callback** | **C** | MED — onboarding emails (operator + client) |
+| 2 | brand-scanner | 22 | `brand-scanner-v1.0.1` | ✓ semver | `2d027f3c` | LF/CRLF only | **A line-ending** | MED — onboarding logo + brand-colour extract |
+| 3 | ai-profile-bootstrap | 21 | `ai-profile-bootstrap-v1.0.0` | ✓ semver | `847cdb02` | **NO — slug variable refactor in `buildPrompt` + comment differences** | **C** | MED — onboarding AI profile gen (Claude API) |
+| 4 | **heygen-avatar-creator** | 28 | deployed `v2.2.0` ≠ repo `v2.0.0` | ✓ semver | `021e8994` | **NO — substantial drift: deployed uses `Pixar` style enum (vs repo `Animated`) + `save_avatar_generation()` SECURITY DEFINER fn (vs repo direct `exec_sql` UPDATE on `c.brand_avatar`)** | **B** | MED — avatar gen entry point. **Repo redeploy would silently fail** (exec_sql is read-only on c schema per project memory). |
+| 5 | **heygen-avatar-poller** | 31 | deployed `v2.0.0` ≠ repo `v1.0.0` | ✓ semver | `895c9b17` | **NO — major architectural drift: deployed uses `api2.heygen.com/v2/avatar_group` endpoints "discovered via browser network inspection" + 4 SECURITY DEFINER fns (`store_gen_poll_response`, `advance_avatar_to_creating`, `complete_avatar_training`, `fail_avatar_generation`); repo uses `api.heygen.com/v2/photo_avatar/train` + direct `exec_sql` UPDATE on `c.brand_avatar`** | **B** | MED — pg_cron 60s. **Repo redeploy would silently fail** (broken endpoints + broken schema writes). |
+| 6 | series-outline | 37 | `series-outline-v1.2.0` | ✓ semver | `522871e3` | **NO — repo single-line compacted; deployed has expanded prompt with extra carousel guidance + narrative-arc instruction + console.error log** | **C** | MED — series outline gen (content quality affected) |
+| 7 | **series-writer** | 38 | deployed `v1.3.0` ≠ repo `v1.2.0` | ✓ semver | `da3d55de` | **NO — deployed banner explicitly notes "v1.3.0 — Source material + format preference support; both fields added to c.content_series schema (20 Mar 2026)". Deployed reads `series.source_material` and `series.format_preference`; repo doesn't.** | **B** | MED — series writer gen. Repo would lose v1.3.0 features (source-material injection + format override). |
+| 8 | **draft-notifier** | 38 | deployed `v1.1.0` ≠ repo `v1.0.0` | ✓ semver | `0839cc56` | **NO — banner explicitly notes "Fix v1.1: use public.mark_drafts_notified(uuid[]) SECURITY DEFINER function instead of exec_sql UPDATE which was silently failing (m schema not writable via exec_sql)." Repo still uses the broken exec_sql UPDATE on `m.post_draft`.** | **B** | **HIGH — approval flow + duplicate-email risk.** Repo redeploy would re-introduce a known production bug: drafts never get marked as notified, so every 30min cron run would send the same review-email batch to clients. |
+| 9 | email-ingest | 37 | `email-ingest-v1` | ✗ slug-prefix correct, version `v1` not semver (same as `inspector_sql_ro`) | `10d4500d` | **NO — repo single-line compacted, deployed has section dividers + slightly different `console.warn` text on ingest_run insert fallback** | **C cosmetic** | MED — Gmail label ingest (newsletter/ndis, newsletter/property). No functional risk. |
+| 10 | feed-discovery | 22 | deployed `1.1.0` ≠ repo `1.2.0` | **✗ no slug prefix at all (bare `1.x.y`)** | `76607246` | **NO — repo is AHEAD of deployed.** Repo banner explicitly documents the alignment commit (28 Apr 2026): `config.url` → `config.feed_url` + OR-fallback dedupe query for legacy rows. Repo author notes the commit makes a fresh `supabase functions deploy` from main safe. | **B forward-drift** | LOW — feed-source provisioning. Functionally compatible (deployed v1.1.0 still works since all live rows since 28 Apr use `feed_url`). |
+
+**Batch 4 totals:** A=1 (line-ending), B=5 (one of which is forward-drift), C=4. No D. No reverse-drift.
+
+**Batch 4 critical observation: SECURITY DEFINER pattern is the single largest source of dangerous drift.** Three of the five Class B cases in this batch (`heygen-avatar-creator`, `heygen-avatar-poller`, `draft-notifier`) share the exact same architectural fix: replace a broken `exec_sql` UPDATE on the `c` or `m` schema (which fails silently per project memory) with a `SECURITY DEFINER` function called via `.rpc()`. The repo still has the broken pattern. **A repo redeploy of any of these three would silently re-introduce a known production bug.** The fourth Class B (`series-writer`) is feature drift, not pattern drift. The fifth (`feed-discovery`) is forward-drift, not regression risk.
+
+### Cumulative across Batches 1+2+3+4 (41 EFs surveyed)
+
+A=22 (54%), B=6 (15%, of which 1 forward-drift), C=6 (15%), D=7 (17%).
+
+A breakdown: 7 line-ending-only-different + 15 byte-identical = 22.
 
 ### Already characterised in RECONCILE-EF-DRIFT (pre-sync state, historical record)
 
@@ -211,66 +242,73 @@ A=21 (68%), B=1 (3%), C=2 (6%), D=7 (23%).
 
 ---
 
-## 6. Tier 3 — root-cause hypothesis matrix (post-Batch 3)
+## 6. Tier 3 — root-cause hypothesis matrix (post-Batch 4)
 
 | Hypothesis | Likelihood | Evidence pattern |
 |---|---|---|
-| **Manual CLI `supabase functions deploy` without commit** | **HIGH-CONFIRMED** | Class B (`insights-worker` v1.6.0→v14.0.0). RECONCILE-EF-DRIFT pattern (3/4 EFs were banner-drift). |
-| **Windows CLI deploy without git autocrlf normalization** | **HIGH-CONFIRMED** | content_fetch + instagram-publisher (Batch 2) and inspector + inspector_sql_ro + chatgpt-review-worker + mcp-chatgpt-bridge (Batch 3) all have CRLF deployed / LF repo. 6/24 (25%) of repo-comparable EFs across surveyed batches show this pattern. Consistent with PK's local repo at `C:\Users\parve\Invegent-content-engine`. |
+| **Manual CLI `supabase functions deploy` without commit** | **HIGH-CONFIRMED** | Class B count now 6 (`insights-worker`, `heygen-avatar-creator`, `heygen-avatar-poller`, `series-writer`, `draft-notifier`, `feed-discovery`). 3 of these have explicit "Fix vX.Y: ..." banners that show the deploy was the result of a hands-on patch, not a CI flow. RECONCILE-EF-DRIFT pattern (3/4 of original sync targets were banner-drift). |
+| **Windows CLI deploy without git autocrlf normalization** | **HIGH-CONFIRMED** | content_fetch + instagram-publisher (Batch 2), inspector + inspector_sql_ro + chatgpt-review-worker + mcp-chatgpt-bridge (Batch 3), brand-scanner (Batch 4) all have CRLF deployed / LF repo. 7/30 (23%) of repo-comparable EFs across surveyed batches show this pattern. Consistent with PK's local repo at `C:\Users\parve\Invegent-content-engine`. |
 | **Source minification before deploy** | possible (single case) | `image-worker` only. Could indicate (a) intentional minification, (b) hand-deployed minified copy, (c) dashboard-edit converting formatting. Functionally equivalent to repo. |
-| **Supabase dashboard inline-edit** | **MEDIUM** | Suspected for `ingest` (Class D, feature-tag banner). Suspected for `heygen-intro` and `heygen-youtube-upload` (Class D, no VERSION constant, utility-style). |
-| **Uncommitted local working-tree edit** | **MEDIUM** | Indistinguishable from CLI-deploy without local-machine evidence. |
-| **Class C "polish drift" — repo cleanup never deployed** | **CONFIRMED** | `feed-intelligence` repo has dead code removed; deployed version still has it. |
+| **Supabase dashboard inline-edit** | **MEDIUM-HIGH** | Suspected for `ingest` (Class D, feature-tag banner). Suspected for `heygen-intro` and `heygen-youtube-upload` (Class D, no VERSION constant, utility-style). **New evidence from Batch 4:** `onboarding-notifier` deployed has comments stripped + 1 type annotation added relative to repo (no functional change), which is a textbook signature of a Studio inline-edit (developer auto-formats / annotates while editing in browser). |
+| **Uncommitted local working-tree edit** | **MEDIUM** | Indistinguishable from CLI-deploy without local-machine evidence. `series-outline` and `email-ingest` Class C cases (single-line compacted in repo, multi-line expanded in deployed) suggest the inverse — repo was compacted *after* deploy, possibly by a code-formatter run that wasn't redeployed. |
+| **Class C "polish drift" — repo cleanup never deployed** | **CONFIRMED** | `feed-intelligence` repo has dead code removed; deployed still has it. `series-outline` and `email-ingest` are similar (repo was reformatted single-line-style after deploy). `ai-profile-bootstrap` repo extracted slug as variable. |
+| **SECURITY-DEFINER-vs-exec_sql architectural drift** | **NEW — CONFIRMED, 3 cases in Batch 4** | `heygen-avatar-creator` v2.2.0 banner: "use public.save_avatar_generation() SECURITY DEFINER fn for c schema write". `draft-notifier` v1.1.0 banner: "use public.mark_drafts_notified(uuid[]) SECURITY DEFINER function instead of exec_sql UPDATE which was silently failing (m schema not writable via exec_sql)." `heygen-avatar-poller` v2.0.0 implicitly carries the same pattern. **All three repo source files still use the broken `exec_sql` UPDATE pattern**. Project memory documents this exact pattern: "`exec_sql` / `execute_sql` is effectively read-only on `c`, `f`, `m`, `t` schemas — DML silently fails. All mutations require `SECURITY DEFINER` functions in `public` schema called via `.rpc()`". **The drift is not random — it is a recurring fix being recurringly stripped from the repo**, likely because the EF was patched in dashboard or via CLI without a corresponding repo edit. |
+| **Forward-drift (repo ahead of deployed, pending deploy)** | **NEW — CONFIRMED, 1 case** | `feed-discovery` repo v1.2.0 with explicit alignment-commit banner; deployed still v1.1.0. Documented at commit time ("a fresh `supabase functions deploy feed-discovery` from main is safe"). This is a benign state, not regression, but the prevention recommendation must distinguish this from regression-drift. |
 | **Parallel agent / chat window deploy** | LOW-MEDIUM | No direct evidence. Memory references "ChatGPT-reviewed in 4 rounds" for some banners. |
 | **GitHub Actions / CI absent or bypassed** | **CONFIRMED** | The repo has no `.github/workflows/` EF-deploy pipeline. All deploys are manual. |
-| **Recent / careful deploys are clean** | **NEW EVIDENCE — strong** | 10/10 of Batch 3 are Class A. Critical infra (MCP bridges, pipeline observability/healer trio, inspector pair, weekly reports) all in sync. The drift problem is concentrated in (a) older operational EFs created via dashboard like `ingest` and the heygen utilities, (b) cron-driven Class D EFs that never landed in the repo (`compliance-monitor`, `pipeline-doctor`, `pipeline-ai-summary`), and (c) hand-edited Class B/C cases (`insights-worker`, `image-worker`, `feed-intelligence`). The system is *not* uniformly broken. |
-| **Deploy machine determines line-ending** | **NEW EVIDENCE — likely** | Mix of CRLF-deployed and LF-deployed EFs across batches. Batch 3 had 4 CRLF-deployed (inspector/inspector_sql_ro/chatgpt-review-worker/mcp-chatgpt-bridge) and 6 LF-deployed. Pattern is consistent with multiple deploy machines or path differences. Drift detection script must normalize line endings regardless. |
+| **Recent / careful deploys are clean; older / hand-fixed deploys drift** | **CONFIRMED — strongly** | Batch 3 sweep was 10/10 clean (MCP, observability, weekly reports). Batch 4 onboarding flow had mixed results: brand-scanner clean, AI/notifier path drifted 4-of-5. The drift pattern correlates with EFs that have had a hand-patch applied to fix a schema-write or HeyGen-API problem after initial deploy. |
+| **Deploy machine determines line-ending** | **likely** | Mix of CRLF-deployed and LF-deployed EFs across batches. Drift detection script must normalize line endings regardless. |
 
-The top-level finding remains: **drift is the default state without a CI deploy pipeline**. Batch 3 shows that the *consequence* of this default depends on deploy discipline. Where PK has worked carefully (recent MCP build-out, observability tooling), drift is zero. Where PK has hand-edited, used the dashboard, or shipped utilities, drift accumulates.
+The top-level finding is now sharper: **drift is not just "the default state without a CI deploy pipeline"; it is actively recurring at specific failure seams — the c/m/f/t schema-write boundary and the HeyGen-API-discovery boundary.** Both are places where the running production system needs a fix that the repo source doesn't provide. The fix gets applied in the dashboard or via CLI hot-deploy, then the repo source is forgotten until inspection like this catches it.
 
 ---
 
-## 7. Banner reliability — running (post-Batch 3, 31/46 EFs surveyed)
+## 7. Banner reliability — running (post-Batch 4, 41/46 EFs surveyed)
 
 **Banner conformance:**
-- 22/31 deployed banners follow the `<slug>-vX.Y.Z` semver convention
-- 2/31 use feature-tag style with non-numeric semver field:
+- 28/41 deployed banners follow the `<slug>-vX.Y.Z` semver convention
+- 2/41 use feature-tag style with non-numeric semver field:
   - `ingest-v8-youtube-channel` (Batch 1)
   - `content-fetch-v2.4-rpc` (Batch 2)
-- 1/31 uses `<slug>-vN` style (single-digit major version, not full semver):
+- 2/41 use `<slug>-vN` style (single-digit major version, not full semver):
   - `inspector-sql-ro-v1` (Batch 3)
-- 4/31 have **no `VERSION` constant at all** — banner is a comment-only line:
+  - `email-ingest-v1` (Batch 4)
+- 4/41 have **no `VERSION` constant at all** — banner is a comment-only line:
   - `heygen-intro` (Batch 2)
   - `heygen-youtube-upload` (Batch 2)
   - `inspector` (Batch 3) — Hono multi-endpoint pattern
   - `chatgpt-review-worker` (Batch 3) — comment refs spec brief, no version constant
-- 2/31 use **MCP `SERVER_INFO.version` pattern** instead of top-level `VERSION`:
+- 2/41 use **MCP `SERVER_INFO.version` pattern** instead of top-level `VERSION`:
   - `mcp-chatgpt-bridge` (Batch 3) — `SERVER_INFO = { name: 'mcp-chatgpt-bridge', version: '1.2.2' }`
   - `mcp-github-bridge` (Batch 3) — `SERVER_INFO = { name: 'mcp-github-bridge', version: '2.0.0' }`
+- 1/41 uses **bare version-only** banner with no slug prefix:
+  - `feed-discovery` (Batch 4) — `VERSION = "1.2.0"` (in repo; deployed has `"1.1.0"`).
 
-That is **9/31 (29%) non-conforming** to the simple `VERSION = "<slug>-vX.Y.Z"` pattern. Of the 9, 2 follow a defensible alternative (MCP SERVER_INFO).
+That is **11/41 (27%) non-conforming** to the simple `VERSION = "<slug>-vX.Y.Z"` pattern. Of the 11, 2 follow a defensible alternative (MCP SERVER_INFO).
 
 **Body-vs-banner relationship:**
-- 21/31 (68%) Class A — banner matches deploy slug, body matches repo
+- 22/41 (54%) Class A — banner matches deploy slug, body matches repo
   - 15 truly byte-identical
-  - 6 line-ending-only-different (CRLF vs LF)
-- 1/31 (3%) Class B — banner numerically different between deployed and repo (insights-worker v14.0.0 vs v1.6.0). Banner check would catch this.
-- 2/31 (6%) Class C — banner identical between deployed and repo, body different. **Banner check FAILS for Class C.**
-- 7/31 (23%) Class D — no repo file to compare.
+  - 7 line-ending-only-different (CRLF vs LF)
+- 6/41 (15%) Class B — banner numerically different between deployed and repo. Banner check would catch this. **One is forward-drift (feed-discovery).**
+- 6/41 (15%) Class C — banner identical between deployed and repo, body different. **Banner check FAILS for Class C.**
+- 7/41 (17%) Class D — no repo file to compare.
 
-**Locked recommendations (firm, won't change with remaining 15 EFs):**
-- **Banner-only check is INSUFFICIENT for full drift detection** — it cannot detect Class C cases (`image-worker`, `feed-intelligence`).
-- **Banner-only check is also UNRELIABLE** because ~29% of EFs don't follow the simple top-level `VERSION` convention. A check that hard-requires `<slug>-vX.Y.Z` would falsely flag `ingest`, `content_fetch`, `inspector_sql_ro`, `heygen-intro`, `heygen-youtube-upload`, `inspector`, `chatgpt-review-worker`, `mcp-chatgpt-bridge`, `mcp-github-bridge` as malformed when they are merely non-conforming.
+**Locked recommendations (firm, won't change with remaining 5 EFs):**
+- **Banner-only check is INSUFFICIENT for full drift detection** — it cannot detect Class C cases (`youtube-publisher`, `image-worker`, `feed-intelligence`, `onboarding-notifier`, `ai-profile-bootstrap`, `series-outline`, `email-ingest`). Class C now has 7 confirmed cases including the original sync-target.
+- **Banner-only check is also UNRELIABLE** because ~27% of EFs don't follow the simple top-level `VERSION` convention. A check that hard-requires `<slug>-vX.Y.Z` would falsely flag ~11 EFs as malformed when they are merely non-conforming.
 - **Production prevention mechanism must body-compare** (not banner-compare) on a periodic basis.
 - **Body-comparison should normalize line endings** before computing equality. Otherwise CRLF/LF mismatches will create constant false-positive drift signals.
+- **Body-comparison should distinguish forward-drift from regression-drift.** When repo is ahead of deployed, this is a pending deploy, not a regression. Reporting should treat them as different states.
 - **The semver convention is opt-in not contractual.** Recommendation will treat banner content as advisory and a useful triage filter, but never as the sole evidence of parity.
 - **MCP SERVER_INFO pattern is a legitimate alternative**, not drift. Drift detection will recognise both patterns; reporting will surface non-conforming EFs as informational, not as drift.
+- **NEW: SECURITY-DEFINER-vs-exec_sql drift is the highest-severity class.** When a repo source uses `exec_sql` UPDATE on `c`, `f`, `m`, or `t` schemas while the deployed source uses a `.rpc()` call to a SECURITY DEFINER function, the repo is silently broken. Drift detection should flag this category as urgent — these are the cases where a repo redeploy actively re-introduces production bugs.
 
 ---
 
-## 8. Prevention options — preliminary (post-Batch 3)
+## 8. Prevention options — preliminary (post-Batch 4)
 
-_Lock to come after Batch 5. Current ranking based on 31/46 evidence:_
+_Lock to come after Batch 5. Current ranking based on 41/46 evidence:_
 
 **Option A — Drift-check script invoked manually before each session.**
 Friction: low (1 command). Coverage: high (46 EFs). Latency: zero. Cost: developer discipline only.
@@ -294,6 +332,9 @@ Friction: low-medium. Coverage: high (B detects + C warns). Cost: minor.
 Scoring: friction-low-medium, coverage-prevention+detection, latency-deploy+24h, false-positive-rate-low.
 **Likely final recommendation candidate.**
 
+**NEW (post-Batch 4) — Option F: B + C + targeted pattern detection for SECURITY-DEFINER-vs-exec_sql drift.**
+The drift script in Option B would also lex-scan deployed and repo source for `await supabase.rpc('exec_sql', ...)` patterns specifically targeting `UPDATE c.`, `UPDATE m.`, `UPDATE f.`, or `UPDATE t.` schemas. When detected in repo but NOT in deployed (replaced by `.rpc('<fn_name>', ...)` calls), surface as a special "schema-write regression risk" category. This would catch the three Batch 4 critical cases automatically and let PK triage them as urgent before a careless redeploy. Cost: ~30 extra lines in the drift script, a single regex set.
+
 ---
 
 ## 9. Tasks
@@ -304,11 +345,11 @@ Scoring: friction-low-medium, coverage-prevention+detection, latency-deploy+24h,
 - [x] **Batch 1 complete** (11 EFs).
 - [x] **Batch 2 complete** (10 EFs).
 - [x] **Batch 3 complete** (10 EFs): inspector, inspector_sql_ro, chatgpt-review-worker, mcp-chatgpt-bridge, mcp-github-bridge, pipeline-sentinel, pipeline-diagnostician, pipeline-healer, weekly-manager-report, client-weekly-summary.
-- [ ] Batch 4 (~10 EFs): onboarding (onboarding-notifier, brand-scanner, ai-profile-bootstrap, heygen-avatar-creator, heygen-avatar-poller), drafts (series-outline, series-writer, draft-notifier, email-ingest), feed support (feed-discovery, compliance-reviewer).
-- [ ] Batch 5 (~5 EFs): final tail (external-reviewer, external-reviewer-digest, system-auditor, insights-feedback) plus reverse-drift checks on `ai-diagnostic` and `linkedin-publisher`.
+- [x] **Batch 4 complete** (10 EFs): onboarding-notifier, brand-scanner, ai-profile-bootstrap, heygen-avatar-creator, heygen-avatar-poller, series-outline, series-writer, draft-notifier, email-ingest, feed-discovery.
+- [ ] Batch 5 (~5 EFs): final tail (compliance-reviewer, external-reviewer, external-reviewer-digest, system-auditor, insights-feedback) plus reverse-drift checks on `ai-diagnostic` and `linkedin-publisher`.
 - [ ] Tier 3: lock root-cause hypothesis matrix with all-46 data.
 - [ ] Section 7: lock banner-reliability assessment with all-46 data.
-- [ ] Section 8: rank prevention options on (friction, coverage, latency, FP-rate).
+- [ ] Section 8: rank prevention options on (friction, coverage, latency, FP-rate). Decide whether Option F (SECURITY-DEFINER pattern detector) is in scope.
 - [ ] Section 8: lock recommendation and present for PK approval.
 
 No EF patching, no deploys, no NY×YT or M6 work until this brief is closed and PK has approved a recommendation.
@@ -321,13 +362,13 @@ No EF patching, no deploys, no NY×YT or M6 work until this brief is closed and 
 Rationale: full 46-EF inventory in one session would consume excessive context and prevent mid-investigation course correction. Batches let PK redirect after each report.
 
 **D-PREV-02 (2026-05-05) — Class C is the highest-priority case to surface.**
-Banner-only checks miss Class C; the `youtube-publisher` case demonstrated this. Batch 2 confirmed twice (`image-worker`, `feed-intelligence`).
+Banner-only checks miss Class C; the `youtube-publisher` case demonstrated this. Batch 2 confirmed twice (`image-worker`, `feed-intelligence`). Batch 4 added four more (`onboarding-notifier`, `ai-profile-bootstrap`, `series-outline`, `email-ingest`). Class C now has 7 confirmed cases — it is a recurring failure mode, not an edge case.
 
 **D-PREV-03 (2026-05-05) — `ingest` banner non-conformance is a finding, not a defect.**
 The feature-tag banner style cannot be programmatically compared to a deploy version number, but it is informative for the operator. Recommendation will treat semver banners as advisory only; drift detection must rely on body-comparison.
 
 **D-PREV-04 (2026-05-05, post-Batch 2) — CRLF/LF line-ending differences are NOT classified as drift.**
-At least 6/24 repo-comparable EFs across surveyed batches differ from deployed by CRLF vs LF only. Drift detection script must normalize line endings before comparison; otherwise nearly every Windows-deployed EF will produce a false-positive.
+At least 7/30 repo-comparable EFs across surveyed batches differ from deployed by CRLF vs LF only. Drift detection script must normalize line endings before comparison; otherwise nearly every Windows-deployed EF will produce a false-positive.
 
 **D-PREV-05 (2026-05-05, post-Batch 2) — `image-worker` minification is NOT classified as drift requiring sync.**
 Deployed and repo are functionally equivalent; the difference is whitespace/formatting. Sync would replace minified deployed source with formatted repo source, which is harmless but unnecessary.
@@ -339,17 +380,32 @@ Both are utility/test EFs with no `VERSION` constant. Drift detection will inclu
 The repo (v1.6.0) is many versions behind deployed (v14.0.0). Sync would mean overwriting the repo with deployed source. PK should review the deployed source for correctness before accepting it as canonical. Logged as a follow-up sync candidate.
 
 **D-PREV-08 (2026-05-05, post-Batch 3) — MCP `SERVER_INFO.version` is a legitimate alternative banner pattern.**
-Both `mcp-chatgpt-bridge` and `mcp-github-bridge` follow this pattern because the MCP protocol's `initialize` response requires a `serverInfo` dictionary that includes a `version` field. Hard-coding this dictionary is the natural way to keep the protocol in sync with the deploy version. Drift detection should:
+Both `mcp-chatgpt-bridge` and `mcp-github-bridge` follow this pattern because the MCP protocol's `initialize` response requires a `serverInfo` dictionary that includes a `version` field. Drift detection should:
 - recognise the `SERVER_INFO = { ..., version: 'X.Y.Z' }` pattern as a valid version source
 - compare the version field across deployed and repo for these EFs
 - not flag absence of top-level `VERSION` constant as a drift signal when SERVER_INFO is present
 
 **D-PREV-09 (2026-05-05, post-Batch 3) — `chatgpt-review-worker` and `inspector` lack any machine-readable version field.**
-`chatgpt-review-worker` only has a comment banner referencing `docs/briefs/chatgpt-review-mcp-v1.md (v1.1)`. `inspector` has no banner or version constant at all (its identity is only the deploy slug + Hono route prefix). For drift detection these EFs must rely entirely on body-hash comparison; no version-field signal is available. This is acceptable but worth noting in the prevention recommendation as a caveat: the drift report cannot say "deployed v1.5.2, repo v1.4.0" for these two — only "drift / no-drift" based on body bytes.
+For drift detection these EFs must rely entirely on body-hash comparison; no version-field signal is available. The drift report cannot say "deployed v1.5.2, repo v1.4.0" for these two — only "drift / no-drift" based on body bytes.
 
 **D-PREV-10 (2026-05-05, post-Batch 3) — Drift is concentrated, not uniform.**
-Batch 3's clean sweep (10/10 Class A) confirms that drift accumulates at specific seams: (a) older operational EFs created via dashboard, (b) cron-driven EFs that never made it into the repo, (c) hand-edited Class B/C cases. Recently built and carefully deployed infrastructure (MCP, observability trio, inspector pair, weekly reports) is in clean sync. The prevention recommendation should therefore prioritise *detection of existing drift* (so PK can manually triage the 7 Class D cases plus the 1 B / 2 C) over *prevention of new drift in well-managed code* (which is already happening naturally). Option B (passive daily cron + drift log) addresses the detection priority; Option C (deploy-time non-blocking warning) is the marginal addition for new-drift prevention.
+Batch 3's clean sweep (10/10 Class A) confirms that drift accumulates at specific seams. Recently built and carefully deployed infrastructure is in clean sync. The prevention recommendation should prioritise *detection of existing drift* over *prevention of new drift in well-managed code*.
+
+**D-PREV-11 (2026-05-05, post-Batch 4) — SECURITY-DEFINER-vs-exec_sql drift is the highest-severity drift category.**
+Three Batch 4 cases (`heygen-avatar-creator`, `heygen-avatar-poller`, `draft-notifier`) all share the same pattern: deployed source replaces a broken `exec_sql` UPDATE on `c.brand_avatar` or `m.post_draft` with a `SECURITY DEFINER` function called via `.rpc()`. Repo source still has the broken pattern. Per project memory: "`exec_sql` / `execute_sql` is effectively read-only on `c`, `f`, `m`, `t` schemas — DML silently fails. All mutations require `SECURITY DEFINER` functions in `public` schema called via `.rpc()`". A repo redeploy of any of these three would silently re-introduce a known production bug. Drift detection should:
+- detect this pattern specifically (regex for `\.rpc\('exec_sql'.*UPDATE [cmft]\.` in repo source)
+- when detected in repo AND NOT in deployed (replaced by named `.rpc()` calls), surface as a special "schema-write regression risk" alert
+- treat this as P1 sync priority — these cases need backfill commits, not just monitoring
+Option F (Section 8) addresses this with a targeted pattern detector. Option F is the strongest candidate addition to the recommendation post-Batch 4.
+
+**D-PREV-12 (2026-05-05, post-Batch 4) — Forward-drift is a separate state, not a regression.**
+`feed-discovery` repo v1.2.0 is ahead of deployed v1.1.0 with an explicit alignment-commit banner. This is a pending deploy, not stale source. Drift detection should:
+- compare version numbers when banner is parseable
+- distinguish "deployed > repo" (regression risk — the dangerous case) from "repo > deployed" (pending deploy — benign)
+- report forward-drift as informational only, not as an alert
+- still trigger a body-hash drift signal (the bodies differ), but classify it as forward-drift in the report
+Without this distinction, every commit-before-deploy workflow PK uses would generate a false-positive alert.
 
 ---
 
-_End of brief. Batch 4 next; checkpoint will report after that batch._
+_End of brief. Batch 5 next; checkpoint will report after that batch and lock the final recommendation in Section 8._
