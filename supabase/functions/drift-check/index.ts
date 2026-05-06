@@ -1,19 +1,20 @@
 // supabase/functions/drift-check/index.ts
 //
-// drift-check-v1.0.6 — Edge Function source drift detector
+// drift-check-v1.0.7 — Edge Function source drift detector
 // F-EF-DRIFT-PREVENTION Stage 2a (Option F backend).
 //
 // Iterates a *slice* of deployed Edge Functions, compares against repo source
 // on `main`, classifies drift per the taxonomy locked in
 // docs/briefs/2026-05-05-f-ef-drift-prevention.md, and writes one batch per
-// invocation to m.ef_drift_log via public.write_ef_drift_log(jsonb).
+// invocation to m.ef_drift_log via public.write_ef_drift_log(jsonb, uuid).
 //
-// Multi-invocation chunking — v1.0.6 design.
+// Multi-invocation chunking — v1.0.6+ design.
 //   v1.0.5 chunked-parallel processing in a single invocation hit Supabase EF
-//   WORKER_RESOURCE_LIMIT (~45-60s budget, sub-wall-clock cause). v1.0.6
+//   WORKER_RESOURCE_LIMIT (~45-60s budget, sub-wall-clock cause). v1.0.6+
 //   processes a fixed-size slice per invocation; orchestrator (manual or cron)
 //   walks the offsets to cover the full deployed inventory. Chunks of one
-//   logical scan are grouped via a shared `scan_id`.
+//   logical scan are grouped via a shared scan_id, which the EF passes
+//   verbatim as the writer fn's p_run_id (column m.ef_drift_log.drift_check_run_id).
 //
 // Invocation
 //   POST /functions/v1/drift-check
@@ -25,11 +26,18 @@
 //   - offset=<int>    -> starting index into stable-sorted deployed slug list
 //                        (default 0)
 //   - limit=<int>     -> chunk size (default 10, hard cap 10)
-//   - scan_id=<uuid>  -> shared scan correlation ID; embedded in each row's
-//                        notes as "[scan=<uuid>] ". If omitted, EF generates
-//                        crypto.randomUUID() and returns it in the summary.
-//                        Orchestrator passes the same scan_id to all chunks.
+//   - scan_id=<uuid>  -> shared scan correlation ID, written verbatim into
+//                        m.ef_drift_log.drift_check_run_id for every row in
+//                        every chunk of one logical daily scan.
+//                        If omitted, EF generates crypto.randomUUID() and
+//                        returns it in the summary. Orchestrator passes the
+//                        same scan_id to all chunks.
 //   - concurrency=<N> -> per-chunk Promise.all width (default 10, capped 20)
+//
+// Naming: scan_id is the orchestrator-facing concept; it lands in the table
+// as drift_check_run_id (the canonical column name). The writer fn's
+// p_run_id parameter is the bridge — see public.write_ef_drift_log(jsonb, uuid)
+// (Stage 2a writer-patch migration).
 //
 // Auth
 //   verify_jwt:false in config (matches draft-notifier convention).
@@ -52,7 +60,8 @@
 //   - Missing required env -> HTTP 500 JSON, no DB writes.
 //   - Per-slug fetch failure -> entry in `errors[]`, batch continues.
 //   - writeFlag is strict equality to "true"; anything else is dry-run.
-//   - One drift_check_run_id per invocation (writer fn generates it).
+//   - One drift_check_run_id per invocation when scan_id provided; same
+//     run_id reused across chunks of one logical scan.
 //   - Repo-only directory rows are emitted ONLY on the first chunk
 //     (offset=0) to avoid duplication across chunks of one scan.
 //
@@ -65,17 +74,20 @@
 //     ?write=true&offset=0&limit=10&scan_id=<uuid>
 //     ?write=true&offset=10&limit=10&scan_id=<same>
 //     ...etc
-//   SQL: SELECT count(*), max(checked_at) FROM m.ef_drift_log
-//         WHERE notes ILIKE '[scan=<uuid>]%';
+//   SQL: SELECT count(*) FROM m.ef_drift_log
+//         WHERE drift_check_run_id = '<scan_id>';
 //
 // Changelog
-//   v1.0.6 (2026-05-06) — Multi-invocation chunking. Adds offset/limit/scan_id
-//                         params. Default limit=10, hard cap 10. scan_id
-//                         embedded in each row's notes prefix as "[scan=<uuid>]"
-//                         to group chunks of one logical scan without a
-//                         schema change. Stable slug sort (alphabetical) for
-//                         deterministic offset slicing. Repo-only rows
-//                         emitted only on first chunk (offset=0).
+//   v1.0.7 (2026-05-06) — scan_id flows through to m.ef_drift_log.drift_check_run_id
+//                         via the patched writer fn signature
+//                         public.write_ef_drift_log(p_rows jsonb, p_run_id uuid).
+//                         Drops the v1.0.6 [scan=<uuid>] prefix on notes
+//                         (PK rejected — schema debt). Notes field reverts to
+//                         purely human-readable details from the classifier.
+//                         Migration f_ef_drift_prevention_writer_accept_run_id
+//                         applied 2026-05-06 (D-01 review 0a9012e7).
+//   v1.0.6 — multi-invocation chunking (offset/limit/scan_id), notes prefix
+//            (now superseded by v1.0.7).
 //   v1.0.5 — chunked parallel within single invocation (insufficient).
 //   v1.0.4 — banner-version parser fix.
 //   v1.0.3 — drop internal bearer self-validation.
@@ -83,7 +95,7 @@
 //   v1.0.1 — read GitHub auth from existing GITHUB_PAT.
 //   v1.0.0 — initial Stage 2a backend.
 
-const VERSION = "drift-check-v1.0.6";
+const VERSION = "drift-check-v1.0.7";
 
 // ---------- hardcoded project constants ----------
 
@@ -556,10 +568,14 @@ async function processSlug(
 }
 
 // ---------- batch writer ----------
+// v1.0.7: passes runId as p_run_id to the patched writer fn signature
+// public.write_ef_drift_log(p_rows jsonb, p_run_id uuid). All rows in this
+// chunk land in m.ef_drift_log with drift_check_run_id = runId.
 
 async function writeBatch(
   env: RequiredEnv,
   rows: DriftRow[],
+  runId: string,
 ): Promise<{ inserted: number }> {
   const url = `${env.SUPABASE_URL}/rest/v1/rpc/write_ef_drift_log`;
   const resp = await fetch(url, {
@@ -569,7 +585,7 @@ async function writeBatch(
       Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
       apikey: env.SUPABASE_SERVICE_ROLE_KEY,
     },
-    body: JSON.stringify({ p_rows: rows }),
+    body: JSON.stringify({ p_rows: rows, p_run_id: runId }),
   });
   if (!resp.ok) {
     const body = await resp.text();
@@ -587,7 +603,6 @@ Deno.serve(async (req) => {
   const writeFlag = url.searchParams.get("write") === "true";
   const slugFilter = url.searchParams.get("slug");
 
-  // offset / limit (capped to MAX_LIMIT for safety)
   const offsetRaw = url.searchParams.get("offset");
   const limitRaw = url.searchParams.get("limit");
   let offset = 0;
@@ -601,7 +616,8 @@ Deno.serve(async (req) => {
     if (!Number.isNaN(n) && n >= 1) limit = Math.min(n, MAX_LIMIT);
   }
 
-  // scan_id — accept caller-provided; else generate.
+  // scan_id — accept caller-provided; else generate. Maps to the writer
+  // fn's p_run_id and lands in m.ef_drift_log.drift_check_run_id.
   let scanId = url.searchParams.get("scan_id");
   let scanIdGenerated = false;
   if (!scanId) {
@@ -609,7 +625,6 @@ Deno.serve(async (req) => {
     scanIdGenerated = true;
   }
 
-  // Concurrency parsing.
   let concurrency = DEFAULT_CONCURRENCY;
   const concurrencyRaw = url.searchParams.get("concurrency");
   if (concurrencyRaw) {
@@ -619,7 +634,6 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Env validation.
   const envRes = readEnv();
   if (!envRes.ok) {
     return new Response(
@@ -659,9 +673,6 @@ Deno.serve(async (req) => {
   deployed.sort((a, b) => a.slug.localeCompare(b.slug));
 
   let repoDirs: string[] = [];
-  // listRepoFunctionDirs is only needed when emitting repo-only rows
-  // (offset==0 in chunked mode; or any single-slug call where repoDirs are
-  // ignored anyway). Skip on offset>0 to save 1 fetch + reduce work.
   const willEmitRepoOnly = !slugFilter && offset === 0;
   if (willEmitRepoOnly) {
     try {
@@ -679,7 +690,6 @@ Deno.serve(async (req) => {
   const deployedSlugs = new Set(deployed.map((d) => d.slug));
   const repoOnlyDirs = repoDirs.filter((d) => !deployedSlugs.has(d));
 
-  // Determine slugs to process for this invocation.
   let slugsToProcess: DeployedFn[];
   let totalChunkSize: number;
   if (slugFilter) {
@@ -722,7 +732,6 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Repo-only directory rows — only on offset==0 chunk (or single-slug never).
   if (willEmitRepoOnly) {
     for (const dir of repoOnlyDirs) {
       const cls = classify({
@@ -755,12 +764,9 @@ Deno.serve(async (req) => {
   }
   const processPhaseMs = Date.now() - processPhaseStart;
 
-  // Embed scan_id into every row's notes prefix for cross-chunk correlation.
-  // Schema-free grouping: SELECT ... WHERE notes LIKE '[scan=<uuid>]%'
-  const scanPrefix = `[scan=${scanId}] `;
-  for (const r of rows) {
-    r.notes = r.notes ? `${scanPrefix}${r.notes}` : scanPrefix.trim();
-  }
+  // v1.0.7: NO scan-prefix on notes. scan_id flows through to drift_check_run_id
+  // via the writer fn p_run_id parameter (see writeBatch). Notes stay clean
+  // and human-readable.
 
   // Tallies.
   const byClass: Record<string, number> = {};
@@ -776,13 +782,13 @@ Deno.serve(async (req) => {
     }
   }
 
-  // ---------- Phase 3: writer (single batch call for this chunk) ----------
+  // ---------- Phase 3: writer (single batch call, runId = scanId) ----------
   const writerPhaseStart = Date.now();
   let wroteRows = false;
   let writerInserted = 0;
   if (writeFlag && rows.length > 0) {
     try {
-      const w = await writeBatch(env, rows);
+      const w = await writeBatch(env, rows, scanId);
       wroteRows = true;
       writerInserted = w.inserted;
     } catch (e) {
@@ -797,7 +803,6 @@ Deno.serve(async (req) => {
 
   const totalMs = Date.now() - startedAt;
 
-  // Pagination hints for the orchestrator.
   const nextOffset = slugFilter ? null : offset + slugsToProcess.length;
   const hasMore = !slugFilter && nextOffset !== null &&
     nextOffset < deployed.length;
@@ -810,6 +815,7 @@ Deno.serve(async (req) => {
     writer_inserted: writerInserted,
     scan_id: scanId,
     scan_id_generated: scanIdGenerated,
+    drift_check_run_id: scanId, // alias — same value, canonical column name
     slug_filter: slugFilter,
     offset: slugFilter ? null : offset,
     limit: slugFilter ? null : limit,
