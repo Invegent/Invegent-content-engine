@@ -1,6 +1,6 @@
 // supabase/functions/drift-check/index.ts
 //
-// drift-check-v1.0.1 — Edge Function source drift detector
+// drift-check-v1.0.2 — Edge Function source drift detector
 // F-EF-DRIFT-PREVENTION Stage 2a (Option F backend).
 //
 // Iterates deployed Edge Functions, compares against repo source on `main`,
@@ -22,7 +22,7 @@
 //   SUPABASE_URL                  (auto-injected by Supabase EF runtime)
 //   SUPABASE_SERVICE_ROLE_KEY     (auto-injected by Supabase EF runtime)
 //   GITHUB_PAT                    (existing project secret — fine-grained, read-only)
-//   SUPABASE_ACCESS_TOKEN         (NEW — sbp_... Management API PAT)
+//   MANAGEMENT_API_TOKEN          (NEW — sbp_... Supabase Management API PAT)
 //
 // Hardcoded (project-specific constants, not secrets)
 //   GITHUB_OWNER = "Invegent"
@@ -37,12 +37,15 @@
 //   - writeFlag is strict equality to "true"; anything else is dry-run.
 //
 // Changelog
+//   v1.0.2 (2026-05-06) — Rename SUPABASE_ACCESS_TOKEN -> MANAGEMENT_API_TOKEN.
+//                         Supabase CLI reserves the SUPABASE_* namespace for
+//                         runtime auto-injection; secrets cannot use that prefix.
 //   v1.0.1 (2026-05-06) — Read GitHub auth from existing GITHUB_PAT secret.
 //                         Hardcode owner/repo/ref. Derive PROJECT_REF from
 //                         SUPABASE_URL. Reduces required new secrets from 5 to 1.
 //   v1.0.0 (2026-05-06) — Initial Stage 2a backend (D-01 review_id 48033af8).
 
-const VERSION = "drift-check-v1.0.1";
+const VERSION = "drift-check-v1.0.2";
 
 // ---------- hardcoded project constants ----------
 
@@ -55,7 +58,7 @@ const GITHUB_REF = "main";
 interface RequiredEnv {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
-  SUPABASE_ACCESS_TOKEN: string;
+  MANAGEMENT_API_TOKEN: string;
   GITHUB_PAT: string;
   PROJECT_REF: string; // derived from SUPABASE_URL
 }
@@ -63,7 +66,7 @@ interface RequiredEnv {
 const REQUIRED_ENV_KEYS = [
   "SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
-  "SUPABASE_ACCESS_TOKEN",
+  "MANAGEMENT_API_TOKEN",
   "GITHUB_PAT",
 ] as const;
 
@@ -196,7 +199,7 @@ async function listDeployedFunctions(env: RequiredEnv): Promise<DeployedFn[]> {
   const url =
     `https://api.supabase.com/v1/projects/${env.PROJECT_REF}/functions`;
   const resp = await fetch(url, {
-    headers: { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}` },
+    headers: { Authorization: `Bearer ${env.MANAGEMENT_API_TOKEN}` },
   });
   if (!resp.ok) {
     const body = await resp.text();
@@ -219,7 +222,7 @@ async function fetchDeployedBody(
   const url =
     `https://api.supabase.com/v1/projects/${env.PROJECT_REF}/functions/${slug}/body`;
   const resp = await fetch(url, {
-    headers: { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}` },
+    headers: { Authorization: `Bearer ${env.MANAGEMENT_API_TOKEN}` },
   });
   if (!resp.ok) {
     const body = await resp.text();
