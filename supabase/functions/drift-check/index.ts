@@ -1,7 +1,24 @@
 // supabase/functions/drift-check/index.ts
 //
-// drift-check-v1.0.7 — Edge Function source drift detector
+// drift-check-v1.0.8 — Edge Function source drift detector
 // F-EF-DRIFT-PREVENTION Stage 2a (Option F backend).
+//
+// CRITICAL FIX in v1.0.8: fetchDeployedBody now correctly parses
+// multipart/form-data from /v1/projects/{ref}/functions/{slug}/body.
+// v1.0.7 and earlier text-parsed multipart bytes (boundary markers, headers)
+// instead of extracting the actual index.ts file, which produced false-
+// positive drift on every deployed Edge Function. Confirmed via
+// `npx supabase functions download` source code in supabase/cli@main —
+// the CLI sends `Accept: multipart/form-data` and parses the resulting
+// form, finding the entrypoint file by metadata.entrypoint_path or
+// falling back to index.ts.
+//
+// Investigation evidence (F1, 2026-05-06):
+//   - publisher CLI download: normalised SHA-256 91d26289... matches repo
+//   - publisher drift-check v1.0.7: normalised SHA-256 5a399748... — wrong artefact
+//   - 47-of-47 universal "drift" was a fetch bug, not real drift
+//   - Now fixed; expected post-fix: most EFs Class A (clean) or A-LE
+//     (line-ending only), with a small number of real Class B/C/D drifts.
 //
 // Iterates a *slice* of deployed Edge Functions, compares against repo source
 // on `main`, classifies drift per the taxonomy locked in
@@ -20,24 +37,6 @@
 //   POST /functions/v1/drift-check
 //        ?write=<bool>&slug=<optional>
 //        &offset=<int>&limit=<int>&scan_id=<uuid>&concurrency=<N>
-//
-//   - write=true / write=false (default false)
-//   - slug=<name>     -> single-slug mode (smoke); ignores offset/limit
-//   - offset=<int>    -> starting index into stable-sorted deployed slug list
-//                        (default 0)
-//   - limit=<int>     -> chunk size (default 10, hard cap 10)
-//   - scan_id=<uuid>  -> shared scan correlation ID, written verbatim into
-//                        m.ef_drift_log.drift_check_run_id for every row in
-//                        every chunk of one logical daily scan.
-//                        If omitted, EF generates crypto.randomUUID() and
-//                        returns it in the summary. Orchestrator passes the
-//                        same scan_id to all chunks.
-//   - concurrency=<N> -> per-chunk Promise.all width (default 10, capped 20)
-//
-// Naming: scan_id is the orchestrator-facing concept; it lands in the table
-// as drift_check_run_id (the canonical column name). The writer fn's
-// p_run_id parameter is the bridge — see public.write_ef_drift_log(jsonb, uuid)
-// (Stage 2a writer-patch migration).
 //
 // Auth
 //   verify_jwt:false in config (matches draft-notifier convention).
@@ -65,29 +64,18 @@
 //   - Repo-only directory rows are emitted ONLY on the first chunk
 //     (offset=0) to avoid duplication across chunks of one scan.
 //
-// Manual test sequence (per PK directive)
-//   Smoke:           ?write=false&slug=publisher
-//   Dry-run chunk 1: ?write=false&offset=0&limit=10
-//   Dry-run chunk 2: ?write=false&offset=10&limit=10
-//   ...etc until offset >= deployed_count...
-//   Full write chunks (use same scan_id):
-//     ?write=true&offset=0&limit=10&scan_id=<uuid>
-//     ?write=true&offset=10&limit=10&scan_id=<same>
-//     ...etc
-//   SQL: SELECT count(*) FROM m.ef_drift_log
-//         WHERE drift_check_run_id = '<scan_id>';
-//
 // Changelog
-//   v1.0.7 (2026-05-06) — scan_id flows through to m.ef_drift_log.drift_check_run_id
-//                         via the patched writer fn signature
-//                         public.write_ef_drift_log(p_rows jsonb, p_run_id uuid).
-//                         Drops the v1.0.6 [scan=<uuid>] prefix on notes
-//                         (PK rejected — schema debt). Notes field reverts to
-//                         purely human-readable details from the classifier.
-//                         Migration f_ef_drift_prevention_writer_accept_run_id
-//                         applied 2026-05-06 (D-01 review 0a9012e7).
+//   v1.0.8 (2026-05-06) — F1 fix: multipart/form-data parsing for
+//                         /functions/{slug}/body. Sends Accept header,
+//                         parses Response.formData(), reads entrypoint_path
+//                         from "metadata" form value, picks matching file
+//                         with sensible fallbacks. Verified against CLI
+//                         download for publisher (true clean baseline).
+//   v1.0.7 — scan_id flows to drift_check_run_id via writer fn p_run_id
+//            (now applies to a CORRECT body — earlier versions hashed
+//             the multipart wire format).
 //   v1.0.6 — multi-invocation chunking (offset/limit/scan_id), notes prefix
-//            (now superseded by v1.0.7).
+//            (superseded by v1.0.7).
 //   v1.0.5 — chunked parallel within single invocation (insufficient).
 //   v1.0.4 — banner-version parser fix.
 //   v1.0.3 — drop internal bearer self-validation.
@@ -95,7 +83,7 @@
 //   v1.0.1 — read GitHub auth from existing GITHUB_PAT.
 //   v1.0.0 — initial Stage 2a backend.
 
-const VERSION = "drift-check-v1.0.7";
+const VERSION = "drift-check-v1.0.8";
 
 // ---------- hardcoded project constants ----------
 
@@ -264,6 +252,12 @@ async function listDeployedFunctions(env: RequiredEnv): Promise<DeployedFn[]> {
   }));
 }
 
+// v1.0.8: parses multipart/form-data response from
+// GET /v1/projects/{ref}/functions/{slug}/body. The Supabase Management API
+// returns the deployed function as a multipart form: one "metadata" form
+// value (JSON with entrypoint_path), plus one or more file parts. We send
+// `Accept: multipart/form-data` and use Response.formData() to parse, then
+// pick the entrypoint file (or fall back to index.ts).
 async function fetchDeployedBody(
   env: RequiredEnv,
   slug: string,
@@ -271,7 +265,10 @@ async function fetchDeployedBody(
   const url =
     `https://api.supabase.com/v1/projects/${env.PROJECT_REF}/functions/${slug}/body`;
   const resp = await fetch(url, {
-    headers: { Authorization: `Bearer ${env.MANAGEMENT_API_TOKEN}` },
+    headers: {
+      Authorization: `Bearer ${env.MANAGEMENT_API_TOKEN}`,
+      Accept: "multipart/form-data",
+    },
   });
   if (!resp.ok) {
     const body = await resp.text();
@@ -279,30 +276,111 @@ async function fetchDeployedBody(
       `fetch_deployed ${slug} ${resp.status}: ${body.slice(0, 200)}`,
     );
   }
-  const text = await resp.text();
-  try {
-    const parsed = JSON.parse(text);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      if (typeof parsed.body === "string") return parsed.body;
-      if (typeof parsed.content === "string") return parsed.content;
-    }
-    if (Array.isArray(parsed)) {
-      const indexFile = parsed.find(
-        (f: { name?: string }) => f && f.name === "index.ts",
-      );
-      if (indexFile && typeof indexFile.content === "string") {
-        return indexFile.content;
-      }
-      const concatenated = parsed
-        .filter((f: { content?: string }) => typeof f.content === "string")
-        .map((f: { content: string }) => f.content)
-        .join("\n");
-      if (concatenated.length > 0) return concatenated;
-    }
-    return text;
-  } catch {
-    return text;
+
+  const contentType = resp.headers.get("Content-Type") || "";
+  if (!contentType.startsWith("multipart/")) {
+    const body = await resp.text();
+    throw new Error(
+      `fetch_deployed ${slug}: expected multipart response, got Content-Type='${contentType}'; body[0:200]: ${
+        body.slice(0, 200)
+      }`,
+    );
   }
+
+  // Web Fetch API can parse multipart/form-data via Response.formData().
+  let formData: FormData;
+  try {
+    formData = await resp.formData();
+  } catch (e) {
+    throw new Error(
+      `fetch_deployed ${slug}: failed to parse multipart form: ${
+        (e as Error).message
+      }`,
+    );
+  }
+
+  // 1. Try to read entrypoint_path from "metadata" form value.
+  let entrypointPath: string | null = null;
+  const metadataValue = formData.get("metadata");
+  if (metadataValue !== null) {
+    let metaText: string | null = null;
+    if (typeof metadataValue === "string") {
+      metaText = metadataValue;
+    } else if (metadataValue instanceof File) {
+      metaText = await metadataValue.text();
+    }
+    if (metaText) {
+      try {
+        const meta = JSON.parse(metaText);
+        if (typeof meta?.entrypoint_path === "string") {
+          entrypointPath = meta.entrypoint_path;
+        }
+      } catch {
+        // metadata not JSON; proceed without entrypoint hint
+      }
+    }
+  }
+
+  // 2. Collect all file parts.
+  type MpFile = { name: string; content: string };
+  const files: MpFile[] = [];
+  for (const [key, value] of formData.entries()) {
+    if (value instanceof File) {
+      const text = await value.text();
+      const name = value.name || key;
+      files.push({ name, content: text });
+    }
+  }
+
+  if (files.length === 0) {
+    throw new Error(`fetch_deployed ${slug}: no files in multipart response`);
+  }
+
+  // 3. Pick the entrypoint file.
+  // entrypointPath may look like "file:///src/index.ts", "/src/index.ts",
+  // "src/index.ts", "index.ts", or similar. File names from Content-Disposition
+  // may be just the basename, full path, or anything. We try several
+  // matching strategies in order of strictness, falling back to "index.ts".
+  let chosen: MpFile | null = null;
+
+  if (entrypointPath) {
+    let entrypointPathname = entrypointPath;
+    try {
+      // Parse as URL to strip "file://" scheme if present.
+      const u = new URL(entrypointPath);
+      entrypointPathname = u.pathname;
+    } catch {
+      // not a URL — leave as-is
+    }
+    // Normalise: remove leading slash for fuzzy matching
+    const epClean = entrypointPathname.replace(/^\//, "");
+    chosen = files.find((f) =>
+      f.name === entrypointPath ||
+      f.name === entrypointPathname ||
+      f.name === epClean ||
+      f.name.endsWith("/" + epClean) ||
+      f.name.endsWith(epClean) ||
+      epClean.endsWith(f.name)
+    ) ?? null;
+  }
+
+  if (!chosen) {
+    chosen = files.find((f) =>
+      f.name === "index.ts" ||
+      f.name.endsWith("/index.ts")
+    ) ?? null;
+  }
+
+  if (!chosen) {
+    // Last resort: first .ts file
+    chosen = files.find((f) => f.name.endsWith(".ts")) ?? null;
+  }
+
+  if (!chosen) {
+    chosen = files[0];
+  }
+
+  return chosen.content;
 }
 
 async function fetchRepoBody(
@@ -568,9 +646,6 @@ async function processSlug(
 }
 
 // ---------- batch writer ----------
-// v1.0.7: passes runId as p_run_id to the patched writer fn signature
-// public.write_ef_drift_log(p_rows jsonb, p_run_id uuid). All rows in this
-// chunk land in m.ef_drift_log with drift_check_run_id = runId.
 
 async function writeBatch(
   env: RequiredEnv,
@@ -616,8 +691,6 @@ Deno.serve(async (req) => {
     if (!Number.isNaN(n) && n >= 1) limit = Math.min(n, MAX_LIMIT);
   }
 
-  // scan_id — accept caller-provided; else generate. Maps to the writer
-  // fn's p_run_id and lands in m.ef_drift_log.drift_check_run_id.
   let scanId = url.searchParams.get("scan_id");
   let scanIdGenerated = false;
   if (!scanId) {
@@ -651,7 +724,6 @@ Deno.serve(async (req) => {
 
   const errors: ProcessError[] = [];
 
-  // ---------- Phase 1: list deployed + repo dirs ----------
   const listPhaseStart = Date.now();
   let deployed: DeployedFn[];
   try {
@@ -669,7 +741,6 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Stable alphabetical sort so offset slicing is deterministic across calls.
   deployed.sort((a, b) => a.slug.localeCompare(b.slug));
 
   let repoDirs: string[] = [];
@@ -713,7 +784,6 @@ Deno.serve(async (req) => {
     totalChunkSize = slugsToProcess.length;
   }
 
-  // ---------- Phase 2: chunked-parallel processing of this slice ----------
   const processPhaseStart = Date.now();
   const rows: DriftRow[] = [];
 
@@ -764,11 +834,6 @@ Deno.serve(async (req) => {
   }
   const processPhaseMs = Date.now() - processPhaseStart;
 
-  // v1.0.7: NO scan-prefix on notes. scan_id flows through to drift_check_run_id
-  // via the writer fn p_run_id parameter (see writeBatch). Notes stay clean
-  // and human-readable.
-
-  // Tallies.
   const byClass: Record<string, number> = {};
   const bySeverity: Record<string, number> = {};
   let sdRiskCount = 0;
@@ -782,7 +847,6 @@ Deno.serve(async (req) => {
     }
   }
 
-  // ---------- Phase 3: writer (single batch call, runId = scanId) ----------
   const writerPhaseStart = Date.now();
   let wroteRows = false;
   let writerInserted = 0;
@@ -815,7 +879,7 @@ Deno.serve(async (req) => {
     writer_inserted: writerInserted,
     scan_id: scanId,
     scan_id_generated: scanIdGenerated,
-    drift_check_run_id: scanId, // alias — same value, canonical column name
+    drift_check_run_id: scanId,
     slug_filter: slugFilter,
     offset: slugFilter ? null : offset,
     limit: slugFilter ? null : limit,
