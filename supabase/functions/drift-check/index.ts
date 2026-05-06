@@ -1,67 +1,89 @@
 // supabase/functions/drift-check/index.ts
 //
-// drift-check-v1.0.5 — Edge Function source drift detector
+// drift-check-v1.0.6 — Edge Function source drift detector
 // F-EF-DRIFT-PREVENTION Stage 2a (Option F backend).
 //
-// Iterates deployed Edge Functions, compares against repo source on `main`,
-// classifies drift per the taxonomy locked in
+// Iterates a *slice* of deployed Edge Functions, compares against repo source
+// on `main`, classifies drift per the taxonomy locked in
 // docs/briefs/2026-05-05-f-ef-drift-prevention.md, and writes one batch per
-// run to m.ef_drift_log via public.write_ef_drift_log(jsonb).
+// invocation to m.ef_drift_log via public.write_ef_drift_log(jsonb).
+//
+// Multi-invocation chunking — v1.0.6 design.
+//   v1.0.5 chunked-parallel processing in a single invocation hit Supabase EF
+//   WORKER_RESOURCE_LIMIT (~45-60s budget, sub-wall-clock cause). v1.0.6
+//   processes a fixed-size slice per invocation; orchestrator (manual or cron)
+//   walks the offsets to cover the full deployed inventory. Chunks of one
+//   logical scan are grouped via a shared `scan_id`.
 //
 // Invocation
-//   POST /functions/v1/drift-check?write=<bool>&slug=<optional>&concurrency=<N>
-//   - write=true        -> writes rows via writer fn (cron path)
-//   - write=false / omitted -> dry-run, writes nothing (default)
-//   - slug=<name>       -> single-slug mode (smoke test)
-//   - concurrency=<N>   -> per-chunk Promise.all width (default 10, capped 20)
+//   POST /functions/v1/drift-check
+//        ?write=<bool>&slug=<optional>
+//        &offset=<int>&limit=<int>&scan_id=<uuid>&concurrency=<N>
+//
+//   - write=true / write=false (default false)
+//   - slug=<name>     -> single-slug mode (smoke); ignores offset/limit
+//   - offset=<int>    -> starting index into stable-sorted deployed slug list
+//                        (default 0)
+//   - limit=<int>     -> chunk size (default 10, hard cap 10)
+//   - scan_id=<uuid>  -> shared scan correlation ID; embedded in each row's
+//                        notes as "[scan=<uuid>] ". If omitted, EF generates
+//                        crypto.randomUUID() and returns it in the summary.
+//                        Orchestrator passes the same scan_id to all chunks.
+//   - concurrency=<N> -> per-chunk Promise.all width (default 10, capped 20)
 //
 // Auth
 //   verify_jwt:false in config (matches draft-notifier convention).
-//   No internal bearer check — relies on verify_jwt:false at the gateway and
-//   URL obscurity. The function is read-mostly (dry-run by default), and write
-//   mode inserts only to m.ef_drift_log via the SECURITY DEFINER writer fn,
-//   which is itself service_role-gated. Cron sends a service_role bearer for
-//   compatibility with the existing pg_net pattern; the value is not validated.
 //
 // Required env
 //   SUPABASE_URL                  (auto-injected)
 //   SUPABASE_SERVICE_ROLE_KEY     (auto-injected; used to call writer RPC)
-//   GITHUB_PAT                    (existing project secret — fine-grained)
+//   GITHUB_PAT                    (existing project secret)
 //   MANAGEMENT_API_TOKEN          (sbp_... Supabase Management API PAT)
 //
 // Hardcoded
 //   GITHUB_OWNER = "Invegent"
 //   GITHUB_REPO  = "Invegent-content-engine"
 //   GITHUB_REF   = "main"
-//   PROJECT_REF derived from SUPABASE_URL hostname.
-//   DEFAULT_CONCURRENCY = 10, MAX_CONCURRENCY = 20.
+//   PROJECT_REF  = derived from SUPABASE_URL hostname.
+//   DEFAULT_LIMIT = 10, MAX_LIMIT = 10, DEFAULT_CONCURRENCY = 10,
+//   MAX_CONCURRENCY = 20.
 //
 // Hard guarantees
 //   - Missing required env -> HTTP 500 JSON, no DB writes.
 //   - Per-slug fetch failure -> entry in `errors[]`, batch continues.
 //   - writeFlag is strict equality to "true"; anything else is dry-run.
-//   - One drift_check_run_id per invocation (writer fn generates it from a
-//     single RPC call, regardless of how many chunks the EF processed in).
+//   - One drift_check_run_id per invocation (writer fn generates it).
+//   - Repo-only directory rows are emitted ONLY on the first chunk
+//     (offset=0) to avoid duplication across chunks of one scan.
+//
+// Manual test sequence (per PK directive)
+//   Smoke:           ?write=false&slug=publisher
+//   Dry-run chunk 1: ?write=false&offset=0&limit=10
+//   Dry-run chunk 2: ?write=false&offset=10&limit=10
+//   ...etc until offset >= deployed_count...
+//   Full write chunks (use same scan_id):
+//     ?write=true&offset=0&limit=10&scan_id=<uuid>
+//     ?write=true&offset=10&limit=10&scan_id=<same>
+//     ...etc
+//   SQL: SELECT count(*), max(checked_at) FROM m.ef_drift_log
+//         WHERE notes ILIKE '[scan=<uuid>]%';
 //
 // Changelog
-//   v1.0.5 (2026-05-06) — Chunked parallel processing via Promise.all to fit
-//                         within Supabase EF wall-clock budget. v1.0.4 serial
-//                         (47 EFs × ~3.7s = ~175s) hit WORKER_RESOURCE_LIMIT
-//                         at ~60s. v1.0.5 default concurrency=10 yields
-//                         ~5 chunks × ~5s = ~25s wall-clock. Per-slug logic
-//                         factored into processSlug(). Single writer-fn call
-//                         at end preserves the one-run-id invariant. Body
-//                         strings are not retained beyond per-slug scope
-//                         (already true in v1.0.4 due to local-scope vars,
-//                         documented here for clarity). Adds timing stats.
-//                         No classification or banner-parser change.
-//   v1.0.4 — banner-version parser fix (extractSemver).
+//   v1.0.6 (2026-05-06) — Multi-invocation chunking. Adds offset/limit/scan_id
+//                         params. Default limit=10, hard cap 10. scan_id
+//                         embedded in each row's notes prefix as "[scan=<uuid>]"
+//                         to group chunks of one logical scan without a
+//                         schema change. Stable slug sort (alphabetical) for
+//                         deterministic offset slicing. Repo-only rows
+//                         emitted only on first chunk (offset=0).
+//   v1.0.5 — chunked parallel within single invocation (insufficient).
+//   v1.0.4 — banner-version parser fix.
 //   v1.0.3 — drop internal bearer self-validation.
-//   v1.0.2 — rename SUPABASE_ACCESS_TOKEN -> MANAGEMENT_API_TOKEN.
+//   v1.0.2 — rename to MANAGEMENT_API_TOKEN.
 //   v1.0.1 — read GitHub auth from existing GITHUB_PAT.
 //   v1.0.0 — initial Stage 2a backend.
 
-const VERSION = "drift-check-v1.0.5";
+const VERSION = "drift-check-v1.0.6";
 
 // ---------- hardcoded project constants ----------
 
@@ -69,6 +91,8 @@ const GITHUB_OWNER = "Invegent";
 const GITHUB_REPO = "Invegent-content-engine";
 const GITHUB_REF = "main";
 
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 10;
 const DEFAULT_CONCURRENCY = 10;
 const MAX_CONCURRENCY = 20;
 
@@ -79,7 +103,7 @@ interface RequiredEnv {
   SUPABASE_SERVICE_ROLE_KEY: string;
   MANAGEMENT_API_TOKEN: string;
   GITHUB_PAT: string;
-  PROJECT_REF: string; // derived from SUPABASE_URL
+  PROJECT_REF: string;
 }
 
 const REQUIRED_ENV_KEYS = [
@@ -92,8 +116,7 @@ const REQUIRED_ENV_KEYS = [
 function deriveProjectRef(url: string): string | null {
   try {
     const parsed = new URL(url);
-    const host = parsed.hostname;
-    const ref = host.split(".")[0];
+    const ref = parsed.hostname.split(".")[0];
     if (!ref || ref.length < 8) return null;
     return ref;
   } catch {
@@ -428,7 +451,7 @@ function classify(args: ClassifyArgs): ClassifyResult {
   };
 }
 
-// ---------- per-slug worker (concurrent-safe) ----------
+// ---------- per-slug worker ----------
 
 interface ProcessError {
   slug: string;
@@ -445,22 +468,16 @@ async function processSlug(
   env: RequiredEnv,
   slug: string,
 ): Promise<SlugResult> {
-  // Fetch deployed body.
   let deployedRaw: string;
   try {
     deployedRaw = await fetchDeployedBody(env, slug);
   } catch (e) {
     return {
       kind: "error",
-      error: {
-        slug,
-        stage: "fetch_deployed",
-        message: (e as Error).message,
-      },
+      error: { slug, stage: "fetch_deployed", message: (e as Error).message },
     };
   }
 
-  // Fetch repo body (404 -> missing).
   let repoRaw: string | null = null;
   let repoPathStatus: "present" | "missing" = "present";
   try {
@@ -470,11 +487,7 @@ async function processSlug(
   } catch (e) {
     return {
       kind: "error",
-      error: {
-        slug,
-        stage: "fetch_repo",
-        message: (e as Error).message,
-      },
+      error: { slug, stage: "fetch_repo", message: (e as Error).message },
     };
   }
 
@@ -483,7 +496,6 @@ async function processSlug(
     ? null
     : normaliseLineEndings(repoRaw);
 
-  // Hash both raw + normalised.
   let deployedHash: string;
   let deployedHashNormalised: string;
   let repoHash: string | null = null;
@@ -498,11 +510,7 @@ async function processSlug(
   } catch (e) {
     return {
       kind: "error",
-      error: {
-        slug,
-        stage: "hash",
-        message: (e as Error).message,
-      },
+      error: { slug, stage: "hash", message: (e as Error).message },
     };
   }
 
@@ -527,7 +535,6 @@ async function processSlug(
     sdRisk,
   });
 
-  // Body strings go out of scope at function return — no explicit drop needed.
   return {
     kind: "row",
     row: {
@@ -550,14 +557,10 @@ async function processSlug(
 
 // ---------- batch writer ----------
 
-interface WriteResult {
-  inserted: number;
-}
-
 async function writeBatch(
   env: RequiredEnv,
   rows: DriftRow[],
-): Promise<WriteResult> {
+): Promise<{ inserted: number }> {
   const url = `${env.SUPABASE_URL}/rest/v1/rpc/write_ef_drift_log`;
   const resp = await fetch(url, {
     method: "POST",
@@ -573,8 +576,7 @@ async function writeBatch(
     throw new Error(`writer_rpc ${resp.status}: ${body.slice(0, 300)}`);
   }
   const data = await resp.json();
-  const inserted = Array.isArray(data) ? data.length : 0;
-  return { inserted };
+  return { inserted: Array.isArray(data) ? data.length : 0 };
 }
 
 // ---------- handler ----------
@@ -585,7 +587,29 @@ Deno.serve(async (req) => {
   const writeFlag = url.searchParams.get("write") === "true";
   const slugFilter = url.searchParams.get("slug");
 
-  // Concurrency parsing — default 10, capped at MAX_CONCURRENCY.
+  // offset / limit (capped to MAX_LIMIT for safety)
+  const offsetRaw = url.searchParams.get("offset");
+  const limitRaw = url.searchParams.get("limit");
+  let offset = 0;
+  if (offsetRaw) {
+    const n = parseInt(offsetRaw, 10);
+    if (!Number.isNaN(n) && n >= 0) offset = n;
+  }
+  let limit = DEFAULT_LIMIT;
+  if (limitRaw) {
+    const n = parseInt(limitRaw, 10);
+    if (!Number.isNaN(n) && n >= 1) limit = Math.min(n, MAX_LIMIT);
+  }
+
+  // scan_id — accept caller-provided; else generate.
+  let scanId = url.searchParams.get("scan_id");
+  let scanIdGenerated = false;
+  if (!scanId) {
+    scanId = crypto.randomUUID();
+    scanIdGenerated = true;
+  }
+
+  // Concurrency parsing.
   let concurrency = DEFAULT_CONCURRENCY;
   const concurrencyRaw = url.searchParams.get("concurrency");
   if (concurrencyRaw) {
@@ -625,55 +649,72 @@ Deno.serve(async (req) => {
         version: VERSION,
         error: `list_deployed_functions failed: ${(e as Error).message}`,
         wrote_rows: false,
+        scan_id: scanId,
       }),
       { status: 502, headers: { "Content-Type": "application/json" } },
     );
   }
 
+  // Stable alphabetical sort so offset slicing is deterministic across calls.
+  deployed.sort((a, b) => a.slug.localeCompare(b.slug));
+
   let repoDirs: string[] = [];
-  try {
-    repoDirs = await listRepoFunctionDirs(env);
-  } catch (e) {
-    errors.push({
-      slug: "<repo-list>",
-      stage: "list_repo_dirs",
-      message: (e as Error).message,
-    });
+  // listRepoFunctionDirs is only needed when emitting repo-only rows
+  // (offset==0 in chunked mode; or any single-slug call where repoDirs are
+  // ignored anyway). Skip on offset>0 to save 1 fetch + reduce work.
+  const willEmitRepoOnly = !slugFilter && offset === 0;
+  if (willEmitRepoOnly) {
+    try {
+      repoDirs = await listRepoFunctionDirs(env);
+    } catch (e) {
+      errors.push({
+        slug: "<repo-list>",
+        stage: "list_repo_dirs",
+        message: (e as Error).message,
+      });
+    }
   }
   const listPhaseMs = Date.now() - listPhaseStart;
 
   const deployedSlugs = new Set(deployed.map((d) => d.slug));
   const repoOnlyDirs = repoDirs.filter((d) => !deployedSlugs.has(d));
 
-  const slugsToProcess = slugFilter
-    ? deployed.filter((d) => d.slug === slugFilter)
-    : deployed;
-  if (slugFilter && slugsToProcess.length === 0) {
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        version: VERSION,
-        error: `slug not found in deployed functions: ${slugFilter}`,
-        deployed_slugs_sample: deployed.slice(0, 10).map((d) => d.slug),
-        wrote_rows: false,
-      }),
-      { status: 404, headers: { "Content-Type": "application/json" } },
-    );
+  // Determine slugs to process for this invocation.
+  let slugsToProcess: DeployedFn[];
+  let totalChunkSize: number;
+  if (slugFilter) {
+    slugsToProcess = deployed.filter((d) => d.slug === slugFilter);
+    totalChunkSize = slugsToProcess.length;
+    if (slugsToProcess.length === 0) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          version: VERSION,
+          error: `slug not found in deployed functions: ${slugFilter}`,
+          deployed_slugs_sample: deployed.slice(0, 10).map((d) => d.slug),
+          wrote_rows: false,
+          scan_id: scanId,
+        }),
+        { status: 404, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  } else {
+    slugsToProcess = deployed.slice(offset, offset + limit);
+    totalChunkSize = slugsToProcess.length;
   }
 
-  // ---------- Phase 2: chunked-parallel processing ----------
+  // ---------- Phase 2: chunked-parallel processing of this slice ----------
   const processPhaseStart = Date.now();
   const rows: DriftRow[] = [];
 
-  // Effective concurrency for this run (honour single-slug mode).
   const effectiveConcurrency = slugFilter
     ? 1
     : Math.min(concurrency, slugsToProcess.length || 1);
 
   for (let i = 0; i < slugsToProcess.length; i += effectiveConcurrency) {
-    const chunk = slugsToProcess.slice(i, i + effectiveConcurrency);
+    const subChunk = slugsToProcess.slice(i, i + effectiveConcurrency);
     const results = await Promise.all(
-      chunk.map((fn) => processSlug(env, fn.slug)),
+      subChunk.map((fn) => processSlug(env, fn.slug)),
     );
     for (const r of results) {
       if (r.kind === "row") rows.push(r.row);
@@ -681,8 +722,8 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Repo-only directories — no fetch; classify and append.
-  if (!slugFilter) {
+  // Repo-only directory rows — only on offset==0 chunk (or single-slug never).
+  if (willEmitRepoOnly) {
     for (const dir of repoOnlyDirs) {
       const cls = classify({
         slug: dir,
@@ -714,6 +755,13 @@ Deno.serve(async (req) => {
   }
   const processPhaseMs = Date.now() - processPhaseStart;
 
+  // Embed scan_id into every row's notes prefix for cross-chunk correlation.
+  // Schema-free grouping: SELECT ... WHERE notes LIKE '[scan=<uuid>]%'
+  const scanPrefix = `[scan=${scanId}] `;
+  for (const r of rows) {
+    r.notes = r.notes ? `${scanPrefix}${r.notes}` : scanPrefix.trim();
+  }
+
   // Tallies.
   const byClass: Record<string, number> = {};
   const bySeverity: Record<string, number> = {};
@@ -728,7 +776,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  // ---------- Phase 3: writer (single batch call) ----------
+  // ---------- Phase 3: writer (single batch call for this chunk) ----------
   const writerPhaseStart = Date.now();
   let wroteRows = false;
   let writerInserted = 0;
@@ -748,18 +796,31 @@ Deno.serve(async (req) => {
   const writerPhaseMs = Date.now() - writerPhaseStart;
 
   const totalMs = Date.now() - startedAt;
+
+  // Pagination hints for the orchestrator.
+  const nextOffset = slugFilter ? null : offset + slugsToProcess.length;
+  const hasMore = !slugFilter && nextOffset !== null &&
+    nextOffset < deployed.length;
+
   const summary = {
     ok: errors.length === 0,
     version: VERSION,
     write_mode: writeFlag,
     wrote_rows: wroteRows,
     writer_inserted: writerInserted,
+    scan_id: scanId,
+    scan_id_generated: scanIdGenerated,
     slug_filter: slugFilter,
+    offset: slugFilter ? null : offset,
+    limit: slugFilter ? null : limit,
+    next_offset: hasMore ? nextOffset : null,
+    has_more: hasMore,
+    chunk_size: totalChunkSize,
     concurrency: effectiveConcurrency,
     project_ref: env.PROJECT_REF,
     total_rows: rows.length,
     deployed_count: deployed.length,
-    repo_only_count: repoOnlyDirs.length,
+    repo_only_count: willEmitRepoOnly ? repoOnlyDirs.length : 0,
     by_class: byClass,
     by_severity: bySeverity,
     security_definer_risk_count: sdRiskCount,
