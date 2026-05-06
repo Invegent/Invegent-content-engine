@@ -1,6 +1,6 @@
 // supabase/functions/drift-check/index.ts
 //
-// drift-check-v1.0.0 — Edge Function source drift detector
+// drift-check-v1.0.1 — Edge Function source drift detector
 // F-EF-DRIFT-PREVENTION Stage 2a (Option F backend).
 //
 // Iterates deployed Edge Functions, compares against repo source on `main`,
@@ -18,51 +18,70 @@
 //   verify_jwt:false in config (matches draft-notifier convention).
 //   Self-validates Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>.
 //
-// Required env
-//   SUPABASE_URL                  (auto-injected)
-//   SUPABASE_SERVICE_ROLE_KEY     (auto-injected)
-//   SUPABASE_PROJECT_REF          (set explicitly; not auto-injected)
-//   SUPABASE_ACCESS_TOKEN         (sbp_... PAT, Management API scope)
-//   GITHUB_TOKEN                  (PAT, contents:read)
-//   GITHUB_OWNER                  (= "Invegent")
-//   GITHUB_REPO                   (= "Invegent-content-engine")
-//   GITHUB_REF                    (= "main")
+// Required env (only one new secret vs existing project)
+//   SUPABASE_URL                  (auto-injected by Supabase EF runtime)
+//   SUPABASE_SERVICE_ROLE_KEY     (auto-injected by Supabase EF runtime)
+//   GITHUB_PAT                    (existing project secret — fine-grained, read-only)
+//   SUPABASE_ACCESS_TOKEN         (NEW — sbp_... Management API PAT)
+//
+// Hardcoded (project-specific constants, not secrets)
+//   GITHUB_OWNER = "Invegent"
+//   GITHUB_REPO  = "Invegent-content-engine"
+//   GITHUB_REF   = "main"
+//   PROJECT_REF derived from SUPABASE_URL hostname.
 //
 // Hard guarantees
 //   - Missing required env -> HTTP 500 JSON, no DB writes.
 //   - Unauthorised bearer -> HTTP 401 JSON, no DB writes.
 //   - Per-slug fetch failure -> entry in `errors[]`, batch continues.
 //   - writeFlag is strict equality to "true"; anything else is dry-run.
+//
+// Changelog
+//   v1.0.1 (2026-05-06) — Read GitHub auth from existing GITHUB_PAT secret.
+//                         Hardcode owner/repo/ref. Derive PROJECT_REF from
+//                         SUPABASE_URL. Reduces required new secrets from 5 to 1.
+//   v1.0.0 (2026-05-06) — Initial Stage 2a backend (D-01 review_id 48033af8).
 
-const VERSION = "drift-check-v1.0.0";
+const VERSION = "drift-check-v1.0.1";
+
+// ---------- hardcoded project constants ----------
+
+const GITHUB_OWNER = "Invegent";
+const GITHUB_REPO = "Invegent-content-engine";
+const GITHUB_REF = "main";
 
 // ---------- env ----------
 
 interface RequiredEnv {
   SUPABASE_URL: string;
   SUPABASE_SERVICE_ROLE_KEY: string;
-  SUPABASE_PROJECT_REF: string;
   SUPABASE_ACCESS_TOKEN: string;
-  GITHUB_TOKEN: string;
-  GITHUB_OWNER: string;
-  GITHUB_REPO: string;
-  GITHUB_REF: string;
+  GITHUB_PAT: string;
+  PROJECT_REF: string; // derived from SUPABASE_URL
 }
 
-const REQUIRED_ENV_KEYS: (keyof RequiredEnv)[] = [
+const REQUIRED_ENV_KEYS = [
   "SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
-  "SUPABASE_PROJECT_REF",
   "SUPABASE_ACCESS_TOKEN",
-  "GITHUB_TOKEN",
-  "GITHUB_OWNER",
-  "GITHUB_REPO",
-  "GITHUB_REF",
-];
+  "GITHUB_PAT",
+] as const;
+
+function deriveProjectRef(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname; // e.g. "mbkmaxqhsohbtwsqolns.supabase.co"
+    const ref = host.split(".")[0];
+    if (!ref || ref.length < 8) return null;
+    return ref;
+  } catch {
+    return null;
+  }
+}
 
 function readEnv():
   | { ok: true; env: RequiredEnv }
-  | { ok: false; missing: string[] } {
+  | { ok: false; missing: string[]; reason?: string } {
   const env: Record<string, string> = {};
   const missing: string[] = [];
   for (const key of REQUIRED_ENV_KEYS) {
@@ -71,6 +90,16 @@ function readEnv():
     else env[key] = v;
   }
   if (missing.length > 0) return { ok: false, missing };
+
+  const projectRef = deriveProjectRef(env.SUPABASE_URL);
+  if (!projectRef) {
+    return {
+      ok: false,
+      missing: [],
+      reason: `could not derive project ref from SUPABASE_URL: ${env.SUPABASE_URL}`,
+    };
+  }
+  env.PROJECT_REF = projectRef;
   return { ok: true, env: env as unknown as RequiredEnv };
 }
 
@@ -165,7 +194,7 @@ interface DeployedFn {
 
 async function listDeployedFunctions(env: RequiredEnv): Promise<DeployedFn[]> {
   const url =
-    `https://api.supabase.com/v1/projects/${env.SUPABASE_PROJECT_REF}/functions`;
+    `https://api.supabase.com/v1/projects/${env.PROJECT_REF}/functions`;
   const resp = await fetch(url, {
     headers: { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}` },
   });
@@ -188,7 +217,7 @@ async function fetchDeployedBody(
   slug: string,
 ): Promise<string> {
   const url =
-    `https://api.supabase.com/v1/projects/${env.SUPABASE_PROJECT_REF}/functions/${slug}/body`;
+    `https://api.supabase.com/v1/projects/${env.PROJECT_REF}/functions/${slug}/body`;
   const resp = await fetch(url, {
     headers: { Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}` },
   });
@@ -236,10 +265,10 @@ async function fetchRepoBody(
 ): Promise<string | null> {
   const path = `supabase/functions/${slug}/index.ts`;
   const url =
-    `https://raw.githubusercontent.com/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/${env.GITHUB_REF}/${path}`;
+    `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_REF}/${path}`;
   const resp = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      Authorization: `Bearer ${env.GITHUB_PAT}`,
       "User-Agent": "drift-check/1.0",
     },
   });
@@ -253,10 +282,10 @@ async function fetchRepoBody(
 
 async function listRepoFunctionDirs(env: RequiredEnv): Promise<string[]> {
   const url =
-    `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/supabase/functions?ref=${env.GITHUB_REF}`;
+    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/supabase/functions?ref=${GITHUB_REF}`;
   const resp = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      Authorization: `Bearer ${env.GITHUB_PAT}`,
       Accept: "application/vnd.github.v3+json",
       "User-Agent": "drift-check/1.0",
     },
@@ -453,7 +482,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: false,
         version: VERSION,
-        error: "missing required environment variables",
+        error: envRes.reason ?? "missing required environment variables",
         missing: envRes.missing,
         wrote_rows: false,
       }),
@@ -690,6 +719,7 @@ Deno.serve(async (req) => {
     wrote_rows: wroteRows,
     writer_inserted: writerInserted,
     slug_filter: slugFilter,
+    project_ref: env.PROJECT_REF,
     total_rows: rows.length,
     deployed_count: deployed.length,
     repo_only_count: repoOnlyDirs.length,
