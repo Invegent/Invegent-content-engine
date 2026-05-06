@@ -1,6 +1,6 @@
 // supabase/functions/drift-check/index.ts
 //
-// drift-check-v1.0.3 — Edge Function source drift detector
+// drift-check-v1.0.4 — Edge Function source drift detector
 // F-EF-DRIFT-PREVENTION Stage 2a (Option F backend).
 //
 // Iterates deployed Edge Functions, compares against repo source on `main`,
@@ -40,22 +40,27 @@
 //   - writeFlag is strict equality to "true"; anything else is dry-run.
 //
 // Changelog
-//   v1.0.3 (2026-05-06) — Drop internal bearer self-validation. The project's
-//                         convention for cron-driven internal EFs (e.g.
-//                         draft-notifier) relies on verify_jwt:false +
-//                         URL obscurity, not a self-check against
-//                         SUPABASE_SERVICE_ROLE_KEY (which is auto-injected
-//                         and does not equal vault.service_role_key in this
-//                         project). v1.0.2 self-check failed in production.
+//   v1.0.4 (2026-05-06) — Banner-version parser fix. parseBannerVersion now
+//                         extracts the X.Y.Z semver substring from any matched
+//                         banner (was returning the full slug-prefixed string,
+//                         e.g. "publisher-v1.8.0", which then failed numeric
+//                         comparison). compareVersions gains a string-equality
+//                         shortcut for non-semver banners that happen to match.
+//                         Affects notes text only on equal-banner Class C cases;
+//                         no algorithm change beyond version comparability.
+//                         Surfaced by smoke test of v1.0.3 against publisher.
+//   v1.0.3 (2026-05-06) — Drop internal bearer self-validation. Match
+//                         draft-notifier convention (verify_jwt:false + URL
+//                         obscurity, no SUPABASE_SERVICE_ROLE_KEY equality
+//                         check, since auto-injected value differs from the
+//                         15-char vault.service_role_key cron sends).
 //   v1.0.2 (2026-05-06) — Rename SUPABASE_ACCESS_TOKEN -> MANAGEMENT_API_TOKEN.
-//                         Supabase CLI reserves the SUPABASE_* namespace for
-//                         runtime auto-injection; secrets cannot use that prefix.
+//                         Supabase CLI reserves the SUPABASE_* namespace.
 //   v1.0.1 (2026-05-06) — Read GitHub auth from existing GITHUB_PAT secret.
-//                         Hardcode owner/repo/ref. Derive PROJECT_REF from
-//                         SUPABASE_URL. Reduces required new secrets from 5 to 1.
+//                         Hardcode owner/repo/ref. Derive PROJECT_REF.
 //   v1.0.0 (2026-05-06) — Initial Stage 2a backend (D-01 review_id 48033af8).
 
-const VERSION = "drift-check-v1.0.3";
+const VERSION = "drift-check-v1.0.4";
 
 // ---------- hardcoded project constants ----------
 
@@ -130,16 +135,25 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
+// v1.0.4: extract X.Y.Z semver from any matched string. If captured banner is
+// "publisher-v1.8.0" or "v1.8.0" or "1.8.0", returns "1.8.0". If no semver
+// substring exists, returns the raw captured value as a fallback so the
+// string-equality shortcut in compareVersions can still produce "eq".
+function extractSemver(raw: string): string {
+  const m = raw.match(/(\d+\.\d+\.\d+)/);
+  return m ? m[1] : raw;
+}
+
 function parseBannerVersion(body: string, slug: string): string | null {
   // Pattern 1: `const VERSION = '...'` or `const VERSION = "..."`
   const p1 = body.match(/const\s+VERSION\s*=\s*['"]([^'"]+)['"]/);
-  if (p1) return p1[1];
+  if (p1) return extractSemver(p1[1]);
   // Pattern 2: SERVER_INFO = { ... version: '...' ... }
   const p2 = body.match(
     /SERVER_INFO[\s\S]{0,200}?version\s*:\s*['"]([^'"]+)['"]/,
   );
-  if (p2) return p2[1];
-  // Pattern 3: <slug>-vX.Y.Z banner string
+  if (p2) return extractSemver(p2[1]);
+  // Pattern 3: <slug>-vX.Y.Z banner string (already captures only X.Y.Z)
   const escaped = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const p3 = body.match(new RegExp(`${escaped}-v(\\d+\\.\\d+\\.\\d+)`));
   if (p3) return p3[1];
@@ -150,6 +164,9 @@ type VersionCmp = "lt" | "eq" | "gt" | "incomparable";
 
 function compareVersions(a: string | null, b: string | null): VersionCmp {
   if (!a || !b) return "incomparable";
+  // v1.0.4: string-equality shortcut for non-semver banners that happen to match
+  // (e.g. both sides return "alpha-build-7" or some non-numeric label).
+  if (a === b) return "eq";
   const stripV = (s: string) => s.replace(/^v/i, "");
   const ax = stripV(a).split(".").map((p) => parseInt(p, 10));
   const bx = stripV(b).split(".").map((p) => parseInt(p, 10));
