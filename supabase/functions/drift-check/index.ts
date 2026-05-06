@@ -1,6 +1,6 @@
 // supabase/functions/drift-check/index.ts
 //
-// drift-check-v1.0.2 — Edge Function source drift detector
+// drift-check-v1.0.3 — Edge Function source drift detector
 // F-EF-DRIFT-PREVENTION Stage 2a (Option F backend).
 //
 // Iterates deployed Edge Functions, compares against repo source on `main`,
@@ -16,11 +16,15 @@
 //
 // Auth
 //   verify_jwt:false in config (matches draft-notifier convention).
-//   Self-validates Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>.
+//   No internal bearer check — relies on verify_jwt:false at the gateway and
+//   URL obscurity. The function is read-mostly (dry-run by default), and write
+//   mode inserts only to m.ef_drift_log via the SECURITY DEFINER writer fn,
+//   which is itself service_role-gated. Cron sends a service_role bearer for
+//   compatibility with the existing pg_net pattern; the value is not validated.
 //
 // Required env (only one new secret vs existing project)
 //   SUPABASE_URL                  (auto-injected by Supabase EF runtime)
-//   SUPABASE_SERVICE_ROLE_KEY     (auto-injected by Supabase EF runtime)
+//   SUPABASE_SERVICE_ROLE_KEY     (auto-injected; used to call writer RPC)
 //   GITHUB_PAT                    (existing project secret — fine-grained, read-only)
 //   MANAGEMENT_API_TOKEN          (NEW — sbp_... Supabase Management API PAT)
 //
@@ -32,11 +36,17 @@
 //
 // Hard guarantees
 //   - Missing required env -> HTTP 500 JSON, no DB writes.
-//   - Unauthorised bearer -> HTTP 401 JSON, no DB writes.
 //   - Per-slug fetch failure -> entry in `errors[]`, batch continues.
 //   - writeFlag is strict equality to "true"; anything else is dry-run.
 //
 // Changelog
+//   v1.0.3 (2026-05-06) — Drop internal bearer self-validation. The project's
+//                         convention for cron-driven internal EFs (e.g.
+//                         draft-notifier) relies on verify_jwt:false +
+//                         URL obscurity, not a self-check against
+//                         SUPABASE_SERVICE_ROLE_KEY (which is auto-injected
+//                         and does not equal vault.service_role_key in this
+//                         project). v1.0.2 self-check failed in production.
 //   v1.0.2 (2026-05-06) — Rename SUPABASE_ACCESS_TOKEN -> MANAGEMENT_API_TOKEN.
 //                         Supabase CLI reserves the SUPABASE_* namespace for
 //                         runtime auto-injection; secrets cannot use that prefix.
@@ -45,7 +55,7 @@
 //                         SUPABASE_URL. Reduces required new secrets from 5 to 1.
 //   v1.0.0 (2026-05-06) — Initial Stage 2a backend (D-01 review_id 48033af8).
 
-const VERSION = "drift-check-v1.0.2";
+const VERSION = "drift-check-v1.0.3";
 
 // ---------- hardcoded project constants ----------
 
@@ -458,25 +468,8 @@ Deno.serve(async (req) => {
   const writeFlag = url.searchParams.get("write") === "true"; // strict opt-in
   const slugFilter = url.searchParams.get("slug");
 
-  // Auth: self-validate service_role bearer (verify_jwt:false convention).
-  const expected = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
-  const presentedToken = tokenMatch ? tokenMatch[1].trim() : null;
-  if (!expected || !presentedToken || presentedToken !== expected) {
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        version: VERSION,
-        error: "unauthorized: service_role bearer required",
-        wrote_rows: false,
-      }),
-      {
-        status: 401,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-  }
+  // No internal bearer check — see header comment. verify_jwt:false at gateway
+  // + URL obscurity is the auth surface, matching draft-notifier convention.
 
   // Env validation.
   const envRes = readEnv();
