@@ -18,7 +18,7 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
-| 2026-05-07 | s30-paused-stuck-cluster-recheck | **Lightweight checkpoint.** S30 deferred to natural cron fire (~11.5h, 17:00 UTC tonight). Read-only re-evaluation: PP×YT + LinkedIn-PP clusters CLEARED (4 PP×YT publishes confirmed 05-05 09:15–09:45 UTC, no invalid_grant 7d); NY×YT STILL BLOCKED by F-YT-NY-FORMAT-SELECTION (8 text-format ready rows + 2 latent dead avatar tests); Invegent IG backlog same root cause as NY/PP IG (jobid 53 paused, ~104 total overdue when T05 unblocks). No NULL scheduled_for. Active publisher crons all green. F-AI-WORKER-PARSER-SKIP-BUG V3 PASS (28 jobs, 0 bug fingerprints); V5 PASS (4/4 sched written); V4 INCONCLUSIVE (no natural skip in 48h). Zero production mutations. ~35 min closure. | `docs/runtime/sessions/2026-05-07-s30-paused-stuck-cluster-recheck.md` |
+| 2026-05-07 | s30-paused-stuck-cluster-recheck | **Lightweight checkpoint + mid-hold audit + 4-way sync close.** S30 deferred to natural cron fire (17:00 UTC tonight). Read-only re-evaluation: PP×YT + LinkedIn-PP clusters CLEARED; NY×YT STILL BLOCKED by F-YT-NY-FORMAT-SELECTION; Invegent IG backlog same root cause as NY/PP IG (jobid 53 paused). Mid-hold pre-fire setup audit (read-only) confirmed all drift-check infrastructure correct. Vault `service_role_key`=15 chars flagged then cleared as NON-BLOCKING (drift-check `verify_jwt:false` + auto-injected `SUPABASE_SERVICE_ROLE_KEY` env). F-AI-WORKER-PARSER-SKIP-BUG V3+V5 PASS (28 jobs, 0 bug fingerprints; 4/4 sched written). V4 INCONCLUSIVE (no natural skip in 48h). Dashboard architecture review doc lookup completed (kickoff at `docs/runtime/sessions/2026-05-04-dashboard-architecture-review-kickoff.md`; target doc location `docs/dashboard-review-2026-05/` decided but §1 not yet started). Lesson candidate #69 captured. Zero production mutations across full session. ~45 min closure. | `docs/runtime/sessions/2026-05-07-s30-paused-stuck-cluster-recheck.md` |
 | 2026-05-07 | stage2a-cron-applied | F-EF-DRIFT-PREVENTION Stage 2a fully CLOSED. Daily drift-check + 90-day retention crons applied via Supabase MCP per D170 (D-01 review `c261e338` agree, no pushback). Two crons live (jobid 80 + 81). All 7 PK verification criteria PASS including dry-run smoke. | `docs/runtime/sessions/2026-05-07-stage2a-cron-applied.md` |
 | 2026-05-07 | bef6be96-investigation-resolved | bef6be96 origin investigation RESOLVED. `pg_stat_statements` traced to same `postgres` DB role + chat-authored SQL fingerprint as v2.42 chat session itself. PK keep-both decision documented. Stage 2a UNBLOCKED. Lesson candidate #68 captured. | `docs/runtime/sessions/2026-05-07-bef6be96-investigation-resolved.md` |
 | 2026-05-06 | f-ef-drift-prevention-stage2a-checkpoint | F-EF-DRIFT-PREVENTION Stage 2a CHECKPOINT — was BLOCKED on bef6be96 origin investigation; resolved + closed v2.44. drift-check EF v1.0.8 deployed (commit `d81de062`). T-MCP-02 37→40; T-MCP-08 1→2. | `docs/runtime/sessions/2026-05-06-f-ef-drift-prevention-stage2a-checkpoint.md` |
@@ -28,7 +28,7 @@
 | 2026-05-05 | m5-applied-corrected-cascade-fix | M5 (`p_shadow` / `is_shadow` removal) APPLIED. 7/7 PASS. | `docs/runtime/sessions/2026-05-05-m5-applied-corrected-cascade-fix.md` |
 | 2026-05-05 | m4-applied-state-capture-override | M4 (Defect 5: enqueue scheduled_for + 147-row backfill) APPLIED. 8/8 PASS. | `docs/runtime/sessions/2026-05-05-m4-applied-state-capture-override.md` |
 | 2026-05-05 | tier-1-queue-integrity-applied | M1+M2+M3 applied. 8/8 PASS. | `docs/runtime/sessions/2026-05-05-tier-1-queue-integrity-applied.md` |
-| 2026-05-04 | dashboard-architecture-review-kickoff | Dashboard review kickoff. | `docs/runtime/sessions/2026-05-04-dashboard-architecture-review-kickoff.md` |
+| 2026-05-04 | dashboard-architecture-review-kickoff | Dashboard review kickoff (4 review rounds, 11-section structure, 6-section IA, 3 foundational decisions). Target doc location `docs/dashboard-review-2026-05/` — not yet built. | `docs/runtime/sessions/2026-05-04-dashboard-architecture-review-kickoff.md` |
 | 2026-05-04 | laptop-three-applies | ai-worker v2.11.1; F-AAP-007 v2; F-PUB-009. | `docs/runtime/sessions/2026-05-04-laptop-three-applies.md` |
 | 2026-05-04 | baudit-check5-retired-faap007-revised | B-AUDIT-CHECK5-DRIFT retired; F-AAP-007 v1→v2; F-PUB-009 brief. | `docs/runtime/sessions/2026-05-04-baudit-check5-retired-faap007-revised.md` |
 | 2026-05-03 | audit-readiness-completion-night | Migration 3 + runbook v2.1; F-HISTORIC-DEAD-CLEANUP retired. | `docs/runtime/sessions/2026-05-03-audit-readiness-completion-night.md` |
@@ -47,13 +47,13 @@
 
 ## 🟢 Most recent session — inline summary
 
-### 2026-05-07 Sydney — S30 Paused / Stuck-Cluster Recheck Checkpoint
+### 2026-05-07 Sydney — S30 Paused / Stuck-Cluster Recheck Checkpoint + Mid-Hold Audit + 4-Way Sync Close
 
-**Outcome:** Lightweight checkpoint. S30 deferred to natural cron fire (~11.5h away, 17:00 UTC). Read-only stuck-cluster re-evaluation + parser-skip-bug forward acid test. Zero production mutations.
+**Outcome:** Lightweight checkpoint. S30 deferred to natural cron fire (~10h away from session close, 17:00 UTC). Read-only stuck-cluster re-evaluation + parser-skip-bug forward acid test + mid-hold pre-fire setup audit + vault investigation + dashboard architecture review doc location lookup. Zero production mutations.
 
 **S30 status:**
 - jobid 80 (`drift-check-daily-fire`) and jobid 81 (`ef-drift-log-retention-90d`) both `active=true`, 0 runs ever in `cron.job_run_details` (correct — first natural fire is 17:00 UTC tonight)
-- Cron infrastructure healthy: `pipeline-sentinel-every-15m` succeeded 1 min ago at 04:45 UTC
+- Cron infrastructure healthy: `pipeline-sentinel-every-15m` succeeded recently
 - Run S30 around 17:15 UTC / 03:15 AEST tomorrow
 
 **3 stuck-item clusters re-evaluation:**
@@ -74,20 +74,42 @@
 - **V5 PASS** — 4 drafts progressed to queue; 4/4 have `scheduled_for` non-null
 - **V4 INCONCLUSIVE** — 0 natural skip events in window; skip path not exercised by current data. Not a bug, just absence of trigger.
 
+**Mid-hold pre-fire setup audit (read-only):**
+- pg_cron 1.6.4 + pg_net 0.19.5 + supabase_vault 0.3.1 ✅
+- jobid 80 + 81 owner + db + schedule + tz all correct ✅
+- Writer fn `public.write_ef_drift_log(p_rows jsonb, p_run_id uuid)` matches v2.43 D-01 spec ✅
+- `m.ef_drift_log` 98 rows, 2 distinct scans, unchanged ✅
+- Vault `service_role_key` 15 chars flagged → cleared as NON-BLOCKING (drift-check `verify_jwt:false` + auto-injected `SUPABASE_SERVICE_ROLE_KEY` env for writer RPC; cron's bearer header is accepted-not-validated)
+- No conflicting cron at 17:00 UTC daily slot ✅
+
 **Health checks:**
 - Invalid_grant errors last 7d: **0**
 - NULL `scheduled_for` (active rows): **0**
 - Active publisher crons all green (FB, LI, YT, WP, enqueuer + `instagram-publisher-every-15m` paused intentionally)
 
-**Closure budget:** +~35 min this checkpoint. Combined day ~10h. Trailing-14-day ~36.25h above 8.0 floor.
+**Dashboard architecture review doc lookup:**
+- PK queried where the dashboard revamp document was saved
+- Located: kickoff session file at `docs/runtime/sessions/2026-05-04-dashboard-architecture-review-kickoff.md` (4 review rounds + market research + 11-section structure + 6-section IA + 3 foundational decisions)
+- Target standalone doc location decided at `docs/dashboard-review-2026-05/` — NOT YET CREATED. §1 work not yet started ("next session whenever — no rush" per kickoff)
+- All current architectural review content is in the kickoff session file
+
+**Closure budget:** +~45 min this session total. Combined day ~10h. Trailing-14-day ~36.25h above 8.0 floor.
 
 **0 D-01 fires this session** (read-only). T-MCP-02 quota unchanged at 41.
+
+**4-way sync close at this commit:**
+- Session file: full mid-hold work + amendments captured
+- Sync state (this file): inline summary refreshed
+- Action list: amended in commit `ef021b40` with v2.45 Mid-hold + Lesson #69 candidate — no further change
+- Memory (entry #14): refreshed to v2.45 close state (Sync `ef021b40`)
+- Dashboard roadmap: LAST_UPDATED bumped only (PHASES stale since 3 May; full reconciliation deferred)
 
 **Hold-state in effect (per PK):**
 - No Stage 2b / Stage 3 / P1 triage / NY×YT / M6
 - No manual cron triggers
 - No DML / DDL
 - No close-the-loop UPDATEs
+- No vault edits
 - DO NOT REDEPLOY heygen-avatar-creator / heygen-avatar-poller / draft-notifier (P1 SECURITY-DEFINER regression-risk)
 - Do not delete rows from `m.ef_drift_log` (98-row keep-both preserved)
 
@@ -107,9 +129,11 @@
 10. **F-AAP-NEEDS-REVIEW-BACKLOG** (P2) — 28 drafts.
 11. **F-PUB-009 7-day flow check** (P2).
 12. **F-AI-WORKER-PARSER-SKIP-BUG V4** — inconclusive at v2.45; either wait for natural skip event or schedule synthetic test.
-13. **Dashboard Architecture Review §1** — when PK signals; ~1.5h.
-14. **`docs/audit/health/2026-05-06.md` follow-up** (P3) — investigate if still absent.
-15. **16+ close-the-loop UPDATEs pending** to `m.chatgpt_review` — next batch closure (includes `c261e338`).
+13. **Dashboard Architecture Review §1** — when PK signals; ~1.5h. Target doc location `docs/dashboard-review-2026-05/`.
+14. **Vault `service_role_key` naming hygiene scope-check** (P3 from v2.45) — search what else reads this vault entry; rename if appropriate. Read-only investigation, no fix unless something is found broken.
+15. **`docs/audit/health/2026-05-06.md` follow-up** (P3) — investigate if still absent.
+16. **17+ close-the-loop UPDATEs pending** to `m.chatgpt_review` — next batch closure (includes `c261e338`).
+17. **Dashboard roadmap reconciliation** (deferred from v2.45) — PHASES array hasn't been touched since 3 May; needs a dedicated session to add v2.34→v2.45 progress (drift-prevention, Stage 2a, parser-skip-bug, etc.).
 
 ---
 
@@ -119,7 +143,7 @@
 - Cron jobid 53 (`instagram-publisher-every-15m`) `active=false` — do not re-enable until S16 + T05; **note v2.45**: when re-enabled, ~104 IG-overdue posts will fire (NY 41 + PP 57 + Invegent 6) — cap-throttle planning required
 - Cron jobid 11/64/65 (`seed-and-enqueue-{fb,ig,li}`) — paused per slot-driven v4
 - Jobid 12 (`planner-hourly`) — still active despite v3 orphan production (B-CRON-V3-ORPHAN)
-- 16+ review_ids close-the-loop pending (carry-over). Combine in next batch closure.
+- 17+ review_ids close-the-loop pending (carry-over). Combine in next batch closure.
 - 47 historic dead queue rows retained as audit trail (Phase 1.7 design)
 - 32 historical `post_draft_not_found` orphans (16 NY-FB + 16 PP-FB) confirmed v2.45 — M6 Phase A scope (BLOCKED)
 - 6 CFW LinkedIn slots + 1 CFW Facebook slot in `exceeded_recovery_attempts` — quiescent
@@ -140,6 +164,8 @@
 - **v2.45: `m.ef_drift_log` retains 98 rows.** Keep-both per PK v2.43 decision. **Do not delete.**
 - **v2.45: drift-check v1.0.8 LIVE.** Daily fire cron LIVE (jobid 80, 0 runs ever — first fire 17:00 UTC tonight). Retention cron LIVE (jobid 81).
 - **v2.45: Standing don't-redeploy** for `heygen-avatar-creator`, `heygen-avatar-poller`, `draft-notifier`.
+- **v2.45: Vault `service_role_key` 15-char value.** Confirmed non-blocking for drift-check (verify_jwt:false + auto-injected env). Other consumers not yet scope-checked. P3 hygiene cleanup logged.
+- **v2.45: Dashboard roadmap PHASES array stale since 3 May.** No reconciliation done at v2.45 close (lightweight checkpoint scope). Defer to dedicated session.
 
 ---
 
@@ -157,4 +183,4 @@
 
 ---
 
-*Last updated: 2026-05-07 Sydney — S30 paused / stuck-cluster recheck checkpoint (v2.45). Next: S30 after natural cron fire 17:00 UTC.*
+*Last updated: 2026-05-07 Sydney — S30 paused / stuck-cluster recheck + mid-hold audit + 4-way sync close (v2.45). Next: S30 after natural cron fire 17:00 UTC.*
