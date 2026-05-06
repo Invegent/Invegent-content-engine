@@ -4,7 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-07 Sydney (v2.45 — **lightweight checkpoint.** S30 deferred to natural cron fire (~11.5h away, 17:00 UTC tonight). Read-only re-evaluation: PP×YT + LinkedIn-PP clusters CLEARED, NY×YT STILL BLOCKED by F-YT-NY-FORMAT-SELECTION. Invegent IG backlog observed under same root cause as NY/PP IG (jobid 53 paused). No NULL scheduled_for. Active publisher crons green. F-AI-WORKER-PARSER-SKIP-BUG V3 PASS (28 jobs, 0 bugs); V5 PASS (4/4 sched written); V4 INCONCLUSIVE (no natural skip in 48h). Zero production mutations. ~35 min closure. Hold until S30 window.
+> Last updated: 2026-05-07 Sydney (v2.45 — **lightweight checkpoint.** S30 deferred to natural cron fire (~11.5h away, 17:00 UTC tonight). Read-only re-evaluation: PP×YT + LinkedIn-PP clusters CLEARED, NY×YT STILL BLOCKED by F-YT-NY-FORMAT-SELECTION. Invegent IG backlog observed under same root cause as NY/PP IG (jobid 53 paused). No NULL scheduled_for. Active publisher crons green. F-AI-WORKER-PARSER-SKIP-BUG V3 PASS (28 jobs, 0 bugs); V5 PASS (4/4 sched written); V4 INCONCLUSIVE (no natural skip in 48h). Zero production mutations. ~35 min closure. Hold until S30 window. **Mid-hold pre-fire setup audit (read-only):** all cron + extension + writer fn + drift_log state correct; vault `service_role_key` is 15 chars (non-blocking — drift-check has `verify_jwt:false` and uses auto-injected `SUPABASE_SERVICE_ROLE_KEY` env for writer RPC). P3 hygiene cleanup logged below.
 
 ---
 
@@ -67,6 +67,8 @@
 ## 🟢 F-EF-DRIFT-PREVENTION — STATUS BLOCK (v2.45 update)
 
 Unchanged from v2.44 — Stage 2a fully CLOSED. Both crons live (jobid 80 + 81), `active=true`. **0 runs ever** in `cron.job_run_details` for either job (correct — first natural fire is 17:00 UTC tonight). S30 verification is the gate to Stage 2b.
+
+**Mid-hold setup audit completed v2.45 (read-only):** All checks PASS — pg_cron 1.6.4, pg_net 0.19.5, supabase_vault 0.3.1 loaded. Writer fn `public.write_ef_drift_log(p_rows jsonb, p_run_id uuid)` correct signature. Vault `project_url` 40 chars matches project ref. Vault `service_role_key` 15 chars — confirmed non-blocking via `drift-check` source `verify_jwt:false` + auto-injected `SUPABASE_SERVICE_ROLE_KEY` env var. cron.timezone=GMT, server tz=UTC. Two neighbour crons fire at minute :17 within every hour but on different schedule (no conflict with daily 17:00 UTC fire). End-to-end auth path will use auto-injected JWT internally regardless of vault content.
 
 ---
 
@@ -134,6 +136,7 @@ Per v2.44 except:
 | **Verify first automated drift-check scan** = S30 | (rolled into S30 above) | — | merged | — | — |
 | **Invegent IG cap-throttle planning** (NEW v2.45) | When jobid 53 unblocks, ~104 IG-overdue posts will fire | P3 | OBSERVED, not actioning | chat → T05 unblock session | Plan cap-throttle / rate-limit handling before re-enabling jobid 53. |
 | **CFW post-ai-worker dead drafts** (NEW v2.45) | Drafts dying after AI succeeds | P3 | OBSERVED, not in F-AI-WORKER-PARSER-SKIP-BUG scope | chat → future session | Investigate downstream cap/approval pathway. Stage 2b dashboard panel will surface. |
+| **Vault `service_role_key` naming hygiene** (NEW v2.45) | Vault entry is misleadingly named (15 chars; not a JWT). Drift-check cron unaffected (verify_jwt:false + auto-injected `SUPABASE_SERVICE_ROLE_KEY`). | P3 | OBSERVED, not actioning | chat → future session | Read-only scope-check: search `cron.job.command`, `pg_proc.prosrc`, EF env if visible — find anything else that reads `vault.decrypted_secrets['service_role_key']` expecting a JWT. If anything is silently broken, fix that consumer (or rotate vault entry to the real JWT and verify all consumers). If nothing else uses it, consider rename for clarity. **No fix unless something is found broken.** |
 | **`docs/audit/health/2026-05-06.md` follow-up** | Cowork 02:00 AEST cron 6 May did not push | P3 | Carried | chat → next session if still absent | Investigate Cowork status. |
 | **ICE Dashboard Architecture Review** | 11-section formal review | strategic-product | KICKOFF complete; §1 next | chat ↔ PK | PK signals start. |
 | (others) | per v2.44 | — | — | — | per v2.44 |
@@ -163,8 +166,10 @@ Per v2.44 except:
 - **NEW v2.45**: S30 forward verification task (P1 TOP next session).
 - **OBSERVED v2.45**: Invegent IG cap-throttle planning (P3) — ~104 IG-overdue when jobid 53 unblocks.
 - **OBSERVED v2.45**: CFW post-ai-worker dead drafts (P3) — downstream issue, dashboard panel candidate.
+- **OBSERVED v2.45**: Vault `service_role_key` naming hygiene (P3) — entry is 15 chars, not a JWT. Cron path unaffected (verify_jwt:false + auto-injected env). Scope-check what else reads it; rename if appropriate. Read-only investigation, no fix unless found broken.
 - **DEMOTED v2.45**: F-AI-WORKER-PARSER-SKIP-BUG from P1 to P2 (V3+V5 PASS; V4 monitoring only).
 - **CONFIRMED v2.45**: M4 NULL `scheduled_for` fix held; F-YT-OAUTH-PP held; no `invalid_grant` errors 7d.
+- **CONFIRMED v2.45 (mid-hold)**: drift-check cron + extensions + writer fn + drift_log all correctly set up; no setup blocker for tonight's natural fire.
 
 **v2.44 changes** (still active):
 
@@ -198,6 +203,8 @@ Unchanged.
 
 Per v2.44. No new candidates v2.45. Lesson #68 not exercised this session (no fired writes).
 
+**Lesson candidate #69 (v2.45, observation only):** Vault entries named after Supabase auto-injected env vars (`service_role_key`, etc.) can be confusing. The auto-injected EF env var `SUPABASE_SERVICE_ROLE_KEY` is the real JWT and is not the same thing as `vault.decrypted_secrets['service_role_key']`. Future EF + cron designs should either (a) name vault entries unambiguously (e.g. `placeholder_bearer_for_drift_check`), or (b) validate the vault content matches expected format at deployment time. Not promoted to a Lesson yet — single occurrence, low cost.
+
 ---
 
 ## v2.45 honest limitations
@@ -206,6 +213,7 @@ Per v2.44. No new candidates v2.45. Lesson #68 not exercised this session (no fi
 - **F-AI-WORKER-PARSER-SKIP-BUG V4 inconclusive.** Skip-path hasn't been exercised by natural data in 48h. Two options for closure: (a) wait for natural skip event, (b) deliberately schedule a synthetic test with a known skip-cause input. Both deferred.
 - **CFW post-ai-worker dead drafts** observed but not investigated this session.
 - **Cron 80/81 have 0 runs in `cron.job_run_details`** — correct, first natural fire is 17:00 UTC tonight. S30 will validate.
+- **Vault `service_role_key` 15-char value** — confirmed non-blocking for drift-check (verify_jwt:false + auto-injected env). Other consumers not yet scope-checked. P3 hygiene item logged.
 - **Standing don't-redeploy** for `heygen-avatar-creator`, `heygen-avatar-poller`, `draft-notifier` (P1 SECURITY-DEFINER regression-risk).
 - **`m.ef_drift_log` retains 98 rows by design** (carry-over).
 - **17+ close-the-loop UPDATEs still pending** (carry-over). Combine in next batch closure.
@@ -223,8 +231,9 @@ Per v2.44. No new candidates v2.45. Lesson #68 not exercised this session (no fi
   - **Side findings:** Invegent IG 6 queued + same root cause as NY/PP IG (jobid 53 paused); 32 historical orphans = M6 Phase A scope; CFW post-ai-worker dead drafts (downstream issue).
   - **F-AI-WORKER-PARSER-SKIP-BUG forward acid test:** V3 PASS (28 jobs, 0 bug fingerprints). V5 PASS (4/4 sched written). V4 INCONCLUSIVE (no natural skip in 48h). Demoted P1 → P2.
   - **Health checks:** 0 invalid_grant 7d; 0 NULL scheduled_for; active publisher crons all green (IG cron paused intentionally).
+  - **Mid-hold setup audit (read-only):** drift-check cron + extensions (pg_cron 1.6.4, pg_net 0.19.5, supabase_vault 0.3.1) + writer fn (`p_rows jsonb, p_run_id uuid`) + drift_log state (98 rows, 2 distinct scans) all correct. Vault `service_role_key` is 15 chars — flagged then resolved as non-blocking (drift-check has `verify_jwt:false` and uses auto-injected `SUPABASE_SERVICE_ROLE_KEY` env for writer RPC). P3 hygiene cleanup logged. cron.timezone=GMT, server tz=UTC, no neighbour-cron conflict at 17:00 UTC daily slot.
   - **0 D-01 fires** this session (read-only). T-MCP-02 quota unchanged at 41.
   - **Net P0+P1 open: 8 unchanged** (cluster re-eval and parser acid test were monitoring, not closures).
-  - **Closure budget**: +~35 min this checkpoint. Day ~10h. Trailing-14-day ~36.25h above 8.0 floor.
-  - **Zero production mutations.** Read-only throughout.
+  - **Closure budget**: +~35 min this checkpoint + ~10 min mid-hold audit. Day ~10h. Trailing-14-day ~36.25h above 8.0 floor.
+  - **Zero production mutations.** Read-only throughout. No vault edit. No manual cron trigger.
   - **Hold until S30 window.** Next action: S30 around 17:15 UTC / 03:15 AEST tomorrow.
