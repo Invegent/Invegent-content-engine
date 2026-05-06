@@ -1,6 +1,6 @@
 // supabase/functions/drift-check/index.ts
 //
-// drift-check-v1.0.4 — Edge Function source drift detector
+// drift-check-v1.0.5 — Edge Function source drift detector
 // F-EF-DRIFT-PREVENTION Stage 2a (Option F backend).
 //
 // Iterates deployed Edge Functions, compares against repo source on `main`,
@@ -9,10 +9,11 @@
 // run to m.ef_drift_log via public.write_ef_drift_log(jsonb).
 //
 // Invocation
-//   POST /functions/v1/drift-check?write=<bool>&slug=<optional>
-//   - write=true     -> writes rows via writer fn (cron path)
-//   - write=false or omitted -> dry-run, returns classification, writes nothing (default)
-//   - slug=<name>    -> single-slug mode (smoke test)
+//   POST /functions/v1/drift-check?write=<bool>&slug=<optional>&concurrency=<N>
+//   - write=true        -> writes rows via writer fn (cron path)
+//   - write=false / omitted -> dry-run, writes nothing (default)
+//   - slug=<name>       -> single-slug mode (smoke test)
+//   - concurrency=<N>   -> per-chunk Promise.all width (default 10, capped 20)
 //
 // Auth
 //   verify_jwt:false in config (matches draft-notifier convention).
@@ -22,51 +23,54 @@
 //   which is itself service_role-gated. Cron sends a service_role bearer for
 //   compatibility with the existing pg_net pattern; the value is not validated.
 //
-// Required env (only one new secret vs existing project)
-//   SUPABASE_URL                  (auto-injected by Supabase EF runtime)
+// Required env
+//   SUPABASE_URL                  (auto-injected)
 //   SUPABASE_SERVICE_ROLE_KEY     (auto-injected; used to call writer RPC)
-//   GITHUB_PAT                    (existing project secret — fine-grained, read-only)
-//   MANAGEMENT_API_TOKEN          (NEW — sbp_... Supabase Management API PAT)
+//   GITHUB_PAT                    (existing project secret — fine-grained)
+//   MANAGEMENT_API_TOKEN          (sbp_... Supabase Management API PAT)
 //
-// Hardcoded (project-specific constants, not secrets)
+// Hardcoded
 //   GITHUB_OWNER = "Invegent"
 //   GITHUB_REPO  = "Invegent-content-engine"
 //   GITHUB_REF   = "main"
 //   PROJECT_REF derived from SUPABASE_URL hostname.
+//   DEFAULT_CONCURRENCY = 10, MAX_CONCURRENCY = 20.
 //
 // Hard guarantees
 //   - Missing required env -> HTTP 500 JSON, no DB writes.
 //   - Per-slug fetch failure -> entry in `errors[]`, batch continues.
 //   - writeFlag is strict equality to "true"; anything else is dry-run.
+//   - One drift_check_run_id per invocation (writer fn generates it from a
+//     single RPC call, regardless of how many chunks the EF processed in).
 //
 // Changelog
-//   v1.0.4 (2026-05-06) — Banner-version parser fix. parseBannerVersion now
-//                         extracts the X.Y.Z semver substring from any matched
-//                         banner (was returning the full slug-prefixed string,
-//                         e.g. "publisher-v1.8.0", which then failed numeric
-//                         comparison). compareVersions gains a string-equality
-//                         shortcut for non-semver banners that happen to match.
-//                         Affects notes text only on equal-banner Class C cases;
-//                         no algorithm change beyond version comparability.
-//                         Surfaced by smoke test of v1.0.3 against publisher.
-//   v1.0.3 (2026-05-06) — Drop internal bearer self-validation. Match
-//                         draft-notifier convention (verify_jwt:false + URL
-//                         obscurity, no SUPABASE_SERVICE_ROLE_KEY equality
-//                         check, since auto-injected value differs from the
-//                         15-char vault.service_role_key cron sends).
-//   v1.0.2 (2026-05-06) — Rename SUPABASE_ACCESS_TOKEN -> MANAGEMENT_API_TOKEN.
-//                         Supabase CLI reserves the SUPABASE_* namespace.
-//   v1.0.1 (2026-05-06) — Read GitHub auth from existing GITHUB_PAT secret.
-//                         Hardcode owner/repo/ref. Derive PROJECT_REF.
-//   v1.0.0 (2026-05-06) — Initial Stage 2a backend (D-01 review_id 48033af8).
+//   v1.0.5 (2026-05-06) — Chunked parallel processing via Promise.all to fit
+//                         within Supabase EF wall-clock budget. v1.0.4 serial
+//                         (47 EFs × ~3.7s = ~175s) hit WORKER_RESOURCE_LIMIT
+//                         at ~60s. v1.0.5 default concurrency=10 yields
+//                         ~5 chunks × ~5s = ~25s wall-clock. Per-slug logic
+//                         factored into processSlug(). Single writer-fn call
+//                         at end preserves the one-run-id invariant. Body
+//                         strings are not retained beyond per-slug scope
+//                         (already true in v1.0.4 due to local-scope vars,
+//                         documented here for clarity). Adds timing stats.
+//                         No classification or banner-parser change.
+//   v1.0.4 — banner-version parser fix (extractSemver).
+//   v1.0.3 — drop internal bearer self-validation.
+//   v1.0.2 — rename SUPABASE_ACCESS_TOKEN -> MANAGEMENT_API_TOKEN.
+//   v1.0.1 — read GitHub auth from existing GITHUB_PAT.
+//   v1.0.0 — initial Stage 2a backend.
 
-const VERSION = "drift-check-v1.0.4";
+const VERSION = "drift-check-v1.0.5";
 
 // ---------- hardcoded project constants ----------
 
 const GITHUB_OWNER = "Invegent";
 const GITHUB_REPO = "Invegent-content-engine";
 const GITHUB_REF = "main";
+
+const DEFAULT_CONCURRENCY = 10;
+const MAX_CONCURRENCY = 20;
 
 // ---------- env ----------
 
@@ -88,7 +92,7 @@ const REQUIRED_ENV_KEYS = [
 function deriveProjectRef(url: string): string | null {
   try {
     const parsed = new URL(url);
-    const host = parsed.hostname; // e.g. "mbkmaxqhsohbtwsqolns.supabase.co"
+    const host = parsed.hostname;
     const ref = host.split(".")[0];
     if (!ref || ref.length < 8) return null;
     return ref;
@@ -135,25 +139,18 @@ async function sha256Hex(input: string): Promise<string> {
     .join("");
 }
 
-// v1.0.4: extract X.Y.Z semver from any matched string. If captured banner is
-// "publisher-v1.8.0" or "v1.8.0" or "1.8.0", returns "1.8.0". If no semver
-// substring exists, returns the raw captured value as a fallback so the
-// string-equality shortcut in compareVersions can still produce "eq".
 function extractSemver(raw: string): string {
   const m = raw.match(/(\d+\.\d+\.\d+)/);
   return m ? m[1] : raw;
 }
 
 function parseBannerVersion(body: string, slug: string): string | null {
-  // Pattern 1: `const VERSION = '...'` or `const VERSION = "..."`
   const p1 = body.match(/const\s+VERSION\s*=\s*['"]([^'"]+)['"]/);
   if (p1) return extractSemver(p1[1]);
-  // Pattern 2: SERVER_INFO = { ... version: '...' ... }
   const p2 = body.match(
     /SERVER_INFO[\s\S]{0,200}?version\s*:\s*['"]([^'"]+)['"]/,
   );
   if (p2) return extractSemver(p2[1]);
-  // Pattern 3: <slug>-vX.Y.Z banner string (already captures only X.Y.Z)
   const escaped = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const p3 = body.match(new RegExp(`${escaped}-v(\\d+\\.\\d+\\.\\d+)`));
   if (p3) return p3[1];
@@ -164,8 +161,6 @@ type VersionCmp = "lt" | "eq" | "gt" | "incomparable";
 
 function compareVersions(a: string | null, b: string | null): VersionCmp {
   if (!a || !b) return "incomparable";
-  // v1.0.4: string-equality shortcut for non-semver banners that happen to match
-  // (e.g. both sides return "alpha-build-7" or some non-numeric label).
   if (a === b) return "eq";
   const stripV = (s: string) => s.replace(/^v/i, "");
   const ax = stripV(a).split(".").map((p) => parseInt(p, 10));
@@ -182,15 +177,11 @@ function compareVersions(a: string | null, b: string | null): VersionCmp {
   return "eq";
 }
 
-// SECURITY-DEFINER regression-risk detector.
-// repo has risky `.rpc('exec_sql')` + UPDATE c/m/f/t within 500 chars,
-// AND deployed has been refactored away from the same pattern.
 function detectSecurityDefinerRegressionRisk(
   repoBody: string | null,
   deployedBody: string | null,
 ): boolean {
   if (!repoBody) return false;
-
   const rpcRe = /\.rpc\s*\(\s*['"]exec_sql['"]/g;
   const updateRe = /UPDATE\s+[cmft]\./i;
 
@@ -206,12 +197,8 @@ function detectSecurityDefinerRegressionRisk(
 
   const repoHasRisky = hasRiskyPattern(repoBody);
   if (!repoHasRisky) return false;
-
-  // Repo has it. If deployed missing, redeploy = risk.
   if (!deployedBody) return true;
-
   const deployedHasRisky = hasRiskyPattern(deployedBody);
-  // Regression risk only when repo has the pattern and deployed has been refactored away.
   return repoHasRisky && !deployedHasRisky;
 }
 
@@ -258,10 +245,6 @@ async function fetchDeployedBody(
     );
   }
   const text = await resp.text();
-  // Defensive: handle 3 possible response shapes.
-  // Shape 1: raw text (just the source)
-  // Shape 2: JSON { body: "..." }
-  // Shape 3: JSON array of files [{ name, content }, ...]
   try {
     const parsed = JSON.parse(text);
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
@@ -281,10 +264,8 @@ async function fetchDeployedBody(
         .join("\n");
       if (concatenated.length > 0) return concatenated;
     }
-    // Parsed JSON but no recognised shape — treat raw response as source.
     return text;
   } catch {
-    // Not JSON — raw text source.
     return text;
   }
 }
@@ -398,7 +379,6 @@ function classify(args: ClassifyArgs): ClassifyResult {
     severity = "P2";
     notes = "Deployed slug has no repo directory.";
   } else {
-    // present
     if (deployedNormalised === repoNormalised) {
       current_class = deployedRaw === repoRaw ? "A" : "A-LE";
       direction = "clean";
@@ -448,6 +428,126 @@ function classify(args: ClassifyArgs): ClassifyResult {
   };
 }
 
+// ---------- per-slug worker (concurrent-safe) ----------
+
+interface ProcessError {
+  slug: string;
+  stage: string;
+  message: string;
+}
+
+type SlugResult = { kind: "row"; row: DriftRow } | {
+  kind: "error";
+  error: ProcessError;
+};
+
+async function processSlug(
+  env: RequiredEnv,
+  slug: string,
+): Promise<SlugResult> {
+  // Fetch deployed body.
+  let deployedRaw: string;
+  try {
+    deployedRaw = await fetchDeployedBody(env, slug);
+  } catch (e) {
+    return {
+      kind: "error",
+      error: {
+        slug,
+        stage: "fetch_deployed",
+        message: (e as Error).message,
+      },
+    };
+  }
+
+  // Fetch repo body (404 -> missing).
+  let repoRaw: string | null = null;
+  let repoPathStatus: "present" | "missing" = "present";
+  try {
+    const r = await fetchRepoBody(env, slug);
+    if (r === null) repoPathStatus = "missing";
+    else repoRaw = r;
+  } catch (e) {
+    return {
+      kind: "error",
+      error: {
+        slug,
+        stage: "fetch_repo",
+        message: (e as Error).message,
+      },
+    };
+  }
+
+  const deployedNormalised = normaliseLineEndings(deployedRaw);
+  const repoNormalised = repoRaw === null
+    ? null
+    : normaliseLineEndings(repoRaw);
+
+  // Hash both raw + normalised.
+  let deployedHash: string;
+  let deployedHashNormalised: string;
+  let repoHash: string | null = null;
+  let repoHashNormalised: string | null = null;
+  try {
+    deployedHash = await sha256Hex(deployedRaw);
+    deployedHashNormalised = await sha256Hex(deployedNormalised);
+    if (repoRaw !== null && repoNormalised !== null) {
+      repoHash = await sha256Hex(repoRaw);
+      repoHashNormalised = await sha256Hex(repoNormalised);
+    }
+  } catch (e) {
+    return {
+      kind: "error",
+      error: {
+        slug,
+        stage: "hash",
+        message: (e as Error).message,
+      },
+    };
+  }
+
+  const deployVersion = parseBannerVersion(deployedRaw, slug);
+  const repoVersion = repoRaw === null
+    ? null
+    : parseBannerVersion(repoRaw, slug);
+
+  const sdRisk = repoPathStatus === "present"
+    ? detectSecurityDefinerRegressionRisk(repoRaw, deployedRaw)
+    : false;
+
+  const cls = classify({
+    slug,
+    deployVersion,
+    deployedRaw,
+    deployedNormalised,
+    repoRaw,
+    repoNormalised,
+    repoVersion,
+    repoPathStatus,
+    sdRisk,
+  });
+
+  // Body strings go out of scope at function return — no explicit drop needed.
+  return {
+    kind: "row",
+    row: {
+      slug,
+      current_class: cls.current_class,
+      severity: cls.severity,
+      repo_path_status: repoPathStatus,
+      deploy_version: deployVersion,
+      deployed_hash: deployedHash,
+      deployed_hash_normalised: deployedHashNormalised,
+      repo_version: repoVersion,
+      repo_hash: repoHash,
+      repo_hash_normalised: repoHashNormalised,
+      direction: cls.direction,
+      security_definer_regression_risk: sdRisk,
+      notes: cls.notes,
+    },
+  };
+}
+
 // ---------- batch writer ----------
 
 interface WriteResult {
@@ -482,11 +582,18 @@ async function writeBatch(
 Deno.serve(async (req) => {
   const startedAt = Date.now();
   const url = new URL(req.url);
-  const writeFlag = url.searchParams.get("write") === "true"; // strict opt-in
+  const writeFlag = url.searchParams.get("write") === "true";
   const slugFilter = url.searchParams.get("slug");
 
-  // No internal bearer check — see header comment. verify_jwt:false at gateway
-  // + URL obscurity is the auth surface, matching draft-notifier convention.
+  // Concurrency parsing — default 10, capped at MAX_CONCURRENCY.
+  let concurrency = DEFAULT_CONCURRENCY;
+  const concurrencyRaw = url.searchParams.get("concurrency");
+  if (concurrencyRaw) {
+    const n = parseInt(concurrencyRaw, 10);
+    if (!Number.isNaN(n) && n >= 1) {
+      concurrency = Math.min(n, MAX_CONCURRENCY);
+    }
+  }
 
   // Env validation.
   const envRes = readEnv();
@@ -499,17 +606,15 @@ Deno.serve(async (req) => {
         missing: envRes.missing,
         wrote_rows: false,
       }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
   const env = envRes.env;
 
-  const errors: Array<{ slug: string; stage: string; message: string }> = [];
+  const errors: ProcessError[] = [];
 
-  // List deployed EFs (hard requirement; fail closed).
+  // ---------- Phase 1: list deployed + repo dirs ----------
+  const listPhaseStart = Date.now();
   let deployed: DeployedFn[];
   try {
     deployed = await listDeployedFunctions(env);
@@ -521,14 +626,10 @@ Deno.serve(async (req) => {
         error: `list_deployed_functions failed: ${(e as Error).message}`,
         wrote_rows: false,
       }),
-      {
-        status: 502,
-        headers: { "Content-Type": "application/json" },
-      },
+      { status: 502, headers: { "Content-Type": "application/json" } },
     );
   }
 
-  // List repo dirs (soft requirement; record error and continue).
   let repoDirs: string[] = [];
   try {
     repoDirs = await listRepoFunctionDirs(env);
@@ -539,11 +640,11 @@ Deno.serve(async (req) => {
       message: (e as Error).message,
     });
   }
+  const listPhaseMs = Date.now() - listPhaseStart;
 
   const deployedSlugs = new Set(deployed.map((d) => d.slug));
   const repoOnlyDirs = repoDirs.filter((d) => !deployedSlugs.has(d));
 
-  // Filter to single slug if requested (smoke-test mode).
   const slugsToProcess = slugFilter
     ? deployed.filter((d) => d.slug === slugFilter)
     : deployed;
@@ -556,112 +657,31 @@ Deno.serve(async (req) => {
         deployed_slugs_sample: deployed.slice(0, 10).map((d) => d.slug),
         wrote_rows: false,
       }),
-      {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      },
+      { status: 404, headers: { "Content-Type": "application/json" } },
     );
   }
 
+  // ---------- Phase 2: chunked-parallel processing ----------
+  const processPhaseStart = Date.now();
   const rows: DriftRow[] = [];
 
-  // Iterate deployed slugs serially.
-  for (const fn of slugsToProcess) {
-    const slug = fn.slug;
-    let deployedRaw: string;
-    try {
-      deployedRaw = await fetchDeployedBody(env, slug);
-    } catch (e) {
-      errors.push({
-        slug,
-        stage: "fetch_deployed",
-        message: (e as Error).message,
-      });
-      continue;
+  // Effective concurrency for this run (honour single-slug mode).
+  const effectiveConcurrency = slugFilter
+    ? 1
+    : Math.min(concurrency, slugsToProcess.length || 1);
+
+  for (let i = 0; i < slugsToProcess.length; i += effectiveConcurrency) {
+    const chunk = slugsToProcess.slice(i, i + effectiveConcurrency);
+    const results = await Promise.all(
+      chunk.map((fn) => processSlug(env, fn.slug)),
+    );
+    for (const r of results) {
+      if (r.kind === "row") rows.push(r.row);
+      else errors.push(r.error);
     }
-
-    let repoRaw: string | null = null;
-    let repoPathStatus: "present" | "missing" = "present";
-    try {
-      const r = await fetchRepoBody(env, slug);
-      if (r === null) {
-        repoPathStatus = "missing";
-      } else {
-        repoRaw = r;
-      }
-    } catch (e) {
-      errors.push({
-        slug,
-        stage: "fetch_repo",
-        message: (e as Error).message,
-      });
-      continue;
-    }
-
-    const deployedNormalised = normaliseLineEndings(deployedRaw);
-    const repoNormalised = repoRaw === null
-      ? null
-      : normaliseLineEndings(repoRaw);
-
-    let deployedHash: string;
-    let deployedHashNormalised: string;
-    let repoHash: string | null = null;
-    let repoHashNormalised: string | null = null;
-    try {
-      deployedHash = await sha256Hex(deployedRaw);
-      deployedHashNormalised = await sha256Hex(deployedNormalised);
-      if (repoRaw !== null && repoNormalised !== null) {
-        repoHash = await sha256Hex(repoRaw);
-        repoHashNormalised = await sha256Hex(repoNormalised);
-      }
-    } catch (e) {
-      errors.push({
-        slug,
-        stage: "hash",
-        message: (e as Error).message,
-      });
-      continue;
-    }
-
-    const deployVersion = parseBannerVersion(deployedRaw, slug);
-    const repoVersion = repoRaw === null
-      ? null
-      : parseBannerVersion(repoRaw, slug);
-
-    const sdRisk = repoPathStatus === "present"
-      ? detectSecurityDefinerRegressionRisk(repoRaw, deployedRaw)
-      : false;
-
-    const cls = classify({
-      slug,
-      deployVersion,
-      deployedRaw,
-      deployedNormalised,
-      repoRaw,
-      repoNormalised,
-      repoVersion,
-      repoPathStatus,
-      sdRisk,
-    });
-
-    rows.push({
-      slug,
-      current_class: cls.current_class,
-      severity: cls.severity,
-      repo_path_status: repoPathStatus,
-      deploy_version: deployVersion,
-      deployed_hash: deployedHash,
-      deployed_hash_normalised: deployedHashNormalised,
-      repo_version: repoVersion,
-      repo_hash: repoHash,
-      repo_hash_normalised: repoHashNormalised,
-      direction: cls.direction,
-      security_definer_regression_risk: sdRisk,
-      notes: cls.notes,
-    });
   }
 
-  // Add repo-only directory rows (only when not filtering to a single slug).
+  // Repo-only directories — no fetch; classify and append.
   if (!slugFilter) {
     for (const dir of repoOnlyDirs) {
       const cls = classify({
@@ -692,6 +712,7 @@ Deno.serve(async (req) => {
       });
     }
   }
+  const processPhaseMs = Date.now() - processPhaseStart;
 
   // Tallies.
   const byClass: Record<string, number> = {};
@@ -707,7 +728,8 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Optionally write the batch.
+  // ---------- Phase 3: writer (single batch call) ----------
+  const writerPhaseStart = Date.now();
   let wroteRows = false;
   let writerInserted = 0;
   if (writeFlag && rows.length > 0) {
@@ -723,8 +745,9 @@ Deno.serve(async (req) => {
       });
     }
   }
+  const writerPhaseMs = Date.now() - writerPhaseStart;
 
-  const durationMs = Date.now() - startedAt;
+  const totalMs = Date.now() - startedAt;
   const summary = {
     ok: errors.length === 0,
     version: VERSION,
@@ -732,6 +755,7 @@ Deno.serve(async (req) => {
     wrote_rows: wroteRows,
     writer_inserted: writerInserted,
     slug_filter: slugFilter,
+    concurrency: effectiveConcurrency,
     project_ref: env.PROJECT_REF,
     total_rows: rows.length,
     deployed_count: deployed.length,
@@ -741,9 +765,12 @@ Deno.serve(async (req) => {
     security_definer_risk_count: sdRiskCount,
     security_definer_risk_slugs: sdRiskSlugs,
     errors,
-    duration_ms: durationMs,
-    // Include classification rows in dry-run for inspection. Omit on full write
-    // to keep response payload small.
+    timing_ms: {
+      total: totalMs,
+      list_phase: listPhaseMs,
+      process_phase: processPhaseMs,
+      writer_phase: writerPhaseMs,
+    },
     rows: writeFlag ? undefined : rows,
   };
 
