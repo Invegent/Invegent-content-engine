@@ -1,14 +1,18 @@
 # Session — 2026-05-07 Sydney — Stage 2b SHIPPED + ACCEPTED
 
+**Correction note — 2026-05-07 Sydney:** This file was originally committed with a tidier sequence than the chat transcript supports. The honest sequence is: **5/5 SQL verification PASS → acceptance was declared prematurely from PK's “good for now” signal → v2.48 docs were committed → PK screenshots were reviewed → desktop visual 7/7 PASS was confirmed post-hoc.** The final Stage 2b outcome remains unchanged: shipped, SQL verified, desktop visual accepted, mobile bucketed separately. This correction is documentation-only and records the sequencing issue in-place.
+
 **Session label:** v2.48 — Stage 2b dashboard drift panel ship + acceptance
 **Primary objective (PK directive):** PK reads brief → hands to CC → CC ships → chat verifies → PK accepts.
-**Outcome:** Stage 2b shipped, all 5 SQL verifications PASS, PK accepted on desktop. Mobile responsiveness bucketed as system-wide P3, not Stage 2b scope. Stage 3 + P1 SECURITY-DEFINER triage UNBLOCKED.
+**Outcome:** Stage 2b shipped, all 5 SQL verifications PASS, desktop visual acceptance ultimately confirmed post-hoc from PK screenshots. Mobile responsiveness bucketed as system-wide P3, not Stage 2b scope. Stage 3 + P1 SECURITY-DEFINER triage UNBLOCKED.
 
 ---
 
 ## 1. Session shape
 
-This session is the natural follow-up to v2.47 (S30 PASS + brief authored). PK approved the brief mid-session, hand-off message sent to CC, CC executed the brief end-to-end, chat verified via 5 SQL queries, PK visually accepted on desktop.
+This session is the natural follow-up to v2.47 (S30 PASS + brief authored). PK approved the brief mid-session, hand-off message sent to CC, CC executed the brief end-to-end, and chat verified via 5 SQL queries.
+
+**Sequence correction:** Chat then treated PK's “this should be good for now” signal as visual acceptance before screenshots had actually been reviewed, and committed v2.48 using premature “7/7 visual PASS” wording. PK screenshots arrived afterward; chat reviewed them and confirmed the 7/7 desktop checks post-hoc. The final acceptance state is valid, but the original committed sequence was too clean and is corrected here.
 
 PK directive at acceptance:
 > "The mobile is, an issue. But the mobile visuals are a different task, I believe. They should not be bundled up with the web because at present, it's not only for this that the mobile is not working, but for the other tabs and views. So that will be a separate task. Let's concentrate on the web access only."
@@ -70,9 +74,11 @@ Underlying data is correct. Panel data layer is sound.
 
 ---
 
-## 4. PK visual acceptance — 7/7 desktop checks PASS
+## 4. Desktop visual acceptance — 7/7 checks PASS, confirmed post-hoc
 
-PK loaded `dashboard.invegent.com/ef-drift` and confirmed:
+**Correction:** the checks below were confirmed after the initial v2.48 commit, by reviewing PK's screenshots. The original docs incorrectly implied they had been fully reviewed before the commit.
+
+PK loaded `dashboard.invegent.com/ef-drift`; screenshots supported:
 
 | # | Check | Status |
 |---|---|---|
@@ -123,7 +129,7 @@ D-01 fires this session: 0 (verification work + acceptance — not a new patch).
 
 P0+P1 open findings: ~8 (unchanged at design level; Stage 2b ship is closure of an Active item but doesn't reveal new findings).
 
-**Closures this session:** Stage 2b (closed via PK acceptance).
+**Closures this session:** Stage 2b (closed via post-hoc-confirmed desktop acceptance).
 
 ---
 
@@ -133,7 +139,7 @@ P0+P1 open findings: ~8 (unchanged at design level; Stage 2b ship is closure of 
 - Stage 2b brief PK approval → CLOSED (PK approved mid-session)
 - Stage 2b panel build → CLOSED (CC commit 66aea99)
 - Stage 2b post-ship verification → CLOSED (5/5 SQL PASS)
-- Stage 2b PK visual acceptance → CLOSED (desktop accepted)
+- Stage 2b desktop visual acceptance → CLOSED (confirmed post-hoc from screenshots)
 
 **v2.48 unblocks:**
 - F-EF-DRIFT-PREVENTION Stage 3 (`scripts/safe-deploy.sh`) — UNBLOCKED, eligible for next session
@@ -150,7 +156,7 @@ P0+P1 open findings: ~8 (unchanged at design level; Stage 2b ship is closure of 
 
 The v2.47 carry-forward "do not touch" list is preserved unchanged with the following notational deltas:
 
-1. **Stage 2b SHIPPED + ACCEPTED on desktop** (replaces "brief drafted with PK approval gate").
+1. **Stage 2b SHIPPED + desktop accepted post-hoc** (replaces "brief drafted with PK approval gate").
 2. **`/ef-drift` is LIVE at dashboard.invegent.com** (route adapted from brief's `/admin/ef-drift`).
 3. **Stage 3 + P1 SD triage UNBLOCKED** (replaces "held until Stage 2b ships").
 4. **NEW carry-forward: dashboard-wide mobile responsiveness P3** (system gap, not just Stage 2b).
@@ -159,16 +165,16 @@ Everything else in v2.47 carry-forward unchanged.
 
 ---
 
-## 9. 4-way sync close (this commit)
+## 9. 4-way sync close (corrected by follow-up commit)
 
 | # | Surface | Action |
 |---|---|---|
-| 1 | Session file | This file at `docs/runtime/sessions/2026-05-07-stage2b-shipped-accepted.md` |
-| 2 | `docs/00_sync_state.md` | Replace inline summary; add v2.48 row to index; update next priorities for unblocked items; update carry-forward |
-| 3 | `docs/00_action_list.md` | Bump to v2.48; close Stage 2b items; promote Stage 3 + P1 triage to Today/Next 5; add mobile-responsiveness P3 |
-| 4 | Memory | Bump v2.47 → v2.48 entry (already done before this commit) |
+| 1 | Session file | This file at `docs/runtime/sessions/2026-05-07-stage2b-shipped-accepted.md`, corrected in-place with sequencing note |
+| 2 | `docs/00_sync_state.md` | Corrected to show SQL PASS → premature acceptance declaration → commit → screenshot review → post-hoc 7/7 desktop PASS |
+| 3 | `docs/00_action_list.md` | Corrected limitations + roadmap deferral count |
+| 4 | Memory | Corrected to the same sequence before GitHub corrections landed |
 
-Dashboard roadmap (`invegent-dashboard/app/(dashboard)/roadmap/page.tsx`) — fourth consecutive deferral. Carried forward unchanged.
+Dashboard roadmap (`invegent-dashboard/app/(dashboard)/roadmap/page.tsx`) — fifth consecutive deferral. Carried forward unchanged.
 
 ---
 
@@ -189,7 +195,7 @@ Dashboard roadmap (`invegent-dashboard/app/(dashboard)/roadmap/page.tsx`) — fo
 13. **Vault `service_role_key` naming hygiene scope-check** (P3).
 14. **`docs/audit/health/2026-05-06.md` follow-up** (P3, still absent).
 15. **18+ close-the-loop UPDATEs** to `m.chatgpt_review` — next batch closure.
-16. **Dashboard roadmap reconciliation** (P3, deferred from v2.45 through v2.47).
+16. **Dashboard roadmap reconciliation** (P3, deferred from v2.45 through v2.48; fifth consecutive deferral by this correction close).
 17. **`00_overview.md` 11-section table reconciliation** (P3, carry from v2.46).
 
 ---
@@ -197,9 +203,15 @@ Dashboard roadmap (`invegent-dashboard/app/(dashboard)/roadmap/page.tsx`) — fo
 ## 11. Open from this session
 
 - **Mobile responsiveness — whole dashboard** (NEW P3) — system-wide, not Stage 2b. Pending dedicated session or Phase 1 architecture-review-build inclusion.
-- **Dashboard roadmap PHASES still stale** — fourth consecutive deferral. Risk: roadmap claims phase positions that don't reflect current deployment state.
+- **Dashboard roadmap PHASES still stale** — fifth consecutive deferral. Risk: roadmap claims phase positions that don't reflect current deployment state.
 - **17+ close-the-loop UPDATEs pending** to `m.chatgpt_review` (this session's `e0ab4a0b` from v2.47 still pending close).
 
 ---
 
-*Session closed 2026-05-07 Sydney. v2.48. Stage 2b live and accepted on desktop. Stage 3 + P1 SD triage now eligible.*
+## 12. Honest limitation added by correction
+
+- **v2.48 was originally documented too cleanly.** The first v2.48 commit claimed desktop visual 7/7 PASS as though PK screenshots had already been reviewed. Actual sequence: SQL PASS → premature acceptance declaration → v2.48 commit → screenshots reviewed → 7/7 desktop PASS confirmed post-hoc. Final acceptance state is valid; the corrected audit trail records the sequencing issue.
+
+---
+
+*Session corrected 2026-05-07 Sydney. v2.48. Stage 2b live and accepted on desktop post-hoc. Stage 3 + P1 SD triage now eligible.*
