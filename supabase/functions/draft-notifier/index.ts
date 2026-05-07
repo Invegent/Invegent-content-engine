@@ -1,13 +1,13 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// draft-notifier v1.0.0
-// pg_cron: every 30 minutes
+// draft-notifier v1.1.0
+// Runs every 30 minutes via pg_cron.
 // Finds unnotified needs_review drafts for portal-enabled clients,
-// sends one email per client via Resend, marks drafts as notified.
-//
-// Required Supabase secrets: RESEND_API_KEY, PORTAL_URL (optional), NOTIFY_FROM (optional)
+// sends ONE email per client, marks drafts notified via mark_drafts_notified().
+// Fix v1.1: use public.mark_drafts_notified(uuid[]) SECURITY DEFINER function
+// instead of exec_sql UPDATE which was silently failing (m schema not writable via exec_sql).
 
-const VERSION = "draft-notifier-v1.0.0";
+const VERSION = "draft-notifier-v1.1.0";
 const RESEND_API_URL = "https://api.resend.com/emails";
 
 function getServiceClient() {
@@ -42,29 +42,34 @@ async function sendReviewEmail(opts: {
     : "";
 
   const plural = opts.pendingCount !== 1;
-  const subject = `${opts.pendingCount} post${plural ? "s" : ""} ready for your review — ${opts.clientName}`;
+  const subject = `${opts.pendingCount} post${plural ? "s" : ""} ready for your review \u2014 ${opts.clientName}`;
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
-<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,sans-serif;">
+<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
 <div style="max-width:480px;margin:32px auto;padding:0 16px 32px;">
   <div style="margin-bottom:24px;">
     <span style="background:#06b6d4;color:white;font-weight:700;font-size:15px;padding:6px 14px;border-radius:8px;">Invegent</span>
   </div>
-  <div style="background:white;border-radius:16px;border:1px solid #e2e8f0;padding:24px;">
+  <div style="background:white;border-radius:16px;border:1px solid #e2e8f0;padding:24px 24px 28px;">
     <h1 style="font-size:20px;color:#0f172a;margin:0 0 8px;">${opts.pendingCount} post${plural ? "s" : ""} ready for your review</h1>
     <p style="color:#64748b;font-size:15px;margin:0 0 20px;">New content is waiting for your approval in the ${opts.clientName} portal.</p>
     <ul style="list-style:none;padding:12px 16px;margin:0 0 20px;background:#f8fafc;border-radius:10px;">${items}</ul>
     ${moreNote}
-    <a href="${portalUrl}/inbox" style="display:inline-block;background:#06b6d4;color:white;font-weight:600;font-size:16px;padding:14px 28px;border-radius:12px;text-decoration:none;">Review posts &rarr;</a>
+    <a href="${portalUrl}/inbox" style="display:inline-block;background:#06b6d4;color:white;font-weight:600;font-size:16px;padding:14px 28px;border-radius:12px;text-decoration:none;">Review posts &#8594;</a>
   </div>
-  <p style="color:#94a3b8;font-size:12px;margin-top:16px;text-align:center;">You're receiving this because you have posts awaiting approval in the Invegent portal.</p>
+  <p style="color:#94a3b8;font-size:12px;margin-top:16px;text-align:center;">
+    You're receiving this because you have posts awaiting approval in the Invegent portal.
+  </p>
 </div>
 </body></html>`;
 
   const resp = await fetch(RESEND_API_URL, {
     method: "POST",
-    headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${resendKey}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ from: `Invegent <${fromEmail}>`, to: [opts.to], subject, html }),
   });
 
@@ -77,7 +82,8 @@ async function sendReviewEmail(opts: {
 Deno.serve(async () => {
   const supabase = getServiceClient();
 
-  const { data: rows } = await supabase.rpc("exec_sql", {
+  // Find unnotified needs_review drafts for portal-enabled clients
+  const { data: rows, error: queryErr } = await supabase.rpc("exec_sql", {
     query: `
       SELECT
         pd.post_draft_id,
@@ -88,7 +94,8 @@ Deno.serve(async () => {
       FROM m.post_draft pd
       LEFT JOIN m.digest_item  di ON di.digest_item_id  = pd.digest_item_id
       LEFT JOIN m.digest_run   dr ON dr.digest_run_id   = di.digest_run_id
-      JOIN  c.client c ON c.client_id = COALESCE(pd.client_id, dr.client_id)
+      JOIN  c.client c
+        ON c.client_id = COALESCE(pd.client_id, dr.client_id)
       WHERE pd.approval_status      = 'needs_review'
         AND pd.notification_sent_at IS NULL
         AND c.portal_enabled         = true
@@ -97,15 +104,30 @@ Deno.serve(async () => {
     `,
   });
 
+  if (queryErr) {
+    console.error("[draft-notifier] Query error:", queryErr);
+    return new Response(
+      JSON.stringify({ ok: false, version: VERSION, error: queryErr }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   if (!rows || !Array.isArray(rows) || rows.length === 0) {
     return new Response(
-      JSON.stringify({ ok: true, version: VERSION, sent: 0, message: "no_pending_drafts" }),
+      JSON.stringify({ ok: true, version: VERSION, sent: 0, message: "no_new_drafts" }),
       { headers: { "Content-Type": "application/json" } }
     );
   }
 
-  type Row = { post_draft_id: string; draft_title: string; client_id: string; client_name: string; notifications_email: string };
+  type Row = {
+    post_draft_id: string;
+    draft_title: string;
+    client_id: string;
+    client_name: string;
+    notifications_email: string;
+  };
 
+  // Group by client
   const byClient = new Map<string, Row[]>();
   for (const row of rows as Row[]) {
     if (!byClient.has(row.client_id)) byClient.set(row.client_id, []);
@@ -132,15 +154,30 @@ Deno.serve(async () => {
     }
   }
 
+  // Mark as notified using SECURITY DEFINER function (exec_sql UPDATE was silently failing)
+  let markedCount = 0;
   if (notifiedIds.length > 0) {
-    const idList = notifiedIds.map((id) => `'${id}'::uuid`).join(", ");
-    await supabase.rpc("exec_sql", {
-      query: `UPDATE m.post_draft SET notification_sent_at = NOW() WHERE post_draft_id IN (${idList})`,
+    const { data: marked, error: markErr } = await supabase.rpc("mark_drafts_notified", {
+      p_ids: notifiedIds,
     });
+    if (markErr) {
+      console.error("[draft-notifier] mark_drafts_notified failed:", markErr);
+      errors.push(`mark_failed: ${markErr.message}`);
+    } else {
+      markedCount = marked ?? 0;
+      console.log(`[draft-notifier] Marked ${markedCount} drafts as notified`);
+    }
   }
 
   return new Response(
-    JSON.stringify({ ok: true, version: VERSION, drafts_found: rows.length, emails_sent: emailsSent, drafts_notified: notifiedIds.length, errors }),
+    JSON.stringify({
+      ok: true,
+      version: VERSION,
+      drafts_found: rows.length,
+      emails_sent: emailsSent,
+      drafts_marked: markedCount,
+      errors,
+    }),
     { headers: { "Content-Type": "application/json" } }
   );
 });
