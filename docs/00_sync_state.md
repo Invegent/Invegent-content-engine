@@ -18,9 +18,10 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
-| 2026-05-07 | p1-sd-triage-sync | **P1 SECURITY-DEFINER triage CLOSED (v2.50).** All 3 standing-three EFs now repo-aligned to deployed source via sync-only commits: `a83ab4c0` (draft-notifier, 77 lines, UNDER threshold), `448eeb30` (heygen-avatar-creator, 86 lines, UNDER), `5aefd6e6` (heygen-avatar-poller, 269 lines, OVER cond i; held → diff reviewed in chat against actual artifact → PK approved). 3 D-01 fires: `32ade261` advisory partial → STEP C.5 adopted; `9cbc7de3` verification partial → corrected_action verified empirically (surfaced orphan-RPC finding); `4a48024f` sync-close partial → non-testable corrected_action, PK override approved (state-capture exception). NEW finding F-HEYGEN-RPC-MIGRATIONS-MISSING P2 (4 orphan-deployed RPCs surfaced by diff review). NEW standing rule: acceptance integrity (generalised from v2.49 visual-acceptance integrity). Lesson #62 refinement: testable corrected_action → verify; non-testable → override. T-MCP-02 44 → 47. State-capture exceptions v2.50: 1. 0 production mutations chat-side. | `docs/runtime/sessions/2026-05-07-p1-sd-triage-sync.md` |
-| 2026-05-07 | stage3-safe-deploy | **Stage 3 SHIPPED + VERIFIED (v2.49).** `scripts/safe-deploy.sh` live. CC commit `3d43796`. §1.5 schema delta adapted (`function_name` → `slug`, `class` → `current_class`); curl + `exec_sql` RPC connection method. All 8 acceptance tests PASS. Above-spec defensive additions: SQL-injection guard, standing-three pre-DB ordering, unknown-class fallback. 2 D-01 fires (brief + read-only verification, both PASS). T-MCP-02 42 → 44. P1 SECURITY-DEFINER triage trio NEWLY UNBLOCKED. v2.49 manifest folded: 5th-deferral correction, visual-acceptance integrity standing rule, AI cost view P3, cc-0001 parenthetical. Hold-state respected; 0 production mutations chat-side. | `docs/runtime/sessions/2026-05-07-stage3-safe-deploy.md` |
-| 2026-05-07 | stage2b-shipped-accepted | **Stage 2b SHIPPED + ACCEPTED on desktop (v2.48).** CC commit `66aea99` (dashboard) + `9564297` (result file). Live at `dashboard.invegent.com/ef-drift`. 5/5 SQL V1–V5 PASS. PK visual acceptance 7/7 desktop checks PASS. Stage 3 + P1 SECURITY-DEFINER triage trio NEWLY UNBLOCKED. | `docs/runtime/sessions/2026-05-07-stage2b-shipped-accepted.md` |
+| 2026-05-08 | personal-finance-cowork-inbox-brief | **Lightweight close (v2.51).** Personal finance interlude: PK Crazy Domains $521/3yr renewal quote analysed; identified $251/yr Website Builder auto-renewal bleed (Nov 25 free trial → Feb 26 auto-convert) + $26/yr Premium DNS + $18/yr Domain Guard ×2 fluff. PK called CD; ≥1 refund verbally in progress. Total annual saving once cleaned up: ~A$286. NEW Cowork brief drafted: `morning-inbox-sweep-v1` (daily 06:00 AEST personal-email triage; Tier 0 read-only Gmail; URGENT/FYI/NOISE classifier; calibration anchor=Crazy Domains discovery; money-out flags every match regardless of amount). Brief committed status=draft per PK hold-pending-amendment. Logged P3 in Active. NEW Personal businesses entry: CD refund + clean-up follow-up. No D-01 fire (doc-only bump). 0 production mutations chat-side. Today/Next 5 unchanged from v2.50. | `docs/runtime/sessions/2026-05-08-personal-finance-cowork-inbox-brief.md` |
+| 2026-05-07 | p1-sd-triage-sync | **P1 SECURITY-DEFINER triage CLOSED (v2.50).** All 3 standing-three EFs now repo-aligned to deployed source via sync-only commits: `a83ab4c0` (draft-notifier, 77 lines, UNDER threshold), `448eeb30` (heygen-avatar-creator, 86 lines, UNDER), `5aefd6e6` (heygen-avatar-poller, 269 lines, OVER cond i; held → diff reviewed in chat against actual artifact → PK approved). 3 D-01 fires: `32ade261` advisory partial → STEP C.5 adopted; `9cbc7de3` verification partial → corrected_action verified empirically (surfaced orphan-RPC finding); `4a48024f` sync-close partial → non-testable corrected_action, PK override approved (state-capture exception). NEW finding F-HEYGEN-RPC-MIGRATIONS-MISSING P2. NEW standing rule: acceptance integrity (generalised from v2.49 visual-acceptance integrity). Lesson #62 refinement: testable corrected_action → verify; non-testable → override. T-MCP-02 44 → 47. State-capture exceptions v2.50: 1. 0 production mutations chat-side. | `docs/runtime/sessions/2026-05-07-p1-sd-triage-sync.md` |
+| 2026-05-07 | stage3-safe-deploy | **Stage 3 SHIPPED + VERIFIED (v2.49).** `scripts/safe-deploy.sh` live. CC commit `3d43796`. §1.5 schema delta adapted; curl + `exec_sql` RPC connection method. All 8 acceptance tests PASS. T-MCP-02 42 → 44. P1 SECURITY-DEFINER triage trio NEWLY UNBLOCKED. Hold-state respected; 0 production mutations chat-side. | `docs/runtime/sessions/2026-05-07-stage3-safe-deploy.md` |
+| 2026-05-07 | stage2b-shipped-accepted | **Stage 2b SHIPPED + ACCEPTED on desktop (v2.48).** CC commit `66aea99` + `9564297`. Live at `dashboard.invegent.com/ef-drift`. 5/5 SQL V1–V5 PASS. PK visual acceptance 7/7 desktop checks PASS. | `docs/runtime/sessions/2026-05-07-stage2b-shipped-accepted.md` |
 | 2026-05-07 | s30-pass-stage2b-kickoff | **S30 PASS + Stage 2b kickoff (v2.47).** Cron-backed drift logging confirmed live. | `docs/runtime/sessions/2026-05-07-s30-pass-stage2b-kickoff.md` |
 | 2026-05-07 | dashboard-architecture-review-completion | **Dashboard Architecture Review COMPLETE.** 12 docs at `docs/dashboard-review-2026-05/`. | `docs/runtime/sessions/2026-05-07-dashboard-architecture-review-completion.md` |
 | 2026-05-07 | s30-paused-stuck-cluster-recheck | Lightweight checkpoint. PP×YT + LinkedIn-PP CLEARED; NY×YT STILL BLOCKED. | `docs/runtime/sessions/2026-05-07-s30-paused-stuck-cluster-recheck.md` |
@@ -48,117 +49,90 @@
 
 ## 🟢 Most recent session — inline summary
 
-### 2026-05-07 Sydney — P1 SECURITY-DEFINER triage CLOSED (v2.50)
+### 2026-05-08 Sydney — Personal finance interlude + Cowork inbox-sweep brief drafted (v2.51)
 
-**Outcome:** P1 SECURITY-DEFINER regression-risk triage closed end-to-end. All three standing-three Edge Functions now have repo source aligned to deployed source via three sync-only commits on main. v2.49 Stage 3 ship (`scripts/safe-deploy.sh`) was the prerequisite that made this triage safe — gate remained mechanically active throughout.
+**Outcome:** Lightweight session. ICE chat-side: 0 production mutations, 0 D-01 fires, 0 SQL DDL/DML, 0 EF deploys, 0 cron changes. STANDING_THREE array unchanged. Hold-state respected throughout.
 
-**Closure artifacts:**
-- `a83ab4c0` chore(sync): align draft-notifier (77 lines, UNDER threshold)
-- `448eeb30` chore(sync): align heygen-avatar-creator (86 lines, UNDER threshold)
-- `5aefd6e6` chore(sync): align heygen-avatar-poller (269 lines, OVER cond i; held → diff reviewed in chat against actual artifact → PK approved)
+This was a personal-finance + automation-design session triggered by an out-of-cycle PK question about a Crazy Domains 3-year renewal quote. Surfaced a meaningful auto-renewal bleed and produced a draft Cowork brief that PK held for cool-headed amendment.
 
-**STEP C.5 threshold checkpoint** (>100 lines OR >50% size delta → STOP, report full diff, wait for explicit `proceed with <ef> sync` phrase) was adopted from D-01 advisory `32ade261` corrected_action and worked exactly as designed: pair under-threshold autocommitted, third over-threshold held until PK reviewed actual diff.
+**Personal finance interlude:**
+- PK uploaded 5 Crazy Domains invoices spanning Nov 2025 → May 2026 ($246.68 total).
+- Identified $251/yr Website Builder auto-renewal bleed (Nov 25 free trial auto-converted Feb 26; today's $62.67 was the 2nd auto-renewal).
+- Plus $26/yr Premium DNS + $18/yr Domain Guard ×2 + ~$35 one-off Domain Expiry Protection — ~$212 of the $246.68 was unnecessary spend.
+- PK called Crazy Domains during the session; ≥1 invoice refund verbally confirmed in progress.
+- Recommended clean-up: cancel Website Builder + Premium DNS + Domain Guard auto-renewals; transfer to Cloudflare Registrar (.com) + VentraIP (.com.au) before Nov 2026; decline the $521/3yr quote. Total annual saving once actioned: ~A$286.
 
-**3 D-01 fires (T-MCP-02 44 → 47):**
-- `32ade261-5f99-4c75-a643-5a20c7c978ae` advisory: partial → STEP C.5 adopted; no re-fire per PK
-- `9cbc7de3-537f-425c-8e77-b1245a76a2e1` verification: partial → corrected_action verified empirically; surfaced **F-HEYGEN-RPC-MIGRATIONS-MISSING (P2)** as real adjacent finding
-- `4a48024f-e361-4876-b5a0-89651eb7c662` sync-close: partial → non-testable corrected_action; PK override approved (state-capture exception count v2.50: 1)
+**NEW Cowork brief drafted:** `docs/briefs/morning-inbox-sweep-v1.md` (status=draft).
+- Daily 06:00 AEST personal-email triage sweep. Read-only Gmail. Three-bucket classifier (URGENT / FYI / NOISE).
+- Money-out triggers fire on every match regardless of dollar amount — calibration anchor is today's Crazy Domains discovery.
+- Existing ICE Gmail labels (`newsletter/ndis`, `newsletter/property`) auto-suppressed since those belong to the content engine, not PK personally.
+- Single write exception: self-addressed email ping confirming the file is ready. No external recipients under any circumstance.
+- Sunset review at 4 weeks (2026-06-08).
+- PK held the commit pending cool-headed amendment. Pre-amendment checklist included in the brief itself.
 
-**NEW finding:** F-HEYGEN-RPC-MIGRATIONS-MISSING (P2). Four RPCs called by heygen-avatar-poller v2.0.0 deployed source (`store_gen_poll_response`, `advance_avatar_to_creating`, `complete_avatar_training`, `fail_avatar_generation`) not present in repo migrations. Pre-existing orphan-deployed drift surfaced by diff review. ~30 min next session: `pg_get_functiondef` (read-only) + new migration file.
+**No D-01 fire this session.** Per protocol, D-01 fires before production patches and action_list version bumps that touch production state. v2.51 is documentation-only (1 new draft brief, 1 new Active row, 1 new Personal businesses entry); no production mutations, no schema changes, no EF changes, no cron changes. State-capture exception count v2.51: **0**.
 
-**NEW STANDING RULE — Acceptance integrity (generalised from v2.49 visual-acceptance integrity):** Acceptance is not complete until actual review artifact is received and reviewed regardless of artifact type — visual, diff, log, command output, screen capture, or otherwise. "Looks good" / "passed" / "matches" signal alone NOT sufficient. Chat does not advance state on unverified summary. Empirically validated this session: STEP C.5 held heygen-avatar-poller until full diff was in chat, which is what surfaced the orphan-RPC finding.
+**Closure budget:** ~0.5h chat. Day total v2.51: ~0.5h. Trailing-14-day ~52.5h above 8.0 floor. ~6 P0+P1 open of 20 cap. ✅ within budget.
 
-**Lesson #62 refinement (v2.50):** When corrected_action is **low-cost and testable** → prefer empirical verification over override. When **non-testable** → override remains default (with PK approval as state-capture exception). Two empirical proofs this session: fire #2 testable → verified → real finding logged; fire #3 non-testable → override approved.
-
-**Closure budget:** ~1.5h chat. Day total v2.47+v2.48+v2.49+v2.50 ~6.0h. Trailing-14-day ~52h above 8.0 floor. ~6 P0+P1 open (was ~7).
-
-**Closures this session:**
-- F-EF-DRIFT-PREVENTION P1 SECURITY-DEFINER triage → CLOSED (3 sync commits as artifacts)
-
-**Newly unblocked:**
-- **insights-worker P1 functional drift** — was sequenced after triage trio; now next-session #1
-- **F-YT-NY-FORMAT-SELECTION** (carry-forward) — was BLOCKED behind P1 SD triage; now unblocked
-- **M6 Phase A** (carry-forward) — was BLOCKED behind P1 SD triage; now unblocked
+**Today/Next 5 carries unchanged from v2.50:**
+1. insights-worker P1 functional drift (P1 TOP)
+2. Personal businesses check-in (P0; v2.51 added Crazy Domains refund follow-up)
+3. Dashboard Architecture Review Phase 0 prerequisites (P1)
+4. F-HEYGEN-RPC-MIGRATIONS-MISSING (P2)
+5. AI cost view (P3)
 
 **4-way sync close at this commit:**
-- Session file: `docs/runtime/sessions/2026-05-07-p1-sd-triage-sync.md`
-- Sync state (this file): refreshed v2.50
-- Action list: v2.50 bump (P1 SD triage closed; F-HEYGEN-RPC-MIGRATIONS-MISSING P2 added; Today/Next 5 rebuilt; new acceptance-integrity standing rule + Lesson #62 refinement)
-- Memory: v2.50 entry committed separately
-- Brief retroactive commit: `docs/briefs/cc-0002-p1-sd-triage-sync.md` folded into same v2.50 commit so three sync commits' citations resolve
+- Session file: `docs/runtime/sessions/2026-05-08-personal-finance-cowork-inbox-brief.md`
+- Sync state (this file): refreshed v2.51
+- Action list: v2.51 bump (NEW Active row + NEW Personal businesses entry; Today/Next 5 carries from v2.50)
+- Memory: v2.51 entry committed
+- Brief draft: `docs/briefs/morning-inbox-sweep-v1.md` committed status=draft
 
 **Hold-state respected throughout.** 0 EF redeploys, 0 SQL DDL/DML, 0 cron changes, STANDING_THREE array unchanged.
 
 **Open from this session:**
-- F-HEYGEN-RPC-MIGRATIONS-MISSING P2 (NEW) — ~30 min next session
-- Filename-only scan caveat for orphan-RPC finding (not file-content grep)
-- Standard CC paste-back chain rather than chat-direct execution
-- Dashboard roadmap PHASES — **6th** consecutive deferral (corrected from v2.49 5th)
-- 18+ close-the-loop UPDATEs to `m.chatgpt_review`; v2.50 adds 3 more (`32ade261` + `9cbc7de3` + `4a48024f`); cumulative 21+
+- morning-inbox-sweep-v1 brief amendment (P3, NEW v2.51) — PK reviews + amends + flips status
+- Crazy Domains refund + clean-up follow-up (Personal businesses, NEW v2.51) — PK actions manually
+- Dashboard roadmap PHASES — **7th** consecutive deferral (was 6th in v2.50)
+- 21+ close-the-loop UPDATEs to `m.chatgpt_review` still pending; v2.51 adds 0 (no fires)
 
 ---
 
-## 🟡 Next session priorities (rebuilt for v2.50)
+## 🟡 Next session priorities (carries unchanged from v2.50)
 
-1. **insights-worker P1 functional drift** (P1 TOP, NEWLY UNBLOCKED) — manual review by PK. Deployed v14.0.0 vs repo v1.6.0. D-PREV-07: manual review, no auto-sync.
-2. **Personal businesses check-in** (P0 standing).
-3. **Dashboard Architecture Review Phase 0 prerequisites** (P1) — 7 confirm-defaults via `cc-0001-dashboard-phase-0-defaults.md` + M5–M8 reconciliation. Independent of insights-worker timeline; can run in parallel.
-4. **F-HEYGEN-RPC-MIGRATIONS-MISSING** (P2 NEW v2.50) — `pg_get_functiondef` (read-only) + new migration file for 4 orphan-deployed RPCs. ~30 min.
-5. **AI cost view P3** (carry from v2.49) — `vw_ai_cost_monthly` + NOW dashboard tile. ~1h.
-6. **F-YT-NY-FORMAT-SELECTION** (P1, NEWLY UNBLOCKED) — read v2.11.1 source post-build; locate `format-advisor-v1`; decide between 4 fix shapes.
-7. **M6 Phase A** (P1, NEWLY UNBLOCKED) — 108 historical Bug 3 dead-letter; coordinate with M-09-03 view definition.
-8. **Dashboard mobile responsiveness — system-wide** (P3).
-9. **F-AAP-NEEDS-REVIEW-BACKLOG** (P2) — 28 drafts; closure target = architecture review Phase 2 B-09-14.
-10. **F-PUB-009 7-day flow check** (P2).
-11. **F-AI-WORKER-PARSER-SKIP-BUG V4** — inconclusive.
-12. **Vault `service_role_key` naming hygiene scope-check** (P3).
-13. **`docs/audit/health/2026-05-06.md` follow-up** (P3, still absent).
-14. **18+ close-the-loop UPDATEs** to `m.chatgpt_review` — next batch closure (v2.50 adds 3 more; cumulative 21+).
-15. **Dashboard roadmap reconciliation** (P3, **6th** consecutive deferral).
-16. **`00_overview.md` 11-section table reconciliation** (P3, carry from v2.46).
+1. **insights-worker P1 functional drift** (P1 TOP) — manual review by PK. Deployed v14.0.0 vs repo v1.6.0. D-PREV-07: manual review, no auto-sync.
+2. **Personal businesses check-in** (P0 standing) — v2.51 adds Crazy Domains refund + clean-up status check.
+3. **Dashboard Architecture Review Phase 0 prerequisites** (P1) — 7 confirm-defaults via `cc-0001-dashboard-phase-0-defaults.md` + M5–M8 reconciliation.
+4. **F-HEYGEN-RPC-MIGRATIONS-MISSING** (P2 carry) — `pg_get_functiondef` (read-only) + new migration file. ~30 min.
+5. **AI cost view P3** (carry) — `vw_ai_cost_monthly` + NOW dashboard tile. ~1h.
+6. **morning-inbox-sweep-v1 brief amendment** (P3 NEW v2.51) — if PK has cool-headed time to amend.
+7. **F-YT-NY-FORMAT-SELECTION** (P1 carry).
+8. **M6 Phase A** (P1 carry).
+9. **Dashboard mobile responsiveness** (P3).
+10. **F-AAP-NEEDS-REVIEW-BACKLOG** (P2).
+11. **F-PUB-009 7-day flow check** (P2).
+12. **F-AI-WORKER-PARSER-SKIP-BUG V4** (P2).
+13. **Vault `service_role_key` naming hygiene** (P3).
+14. **`docs/audit/health/2026-05-06.md` follow-up** (P3).
+15. **21+ close-the-loop UPDATEs** to `m.chatgpt_review`.
+16. **Dashboard roadmap reconciliation** (P3, **7th** consecutive deferral).
+17. **`00_overview.md` 11-section table reconciliation** (P3).
 
 ---
 
 ## ⛔ Carried-forward "do not touch" state
 
-- NDIS-Yarns IG `publish_enabled=false` — do not flip until T05 decides recovery
-- Cron jobid 53 (`instagram-publisher-every-15m`) `active=false` — do not re-enable until S16 + T05; ~104 IG-overdue posts will fire when re-enabled
-- Cron jobid 11/64/65 (`seed-and-enqueue-{fb,ig,li}`) — paused per slot-driven v4
-- Jobid 12 (`planner-hourly`) — still active despite v3 orphan production (B-CRON-V3-ORPHAN)
-- 21+ review_ids close-the-loop pending (v2.50 adds 3 more)
-- 47 historic dead queue rows retained as audit trail
-- 32 historical `post_draft_not_found` orphans (16 NY-FB + 16 PP-FB) — M6 Phase A scope (NEWLY UNBLOCKED v2.50)
-- 6 CFW LinkedIn slots + 1 CFW Facebook slot in `exceeded_recovery_attempts` — quiescent
-- 1 NDIS-FB dead queue row preserved per F-PUB-005 carry-forward
-- 5 over-cap (client, platform) combos hold queue depth — by design
-- NDIS-Yarns LinkedIn slot `8f9e5c57-…` orphan since 4-27 — do not touch
-- Property Pulse Facebook 1 orphan slot (B-PP-FB-ORPHAN-PENDING-FILL P3)
-- C2-CAND-001 — punted to Cycle 3
-- 108 historical Bug 3 fingerprint queue rows — M6 Phase A scope (NEWLY UNBLOCKED v2.50)
-- queue_id `ad573844-…` — dead-lettered; do not re-queue
-- 47 v4-origin queue rows still mismatch slot intent — M6 Phase B scope
-- 160 records previously flagged is_shadow=true lost flag metadata — acceptable
-- 2 NY×YT avatar test drafts (a501aa6a, 80d8d2b7) from 2026-04-09 — latent
-- `is_shadow: true` JSONB residue in `m.post_draft.draft_format.ai`
-- 13 drift cases active in priority buckets (v2.40 inventory)
-- 2 repo-only directories (ai-diagnostic, linkedin-publisher) — do not deploy or remove without PK direction
-- `docs/audit/health/2026-05-06.md` absent — Cowork did not push 6 May. P3.
-- **Cron-backed drift logging is LIVE.** jobid 80 + 81 active=true.
-- **`m.ef_drift_log` retains 147 rows** (next fire 2026-05-07 17:00 UTC = 03:00 AEST 8 May → 196 rows expected).
-- **3 distinct `drift_check_run_id` values** (`bef6be96` + `a2124145` + `c3446a47`).
-- **drift-check v1.0.8 LIVE.**
-- **Standing don't-redeploy three** (`heygen-avatar-creator`, `heygen-avatar-poller`, `draft-notifier`) — confirmed via cron-driven scan AND mechanically encoded in `scripts/safe-deploy.sh` STANDING_THREE array. v2.50: repo source NOW aligned to deployed for all three; standing-three list unchanged.
-- **Vault `service_role_key` 15-char value.** Confirmed non-blocking for drift-check. P3 hygiene cleanup logged.
-- **Dashboard roadmap PHASES array stale since 3 May. SIXTH consecutive deferral** (corrected v2.50 from v2.49's 5th).
-- **v2.49: `scripts/safe-deploy.sh` LIVE.** Pre-deploy gate consuming `m.vw_ef_drift_current`. Hard-blocks standing three. CC commit `3d43796`. Read-only D-01 verification PASS.
-- **v2.50: P1 SECURITY-DEFINER triage CLOSED.** Three sync-only commits as closure artifacts. Standing-three list unchanged. 0 production mutations.
-- **v2.50 NEW STANDING RULE — Acceptance integrity (generalised from v2.49).** Acceptance not complete until actual review artifact received and reviewed regardless of artifact type. "Looks good" / "passed" / "matches" signal alone insufficient. Chat does not advance state on unverified summary.
-- **v2.50 Lesson #62 refinement.** When corrected_action is low-cost and testable → verify empirically. When non-testable → override remains default with PK approval as state-capture exception. Two empirical proofs this session.
-- **v2.50 NEW (P2) — F-HEYGEN-RPC-MIGRATIONS-MISSING.** Four RPCs called by heygen-avatar-poller v2.0.0 deployed source not in repo migrations. Pre-existing orphan-deployed drift. ~30 min next session.
-- **v2.49 NEW (P3) — AI cost view.** `vw_ai_cost_monthly` view + NOW dashboard tile. ~1h estimate. Carry to v2.50.
-- **v2.48: Stage 2b SHIPPED + ACCEPTED on desktop.** Live at `dashboard.invegent.com/ef-drift`.
-- **v2.46: Dashboard Architecture Review COMPLETE.** 12 docs at `docs/dashboard-review-2026-05/`. 17 build-blockers. Phase 0 prerequisites: M5–M8 reconciliation + 7 confirm-defaults remain. cc-0001 brief-runner-v0 cycle #1 still open and unexecuted.
-- **v2.46: `00_overview.md` 11-section table out-of-sync.** Required updates in `11_final_consolidation.md` §11.1.
+Unchanged from v2.50. All 30+ items intact (NDIS-Yarns IG `publish_enabled=false`, cron 53/11/64/65 paused, jobid 12 planner-hourly, 21+ close-the-loop UPDATEs pending, 47 dead queue rows, 32 historical orphans, etc.).
+
+**v2.51 update on standing items:**
+- Cron-backed drift logging is LIVE (jobid 80 + 81 active=true).
+- 7-8 May fire window: 17:00 UTC 7 May = 03:00 AEST 8 May should have grown `m.ef_drift_log` from 147 → 196 rows. Verifiable next session if needed; no action this session.
+- Standing don't-redeploy three (`heygen-avatar-creator`, `heygen-avatar-poller`, `draft-notifier`) — confirmed via cron-driven scan AND mechanically encoded in `scripts/safe-deploy.sh` STANDING_THREE array. v2.51: list unchanged from v2.50.
+- Dashboard roadmap PHASES array stale since 3 May — **7th** consecutive deferral (was 6th in v2.50).
+- F-HEYGEN-RPC-MIGRATIONS-MISSING P2 — carry from v2.50.
+- AI cost view P3 — carry from v2.49.
+- morning-inbox-sweep-v1 brief at `docs/briefs/morning-inbox-sweep-v1.md` status=draft — do not pick up in Cowork until PK amends and flips status.
+- Crazy Domains clean-up — PK to action manually; chat tracks via Personal businesses entry, no chat-side action without PK direction.
 
 ---
 
@@ -176,4 +150,4 @@
 
 ---
 
-*Last updated: 2026-05-07 Sydney — P1 SECURITY-DEFINER triage CLOSED (v2.50). 3 sync-only commits as closure artifacts. F-HEYGEN-RPC-MIGRATIONS-MISSING P2 logged. NEW standing rule: acceptance integrity (generalised). Lesson #62 refinement: testable → verify, non-testable → override. T-MCP-02 44 → 47. State-capture exceptions v2.50: 1. 0 production mutations chat-side.*
+*Last updated: 2026-05-08 Sydney — Lightweight close (v2.51). Personal finance interlude (Crazy Domains $251/yr auto-renewal bleed identified, refund in progress) + morning-inbox-sweep-v1 Cowork brief drafted, committed status=draft per PK hold. NEW Active row (P3). NEW Personal businesses entry. No D-01 fire (doc-only bump). 0 production mutations chat-side. Today/Next 5 carries unchanged from v2.50.*
