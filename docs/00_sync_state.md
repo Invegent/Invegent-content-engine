@@ -18,13 +18,14 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
-| 2026-05-07 | stage3-safe-deploy | **Stage 3 SHIPPED + VERIFIED (v2.49).** `scripts/safe-deploy.sh` live. CC commit `3d43796`. §1.5 schema delta adapted (`function_name` → `slug`, `class` → `current_class`); curl + `exec_sql` RPC connection method (CLI v2.75 has no ad-hoc SQL subcommand, psql not installed). All 8 acceptance tests PASS. Above-spec defensive additions: SQL-injection guard, standing-three pre-DB ordering, unknown-class fallback. 2 D-01 fires (brief + read-only verification, both PASS). T-MCP-02 42 → 44. P1 SECURITY-DEFINER triage trio NEWLY UNBLOCKED. v2.49 manifest folded: 5th-deferral correction, visual-acceptance integrity standing rule, AI cost view P3, cc-0001 parenthetical. Hold-state respected; 0 production mutations chat-side. | `docs/runtime/sessions/2026-05-07-stage3-safe-deploy.md` |
-| 2026-05-07 | stage2b-shipped-accepted | **Stage 2b SHIPPED + ACCEPTED on desktop (v2.48).** CC commit `66aea99` (dashboard) + `9564297` (result file). Live at `dashboard.invegent.com/ef-drift`. 5/5 SQL V1–V5 PASS. PK visual acceptance 7/7 desktop checks PASS. Pre-flight (§1.5) deltas: no `/admin/*` group; single-tier middleware auth; Tailwind+lucide. Mobile responsiveness bucketed system-wide P3. Stage 3 + P1 SECURITY-DEFINER triage trio NEWLY UNBLOCKED. F-YT-NY-FORMAT-SELECTION + M6 Phase A still BLOCKED behind P1 triage. Hold-state respected; 0 production mutations chat-side. `m.ef_drift_log` 147 rows. | `docs/runtime/sessions/2026-05-07-stage2b-shipped-accepted.md` |
-| 2026-05-07 | s30-pass-stage2b-kickoff | **S30 PASS + Stage 2b kickoff (v2.47).** Cron-backed drift logging confirmed live: jobid 80 fired, succeeded, wrote 49 rows under `c3446a47`. `m.ef_drift_log` 98 → 147. All 8 S30 criteria PASS. Stage 2b brief authored. T-MCP-02 41 → 42. 0 production mutations. | `docs/runtime/sessions/2026-05-07-s30-pass-stage2b-kickoff.md` |
-| 2026-05-07 | dashboard-architecture-review-completion | **Dashboard Architecture Review COMPLETE.** 12 docs at `docs/dashboard-review-2026-05/`. 5-section IA Option B locked. HYBRID Brief locked. 6 product primitives at contract level. 17 build-blockers as PK execution checklist (§11.4). 5-phase implementation plan ~44–54h. | `docs/runtime/sessions/2026-05-07-dashboard-architecture-review-completion.md` |
-| 2026-05-07 | s30-paused-stuck-cluster-recheck | Lightweight checkpoint. PP×YT + LinkedIn-PP clusters CLEARED; NY×YT STILL BLOCKED. F-AI-WORKER-PARSER-SKIP-BUG V3+V5 PASS, V4 INCONCLUSIVE. | `docs/runtime/sessions/2026-05-07-s30-paused-stuck-cluster-recheck.md` |
-| 2026-05-07 | stage2a-cron-applied | F-EF-DRIFT-PREVENTION Stage 2a fully CLOSED. Two crons live (jobid 80 + 81). | `docs/runtime/sessions/2026-05-07-stage2a-cron-applied.md` |
-| 2026-05-07 | bef6be96-investigation-resolved | bef6be96 origin RESOLVED. Stage 2a UNBLOCKED. Lesson candidate #68. | `docs/runtime/sessions/2026-05-07-bef6be96-investigation-resolved.md` |
+| 2026-05-07 | p1-sd-triage-sync | **P1 SECURITY-DEFINER triage CLOSED (v2.50).** All 3 standing-three EFs now repo-aligned to deployed source via sync-only commits: `a83ab4c0` (draft-notifier, 77 lines, UNDER threshold), `448eeb30` (heygen-avatar-creator, 86 lines, UNDER), `5aefd6e6` (heygen-avatar-poller, 269 lines, OVER cond i; held → diff reviewed in chat against actual artifact → PK approved). 3 D-01 fires: `32ade261` advisory partial → STEP C.5 adopted; `9cbc7de3` verification partial → corrected_action verified empirically (surfaced orphan-RPC finding); `4a48024f` sync-close partial → non-testable corrected_action, PK override approved (state-capture exception). NEW finding F-HEYGEN-RPC-MIGRATIONS-MISSING P2 (4 orphan-deployed RPCs surfaced by diff review). NEW standing rule: acceptance integrity (generalised from v2.49 visual-acceptance integrity). Lesson #62 refinement: testable corrected_action → verify; non-testable → override. T-MCP-02 44 → 47. State-capture exceptions v2.50: 1. 0 production mutations chat-side. | `docs/runtime/sessions/2026-05-07-p1-sd-triage-sync.md` |
+| 2026-05-07 | stage3-safe-deploy | **Stage 3 SHIPPED + VERIFIED (v2.49).** `scripts/safe-deploy.sh` live. CC commit `3d43796`. §1.5 schema delta adapted (`function_name` → `slug`, `class` → `current_class`); curl + `exec_sql` RPC connection method. All 8 acceptance tests PASS. Above-spec defensive additions: SQL-injection guard, standing-three pre-DB ordering, unknown-class fallback. 2 D-01 fires (brief + read-only verification, both PASS). T-MCP-02 42 → 44. P1 SECURITY-DEFINER triage trio NEWLY UNBLOCKED. v2.49 manifest folded: 5th-deferral correction, visual-acceptance integrity standing rule, AI cost view P3, cc-0001 parenthetical. Hold-state respected; 0 production mutations chat-side. | `docs/runtime/sessions/2026-05-07-stage3-safe-deploy.md` |
+| 2026-05-07 | stage2b-shipped-accepted | **Stage 2b SHIPPED + ACCEPTED on desktop (v2.48).** CC commit `66aea99` (dashboard) + `9564297` (result file). Live at `dashboard.invegent.com/ef-drift`. 5/5 SQL V1–V5 PASS. PK visual acceptance 7/7 desktop checks PASS. Stage 3 + P1 SECURITY-DEFINER triage trio NEWLY UNBLOCKED. | `docs/runtime/sessions/2026-05-07-stage2b-shipped-accepted.md` |
+| 2026-05-07 | s30-pass-stage2b-kickoff | **S30 PASS + Stage 2b kickoff (v2.47).** Cron-backed drift logging confirmed live. | `docs/runtime/sessions/2026-05-07-s30-pass-stage2b-kickoff.md` |
+| 2026-05-07 | dashboard-architecture-review-completion | **Dashboard Architecture Review COMPLETE.** 12 docs at `docs/dashboard-review-2026-05/`. | `docs/runtime/sessions/2026-05-07-dashboard-architecture-review-completion.md` |
+| 2026-05-07 | s30-paused-stuck-cluster-recheck | Lightweight checkpoint. PP×YT + LinkedIn-PP CLEARED; NY×YT STILL BLOCKED. | `docs/runtime/sessions/2026-05-07-s30-paused-stuck-cluster-recheck.md` |
+| 2026-05-07 | stage2a-cron-applied | F-EF-DRIFT-PREVENTION Stage 2a fully CLOSED. | `docs/runtime/sessions/2026-05-07-stage2a-cron-applied.md` |
+| 2026-05-07 | bef6be96-investigation-resolved | bef6be96 origin RESOLVED. Stage 2a UNBLOCKED. | `docs/runtime/sessions/2026-05-07-bef6be96-investigation-resolved.md` |
 | 2026-05-06 | f-ef-drift-prevention-stage2a-checkpoint | Stage 2a CHECKPOINT. drift-check EF v1.0.8 deployed. | `docs/runtime/sessions/2026-05-06-f-ef-drift-prevention-stage2a-checkpoint.md` |
 | 2026-05-06 | f-ef-drift-prevention-stage1-applied | Stage 1 APPLIED. 3 D-01 fires. | `docs/runtime/sessions/2026-05-06-f-ef-drift-prevention-stage1-applied.md` |
 | 2026-05-05 | f-ef-drift-prevention-locked | Tier 2 inventory LOCKED. Option F APPROVED. | `docs/runtime/sessions/2026-05-05-f-ef-drift-prevention-locked.md` |
@@ -47,83 +48,73 @@
 
 ## 🟢 Most recent session — inline summary
 
-### 2026-05-07 Sydney — Stage 3 SHIPPED + VERIFIED (v2.49)
+### 2026-05-07 Sydney — P1 SECURITY-DEFINER triage CLOSED (v2.50)
 
-**Outcome:** F-EF-DRIFT-PREVENTION Stage 3 closed end-to-end. `scripts/safe-deploy.sh` is now the canonical pre-deploy gate. CC executed brief in ~14 min. All 8 acceptance tests PASS. Two D-01 fires (brief + read-only verification of result), both PASS. P1 SECURITY-DEFINER triage trio newly executable using the tool we just built.
+**Outcome:** P1 SECURITY-DEFINER regression-risk triage closed end-to-end. All three standing-three Edge Functions now have repo source aligned to deployed source via three sync-only commits on main. v2.49 Stage 3 ship (`scripts/safe-deploy.sh`) was the prerequisite that made this triage safe — gate remained mechanically active throughout.
 
-**CC execution:**
-- Brief commit: `3f1135b9` (chat) → implementation commit: `3d43796` (CC).
-- Files: `scripts/safe-deploy.sh` (mode 100755, 9095 bytes) + `scripts/README.md` (1590 bytes). No other files modified.
-- §1.5 pre-flight deltas, all documented in commit body:
-  - **§1.5.1** shebang `#!/bin/bash` + `set -euo pipefail` per existing scripts; no root `package.json` so no npm-script alias
-  - **§1.5.2** CLI v2.75 has no ad-hoc SQL subcommand; psql not installed; **adopted method (c) curl + `exec_sql` RPC**. Required env `SUPABASE_SERVICE_ROLE_KEY`; optional env `SUPABASE_PROJECT_REF`.
-  - **§1.5.3 SCHEMA DELTA (significant)** — brief assumed columns `function_name` and `class`; actual columns are **`slug` and `current_class`**. Adapted per §1.5 step 5 mandate. Documented in script header AND README.
-  - **§1.5.4** standing-three slug values match exactly. All three currently class B-RR severity P1 with `security_definer_regression_risk=true`.
+**Closure artifacts:**
+- `a83ab4c0` chore(sync): align draft-notifier (77 lines, UNDER threshold)
+- `448eeb30` chore(sync): align heygen-avatar-creator (86 lines, UNDER threshold)
+- `5aefd6e6` chore(sync): align heygen-avatar-poller (269 lines, OVER cond i; held → diff reviewed in chat against actual artifact → PK approved)
 
-**Above-spec defensive additions (CC, net-positive):**
-- SQL-injection guard via regex `^[A-Za-z0-9_-]+$` on `<ef_name>` before SQL interpolation
-- Standing-three check fires BEFORE pre-flight — block holds even if Supabase is down or schema check fails
-- Default case for unknown future class values — surfaces as WARN, treats as advisory PASS
+**STEP C.5 threshold checkpoint** (>100 lines OR >50% size delta → STOP, report full diff, wait for explicit `proceed with <ef> sync` phrase) was adopted from D-01 advisory `32ade261` corrected_action and worked exactly as designed: pair under-threshold autocommitted, third over-threshold held until PK reviewed actual diff.
 
-**A1–A8 acceptance — all PASS:**
-- A1: usage + exit 1
-- A2–A4: standing-three synthetic JSON + BLOCK exit 2 (`draft-notifier`, `heygen-avatar-creator`, `heygen-avatar-poller`)
-- A5: `insights-worker` B-RR row JSON + BLOCK exit 1
-- A6: same row + WARN + PASS exit 0 (`--allow-warn`)
-- A7: `nonexistent-fn` PASS class=none exit 0
-- A8: git index mode 100755
+**3 D-01 fires (T-MCP-02 44 → 47):**
+- `32ade261-5f99-4c75-a643-5a20c7c978ae` advisory: partial → STEP C.5 adopted; no re-fire per PK
+- `9cbc7de3-537f-425c-8e77-b1245a76a2e1` verification: partial → corrected_action verified empirically; surfaced **F-HEYGEN-RPC-MIGRATIONS-MISSING (P2)** as real adjacent finding
+- `4a48024f-e361-4876-b5a0-89651eb7c662` sync-close: partial → non-testable corrected_action; PK override approved (state-capture exception count v2.50: 1)
 
-**D-01 fires (2):**
-- Brief D-01: `39a588d4-3fb4-41e4-a5a4-07916b6d64c7` — verdict agree, risk medium, 0 pushback
-- Result D-01 (read-only verification): `82aff9d3-5176-41e9-9102-71f30a90e130` — verdict agree, risk **LOW** (downgraded — implementation strictly safer than contract), 0 pushback
-- T-MCP-02 cumulative 42 → 44
+**NEW finding:** F-HEYGEN-RPC-MIGRATIONS-MISSING (P2). Four RPCs called by heygen-avatar-poller v2.0.0 deployed source (`store_gen_poll_response`, `advance_avatar_to_creating`, `complete_avatar_training`, `fail_avatar_generation`) not present in repo migrations. Pre-existing orphan-deployed drift surfaced by diff review. ~30 min next session: `pg_get_functiondef` (read-only) + new migration file.
 
-**v2.49 sync close manifest folded in:**
-- **Sequence-honesty cleanup**: dashboard roadmap PHASES carry-forward bumped 4th → **5th** consecutive deferral; NEW standing rule on visual-acceptance integrity; honest-limitation bullet added re: v2.48 premature acceptance documentation.
-- **AI cost view P3** (from ruflo analysis 6 May): NEW Active row — `vw_ai_cost_monthly` view on `m.ai_job` + NOW dashboard tile. ~1h estimate.
-- **cc-0001 status note**: parenthetical added to existing tracked Phase 0 row noting brief-runner-v0 cycle #1 (`docs/briefs/cc-0001-dashboard-phase-0-defaults.md`) open and unexecuted. No new tracking row.
+**NEW STANDING RULE — Acceptance integrity (generalised from v2.49 visual-acceptance integrity):** Acceptance is not complete until actual review artifact is received and reviewed regardless of artifact type — visual, diff, log, command output, screen capture, or otherwise. "Looks good" / "passed" / "matches" signal alone NOT sufficient. Chat does not advance state on unverified summary. Empirically validated this session: STEP C.5 held heygen-avatar-poller until full diff was in chat, which is what surfaced the orphan-RPC finding.
 
-**Hold-state respected throughout.** 0 production mutations chat-side. Standing-three not redeployed; merely encoded as gate logic in the new script.
+**Lesson #62 refinement (v2.50):** When corrected_action is **low-cost and testable** → prefer empirical verification over override. When **non-testable** → override remains default (with PK approval as state-capture exception). Two empirical proofs this session: fire #2 testable → verified → real finding logged; fire #3 non-testable → override approved.
 
-**Closure budget:** ~1.0h chat. Day total v2.47+v2.48+v2.49 ~4.5h. Trailing-14-day ~50.5h above 8.0 floor.
+**Closure budget:** ~1.5h chat. Day total v2.47+v2.48+v2.49+v2.50 ~6.0h. Trailing-14-day ~52h above 8.0 floor. ~6 P0+P1 open (was ~7).
 
 **Closures this session:**
-- F-EF-DRIFT-PREVENTION Stage 3 → CLOSED (`scripts/safe-deploy.sh` live + verified)
+- F-EF-DRIFT-PREVENTION P1 SECURITY-DEFINER triage → CLOSED (3 sync commits as artifacts)
 
 **Newly unblocked:**
-- **P1 SECURITY-DEFINER regression-risk triage trio** — next session can use `safe-deploy.sh --check-only` against each to confirm BLOCK, then sync repo → deployed source via Windows CLI as sync-only commits
-- **insights-worker P1 functional drift manual review** — sequenced after triage trio
+- **insights-worker P1 functional drift** — was sequenced after triage trio; now next-session #1
+- **F-YT-NY-FORMAT-SELECTION** (carry-forward) — was BLOCKED behind P1 SD triage; now unblocked
+- **M6 Phase A** (carry-forward) — was BLOCKED behind P1 SD triage; now unblocked
 
 **4-way sync close at this commit:**
-- Session file: `docs/runtime/sessions/2026-05-07-stage3-safe-deploy.md`
-- Sync state (this file): refreshed
-- Action list: v2.49 bump (Stage 3 closed; P1 SD triage promoted to TOP; AI cost view P3 added; sequence-honesty corrections folded in)
-- Memory: v2.49 entry committed separately
+- Session file: `docs/runtime/sessions/2026-05-07-p1-sd-triage-sync.md`
+- Sync state (this file): refreshed v2.50
+- Action list: v2.50 bump (P1 SD triage closed; F-HEYGEN-RPC-MIGRATIONS-MISSING P2 added; Today/Next 5 rebuilt; new acceptance-integrity standing rule + Lesson #62 refinement)
+- Memory: v2.50 entry committed separately
+- Brief retroactive commit: `docs/briefs/cc-0002-p1-sd-triage-sync.md` folded into same v2.50 commit so three sync commits' citations resolve
+
+**Hold-state respected throughout.** 0 EF redeploys, 0 SQL DDL/DML, 0 cron changes, STANDING_THREE array unchanged.
 
 **Open from this session:**
-- Mobile responsiveness — whole dashboard (carried P3)
-- Dashboard roadmap PHASES — **5th** consecutive deferral (sequence-honesty corrected)
-- 18+ close-the-loop UPDATEs to `m.chatgpt_review`
+- F-HEYGEN-RPC-MIGRATIONS-MISSING P2 (NEW) — ~30 min next session
+- Filename-only scan caveat for orphan-RPC finding (not file-content grep)
+- Standard CC paste-back chain rather than chat-direct execution
+- Dashboard roadmap PHASES — **6th** consecutive deferral (corrected from v2.49 5th)
+- 18+ close-the-loop UPDATEs to `m.chatgpt_review`; v2.50 adds 3 more (`32ade261` + `9cbc7de3` + `4a48024f`); cumulative 21+
 
 ---
 
-## 🟡 Next session priorities (rebuilt for v2.49)
+## 🟡 Next session priorities (rebuilt for v2.50)
 
-1. **P1 SECURITY-DEFINER regression-risk triage** (P1 TOP, NEWLY UNBLOCKED) — use `safe-deploy.sh --check-only` against `heygen-avatar-creator`, `heygen-avatar-poller`, `draft-notifier` to confirm BLOCK; then sync repo → deployed source via Windows CLI as sync-only commits.
-2. **insights-worker P1 functional drift** (P1) — manual review by PK. After triage trio.
-3. **Personal businesses check-in** (P0).
-4. **Dashboard Architecture Review Phase 0 prerequisites** (P1) — 7 confirm-defaults via `cc-0001-dashboard-phase-0-defaults.md` + M5–M8 reconciliation. Independent of triage timeline; can run in parallel.
-5. **F-YT-NY-FORMAT-SELECTION** (P1) — unblocks after #1.
-6. **M6 Phase A** (P1) — unblocks after #1.
-7. **AI cost view P3** (NEW v2.49) — `vw_ai_cost_monthly` + NOW dashboard tile. ~1h.
+1. **insights-worker P1 functional drift** (P1 TOP, NEWLY UNBLOCKED) — manual review by PK. Deployed v14.0.0 vs repo v1.6.0. D-PREV-07: manual review, no auto-sync.
+2. **Personal businesses check-in** (P0 standing).
+3. **Dashboard Architecture Review Phase 0 prerequisites** (P1) — 7 confirm-defaults via `cc-0001-dashboard-phase-0-defaults.md` + M5–M8 reconciliation. Independent of insights-worker timeline; can run in parallel.
+4. **F-HEYGEN-RPC-MIGRATIONS-MISSING** (P2 NEW v2.50) — `pg_get_functiondef` (read-only) + new migration file for 4 orphan-deployed RPCs. ~30 min.
+5. **AI cost view P3** (carry from v2.49) — `vw_ai_cost_monthly` + NOW dashboard tile. ~1h.
+6. **F-YT-NY-FORMAT-SELECTION** (P1, NEWLY UNBLOCKED) — read v2.11.1 source post-build; locate `format-advisor-v1`; decide between 4 fix shapes.
+7. **M6 Phase A** (P1, NEWLY UNBLOCKED) — 108 historical Bug 3 dead-letter; coordinate with M-09-03 view definition.
 8. **Dashboard mobile responsiveness — system-wide** (P3).
-9. **F-AAP-NEEDS-REVIEW-BACKLOG** (P2) — 28 drafts.
+9. **F-AAP-NEEDS-REVIEW-BACKLOG** (P2) — 28 drafts; closure target = architecture review Phase 2 B-09-14.
 10. **F-PUB-009 7-day flow check** (P2).
 11. **F-AI-WORKER-PARSER-SKIP-BUG V4** — inconclusive.
 12. **Vault `service_role_key` naming hygiene scope-check** (P3).
 13. **`docs/audit/health/2026-05-06.md` follow-up** (P3, still absent).
-14. **18+ close-the-loop UPDATEs** to `m.chatgpt_review` — next batch closure.
-15. **Dashboard roadmap reconciliation** (P3, **5th** consecutive deferral).
+14. **18+ close-the-loop UPDATEs** to `m.chatgpt_review` — next batch closure (v2.50 adds 3 more; cumulative 21+).
+15. **Dashboard roadmap reconciliation** (P3, **6th** consecutive deferral).
 16. **`00_overview.md` 11-section table reconciliation** (P3, carry from v2.46).
 
 ---
@@ -134,16 +125,16 @@
 - Cron jobid 53 (`instagram-publisher-every-15m`) `active=false` — do not re-enable until S16 + T05; ~104 IG-overdue posts will fire when re-enabled
 - Cron jobid 11/64/65 (`seed-and-enqueue-{fb,ig,li}`) — paused per slot-driven v4
 - Jobid 12 (`planner-hourly`) — still active despite v3 orphan production (B-CRON-V3-ORPHAN)
-- 18+ review_ids close-the-loop pending
+- 21+ review_ids close-the-loop pending (v2.50 adds 3 more)
 - 47 historic dead queue rows retained as audit trail
-- 32 historical `post_draft_not_found` orphans (16 NY-FB + 16 PP-FB) — M6 Phase A scope (BLOCKED)
+- 32 historical `post_draft_not_found` orphans (16 NY-FB + 16 PP-FB) — M6 Phase A scope (NEWLY UNBLOCKED v2.50)
 - 6 CFW LinkedIn slots + 1 CFW Facebook slot in `exceeded_recovery_attempts` — quiescent
 - 1 NDIS-FB dead queue row preserved per F-PUB-005 carry-forward
 - 5 over-cap (client, platform) combos hold queue depth — by design
 - NDIS-Yarns LinkedIn slot `8f9e5c57-…` orphan since 4-27 — do not touch
 - Property Pulse Facebook 1 orphan slot (B-PP-FB-ORPHAN-PENDING-FILL P3)
 - C2-CAND-001 — punted to Cycle 3
-- 108 historical Bug 3 fingerprint queue rows — M6 Phase A scope (BLOCKED)
+- 108 historical Bug 3 fingerprint queue rows — M6 Phase A scope (NEWLY UNBLOCKED v2.50)
 - queue_id `ad573844-…` — dead-lettered; do not re-queue
 - 47 v4-origin queue rows still mismatch slot intent — M6 Phase B scope
 - 160 records previously flagged is_shadow=true lost flag metadata — acceptable
@@ -152,20 +143,21 @@
 - 13 drift cases active in priority buckets (v2.40 inventory)
 - 2 repo-only directories (ai-diagnostic, linkedin-publisher) — do not deploy or remove without PK direction
 - `docs/audit/health/2026-05-06.md` absent — Cowork did not push 6 May. P3.
-- **Cron-backed drift logging is LIVE.** jobid 80 + 81 active=true. Next fire 2026-05-07 17:00 UTC = 03:00 AEST 8 May.
-- **`m.ef_drift_log` retains 147 rows.** Keep-both per PK v2.43 decision. Do not delete.
+- **Cron-backed drift logging is LIVE.** jobid 80 + 81 active=true.
+- **`m.ef_drift_log` retains 147 rows** (next fire 2026-05-07 17:00 UTC = 03:00 AEST 8 May → 196 rows expected).
 - **3 distinct `drift_check_run_id` values** (`bef6be96` + `a2124145` + `c3446a47`).
 - **drift-check v1.0.8 LIVE.**
-- **Standing don't-redeploy** for `heygen-avatar-creator`, `heygen-avatar-poller`, `draft-notifier` — confirmed via cron-driven scan AND now mechanically encoded in `scripts/safe-deploy.sh` STANDING_THREE array.
+- **Standing don't-redeploy three** (`heygen-avatar-creator`, `heygen-avatar-poller`, `draft-notifier`) — confirmed via cron-driven scan AND mechanically encoded in `scripts/safe-deploy.sh` STANDING_THREE array. v2.50: repo source NOW aligned to deployed for all three; standing-three list unchanged.
 - **Vault `service_role_key` 15-char value.** Confirmed non-blocking for drift-check. P3 hygiene cleanup logged.
-- **Dashboard roadmap PHASES array stale since 3 May. FIFTH consecutive deferral** (corrected v2.49 from prior "fourth" framing per sequence-honesty cleanup).
-- **v2.49: `scripts/safe-deploy.sh` LIVE.** Pre-deploy gate consuming `m.vw_ef_drift_current`. Hard-blocks standing three. CC commit `3d43796`. All 8 acceptance tests PASS. Read-only D-01 verification PASS.
-- **v2.49: P1 SECURITY-DEFINER triage UNBLOCKED.** Sequenced for next session. Use `safe-deploy.sh` as the gate.
-- **v2.49 NEW STANDING RULE — Visual acceptance integrity.** Visual acceptance is not complete until the actual visual review artifact (screenshot, screen recording, or equivalent direct visual confirmation) is received and reviewed. A "looks good" signal alone is NOT sufficient to declare acceptance. Chat does not advance state, close items, or trigger sync close on the basis of an unverified visual signal.
-- **v2.49 honest limitation — v2.48 premature acceptance documentation.** Stage 2b acceptance was declared in chat ahead of the actual visual review artifact arriving; subsequent screenshots reconciled the claim post-hoc. Documentation gap noted: chat sequenced the v2.48 close with "5/5 SQL PASS → declared accept → committed → screenshots → 7/7 visual PASS post-hoc → correction commit reconciles." Standing rule above prevents recurrence.
-- **v2.49 NEW (P3) — AI cost view.** `vw_ai_cost_monthly` on `m.ai_job` + NOW dashboard tile. Concept from ruflo analysis 6 May (`ruflo-cost-tracker` plugin). ~1h estimate. Logged in action_list Active table.
-- **v2.48: Stage 2b SHIPPED + ACCEPTED on desktop.** Live at `dashboard.invegent.com/ef-drift`. CC commits `66aea99` (dashboard) + `9564297` (result file). 5/5 SQL + 7/7 PK visual checks PASS.
-- **v2.46: Dashboard Architecture Review COMPLETE.** 12 docs at `docs/dashboard-review-2026-05/`. 17 build-blockers. Phase 0 prerequisites: S30 cleared v2.47; M5–M8 reconciliation + 7 confirm-defaults remain. cc-0001 brief-runner-v0 cycle #1 open and unexecuted at `docs/briefs/cc-0001-dashboard-phase-0-defaults.md`.
+- **Dashboard roadmap PHASES array stale since 3 May. SIXTH consecutive deferral** (corrected v2.50 from v2.49's 5th).
+- **v2.49: `scripts/safe-deploy.sh` LIVE.** Pre-deploy gate consuming `m.vw_ef_drift_current`. Hard-blocks standing three. CC commit `3d43796`. Read-only D-01 verification PASS.
+- **v2.50: P1 SECURITY-DEFINER triage CLOSED.** Three sync-only commits as closure artifacts. Standing-three list unchanged. 0 production mutations.
+- **v2.50 NEW STANDING RULE — Acceptance integrity (generalised from v2.49).** Acceptance not complete until actual review artifact received and reviewed regardless of artifact type. "Looks good" / "passed" / "matches" signal alone insufficient. Chat does not advance state on unverified summary.
+- **v2.50 Lesson #62 refinement.** When corrected_action is low-cost and testable → verify empirically. When non-testable → override remains default with PK approval as state-capture exception. Two empirical proofs this session.
+- **v2.50 NEW (P2) — F-HEYGEN-RPC-MIGRATIONS-MISSING.** Four RPCs called by heygen-avatar-poller v2.0.0 deployed source not in repo migrations. Pre-existing orphan-deployed drift. ~30 min next session.
+- **v2.49 NEW (P3) — AI cost view.** `vw_ai_cost_monthly` view + NOW dashboard tile. ~1h estimate. Carry to v2.50.
+- **v2.48: Stage 2b SHIPPED + ACCEPTED on desktop.** Live at `dashboard.invegent.com/ef-drift`.
+- **v2.46: Dashboard Architecture Review COMPLETE.** 12 docs at `docs/dashboard-review-2026-05/`. 17 build-blockers. Phase 0 prerequisites: M5–M8 reconciliation + 7 confirm-defaults remain. cc-0001 brief-runner-v0 cycle #1 still open and unexecuted.
 - **v2.46: `00_overview.md` 11-section table out-of-sync.** Required updates in `11_final_consolidation.md` §11.1.
 
 ---
@@ -184,4 +176,4 @@
 
 ---
 
-*Last updated: 2026-05-07 Sydney — Stage 3 SHIPPED + VERIFIED (v2.49). `scripts/safe-deploy.sh` live; 8/8 acceptance PASS; read-only D-01 PASS. P1 SECURITY-DEFINER triage NEWLY UNBLOCKED. v2.49 manifest folded: 5th-deferral correction, visual-acceptance integrity standing rule, AI cost view P3, cc-0001 parenthetical.*
+*Last updated: 2026-05-07 Sydney — P1 SECURITY-DEFINER triage CLOSED (v2.50). 3 sync-only commits as closure artifacts. F-HEYGEN-RPC-MIGRATIONS-MISSING P2 logged. NEW standing rule: acceptance integrity (generalised). Lesson #62 refinement: testable → verify, non-testable → override. T-MCP-02 44 → 47. State-capture exceptions v2.50: 1. 0 production mutations chat-side.*
