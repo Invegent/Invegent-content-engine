@@ -18,6 +18,7 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
+| 2026-05-08 | video-worker-v3-deploy-verify-jwt-recovery | **video-worker v3.0.0 DEPLOYED + verify_jwt regression recovered + durable `supabase/config.toml` LANDED (v2.54).** Commit `4ae5b5a7` shipped F-VIDEO-QUALITY-UPGRADE-A-B-C (env-gated music default OFF, 9:16 layout fix, animation polish). Deployed via `safe-deploy.sh video-worker --allow-warn` (gate WARN→PASS, exit 0). Cron jobid 33 401'd because CLI default flips `verify_jwt: true` when no `supabase/config.toml`. Recovered same session via `supabase functions deploy video-worker --no-verify-jwt`. Drift round-trip COMPLETED: scan `cb7fe77b-2011-48cf-8ffc-806d63e535aa` 07:20:56 UTC, video-worker B-FD → A-LE, repo=deploy=3.0.0. Durable `supabase/config.toml` LANDED this turn covering 23 EFs (10 custom-header + 13 service-role; excluded as stale: `ingest`, `compliance-monitor`, `pipeline-ai-summary`, `pipeline-doctor`). 4 m.chatgpt_review records closed-the-loop (`8bd6ac37`, `fa4322e5`, `ee27dd37`, `4e0e9c00`). YouTube cadence prior-session memory entry RETRACTED (NDIS-Yarns Mon–Fri 19:00 AEST/09:00 UTC, Property Pulse Mon–Fri 17:00 AEST/07:00 UTC, **5 slots/wk each**, **not** "~3-day cadence" — Sat–Sun gap mislabelled, fill_window_opens_at conflated with scheduled_publish_at; system healthy via cron 72/73/75/76). NEW findings: F-CRON-INGEST-STALE (P2), F-CRON-COMPLIANCE-MONITOR-STALE (P2), F-CRON-PIPELINE-AI-SUMMARY-STALE (P2), F-CRON-PIPELINE-DOCTOR-STALE (P2 — NOT a rename of pipeline-diagnostician), F-CRON-PG-NET-TIMEOUT-5S (P2), F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 sec). Closed v2.54: video-worker verify_jwt durable fix (P3). PHASES reconciliation now **10th** carry. | `docs/runtime/sessions/2026-05-08-video-worker-v3-deploy-verify-jwt-recovery.md` |
 | 2026-05-08 | f-yt-ny-format-fix | **F-YT-NY-FORMAT-SELECTION CLOSED end-to-end (v2.53).** Commit `1ccfe9a2`: ai-worker v2.11.1 → v2.12.0. Two-part format-advisor-v1 fix: (A) `fetchFormatContext` opt-in candidate filter (`s[platform] !== true` was `=== false`); (B) `callFormatAdvisor` receives `platform`, system prompt prepends "Target platform: ${platform}. Choose only formats compatible with ${platform}." Diagnosed via Supabase MCP read-only catalogue inspection of `t."5.3_content_format"` (5 of 10 buildable rows have no `youtube` key in `platform_support` JSONB → all leaked under opt-out filter). 1 D-01 fire (`64230c18`, PASS, 0 pushback, 0 escalation). safe-deploy.sh `--allow-warn` honoured as authoritative Stage 3 gate (first real use on B-FD class). Live deploy verified `version: ai-worker-v2.12.0` via GET endpoint. Post-deploy drift fire `3bed87b0` confirmed Class A-LE (normalised hashes match). T-MCP-02 49 → 50. **0 state-capture exceptions.** ~4 P0+P1 open of 20 cap (was ~5 v2.52). NEW P3 logged: F-YT-PUB-AVATAR-EXCLUSION (latent youtube-publisher `.in()` filter risk). Dashboard PHASES — **9th** consecutive deferral. | `docs/runtime/sessions/2026-05-08-f-yt-ny-format-fix.md` |
 | 2026-05-08 | v2.52-insights-sync-rpc-closure | **Productive close (v2.52).** 3 findings closed in single session. Commit `57daf877`: insights-worker forward-sync (deployed v14.0.0 → repo, byte-equivalent). Commit `7555b98a`: combined RPC migration orphan closure (F-HEYGEN + F-INSIGHTS — 5 SD RPCs + 1 fn + 1 table + 1 col + 1 index + 2 FK guards, all idempotent). 2 D-01 fires (T-MCP-02 47 → 49); fire #1 partial → empirical resolution (Lesson #62 v2.50 testable-corrected-action path), fire #2 clean agree. **0 state-capture exceptions.** 0 production mutations chat-side. STANDING_THREE unchanged. ~5 P0+P1 open of 20 cap. | `docs/runtime/sessions/2026-05-08-v2.52-insights-sync-rpc-closure.md` |
 | 2026-05-08 | personal-finance-cowork-inbox-brief | **Lightweight close (v2.51).** Crazy Domains $521/3yr renewal analysis; ~A$286/yr ongoing saving identified. NEW Cowork brief drafted: `morning-inbox-sweep-v1` (status=draft per PK hold). | `docs/runtime/sessions/2026-05-08-personal-finance-cowork-inbox-brief.md` |
@@ -50,6 +51,52 @@
 ---
 
 ## 🟢 Most recent session — inline summary
+
+### 2026-05-08 Sydney — video-worker v3.0.0 deploy + verify_jwt regression recovered + durable supabase/config.toml landed (v2.54)
+
+**Outcome:** F-VIDEO-QUALITY-UPGRADE-A-B-C shipped via two CLI invocations within ~5 minutes; verify_jwt regression introduced + recovered same session; durable `supabase/config.toml` covering 23 EFs landed this turn; drift round-trip CLOSED with B-FD → A-LE Class A family; 4 m.chatgpt_review records closed-the-loop; YouTube cadence prior memory entry RETRACTED; 6 new P2 findings logged. STANDING_THREE array unchanged. Other holds (cron 53/11/64/65 paused, NDIS-Yarns IG `publish_enabled=false`, etc.) preserved.
+
+**Deploy chronology:**
+1. Pre-fire drift scan `6a381ec7-dc37-418c-8ff1-e7b8d76801ca` (06:17:56 UTC): video-worker class B-FD, repo 3.0.0 ahead of deploy 2.1.0, `previous_class=A`, `state_changed=true`.
+2. D-01 fire `4e0e9c00-11d3-4096-afd3-ec765b296b36` (deploy fire #2 — escalation-resolved by re-fire from `ee27dd37`): PASS.
+3. `./scripts/safe-deploy.sh video-worker --allow-warn` → gate WARN → PASS, CLI `Deployed Functions on project mbkmaxqhsohbtwsqolns: video-worker`, exit 0.
+4. **Regression detected:** cron jobid 33 401'd. Root cause: CLI default sets `verify_jwt: true` on the gateway when no `supabase/config.toml` exists.
+5. **Recovery (same session):** `supabase functions deploy video-worker --no-verify-jwt`. Same v3.0.0 source, gateway flag flipped only. Exit 0. Cron jobid 33 unblocked.
+
+**Post-deploy drift round-trip (chat-owned, COMPLETED):** scan `cb7fe77b-2011-48cf-8ffc-806d63e535aa` at 2026-05-08 07:20:56 UTC. video-worker `current_class=A-LE`, `previous_class=B-FD`, `state_changed=true`, repo=deploy=3.0.0. Textbook B-FD → A-LE.
+
+**Durable `supabase/config.toml` landed (this turn):** 23 EFs encoded with `verify_jwt = false` — 10 custom-header (video-worker, content_fetch, image-worker, feed-discovery, heygen-worker, linkedin-zapier-publisher, pipeline-fixer, wordpress-publisher, youtube-publisher, auto-approver) + 13 service-role (ai-diagnostic, client-weekly-summary, compliance-reviewer, draft-notifier, drift-check, email-ingest, external-reviewer-digest, feed-intelligence, insights-feedback, insights-worker, pipeline-healer, pipeline-sentinel, weekly-manager-report). 4 slugs excluded as stale: `ingest`, `compliance-monitor`, `pipeline-ai-summary`, `pipeline-doctor` — F-CRON-*-STALE findings logged for each.
+
+**4 m.chatgpt_review close-the-loop (chat-owned, COMPLETED):**
+- `8bd6ac37-fa9e-43af-803f-75a171080554` — sql_destructive F-YT-PUB-AVATAR-EXCLUSION fire #1, escalated → resolved by re-fire `fa4322e5` PASS. resolved_by `chat-via-refire-fa4322e5-pass`.
+- `fa4322e5-69a7-4b77-a745-cdd0296dccc4` — sql_destructive fire #2, PASS. action_taken: catalog UPDATE applied 2026-05-08 05:24:00.472666 UTC removing youtube from `t."5.3_content_format".platform_support` for `video_short_avatar`. status completed.
+- `ee27dd37-472a-443c-b29d-dd07f8a8c7d3` — ef_deploy video-worker fire #1, escalated → resolved by re-fire `4e0e9c00` PASS. resolved_by `chat-via-refire-4e0e9c00-pass`.
+- `4e0e9c00-11d3-4096-afd3-ec765b296b36` — ef_deploy video-worker fire #2, PASS. action_taken: deploy completed + verify_jwt regression+recovery saga documented inline. status completed.
+
+**YouTube cadence retraction:** prior session memory entry claimed "~3-day cadence" with "next fill 49h forward" for NDIS-Yarns / Property Pulse YouTube. **INCORRECT.** Actual state: NDIS-Yarns YT Mon–Fri 19:00 AEST / 09:00 UTC, 5 slots/wk. Property Pulse YT Mon–Fri 17:00 AEST / 07:00 UTC, 5 slots/wk. Slot pipeline healthy via cron jobid 72 (`m.materialise_slots(7)`) + 73/75/76 slot processing. Root of error: Sat–Sun weekend gap mislabelled as "cadence"; fill_window_opens_at conflated with scheduled_publish_at. System issue: NONE. Reporting issue: corrected.
+
+**NEW v2.54 findings (6 logged):**
+- **F-CRON-INGEST-STALE (P2)** — cron jobid 1 (`rss-ingest-run-all-hourly`) calls deployed slug `ingest` (`ingest-v8-youtube-channel`); `supabase/functions/ingest/` missing. Prior `Ingest/` (capital I) removed in `961482c` 8 Mar 2026 ("superseded by ingest v75"); lowercase folder never re-added. Excluded from `config.toml`.
+- **F-CRON-COMPLIANCE-MONITOR-STALE (P2)** — cron jobid 31 calls deployed v1.2.0; folder absent.
+- **F-CRON-PIPELINE-AI-SUMMARY-STALE (P2)** — cron jobid 30 (`pipeline-ai-summary-hourly`) active; folder absent. Per source-recovery commit `8ee27b4` (30 Mar 2026) was in deploy-only ghost bucket; never recovered.
+- **F-CRON-PIPELINE-DOCTOR-STALE (P2)** — cron jobids 29 + 39 active; folder absent. **NOT** a rename of `pipeline-diagnostician` (separate newer Claude-powered RCA function introduced in `c039e84`). Same source-recovery ghost bucket as pipeline-ai-summary.
+- **F-CRON-PG-NET-TIMEOUT-5S (P2)** — cron jobid 33 (video-worker), 44 (heygen-worker), 58 (auto-approver) timed out at 07:30:00 UTC because `net.http_post` calls omit `timeout_milliseconds`, falling back to pg_net default 5000ms. Pre-existing pattern. Proposed fix: `cron.alter_job` to add explicit `timeout_milliseconds := 30000`.
+- **F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 security)** — cron jobid 58 has `x-auto-approver-key` hardcoded as literal string in cron command body, NOT pulled from `vault.decrypted_secrets`. Risks: secret visible to roles with `cron.job` SELECT; captured in `pg_stat_statements`; rotation requires editing the cron command.
+
+**Closed v2.54:** video-worker `verify_jwt` durable fix (P3) — landed via `supabase/config.toml` this turn.
+
+**Open from this session (deferred to v2.55+):**
+- F-CRON-PG-NET-TIMEOUT-5S (P2) — cron timeout fix for jobid 33, 44, 58.
+- F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 sec) — secret rotation + vault refactor.
+- F-CRON-INGEST-STALE + F-CRON-COMPLIANCE-MONITOR-STALE + F-CRON-PIPELINE-AI-SUMMARY-STALE + F-CRON-PIPELINE-DOCTOR-STALE (P2 each).
+- Music library activation checklist (P3 PK action) — bucket + tracks + env var.
+- Emergency redeploy governance question (P2 PK decision) — does bounded production-restoration require expedited D-01? Document in `docs/06_decisions.md`.
+- First deploy that uses the new `config.toml` WILL require D-01. Suggested validation: a controlled redeploy of one custom-header EF (e.g. `content_fetch`) post-config.toml to verify the gate flag is preserved across redeploys.
+- PHASES reconciliation now **10th**-deferred — needs dedicated session.
+
+**Constraints respected this turn:** No EF deploys. No Supabase writes (no DDL, no DML). No cron edits. `supabase functions list` only (read). Read-only `SELECT` against `cron.job` and `m.vw_ef_drift_current`. Memory `recent_updates` v2.54 entry handled by chat at session end (out of scope for CC turn).
+
+---
 
 ### 2026-05-08 Sydney — F-YT-NY-FORMAT-SELECTION closed end-to-end (v2.53)
 
@@ -152,4 +199,4 @@ Unchanged from v2.52. All 30+ items intact (NDIS-Yarns IG `publish_enabled=false
 
 ---
 
-*Last updated: 2026-05-08 Sydney — F-YT-NY-FORMAT-SELECTION CLOSED end-to-end (v2.53). Commit `1ccfe9a2`: ai-worker v2.11.1 → v2.12.0 with two-part format-advisor-v1 fix (opt-in candidate filter + platform-aware advisor prompt). 1 D-01 fire (`64230c18`, clean PASS). safe-deploy.sh `--allow-warn` honoured (Stage 3 gate authoritative — first real use on B-FD class). Live version verified `ai-worker-v2.12.0`. Post-deploy drift fire `3bed87b0` confirmed Class A-LE (round-trip closed). T-MCP-02 49 → 50. **0 state-capture exceptions.** ~4 P0+P1 open of 20 cap. NEW P3 logged: F-YT-PUB-AVATAR-EXCLUSION (latent youtube-publisher `.in()` filter risk). Next session priorities: Dashboard Phase 0 (P1 TOP) → AI cost view (P3 quick win) → M6 Phase A (P1 carry).*
+*Last updated: 2026-05-08 Sydney — v2.54: video-worker v3.0.0 DEPLOYED (commit `4ae5b5a7`) + verify_jwt regression recovered same-session via `supabase functions deploy video-worker --no-verify-jwt` (cron jobid 33 401 → 200) + durable `supabase/config.toml` LANDED this turn covering 23 EFs (10 custom-header + 13 service-role; 4 stale slugs excluded). Drift round-trip COMPLETED: scan `cb7fe77b…` 07:20:56 UTC, video-worker B-FD → A-LE. 4 m.chatgpt_review records closed-the-loop (`8bd6ac37`, `fa4322e5`, `ee27dd37`, `4e0e9c00`). YouTube cadence prior-session memory entry RETRACTED (Mon–Fri 5/wk both clients, **not** "~3-day cadence"). 6 NEW P2 findings logged. Closed v2.54: video-worker verify_jwt durable fix (P3). PHASES reconciliation now **10th** carry. Previous (v2.53): F-YT-NY-FORMAT-SELECTION P1 closure, ai-worker v2.12.0 deploy, NEW P3 F-YT-PUB-AVATAR-EXCLUSION.*

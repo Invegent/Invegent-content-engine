@@ -1,0 +1,127 @@
+# Supabase project configuration — repo-tracked
+#
+# Purpose: pin per-function gateway settings (currently `verify_jwt`) so that
+# `supabase functions deploy <slug>` is reproducible and does not silently
+# regress to CLI defaults.
+#
+# Why this file exists:
+#   Without supabase/config.toml the CLI default sets `verify_jwt: true` on
+#   every deploy. Several Edge Functions are invoked by pg_cron without a
+#   JWT (custom-header auth or service-role-from-DB pattern) and 401 when
+#   verify_jwt is true. Encoding the verified-correct setting in repo
+#   prevents recurrence of the 2026-05-08 video-worker regression where a
+#   v3.0.0 deploy broke cron jobid 33 until a manual --no-verify-jwt
+#   redeploy.
+#
+# Contents (23 functions total — 10 custom-header + 13 service-role):
+#   • Custom-header-auth:   functions whose cron call carries a literal
+#                           secret header (x-*-key); the function body
+#                           compares against an env var.
+#   • Service-role-pattern: functions whose cron call sets only
+#                           Content-Type and the function body trusts
+#                           callers from inside the project (no JWT).
+#
+# Excluded slugs (NOT in this file):
+#   • ingest                 — F-CRON-INGEST-STALE (P2). Cron jobid 1
+#                              calls deployed slug `ingest`
+#                              (ingest-v8-youtube-channel) but
+#                              supabase/functions/ingest/ does not exist.
+#                              Prior `Ingest/` folder removed in 961482c
+#                              2026-03-08 ("superseded by ingest v75");
+#                              lowercase folder never re-added.
+#   • compliance-monitor     — F-CRON-COMPLIANCE-MONITOR-STALE (P2).
+#                              Cron jobid 31 calls deployed v1.2.0;
+#                              repo folder absent.
+#   • pipeline-ai-summary    — F-CRON-PIPELINE-AI-SUMMARY-STALE (P2).
+#                              Cron jobid 30 active; folder absent.
+#                              Per source-recovery commit 8ee27b4
+#                              (30 Mar 2026) it was in the deploy-only
+#                              ghost bucket and never recovered.
+#   • pipeline-doctor        — F-CRON-PIPELINE-DOCTOR-STALE (P2).
+#                              Cron jobids 29 + 39 active; folder absent.
+#                              Same source-recovery ghost bucket. NOT a
+#                              rename of pipeline-diagnostician (which is
+#                              a separate newer function introduced in
+#                              c039e84 — Claude-powered root-cause
+#                              analysis).
+#
+# To onboard a new EF: add a `[functions.<slug>]` table below and set
+# verify_jwt explicitly. If the function is JWT-gated by design (caller
+# always presents a Supabase auth token), set `verify_jwt = true`.
+
+# ---------------------------------------------------------------------
+# Custom-header-auth EFs (10) — verify_jwt = false
+# ---------------------------------------------------------------------
+
+[functions.video-worker]
+verify_jwt = false
+
+[functions.content_fetch]
+verify_jwt = false
+
+[functions.image-worker]
+verify_jwt = false
+
+[functions.feed-discovery]
+verify_jwt = false
+
+[functions.heygen-worker]
+verify_jwt = false
+
+[functions.linkedin-zapier-publisher]
+verify_jwt = false
+
+[functions.pipeline-fixer]
+verify_jwt = false
+
+[functions.wordpress-publisher]
+verify_jwt = false
+
+[functions.youtube-publisher]
+verify_jwt = false
+
+[functions.auto-approver]
+verify_jwt = false
+
+# ---------------------------------------------------------------------
+# Service-role-pattern EFs (13) — verify_jwt = false
+# ---------------------------------------------------------------------
+
+[functions.ai-diagnostic]
+verify_jwt = false
+
+[functions.client-weekly-summary]
+verify_jwt = false
+
+[functions.compliance-reviewer]
+verify_jwt = false
+
+[functions.draft-notifier]
+verify_jwt = false
+
+[functions.drift-check]
+verify_jwt = false
+
+[functions.email-ingest]
+verify_jwt = false
+
+[functions.external-reviewer-digest]
+verify_jwt = false
+
+[functions.feed-intelligence]
+verify_jwt = false
+
+[functions.insights-feedback]
+verify_jwt = false
+
+[functions.insights-worker]
+verify_jwt = false
+
+[functions.pipeline-healer]
+verify_jwt = false
+
+[functions.pipeline-sentinel]
+verify_jwt = false
+
+[functions.weekly-manager-report]
+verify_jwt = false

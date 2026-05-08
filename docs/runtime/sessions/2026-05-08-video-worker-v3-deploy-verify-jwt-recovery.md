@@ -60,17 +60,42 @@ No commit in `git log --diff-filter=D` references `compliance-monitor` under `su
 
 Folder present at `supabase/functions/auto-approver/index.ts`. Drift class C means banner versions match (both 1.6.0) but bodies diverge — this is the body-drift trap, not a missing-source problem. **No new finding.** When `config.toml` work lands, include `auto-approver` with `verify_jwt = false` (cron uses its own header `x-auto-approver-key`, not a JWT).
 
-## 4. Drift round-trip (chat-owned)
+## 4. Drift round-trip — COMPLETED
 
-Chat owns the post-deploy round-trip (cron-pattern probe, 07:30 UTC fire check, drift fire to confirm Class A-LE with repo=deploy=3.0.0). Not run from this session per brief direction. Will be captured at v2.54 sync_state close.
+Drift round-trip COMPLETED by chat earlier this session. Scan `cb7fe77b-2011-48cf-8ffc-806d63e535aa` at 2026-05-08 07:20:56 UTC.
 
-## 5. m.chatgpt_review close-the-loop (chat-owned)
+video-worker:
+- `current_class`  = `A-LE`
+- `previous_class` = `B-FD`
+- `state_changed`  = `true`
+- `repo_version`   = `3.0.0`
+- `deploy_version` = `3.0.0`
 
-Per brief: "Close the four reviews from this session and do the 4-way sync close." Chat owns review-row closure. Review IDs to be enumerated by chat at v2.54 close (only `4e0e9c00-11d3-4096-afd3-ec765b296b36` is referenced in the deploy briefs received this session; the other three review IDs are not in the work surfaces visible from CC's side and will be filled by chat at sync close).
+Textbook B-FD → A-LE post-deploy round-trip. Confirmed via `m.vw_ef_drift_current`.
 
-## 6. YT cadence retraction (chat-owned)
+## 5. m.chatgpt_review close-the-loop — COMPLETED
 
-Brief mentions a "YT cadence retraction" to cover in this session file. No in-repo evidence (no commit, no migration, no doc edit) of a cadence-retraction decision visible from CC's side this session. The most recent YT-adjacent work in repo is yesterday's `F-YT-NY-FORMAT-SELECTION` closure (v2.53, commit `1ccfe9a2`) and the `F-YT-PUB-AVATAR-EXCLUSION` P3 logging. Cadence retraction is presumably a chat-side / operational decision; the substantive description belongs in v2.54 sync_state when chat closes the session.
+m.chatgpt_review close-the-loop COMPLETED by chat earlier this session. 4 reviews closed via UPDATE on `m.chatgpt_review` with `escalation_resolved_at`, `resolved_by`, `action_taken` populated:
+
+- **`8bd6ac37-fa9e-43af-803f-75a171080554`** — `sql_destructive`, F-YT-PUB-AVATAR-EXCLUSION fire #1. Escalated → resolved by re-fire `fa4322e5` PASS. status: `resolved`. resolved_by: `chat-via-refire-fa4322e5-pass`.
+- **`fa4322e5-69a7-4b77-a745-cdd0296dccc4`** — `sql_destructive` fire #2, PASS. action_taken: catalog UPDATE applied 2026-05-08 05:24:00.472666 UTC removing `youtube` from `t."5.3_content_format".platform_support` for `video_short_avatar`. status: `completed`.
+- **`ee27dd37-472a-443c-b29d-dd07f8a8c7d3`** — `ef_deploy` video-worker fire #1. Escalated → resolved by re-fire `4e0e9c00` PASS. status: `resolved`. resolved_by: `chat-via-refire-4e0e9c00-pass`.
+- **`4e0e9c00-11d3-4096-afd3-ec765b296b36`** — `ef_deploy` video-worker fire #2, PASS. action_taken: deploy completed + verify_jwt regression+recovery saga documented inline. status: `completed`.
+
+## 6. YT cadence retraction
+
+Prior-session memory entry claimed NDIS-Yarns / Property Pulse YouTube had a "~3-day cadence" with "next fill 49h forward". **INCORRECT.**
+
+Actual state:
+- **NDIS-Yarns YouTube:** Mon–Fri 19:00 AEST / 09:00 UTC, **5 slots/week**.
+- **Property Pulse YouTube:** Mon–Fri 17:00 AEST / 07:00 UTC, **5 slots/week**.
+- Slot pipeline healthy via cron jobid 72 nightly (`m.materialise_slots(7)`) + jobids 73/75/76 slot processing.
+
+Root of error:
+- Sat–Sun weekend gap mislabelled as "cadence".
+- `fill_window_opens_at` conflated with `scheduled_publish_at`.
+
+System issue: NONE. Reporting issue: corrected. Memory `recent_updates` v2.54 entry will reflect this retraction (chat-owned at session end).
 
 ## 7. Hold-state assertions
 
@@ -94,16 +119,25 @@ Brief mentions a "YT cadence retraction" to cover in this session file. No in-re
 - `m.vw_ef_drift_current` queried for each slug; `repo_path_status` field used to corroborate folder check.
 - No acceptance asserted on summary/signal alone.
 
-## 9. Open queued work (NOT ACTIONED THIS SESSION)
+## 9. Open queued work
 
-- **Durable verify_jwt fix:** create `supabase/config.toml` with per-function settings. Include `auto-approver` (verify_jwt=false). Do NOT include `ingest` or `compliance-monitor` (stale slugs, see findings 3.1 + 3.2).
-- **F-CRON-INGEST-STALE (P2)** — re-author `supabase/functions/ingest/` to align with deployed `ingest-v8-youtube-channel`, OR formally retire the deployed slug. Decision belongs to PK.
-- **F-CRON-COMPLIANCE-MONITOR-STALE (P2)** — same shape as ingest.
-- **YT cadence retraction** — chat to fill at v2.54 close.
-- **m.chatgpt_review close-the-loop** — chat to fill at v2.54 close (4 reviews).
-- **Memory `recent_updates` v2.54 entry** — explicitly out of scope per PK direction; chat handles at next session start.
-- **Drift round-trip post-deploy** — chat to run at v2.54 close (expect Class A-LE, repo=deploy=3.0.0).
-- **PHASES array full reconciliation** — 9th carry-forward deferral; this session adds only the video-worker v3.0.0 entry + LAST_UPDATED bump per PK direction.
+### 9.1 Closed in this turn (v2.54)
+
+- **Durable verify_jwt fix: COMPLETED in this turn.** `supabase/config.toml` covers 23 EFs (10 custom-header + 13 service-role). Excluded as stale: `ingest`, `compliance-monitor`, `pipeline-ai-summary`, `pipeline-doctor` (all 4 confirmed missing during pre-flight folder check; per source-recovery commit `8ee27b4` 30 Mar 2026, the latter two were in the deploy-only ghost bucket of 9 EFs and never recovered). Commit SHA recorded in v2.54 close.
+- **Drift round-trip:** completed by chat earlier this session — see Section 4.
+- **m.chatgpt_review close-the-loop:** completed by chat earlier this session — see Section 5.
+- **YT cadence retraction:** captured in Section 6 + sync_state v2.54.
+
+### 9.2 v2.54 → v2.55 deferred actions
+
+- **F-CRON-PG-NET-TIMEOUT-5S (P2)** — cron timeout fix for jobid 33 (video-worker), 44 (heygen-worker), 58 (auto-approver). Proposed: `cron.alter_job` to add explicit `timeout_milliseconds := 30000`.
+- **F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 security)** — secret rotation + vault refactor. PK approval required for rotation; chat refactors via `cron.alter_job` matching the vault pattern in jobid 1/4/27/33.
+- **F-CRON-INGEST-STALE (P2)** + **F-CRON-COMPLIANCE-MONITOR-STALE (P2)** + **F-CRON-PIPELINE-AI-SUMMARY-STALE (P2)** + **F-CRON-PIPELINE-DOCTOR-STALE (P2)** — four deploy-only ghost slugs. PK decision per slug: re-author repo source OR formally retire deployed slug + cron.
+- **First deploy that uses the new `config.toml` WILL require D-01.** Suggested validation deploy candidate: a controlled redeploy of one custom-header EF (e.g. `content_fetch`) post-`config.toml` to verify the gate flag is preserved across redeploys.
+- **Music library activation checklist (P3 PK action)** — bucket + 9 mp3 tracks + env var `VIDEO_WORKER_MUSIC_ENABLED=true`. video-worker v3.0.0 already ships music gated OFF; activation requires no second deploy.
+- **Emergency redeploy governance question (P2 PK decision)** — does bounded production-restoration require expedited D-01 fire, or is it exempt when reversible? Document outcome in `docs/06_decisions.md`.
+- **Memory `recent_updates` v2.54 entry** — chat handles at session end via memory_user_edits; out of scope for CC.
+- **PHASES reconciliation** — now **10th**-deferred; needs dedicated session (this v2.54 turn does not touch the dashboard repo).
 
 ## 10. Commits
 
