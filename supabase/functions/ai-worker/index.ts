@@ -9,7 +9,31 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.11.1";
+const VERSION = "ai-worker-v2.12.0";
+// v2.12.0 — F-YT-NY-FORMAT-SELECTION fix
+//   ROOT CAUSE: format-advisor-v1 received no platform context and the
+//   candidate-list filter in fetchFormatContext used opt-out semantics
+//   (`s[platform] === false`). 5 of 10 buildable rows in
+//   t."5.3_content_format" have no `youtube` key in `platform_support`
+//   JSONB, so they all leaked through to the YouTube candidate set.
+//   Result: NDIS-Yarns × YouTube selected `text` for 100% of last 14
+//   days' drafts (8/8); Property-Pulse × YouTube selected `text` for
+//   76% (13/17). YouTube cannot publish text — 0 published posts on
+//   NY×YT and 24% publish rate on PP×YT.
+//   Fix part A — fetchFormatContext: opt-in semantics. `s[platform]
+//   !== true` excludes any row where the platform key is absent or
+//   not-true. Verified across all 4 platforms: identical candidate
+//   sets for facebook (10), linkedin (4), instagram (5); youtube
+//   correctly drops from 10 to the 5 video formats only.
+//   Fix part B — callFormatAdvisor: now receives `platform` and
+//   injects "Target platform: ${platform}. Choose only formats
+//   compatible with ${platform}." into the system prompt. Defence-
+//   in-depth — keeps the advisor platform-aware even if a future
+//   format row is added with missing platform keys.
+//   Diagnosed via Supabase MCP read-only catalogue inspection +
+//   ai-worker source read. See:
+//   docs/briefs/2026-05-05-f-yt-ny-format-selection.md (sha 7d71eda6)
+//   D-01 review_id: 64230c18-362b-4d0c-bf82-b5ab6eda3856 (PASS)
 // v2.11.1 — F-AI-WORKER-PARSER-SKIP-BUG fix + raw response capture on failure
 //   ROOT CAUSE: callClaude and callOpenAI parsers checked for {title, body}
 //   BEFORE checking the skip flag, throwing anthropic_missing_title_or_body
@@ -199,7 +223,7 @@ async function fetchFormatContext(supabase: ReturnType<typeof getServiceClient>,
     });
     const allFormats: FormatInfo[] = [];
     for (const r of (formatRows ?? [])) {
-      try { const s = JSON.parse(r.platform_support_raw ?? '{}'); if (s[platform] === false) continue; } catch { }
+      try { const s = JSON.parse(r.platform_support_raw ?? '{}'); if (s[platform] !== true) continue; } catch { }
       allFormats.push({ ice_format_key: r.ice_format_key, format_name: r.format_name, advisor_description: r.advisor_description, best_for: r.best_for, min_content_signals: r.min_content_signals });
     }
     const formats = allFormats.length > 0 ? allFormats : [{ ice_format_key: 'text', format_name: 'Text post', advisor_description: 'Plain text post.', best_for: 'General content', min_content_signals: 'Any' }];
@@ -226,14 +250,14 @@ async function fetchFormatContext(supabase: ReturnType<typeof getServiceClient>,
   }
 }
 
-async function callFormatAdvisor(opts: { anthropicKey: string; seedTitle: string; seedBody: string; clientName: string; vertical: string; formats: FormatInfo[]; perfSummary: string; preferredFormat?: string | null; }): Promise<{ formatKey: string; reason: string; imageHeadline: string; durationMs: number }> {
-  const { anthropicKey, seedTitle, seedBody, clientName, vertical, formats, perfSummary, preferredFormat } = opts;
+async function callFormatAdvisor(opts: { anthropicKey: string; seedTitle: string; seedBody: string; clientName: string; vertical: string; formats: FormatInfo[]; perfSummary: string; preferredFormat?: string | null; platform: string; }): Promise<{ formatKey: string; reason: string; imageHeadline: string; durationMs: number }> {
+  const { anthropicKey, seedTitle, seedBody, clientName, vertical, formats, perfSummary, preferredFormat, platform } = opts;
   const startMs = Date.now();
   const formatPalette = formats.map(f => `FORMAT: ${f.ice_format_key} (${f.format_name})\n${f.advisor_description}\nBest for: ${f.best_for}\nMinimum signals: ${f.min_content_signals}`).join('\n\n');
   const preferredFormatInstruction = preferredFormat
     ? `\n\nCLIENT FORMAT PREFERENCE:\nThis client prefers ${preferredFormat} format. When the content quality is borderline (e.g., has one reasonably interesting insight but not a definitive standout stat), bias toward ${preferredFormat} over text. Only fall back to text if the content is genuinely conversational/reactive with no visual potential whatsoever.`
     : '';
-  const systemPrompt = `You are a content format advisor for ${clientName}, a ${vertical} sector social media presence.\n\nYour task: read a content seed and select the optimal format from the available palette.\n\nAVAILABLE FORMATS:\n${formatPalette}\n${perfSummary}\nDECISION RULES:\n- Choose the format that best serves the content's natural structure\n- Default to text if the content is conversational, reactive, or opinionated\n- carousel requires 3+ distinct structured points and minimum 200 words\n- image_quote requires one interesting stat, insight, or key message that works as a visual headline — it doesn't need to be a hard number, a clear declarative statement about a sector development works\n- video_short_kinetic requires 3+ distinct points expressible in 60 chars each\n- video_short_stat requires one striking numeric stat that anchors the story\n- Never choose a visual format to add interest if the content doesn't support it${preferredFormatInstruction}\n\nReturn ONLY valid JSON: {\"format_key\": string, \"reason\": string, \"image_headline\": string}`;
+  const systemPrompt = `You are a content format advisor for ${clientName}, a ${vertical} sector social media presence.\n\nTarget platform: ${platform}. Choose only formats compatible with ${platform}.\n\nYour task: read a content seed and select the optimal format from the available palette.\n\nAVAILABLE FORMATS:\n${formatPalette}\n${perfSummary}\nDECISION RULES:\n- Choose the format that best serves the content's natural structure\n- Default to text if the content is conversational, reactive, or opinionated\n- carousel requires 3+ distinct structured points and minimum 200 words\n- image_quote requires one interesting stat, insight, or key message that works as a visual headline — it doesn't need to be a hard number, a clear declarative statement about a sector development works\n- video_short_kinetic requires 3+ distinct points expressible in 60 chars each\n- video_short_stat requires one striking numeric stat that anchors the story\n- Never choose a visual format to add interest if the content doesn't support it${preferredFormatInstruction}\n\nReturn ONLY valid JSON: {\"format_key\": string, \"reason\": string, \"image_headline\": string}`;
   const userPrompt = `Content seed:\nTitle: ${seedTitle || '(no title)'}\nBody preview: ${seedBody.slice(0, 600)}${seedBody.length > 600 ? '...' : ''}\n\nSelect the optimal format.`;
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -746,7 +770,7 @@ app.post('*', async (c) => {
       let decidedFormat = 'text', advisorReason = '', advisorImageHeadline = '', advisorDurationMs = 0;
       if (anthropicKey && formats.length > 0) {
         try {
-          const advised = await callFormatAdvisor({ anthropicKey, seedTitle, seedBody, clientName, vertical, formats, perfSummary, preferredFormat });
+          const advised = await callFormatAdvisor({ anthropicKey, seedTitle, seedBody, clientName, vertical, formats, perfSummary, preferredFormat, platform });
           decidedFormat = advised.formatKey; advisorReason = advised.reason; advisorImageHeadline = advised.imageHeadline; advisorDurationMs = advised.durationMs;
           console.log(`[ai-worker] ${VERSION} — job ${jobId}: advisor chose ${decidedFormat} (${advisorDurationMs}ms) seedTitle=\"${seedTitle.slice(0, 60)}\"`);
         } catch (advisorErr: any) {
