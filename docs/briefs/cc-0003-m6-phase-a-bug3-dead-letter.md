@@ -3,7 +3,7 @@
 **Created:** 2026-05-09 Sydney  
 **Author:** chat  
 **Executor:** chat (apply via Supabase MCP `apply_migration`)  
-**Status:** issued  
+**Status:** issued (patched 2026-05-09; see Patch History)  
 **Result file:** `docs/briefs/results/cc-0003-m6-phase-a-bug3-dead-letter.md` (created on completion)
 
 ---
@@ -73,6 +73,7 @@ Apply via Supabase MCP `apply_migration` as migration `m6_phase_a_bug3_fingerpri
 - No `apply_migration` if the read-only pre-flight count returns 0 (no-op condition per §8) or outside [5, 25] (halt condition per §8).
 - No proceeding past D-01 if the verdict is anything other than `agree` with `proceed`. Escalation to PK per standing protocol if D-01 returns escalate=true or pushback.
 - No assumption that 11 is the exact count. Always re-verify.
+- No assumption that `pre_dead_reason_count` is 0. Always read it from §1.7 at apply time and use the captured value in V1 pass.
 - No edit to `00_overview.md`, `04_phases.md`, `06_decisions.md` from this session unless 4-way sync requires it (PHASES roadmap update + memory edit + action_list bump are the standard close).
 - No Phase 0 scheduling.
 
@@ -169,6 +170,20 @@ ORDER BY status;
 
 **Purpose:** baseline for V3 (queued+failed should decrease by exactly N) and V4 (dead should increase by exactly N) post-apply.
 
+### 1.7 Capture pre-existing `dead_reason` baseline (added by 2026-05-09 patch)
+
+```sql
+SELECT COUNT(*) AS pre_dead_reason_count
+FROM m.post_publish_queue
+WHERE dead_reason = 'anomalous_scheduled_for_bug3_fallback';
+```
+
+**Purpose:** baseline for V1 (§7). Captures any rows that already carry the target `dead_reason` value before this migration runs. The apply session MUST persist this number in chat context and use it in V1's pass condition.
+
+**Why this is required:** any prior session, manual operator UPDATE, or test migration could have set `dead_reason='anomalous_scheduled_for_bug3_fallback'` on rows in `m.post_publish_queue` independently. Function-definition string searches (§4 P3.2) only verify that no production CODE writes this value — they say nothing about whether existing TABLE ROWS already carry it. Treat the table state as ground truth; never assume `pre_dead_reason_count = 0`.
+
+**Expected (informative, not a halt criterion):** likely 0 or very small. If `pre_dead_reason_count` is non-trivial (say > 5) and unexpected, capture for the D-01 packet but do NOT halt — the migration's V1 pass condition compensates. Document the surprise in the result file §6.
+
 ---
 
 ## 2. Selection criterion (final, locked)
@@ -257,8 +272,9 @@ Apply session walks each step, captures evidence, and refuses to proceed past an
 - [ ] **P1.4** Run §1.4 target snapshot; persist queue_id list to chat context (or scratch file `/tmp/cc-0003-targets-{date}.csv`).
 - [ ] **P1.5** Run §1.5 slot-driven sanity check; confirm `slot_driven_count = 0`. HALT if not zero.
 - [ ] **P1.6** Run §1.6 pre-state aggregates; capture `(status, count)` baseline.
+- [ ] **P1.7** Run §1.7 pre_dead_reason_count baseline (added by 2026-05-09 patch); persist value for V1 pass condition. No HALT criterion; informative-only.
 
-**Pass criterion:** all 6 checks PASS. Any FAIL halts the session.
+**Pass criterion:** all 7 checks PASS. Any FAIL halts the session.
 
 ### P2 — Side-effect surface
 
@@ -293,7 +309,7 @@ Apply session walks each step, captures evidence, and refuses to proceed past an
   ```
   **Decision rule:** for each result, read its definition and confirm the reference is read-only (SELECT, no UPDATE/INSERT/DELETE on dead_reason). HALT if any function WRITES to dead_reason in a way that conflicts.
 
-- [ ] **P3.2** Search for any reference to the literal string `'anomalous_scheduled_for_bug3_fallback'` (collision check):
+- [ ] **P3.2** Code-collision check: search for any function that writes the literal string `'anomalous_scheduled_for_bug3_fallback'`:
   ```sql
   SELECT n.nspname AS schema_name, p.proname AS function_name
   FROM pg_proc p
@@ -301,7 +317,9 @@ Apply session walks each step, captures evidence, and refuses to proceed past an
   WHERE p.prokind IN ('f','p')
     AND pg_get_functiondef(p.oid) ILIKE '%anomalous_scheduled_for_bug3_fallback%';
   ```
-  **Expected:** zero hits. This is the first migration to use this dead_reason value at scale.
+  **Scope of this check:** function-definition string search. Verifies that no production CODE writes this dead_reason value (i.e. no concurrent writer can collide with this migration's UPDATE).  
+  **What this check does NOT verify:** whether existing rows in `m.post_publish_queue` already carry this dead_reason value. That is a TABLE-STATE question answered by §1.7's `pre_dead_reason_count` query, not by this code-collision check.  
+  **Expected:** zero hits on this code search. **Acting on the result:** if non-zero, read the function body and confirm the writer is dormant / removed / safe; HALT if a live writer could collide.
 
 - [ ] **P3.3** Verify `m.post_draft` rows associated with the target queue rows are NOT in a state that breaks downstream:
   - Pre-apply: drafts of the 11 (or however many) target queue rows have `approval_status` in (`approved`, `scheduled`, `published`, `needs_review`).
@@ -339,7 +357,7 @@ Apply session walks each step, captures evidence, and refuses to proceed past an
 
 **Goal:** define the post-apply assertions before apply, not after.
 
-- [ ] **P5.1** V1: count of rows with `dead_reason='anomalous_scheduled_for_bug3_fallback'` increases by exactly N (the captured pre-apply count).
+- [ ] **P5.1** V1: count of rows with `dead_reason='anomalous_scheduled_for_bug3_fallback'` post-apply equals `pre_dead_reason_count + N` (where `pre_dead_reason_count` is captured in §1.7 and N is the apply scope from §1.3). **Do not assume `pre_dead_reason_count = 0`.**
 - [ ] **P5.2** V2: count of rows matching the Bug 3 fingerprint criterion in `status IN ('queued','failed')` becomes 0.
 - [ ] **P5.3** V3: total queued+failed row count decreases by exactly N.
 - [ ] **P5.4** V4: total dead row count increases by exactly N.
@@ -374,7 +392,8 @@ snapshot shows 11 rows (down from 108 on 5 May; FIFO drained 97 over 4 days).
 ROLLBACK: single rollback migration available; UPDATE the captured queue_id list back to status='queued' 
 with dead_reason=NULL. No irreversible side effects.
 
-VERIFICATION: 6 post-apply queries (V1-V6) per cc-0003 §7.
+VERIFICATION: 6 post-apply queries (V1-V6) per cc-0003 §7. V1 uses the pre_dead_reason_count baseline 
+from pre-flight §1.7 (does not assume 0).
 ```
 
 ### 5.2 `context` (structured object)
@@ -383,12 +402,13 @@ VERIFICATION: 6 post-apply queries (V1-V6) per cc-0003 §7.
 {
   "decision_under_review": "Apply M6 Phase A: dead-letter ~11 Bug 3 fingerprint rows in m.post_publish_queue",
   "production_action_if_approved": "Single Supabase MCP apply_migration call. UPDATE status from queued/failed to dead with dead_reason='anomalous_scheduled_for_bug3_fallback' for rows matching the strict 5-min fingerprint criterion.",
-  "consequence_if_delayed": "Cosmetic only. The 11 rows continue to drain via FIFO publishing (per evidence: 108→11 over 4 days). The publisher does NOT publish them anomalously — it publishes them in queue order. The cosmetic effect is that health-check Cowork keeps surfacing them as 'overdue queued', and the future m.vw_pipeline_state view's first day shows noise.",
-  "cost_of_waiting": "Low. Each day of delay drains 5-25 rows naturally. The migration may become a no-op within ~7-14 days at current drain rate.",
+  "consequence_if_delayed": "Low operational risk if delayed because the cohort is naturally draining (108 → 11 over 4 days), but it remains pipeline-integrity cleanup and prevents stale queue noise in future m.vw_pipeline_state. The publisher does not publish these rows anomalously; it publishes them in queue order. Health-check Cowork keeps surfacing them as 'overdue queued' until cleared, and Phase 0's m.vw_pipeline_state would classify them as 'queued' on its first day until the migration runs.",
+  "cost_of_waiting": "Low. Each day of delay drains 5-25 rows naturally. The migration may become a no-op within ~7-14 days at current drain rate. Pipeline-integrity benefit (clean baseline for m.vw_pipeline_state) is the residual reason to apply rather than wait for full drain.",
   "current_evidence": [
     "Pre-flight §1.3 count check: <N> rows match criterion at <DATETIME>",
     "Pre-flight §1.5 sanity check: 0 slot-driven rows in scope",
     "Pre-flight §1.2 trigger check: <result>",
+    "Pre-flight §1.7 pre_dead_reason_count: <P> (baseline used in V1; not assumed to be 0)",
     "M5 session record cited 108 rows on 5 May; today's count <N> is consistent with FIFO drain hypothesis",
     "docs/briefs/2026-05-09-m5-m8-vw-pipeline-state-reconciliation.md §2.6 confirms column-unblocked + view-compatible",
     "docs/briefs/2026-05-05-queue-integrity-incident.md v3 §2 Bug 3 mechanism",
@@ -397,7 +417,8 @@ VERIFICATION: 6 post-apply queries (V1-V6) per cc-0003 §7.
   "known_weak_evidence": [
     "The M5 session's 108 figure may have used a broader criterion than today's strict 5-min fingerprint. The 97-row delta is plausibly natural drain (108 / 4 days = ~27/day; today's 11 / next-7-days projection ~consistent), but a criterion-difference contribution can't be ruled out without re-running the M5-era query.",
     "No precedent for this specific UPDATE on this table in this scale (M5 was DDL+function refactor; M1–M4 were function/trigger bodies, not bulk row updates on m.post_publish_queue). M6 Phase A is the first bulk UPDATE on this table at scale.",
-    "Rollback path uses captured queue_id list rather than criterion-based WHERE; depends on apply session correctly persisting the snapshot in P1.4."
+    "Rollback path uses captured queue_id list rather than criterion-based WHERE; depends on apply session correctly persisting the snapshot in P1.4.",
+    "V1 pass condition relies on pre_dead_reason_count captured at §1.7; if pre_dead_reason_count drifts between §1.7 read and apply (unlikely; only writers of this dead_reason would cause drift, and §4 P3.2 verifies no live code writers), V1 could mis-pass. Acceptable risk because the drift window is seconds and writer-absence is verified."
   ],
   "default_action": "proceed if D-01 returns clean agree; halt and escalate to PK if any escalation, pushback, or risk-elevation",
   "references": {
@@ -424,7 +445,7 @@ VERIFICATION: 6 post-apply queries (V1-V6) per cc-0003 §7.
 
 After D-01 returns clean agree + PK approval:
 
-1. **Final read-only re-verification** — re-run §1.3 + §1.4 within ~60s of apply. Confirm count is in the same range as the D-01 packet stated. If divergence > 3 rows from packet count, halt and refresh D-01 packet.
+1. **Final read-only re-verification** — re-run §1.3 + §1.4 + §1.7 within ~60s of apply. Confirm count is in the same range as the D-01 packet stated. If divergence > 3 rows from packet count for §1.3, halt and refresh D-01 packet. If `pre_dead_reason_count` from §1.7 changed since the earlier capture, use the fresh value in V1.
 2. **`apply_migration` call** — single call:
    ```
    apply_migration(
@@ -443,15 +464,19 @@ After D-01 returns clean agree + PK approval:
 
 Run all 6 in sequence. Each must PASS to declare success.
 
-### V1 — Exact dead_reason population count
+### V1 — Exact dead_reason population delta
 
 ```sql
-SELECT COUNT(*) AS v1_count
+SELECT COUNT(*) AS post_dead_reason_count
 FROM m.post_publish_queue
 WHERE dead_reason = 'anomalous_scheduled_for_bug3_fallback';
 ```
 
-**Pass:** `v1_count = N` where N is the pre-apply target count from §1.3. (Note: this assumes no prior rows had this exact dead_reason; §4 P3.2 verified zero prior usage.)
+**Pass:** `post_dead_reason_count = pre_dead_reason_count + N` where `pre_dead_reason_count` is captured in pre-flight §1.7 and N is the apply scope from §1.3.
+
+**Do NOT assume `pre_dead_reason_count = 0`.** Prior rows may carry this dead_reason for any reason (manual operator UPDATEs, previous test migrations, prior partial runs of this migration if any). §4 P3.2's function-definition string search is a code-collision check (verifies no live CODE writer), NOT a guarantee about row state.
+
+If V1 fails because the post-count differs from `pre_dead_reason_count + N` by an unexpected amount, the rollback path (§8.3) uses the captured queue_id list (§1.4), which is unaffected by `pre_dead_reason_count` drift.
 
 ### V2 — No remaining matching queued/failed rows
 
@@ -494,7 +519,9 @@ WHERE q.status = 'dead'
 ORDER BY q.queue_id;
 ```
 
-**Pass:** the returned queue_id list equals the captured target list from §1.4 exactly. No additional rows; no missing rows.
+**Pass:** the returned queue_id list contains AT LEAST the captured target list from §1.4 (every captured queue_id is present with status='dead' and the target dead_reason). Any additional queue_ids in the result correspond to the `pre_dead_reason_count` baseline from §1.7 — specifically, the result list size should equal `pre_dead_reason_count + N`, and the (result minus pre_existing_set) should equal the captured target set exactly.
+
+**Apply session implementation note:** to make V5 fully deterministic, capture the pre-existing set in pre-flight §1.7 (extend that query to return `queue_id` list, not just count, if memory budget allows). Then V5 set-difference is straightforward.
 
 ### V6 — Coherence cross-check
 
@@ -543,6 +570,8 @@ If any of V1–V6 FAIL:
    ```sql
    -- Rollback for m6_phase_a_bug3_fingerprint_dead_letter_v1
    -- Uses captured queue_id list (NOT criterion-based) to avoid touching unrelated rows.
+   -- Specifically does NOT touch rows that carried dead_reason='anomalous_scheduled_for_bug3_fallback'
+   -- pre-apply (those rows are part of the pre_dead_reason_count baseline from §1.7).
    
    UPDATE m.post_publish_queue
    SET status = <pre_status>,  -- per P1.4 captured snapshot, mapped queue_id → pre_status
@@ -550,7 +579,7 @@ If any of V1–V6 FAIL:
    WHERE queue_id IN (<captured queue_id list from P1.4>);
    ```
    The actual rollback SQL is constructed at apply time from P1.4's snapshot (cannot be templated in advance because queue_ids are not known).
-3. Re-run V1–V6 to confirm rollback restored pre-apply state.
+3. Re-run V1–V6 to confirm rollback restored pre-apply state. V1 post-rollback should equal the original `pre_dead_reason_count` from §1.7.
 4. Document: "M6 Phase A applied + rolled back. Pre-state restored. Failure mode: <verification ID + diagnosis>."
 5. PK escalation; cc-0003v2 with corrective measures.
 
@@ -564,11 +593,11 @@ The rollback SQL needs the captured queue_id → pre_status mapping from §1.4. 
 
 The cc-0003 apply session is COMPLETE when:
 
-1. §1 pre-flight all 6 checks PASS.
+1. §1 pre-flight all 7 checks PASS (incl. §1.7 pre_dead_reason_count baseline).
 2. §4 P1–P5 all PASS.
 3. §5 D-01 fire returns clean agree + PK approval.
 4. §6 apply procedure completes; `apply_migration` returns success.
-5. §7 verification V1–V6 all PASS.
+5. §7 verification V1–V6 all PASS (V1 uses pre_dead_reason_count + N).
 6. Close-the-loop UPDATE on `m.chatgpt_review` (or carry as backlog).
 7. Result file `docs/briefs/results/cc-0003-m6-phase-a-bug3-dead-letter.md` created and committed.
 8. 4-way sync close: session file (`docs/runtime/sessions/{YYYY-MM-DD}-cc-0003-m6-phase-a-applied.md`) + sync_state v2.55+ pointer index entry + action_list v2.55+ closure of M6 Phase A + memory `recent_updates` entry.
@@ -603,7 +632,45 @@ If brief-runner-v0 friction surfaces during the apply session, capture in result
 2. **D-01 packet templating** — §5.2 has a `<DATETIME>` placeholder for the pre-flight verification timestamp. Apply session fills this. Whether the brief should include a fill-template or leave fully prose is a question.
 3. **`updated_at` amendment** — the conditional SQL amendment (§3 note 3) adds branching. If P1.1 always finds `updated_at` present without auto-trigger, the amendment is mandatory; if rarely, the conditional is overhead. Empirical answer at apply time.
 4. **Rollback templating** — §8.4 explains why rollback isn't templated in this brief. Whether this is acceptable or a brief-runner-v0 gap is a question for PK after cc-0003 result file §6.
+5. **Pre-existing-state baselines** — the 2026-05-09 patch added §1.7's `pre_dead_reason_count` to fix V1's hidden assumption. The general pattern for any apply-class brief that asserts a delta on a column: read the pre-existing state baseline; assert post = pre + delta. Worth promoting to a brief-runner-v0 standing rule for cc-0004+.
 
 ---
 
-*Brief authored 2026-05-09 Sydney. Inputs: cc-0001 + cc-0002 brief shapes; reconciliation brief §2.6 + §6 Q1; queue integrity v3 brief §2 Bug 3 + §7 reason codes; M5 session record §Carry-forward; §10.2 view contract precedence rule 1. Output: full apply brief (selection criterion + SQL + P1–P5 + D-01 packet + verification + rollback + stop condition). No production state changed by drafting. Awaiting PK direction to schedule the apply session.*
+## Patch History
+
+### 2026-05-09 patch (chat, doc-only)
+
+Applied two PK-directed corrections + one supporting clarification. No production state changed; no D-01 fire; no apply.
+
+**Patch 1 — V1 baseline correction:**
+- Added §1.7 pre-flight query capturing `pre_dead_reason_count`.
+- Updated §4 P1 checklist to include P1.7 (now 7 checks; was 6).
+- Updated §4 P5.1 to assert `pre_dead_reason_count + N` rather than "increases by exactly N".
+- Rewrote §7 V1 query alias from `v1_count` → `post_dead_reason_count` and pass condition to `post_dead_reason_count = pre_dead_reason_count + N`.
+- Removed the prior V1 note that cited §4 P3.2 as the basis for assuming zero pre-existing rows (that was a category error: function-definition string search is a code-collision check, not a table-state check).
+- Tightened V5 pass language to handle the case where pre-existing rows already carry the target dead_reason.
+- Added "No assumption that `pre_dead_reason_count` is 0" to §Forbidden actions.
+- Updated §6 apply procedure step 1 to re-read §1.7 alongside §1.3 + §1.4 within ~60s of apply.
+- Added the pre-flight value to §5.2 `current_evidence` array.
+- Added a `known_weak_evidence` line acknowledging the §1.7 capture-to-apply drift window.
+- Updated §8.3 ROLLBACK path note re V1 post-rollback equalling the original `pre_dead_reason_count`.
+- Added §Notes item 5 promoting the pre-existing-state-baseline pattern as a candidate brief-runner-v0 standing rule for cc-0004+.
+
+**Patch 2 — §5.2 `consequence_if_delayed` softening:**
+- Replaced "Cosmetic only. The 11 rows continue to drain via FIFO publishing (per evidence: 108→11 over 4 days). The publisher does NOT publish them anomalously — it publishes them in queue order. The cosmetic effect is that health-check Cowork keeps surfacing them as 'overdue queued', and the future m.vw_pipeline_state view's first day shows noise." with: "Low operational risk if delayed because the cohort is naturally draining (108 → 11 over 4 days), but it remains pipeline-integrity cleanup and prevents stale queue noise in future m.vw_pipeline_state. The publisher does not publish these rows anomalously; it publishes them in queue order. Health-check Cowork keeps surfacing them as 'overdue queued' until cleared, and Phase 0's m.vw_pipeline_state would classify them as 'queued' on its first day until the migration runs."
+- Updated §5.2 `cost_of_waiting` to reflect the same framing: pipeline-integrity benefit is the residual reason to apply rather than wait for full drain.
+
+**Patch 3 (supporting) — §4 P3.2 scope clarification:**
+- Reworded P3.2 from "Search for any reference to the literal string... (collision check)" to "Code-collision check: search for any function that writes the literal string...".
+- Added explicit "Scope of this check" + "What this check does NOT verify" notes pointing to §1.7 as the authoritative source for table-row state.
+- Reason: PK directive that the brief must not present function-definition string search as evidence about table rows. The reword separates code-collision verification (the check's actual purpose) from table-state verification (§1.7's purpose).
+
+**Patch 4 (supporting) — status/header:**
+- Updated header `Status:` from `issued` to `issued (patched 2026-05-09; see Patch History)`.
+- Added this Patch History section.
+
+No other sections changed. Selection criterion (§2) unchanged. Proposed SQL (§3) unchanged. NO-OP / HALT / ROLLBACK paths (§8.1, §8.2 unchanged; §8.3 unchanged except for one supporting note re V1 post-rollback baseline). Stop condition (§9) unchanged except checklist count.
+
+---
+
+*Brief authored 2026-05-09 Sydney; patched same day per PK direction. Inputs: cc-0001 + cc-0002 brief shapes; reconciliation brief §2.6 + §6 Q1; queue integrity v3 brief §2 Bug 3 + §7 reason codes; M5 session record §Carry-forward; §10.2 view contract precedence rule 1. Output: full apply brief (selection criterion + SQL + P1–P5 + D-01 packet + verification + rollback + stop condition). No production state changed by drafting or patching. Awaiting PK direction to schedule the apply session.*
