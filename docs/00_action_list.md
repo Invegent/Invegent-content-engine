@@ -4,9 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-09 Sydney (v2.57 — **F-CRON-PG-NET-TIMEOUT-5S CLOSED** via cc-0006 APPLIED by CC via Supabase MCP `execute_sql` (commit `c72bc327`, jobs 33/44/58 each patched with `timeout_milliseconds := 30000`, 35-byte command growth, byte-for-byte URL/headers/schedule preservation, job 58 inline secret preserved character-for-character, V1+V2+V3 PASS strictly, V4 PASS load-bearing "no regression" criterion, no rollback). First `cron_edit` D-01 action_type. **F-CRON-AUTO-APPROVER-SECRET-INLINE remains separately OPEN (P2 sec)** — cc-0006 deliberately preserved the inline secret on job 58. **HTTP 401 5-min cron pattern surfaced as NEW v2.57 triage candidate** — likely jobid 48 or another `*/5` cron whose endpoint returns 401; out-of-scope for cc-0006; not a regression. **cc-0005 / M8 Path A v3 PATCHED** chat-side under PK direction (commit `245005a3`); supersedes v2 Path A (`f70cb41f`) which had 5 critical regex bugs (substring matches against `get_next_scheduled_for` would have matched comment text in rewritten cron 48 body and fired V8/V10 RAISE EXCEPTION). v3 fixes: function-call regex at all 11 call sites; comment rephrase; H1–H6 extended pre-flight (alignment HALT §8.2.l added; un-publishable cohort + distinct created_by enumeration + ORIGINAL_COMMENT capture); M1–M4 hygiene; L1–L2 defensive. **Brief ready for pre-flight gating, NOT apply.** Apply gates remaining: §1.5d alignment=0 + §1.5c PK direction on un-publishable cohort + D-01 + PK approval. Brief-runner-v0 L10–L18 candidates captured from cc-0006 + cc-0005 v3 cycles. Closed v2.57: F-CRON-PG-NET-TIMEOUT-5S (P2). Previous (v2.56): M6 Phase B CLOSED via cc-0004 APPLIED.)
->
-> **Inline addition post-v2.57 (2026-05-09 Sydney):** **Platform Reconciliation View — BRIEF CANDIDATE** added under PK direction. Pipeline observability / reconciliation class (NOT cosmetic dashboard). 13 seed manual observations captured. Implementation queued behind cc-0007 + cc-0005 M8a + current pipeline-integrity closure. See dedicated 🟢 status block below + Active table row. Header version remains v2.57 — this addition will fold into next sync close (v2.58 candidate). Header version NOT bumped this turn per inline-addition convention. **NEW POST-v2.57 INLINE ADDITIONS NOT YET REFLECTED IN HEADER:** cc-0005 v4 patch (commit `577d8568`, M8 staged → M8a only; Component 3 deferred to M8b after CC v3 pre-flight HALT surfaced 2 non-cron manual callers); cc-0007 P1 recovery brief draft (commit `7c45a927`, F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT, ai-worker `verify_jwt` regression class match to v2.54 video-worker); Platform Reconciliation View brief candidate (this addition).
+> Last updated: 2026-05-09 Sydney (**v2.58 — F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT CLOSED / RECOVERED via cc-0007 APPLIED** by CC. Repo patch `supabase/config.toml` `[functions.ai-worker] verify_jwt = false` (commit `5037e573`) + EF deploy `supabase functions deploy ai-worker --no-verify-jwt` (exit=0 at 04:23:27Z). Recovery confirmed at first post-deploy cron 5 fire 04:25:00Z; status_code=200; pattern transition unambiguous: 22+ × 401 pre-deploy → 200 immediately post-deploy. V1–V4 all PASS at first fire. No rollback. **First `ef_deploy` D-01 action_type in cc-NNNN series.** Class match to v2.54 video-worker regression (commit `6ed29bbc`); 2-step recovery pattern (config.toml entry + `--no-verify-jwt` deploy) now vindicated twice across distinct EFs. Result file commit `411b85ee` (blob `b21be653`, 11,401 B). HTTP 401 5-min cron triage candidate from v2.57 CLOSED (jobid 5 was the source; cc-0006's earlier hypothesis of jobid 48 corrected by CC's read-only triage 2026-05-09). Latent risk noted (NOT closed): publisher block remains ABSENT from `supabase/config.toml`; carried as v2.58 P3 follow-up. **cc-0005 M8a is the next pipeline-integrity apply candidate per PK directive.** Brief-runner-v0 L22–L25 vindicated (`ef_deploy` action_type, repo+deploy coordination, P1 recovery timing, security hygiene in result files); L23 logged but rollback path not exercised. Inline post-v2.57 work (cc-0005 v4 patch commit `577d8568`; cc-0007 brief draft commit `7c45a927`; Platform Reconciliation View brief candidate commit `a8a241d1`) folded into v2.58 close. Closed v2.58: F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT (P1). Previous (v2.57): F-CRON-PG-NET-TIMEOUT-5S CLOSED via cc-0006 APPLIED + cc-0005 / M8 Path A v3 PATCHED.)
 
 ---
 
@@ -19,15 +17,15 @@
 4. Asks PK about Personal businesses
 5. Surfaces Time-bound items due today/tomorrow
 
-**Standing rule (D-01)**: every production patch + action_list version bump that touches production state goes through ChatGPT cross-check before deploy/commit. **v2.57 application**: 1 D-01 fire chat-side prior cycle for cc-0006 apply (clean PASS / agree / proceed / 0 pushback / 0 escalation; first `cron_edit` action_type). v2.57 4-way sync close commit (this) is doc-only and per protocol does not require a fire. cc-0005 v3 patch (prior turn) was doc-only and did not require a fire. **Inline post-v2.57 additions** (cc-0005 v4 patch, cc-0007 P1 recovery brief draft, Platform Reconciliation View brief candidate) are all doc-only and per protocol did not require fires.
+**Standing rule (D-01)**: every production patch + action_list version bump that touches production state goes through ChatGPT cross-check before deploy/commit. **v2.58 application**: 1 D-01 fire chat-side prior cycle for cc-0007 apply (clean PASS / agree / proceed / 0 pushback / 0 escalation; **first `ef_deploy` action_type in cc-NNNN series**). v2.58 4-way sync close commit (this) is doc-only and per protocol does not require a fire. Inline post-v2.57 doc-only commits (cc-0005 v4 patch, cc-0007 brief draft, Platform Reconciliation View brief candidate, action_list reconciliation `a8a241d1`) all doc-only and per protocol did not require fires.
 
 **Standing rule (D-186)**: closure work has a hard time budget. 20-finding cap on P0+P1 open items + 4h/week closure floor + 2-week pause trigger.
 
 **Standing rule (D-YT-OAUTH-1, v2.39)**: invegent-dashboard `/connect` first for FB/IG/LI/YT OAuth reconnects.
 
-**Standing rule (D-PREV-16, v2.40)**: F-EF-DRIFT-PREVENTION Option F is approved target design. All stages CLOSED. **v2.57 application**: no drift fires this session.
+**Standing rule (D-PREV-16, v2.40)**: F-EF-DRIFT-PREVENTION Option F is approved target design. All stages CLOSED. **v2.58 application**: no drift fires this session (cc-0007 EF deploy logged in `m.ef_drift_log` as expected ai-worker entry; V4 PASS).
 
-**STANDING RULE (Lesson #62, v2.41 + v2.50 refinement)**: When ChatGPT MCP echoes Claude's self-disclosed weak evidence as objections, default is NOT automatic state-capture override. **v2.57 application**: D-01 fire for cc-0006 returned clean agree / 0 pushback / 0 escalation; rule not exercised.
+**STANDING RULE (Lesson #62, v2.41 + v2.50 refinement)**: When ChatGPT MCP echoes Claude's self-disclosed weak evidence as objections, default is NOT automatic state-capture override. **v2.58 application**: D-01 fire for cc-0007 returned clean agree / 0 pushback / 0 escalation; rule not exercised.
 
 **STANDING RULE (Lesson candidate #68, v2.43)**: All fired writes must be tracked inline.
 
@@ -37,7 +35,7 @@
 
 **STANDING RULE (v2.48 — Pre-flight discovery as standard CC pattern)**: §1.5-style pre-flight discovery is now the default brief pattern for any CC dashboard/portal/web/script work.
 
-**STANDING RULE (v2.50 — Acceptance integrity)**: Acceptance is not complete until the actual review artifact is received and reviewed. **v2.57 application**: cc-0006 result file commit `c72bc327` verified by re-fetching landed file content via Invegent GitHub MCP — blob `9613c133`, size 11,188 B; md5 deltas + V1–V4 verification table + D-01 conditions all present. cc-0005 v3 patch commit `245005a3` verified by re-fetching landed file content — blob `2284ef2d`, size 75,985 B; all 13 v3 fix categories verified present. **Inline post-v2.57 additions verified:** cc-0005 v4 patch commit `577d8568` (blob `96567ddd`, 80,912 B); cc-0007 P1 recovery brief commit `7c45a927` (blob `4e0372ca`, 39,686 B); Platform Reconciliation View addition (this commit; SHA pending push completion).
+**STANDING RULE (v2.50 — Acceptance integrity)**: Acceptance is not complete until the actual review artifact is received and reviewed. **v2.58 application**: cc-0007 result file commit `411b85ee` verified by re-fetching landed file content via Invegent GitHub MCP — blob `b21be653`, size 11,401 B; V1–V4 verification table + D-01 conditions + bearer-token redaction + brief-runner-v0 §9 observations all present. cc-0007 repo patch commit `5037e573` verified by re-fetching landed `supabase/config.toml` content — blob `3d98d88f`, 4,496 B; `[functions.ai-worker] verify_jwt = false` block present at end of custom-header section; section count comments updated 23→24 / 10→11; all other entries preserved verbatim.
 
 **STANDING RULE (v2.55 — brief-runner-v0 baseline patterns from cc-0003 cycle)**: L1–L4 are baseline:
 - **L1 HALT mechanism is load-bearing.**
@@ -47,31 +45,19 @@
 
 **v2.56 ADDITION**: **L6 (cross-brief patch propagation when invariant fails) is now baseline.**
 
-**v2.57 ADDITIONS (candidates from cc-0006 + cc-0005 v3 cycles, promotion after one more vindication each):**
-- **L10** `cron_edit` D-01 action_type works cleanly
-- **L11** md5 baseline + post-md5 fingerprint pattern for any brief that touches a fingerprintable artifact
-- **L12** substrate-drift guard pattern (paranoid but cheap)
-- **L13** V3 immediate evaluation — cron_health_snapshot may compute right after apply; cannot be relied on in general
-- **L14** V4 strict-vs-load-bearing distinction — informational vs blocking criteria
-- **L15** chat review pass before apply — explicit doc-review step before D-01 fire materially reduces apply-time risk for any new brief shape
-- **L16** function-call regex pattern — portable PostgreSQL pattern for verifying call presence/absence in function/view/cron bodies
-- **L17** in-place patching pattern — a brief with critical correctness or premise bugs caught at review time can be in-place patched as long as it has not yet been applied
-- **L18** pre-flight cohort surfacing pattern — when a brief retires or modifies a code path, surface the cohorts the retired path was processing; PK decides handling
+**v2.57 ADDITIONS (candidates from cc-0006 + cc-0005 v3 cycles, promotion after one more vindication each):** L10–L18.
 
-**Inline post-v2.57 lesson candidates (from cc-0005 v4 patch + cc-0007 draft cycles, promotion deferred to next sync close):**
-- **L19** CC v3 pre-flight HALT pattern — v3 §1.4 caller check correctly HALTed at apply when expected (1) didn't match observed (3); vindicates v3 H1–H6 expansion.
-- **L20** in-place patch vs scope-reduce vs new brief — distinct from L17. L17 = in-place patch for bugs caught BEFORE apply. L20 = when blocker requires non-trivial follow-up, defer to a NEW brief rather than retry in-place. M8b is L20's exemplar.
-- **L21** scope re-banding pattern — brief lower bounds matter as much as upper bounds. v3 had min=0; v4 re-bands [250, 500] to REQUIRE non-trivial cohort.
-- **L22** `ef_deploy` D-01 action_type — cc-0007 introduces (post-cc-0006's `cron_edit`). Reviewer should apply same standards as `sql_destructive` (production state change with rollback path).
-- **L23** repo + deploy coordination rollback shape — first brief where apply session has TWO production-touching steps: (a) git commit pushing config.toml, (b) supabase functions deploy. Rollback handles either-or-both failure.
-- **L24** P1 recovery timing — first cc-NNNN brief at P1 recovery level. Tests whether brief-runner-v0 can handle expedited timing.
-- **L25** security hygiene in result files — bearer-token redaction pattern as standard for any brief touching authentication-related cron commands.
+**v2.58 ADDITIONS (candidates from cc-0007 cycle, promotion after one more vindication each):**
+- **L22** `ef_deploy` D-01 action_type — **VINDICATED** by cc-0007. Reviewer applied appropriate standards (same as `sql_destructive`); clean PASS / agree / proceed / 0 pushback / 0 escalation. Cousin to L10 (`cron_edit`); both proven robust.
+- **L23** repo + deploy coordination rollback shape — **LOGGED** by cc-0007. cc-0007 was first apply with TWO production-touching steps: (a) `git push` of `supabase/config.toml`, (b) `supabase functions deploy`. Both succeeded; rollback shape (git revert + redeploy without flag) was prepared but NOT exercised. Pattern is durable but not yet vindicated through actual rollback.
+- **L24** P1 recovery timing — **LOGGED** by cc-0007. Wall-clock ~1h55m brief→closure including D-01 fire + final re-verify + repo patch + deploy + V1–V4 + result file authoring. P1 cost-of-waiting honoured without expediting D-01 protocol.
+- **L25** security hygiene in result files — **VINDICATED** by cc-0007. Bearer tokens / vault values successfully redacted from result file; only structural references (`vault.decrypted_secrets WHERE name='X'`) appear. Pattern is now standard for any brief touching authentication-related cron commands.
 
-**v2.57 promotion candidates (carry-forward from v2.56, after one more vindication each):**
-- **L5** invariants must be empirically pre-tested
-- **L7** "informational, expected non-zero" co-occurrence pattern
-- **L8** multi-table criterion via IN-subquery pattern at production scale
-- **L9** schedule-delta evidence in result files
+**v2.58 vindications of prior candidates:**
+- **L10** `cron_edit` action_type — vindicated again indirectly (sibling `ef_deploy` action_type also clean). Promotion to baseline candidate next cycle.
+- **L17** in-place patching pattern — vindicated again by cc-0005 v4 (in-place supersedes v3 since v3 was never applied). Promotion to baseline candidate next cycle.
+
+**v2.57 promotion candidates (carry-forward, after one more vindication each):** L5, L7, L8, L9.
 
 ---
 
@@ -79,37 +65,36 @@
 
 | Metric | Current | Limit | Status |
 |---|---|---|---|
-| Open findings + investigations (P0+P1) | ~3 (was ~2 v2.57 + cc-0007 P1 added; cc-0005/cc-0006 closures pending) | 20 | ✅ within budget |
-| Trailing-14-day closure hours | ~60h (carry from v2.57; +30m for cc-0005 v4 + cc-0007 + Platform Reconciliation candidate authoring this session) | 8.0 floor | ✅ above floor |
+| Open findings + investigations (P0+P1) | ~2 (was ~3 v2.57; cc-0007 P1 closed v2.58) | 20 | ✅ within budget |
+| Trailing-14-day closure hours | ~62h (carry from v2.57 + ~2h cc-0007 cycle + ~30m sync close) | 8.0 floor | ✅ above floor |
 | Pause trigger active? | NO | — | New automation authoring still allowed |
 
-**Inline post-v2.57 additions this session: ~30 min** (cc-0005 v4 patch + cc-0007 P1 brief draft + Platform Reconciliation View candidate).
+**This v2.58 4-way sync close: ~30 min** (read 3 docs + cc-0007 result file + supabase/config.toml verification + author 3 doc files + acceptance integrity verify).
 
-**State-capture exception count v2.57: 0** (cc-0006 D-01 fire returned clean agree; no escalation, no override). **Post-v2.57 inline additions: no D-01 fires** (all doc-only).
+**State-capture exception count v2.58: 0** (cc-0007 D-01 fire returned clean agree; no escalation, no override).
 
 ---
 
-## ⭐ Today / Next 5 — REBUILT v2.57
+## ⭐ Today / Next 5 — REBUILT v2.58
 
-> **Last rebuilt:** 2026-05-09 Sydney (v2.57).
-> **F-CRON-PG-NET-TIMEOUT-5S CLOSED v2.57.** cc-0005 v3 PATCHED chat-side, ready for pre-flight gating. HTTP 401 5-min cron triage NEW v2.57.
-> **Inline post-v2.57:** cc-0005 v4 patched (M8 staged → M8a only); cc-0007 P1 recovery brief draft authored (F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT); Platform Reconciliation View brief candidate added to backlog.
+> **Last rebuilt:** 2026-05-09 Sydney (v2.58).
+> **F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT CLOSED v2.58 (P1).** cc-0007 repo patch + EF deploy applied; V1–V4 PASS. ai-worker now generating drafts; pipeline starvation cleared. **cc-0005 M8a is the next pipeline-integrity apply candidate per PK directive.**
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
-| 1 | **Dashboard Architecture Review Phase 0 prerequisites** | **P1 TOP** | Unchanged from v2.55/v2.56. M6 Phase A + B closed; M7 (doc-only) + M8 (cc-0005 v3 patched, awaiting apply) still pending. | PK confirms 7 default-blockers via `docs/briefs/cc-0001-dashboard-phase-0-defaults.md`. |
-| 2 | **AI cost view** | P3 quick win | Unchanged. ~1h estimate. | Author `vw_ai_cost_monthly` on `m.ai_job` (read-only DDL) + add NOW dashboard tile. |
-| 3 | **cc-0005 / M8 Path A v3 — APPLY scheduling** | **P3 (PK direction required)** | **Rephrased v2.57.** Brief patched to v3 (commit `245005a3`); v2 Path A had 5 critical regex bugs that would have blocked first apply. v3 ready for pre-flight gating. **Inline post-v2.57:** PATCHED FURTHER to v4 (commit `577d8568`, M8 staged → M8a only after CC v3 pre-flight HALT surfaced 2 non-cron manual callers; Component 3 deferred to M8b separate brief). v4 apply gates remaining: §1.0 sequencing ✅ MET + §1.4 expected 3 callers + §1.5a band [250, 500] + §1.5d alignment=0 + D-01 + PK approval. | PK directs whether to schedule apply session. |
-| 4 | **HTTP 401 5-min cron triage** | **P3 (NEW v2.57)** | Surfaced during cc-0006 V4. NOT a regression. Likely jobid 48 or another `*/5` cron returning 401. **Inline post-v2.57:** CC's read-only triage 2026-05-09 definitively identified jobid 5 (`ai-worker-every-5m`), NOT jobid 48 (which is pure-SQL pg_cron and cannot 401 against an EF gateway). cc-0007 P1 recovery brief authored (commit `7c45a927`, finding F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT). | PK directs apply scheduling for cc-0007. |
+| 1 | **Dashboard Architecture Review Phase 0 prerequisites** | **P1 TOP** | Unchanged from v2.55/v2.56/v2.57. M6 Phase A + B closed; M7 (doc-only) + M8 (cc-0005 v4 patched, awaiting apply) still pending. | PK confirms 7 default-blockers via `docs/briefs/cc-0001-dashboard-phase-0-defaults.md`. |
+| 2 | **cc-0005 / M8 Path A v4 — APPLY scheduling** | **P3 (PK direction required; PROMOTED v2.58)** | **cc-0007 closure clears the P1 ai-worker block** — ai-worker is now generating drafts; m.ai_job rows being processed; cron 48 has fresh succeeded ai_jobs to enqueue from. cc-0005 M8a v4 (commit `577d8568`) is now the next pipeline-integrity apply candidate per PK directive. | PK directs whether to schedule apply session (chat-driven via Supabase MCP OR CC-driven per brief-runner-v0). v4 apply gates: §1.0 sequencing ✅ MET v2.55/v2.56 + §1.4 expected 3 callers + §1.3 cron state + §1.5a band [250, 500] + §1.5d alignment count = 0 + D-01 fire (`sql_destructive` action_type for migration) + PK explicit approval phrase. |
+| 3 | **AI cost view** | P3 quick win | Unchanged. ~1h estimate. | Author `vw_ai_cost_monthly` on `m.ai_job` (read-only DDL) + add NOW dashboard tile. |
+| 4 | **Publisher latent config risk follow-up** | **P3 (NEW v2.58)** | cc-0007 §1.4 surfaced publisher block ABSENT from `supabase/config.toml`. Currently 0 × 401 (gateway presumably already at `verify_jwt: false`), but next publisher deploy without flag AND without config.toml entry would regress identically. | Doc-only patch adding `[functions.publisher] verify_jwt = false` to `supabase/config.toml`. No deploy required (publisher currently working). PK directs scheduling. ~5 min. |
 | 5 | **Personal businesses check-in** | P0 standing | Carry. | PK reports any time-sensitive items + Crazy Domains clean-up status. |
 
-**Carry-forward unchanged from v2.56 except v2.57 deltas (cc-0006 closure, cc-0005 v3 patch landed, HTTP 401 triage candidate added). Inline post-v2.57: cc-0005 v4 patch + cc-0007 brief draft + Platform Reconciliation View brief candidate.**
+**Carry-forward unchanged from v2.57 except v2.58 deltas (cc-0007 closure, cc-0005 promoted to rank 2, publisher latent config risk added at rank 4).**
 
 ---
 
 ## 🟢 F-EF-DRIFT-PREVENTION — STATUS BLOCK (unchanged from v2.55)
 
-All stages CLOSED. Cron jobid 80 + 81 active=true. No drift fires this cycle.
+All stages CLOSED. Cron jobid 80 + 81 active=true. No drift fires this cycle (cc-0007 EF deploy logged in `m.ef_drift_log` as expected ai-worker entry; V4 PASS).
 
 ---
 
@@ -117,18 +102,18 @@ All stages CLOSED. Cron jobid 80 + 81 active=true. No drift fires this cycle.
 
 **Status:** COMPLETE at v2.46. 12 docs at `docs/dashboard-review-2026-05/`.
 
-**v2.57 update on hard blockers:**
+**v2.58 update on hard blockers:**
 - ✅ S30 cleared v2.47 — first hard blocker DONE.
-- 🔲 M5–M8 reconciliation — partial progress: M6 Phase A **CLOSED v2.55**; M6 Phase B **CLOSED v2.56**. M7 (doc-only) + M8 (cc-0005 v3 patched but NOT applied; **inline post-v2.57: now v4 patched, M8a-only, with M8b deferred separate brief**) still pending.
+- 🔲 M5–M8 reconciliation — partial progress: M6 Phase A **CLOSED v2.55**; M6 Phase B **CLOSED v2.56**. M7 (doc-only) + M8 (cc-0005 v4 patched, awaiting apply) still pending.
 - 🔲 7 Phase 0 confirmation-blocker defaults — pending PK confirm/override (cc-0001 result file in place).
 
-**Phase 0 still gated. Remains Top-1 next session priority v2.57.**
+**Phase 0 still gated. Remains Top-1 next session priority v2.58.**
 
 ---
 
 ## 🟢 Tier 1 + M4 + M5 + M6 Phase A + M6 Phase B queue integrity & stability remediation — STATUS BLOCK
 
-**v2.57 update:**
+**v2.58 update:**
 - M1 + M2 + M3 — CLOSED 2026-05-05
 - M4 — CLOSED 2026-05-05
 - M5 — CLOSED 2026-05-05
@@ -136,78 +121,17 @@ All stages CLOSED. Cron jobid 80 + 81 active=true. No drift fires this cycle.
 - **M6 Phase B — CLOSED v2.56** via cc-0004 (commit `9d5bdd37`, 43 rows)
 - **M6 dead-letter cycle: COMPLETE.** Total 52 residual rows cleared.
 - **M7 closure — PENDING (folds into cc-0005 / M8 4-way sync per reconciliation §6 Q2; doc-only)**
-- **M8 atomic cutover — cc-0005 v3 PATCHED v2.57 commit `245005a3`** (supersedes v2 Path A `f70cb41f` due to 5 critical regex bugs caught in chat review). **NOT YET APPLIED.** Apply gates remaining: §1.5d alignment + §1.5c PK direction + D-01 + PK approval.
-- **Inline post-v2.57: M8 STAGED into M8a + M8b** — cc-0005 v4 patch (commit `577d8568`, blob `96567ddd`, 80,912 B). v3's Component 3 (function rename + COMMENT) deferred to M8b separate brief after CC's v3 pre-flight HALT surfaced 2 non-cron manual callers of `public.get_next_scheduled_for` (`public.draft_approve_and_enqueue` + `public.draft_approve_and_enqueue_scheduled`). v4 retains Component 1 (cron 48 in-place rewrite) + Component 2 (legacy cleanup, count band re-banded to [250, 500] around CC's pre-flight observation of 344). M8b is a separate cc-NNNN brief reserved for: remediate 2 manual callers → re-verify zero callers → ALTER FUNCTION RENAME + COMMENT. M8b NOT YET AUTHORED. Also recorded as separate follow-up: 94-row un-publishable legacy draft cohort observed at v3 pre-flight (out of M8a/M8b scope).
+- **M8 atomic cutover — cc-0005 v4 PATCHED** (M8 staged → M8a only; commit `577d8568`, blob `96567ddd`, 80,912 B). v3's Component 3 (function rename + COMMENT) deferred to M8b separate brief after CC's v3 pre-flight HALT surfaced 2 non-cron manual callers of `public.get_next_scheduled_for`. v4 retains Component 1 (cron 48 in-place rewrite) + Component 2 (legacy cleanup, count band re-banded to [250, 500] around CC's pre-flight observation of 344). M8b is a separate cc-NNNN brief reserved for: remediate 2 manual callers → re-verify zero callers → ALTER FUNCTION RENAME + COMMENT. M8b NOT YET AUTHORED. Also separate follow-up: 94-row un-publishable legacy draft cohort (out of M8a/M8b scope). **NOT YET APPLIED. cc-0005 M8a is now the next pipeline-integrity apply candidate per PK directive (v2.58).**
 
 ---
 
-## 🟢 Platform Reconciliation View — BRIEF CANDIDATE STATUS BLOCK (NEW post-v2.57, 2026-05-09)
+## 🟢 Platform Reconciliation View — BRIEF CANDIDATE STATUS BLOCK (added inline post-v2.57, 2026-05-09; unchanged v2.58)
 
 **Status:** brief candidate — NOT yet authored. Reserved as cc-NNNN; promotes to numbered brief when scheduled.
 
-**Classification:** pipeline observability / reconciliation. **NOT cosmetic dashboard work** (PK explicit framing 2026-05-09).
+**v2.58 sequencing update:** cc-0007 closure (v2.58) satisfies the **first** of three blockers. Remaining: **cc-0005 M8a closure** (next apply candidate per PK directive); **current pipeline-integrity closure work** (M8b deferred separate brief; 94-row un-publishable legacy draft cohort separate follow-up; M5–M8 reconciliation residual). **Implementation NOT to start now per PK explicit direction.**
 
-**Title:** Platform Reconciliation View — by day / client / platform.
-
-**Problem (PK directive 2026-05-09 Sydney):** PK is manually checking each social platform to know whether ICE output actually appeared. This is not scalable. Dashboard needs a reconciliation surface showing what ICE expected/produced/queued/published versus what each platform actually shows.
-
-**Required scope (PK-directed 2026-05-09):**
-- by day / client / platform reconciliation
-- ICE expected cadence (per client × platform × day; sourced from `c.client_publish_profile` + `c.client_ai_profile` schedule rules)
-- ICE generated assets / drafts (`m.post_draft` rows, including `approval_status` distribution)
-- ICE queue state (`m.post_publish_queue`, including `dead`/`failed`/`queued`/`published`)
-- ICE publisher result / logs (`m.post_publish`, `m.worker_http_log`, EF deploy state)
-- platform-observed post evidence (manual ingestion or API where available)
-- mismatch classification: `missing`, `late`, `duplicate`, `extra`, `wrong-content`, `stale`, `OK`
-- evidence links / platform IDs where available
-- manual override field for platforms where API ingestion is not yet available
-
-**Seed manual observations (PK direct, 2026-05-09 Sydney):**
-
-| Client | Platform | Observation date | PK note |
-|---|---|---|---|
-| NDIS Yarns | YouTube Short | 7 May 2026 | — |
-| Property Pulse | YouTube Short | 6 May 2026 | — |
-| NDIS Yarns | Instagram | 1 May 2026 | — |
-| Property Pulse | Instagram | 25 Apr 2026 | — |
-| Invegent | Instagram | 25 Apr 2026 | — |
-| Property Pulse | Facebook | 8 May 2026 | — |
-| NDIS Yarns | Facebook | 8 May 2026 | — |
-| Care for Welfare | Facebook | 1 May 2026 | — |
-| Invegent | Facebook | 8 May 2026 | **wrong / irrelevant post** (potential `wrong-content` classification) |
-| Care for Welfare | LinkedIn | ~6 May 2026 | — |
-| NDIS Yarns | LinkedIn | ~8 May 2026 | — |
-| Property Pulse | LinkedIn | ~7 May 2026 | **two posts in one day** (potential `duplicate` or `extra` classification) |
-| Invegent | LinkedIn | (consistent) | "appears consistent" — informal `OK` |
-
-**13 datapoints across 4 clients (NDIS Yarns, Property Pulse, Care for Welfare, Invegent) and 4 platforms (Facebook, Instagram, LinkedIn, YouTube).** PK's notes surface at least 2 explicit mismatch flags (Invegent FB wrong-content; Property Pulse LI possible duplicate-or-extra). Several observation gaps may reflect `stale` (Property Pulse + Invegent Instagram both 14+ days old at observation; Care for Welfare Facebook 8 days old). These 13 datapoints are durable seed cohort for the future brief — preserved here so the brief author can use them as test cases when promoted.
-
-**Sequencing / blockers (PK explicit 2026-05-09):**
-1. **cc-0007 ai-worker 401 recovery (P1)** — brief authored 2026-05-09 (commit `7c45a927`); awaiting apply.
-2. **cc-0005 M8a Path A v4** — brief patched 2026-05-09 (commit `577d8568`); awaiting apply.
-3. **Current pipeline-integrity closure work** — M8b deferred separate brief (manual caller remediation + function deprecation); 94-row un-publishable legacy draft cohort separate follow-up; M5–M8 reconciliation residual.
-
-**Implementation NOT to start now per PK explicit direction.**
-
-**Brief shape (sketched; when promoted):**
-- Reserved cc-NNNN; chat-authored consistent with cc-NNNN observability-class pattern.
-- Likely multi-repo: invegent-dashboard (reconciliation surface UI) + possibly invegent-content-engine (new tables for platform-observed evidence + manual override) + possibly portal scope (client-facing summary variant).
-- Architecture review §10 product objects + data model exists at `docs/dashboard-review-2026-05/10_product_objects_and_data_model.md` — informs what "expected" means per platform but will need extension with reconciliation-specific objects (`platform_observation`, `mismatch_classification`).
-- LinkedIn API ingestion gated on Phase 2.x dependency (per `docs/04_phases.md`); manual override field is the bridge for platforms without API access.
-- Mismatch-classification rules need codification: thresholds for `late` vs `OK`, definitions of `duplicate` vs `extra`, content-similarity heuristic for `wrong-content`, freshness threshold for `stale`.
-- Reconciliation joins span `c.*` (expected cadence) + `m.post_draft` (generated) + `m.ai_job` (succeeded/failed) + `m.post_publish_queue` (queue state) + `m.post_publish` (ICE result) + new `m.platform_observation` (platform-observed evidence) + new `m.platform_observation_manual_override` (PK manual entries).
-
-**Open dependencies before promotion:**
-1. cc-0007 closure (or in-progress with stable next-step).
-2. cc-0005 M8a closure (or stable next-step).
-3. Phase 0 confirmation defaults (PK confirms 7 default-blockers via cc-0001).
-4. Architecture review §10 extension scope decided at brief-authoring time.
-5. Manual override design: dashboard input form? Supabase RLS-protected table? PK directs at brief-authoring time.
-6. API ingestion priority: which platforms get auto-ingested first? Facebook + Instagram via Meta Graph API likely first (already integrated for publishing); LinkedIn manual until Phase 2.x; YouTube via Data API if possible.
-
-**Brief author when promoted:** chat. (Consistent with observability-class cc-NNNN pattern.)
-
-**Inline addition annotation:** added to action_list 2026-05-09 post-v2.57. Header version remains v2.57 — this entry will fold into the next sync close (v2.58 candidate) along with cc-0005 v4 + cc-0007 references.
+13 seed manual observations + scope + brief shape sketch + open dependencies preserved verbatim from inline post-v2.57 addition (commit `a8a241d1`). See full block in commit `a8a241d1` if needed; not duplicated here to keep file size bounded.
 
 ---
 
@@ -223,22 +147,22 @@ Unchanged from v2.54.
 
 ---
 
-## 🛠 Meta-tooling — ChatGPT Review MCP (T-MCP-02 quota at 53 cumulative; close-the-loop ~27+ pending)
+## 🛠 Meta-tooling — ChatGPT Review MCP (T-MCP-02 quota at 54 cumulative; close-the-loop ~28+ pending; 4 cc-NNNN reviews pending close-the-loop)
 
-**v2.57 application**: 1 D-01 fire chat-side prior cycle for cc-0006 apply. Cumulative T-MCP-02: 52 → 53. Cumulative T-MCP-08: 2 (unchanged). State-capture exceptions v2.57: **0**.
+**v2.58 application**: 1 D-01 fire chat-side prior cycle for cc-0007 apply. Cumulative T-MCP-02: 53 → 54. Cumulative T-MCP-08: 2 (unchanged). State-capture exceptions v2.58: **0**.
 
 **Fire ledger this cycle:**
-- Fire #1 (cc-0006 D-01, review_id pending close-the-loop capture): action_type **`cron_edit`** (first use in cc-NNNN series). Verdict agree / proceed / risk=medium / confidence=high. 0 pushback. 0 escalation. Clean approve. Conditions: re-run final read-only verification immediately before apply (PASSED — no drift); halt if any job missing/inactive/already-has-timeout/md5-divergent (NOT triggered); use exact cc-0006 SQL from packet (USED VERBATIM); apply only after PK explicit phrase (RECEIVED); after apply run V1–V4 (DONE — V1+V2+V3 PASS strictly, V4 PASS load-bearing); commit result file (DONE — commit `c72bc327`).
+- Fire #1 (cc-0007 D-01, review_id pending close-the-loop capture): action_type **`ef_deploy`** (**first use in cc-NNNN series**). Verdict agree / proceed / risk ≤ medium / confidence high. 0 pushback. 0 escalation. Clean approve. Conditions: re-run final read-only verification immediately before apply (PASSED — no drift); halt if ai-worker self-resolves OR config already correct OR 401 pattern absent (NOT triggered); patch only `supabase/config.toml` adding `[functions.ai-worker] verify_jwt = false` (DONE — commit `5037e573`); commit repo patch (DONE); deploy only `supabase functions deploy ai-worker --no-verify-jwt` (DONE — exit=0); after deploy run V1–V4 (DONE — all PASS at first fire); redact bearer tokens / keys from result file (DONE — only structural references in result file); rollback only if verification fails (NOT TRIGGERED).
 
-**Inline post-v2.57: 0 D-01 fires** (cc-0005 v4 patch + cc-0007 brief draft + Platform Reconciliation View candidate are all doc-only).
+**Inline post-v2.57: 0 D-01 fires** (cc-0005 v4 patch + cc-0007 brief draft + Platform Reconciliation View candidate + action_list reconciliation `a8a241d1` are all doc-only).
 
-**Close-the-loop UPDATEs to `m.chatgpt_review`:** v2.57 adds 1 more (cumulative ~27+ pending). Carried as P3 backlog. **Deferred this turn per PK explicit "no Supabase writes" scope.** v2.55 (cc-0003 v2) + v2.56 (cc-0004) close-the-loops also still pending.
+**Close-the-loop UPDATEs to `m.chatgpt_review`:** v2.58 adds 1 more (cumulative ~28+ pending). **4 cc-NNNN reviews pending close-the-loop** (cc-0003 v2 + cc-0004 + cc-0006 + cc-0007). Carried as P3 backlog. **Deferred this turn per PK explicit "no Supabase writes" scope.** v2.55 (cc-0003 v2) + v2.56 (cc-0004) + v2.57 (cc-0006) close-the-loops also still pending.
 
 ---
 
 ## 🤖 Cowork automation (D182)
 
-**v2.57 status (carry from v2.54/v2.55/v2.56):** `docs/briefs/morning-inbox-sweep-v1.md` committed status=draft per PK hold. NOT scheduled in Cowork until PK amends and flips status=review_required.
+**v2.58 status (carry from v2.54/v2.55/v2.56/v2.57):** `docs/briefs/morning-inbox-sweep-v1.md` committed status=draft per PK hold. NOT scheduled in Cowork until PK amends and flips status=review_required.
 
 **Existing Cowork status (unchanged):** Weekly reconciliation Mon 7am AEST + ICE Nightly Health Check daily 02:00 AEST. `docs/audit/health/2026-05-06.md` still absent — carry as P3 follow-up.
 
@@ -248,35 +172,35 @@ Unchanged from v2.54.
 
 | ID | Item | Priority | Status | Owner | Next action |
 |---|---|---|---|---|---|
-| **Dashboard Architecture Review Phase 0 prerequisites** | 7 confirm-defaults + M5–M8 reconciliation | P1 TOP (v2.56) | S30 cleared v2.47; M6 Phase A closed v2.55; M6 Phase B closed v2.56; M7 + M8 + defaults pending | PK | Review §11.4 items 3–9; confirm defaults via `docs/briefs/cc-0001-dashboard-phase-0-defaults.md`. |
-| **AI cost view** (carry from v2.49) | `vw_ai_cost_monthly` view on `m.ai_job` + NOW dashboard tile | P3 → Top 2 (carry from v2.55) | Backlog | chat → next session | Author view DDL (read-only); add NOW dashboard tile. ~1h estimate. |
-| **cc-0005 / M8 Path A v3 — APPLY scheduling** | Apply Path A v3 cutover (cron 48 in-place rewrite + legacy-origin future cleanup + function deprecation) | P3 → Top 3 (rephrased v2.57; **patched further to v4 inline post-v2.57: M8a-only**) | Brief PATCHED to v3 (commit `245005a3`, blob `2284ef2d`, 75,985 B). v2 Path A (`f70cb41f`) superseded due to 5 critical regex bugs (C1–C5) caught in chat review. v3 also adds H1–H6 + M1–M4 + L1–L2 fixes. **NOT YET APPLIED.** **Inline post-v2.57: PATCHED FURTHER to v4 (commit `577d8568`, blob `96567ddd`, 80,912 B); M8 staged → M8a only; Component 3 deferred to M8b separate brief after CC v3 pre-flight HALT surfaced 2 non-cron manual callers of `public.get_next_scheduled_for`. v4 also re-bands cleanup count to [250, 500] around CC's v3 pre-flight observation of 344.** | PK → chat OR CC | PK directs whether to schedule apply session (chat-driven via Supabase MCP OR CC-driven per brief-runner-v0). v4 apply gates: §1.0 sequencing ✅ MET v2.55/v2.56 + §1.4 expected 3 callers + §1.3 cron state + §1.5a band [250, 500] + §1.5d alignment count = 0 + D-01 fire + PK explicit approval phrase. M8b is a separate cc-NNNN brief reserved for manual caller remediation + function deprecation — NOT YET AUTHORED. |
-| **cc-0007 ai-worker 401 recovery — APPLY scheduling (NEW post-v2.57)** | F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT (ai-worker `verify_jwt` regression; class match to v2.54 video-worker) | **P1 (NEW post-v2.57)** | Brief AUTHORED inline post-v2.57 (commit `7c45a927`, blob `4e0372ca`, 39,686 B). NOT YET APPLIED. | PK → chat → CC | PK directs apply scheduling. Pre-flight §1.1–§1.5 → D-01 (`ef_deploy` action_type, first use) → PK approval → CC apply session (repo patch `[functions.ai-worker] verify_jwt = false` + `supabase functions deploy ai-worker --no-verify-jwt`). Verification V1–V4 cover next jobid 5 fire returns 200, no new UNAUTHORIZED_INVALID_JWT_FORMAT, m.worker_http_log success linkage, no EF drift regression. P1 because autonomous AI generation stage may be blocked. |
-| **HTTP 401 5-min cron triage** | Triage candidate (jobid 5 confirmed inline post-v2.57; cc-0007 brief authored) | P3 → P1 (rephrased post-v2.57) | **CONFIRMED jobid 5 (`ai-worker-every-5m`)**, NOT jobid 48. cc-0006's earlier hypothesis ("likely jobid 48") corrected by CC's read-only triage 2026-05-09. cc-0007 brief addresses. | folded into cc-0007 — no separate next action | Closure folds into cc-0007 apply outcome. |
-| **Platform Reconciliation View — BRIEF CANDIDATE (NEW post-v2.57)** | by day / client / platform reconciliation surface; pipeline observability (NOT cosmetic dashboard) | **P2 (NEW post-v2.57)** | OBSERVATION-stage; brief NOT YET AUTHORED. 13 seed manual observations captured 2026-05-09 in dedicated 🟢 status block above. | PK → chat → future session | **Queued behind:** (1) cc-0007 ai-worker 401 recovery, (2) cc-0005 M8a, (3) current pipeline-integrity closure work. See dedicated 🟢 status block above for full scope, 13 seed observations, brief shape sketch, and open dependencies. PK explicit "do not start implementation now" 2026-05-09. |
-| **F-CRON-AUTO-APPROVER-SECRET-INLINE** (carry, security) | Cron jobid 58 has secret hardcoded inline; cc-0006 deliberately preserved character-for-character | P2 (security) | OPEN — cc-0006 did NOT touch risk profile | chat → future session (PK approval required for rotation) | PK to authorise secret rotation + vault entry creation + cron command refactor. Separate cc-NNNN brief required. |
+| **Dashboard Architecture Review Phase 0 prerequisites** | 7 confirm-defaults + M5–M8 reconciliation | P1 TOP | S30 cleared v2.47; M6 Phase A closed v2.55; M6 Phase B closed v2.56; M7 + M8 + defaults pending | PK | Review §11.4 items 3–9; confirm defaults via `docs/briefs/cc-0001-dashboard-phase-0-defaults.md`. |
+| **cc-0005 / M8 Path A v4 — APPLY scheduling** | Apply Path A v4 cutover (cron 48 in-place rewrite + legacy-origin future cleanup; M8a only; Component 3 deferred to M8b) | **P3 (PK direction required); PROMOTED to rank 2 v2.58** | Brief PATCHED to v4 inline post-v2.57 (commit `577d8568`, blob `96567ddd`, 80,912 B). M8 staged → M8a only after CC v3 pre-flight HALT surfaced 2 non-cron manual callers. **NOT YET APPLIED.** **cc-0007 closure clears the P1 ai-worker block; cc-0005 M8a is now the next pipeline-integrity apply candidate per PK directive.** | PK → chat OR CC | PK directs whether to schedule apply session (chat-driven via Supabase MCP OR CC-driven per brief-runner-v0). v4 apply gates: §1.0 sequencing ✅ MET v2.55/v2.56 + §1.4 expected 3 callers + §1.3 cron state + §1.5a band [250, 500] + §1.5d alignment count = 0 + D-01 fire (`sql_destructive` action_type for migration) + PK explicit approval phrase. M8b is a separate cc-NNNN brief reserved for manual caller remediation + function deprecation — NOT YET AUTHORED. |
+| **AI cost view** (carry from v2.49) | `vw_ai_cost_monthly` view on `m.ai_job` + NOW dashboard tile | P3 → Top 3 (carry from v2.55) | Backlog | chat → next session | Author view DDL (read-only); add NOW dashboard tile. ~1h estimate. |
+| **Publisher latent config risk follow-up** | Doc-only patch adding `[functions.publisher] verify_jwt = false` to `supabase/config.toml` | **P3 (NEW v2.58)** | cc-0007 §1.4 surfaced; defensive patch held back per strict rule + D-01 conditions. Currently 0 × 401 (gateway presumably already at correct setting), but next publisher deploy without flag AND config.toml entry would regress identically. | chat → next session | Single-file commit to `supabase/config.toml` adding `[functions.publisher] verify_jwt = false`. NO deploy required (publisher currently working). ~5 min. PK directs scheduling. |
+| **Platform Reconciliation View — BRIEF CANDIDATE** | by day / client / platform reconciliation surface; pipeline observability (NOT cosmetic dashboard) | **P2** | OBSERVATION-stage; brief NOT YET AUTHORED. 13 seed manual observations 2026-05-09 captured in dedicated 🟢 status block. **v2.58 update: cc-0007 closure satisfies first blocker.** | PK → chat → future session | **Queued behind:** ~~(1) cc-0007 ai-worker 401 recovery~~ **CLOSED v2.58**, (2) cc-0005 M8a, (3) current pipeline-integrity closure work. PK explicit "do not start implementation now" 2026-05-09 still standing. |
+| **F-CRON-AUTO-APPROVER-SECRET-INLINE** (carry, security) | Cron jobid 58 has secret hardcoded inline; cc-0006 deliberately preserved character-for-character | P2 (security) | OPEN — unchanged v2.58 | chat → future session (PK approval required for rotation) | PK to authorise secret rotation + vault entry creation + cron command refactor. Separate cc-NNNN brief required. |
 | **F-YT-PUB-AVATAR-EXCLUSION** (carry from v2.53) | youtube-publisher `.in()` filter excludes `video_short_avatar` | P3 | LOGGED, no chat action | chat → future (passive) | Validator: any future NY×YT or PP×YT slot where advisor picks `video_short_avatar`. |
 | **morning-inbox-sweep-v1 brief amendment** (carry from v2.51) | PK personal-email morning triage | P3 | DRAFT exists at `docs/briefs/morning-inbox-sweep-v1.md` (status=draft) | PK → chat | PK reviews + proposes amendments; chat applies + flips status=review_required. |
-| **NEW v2.56 P3 backlog observation** | 1 LinkedIn queue row (`1a21199e-...`) was in queue with `pd.approval_status='draft'` (cc-0004 P3.3 outlier; queue dead-lettered, draft itself unchanged) | P3 | LOGGED, no chat action | chat → future (passive) | Investigation deferred. Pattern: investigate how the row reached the queue in 'draft' status (likely manual or pre-M4 path). |
+| **NEW v2.56 P3 backlog observation** | 1 LinkedIn queue row (`1a21199e-...`) was in queue with `pd.approval_status='draft'` (cc-0004 P3.3 outlier; queue dead-lettered, draft itself unchanged) | P3 | LOGGED, no chat action | chat → future (passive) | Investigation deferred. |
 | **Dashboard mobile responsiveness — system-wide** | Whole-dashboard gap | P3 | OBSERVED | chat → dedicated session OR Phase 1+ | Either dedicated session OR roll into architecture review Phase 1+ build sequence. |
 | **F-PUB-009 V3-V5 + 7-day flow** | Forward acid-test | P2 | Passive monitoring | chat → next session | Continue passive monitoring. |
 | **Invegent IG cap-throttle planning** | jobid 53 unblock readiness | P3 | OBSERVED | chat → T05 unblock session | Plan cap-throttle / rate-limit handling. |
-| **CFW post-ai-worker dead drafts** | Drafts dying after AI succeeds | P3 | OBSERVED | chat → future session | Investigate downstream pathway. |
+| **CFW post-ai-worker dead drafts** | Drafts dying after AI succeeds | P3 | OBSERVED | chat → future session | Investigate downstream pathway. **v2.58 note:** with cc-0007 recovery, ai-worker is now succeeding; observe whether this finding self-resolves over next 24–48h. |
 | **Vault `service_role_key` naming hygiene** | 15-char value; misleadingly named | P3 | OBSERVED | chat → future session | Read-only scope-check; rename if appropriate. |
 | **`docs/audit/health/2026-05-06.md` follow-up** | Cowork 02:00 AEST cron 6 May did not push | P3 | Carried | chat → next session if still absent | Investigate Cowork status. |
 | **`00_overview.md` 11-section table reconciliation** | Architecture review changed actual section structure | P3 | Required updates in `11_final_consolidation.md` §11.1 | chat → future session | Update `00_overview.md`. ~15 min. |
 | **F-AAP-NEEDS-REVIEW-BACKLOG** | 28 drafts pending review | P2 | Closure target = architecture review Phase 2 B-09-14 | chat → Phase 2 session | After Phase 0 + Phase 1: bulk approve UI in Phase 2. |
-| **Dashboard roadmap PHASES reconciliation** | PHASES array stale since 3 May | P3 | Carried v2.45 → v2.57 (**13th deferral**) | chat → dedicated session | Open `app/(dashboard)/roadmap/page.tsx` and bring PHASES + LAST_UPDATED current. |
+| **Dashboard roadmap PHASES reconciliation** | PHASES array stale since 3 May | P3 | Carried v2.45 → v2.58 (**14th deferral**) | chat → dedicated session | Open `app/(dashboard)/roadmap/page.tsx` and bring PHASES + LAST_UPDATED current. |
 | **F-AI-WORKER-PARSER-SKIP-BUG V4** | Forward acid-test inconclusive | P2 | Passive monitoring | chat → future | V4 needs natural skip event OR synthetic test. |
 | **F-CRON-COMPLIANCE-MONITOR-STALE** (carry) | cron jobid 31 calls deployed slug; folder absent | P2 | LOGGED | PK → future session | Decide: re-author repo source OR retire deployed slug + cron. |
 | **F-CRON-INGEST-STALE** (carry) | cron jobid 1 calls deployed `ingest-v8-youtube-channel`; folder absent | P2 | LOGGED | PK → future session | Same shape as compliance-monitor. |
 | **F-CRON-PIPELINE-AI-SUMMARY-STALE** (carry) | cron jobid 30 calls deployed slug; folder absent | P2 | LOGGED | PK → future session | Same shape. |
 | **F-CRON-PIPELINE-DOCTOR-STALE** (carry) | cron jobids 29 + 39 call deployed slug; folder absent. **NOT** a rename of `pipeline-diagnostician`. | P2 | LOGGED | PK → future session | Same shape. |
 | **Music library activation checklist** (carry) | 9 mp3 upload + bucket + env var | P3 (PK action) | PENDING PK ACTION | PK | PK to action when music tracks are ready. |
-| **Emergency redeploy governance question** (carry) | Should bounded production-restoration require expedited D-01? | P2 (PK decision) | PENDING PK DECISION | PK | PK rules; chat documents in `docs/06_decisions.md`. |
+| **Emergency redeploy governance question** (carry) | Should bounded production-restoration require expedited D-01? | P2 (PK decision) | PENDING PK DECISION | PK | PK rules; chat documents in `docs/06_decisions.md`. **v2.58 note:** cc-0007 P1 recovery cycle (~1h55m brief→closure) demonstrates standard D-01 protocol can handle P1 timing without expediting. Empirical input for the decision.
 
-**Closed v2.57:** **F-CRON-PG-NET-TIMEOUT-5S (P2)** — cc-0006 APPLIED via Supabase MCP `execute_sql` (commit `c72bc327`). Jobs 33/44/58 patched with `timeout_milliseconds := 30000`. V1+V2+V3 PASS strictly; V4 PASS for load-bearing "no regression in `timed_out`" criterion. 3 pre-existing background HTTP 401s on `*/5` schedule (stable across apply boundary) — NOT a regression; logged as separate triage candidate (now confirmed jobid 5 inline post-v2.57; cc-0007 brief addresses). No rollback. Job 58's inline `x-auto-approver-key` value preserved character-for-character — F-CRON-AUTO-APPROVER-SECRET-INLINE remains separately OPEN.
+**Closed v2.58:** **F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT (P1)** — cc-0007 APPLIED via repo patch + EF deploy by CC. Repo patch commit `5037e573` (`supabase/config.toml` `[functions.ai-worker] verify_jwt = false`); EF deploy `supabase functions deploy ai-worker --no-verify-jwt` exit=0 at `2026-05-09T04:23:27Z`. Recovery confirmed at first post-deploy cron 5 fire `04:25:00Z`; status_code=200; pattern transition unambiguous (22+ × 401 pre-deploy → 200 immediately post-deploy). V1–V4 all PASS at first fire. No rollback. Result file commit `411b85ee` (blob `b21be653`, 11,401 B). HTTP 401 5-min cron triage candidate from v2.57 also closed (jobid 5 was the source). First `ef_deploy` D-01 action_type. Class match to v2.54 video-worker regression vindicated twice.
 
+**Closed v2.57:** F-CRON-PG-NET-TIMEOUT-5S (P2) — cc-0006 commit `c72bc327`.
 **Closed v2.56:** M6 Phase B (P1) — cc-0004 commit `9d5bdd37`.
 **Closed v2.55:** M6 Phase A (P1) — cc-0003 v2 commit `d60dcfbc`.
 **Closed v2.54:** video-worker `verify_jwt` durable fix (P3) — landed via `supabase/config.toml`.
@@ -296,7 +220,7 @@ Unchanged from v2.54.
 
 ## 💼 Personal businesses
 
-**v2.57 carry from v2.55/v2.56 (unchanged):**
+**v2.58 carry (unchanged from v2.55/v2.56/v2.57):**
 
 - **Crazy Domains refund + clean-up follow-up** (carry from v2.51) — PK called CD on 2026-05-08; at least one invoice refund verbally confirmed in progress. Remaining clean-up still PK to action manually:
   1. Cancel Website Builder auto-renewal (saves ~$251/yr ongoing)
@@ -309,32 +233,29 @@ Unchanged from v2.54.
 
   Not chat scope — PK actions manually. Re-check status next session.
 
-*(no other items flagged at v2.57 close — standing P0 to ask at next session start.)*
+*(no other items flagged at v2.58 close — standing P0 to ask at next session start.)*
 
 ---
 
 ## 📌 Backlog
 
-**v2.57 changes**:
+**v2.58 changes**:
 
-- **CLOSED v2.57**: F-CRON-PG-NET-TIMEOUT-5S P2 (cc-0006; commit `c72bc327`).
-- **PROMOTED v2.57**: HTTP 401 5-min cron triage → Top 4 next session priority + Active table P3 row. NEW finding surfaced during cc-0006 V4 (3 responses in 30-min window on `*/5` schedule; not a regression; out-of-scope for cc-0006). Likely candidates: jobid 48 `enqueue-publish-queue-every-5m` or another 5-min cron whose endpoint returns 401. **Inline post-v2.57: confirmed jobid 5 (`ai-worker-every-5m`) NOT jobid 48; folded into cc-0007 brief.**
-- **REPHRASED v2.57**: cc-0005 / M8 cutover Active row — brief patched to v3 (commit `245005a3`); supersedes v2 Path A (`f70cb41f`) which had 5 critical regex bugs (substring matches against `get_next_scheduled_for` would have matched comment text in rewritten cron 48 body and fired V8/V10 RAISE EXCEPTION). v3 fixes regex (function-call syntax) + comment rephrase + H1–H6 (P1.5b distinct created_by, P1.5c un-publishable cohort, P1.5d alignment HALT §8.2.l, §1.4b ORIGINAL_COMMENT capture) + M1–M4 hygiene + L1–L2 defensive. **NOT YET APPLIED.** Apply gates remaining: §1.5d alignment=0 + §1.5c PK direction + D-01 + PK approval. **Inline post-v2.57: PATCHED FURTHER to v4 (commit `577d8568`); M8 staged → M8a only; Component 3 deferred to M8b separate brief.**
-- **CARRIED v2.57**: Dashboard roadmap PHASES — **13th** consecutive deferral (was 12th in v2.56).
-- **CARRIED v2.57**: 3 outstanding `m.chatgpt_review` close-the-loop UPDATEs (cc-0003 v2 + cc-0004 + cc-0006 D-01 fires).
-- **CARRIED v2.57**: 4× v2.54 P2 cron findings (F-CRON-COMPLIANCE-MONITOR-STALE, F-CRON-INGEST-STALE, F-CRON-PIPELINE-AI-SUMMARY-STALE, F-CRON-PIPELINE-DOCTOR-STALE).
-- **CARRIED v2.57**: F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 sec) — cc-0006 deliberately did NOT touch this finding; risk profile UNCHANGED. PK auth required.
-- **NEW v2.57 LESSON CANDIDATES**: L10–L18 from cc-0006 + cc-0005 v3 cycles. Promotion to canonical or baseline after one more vindication each.
-- **CARRIED v2.57**: All v2.55/v2.56 items unchanged except F-CRON-PG-NET-TIMEOUT-5S closure, cc-0005 v3 patch landed, HTTP 401 triage added.
+- **CLOSED v2.58**: F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT (P1; cc-0007 result commit `411b85ee`).
+- **CLOSED v2.58 (folded into cc-0007)**: HTTP 401 5-min cron triage candidate from v2.57 (jobid 5 was the source; cc-0006's earlier hypothesis of jobid 48 corrected).
+- **PROMOTED v2.58**: cc-0005 / M8 Path A v4 APPLY scheduling → Top 2 next session priority + Active table rank 2. cc-0007 closure clears the P1 ai-worker block; cc-0005 M8a is now the next pipeline-integrity apply candidate per PK directive.
+- **NEW v2.58**: Publisher latent config risk follow-up → Top 4 next session priority + Active table P3 row. Doc-only patch (no deploy required).
+- **CARRIED v2.58**: Dashboard roadmap PHASES — **14th** consecutive deferral (was 13th in v2.57).
+- **CARRIED v2.58**: 4 outstanding `m.chatgpt_review` close-the-loop UPDATEs (cc-0003 v2 + cc-0004 + cc-0006 + cc-0007 D-01 fires).
+- **CARRIED v2.58**: 4× v2.54 P2 cron findings (F-CRON-COMPLIANCE-MONITOR-STALE, F-CRON-INGEST-STALE, F-CRON-PIPELINE-AI-SUMMARY-STALE, F-CRON-PIPELINE-DOCTOR-STALE).
+- **CARRIED v2.58**: F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 sec) — risk profile UNCHANGED. PK auth required.
+- **NEW v2.58 LESSON CANDIDATES**: L22–L25 from cc-0007 cycle (`ef_deploy` action_type VINDICATED, repo+deploy coordination LOGGED, P1 recovery timing LOGGED, security hygiene VINDICATED).
+- **VINDICATED v2.58**: L10 (`cron_edit` action_type, by sibling `ef_deploy` clean apply); L17 (in-place patching pattern, by cc-0005 v4 in-place superseding v3).
+- **CARRIED v2.58**: All v2.55/v2.56/v2.57 items unchanged except F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT closure, HTTP 401 triage closure (folded into cc-0007), cc-0005 promoted to rank 2, publisher follow-up added.
+- **CARRIED v2.58**: Platform Reconciliation View brief candidate (commit `a8a241d1`) — first blocker (cc-0007) cleared; remaining: cc-0005 M8a + pipeline-integrity closure.
+- **CARRIED v2.58**: cc-0005 v4 patch (commit `577d8568`); M8b NOT YET AUTHORED (separate cc-NNNN brief reserved for after M8a closes); 94-row un-publishable legacy draft cohort separate follow-up if PK directs.
 
-**INLINE POST-v2.57 ADDITIONS (2026-05-09 Sydney):**
-
-- **NEW INLINE post-v2.57**: **cc-0005 v4 patch** (commit `577d8568`, blob `96567ddd`, 80,912 B). M8 staged → M8a only after CC's v3 pre-flight HALT surfaced 2 non-cron manual callers of `public.get_next_scheduled_for`. Component 3 (function rename + COMMENT) deferred to M8b separate brief. v4 retains Component 1 + Component 2 (cleanup band re-banded to [250, 500]). M8b NOT YET AUTHORED. 94-row un-publishable legacy draft cohort recorded as separate follow-up (out of M8a/M8b scope). v4 lesson candidates L19–L21.
-- **NEW INLINE post-v2.57**: **cc-0007 P1 recovery brief draft** (commit `7c45a927`, blob `4e0372ca`, 39,686 B). Finding F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT. ai-worker `verify_jwt` regression; class match to v2.54 video-worker recovery. Brief proposes (1) repo patch adding `[functions.ai-worker] verify_jwt = false` to `supabase/config.toml` (+ defensive publisher block conditional on §1.4 evidence + PK direct), (2) production deploy `supabase functions deploy ai-worker --no-verify-jwt` from CC shell. NOT YET APPLIED. v4 lesson candidates L22–L25 (`ef_deploy` action_type, repo+deploy coordination, P1 recovery timing, security hygiene in result files).
-- **NEW INLINE post-v2.57**: **Platform Reconciliation View — BRIEF CANDIDATE** (this addition). Pipeline observability / reconciliation class. by day / client / platform reconciliation surface. 13 seed manual observations from 2026-05-09 captured in dedicated 🟢 status block above. Reserved cc-NNNN. Implementation gated behind cc-0007 + cc-0005 M8a + current pipeline-integrity closure. PK explicit "do not start implementation now".
-- **CONFIRMATION inline post-v2.57**: HTTP 401 5-min cron triage (carried from v2.57) **CONFIRMED jobid 5 `ai-worker-every-5m`**, NOT jobid 48. cc-0007 brief addresses; closure folds into cc-0007 apply outcome.
-
-**v2.55 + v2.56 + earlier changes**: per prior changelog.
+**v2.55 + v2.56 + v2.57 + earlier changes**: per prior changelog.
 
 ---
 
@@ -346,64 +267,53 @@ Unchanged.
 
 ## 🎓 Canonical Lessons
 
-Unchanged from v2.56 except:
-- **Lesson #61** (P1–P5 must be empirically verified, not theoretically assumed) — reinforced again by L15 (chat review pass before apply) and L17 (in-place patching pattern) this cycle. **Promotion to canonical recommended.**
+Unchanged from v2.57 except:
+- **Lesson #61** (P1–P5 must be empirically verified, not theoretically assumed) — reinforced again by cc-0007 cycle (final re-verify confirmed no drift; pre-flight queries empirically gathered before D-01). **Promotion to canonical recommended.**
 - **Lesson #62 v2.50 refinement** — not exercised this cycle.
-
-**Inline post-v2.57:** L19–L25 lesson candidates added from cc-0005 v4 + cc-0007 cycles. Promotion to canonical or baseline after one more vindication each.
+- **L22–L25 (v2.58)** — added; promotion to baseline candidate after one more vindication each.
 
 ---
 
-## v2.57 honest limitations
+## v2.58 honest limitations
 
-- All v2.31–v2.56 limitations apply.
-- **Memory at 30-edit cap pre-session** (carry). v2.57 update DEFERRED per PK explicit scope (no memory edit this turn). Memory `recent_updates` v2.54 entry remains canonical until next chat-owned memory update opportunity (will need to reflect v2.55 + v2.56 + v2.57 closures + inline post-v2.57 additions in a single rolling entry).
-- **Dashboard roadmap PHASES still stale** — **13th** consecutive deferral. Risk unchanged.
-- **~27+ close-the-loop UPDATEs to `m.chatgpt_review`** still pending — v2.57 adds 1 (cc-0006 D-01 fire); v2.55 + v2.56 each added 1; cumulative pending ~27+. All deferred per PK "no Supabase writes" scope across v2.55/v2.56/v2.57.
-- **cc-0003 v2 + cc-0004 + cc-0006 D-01 review_ids not captured in 4-way sync files**. Will surface when close-the-loop UPDATEs are fired (chat session log holds the values).
-- **Sync state file size**: ~25KB at v2.57 close (was ~24KB at v2.56). Archive sweep **OVERDUE** since the 16KB threshold was crossed at v2.54; deferred.
-- **cc-0005 v3 brief is NOT YET APPLIED.** Apply gates remaining: §1.5d alignment=0 + §1.5c PK direction on un-publishable legacy draft cohort + D-01 fire + PK approval. v3 supersedes v2 Path A (`f70cb41f`) due to 5 critical regex bugs caught in chat review pass; in-place patch preserved brief identifier + migration name (`m8_atomic_cutover_v1`) since v2 was never applied. **Inline post-v2.57: cc-0005 PATCHED FURTHER to v4** (commit `577d8568`). v4 supersedes v3; M8 staged → M8a only; Component 3 deferred to M8b separate brief; migration name updated to `m8a_cron48_rewrite_and_legacy_cleanup_v1`. v3 also was never applied; in-place patch convention (L17) preserved across v3→v4 transition.
-- **No D-01 fire for the v2.57 4-way sync close commit** — doc-only, no production state touch. Documented in protocol notes above.
-- **No D-01 fire for cc-0005 v3 patch** — doc-only patch, prior turn. Will require D-01 at apply time when scheduled.
-- **No D-01 fires for inline post-v2.57 additions** (cc-0005 v4 patch + cc-0007 brief draft + Platform Reconciliation View brief candidate) — all doc-only. cc-0005 v4 + cc-0007 will require D-01 at apply time when scheduled.
-- **HTTP 401 5-min cron pattern** — surfaced as triage candidate; not yet investigated. Could be: legitimate auth issue requiring fix; expected behaviour from a cron that returns 401 deliberately; misconfiguration. Read-only triage to identify the 5-min cron source is the next step. **Inline post-v2.57: CONFIRMED jobid 5 `ai-worker-every-5m`; cc-0007 brief addresses.**
-- **cc-0006 P2 closure was within budget but should NOT be confused with addressing F-CRON-AUTO-APPROVER-SECRET-INLINE** — cc-0006 deliberately preserved job 58's inline secret. Rotation requires PK auth and is a separate effort.
-- **Inline post-v2.57 limitation**: action_list header version remains v2.57 despite 3 inline additions (cc-0005 v4 patch + cc-0007 brief draft + Platform Reconciliation View brief candidate). Header bump deferred to next sync close (v2.58 candidate) per inline-addition convention. Sync_state.md unchanged this turn (separate file; remains at v2.57 reference). Per-session file (`docs/runtime/sessions/2026-05-09-cc-0006-closed-cc-0005-v3-patched.md`) does NOT yet reflect inline post-v2.57 work; new per-session file `docs/runtime/sessions/2026-05-09-cc-0005-v4-cc-0007-platform-reconciliation.md` (or similar) authored at next sync close.
-- **Platform Reconciliation View brief candidate is NOT a brief** — only a candidate / queued backlog item with structured scope + 13 seed observations. No code changes, no schema changes, no Supabase writes. Brief authoring deferred behind cc-0007 + cc-0005 M8a + pipeline-integrity closure.
+- All v2.31–v2.57 limitations apply.
+- **Memory at 30-edit cap pre-session** (carry). v2.58 update DEFERRED per PK explicit scope (no memory edit this turn). Memory `recent_updates` v2.54 entry remains canonical until next chat-owned memory update opportunity (will need to reflect v2.55 + v2.56 + v2.57 + v2.58 closures + inline post-v2.57 additions in a single rolling entry).
+- **Dashboard roadmap PHASES still stale** — **14th** consecutive deferral. Risk unchanged.
+- **~28+ close-the-loop UPDATEs to `m.chatgpt_review`** still pending — v2.58 adds 1 (cc-0007 D-01 fire); v2.55 + v2.56 + v2.57 each added 1; cumulative pending ~28+. **4 cc-NNNN reviews pending close-the-loop** (cc-0003 v2 + cc-0004 + cc-0006 + cc-0007). All deferred per PK "no Supabase writes" scope.
+- **cc-0003 v2 + cc-0004 + cc-0006 + cc-0007 D-01 review_ids not captured in 4-way sync files**. Will surface when close-the-loop UPDATEs are fired.
+- **Sync state file size**: ~30KB at v2.58 close (was ~26KB at v2.57 close). Archive sweep **OVERDUE** since the 16KB threshold was crossed at v2.54; deferred.
+- **cc-0005 v4 brief is NOT YET APPLIED.** Apply gates remaining: §1.4 expected 3 callers + §1.3 cron state + §1.5a band [250, 500] + §1.5d alignment count = 0 + D-01 fire + PK approval. cc-0005 M8a is now the next pipeline-integrity apply candidate per PK directive (v2.58).
+- **Publisher latent config risk** — carried as v2.58 P3 follow-up. Doc-only patch only (no deploy). Removes regression risk for next publisher deploy without affecting current state.
+- **No D-01 fire for the v2.58 4-way sync close commit** — doc-only, no production state touch.
+- **No D-01 fire for inline post-v2.57 additions** (cc-0005 v4 patch + cc-0007 brief draft + Platform Reconciliation View brief candidate + action_list reconciliation `a8a241d1`) — all doc-only.
+- **L23 (repo + deploy coordination rollback shape)** — logged but rollback path was NOT exercised in cc-0007. Pattern is durable on the apply side; rollback shape remains theoretical until exercised.
+- **Brief-runner-v0 §1.x quality observations** from cc-0007 (logged in result file §9): cron blind spot for HTTP failures; §1.2 threshold not regression-onset-aware; §1.5 first-failed-cron-fire query relies on same blind spot; `m.ef_drift_log` column-name mismatch (`ef_slug` → `slug`, `created_at` → `checked_at`). Worth incorporating into brief-template work.
 
 ---
 
 ## Changelog
 
-- v1.0–v2.56: per previous changelog.
-- **v2.57 (2026-05-09 Sydney, F-CRON-PG-NET-TIMEOUT-5S closure via cc-0006 APPLIED + cc-0005 / M8 Path A v3 PATCHED chat-side):**
-  - **F-CRON-PG-NET-TIMEOUT-5S CLOSED** — cc-0006 APPLIED via Supabase MCP `execute_sql` by CC. Logical migration `cron_pg_net_timeout_30s_v1` on project `mbkmaxqhsohbtwsqolns`. Single transaction wrapping three `cron.alter_job(...)` statements. `execute_sql` return `[{"alter_job": ""}]` (transaction committed). Jobs 33 (`video-worker-every-30min`), 44 (`heygen-worker-every-30min`), 58 (`auto-approver-sweep`) each patched with `timeout_milliseconds := 30000`. Each command grew by exactly 35 bytes. URLs/headers/body/schedule/active flag byte-for-byte preserved per job. Job 58's inline `x-auto-approver-key` value `DfMs_7SfmGnQA.B` preserved character-for-character. V1+V2+V3 PASS strictly; V4 PASS for load-bearing "no regression in `timed_out`" criterion. No rollback. Result file commit `c72bc3276b7575c0c920b75c76ead396dbaa6a95` (blob `9613c133`, 11,188 B).
-  - **First `cron_edit` D-01 action_type** in cc-NNNN series. Reviewer applied same standards as `sql_destructive` despite zero data-state impact.
-  - **HTTP 401 5-min cron pattern surfaced as new triage candidate** — 3 HTTP 401 responses in 30-min `_http_response` window during cc-0006 V4 (02:20, 02:25, 02:35 UTC); pattern matches `*/5` cron schedule. NOT a regression introduced by cc-0006 (stable across apply boundary). Out-of-scope for cc-0006. Likely candidates: jobid 48 `enqueue-publish-queue-every-5m` or another 5-min cron whose endpoint returns 401. Logged for separate triage.
-  - **F-CRON-AUTO-APPROVER-SECRET-INLINE remains separately OPEN (P2 sec)** — cc-0006 deliberately preserved job 58's inline secret. Rotation requires PK auth + vault entry creation + cron command refactor (separate cc-NNNN brief).
-  - **cc-0005 / M8 Path A v3 PATCHED chat-side** under PK direction (commit `245005a3c86dc23cac8bd6cae41fea5fd135e5f9`, blob `2284ef2dd9297fc7685d9819910d5b31bba636be`, 75,985 B). Supersedes v2 Path A (`f70cb41f`) which had 5 critical regex bugs (C1–C5) that would have blocked first apply at the in-migration verify gates V8 and V10. The bugs: substring matches against `get_next_scheduled_for` would have matched comment text in the rewritten cron 48 command body, fired RAISE EXCEPTION, and rolled back the transaction before Component 2 + Component 3 could run.
-  - **v3 critical fixes:** all 11 ILIKE/substring call sites replaced with function-call-syntax regex `~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('`. Pattern correctly distinguishes function calls from comment-mentions, AND covers both the original name and the post-rename deprecated name. Belt-and-braces comment rephrase: new cron 48 command body comment changed to "legacy fallback removed from COALESCE chain." — substring `get_next_scheduled_for` no longer present in rewritten cron body.
-  - **v3 H1–H6 extended pre-flight:** §1.4b original COMMENT capture for rollback (H6); §1.5 P1.5b distinct `pd.created_by` enumeration (H3); §1.5 P1.5c un-publishable legacy draft cohort query (H4, informational); §1.5 P1.5d slot-driven alignment check (H5, **HALT §8.2.l if non-zero**).
-  - **v3 M1–M4 hygiene:** §8.3 unique dollar-quote tag guidance (M1); §Forbidden actions amendment list expanded from 2 items to 4 (M2); removed unused `v_min_expected` variable (M3); TOCTOU acknowledgement in §3 Notes (M4).
-  - **v3 L1–L2 defensive:** §1.2 trigger query expanded to also survey `m.post_draft / slot / ai_job / post_publish` (L1); §1.3 explicit `OLD_CRON_48_SCHEDULE` capture and §7 V7 expanded to verify schedule unchanged (L2).
-  - **Brief now ready for pre-flight gating; NOT YET APPLIED.** Apply gates remaining: §1.0 sequencing (✅ met v2.55/v2.56) + §1.4 caller check + §1.3 cron state + §1.5d alignment count = 0 + §1.5c PK direction on un-publishable cohort + D-01 fire + PK approval.
-  - **D-01 fire** — 1 cc-0006 fire (prior cycle by chat), action_type `cron_edit`. Verdict agree / proceed / risk=medium / confidence=high. 0 pushback. 0 escalation. Clean approve. cc-0005 v3 patch (prior turn by chat) is doc-only and did NOT require a fire. v2.57 4-way sync close (this) is doc-only and per protocol does NOT require a fire.
-  - **PK explicit approval phrase received** for cc-0006 apply: `"pk - proceed with cc-0006 apply"`.
-  - **Brief-runner-v0 lesson candidates** — L10–L14 from cc-0006 cycle (cron_edit action_type, md5 fingerprint, substrate-drift guard, V3 immediate eval, V4 strict-vs-load-bearing); L15–L18 from cc-0005 v3 (review pass before apply, function-call regex, in-place patching, pre-flight cohort surfacing). Promotion to canonical or baseline after one more vindication each.
-  - **State-capture exception count v2.57: 0**.
-  - **Closure budget**: ~30 min chat 4-way sync close. Trailing-14-day ~60h above 8.0 floor. ~2 P0+P1 open of 20 cap (unchanged from v2.56; cc-0006 was P2).
-  - **0 production mutations chat-side this turn** — 4-way sync close is doc-only. Production mutations in this 2-cycle window were the cc-0006 `execute_sql` call by CC (separate session, prior cycle) and the cc-0005 v3 patch chat commit (doc-only, prior turn).
-  - **STANDING_THREE array unchanged**. `m.ef_drift_log` untouched. No cron edits this turn. No EF deploys. No code changes. No Phase 0 scheduling.
-  - **Acceptance-integrity adherence** (v2.50): cc-0006 result file commit `c72bc327` verified by re-fetching landed file content via Invegent GitHub MCP — blob `9613c133`, 11,188 B; md5 deltas + V1–V4 verification table + D-01 conditions all present. cc-0005 v3 patch commit `245005a3` verified by re-fetching landed file content — blob `2284ef2d`, 75,985 B; all 13 v3 fix categories verified present in landed file.
-  - **Deferred per PK explicit scope this turn**: memory `recent_updates` v2.55 + v2.56 + v2.57 entries; 3 outstanding `m.chatgpt_review` close-the-loop UPDATEs (cc-0003 v2 + cc-0004 + cc-0006 D-01 fires); dashboard PHASES update (**13th** carry); cc-0005 v3 apply work (awaiting PK direction); HTTP 401 5-min cron triage (awaiting PK direction); Phase 0 scheduling (carry from v2.56).
-  - **Carried**: Crazy Domains refund follow-up (Personal businesses); morning-inbox-sweep-v1 brief amendment (P3); 4 P2 cron findings from v2.54.
-
-- **INLINE POST-v2.57 (2026-05-09 Sydney; not a sync close, single-file action_list addition):**
-  - **cc-0005 v4 PATCH (M8 staged → M8a only)** — commit `577d85680b72c6f942a7af2262dba93a9e2b5ac0`, blob `96567ddd0861b525d021e7a3c8accea401e70d47`, 80,912 B at `docs/briefs/cc-0005-m8-atomic-cutover.md`. Supersedes v3 (commit `245005a3`) after CC's v3 pre-flight HALT surfaced 2 non-cron manual callers of `public.get_next_scheduled_for` (`public.draft_approve_and_enqueue` + `public.draft_approve_and_enqueue_scheduled`). v3 Component 3 (function rename) would have broken those manual flows. PK directive: stage M8 into M8a (this brief) + M8b (separate cc-NNNN brief). v4 retains Component 1 (cron 48 in-place rewrite) + Component 2 (legacy cleanup, count band re-banded from [0, 200] (v3) to [250, 500] (v4) around CC's pre-flight observation of 344). v4 V10 zero-callers RETIRED; replaced with V10' (expected callers list = 3). v4 V10b function-rename paranoia RETIRED. v4 §1.4b ORIGINAL_COMMENT capture RETIRED. v4 §1.5c (un-publishable cohort) RELAXED to informational-only; 94-row figure recorded as separate follow-up. v4 migration name updated to `m8a_cron48_rewrite_and_legacy_cleanup_v1`. v4 lesson candidates L19–L21. M8b NOT YET AUTHORED.
-  - **cc-0007 P1 RECOVERY BRIEF DRAFT** — commit `7c45a92785589e0731f7469571cf7eb15e333507`, blob `4e0372cacf4922cc73abd88e2e8876719caa2549`, 39,686 B at `docs/briefs/cc-0007-ai-worker-401-jwt-format-recovery.md`. Finding F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT (P1). Symptom: jobid 5 `ai-worker-every-5m` returns persistent 401 `UNAUTHORIZED_INVALID_JWT_FORMAT` on every fire. Root hypothesis: ai-worker EF gateway has `verify_jwt=true` (default for EFs missing from `supabase/config.toml`); class match to v2.54 video-worker recovery (commit `6ed29bbc`, 23 EFs). Brief proposes (1) repo patch adding `[functions.ai-worker] verify_jwt = false` to `supabase/config.toml` (+ defensive publisher block conditional on §1.4 evidence + PK direct), (2) production deploy `supabase functions deploy ai-worker --no-verify-jwt` from CC shell. NOT YET APPLIED. v4 lesson candidates L22–L25 (`ef_deploy` action_type, repo+deploy coordination, P1 recovery timing, security hygiene in result files). Confirms jobid 5 (NOT jobid 48 as cc-0006 hypothesised). HTTP 401 5-min cron triage candidate from v2.57 folds into cc-0007 brief.
-  - **PLATFORM RECONCILIATION VIEW BRIEF CANDIDATE** (this commit) — added to action_list under PK directive 2026-05-09. Pipeline observability / reconciliation class (NOT cosmetic dashboard). by day / client / platform reconciliation surface. 13 seed manual observations from 2026-05-09 captured in dedicated 🟢 Platform Reconciliation View status block. Reserved cc-NNNN. Implementation gated behind cc-0007 + cc-0005 M8a + current pipeline-integrity closure. PK explicit "do not start implementation now". P2 priority.
-  - **No D-01 fires for inline post-v2.57 additions** — all 3 are doc-only.
-  - **Header version remains v2.57** — inline-addition convention; will fold into next sync close (v2.58 candidate).
-  - **Acceptance integrity verified** for cc-0005 v4 (blob + size + content markers re-fetched) and cc-0007 (blob + size + content markers re-fetched).
-  - **Closure budget impact**: ~30 min total for cc-0005 v4 + cc-0007 + Platform Reconciliation candidate authoring. Trailing-14-day ~60h still above 8.0 floor.
-  - **STANDING_THREE array unchanged.** `m.ef_drift_log` untouched. No cron edits inline post-v2.57. No EF deploys inline post-v2.57. No code changes (only `docs/briefs/*.md` and `docs/00_action_list.md` edits). No Phase 0 scheduling. No memory edits. No `m.chatgpt_review` writes.
+- v1.0–v2.57: per previous changelog.
+- **v2.58 (2026-05-09 Sydney, F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT closure via cc-0007 APPLIED):**
+  - **F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT CLOSED / RECOVERED** — cc-0007 APPLIED via repo patch + EF deploy by CC. Repo patch commit `5037e573881c524dc244664c4a2fc08906c069bc` modified `supabase/config.toml` adding `[functions.ai-worker] verify_jwt = false` at end of custom-header-auth section after `[functions.auto-approver]`; section count comments updated 23→24 / 10→11; +5/-2 additive only; all other entries preserved verbatim. EF deploy `supabase functions deploy ai-worker --no-verify-jwt` returned exit=0 at `DEPLOY_TIMESTAMP 2026-05-09T04:23:27Z`. EF source bytes unchanged across deploy boundary (Class A-LE; deploy=repo=2.12.0 since 2026-05-08 03:24Z); single semantic change was gateway `verify_jwt: true → false`. Recovery confirmed at first post-deploy cron 5 fire `04:25:00Z` (~93 s after deploy returned); status_code=200; pattern transition unambiguous (22+ × 401 pre-deploy → 200 immediately post-deploy). V1–V4 all PASS at first fire (V1 cron-side runid 173234 status=`succeeded`, return_message=`INSERT 0 1` no UNAUTHORIZED; V1 HTTP authoritative http_response_id 101268 status_code=200 timed_out=false; V2 post_deploy_jwt_format_401_count=0; V3 covered by V1 HTTP authoritative row; V4 0 unexpected `m.ef_drift_log` entries in window). No rollback. Result file commit `411b85ee0b8c8cd716af2c3226d6af423f563591` (blob `b21be653`, 11,401 B).
+  - **First `ef_deploy` D-01 action_type** in cc-NNNN series. Reviewer applied same standards as `sql_destructive` (production state change with rollback path). Verdict agree / proceed / risk ≤ medium / confidence high. 0 pushback. 0 escalation. Clean approve. PK approval phrase: `"pk proceed with cc-0007 apply ai-worker only"`.
+  - **Class match validation:** identical recovery vector to v2.54 video-worker regression (commit `6ed29bbc`). 2-step pattern (config.toml entry + `--no-verify-jwt` deploy) now vindicated twice across two distinct EFs. Pattern is durable.
+  - **HTTP 401 5-min cron triage candidate from v2.57 CLOSED** (folded into cc-0007 closure). cc-0006's earlier hypothesis ("likely jobid 48") was wrong; CC's read-only triage 2026-05-09 corrected to jobid 5 (`ai-worker-every-5m`). jobid 48's command body is pure PostgreSQL and cannot 401 against an EF gateway.
+  - **Latent risk noted (NOT closed by cc-0007): publisher block remains ABSENT from `supabase/config.toml`.** Currently 0 × 401 (gateway presumably already at `verify_jwt: false`), but next publisher deploy without flag AND without config.toml entry would regress identically. cc-0007 §1.4 surfaced; defensive patch held back per strict rule + D-01 conditions. Carried as v2.58 P3 follow-up: doc-only patch adding `[functions.publisher] verify_jwt = false` (no deploy required). PK directs scheduling.
+  - **cc-0005 M8a is now the next pipeline-integrity apply candidate per PK directive.** ai-worker is now generating drafts; m.ai_job rows are being processed; cron 48 has fresh succeeded ai_jobs to enqueue from. cc-0005 M8a v4 (commit `577d8568`) apply gates remaining: §1.0 sequencing ✅ met v2.55/v2.56; §1.4 expected 3 callers; §1.3 cron state; §1.5a band [250, 500]; §1.5d alignment count = 0; D-01 fire (`sql_destructive` action_type for migration); PK explicit approval phrase.
+  - **Brief-runner-v0 lessons — cc-0007 cycle:**
+    - **L22 (`ef_deploy` D-01 action_type) VINDICATED** — reviewer applied appropriate standards; clean PASS. Cousin to L10 (`cron_edit`); both proven robust.
+    - **L23 (repo + deploy coordination rollback shape) LOGGED** — first apply with TWO production-touching steps; both succeeded; rollback prepared but NOT exercised. Pattern durable on apply side; rollback shape theoretical until exercised.
+    - **L24 (P1 recovery timing) LOGGED** — wall-clock ~1h55m brief→closure including D-01 fire + final re-verify + repo patch + deploy + V1–V4 + result file. P1 cost-of-waiting honoured without expediting D-01 protocol. Empirical input for Emergency redeploy governance question.
+    - **L25 (security hygiene in result files) VINDICATED** — bearer tokens / vault values successfully redacted; only structural references appear.
+  - **L10 + L17 vindicated again v2.58** (sibling action_type clean apply; in-place patching pattern via cc-0005 v4 superseding v3). Promotion to baseline candidate next cycle.
+  - **Brief-runner-v0 observations from CC apply session (§9 of result file; logged for future briefs):** cron blind spot for HTTP failures (`return_message` reflects last SQL statement, not gateway HTTP body); §1.2 threshold not regression-onset-aware; §1.5 first-failed-cron-fire query relies on same blind spot; `m.ef_drift_log` column-name mismatch (brief used `ef_slug` / `created_at`; actual schema is `slug` / `checked_at`). Worth incorporating into brief-template work.
+  - **D-01 fire** — 1 cc-0007 fire (prior cycle by chat), action_type `ef_deploy`. Verdict agree / proceed / risk ≤ medium / confidence high. 0 pushback. 0 escalation. Clean approve. v2.58 4-way sync close (this) is doc-only and per protocol does NOT require a fire. Inline post-v2.57 additions all doc-only and per protocol did not require fires.
+  - **PK explicit approval phrase received** for cc-0007 apply: `"pk proceed with cc-0007 apply ai-worker only"`.
+  - **State-capture exception count v2.58: 0**.
+  - **Closure budget**: ~30 min chat 4-way sync close. Trailing-14-day ~62h above 8.0 floor. ~2 P0+P1 open of 20 cap (was ~3 v2.57; cc-0007 P1 closed v2.58).
+  - **0 production mutations chat-side this turn** — 4-way sync close is doc-only. Production mutations in this cycle were the cc-0007 repo patch (`5037e573`, by CC via git push) and cc-0007 EF deploy (by CC via shell command) — both prior to this sync close.
+  - **STANDING_THREE array unchanged**. `m.ef_drift_log` untouched by chat (cc-0007 EF deploy logged 1 expected ai-worker entry; V4 PASS). No cron edits this turn. No EF deploys this turn. No code changes this turn. No Phase 0 scheduling.
+  - **Acceptance-integrity adherence** (v2.50): cc-0007 result file commit `411b85ee` verified by re-fetching landed file content via Invegent GitHub MCP — blob `b21be653`, 11,401 B; V1–V4 verification table + D-01 conditions + bearer-token redaction + brief-runner-v0 §9 observations all present. cc-0007 repo patch commit `5037e573` verified by re-fetching landed `supabase/config.toml` content — blob `3d98d88f`, 4,496 B; `[functions.ai-worker] verify_jwt = false` block confirmed at end of custom-header section; section count comments updated 23→24 / 10→11; all other entries preserved verbatim.
+  - **Deferred per PK explicit scope this turn**: memory `recent_updates` v2.55 + v2.56 + v2.57 + v2.58 entries; 4 outstanding `m.chatgpt_review` close-the-loop UPDATEs (cc-0003 v2 + cc-0004 + cc-0006 + cc-0007 D-01 fires); dashboard PHASES update (**14th** carry); cc-0005 M8a v4 apply work (awaiting PK direction); M8b brief authoring (deferred until M8a closes); 94-row un-publishable legacy draft cohort cleanup (separate follow-up if PK directs); Phase 0 scheduling (carry); Publisher latent config risk follow-up (P3, scheduled separately).
+  - **Carried**: Crazy Domains refund follow-up (Personal businesses); morning-inbox-sweep-v1 brief amendment (P3); 4 P2 cron findings from v2.54; F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 sec, OPEN, unchanged); Platform Reconciliation View brief candidate (sequencing: cc-0007 cleared, cc-0005 M8a + pipeline-integrity closure remain).
