@@ -3,7 +3,7 @@
 **Created:** 2026-05-09 Sydney
 **Author:** chat (Claude)
 **Executor:** chat applies via Supabase MCP `apply_migration` per memory standing rule ("apply_migration is the ONLY correct DDL path for c/m/f/t schemas"). DML seed applied in the same migration call (single transactional unit). CC role: 0 in cc-0008 (chat-driven DDL+DML; no `supabase/migrations/*.sql` file required).
-**Status:** drafted v3 (apply pending D-01 fire + PK explicit approval phrase; PK §3.5 seed review COMPLETE 2026-05-09 — both decision points resolved)
+**Status:** drafted v4 (apply pending D-01 fire + PK explicit approval phrase; PK §3.5 seed review COMPLETE 2026-05-09; CCD independent review of v3 returned PASS with 2 minor WARNs — both addressed in v4 doc-only patch below)
 **Authority:** PRV-0 design lock v2 — `docs/dashboard-review-2026-05/prv-0-design-lock.md` commit `6e989517ceaf600e1373f7f319ab5b7d5c2c7147` blob `3b5f382096abfa7ac5e0aff4bc4bdd327e95d6f7` (v1 was commit `24d08aeeb6ed793171f76191f41545cdaca32b5d` blob `ea67a51b0e69c22f7f68712beba07946b8cc968a`)
 **Source design section:** PRV-0 v2 §3.2 (DDL — `preferred_local_times time[]`), §5.1 (generator paused-profile clause), §8.1 (cc-0008 scope contract — all 14 rows is_active=true), §11.4 (PK v2 directive)
 **Result file:** `docs/briefs/results/cc-0008-client-cadence-rule-table-and-seed.md` (created on completion of apply session)
@@ -12,15 +12,17 @@
 
 ## Patch history
 
-- **2026-05-09 Sydney — v3 patch** (doc-only; no apply) following PK + ChatGPT seed review of v2 §3.5. Both v2 PK decision points resolved:
-  1. **`expected_format` non-null seed for all 14 rows** (PK directive). FB→`'image_quote'` (4 rows, unchanged from v2); IG→`'image'` (4 rows, was NULL on 4); LI→`'linkedin_post'` (4 rows, was NULL); YT→`'youtube_short'` (2 rows, was NULL). Net: 14 non-null / 0 NULL. Cascaded: §3.1 + §3.2 INSERTs; §3.4 column registry purpose; §3.5 surface table column.
-  2. **`valid_from = current_date` — APPROVED.** No DML change.
+- **2026-05-09 Sydney — v4 patch** (doc-only; no apply) addressing 2 minor WARNs from CCD independent review of v3 (PASS overall):
+  1. **V1b CHECK-count wording corrected.** v3 said "≥6 inline + 2 named". Actual DDL post-PRV-0-v2 = **5 inline + 2 named = 7 total**. v3 prose carried the v1 hour-array CHECK forward by mistake; PRV-0 v2's `preferred_local_times time[]` removed it. §4 V1b pass criterion enumerates the 5 inline CHECKs explicitly.
+  2. **V6b `is_foreign_key` handling clarified.** `k.column_registry.is_foreign_key` is NOT NULL (per §1.8) — explicit insert is required, not generated/defaulted. §3.4 INSERT already populates correctly via `(p.fk_schema IS NOT NULL)`. v4 adds inline §3.4 note + expands V6b pass criterion to verify exactly **1 row `is_foreign_key=true`** (`client_id`) + **18 rows `is_foreign_key=false`**.
 
-  v2→v3 is seed-value only — no DDL change, no migration name change, no row count change. PRV-0 v2 §3.2 contract honoured exactly.
+  v3→v4 is doc-only — no DDL change, no DML change, no seed-value change, no migration-name change, no row-count change. PRV-0 v2 §3.2 contract honoured exactly. PK §3.5 seed review remains valid for v4 (no semantic deviation).
 
-- **2026-05-09 Sydney — v2 patch** (doc-only; no apply). Two corrections per PK directive 2026-05-09: (1) `preferred_local_hours int[]` → `preferred_local_times time[]` (PRV-0 v2 §3.2 contract; minute precision; cascaded across §2/§3.1/§3.2/§3.4/§3.5/§4); (2) paused-IG cadence preservation — NDIS-Yarns/IG + Property Pulse/IG seeded `is_active=true` (was false in v1) with notes capturing `publish_enabled=false` + `paused_reason`; cc-0009 generator handles per-row suppression per PRV-0 v2 §5.1; V7 verifies paused-IG notes; V3 reframed (14:14 regardless of `publish_enabled`). Property Pulse × LinkedIn 2.3/day drift documented in row 11 notes for cc-0011. Committed at SHA `e11890e3e52b5b535b7f82cfb6dcb577ec73c42e` blob `7c18aa83ff22a36adf5630943eb354a5092ab2ae`.
+- **2026-05-09 Sydney — v3 patch** (doc-only; no apply) following PK + ChatGPT seed review of v2 §3.5. Both v2 PK decision points resolved: (1) `expected_format` non-null seed for all 14 rows — FB→`'image_quote'`, IG→`'image'` (incl. 2 paused), LI→`'linkedin_post'`, YT→`'youtube_short'` (was 4 FB + 10 NULL in v2); (2) `valid_from = current_date` APPROVED. Cascaded: §3.1 + §3.2 INSERTs; §3.4 column registry purpose; §3.5 surface table column. v2→v3 was seed-value only — DDL/migration-name/row-count unchanged. Committed at SHA `b9a76e9ad7566316a1587e5ea0ccbeb612e21ab9` blob `4f5258bcf212022ed86e170593c236f213593774`.
 
-- **2026-05-09 Sydney — initial draft (v1)** under PK direction. Authored after PRV-0 v1 design lock landed. Pre-flight P1.1–P1.11 ran read-only against production via Supabase MCP `execute_sql`; results in §1. Seed derived empirically from `c.client_publish_schedule` × `c.client_publish_profile`. Committed at SHA `216a5ea2f7e9841c8db94d2f7c847f9e19e93e27` blob `2df46c744a9d426d2cd893dee9ebd942d3d3e523`.
+- **2026-05-09 Sydney — v2 patch** (doc-only; no apply). Two corrections per PK directive 2026-05-09: (1) `preferred_local_hours int[]` → `preferred_local_times time[]` (PRV-0 v2 §3.2 minute precision; cascaded across §2/§3.1/§3.2/§3.4/§3.5/§4); (2) paused-IG cadence preservation — NDIS-Yarns/IG + Property Pulse/IG seeded `is_active=true` with notes capturing `publish_enabled=false`+`paused_reason`; cc-0009 generator handles per-row suppression per PRV-0 v2 §5.1; V7 added; V3 reframed (14:14). PP×LinkedIn 2.3/day drift documented in row 11 notes for cc-0011. Committed at SHA `e11890e3e52b5b535b7f82cfb6dcb577ec73c42e` blob `7c18aa83ff22a36adf5630943eb354a5092ab2ae`.
+
+- **2026-05-09 Sydney — initial draft (v1)** under PK direction. Pre-flight P1.1–P1.11 ran read-only against production. Seed derived empirically from `c.client_publish_schedule` × `c.client_publish_profile`. Superseded by v2/v3/v4. Committed at SHA `216a5ea2f7e9841c8db94d2f7c847f9e19e93e27`.
 
 ---
 
@@ -140,7 +142,7 @@ Source: PRV-0 design lock (this session) + chat pre-flight discovery 2026-05-09.
 - **No creation of any temporary log table** — explicitly forbidden per PK sequencing clarification 2026-05-09.
 - No DDL adjustments deviating from PRV-0 v2 §3.2 unless §1 pre-flight surfaces a constraint that genuinely blocks apply.
 - No proceeding past D-01 if verdict is anything other than `agree` with `proceed`.
-- No proceeding past PK seed review if PK requests modification — return to brief authoring (v4).
+- No proceeding past PK seed review if PK requests modification — return to brief authoring (v5).
 - No M8 work (cc-0005 v4 is a separate brief).
 - No Phase 0 scheduling activity.
 
@@ -188,13 +190,7 @@ ORDER BY ordinal_position;
 
 ### 1.4 `c.client_publish_profile` per active client × platform — PASS, 14 rows
 
-12 active publish profiles + 2 paused IG (per below):
-- CFW: FB ✓ | IG ✓ | LI ✓
-- Invegent: FB ✓ | IG ✓ | LI ✓
-- NDIS-Yarns: FB ✓ | **IG ✗** (`meta_subcode_2207051_block_2026-05-01_ndis_yarns_ig_anti_spam`) | LI ✓ | YT ✓
-- Property Pulse: FB ✓ | **IG ✗** (`meta_subcode_2207051_block_25_apr_pp_ig_anti_spam`) | LI ✓ | YT ✓
-
-**Findings:** 12 active + 2 paused IG. `max_per_day=2` all rows; `min_gap_minutes` ∈ {240, 360}. `preferred_format_facebook='image_quote'` on all 4 active FB rows; LI + IG preferred-format columns NULL throughout. No `paused_until`; only `publish_enabled=false` + `paused_reason` text.
+12 active publish profiles + 2 paused IG (NDIS-Yarns × IG: `meta_subcode_2207051_block_2026-05-01_ndis_yarns_ig_anti_spam`; Property Pulse × IG: `meta_subcode_2207051_block_25_apr_pp_ig_anti_spam`). All other 12 (CFW × {FB,IG,LI}, Invegent × {FB,IG,LI}, NDIS-Yarns × {FB,LI,YT}, Property Pulse × {FB,LI,YT}) `publish_enabled=true`. `max_per_day=2` all rows; `min_gap_minutes` ∈ {240, 360}. `preferred_format_facebook='image_quote'` on all 4 active FB rows; LI + IG preferred-format columns NULL throughout. No `paused_until`; only `publish_enabled=false` + `paused_reason` text.
 
 ### 1.5 `c.client_publish_schedule` aggregate cadence — PASS, 14 active patterns
 
@@ -458,6 +454,8 @@ CROSS JOIN t;
 
 This pattern keeps `data_type`/`udt_name`/`is_nullable`/`column_default` empirically sourced from `information_schema.columns` at apply time (so they always match the actual table) while `column_purpose` and FK metadata come from the small VALUES table (chat-authored documentation).
 
+**v4 note (CCD review WARN):** `k.column_registry.is_foreign_key` is **NOT NULL** (per §1.8) — explicit insert required, not generated/defaulted. The §3.4 INSERT above populates it via `(p.fk_schema IS NOT NULL)` — boolean derived from whether the row's purposes-VALUES entry has a non-NULL `fk_schema`. Resulting distribution post-apply: exactly **1 row `is_foreign_key=true`** (column_name='client_id', the only FK column) + **18 rows `is_foreign_key=false`**. V6b verifies this distribution.
+
 ### 3.5 Seed surface for PK review
 
 **Summary:** 14 rows total — all `is_active=true`. 2 rows are for IG profiles currently paused on the publish side (`c.client_publish_profile.publish_enabled=false`); cadence intent preserved at the rule level per PRV-0 v2 §11.4. v3: all 14 rows now carry non-null `expected_format` per PK directive.
@@ -483,14 +481,15 @@ Common attributes for all 14 rows: `cadence_type='weekly'`, `posts_per_period=5`
 
 **Property Pulse × LinkedIn divergence note (PK directive 2026-05-09):** row 11 cadence-side intent is `1/day Mon-Fri 12:00`. Recent publish-side observed runtime has been ~2.3 posts/day on this profile (drifted from intent). cadence-drift-checker (cc-0011) will surface this drift; cc-0008 v3 seed reflects the config-side `c.client_publish_schedule` faithfully (1/day Mon-Fri 12:00) and documents the reality drift in the row's `notes`.
 
-**v3 RESOLVED upstream by PK directive 2026-05-09:**
+**v3+v4 RESOLVED upstream (no PK decision points open):**
 
-- ~~Option A vs Option B (paused IG handling)~~ — RESOLVED v2: single canonical model. All 14 rules `is_active=true`. cc-0009 generator handles publish-side pause via PRV-0 v2 §5.1 clause.
-- ~~Hour aggregation policy (collapsed minute precision)~~ — RESOLVED v2: `preferred_local_times time[]` stores minute precision authoritatively. All 14 rows reflect `c.client_publish_schedule.publish_time` exactly.
-- ~~`expected_format` policy~~ — RESOLVED v3: non-null seed for all 14 rows (FB→image_quote; IG→image; LI→linkedin_post; YT→youtube_short). Removes avoidable ambiguity for cc-0009+ Tier 4 matcher.
-- ~~`valid_from = current_date` for all rows~~ — RESOLVED v3: APPROVED by PK 2026-05-09. Rule applies forward from apply date; PRV-1 backfill is 7-day generated by cc-0009 (per PRV-0 D-23).
+- ~~Option A vs Option B (paused IG handling)~~ — RESOLVED v2 (single canonical model; all 14 `is_active=true`; cc-0009 generator handles publish-side pause per PRV-0 v2 §5.1).
+- ~~Hour aggregation policy~~ — RESOLVED v2 (`preferred_local_times time[]` minute precision; matches `c.client_publish_schedule.publish_time` exactly).
+- ~~`expected_format` policy~~ — RESOLVED v3 (non-null seed for all 14 rows; FB→image_quote, IG→image, LI→linkedin_post, YT→youtube_short).
+- ~~`valid_from = current_date`~~ — RESOLVED v3 (APPROVED by PK 2026-05-09).
+- ~~V1b CHECK count + V6b `is_foreign_key` handling~~ — RESOLVED v4 (CCD review WARNs; doc-only corrections per §4 V1b + V6b).
 
-**No PK decision points open. v3 ready for D-01 fire + PK explicit approval phrase.**
+**v4 ready for D-01 fire + PK explicit approval phrase.**
 
 ---
 
@@ -534,7 +533,7 @@ ORDER BY i.relname;
 
 **Pass:**
 - V1a: `table_exists=true` AND `column_count=19` (preferred_local_times replaces preferred_local_hours; column count unchanged).
-- V1b: ≥ 6 inline-CHECK + 2 named CHECK constraints (cadence_rule_period_when_count_set + cadence_rule_active_window_valid). Note v2: one inline CHECK (`preferred_local_hours <@ ARRAY(0..23)`) was removed because the column was removed; new column `preferred_local_times time[]` has no CHECK (all `time` values are valid in PostgreSQL).
+- V1b: **5 inline CHECK + 2 named CHECK = 7 total** (v4 correction per CCD review WARN). Inline (5): `platform IN (...)`, `cadence_type IN (...)`, `posts_per_period > 0`, `period_unit IN (...)`, `weekdays <@ ARRAY[0..6]`. Named (2): `cadence_rule_period_when_count_set` + `cadence_rule_active_window_valid`. v3 said "≥6 inline + 2 named" — overcounted because it carried v1's `preferred_local_hours <@ ARRAY[0..23]` forward in prose; PRV-0 v2 removed that column. New `time[]` column has no CHECK (all PG `time` values valid).
 - V1c: 1 FK constraint referencing `c.client(client_id)` with `ON DELETE CASCADE`.
 - V1d: ≥ 3 indexes (PK + cadence_rule_active_lookup + cadence_rule_validity_lookup). **v2 addition:** verify `preferred_local_times` column has data type `time without time zone` and is array (`udt_name='_time'` in pg_attribute), confirming PRV-0 v2 §3.2 contract:
 
@@ -634,6 +633,18 @@ ORDER BY cr.ordinal_position;
 **Pass:**
 - V6a: 1 row with status='active', allowed_ops='upsert', pii_risk='none', purpose populated.
 - V6b: 19 rows, ordinal_position 1..19 in sequence, every `column_purpose` non-NULL.
+- **V6b `is_foreign_key` distribution check (v4 addition per CCD WARN):** exactly **1 row `is_foreign_key=true`** (`client_id`) + **18 rows `is_foreign_key=false`**. `k.column_registry.is_foreign_key` is NOT NULL (per §1.8); §3.4 INSERT populates explicitly via `(p.fk_schema IS NOT NULL)`. Verify post-apply:
+
+```sql
+-- V6b is_foreign_key distribution (v4)
+SELECT cr.column_name, cr.is_foreign_key, cr.fk_ref_schema, cr.fk_ref_table, cr.fk_ref_column
+FROM k.column_registry cr
+JOIN k.table_registry tr ON tr.table_id = cr.table_id
+WHERE tr.schema_name='c' AND tr.table_name='client_cadence_rule'
+ORDER BY cr.is_foreign_key DESC, cr.ordinal_position;
+```
+
+Pass: top row = `client_id` with `is_foreign_key=true`, fk_ref_schema='c', fk_ref_table='client', fk_ref_column='client_id'; remaining 18 rows have `is_foreign_key=false` AND all three `fk_ref_*` columns NULL. Aggregate: `COUNT(*) FILTER (WHERE is_foreign_key) = 1` AND `COUNT(*) FILTER (WHERE NOT is_foreign_key) = 18`.
 
 ### V7 (v2) — Paused-IG cadence rules carry pause-context tokens in `notes`
 
@@ -730,20 +741,21 @@ the table until cc-0009 deploys cadence-rule-generator.
   ],
   "known_weak_evidence": [
     "expected_format values are chat-authored seed strings ('image_quote', 'image', 'linkedin_post', 'youtube_short'); the column has no CHECK enum so values are not constrained at DDL level. cc-0009 Tier 4 matcher will treat them as hints, not enforced. PK can edit values later without re-applying cc-0008.",
-    "k.table_registry.table_id is bigint; cc-0008 assumes identity-default. If schema reveals not-identity, halt and re-issue v4.",
-    "cc-0009 brief decision (option a skip vs option b expected_status='suppressed') not yet locked; cc-0008 v3 seed is correct under either path.",
+    "k.table_registry.table_id is bigint; cc-0008 assumes identity-default. If schema reveals not-identity, halt and re-issue v5.",
+    "cc-0009 brief decision (option a skip vs option b expected_status='suppressed') not yet locked; cc-0008 v4 seed is correct under either path.",
     "No EF reads c.client_cadence_rule until cc-0009 lands. Sits inert with seed."
   ],
   "default_action": "proceed if D-01 returns clean agree AND PK explicit approval phrase received AND final §1 re-verification within ~60s shows no drift",
   "references": {
-    "cc-0008 v3 brief (this)": "docs/briefs/cc-0008-client-cadence-rule-table-and-seed.md",
-    "cc-0008 v2 brief (predecessor)": "@ commit e11890e3e52b5b535b7f82cfb6dcb577ec73c42e",
+    "cc-0008 v4 brief (this)": "docs/briefs/cc-0008-client-cadence-rule-table-and-seed.md",
+    "cc-0008 v3 brief (predecessor)": "@ commit b9a76e9ad7566316a1587e5ea0ccbeb612e21ab9",
+    "cc-0008 v2 brief": "@ commit e11890e3e52b5b535b7f82cfb6dcb577ec73c42e",
     "cc-0008 v1 brief": "@ commit 216a5ea2f7e9841c8db94d2f7c847f9e19e93e27",
     "PRV-0 v2 design lock (authority)": "docs/dashboard-review-2026-05/prv-0-design-lock.md @ commit 6e989517ceaf600e1373f7f319ab5b7d5c2c7147",
     "PRV-0 v1 design lock": "@ commit 24d08aeeb6ed793171f76191f41545cdaca32b5d",
     "Memory standing rules": "Lesson #61 (P1-P5 pre-flight); D-01 protocol per docs/runtime/mcp_review_protocol.md; apply_migration is ONLY DDL path for c/m/f/t schemas; D-50 / Lesson v2.50 acceptance integrity"
   },
-  "sql_to_apply": "Single apply_migration named cc_0008_client_cadence_rule containing the DDL from §2 (preferred_local_times time[]) + DML from §3.1 (12 active rows, all is_active=true, time-array minute-precision, non-null expected_format) + §3.2 (2 paused-IG rows, is_active=true, expected_format='image', notes capture publish_enabled=false + paused_reason + cc-0009 handoff) + §3.3 (k.table_registry) + §3.4 (k.column_registry CTE)."
+  "sql_to_apply": "Single apply_migration named cc_0008_client_cadence_rule containing the DDL from §2 (preferred_local_times time[]) + DML from §3.1 (12 active rows, all is_active=true, time-array minute-precision, non-null expected_format) + §3.2 (2 paused-IG rows, is_active=true, expected_format='image', notes capture publish_enabled=false + paused_reason + cc-0009 handoff) + §3.3 (k.table_registry) + §3.4 (k.column_registry CTE; is_foreign_key explicitly populated via (p.fk_schema IS NOT NULL))."
 }
 ```
 
@@ -779,7 +791,7 @@ Document any no-op outcome in result file.
 - **6.2.i Prior cc-0008 D-01 row:** §1.10 returns count > 0.
 - **6.2.j PRV-0 §3.2 deviation required:** if pre-flight reveals a constraint that genuinely blocks the verbatim DDL.
 - **6.2.k Sequencing violation attempted:** if at any point apply attempts to deploy `cadence-rule-generator`, create `r.*` schema, create `r.reconciliation_run`, set up cron, or create a temp log table → HALT immediately. These are forbidden in cc-0008.
-- **6.2.l PK seed review rejection:** PK reviews §3.5 and rejects → HALT v3; chat re-issues v4 with PK-directed changes. (v3 already incorporates PK directives 2026-05-09 on minute precision + paused-profile suppression + non-null expected_format + valid_from approval; previous decision points are all resolved.)
+- **6.2.l PK seed review rejection:** PK reviews §3.5 and rejects → HALT v4; chat re-issues v5 with PK-directed changes. (At v4: PK §3.5 seed review COMPLETE 2026-05-09; CCD independent review WARNs addressed; no known open review items.)
 
 ### 6.3 ROLLBACK path (verification fails after apply)
 
@@ -806,7 +818,7 @@ WHERE schema_name='c' AND table_name='client_cadence_rule';
 
 4. Re-run V1 (table_exists=false expected) and V6 (k.* registry rows = 0 expected) to confirm rollback applied.
 5. Document failure mode + diagnosis in result file.
-6. PK escalation; cc-0008 v4 brief.
+6. PK escalation; cc-0008 v5 brief.
 
 ---
 
@@ -816,27 +828,27 @@ WHERE schema_name='c' AND table_name='client_cadence_rule';
 
 **Standard sections (mirror cc-0006 / cc-0007 result pattern):**
 
-1. **Header** — brief reference (cc-0008 v3), apply session date, executor, D-01 verdict, PK approval phrase, outcome summary, brief version applied (v3 single canonical model — non-null expected_format on all 14 rows).
+1. **Header** — brief reference (cc-0008 v4), apply session date, executor, D-01 verdict, PK approval phrase, outcome summary, brief version applied (v4 — non-null expected_format on all 14 rows + CCD WARN doc-only corrections).
 2. **Apply summary** — logical action, project, method, result, table created (yes/no), seed rows inserted (14 expected, all is_active=true, all expected_format non-null), k.* registry rows inserted, rollback fired (yes/no), §6 path triggered (or NONE).
 3. **Pre-flight + final re-verification** — table comparing initial pre-flight values (per §1) vs ~60s-before-apply re-verification values; status PASS/FAIL per §1.1–§1.11.
 4. **DDL applied** — exact CREATE TABLE + CREATE INDEX + COMMENT statements applied (mirroring §2 of brief; preferred_local_times time[]).
-5. **DML applied** — number of seed rows by client × platform (matching §3.5 surface table); confirm preferred_local_times values match `c.client_publish_schedule.publish_time` exactly; confirm expected_format breakdown 4×image_quote + 4×image + 4×linkedin_post + 2×youtube_short = 14; 1 k.table_registry row; 19 k.column_registry rows.
-6. **Verification (V1–V7)** — status table per V; capture exact returned counts and any anomalies; V7 confirms paused-IG notes.
+5. **DML applied** — number of seed rows by client × platform (matching §3.5 surface table); confirm preferred_local_times values match `c.client_publish_schedule.publish_time` exactly; confirm expected_format breakdown 4×image_quote + 4×image + 4×linkedin_post + 2×youtube_short = 14; 1 k.table_registry row; 19 k.column_registry rows; `is_foreign_key` distribution 1+18.
+6. **Verification (V1–V7)** — status table per V; capture exact returned counts and any anomalies; V1b records the corrected 5+2=7 CHECK count; V6b records `is_foreign_key` 1+18 distribution; V7 confirms paused-IG notes.
 7. **D-01 record** — `m.chatgpt_review` row id, verdict, conditions stated by reviewer, PK approval phrase, action_type ('sql_destructive'), close-the-loop UPDATE status.
 8. **Hold-state assertions** — STANDING_THREE EFs untouched, no EF deploy, no cron edit, no temp log tables, no `r.*` schema work, no Phase 0 scheduling, no M8 work, no other DDL/DML.
 9. **Open / next** — propose readiness gate for cc-0009 (now also includes locking option (a) skip vs option (b) `expected_status='suppressed'` per PRV-0 v2 §5.1); flag any seed adjustments observed during apply; flag any new findings observed.
-10. **New brief-runner-v0 patterns observed** — capture lessons for future PRV-1 build briefs (this is the first PRV-1 cc-NNNN brief; first to combine DDL + 14-row seed + 20 k.* rows in one apply_migration; first to use preferred_local_times time[] minute-precision pattern; first to ship non-null expected_format seed).
+10. **New brief-runner-v0 patterns observed** — capture lessons for future PRV-1 build briefs (first PRV-1 cc-NNNN brief; first to combine DDL + 14-row seed + 20 k.* rows in one apply_migration; first to use preferred_local_times time[] minute-precision pattern; first to ship non-null expected_format seed; **first with CCD independent review WARN→doc-only-patch cycle without re-fire — L32 candidate**).
 
 ---
 
 ## 8. Stop condition
 
 1. §1 pre-flight all §1.1–§1.11 PASS (no HALT triggered).
-2. PK §3.5 v3 seed surface review COMPLETE 2026-05-09 (both decision points resolved upstream).
-3. §5 D-01 fire returns clean agree; reviewer's notes match v3 brief content.
+2. PK §3.5 v3 seed surface review COMPLETE 2026-05-09; CCD independent review WARNs addressed in v4.
+3. §5 D-01 fire returns clean agree; reviewer's notes match v4 brief content.
 4. Final read-only re-verification confirms no drift (re-run §1.1, §1.5, §1.10, §1.11 within ~60s of apply).
 5. §3 apply_migration call completes successfully (single transactional unit; no partial apply).
-6. §4 verification V1–V7 all PASS.
+6. §4 verification V1–V7 all PASS (V1b records 5+2=7 CHECK count; V6b records `is_foreign_key` 1+18 distribution).
 7. Close-the-loop UPDATE on `m.chatgpt_review` for the cc-0008 D-01 row.
 8. Result file `docs/briefs/results/cc-0008-client-cadence-rule-table-and-seed.md` committed.
 9. PRV-1 cc-0008 closure documented in 4-way sync close.
@@ -850,39 +862,31 @@ If any of §6.1, §6.2.{a-l}, or §6.3 paths trigger: report and stop.
 
 This is the **eighth cc-NNNN brief** (sixth-applied class will be when this lands). It is the **first PRV-1 build-class apply brief** — earlier cc-NNNN were Phase 0 (cc-0001), M-class queue integrity remediation (cc-0003..cc-0006), and recovery class (cc-0007).
 
-### Brief-runner-v0 watch items specific to cc-0008 v3
+### Brief-runner-v0 watch items specific to cc-0008 v4
 
-1. **34 INSERTs in one apply_migration** (14 cadence + 1 table_registry + 19 column_registry). All transactional; ROLLBACK on any failure unwinds entire migration.
-2. **First brief consuming a PRV-0 contract.** PRV-0 v2 §3.2 DDL is source of truth (preferred_local_times time[] minute-precision). Deviation = v3.
-3. **First brief generating k.* doc-catalog rows alongside the table** (PRV-0 §3.12 standing rule).
-4. **First brief with empirical seed derivation surfaced for §3.5 review.**
-5. **First cc-NNNN at PRV build class.** cc-0009..cc-0011 will follow this pattern.
-6. **First brief using minute-precision `time[]` cadence column.** Pattern: store native `time` arrays matching publish-side `publish_time`; derive hour-only metadata at query time.
-7. **First brief using two-layer is_active / publish_enabled separation.** cadence rule `is_active=true` = part of cadence; runtime pause lives in `c.client_publish_profile.publish_enabled`; cc-0009 generator reads both layers (PRV-0 v2 §5.1).
+1. 34 INSERTs in one apply_migration (14 cadence + 1 table_registry + 19 column_registry); transactional rollback unwinds all.
+2. First brief consuming a PRV-0 contract (PRV-0 v2 §3.2 DDL verbatim).
+3. First brief generating k.* doc-catalog rows alongside the table (PRV-0 §3.12).
+4. First brief with empirical seed derivation surfaced for §3.5 PK review.
+5. First cc-NNNN at PRV build class — cc-0009..cc-0011 will follow.
+6. First brief using minute-precision `time[]` cadence column.
+7. First brief using two-layer `is_active` / `publish_enabled` separation (cadence-side rule vs runtime pause).
+8. **First brief with CCD independent review WARN→doc-only-patch cycle (v3→v4)** without semantic deviation or re-fire.
 
-**Lesson candidates (post-apply):**
-- L26 — DDL + seed + k.* registry in one apply_migration.
-- L27 — PRV contract consumption discipline (PRV-0 v2 §3.2 verbatim).
-- L28 — Seed provenance documentation (notes reference source query + slot times).
-- L29 — Two-layer state separation in seed model (cadence-side is_active vs publish-side publish_enabled).
-- L30 — Output-budget discipline: brief commits ≤ 65KB to stay under output-token limit; trim verbose sections rather than splitting files.
-- L31 — Acceptance-integrity re-fetch on large commits: UTF-8 multibyte char accounting can produce apparent size discrepancies (e.g. PRV-0 v2 70KB local vs 59KB landed) without content loss; verify section-by-section instead.
+**Lesson candidates (post-apply):** L26 (DDL+seed+k.* in one apply_migration); L27 (PRV contract verbatim); L28 (seed provenance in notes); L29 (two-layer is_active/publish_enabled); L30 (output-budget discipline ≤65KB landed); L31 (acceptance-integrity re-fetch on large commits); **L32 (v4): independent-review WARN→doc-only-patch flow without re-fire — minor verification-criterion corrections + clarifications can land as a tight version bump while preserving D-01/PK seed approvals.**
 
 ### Open dependencies for the apply session
 
-- ~~PK reviews §3.5 seed surface table~~ — COMPLETE 2026-05-09 (v3 reflects both PK decisions: non-null expected_format + valid_from approval).
-- Final §1 re-verification within ~60s of apply.
-- D-01 fire (`ask_chatgpt_review` action_type=sql_destructive) returns clean agree.
-- PK explicit approval phrase received in chat after D-01.
+PK seed review COMPLETE 2026-05-09. CCD independent review of v3 → PASS, 2 minor WARNs addressed in v4. Apply gates remaining: (1) final §1 re-verification within ~60s of apply; (2) D-01 fire (`ask_chatgpt_review` action_type=sql_destructive) returns clean agree; (3) PK explicit approval phrase received in chat after D-01.
 
 When all hold: apply session proceeds with one `apply_migration` call.
 
-**No M8 dependency. cc-0008 v3 can apply independently of cc-0005 v4 or cc-0007 status.**
+**No M8 dependency. cc-0008 v4 can apply independently of cc-0005 v4 or cc-0007 status.**
 
 ### Sequencing reminders (PK directives 2026-05-09 — boilerplate forbidden)
 
-cc-0008 v3 must NOT: deploy cadence-rule-generator EF, create r.* schema, create r.reconciliation_run / r.expected_publication, set up cron, run first generator backfill, create temp log tables, decide cc-0009 generator option (a) skip vs (b) suppressed. All deferred to cc-0009 (PRV-0 v2 §8.2). Violation → HALT per §6.2.k.
+cc-0008 v4 must NOT: deploy cadence-rule-generator EF, create r.* schema, create r.reconciliation_run / r.expected_publication, set up cron, run first generator backfill, create temp log tables, decide cc-0009 generator option (a) skip vs (b) suppressed. All deferred to cc-0009 (PRV-0 v2 §8.2). Violation → HALT per §6.2.k.
 
 ---
 
-*Brief authored 2026-05-09 Sydney by chat (v1 + v2 + v3 patches in same session). v3 inputs: PK + ChatGPT seed review of v2 §3.5 (resolved both decision points: non-null expected_format on all 14 rows; valid_from=current_date approved). v2 inputs: PRV-0 v2 design lock (commit 6e989517ceaf600e1373f7f319ab5b7d5c2c7147); PK directive 2026-05-09 (minute precision + paused-profile suppression). v1 inputs: PRV-0 v1 design lock; chat read-only pre-flight P1.1–P1.11 against production via Supabase MCP execute_sql. Output: full apply brief v3 (11-step pre-flight + DDL with preferred_local_times + 14-row all-active seed with non-null expected_format + k.* doc-catalog + V1–V7 + D-01 packet sql_destructive + rollback path + result-file convention). No production state changed by drafting (read-only SELECTs only). Apply gated by D-01 + PK approval phrase.*
+*Brief authored 2026-05-09 Sydney by chat across v1 → v2 → v3 → v4 in same session (full lineage in patch_history above). v4 inputs: CCD independent review of v3 returned PASS with 2 minor WARNs — addressed via doc-only patch (V1b CHECK count corrected to 5+2=7; V6b expanded with `is_foreign_key` distribution check + §3.4 inline note clarifying explicit-insert handling). v3→v4 doc-only — no DDL/DML/seed-value/migration-name change. PRV-0 v2 §3.2 contract honoured. Apply gated by D-01 + PK approval phrase + final §1 re-verification within ~60s of apply.*
