@@ -4,7 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-09 Sydney (**v2.59 — M8a Path A APPLIED and CLOSED via cc-0005 v4** by CC. Single-transaction `apply_migration` (`m8a_cron48_rewrite_and_legacy_cleanup_v1`); 344 legacy-origin future queue rows dead-lettered with `dead_reason='m8_cutover_legacy_path_deprecated'`. Cron 48 rewritten in place (`active=true`, schedule `*/5 * * * *`, jobname all preserved); legacy `public.get_next_scheduled_for(...)` fallback removed from COALESCE chain; autonomous slot-driven enqueue path preserved (V9 in-migration gate verified). cron 48 command_md5 `5113bc4...` → `57bbafb...` (+149 bytes). V1–V10' all PASS. No rollback. **Component 3 (function rename + COMMENT) DEFERRED to M8b** per v4 design; `public.get_next_scheduled_for` NOT renamed; manual callers `public.draft_approve_and_enqueue` + `public.draft_approve_and_enqueue_scheduled` NOT modified. V10' delta-framed verification confirmed exactly 2 manual callers post-apply (cron 48 dropped from caller list as intended). Result file commit `eb820bae6951b66bfd1dd9a61e3e0cb235d5d8ad` (blob `ebd2fb05`, 16,052 B). M-series total dead-letter rows since 8 May 2026: 9 (M6 Phase A) + 43 (M6 Phase B) + 344 (M8a) = **396 rows**. **Urgent pipeline-integrity block now effectively complete** (M1+M2+M3, M4, M5, M6 Phase A + B, M7 folds-in, M8a CLOSED; M8b is the only residual M-series item, gated on manual caller remediation, not blocking new work). **Per PK directive recorded at Platform Reconciliation View brief candidate addition (commit `a8a241d1`): with all three sequencing blockers now cleared, Platform Reconciliation View becomes the next major planning/work item after this sync close.** Brief-runner-v0 L19–L21 VINDICATED (CC pre-flight HALT pattern; in-place patch vs scope-reduce vs new brief; scope re-banding); L11+L16+L17+L18 vindicated again. T-MCP-02 +1 (cc-0005 v4 D-01); cumulative pending close-the-loops now 5. State-capture exceptions v2.59: 0. P0+P1 open: ~2 → ~2 (cc-0005 v4 / M8a was P3 scheduling). PHASES reconciliation now **15th** carry. Closed v2.59: M8 Path A (cc-0005 v4 / M8a). Previous (v2.58): F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT CLOSED via cc-0007 APPLIED.)
+> Last updated: 2026-05-09 Sydney (**v2.60 — Future ideation backlog: Brand Topic Notebook → Episodic Podcast Source Pack** added per PK direction post cc-0008 v3 landing. Single-file doc-only addition to `docs/00_action_list.md` (this) under new section "🌱 Future ideation / content-pipeline expansion". NotebookLM upstream feed concept: per-brand topic notebooks (NDIS Yarns, Property Pulse, CFW, Invegent) → NotebookLM Audio Overview → ICE ingest → multi-platform derivatives (YouTube Shorts, LinkedIn, FB, IG, newsletter, possible long-form podcast scripts). Raw NotebookLM audio NOT to be treated as final publishable brand content (PK explicit framing); research/ideation/source-pack material requiring review only. Queue behind: (1) cc-0008 / PRV-1 foundation, (2) Platform Reconciliation build, (3) AI Operating System Improvements / project skills. Forward visibility only — not actionable until upstream blockers clear. Classification: forward-looking ideation, NOT current pipeline-integrity work. v2.59 baseline state preserved across this turn — closure budget unchanged; no closure tracking deltas; STANDING_THREE EFs untouched; no D-01 fire required (doc-only single-file). Previous (v2.59): M8a Path A APPLIED and CLOSED via cc-0005 v4 — 344 legacy-origin future queue rows dead-lettered; cron 48 rewritten in place; V1–V10' all PASS; M-series effectively complete.)
 
 ---
 
@@ -17,15 +17,15 @@
 4. Asks PK about Personal businesses
 5. Surfaces Time-bound items due today/tomorrow
 
-**Standing rule (D-01)**: every production patch + action_list version bump that touches production state goes through ChatGPT cross-check before deploy/commit. **v2.59 application**: 1 D-01 fire chat-side prior cycle for cc-0005 v4 / M8a apply (clean PASS / agree / proceed / 0 pushback / 0 escalation; action_type `sql_destructive`). v2.59 4-way sync close commit (this) is doc-only and per protocol does not require a fire.
+**Standing rule (D-01)**: every production patch + action_list version bump that touches production state goes through ChatGPT cross-check before deploy/commit. **v2.60 application**: 0 D-01 fires this turn. v2.60 is a doc-only single-file addition (future-ideation backlog note) and per protocol does not require a fire (no production state touch).
 
 **Standing rule (D-186)**: closure work has a hard time budget. 20-finding cap on P0+P1 open items + 4h/week closure floor + 2-week pause trigger.
 
 **Standing rule (D-YT-OAUTH-1, v2.39)**: invegent-dashboard `/connect` first for FB/IG/LI/YT OAuth reconnects.
 
-**Standing rule (D-PREV-16, v2.40)**: F-EF-DRIFT-PREVENTION Option F is approved target design. All stages CLOSED. **v2.59 application**: no drift fires this session.
+**Standing rule (D-PREV-16, v2.40)**: F-EF-DRIFT-PREVENTION Option F is approved target design. All stages CLOSED. **v2.60 application**: no drift fires this session.
 
-**STANDING RULE (Lesson #62, v2.41 + v2.50 refinement)**: When ChatGPT MCP echoes Claude's self-disclosed weak evidence as objections, default is NOT automatic state-capture override. **v2.59 application**: D-01 fire for cc-0005 v4 returned clean agree / 0 pushback / 0 escalation; rule not exercised.
+**STANDING RULE (Lesson #62, v2.41 + v2.50 refinement)**: When ChatGPT MCP echoes Claude's self-disclosed weak evidence as objections, default is NOT automatic state-capture override. **v2.60 application**: rule not exercised this turn (no D-01 fire).
 
 **STANDING RULE (Lesson candidate #68, v2.43)**: All fired writes must be tracked inline.
 
@@ -35,7 +35,7 @@
 
 **STANDING RULE (v2.48 — Pre-flight discovery as standard CC pattern)**: §1.5-style pre-flight discovery is now the default brief pattern for any CC dashboard/portal/web/script work.
 
-**STANDING RULE (v2.50 — Acceptance integrity)**: Acceptance is not complete until the actual review artifact is received and reviewed. **v2.59 application**: cc-0005 v4 / M8a result file commit `eb820bae6951b66bfd1dd9a61e3e0cb235d5d8ad` verified by re-fetching landed file content via Invegent GitHub MCP — blob `ebd2fb05`, size 16,052 B; V1–V10' verification table + D-01 conditions + brief-runner-v0 §9 patterns observed all present. §1 apply summary records all 12 closure facts (migration name, project, method, return, rows, dead_reason, command_md5 transition, cron 48 active=true preservation, schedule unchanged, V10' delta framing, Component 3 deferral, manual callers preserved).
+**STANDING RULE (v2.50 — Acceptance integrity)**: Acceptance is not complete until the actual review artifact is received and reviewed. **v2.60 application**: no acceptance-class artifact received this turn (single-file backlog addition).
 
 **STANDING RULE (v2.55 — brief-runner-v0 baseline patterns from cc-0003 cycle)**: L1–L4 are baseline:
 - **L1 HALT mechanism is load-bearing.**
@@ -66,30 +66,30 @@
 
 | Metric | Current | Limit | Status |
 |---|---|---|---|
-| Open findings + investigations (P0+P1) | ~2 (unchanged from v2.58; cc-0005 v4 / M8a was P3 scheduling) | 20 | ✅ within budget |
-| Trailing-14-day closure hours | ~64h (carry from v2.58 + ~2h cc-0005 v4 cycle + ~30m sync close) | 8.0 floor | ✅ above floor |
+| Open findings + investigations (P0+P1) | ~2 (unchanged from v2.59) | 20 | ✅ within budget |
+| Trailing-14-day closure hours | ~64h (unchanged from v2.59; v2.60 is a small backlog note addition, no closure work) | 8.0 floor | ✅ above floor |
 | Pause trigger active? | NO | — | New automation authoring still allowed |
 
-**This v2.59 4-way sync close: ~30 min** (read 3 docs + cc-0005 v4 result file + author 3 doc files + acceptance integrity verify).
+**This v2.60 backlog addition: ~5 min** (read action_list + author one new section + bump version + commit).
 
-**State-capture exception count v2.59: 0** (cc-0005 v4 D-01 fire returned clean agree; no escalation, no override).
+**State-capture exception count v2.60: 0** (no D-01 fire this turn).
 
 ---
 
-## ⭐ Today / Next 5 — REBUILT v2.59
+## ⭐ Today / Next 5 — UNCHANGED from v2.59
 
 > **Last rebuilt:** 2026-05-09 Sydney (v2.59).
-> **M8a Path A CLOSED v2.59 (P3 scheduling).** cron 48 rewritten in place; 344 rows dead-lettered; V1–V10' PASS. **Urgent pipeline-integrity block now effectively complete.** **Per PK directive: Platform Reconciliation View becomes the next major planning/work item.**
+> **v2.60 note:** Today/Next 5 unchanged. cc-0008 v3 brief (commit `b9a76e9a`) sits at apply-pending-D-01 gate within Platform Reconciliation View planning sequence. Brand Topic Notebook ideation logged for forward visibility only (queue behind cc-0008 / PRV-1 foundation, Platform Reconciliation, AI Operating System Improvements).
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
 | 1 | **Platform Reconciliation View — BRIEF AUTHORING** | **P2 → PROMOTED to rank 1 v2.59** | All three sequencing blockers cleared (cc-0007 v2.58, cc-0005 M8a v2.59, urgent pipeline-integrity closure v2.59). **Per PK directive recorded at commit `a8a241d1`: this becomes the next major planning/work item after v2.59 sync close.** | PK directs scheduling. Brief authoring (chat) when greenlit. Implementation gates: Phase 0 confirmation defaults; architecture review §10 extension scope; manual override design (dashboard form vs Supabase RLS-protected table); API ingestion priority order (FB+IG via Meta Graph API likely first; LinkedIn manual until Phase 2.x; YouTube via Data API if possible). 13 seed manual observations preserved in dedicated 🟢 status block below. |
-| 2 | **Dashboard Architecture Review Phase 0 prerequisites** | P1 TOP | Unchanged from v2.55–v2.58. M5–M8 reconciliation status: **M6 Phase A + B both CLOSED v2.55/v2.56; M8a CLOSED v2.59; M7 doc-only fold complete; M8b deferred (gated on manual caller remediation, not blocking new work).** | PK confirms 7 default-blockers via `docs/briefs/cc-0001-dashboard-phase-0-defaults.md`. |
+| 2 | **Dashboard Architecture Review Phase 0 prerequisites** | P1 TOP | Unchanged from v2.55–v2.59. M5–M8 reconciliation status: **M6 Phase A + B both CLOSED v2.55/v2.56; M8a CLOSED v2.59; M7 doc-only fold complete; M8b deferred (gated on manual caller remediation, not blocking new work).** | PK confirms 7 default-blockers via `docs/briefs/cc-0001-dashboard-phase-0-defaults.md`. |
 | 3 | **AI cost view** | P3 quick win | Unchanged. ~1h estimate. | Author `vw_ai_cost_monthly` on `m.ai_job` (read-only DDL) + add NOW dashboard tile. |
 | 4 | **Publisher latent config risk follow-up** | P3 quick win | Carry from v2.58. cc-0007 §1.4 surfaced; defensive patch held back per strict rule + D-01 conditions. Currently 0 × 401, but next publisher deploy without flag AND config.toml entry would regress identically. | Single-file commit to `supabase/config.toml` adding `[functions.publisher] verify_jwt = false`. NO deploy required. ~5 min. |
 | 5 | **Personal businesses check-in** | P0 standing | Carry. | PK reports any time-sensitive items + Crazy Domains clean-up status. |
 
-**Carry-forward unchanged from v2.58 except v2.59 deltas (cc-0005 v4 / M8a closure, Platform Reconciliation View promoted to rank 1, Phase 0 prerequisites demoted to rank 2 since pipeline-integrity block now effectively complete).**
+**Carry-forward unchanged from v2.59. v2.60 is a backlog-only addition — no Today/Next 5 reshuffle.**
 
 ---
 
@@ -103,7 +103,7 @@ All stages CLOSED. Cron jobid 80 + 81 active=true. No drift fires this cycle.
 
 **Status:** COMPLETE at v2.46. 12 docs at `docs/dashboard-review-2026-05/`.
 
-**v2.59 update on hard blockers:**
+**v2.59 update on hard blockers (preserved at v2.60):**
 - ✅ S30 cleared v2.47 — first hard blocker DONE.
 - ✅ **M5–M8 reconciliation — effectively COMPLETE v2.59:** M6 Phase A **CLOSED v2.55**; M6 Phase B **CLOSED v2.56**; M7 doc-only fold complete with M8a 4-way sync per reconciliation §6 Q2; **M8a CLOSED v2.59 (cron 48 rewritten in place + 344 rows dead-lettered).** M8b is the only residual M-series item, deferred to separate cc-NNNN brief (gated on manual caller remediation; not blocking new work).
 - 🔲 7 Phase 0 confirmation-blocker defaults — pending PK confirm/override (cc-0001 result file in place).
@@ -114,7 +114,7 @@ All stages CLOSED. Cron jobid 80 + 81 active=true. No drift fires this cycle.
 
 ## 🟢 Tier 1 + M4 + M5 + M6 Phase A + M6 Phase B + M8a queue integrity & stability remediation — STATUS BLOCK
 
-**v2.59 update — M-series effectively complete:**
+**v2.59 update — M-series effectively complete (preserved at v2.60):**
 
 | M-step | Closure version | Apply commit | Effect |
 |---|---|---|---|
@@ -124,7 +124,7 @@ All stages CLOSED. Cron jobid 80 + 81 active=true. No drift fires this cycle.
 | M6 Phase A | v2.55 | `d60dcfbc` | 9 Bug 3 fingerprint rows dead-lettered |
 | M6 Phase B | v2.56 | `9d5bdd37` | 43 v4-mismatch rows dead-lettered |
 | M7 | doc-only fold | (folds into M8a 4-way sync per reconciliation §6 Q2) | n/a |
-| **M8a** | **v2.59 (this)** | result `eb820bae` | **344 legacy-origin future queue rows dead-lettered + cron 48 rewritten in place (`active=true` preserved)** |
+| **M8a** | **v2.59** | result `eb820bae` | **344 legacy-origin future queue rows dead-lettered + cron 48 rewritten in place (`active=true` preserved)** |
 | M8b | DEFERRED | TBD (separate cc-NNNN brief) | function rename + COMMENT after manual caller remediation |
 
 **Total residual rows cleared by M-series dead-letter cycles since 8 May 2026: 9 + 43 + 344 = 396 rows.**
@@ -135,12 +135,12 @@ All stages CLOSED. Cron jobid 80 + 81 active=true. No drift fires this cycle.
 
 ## 🟢 Platform Reconciliation View — BRIEF CANDIDATE STATUS BLOCK (PROMOTED to rank 1 v2.59; sequencing blockers all cleared)
 
-**Status v2.59:** **PROMOTED to next major planning/work item per PK directive.** Brief authoring (chat) when scheduled. All three sequencing blockers cleared:
+**Status v2.60:** Unchanged from v2.59. **PROMOTED to next major planning/work item per PK directive.** Brief authoring (chat) when scheduled. All three sequencing blockers cleared:
 
 | Blocker | Status | Closure |
 |---|---|---|
 | ~~cc-0007 ai-worker 401 recovery~~ | CLEARED | v2.58 |
-| ~~cc-0005 M8a Path A~~ | CLEARED | **v2.59 (this)** |
+| ~~cc-0005 M8a Path A~~ | CLEARED | **v2.59** |
 | ~~Urgent pipeline-integrity closure work~~ | CLEARED | **v2.59 (M-series effectively complete; M8b doesn't block new work)** |
 
 **Classification:** pipeline observability / reconciliation. **NOT cosmetic dashboard work** (PK explicit framing 2026-05-09).
@@ -149,9 +149,11 @@ All stages CLOSED. Cron jobid 80 + 81 active=true. No drift fires this cycle.
 
 **Problem (PK directive 2026-05-09 Sydney):** PK is manually checking each social platform to know whether ICE output actually appeared. This is not scalable. Dashboard needs a reconciliation surface showing what ICE expected/produced/queued/published versus what each platform actually shows.
 
+**v2.60 cross-reference:** cc-0008 v3 brief (commit `b9a76e9a`, blob `4f5258bc`) is the first PRV-1 build-class apply brief in this stream. PRV-0 v2 design lock at commit `6e989517`; cc-0008 sits at apply-pending-D-01 + PK approval phrase gate.
+
 **Required scope (PK-directed 2026-05-09):**
 - by day / client / platform reconciliation
-- ICE expected cadence (per client × platform × day; sourced from `c.client_publish_profile` + `c.client_ai_profile` schedule rules)
+- ICE expected cadence (per client × platform × day; sourced from `c.client_publish_profile` + `c.client_ai_profile` schedule rules; canonical seed lands via cc-0008 `c.client_cadence_rule` once applied)
 - ICE generated assets / drafts (`m.post_draft` rows, including `approval_status` distribution)
 - ICE queue state (`m.post_publish_queue`, including `dead`/`failed`/`queued`/`published`)
 - ICE publisher result / logs (`m.post_publish`, `m.worker_http_log`, EF deploy state)
@@ -160,7 +162,7 @@ All stages CLOSED. Cron jobid 80 + 81 active=true. No drift fires this cycle.
 - evidence links / platform IDs where available
 - manual override field for platforms where API ingestion is not yet available
 
-**Seed manual observations (PK direct, 2026-05-09 Sydney; preserved across v2.58 + v2.59 closes):**
+**Seed manual observations (PK direct, 2026-05-09 Sydney; preserved across v2.58 + v2.59 + v2.60 closes):**
 
 | Client | Platform | Observation date | PK note |
 |---|---|---|---|
@@ -180,7 +182,7 @@ All stages CLOSED. Cron jobid 80 + 81 active=true. No drift fires this cycle.
 
 **13 datapoints across 4 clients (NDIS Yarns, Property Pulse, Care for Welfare, Invegent) and 4 platforms (Facebook, Instagram, LinkedIn, YouTube).** Both PK explicit mismatch flags preserved (Invegent FB wrong-content; Property Pulse LI possible duplicate-or-extra). These 13 datapoints are the durable seed cohort for the brief author.
 
-**Implementation gates (still open as of v2.59):**
+**Implementation gates (still open as of v2.60):**
 1. Phase 0 confirmation defaults still pending (P1 TOP carry).
 2. Architecture review §10 extension scope to be decided at brief-authoring time. Existing §10 product objects + data model at `docs/dashboard-review-2026-05/10_product_objects_and_data_model.md` informs what "expected" means per platform but will need extension with reconciliation-specific objects (`platform_observation`, `mismatch_classification`).
 3. Manual override design — dashboard input form vs Supabase RLS-protected table? PK directs at brief-authoring time.
@@ -206,18 +208,15 @@ Unchanged from v2.54.
 
 ## 🛠 Meta-tooling — ChatGPT Review MCP (T-MCP-02 quota at 55 cumulative; close-the-loop ~29+ pending; 5 cc-NNNN reviews pending close-the-loop)
 
-**v2.59 application**: 1 D-01 fire chat-side prior cycle for cc-0005 v4 / M8a apply. Cumulative T-MCP-02: 54 → 55. Cumulative T-MCP-08: 2 (unchanged). State-capture exceptions v2.59: **0**.
+**v2.60 application**: 0 D-01 fires this turn (single-file backlog addition is doc-only, no production state touch). Cumulative T-MCP-02 unchanged at 55. Cumulative T-MCP-08 unchanged at 2. State-capture exceptions v2.60: **0**.
 
-**Fire ledger this cycle:**
-- Fire #1 (cc-0005 v4 D-01, review_id pending close-the-loop capture): action_type **`sql_destructive`**. Verdict agree / proceed / risk ≤ medium / confidence high. 0 pushback. 0 escalation. Clean approve. Conditions: re-run final read-only verification immediately before apply (PASSED — no drift); halt if cleanup count outside [250, 500] (NOT triggered; 344 in band); halt if cron 48 command/md5 changed unexpectedly (NOT triggered); capture fresh queue_id list before UPDATE; use exact cc-0005 v4 §3 SQL verbatim; apply only after PK explicit phrase (RECEIVED); after apply run V1–V10' (DONE — all PASS); roll back only if verification fails (NOT TRIGGERED); commit cc-0005 result file (DONE).
-
-**Close-the-loop UPDATEs to `m.chatgpt_review`:** v2.59 adds 1 more (cumulative ~29+ pending). **5 cc-NNNN reviews pending close-the-loop** (cc-0003 v2 + cc-0004 + cc-0006 + cc-0007 + cc-0005 v4). Carried as P3 backlog. **Deferred this turn per PK explicit "no Supabase writes" scope.** v2.55–v2.58 close-the-loops also still pending.
+**Close-the-loop UPDATEs to `m.chatgpt_review`:** v2.60 adds 0. **5 cc-NNNN reviews pending close-the-loop** (cc-0003 v2 + cc-0004 + cc-0006 + cc-0007 + cc-0005 v4) — unchanged from v2.59. Carried as P3 backlog.
 
 ---
 
 ## 🤖 Cowork automation (D182)
 
-**v2.59 status (carry from v2.54–v2.58):** `docs/briefs/morning-inbox-sweep-v1.md` committed status=draft per PK hold. NOT scheduled in Cowork until PK amends and flips status=review_required.
+**v2.60 status (carry from v2.54–v2.59):** `docs/briefs/morning-inbox-sweep-v1.md` committed status=draft per PK hold. NOT scheduled in Cowork until PK amends and flips status=review_required.
 
 **Existing Cowork status (unchanged):** Weekly reconciliation Mon 7am AEST + ICE Nightly Health Check daily 02:00 AEST. `docs/audit/health/2026-05-06.md` still absent — carry as P3 follow-up.
 
@@ -233,26 +232,28 @@ Unchanged from v2.54.
 | **Publisher latent config risk follow-up** | Doc-only patch adding `[functions.publisher] verify_jwt = false` to `supabase/config.toml` | P3 (carry from v2.58) | OPEN. Currently 0 × 401 (gateway presumably already at correct setting), but next publisher deploy without flag AND config.toml entry would regress identically. | chat → next session | Single-file commit to `supabase/config.toml`. NO deploy required. ~5 min. |
 | **M8b separate brief authoring** | Function rename (`public.get_next_scheduled_for` → `__deprecated_m8b`) + COMMENT, after manual caller remediation | P3 (NEW v2.59 Active item; was carry from v2.58) | NOT YET AUTHORED. Reserved as separate cc-NNNN brief. Sequencing gate: BOTH `public.draft_approve_and_enqueue` AND `public.draft_approve_and_enqueue_scheduled` must first be remediated. Once remediated AND V10' returns 0 callers, M8b applies the rename. | PK → chat | When PK directs. Brief shape sketched in cc-0005 v4 §M8b follow-up section. **Not blocking new work.** |
 | **94-row un-publishable legacy draft cohort cleanup** | Drafts: `pd.slot_id IS NULL AND pd.scheduled_for IS NULL AND pd.created_by='seed_and_enqueue' AND pd.approval_status IN ('approved','scheduled')` | P3 (carry from v2.58) | LOGGED. Currently 94 rows; oldest 2026-04-17, newest 2026-04-25 (10-day pre-M3/M4 era window). Post-M8a these will silently never publish (cron 48's WHERE filter drops them). | PK → chat → future session | If PK directs, separate cc-NNNN brief. Resolution candidates documented in cc-0005 v4 brief §Separate follow-up: (a) bulk dead-letter, (b) per-draft triage, (c) retroactive scheduling, (d) leave indefinitely. |
-| **F-CRON-AUTO-APPROVER-SECRET-INLINE** (carry, security) | Cron jobid 58 has secret hardcoded inline; cc-0006 deliberately preserved character-for-character | P2 (security) | OPEN — unchanged v2.59 | chat → future session (PK approval required for rotation) | PK to authorise secret rotation + vault entry creation + cron command refactor. Separate cc-NNNN brief required. |
+| **F-CRON-AUTO-APPROVER-SECRET-INLINE** (carry, security) | Cron jobid 58 has secret hardcoded inline; cc-0006 deliberately preserved character-for-character | P2 (security) | OPEN — unchanged v2.60 | chat → future session (PK approval required for rotation) | PK to authorise secret rotation + vault entry creation + cron command refactor. Separate cc-NNNN brief required. |
 | **F-YT-PUB-AVATAR-EXCLUSION** (carry from v2.53) | youtube-publisher `.in()` filter excludes `video_short_avatar` | P3 | LOGGED, no chat action | chat → future (passive) | Validator: any future NY×YT or PP×YT slot where advisor picks `video_short_avatar`. |
 | **morning-inbox-sweep-v1 brief amendment** (carry from v2.51) | PK personal-email morning triage | P3 | DRAFT exists at `docs/briefs/morning-inbox-sweep-v1.md` (status=draft) | PK → chat | PK reviews + proposes amendments; chat applies + flips status=review_required. |
 | **NEW v2.56 P3 backlog observation** | 1 LinkedIn queue row (`1a21199e-...`) was in queue with `pd.approval_status='draft'` (cc-0004 P3.3 outlier; queue dead-lettered, draft itself unchanged) | P3 | LOGGED, no chat action | chat → future (passive) | Investigation deferred. |
 | **Dashboard mobile responsiveness — system-wide** | Whole-dashboard gap | P3 | OBSERVED | chat → dedicated session OR Phase 1+ | Either dedicated session OR roll into architecture review Phase 1+ build sequence. |
 | **F-PUB-009 V3-V5 + 7-day flow** | Forward acid-test | P2 | Passive monitoring | chat → next session | Continue passive monitoring. |
 | **Invegent IG cap-throttle planning** | jobid 53 unblock readiness | P3 | OBSERVED | chat → T05 unblock session | Plan cap-throttle / rate-limit handling. |
-| **CFW post-ai-worker dead drafts** | Drafts dying after AI succeeds | P3 | OBSERVED | chat → future session | Investigate downstream pathway. **v2.58 + v2.59 note:** with cc-0007 recovery + cc-0005 M8a closure, ai-worker is now succeeding AND queue-enqueue path is clean; observe whether finding self-resolves over next 24–48h. |
+| **CFW post-ai-worker dead drafts** | Drafts dying after AI succeeds | P3 | OBSERVED | chat → future session | Investigate downstream pathway. **v2.58 + v2.59 + v2.60 note:** with cc-0007 recovery + cc-0005 M8a closure, ai-worker is now succeeding AND queue-enqueue path is clean; observe whether finding self-resolves over next 24–48h. |
 | **Vault `service_role_key` naming hygiene** | 15-char value; misleadingly named | P3 | OBSERVED | chat → future session | Read-only scope-check; rename if appropriate. |
 | **`docs/audit/health/2026-05-06.md` follow-up** | Cowork 02:00 AEST cron 6 May did not push | P3 | Carried | chat → next session if still absent | Investigate Cowork status. |
 | **`00_overview.md` 11-section table reconciliation** | Architecture review changed actual section structure | P3 | Required updates in `11_final_consolidation.md` §11.1 | chat → future session | Update `00_overview.md`. ~15 min. |
 | **F-AAP-NEEDS-REVIEW-BACKLOG** | 28 drafts pending review | P2 | Closure target = architecture review Phase 2 B-09-14 | chat → Phase 2 session | After Phase 0 + Phase 1: bulk approve UI in Phase 2. |
-| **Dashboard roadmap PHASES reconciliation** | PHASES array stale since 3 May | P3 | Carried v2.45 → v2.59 (**15th deferral**) | chat → dedicated session | Open `app/(dashboard)/roadmap/page.tsx` and bring PHASES + LAST_UPDATED current. |
+| **Dashboard roadmap PHASES reconciliation** | PHASES array stale since 3 May | P3 | Carried v2.45 → v2.60 (**16th deferral**) | chat → dedicated session | Open `app/(dashboard)/roadmap/page.tsx` and bring PHASES + LAST_UPDATED current. |
 | **F-AI-WORKER-PARSER-SKIP-BUG V4** | Forward acid-test inconclusive | P2 | Passive monitoring | chat → future | V4 needs natural skip event OR synthetic test. |
 | **F-CRON-COMPLIANCE-MONITOR-STALE** (carry) | cron jobid 31 calls deployed slug; folder absent | P2 | LOGGED | PK → future session | Decide: re-author repo source OR retire deployed slug + cron. |
 | **F-CRON-INGEST-STALE** (carry) | cron jobid 1 calls deployed `ingest-v8-youtube-channel`; folder absent | P2 | LOGGED | PK → future session | Same shape as compliance-monitor. |
 | **F-CRON-PIPELINE-AI-SUMMARY-STALE** (carry) | cron jobid 30 calls deployed slug; folder absent | P2 | LOGGED | PK → future session | Same shape. |
 | **F-CRON-PIPELINE-DOCTOR-STALE** (carry) | cron jobids 29 + 39 call deployed slug; folder absent. **NOT** a rename of `pipeline-diagnostician`. | P2 | LOGGED | PK → future session | Same shape. |
 | **Music library activation checklist** (carry) | 9 mp3 upload + bucket + env var | P3 (PK action) | PENDING PK ACTION | PK | PK to action when music tracks are ready. |
-| **Emergency redeploy governance question** (carry) | Should bounded production-restoration require expedited D-01? | P2 (PK decision) | PENDING PK DECISION | PK | PK rules; chat documents in `docs/06_decisions.md`. **v2.58 + v2.59 note:** cc-0007 P1 recovery cycle + cc-0005 v4 SQL apply both demonstrate standard D-01 protocol can handle complex apply-class brief timing without expediting. Empirical input for the decision. |
+| **Emergency redeploy governance question** (carry) | Should bounded production-restoration require expedited D-01? | P2 (PK decision) | PENDING PK DECISION | PK | PK rules; chat documents in `docs/06_decisions.md`. **v2.58 + v2.59 + v2.60 note:** cc-0007 P1 recovery cycle + cc-0005 v4 SQL apply both demonstrate standard D-01 protocol can handle complex apply-class brief timing without expediting. Empirical input for the decision. |
+
+**Closed v2.60:** *(none — v2.60 is a single-file backlog addition only; no closures.)*
 
 **Closed v2.59:** **M8 Path A (cc-0005 v4 / M8a)** — APPLIED via Supabase MCP `apply_migration` by CC in single atomic transaction (`m8a_cron48_rewrite_and_legacy_cleanup_v1`). 344 legacy-origin future queue rows dead-lettered with `dead_reason='m8_cutover_legacy_path_deprecated'`. Cron 48 rewritten in place; `active=true` + schedule `*/5 * * * *` + jobname all preserved. Legacy `public.get_next_scheduled_for(...)` fallback removed from cron 48's COALESCE chain. Autonomous slot-driven enqueue path preserved. cron 48 command_md5 `5113bc4...` → `57bbafb...` (+149 bytes). V1–V10' all PASS. No rollback. Component 3 (function rename + COMMENT) DEFERRED to M8b per v4 design. `public.get_next_scheduled_for` NOT renamed; manual callers `public.draft_approve_and_enqueue` + `public.draft_approve_and_enqueue_scheduled` NOT modified. Result file commit `eb820bae` (blob `ebd2fb05`, 16,052 B). M-series total dead-letter rows since 8 May: 9 + 43 + 344 = 396 rows. Urgent pipeline-integrity block now effectively complete.
 
@@ -277,7 +278,7 @@ Unchanged from v2.54.
 
 ## 💼 Personal businesses
 
-**v2.59 carry (unchanged from v2.55–v2.58):**
+**v2.60 carry (unchanged from v2.55–v2.59):**
 
 - **Crazy Domains refund + clean-up follow-up** (carry from v2.51) — PK called CD on 2026-05-08; at least one invoice refund verbally confirmed in progress. Remaining clean-up still PK to action manually:
   1. Cancel Website Builder auto-renewal (saves ~$251/yr ongoing)
@@ -290,11 +291,75 @@ Unchanged from v2.54.
 
   Not chat scope — PK actions manually. Re-check status next session.
 
-*(no other items flagged at v2.59 close — standing P0 to ask at next session start.)*
+*(no other items flagged at v2.60 close — standing P0 to ask at next session start.)*
+
+---
+
+## 🌱 Future ideation / content-pipeline expansion (NOT current pipeline-integrity work)
+
+> **Classification:** Forward-looking ideation. Queue behind: (1) cc-0008 / PRV-1 foundation, (2) Platform Reconciliation build, (3) AI Operating System Improvements / project skills. NOT pipeline-integrity work.
+> **Status of section v2.60:** new section introduced this turn. Forward visibility only. No brief authoring, no architecture review, no DDL planning. Items here are NOT actionable until upstream blockers clear.
+
+### NEW v2.60 — Brand Topic Notebook → Episodic Podcast Source Pack (NotebookLM upstream feed)
+
+**Logged:** 2026-05-09 Sydney (PK direction post cc-0008 v3 landing).
+
+**Context.** PK observed that NotebookLM can create topic-specific notebooks and generate podcast-style Audio Overviews from source material. This could be connected to ICE brands as an upstream content ideation / source-pack system.
+
+**Potential use:**
+- One or more topic notebooks per brand:
+  - NDIS Yarns
+  - Property Pulse
+  - Care for Welfare
+  - Invegent
+- Each notebook contains curated brand/topic sources.
+- NotebookLM Audio Overview generates an episodic discussion / draft.
+- ICE ingests the transcript / summary / source pack and turns it into:
+  - YouTube Shorts
+  - LinkedIn posts
+  - Facebook posts
+  - Instagram captions
+  - newsletter / blog derivatives
+  - possible long-form podcast scripts
+
+**Important framing (PK explicit):**
+- Do NOT treat raw NotebookLM audio as final publishable brand content.
+- Treat it as research / ideation / source-pack material requiring review.
+- Near-term workflow likely semi-manual unless a reliable API / export path is confirmed.
+- Future module name candidate: `Brand Topic Notebook → Episode Source Pack → Content Derivatives`.
+
+**Queue behind (PK directive):**
+1. cc-0008 / PRV-1 foundation (cc-0008 v3 brief landed at commit `b9a76e9a`; apply pending D-01 + PK approval phrase. PRV-1 = cc-0008..cc-0011 per PRV-0 v2 §8.)
+2. Platform Reconciliation build (Active table rank 1 promoted v2.59).
+3. AI Operating System Improvements / project skills.
+
+**Classification:** Future content-pipeline expansion, not current pipeline-integrity work.
+
+**Open questions (deferred to brief-authoring time, not now):**
+- Reliable export path from NotebookLM (transcript text, audio file, source list)? API access vs manual export? Latency from notebook update → derivative content?
+- Per-brand notebook count: one per brand, or one per topic-thread per brand?
+- Source curation responsibility: PK manual vs ICE-ingested feed (e.g. CFW industry news, Property Pulse market data, NDIS Yarns sector updates)?
+- Review gate before ICE generates publishable derivatives: PK approval per Audio Overview, or auto-derive with PK approval per derivative?
+- Long-form podcast scripts: separate output channel, or downstream of Audio Overview?
+- Storage / retention: Audio Overview audio files, transcripts, source packs — where do they live (Supabase storage, GCS, local)? Versioning?
+- Mismatch with cc-0008 cadence model: cadence-side intent (`c.client_cadence_rule`) vs ideation-driven episodic cadence (when an Audio Overview is fresh) — how do they reconcile?
+
+**Not actionable until upstream blockers clear.** Logged for forward visibility only.
 
 ---
 
 ## 📌 Backlog
+
+**v2.60 changes**:
+
+- **NEW v2.60**: Brand Topic Notebook → Episodic Podcast Source Pack (NotebookLM upstream feed concept) — added to new "🌱 Future ideation / content-pipeline expansion" section above. Per-brand topic notebooks → NotebookLM Audio Overview → ICE ingest → multi-platform derivatives. Raw NotebookLM audio NOT to be treated as final publishable content (PK explicit framing). Queued behind cc-0008/PRV-1 foundation, Platform Reconciliation build, AI Operating System Improvements / project skills. Classification: forward-looking ideation, NOT current pipeline-integrity work.
+- **PROGRESS NOTE v2.60 (cc-0008 v3 landed but apply still pending)**: cc-0008 brief progressed v1 → v2 → v3 in same session 2026-05-09 prior to this v2.60 turn. v3 commit `b9a76e9a` (blob `4f5258bc`); blob size 65,667 B. v3 changes from v2: `expected_format` non-null on all 14 seed rows per PK directive (FB→`image_quote`, IG→`image` incl. 2 paused, LI→`linkedin_post`, YT→`youtube_short`); both v2 PK decision points resolved upstream (`expected_format` policy + `valid_from=current_date` approval). v2 commit `e11890e3` and v1 commit `216a5ea2` preserved as predecessors. Apply still pending D-01 fire + PK explicit approval phrase + final §1 re-verification within ~60s of apply. NOT closed at v2.60 (this turn is purely a backlog addition, not a cc-0008 closure). Brief continues to sit at apply-pending gate.
+- **CARRIED v2.60**: Dashboard roadmap PHASES — **16th** consecutive deferral (was 15th in v2.59).
+- **CARRIED v2.60**: 5 outstanding `m.chatgpt_review` close-the-loop UPDATEs (cc-0003 v2 + cc-0004 + cc-0006 + cc-0007 + cc-0005 v4 D-01 fires).
+- **CARRIED v2.60**: 4× v2.54 P2 cron findings (F-CRON-COMPLIANCE-MONITOR-STALE, F-CRON-INGEST-STALE, F-CRON-PIPELINE-AI-SUMMARY-STALE, F-CRON-PIPELINE-DOCTOR-STALE).
+- **CARRIED v2.60**: F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 sec, OPEN unchanged).
+- **CARRIED v2.60**: Publisher latent config risk follow-up (P3 quick win, doc-only patch, ~5 min).
+- **CARRIED v2.60**: All v2.59 carries unchanged. Today/Next 5 unchanged. M-series effectively complete carry preserved.
 
 **v2.59 changes**:
 
@@ -322,30 +387,37 @@ Unchanged.
 
 ## 🎓 Canonical Lessons
 
-Unchanged from v2.58 except:
-- **Lesson #61** (P1–P5 must be empirically verified, not theoretically assumed) — reinforced again by cc-0005 v4 / M8a cycle (final re-verify confirmed no drift; pre-flight queries empirically gathered before D-01; §1.5d alignment HALT criterion empirically gated). **Promotion to canonical recommended (now reinforced 4 times: cc-0003 v2, cc-0004, cc-0006, cc-0005 v4).**
+Unchanged from v2.59 except:
+- **Lesson #61** (P1–P5 must be empirically verified, not theoretically assumed) — reinforced again by cc-0005 v4 / M8a cycle. **Promotion to canonical recommended (now reinforced 4 times: cc-0003 v2, cc-0004, cc-0006, cc-0005 v4).** Carry status at v2.60.
 - **Lesson #62 v2.50 refinement** — not exercised this cycle.
-- **L17 in-place patching pattern** — vindicated third time v2.59. **Recommended for promotion to baseline.**
+- **L17 in-place patching pattern** — vindicated third time v2.59. **Recommended for promotion to baseline.** Carry status at v2.60.
 - **L11, L16, L18 vindicated again** — carry as candidates with strong evidence; promotion next cycle.
-- **L19, L20, L21 (v2.58 candidates)** — VINDICATED v2.59. Promotion to baseline candidates.
+- **L19, L20, L21 (v2.58 candidates)** — VINDICATED v2.59. Promotion to baseline candidates. Carry status at v2.60.
+
+**v2.60 NEW lesson candidate (L32)**: future-ideation backlog should be quarantined from in-flight work to prevent priority drift. A dedicated "🌱 Future ideation / content-pipeline expansion" section keeps speculative items visible for forward planning without polluting Today/Next 5 or the Active table. Also enforces explicit "queue behind" framing for sequencing discipline. To be vindicated when at least one ideation-class item gets promoted from this section into Active in a future cycle.
 
 ---
 
-## v2.59 honest limitations
+## v2.60 honest limitations
 
-- All v2.31–v2.58 limitations apply.
-- **Memory at 30-edit cap pre-session** (carry). v2.59 update DEFERRED per PK explicit scope (no memory edit this turn). Memory `recent_updates` v2.54 entry remains canonical until next chat-owned memory update opportunity (will need to reflect v2.55 + v2.56 + v2.57 + v2.58 + v2.59 closures + inline post-v2.57 additions in a single rolling entry).
-- **Dashboard roadmap PHASES still stale** — **15th** consecutive deferral. Risk unchanged.
-- **~29+ close-the-loop UPDATEs to `m.chatgpt_review`** still pending — v2.59 adds 1 (cc-0005 v4 D-01 fire); v2.55–v2.58 each added 1; cumulative pending ~29+. **5 cc-NNNN reviews pending close-the-loop** (cc-0003 v2 + cc-0004 + cc-0006 + cc-0007 + cc-0005 v4). All deferred per PK "no Supabase writes" scope.
+- All v2.31–v2.59 limitations apply.
+- **cc-0008 v3 brief landed but NOT YET APPLIED.** Sits at apply-pending-D-01-fire + PK explicit approval phrase + final §1 re-verification gate. v2.60 turn does NOT close cc-0008; it adds an unrelated future-ideation backlog note. cc-0008 closure will happen at next 4-way sync close after apply (will be v2.61 or later).
+- **Memory at 30-edit cap pre-session** (carry). v2.60 does NOT update memory (single-file backlog addition). Memory will need a rolling-update entry covering v2.55 + v2.56 + v2.57 + v2.58 + v2.59 + v2.60 (and potentially cc-0008 closure when it lands) at next chat-owned memory update opportunity.
+- **Dashboard roadmap PHASES still stale** — **16th** consecutive deferral. Risk unchanged.
+- **~29+ close-the-loop UPDATEs to `m.chatgpt_review`** still pending — v2.60 adds 0 (no D-01 fire this turn). Cumulative pending still ~29+. **5 cc-NNNN reviews pending close-the-loop** (cc-0003 v2 + cc-0004 + cc-0006 + cc-0007 + cc-0005 v4) — unchanged from v2.59. All deferred.
 - **5 cc-NNNN D-01 review_ids not captured in 4-way sync files**. Will surface when close-the-loop UPDATEs are fired.
-- **Sync state file size**: ~30KB at v2.59 close. Archive sweep **OVERDUE** since the 16KB threshold was crossed at v2.54; deferred.
+- **Sync state file size**: ~30KB at v2.59 close (unchanged at v2.60 since this turn does not touch sync_state). Archive sweep **OVERDUE** since the 16KB threshold was crossed at v2.54; deferred. Note: v2.60 is action_list-only; sync_state untouched this turn.
+- **No sync_state pointer update for v2.60.** v2.60 is a single-file backlog addition that does not warrant a full 4-way sync close. sync_state, per-session file, and dashboard PHASES are NOT updated at v2.60 (per minimal-scope discipline). Next 4-way sync close will catch this turn up alongside cc-0008 closure.
+- **No per-session file for v2.60.** Single-file backlog addition does not justify a per-session file under `docs/runtime/sessions/`. Next 4-way sync close will fold v2.60 into the session-level narrative.
 - **M8b separate brief NOT YET AUTHORED.** Reserved as separate cc-NNNN brief; gated on manual caller remediation; not blocking new work but represents an honest residual M-series TODO.
 - **94-row un-publishable legacy draft cohort still un-publishable.** Post-M8a these drafts will silently never enqueue (cron 48's WHERE filter drops them). Resolution requires PK directive on which of (a) bulk dead-letter / (b) per-draft triage / (c) retroactive scheduling / (d) leave indefinitely is preferred.
-- **Publisher latent config risk** — carried as v2.58/v2.59 P3 follow-up. Doc-only patch only (no deploy). Removes regression risk for next publisher deploy without affecting current state.
-- **No D-01 fire for the v2.59 4-way sync close commit** — doc-only, no production state touch.
-- **L23 (repo + deploy coordination rollback shape)** — still logged but not exercised; cc-0007 was first apply with TWO production-touching steps but rollback was not triggered. Pattern is durable on apply side; rollback shape remains theoretical until exercised.
-- **Brief-runner-v0 §1.x quality observations** from cc-0007 (logged in v2.58): cron blind spot for HTTP failures; §1.2 threshold not regression-onset-aware; §1.5 first-failed-cron-fire query relies on same blind spot; `m.ef_drift_log` column-name mismatch (`ef_slug` → `slug`, `created_at` → `checked_at`). Worth incorporating into brief-template work; **carry for next major brief (likely Platform Reconciliation View).**
+- **Publisher latent config risk** — carried as v2.58/v2.59/v2.60 P3 follow-up. Doc-only patch only (no deploy). Removes regression risk for next publisher deploy without affecting current state.
+- **No D-01 fire for v2.60** — single-file backlog addition is doc-only, no production state touch. Per standing rule (D-01) doc-only commits do not require fire.
+- **Brand Topic Notebook ideation note has open questions** (listed in the new section) — these are deliberately deferred to brief-authoring time. Notable risks to flag now: (a) NotebookLM API/export path may not exist or may be unstable, locking the workflow into manual export indefinitely; (b) audio-as-source raises copyright + derivative-content ownership questions; (c) cadence reconciliation between `c.client_cadence_rule` and ideation-driven episodic cadence is non-trivial.
+- **L23 (repo + deploy coordination rollback shape)** — still logged but not exercised. Pattern is durable on apply side; rollback shape remains theoretical until exercised.
+- **Brief-runner-v0 §1.x quality observations** from cc-0007 (logged in v2.58): cron blind spot for HTTP failures; §1.2 threshold not regression-onset-aware; §1.5 first-failed-cron-fire query relies on same blind spot; `m.ef_drift_log` column-name mismatch (`ef_slug` → `slug`, `created_at` → `checked_at`). **Carry for next major brief (likely Platform Reconciliation View).**
 - **cc-0005 v4 / M8a brief-runner-v0 §9 patterns** — multi-component single-transaction with in-migration verify gates; md5 fingerprint cron edit verification; §1.6 snapshot persisted to local file; V10' "expected delta" framing; function rename deferral via Component 3 → M8b. All 5 patterns logged for future apply-class briefs.
+- **cc-0008 v1 → v2 → v3 brief-runner-v0 patterns observed** (from this session prior to v2.60): output-budget discipline at 65–66KB landed-size for `create_or_update_file` reliability (PRV-0 v2 succeeded at 70KB; cc-0008 v2 at 65,677 landed; cc-0008 v3 at 65,667 landed; first v3 attempt at 68,705 local FAILED mid-stream due to context-window pressure, retry at 65,796 local SUCCEEDED). UTF-8 multibyte char accounting produces ~0.2% size delta (e.g. 65,796 local → 65,667 landed). Acceptance integrity re-fetch via `Invegent GitHub:get_file_contents` after large commits is durable. Patch-history versioning (v1 + v2 + v3 in same session) with explicit predecessor commit SHAs preserves audit trail across in-place revisions. **Lesson candidates L26–L31** from this session — to be folded into baseline candidate list at next 4-way sync close.
 
 ---
 
@@ -370,3 +442,19 @@ Unchanged from v2.58 except:
   - **Acceptance-integrity adherence** (v2.50): cc-0005 v4 / M8a result file commit `eb820bae` verified by re-fetching landed file content via Invegent GitHub MCP — blob `ebd2fb05`, 16,052 B; §1 apply summary records all 12 closure facts; V1–V10' verification table + D-01 conditions + brief-runner-v0 §9 patterns all present.
   - **Deferred per PK explicit scope this turn**: memory `recent_updates` v2.55 + v2.56 + v2.57 + v2.58 + v2.59 entries; 5 outstanding `m.chatgpt_review` close-the-loop UPDATEs (cc-0003 v2 + cc-0004 + cc-0006 + cc-0007 + cc-0005 v4 D-01 fires); dashboard PHASES update (**15th** carry); M8b brief authoring (gated on manual caller remediation); 94-row un-publishable legacy draft cohort cleanup (separate follow-up if PK directs); Phase 0 scheduling (carry); Publisher latent config risk follow-up (P3, scheduled separately).
   - **Carried**: Crazy Domains refund follow-up (Personal businesses); morning-inbox-sweep-v1 brief amendment (P3); 4 P2 cron findings from v2.54; F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 sec, OPEN, unchanged); Platform Reconciliation View brief candidate (PROMOTED to next major work item); M8b separate brief (Active P3 row, NOT YET AUTHORED, not blocking new work); 94-row un-publishable legacy draft cohort (Active P3 row, separate follow-up).
+- **v2.60 (2026-05-09 Sydney, future ideation backlog addition — Brand Topic Notebook):**
+  - **NEW**: Brand Topic Notebook → Episodic Podcast Source Pack — logged in new "🌱 Future ideation / content-pipeline expansion" section. NotebookLM upstream feed concept per PK direction post cc-0008 v3 landing. Per-brand topic notebooks (NDIS Yarns, Property Pulse, CFW, Invegent) → NotebookLM Audio Overview → ICE ingest → YouTube Shorts / LinkedIn / FB / IG / newsletter / long-form podcast scripts. Raw NotebookLM audio NOT to be treated as final publishable content (PK explicit framing) — research/ideation/source-pack material requiring review only. Near-term semi-manual; reliable API/export path TBD. Future module name candidate: `Brand Topic Notebook → Episode Source Pack → Content Derivatives`.
+  - **Queue behind** (PK directive): (1) cc-0008 / PRV-1 foundation, (2) Platform Reconciliation build, (3) AI Operating System Improvements / project skills.
+  - **Classification**: Future content-pipeline expansion, NOT current pipeline-integrity work.
+  - **Section discipline (NEW v2.60 pattern, lesson candidate L32)**: dedicated "🌱 Future ideation / content-pipeline expansion" section quarantines speculative items from Today/Next 5 + Active to prevent priority drift. Forces explicit "queue behind" framing for sequencing discipline.
+  - **Open questions** (listed in section, deferred to brief-authoring time): NotebookLM export path, per-brand notebook count, source curation responsibility, review gate placement, long-form podcast script handling, storage/retention, cadence reconciliation with `c.client_cadence_rule`.
+  - **Honest risks flagged**: NotebookLM API/export path stability; audio-as-source copyright/derivative-ownership; cadence reconciliation between cadence-rule (`c.client_cadence_rule`, cc-0008) and episodic ideation cadence (when an Audio Overview is fresh).
+  - **Single-file doc-only commit** to `docs/00_action_list.md`. No D-01 fire (doc-only per standing rule, no production state touch).
+  - **STANDING_THREE EFs untouched.** No EF deploys, no cron edits, no Supabase writes, no code changes. No Phase 0 scheduling. No memory edits.
+  - **Closure budget unchanged**: ~2 P0+P1 open of 20 cap (carry from v2.59). Trailing-14-day still above 8.0h floor. v2.60 closure work = ~5 min (this).
+  - **State-capture exception count v2.60: 0**.
+  - **Carried**: all v2.59 carries unchanged. Today/Next 5 unchanged. Platform Reconciliation View remains rank 1. M8b + 94-row cohort remain Active P3 rows. cc-0008 v3 (commit `b9a76e9a`) remains at apply-pending-D-01-fire + PK approval phrase + final §1 re-verification gate. Dashboard roadmap PHASES = **16th** consecutive deferral.
+  - **Not closing cc-0008 at v2.60.** cc-0008 v3 brief commit landed earlier this same session (Sydney 2026-05-09) but apply has not occurred. v2.60 is purely a backlog-note addition, scoped tight per PK directive. cc-0008 closure will happen at next 4-way sync close after `apply_migration` runs (will be v2.61 or later).
+  - **Not a 4-way sync close.** v2.60 is a minimal-scope action_list-only update. sync_state pointer NOT updated at v2.60; per-session file under `docs/runtime/sessions/` NOT created at v2.60; dashboard PHASES roadmap NOT updated at v2.60. Next true 4-way sync close (likely after cc-0008 apply) will catch v2.60 up alongside cc-0008 closure.
+  - **PK explicit framing**: "Do not treat raw NotebookLM audio as final publishable brand content. Treat it as research/ideation/source-pack material requiring review." Preserved verbatim in section above.
+  - **Lesson candidate L32**: future-ideation backlog quarantine pattern (this section) — to be vindicated when at least one ideation-class item gets promoted from "🌱 Future ideation" to Active in a future cycle.
