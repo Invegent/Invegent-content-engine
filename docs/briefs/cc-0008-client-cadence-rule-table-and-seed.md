@@ -3,16 +3,24 @@
 **Created:** 2026-05-09 Sydney
 **Author:** chat (Claude)
 **Executor:** chat applies via Supabase MCP `apply_migration` per memory standing rule ("apply_migration is the ONLY correct DDL path for c/m/f/t schemas"). DML seed applied in the same migration call (single transactional unit). CC role: 0 in cc-0008 (chat-driven DDL+DML; no `supabase/migrations/*.sql` file required).
-**Status:** drafted (apply pending PK seed review + D-01 fire + PK explicit approval phrase)
-**Authority:** PRV-0 design lock — `docs/dashboard-review-2026-05/prv-0-design-lock.md` commit `24d08aeeb6ed793171f76191f41545cdaca32b5d` blob `ea67a51b0e69c22f7f68712beba07946b8cc968a`
-**Source design section:** PRV-0 §3.2 (DDL), §8.1 (cc-0008 scope contract), §11 (PK approvals — commit path + seed authority + sequencing)
+**Status:** drafted v2 (apply pending PK seed review + D-01 fire + PK explicit approval phrase)
+**Authority:** PRV-0 design lock v2 — `docs/dashboard-review-2026-05/prv-0-design-lock.md` commit `6e989517ceaf600e1373f7f319ab5b7d5c2c7147` blob `3b5f382096abfa7ac5e0aff4bc4bdd327e95d6f7` (v1 was commit `24d08aeeb6ed793171f76191f41545cdaca32b5d` blob `ea67a51b0e69c22f7f68712beba07946b8cc968a`)
+**Source design section:** PRV-0 v2 §3.2 (DDL — `preferred_local_times time[]`), §5.1 (generator paused-profile clause), §8.1 (cc-0008 scope contract — all 14 rows is_active=true), §11.4 (PK v2 directive)
 **Result file:** `docs/briefs/results/cc-0008-client-cadence-rule-table-and-seed.md` (created on completion of apply session)
 
 ---
 
 ## Patch history
 
-- **2026-05-09 Sydney — initial draft (v1)** under PK direction. Authored after PRV-0 design lock commit landed and PK signalled "Start cc-0008 apply brief authoring." Pre-flight P1.1–P1.11 ran read-only against production via Supabase MCP `execute_sql`; results captured below in §1. Seed derived empirically from `c.client_publish_schedule` × `c.client_publish_profile` joined on (client_id, platform); decisions on paused-IG handling surfaced for PK in §3.5.
+- **2026-05-09 Sydney — v2 patch** (doc-only; no apply yet). Two corrections per PK directive 2026-05-09:
+
+  **Correction 1 — Minute-precision cadence (machine-readable).** PRV-0 v2 §3.2 replaces `preferred_local_hours int[]` with `preferred_local_times time[]`. Cascaded into this brief: §2 DDL line; all 14 §3.1/§3.2 seed rows now use `ARRAY['HH:MM'::time]` matching `c.client_publish_schedule.publish_time` exactly (e.g. CFW FB → `ARRAY['09:06'::time]`); §3.4 column registry row replaces `preferred_local_hours` with `preferred_local_times`; §3.5 surface table column header → "time (Sydney)" with minute precision; §4 V1e adds type verification; §5 D-01 packet updated. Hour-only metadata derivable via `EXTRACT(HOUR FROM unnest(...))::int[]`.
+
+  **Correction 2 — Paused-IG cadence preservation.** PRV-0 v2 §5.1 + §11.4 directs paused publish profiles do NOT collapse the cadence rule. NDIS-Yarns × IG and Property Pulse × IG cadence rules now seeded with `is_active=true` (was false in v1). Their `notes` capture `c.client_publish_profile.publish_enabled=false` + `paused_reason`. cc-0009 generator handles per-row suppression. Cascaded: §3.1 has all 14 rows; §3.2 retitled "Paused-IG cadence rules (2 rows, `is_active=true`)"; §3.5 surface table — all 14 `is_active=true` with separate `publish_enabled` column; §3.5 PK decision points — Option A/B + minute precision both RESOLVED upstream; §4 V2 expects 14/14/0; V3 reframes (every publish_profile row regardless of `publish_enabled` → 14:14); new V7 verifies paused-IG notes contain `meta_subcode_2207051` + `publish_enabled=false`.
+
+  **Property Pulse × LinkedIn note (PK directive):** row 11 cadence-side intent = 1/day Mon-Fri 12:00; recent publish-side reality ~2.3/day. cc-0008 seed reflects config-side intent; cadence-drift-checker (cc-0011) will surface drift; documented in row's `notes`.
+
+- **2026-05-09 Sydney — initial draft (v1)** under PK direction. Authored after PRV-0 v1 design lock landed. Pre-flight P1.1–P1.11 ran read-only against production via Supabase MCP `execute_sql`; results in §1. Seed derived empirically from `c.client_publish_schedule` × `c.client_publish_profile`. Committed at SHA `216a5ea2f7e9841c8db94d2f7c847f9e19e93e27` blob `2df46c744a9d426d2cd893dee9ebd942d3d3e523`.
 
 ---
 
@@ -85,7 +93,7 @@ Source: PRV-0 design lock (this session) + chat pre-flight discovery 2026-05-09.
 - Read-only pre-flight verification (§1) — completed during this brief authoring session; results frozen below.
 - One D-01 fire (`ask_chatgpt_review`) per §5 packet; action_type `sql_destructive` (DDL + DML in single transactional migration).
 - One `apply_migration` call applying the DDL + seed + k.* registry rows together as a single transactional unit named `cc_0008_client_cadence_rule`.
-- 6 verification queries V1–V6 (§4).
+- 7 verification queries V1–V7 (§4).
 - Close-the-loop UPDATE to `m.chatgpt_review` post-apply.
 - One commit creating `docs/briefs/results/cc-0008-client-cadence-rule-table-and-seed.md`.
 - 4-way sync close at session end per memory standing rule.
@@ -110,7 +118,7 @@ Source: PRV-0 design lock (this session) + chat pre-flight discovery 2026-05-09.
 - Read-only `SELECT` against `c.client`, `c.client_publish_profile`, `c.client_publish_schedule`, `c.client_ai_profile`, `k.table_registry`, `k.column_registry`, `m.chatgpt_review`, `pg_extension`, `information_schema.tables`, `information_schema.columns` for pre-flight + verification.
 - One `ask_chatgpt_review` D-01 fire per §5.
 - One `apply_migration` call per §3 (DDL + DML + k.* registry rows in one transactional unit).
-- Up to 3 retry attempts on V1–V6 (network/timeout reasons only).
+- Up to 3 retry attempts on V1–V7 (network/timeout reasons only).
 - One `m.chatgpt_review` UPDATE post-apply for close-the-loop.
 - One commit creating `docs/briefs/results/cc-0008-client-cadence-rule-table-and-seed.md`.
 - One commit updating `docs/00_sync_state.md` + `docs/00_action_list.md` + `docs/runtime/sessions/YYYY-MM-DD-cc-0008-applied.md` + dashboard PHASES roadmap (4-way sync) at session close.
@@ -130,9 +138,9 @@ Source: PRV-0 design lock (this session) + chat pre-flight discovery 2026-05-09.
 - No deployment of `cadence-rule-generator`, `ice-evidence-materialiser`, `cadence-drift-checker`, or `reconciliation-matcher` Edge Functions.
 - No creation of any `r.*` table, view, or function (all deferred).
 - **No creation of any temporary log table** — explicitly forbidden per PK sequencing clarification 2026-05-09.
-- No DDL adjustments deviating from PRV-0 §3.2 unless §1 pre-flight surfaces a constraint that genuinely blocks apply.
+- No DDL adjustments deviating from PRV-0 v2 §3.2 unless §1 pre-flight surfaces a constraint that genuinely blocks apply.
 - No proceeding past D-01 if verdict is anything other than `agree` with `proceed`.
-- No proceeding past PK seed review if PK requests modification — return to brief authoring.
+- No proceeding past PK seed review if PK requests modification — return to brief authoring (v3).
 - No M8 work (cc-0005 v4 is a separate brief).
 - No Phase 0 scheduling activity.
 
@@ -180,74 +188,41 @@ ORDER BY ordinal_position;
 
 ### 1.4 `c.client_publish_profile` per active client × platform — PASS, 14 rows
 
-| client_slug | platform | publish_enabled | paused_reason |
-|---|---|---|---|
-| care-for-welfare-pty-ltd | facebook | true | NULL |
-| care-for-welfare-pty-ltd | instagram | true | NULL |
-| care-for-welfare-pty-ltd | linkedin | true | NULL |
-| invegent | facebook | true | NULL |
-| invegent | instagram | true | NULL |
-| invegent | linkedin | true | NULL |
-| ndis-yarns | facebook | true | NULL |
-| ndis-yarns | instagram | **false** | `meta_subcode_2207051_block_2026-05-01_ndis_yarns_ig_anti_spam` |
-| ndis-yarns | linkedin | true | NULL |
-| ndis-yarns | youtube | true | NULL |
-| property-pulse | facebook | true | NULL |
-| property-pulse | instagram | **false** | `meta_subcode_2207051_block_25_apr_pp_ig_anti_spam` |
-| property-pulse | linkedin | true | NULL |
-| property-pulse | youtube | true | NULL |
+12 active publish profiles + 2 paused IG (per below):
+- CFW: FB ✓ | IG ✓ | LI ✓
+- Invegent: FB ✓ | IG ✓ | LI ✓
+- NDIS-Yarns: FB ✓ | **IG ✗** (`meta_subcode_2207051_block_2026-05-01_ndis_yarns_ig_anti_spam`) | LI ✓ | YT ✓
+- Property Pulse: FB ✓ | **IG ✗** (`meta_subcode_2207051_block_25_apr_pp_ig_anti_spam`) | LI ✓ | YT ✓
 
-**Findings:** 14 (client × platform) profiles confirmed; 12 active + 2 paused IG. `max_per_day=2` for all rows; `min_gap_minutes` ∈ {240, 360}. `preferred_format_facebook='image_quote'` for all 4 active FB rows; LI + IG preferred-format columns are NULL across the board. No `paused_until` (time-bound pauses); only `publish_enabled=false` + `paused_reason` text.
+**Findings:** 12 active + 2 paused IG. `max_per_day=2` all rows; `min_gap_minutes` ∈ {240, 360}. `preferred_format_facebook='image_quote'` on all 4 active FB rows; LI + IG preferred-format columns NULL throughout. No `paused_until`; only `publish_enabled=false` + `paused_reason` text.
 
 ### 1.5 `c.client_publish_schedule` aggregate cadence — PASS, 14 active patterns
 
-| client_slug | platform | enabled_slots | weekdays_pg | hour | publish_time | format | publish_enabled |
-|---|---|---|---|---|---|---|---|
-| care-for-welfare-pty-ltd | facebook | 5 | [1,2,3,4,5] | 9 | 09:06:00 | image_quote | true |
-| care-for-welfare-pty-ltd | instagram | 5 | [1,2,3,4,5] | 11 | 11:02:00 | NULL | true |
-| care-for-welfare-pty-ltd | linkedin | 5 | [1,2,3,4,5] | 13 | 13:04:00 | NULL | true |
-| invegent | facebook | 5 | [1,2,3,4,5] | 8 | 08:06:00 | image_quote | true |
-| invegent | instagram | 5 | [1,2,3,4,5] | 10 | 10:36:00 | NULL | true |
-| invegent | linkedin | 5 | [1,2,3,4,5] | 12 | 12:36:00 | NULL | true |
-| ndis-yarns | facebook | 5 | [1,2,3,4,5] | 8 | 08:00:00 | image_quote | true |
-| ndis-yarns | instagram | 5 | [1,2,3,4,5] | 12 | 12:00:00 | NULL | **false** |
-| ndis-yarns | linkedin | 5 | [1,2,3,4,5] | 10 | 10:00:00 | NULL | true |
-| ndis-yarns | youtube | 5 | [1,2,3,4,5] | 19 | 19:00:00 | NULL | true |
-| property-pulse | facebook | 5 | [1,2,3,4,5] | 7 | 07:30:00 | image_quote | true |
-| property-pulse | instagram | 5 | [1,2,3,4,5] | 10 | 10:00:00 | NULL | **false** |
-| property-pulse | linkedin | 5 | [1,2,3,4,5] | 12 | 12:00:00 | NULL | true |
-| property-pulse | youtube | 5 | [1,2,3,4,5] | 17 | 17:00:00 | NULL | true |
+All 14 (client × platform) pairs: weekly, weekdays=[1,2,3,4,5] (Mon–Fri PG convention), 1 enabled `publish_time` per pair (5 enabled slots/week). Times (full minute precision):
 
-**Findings:** Every active (client × platform) pair publishes Mon–Fri (PostgreSQL day_of_week 1..5; Sunday=0). One enabled hour per weekday, so 5 enabled slots/week per pair. `c.client_publish_schedule.day_of_week` integer convention matches PRV-0 §3.2 `weekdays int[]` comment "0=Sun..6=Sat, Sydney local" — no remapping needed. Disabled slot rows exist per pair (e.g. CFW FB has 4 publish_time options/weekday but only 09:06 enabled); the cadence rule reflects ENABLED slots only. `paused_until` NULL on all 14 profile rows; the 2 paused-IG rows use `publish_enabled=false` + `paused_reason` (indefinite).
+- **CFW:** FB 09:06 (image_quote) | IG 11:02 | LI 13:04
+- **Invegent:** FB 08:06 (image_quote) | IG 10:36 | LI 12:36
+- **NDIS-Yarns:** FB 08:00 (image_quote) | IG 12:00 (publish_enabled=false) | LI 10:00 | YT 19:00
+- **Property Pulse:** FB 07:30 (image_quote) | IG 10:00 (publish_enabled=false) | LI 12:00 | YT 17:00
 
-**Captured for D-01:** 14 uniform weekly patterns; cadence_type='weekly', posts_per_period=5, period_unit='week', weekdays=[1,2,3,4,5]. Cleared.
+**Findings:** PG day_of_week 0..6 matches PRV-0 §3.2 `weekdays` comment "0=Sun..6=Sat" — no remapping. Disabled slot rows exist per pair (e.g. CFW FB has 4 publish_time options/weekday but only 09:06 enabled); cadence rule reflects ENABLED slots only. `paused_until` NULL on all 14 profile rows; paused-IG rows use `publish_enabled=false` + `paused_reason` (indefinite).
+
+**Captured for D-01:** 14 uniform weekly patterns; cadence_type='weekly', posts_per_period=5, period_unit='week', weekdays=[1,2,3,4,5].
 
 ### 1.6 `c.client_ai_profile` interpretation (informational) — N/A for cadence
 
-`c.client_ai_profile` columns include `platform_rules jsonb`, `generation jsonb`, `persona jsonb`, `guidelines jsonb`, `system_prompt text`. None encode cadence (weekday × hour). Cadence is canonically in `c.client_publish_schedule`. No reads from `c.client_ai_profile` for seed derivation.
+`c.client_ai_profile` columns (`platform_rules`/`generation`/`persona`/`guidelines`/`system_prompt`) do not encode cadence. Cadence is canonically in `c.client_publish_schedule`. No reads from `c.client_ai_profile` for seed derivation.
 
 ### 1.7 Slot-related table inventory — PASS
 
-```sql
-SELECT table_schema, table_name FROM information_schema.tables
-WHERE (table_name ~* 'slot' OR table_name ~* 'cadence' OR table_name ~* 'schedul')
-  AND table_schema NOT IN ('pg_catalog','information_schema')
-ORDER BY table_schema, table_name;
-```
-
-**Result (6 rows):** `audit.v_slot_health_by_client_platform`, `c.client_publish_schedule`, `m.slot`, `m.slot_alerts`, `m.slot_fill_attempt`, `m.slots_in_critical_window`.
-
-**Interpretation:** `c.client_publish_schedule` is the cadence config (one row per slot definition). `m.slot` is the runtime slot row materialisation. PRV-0 cadence rule reads from CONFIG, not RUNTIME, so `c.client_publish_schedule` is the correct source. `m.slot` is irrelevant to cc-0008 seed.
+`audit.v_slot_health_by_client_platform`, `c.client_publish_schedule`, `m.slot`, `m.slot_alerts`, `m.slot_fill_attempt`, `m.slots_in_critical_window`. `c.client_publish_schedule` is the cadence config (correct seed source). `m.slot` is runtime materialisation (irrelevant to cc-0008 seed).
 
 ### 1.8 `k.table_registry` + `k.column_registry` shape + convention — PASS
 
-**`k.table_registry`:** PK = `table_id bigint`. NOT NULL: `schema_name`, `table_name`, `table_kind`, `status`, `allowed_ops`, `pii_risk`, `purpose`, `created_at`, `updated_at`. Optional: `owner`, `source_system`, `source_reference`, `refresh_method`, `refresh_cadence`, `primary_use_cases`, `join_keys`, `rules_summary`, `advisory`.
-
-**`k.column_registry`:** PK = `column_id bigint`. NOT NULL: `table_id` (FK to `k.table_registry`), `column_name`, `ordinal_position`, `data_type`, `is_nullable` (boolean), `is_foreign_key` (boolean), `pii_risk`, `created_at`, `updated_at`. Optional: `udt_name`, `column_default`, `fk_ref_schema`, `fk_ref_table`, `fk_ref_column`, `column_purpose`, `value_semantics`, `allowed_values`, `example_values`, `quality_rules`, `notes`.
-
-**Memory correction:** memory says "k.column_registry has no schema_name/table_name columns — joins must go through k.table_registry on table_id"; correct table-level doc column is `purpose`. Both confirmed empirically.
-
-**Convention from sample existing rows (`c.client`, `c.client_ai_profile`, etc.):** `table_kind='table'`, `status='active'`, `allowed_ops='upsert'`, `pii_risk='none'`. Applied to the new table.
+- **`k.table_registry`:** PK `table_id bigint`. NOT NULL: schema_name, table_name, table_kind, status, allowed_ops, pii_risk, purpose, created_at, updated_at.
+- **`k.column_registry`:** PK `column_id bigint`. NOT NULL: table_id (FK to table_registry), column_name, ordinal_position, data_type, is_nullable, is_foreign_key, pii_risk, created_at, updated_at.
+- Joins go via `table_id` (k.column_registry has no schema_name/table_name columns); table-level doc column is `purpose`.
+- Convention from sample existing rows (`c.client`, `c.client_ai_profile`): `table_kind='table'`, `status='active'`, `allowed_ops='upsert'`, `pii_risk='none'`.
 
 ### 1.9 Day-of-week convention in `c.client_publish_schedule` — PASS
 
@@ -279,9 +254,9 @@ If row exists → HALT (§6.2.g — name collision; rename or investigate).
 
 ---
 
-## 2. Proposed DDL (PRV-0 §3.2 verbatim, with defensive `IF NOT EXISTS`)
+## 2. Proposed DDL (PRV-0 v2 §3.2 verbatim, with defensive `IF NOT EXISTS`)
 
-PRV-0 §3.2 DDL is reproduced unmodified except for one safety adjustment: `IF NOT EXISTS` on `CREATE TABLE` and indexes for idempotency protection (zero risk; protects narrow race windows). No CHECK, FK, or column changed. PRV-0 contract honoured exactly.
+PRV-0 v2 §3.2 DDL is reproduced unmodified except for one safety adjustment: `IF NOT EXISTS` on `CREATE TABLE` and indexes for idempotency protection (zero risk; protects narrow race windows). No CHECK, FK, or column changed beyond the v2 amendment. PRV-0 v2 contract honoured exactly.
 
 ```sql
 -- cc-0008 migration — c.client_cadence_rule table
@@ -294,7 +269,7 @@ CREATE TABLE IF NOT EXISTS c.client_cadence_rule (
     posts_per_period       int CHECK (posts_per_period > 0),
     period_unit            text CHECK (period_unit IN ('day','week','month')),
     weekdays               int[] CHECK (weekdays <@ ARRAY[0,1,2,3,4,5,6]),
-    preferred_local_hours  int[] CHECK (preferred_local_hours <@ ARRAY(SELECT generate_series(0,23))),
+    preferred_local_times  time[],                                        -- v2 (PRV-0 v2 §3.2): authoritative; minute precision; Sydney local; e.g. ARRAY['09:06'::time, '13:04'::time]; replaces preferred_local_hours from v1
     expected_format        text,
     timezone               text NOT NULL DEFAULT 'Australia/Sydney',
     valid_from             date NOT NULL DEFAULT current_date,
@@ -324,59 +299,73 @@ CREATE INDEX IF NOT EXISTS cadence_rule_validity_lookup
 COMMENT ON TABLE c.client_cadence_rule IS 'Canonical cadence rules per (client, platform). Authoritative source for r.expected_publication generation. PRV-1 reconciliation reads this; publish-side reads existing scattered config in v1 and migrates onto this table in PRV-7+.';
 ```
 
+**v2 column-count note:** `preferred_local_times` REPLACES `preferred_local_hours` — column count remains 19 (rename + retype, no add/remove). V1a column_count=19 verification stays valid.
+
+**v2 hour-derivation note (informational):** if a downstream view or query needs hour-only metadata, derive at query time:
+
+```sql
+SELECT cadence_rule_id,
+       (SELECT array_agg(EXTRACT(HOUR FROM t)::int)
+        FROM unnest(preferred_local_times) AS t) AS preferred_local_hours_derived
+FROM c.client_cadence_rule;
+```
+
+This is documentation-side only; cc-0008 does not create such a view.
+
 ---
 
 ## 3. Proposed DML — initial seed (chat-authored per PRV-0 §11.2; PK reviews before D-01 fires)
 
-Seed strategy decision:
+**v2 seed model (PRV-0 v2 §11.4 directive):** All 14 (client × platform) rows are seeded with `is_active=true`. The `is_active` flag now means "rule is part of cadence" (not "currently producing expected rows"). Two paused IG profiles (NDIS-Yarns × IG, Property Pulse × IG) keep their cadence intent active; their `notes` capture the publish-side pause state. cc-0009 generator (PRV-0 v2 §5.1) detects `c.client_publish_profile.publish_enabled=false` and either skips the insert or emits `expected_status='suppressed'` (cc-0009 brief locks option (a) vs (b)).
 
-- **Option A — 12 active rows only.** Skip the 2 paused IG rows entirely. Reconciliation never expects them. Simpler.
-- **Option B — 14 rows, 2 with `is_active=false`** (recommended; reflected below). Both paused IG rules seeded with `is_active=false` + notes capturing the `paused_reason`. Preserves historical intent; cadence-drift-checker (cc-0011) gets correct comparison data even for paused platforms; allows PK to flip `is_active=true` without re-deriving the rule when blocks lift.
+**v1 Option A vs Option B is RESOLVED upstream by PK directive — single canonical model below.**
 
-PK directs change to Option A by reply if preferred — chat re-issues without the 2 `is_active=false` rows.
-
-### 3.1 Active cadence rules (12 rows, `is_active=true`)
+### 3.1 Active cadence rules — all 14 rows, `is_active=true`
 
 ```sql
 INSERT INTO c.client_cadence_rule (
     client_id, platform, cadence_type, posts_per_period, period_unit,
-    weekdays, preferred_local_hours, expected_format,
+    weekdays, preferred_local_times, expected_format,
     timezone, valid_from, valid_to, is_active, suppression_dates, notes,
     created_by, updated_by
 ) VALUES
 -- Care For Welfare Pty Ltd
-('3eca32aa-e460-462f-a846-3f6ace6a3cae', 'facebook',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[9],  'image_quote', 'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 initial seed; derived from c.client_publish_schedule enabled slots (Mon-Fri 09:06).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
-('3eca32aa-e460-462f-a846-3f6ace6a3cae', 'instagram', 'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[11], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 initial seed; derived from c.client_publish_schedule enabled slots (Mon-Fri 11:02).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
-('3eca32aa-e460-462f-a846-3f6ace6a3cae', 'linkedin',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[13], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 initial seed; derived from c.client_publish_schedule enabled slots (Mon-Fri 13:04).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
+('3eca32aa-e460-462f-a846-3f6ace6a3cae', 'facebook',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['09:06'::time], 'image_quote', 'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; derived from c.client_publish_schedule enabled slot (Mon-Fri 09:06).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
+('3eca32aa-e460-462f-a846-3f6ace6a3cae', 'instagram', 'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['11:02'::time], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; derived from c.client_publish_schedule enabled slot (Mon-Fri 11:02).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
+('3eca32aa-e460-462f-a846-3f6ace6a3cae', 'linkedin',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['13:04'::time], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; derived from c.client_publish_schedule enabled slot (Mon-Fri 13:04).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
 
 -- Invegent
-('93494a09-cc89-41d1-b364-cb63983063a6', 'facebook',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[8],  'image_quote', 'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 initial seed; derived from c.client_publish_schedule enabled slots (Mon-Fri 08:06).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
-('93494a09-cc89-41d1-b364-cb63983063a6', 'instagram', 'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[10], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 initial seed; derived from c.client_publish_schedule enabled slots (Mon-Fri 10:36).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
-('93494a09-cc89-41d1-b364-cb63983063a6', 'linkedin',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[12], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 initial seed; derived from c.client_publish_schedule enabled slots (Mon-Fri 12:36).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
+('93494a09-cc89-41d1-b364-cb63983063a6', 'facebook',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['08:06'::time], 'image_quote', 'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; derived from c.client_publish_schedule enabled slot (Mon-Fri 08:06).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
+('93494a09-cc89-41d1-b364-cb63983063a6', 'instagram', 'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['10:36'::time], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; derived from c.client_publish_schedule enabled slot (Mon-Fri 10:36).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
+('93494a09-cc89-41d1-b364-cb63983063a6', 'linkedin',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['12:36'::time], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; derived from c.client_publish_schedule enabled slot (Mon-Fri 12:36).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
 
--- NDIS-Yarns (IG paused; see §3.2)
-('fb98a472-ae4d-432d-8738-2273231c1ef4', 'facebook',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[8],  'image_quote', 'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 initial seed; derived from c.client_publish_schedule enabled slots (Mon-Fri 08:00).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
-('fb98a472-ae4d-432d-8738-2273231c1ef4', 'linkedin',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[10], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 initial seed; derived from c.client_publish_schedule enabled slots (Mon-Fri 10:00).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
-('fb98a472-ae4d-432d-8738-2273231c1ef4', 'youtube',   'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[19], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 initial seed; derived from c.client_publish_schedule enabled slots (Mon-Fri 19:00).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
+-- NDIS-Yarns (FB / LI / YT active; IG paused — see §3.2)
+('fb98a472-ae4d-432d-8738-2273231c1ef4', 'facebook',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['08:00'::time], 'image_quote', 'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; derived from c.client_publish_schedule enabled slot (Mon-Fri 08:00).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
+('fb98a472-ae4d-432d-8738-2273231c1ef4', 'linkedin',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['10:00'::time], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; derived from c.client_publish_schedule enabled slot (Mon-Fri 10:00).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
+('fb98a472-ae4d-432d-8738-2273231c1ef4', 'youtube',   'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['19:00'::time], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; derived from c.client_publish_schedule enabled slot (Mon-Fri 19:00).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
 
--- Property Pulse (IG paused; see §3.2)
-('4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', 'facebook',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[7],  'image_quote', 'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 initial seed; derived from c.client_publish_schedule enabled slots (Mon-Fri 07:30).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
-('4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', 'linkedin',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[12], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 initial seed; derived from c.client_publish_schedule enabled slots (Mon-Fri 12:00).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
-('4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', 'youtube',   'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[17], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 initial seed; derived from c.client_publish_schedule enabled slots (Mon-Fri 17:00).', 'cc-0008-chat-seed', 'cc-0008-chat-seed');
+-- Property Pulse (FB / LI / YT active; IG paused — see §3.2)
+('4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', 'facebook',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['07:30'::time], 'image_quote', 'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; derived from c.client_publish_schedule enabled slot (Mon-Fri 07:30).', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
+('4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', 'linkedin',  'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['12:00'::time], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; cadence-side intent = 1/day Mon-Fri 12:00. Recent publish-side reality has been ~2.3 posts/day on this profile (slot table + queue residue) — divergence flagged by PK 2026-05-09 for cadence-drift-checker (cc-0011) to surface; cc-0008 seed faithfully reflects the config-side intent, not the runtime drift.', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
+('4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', 'youtube',   'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['17:00'::time], NULL,           'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; derived from c.client_publish_schedule enabled slot (Mon-Fri 17:00).', 'cc-0008-chat-seed', 'cc-0008-chat-seed');
 ```
 
-### 3.2 Paused-IG cadence rules (2 rows, `is_active=false` per Option B)
+### 3.2 Paused-IG cadence rules — 2 rows, `is_active=true` (cadence intent preserved per PRV-0 v2 §11.4)
+
+These rules keep the cadence shape so the rule is preserved across the pause. Generator-side suppression is handled in cc-0009 (per PRV-0 v2 §5.1); cc-0008 only stores the cadence intent + the pause-context notes.
 
 ```sql
 INSERT INTO c.client_cadence_rule (
     client_id, platform, cadence_type, posts_per_period, period_unit,
-    weekdays, preferred_local_hours, expected_format,
+    weekdays, preferred_local_times, expected_format,
     timezone, valid_from, valid_to, is_active, suppression_dates, notes,
     created_by, updated_by
 ) VALUES
-('fb98a472-ae4d-432d-8738-2273231c1ef4', 'instagram', 'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[12], NULL, 'Australia/Sydney', current_date, NULL, false, '{}', 'cc-0008 initial seed; PAUSED. c.client_publish_profile.publish_enabled=false; paused_reason=meta_subcode_2207051_block_2026-05-01_ndis_yarns_ig_anti_spam. Cadence preserved at Mon-Fri 12:00 for when block lifts; is_active=false until manually re-enabled.', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
-('4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', 'instagram', 'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY[10], NULL, 'Australia/Sydney', current_date, NULL, false, '{}', 'cc-0008 initial seed; PAUSED. c.client_publish_profile.publish_enabled=false; paused_reason=meta_subcode_2207051_block_25_apr_pp_ig_anti_spam. Cadence preserved at Mon-Fri 10:00 for when block lifts; is_active=false until manually re-enabled.', 'cc-0008-chat-seed', 'cc-0008-chat-seed');
+('fb98a472-ae4d-432d-8738-2273231c1ef4', 'instagram', 'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['12:00'::time], NULL, 'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; cadence intent preserved at Mon-Fri 12:00. c.client_publish_profile.publish_enabled=false; paused_reason=meta_subcode_2207051_block_2026-05-01_ndis_yarns_ig_anti_spam. cc-0009 generator detects paused profile (PRV-0 v2 §5.1) and either skips insert OR emits expected_status=suppressed (cc-0009 brief decides). is_active=true preserves cadence shape; pause is a publish-side runtime state, not a cadence-side disablement.', 'cc-0008-chat-seed', 'cc-0008-chat-seed'),
+('4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', 'instagram', 'weekly', 5, 'week', ARRAY[1,2,3,4,5], ARRAY['10:00'::time], NULL, 'Australia/Sydney', current_date, NULL, true, '{}', 'cc-0008 v2 initial seed; cadence intent preserved at Mon-Fri 10:00. c.client_publish_profile.publish_enabled=false; paused_reason=meta_subcode_2207051_block_25_apr_pp_ig_anti_spam. cc-0009 generator detects paused profile (PRV-0 v2 §5.1) and either skips insert OR emits expected_status=suppressed (cc-0009 brief decides). is_active=true preserves cadence shape; pause is a publish-side runtime state, not a cadence-side disablement.', 'cc-0008-chat-seed', 'cc-0008-chat-seed');
 ```
+
+When a paused-IG profile is later un-paused (anti-spam block resolved), no edit to `c.client_cadence_rule` is required — only the `c.client_publish_profile.publish_enabled` flag flips, and cc-0009 generator naturally resumes emitting normal `expected` rows for that (client × platform) at the next run.
 
 ### 3.3 `k.table_registry` row for the new table
 
@@ -395,8 +384,8 @@ INSERT INTO k.table_registry (
     'Canonical cadence rules per (client, platform). Authoritative source for r.expected_publication generation. PRV-1 reconciliation reads this; publish-side reads existing scattered config in v1 and migrates onto this table in PRV-7+.',
     'PRV-1 reconciliation seed for r.expected_publication; future PRV-7+ publish-side cadence source; cadence-drift-checker (cc-0011) input.',
     'client_id -> c.client(client_id); platform IN (facebook,instagram,linkedin,youtube)',
-    '1 row per (client, platform, valid window). is_active=false reserves cadence shape for paused platforms. Edits do not auto-propagate to c.client_publish_schedule until PRV-7+.',
-    'cc-0008 introduced this table. cc-0009 will deploy cadence-rule-generator EF reading this table. cc-0011 will deploy cadence-drift-checker comparing predictions vs publish-side config.'
+    '1 row per (client, platform, valid window). is_active=true preserves cadence shape; per-(client × platform) runtime publish-enabled state lives in c.client_publish_profile (queried by cc-0009 generator for per-row suppression). Edits do not auto-propagate to c.client_publish_schedule until PRV-7+.',
+    'cc-0008 v2 introduced this table with all 14 rows is_active=true (paused IG profiles preserve cadence intent; cc-0009 generator handles publish-side suppression per PRV-0 v2 §5.1). cc-0009 will deploy cadence-rule-generator EF reading this table. cc-0011 will deploy cadence-drift-checker comparing predictions vs publish-side config.'
 );
 ```
 
@@ -420,37 +409,37 @@ purposes (column_name, fk_schema, fk_table, fk_column, column_purpose) AS (
     ('cadence_rule_id',       NULL::text, NULL::text, NULL::text,
      'Surrogate primary key. One row per cadence rule (client, platform, valid window).'),
     ('client_id',             'c', 'client', 'client_id',
-     'FK to c.client. ON DELETE CASCADE — deleting a client removes all its cadence rules.'),
+     'FK to c.client. ON DELETE CASCADE.'),
     ('platform',              NULL, NULL, NULL,
-     'External publishing platform identifier. CHECK enum: facebook | instagram | linkedin | youtube. Excludes website/blog (PRV-0 D-22 deferred to PRV-7+).'),
+     'Platform identifier. CHECK enum: facebook | instagram | linkedin | youtube. Excludes website (PRV-0 D-22).'),
     ('cadence_type',          NULL, NULL, NULL,
-     'High-level cadence regime. CHECK enum: daily | weekly | monthly | custom_cron | none. cc-0008 seed uses ''weekly'' uniformly.'),
+     'CHECK enum: daily | weekly | monthly | custom_cron | none. cc-0008 seed uses ''weekly''.'),
     ('posts_per_period',      NULL, NULL, NULL,
-     'Number of expected publications per period_unit. NULL when cadence_type=none. CHECK > 0; jointly NULL or set with period_unit.'),
+     'Expected publications per period_unit. CHECK > 0; jointly NULL or set with period_unit.'),
     ('period_unit',           NULL, NULL, NULL,
-     'Period over which posts_per_period applies. CHECK enum: day | week | month. Jointly NULL or set with posts_per_period.'),
+     'CHECK enum: day | week | month. Jointly NULL or set with posts_per_period.'),
     ('weekdays',              NULL, NULL, NULL,
-     'Allowed weekdays for publication. 0=Sun..6=Sat, Sydney local. CHECK weekdays <@ ARRAY[0..6]. cc-0008 seed uses {1,2,3,4,5} (Mon-Fri) for all 14 rows.'),
-    ('preferred_local_hours', NULL, NULL, NULL,
-     'Preferred publish hours in Sydney local time. CHECK preferred_local_hours <@ ARRAY[0..23]. cc-0008 seed uses 1 hour per (client, platform) per current single-slot config.'),
+     'Allowed weekdays. 0=Sun..6=Sat Sydney local. CHECK <@ ARRAY[0..6]. cc-0008 v2 seed: {1,2,3,4,5} for all 14 rows.'),
+    ('preferred_local_times', NULL, NULL, NULL,
+     'Authoritative cadence schedule field (PRV-0 v2 §3.2). Minute-precision Sydney local times. cc-0009 generator computes expected_window from valid_from/valid_to date + each time element. cc-0008 v2 seed: 1 element per (client × platform), e.g. ARRAY[''09:06''::time]. Replaces v1 preferred_local_hours int[]; hour-only metadata derivable via EXTRACT(HOUR FROM unnest(...))::int[].'),
     ('expected_format',       NULL, NULL, NULL,
-     'Expected post format for reconciliation Tier 4 fuzzy match (caption-similarity hint). cc-0008 seed: ''image_quote'' for FB rows; NULL for IG/LI/YT (no preferred_format_<platform> set).'),
+     'Tier 4 fuzzy-match hint. cc-0008 v2 seed: ''image_quote'' for FB rows; NULL elsewhere.'),
     ('timezone',              NULL, NULL, NULL,
-     'IANA tz name interpretation for valid_from/valid_to/preferred_local_hours/weekdays. NOT NULL; default Australia/Sydney.'),
+     'IANA tz for valid_from/valid_to/preferred_local_times/weekdays. NOT NULL; default Australia/Sydney.'),
     ('valid_from',            NULL, NULL, NULL,
-     'Earliest date this cadence rule applies. NOT NULL; default current_date. Used by generator to bound horizon and by drift-checker to bound history.'),
+     'Earliest date rule applies. NOT NULL; default current_date.'),
     ('valid_to',              NULL, NULL, NULL,
-     'Latest date this cadence rule applies. NULL means open-ended. CHECK valid_to IS NULL OR valid_to >= valid_from.'),
+     'Latest date rule applies. NULL = open-ended. CHECK valid_to IS NULL OR valid_to >= valid_from.'),
     ('is_active',             NULL, NULL, NULL,
-     'Whether the rule should drive r.expected_publication generation. False = preserve historical intent without producing predictions. cc-0008: 12 rows true (active platforms); 2 rows false (paused IG anti-spam blocks).'),
+     'Whether the rule is part of cadence. cc-0008 v2: all 14 rows true. PRV-0 v2 §5.1 separates this from runtime publish-side pause (c.client_publish_profile.publish_enabled); generator reads both layers.'),
     ('suppression_dates',     NULL, NULL, NULL,
-     'One-off cancellation dates within the valid window. Generator skips these. cc-0008 seed: empty for all rows.'),
+     'One-off cancellation dates within validity window. cc-0008 seed: empty.'),
     ('notes',                 NULL, NULL, NULL,
-     'Free-text narrative for human operators. cc-0008 seed populates with derivation provenance.'),
+     'Free-text narrative. cc-0008 seed populates with derivation provenance.'),
     ('created_at',            NULL, NULL, NULL, 'Row creation timestamp. NOT NULL; default now().'),
-    ('created_by',            NULL, NULL, NULL, 'Identifier of the actor who created the row. cc-0008 seed: ''cc-0008-chat-seed''.'),
+    ('created_by',            NULL, NULL, NULL, 'Creating actor. cc-0008 seed: ''cc-0008-chat-seed''.'),
     ('updated_at',            NULL, NULL, NULL, 'Last-modified timestamp. NOT NULL; default now().'),
-    ('updated_by',            NULL, NULL, NULL, 'Identifier of the last actor to modify the row. cc-0008 seed: ''cc-0008-chat-seed''.')
+    ('updated_by',            NULL, NULL, NULL, 'Last-modifying actor. cc-0008 seed: ''cc-0008-chat-seed''.')
 )
 INSERT INTO k.column_registry (
     table_id, column_name, ordinal_position, data_type, udt_name,
@@ -471,41 +460,46 @@ This pattern keeps `data_type`/`udt_name`/`is_nullable`/`column_default` empiric
 
 ### 3.5 Seed surface for PK review
 
-**Summary:** 14 rows total — 12 active + 2 paused (Option B).
+**Summary:** 14 rows total — all `is_active=true`. 2 rows are for IG profiles currently paused on the publish side (`c.client_publish_profile.publish_enabled=false`); cadence intent preserved at the rule level per PRV-0 v2 §11.4.
 
-| # | client_slug | platform | hour (Sydney) | format | is_active |
-|---|---|---|---|---|---|
-| 1 | care-for-welfare-pty-ltd | facebook | 9 | image_quote | true |
-| 2 | care-for-welfare-pty-ltd | instagram | 11 | NULL | true |
-| 3 | care-for-welfare-pty-ltd | linkedin | 13 | NULL | true |
-| 4 | invegent | facebook | 8 | image_quote | true |
-| 5 | invegent | instagram | 10 | NULL | true |
-| 6 | invegent | linkedin | 12 | NULL | true |
-| 7 | ndis-yarns | facebook | 8 | image_quote | true |
-| 8 | ndis-yarns | linkedin | 10 | NULL | true |
-| 9 | ndis-yarns | youtube | 19 | NULL | true |
-| 10 | property-pulse | facebook | 7 | image_quote | true |
-| 11 | property-pulse | linkedin | 12 | NULL | true |
-| 12 | property-pulse | youtube | 17 | NULL | true |
-| 13 | ndis-yarns | instagram | 12 | NULL | **false** (anti-spam) |
-| 14 | property-pulse | instagram | 10 | NULL | **false** (anti-spam) |
+| # | client_slug | platform | time (Sydney) | format | is_active | publish_enabled (publish_profile side) |
+|---|---|---|---|---|---|---|
+| 1 | care-for-welfare-pty-ltd | facebook | 09:06 | image_quote | true | true |
+| 2 | care-for-welfare-pty-ltd | instagram | 11:02 | NULL | true | true |
+| 3 | care-for-welfare-pty-ltd | linkedin | 13:04 | NULL | true | true |
+| 4 | invegent | facebook | 08:06 | image_quote | true | true |
+| 5 | invegent | instagram | 10:36 | NULL | true | true |
+| 6 | invegent | linkedin | 12:36 | NULL | true | true |
+| 7 | ndis-yarns | facebook | 08:00 | image_quote | true | true |
+| 8 | ndis-yarns | linkedin | 10:00 | NULL | true | true |
+| 9 | ndis-yarns | youtube | 19:00 | NULL | true | true |
+| 10 | property-pulse | facebook | 07:30 | image_quote | true | true |
+| 11 | property-pulse | linkedin | 12:00 | NULL | true | true |
+| 12 | property-pulse | youtube | 17:00 | NULL | true | true |
+| 13 | ndis-yarns | instagram | 12:00 | NULL | true | **false** (anti-spam) |
+| 14 | property-pulse | instagram | 10:00 | NULL | true | **false** (anti-spam) |
 
 Common attributes for all 14 rows: `cadence_type='weekly'`, `posts_per_period=5`, `period_unit='week'`, `weekdays=[1,2,3,4,5]`, `timezone='Australia/Sydney'`, `valid_from=current_date`, `valid_to=NULL`, `suppression_dates={}`.
 
-**PK decision points before D-01 fire:**
+**Property Pulse × LinkedIn divergence note (PK directive 2026-05-09):** row 11 cadence-side intent is `1/day Mon-Fri 12:00`. Recent publish-side observed runtime has been ~2.3 posts/day on this profile (drifted from intent). cadence-drift-checker (cc-0011) will surface this drift; cc-0008 v2 seed reflects the config-side `c.client_publish_schedule` faithfully (1/day Mon-Fri 12:00) and documents the reality drift in the row's `notes`.
 
-1. **Option A vs Option B** (paused IG handling). Recommend B (14 rows; 2 with is_active=false). PK confirms or downgrades to A (12 rows only).
-2. **`expected_format` policy.** Currently 4 FB rows have `image_quote`; 10 rows have NULL. PRV-0 §6.1 Tier 4 matcher uses `expected_format` only as a hint, not a blocker. PK confirms NULL is acceptable for IG/LI/YT, or supplies values to set.
-3. **Hour aggregation policy.** `c.client_publish_schedule` rows include `MM:SS` precision (e.g. CFW FB = 09:06:00). The seed uses HOUR only (`preferred_local_hours=[9]`) since PRV-0 cadence rule has no minute-precision column. PK confirms minute precision is not required at cadence-rule layer (it can be added in cc-0009 generator window computation).
-4. **`valid_from=current_date` for all rows.** Not historical; rule applies forward from apply date. Acceptable per PRV-0 D-23 (PRV-1 backfill is 7-day, generated by cc-0009). PK confirms.
+**v2 RESOLVED upstream by PK directive (no longer PK gates here):**
+
+- ~~Option A vs Option B (paused IG handling)~~ — RESOLVED: single canonical model. All 14 rules `is_active=true`. cc-0009 generator handles publish-side pause via PRV-0 v2 §5.1 clause.
+- ~~Hour aggregation policy (collapsed minute precision)~~ — RESOLVED: `preferred_local_times time[]` stores minute precision authoritatively. All 14 rows reflect `c.client_publish_schedule.publish_time` exactly.
+
+**v2 PK decision points still open (before D-01 fire):**
+
+1. **`expected_format` policy.** Currently 4 FB rows have `image_quote`; 10 rows have NULL (matches `c.client_publish_profile` empirical state). PRV-0 §6.1 Tier 4 matcher uses `expected_format` only as a hint, not a blocker. PK confirms NULL is acceptable for IG/LI/YT, or supplies values to set.
+2. **`valid_from=current_date` for all rows.** Not historical; rule applies forward from apply date. Acceptable per PRV-0 D-23 (PRV-1 backfill is 7-day, generated by cc-0009). PK confirms.
 
 PK explicit approval phrase required after seed review and before chat fires §5 D-01 packet.
 
 ---
 
-## 4. Verification queries (post-apply, V1–V6)
+## 4. Verification queries (post-apply, V1–V7)
 
-All 6 must PASS post-apply. Run via Supabase MCP `execute_sql` (read-only) within ~60s of `apply_migration` completion.
+All 7 must PASS post-apply. Run via Supabase MCP `execute_sql` (read-only) within ~60s of `apply_migration` completion. v2 added V7 (paused-IG notes verification) and V1e (preferred_local_times type verification).
 
 ### V1 — Table exists with all FKs, CHECKs, indexes per PRV-0 §3.2
 
@@ -542,12 +536,22 @@ ORDER BY i.relname;
 ```
 
 **Pass:**
-- V1a: `table_exists=true` AND `column_count=19`.
-- V1b: ≥ 7 inline-CHECK + 2 named CHECK constraints (cadence_rule_period_when_count_set + cadence_rule_active_window_valid).
+- V1a: `table_exists=true` AND `column_count=19` (preferred_local_times replaces preferred_local_hours; column count unchanged).
+- V1b: ≥ 6 inline-CHECK + 2 named CHECK constraints (cadence_rule_period_when_count_set + cadence_rule_active_window_valid). Note v2: one inline CHECK (`preferred_local_hours <@ ARRAY(0..23)`) was removed because the column was removed; new column `preferred_local_times time[]` has no CHECK (all `time` values are valid in PostgreSQL).
 - V1c: 1 FK constraint referencing `c.client(client_id)` with `ON DELETE CASCADE`.
-- V1d: ≥ 3 indexes (PK + cadence_rule_active_lookup + cadence_rule_validity_lookup).
+- V1d: ≥ 3 indexes (PK + cadence_rule_active_lookup + cadence_rule_validity_lookup). **v2 addition:** verify `preferred_local_times` column has data type `time without time zone` and is array (`udt_name='_time'` in pg_attribute), confirming PRV-0 v2 §3.2 contract:
 
-### V2 — Seed row count matches chat-authored expectation
+```sql
+-- V1e (v2): verify preferred_local_times column data type
+SELECT column_name, data_type, udt_name
+FROM information_schema.columns
+WHERE table_schema='c' AND table_name='client_cadence_rule'
+  AND column_name='preferred_local_times';
+```
+
+V1e Pass: `data_type='ARRAY' AND udt_name='_time'` (one row).
+
+### V2 — Seed row count matches chat-authored expectation (v2 model)
 
 ```sql
 SELECT COUNT(*) AS total_rows,
@@ -556,31 +560,32 @@ SELECT COUNT(*) AS total_rows,
 FROM c.client_cadence_rule;
 ```
 
-**Pass (Option B):** `total_rows=14 AND active_rows=12 AND inactive_rows=2`.
-**Pass (Option A — if PK selected):** `total_rows=12 AND active_rows=12 AND inactive_rows=0`.
+**Pass (v2 single canonical model):** `total_rows=14 AND active_rows=14 AND inactive_rows=0`.
 
-### V3 — Every active (client × platform) pair has at least one seeded rule
+### V3 — Every (client × platform) profile (regardless of `publish_enabled`) has a corresponding active cadence rule
+
+**v2 logic change:** v1 V3 filtered `WHERE cli.status='active' AND cpp.publish_enabled=true` (expected 12). v2 drops the `publish_enabled` filter — paused publish profiles still have cadence rules per PRV-0 v2 §11.4. Expected pairs = 14, seeded pairs = 14.
 
 ```sql
-WITH expected_active_pairs AS (
+WITH expected_pairs AS (
     SELECT cli.client_id, cli.client_slug, cpp.platform
     FROM c.client_publish_profile cpp
     JOIN c.client cli ON cli.client_id = cpp.client_id
-    WHERE cli.status='active' AND cpp.publish_enabled=true
+    WHERE cli.status='active'                                 -- v2: any publish_enabled state
 ),
 seeded_pairs AS (
     SELECT client_id, platform FROM c.client_cadence_rule WHERE is_active=true
 )
 SELECT
-    (SELECT COUNT(*) FROM expected_active_pairs) AS expected_active_pairs_count,
-    (SELECT COUNT(*) FROM seeded_pairs) AS seeded_active_pairs_count,
+    (SELECT COUNT(*) FROM expected_pairs) AS expected_pairs_count,
+    (SELECT COUNT(*) FROM seeded_pairs) AS seeded_pairs_count,
     array_agg(client_slug || '/' || platform) FILTER (
-        WHERE NOT EXISTS (SELECT 1 FROM seeded_pairs s WHERE s.client_id = expected_active_pairs.client_id AND s.platform = expected_active_pairs.platform)
+        WHERE NOT EXISTS (SELECT 1 FROM seeded_pairs s WHERE s.client_id = expected_pairs.client_id AND s.platform = expected_pairs.platform)
     ) AS missing_pairs
-FROM expected_active_pairs;
+FROM expected_pairs;
 ```
 
-**Pass:** `expected_active_pairs_count = seeded_active_pairs_count = 12 AND missing_pairs IS NULL`.
+**Pass (v2):** `expected_pairs_count = seeded_pairs_count = 14 AND missing_pairs IS NULL`.
 
 ### V4 — No NULL in NOT NULL columns; CHECK constraints satisfied
 
@@ -633,6 +638,29 @@ ORDER BY cr.ordinal_position;
 - V6a: 1 row with status='active', allowed_ops='upsert', pii_risk='none', purpose populated.
 - V6b: 19 rows, ordinal_position 1..19 in sequence, every `column_purpose` non-NULL.
 
+### V7 (v2) — Paused-IG cadence rules carry pause-context tokens in `notes`
+
+Verifies cc-0008 v2 §3.2 paused rows correctly capture the publish-side pause state for cc-0009 generator + future drift-checker reads.
+
+```sql
+SELECT cli.client_slug, ccr.platform, ccr.is_active,
+       (ccr.notes ILIKE '%publish_enabled=false%')              AS notes_mentions_publish_disabled,
+       (ccr.notes ILIKE '%meta_subcode_2207051%')               AS notes_mentions_anti_spam_subcode,
+       (ccr.notes ILIKE '%cadence intent preserved%')           AS notes_mentions_cadence_preserved,
+       (ccr.notes ILIKE '%cc-0009 generator%')                  AS notes_mentions_cc_0009_handoff
+FROM c.client_cadence_rule ccr
+JOIN c.client cli ON cli.client_id = ccr.client_id
+JOIN c.client_publish_profile cpp
+    ON cpp.client_id = ccr.client_id AND cpp.platform = ccr.platform
+WHERE cpp.publish_enabled = false
+ORDER BY cli.client_slug, ccr.platform;
+```
+
+**Pass:**
+- 2 rows returned (NDIS-Yarns × IG, Property Pulse × IG).
+- All 4 boolean columns = true on both rows.
+- `is_active = true` on both rows.
+
 ---
 
 ## 5. D-01 packet content (NOT YET FIRED)
@@ -640,99 +668,108 @@ ORDER BY cr.ordinal_position;
 ### 5.1 `proposal` (prose)
 
 ```
-Apply cc-0008 (PRV-1 first build): create c.client_cadence_rule
-table + seed 14 rows (12 active + 2 paused IG with is_active=false;
-per PRV-0 §11.2 chat-authored seed; per PK approval Option B) +
-populate k.table_registry (1 row) + k.column_registry (19 rows).
-All in one transactional unit via Supabase MCP apply_migration
-named cc_0008_client_cadence_rule.
+Apply cc-0008 v2 (PRV-1 first build): create c.client_cadence_rule
+table per PRV-0 v2 §3.2 + seed all 14 rows with is_active=true (12
+active publish profiles + 2 paused-but-cadence-active IG profiles
+per PRV-0 v2 §11.4) + populate k.table_registry (1 row) +
+k.column_registry (19 rows). Single apply_migration named
+cc_0008_client_cadence_rule.
 
-Source design: docs/dashboard-review-2026-05/prv-0-design-lock.md
-commit 24d08aeeb6ed793171f76191f41545cdaca32b5d §3.2 (DDL verbatim)
-+ §8.1 (cc-0008 scope contract; DDL+seed only, no EF, no cron)
-+ §11 (PK approvals).
+Source design: PRV-0 v2 commit 6e989517ceaf600e1373f7f319ab5b7d5c2c7147
+§3.2 (DDL with preferred_local_times time[] minute-precision) +
+§5.1 (generator paused-profile clause) + §11.4 (PK v2 directive).
 
-Pre-flight P1.1–P1.11 PASS:
-- c.client_cadence_rule does not exist (idempotency confirmed)
-- pgcrypto installed; schemas c + k exist
-- c.client.client_id is uuid PK (FK target valid)
-- 4 active clients confirmed (CFW, Invegent, NDIS-Yarns, Property Pulse)
+v2 changes from cc-0008 v1:
+1. preferred_local_hours int[] → preferred_local_times time[]
+   (minute-precision; e.g. ARRAY['09:06'::time]).
+2. All 14 rows is_active=true (was 12 + 2-inactive in v1 Option B).
+   Paused IG rows preserve cadence intent; cc-0009 generator
+   handles publish-side suppression per PRV-0 v2 §5.1.
+
+Pre-flight P1.1–P1.11 PASS (re-run §1.1, §1.5, §1.10, §1.11 within
+~60s of apply for final re-verification):
+- c.client_cadence_rule does not exist; pgcrypto+schemas ready
+- c.client.client_id uuid PK, FK target valid
+- 4 active clients (CFW, Invegent, NDIS-Yarns, Property Pulse)
 - 14 (client × platform) profiles in c.client_publish_profile;
-  12 publish_enabled=true, 2 false (Meta anti-spam IG blocks)
-- c.client_publish_schedule shows uniform Mon-Fri weekly pattern,
-  1 hour/day per pair (5 enabled slots/week per pair)
-- day_of_week convention is 0..6 PG; matches PRV-0 §3.2 weekdays
-- k.table_registry / k.column_registry shapes confirmed; convention
-  values selected (table_kind=table, allowed_ops=upsert, pii_risk=none)
-- No prior cc-0008 D-01 row in m.chatgpt_review (clean ledger)
+  12 publish_enabled=true, 2 false (Meta IG anti-spam)
+- c.client_publish_schedule shows uniform Mon-Fri weekly with
+  full minute precision (09:06, 11:02, 13:04, 08:06, 10:36,
+  12:36, 08:00, 10:00, 19:00, 12:00, 07:30, 12:00, 17:00, 10:00)
+- day_of_week 0..6 PG convention matches PRV-0 §3.2 weekdays
+- k.* registry shapes confirmed
+- No prior cc-0008 D-01 row in m.chatgpt_review
 
-DDL: PRV-0 §3.2 verbatim with defensive IF NOT EXISTS additions
-on CREATE TABLE + CREATE INDEX. No semantic deviation.
+DDL: PRV-0 v2 §3.2 verbatim + IF NOT EXISTS defensive additions.
+Column count unchanged at 19 (preferred_local_times replaces
+preferred_local_hours). No CHECK on time[] (all PG time values
+valid).
 
 DML: 14 INSERTs into c.client_cadence_rule + 1 INSERT into
 k.table_registry + 19 INSERTs into k.column_registry (CTE-driven
-join with information_schema.columns + chat-authored purposes
-VALUES table). All in one apply_migration transactional unit.
+join with information_schema.columns). All in one transactional
+unit.
 
-Verification: V1 (table+FKs+CHECKs+indexes per PRV-0 §3.2),
-V2 (row counts 14/12/2 matching seed), V3 (every active pair seeded),
-V4 (no NULL in NOT NULL; joint period pair correct; window valid),
-V5 (validity window invariant), V6 (k.* registry rows populated).
-All 6 must PASS.
+Verification V1–V7: V1 (table+FKs+CHECKs+indexes+V1e type),
+V2 (14/14/0), V3 (14:14 every publish_profile pair seeded
+regardless of publish_enabled), V4 (NOT NULL + joint period +
+window valid), V5 (validity invariant), V6 (k.* registry rows),
+V7 (paused-IG notes contain publish_enabled=false +
+meta_subcode_2207051 + cadence-preserved + cc-0009 handoff).
+All 7 must PASS.
 
 Rollback: DROP TABLE c.client_cadence_rule CASCADE + explicit
-DELETE on k.column_registry + k.table_registry rows for this table
-(see §6.3).
+DELETE on k.column_registry + k.table_registry rows (see §6.3).
 
-No production behaviour change in cc-0008 isolation: no EF reads
-the table until cc-0009 deploys cadence-rule-generator.
+No production behaviour change in cc-0008 v2 isolation: no EF
+reads the table until cc-0009 deploys cadence-rule-generator
+(which implements PRV-0 v2 §5.1 paused-profile clause).
 ```
 
 ### 5.2 `context` (structured object)
 
 ```json
 {
-  "decision_under_review": "Apply cc-0008: create c.client_cadence_rule table + 14-row initial seed + 1 k.table_registry row + 19 k.column_registry rows, all in one apply_migration transactional unit named cc_0008_client_cadence_rule.",
-  "production_action_if_approved": "Single Supabase MCP apply_migration call applying DDL (CREATE TABLE c.client_cadence_rule with all FKs/CHECKs/indexes per PRV-0 §3.2 + IF NOT EXISTS defensive additions) + DML (14 INSERTs into c.client_cadence_rule per §3.1+§3.2; 1 INSERT into k.table_registry per §3.3; 19 INSERTs into k.column_registry per §3.4) as one transactional unit.",
-  "consequence_if_delayed": "PRV-1 build sequence stalls. cc-0009 (r.* schema + cadence-rule-generator EF deploy + first backfill) cannot apply until cc-0008 lands because cc-0009's cadence-rule-generator needs c.client_cadence_rule rows to read. Delay is direct schedule slip on PRV-1.",
-  "cost_of_waiting": "Low. No live system degraded. PRV-1 is the next strategic deliverable, not an active incident. Acceptable to delay to capture PK seed review feedback or refine seed.",
+  "decision_under_review": "Apply cc-0008 v2: create c.client_cadence_rule per PRV-0 v2 §3.2 (preferred_local_times time[]) + 14-row seed (all is_active=true; 12 active publish profiles + 2 paused-but-cadence-preserved IG profiles per PRV-0 v2 §11.4) + 1 k.table_registry row + 19 k.column_registry rows, in one apply_migration named cc_0008_client_cadence_rule.",
+  "production_action_if_approved": "Single Supabase MCP apply_migration call: DDL per PRV-0 v2 §3.2 (preferred_local_times time[] replaces v1 preferred_local_hours int[]; IF NOT EXISTS defensive additions) + DML per §3.1+§3.2 (14 INSERTs into c.client_cadence_rule) + §3.3 (1 INSERT into k.table_registry) + §3.4 (19 INSERTs into k.column_registry via CTE-driven join with information_schema.columns).",
+  "consequence_if_delayed": "PRV-1 build sequence stalls. cc-0009 (r.* schema + cadence-rule-generator EF deploy + first backfill) cannot apply until cc-0008 v2 lands. Direct schedule slip on PRV-1.",
+  "cost_of_waiting": "Low. No live system degraded. PRV-1 is the next strategic deliverable, not an active incident.",
   "current_evidence": [
-    "PRV-0 design lock: docs/dashboard-review-2026-05/prv-0-design-lock.md commit 24d08aeeb6ed793171f76191f41545cdaca32b5d blob ea67a51b0e69c22f7f68712beba07946b8cc968a; §3.2 DDL is the authoritative spec for the table being created.",
-    "Pre-flight §1.1: c.client_cadence_rule.table_exists=false (idempotency); pgcrypto=true; schema c + k exist.",
-    "Pre-flight §1.2: c.client.client_id is uuid NOT NULL with gen_random_uuid() default. FK target valid.",
+    "PRV-0 v2 design lock: commit 6e989517ceaf600e1373f7f319ab5b7d5c2c7147 blob 3b5f382096abfa7ac5e0aff4bc4bdd327e95d6f7; §3.2 (DDL preferred_local_times time[]); §5.1 (generator paused-profile clause); §11.4 (PK v2 directive).",
+    "cc-0008 v1 brief landed: commit 216a5ea2f7e9841c8db94d2f7c847f9e19e93e27 blob 2df46c744a9d426d2cd893dee9ebd942d3d3e523; this v2 supersedes (Option A/B framing removed; preferred_local_hours replaced).",
+    "Pre-flight §1.1: c.client_cadence_rule does not exist; pgcrypto installed; schemas c+k exist.",
+    "Pre-flight §1.2: c.client.client_id is uuid NOT NULL with gen_random_uuid() default. FK valid.",
     "Pre-flight §1.3: 4 active clients (CFW, Invegent, NDIS-Yarns, Property Pulse); all Australia/Sydney.",
-    "Pre-flight §1.4: 14 (client × platform) rows in c.client_publish_profile; 12 publish_enabled=true + 2 publish_enabled=false (NDIS-Yarns IG + Property Pulse IG; Meta anti-spam blocks).",
-    "Pre-flight §1.5: 14 uniform weekly cadence patterns from c.client_publish_schedule; weekdays=[1,2,3,4,5] (Mon-Fri PG convention); 1 hour per (client × platform); enabled_slot_count=5 per pair.",
-    "Pre-flight §1.6: c.client_ai_profile does not encode cadence (informational only).",
-    "Pre-flight §1.7: c.client_publish_schedule is canonical cadence config; m.slot is runtime materialisation (irrelevant to seed).",
-    "Pre-flight §1.8: k.table_registry + k.column_registry shapes confirmed; convention values selected (table_kind=table, status=active, allowed_ops=upsert, pii_risk=none).",
-    "Pre-flight §1.9: day_of_week is 0..6 PG convention; matches PRV-0 §3.2 weekdays comment.",
-    "Pre-flight §1.10: m.chatgpt_review has no prior cc-0008 row (clean ledger; first-fire idempotency).",
-    "Pre-flight §1.11: apply_migration name 'cc_0008_client_cadence_rule' will be checked at final re-verification for collision with supabase_migrations history."
+    "Pre-flight §1.4: 14 (client × platform) rows in c.client_publish_profile; 12 publish_enabled=true + 2 false (NDIS-Yarns IG + Property Pulse IG; Meta anti-spam blocks).",
+    "Pre-flight §1.5: 14 uniform weekly cadence patterns; weekdays=[1,2,3,4,5]; full minute precision in publish_time (09:06, 11:02, 13:04, 08:06, 10:36, 12:36, 08:00, 10:00, 19:00, 12:00, 07:30, 12:00, 17:00, 10:00).",
+    "Pre-flight §1.8: k.table_registry + k.column_registry shapes confirmed.",
+    "Pre-flight §1.10: m.chatgpt_review has no prior cc-0008 row (clean ledger).",
+    "PK directive 2026-05-09 (PP × LinkedIn): cadence-side intent = 1/day Mon-Fri 12:00; recent publish-side reality ~2.3/day; documented in row 11 notes for cadence-drift-checker (cc-0011)."
   ],
   "known_weak_evidence": [
-    "Option A vs Option B for paused IG (NDIS-Yarns + Property Pulse instagram) is a judgement call. Brief recommends B (14 rows; 2 is_active=false) per audit-trail preservation. PK could choose A (12 rows only) without semantic harm to cc-0008 outputs.",
-    "expected_format is empirically NULL for IG/LI/YT in c.client_publish_profile; cc-0008 seed reflects this. Tier 4 matcher (PRV-0 §6.1 confidence=0.750) uses expected_format only as a hint. PK can populate later without re-applying cc-0008.",
-    "Minute precision in c.client_publish_schedule.publish_time (e.g., 09:06:00) is collapsed to hour in cc-0008 seed. PRV-0 cadence rule has no minute column. Generator window computation in cc-0009 will need to decide whether to widen window for minute-shifts. Not a cc-0008 blocker.",
-    "valid_from=current_date for all 14 rows; not historical. PRV-1 backfill (D-23 7-day) is generated in cc-0009 by the generator EF, not by cc-0008 seed. Acceptable per PRV-0 sequencing.",
-    "k.table_registry.table_id is bigint; cc-0008 brief assumes identity/default behaviour and omits explicit value. If schema reveals not-identity-default at apply time, brief is HALTED and re-issued v2 with explicit table_id derivation.",
-    "cc-0008 does not deploy cadence-rule-generator (cc-0009). Until cc-0009 lands, no EF reads this table. Risk window: c.client_cadence_rule sits inert with seed; if a future EF accidentally reads it before cc-0009 wires it up, that EF should fail closed. No EF currently exists with this read path."
+    "expected_format empirically NULL for IG/LI/YT in publish_profile; Tier 4 matcher uses it as hint, not blocker. PK can populate later without re-applying cc-0008.",
+    "valid_from=current_date for all 14 rows; not historical. 7-day backfill in cc-0009. Acceptable per PRV-0 D-23.",
+    "k.table_registry.table_id is bigint; cc-0008 assumes identity-default. If schema reveals not-identity, halt and re-issue v3.",
+    "cc-0009 brief decision (option a skip vs option b expected_status='suppressed') not yet locked; cc-0008 v2 seed is correct under either path.",
+    "No EF reads c.client_cadence_rule until cc-0009 lands. Sits inert with seed.",
+    "v1 Option A/B framing was RESOLVED upstream by PK directive 2026-05-09 — reviewer should not re-litigate.",
+    "v1 hour-aggregation question was RESOLVED upstream by PK directive 2026-05-09 — reviewer should not flag absence of hour-only column."
   ],
-  "default_action": "proceed if D-01 returns clean agree AND PK has reviewed §3.5 seed + given explicit approval phrase AND final §1 re-verification within ~60s shows no drift",
+  "default_action": "proceed if D-01 returns clean agree AND PK has reviewed §3.5 v2 seed + given explicit approval phrase AND final §1 re-verification within ~60s shows no drift",
   "references": {
-    "cc-0008 brief (this)": "docs/briefs/cc-0008-client-cadence-rule-table-and-seed.md",
-    "PRV-0 design lock (authority)": "docs/dashboard-review-2026-05/prv-0-design-lock.md @ commit 24d08aeeb6ed793171f76191f41545cdaca32b5d",
-    "cc-0007 reference structure": "docs/briefs/cc-0007-ai-worker-401-jwt-format-recovery.md",
-    "Memory standing rules": "Lesson #61 (P1-P5 mandatory pre-flight); D-01 protocol per docs/runtime/mcp_review_protocol.md; apply_migration is ONLY DDL path for c/m/f/t schemas; D-50 / Lesson v2.50 acceptance integrity"
+    "cc-0008 v2 brief (this)": "docs/briefs/cc-0008-client-cadence-rule-table-and-seed.md",
+    "cc-0008 v1 brief (predecessor)": "@ commit 216a5ea2f7e9841c8db94d2f7c847f9e19e93e27",
+    "PRV-0 v2 design lock (authority)": "docs/dashboard-review-2026-05/prv-0-design-lock.md @ commit 6e989517ceaf600e1373f7f319ab5b7d5c2c7147",
+    "PRV-0 v1 design lock (predecessor)": "@ commit 24d08aeeb6ed793171f76191f41545cdaca32b5d",
+    "Memory standing rules": "Lesson #61 (P1-P5 pre-flight); D-01 protocol per docs/runtime/mcp_review_protocol.md; apply_migration is ONLY DDL path for c/m/f/t schemas; D-50 / Lesson v2.50 acceptance integrity"
   },
-  "sql_to_apply": "Single apply_migration named cc_0008_client_cadence_rule containing the DDL from §2 + DML from §3.1 + §3.2 + §3.3 + §3.4. See brief §2 and §3 for full text."
+  "sql_to_apply": "Single apply_migration named cc_0008_client_cadence_rule containing the DDL from §2 (preferred_local_times time[]) + DML from §3.1 (12 active rows, all is_active=true, time-array minute-precision) + §3.2 (2 paused-IG rows, is_active=true, notes capture publish_enabled=false + paused_reason + cc-0009 handoff) + §3.3 (k.table_registry) + §3.4 (k.column_registry CTE)."
 }
 ```
 
 ### 5.3 Decision rule on D-01 verdict
 
 - `agree` + `proceed` + risk ≤ medium + 0 pushback → apply (with PK explicit approval phrase received post-§3.5 seed review).
-- `agree` + `proceed` + reviewer notes Option A preference → surface to PK for Option choice; default is Option B unless PK affirms A.
 - `agree` + `proceed` + reviewer notes minor item → adjust brief in-place if non-substantive.
 - `partial` → read `corrected_action`; if substantive → do not proceed; surface to PK for state-capture-exception per Lesson #62.
 - `disagree` OR risk=high OR ≥1 substantive pushback → do not proceed; surface to PK for state-capture-exception consideration.
@@ -762,11 +799,11 @@ Document any no-op outcome in result file.
 - **6.2.i Prior cc-0008 D-01 row:** §1.10 returns count > 0.
 - **6.2.j PRV-0 §3.2 deviation required:** if pre-flight reveals a constraint that genuinely blocks the verbatim DDL.
 - **6.2.k Sequencing violation attempted:** if at any point apply attempts to deploy `cadence-rule-generator`, create `r.*` schema, create `r.reconciliation_run`, set up cron, or create a temp log table → HALT immediately. These are forbidden in cc-0008.
-- **6.2.l PK seed review rejection:** PK reviews §3.5 and rejects → HALT v1; chat re-issues v2 with PK-directed changes.
+- **6.2.l PK seed review rejection:** PK reviews §3.5 and rejects → HALT v2; chat re-issues v3 with PK-directed changes. (v2 already incorporates PK directives 2026-05-09 on minute precision + paused-profile suppression; v1 Option A/B was resolved upstream and is no longer a v2 PK-decision lever.)
 
 ### 6.3 ROLLBACK path (verification fails after apply)
 
-If V1–V6 FAIL post-apply:
+If V1–V7 FAIL post-apply:
 
 1. Halt session continuation immediately.
 2. Diagnose which V failed and why (capture full output).
@@ -789,7 +826,7 @@ WHERE schema_name='c' AND table_name='client_cadence_rule';
 
 4. Re-run V1 (table_exists=false expected) and V6 (k.* registry rows = 0 expected) to confirm rollback applied.
 5. Document failure mode + diagnosis in result file.
-6. PK escalation; cc-0008 v2 brief.
+6. PK escalation; cc-0008 v3 brief.
 
 ---
 
@@ -799,31 +836,31 @@ WHERE schema_name='c' AND table_name='client_cadence_rule';
 
 **Standard sections (mirror cc-0006 / cc-0007 result pattern):**
 
-1. **Header** — brief reference, apply session date, executor, D-01 verdict, PK approval phrase, outcome summary, seed option chosen (A or B).
-2. **Apply summary** — logical action, project, method, result, table created (yes/no), seed rows inserted, k.* registry rows inserted, rollback fired (yes/no), §6 path triggered (or NONE).
+1. **Header** — brief reference (cc-0008 v2), apply session date, executor, D-01 verdict, PK approval phrase, outcome summary, brief version applied (v2 single canonical model — no Option choice).
+2. **Apply summary** — logical action, project, method, result, table created (yes/no), seed rows inserted (14 expected, all is_active=true), k.* registry rows inserted, rollback fired (yes/no), §6 path triggered (or NONE).
 3. **Pre-flight + final re-verification** — table comparing initial pre-flight values (per §1) vs ~60s-before-apply re-verification values; status PASS/FAIL per §1.1–§1.11.
-4. **DDL applied** — exact CREATE TABLE + CREATE INDEX + COMMENT statements applied (mirroring §2 of brief).
-5. **DML applied** — number of seed rows by client × platform × is_active state (matching §3.5 surface table); 1 k.table_registry row; 19 k.column_registry rows.
-6. **Verification (V1–V6)** — status table per V; capture exact returned counts and any anomalies.
+4. **DDL applied** — exact CREATE TABLE + CREATE INDEX + COMMENT statements applied (mirroring §2 of brief; preferred_local_times time[]).
+5. **DML applied** — number of seed rows by client × platform (matching §3.5 surface table); confirm preferred_local_times values match `c.client_publish_schedule.publish_time` exactly; 1 k.table_registry row; 19 k.column_registry rows.
+6. **Verification (V1–V7)** — status table per V; capture exact returned counts and any anomalies; V7 confirms paused-IG notes.
 7. **D-01 record** — `m.chatgpt_review` row id, verdict, conditions stated by reviewer, PK approval phrase, action_type ('sql_destructive'), close-the-loop UPDATE status.
 8. **Hold-state assertions** — STANDING_THREE EFs untouched, no EF deploy, no cron edit, no temp log tables, no `r.*` schema work, no Phase 0 scheduling, no M8 work, no other DDL/DML.
-9. **Open / next** — propose readiness gate for cc-0009; flag any seed adjustments observed during apply (e.g., PK chose Option A); flag any new findings observed.
-10. **New brief-runner-v0 patterns observed** — capture lessons for future PRV-1 build briefs (this is the first PRV-1 cc-NNNN brief; first to combine DDL + 14-row seed + 20 k.* rows in one apply_migration).
+9. **Open / next** — propose readiness gate for cc-0009 (now also includes locking option (a) skip vs option (b) `expected_status='suppressed'` per PRV-0 v2 §5.1); flag any seed adjustments observed during apply; flag any new findings observed.
+10. **New brief-runner-v0 patterns observed** — capture lessons for future PRV-1 build briefs (this is the first PRV-1 cc-NNNN brief; first to combine DDL + 14-row seed + 20 k.* rows in one apply_migration; first to use preferred_local_times time[] minute-precision pattern).
 
 ---
 
 ## 8. Stop condition
 
 1. §1 pre-flight all §1.1–§1.11 PASS (no HALT triggered).
-2. PK reviewed §3.5 seed and gave explicit approval phrase for Option A or Option B.
-3. §5 D-01 fire returns clean agree; reviewer's notes match brief content.
+2. PK reviewed §3.5 v2 seed surface table and gave explicit approval phrase. (Option A/B no longer a PK lever — single canonical model.)
+3. §5 D-01 fire returns clean agree; reviewer's notes match v2 brief content.
 4. Final read-only re-verification confirms no drift (re-run §1.1, §1.5, §1.10, §1.11 within ~60s of apply).
 5. §3 apply_migration call completes successfully (single transactional unit; no partial apply).
-6. §4 verification V1–V6 all PASS.
+6. §4 verification V1–V7 all PASS (V7 added in v2).
 7. Close-the-loop UPDATE on `m.chatgpt_review` for the cc-0008 D-01 row.
 8. Result file `docs/briefs/results/cc-0008-client-cadence-rule-table-and-seed.md` committed.
 9. PRV-1 cc-0008 closure documented in 4-way sync close.
-10. cc-0009 readiness signal logged for next session pickup.
+10. cc-0009 readiness signal logged for next session pickup, with explicit cc-0009-brief-decision flag: option (a) skip vs option (b) `expected_status='suppressed'` for paused-profile rows (PRV-0 v2 §5.1).
 
 If any of §6.1, §6.2.{a-l}, or §6.3 paths trigger: report and stop.
 
@@ -831,48 +868,42 @@ If any of §6.1, §6.2.{a-l}, or §6.3 paths trigger: report and stop.
 
 ## Notes
 
-This is the **eighth cc-NNNN brief** (sixth-applied class will be when this lands; cc-0007 is queued ahead of it). It is the **first PRV-1 build-class apply brief** — earlier cc-NNNN were Phase 0 (cc-0001), M-class queue integrity remediation (cc-0003..cc-0006), and recovery class (cc-0007).
+This is the **eighth cc-NNNN brief** (sixth-applied class will be when this lands). It is the **first PRV-1 build-class apply brief** — earlier cc-NNNN were Phase 0 (cc-0001), M-class queue integrity remediation (cc-0003..cc-0006), and recovery class (cc-0007).
 
-### Brief-runner-v0 watch items specific to cc-0008
+### Brief-runner-v0 watch items specific to cc-0008 v2
 
-1. **First multi-INSERT seed inside one apply_migration call.** 14 + 1 + 19 = 34 INSERTs total, all transactional. Watch for: transaction size limits (none expected at this volume); ROLLBACK behaviour if any INSERT fails (entire migration unwinds — desired).
-2. **First brief consuming a PRV-0 contract.** PRV-0 §3.2 DDL is the source of truth. Any deviation requires v2.
-3. **First brief with explicit Option A vs Option B PK choice.** Option choice is reserved for PK; D-01 reviewer must not make the choice on PK's behalf.
-4. **First brief generating k.* doc-catalog rows alongside the table.** Sets the precedent for "registry rows in same migration as the table they document" per PRV-0 §3.12.
-5. **First brief with empirical seed derivation surfaced for review in §3.5** (transparent table; decision points; PK gate before D-01).
-6. **First cc-NNNN brief at PRV build class.** Subsequent cc-0009..cc-0011 will follow this pattern.
-7. **Lesson candidates from cc-0008 cycle (post-apply):**
-   - **L26 (DDL + seed + k.* registry in one apply_migration)** — codify if pattern proves clean.
-   - **L27 (PRV contract consumption discipline)** — PRV-0 §3.2 DDL verbatim; deviation = v2.
-   - **L28 (seed provenance documentation)** — every seed row's `notes` references the source query and slot times.
-   - **L29 (Option A/B surfacing pattern)** — codify for any seed brief with non-trivial scope decision.
+1. **34 INSERTs in one apply_migration** (14 cadence + 1 table_registry + 19 column_registry). All transactional; ROLLBACK on any failure unwinds entire migration.
+2. **First brief consuming a PRV-0 contract.** PRV-0 v2 §3.2 DDL is source of truth (preferred_local_times time[] minute-precision). Deviation = v3.
+3. **First brief generating k.* doc-catalog rows alongside the table** (PRV-0 §3.12 standing rule).
+4. **First brief with empirical seed derivation surfaced for §3.5 review.**
+5. **First cc-NNNN at PRV build class.** cc-0009..cc-0011 will follow this pattern.
+6. **First brief using minute-precision `time[]` cadence column.** Pattern: store native `time` arrays matching publish-side `publish_time`; derive hour-only metadata at query time.
+7. **First brief using two-layer is_active / publish_enabled separation.** cadence rule `is_active=true` = part of cadence; runtime pause lives in `c.client_publish_profile.publish_enabled`; cc-0009 generator reads both layers (PRV-0 v2 §5.1).
+
+**Lesson candidates (post-apply):**
+- L26 — DDL + seed + k.* registry in one apply_migration.
+- L27 — PRV contract consumption discipline (PRV-0 v2 §3.2 verbatim).
+- L28 — Seed provenance documentation (notes reference source query + slot times).
+- L29 — Two-layer state separation in seed model (cadence-side is_active vs publish-side publish_enabled).
+- L30 — Output-budget discipline: brief commits ≤ 65KB to stay under output-token limit; trim verbose sections rather than splitting files.
+- L31 — Acceptance-integrity re-fetch on large commits: UTF-8 multibyte char accounting can produce apparent size discrepancies (e.g. PRV-0 v2 70KB local vs 59KB landed) without content loss; verify section-by-section instead.
 
 ### Open dependencies for the apply session
 
-Before cc-0008 can apply:
+- PK reviews §3.5 v2 seed surface table.
+- PK directs on the 2 remaining decision points (expected_format NULL + valid_from current_date acceptance).
+- Final §1 re-verification within ~60s of apply.
+- D-01 fire (`ask_chatgpt_review` action_type=sql_destructive) returns clean agree.
+- PK explicit approval phrase received in chat after D-01.
 
-- **PK reviews §3.5 seed surface table.** PK confirms Option A or B.
-- **PK directs on the 4 decision points in §3.5.**
-- **Final §1 re-verification within ~60s of apply** — re-run §1.1, §1.5, §1.10, §1.11.
-- **D-01 fire** (`ask_chatgpt_review` action_type=sql_destructive) returns clean agree.
-- **PK explicit approval phrase** received in chat after D-01.
+When all hold: apply session proceeds with one `apply_migration` call.
 
-When all hold: apply session can proceed with one `apply_migration` call.
+**No M8 dependency. cc-0008 v2 can apply independently of cc-0005 v4 or cc-0007 status.**
 
-**No M8 dependency. cc-0008 can apply independently of cc-0005 v4 status. No cc-0007 dependency (cc-0007 is parallel, not blocking).**
+### Sequencing reminders (PK directives 2026-05-09 — boilerplate forbidden)
 
-### Sequencing reminders (PK directive 2026-05-09 — boilerplate forbidden actions)
-
-- cc-0008 must NOT deploy or enable `cadence-rule-generator` Edge Function. → moved to cc-0009.
-- cc-0008 must NOT create `r.*` schema. → moved to cc-0009.
-- cc-0008 must NOT create `r.reconciliation_run` table. → moved to cc-0009.
-- cc-0008 must NOT create `r.expected_publication` table. → moved to cc-0009.
-- cc-0008 must NOT set up any cron job. → moved to cc-0009.
-- cc-0008 must NOT execute the first generator backfill. → moved to cc-0009.
-- cc-0008 must NOT create any temporary log table for chicken/egg purposes. → resolved by sequencing.
-
-If at apply time any of these are attempted: HALT immediately per §6.2.k.
+cc-0008 v2 must NOT: deploy cadence-rule-generator EF, create r.* schema, create r.reconciliation_run / r.expected_publication, set up cron, run first generator backfill, create temp log tables, decide cc-0009 generator option (a) skip vs (b) suppressed. All deferred to cc-0009 (PRV-0 v2 §8.2). Violation → HALT per §6.2.k.
 
 ---
 
-*Brief authored 2026-05-09 Sydney by chat. Inputs: PRV-0 design lock (commit 24d08aeeb6ed793171f76191f41545cdaca32b5d); chat read-only pre-flight P1.1–P1.11 against production via Supabase MCP execute_sql; PK direction "Start cc-0008 apply brief authoring"; cc-0007 brief structure as template. Output: full apply brief (11-step pre-flight + DDL + 14-row seed + k.* doc-catalog rows + V1–V6 verification + D-01 packet with sql_destructive action_type + rollback path + result-file convention). No production state changed by drafting (read-only SELECTs only). cc-0008 apply gated by PK §3.5 seed review + D-01 + PK explicit approval phrase. Awaiting PK direction to schedule apply session.*
+*Brief authored 2026-05-09 Sydney by chat (v1 + v2 patch in same session). v2 inputs: PRV-0 v2 design lock (commit 6e989517ceaf600e1373f7f319ab5b7d5c2c7147); PK directive 2026-05-09 (minute precision + paused-profile suppression); cc-0008 v1 (commit 216a5ea2f7e9841c8db94d2f7c847f9e19e93e27). Output: full apply brief v2 (11-step pre-flight + DDL with preferred_local_times + 14-row all-active seed + k.* doc-catalog + V1–V7 + D-01 packet sql_destructive + rollback path + result-file convention). No production state changed by drafting (read-only SELECTs only). Apply gated by §3.5 v2 seed review + D-01 + PK approval phrase.*
