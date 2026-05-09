@@ -1,21 +1,60 @@
-# Brief cc-0005 — M8 Path A cutover (cron 48 in-place rewrite + legacy-origin future cleanup + `public.get_next_scheduled_for` deprecation)
+# Brief cc-0005 — M8a Path A cutover (cron 48 in-place rewrite + legacy-origin future cleanup; function deprecation **DEFERRED to M8b**)
 
 **Created:** 2026-05-09 Sydney  
 **Author:** chat  
-**Patched:** 2026-05-09 Sydney — **v3 patch (regex correctness + H1-H6 + L2)** under PK direction. Supersedes Path A patch `f70cb41f` (which had 5 critical regex bugs that would have blocked first apply at the in-migration verify gates). v3 also extends pre-flight scope per H1-H6 review findings.  
+**Patched:** 2026-05-09 Sydney — **v4 patch (M8 staged → M8a only; Component 3 deferred to M8b)** under PK direction. Supersedes v3 (commit `245005a3`) after CC's v3 pre-flight HALT surfaced 2 non-cron manual callers of `public.get_next_scheduled_for` that v3 Component 3 (rename) would have broken.  
 **Executor:** chat (apply via Supabase MCP `apply_migration`) OR Claude Code per brief-runner-v0  
-**Status:** issued (v3 patched 2026-05-09; apply pending PK direction to schedule)  
-**Result file:** `docs/briefs/results/cc-0005-m8-atomic-cutover.md` (created on completion)
+**Status:** issued (v4 patched 2026-05-09; apply pending PK direction to schedule)  
+**Result file:** `docs/briefs/results/cc-0005-m8a-cron48-rewrite-and-legacy-cleanup.md` (created on completion)
 
 ---
 
 ## Patch history
 
-- **2026-05-09 Sydney — v3 patch (regex correctness + H1-H6 + L2)** under PK direction. Five critical regex bugs in the v2 Path A patch (`f70cb41f`) would have blocked first apply: the in-migration verify gates V8 and V10 used substring matches (`ILIKE '%get_next_scheduled_for%'` / `~ 'get_next_scheduled_for'`) which would have matched the substring in the M8 Path A comment line in the rewritten cron 48 command body, fired `RAISE EXCEPTION`, and rolled back the transaction before Component 2 + Component 3 could run. v3 replaces all 8+ substring matches with function-call-syntax regex (`~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('`) which correctly distinguishes function calls from comment-mentions AND covers both the original name and the renamed/deprecated name. v3 also reworded the M8 Path A comment in the rewritten cron 48 command body to remove the `get_next_scheduled_for` substring entirely ("legacy fallback removed from COALESCE chain.") as belt-and-braces. v3 additionally extends pre-flight scope per the H1-H6 review: distinct `pd.created_by` enumeration (H3), un-publishable legacy draft cohort query (H4), slot-driven alignment check (H5; new HALT §8.2.l if misaligned), original COMMENT capture for rollback (H6), unique rollback dollar-quote tag guidance (M1), §Forbidden-actions amendment list expanded to 4 items (M2), removed unused `v_min_expected` variable (M3), TOCTOU acknowledgement (M4), expanded §1.2 trigger survey (L1), and explicit schedule capture in §1.3 + V7 (L2). Patches in detail under §Patch history details below.
+- **2026-05-09 Sydney — v4 patch (M8 staged → M8a only; Component 3 deferred to M8b)** under PK direction. **Trigger:** CC's v3 pre-flight HALT at §1.4 surfaced 2 non-cron manual callers of `public.get_next_scheduled_for`:
+  - `public.draft_approve_and_enqueue`
+  - `public.draft_approve_and_enqueue_scheduled`
 
-- **2026-05-09 Sydney — Path A patch (v2)** — commit `f70cb41f72e01c27c83639f1ae5bf0dac9353b70`. Component 1 changed from "disable cron 48 via `cron.alter_job(48, active := false)`" to **"rewrite cron 48's command body in place via `cron.alter_job(48, command := <new body>)` to remove `public.get_next_scheduled_for` from the COALESCE chain"**. Cron 48 remains `active=true`. Cleanup component (component 2) and function deprecation (component 3) made structurally conditional on V10 (cron 48 no longer calls `public.get_next_scheduled_for`, enforced via in-migration verify gate). New verifications V7-V10 restructured per PK directive: V7 cron 48 active=true; V8 cron 48 command no longer contains `get_next_scheduled_for`; V9 autonomous slot-driven enqueue path still represented; V10 zero live callers before rename. §1.0 PK confirmation gate simplified (Path A architecture resolves the original items 1 + 2). Investigation record added. Rollback updated to restore old command body. **Superseded by v3 due to regex correctness bugs.**
+  These are dashboard / manual-flow paths used by operators for individual draft approvals; they are NOT autonomous (do not run on cron). v3's Component 3 (`ALTER FUNCTION ... RENAME TO get_next_scheduled_for__deprecated_m8`) would have broken both manual flows the moment it landed. v3 §1.4 + V10 in-migration gate would have correctly HALTed apply (which is what they did at pre-flight), but the deeper question is: do we want to rename the function at all right now, or first remediate the manual callers? PK directive: **stage M8 into M8a (this brief) and M8b (separate cc-NNNN brief).**
 
-- **2026-05-09 Sydney (initial draft)** — commit `6f16c40e4947c19280b6f004c1ed3435a234b9ef`. Original Path C draft (disable cron 48 + cleanup + function rename). Brief premise was incorrect: chat investigation 2026-05-09 (turn after cc-0004 closure) established that disabling cron 48 with no replacement would stop autonomous publishing.
+  **v4 scope reduction (M8a only):**
+  - **Component 1 (cron 48 in-place rewrite)** — RETAINED, unchanged from v3. Cron 48 keeps `active=true`. Removes the legacy fallback function call from the COALESCE chain in cron 48's command body.
+  - **Component 2 (legacy-origin future cleanup)** — RETAINED. Count band re-banded from `[0, 200]` (v3) to `[250, 500]` (v4) around CC's v3 pre-flight observation of 344 rows. Both lower (250) and upper (500) bounds are HALT criteria. Lower bound prevents apply on a near-zero count (would indicate criterion regression or that the cohort already drained); upper bound prevents apply on a runaway count (would indicate scope creep). `v_min_expected` variable restored (v3 M3 "removed unused" reversed).
+  - **Component 3 (function rename + COMMENT)** — **DEFERRED to M8b.** Removed entirely from §3 SQL. v4 does NOT rename `public.get_next_scheduled_for`. The function continues to exist with its original name and signature. cron 48 stops calling it post-Component-1; the 2 manual callers continue to call it post-M8a.
+
+  **v4 verify gate restructure:**
+  - V7 (cron 48 active=true + schedule unchanged + jobname unchanged) — RETAINED.
+  - V8 (cron 48 command no longer contains a function-call to legacy fallback) — RETAINED with v3 function-call regex `~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('`.
+  - V9 (autonomous slot-driven enqueue path preserved) — RETAINED.
+  - V10 (zero live callers) — **RETIRED for M8a.** Replaced with **V10' (expected callers list)**: exactly cron 48 + the 2 manual functions = 3 expected callers. HALT only if a caller surfaces OUTSIDE this expected set.
+  - V10b (function rename paranoia) — RETIRED for M8a; folds into M8b.
+
+  **v4 §1.4 expectation update:** v3 expected exactly 1 caller (cron 48). v4 expects exactly 3 callers (cron 48 + `draft_approve_and_enqueue` + `draft_approve_and_enqueue_scheduled`). HALT (v4 §8.2.g) if a caller outside this expected set surfaces.
+
+  **v4 §1.4b retirement:** ORIGINAL_COMMENT capture is no longer needed (no rename in M8a). Removed.
+
+  **v4 §1.5c (un-publishable cohort) rule update:** v3 captured this as informational with PK direction required pre-apply. v4 makes it informational ONLY — the 94 un-publishable legacy drafts CC observed at v3 pre-flight are recorded as a **separate follow-up finding / brief candidate** (out of M8a and M8b scope). Apply gates no longer include PK direction on this cohort. The cohort exists; M8a does not address it; future cleanup brief required if PK directs.
+
+  **v4 dead_reason value:** unchanged from v3 — `m8_cutover_legacy_path_deprecated` (preserved for brief-patch minimalism; v3 value referred to the legacy *path* being deprecated from cron 48, which is still accurate for M8a).
+
+  **v4 migration name:** changed from v3 `m8_atomic_cutover_v1` to `m8a_cron48_rewrite_and_legacy_cleanup_v1` (clearer phase signalling; v3 "atomic cutover" no longer accurate after Component 3 deferral). Migration name not burned (v3 was never applied).
+
+  **v4 §8.3 rollback simplification:** reduced from 3-component reversal to 2-component reversal. Removed `<ORIGINAL_COMMENT>` placeholder + unique-dollar-quote-tag guidance (only 1 dollar-quoted body remains: cron 48 command). Apply-time amendment list reduced from 4 items (v3) to 2 items (v4): (a) `updated_at` per §1.1, (b) cleanup band integers if PK directs adjustment from [250, 500].
+
+  **v4 NEW §M8b follow-up section** — documents the deferred work as a separate brief shape: (1) remediate `public.draft_approve_and_enqueue` caller; (2) remediate `public.draft_approve_and_enqueue_scheduled` caller; (3) re-verify zero callers; (4) `ALTER FUNCTION public.get_next_scheduled_for RENAME TO __deprecated_m8` + `COMMENT ON FUNCTION`. Brief shape mirrors cc-0005 v3 Component 3 + new pre-flight on the 2 manual callers. M8b is NOT the responsibility of this brief; this brief defers to it cleanly.
+
+  **v4 brief-runner-v0 lesson candidates:**
+  - **L19 (CC v3 pre-flight HALT pattern)** — v3 §1.4 caller check correctly HALTed at apply when expected callers (1) didn't match observed callers (3). Pattern vindicates the v3 H1-H6 expansion: pre-flight cohort surfacing (L18) caught a real blocker before apply, AND the function-call regex (L16) correctly identified all 3 callers (rather than hidden substring noise).
+  - **L20 (in-place patch vs scope-reduce vs new brief)** — v3 was patched to v4 because v3 was never applied (consistent with L17). Component 3 was deferred to a NEW brief (M8b) rather than retried in-place because the dependency (manual caller remediation) is non-trivial and warrants its own pre-flight + verification + D-01.
+  - **L21 (scope re-banding pattern)** — brief lower bounds matter as much as upper bounds. v3 had min=0 (allowing no-op); v4 re-bands to [250, 500] to REQUIRE a non-trivial cohort (validates brief premise; HALTs apply if observed count is suspiciously low).
+
+  Patches in detail under §Patch history details below (~30-item enumeration covering all v4 changes vs v3).
+
+- **2026-05-09 Sydney — v3 patch (regex correctness + H1-H6 + L2)** under PK direction. Five critical regex bugs in the v2 Path A patch (`f70cb41f`) would have blocked first apply: the in-migration verify gates V8 and V10 used substring matches (`ILIKE '%get_next_scheduled_for%'` / `~ 'get_next_scheduled_for'`) which would have matched the substring in the M8 Path A comment line in the rewritten cron 48 command body, fired `RAISE EXCEPTION`, and rolled back the transaction before Component 2 + Component 3 could run. v3 replaced all 8+ substring matches with function-call-syntax regex. v3 also reworded the M8 Path A comment in the rewritten cron 48 command body to remove the `get_next_scheduled_for` substring entirely ("legacy fallback removed from COALESCE chain.") as belt-and-braces. v3 additionally extended pre-flight scope per the H1-H6 review: distinct `pd.created_by` enumeration (H3), un-publishable legacy draft cohort query (H4), slot-driven alignment check (H5; HALT §8.2.l if misaligned), original COMMENT capture for rollback (H6), unique rollback dollar-quote tag guidance (M1), §Forbidden-actions amendment list expanded to 4 items (M2), removed unused `v_min_expected` variable (M3), TOCTOU acknowledgement (M4), expanded §1.2 trigger survey (L1), and explicit schedule capture in §1.3 + V7 (L2). **Superseded by v4 due to scope reduction (M8 staged into M8a + M8b).**
+
+- **2026-05-09 Sydney — Path A patch (v2)** — commit `f70cb41f72e01c27c83639f1ae5bf0dac9353b70`. Component 1 changed from "disable cron 48" to "rewrite cron 48's command body in place". **Superseded by v3 due to regex correctness bugs.**
+
+- **2026-05-09 Sydney (initial draft)** — commit `6f16c40e4947c19280b6f004c1ed3435a234b9ef`. Original Path C draft. Premise was incorrect (chat investigation 2026-05-09 established Path C would stop autonomous publishing).
 
 ---
 
@@ -23,18 +62,21 @@
 
 This Path A patch is informed by a read-only Supabase investigation conducted by chat 2026-05-09 (the turn immediately after cc-0004 closure / sync_state v2.56). Findings:
 
-1. **Cron 48 is currently the SOLE autonomous inserter into `m.post_publish_queue`.** Confirmed by enumerating every function whose definition contains `INSERT INTO m.post_publish_queue` across all relevant schemas. Result: 4 hits beyond cron 48 — `public.draft_approve_and_enqueue`, `public.draft_approve_and_enqueue_scheduled`, `public.manual_post_insert`, `m.run_system_audit`. All 4 are dashboard-manual / audit paths; **none are autonomous**. SQL used:
-   ```sql
-   SELECT n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)
-   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-   WHERE p.prokind IN ('f','p')
-     AND pg_get_functiondef(p.oid) ~* 'INSERT\s+INTO\s+(m\.)?post_publish_queue'
-     AND n.nspname IN ('m', 'public', 'c', 'f', 'a', 'k', 't')
-   ORDER BY n.nspname, p.proname;
-   ```
-2. **`m.fill_pending_slots` inserts drafts + AI jobs only, NOT queue rows.** Function body inspected verbatim. The fill function INSERTs / UPSERTs into `m.post_draft` (with `created_by='fill_function'`, `scheduled_for = v_slot.scheduled_publish_at`) and `m.ai_job` (with `status='queued'`, `job_type='slot_fill_synthesis_v1'`). The function NEVER touches `m.post_publish_queue`. Slot-driven drafts therefore depend on cron 48 to enqueue them.
-3. **No trigger on `m.post_draft`, `m.slot`, `m.ai_job`, or `m.post_publish` inserts queue rows.** 9 non-internal triggers surveyed. The closest candidates are `trg_release_queue_on_asset_ready` and `trg_gate_queue_on_asset_status`; both operate on EXISTING queue rows (gate / release), not creation.
-4. **Disabling cron 48 with no replacement = autonomous publishing stops.** The original cc-0005 draft (Path C) component 1 (`cron.alter_job(48, active := false)`) would have stopped autonomous publishing because the AI worker / auto-approver continue to flow drafts to `approval_status='approved'`, but no path INSERTs them into `m.post_publish_queue`. The publisher reads only from `m.post_publish_queue`. Outcome: **drafts pile up at `approved` status; nothing publishes**.
+1. **Cron 48 is currently the SOLE autonomous inserter into `m.post_publish_queue`.** Confirmed by enumerating every function whose definition contains `INSERT INTO m.post_publish_queue` across all relevant schemas. Result: 4 hits beyond cron 48 — `public.draft_approve_and_enqueue`, `public.draft_approve_and_enqueue_scheduled`, `public.manual_post_insert`, `m.run_system_audit`. All 4 are dashboard-manual / audit paths; **none are autonomous**.
+
+2. **`m.fill_pending_slots` inserts drafts + AI jobs only, NOT queue rows.** The fill function INSERTs / UPSERTs into `m.post_draft` and `m.ai_job`. The function NEVER touches `m.post_publish_queue`. Slot-driven drafts therefore depend on cron 48 to enqueue them.
+
+3. **No trigger on `m.post_draft`, `m.slot`, `m.ai_job`, or `m.post_publish` inserts queue rows.**
+
+4. **Disabling cron 48 with no replacement = autonomous publishing stops.** The original cc-0005 draft (Path C) component 1 (`cron.alter_job(48, active := false)`) would have stopped autonomous publishing.
+
+5. **NEW v4: 2 non-cron manual callers of `public.get_next_scheduled_for` confirmed at v3 pre-flight (CC, 2026-05-09):**
+   - `public.draft_approve_and_enqueue` — dashboard manual draft-approval flow.
+   - `public.draft_approve_and_enqueue_scheduled` — dashboard scheduled-draft-approval flow.
+
+   Both functions call `public.get_next_scheduled_for(...)` for non-cron, manual / dashboard-driven approval paths. v3 Component 3 (rename) would have broken both immediately. PK decision: defer Component 3 to M8b after these 2 callers are remediated.
+
+6. **NEW v4: 94-row un-publishable legacy draft cohort observed at v3 pre-flight (CC, 2026-05-09).** Drafts where `pd.slot_id IS NULL AND pd.scheduled_for IS NULL AND created_by='seed_and_enqueue' AND approval_status IN ('approved','scheduled') AND no queue row exists`. Post-M8a: cron 48 won't enqueue these (rewritten WHERE filter drops legacy-unresolvable rows). They will silently never publish. **Recorded as separate follow-up finding / brief candidate — out of M8a and M8b scope.**
 
 **Cron 48 current command body (captured by chat 2026-05-09):** three-element COALESCE chain inside the candidates CTE:
 
@@ -46,26 +88,21 @@ COALESCE(
 )
 ```
 
-For slot-driven v4 drafts, position (1) is non-null (M4 + F-PUB-009 ensure `pd.scheduled_for` is set by `m.fill_pending_slots`). Position (3) only fires for legacy-origin drafts where `pd.scheduled_for IS NULL` AND `pd.slot_id IS NULL`. The Path A cutover removes position (3) so legacy-unresolvable drafts are skipped via the existing `WHERE computed_scheduled_for IS NOT NULL` filter rather than fallback-scheduled.
+The Path A cutover removes position (3) so legacy-unresolvable drafts are skipped via the existing `WHERE computed_scheduled_for IS NOT NULL` filter rather than fallback-scheduled.
 
-**Path A vs Path B vs Path C** (chat synthesis):
-- **Path A (this brief):** rewrite cron 48 command body in place. Lowest-risk; cron 48 retains autonomous enqueue role with M4 slot-aware behaviour.
-- **Path B:** build a replacement enqueue path (trigger on `m.ai_job` UPDATE→'succeeded' OR new EF). Significant new build work; likely a separate cc-NNNN brief.
-- **Path C:** disable cron 48 with no replacement. **Not viable** — autonomous publishing stops.
-
-**PK directed Path A.** This brief implements Path A.
+**PK directed Path A staged: M8a (this brief) + M8b (deferred separate brief).** This v4 brief implements M8a only.
 
 ---
 
-## Task
+## Task (M8a only)
 
-Execute the M8 Path A cutover. Three coordinated components in a single atomic transaction:
+Execute the M8a Path A cutover. **Two coordinated components in a single atomic transaction** (was 3 in v3; Component 3 deferred to M8b):
 
-1. **Rewrite cron 48 (`enqueue-publish-queue-every-5m`) command body in place** via `cron.alter_job(48, command := <new body>)`. **Cron 48 remains `active=true`.** The new command body is the current command MINUS `public.get_next_scheduled_for(...)` from the COALESCE chain in the candidates CTE — resulting COALESCE: `(pd.scheduled_for, s.scheduled_publish_at)`. Legacy rows with both NULL are **skipped** via the pre-existing `WHERE computed_scheduled_for IS NOT NULL` filter (M3 Bug 3 fix carries forward — Path A repurposes this filter to also drop unresolvable legacy rows). v3-rephrased comment annotation added at the COALESCE site (no longer contains the substring `get_next_scheduled_for` per v3 patch).
-2. **Cleanup of legacy-origin future queue rows** — dead-letter all `m.post_publish_queue` rows where `pd.slot_id IS NULL AND pd.created_by='seed_and_enqueue' AND q.scheduled_for > NOW() AND q.status IN ('queued','failed')`. **Conditional on Component 1 verify gate passing** (cron 48 command no longer contains a function-call to `get_next_scheduled_for`); enforced via in-migration `RAISE EXCEPTION`.
-3. **Deprecate `public.get_next_scheduled_for`** — rename to `public.get_next_scheduled_for__deprecated_m8` AND add `COMMENT ON FUNCTION` annotating the deprecation. **Conditional on V10 (zero live callers) passing within the migration**; enforced via in-migration `RAISE EXCEPTION` BEFORE the rename fires.
+1. **Rewrite cron 48 (`enqueue-publish-queue-every-5m`) command body in place** via `cron.alter_job(48, command := <new body>)`. **Cron 48 remains `active=true`.** The new command body is the current command MINUS `public.get_next_scheduled_for(...)` from the COALESCE chain in the candidates CTE — resulting COALESCE: `(pd.scheduled_for, s.scheduled_publish_at)`. Legacy rows with both NULL are **skipped** via the pre-existing `WHERE computed_scheduled_for IS NOT NULL` filter. v3-rephrased comment annotation retained (no longer contains the substring `get_next_scheduled_for`).
+2. **Cleanup of legacy-origin future queue rows** — dead-letter all `m.post_publish_queue` rows where `pd.slot_id IS NULL AND pd.created_by='seed_and_enqueue' AND q.scheduled_for > NOW() AND q.status IN ('queued','failed')`. **Conditional on Component 1 verify gate passing** (cron 48 command no longer contains a function-call to `get_next_scheduled_for`); enforced via in-migration `RAISE EXCEPTION`. Count band: **[250, 500]** (v4 re-banded around CC's v3 pre-flight observation of 344). HALT (§8.2.a) if observed count outside band.
+3. ~~**Deprecate `public.get_next_scheduled_for`**~~ — **DEFERRED to M8b.** Function NOT renamed in M8a. NOT touched by this brief.
 
-Apply via Supabase MCP `apply_migration` as migration `m8_atomic_cutover_v1`. Single atomic transaction.
+Apply via Supabase MCP `apply_migration` as migration `m8a_cron48_rewrite_and_legacy_cleanup_v1`. Single atomic transaction.
 
 **Sequencing:** cc-0003 v2 + cc-0004 confirmed Complete (commits `d60dcfb` + `9d5bdd37`).
 
@@ -74,36 +111,42 @@ Apply via Supabase MCP `apply_migration` as migration `m8_atomic_cutover_v1`. Si
 ## Source context
 
 - **Investigation record above** (this brief; chat 2026-05-09).
+- **CC v3 pre-flight HALT** (2026-05-09; surfaced 2 non-cron manual callers + 94-row un-publishable cohort + 344 cleanup count).
 - `docs/briefs/2026-05-05-queue-integrity-incident.md` v3 §2 + §6 + §8.
 - `docs/briefs/2026-05-09-m5-m8-vw-pipeline-state-reconciliation.md` §2.8 + §6 Q2 + §6 Q3.
 - `docs/briefs/cc-0003-m6-phase-a-bug3-dead-letter.md` (v2 patched) — pattern source.
 - `docs/briefs/cc-0004-m6-phase-b-v4-mismatch-dead-letter.md` (post 2026-05-09 patch) — pattern source.
 - `docs/briefs/results/cc-0003-m6-phase-a-bug3-dead-letter.md` — v1 HALT result.
 - `docs/briefs/results/cc-0004-m6-phase-b-v4-mismatch-dead-letter.md` — sequencing satisfied 2026-05-09.
-- `docs/runtime/sessions/2026-05-09-cc-0004-applied-m6-phase-b-closed.md` — v2.56 close.
+- `docs/runtime/sessions/2026-05-09-cc-0006-closed-cc-0005-v3-patched.md` — v2.57 close.
 - `docs/runtime/sessions/2026-05-05-m4-applied-state-capture-override.md` + `docs/runtime/sessions/2026-05-05-m5-applied-corrected-cascade-fix.md` — M4/M5 state.
 - `docs/dashboard-review-2026-05/10_product_objects_and_data_model.md` §10.2.
-- **v3 patch commit (this version)** — see Patch history; v2 patch commit `f70cb41f` superseded.
+- **v4 patch commit (this version)** — see Patch history; v3 patch commit `245005a3` superseded.
 
-**`dead_reason` canonical value:** `m8_cutover_legacy_path_deprecated`.
+**`dead_reason` canonical value:** `m8_cutover_legacy_path_deprecated` (preserved from v3; refers to the legacy path being deprecated from cron 48; M8a still validates this even with function rename deferred to M8b).
 
-## Scope
+## Scope (M8a)
 
 **In scope:**
-- Pre-flight verification (read-only SELECTs against `information_schema`, `pg_trigger`, `pg_proc`, `pg_views`, `pg_description`, `cron.job`, `cron.job_run_details`, target tables + JOINs; cc-0003 v2 + cc-0004 result files via Invegent GitHub MCP).
+- Pre-flight verification (read-only SELECTs).
 - One D-01 fire (`ask_chatgpt_review`) with packet specified in §5.
-- Single Supabase MCP `apply_migration` call with the exact SQL in §3 (atomic 3-component migration with two in-migration verify gates).
-- 10 post-apply verification queries V1–V10 (§7).
-- Rollback within session if any verification fails (per §8); rollback reverses ALL 3 components, including restoring the pre-Path-A cron 48 command body captured at §1.3 AND restoring the original COMMENT (or NULL) on the function captured at §1.4b.
+- Single Supabase MCP `apply_migration` call with the exact SQL in §3 (atomic 2-component migration with one in-migration verify gate).
+- 9 post-apply verification queries V1–V9 + V10' (§7; was 10 + V10b in v3).
+- Rollback within session if any verification fails (per §8); rollback reverses BOTH 2 components.
 - Close-the-loop UPDATE to `m.chatgpt_review`.
 - 4-way sync at session close.
-- M7 closure documented in 4-way sync.
+- M8a closure documented in 4-way sync (M7 closure folds at M8b time).
 
-**Out of scope:**
+**Out of scope (M8a):**
+- **`public.get_next_scheduled_for` function rename** — DEFERRED to M8b.
+- **`COMMENT ON FUNCTION` annotations** — DEFERRED to M8b.
+- **Remediation of `public.draft_approve_and_enqueue` caller** — M8b scope.
+- **Remediation of `public.draft_approve_and_enqueue_scheduled` caller** — M8b scope.
+- **Cleanup of 94 un-publishable legacy drafts** — separate follow-up brief if PK directs (out of M8a/M8b scope).
 - M-09-03 view DDL.
 - Any change to cron jobs other than 48.
 - Disabling cron 48 (Path A explicitly retains active=true).
-- Any DDL beyond `ALTER FUNCTION ... RENAME` and `COMMENT ON FUNCTION` on `public.get_next_scheduled_for`.
+- Any DDL.
 - Any change to `m.post_draft` rows.
 - Any change to `m.slot` rows.
 - Any change to other tables.
@@ -111,7 +154,6 @@ Apply via Supabase MCP `apply_migration` as migration `m8_atomic_cutover_v1`. Si
 - `m.ef_drift_log`.
 - EF deploys, dashboard/portal/web work.
 - Building a replacement enqueue path.
-- Cleanup of un-publishable legacy drafts surfaced by H4 query (separate cc-NNNN if PK directs).
 
 ## Allowed actions
 
@@ -122,29 +164,29 @@ Apply via Supabase MCP `apply_migration` as migration `m8_atomic_cutover_v1`. Si
 - Up to 3 retries on the post-apply verification queries (network/timeout reasons only).
 - One rollback migration per §8.3 if any verification fails.
 - One close-the-loop UPDATE to `m.chatgpt_review` after success.
-- One commit creating `docs/briefs/results/cc-0005-m8-atomic-cutover.md`.
+- One commit creating `docs/briefs/results/cc-0005-m8a-cron48-rewrite-and-legacy-cleanup.md`.
 - 4-way sync close commits at session end.
 
 ## Forbidden actions
 
 - No second `apply_migration` call beyond the one in §3 (and a rollback if verification fails).
-- **SQL amendment list (4 items, expanded v3 per M2):** No modifications to the SQL in §3 except (a) to add or remove `updated_at = NOW()` per P1.1 outcome on `m.post_publish_queue`, (b) to adjust the function-rename argument signature based on the actual function definition surfaced at P1.4, (c) to replace the `2026-05-XX` placeholder in the COMMENT text with the apply-session UTC date, and (d) to replace the `<ORIGINAL_COMMENT>` placeholder in the §8.3 rollback SQL with the value captured at §1.4b (literal NULL or quoted string). All 4 amendments are documented in the D-01 packet (§5.2 `sql_to_apply` field) before fire.
+- **SQL amendment list (2 items, reduced v4 from 4 in v3):** No modifications to the SQL in §3 except (a) to add or remove `updated_at = NOW()` per P1.1 outcome on `m.post_publish_queue`, and (b) to adjust the `[v_min_expected, v_max_expected] = [250, 500]` cleanup band integers if PK explicitly directs based on §1.5a fresh pre-flight count. v3 amendments (c) `2026-05-XX` date in COMMENT and (d) `<ORIGINAL_COMMENT>` placeholder — RETIRED in v4 (no Component 3, no rename). All v4 amendments are documented in the D-01 packet (§5.2 `sql_to_apply` field) before fire.
+- **No `ALTER FUNCTION public.get_next_scheduled_for(...)` of any kind in M8a.** Deferred to M8b.
+- **No `COMMENT ON FUNCTION public.get_next_scheduled_for(...)` in M8a.** Deferred to M8b.
 - **No setting `cron.alter_job(48, active := false)`.** Path A explicitly retains cron 48 active. Component 1 only rewrites the `command` argument.
 - No cron edits to ANY cron job other than jobid 48.
-- No DDL beyond `ALTER FUNCTION ... RENAME` and `COMMENT ON FUNCTION` on `public.get_next_scheduled_for`. No `DROP FUNCTION`. No table DDL. No index DDL. No new functions.
+- No DDL of any kind. No new functions. No table DDL. No index DDL.
 - No changes to `m.post_draft` rows. No changes to `m.slot` rows. No changes to any other table.
 - No D-01 fire beyond the one in §5.
-- No deletes. Cleanup is UPDATE only. Function deprecation is rename, not drop.
+- No deletes. Cleanup is UPDATE only.
 - No `apply_migration` if §1.0 sequencing gate fails.
 - No `apply_migration` if cc-0003 v2 OR cc-0004 result file is missing or shows incomplete status.
-- No `apply_migration` if pre-flight cleanup count returns outside [0, 200] (HALT path §8.2.a).
-- No `apply_migration` if pre-flight §1.4 surfaces any caller of `public.get_next_scheduled_for` outside cron 48.
-- **No `apply_migration` if §1.5 P1.5d alignment check returns non-zero (HALT path §8.2.l, NEW v3).**
+- No `apply_migration` if pre-flight cleanup count returns outside [250, 500] (HALT path §8.2.a).
+- No `apply_migration` if pre-flight §1.4 surfaces any caller of `public.get_next_scheduled_for` outside the **expected v4 set of 3**: cron 48 + `public.draft_approve_and_enqueue` + `public.draft_approve_and_enqueue_scheduled`.
+- **No `apply_migration` if §1.5 P1.5d alignment check returns non-zero (HALT path §8.2.l).**
 - No proceeding past D-01 if the verdict is anything other than `agree` with `proceed`.
 - No assumption that `pd.created_by = 'seed_and_enqueue'` is the only legacy-origin filter — §1.5 P1.5b enumerates distinct values.
 - No assumption that `pre_dead_reason_count` for `m8_cutover_legacy_path_deprecated` is 0. Always read from §1.8.
-- No assumption that `public.get_next_scheduled_for` is uniquely defined by name. §1.4 surfaces all overloaded signatures.
-- No assumption that `public.get_next_scheduled_for` has no pre-existing COMMENT. §1.4b captures.
 - No assumption that the Path A new cron 48 command body is byte-equivalent to the existing body except for the third COALESCE element. The complete rewritten body is specified in §3.
 - No edit to `00_overview.md`, `04_phases.md`, `06_decisions.md` from this session unless 4-way sync requires it.
 - No Phase 0 scheduling.
@@ -201,7 +243,7 @@ WHERE NOT t.tgisinternal
 ORDER BY pn.nspname, c.relname, t.tgname;
 ```
 
-**Decision rule:** HALT if any trigger fires on UPDATE of `status` AND has external side-effects on `m.post_publish_queue`. **L1 v3 expansion:** survey extends to `m.post_draft / slot / ai_job / post_publish` to confirm none INSERT into `m.post_publish_queue` (validates the chat investigation finding). Expected: triggers on `m.post_publish_queue` PASS criteria; triggers on the other 4 tables exist (gate/release/asset triggers) but none INSERT into queue. Capture full list for D-01.
+**Decision rule:** HALT if any trigger fires on UPDATE of `status` AND has external side-effects on `m.post_publish_queue`. Capture full list for D-01.
 
 ### 1.3 Cron 48 current state, command body, schedule, and history
 
@@ -229,9 +271,9 @@ LIMIT 10;
 
 If > 50% of last 10 runs show `status != 'succeeded'` — capture for D-01 (informational).
 
-### 1.4 Identify all callers of `public.get_next_scheduled_for` (V10 pre-flight check)
+### 1.4 Identify all callers of `public.get_next_scheduled_for` (v4 — expected callers list updated)
 
-**v3 fix:** all three sub-queries use function-call-syntax regex `~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('` instead of substring `ILIKE '%get_next_scheduled_for%'`. The pattern correctly distinguishes function calls from comment-mentions, AND covers both the original name and (post-rename) the deprecated name.
+**v3 fix (preserved in v4):** all three sub-queries use function-call-syntax regex `~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('` instead of substring `ILIKE '%get_next_scheduled_for%'`. Pattern correctly distinguishes function calls from comment-mentions.
 
 ```sql
 -- Function/procedure callers
@@ -262,11 +304,18 @@ FROM cron.job
 WHERE command ~* 'get_next_scheduled_for(__deprecated_m8)?\s*\(';
 ```
 
-**Decision rule:**
-- Expected callers: cron 48 (only). HALT (§8.2.g) if non-cron-48 caller surfaces.
+**v4 expected callers (3):**
+1. `public.draft_approve_and_enqueue` (function row)
+2. `public.draft_approve_and_enqueue_scheduled` (function row)
+3. `enqueue-publish-queue-every-5m` (cron row, jobid=48)
+
+**Decision rule (v4 updated from v3):**
+- Exactly the 3 expected callers above surface (CC v3 pre-flight observation) → PROCEED.
+- More than 3 callers OR a caller outside the expected set surfaces → HALT (§8.2.g, v4 rephrased). New non-cron callers means M8a's premise (the 2 manual callers we know about) is incomplete; investigate.
+- Fewer than 3 callers surface → PROCEED but FLAG for D-01 (something has changed; possible caller already remediated independently).
 - 0 cron callers (e.g. re-attempt after partial state) → proceed; component 1 is a no-op.
 
-**Surface the EXACT signature of `public.get_next_scheduled_for`:**
+**Surface the EXACT signature of `public.get_next_scheduled_for`** (informational v4; no longer renamed, but useful for M8b reference):
 
 ```sql
 SELECT n.nspname AS schema_name, p.proname AS function_name,
@@ -277,31 +326,18 @@ JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public' AND p.proname = 'get_next_scheduled_for';
 ```
 
-**Decision rule:** 0 rows → component 3 no-op. 1 row → capture `args` for the rename SQL. > 1 → HALT (§8.2.h).
+**Decision rule (v4):** 0 rows → informational; the function is already absent which means M8b has effectively run separately. 1 row → capture `args` for the M8b reference. > 1 → HALT (§8.2.h, **rephrased v4** — not a hard blocker for M8a since we don't rename, but multiple sigs is unusual and worth flagging).
 
-### 1.4b Capture pre-existing COMMENT on `public.get_next_scheduled_for` (NEW v3 per H6)
+### 1.4b ~~Capture pre-existing COMMENT~~ — RETIRED v4
 
-```sql
-SELECT n.nspname AS schema_name,
-       p.proname AS function_name,
-       pg_get_function_identity_arguments(p.oid) AS args,
-       d.description AS pre_existing_comment
-FROM pg_proc p
-JOIN pg_namespace n ON n.oid = p.pronamespace
-LEFT JOIN pg_description d ON d.objoid = p.oid AND d.classoid = 'pg_proc'::regclass
-WHERE n.nspname = 'public' AND p.proname = 'get_next_scheduled_for';
-```
+**v3 had this for rollback's COMMENT restoration. v4 doesn't rename, so no COMMENT is touched, so no capture or restoration is needed.** Removed.
 
-**Capture:** `ORIGINAL_COMMENT` (NULL if `description` is NULL, otherwise the literal string value). Required by §8.3 rollback to restore the original COMMENT state if rollback fires (instead of hardcoding `IS NULL` which would erase a pre-existing comment).
+### 1.5 Cleanup count check + 3 v3 sub-queries (v4 P1.5a re-banded; P1.5c rule updated)
 
-**Decision rule:** informational. Document captured value in result file. If non-NULL, the v3 brief's `<ORIGINAL_COMMENT>` placeholder in §8.3 is filled with the quoted literal at apply time; if NULL, filled with the literal `NULL`.
-
-### 1.5 Cleanup count check + 3 v3 sub-queries
-
-#### P1.5a — Cleanup count check (unchanged)
+#### P1.5a — Cleanup count check (v4 re-banded to [250, 500])
 
 ```sql
-SELECT COUNT(*) AS m8_cleanup_count,
+SELECT COUNT(*) AS m8a_cleanup_count,
        MIN(q.scheduled_for) AS earliest_future,
        MAX(q.scheduled_for) AS latest_future,
        COUNT(DISTINCT (q.client_id, q.platform)) AS partition_count
@@ -313,11 +349,12 @@ WHERE q.status IN ('queued', 'failed')
   AND q.scheduled_for > NOW();
 ```
 
-**Decision rule:** = 0 → cleanup is no-op. Outside [0, 200] → HALT (§8.2.a). Inside → proceed.
+**Decision rule (v4):** 
+- Outside [250, 500] → **HALT (§8.2.a)**. v3 band [0, 200] retired; v4 band re-anchored around CC's v3 pre-flight observation of 344. Lower bound 250 prevents apply on a near-zero count (criterion regression or cohort drained); upper bound 500 prevents apply on a runaway count (scope creep). 
+- Inside [250, 500] → proceed. 
+- Apply-time amendment: PK may direct band adjustment (§Forbidden actions amendment (b)) if fresh pre-flight reveals materially different count.
 
-#### P1.5b — Distinct `pd.created_by` enumeration (NEW v3 per H3)
-
-Surfaces any out-of-scope cohorts beyond `'seed_and_enqueue'`. The cleanup criterion only retires `'seed_and_enqueue'` rows; other values remain in queue post-Path-A and require their own decision.
+#### P1.5b — Distinct `pd.created_by` enumeration (NEW v3 per H3; carried into v4)
 
 ```sql
 SELECT pd.created_by, COUNT(*) AS row_count
@@ -329,11 +366,9 @@ GROUP BY pd.created_by
 ORDER BY row_count DESC;
 ```
 
-**Decision rule:** capture all values for D-01. Informational; no HALT. If values other than `'seed_and_enqueue'` appear with non-trivial counts, surface to PK for decision (separate cc-NNNN brief possibly required).
+**Decision rule:** capture all values for D-01. Informational; no HALT.
 
-#### P1.5c — Un-publishable legacy draft cohort (NEW v3 per H4)
-
-Drafts that the rewritten cron 48 will silently never enqueue (because both `pd.scheduled_for IS NULL` AND `pd.slot_id IS NULL`, and the new `WHERE computed_scheduled_for IS NOT NULL` filter drops them).
+#### P1.5c — Un-publishable legacy draft cohort (NEW v3 per H4; v4 rule updated)
 
 ```sql
 SELECT COUNT(*) AS unpublishable_legacy_draft_count,
@@ -351,11 +386,9 @@ WHERE pd.slot_id IS NULL
   );
 ```
 
-**Decision rule:** capture for D-01. If `unpublishable_legacy_draft_count > 0`, these drafts will silently never publish post-Path-A. PK decides per-D-01-fire whether to (a) apply Path A as-is and accept the silent skip, (b) clean up these drafts via separate cc-0006 brief before Path A apply, OR (c) extend Path A scope to dead-letter these drafts (would require brief patch v4). **No HALT** in v3 — informational only. PK directs.
+**v4 decision rule (RELAXED from v3):** capture for D-01 packet as informational. **NO PK direction blocker required for M8a apply.** v3 required PK direction on (a) apply as-is, (b) cleanup pre-Path-A, or (c) extend Path A scope. v4 RELAXES this: M8a applies as-is regardless of `unpublishable_legacy_draft_count`; the cohort is recorded as a **separate follow-up finding / brief candidate** (out of M8a and M8b scope). CC's v3 pre-flight observed 94 — carry that figure (or fresh count) into the result file as a closure note pointing to the follow-up.
 
-#### P1.5d — Slot-driven `pd.scheduled_for` vs `s.scheduled_publish_at` alignment check (NEW v3 per H5)
-
-Path A's COALESCE picks `pd.scheduled_for` first, falling back to `s.scheduled_publish_at`. cc-0004 dead-lettered the misaligned cohort, so post-cc-0004 the two should agree for all active slot-driven drafts. If non-zero, new misalignment has accumulated and Path A would silently use the misaligned `pd.scheduled_for`.
+#### P1.5d — Slot-driven `pd.scheduled_for` vs `s.scheduled_publish_at` alignment check (NEW v3 per H5; carried into v4)
 
 ```sql
 SELECT COUNT(*) AS post_cc0004_misaligned_count,
@@ -367,7 +400,7 @@ WHERE pd.slot_id IS NOT NULL
   AND pd.approval_status IN ('approved','scheduled');
 ```
 
-**Decision rule:** Expected 0 post-cc-0004. **HALT (§8.2.l, NEW v3) if non-zero.** Path A would silently use misaligned `pd.scheduled_for` values. Investigate before Path A apply.
+**Decision rule (unchanged from v3):** Expected 0 post-cc-0004. **HALT (§8.2.l) if non-zero.** Path A would silently use misaligned `pd.scheduled_for` values.
 
 #### P1.5 cross-check vs cc-0003 v2 + cc-0004 (unchanged)
 
@@ -403,7 +436,7 @@ WHERE q.status IN ('queued', 'failed')
 ORDER BY q.scheduled_for, q.queue_id;
 ```
 
-**Purpose:** target snapshot for V5 paranoia + rollback reconstruction. Persist queue_id list.
+**Purpose:** target snapshot for V5 paranoia + rollback reconstruction. Persist queue_id list (≈344 per CC v3 pre-flight; fresh count at apply time).
 
 ### 1.7 Capture pre-state aggregates
 
@@ -456,34 +489,38 @@ WHERE q.status IN ('queued', 'failed')
   AND q.scheduled_for > NOW()
 ```
 
-**Rationale + disjointness:** unchanged from v2 Path A.
+**Rationale + disjointness:** unchanged from v2/v3.
 
 ---
 
-## 3. Proposed SQL (Path A v3, locked)
+## 3. Proposed SQL (M8a v4, locked)
 
 Applied via Supabase MCP `apply_migration`:
-- **Migration name:** `m8_atomic_cutover_v1`
+- **Migration name:** `m8a_cron48_rewrite_and_legacy_cleanup_v1`
 - **Project ID:** `mbkmaxqhsohbtwsqolns`
 
 ```sql
--- M8 Path A atomic cutover (v3 patched)
--- See: docs/briefs/cc-0005-m8-atomic-cutover.md (v3 patched 2026-05-09)
+-- M8a Path A cron 48 rewrite + legacy cleanup (v4 patched)
+-- See: docs/briefs/cc-0005-m8-atomic-cutover.md (v4 patched 2026-05-09; M8a only)
 --
--- Three coordinated components in a single transaction:
+-- TWO coordinated components in a single transaction (was 3 in v3; Component 3
+-- function rename + COMMENT DEFERRED to M8b after manual caller remediation):
 --   1. Rewrite cron 48 command body in place (drop legacy fallback from COALESCE)
 --   2. Cleanup legacy-origin future queue rows
---   3. Deprecate the legacy fallback function via rename + comment (after V10 verify gate)
 --
--- All 3 atomic. Two in-migration verify gates enforce conditional dependencies.
--- v3 fix: all regex checks use ~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('
---         (function-call syntax) instead of substring ILIKE, to avoid false matches
---         against comment text in the rewritten cron body.
--- v3 fix: rewritten cron body comment no longer contains the substring
---         'get_next_scheduled_for' (belt-and-braces).
+-- Both atomic. One in-migration verify gate (V7+V8+V9) enforces the conditional
+-- dependency between Component 1 (cron rewrite) and Component 2 (cleanup).
+--
+-- v3 fix (preserved in v4): regex checks use ~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('
+--                            (function-call syntax) instead of substring ILIKE.
+-- v3 fix (preserved in v4): rewritten cron body comment no longer contains the
+--                            substring 'get_next_scheduled_for' (belt-and-braces).
+-- v4 change: V10 in-migration pre-rename gate REMOVED (no rename in M8a).
+-- v4 change: Component 3 (ALTER FUNCTION + COMMENT) REMOVED entirely.
+-- v4 change: Component 2 cleanup band re-banded to [250, 500].
 
 -- =========================================================================
--- COMPONENT 1: Rewrite cron 48 command body in place (Path A)
+-- COMPONENT 1: Rewrite cron 48 command body in place (Path A) [v3 verbatim]
 -- =========================================================================
 
 DO $$
@@ -496,19 +533,17 @@ BEGIN
     FROM cron.job WHERE jobid = 48;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'M8 Path A HALT: cron jobid 48 not found.';
+    RAISE EXCEPTION 'M8a Path A HALT: cron jobid 48 not found.';
   END IF;
 
   IF v_active IS DISTINCT FROM true THEN
-    RAISE EXCEPTION 'M8 Path A HALT: cron 48 active=% pre-rewrite; expected true. Path A retains cron 48 active.', v_active;
+    RAISE EXCEPTION 'M8a Path A HALT: cron 48 active=% pre-rewrite; expected true. Path A retains cron 48 active.', v_active;
   END IF;
 
   -- v3 fix: idempotency check uses function-call regex, not substring match.
   IF v_old_command !~* 'get_next_scheduled_for(__deprecated_m8)?\s*\(' THEN
-    RAISE NOTICE 'M8 Path A component 1: cron 48 command already has no function-call to the legacy fallback; treating component 1 as idempotent no-op. Verify gate proceeds.';
+    RAISE NOTICE 'M8a Path A component 1: cron 48 command already has no function-call to the legacy fallback; treating component 1 as idempotent no-op. Verify gate proceeds.';
   ELSE
-    -- v3-rephrased comment in $cron_body$ block: belt-and-braces, no substring
-    -- 'get_next_scheduled_for' anywhere in the new body.
     v_new_command := $cron_body$
   WITH candidates AS (
     SELECT
@@ -570,14 +605,13 @@ BEGIN
   $cron_body$;
 
     PERFORM cron.alter_job(48, command := v_new_command);
-    RAISE NOTICE 'M8 Path A component 1: cron 48 command body rewritten at % (Path A: legacy fallback removed from COALESCE).', NOW();
+    RAISE NOTICE 'M8a Path A component 1: cron 48 command body rewritten at % (Path A: legacy fallback removed from COALESCE).', NOW();
   END IF;
 END $$;
 
 -- =========================================================================
--- COMPONENT 1 verify gate (V7 + V8 + V9 in-migration check)
+-- COMPONENT 1 verify gate (V7 + V8 + V9 in-migration check) [v3 verbatim]
 -- =========================================================================
--- v3 fix: V8 check uses function-call regex, not substring match.
 
 DO $$
 DECLARE
@@ -588,46 +622,48 @@ BEGIN
     FROM cron.job WHERE jobid = 48;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'M8 Path A HALT (Component 1 gate): cron 48 not found post-rewrite (catastrophic).';
+    RAISE EXCEPTION 'M8a Path A HALT (Component 1 gate): cron 48 not found post-rewrite (catastrophic).';
   END IF;
 
   -- V7: cron 48 active=true
   IF v_active IS DISTINCT FROM true THEN
-    RAISE EXCEPTION 'M8 Path A HALT (V7 gate): cron 48 active=% post-rewrite; expected true (Path A keeps cron 48 active).', v_active;
+    RAISE EXCEPTION 'M8a Path A HALT (V7 gate): cron 48 active=% post-rewrite; expected true (Path A keeps cron 48 active).', v_active;
   END IF;
 
   -- V8 (v3 fix): cron 48 command no longer contains a function-call to the legacy fallback.
-  -- Regex matches 'get_next_scheduled_for(' or 'get_next_scheduled_for__deprecated_m8(' but NOT comment text.
   IF v_command ~* 'get_next_scheduled_for(__deprecated_m8)?\s*\(' THEN
-    RAISE EXCEPTION 'M8 Path A HALT (V8 gate): cron 48 command still contains a function-call to the legacy fallback post-rewrite. Component 1 did not produce expected effect.';
+    RAISE EXCEPTION 'M8a Path A HALT (V8 gate): cron 48 command still contains a function-call to the legacy fallback post-rewrite. Component 1 did not produce expected effect.';
   END IF;
 
   -- V9: autonomous slot-driven enqueue path is still represented by the rewritten command
   IF v_command !~ 'INSERT INTO m\.post_publish_queue' THEN
-    RAISE EXCEPTION 'M8 Path A HALT (V9 gate): cron 48 command no longer contains INSERT INTO m.post_publish_queue post-rewrite (autonomous enqueue would stop).';
+    RAISE EXCEPTION 'M8a Path A HALT (V9 gate): cron 48 command no longer contains INSERT INTO m.post_publish_queue post-rewrite (autonomous enqueue would stop).';
   END IF;
   IF v_command !~ 'pd\.scheduled_for' OR v_command !~ 's\.scheduled_publish_at' THEN
-    RAISE EXCEPTION 'M8 Path A HALT (V9 gate): cron 48 command no longer references pd.scheduled_for AND s.scheduled_publish_at as COALESCE inputs.';
+    RAISE EXCEPTION 'M8a Path A HALT (V9 gate): cron 48 command no longer references pd.scheduled_for AND s.scheduled_publish_at as COALESCE inputs.';
   END IF;
 
-  RAISE NOTICE 'M8 Path A Component 1 verify gate: V7+V8+V9 PASS — cron 48 active=true, command rewritten (no legacy fallback call), autonomous enqueue path preserved.';
+  RAISE NOTICE 'M8a Path A Component 1 verify gate: V7+V8+V9 PASS — cron 48 active=true, command rewritten (no legacy fallback call), autonomous enqueue path preserved.';
 END $$;
 
 -- =========================================================================
 -- COMPONENT 2: Cleanup legacy-origin future queue rows
 -- (conditional on Component 1 verify gate above passing)
 -- =========================================================================
--- v3 cleanup: removed unused v_min_expected variable per M3.
--- v3 note: TOCTOU gap between count check and UPDATE is negligible because
--- single transaction holds row locks; concurrent INSERTs targeting the same
--- criterion in the few seconds the migration runs are vanishingly unlikely
--- (cron 48 just had its command rewritten, so the legacy path that creates
--- such rows is gone within the same transaction).
+-- v4 change: cleanup band re-banded from [0, 200] (v3) to [250, 500] (v4).
+-- v4 change: v_min_expected variable restored (v3 M3 "removed unused" reversed,
+--            because v4 introduces a non-zero lower bound).
+-- v3 note (preserved): TOCTOU gap between count check and UPDATE is negligible
+-- because single transaction holds row locks; concurrent INSERTs targeting the
+-- same criterion in the few seconds the migration runs are vanishingly unlikely
+-- (cron 48 just had its command rewritten, so the legacy path that creates such
+-- rows is gone within the same transaction).
 
 DO $$
 DECLARE
   v_count integer;
-  v_max_expected integer := 200;
+  v_min_expected integer := 250;
+  v_max_expected integer := 500;
 BEGIN
   SELECT COUNT(*) INTO v_count
   FROM m.post_publish_queue q
@@ -637,12 +673,12 @@ BEGIN
     AND pd.created_by = 'seed_and_enqueue'
     AND q.scheduled_for > NOW();
 
-  IF v_count > v_max_expected THEN
-    RAISE EXCEPTION 'M8 cleanup SCOPE ANOMALY: % rows match criterion (max % allowed). Halt for re-investigation.',
-      v_count, v_max_expected;
+  IF v_count < v_min_expected OR v_count > v_max_expected THEN
+    RAISE EXCEPTION 'M8a cleanup SCOPE ANOMALY: % rows match criterion (expected band [%, %]). Halt for re-investigation.',
+      v_count, v_min_expected, v_max_expected;
   END IF;
 
-  RAISE NOTICE 'M8 Path A component 2: % rows match cleanup criterion. Proceeding with UPDATE.', v_count;
+  RAISE NOTICE 'M8a Component 2: % rows match cleanup criterion (within band [%, %]). Proceeding with UPDATE.', v_count, v_min_expected, v_max_expected;
 END $$;
 
 UPDATE m.post_publish_queue
@@ -660,125 +696,50 @@ WHERE queue_id IN (
 );
 
 -- =========================================================================
--- V10 PRE-RENAME GATE: zero live callers of the legacy fallback function
+-- COMPONENT 3 — DEFERRED TO M8b (function rename + COMMENT)
 -- =========================================================================
--- v3 fix: all 3 sub-checks use function-call regex, not substring match.
-
-DO $$
-DECLARE
-  v_func_count integer;
-  v_func_callers text;
-  v_view_count integer;
-  v_cron_count integer;
-BEGIN
-  -- Function/procedure callers (excluding self-references)
-  SELECT COUNT(*), string_agg(format('%I.%I(%s)',
-      n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)), ', ')
-    INTO v_func_count, v_func_callers
-  FROM pg_proc p
-  JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE p.prokind IN ('f','p')
-    AND pg_get_functiondef(p.oid) ~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('
-    AND NOT (n.nspname = 'public' AND p.proname IN ('get_next_scheduled_for', 'get_next_scheduled_for__deprecated_m8'))
-    AND n.nspname IN ('m', 'public', 'c', 'f', 'a', 'k', 't');
-
-  IF v_func_count > 0 THEN
-    RAISE EXCEPTION 'M8 Path A HALT (V10 pre-rename gate): % function/procedure caller(s) of legacy fallback: %. Cannot rename safely.',
-      v_func_count, v_func_callers;
-  END IF;
-
-  -- View callers
-  SELECT COUNT(*) INTO v_view_count
-  FROM pg_views
-  WHERE definition ~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('
-    AND schemaname IN ('m', 'public', 'c', 'f', 'a', 'k', 't');
-
-  IF v_view_count > 0 THEN
-    RAISE EXCEPTION 'M8 Path A HALT (V10 pre-rename gate): % view caller(s) of legacy fallback. Cannot rename safely.', v_view_count;
-  END IF;
-
-  -- Cron callers (post-Component-1, cron 48 should no longer match)
-  SELECT COUNT(*) INTO v_cron_count
-  FROM cron.job
-  WHERE command ~* 'get_next_scheduled_for(__deprecated_m8)?\s*\(';
-
-  IF v_cron_count > 0 THEN
-    RAISE EXCEPTION 'M8 Path A HALT (V10 pre-rename gate): % cron caller(s) of legacy fallback. Component 1 did not fully remove the call, OR another cron job was added.', v_cron_count;
-  END IF;
-
-  RAISE NOTICE 'M8 Path A V10 pre-rename gate: zero live callers of legacy fallback (function/view/cron). Safe to proceed with Component 3 rename.';
-END $$;
-
--- =========================================================================
--- COMPONENT 3: Deprecate public.get_next_scheduled_for
--- (conditional on V10 pre-rename gate above passing)
--- =========================================================================
---
--- Apply-time amendment rule: <ARGS> MUST be replaced with the actual signature
--- surfaced at §1.4 before D-01 fire.
--- 2026-05-XX MUST be replaced with the apply-session UTC date before D-01 fire.
-
-DO $$
-DECLARE
-  v_func_count integer;
-BEGIN
-  SELECT COUNT(*) INTO v_func_count
-  FROM pg_proc p
-  JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public' AND p.proname = 'get_next_scheduled_for';
-
-  IF v_func_count = 0 THEN
-    RAISE NOTICE 'M8 Path A component 3: function public.get_next_scheduled_for already absent; no-op.';
-  ELSIF v_func_count > 1 THEN
-    RAISE EXCEPTION 'M8 Path A HALT: % overloaded signatures of public.get_next_scheduled_for. Brief expected exactly 1.', v_func_count;
-  ELSE
-    RAISE NOTICE 'M8 Path A component 3: renaming public.get_next_scheduled_for -> get_next_scheduled_for__deprecated_m8.';
-  END IF;
-END $$;
-
-ALTER FUNCTION public.get_next_scheduled_for(<ARGS>)
-  RENAME TO get_next_scheduled_for__deprecated_m8;
-
-COMMENT ON FUNCTION public.get_next_scheduled_for__deprecated_m8(<ARGS>) IS
-  '@deprecated M8 Path A cutover 2026-05-XX. Original name: public.get_next_scheduled_for. '
-  'Replaced by slot-aware enqueue path (cron 48 rewritten in place to drop the legacy fallback from COALESCE chain). '
-  'Function body retained for audit; do not call. '
-  'See docs/briefs/cc-0005-m8-atomic-cutover.md for cutover context.';
+-- v4 explicitly removes Component 3 + V10 in-migration pre-rename gate from M8a.
+-- public.get_next_scheduled_for continues to exist with its original name and
+-- signature post-M8a apply. Two manual callers (public.draft_approve_and_enqueue,
+-- public.draft_approve_and_enqueue_scheduled) continue to call it. M8b will
+-- (1) remediate both manual callers and (2) rename + comment the function.
+-- See §M8b follow-up section below.
 ```
 
-**Notes on the SQL (v3 updated):**
+**Notes on the SQL (v4 updated):**
 
-1. **Atomicity:** single transaction. Any RAISE EXCEPTION rolls back all 3 components.
-2. **Idempotency:** all 3 components individually idempotent. v3 fix: Component 1's idempotency check uses function-call regex, so post-first-apply state is correctly identified as no-op.
-3. **Conditional dependencies enforced via in-migration verify gates:** Component 2 conditional on Component 1 gate (V7+V8+V9). Component 3 conditional on V10 pre-rename gate. Both gates RAISE EXCEPTION on failure.
-4. **Apply-time amendments (4 items per §Forbidden actions M2):** (a) `<ARGS>` placeholder, (b) `2026-05-XX` placeholder in COMMENT, (c) `updated_at` SET clause adjustment per §1.1, (d) `<ORIGINAL_COMMENT>` placeholder in §8.3 rollback (NULL or quoted literal from §1.4b).
+1. **Atomicity:** single transaction. Any RAISE EXCEPTION rolls back BOTH 2 components.
+2. **Idempotency:** both components individually idempotent. v3 fix preserved: Component 1's idempotency check uses function-call regex.
+3. **Conditional dependency enforced via single in-migration verify gate:** Component 2 conditional on Component 1 gate (V7+V8+V9). v3's V10 pre-rename gate REMOVED (no rename in M8a).
+4. **Apply-time amendments (2 items v4, reduced from 4 in v3):** (a) `updated_at` SET clause adjustment per §1.1; (b) `[v_min_expected, v_max_expected] = [250, 500]` cleanup band integers if PK directs adjustment from §1.5a fresh pre-flight.
 5. **`updated_at = NOW()` for cleanup UPDATE:** matches cc-0003 v2 / cc-0004 patterns. §1.1 verifies.
 6. **`WHERE queue_id IN (...)` subquery form** for cleanup UPDATE.
-7. **`dead_reason='m8_cutover_legacy_path_deprecated'`** distinguishes from cc-0003 v2 + cc-0004.
-8. **No `DROP FUNCTION`:** rename + comment retains body for audit.
+7. **`dead_reason='m8_cutover_legacy_path_deprecated'`** preserved from v3 (refers to the legacy path being deprecated from cron 48; M8a still validates this even with function rename deferred to M8b).
+8. **No `DROP FUNCTION` / `ALTER FUNCTION` / `COMMENT ON FUNCTION` in M8a.** Deferred to M8b.
 9. **Path A specifically does NOT set `cron.alter_job(48, active := false)`.**
-10. **The new cron 48 command body is byte-for-byte identical** to the old body except: the third COALESCE element is removed AND two comment lines are added (v3-rephrased to remove the `get_next_scheduled_for` substring). F-PUB-010 hard-cap, distinctness selection, NOT EXISTS guards, ORDER BY, ON CONFLICT clause — all preserved verbatim.
-11. **v3 regex pattern rationale:** `~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('` is case-insensitive ARE that matches function calls (name + optional whitespace + literal paren) but NOT comment text or substring mentions in larger identifiers. The optional group covers both the original name and the post-rename deprecated name. Prevents false-positive verify-gate exceptions from comments in cron command body or function definitions.
-12. **TOCTOU acknowledgement (M4):** the gap between Component 2's count check and UPDATE is single-transaction-bounded; concurrent INSERTs targeting the same criterion in the few seconds the migration runs are vanishingly unlikely (cron 48 just had its command rewritten, so the legacy path that creates such rows is gone within the same transaction). Negligible risk.
+10. **The new cron 48 command body is byte-for-byte identical** to the old body except: the third COALESCE element is removed AND two comment lines are added (v3-rephrased to remove the `get_next_scheduled_for` substring). All other clauses preserved verbatim.
+11. **v3 regex pattern rationale (preserved in v4):** `~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('` matches function calls but NOT comment text.
+12. **TOCTOU acknowledgement (v3 M4, preserved):** Component 2's count-vs-UPDATE gap is single-transaction-bounded. Negligible risk.
+13. **v4 cleanup band rationale:** [250, 500] anchors around CC v3 pre-flight observation of 344. Upper 500 prevents runaway scope; lower 250 prevents apply on a near-zero count which would indicate criterion regression or that the cohort already drained between v3 pre-flight and v4 apply.
 
 ---
 
-## 4. P1–P5 pre-flight checklist (per Lesson #61)
+## 4. P1–P5 pre-flight checklist (per Lesson #61) (v4 — 13 items)
 
 ### P0 — Pre-condition gate
 
 - [ ] **P0.1** §1.0 sequencing gate (cc-0003 v2 + cc-0004 Complete). Already structurally satisfied as of 2026-05-09.
 
-### P1 — Pre-state capture
+### P1 — Pre-state capture (13 items v4, was 15 in v3)
 
 - [ ] **P1.1** §1.1 information_schema check.
 - [ ] **P1.2** §1.2 pg_trigger check (v3 expanded scope per L1).
 - [ ] **P1.3** §1.3 cron 48 state check; capture `OLD_CRON_48_COMMAND` AND `OLD_CRON_48_SCHEDULE` (v3 explicit per L2). HALT (§8.2.j) if inactive. HALT (§8.2.k) if no queue INSERT.
-- [ ] **P1.4** §1.4 callers + signature check; HALT (§8.2.g) if non-cron-48 caller; HALT (§8.2.h) if > 1 signature.
-- [ ] **P1.4b** (NEW v3 per H6) §1.4b capture `ORIGINAL_COMMENT` for rollback.
-- [ ] **P1.5a** §1.5 cleanup count check. HALT (§8.2.a) if outside [0, 200].
+- [ ] **P1.4** §1.4 callers + signature check; **v4 expected callers list = 3** (cron 48 + `draft_approve_and_enqueue` + `draft_approve_and_enqueue_scheduled`); HALT (§8.2.g, v4 rephrased) if any caller outside expected set surfaces. Function signature captured as informational (M8b reference).
+- ~~**P1.4b**~~ — **RETIRED v4** (no rename in M8a, no COMMENT capture needed).
+- [ ] **P1.5a** §1.5 cleanup count check. **HALT (§8.2.a) if outside [250, 500]** (v4 re-banded from v3 [0, 200]).
 - [ ] **P1.5b** (NEW v3 per H3) §1.5 distinct `pd.created_by` enumeration. Informational; capture for D-01.
-- [ ] **P1.5c** (NEW v3 per H4) §1.5 un-publishable legacy draft cohort query. Informational; capture for D-01.
+- [ ] **P1.5c** (NEW v3 per H4) §1.5 un-publishable legacy draft cohort query. **v4 RELAXED**: informational only; no PK direction required for M8a apply. Recorded as separate follow-up finding.
 - [ ] **P1.5d** (NEW v3 per H5) §1.5 slot-driven alignment check. **HALT (§8.2.l) if non-zero.**
 - [ ] **P1.5 cross-check** vs cc-0003 v2 / cc-0004. HALT (§8.2.i) if either overlap > 0.
 - [ ] **P1.6** §1.6 cleanup snapshot.
@@ -786,20 +747,20 @@ COMMENT ON FUNCTION public.get_next_scheduled_for__deprecated_m8(<ARGS>) IS
 - [ ] **P1.8** §1.8 pre_dead_reason_count baseline.
 - [ ] **P1.9** §1.9 sequencing gate cross-check.
 
-**Pass criterion:** P0.1 + all P1 checks PASS (15 items v3, up from 9 in v2).
+**Pass criterion:** P0.1 + all P1 checks PASS (13 items v4, down from 15 in v3 due to P1.4b retirement and merged P1.5 sub-counter).
 
 ### P2 — Side-effect surface
 
 - [ ] **P2.1** `m.publisher_lock_queue_v2`.
 - [ ] **P2.2** `m.cleanup_queue_on_publish_v1` trigger.
-- [ ] **P2.3** Cron 48 — Component 1 target. Post-apply: active=true unchanged, command body rewritten, schedule unchanged (V7 v3 expanded).
+- [ ] **P2.3** Cron 48 — Component 1 target. Post-apply: active=true unchanged, command body rewritten, schedule unchanged (V7).
 - [ ] **P2.4** Dashboard / portal queries.
 - [ ] **P2.5** `m.vw_pipeline_state`.
 - [ ] **P2.6** Cowork health-check.
 - [ ] **P2.7** `m.fill_pending_slots` — chat investigation 2026-05-09 confirms inserts drafts + ai_jobs only, never queue rows. No conflict with Path A.
-- [ ] **P2.8** Callers of `public.get_next_scheduled_for` — V10 in-migration gate enforces zero callers.
+- [ ] **P2.8** Callers of `public.get_next_scheduled_for` — v4 expected 3 callers. Manual callers (`draft_approve_and_enqueue`, `draft_approve_and_enqueue_scheduled`) continue to function post-M8a apply (function still exists with original name).
 - [ ] **P2.9** Future cron 48 fires post-apply — slot-driven drafts continue to enqueue; legacy-unresolvable drafts skipped via WHERE filter.
-- [ ] **P2.10** (NEW v3 per H4) Un-publishable legacy drafts surfaced by P1.5c — captured for D-01; PK directs handling.
+- [ ] **P2.10** (NEW v3 per H4; v4 relaxed) Un-publishable legacy drafts surfaced by P1.5c — informational; recorded as separate follow-up finding.
 
 ### P3 — Transitive dependency map
 
@@ -808,14 +769,14 @@ COMMENT ON FUNCTION public.get_next_scheduled_for__deprecated_m8(<ARGS>) IS
 - [ ] **P3.3** `m.post_draft.approval_status` distribution for cleanup queue rows.
 - [ ] **P3.4** Cowork brief / scheduled task references.
 - [ ] **P3.5** Forward-look on cron 48 post-rewrite.
-- [ ] **P3.6** Active production callers of `public.get_next_scheduled_for` outside cron 48 — HALT (§8.2.g).
+- [ ] **P3.6** (v4 reframed) Active production callers of `public.get_next_scheduled_for` outside the expected v4 set of 3 — HALT (§8.2.g).
 
 ### P4 — Reversibility
 
-- [ ] **P4.1** Rollback SQL drafted (§8.3) for all 3 components: restore old cron 48 command from §1.3, restore queue_id list, rename function back, restore COMMENT from §1.4b (NEW v3).
+- [ ] **P4.1** Rollback SQL drafted (§8.3) for **2 components (v4)**: restore old cron 48 command from §1.3, restore queue_id list. ~~Function rename reversal~~ removed v4 (no rename).
 - [ ] **P4.2** No irreversible side-effects.
 - [ ] **P4.3** Time-window for rollback bounded.
-- [ ] **P4.4** Rollback uses captured artefacts (§1.3 + §1.4b + §1.6) and known constants.
+- [ ] **P4.4** Rollback uses captured artefacts (§1.3 + §1.6) and known constants.
 - [ ] **P4.5** No partial state possible within migration.
 
 ### P5 — Post-state verification preconditions
@@ -826,12 +787,12 @@ COMMENT ON FUNCTION public.get_next_scheduled_for__deprecated_m8(<ARGS>) IS
 - [ ] **P5.4** V4: dead count increase by N.
 - [ ] **P5.5** V5: paranoia row-set match.
 - [ ] **P5.6** V6: per-status totals coherent.
-- [ ] **P5.7** V7 (CHANGED v2; v3 expanded per L2): cron 48 active=true AND schedule unchanged AND jobname unchanged.
-- [ ] **P5.8** V8 (CHANGED v2; v3 regex fix): cron 48 command no longer contains a function-call to the legacy fallback.
-- [ ] **P5.9** V9 (NEW v2): autonomous slot-driven enqueue path still represented.
-- [ ] **P5.10** V10 (NEW v2; v3 regex fix): zero live callers of legacy fallback (or post-rename deprecated) name.
+- [ ] **P5.7** V7: cron 48 active=true AND schedule unchanged AND jobname unchanged.
+- [ ] **P5.8** V8: cron 48 command no longer contains a function-call to the legacy fallback.
+- [ ] **P5.9** V9: autonomous slot-driven enqueue path still represented.
+- [ ] **P5.10** V10' (v4 reframed): expected callers list = 3 functions; HALT if outside set. ~~V10 (zero callers)~~ retired v4. ~~V10b (function rename paranoia)~~ retired v4.
 
-**Pass criterion:** all 10 verification queries written and ready (§7).
+**Pass criterion:** all 9 + V10' verification queries written and ready (§7; was 10 + V10b in v3).
 
 ---
 
@@ -840,10 +801,10 @@ COMMENT ON FUNCTION public.get_next_scheduled_for__deprecated_m8(<ARGS>) IS
 ### 5.1 `proposal` (prose)
 
 ```
-Apply M8 Path A v3 atomic cutover: 3 coordinated components in a single transaction.
-Cron 48 is REWRITTEN IN PLACE, not disabled.
+Apply M8a Path A v4 cutover: 2 coordinated components in a single transaction.
+Cron 48 is REWRITTEN IN PLACE, not disabled. Function rename DEFERRED to M8b.
 
-Migration name: m8_atomic_cutover_v1
+Migration name: m8a_cron48_rewrite_and_legacy_cleanup_v1
 Project: mbkmaxqhsohbtwsqolns
 Method: Supabase MCP apply_migration (single atomic transaction)
 
@@ -852,66 +813,63 @@ COMPONENT 1 — Rewrite cron 48 command body (cron stays active=true):
   - Resulting COALESCE: (pd.scheduled_for, s.scheduled_publish_at).
   - Legacy rows with both NULL are skipped via existing WHERE filter.
   - v3-rephrased comment: 'legacy fallback removed from COALESCE chain.'
-    (no longer contains substring 'get_next_scheduled_for')
 
 IN-MIGRATION VERIFY GATE (V7 + V8 + V9): RAISE EXCEPTION if cron 48
   inactive, OR command still contains a function-call to the legacy fallback,
   OR autonomous enqueue path missing required structural elements.
-  v3 fix: V8 uses ~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('
-          (function-call regex, not substring).
 
 COMPONENT 2 — Cleanup legacy-origin future queue rows:
   Scope: q.status IN ('queued','failed') AND pd.slot_id IS NULL
          AND pd.created_by='seed_and_enqueue' AND q.scheduled_for > NOW()
-  Expected count: <N> (read-only verified <DATETIME>; halts if outside [0,200])
+  Expected count: <N> (read-only verified <DATETIME>; halts if outside [250,500])
   UPDATE: SET status='dead', dead_reason='m8_cutover_legacy_path_deprecated',
                updated_at=NOW()
 
-IN-MIGRATION V10 PRE-RENAME GATE: RAISE EXCEPTION if any live caller of
-  the legacy fallback function surfaces (function/view/cron, both names).
-  v3 fix: function-call regex throughout.
+COMPONENT 3 (function rename + COMMENT) — DEFERRED TO M8b. Not in M8a SQL.
+  Reason: 2 non-cron manual callers of public.get_next_scheduled_for surfaced
+  at v3 pre-flight (public.draft_approve_and_enqueue and
+  public.draft_approve_and_enqueue_scheduled). Renaming would break them.
+  M8b is a separate cc-NNNN brief: remediate both manual callers, then rename.
 
-COMPONENT 3 — Deprecate the legacy fallback:
-  ALTER FUNCTION public.get_next_scheduled_for(<ARGS>)
-    RENAME TO get_next_scheduled_for__deprecated_m8
-  + COMMENT ON FUNCTION ... IS '@deprecated M8 Path A cutover ...'
+v4 PRE-FLIGHT (preserved from v3):
+  - §1.4 expected callers list = 3 (cron 48 + the 2 manual functions);
+    HALT §8.2.g if any caller outside expected set surfaces.
+  - §1.5a cleanup count band [250, 500].
+  - §1.5b distinct pd.created_by enumeration (informational).
+  - §1.5c un-publishable legacy draft cohort (94 at v3 pre-flight; informational;
+    recorded as separate follow-up finding).
+  - §1.5d slot-driven alignment check (HALT §8.2.l if non-zero).
+  - §1.4b ORIGINAL_COMMENT capture RETIRED v4 (no rename).
 
-v3 PRE-FLIGHT EXTENSIONS (H1-H6):
-  - H1 §1.4 ILIKE → ~* (covered by C1-C5).
-  - H3 §1.5 P1.5b distinct pd.created_by enumeration.
-  - H4 §1.5 P1.5c un-publishable legacy draft cohort (informational).
-  - H5 §1.5 P1.5d slot-driven alignment check (HALT §8.2.l if non-zero).
-  - H6 §1.4b original COMMENT capture for rollback.
+ROLLBACK: single rollback migration; v4 reverses 2 components (no function
+  rename reversal).
 
-ROLLBACK: single rollback migration; v3 includes COMMENT restoration
-  (NULL or captured pre-existing value); apply session picks unique
-  dollar-quote tag for OLD_CRON_48_COMMAND embedding (M1).
-
-VERIFICATION: 10 post-apply queries (V1-V10). v3 V7 expanded to include
-  schedule check (L2). V8 + V10 regex-fixed.
+VERIFICATION: 9 + V10' post-apply queries (V1-V9 + V10' expected callers list).
+  V10 zero-callers retired v4. V10b function-rename paranoia retired v4.
 ```
 
 ### 5.2 `context` (structured object)
 
 ```json
 {
-  "decision_under_review": "Apply M8 Path A v3 atomic cutover: cron 48 in-place command rewrite + legacy-origin future cleanup + legacy fallback function deprecation",
-  "production_action_if_approved": "Single Supabase MCP apply_migration call. Three components in one transaction with two in-migration verify gates: (1) cron.alter_job(48, command := <new body>) keeping active=true, (2) UPDATE m.post_publish_queue cleanup rows to dead/m8_cutover_legacy_path_deprecated, (3) ALTER FUNCTION public.get_next_scheduled_for RENAME + COMMENT.",
-  "consequence_if_delayed": "Moderate operational benefit if delayed. Pipeline-integrity benefit (single canonical schedule resolution path; legacy fallback retired in code; deprecation marker on the function) is the residual reason to apply.",
-  "cost_of_waiting": "Low. Path A is a structural/architectural cutover; no immediate operational degradation if delayed.",
+  "decision_under_review": "Apply M8a Path A v4 cutover: cron 48 in-place command rewrite + legacy-origin future cleanup. Function rename DEFERRED to M8b.",
+  "production_action_if_approved": "Single Supabase MCP apply_migration call. Two components in one transaction with one in-migration verify gate: (1) cron.alter_job(48, command := <new body>) keeping active=true, (2) UPDATE m.post_publish_queue cleanup rows to dead/m8_cutover_legacy_path_deprecated. Component 3 (ALTER FUNCTION RENAME + COMMENT) deferred to M8b separate brief.",
+  "consequence_if_delayed": "Moderate operational benefit if delayed. Pipeline-integrity benefit (single canonical schedule resolution path; legacy fallback retired from cron 48) is the primary residual reason to apply M8a. M8b (function rename + manual caller remediation) is a separate effort regardless of M8a timing.",
+  "cost_of_waiting": "Low. Path A M8a is a structural cutover; no immediate operational degradation if delayed. M8b similarly low cost-of-waiting.",
   "current_evidence": [
     "Chat investigation 2026-05-09: cron 48 is the SOLE autonomous inserter into m.post_publish_queue.",
     "Chat investigation 2026-05-09: m.fill_pending_slots inserts drafts + ai_jobs only.",
-    "Chat investigation 2026-05-09: no trigger inserts queue rows (9 triggers surveyed; v3 §1.2 expanded survey re-confirms at apply time).",
+    "Chat investigation 2026-05-09: no trigger inserts queue rows.",
+    "CC v3 pre-flight 2026-05-09: 3 callers of public.get_next_scheduled_for surfaced — cron 48 + public.draft_approve_and_enqueue + public.draft_approve_and_enqueue_scheduled. v3 expected 1 (cron 48 only); HALTed correctly.",
+    "CC v3 pre-flight 2026-05-09: cleanup count = 344 (within new v4 band [250, 500]).",
+    "CC v3 pre-flight 2026-05-09: un-publishable legacy draft count = 94. Recorded as separate follow-up finding (out of M8a/M8b scope).",
     "Pre-flight §1.0: cc-0003 v2 result Complete (commit d60dcfb); cc-0004 result Complete (commit 9d5bdd37).",
     "Pre-flight §1.3: cron 48 active=<true|false>; OLD_CRON_48_COMMAND + OLD_CRON_48_SCHEDULE captured.",
-    "Pre-flight §1.4: callers of legacy fallback — cron 48 only (HALT if non-cron-48 caller surfaces).",
-    "Pre-flight §1.4: function signature: <args>.",
-    "Pre-flight §1.4b (NEW v3): ORIGINAL_COMMENT captured (NULL or string).",
-    "Pre-flight §1.5a: cleanup count <N> rows at <DATETIME>.",
-    "Pre-flight §1.5b (NEW v3): distinct pd.created_by values + counts: <captured>.",
-    "Pre-flight §1.5c (NEW v3): un-publishable legacy draft count: <captured>. PK direction: <as-is | cc-0006 cleanup | brief patch v4>.",
-    "Pre-flight §1.5d (NEW v3): post-cc-0004 slot-driven misaligned count: <captured> (HALT if non-zero).",
+    "Pre-flight §1.4: callers of legacy fallback — v4 expected 3 callers (HALT §8.2.g if outside expected set).",
+    "Pre-flight §1.5a: fresh cleanup count <N> rows at <DATETIME>.",
+    "Pre-flight §1.5b: distinct pd.created_by values + counts: <captured>.",
+    "Pre-flight §1.5c: un-publishable legacy draft count: <captured> (carry CC's 94 figure or fresh count).",
+    "Pre-flight §1.5d: post-cc-0004 slot-driven misaligned count: <captured> (HALT if non-zero).",
     "Pre-flight §1.5 cross-check: 0 overlap with cc-0003 v2 + cc-0004.",
     "Pre-flight §1.8: pre_dead_reason_count: <P>.",
     "Pre-flight §1.9: cc-0003 v2 dead_reason population: 9; cc-0004: 43.",
@@ -919,18 +877,19 @@ VERIFICATION: 10 post-apply queries (V1-V10). v3 V7 expanded to include
     "docs/briefs/2026-05-05-queue-integrity-incident.md v3 §6 (original Path C; superseded by Path A)."
   ],
   "known_weak_evidence": [
-    "No prior brief has counted the M8 cleanup criterion. Range [0, 200] unanchored.",
-    "Three coordinated components in one transaction is a larger blast radius than cc-0003/cc-0004's single-component shape. Mitigation: atomicity + two in-migration verify gates + comprehensive rollback (now including ORIGINAL_COMMENT restoration v3).",
-    "Cron edit (command rewrite) is a new permission for the brief-runner-v0 trial.",
-    "DDL (ALTER FUNCTION RENAME) is a new permission for the brief-runner-v0 trial.",
-    "v3 regex pattern is critical: substring matching in v2 would have failed at first apply (5 critical bugs caught in review). v3 uses function-call-syntax regex throughout.",
-    "Apply-time SQL has 4 amendments (ARGS, date, updated_at, ORIGINAL_COMMENT). Apply session must verify all 4 before D-01 fire.",
-    "Rollback path uses captured OLD_CRON_48_COMMAND + queue_id list + ORIGINAL_COMMENT. Apply session picks unique dollar-quote tag at runtime per M1.",
-    "v3 P1.5c may surface un-publishable drafts. PK decides whether to address pre-apply."
+    "v4 band [250, 500] is anchored around 1 observation (CC v3 pre-flight = 344). If natural drain or growth has occurred between v3 pre-flight and v4 apply, the band may need adjustment. Apply-time amendment (b) allows PK to direct band adjustment.",
+    "Two coordinated components in one transaction is a smaller blast radius than v3's 3 components (function rename gone). Comprehensive rollback retained for both components.",
+    "Cron edit (command rewrite) permission preserved from v3.",
+    "DDL permission RETIRED v4 (no ALTER FUNCTION; deferred to M8b).",
+    "Apply-time SQL has 2 amendments (updated_at, cleanup band integers). Apply session must verify both before D-01 fire.",
+    "Rollback path uses captured OLD_CRON_48_COMMAND + queue_id list. No ORIGINAL_COMMENT logic v4.",
+    "v4 P1.5c is informational: 94-row un-publishable legacy draft cohort will silently never publish post-M8a. Recorded as separate follow-up brief candidate — not addressed by M8a.",
+    "M8b is a non-trivial separate effort: must remediate 2 manual callers (functional changes to dashboard flows) before function rename. M8b brief shape is sketched in §M8b follow-up section but not authored."
   ],
-  "default_action": "proceed if D-01 returns clean agree AND §1.0 sequencing gate passed AND §1.4 confirmed cron 48 is the sole caller AND §1.5d alignment count = 0 AND PK has directed handling for §1.5c un-publishable cohort",
+  "default_action": "proceed if D-01 returns clean agree AND §1.0 sequencing gate passed AND §1.4 confirmed exactly 3 expected callers (or fewer with FLAG) AND §1.5d alignment count = 0 AND §1.5a cleanup count in [250, 500]",
   "references": {
-    "cc-0005 brief (v3 patched)": "docs/briefs/cc-0005-m8-atomic-cutover.md",
+    "cc-0005 brief (v4 patched)": "docs/briefs/cc-0005-m8-atomic-cutover.md",
+    "cc-0005 v3 (superseded by v4)": "commit 245005a3c86dc23cac8bd6cae41fea5fd135e5f9",
     "cc-0005 v2 Path A (superseded by v3)": "commit f70cb41f72e01c27c83639f1ae5bf0dac9353b70",
     "cc-0003 v2 brief": "docs/briefs/cc-0003-m6-phase-a-bug3-dead-letter.md",
     "cc-0004 brief": "docs/briefs/cc-0004-m6-phase-b-v4-mismatch-dead-letter.md",
@@ -938,40 +897,39 @@ VERIFICATION: 10 post-apply queries (V1-V10). v3 V7 expanded to include
     "cc-0004 result": "docs/briefs/results/cc-0004-m6-phase-b-v4-mismatch-dead-letter.md",
     "reconciliation brief": "docs/briefs/2026-05-09-m5-m8-vw-pipeline-state-reconciliation.md",
     "queue integrity v3": "docs/briefs/2026-05-05-queue-integrity-incident.md",
-    "v2.56 cc-0004 close": "docs/runtime/sessions/2026-05-09-cc-0004-applied-m6-phase-b-closed.md",
+    "v2.57 sync close": "docs/runtime/sessions/2026-05-09-cc-0006-closed-cc-0005-v3-patched.md",
     "§10.2 view contract": "docs/dashboard-review-2026-05/10_product_objects_and_data_model.md"
   },
-  "sql_to_apply": "<full SQL from cc-0005 §3 verbatim, with all 4 apply-time amendments resolved: <ARGS> from §1.4, 2026-05-XX from apply-session UTC date, updated_at adjusted per §1.1, <ORIGINAL_COMMENT> per §1.4b>"
+  "sql_to_apply": "<full SQL from cc-0005 §3 verbatim, with 2 apply-time amendments resolved: updated_at adjusted per §1.1, cleanup band [v_min_expected, v_max_expected] preserved or adjusted per PK direction>"
 }
 ```
 
 ### 5.3 Decision rule on D-01 verdict
 
-Unchanged from v2: `agree` + `proceed` + risk ≤ medium + 0 pushback → apply. Lesson #62 v2.50 refinement applies.
+Unchanged from v2/v3: `agree` + `proceed` + risk ≤ medium + 0 pushback → apply. Lesson #62 v2.50 refinement applies.
 
 ---
 
 ## 6. Apply procedure
 
 1. **Sequencing gate re-confirmation.**
-2. **Final read-only re-verification** — re-run §1.3 + §1.4 + §1.4b + §1.5 (all 4 sub-queries: a, b, c, d) + §1.6 + §1.8 within ~60s of apply. Confirm:
-   - Cleanup count divergence < 10 rows from D-01 packet.
+2. **Final read-only re-verification** — re-run §1.3 + §1.4 + §1.5 (sub-queries a, b, c, d) + §1.6 + §1.8 within ~60s of apply. Confirm:
+   - Cleanup count divergence < 30 rows from D-01 packet AND still inside [250, 500].
    - `OLD_CRON_48_COMMAND` + `OLD_CRON_48_SCHEDULE` unchanged from initial pre-flight.
-   - Function signature unchanged.
-   - `ORIGINAL_COMMENT` unchanged (or document drift).
+   - Function signature unchanged (informational; M8b will use).
    - **§1.5d alignment count still = 0** (HALT §8.2.l if non-zero).
-   - No new caller surfaced in §1.4.
-3. **Apply SQL amendment** — replace 4 placeholders: `<ARGS>` (from §1.4), `2026-05-XX` (apply-session UTC date), `updated_at` SET clause (per §1.1), `<ORIGINAL_COMMENT>` (NULL or quoted from §1.4b — used in §8.3 rollback only). Confirm `$cron_body$` block matches v3 locked body byte-for-byte.
+   - §1.4 still shows expected 3 callers (no new caller).
+3. **Apply SQL amendment** — replace 2 placeholders: `updated_at` SET clause (per §1.1); cleanup band integers if PK directs adjustment from [250, 500]. Confirm `$cron_body$` block matches v3 locked body byte-for-byte (v4 inherits v3 cron body verbatim).
 4. **`apply_migration` call** — single call.
-5. **Capture the result** — record success/failure, exact return value, and all RAISE NOTICE messages: Component 1 rewrite (or no-op), Component 1 verify gate (V7+V8+V9 PASS), Component 2 count, V10 pre-rename gate (PASS), Component 3 rename (or no-op).
-6. **Run all 10 verification queries (§7)** — if any fails, rollback per §8.3.
-7. **If all 10 PASS:** session continues to close-the-loop UPDATE on `m.chatgpt_review` and 4-way sync.
+5. **Capture the result** — record success/failure, exact return value, and all RAISE NOTICE messages: Component 1 rewrite (or no-op), Component 1 verify gate (V7+V8+V9 PASS), Component 2 count.
+6. **Run all 9 + V10' verification queries (§7)** — if any fails, rollback per §8.3.
+7. **If all PASS:** session continues to close-the-loop UPDATE on `m.chatgpt_review` and 4-way sync.
 
 ---
 
 ## 7. Verification queries (post-apply)
 
-All 10 must PASS.
+All 9 + V10' must PASS.
 
 ### V1 — dead_reason delta
 
@@ -1013,7 +971,7 @@ Same as cc-0003 v2 / cc-0004 V5.
 
 Same as cc-0003 v2 / cc-0004 V6.
 
-### V7 — Cron 48 active=true + schedule unchanged + jobname unchanged (v3 expanded per L2)
+### V7 — Cron 48 active=true + schedule unchanged + jobname unchanged
 
 ```sql
 SELECT jobid, jobname, schedule, active
@@ -1021,9 +979,9 @@ FROM cron.job
 WHERE jobid = 48;
 ```
 
-**Pass:** `active = true` AND `jobname` unchanged from §1.3 capture AND `schedule` unchanged from `OLD_CRON_48_SCHEDULE` (§1.3 capture).
+**Pass:** `active = true` AND `jobname` unchanged from §1.3 capture AND `schedule` unchanged from `OLD_CRON_48_SCHEDULE`.
 
-### V8 — Cron 48 command no longer contains a function-call to the legacy fallback (v3 regex fix)
+### V8 — Cron 48 command no longer contains a function-call to the legacy fallback
 
 ```sql
 SELECT jobid,
@@ -1033,7 +991,7 @@ FROM cron.job
 WHERE jobid = 48;
 ```
 
-**Pass:** `path_a_rewrite_complete = true`. The regex correctly distinguishes function calls from comment-mentions, AND covers both the original name and post-rename deprecated name. `command_length` informational.
+**Pass:** `path_a_rewrite_complete = true`.
 
 ### V9 — Autonomous slot-driven enqueue path still represented
 
@@ -1051,7 +1009,7 @@ WHERE jobid = 48;
 
 **Pass:** all 6 columns true.
 
-### V10 — Zero live callers of legacy fallback (or post-rename deprecated) name (v3 regex fix)
+### V10' — Expected callers list (v4 reframed; replaces V10 zero-callers)
 
 ```sql
 SELECT 'function' AS object_type, n.nspname || '.' || p.proname AS caller,
@@ -1077,23 +1035,17 @@ FROM cron.job
 WHERE command ~* 'get_next_scheduled_for(__deprecated_m8)?\s*\(';
 ```
 
-**Pass:** zero rows returned.
+**Pass (v4 reframed):** Result set must equal exactly the 2 expected non-cron callers:
+- `public.draft_approve_and_enqueue` (function row)
+- `public.draft_approve_and_enqueue_scheduled` (function row)
 
-### V10b — Function rename + comment paranoia (folded post-V10)
+And zero cron rows (cron 48 should no longer match post-Component-1; if cron 48 surfaces, V8 already failed).
 
-```sql
-SELECT n.nspname AS schema_name, p.proname AS function_name,
-       pg_get_function_identity_arguments(p.oid) AS args,
-       d.description
-FROM pg_proc p
-JOIN pg_namespace n ON n.oid = p.pronamespace
-LEFT JOIN pg_description d ON d.objoid = p.oid AND d.classoid = 'pg_proc'::regclass
-WHERE n.nspname = 'public'
-  AND p.proname IN ('get_next_scheduled_for', 'get_next_scheduled_for__deprecated_m8')
-ORDER BY p.proname;
-```
+**Decision rule:** Result equals exactly the 2 expected non-cron functions → PASS. Result includes cron 48 → V8 already failed (apply rollback). Result includes additional callers → FAIL (unexpected caller emerged between pre-flight and post-apply; rollback). Result fewer than 2 functions → FAIL (a manual caller has been independently removed; investigate).
 
-**Pass:** exactly 1 row, `function_name = 'get_next_scheduled_for__deprecated_m8'`, `description ~* '@deprecated M8 Path A cutover'`. No row with `function_name = 'get_next_scheduled_for'`.
+### ~~V10b~~ — RETIRED v4
+
+v3's V10b (function rename + COMMENT paranoia) folds into M8b. Not run in M8a.
 
 ---
 
@@ -1104,62 +1056,49 @@ ORDER BY p.proname;
 Nuanced per-component NO-OP. v3 fix: Component 1 NO-OP detection uses function-call regex.
 
 - Component 1 NO-OP if §1.3 shows command lacks function-call to legacy fallback.
-- Component 2 NO-OP if §1.5a returns 0.
-- Component 3 NO-OP if §1.4 shows 0 signatures.
+- Component 2 NO-OP if §1.5a returns 0 (which would also fail HALT §8.2.a since 0 < 250).
+- ~~Component 3 NO-OP~~ — retired v4 (no Component 3).
 
-All 3 simultaneous NO-OP → no `apply_migration`. Document in result file.
+Both simultaneous NO-OP → no `apply_migration`. Document in result file.
 
 Also §1.3 `active = false` → HALT (§8.2.j).
 
 ### 8.2 HALT paths
 
-**8.2.a Cleanup count > 200:** §1.5a outside [0, 200].
+**8.2.a Cleanup count outside [250, 500]:** §1.5a outside band (v4 re-banded from v3 [0, 200]).
 **8.2.b (RETIRED).**
 **8.2.c Sequencing gate fail.**
 **8.2.d (RETIRED).**
-**8.2.e (RETIRED v2 Path A patch; v3 historical reference only).**
+**8.2.e (RETIRED v2 Path A patch).**
 **8.2.f `m.post_draft.created_by` column absent.**
-**8.2.g Live caller of legacy fallback outside cron 48.**
-**8.2.h Multiple overloaded signatures of `public.get_next_scheduled_for`.**
+**8.2.g (REPHRASED v4) Caller of legacy fallback outside expected set:** v3 read "live caller outside cron 48". v4 expected set is `{cron 48, draft_approve_and_enqueue, draft_approve_and_enqueue_scheduled}`. HALT if a caller outside this set surfaces.
+**8.2.h (REPHRASED v4) Multiple overloaded signatures of `public.get_next_scheduled_for`:** informational v4 (no rename to break); flag for D-01 but does not necessarily HALT M8a unless D-01 reviewer escalates.
 **8.2.i cc-0003 v2 / cc-0004 overlap > 0.**
 **8.2.j Cron 48 already inactive (Path A premise violated).**
 **8.2.k Cron 48 command no longer contains queue INSERT.**
-**8.2.l (NEW v3 per H5) Slot-driven misalignment count > 0:** §1.5d returns non-zero `post_cc0004_misaligned_count`. Path A would silently use misaligned `pd.scheduled_for`. Investigate before apply. Possible causes: new misalignment introduced post-cc-0004 by some path; cc-0004 didn't drain expected cohort; M4 backfill regression. NO `apply_migration` call. Escalate to PK with the misaligned cohort details.
+**8.2.l Slot-driven misalignment count > 0:** §1.5d returns non-zero. Investigate before apply.
 
-### 8.3 ROLLBACK path (verification fails after apply)
+### 8.3 ROLLBACK path (verification fails after apply) — v4 simplified
 
-If any of V1–V10 (or V10b) FAIL:
+If any of V1–V9 (or V10') FAIL:
 
 1. Halt session continuation.
-2. Apply rollback migration `m8_atomic_cutover_v1_rollback`. v3 includes ORIGINAL_COMMENT restoration AND M1 unique dollar-quote-tag guidance.
+2. Apply rollback migration `m8a_cron48_rewrite_and_legacy_cleanup_v1_rollback`. v4 reverses 2 components only.
 
 ```sql
--- Rollback for m8_atomic_cutover_v1 (Path A v3)
--- Three reversals in single transaction. Order: 3 -> 2 -> 1 (reverse of apply).
+-- Rollback for m8a_cron48_rewrite_and_legacy_cleanup_v1 (v4)
+-- Two reversals in single transaction. Order: 2 -> 1 (reverse of apply).
 --
--- v3 Apply-time amendment rules (M1 + H6):
---   1. <ARGS> placeholder: replace with §1.4 captured signature.
---   2. <ORIGINAL_COMMENT> placeholder: replace with NULL (literal) if §1.4b
---      captured pre_existing_comment IS NULL, otherwise the captured value
---      properly quoted as a SQL string literal.
---   3. <UNIQUE_TAG_HERE>: apply session must pick a dollar-quote tag
+-- v4 Apply-time amendment rules (reduced from v3):
+--   1. <UNIQUE_TAG_HERE>: apply session must pick a dollar-quote tag
 --      that does NOT appear as a substring inside the captured
 --      OLD_CRON_48_COMMAND. Verify via simple substring check before
 --      templating. Suggested format: $rb_<random_8_chars>$ or
 --      $cron_body_rollback_<UTC_unix_ts>$. NEVER use the literal
 --      $cron_body_old$ shown below — that is a placeholder, not the
 --      actual tag for any real apply session.
---   4. <OLD_CRON_48_COMMAND from §1.3>: paste the captured command
+--   2. <OLD_CRON_48_COMMAND from §1.3>: paste the captured command
 --      verbatim (without modification).
-
--- Reverse component 3: rename function back, restore COMMENT to original state
-ALTER FUNCTION public.get_next_scheduled_for__deprecated_m8(<ARGS>)
-  RENAME TO get_next_scheduled_for;
-
-COMMENT ON FUNCTION public.get_next_scheduled_for(<ARGS>) IS <ORIGINAL_COMMENT>;
-  -- v3 fix: <ORIGINAL_COMMENT> resolves to either the literal NULL
-  -- (if pre-existing was NULL) or a quoted string literal of the captured
-  -- comment from §1.4b. Apply session resolves before applying rollback.
 
 -- Reverse component 2: restore cleanup queue rows
 UPDATE m.post_publish_queue
@@ -1171,144 +1110,251 @@ WHERE queue_id IN (<captured queue_id list from §1.6>);
 -- Reverse component 1: restore cron 48 command body to OLD_CRON_48_COMMAND
 DO $$
 BEGIN
-  -- v3 fix per M1: apply session picks unique tag <UNIQUE_TAG_HERE> at runtime;
-  -- the literal $cron_body_old$ shown below is illustrative, not the actual tag.
+  -- v4 (preserved from v3 M1): apply session picks unique tag <UNIQUE_TAG_HERE>
+  -- at runtime; the literal $cron_body_old$ shown below is illustrative.
   PERFORM cron.alter_job(48, command := $cron_body_old$<OLD_CRON_48_COMMAND from §1.3>$cron_body_old$);
-  RAISE NOTICE 'M8 Path A rollback component 1: cron 48 command restored to pre-apply body.';
+  RAISE NOTICE 'M8a Path A rollback component 1: cron 48 command restored to pre-apply body.';
 END $$;
+
+-- v4: NO Component 3 reversal needed (no rename in M8a apply).
 ```
 
-3. Re-run V1–V10 + V10b post-rollback. V1 = original `pre_dead_reason_count`. V2 = original §1.5a count. V7 = active=true (unchanged) + schedule unchanged. V8 returns `path_a_rewrite_complete = false` (the legacy fallback function-call is back). V10 returns cron 48 in caller list.
+3. Re-run V1–V9 + V10' post-rollback. V1 = original `pre_dead_reason_count`. V2 = original §1.5a count. V7 = active=true (unchanged) + schedule unchanged. V8 returns `path_a_rewrite_complete = false` (the legacy fallback function-call is back). V10' returns expected 3 callers (cron 48 reappears in caller list since rollback restored its call).
 4. Document failure mode + diagnosis.
-5. PK escalation; cc-0005 v4 with corrective measures.
+5. PK escalation; cc-0005 v5 with corrective measures.
 
 ### 8.4 Why not template the rollback fully
 
-Unchanged: queue_id mapping known only at apply time; v3 adds `<ORIGINAL_COMMENT>` and `<UNIQUE_TAG_HERE>` to the per-apply-resolution list. The cron jobid (48) and function name (canonical) are pre-filled.
+v4 simplified: queue_id mapping known only at apply time. Cron jobid (48) and dollar-quote tag (apply-session unique) are the only per-apply-resolution items.
 
 ---
 
 ## 9. Stop condition
 
 1. §1.0 sequencing gate passes.
-2. §1 pre-flight all P1 checks PASS (15 items v3, including P1.4b + P1.5b/c/d).
+2. §1 pre-flight all P1 checks PASS (13 items v4, down from 15 in v3).
 3. §4 P0 + P1–P5 all PASS.
 4. §5 D-01 fire returns clean agree + PK approval.
-5. §6 apply procedure completes; in-migration verify gates PASSED inside transaction.
-6. §7 verification V1–V10 (+ V10b paranoia) all PASS.
+5. §6 apply procedure completes; in-migration verify gate (V7+V8+V9) PASSED inside transaction.
+6. §7 verification V1–V9 + V10' all PASS.
 7. Close-the-loop UPDATE on `m.chatgpt_review`.
-8. Result file `docs/briefs/results/cc-0005-m8-atomic-cutover.md` committed.
-9. M7 closure documented in 4-way sync.
+8. Result file `docs/briefs/results/cc-0005-m8a-cron48-rewrite-and-legacy-cleanup.md` committed.
+9. M8a closure documented in 4-way sync (M7 closure folds at M8b time; M8b is the next brief in sequence).
 10. 4-way sync close.
+11. **NEW v4: 94-row un-publishable legacy draft cohort recorded as separate follow-up finding/brief candidate** in 4-way sync close.
 
 If any of §8.1, §8.2.{a,c,f,g,h,i,j,k,l}, or §8.3 paths trigger: report and stop.
 
 ---
 
+## M8b follow-up section (NEW v4)
+
+This section documents the deferred work as a separate brief shape. **M8b is NOT the responsibility of this v4 brief.** Sketched here for traceability.
+
+### Scope (M8b, separate cc-NNNN)
+
+1. **Remediate `public.draft_approve_and_enqueue` caller:**
+   - Read function body to identify why it calls `public.get_next_scheduled_for(...)` and what semantic role the call serves (likely: compute a default scheduled_for when the manual approval flow doesn't supply one).
+   - Replace the call with one of:
+     - (a) inline equivalent computation (preferred if logic is short),
+     - (b) replacement function with clearer naming + semantic boundary,
+     - (c) require the caller to pass `scheduled_for` explicitly (push the responsibility upstream).
+   - Test: dashboard manual-approval flow continues to function correctly.
+
+2. **Remediate `public.draft_approve_and_enqueue_scheduled` caller:**
+   - Same shape as above. May be structurally similar (likely a sibling function).
+
+3. **Re-verify zero callers:** run §1.4 query post-remediation. Expected: 0 callers (cron 48 already removed in M8a; both manual functions remediated in M8b).
+
+4. **Function rename + COMMENT:**
+   ```sql
+   ALTER FUNCTION public.get_next_scheduled_for(<ARGS>)
+     RENAME TO get_next_scheduled_for__deprecated_m8b;
+
+   COMMENT ON FUNCTION public.get_next_scheduled_for__deprecated_m8b(<ARGS>) IS
+     '@deprecated M8b cutover <DATE>. Original name: public.get_next_scheduled_for. '
+     'Replaced by slot-aware enqueue path (cron 48) + remediated dashboard flows. '
+     'Function body retained for audit; do not call. '
+     'See docs/briefs/cc-NNNN-m8b-function-deprecation.md for cutover context.';
+   ```
+
+   Note suffix `__deprecated_m8b` (was `__deprecated_m8` in v3); reflects that the deprecation lands in M8b phase.
+
+### Pre-flight (M8b, sketched)
+
+- M8a sequencing gate (this brief's result file Complete).
+- Caller verification at apply time (expected 0 post-remediation).
+- ORIGINAL_COMMENT capture per v3 H6 pattern (re-introduced in M8b).
+- Standard pre-flight pattern (cc-0003 v2 / cc-0004 / cc-0005 v3 / v4 lineage).
+
+### Verification (M8b, sketched)
+
+- V1: function renamed (1 row at new name, 0 rows at original name).
+- V2: COMMENT applied with `@deprecated M8b` annotation.
+- V3: zero live callers of either name (expected after remediation).
+- V4: dashboard manual-approval flows continue to function (smoke test).
+
+### Apply gates (M8b, sketched)
+
+- M8a result file Complete.
+- Both manual callers remediated and tested.
+- D-01 fire (`sql_destructive` action_type with DDL).
+- PK explicit approval.
+
+### Brief ID
+
+Reserved as **cc-NNNN** — to be authored separately when M8a closes and PK directs M8b authoring.
+
+---
+
+## Separate follow-up: 94-row un-publishable legacy draft cohort
+
+**NOT in M8a or M8b scope.** Recorded here as a follow-up finding / brief candidate.
+
+**Cohort:** drafts where:
+```sql
+pd.slot_id IS NULL
+AND pd.scheduled_for IS NULL
+AND pd.created_by = 'seed_and_enqueue'
+AND pd.approval_status IN ('approved','scheduled')
+AND NOT EXISTS (SELECT 1 FROM m.post_publish_queue q WHERE q.post_draft_id = pd.post_draft_id)
+```
+
+**Observed at v3 pre-flight (CC, 2026-05-09):** 94 drafts.
+
+**Post-M8a behaviour:** cron 48 will silently never enqueue these (rewritten WHERE filter drops legacy-unresolvable rows). They will sit in `m.post_draft` with `approval_status='approved'` or `'scheduled'` indefinitely.
+
+**Resolution candidates (out of M8a/M8b scope):**
+- (a) Bulk dead-letter (mark as failed with reason); pattern from cc-0003 v2 / cc-0004.
+- (b) Manual triage per draft (likely too much manual work for 94 rows).
+- (c) Schedule them retroactively via `m.fill_pending_slots` analogue (would require new code path).
+- (d) Do nothing; let them sit indefinitely as historical artifact (lowest effort).
+
+**Brief shape:** likely a small cc-NNNN single-component dead-letter brief if PK directs (a). Otherwise no brief.
+
+**Follow-up trigger:** PK directive at M8a closure or earlier.
+
+---
+
 ## Success criteria (for this brief draft, NOT for the apply)
 
-v3 brief is correctly drafted when:
+v4 brief is correctly drafted when:
 
 1. The brief file exists at `docs/briefs/cc-0005-m8-atomic-cutover.md`.
 2. The apply procedure is executable using only this brief + read-only DB access + Supabase MCP.
-3. **v3 regex fixes are explicit:** all substring matches replaced with function-call-syntax regex `~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('` at all 11 call sites.
-4. **v3 cron command body comment is rephrased:** "legacy fallback removed from COALESCE chain." — no longer contains `get_next_scheduled_for` substring.
-5. SQL is locked to v3 §3, with 4 documented apply-time amendments.
-6. Verification queries V1–V10 (+ V10b) runnable post-amendment.
-7. Rollback for all 3 components concrete: `OLD_CRON_48_COMMAND` (§1.3), captured queue_id list (§1.6), function rename, AND `ORIGINAL_COMMENT` restoration (§1.4b).
+3. **v4 scope reduction is explicit:** Component 3 deferred to M8b; only Components 1 + 2 remain.
+4. **v4 cleanup band re-banded to [250, 500]** with `v_min_expected` restored.
+5. SQL is locked to v4 §3, with 2 documented apply-time amendments (was 4 in v3).
+6. Verification queries V1–V9 + V10' runnable post-amendment.
+7. Rollback for 2 components concrete: `OLD_CRON_48_COMMAND` (§1.3), captured queue_id list (§1.6). No function rename reversal.
 8. Sequencing gates re-confirmed at apply procedure step 1.
-9. M7 closure folding into 4-way sync documented.
-10. Forbidden actions explicitly prohibit `cron.alter_job(48, active := false)`.
-11. **v3 H1-H6 + L1-L2 + M1-M4 fixes all reflected.**
-12. No production state changed by drafting or by this v3 patch.
+9. M8a closure folding into 4-way sync documented.
+10. Forbidden actions explicitly prohibit `cron.alter_job(48, active := false)` AND `ALTER FUNCTION` AND `COMMENT ON FUNCTION`.
+11. **v4 §M8b follow-up section sketches the deferred work** (manual caller remediation + function rename).
+12. **v4 separate-follow-up section records the 94-row un-publishable legacy draft cohort** as out-of-M8a/M8b scope.
+13. v3 regex/function-call checks preserved where still relevant (§1.4, §3 Component 1 idempotency, §3 Component 1 verify gate, §7 V8, §7 V10').
+14. v3 V10 zero-callers in-migration gate REMOVED. V10b function-rename paranoia REMOVED. v3 §1.4b ORIGINAL_COMMENT capture RETIRED.
+15. **v4 H1–H6 + L1–L2 + M1–M4 (where still relevant) preserved.** L19–L21 v4 lesson candidates documented.
+16. No production state changed by drafting or by this v4 patch.
 
 ---
 
 ## Notes
 
-This is the fourth cc-NNNN brief in the brief-runner-v0 trial; third apply-class brief; first multi-component (3-way) atomic migration; first to require pre-condition gate at §1.0; first with cron edit + DDL permissions; first with two in-migration verify gates; **first to undergo a critical doc-only correctness patch (v3) before first apply**.
+This is the fourth cc-NNNN brief in the brief-runner-v0 trial; third apply-class brief; **first to undergo a critical doc-only correctness patch (v3) AND a scope-reduction patch (v4) before first apply**. v4 is the second in-place patch on this brief without any apply having occurred (consistent with L17 in-place-patching pattern: brief identifier + migration name preserved as long as brief was never applied; v4 changes migration name to `m8a_cron48_rewrite_and_legacy_cleanup_v1` to reflect the scope reduction, not because v3 was burned).
 
-### Brief-runner-v0 watch items specific to cc-0005 (Path A v3)
+### Brief-runner-v0 watch items specific to cc-0005 (Path A v4)
 
-1. **Path A vs Path C cutover decision** — chat investigation 2026-05-09 established cron 48 is the SOLE autonomous inserter; Path C (disable) was not viable.
+1. **Path A staged into M8a + M8b** — chat investigation 2026-05-09 + CC v3 pre-flight HALT 2026-05-09 established that the function rename in v3 Component 3 would break 2 manual callers. PK directed staging.
 
-2. **In-migration verify gates** — pattern: RAISE EXCEPTION inside transaction enforces conditional dependencies between components. Two gates in cc-0005 (Component 1 verify gate + V10 pre-rename gate). v3 fix: gates use function-call regex, not substring match.
+2. **In-migration verify gate** — single gate in M8a (V7+V8+V9). v3's V10 pre-rename gate REMOVED in v4.
 
-3. **Atomic 3-step migration with embedded dollar-quoted command body** — Component 1 uses `$cron_body$...$cron_body$` to embed the rewritten cron command. v3 acknowledges that rollback's dollar-quote tag for `OLD_CRON_48_COMMAND` must be picked at runtime to avoid theoretical collision.
+3. **Atomic 2-component migration with embedded dollar-quoted command body** — v4 reduces from 3 to 2 components.
 
-4. **Cron edit permission (command rewrite, not active toggle)** — first cc-NNNN brief with this.
+4. **Cron edit permission** — retained from v3.
 
-5. **DDL permission (function rename + comment)** — first cc-NNNN brief with this.
+5. **DDL permission** — RETIRED in v4 (deferred to M8b).
 
-6. **No prior count to inherit** — cleanup count unanchored.
+6. **Cleanup count band re-banded to [250, 500]** — anchored around CC's v3 pre-flight observation of 344 rows.
 
-7. **10 verification queries** — V7-V10 cover Component 1 + V10 covers Component 3.
+7. **9 + V10' verification queries** (was 10 + V10b in v3). V10 zero-callers retired; V10b function-rename paranoia retired.
 
-8. **Rollback complexity** — v3 includes COMMENT restoration; reversing 3 components in single transaction.
+8. **Rollback complexity reduced** — v4 reverses 2 components instead of 3. ORIGINAL_COMMENT logic removed.
 
-9. **M7 closure** — doc-only fold into 4-way sync.
+9. **M8a closure** — doc-only fold into 4-way sync. M7 closure folds at M8b time.
 
 10. **§1.5 cross-check** — unique to cc-0005.
 
-11. **Apply-time SQL amendments (4 items v3)** — `<ARGS>`, `2026-05-XX`, `updated_at`, `<ORIGINAL_COMMENT>`.
+11. **Apply-time SQL amendments (2 items v4, down from 4 in v3)** — `updated_at` + cleanup band integers.
 
-12. **In-place patching pattern** — v3 supersedes v2 in place because v2 was never applied. Brief-runner-v0 lesson: **a brief with critical correctness bugs caught at review time can be in-place patched as long as it has not yet been applied. Once applied, any corrective work would require a new cc-NNNN brief.**
+12. **In-place patching pattern (L17)** — v4 supersedes v3 in place because v3 was never applied. Brief identifier preserved (`cc-0005`); migration name updated for clarity (`m8a_*_v1`).
 
-13. **NEW v3 — Function-call regex pattern** — `~* '<name>(__deprecated_m8)?\s*\('` correctly distinguishes calls from comments AND covers both pre-rename and post-rename names. Pattern is portable to any brief that needs to verify function-call presence/absence in PostgreSQL function/view/cron bodies.
+13. **Function-call regex pattern (L16)** — preserved from v3; correctly distinguished call-sites from comments AND surfaced all 3 callers at v3 pre-flight.
 
-14. **NEW v3 — Pre-flight cohort surfacing pattern** — H4 un-publishable cohort + H3 distinct created_by enumeration. Pattern: when a brief retires or modifies a code path, surface the cohorts that the retired path was processing; PK decides handling for residual cohorts (apply as-is, separate cleanup brief, or extend brief scope).
+14. **Pre-flight cohort surfacing pattern (L18)** — vindicated by v3 pre-flight: surfaced 2 manual callers AND 94-row un-publishable cohort. Both surfaced cleanly; 2 callers triggered HALT (correct), 94-row cohort triggered informational capture (correct).
 
-### Patch history details (v3 patch, 2026-05-09)
+15. **NEW v4 — L19 (CC v3 pre-flight HALT pattern)** — v3 §1.4 caller check correctly HALTed at apply when expected callers (1) didn't match observed callers (3). Validates the v3 H1–H6 expansion.
 
-Patches relative to v2 Path A (commit `f70cb41f`):
+16. **NEW v4 — L20 (in-place patch vs scope-reduce vs new brief)** — distinct from L17. L17: in-place patch when bugs are caught BEFORE apply. L20: when blocker requires non-trivial follow-up work, defer to a new brief rather than retry in-place. M8b is L20's exemplar.
 
-1. **Title** — added v3 Patched line; superseded reference to v2.
-2. **Header block** — added v3 Patched line with regex fix + H1-H6 + L2 summary.
-3. **NEW v3 entry at top of §Patch history** — summarises the 5 critical regex bugs in v2 + v3 fixes + H1-H6 + M1-M4 + L1-L2 additions.
-4. **§Forbidden actions amendment list** — expanded from 2 items (a) updated_at, (b) ARGS to 4 items adding (c) `2026-05-XX` date in COMMENT, (d) `<ORIGINAL_COMMENT>` in §8.3 rollback (M2).
-5. **§Forbidden actions** — added explicit prohibition on apply if §1.5d alignment count > 0 (HALT §8.2.l).
-6. **§Forbidden actions** — added "no assumption that `public.get_next_scheduled_for` has no pre-existing COMMENT" clause; added "no assumption that `pd.created_by = 'seed_and_enqueue'` is the only legacy-origin filter" clause referencing P1.5b enumeration.
-7. **§1.2** — expanded scope per L1 to survey triggers on `m.post_draft / slot / ai_job / post_publish` in addition to `m.post_publish_queue`. Validates chat investigation finding that no trigger inserts queue rows.
-8. **§1.3** — added explicit `OLD_CRON_48_SCHEDULE` capture per L2 (already in raw query but now explicit in capture rule).
-9. **§1.4** — function/view/cron callers WHERE clauses changed from `ILIKE '%get_next_scheduled_for%'` to `~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('` (3 sub-queries; v3 critical fix C1+C5 + H1).
-10. **§1.4b** (NEW) — pre-existing COMMENT capture for rollback (H6).
-11. **§1.5** — added 3 sub-queries: P1.5b distinct created_by enumeration (H3); P1.5c un-publishable legacy draft cohort (H4); P1.5d slot-driven alignment check (H5).
-12. **§3 Component 1 idempotency check** — `IF v_old_command !~ 'get_next_scheduled_for'` changed to `IF v_old_command !~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('` (v3 critical fix; addresses H2 — re-attempt now correctly recognised as no-op).
-13. **§3 Component 1 `$cron_body$` block** — v3 comment rephrase: `-- M8 Path A 2026-05-XX: legacy fallback removed from COALESCE chain.` (no longer contains `get_next_scheduled_for` substring; belt-and-braces against any future regex tweak that might revert to substring-style).
-14. **§3 Component 1 verify gate (V8 in-migration)** — `IF v_command ~ 'get_next_scheduled_for'` changed to `IF v_command ~* 'get_next_scheduled_for(__deprecated_m8)?\s*\('` (v3 critical fix C1).
-15. **§3 Component 2 DO block** — removed unused `v_min_expected` variable per M3.
-16. **§3 V10 pre-rename gate** — 3 ILIKE checks changed to ~* function-call regex (v3 critical fix C2 + C5).
-17. **§3 Notes** — note 11 updated to document the function-call regex rationale; note 12 added (TOCTOU acknowledgement per M4); note about "no longer contains the substring `get_next_scheduled_for`" added.
-18. **§4 P1–P5 walk** — added P1.4b (H6), P1.5b/c/d (H3/H4/H5), P2.10 (H4 forward-look), P5.7 expanded for schedule (L2). Pass criterion now 15 items in P1 (was 9 in v2).
-19. **§5 D-01 packet** — `proposal` rewritten for v3 (4-amendment apply rule; v3 regex pattern explicit; H1-H6 evidence items); `context.current_evidence` adds H6 + H3 + H4 + H5 captures; `context.known_weak_evidence` adds v3 regex critique + 4-amendment caveat + ORIGINAL_COMMENT dependency; `context.references` adds v2 supersession reference.
-20. **§6 Apply procedure** — step 2 expanded: re-run §1.4b + §1.5b/c/d alongside existing checks; step 3 expanded: 4-amendment list; step 5 expanded: 5+ RAISE NOTICE messages including V10 pre-rename gate.
-21. **§7 V7** — expanded per L2 to verify schedule unchanged in addition to active=true and jobname unchanged.
-22. **§7 V8** — substring `(command !~ 'get_next_scheduled_for')` changed to `(command !~* 'get_next_scheduled_for(__deprecated_m8)?\s*\(')` (v3 critical fix C3).
-23. **§7 V10** — 3 ILIKE checks changed to ~* function-call regex (v3 critical fix C4).
-24. **§7 V10b paranoia query** — unchanged (already used direct name match).
-25. **§8.1 NO-OP path** — Component 1 NO-OP detection updated to use function-call regex.
-26. **§8.2 HALT paths** — added §8.2.l for slot-driven misalignment per H5; §8.2.e remains retired (v2 Path A patch).
-27. **§8.3 Rollback** — Component 3 reversal `COMMENT ON FUNCTION ... IS NULL` replaced with `IS <ORIGINAL_COMMENT>` placeholder per H6; added M1 unique-dollar-quote-tag guidance for Component 1 reversal; updated apply-time amendment rules to 4 items.
-28. **§9 Stop condition** — P1 check count updated to 15; added §8.2.l reference.
-29. **§Notes brief-runner-v0 watch items** — added items 13 (function-call regex pattern) + 14 (pre-flight cohort surfacing pattern) as v3 lesson candidates.
-30. **§Notes Patch history details (this section)** — v3 patch enumeration (30 items).
+17. **NEW v4 — L21 (scope re-banding pattern)** — brief lower bounds matter as much as upper bounds. v3 had min=0 (allowing no-op); v4 re-bands [250, 500] to REQUIRE non-trivial cohort.
 
-### Open dependencies for the apply session (v3 updated)
+### Patch history details (v4 patch, 2026-05-09)
 
-Before cc-0005 (Path A v3) can apply:
+Patches relative to v3 (commit `245005a3`):
+
+1. **Title** — added v4 Patched line; renamed migration in title to "M8a Path A cutover (cron 48 in-place rewrite + legacy-origin future cleanup; function deprecation **DEFERRED to M8b**)".
+2. **Header block** — added v4 Patched line with M8 staging summary.
+3. **NEW v4 entry at top of §Patch history** — summarises CC's v3 pre-flight HALT, the 2 manual callers, the 94-row un-publishable cohort, and the M8a/M8b staging decision.
+4. **§Forbidden actions amendment list** — reduced from 4 items (v3) to 2 items (v4): retired `2026-05-XX` date and `<ORIGINAL_COMMENT>` placeholder amendments.
+5. **§Forbidden actions** — added explicit prohibition on `ALTER FUNCTION public.get_next_scheduled_for(...)` and `COMMENT ON FUNCTION public.get_next_scheduled_for(...)` in M8a.
+6. **§Forbidden actions** — updated cleanup band to [250, 500].
+7. **§Forbidden actions** — updated §1.4 expected callers to set of 3.
+8. **Investigation record** — added items 5 + 6 documenting CC's v3 pre-flight HALT findings.
+9. **§1.4** — query unchanged; decision rule rewritten for v4 expected callers list of 3.
+10. **§1.4 signature surface** — decision rule rephrased (informational v4; M8b reference).
+11. **§1.4b** — RETIRED v4 (no rename; no COMMENT capture needed).
+12. **§1.5a** — cleanup count band re-banded from [0, 200] (v3) to [250, 500] (v4). Apply-time amendment (b) allows PK to direct band adjustment.
+13. **§1.5c** — decision rule RELAXED v4: informational only; no PK direction blocker for M8a apply. 94-row figure recorded as separate follow-up finding.
+14. **§3 Component 1** — unchanged from v3 (verbatim).
+15. **§3 Component 1 verify gate** — unchanged from v3.
+16. **§3 Component 2** — cleanup band re-banded to [250, 500]; `v_min_expected` variable restored (v3 M3 reversal).
+17. **§3 V10 in-migration pre-rename gate** — REMOVED v4 (no rename in M8a).
+18. **§3 Component 3** — REMOVED v4 (function rename + COMMENT deferred to M8b).
+19. **§3 Notes** — reduced to 13 notes (was 12 in v3); updated for v4 scope.
+20. **§4 P1–P5** — P1.4b removed; P1.4 expected callers set of 3; P1.5a re-banded; P1.5c relaxed; P5.10 reframed (V10' instead of V10/V10b). Pass criterion 13 P1 items (was 15).
+21. **§5 D-01 packet** — proposal rewritten for v4 (M8a only); evidence + weak-evidence + references all updated.
+22. **§6 Apply procedure** — step 2 expanded for fresh band check; step 3 reduced amendment list; step 5 reduced RAISE NOTICE expectations.
+23. **§7 V10** — RETIRED v4 (zero-callers semantic invalid for M8a). Replaced with V10' (expected callers list).
+24. **§7 V10b** — RETIRED v4 (function-rename paranoia not applicable).
+25. **§8.1 NO-OP path** — Component 3 NO-OP retired.
+26. **§8.2 HALT paths** — 8.2.g rephrased (caller outside expected set of 3); 8.2.h rephrased (multiple sigs informational, not hard HALT in v4).
+27. **§8.3 Rollback** — Component 3 reversal removed; ORIGINAL_COMMENT placeholder removed; reduced to 2 reversals.
+28. **§9 Stop condition** — P1 check count 15 → 13; verification 10 + V10b → 9 + V10'; added separate-follow-up record for 94-row cohort.
+29. **NEW §M8b follow-up section** — sketches the deferred work as a separate brief shape.
+30. **NEW §Separate follow-up** — records the 94-row un-publishable legacy draft cohort as out-of-M8a/M8b scope.
+31. **§Notes brief-runner-v0 watch items** — added items 15 (L19), 16 (L20), 17 (L21) as v4 lesson candidates.
+32. **§Notes Patch history details (this section)** — v4 patch enumeration (32 items).
+
+### Open dependencies for the apply session (v4 updated)
+
+Before cc-0005 (M8a v4) can apply:
 
 - **cc-0003 v2 apply** complete. Confirmed Complete v2.55.
 - **cc-0004 apply** complete. Confirmed Complete v2.56.
-- **Pre-flight §1.4** confirms cron 48 is the only caller of legacy fallback. Path A premise.
-- **Pre-flight §1.4b** captures pre-existing COMMENT (NULL or string).
+- **Pre-flight §1.4** confirms exactly 3 expected callers (cron 48 + 2 manual functions). v4 expected.
+- ~~Pre-flight §1.4b~~ — RETIRED v4.
 - **Pre-flight §1.3** confirms cron 48 currently `active=true`. Path A premise.
-- **Pre-flight §1.5d** alignment count = 0 (NEW v3 HALT §8.2.l).
-- **Pre-flight §1.5c** un-publishable cohort surfaced; PK direction received.
+- **Pre-flight §1.5a** count inside [250, 500].
+- **Pre-flight §1.5d** alignment count = 0 (HALT §8.2.l).
+- ~~Pre-flight §1.5c PK direction~~ — RELAXED v4 (informational only).
 - D-01 fire passes clean.
 - PK explicit approval phrase received.
 
-When all hold: apply session can proceed.
+When all hold: M8a apply session can proceed.
+
+**M8b is a separate effort and is NOT a prerequisite for M8a apply.** M8a applies independently; M8b authored later when manual caller remediation is scoped.
 
 ---
 
-*Brief authored 2026-05-09 Sydney by chat. Path A patched 2026-05-09 (v2, commit `f70cb41f`). v3 patched 2026-05-09 under PK direction (regex correctness + H1-H6 + L2). Inputs: cc-0003 v2 + cc-0004 brief shapes; reconciliation brief; queue integrity v3; chat investigation 2026-05-09; chat review pass on v2 (5 critical bugs surfaced + H1-H6 + M1-M4 + L1-L2 recommendations). Output: full apply brief (3-component cutover SQL with two in-migration verify gates using function-call regex throughout + P0 + P1–P5 + D-01 packet with 4-amendment SQL + 10 verification queries + V10b paranoia + 3-component rollback with ORIGINAL_COMMENT restoration and unique-tag guidance + halt paths incl. new §8.2.l + stop condition incl. M7 closure). No production state changed by drafting v3. cc-0005 (v3) apply gated by §1.0 sequencing (already met) + §1.4 caller check + §1.3 cron state + §1.5d alignment + §1.5c PK direction + D-01 + PK approval. Awaiting PK direction to schedule apply session.*
+*Brief authored 2026-05-09 Sydney by chat. Path A patched 2026-05-09 (v2, commit `f70cb41f`). v3 patched 2026-05-09 under PK direction (regex correctness + H1-H6 + L2; commit `245005a3`). v4 patched 2026-05-09 under PK direction (M8 staged → M8a only; Component 3 deferred to M8b after CC's v3 pre-flight HALT surfaced 2 non-cron manual callers + 94-row un-publishable cohort). Inputs: cc-0003 v2 + cc-0004 brief shapes; reconciliation brief; queue integrity v3; chat investigation 2026-05-09; CC v3 pre-flight HALT 2026-05-09. Output: full apply brief (2-component cutover SQL with one in-migration verify gate using function-call regex throughout + P0 + P1–P5 + D-01 packet with 2-amendment SQL + 9 + V10' verification queries + 2-component rollback + halt paths + stop condition + M8b follow-up sketch + separate-follow-up for 94-row cohort). No production state changed by drafting v4. cc-0005 (M8a v4) apply gated by §1.0 sequencing (already met) + §1.4 expected callers set of 3 + §1.3 cron state + §1.5d alignment + §1.5a band [250, 500] + D-01 + PK approval. Awaiting PK direction to schedule apply session.*
