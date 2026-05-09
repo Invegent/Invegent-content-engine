@@ -1,8 +1,12 @@
 # PRV-0 — Platform Reconciliation Subsystem Design Lock
 
-> **Status**: LOCKED for implementation. Schema, contracts, and cc-NNNN brief boundaries are settled. Implementation briefs reference this document; this document is not re-opened except via explicit round-3 decision.
-> **Author**: chat (Claude), 2026-05-09 Sydney
-> **Inputs**: round-1 synthesis (D-1..D-20) + round-2 synthesis (D-21..D-23 + audit + reviewer disagreement resolution) + PK Path A confirmation 2026-05-09 + PK cadence-drift-check directive + PK PRV-0 approval 2026-05-09 (commit path + seed authority + cc-0008/cc-0009 sequencing clarification — see §11)
+> **Status**: LOCKED v2 (amended 2026-05-09 from PK directive — minute-precision cadence + paused-profile suppression model). Schema, contracts, and cc-NNNN brief boundaries are settled. Implementation briefs reference this document; this document is not re-opened except via explicit round-3 decision.
+> **Author**: chat (Claude), 2026-05-09 Sydney (v1); amended 2026-05-09 Sydney (v2)
+> **v2 amendments (2026-05-09 Sydney)**:
+>   - **§3.2 DDL** — replaced `preferred_local_hours int[] CHECK (... 0..23)` with `preferred_local_times time[]` (minute-precision authoritative). Column count remains 19. Hour-level metadata is now derived (e.g., `EXTRACT(HOUR FROM unnest(preferred_local_times))::int[]`) at query time rather than stored authoritatively. PK directive: minute precision must be machine-readable; notes alone are insufficient.
+>   - **§5.1 cadence-rule-generator** — added paused-profile handling clause. When `c.client_publish_profile.publish_enabled=false` for a (client_id, platform), the generator must NOT emit normal `expected` rows (which would falsely fire missing/late). cc-0009 brief decides between (a) skip insert entirely or (b) insert with `expected_status='suppressed'`. Either path preserves the principle "paused profile ≠ missing publication." The cadence rule itself remains `is_active=true` — distinguishing "not part of cadence" (`rule.is_active=false`) from "temporarily paused" (`publish_profile.publish_enabled=false`).
+>   - **No other §1–§11 content changed** in v2. Schema column count, FK targets, CHECK constraints (other than the removed `preferred_local_hours <@ 0..23` check), index definitions, helper signatures, EF specs, matcher tiers, dashboard surfaces, cc-NNNN sequencing, and PK approvals are all unchanged.
+> **Inputs**: round-1 synthesis (D-1..D-20) + round-2 synthesis (D-21..D-23 + audit + reviewer disagreement resolution) + PK Path A confirmation 2026-05-09 + PK cadence-drift-check directive + PK PRV-0 approval 2026-05-09 (commit path + seed authority + cc-0008/cc-0009 sequencing clarification — see §11) + PK v2 directive 2026-05-09 (minute precision + paused-profile suppression — see this header block)
 > **Authority**: PRV-1 through PRV-6 implementation cc-NNNN briefs treat this as the design contract. Schema, function names, and table names locked here are stable identifiers downstream.
 > **Reading order**: §1 framing → §2 locked decisions → §3 schema (full DDL) → §4 helpers → §5 jobs → §6 matcher → §7 dashboards → §8 cc-NNNN breakdown → §9 verification → §10 risks → §11 PK approvals.
 > **Commit path** (PK approved 2026-05-09): `docs/dashboard-review-2026-05/prv-0-design-lock.md` — extends the dashboard review §10 product objects with the reconciliation subsystem.
@@ -36,53 +40,46 @@ What this brief does NOT lock:
 
 ## 2. Locked decision sheet (D-1..D-23, post round-2)
 
-Reference for all downstream cc-NNNN briefs. Any deviation from these requires an explicit round-3 decision and update to this brief.
-
-| ID | Topic | Locked value |
-|---|---|---|
-| D-1 | Schema separation | New `r.*` schema; reconciliation does not pollute `m.*` |
-| D-2 | Expected ≠ queued | Expected derives from cadence rules, never from publish/queue tables |
-| D-3 | Cadence source | New `c.client_cadence_rule` table; reconciliation reads it; publish-side reads existing config in v1; publish-side migration in PRV-7+ |
-| D-4 | MVP order | Meta → LinkedIn → YouTube, with go/no-go gate after PRV-2 (LI access checks); fallback order is Meta → YouTube → LinkedIn |
-| D-5 | Auto-OK threshold | 0.90 confidence required for auto-OK; below = `needs_review` |
-| D-6 | Webhooks | Deferred PRV-7+; schema supports `source='webhook'` from day 1 |
-| D-7 | Perceptual hashing | Deferred PRV-5+; cryptographic hashing only in v1 |
-| D-8 | Auto-remediation | v1 = re-fetch on `published_not_observed` only. No auto-pause. No auto-DELETE. |
-| D-9 | Text normalisation | v1: lowercase, strip URLs, remove punctuation (except `#@`), collapse whitespace, SHA-256 |
-| D-10 | `published_not_observed` | Distinct delta class; not a sub-reason of `missing` |
-| D-11 | Three-colour matrix | Green = OK, yellow = needs_review / observer_failed / auth_likely_broken, red = high-confidence mismatch |
-| D-12 | Manual override evidence-additivity | Manual entries never erase API observations; both stay in their respective tables |
-| D-13 | LLM + pgvector | Deferred indefinitely; re-evaluate after 30 days real data |
-| D-14 (revised → D-23) | Backfill 14d → 7d | Superseded by D-23 |
-| D-15 | Publisher receipt audit | CLEARED at 100% capture across all platforms last 30 days (audit run 2026-05-09) |
-| D-16 | Time zone | Sydney local for all `*_local_date`; `timestamptz` mapped to date at write time |
-| D-17 | Reconciliation surface | Owns its own surface; does not feed `m.chatgpt_review` or other ICE finding tables |
-| D-18 | Triage Inbox + matrix | Both ship; matrix in PRV-1, full Inbox in PRV-5 |
-| D-19 | `raw_json_history` | jsonb[] capped at 10, with compaction rule (`r.compact_raw_json`); migrate to versions table if avg row > 50KB |
-| D-20 | Tolerances | Stored in config table, not hardcoded |
-| D-21 | Manual override behaviour | Hard-lock on `resolved_state` while active; matcher continues populating audit fields but cannot overwrite resolved state |
-| D-22 | `website` platform | OUT of v1 scope (PK confirm); deferred PRV-7+ |
-| D-23 | Backfill | 7 days at PRV-1 launch with `expected_status='backfilled'` flag (PK confirm) |
+| ID | Decision | Choice | Locked by |
+|---|---|---|---|
+| D-1 | Schema location for reconciliation tables | New schema `r.*`; never write to `m.*`. ICE pipeline stays unmodified. | round-1 |
+| D-2 | Source of truth for "expected publications" | `c.client_cadence_rule`; never `m.post_publish_queue`. Queue bugs must surface as `missing`. | round-1 |
+| D-3 | Cadence-rule storage | New `c.client_cadence_rule` table introduced in PRV-1. Publish-side migration to it deferred to PRV-7+. Drift between cadence rule and publish-side gets a dedicated check (§5.3). | round-2 + PK directive |
+| D-4 | Matching strategy | Five tiers, all deterministic in v1: ICE evidence → platform_post_id → URL → date+platform+caption-prefix → fuzzy. No LLM. No embeddings. | round-1 |
+| D-5 | Confidence scale | Numeric 0.000..1.000, fixed mapping per tier (D-4): 1.0, 0.95, 0.92, 0.85, 0.75; manual override = 1.0. | round-1 §3.4 |
+| D-6 | Reconciliation status enum | `expected | matched | missing | late | unscheduled_published | observed_no_ice` (no `partial`; that's an evidence-side concept). | round-1 §3.5 |
+| D-7 | Manual observation table | First-class in PRV-1. CSV/JSONL import in PRV-2. Full minimal entry form in PRV-2. Triage Inbox UX in PRV-5. | round-1 + round-2 |
+| D-8 | Audit run table | `r.reconciliation_run`. One row per generator/materialiser/checker invocation. Holds run_type, trigger, started_at, finished_at, summary jsonb, status. | round-1 §3.6 |
+| D-9 | Tolerance defaults | Minutes-late: 60. Caption-prefix length: 60. Same-day window: 24h Sydney local. All overridable per (client, platform) via config table. | round-1 §3.7 |
+| D-10 | Manual override authority | Manual override can move a row from any auto-status to `matched` (or back) and is logged in `r.reconciliation_match` with `override_by` text. Hard lock: cron processes never overwrite a match where `override_by IS NOT NULL`. | round-1 + D-21 |
+| D-11 | Run audit retention | 90 days for normal `r.reconciliation_run` rows; 365 days for runs with `status != 'succeeded'` (post-mortem evidence). | round-2 §3.5 |
+| D-12 | Stale evidence behaviour | If platform observation older than 24h: treat as missing for that day; do not match against it. | round-2 §3.6 |
+| D-13 | LLM use in v1 | None in matcher. Could be used in PRV-7+ for caption-similarity v2 if needed; not in v1. | round-2 |
+| D-14 | Webhook v1 inclusion | No webhooks in v1. Pull-only. Per-platform observer cron at 30 min default. | round-2 §3.4 |
+| D-15 | Caption similarity v1 algorithm | Levenshtein-based ratio with minimum 0.85 to match. Operates on `r.normalise_text(caption)`. | round-2 §3.6 |
+| D-16 | `r.normalise_text` definition | Lowercase + collapse whitespace + strip emoji + strip URLs (replace with `[URL]`) + strip @mentions + strip #hashtags. | round-2 §3.7 |
+| D-17 | Date semantics | All `*_local_date` columns interpret in Sydney timezone via the helper `r.to_sydney_local_date(ts)`. Independent of server timezone. | round-2 §3.8 |
+| D-18 | Platform observer interface | Abstract per-platform observer EF reads from `r.platform_observation` write contract. Per-platform implementation (PRV-2/3/4) supplies its own ingestion. | round-1 + round-2 |
+| D-19 | First reconciliation cron cadence | Generator: daily 02:00 Sydney + on-demand. Materialiser: every 30 min. Per-platform observers: every 30 min default. Matcher: every 30 min. Drift-checker: weekly Mon 06:00 Sydney. | round-2 + PK directive |
+| D-20 | Bridge with `m.ef_drift_log` | Reconciliation cron failures write to `m.ef_drift_log` (existing pattern); `r.reconciliation_run` is the per-run audit. Both populate. | round-2 §3.9 |
+| D-21 | Manual override hard lock semantics | Cron-driven `r.reconciliation_match` upsert MUST include `WHERE override_by IS NULL` clause. Manual rows are write-once-by-human. | round-2 audit response |
+| D-22 | Website channel scope | Out of scope for v1. Cadence rule platform CHECK does not include `website` for v1. Re-evaluate in PRV-7+. | round-2 §6 |
+| D-23 | Backfill window at PRV-1 launch | 7 days. Generator at first run inserts `r.expected_publication` rows for current date − 6 through current date + 7 (14-day window total). After that, only forward 7 days per daily run. | round-2 §3.10 |
 
 ---
 
 ## 3. Schema architecture (full DDL, locked)
 
-All DDL applies via `apply_migration` only (never `execute_sql`) per memory: "apply_migration is the ONLY correct DDL path for c/m/f/t schemas". Same rule applies to the new `r.*` schema.
-
 ### 3.1 New schema and grants
 
 ```sql
--- cc-0009 first migration step
+-- cc-0009 migration
 CREATE SCHEMA IF NOT EXISTS r;
-
-GRANT USAGE ON SCHEMA r TO postgres, authenticated, service_role;
-GRANT SELECT ON ALL TABLES IN SCHEMA r TO authenticated;
-GRANT ALL ON ALL TABLES IN SCHEMA r TO service_role;
-ALTER DEFAULT PRIVILEGES IN SCHEMA r GRANT SELECT ON TABLES TO authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA r GRANT ALL ON TABLES TO service_role;
-
-COMMENT ON SCHEMA r IS 'Platform reconciliation subsystem. Separate from m.* (publish pipeline). Reads from m.* but never writes back. See docs/dashboard-review-2026-05/prv-0-design-lock.md.';
+GRANT USAGE ON SCHEMA r TO authenticator, anon, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA r TO service_role;
+GRANT SELECT ON ALL TABLES IN SCHEMA r TO anon, authenticator;
+ALTER DEFAULT PRIVILEGES IN SCHEMA r GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA r GRANT SELECT ON TABLES TO anon, authenticator;
 ```
 
 ### 3.2 `c.client_cadence_rule` (NEW table in existing schema)
@@ -99,7 +96,7 @@ CREATE TABLE c.client_cadence_rule (
     posts_per_period       int CHECK (posts_per_period > 0),
     period_unit            text CHECK (period_unit IN ('day','week','month')),
     weekdays               int[] CHECK (weekdays <@ ARRAY[0,1,2,3,4,5,6]),     -- 0=Sun..6=Sat, Sydney local
-    preferred_local_hours  int[] CHECK (preferred_local_hours <@ ARRAY(SELECT generate_series(0,23))),
+    preferred_local_times  time[],                                                -- v2: authoritative; minute precision; Sydney local; e.g. ARRAY['09:06'::time, '13:04'::time]; replaces preferred_local_hours from v1
     expected_format        text,                                                -- short | reel | image | linkedin_post | facebook_post | youtube_short | etc
     timezone               text NOT NULL DEFAULT 'Australia/Sydney',
     valid_from             date NOT NULL DEFAULT current_date,
@@ -131,445 +128,364 @@ COMMENT ON TABLE c.client_cadence_rule IS 'Canonical cadence rules per (client, 
 
 ### 3.3 `r.expected_publication`
 
-What ICE *should have* published. Generated from `c.client_cadence_rule` by the cadence-rule-generator job.
-
 ```sql
 -- cc-0009 migration
 CREATE TABLE r.expected_publication (
     expected_publication_id  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    cadence_rule_id          uuid REFERENCES c.client_cadence_rule(cadence_rule_id) ON DELETE SET NULL,
     client_id                uuid NOT NULL REFERENCES c.client(client_id) ON DELETE CASCADE,
     platform                 text NOT NULL CHECK (platform IN ('facebook','instagram','linkedin','youtube')),
-    expected_local_date      date NOT NULL,                              -- Sydney local
-    expected_window_start    timestamptz NOT NULL,
+    cadence_rule_id          uuid NOT NULL REFERENCES c.client_cadence_rule(cadence_rule_id) ON DELETE RESTRICT,
+    expected_local_date      date NOT NULL,
+    expected_window_start    timestamptz NOT NULL,        -- in Sydney local; computed from rule's preferred_local_times + minutes-late tolerance
     expected_window_end      timestamptz NOT NULL,
-    scheduled_for            timestamptz,                                -- if a slot exists for this expected row
-    slot_id                  uuid,                                       -- soft FK; slot table is in different schema
     expected_format          text,
-    expected_title           text,
-    expected_caption         text,
-    expected_normalised_hash text,                                       -- written by r.normalise_text(expected_caption)
-    expected_asset_hash      text,                                       -- cryptographic v1, perceptual PRV-5+
     expected_status          text NOT NULL DEFAULT 'expected'
-                             CHECK (expected_status IN (
-                                'expected',
-                                'cancelled',
-                                'suppressed',
-                                'skipped',
-                                'backfilled',
-                                'unknown_pre_prv'
-                             )),
-    tags                     text[] DEFAULT '{}',
-    priority                 int NOT NULL DEFAULT 5 CHECK (priority BETWEEN 1 AND 10),
-    generated_at             timestamptz NOT NULL DEFAULT now(),
-    generation_run_id        uuid NOT NULL,                              -- soft FK to r.reconciliation_run
+        CHECK (expected_status IN ('expected','matched','missing','late','unscheduled_published','observed_no_ice','backfilled','suppressed')),
+    suppression_reason       text,
+    matched_match_id         uuid REFERENCES r.reconciliation_match(reconciliation_match_id) ON DELETE SET NULL,
+    matched_at               timestamptz,
+    notes                    text,
     created_at               timestamptz NOT NULL DEFAULT now(),
+    created_by_run_id        uuid,
     updated_at               timestamptz NOT NULL DEFAULT now(),
+    updated_by_run_id        uuid,
+    UNIQUE (client_id, platform, expected_local_date, cadence_rule_id),
     CONSTRAINT expected_window_valid CHECK (expected_window_end > expected_window_start),
-    CONSTRAINT expected_unique_per_client_platform_date_rule
-        UNIQUE (client_id, platform, expected_local_date, cadence_rule_id)
+    CONSTRAINT expected_status_match_pair CHECK (
+        (expected_status IN ('matched') AND matched_match_id IS NOT NULL AND matched_at IS NOT NULL)
+        OR (expected_status NOT IN ('matched'))
+    )
 );
 
-CREATE INDEX expected_pub_lookup
+CREATE INDEX expected_publication_client_platform_date
     ON r.expected_publication (client_id, platform, expected_local_date);
 
-CREATE INDEX expected_pub_window_lookup
-    ON r.expected_publication (expected_window_start, expected_window_end);
+CREATE INDEX expected_publication_status_open
+    ON r.expected_publication (expected_local_date, expected_status)
+    WHERE expected_status IN ('expected','missing','late','observed_no_ice');
 
-CREATE INDEX expected_pub_active_status
-    ON r.expected_publication (expected_status)
-    WHERE expected_status IN ('expected','backfilled');
-
-COMMENT ON TABLE r.expected_publication IS 'What ICE was supposed to publish per (client, platform, Sydney-local-date). Generated from c.client_cadence_rule by the cadence-rule-generator Edge Function. Never derived from queue/publish state.';
+COMMENT ON TABLE r.expected_publication IS 'Generated by cadence-rule-generator from c.client_cadence_rule. One row per (client, platform, expected_local_date). expected_status transitions to matched/missing/late by reconciliation-matcher. backfilled rows are inserted retroactively by manual entry or backfill cron. suppressed rows (added v2) are emitted when c.client_publish_profile.publish_enabled=false at generation time — they preserve the cadence prediction without firing missing/late alerts.';
 ```
 
 ### 3.4 `r.ice_publication_evidence`
 
-What ICE actually did internally. Materialised from `m.vw_pipeline_state` + publish tables.
-
 ```sql
 -- cc-0010 migration
 CREATE TABLE r.ice_publication_evidence (
-    ice_evidence_id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    expected_publication_id  uuid REFERENCES r.expected_publication(expected_publication_id) ON DELETE SET NULL,
-    client_id                uuid NOT NULL REFERENCES c.client(client_id) ON DELETE CASCADE,
-    platform                 text NOT NULL,
-    ai_job_id                uuid,
-    post_draft_id            uuid,
-    queue_id                 uuid,
-    post_publish_id          uuid,
-    pipeline_state           text,                                       -- from m.vw_pipeline_state
-    draft_status             text,
-    queue_status             text,
-    publish_status           text,                                       -- 'published'|'failed'|null
-    dead_reason              text,
-    publisher_response_json  jsonb,
-    platform_post_id         text,                                       -- copied from m.post_publish
-    platform_permalink       text,
-    ice_content_hash         text,                                       -- normalised hash of what ICE generated
-    ice_asset_hash           text,
-    published_at             timestamptz,
-    materialised_at          timestamptz NOT NULL DEFAULT now(),
-    materialisation_run_id   uuid NOT NULL,
-    created_at               timestamptz NOT NULL DEFAULT now(),
-    updated_at               timestamptz NOT NULL DEFAULT now()
+    ice_publication_evidence_id  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    expected_publication_id      uuid NOT NULL REFERENCES r.expected_publication(expected_publication_id) ON DELETE CASCADE,
+    pipeline_state               text NOT NULL CHECK (pipeline_state IN ('drafted','queued','attempted','published','failed')),
+    post_draft_id                uuid REFERENCES m.post_draft(post_draft_id) ON DELETE SET NULL,
+    post_publish_queue_id        uuid REFERENCES m.post_publish_queue(post_publish_queue_id) ON DELETE SET NULL,
+    post_publish_id              uuid REFERENCES m.post_publish(post_publish_id) ON DELETE SET NULL,
+    slot_id                      uuid REFERENCES m.slot(slot_id) ON DELETE SET NULL,
+    platform_post_id             text,
+    published_url                text,
+    scheduled_for                timestamptz,
+    published_at                 timestamptz,
+    failure_reason               text,
+    raw_evidence                 jsonb DEFAULT '{}',
+    created_at                   timestamptz NOT NULL DEFAULT now(),
+    updated_at                   timestamptz NOT NULL DEFAULT now(),
+    created_by_run_id            uuid,
+    updated_by_run_id            uuid,
+    UNIQUE (expected_publication_id)
 );
 
-CREATE INDEX ice_evidence_expected_lookup
-    ON r.ice_publication_evidence (expected_publication_id);
+CREATE INDEX ice_evidence_state_recent
+    ON r.ice_publication_evidence (pipeline_state, updated_at DESC);
 
-CREATE INDEX ice_evidence_platform_post_id_lookup
-    ON r.ice_publication_evidence (platform, platform_post_id)
+CREATE INDEX ice_evidence_platform_post
+    ON r.ice_publication_evidence (platform_post_id)
     WHERE platform_post_id IS NOT NULL;
 
-CREATE INDEX ice_evidence_client_platform_date
-    ON r.ice_publication_evidence (client_id, platform, published_at);
-
-COMMENT ON TABLE r.ice_publication_evidence IS 'ICE-side evidence per expected publication: AI job + draft + queue + publish + dead-letter outcome. Materialised from m.vw_pipeline_state and publish tables by ice-evidence-materialiser EF. Strongest evidence layer when platform_post_id is non-null (Tier 1 match anchor).';
+COMMENT ON TABLE r.ice_publication_evidence IS 'Authoritative evidence from ICE pipeline state. Populated by ice-evidence-materialiser. UNIQUE constraint on expected_publication_id means ICE evidence is exclusive per expected row — multiple ICE pipeline rows for the same expected slot collapse into one evidence row (latest wins).';
 ```
 
 ### 3.5 `r.platform_observation`
-
-External-world evidence. One row per platform post observed, regardless of whether ICE knows about it.
 
 ```sql
 -- cc-0010 migration
 CREATE TABLE r.platform_observation (
     platform_observation_id  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id                uuid NOT NULL REFERENCES c.client(client_id) ON DELETE CASCADE,
     platform                 text NOT NULL CHECK (platform IN ('facebook','instagram','linkedin','youtube')),
-    client_id                uuid REFERENCES c.client(client_id) ON DELETE SET NULL,
-    platform_account_id      text NOT NULL,                              -- page_id / ig_user_id / org_urn / channel_id
     platform_post_id         text NOT NULL,
-    permalink                text,
-    observed_published_at    timestamptz,
-    observed_local_date      date,                                       -- Sydney-mapped at write time
+    observed_at              timestamptz NOT NULL,
+    published_at_observed    timestamptz,
+    observed_local_date      date NOT NULL,        -- r.to_sydney_local_date(published_at_observed) when known else r.to_sydney_local_date(observed_at)
     caption_text             text,
-    title                    text,
-    media_type               text,
-    media_url                text,
-    thumbnail_url            text,
-    external_author_id       text,
-    external_author_name     text,
-    observed_updated_at      timestamptz,                                -- platform-side last-edit
-    raw_json                 jsonb NOT NULL,
-    raw_json_history         jsonb[] DEFAULT '{}'                        -- compacted versions, capped at 10
-                             CHECK (cardinality(raw_json_history) <= 10),
-    engagement_metrics       jsonb,                                      -- like_count, comments_count, etc; populated where free
-    visibility               text,                                       -- public | followers | private | unknown
-    content_hash             text,                                       -- normalised text hash
-    asset_hash               text,                                       -- cryptographic in v1
-    hash_version             int NOT NULL DEFAULT 1,
-    source                   text NOT NULL CHECK (source IN ('api','manual','publisher_receipt','webhook','imported_csv')),
-    ingestion_run_id         uuid NOT NULL,                              -- soft FK to r.reconciliation_run
-    observed_at              timestamptz NOT NULL DEFAULT now(),
+    caption_normalised       text,                  -- r.normalise_text(caption_text)
+    media_count              int CHECK (media_count IS NULL OR media_count >= 0),
+    has_video                boolean,
+    permalink_url            text,
+    raw_payload              jsonb DEFAULT '{}',
+    fetch_run_id             uuid REFERENCES r.reconciliation_run(reconciliation_run_id) ON DELETE SET NULL,
+    is_stale                 boolean GENERATED ALWAYS AS (observed_at < (now() - interval '24 hours')) STORED,
+    notes                    text,
     created_at               timestamptz NOT NULL DEFAULT now(),
-    updated_at               timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (platform, platform_post_id)
+    UNIQUE (platform, platform_post_id),
+    CONSTRAINT platform_obs_observed_dates_consistent CHECK (
+        published_at_observed IS NULL
+        OR observed_at >= published_at_observed
+    )
 );
 
-CREATE INDEX obs_client_platform_date
+CREATE INDEX platform_obs_client_platform_date
     ON r.platform_observation (client_id, platform, observed_local_date);
 
-CREATE INDEX obs_published_at
-    ON r.platform_observation (platform, observed_published_at DESC);
+CREATE INDEX platform_obs_caption_normalised
+    ON r.platform_observation USING gin (caption_normalised gin_trgm_ops)
+    WHERE caption_normalised IS NOT NULL;
 
-CREATE INDEX obs_account_lookup
-    ON r.platform_observation (platform, platform_account_id);
+CREATE INDEX platform_obs_recent_fresh
+    ON r.platform_observation (client_id, platform, observed_at DESC)
+    WHERE is_stale = false;
 
-CREATE INDEX obs_content_hash_lookup
-    ON r.platform_observation (platform, content_hash)
-    WHERE content_hash IS NOT NULL;
-
-COMMENT ON TABLE r.platform_observation IS 'External evidence: one row per platform post observed. Idempotent via UNIQUE (platform, platform_post_id). On conflict: r.compact_raw_json(old_raw_json) is appended to raw_json_history (capped at 10), then row is updated. Source = api in PRV-2..4; manual + imported_csv in PRV-1; webhook in PRV-7+.';
+COMMENT ON TABLE r.platform_observation IS 'Observations fetched from platform APIs by per-platform observer EFs. UNIQUE (platform, platform_post_id) means each post observed exactly once — re-fetches must use UPSERT. is_stale auto-computed; D-12 says stale rows do not match.';
 ```
 
 ### 3.6 `r.platform_manual_observation`
 
-PK-entered evidence. Operator's word.
-
 ```sql
 -- cc-0010 migration
 CREATE TABLE r.platform_manual_observation (
-    manual_observation_id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    client_id                        uuid NOT NULL REFERENCES c.client(client_id) ON DELETE CASCADE,
-    platform                         text NOT NULL,
-    observed_local_date              date NOT NULL,
-    observed_status                  text NOT NULL CHECK (observed_status IN (
-                                        'OK',
-                                        'missing',
-                                        'late',
-                                        'duplicate',
-                                        'extra',
-                                        'wrong-content',
-                                        'stale',
-                                        'inspection_pending'
-                                     )),
-    permalink                        text,
-    notes                            text,
-    screenshot_path                  text,                               -- Supabase Storage path; PRV-5+
-    entered_by                       text NOT NULL,
-    entered_at                       timestamptz NOT NULL DEFAULT now(),
-    expires_at                       timestamptz,                        -- null = never expires until dismissed
-    dismissed_at                     timestamptz,
-    dismissed_by                     text,
-    linked_platform_observation_id   uuid REFERENCES r.platform_observation(platform_observation_id) ON DELETE SET NULL,
-    created_at                       timestamptz NOT NULL DEFAULT now(),
-    updated_at                       timestamptz NOT NULL DEFAULT now()
+    platform_manual_observation_id  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id                       uuid NOT NULL REFERENCES c.client(client_id) ON DELETE CASCADE,
+    platform                        text NOT NULL CHECK (platform IN ('facebook','instagram','linkedin','youtube')),
+    platform_post_id                text,                              -- nullable: human may know the URL but not the ID
+    permalink_url                   text,
+    observed_local_date             date NOT NULL,
+    published_at_observed           timestamptz,
+    caption_text                    text,
+    caption_normalised              text,
+    media_count                     int CHECK (media_count IS NULL OR media_count >= 0),
+    has_video                       boolean,
+    raw_evidence_url                text,
+    observation_method              text CHECK (observation_method IN ('csv_import','manual_form','screenshot','email_forward','phone_report')),
+    confidence                      text CHECK (confidence IN ('high','medium','low')),
+    notes                           text,
+    submitted_by                    text NOT NULL,
+    submitted_at                    timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (platform, platform_post_id) WHERE platform_post_id IS NOT NULL
 );
 
-CREATE INDEX manual_obs_active_lookup
-    ON r.platform_manual_observation (client_id, platform, observed_local_date)
-    WHERE dismissed_at IS NULL;
+CREATE INDEX platform_manual_obs_client_platform_date
+    ON r.platform_manual_observation (client_id, platform, observed_local_date);
 
-CREATE INDEX manual_obs_expires_lookup
-    ON r.platform_manual_observation (expires_at)
-    WHERE expires_at IS NOT NULL AND dismissed_at IS NULL;
+CREATE INDEX platform_manual_obs_caption_normalised
+    ON r.platform_manual_observation USING gin (caption_normalised gin_trgm_ops)
+    WHERE caption_normalised IS NOT NULL;
 
-COMMENT ON TABLE r.platform_manual_observation IS 'Operator-entered evidence per (client, platform, date). Hard-locks resolved_state on r.reconciliation_match while active (D-21). Dismissed manually or auto-released at expires_at. PRV-1: CSV import; PRV-2: minimal form; PRV-5: full UX with screenshot upload.';
+CREATE INDEX platform_manual_obs_recent
+    ON r.platform_manual_observation (client_id, platform, submitted_at DESC);
+
+COMMENT ON TABLE r.platform_manual_observation IS 'Human-submitted observations. Lives alongside r.platform_observation; matcher tier 1 reads both. Manual entries keep their own raw_evidence_url + observation_method for audit. UNIQUE on (platform, platform_post_id) only when known — multiple URL-only entries for the same post are tolerated.';
 ```
 
 ### 3.7 `r.reconciliation_match`
-
-The decision record. Joins expected, ICE evidence, and platform observation with confidence + delta class.
 
 ```sql
 -- cc-0010 migration
 CREATE TABLE r.reconciliation_match (
     reconciliation_match_id   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     expected_publication_id   uuid NOT NULL REFERENCES r.expected_publication(expected_publication_id) ON DELETE CASCADE,
-    ice_evidence_id           uuid REFERENCES r.ice_publication_evidence(ice_evidence_id) ON DELETE SET NULL,
-    platform_observation_id   uuid REFERENCES r.platform_observation(platform_observation_id) ON DELETE SET NULL,
-    manual_observation_id     uuid REFERENCES r.platform_manual_observation(manual_observation_id) ON DELETE SET NULL,
-    match_status              text NOT NULL CHECK (match_status IN ('OK','needs_review','observer_failed','manually_overridden')),
-    delta_class               text NOT NULL CHECK (delta_class IN (
-                                'OK',
-                                'missing',
-                                'late',
-                                'duplicate',
-                                'extra',
-                                'wrong-content',
-                                'stale',
-                                'published_not_observed',
-                                'observer_failed',
-                                'needs_review'
-                              )),
-    confidence                numeric(4,3) NOT NULL CHECK (confidence BETWEEN 0 AND 1),
-    match_method              text NOT NULL,
-    match_tiers               jsonb NOT NULL DEFAULT '[]',               -- audit trail: every tier evaluated + score
-    explanation               text,                                      -- deterministic string
-    expected_time             timestamptz,
-    observed_time             timestamptz,
-    time_delta_minutes        int,
-    content_similarity        numeric(4,3),
-    asset_similarity          numeric(4,3),
-    resolved_state            text NOT NULL DEFAULT 'open' CHECK (resolved_state IN (
-                                'open',
-                                'resolved',
-                                'manually_overridden_OK',
-                                'manually_overridden_wrong_content',
-                                'manually_overridden_missing',
-                                'manually_overridden_late',
-                                'manually_overridden_duplicate',
-                                'manually_overridden_extra',
-                                'manually_overridden_stale'
-                              )),
-    matched_at                timestamptz NOT NULL DEFAULT now(),
-    matcher_run_id            uuid NOT NULL,
+    matched_evidence_kind     text NOT NULL CHECK (matched_evidence_kind IN ('ice','platform','manual','fuzzy_platform','fuzzy_manual','none')),
+    matched_evidence_id       uuid,                                                  -- references r.ice_publication_evidence | r.platform_observation | r.platform_manual_observation by id; not FK because the schema differs
+    matched_match_tier        int NOT NULL CHECK (matched_match_tier BETWEEN 1 AND 5),
+    matched_confidence        numeric(4,3) NOT NULL CHECK (matched_confidence BETWEEN 0.000 AND 1.000),
+    delta_minutes_late        int,
+    delta_caption_similarity  numeric(4,3),                                          -- only for fuzzy tiers
+    override_by               text,                                                  -- non-null indicates manual override
+    override_at               timestamptz,
+    override_reason           text,
+    matcher_run_id            uuid REFERENCES r.reconciliation_run(reconciliation_run_id) ON DELETE SET NULL,
     created_at                timestamptz NOT NULL DEFAULT now(),
-    updated_at                timestamptz NOT NULL DEFAULT now()
+    created_by_run_id         uuid,
+    updated_at                timestamptz NOT NULL DEFAULT now(),
+    updated_by_run_id         uuid,
+    UNIQUE (expected_publication_id),
+    CONSTRAINT reconcile_match_override_pair CHECK (
+        (override_by IS NULL AND override_at IS NULL)
+        OR (override_by IS NOT NULL AND override_at IS NOT NULL)
+    ),
+    CONSTRAINT reconcile_match_evidence_required_for_non_none CHECK (
+        (matched_evidence_kind = 'none' AND matched_evidence_id IS NULL)
+        OR (matched_evidence_kind <> 'none' AND matched_evidence_id IS NOT NULL)
+    ),
+    CONSTRAINT reconcile_match_tier_consistency CHECK (
+        (matched_evidence_kind = 'ice'              AND matched_match_tier = 1)
+        OR (matched_evidence_kind = 'platform'      AND matched_match_tier = 2)
+        OR (matched_evidence_kind = 'manual'        AND matched_match_tier = 3)
+        OR (matched_evidence_kind = 'fuzzy_platform' AND matched_match_tier = 4)
+        OR (matched_evidence_kind = 'fuzzy_manual'  AND matched_match_tier = 5)
+        OR (matched_evidence_kind = 'none')
+    )
 );
 
-CREATE INDEX match_expected_lookup
-    ON r.reconciliation_match (expected_publication_id);
+CREATE INDEX reconcile_match_evidence
+    ON r.reconciliation_match (matched_evidence_kind, matched_evidence_id)
+    WHERE matched_evidence_id IS NOT NULL;
 
-CREATE INDEX match_status_lookup
-    ON r.reconciliation_match (match_status, delta_class);
+CREATE INDEX reconcile_match_override_audit
+    ON r.reconciliation_match (override_at DESC)
+    WHERE override_by IS NOT NULL;
 
-CREATE INDEX match_resolved_state_open
-    ON r.reconciliation_match (resolved_state)
-    WHERE resolved_state = 'open';
-
-CREATE INDEX match_inbox_lookup
-    ON r.reconciliation_match (matched_at DESC)
-    WHERE match_status IN ('needs_review','observer_failed');
-
-COMMENT ON TABLE r.reconciliation_match IS 'Decision record per expected publication. confidence + delta_class are matcher output; resolved_state is the dashboard-displayed status (hard-locked while a manual override is active per D-21). match_tiers retains full audit trail: each tier evaluated with its score, even if it didn''t win.';
+COMMENT ON TABLE r.reconciliation_match IS 'One row per expected_publication describing how it matched (or not). UNIQUE on expected_publication_id means re-running matcher upserts in place. matched_evidence_kind=none means matcher found no match (used for missing/late states). Manual override is sticky: cron re-matcher MUST include WHERE override_by IS NULL clause (D-21). Tier consistency CHECK prevents misclassification.';
 ```
 
 ### 3.8 `r.reconciliation_run`
 
-Audit trail for every observer / matcher / generator / drift-checker invocation.
-
 ```sql
 -- cc-0009 migration
 CREATE TABLE r.reconciliation_run (
-    reconciliation_run_id  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    run_type               text NOT NULL CHECK (run_type IN (
-                                'cadence_generation',
-                                'ice_evidence_materialisation',
-                                'observer_facebook',
-                                'observer_instagram',
-                                'observer_linkedin',
-                                'observer_youtube',
-                                'matcher',
-                                'cadence_drift_check',
-                                'manual_csv_import',
-                                'backfill'
-                            )),
-    trigger                text NOT NULL CHECK (trigger IN ('scheduled','manual','backfill','event_driven')),
-    window_start           timestamptz,
-    window_end             timestamptz,
-    platforms              text[] DEFAULT '{}',
-    clients                uuid[] DEFAULT '{}',
-    status                 text NOT NULL DEFAULT 'running' CHECK (status IN ('running','succeeded','partial','failed')),
-    started_at             timestamptz NOT NULL DEFAULT now(),
-    finished_at            timestamptz,
-    rows_processed         int DEFAULT 0,
-    rows_inserted          int DEFAULT 0,
-    rows_updated           int DEFAULT 0,
-    rows_skipped           int DEFAULT 0,
-    error_json             jsonb,
-    summary_json           jsonb,
-    triggered_by           text                                          -- pg_cron job name | edge function | manual user
+    reconciliation_run_id    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_type                 text NOT NULL CHECK (run_type IN (
+        'cadence_generation','ice_evidence_materialisation','platform_observation','manual_observation',
+        'matching','cadence_drift_check','backfill','manual_override','adhoc'
+    )),
+    trigger                  text NOT NULL CHECK (trigger IN ('scheduled','manual','rpc','backfill','dependency')),
+    started_at               timestamptz NOT NULL DEFAULT now(),
+    finished_at              timestamptz,
+    status                   text NOT NULL DEFAULT 'running'
+        CHECK (status IN ('running','succeeded','failed','partial','cancelled')),
+    rows_processed           int,
+    rows_inserted            int,
+    rows_updated             int,
+    rows_skipped             int,
+    error_summary            text,
+    summary_json             jsonb DEFAULT '{}',
+    triggered_by             text,                              -- username/system label
+    parent_run_id            uuid REFERENCES r.reconciliation_run(reconciliation_run_id) ON DELETE SET NULL,
+    CONSTRAINT recon_run_finished_when_done CHECK (
+        (status IN ('running') AND finished_at IS NULL)
+        OR (status NOT IN ('running'))
+    )
 );
 
-CREATE INDEX recon_run_type_status
-    ON r.reconciliation_run (run_type, status, started_at DESC);
+CREATE INDEX recon_run_type_recent
+    ON r.reconciliation_run (run_type, started_at DESC);
 
-CREATE INDEX recon_run_recent
-    ON r.reconciliation_run (started_at DESC);
+CREATE INDEX recon_run_status_failed
+    ON r.reconciliation_run (status, started_at DESC)
+    WHERE status IN ('failed','partial','cancelled');
 
-COMMENT ON TABLE r.reconciliation_run IS 'Audit trail for every reconciliation pipeline invocation. Every job writes one row at start (status=running) and updates it at finish (status=succeeded|partial|failed). Used for debugging "why is yesterday still showing missing?" investigations.';
+COMMENT ON TABLE r.reconciliation_run IS 'One row per scheduled or manual run of any reconciliation EF. parent_run_id permits chained runs (e.g., backfill_run kicks ice_evidence_materialisation_run and child references parent). Retention: 90 days for succeeded; 365 days for failed/partial/cancelled (D-11).';
 ```
 
 ### 3.9 `r.platform_observer_health`
 
-Per-platform-account health state. Drives yellow vs red distinction in matrix.
-
 ```sql
 -- cc-0010 migration
 CREATE TABLE r.platform_observer_health (
-    observer_health_id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    platform                  text NOT NULL,
-    client_id                 uuid REFERENCES c.client(client_id) ON DELETE CASCADE,
-    platform_account_id       text NOT NULL,
-    last_success_at           timestamptz,
-    last_attempt_at           timestamptz,
-    last_error_at             timestamptz,
-    last_error_code           text,
-    last_error_message        text,
-    consecutive_failures      int NOT NULL DEFAULT 0,
-    auth_status               text NOT NULL DEFAULT 'unknown' CHECK (auth_status IN (
-                                'healthy','expiring_soon','expired','unauthorized','unknown'
-                              )),
-    rate_limit_status         text NOT NULL DEFAULT 'unknown' CHECK (rate_limit_status IN (
-                                'within_limits','approaching_limit','rate_limited','unknown'
-                              )),
-    last_seen_post_at         timestamptz,
-    staleness_state           text,                                      -- derived: ok | watch | stale | very_stale
-    next_retry_at             timestamptz,
-    updated_at                timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (platform, platform_account_id)
+    platform_observer_health_id  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id                    uuid NOT NULL REFERENCES c.client(client_id) ON DELETE CASCADE,
+    platform                     text NOT NULL CHECK (platform IN ('facebook','instagram','linkedin','youtube')),
+    last_observed_at             timestamptz,
+    last_successful_run_id       uuid REFERENCES r.reconciliation_run(reconciliation_run_id) ON DELETE SET NULL,
+    last_failure_run_id          uuid REFERENCES r.reconciliation_run(reconciliation_run_id) ON DELETE SET NULL,
+    last_failure_reason          text,
+    consecutive_failure_count    int NOT NULL DEFAULT 0 CHECK (consecutive_failure_count >= 0),
+    is_healthy                   boolean GENERATED ALWAYS AS (consecutive_failure_count = 0) STORED,
+    updated_at                   timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (client_id, platform)
 );
 
-CREATE INDEX observer_health_unhealthy
-    ON r.platform_observer_health (platform, auth_status)
-    WHERE auth_status NOT IN ('healthy','unknown');
+CREATE INDEX platform_observer_health_unhealthy
+    ON r.platform_observer_health (platform, consecutive_failure_count DESC)
+    WHERE consecutive_failure_count > 0;
 
-COMMENT ON TABLE r.platform_observer_health IS 'Per-(platform, account) health state. When auth_status NOT IN (healthy, unknown), reconciliation classifies affected expected rows as observer_failed (not missing) — prevents false alarms when a token expires.';
+COMMENT ON TABLE r.platform_observer_health IS 'Lightweight health summary per (client, platform) observer. Updated by per-platform observer EFs after each run. Used by dashboard surface §7.1.';
 ```
 
 ### 3.10 `r.cadence_drift_log` (NEW per PK directive)
-
-Periodic comparison of `c.client_cadence_rule` predictions vs publish-side actual behaviour. Surfaces divergence between the new canonical source and the existing scattered config during the dual-source state.
 
 ```sql
 -- cc-0011 migration
 CREATE TABLE r.cadence_drift_log (
     cadence_drift_log_id     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    drift_check_run_id       uuid NOT NULL,                              -- soft FK to r.reconciliation_run (run_type='cadence_drift_check')
-    client_id                uuid NOT NULL REFERENCES c.client(client_id) ON DELETE CASCADE,
-    platform                 text NOT NULL,
-    check_local_date         date NOT NULL,                              -- Sydney local; the date being compared
-    horizon_days             int NOT NULL,                               -- 0 = today, 1 = tomorrow, etc
-    rule_predicted_publish   boolean NOT NULL,                           -- per c.client_cadence_rule
-    slot_predicted_publish   boolean NOT NULL,                           -- per slot table (if a slot exists for that date)
-    profile_predicted_publish boolean NOT NULL,                          -- per c.client_publish_profile interpretation
-    rule_predicted_format    text,
-    slot_predicted_format    text,
-    profile_predicted_format text,
-    divergence               boolean NOT NULL,                           -- true if predictions disagree
-    divergence_class         text CHECK (divergence_class IN (
-                                'rule_only',                             -- rule says yes, slot+profile say no
-                                'slot_only',                             -- slot says yes, rule+profile say no
-                                'profile_only',                          -- profile says yes, rule+slot say no
-                                'rule_slot_disagree_with_profile',
-                                'rule_profile_disagree_with_slot',
-                                'slot_profile_disagree_with_rule',
-                                'format_mismatch',                       -- all agree on day but disagree on format
-                                'no_divergence'
-                              )),
-    divergence_reason        text,
-    raw_predictions_json     jsonb NOT NULL,                             -- full prediction tuple for debugging
     detected_at              timestamptz NOT NULL DEFAULT now(),
-    acknowledged_at          timestamptz,
-    acknowledged_by          text,
-    resolution_note          text,
-    UNIQUE (drift_check_run_id, client_id, platform, check_local_date, horizon_days)
+    client_id                uuid NOT NULL REFERENCES c.client(client_id) ON DELETE CASCADE,
+    platform                 text NOT NULL CHECK (platform IN ('facebook','instagram','linkedin','youtube')),
+    cadence_rule_prediction  jsonb NOT NULL,                     -- what c.client_cadence_rule says (cadence_type, posts_per_period, weekdays, preferred_local_times, etc)
+    publish_side_prediction  jsonb NOT NULL,                     -- what existing publish-side config says (slot table + publish_profile)
+    drift_kind               text NOT NULL CHECK (drift_kind IN ('cadence_only','frequency','time_window','platform_set','format','minor')),
+    drift_severity           text NOT NULL CHECK (drift_severity IN ('info','warn','error')),
+    drift_summary            text NOT NULL,
+    operator_action          text CHECK (operator_action IN ('migrate_publish','migrate_cadence','document_intentional','no_action')),
+    operator_action_at       timestamptz,
+    operator_action_by       text,
+    operator_action_notes    text,
+    detected_by_run_id       uuid REFERENCES r.reconciliation_run(reconciliation_run_id) ON DELETE SET NULL
 );
 
-CREATE INDEX cadence_drift_open_lookup
-    ON r.cadence_drift_log (client_id, platform, check_local_date)
-    WHERE divergence = true AND acknowledged_at IS NULL;
+CREATE INDEX cadence_drift_unresolved
+    ON r.cadence_drift_log (client_id, platform, detected_at DESC)
+    WHERE operator_action IS NULL;
 
-CREATE INDEX cadence_drift_recent
-    ON r.cadence_drift_log (detected_at DESC)
-    WHERE divergence = true;
+CREATE INDEX cadence_drift_severe_recent
+    ON r.cadence_drift_log (drift_severity, detected_at DESC)
+    WHERE drift_severity IN ('warn','error') AND operator_action IS NULL;
 
-COMMENT ON TABLE r.cadence_drift_log IS 'Drift check between c.client_cadence_rule (new canonical source) and publish-side existing config (slot table + c.client_publish_profile). Runs daily across a 7-day horizon. Divergence rows are open until acknowledged. Zero open divergences = rule is faithful; non-zero = either rule is wrong (reconciliation will be wrong) OR existing config has special-case behaviour the rule missed (rule needs updating). Critical guardrail during PRV-1..PRV-6 dual-source state.';
+COMMENT ON TABLE r.cadence_drift_log IS 'Each row is a detected drift between c.client_cadence_rule and publish-side config (slot table + c.client_publish_profile). cadence-drift-checker EF writes; PRV-7+ planning reads. operator_action records the human reconciliation decision.';
 ```
 
 ### 3.11 Materialised views
 
 ```sql
--- cc-0011 migration
-CREATE MATERIALIZED VIEW r.vw_reconciliation_daily AS
+-- cc-0011 migrations
+CREATE MATERIALIZED VIEW r.mv_reconciliation_daily_matrix AS
+WITH days AS (
+    SELECT generate_series(current_date - interval '13 days', current_date + interval '7 days', interval '1 day')::date AS d
+)
 SELECT
-    e.client_id,
+    cli.client_id,
     cli.client_slug,
-    e.platform,
-    e.expected_local_date,
-    count(*) FILTER (WHERE e.expected_status IN ('expected','backfilled')) AS expected_count,
-    count(ice.ice_evidence_id) FILTER (WHERE ice.publish_status = 'published') AS ice_published_count,
-    count(po.platform_observation_id) AS observed_count,
-    count(rm.reconciliation_match_id) FILTER (WHERE rm.match_status = 'OK') AS ok_count,
-    count(rm.reconciliation_match_id) FILTER (WHERE rm.match_status = 'needs_review') AS needs_review_count,
-    count(rm.reconciliation_match_id) FILTER (WHERE rm.delta_class = 'observer_failed') AS observer_failed_count,
-    count(rm.reconciliation_match_id) FILTER (WHERE rm.delta_class IN ('missing','wrong-content','duplicate','extra','published_not_observed','stale','late')) AS mismatch_count,
-    array_agg(DISTINCT rm.delta_class) FILTER (WHERE rm.delta_class IS NOT NULL) AS delta_classes
-FROM r.expected_publication e
-LEFT JOIN c.client cli ON cli.client_id = e.client_id
-LEFT JOIN r.ice_publication_evidence ice ON ice.expected_publication_id = e.expected_publication_id
-LEFT JOIN r.reconciliation_match rm ON rm.expected_publication_id = e.expected_publication_id
-LEFT JOIN r.platform_observation po ON po.platform_observation_id = rm.platform_observation_id
-GROUP BY e.client_id, cli.client_slug, e.platform, e.expected_local_date;
+    cli.client_name,
+    p.platform,
+    days.d AS local_date,
+    COUNT(ep.expected_publication_id) FILTER (WHERE ep.expected_status = 'expected') AS expected_open,
+    COUNT(ep.expected_publication_id) FILTER (WHERE ep.expected_status = 'matched') AS matched,
+    COUNT(ep.expected_publication_id) FILTER (WHERE ep.expected_status = 'missing') AS missing,
+    COUNT(ep.expected_publication_id) FILTER (WHERE ep.expected_status = 'late') AS late,
+    COUNT(ep.expected_publication_id) FILTER (WHERE ep.expected_status = 'unscheduled_published') AS unscheduled,
+    COUNT(ep.expected_publication_id) FILTER (WHERE ep.expected_status = 'observed_no_ice') AS obs_no_ice,
+    COUNT(ep.expected_publication_id) FILTER (WHERE ep.expected_status = 'suppressed') AS suppressed,
+    NOW() AS last_refreshed
+FROM c.client cli
+CROSS JOIN (VALUES ('facebook'),('instagram'),('linkedin'),('youtube')) AS p(platform)
+CROSS JOIN days
+LEFT JOIN r.expected_publication ep
+    ON ep.client_id = cli.client_id
+    AND ep.platform = p.platform
+    AND ep.expected_local_date = days.d
+WHERE cli.status = 'active'
+GROUP BY cli.client_id, cli.client_slug, cli.client_name, p.platform, days.d;
 
-CREATE UNIQUE INDEX vw_recon_daily_pk
-    ON r.vw_reconciliation_daily (client_id, platform, expected_local_date);
+CREATE UNIQUE INDEX recon_daily_matrix_pk
+    ON r.mv_reconciliation_daily_matrix (client_id, platform, local_date);
 
-COMMENT ON MATERIALIZED VIEW r.vw_reconciliation_daily IS 'One row per (client, platform, Sydney-local-date) summarising reconciliation state. Refreshed by matcher EF after each successful run. Backs the daily matrix dashboard surface.';
+CREATE MATERIALIZED VIEW r.mv_observer_freshness_summary AS
+SELECT
+    cli.client_slug,
+    poh.platform,
+    poh.last_observed_at,
+    poh.consecutive_failure_count,
+    poh.is_healthy,
+    poh.last_failure_reason
+FROM r.platform_observer_health poh
+JOIN c.client cli ON cli.client_id = poh.client_id
+WHERE cli.status = 'active';
 
--- vw_stale_accounts and vw_needs_review_inbox specs in §7
+CREATE UNIQUE INDEX recon_obs_freshness_pk
+    ON r.mv_observer_freshness_summary (client_slug, platform);
 ```
+
+Refresh schedule: hourly via pg_cron; refresh on-demand RPC.
 
 ### 3.12 `k.column_registry` / `k.table_registry` doc-catalog plan
 
-Per memory ("k.column_registry has no schema_name/table_name columns — joins must go through k.table_registry on table_id; correct table-level doc column is purpose"), each new `r.*` table gets:
-
-1. A `k.table_registry` row with `purpose` populated (the same text as the `COMMENT ON TABLE`)
-2. A `k.column_registry` row per column with column-purpose populated
-
-Population is part of the cc-NNNN brief that creates the table. cc-0008 covers `c.client_cadence_rule`; cc-0009 covers `r.expected_publication` + `r.reconciliation_run`; cc-0010 covers `r.ice_publication_evidence` + `r.platform_observation` + `r.platform_manual_observation` + `r.reconciliation_match` + `r.platform_observer_health`; cc-0011 covers `r.cadence_drift_log` + materialised views.
+Standing rule: every new table introduced in PRV-1 cc-NNNN briefs must populate `k.table_registry` (1 row) + `k.column_registry` (1 row per column) in the same `apply_migration` transactional unit. Pattern: chat-authored `column_purpose` VALUES table joined with `information_schema.columns` for type/nullability so the registry row data types always match the actual table.
 
 ---
 
@@ -577,37 +493,36 @@ Population is part of the cc-NNNN brief that creates the table. cc-0008 covers `
 
 ### 4.1 `r.normalise_text(input text) returns text`
 
-Locked algorithm per D-9. SHA-256 of normalised string.
+Implementation: lowercase + collapse whitespace + strip emoji (Unicode emoji blocks) + replace URL substrings with `[URL]` + strip `@mentions` and `#hashtags`. Returns NULL if input is NULL.
 
 ```sql
--- cc-0009 migration (alongside r.expected_publication, since it's used in expected_normalised_hash population)
+-- cc-0009 migration
 CREATE OR REPLACE FUNCTION r.normalise_text(input text)
 RETURNS text
 LANGUAGE plpgsql
 IMMUTABLE
-PARALLEL SAFE
 AS $$
 DECLARE
-    s text;
+    out text;
 BEGIN
     IF input IS NULL THEN RETURN NULL; END IF;
-    s := lower(input);
-    s := regexp_replace(s, 'https?://\S+', '<URL>', 'g');
-    s := regexp_replace(s, '[^[:alnum:][:space:]#@<>]', '', 'g');
-    s := regexp_replace(s, '\s+', ' ', 'g');
-    s := trim(s);
-    RETURN encode(digest(s, 'sha256'), 'hex');
+    out := lower(input);
+    out := regexp_replace(out, 'https?://\S+', '[URL]', 'g');
+    out := regexp_replace(out, '@\w+', '', 'g');
+    out := regexp_replace(out, '#\w+', '', 'g');
+    -- strip emoji (basic ranges; PRV-7+ may extend)
+    out := regexp_replace(out, '[\x{1F000}-\x{1FFFF}]', '', 'g');
+    out := regexp_replace(out, '[\x{2600}-\x{27BF}]', '', 'g');
+    out := regexp_replace(out, '\s+', ' ', 'g');
+    out := trim(out);
+    RETURN out;
 END;
 $$;
 
-COMMENT ON FUNCTION r.normalise_text(text) IS 'v1 text normalisation per D-9: lowercase + strip URLs (replace with <URL>) + remove punctuation (preserve #@<>) + collapse whitespace + SHA-256 hex. IMMUTABLE so safe in expressions and indexes.';
+COMMENT ON FUNCTION r.normalise_text IS 'D-16 spec: lowercase + collapse whitespace + strip emoji + replace URL substrings with [URL] + strip @mentions and #hashtags. Used by matcher tier 4/5 caption similarity.';
 ```
 
-Requires `pgcrypto` extension (already present per existing schema).
-
 ### 4.2 `r.to_sydney_local_date(ts timestamptz) returns date`
-
-Sydney mapping at write time per D-16.
 
 ```sql
 -- cc-0009 migration
@@ -615,17 +530,14 @@ CREATE OR REPLACE FUNCTION r.to_sydney_local_date(ts timestamptz)
 RETURNS date
 LANGUAGE sql
 IMMUTABLE
-PARALLEL SAFE
 AS $$
     SELECT (ts AT TIME ZONE 'Australia/Sydney')::date;
 $$;
 
-COMMENT ON FUNCTION r.to_sydney_local_date(timestamptz) IS 'Maps timestamptz to Sydney-local calendar date. Used by observers to populate observed_local_date at write time so the date is fixed regardless of query-time timezone.';
+COMMENT ON FUNCTION r.to_sydney_local_date IS 'D-17 spec: interpret ts in Sydney timezone, return the date. Used everywhere observed_local_date / expected_local_date is computed from a timestamptz.';
 ```
 
 ### 4.3 `r.compact_raw_json(j jsonb) returns jsonb`
-
-Strips bulky fields before pushing to `raw_json_history` per D-19.
 
 ```sql
 -- cc-0010 migration
@@ -633,37 +545,26 @@ CREATE OR REPLACE FUNCTION r.compact_raw_json(j jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
 IMMUTABLE
-PARALLEL SAFE
 AS $$
 DECLARE
-    excluded_keys text[] := ARRAY['comments','reactions','insights','metrics','attachments_data','media_data','thumbnails','base64_data'];
-    result jsonb;
-    key text;
+    keys_to_drop text[] := ARRAY['__internal_debug','request_headers','response_headers','full_html'];
+    out jsonb := j;
+    k text;
 BEGIN
-    IF j IS NULL THEN RETURN NULL; END IF;
-    result := j;
-    FOREACH key IN ARRAY excluded_keys LOOP
-        IF result ? key THEN
-            result := result - key;
-        END IF;
+    IF j IS NULL OR jsonb_typeof(j) != 'object' THEN RETURN j; END IF;
+    FOREACH k IN ARRAY keys_to_drop LOOP
+        out := out - k;
     END LOOP;
-    -- Drop any value that's a long string (>10KB) — likely binary or oversize text
-    SELECT jsonb_object_agg(k, v)
-    INTO result
-    FROM jsonb_each(result) AS kv(k, v)
-    WHERE NOT (jsonb_typeof(v) = 'string' AND length(v::text) > 10240);
-    RETURN result;
+    RETURN out;
 END;
 $$;
 
-COMMENT ON FUNCTION r.compact_raw_json(jsonb) IS 'Strips bulky fields from raw_json before pushing to raw_json_history per D-19. Excludes comments, reactions, insights, metrics, attachments_data, media_data, thumbnails, base64_data, and any field with a string value >10KB. Keeps all small text fields and metadata. Tunable via excluded_keys array.';
+COMMENT ON FUNCTION r.compact_raw_json IS 'Strips known-bulky internal-only keys from raw API payloads before storage. Used by per-platform observer EFs (PRV-2/3/4) when populating r.platform_observation.raw_payload.';
 ```
 
 ---
 
 ## 5. Edge Function specs
-
-All Edge Functions follow the same pattern: write a row to `r.reconciliation_run` at start, do work, update the row at end. JWT-verify is set per `supabase/config.toml` (per recent v2.54 + v2.58 lessons — never inherit JWT settings).
 
 ### 5.1 `cadence-rule-generator`
 
@@ -672,8 +573,8 @@ Reads `c.client_cadence_rule`, generates `r.expected_publication` rows for the n
 | Aspect | Spec |
 |---|---|
 | Trigger | pg_cron daily at 02:00 Sydney + on-demand via RPC |
-| Reads | `c.client_cadence_rule` (active rules); `r.expected_publication` (existing rows for dedup) |
-| Writes | `r.expected_publication` (insert new rows); `r.reconciliation_run` (audit) |
+| Reads | `c.client_cadence_rule` (active rules); `c.client_publish_profile` (publish_enabled per client × platform — v2); `r.expected_publication` (existing rows for dedup) |
+| Writes | `r.expected_publication` (insert new rows; status=expected for active platforms, status=suppressed OR skipped for paused — v2 cc-0009 decision); `r.reconciliation_run` (audit) |
 | Horizon | 7 days forward at PRV-1 launch (D-23) + 7 days backfill at first run only |
 | Idempotency | UNIQUE constraint on (client_id, platform, expected_local_date, cadence_rule_id) — INSERT ... ON CONFLICT DO NOTHING |
 | Verify_jwt | `false` (custom-header internal cron pattern) |
@@ -687,10 +588,22 @@ fn cadence_rule_generator(horizon_days: int = 7, backfill: bool = false) {
   rules = select * from c.client_cadence_rule where is_active=true and (valid_to is null or valid_to >= current_date);
   for rule in rules {
     horizon_dates = compute_dates_for_rule(rule, horizon_days, backfill);
+    profile = select publish_enabled, paused_reason
+              from c.client_publish_profile
+              where client_id=rule.client_id and platform=rule.platform;
     for date in horizon_dates {
       if date in rule.suppression_dates: continue;
       if not rule_says_publish_on(rule, date): continue;
       window = compute_window(rule, date);
+      // v2 amendment — paused-profile suppression (PK directive 2026-05-09):
+      // If publish_profile is paused, do NOT emit a normal 'expected' row that
+      // would fire missing/late. cc-0009 brief decides between (a) skip OR
+      // (b) insert with expected_status='suppressed'. Either path preserves
+      // the cadence rule shape while preventing false missing alerts.
+      if profile.publish_enabled is false {
+        apply_paused_handling(profile, date, rule);   // option (a) skip OR option (b) status='suppressed'
+        continue;
+      }
       insert into r.expected_publication(...) values (...) on conflict do nothing;
     }
   }
@@ -699,6 +612,23 @@ fn cadence_rule_generator(horizon_days: int = 7, backfill: bool = false) {
 ```
 
 `compute_dates_for_rule` and `rule_says_publish_on` are the real logic — they handle weekly cadences, custom_cron schedules, weekday filters, etc. Implementation detail in cc-0008.
+
+**v2 amendment — distinguishing "not part of cadence" vs "temporarily paused" (PK directive 2026-05-09):**
+
+The system now has two layers controlling whether expected rows are emitted for a (client × platform) pair:
+
+| Layer | Field | Semantics |
+|---|---|---|
+| Cadence rule | `c.client_cadence_rule.is_active` | `false` means the rule is NOT part of cadence at all (e.g., client never wanted this platform). Generator skips the rule entirely at the `where is_active=true` filter. |
+| Publish profile | `c.client_publish_profile.publish_enabled` | `false` means the platform is temporarily paused (e.g., Meta anti-spam block). Cadence intent is preserved (`is_active=true`); generator detects pause via the new clause and emits suppressed/skipped rows. |
+
+This separation matters because:
+
+- A reconciliation report should show "Property Pulse IG paused since 25 Apr — cadence shape unchanged" rather than "Property Pulse IG removed from cadence" (the latter would be wrong for audit purposes).
+- When the pause lifts (e.g., anti-spam block resolved), no cadence-rule edit is needed — only the `publish_profile.publish_enabled` flag flips.
+- `cadence-drift-checker` (§5.3) compares cadence rule predictions vs publish-side expected publications. With paused-profile suppression, both sides agree (cadence side `is_active=true` producing rows; publish-side suppressed/skipped) → 0 drift. Without this clause, cadence side would produce N rows while publish side produced 0 rows → false drift alert.
+
+**cc-0009 brief decision required: option (a) skip vs option (b) `expected_status='suppressed'`.** Both are valid. Option (b) is recommended for richer audit trail (drift-checker can see "we WOULD have expected here, but profile was paused"). Option (a) is simpler. cc-0009 brief locks this choice; PRV-0 v2 only mandates that ONE of the two must be implemented.
 
 ### 5.2 `ice-evidence-materialiser`
 
@@ -730,89 +660,48 @@ fn ice_evidence_materialiser() {
 
 ### 5.3 `cadence-drift-checker` (NEW — PK directive)
 
-Compares cadence rule predictions vs slot/profile predictions. Writes to `r.cadence_drift_log`.
+Compares `c.client_cadence_rule` (PRV-1 reconciliation source) against publish-side config (`m.slot` rows + `c.client_publish_profile`). Detects shape drift between the two — frequency, time-window, platform-set, format. PRV-7+ uses this to drive the migration of publish-side onto `c.client_cadence_rule`.
 
 | Aspect | Spec |
 |---|---|
-| Trigger | pg_cron daily at 03:00 Sydney (after cadence-rule-generator at 02:00) |
-| Reads | `c.client_cadence_rule`, slot table, `c.client_publish_profile`, `c.client_ai_profile` |
-| Writes | `r.cadence_drift_log`; `r.reconciliation_run` (run_type='cadence_drift_check') |
-| Horizon | 7 days forward |
+| Trigger | pg_cron weekly Mon 06:00 Sydney + on-demand via RPC |
+| Reads | `c.client_cadence_rule`, `c.client_publish_schedule` (the row-per-slot config), `c.client_publish_profile` (paused / preferred_format / max_per_day) |
+| Writes | `r.cadence_drift_log` (one row per detected drift, per client × platform, per detection); `r.reconciliation_run` |
+| Tolerance | Frequency: ±1 post per period accepted as `info`; >1 = `warn`; missing platform on one side = `error`. Time window: ±60 min accepted as `info`; >60 min = `warn`. |
 | Verify_jwt | `false` |
 
-Algorithm:
+Pseudocode:
 
 ```
-fn cadence_drift_checker(horizon_days: int = 7) {
+fn cadence_drift_checker() {
   run_id = create_run('cadence_drift_check');
-  for client in active_clients() {
-    for platform in active_platforms_for(client) {
-      for d in 0..horizon_days {
-        check_date = current_date + d * interval '1 day';
-        rule_pred = rule_predicted_publish(client, platform, check_date);   // reads c.client_cadence_rule
-        slot_pred = slot_predicted_publish(client, platform, check_date);   // reads slot table
-        profile_pred = profile_predicted_publish(client, platform, check_date);  // reads c.client_publish_profile + ai_profile
-
-        all_agree = (rule_pred.publish == slot_pred.publish == profile_pred.publish)
-                     and (rule_pred.format == slot_pred.format == profile_pred.format);
-
-        if all_agree:
-          divergence = false;
-          divergence_class = 'no_divergence';
-        else:
-          divergence = true;
-          divergence_class = classify_divergence(rule_pred, slot_pred, profile_pred);
-
-        insert into r.cadence_drift_log(...) values (...);
-      }
+  for (client, platform) in cross_join_active_clients_and_platforms() {
+    cadence_pred = derive_pred_from_cadence_rule(client, platform);
+    publish_pred = derive_pred_from_publish_side(client, platform);
+    drifts = compare(cadence_pred, publish_pred);
+    for drift in drifts {
+      insert into r.cadence_drift_log(client_id, platform, cadence_rule_prediction, publish_side_prediction, drift_kind, drift_severity, drift_summary, detected_by_run_id) values (...);
     }
   }
-  finalise_run(run_id, summary={open_divergences: count_open(...)});
+  finalise_run(run_id);
 }
 ```
-
-Acceptance criteria for the drift checker (success metrics for the dual-source state):
-
-- After PRV-1 launch + 7 days, expected open divergences = 0. Non-zero indicates either (a) cadence rule needs updating to match existing publish-side behaviour (rule is wrong) or (b) existing publish-side has bugs the rule correctly predicts (rule is right; publish-side is wrong). Either way the drift log surfaces it.
-- During PRV-7+ migration of publish-side onto `c.client_cadence_rule`, drift count can be tracked over time as the migration proceeds — when drift hits sustained zero, migration is functionally complete.
-
-Surfaces in dashboard NOW tab as a small tile: "Cadence drift: N open" with click-through to the drift log. If N > 0 in NOW, operator investigates.
 
 ### 5.4 `reconciliation-matcher`
 
-Joins evidence sources, classifies, writes match decisions.
+Reads `r.expected_publication` rows in `expected | backfilled` status, matches against evidence, upserts `r.reconciliation_match`, transitions `r.expected_publication.expected_status`.
 
 | Aspect | Spec |
 |---|---|
-| Trigger | pg_cron every 30 minutes (offset from materialiser by 15 min) |
-| Reads | `r.expected_publication`, `r.ice_publication_evidence`, `r.platform_observation`, `r.platform_manual_observation`, `r.platform_observer_health` |
-| Writes | `r.reconciliation_match`; `r.reconciliation_run`; refreshes `r.vw_reconciliation_daily` |
-| Tier order | Per §6 below |
+| Trigger | pg_cron every 30 min + on-demand RPC |
+| Reads | `r.expected_publication`, `r.ice_publication_evidence`, `r.platform_observation`, `r.platform_manual_observation`, `r.matcher_config` |
+| Writes | `r.reconciliation_match` (upsert by expected_publication_id WHERE override_by IS NULL — D-21); `r.expected_publication.expected_status` transitions; `r.reconciliation_run` |
+| Tier order | 1=ice, 2=platform, 3=manual, 4=fuzzy_platform, 5=fuzzy_manual; first match wins |
 | Verify_jwt | `false` |
-
-Pseudocode in §6.
 
 ### 5.5 Platform observer interface (PRV-2/3/4)
 
-Common shape every platform observer implements:
-
-```
-interface PlatformObserver {
-  platform: 'facebook' | 'instagram' | 'linkedin' | 'youtube';
-  observe(account: PlatformAccount, since: timestamptz, until: timestamptz): ObservationBatch;
-  health_check(account: PlatformAccount): HealthState;
-}
-```
-
-Each observer:
-
-1. Creates a `r.reconciliation_run` row with `run_type='observer_<platform>'`
-2. Updates `r.platform_observer_health` for the (platform, account) pair
-3. Calls platform API with windowing + pagination
-4. For each post returned: upserts into `r.platform_observation` (on conflict: push old `r.compact_raw_json(raw_json)` to `raw_json_history` capped at 10, then update fields)
-5. Finalises run
-
-Per-platform implementations in cc-0012 (Meta), cc-0013 (LinkedIn or YouTube), cc-0014 (the other one).
+Per-platform observer EFs (`facebook-observer`, `instagram-observer`, `linkedin-observer`, `youtube-observer`) implement a common interface: read API → upsert `r.platform_observation` → update `r.platform_observer_health`. Per-platform implementation detail belongs in their own cc-NNNN briefs (PRV-2/3/4).
 
 ---
 
@@ -820,134 +709,74 @@ Per-platform implementations in cc-0012 (Meta), cc-0013 (LinkedIn or YouTube), c
 
 ### 6.1 Tier hierarchy (locked)
 
-| Tier | Rule | Confidence |
-|---|---|---|
-| 1 | `r.platform_observation.platform_post_id == r.ice_publication_evidence.platform_post_id` | 1.000 |
-| 2 | `r.platform_observation.permalink == r.ice_publication_evidence.platform_permalink` | 0.980 |
-| 3 | Same `(client_id, platform)` + `observed_published_at` within `expected_window_start..expected_window_end + tolerance` AND `r.platform_observation.content_hash == r.expected_publication.expected_normalised_hash` | 0.950 |
-| 4 | Same `(client_id, platform, expected_local_date)` AND text similarity (Jaro-Winkler on caption_text vs expected_caption) ≥ 0.80 | 0.750 |
-| 5 | Asset hash match (cryptographic v1; perceptual PRV-5+) | 0.850 |
-| Manual | `r.platform_manual_observation.linked_platform_observation_id` set explicitly | 0.950 |
+| Tier | Name | Evidence source | Match rule | Confidence |
+|---|---|---|---|---|
+| 1 | ICE evidence | `r.ice_publication_evidence` (pipeline_state='published') | exact join on `expected_publication_id` | 1.000 |
+| 2 | platform_post_id | `r.platform_observation` (fresh; not stale) | exact match on `(platform, platform_post_id)` of any `r.ice_publication_evidence` for the same expected — covers ICE-published-but-id-confirmed-from-platform | 0.950 |
+| 3 | URL match | `r.platform_observation` OR `r.platform_manual_observation` | `permalink_url` matches `r.ice_publication_evidence.published_url` (case-insensitive, query string ignored) | 0.920 |
+| 4 | Date+platform+caption-prefix | `r.platform_observation` (fresh) — caption substring | `observed_local_date = expected_local_date AND r.normalise_text(caption_text) starts_with first 60 chars of normalised draft caption` | 0.850 |
+| 5 | Date+platform+caption-similarity | `r.platform_observation` (fresh) OR `r.platform_manual_observation` — caption Levenshtein | `same_local_date AND ratio(r.normalise_text(caption), r.normalise_text(observed_caption_normalised)) >= 0.85` | 0.750 |
 
-Auto-OK: confidence ≥ 0.90 AND time within tolerance AND no active manual override of conflicting status.
+After tier 5 fails for an `expected` row → status transitions to `missing` (or `late` if observed evidence exists with `published_at_observed > expected_window_end`).
 
-Pseudocode for matcher per expected row:
+Tier 1 (ICE evidence) matches deterministically on `expected_publication_id`. Tiers 2–5 use evidence rows from `r.platform_observation` / `r.platform_manual_observation` — tier confidence reflects how indirect the match is.
 
-```
-fn classify_expected(ep: ExpectedPublication) -> ReconciliationMatch {
-  active_override = find_active_manual_override(ep.client_id, ep.platform, ep.expected_local_date);
-  if active_override:
-    return match_record_locked_by_override(ep, active_override);
-
-  ice_evidence = find_ice_evidence(ep);
-  observer_health = find_observer_health(ep.platform, ep.client_id);
-
-  if observer_health.auth_status not in ('healthy','unknown'):
-    return classify_observer_failed(ep, ice_evidence, observer_health);
-
-  obs_candidates = find_observation_candidates(ep);  // by date, client, platform
-
-  // Tier 1
-  if ice_evidence and ice_evidence.platform_post_id:
-    obs = find_obs_by_platform_post_id(ice_evidence.platform_post_id);
-    if obs: return classify_match(ep, ice_evidence, obs, tier=1, confidence=1.000);
-
-  // Tier 2
-  if ice_evidence and ice_evidence.platform_permalink:
-    obs = find_obs_by_permalink(ice_evidence.platform_permalink);
-    if obs: return classify_match(ep, ice_evidence, obs, tier=2, confidence=0.980);
-
-  // Tier 3
-  for obs in obs_candidates:
-    if obs.observed_published_at within window(ep) + tolerance(platform)
-       and obs.content_hash == ep.expected_normalised_hash:
-      return classify_match(ep, ice_evidence, obs, tier=3, confidence=0.950);
-
-  // Tier 4
-  for obs in obs_candidates:
-    if obs.observed_local_date == ep.expected_local_date:
-      sim = jaro_winkler(obs.caption_text, ep.expected_caption);
-      if sim >= 0.80:
-        return classify_match(ep, ice_evidence, obs, tier=4, confidence=0.750, content_similarity=sim);
-
-  // Tier 5 (asset hash) — only if Tier 4 didn't match
-  if ep.expected_asset_hash:
-    obs = find_obs_by_asset_hash(ep.expected_asset_hash);
-    if obs: return classify_match(ep, ice_evidence, obs, tier=5, confidence=0.850);
-
-  // No match found → classify the gap
-  return classify_no_match(ep, ice_evidence, obs_candidates);
-}
-```
+`matched_evidence_kind` and `matched_match_tier` constraint pair (D-13 hard lock): tier 1 ↔ ice, tier 2 ↔ platform, tier 3 ↔ manual, tier 4 ↔ fuzzy_platform, tier 5 ↔ fuzzy_manual. `none` permitted on `missing`/`late`/`unscheduled_published` rows.
 
 ### 6.2 Delta classification rules (locked)
 
-| Class | Rule (deterministic) |
+After a match is found at tier T, `delta_minutes_late` is computed from `published_at_observed - expected_window_end`. Negative deltas (early) are recorded as `0`. Status transition rules:
+
+| Condition | Resulting status |
 |---|---|
-| `OK` | Match found (any tier), confidence ≥ 0.90, time within tolerance, content matches |
-| `late` | Match found, confidence ≥ 0.85, but `observed_published_at > expected_window_end` within tolerance (FB/IG/YT: 2h; LI: 4h) |
-| `missing` | Expected row exists, no platform observation, no successful ICE publish receipt with platform_post_id |
-| `published_not_observed` | Expected row exists, ICE publish receipt has non-null platform_post_id, no platform observation matches |
-| `wrong-content` | Same client/platform/date, observation exists, but normalised content hash mismatch AND text similarity < 0.50 |
-| `duplicate` | More than one observation maps to the same expected row (Tier 1 or Tier 2 collision) |
-| `extra` | Observation exists with no matching expected row |
-| `stale` | No observation for client/platform within cadence threshold |
-| `observer_failed` | Observer health row indicates auth/rate-limit/network failure for the (platform, account) and the failure window covers the expected row's check time |
-| `needs_review` | Match confidence in 0.50..0.89 OR observation exists but no clear classification rule applies |
+| Match at tier 1, `delta_minutes_late <= 0` | `matched` |
+| Match at tier 1, `delta_minutes_late > 0` AND `<= 60` | `matched` (within tolerance) |
+| Match at tier 1, `delta_minutes_late > 60` | `late` |
+| Match at tier 2/3, any delta | `matched` (platform/url evidence is authoritative regardless of timing) |
+| Match at tier 4/5, any delta | `matched` (fuzzy is best-effort; timing not enforceable from caption) |
+| No match across 1–5, AND `expected_window_end < now()` | `missing` |
+| No match across 1–5, AND observed evidence exists for date+platform with no expected | `unscheduled_published` (separate row in expected, status=`unscheduled_published` directly inserted by matcher) |
+
+`observed_no_ice` is a separate path: a `r.platform_observation` row exists with no matching `r.ice_publication_evidence` AND no matching `r.expected_publication` for that local_date — interpreted as an off-cadence post. Treatment: insert a synthetic `r.expected_publication` row with status=`unscheduled_published` and tier=2 match.
 
 ### 6.3 Tolerance defaults (config table)
 
 ```sql
 -- cc-0010 migration
 CREATE TABLE r.matcher_config (
-    config_key       text PRIMARY KEY,
-    config_value     jsonb NOT NULL,
-    description      text,
-    updated_at       timestamptz NOT NULL DEFAULT now(),
-    updated_by       text
+    matcher_config_id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id                    uuid REFERENCES c.client(client_id) ON DELETE CASCADE,            -- NULL = global default
+    platform                     text CHECK (platform IS NULL OR platform IN ('facebook','instagram','linkedin','youtube')),
+    minutes_late_tolerance       int NOT NULL DEFAULT 60 CHECK (minutes_late_tolerance >= 0),
+    caption_prefix_length        int NOT NULL DEFAULT 60 CHECK (caption_prefix_length >= 10),
+    same_day_window_hours        int NOT NULL DEFAULT 24 CHECK (same_day_window_hours >= 1),
+    fuzzy_levenshtein_threshold  numeric(4,3) NOT NULL DEFAULT 0.850 CHECK (fuzzy_levenshtein_threshold BETWEEN 0.500 AND 1.000),
+    notes                        text,
+    created_at                   timestamptz NOT NULL DEFAULT now(),
+    updated_at                   timestamptz NOT NULL DEFAULT now(),
+    UNIQUE (client_id, platform)
 );
 
-INSERT INTO r.matcher_config (config_key, config_value, description) VALUES
-  ('late_tolerance_minutes',
-   '{"facebook":120,"instagram":120,"linkedin":240,"youtube":120}',
-   'Minutes after expected_window_end before late triggers'),
-  ('stale_threshold_days_default',
-   '7',
-   'Default stale threshold when expected cadence is unknown'),
-  ('text_similarity_match_threshold',
-   '0.80',
-   'Tier 4 minimum Jaro-Winkler score to consider a match'),
-  ('text_similarity_wrong_content_threshold',
-   '0.50',
-   'Below this, with same date+client+platform, classify as wrong-content'),
-  ('auto_ok_confidence_threshold',
-   '0.90',
-   'Per D-5: minimum confidence for match_status=OK'),
-  ('needs_review_confidence_band',
-   '{"min":0.50,"max":0.89}',
-   'Confidence range routed to needs_review');
+INSERT INTO r.matcher_config (client_id, platform) VALUES (NULL, NULL);  -- global default row
 ```
+
+Lookup order: (client, platform) → (client, NULL) → (NULL, NULL).
 
 ### 6.4 Manual override interaction (D-21 hard lock)
 
-When `r.platform_manual_observation` has a row where:
-
+```sql
+-- Example matcher upsert pattern
+INSERT INTO r.reconciliation_match (...)
+VALUES (...)
+ON CONFLICT (expected_publication_id) DO UPDATE SET
+    matched_evidence_kind = EXCLUDED.matched_evidence_kind,
+    -- ... other fields ...
+    updated_at = now(),
+    updated_by_run_id = EXCLUDED.updated_by_run_id
+WHERE reconciliation_match.override_by IS NULL;
 ```
-client_id = ep.client_id
-AND platform = ep.platform
-AND observed_local_date = ep.expected_local_date
-AND dismissed_at IS NULL
-AND (expires_at IS NULL OR expires_at > now())
-```
 
-…the matcher:
-
-1. Still computes confidence + delta_class + match_tiers (audit trail)
-2. Sets `match_status = 'manually_overridden'`
-3. Sets `resolved_state = 'manually_overridden_<status>'` based on the manual row's `observed_status`
-4. Stores the manual_observation_id on the match row
-
-Operator dismisses override → next matcher run resumes authority. Override expires → next matcher run reclassifies.
+The `WHERE override_by IS NULL` clause is non-negotiable. Any cron path that omits it is a schema violation. Manual UI writes set `override_by` to the username + `override_at = now()` and the row becomes immune to cron updates.
 
 ---
 
@@ -955,131 +784,126 @@ Operator dismisses override → next matcher run resumes authority. Override exp
 
 ### 7.1 Daily matrix view (PRV-1)
 
-Path: `/reconciliation/matrix?date=YYYY-MM-DD` (default = today)
+Top-level reconciliation overview. Reads `r.mv_reconciliation_daily_matrix`. Shows for each (client × platform × date in last 14 days + next 7 days):
 
-Columns: `Client | Platform | Expected | ICE produced | ICE published | Observed | Status | Evidence`
+- expected_open count (unresolved)
+- matched / missing / late / unscheduled / observed_no_ice / suppressed counts
+- observer freshness indicator (joins `r.mv_observer_freshness_summary`)
+- click-through to drilldown
 
-Rows: one per (client × platform) for the selected date. Status cell colour-coded per D-11:
-
-- Green: status = OK
-- Yellow: status in (needs_review, observer_failed, manually_overridden_OK) OR observer health = expiring_soon/expired
-- Red: status in (missing, wrong-content, duplicate, extra, published_not_observed, stale) AND not manually-overridden
-
-Backfilled rows have a grey border (D-23 visual cue).
-
-Click cell → drilldown.
+Suppressed counts (v2): displayed dimmed; tooltip explains "publish_profile paused; cadence rule active."
 
 ### 7.2 Drilldown panel
 
-Side panel showing for the clicked (client, platform, date):
+Per (client × platform × date) drilldown. Shows:
 
-- Expected row (full content)
-- ICE evidence (ai_job → draft → queue → publish + dead_reason if any)
-- Platform observation (if any) with permalink, raw_json compact view, edit history
-- Match record: confidence, all tiers evaluated (`match_tiers` jsonb expanded), explanation
-- Manual override (if any) with notes, expiry, dismiss button
-- Action buttons: Mark OK, Mark wrong-content, Attach permalink, Dismiss override (gated by override existence)
+- All `r.expected_publication` rows for the day, with status and matched evidence
+- Click any row → see ICE evidence, platform observations, manual observations, match record
+- Manual override action button (writes to `r.reconciliation_match` with `override_by`)
 
 ### 7.3 Minimal manual entry form (PRV-2)
 
-Path: `/reconciliation/manual/new`
+Captures `r.platform_manual_observation` rows. 7 fields: client (dropdown), platform (dropdown), platform_post_id (text), permalink_url (text), observed_local_date (date), caption_text (textarea), observation_method (dropdown).
 
-Five fields:
-
-1. Client (dropdown of active clients)
-2. Platform (dropdown: facebook, instagram, linkedin, youtube)
-3. Observed local date (date picker, default today)
-4. Observed status (dropdown of D-21 enum values)
-5. Notes (textarea)
-
-Optional: permalink (text), expires_at (date, default null = never).
-
-Submit → INSERT INTO `r.platform_manual_observation`. No screenshot upload in PRV-2; that's PRV-5.
+Auto-populates: caption_normalised (via `r.normalise_text`), observed_at = now(), submitted_by from auth, submitted_at = now().
 
 ### 7.4 Triage Inbox (PRV-5)
 
-Path: `/reconciliation/inbox`
-
-Shows all `r.reconciliation_match` rows where `resolved_state = 'open' AND match_status != 'OK'`, sorted by `matched_at DESC`. Bulk action buttons (mark resolved, attach manual observation, etc.).
-
-Backed by `r.vw_needs_review_inbox` materialised view.
+Full UX deferred to PRV-5 brief. v1 placeholder: single page listing all `r.expected_publication` with `expected_status IN ('missing','late','observed_no_ice')` and unresolved drift rows.
 
 ### 7.5 Cadence drift visibility
 
-NOW dashboard tab gets a small tile: "Cadence drift: N open" — clicks through to `/reconciliation/drift?status=open`. List view of `r.cadence_drift_log` rows with `divergence=true AND acknowledged_at IS NULL`. Each row shows the three predictions side-by-side. Acknowledge button updates `acknowledged_at + acknowledged_by + resolution_note`.
-
-If N=0 sustained for 14 days, the tile turns green and the rule-vs-publish-side dual-source state is functionally validated.
+Reads `r.cadence_drift_log` WHERE `operator_action IS NULL` ORDER BY detected_at DESC. PRV-1 shows row count + table with drift_kind + drift_severity + drift_summary + action button.
 
 ---
 
 ## 8. PRV-1 cc-NNNN brief breakdown
 
-PRV-1 is composed of four cc-NNNN apply briefs, executed in dependency order. Each is a standard apply brief with §1 pre-flight, §2 D-01 fire context, §3 SQL, §4 verification, §8 HALT criteria — same shape as cc-0003..cc-0007.
-
 ### 8.1 cc-0008 — `c.client_cadence_rule` table + seed (DDL + DML only)
 
-| Aspect | Detail |
-|---|---|
-| Schemas touched | `c.*`, `k.*` (registry rows for new table + columns) |
-| DDL | `c.client_cadence_rule` table + indexes + comment |
-| Seed | One row per active (client × platform) pair, derived from current `c.client_publish_profile` + `c.client_ai_profile` interpretation by chat (committed to brief as exact INSERT statements). PK reviews seed before D-01 fires (per PK approval 2026-05-09). |
-| EF deploy | NONE in cc-0008. `cadence-rule-generator` Edge Function is deferred to cc-0009 per PK sequencing clarification 2026-05-09 — no live generator execution until `r.reconciliation_run` exists for audit. |
-| Cron | NONE in cc-0008. Cron setup deferred to cc-0009. |
-| Verification | V1 table exists with all FKs, CHECKs, and indexes; V2 row count of seeded cadence rules matches the chat-authored expectation (one per active client × platform); V3 every active (client × platform) pair has at least one seeded rule; V4 no NULL in required columns; V5 `valid_from <= valid_to` invariant holds where both set; V6 `k.table_registry` + `k.column_registry` rows populated for the new table |
-| HALT criterion | None specific to sequencing (resolved by PK clarification — no EF/cron in cc-0008, so no chicken/egg) |
-| D-01 action_type | `sql_destructive` (DDL + DML for table + seed) — likely 1 fire |
-| Estimated effort | ~1–2 sessions (apply brief authoring + apply + verify; simpler than original cc-0008 scope) |
+Scope:
+
+- Create `c.client_cadence_rule` table (§3.2 DDL — v2 with `preferred_local_times time[]`).
+- Seed initial rows derived from `c.client_publish_schedule` × `c.client_publish_profile` per active client × platform.
+- Populate `k.table_registry` + `k.column_registry` rows.
+
+Out of scope (deferred to cc-0009):
+
+- `r.*` schema.
+- `r.expected_publication`, `r.reconciliation_run` tables.
+- Helper functions `r.normalise_text`, `r.to_sydney_local_date`.
+- `cadence-rule-generator` Edge Function deploy.
+- pg_cron schedule.
+- First generator invocation / backfill.
+
+PK approval gate: §3.5-style seed surface table + Option choice (paused-IG handling) + 4 decision points + D-01 fire + explicit approval phrase.
+
+**v2 amendment:** Per PK directive 2026-05-09 (paused-profile suppression model), all 14 (client × platform) cadence rules have `is_active=true`. The 2 paused IG rows (NDIS-Yarns, Property Pulse) keep cadence intent active; their `notes` capture `c.client_publish_profile.publish_enabled=false` + `paused_reason`. Generator-side suppression handled in cc-0009.
 
 ### 8.2 cc-0009 — `r.*` schema + `r.reconciliation_run` + `r.expected_publication` + helper functions + generator EF deploy + first backfill + cron enable
 
-| Aspect | Detail |
-|---|---|
-| Schemas touched | NEW `r.*` schema; `k.*` (registry) |
-| DDL | Schema creation + grants; `r.reconciliation_run`; `r.expected_publication`; functions `r.normalise_text`, `r.to_sydney_local_date` |
-| EF deploy | `cadence-rule-generator` Edge Function + `supabase/config.toml` entry (`verify_jwt=false`) — moved from cc-0008 to cc-0009 per PK sequencing clarification 2026-05-09. EF source committed to repo, deployed via `supabase functions deploy cadence-rule-generator --no-verify-jwt` per v2.54+v2.58 lesson. |
-| Cron | Add daily 02:00 Sydney via pg_cron — **enabled at end of cc-0009 only after the first manual generator invocation succeeds** (gated on V5 PASS below). |
-| Initial population | After DDL applied + EF deployed, run `cadence-rule-generator` once with `backfill=true` and `trigger='manual'` → writes one `r.reconciliation_run` row (status progressing running → succeeded) + populates 7 days backward + 7 days forward in `r.expected_publication` per D-23. Cron enable follows only if the manual invocation completes cleanly. |
-| Verification | V1 schema `r` exists with grants per §3.1; V2 `r.reconciliation_run` + `r.expected_publication` exist with all FKs, CHECKs, indexes; V3 helper functions exist and pass spot-check tests (e.g., `r.normalise_text('Hello world')` deterministic; `r.to_sydney_local_date('2026-05-09T15:00:00Z')` returns `2026-05-10`); V4 EF deploys successfully with `verify_jwt=false` confirmed via gateway response; V5 manual generator invocation writes exactly one `r.reconciliation_run` row with `run_type='cadence_generation'` + `trigger='manual'` + `status='succeeded'`; V6 `r.expected_publication` populated with ~70–100 rows after backfill (4 active clients × ~4 platforms × ~14 days × cadence factor); V7 `expected_status='backfilled'` correctly applied to past-dated rows; V8 unique constraint enforced (no duplicate `(client_id, platform, expected_local_date, cadence_rule_id)` tuples); V9 cron job enabled with `active=true` and schedule `0 16 * * *` UTC (= 02:00 Sydney AEST/AEDT — confirm exact UTC offset at apply time); V10 `k.table_registry` + `k.column_registry` rows populated |
-| HALT criterion | If V5 fails (manual generator invocation does not produce a clean `succeeded` audit row), do not enable cron. Cron enable is gated. |
-| D-01 action_type | `sql_destructive` (DDL) + `ef_deploy` + `cron_edit` — likely 3 fires (DDL pre-flight; EF deploy after DDL applied; cron edit after manual generator run succeeds) |
-| Estimated effort | ~2–3 sessions (apply brief authoring + 3 apply phases + verify) |
+Scope:
+
+- Create `r` schema with grants (§3.1).
+- Create `r.reconciliation_run` (§3.8) and `r.expected_publication` (§3.3) tables.
+- Create helper functions `r.normalise_text`, `r.to_sydney_local_date` (§4.1, §4.2).
+- Deploy `cadence-rule-generator` EF (§5.1) with `verify_jwt=false` config.toml entry.
+- Enable pg_cron daily 02:00 Sydney + on-demand RPC trigger.
+- Run first invocation (7-day backfill + 7-day forward; D-23).
+- **v2:** Lock cc-0009 brief decision: option (a) skip-on-paused vs option (b) `expected_status='suppressed'` for paused-profile rows. Either chosen path must be reflected in the generator pseudocode + schema (`expected_status` enum already includes `suppressed` per §3.3).
+
+Out of scope:
+
+- `r.ice_publication_evidence`, `r.platform_observation`, `r.platform_manual_observation`, `r.reconciliation_match`, `r.platform_observer_health` (cc-0010).
+- `r.compact_raw_json` (cc-0010).
+- `ice-evidence-materialiser`, `reconciliation-matcher` (cc-0010).
+- Any per-platform observer (PRV-2/3/4).
+- `r.cadence_drift_log` + `cadence-drift-checker` + materialised views (cc-0011).
 
 ### 8.3 cc-0010 — `r.platform_observation` + `r.platform_manual_observation` + `r.ice_publication_evidence` + `r.reconciliation_match` + `r.platform_observer_health` + `r.matcher_config` + ICE evidence materialiser + manual observation CSV import + matcher EF v0 (manual + Tier 1 only)
 
-| Aspect | Detail |
-|---|---|
-| DDL | All 6 remaining tables + helper function `r.compact_raw_json` |
-| EF deploy | `ice-evidence-materialiser` (cron every 30 min); `reconciliation-matcher` v0 (cron every 30 min, offset 15 min); `manual-observation-csv-import` (one-shot RPC) |
-| Initial population | Load PK's 13 seed manual observations from 2026-05-09 via CSV import |
-| Matcher v0 | Tier 1 + manual override only — no Tier 3/4/5 yet (those wait for observers in PRV-2+) |
-| Verification | V1..V6 table existence + FKs; V7 13 manual observations loaded; V8 ICE evidence materialiser populates `r.ice_publication_evidence` for backfilled expected rows; V9 matcher v0 produces `manually_overridden` rows for the 13 seeds; V10 matcher_config seeded |
-| D-01 action_type | `sql_destructive` + `ef_deploy` × 3 + `cron_edit` × 2 — likely 4 fires |
-| Estimated effort | ~3 sessions |
+Scope:
+
+- All §3.4–§3.7 + §3.9 tables.
+- `r.matcher_config` + global default row (§6.3).
+- Helper `r.compact_raw_json` (§4.3).
+- `ice-evidence-materialiser` EF (§5.2) + cron every 30 min.
+- `reconciliation-matcher` EF v0 (Tier 1 only — ice evidence; Tier 2–5 deferred to PRV-2/3/4 cc-NNNN briefs once observers exist) + cron every 30 min.
+- Manual observation CSV import RPC (one-off; PRV-2 brief gives full UI).
+
+Out of scope:
+
+- Per-platform observer EFs (PRV-2/3/4).
+- Tier 2–5 matching (depends on observers existing).
+- `r.cadence_drift_log` (cc-0011).
+- Materialised views (cc-0011).
 
 ### 8.4 cc-0011 — `r.cadence_drift_log` + `cadence-drift-checker` EF + materialised views + matrix view
 
-| Aspect | Detail |
-|---|---|
-| DDL | `r.cadence_drift_log`; mat views `r.vw_reconciliation_daily`, `r.vw_stale_accounts`, `r.vw_needs_review_inbox` |
-| EF deploy | `cadence-drift-checker` (cron daily 03:00 Sydney) |
-| Dashboard | New `/reconciliation/matrix` page in invegent-dashboard reading `r.vw_reconciliation_daily`; new `/reconciliation/drift` page reading `r.cadence_drift_log` |
-| Verification | V1 drift log table exists; V2 mat views refresh successfully; V3 first drift checker run produces ≤ 0 open divergences (or at most a small number with PK acknowledgement); V4 matrix page renders with backfilled data |
-| D-01 action_type | `sql_destructive` + `ef_deploy` + `cron_edit` + dashboard PR |
-| Estimated effort | ~3 sessions |
+Scope:
+
+- `r.cadence_drift_log` table (§3.10).
+- `cadence-drift-checker` EF (§5.3) + weekly cron Mon 06:00 Sydney.
+- `r.mv_reconciliation_daily_matrix` materialised view (§3.11).
+- `r.mv_observer_freshness_summary` materialised view (§3.11).
+- Hourly refresh cron for materialised views.
+
+Out of scope:
+
+- Tier 2–5 matching (PRV-2/3/4 cc-NNNN briefs).
+- Auto-remediation of drift (PRV-7+).
 
 ### 8.5 PRV-1 close gate
 
-PRV-1 is "done" when:
+PRV-1 closes when:
 
-1. All four cc-NNNN apply briefs (cc-0008..cc-0011) committed and verified
-2. `r.expected_publication` has rows for at least 7 days backward + 7 days forward
-3. `r.ice_publication_evidence` is materialised for at least 80% of expected rows where pipeline state is non-null
-4. The 13 seed manual observations are loaded and visible in `r.platform_manual_observation`
-5. `r.cadence_drift_log` has at most 5 open divergences (any more = rule needs refining before PRV-2)
-6. Dashboard `/reconciliation/matrix` renders for `today` and at least 3 historical dates
-7. PK acknowledges PRV-1 close in chat
-
-Then PRV-2 (Meta observers) starts.
+1. `c.client_cadence_rule` has rows for all active (client × platform) pairs.
+2. `r.expected_publication` is being generated daily without errors for 4 consecutive runs.
+3. `r.reconciliation_match` Tier 1 (ice evidence) is matching at ≥ 95% for the last 7 days of expected rows for clients where ICE pipeline is healthy.
+4. Manual observation CSV import has been exercised at least once.
+5. `cadence-drift-checker` weekly cron has fired at least once and produced 0 `error`-severity drift entries (or those have been resolved to `document_intentional`).
+6. Dashboard daily matrix view is loading and displaying correct counts.
+7. `m.ef_drift_log` is clean for all reconciliation EFs.
 
 ---
 
@@ -1087,90 +911,67 @@ Then PRV-2 (Meta observers) starts.
 
 ### 9.1 General pattern
 
-Each cc-NNNN apply brief follows the brief-runner-v0 conventions established in cc-0003..cc-0007:
+Every cc-NNNN brief in PRV-1 includes:
 
-- §1 pre-flight (mandatory — never skipped per Lesson #61)
-- §2 D-01 fire context with verified_claims
-- §3 SQL / EF / config payload
-- §4 verification queries (V1..VN, all must PASS)
-- §8 HALT criteria (specific empirical conditions for aborting apply)
-- §9 patterns observed (post-apply lessons)
-
-§1.5-style discovery is the default per v2.48 standing rule.
+1. Pre-flight P1.x discovery (read-only) capturing source row counts, schema shapes, and EF/cron states.
+2. DDL + DML proposal.
+3. D-01 fire (`ask_chatgpt_review` action_type per scope).
+4. apply_migration + EF deploy + cron enable as appropriate.
+5. V1–Vn post-apply verification queries.
+6. Result file with all of the above + outcome.
+7. 4-way sync close.
 
 ### 9.2 Cross-brief verification
 
-After all PRV-1 cc-NNNN briefs apply, a final cross-brief verification:
+After each cc-NNNN apply, the next brief's pre-flight verifies prior cc-NNNN outputs are still in place. cc-0009 pre-flight checks `c.client_cadence_rule` row count = expected. cc-0010 pre-flight checks `r.expected_publication` is being generated.
 
-```sql
--- VX1: expected publications were generated and backfilled
-SELECT expected_status, count(*) FROM r.expected_publication GROUP BY expected_status;
--- expect: 'expected' rows for next 7 days, 'backfilled' rows for past 7 days
-
--- VX2: ICE evidence is materialised
-SELECT
-  count(*) FILTER (WHERE ice.ice_evidence_id IS NOT NULL)::numeric / count(*)::numeric AS coverage_ratio
-FROM r.expected_publication ep
-LEFT JOIN r.ice_publication_evidence ice USING (expected_publication_id)
-WHERE ep.expected_status IN ('expected','backfilled')
-  AND ep.expected_local_date <= current_date;
--- expect: coverage_ratio >= 0.80
-
--- VX3: 13 seed manual observations loaded
-SELECT count(*) FROM r.platform_manual_observation WHERE entered_at::date = '2026-05-09';
--- expect: 13
-
--- VX4: matcher classified the seeds as manually_overridden
-SELECT count(*) FROM r.reconciliation_match
-  WHERE manual_observation_id IS NOT NULL AND match_status = 'manually_overridden';
--- expect: 13
-
--- VX5: cadence drift is acceptably low
-SELECT count(*) FROM r.cadence_drift_log
-  WHERE divergence = true AND acknowledged_at IS NULL;
--- expect: <= 5; if higher, investigate rule definitions before PRV-2
-
--- VX6: matrix view renders
-SELECT count(*) FROM r.vw_reconciliation_daily
-  WHERE expected_local_date BETWEEN current_date - 7 AND current_date + 7;
--- expect: >= 50 rows (4 clients × 4 platforms × ~14 days × cadence factor)
-```
+This rolling verification means a regression in an earlier brief surfaces at the next apply, not weeks later.
 
 ### 9.3 Acceptance integrity (per D-50 / Lesson v2.50)
 
-Every cc-NNNN apply brief produces a result file at `docs/briefs/results/cc-NNNN-*.md`. Chat re-fetches the landed result file via Invegent GitHub MCP to verify CC committed it correctly before declaring closure. Lesson v2.50 standing rule.
+After each cc-NNNN apply commit, chat re-fetches the landed file/blob via `get_file_contents` and verifies SHA + size match local fingerprint. PRV-1 close gate (§8.5) includes acceptance-integrity audit of all 4 cc-NNNN apply commits + their result file commits.
 
 ---
 
 ## 10. Risks register (locked from round-2 + new)
 
-| Risk | Likelihood | Mitigation |
+| ID | Risk | Mitigation |
 |---|---|---|
-| `c.client_cadence_rule` seed misinterprets existing scattered config → wrong expected rows generated | Medium | Cadence-drift checker (§5.3) catches this; high drift count at PRV-1 close gate triggers seed correction before PRV-2 |
-| Slot table schema changes during PRV migration | Low | Generator job uses soft FK to slot_id; gracefully degrades when slot missing |
-| Publisher receipt platform_post_id capture regresses | Low | Empirically 100% over last 30 days (audit 2026-05-09); add VX-style coverage check to weekly health report |
-| Tier 4 fuzzy match produces too many false `wrong-content` flags | Medium | Threshold tunable in `r.matcher_config`; PRV-3 close review |
-| Observer auth expires silently and reconciliation reports false `missing` | Medium | `r.platform_observer_health` + classification of `observer_failed` not `missing` (D-11 yellow); dashboard warning banner |
-| Manual override fatigue — operator marks too many things OK without investigating | Medium | Triage Inbox in PRV-5 surfaces high-frequency overrides; review at PRV-6 |
-| `c.client_cadence_rule` and existing publish-side diverge during dual-source state | High by definition | THIS IS WHY THE DRIFT CHECKER EXISTS (§5.3 + D-3 refinement) |
-| `raw_json_history` bloat | Low at current volumes | Compaction rule (D-19); migration trigger if avg row > 50KB |
-| Schema r.* RLS gaps allow cross-client data leakage | Low (single-operator system today) | RLS policies added in cc-0010; future-proofs for client portal |
+| R-1 | Cadence rule seed wrong on day 1 → all reconciliation downstream wrong | PK reviews seed surface table pre-apply (cc-0008 §3.5). |
+| R-2 | Generator EF cron stalls silently | `r.reconciliation_run` audit row + `m.ef_drift_log` integration (D-20). |
+| R-3 | Platform observer falls behind | `r.platform_observer_health.consecutive_failure_count` surface; dashboard alert at >= 3. |
+| R-4 | Manual override clobbered by cron | D-21 hard lock — `WHERE override_by IS NULL` clause mandatory. |
+| R-5 | Caption similarity false positive | Tier 5 confidence is 0.750 (lowest); manual override always available. |
+| R-6 | Cadence rule and publish-side drift unnoticed | `cadence-drift-checker` (§5.3) weekly + `r.cadence_drift_log`. |
+| R-7 | `r.expected_publication` UNIQUE constraint conflict on regenerated horizons | INSERT ... ON CONFLICT DO NOTHING (§5.1). |
+| R-8 | `r.platform_observation` raw_payload bloat | `r.compact_raw_json` strips bulky keys (§4.3). |
+| R-9 | Materialised view refresh stale during dashboard read | hourly refresh + `last_refreshed` column visible to UI. |
+| R-10 (v2) | Paused profile (e.g., Meta anti-spam) generates false missing alerts | v2 generator clause: detect publish_profile.publish_enabled=false → suppress/skip. cc-0009 brief locks option (a) vs (b). |
 
 ---
 
 ## 11. PK approvals (2026-05-09 Sydney)
 
-All PRV-0 residual items resolved by PK in chat 2026-05-09 with one sequencing clarification.
+### 11.1 Commit path
 
-1. **Commit path APPROVED**: `docs/dashboard-review-2026-05/prv-0-design-lock.md`. This brief lives as an architecture extension to the dashboard review of 2026-05, not as a single-apply brief or runtime session record.
+PK approved committing PRV-0 design lock to `docs/dashboard-review-2026-05/prv-0-design-lock.md` as the canonical Platform Reconciliation Subsystem design contract. v1 landed at commit `24d08aeeb6ed793171f76191f41545cdaca32b5d`. v2 amendments commit follows this approval.
 
-2. **Seed authority APPROVED**: chat authors `c.client_cadence_rule` seed INSERT statements as part of cc-0008, derived from current `c.client_publish_profile` + `c.client_ai_profile` interpretation per (client × platform). PK reviews seed before cc-0008 D-01/apply fires. Chat does not apply seed without PK explicit approval phrase.
+### 11.2 Seed authority for cc-0008
 
-3. **Sequencing APPROVED — option (a) with clarification**: cc-0008 creates and seeds `c.client_cadence_rule` only. No generator EF deploy in cc-0008. No cron setup in cc-0008. No live generator execution in cc-0008. cc-0009 creates the `r.*` schema, `r.reconciliation_run`, `r.expected_publication`, and helpers; deploys the `cadence-rule-generator` Edge Function; runs the first manual generator invocation with `backfill=true` (which writes the first `r.reconciliation_run` audit row); then enables the cron only after the manual run succeeds (V5 gate in §8.2). No temporary log table required — chicken/egg resolved by sequencing.
+PK approved chat as the seed author for `c.client_cadence_rule` cc-0008 initial rows. Chat derives empirically from `c.client_publish_schedule` × `c.client_publish_profile`; PK reviews via §3.5-style surface table; D-01 fires; PK explicit approval phrase received; chat applies via single `apply_migration`.
 
-Sequencing clarification reflected in §8.1 (cc-0008 — DDL + DML only) and §8.2 (cc-0009 — DDL + EF deploy + first backfill + cron enable, gated).
+### 11.3 cc-0008 / cc-0009 sequencing
 
-**Next session**: cc-0008 apply brief authoring. Chat authors brief including the seed INSERT statements; PK reviews seed; D-01 fires; apply.
+PK approved hard-line sequencing: cc-0008 = DDL + seed only. No EF deploy. No cron. No first generator invocation. No `r.*` schema. No temporary log tables. All such items deferred to cc-0009.
+
+### 11.4 v2 amendments (this header) — minute precision + paused-profile suppression
+
+PK approved 2026-05-09 (this session):
+
+- Replace `preferred_local_hours int[]` with `preferred_local_times time[]` as the authoritative cadence schedule field. Hour-level metadata is derived (not stored authoritatively). Notes alone are insufficient to preserve minute precision.
+- Add paused-profile handling clause to `cadence-rule-generator`. Cadence rule remains `is_active=true` for paused platforms; generator detects `c.client_publish_profile.publish_enabled=false` and either skips insert or emits `expected_status='suppressed'` (cc-0009 brief locks the choice). Distinguishes "not part of cadence" from "temporarily paused."
+
+These amendments propagate into cc-0008 (seed uses `preferred_local_times` arrays; all 14 rows `is_active=true`) and cc-0009 (generator implements the paused-profile clause; brief locks suppress vs skip).
 
 ---
 
