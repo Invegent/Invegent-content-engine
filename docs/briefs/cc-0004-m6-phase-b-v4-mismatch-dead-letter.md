@@ -3,20 +3,22 @@
 **Created:** 2026-05-09 Sydney  
 **Author:** chat  
 **Executor:** chat (apply via Supabase MCP `apply_migration`) OR Claude Code per brief-runner-v0  
-**Status:** issued (draft; may be patched after cc-0003 execution results land — see §Notes)  
+**Status:** issued (draft; patched 2026-05-09 post cc-0003 v1 HALT — see Patch History)  
 **Result file:** `docs/briefs/results/cc-0004-m6-phase-b-v4-mismatch-dead-letter.md` (created on completion)
 
 ---
 
 ## Task
 
-Dead-letter the remaining `m.post_publish_queue` rows that are slot-driven (v4 origin, `pd.slot_id IS NOT NULL`) but whose queue `scheduled_for` does not match the slot's `scheduled_publish_at`. These are pre-M4 legacy artifacts where the enqueue cron filled `q.scheduled_for` from `get_next_scheduled_for(...)` instead of from the slot, despite the draft being slot-driven. M4 (applied 2026-05-05 v2.50) closed this source path forward; this migration cleans up the residual cohort.
+Dead-letter the remaining `m.post_publish_queue` rows that are **slot-driven** (`pd.slot_id IS NOT NULL`) and whose queue `scheduled_for` does not match the slot's `scheduled_publish_at`. M4 (applied 2026-05-05 v2.50) closed the source path forward and backfilled `pd.scheduled_for` from slot times for 147 v4 drafts; this migration cleans up the residual queue rows that were created before M4 landed (and any other slot-bound rows that match the v4 mismatch fingerprint, regardless of how their `scheduled_for` was originally set).
+
+**cc-0004 scope is explicitly `pd.slot_id IS NOT NULL`.** cc-0003 v2 (the planned re-issue of cc-0003 post the v1 HALT) will scope to `pd.slot_id IS NULL`. The two briefs together partition the slot_id-keyed universe of `m.post_publish_queue` rows in `(queued, failed)` status, and are **disjoint by construction on the `pd.slot_id` discriminator**. No row can satisfy both criteria simultaneously.
 
 Apply via Supabase MCP `apply_migration` as migration `m6_phase_b_v4_mismatch_dead_letter_v1`. Single atomic transaction. UPDATEs `m.post_publish_queue.status` from `queued`/`failed` to `dead` and populates `m.post_publish_queue.dead_reason` with `anomalous_pre_m4_v4_mismatch` for matching rows.
 
-**Expected scope at draft time:** 43 rows (read-only verified 2026-05-09). Apply session must re-verify count from a fresh read-only SELECT and halt if outside the [20, 65] range.
+**Expected scope at draft time:** 43 rows (read-only verified 2026-05-09). With cc-0003 v1 HALT having surfaced 2 additional slot-bound rows that match the Bug 3 5-min fingerprint (queue_ids `929ee2f9-7bd0-42ce-b6e0-1ff62b88f823` and `30fa6594-a233-4f1e-a984-7b37fa170fcb`, both CFW × IG, both `pd.slot_id IS NOT NULL`), those 2 rows are expected to fall within cc-0004 scope **iff** their `q.scheduled_for IS DISTINCT FROM s.scheduled_publish_at` — almost certainly TRUE because the cc-0003 v1 §1.4 snapshot showed their `scheduled_for` ≈ created_at + 5 min, which is unlikely to coincide with any configured slot publish time. Apply session re-verifies the count from a fresh read-only SELECT and halts if outside the [20, 65] range. The range upper bound already accommodates the 2 CFW rows landing in scope.
 
-**Sequencing constraint:** cc-0004 apply must NOT proceed until cc-0003 completes successfully OR resolves to a clean NO-OP. If cc-0003 fails / halts / rolls back, cc-0004 is blocked until cc-0003 is resolved. cc-0004 brief authoring (this draft) is parallel-safe; the apply itself is sequenced.
+**Sequencing constraint:** cc-0004 apply must NOT proceed until cc-0003 v2 completes successfully OR resolves to a clean NO-OP. If cc-0003 v2 fails / halts / rolls back, cc-0004 is blocked until cc-0003 v2 is resolved. cc-0004 brief authoring (this draft) is parallel-safe; the apply itself is sequenced. **The cc-0003 v1 HALT does NOT constitute a "completed" cc-0003 outcome — cc-0003 v2 must be authored, run, and resolved before cc-0004 can proceed.**
 
 ---
 
@@ -27,6 +29,7 @@ Apply via Supabase MCP `apply_migration` as migration `m6_phase_b_v4_mismatch_de
 - `docs/runtime/sessions/2026-05-05-m5-applied-corrected-cascade-fix.md` §Schema state delta + §Carry-forward — M5 applied; explicit "47 v4-origin queue mismatch rows still carried-forward (M6 Phase B scope; M4 forward-only)".
 - `docs/briefs/2026-05-09-m5-m8-vw-pipeline-state-reconciliation.md` §2.7 + §6 Q1 — today's reconciliation finding (43 rows; column-unblocked; §10.2 view auto-reclassification; same shape as Phase A but slot-driven).
 - `docs/briefs/cc-0003-m6-phase-a-bug3-dead-letter.md` (incl. 2026-05-09 patches) — pattern source for this brief; §1.7 baseline + §4 P3.2 scope distinction + softened D-01 wording all carry forward verbatim.
+- `docs/briefs/results/cc-0003-m6-phase-a-bug3-dead-letter.md` (commit `2acdee33`) — cc-0003 v1 HALT result. Empirically falsified the assumption that slot-driven drafts cannot exhibit the Bug 3 5-min fingerprint: 2 CFW × IG rows surfaced as slot-bound AND fingerprint-matching at pre-flight §1.5. cc-0003 v2 will narrow to `pd.slot_id IS NULL`; cc-0004 (this brief, post-patch) is the disjoint complement.
 - `docs/dashboard-review-2026-05/10_product_objects_and_data_model.md` §10.2 precedence rule 1 — view auto-reclassifies dead rows correctly post-apply.
 - `docs/00_action_list.md` v2.54 — carry-forward classification of M6 Phase B as P3 (sequenced after M6 Phase A).
 
@@ -82,7 +85,7 @@ Apply via Supabase MCP `apply_migration` as migration `m6_phase_b_v4_mismatch_de
 - No proceeding past D-01 if the verdict is anything other than `agree` with `proceed`. Escalation to PK per standing protocol if D-01 returns escalate=true or pushback.
 - No assumption that 43 is the exact count. Always re-verify.
 - No assumption that `pre_dead_reason_count` is 0. Always read it from §1.7 at apply time and use the captured value in V1 pass.
-- No assumption that Phase A and Phase B scopes are disjoint without empirical check. §1.5 verifies disjointness.
+- No assumption that slot-driven rows cannot also exhibit the Bug 3 5-min fingerprint. cc-0003 v1 HALT empirically falsified this; §1.5 retains a co-occurrence count as informational evidence only. Disjointness vs cc-0003 v2 is established **by construction** on `pd.slot_id` (this brief = `IS NOT NULL`; cc-0003 v2 = `IS NULL`).
 - No edit to `00_overview.md`, `04_phases.md`, `06_decisions.md` from this session unless 4-way sync requires it (PHASES roadmap update + memory edit + action_list bump are the standard close).
 - No Phase 0 scheduling.
 
@@ -170,10 +173,10 @@ ORDER BY q.created_at, q.queue_id;
 
 **Purpose:** hold the target snapshot in chat context (or copy to a temp/scratch file) so post-apply verification (V5) can compare. The list MUST equal the count from §1.3. The `schedule_delta` column is informative — captures how far off each row's `scheduled_for` is from its slot's intended publish time.
 
-### 1.5 Disjointness check vs Phase A criterion (sanity inversion of cc-0003 §1.5)
+### 1.5 Bug 3 fingerprint co-occurrence (informational; was disjointness check pre-2026-05-09 patch)
 
 ```sql
-SELECT COUNT(*) AS phase_a_overlap_count
+SELECT COUNT(*) AS bug3_fingerprint_within_scope_count
 FROM m.post_publish_queue q
 JOIN m.post_draft pd ON pd.post_draft_id = q.post_draft_id
 JOIN m.slot s ON s.slot_id = pd.slot_id
@@ -183,9 +186,16 @@ WHERE q.status IN ('queued', 'failed')
   AND ABS(EXTRACT(EPOCH FROM (q.scheduled_for - q.created_at)) - 300) < 60;
 ```
 
-**Decision rule:** expected = 0. Phase A requires `pd.slot_id IS NULL` (verified by cc-0003 §1.5); Phase B requires `pd.slot_id IS NOT NULL`. They are disjoint by the slot_id discriminator alone. This check looks for any row that ALSO matches Bug 3's 5-min fingerprint within Phase B's slot-driven population — a pathological edge case where a slot-driven draft somehow had `q.scheduled_for` set via the Bug 3 fallback path (theoretically impossible post-M4 since M4 backfilled `pd.scheduled_for` from slot times; pre-M4 + pre-M3 could in theory produce this). If `phase_a_overlap_count > 0`, HALT and escalate — either cc-0003 should have caught these (and cc-0004 must defer until they're resolved) or the criterion class has unexpected interaction.
+**Status post 2026-05-09 patch:** **informational only — NOT a halt criterion.** Disjointness between cc-0003 v2 and cc-0004 is now established **by construction on `pd.slot_id`** (cc-0003 v2 = `IS NULL`; cc-0004 = `IS NOT NULL`), not by Bug 3 fingerprint exclusion.
 
-**Note on order-independence:** if cc-0003 has already run and dead-lettered its 11 rows, those rows now have `status='dead'` and would NOT match this check (status filter excludes dead). So if cc-0003 has completed, this check measures only Phase B. If cc-0003 has not yet run, this check measures cross-criterion overlap. Either case: `phase_a_overlap_count = 0` is the expected outcome.
+**What this query counts:** rows in cc-0004's selection set whose `(scheduled_for - created_at)` happens to fall within the 5-min ± 60 s window of the Bug 3 fingerprint. Pre-2026-05-09, the brief assumed this should always be 0 — that slot-driven drafts could not have been touched by the Bug 3 wall-clock fallback. The cc-0003 v1 HALT empirically falsified that: 2 CFW × IG rows surfaced as both slot-bound AND fingerprint-matching at cc-0003 v1 §1.5. So a non-zero count here is **expected** (≥ 2 today) and does not indicate scope corruption.
+
+**Decision rule (post-patch):**
+- Capture `bug3_fingerprint_within_scope_count` and the queue_id list for the D-01 packet (`current_evidence` line). The 2 CFW rows from cc-0003 v1 HALT (`929ee2f9-7bd0-42ce-b6e0-1ff62b88f823`, `30fa6594-a233-4f1e-a984-7b37fa170fcb`) should appear in this list iff they remain `(queued, failed)` and slot-mismatched at apply time.
+- **No HALT** based on this query alone. The disjointness invariant is enforced by the `pd.slot_id IS NOT NULL` clause in §2 / §3, which is mutually exclusive with cc-0003 v2's `pd.slot_id IS NULL` clause.
+- If the count is large (say > 10) and dominates Phase B's total, that's a signal of an upstream pattern worth investigating after cc-0004 lands — but it does not block this apply.
+
+**Why the check is retained:** observability. Knowing how many cc-0004 targets carry the Bug 3 fingerprint helps reason about M3/M4 interaction history when reading the result file later.
 
 ### 1.6 Capture pre-state aggregates for V3/V4 verification
 
@@ -232,9 +242,11 @@ JOIN m.slot s ON s.slot_id = pd.slot_id
 **Rationale:** v4 mismatch fingerprint per reconciliation brief §2.7. This identifies queue rows whose draft is slot-driven (`pd.slot_id IS NOT NULL`) but whose `q.scheduled_for` does not match the slot's intended publish time. Per the queue integrity v3 brief §2 Defect 5, pre-M4 the enqueue cron used `COALESCE(pd.scheduled_for, get_next_scheduled_for(...))` without consulting `slot.scheduled_publish_at`, causing this mismatch. M4 (applied 2026-05-05) added slot lookup to the COALESCE chain AND backfilled `pd.scheduled_for` from slot times for 147 v4 drafts. Despite the backfill, queue rows already created with the old `scheduled_for` value persist — those are this migration's targets.
 
 **Excluded by criterion:**
-- Legacy-origin rows (`pd.slot_id IS NULL`): not slot-driven; not Phase B scope. Some are Phase A scope (cc-0003); the rest are M8 cleanup scope (cc-0005).
+- Legacy-origin rows (`pd.slot_id IS NULL`): **not slot-driven; not Phase B scope.** These are cc-0003 v2 scope (the planned re-issue post the v1 HALT) for the Bug 3 fingerprint subset, and M8 cleanup scope (cc-0005) for the rest.
 - Slot-driven rows where `q.scheduled_for = s.scheduled_publish_at`: aligned correctly; not anomalous.
 - Dead or published rows: not in active queue.
+
+**Disjoint-by-construction guarantee:** the `pd.slot_id IS NOT NULL` clause in this criterion is mutually exclusive with the `pd.slot_id IS NULL` clause that cc-0003 v2 will carry. No row can satisfy both. The Bug 3 5-min fingerprint can co-occur within Phase B's slot-driven population (per cc-0003 v1 HALT empirical finding); that is a property of those rows' `scheduled_for`, not a sign of scope overlap with cc-0003 v2.
 
 **Why `IS DISTINCT FROM` not `!=`:** `IS DISTINCT FROM` treats two NULLs as equal and a NULL-vs-non-NULL as distinct. This handles the edge case where `q.scheduled_for IS NULL` (would mismatch any non-NULL slot time, correctly captured) or `s.scheduled_publish_at IS NULL` (slot without intent — shouldn't happen but is handled). Using `!=` would silently drop NULL-bearing rows from the criterion, an accidental scope reduction.
 
@@ -263,13 +275,17 @@ Applied via Supabase MCP `apply_migration` with:
 
 DO $$
 DECLARE
-  v_overlap_count integer;
+  v_bug3_co_count integer;
   v_count integer;
   v_min_expected integer := 20;
   v_max_expected integer := 65;
 BEGIN
-  -- Disjointness sanity (Phase A vs Phase B); see cc-0004 §1.5
-  SELECT COUNT(*) INTO v_overlap_count
+  -- Bug 3 fingerprint co-occurrence (informational; see cc-0004 §1.5).
+  -- Disjointness vs cc-0003 v2 is established by construction on pd.slot_id
+  -- (cc-0003 v2 = IS NULL; cc-0004 = IS NOT NULL). The Bug 3 5-min fingerprint
+  -- CAN co-occur within slot-driven rows (empirically confirmed by cc-0003 v1 HALT).
+  -- A non-zero count here is informational, NOT a halt criterion.
+  SELECT COUNT(*) INTO v_bug3_co_count
   FROM m.post_publish_queue q
   JOIN m.post_draft pd ON pd.post_draft_id = q.post_draft_id
   JOIN m.slot s ON s.slot_id = pd.slot_id
@@ -278,10 +294,7 @@ BEGIN
     AND q.scheduled_for IS DISTINCT FROM s.scheduled_publish_at
     AND ABS(EXTRACT(EPOCH FROM (q.scheduled_for - q.created_at)) - 300) < 60;
 
-  IF v_overlap_count > 0 THEN
-    RAISE EXCEPTION 'M6 Phase B DISJOINTNESS FAIL: % rows match BOTH Phase B and Phase A (Bug 3 fingerprint) criterion. Halt for re-investigation.',
-      v_overlap_count;
-  END IF;
+  RAISE NOTICE 'M6 Phase B Bug 3 co-occurrence: % rows in scope also match the 5-min fingerprint (informational; expected >= 2 from cc-0003 v1 HALT findings).', v_bug3_co_count;
 
   -- Phase B count check
   SELECT COUNT(*) INTO v_count
@@ -325,7 +338,7 @@ WHERE queue_id IN (
 3. **No `updated_at` set explicitly:** §4 P1 will determine whether `updated_at` exists and whether a trigger maintains it. The SQL above does NOT set `updated_at`. **Apply-session amendment rule:** if P1 confirms `updated_at` column exists AND no auto-trigger maintains it on UPDATE, AMEND the SQL to add `, updated_at = NOW()` to the SET clause before D-01 fire. Document the amendment in the D-01 packet (§5).
 4. **`WHERE queue_id IN (...)` subquery form preferred:** unlike cc-0003's single-table criterion, cc-0004's multi-table criterion can't be expressed as a simple `WHERE` on the UPDATE target. The IN-subquery form: (a) self-validates against the same criterion the DO block checked, (b) remains correct if a row drains in the millisecond between count check and UPDATE (subquery re-evaluates), (c) the criterion is the audit trail. Alternative forms (`UPDATE ... FROM`) are valid in Postgres but the IN-subquery is more readable and matches the pre-flight diagnostic verbatim.
 5. **`dead_reason` value `anomalous_pre_m4_v4_mismatch`** matches the reconciliation brief §2.7 proposal. PK can override via patch; current source-doc canonical is the reconciliation brief.
-6. **Disjointness check inside the DO block** is doubly redundant with §1.5 (which runs at session start). The redundancy is intentional: §1.5 catches the issue pre-D-01; the DO block catches any drift between §1.5 read and apply (within the same transaction window). Belt-and-braces; the DO block's overlap check is cheap.
+6. **Bug 3 fingerprint co-occurrence inside the DO block** (post 2026-05-09 patch): captured as `v_bug3_co_count` and emitted via `RAISE NOTICE` for observability. **Not a halt condition.** Disjointness vs cc-0003 v2 is established by construction on `pd.slot_id` (the `IS NOT NULL` clause in the apply WHERE clause is mutually exclusive with cc-0003 v2's `IS NULL` clause), not by Bug 3 fingerprint exclusion. See §1.5 rewrite for full rationale.
 
 ---
 
@@ -341,7 +354,7 @@ Apply session walks each step, captures evidence, and refuses to proceed past an
 - [ ] **P1.2** Run §1.2 pg_trigger check; confirm zero non-internal triggers on `m.post_publish_queue` OR all non-internal triggers are column-maintenance-only (no INSERTs, no pg_notify, no EF calls). HALT if any trigger has external side-effects.
 - [ ] **P1.3** Run §1.3 count check; confirm `phase_b_target_count` in [20, 65]. If 0 → NO-OP path (§8). If outside [20, 65] → HALT.
 - [ ] **P1.4** Run §1.4 target snapshot; persist queue_id list + slot scheduling delta to chat context (or scratch file `/tmp/cc-0004-targets-{date}.csv`).
-- [ ] **P1.5** Run §1.5 disjointness check (Phase A overlap); confirm `phase_a_overlap_count = 0`. HALT if not zero.
+- [ ] **P1.5** Run §1.5 Bug 3 fingerprint co-occurrence query (informational, post-patch). Capture `bug3_fingerprint_within_scope_count` for the D-01 packet. **No HALT** based on this query — disjointness vs cc-0003 v2 is established by construction on `pd.slot_id`, not by fingerprint exclusion.
 - [ ] **P1.6** Run §1.6 pre-state aggregates; capture `(status, count)` baseline.
 - [ ] **P1.7** Run §1.7 pre_dead_reason_count baseline; persist value for V1 pass condition. No HALT criterion; informative-only.
 
@@ -506,7 +519,7 @@ baseline from pre-flight §1.7 (does not assume 0).
   "cost_of_waiting": "Low-to-moderate. Each day of delay drains ~1 row naturally; full drain would take ~6 weeks at current rate. Pipeline-integrity benefit (clean baseline for m.vw_pipeline_state, removes ambiguity in slot-intent vs queue-intent) is the residual reason to apply rather than wait for full drain. Note: cc-0004's drain rate is much slower than cc-0003's (~1/day vs ~24/day), so the wait-for-natural-drain strategy is less attractive here than for Phase A.",
   "current_evidence": [
     "Pre-flight §1.3 count check: <N> rows match criterion at <DATETIME>",
-    "Pre-flight §1.5 disjointness check: 0 Phase A overlap rows",
+    "Pre-flight §1.5 Bug 3 fingerprint co-occurrence (informational): <K> rows in scope also match the 5-min fingerprint. Expected K >= 2 from cc-0003 v1 HALT findings (queue_ids 929ee2f9-... and 30fa6594-...).",
     "Pre-flight §1.2 trigger check: <result>",
     "Pre-flight §1.7 pre_dead_reason_count: <P> (baseline used in V1; not assumed to be 0)",
     "Pre-flight §4 P3.4 slot data quality: <slot_time_null_flag>=false confirmed",
@@ -514,7 +527,8 @@ baseline from pre-flight §1.7 (does not assume 0).
     "docs/briefs/2026-05-09-m5-m8-vw-pipeline-state-reconciliation.md §2.7 confirms column-unblocked + view-compatible + same shape as Phase A",
     "docs/briefs/2026-05-05-queue-integrity-incident.md v3 §2 Defect 5 mechanism (revised)",
     "docs/briefs/cc-0003-m6-phase-a-bug3-dead-letter.md (incl. patches) — pattern source",
-    "cc-0003 result file status: <Complete | NO-OP | Partial | Blocked> (sequencing pre-condition)"
+    "docs/briefs/results/cc-0003-m6-phase-a-bug3-dead-letter.md (commit 2acdee33) — cc-0003 v1 HALT empirical finding: 2 slot-bound rows match Bug 3 fingerprint; falsifies the prior 'theoretically impossible' assumption; motivates the pd.slot_id IS NULL/IS NOT NULL partitioning between cc-0003 v2 and cc-0004",
+    "cc-0003 v2 result file status: <Complete | NO-OP | Partial | Blocked> (sequencing pre-condition; cc-0003 v1 HALT alone does NOT satisfy the gate)"
   ],
   "known_weak_evidence": [
     "The M5 session's 47 figure may have used a different criterion than today's strict IS DISTINCT FROM. The 4-row delta is plausibly natural drain (~1/day; today's 43 / 6-week projection consistent), but a criterion-difference contribution can't be ruled out.",
@@ -522,7 +536,8 @@ baseline from pre-flight §1.7 (does not assume 0).
     "Rollback path uses captured queue_id list rather than criterion-based WHERE; depends on apply session correctly persisting the snapshot in P1.4.",
     "V1 pass condition relies on pre_dead_reason_count captured at §1.7; if pre_dead_reason_count drifts between §1.7 read and apply (unlikely; only writers of this dead_reason would cause drift, and §4 P3.2 verifies no live code writers), V1 could mis-pass. Acceptable risk because the drift window is seconds and writer-absence is verified.",
     "Phase B drain rate (~1/day) means the cohort is much more persistent than Phase A. If the apply is delayed beyond ~1-2 weeks, the natural drain may not change the apply-time count materially — unlike Phase A where drain was rapid.",
-    "P2.7 re-fill consideration: dead-lettering these queue rows leaves their slots in a state where m.fill_pending_slots may re-create drafts for them. New drafts would have correct (post-M4) scheduling. This is desirable, but means the publisher cycle for affected (client, platform) partitions may briefly have MORE queue activity post-apply, not less, as slots get re-filled. Document for D-01 reviewer awareness."
+    "P2.7 re-fill consideration: dead-lettering these queue rows leaves their slots in a state where m.fill_pending_slots may re-create drafts for them. New drafts would have correct (post-M4) scheduling. This is desirable, but means the publisher cycle for affected (client, platform) partitions may briefly have MORE queue activity post-apply, not less, as slots get re-filled. Document for D-01 reviewer awareness.",
+    "Disjointness vs cc-0003 v2 is by-construction on pd.slot_id, not empirically verified by Bug 3 fingerprint exclusion. The previous (pre 2026-05-09 patch) framing assumed 'slot-driven drafts cannot match Bug 3' which the cc-0003 v1 HALT empirically falsified. The new disjointness argument is structural (mutually exclusive WHERE clauses) and does not rely on M3/M4 source-path closure semantics."
   ],
   "default_action": "proceed if D-01 returns clean agree; halt and escalate to PK if any escalation, pushback, or risk-elevation",
   "references": {
@@ -552,7 +567,7 @@ baseline from pre-flight §1.7 (does not assume 0).
 After D-01 returns clean agree + PK approval AND cc-0003 has resolved:
 
 1. **Sequencing gate** — verify cc-0003 result file at `docs/briefs/results/cc-0003-m6-phase-a-bug3-dead-letter.md` exists and §1 status is `Complete` (or equivalent). If not, HALT.
-2. **Final read-only re-verification** — re-run §1.3 + §1.4 + §1.5 + §1.7 within ~60s of apply. Confirm count is in the same range as the D-01 packet stated. If divergence > 5 rows from packet count for §1.3, halt and refresh D-01 packet. If `pre_dead_reason_count` from §1.7 changed since the earlier capture, use the fresh value in V1. If §1.5 disjointness fails, halt.
+2. **Final read-only re-verification** — re-run §1.3 + §1.4 + §1.5 + §1.7 within ~60s of apply. Confirm §1.3 count is in the same range as the D-01 packet stated. If divergence > 5 rows from packet count for §1.3, halt and refresh D-01 packet. If `pre_dead_reason_count` from §1.7 changed since the earlier capture, use the fresh value in V1. **§1.5 is informational only post 2026-05-09 patch** — capture the count for the result file but do not halt on a non-zero value.
 3. **`apply_migration` call** — single call:
    ```
    apply_migration(
@@ -671,20 +686,14 @@ If §1.3 returns `phase_b_target_count = 0`:
    - (c) re-investigate criterion
 5. cc-0004 stays issued; PK directs cc-0004v2 or new investigation brief.
 
-**8.2.b Disjointness fail:** §1.5 returns `phase_a_overlap_count > 0`:
+**8.2.b (RETIRED post 2026-05-09 patch):** previously a HALT path on `phase_a_overlap_count > 0`. Retired because §1.5 is now informational only. Disjointness vs cc-0003 v2 is established **by construction** on `pd.slot_id` and cannot be violated by table state. The §1.5 query is retained as observability evidence; a non-zero count is **expected** post the cc-0003 v1 HALT findings (≥ 2 today) and triggers no halt.
+
+**8.2.c Sequencing gate fail:** cc-0003 v2 result file does not exist OR shows `Partial` / `Blocked` (cc-0003 v1 HALT result alone does NOT satisfy the gate):
 
 1. NO `apply_migration` call.
 2. NO D-01 fire.
-3. Document: "M6 Phase B halted: <N> rows match BOTH Phase B and Phase A criterion. Disjointness invariant violated."
-4. Escalate to PK with the overlapping queue_ids. Possible causes: (a) cc-0003 has not yet run and these rows would be claimed by cc-0003 first — simply wait for cc-0003 and re-fire pre-flight; (b) cc-0003 ran but did not capture these specific rows (criterion mismatch) — deeper investigation required.
-5. cc-0004 stays issued; PK directs path.
-
-**8.2.c Sequencing gate fail:** cc-0003 result file does not exist OR shows `Partial` / `Blocked`:
-
-1. NO `apply_migration` call.
-2. NO D-01 fire.
-3. Document: "M6 Phase B halted at apply: cc-0003 sequencing gate not met. cc-0003 result status: <X>."
-4. Wait for cc-0003 resolution. cc-0004 stays issued.
+3. Document: "M6 Phase B halted at apply: cc-0003 v2 sequencing gate not met. cc-0003 v2 result status: <X>."
+4. Wait for cc-0003 v2 resolution. cc-0004 stays issued.
 
 ### 8.3 ROLLBACK path (verification fails after apply)
 
@@ -718,8 +727,8 @@ The rollback SQL needs the captured queue_id → pre_status mapping from §1.4. 
 
 The cc-0004 apply session is COMPLETE when:
 
-1. cc-0003 sequencing gate met (cc-0003 result status `Complete` or clean NO-OP).
-2. §1 pre-flight all 7 checks PASS (incl. §1.5 disjointness + §1.7 pre_dead_reason_count baseline).
+1. cc-0003 v2 sequencing gate met (cc-0003 v2 result status `Complete` or clean NO-OP). cc-0003 v1 HALT alone does NOT satisfy the gate.
+2. §1 pre-flight all 7 checks PASS (incl. §1.5 informational co-occurrence capture + §1.7 pre_dead_reason_count baseline). §1.5 is no longer a halt criterion post 2026-05-09 patch.
 3. §4 P1–P5 all PASS.
 4. §5 D-01 fire returns clean agree + PK approval.
 5. §6 apply procedure completes; `apply_migration` returns success.
@@ -764,7 +773,7 @@ PK directive at issuance: "cc-0004 may need a small patch after cc-0003 executio
 4. **Rollback templating** — if PK decides to template rollback in the brief rather than defer to apply session, cc-0004's §8.3 + §8.4 need rewriting.
 5. **Pre-existing-state baseline pattern** — if the §1.7 baseline pattern was unclear or burdensome, cc-0004's §1.7 (and §1.5 disjointness check, and §3 DO block overlap check) need re-shaping. Likely candidate for promotion to a brief-runner-v0 standing rule.
 6. **Multi-table criterion handling** — cc-0004 introduces JOIN-based criterion via subquery form. cc-0003 didn't have this. CC may surface friction with the subquery form, especially in the rollback (which uses queue_id list — not criterion — so JOINs only apply to the apply path, not rollback). Patch could either (a) align rollback with subquery form too (currently uses queue_id list, which is correct), or (b) document the asymmetry more explicitly.
-7. **Disjointness check (§1.5)** — NEW vs cc-0003. If CC finds the disjointness check redundant with the sequencing gate (cc-0003 must complete first, so its rows are already dead and outside Phase B criterion), the check could be downgraded to informative-only or removed.
+7. **Disjointness check (§1.5)** — NEW vs cc-0003. **Resolved by 2026-05-09 patch:** downgraded from HALT-on-overlap to informational. Disjointness vs cc-0003 v2 is by construction on `pd.slot_id`, not by Bug 3 fingerprint exclusion. The cc-0003 v1 HALT empirically falsified the prior assumption.
 
 None of these would require a full rewrite. All are tightening passes if needed.
 
@@ -787,4 +796,87 @@ Same as cc-0003 §Notes 1–5. Particular for cc-0004:
 
 ---
 
-*Brief authored 2026-05-09 Sydney. Inputs: cc-0003 brief shape (incl. patches); reconciliation brief §2.7 + §6 Q1; queue integrity v3 brief §2 Defect 5 + §8 Migration 4; M4 + M5 session records §Carry-forward; §10.2 view contract precedence rule 1. Output: full apply brief (selection criterion + multi-table SQL via subquery + P1–P5 + D-01 packet + verification + rollback + halt paths + sequencing gate + stop condition). No production state changed by drafting. cc-0004 apply blocks until cc-0003 resolves. Awaiting cc-0003 result + PK direction to schedule the cc-0004 apply session.*
+*Brief authored 2026-05-09 Sydney. Inputs: cc-0003 brief shape (incl. patches); reconciliation brief §2.7 + §6 Q1; queue integrity v3 brief §2 Defect 5 + §8 Migration 4; M4 + M5 session records §Carry-forward; §10.2 view contract precedence rule 1. Output: full apply brief (selection criterion + multi-table SQL via subquery + P1–P5 + D-01 packet + verification + rollback + halt paths + sequencing gate + stop condition). Patched 2026-05-09 same day per PK direction post the cc-0003 v1 HALT findings (see Patch History). No production state changed by drafting or patching. cc-0004 apply blocks until cc-0003 v2 resolves. Awaiting cc-0003 v2 authoring + execution + PK direction to schedule the cc-0004 apply session.*
+
+---
+
+## Patch History
+
+### 2026-05-09 patch (chat → CC, doc-only)
+
+PK greenlight to propagate cc-0003 v1 HALT findings into cc-0004. No production state changed; no D-01 fire; no apply; no Supabase writes; no cron edits; no deploys.
+
+**Trigger:** cc-0003 v1 pre-flight §1.5 returned `slot_driven_count = 2` against an expected 0, halting cc-0003 v1 (result file `docs/briefs/results/cc-0003-m6-phase-a-bug3-dead-letter.md`, commit `2acdee33`). The 2 surfaced rows (queue_ids `929ee2f9-7bd0-42ce-b6e0-1ff62b88f823` and `30fa6594-a233-4f1e-a984-7b37fa170fcb`, both CFW × IG, both `pd.slot_id IS NOT NULL`, both with `(scheduled_for - created_at) ≈ 5 min`) empirically falsified the prior cross-brief assumption that slot-driven drafts cannot exhibit the Bug 3 5-min fingerprint.
+
+**PK direction:** re-partition Phase A and Phase B by the `pd.slot_id` discriminator alone. cc-0003 will be re-issued as cc-0003 v2 with scope narrowed to `pd.slot_id IS NULL`. cc-0004 (this brief) keeps its existing `pd.slot_id IS NOT NULL` scope but drops every assumption that depended on Bug 3 fingerprint not co-occurring with slot-driven rows.
+
+**Patch 1 — §Task scope statement:**
+- Added explicit "cc-0004 scope is explicitly `pd.slot_id IS NOT NULL`" sentence with the disjoint-by-construction guarantee vs cc-0003 v2.
+- Added the 2 CFW × IG queue_ids (`929ee2f9-...`, `30fa6594-...`) as expected cc-0004 scope, conditional on `q.scheduled_for IS DISTINCT FROM s.scheduled_publish_at` at apply time.
+- Updated sequencing constraint to require **cc-0003 v2** completion (not cc-0003 v1 HALT alone).
+
+**Patch 2 — §Source context:**
+- Added `docs/briefs/results/cc-0003-m6-phase-a-bug3-dead-letter.md` (commit `2acdee33`) as input source documenting the empirical falsification of the prior assumption.
+
+**Patch 3 — §1.5 rewrite (the central change):**
+- Renamed "Disjointness check vs Phase A criterion" → "Bug 3 fingerprint co-occurrence (informational; was disjointness check pre-2026-05-09 patch)".
+- Renamed result column from `phase_a_overlap_count` → `bug3_fingerprint_within_scope_count`.
+- Removed the "theoretically impossible" language and the "HALT and escalate" decision rule.
+- Added explicit decision rule: capture the count for D-01 packet, no HALT, expected ≥ 2.
+- Replaced the "Note on order-independence" block with a "Why the check is retained" block (observability, not safety gate).
+
+**Patch 4 — §2 Selection criterion:**
+- Added "Disjoint-by-construction guarantee" paragraph: cc-0003 v2's `pd.slot_id IS NULL` clause is mutually exclusive with cc-0004's `pd.slot_id IS NOT NULL` clause; Bug 3 5-min fingerprint can co-occur within Phase B's slot-driven population without breaking disjointness.
+- Updated "Excluded by criterion" to reference cc-0003 v2 explicitly.
+
+**Patch 5 — §3 SQL DO block:**
+- Renamed declared variable `v_overlap_count` → `v_bug3_co_count`.
+- Replaced the `RAISE EXCEPTION 'M6 Phase B DISJOINTNESS FAIL'` on overlap > 0 with `RAISE NOTICE 'M6 Phase B Bug 3 co-occurrence: ...'`.
+- Updated SQL note 6 to reflect the new informational role of the co-occurrence query.
+
+**Patch 6 — §4 P1.5:**
+- Updated checklist text to "informational, post-patch", "No HALT".
+- Updated §Forbidden actions item to drop the "no assumption that Phase A and Phase B scopes are disjoint without empirical check" line and replace with the corrected "no assumption that slot-driven rows cannot also exhibit the Bug 3 5-min fingerprint" line; pointed disjointness argument to construction on `pd.slot_id`.
+
+**Patch 7 — §5.2 D-01 packet:**
+- `current_evidence`: replaced "Pre-flight §1.5 disjointness check: 0 Phase A overlap rows" with "Pre-flight §1.5 Bug 3 fingerprint co-occurrence (informational): <K> rows...; expected K >= 2 from cc-0003 v1 HALT findings."
+- `current_evidence`: added explicit cc-0003 v1 HALT result file reference (commit `2acdee33`).
+- `current_evidence`: changed "cc-0003 result file status" to "cc-0003 v2 result file status" and added that cc-0003 v1 HALT alone does not satisfy the gate.
+- `known_weak_evidence`: added a line acknowledging that the disjointness argument is now structural (by construction on `pd.slot_id`), not empirical (Bug 3 fingerprint exclusion), and that the prior framing was empirically falsified.
+
+**Patch 8 — §6 apply procedure:**
+- Step 2 re-verification language updated to note that §1.5 is informational only post-patch.
+
+**Patch 9 — §8 halt paths:**
+- §8.2.b retired (the disjointness HALT path on `phase_a_overlap_count > 0` is no longer applicable). The §8.2.b slot is preserved with an explicit RETIRED note for traceability.
+- §8.2.c sequencing gate text updated to require cc-0003 **v2** result, with explicit note that cc-0003 v1 HALT does not satisfy the gate.
+
+**Patch 10 — §9 stop condition:**
+- Item 1 updated to require cc-0003 v2 result.
+- Item 2 updated to note §1.5 is informational only.
+
+**Patch 11 — §Notes item 7:**
+- Marked "Resolved by 2026-05-09 patch" with brief explanation of how disjointness is now structural.
+
+**Patch 12 — supporting:**
+- Header `Status:` updated from `issued (draft; may be patched after cc-0003 execution results land — see §Notes)` to `issued (draft; patched 2026-05-09 post cc-0003 v1 HALT — see Patch History)`.
+- Footer paragraph updated to mention the patch and cc-0003 v2 dependency.
+
+**What was NOT changed:**
+- §2 selection criterion SQL itself (the `WHERE` clauses are correct as-is).
+- §3 UPDATE statement target rows / dead_reason value / atomicity / idempotency.
+- §1.7 pre_dead_reason_count baseline pattern — preserved verbatim.
+- §4 P3.2 code-collision-vs-table-state distinction — preserved verbatim. Both are explicit PK directives on the patch.
+- §7 verification queries V1–V6.
+- §8.1 NO-OP path, §8.2.a scope-out-of-range HALT path, §8.3 ROLLBACK path, §8.4 rollback templating note.
+- The `[20, 65]` count range. The 2 CFW rows landing in scope still keeps the count well within bounds (43 today + 2 expected = 45, comfortably below the 65 ceiling).
+
+**Hold-state assertions:**
+- No `apply_migration` calls.
+- No SQL DDL/DML executed.
+- No D-01 fire.
+- No EF deploys, no cron edits, no code changes.
+- `STANDING_THREE` array untouched. `m.ef_drift_log` untouched. `m.chatgpt_review` untouched.
+- cc-0003 v1 HALT result file (`docs/briefs/results/cc-0003-m6-phase-a-bug3-dead-letter.md`) untouched.
+- cc-0003 v1 brief (`docs/briefs/cc-0003-m6-phase-a-bug3-dead-letter.md`) untouched — that's a separate cc-0003 v2 authoring task, not in scope for this patch.
+- This commit modifies only `docs/briefs/cc-0004-m6-phase-b-v4-mismatch-dead-letter.md`.
