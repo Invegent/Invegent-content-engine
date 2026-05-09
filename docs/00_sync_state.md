@@ -18,11 +18,12 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
-| 2026-05-09 | cc-0003-v2-applied-m6-phase-a-closed | **M6 Phase A CLOSED via cc-0003 v2 APPLIED (v2.55).** Brief-runner-v0 HALT-then-correction loop completed end-to-end across 8–9 May. CC HALTed cc-0003 v1 at §1.5 (slot_driven_count=2 vs expected 0; commit `2acdee33`); chat fired post-HALT diagnostic confirming both anomalous queue_ids are v4 mismatch (Phase B) rows that incidentally fingerprint Bug 3 because M4 was forward-only on `pd`; cc-0003 v1 → v2 patch + v1 result preservation in single chat commit `f91d9c79`; cc-0004 §1.5 propagation patch (CC, PK direct greenlight) commit `6675aa7c`; cc-0005 M8 atomic cutover brief draft (chat) commit `6f16c40e`; cc-0003 v2 D-01 PASS + PK explicit approval phrase + cc-0003 v2 APPLIED by CC via Supabase MCP (commit `d60dcfbc`, 9 rows dead-lettered, V1–V6 all PASS, no rollback). cc-0004 (M6 Phase B) sequencing gate now **MET**; CC owns apply when PK directs. cc-0005 PARKED at §1.0 hard PK confirmation gate (post-cutover enqueue path + `get_next_scheduled_for` callers). 6 brief-runner-v0 lessons captured (L1 v1 HALT works, L2 v2 patch works, L3 result-file preservation works, L4 pre-state baseline pattern now required, L5 invariants must be empirically pre-tested, L6 cross-brief propagation required when invariant fails). T-MCP-02 quota +1. P0+P1 open: ~4 → ~3. PHASES reconciliation now **11th** carry. | `docs/runtime/sessions/2026-05-09-cc-0003-v2-applied-m6-phase-a-closed.md` |
-| 2026-05-08 | video-worker-v3-deploy-verify-jwt-recovery | **video-worker v3.0.0 DEPLOYED + verify_jwt regression recovered + durable `supabase/config.toml` LANDED (v2.54).** Commit `4ae5b5a7` shipped F-VIDEO-QUALITY-UPGRADE-A-B-C (env-gated music default OFF, 9:16 layout fix, animation polish). Deployed via `safe-deploy.sh video-worker --allow-warn` (gate WARN→PASS, exit 0). Cron jobid 33 401'd because CLI default flips `verify_jwt: true` when no `supabase/config.toml`. Recovered same session via `supabase functions deploy video-worker --no-verify-jwt`. Drift round-trip COMPLETED: scan `cb7fe77b-2011-48cf-8ffc-806d63e535aa` 07:20:56 UTC, video-worker B-FD → A-LE, repo=deploy=3.0.0. Durable `supabase/config.toml` LANDED this turn covering 23 EFs (10 custom-header + 13 service-role; excluded as stale: `ingest`, `compliance-monitor`, `pipeline-ai-summary`, `pipeline-doctor`). 4 m.chatgpt_review records closed-the-loop (`8bd6ac37`, `fa4322e5`, `ee27dd37`, `4e0e9c00`). YouTube cadence prior-session memory entry RETRACTED (NDIS-Yarns Mon–Fri 19:00 AEST/09:00 UTC, Property Pulse Mon–Fri 17:00 AEST/07:00 UTC, **5 slots/wk each**, **not** "~3-day cadence" — Sat–Sun gap mislabelled, fill_window_opens_at conflated with scheduled_publish_at; system healthy via cron 72/73/75/76). NEW findings: F-CRON-INGEST-STALE (P2), F-CRON-COMPLIANCE-MONITOR-STALE (P2), F-CRON-PIPELINE-AI-SUMMARY-STALE (P2), F-CRON-PIPELINE-DOCTOR-STALE (P2 — NOT a rename of pipeline-diagnostician), F-CRON-PG-NET-TIMEOUT-5S (P2), F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 sec). Closed v2.54: video-worker verify_jwt durable fix (P3). PHASES reconciliation now **10th** carry. | `docs/runtime/sessions/2026-05-08-video-worker-v3-deploy-verify-jwt-recovery.md` |
-| 2026-05-08 | f-yt-ny-format-fix | **F-YT-NY-FORMAT-SELECTION CLOSED end-to-end (v2.53).** Commit `1ccfe9a2`: ai-worker v2.11.1 → v2.12.0. Two-part format-advisor-v1 fix. ai-worker class B-FD → A-LE. T-MCP-02 49 → 50. **0 state-capture exceptions.** ~4 P0+P1 open of 20 cap. NEW P3: F-YT-PUB-AVATAR-EXCLUSION. | `docs/runtime/sessions/2026-05-08-f-yt-ny-format-fix.md` |
-| 2026-05-08 | v2.52-insights-sync-rpc-closure | **Productive close (v2.52).** 3 findings closed in single session. Commit `57daf877`: insights-worker forward-sync. Commit `7555b98a`: combined RPC migration orphan closure. | `docs/runtime/sessions/2026-05-08-v2.52-insights-sync-rpc-closure.md` |
-| 2026-05-08 | personal-finance-cowork-inbox-brief | **Lightweight close (v2.51).** Crazy Domains analysis; morning-inbox-sweep-v1 brief drafted. | `docs/runtime/sessions/2026-05-08-personal-finance-cowork-inbox-brief.md` |
+| 2026-05-09 | cc-0004-applied-m6-phase-b-closed | **M6 Phase B CLOSED via cc-0004 APPLIED (v2.56).** 43 rows dead-lettered across 7 (client, platform) partitions; both cc-0003 v1 HALT slot-bound CFW IG rows captured. All V1–V6 PASS. No rollback. Result file commit `9d5bdd37`. **M6 dead-letter cycle now functionally complete: 9 (Phase A) + 43 (Phase B) = 52 residual rows cleared.** Schedule deltas -1d to +21d confirm pre-M4 residue, not minor drift. P3.3 outlier: 1 LinkedIn queue row with `pd.approval_status='draft'` dead-lettered (D-01 reviewer cleared as not blocking). Brief-runner-v0 L6 (cross-brief propagation) validated end-to-end. New L7 (informational co-occurrence pattern), L8 (multi-table IN-subquery pattern), L9 (schedule-delta evidence pattern) logged as candidates. cc-0005 §1.0 gate: items 3 + 4 now MET; items 1 + 2 still blocked. Chat investigation last turn established Path (A) cutover architecture (rewrite cron 48 in place, do not disable). cc-0005 patch deferred to PK direction. T-MCP-02 +1. P0+P1 open: ~3 → ~2. PHASES reconciliation now **12th** carry. | `docs/runtime/sessions/2026-05-09-cc-0004-applied-m6-phase-b-closed.md` |
+| 2026-05-09 | cc-0003-v2-applied-m6-phase-a-closed | **M6 Phase A CLOSED via cc-0003 v2 APPLIED (v2.55).** Brief-runner-v0 HALT-then-correction loop completed end-to-end across 8–9 May. CC HALTed cc-0003 v1 at §1.5 (slot_driven_count=2 vs expected 0; commit `2acdee33`); chat fired post-HALT diagnostic confirming both anomalous queue_ids are v4 mismatch (Phase B) rows that incidentally fingerprint Bug 3 because M4 was forward-only on `pd`; cc-0003 v1 → v2 patch + v1 result preservation in single chat commit `f91d9c79`; cc-0004 §1.5 propagation patch (CC, PK direct greenlight) commit `6675aa7c`; cc-0005 M8 atomic cutover brief draft (chat) commit `6f16c40e`; cc-0003 v2 D-01 PASS + PK explicit approval phrase + cc-0003 v2 APPLIED by CC via Supabase MCP (commit `d60dcfbc`, 9 rows dead-lettered, V1–V6 all PASS, no rollback). cc-0004 (M6 Phase B) sequencing gate **MET**; cc-0005 PARKED at §1.0 hard PK confirmation gate. 6 brief-runner-v0 lessons captured (L1–L6). T-MCP-02 +1. P0+P1 open: ~4 → ~3. PHASES reconciliation now **11th** carry. | `docs/runtime/sessions/2026-05-09-cc-0003-v2-applied-m6-phase-a-closed.md` |
+| 2026-05-08 | video-worker-v3-deploy-verify-jwt-recovery | **video-worker v3.0.0 DEPLOYED + verify_jwt regression recovered + durable `supabase/config.toml` LANDED (v2.54).** | `docs/runtime/sessions/2026-05-08-video-worker-v3-deploy-verify-jwt-recovery.md` |
+| 2026-05-08 | f-yt-ny-format-fix | **F-YT-NY-FORMAT-SELECTION CLOSED end-to-end (v2.53).** | `docs/runtime/sessions/2026-05-08-f-yt-ny-format-fix.md` |
+| 2026-05-08 | v2.52-insights-sync-rpc-closure | **Productive close (v2.52).** 3 findings closed in single session. | `docs/runtime/sessions/2026-05-08-v2.52-insights-sync-rpc-closure.md` |
+| 2026-05-08 | personal-finance-cowork-inbox-brief | **Lightweight close (v2.51).** | `docs/runtime/sessions/2026-05-08-personal-finance-cowork-inbox-brief.md` |
 | 2026-05-07 | p1-sd-triage-sync | **P1 SECURITY-DEFINER triage CLOSED (v2.50).** | `docs/runtime/sessions/2026-05-07-p1-sd-triage-sync.md` |
 | 2026-05-07 | stage3-safe-deploy | **Stage 3 SHIPPED + VERIFIED (v2.49).** `scripts/safe-deploy.sh` live. | `docs/runtime/sessions/2026-05-07-stage3-safe-deploy.md` |
 | 2026-05-07 | stage2b-shipped-accepted | **Stage 2b SHIPPED + ACCEPTED on desktop (v2.48).** | `docs/runtime/sessions/2026-05-07-stage2b-shipped-accepted.md` |
@@ -53,6 +54,66 @@
 
 ## 🟢 Most recent session — inline summary
 
+### 2026-05-09 Sydney — cc-0004 APPLIED (M6 Phase B closed; M6 dead-letter cycle now functionally complete) (v2.56)
+
+**Outcome:** **M6 Phase B CLOSED.** cc-0004 (v4 mismatch dead-letter) APPLIED via Supabase MCP `apply_migration` by CC (commit `9d5bdd37`). 43 rows dead-lettered across 7 `(client, platform)` partitions. Both cc-0003 v1 HALT slot-bound CFW IG rows (`929ee2f9-...`, `30fa6594-...`) captured. All 6 verification queries (V1–V6) PASS. No rollback. **M6 dead-letter cycle now functionally complete: 9 (Phase A) + 43 (Phase B) = 52 residual rows cleared.**
+
+**Apply summary:** migration `m6_phase_b_v4_mismatch_dead_letter_v1`; `dead_reason='anomalous_pre_m4_v4_mismatch'`; `apply_migration` returned `{"success": true}`; sequencing gate MET (cc-0003 v2 result `d60dcfb`); D-01 PASS; PK approval phrase `"proceed with cc-0004 apply"`; final read-only re-verification identical to initial pre-flight (no drift on §1.3 = 43, §1.5 = 2 informational, §1.7 = 0, §1.4 queue_id list); SQL applied with `updated_at = NOW()` per brief §3 note 3 amendment.
+
+**Verification (V1–V6 all PASS):** V1 post_dead_reason_count = 43 (= 0 + 43); V2 v2_count = 0; V3 queued+failed = 436 (= 479 - 43); V4 dead = 100 (= 57 + 43); V5 result list set-equal to captured 43 IDs; V6 per-status totals coherent (queued=436, dead=100, published=95, failed absent both sides).
+
+**Partition characterization (7 (client, platform) pairs):**
+
+| client_id | platform | rows | min Δsec | max Δsec |
+|---|---|---:|---:|---:|
+| `3eca32aa-…` | facebook | 1 | +440343 | +440343 |
+| `3eca32aa-…` | instagram | 7 | -71504 | +20642 |
+| `3eca32aa-…` | linkedin | 1 | +1029368 | +1029368 |
+| `4036a6b5-…` | facebook | 10 | +1188899 | +1814400 |
+| `4036a6b5-…` | youtube | 10 | +621899 | +1728000 |
+| `93494a09-…` | instagram | 6 | -85821 | +22185 |
+| `fb98a472-…` | youtube | 8 | -84572 | +604800 |
+
+Schedule deltas range -85,821s (-1 day) to +1,814,400s (+21 days) — confirms these were materially-wrong scheduling artifacts (pre-M4 residue), not minor drift.
+
+**P3.3 outlier (noted, not blocking):** 1 of 43 rows had `pd.approval_status='draft'` (queue_id `1a21199e-...`, LinkedIn). D-01 reviewer cleared: "queue row dead-lettered, draft itself unchanged." Confirmed. Logged as P3 backlog observation (passive validator).
+
+**Brief-runner-v0 lessons — cc-0004 cycle:**
+- **L6 (cross-brief propagation) VALIDATED end-to-end.** cc-0003 v1 HALT triggered chat-authored cc-0004 §1.5 patch (commit `6675aa7c`) BEFORE cc-0003 v2 was applied. CC executed cc-0004 cleanly post-cc-0003 v2 with no friction. The 2 CFW IG rows surfaced in cc-0004 §1.5 (informational, post-patch) and were correctly captured in apply set.
+- **L7 candidate** — "informational, expected non-zero" co-occurrence pattern works (cc-0004 §1.5 downgraded from HALT to capture-for-D-01-packet).
+- **L8 candidate** — multi-table criterion via IN-subquery pattern works at production scale (cc-0004 was first multi-table criterion bulk UPDATE in M-series).
+- **L9 candidate** — schedule-delta evidence in result files validates dead-letter rationale post-apply.
+
+L1–L4 + L6 are baseline patterns. L5 + L7 + L8 + L9 are promotion candidates after one more vindication.
+
+**M6 dead-letter cycle complete:**
+
+| Brief | Phase | dead_reason | Rows | Apply commit |
+|---|---|---|---:|---|
+| cc-0003 v2 | M6 Phase A | `anomalous_scheduled_for_bug3_fallback` | 9 | `d60dcfb` |
+| cc-0004 | M6 Phase B | `anomalous_pre_m4_v4_mismatch` | 43 | `9d5bdd37` |
+| **Total** | | | **52** | |
+
+**cc-0005 §1.0 PK confirmation gate state (post v2.56):**
+- ✅ Item 3: cc-0003 v2 result Complete — met v2.55.
+- ✅ Item 4: cc-0004 result Complete — **met v2.56 (this turn).**
+- 🔲 Item 1: post-cutover enqueue path — NOT confirmed. Chat investigation last turn (9 May) established cron 48 is the SOLE autonomous inserter into `m.post_publish_queue`; `m.fill_pending_slots` creates drafts + ai_jobs only; no triggers insert queue rows; the 4 other inserters are dashboard-manual / audit. Disabling cron 48 with no replacement = autonomous publishing stops. **cc-0005 brief premise (component 1 = disable cron 48) is incorrect as written.**
+- 🔲 Item 2: `public.get_next_scheduled_for` callers — 1 caller confirmed (cron 48). PK confirmation pending.
+
+**Recommended Path (A):** rewrite cc-0005 component 1 from "disable cron 48" to "`cron.alter_job(48, command := <new body>)` removing `public.get_next_scheduled_for` from the COALESCE chain in cron 48's command body". Cron 48 keeps handling autonomous v4 enqueue; legacy fallback deprecated at the call site. Components 2 + 3 remain valid. **Requires cc-0005 doc-only patch under PK direction.** Not yet acted on.
+
+**Constraints respected this turn:** No Supabase writes. No D-01 fire. No cron edits. No EF deploys. No code changes. No Phase 0 scheduling. No cc-0005 apply work. Single doc-only commit covering 3 files. cc-0003/cc-0004/cc-0005 briefs and result files **untouched**.
+
+**Closed v2.56:** M6 Phase B (P1) — cc-0004 commit `9d5bdd37`.
+
+**Open / deferred this turn (carried per PK explicit scope):**
+- 2 outstanding `m.chatgpt_review` close-the-loop UPDATEs (cc-0003 v2 + cc-0004 D-01 fires) — Supabase writes, PK excluded.
+- Memory `recent_updates` v2.55 + v2.56 entries (chat-owned at next opportunity).
+- Dashboard PHASES reconciliation — **12th** consecutive deferral.
+- cc-0005 Path (A) patch — awaiting PK direction.
+
+---
+
 ### 2026-05-09 Sydney — cc-0003 v2 APPLIED (M6 Phase A closed; brief-runner-v0 HALT-then-correction loop end-to-end) (v2.55)
 
 **Outcome:** **M6 Phase A CLOSED.** cc-0003 v2 APPLIED via Supabase MCP `apply_migration` by CC. 9 rows dead-lettered (NY × 7 IG + PP × 2 IG; all `approval_status='approved'`; all `pd.slot_id IS NULL`). All 6 verification queries (V1–V6) PASS. No rollback. **cc-0004 (M6 Phase B) sequencing gate now MET.** cc-0005 (M8 atomic cutover) PARKED at §1.0 hard PK confirmation gate.
@@ -63,12 +124,11 @@
 3. cc-0003 v1 EXECUTED by CC → **HALTED at §1.5** (slot_driven_count=2 vs expected 0). Result file `2acdee33`.
 4. Chat fired post-HALT read-only diagnostic on the 2 anomalous queue_ids (`929ee2f9-...`, `30fa6594-...`). Confirmed: both rows are v4 mismatch (Phase B / cc-0004) scope that incidentally fingerprint Bug 3 because M4 was forward-only on `pd`. v1 §1.5 invariant assumption ("M4 backfilled, slot-driven can't fingerprint Bug 3") empirically falsified.
 5. cc-0003 v1 → v2 patch + v1 HALT result file preservation in single chat commit `f91d9c79`. v2 narrows criterion to `pd.slot_id IS NULL`; expected count 11 → 9; range [5,25] → [3,20]; §1.5 inverted from disjointness HALT to partition arithmetic check; multi-table JOIN + IN-subquery SQL form.
-6. cc-0004 §1.5 propagation patch (CC, PK direct greenlight) commit `6675aa7c`. Removed empirically-falsified disjointness assumption; established structural disjointness on `pd.slot_id` discriminator (cc-0003 v2 = `IS NULL`; cc-0004 = `IS NOT NULL`); §8.2.b RETIRED with audit note. cc-0004 v1 migration name retained (never applied or HALTed).
-7. cc-0005 M8 atomic cutover brief drafted (chat) commit `6f16c40e`. Three-component atomic migration (cron 48 disable + legacy-origin future cleanup + `public.get_next_scheduled_for` deprecation). Novel §1.0 hard PK confirmation gate.
+6. cc-0004 §1.5 propagation patch (CC, PK direct greenlight) commit `6675aa7c`. Removed empirically-falsified disjointness assumption; established structural disjointness on `pd.slot_id` discriminator. cc-0004 v1 migration name retained (never applied or HALTed).
+7. cc-0005 M8 atomic cutover brief drafted (chat) commit `6f16c40e`. Three-component atomic migration. Novel §1.0 hard PK confirmation gate.
 8. cc-0003 v2 D-01 review fired chat-side — verdict `agree` / `proceed` / clean PASS / 0 pushback / 0 escalation.
 9. PK explicit approval phrase received: `"myself pk approve - proceed with cc-0003 v2 apply"`.
-10. cc-0003 v2 APPLIED by CC via Supabase MCP `apply_migration` (commit `d60dcfbc`). `{"success": true}`. Final read-only re-verification (~60s before apply): identical to initial pre-flight (no drift). V1–V6 all PASS. No rollback. Result file appended (v1 HALT + v2 APPLIED co-located).
-11. **This turn (chat 4-way sync close):** session file + sync_state v2.55 + action_list v2.55. Doc-only single commit. No Supabase writes. No D-01. No cron edits. No deploys.
+10. cc-0003 v2 APPLIED by CC via Supabase MCP `apply_migration` (commit `d60dcfbc`). `{"success": true}`. Final read-only re-verification: identical to initial pre-flight (no drift). V1–V6 all PASS. No rollback.
 
 **Verification (V1–V6 all PASS):** V1 post_dead_reason_count = 9 (= 0 + 9); V2 v2_count = 0; V3 queued+failed = 479 (= 488 - 9); V4 dead = 57 (= 48 + 9); V5 result list set-equal to captured 9 IDs; V6 per-status totals coherent (queued=479, dead=57, published=95, failed absent both sides).
 
@@ -76,70 +136,24 @@
 - **L1** v1 HALT works — first apply-class HALT in trial, load-bearing, no production state touched.
 - **L2** v2 patch works — doc-only patch produced correctly-scoped migration that applied cleanly.
 - **L3** result-file preservation works — v1 HALT + v2 APPLIED co-located in same file (commit `d60dcfbc`).
-- **L4** pre-state baseline pattern is now required — V1 must use `pre_dead_reason_count + N`, never assume baseline = 0; code-collision check is NOT a guarantee about row state.
-- **L5** brief invariant assumptions can be empirically wrong — disjointness invariants must be pre-tested with read-only SELECT before being baked into HALT rules.
-- **L6** cross-brief patch propagation required when invariant fails — cc-0004 §1.5 carried the same v1 invariant; patched in same cycle.
-
-L1–L4 are now baseline patterns. L5 + L6 reinforce Lesson #61 — promotion candidates after one more vindication.
-
-**Sequencing gate state:**
-- **cc-0004 (M6 Phase B):** Sequencing gate **MET.** CC owns apply when PK directs. Expected scope: 43 v4 mismatch rows + the 2 slot-driven CFW IG rows surfaced by cc-0003 v1 HALT.
-- **cc-0005 (M8 atomic cutover):** **PARKED.** Blocked by cc-0004 completion + §1.0 PK confirmation (post-cutover enqueue path + `get_next_scheduled_for` callers).
-
-**Constraints respected this turn:** No Supabase writes. No D-01 fire. No cron edits. No EF deploys. No code changes. No Phase 0 scheduling. Single doc-only commit covering 3 files (this update + session file + action_list v2.55). cc-0003 brief + result + cc-0004 + cc-0005 briefs **untouched**.
+- **L4** pre-state baseline pattern is now required — V1 must use `pre_dead_reason_count + N`, never assume baseline = 0.
+- **L5** brief invariant assumptions can be empirically wrong — disjointness invariants must be pre-tested with read-only SELECT.
+- **L6** cross-brief patch propagation required when invariant fails (cc-0004 §1.5 patched in same cycle).
 
 **Closed v2.55:** M6 Phase A (P1) — cc-0003 v2 commit `d60dcfbc`.
 
-**Open / deferred this turn (not in PK scope):**
-- `m.chatgpt_review` close-the-loop UPDATE for cc-0003 v2 D-01 fire (Supabase write; PK excluded).
-- Memory `recent_updates` v2.55 entry (chat-owned at next opportunity).
-- Dashboard PHASES reconciliation — **11th** consecutive deferral (was 10th in v2.54).
-
 ---
 
-### 2026-05-08 Sydney — video-worker v3.0.0 deploy + verify_jwt regression recovered + durable supabase/config.toml landed (v2.54)
+## 🟡 Next session priorities (rebuilt v2.56 per M6 Phase B closure)
 
-**Outcome:** F-VIDEO-QUALITY-UPGRADE-A-B-C shipped via two CLI invocations within ~5 minutes; verify_jwt regression introduced + recovered same session; durable `supabase/config.toml` covering 23 EFs landed this turn; drift round-trip CLOSED with B-FD → A-LE Class A family; 4 m.chatgpt_review records closed-the-loop; YouTube cadence prior memory entry RETRACTED; 6 new P2 findings logged. STANDING_THREE array unchanged. Other holds (cron 53/11/64/65 paused, NDIS-Yarns IG `publish_enabled=false`, etc.) preserved.
-
-**Deploy chronology:**
-1. Pre-fire drift scan `6a381ec7-dc37-418c-8ff1-e7b8d76801ca` (06:17:56 UTC): video-worker class B-FD, repo 3.0.0 ahead of deploy 2.1.0, `previous_class=A`, `state_changed=true`.
-2. D-01 fire `4e0e9c00-11d3-4096-afd3-ec765b296b36` (deploy fire #2 — escalation-resolved by re-fire from `ee27dd37`): PASS.
-3. `./scripts/safe-deploy.sh video-worker --allow-warn` → gate WARN → PASS, CLI `Deployed Functions on project mbkmaxqhsohbtwsqolns: video-worker`, exit 0.
-4. **Regression detected:** cron jobid 33 401'd. Root cause: CLI default sets `verify_jwt: true` on the gateway when no `supabase/config.toml` exists.
-5. **Recovery (same session):** `supabase functions deploy video-worker --no-verify-jwt`. Same v3.0.0 source, gateway flag flipped only. Exit 0. Cron jobid 33 unblocked.
-
-**Post-deploy drift round-trip (chat-owned, COMPLETED):** scan `cb7fe77b-2011-48cf-8ffc-806d63e535aa` at 2026-05-08 07:20:56 UTC. video-worker `current_class=A-LE`, `previous_class=B-FD`, `state_changed=true`, repo=deploy=3.0.0. Textbook B-FD → A-LE.
-
-**Durable `supabase/config.toml` landed (this turn):** 23 EFs encoded with `verify_jwt = false` — 10 custom-header (video-worker, content_fetch, image-worker, feed-discovery, heygen-worker, linkedin-zapier-publisher, pipeline-fixer, wordpress-publisher, youtube-publisher, auto-approver) + 13 service-role (ai-diagnostic, client-weekly-summary, compliance-reviewer, draft-notifier, drift-check, email-ingest, external-reviewer-digest, feed-intelligence, insights-feedback, insights-worker, pipeline-healer, pipeline-sentinel, weekly-manager-report). 4 slugs excluded as stale: `ingest`, `compliance-monitor`, `pipeline-ai-summary`, `pipeline-doctor` — F-CRON-*-STALE findings logged for each.
-
-**4 m.chatgpt_review close-the-loop (chat-owned, COMPLETED):**
-- `8bd6ac37-fa9e-43af-803f-75a171080554` — sql_destructive F-YT-PUB-AVATAR-EXCLUSION fire #1, escalated → resolved by re-fire `fa4322e5` PASS. resolved_by `chat-via-refire-fa4322e5-pass`.
-- `fa4322e5-69a7-4b77-a745-cdd0296dccc4` — sql_destructive fire #2, PASS. action_taken: catalog UPDATE applied 2026-05-08 05:24:00.472666 UTC removing youtube from `t."5.3_content_format".platform_support` for `video_short_avatar`. status completed.
-- `ee27dd37-472a-443c-b29d-dd07f8a8c7d3` — ef_deploy video-worker fire #1, escalated → resolved by re-fire `4e0e9c00` PASS. resolved_by `chat-via-refire-4e0e9c00-pass`.
-- `4e0e9c00-11d3-4096-afd3-ec765b296b36` — ef_deploy video-worker fire #2, PASS. action_taken: deploy completed + verify_jwt regression+recovery saga documented inline. status completed.
-
-**YouTube cadence retraction:** prior session memory entry claimed "~3-day cadence" with "next fill 49h forward" for NDIS-Yarns / Property Pulse YouTube. **INCORRECT.** Actual state: NDIS-Yarns YT Mon–Fri 19:00 AEST / 09:00 UTC, 5 slots/wk. Property Pulse YT Mon–Fri 17:00 AEST / 07:00 UTC, 5 slots/wk. Slot pipeline healthy via cron jobid 72 + 73/75/76. Root of error: Sat–Sun weekend gap mislabelled as "cadence"; fill_window_opens_at conflated with scheduled_publish_at. System issue: NONE. Reporting issue: corrected.
-
-**NEW v2.54 findings (6 logged):** F-CRON-INGEST-STALE (P2); F-CRON-COMPLIANCE-MONITOR-STALE (P2); F-CRON-PIPELINE-AI-SUMMARY-STALE (P2); F-CRON-PIPELINE-DOCTOR-STALE (P2 — NOT a rename of pipeline-diagnostician); F-CRON-PG-NET-TIMEOUT-5S (P2); F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 security).
-
-**Closed v2.54:** video-worker `verify_jwt` durable fix (P3) — landed via `supabase/config.toml` this turn.
-
-**Open from this session (deferred to v2.55+):** F-CRON-PG-NET-TIMEOUT-5S; F-CRON-AUTO-APPROVER-SECRET-INLINE; F-CRON-INGEST-STALE + F-CRON-COMPLIANCE-MONITOR-STALE + F-CRON-PIPELINE-AI-SUMMARY-STALE + F-CRON-PIPELINE-DOCTOR-STALE; Music library activation checklist (PK action); Emergency redeploy governance question (PK decision); first deploy that uses the new `config.toml` (will require D-01); PHASES reconciliation now **10th**-deferred.
-
-**Constraints respected:** No EF deploys. No Supabase writes (no DDL, no DML). No cron edits. `supabase functions list` only (read). Read-only `SELECT` against `cron.job` and `m.vw_ef_drift_current`. Memory `recent_updates` v2.54 entry handled by chat at session end.
-
----
-
-## 🟡 Next session priorities (rebuilt v2.55 per M6 Phase A closure)
-
-1. **Dashboard Architecture Review Phase 0 prerequisites** (P1 TOP) — unchanged from v2.54. PK confirms 7 default-blockers via `docs/briefs/cc-0001-dashboard-phase-0-defaults.md`. M5–M8 reconciliation independent (M6 Phase A now closed; M6 Phase B + M8 still pending per their respective briefs).
+1. **Dashboard Architecture Review Phase 0 prerequisites** (P1 TOP) — unchanged from v2.55. PK confirms 7 default-blockers via `docs/briefs/cc-0001-dashboard-phase-0-defaults.md`. M5–M8 reconciliation: M6 Phase A + B both **CLOSED v2.56**; M7 (doc-only) + M8 still pending.
 2. **AI cost view P3** (quick win, ~1h) — unchanged. Author `vw_ai_cost_monthly` view DDL on `m.ai_job` + add NOW dashboard tile.
-3. **cc-0004 (M6 Phase B) apply** — sequencing gate **MET v2.55**; CC owns apply when PK directs. Expected scope: 43 v4 mismatch rows + 2 slot-driven CFW IG rows from cc-0003 v1 HALT. Promoted from carry to Top 3 by M6 Phase A closure.
+3. **cc-0005 / M8 atomic cutover — Path (A) patch under PK direction** — **NEW Top 3 v2.56.** §1.0 gate items 3 + 4 now MET; items 1 + 2 still blocked. Recommended cutover architecture (Path A): rewrite cron 48's command body in place via `cron.alter_job` to remove `get_next_scheduled_for` from COALESCE; do NOT disable cron 48 (would stop autonomous publishing). Requires cc-0005 doc-only patch under PK direction before any apply work.
 
 Plus standing P0:
 - **Personal businesses check-in** — Crazy Domains refund status + any new items from Care for Welfare / Property Buyers Agent / NDIS Accessories.
 
-Carries (lower priority, unchanged from v2.54 except M6 Phase A removed and cc-0004 promoted):
+Carries (lower priority, unchanged from v2.55 except M6 Phase B closure):
 - F-YT-PUB-AVATAR-EXCLUSION (P3, latent)
 - F-PUB-009 V3-V5 + 7-day flow (P2, passive monitoring)
 - F-AAP-NEEDS-REVIEW-BACKLOG (P2)
@@ -148,33 +162,35 @@ Carries (lower priority, unchanged from v2.54 except M6 Phase A removed and cc-0
 - Vault `service_role_key` naming hygiene (P3)
 - `docs/audit/health/2026-05-06.md` follow-up (P3)
 - Dashboard mobile responsiveness (P3)
-- 21+ close-the-loop UPDATEs to `m.chatgpt_review` (cumulative ~25+ pending after v2.55 cc-0003 v2 fire)
-- Dashboard roadmap PHASES reconciliation (P3, **11th** consecutive deferral, was 10th in v2.54)
+- 2 outstanding `m.chatgpt_review` close-the-loop UPDATEs (cc-0003 v2 + cc-0004 D-01 fires)
+- Dashboard roadmap PHASES reconciliation (P3, **12th** consecutive deferral, was 11th in v2.55)
 - `00_overview.md` 11-section table reconciliation (P3)
 - Invegent IG cap-throttle planning (P3)
 - CFW post-ai-worker dead drafts (P3)
-- **cc-0005 (M8 atomic cutover) PARKED** — blocked by cc-0004 completion + §1.0 PK confirmation (post-cutover enqueue path + `get_next_scheduled_for` callers).
 - F-CRON-PG-NET-TIMEOUT-5S, F-CRON-AUTO-APPROVER-SECRET-INLINE (security), 4× F-CRON-*-STALE (all P2, carried from v2.54)
 - Music library activation checklist (PK action) + Emergency redeploy governance question (PK decision) — carried from v2.54.
+- **NEW v2.56 P3 backlog observation** — 1 LinkedIn queue row (`1a21199e-...`) was in queue with `draft.approval_status='draft'` (cc-0004 P3.3 outlier); investigation deferred as passive-validator.
 
 ---
 
 ## ⛔ Carried-forward "do not touch" state
 
-Unchanged from v2.54. All standing items intact (NDIS-Yarns IG `publish_enabled=false`, cron 53/11/64/65 paused, jobid 12 planner-hourly, ~25+ close-the-loop UPDATEs pending, 32 historical orphans, etc.).
+Unchanged from v2.55 except for M6 Phase B closure.
 
-**v2.55 update on standing items:**
-- 108 historical Bug 3 fingerprint queue rows — cc-0003 v2 dead-lettered 9 of these (the actively-queued cohort matching the v2 narrowed criterion of `pd.slot_id IS NULL`). The remaining 99 may be a mix of already-dead rows from prior cycles + 2 slot-driven rows that fall to cc-0004 + others outside the v2 criterion. cc-0004 will sweep the 2 slot-driven CFW IG rows. **Net legacy queue noise after cc-0003 v2:** materially reduced.
-- 47 v4 mismatch queue rows / M6 Phase B — sequencing gate **MET v2.55**; cc-0004 apply ready when PK directs. CC owns apply.
-- M8 atomic cutover (cc-0005) — brief drafted commit `6f16c40e`; **PARKED** at §1.0 hard PK confirmation gate.
-- T-MCP-02 quota: cumulative +1 this session for cc-0003 v2 D-01 fire (clean PASS). Close-the-loop UPDATE deferred per PK scope.
-- Cron-backed drift logging is LIVE (jobid 80 + 81 active=true). No drift fires this session.
+**v2.56 update on standing items:**
+- **M6 dead-letter cycle: COMPLETE.** cc-0003 v2 (9 rows Phase A) + cc-0004 (43 rows Phase B) = 52 residual rows cleared. `m.post_publish_queue` `status IN ('queued','failed')` rows now reflect current intent, not historical drift.
+- **2 slot-driven CFW IG queue rows** (`929ee2f9-...`, `30fa6594-...`) — **dead-lettered v2.56** as part of cc-0004's 43-row apply set. Fully resolved.
+- **47 v4 mismatch queue rows** carry-forward note from v2.50 sessions — **resolved v2.56** (cc-0004 dead-lettered 43; the original 47 figure from M5 session record dropped to 43 via natural drain over 4 days).
+- **108 historical Bug 3 fingerprint queue rows** carry-forward note — cc-0003 v2 dead-lettered the actively-queued narrowed-criterion cohort (9 rows). The remaining ~99 from the original 108 figure include already-dead rows from prior cycles, the 2 slot-driven CFW IG rows now caught by cc-0004, and others outside the v2 narrowed criterion. Net legacy queue noise after cc-0003 v2 + cc-0004 = materially resolved.
+- **M8 atomic cutover (cc-0005)** — brief drafted commit `6f16c40e`; **REMAINS PARKED.** §1.0 gate items 3 + 4 MET v2.55/v2.56; items 1 + 2 still pending PK confirmation. Chat investigation 9 May established Path (A) is the recommended architecture (rewrite cron 48 in place, do not disable). cc-0005 patch under Path (A) deferred to PK direction.
+- **M7 closure** — doc-only; folds into cc-0005 / M8 4-way sync per reconciliation §6 Q2 when M8 lands.
+- **T-MCP-02 quota:** cumulative +1 v2.56 for cc-0004 D-01 fire. Cumulative +1 v2.55 for cc-0003 v2 D-01 fire. **2 close-the-loop UPDATEs pending** (deferred per PK "no Supabase writes" scope across both v2.55 and v2.56).
+- Cron-backed drift logging is LIVE (jobid 80 + 81 active=true). No drift fires this cycle.
 - Standing don't-redeploy three (`heygen-avatar-creator`, `heygen-avatar-poller`, `draft-notifier`) — list unchanged.
-- Dashboard roadmap PHASES array stale since 3 May — **11th** consecutive deferral (was 10th in v2.54).
-- M6 Phase A P1 — **CLOSED v2.55** (commit `d60dcfbc`).
-- cc-0003 v1 brief + result + cc-0003 v2 brief + result + cc-0004 brief + cc-0005 brief — untouched by this turn (all CC's commits + chat's prior commits stay canonical).
-- Memory `recent_updates` v2.55 entry **deferred** this turn per PK explicit scope.
-- `m.chatgpt_review` close-the-loop UPDATE for cc-0003 v2 D-01 fire **deferred** this turn per PK explicit scope ("no Supabase writes").
+- Dashboard roadmap PHASES array stale since 3 May — **12th** consecutive deferral.
+- M6 Phase A P1 — **CLOSED v2.55**. M6 Phase B P1 — **CLOSED v2.56**.
+- cc-0003 / cc-0004 / cc-0005 briefs and result files — untouched by this turn.
+- Memory `recent_updates` v2.55 + v2.56 entries **deferred** per PK explicit scope across both versions.
 
 ---
 
@@ -186,10 +202,10 @@ Unchanged from v2.54. All standing items intact (NDIS-Yarns IG `publish_enabled=
 2. Replacing the `🟢 Most recent session — inline summary` section with the new session's summary (oldest of the prior 1–2 inlined sessions drops out)
 3. Optionally updating `🟡 Next session priorities` and `⛔ Carried-forward` blocks
 
-**This file should never exceed ~10KB.** **v2.55 status:** ~24KB after this update (was ~25KB at v2.54 close — v2.55 inline replaces v2.53 inline; v2.54 inline preserved as second-most-recent). Archive sweep **OVERDUE** since the 16KB threshold was crossed at v2.54 close. Sweep will require relocating older inlined sessions into a v2.50+ archive bucket; deferred to a separate cycle.
+**This file should never exceed ~10KB.** **v2.56 status:** ~24KB after this update (was ~24KB at v2.55 close — v2.56 inline replaces v2.54 inline; v2.55 inline preserved as second-most-recent). Archive sweep **OVERDUE** since the 16KB threshold was crossed at v2.54 close. Sweep will require relocating older inlined sessions into a v2.50+ archive bucket; deferred to a separate cycle.
 
 **Old monolithic file is frozen.** Pre-2026-05-03 → `docs/runtime/archive/sync_state-pre-2026-05-03.md`. Never modified again.
 
 ---
 
-*Last updated: 2026-05-09 Sydney — v2.55: **M6 Phase A CLOSED via cc-0003 v2 APPLIED** by CC via Supabase MCP `apply_migration` (commit `d60dcfbc`, 9 rows dead-lettered, V1–V6 all PASS, no rollback). cc-0004 (M6 Phase B) sequencing gate **MET**; CC owns apply when PK directs. cc-0005 (M8 atomic cutover) **PARKED** at §1.0 hard PK confirmation gate. Brief-runner-v0 HALT-then-correction loop completed end-to-end (cc-0003 v1 HALT → diagnostic → v2 patch + result preservation → v2 APPLIED). 6 lessons captured (L1–L6). T-MCP-02 quota +1 (close-the-loop deferred). P0+P1 open: ~4 → ~3. PHASES reconciliation now **11th** carry. Previous (v2.54): video-worker v3.0.0 deploy + verify_jwt regression recovered + durable `supabase/config.toml` landed.*
+*Last updated: 2026-05-09 Sydney — v2.56: **M6 Phase B CLOSED via cc-0004 APPLIED** by CC via Supabase MCP `apply_migration` (commit `9d5bdd37`, 43 rows dead-lettered across 7 (client, platform) partitions, V1–V6 all PASS, no rollback). Both cc-0003 v1 HALT slot-bound CFW IG rows captured. **M6 dead-letter cycle now functionally complete: 9 (Phase A) + 43 (Phase B) = 52 residual rows cleared.** Schedule deltas -1d to +21d confirm pre-M4 residue. P3.3 outlier (1 LinkedIn 'draft' row) cleared not-blocking. cc-0005 §1.0 gate: items 3 + 4 now MET v2.55/v2.56; items 1 + 2 still blocked (chat investigation last turn established Path A recommended cutover). Brief-runner-v0 L6 (cross-brief propagation) validated end-to-end; L7–L9 candidates logged. T-MCP-02 quota +1 (close-the-loop deferred). P0+P1 open: ~3 → ~2. PHASES reconciliation now **12th** carry. Previous (v2.55): M6 Phase A CLOSED via cc-0003 v2 APPLIED.*
