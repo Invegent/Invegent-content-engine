@@ -129,3 +129,124 @@ The v1 HALT outcome is preserved here as audit trail. CC will execute cc-0003 v2
 ---
 
 *Result file authored 2026-05-09 Sydney by chat from CC's HALT report (in-session) + post-HALT read-only diagnostic. v1 brief outcome: halted_at_pre_flight_section_1_5. v2 brief follows in same commit. cc-0004 §1.5 propagation patch deferred (separate PK-gated cycle).*
+
+---
+
+# Result — cc-0003 v2 — APPLIED (M6 Phase A v2 closed)
+
+**Brief:** `docs/briefs/cc-0003-m6-phase-a-bug3-dead-letter.md` (status v2; commit `f91d9c7`)
+**Apply session:** 2026-05-09 Sydney
+**Executor:** CC (Claude Code)
+**D-01 review:** PASS (agree / proceed) per chat fire prior to apply
+**PK approval phrase received:** "myself pk approve - proceed with cc-0003 v2 apply"
+**Outcome:** APPLIED via Supabase MCP `apply_migration`. All 6 verification checks (V1–V6) PASS. 9 rows dead-lettered. No rollback required.
+
+---
+
+## v2.1 Apply summary
+
+| Item | Value |
+|---|---|
+| Migration name | `m6_phase_a_bug3_fingerprint_dead_letter_v2` |
+| Project | `mbkmaxqhsohbtwsqolns` |
+| Method | Supabase MCP `apply_migration` (single atomic transaction) |
+| `apply_migration` return | `{"success": true}` |
+| Rows updated | 9 |
+| Rollback fired | NO |
+| §8 path triggered | NONE (clean apply path) |
+
+## v2.2 Pre-flight + final re-verification
+
+Initial pre-flight (run before D-01 fire) and final re-verification (~60s before apply) returned identical values. No drift across the verification window.
+
+| Check | Initial value | Re-verify value | Status |
+|---|---|---|---|
+| §1.1 columns | required columns present; `updated_at` NOT NULL on queue; `slot_id` nullable on draft | (not re-run; structural) | PASS |
+| §1.2 triggers | 3 surveyed; only `tr_publish_queue_reset_on_success_v1` fires on UPDATE OF status; inner IF only acts on `new.status='published'` (no-op for our 'dead' UPDATE) | (not re-run; structural) | PASS |
+| §1.3 phase_a_target_count | 9 (in `[3, 20]`) | **9** | PASS |
+| §1.5 partition arithmetic | 9 + 2 = 11 (slot_driven_incidental=2 in `[0, 7]`) | **9 + 2 = 11** | PASS |
+| §1.7 pre_dead_reason_count | 0 | **0** | PASS |
+| §1.4 captured queue_id list | 9 IDs (all `queued`) | **9 IDs identical, all still `queued`** | PASS |
+
+## v2.3 Apply target — final 9 queue_ids dead-lettered
+
+| # | queue_id | client | platform |
+|---|---|---|---|
+| 1 | `7bf95451-ce60-4a05-b013-ef72cc153cc3` | NY | instagram |
+| 2 | `e9f9646c-6a32-48a2-9976-65c64a23c8d2` | NY | instagram |
+| 3 | `2a20945f-5686-4e18-a578-7f647123df12` | NY | instagram |
+| 4 | `198cafdd-7be0-47a6-a166-ffbe91a86750` | NY | instagram |
+| 5 | `1ee24789-b388-4424-ab91-422372f69d53` | NY | instagram |
+| 6 | `f93f8072-8f56-4371-a002-26dd6141a8f8` | NY | instagram |
+| 7 | `958a6c98-bd5e-4db4-9aaf-18f358890f26` | NY | instagram |
+| 8 | `c736a6ff-7c1a-49f0-821d-7e0da51460ab` | PP | instagram |
+| 9 | `7bcb5574-4932-4720-ad8d-160012195935` | PP | instagram |
+
+All 9: `pre_status='queued'`, `pre_dead_reason=NULL`, `pd.slot_id=NULL`, `pd.approval_status='approved'`. Post-apply: `status='dead'`, `dead_reason='anomalous_scheduled_for_bug3_fallback'`, `updated_at=NOW()`.
+
+## v2.4 Verification queries (V1–V6) — all PASS
+
+| V | Query | Expected | Actual | Status |
+|---|---|---:|---:|---|
+| V1 | `COUNT(*) WHERE dead_reason='anomalous_scheduled_for_bug3_fallback'` | `0 + 9 = 9` | **9** | PASS |
+| V2 | `COUNT(*)` matching v2 criterion in `(queued, failed)` | `0` | **0** | PASS |
+| V3 | `COUNT(*) WHERE status IN ('queued','failed')` | `488 - 9 = 479` | **479** | PASS |
+| V4 | `COUNT(*) WHERE status='dead'` | `48 + 9 = 57` | **57** | PASS |
+| V5 | result list of `(status='dead', dead_reason=target)` queue_ids | exactly the 9 captured set (since `pre_dead_reason_count=0`) | **9 IDs returned, set-equal to capture, no extras** | PASS |
+| V6 | per-status totals coherence | queued: 488→479, dead: 48→57, published: 95 unchanged, failed: absent both sides | **queued=479, dead=57, published=95** | PASS |
+
+V5 result list (alphabetical), confirmed set-equal to §1.4 capture:
+```
+198cafdd-7be0-47a6-a166-ffbe91a86750
+1ee24789-b388-4424-ab91-422372f69d53
+2a20945f-5686-4e18-a578-7f647123df12
+7bcb5574-4932-4720-ad8d-160012195935
+7bf95451-ce60-4a05-b013-ef72cc153cc3
+958a6c98-bd5e-4db4-9aaf-18f358890f26
+c736a6ff-7c1a-49f0-821d-7e0da51460ab
+e9f9646c-6a32-48a2-9976-65c64a23c8d2
+f93f8072-8f56-4371-a002-26dd6141a8f8
+```
+
+## v2.5 §4 P1–P5 walk results
+
+- **P1** Pre-state capture: 7/7 PASS (all §1.x captured, values in v2.2 above).
+- **P2** Side-effect surface: P2.1–P2.6 all reviewed. Publisher loses 9 eligible queue rows (cap-limited; trivial); cleanup_queue_on_publish_v1 doesn't fire on this UPDATE; cron 48 unaffected; UI counts shift; vw_pipeline_state not yet built; health-check Cowork sees the count shift.
+- **P3.1** dead_reason references — 3 functions identified, all safe:
+  - `m.dead_letter_sweep`: writes to `m.post_publish_queue.dead_reason` only `WHERE status='locked' AND locked_at < now() - interval '2 hours'` (disjoint from our `status='queued'` targets) with dynamic `'sweep: ...'` value (different from our literal). No collision.
+  - `m.fill_pending_slots`: only sets `dead_reason = NULL` on slot-fill, touches slot-bound rows only. Our targets are `pd.slot_id IS NULL`. No collision.
+  - `public.reset_stuck_ai_jobs`: writes to `m.ai_job.dead_reason`, NOT `m.post_publish_queue`. Out of scope.
+- **P3.2** code-collision check on `'anomalous_scheduled_for_bug3_fallback'`: 0 hits. No live code writer.
+- **P3.3** draft state distribution: 9/9 `approval_status='approved'`. Per §10.2 precedence rule 1, view `state` becomes `dead` because queue is dead, drafts unchanged.
+- **P3.4** Cowork brief queue_id references: none.
+- **P3.5** forward-look slot-driven incidentals to cc-0004: both 2 rows confirmed `will_match_phase_b=true`.
+- **P4** Reversibility: 4/4 PASS (rollback path templated from captured queue_id list, no irreversible side effects, indefinite rollback window, no collision risk).
+- **P5** Verification preconditions: 6/6 ready before apply.
+
+## v2.6 D-01 record
+
+- **Verdict:** agree / proceed (clean PASS).
+- **Conditions:** re-run final read-only verification immediately before apply (PASSED — see v2.2); halt if count is 0 or outside `[3, 20]` (NOT triggered — count was 9); use exact cc-0003 v2 SQL from packet (USED VERBATIM); apply only after PK explicit approval (RECEIVED); after apply, run V1–V6 (DONE — all PASS); write/append v2 result file (THIS SECTION).
+- **PK approval phrase:** "myself pk approve - proceed with cc-0003 v2 apply" (received 2026-05-09).
+
+T-MCP-02: chat fired one D-01 review; close-the-loop UPDATE on `m.chatgpt_review` is a chat-owned action at v2.55 4-way sync close.
+
+## v2.7 Hold-state assertions (this apply turn)
+
+- One `apply_migration` call. No second migration. No rollback fired (V1–V6 all PASS).
+- Read-only `SELECT` against `m.post_publish_queue`, `m.post_draft`, `information_schema.columns`, `pg_trigger`, `pg_proc`, `pg_views`, `m.slot` only. No DDL. No DELETEs.
+- Only `m.post_publish_queue` was written (UPDATE on 9 rows). No other tables modified.
+- `STANDING_THREE` array untouched. `m.ef_drift_log` untouched. No cron edits. No EF deploys. No code changes. No Phase 0 scheduling.
+- `m.chatgpt_review` close-the-loop UPDATE deferred to chat (standing protocol).
+- 4-way sync close (session file + sync_state v2.55 pointer + action_list v2.55 closure of M6 Phase A + memory `recent_updates` v2.55 entry) deferred to chat.
+
+## v2.8 Open / next
+
+- **Closed v2.55 (proposed):** M6 Phase A (v2; commit referencing this result file). Action list bump pending chat close.
+- **Sequencing unblock:** cc-0004 (M6 Phase B) sequencing gate is **MET** (cc-0003 v2 result status `Complete`). cc-0004 apply session can be scheduled when PK directs. Per cc-0004 brief §6 step 1, the apply session will read this result file and verify status before proceeding.
+- **2 slot-driven CFW IG rows** (`929ee2f9-7bd0-42ce-b6e0-1ff62b88f823`, `30fa6594-a233-4f1e-a984-7b37fa170fcb`) remain in `(queued, slot_id IS NOT NULL, fingerprint-matching)` state. P3.5 confirmed `will_match_phase_b=true` for both. They will be cleaned up by cc-0004.
+- **No memory edit** by CC (chat-owned at v2.55 close).
+
+---
+
+*v2 outcome appended 2026-05-09 Sydney by CC. Pre-flight, final re-verification, D-01-conditioned apply, V1–V6 verification all PASS in single session. No rollback. cc-0004 sequencing gate now met.*
