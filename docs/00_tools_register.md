@@ -19,7 +19,7 @@ Tools available in a Claude conversation. They sit between chat and the outside 
 | **Supabase MCP** | Run SQL (`execute_sql` read; `apply_migration` for DDL), read EF source (`get_edge_function`), pull EF logs (`get_logs`) | First-party Supabase MCP server | Primary DB access |
 | **Invegent GitHub MCP** | Read-only access to whitelisted Invegent repos (`get_file_contents`, `list_directory`, `list_recent_commits`) | Custom bridge EF (`mcp-github-bridge` v5) | Cheap, whitelisted; default for routine repo reads |
 | **github MCP** (generic) | Full GitHub API — issues, PRs, commits, search; not Invegent-locked | Local binary `C:\Users\parve\github-mcp-server\github-mcp-server.exe` | Use for writes (commits) and cross-org reads |
-| **ChatGPT Review MCP** (`ask_chatgpt_review`) | The D-01 review tool — gates destructive actions through gpt-4o-mini | Custom bridge EF (`mcp-chatgpt-bridge` v9) | Sensitive to OAuth re-auth; see "Operational disambiguation" below |
+| **ChatGPT Review MCP** (`ask_chatgpt_review`) | The D-01 review tool — gates destructive actions through gpt-4o-mini | Custom bridge EF (`mcp-chatgpt-bridge` v9) | ⚠ **Has known OAuth re-auth pattern — see KOI-01** |
 | **Google Calendar MCP** | Calendar event read/write | First-party | |
 | **Google Drive MCP** | Drive file read/search | First-party | |
 | **Gmail MCP** | Gmail search/draft | First-party | |
@@ -29,7 +29,7 @@ Tools available in a Claude conversation. They sit between chat and the outside 
 | **Zapier MCP** | 8000+ third-party app actions | First-party | LinkedIn fallback path lives here |
 | **Web search / web fetch / image search** | Browser-class tools | Built-in | |
 
-**Note:** the MCP registry locks at session start. New MCP connections require a new conversation. Re-auth flows that don't complete leave the MCP in a 401 loop (see Operational disambiguation).
+**Note:** the MCP registry locks at session start. New MCP connections require a new conversation. Re-auth flows that don't complete leave the MCP in a 401 loop (see KOI-01 below).
 
 ---
 
@@ -93,7 +93,7 @@ Source of truth: `supabase/functions/` directory + `supabase/config.toml`.
 | `external-reviewer` | Post-commit code review (Gemini 2.5 Pro + GPT-4o + Grok 4.1 Fast) | GitHub webhook |
 | `external-reviewer-digest` | Weekly digest of reviewer findings | cron |
 | `chatgpt-review-worker` | Backend for `ask_chatgpt_review` MCP | Called by mcp-chatgpt-bridge |
-| `mcp-chatgpt-bridge` | OAuth + JSON-RPC server fronting the ChatGPT review tool | MCP client (Claude.ai) |
+| `mcp-chatgpt-bridge` | OAuth + JSON-RPC server fronting the ChatGPT review tool | MCP client (Claude.ai) — ⚠ see KOI-01 |
 | `mcp-github-bridge` | OAuth + JSON-RPC server fronting Invegent GitHub access | MCP client (Claude.ai) |
 
 **Total: ~32 EFs.**
@@ -126,6 +126,39 @@ Tools that **aren't EFs and aren't MCPs** — separate hosted things.
 
 ---
 
+## Known operational issues (KOI)
+
+Recurring problems with known cause. New entries added when a failure pattern recurs ≥2 times. Each entry has a stable ID so it can be referenced in `00_sync_state.md` and briefs.
+
+### KOI-01 — `mcp-chatgpt-bridge` OAuth re-auth required ~weekly
+
+**Symptom:** Calls to `ask_chatgpt_review` return 401. New row appears in `m.mcp_oauth_client` with `last_used_at = NULL`. D-01 gating offline.
+
+**Empirical pattern (last 30 days):**
+- 2 May — successful auth (17s register → use)
+- 4 May — successful auth (10s register → use)
+- 10 May — registration only, never authed; bridge offline since
+
+**Root cause:** Claude.ai's MCP client layer occasionally invalidates its locally-stored refresh token and runs Dynamic Client Registration against the bridge again. Bridge sees a fresh `client_id` with no JWT, returns 401 until consent flow completes. The bridge tokens themselves last 30/90 days — this is not a TTL issue.
+
+**Triggers:**
+- Claude.ai session resets (long gaps, cache clear, sign-out)
+- Rotation of `MCP_BRIDGE_BEARER_TOKEN` invalidates all JWTs (the signing key derives from this token)
+
+**Current recovery:**
+1. Disconnect + reconnect MCP in Claude.ai Settings → Connectors → ChatGPT Review
+2. On first tool call, redirect to `dashboard.invegent.com/mcp-consent`
+3. Enter `MCP_BRIDGE_BEARER_TOKEN` passphrase
+4. Submit → auth code issued → JWT minted → bridge returns to working state
+
+**Prerequisite for recovery:** `MCP_BRIDGE_BEARER_TOKEN` must be retrievable. Store in 1Password / Keychain titled "ICE MCP Bridge Passphrase" — vault is for the system to read, not for PK to retrieve mid-flow.
+
+**Proposed architectural fix (KOI-01-FIX, pending):** Add `POST /mint-operator-token` endpoint to bridge that produces a 1-year JWT bound to a stable `client_id` (`mcp_operator_pk`). The JWT goes in 1Password and is pasted into Claude.ai's MCP config as a bearer token, bypassing OAuth discovery entirely. Eliminates the re-auth cadence. **Open question:** does Claude.ai's MCP connector UI support manual bearer-token entry? Needs 2-min experiment to verify. If not, fallback is making `client_id` deterministic (Option 2 in pre-decision discussion) plus Telegram alert on `last_used_at = NULL` for >10 min.
+
+**Brief reference:** to be authored cc-NNNN when KOI-01-FIX is sequenced.
+
+---
+
 ## Operational disambiguation
 
 When something "isn't working," check which of these you actually mean:
@@ -136,7 +169,7 @@ Two completely different systems share the "AI review" framing:
 
 | Component | Role | Failure mode |
 |---|---|---|
-| **`mcp-chatgpt-bridge`** (Cat 2 EF) | OAuth + JSON-RPC server that takes `ask_chatgpt_review` calls from chat and routes them to `chatgpt-review-worker` (which calls gpt-4o-mini). | **D-01 gate down.** Returns 401 if OAuth re-auth is incomplete (no JWT minted for the current MCP client_id). Fix: complete consent flow at `dashboard.invegent.com/mcp-consent` OR disconnect + reconnect MCP in Claude.ai. |
+| **`mcp-chatgpt-bridge`** (Cat 2 EF) | OAuth + JSON-RPC server that takes `ask_chatgpt_review` calls from chat and routes them to `chatgpt-review-worker` (which calls gpt-4o-mini). | **D-01 gate down.** Returns 401 if OAuth re-auth is incomplete (no JWT minted for the current MCP client_id). Fix: see KOI-01 above. |
 | **`external-reviewer`** (Cat 2 EF) | Post-commit GitHub webhook reviewer using Gemini 2.5 Pro + GPT-4o + Grok 4.1 Fast. Writes findings to `m.external_review_queue`. | Provider-API failure (5xx, rate limit, refusal). Does NOT affect D-01 gating. |
 
 Both involve "AI reviewing things." They are independent systems with different triggers, different downstream models, and different failure modes. **Always name the EF, not "ChatGPT review."**
@@ -166,8 +199,8 @@ Both involve "AI reviewing things." They are independent systems with different 
 
 | Symptom | Most likely cause | Check |
 |---|---|---|
-| MCP returns 401 | OAuth re-auth incomplete | `SELECT * FROM m.mcp_oauth_client WHERE last_used_at IS NULL ORDER BY created_at DESC` |
-| D-01 fire produces no `m.chatgpt_review` row | `mcp-chatgpt-bridge` 401 OR `chatgpt-review-worker` down | EF logs filtered to `mcp-chatgpt-bridge` then `chatgpt-review-worker` |
+| MCP returns 401 | OAuth re-auth incomplete (KOI-01) | `SELECT * FROM m.mcp_oauth_client WHERE last_used_at IS NULL ORDER BY created_at DESC` |
+| D-01 fire produces no `m.chatgpt_review` row | `mcp-chatgpt-bridge` 401 (KOI-01) OR `chatgpt-review-worker` down | EF logs filtered to `mcp-chatgpt-bridge` then `chatgpt-review-worker` |
 | Publishing stopped for one client | Token expired OR queue locked | Dashboard → Overview tab → Token Health AND `m.post_publish_queue` lock state |
 | Publishing stopped for all clients | Meta API outage OR rate limit OR app-level issue | `Supabase:get_logs service=edge-function` filtered to publisher |
 | Drafts not generating | `ai-worker` errored OR AI provider rate-limited | `m.ai_job` for non-completed rows + ai-worker logs |
@@ -181,6 +214,7 @@ This register is reviewed when:
 - A new EF is deployed (add to Cat 2)
 - A new MCP is connected (add to Cat 1)
 - A new external service is integrated (add to Cat 3)
-- A failure pattern recurs (add to Operational disambiguation)
+- A failure pattern recurs ≥2 times (add to Known operational issues with a KOI-NN ID)
+- A failure-naming pattern surfaces (add to Operational disambiguation)
 
 Trivial drift (version bumps within a stable EF) is not tracked here — `00_sync_state.md` covers that.
