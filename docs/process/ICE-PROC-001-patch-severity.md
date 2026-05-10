@@ -288,6 +288,7 @@ docs/briefs/redlines/
 | Date | Change | Author |
 |---|---|---|
 | 2026-05-10 | Initial adoption | PK CCH directive + chat |
+| 2026-05-10 | cc-0009 frozen under ICE-PROC-001 (first mid-flight migration case study) | PK CCH directive + chat |
 
 ---
 
