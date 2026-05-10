@@ -19,7 +19,7 @@ Tools available in a Claude conversation. They sit between chat and the outside 
 | **Supabase MCP** | Run SQL (`execute_sql` read; `apply_migration` for DDL), read EF source (`get_edge_function`), pull EF logs (`get_logs`) | First-party Supabase MCP server | Primary DB access |
 | **Invegent GitHub MCP** | Read-only access to whitelisted Invegent repos (`get_file_contents`, `list_directory`, `list_recent_commits`) | Custom bridge EF (`mcp-github-bridge` v5) | Cheap, whitelisted; default for routine repo reads |
 | **github MCP** (generic) | Full GitHub API — issues, PRs, commits, search; not Invegent-locked | Local binary `C:\Users\parve\github-mcp-server\github-mcp-server.exe` | Use for writes (commits) and cross-org reads |
-| **ChatGPT Review MCP** (`ask_chatgpt_review`) | The D-01 review tool — gates destructive actions through gpt-4o-mini | Custom bridge EF (`mcp-chatgpt-bridge` v9) | ⚠ **Has known OAuth re-auth pattern — see KOI-01** |
+| **ChatGPT Review MCP** (`ask_chatgpt_review`) | The D-01 review tool — gates destructive actions through gpt-4o-mini | Custom bridge EF (`mcp-chatgpt-bridge` v9) | ⚠ **Has recurring OAuth re-auth pattern — see KOI-01** |
 | **Google Calendar MCP** | Calendar event read/write | First-party | |
 | **Google Drive MCP** | Drive file read/search | First-party | |
 | **Gmail MCP** | Gmail search/draft | First-party | |
@@ -130,32 +130,69 @@ Tools that **aren't EFs and aren't MCPs** — separate hosted things.
 
 Recurring problems with known cause. New entries added when a failure pattern recurs ≥2 times. Each entry has a stable ID so it can be referenced in `00_sync_state.md` and briefs.
 
-### KOI-01 — `mcp-chatgpt-bridge` OAuth re-auth required ~weekly
+### KOI-01 — `mcp-chatgpt-bridge` recurring OAuth re-auth
 
-**Symptom:** Calls to `ask_chatgpt_review` return 401. New row appears in `m.mcp_oauth_client` with `last_used_at = NULL`. D-01 gating offline.
+**Symptom:** Calls to `ask_chatgpt_review` from chat return 401. New row appears in `m.mcp_oauth_client` with `last_used_at = NULL`. D-01 gating offline. Static-bearer callers (PowerShell, `safe-deploy.sh`) continue to work normally.
 
-**Empirical pattern (last 30 days):**
-- 2 May — successful auth (17s register → use)
-- 4 May — successful auth (10s register → use)
-- 10 May — registration only, never authed; bridge offline since
+**Empirical pattern (3 data points, last 10 days):**
+- 2 May 02:30–02:50 — 6 abandoned consent attempts (PK figuring out flow); 03:16 successful (17s register → use)
+- 4 May 04:44 — successful (10s register → use)
+- 10 May 10:18 — registration only, never authed; bridge offline since
 
-**Root cause:** Claude.ai's MCP client layer occasionally invalidates its locally-stored refresh token and runs Dynamic Client Registration against the bridge again. Bridge sees a fresh `client_id` with no JWT, returns 401 until consent flow completes. The bridge tokens themselves last 30/90 days — this is not a TTL issue.
+3 data points is not enough to call this a fixed cadence. Treat as **recurring auth-state loss with no proven schedule**.
 
-**Triggers:**
-- Claude.ai session resets (long gaps, cache clear, sign-out)
-- Rotation of `MCP_BRIDGE_BEARER_TOKEN` invalidates all JWTs (the signing key derives from this token)
+**Root cause:** Claude.ai's MCP client layer occasionally invalidates its locally-stored refresh token and runs Dynamic Client Registration against the bridge again. Bridge sees a fresh `client_id` with no JWT, returns 401 until consent flow completes. The bridge tokens themselves last 30/90 days — **this is not a TTL issue, it is client-state loss on Claude.ai's side.**
 
-**Current recovery:**
-1. Disconnect + reconnect MCP in Claude.ai Settings → Connectors → ChatGPT Review
-2. On first tool call, redirect to `dashboard.invegent.com/mcp-consent`
-3. Enter `MCP_BRIDGE_BEARER_TOKEN` passphrase
-4. Submit → auth code issued → JWT minted → bridge returns to working state
+**Triggers (hypothesised, not all confirmed):**
+- Claude.ai session resets (long gaps between conversations, cache clear, sign-out, browser changes)
+- Rotation of `MCP_BRIDGE_BEARER_TOKEN` invalidates all JWTs (the bridge's JWT signing key derives from this token via `sha256(BRIDGE_TOKEN + ':oauth-jwt-v1')`)
 
-**Prerequisite for recovery:** `MCP_BRIDGE_BEARER_TOKEN` must be retrievable. Store in 1Password / Keychain titled "ICE MCP Bridge Passphrase" — vault is for the system to read, not for PK to retrieve mid-flow.
+**Current recovery procedure:**
+1. **First: try to retrieve the existing `MCP_BRIDGE_BEARER_TOKEN`** from 1Password / Keychain / browser saved passwords / scratch notes / Windows env files. Rotation is only correct if genuinely unrecoverable, because rotation also breaks static-bearer callers (`safe-deploy.sh` etc).
+2. Disconnect + reconnect MCP in Claude.ai Settings → Connectors → ChatGPT Review.
+3. On first tool call, the bridge redirects Claude.ai to `dashboard.invegent.com/mcp-consent`.
+4. Enter `MCP_BRIDGE_BEARER_TOKEN` passphrase. Submit.
+5. Bridge issues auth code → mints JWT → `m.mcp_oauth_client.last_used_at` populates → bridge returns to working state.
 
-**Proposed architectural fix (KOI-01-FIX, pending):** Add `POST /mint-operator-token` endpoint to bridge that produces a 1-year JWT bound to a stable `client_id` (`mcp_operator_pk`). The JWT goes in 1Password and is pasted into Claude.ai's MCP config as a bearer token, bypassing OAuth discovery entirely. Eliminates the re-auth cadence. **Open question:** does Claude.ai's MCP connector UI support manual bearer-token entry? Needs 2-min experiment to verify. If not, fallback is making `client_id` deterministic (Option 2 in pre-decision discussion) plus Telegram alert on `last_used_at = NULL` for >10 min.
+**Prerequisite for sustainable recovery:** `MCP_BRIDGE_BEARER_TOKEN` must be retrievable by PK. Store in 1Password / Keychain titled "ICE MCP Bridge Passphrase". Vault is for the bridge to read at runtime, not for PK to retrieve mid-flow.
 
-**Brief reference:** to be authored cc-NNNN when KOI-01-FIX is sequenced.
+**Rotation decision rule:** rotate `MCP_BRIDGE_BEARER_TOKEN` **only** if unrecoverable or known-exposed. Rotation invalidates: all existing JWTs (Claude.ai session) + all static-bearer callers (PowerShell, `safe-deploy.sh`). Cost of rotation = repaste new value into all PowerShell scripts using the static bearer.
+
+### KOI-01-FIX — proposed architectural fix (NOT yet validated)
+
+**Goal:** eliminate the recurring consent flow.
+
+**Hypothesis under test:** mint a long-lived "operator token" (1-year JWT) bound to a stable, labelled `client_id` (e.g. `mcp_operator_pk_desktop`). The JWT is stored in 1Password and pasted into Claude.ai's MCP connector config as a bearer token, bypassing the OAuth discovery flow entirely.
+
+**Gating prerequisite (must verify before any code change):**
+
+> Does Claude.ai's custom MCP connector UI actually support manual bearer-token entry, or does it force OAuth discovery?
+
+Anthropic's API supports `authorization_token` for MCP servers when called programmatically via the Messages API, **but the Claude.ai chat UI may not expose this**. Claude.ai's documented custom-connector flow uses URL + OAuth — manual bearer entry is not documented as supported. A 5-minute experiment determines the path:
+- Claude.ai → Settings → Connectors → Add custom connector OR edit existing connector
+- Look for: bearer token field, custom auth header field, manual token override, or any non-OAuth credential entry
+
+**If the UI supports manual bearer auth →** brief for an operator-token system:
+- New table `m.mcp_operator_token` with `token_id`, `client_label`, `created_at`, `expires_at`, `revoked_at`, `last_used_at`, `usage_count` columns
+- New EF endpoint `POST /mint-operator-token` gated by the existing static bearer
+- Bridge auth check extends to: static bearer (existing) | OAuth JWT (existing) | operator JWT with revocation lookup (new)
+- 1Password entries per `client_label`
+- Annual rotation: revoke old `token_id` then issue fresh
+- **Do not reuse `MCP_BRIDGE_BEARER_TOKEN` as the Claude.ai credential** — that token is the JWT signing key seed; exposing it to Claude.ai connector config widens the leak surface unacceptably
+- Estimated effort: 2–3 hours EF patch + Vault + 1Password setup (not 30 min)
+
+**If the UI does NOT support manual bearer auth →** brief for OAuth resilience instead:
+- Deterministic `client_id` based on hash of (`client_name`, `redirect_uris`): re-registrations reuse the same row, eliminating orphan accumulation
+- pg_cron job: when a `mcp_oauth_client` row sits at `last_used_at = NULL` for >10 min, fire a Telegram alert
+- `mcp_oauth_client` cleanup: archive or delete orphans older than 30 days
+- Re-auth still required, but: alerts make it actionable, table stays clean, recovery is faster
+
+**Security tradeoffs that apply to either path:**
+- Long-lived tokens require explicit revocation mechanism (`revoked_at` column + bridge-side lookup on every auth check)
+- Per-token usage logging (not currently present — `last_used_at` is per-`client_id`)
+- Device/client labelling so individual tokens can be revoked without cascading
+
+**Brief reference:** to be authored cc-NNNN **only after** the UI-capability experiment confirms which path is viable.
 
 ---
 
