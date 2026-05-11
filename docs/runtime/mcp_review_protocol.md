@@ -2,6 +2,8 @@
 
 > **Active from 2026-05-02 Saturday afternoon Sydney session.**
 > Captures PK feedback after the first real fire of `ask_chatgpt_review` on T02 Gate B exit decision (review_id `2bab95d5-36bb-47f8-88e4-75b4887d458f`). Supplements the standing rule from D-01.
+>
+> **L46 Evidence Gate added 2026-05-11** following cc-0009 closure review. See "Evidence Gate" section below.
 
 ## Why this exists
 
@@ -49,6 +51,56 @@ Applies to all `escalate_*` routing decisions: `escalate_disagree`, `escalate_hi
 
 ---
 
+## Evidence Gate (L46) — escalation classification
+
+**Active from 2026-05-11 post-cc-0009 closure.** Formalises override path previously documented informally as Lesson #62 type-(c).
+
+Every `escalate=true` return is classified before reaching PK. Classification depends on whether all three required fields are present in the response:
+
+| Field | Definition |
+|---|---|
+| **New defect** | A specific failure mode, edge case, or empirical scenario not already addressed in the proposal text or prior verified_claims |
+| **New evidence** | A query result, log line, file content, or schema fact not already in the proposal's `current_evidence` |
+| **Concrete corrective action** | A specific change to SQL, EF code, payload, schedule, or config — not generic advice like "consider documenting" or "verify before proceeding" |
+
+### Classification paths
+
+**INFORMATIVE-BLOCKING** — all three fields present.
+- Surfaced to PK as a substantive escalation.
+- Default response per existing steps 1–6 above.
+- Logged in session file under "D-01 fires this session".
+
+**GENERIC-NON-BLOCKING** — any field missing.
+- NOT surfaced to PK as a blocker.
+- Logged in session file under "GENERIC-NON-BLOCKING log" with: review_id, action_type, missing field(s), reviewer text verbatim, classification rationale.
+- Close-the-loop UPDATE on `m.chatgpt_review` still required — set `action_taken` to "GENERIC-NON-BLOCKING per L46; <field(s) missing>; proceeded with original action under PK standing approval".
+
+### Override path
+
+After **two consecutive GENERIC-NON-BLOCKING** classifications against the same proposed action, with no specific objection unaddressed across both fires, PK explicit approval authorises override. Override is logged in the third fire's `action_taken` with reference to both prior GNB row IDs.
+
+This codifies the override path that was previously documented as Lesson #62 type-(c) in memory.
+
+### What the gate is NOT
+
+- Not a filter on whether to fire the review. Every action_type that mandates full protocol (see table below) still fires.
+- Not a permission to skip close-the-loop. Every review row still gets resolved.
+- Not a way to dismiss substantive pushback. If the reviewer raises a specific defect with specific evidence and a specific fix, the gate classifies INFORMATIVE-BLOCKING regardless of whether Claude agrees with the substance.
+
+### Worked example (hypothetical)
+
+Reviewer returns: *"Recommend verifying the migration is idempotent before applying. Consider documenting rollback steps."*
+
+- New defect? No — "verify idempotent" and "document rollback" are generic best-practices, not a specific failure mode for this migration.
+- New evidence? No — no query result, log, or schema fact cited.
+- Concrete corrective action? No — "verify" and "consider documenting" are not specific changes.
+
+Classification: **GENERIC-NON-BLOCKING**. Logged, not escalated.
+
+Contrast: reviewer returns *"Migration drops FK on `r.expected_publication.cadence_rule_id` but `r.reconciliation_match` row 7c4a still references it — apply will fail with FK violation."* All three fields present (specific defect, specific evidence row 7c4a, specific corrective action implicit in the defect). Classification: **INFORMATIVE-BLOCKING**.
+
+---
+
 ## Worked example: T02 Gate B exit (2026-05-02)
 
 The first fire used a *partial* version of this protocol. Context included `obs_window`, `phase_b_patch`, `exit_default_rule`, `carried_forward_locks_unrelated_to_phase_b`, `what_could_go_wrong`, `session_meta` — useful but unstructured. It did **not** include explicit:
@@ -82,6 +134,8 @@ What was missing: an explicit recommended path. Path A was presented as one of t
 | `finding_classification` | Light protocol |
 | `other` | Judgement call — default to full protocol |
 
+The Evidence Gate applies to all `action_type` values equally — it classifies the reviewer's response, not the call-side scaffolding.
+
 ---
 
 ## References
@@ -91,3 +145,5 @@ What was missing: an explicit recommended path. Path A was presented as one of t
 - First fire: `m.chatgpt_review` row `2bab95d5-36bb-47f8-88e4-75b4887d458f`
 - T02 audit memo: `docs/audit/runs/2026-05-02-t02-extension.md`
 - T-MCP-05: close-the-loop UPDATE on the first escalation row (operationalises step 6 of response-side protocol)
+- L46 (Evidence Gate): added 2026-05-11 post-cc-0009 closure; formalises informal Lesson #62 type-(c) override path
+- L62 attribution: pending investigation — verify whether generic-pushback pattern originates from ChatGPT Review MCP or also from CCD / Claude Code; gate naming may generalise pending outcome
