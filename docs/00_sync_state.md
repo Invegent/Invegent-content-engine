@@ -18,11 +18,12 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
-| 2026-05-11 | cc-0009-stage-c-doc-sync | **cc-0009 Stage C documentation sync — retroactive doc-only patch (v2.64).** Stage C deploy + V5 service_role grant remediation (`cc_0008_service_role_grants_fix`) + 3-row audit close-out (`bea1bca4` + `48304b04` + `4ac0cfce`, all `resolved_by='cc-0009-stage-c-close-2026-05-11'`) completed earlier on 2026-05-11 (closure timestamp 07:26:28 UTC; preceded by V5 PASS at 07:20:59 UTC). v2.64 patches repo documentation to match runtime truth before Stage D D-01. Stage D pre-flight ran GREEN in same session: Q1 PASS (EF ACTIVE v4, latest reconciliation_run row `63c7aef9` succeeded, two prior failed runs match V5 narrative empirically), Q2 PASS-with-observation (CRON_SECRET absent from vault.secrets — EF-only storage; Stage D D-01 design input), Q3 PASS (zero cron collisions), Q4 PASS (pg_cron 1.6.4 + pg_net 0.19.5), Q5 PASS (verify_jwt false). No production mutation this session. No D-01 fires. **L37 candidate vindicated again** through Stage A + B + C end-to-end. **L41 NEW candidate**: runtime grant defect surfaced at V-check + fixed in-place during same Stage close cycle. T-MCP-02 cum 57 unchanged. State-capture exceptions: 0. PHASES reconciliation **20th** consecutive carry. **cc-0009 Stage A + B + C CLOSED. Stages D + E NOT STARTED.** | (no per-session file — retroactive doc-only sync exception to G1) |
-| 2026-05-11 | cc-0009-stage-b-applied-closed | **cc-0009 Stage B APPLIED + MERGED + CLOSED (v2.63).** Feature branch `feature/cc-0009-stage-b-ef-source` merged onto main via squash-equivalent commit `dbd41438` (parent `db4143ce`). D1 schema-mismatch fixup commit `9796b0ee` removed `tolerance_minutes` references. Stage B D-01 re-fire `7feb52d5` CLEAN AGREE. Close-the-loop via `apply_migration cc_0009_stage_b_close_the_loop`. L40 NEW candidate (squash-equivalent merge via push_files). T-MCP-02 +1 (cum=57). | `docs/runtime/sessions/2026-05-11-cc-0009-stage-b-applied-closed.md` |
-| 2026-05-10 | cc-0009-authored | **cc-0009 v1 AUTHORED (doc-only) (v2.62).** Brief `97b8d844`. 5-stage gated build plan. After session: Stage A + B + C all subsequently closed on 2026-05-11. | `docs/runtime/sessions/2026-05-10-cc-0009-authored.md` |
+| 2026-05-11 | cc-0009-stages-d-e-closed | **cc-0009 Stages D + E CLOSED — PRV-1 second build COMPLETE (v2.65).** Stage D applied (migration `cc_0009_pg_cron_cadence_generator` registering cron jobid=82 `cadence_rule_generator_daily` at `5 16 * * *` UTC) + vault-pivoted (tactical in-stage adjustment via `cc_0009_pg_cron_cadence_generator_vault_pivot` using `cron.alter_job(82)` after `ALTER DATABASE postgres SET app.settings.cron_secret` failed to persist across 2 PK retries — L42 NEW candidate, KOI-03 NEW). Stage E first backfill executed via `execute_sql net.http_post` request_id 104822; EF response HTTP 200 + reconciliation_run_id `55306576-08f2-4328-8e45-69ff74eb7b97`; 84 rows inserted into `r.expected_publication` (72 expected + 12 suppressed across May 11-18 weekday-filtered). Stage E **CLOSED WITH VERIFIED VARIANCE** per PK acceptance directive: pre-flight envelope 154 rows vs EF actual 84 rows; root cause = EF emits today-forward-only weekday dates while brief §4.1 + §6 V10d assumed today-7..today+7 full 15-day window. KOI-04 NEW (EF body contract `run_mode`+`triggered_by` not `horizon_days`+`backfill_days`) caught + resolved pre-D-01 via correction packet. KOI-05 NEW (emission semantics mismatch) closed with verified variance. Follow-up `F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY` opened P3 for cc-0010+ reconciliation. L41 vindicated; L42 + L43 NEW candidates. T-MCP-02 +2 (cum=59 — Stage D + Stage E D-01 fires). Result file already updated at SHA `0f6873f8` by parallel agent (CC / direct PK SQL) — chat's Stage E close-the-loop UPDATE was no-opped by defensive `status != 'resolved'` clause. **cc-0009 ALL STAGES CLOSED. Next major: cc-0010 OR Platform Reconciliation View OR close-the-loop batch.** | `docs/runtime/sessions/2026-05-11-cc-0009-stages-d-e-closed.md` |
+| 2026-05-11 | cc-0009-stage-c-doc-sync | **cc-0009 Stage C documentation sync — retroactive doc-only patch (v2.64).** Stage C deploy + V5 service_role grant remediation + 3-row audit close-out completed earlier on 2026-05-11. v2.64 patches repo documentation. Stage D pre-flight GREEN. L41 NEW candidate. No production mutation this session. | (no per-session file — retroactive doc-only sync exception to G1) |
+| 2026-05-11 | cc-0009-stage-b-applied-closed | **cc-0009 Stage B APPLIED + MERGED + CLOSED (v2.63).** Feature branch merged via squash-equivalent commit `dbd41438`. D1 schema-mismatch fixup `9796b0ee`. Stage B D-01 re-fire `7feb52d5` CLEAN AGREE. L40 NEW candidate. | `docs/runtime/sessions/2026-05-11-cc-0009-stage-b-applied-closed.md` |
+| 2026-05-10 | cc-0009-authored | **cc-0009 v1 AUTHORED (doc-only) (v2.62).** Brief `97b8d844`. 5-stage gated build plan. | `docs/runtime/sessions/2026-05-10-cc-0009-authored.md` |
 | 2026-05-09 | cc-0008-applied | **cc-0008 v5 APPLIED + CLOSED (v2.61).** | `docs/runtime/sessions/2026-05-09-cc-0008-applied.md` |
-| 2026-05-09 | cc-0005-v4-m8a-applied-pipeline-integrity-complete | **M8a Path A APPLIED via cc-0005 v4 (v2.59).** 344 rows dead-lettered. V1-V10' PASS. | `docs/runtime/sessions/2026-05-09-cc-0005-v4-m8a-applied-pipeline-integrity-complete.md` |
+| 2026-05-09 | cc-0005-v4-m8a-applied-pipeline-integrity-complete | **M8a Path A APPLIED via cc-0005 v4 (v2.59).** 344 rows dead-lettered. | `docs/runtime/sessions/2026-05-09-cc-0005-v4-m8a-applied-pipeline-integrity-complete.md` |
 | 2026-05-09 | cc-0007-applied-ai-worker-401-recovered | **F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT CLOSED via cc-0007 (v2.58).** | `docs/runtime/sessions/2026-05-09-cc-0007-applied-ai-worker-401-recovered.md` |
 | 2026-05-09 | cc-0006-closed-cc-0005-v3-patched | **F-CRON-PG-NET-TIMEOUT-5S CLOSED via cc-0006 (v2.57).** | `docs/runtime/sessions/2026-05-09-cc-0006-closed-cc-0005-v3-patched.md` |
 | 2026-05-09 | cc-0004-applied-m6-phase-b-closed | **M6 Phase B CLOSED via cc-0004 (v2.56).** | `docs/runtime/sessions/2026-05-09-cc-0004-applied-m6-phase-b-closed.md` |
@@ -61,83 +62,92 @@
 
 ## 🟢 Most recent session — inline summary
 
+### 2026-05-11 Sydney — cc-0009 Stages D + E CLOSED (PRV-1 second build COMPLETE) (v2.65)
+
+**Outcome:** **cc-0009 ALL STAGES CLOSED.** Stage D applied + vault-pivoted (tactical in-stage adjustment); Stage E first backfill executed + closed with verified variance per PK acceptance directive. `r.expected_publication` populated with 84 rows (72 expected + 12 suppressed). New follow-up `F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY` opened P3.
+
+**Stage D — applied + vault-pivoted (10:18 UTC):**
+- Pre-flight Q1–Q5: all PASS (EF ACTIVE v4; CRON_SECRET in EF env but absent from vault.secrets — flagged as design input; zero cron collisions; pg_cron 1.6.4 + pg_net 0.19.5 installed; verify_jwt=false confirmed).
+- D-01 review `18c5cc02-aaa5-4149-a39b-6c36a6de99ca`: CLEAN AGREE (verdict=agree, risk=medium, pushback=[]).
+- Applied: `apply_migration cc_0009_pg_cron_cadence_generator` at 09:36 UTC. Cron jobid=82, jobname=`cadence_rule_generator_daily`, schedule=`5 16 * * *` UTC (02:05 AEST / 03:05 AEDT — CCH R14 fixed UTC anchor).
+- V9: 10/10 assertions PASS.
+- **KOI-03 NEW**: `ALTER DATABASE postgres SET app.settings.cron_secret = '<value>'` did not persist across 2 PK retry attempts. Root cause undiagnosed.
+- **PK CCH directive (vault pivot)**: pivot Stage D secret sourcing to vault. PK inserted `CRON_SECRET` into vault (id `0fede5c3-f92c-4bd6-8837-c0e304dfca4c`, decrypted length 15 chars) + rotated EF env to matching value.
+- Cron patch: `apply_migration cc_0009_pg_cron_cadence_generator_vault_pivot` via `cron.alter_job(82, command := <new>)` at ~10:18 UTC. jobid 82 preserved; secret source `current_setting('app.settings.cron_secret', true)` → `(SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'CRON_SECRET' LIMIT 1)`. V2 (12 assertions) + V3 (no duplicate cron) all PASS.
+- Close-the-loop: `apply_migration cc_0009_stage_d_close_the_loop` on row `18c5cc02` → `status='resolved'`, `resolved_by='cc-0009-stage-d-apply-2026-05-11'`, `escalation_resolved_at=2026-05-11 09:36:35.754568 UTC`.
+- **L42 NEW candidate**: in-stage tactical pivot pattern.
+
+**Stage E — first backfill executed + closed with verified variance (10:50–10:56 UTC):**
+- Pre-flight Q1–Q6: all GREEN (cron 82 integrity, vault secret readiness, vault-lookup command pattern, no duplicate cron, `r.expected_publication`=0 baseline, latest reconciliation_run succeeded).
+- **KOI-04 NEW** (CCD correction packet): deployed EF body contract is `run_mode` + `triggered_by`, not brief §4.1 `horizon_days` + `backfill_days`. Corrected payload caught pre-D-01.
+- Pre-flight live-derived envelope: **154** rows (132 expected + 22 suppressed across 14 active rules × 15 days, weekday-filtered) — replaced brief's stale "~140" placeholder.
+- D-01 review `339ae9e4-e51f-46d0-bf73-812d959233a1`: CLEAN AGREE (verdict=agree, risk=medium, pushback=[]). PK approval phrase received with explicit payload constraints.
+- Invocation: `execute_sql net.http_post` at 10:50:03 UTC. Body: `{run_mode: backfill, triggered_by: cc-0009-stage-e-first-backfill}`. Headers: x-cron-secret from vault. pg_net request_id=104822.
+- EF response: **HTTP 200**; reconciliation_run_id=`55306576-08f2-4328-8e45-69ff74eb7b97`; rows_inserted=84; rows_suppressed=12 (sub-count); rules_processed=14; rules_failed=0; duration_ms=743.
+- `r.reconciliation_run` row 55306576: run_type=backfill, trigger=backfill, status=succeeded, started/finished=10:50:05 UTC, DB duration 505 ms.
+- V10 breakdown: 14 (client × platform) pairs each producing exactly 6 rows across dates {2026-05-11, 2026-05-12, 2026-05-13, 2026-05-14, 2026-05-15, 2026-05-18}. Total 84 = 72 expected + 12 suppressed.
+- V11 sample window math: 0 invalid windows; not exhaustively verified per PK EF-as-authoritative acceptance.
+- V12 suppression: 12 rows split exactly ndis-yarns/instagram (6) + property-pulse/instagram (6); reasons match cc-0008 seed paused_reason verbatim.
+- Anomaly scan: 6/6 hard-fail checks = 0. Idempotency integrity: distinct keys = total rows = 84.
+- **KOI-05 NEW**: deployed EF emission semantics diverge from brief §4.1 + §6 V10d. Variance: 154 model vs 84 actual; EF emits today-forward-only weekday dates (May 11-18) while brief assumed today-7..today+7 full window.
+- **PK acceptance directive 2026-05-11**: EF behavior accepted as authoritative; live-derived emission is reference baseline. No re-fire. No data repair. No EF source change.
+- **L43 NEW candidate**: pre-flight envelope vs deployed-EF emission semantics mismatch + "closed with verified variance" pathway.
+- Close-the-loop on `m.chatgpt_review` row `339ae9e4`: status=resolved, escalation_resolved_at=2026-05-11 10:56:34.55239 UTC. **Coordination finding**: chat's `apply_migration cc_0009_stage_e_close_the_loop` returned `{success: true}` but row content (resolved_by `cc-0009-stage-e-apply-2026-05-11` + comprehensive action_taken using finding name `F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY`) was written by a **parallel agent** (most likely CC on PK's local machine or PK direct SQL editor). Chat's defensive `AND status != 'resolved'` WHERE clause prevented overwrite (no-op safety worked as designed).
+
+**Follow-up finding opened at cc-0009 closure:**
+
+**F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY** (P3, OPEN, for cc-0010+ reconciliation): Deployed cadence-rule-generator EF emits `r.expected_publication` rows only for today + forward-portion of announced horizon (weekday-filtered), not past-portion. Brief §4.1 + §6 V10d assumed full 15-calendar-date inclusive horizon. PK accepted EF behavior as authoritative; live-derived emission is reference baseline. Reconciliation options for cc-0010+: (a) update brief to match EF [chat-recommended]; (b) update EF to populate past-portion [higher effort, semantically unusual]; (c) leave both as-is with permanent design note [creates ongoing cognitive load]. Surfaced in result file + action_list + m.chatgpt_review row 339ae9e4 action_taken.
+
+**Production state at cc-0009 closure:**
+- `r.*` schema active with 2 tables + 2 helper functions (Stage A)
+- 84 `r.expected_publication` rows in place (72 expected + 12 suppressed) (Stage E)
+- 4 `r.reconciliation_run` rows in place (3 Stage C V5 + 1 Stage E backfill)
+- cron job 82 `cadence_rule_generator_daily` ACTIVE at `5 16 * * *` UTC with vault-backed secret sourcing (Stage D + vault pivot)
+- EF `cadence-rule-generator` ACTIVE v4 verify_jwt=false (Stage B + C)
+- All Stage D-01 rows resolved across Stages A/B/C/D/E (7 review row IDs counted; some stages had multiple fires)
+- vault.secrets has `CRON_SECRET` (id `0fede5c3-f92c-4bd6-8837-c0e304dfca4c`)
+
+**Next scheduled cron fire**: 2026-05-11 16:05 UTC (~5h after session close). First production cron-driven `r.reconciliation_run` row will appear with `trigger='scheduled'`, `triggered_by='pg_cron_cadence_rule_generator_daily'`. Sanity check at next session.
+
+**Lessons v2.65:**
+- **L37 candidate FULLY VINDICATED**: cc-0009 Stages A+B+C+D+E all closed end-to-end. **Recommend promotion to baseline at next cycle.**
+- **L41 candidate vindicated**: runtime grant defect at V-check + in-cycle remediation pattern (reinforced by Stage D vault pivot which is also in-cycle remediation).
+- **L42 NEW candidate**: in-stage tactical pivot pattern.
+- **L43 NEW candidate**: pre-flight envelope vs deployed-EF emission semantics mismatch + "closed with verified variance" pathway.
+
+**T-MCP-02 cumulative**: 59 (was 57 at v2.64; +2 this session — Stage D D-01 + Stage E D-01). State-capture exceptions: **0**.
+
+**Production mutations this session**: 4 chat-driven migrations + 1 chat-driven execute_sql net.http_post invocation + PK's vault insert + EF env rotation (off-chat). Chat's Stage E close-the-loop UPDATE was a no-op (defensive guard worked). No EF redeploys; no source edits; no schema changes beyond `r.*` row population; no secret value ever entered chat context.
+
+**Closed v2.65**: **cc-0009 Stages D + E (PRV-1 second build, fourth + fifth stages — full PRV-1 second build complete).** Stage D applied via Supabase MCP `apply_migration`; vault-pivoted via `cron.alter_job(82)`; Stage E first backfill via `execute_sql net.http_post` request_id 104822; HTTP 200; 84 rows; PK acceptance directive received for envelope variance; result file (already updated by parallel agent at SHA `0f6873f8`), sync_state, action_list and per-session file all sync'd in this 4-way close.
+
+---
+
 ### 2026-05-11 Sydney — cc-0009 Stage C documentation sync (retroactive doc-only) (v2.64)
 
-**Outcome:** **cc-0009 Stage C retroactively documented in repo.** Stage C deploy + V5 service_role grant remediation + 3-row audit close-out completed earlier on 2026-05-11 (closure timestamp 07:26:28 UTC). v2.64 brings repo documentation into line with runtime truth before Stage D D-01.
-
-**Stage C runtime truth (per PK report + this session's pre-flight reads):**
-- EF deploy succeeded: `cadence-rule-generator` ACTIVE, version 4, `verify_jwt=false` (empirically verified this session via `get_edge_function`)
-- V1–V4 + V6–V7 PASS (per PK)
-- V5 initial failure: `fetchActiveCadenceRules failed: permission denied for table client_cadence_rule` — failed runs `49955e8d` at 07:12:29 + `ed72cb99` at 07:13:26 UTC empirically verified this session via `r.reconciliation_run` query
-- Remediation: `cc_0008_service_role_grants_fix` (service_role SELECT on `c.client_cadence_rule`)
-- V5 post-remediation: HTTP 200; succeeded run `63c7aef9` at 07:20:59 UTC, rows_inserted=0, rows_skipped=0 (empirically verified this session)
-- `r.expected_publication` delta: 0 (first population deferred to Stage E)
-- 3 review rows resolved at 07:26:28 UTC: `bea1bca4-7517-4382-bb20-5ddcf3770f4e` + `48304b04-0c86-4ed4-8ec3-1ad34d5d72aa` + `4ac0cfce-6765-40dc-b151-4bd35a8bb935` (all `resolved_by='cc-0009-stage-c-close-2026-05-11'`)
-
-**Files patched in v2.64 doc-sync (split across two commits due to response-size budget):**
-1. `docs/briefs/results/cc-0009-r-schema-and-cadence-rule-generator.md` — title "Stage A + Stage B" → "Stage A + Stage B + Stage C"; new `# Stage C — Result` section; Stop condition + final Confirmation updated
-2. `docs/00_sync_state.md` (this file) — version bump + new session index row + inline summary replacement + Next session priorities rebuild + Carried-forward update
-3. `docs/00_action_list.md` — version bump + Today/Next 5 rebuild + Active table update + Closed v2.64 entry + Backlog changes + v2.64 honest limitations + Changelog v2.64 *(separate commit follow-on)*
-
-**Stage D pre-flight ran GREEN this session, post-doc-sync gate-ready:**
-- Q1 PASS (EF ACTIVE v4; latest `r.reconciliation_run` row `63c7aef9` succeeded; two prior failed runs match V5 narrative)
-- Q2 PASS with vault observation (CRON_SECRET absent from `vault.secrets`; EF secrets only — Stage D D-01 / pre-flight §1.10+§1.11 design input)
-- Q3 PASS (zero `cron.job` rows matching schedule `5 16 * * *`, jobname `%cadence%`/`%cc_0009%`, or command `%cadence-rule-generator%`)
-- Q4 PASS (`pg_cron` 1.6.4 in `pg_catalog`; `pg_net` 0.19.5 in `extensions`)
-- Q5 PASS (`verify_jwt=false` on cadence-rule-generator)
-
-**Hold-state at session close:**
-- **NO** Stage D D-01 fire. **NO** cron creation. **NO** backfill invocation. **NO** Stage E activity. **NO** EF deploys. **NO** production mutation this session. **NO** memory edit (30-cap unchanged; tool unavailable). **NO** dashboard PHASES update (**20th** consecutive carry). **NO** per-session file written (retroactive doc-sync exception to G1).
-
-**v2.64 4-way sync convention note:** v2.64 is a retroactive 3-file doc-only sync (not a normal 4-way close). The result file + this sync_state + action_list constitute the sync artifact. Per-session file deliberately omitted because the Stage C work itself was performed earlier in the day in a session whose record was not captured at the time.
-
-**Lessons v2.64:**
-- **L37 candidate VINDICATED again**: cc-0009 Stages A + B + C now all closed end-to-end across heterogeneous actor types.
-- **L41 NEW candidate**: runtime grant defect surfaced at V-check + fixed in-place during same Stage close cycle via target-table-attributed migration (`cc_0008_service_role_grants_fix` for a `c.client_cadence_rule` grant fix surfaced by cc-0009). Reinforces L17.
-
-**T-MCP-02 cumulative:** 57 (unchanged; no D-01 fires v2.64). State-capture exceptions this session: **0**.
-
-**Production mutations this session:** **0**. Only documentation file commits.
-
-**Closed v2.64:** *(none in the apply-and-close sense — v2.64 is a retroactive doc-only sync. cc-0009 Stage C was operationally CLOSED earlier on 2026-05-11; v2.64 makes that closure visible in repo documentation.)*
-
-**Status of cc-0009 at v2.64 close:** Stage A CLOSED + Stage B CLOSED + Stage C CLOSED. Stages D + E NOT STARTED.
+**Outcome:** **cc-0009 Stage C retroactively documented in repo.** Stage C deploy + V5 service_role grant remediation + 3-row audit close-out completed earlier on 2026-05-11 (closure timestamp 07:26:28 UTC). v2.64 brings repo documentation into line with runtime truth before Stage D D-01. Stage D pre-flight ran GREEN in same session (Q1-Q5 all PASS with Q2 vault observation flagged). No production mutation this session. **L41 NEW candidate**: runtime grant defect surfaced at V-check + fixed in-place during same Stage close cycle. T-MCP-02 cum 57 unchanged.
 
 ---
 
-### 2026-05-11 Sydney — cc-0009 Stage B APPLIED + MERGED + CLOSED (v2.63)
+## 🟡 Next session priorities (rebuilt v2.65)
 
-**Outcome:** **cc-0009 Stage B closure complete.** Feature branch `feature/cc-0009-stage-b-ef-source` brought onto `main` via single squash-equivalent commit `dbd41438df887ef085d39d724c28c5bb0f8d4b65` (parent `db4143ce`). Stage B closure gate per cc-0009 brief §11 fully satisfied: feature-branch commits (`23355f97` + `9796b0ee`) → Stage B D-01 fire post-D1-fix returning **CLEAN AGREE** → PK approval phrase → merge to main → close-the-loop UPDATE.
-
-**D1 schema mismatch fixup:** `c.client_cadence_rule.tolerance_minutes` absent in applied cc-0008 v5 schema (19 columns). Per cc-0009 brief §4.1, per-rule overrides deferred to cc-0010 matcher_config. Single fixup commit `9796b0ee` removed all references.
-
-**Stage B D-01 re-fire:** review_id `7feb52d5-b9d0-419a-86ae-d2ce4afbc5c1`, action_type `plan_review` (KOI-02 workaround), verdict=agree, risk=low, conf=high, pushback=[]. No Lesson #62 type-(c) markers.
-
-**Merge mechanism advisory:** executed via MCP `push_files` directly to main rather than literal Git merge commit with PR. End state on main byte-identical to feature branch HEAD `9796b0ee`. PR URL: **none**. L40 NEW candidate.
-
-**Close-the-loop UPDATE:** `apply_migration cc_0009_stage_b_close_the_loop` on review row `7feb52d5` → `status='resolved'`, `resolved_by='cc-0009-stage-b-merge-2026-05-11'`, `escalation_resolved_at=2026-05-11 04:40:11.678254 UTC`.
-
-**T-MCP-02 cumulative: 57** (was 56 at v2.62; +1 Stage B re-review). State-capture exceptions this session: **0**.
-
----
-
-## 🟡 Next session priorities (rebuilt v2.64)
-
-1. **cc-0009 Stage D apply gate** — `apply_migration cc_0009_pg_cron_cadence_generator` registering `cadence_rule_generator_daily` cron at fixed UTC anchor `5 16 * * *` (Sydney: 02:05 AEST). Pre-flight §1.10+§1.11 final re-verify (v2.64 pre-flight already GREEN with vault observation flagged) → NEW Stage-D D-01 fire (action_type=plan_review per KOI-02) → PK approval phrase → apply → V9 → close-the-loop UPDATE. **NEXT NATURAL WORK** post-Stage-C doc sync. Vault observation from v2.64 Q2: CRON_SECRET in EF secrets only, not duplicated in `vault.secrets` — cron command construction must inject literally from EF env or use a vault path that exists.
-2. **cc-0009 Stage E apply gate** — `execute_sql net.http_post` first backfill (horizon_days=7, backfill_days=7 → 15 calendar dates inclusive). Pre-flight §1.12 → D-01 → PK approval → invoke → V10-V12 → close-the-loop. Sequenced after Stage D.
-3. **5-row close-the-loop batch (UNBLOCKED v2.61, still pending v2.64)** — cc-0003 v2 + cc-0004 + cc-0006 + cc-0007 + cc-0005 v4 D-01 rows in `m.chatgpt_review` → `resolved` via single `execute_sql` with CASE. ~10 min. Can be batched between cc-0009 stages.
-4. **Platform Reconciliation View brief authoring** — when PK directs. Can proceed in parallel with cc-0009 Stages D-E.
+1. **cc-0010 (matcher + evidence + reconciliation_match table)** — natural successor to cc-0009 closure. Brief authoring required. Inherits cc-0009 outputs: `r.expected_publication` table now populated + `r.reconciliation_run` audit trail live + cron job 82 firing daily. cc-0010 will add `r.platform_observation`, `r.ice_publication_evidence`, `r.platform_manual_observation`, `r.reconciliation_match`, `r.platform_observer_health`, `r.matcher_config`, `r.compact_raw_json` helper, `ice-evidence-materialiser` EF, `reconciliation-matcher` EF, ALTER TABLE re-adding `matched_match_id` FK to `r.reconciliation_match` (L38 candidate empirical vindication).
+2. **5-row close-the-loop batch (UNBLOCKED v2.61, still pending v2.65; batch overdue 7 sessions)** — cc-0003 v2 + cc-0004 + cc-0006 + cc-0007 + cc-0005 v4 D-01 rows still `status='escalated'`. Single `execute_sql` UPDATE with CASE. ~10 min. Eligible for parallel execution alongside cc-0010 brief authoring.
+3. **F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY reconciliation** (P3, NEW v2.65) — decide between Option (a) update brief to match EF [chat-recommended], (b) update EF to populate past-portion, (c) leave both as-is with permanent design note. PK decision.
+4. **Platform Reconciliation View brief authoring** — promoted from rank 4 → rank 4 (still queued behind cc-0010 + close-the-loop batch + cc-0009 follow-up). Eligible for parallel work if PK directs.
 5. **Dashboard Architecture Review Phase 0 prerequisites** (P1 TOP) — unchanged. PK confirms 7 default-blockers via `docs/briefs/cc-0001-dashboard-phase-0-defaults.md`.
 6. **AI cost view P3** (quick win, ~1h) — unchanged.
 7. **Personal businesses check-in** — standing P0.
 
+**First cron-driven r.reconciliation_run row at 2026-05-11 16:05 UTC** is a passive observation item — sanity check at next session start. Verify `trigger='scheduled'`, `triggered_by='pg_cron_cadence_rule_generator_daily'`, status=`succeeded`.
+
 Carries (lower priority):
 - Publisher latent config risk follow-up (P3 quick win, ~5 min)
-- F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 sec, OPEN, carry from v2.57)
+- F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 sec, OPEN, carry from v2.57; cc-0009 designed AROUND this lesson via vault-backed secret; finding itself not remediated)
 - M8b separate brief (NOT YET AUTHORED)
 - 94-row un-publishable legacy draft cohort cleanup
 - `f4a0dd85` bridge health-check `sql_read` row (P3 hygiene)
-- Feature branch `feature/cc-0009-stage-b-ef-source` preservation
+- Feature branch `feature/cc-0009-stage-b-ef-source` preservation (P3 hygiene; PK can direct deletion when convenient)
 - F-YT-PUB-AVATAR-EXCLUSION (P3, latent)
 - F-PUB-009 V3-V5 + 7-day flow (P2, passive monitoring)
 - F-AAP-NEEDS-REVIEW-BACKLOG (P2)
@@ -146,49 +156,55 @@ Carries (lower priority):
 - Vault `service_role_key` naming hygiene (P3)
 - `docs/audit/health/2026-05-06.md` follow-up (P3)
 - Dashboard mobile responsiveness (P3)
-- Dashboard roadmap PHASES reconciliation (P3, **20th** consecutive deferral)
+- Dashboard roadmap PHASES reconciliation (P3, **21st** consecutive deferral)
 - `00_overview.md` 11-section table reconciliation (P3)
 - Invegent IG cap-throttle planning (P3)
 - CFW post-ai-worker dead drafts (P3)
 - 4× F-CRON-*-STALE (P2)
 - Music library activation checklist (PK action) + Emergency redeploy governance question (PK decision)
 - v2.56 P3 backlog observation (LinkedIn queue row `1a21199e-...`)
-- v2.60 future ideation Brand Topic Notebook (queued behind remaining cc-0009 stages, Platform Reconciliation, AI OS Improvements)
+- v2.60 future ideation Brand Topic Notebook (now queued behind cc-0010, Platform Reconciliation, AI OS Improvements)
+- **NEW v2.65 hygiene**: Parallel CC/Claude-Code instance coordination — chat detected another agent writing to `m.chatgpt_review` row 339ae9e4 during Stage E close-the-loop. Defensive guards prevented overwrite. PK may want to formalise coordination protocol if parallel agent work is intended.
 
 ---
 
 ## ⛔ Carried-forward "do not touch" state
 
-**v2.64 update on standing items:**
+**v2.65 update on standing items:**
 
-- **cc-0009 Stage A + Stage B + Stage C: ALL CLOSED.** Stage A applied 2026-05-11 01:38 UTC. Stage B merged at commit `dbd41438` 2026-05-11 04:38 UTC. Stage C deployed + remediated + audit-closed 2026-05-11 07:26 UTC. Result file documents Stages A + B + C as of v2.64 patch. Stages D/E NOT STARTED — each has its own gate cycle.
-- **cc-0009 brief: FROZEN.** ICE-PROC-001 §9.1 at commit `ae301a92`. No content changes in v2.64.
+- **cc-0009 PRV-1 second build: COMPLETE.** All 5 stages (A + B + C + D + E) CLOSED. Cron job 82 active. EF live. 84 `r.expected_publication` rows + 4 `r.reconciliation_run` rows in place. Result file at SHA `0f6873f8` documents all 5 stages.
+- **cc-0009 brief: FROZEN.** ICE-PROC-001 §9.1 at commit `ae301a92`. No content changes in v2.65 (F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY follow-up does NOT mutate the brief — PK to direct in cc-0010+).
 - **Feature branch `feature/cc-0009-stage-b-ef-source`:** preserved at HEAD `9796b0ee` as audit artifact. PK can direct deletion later.
-- **5 prior close-the-loop carries: still UNBLOCKED v2.61, still pending v2.64.** Batch close-out recommended between cc-0009 stages.
-- **L33+L34+L35+L36 lessons reified** across cc-0009 §1.6+§1.7+§3.5+§3.6.
-- **L37+L39 candidates: empirically vindicated through Stage A + B + C end-to-end.** Still candidate-only pending broader empirical use.
-- **L38 candidate** awaits cc-0010 ALTER TABLE.
-- **L40 candidate** (squash-equivalent merge mechanism): documented at v2.63. Pending repeat use.
-- **L41 NEW candidate v2.64** (runtime grant defect surfaced at V-check + fixed in-place during same Stage close cycle): reinforces L17. Pending repeat use.
+- **5 prior close-the-loop carries: still UNBLOCKED v2.61, still pending v2.65** (batch overdue 7 sessions).
+- **L33+L34+L35+L36 lessons reified** across cc-0009.
+- **L37 candidate FULLY VINDICATED** through Stages A+B+C+D+E. Recommend promotion to baseline next cycle.
+- **L38 candidate** awaits cc-0010 ALTER TABLE for empirical vindication.
+- **L39 candidate VINDICATED v2.63**: feature-branch + diff-review + PK-approval workflow per CCH R11.
+- **L40 candidate**: squash-equivalent merge mechanism via push_files. Pending repeat use.
+- **L41 candidate VINDICATED v2.65** (reinforced by Stage D vault pivot which is also in-cycle remediation against post-apply operational readiness failure).
+- **L42 NEW candidate v2.65**: in-stage tactical pivot pattern. Pending repeat use.
+- **L43 NEW candidate v2.65**: pre-flight envelope vs deployed-EF emission semantics mismatch + "closed with verified variance" pathway. Pending repeat use.
+- **F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY**: NEW P3 OPEN follow-up — for cc-0010+ reconciliation. Documented in result file + action_list + m.chatgpt_review row 339ae9e4. PK decision pending on option (a)/(b)/(c).
 - **M8 Path A (cc-0005 v4 / M8a): still CLOSED.** v2.59 closure unchanged.
 - **M8b separate brief: NOT YET AUTHORED.** Not blocking new work.
 - **94-row un-publishable legacy draft cohort:** still recorded as separate follow-up.
 - **Urgent pipeline-integrity block: EFFECTIVELY COMPLETE.**
-- **Platform Reconciliation View brief candidate:** still PROMOTED. Can proceed in parallel with cc-0009 Stages D-E.
+- **Platform Reconciliation View brief candidate:** still PROMOTED. Now eligible for parallel work alongside cc-0010 authoring.
 - **F-CRON-AI-WORKER-401-INVALID-JWT-FORMAT: still CLOSED.** v2.58 closure unchanged.
 - **Publisher latent config risk: OPEN as P3 follow-up.**
-- **F-CRON-AUTO-APPROVER-SECRET-INLINE: still OPEN.** cc-0009 Stage B+D design around the lesson by using `x-cron-secret` header + env-var pattern. v2.64 Q2 vault observation consistent with this. Finding itself not remediated by cc-0009.
+- **F-CRON-AUTO-APPROVER-SECRET-INLINE: still OPEN.** cc-0009 vault-backed cron secret sourcing for jobid 82 sets a positive precedent; jobid 58 specifically still has inline secret (separate work).
 - **F-CRON-PG-NET-TIMEOUT-5S: still CLOSED.** v2.57 closure unchanged.
 - **M7 closure** — doc-only fold complete with M8a 4-way sync.
-- **T-MCP-02 quota: 57 cumulative** (unchanged from v2.63; no D-01 fires in v2.64 doc-sync session).
-- **State-capture exceptions: cumulative unchanged from v2.63** (v2.64 this session: 0).
-- **Close-the-loop UPDATEs to `m.chatgpt_review` this session: 0** (Stage C close-the-loop UPDATEs applied earlier on 2026-05-11 at 07:26:28 UTC, not in this session).
+- **T-MCP-02 quota: 59 cumulative** (+2 this session for Stage D + Stage E D-01 fires).
+- **State-capture exceptions: cumulative unchanged from v2.64** (v2.65 this session: 0).
+- **Close-the-loop UPDATEs to `m.chatgpt_review` this session: 2 attempted, 1 effective** (Stage D row 18c5cc02 fully landed via chat UPDATE; Stage E row 339ae9e4 row was already resolved by parallel agent — chat's UPDATE was a defensive no-op).
+- **Parallel agent coordination v2.65 NEW**: chat detected another writer (most likely CC instance or PK direct SQL) updated `m.chatgpt_review` row 339ae9e4 + result file. Defensive `status != 'resolved'` WHERE clause prevented overwrite. Audit trail consistent. Surfaced for PK awareness.
 - Cron-backed drift logging is LIVE. No drift fires this cycle.
 - Standing don't-redeploy three (`heygen-avatar-creator`, `heygen-avatar-poller`, `draft-notifier`) — list unchanged.
-- Dashboard roadmap PHASES array stale since 3 May — **20th** consecutive deferral.
-- M-series total dead-letter rows cleared since 8 May 2026: 9 + 43 + 344 = **396 rows.** No new M-series rows in v2.64.
-- cc-0003 / cc-0004 / cc-0005 / cc-0006 / cc-0007 / cc-0008 / cc-0009 briefs and result files — cc-0009 result file updated in v2.64 with Stage C section; others untouched.
-- Memory `recent_updates` v2.55–v2.64 entries **deferred** per memory cap + tool unavailability.
+- Dashboard roadmap PHASES array stale since 3 May — **21st** consecutive deferral.
+- M-series total dead-letter rows cleared since 8 May 2026: 396 rows (unchanged v2.65).
+- cc-0003 / cc-0004 / cc-0005 / cc-0006 / cc-0007 / cc-0008 / cc-0009 briefs + result files — cc-0009 result file updated at SHA `0f6873f8` (by parallel agent); others untouched.
+- Memory `recent_updates` v2.55–v2.65 entries **deferred** per memory cap + tool unavailability.
 
 ---
 
@@ -200,12 +216,12 @@ Carries (lower priority):
 2. Replacing the `🟢 Most recent session — inline summary` section with the new session's summary (oldest of the prior 1–2 inlined sessions drops out)
 3. Optionally updating `🟡 Next session priorities` and `⛔ Carried-forward` blocks
 
-**v2.64 exception to G1:** v2.64 is a retroactive doc-only sync — no per-session file is written. The doc patches (this file + action_list + result file) are the sync artifact. The session index row for v2.64 points to no file.
+**v2.65 close**: per-session file `docs/runtime/sessions/2026-05-11-cc-0009-stages-d-e-closed.md` written; this sync_state + action_list updated; result file at SHA `0f6873f8` already updated by parallel agent (not by chat). 4-way sync complete.
 
-**This file should never exceed ~10KB.** **v2.64 status:** ~31KB after this update. Archive sweep **OVERDUE** since the 16KB threshold was crossed at v2.54 close. Sweep deferred.
+**This file should never exceed ~10KB.** **v2.65 status:** ~30KB after this update. Archive sweep **OVERDUE** since the 16KB threshold was crossed at v2.54 close. Sweep deferred.
 
 **Old monolithic file is frozen.** Pre-2026-05-03 → `docs/runtime/archive/sync_state-pre-2026-05-03.md`.
 
 ---
 
-*Last updated: 2026-05-11 Sydney — v2.64: **cc-0009 Stage C documentation sync (retroactive doc-only patch).** Stage C deploy + V5 service_role grant remediation (`cc_0008_service_role_grants_fix`) + 3-row audit close-out completed earlier on 2026-05-11 (closure timestamp 07:26:28 UTC); v2.64 brings repo documentation into line with runtime truth before Stage D D-01. Result file gets new `# Stage C — Result` section. Sync_state shows Stage A + B + C all CLOSED. Action_list rebuilds Today/Next 5 with Stage D D-01 as rank 1. Stage D pre-flight ran GREEN in v2.64 session (Q1-Q5 all PASS, with Q2 vault observation: CRON_SECRET absent from vault.secrets — Stage D D-01 design input). **L37 candidate vindicated again. L41 NEW candidate** for runtime grant defect surfaced at V-check + fixed in-place during same Stage close cycle. No production mutation this session. T-MCP-02 cum 57 unchanged. State-capture exceptions: 0. 3-file doc-sync close split across two commits due to response-size budget (this commit: result file + sync_state; follow-on commit: action_list). No per-session file written (G1 exception). PHASES reconciliation **20th** consecutive carry. **cc-0009 Stage A + B + C CLOSED. Stages D + E NOT STARTED.** Previous (v2.63): cc-0009 Stage B APPLIED + MERGED + CLOSED.*
+*Last updated: 2026-05-11 Sydney — v2.65: **cc-0009 PRV-1 second build COMPLETE — Stages D + E CLOSED.** Stage D applied via Supabase MCP `apply_migration cc_0009_pg_cron_cadence_generator` registering cron jobid=82 `cadence_rule_generator_daily` at `5 16 * * *` UTC, then vault-pivoted via `cron.alter_job(82)` after `ALTER DATABASE postgres SET app.settings.cron_secret` failed to persist (KOI-03 NEW, L42 NEW candidate). Stage E first backfill executed via `execute_sql net.http_post` request_id 104822; HTTP 200; reconciliation_run_id `55306576-08f2-4328-8e45-69ff74eb7b97`; 84 rows in `r.expected_publication` (72 expected + 12 suppressed across May 11-18 weekday-filtered). Stage E **CLOSED WITH VERIFIED VARIANCE** per PK acceptance directive: pre-flight envelope 154 vs EF actual 84; EF emits today-forward-only weekday dates while brief assumed today-7..today+7 full window. KOI-04 NEW (EF body contract mismatch) + KOI-05 NEW (emission semantics mismatch). Follow-up `F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY` opened P3 for cc-0010+ reconciliation. L41 vindicated; L42 + L43 NEW candidates. T-MCP-02 +2 (cum=59). Result file at SHA `0f6873f8` already updated by parallel agent (chat's Stage E close-the-loop UPDATE was no-opped by defensive `status != 'resolved'` clause — coordination finding flagged). Per-session file + this sync_state + action_list constitute the chat-side 4-way sync. **cc-0009 ALL STAGES CLOSED. Next major: cc-0010 (matcher + evidence + reconciliation_match) OR Platform Reconciliation View OR 5-row close-the-loop batch.** Previous (v2.64): cc-0009 Stage C documentation sync (retroactive doc-only patch).*
