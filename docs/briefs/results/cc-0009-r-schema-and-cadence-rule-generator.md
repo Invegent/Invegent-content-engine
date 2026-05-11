@@ -8,6 +8,27 @@
 
 ---
 
+## Stage scope statement
+
+**This result file covers Stage A only.** Stage A creates database structure (schema, tables, helper functions, registry rows). It does not deploy Edge Functions, create cron schedules, or invoke any backfill. Each subsequent stage has an independent gate cycle (pre-flight + D-01 + PK approval + execution + V-checks + close-the-loop).
+
+| Stage | Scope | Status after this close-out |
+|---|---|---|
+| **A** | schema r + 2 tables + 2 helper functions + k.* registry UPSERTs | **APPLIED + VERIFIED + CLOSED** |
+| B | EF source for cadence-rule-generator on feature branch per CCH R11 | NOT STARTED — next gate |
+| C | EF deploy from post-merge main | NOT STARTED |
+| D | pg_cron schedule | NOT STARTED |
+| E | First backfill invocation | NOT STARTED |
+
+**Explicit negative-state declarations:**
+- No Edge Function deployed in Stage A. Stage C handles deployment.
+- No cron schedule created in Stage A. Stage D handles scheduling.
+- No backfill invoked in Stage A. Stage E handles first backfill.
+- No production data mutation beyond `r.*` schema creation, helper functions, and `k.*` registry UPSERTs.
+- No Stage B work batched into this turn.
+
+---
+
 ## Routing summary
 
 Stage A D-01 was fired twice via `action_type=plan_review` (forced from `sql_destructive` by KOI-02 — Anthropic GitHub issue [#56757](https://github.com/anthropics/claude-code/issues/56757), Claude.ai not surfacing per-tool approval prompts for `sql_destructive` on individual Pro plans). Both fires returned identical generic pushback:
@@ -131,7 +152,12 @@ All 8 transform tests pass; all 4 idempotency assertions return `true`:
 | `reconciliation_run` | 14 | 14 | 1 | `[parent_run_id]` |
 | `expected_publication` | 17 | 17 | 2 | `[client_id, cadence_rule_id]` |
 
-`matched_match_id` correctly `is_foreign_key=false` per L38 cross-brief deferral. cc-0010 ALTER TABLE will re-add the FK after `r.reconciliation_match` is created.
+- **31 total column registry rows** across both tables — matches brief expectation (14 + 17)
+- **31 of 31 column purposes populated** — every column has a non-null, non-empty `column_purpose`
+- **`matched_match_id` correctly `is_foreign_key=false`** per L38 cross-brief deferral
+- **Zero duplicate `(table_id, column_name)` groups** — uq_table_column constraint protected against double-write; L34/L35 trigger-aware UPSERT collapsed any stub rows in-place
+
+cc-0010 ALTER TABLE will re-add the FK on `matched_match_id` after `r.reconciliation_match` is created.
 
 ### V7 — row counts both = 0
 | Table | rows |
@@ -139,22 +165,35 @@ All 8 transform tests pass; all 4 idempotency assertions return `true`:
 | `r.reconciliation_run` | 0 |
 | `r.expected_publication` | 0 |
 
-Stage E (first backfill invocation) will populate `expected_publication`. `reconciliation_run` is populated by EFs starting from Stage C deployment.
+Stage A creates structure only. Stage E (first backfill invocation) will populate `r.expected_publication`. `r.reconciliation_run` is populated by EFs starting from Stage C deployment.
 
 ### V8 — constraint integrity detail
-**`r.reconciliation_run` — 6 constraints:**
-- CHECK: `run_type`, `trigger`, `status`, `recon_run_finished_when_done`
-- FK: `parent_run_id` → `reconciliation_run(reconciliation_run_id)` (self-ref, ON DELETE SET NULL)
-- PK: `reconciliation_run_pkey`
 
-**`r.expected_publication` — 8 constraints:**
-- CHECK: `platform`, `expected_status`, `expected_window_valid`, `expected_status_match_pair`
-- FK: `client_id` → `c.client(client_id)` (ON DELETE CASCADE)
-- FK: `cadence_rule_id` → `c.client_cadence_rule(cadence_rule_id)` (ON DELETE RESTRICT)
-- PK: `expected_publication_pkey`
-- UNIQUE: `(client_id, platform, expected_local_date, cadence_rule_id)` — generator idempotency key per R9
+**`r.reconciliation_run` — 6 constraints, all match brief specification:**
 
-No FK on `matched_match_id` — confirmed L38 deferral.
+| Type | Name | Definition |
+|---|---|---|
+| PK | `reconciliation_run_pkey` | `PRIMARY KEY (reconciliation_run_id)` |
+| FK | `reconciliation_run_parent_run_id_fkey` | `FK (parent_run_id) → r.reconciliation_run(reconciliation_run_id) ON DELETE SET NULL` (self-ref) |
+| CHECK | `reconciliation_run_run_type_check` | 9-value enum |
+| CHECK | `reconciliation_run_trigger_check` | 5-value enum |
+| CHECK | `reconciliation_run_status_check` | 5-value enum |
+| CHECK | `recon_run_finished_when_done` | `(status='running' AND finished_at IS NULL) OR (status<>'running')` |
+
+**`r.expected_publication` — 8 constraints, all match brief specification:**
+
+| Type | Name | Definition |
+|---|---|---|
+| PK | `expected_publication_pkey` | `PRIMARY KEY (expected_publication_id)` |
+| UNIQUE | `expected_publication_client_id_platform_expected_local_date_key` | `UNIQUE (client_id, platform, expected_local_date, cadence_rule_id)` — generator idempotency key per R9 |
+| FK | `expected_publication_client_id_fkey` | `FK (client_id) → c.client(client_id) ON DELETE CASCADE` |
+| FK | `expected_publication_cadence_rule_id_fkey` | `FK (cadence_rule_id) → c.client_cadence_rule(cadence_rule_id) ON DELETE RESTRICT` |
+| CHECK | `expected_publication_platform_check` | 4-value enum |
+| CHECK | `expected_publication_expected_status_check` | 8-value enum |
+| CHECK | `expected_window_valid` | `expected_window_end > expected_window_start` |
+| CHECK | `expected_status_match_pair` | `(status='matched' ⇒ matched_match_id IS NOT NULL AND matched_at IS NOT NULL)` |
+
+**`matched_match_id` FK count in `pg_constraint`: 0** — confirmed L38 deferral at the catalog level, not just the registry flag.
 
 ---
 
@@ -193,8 +232,8 @@ Promotion to global lesson registry deferred until cc-0010 empirically vindicate
 
 Per PK directive: "Do not proceed to Stage B. Do not fire new D-01. Do not batch additional work."
 
-Stage B (EF source on feature branch per CCH R11) is the next gate. Independent pre-flight + D-01 + PK approval + execution + V-checks + close-the-loop cycle required.
+**Next gate: Stage B pre-flight + D-01.** Stage B writes EF source for `cadence-rule-generator` to a feature branch per CCH R11, with the standard pre-flight + D-01 + PK approval + execution + V-checks + close-the-loop cycle.
 
 ---
 
-**Confirmation:** `cc-0009 Stage A executed under PK type-(c) override. Verification complete.`
+**Confirmation:** `cc-0009 Stage A is applied, verified, and closed. Stage B not started.`
