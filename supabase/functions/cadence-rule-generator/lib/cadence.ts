@@ -15,7 +15,6 @@ export interface CadenceRule {
   is_active: boolean;
   weekdays: number[] | null; // ISO weekdays 1=Mon..7=Sun; null means every day
   preferred_local_times: string[]; // HH:MM:SS strings, Sydney local
-  tolerance_minutes: number | null; // late-window tolerance; default 60 if null
   suppression_dates: string[] | null; // YYYY-MM-DD strings; rule does not fire on these dates
   expected_format: string | null;
   valid_from: string | null; // YYYY-MM-DD
@@ -213,7 +212,8 @@ export function derivePlannedRows(input: {
     if (rule.preferred_local_times.length === 0) continue;
 
     const profile = profileMap.get(`${rule.client_id}::${rule.platform}`);
-    const tolerance = rule.tolerance_minutes ?? DEFAULT_TOLERANCE_MINUTES;
+    const tolerance = DEFAULT_TOLERANCE_MINUTES;
+    // Per cc-0009 §4.1, per-rule overrides deferred to cc-0010 matcher_config
     const suppressionSet = new Set(rule.suppression_dates ?? []);
 
     for (const date of horizon.dates) {

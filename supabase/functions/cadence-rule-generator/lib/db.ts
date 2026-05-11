@@ -169,7 +169,7 @@ export async function fetchActiveCadenceRules(
     .schema("c" as never)
     .from("client_cadence_rule")
     .select(
-      "cadence_rule_id, client_id, platform, is_active, weekdays, preferred_local_times, tolerance_minutes, suppression_dates, expected_format, valid_from, valid_to",
+      "cadence_rule_id, client_id, platform, is_active, weekdays, preferred_local_times, suppression_dates, expected_format, valid_from, valid_to",
     )
     .eq("is_active", true);
 
