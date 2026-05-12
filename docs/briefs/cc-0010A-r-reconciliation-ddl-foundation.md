@@ -1,7 +1,7 @@
 # Brief cc-0010A — `r.*` second-wave DDL foundation + `r.compact_raw_json` helper + `r.expected_publication.matched_match_id` FK re-add + `r.matcher_config` global default + `k.*` catalog UPSERTs
 
 **Created:** 2026-05-12 Sydney
-**Last patched:** 2026-05-12 Sydney (v1.2 — CCD corrections + arithmetic cleanup + strengthened cross-schema PK-column probe)
+**Last patched:** 2026-05-12 Sydney (v1.3 — FK target correction from L44 live pre-flight)
 **Author:** chat (Claude)
 **Executor:** chat (ChatGPT-operated) — Supabase MCP `apply_migration`
 **Parent brief:** `docs/briefs/cc-0010-r-reconciliation-evidence-and-matcher.md` commit `cfee0814` (split via L48 Atomicity Gate 2026-05-12)
@@ -9,11 +9,11 @@
 
 **Stage count:** 1 (Stage A only — DDL foundation). No Stages B–E.
 
-**Status:** drafted v1.2 — **planning + documentation only.** No `apply_migration`, no D-01 fire, no production mutation until the stage's gate cycle clears (pre-flight re-verify → D-01 → PK approval phrase → apply → V-checks → close-the-loop).
+**Status:** drafted v1.3 — **planning + documentation only.** No `apply_migration`, no D-01 fire, no production mutation until the stage's gate cycle clears (pre-flight re-verify → D-01 → PK approval phrase → apply → V-checks → close-the-loop). v1.3 supersedes v1.2 for FK target text; re-run live pre-flight before D-01 fire.
 
 **Authority:** PRV-0 design lock v2 — `docs/dashboard-review-2026-05/prv-0-design-lock.md` commit `6e989517ceaf600e1373f7f319ab5b7d5c2c7147` blob `3b5f382096abfa7ac5e0aff4bc4bdd327e95d6f7`.
 **Source design sections:** PRV-0 v2 §3.4 (r.ice_publication_evidence), §3.5 (r.platform_observation), §3.6 (r.platform_manual_observation), §3.7 (r.reconciliation_match), §3.9 (r.platform_observer_health), §4.3 (r.compact_raw_json), §6.3 (r.matcher_config), §8.3 (cc-0010 scope contract).
-**Lineage:** cc-0010 v1 parent brief at `cfee0814` — split decision recorded at parent-brief top. Inherits cc-0009 v2.1 outputs (commit `ae301a92`, result `0f6873f8`): `r.*` schema live; `r.expected_publication` 84 rows; `r.reconciliation_run` 4+ rows; `r.normalise_text` + `r.to_sydney_local_date` helpers in place; `cron job 82 cadence_rule_generator_daily` firing.
+**Lineage:** cc-0010 v1 parent brief at `cfee0814` — split decision recorded at parent-brief top. Inherits cc-0009 v2.1 outputs (commit `ae301a92`, result `0f6873f8`): `r.*` schema live; `r.expected_publication` 84+ rows (currently 98 with cron-driven forward emission); `r.reconciliation_run` 4+ rows; `r.normalise_text` + `r.to_sydney_local_date` helpers in place; `cron job 82 cadence_rule_generator_daily` firing.
 
 ---
 
@@ -29,6 +29,7 @@
   6. Strengthened V1 (6 explicit assertions) + V6 (`column_purpose ILIKE '%L38 candidate empirically vindicated%'` hard-fail clause).
   7. Updated column counts: `r.platform_observation` 17 → 16 (no `is_stale`); total `k.column_registry` rows = **86** (17+16+17+16+10+10).
 - **2026-05-12 Sydney — v1.2 — arithmetic cleanup + strengthened PK-column probe** (planning only). v1.1 briefly questioned the +86 total after removing `is_stale`; re-audit confirms +86 because `r.ice_publication_evidence` remains 17 columns and `r.platform_observation` is now 16 columns. v1.2 also strengthens §1.9 cross-schema probe to verify actual PRIMARY KEY columns via `pg_constraint` (CCD-provided shape) rather than just column existence in `information_schema.columns`.
+- **2026-05-12 Sydney — v1.3 — FK target correction from L44 live pre-flight.** Probe 1.9 found live `m.post_publish_queue` primary key is `queue_id`, not `post_publish_queue_id`. Updated `r.ice_publication_evidence.post_publish_queue_id` FK target to `REFERENCES m.post_publish_queue(queue_id)`. Local column name preserved (`r.ice_publication_evidence.post_publish_queue_id` stays); only the FK target column changes. §1.9 expected-row list updated to `m.post_publish_queue.queue_id`. §3.7 column-purpose qualifier added for explicitness. New risk-catalog entry F-CC-0010A-FK-PK-COLUMN-DRIFT logged as caught-and-resolved. No production mutation during this patch — doc-only. L44 Runtime Proof Pre-flight worked exactly as designed: empirical probe caught a documentation-vs-DB drift before the apply gate, eliminating a guaranteed `there is no unique constraint matching given keys for referenced table "m.post_publish_queue"` failure at migration time.
 
 ---
 
@@ -108,7 +109,7 @@ This brief inherits directly from cc-0010 v1 parent brief at `cfee0814` and tran
 
 **No read or write to** `c.*`, `f.*`, `t.*`, `a.*`, `m.*` schemas (writes). No `vault.*` access. No `cron.*` access.
 
-**Indirect risk catalog (10 items):**
+**Indirect risk catalog (11 items — v1.3 adds F-CC-0010A-FK-PK-COLUMN-DRIFT at #11):**
 
 1. **FK ALTER fails on existing rows with non-null `matched_match_id`** — verified at §1.1 pre-flight (`ep_rows_with_match_id = 0`). cc-0009 Stage E produced 0 matched rows. Risk: drift between pre-flight and apply (~60s window). Mitigation: pre-flight re-run immediately before apply.
 2. **k.column_registry UPDATE race with trigger auto-insert** — trigger fires on CREATE TABLE only, not ALTER TABLE. UPDATE on pre-existing row from cc-0009 §3.6 is plain UPDATE. No race.
@@ -120,6 +121,7 @@ This brief inherits directly from cc-0010 v1 parent brief at `cfee0814` and tran
 8. **Single-transaction migration size** — Stage A migration body is ~600 lines of SQL. PostgreSQL has no hard line limit. Migration is one logical unit; splitting would create intermediate states.
 9. **Cross-schema FK targets missing** — if any of `m.post_draft`, `m.post_publish_queue`, `m.post_publish`, `m.slot`, `c.client`, `r.expected_publication`, `r.reconciliation_run` is missing or lacks its expected PK column, Stage A fails with cryptic error. Mitigation: §1.9 PK-column probe halts before apply.
 10. **Stored generated column volatility** (CCD-caught defect v1.1) — `STORED GENERATED with now()` rejected by Postgres at table creation. cc-0010A v1.1 removed `is_stale` entirely; freshness is query-time predicate. Partial-index-with-`now()` rejected for same reason. Plain index `platform_obs_recent (client_id, platform, observed_at DESC)` supports the dominant query pattern.
+11. **F-CC-0010A-FK-PK-COLUMN-DRIFT** (v1.3 entry — **caught and resolved by L44 Runtime Proof Pre-flight before D-01**). cc-0010A v1.2 §2.1 declared `post_publish_queue_id uuid REFERENCES m.post_publish_queue(post_publish_queue_id)` assuming the PRV-0 design lock's `<table>_id` PK-naming convention applied to `m.post_publish_queue`. Live database has `m.post_publish_queue.queue_id` as the actual PK (deviates from convention). Probe 1.9 returned `m.post_publish_queue.queue_id`, mismatching the v1.2 expected row `m.post_publish_queue.post_publish_queue_id`. Migration would have failed at FK constraint resolution with `there is no unique constraint matching given keys for referenced table "m.post_publish_queue"`. v1.3 corrects the FK target to `REFERENCES m.post_publish_queue(queue_id)` and updates the §1.9 expected-row list. Local column name `r.ice_publication_evidence.post_publish_queue_id` preserved (internal naming choice; only the cross-schema target reference changes). **Lesson candidate:** PK-naming-convention assumptions from design-lock documents must be probe-verified against the live schema before brief authoring is locked. Future cc-NNNN briefs that reference any `m.*` table PK column should run §1.9-style probes during authoring, not just at apply gate.
 
 **Cost-of-waiting:** Low. cc-0010B + cc-0010C are blocked on cc-0010A completion. Each day cc-0010A is delayed = +1 day to cc-0010C close = +1 day to PRV-1 close gate evaluation. No external client impact.
 
@@ -131,14 +133,14 @@ This brief inherits directly from cc-0010 v1 parent brief at `cfee0814` and tran
 - **cc-0010 v1 parent brief** — `docs/briefs/cc-0010-r-reconciliation-evidence-and-matcher.md` commit `cfee0814`. Split decision note section at top.
 - **cc-0009 v2.1 brief** — `docs/briefs/cc-0009-r-schema-and-cadence-rule-generator.md` commit `ae301a92`.
 - **cc-0009 result file** — `docs/briefs/results/cc-0009-r-schema-and-cadence-rule-generator.md` SHA `0f6873f8`.
-- **`r.expected_publication`** — 84 rows post-cc-0009 Stage E.
-- **`r.reconciliation_run`** — 4+ rows post-cc-0009 Stage E.
+- **`r.expected_publication`** — 84+ rows post-cc-0009 Stage E (currently 98 from cron-driven forward emission).
+- **`r.reconciliation_run`** — 4+ rows post-cc-0009 Stage E (currently 5).
 - **`k.table_registry` + `k.column_registry`** — doc-catalog targets per L34.
 - **`m.chatgpt_review`** — D-01 audit trail (1 D-01 fire expected for cc-0010A).
 - **L33+L34+L35+L36+L37+L38+L41** — cc-0008+cc-0009 reified lessons; carry forward.
 - **L42+L43** — cc-0009 NEW candidates; not exercised in cc-0010A (no cron, no EF invocation).
-- **L44+L45+L48** — v2.66 baselines; cc-0010A is the first live exercise of each.
-- **L46** — v2.66 baseline; will activate if D-01 returns `escalate=true`.
+- **L44+L45+L48** — v2.66 baselines; cc-0010A is the first live exercise of each. **L44 already vindicated in v1.3 pre-flight: Probe 1.9 caught F-CC-0010A-FK-PK-COLUMN-DRIFT before D-01 fire, preventing a guaranteed apply-time failure.**
+- **L46** — v2.66 baseline; first live application during the prior pre-cc-0010A M4 close-the-loop sequence (3 D-01 fires → PK GNB override threshold reached → override invoked → UPDATE applied successfully). cc-0010A D-01 will be the second live L46 exercise.
 - **L62** — wording unchanged at pre-cc-0010A gating.
 - **`docs/runtime/cc_stage_template.md` sha `5657b69e`** — stage template baseline.
 - **`docs/runtime/mcp_review_protocol.md` sha `9bd5d3fa`** — Evidence Gate (L46).
@@ -173,10 +175,11 @@ This brief inherits directly from cc-0010 v1 parent brief at `cfee0814` and tran
 - Per-platform observer EFs (PRV-2/3/4).
 - Dashboard surfaces.
 - `r.normalise_text` expansion (cc-0009 R7 lock).
-- 5-row close-the-loop batch (UNBLOCKED v2.61; still 8 sessions overdue; PK directive: clear pre-cc-0010A apply).
+- 5-row close-the-loop batch (CLOSED 2026-05-12: M4 2-row remediation + 3 D-01 review rows resolved via L46 GNB override).
 - F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY (separate; folded into cc-0010B/C).
 - Dashboard PHASES reconciliation (22nd consecutive deferral).
 - F-CRON-AUTO-APPROVER-SECRET-INLINE.
+- F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION (P3 — v1.3 pre-flight surfaced this; `k.schema_registry.r` row's `category`/`purpose`/`typical_contents` describe geography reference data but the schema is the reconciliation surface. Non-blocking; future P3 cleanup brief).
 
 ---
 
@@ -208,11 +211,11 @@ This brief inherits directly from cc-0010 v1 parent brief at `cfee0814` and tran
 - **No write to `c.*`, `f.*`, `t.*`, `a.*`, `m.*` (beyond R5 close-the-loop)**.
 - **No `r.*` table creation beyond the 6 specified.**
 - **No `r.*` function creation beyond `r.compact_raw_json`.**
-- **No DDL deviation from PRV-0 v2 §3.4/§3.5/§3.6/§3.7/§3.9/§4.3/§6.3** unless §1 pre-flight surfaces a genuine blocker. **Exception: CCD-corrected divergences from PRV-0 v1 text** — no `is_stale` STORED column (immutability requirement of `now()`), `UNIQUE NULLS NOT DISTINCT` instead of plain UNIQUE on `r.matcher_config` — both documented in §2.
-- **No proceeding past D-01 if verdict != `agree`** with `proceed` (or PK explicit Lesson #62 type-(c) state-capture override; classified per L46).
+- **No DDL deviation from PRV-0 v2 §3.4/§3.5/§3.6/§3.7/§3.9/§4.3/§6.3** unless §1 pre-flight surfaces a genuine blocker. **Exceptions: CCD-corrected divergences from PRV-0 v1 text (v1.1)** — no `is_stale` STORED column, `UNIQUE NULLS NOT DISTINCT` on `r.matcher_config`. **L44-corrected divergence (v1.3)** — `r.ice_publication_evidence.post_publish_queue_id` FK references `m.post_publish_queue(queue_id)`, not `m.post_publish_queue(post_publish_queue_id)`, because the live DB PK is `queue_id`. All three documented in §2.
+- **No proceeding past D-01 if verdict != `agree`** with `proceed` (or PK explicit Lesson #62 type-(c) state-capture override OR L46 GNB override; classified per L46).
 - **No `m.*` writes beyond the single close-the-loop UPDATE.**
-- **No direct push to `main` for any cc-0010A doc commit** unless PK separately approves (per CCH directive 2026-05-12: direct-to-main doc commit accepted for v1.2).
-- **No D-01 fire until cc-0010A v1.2 is PK-approved-for-D-01** (per CCH directive 2026-05-12 commit-only-approval).
+- **No direct push to `main` for any cc-0010A doc commit** unless PK separately approves (per CCH directive 2026-05-12: direct-to-main doc commit accepted for v1.2 and v1.3).
+- **No k.schema_registry cleanup in this brief** — F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION is a separate P3 brief.
 
 ---
 
@@ -324,7 +327,7 @@ SELECT
 
 Neither outcome blocks. Informational + execution-path-determining only.
 
-### 1.9 — Cross-schema FK target PK-column probe (CCD-strengthened v1.2)
+### 1.9 — Cross-schema FK target PK-column probe (CCD-strengthened v1.2; expected-row list corrected v1.3)
 
 ```sql
 SELECT n.nspname || '.' || c.relname || '.' || a.attname AS pk_col
@@ -340,17 +343,17 @@ WHERE con.contype = 'p'
 ORDER BY pk_col;
 ```
 
-**Expected exactly 7 rows:**
+**Expected exactly 7 rows (v1.3 — `m.post_publish_queue.queue_id` corrected from v1.2's incorrect `post_publish_queue_id`):**
 
 - `c.client.client_id`
 - `m.post_draft.post_draft_id`
 - `m.post_publish.post_publish_id`
-- `m.post_publish_queue.post_publish_queue_id`
+- `m.post_publish_queue.queue_id` *(v1.3 — was `post_publish_queue_id` in v1.2; corrected after L44 live pre-flight returned `queue_id` from `pg_constraint` against the live DB)*
 - `m.slot.slot_id`
 - `r.expected_publication.expected_publication_id`
 - `r.reconciliation_run.reconciliation_run_id`
 
-**Decision rule (CCD-strengthened v1.2):** all 7 rows present with exact PK-column names matching. Any missing row OR any unexpected PK-column-name → **HALT** (FK target's actual PRIMARY KEY differs from cc-0010A FK reference; Stage A would fail with `constraint ... does not match column type` or `there is no unique constraint matching given keys`). This probe verifies *PRIMARY KEY-ness* via `pg_constraint.contype='p'`, not just column existence — stronger than v1.1's `information_schema.columns` shape.
+**Decision rule (CCD-strengthened v1.2):** all 7 rows present with exact PK-column names matching. Any missing row OR any unexpected PK-column-name → **HALT** (FK target's actual PRIMARY KEY differs from cc-0010A FK reference; Stage A would fail with `constraint ... does not match column type` or `there is no unique constraint matching given keys`). This probe verifies *PRIMARY KEY-ness* via `pg_constraint.contype='p'`, not just column existence — stronger than v1.1's `information_schema.columns` shape. **v1.3 historical note:** this probe FIRED on v1.2's expected list at the first live pre-flight run — returning `m.post_publish_queue.queue_id` (live) vs `m.post_publish_queue.post_publish_queue_id` (v1.2-expected). The HALT triggered cleanly; no apply attempt was made; v1.3 corrects the FK target in §2.1 and the expected-row list above. **L44 vindicated.**
 
 ### 1.10 — Postgres version probe (for NULLS NOT DISTINCT)
 
@@ -360,7 +363,7 @@ SELECT
   current_setting('server_version') AS server_version;
 ```
 
-**Decision rule:** `server_version_num >= 150000` (PG15+). If `< 150000` → **HALT** (NULLS NOT DISTINCT not supported; PK must scope a separate fallback brief — partial UNIQUE index with COALESCE sentinel or pre-INSERT trigger check). Supabase production runs PG15+; probe is a guard.
+**Decision rule:** `server_version_num >= 150000` (PG15+). If `< 150000` → **HALT** (NULLS NOT DISTINCT not supported; PK must scope a separate fallback brief — partial UNIQUE index with COALESCE sentinel or pre-INSERT trigger check). Supabase production runs PG15+; probe is a guard. **v1.3 historical note:** live pre-flight returned `server_version_num = 170006` (PG 17.6) — well above the threshold.
 
 ---
 
@@ -376,7 +379,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 Idempotent. Required by GIN indexes in §2.2 + §2.3. **Must be the FIRST statement of the migration body, before all CREATE TABLE statements.**
 
-### 2.1 `r.ice_publication_evidence` (PRV-0 §3.4 verbatim) — 17 cols
+### 2.1 `r.ice_publication_evidence` (PRV-0 §3.4 verbatim; v1.3 FK target correction on `post_publish_queue_id`) — 17 cols
 
 ```sql
 CREATE TABLE IF NOT EXISTS r.ice_publication_evidence (
@@ -384,7 +387,7 @@ CREATE TABLE IF NOT EXISTS r.ice_publication_evidence (
     expected_publication_id      uuid NOT NULL REFERENCES r.expected_publication(expected_publication_id) ON DELETE CASCADE,
     pipeline_state               text NOT NULL CHECK (pipeline_state IN ('drafted','queued','attempted','published','failed')),
     post_draft_id                uuid REFERENCES m.post_draft(post_draft_id) ON DELETE SET NULL,
-    post_publish_queue_id        uuid REFERENCES m.post_publish_queue(post_publish_queue_id) ON DELETE SET NULL,
+    post_publish_queue_id        uuid REFERENCES m.post_publish_queue(queue_id) ON DELETE SET NULL,
     post_publish_id              uuid REFERENCES m.post_publish(post_publish_id) ON DELETE SET NULL,
     slot_id                      uuid REFERENCES m.slot(slot_id) ON DELETE SET NULL,
     platform_post_id             text,
@@ -407,8 +410,10 @@ CREATE INDEX IF NOT EXISTS ice_evidence_platform_post
     ON r.ice_publication_evidence (platform_post_id)
     WHERE platform_post_id IS NOT NULL;
 
-COMMENT ON TABLE r.ice_publication_evidence IS 'cc-0010A: Authoritative evidence from ICE pipeline state. Empty at cc-0010A close; populated by ice-evidence-materialiser EF (cc-0010B). UNIQUE (expected_publication_id) means ICE evidence is exclusive per expected row.';
+COMMENT ON TABLE r.ice_publication_evidence IS 'cc-0010A: Authoritative evidence from ICE pipeline state. Empty at cc-0010A close; populated by ice-evidence-materialiser EF (cc-0010B). UNIQUE (expected_publication_id) means ICE evidence is exclusive per expected row. Local column post_publish_queue_id references m.post_publish_queue(queue_id) — note that the target PK column is named queue_id, not post_publish_queue_id, despite the local column naming convention (v1.3 L44 correction).';
 ```
+
+**v1.3 FK target note:** The local column `r.ice_publication_evidence.post_publish_queue_id` retains its name (consistent with the table's local naming convention pattern: `post_draft_id`, `post_publish_id`, `slot_id`, `post_publish_queue_id` — all `<remote_table_singular>_id` for clarity within `r.ice_publication_evidence`). The FK *target* column is `queue_id` because that is the actual PK column name on `m.post_publish_queue` in the live DB. The mismatch is intentional and unavoidable; the COMMENT on the table documents the asymmetry for future readers.
 
 ### 2.2 `r.platform_observation` (PRV-0 §3.5, CCD-corrected v1.1 — no `is_stale`) — 16 cols
 
@@ -671,6 +676,14 @@ CTE-driven pattern from cc-0009 §3.6 / cc-0010 v1 §3.7. Six CTE blocks (one pe
 
 **Re-audit note (v1.2):** v1.1 briefly questioned the total after removing `is_stale`; re-audit confirms +86 because `r.ice_publication_evidence` remains 17 columns and `r.platform_observation` is now 16 columns.
 
+**Column-purpose qualifiers for `r.ice_publication_evidence` (v1.3 explicitness):**
+
+The `k.column_registry.column_purpose` text for `r.ice_publication_evidence.post_publish_queue_id` MUST explicitly note the cross-schema FK asymmetry:
+
+> `local column r.ice_publication_evidence.post_publish_queue_id references m.post_publish_queue(queue_id); the FK target PK column on m.post_publish_queue is named queue_id, not post_publish_queue_id, despite the local column naming convention used in cc-0010A; this asymmetry is documented in the table COMMENT and in v1.3 patch history; L44 caught the prior v1.2 typo before apply`
+
+Other `r.ice_publication_evidence` column purposes for FK columns follow the simpler pattern (e.g., `post_draft_id` purpose: `local column references m.post_draft(post_draft_id)`).
+
 ### 3.8 `k.column_registry` UPDATE for matched_match_id FK flag (post FK ALTER)
 
 ```sql
@@ -784,6 +797,20 @@ WHERE n.nspname='r' AND t.relname='expected_publication'
 
 **Pass:** 1 row, def matches `FOREIGN KEY (matched_match_id) REFERENCES r.reconciliation_match(reconciliation_match_id) ON DELETE SET NULL`.
 
+### V5b — (v1.3 NEW) FK on r.ice_publication_evidence.post_publish_queue_id targets queue_id
+
+```sql
+SELECT con.conname, pg_get_constraintdef(con.oid) AS def
+FROM pg_constraint con
+JOIN pg_class t ON t.oid = con.conrelid
+JOIN pg_namespace n ON n.oid = t.relnamespace
+WHERE n.nspname='r' AND t.relname='ice_publication_evidence'
+  AND con.contype = 'f'
+  AND pg_get_constraintdef(con.oid) LIKE '%post_publish_queue_id%';
+```
+
+**Pass:** 1 row, def matches `FOREIGN KEY (post_publish_queue_id) REFERENCES m.post_publish_queue(queue_id) ON DELETE SET NULL`. **Critical v1.3 assertion:** the target column is `queue_id`, NOT `post_publish_queue_id`. This V-check catches any future regression that re-introduces the v1.2 typo.
+
 ### V6 — Strengthened k.column_registry matched_match_id FK flag
 
 ```sql
@@ -803,6 +830,24 @@ WHERE tr.schema_name='r' AND tr.table_name='expected_publication'
 - `fk_ref_table = 'reconciliation_match'`
 - `fk_ref_column = 'reconciliation_match_id'`
 - `purpose_marker_present = true` ← **NEW v1.1 hard-fail clause; silent text drift now fails loudly**
+
+### V6b — (v1.3 NEW) k.column_registry FK metadata for r.ice_publication_evidence.post_publish_queue_id
+
+```sql
+SELECT cr.column_name, cr.is_foreign_key, cr.fk_ref_schema, cr.fk_ref_table, cr.fk_ref_column,
+       LEFT(cr.column_purpose, 200) AS purpose_preview
+FROM k.column_registry cr
+JOIN k.table_registry tr ON tr.table_id = cr.table_id
+WHERE tr.schema_name='r' AND tr.table_name='ice_publication_evidence'
+  AND cr.column_name = 'post_publish_queue_id';
+```
+
+**Pass rule (ALL must hold):**
+
+- `is_foreign_key = true`
+- `fk_ref_schema = 'm'`
+- `fk_ref_table = 'post_publish_queue'`
+- `fk_ref_column = 'queue_id'` ← **CRITICAL v1.3 assertion**
 
 ### V7 — k.table_registry + k.column_registry final state
 
@@ -835,15 +880,17 @@ After apply, capture verbatim:
 | `r.matcher_config` global default rows (`client_id IS NULL AND platform IS NULL`) | 0 | 1 | +1 | +1 | TBD |
 | `r.compact_raw_json` function | not exists | exists | new | new | TBD |
 | `r.expected_publication.matched_match_id` FK | not exists | exists | new | new | TBD |
+| `r.ice_publication_evidence.post_publish_queue_id` FK target | not exists | `m.post_publish_queue(queue_id)` | new | `(queue_id)` | TBD |
 | `r.expected_publication` row count | 84+ | 84+ | 0 | 0 | TBD |
 | `k.table_registry` r.* row count | 2 (from cc-0009) | 8 (2 + 6) | +6 | +6 | TBD |
 | **`k.column_registry` r.* row count** | (cc-0009 baseline) | **baseline + 86** | **+86** | **+86** | TBD |
 | `k.column_registry.is_foreign_key` for matched_match_id | false | true | flipped | flipped | TBD |
+| `k.column_registry.fk_ref_column` for r.ice_publication_evidence.post_publish_queue_id | unset | `queue_id` | set | `queue_id` | TBD |
 | `pg_extension` pg_trgm | (pre-flight state) | true | no-op or installed | installed | TBD |
 
 ### Sanity sample (≥3 rows; shape-variant)
 
-To capture verbatim at apply: 1 row from `r.matcher_config` (only populated table); 3 rows from `k.table_registry` covering different `purpose` shapes; 3 rows from `k.column_registry` covering FK-true vs FK-false vs JSONB column.
+To capture verbatim at apply: 1 row from `r.matcher_config` (only populated table); 3 rows from `k.table_registry` covering different `purpose` shapes; 3 rows from `k.column_registry` covering FK-true vs FK-false vs JSONB column; explicit row for `r.ice_publication_evidence.post_publish_queue_id` confirming `fk_ref_column='queue_id'`.
 
 ### Mismatch declaration template (L45)
 
@@ -861,11 +908,11 @@ Per `docs/runtime/mcp_review_protocol.md` sha `9bd5d3fa`:
 
 - **action_type:** `sql_destructive` (or `plan_review` fallback per cc-0009 KOI-02 if MCP routing requires)
 - **decision_under_review:** Apply migration `cc_0010a_r_evidence_matcher_schema_foundation` containing all DDL + DML enumerated in §2 + §3 in a single transactional unit.
-- **production_action_if_approved:** Single `apply_migration` call via Supabase MCP. 6 new tables created in schema r; 1 helper function; 1 FK constraint; 1 row inserted into r.matcher_config; 6 rows upserted into k.table_registry; 86 rows upserted into k.column_registry; 1 row updated in k.column_registry; CREATE EXTENSION IF NOT EXISTS pg_trgm idempotent.
+- **production_action_if_approved:** Single `apply_migration` call via Supabase MCP. 6 new tables created in schema r; 1 helper function; 1 FK constraint (matched_match_id); 1 row inserted into r.matcher_config; 6 rows upserted into k.table_registry; 86 rows upserted into k.column_registry; 1 row updated in k.column_registry; CREATE EXTENSION IF NOT EXISTS pg_trgm idempotent. **v1.3 note:** the `r.ice_publication_evidence.post_publish_queue_id` FK targets `m.post_publish_queue(queue_id)` — NOT `m.post_publish_queue(post_publish_queue_id)`. v1.2's typo was caught by L44 Probe 1.9 before D-01 fire.
 - **consequence_if_delayed:** cc-0010B and cc-0010C cannot begin authoring/apply; PRV-1 close gate evaluation deferred. No external client impact.
 - **cost_of_waiting:** Low. Days-scale lag only.
-- **current_evidence:** §1 pre-flight probe outputs verbatim (run within ~60s of D-01 fire per L44 baseline).
-- **known_weak_evidence:** None at brief authoring; populate at apply if any §1 probe returns FLAGGED.
+- **current_evidence:** §1 pre-flight probe outputs verbatim (run within ~60s of D-01 fire per L44 baseline). v1.3 expected list for §1.9 is the corrected list; live probe output must match v1.3 expectation exactly.
+- **known_weak_evidence:** None at brief authoring; populate at apply if any §1 probe returns FLAGGED. **v1.3 disclosure:** v1.2 had an incorrect FK target PK column name (`post_publish_queue_id` instead of `queue_id`); L44 Probe 1.9 caught this drift; v1.3 corrects. The v1.2 → v1.3 transition is itself evidence that the L44 pre-flight discipline is working as designed — NOT a defect in v1.3.
 - **default_action:** Hold migration; PK chooses to re-fire after addressing or to override per L46 GNB classification.
 
 **L46 response classification (to be filled at D-01 return):** INFORMATIVE-BLOCKING / GENERIC-NON-BLOCKING with 3-field analysis recorded.
@@ -885,7 +932,7 @@ Per `docs/runtime/mcp_review_protocol.md` sha `9bd5d3fa`:
 | H5 | §1.5 returns any row (migration name collision) | Stop. PK chooses different migration name OR investigates prior apply attempt. |
 | H6 | §1.6 returns trigger drift | Stop. k.* trigger missing or disabled. Rebuild path required before cc-0010A can proceed. |
 | H7 | §1.7 returns UNIQUE constraint drift on k.* | Stop. UPSERT pattern would fail. PK escalation. |
-| H8 | §1.9 returns < 7 PK-column rows OR unexpected PK names | Stop. Cross-schema FK target broken. PK escalation. |
+| H8 | §1.9 returns < 7 PK-column rows OR unexpected PK names | Stop. Cross-schema FK target broken. PK escalation. **Historical:** H8 fired on v1.2 expected list at first live pre-flight; v1.3 corrected the expected list to match live DB. |
 | H9 | §1.10 returns `server_version_num < 150000` | Stop. NULLS NOT DISTINCT unsupported. PK to scope fallback brief or accept halt. |
 
 **ROLLBACK:** PostgreSQL single-transaction atomicity. If migration body fails at any point, entire migration rolls back. No partial state. No manual rollback steps required.
@@ -905,7 +952,7 @@ Single result file at `docs/briefs/results/cc-0010A-r-reconciliation-ddl-foundat
 Stage A closed when:
 
 - Migration applied successfully.
-- V1–V8 PASS (or mismatch declared per L45 with PK accept-with-variance / re-fire / rollback / escalate decision per row).
+- V1–V8 PASS including V5b + V6b (v1.3 additions enforcing the corrected FK target on `r.ice_publication_evidence.post_publish_queue_id` references `m.post_publish_queue(queue_id)`).
 - Close-the-loop UPDATE on `m.chatgpt_review` row resolved.
 - Result file committed.
 - Session file written at `docs/runtime/sessions/YYYY-MM-DD-cc-0010A-applied.md`.
@@ -947,7 +994,8 @@ Per pre-cc-0010A gating evidence pack:
 - CCD-output review (PK direct) found no generic CCD-origin pushback.
 - `m.chatgpt_review` samples only ChatGPT MCP reviews by table construction; CCD-side reviews are not logged in this table. Attribution work for CCD origin requires separate CCD-output log inspection — out of `m.chatgpt_review`-only scope.
 - Single GNB episode `bea1bca4` (cc-0009 Stage C D-01) classified per L46 as 2-of-3 fields missing → GENERIC-NON-BLOCKING. Treated as non-blocking corrective advisory. No PK escalation required for this row in retrospect; no protocol rewrite in cc-0010A.
-- L46 Evidence Gate is active for cc-0010A D-01 fire; first live application.
+- L46 Evidence Gate first live application completed 2026-05-12 in the pre-cc-0010A M4 close-the-loop sequence: 3 D-01 fires on identical proposal → 5 cumulative GNB classifications → PK override threshold exceeded → Path B PK GNB override invoked → narrow status-only UPDATE applied successfully + audit-loop closure completed. Pattern proven; mechanism baselined-after-empirical-confirmation.
+- L46 Evidence Gate active for cc-0010A D-01 fire; second live application.
 
 ---
 
@@ -956,50 +1004,52 @@ Per pre-cc-0010A gating evidence pack:
 This is the **eleventh cc-NNNN brief** and the **first single-stage sub-brief from a split parent**. Pattern firsts:
 
 1. **First L48 split outcome applied.** cc-0010 v1 → cc-0010A + cc-0010B + cc-0010C decomposition.
-2. **First live exercise of L44 (Runtime Proof Pre-flight).** §1 probes captured verbatim at apply time.
-3. **First live exercise of L45 (Post-mutation truth check).** §5 count-delta + sanity sample baked in.
+2. **First live exercise of L44 (Runtime Proof Pre-flight).** §1 probes captured verbatim at apply time. **v1.3 vindication:** Probe 1.9 caught F-CC-0010A-FK-PK-COLUMN-DRIFT (`m.post_publish_queue.queue_id` vs v1.2's expected `post_publish_queue_id`) before D-01 fire. L44 baselined-after-empirical-confirmation.
+3. **First live exercise of L45 (Post-mutation truth check).** §5 count-delta + sanity sample baked in. v1.3 adds explicit FK-target-column delta for `post_publish_queue_id`.
 4. **First sub-brief where Stages B–N do not exist by construction.** cc-0010A is single-stage by scope.
 5. **L38 candidate empirical vindication at Stage A close** (cross-brief FK re-add via downstream-sub-brief ALTER).
 6. **First brief explicitly noting forward-looking-only matcher_config** (does NOT wire into cadence-rule-generator EF; cc-0010C is first consumer).
 7. **First brief noting L47 Path B dependency** without building it. Future Path B brief specification included in §10.
 8. **First CCD-driven correction landing pre-D-01.** CCD review of cc-0010A v1 surfaced two hard defects (stored-generated `now()` + `UNIQUE` NULL semantics) and one secondary concern (partial-index-with-`now()` also unsafe — chat-added). v1.1 incorporated all three. v1.2 strengthens §1.9 cross-schema probe to verify actual PRIMARY KEY columns via `pg_constraint` (CCD-provided shape) rather than just column existence. Pattern likely repeats for cc-0010B/C DDL changes.
+9. **First L44-driven correction landing pre-D-01 (v1.3).** Live pre-flight Probe 1.9 returned `m.post_publish_queue.queue_id` against v1.2's expected `post_publish_queue_id`, blocking D-01. v1.3 corrects the FK target. **This is the first time the L44 "runtime proof" loop has fired in earnest — the Probe 1.9 strengthening from v1.2 paid off immediately on its first live run.** Lesson: PK-naming-convention assumptions inherited from design-lock documents must be validated against live DB, not assumed. Likely to repeat for cc-0010B/C if either references `m.*` PK columns.
 
 ### Lesson candidate notes
 
 - **L37 candidate** continues vindication through split-brief execution pattern.
 - **L38 candidate** → empirical vindication at Stage A close (cross-brief FK ALTER).
-- **L44+L45+L48** → first live exercises; status candidate→baselined-after-empirical-confirmation.
-- **L46** → activates if D-01 returns `escalate=true`.
+- **L44** → **first live exercise complete (v1.3 pre-flight); baseline-eligible.** Probe 1.9 caught a real drift that would have failed at apply time.
+- **L45+L48** → first live exercises in progress; baseline candidates pending Stage A close.
+- **L46** → first live exercise complete (M4 close-the-loop sequence 2026-05-12); baselined-after-empirical-confirmation.
+- **New lesson candidate from v1.3:** "Design-lock PK-naming conventions must be probe-verified before brief authoring is locked." Holds when a brief references *any* cross-schema FK target. Promote at cc-0010C close if cc-0010C surfaces a similar drift.
 
 ### Open dependencies for apply session
 
 1. PK approval-to-apply phrase received.
 2. Supabase MCP `apply_migration` available.
-3. `pg_trgm` extension installable (or already installed; §1.8 determines).
+3. `pg_trgm` extension installable (or already installed; §1.8 determines). **Confirmed installed in live pre-flight 2026-05-12: version 1.6.**
 4. No drift on §1 probes within ~60s of apply.
 5. ChatGPT Review MCP available for D-01 fire.
-6. 5-row close-the-loop batch cleared (per PK directive 2026-05-12: clear pre-cc-0010A apply).
+6. 5-row close-the-loop batch cleared. **DONE 2026-05-12** — M4 2-row remediation + 3 D-01 review rows resolved via L46 GNB override; 24 unrelated historical escalated rows intentionally untouched.
 
 ---
 
 ## Ready for D-01 review?
 
-**Brief status: DRAFTED v1.2, repo-committed, ready for D-01 fire pending PK approval-to-apply.**
+**Brief status: DRAFTED v1.3, repo-committed, ready for live pre-flight RE-RUN + D-01 fire pending PK approval-to-apply.**
 
 **Recommended sequencing:**
 
-1. PK clears 5-row close-the-loop batch (~10 min).
-2. PK gives go-ahead for cc-0010A apply.
-3. Chat fires §1 pre-flight probes within ~60s of intended apply window (L44 discipline).
-4. Chat fires D-01 (`ask_chatgpt_review` action_type=sql_destructive | plan_review fallback).
-5. PK gives explicit approval phrase if D-01 returns clean agree (or PK GNB override per L46 if generic pushback).
-6. Chat applies `cc_0010a_r_evidence_matcher_schema_foundation`.
-7. Chat captures L45 truth check verbatim.
-8. Chat verifies V1–V8 PASS (or declares mismatch per L45).
-9. Chat fires close-the-loop UPDATE on m.chatgpt_review.
-10. Chat writes result file + session file + sync_state + action_list (4-way sync).
-11. cc-0010B and cc-0010C unblocked.
+1. PK gives go-ahead for cc-0010A apply.
+2. Chat fires §1 pre-flight probes within ~60s of intended apply window (L44 discipline). Probe 1.9 expected list now reflects v1.3 correction (`m.post_publish_queue.queue_id`).
+3. Chat fires D-01 (`ask_chatgpt_review` action_type=sql_destructive | plan_review fallback).
+4. PK gives explicit approval phrase if D-01 returns clean agree (or PK GNB override per L46 if generic pushback — prior precedent set by M4 close-the-loop sequence 2026-05-12).
+5. Chat applies `cc_0010a_r_evidence_matcher_schema_foundation`.
+6. Chat captures L45 truth check verbatim.
+7. Chat verifies V1–V8 + V5b + V6b PASS (or declares mismatch per L45).
+8. Chat fires close-the-loop UPDATE on m.chatgpt_review.
+9. Chat writes result file + session file + sync_state + action_list (4-way sync).
+10. cc-0010B and cc-0010C unblocked.
 
 ---
 
-*Brief authored 2026-05-12 Sydney by chat (Claude). v1 + v1.1 (CCD corrections) + v1.2 (arithmetic cleanup + strengthened cross-schema PK-column probe). Inputs: cc-0010 v1 parent brief at commit `cfee0814` (split decision recorded at parent-brief top); PRV-0 v2 §3.4–§3.7 + §3.9 + §4.3 + §6.3 verbatim; cc-0009 v2.1 brief structure + result file SHA `0f6873f8`; CCD review v1.1 → v1.2; L33+L34+L35+L36+L37+L38+L41 lessons; v2.66 L44+L45+L46+L48 first live exercise; v2.66 `cc_stage_template.md` sha `5657b69e`; v2.66 `mcp_review_protocol.md` sha `9bd5d3fa`. Output: single-stage DDL/schema/catalog/FK/helper/default-config brief; 1 migration; 1 D-01 fire; 8 V-checks; 1 close-the-loop. NO production mutation during authoring; doc-only commit per CCH directive 2026-05-12.*
+*Brief authored 2026-05-12 Sydney by chat (Claude). v1 + v1.1 (CCD corrections) + v1.2 (arithmetic cleanup + strengthened cross-schema PK-column probe) + v1.3 (FK target correction from L44 live pre-flight — `m.post_publish_queue(queue_id)` replaces v1.2's incorrect `m.post_publish_queue(post_publish_queue_id)`). Inputs: cc-0010 v1 parent brief at commit `cfee0814` (split decision recorded at parent-brief top); PRV-0 v2 §3.4–§3.7 + §3.9 + §4.3 + §6.3 verbatim; cc-0009 v2.1 brief structure + result file SHA `0f6873f8`; CCD review v1.1 → v1.2; L44 live pre-flight v1.2 → v1.3; L33+L34+L35+L36+L37+L38+L41 lessons; v2.66 L44+L45+L46+L48 first live exercises; v2.66 `cc_stage_template.md` sha `5657b69e`; v2.66 `mcp_review_protocol.md` sha `9bd5d3fa`. Output: single-stage DDL/schema/catalog/FK/helper/default-config brief; 1 migration; 1 D-01 fire; 10 V-checks (V1–V8 + V5b + V6b); 1 close-the-loop. NO production mutation during authoring; doc-only commit per CCH directive 2026-05-12.*
