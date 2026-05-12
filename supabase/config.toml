@@ -13,7 +13,7 @@
 #   v3.0.0 deploy broke cron jobid 33 until a manual --no-verify-jwt
 #   redeploy.
 #
-# Contents (24 functions total — 11 custom-header + 13 service-role):
+# Contents (26 functions total — 13 custom-header + 13 service-role):
 #   • Custom-header-auth:   functions whose cron call carries a literal
 #                           secret header (x-*-key); the function body
 #                           compares against an env var.
@@ -50,7 +50,7 @@
 # always presents a Supabase auth token), set `verify_jwt = true`.
 
 # ---------------------------------------------------------------------
-# Custom-header-auth EFs (12) — verify_jwt = false
+# Custom-header-auth EFs (13) — verify_jwt = false
 # ---------------------------------------------------------------------
 
 [functions.video-worker]
@@ -87,6 +87,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.cadence-rule-generator]
+verify_jwt = false
+
+[functions.ice-evidence-materialiser]
 verify_jwt = false
 
 # ---------------------------------------------------------------------
