@@ -1,12 +1,12 @@
-# Brief cc-0010B v1.1 — `ice-evidence-materialiser` EF end-to-end (PRV-1 third build, sub-build 2 of 3)
+# Brief cc-0010B v1.2 — `ice-evidence-materialiser` EF end-to-end (PRV-1 third build, sub-build 2 of 3)
 
 **Created:** 2026-05-12 Sydney
-**Last patched:** 2026-05-12 Sydney (v1.1 — CCD review corrections D1 + R1 + R2 applied; Assumption #3 marked PK-DECISION-REQUIRED-BEFORE-STAGE-B-D-01)
+**Last patched:** 2026-05-12 Sydney (v1.2 — final docs-only cleanup eliminating remaining legacy skipped-row field name references from patch history, §6.4 V10 PASS criterion explainer, and closing italics footer)
 **Author:** chat (Claude)
 **Parent brief:** `docs/briefs/cc-0010-r-reconciliation-evidence-and-matcher.md` (SUPERSEDED-BY for execution per L48 split 2026-05-12)
 **Sibling sub-brief (closed):** `docs/briefs/cc-0010A-r-reconciliation-ddl-foundation.md` (cc-0010A v1.5 APPLIED + CLOSED 2026-05-12)
 **Sibling sub-brief (gated, out of scope here):** `cc-0010C-reconciliation-matcher.md` (not yet authored; gated on cc-0010B Stage E close)
-**Status:** **AUTHORED v1.1 — docs-only; CCD review accepted with corrections applied at this commit. Ready for Stage B D-01 ONCE PK resolves Assumption #3 (slot_id join precedence) per §13.** No D-01 fired this commit. No apply. No deploy. No invocation. No `m.chatgpt_review` write.
+**Status:** **AUTHORED v1.2 — docs-only; CCD review accepted with corrections applied; final string cleanup complete. Ready for Stage B D-01 ONCE PK resolves Assumption #3 (slot_id join precedence) per §13.** No D-01 fired this commit. No apply. No deploy. No invocation. No `m.chatgpt_review` write.
 
 **Executor (per stage — explicit per CCH R1 + R11 carried from cc-0009):**
 
@@ -31,7 +31,8 @@
 
 ## Patch history
 
-- **2026-05-12 Sydney — v1.1** (docs-only; CCD review corrections from commit `d2984c20` accepted). **D1 correction**: replaced all references to `rows_skipped_no_evidence` with `rows_skipped` matching the live `r.reconciliation_run` schema — applied at §5.2 HTTP response field list, §5.2 audit-row UPDATE spec, §6.4 V10 SELECT projection, §6.4 V10 PASS criterion. Full-file zero-leftover check passes. **R1 included**: new §4.10b pre-flight probe enumerating non-system triggers on `r.ice_publication_evidence` + `r.reconciliation_run` write targets; halt rule surfaces any unexpected trigger for chat review before Stage E execution. **R2 included**: §5.2 EF spec now explicitly requires materialiser to set `created_by_run_id` + `updated_by_run_id` on every UPSERTed `r.ice_publication_evidence` row using the Stage E audit run_id; §6.7 L45 sanity sample now verifies sampled rows have both columns IS NOT NULL. **Assumption #3 (slot_id join precedence)** marked **PK-DECISION-REQUIRED-BEFORE-STAGE-B-D-01** with default recommendation explicit (forward-compatible guarded branch) and decision paths A/B enumerated. CCD verdict carried: agree-with-corrections, risk low, commit d2984c20 accepted, Stage B D-01 gate now hinges on PK Assumption #3 resolution.
+- **2026-05-12 Sydney — v1.2** (docs-only; final string-cleanup pass on CCH directive). Removed three remaining file-wide references to the legacy skipped-row field name — one in the v1.1 patch history entry, one in the §6.4 V10 PASS criterion explainer (which CCH did not flag but the directive's "zero times anywhere in the file" rule required cleaning), and one in the closing italics footer. Substituted phrasings: "legacy skipped-row field name", "obsolete skipped-row field", "D1 skipped-row naming correction". Exact grep count for the forbidden string is now zero file-wide. All v1.1 operational fixes (D1 operational substitutions in §5.2 + §6.4; R1 trigger inventory probe; R2 run-id stamping requirement + verification; Assumption #3 PK-decision-required gate) preserved. cc-0010A frozen state preserved. cc-0010C out-of-scope boundary preserved. Version labels updated from v1.1 → v1.2 in header status, §3.1 internal Q2, §11.10 L49 assertion, §12.4 sequencing reminders header, §14 status, §14 closing non-mutation block. Historical labels (R1 v1.1, R2 v1.1, L50 NEW candidate v1.1, D1 v1.1) preserved as accurate timestamps of when each was introduced.
+- **2026-05-12 Sydney — v1.1** (docs-only; CCD review corrections from commit `d2984c20` accepted). **D1 skipped-row naming correction**: replaced the legacy skipped-row field name with `rows_skipped` matching the live `r.reconciliation_run` schema — applied at §5.2 HTTP response field list, §5.2 audit-row UPDATE spec, §6.4 V10 SELECT projection, §6.4 V10 PASS criterion. Full-file zero-leftover check passed at operative loci (historical mentions cleaned up subsequently at v1.2). **R1 included**: new §4.10b pre-flight probe enumerating non-system triggers on `r.ice_publication_evidence` + `r.reconciliation_run` write targets; halt rule surfaces any unexpected trigger for chat review before Stage E execution. **R2 included**: §5.2 EF spec now explicitly requires materialiser to set `created_by_run_id` + `updated_by_run_id` on every UPSERTed `r.ice_publication_evidence` row using the Stage E audit run_id; §6.7 L45 sanity sample now verifies sampled rows have both columns IS NOT NULL. **Assumption #3 (slot_id join precedence)** marked **PK-DECISION-REQUIRED-BEFORE-STAGE-B-D-01** with default recommendation explicit (forward-compatible guarded branch) and decision paths A/B enumerated. CCD verdict carried: agree-with-corrections, risk low, commit d2984c20 accepted, Stage B D-01 gate now hinges on PK Assumption #3 resolution.
 - **2026-05-12 Sydney — v1.0** (initial authoring; docs-only). Authored after cc-0010A v1.5 APPLIED + CLOSED 2026-05-12 (4-way sync close at commit `0589dce264f834a0d53eeb871562a57ae904aa38`). Bakes L44 (Runtime Proof Pre-flight + §1.7b NOT NULL enumeration probe), L45 (post-mutation truth check + count-delta + 5-row sanity sample + mismatch declaration), L46 (clean brief surface to avoid GNB pushback), L48 (atomic sub-build per parent split), L49 NEW (PG reserved-word collision check for PL/pgSQL DECLARE variables — applied as authoring discipline though Stage D cron SQL uses inline literal, no `DECLARE` block). Folds F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY Option (a) into materialiser horizon contract (today-forward, weekday-filtered, 7-day window default).
 
 ---
@@ -161,7 +162,7 @@ Per `docs/runtime/cc_stage_template.md`: "For Stage B onward of an already-split
 | Q | Question | Answer |
 |---|---|---|
 | Internal Q1 | Can cc-0010B succeed or fail as one logical sub-unit? | **yes** — all 4 stages target one EF + one cron + one first invocation; each stage has its own rollback path; failures at any stage do not poison cc-0010A's already-applied state |
-| Internal Q2 | More than 3 unresolved assumptions at cc-0010B v1.1 approval? | **1** (Assumption #3 slot_id join precedence — PK decision required before Stage B D-01; others resolved via R1/R2 inclusion at v1.1) |
+| Internal Q2 | More than 3 unresolved assumptions at cc-0010B v1.2 approval? | **1** (Assumption #3 slot_id join precedence — PK decision required before Stage B D-01; others resolved via R1/R2 inclusion at v1.1) |
 | Internal Q3 | Would a late-stage failure force rollback of earlier stages? | **no** — Stage B+C revertible via feature-branch revert; Stage D revertible via `cron.unschedule`; Stage E revertible via `r.reconciliation_run.status='partial'` mark + optional row delete under PK approval |
 
 No further split needed. cc-0010B proceeds as a 4-stage atomic sub-build.
@@ -507,7 +508,7 @@ No autonomous apply. No "implicit" approval from prior stage approval. No state-
 - **UPSERT on `r.ice_publication_evidence`:** `ON CONFLICT (expected_publication_id) DO UPDATE` (UNIQUE constraint enforces idempotency). Latest-wins semantics: when multiple pipeline rows match the same expected_publication, materialiser picks the one with maximum `COALESCE(published_at, scheduled_for, created_at)`.
 - **`raw_evidence` compaction:** populate via `r.compact_raw_json(row_to_json(pipeline_row)::jsonb)`. Helper strips `['__internal_debug', 'request_headers', 'response_headers', 'full_html']` per cc-0010A v1.5 delivery.
 - **Run-id stamping (R2 v1.1 REQUIREMENT):** Materialiser MUST set BOTH `created_by_run_id` AND `updated_by_run_id` on every UPSERTed `r.ice_publication_evidence` row, using the **Stage E audit run_id** (the `reconciliation_run_id` from the `INSERT INTO r.reconciliation_run` performed at the start of the EF invocation). On INSERT path: both columns = current run_id. On UPDATE path (idempotent re-run hitting `ON CONFLICT`): `updated_by_run_id` = current run_id; `created_by_run_id` is preserved unchanged (i.e., `ON CONFLICT (expected_publication_id) DO UPDATE SET ..., updated_by_run_id = EXCLUDED.updated_by_run_id` — do NOT set `created_by_run_id` in the UPDATE clause). The audit trail thereby distinguishes the original materialisation run from the most-recent refresh.
-- **Audit row:** INSERT into `r.reconciliation_run` BEFORE the driver loop with `run_type='ice_evidence_materialisation'`, `status='running'`, `trigger=...`, `triggered_by=...`. UPDATE at end with `status` ∈ {`succeeded`, `partial`, `failed`}, `rows_processed`, `rows_inserted`, `rows_updated`, `rows_skipped`, `duration_ms`. The `rows_skipped` counter records expected_publication rows that found no pipeline match (no evidence emitted) — column name matches the live `r.reconciliation_run` schema per D1 v1.1 correction.
+- **Audit row:** INSERT into `r.reconciliation_run` BEFORE the driver loop with `run_type='ice_evidence_materialisation'`, `status='running'`, `trigger=...`, `triggered_by=...`. UPDATE at end with `status` ∈ {`succeeded`, `partial`, `failed`}, `rows_processed`, `rows_inserted`, `rows_updated`, `rows_skipped`, `duration_ms`. The `rows_skipped` counter records expected_publication rows that found no pipeline match (no evidence emitted) — column name matches the live `r.reconciliation_run` schema per D1 v1.1 skipped-row naming correction.
 - **Error handling:** per-row try/catch; one row's failure does not abort the whole run; aggregate failures land in `r.reconciliation_run.error_summary`. If ALL rows fail, run status = `failed`.
 - **No writes outside `r.ice_publication_evidence` + `r.reconciliation_run`.** No writes to `m.*`. No reads of `r.platform_observation` / `r.platform_manual_observation` / `r.reconciliation_match` / `r.matcher_config` (Tier 1 ICE-only; scope-creep guard).
 - **HTTP response:** 200 with `{run_id, rows_planned, rows_inserted, rows_updated, rows_skipped, duration_ms}`.
@@ -620,7 +621,7 @@ If `status='running'` after `pg_sleep(8)` — repeat read after another `pg_slee
 - Stage E: `execute_sql` `net.http_post` call (chat).
 
 **Documentation-only artefacts:**
-- This brief (`docs/briefs/cc-0010B-ice-evidence-materialiser.md`) — authored docs-only at v1.0 and patched to v1.1 docs-only.
+- This brief (`docs/briefs/cc-0010B-ice-evidence-materialiser.md`) — authored docs-only at v1.0, patched docs-only to v1.1, and patched docs-only to v1.2.
 - Result file (`docs/briefs/results/cc-0010B-ice-evidence-materialiser.md`) — written after Stage E close.
 - Session file (`docs/runtime/sessions/YYYY-MM-DD-cc-0010B-*.md`) — written after each apply session.
 - Updates to `docs/00_sync_state.md` + `docs/00_action_list.md` — per 4-way sync close convention.
@@ -693,7 +694,7 @@ LIMIT 1;
 - `trigger = 'manual'` (or 'rpc' depending on EF source convention).
 - `status IN ('succeeded', 'partial')`. **`failed` → HALT (§9.2.j).**
 - `duration_ms < 30000` (timeout cap).
-- `rows_inserted + rows_updated + rows_skipped = rows_processed`. **(D1 v1.1 correction — `rows_skipped` matches the live `r.reconciliation_run` schema; previously v1.0 used the non-existent column name `rows_skipped_no_evidence`.)**
+- `rows_inserted + rows_updated + rows_skipped = rows_processed`. **(D1 v1.1 skipped-row naming correction — `rows_skipped` matches the live `r.reconciliation_run` schema; the v1.0 brief used an obsolete skipped-row field name that did not match the live schema.)**
 
 **`status='partial'` is accept-with-variance per L45 if `error_summary` is reasonable** (e.g., specific m.* rows had unparseable raw payloads). Chat captures verbatim and declares in L45 mismatch table.
 
@@ -857,8 +858,9 @@ LIMIT 5;
 |---|---|---|---|
 | 1 | v1.0 commit `d2984c20` | cc-0010B v1.0 brief authored, docs-only | v1.0 file |
 | 2 | PK directs CCD review | CCD reads brief, produces corrections (verdict + risk + blocking/non-blocking suggestions) | CCD response: agree-with-corrections, risk low, commit d2984c20 accepted |
-| 3 | CCD blocking + non-blocking corrections | chat patches v1.0 → v1.1 (D1 mandatory; R1 + R2 cheap-and-useful included) | **THIS COMMIT (v1.1)** |
-| 4 | PK resolves Assumption #3 (slot_id join precedence) per §13 | path A or path B chosen | chat optionally patches v1.1 → v1.2 to reflect chosen path |
+| 3 | CCD blocking + non-blocking corrections | chat patches v1.0 → v1.1 (D1 mandatory; R1 + R2 cheap-and-useful included) | v1.1 commit `46e1a12d` |
+| 3a | Final string cleanup pass | chat patches v1.1 → v1.2 (zero remaining file-wide instances of the legacy skipped-row field name) | **THIS COMMIT (v1.2)** |
+| 4 | PK resolves Assumption #3 (slot_id join precedence) per §13 | path A or path B chosen | chat optionally patches v1.2 → v1.3 to reflect chosen path |
 | 5 | Brief frozen per ICE-PROC-001 §9.1 | freeze marker at chosen commit | freeze marker |
 | 6 | PK instructs Stage B apply gate | chat runs §4.1+§4.2+§4.3+§4.4 pre-flight | probe output captured |
 | 7 | chat fires Stage B D-01 (`ask_chatgpt_review` action_type=plan_review for CC's diff) | D-01 fire with packet (§8 below) | D-01 verdict |
@@ -877,7 +879,7 @@ LIMIT 5;
 
 ### 7.2 Gate enforcement
 
-- **CCD review must happen BEFORE any D-01 fire.** v1.1 captures CCD-accepted state; further amendments require fresh CCD pass if material.
+- **CCD review must happen BEFORE any D-01 fire.** v1.1 captures CCD-accepted state; v1.2 is a docs-only cleanup that does not require fresh CCD pass (no operative content changed).
 - **PK Assumption #3 resolution must happen BEFORE Stage B D-01 fires.** This is a hard gate established by CCD at v1.1; not relitigated mid-stage.
 - **D-01 must return verdict=`agree` with `proceed` direction** OR PK invokes L46 type-(c) state-capture override path (rare; v2.67 had zero such overrides at cc-0010A v1.5 D-01).
 - **PK approval phrase is verbatim, in chat, after D-01 returns.** Approval prior to D-01 fire is informational only, not gate-clearing.
@@ -1137,7 +1139,7 @@ WHERE review_id IN (<stage-b-review-id>, <stage-c-review-id>, <stage-d-review-id
 
 **Vector:** A future cc-0010B amendment introduces a PL/pgSQL function with `DECLARE` block using reserved words (`out`, `result`, `record`, `row`, etc.) — collision at apply time.
 
-**Likelihood:** None in cc-0010B v1.1 (no PL/pgSQL DECLARE blocks introduced; verified at §4.12).
+**Likelihood:** None in cc-0010B v1.2 (no PL/pgSQL DECLARE blocks introduced; verified at §4.12).
 
 **Detection:** Brief-authoring checklist; pre-D-01 reserved-word scan.
 
@@ -1215,7 +1217,7 @@ WHERE review_id IN (<stage-b-review-id>, <stage-c-review-id>, <stage-d-review-id
 - **L45 (Post-mutation truth check)**: cc-0010B will provide a **second live exercise** at apply time. Strengthens baseline eligibility.
 - **L46 (Reviewer Evidence Gate)**: cc-0010B authoring aims for clean-pass-through D-01s across all 4 stages — would be the first cc-NNNN brief with 4 consecutive zero-pushback D-01s if achieved. Baseline confirmation strengthens.
 - **L48 (Atomicity Gate)**: cc-0010B is the second sub-build from the cc-0010 split; together with cc-0010A's atomic delivery, L48 split-then-atomic-sub-build pattern is vindicated through 2 of 3 sub-builds.
-- **L49 NEW candidate**: cc-0010B records risk as NONE for v1.1 (no PL/pgSQL DECLARE); next PL/pgSQL-heavy brief will provide the next live exercise.
+- **L49 NEW candidate**: cc-0010B records risk as NONE for v1.2 (no PL/pgSQL DECLARE); next PL/pgSQL-heavy brief will provide the next live exercise.
 - **L50 NEW candidate v1.1**: trigger-inventory pre-flight probe before write-target mutations — promote to baseline if pattern repeats in cc-0010C + observer briefs without surfacing real unexpected triggers (would indicate the probe is consistently informational-only) OR confirm value if it does surface (probe earns its keep).
 
 ### 12.3 Open dependencies for the apply session(s)
@@ -1231,7 +1233,7 @@ WHERE review_id IN (<stage-b-review-id>, <stage-c-review-id>, <stage-d-review-id
 
 ### 12.4 Sequencing reminders
 
-cc-0010B v1.1 must NOT (until each stage's gate clears):
+cc-0010B v1.2 must NOT (until each stage's gate clears):
 - Apply any DDL.
 - Deploy any EF.
 - Schedule any cron.
@@ -1265,11 +1267,11 @@ Violation → HALT + report to PK.
 
    **Stage B D-01 must NOT fire until PK explicitly confirms either:**
    - **Path A** — forward-compatible slot_id branch included, guarded and non-blocking (default recommendation above); CC's Stage B diff implements the guarded `if (slot_id !== null) ... else ...` pattern.
-   - **Path B** — simpler no-slot_id branch for cc-0010B; slot_id support entirely deferred to a future cc-0010B v2 amendment or a separate cc-0010D brief authored when cc-0009 EF starts emitting slot_id. CC's Stage B diff implements only the (client_id, platform, date) join path; §5.2 step 1 wording is amended at v1.2 to mark slot_id-step explicitly out-of-scope.
+   - **Path B** — simpler no-slot_id branch for cc-0010B; slot_id support entirely deferred to a future cc-0010B v2 amendment or a separate cc-0010D brief authored when cc-0009 EF starts emitting slot_id. CC's Stage B diff implements only the (client_id, platform, date) join path; §5.2 step 1 wording is amended at v1.3 to mark slot_id-step explicitly out-of-scope.
 
    This is a brief-content decision that affects CC's Stage B implementation, not a runtime decision deferrable to later stages. Resolved silently → CCD's recommended-blocker not honoured; trust in v1.1's review-gate discipline degraded. PK must give explicit A or B before chat fires Stage B D-01. CCD verdict at v1.0 review explicitly elevated this from "open assumption" (v1.0) to "PK-decision-required-before-Stage-B-D-01" (v1.1).
 
-4. **F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY Option (a) carry** — cc-0010B v1.1 inherits parent cc-0010's stance: alignment lives in materialiser horizon contract (today-forward, weekday-filtered, 7-day default); cc-0009 brief frozen unmodified. PK may direct alternative (e.g., formalise cc-0009 → v2.2 patch).
+4. **F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY Option (a) carry** — cc-0010B v1.2 inherits parent cc-0010's stance: alignment lives in materialiser horizon contract (today-forward, weekday-filtered, 7-day default); cc-0009 brief frozen unmodified. PK may direct alternative (e.g., formalise cc-0009 → v2.2 patch).
 
 5. **Stage D migration includes Stage E's audit-row INSERT?** — Brief separates Stage D (cron) from Stage E (first invocation). Alternative: Stage D migration could `INSERT INTO r.reconciliation_run` pre-populating a placeholder row before any EF fire. Chat default: keep Stage D pure-DDL-equivalent; Stage E owns the first runtime artefact.
 
@@ -1279,18 +1281,18 @@ Violation → HALT + report to PK.
 
 ## §14. Ready for Stage B D-01?
 
-**Brief status: AUTHORED v1.1; CCD review accepted with corrections applied.** Not yet ready for Stage B D-01 — gated on PK resolving Assumption #3 (slot_id join precedence) per §13.
+**Brief status: AUTHORED v1.2; CCD review accepted with corrections applied at v1.1; final string cleanup complete at v1.2.** Not yet ready for Stage B D-01 — gated on PK resolving Assumption #3 (slot_id join precedence) per §13.
 
-**CCD verdict captured at v1.1:** agree-with-corrections; risk low; commit `d2984c20` (v1.0) accepted; cc-0010B may proceed to Stage B D-01 once D1 + R1 + R2 applied (this commit) + Assumption #3 resolved.
+**CCD verdict captured at v1.1 (still in force at v1.2 — string cleanup is non-operative):** agree-with-corrections; risk low; commit `d2984c20` (v1.0) accepted; cc-0010B may proceed to Stage B D-01 once D1 + R1 + R2 applied (v1.1 commit `46e1a12d`) + Assumption #3 resolved.
 
 **Recommended next-steps for PK:**
 
-1. PK reviews this v1.1 brief and §13 Assumption #3.
+1. PK reviews this v1.2 brief and §13 Assumption #3.
 2. PK gives explicit Path A or Path B decision for slot_id join precedence.
-3. If Path A confirmed: brief freezes at v1.1 commit per ICE-PROC-001 §9.1; chat fires Stage B D-01 at chosen session window.
-4. If Path B confirmed: chat patches v1.1 → v1.2 (small edit to §5.2 step 1 marking slot_id explicitly out-of-scope); brief freezes at v1.2; chat fires Stage B D-01 at chosen session window.
+3. If Path A confirmed: brief freezes at v1.2 commit per ICE-PROC-001 §9.1; chat fires Stage B D-01 at chosen session window.
+4. If Path B confirmed: chat patches v1.2 → v1.3 (small edit to §5.2 step 1 marking slot_id explicitly out-of-scope); brief freezes at v1.3; chat fires Stage B D-01 at chosen session window.
 
-**Brief authoring this v1.1 commit is non-mutating per CCH directive 2026-05-12:**
+**Brief authoring this v1.2 commit is non-mutating per CCH directive 2026-05-12:**
 - No D-01 fired.
 - No `apply_migration` called.
 - No EF deployed.
@@ -1307,6 +1309,6 @@ Violation → HALT + report to PK.
 
 ---
 
-*Brief authored 2026-05-12 Sydney by chat (Claude). v1.0 → v1.1 patch 2026-05-12 Sydney by chat after CCD review of commit `d2984c20`. v1.1 inputs: CCD verdict (agree-with-corrections, risk low) carried at v1.1 commit; D1 correction (`rows_skipped_no_evidence` → `rows_skipped` at §5.2 HTTP response field list, §5.2 audit-row UPDATE spec, §6.4 V10 SELECT, §6.4 V10 PASS criterion); R1 inclusion (§4.10b trigger inventory probe on `r.ice_publication_evidence` + `r.reconciliation_run` with halt rule on unexpected non-system triggers); R2 inclusion (§5.2 EF spec explicit `created_by_run_id` + `updated_by_run_id` stamping requirement using Stage E run_id; §6.7 L45 sanity sample cross-join verification + §6.5 V11c column addition + §6.6 V12 anomaly checks); Assumption #3 marked PK-DECISION-REQUIRED-BEFORE-STAGE-B-D-01 with explicit Path A (default; forward-compatible guarded slot_id branch) and Path B (simpler no-slot, slot_id deferred) decision paths.*
+*Brief authored 2026-05-12 Sydney by chat (Claude). v1.0 → v1.1 patch 2026-05-12 Sydney by chat after CCD review of commit `d2984c20`. v1.1 → v1.2 patch 2026-05-12 Sydney by chat after CCH directive to fully purge file-wide references to the legacy skipped-row field name. v1.2 inputs: CCH directive carry; CCD verdict (agree-with-corrections, risk low) preserved from v1.1; D1 skipped-row naming correction now fully described using approved phrasings ("legacy skipped-row field name", "obsolete skipped-row field", "D1 skipped-row naming correction"); R1 inclusion (§4.10b trigger inventory probe on `r.ice_publication_evidence` + `r.reconciliation_run` with halt rule on unexpected non-system triggers); R2 inclusion (§5.2 EF spec explicit `created_by_run_id` + `updated_by_run_id` stamping requirement using Stage E run_id; §6.7 L45 sanity sample cross-join verification + §6.5 V11c column addition + §6.6 V12 anomaly checks); Assumption #3 marked PK-DECISION-REQUIRED-BEFORE-STAGE-B-D-01 with explicit Path A (default; forward-compatible guarded slot_id branch) and Path B (simpler no-slot, slot_id deferred) decision paths.*
 
-*v1.1 output: 4-stage gated build plan (B+C+D+E) for `ice-evidence-materialiser` EF only, with CCD-accepted corrections baked in. 1 new EF + 1 new cron job + 1 first invocation. Apply sequence requires 4 sequential D-01 fires + 4 PK approval phrases + V8a + V9 + V10 + V11 + V12 V-checks + L45 truth check + R1 trigger inventory probe + R2 run-id verification + 4 close-the-loop UPDATEs. cc-0010B v1.1 remains AUTHORED ONLY. No D-01. No apply. No production mutation. 24 historical escalated rows untouched. cc-0010A unchanged. cc-0010C still gated. Stage B D-01 still gated on PK Assumption #3 resolution.*
+*v1.2 output: 4-stage gated build plan (B+C+D+E) for `ice-evidence-materialiser` EF only, with CCD-accepted corrections baked in and obsolete skipped-row field references fully purged file-wide (zero file-wide occurrences of the forbidden exact string). 1 new EF + 1 new cron job + 1 first invocation. Apply sequence requires 4 sequential D-01 fires + 4 PK approval phrases + V8a + V9 + V10 + V11 + V12 V-checks + L45 truth check + R1 trigger inventory probe + R2 run-id verification + 4 close-the-loop UPDATEs. cc-0010B v1.2 remains AUTHORED ONLY. No D-01. No apply. No production mutation. 24 historical escalated rows untouched. cc-0010A unchanged. cc-0010C still gated. Stage B D-01 still gated on PK Assumption #3 resolution.*
