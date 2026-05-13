@@ -1,10 +1,10 @@
 # ICE — Action List
 
-> **Single active action index for what's queued, in flight, blocked, or frozen.**
+> **Single active action index for what''s queued, in flight, blocked, or frozen.**
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-12 Sydney (**v2.67 — cc-0010A v1.5 APPLIED + CLOSED.** apply_migration cc_0010a_r_evidence_matcher_schema_foundation succeeded after prior v1.3 atomic rollback. v1.4 Fix A pattern (purposes CTE joined to information_schema.columns) hydrated 86 k.column_registry NOT NULL columns. v1.5 V6c row-count tightened `>= 86` → `= 86` per CCD narrow review. v1.5 D-01 (`752dfec6-6f9a-4956-b7d7-a4112009b93c`) returned clean agree with **zero pushback** — first cc-0010A D-01 to do so. Apply delivered 6 r.* tables, 1 helper function (with `out` → `result_jsonb` rename disclosed in L45 — PG reserved-word collision), 1 FK constraint (L38 VINDICATED), 1 matcher_config global default row, 6 k.table_registry UPSERTs, 86 k.column_registry rows via Fix A, 1 k.column_registry FK-flag UPDATE. V-checks 10 PASS + 1 accept-with-variance (V6 purpose marker REPLACE no-op; substantive FK fields correct). L45 5 mismatches all accept-with-variance. Close-the-loop on BOTH D-01 rows (8a4b93fb v1.3 escalated→resolved + 752dfec6 v1.5 completed→resolved) in single 2-row UPDATE. cc-0010B + cc-0010C UNBLOCKED. 24 unrelated historical escalated rows intentionally untouched per CCH directive. T-MCP-02 +1 (cum=60). State-capture exceptions: 0. L38 VINDICATED. L44 + L45 baseline-eligible. L46 baseline confirmed. NEW lesson candidate (L49): PG reserved-word collision check for PL/pgSQL DECLARE variables must be brief-authoring pre-D-01 checklist item. Three pre-cc-0010A gating items from v2.66 all CLOSED v2.67 (L62 attribution: clean pass-through D-01 indicates ChatGPT MCP noise not systemic; L47 lock scope: no parallel-writer conflict observed during apply, Path A likely sufficient; L48 application: split delivered cc-0010A atomic). **Next major:** cc-0010B authoring + v1.6 doc patch + 24-row + 5-row close-the-loop batch.)
+> Last updated: 2026-05-13 Sydney (**v2.68 — cc-0010B CLOSED-WITH-VERIFIED-VARIANCE.** ice-evidence-materialiser EF v2 live in production. First post-v2 cron fire `c256dc99-484c-4206-80f5-7b4054c31532` succeeded with 30 rows_inserted in 3.5 sec. PK accepted cron runtime proof as Stage E-equivalent variance. F4 path (b) hotfix encoded (commit `62f319c`), merged, deployed via CLI after 2x Supabase MCP InternalServerErrorException failures (clean atomic rollback). 4 D-01 fires this session, all clean agree zero pushback (5 consecutive including v2.67 v1.5 — strongest L46 baseline state to date). T-MCP-02 cum 64. State-capture exceptions: 0. L40 reified end-to-end at production runtime. L52 NEW candidate (MCP vs CLI deploy reliability). L53 NEW candidate (FK source-column-type asymmetry at brief authoring). cc-0010C UNBLOCKED. **Next major:** cc-0010C authoring + v1.6 cc-0010A doc patch (3 items) + close-the-loop batch sweeps.)
 
 ---
 
@@ -17,18 +17,17 @@
 4. Asks PK about Personal businesses
 5. Surfaces Time-bound items due today/tomorrow
 
-**Standing rules unchanged from v2.66.** D-01 + D-186 + D-YT-OAUTH-1 + D-PREV-16 + Lesson #62 (now L46) + #68 + v2.46/47/48/50/55/56/57/58 + L33–L48 carried.
+**Standing rules unchanged from v2.67.** D-01 + D-186 + D-YT-OAUTH-1 + D-PREV-16 + Lesson #62 (L46) + #68 + v2.46/47/48/50/55/56/57/58 + L33–L53 carried.
 
-**v2.67 ADDITIONS:**
-- **L38 VINDICATED v2.67**: Cross-brief FK deferral pattern empirically vindicated at cc-0010A Stage A close (cc-0009 declared column without REFERENCES; cc-0010A ALTER TABLE added FK after `r.reconciliation_match` came into existence in same transaction). **Recommend promotion to baseline next cycle.**
-- **L44 baseline-eligible v2.67**: Runtime Proof Pre-flight has 3 live exercises complete. v1.3 caught queue_id PK-name drift; v1.4 added §1.7b NOT NULL enumeration after v1.3 apply failure exposed UNIQUE-only blind spot; v1.5 pre-flight all 12 probes clean.
-- **L45 baseline-eligible v2.67**: Post-mutation truth check first full live exercise complete. Count-delta + 5-row shape-variant sanity sample + 5-row mismatch declaration template all exercised end-to-end. All 5 mismatches resolved accept-with-variance.
-- **L46 baseline CONFIRMED v2.67**: Reviewer Evidence Gate has 3 live applications. v1.3 D-01 had 2 GNB → PK Path B override → apply failed downstream (failure was downstream SQL rendering defect, not protocol issue). v1.5 D-01 returned **zero pushback** clean pass-through — demonstrates that improving brief surface (Fix A + V6c tightening) eliminates need for overrides. **L46 baseline confirmed.**
-- **L47 still deferred v2.67**: No parallel-writer conflict observed during v1.5 apply window. Path A (doc-only pause cron) likely sufficient when next race opportunity arises.
-- **L48 vindicated v2.67**: Atomicity Gate split delivered cc-0010A as atomic sub-build; cc-0010B + cc-0010C unblocked.
-- **L49 NEW candidate v2.67**: PG reserved-word collision check for PL/pgSQL DECLARE variables (`out`, `result`, `record`, `row`, etc.). PRV-0 §4.3 had `out` which would cause syntax error if not caught at apply construction; neither CCD nor D-01 caught it. Must be brief-authoring pre-D-01 checklist item.
+**v2.68 ADDITIONS:**
+- **L40 reified end-to-end at runtime v2.68.** TS-compile-vs-FK-runtime gap surfaced at Stage E cron pre-fire → encoded in Stage B hotfix → merged → deployed → first post-v2 cron fire validated fix. Full lesson cycle complete. Strongest single-session reification of L40 to date.
+- **L41 honored v2.68** at Stage C v2 CLI deploy (pre-flight local HEAD verified before deploy).
+- **L46 baseline STRONGEST state to date v2.68**: 4 consecutive clean pass-through D-01s this session (5 cumulative including v2.67 v1.5). 0 GNB classifications. 0 state-capture overrides. Demonstrates that improving brief surface + accurate runtime probes eliminates override pathways across multi-stage builds.
+- **L52 NEW candidate v2.68**: Supabase MCP `deploy_edge_function` has demonstrably higher transient-failure rate than CLI `supabase functions deploy` for the same source payload. Two MCP failures (clean atomic rollback both times) vs one CLI success in 2.2 sec, same payload. When a directive specifies CLI as the approved command, route directly to CLI rather than attempting MCP first. **Promotion pending one more repeat instance.**
+- **L53 NEW candidate v2.68**: FK reference integrity vs source-column-type asymmetry not caught by TypeScript compile. Brief-authoring discipline: when an EF UPSERTs into a FK-constrained column, enumerate every FK-constrained INSERT target and confirm the source pipeline column is either (a) itself FK-constrained to the same parent, (b) handled with existence-check guard, or (c) explicitly nullified. F4 caught this gap empirically; v1.6 cc-0010A doc patch should fold an authoring-time check.
+- **L62 type-(b) empirically used v2.68**: Pre-flight observation of cron pre-fire result (turn 9) constituted genuine new evidence not in PK''s possession at directive issue; escalated BEFORE firing the manual Stage E D-01 to preserve "exactly one invocation, no retry" budget. PK accepted; F4 hotfix cycle proceeded cleanly.
 
-**All thirteen candidates (L37 + L38 + L39 + L40 + L41 + L42 + L43 + L44 + L45 + L46 + L47 + L48 + L49 — plus standing baseline) recommended for promotion to baseline at appropriate cycle.**
+**All fifteen candidates (L37 + L38 + L39 + L40 + L41 + L42 + L43 + L44 + L45 + L46 + L47 + L48 + L49 + L52 + L53 — plus standing baseline) recommended for promotion to baseline at appropriate cycle once empirical evidence accumulates.**
 
 ---
 
@@ -36,95 +35,115 @@
 
 | Metric | Current | Limit | Status |
 |---|---|---|---|
-| Open findings + investigations (P0+P1) | ~3 (3 pre-cc-0010A gating items CLOSED v2.67; cc-0010A CLOSED; cc-0010B + cc-0010C now P1) | 20 | ✅ within budget |
-| Trailing-14-day closure hours | ~75h (v2.67 ~3h for v1.5 doc patch + pre-flight + D-01 + apply + V-checks + L45 + close-the-loop + 4-way sync) | 8.0 floor | ✅ above floor |
+| Open findings + investigations (P0+P1) | ~2 (cc-0010C + Phase 0; cc-0010A + cc-0010B both CLOSED v2.67 + v2.68) | 20 | ✅ within budget |
+| Trailing-14-day closure hours | ~78h (v2.68 ~3h for Stage B hotfix + Stage C v2 redeploy + cron observation + close-out) | 8.0 floor | ✅ above floor |
 | Pause trigger active? | NO | — | New automation authoring still allowed |
 
-**v2.67 cycle: ~3h total (v1.5 doc patch + pre-flight + D-01 + apply + V-checks + L45 + close-the-loop + 4-way sync).**
+**v2.68 cycle: ~3h total** (Stage B hotfix branch+commit+merge + Stage C v2 redeploy + post-v2 cron observation + governance close-out + final close-out 4-way sync).
 
-**State-capture exception count v2.67: 0** (v1.5 D-01 clean pass-through).
+**State-capture exception count v2.68: 0** (all 4 D-01 fires clean pass-through).
 
 ---
-
 ## ⭐ Today / Next 5
 
-> **Last rebuilt:** 2026-05-12 Sydney (v2.67).
-> **v2.67 note:** cc-0010A CLOSED. cc-0010B becomes rank 1 (natural successor). v1.6 doc patch rank 2. Close-the-loop batches rank 3 (5-row UNBLOCKED + 24-row historical eligible). cc-0010C rank 4 (gated on cc-0010B). Cleanup briefs rank 5 (F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION + L34 trigger filter audit).
+> **Last rebuilt:** 2026-05-13 Sydney (v2.68).
+> **v2.68 note:** cc-0010B CLOSED-WITH-VERIFIED-VARIANCE. cc-0010C promoted rank 1 (natural successor). v1.6 doc patch rank 2 (3 items now: result_jsonb rename + r.set_updated_at trigger audit + m.post_publish.queue_id non-FK semantics docs). Close-the-loop batches rank 3 (5-row + 24-row). F-K-SCHEMA + L34 trigger rank 4. Platform Reconciliation View rank 5 (now fully eligible — schema + data both live). Dashboard Phase 0 rank 6.
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
-| 1 | **cc-0010B authoring (ice-evidence-materialiser EF end-to-end)** | **P1 (NEW rank 1 v2.67)** | Natural successor to cc-0010A closure. cc-0010A delivered the 6 r.* tables; cc-0010B authors the materialiser EF that reads m.post_publish_queue/post_publish/post_draft/slot and writes r.ice_publication_evidence. First full Stage A–E build since cc-0009. Should apply v1.5 lessons: PG reserved-word collision check for PL/pgSQL DECLARE; inline literal SQL for k.* writes; §1.7b NOT NULL enumeration probe in pre-flight; fold F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY reconciliation. | chat → next session | Author brief at `docs/briefs/cc-0010B-ice-evidence-materialiser.md`. |
-| 2 | **v1.6 doc-only patch to cc-0010A** | P2 | Fold L45 disclosures into brief: (a) §2.7 PL/pgSQL `out` → `result_jsonb` rename + PRV-0 §4.3 update; (b) V6 purpose-marker fix-forward UPDATE design. No production mutation. | chat → next session or before cc-0010B authoring | Doc-only patch via github MCP. |
-| 3 | **Close-the-loop batch sweep (5-row + 24-row eligible)** | P2 (5-row UNBLOCKED 9 sessions overdue v2.67; 24-row historical eligible) | 5 prior cc-NNNN rows (cc-0003 v2 + cc-0004 + cc-0006 + cc-0007 + cc-0005 v4) still `status='escalated'`. 24 unrelated historical escalated rows untouched per CCH directive at v2.67 — eligible for review/sweep next session. | chat → next session | Single execute_sql UPDATE with CASE expression for 5-row batch; separate review for the 24-row historical batch. |
-| 4 | **cc-0010C authoring (reconciliation-matcher EF + Tier 1)** | **P1 (gated on cc-0010B)** | Tier 1 ICE-evidence match. Reads r.expected_publication + r.ice_publication_evidence (via cc-0010B) + r.matcher_config (now live); writes r.reconciliation_match (now live). | chat → after cc-0010B closes | Author brief at `docs/briefs/cc-0010C-reconciliation-matcher.md`. |
-| 5 | **F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION + L34 trigger filter audit (combined P3 cleanup)** | P3 | F-K-SCHEMA-REGISTRY: 3 geography rows registered to schema `r` (country, country_subdivision, country_timezone) empirically observed at v1.5 close-out. L34: v1.5 apply confirmed `evtrg_sync_registry_on_create_table` did NOT pre-insert for r.* CREATE TABLE (Fix A pattern is trigger-independent so non-blocking). | chat → future session | Separate cc-NNNN cleanup brief. |
-| 6 | **Platform Reconciliation View — BRIEF AUTHORING** | P2 — now newly-eligible | cc-0010A delivered schema; cc-0010B/C will deliver data. Can begin authoring once cc-0010B brief stabilises. | PK → chat | Brief authoring when PK greenlights. |
-| 7 | **Dashboard Architecture Review Phase 0 prerequisites** | P1 TOP | Unchanged. 7 default-blockers still pending PK confirm/override. | PK | Confirm defaults via cc-0001. |
-| 8 | **Personal businesses check-in** | P0 standing | Carry. | PK reports any time-sensitive items + Crazy Domains clean-up status. |
+| 1 | **cc-0010C authoring (reconciliation-matcher EF + Tier 1)** | **P1 (NEW rank 1 v2.68)** | Natural successor to cc-0010B closure. cc-0010A delivered the 6 r.* tables + matcher_config default; cc-0010B materialised 30 evidence rows (and steady-state every 30 min cron); cc-0010C is the Tier 1 ICE-evidence match consumer. Reads r.expected_publication + r.ice_publication_evidence + r.matcher_config; writes r.reconciliation_match. Should apply v2.68 lessons: L52 (CLI deploy preference where directive permits); L53 (FK source-column-type enumeration at brief-authoring); L40 (TS-compile-vs-FK-runtime gap awareness for the writer-side INSERT path). | chat → next session | Author brief at `docs/briefs/cc-0010C-reconciliation-matcher.md`. |
+| 2 | **v1.6 doc-only patch to cc-0010A (3 items)** | P2 | Fold disclosures into brief: (a) `out` → `result_jsonb` rename in §2.7 + PRV-0 §4.3 update (carry from v2.67); (b) `r.set_updated_at` trigger audit (this session E1: trigger not bound to r.ice_publication_evidence + r.reconciliation_run despite r.* registry membership); (c) `m.post_publish.queue_id` non-FK semantics documentation for future brief authors (this session F4 → L53 candidate). No production mutation. | chat → next session or before cc-0010C authoring | Doc-only patch via local git (github MCP write tools still need server restart). |
+| 3 | **Close-the-loop batch sweep (5-row + 24-row eligible)** | P2 (5-row UNBLOCKED 10 sessions overdue v2.68; 24-row historical eligible) | 5 prior cc-NNNN rows (cc-0003 v2 + cc-0004 + cc-0006 + cc-0007 + cc-0005 v4) still `status='escalated'`. 24 unrelated historical escalated rows untouched per CCH directive at v2.67-v2.68 — eligible for review/sweep next session. | chat → next session | Single execute_sql UPDATE with CASE expression for 5-row batch; separate review for 24-row historical batch. |
+| 4 | **F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION + L34 trigger filter audit (combined P3 cleanup)** | P3 | F-K-SCHEMA: 3 geography rows (country, country_subdivision, country_timezone) registered to schema `r`. L34: trigger filter investigation strengthened by E1 (this session): r.ice_publication_evidence + r.reconciliation_run have no `r.set_updated_at` trigger bound despite registry membership. | chat → future session | Separate cc-NNNN cleanup brief. |
+| 5 | **Platform Reconciliation View — BRIEF AUTHORING** | P2 — fully eligible v2.68 | cc-0010A delivered schema (v2.67); cc-0010B delivered data (v2.68 — 30 evidence rows + steady-state cron). Can fully proceed once cc-0010C closes Tier 1 matches. | PK → chat | Brief authoring when PK greenlights. |
+| 6 | **Dashboard Architecture Review Phase 0 prerequisites** | P1 TOP | Unchanged. 7 default-blockers still pending PK confirm/override. | PK | Confirm defaults via cc-0001. |
+| 7 | **Personal businesses check-in** | P0 standing | Carry. | PK reports any time-sensitive items + Crazy Domains clean-up status. |
 
-**Passive observation v2.67**: Cron 82 cadence_rule_generator_daily — verify next fire post-v1.5 apply produces expected r.reconciliation_run row.
+**Passive observation v2.68**: Cron 83 ice_evidence_materialiser_30min — every 30 min UTC. Steady-state expected: rows_processed=72, rows_inserted=0, rows_updated=30 (UPSERT idempotency on first-fire-already-materialised expected_publication rows). Any deviation (status=failed, error_summary populated, rows_inserted unexpectedly > 0 outside of new-publication horizon) → escalate. Cron 82 cadence_rule_generator_daily — unchanged.
 
 ---
 
-## 🟢 cc-0010A r.* DDL Foundation — STATUS BLOCK (NEW v2.67)
+## 🟢 cc-0010B ice-evidence-materialiser — STATUS BLOCK (NEW v2.68)
 
-**Status v2.67:** **APPLIED + CLOSED.** Stage A delivered via apply_migration cc_0010a_r_evidence_matcher_schema_foundation 2026-05-12.
+**Status v2.68:** **CLOSED-WITH-VERIFIED-VARIANCE.** Stage E proof came from production cron firing (`triggered_by='pg_cron_ice_evidence_materialiser_30min'`) rather than manual `triggered_by='cc-0010B-stage-e-first'`. PK accepted variance at directive turn 25.
 
-**Brief lineage:**
-- v1 (initial draft) → v1.1 (CCD corrections) → v1.2 (arithmetic + strengthened PK probe) → v1.3 (L44 FK target correction) → **v1.3 apply attempt FAILED atomically 08:15:13 UTC** → v1.4 (Fix A pattern) → CCD narrow re-review (agree-with-corrections, low risk) → v1.5 (V6c tightening) → v1.5 D-01 clean agree → **v1.5 apply SUCCESS**.
+**Brief lineage:** v1 → v1.3 frozen by reference at commit `1b0bbff7a442883dc443debd54b1dd2bf4fe1761` per ICE-PROC-001 §9.1.
 
-**v1.5 commit:** `3db84322951e2404b26589e49bb43d5c40cf0db5`. v1.4 commit: `2035a3a83b3a7b3fc783ebbd36be9e5784adb486`.
+**Stages delivered:**
+- Stage A: authored (prior session)
+- Stage B v1: EF source merged to main (commit `e8e55399`) (prior session)
+- Stage C v1: Edge Function deployed via Supabase MCP (prior in this session; pre-compaction)
+- Stage D: pg_cron jobid 83 install via apply_migration (prior in this session)
+- Stage E (initial): HELD per L62 type-(b) escalation after pre-flight observed cron pre-fire failure
+- Stage B hotfix: branch `feat/cc-0010B-fk-hotfix-publish-queue-null` + commit `62f319c8554b25ee06cf680bc548cf87f24521ba` (F4 path (b): null `post_publish_queue_id` in publish path)
+- Stage B hotfix merge to main (D-01 `446dcd34-…` clean agree)
+- Stage C v2 redeploy: EF v1 → v2 via CLI after 2x Supabase MCP InternalServerErrorException failures (clean atomic rollback; D-01 `7247fdf7-…` clean agree)
+- Stage E (cron equivalent): First post-v2 cron fire `r.reconciliation_run` id `c256dc99-484c-4206-80f5-7b4054c31532` succeeded with 30 rows_inserted (variance accepted by PK)
 
-**Delivered:**
-- 6 r.* tables (ice_publication_evidence 17 cols, platform_observation 16, platform_manual_observation 17, reconciliation_match 16, platform_observer_health 10, matcher_config 10 = 86 total)
-- 1 helper function `r.compact_raw_json` (IMMUTABLE, plpgsql; with `out` → `result_jsonb` rename disclosed in L45)
-- 1 FK constraint `expected_publication_matched_match_id_fkey` (L38 VINDICATED)
-- 1 r.matcher_config global default row
-- 6 k.table_registry UPSERTs
-- 86 k.column_registry rows via Fix A pattern
-- 1 k.column_registry FK-flag UPDATE
-- pg_trgm v1.6 confirmed (no-op)
+**Production state:**
+- ice-evidence-materialiser EF v2 ACTIVE in production; EF id `9f4d53e6-8aa4-486c-af56-c63738489d6c`; `ezbr_sha256 2bb6a1fc7386cbf875b3f532973bf63d4e16d2127cc09b909e034139cd351bdd`; verify_jwt=false; custom x-cron-secret auth gate
+- pg_cron jobid 83 `ice_evidence_materialiser_30min` schedule `*/30 * * * *` UTC, active=true
+- 30 `r.ice_publication_evidence` rows from first post-v2 cron fire; steady-state UPSERT idempotency on `expected_publication_id`
+- main HEAD = `62f319c` + this close-out commit
 
-**V-checks:** 10 PASS + 1 accept-with-variance.
-**L45 mismatches:** 5, all accept-with-variance.
-**Close-the-loop:** 2 D-01 rows (8a4b93fb + 752dfec6) both → resolved in single 2-row UPDATE.
-**24 historical escalated rows:** intentionally untouched per CCH directive.
+**L45 declaration table:**
+- **F1** JS-side `compactRawEvidence` — accept-with-variance (semantically identical to DB `r.compact_raw_json`; avoids per-row RPC overhead)
+- **F2** `published_url` nullability — accept-with-variance (m.post_publish has no published_url column)
+- **F3** all-or-nothing batch UPSERT semantics — runtime discovery (PostgREST single-FK-violation rejects entire batch)
+- **F4** publish-path FK hotfix path (b) — hotfix delivered + runtime-validated
+- **E1** trigger-inventory drift carry — P3 to v1.6 cc-0010A doc patch
 
-**Result file:** `docs/briefs/results/cc-0010A-r-reconciliation-ddl-foundation.md`.
-**Session file:** `docs/runtime/sessions/2026-05-12-cc-0010A-applied.md`.
+**D-01 fires this session (4, all clean agree zero pushback):**
+1. `1729498a-49cf-41ef-b8b9-6ecbccc9c211` — Stage C v1 deploy
+2. `140dacb9-5cf1-4cb4-bbf3-b8495a00b0aa` — Stage D apply
+3. `446dcd34-b36b-4b8b-b19e-5397d228f057` — Stage B hotfix merge
+4. `7247fdf7-e1d8-41b6-b9d3-66283c4826ed` — Stage C v2 redeploy
 
-**Outputs available to downstream:**
-- 6 r.* tables ready for cc-0010B + cc-0010C
-- r.compact_raw_json helper available
-- r.matcher_config global default in place
-- matched_match_id FK live
-- pg_trgm v1.6 indexes ready
+5 consecutive clean pass-through D-01s including cc-0010A v1.5 — strongest L46 baseline state.
+
+**Result file:** `docs/briefs/results/cc-0010B-ice-evidence-materialiser.md`.
+**Session file:** `docs/runtime/sessions/2026-05-13-cc-0010B-closed-stage-e-cron-equivalent.md`.
 
 **Open follow-ups:**
-- v1.6 doc patch (rank 2 above)
-- V6 purpose-marker fix-forward UPDATE
-- F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION P3 (rank 5 above)
-- L34 trigger filter audit (rank 5 above)
-- F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY fold into cc-0010B (rank 1 above)
+- v1.6 cc-0010A doc patch (rank 2 above; 3 items now)
+- 3 pre-v2 forensic `r.reconciliation_run failed` rows retained per directives 12 + 24 + 25 (PK forensic-accepted; NO repair)
+- cc-0010C reconciliation-matcher authoring (rank 1 above)
+- L52 + L53 NEW candidates v2.68 — promotion pending pattern repeat
+
+---
+## 🟢 cc-0010A r.* DDL Foundation — STATUS BLOCK (carried v2.68, condensed)
+
+**Status v2.68:** **APPLIED + CLOSED v2.67.** Stage A delivered. 6 r.* tables + 1 helper + 1 FK (L38 vindicated) + 1 default row + 6 k.table_registry rows + 86 k.column_registry rows live.
+
+**v2.68 carry items (3) into v1.6 doc patch:**
+1. PL/pgSQL `out` → `result_jsonb` rename in §2.7 + PRV-0 §4.3 (from v2.67 L45)
+2. `r.set_updated_at` trigger audit (this session E1) — trigger not bound to r.ice_publication_evidence + r.reconciliation_run despite r.* registry membership; r.reconciliation_run has no `updated_at` column (correct); r.ice_publication_evidence has `updated_at` column without trigger binding (drift)
+3. `m.post_publish.queue_id` non-FK semantics documentation (this session F4 → L53 candidate)
+
+**Result file:** `docs/briefs/results/cc-0010A-r-reconciliation-ddl-foundation.md`.
 
 ---
 
-## 🟢 Process Upgrades L44–L48 — STATUS BLOCK (UPDATED v2.67)
+## 🟢 Process Upgrades L44–L48 — STATUS BLOCK (UPDATED v2.68)
 
-**Status v2.67:** **L44 + L45 + L46 + L48 all live-exercised at cc-0010A.** L47 still deferred (no parallel-writer race opportunity observed during v1.5 apply).
+**Status v2.68:** **L44 + L45 + L46 + L48 all live-exercised + reified.** L40 reified end-to-end at runtime v2.68. L52 + L53 NEW candidates added v2.68.
 
-- **L44 (Runtime Proof Pre-flight)**: **3 live exercises + baseline-eligible.** v1.3 pre-flight caught queue_id PK-name drift before D-01; v1.4 added §1.7b NOT NULL enumeration probe after v1.3 apply failure exposed UNIQUE-only blind spot; v1.5 pre-flight all 12 probes clean.
-- **L45 (Post-mutation truth check)**: **first full live exercise + baseline-eligible.** Count-delta + 5-row shape-variant sanity sample + 5-row mismatch declaration template all exercised end-to-end. All 5 mismatches accept-with-variance.
-- **L46 (Reviewer Evidence Gate)**: **3 live applications + baseline confirmed.** v1.3 had 2 GNB → PK Path B override → apply failed downstream (downstream SQL rendering defect not L46 protocol issue). v1.5 had zero pushback clean pass-through. Demonstrates improving brief surface eliminates need for overrides.
-- **L47**: still deferred. No parallel-writer race observed at v1.5 apply window. Path A likely sufficient when needed.
-- **L48 (Atomicity Gate)**: vindicated v2.67. cc-0010 split into A/B/C; cc-0010A delivered atomically.
-- **L49 NEW candidate v2.67**: PG reserved-word collision check for PL/pgSQL DECLARE variables.
+- **L40**: **REIFIED END-TO-END AT RUNTIME v2.68.** TS-compile-vs-FK-runtime gap surfaced at Stage E cron pre-fire → encoded in Stage B hotfix → merged to main → deployed to runtime → first post-v2 cron fire validated fix. Full lesson cycle complete.
+- **L41**: honored v2.68 at Stage C v2 CLI deploy.
+- **L44 (Runtime Proof Pre-flight)**: 3 live exercises complete (v1.3 + v1.4 + v1.5 cc-0010A). Baseline-eligible.
+- **L45 (Post-mutation truth check)**: 2 live exercises complete (cc-0010A v1.5 + cc-0010B v2.68 declaration table F1/F2/F3/F4/E1). Baseline-eligible.
+- **L46 (Reviewer Evidence Gate)**: **STRONGEST baseline state v2.68.** 5 consecutive clean pass-through D-01s (cc-0010A v1.5 → Stage C v1 → Stage D → Stage B merge → Stage C v2). 0 GNB classifications. 0 state-capture overrides.
+- **L47**: still deferred. No parallel-writer race opportunity v2.68.
+- **L48 (Atomicity Gate)**: vindicated v2.67 (cc-0010A split delivery) + reaffirmed v2.68 (cc-0010B delivered within stage budget).
+- **L49 carry from v2.67**: PG reserved-word collision check for PL/pgSQL DECLARE. No PL/pgSQL-heavy work v2.68; promotion pending next opportunity.
+- **L52 NEW candidate v2.68**: Supabase MCP `deploy_edge_function` higher transient-failure rate vs CLI for same payload.
+- **L53 NEW candidate v2.68**: FK reference integrity vs source-column-type asymmetry not caught by TypeScript compile.
 
 ---
 
-## 🟢 cc-0009 PRV-1 Second Build — STATUS BLOCK (unchanged v2.67)
+## 🟢 cc-0009 PRV-1 Second Build — STATUS BLOCK (unchanged v2.68)
 
-Unchanged from v2.66. ALL STAGES CLOSED at v2.65.
+Unchanged from v2.65–v2.67. ALL STAGES CLOSED at v2.65.
 
 ---
 
@@ -136,47 +155,53 @@ S1–S29 unchanged. S30 closed PASS v2.47.
 
 ## 🔴 Time-bound (calendar-driven deadlines)
 
-Unchanged from v2.66.
+Unchanged from v2.67.
 
 ---
 
 ## 🛠 Meta-tooling — ChatGPT Review MCP
 
-**v2.67 application**: 1 D-01 fire (v1.5, `752dfec6-6f9a-4956-b7d7-a4112009b93c`, clean agree, zero pushback). Cumulative T-MCP-02: **60** (+1 from 59). State-capture exceptions v2.67: **0** (clean pass-through).
+**v2.68 application**: 4 D-01 fires this session, all clean agree zero pushback:
+1. `1729498a-49cf-41ef-b8b9-6ecbccc9c211` (Stage C v1 deploy, pre-compaction)
+2. `140dacb9-5cf1-4cb4-bbf3-b8495a00b0aa` (Stage D apply, pre-compaction)
+3. `446dcd34-b36b-4b8b-b19e-5397d228f057` (Stage B hotfix merge to main)
+4. `7247fdf7-e1d8-41b6-b9d3-66283c4826ed` (Stage C v2 hotfix redeploy)
 
-**L46 Evidence Gate**: **3rd live application complete + baseline confirmed.** v1.5 D-01 zero-pushback demonstrates clean-surface path.
+Cumulative T-MCP-02: **64** (+4 from 60 at v2.67). State-capture exceptions v2.68: **0** (all 4 clean pass-through).
 
-**Close-the-loop UPDATEs to m.chatgpt_review v2.67:** 2 (8a4b93fb v1.3 + 752dfec6 v1.5). **5 prior cc-NNNN reviews still pending UNBLOCKED v2.61, batch now 9 sessions overdue. 24 unrelated historical escalated rows untouched per CCH directive — eligible for next-session review.**
+**L46 Evidence Gate**: **STRONGEST baseline state to date.** 5 consecutive clean pass-through D-01s (cc-0010A v1.5 `752dfec6` + this session''s 4). Demonstrates that improving brief surface + accurate runtime probes + L62 type-(b) escalation discipline eliminates need for state-capture override pathways across a 5-D-01-stage multi-stage build.
+
+**Close-the-loop UPDATEs to m.chatgpt_review v2.68:** 4 (1729498a + 140dacb9 + 446dcd34 + 7247fdf7), all → status=`resolved`, resolved_by varies (chat for first two pre-compaction; PK for last two via turn 23 atomic UPDATE).
+
+**5 prior cc-NNNN reviews still pending — batch now 10 sessions overdue v2.68. 24 unrelated historical escalated rows untouched per CCH directive — eligible for next-session review.**
 
 ---
 
 ## 🤖 Cowork automation (D182)
 
-**v2.67 status:** unchanged from v2.66. Cron 82 firing daily.
+**v2.68 status:** unchanged from v2.67. Cron 82 firing daily. Cron 83 firing every 30 min (newly added v2.68; cc-0010B Stage D).
 
 ---
-
 ## 🟡 Active
 
 | ID | Item | Priority | Status | Owner | Next action |
 |---|---|---|---|---|---|
-| **cc-0010B authoring (ice-evidence-materialiser EF)** | EF end-to-end: source + deploy + cron + invocation; writes r.ice_publication_evidence | **P1 (NEW v2.67, rank 1)** | UNBLOCKED v2.67. Brief NOT YET AUTHORED. Inherits cc-0010A outputs. | chat → next session | Author brief at `docs/briefs/cc-0010B-ice-evidence-materialiser.md`. Apply v1.5 lessons: PG reserved-word check for PL/pgSQL DECLARE; inline k.* SQL; §1.7b NOT NULL probe. Fold F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY. |
-| **v1.6 doc-only patch to cc-0010A** | Document `out` → `result_jsonb` rename in §2.7 + update PRV-0 §4.3; document V6 purpose-marker fix-forward design | **P2 (NEW v2.67, rank 2)** | NEW. No production mutation. | chat → next session or before cc-0010B | Single github MCP patch. |
-| **Close-the-loop batch sweep** | 5-row UNBLOCKED 9 sessions overdue + 24-row historical eligible | **P2 (rank 3 v2.67)** | UNBLOCKED v2.61 for 5-row. 24-row historical untouched per CCH directive at v2.67. | chat → next session | Single execute_sql UPDATE with CASE for 5-row batch; separate review for 24-row historical batch. |
-| **cc-0010C authoring (reconciliation-matcher EF + Tier 1)** | Tier 1 ICE-evidence match | **P1 (gated on cc-0010B)** | UNBLOCKED v2.67 (gated on cc-0010B completion). | chat → after cc-0010B closes | Author brief. |
-| **F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION + L34 trigger filter audit (combined)** | 3 geography rows registered to schema `r` + trigger filter investigation | **P3 (rank 5 v2.67)** | Empirically observed at v1.5 close-out. | chat → future session | Separate cc-NNNN cleanup brief. |
-| **Platform Reconciliation View — BRIEF AUTHORING** | reconciliation surface | **P2 — newly eligible v2.67** | cc-0010A delivered schema. | PK → chat | Brief authoring when PK greenlights. |
+| **cc-0010C authoring (reconciliation-matcher EF + Tier 1)** | Tier 1 ICE-evidence match. Reads r.expected_publication + r.ice_publication_evidence + r.matcher_config; writes r.reconciliation_match. | **P1 (NEW rank 1 v2.68)** | UNBLOCKED v2.68 (cc-0010B closed). Brief NOT YET AUTHORED. | chat → next session | Author brief. Apply L52 + L53 + L40 lessons from v2.68. |
+| **v1.6 doc-only patch to cc-0010A (3 items)** | (a) `result_jsonb` rename in §2.7 + PRV-0 §4.3 (v2.67); (b) r.set_updated_at trigger audit (v2.68 E1); (c) m.post_publish.queue_id non-FK semantics (v2.68 F4 → L53) | **P2 (rank 2 v2.68)** | NEW v2.67 + expanded v2.68 (now 3 items). No production mutation. | chat → next session or before cc-0010C | Single doc patch commit. |
+| **Close-the-loop batch sweep** | 5-row UNBLOCKED 10 sessions overdue + 24-row historical eligible | **P2 (rank 3 v2.68)** | UNBLOCKED v2.61 for 5-row. 24-row historical untouched per CCH directive. | chat → next session | Single execute_sql UPDATE with CASE for 5-row batch; separate review for 24-row historical batch. |
+| **F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION + L34 trigger filter audit (combined)** | 3 geography rows registered to schema `r` + trigger filter investigation | **P3 (rank 4 v2.68)** | Strengthened v2.68 by E1: r.ice_publication_evidence + r.reconciliation_run have no r.set_updated_at trigger bound despite registry membership. | chat → future session | Separate cc-NNNN cleanup brief. |
+| **Platform Reconciliation View — BRIEF AUTHORING** | reconciliation surface | **P2 — fully eligible v2.68** | cc-0010A delivered schema; cc-0010B delivered data. | PK → chat | Brief authoring when PK greenlights. |
 | **Dashboard Architecture Review Phase 0 prerequisites** | 7 confirm-defaults | P1 TOP (unchanged) | Carry. | PK | Confirm via cc-0001. |
 | **AI cost view** | `vw_ai_cost_monthly` | P3 quick win | Carry. | chat → future session | DDL + tile. |
 | **Publisher latent config risk follow-up** | `[functions.publisher] verify_jwt = false` doc patch | P3 (carry) | OPEN | chat → future | Single-file commit. |
 | **M8b separate brief authoring** | Function rename | P3 (carry) | NOT YET AUTHORED | PK → chat | When PK directs. |
 | **94-row un-publishable legacy draft cohort cleanup** | SQL filter per cc-0007 | P3 (carry) | LOGGED | PK → chat → future | If PK directs. |
-| **F-CRON-AUTO-APPROVER-SECRET-INLINE** | Cron jobid 58 inline secret | P2 (security, OPEN) | OPEN; cc-0009 vault precedent set | chat → future (PK approval) | PK authorisation for rotation. |
+| **F-CRON-AUTO-APPROVER-SECRET-INLINE** | Cron jobid 58 inline secret | P2 (security, OPEN) | OPEN; cc-0009 + cc-0010B (jobid 83) both use vault-backed pattern. | chat → future (PK approval) | PK authorisation for rotation. |
 | **F-YT-PUB-AVATAR-EXCLUSION** | youtube-publisher filter | P3 (carry) | LOGGED | chat → future (passive) | — |
 | **morning-inbox-sweep-v1 brief amendment** | PK personal-email morning triage | P3 (carry) | DRAFT exists | PK → chat | PK reviews. |
-| **24 unrelated historical escalated m.chatgpt_review rows** | Historical escalated review backlog (24 rows untouched per CCH at v2.67) | **P3 (NEW v2.67 hygiene)** | NEW v2.67. Eligible for next-session review/sweep. | chat → next session | Single execute_sql query to enumerate + categorise, then batched UPDATEs as appropriate. |
-| **Memory cap NEW v2.66 hygiene carry** | Memory at 30/30 cap; line-replacement strategy | P3 (carry) | OBSERVED. v2.67: 0 memory edits this session. | PK → future | PK to consider pruning cadence. |
-| **Parallel agent coordination observation** | L47 informational | P3 (carry) | v2.67: no parallel-writer conflicts observed at v1.5 apply window. Path A likely sufficient. | chat → future | Continue passive observation. |
+| **24 unrelated historical escalated m.chatgpt_review rows** | Historical escalated review backlog | **P3 (carry v2.68)** | Untouched per CCH at v2.67-v2.68. Eligible for next-session sweep. | chat → next session | Single execute_sql query to enumerate + categorise, then batched UPDATEs. |
+| **Memory cap hygiene carry** | Memory at 30/30 cap; line-replacement strategy | P3 (carry) | OBSERVED. v2.68: 0 memory edits this session. | PK → future | PK to consider pruning cadence. |
+| **Parallel agent coordination observation** | L47 informational | P3 (carry) | v2.68: no parallel-writer conflicts observed. Path A likely sufficient. | chat → future | Continue passive observation. |
 | **Dashboard mobile responsiveness** | Whole-dashboard gap | P3 | OBSERVED | chat → dedicated session | — |
 | **F-PUB-009 V3-V5 + 7-day flow** | Forward acid-test | P2 | Passive monitoring | chat → next session | — |
 | **Invegent IG cap-throttle planning** | jobid 53 unblock readiness | P3 | OBSERVED | chat → T05 unblock session | — |
@@ -185,17 +210,20 @@ Unchanged from v2.66.
 | **`docs/audit/health/2026-05-06.md` follow-up** | Cowork 02:00 AEST cron 6 May did not push | P3 | Carried | chat → next session | — |
 | **`00_overview.md` 11-section table reconciliation** | Architecture review changed actual section structure | P3 | Required updates | chat → future session | ~15 min. |
 | **F-AAP-NEEDS-REVIEW-BACKLOG** | 28 drafts pending review | P2 | Closure target = architecture review Phase 2 B-09-14 | chat → Phase 2 session | Bulk approve UI in Phase 2. |
-| **Dashboard roadmap PHASES reconciliation** | PHASES array stale since 3 May | P3 | Carried (**23rd deferral v2.67**) | chat → dedicated session | Update PHASES + LAST_UPDATED. |
+| **Dashboard roadmap PHASES reconciliation** | PHASES array stale since 3 May | P3 | Carried (**24th deferral v2.68**) | chat → dedicated session | Update PHASES + LAST_UPDATED. |
 | **F-AI-WORKER-PARSER-SKIP-BUG V4** | Forward acid-test inconclusive | P2 | Passive monitoring | chat → future | V4 natural skip event OR synthetic test. |
 | **4× F-CRON-*-STALE** | jobids 1/29/30/31/39 call slugs whose folders are absent | P2 | LOGGED | PK → future session | Decide. |
 | **Music library activation checklist** | 9 mp3 upload + bucket + env var | P3 (PK action) | PENDING PK ACTION | PK | — |
 | **Emergency redeploy governance question** | Expedited D-01 for bounded production-restoration? | P2 (PK decision) | PENDING PK DECISION | PK | PK rules. |
 | **`f4a0dd85` bridge health-check `sql_read` row** | hygiene only | P3 (carry) | OBSERVED | PK → future | — |
 | **Feature branch `feature/cc-0009-stage-b-ef-source`** | Audit artifact at HEAD `9796b0ee` | P3 (carry) | OBSERVED | PK → future | — |
+| **3 pre-v2 forensic `r.reconciliation_run failed` rows** | cc-0010B Stage E pre-fire failures | P3 (carry v2.68) | Retained per directives 12 + 24 + 25 (NO repair). PK forensic-accepted. | informational | — |
+| **github MCP local server restart needed** | Write tools unresponsive since turn 11 this session | P3 (operational carry v2.68) | Recovered via Windows-MCP local git workflow. | PK | Restart Claude Desktop MCP server before next github-write op. |
+**Closed v2.68:**
+- **cc-0010B CLOSED-WITH-VERIFIED-VARIANCE.** ice-evidence-materialiser EF v2 live in production. First post-v2 cron fire `r.reconciliation_run` id `c256dc99-484c-4206-80f5-7b4054c31532` succeeded with 30 rows_inserted in 3.5 sec. PK accepted cron runtime proof as Stage E-equivalent variance at directive turn 25. F4 path (b) hotfix (commit `62f319c`) encoded → merged → deployed via CLI (after 2x Supabase MCP InternalServerErrorException failures with clean atomic rollback) → runtime-validated. 4 D-01 fires this session, all clean agree zero pushback. L45 declaration table recorded (F1/F2/F3/F4/E1). Result file at `docs/briefs/results/cc-0010B-ice-evidence-materialiser.md`.
 
 **Closed v2.67:**
-- **cc-0010A v1.5 APPLIED + CLOSED.** apply_migration cc_0010a_r_evidence_matcher_schema_foundation succeeded after prior v1.3 atomic rollback. v1.4 Fix A pattern (purposes CTE joined to information_schema.columns) hydrated 86 k.column_registry NOT NULL columns. v1.5 V6c row-count tightened `>= 86` → `= 86`. v1.5 D-01 (`752dfec6`) returned clean agree with zero pushback. Apply delivered 6 r.* tables + 1 helper + 1 FK (L38 VINDICATED) + 1 default row + 6 k.table_registry rows + 86 k.column_registry rows. V-checks 10 PASS + 1 accept-with-variance. L45 5 mismatches accept-with-variance. Close-the-loop on BOTH D-01 rows (8a4b93fb + 752dfec6) in single 2-row UPDATE. Result file at `docs/briefs/results/cc-0010A-r-reconciliation-ddl-foundation.md`.
-- **Pre-cc-0010A gating items (3 items from v2.66) all CLOSED v2.67**: L62 attribution (clean pass-through D-01 indicates not systemic ChatGPT MCP noise); L47 lock scope (no parallel-writer conflict observed at v1.5 apply; Path A likely sufficient); L48 application (split delivered cc-0010A atomic).
+- cc-0010A v1.5 APPLIED + CLOSED. Pre-cc-0010A gating items (L62 attribution + L47 lock scope + L48 application) all closed.
 
 **Closed v2.66:** L44–L48 process upgrades formalised + committed.
 **Closed v2.65:** cc-0009 PRV-1 second build COMPLETE.
@@ -209,34 +237,35 @@ Unchanged from v2.66.
 
 ## 💼 Personal businesses
 
-**v2.67 carry (unchanged from v2.55–v2.66):**
+**v2.68 carry (unchanged from v2.55–v2.67):**
 
 - **Crazy Domains refund + clean-up follow-up** (carry from v2.51) — PK actions manually. Re-check status next session.
 
-*(no other items flagged at v2.67 close — standing P0 to ask at next session start.)*
+*(no other items flagged at v2.68 close — standing P0 to ask at next session start.)*
 
 ---
 
 ## 🌱 Future ideation / content-pipeline expansion
 
-Unchanged from v2.66.
+Unchanged from v2.67.
 
 ---
 
 ## 📌 Backlog
 
-**v2.67 changes:**
+**v2.68 changes:**
 
-- **CLOSED v2.67**: cc-0010A v1.5 APPLIED + CLOSED. Pre-cc-0010A gating items (L62 attribution + L47 lock scope + L48 application) all closed.
-- **STATE CHANGE v2.67**: cc-0010B promoted rank 1 (was rank 2 v2.66 cc-0010A); v1.6 doc patch rank 2 (NEW); close-the-loop batches rank 3 (5-row + 24-row); cc-0010C rank 4 (gated on cc-0010B); F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION + L34 trigger filter audit rank 5 (combined cleanup); Platform Reconciliation View newly-eligible rank 6.
-- **NEW v2.67 ACTIVE ROWS**: cc-0010B authoring (P1) + v1.6 doc patch (P2) + 24-row historical close-the-loop batch hygiene (P3).
-- **NEW v2.67 LESSON CANDIDATE**: L49 — PG reserved-word collision check for PL/pgSQL DECLARE variables.
-- **L38 VINDICATED v2.67** — recommend promotion to baseline next cycle.
-- **L44 + L45 baseline-eligible v2.67.**
-- **L46 baseline CONFIRMED v2.67.**
-- **CARRIED v2.67**: Dashboard roadmap PHASES — **23rd** consecutive deferral. F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY OPEN (likely fold into cc-0010B). All v2.66 carries unchanged otherwise.
+- **CLOSED v2.68**: cc-0010B CLOSED-WITH-VERIFIED-VARIANCE. ice-evidence-materialiser EF v2 live + runtime-validated. cc-0010C UNBLOCKED.
+- **STATE CHANGE v2.68**: cc-0010C promoted rank 1 (was rank 4 v2.67 gated on cc-0010B); v1.6 doc patch expanded to 3 items rank 2 (was 1 item v2.67); close-the-loop batches rank 3 (5-row now 10 sessions overdue + 24-row historical); F-K-SCHEMA + L34 trigger filter rank 4 (combined cleanup, strengthened by E1); Platform Reconciliation View rank 5 (now fully eligible — schema + data both live); Phase 0 rank 6; Personal businesses rank 7.
+- **NEW v2.68 ACTIVE ROWS**: cc-0010C authoring (P1) + 3 pre-v2 forensic failed rows carry (P3 informational) + github MCP server restart op carry (P3).
+- **NEW v2.68 LESSON CANDIDATES**: L52 (MCP vs CLI deploy reliability) + L53 (FK source-column-type asymmetry at brief authoring).
+- **L40 REIFIED END-TO-END AT RUNTIME v2.68** — strongest single-session reification to date.
+- **L46 STRONGEST baseline state to date v2.68** — 5 consecutive clean pass-through D-01s.
+- **L41 honored v2.68** at Stage C v2 CLI deploy (pre-flight local HEAD verified).
+- **L62 type-(b) empirically used v2.68** (cron pre-fire observation pre-empted manual Stage E D-01 budget).
+- **CARRIED v2.68**: Dashboard roadmap PHASES — **24th** consecutive deferral. F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY OPEN. All v2.67 carries unchanged otherwise.
 
-**Pre-v2.67 changes**: per commit history + sync_state archive.
+**Pre-v2.68 changes**: per commit history + sync_state archive.
 
 ---
 
@@ -248,68 +277,65 @@ Unchanged.
 
 ## 🎓 Canonical Lessons
 
-L37–L48 unchanged from v2.66 framing. **v2.67 updates:**
+L37–L49 unchanged from v2.67 framing. **v2.68 updates:**
 
-- **L37**: continued vindication through cc-0010A v1 → v1.5.
-- **L38**: **EMPIRICALLY VINDICATED v2.67.** Recommend promotion to baseline next cycle.
-- **L44**: **3rd live exercise complete v2.67 + baseline-eligible.**
-- **L45**: **first full live exercise complete v2.67 + baseline-eligible.**
-- **L46**: **3rd live application complete v2.67 + baseline confirmed.**
-- **L47**: still deferred (no race opportunity at v1.5).
-- **L48**: **VINDICATED v2.67** through cc-0010 split delivering cc-0010A as atomic sub-build.
-- **L49 NEW candidate v2.67**: PG reserved-word collision check for PL/pgSQL DECLARE variables. PRV-0 §4.3 had `out` which would cause `syntax error at or near "out"` if not caught at apply construction. Neither CCD nor D-01 caught it. Must be brief-authoring pre-D-01 checklist item. Promotion candidate at next-PL/pgSQL-heavy brief close.
+- **L40**: **REIFIED END-TO-END AT RUNTIME v2.68.** Source defect (FK reference asymmetry not caught by TS compile) → caught at runtime pre-flight (cron pre-fire observation) → encoded in source (Stage B hotfix commit `62f319c`) → merged to main → deployed to runtime (CLI after 2x MCP failures) → first post-v2 cron fire validated fix (30 rows_inserted, error_summary NULL). Full lesson cycle complete. **Strongest single-session reification to date.**
+- **L41**: honored v2.68 at Stage C v2 CLI deploy (pre-flight local HEAD verified before deploy to prevent chat-side-MCP-vs-local-deploy-machine drift).
+- **L44**: 3 live exercises complete (v2.67); not re-exercised v2.68 (no SQL migration this session). Baseline-eligible.
+- **L45**: 2 live exercises complete (cc-0010A v1.5 + cc-0010B v2.68 declaration F1/F2/F3/F4/E1). Baseline-eligible.
+- **L46**: **STRONGEST baseline state to date v2.68.** 5 consecutive clean pass-through D-01s (cc-0010A v1.5 → Stage C v1 → Stage D → Stage B merge → Stage C v2). 0 GNB classifications. 0 state-capture overrides.
+- **L47**: still deferred. No race opportunity v2.68.
+- **L48**: vindicated v2.67 + reaffirmed v2.68 (cc-0010B delivered within stage budget despite F4 hotfix cycle).
+- **L49 carry from v2.67**: PG reserved-word collision check. No PL/pgSQL-heavy work v2.68.
+- **L52 NEW candidate v2.68**: Supabase MCP `deploy_edge_function` higher transient-failure rate vs CLI for same payload. Two MCP failures (clean atomic rollback both times: request_ids `req_011CayjGWY42S9kNSR9Sqi2S`, `req_011CayjTp6Hm6E8Kqho8infX`) vs one CLI success in 2.2 sec, same source payload. When a directive specifies CLI, route directly to CLI rather than attempting MCP first. **Promotion pending one more repeat instance.**
+- **L53 NEW candidate v2.68**: FK reference integrity vs source-column-type asymmetry not caught by TypeScript compile. Brief-authoring discipline addition: when an EF UPSERTs into a FK-constrained column, enumerate every FK-constrained INSERT target and confirm the source pipeline column is either (a) itself FK-constrained to the same parent, (b) handled with existence-check guard, or (c) explicitly nullified. F4 caught this gap empirically (m.post_publish.queue_id NOT FK-constrained to m.post_publish_queue.queue_id despite type matching; 94% orphan rate). v1.6 cc-0010A doc patch should fold an authoring-time check.
 
-**All thirteen candidates (L37 + L38 + L39 + L40 + L41 + L42 + L43 + L44 + L45 + L46 + L47 + L48 + L49) recommended for promotion to baseline at appropriate cycle once empirical evidence accumulates.**
+**All fifteen candidates (L37 + L38 + L39 + L40 + L41 + L42 + L43 + L44 + L45 + L46 + L47 + L48 + L49 + L52 + L53) recommended for promotion to baseline at appropriate cycle.**
 
 ---
+## v2.68 honest limitations
 
-## v2.67 honest limitations
-
-- All v2.31–v2.66 limitations apply.
-- **L44 + L45 baseline-eligible but not yet promoted.** Baselining requires PK confirmation at promotion cycle.
-- **L46 baseline confirmed via clean pass-through** — but only one zero-pushback D-01 in cc-0010A's lifecycle. Need additional clean pass-throughs before claiming L46 is fully vindicated.
-- **L47 conditional build still deferred** — no parallel-writer conflicts observed at v1.5 apply window. Path A (doc-only pause cron) presumed sufficient pending next race opportunity.
-- **L48 vindicated empirically through cc-0010A delivery.** cc-0010B + cc-0010C will provide additional vindication if their atomic sub-build pattern works smoothly.
-- **L49 NEW candidate v2.67** is high-confidence (real bug caught) but pattern repeat unknown until next PL/pgSQL-heavy brief.
-- **`r.compact_raw_json` function body uses `result_jsonb` instead of brief-specified `out`.** Disclosure in L45 mismatch declaration. v1.6 doc patch will fold this into brief §2.7 + PRV-0 §4.3.
-- **V6 purpose marker not present** on matched_match_id k.column_registry row. Substantive FK fields correct. Brief §3.8 footnote anticipated. Fix-forward in v1.6 or future k.* maintenance brief.
-- **5 prior outstanding m.chatgpt_review close-the-loop UPDATEs UNBLOCKED v2.61, still pending v2.67** — batch now 9 sessions overdue. 24 additional unrelated historical escalated rows untouched per CCH directive — eligible for next-session review.
-- **F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION** empirically confirmed at v1.5 close-out (3 geography rows registered to schema `r`).
-- **L34 trigger filter audit empirically informed v2.67**: `evtrg_sync_registry_on_create_table` did NOT pre-insert stub rows for r.* CREATE TABLE during v1.5 apply (Fix A INSERT hit fresh path not ON CONFLICT). Fix A pattern is trigger-independent so non-blocking; trigger filter investigation eligible for P3 cleanup brief.
-- **Dashboard roadmap PHASES still stale** — **23rd** consecutive deferral.
-- **Action_list file size**: ~52KB at v2.67 close. Sync_state ~30KB. Both above their 10KB / 16KB respective targets.
-- **Per-session file written v2.67**: `docs/runtime/sessions/2026-05-12-cc-0010A-applied.md`.
-- **Result file written v2.67**: `docs/briefs/results/cc-0010A-r-reconciliation-ddl-foundation.md`.
-- **Doc-sync this session**: single push_files commit with 4 files (result file + session file + sync_state + action_list). Production payload commit `3db84322` (v1.5 doc patch) already landed earlier in the session via github MCP.
-- **Close-the-loop UPDATEs on m.chatgpt_review this session**: 2 (8a4b93fb + 752dfec6). 5 prior + 24 historical still eligible.
-- **State-capture exceptions v2.67: 0.** v1.5 D-01 was clean pass-through.
+- All v2.31–v2.67 limitations apply.
+- **L40 REIFIED END-TO-END AT RUNTIME v2.68** — strongest empirical reification to date but still pattern-of-one for this specific (FK source-column-type asymmetry → publish-path) defect class.
+- **L46 STRONGEST baseline state to date v2.68** — 5 consecutive clean pass-through D-01s. But still need additional clean pass-throughs across non-cc-0010 builds before claiming the baseline holds broadly.
+- **L52 + L53 NEW candidates v2.68** are both pattern-of-one. Promotion pending repeat.
+- **L41 honored v2.68** — pre-flight verified local HEAD = `62f319c` (matches deploy ref) before CLI deploy at turn 21. Single occurrence; pattern continues to be exercised case-by-case.
+- **L47 conditional build still deferred** — no parallel-writer conflicts observed at v2.68.
+- **F4 path (b) selected** based on F3 + L53 evidence (publish-path FK rejection rate vs queue-path; 94% orphan rate on m.post_publish.queue_id globally). Path (b) preserves audit trail in raw_evidence; semantically sound. **But**: future restoration of m.post_publish.queue_id semantics to live FK (if ever desired) would require schema migration. Currently treating queue_id on publish records as historical/audit pointer is correct given empirical data.
+- **3 pre-v2 forensic `r.reconciliation_run failed` rows retained** per directives 12 + 24 + 25. No repair scope v2.68. Future "clean up forensic rows" decision belongs to PK.
+- **F1 + F2 (compactRawEvidence + published_url nullability)** disclosed in EF JSDoc + this result file. Brief §5.2 and §3.x not updated post-implementation; recommend v1.6 doc patch covers both (in addition to the 3 stated v1.6 items).
+- **Stage E variance accepted**: cron-triggered runtime execution accepted as Stage E equivalent. The runtime evidence is strong (succeeded, 30 inserts, error_summary NULL, F4 path empirically exercised). But the attribution `triggered_by='pg_cron_ice_evidence_materialiser_30min'` rather than `'cc-0010B-stage-e-first'` means future audit queries for cc-0010B Stage E will need to know about this variance.
+- **5 prior outstanding m.chatgpt_review close-the-loop UPDATEs UNBLOCKED v2.61, still pending v2.68** — batch now **10 sessions overdue**.
+- **24 unrelated historical escalated rows** untouched per CCH directive — eligible for next-session review.
+- **F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION** still P3; geography drift still present.
+- **L34 trigger filter audit empirically strengthened v2.68 by E1**: r.ice_publication_evidence + r.reconciliation_run lack r.set_updated_at trigger binding despite r.* registry membership. Eligible for combined P3 cleanup brief (rank 4).
+- **Dashboard roadmap PHASES still stale** — **24th** consecutive deferral.
+- **Action_list file size**: ~30KB at v2.68 close (target was 10KB — historically over since v2.30s). Sync_state ~19KB (target 16KB).
+- **Per-session file written v2.68**: `docs/runtime/sessions/2026-05-13-cc-0010B-closed-stage-e-cron-equivalent.md`.
+- **Result file written v2.68**: `docs/briefs/results/cc-0010B-ice-evidence-materialiser.md`.
+- **Doc-sync this session**: single 4-way close commit (this commit). Production payload commit `62f319c` (Stage B hotfix) already landed via local git earlier in this session at turn 17.
+- **Close-the-loop UPDATEs on m.chatgpt_review v2.68**: 4 (1729498a + 140dacb9 pre-compaction, 446dcd34 + 7247fdf7 at turn 23). 5 prior + 24 historical still eligible for next-session.
+- **State-capture exceptions v2.68: 0.** All 4 D-01 fires clean pass-through.
+- **Supabase MCP `deploy_edge_function` reliability concern v2.68**: 2 InternalServerErrorException failures in same session on same payload before CLI success in 2.2 sec. L52 candidate. Recommend always have CLI path available + L41 pre-flight when CLI used.
+- **github MCP local server unresponsive since turn 11 this session**: write tools (`create_branch`, `push_files`, `create_or_update_file`) all timing out. Read tools (Invegent GitHub bridge) functional. Recovery: Windows-MCP local git workflow. Restart needed before next github-write-via-MCP operation.
 
 ---
 
 ## Changelog
 
-- v1.0–v2.65: per commit history + sync_state archive.
-- **v2.66 (2026-05-11 Sydney, post-cc-0009 process upgrades L44–L48 formalised + committed)**: as documented.
-- **v2.67 (2026-05-12 Sydney, cc-0010A v1.5 APPLIED + CLOSED — r.* DDL foundation delivered):**
-  - **Apply chain**: v1.3 apply at 2026-05-12 08:15:13 UTC FAILED atomically (PG error 23502 on k.column_registry.ordinal_position NOT NULL; zero persistent effect). v1.4 doc patch (`2035a3a8`) introduced Fix A pattern (purposes CTE joined to information_schema.columns) + §1.7b NOT NULL enumeration probe + HALT codes H7b + H10. CCD narrow re-review of v1.4: agree-with-corrections, low risk, no blocking corrections. v1.5 doc patch (`3db84322`) tightened V6c row-count assertion `>= 86` → `= 86` per CCD non-blocking suggestion. v1.5 live pre-flight all 12 probes PASS. v1.5 D-01 (`752dfec6-6f9a-4956-b7d7-a4112009b93c`) clean agree zero pushback — first cc-0010A D-01 to do so. PK approval. Fast drift re-check clean. **apply_migration cc_0010a_r_evidence_matcher_schema_foundation SUCCESS.**
-  - **Apply delivered**: 6 r.* tables (ice_publication_evidence 17 cols, platform_observation 16, platform_manual_observation 17, reconciliation_match 16, platform_observer_health 10, matcher_config 10 = 86 total), 1 helper function r.compact_raw_json (with `out` → `result_jsonb` rename disclosed in L45), 1 FK expected_publication_matched_match_id_fkey (L38 VINDICATED), 1 r.matcher_config global default row, 6 k.table_registry UPSERTs, 86 k.column_registry rows via Fix A pattern, 1 k.column_registry FK-flag UPDATE, pg_trgm v1.6 confirmed (no-op).
-  - **V-checks**: 10 PASS + 1 accept-with-variance (V6 purpose marker REPLACE no-op; substantive FK fields correct; brief §3.8 footnote anticipated).
-  - **L45 truth check**: count-delta 18/18 match; 5-row shape-variant sanity sample all show ordinal_position populated; **5 mismatches all accept-with-variance**: (1) PL/pgSQL `out` → `result_jsonb` rename; (2) V3 function count 3→4 (r.set_updated_at cc-0009 carry); (3) V6 purpose marker absent; (4) k.table_registry r.* baseline 2→5; (5) k.column_registry r.* baseline ~17→95 (4 + 5 per F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION).
-  - **Close-the-loop**: single 2-row UPDATE on m.chatgpt_review — 8a4b93fb v1.3 (escalated→resolved) + 752dfec6 v1.5 (completed→resolved). Both `resolved_by='chat'`, `escalation_resolved_at=2026-05-12 09:33:17.63959+00`.
-  - **24 unrelated historical escalated m.chatgpt_review rows: intentionally untouched per CCH directive.**
-  - **L38 VINDICATED v2.67**: recommend promotion to baseline.
-  - **L44 baseline-eligible v2.67**: 3 live exercises complete.
-  - **L45 baseline-eligible v2.67**: first full live exercise complete with 5 accept-with-variance mismatches.
-  - **L46 baseline confirmed v2.67**: 3 live applications; v1.5 clean pass-through demonstrates clean-surface path eliminates need for overrides.
-  - **L48 vindicated v2.67**: cc-0010 split delivered cc-0010A atomic.
-  - **L49 NEW candidate v2.67**: PG reserved-word collision check for PL/pgSQL DECLARE variables.
-  - **Pattern firsts (6)**: first L48 split outcome applied; first L44+L45+L46+L48 first-live-exercise cycle complete; first single-stage sub-brief from split parent; first apply-time-driven correction (v1.4 from v1.3 atomic rollback); first L46 clean pass-through D-01 (v1.5); first CCD narrow re-review accepting prior commit.
-  - **3 pre-cc-0010A gating items from v2.66 all CLOSED v2.67**: L62 attribution; L47 lock scope; L48 application.
-  - **cc-0010B + cc-0010C UNBLOCKED v2.67.**
-  - **Today/Next 5 rebuild**: cc-0010B = rank 1; v1.6 doc patch = rank 2; close-the-loop batches = rank 3 (5-row + 24-row); cc-0010C = rank 4 (gated); cleanup briefs = rank 5; Platform Reconciliation View = rank 6 (newly eligible); Phase 0 = rank 7; Personal businesses = rank 8.
-  - **Active rows updated v2.67**: cc-0010B + v1.6 doc patch + 24-row historical close-the-loop hygiene ADDED. cc-0010A row CLOSED. Pre-cc-0010A gating items CLOSED.
-  - **NEW STATUS BLOCK v2.67**: "🟢 cc-0010A r.* DDL Foundation — STATUS BLOCK".
-  - **Closure budget**: ~3h v2.67 cycle. Trailing-14-day ~75h above 8.0h floor. ~3 P0+P1 open (cc-0010B + cc-0010C + Phase 0; within 20-finding cap).
-  - **Doc-sync this session**: single push_files commit (this commit) with 4 files: result file + session file + sync_state + action_list. Production payload commit `3db84322` (v1.5 doc patch) already landed earlier in the session.
-  - **Production mutations this session**: 1 apply_migration (success) + 1 execute_sql write (close-the-loop 2-row UPDATE) + 1 ask_chatgpt_review (D-01) + 2 GitHub commits + 0 memory edits. Zero EF deploys. Zero cron changes. Zero vault writes. Zero secret value entered chat context.
-  - **T-MCP-02 cum**: 60 (+1 from 59). State-capture exceptions: 0.
+- v1.0–v2.66: per commit history + sync_state archive.
+- **v2.67 (2026-05-12 Sydney, cc-0010A v1.5 APPLIED + CLOSED — r.* DDL foundation delivered)**: as documented in v2.67 changelog entry (carried in commit history).
+- **v2.68 (2026-05-13 Sydney, cc-0010B CLOSED-WITH-VERIFIED-VARIANCE — ice-evidence-materialiser EF v2 live + runtime-validated):**
+  - **Build arc**: Stage A authored + Stage B v1 source merged (prior session) → Stage C v1 deploy (this session pre-compaction, D-01 `1729498a-…` clean agree) → Stage D pg_cron jobid 83 install (this session pre-compaction, D-01 `140dacb9-…` clean agree) → **Stage E (initial) HELD per L62 type-(b)** after pre-flight observed cron pre-fire `r.reconciliation_run` id `feff354a-…` failed with FK violation → F4 root cause investigation (m.post_publish.queue_id 94% orphan rate; NOT a live FK to m.post_publish_queue.queue_id) → F4 path (b) selected by PK → **Stage B hotfix** branch `feat/cc-0010B-fk-hotfix-publish-queue-null` + single commit `62f319c8554b25ee06cf680bc548cf87f24521ba` (turn 13) → **Stage B hotfix merge to main** (turn 17, D-01 `446dcd34-…` clean agree, FF-merge e8e5539→62f319c) → **Stage C v2 redeploy** (turn 21, D-01 `7247fdf7-…` clean agree, Supabase MCP deploy_edge_function failed TWICE with InternalServerErrorException — clean atomic rollback both times — recovered via CLI `supabase functions deploy ice-evidence-materialiser --no-verify-jwt --project-ref mbkmaxqhsohbtwsqolns` in 2.2 sec; v1 → v2; ezbr_sha256 `2a64306511…` → `2bb6a1fc73…`) → **post-v2 cron observation** (turn 23, first post-v2 fire `r.reconciliation_run` id `c256dc99-…` succeeded 2026-05-13 02:00:03 UTC with rows_inserted=30, error_summary NULL) → **governance close-out** (turn 23, 2-row UPDATE on m.chatgpt_review for 446dcd34 + 7247fdf7 → resolved) → **PK accepted cron runtime proof as Stage E-equivalent variance** (directive turn 25) → **final cc-0010B close-out 4-way sync** (this commit).
+  - **Stage E variance**: production cron firing (`triggered_by='pg_cron_ice_evidence_materialiser_30min'`) accepted as equivalent to manual fire (`triggered_by='cc-0010B-stage-e-first'`). PK acceptance reason: cron-triggered run materially satisfies Stage E objective (live production execution, succeeded status, real data, F4 path empirically exercised).
+  - **L45 declaration table** (per directive 25): **F1** JS-side compactRawEvidence (accept-with-variance, semantically identical to DB r.compact_raw_json); **F2** published_url nullability (accept-with-variance, m.post_publish has no published_url column); **F3** all-or-nothing batch UPSERT semantics (runtime discovery — PostgREST single-FK-violation rejects entire batch); **F4** publish-path FK hotfix path (b) (hotfix delivered + runtime-validated); **E1** trigger-inventory drift carry (P3 to v1.6 cc-0010A doc patch — r.ice_publication_evidence + r.reconciliation_run have no r.set_updated_at trigger bound).
+  - **D-01 fires (4, all clean agree zero pushback)**: 1729498a + 140dacb9 + 446dcd34 + 7247fdf7. **5 consecutive clean pass-through D-01s including cc-0010A v1.5 `752dfec6` at v2.67 close — strongest L46 baseline state to date.**
+  - **L-series outcomes**: L40 REIFIED END-TO-END AT RUNTIME (strongest single-session reification). L41 honored at Stage C v2 CLI deploy. L46 STRONGEST baseline state. L52 NEW candidate (MCP vs CLI deploy reliability). L53 NEW candidate (FK source-column-type asymmetry at brief authoring). L62 type-(b) empirically used (cron pre-fire observation pre-empted manual Stage E D-01).
+  - **Pattern firsts (7)**: first multi-stage F4 hotfix cycle; first CLOSED-WITH-VERIFIED-VARIANCE result status; first Supabase MCP deploy failure → CLI recovery; first runtime proof from production cron accepted as Stage E equivalent; first 5-consecutive-clean-pass-through D-01 streak; first L40 reified end-to-end at production runtime; first L62 type-(b) escalation BEFORE D-01 fire.
+  - **Today/Next 5 rebuild**: cc-0010C = rank 1 (UNBLOCKED v2.68); v1.6 doc patch (3 items now) = rank 2; close-the-loop batches (5-row + 24-row) = rank 3; F-K-SCHEMA + L34 trigger filter (combined) = rank 4; Platform Reconciliation View = rank 5 (fully eligible); Phase 0 = rank 6; Personal businesses = rank 7.
+  - **Active rows updated v2.68**: cc-0010C ADDED (P1 rank 1); 3 pre-v2 forensic failed rows carry ADDED (P3 informational); github MCP server restart op ADDED (P3 operational carry). cc-0010B row MOVED TO Closed v2.68. v1.6 doc patch row expanded to 3 items.
+  - **NEW STATUS BLOCK v2.68**: "🟢 cc-0010B ice-evidence-materialiser — STATUS BLOCK". cc-0010A status block condensed.
+  - **Closure budget**: ~3h v2.68 cycle. Trailing-14-day ~78h above 8.0h floor. ~2 P0+P1 open (cc-0010C + Phase 0; within 20-finding cap).
+  - **Doc-sync this session**: single commit (this commit) with 4 files: result file + session file + sync_state + action_list. Production payload commit `62f319c` (Stage B hotfix) landed via local git earlier in this session (turn 17).
+  - **Production mutations this session**: 0 apply_migration this turn-window (Stage D apply was pre-compaction in this session); 0 MCP deploy success (2 attempts failed, clean atomic rollback both times); 1 CLI deploy success (Stage C v2 via PK local machine); 1 execute_sql write (2-row close-the-loop UPDATE); 2 ask_chatgpt_review D-01 fires (446dcd34 + 7247fdf7 at turns 16 + 19); 2 GitHub commits (`62f319c` Stage B hotfix merge + this close-out commit); 0 memory edits this turn-window. Zero schema changes. Zero vault writes. Zero cron mutations.
+  - **T-MCP-02 cum**: 64 (+4 from 60). State-capture exceptions: 0. L46 baseline: 5 consecutive clean pass-through D-01s (strongest to date).
