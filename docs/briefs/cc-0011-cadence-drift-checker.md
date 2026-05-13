@@ -1,6 +1,6 @@
 # cc-0011 — cadence-drift-checker
 
-**Status:** v1.1 (v1 authored 2026-05-13 Sydney; v1.1 docs-only patch 2026-05-13 Sydney per PK directive after D-01 accept; awaiting re-fired D-01).
+**Status:** v1.2 (v1 authored 2026-05-13 Sydney; v1.1 patch 2026-05-13 Sydney per PK directive after D-01 accept; v1.2 patch 2026-05-13 Sydney per PK directive after Stage A apply HALT — `ipe.evidence_at` column reference defect replaced with `COALESCE(ipe.published_at, ipe.created_at)` per PK Option C selection; awaiting re-fired Stage A D-01).
 **Parent:** cc-0010 (Phase D — Reconciliation surface).
 **Depends on:** cc-0010A v1.5 (r.* schema foundation), cc-0010B v2 (`ice-evidence-materialiser` populating `r.ice_publication_evidence`), cc-0010C v1 (`reconciliation-matcher` populating `r.reconciliation_match` + transitioning `r.expected_publication.expected_status` to `matched`).
 **Blocks:** PRV-1 close declaration (criterion 5: cadence-drift-checker weekly; criterion 6: dashboard daily matrix view backed by `r.mv_reconciliation_daily_matrix`).
@@ -115,6 +115,7 @@ Each Stage has a single consolidated `execute_sql` read that asserts the gate se
 | 4.1.5 | `r.mv_observer_freshness_summary` does not exist yet | parallel to 4.1.4 |
 | 4.1.6 | `r.reconciliation_run.run_type` constraint inspection | `SELECT pg_get_constraintdef(c.oid) FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname='r' AND t.relname='reconciliation_run' AND c.contype='c'` — Stage A migration must inspect this and select one of Case A / Case B / Case C per §5.1.4. **HALT rule (v1.1):** if pre-flight shows `cadence_drift_check` already present in the live constraint AND the proposed Stage A migration body still attempts an ALTER on the constraint, HALT and route to PK before applying. The no-op Case C path is the only valid action when the value is already present. |
 | 4.1.7 | Migration name uniqueness | `(SELECT COUNT(*) FROM supabase_migrations.schema_migrations WHERE name='cc_0011_r_cadence_drift_log_and_views_foundation')=0` |
+| 4.1.8 (v1.2 ADDED) | `r.ice_publication_evidence` schema columns required by §5.1.2 `mv_observer_freshness_summary` exist | `SELECT (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='r' AND table_name='ice_publication_evidence' AND column_name='published_at')=1 AS pub_at_exists, (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='r' AND table_name='ice_publication_evidence' AND column_name='created_at')=1 AS created_at_exists` — **HALT rule (v1.2):** if EITHER `ipe.published_at` is absent OR `ipe.created_at` is absent, HALT before apply and route to PK; the §5.1.2 `COALESCE(ipe.published_at, ipe.created_at)` expression depends on both columns being present, and proceeding would re-trigger the v1-vs-v1.1 apply-time HALT path. |
 
 ### 4.2 Stage B gates (run before merge)
 | Gate | Assertion |
@@ -200,17 +201,20 @@ COMMENT ON TABLE r.cadence_drift_log IS 'cc-0011 — drift findings per (client,
 - Partial index on `expected_publication_id IS NOT NULL` covers the row-level FK lookups efficiently.
 
 #### 5.1.2 `r.mv_observer_freshness_summary` definition
+
+**v1.2 rationale:** `published_at` is the true platform-side timestamp when the evidence row represents a confirmed platform publish; `created_at` is used as the observer-side fallback for non-published evidence states (drafted/queued/attempted/failed) where `published_at` is NULL. The `COALESCE(ipe.published_at, ipe.created_at)` expression gives "when did we last hear about this evidence for this (client, platform)" — best-of-both freshness signal. v1 of the brief incorrectly assumed an `ipe.evidence_at` column existed on `r.ice_publication_evidence`; Stage A apply HALTed at that defect (atomic rollback) and PK selected Option C at directive turn after the HALT escalation.
+
 ```sql
 CREATE MATERIALIZED VIEW r.mv_observer_freshness_summary AS
 SELECT
     ep.client_id,
     ep.platform,
     cli.client_slug,
-    MAX(ipe.evidence_at) AS last_evidence_at,
+    MAX(COALESCE(ipe.published_at, ipe.created_at)) AS last_evidence_at,
     MAX(rm.created_at) AS last_match_at,
     MAX(cdl.created_at) AS last_drift_log_at,
     COUNT(DISTINCT ipe.ice_publication_evidence_id) FILTER (
-        WHERE ipe.evidence_at >= now() - interval '7 days'
+        WHERE COALESCE(ipe.published_at, ipe.created_at) >= now() - interval '7 days'
     ) AS evidence_count_7d,
     COUNT(DISTINCT rm.reconciliation_match_id) FILTER (
         WHERE rm.created_at >= now() - interval '7 days'
@@ -219,9 +223,9 @@ SELECT
         WHERE cdl.created_at >= now() - interval '7 days' AND cdl.drift_severity IN ('warn','critical')
     ) AS drift_warn_critical_count_7d,
     CASE
-        WHEN MAX(ipe.evidence_at) IS NULL THEN 'no_evidence_ever'
-        WHEN MAX(ipe.evidence_at) >= now() - interval '24 hours' THEN 'fresh'
-        WHEN MAX(ipe.evidence_at) >= now() - interval '48 hours' THEN 'aging'
+        WHEN MAX(COALESCE(ipe.published_at, ipe.created_at)) IS NULL THEN 'no_evidence_ever'
+        WHEN MAX(COALESCE(ipe.published_at, ipe.created_at)) >= now() - interval '24 hours' THEN 'fresh'
+        WHEN MAX(COALESCE(ipe.published_at, ipe.created_at)) >= now() - interval '48 hours' THEN 'aging'
         ELSE 'stale'
     END AS freshness_status,
     now() AS refreshed_at
@@ -658,6 +662,7 @@ Path: `docs/briefs/results/cc-0011-cadence-drift-checker.md`.
 
 - **Authored:** 2026-05-13 Sydney (this session, post-v2.69 close).
 - **v1.1 patch:** 2026-05-13 Sydney by chat (Claude) under PK directive after D-01 acceptance. Scope: §5.1.4 Case A/B/C re-shape (Case A placeholder-only with explicit live-value preservation invariant; Case B `IF NOT EXISTS` idempotency; Case C no-op no-ALTER path); §4.1.6 HALT rule extension; version metadata bump v1 → v1.1. No design-scope changes; no V-check changes; no schedule changes; cc-0010A/B/C invariants untouched.
+- **v1.2 patch:** 2026-05-13 Sydney by chat (Claude) under PK directive after Stage A apply HALT. Scope: §5.1.2 `r.mv_observer_freshness_summary` definition rewritten — all 5 references to non-existent `ipe.evidence_at` column replaced with `COALESCE(ipe.published_at, ipe.created_at)` (PK Option C selection from the HALT escalation triad of `created_at` / `published_at` / `COALESCE`); §5.1.2 prose v1.2 rationale block added; §4.1.8 new pre-flight gate verifying both `ipe.published_at` and `ipe.created_at` columns exist + HALT rule for either-absent case; version metadata bump v1.1 → v1.2. No other design-scope changes; no V-check changes; no schedule changes; Case C run_type decision from v1.1 still applies; cc-0010A/B/C invariants untouched. Pre-apply HALT was atomic (zero objects created on production, zero migration row recorded); v1.2 patch is the corrective brief revision required before Stage A re-attempt.
 - **Author:** chat (Claude) under PK directive.
 - **Authoring strict-limits compliance:** docs-only this turn — no schema changes, no EF source, no deploy, no cron, no SQL writes, no review-row writes, no sync_state/action_list edits, no PRV work.
 - **Lessons applied at authoring time:** L42 + L43 + L46 + L52 + L53 + L54 all explicitly referenced in §1.2 + §5 + §6 + §7 + §8 + §12 (per directive).
@@ -671,4 +676,4 @@ Path: `docs/briefs/results/cc-0011-cadence-drift-checker.md`.
 
 ---
 
-*Brief authored 2026-05-13 Sydney by chat (Claude) at v2.69 sync close; v1.1 docs-only patch 2026-05-13 Sydney after PK D-01 accept. Mirrors cc-0010C 12-section shape with cc-0011-specific drift-detection scope. §5.1.4 now offers 3 cases (A/B/C) with Case C taking precedence when value already present; §4.1.6 HALT rule prevents redundant ALTER. Awaiting re-fired Stage A D-01 under PK direction. cc-0010A/B/C all unchanged; this is purely additive cc-0011 design surface.*
+*Brief authored 2026-05-13 Sydney by chat (Claude) at v2.69 sync close; v1.1 docs-only patch 2026-05-13 Sydney after PK D-01 accept; v1.2 docs-only patch 2026-05-13 Sydney after PK Option C selection following Stage A apply HALT. Mirrors cc-0010C 12-section shape with cc-0011-specific drift-detection scope. §5.1.2 now uses `COALESCE(ipe.published_at, ipe.created_at)` (PK Option C) rather than non-existent `ipe.evidence_at`; §4.1.8 verifies both source columns exist before apply with HALT rule; §5.1.4 Case C run_type decision (no ALTER required; live constraint already includes cadence_drift_check) carries forward from v1.1. Awaiting re-fired Stage A D-01 under PK direction. cc-0010A/B/C all unchanged; this is purely additive cc-0011 design surface.*
