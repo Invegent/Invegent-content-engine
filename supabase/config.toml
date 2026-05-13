@@ -92,6 +92,9 @@ verify_jwt = false
 [functions.ice-evidence-materialiser]
 verify_jwt = false
 
+[functions.reconciliation-matcher]
+verify_jwt = false
+
 # ---------------------------------------------------------------------
 # Service-role-pattern EFs (13) — verify_jwt = false
 # ---------------------------------------------------------------------
