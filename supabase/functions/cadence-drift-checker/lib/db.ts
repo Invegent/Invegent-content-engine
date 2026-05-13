@@ -203,7 +203,7 @@ export async function fetchMatcherConfig(client: SupabaseClient): Promise<Matche
   // v1 reads ALL rows but only consumes the global default — kept simple for forward-compat with per-client extensions.
   const { data, error } = await client
     .from("matcher_config")
-    .select("matcher_config_id, client_id, platform, late_tolerance_minutes");
+    .select("matcher_config_id, client_id, platform, minutes_late_tolerance");
   if (error) throw new Error(`cc-0011 fetchMatcherConfig failed: ${error.message}`);
   return (data ?? []) as MatcherConfigRow[];
 }

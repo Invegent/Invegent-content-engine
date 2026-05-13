@@ -77,7 +77,7 @@ export interface MatcherConfigRow {
   matcher_config_id: string;
   client_id: string | null;
   platform: string | null;
-  late_tolerance_minutes: number;
+  minutes_late_tolerance: number;
 }
 
 export interface MatrixRow {
@@ -176,7 +176,7 @@ export function resolveLateToleranceMinutes(configs: MatcherConfigRow[]): number
         "cc-0010A v1.5 should have seeded it at Stage A. Halting.",
     );
   }
-  return global.late_tolerance_minutes;
+  return global.minutes_late_tolerance;
 }
 
 // =============================================================================
