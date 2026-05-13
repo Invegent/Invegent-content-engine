@@ -1,6 +1,6 @@
 # cc-0011 — cadence-drift-checker
 
-**Status:** v1 (authored 2026-05-13 Sydney; awaiting D-01).
+**Status:** v1.1 (v1 authored 2026-05-13 Sydney; v1.1 docs-only patch 2026-05-13 Sydney per PK directive after D-01 accept; awaiting re-fired D-01).
 **Parent:** cc-0010 (Phase D — Reconciliation surface).
 **Depends on:** cc-0010A v1.5 (r.* schema foundation), cc-0010B v2 (`ice-evidence-materialiser` populating `r.ice_publication_evidence`), cc-0010C v1 (`reconciliation-matcher` populating `r.reconciliation_match` + transitioning `r.expected_publication.expected_status` to `matched`).
 **Blocks:** PRV-1 close declaration (criterion 5: cadence-drift-checker weekly; criterion 6: dashboard daily matrix view backed by `r.mv_reconciliation_daily_matrix`).
@@ -113,7 +113,7 @@ Each Stage has a single consolidated `execute_sql` read that asserts the gate se
 | 4.1.3 | `r.cadence_drift_log` does not exist yet | `NOT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema='r' AND table_name='cadence_drift_log')` |
 | 4.1.4 | `r.mv_reconciliation_daily_matrix` does not exist yet | `NOT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema='r' AND table_name='mv_reconciliation_daily_matrix') AND NOT EXISTS(SELECT 1 FROM pg_matviews WHERE schemaname='r' AND matviewname='mv_reconciliation_daily_matrix')` |
 | 4.1.5 | `r.mv_observer_freshness_summary` does not exist yet | parallel to 4.1.4 |
-| 4.1.6 | `r.reconciliation_run.run_type` constraint inspection | `SELECT pg_get_constraintdef(c.oid) FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname='r' AND t.relname='reconciliation_run' AND c.contype='c'` — Stage A migration must inspect this and either DROP+ADD constraint (CHECK with literal IN) or ALTER TYPE (enum) — exact form TBD by pre-flight |
+| 4.1.6 | `r.reconciliation_run.run_type` constraint inspection | `SELECT pg_get_constraintdef(c.oid) FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname='r' AND t.relname='reconciliation_run' AND c.contype='c'` — Stage A migration must inspect this and select one of Case A / Case B / Case C per §5.1.4. **HALT rule (v1.1):** if pre-flight shows `cadence_drift_check` already present in the live constraint AND the proposed Stage A migration body still attempts an ALTER on the constraint, HALT and route to PK before applying. The no-op Case C path is the only valid action when the value is already present. |
 | 4.1.7 | Migration name uniqueness | `(SELECT COUNT(*) FROM supabase_migrations.schema_migrations WHERE name='cc_0011_r_cadence_drift_log_and_views_foundation')=0` |
 
 ### 4.2 Stage B gates (run before merge)
@@ -293,19 +293,29 @@ COMMENT ON MATERIALIZED VIEW r.mv_reconciliation_daily_matrix IS
 ```
 
 #### 5.1.4 `r.reconciliation_run.run_type` constraint extension
-**Pre-flight 4.1.6 must determine exact form.** Two plausible cases:
-- **Case A — CHECK with literal IN:** Stage A migration appends:
-  ```sql
-  ALTER TABLE r.reconciliation_run DROP CONSTRAINT <existing_constraint_name>;
-  ALTER TABLE r.reconciliation_run ADD CONSTRAINT reconciliation_run_run_type_check
-      CHECK (run_type IN ('cadence_generation','materialisation','matching','cadence_drift_check'));
-  ```
-- **Case B — ENUM type:** Stage A migration appends:
-  ```sql
-  ALTER TYPE r.run_type ADD VALUE 'cadence_drift_check';
-  ```
+**Pre-flight 4.1.6 must determine exact form.** Three plausible cases, in priority order:
 
-Stage A D-01 proposal must include the discovered constraint form and the chosen ALTER path. Stage A pre-flight gate 4.1.6 captures the empirical form; brief authoring cannot pre-determine.
+- **Case C — value already present (no-op; v1.1 ADDED):** If pre-flight §4.1.6 confirms that `'cadence_drift_check'` already exists in the live `run_type` constraint (whether the constraint is a CHECK-with-literal-IN form OR an ENUM type), NO ALTER is required. The migration body for the run_type extension reduces to a comment-only no-op:
+  ```sql
+  -- cadence_drift_check already present in live constraint; no ALTER required
+  ```
+  Case C takes precedence over Case A and Case B and MUST be chosen whenever pre-flight detects the value already present. The HALT rule in §4.1.6 enforces this.
+
+- **Case A — CHECK with literal IN (value not yet present):** Stage A migration appends, with the existing constraint name + the exact existing value list both empirically captured at pre-flight §4.1.6 (do NOT hard-code from brief authoring assumptions):
+  ```sql
+  ALTER TABLE r.reconciliation_run DROP CONSTRAINT {discovered_constraint_name};
+  ALTER TABLE r.reconciliation_run ADD CONSTRAINT {discovered_constraint_name}
+      CHECK (run_type IN ({discovered live values} ∪ {'cadence_drift_check'}));
+  ```
+  **Invariant:** every value present in the live constraint at pre-flight time MUST appear in the new constraint. Dropping any existing value would break in-flight or audit rows; the migration body must explicitly preserve all live values. Stage A D-01 proposal MUST inline the discovered value list verbatim for narrow review, not the placeholder. No literal example is shown in this brief intentionally — the proposal must reflect empirically-captured production state.
+
+- **Case B — ENUM type (value not yet present):** Stage A migration appends:
+  ```sql
+  ALTER TYPE r.run_type ADD VALUE IF NOT EXISTS 'cadence_drift_check';
+  ```
+  `IF NOT EXISTS` is idempotent — a re-run after partial Stage A failure does not raise. Note that `ALTER TYPE ... ADD VALUE` cannot run inside a transaction block in older PostgreSQL versions; supabase_migrations.schema_migrations is a single-transaction wrapper, but recent Postgres (≥12) permits this inside transactions if the new value isn't used in the same transaction. Stage A pre-flight §4.1.6 must verify PG version + transaction-permissibility before D-01.
+
+Stage A D-01 proposal must include the discovered constraint form, the case selection (A / B / C), and the full empirical value list if Case A applies. Stage A pre-flight gate 4.1.6 captures the empirical form + value list + Case-selection; brief authoring cannot pre-determine. The §4.1.6 HALT rule prevents redundant ALTERs from being applied when Case C is the correct path.
 ### 5.2 Stage B EF source
 
 #### 5.2.1 File layout (mirrors cc-0010C)
@@ -647,8 +657,9 @@ Path: `docs/briefs/results/cc-0011-cadence-drift-checker.md`.
 ## 15. Authoring metadata + freeze terms
 
 - **Authored:** 2026-05-13 Sydney (this session, post-v2.69 close).
+- **v1.1 patch:** 2026-05-13 Sydney by chat (Claude) under PK directive after D-01 acceptance. Scope: §5.1.4 Case A/B/C re-shape (Case A placeholder-only with explicit live-value preservation invariant; Case B `IF NOT EXISTS` idempotency; Case C no-op no-ALTER path); §4.1.6 HALT rule extension; version metadata bump v1 → v1.1. No design-scope changes; no V-check changes; no schedule changes; cc-0010A/B/C invariants untouched.
 - **Author:** chat (Claude) under PK directive.
-- **Authoring strict-limits compliance:** docs-only this turn — no schema changes, no EF source, no deploy, no cron, no `execute_sql` writes, no review-row writes, no sync_state/action_list edits, no PRV work.
+- **Authoring strict-limits compliance:** docs-only this turn — no schema changes, no EF source, no deploy, no cron, no SQL writes, no review-row writes, no sync_state/action_list edits, no PRV work.
 - **Lessons applied at authoring time:** L42 + L43 + L46 + L52 + L53 + L54 all explicitly referenced in §1.2 + §5 + §6 + §7 + §8 + §12 (per directive).
 - **Brief blob freeze policy:** brief becomes frozen-by-reference at Stage A D-01 acceptance + Stage A migration commit. Future amendments (v1.1, v2) require new D-01 + explicit version bump.
 - **Carry-forward at brief authoring time:**
@@ -660,4 +671,4 @@ Path: `docs/briefs/results/cc-0011-cadence-drift-checker.md`.
 
 ---
 
-*Brief authored 2026-05-13 Sydney by chat (Claude) at v2.69 sync close. Mirrors cc-0010C 12-section shape with cc-0011-specific drift-detection scope. Awaiting Stage A D-01 fire under PK direction. cc-0010A/B/C all unchanged; this is purely additive cc-0011 design surface.*
+*Brief authored 2026-05-13 Sydney by chat (Claude) at v2.69 sync close; v1.1 docs-only patch 2026-05-13 Sydney after PK D-01 accept. Mirrors cc-0010C 12-section shape with cc-0011-specific drift-detection scope. §5.1.4 now offers 3 cases (A/B/C) with Case C taking precedence when value already present; §4.1.6 HALT rule prevents redundant ALTER. Awaiting re-fired Stage A D-01 under PK direction. cc-0010A/B/C all unchanged; this is purely additive cc-0011 design surface.*
