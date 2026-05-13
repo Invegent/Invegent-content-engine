@@ -1,17 +1,23 @@
+import type { CSSProperties } from "react";
 import { createOpClient } from "../../lib/supabase/server";
+import { EmptyState, ErrorState, PageFooter } from "../_components/StateBlocks";
+import {
+  formatDate,
+  formatNumber,
+  formatTimestamp,
+} from "../_components/format";
+import { TABLE, TABLE_WRAPPER, TD, TH } from "../_components/tableStyles";
 
-// cc-0013 Stage C — Drift triage queue (trailing 30-day window).
+// cc-0013 Stage D — Drift triage queue (trailing 30-day window), polished.
 // Server Component. Reads op.v_drift_rollup via op-scoped server-only client.
 //
 // Phase 0 brief V4 hygiene: this route renders columns surfaced by the op view
-// (passthrough columns from cc-0011's r.cadence_drift_log). To keep the V4
-// substring grep clean (no `cadence_drift_log` / `expected_publication` /
-// `reconciliation_match` / `ice_publication_evidence` literals in this file),
-// the operator-visible columns are limited to the human-actionable set:
-// timestamps, client_slug, platform, drift_type, drift_severity, observation
-// window, observed/expected counts, drift_details, is_recent/is_actionable.
-// FK identifier columns (passthrough only; no operator action surface at v1)
-// are intentionally omitted from this interface + render.
+// (passthrough columns from cc-0011's drift table). To keep the V4 substring
+// grep clean, the operator-visible columns are limited to the human-actionable
+// set: timestamps, client_slug, platform, drift_type, drift_severity,
+// observation window, observed/expected counts, drift_details, is_recent/
+// is_actionable. FK identifier passthrough columns are intentionally omitted
+// from this interface + render.
 
 interface DriftRow {
   run_started_at: string | null;
@@ -32,71 +38,49 @@ interface DriftRow {
 
 export const dynamic = "force-dynamic";
 
-function fmtNumber(value: number | null): string {
-  if (value == null) return "—";
-  return value.toLocaleString("en-AU");
-}
+const SEVERITY_BADGE_STYLES: Record<string, CSSProperties> = {
+  info: {
+    background: "#e3f2fd",
+    border: "1px solid #64b5f6",
+    color: "#0d47a1",
+  },
+  warn: {
+    background: "#fff4e5",
+    border: "1px solid #ffb74d",
+    color: "#7a3e00",
+  },
+  critical: {
+    background: "#fde7e9",
+    border: "1px solid #ef5350",
+    color: "#b71c1c",
+    fontWeight: 600,
+  },
+};
+
+const SEVERITY_BADGE_BASE: CSSProperties = {
+  padding: "2px 8px",
+  borderRadius: "3px",
+  fontSize: "0.8rem",
+  textTransform: "uppercase",
+  letterSpacing: "0.025em",
+  display: "inline-block",
+};
+
+const SEVERITY_FALLBACK: CSSProperties = {
+  background: "#eee",
+  border: "1px solid #bbb",
+  color: "#333",
+};
 
 function severityBadge(severity: string) {
   const lower = (severity ?? "").toLowerCase();
-  const styles: Record<string, React.CSSProperties> = {
-    info: {
-      background: "#e3f2fd",
-      border: "1px solid #64b5f6",
-      color: "#0d47a1",
-    },
-    warn: {
-      background: "#fff4e5",
-      border: "1px solid #ffb74d",
-      color: "#7a3e00",
-    },
-    critical: {
-      background: "#fde7e9",
-      border: "1px solid #ef5350",
-      color: "#b71c1c",
-      fontWeight: 600,
-    },
-  };
-  const fallback: React.CSSProperties = {
-    background: "#eee",
-    border: "1px solid #bbb",
-    color: "#333",
-  };
-  return (
-    <span
-      style={{
-        padding: "2px 6px",
-        borderRadius: "3px",
-        fontSize: "0.8rem",
-        textTransform: "uppercase",
-        letterSpacing: "0.025em",
-        ...(styles[lower] ?? fallback),
-      }}
-    >
-      {severity}
-    </span>
-  );
+  const variant = SEVERITY_BADGE_STYLES[lower] ?? SEVERITY_FALLBACK;
+  return <span style={{ ...SEVERITY_BADGE_BASE, ...variant }}>{severity}</span>;
 }
-
-const TH: React.CSSProperties = {
-  textAlign: "left",
-  padding: "0.4rem 0.5rem",
-  borderBottom: "2px solid #ddd",
-  fontWeight: 600,
-  fontSize: "0.875rem",
-  whiteSpace: "nowrap",
-};
-const TD: React.CSSProperties = {
-  padding: "0.35rem 0.5rem",
-  borderBottom: "1px solid #f0f0f0",
-  fontSize: "0.9rem",
-  verticalAlign: "top",
-};
 
 export default async function DriftPage() {
   const supabase = createOpClient();
 
-  // Order per Phase 0 brief §4.4.
   const { data, error } = await supabase
     .from("v_drift_rollup")
     .select(
@@ -111,7 +95,8 @@ export default async function DriftPage() {
     return (
       <main>
         <h1>Drift queue</h1>
-        <p style={{ color: "#b00020" }}>Error loading data: {error.message}</p>
+        <ErrorState message={error.message} />
+        <PageFooter routeNote="reads op.v_drift_rollup" />
       </main>
     );
   }
@@ -128,64 +113,72 @@ export default async function DriftPage() {
       </p>
 
       {rows.length === 0 ? (
-        <p>No drift findings in trailing 30 days.</p>
+        <EmptyState message="No drift findings in trailing 30 days." />
       ) : (
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr>
-              <th style={TH}>Created</th>
-              <th style={TH}>Client</th>
-              <th style={TH}>Platform</th>
-              <th style={TH}>Type</th>
-              <th style={TH}>Severity</th>
-              <th style={TH}>Window</th>
-              <th style={TH}>Observed</th>
-              <th style={TH}>Expected</th>
-              <th style={TH}>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, idx) => (
-              <tr key={`${r.created_at}-${r.client_id}-${r.platform}-${r.drift_type}-${idx}`}>
-                <td style={TD}>{r.created_at}</td>
-                <td style={TD}>{r.client_slug ?? r.client_id}</td>
-                <td style={TD}>{r.platform}</td>
-                <td style={TD}>{r.drift_type}</td>
-                <td style={TD}>{severityBadge(r.drift_severity)}</td>
-                <td style={TD}>
-                  {r.observation_window_start ?? "—"} →{" "}
-                  {r.observation_window_end ?? "—"}
-                </td>
-                <td style={TD}>{fmtNumber(r.observed_count)}</td>
-                <td style={TD}>{fmtNumber(r.expected_count)}</td>
-                <td style={TD}>
-                  {r.drift_details ? (
-                    <details>
-                      <summary style={{ cursor: "pointer", fontSize: "0.85rem" }}>
-                        view
-                      </summary>
-                      <pre
-                        style={{
-                          background: "#f7f7f7",
-                          padding: "0.5rem",
-                          fontSize: "0.75rem",
-                          overflow: "auto",
-                          maxWidth: "320px",
-                          marginTop: "0.25rem",
-                        }}
-                      >
-                        {JSON.stringify(r.drift_details, null, 2)}
-                      </pre>
-                    </details>
-                  ) : (
-                    "—"
-                  )}
-                </td>
+        <div style={TABLE_WRAPPER}>
+          <table style={TABLE}>
+            <thead>
+              <tr>
+                <th style={TH}>Created</th>
+                <th style={TH}>Client</th>
+                <th style={TH}>Platform</th>
+                <th style={TH}>Type</th>
+                <th style={TH}>Severity</th>
+                <th style={TH}>Window</th>
+                <th style={TH}>Observed</th>
+                <th style={TH}>Expected</th>
+                <th style={TH}>Details</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r, idx) => (
+                <tr
+                  key={`${r.created_at}-${r.client_id}-${r.platform}-${r.drift_type}-${idx}`}
+                >
+                  <td style={TD}>{formatTimestamp(r.created_at)}</td>
+                  <td style={TD}>{r.client_slug ?? r.client_id}</td>
+                  <td style={TD}>{r.platform}</td>
+                  <td style={TD}>{r.drift_type}</td>
+                  <td style={TD}>{severityBadge(r.drift_severity)}</td>
+                  <td style={TD}>
+                    {formatDate(r.observation_window_start)} →{" "}
+                    {formatDate(r.observation_window_end)}
+                  </td>
+                  <td style={TD}>{formatNumber(r.observed_count)}</td>
+                  <td style={TD}>{formatNumber(r.expected_count)}</td>
+                  <td style={TD}>
+                    {r.drift_details ? (
+                      <details>
+                        <summary
+                          style={{ cursor: "pointer", fontSize: "0.85rem" }}
+                        >
+                          view
+                        </summary>
+                        <pre
+                          style={{
+                            background: "#f7f7f7",
+                            padding: "0.5rem",
+                            fontSize: "0.75rem",
+                            overflow: "auto",
+                            maxWidth: "320px",
+                            marginTop: "0.25rem",
+                          }}
+                        >
+                          {JSON.stringify(r.drift_details, null, 2)}
+                        </pre>
+                      </details>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      <PageFooter routeNote="reads op.v_drift_rollup" />
     </main>
   );
 }

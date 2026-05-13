@@ -1,9 +1,15 @@
 import { createOpClient } from "../../lib/supabase/server";
+import { AttentionBadge } from "../_components/AttentionBadge";
+import { EmptyState, ErrorState, PageFooter } from "../_components/StateBlocks";
+import {
+  formatNumber,
+  formatPercent,
+  formatTimestamp,
+} from "../_components/format";
+import { TABLE, TABLE_WRAPPER, TD, TH } from "../_components/tableStyles";
 
-// cc-0013 Stage C — Per-Client Rollup.
-// Server Component (no "use client"). Reads op.v_per_client_rollup via
-// the op-scoped server-only Supabase client. No client-side fetch. No forms.
-// No mutation. Per Phase 0 brief §4.2 + V3 + V5.
+// cc-0013 Stage D — Per-Client Rollup, polished.
+// Server Component. Reads op.v_per_client_rollup via op-scoped server-only client.
 
 interface ClientRollupRow {
   client_id: string;
@@ -24,33 +30,9 @@ interface ClientRollupRow {
 
 export const dynamic = "force-dynamic";
 
-function fmtPercent(value: number | null): string {
-  if (value == null) return "—";
-  return `${(value * 100).toFixed(2)}%`;
-}
-
-function fmtNumber(value: number | null): string {
-  if (value == null) return "—";
-  return value.toLocaleString("en-AU");
-}
-
-const TH: React.CSSProperties = {
-  textAlign: "left",
-  padding: "0.4rem 0.5rem",
-  borderBottom: "2px solid #ddd",
-  fontWeight: 600,
-  fontSize: "0.875rem",
-};
-const TD: React.CSSProperties = {
-  padding: "0.35rem 0.5rem",
-  borderBottom: "1px solid #f0f0f0",
-  fontSize: "0.9rem",
-};
-
 export default async function ClientsPage() {
   const supabase = createOpClient();
 
-  // Order per Phase 0 brief §4.2: attention first, then highest late rate, then alpha.
   const { data, error } = await supabase
     .from("v_per_client_rollup")
     .select("*")
@@ -63,7 +45,8 @@ export default async function ClientsPage() {
     return (
       <main>
         <h1>Per-Client Rollup</h1>
-        <p style={{ color: "#b00020" }}>Error loading data: {error.message}</p>
+        <ErrorState message={error.message} />
+        <PageFooter routeNote="reads op.v_per_client_rollup" />
       </main>
     );
   }
@@ -75,84 +58,57 @@ export default async function ClientsPage() {
     <main>
       <h1>Per-Client Rollup</h1>
       <p>
-        Data as of: <strong>{asOf ?? "—"}</strong> · {rows.length} client
-        {rows.length === 1 ? "" : "s"} with trailing 7-day activity
+        Data as of: <strong>{formatTimestamp(asOf)}</strong> · {rows.length}{" "}
+        client{rows.length === 1 ? "" : "s"} with trailing 7-day activity
       </p>
 
       {rows.length === 0 ? (
-        <p>No client data in trailing 7 days.</p>
+        <EmptyState message="No client data in trailing 7 days." />
       ) : (
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr>
-              <th style={TH}>Client</th>
-              <th style={TH}>Platforms</th>
-              <th style={TH}>Expected</th>
-              <th style={TH}>Matched</th>
-              <th style={TH}>Late</th>
-              <th style={TH}>Suppressed</th>
-              <th style={TH}>On-time</th>
-              <th style={TH}>Late rate</th>
-              <th style={TH}>Drift warn/crit</th>
-              <th style={TH}>Stale platforms</th>
-              <th style={TH}>Last evidence</th>
-              <th style={TH}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              // Var-A3 strict-equality rule (Phase 0 §8):
-              // true → attention; false OR null → OK.
-              const isAttention = r.attention_needed === true;
-              return (
+        <div style={TABLE_WRAPPER}>
+          <table style={TABLE}>
+            <thead>
+              <tr>
+                <th style={TH}>Client</th>
+                <th style={TH}>Platforms</th>
+                <th style={TH}>Expected</th>
+                <th style={TH}>Matched</th>
+                <th style={TH}>Late</th>
+                <th style={TH}>Suppressed</th>
+                <th style={TH}>On-time</th>
+                <th style={TH}>Late rate</th>
+                <th style={TH}>Drift warn/crit</th>
+                <th style={TH}>Stale platforms</th>
+                <th style={TH}>Last evidence</th>
+                <th style={TH}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
                 <tr key={r.client_id}>
                   <td style={TD}>{r.client_slug ?? "—"}</td>
-                  <td style={TD}>{fmtNumber(r.platform_count)}</td>
-                  <td style={TD}>{fmtNumber(r.total_expected_7d)}</td>
-                  <td style={TD}>{fmtNumber(r.total_matched_7d)}</td>
-                  <td style={TD}>{fmtNumber(r.total_late_7d)}</td>
-                  <td style={TD}>{fmtNumber(r.total_suppressed_7d)}</td>
-                  <td style={TD}>{fmtPercent(r.on_time_rate_7d)}</td>
-                  <td style={TD}>{fmtPercent(r.late_rate_7d)}</td>
-                  <td style={TD}>{fmtNumber(r.drift_warn_critical_count_7d)}</td>
-                  <td style={TD}>{fmtNumber(r.observer_stale_platform_count)}</td>
-                  <td style={TD}>{r.last_evidence_at ?? "—"}</td>
+                  <td style={TD}>{formatNumber(r.platform_count)}</td>
+                  <td style={TD}>{formatNumber(r.total_expected_7d)}</td>
+                  <td style={TD}>{formatNumber(r.total_matched_7d)}</td>
+                  <td style={TD}>{formatNumber(r.total_late_7d)}</td>
+                  <td style={TD}>{formatNumber(r.total_suppressed_7d)}</td>
+                  <td style={TD}>{formatPercent(r.on_time_rate_7d)}</td>
+                  <td style={TD}>{formatPercent(r.late_rate_7d)}</td>
+                  <td style={TD}>{formatNumber(r.drift_warn_critical_count_7d)}</td>
+                  <td style={TD}>{formatNumber(r.observer_stale_platform_count)}</td>
+                  <td style={TD}>{formatTimestamp(r.last_evidence_at)}</td>
                   <td style={TD}>
-                    {isAttention ? (
-                      <span
-                        style={{
-                          background: "#fff4e5",
-                          border: "1px solid #ffb74d",
-                          padding: "2px 6px",
-                          borderRadius: "3px",
-                          color: "#7a3e00",
-                          fontWeight: 600,
-                          fontSize: "0.8rem",
-                        }}
-                      >
-                        ATTENTION
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          background: "#e8f5e9",
-                          border: "1px solid #81c784",
-                          padding: "2px 6px",
-                          borderRadius: "3px",
-                          color: "#1b5e20",
-                          fontSize: "0.8rem",
-                        }}
-                      >
-                        OK
-                      </span>
-                    )}
+                    {/* Var-A3 strict-equality rule applied inside AttentionBadge. */}
+                    <AttentionBadge attentionNeeded={r.attention_needed} />
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      <PageFooter routeNote="reads op.v_per_client_rollup" />
     </main>
   );
 }
