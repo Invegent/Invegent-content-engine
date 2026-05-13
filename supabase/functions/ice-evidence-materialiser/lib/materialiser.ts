@@ -218,6 +218,16 @@ export function compactRawEvidence(input: Record<string, unknown>): Record<strin
  * published_url is left null — m.post_publish has no published_url field. cc-0010A v1.5
  * r.ice_publication_evidence.published_url is nullable; future enhancement may derive URL
  * from destination_id + platform conventions.
+ *
+ * F4 hotfix (path (b), 2026-05-13): post_publish_queue_id forced null in this branch.
+ * `m.post_publish.queue_id` is a historical/audit pointer, NOT a live FK to
+ * `m.post_publish_queue.queue_id` (94% orphan rate in production observed at Stage E
+ * cron pre-fire 2026-05-13 00:30:04 UTC; 42 orphans in 7-day window). The cc-0010A v1.5
+ * FK constraint `ice_publication_evidence_post_publish_queue_id_fkey` correctly rejects
+ * orphan values, killing the entire UPSERT batch (all-or-nothing semantics). Queue
+ * linkage is preserved only in `buildEvidenceFromQueue` where the queue row's existence
+ * is guaranteed by construction. `pp.queue_id` is still captured inside `raw_evidence`
+ * jsonb for forensic audit but never as the FK column value.
  */
 export function buildEvidenceFromPublish(
   ep: ExpectedPublicationRow,
@@ -241,7 +251,7 @@ export function buildEvidenceFromPublish(
     expected_publication_id: ep.expected_publication_id,
     pipeline_state: "published",
     post_draft_id: pp.post_draft_id,
-    post_publish_queue_id: pp.queue_id,
+    post_publish_queue_id: null,  // F4 hotfix path (b) — pp.queue_id is historical, not live FK; see JSDoc + raw_evidence still captures it
     post_publish_id: pp.post_publish_id,
     slot_id: capturedSlotId,
     platform_post_id: pp.platform_post_id,
