@@ -1,0 +1,1 @@
+v3.0.0 smoke test — V6 atomic file A
