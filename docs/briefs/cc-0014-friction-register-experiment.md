@@ -1,0 +1,1 @@
+[FULL_FILE_CONTENT_FROM_/mnt/user-data/outputs/cc-0014-friction-register-experiment.md]
