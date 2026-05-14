@@ -1,1 +1,1 @@
-v3.0.0 smoke test — create path
+v3.0.0 smoke test — update path
