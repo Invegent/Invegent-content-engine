@@ -9,10 +9,9 @@ import { FrictionFAB } from "./_components/FrictionFAB";
 // cc-0014 Stage D — friction capture FAB mounted at layout level so it is
 // reachable from every route. Gated by DASHBOARD_FRICTION_FAB_ENABLED env
 // var; renders nothing when unset, so deployments without the gate set
-// see no UI surface.
-
-const FRICTION_FAB_ENABLED =
-  process.env.DASHBOARD_FRICTION_FAB_ENABLED === "true";
+// see no UI surface. Env is read inside RootLayout (request-time, server
+// component) so a missed dev-server restart shows up as a request-time
+// re-evaluation rather than a stale module-load constant.
 
 export const metadata = {
   title: "Invegent — Reconciliation Dashboard",
@@ -28,6 +27,9 @@ const NAV_LINK_STYLE: React.CSSProperties = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const frictionFabEnabled =
+    process.env.DASHBOARD_FRICTION_FAB_ENABLED === "true";
+
   return (
     <html lang="en">
       <body
@@ -71,7 +73,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </Link>
         </nav>
         {children}
-        <FrictionFAB enabled={FRICTION_FAB_ENABLED} />
+        <FrictionFAB enabled={frictionFabEnabled} />
       </body>
     </html>
   );
