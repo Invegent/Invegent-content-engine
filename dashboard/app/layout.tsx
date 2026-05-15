@@ -1,17 +1,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { FrictionFAB } from "./_components/FrictionFAB";
 
 // cc-0013 Stage C — root layout with navigation shell.
 // Server Component (no "use client"). No client-side state, no providers,
 // no analytics, no theming at v1.
-//
-// cc-0014 Stage D — friction capture FAB mounted at layout level so it is
-// reachable from every route. Gated by DASHBOARD_FRICTION_FAB_ENABLED env
-// var; renders nothing when unset, so deployments without the gate set
-// see no UI surface. Env is read inside RootLayout (request-time, server
-// component) so a missed dev-server restart shows up as a request-time
-// re-evaluation rather than a stale module-load constant.
 
 export const metadata = {
   title: "Invegent — Reconciliation Dashboard",
@@ -27,9 +19,6 @@ const NAV_LINK_STYLE: React.CSSProperties = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  const frictionFabEnabled =
-    process.env.DASHBOARD_FRICTION_FAB_ENABLED === "true";
-
   return (
     <html lang="en">
       <body
@@ -73,7 +62,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </Link>
         </nav>
         {children}
-        <FrictionFAB enabled={frictionFabEnabled} />
       </body>
     </html>
   );
