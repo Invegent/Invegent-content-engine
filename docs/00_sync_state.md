@@ -14,6 +14,17 @@
 
 ---
 
+## 🔧 Mid-session reconciliation note — 2026-05-17 Sydney
+
+> **Not a version bump.** No new session file. No new userMemories edits this pass. Docs-only patches in `docs/00_sync_state.md` + `docs/00_action_list.md` to correct stale framings that would otherwise misdirect future agents. Specifically:
+>
+> 1. **Cowork blocker corrected**: prior "OpenClaw" / "silent since 2026-05-06" framing was empirically wrong. Cowork has been firing nightly ~16:02 UTC since 2026-05-05; the actual blocker was `docs/briefs/nightly-health-check-v1.md` remaining `status: review_required` since 2026-05-04, so Cowork's owner-gate convention skipped it on each fire. Commit `9215de77` reset the brief to v3.0 `status: ready` (2026-05-17). Awaiting next Cowork fire. **V-C3 still PENDING** — not complete until new `docs/audit/health/YYYY-MM-DD.md` + matching run-state file land.
+> 2. **Close-the-loop sweep — safe buckets only**: 6 rows resolved this session via 2 atomic apply_migration calls (2 v2.72 carries `903cfd8e` + `873985f7` + 4 cc-NNNN family rows `32ade261` + `9cbc7de3` + `4a48024f` + `defc0fe1`). m.chatgpt_review distribution now: completed 29 / resolved 29 / escalated 22 / total 80. **22 escalated rows remain** = 21 historical CCH-locked + 1 T-MCP-05 meta (`1bae5068`). **Not to be closed without explicit PK directive** lifting the CCH standing rule + resolving the meta recursion concern. The full sweep is **NOT** complete.
+> 3. **Manual FAB count**: 2/3 in-window manual events logged as of 2026-05-17 (up from 1/3 at v2.76 close). One more manual event still needed to qualify manual as a contributing source for criterion 3.
+> 4. **cc-0015 + cc-0016**: both remain **BLOCKED** until Day-19 verdict (2026-05-29 Sydney). Not reclassified as active.
+
+---
+
 ## 📚 Session index (reverse chronological)
 
 | Date | Slug | Headline | File |
@@ -140,13 +151,13 @@
 
 ## 🟡 Next session priorities (rebuilt v2.76)
 
-1. **In-window operational use of FAB** — **P1 rank 1 v2.76.** Target ≥3 in-window events from source=manual to qualify manual as a contributing source for criterion 3. Currently at 1 in-window event. PK files real friction observations via dashboard.invegent.com FAB during normal operations. Each event auto-promotes via promotion trigger; PK triages on /operations within 72h to maintain late_triage_ratio ≤ 0.50 invalidation gate.
-2. **Cowork output pipeline recovery** — P1 rank 2 v2.76 (carry from v2.75). Output pipeline silent since 2026-05-06 (11+ days as of v2.76 close). Recovery via PK manual `openclaw tui` trigger on Windows. Critical for criterion 3 source-mix viability.
+1. **In-window operational use of FAB** — **P1 rank 1 v2.76.** Target ≥3 in-window events from source=manual to qualify manual as a contributing source for criterion 3. **Currently at 2/3 in-window events as of 2026-05-17 — one more manual event still needed.** PK files real friction observations via dashboard.invegent.com FAB during normal operations. Each event auto-promotes via promotion trigger; PK triages on /operations within 72h to maintain late_triage_ratio ≤ 0.50 invalidation gate.
+2. **Cowork output pipeline recovery** — P1 rank 2 v2.76 (carry from v2.75). **Blocker corrected 2026-05-17**: prior framing implying OpenClaw was the recovery mechanism was empirically wrong. Cowork has been firing every night ~16:02 UTC since 2026-05-05; the actual blocker was `docs/briefs/nightly-health-check-v1.md` remaining `status: review_required` (since 2026-05-04), so Cowork's owner-gate convention skipped it on each fire. Commit `9215de77` (2026-05-17) reset the brief to v3.0 `status: ready`. Awaiting next Cowork fire (expected ~2026-05-17 16:02 UTC = ~02:02 AEST 18 May). **V-C3 still PENDING** live run — not complete until new `docs/audit/health/YYYY-MM-DD.md` + matching run-state file land. Critical for criterion 3 source-mix viability.
 3. **Mid-window check-in at ~Day 7** — P1 rank 3 v2.76. Target 2026-05-22 Sydney. Empirical reading of all 5 criteria + invalidation gates against current friction state. If criterion 3 looks structurally unsatisfiable at Day 7, flag for honest INVALID-EXTEND vs FAIL conversation.
 4. **Day-19 verdict execution** — P1 rank 4 v2.76. **2026-05-29 Sydney**. Execute all 10 brief §11 scoring queries. Render verdict PASS / FAIL / INVALID. Author postmortem brief within 14 days per brief §14. If PASS: cc-0015 + cc-0016 unblocked for execution (parallel-executable). If INVALID: identify instrument cause, decide re-run with same criteria_snapshot OR cc-0014-v2.
 5. **Brief v1.2 doc patch (combined defects + L60 + L63 + L64 + L65 + L-v2.76-a-f framing)** — P3 rank 5 carry from v2.75. Doc-only. Defer until post Day-19.
 6. **cc-0013 Dashboard Phase 0** — **P2 DEPRIORITISED rank 6 carry.** Hold pending cc-0014 Day-19 verdict.
-7. **Close-the-loop batch sweep** — P2 rank 7. 31 eligible rows (5 prior cc-NNNN + 2 v2.72 + 24 historical). v2.76 adds 0 new D-01 rows.
+7. **Close-the-loop batch sweep — safe buckets COMPLETE; remainder NOT complete** — P2 rank 7. **Updated 2026-05-17**: 6 rows resolved this session via 2 atomic apply_migration calls (2 v2.72 carries + 4 cc-NNNN family rows). m.chatgpt_review distribution now: completed 29 / resolved 29 / escalated 22 / total 80. **Remaining: 22 escalated rows** = 21 historical CCH-locked + 1 T-MCP-05 meta (`1bae5068`). **Not to be closed without explicit PK directive** lifting CCH standing rule (21 historical) + resolving the meta recursion concern (1 row). Safe buckets are CLOSED; the full backlog is NOT closed.
 8. **Personal businesses check-in** — standing P0. Crazy Domains refund + clean-up follow-up still carried from v2.51.
 
 Carries (lower priority unchanged from v2.75):
@@ -215,9 +226,9 @@ Carries (lower priority unchanged from v2.75):
 - **cc-0010C reconciliation-matcher: CLOSED-WITH-VERIFIED-VARIANCE v2.69.**
 - **cc-0010B ice-evidence-materialiser: CLOSED-WITH-VERIFIED-VARIANCE v2.68.**
 - **cc-0010A r.* DDL Foundation: APPLIED + CLOSED v2.67.**
-- **5 prior close-the-loop carries: still pending, 17 sessions overdue v2.76.**
-- **2 new close-the-loop carries v2.72**: 903cfd8e + 873985f7 both PK-resolved, pending status='resolved' UPDATE.
-- **24 unrelated historical escalated m.chatgpt_review rows**: intentionally untouched per CCH directive.
+- **Prior close-the-loop cc-NNNN family carries: RESOLVED 2026-05-17.** Migration `close_chatgpt_review_cc_nnnn_family` closed 4 rows atomically: `32ade261` (P1 SD triage plan, cc-0002 lineage), `9cbc7de3` (P1 SD triage verification, cc-0002 lineage), `4a48024f` (v2.50 sync-close bundle push, cc-0002 explicit), `defc0fe1` (adversarial review on docs/08, cc-0014 successor lineage). v2.76 framing of "5 prior" carries a -1 discrepancy vs the 4 lineage-confirmed candidates resolved this session; acknowledged at session start, not force-reconciled this pass.
+- **2 close-the-loop carries v2.72: RESOLVED 2026-05-17.** Migration `close_chatgpt_review_v2_72_carries` closed both atomically: `903cfd8e` (cc-0014 Stage A v1.0 D-01 type-(b), Path A re-fire) + `873985f7` (cc-0014 Stage A v1.1 D-01 type-(c) state-capture override per L62; brief frozen at v1.1 commit `34305092f4`).
+- **22 escalated m.chatgpt_review rows remain as of 2026-05-17** (post safe-buckets sweep): 21 historical CCH-locked (F-PUB, F-AAP, F-YT, F-EF-DRIFT-PREVENTION, B-build, queue-integrity, infra/sync, mcp-github-bridge classes) + 1 T-MCP-05 meta row (`1bae5068`, close-the-loop migration self-reference). Intentionally untouched per CCH directive. **Not to be closed without explicit PK directive** lifting the CCH standing rule (21 historical) + resolving the meta recursion concern (`1bae5068`). Replaces prior v2.76 "24 unrelated historical" framing — small count discrepancy (-3) acknowledged at session start, not force-reconciled this pass.
 - **F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION**: P3 OPEN.
 - **F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY**: P3 OPEN.
 - **L34 trigger filter audit**: P3 carry.
@@ -230,7 +241,7 @@ Carries (lower priority unchanged from v2.75):
 - Standing don't-redeploy three (heygen-avatar-creator, heygen-avatar-poller, draft-notifier) — list unchanged.
 - github MCP write tools: L58 promoted to baseline v2.76; per-file single-file commit strategy now default.
 - PostgREST exposed_schemas continues to include `friction` (carry from v2.75).
-- **Cowork output pipeline silence since 2026-05-06** — now 11+ day gap as of v2.76 close. Continues to be P1 OPEN rank 2.
+- **Cowork output pipeline blocker corrected 2026-05-17**: prior "silence since 2026-05-06" framing was empirically wrong. Cowork has been firing nightly ~16:02 UTC since 2026-05-05 (12 consecutive `docs/runtime/runs/no-ready-briefs-{date}T160{2,4}{1-5}Z.md` state files). Actual blocker: `nightly-health-check-v1.md` brief stuck `status: review_required` since 2026-05-04; Cowork's owner-gate convention skipped it on each fire. Commit `9215de77` (2026-05-17) reset the brief to v3.0 `status: ready`. Awaiting next Cowork fire (~2026-05-17 16:02 UTC). V-C3 still PENDING live run — not complete until new health markdown + run-state land. Continues to be P1 OPEN rank 2.
 - **Production FAB live on dashboard.invegent.com**: NEW v2.76. Vercel env var DASHBOARD_FRICTION_FAB_ENABLED=true. Deployment dpl_9Geda1dbh... serving. Localhost cleanup pending — `.env.local` still has the flag enabled (post-window cleanup recommended).
 
 ---
