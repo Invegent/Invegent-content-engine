@@ -5,6 +5,8 @@
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
 > Last updated: 2026-05-16 Sydney (**v2.76 — cc-0014 FULLY CLOSED + 14-DAY WINDOW OPEN + FAB LIVE ON PRODUCTION + cc-0015 + cc-0016 DRAFTED.** Stage E close executed via migration `cc_0014_e_close_experiment_run_start`. PK pre-execution review caught 3 verification defects pre-fire (trigger probe structurally wrong; probe isolation broken; Day-19 wording confusion). 4 post-INSERT verifications PASS. **14-day window OPEN: 2026-05-15 06:20 UTC → 2026-05-29 06:20 UTC. Day-19 verdict review = 2026-05-29 Sydney.** **FAB live on production** via Vercel env var DASHBOARD_FRICTION_FAB_ENABLED=true (Production + Preview). 2 mid-execution defects caught + recovered (wrong project ID cited; uppercase value silent failure). Live FAB smoke test + triage end-to-end PASS — event `fbd1b12d`, auto-promoted case `b7369dc9`, triaged to acknowledged + quality_flag=true + action_decision=track. Emitter coverage diagnostic refuted initial chat diagnosis. **cc-0015 + cc-0016 briefs drafted PENDING_EXECUTION** (commits 9a5dc155 + f35f8ea4). **Memory edit cycle 30/30 → 19/30** (11 free slots; 1 mid-cycle unauthorised remove identified + recovered). **0 D-01 fires** per brief §13. T-MCP-02 cum unchanged at **66**. State-capture exceptions cum unchanged at **1**. **6 NEW L-candidates v2.76 (a-f)**. **L58 PROMOTED TO BASELINE**. 3-of-4-way sync via 3 single-file chat MCP commits (dashboard PHASES **29th consecutive deferral** per IOL hold-stance). **Next major**: in-window operational FAB use (target ≥3 manual events); Cowork output pipeline recovery; mid-window check-in ~2026-05-22; Day-19 verdict 2026-05-29 Sydney.)
+>
+> **Mid-session reconciliation 2026-05-17 Sydney (not a version bump):** docs-only patches in this file + `docs/00_sync_state.md` to correct stale framings. (1) Cowork blocker correctly diagnosed — not OpenClaw, brief was `status: review_required`; commit `9215de77` reset to v3.0 `status: ready`; V-C3 still PENDING. (2) Close-the-loop safe buckets complete: 6 rows resolved (2 v2.72 carries + 4 cc-NNNN family); 22 escalated remain (21 historical + 1 T-MCP-05 meta); full sweep NOT complete. (3) Manual FAB events: 2/3 logged; one more needed. (4) cc-0015 + cc-0016 still BLOCKED until Day-19 verdict.
 
 ---
 
@@ -55,13 +57,13 @@
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
-| 1 | **In-window operational FAB use** | **P1 (rank 1 v2.76)** | Currently 1 in-window event from source=manual. Criterion 3 requires ≥2 sources × ≥3 events. Manual is only realistic source-of-events during window unless Cowork recovers or Monday reconciliation fires. Target: PK files real friction observations via dashboard.invegent.com FAB; each auto-promotes via promotion trigger; PK triages within 72h to maintain late_triage_ratio ≤ 0.50 invalidation gate. | PK → dashboard.invegent.com | Continuous through 2026-05-29. Capture as friction surfaces; triage within 72h. |
-| 2 | **Cowork output pipeline recovery** | **P1 (rank 2 v2.76 carry from v2.75)** | Output pipeline silent since 2026-05-06 — 11+ day gap at v2.76 close. Recovery: PK manual `openclaw tui` trigger on Windows. Once Cowork resumes, health_check becomes viable second source for criterion 3. Critical for source-mix viability. | PK → Cowork | Manual trigger via `openclaw tui` next opportunity. |
+| 1 | **In-window operational FAB use** | **P1 (rank 1 v2.76)** | **Currently 2/3 in-window events from source=manual as of 2026-05-17 — one more manual event still needed.** Criterion 3 requires ≥2 sources × ≥3 events. Manual is only realistic source-of-events during window unless Cowork recovers or Monday reconciliation fires. Target: PK files real friction observations via dashboard.invegent.com FAB; each auto-promotes via promotion trigger; PK triages within 72h to maintain late_triage_ratio ≤ 0.50 invalidation gate. | PK → dashboard.invegent.com | Continuous through 2026-05-29. Capture as friction surfaces; triage within 72h. |
+| 2 | **Cowork output pipeline recovery** | **P1 (rank 2 v2.76 carry from v2.75)** | **Blocker corrected 2026-05-17**: Cowork has been firing nightly ~16:02 UTC since 2026-05-05; the actual blocker was `docs/briefs/nightly-health-check-v1.md` remaining `status: review_required` since 2026-05-04, so Cowork's owner-gate skipped it each fire. Commit `9215de77` reset brief to v3.0 `status: ready`. Awaiting next Cowork fire (expected ~2026-05-17 16:02 UTC). Once Cowork picks up the v3.0 brief, health_check becomes viable second source for criterion 3. **V-C3 still PENDING** live run. | Cowork (scheduled fire) → chat | Wait for next scheduled Cowork fire; chat runs V-C3 reconciliation probe post-run. |
 | 3 | **Mid-window check-in at ~Day 7** | **P1 (rank 3 v2.76 NEW)** | Target 2026-05-22 Sydney. Empirical reading of all 5 criteria + invalidation gates. If criterion 3 looks structurally unsatisfiable at Day 7, flag for honest INVALID-EXTEND vs FAIL conversation. Also triage discipline check. | chat → PK | Single execute_sql Q1-Q10 vs current state; comparison to thresholds; PK direction. |
 | 4 | **Day-19 verdict execution** | **P1 (rank 4 v2.76)** | 2026-05-29 Sydney. Execute all 10 brief §11 scoring queries. Render verdict PASS / FAIL / INVALID. Author postmortem within 14 days per brief §14. If PASS: cc-0015 + cc-0016 unblock. If FAIL: per brief §14 — emitters removed, tables archived. If INVALID: identify cause, decide re-run vs cc-0014-v2. | chat → PK | Plan execution at or after 2026-05-29 Sydney. |
 | 5 | **Brief v1.2 doc patch** | **P3 (rank 5 v2.75 carry, scope expanded v2.76)** | Doc-only consolidation: 6 fixture defects + L60 + L63 + L64 + L65 + L-v2.76-a through L-v2.76-f framing. Defer to post Day-19. | chat → future (post Day-19) | Single doc patch via local git. |
 | 6 | **cc-0013 Dashboard Phase 0** | **P2 (DEPRIORITISED — rank 6 carry)** | Hold pending cc-0014 Day-19 verdict. If PASS: fold IOL surface as new anchor. If FAIL: return to original scope. If INVALID: address cause first. | chat → future post-Day 19 | Hold. |
-| 7 | **Close-the-loop batch sweep** | P2 (rank 7 v2.76) | 5 prior cc-NNNN rows escalated + 2 v2.72 PK-resolved + 24 historical = 31 eligible. v2.76 adds 0. | chat → next session | Single execute_sql UPDATE; separate review for 24-row historical. |
+| 7 | **Close-the-loop batch sweep — safe buckets COMPLETE; remainder NOT complete** | P2 (rank 7 v2.76) | **Updated 2026-05-17**: 6 rows resolved this session via 2 atomic apply_migration calls — 2 v2.72 carries (`903cfd8e` + `873985f7`) + 4 cc-NNNN family rows (`32ade261` + `9cbc7de3` + `4a48024f` + `defc0fe1`). m.chatgpt_review distribution now: completed 29 / resolved 29 / escalated 22 / total 80. **Remaining: 22 escalated rows** = 21 historical CCH-locked + 1 T-MCP-05 meta (`1bae5068`). **Not to be closed without explicit PK directive** lifting CCH standing rule + resolving meta recursion. | chat → future PK directive | Hold remainder pending explicit directive. |
 
 **Standing P0 (not ranked):** Personal businesses check-in. Crazy Domains refund + clean-up follow-up carry from v2.51.
 
@@ -87,7 +89,7 @@
 
 **Stages pending:** NONE. Operational phase begins through 2026-05-29.
 
-**V-C3 live verification still pending**: requires live Cowork run. Cowork output pipeline silent since 2026-05-06 (11+ day gap as of v2.76 close).
+**V-C3 live verification still pending** (as of 2026-05-17 mid-session): requires live Cowork run. **Blocker corrected 2026-05-17** — prior "silent since 2026-05-06" framing was wrong; Cowork was firing nightly but skipping the brief due to `status: review_required`. Commit `9215de77` reset brief to v3.0 `status: ready`. Awaiting next scheduled Cowork fire.
 
 **Production state at v2.76 close:**
 - `friction` schema live in Supabase `mbkmaxqhsohbtwsqolns`
@@ -133,11 +135,11 @@
 
 **D-01 fires this session: 0** (per brief §13).
 
-**Cumulative D-01 history for cc-0014 (unchanged):**
+**Cumulative D-01 history for cc-0014** (resolution status cells updated 2026-05-17):
 | review_id | brief version | session | verdict | classification | resolution status |
 |---|---|---|---|---|---|
-| `903cfd8e` | v1.0 | v2.72 | partial | type-(b) | PK-resolved; close-the-loop UPDATE pending |
-| `873985f7` | v1.1 | v2.72 | partial | type-(c) | PK-resolved (state-capture); close-the-loop UPDATE pending |
+| `903cfd8e` | v1.0 | v2.72 | partial | type-(b) | PK-resolved (Path A re-fire); close-the-loop UPDATE **RESOLVED 2026-05-17** (migration `close_chatgpt_review_v2_72_carries`) |
+| `873985f7` | v1.1 | v2.72 | partial | type-(c) | PK-resolved (state-capture override per L62; brief frozen at v1.1); close-the-loop UPDATE **RESOLVED 2026-05-17** (migration `close_chatgpt_review_v2_72_carries`) |
 
 **Result file:** deferred to Day-19 verdict 2026-05-29.
 
@@ -154,7 +156,7 @@
 - Mid-window check-in at ~Day 7 (rank 3 v2.76)
 - Day-19 verdict execution (rank 4 v2.76)
 - V-C3 live Cowork verification (depends on Cowork recovery)
-- Close-the-loop UPDATEs on 2 m.chatgpt_review rows from v2.72
+- Close-the-loop UPDATEs on 2 v2.72 rows: **RESOLVED 2026-05-17** (migration `close_chatgpt_review_v2_72_carries`)
 - Brief v1.2 doc patch (scope expanded v2.76)
 - L58 + L59 + L60 + L63 + L64 + L65 + L-v2.76-a-f candidates — promotion pending (L58 now baseline)
 - Localhost FAB cleanup post-window
@@ -281,11 +283,13 @@ Other items unchanged from v2.75.
 
 **Close-the-loop UPDATEs v2.76: 0.** 5 prior + 2 v2.72 + 24 historical = **31 eligible** (unchanged).
 
+**Close-the-loop UPDATEs 2026-05-17 reconciliation: 6** (2 v2.72 carries + 4 cc-NNNN family rows). Migrations: `close_chatgpt_review_v2_72_carries` + `close_chatgpt_review_cc_nnnn_family`. **22 escalated rows remain** = 21 historical CCH-locked + 1 T-MCP-05 meta (`1bae5068`). Not to be closed without explicit PK directive. Safe buckets complete; full sweep NOT complete.
+
 ---
 
 ## 🤖 Cowork automation (D182)
 
-**v2.76 status:** Cowork brief v3.0 frozen at HEAD `bc32e86`. Cron 82 + 83 + 86 firing normally. **Cowork output pipeline silent since 2026-05-06 — 11+ day gap as of v2.76 close**. P1 rank 2 open recovery via PK manual `openclaw tui`.
+**v2.76 status (updated 2026-05-17):** Cowork brief v3.0 frozen at HEAD `bc32e86`. Cron 82 + 83 + 86 firing normally. **Cowork pipeline blocker corrected 2026-05-17**: prior "silent since 2026-05-06" framing was empirically wrong — Cowork has been firing nightly ~16:02 UTC since 2026-05-05 (12 consecutive `docs/runtime/runs/no-ready-briefs-*.md` state files). Actual blocker: nightly-health-check-v1 brief stuck `status: review_required` since 2026-05-04; Cowork's owner-gate skipped it each fire. Commit `9215de77` reset brief to v3.0 `status: ready` (2026-05-17). Awaiting next scheduled Cowork fire (~2026-05-17 16:02 UTC). P1 rank 2 OPEN until V-C3 PASS on first live run after `9215de77`.
 
 ---
 
@@ -299,7 +303,7 @@ Other items unchanged from v2.75.
 | **cc-0015 friction-pool-view brief** | Authored PENDING_EXECUTION | **P3 (post Day-19)** | DRAFTED. Commit `9a5dc155`. Blocked-on Day-19 verdict. | chat → post Day-19 | If PASS: execute A→G (12-15h over 3 sessions) |
 | **cc-0016 friction-capture-evidence brief** | Authored PENDING_EXECUTION | **P3 (post Day-19)** | DRAFTED. Commit `f35f8ea4`. Blocked-on Day-19 verdict. Parallel-executable. | chat → post Day-19 | If PASS: execute A→E (8-10h over 2 sessions) |
 | **cc-0014 Stage C** | Health-check Cowork brief v3.0 dual-write + pg_cron | P1 (APPLIED, V-C3 PENDING) | APPLIED v2.74. V-C3 pending live Cowork run. | chat → Cowork / PK manual | Wait natural OR `openclaw tui` |
-| **V-C3 live Cowork verification** | Live Cowork run produces friction.event matching markdown finding_ids | **P1 (rank 2 v2.76)** | PENDING. Cowork silent since 2026-05-06 (11+ days). | PK → Cowork → chat | Natural OR `openclaw tui`; chat reconciliation SQL post-run |
+| **V-C3 live Cowork verification** | Live Cowork run produces friction.event matching markdown finding_ids | **P1 (rank 2 v2.76)** | PENDING. **Blocker corrected 2026-05-17**: Cowork was scheduler-firing nightly but skipping the brief due to `status: review_required`. Commit `9215de77` reset to v3.0 `status: ready`. Awaiting next scheduled fire. | Cowork (scheduled) → chat | Chat runs V-C3 reconciliation probe after next `docs/audit/health/YYYY-MM-DD.md` + run-state file land |
 | **Mid-window check-in at Day 7** | Empirical reading of brief §11 Q1-Q10 at ~2026-05-22 Sydney | **P1 (rank 3 v2.76 NEW)** | SCHEDULED ~2026-05-22 | chat → PK | Single execute_sql Q1-Q10; PK direction |
 | **Day-19 verdict execution** | Final 10 scoring queries + verdict + postmortem | **P1 (rank 4 v2.76 NEW)** | SCHEDULED 2026-05-29 Sydney | chat → PK | Execute scoring; render PASS/FAIL/INVALID; postmortem within 14 days |
 | **Brief v1.2 doc patch** | 6 defects + L60/L63/L64/L65/L-v2.76-a-f framing | **P3 (rank 5 v2.76)** | DRAFT scope expanded. Doc-only. | chat → future (post Day-19) | Single doc patch when PK greenlights |
@@ -307,7 +311,7 @@ Other items unchanged from v2.75.
 | **v1.1 cc-0012 minor doc patch (3 items)** | Var-A1 + Var-A2 + Var-A3 | P3 (carry v2.72) | HOLD | chat → future | Doc-only |
 | **v1.6 cc-0010A doc patch (3 items)** | result_jsonb rename + trigger audit + queue_id non-FK | P3 (carry v2.72) | HOLD | chat → future | Doc-only |
 | **v1.3 cc-0011 minor doc patch (5 items)** | E1 + Var-A/B/C/E | P3 (carry v2.72) | HOLD | chat → future | Doc-only |
-| **Close-the-loop batch sweep** | 5 + 2 v2.72 + 24 historical = 31 eligible | P2 (rank 7 v2.76) | UNBLOCKED. v2.76 adds 0 new. | chat → next session | Single execute_sql UPDATE; separate review for 24 historical |
+| **Close-the-loop batch sweep — safe buckets COMPLETE; remainder NOT complete** | 6 resolved 2026-05-17 (2 v2.72 + 4 cc-NNNN family); 22 remain (21 historical CCH-locked + 1 T-MCP-05 meta) | P2 (rank 7 v2.76) | PARTIAL COMPLETE 2026-05-17. Safe buckets closed via 2 atomic migrations. Remainder gated on explicit PK directive. | chat → future PK directive | Hold remaining 22 until PK lifts CCH standing rule (21 historical) + resolves T-MCP-05 meta recursion (1 row) |
 | **F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION + L34 audit** | 3 geography rows + trigger filter | P3 (carry v2.71) | Strengthened v2.68. | chat → future | Separate cc-NNNN cleanup brief |
 | **Platform Reconciliation View — BRIEF AUTHORING** | reconciliation surface | P2 — fully eligible v2.68 | cc-0010A + cc-0010B delivered. | PK → chat | When PK greenlights |
 | **Dashboard Architecture Review Phase 0** | 7 confirm-defaults | P1 TOP (unchanged) | Carry. | PK | Confirm via cc-0001 |
@@ -318,7 +322,7 @@ Other items unchanged from v2.75.
 | **F-CRON-AUTO-APPROVER-SECRET-INLINE** | Cron jobid 58 inline secret | P2 (security, OPEN) | OPEN | chat → future (PK approval) | PK authorisation |
 | **F-YT-PUB-AVATAR-EXCLUSION** | youtube-publisher filter | P3 (carry) | LOGGED | chat → future | — |
 | **morning-inbox-sweep-v1 brief amendment** | PK personal-email morning triage | P3 (carry) | DRAFT exists | PK → chat | PK reviews |
-| **24 historical escalated m.chatgpt_review rows** | Historical backlog | P3 (carry v2.76) | Untouched per CCH. | chat → next session | Single execute_sql + batched UPDATEs |
+| **22 escalated m.chatgpt_review rows remain (updated 2026-05-17)** | 21 historical CCH-locked + 1 T-MCP-05 meta (`1bae5068`); post safe-buckets sweep | P3 (carry; gated) | Untouched per CCH; not to be closed without explicit PK directive | chat → future PK directive | Hold pending PK lift of CCH standing rule + resolution of meta recursion |
 | **Memory cap hygiene** | 19/30 v2.76 (down from 30/30) | **DOWNGRADED to P3 v2.76** | 11 free slots; not urgent. | chat → future | Add v2.77+ memories as needed |
 | **Parallel agent coordination (L47)** | informational | P3 (carry) | No conflicts observed v2.76. | chat → future | Passive observation |
 | **Dashboard mobile responsiveness** | Whole-dashboard gap | P3 | OBSERVED | chat → dedicated session | — |
@@ -326,7 +330,7 @@ Other items unchanged from v2.75.
 | **Invegent IG cap-throttle planning** | jobid 53 unblock | P3 | OBSERVED | chat → T05 unblock | — |
 | **CFW post-ai-worker dead drafts** | Drafts dying after AI succeeds | P3 | OBSERVED | chat → future | — |
 | **Vault `service_role_key` naming** | 15-char value; misleadingly named | P3 | OBSERVED | chat → future | Read-only scope-check |
-| **Cowork output pipeline silence** | 11+ day gap (V-C3 dependency) | **P1 (rank 2 v2.76)** | OPEN escalated. | PK → next session | Investigate OR `openclaw tui` |
+| **Cowork output pipeline — blocker corrected 2026-05-17** | Brief was `status: review_required` since 2026-05-04 — Cowork's owner-gate skipped it each fire (Cowork itself was firing nightly). Reset to v3.0 `status: ready` via commit `9215de77`. | **P1 (rank 2 v2.76)** | OPEN until V-C3 PASS on first live run after `9215de77` | Cowork (scheduled) → chat | Wait for next scheduled fire; chat runs V-C3 reconciliation probe |
 | **`00_overview.md` 11-section table** | Architecture review structure change | P3 | Required updates | chat → future | ~15 min |
 | **F-AAP-NEEDS-REVIEW-BACKLOG** | 28 drafts pending review | P2 | Closure = Phase 2 B-09-14 | chat → Phase 2 | Bulk approve UI |
 | **Dashboard roadmap PHASES** | PHASES array stale since 3 May | P3 | Carried (**29th deferral v2.76**) | chat → post-cc-0014 verdict | Update after Day 19 |
