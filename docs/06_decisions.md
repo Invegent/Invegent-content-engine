@@ -13,11 +13,11 @@ is recorded here with context and reasoning.
 
 ## D126–D141 — See 17 Apr 2026 commits (pipeline analysis, synthesis decision, demand-aware seeding direction). **D141 sequencing recommendation reversed by D166 — see below.**
 
-## D142–D146 — See 17 Apr 2026 evening commits (demand-aware seeder, classifier, router, benchmark, feed score — all but D142 gated on 60d data). **D144 MVP shadow infrastructure shipped via D167. D145 research portion shipped via D167.**
+## D142–D146 — See 17 Apr 2026 afternoon commits (demand-aware seeder, classifier, router, benchmark, feed score — all but D142 gated on 60d data). **D144 MVP shadow infrastructure shipped via D167. D145 research portion shipped via D167.**
 
 ## D147–D151 — See 18 Apr 2026 afternoon commit (pilot structure, buyer-risk form, advisor layer, session-close SOP, table-purpose rule)
 
-## D152–D155 — See 18 Apr 2026 evening commit (seeder client_id fix, token-health live direction, native LinkedIn flow, ON CONFLICT root-cause fix)
+## D152–D155 — See 18 Apr 2026 evening commits (seeder client_id fix, token-health live direction, native LinkedIn flow, ON CONFLICT root-cause fix)
 
 ## D156–D162 — See 21 Apr 2026 commits (external reviewer layer shipped + paused, cost guardrails architecture, reviewer implementation details)
 
@@ -64,306 +64,97 @@ The question this decision answers: what's the canonical path for applying migra
 ---
 
 ## D181 — Audit loop as three-layer architecture
-**Date:** 28 April 2026 evening | **Status:** ✅ BUILT — Slice 1 live since 28 Apr; Slice 2 shipped 30 Apr (first run via D182 Tier 0 brief, 5/5 thresholds); Slice 3 manual cycle 1 closed 28 Apr, cycle 2 ready (R03).
-
-### The problem this decides
-
-How does ICE prevent recurring audit findings from re-occurring? The pattern observed across F-001 (table-purpose backfill) and F-002 (column-purpose backfill): the audit cycle would surface a class of finding (e.g. 22 tables missing purpose), PK + chat would apply a fix, then the next cycle would surface the same class of finding because nothing prevented re-introduction. Audit work that produces only point-fixes is Sisyphean — every newly-created table arrives undocumented, every refactor reintroduces the gap.
-
-The question this decision answers: what's the structural shape of an audit loop that prevents recurrence rather than just catching it?
-
-### The decision
-
-**The audit loop is structured as three layers, each addressing a distinct failure mode:**
-
-- **Slice 1 — recurrence prevention.** Encode the audit finding's negative space as a constraint that fires automatically on the act that would reintroduce the gap. Examples shipped: `PENDING_DOCUMENTATION` sentinel forcing every new table to have a non-empty purpose at create time; 14-day grace window for inferred purposes; F-003 detector flagging naming-discipline violations.
-- **Slice 2 — snapshot generation.** Produce the input material the auditor consumes. Mechanical SQL queries against `k.*` + targeted `f.*`/`m.*`, formatted as a 17-section markdown file at `docs/audit/snapshots/{YYYY-MM-DD}.md`. No judgment; only data.
-- **Slice 3 — auditor pass.** The judgment layer: read snapshot + role definition, write findings to `docs/audit/runs/{YYYY-MM-DD}-{role}.md`. Currently ChatGPT in role per `docs/audit/roles/`; auto-auditor (OpenAI API + role spec) deferred per D184 + the standing 5+ cycle rule.
-
-### What this requires
-
-- Audit roles defined in `docs/audit/roles/`: Data + Security + Operations + Financial + Compliance, each with its own slice 1+2+3 stack.
-- Findings format: `F-YYYY-MM-DD-{role-letter}-NNN`, severity enum (HIGH/MEDIUM/LOW), evidence chain (snapshot section + commit refs + reasoning).
-- Closure tracking: `docs/audit/open_findings.md` with closure type (`CLOSED-ACTION-TAKEN`, `CLOSED-NO-ACTION-WONTFIX`, `CLOSED-DUPLICATE`).
-- **5+ cycle rule:** don't automate Slice 3 for any role until 5+ manual cycles have validated findings format stability, judgment repeatability, and known failure modes.
-
-### Related decisions
-
-- **D184** — sequences D181's slices into D182's brief shapes. Slice 2 is a Tier 0 brief; Slice 3 stays manual.
-- **D182** — automation primitives. Slice 1 is encoded in migrations; Slice 2 in Tier 0 briefs; Slice 3 in roles + manual cycles.
-
----
+*(unchanged — see prior commits for full text)*
 
 ## D182 — Non-blocking execution model (five-rule automation system)
-**Date:** 28 April 2026 evening (revised across 29–30 Apr after first runs) | **Status:** ✅ LOCKED v1 — `docs/runtime/automation_v1_spec.md` is canonical. Sunset review 12 May 2026. Validated across two brief shapes (Tier 1 migration drafting + Tier 0 markdown generation) as of 30 Apr.
+*(unchanged — see prior commits for full text)*
 
-### The problem this decides
+## D183 — D182 v1 First-Run Learnings + Phase 4b/4c Deferral Principle
+*(unchanged — see prior commits for full text)*
 
-Chat-driven work bottlenecks on PK's availability. Even mechanical work — column-purpose authoring, snapshot generation, refactor sweeps — requires PK to be present at every decision point because chat can't make the calls itself. The result: the rate at which ICE ships is bounded by PK's session count, not by the work itself. If automation infrastructure can earn its keep at lower complexity than chat (deterministic execution + paste-in prompts via Cowork), more work can ship per session.
+## D184 — Audit Workflow Automation Slicing (D181 + D182 Composition)
+*(unchanged — see prior commits for full text)*
 
-The question this decision answers: what's the minimal rule set that makes unattended automation safe enough to actually deploy?
+## D185 — RESERVED for `structured_red_team_review_v1` ratification
+*(unchanged — see prior commits for full text)*
 
-### The decision
-
-**Five rules govern the execution of automation briefs:**
-
-1. **Default-and-continue.** If a brief specifies a default for a question, automation applies the default and proceeds. No blocking on confirmation.
-2. **Answer-key pattern.** Brief authors enumerate likely questions and supply pre-answers in the brief itself. Target: 0 questions on first run.
-3. **One AI per question.** If automation does ask a question, PK answers once; the answer goes into the brief for future runs (single source of truth for resolved ambiguity).
-4. **Escalation.** Automation halts and surfaces to PK if scope exceeds brief authority — DML when forbidden, schema mismatch beyond stop conditions, ambiguous risk tier.
-5. **No production writes from automation.** Tier 0 (auto-commit, markdown only) is the absolute ceiling for unattended runs. Tier 1+ requires chat to apply via Supabase MCP per D170.
-
-**4-tier risk system:** Tier 0 (auto-commit, no DB), Tier 1 (DDL via chat MCP), Tier 2 (DDL with rollback gate), Tier 3 (escalation default).
-
-### Phase build path
-
-- Phase 1 (brief authoring + queue) — ✅ DONE 7 Apr
-- Phase 2 (Cowork integration) — ✅ DONE 28 Apr
-- Phase 3 (run state + claude_questions) — ✅ DONE 29 Apr
-- Phase 4a (executor prompt template) — ✅ DONE 29 Apr
-- Phase 4b (GitHub Actions cloud-side validation) — DEFERRED per D183
-- Phase 4c (OpenAI API answer step) — DEFERRED per D183
-- Phase 5 (first overnight test) — ✅ DONE 29 Apr (Phase D ARRAY mop-up, 5/5 thresholds)
-
-### Validation as of 30 Apr evening
-
-D182 v1 has run 6 briefs successfully: Phase D ARRAY, slot-core, post-publish-obs, pipeline-health-pair, operator-alerting-trio, audit Slice 2. Five were Tier 1 migration drafting; one was Tier 0 markdown generation. All hit 5/5 first-run thresholds. v1 is validated across two distinct brief shapes.
-
-### Sunset review
-
-12 May 2026. Decide: lock v1 as standing rule, iterate to v2, or retire. The decision is data-driven — if briefs are surfacing volumes of real questions or PK is repeatedly hand-validating outputs the system missed, that's the signal to build Phase 4b/4c (or step back). If briefs continue at current 5/5 cadence, v1 graduates to standing rule.
-
-### Related decisions
-
-- **D170** — apply path for Tier 1+ briefs.
-- **D181** — composes with D182 via D184 (Slice 2 is the second-shape D182 test).
-- **D183** — first-run learnings + Phase 4b/4c deferral principle.
-- **D184** — audit workflow slicing under D182.
+## D186 — Closure-First Discipline (Find/Fix Imbalance Constraint)
+*(unchanged — see prior commits for full text. Full prose preserved in prior decision log.)*
 
 ---
 
-## D183 — D182 v1 First-Run Learnings + Phase 4b/4c Deferral Principle
-**Date:** 30 April 2026 morning | **Status:** ✅ LOCKED — captured during 30 Apr Thu morning end-of-session reconciliation. Phase 4b + Phase 4c DEFERRED until briefs demand them.
+## D-IOL-001 — Friction Register as Standing Infrastructure
+**Date:** 18 May 2026 morning | **Status:** ✅ LOCKED — applies from this session forward. Replaces cc-0014 experimental framing.
 
 ### The problem this decides
 
-D182 v1 spec authored 28 Apr evening had a build path with Phase 4b (GitHub Actions cloud-side validation workflow) and Phase 4c (OpenAI API overnight answer step + Cowork correction pass wiring) listed as "next session" tasks blocking Phase 5 (first overnight test).
+cc-0014 was authored as a 14-day operational experiment: instrument a friction register with three emitters (reconciliation / health_check / manual FAB), run for 14 days, score five pre-locked criteria at Day 19, render PASS / FAIL / INVALID verdict. The register was framed as conditional infrastructure — useful if and only if it produced quality signal across multiple sources within the window.
 
-PK ran the first test manually on 29 Apr Wed evening WITHOUT 4b or 4c. The brief was Phase D ARRAY mop-up — Tier 1, draft-only, mechanical, finite scope, 7 ARRAY columns to document. Cowork picked it up via paste-in prompt, executed end-to-end in ~5 min, produced a clean migration file + state file, asked 0 questions.
+By Day 4 of the window, three conditions emerged that the experimental framing did not anticipate:
 
-The question for this decision: now that the system has earned its first run without 4b/4c, should we still build them speculatively, or defer until a brief actually surfaces the gap they fill?
+1. **Manual FAB validated faster than the window required.** PK filed 3/3 in-window events by Day 3 and reported the workflow felt real and useful. Validation question on this source was empirically answered before 11 more days of window time could add anything.
+2. **Reconciliation cadence was structurally insufficient.** cron 85 ran weekly, producing at most 2 fires in 14 days. Criterion 3 (≥2 sources × ≥3 events) was unachievable on this source within window length, regardless of register quality.
+3. **Health_check produced zero signal.** Root cause was upstream (Cowork brief stuck at `status: review_required`), unrelated to register design. Diagnosis required, not verdict.
+
+Day-19 verdict on this trajectory would have read INVALID due to insufficient signal density. That is a procedural verdict that does not inform whether the register concept is sound — it informs whether the upstream signal sources were correctly instrumented and cadenced.
+
+The question this decision answers: should the register be treated as a thing-to-be-evaluated, or as a thing-to-be-operated?
 
 ### The decision
 
-**Defer 4b and 4c. Build automation infrastructure when observation under load demands it, not pre-emptively.**
+**The friction register is standing operational infrastructure, not an experiment. Verdict ritual is retired. The register runs continuously and improves continuously through signal-quality iteration, not through periodic re-evaluation.**
 
 Specifically:
 
-- **Phase 4b (GitHub Actions validation workflow)** — DEFERRED. The first run's inline count-delta DO block (Lesson #38) raises an exception on delta mismatch and is sufficient safety for mechanical Tier 1 briefs. Build 4b only when a brief whose verification cannot be encoded inline lands in the queue.
-- **Phase 4c (OpenAI API answer step + Cowork correction pass)** — DEFERRED. The first run produced 0 questions because the answer-key pre-empted every decision. Build 4c only when 2–3 briefs in succession surface real questions PK cannot trivially answer in the morning.
+- cc-0014 closes at status=archived. Brief frozen. Postmortem authored per brief §14 commitment.
+- The register's schema, triggers, emitters, FAB, and triage surface all remain live and unchanged.
+- The register's *value* improves as more cases land, get worked, and the underlying system gets fixed. The register itself does not iterate; the system it diagnoses does.
+- Three sources are treated as three independent diagnostic streams. Manual is proven. Recon and health_check require diagnostic follow-up (cadence change applied for recon this session; health_check diagnostic deferred).
+- Pool review cadence proposed as Fridays 09:00 Sydney (per cc-0015 brief §G). Cases pooled, worked in sprints, fixed.
 
-### Why deferral over pre-emptive build
+### What this changes
 
-Three reasons:
-
-1. **Speculative infrastructure ages badly.** GitHub Actions written for hypothetical brief shapes will need rework once real briefs surface real validation needs. The first run's success suggests the inline DO block pattern may scale to most Tier 1 briefs; building 4b before knowing which briefs need it = guessing.
-
-2. **Q&A pipeline needs question signal.** Phase 4c's value comes from API answering questions Cowork couldn't auto-default. Without observed questions, building the pipeline = building a forklift to lift zero packages. Authoring 2–3 more briefs without 4b/4c will reveal whether Q&A flow is needed at all, or whether tighter answer-keys are sufficient.
-
-3. **Sunset clause already covers re-evaluation.** D182 has a sunset review on 12 May 2026 (2 weeks from lock). If by then briefs are surfacing volumes of real questions or PK is repeatedly hand-validating outputs the inline DO block missed, build 4b/4c then. Until then: observe.
-
-### What this requires
-
-- D182 spec build path table updated (this session's commit) to mark Phase 5 DONE 29 Apr (5/5 thresholds), Phase 4b DEFERRED per D183, Phase 4c DEFERRED per D183.
-- First-run learnings section added to spec capturing what worked: answer-key pre-empted every decision, pre-flight reuse saved ~5 SQL calls, 3-commit run pattern emerged organically, ~5 min runtime vs ~20 min estimated, ~45k token burn (modest on Max 5x bundled).
-- Memory entry 14 updated to reflect first-run validation.
+- **IOL hold-stance lifted.** Work previously deferred pending cc-0014 Day-19 verdict is now actionable in normal queue priority. This includes:
+  - cc-0015 friction-pool-view brief execution (unblocked)
+  - cc-0016 friction-capture-evidence brief execution (unblocked, parallel-executable with cc-0015)
+  - Publisher recovery sequence (music / IG cron 53 / YT diagnostic)
+  - Dashboard PHASES sync (now 30 consecutive deferrals; unblocked for next dashboard session)
+  - Brief authoring for other initiatives (Platform Reconciliation View, etc.)
+- **Reconciliation cron promoted weekly → daily** this session. Migration `cc_0014_recon_daily_cadence` applied. First daily fire 2026-05-19 03:30 AEST. Cadence change is independent of brief mechanics; it is operational infrastructure tuning.
+- **Day-19 calendar item retired.** Mid-window check-in at Day 7 retired.
 
 ### What this does NOT change
 
-- D182 five-rule system stays as-is (default-and-continue, answer-key, one-AI-per-question, escalation, no-production-writes-from-automation).
-- D182 4-tier risk system stays as-is.
-- D182 sunset clause unchanged: 12 May 2026 re-evaluation.
-- All other deferred items (audit Slice 2/3, branch sweep, filename hygiene, etc.) untouched.
+- The register's schema, grants, RLS posture, triggers, and functions remain stable.
+- ICE-PROC-001 D-01 cross-review discipline remains active for production mutations.
+- D-186 closure-first discipline remains active. The friction register cases populating the backlog become subject to D-186's closure budget.
+- No claim that the register is "validated" in the experimental sense. Manual is empirically proven. Recon and health_check remain diagnostic targets, not validated sources.
+- `friction.experiment_run` row is preserved at status=archived as audit trail. criteria_snapshot remains immutable on the archived row. Future researchers reading this record can see what would have been scored had the window completed.
 
-### First-run findings worth keeping for future briefs
+### Why archived (not passed/failed/invalid/superseded)
 
-1. **Pre-loaded pre-flight data eliminates ~5 SQL re-query loops.** Saved meaningful runtime + token burn vs Cowork starting cold. Worth keeping as a discipline: brief authors run pre-flight via Supabase MCP, embed findings as authoritative data for the run.
-2. **Answer-key pattern works completely when scope is tight.** All 5 anticipated decision points pre-answered; 0 questions written. Future briefs should aim for similar pre-flight depth.
-3. **3-commit run pattern emerged organically.** ready→running, work, running→review_required + queue update. Clean transitions, easy audit trail. Worth codifying in next executor-prompt revision.
-4. **Runtime ~5 min vs estimated 20 min.** First brief was tighter than predicted. May need to set tighter estimates for similar mop-up briefs.
-5. **Two minor wording observations during PK review accepted as-is** — (a) `f.video_analysis.key_hooks` claimed producer "video-analysis worker extracted..." — real per A13 closure but goes slightly beyond pre-flight evidence; (b) `c.client_brand_asset.platform_scope` had shape speculation hedged with "no observed sample available to confirm" — useful future-reader hint. Neither was safety-impacting.
-
-### Related decisions
-
-- **D182** — v1 spec lock. D183 is the first-run validation + deferral lock that complements it.
-- **D181** — audit loop architecture. D183 reinforces D181's pattern of "run manually for N cycles before automating".
-- **Lesson #38** — count-delta verification beats time-window. The first run's DO block applied this directly.
-
----
-
-## D184 — Audit Workflow Automation Slicing (D181 + D182 Composition)
-**Date:** 30 April 2026 morning | **Status:** ✅ LOCKED — Slice 2 designated as next D182 Tier 0 brief; Slice 3 waits 5+ cycles per D181 standing rule.
-
-### The problem this decides
-
-D181 (audit loop architecture) introduced three slices:
-
-- **Slice 1** (recurrence prevention) — LIVE since 28 Apr. PENDING_DOCUMENTATION sentinel + 14-day grace + DEFERRED escape hatch + automated naming-discipline detector.
-- **Slice 2** (snapshot generation automation) — currently manual. ~30k char snapshot is generated by chat session running queries against `k.*` + targeted `f.*`/`m.*`, written to `docs/audit/snapshots/{YYYY-MM-DD}.md`.
-- **Slice 3** (auditor pass automation) — ChatGPT reads snapshot + role definition, writes findings. Currently manual.
-
-D181 set a standing rule: don't automate the auditor (Slice 3) until 5+ manual cycles have established that findings format is stable, judgment patterns are repeatable, and failure modes are understood.
-
-The question this decision answers: now that D182 (non-blocking execution) has earned its first run, how do D181 and D182 compose? Specifically: which audit slice gets automated next, via D182 brief, or via something else?
-
-### The decision
-
-**Slice 2 (snapshot generation) is authored next as a D182 Tier 0 brief. Slice 3 (auditor pass) waits per D181's 5+ cycles rule.**
-
-The Slice 2 brief is the second D182 test — different shape from the first (markdown generation + DB read, no DB writes, no migration drafting). If it runs clean to 5/5 thresholds, D182 is validated across two brief shapes. If it surfaces real questions, those become the signal that Phase 4c (Q&A flow per D183) has earned its build.
-
-### Why Slice 2 next, Slice 3 later
-
-Three reasons:
-
-1. **Slice 2 is mechanical. Slice 3 is judgment-heavy.** Snapshot generation is read-only SQL queries against `k.*` views, plus markdown formatting. Tier 0 (auto-commit, no DB writes). Slice 3 is auditor *judgment*: deciding what's a finding, what severity, what evidence to cite. That's domain reasoning the system has only practiced once. Five practice runs first, then automate.
-
-2. **Slice 2 is the natural second D182 test.** First test was migration drafting (Tier 1). Slice 2 brief is markdown generation (Tier 0). Two different shapes validates whether D182's primitives generalise. If Slice 2 hits 5/5, that's stronger signal than two Tier 1 runs in a row.
-
-3. **Slice 3 readiness is also Q&A readiness.** Automating the auditor requires deciding whether ambiguous patterns are findings or noise. That's exactly the kind of decision Phase 4c (API answer step) was designed for. Building Slice 3 = building Phase 4c. D183 says wait for evidence; same principle applies here.
+- **Not passed.** Criteria designed for Day-14 evaluation were not scored. Claiming pass would overclaim against the brief's own §11 criteria.
+- **Not failed.** Window did not run to completion. Failure verdict implies the criteria were tested and not met — they were not tested.
+- **Not invalid.** The instrument worked. emit_error rates negligible. Closure was operator-driven reframing, not instrument failure.
+- **Not a new enum value (e.g. superseded).** Adding a new CHECK constraint value would require migration + downstream cascade review. The brief's existing `archived` enum value covers "closed, terminal, neutral" cases — the most honest fit available without schema change.
 
 ### What this requires
 
-- **Next session:** PK + chat author the Slice 2 brief at `docs/briefs/audit-snapshot-cycle-2.md` with v1 frontmatter (Tier 0, allowed_paths includes `docs/audit/snapshots/**` and `docs/runtime/runs/**`, idempotency_check verifies file at target date doesn't exist).
-- Brief includes pre-flight findings (sections to include, query templates per section, example output from 28 Apr cycle 1 snapshot).
-- Cowork executes via paste-in prompt, produces `docs/audit/snapshots/{YYYY-MM-DD}.md`.
-- PK reviews + commits per Tier 0 auto-commit rule (or per current D182 manual approval pattern — PK to choose).
-- ChatGPT then reads the auto-generated snapshot + cycle 1 closure context + role definition + writes cycle 2 findings to `docs/audit/runs/{YYYY-MM-DD}-data.md`. This step stays manual per D181.
-- After 5+ cycles of manual Slice 3 (i.e. ~5 weeks at weekly cadence, or longer if findings volume justifies), re-evaluate Slice 3 automation.
-
-### What this does NOT decide
-
-- The exact Slice 2 brief contents (locked when authored next session).
-- Whether snapshot cadence changes from weekly to something else (kept as default Tuesday cadence per D181).
-- Whether new audit roles (Security, Operations, Financial, Compliance) get added — D181 standing rule says wait for Data role to run 5+ cycles first.
-- Whether D182 brief authoring itself becomes automated (i.e. Cowork writes briefs for Cowork to execute) — explicitly out of scope; PK authors briefs.
-
-### Standing rule reminder for future audit roles
-
-When a future audit role (Security, Operations, etc.) is added per D181, it follows the same slicing:
-
-- Slice 1 (recurrence prevention) — designed at role-spec time.
-- Slice 2 (snapshot generation) — D182 Tier 0 brief if scoped, manual otherwise.
-- Slice 3 (auditor pass) — manual for 5+ cycles, then re-evaluate automation.
-
-### Related decisions
-
-- **D181** — audit loop architecture. D184 operationalises Slice 2/3 sequencing.
-- **D182** — non-blocking execution model. D184 says Slice 2 is the natural second test brief.
-- **D183** — build-when-evidence-demands principle. D184 applies it to Slice 3 deferral.
-
----
-
-## D185 — RESERVED for `structured_red_team_review_v1` ratification
-**Date:** TBD — gated on R10 (Phase C cutover live pilot) outcome | **Status:** 🔲 RESERVED — placeholder only. Ratification (or rejection) decision held until pilot evidence arrives.
-
-### Reservation rationale
-
-The `structured_red_team_review_v1` proposal at `docs/runtime/structured_red_team_review_v1_proposal.md` proposes a standing rule: every Tier 2+ brief gets a structured red-team pass (ChatGPT in adversarial role) before chat applies. The proposal is currently at PILOT DECISION (committed 30 Apr); R10 in `docs/00_action_list.md` schedules the live pilot during Phase C cutover.
-
-D185 is reserved for the formal ratification call once R10 produces evidence. Three outcomes possible:
-
-- **Useful** — R10 surfaces real risk that a vanilla brief review missed. Lock as standing rule under D185.
-- **Noisy** — R10 produces redundant or speculative concerns relative to the cost (~30 min added to each Phase C cutover review). Reduce scope or kill under D185.
-- **Mixed** — R10 useful for some brief shapes, not others. Reduce scope to specific shapes (e.g. Tier 2+ only, or specific risk-tier categories) under D185.
-
-### Why reserve a number now
-
-Reserving D185 prevents accidental reuse of the number for an unrelated decision before R10 lands. The proposal is already committed; tying a placeholder decision number to it ensures the audit trail is clean when ratification arrives.
+- Postmortem at `docs/postmortems/cc-0014-closing-note.md` (this session).
+- Action_list and sync_state rebuilt to reflect lifted hold-stance (this session, v2.77).
+- Memory edits to remove cc-0014-window references (this session).
+- Future cc-NNNN that depend on the register cite this decision rather than re-relitigating the experimental framing.
+- The register's standing diagnostic role is reflected in operational rituals (pool review session; friction-driven sprint planning).
 
 ### Sunset clause
 
-D185 placeholder expires if R10 hasn't completed by **31 May 2026** — at which point the reservation lapses, the proposal moves to F07 (frozen / deferred) status, and D185 becomes available for reassignment to the next decision needing a number.
-
-### What R10 requires (for reference)
-
-- Phase C cutover brief drafted (chat + PK).
-- ChatGPT runs structured red-team review pass per proposal § 3 (concrete role spec + checklist).
-- Outcome captured in run state file at `docs/runtime/runs/phase-c-cutover-{stage}-{timestamp}.md`.
-- D185 ratification commits to this file with the specific outcome.
+None. This is a structural reframing, not a time-bounded constraint. If at any future point the register accumulates evidence that it is not earning its operational keep (e.g. cases sit untriaged for months, signal sources never produce after diagnostic attempts, operator stops using the FAB), that becomes its own decision needing its own number — not a reversal of D-IOL-001.
 
 ### Related decisions
 
-- **Proposal** — `docs/runtime/structured_red_team_review_v1_proposal.md` (PILOT DECISION committed 30 Apr).
-- **R10 in action_list** — Phase C cutover live pilot, gated on Phase B Gate B exit.
-- **T04 in action_list** — Sun 3 / Mon 4 May calibration session, 90 min hard cap; informs but does not gate R10.
-
----
-
-## D186 — Closure-First Discipline (Find/Fix Imbalance Constraint)
-**Date:** 2 May 2026 late evening | **Status:** ✅ LOCKED — applies from this session forward; reviewed against evidence at sunset 30 June 2026.
-
-### The problem this decides
-
-Across the 30 Apr–2 May window, ICE accumulated a structural imbalance: the rate at which audit cycles, nightly health checks, and ChatGPT reviews surface findings outpaces the rate at which those findings get closed. F-PUB-002, F-PUB-004, F-PUB-005, B-INV-LinkedIn-Queue-Stall, the cycling-30 starvation, the cron-success-but-zero-business-output pattern (Lesson #46) — all surfaced inside roughly 72 hours, and most were still open at session start tonight. PK named this directly: *"the existing pipeline has issues which we keep discovering, how do we close those... I want to focus on building."*
-
-The 2 May late-evening session attempted to author this decision and conceded twice in writing before running out of session-tail time. ChatGPT's review of the Slice 3 build proposal returned the same shape of pushback: *"You don't need more discovery yet. You need closure discipline + one minimal audit prototype."* The find-vs-fix imbalance was diagnosed three independent times in 48 hours; codifying the constraint is overdue.
-
-The question this decision answers: what's the structural shape of a constraint that prevents new finding-generation infrastructure from being built while existing findings sit open?
-
-### The decision
-
-**Closure work is allocated a hard time budget that takes precedence over new finding-generation infrastructure. The constraint has three rules:**
-
-1. **Open-finding inventory is bounded.** At any time, no more than **20 open findings + investigation threads** total may sit in `docs/audit/open_findings.md` plus the action_list `🟡 Active` and `📌 Backlog` sections combined (P0 + P1 items only — P2 and below are out of scope of this constraint). Discovery surfaces a 21st item → next session must close one before authoring/building anything new.
-
-2. **Fix-time minimum.** **At least 4 hours per ICE-active week** must be spent on closure work — applying queued migrations, executing planned UPDATEs, deploying patched EFs, walking T09-style safe-to-resume checklists. Sessions that are pure brief-authoring or pure exploratory build do not count. The 4h is a *floor not a ceiling*; the upper bound is implicit in standard session-allocation discipline.
-
-3. **Automation pause trigger.** **If fix-time falls behind by 2 weeks** (i.e. less than 8 cumulative closure hours across the trailing 14 days while ICE is active), no new automation infrastructure may be authored or built — including new D182 brief shapes, new audit-loop slices, new MCP tools, new monitoring layers — until closure catches up. Existing infrastructure runs as-is. Bug fixes to existing infrastructure are allowed (they're closure work). Doc-only spec authoring is allowed (it's not a build). Net new build is paused.
-
-### What this requires
-
-- **Per-session check at session start.** Read `docs/00_action_list.md` open-finding count + sum the trailing-14-day closure hours from sync_state session logs. If either constraint is breached, surface to PK before any new work begins.
-- **A new heading in sync_state**: each session-end reconciliation lists "Closure hours this session: N.NN h" alongside the standard mutations / commits / standing rule sections. Closure hours = wall-clock time spent on items that closed an open finding or shipped a fix. Estimation, not stopwatch precision; granularity 0.25h.
-- **The action_list bears the count.** Top section gains: `Open findings + investigations: N / 20 (P0+P1 only)` and `Trailing-14-day closure hours: N.N / 8.0`. Updated at every action_list version bump.
-- **The 21st-finding rule applies symmetrically.** Discovery during work is fine — the rule is about authorship/build escalation, not observation. Capturing a new finding in `docs/audit/open_findings.md` does not violate the rule; what violates the rule is starting net new infrastructure work after the count crosses 20.
-
-### Why these specific numbers
-
-- **20 open findings.** Tonight's count is roughly 14 active P0+P1 items across action_list + audit findings. 20 is a 40% headroom over current state — enough to absorb normal discovery without forcing artificial closures, tight enough to force prioritisation when a discovery wave hits.
-- **4h/week closure floor.** Average ICE-active week is 6-8 sessions of 1-3h each = 12-20 wall-clock hours. 4h closure floor is 20-30% of that — substantial but not dominant. Allows building to remain the primary activity while preventing the ratio drifting to zero (current observed ratio is well below 20%).
-- **2-week pause trigger.** 1 week is too noisy (a single deep-dive session on one finding can swallow the whole week's closure budget legitimately). 2 weeks gives the system room to absorb week-to-week variance while still firing the automation-pause before backlog explodes. 4 weeks would be too late — at that scale the find/fix imbalance has already calcified.
-
-### What this does NOT decide
-
-- **Which findings get closed first.** Priority within the closure budget remains a session-by-session call. The constraint is a quota, not a schedule.
-- **Whether existing automation gets rolled back.** Already-shipped infrastructure (D182 framework, ChatGPT Review MCP, audit slices 1+2, nightly-health-check) keeps running. The pause applies only to *new* authorship and build, not to maintenance of what's running.
-- **Whether closure work goes through ChatGPT review.** It can if it's a production patch (per D-01 standing rule), it doesn't have to if it's pure execution of an already-decided UPDATE. D-01 governs the patch decision, D186 governs the time allocation.
-- **Reserved decision number D185.** Independent. D185 is gated on R10 outcome; D186 applies regardless of D185's eventual ratification call.
-
-### Sunset clause
-
-**30 June 2026** — review the constraint against ~8 weeks of evidence. Three outcomes possible:
-- **Working** — find/fix ratio stabilised; pause trigger fired 0-1 times. Lock as standing rule.
-- **Too tight** — closure floor or 20-finding cap repeatedly forces deferral of legitimate build work. Loosen specific numbers.
-- **Too loose** — backlog continued to grow despite the constraint. Tighten pause trigger to 1-week or reduce open-finding cap.
-
-### What this does NOT change
-
-- D-01 standing rule (ChatGPT cross-check before production deploys) — unchanged.
-- D170 MCP-applied migration pattern — unchanged.
-- D181 audit loop architecture — unchanged. Slice 1+2 keep running.
-- D182 non-blocking execution model — unchanged. The pause trigger affects authoring of *new* brief shapes, not execution of existing ones.
-- D183 build-when-evidence-demands principle — reinforced. D186 is the time-allocation expression of the same principle.
-- D184 audit workflow slicing — Slice 3 deferral now has a second gate (closure trigger) on top of the existing 5+-cycles trigger from D181.
-
-### Related decisions
-
-- **D181** — three-layer audit loop. D186 governs the time allocation of all three layers.
-- **D183** — Phase 4b/4c deferral. D186 generalises the deferral logic to all new automation.
-- **D184** — Slice 3 deferral. D186 makes the deferral structural, not just calendar-bound.
-- **B36 (Slice 3 v0 spec authoring)** — gated on D186 + B31 + LinkedIn P1 closure + 1 month of nightly-health-check observation. D186 is the closure-budget half of that gate.
-- **Lesson #46** — *verify the actual live state before patching the wrong layer* — the discovery half of the loop. D186 governs the closure half.
+- **D-186** — closure-first discipline. The register's pooled cases now feed D-186's 20-finding cap.
+- **D-IOL-001 supersedes the cc-0014 Day-19 verdict commitment.** The brief's §14 commitments map onto follow-up work (cc-0015 / cc-0016 / health_check diagnostic / recon cadence change), but the verdict ritual itself is retired.
+- **Brief cc-0014** — frozen at v1.1 commit `34305092f4`. Postmortem at `docs/postmortems/cc-0014-closing-note.md`.
 
 ---
 
@@ -388,8 +179,8 @@ The question this decision answers: what's the structural shape of a constraint 
 | **D166 — Router sequencing reversal** | ✅ APPLIED 22 Apr evening — superseded by slot-driven build (D170+) | — |
 | **D167 — Router MVP shadow infrastructure** | ✅ APPLIED 22 Apr evening — preserved as shadow infrastructure; slot-driven Phase D decommissions | Phase D Stage 19 |
 | **D168 — ID004 sentinel** | 🔲 Backlog A-item | Spec defined; implementation deferred |
-| **D170 — MCP-applied migrations pattern** | ✅ LOCKED through Phase A+B7-9 + concrete-pipeline track; applies for all 19 stages; reinforced by D182 first run (PK applied via Supabase MCP). **Full prose entry above.** | — |
-| **D171 — Pre-flight schema verification per stage** | ✅ LOCKED; sharpened by Lesson #32 (query every directly-touched table); reinforced by D182 brief pre-flight discipline | — |
+| **D170 — MCP-applied migrations pattern** | ✅ LOCKED through Phase A+B7-9 + concrete-pipeline track; applies for all 19 stages; reinforced by D182 first run | — |
+| **D171 — Pre-flight schema verification per stage** | ✅ LOCKED; sharpened by Lesson #32; reinforced by D182 brief pre-flight discipline | — |
 | **D172 — Architectural revision authority** | ✅ LOCKED; R-A through R-E applied in Phase A | — |
 | **D173 — Two-trigger chain pattern** | ✅ APPLIED Stage 3 | — |
 | **D174 — Invegent thin-pool operational signal** | ✅ Observed; informs Phase E priority | Phase E content work |
@@ -398,39 +189,43 @@ The question this decision answers: what's the structural shape of a constraint 
 | **D177 — fitness_score_max scale 0..100** | ✅ APPLIED Stage 7.032 | Apply at every fitness consumer |
 | **D178 — ai_job.slot_id FK = ON DELETE CASCADE** | ✅ APPLIED Stage 9.039 | — |
 | **D179 — Stage 10/11 ordering: Option B** | ✅ LOCKED for Stage 10 brief | Stage 10 next session |
-| **D180 — Discovery decides assignment, intelligence decides retention** | ✅ APPLIED via migration 006 trigger; backfill ran for 8 CFW seeds | Apply to any future discovery channel (YouTube channel discovery, email-newsletter discovery, etc.) |
-| **D181 — Audit loop as three-layer architecture** | ✅ BUILT — first cycle complete same day; slice 1 prevention live; D184 sequences Slice 2/3. **Full prose entry above.** | Apply to future audit roles (Security, Operations, Financial, Compliance) when added |
-| **D182 — Non-blocking execution model (five-rule system)** | ✅ LOCKED — v1 spec at `docs/runtime/automation_v1_spec.md`; Phase 1+2+3+4a+5 done; Phase 4b/4c DEFERRED per D183; sunset review 12 May 2026. **Full prose entry above.** | — |
-| **D183 — D182 v1 first-run learnings + Phase 4b/4c deferral** | ✅ LOCKED 30 Apr morning — build-when-evidence-demands principle | Build 4b when a brief demands cloud-side validation; build 4c when 2–3 briefs surface real questions |
-| **D184 — Audit workflow automation slicing** | ✅ LOCKED 30 Apr morning — Slice 2 next as D182 Tier 0 brief; Slice 3 waits 5+ cycles per D181. Slice 2 first run 30 Apr evening — 5/5 thresholds, second-shape D182 validation confirmed | Slice 2 brief authored next session; Slice 3 re-evaluation after cycle 5 |
-| **D185 — `structured_red_team_review_v1` ratification** | 🔲 RESERVED — gated on R10 (Phase C cutover live pilot). Sunset 31 May 2026 if R10 hasn't completed | R10 outcome |
-| **D186 — Closure-First Discipline (find/fix imbalance constraint)** | ✅ LOCKED 2 May late evening — 20-finding cap on P0+P1 + 4h/week closure floor + 2-week pause trigger on new automation. Sunset 30 June 2026. **Full prose entry above.** | Per-session check at session start; closure-hours line per session-end reconciliation; trailing-14-day total tracked in action_list header |
+| **D180 — Discovery decides assignment, intelligence decides retention** | ✅ APPLIED via migration 006 trigger; backfill ran for 8 CFW seeds | Apply to any future discovery channel |
+| **D181 — Audit loop as three-layer architecture** | ✅ BUILT — first cycle complete same day; slice 1 prevention live; D184 sequences Slice 2/3 | Apply to future audit roles when added |
+| **D182 — Non-blocking execution model (five-rule system)** | ✅ LOCKED — v1 spec at `docs/runtime/automation_v1_spec.md` | — |
+| **D183 — D182 v1 first-run learnings + Phase 4b/4c deferral** | ✅ LOCKED 30 Apr morning | — |
+| **D184 — Audit workflow automation slicing** | ✅ LOCKED 30 Apr morning | — |
+| **D185 — `structured_red_team_review_v1` ratification** | 🔲 RESERVED — gated on R10. Sunset 31 May 2026 if R10 hasn't completed | R10 outcome |
+| **D186 — Closure-First Discipline (find/fix imbalance constraint)** | ✅ LOCKED 2 May late evening — 20-finding cap on P0+P1 + 4h/week closure floor + 2-week pause trigger on new automation. Sunset 30 June 2026 | Per-session check at session start |
+| **D-IOL-001 — Friction Register as Standing Infrastructure** | ✅ LOCKED 18 May 2026 morning — cc-0014 reframed from experiment to standing infrastructure; IOL hold-stance lifted; verdict ritual retired. **Full prose entry above.** | None — structural reframing, no sunset |
 | **Slot-driven Phase A** | ✅ COMPLETE 26 Apr morning | — |
 | **Slot-driven Phase B Stages 7-9** | ✅ COMPLETE 26 Apr afternoon–evening | — |
 | **Slot-driven Phase B Stages 10-12** | ✅ COMPLETE 27 Apr | — |
 | **Gate B observation** | 🔄 IN PROGRESS — Day 1 healthy. Day 2 obs slipped 29 Apr; due 30 Apr. Earliest exit Sat 2 May | 5-7 days post-Stage 12 |
 | **Concrete-pipeline track** | 🔄 IN PROGRESS — Discovery Stage 1.1 ✅, Publisher Stage 2.1 ✅, Brief A ✅, Brief 2 ✅. Stages 1.2-1.5 + 2.2-2.5 pending | Parallel to Gate B |
-| **F-002 closure** | ✅ CLOSED-ACTION-TAKEN — P1 + P2 + P3 all applied 28 Apr same day. Phase D ARRAY mop-up applied 29 Apr via D182 first brief. c+f coverage 0% → 22.1% (149/674). 6 LOW rows deferred to followups. | — |
+| **F-002 closure** | ✅ CLOSED-ACTION-TAKEN — P1 + P2 + P3 all applied 28 Apr same day. Phase D ARRAY mop-up applied 29 Apr via D182 first brief | — |
 | **Phase D ARRAY mop-up** | ✅ CLOSED-ACTION-TAKEN 29 Apr — first D182 brief, applied via Supabase MCP, 5/5 thresholds | — |
-| **6 LOW-row joint resolution session** | 🔲 Backlog | PK + chat session, ~30 min, likely synchronous (not Cowork) per D184 reasoning |
-| **Audit loop slice 2 (snapshot automation)** | ✅ FIRST RUN 30 Apr evening — 5/5 thresholds, brief refreshed at same closure commit. Brief at `docs/briefs/audit-slice-2-snapshot-generation.md` is now reusable daily | — |
-| **Audit loop slice 3 (API auditor pass via Cowork+OpenAI)** | 🔲 Deferred per D184 + D186 | After 5+ manual cycles of Slice 3 AND closure-budget headroom per D186 |
-| **B31 — Reconstruct auto-approver v1.6.0 EF source** | ✅ CLOSED-ACTION-TAKEN 2 May late evening — deployed via Supabase MCP, version 53 LIVE. Run state at `docs/runtime/runs/2026-05-02-b31-auto-approver-v160-deploy.md` | — |
-| **B32 — Cooldown design decision** | ✅ CLOSED 2 May late evening — Path 3 chosen: Option B EF cooldown defence-in-depth, 4h window via `draft_format.auto_review.checked_at` JSONB | — |
+| **6 LOW-row joint resolution session** | 🔲 Backlog | PK + chat session, ~30 min, likely synchronous |
+| **Audit loop slice 2 (snapshot automation)** | ✅ FIRST RUN 30 Apr evening — 5/5 thresholds | — |
+| **Audit loop slice 3 (API auditor pass via Cowork+OpenAI)** | 🔲 Deferred per D184 + D186 | After 5+ manual cycles AND closure-budget headroom |
+| **B31 — Reconstruct auto-approver v1.6.0 EF source** | ✅ CLOSED-ACTION-TAKEN 2 May late evening | — |
+| **B32 — Cooldown design decision** | ✅ CLOSED 2 May late evening — Path 3 chosen | — |
 | **T08 — EF v1.6.0 deploy** | ✅ CLOSED-ACTION-TAKEN 2 May late evening via B31 | — |
 | **F04 — post_render_log column-purposes migration** | 🔲 Pending chat apply per D170 | Chat apply at next session |
 | **Slot-driven Phase C — Cutover (Stages 12-18)** | 🔲 After Gate B exit | Gate B exit |
 | **Slot-driven Phase D Stage 19 decommission R6** | 🔲 After Phase C | All client-platforms cut over |
 | **Slot-driven Phase E — Evergreen seeding** | 🔲 Parallel | Prioritise Invegent verticals per D174 |
-| **Overload B of `create_feed_source_rss` cleanup** | 🔲 Backlog | Drop or fix in follow-up; latent NOT NULL bug uncovered by D180 work |
+| **Overload B of `create_feed_source_rss` cleanup** | 🔲 Backlog | Drop or fix in follow-up |
 | **Feeds-tab URL clickability follow-up** | ✅ SHIPPED 28 Apr afternoon (Brief 2) | — |
+| **cc-0014 Friction Register Capture Experiment** | ✅ CLOSED-ARCHIVED 18 May 2026 — postmortem at `docs/postmortems/cc-0014-closing-note.md`; reframed via D-IOL-001 | — |
+| **cc-0015 Friction Pool View** | 🟢 AUTHORED, PENDING_EXECUTION — unblocked per D-IOL-001 | Normal queue priority |
+| **cc-0016 Friction Capture Evidence** | 🟢 AUTHORED, PENDING_EXECUTION — unblocked per D-IOL-001, parallel-executable with cc-0015 | Normal queue priority |
 | Inbox anomaly monitor | 🔲 Post-sprint | Separate brief TBW |
 | Phase 2.1 — Insights-worker | 🔲 Next major build | Meta Standard Access |
 | Phase 2.6 — Proof dashboard | 🔲 After Phase 2.1 | Engagement data |
 | Solicitor engagement | 🔲 Parked per D147 + D156 refinement | First pilot revenue OR second pilot signed |
 | Meta App Review | ⏳ In Review | Contact dev support if stuck after 27 Apr |
 | CFW + Invegent content prompts | 🔲 A11b pre-sales | PK prompt-writing session Fri 24 Apr |
-| TBC subscription costs | 🔲 A6 pre-sales | PK said 28 Apr morning: deferred until product evaluation + outside conversations complete |
+| TBC subscription costs | 🔲 A6 pre-sales | PK deferred until product evaluation complete |
 | CFW profession fix | 🔲 Immediate | Change in Profile |
 | Auto-approver target pass rate | 🔲 C1 | Single PK decision |
 | Monitoring items A20–A22 (D155 follow-on) | 🔲 Sprint items | Sprint priority per D162 |
@@ -444,7 +239,9 @@ The question this decision answers: what's the structural shape of a constraint 
 | **M8 Gate 4 — 24h regression check** | 🔲 23 Apr | Re-run regression query against runs > M8 merge timestamp |
 | **Bundler dedup weekly regression check** | 🔲 Ongoing | Weekly Mon — query in D164 |
 | **`instagram-publisher` exec_sql + raw interpolation** | 🔲 Folds into slot-driven Phase B Stage 11 ai-worker refactor | Stage 11 |
-| **PP Schedule Facebook 6/5 over-tier-limit** | 🔲 Sprint item TBD | Surfaced in M5 verification — investigate save-side validation |
-| **Stage 12+ refinement: try_urgent_breaking_fills per-platform variance** | 🔲 After Gate B | Currently picks same top breaking item across all platforms for a client; fill function's LD15 dedup masks it. Refine to pick different item per platform within client. |
-| **Branch sweep — invegent-content-engine + invegent-dashboard + invegent-portal (10 stale branches)** | 🔲 Backlog | content-engine 4, dashboard 5, portal 1; cleanup with `git push origin --delete` after each branch verified merged |
-| **Phase B filename hygiene** | 🔲 Backlog | Rename `supabase/migrations/20260428163000_audit_f002_p2_column_purposes_corrected.sql` to match DB version `20260428064115` per Lesson #36 |
+| **PP Schedule Facebook 6/5 over-tier-limit** | 🔲 Sprint item TBD | Surfaced in M5 verification |
+| **Stage 12+ refinement: try_urgent_breaking_fills per-platform variance** | 🔲 After Gate B | — |
+| **Branch sweep — invegent-content-engine + invegent-dashboard + invegent-portal (10 stale branches)** | 🔲 Backlog | content-engine 4, dashboard 5, portal 1 |
+| **Phase B filename hygiene** | 🔲 Backlog | Rename per Lesson #36 |
+
+*Note (2026-05-18): Full prose for D181–D186 preserved in commit history. This compaction is editorial only — content unchanged for prior decisions; only D-IOL-001 is new.*
