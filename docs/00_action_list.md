@@ -4,9 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-16 Sydney (**v2.76 — cc-0014 FULLY CLOSED + 14-DAY WINDOW OPEN + FAB LIVE ON PRODUCTION + cc-0015 + cc-0016 DRAFTED.** Stage E close executed via migration `cc_0014_e_close_experiment_run_start`. PK pre-execution review caught 3 verification defects pre-fire (trigger probe structurally wrong; probe isolation broken; Day-19 wording confusion). 4 post-INSERT verifications PASS. **14-day window OPEN: 2026-05-15 06:20 UTC → 2026-05-29 06:20 UTC. Day-19 verdict review = 2026-05-29 Sydney.** **FAB live on production** via Vercel env var DASHBOARD_FRICTION_FAB_ENABLED=true (Production + Preview). 2 mid-execution defects caught + recovered (wrong project ID cited; uppercase value silent failure). Live FAB smoke test + triage end-to-end PASS — event `fbd1b12d`, auto-promoted case `b7369dc9`, triaged to acknowledged + quality_flag=true + action_decision=track. Emitter coverage diagnostic refuted initial chat diagnosis. **cc-0015 + cc-0016 briefs drafted PENDING_EXECUTION** (commits 9a5dc155 + f35f8ea4). **Memory edit cycle 30/30 → 19/30** (11 free slots; 1 mid-cycle unauthorised remove identified + recovered). **0 D-01 fires** per brief §13. T-MCP-02 cum unchanged at **66**. State-capture exceptions cum unchanged at **1**. **6 NEW L-candidates v2.76 (a-f)**. **L58 PROMOTED TO BASELINE**. 3-of-4-way sync via 3 single-file chat MCP commits (dashboard PHASES **29th consecutive deferral** per IOL hold-stance). **Next major**: in-window operational FAB use (target ≥3 manual events); Cowork output pipeline recovery; mid-window check-in ~2026-05-22; Day-19 verdict 2026-05-29 Sydney.)
->
-> **Mid-session reconciliation 2026-05-17 Sydney (not a version bump):** docs-only patches in this file + `docs/00_sync_state.md` to correct stale framings. (1) Cowork blocker correctly diagnosed — not OpenClaw, brief was `status: review_required`; commit `9215de77` reset to v3.0 `status: ready`; V-C3 still PENDING. (2) Close-the-loop safe buckets complete: 6 rows resolved (2 v2.72 carries + 4 cc-NNNN family); 22 escalated remain (21 historical + 1 T-MCP-05 meta); full sweep NOT complete. (3) Manual FAB events: 2/3 logged; one more needed. (4) cc-0015 + cc-0016 still BLOCKED until Day-19 verdict.
+> Last updated: 2026-05-18 Sydney (**v2.77 — cc-0014 CLOSED-ARCHIVED + RECON CRON DAILY + IOL HOLD-STANCE LIFTED.** Closed 11 days before scheduled Day-19 verdict by PK reframing decision. Migration `cc_0014_close_archived` applied (`friction.experiment_run.status` running→archived; notes 2001 chars verbatim rationale; `criteria_snapshot` preserved immutable as audit trail). Migration `cc_0014_recon_daily_cadence` applied (cron 85 schedule `30 17 * * 0` → `30 17 * * *` daily; jobname stays cosmetic `cadence_drift_checker_weekly` — rename blocked by permissions). **D-IOL-001 logged** in `docs/06_decisions.md`: friction register reframed from experiment requiring verdict to standing operational infrastructure. **IOL hold-stance LIFTED**: cc-0015 + cc-0016 + publisher recovery sequence + dashboard PHASES + brief authoring all unblocked. Postmortem authored per brief §14 commitment at `docs/postmortems/cc-0014-closing-note.md`. **2 D-01 fires this session** (review_id `6a90cacf` close-as-archived 3 type-(c) generic + review_id `94bd6835` recon daily 1 type-(c) generic; PK explicit approval stood per L62 in both cases). Yesterday's review_id `3ff74643` (close-as-passed proposal) returned 4 type-(b) genuine pushbacks correctly identifying overclaim — pushback satisfied by revised plan to archived rather than passed. **T-MCP-02 cum: 69** (+3 across v2.77 cycle). **State-capture exceptions cum unchanged at 1** — type-(c) PK approval is not override of type-(b). **L62 baseline-eligible** (3+ exercises cumulative). **No new L-candidates this session.** **Atomic 4-file push** commit `d6bf9e4a` (postmortem + session note + decisions D-IOL-001 + sync_state v2.77). This file (`docs/00_action_list.md` v2.77 rebuild) is a follow-up commit. Dashboard PHASES **30th consecutive deferral** — now eligible for next dashboard session per D-IOL-001. **Day-19 calendar item retired**; mid-window check-in retired.)
 
 ---
 
@@ -19,20 +17,17 @@
 4. Asks PK about Personal businesses
 5. Surfaces Time-bound items due today/tomorrow
 
-**Standing rules unchanged from v2.75.** D-01 + D-186 + D-YT-OAUTH-1 + D-PREV-16 + Lesson #62 (L46) + #68 + v2.46/47/48/50/55/56/57/58 + L33–L65 + L-v2.76-a through L-v2.76-f carried.
+**Standing rules unchanged from v2.76.** D-01 + D-186 + D-YT-OAUTH-1 + D-PREV-16 + Lesson #62 (L46) + #68 + v2.46/47/48/50/55/56/57/58 + L33–L65 + L-v2.76-a through L-v2.76-f carried. **D-IOL-001 NEW v2.77.**
 
-**v2.76 ADDITIONS:**
-- **cc-0014 FULLY CLOSED.** All stages A-E applied through window-open INSERT. Migration `cc_0014_e_close_experiment_run_start` applied via apply_migration MCP. friction.experiment_run row live with status=running, starts_at 2026-05-15 06:20 UTC, ends_at 2026-05-29 06:20 UTC, criteria_snapshot brief §10 verbatim immutable.
-- **FAB live on production.** Vercel env var DASHBOARD_FRICTION_FAB_ENABLED=true set with Production + Preview scope. Deployment `dpl_9Geda1dbh...` serving dashboard.invegent.com. Live FAB smoke test + triage end-to-end PASS.
-- **cc-0015 friction-pool-view brief drafted PENDING_EXECUTION.** Commit `9a5dc155`. 7 stages including dashboard_ui category split + Stage F full surface copy. Blocked-on cc-0014 Day-19 verdict.
-- **cc-0016 friction-capture-evidence brief drafted PENDING_EXECUTION.** Commit `f35f8ea4`. 5 stages including Supabase Storage bucket + 18-month auto-delete. Blocked-on cc-0014 Day-19 verdict. Parallel-executable with cc-0015.
-- **6 NEW L-candidates this session**: L-v2.76-a through L-v2.76-f.
-- **L58 PROMOTED TO BASELINE v2.76**: 3 consecutive preventive applications within consistent context with zero failures. Per-file single-commit strategy now default for any multi-file sync.
-- **L41 + L45 strengthened to 5+ exercises**.
-- **L48 re-exercised** (1 atomic migration).
-- **0 D-01 fires this session** per brief §13. T-MCP-02 cum stays at 66. State-capture exceptions stay at 1 cumulative.
-- **Memory edit cycle executed**: 30/30 → 19/30 (11 free slots headroom). 11 approved removals + 2 in-place updates + 1 unauthorised remove identified mid-cycle and recovered to authorised state.
-- **Sync debt resolved this commit**: 1 new session file + sync_state v2.75 → v2.76 + action_list v2.75 → v2.76. **3 single-file chat MCP commits this session** per L58 (now baseline). 3-of-4-way sync (docs + memory updated; dashboard PHASES intentionally deferred — **29th consecutive** — per IOL hold-stance pending Day-19 verdict 2026-05-29).
+**v2.77 ADDITIONS:**
+- **cc-0014 CLOSED-ARCHIVED.** Closed Day 4 of 14-day window by PK reframing decision. `friction.experiment_run.status` = `archived` (terminal neutral state). `criteria_snapshot` preserved immutable on archived row as audit trail. Postmortem at `docs/postmortems/cc-0014-closing-note.md`.
+- **Reconciliation cron 85 promoted weekly → daily.** Migration `cc_0014_recon_daily_cadence`. Schedule now `30 17 * * *`. First daily fire 2026-05-19 03:30 AEST.
+- **D-IOL-001 logged in decisions.md.** Friction register = standing operational infrastructure, not experiment. No sunset (structural reframing).
+- **IOL hold-stance LIFTED.** cc-0015 + cc-0016 + publisher recovery + dashboard PHASES + brief authoring all unblocked.
+- **3 D-01 fires across v2.77 cycle** (1 yesterday close-as-passed + 2 today close-as-archived + recon daily). T-MCP-02 cum 66→69. State-capture exceptions unchanged at cumulative 1.
+- **L62 re-exercised 2× this session** (3+ cumulative; baseline-eligible).
+- **No new L-candidates this session.**
+- **Atomic 4-file push** (postmortem + session note + decisions + sync_state) commit `d6bf9e4a`. This action_list update is the v2.77 follow-up commit.
 
 ---
 
@@ -40,140 +35,128 @@
 
 | Metric | Current | Limit | Status |
 |---|---|---|---|
-| Open findings + investigations (P0+P1) | ~3 (Cowork output pipeline recovery + mid-window check-in pending + Day-19 verdict scheduled) | 20 | ✅ within budget |
-| Trailing-14-day closure hours | ~8h v2.76 | 8.0 floor | ✅ at floor |
-| Pause trigger active? | NO | — | New automation authoring still allowed |
+| Open findings + investigations (P0+P1) | ~3 (recon daily diagnostic + health_check signal diagnostic + dashboard PHASES sync) | 20 | ✅ within budget |
+| Trailing-14-day closure hours | ~10h | 8.0 floor | ✅ above floor |
+| Pause trigger active? | NO | — | New automation authoring allowed |
 
-**v2.76 cycle: ~8h total** (Stage E close ~1.5h + FAB env var setup + recovery ~1h + smoke tests ~30min + emitter diagnostic ~30min + cc-0015 brief ~1h + cc-0016 brief ~1h + memory cycle ~45min + 3-commit sync ~2h).
+**v2.77 cycle: ~1.5h total** (2 migrations + atomic docs push + memory edits + action_list rebuild).
 
-**State-capture exception count v2.76: 0** (no D-01 fires this session; v2.72's count of 1 carries cumulatively).
+**State-capture exception count v2.77: 0** (3 D-01 fires across cycle; all type-(b) satisfied or type-(c) PK approval; no override consumed). Cumulative: 1.
 
 ---
 
 ## ⭐ Today / Next 5
 
-> **Last rebuilt:** 2026-05-16 Sydney (v2.76).
-> **v2.76 note:** cc-0014 fully CLOSED through window-open INSERT. 14-day window running 2026-05-15→2026-05-29. FAB live on production. cc-0015 + cc-0016 briefs drafted PENDING_EXECUTION (post Day-19). Memory edit cycle complete at 19/30. Primary focus shifts to operational use of FAB during the window, mid-window check-in, and Day-19 verdict execution. cc-0013 stays deprioritised pending verdict.
+> **Last rebuilt:** 2026-05-18 Sydney (v2.77).
+> **v2.77 note:** cc-0014 closed-archived. Verdict ritual retired. Friction register transitions to standing infrastructure. Three diagnostic streams (manual proven; recon needs daily-cadence observation; health_check needs V-C3 + signal-production investigation). Publisher recovery sequence (music/IG/YT) and cc-0015 + cc-0016 now in normal queue.
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
-| 1 | **In-window operational FAB use** | **P1 (rank 1 v2.76)** | **Currently 2/3 in-window events from source=manual as of 2026-05-17 — one more manual event still needed.** Criterion 3 requires ≥2 sources × ≥3 events. Manual is only realistic source-of-events during window unless Cowork recovers or Monday reconciliation fires. Target: PK files real friction observations via dashboard.invegent.com FAB; each auto-promotes via promotion trigger; PK triages within 72h to maintain late_triage_ratio ≤ 0.50 invalidation gate. | PK → dashboard.invegent.com | Continuous through 2026-05-29. Capture as friction surfaces; triage within 72h. |
-| 2 | **Cowork output pipeline recovery** | **P1 (rank 2 v2.76 carry from v2.75)** | **Blocker corrected 2026-05-17**: Cowork has been firing nightly ~16:02 UTC since 2026-05-05; the actual blocker was `docs/briefs/nightly-health-check-v1.md` remaining `status: review_required` since 2026-05-04, so Cowork's owner-gate skipped it each fire. Commit `9215de77` reset brief to v3.0 `status: ready`. Awaiting next Cowork fire (expected ~2026-05-17 16:02 UTC). Once Cowork picks up the v3.0 brief, health_check becomes viable second source for criterion 3. **V-C3 still PENDING** live run. | Cowork (scheduled fire) → chat | Wait for next scheduled Cowork fire; chat runs V-C3 reconciliation probe post-run. |
-| 3 | **Mid-window check-in at ~Day 7** | **P1 (rank 3 v2.76 NEW)** | Target 2026-05-22 Sydney. Empirical reading of all 5 criteria + invalidation gates. If criterion 3 looks structurally unsatisfiable at Day 7, flag for honest INVALID-EXTEND vs FAIL conversation. Also triage discipline check. | chat → PK | Single execute_sql Q1-Q10 vs current state; comparison to thresholds; PK direction. |
-| 4 | **Day-19 verdict execution** | **P1 (rank 4 v2.76)** | 2026-05-29 Sydney. Execute all 10 brief §11 scoring queries. Render verdict PASS / FAIL / INVALID. Author postmortem within 14 days per brief §14. If PASS: cc-0015 + cc-0016 unblock. If FAIL: per brief §14 — emitters removed, tables archived. If INVALID: identify cause, decide re-run vs cc-0014-v2. | chat → PK | Plan execution at or after 2026-05-29 Sydney. |
-| 5 | **Brief v1.2 doc patch** | **P3 (rank 5 v2.75 carry, scope expanded v2.76)** | Doc-only consolidation: 6 fixture defects + L60 + L63 + L64 + L65 + L-v2.76-a through L-v2.76-f framing. Defer to post Day-19. | chat → future (post Day-19) | Single doc patch via local git. |
-| 6 | **cc-0013 Dashboard Phase 0** | **P2 (DEPRIORITISED — rank 6 carry)** | Hold pending cc-0014 Day-19 verdict. If PASS: fold IOL surface as new anchor. If FAIL: return to original scope. If INVALID: address cause first. | chat → future post-Day 19 | Hold. |
-| 7 | **Close-the-loop batch sweep — safe buckets COMPLETE; remainder NOT complete** | P2 (rank 7 v2.76) | **Updated 2026-05-17**: 6 rows resolved this session via 2 atomic apply_migration calls — 2 v2.72 carries (`903cfd8e` + `873985f7`) + 4 cc-NNNN family rows (`32ade261` + `9cbc7de3` + `4a48024f` + `defc0fe1`). m.chatgpt_review distribution now: completed 29 / resolved 29 / escalated 22 / total 80. **Remaining: 22 escalated rows** = 21 historical CCH-locked + 1 T-MCP-05 meta (`1bae5068`). **Not to be closed without explicit PK directive** lifting CCH standing rule + resolving meta recursion. | chat → future PK directive | Hold remainder pending explicit directive. |
+| 1 | **Reconciliation daily cadence diagnostic** | **P1 (rank 1 v2.77 NEW)** | First daily fire 2026-05-19 03:30 AEST. Observe whether daily cadence detects drift that weekly missed. If `r.cadence_drift_log` rows land + `friction.event` source='reconciliation' rows emit, signal pipe is alive. If `r.cadence_drift_log` rows land but `friction.event` doesn't get rows, trigger defect. If neither, no real drift in pipeline. Three failure modes possible; read-only diagnosis. | chat → PK | Post-fire SQL: count `r.cadence_drift_log` rows since 2026-05-18 17:30 UTC + count `friction.event` source='reconciliation' rows same window. |
+| 2 | **Health_check V-C3 + signal-production diagnostic** | **P1 (rank 2 v2.77 carry)** | V-C3 still PENDING since 2026-05-15. Cowork brief reset to v3.0 `status: ready` via commit `9215de77` (2026-05-17). Awaiting next Cowork fire. Three sub-questions: (a) does Cowork fire and write `docs/audit/health/YYYY-MM-DD.md`? (b) does the markdown contain findings? (c) do those findings emit `friction.event` source='health_check' rows? Each is its own diagnostic. | Cowork (scheduled) → chat | Check for new `docs/audit/health/YYYY-MM-DD.md` post-fire window; reconcile against friction.event. |
+| 3 | **Music library activation** | **P2 (rank 3 v2.77 NEW promoted from P3)** | Code already wired in `video-worker` v3.0.0 (deployed 8 May). Activation gated by env var `VIDEO_WORKER_MUSIC_ENABLED=true` + 9 mp3 tracks at `post-music/{news,upbeat,calm}/track-{1,2,3}.mp3`. ~30 min PK-led with chat guidance. Quickest infrastructure win after cc-0014 close. | PK + chat | Create bucket `post-music`; upload tracks; set env var; smoke test one video render. |
+| 4 | **cc-0015 friction-pool-view Stage A authoring** | **P2 (rank 4 v2.77 promoted from P3)** | Brief drafted PENDING_EXECUTION at commit `9a5dc155`. Now unblocked per D-IOL-001. Stage A = schema additions (`dashboard_ui` category split + `pool_session` table + backfill plan). D-01 fire per brief §13. ~2-3h session. | chat → PK | When PK directs. |
+| 5 | **Publisher recovery sequence — IG cron 53 re-enable OR YT diagnostic (pick one)** | **P2 (rank 5 v2.77 promoted from P3)** | Both unblocked per D-IOL-001. IG: verify throttles + dry-run smoke test + re-enable cron 53. ~1h. YT: audit `m.post_draft` recommended_format + video_status; decide on filter expansion (`video_short_avatar`) or upstream chain investigation. 1-2h depending on findings. | chat → PK | When PK directs sequence. |
+| 6 | **Dashboard PHASES sync** | **P2 (rank 6 v2.77 promoted from P3 — 30th consecutive deferral)** | Now eligible per D-IOL-001 hold-stance lift. Updates `app/(dashboard)/roadmap/page.tsx` in `invegent-dashboard` repo (PHASES array + lastUpdated). Separate repo write. | chat → PK | When PK directs next dashboard session. |
+| 7 | **Close-the-loop batch sweep — 22 escalated rows remaining** | P2 (rank 7 v2.77 carry) | Gated on explicit PK directive lifting CCH standing rule (21 historical) + resolving T-MCP-05 meta recursion (1 row). Not affected by D-IOL-001. | chat → future PK directive | Hold. |
 
 **Standing P0 (not ranked):** Personal businesses check-in. Crazy Domains refund + clean-up follow-up carry from v2.51.
 
-**Passive observation v2.76**: Cron 83 + 84 (steady-state); cron 85 (Sun 17:30 UTC); cron 86 `friction-verification-daily` (01:15 UTC, active). PRV v1 operator views queryable via `op_reader` role. **friction.* schema state v2.76**: 5 tables live; functions/triggers all from Stage A-E; **`friction.experiment_run` row LIVE: status=running, brief_id=cc-0014, starts_at 2026-05-15 06:20 UTC, ends_at 2026-05-29 06:20 UTC**; **3 DELETE/UPDATE-protection triggers ACTIVE-while-running**. PostgREST exposed_schemas includes `friction`. **6 events + 6 cases** (5 baseline + 1 in-window manual; all 6 acknowledged via /operations). **/operations route live in invegent-dashboard at HEAD `5753f41b`**. **Vercel invegent-dashboard production serving `dpl_9Geda1dbh...` with FAB enabled**. Next natural fires: cron 85 next Sun 17 May 17:30 UTC (first reconciliation opportunity during window); cron 86 daily 01:15 UTC.
+**Passive observation v2.77**: Cron 82 + 83 + 84 + 86 unchanged. Cron 85 promoted **weekly → daily** (first daily fire 2026-05-19 03:30 AEST). PRV v1 operator views queryable via `op_reader` role. **friction.* schema state v2.77**: 5 tables live (unchanged); functions/triggers unchanged. **`friction.experiment_run` row: status=archived, brief_id=cc-0014, criteria_snapshot preserved immutable**. **3 DELETE/UPDATE-protection triggers now DORMANT** (no run is `running`). 1 always-active promotion BEFORE INSERT trigger remains operational. PostgREST exposed_schemas includes `friction`. **6 events + 6 cases** (no change). **/operations route live in invegent-dashboard at HEAD `5753f41b`**. **Vercel invegent-dashboard production serving with FAB enabled** (unchanged). Next natural fires: cron 85 next daily fire 2026-05-19 03:30 AEST; cron 86 daily 01:15 UTC.
 
 ---
 
-## 🟢 cc-0014 friction register experiment — STATUS BLOCK (UPDATED v2.76)
+## 🟢 cc-0014 friction register — STATUS BLOCK (UPDATED v2.77 — CLOSED-ARCHIVED)
 
-**Status v2.76: FULLY CLOSED — 14-day operational window OPEN.** All stages A-E applied through window-open INSERT. Migration `cc_0014_e_close_experiment_run_start` applied 2026-05-16 Sydney. **14-day operational window: 2026-05-15 06:20:13 UTC → 2026-05-29 06:20:13 UTC. Day-19 verdict review = 2026-05-29 Sydney.** No further build work — experiment now in operational phase.
+**Status v2.77: CLOSED-ARCHIVED 2026-05-18.** Closed Day 4 of 14-day operational window by PK reframing decision. Migration `cc_0014_close_archived` applied 2026-05-18 Sydney. `friction.experiment_run.status` = `archived` (terminal neutral state per CHECK enum). `criteria_snapshot` preserved immutable as audit trail. Notes column captures 2001 chars of verbatim reframing rationale. Postmortem authored per brief §14 commitment at `docs/postmortems/cc-0014-closing-note.md`. **Day-19 verdict 2026-05-29 RETIRED. Mid-window check-in RETIRED.** Friction register transitions from experiment to standing operational infrastructure per **D-IOL-001** (logged in `docs/06_decisions.md`).
 
-**Brief lineage:** v1.0 → v1.1 final (frozen at commit `34305092f4`). All stages applied through window-open INSERT without further D-01 cycles per §13 governance gate.
+**Brief lineage:** v1.0 → v1.1 final (frozen at commit `34305092f4`). Brief itself unchanged; closure is via experiment_run state transition, not brief modification.
 
-**Stages delivered (full list, v2.76 close):**
+**Stages delivered (final):**
 - Stage A v1.1 (v2.72): schema + grants + 2 triggers + 11 V-checks PASS
 - Stage B (v2.73): reconciliation emitter + 5 V-checks PASS
-- Stage C (v2.74): health-check emitter + Cowork brief v3.0 + 5 V-checks PASS (V-C3 PENDING)
-- Stage D (v2.74 backend + v2.75 frontend close): manual FAB; **v2.76 production deploy** via Vercel env var
+- Stage C (v2.74): health-check emitter + Cowork brief v3.0 + 5 V-checks PASS (V-C3 PENDING, now an infrastructure follow-up)
+- Stage D (v2.74 backend + v2.75 frontend + v2.76 production deploy): manual FAB live on dashboard.invegent.com
 - Stage E backend (v2.75): fn_recent_cases + fn_triage_case + 2 V-checks PASS
-- Stage E frontend (v2.75): /operations route at HEAD `5753f41b` + V-E3 PASS
-- Stage E promotion (v2.75): fn_promote_event_to_case + BEFORE INSERT trigger + 8 V-checks PASS + 5 orphans backfilled
-- **Stage E close (v2.76)**: defensive cleanup + experiment_run INSERT with brief §10 verbatim criteria_snapshot; V-E5 PASS post-INSERT; trigger activation probes PASS. **14-day window OPEN.**
+- Stage E frontend (v2.75): /operations route + V-E3 PASS
+- Stage E promotion (v2.75): fn_promote_event_to_case + BEFORE INSERT trigger + 8 V-checks PASS
+- Stage E close (v2.76): experiment_run INSERT with criteria_snapshot
+- **v2.77 close (2026-05-18):** experiment_run.status running → archived. 14-day window closed at Day 4.
 
-**Stages pending:** NONE. Operational phase begins through 2026-05-29.
+**Why closed early at Day 4 (per postmortem):**
+- Manual FAB source proven operationally by Day 3 (3/3 events, validated workflow)
+- Reconciliation source under-frequenced (weekly cadence × 14 days = ≤2 fires; insufficient for criterion 3)
+- Health_check source produced zero signal due to upstream Cowork blocker (root cause = brief stuck `status: review_required`, unrelated to register design)
+- Day-19 verdict on this trajectory would have read INVALID (procedural verdict, not insight verdict)
+- PK reframing: register is operational spine, not experiment
 
-**V-C3 live verification still pending** (as of 2026-05-17 mid-session): requires live Cowork run. **Blocker corrected 2026-05-17** — prior "silent since 2026-05-06" framing was wrong; Cowork was firing nightly but skipping the brief due to `status: review_required`. Commit `9215de77` reset brief to v3.0 `status: ready`. Awaiting next scheduled Cowork fire.
+**Why status=archived (not passed/failed/invalid/superseded):**
+- `passed`: would overclaim against criterion 3 (1 of 3 sources)
+- `failed`: window did not run to completion; criteria not properly tested
+- `invalid`: instrument worked; closure was operator-driven
+- `superseded`: would require new CHECK enum value + migration
+- `archived`: brief's neutral terminal state, honest fit
 
-**Production state at v2.76 close:**
-- `friction` schema live in Supabase `mbkmaxqhsohbtwsqolns`
-- 5 tables: category (6+1), **event (6 rows — 5 baseline + 1 in-window manual)**, **case (6 rows — all 6 acknowledged via /operations)**, emit_error (0 rows), **experiment_run (1 row, status=running)**
-- 4 CHECK constraints on `friction.case`
-- **4 triggers in `friction.*`**: 3 ACTIVE-while-running + 1 always-active (promotion BEFORE INSERT)
-- 1 active trigger on r.cadence_drift_log (no firings since 2026-05-13)
-- 8 functions in `friction.*` (unchanged from v2.75)
-- 5 pg_cron jobs (82-86 unchanged)
-- PostgREST exposed_schemas: includes `friction` (carry)
-- Cowork brief v3.0 at HEAD `bc32e86`
-- `invegent-dashboard` HEAD: `5753f41b` (unchanged — env var only)
-- **Vercel invegent-dashboard production**: deployment `dpl_9Geda1dbhitN5ykTfV7UxF9A3pKc` with DASHBOARD_FRICTION_FAB_ENABLED=true
-- Localhost `.env.local` still has flag enabled (cleanup post-window recommended)
-- main HEAD: this commit building on `98c6227c` (sync_state) building on `e3a2d6a7` (session file) building on `f35f8ea4` (cc-0016 brief) building on `9a5dc155` (cc-0015 brief)
+**Section 14 commitments — disposition:**
+- Pass-path next-layer design → cc-0015 friction-pool-view (already drafted, now unblocked)
+- Pass-path health_check pg_cron migration → folded into infrastructure diagnostic phase
+- Fail-path table archival → NOT invoked (schema and emitters remain live)
+- Fail-path postmortem within 14 days → satisfied at `docs/postmortems/cc-0014-closing-note.md`
 
-**Stage E close V-check evidence (v2.76):**
+**Production state at v2.77 close:**
+- `friction` schema unchanged: 5 tables, 8 functions, 4 triggers, 1 active trigger on `r.cadence_drift_log`, 5 pg_cron jobs (82-86, with 85 now daily)
+- **friction.experiment_run: 1 row, status=archived**, brief_id=cc-0014, notes=verbatim rationale, criteria_snapshot immutable (939 chars)
+- friction.event: 6 rows (no change since v2.76)
+- friction.case: 6 rows (no change, all acknowledged)
+- friction.emit_error: 0 rows
+- 3 DELETE-protection / criteria-snapshot-immutability triggers now DORMANT (no run is `running`)
+- 1 always-active promotion BEFORE INSERT trigger continues to operate
+- Cowork brief v3.0 at HEAD `bc32e86` (no change)
+- invegent-dashboard HEAD: `5753f41b` (no change — env var only)
+- Vercel invegent-dashboard production: deployment `dpl_9Geda1dbhitN5ykTfV7UxF9A3pKc` serving with `DASHBOARD_FRICTION_FAB_ENABLED=true`
+- Localhost `.env.local` cleanup still pending (carry, low priority)
 
-| V-check | Evidence |
-|---|---|
-| V-E4 | PASS pre-flight: 0/0/0 residue across friction.event/case/emit_error; cron-86 verify/2026-05-15 marker deleted in migration |
-| V-E5 pre-state | PASS: 0 running rows, 0 cc-0014 rows, 0 total |
-| V-E5 post-INSERT | PASS: brief_id=cc-0014, status=running, window=14 days exact, criteria_locked_at set, all 5 criterion keys + invalidation present |
-| DELETE-protection trigger probe | PASS: INSERT real test row (outer subtxn), DELETE (inner subtxn), trigger fired P0001, outer rollback successful; 0 residual |
-| criteria_snapshot immutability probe | PASS: UPDATE on criteria_snapshot raised P0001 |
-| notes mutability probe | PASS: UPDATE on notes succeeded, then reverted via subtxn rollback |
-| final state | PASS: 5 events / 5 cases / 0 emit_errors / 1 running run / notes=NULL / 0 residual |
+**Cumulative D-01 history for cc-0014 (FINAL):**
 
-(6 events/6 cases count reflects post-INSERT in-window event filed via live FAB.)
+| review_id | brief version / session | verdict | classification | resolution status |
+|---|---|---|---|---|
+| `903cfd8e` | v1.0 (v2.72) | partial | type-(b) | PK-resolved Path A re-fire; close-the-loop UPDATE RESOLVED 2026-05-17 |
+| `873985f7` | v1.1 (v2.72) | partial | type-(c) | PK-resolved state-capture override per L62; brief frozen v1.1; close-the-loop UPDATE RESOLVED 2026-05-17 |
+| `3ff74643` | close-as-passed (v2.77 cycle, 2026-05-17) | partial | type-(b) | PK accepted pushback; revised plan to archived |
+| `6a90cacf` | close-as-archived (v2.77, 2026-05-18) | partial | type-(c) | PK explicit approval per L62; archived applied |
+| `94bd6835` | recon daily cadence (v2.77, 2026-05-18) | partial | type-(c) | PK explicit approval per L62; daily cadence applied |
 
-**FAB live on production V-check evidence (v2.76):**
+Total D-01 fires for cc-0014 lineage: **5**. State-capture exceptions consumed by cc-0014: **0** (override only applies to type-(b) genuine pushbacks; cc-0014's type-(b) was satisfied by revision, not overridden).
 
-| Check | Evidence |
-|---|---|
-| Env var present | Vercel UI: DASHBOARD_FRICTION_FAB_ENABLED, Production + Preview scope |
-| Redeploy fired | API: deployment `dpl_9Geda1dbhitN5ykTfV7UxF9A3pKc`, target=production, state=READY, action=redeploy |
-| Code unchanged | originalDeploymentId points at v2.75 close state at commit `5753f41b` |
-| Custom domain | API: `dashboard.invegent.com` resolves to this deployment |
-| Live FAB renders | PK confirmed FAB visible on /content-studio |
-| Live FAB submits | Form returned event_id `fbd1b12d-27fd-4444-a861-8051ac3a9937`; DB confirmed source=manual + in_window=true + auto-derived fields |
-| Promotion trigger fires | DB: case `b7369dc9-f0d1-4f70-903c-6a590c21a657` created same txn |
-| Live triage round-trip | DB: 8 fields persisted (triage_state=acknowledged, quality_flag=true, action_decision=track, next_review_at=2026-05-23, capture_reason=routine_log, capture_reason_note='dashboard review', reviewed_at) |
-
-**D-01 fires this session: 0** (per brief §13).
-
-**Cumulative D-01 history for cc-0014** (resolution status cells updated 2026-05-17):
-| review_id | brief version | session | verdict | classification | resolution status |
-|---|---|---|---|---|---|
-| `903cfd8e` | v1.0 | v2.72 | partial | type-(b) | PK-resolved (Path A re-fire); close-the-loop UPDATE **RESOLVED 2026-05-17** (migration `close_chatgpt_review_v2_72_carries`) |
-| `873985f7` | v1.1 | v2.72 | partial | type-(c) | PK-resolved (state-capture override per L62; brief frozen at v1.1); close-the-loop UPDATE **RESOLVED 2026-05-17** (migration `close_chatgpt_review_v2_72_carries`) |
-
-**Result file:** deferred to Day-19 verdict 2026-05-29.
+**Result file:** N/A — postmortem at `docs/postmortems/cc-0014-closing-note.md` satisfies brief §14 commitment.
 
 **Session files:**
 - 2026-05-14 Stage A (v2.72)
 - 2026-05-15 Stage B (v2.73)
 - 2026-05-15 Stage C (v2.74)
 - 2026-05-15 Stage D + E prerun (v2.75)
-- **2026-05-16 v2.76 stage E close + window open (NEW v2.76)**
+- 2026-05-16 v2.76 stage E close + window open
+- **2026-05-18 v2.77 archived + recon daily (NEW)**
 
-**Open follow-ups:**
-- In-window operational FAB use (rank 1 v2.76)
-- Cowork output pipeline recovery (rank 2 v2.76)
-- Mid-window check-in at ~Day 7 (rank 3 v2.76)
-- Day-19 verdict execution (rank 4 v2.76)
-- V-C3 live Cowork verification (depends on Cowork recovery)
-- Close-the-loop UPDATEs on 2 v2.72 rows: **RESOLVED 2026-05-17** (migration `close_chatgpt_review_v2_72_carries`)
-- Brief v1.2 doc patch (scope expanded v2.76)
-- L58 + L59 + L60 + L63 + L64 + L65 + L-v2.76-a-f candidates — promotion pending (L58 now baseline)
-- Localhost FAB cleanup post-window
+**Open follow-ups (now standing infrastructure, not blocking):**
+- Reconciliation daily cadence diagnostic (P1 rank 1 v2.77)
+- Health_check V-C3 + signal-production diagnostic (P1 rank 2 v2.77)
+- V-C3 live verification (depends on Cowork fire post-`9215de77`)
+- Localhost FAB cleanup (P3 carry)
 
 ---
 
-## 🟢 cc-0015 Friction Pool View — STATUS BLOCK (NEW v2.76)
+## 🟢 cc-0015 Friction Pool View — STATUS BLOCK (UPDATED v2.77 — UNBLOCKED)
 
-**Status v2.76:** **AUTHORED, PENDING_EXECUTION.** Commit `9a5dc155`. File: `docs/briefs/cc-0015-friction-pool-view.md` (20.3 KB). Strategic anchor: extends cc-0014. Operationalises register as pool consumed in concentrated sessions. **Depends on:** cc-0014 complete + Day-19 verdict resolved (PASS or INVALID-EXTEND). Do not execute under FAIL verdict.
+**Status v2.77: AUTHORED, PENDING_EXECUTION, UNBLOCKED** per D-IOL-001. Commit `9a5dc155`. File: `docs/briefs/cc-0015-friction-pool-view.md` (20.3 KB). Strategic anchor: extends cc-0014. Operationalises register as pool consumed in concentrated sessions. **Priority: P2** (was P3 blocked-on-Day-19; now normal queue).
 
-**7 stages drafted:**
+**7 stages drafted (unchanged):**
 - Stage A — Schema additions (`dashboard_ui` category split + `pool_session` table + backfill plan)
 - Stage B — Pool view UI on /operations (filter bar, saved views, sort, count badge)
 - Stage C — Batch resolution (checkboxes, batch action bar, per-case execution loop)
 - Stage D — Pool dashboard widget (status strip + click-through)
 - Stage E — Pool session tracking (light-touch table, operator-initiated)
-- Stage F — **Operator surface copy** (highest value — addresses cc-0014 first-week gap; FrictionFieldHelp component + source-of-truth dict)
+- Stage F — **Operator surface copy** (FrictionFieldHelp component + source-of-truth dict)
 - Stage G — Process doc `docs/process/ICE-PROC-002-pooled-resolution.md` (Fri 0900 Sydney cadence)
 
 **D-01 framing:** Fire one D-01 before Stage A. 7 questions.
@@ -184,11 +167,11 @@
 
 ---
 
-## 🟢 cc-0016 Friction Capture Evidence — STATUS BLOCK (NEW v2.76)
+## 🟢 cc-0016 Friction Capture Evidence — STATUS BLOCK (UPDATED v2.77 — UNBLOCKED)
 
-**Status v2.76:** **AUTHORED, PENDING_EXECUTION.** Commit `f35f8ea4`. File: `docs/briefs/cc-0016-friction-capture-evidence.md` (24.8 KB). Strategic anchor: extends cc-0014. **Depends on:** cc-0014 complete + Day-19 verdict resolved. Parallel-executable with cc-0015.
+**Status v2.77: AUTHORED, PENDING_EXECUTION, UNBLOCKED** per D-IOL-001. Commit `f35f8ea4`. File: `docs/briefs/cc-0016-friction-capture-evidence.md` (24.8 KB). Parallel-executable with cc-0015. **Priority: P2** (was P3 blocked-on-Day-19).
 
-**5 stages drafted:**
+**5 stages drafted (unchanged):**
 - Stage A — Storage bucket `friction-evidence` + `friction.event.attachments` jsonb column + helper view
 - Stage B — FAB upload UX (drag-and-drop / paste / file-picker; client-side UUID; thumbnail strip; 3 max, 5MB each, JPG/PNG/WebP)
 - Stage C — Extended `fn_emit_manual_event` (adds `p_event_id` + `p_attachments`; backward-compatible)
@@ -203,59 +186,49 @@
 
 ---
 
-## 🟢 cc-0012 PRV v1 — STATUS BLOCK (carried v2.76, condensed)
+## 🟢 cc-0012 PRV v1 — STATUS BLOCK (carried v2.77, condensed)
 
-**Status v2.76:** **CLOSED-WITH-VERIFIED-VARIANCE v2.71.** Unchanged. 3 carry items in v1.1 doc patch (P3 deprioritised).
-
----
-
-## 🟢 cc-0010B ice-evidence-materialiser — STATUS BLOCK (carried v2.76, condensed)
-
-**Status v2.76:** **CLOSED-WITH-VERIFIED-VARIANCE v2.68.** Unchanged. Result: `docs/briefs/results/cc-0010B-ice-evidence-materialiser.md`.
+**Status v2.77:** **CLOSED-WITH-VERIFIED-VARIANCE v2.71.** Unchanged. 3 carry items in v1.1 doc patch (P3 deprioritised).
 
 ---
 
-## 🟢 cc-0010A r.* DDL Foundation — STATUS BLOCK (carried v2.76, condensed)
+## 🟢 cc-0010B ice-evidence-materialiser — STATUS BLOCK (carried v2.77, condensed)
 
-**Status v2.76:** **APPLIED + CLOSED v2.67.** v1.6 doc patch DEPRIORITISED to P3. Result: `docs/briefs/results/cc-0010A-r-reconciliation-ddl-foundation.md`.
-
----
-
-## 🟢 Process Upgrades L44–L48 + L52–L65 + L-v2.76-a through L-v2.76-f — STATUS BLOCK (UPDATED v2.76)
-
-**Status v2.76:** L40 reified v2.68. L44 + L45 + L46 + L48 baseline-eligible. **L58 PROMOTED TO BASELINE v2.76** (3 consecutive preventive applications in cc-0014 lineage with zero failures). L60 at 7 occurrences (all within cc-0014; promotion pending pattern repeat in independent brief). L63 + L64 + L65 candidates carry from v2.75 (1 each). **6 NEW L-candidates v2.76 (a-f):**
-
-- **L41**: re-exercised v2.76 (Vercel API + post-INSERT trigger probes + post-FAB DB probes). 5+ exercises now.
-- **L44**: re-exercised v2.76 (V-E4 + V-E5 + baseline exclusion audit). 7 cycles cumulative. Baseline-eligible.
-- **L45**: re-exercised v2.76 (4 post-INSERT verifications + Vercel API + DB probes). 5+ exercises now.
-- **L46**: not exercised v2.76 (0 D-01 fires). Pattern shape v2.76 reinforces v2.73 + v2.74 + v2.75: four consecutive 0-D-01 stage-execution sessions.
-- **L47**: still deferred.
-- **L48**: re-exercised v2.76 (1 atomic migration).
-- **L52**: not exercised v2.76 (no EF deploys).
-- **L53**: not exercised v2.76.
-- **L54**: not exercised v2.76.
-- **L55**: not exercised v2.76 (PK pre-execution review caught probe defect class L-v2.76-c pre-fire).
-- **L56**: not exercised v2.76.
-- **L57**: not exercised v2.76.
-- **L58 PROMOTED TO BASELINE v2.76.** 3rd preventive application this session. Cumulative: 1 reactive (v2.72) + 3 preventive (v2.73 + v2.74 + v2.75) + 1 baseline (v2.76). Per-file single-commit strategy now default.
-- **L59**: vindicated by trigger activation this session (DELETE-protection P0001 fired). Not re-exercised in new code.
-- **L60**: NOT exercised v2.76 — different defect class. 7 occurrences cumulative. Promotion pending.
-- **L62**: not exercised v2.76 (0 D-01 fires).
-- **L63 + L64 + L65 candidates carry from v2.75**: not re-exercised. 1 occurrence each. Promotion pending.
-- **L-v2.76-a NEW** — Project IDs cited in chat must be verified from userMemories at point of citation. v2.76 burned by `prj_EpPsX7gCu5wGbiSJr1SA3CmjVlAa` confidently asserted as invegent-dashboard when it's invegent-portal. Pattern: query userMemories before typing a project ID. 1 occurrence; promotion pending.
-- **L-v2.76-b NEW** — Env-gated feature flag setup directives must explicitly state literal value shape (case sensitivity, no quotes, no whitespace). Strict `=== "true"` gates fail silently. Pattern: explicit literal in directive. 1 occurrence; promotion pending.
-- **L-v2.76-c NEW** — Row-level BEFORE DELETE trigger probes require existing row + savepoint-rollback DO block. DELETE on non-existent rows produces false PASS. Pattern: INSERT test row first, then DELETE, then force outer rollback. 1 occurrence (caught pre-fire by PK); promotion pending.
-- **L-v2.76-d NEW** — Post-stage emitter coverage verification at window-open moment. Pattern: window-open checklist for each declared emitter. 1 occurrence; promotion pending.
-- **L-v2.76-e NEW (positive)** — PK pre-execution review caught 3 verification defects before chat-side fire. Confirms pre-fire review value. Generalisable. 1 occurrence; promotion pending.
-- **L-v2.76-f NEW** — Destructive memory operations must check each target against explicit approved-list at moment of execution, not against re-derived intent. Same class as L-v2.76-a (chat operating from cached internal state when authoritative source available). 1 occurrence; promotion pending.
-
-**L-v2.76-a + L-v2.76-f share deeper class**: chat operates from cached internal state when authoritative source is available. Both could have been prevented by "look up source-of-truth at moment of action, not from working memory."
+**Status v2.77:** **CLOSED-WITH-VERIFIED-VARIANCE v2.68.** Unchanged. Result: `docs/briefs/results/cc-0010B-ice-evidence-materialiser.md`.
 
 ---
 
-## 🟢 cc-0009 PRV-1 Second Build — STATUS BLOCK (unchanged v2.76)
+## 🟢 cc-0010A r.* DDL Foundation — STATUS BLOCK (carried v2.77, condensed)
 
-Unchanged from v2.65–v2.75. ALL STAGES CLOSED at v2.65.
+**Status v2.77:** **APPLIED + CLOSED v2.67.** v1.6 doc patch DEPRIORITISED to P3. Result: `docs/briefs/results/cc-0010A-r-reconciliation-ddl-foundation.md`.
+
+---
+
+## 🟢 Process Upgrades L44–L48 + L52–L65 + L-v2.76-a through L-v2.76-f — STATUS BLOCK (UPDATED v2.77)
+
+**Status v2.77:** L40 reified v2.68. L44 + L45 + L46 + L48 baseline-eligible (carry from v2.76). **L58 BASELINE v2.76** (per-file/atomic-push strategy default). **L62 baseline-eligible v2.77** (3+ exercises now). L60 at 7 occurrences (carry). L63 + L64 + L65 candidates carry from v2.75 (1 each). L-v2.76-a through L-v2.76-f carry (1 each).
+
+**v2.77 cycle outcomes:**
+- **L41 + L45**: re-exercised v2.77 (post-mutation execute_sql verifications)
+- **L44**: not exercised v2.77 (no V-check pattern this session)
+- **L46**: not exercised v2.77 (D-01s fired; not 0)
+- **L47**: still deferred
+- **L48**: re-exercised v2.77 (2 atomic migrations)
+- **L52 / L53 / L54 / L55 / L56 / L57**: not exercised v2.77
+- **L58**: baseline applied v2.77 (atomic 4-file push for docs sync)
+- **L59**: not re-exercised (no new trigger build)
+- **L60**: not exercised v2.77
+- **L62 baseline-eligible v2.77**: 3 exercises cumulative (v2.72 `873985f7` + v2.77 `6a90cacf` + v2.77 `94bd6835` — all type-(c) classifications). One more independent occurrence outside cc-0014 lineage would strengthen confidence.
+- **L63 + L64 + L65**: not re-exercised v2.77
+- **L-v2.76-a through L-v2.76-f**: not re-exercised v2.77; promotion still pending
+
+**No new L-candidates this session.**
+
+---
+
+## 🟢 cc-0009 PRV-1 Second Build — STATUS BLOCK (unchanged v2.77)
+
+Unchanged from v2.65–v2.76. ALL STAGES CLOSED at v2.65.
 
 ---
 
@@ -267,29 +240,35 @@ S1–S29 unchanged. S30 closed PASS v2.47.
 
 ## 🔴 Time-bound (calendar-driven deadlines)
 
-**v2.76 update:**
-- **Day-19 verdict for cc-0014: 2026-05-29 Sydney.** Capture window ends_at = 2026-05-29 06:20:13 UTC. **LOCKED**.
-- **Mid-window check-in target: ~2026-05-22 Sydney (Day 7).** Soft deadline.
+**v2.77 update:**
+- **Day-19 verdict for cc-0014: RETIRED.** Original deadline 2026-05-29 Sydney. Superseded by D-IOL-001 reframing 2026-05-18.
+- **Mid-window check-in: RETIRED.** Was target ~2026-05-22 Sydney.
+- **NEW v2.77**: First daily reconciliation cron 85 fire: 2026-05-19 03:30 AEST. Soft deadline for diagnostic observation.
 
-Other items unchanged from v2.75.
+Other items unchanged from v2.76.
 
 ---
 
 ## 🛠 Meta-tooling — ChatGPT Review MCP
 
-**v2.76 application**: 0 D-01 fires. Cumulative T-MCP-02 stays at **66**.
+**v2.77 application**: 3 D-01 fires across cycle (1 yesterday `3ff74643` close-as-passed + 2 today `6a90cacf` close-as-archived + `94bd6835` recon daily). Cumulative T-MCP-02: **69** (66 prior + 3 v2.77 cycle).
 
-**L46 Evidence Gate v2.76**: not exercised. Pattern reinforced v2.76 (extends v2.73 + v2.74 + v2.75): four consecutive 0-D-01 stage-execution sessions under brief §13 governance gate.
+**L46 Evidence Gate v2.77**: not exercised — D-01s fired by design for production mutations per ICE-PROC-001, not skipped under brief §13 governance.
 
-**Close-the-loop UPDATEs v2.76: 0.** 5 prior + 2 v2.72 + 24 historical = **31 eligible** (unchanged).
+**L62 v2.77 exercises:**
+- `6a90cacf` (close-as-archived): 3 type-(c) generic objections echoing self-disclosed open questions. PK explicit approval per L62 stood.
+- `94bd6835` (recon daily): 1 type-(c) generic objection (performance speculation on already-deployed EF). PK explicit approval stood.
+- Yesterday's `3ff74643` (close-as-passed): 4 type-(b) genuine pushbacks. Pushback satisfied by revision (archived instead of passed), not by override.
 
-**Close-the-loop UPDATEs 2026-05-17 reconciliation: 6** (2 v2.72 carries + 4 cc-NNNN family rows). Migrations: `close_chatgpt_review_v2_72_carries` + `close_chatgpt_review_cc_nnnn_family`. **22 escalated rows remain** = 21 historical CCH-locked + 1 T-MCP-05 meta (`1bae5068`). Not to be closed without explicit PK directive. Safe buckets complete; full sweep NOT complete.
+**State-capture exceptions v2.77: 0.** Cumulative: 1 (unchanged from v2.72).
+
+**Close-the-loop UPDATEs v2.77: 0.** 22 escalated rows still gated on PK directive. The 3 v2.77 D-01s will themselves need close-the-loop UPDATEs at some future sweep (deferred to next batch).
 
 ---
 
 ## 🤖 Cowork automation (D182)
 
-**v2.76 status (updated 2026-05-17):** Cowork brief v3.0 frozen at HEAD `bc32e86`. Cron 82 + 83 + 86 firing normally. **Cowork pipeline blocker corrected 2026-05-17**: prior "silent since 2026-05-06" framing was empirically wrong — Cowork has been firing nightly ~16:02 UTC since 2026-05-05 (12 consecutive `docs/runtime/runs/no-ready-briefs-*.md` state files). Actual blocker: nightly-health-check-v1 brief stuck `status: review_required` since 2026-05-04; Cowork's owner-gate skipped it each fire. Commit `9215de77` reset brief to v3.0 `status: ready` (2026-05-17). Awaiting next scheduled Cowork fire (~2026-05-17 16:02 UTC). P1 rank 2 OPEN until V-C3 PASS on first live run after `9215de77`.
+**v2.77 status:** Cowork brief v3.0 frozen at HEAD `bc32e86`. Cron 82 + 83 + 86 firing normally. **V-C3 still PENDING live run** post-commit `9215de77` (2026-05-17 reset to `status: ready`). Awaiting next scheduled Cowork fire. **No longer P1 rank 2** — health_check signal production is now standing infrastructure follow-up under D-IOL-001 (P1 rank 2 v2.77 is the health_check diagnostic itself, not the Cowork pipeline silence).
 
 ---
 
@@ -297,58 +276,51 @@ Other items unchanged from v2.75.
 
 | ID | Item | Priority | Status | Owner | Next action |
 |---|---|---|---|---|---|
-| **cc-0014 operational window** | 14-day window OPEN; manual FAB live; mid-window + Day-19 scheduled | **P1 (rank 1-4 v2.76)** | OPEN. starts_at 2026-05-15 06:20 UTC, ends_at 2026-05-29 06:20 UTC. 1 in-window event + 1 case (manual via live FAB, acknowledged + quality_flag=true). | PK + chat | Continuous FAB use; mid-window ~2026-05-22; verdict 2026-05-29 |
-| **cc-0014 Stage E close** | Window-open INSERT | **P1 (CLOSED v2.76)** | CLOSED. 4 post-INSERT verifications PASS. | informational | (closed) |
-| **cc-0014 Stage D production deploy** | Vercel env var + redeploy on live | **P1 (CLOSED v2.76 NEW)** | CLOSED. Env var DASHBOARD_FRICTION_FAB_ENABLED=true set. dpl_9Geda1dbh... serving. Smoke test + triage PASS. | informational | (closed) |
-| **cc-0015 friction-pool-view brief** | Authored PENDING_EXECUTION | **P3 (post Day-19)** | DRAFTED. Commit `9a5dc155`. Blocked-on Day-19 verdict. | chat → post Day-19 | If PASS: execute A→G (12-15h over 3 sessions) |
-| **cc-0016 friction-capture-evidence brief** | Authored PENDING_EXECUTION | **P3 (post Day-19)** | DRAFTED. Commit `f35f8ea4`. Blocked-on Day-19 verdict. Parallel-executable. | chat → post Day-19 | If PASS: execute A→E (8-10h over 2 sessions) |
-| **cc-0014 Stage C** | Health-check Cowork brief v3.0 dual-write + pg_cron | P1 (APPLIED, V-C3 PENDING) | APPLIED v2.74. V-C3 pending live Cowork run. | chat → Cowork / PK manual | Wait natural OR `openclaw tui` |
-| **V-C3 live Cowork verification** | Live Cowork run produces friction.event matching markdown finding_ids | **P1 (rank 2 v2.76)** | PENDING. **Blocker corrected 2026-05-17**: Cowork was scheduler-firing nightly but skipping the brief due to `status: review_required`. Commit `9215de77` reset to v3.0 `status: ready`. Awaiting next scheduled fire. | Cowork (scheduled) → chat | Chat runs V-C3 reconciliation probe after next `docs/audit/health/YYYY-MM-DD.md` + run-state file land |
-| **Mid-window check-in at Day 7** | Empirical reading of brief §11 Q1-Q10 at ~2026-05-22 Sydney | **P1 (rank 3 v2.76 NEW)** | SCHEDULED ~2026-05-22 | chat → PK | Single execute_sql Q1-Q10; PK direction |
-| **Day-19 verdict execution** | Final 10 scoring queries + verdict + postmortem | **P1 (rank 4 v2.76 NEW)** | SCHEDULED 2026-05-29 Sydney | chat → PK | Execute scoring; render PASS/FAIL/INVALID; postmortem within 14 days |
-| **Brief v1.2 doc patch** | 6 defects + L60/L63/L64/L65/L-v2.76-a-f framing | **P3 (rank 5 v2.76)** | DRAFT scope expanded. Doc-only. | chat → future (post Day-19) | Single doc patch when PK greenlights |
-| **cc-0013 Dashboard Phase 0** | DEPRIORITISED pending verdict | P2 (DEPRIORITISED carry) | HOLD. /operations + live FAB consumable. | chat → post-Day 19 | Hold |
-| **v1.1 cc-0012 minor doc patch (3 items)** | Var-A1 + Var-A2 + Var-A3 | P3 (carry v2.72) | HOLD | chat → future | Doc-only |
-| **v1.6 cc-0010A doc patch (3 items)** | result_jsonb rename + trigger audit + queue_id non-FK | P3 (carry v2.72) | HOLD | chat → future | Doc-only |
-| **v1.3 cc-0011 minor doc patch (5 items)** | E1 + Var-A/B/C/E | P3 (carry v2.72) | HOLD | chat → future | Doc-only |
-| **Close-the-loop batch sweep — safe buckets COMPLETE; remainder NOT complete** | 6 resolved 2026-05-17 (2 v2.72 + 4 cc-NNNN family); 22 remain (21 historical CCH-locked + 1 T-MCP-05 meta) | P2 (rank 7 v2.76) | PARTIAL COMPLETE 2026-05-17. Safe buckets closed via 2 atomic migrations. Remainder gated on explicit PK directive. | chat → future PK directive | Hold remaining 22 until PK lifts CCH standing rule (21 historical) + resolves T-MCP-05 meta recursion (1 row) |
+| **cc-0014 operational window** | 14-day window — CLOSED early at Day 4 | **CLOSED-ARCHIVED v2.77** | CLOSED 2026-05-18. friction.experiment_run.status=archived. Postmortem at `docs/postmortems/cc-0014-closing-note.md`. Day-19 + mid-window check-in retired. | informational | (closed) |
+| **Reconciliation daily cadence diagnostic** | First daily fire 2026-05-19 03:30 AEST | **P1 (rank 1 v2.77 NEW)** | OPEN. Cron 85 schedule promoted weekly→daily via `cc_0014_recon_daily_cadence`. | chat → PK | Post-fire SQL count comparison `r.cadence_drift_log` vs `friction.event` source='reconciliation' |
+| **Health_check V-C3 + signal-production diagnostic** | Three sub-questions on Cowork pipe | **P1 (rank 2 v2.77 carry)** | OPEN. V-C3 PENDING. Cowork brief reset via `9215de77`. | Cowork → chat | Check for new `docs/audit/health/YYYY-MM-DD.md` post-fire; reconcile against friction.event |
+| **cc-0015 friction-pool-view brief** | Authored PENDING_EXECUTION | **P2 (rank 4 v2.77 UNBLOCKED)** | DRAFTED. Commit `9a5dc155`. Unblocked per D-IOL-001. | chat → PK | Stage A authoring when PK directs |
+| **cc-0016 friction-capture-evidence brief** | Authored PENDING_EXECUTION | **P2 (rank 4 v2.77 UNBLOCKED, parallel)** | DRAFTED. Commit `f35f8ea4`. Unblocked per D-IOL-001. | chat → PK | Stage A authoring when PK directs (parallel-executable with cc-0015) |
+| **Music library activation** | Code wired in video-worker v3.0.0; env-var gated | **P2 (rank 3 v2.77 PROMOTED)** | PENDING PK execution. Code already deployed. | PK + chat | Create bucket; upload 9 tracks; set env var; smoke test |
+| **Invegent IG cap-throttle planning** | jobid 53 unblock | **P2 (rank 5 v2.77 PROMOTED)** | OBSERVED. Now unblocked per D-IOL-001. | chat → PK | Verify throttles + dry-run + re-enable |
+| **F-YT-PUB-AVATAR-EXCLUSION** | youtube-publisher filter + upstream chain | **P2 (rank 5 v2.77 PROMOTED)** | LOGGED. Now unblocked per D-IOL-001. | chat → PK | Audit m.post_draft + decide filter expansion or chain investigation |
+| **Dashboard PHASES sync** | PHASES array stale since 3 May | **P2 (rank 6 v2.77 UNBLOCKED)** | 30th consecutive deferral. Now unblocked per D-IOL-001. | chat → PK | Update `app/(dashboard)/roadmap/page.tsx` at next dashboard session |
+| **cc-0013 Dashboard Phase 0** | 7 confirm-defaults | P2 (carry) | OPEN — no longer gated on Day-19. | PK | When PK directs |
+| **Close-the-loop batch sweep — 22 escalated remain** | Gated on PK directive | P2 (rank 7 v2.77 carry) | PARTIAL COMPLETE 2026-05-17. 22 remain (21 historical CCH-locked + 1 T-MCP-05 meta). | chat → future PK directive | Hold remainder pending PK lift of CCH + meta resolution |
+| **Brief v1.2 doc patch** | 6 defects + L60 + L63 + L64 + L65 + L-v2.76-a-f framing | P3 (carry) | DRAFT scope expanded. Doc-only. | chat → future | Single doc patch when PK greenlights |
+| **v1.1 cc-0012 minor doc patch (3 items)** | Var-A1 + Var-A2 + Var-A3 | P3 (carry) | HOLD | chat → future | Doc-only |
+| **v1.6 cc-0010A doc patch (3 items)** | result_jsonb rename + trigger audit + queue_id non-FK | P3 (carry) | HOLD | chat → future | Doc-only |
+| **v1.3 cc-0011 minor doc patch (5 items)** | E1 + Var-A/B/C/E | P3 (carry) | HOLD | chat → future | Doc-only |
 | **F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION + L34 audit** | 3 geography rows + trigger filter | P3 (carry v2.71) | Strengthened v2.68. | chat → future | Separate cc-NNNN cleanup brief |
-| **Platform Reconciliation View — BRIEF AUTHORING** | reconciliation surface | P2 — fully eligible v2.68 | cc-0010A + cc-0010B delivered. | PK → chat | When PK greenlights |
-| **Dashboard Architecture Review Phase 0** | 7 confirm-defaults | P1 TOP (unchanged) | Carry. | PK | Confirm via cc-0001 |
+| **Platform Reconciliation View — BRIEF AUTHORING** | reconciliation surface | P2 — fully eligible v2.68; now unblocked per D-IOL-001 | cc-0010A + cc-0010B delivered. | PK → chat | When PK greenlights |
 | **AI cost view** | `vw_ai_cost_monthly` | P3 quick win | Carry. | chat → future | DDL + tile |
 | **Publisher latent config risk** | verify_jwt = false doc patch | P3 (carry) | OPEN | chat → future | Single-file commit |
 | **M8b separate brief authoring** | Function rename | P3 (carry) | NOT YET AUTHORED | PK → chat | When PK directs |
 | **94-row un-publishable legacy draft cohort** | SQL filter per cc-0007 | P3 (carry) | LOGGED | PK → chat → future | If PK directs |
 | **F-CRON-AUTO-APPROVER-SECRET-INLINE** | Cron jobid 58 inline secret | P2 (security, OPEN) | OPEN | chat → future (PK approval) | PK authorisation |
-| **F-YT-PUB-AVATAR-EXCLUSION** | youtube-publisher filter | P3 (carry) | LOGGED | chat → future | — |
 | **morning-inbox-sweep-v1 brief amendment** | PK personal-email morning triage | P3 (carry) | DRAFT exists | PK → chat | PK reviews |
-| **22 escalated m.chatgpt_review rows remain (updated 2026-05-17)** | 21 historical CCH-locked + 1 T-MCP-05 meta (`1bae5068`); post safe-buckets sweep | P3 (carry; gated) | Untouched per CCH; not to be closed without explicit PK directive | chat → future PK directive | Hold pending PK lift of CCH standing rule + resolution of meta recursion |
-| **Memory cap hygiene** | 19/30 v2.76 (down from 30/30) | **DOWNGRADED to P3 v2.76** | 11 free slots; not urgent. | chat → future | Add v2.77+ memories as needed |
-| **Parallel agent coordination (L47)** | informational | P3 (carry) | No conflicts observed v2.76. | chat → future | Passive observation |
+| **22 escalated m.chatgpt_review rows** | 21 historical CCH-locked + 1 T-MCP-05 meta | P3 (carry; gated) | Untouched per CCH | chat → future PK directive | Hold |
+| **Memory cap hygiene** | 19/30 v2.76, unchanged v2.77 | P3 (carry) | 11 free slots. | chat → future | Add as needed |
+| **Parallel agent coordination (L47)** | informational | P3 (carry) | No conflicts observed. | chat → future | Passive observation |
 | **Dashboard mobile responsiveness** | Whole-dashboard gap | P3 | OBSERVED | chat → dedicated session | — |
-| **F-PUB-009 V3-V5 + 7-day flow** | Forward acid-test | P2 | Passive monitoring | chat → next session | — |
-| **Invegent IG cap-throttle planning** | jobid 53 unblock | P3 | OBSERVED | chat → T05 unblock | — |
+| **F-PUB-009 V3-V5 + 7-day flow** | Forward acid-test | P2 | Passive monitoring | chat → future | — |
 | **CFW post-ai-worker dead drafts** | Drafts dying after AI succeeds | P3 | OBSERVED | chat → future | — |
 | **Vault `service_role_key` naming** | 15-char value; misleadingly named | P3 | OBSERVED | chat → future | Read-only scope-check |
-| **Cowork output pipeline — blocker corrected 2026-05-17** | Brief was `status: review_required` since 2026-05-04 — Cowork's owner-gate skipped it each fire (Cowork itself was firing nightly). Reset to v3.0 `status: ready` via commit `9215de77`. | **P1 (rank 2 v2.76)** | OPEN until V-C3 PASS on first live run after `9215de77` | Cowork (scheduled) → chat | Wait for next scheduled fire; chat runs V-C3 reconciliation probe |
 | **`00_overview.md` 11-section table** | Architecture review structure change | P3 | Required updates | chat → future | ~15 min |
 | **F-AAP-NEEDS-REVIEW-BACKLOG** | 28 drafts pending review | P2 | Closure = Phase 2 B-09-14 | chat → Phase 2 | Bulk approve UI |
-| **Dashboard roadmap PHASES** | PHASES array stale since 3 May | P3 | Carried (**29th deferral v2.76**) | chat → post-cc-0014 verdict | Update after Day 19 |
 | **F-AI-WORKER-PARSER-SKIP-BUG V4** | Forward acid-test inconclusive | P2 | Passive monitoring | chat → future | V4 natural OR synthetic test |
 | **4× F-CRON-*-STALE** | jobids 1/29/30/31/39 | P2 | LOGGED | PK → future | Decide |
-| **Music library activation** | 9 mp3 upload + bucket + env var | P3 (PK action) | PENDING PK | PK | — |
 | **Emergency redeploy governance** | Expedited D-01? | P2 (PK decision) | PENDING PK | PK | PK rules |
 | **`f4a0dd85` bridge health-check** | hygiene only | P3 (carry) | OBSERVED | PK → future | — |
 | **Feature branch `feature/cc-0009-stage-b-ef-source`** | Audit artifact at HEAD `9796b0ee` | P3 (carry) | OBSERVED | PK → future | — |
 | **3 pre-v2 forensic `r.reconciliation_run failed` rows** | cc-0010B Stage E pre-fire | P3 (carry v2.68) | PK forensic-accepted | informational | — |
-| **github MCP write tools (baseline per L58 v2.76)** | Per-file single-commit default | informational (baseline) | L58 promoted to baseline. | informational | — |
-| **Localhost FAB cleanup post-window** | `.env.local` still has flag enabled | P3 (carry v2.76 NEW) | OPEN — cross-surface duplicate risk | PK → post Day-19 | Set value to false or delete line |
+| **github MCP write tools (L58 baseline)** | Per-file or atomic-push depending on coordination | informational (baseline) | L58 baseline. Atomic push applied v2.77. | informational | — |
+| **Localhost FAB cleanup** | `.env.local` still has flag enabled | P3 (carry) | OPEN — cross-surface duplicate risk | PK → future | Set value to false or delete line |
+| **Close-the-loop UPDATEs for 3 v2.77 D-01 fires** | `3ff74643`, `6a90cacf`, `94bd6835` | P3 (carry NEW v2.77) | OPEN. Same close-the-loop class as 22 escalated. | chat → future PK directive | Include in next batch sweep |
 
-**Closed v2.76:** cc-0014 Stage E close (window-open INSERT); cc-0014 Stage D production deploy (Vercel env var enabling FAB on live).
+**Closed v2.77:** cc-0014 operational window (archived early at Day 4); cron 85 weekly→daily promotion.
+**Closed v2.76:** cc-0014 Stage E close; cc-0014 Stage D production deploy.
 **Closed v2.75:** Stage D, E backend, E frontend, E promotion.
-**Closed v2.74:** (none — Stage C is a milestone.)
-**Closed v2.73:** (none — Stage B is a milestone.)
-**Closed v2.72:** (none — Stage A is a milestone.)
 **Closed v2.71:** cc-0012 PRV v1 CLOSED-WITH-VERIFIED-VARIANCE.
 **Closed v2.70:** cc-0011 cadence-drift-checker CLOSED-WITH-VERIFIED-VARIANCE.
 **Closed v2.69:** cc-0010C reconciliation-matcher CLOSED-WITH-VERIFIED-VARIANCE.
@@ -359,43 +331,37 @@ Other items unchanged from v2.75.
 
 ## 💼 Personal businesses
 
-**v2.76 carry (unchanged):**
+**v2.77 carry (unchanged):**
 
 - **Crazy Domains refund + clean-up follow-up** (carry from v2.51) — PK actions manually. Re-check next session.
 
-*(no other items flagged at v2.76 close — standing P0 to ask at next session start.)*
+*(Standing P0 to ask at next session start.)*
 
 ---
 
 ## 🌱 Future ideation / content-pipeline expansion
 
-Unchanged from v2.75.
+Unchanged from v2.76.
 
 ---
 
 ## 📌 Backlog
 
-**v2.76 changes:**
+**v2.77 changes:**
 
-- **NEW v2.76**: cc-0014 fully CLOSED through window-open INSERT. 14-day operational window OPEN 2026-05-15 → 2026-05-29.
-- **NEW v2.76**: FAB live on production via Vercel env var. Deployment dpl_9Geda1dbh... serving dashboard.invegent.com.
-- **NEW v2.76**: cc-0015 friction-pool-view brief AUTHORED PENDING_EXECUTION (commit 9a5dc155). Blocked-on Day-19.
-- **NEW v2.76**: cc-0016 friction-capture-evidence brief AUTHORED PENDING_EXECUTION (commit f35f8ea4). Parallel-executable.
-- **STATE CHANGE v2.76**: Today/Next 5 reshuffled — rank 1 in-window FAB use; rank 2 Cowork recovery; rank 3 mid-window check-in NEW; rank 4 Day-19 verdict NEW; rank 5 brief v1.2 doc patch (scope expanded); rank 6 cc-0013; rank 7 close-the-loop.
-- **L58 PROMOTED TO BASELINE v2.76**.
-- **6 NEW L-candidates v2.76 (a-f)**.
-- **L41 + L45 re-exercised v2.76**: 5+ exercises now.
-- **L44 re-exercised v2.76**: 7 cycles. Baseline-eligible.
-- **L48 re-exercised v2.76**.
-- **L60 NOT exercised v2.76**.
-- **0 D-01 fires this session**. T-MCP-02 cum 66. Four consecutive 0-D-01 stage-execution sessions.
-- **Memory edit cycle v2.76**: 30/30 → 19/30. Hygiene DOWNGRADED P1→P3.
-- **Sync via 3 single-file chat MCP commits** per L58 baseline.
-- **Brief v1.2 doc patch scope expanded v2.76**.
-- **CARRIED v2.76**: Dashboard roadmap PHASES — **29th** consecutive deferral.
-- **NEW v2.76 carry**: Localhost FAB cleanup post-window.
+- **NEW v2.77**: cc-0014 CLOSED-ARCHIVED. friction.experiment_run.status=archived. Postmortem at `docs/postmortems/cc-0014-closing-note.md`.
+- **NEW v2.77**: Cron 85 promoted weekly → daily. Migration `cc_0014_recon_daily_cadence`.
+- **NEW v2.77**: D-IOL-001 logged in decisions.md. Friction register = standing infrastructure.
+- **NEW v2.77**: IOL hold-stance LIFTED. cc-0015 + cc-0016 + publisher recovery + dashboard PHASES + brief authoring all unblocked.
+- **STATE CHANGE v2.77**: Today/Next 5 rebuilt — rank 1 recon diagnostic NEW; rank 2 health_check diagnostic carry; rank 3 music activation PROMOTED; rank 4 cc-0015 Stage A PROMOTED; rank 5 IG/YT diagnostic PROMOTED; rank 6 dashboard PHASES UNBLOCKED; rank 7 close-the-loop carry.
+- **STATE CHANGE v2.77**: Day-19 verdict + mid-window check-in calendar items RETIRED.
+- **L62 baseline-eligible v2.77** (3+ exercises cumulative).
+- **3 D-01 fires across v2.77 cycle**. T-MCP-02 cum 66→69. State-capture exceptions unchanged at 1.
+- **CARRIED v2.77**: Dashboard roadmap PHASES — **30th** consecutive deferral; **now unblocked** per D-IOL-001 for next dashboard session.
+- **NEW v2.77 carry**: Close-the-loop UPDATEs for 3 v2.77 D-01 fires.
+- **No new L-candidates this session.**
 
-**Pre-v2.76 changes**: per commit history + sync_state archive.
+**Pre-v2.77 changes**: per commit history + sync_state archive.
 
 ---
 
@@ -407,66 +373,57 @@ Unchanged.
 
 ## 🎓 Canonical Lessons
 
-L37–L65 + L-v2.76-a through L-v2.76-f framing carried + extended from v2.75. **v2.76 updates:**
+L37–L65 + L-v2.76-a through L-v2.76-f framing carried from v2.76. **v2.77 updates:**
 
-- **L41 + L45 re-exercised v2.76**: 5+ exercises.
-- **L44 re-exercised v2.76**: 7 cycles. Baseline-eligible.
-- **L46**: not exercised v2.76 (4 consecutive 0-D-01 stage-execution sessions).
-- **L48 re-exercised v2.76**: 1 atomic migration.
-- **L52 / L53 / L55 / L57**: not exercised v2.76.
-- **L58 PROMOTED TO BASELINE v2.76**.
-- **L59**: vindicated by trigger activation this session.
-- **L60**: NOT exercised v2.76. 7 occurrences cumulative. Promotion pending.
-- **L62**: not exercised v2.76.
-- **L63 + L64 + L65 carry from v2.75**: 1 occurrence each. Promotion pending.
-- **L-v2.76-a through L-v2.76-f NEW candidates**: 1 occurrence each. Promotion pending.
+- **L41 + L45**: re-exercised v2.77 (post-mutation execute_sql verifications).
+- **L44**: not exercised v2.77.
+- **L46**: not exercised v2.77 (3 D-01 fires; not 0).
+- **L48**: re-exercised v2.77 (2 atomic migrations).
+- **L52 / L53 / L55 / L57 / L58 / L59 / L60 / L63 / L64 / L65**: not re-exercised v2.77.
+- **L58**: baseline applied v2.77 (atomic 4-file push for docs sync).
+- **L62 baseline-eligible v2.77**: 3 exercises cumulative.
+- **L-v2.76-a through L-v2.76-f**: not re-exercised v2.77; promotion still pending.
+- **No new L-candidates v2.77.**
 
 **All candidates recommended for promotion to baseline at appropriate cycle once empirical evidence accumulates** (L37–L65 + L-v2.76-a-f, plus standing baseline).
 
 ---
 
-## v2.76 honest limitations
+## v2.77 honest limitations
 
-- All v2.31–v2.75 limitations apply.
-- **cc-0014 fully closed through window-open but verdict not yet rendered.** Day-19 = 2026-05-29 Sydney. 14-day window running with 1 in-window event from 1 source (manual). Criterion 3 likely structurally challenging unless Cowork recovers or Monday reconciliation fires.
-- **V-C3 PENDING live Cowork run.** Cowork silent 11+ days.
-- **L58 PROMOTED TO BASELINE v2.76.** All 3 preventive applications within cc-0014 lineage. One more independent occurrence in non-cc-0014 context would strengthen but not strictly required.
-- **L60 candidate all within single brief** (cc-0014). 7 occurrences. Promotion pending pattern repeat in cc-NNNN ≠ 0014.
-- **L63 + L64 + L65 each at 1 occurrence within cc-0014**. Promotion pending.
-- **6 NEW L-candidates v2.76 (a-f) each at 1 occurrence**. Promotion pending. a + f share class.
-- **0 clean pass-through D-01s v2.76** — 4 consecutive 0-D-01 stage-execution sessions under brief §13.
-- **5 prior + 2 v2.72 + 24 historical close-the-loop UPDATEs** — 17 sessions overdue.
-- **F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION** still P3.
-- **Dashboard PHASES** — **29th** consecutive deferral.
-- **Memory cap 19/30 v2.76** — DOWNGRADED to P3. 11 free slots.
-- **Action_list ~50KB at v2.76 close**.
-- **Per-session files v2.76**: 1 — 2026-05-16-v2.76-stage-e-close-and-window-open.md.
-- **Result file v2.76**: N/A (cc-0014 result at Day-19 verdict).
-- **Doc-sync v2.76**: 3 separate single-file chat MCP commits per L58 baseline. Dashboard PHASES 29th deferral intentional.
-- **Close-the-loop UPDATEs v2.76**: 0. 31 eligible.
-- **State-capture exceptions v2.76: 0**. Cumulative: 1.
-- **Cowork output pipeline silence P1 OPEN rank 2** — escalated v2.76.
-- **Memory edit defect recovery v2.76**: 1 unauthorised remove of #10 caught + recovered. L-v2.76-f.
-- **Vercel project ID error recovery v2.76**: wrong ID cited; PK navigated by name. L-v2.76-a.
-- **Env var value shape error recovery v2.76**: TRUE uppercase silent failure. L-v2.76-b.
-- **Trigger probe defect catch v2.76 (positive)**: PK pre-execution review caught probe defect class pre-fire. L-v2.76-c + L-v2.76-e.
+- All v2.31–v2.76 limitations apply.
+- **cc-0014 closed-archived 11 days before scheduled Day-19.** Closure was operator-driven reframing, not brief mechanics. `criteria_snapshot` preserved immutable on archived row as audit trail; future review can see what would have been scored had window completed. Honest fit was `archived` not `passed` (criterion 3 was not met by 1-of-3 source coverage at closure).
+- **V-C3 still PENDING.** Cowork brief reset via `9215de77`. Awaiting next live fire. Now infrastructure follow-up, not blocking.
+- **Reconciliation daily cadence is new and unobserved.** First fire 2026-05-19 03:30 AEST. Three failure modes possible (no drift / detection-too-tight / trigger-gap). Diagnostic capacity built into next session.
+- **L58 baseline applied v2.77 in atomic-push mode** (4 files single commit), which is the L58-permitted alternative to per-file commits when files form a coordinated state change.
+- **L62 baseline-eligible v2.77** at 3 exercises. One more independent occurrence outside cc-0014 lineage would strengthen confidence.
+- **L-v2.76 candidates** still at 1 occurrence each. Promotion pending pattern repeat.
+- **3 close-the-loop UPDATEs newly outstanding** for v2.77 D-01 fires (`3ff74643`, `6a90cacf`, `94bd6835`). Joined to existing 22-row carry.
+- **22 escalated m.chatgpt_review rows** still gated on PK directive.
+- **Dashboard PHASES** — **30th** consecutive deferral; now eligible.
+- **Memory cap 19/30** — unchanged. 11 free slots.
+- **Action_list size at v2.77**: ~40KB (down from ~50KB at v2.76 close via condensing v2.76 details).
+- **Per-session files v2.77**: 1 — `2026-05-18-cc-0014-archived-and-recon-daily.md`.
+- **Result file v2.77**: N/A (postmortem at `docs/postmortems/cc-0014-closing-note.md`).
+- **Doc-sync v2.77**: 1 atomic 4-file push (commit `d6bf9e4a`) + 1 follow-up single-file commit for this action_list update. Dashboard PHASES deferred to next dashboard session (30th deferral, now structural-only).
+- **Close-the-loop UPDATEs v2.77**: 0. **25 eligible** (22 prior + 3 new this cycle).
+- **State-capture exceptions v2.77: 0**. Cumulative: 1.
 
 ---
 
 ## Changelog
 
-- v1.0–v2.75: per commit history + sync_state archive.
-- **v2.76 (2026-05-16 Sydney, cc-0014 FULLY CLOSED + 14-DAY WINDOW OPEN + FAB LIVE ON PRODUCTION + cc-0015 + cc-0016 DRAFTED):**
-  - **Build arc**: pre-flight V-E4 + V-E5 + baseline exclusion audit → **PK pre-execution review caught 3 verification defects** → corrected migration with savepoint-rollback DO blocks + Day-19 wording fix → migration `cc_0014_e_close_experiment_run_start` applied single-shot → 4 post-INSERT verifications all PASS → FAB env var directive → 2 mid-execution defects caught + recovered (wrong project ID + uppercase value) → second redeploy succeeded → live FAB smoke test + triage end-to-end PASS → emitter coverage diagnostic refuted initial chat claim → cc-0015 brief drafting + commit `9a5dc155` → cc-0016 brief drafting + commit `f35f8ea4` → memory edit cycle (30→19 with 1 unauthorised remove caught + recovered) → 3-commit sync drafting.
-  - **Stage E close V-check pattern**: V-E4 + V-E5 pre-state + V-E5 post-INSERT + DELETE-protection probe + criteria_snapshot immutability + notes mutability + final state = all PASS.
-  - **FAB production deploy V-check pattern**: env var + redeploy + code unchanged + custom domain + live render + live submit + promotion trigger + live triage round-trip = all PASS.
-  - **D-01 fires (0)**: per brief §13. T-MCP-02 cum 66. State-capture exceptions cum 1.
-  - **L-series outcomes**: L41 + L45 re-exercised (5+ exercises). L44 re-exercised (7 cycles, baseline-eligible). L48 re-exercised. L55 + L60 NOT exercised. **L58 PROMOTED TO BASELINE**. **6 NEW L-candidates (a-f)**. a + f share deeper class.
-  - **Pattern firsts (5)**: (1) first cc-NNNN to fully complete through window-open INSERT; (2) first session with PK pre-execution review catching 3 verification defects pre-fire; (3) first session with 2 mid-execution defects caught + recovered via PK route-around; (4) first session where chat-side caught + recovered its own unauthorised destructive memory operation mid-cycle; (5) first session with 2 follow-up briefs drafted in same session as parent brief closure.
-  - **Today/Next 5 rebuild**: rank 1 in-window FAB use; rank 2 Cowork recovery; rank 3 mid-window check-in NEW; rank 4 Day-19 verdict NEW; rank 5 brief v1.2 doc patch (scope expanded); rank 6 cc-0013; rank 7 close-the-loop.
-  - **Active rows updated v2.76**: new "cc-0014 operational window" row P1 rank 1-4; Stage E close CLOSED; Stage D production deploy CLOSED; cc-0015 + cc-0016 brief rows added P3; mid-window + Day-19 verdict added P1; Cowork silence escalated P1 rank 2; memory cap hygiene DOWNGRADED P3; localhost FAB cleanup carry added P3.
-  - **STATUS BLOCK v2.76**: cc-0014 with full A-E closure + Stage E close V-check evidence + FAB production deploy V-check evidence; new cc-0015 status block; new cc-0016 status block.
-  - **Closure budget**: ~8h v2.76 cycle. Trailing-14-day cumulative ~116h above 8.0h floor.
-  - **Doc-sync v2.76**: 3 separate single-file chat MCP commits per L58 baseline. 13 memory edits (11 removes + 1 unauthorised remove caught + 1 restore + 2 in-place replaces; final 19/30). Dashboard PHASES NOT updated — 29th consecutive deferral.
-  - **Production mutations v2.76**: 1 apply_migration; ~12 execute_sql; 0 EF deploys; 0 cron mutations; 0 vault writes; 0 D-01 fires; 3 chat MCP GitHub commits (cc-0015 brief + cc-0016 brief + 3-file sync close); 0 CCD commits; 1 PK manual Vercel UI change (env var + value correction); 1 PK manual Vercel UI action (Redeploy); 13 memory edits.
-  - **T-MCP-02 cum**: 66. State-capture exceptions: 1. L46 baseline: not exercised.
+- v1.0–v2.76: per commit history + sync_state archive.
+- **v2.77 (2026-05-18 Sydney, cc-0014 CLOSED-ARCHIVED + RECON CRON DAILY + IOL HOLD-STANCE LIFTED):**
+  - **Build arc**: yesterday-evening reframing diagnosis → D-01 `3ff74643` close-as-passed surfaced 4 type-(b) genuine pushbacks → revised plan to archived → D-01 `6a90cacf` on archived returned 3 type-(c) generic → migration `cc_0014_close_archived` applied single-shot → D-01 `94bd6835` on recon daily returned 1 type-(c) → migration `cc_0014_recon_daily_cadence` applied (rename blocked, schedule-only succeeded) → atomic 4-file push `d6bf9e4a` (postmortem + session note + decisions D-IOL-001 + sync_state v2.77) → memory edits #8 + #15 → this action_list update.
+  - **D-IOL-001 NEW**: friction register = standing operational infrastructure. No sunset.
+  - **Hold-stance lifted**: cc-0015 + cc-0016 + publisher recovery + dashboard PHASES all unblocked.
+  - **D-01 fires (3 across cycle)**: 1 type-(b) satisfied by revision; 2 type-(c) PK approval per L62. T-MCP-02 cum 66→69. State-capture exceptions unchanged at 1.
+  - **L-series outcomes**: L41 + L45 + L48 re-exercised. L58 baseline atomic-push mode applied. L62 baseline-eligible (3+ exercises). No new candidates.
+  - **Today/Next 5 rebuild**: rank 1 recon daily diagnostic NEW; rank 2 health_check diagnostic carry; rank 3 music activation PROMOTED; rank 4 cc-0015 PROMOTED; rank 5 IG/YT diagnostic PROMOTED; rank 6 dashboard PHASES UNBLOCKED; rank 7 close-the-loop carry.
+  - **Active rows updated v2.77**: cc-0014 operational window CLOSED; cc-0015 + cc-0016 promoted P3→P2 unblocked; music + IG + YT + dashboard PHASES promoted P3→P2 unblocked; Day-19 + mid-window check-in retired.
+  - **STATUS BLOCK v2.77**: cc-0014 with closure rationale + final D-01 history (5 fires); cc-0015 + cc-0016 status block headers updated to UNBLOCKED.
+  - **Closure budget**: ~1.5h v2.77 cycle. Trailing-14-day cumulative ~10h above 8.0h floor.
+  - **Doc-sync v2.77**: 1 atomic 4-file push + this action_list update. Dashboard PHASES still deferred (30th, now structural-only — eligible for next dashboard session).
+  - **Production mutations v2.77**: 2 apply_migration (`cc_0014_close_archived` + `cc_0014_recon_daily_cadence`); ~5 execute_sql; 1 cron mutation (cron.alter_job); 1 GitHub atomic push (4 files); 1 GitHub single-file commit (this); 3 D-01 fires; 2 memory edits; 0 EF deploys; 0 vault writes.
+  - **T-MCP-02 cum**: 69. State-capture exceptions: 1. L62 baseline-eligible.
