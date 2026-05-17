@@ -184,6 +184,37 @@ Under Option C: delete `docs/audit/health/2026-05-05.md` and the run state file 
 
 ---
 
+## Q-nightly-health-check-v1-004
+
+Context:
+Executing `nightly-health-check-v1` brief v3.0 on 2026-05-17T16:02:10Z (Cowork run, Tier 0, **first scheduled fire of v3.0** — daily 02:00 AEST schedule resumed 2026-05-17 after 12-day owner-gate skip 2026-05-05→2026-05-16). Q-stuck returned 7 platform×client rows; Q-true-stuck returned 5 clusters. Two of those 5 (`instagram × care-for-welfare-pty-ltd` n=2, `instagram × invegent` n=2 — both `publish_enabled=true`, both `scheduled_for=2026-05-15`) sit in an ambiguous zone of the Section 6a categorisation rules:
+
+- Brief Cat A reads: "platform=instagram + scheduled_for >= 25 Apr 2026, OR `profile_enabled=false`" → parses as `(instagram AND scheduled>=25 Apr) OR profile_enabled=false`. Under that strict reading both rows are Cat A (instagram + scheduled >= 25 Apr).
+- Q-true-stuck SQL filters on `cpp.publish_enabled=true` AND zero attempts; both rows match, so the SQL ground truth says they ARE TRUE stuck (Cat C).
+
+The brief's "Likely questions and defaults" Q4 covers Cat A vs Cat B overlap (Cat A wins) but not Cat A vs Cat C overlap. Strict reading would put both rows in Cat A in Section 6a but Q-true-stuck (which drives Section 6b + Section 10 P1) still includes them. That's an internal inconsistency between Section 6a's narrative categorisation rules and Section 6b's SQL-derived membership.
+
+Cowork defaulted to: **Cat A means `profile_enabled=false` only**; the `instagram + scheduled >= 25 Apr` clause is treated as a heuristic shorthand for the `profile_enabled=false` state and is superseded when `cpp.publish_enabled` is directly observable. Under this default, the two instagram clusters are Cat C — matching Q-true-stuck. Section 6a tabulates them as Cat C; Section 6b lists them; Section 10 P1 emits one finding per cluster (5 total P1 findings emitted to friction.event; success_count=5).
+
+Additionally noted (separate signal, not the question itself): `instagram-publisher-every-15m` (jobid 53) is `is_active=false` per Q3. So while the profile is `publish_enabled=true`, there is no active publisher cron consuming queued instagram items — this is the apparent root cause for both instagram clusters being stuck.
+
+Question:
+Is Cowork's "`profile_enabled=false` only" reading of Cat A correct, and how should the brief Cat A definition be rewritten so future scheduled runs are unambiguous?
+
+Options:
+A. Cowork's reading correct — accept this run as-is and patch the brief Cat A to "platform-lock artefact: profile_enabled=false (regardless of platform)". Drop the `instagram + scheduled>=25 Apr` clause as it's a leaky heuristic now that `cpp.publish_enabled` is the canonical signal.
+B. Cowork's reading correct — accept this run as-is and leave brief unchanged (Cowork will continue applying the same default at the same overlap each run).
+C. Strict reading correct — re-categorize: 4 Cat A rows + 0 Cat B + 3 Cat C rows; the two instagram clusters should be Cat A (platform-lock) rather than Cat C (true-stuck). Section 10 P1 then drops to 3 findings (only linkedin × property-pulse + youtube × property-pulse + youtube × ndis-yarns). friction.event has 2 over-emissions that Day-19 audit would need to filter out.
+D. Add a new Cat D ("instagram with `publish_enabled=true` but publisher cron is `is_active=false`") to capture instagram × {care-for-welfare-pty-ltd, invegent}. The underlying cron `instagram-publisher-every-15m` (jobid 53) is inactive, so there's no consumer for these queued items even though the profile is enabled. This is the actual root cause — different from Cat A (queue-residue from a disabled-platform period) and different from Cat C (queue + healthy publisher mismatch). Section 10 P1 emission unchanged at 5; Section 6a/6b adds Cat D dimension.
+
+Default:
+Proceeded with Option A reading. Output `docs/audit/health/2026-05-17.md` written; emission completed (success_count=5, failure_count=0); run not blocked.
+
+Impact if wrong:
+Under Option C: 2 friction.event rows already emitted (`priority-1/true-stuck-instagram-care-for-welfare-pty-ltd`, `priority-1/true-stuck-instagram-invegent`) are over-emissions and would need to be marked false-positive in Day-19 reconciliation; Section 6a categorisation + Section 6b table + Section 10 P1 bullet count would shift from 5 → 3. Under Option D: same data, additional category column in Section 6a + new finding_id pattern (e.g. `priority-1/instagram-publisher-inactive-{client_slug}`) for future runs; emission counts unchanged but next-day's emission would use a different finding_id, breaking day-over-day recurrence detection for these two clusters. Under Option A or B: no immediate change to this run's output.
+
+---
+
 ## Closed (resolution refs)
 
 When a question is resolved, append a resolution block here referencing the original Q-ID. Do NOT move the original question entry from the Open section — leave it where it was written. The resolution block here is a back-pointer.
