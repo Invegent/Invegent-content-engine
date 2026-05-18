@@ -7,6 +7,8 @@
 
 V-checks run after `apply_migration` returns success. Each is independent. A failure in one does not block the others. If any required V-check fails, the migration must be rolled back per [`hardstop-rollback.md`](hardstop-rollback.md).
 
+> **v1.1 patch note (defect 3):** V-B12, V-B13, V-B14, and V-B22 in v1.0 used data-modifying CTE chains. PostgreSQL evaluates all CTEs in a single statement against the same snapshot — the second `friction.emit_event(...)` inside such a chain does NOT observe the case created by the first call, so attach/reopen paths were under-tested. v1.1 converts these to **sequential per-statement pattern via temp tables** so each emit runs in its own snapshot.
+
 ---
 
 ## Schema-state V-checks (V-B1 – V-B9)
@@ -139,6 +141,10 @@ FROM friction.emit_event(
 
 **V-B11 — Idempotent replay returns same event/case:**
 ```sql
+-- V-B11's CTE chain is acceptable: the second emit short-circuits on UNIQUE (source,
+-- source_event_id) at INSERT time and returns the prior event — does NOT depend on
+-- observing the first emit's case-side effects. The attach/reopen V-checks (V-B12/13/14)
+-- DO depend on cross-snapshot visibility and use the sequential pattern below.
 WITH first_emit AS (
   SELECT * FROM friction.emit_event(
     p_source             := 'manual',
@@ -176,31 +182,47 @@ SELECT
 
 **V-B12 — emit_event attach-to-open (same fingerprint → attaches, severity escalates):**
 ```sql
-WITH first_emit AS (
-  SELECT * FROM friction.emit_event(
-    p_source             := 'manual', p_condition_key := 'manual_fab',
-    p_problem_key        := 'cc-0017b-test/v-b12-attach',
-    p_source_event_id    := 'cc-0017b-test/v-b12-attach-1',
-    p_observed_at        := now(), p_related_object := '{"k":"v"}'::jsonb,
-    p_observation_text   := 'cc-0017b-test/v-b12 first emit',
-    p_raw_payload        := '{}'::jsonb, p_reported_by := 'pk', p_severity_override := 'info'
-  )
-),
-second_emit AS (
-  SELECT * FROM friction.emit_event(
-    p_source             := 'manual', p_condition_key := 'manual_fab',
-    p_problem_key        := 'cc-0017b-test/v-b12-attach',
-    p_source_event_id    := 'cc-0017b-test/v-b12-attach-2',
-    p_observed_at        := now(), p_related_object := '{"k":"v"}'::jsonb,
-    p_observation_text   := 'cc-0017b-test/v-b12 second emit',
-    p_raw_payload        := '{}'::jsonb, p_reported_by := 'pk', p_severity_override := 'warn'  -- escalate
-  )
-)
+-- v1.1 patch (defect 3): sequential pattern via temp table.
+DROP TABLE IF EXISTS vb12_results;
+CREATE TEMP TABLE vb12_results (
+  step text PRIMARY KEY, event_id uuid, case_id uuid, case_disposition text
+);
+
+-- Step 1: first emit creates the case
+INSERT INTO vb12_results (step, event_id, case_id, case_disposition)
+SELECT 'first', event_id, case_id, case_disposition
+FROM friction.emit_event(
+  p_source := 'manual', p_condition_key := 'manual_fab',
+  p_problem_key := 'cc-0017b-test/v-b12-attach',
+  p_source_event_id := 'cc-0017b-test/v-b12-attach-1',
+  p_observed_at := now(), p_related_object := '{"k":"v"}'::jsonb,
+  p_observation_text := 'cc-0017b-test/v-b12 first emit',
+  p_raw_payload := '{}'::jsonb, p_reported_by := 'pk', p_severity_override := 'info'
+);
+
+-- Step 2: second emit attaches to the same case and escalates severity to 'warn'
+INSERT INTO vb12_results (step, event_id, case_id, case_disposition)
+SELECT 'second', event_id, case_id, case_disposition
+FROM friction.emit_event(
+  p_source := 'manual', p_condition_key := 'manual_fab',
+  p_problem_key := 'cc-0017b-test/v-b12-attach',
+  p_source_event_id := 'cc-0017b-test/v-b12-attach-2',
+  p_observed_at := now(), p_related_object := '{"k":"v"}'::jsonb,
+  p_observation_text := 'cc-0017b-test/v-b12 second emit',
+  p_raw_payload := '{}'::jsonb, p_reported_by := 'pk', p_severity_override := 'warn'
+);
+
+-- Step 3: verify attach + escalation
 SELECT
-  (SELECT case_id FROM first_emit) = (SELECT case_id FROM second_emit) AS case_ids_match,
-  (SELECT case_disposition FROM second_emit) AS second_disposition,
-  (SELECT severity FROM friction.case WHERE case_id = (SELECT case_id FROM first_emit)) AS case_severity_after,
-  (SELECT event_count FROM friction.case WHERE case_id = (SELECT case_id FROM first_emit)) AS event_count_after;
+  (f.case_id = s.case_id)  AS case_ids_match,
+  s.case_disposition       AS second_disposition,
+  c.severity               AS case_severity_after,
+  c.event_count            AS event_count_after
+FROM vb12_results f
+JOIN vb12_results s ON f.step = 'first' AND s.step = 'second'
+JOIN friction.case c ON c.case_id = f.case_id;
+
+DROP TABLE vb12_results;
 -- Expected: case_ids_match=true; second_disposition='attached_open'; case_severity_after='warn'; event_count_after=2
 ```
 
@@ -210,42 +232,57 @@ SELECT
 
 **V-B13 — Reopen within 14-day window:**
 ```sql
-WITH setup AS (
-  SELECT * FROM friction.emit_event(
-    p_source := 'manual', p_condition_key := 'manual_fab',
-    p_problem_key := 'cc-0017b-test/v-b13-reopen',
-    p_source_event_id := 'cc-0017b-test/v-b13-reopen-1',
-    p_observed_at := now() - interval '3 days', p_related_object := '{}'::jsonb,
-    p_observation_text := 'cc-0017b-test/v-b13 setup case for reopen',
-    p_raw_payload := '{}'::jsonb, p_reported_by := 'pk', p_severity_override := 'critical'
-  )
-),
-close_case AS (
-  UPDATE friction.case
-  SET resolved_at = now() - interval '5 days', resolution_kind = 'acted_on'
-  WHERE case_id = (SELECT case_id FROM setup)
-  RETURNING case_id
-),
-reopen AS (
-  SELECT * FROM friction.emit_event(
-    p_source := 'manual', p_condition_key := 'manual_fab',
-    p_problem_key := 'cc-0017b-test/v-b13-reopen',
-    p_source_event_id := 'cc-0017b-test/v-b13-reopen-2',
-    p_observed_at := now(), p_related_object := '{}'::jsonb,
-    p_observation_text := 'cc-0017b-test/v-b13 recurrence within 14d',
-    p_raw_payload := '{}'::jsonb, p_reported_by := 'pk',
-    p_severity_override := 'info'   -- new severity should REPLACE per PK directive
-  )
-)
+-- v1.1 patch (defect 3): sequential pattern; the intermediate UPDATE closing the case
+-- 5d ago must be visible to the second emit's reopen lookup — only achievable via
+-- separate statements.
+DROP TABLE IF EXISTS vb13_results;
+CREATE TEMP TABLE vb13_results (
+  step text PRIMARY KEY, event_id uuid, case_id uuid, case_disposition text
+);
+
+-- Step 1: setup emit creates a case at critical severity (observed 3 days ago)
+INSERT INTO vb13_results (step, event_id, case_id, case_disposition)
+SELECT 'setup', event_id, case_id, case_disposition
+FROM friction.emit_event(
+  p_source := 'manual', p_condition_key := 'manual_fab',
+  p_problem_key := 'cc-0017b-test/v-b13-reopen',
+  p_source_event_id := 'cc-0017b-test/v-b13-reopen-1',
+  p_observed_at := now() - interval '3 days', p_related_object := '{}'::jsonb,
+  p_observation_text := 'cc-0017b-test/v-b13 setup case for reopen',
+  p_raw_payload := '{}'::jsonb, p_reported_by := 'pk', p_severity_override := 'critical'
+);
+
+-- Step 2: close the case 5 days ago (within the 14-day reopen window)
+UPDATE friction.case
+SET resolved_at = now() - interval '5 days', resolution_kind = 'acted_on'
+WHERE case_id = (SELECT case_id FROM vb13_results WHERE step = 'setup');
+
+-- Step 3: fresh emit hits the reopen path; severity REPLACES (not max) per PK directive
+INSERT INTO vb13_results (step, event_id, case_id, case_disposition)
+SELECT 'reopen', event_id, case_id, case_disposition
+FROM friction.emit_event(
+  p_source := 'manual', p_condition_key := 'manual_fab',
+  p_problem_key := 'cc-0017b-test/v-b13-reopen',
+  p_source_event_id := 'cc-0017b-test/v-b13-reopen-2',
+  p_observed_at := now(), p_related_object := '{}'::jsonb,
+  p_observation_text := 'cc-0017b-test/v-b13 recurrence within 14d',
+  p_raw_payload := '{}'::jsonb, p_reported_by := 'pk',
+  p_severity_override := 'info'   -- replaces 'critical' from setup
+);
+
+-- Step 4: verify reopen preserved case_id, cleared resolved_at, replaced severity
 SELECT
-  (SELECT case_id FROM setup) = (SELECT case_id FROM reopen) AS case_id_preserved,
-  (SELECT case_disposition FROM reopen) AS reopen_disposition,
-  c.resolved_at IS NULL                 AS is_open_after_reopen,
-  c.resolution_kind                     AS resolution_kind_after,
-  c.reopen_count                        AS reopen_count_after,
-  c.severity                            AS severity_after  -- expect 'info' (replaced)
-FROM friction.case c
-WHERE c.case_id = (SELECT case_id FROM reopen);
+  (s.case_id = r.case_id)    AS case_id_preserved,
+  r.case_disposition         AS reopen_disposition,
+  (c.resolved_at IS NULL)    AS is_open_after_reopen,
+  c.resolution_kind          AS resolution_kind_after,
+  c.reopen_count             AS reopen_count_after,
+  c.severity                 AS severity_after
+FROM vb13_results s
+JOIN vb13_results r ON s.step = 'setup' AND r.step = 'reopen'
+JOIN friction.case c ON c.case_id = r.case_id;
+
+DROP TABLE vb13_results;
 -- Expected: case_id_preserved=true; reopen_disposition='reopened_within_window';
 --           is_open_after_reopen=true; resolution_kind_after='reopened';
 --           reopen_count_after=1; severity_after='info'
@@ -253,38 +290,51 @@ WHERE c.case_id = (SELECT case_id FROM reopen);
 
 **V-B14 — create_after_window (close >14d ago, emit, verify predecessor link):**
 ```sql
-WITH setup AS (
-  SELECT * FROM friction.emit_event(
-    p_source := 'manual', p_condition_key := 'manual_fab',
-    p_problem_key := 'cc-0017b-test/v-b14-after-window',
-    p_source_event_id := 'cc-0017b-test/v-b14-after-window-1',
-    p_observed_at := now() - interval '20 days', p_related_object := '{}'::jsonb,
-    p_observation_text := 'cc-0017b-test/v-b14 setup case',
-    p_raw_payload := '{}'::jsonb, p_reported_by := 'pk', p_severity_override := 'warn'
-  )
-),
-close_old AS (
-  UPDATE friction.case
-  SET resolved_at = now() - interval '18 days', resolution_kind = 'tracked_done'
-  WHERE case_id = (SELECT case_id FROM setup)
-  RETURNING case_id AS predecessor_id
-),
-emit_new AS (
-  SELECT * FROM friction.emit_event(
-    p_source := 'manual', p_condition_key := 'manual_fab',
-    p_problem_key := 'cc-0017b-test/v-b14-after-window',
-    p_source_event_id := 'cc-0017b-test/v-b14-after-window-2',
-    p_observed_at := now(), p_related_object := '{}'::jsonb,
-    p_observation_text := 'cc-0017b-test/v-b14 new case after window',
-    p_raw_payload := '{}'::jsonb, p_reported_by := 'pk', p_severity_override := 'warn'
-  )
-)
+-- v1.1 patch (defect 3): sequential pattern via temp table.
+DROP TABLE IF EXISTS vb14_results;
+CREATE TEMP TABLE vb14_results (
+  step text PRIMARY KEY, event_id uuid, case_id uuid, case_disposition text
+);
+
+-- Step 1: setup emit creates a case observed 20 days ago
+INSERT INTO vb14_results (step, event_id, case_id, case_disposition)
+SELECT 'setup', event_id, case_id, case_disposition
+FROM friction.emit_event(
+  p_source := 'manual', p_condition_key := 'manual_fab',
+  p_problem_key := 'cc-0017b-test/v-b14-after-window',
+  p_source_event_id := 'cc-0017b-test/v-b14-after-window-1',
+  p_observed_at := now() - interval '20 days', p_related_object := '{}'::jsonb,
+  p_observation_text := 'cc-0017b-test/v-b14 setup case',
+  p_raw_payload := '{}'::jsonb, p_reported_by := 'pk', p_severity_override := 'warn'
+);
+
+-- Step 2: close the case 18 days ago (outside the 14-day reopen window)
+UPDATE friction.case
+SET resolved_at = now() - interval '18 days', resolution_kind = 'tracked_done'
+WHERE case_id = (SELECT case_id FROM vb14_results WHERE step = 'setup');
+
+-- Step 3: fresh emit creates a NEW case with predecessor_case_id linking back to the closed one
+INSERT INTO vb14_results (step, event_id, case_id, case_disposition)
+SELECT 'new', event_id, case_id, case_disposition
+FROM friction.emit_event(
+  p_source := 'manual', p_condition_key := 'manual_fab',
+  p_problem_key := 'cc-0017b-test/v-b14-after-window',
+  p_source_event_id := 'cc-0017b-test/v-b14-after-window-2',
+  p_observed_at := now(), p_related_object := '{}'::jsonb,
+  p_observation_text := 'cc-0017b-test/v-b14 new case after window',
+  p_raw_payload := '{}'::jsonb, p_reported_by := 'pk', p_severity_override := 'warn'
+);
+
+-- Step 4: verify disposition + new case distinct + predecessor link
 SELECT
-  (SELECT case_disposition FROM emit_new) AS disposition,
-  (SELECT case_id FROM emit_new) != (SELECT predecessor_id FROM close_old) AS new_case_distinct,
-  c.predecessor_case_id = (SELECT predecessor_id FROM close_old) AS predecessor_link_correct
-FROM friction.case c
-WHERE c.case_id = (SELECT case_id FROM emit_new);
+  n.case_disposition                   AS disposition,
+  (n.case_id <> s.case_id)             AS new_case_distinct,
+  (c.predecessor_case_id = s.case_id)  AS predecessor_link_correct
+FROM vb14_results s
+JOIN vb14_results n ON s.step = 'setup' AND n.step = 'new'
+JOIN friction.case c ON c.case_id = n.case_id;
+
+DROP TABLE vb14_results;
 -- Expected: disposition='created_after_window'; new_case_distinct=true; predecessor_link_correct=true
 ```
 
@@ -303,6 +353,7 @@ WITH e AS (
     p_observation_text := 'cc-0017b-test/v-b15 severity override provenance',
     p_raw_payload := '{}'::jsonb, p_reported_by := 'pk',
     p_severity_override := 'critical'    -- rule default is 'info'
+    -- NB: p_category_override is NOT passed → no category-provenance change
   )
 )
 SELECT
@@ -312,7 +363,14 @@ SELECT
   ev.dynamic_context -> 'severity_override' ->> 'applied'        AS audit_applied,
   ev.dynamic_context -> 'severity_override' ->> 'effective_was'  AS audit_effective_was
 FROM friction.event ev WHERE ev.event_id = (SELECT event_id FROM e);
--- Expected: severity_actual='critical'; category_source_actual='manual_at_capture' (NOT severity_override);
+-- v1.1 patch (defect 4): expected category_source corrected from 'manual_at_capture'
+-- to 'emitter_default'. Reasoning: emit_event Step 5 CASE evaluates to 'manual_at_capture'
+-- only when p_reported_by='pk' AND p_category_override IS NOT NULL. V-B15 passes 'pk' but
+-- NOT p_category_override → falls through to 'emitter_default'. The severity override
+-- provenance lives ONLY in dynamic_context per PK directive 2026-05-18.
+--
+-- Expected: severity_actual='critical'; category_source_actual='emitter_default'
+--           (NOT 'manual_at_capture' as v1.0 stated; NOT 'severity_override' at all);
 --           has_sev_override_audit=true; audit_applied='critical'; audit_effective_was='info'
 ```
 
@@ -409,8 +467,8 @@ SELECT
 **V-B20 — Direct INSERT triggers defence-in-depth path:**
 ```sql
 -- Confirm GUC NOT set before direct INSERT
-SELECT current_setting('friction.emit_event_active', true) AS guc_before_direct;
--- Expected: ''
+SELECT COALESCE(current_setting('friction.emit_event_active', true), '') AS guc_before_direct;
+-- Expected: '' (empty string from COALESCE on NULL/unset GUC)
 
 -- Direct INSERT (bypass emit_event)
 INSERT INTO friction.event (
@@ -434,9 +492,12 @@ SELECT
 
 **V-B21 — GUC transaction-locality (no cross-transaction leak):**
 ```sql
--- After all prior V-B steps, the GUC should be clear at top level
-SELECT current_setting('friction.emit_event_active', true) AS guc_after_emits;
--- Expected: '' (set_config is_local=true semantics; clears on COMMIT/ROLLBACK)
+-- After all prior V-B steps, the GUC should be clear at top level.
+-- (See P16 v1.1 patch note — NULL is also acceptable as "unset".)
+SELECT
+  current_setting('friction.emit_event_active', true) AS guc_value,
+  COALESCE(current_setting('friction.emit_event_active', true), '') = '' AS guc_is_unset;
+-- Expected: guc_is_unset = true (set_config is_local=true clears on COMMIT/ROLLBACK)
 ```
 
 ---
@@ -445,32 +506,57 @@ SELECT current_setting('friction.emit_event_active', true) AS guc_after_emits;
 
 **V-B22 — Reconciliation wrapper end-to-end (synthetic INSERT to r.cadence_drift_log):**
 ```sql
-WITH ins_drift AS (
-  INSERT INTO r.cadence_drift_log
-    (cadence_drift_log_id, client_id, platform, drift_type, drift_severity,
-     drift_details, observed_count, expected_count,
-     observation_window_start, observation_window_end, created_at)
-  VALUES (
-    'aaaaaaaa-aaaa-aaaa-aaaa-cc0017b00022',
-    (SELECT client_id FROM c.client
-       WHERE client_slug IN ('ndis-yarns','property-pulse','invegent','care-for-welfare') LIMIT 1),
-    'instagram', 'observer_stale', 'warn',
-    '{"test":"v-b22"}'::jsonb, 0, 1,
-    now() - interval '1 day', now(), now()
-  )
-  RETURNING cadence_drift_log_id
-)
+-- v1.1 patch (defect 5): r.cadence_drift_log has 3 NOT NULL FK columns to
+-- r.reconciliation_run (drift_check_run_id, created_by_run_id, updated_by_run_id) that
+-- v1.0 omitted. The INSERT in v1.0 would fail with NOT NULL violation before reaching
+-- the trigger. Use the most recent succeeded reconciliation_run as the FK satisfier —
+-- this is a synthetic test row that borrows the real run's primary key for FK compliance;
+-- it does NOT semantically affect that run. Cleaned up in V-B27.
+--
+-- v1.1 patch (defect 3): also converted from CTE chain to sequential pattern for
+-- consistency with V-B12/13/14.
+
+DROP TABLE IF EXISTS vb22_results;
+CREATE TEMP TABLE vb22_results (
+  label text PRIMARY KEY, drift_log_id uuid
+);
+
+-- Step 1: synthetic insert into r.cadence_drift_log — fires AFTER INSERT trigger
+-- fn_emit_reconciliation_event (rewritten in cc-0017b Step 7 as thin wrapper over emit_event)
+INSERT INTO r.cadence_drift_log
+  (cadence_drift_log_id,
+   drift_check_run_id, created_by_run_id, updated_by_run_id,
+   client_id, platform, drift_type, drift_severity,
+   drift_details, observed_count, expected_count,
+   observation_window_start, observation_window_end, created_at)
+VALUES (
+  'aaaaaaaa-aaaa-aaaa-aaaa-cc0017b00022',
+  (SELECT reconciliation_run_id FROM r.reconciliation_run WHERE status='succeeded' ORDER BY created_at DESC LIMIT 1),
+  (SELECT reconciliation_run_id FROM r.reconciliation_run WHERE status='succeeded' ORDER BY created_at DESC LIMIT 1),
+  (SELECT reconciliation_run_id FROM r.reconciliation_run WHERE status='succeeded' ORDER BY created_at DESC LIMIT 1),
+  (SELECT client_id FROM c.client
+     WHERE client_slug IN ('ndis-yarns','property-pulse','invegent','care-for-welfare') LIMIT 1),
+  'instagram', 'observer_stale', 'warn',
+  '{"test":"v-b22"}'::jsonb, 0, 1,
+  now() - interval '1 day', now(), now()
+);
+
+INSERT INTO vb22_results VALUES ('synthetic', 'aaaaaaaa-aaaa-aaaa-aaaa-cc0017b00022');
+
+-- Step 2: verify trigger fired, wrapper produced friction.event + attached case
 SELECT
   (SELECT count(*) FROM friction.event
-     WHERE source_event_id = 'r.cadence_drift_log/' || (SELECT cadence_drift_log_id FROM ins_drift)::text
+     WHERE source_event_id = 'r.cadence_drift_log/aaaaaaaa-aaaa-aaaa-aaaa-cc0017b00022'
   ) AS event_landed,
   (SELECT case_id FROM friction.event
-     WHERE source_event_id = 'r.cadence_drift_log/' || (SELECT cadence_drift_log_id FROM ins_drift)::text
+     WHERE source_event_id = 'r.cadence_drift_log/aaaaaaaa-aaaa-aaaa-aaaa-cc0017b00022'
   ) IS NOT NULL AS case_attached;
+
+DROP TABLE vb22_results;
 -- Expected: event_landed=1, case_attached=true
 ```
 
-> **V-B22 EXECUTION NOTE:** writes a row to `r.cadence_drift_log` that triggers downstream reconciliation logic. **Apply-time decision:** if PK prefers to skip this V-check, the wrapper logic is exercised indirectly via the natural cron 85 fire window (next is 03:30 AEST = 17:30 UTC). Mark as `SKIPPED-BY-PK-DIRECTION` in apply notes if PK opts out.
+> **V-B22 EXECUTION NOTE:** writes a synthetic row to `r.cadence_drift_log`. **Apply-time decision:** if PK prefers to skip this V-check, the wrapper logic is exercised indirectly via the natural cron 85 fire window (next 03:30 AEST = 17:30 UTC). Mark as `SKIPPED-BY-PK-DIRECTION` in apply notes if PK opts out.
 
 **V-B23 — Health_check wrapper 3-tier condition_key resolution:**
 ```sql
@@ -601,17 +687,57 @@ RESET ROLE;
 
 **V-B27 — Test row cleanup leaves zero residual:**
 ```sql
-DELETE FROM friction.event       WHERE source_event_id LIKE 'cc-0017b-test/%';
-DELETE FROM friction.event       WHERE source_event_id LIKE 'r.cadence_drift_log/aaaaaaaa-aaaa-aaaa-aaaa-cc0017b00022';
-DELETE FROM friction.case        WHERE problem_key LIKE 'cc-0017b-test/%';
-DELETE FROM friction.emit_error  WHERE source_event_id LIKE 'cc-0017b-test/%';
-DELETE FROM friction.emission_rule WHERE source = 'manual' AND condition_key = 'cc-0017b-test-suppress';
-DELETE FROM friction.emission_rule WHERE source = 'health_check' AND condition_key = 'cc-0017b-test-explicit';
-DELETE FROM r.cadence_drift_log  WHERE cadence_drift_log_id = 'aaaaaaaa-aaaa-aaaa-aaaa-cc0017b00022';
+-- v1.1 patch (defect 6): expanded cleanup patterns. The v1.0 cleanup missed two cohorts:
+--   (a) V-B17 + V-B24 manual-wrapper rows — fn_emit_manual_event generates
+--       source_event_id='manual/<uuid>' (NOT 'cc-0017b-test/' prefix) AND normalises
+--       problem_key via [^a-z0-9]+ → '_' (hyphens become underscores).
+--   (b) V-B23 health_check rows — fn_emit_health_check_findings strips 'priority-N/'
+--       from finding_id, so problem_keys are 'test-explicit' / 'true-stuck-instagram-test-client'
+--       with NO 'cc-0017b-test' prefix.
+-- This v1.1 cleanup catches all three cohorts (LIKE 'cc-0017b-test/%' + LIKE 'cc_0017b_test_%'
+-- + explicit IN list for V-B23 problem_keys).
 
+-- ── DELETE friction.event ──
+DELETE FROM friction.event WHERE source_event_id LIKE 'cc-0017b-test/%';
+DELETE FROM friction.event
+  WHERE source_event_id = 'r.cadence_drift_log/aaaaaaaa-aaaa-aaaa-aaaa-cc0017b00022';
+-- V-B17 + V-B24 manual wrapper: source_event_id='manual/<uuid>'; problem_key normalised
+DELETE FROM friction.event
+  WHERE source = 'manual'
+    AND source_event_id LIKE 'manual/%'
+    AND problem_key LIKE 'cc_0017b_test_%';
+-- V-B23 health_check: problem_keys stripped of priority-N/ prefix (no cc-0017b-test prefix)
+DELETE FROM friction.event
+  WHERE source = 'health_check'
+    AND problem_key IN ('test-explicit', 'true-stuck-instagram-test-client');
+
+-- ── DELETE friction.case ──
+DELETE FROM friction.case WHERE problem_key LIKE 'cc-0017b-test/%';
+DELETE FROM friction.case WHERE problem_key LIKE 'cc_0017b_test_%';
+DELETE FROM friction.case WHERE problem_key IN ('test-explicit', 'true-stuck-instagram-test-client');
+
+-- ── DELETE friction.emit_error ──
+DELETE FROM friction.emit_error WHERE source_event_id LIKE 'cc-0017b-test/%';
+
+-- ── DELETE friction.emission_rule (V-B19 suppress + V-B23 explicit) ──
+DELETE FROM friction.emission_rule WHERE condition_key LIKE 'cc-0017b-test-%';
+
+-- ── DELETE r.cadence_drift_log (V-B22 synthetic) ──
+DELETE FROM r.cadence_drift_log WHERE cadence_drift_log_id = 'aaaaaaaa-aaaa-aaaa-aaaa-cc0017b00022';
+
+-- ── Residual verification ──
 SELECT
-  (SELECT count(*) FROM friction.event WHERE source_event_id LIKE 'cc-0017b-test/%' OR source_event_id LIKE 'r.cadence_drift_log/aaaaaaaa-%') AS test_events_residual,
-  (SELECT count(*) FROM friction.case WHERE problem_key LIKE 'cc-0017b-test/%') AS test_cases_residual,
+  (SELECT count(*) FROM friction.event
+     WHERE source_event_id LIKE 'cc-0017b-test/%'
+        OR source_event_id LIKE 'r.cadence_drift_log/aaaaaaaa-%'
+        OR (source = 'manual' AND problem_key LIKE 'cc_0017b_test_%')
+        OR (source = 'health_check' AND problem_key IN ('test-explicit', 'true-stuck-instagram-test-client'))
+  ) AS test_events_residual,
+  (SELECT count(*) FROM friction.case
+     WHERE problem_key LIKE 'cc-0017b-test/%'
+        OR problem_key LIKE 'cc_0017b_test_%'
+        OR problem_key IN ('test-explicit', 'true-stuck-instagram-test-client')
+  ) AS test_cases_residual,
   (SELECT count(*) FROM friction.emit_error WHERE source_event_id LIKE 'cc-0017b-test/%') AS test_errors_residual,
   (SELECT count(*) FROM friction.emission_rule WHERE condition_key LIKE 'cc-0017b-test-%') AS test_rules_residual,
   (SELECT count(*) FROM r.cadence_drift_log WHERE cadence_drift_log_id = 'aaaaaaaa-aaaa-aaaa-aaaa-cc0017b00022') AS test_drift_residual,
