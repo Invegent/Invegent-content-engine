@@ -1,6 +1,6 @@
 # Friction Register Consolidation Plan v1 — Amendments
 
-**Status:** ADDENDUM to v1 — pre-execution lockdown
+**Status:** SIGNED — execution gate OPEN as of 2026-05-18 Sydney afternoon (v2.79)
 **Author:** PK + chat session 2026-05-18 Sydney (after multi-LLM review)
 **Companion doc:** `docs/runtime/friction_register_consolidation_plan_v1.md` (commit afc9306)
 **Reviews received from:** 3 independent reviewers on v1 (ChatGPT, Gemini-style, GitHub-mode) + 4th post-amendments pre-signature cross-check (ChatGPT, see §5.5)
@@ -15,6 +15,8 @@ v1 was written, committed, and reviewed by three independent LLMs. All three app
 Reviewer convergence is the signal. Where ≥2 of 3 reviewers flagged the same gap, the change is locked. Where 1 of 3 flagged a gap, the change is accepted only if pressure-test confirms it's material.
 
 **Update 2026-05-18 Sydney evening:** §5.5 added after PK consulted ChatGPT for a 4th cross-check pre-signature. Two residual ambiguities locked (reopen window N = 14 days; triage metric measurement strategy). No new architectural decisions.
+
+**Update 2026-05-18 Sydney afternoon (v2.79):** PK signature recorded in §9. Execution gate OPEN. cc-0017a Wave 0a brief authoring un-gated.
 
 ---
 
@@ -270,7 +272,7 @@ Reasoning:
 
 ### Clarification 2 — Triage time metric measurement strategy
 
-**Resolves:** Amendment C added `first_viewed_at`, `triaged_at`, `triaged_by` columns and proposed `triaged_at - first_viewed_at` as the canonical metric. But `first_viewed_at` is only populated by /operations UI instrumentation which lands in Wave 7. The pre-Wave-7 measurement basis was not explicitly locked.
+**Resolves:** Amendment C left `triaged_at - first_viewed_at` as the canonical metric, but `first_viewed_at` is only populated by /operations UI instrumentation which lands in Wave 7. The pre-Wave-7 measurement basis was not explicitly locked.
 
 **LOCKED:**
 
@@ -316,7 +318,7 @@ After this addendum, v1 is execution-ready. Total locked decisions:
 cc-0017a authoring may begin once:
 
 1. ✅ This addendum is committed to repo (this commit, plus §5.5 clarifications)
-2. ✅ PK explicit approval (sign-off below)
+2. ✅ PK explicit approval (sign-off below — RECORDED 2026-05-18 v2.79)
 3. cc-0017a brief authored to v1 + amendments combined scope
 4. cc-0017a brief passes D-01 review
 
@@ -353,8 +355,9 @@ cc-0017a authoring may begin once:
 **Pressure-test:** complete, 4 rounds
 **Empirical validation:** complete (26 cron census, 11 output table audit, dedupe gap confirmed)
 **Pre-signature clarifications:** locked in §5.5 (reopen window N = 14 days; triage metric measurement strategy)
-**Execution gate:** awaiting PK approval below
+**Execution gate:** OPEN — PK approval recorded 2026-05-18 Sydney afternoon (v2.79)
 
-PK approved 
-Date: 18th may 2026 2:40pm
+PK approval: **Parveen Kumar (PK) — approved 2026-05-18 Sydney**
+Date: **2026-05-18**
 
+**Status:** SIGNED. cc-0017a Wave 0a brief authoring is now unblocked. Next session opens with cc-0017a authoring as rank 1.
