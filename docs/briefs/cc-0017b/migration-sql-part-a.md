@@ -496,7 +496,12 @@ BEGIN
   v_disposition := v_inner.disposition;
 
   -- ── Step 9: Patch event.case_id and return ──
-  UPDATE friction.event SET case_id = v_case_id WHERE event_id = v_event_id;
+  -- NOTE (v1.1 patch — defect 1): WHERE clause must be schema-qualified (friction.event.event_id)
+  -- because RETURNS TABLE (event_id uuid, ...) creates an implicit OUT parameter `event_id` that
+  -- shadows the column name. Unqualified comparison raises SQLSTATE 42702 (ambiguous column
+  -- reference). Corrective migration cc_0017b_emit_event_ambiguity_fix (applied 2026-05-18 v2.82)
+  -- qualifies this line in production; v1.1 of the brief reflects the final state.
+  UPDATE friction.event SET case_id = v_case_id WHERE friction.event.event_id = v_event_id;
 
   RETURN QUERY SELECT v_event_id, v_case_id, v_disposition;
 END
