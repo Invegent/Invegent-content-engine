@@ -1,10 +1,11 @@
 # cc-0017a — Friction Register Foundational Schema (Wave 0a)
 
 **Brief ID:** cc-0017a
-**Version:** v1.0
-**Status:** Authored, awaiting D-01 review (execution gate open v2.79)
+**Version:** v1.1
+**Status:** Authored with v1.1 patch applied, awaiting D-01 review (execution gate open v2.79)
 **Wave:** 0a of 10 (Friction Register Consolidation Plan)
 **Authored:** 2026-05-18 Sydney evening
+**v1.1 patch applied:** 2026-05-18 Sydney evening (same-day, pre-D-01) — 4 defects/gaps addressed before D-01 fire. See §11 Changelog.
 **Author:** Chat-side Claude on PK directive
 **Strategic anchor:**
   - `docs/runtime/friction_register_consolidation_plan_v1.md` (commit `afc9306`)
@@ -67,7 +68,7 @@ This brief does not re-litigate the architecture. The v1 plan + amendments + §5
 
 **1 new function (formula only — not wired into any trigger or caller in 0a):**
 
-- `friction.fn_compute_dedupe_fingerprint_v1(p_source text, p_problem_key text, p_related_object jsonb)` returns `text` — deterministic sha256 hex of the canonical concatenation. Created in 0a so the backfill query can call it. Wave 0b's `emit_event` will call the same function — locking the formula in one place avoids the divergence risk Review 3 flagged.
+- `friction.fn_compute_dedupe_fingerprint_v1(p_source text, p_problem_key text, p_related_object jsonb)` returns `text` — deterministic sha256 hex of the canonical concatenation. Created in 0a so the backfill query can call it. Wave 0b's `emit_event` will call the same function — locking the formula in one place avoids the divergence risk Review 3 flagged. **Canonicalisation note (v1.1):** the function uses `COALESCE(p_related_object::text, '')` to canonicalise the jsonb input. In PostgreSQL 13+, `jsonb::text` is canonical — keys are output in a stable order, no whitespace — which is functionally equivalent to Amendment B's prose "normalised via `jsonb_build_object` with sorted keys". V-A8 verifies determinism on production data. If a future PG upgrade ever changed JSONB output format, fingerprints would break; that risk is logged in Section 4.
 
 **1 backfill:**
 
@@ -176,6 +177,7 @@ Each new table receives at least one positive grant verification (the role that 
 | The 4 new tables (especially `emission_rule_history`) waste space if Wave 0b is delayed beyond 4 weeks. | Empty tables cost negligible storage. Schema readiness > storage micro-optimisation. |
 | 22 cases gets recomputed and one row throws a SQL error during backfill (e.g., NULL `related_object` triggers an unexpected coercion path). | Function uses `COALESCE(..., '')` on each input — NULL-tolerant. V-A8 explicitly tests the function on NULL `related_object` + NULL `problem_key` inputs. |
 | The migration's V-check assertions (raise exceptions inline) cause the whole transaction to roll back, leaving operators uncertain whether the failure was a real problem or a transient one. | V-check assertions in Section 5 are written as `SELECT … FROM friction.case WHERE …; -- assertion` style read queries, not embedded RAISE EXCEPTION inside the migration. The migration applies the DDL + backfill + index. The V-checks are run *after* `apply_migration` returns, as separate `execute_sql` reads. This matches the cc-0014 v1.1 pattern. |
+| `fn_compute_dedupe_fingerprint_v1` uses `COALESCE(p_related_object::text, '')` rather than an explicit `jsonb_build_object` rebuild — phrasing differs from Amendment B's literal text. (v1.1) | PG13+ JSONB output is canonical (keys in stable order, no whitespace); cast-to-text is functionally equivalent to Amendment B's normalised form. V-A8 verifies determinism (key-order independence + NULL handling) on production data. If a future PG upgrade changed JSONB serialisation, fingerprints break — but Wave 0b's `emit_event` calls the SAME function, so the fingerprint contract is consistent across the schema. Listed as a Wave 0b verification item in Section 8. |
 
 ---
 
@@ -248,17 +250,44 @@ SELECT count(*) AS events_with_case_id FROM friction.event WHERE case_id IS NOT 
 ```
 
 ```sql
+-- Pre-flight P7b (v1.1): confirm no orphan cases (cases without any linked event)
+-- The backfill in Step 5 source-joins from friction.event. Orphan cases (no linked event)
+-- would remain dedupe_fingerprint = NULL post-backfill → V-A9 would fail.
+SELECT count(*) AS orphan_cases
+FROM friction.case c
+WHERE NOT EXISTS (
+  SELECT 1 FROM friction.event e WHERE e.case_id = c.case_id
+);
+-- Expected: 0.
+-- If > 0: those cases will have dedupe_fingerprint = NULL post-backfill. That is structurally
+-- acceptable (NULLs are distinct under the partial unique index in Step 6), but V-A9's
+-- hard-stop condition must be relaxed to "null_fingerprints ≤ orphan_cases_count" rather
+-- than the literal 0. Record the orphan count BEFORE D-01 fire and amend the V-A9
+-- expectation in Section 5.4 hard-stop conditions accordingly. If orphan_cases > 5,
+-- additionally investigate root cause — a non-trivial orphan count suggests a prior
+-- failure mode of the existing fn_promote_event_to_case trigger that should be diagnosed
+-- before adding more schema on top.
+```
+
+```sql
 -- Pre-flight P8: verify the 3 source codes for seed match existing event.source distinct values
 SELECT DISTINCT source FROM friction.event ORDER BY source;
 -- Expected: reconciliation, health_check, manual (3 rows). Confirms seed completeness.
 ```
 
 ```sql
--- Pre-flight P9: confirm friction.category contains all 3 codes referenced by seed
+-- Pre-flight P9 (v1.1): confirm friction.category contains all category codes referenced by:
+--   (a) source seed rows in Step 2 of the migration, and
+--   (b) V-check test inserts (V-A4/5/6/15/16/19) which use 'operator_friction'.
 SELECT category_code
 FROM friction.category
-WHERE category_code IN ('client_commitment', 'pipeline_integrity', 'unclassified');
--- Expected: 3 rows
+WHERE category_code IN ('client_commitment', 'pipeline_integrity', 'unclassified', 'operator_friction');
+-- Expected: 4 rows
+--   3 used in source seed: client_commitment, pipeline_integrity, unclassified
+--   1 used in V-check test inserts: operator_friction
+-- If operator_friction is missing, V-A4/V-A5/V-A6 etc. would fail at the FK reference to
+-- friction.category before reaching the CHECK assertion they're trying to test — masking
+-- the real intent. Hard-stop before D-01 if any of the 4 codes is missing.
 ```
 
 ```sql
@@ -633,7 +662,7 @@ ORDER BY column_name;
 -- This must raise an error
 INSERT INTO friction.case (case_id, case_title, first_seen_at, last_seen_at, severity, category, problem_key, resolution_kind)
 VALUES (
-  '00000000-0000-0000-0000-cc0017a01'::uuid,
+  '00000000-0000-0000-0000-cc0017a00001'::uuid,
   'cc-0017a-test/v-a4 resolution_kind CHECK',
   now(), now(), 'info', 'operator_friction', 'cc-0017a-test',
   'made_up_resolution_kind'
@@ -645,7 +674,7 @@ VALUES (
 ```sql
 INSERT INTO friction.case (case_id, case_title, first_seen_at, last_seen_at, severity, category, problem_key, effort_level)
 VALUES (
-  '00000000-0000-0000-0000-cc0017a02'::uuid,
+  '00000000-0000-0000-0000-cc0017a00002'::uuid,
   'cc-0017a-test/v-a5 effort_level CHECK',
   now(), now(), 'info', 'operator_friction', 'cc-0017a-test',
   'enormous'
@@ -657,7 +686,7 @@ VALUES (
 ```sql
 INSERT INTO friction.case (case_id, case_title, first_seen_at, last_seen_at, severity, category, problem_key, predecessor_case_id)
 VALUES (
-  '00000000-0000-0000-0000-cc0017a03'::uuid,
+  '00000000-0000-0000-0000-cc0017a00003'::uuid,
   'cc-0017a-test/v-a6 predecessor FK',
   now(), now(), 'info', 'operator_friction', 'cc-0017a-test',
   'ffffffff-ffff-ffff-ffff-ffffffffffff'::uuid  -- nonexistent case_id
@@ -737,7 +766,7 @@ WITH target AS (
 )
 INSERT INTO friction.case (case_id, case_title, first_seen_at, last_seen_at, severity, category, problem_key, dedupe_fingerprint)
 SELECT
-  '00000000-0000-0000-0000-cc0017a13'::uuid,
+  '00000000-0000-0000-0000-cc0017a00013'::uuid,
   'cc-0017a-test/v-a13 unique index test',
   now(), now(), 'info', 'operator_friction', 'cc-0017a-test',
   dedupe_fingerprint
@@ -750,7 +779,7 @@ FROM target;
 -- Insert a closed-state test case
 INSERT INTO friction.case (case_id, case_title, first_seen_at, last_seen_at, severity, category, problem_key, dedupe_fingerprint, resolved_at, resolution_kind)
 VALUES (
-  '00000000-0000-0000-0000-cc0017a14a'::uuid,
+  '00000000-0000-0000-0000-cc0017a14a01'::uuid,
   'cc-0017a-test/v-a14 closed test 1',
   now(), now(), 'info', 'operator_friction', 'cc-0017a-test',
   'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -759,7 +788,7 @@ VALUES (
 -- Insert a second closed-state test case with the SAME fingerprint — should succeed (index doesn't apply to closed)
 INSERT INTO friction.case (case_id, case_title, first_seen_at, last_seen_at, severity, category, problem_key, dedupe_fingerprint, resolved_at, resolution_kind)
 VALUES (
-  '00000000-0000-0000-0000-cc0017a14b'::uuid,
+  '00000000-0000-0000-0000-cc0017a14b01'::uuid,
   'cc-0017a-test/v-a14 closed test 2',
   now(), now(), 'info', 'operator_friction', 'cc-0017a-test',
   'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -842,12 +871,12 @@ WHERE e.observation_text = 'cc-0017a-test/v-a19 observational invariant test';
 -- Clean V-A14 successful test inserts
 DELETE FROM friction.case
 WHERE case_id IN (
-  '00000000-0000-0000-0000-cc0017a01'::uuid,
-  '00000000-0000-0000-0000-cc0017a02'::uuid,
-  '00000000-0000-0000-0000-cc0017a03'::uuid,
-  '00000000-0000-0000-0000-cc0017a13'::uuid,
-  '00000000-0000-0000-0000-cc0017a14a'::uuid,
-  '00000000-0000-0000-0000-cc0017a14b'::uuid
+  '00000000-0000-0000-0000-cc0017a00001'::uuid,
+  '00000000-0000-0000-0000-cc0017a00002'::uuid,
+  '00000000-0000-0000-0000-cc0017a00003'::uuid,
+  '00000000-0000-0000-0000-cc0017a00013'::uuid,
+  '00000000-0000-0000-0000-cc0017a14a01'::uuid,
+  '00000000-0000-0000-0000-cc0017a14b01'::uuid
 );
 -- Clean V-A15
 DELETE FROM friction.emission_rule WHERE source = 'manual' AND condition_key = 'cc-0017a-test-key';
@@ -880,7 +909,7 @@ The migration is considered FAILED if any of:
 - V-A4, V-A5, V-A6 do NOT raise their expected CHECK/FK errors (constraint not enforced)
 - V-A7 returns hex_length ≠ 64
 - V-A8 returns `keys_normalised = false` or `handles_nulls` not a 64-char hex string
-- V-A9 returns `null_fingerprints > 0` or `valid_64hex < total`
+- V-A9 returns `null_fingerprints > 0` or `valid_64hex < total` — **except** where pre-flight P7b returned a non-zero `orphan_cases` count, in which case the expected `null_fingerprints` value is exactly the recorded orphan count (and `valid_64hex` is `total - orphan_cases`). Record both pre-flight P7b and V-A9 actuals in the apply-session log. (v1.1)
 - V-A10 returns `mismatches > 0`
 - V-A11 returns `all_distinct = false`
 - V-A12 returns wrong index definition or 0 rows
@@ -1043,9 +1072,63 @@ This brief follows the established baseline:
 - **Production mutations during authoring: 0.**
 - **D-01 fires during authoring: 0** (authoring is pre-execution).
 - **Commits this session containing this brief: 1.**
+- **v1.1 patch applied:** 2026-05-18 Sydney evening (same-day, pre-D-01) by chat-side Claude in a follow-on session. Single-file commit. Addresses 4 defects/gaps identified in pre-D-01 review. See §11 Changelog for details.
 - **Subsequent expected sessions:** (a) D-01 fire + review + decision; (b) apply_migration + V-A1–V-A20 + 4-way sync close.
 - **Estimated execution session length:** ~1.5–2 hours (pre-flight → D-01 → apply → 20 V-checks → cleanup → 4-way sync).
 
 ---
 
-*Brief cc-0017a v1.0. Authored 2026-05-18 Sydney evening. Awaiting D-01 on Wave 0a foundational schema apply.*
+## 11. Changelog
+
+### v1.1 — 2026-05-18 Sydney evening (same-day pre-D-01 patch)
+
+Surfaced in pre-D-01 review of v1.0. None of these changes touch architecture or scope; all are quality fixes to make the brief actually executable as written.
+
+**Defect 1 (BLOCKING) — Malformed UUIDs in V-A4 / V-A5 / V-A6 / V-A13 / V-A14a / V-A14b.**
+
+v1.0 used `'00000000-0000-0000-0000-cc0017a01'::uuid` (INVALID — shown here as documentation of the defect, not as executable SQL) and 5 similar variants. The final segment of a PostgreSQL UUID must be exactly 12 hex characters; `cc0017a01` is 9. PostgreSQL would reject these at parse time before reaching the CHECK / FK / UNIQUE assertion the V-check was trying to verify — V-checks would have failed for the wrong reason, masking whether the constraints were actually enforced.
+
+Fix: padded each suffix to exactly 12 hex chars.
+
+| V-check | v1.0 UUID suffix (9 chars, INVALID) | v1.1 UUID suffix (12 chars, valid) |
+|---|---|---|
+| V-A4 | `cc0017a01` | `cc0017a00001` |
+| V-A5 | `cc0017a02` | `cc0017a00002` |
+| V-A6 | `cc0017a03` | `cc0017a00003` |
+| V-A13 | `cc0017a13` | `cc0017a00013` |
+| V-A14a | `cc0017a14a` (10 chars) | `cc0017a14a01` |
+| V-A14b | `cc0017a14b` (10 chars) | `cc0017a14b01` |
+
+All 12 occurrences updated (6 patterns × 2 occurrences each — once in the V-A* INSERT, once in the V-A20 DELETE list). Verified: `grep -E "cc0017a0[123][^0-9]|cc0017a13[^0-9]|cc0017a14[ab][^0-9]"` returns 0 matches post-patch.
+
+**Defect 2 (CLARIFICATION) — `fn_compute_dedupe_fingerprint_v1` wording vs Amendment B prose.**
+
+Amendment B says the canonical form is "`related_object::jsonb` normalised via `jsonb_build_object` with sorted keys". v1.0 implements this via `COALESCE(p_related_object::text, '')`. In PostgreSQL 13+ `jsonb::text` is canonical (stable key order, no whitespace), so the implementations are functionally equivalent — but the brief should not silently diverge from the amendment's prose without acknowledgement.
+
+Fix:
+- Section 2 function description (in scope summary) appended a "Canonicalisation note (v1.1)" explaining the equivalence and pointing at V-A8 (which verifies determinism).
+- Section 4 risks table appended one row capturing the PG-version-dependence risk (PG could in principle change JSONB output format in a future major version). Mitigation: same function used by Wave 0b's `emit_event` ensures fingerprint contract is consistent across the schema; V-A8 verifies determinism on production data; listed as a Wave 0b verification item in Section 8.
+
+No SQL change. Documentation-only correction.
+
+**Pre-flight gap 3 — `operator_friction` category code not verified.**
+
+v1.0 pre-flight P9 verified the 3 category codes used in the source seed rows (`client_commitment`, `pipeline_integrity`, `unclassified`). But the V-check test inserts in V-A4 / V-A5 / V-A6 / V-A15 / V-A16 / V-A19 use `'operator_friction'` as the category — not verified anywhere. If that code did not exist in `friction.category`, the test inserts would fail at the FK reference before reaching the CHECK / UNIQUE assertion they were designed to test (same failure mode as Defect 1).
+
+Fix: extended P9 to include `'operator_friction'` and updated the expected row count from 3 to 4. Updated comment to explain the (a) seed codes vs (b) V-check codes distinction. Updated hard-stop semantics to require all 4 codes present.
+
+**Pre-flight gap 4 — Orphan-case count not measured pre-apply.**
+
+The Step 5 backfill source-joins from `friction.event`. Cases with no linked event (orphan cases) would remain `dedupe_fingerprint = NULL` after backfill. V-A9 expected `null_fingerprints = 0` — if any orphan exists, V-A9 would hard-fail despite the migration being structurally correct (NULLs are distinct under the partial unique index in Step 6, so orphan NULLs don't break anything).
+
+Fix: added pre-flight P7b which counts orphan cases (`friction.case` rows with no matching `friction.event.case_id`). Expected: 0. If non-zero, the orphan count is recorded and V-A9's hard-stop is relaxed to `null_fingerprints ≤ orphan_cases_count` rather than the literal 0. Updated Section 5.4 hard-stop conditions to reference the orphan-aware threshold for V-A9.
+
+This is a defensive widening, not a scope change. The migration body itself is unchanged.
+
+### v1.0 — 2026-05-18 Sydney evening
+
+Initial authoring against Friction Register Consolidation Plan v1 + amendments + §5.5 (signed v2.79). 4 new tables, 9 new columns, 1 function, 1 backfill, 1 partial unique index, grants. 12 pre-flight checks, 20 V-checks, full D-01 framing, rollback path.
+
+---
+
+*Brief cc-0017a v1.1. Authored 2026-05-18 Sydney evening; v1.1 patch applied same-day pre-D-01. Awaiting D-01 on Wave 0a foundational schema apply.*
