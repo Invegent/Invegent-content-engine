@@ -355,6 +355,6 @@ cc-0017a authoring may begin once:
 **Pre-signature clarifications:** locked in §5.5 (reopen window N = 14 days; triage metric measurement strategy)
 **Execution gate:** awaiting PK approval below
 
-PK approval: ___________________
-Date: ___________________
+PK approved 
+Date: 18th may 2026 2:40pm
 
