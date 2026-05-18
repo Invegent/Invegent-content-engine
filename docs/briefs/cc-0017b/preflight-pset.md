@@ -190,10 +190,18 @@ WHERE emitted_at > '2026-05-18 06:56:10+00';
 
 ```sql
 -- P16: confirm GUC namespace 'friction.emit_event_active' is currently unset
--- (no leftover from prior testing)
-SELECT current_setting('friction.emit_event_active', true) AS guc_value;
--- Expected: empty string ''
--- HARD-STOP if non-empty — clear before apply via SELECT set_config('friction.emit_event_active', NULL, false).
+-- (no leftover from prior testing).
+--
+-- NOTE (v1.1 patch — defect 2): current_setting(name, missing_ok := true) returns NULL
+-- (NOT empty string '') when the GUC has never been set in the current session. The v1.0
+-- literal `= ''` check therefore FAILED on a clean session (NULL = '' yields NULL, not true).
+-- The fix accepts either NULL or empty string as the "unset" state via COALESCE.
+SELECT
+  current_setting('friction.emit_event_active', true) AS guc_value,
+  COALESCE(current_setting('friction.emit_event_active', true), '') = '' AS guc_is_unset;
+-- Expected: guc_value is NULL or '' (empty string); guc_is_unset = true
+-- HARD-STOP if guc_is_unset = false — clear before apply via:
+--   SELECT set_config('friction.emit_event_active', NULL, false);
 ```
 
 ---
@@ -212,7 +220,7 @@ The migration is BLOCKED FROM APPLY if any of:
 - **P9** / **P10** / **P11** return 0 rows (schema drift since cc-0017a).
 - **P12** returns any drift_type value outside `['observer_stale']` — emission_rule seed incomplete; amend seed list and re-fire D-01.
 - **P14** returns < 4 rows or any `is_active = false`.
-- **P16** returns non-empty value (leftover GUC from prior testing).
+- **P16** returns `guc_is_unset = false` (leftover GUC value from prior testing; clear before apply).
 
 **P13** and **P15** have NO hard-stop — informational only.
 
