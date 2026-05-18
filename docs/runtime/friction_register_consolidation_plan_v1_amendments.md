@@ -3,16 +3,18 @@
 **Status:** ADDENDUM to v1 — pre-execution lockdown
 **Author:** PK + chat session 2026-05-18 Sydney (after multi-LLM review)
 **Companion doc:** `docs/runtime/friction_register_consolidation_plan_v1.md` (commit afc9306)
-**Reviews received from:** 3 independent reviewers (ChatGPT, Gemini-style, GitHub-mode)
-**Disposition:** v1 stands as authored; this addendum locks specific changes before cc-0017 authoring.
+**Reviews received from:** 3 independent reviewers on v1 (ChatGPT, Gemini-style, GitHub-mode) + 4th post-amendments pre-signature cross-check (ChatGPT, see §5.5)
+**Disposition:** v1 stands as authored; this addendum locks specific changes before cc-0017a authoring.
 
 ---
 
 ## 1. Why This Addendum Exists
 
-v1 was written, committed, and reviewed by three independent LLMs. All three approved the architecture and the empirical grounding. All three flagged the same execution-readiness gaps. Rather than rewrite v1 (95% would be unchanged), this addendum locks the specific changes needed before cc-0017 can be authored.
+v1 was written, committed, and reviewed by three independent LLMs. All three approved the architecture and the empirical grounding. All three flagged the same execution-readiness gaps. Rather than rewrite v1 (95% would be unchanged), this addendum locks the specific changes needed before cc-0017a can be authored.
 
 Reviewer convergence is the signal. Where ≥2 of 3 reviewers flagged the same gap, the change is locked. Where 1 of 3 flagged a gap, the change is accepted only if pressure-test confirms it's material.
+
+**Update 2026-05-18 Sydney evening:** §5.5 added after PK consulted ChatGPT for a 4th cross-check pre-signature. Two residual ambiguities locked (reopen window N = 14 days; triage metric measurement strategy). No new architectural decisions.
 
 ---
 
@@ -91,7 +93,7 @@ ALTER TABLE friction."case"
 - `triaged_at`: set when action_decision is first non-NULL
 - `triaged_by`: operator identity (PK for now, multi-user later)
 
-Triage time becomes `triaged_at - first_viewed_at`. This is the v1 measurement basis. (Alternative: `triaged_at - created_at` if we don't want to measure "time-to-look" separately. Per reviewers' framing, `first_viewed_at` lets us distinguish operator inattention from operator slow-decision.)
+Triage time becomes `triaged_at - first_viewed_at`. This is the v1 measurement basis for Wave 7+. (See §5.5 Clarification 2 for the Waves 1-6 fallback formula.)
 
 ### Amendment D — Sentinel dual-write success criterion: time AND count
 
@@ -195,7 +197,7 @@ Rules:
 **This subtly changes Decision 7's "attach to OPEN cases only" rule:**
 
 When dedupe sees a matching `dedupe_fingerprint` on a CLOSED case (resolved_at IS NOT NULL):
-- If closed within last N days (TBD, propose 7 days): **reopen the case**, attach event, set `reopen_count = reopen_count + 1`
+- If closed within last N days (locked to 14 days in §5.5 Clarification 1): **reopen the case**, attach event, set `reopen_count = reopen_count + 1`
 - If closed more than N days ago: **new case**, with a `predecessor_case_id` link to the old one for audit
 
 This is more sophisticated than what v1 had. It's also what makes recurrence trends visible — "this problem has recurred 4 times in 6 months" is operationally important signal.
@@ -242,7 +244,48 @@ Telegram lands immediately after compliance (Wave 1). Compliance Wave's emitter 
 
 **Locked answer:**
 
-Both columns use the name `default_category_code` and FK to `friction.category(category_code)`. cc-0017 DDL conforms. No legacy naming.
+Both columns use the name `default_category_code` and FK to `friction.category(category_code)`. cc-0017a DDL conforms. No legacy naming.
+
+---
+
+## 5.5 Pre-Signature Clarifications — LOCKED 2026-05-18 Sydney evening
+
+After v1 + amendments were committed and pre-signature chat review surfaced two residual ambiguities, PK consulted ChatGPT for a 4th independent cross-check before signing. ChatGPT confirmed the architecture is sound and that the concerns raised in the pre-signature review are healthy not stop-signs. Two specific clarifications are locked here to remove residual ambiguity before signature lands.
+
+### Clarification 1 — Reopen window N = 14 days
+
+**Resolves:** Amendment G "If closed within last N days (TBD, propose 7 days)" for the recurrence-reopens-existing-case window.
+
+**LOCKED: N = 14 days.**
+
+Reasoning:
+- 7 days too short for fortnightly/weekly pipeline issues — a problem firing once every 10 days would always present as "new" rather than as recurring, defeating the purpose of recurrence analysis.
+- 30 days too long — keeps old cases sticky and clutters /operations with reopens of long-resolved issues; recurrence after a month is usually a genuinely new occurrence.
+- 14 days is the middle ground:
+  - Catches same-week and fortnightly recurrence as reopen.
+  - Catches monthly compliance reviewer recurrence as new case (correct — fresh review cycle, not a "the same problem keeps coming back" signal).
+  - Aligns with the sentinel dual-write 14-day overlap criterion in Amendment D, so the operational windows in the friction subsystem are consistent.
+
+**Implementation:** when `friction.emit_event` finds a closed case with matching `dedupe_fingerprint`, check `now() - case.resolved_at < interval '14 days'` to decide reopen-vs-new. Constant lives in the `emit_event` function body. If we need this per-source-tunable later, lift to a `friction.config` table or per-source override on `friction.source` table — v2 work, not v1 scope.
+
+### Clarification 2 — Triage time metric measurement strategy
+
+**Resolves:** Amendment C added `first_viewed_at`, `triaged_at`, `triaged_by` columns and proposed `triaged_at - first_viewed_at` as the canonical metric. But `first_viewed_at` is only populated by /operations UI instrumentation which lands in Wave 7. The pre-Wave-7 measurement basis was not explicitly locked.
+
+**LOCKED:**
+
+| Phase | Triage time formula | Captures |
+|---|---|---|
+| Waves 1–6 (no UI; created_at available, first_viewed_at NULL) | `triaged_at - created_at` | Total responsiveness including time-to-look |
+| Wave 7+ (UI live; first_viewed_at populated) | `triaged_at - first_viewed_at` (primary) + `triaged_at - created_at` (secondary) | Operator decision speed (primary) + operator latency to see new cases (secondary) |
+
+In Wave 7, both metrics live; pool view chooses which to display per context. The `triaged_at - created_at` series persists as a continuous secondary chart across Waves 1-6 + Wave 7+, so we never lose the pre-UI baseline for comparison.
+
+The v1 success criterion in plan §10 (`Operator triage time per case < 2 min average`) is interpreted against whichever formula is active in the phase being measured. The threshold remains the same; only the source columns change.
+
+### Why these are clarifications, not new amendments
+
+Both resolve open ambiguities within existing locked amendments (G and C respectively). No new architectural decision; no new schema column; no new sequencing change. The 32-decision total in §7 stands. §8 audit trail updated to note the 4th cross-check.
 
 ---
 
@@ -254,6 +297,7 @@ Reviewers raised these. All confirmed v2 scope, not blockers for v1 execution:
 - **Bulk actions on similar cases** (Review 1): UI feature for pool view v2 iteration after we know operator workflow patterns.
 - **Auto-suggestions from historical resolutions** (Review 1): LLM-assisted resolution. Premature.
 - **SLA timers + stale-open auto-expiry** (Review 2): explicit work for v2. v1 success criterion "0 open cases > 30 days old" surfaces the problem manually for now.
+- **Per-source tunable reopen window** (ChatGPT 4th cross-check, §5.5): v1 locks single global 14-day constant. If empirical data shows different sources need different windows, lift to per-source override in v2.
 
 These are added to v1 §12 ("Decisions That Are NOT in v1") to keep the doc honest.
 
@@ -261,18 +305,20 @@ These are added to v1 §12 ("Decisions That Are NOT in v1") to keep the doc hone
 
 ## 7. Final Lock Summary
 
+**Pre-signature clarifications locked in §5.5 are within existing amendments G and C — no new decision count.**
+
 After this addendum, v1 is execution-ready. Total locked decisions:
 
 - v1 original: 25 decisions
 - Amendments A–G: 7 amendments
 - Total: **25 + 7 = 32 decisions** governing execution
 
-cc-0017 authoring may begin once:
+cc-0017a authoring may begin once:
 
-1. ✅ This addendum is committed to repo (this commit)
+1. ✅ This addendum is committed to repo (this commit, plus §5.5 clarifications)
 2. ✅ PK explicit approval (sign-off below)
-3. cc-0017 brief authored to v1 + amendments combined scope
-4. cc-0017 brief passes D-01 review
+3. cc-0017a brief authored to v1 + amendments combined scope
+4. cc-0017a brief passes D-01 review
 
 **Until then:** continue manual FAB + reconciliation trigger + night job emissions as today. No new emitter wiring. No m.pipeline_incident changes.
 
@@ -296,14 +342,17 @@ cc-0017 authoring may begin once:
 
 10 of 11 reviewer findings incorporated into v1 + amendments. 2 acknowledged as v2 scope. Zero reviewer findings rejected.
 
+**Post-commit 4th cross-check (ChatGPT, pre-signature):** PK consulted ChatGPT after v1 + amendments commits to pressure-test the doc before signing. ChatGPT confirmed the architecture is sound and that the concerns raised in the pre-signature chat review are healthy not stop-signs. Two specific residual ambiguities were locked as §5.5 clarifications (reopen window N = 14 days; triage time metric measurement strategy by phase). No new architectural decisions surfaced. The 4th cross-check is captured here for audit trail; it operates outside the structured D-01 / ChatGPT Review MCP infrastructure (planning docs benefit from multi-reviewer perspective; production mutations use D-01).
+
 ---
 
 ## 9. Sign-Off
 
 **Plan version:** v1 + amendments (this document)
-**Architecture review:** complete, 3 independent LLMs
+**Architecture review:** complete, 3 independent LLMs + 4th pre-signature cross-check (§5.5)
 **Pressure-test:** complete, 4 rounds
 **Empirical validation:** complete (26 cron census, 11 output table audit, dedupe gap confirmed)
+**Pre-signature clarifications:** locked in §5.5 (reopen window N = 14 days; triage metric measurement strategy)
 **Execution gate:** awaiting PK approval below
 
 PK approval: ___________________
