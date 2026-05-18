@@ -86,75 +86,63 @@ The question this decision answers: what's the canonical path for applying migra
 ## D-IOL-001 — Friction Register as Standing Infrastructure
 **Date:** 18 May 2026 morning | **Status:** ✅ LOCKED — applies from this session forward. Replaces cc-0014 experimental framing.
 
+*(unchanged — full prose preserved in prior commit. See v2.77 sync_state for the full text.)*
+
+---
+
+## D-CC-0017B-Q1 — Severity override provenance lives in `dynamic_context`, NOT in `category_source`
+**Date:** 18 May 2026 (cc-0017b authoring + apply) | **Status:** ✅ LOCKED — applies for all queries against `friction.event` from cc-0017b apply (2026-05-18) forward. Note added per brief cc-0017b v1.0 §7.
+
 ### The problem this decides
 
-cc-0014 was authored as a 14-day operational experiment: instrument a friction register with three emitters (reconciliation / health_check / manual FAB), run for 14 days, score five pre-locked criteria at Day 19, render PASS / FAIL / INVALID verdict. The register was framed as conditional infrastructure — useful if and only if it produced quality signal across multiple sources within the window.
+During cc-0017b authoring, a design question surfaced: should the `category_source` enum on `friction.event` include `'severity_override'` as a recognised provenance value, parallel to `'category_override'` / `'manual_at_capture'` / `'emitter_default'`?
 
-By Day 4 of the window, three conditions emerged that the experimental framing did not anticipate:
-
-1. **Manual FAB validated faster than the window required.** PK filed 3/3 in-window events by Day 3 and reported the workflow felt real and useful. Validation question on this source was empirically answered before 11 more days of window time could add anything.
-2. **Reconciliation cadence was structurally insufficient.** cron 85 ran weekly, producing at most 2 fires in 14 days. Criterion 3 (≥2 sources × ≥3 events) was unachievable on this source within window length, regardless of register quality.
-3. **Health_check produced zero signal.** Root cause was upstream (Cowork brief stuck at `status: review_required`), unrelated to register design. Diagnosis required, not verdict.
-
-Day-19 verdict on this trajectory would have read INVALID due to insufficient signal density. That is a procedural verdict that does not inform whether the register concept is sound — it informs whether the upstream signal sources were correctly instrumented and cadenced.
-
-The question this decision answers: should the register be treated as a thing-to-be-evaluated, or as a thing-to-be-operated?
+The natural intuition is yes — symmetric naming makes both override types discoverable via a single column query. But this conflates two distinct concerns: **category source attribution** (which input determined the event's category) and **severity transformation audit** (which input determined the event's final severity, and what the rule-default severity was before the override).
 
 ### The decision
 
-**The friction register is standing operational infrastructure, not an experiment. Verdict ritual is retired. The register runs continuously and improves continuously through signal-quality iteration, not through periodic re-evaluation.**
+**Severity override provenance is stored EXCLUSIVELY in `friction.event.dynamic_context` under the JSONB key `severity_override` (with `applied` and `effective_was` sub-keys). The `category_source` column does NOT include `'severity_override'` as a value. The CHECK constraint on `category_source` explicitly excludes it.**
 
-Specifically:
+**Query pattern (canonical):**
+```sql
+-- To find emissions that had a severity override applied:
+SELECT event_id, severity,
+       dynamic_context -> 'severity_override' ->> 'applied'       AS override_severity,
+       dynamic_context -> 'severity_override' ->> 'effective_was' AS rule_default_severity
+FROM friction.event
+WHERE dynamic_context ? 'severity_override';
+```
 
-- cc-0014 closes at status=archived. Brief frozen. Postmortem authored per brief §14 commitment.
-- The register's schema, triggers, emitters, FAB, and triage surface all remain live and unchanged.
-- The register's *value* improves as more cases land, get worked, and the underlying system gets fixed. The register itself does not iterate; the system it diagnoses does.
-- Three sources are treated as three independent diagnostic streams. Manual is proven. Recon and health_check require diagnostic follow-up (cadence change applied for recon this session; health_check diagnostic deferred).
-- Pool review cadence proposed as Fridays 09:00 Sydney (per cc-0015 brief §G). Cases pooled, worked in sprints, fixed.
+**Anti-pattern (returns ZERO rows by design):**
+```sql
+-- DO NOT USE — this filter will return zero rows because
+-- 'severity_override' is not a valid value for category_source.
+SELECT * FROM friction.event WHERE category_source = 'severity_override';
+```
 
-### What this changes
+### Why this asymmetric design
 
-- **IOL hold-stance lifted.** Work previously deferred pending cc-0014 Day-19 verdict is now actionable in normal queue priority. This includes:
-  - cc-0015 friction-pool-view brief execution (unblocked)
-  - cc-0016 friction-capture-evidence brief execution (unblocked, parallel-executable with cc-0015)
-  - Publisher recovery sequence (music / IG cron 53 / YT diagnostic)
-  - Dashboard PHASES sync (now 30 consecutive deferrals; unblocked for next dashboard session)
-  - Brief authoring for other initiatives (Platform Reconciliation View, etc.)
-- **Reconciliation cron promoted weekly → daily** this session. Migration `cc_0014_recon_daily_cadence` applied. First daily fire 2026-05-19 03:30 AEST. Cadence change is independent of brief mechanics; it is operational infrastructure tuning.
-- **Day-19 calendar item retired.** Mid-window check-in at Day 7 retired.
-
-### What this does NOT change
-
-- The register's schema, grants, RLS posture, triggers, and functions remain stable.
-- ICE-PROC-001 D-01 cross-review discipline remains active for production mutations.
-- D-186 closure-first discipline remains active. The friction register cases populating the backlog become subject to D-186's closure budget.
-- No claim that the register is "validated" in the experimental sense. Manual is empirically proven. Recon and health_check remain diagnostic targets, not validated sources.
-- `friction.experiment_run` row is preserved at status=archived as audit trail. criteria_snapshot remains immutable on the archived row. Future researchers reading this record can see what would have been scored had the window completed.
-
-### Why archived (not passed/failed/invalid/superseded)
-
-- **Not passed.** Criteria designed for Day-14 evaluation were not scored. Claiming pass would overclaim against the brief's own §11 criteria.
-- **Not failed.** Window did not run to completion. Failure verdict implies the criteria were tested and not met — they were not tested.
-- **Not invalid.** The instrument worked. emit_error rates negligible. Closure was operator-driven reframing, not instrument failure.
-- **Not a new enum value (e.g. superseded).** Adding a new CHECK constraint value would require migration + downstream cascade review. The brief's existing `archived` enum value covers "closed, terminal, neutral" cases — the most honest fit available without schema change.
+1. **`category_source` is single-valued and exclusive.** Each event has exactly one category source: `emitter_default`, `category_override`, or `manual_at_capture`. Adding `severity_override` would create category source ambiguity when an event has both a category override AND a severity override.
+2. **Severity transformation has more state than a single enum value.** It captures both the applied severity AND the rule-default it overrode (`effective_was`). This is naturally a JSONB structure, not an enum value.
+3. **`dynamic_context` is the designated audit channel for transformation provenance.** Both `severity_override` and `category_override` audit records live in this column; `category_source` is the FAST-PATH column for category provenance because category provenance is single-valued.
+4. **Future-proofing.** If additional severity transformation modes are introduced (e.g. `severity_promoted_by_age`, `severity_capped_by_quota`), the JSONB schema absorbs them without further CHECK constraint changes.
 
 ### What this requires
 
-- Postmortem at `docs/postmortems/cc-0014-closing-note.md` (this session).
-- Action_list and sync_state rebuilt to reflect lifted hold-stance (this session, v2.77).
-- Memory edits to remove cc-0014-window references (this session).
-- Future cc-NNNN that depend on the register cite this decision rather than re-relitigating the experimental framing.
-- The register's standing diagnostic role is reflected in operational rituals (pool review session; friction-driven sprint planning).
-
-### Sunset clause
-
-None. This is a structural reframing, not a time-bounded constraint. If at any future point the register accumulates evidence that it is not earning its operational keep (e.g. cases sit untriaged for months, signal sources never produce after diagnostic attempts, operator stops using the FAB), that becomes its own decision needing its own number — not a reversal of D-IOL-001.
+- All dashboards, alerts, and analytical queries on severity override frequency MUST use the `dynamic_context ? 'severity_override'` filter pattern, not `category_source = 'severity_override'`.
+- The `category_source` CHECK constraint (extended in cc-0017b Step 1) explicitly excludes `'severity_override'` as a value. This is deliberate, not an oversight.
+- The wrapper functions (`fn_emit_manual_event`, `fn_emit_reconciliation_event`, `fn_emit_health_check_findings`) write severity override audit to `dynamic_context.severity_override` when their `p_severity` arg differs from the rule's `default_severity` — NOT to `category_source`.
+- Future work that adds new event types or new override modes MUST follow this pattern: enums for single-valued provenance, JSONB for multi-state transformation audit.
 
 ### Related decisions
 
-- **D-186** — closure-first discipline. The register's pooled cases now feed D-186's 20-finding cap.
-- **D-IOL-001 supersedes the cc-0014 Day-19 verdict commitment.** The brief's §14 commitments map onto follow-up work (cc-0015 / cc-0016 / health_check diagnostic / recon cadence change), but the verdict ritual itself is retired.
-- **Brief cc-0014** — frozen at v1.1 commit `34305092f4`. Postmortem at `docs/postmortems/cc-0014-closing-note.md`.
+- **cc-0017b brief v1.0 §7** — first formalisation of the query pattern; this decisions.md entry is the persistent record.
+- **D-IOL-001** — friction register as standing infrastructure. Dashboard and analytical queries against the register inherit this query pattern.
+- **No new decisions pending from this entry.** This is a query-pattern note, not an architectural commitment requiring follow-on work.
+
+### Sunset clause
+
+None. This is a permanent design property of `friction.event`. If a future redesign chooses to collapse the two columns into a single representation, that becomes its own decision needing its own number — not a reversal of D-CC-0017B-Q1.
 
 ---
 
@@ -179,8 +167,8 @@ None. This is a structural reframing, not a time-bounded constraint. If at any f
 | **D166 — Router sequencing reversal** | ✅ APPLIED 22 Apr evening — superseded by slot-driven build (D170+) | — |
 | **D167 — Router MVP shadow infrastructure** | ✅ APPLIED 22 Apr evening — preserved as shadow infrastructure; slot-driven Phase D decommissions | Phase D Stage 19 |
 | **D168 — ID004 sentinel** | 🔲 Backlog A-item | Spec defined; implementation deferred |
-| **D170 — MCP-applied migrations pattern** | ✅ LOCKED through Phase A+B7-9 + concrete-pipeline track; applies for all 19 stages; reinforced by D182 first run | — |
-| **D171 — Pre-flight schema verification per stage** | ✅ LOCKED; sharpened by Lesson #32; reinforced by D182 brief pre-flight discipline | — |
+| **D170 — MCP-applied migrations pattern** | ✅ LOCKED through Phase A+B7-9 + concrete-pipeline track; applies for all 19 stages; reinforced by D182 first run + cc-0017a + cc-0017b | — |
+| **D171 — Pre-flight schema verification per stage** | ✅ LOCKED; sharpened by Lesson #32; reinforced by D182 brief pre-flight discipline + cc-0017b P-set | — |
 | **D172 — Architectural revision authority** | ✅ LOCKED; R-A through R-E applied in Phase A | — |
 | **D173 — Two-trigger chain pattern** | ✅ APPLIED Stage 3 | — |
 | **D174 — Invegent thin-pool operational signal** | ✅ Observed; informs Phase E priority | Phase E content work |
@@ -197,6 +185,7 @@ None. This is a structural reframing, not a time-bounded constraint. If at any f
 | **D185 — `structured_red_team_review_v1` ratification** | 🔲 RESERVED — gated on R10. Sunset 31 May 2026 if R10 hasn't completed | R10 outcome |
 | **D186 — Closure-First Discipline (find/fix imbalance constraint)** | ✅ LOCKED 2 May late evening — 20-finding cap on P0+P1 + 4h/week closure floor + 2-week pause trigger on new automation. Sunset 30 June 2026 | Per-session check at session start |
 | **D-IOL-001 — Friction Register as Standing Infrastructure** | ✅ LOCKED 18 May 2026 morning — cc-0014 reframed from experiment to standing infrastructure; IOL hold-stance lifted; verdict ritual retired. **Full prose entry above.** | None — structural reframing, no sunset |
+| **D-CC-0017B-Q1 — Severity override in `dynamic_context` NOT `category_source`** | ✅ LOCKED 18 May 2026 (cc-0017b apply) — query pattern note for `friction.event`. **Full prose entry above.** | None — permanent design property |
 | **Slot-driven Phase A** | ✅ COMPLETE 26 Apr morning | — |
 | **Slot-driven Phase B Stages 7-9** | ✅ COMPLETE 26 Apr afternoon–evening | — |
 | **Slot-driven Phase B Stages 10-12** | ✅ COMPLETE 27 Apr | — |
@@ -217,8 +206,11 @@ None. This is a structural reframing, not a time-bounded constraint. If at any f
 | **Overload B of `create_feed_source_rss` cleanup** | 🔲 Backlog | Drop or fix in follow-up |
 | **Feeds-tab URL clickability follow-up** | ✅ SHIPPED 28 Apr afternoon (Brief 2) | — |
 | **cc-0014 Friction Register Capture Experiment** | ✅ CLOSED-ARCHIVED 18 May 2026 — postmortem at `docs/postmortems/cc-0014-closing-note.md`; reframed via D-IOL-001 | — |
-| **cc-0015 Friction Pool View** | 🟢 AUTHORED, PENDING_EXECUTION — unblocked per D-IOL-001 | Normal queue priority |
-| **cc-0016 Friction Capture Evidence** | 🟢 AUTHORED, PENDING_EXECUTION — unblocked per D-IOL-001, parallel-executable with cc-0015 | Normal queue priority |
+| **cc-0017a Wave 0a foundational schema** | ✅ APPLIED + CLOSED 18 May 2026 (v2.81) | — |
+| **cc-0017b Wave 0b unified emit_event** | ✅ APPLIED-WITH-CORRECTIVE-MIGRATION + CLOSED 18 May 2026 (v2.82) | — |
+| **cc-0017b brief v1.1 doc patch** | 🔲 Required — 6 defects + 2 placeholders identified at apply | Single doc-only commit, any future session |
+| **cc-0015 Friction Pool View** | 🟢 AUTHORED, PENDING_EXECUTION — unblocked per D-IOL-001 | Wave 7 |
+| **cc-0016 Friction Capture Evidence** | 🟢 AUTHORED, PENDING_EXECUTION — unblocked per D-IOL-001, parallel-executable with cc-0015 | Wave 8 |
 | Inbox anomaly monitor | 🔲 Post-sprint | Separate brief TBW |
 | Phase 2.1 — Insights-worker | 🔲 Next major build | Meta Standard Access |
 | Phase 2.6 — Proof dashboard | 🔲 After Phase 2.1 | Engagement data |
@@ -244,4 +236,4 @@ None. This is a structural reframing, not a time-bounded constraint. If at any f
 | **Branch sweep — invegent-content-engine + invegent-dashboard + invegent-portal (10 stale branches)** | 🔲 Backlog | content-engine 4, dashboard 5, portal 1 |
 | **Phase B filename hygiene** | 🔲 Backlog | Rename per Lesson #36 |
 
-*Note (2026-05-18): Full prose for D181–D186 preserved in commit history. This compaction is editorial only — content unchanged for prior decisions; only D-IOL-001 is new.*
+*Note (2026-05-18 v2.82): Full prose for D181–D186 preserved in commit history. This compaction is editorial only — content unchanged for prior decisions; D-IOL-001 (v2.77) and D-CC-0017B-Q1 (v2.82) are the only new entries.*
