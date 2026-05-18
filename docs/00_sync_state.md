@@ -18,8 +18,8 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
-| 2026-05-18 | v2.79-friction-plan-signed | **FRICTION REGISTER CONSOLIDATION PLAN v1 + AMENDMENTS SIGNED + cc-0017a EXECUTION GATE OPEN (v2.79).** Pre-signature clarifications §5.5 locked via commit `aeaddb28` (reopen N=14d; triage metric phase-based formula). PK signature recorded in amendments §9. Atomic 4-file push (signature + sync_state + action_list + session note). 0 D-01 fires. T-MCP-02 cum unchanged at 69. cc-0017a Wave 0a authoring un-gated and rank 1 next session. | `docs/runtime/sessions/2026-05-18-v2.79-friction-plan-signed.md` |
-| 2026-05-18 | v2.78-friction-register-consolidation-planning | **FRICTION REGISTER CONSOLIDATION PLAN v1 + AMENDMENTS LOCKED (v2.78).** Planning-only session. Zero production mutations. 4-layer architecture locked. 32 decisions governing execution. 3 independent LLM reviews → 10 of 11 findings incorporated → 2 acknowledged v2 scope → 0 rejected. Wave 0 split to 0a/0b/0c. Telegram re-sequenced Wave 6→2. Empirical inventory: **26 active diagnostic crons** (was 20 in initial census), **11 distinct output tables**, **22 friction.event rows** with **dedupe NOT working** (max events/case = 1). cc-0015 + cc-0016 demoted from "next-up parallel" to Waves 7-8. cc-0017a (Wave 0a) ready for authoring on PK explicit approval. **0 D-01 fires. No new L-candidates** (1 watcher candidate L-v2.78-a logged at 1 occurrence). | `docs/runtime/sessions/2026-05-18-v2.78-friction-register-consolidation-planning.md` |
+| 2026-05-18 | v2.79-friction-plan-signed | **FRICTION REGISTER CONSOLIDATION PLAN v1 + AMENDMENTS SIGNED (v2.79).** Pre-signature chat review surfaced 2 residual ambiguities. PK obtained 4th cross-check (ChatGPT) → 2 clarifications locked as §5.5 (reopen window N = 14 days; triage metric measurement strategy by phase). PK signed: "Approved and recorded in addendum doc as well". 32 decisions LOCKED + 2 within-amendment clarifications. cc-0017a Wave 0a authoring execution gate now OPEN. 0 D-01 fires (signature is pre-execution). 4-way atomic sync: amendments §9 signed + sync_state v2.79 + action_list v2.79 + new session file. Dashboard PHASES: 32nd consecutive deferral. L-v2.78-a watcher candidate now at 2 occurrences — eligible for baseline promotion next session. | `docs/runtime/sessions/2026-05-18-v2.79-friction-plan-signed.md` |
+| 2026-05-18 | v2.78-friction-register-consolidation-planning | **FRICTION REGISTER CONSOLIDATION PLAN v1 + AMENDMENTS LOCKED (v2.78).** Planning-only session. Zero production mutations. 4-layer architecture locked. 32 decisions governing execution. 3 independent LLM reviews → 10 of 11 findings incorporated → 2 acknowledged v2 scope → 0 rejected. Wave 0 split to 0a/0b/0c. Telegram re-sequenced Wave 6→2. Empirical inventory: **26 active diagnostic crons**, **11 distinct output tables**, **22 friction.event rows** with **dedupe NOT working**. cc-0015 + cc-0016 demoted from "next-up parallel" to Waves 7-8. cc-0017a (Wave 0a) ready for authoring on PK explicit approval. **0 D-01 fires. No new L-candidates** (1 watcher candidate L-v2.78-a logged at 1 occurrence). | `docs/runtime/sessions/2026-05-18-v2.78-friction-register-consolidation-planning.md` |
 | 2026-05-18 | cc-0014-archived-and-recon-daily | **cc-0014 CLOSED-ARCHIVED + RECON CRON DAILY + HOLD-STANCE LIFTED (v2.77).** Closed 11 days before Day-19 by PK reframing decision. D-IOL-001 logged: friction register reframed from experiment to standing infrastructure. cc-0015 + cc-0016 + publisher recovery + dashboard PHASES all unblocked. 2 D-01 fires (type-(c) PK approval per L62). Cumulative T-MCP-02 = 69. Day-19 calendar item retired. | `docs/runtime/sessions/2026-05-18-cc-0014-archived-and-recon-daily.md` |
 | 2026-05-16 | v2.76-stage-e-close-and-window-open | **cc-0014 FULLY CLOSED + 14-DAY WINDOW OPEN + FAB LIVE ON PROD + cc-0015 + cc-0016 DRAFTED (v2.76).** Stage E close via migration `cc_0014_e_close_experiment_run_start`. Window opened 2026-05-15 06:20 UTC → 2026-05-29 06:20 UTC. FAB live via Vercel env var. cc-0015 + cc-0016 briefs drafted PENDING_EXECUTION. Memory 30→19. 0 D-01 fires. L58 PROMOTED TO BASELINE. **(Window closed early 2026-05-18 per v2.77 — see above.)** | `docs/runtime/sessions/2026-05-16-v2.76-stage-e-close-and-window-open.md` |
 | 2026-05-15 | cc-0014-stage-d-and-e-prerun | **cc-0014 STAGE D CLOSED + STAGE E APPLIED (v2.75).** Stage D fully closed via V-D1..V-D5 + Supp-1/2 PASS. Stage E backend + frontend + brief-completing promotion trigger APPLIED. | `docs/runtime/sessions/2026-05-15-cc-0014-stage-d-and-e-prerun.md` |
@@ -42,40 +42,42 @@
 
 ## 🟢 Most recent session — inline summary
 
-### 2026-05-18 Sydney afternoon — FRICTION REGISTER CONSOLIDATION PLAN v1 + AMENDMENTS SIGNED + cc-0017a EXECUTION GATE OPEN (v2.79)
+### 2026-05-18 Sydney evening — FRICTION REGISTER CONSOLIDATION PLAN v1 + AMENDMENTS SIGNED (v2.79)
 
-**Outcome:** PK signature recorded on amendments doc §9. Friction Register Consolidation Plan v1 + amendments is now execution-locked. cc-0017a Wave 0a brief authoring is un-gated and rank 1 for next session. Two pre-signature clarifications applied as §5.5 prior to signature: reopen window N = 14 days (resolves Amendment G "TBD propose 7 days"); triage time metric phase-based formula (`triaged_at - created_at` Waves 1-6; switch to `triaged_at - first_viewed_at` primary + `triaged_at - created_at` secondary Wave 7+).
+**Outcome:** Pre-signature chat review surfaced 4 conscious-thought items + 5 smaller heads-ups. 3 of the 4 were acknowledged as sound architecture; 1 (reopen window N) needed explicit locking. PK consulted ChatGPT for a 4th independent cross-check. ChatGPT confirmed architecture is sound and recommended N = 14 days (middle ground between 7 too short and 30 too sticky) + clarified triage metric measurement strategy by phase (Waves 1-6: `triaged_at - created_at`; Wave 7+: `triaged_at - first_viewed_at` primary + `created_at` secondary). Both locked into amendments §5.5 in pre-signature commit `aeaddb28`. PK then signed: "Approved and recorded in addendum doc as well". cc-0017a Wave 0a authoring execution gate now OPEN.
 
-**Build arc (3 phases):**
+**Sequence:**
 
-**Phase 1 — Pre-signature concern review.** PK asked "any concerns / specifics to review" before signing. Chat read both v1 plan and amendments doc in full, surfaced 4 conscious-thinking-required items (per-source dedupe locked / cross-source v2; severity out of dedupe key; reopen N still TBD; triage metric requires Wave 7 UI) + smaller heads-ups (two Telegram paths coexist Waves 2-3; sentinel dual-write may extend Wave 4 unpredictably; 0c REVOKE may break direct writers; v1 schema sketch illustrative not final; cc-0015 Stage A scope shrinks after Wave 0a). Recommended sign with awareness — no architectural defects identified.
+1. **Session open** — read `00_sync_state.md` (sha `d7c29a5a`) + `00_action_list.md` (sha `cc1c43dd`). Confirmed v2.78 close state.
 
-**Phase 2 — ChatGPT 4th cross-check.** PK consulted ChatGPT, which confirmed v1 + amendments are sound and concerns are healthy not stop-signs. ChatGPT recommended one tightening: lock reopen window N = 14 days (not "TBD, propose 7"). PK accepted, plus implicitly accepted ChatGPT's triage timing fallback recommendation (created_at fallback Waves 1-6; first_viewed_at primary Wave 7+).
+2. **Pre-signature chat review** — read both planning docs `afc9306` (v1, 28.8 KB) + `9c90687` (amendments, 15.6 KB). Surfaced 4 conscious-thought items: (a) per-source dedupe locked, cross-source v2-scope; (b) severity OUT of dedupe key (correct call); (c) reopen window N = "TBD propose 7 days" in Amendment G needed explicit lock; (d) triage time metric via first_viewed_at requires UI not built until Wave 7. Plus 5 smaller heads-ups: two Telegram paths for ~3-4 weeks during Waves 2-3; sentinel dual-write Wave 4 may extend if rare check_names don't fire; 0c REVOKE may break unknown writers; v1 §6 schema sketch is illustrative not final; cc-0015 Stage A scope shrinks after Wave 0a.
 
-**Phase 3 — Two-commit signature gate.** Commit 1 (`aeaddb28`, single-file): §5.5 pre-signature clarifications added; §1 update note; Amendment C end-line + Amendment G N=14 cross-ref; §6 v2-scope addition (per-source tunable reopen); §7 cc-0017 → cc-0017a; §8 4th cross-check paragraph; §9 gate notes "OPEN — PK approval recorded". Commit 2 (atomic 4-file push, this commit): amendments §9 PK signature filled + sync_state v2.79 + action_list v2.79 + new per-session file. L58 honoured for atomic state change.
+3. **PK 4th cross-check (ChatGPT)** — confirmed architecture sound; recommended lock N = 14 days; clarified triage metric phase-based formula. Convergence with chat-side concerns on both items.
 
-**D-01 fires this session: 0.** Planning + signature are pre-execution.
+4. **Pre-signature commit `aeaddb28`** — amendments doc updated: header notes 4th cross-check; §1 update note; Amendment C + G updated to reference §5.5; **§5.5 NEW** with 2 clarifications locked; §6 added per-source tunable reopen window as v2 scope; §7 cc-0017 references corrected to cc-0017a; §8 audit trail paragraph for 4th cross-check; §9 sign-off block ready for signature. File 15.6 KB → 20.5 KB. **No new architectural decisions**; 32-decision total stands.
 
-**Production mutations: 0.** Two GitHub commits only (single-file `aeaddb28` then atomic 4-file). No database, no EF, no cron, no vault.
+5. **PK signed** — explicit approval: "Approved and recorded in addendum doc as well".
 
-**Production state at v2.79 close (unchanged from v2.78):**
-- friction.experiment_run: status=archived (cc-0014), unchanged
-- friction.event: 22 rows (unchanged from v2.78; no new cron fires this session)
-- friction.case: 22 rows (1:1 with events because dedupe broken — fix scoped to Wave 0b)
-- IOL hold-stance: still lifted
-- cron 85: daily, unchanged
-- All other crons unchanged
-- No new schema; no new migrations; no EF deploys
+6. **4-way atomic sync (this commit)** — amendments §9 signature recorded + status block updated to SIGNED + new §10 Post-Signature State section; sync_state v2.79 (this file); action_list v2.79; new per-session file `docs/runtime/sessions/2026-05-18-v2.79-friction-plan-signed.md`. Dashboard PHASES: 32nd consecutive deferral (D-IOL-001 unblock preserved).
 
-**Items unblocked by v2.79:**
-- **cc-0017a Wave 0a brief authoring** — rank 1 next session
-- 9 subsequent wave briefs (cc-0017b, cc-0017c, cc-0018-cc-0025) sequenced behind 0a
+**D-01 fires this session: 0.** Signature is pre-execution. T-MCP-02 cumulative unchanged at 69.
 
-**Decisions recorded v2.79:**
-- Reopen window N = 14 days (locked, single global constant; per-source override is v2 scope per §6)
-- Triage metric measurement strategy phase-based (created_at fallback Waves 1-6; first_viewed_at primary Wave 7+)
+**Production mutations: 0.** Two GitHub commits this session (`aeaddb28` pre-signature clarifications; this commit 4-way atomic sync close). No execute_sql writes. No EF deploys. No schema changes. No cron mutations. No vault writes. No memory edits.
 
-**Lesson outcomes:** L58 properly exercised for the 4-file atomic push (single-file commit `aeaddb28` first was correct because it was a unilateral doc edit that PK needed to read before signing; subsequent state-coordinated 4-way sync is the atomic push). No new L-candidates. L-v2.78-a watcher (reviewer convergence is high-signal) not re-exercised v2.79.
+**Items resolved this session:**
+- PK approval gate (v2.78 rank 1) → CLOSED ✅
+- Amendment G reopen window ambiguity → LOCKED (N = 14 days)
+- Amendment C triage metric measurement basis → LOCKED (created_at fallback Waves 1-6; first_viewed_at primary Wave 7+)
+
+**Items unblocked by v2.79:** cc-0017a Wave 0a brief authoring is now P1 rank 1 (was rank 2 gated on rank 1 PK approval per v2.78).
+
+**Lesson outcomes:** No new L-candidates. L-v2.78-a watcher candidate (reviewer convergence is high-signal) now at **2 occurrences** — the 4th ChatGPT cross-check converged with chat-side concerns on both Clarification 1 (reopen N needs locking) and Clarification 2 (triage metric basis needs locking). Per v2.78 framing "promotion at 1 more independent occurrence", **L-v2.78-a is eligible for baseline promotion at next session's lesson cycle.**
+
+**v2.79 honest limitations:**
+- ChatGPT 4th cross-check conducted outside D-01 / ChatGPT Review MCP infrastructure (intentional — D-01 reserved for production mutations).
+- Signature recorded as text in §9 of amendments doc; no cryptographic provenance. PK identity confirmed by conversation context.
+- No production validation of the locked decisions yet. Wave 0a execution (cc-0017a brief authoring + D-01 + migration) is the next concrete delivery.
+- Friction.event still at 22 rows. Dedupe still broken empirically (max events/case = 1). Wave 0b fixes; no change v2.79.
 
 ---
 
@@ -91,37 +93,36 @@
 
 **Phase 3 — Architectural model.** Converged across 3 ChatGPT exchange rounds on 4-layer architecture: telemetry → detectors → friction.event (facts) → friction.case (decisions) → operator action. Foundational principle: "Events are facts. Cases are decisions." 5 emission credibility requirements adopted.
 
-**Phase 4 — Pressure-testing decisions.** Going through each locked decision deliberately trying to break it. **Critical empirical finding from schema check**: current dedupe is NOT working — 22 events / 22 cases / max-events-per-case = 1 / avg = 1.00. The `fn_promote_event_to_case` trigger creates a new case per event, not attaching to open cases sharing `dedupe_fingerprint`. Surfaced 2 additional decisions (#23 fix dedupe + #24 source registry FK) and 1 derived (#25 case closure semantics). 25 decisions locked total.
+**Phase 4 — Pressure-testing decisions.** Going through each locked decision deliberately trying to break it. **Critical empirical finding from schema check**: current dedupe is NOT working — 22 events / 22 cases / max-events-per-case = 1 / avg = 1.00. Surfaced 2 additional decisions (#23 fix dedupe + #24 source registry FK) and 1 derived (#25 case closure semantics). 25 decisions locked total.
 
 **Phase 5 — v1 doc + 3 reviews + amendments.** Wrote v1 planning doc (commit `afc9306`, 28KB, includes ASCII architecture visual). 3 independent LLM reviewers reviewed against the 8 review questions embedded in §14. Wrote amendments doc (commit `9c90687`, 15.6KB) capturing 7 amendments + Telegram re-sequencing + naming consistency fix.
 
-**Reviewer convergence pattern** (high-signal):
-- **All 3 reviewers said:** Split Wave 0, dedupe key inconsistencies, triage time metric not measurable
-- **2 of 3 said:** Telegram should land earlier, sentinel overlap needs time + count, case lifecycle needs richer state
-- **1 of 3 each:** severity dynamic override, direct-write enforcement, cross-source dedupe v2 (acknowledged not blocker)
-
-Result: 10 of 11 findings incorporated, 2 acknowledged as v2 scope, 0 rejected.
-
 **D-01 fires this session: 0.** Planning is pre-execution.
 
-**Production mutations: 0.** Two read-only `Supabase:execute_sql` inventories. Three `Invegent GitHub:create_or_update_file` commits (planning doc + amendments + session note).
+**Production mutations: 0.** Two read-only `Supabase:execute_sql` inventories. Three `Invegent GitHub:create_or_update_file` commits.
 
-**Items unblocked by v2.78:** cc-0017a authoring (the new Wave 0a) — pending PK approval gate which closed in v2.79.
+**Items unblocked by v2.78:** cc-0017a authoring (the new Wave 0a).
+
+**Items deferred:** cc-0015 → Wave 7; cc-0016 → Wave 8.
+
+**Items elevated:** Telegram → Wave 2 (avoid 5-wave operator alert black hole); Compliance reviewer fix → Wave 1.
+
+**Lesson outcomes:** No new L-candidates (planning-only). L-v2.78-a watcher candidate logged at 1 occurrence.
 
 ---
 
 ## 🟡 Next session priorities (rebuilt v2.79)
 
-1. **cc-0017a Wave 0a authoring** — foundational schema (`friction.source` registry + `friction.emission_rule` + `friction.emission_rule_history` + `friction.notification_policy` + 9 new columns on `friction.case`: `resolved_at`, `effort_level`, `triaged_at`, `triaged_by`, `first_viewed_at`, `resolution_kind`, `reopen_count`, `predecessor_case_id`, `dedupe_fingerprint`). Seed 3 sources. Partial unique index `case_open_dedupe_uniq` on `(dedupe_fingerprint) WHERE resolved_at IS NULL`. NO behavioural change. Authoring requires D-01 fire per ICE-PROC-001. ~3-4h authoring; execution separate session. **Un-gated as of v2.79 PK signature.**
-2. **Reconciliation daily cadence diagnostic** — P1 carry from v2.78. First daily fire happened 2026-05-17 17:30 UTC; 16 new friction events emitted. Material exists. Single read-only SQL: count `r.cadence_drift_log` rows since 2026-05-17 17:00 + count `friction.event` source='reconciliation' rows same window.
-3. **Health_check V-C3 + signal-production diagnostic** — P1 carry. Awaiting next Cowork fire post-`9215de77`.
-4. **Music library activation** — P2 carry (PK action: create bucket, upload tracks, set env var).
+1. **cc-0017a Wave 0a brief authoring** (P1 rank 1 v2.79 — NEW UNGATED). Foundational schema: source registry + emission_rule + history + notification_policy + 8 new case columns (resolved_at + effort_level + triaged_at + triaged_by + first_viewed_at + resolution_kind + reopen_count + predecessor_case_id + dedupe_fingerprint). Seed 3 sources. Partial unique index on `(dedupe_fingerprint) WHERE resolved_at IS NULL`. NO behavioural change. Reopen window N = 14 days locked. Authoring requires D-01 fire per ICE-PROC-001. ~3-4h authoring session; separate session for D-01 review + execution.
+2. **Reconciliation daily cadence diagnostic** — P1 rank 2 v2.79 carry from v2.78. First daily fire 2026-05-17 17:30 UTC emitted 16 new friction events. Single read-only SQL run: count `r.cadence_drift_log` rows since 2026-05-17 17:00 + count `friction.event source='reconciliation'` rows same window.
+3. **Health_check V-C3 diagnostic** — P1 rank 3 v2.79 carry. Awaiting next Cowork fire post-`9215de77`.
+4. **Music library activation** — P2 rank 4 v2.79 carry (PK action: create bucket, upload tracks, set env var).
 5. **Personal businesses check-in** — standing P0. Crazy Domains refund + clean-up follow-up.
 
-Carries (lower priority):
+Carries (lower priority, unchanged from v2.78):
 - 25 close-the-loop UPDATEs (22 historical CCH-locked + 3 v2.77 new)
 - Dashboard PHASES sync — 32nd consecutive deferral
-- Brief v1.2 doc patch (combined defects + L60 + L63–L65 + L-v2.76 a–f framing)
+- Brief v1.2 doc patch (combined defects + L60 + L63–L65 + L-v2.76 a–f framing + L-v2.78-a if promoted)
 - v1.1 cc-0012 / v1.6 cc-0010A / v1.3 cc-0011 minor doc patches
 - F-CRON-AUTO-APPROVER-SECRET-INLINE (P2 sec, OPEN)
 - Memory cap hygiene (19/30; 11 free slots)
@@ -130,6 +131,7 @@ Carries (lower priority):
 - YT publisher diagnostic
 - Platform Reconciliation View brief authoring
 - M8b separate brief authoring
+- **L-v2.78-a baseline promotion eligibility** — 2 occurrences reached; promote at next session's lesson cycle
 
 ---
 
@@ -137,17 +139,17 @@ Carries (lower priority):
 
 **v2.79 update on standing items:**
 
-- **Friction Register Consolidation Plan v1 + amendments SIGNED 2026-05-18 (v2.79).** Two committed planning documents (commits `afc9306` + `9c90687`) + pre-signature clarifications (commit `aeaddb28`) + signature record (this commit). 32 decisions locked. 10-wave execution sequence locked. cc-0017a (Wave 0a) un-gated and rank 1 next session.
+- **Friction Register Consolidation Plan v1 + amendments + §5.5 SIGNED 2026-05-18 Sydney evening.** Amendments doc at `docs/runtime/friction_register_consolidation_plan_v1_amendments.md` (latest commit this 4-way sync). v1 plan unchanged at `docs/runtime/friction_register_consolidation_plan_v1.md` (commit `afc9306`). 32 decisions governing execution + 2 within-amendment clarifications in §5.5. **cc-0017a Wave 0a authoring execution gate is OPEN** — no further approval needed before brief authoring + D-01 fire.
 - **cc-0014 CLOSED-ARCHIVED v2.77.** Postmortem at `docs/postmortems/cc-0014-closing-note.md`. Brief frozen at v1.1 commit `34305092f4`. D-IOL-001 supersedes the cc-0014 experimental framing.
-- **cc-0015 friction-pool-view**: AUTHORED PENDING_EXECUTION (commit `9a5dc155`). **Re-sequenced as Wave 7 in v2.78 plan**. Stages B–F deferred until 1 week of empirical volume from Waves 1-6.
-- **cc-0016 friction-capture-evidence**: AUTHORED PENDING_EXECUTION (commit `f35f8ea4`). **Re-sequenced as Wave 8 in v2.78 plan.**
+- **cc-0015 friction-pool-view**: AUTHORED PENDING_EXECUTION (commit `9a5dc155`). Re-sequenced as Wave 7. Stages B–F deferred until 1 week of empirical volume from Waves 1-6.
+- **cc-0016 friction-capture-evidence**: AUTHORED PENDING_EXECUTION (commit `f35f8ea4`). Re-sequenced as Wave 8.
 - **Cowork brief `nightly-health-check-v1` FROZEN at v3.0** (commit `bc32e86`). Sunset 2026-06-15.
 - **friction.* schema unchanged at v2.79.** Schema work scoped to Wave 0a (cc-0017a) — not yet executed.
 - **PostgREST exposed_schemas continues to include `friction`** (carry).
-- **cron 85 schedule: daily** (unchanged since v2.77 promotion). All other crons (82, 83, 84, 86) unchanged.
-- **L58 BASELINE v2.76** carried. Properly exercised v2.79 for the 4-file atomic push.
-- **L62 baseline-eligible v2.77** carried (3+ exercises cumulative). No D-01 fired v2.79.
-- **L-v2.78-a watcher candidate v2.78**: reviewer convergence pattern is high-signal. 1 occurrence. Promotion at 1 more independent occurrence. Not re-exercised v2.79.
+- **cron 85 schedule: daily** (unchanged since v2.77 promotion). All other crons unchanged.
+- **L58 BASELINE v2.76** carried.
+- **L62 baseline-eligible v2.77** carried (3+ exercises cumulative).
+- **L-v2.78-a watcher candidate v2.78**: now at **2 occurrences** post-v2.79 (chat-side gap raising in pre-signature review + ChatGPT 4th cross-check convergence on both reopen N + triage metric). **Eligible for baseline promotion at next session's lesson cycle.**
 - **L-v2.76-a through L-v2.76-f**: not re-exercised v2.79; promotion still pending pattern repeat.
 - **cc-0009 PRV-1 second build: COMPLETE.** Unchanged.
 - **cc-0012 PRV v1: CLOSED-WITH-VERIFIED-VARIANCE v2.71.** Unchanged.
@@ -155,14 +157,14 @@ Carries (lower priority):
 - **cc-0010C reconciliation-matcher: CLOSED-WITH-VERIFIED-VARIANCE v2.69.**
 - **cc-0010B ice-evidence-materialiser: CLOSED-WITH-VERIFIED-VARIANCE v2.68.**
 - **cc-0010A r.* DDL Foundation: APPLIED + CLOSED v2.67.**
-- **25 close-the-loop UPDATEs outstanding** (22 historical CCH-locked + 3 v2.77 new). Gated on PK directive. **No new D-01 fires v2.79**, so no new close-the-loops added.
+- **25 close-the-loop UPDATEs outstanding** (22 historical CCH-locked + 3 v2.77 new). Gated on PK directive. No new D-01 fires v2.79, so no new close-the-loops added.
 - **F-K-SCHEMA-REGISTRY-R-STALE-DESCRIPTION**: P3 OPEN.
 - **F-CC-0009-EF-BACKFILL-HORIZON-FORWARD-ONLY**: P3 OPEN.
 - **L34 trigger filter audit**: P3 carry.
 - **3 pre-v2 forensic `r.reconciliation_run failed` rows**: retained per directives.
 - **T-MCP-02 quota: 69 cumulative v2.79** (unchanged from v2.78 — no D-01 fires).
 - **State-capture exceptions cumulative: 1** (unchanged).
-- Cron 82-86 firing normally (cron 85 daily).
+- Cron 82-86 firing normally.
 - **Dashboard roadmap PHASES** — **32nd** consecutive deferral. Remains unblocked per D-IOL-001; eligible for next dashboard session.
 - M-series total dead-letter rows cleared since 8 May 2026: 396 rows.
 - Standing don't-redeploy three (heygen-avatar-creator, heygen-avatar-poller, draft-notifier) — list unchanged.
@@ -175,10 +177,10 @@ Carries (lower priority):
 
 ## 📜 G1 convention (the rule)
 
-Unchanged. Per-session file `docs/runtime/sessions/2026-05-18-v2.79-friction-plan-signed.md` written this commit. This sync_state + action_list updated in the same atomic push. **4-of-4-way sync this session** (docs updated; dashboard PHASES 32nd consecutive deferral — still unblocked but deferred to next dashboard session; per-session file written).
+Unchanged. Per-session file `docs/runtime/sessions/2026-05-18-v2.79-friction-plan-signed.md` written. This sync_state + action_list updated. Dashboard PHASES 32nd consecutive deferral. 4-way atomic sync via push_files (L58 baseline applied).
 
 **This file size**: ~22KB after this update (v2.79 current + v2.78 previous inlined per G1 "1-2 sessions inlined" rule; v2.77 + earlier retained as pointer rows only).
 
 ---
 
-*Last updated: 2026-05-18 Sydney afternoon — v2.79: FRICTION REGISTER CONSOLIDATION PLAN v1 + AMENDMENTS SIGNED. PK approval recorded in amendments §9. cc-0017a Wave 0a brief authoring un-gated and rank 1 next session. Pre-signature clarifications locked in §5.5: reopen window N = 14 days; triage metric measurement strategy phase-based. Atomic 4-file push (signature + sync_state + action_list + session note). 0 D-01 fires. T-MCP-02 cum unchanged at 69. Previous (v2.78): FRICTION REGISTER CONSOLIDATION PLAN v1 + AMENDMENTS LOCKED via planning-only session.*
+*Last updated: 2026-05-18 Sydney evening — v2.79: FRICTION REGISTER CONSOLIDATION PLAN v1 + AMENDMENTS SIGNED. Pre-signature chat review surfaced 2 residual ambiguities. PK obtained 4th cross-check (ChatGPT). Both clarifications locked into amendments §5.5 (reopen N = 14 days; triage metric phase-based). PK signed. cc-0017a Wave 0a authoring execution gate now OPEN. 32 decisions + 2 within-amendment clarifications stand. 4-way atomic sync. L-v2.78-a watcher candidate now at 2 occurrences — eligible for baseline promotion next session. Previous (v2.78): planning + amendments locked.*
