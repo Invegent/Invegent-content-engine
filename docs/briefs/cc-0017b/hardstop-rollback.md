@@ -31,7 +31,7 @@ The migration is considered FAILED if any of:
 - **V-B18:** missing rule didn't raise P0001
 - **V-B19:** suppress rule produced an event row (should be NULL) OR didn't write emit_error
 - **V-B20:** direct INSERT didn't get case_id assigned OR no BYPASS-DEFENCE emit_error row
-- **V-B21:** GUC leaked across transactions (current_setting non-empty at top level)
+- **V-B21:** GUC leaked across transactions (`guc_is_unset = false` at top level)
 - **V-B22:** synthetic reconciliation INSERT didn't produce a friction.event (only if V-B22 was run, not SKIPPED-BY-PK-DIRECTION)
 - **V-B23:** health_check wrapper result counts wrong OR fewer/more events than expected
 - **V-B24:** manual wrapper returned wrong field values
@@ -39,7 +39,7 @@ The migration is considered FAILED if any of:
 - **V-B26:** service_role couldn't EXECUTE emit_event
 - **V-B27:** any non-zero residual
 
-**On any hard-stop:** stop. Do not proceed to Wave 0c authoring. Roll back per §5.5. Author a v1.1 patch addressing the failure mode. Re-fire D-01.
+**On any hard-stop:** stop. Do not proceed to Wave 0c authoring. Roll back per §5.5. Author a v1.2 patch addressing the failure mode. Re-fire D-01.
 
 ---
 
@@ -87,7 +87,9 @@ ALTER TABLE friction.event ADD CONSTRAINT event_category_source_check
 
 ### Step 5.5.5 — Restore cc-0014 function bodies (verbatim)
 
-**CRITICAL: the apply session must have captured these from pre-flight P2 output before applying the migration.** Without that capture, rollback for `fn_emit_health_check_findings` + `fn_emit_manual_event` requires manually re-deriving from git history (cc-0014 commit).
+> **v1.1 patch note:** §5.5.5c and §5.5.5d now contain the verbatim cc-0014 function bodies retrieved from `supabase_migrations.schema_migrations` (rows `cc_0014_c_health_check_emitter` version `20260514233321` and `cc_0014_d_manual_emit_function` version `20260515005315`). v1.0 carried "Reference shape only — DO NOT execute" schematic placeholders because the apply session had not yet captured them; v1.1 inlines the actual bodies so the brief is self-contained for rollback purposes. No additional capture step is required at apply time.
+>
+> Source of truth precedence: (1) this brief; (2) `supabase_migrations.schema_migrations` row for the named cc-0014 migration; (3) pg_get_functiondef at the time of apply (only valid PRE-cc-0017b apply — after cc-0017b apply, pg_get_functiondef returns the cc-0017b body).
 
 #### 5.5.5a — fn_promote_event_to_case (cc-0014 body, verbatim from introspection)
 
@@ -192,99 +194,172 @@ BEGIN
 END $$;
 ```
 
-#### 5.5.5c — fn_emit_health_check_findings (cc-0014 body — placeholder)
-
-**Body NOT included verbatim in this brief.** Apply session must paste it from pre-flight P2 output. The function signature is `(p_run_id text, p_markdown_path text, p_findings jsonb) RETURNS jsonb`. Schematic body (per introspection):
+#### 5.5.5c — fn_emit_health_check_findings (cc-0014 body, verbatim from `cc_0014_c_health_check_emitter` migration version `20260514233321`)
 
 ```sql
--- Reference shape only — DO NOT execute. Apply session pastes the captured P2 body here.
-CREATE OR REPLACE FUNCTION friction.fn_emit_health_check_findings(p_run_id text, p_markdown_path text, p_findings jsonb)
+CREATE OR REPLACE FUNCTION friction.fn_emit_health_check_findings(
+  p_run_id text,
+  p_markdown_path text,
+  p_findings jsonb  -- array of {finding_id, priority, severity, title, observation_text, related_object, raw_payload}
+)
 RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER
+LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = friction, public
-AS $function$
+AS $$
 DECLARE
-  v_finding jsonb; v_success_count integer := 0; v_failure_count integer := 0;
-  v_severity text; v_problem_key text; v_dedupe_fingerprint text;
+  v_finding jsonb;
+  v_success_count integer := 0;
+  v_failure_count integer := 0;
+  v_severity text;
+  v_problem_key text;
+  v_dedupe_fingerprint text;
 BEGIN
   FOR v_finding IN SELECT jsonb_array_elements(p_findings) LOOP
     BEGIN
+      -- Severity mapping (priority 1/2/3 -> critical/warn/info)
       v_severity := CASE COALESCE(v_finding->>'priority', '3')
-        WHEN '1' THEN 'critical' WHEN '2' THEN 'warn' ELSE 'info'
+        WHEN '1' THEN 'critical'
+        WHEN '2' THEN 'warn'
+        ELSE 'info'
       END;
+
+      -- Problem key from finding_id (after the priority prefix)
       v_problem_key := COALESCE(
         regexp_replace(v_finding->>'finding_id', '^priority-[0-9]+/', ''),
-        'unknown_finding');
-      v_dedupe_fingerprint := md5('health_check' || '|' || v_problem_key || '|' ||
-        COALESCE((v_finding->'related_object')::text, '') || '|' || 'pipeline_integrity');
-      INSERT INTO friction.event (source, source_event_id, observed_at, severity, category, category_source,
-                                   reported_by, problem_key, observation_text, related_object, raw_payload, dedupe_fingerprint)
-      VALUES ('health_check', p_run_id || '/' || (v_finding->>'finding_id'),
-              now(), v_severity, 'pipeline_integrity', 'emitter_default', 'system',
-              v_problem_key, COALESCE(v_finding->>'observation_text', v_finding->>'title', 'no text'),
-              v_finding->'related_object',
-              jsonb_build_object('health_check_run_id', p_run_id, 'finding_id', v_finding->>'finding_id',
-                                  'markdown_path', p_markdown_path, 'priority', v_finding->>'priority',
-                                  'raw_finding', v_finding),
-              v_dedupe_fingerprint);
+        'unknown_finding'
+      );
+
+      -- Dedupe fingerprint (no day; recurrence via case lookup)
+      v_dedupe_fingerprint := md5(
+        'health_check' || '|' || v_problem_key || '|' ||
+        COALESCE((v_finding->'related_object')::text, '') || '|' ||
+        'pipeline_integrity'
+      );
+
+      INSERT INTO friction.event (
+        source, source_event_id, observed_at, severity, category, category_source,
+        reported_by, problem_key, observation_text, related_object, raw_payload, dedupe_fingerprint
+      ) VALUES (
+        'health_check',
+        p_run_id || '/' || (v_finding->>'finding_id'),
+        now(),
+        v_severity,
+        'pipeline_integrity',
+        'emitter_default',
+        'system',
+        v_problem_key,
+        COALESCE(v_finding->>'observation_text', v_finding->>'title', 'no text'),
+        v_finding->'related_object',
+        jsonb_build_object(
+          'health_check_run_id', p_run_id,
+          'finding_id', v_finding->>'finding_id',
+          'markdown_path', p_markdown_path,
+          'priority', v_finding->>'priority',
+          'raw_finding', v_finding
+        ),
+        v_dedupe_fingerprint
+      );
       v_success_count := v_success_count + 1;
     EXCEPTION WHEN OTHERS THEN
       INSERT INTO friction.emit_error (source, source_event_id, error_message, error_code, raw_payload, emitter_version)
-      VALUES ('health_check', p_run_id || '/' || (v_finding->>'finding_id'),
-              SQLERRM, SQLSTATE, v_finding, 'cc-0014-v1.0');
+      VALUES (
+        'health_check',
+        p_run_id || '/' || (v_finding->>'finding_id'),
+        SQLERRM, SQLSTATE, v_finding, 'cc-0014-v1.0'
+      );
       v_failure_count := v_failure_count + 1;
     END;
   END LOOP;
-  RETURN jsonb_build_object('success_count', v_success_count, 'failure_count', v_failure_count, 'run_id', p_run_id);
-END $function$;
+
+  RETURN jsonb_build_object(
+    'success_count', v_success_count,
+    'failure_count', v_failure_count,
+    'run_id', p_run_id
+  );
+END $$;
+
+REVOKE EXECUTE ON FUNCTION friction.fn_emit_health_check_findings(text, text, jsonb) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION friction.fn_emit_health_check_findings(text, text, jsonb) TO service_role;
 ```
 
-#### 5.5.5d — fn_emit_manual_event (cc-0014 body — placeholder)
-
-**Body NOT included verbatim.** Apply session must paste from pre-flight P2 output. Signature: `(p_observation_text text, p_severity text, p_category text, p_current_route text DEFAULT NULL, p_related_object jsonb DEFAULT NULL, p_notes text DEFAULT NULL) RETURNS uuid`. Schematic body:
+#### 5.5.5d — fn_emit_manual_event (cc-0014 body, verbatim from `cc_0014_d_manual_emit_function` migration version `20260515005315`)
 
 ```sql
--- Reference shape only — DO NOT execute. Apply session pastes the captured P2 body here.
 CREATE OR REPLACE FUNCTION friction.fn_emit_manual_event(
-  p_observation_text text, p_severity text, p_category text,
-  p_current_route text DEFAULT NULL, p_related_object jsonb DEFAULT NULL, p_notes text DEFAULT NULL
-) RETURNS uuid
-LANGUAGE plpgsql SECURITY DEFINER
+  p_observation_text  text,
+  p_severity          text,
+  p_category          text,
+  p_current_route     text DEFAULT NULL,
+  p_related_object    jsonb DEFAULT NULL,
+  p_notes             text DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
 SET search_path = friction, public
-AS $function$
+AS $$
 DECLARE
-  v_event_id uuid; v_severity text; v_category text;
-  v_problem_key text; v_dedupe_fingerprint text; v_related_object jsonb;
+  v_event_id uuid;
+  v_severity text;
+  v_category text;
+  v_problem_key text;
+  v_dedupe_fingerprint text;
+  v_related_object jsonb;
 BEGIN
+  -- Validate inputs
   IF p_observation_text IS NULL OR length(trim(p_observation_text)) < 5 THEN
     RAISE EXCEPTION 'observation_text required and must be >= 5 characters';
   END IF;
+
   v_severity := COALESCE(p_severity, 'info');
   IF v_severity NOT IN ('info', 'warn', 'critical') THEN
     RAISE EXCEPTION 'severity must be info, warn, or critical';
   END IF;
+
   v_category := COALESCE(p_category, 'unclassified');
   IF NOT EXISTS (SELECT 1 FROM friction.category WHERE category_code = v_category AND is_active = true) THEN
     RAISE EXCEPTION 'category % is not active', v_category;
   END IF;
+
+  -- Problem key from first 50 chars of observation_text, normalized
   v_problem_key := lower(regexp_replace(substring(p_observation_text from 1 for 50), '[^a-z0-9]+', '_', 'g'));
+
+  -- Related object includes route if provided
   v_related_object := COALESCE(p_related_object, '{}'::jsonb);
   IF p_current_route IS NOT NULL THEN
     v_related_object := v_related_object || jsonb_build_object('dashboard_route', p_current_route);
   END IF;
+
+  -- Dedupe fingerprint
   v_dedupe_fingerprint := md5('manual' || '|' || v_problem_key || '|' || v_related_object::text || '|' || v_category);
+
+  -- Insert
   v_event_id := gen_random_uuid();
-  INSERT INTO friction.event (event_id, source, source_event_id, observed_at, severity, category,
-                               category_source, reported_by, problem_key, observation_text, related_object,
-                               raw_payload, dedupe_fingerprint)
-  VALUES (v_event_id, 'manual', 'manual/' || v_event_id::text, now(),
-          v_severity, v_category,
-          CASE WHEN p_category IS NOT NULL THEN 'manual_at_capture' ELSE 'emitter_default' END,
-          'pk', v_problem_key, p_observation_text, v_related_object,
-          jsonb_build_object('form_version', 'v1', 'notes', p_notes),
-          v_dedupe_fingerprint);
+  INSERT INTO friction.event (
+    event_id, source, source_event_id, observed_at, severity, category, category_source,
+    reported_by, problem_key, observation_text, related_object, raw_payload, dedupe_fingerprint
+  ) VALUES (
+    v_event_id,
+    'manual',
+    'manual/' || v_event_id::text,
+    now(),
+    v_severity,
+    v_category,
+    CASE WHEN p_category IS NOT NULL THEN 'manual_at_capture' ELSE 'emitter_default' END,
+    'pk',
+    v_problem_key,
+    p_observation_text,
+    v_related_object,
+    jsonb_build_object('form_version', 'v1', 'notes', p_notes),
+    v_dedupe_fingerprint
+  );
+
   RETURN v_event_id;
-END $function$;
+END $$;
+
+REVOKE EXECUTE ON FUNCTION friction.fn_emit_manual_event(text, text, text, text, jsonb, text) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION friction.fn_emit_manual_event(text, text, text, text, jsonb, text) TO authenticated, service_role;
 ```
 
 ---
