@@ -1,19 +1,22 @@
 # cc-0017b — Friction Register Unified Emit Event (Wave 0b)
 
 **Brief ID:** cc-0017b
-**Version:** v1.0
-**Status:** Authored — awaiting D-01 review (execution gate open per v2.81)
+**Version:** v1.1 (doc-only patch — 6 defects + 2 rollback bodies inlined)
+**Status:** CLOSED-APPLIED-WITH-CORRECTIVE-MIGRATION 2026-05-18 (v2.82) — doc-only v1.1 patch 2026-05-18
 **Wave:** 0b of 10 (Friction Register Consolidation Plan)
-**Authored:** 2026-05-18 Sydney evening
+**Authored:** 2026-05-18 Sydney evening (v1.0); v1.1 patched 2026-05-18 Sydney late evening
 **Author:** Chat-side Claude on PK directive
 **Strategic anchors:**
 - `docs/runtime/friction_register_consolidation_plan_v1.md` (commit `afc9306`)
 - `docs/runtime/friction_register_consolidation_plan_v1_amendments.md` (signed v2.79)
 - `docs/briefs/cc-0017a-friction-register-foundational-schema.md` v1.1 (CLOSED-APPLIED v2.81)
 
+**Migrations applied (2026-05-18, v2.82):**
+- `cc_0017b_friction_unified_emit_event` (main, 11 atomic steps)
+- `cc_0017b_emit_event_ambiguity_fix` (corrective, schema-qualifies emit_event Step 9 WHERE)
+
 **Depends on:** cc-0017a Wave 0a — schema landed at migration version `20260518065610`, 22 cases backfilled with sha256 fingerprints, partial unique index `case_open_dedupe_uniq` active.
 **Schema:** extends `friction.*` schema in Supabase `mbkmaxqhsohbtwsqolns`.
-**Migration name (planned):** `cc_0017b_friction_unified_emit_event`
 
 ---
 
@@ -29,7 +32,7 @@ This brief is split across multiple files under `docs/briefs/cc-0017b/` to stay 
 | 5.2 (Steps 1–6) | [`cc-0017b/migration-sql-part-a.md`](cc-0017b/migration-sql-part-a.md) | Transition backfill + CHECK extension + dynamic_context column + helper functions + GUC-aware trigger + canonical emit_event |
 | 5.2 (Steps 7–11) | [`cc-0017b/migration-sql-part-b.md`](cc-0017b/migration-sql-part-b.md) | 3 wrapper rewrites + emission_rule seeds + GRANTs |
 | 5.3 | [`cc-0017b/vchecks.md`](cc-0017b/vchecks.md) | V-B1 through V-B27 |
-| 5.4–5.5 | [`cc-0017b/hardstop-rollback.md`](cc-0017b/hardstop-rollback.md) | Hard-stop conditions + rollback SQL |
+| 5.4–5.5 | [`cc-0017b/hardstop-rollback.md`](cc-0017b/hardstop-rollback.md) | Hard-stop conditions + rollback SQL (incl. verbatim cc-0014 bodies) |
 | 6–8 | [`cc-0017b/d01-postapply-deferred.md`](cc-0017b/d01-postapply-deferred.md) | D-01 framing + post-apply commitments + deferred decisions |
 | 9–11 | [`cc-0017b/lessons-metadata-changelog.md`](cc-0017b/lessons-metadata-changelog.md) | Lessons reference + authoring metadata + changelog |
 
