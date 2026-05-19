@@ -18,9 +18,10 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
-| 2026-05-19 | v2.90-cc0017e-applied | **cc-0017e Wave 0e APPLIED-WITH-VCHECK-CORRECTION**. Main migration `cc_0017e_friction_case_history_and_compat` applied — case_history shadow table created + lockdown grants + fn_triage_case 11-arg patched + 5 cc-0017d mutation functions patched byte-stable + 8-row acknowledged-legacy backfill executed. 5 brief defects surfaced + 4 Path B-prime corrective migrations: severity='low'→'info' + category='cc-0017e/v-d/category'→'unclassified' (fixture seed value defects); explicit `DROP FUNCTION` legacy 10-arg fn_triage_case (CREATE OR REPLACE arity-change semantics); explicit dependency-ordered cleanup DELETEs (purge_test_case regex mismatch + case_history coverage gap); schema-correct close-the-loop UPDATE (resolved_at + result_summary phantom columns in template). D-01 review `315baf84-65ed-4086-9e58-cc2497737f5f` AGREE → resolved/applied_with_correction. Final V-check matrix PASS: V-A1/A2/B1/B2/C1, V-F1-4, V-D1-6 + PK-directed compat smoke (15 pre-cleanup case_history rows reconciled with +1 compat smoke), V-E1-8, V-Z1/Z2/Z3 post-cleanup (0 residue / 29 cases / 29 events / 8 backfill rows). **6 new L-v2.90 candidates surfaced** (L-v2.90-a/b HIGH-SIGNAL; L-v2.90-c/d/e/f candidates). **8-item v1.1 doc patch backlog** (vchecks.md V-D-setup × 3, migration-sql.md §2, risks-and-grants.md R4 + §3, d01-postapply-deferred.md §4 × 2, helper extension future Wave). T-MCP-02 cum ~86 (+1 D-01). State-capture exceptions cum 1 unchanged. Gate 11 Day 1 of 7 unchanged. Dashboard PHASES 43rd deferral. L-v2.85-e 5th consecutive occurrence — promotion-confirmed carries forward. | `docs/runtime/sessions/2026-05-19-cc0017e-applied.md` |
+| 2026-05-19 | v2.91-cc0017e-v1.1-8item-doc-patch | **cc-0017e v1.1 8-item backlog doc patch CLOSED** at commit `be4e6772f20a73d093f53f609230fb565b1fe0df`. 5-file atomic push_files (vchecks.md + migration-sql.md + risks-and-grants.md + d01-postapply-deferred.md + lessons-metadata-changelog.md). All 9 items covered: severity='info' + category='unclassified' + fixture naming `cc-0017e-test/...` (vchecks.md V-D-setup + V-Z1) + explicit `DROP FUNCTION` for fn_triage_case arity change (migration-sql.md §2) + R4 reframe + §3 narrowed lockdown scope (risks-and-grants.md) + phantom `resolved_at`/`result_summary` removal from 4 templates (d01-postapply-deferred.md §4) + L-v2.90-a through L-v2.90-f added (a/b HIGH-SIGNAL). Reconciliation daily cadence diagnostic promoted P1 rank 1. L-v2.85-e **6th consecutive occurrence** promotion-confirmed carries forward. L-v2.83-a **11+ STRONG**. L-v2.88-a "identical PK-directive loop" 2nd documented occurrence (PK re-sent v2.90 cleanup directive verbatim at v2.91 start; handled via hard-stop + read-only state-verification probe + disposition options; no re-execution). T-MCP-02 cum ~86 unchanged. State-capture exceptions cum 1 unchanged. Gate 11 Day 1 of 7 unchanged. Dashboard PHASES 44th deferral. 0 production mutations / 0 Supabase calls / 0 D-01 fires / 0 memory edits / 0 decisions.md edits. | `docs/runtime/sessions/2026-05-19-cc0017e-v1.1-8item-doc-patch.md` |
+| 2026-05-19 | v2.90-cc0017e-applied | cc-0017e Wave 0e APPLIED-WITH-VCHECK-CORRECTION. Main migration `cc_0017e_friction_case_history_and_compat` applied — case_history shadow table + lockdown grants + fn_triage_case 11-arg patched + 5 cc-0017d mutation functions patched byte-stable + 8-row acknowledged-legacy backfill. 5 brief defects + 4 Path B-prime corrective migrations: severity (case_severity_check), category (case_category_fkey), explicit `DROP FUNCTION` legacy 10-arg fn_triage_case (CREATE OR REPLACE arity-change semantics), explicit dependency-ordered cleanup DELETEs (purge_test_case regex mismatch + case_history coverage gap), schema-correct close-the-loop UPDATE (resolved_at + result_summary phantom columns). D-01 review `315baf84-65ed-4086-9e58-cc2497737f5f` AGREE → resolved/applied_with_correction. Final V-check matrix PASS. **8-item v1.1 doc patch backlog identified — CLOSED at v2.91 (see above).** | `docs/runtime/sessions/2026-05-19-cc0017e-applied.md` |
 | 2026-05-19 | v2.89-cc0017e-v1.1-doc-patch | cc-0017e v1.1 doc patch CLOSED at commit `587ee4ac894a50708611cf9a053253083ae39e2b`. 2-file atomic `push_files` corrects m.chatgpt_review column-name anomaly in preflight-pset.md §P3.2 + d01-postapply-deferred.md §3-4: 6× `review_id`→`id`, 2× `proposal_text`→`proposal`. L-v2.85-e extended to 1+1+1 split this session due to atomic push_files timeout. NEW L-v2.89-a candidate. | `docs/runtime/sessions/2026-05-19-cc0017e-v1.1-doc-patch.md` |
-| 2026-05-19 | v2.88-cc0017e-v1.0-authored | cc-0017e Wave 0e v1.0 brief AUTHORED-PENDING-APPLY at commit chain `8502fc49 → 1659b293 → d349bdfe`. 8 files. Open anomaly: m.chatgpt_review column-name discrepancy — **resolved v2.89; surfaced 7 more brief defects at v2.90 apply**. | `docs/runtime/sessions/2026-05-19-cc0017e-v1.0-authored.md` |
+| 2026-05-19 | v2.88-cc0017e-v1.0-authored | cc-0017e Wave 0e v1.0 brief AUTHORED-PENDING-APPLY at commit chain `8502fc49 → 1659b293 → d349bdfe`. 8 files. Open anomaly: m.chatgpt_review column-name discrepancy — **resolved v2.89; surfaced 7 more brief defects at v2.90 apply; closed v2.91**. | `docs/runtime/sessions/2026-05-19-cc0017e-v1.0-authored.md` |
 | 2026-05-19 | v2.87-cc0017d-v1.1-doc-patch | cc-0017d v1.1 doc-only patch CLOSED at commit `f0367405`. 4 files patched + read-back verified. No production mutations. | `docs/runtime/sessions/2026-05-19-cc0017d-v1.1-doc-patch.md` |
 | 2026-05-19 | v2.86-cc0017d-applied-with-vcheck-correction | cc-0017d Wave 0d APPLIED-WITH-VCHECK-CORRECTION. 6 SECURITY DEFINER mutation functions deployed. | `docs/runtime/sessions/2026-05-19-cc0017d-applied-with-vcheck-correction.md` |
 | 2026-05-19 | v2.85-cc0017c-applied-with-vcheck-correction | cc-0017c APPLIED-WITH-VCHECK-CORRECTION. Friction.* Wave 0 (0a+0b+0c) COMPLETE. | `docs/runtime/sessions/2026-05-19-v2.85-cc0017c-applied-with-vcheck-correction.md` |
@@ -46,155 +47,119 @@
 
 ## 🟢 Most recent session — inline summary
 
-### 2026-05-19 Sydney evening — v2.90: cc-0017e Wave 0e APPLIED-WITH-VCHECK-CORRECTION
+### 2026-05-19 Sydney evening — v2.91: cc-0017e v1.1 8-item backlog doc patch CLOSED
 
-**Outcome:** cc-0017e v1.0 applied. friction.case_history shadow table live; fn_triage_case 11-arg patched body with case_history INSERT; 5 cc-0017d mutation functions patched byte-stable with case_history INSERT writes; 8-row acknowledged-legacy backfill executed. D-01 review `315baf84-65ed-4086-9e58-cc2497737f5f` AGREE → resolved/applied_with_correction. 5 brief defects + 4 Path B-prime corrective migrations + 8-item v1.1 doc patch backlog identified.
+**Outcome:** cc-0017e v1.1 8-item backlog doc patch CLOSED at commit `be4e6772f20a73d093f53f609230fb565b1fe0df`. 5 brief files patched in single atomic push_files. All 9 items covered. Apply state preserved (cc-0017e Wave 0e remains APPLIED-WITH-VCHECK-CORRECTION; D-01 `315baf84-...` remains resolved/applied_with_correction).
 
-**Migrations applied this session (5 successful, 2 failed-rollback):**
+**Files patched (5):**
 
-1. `cc_0017e_friction_case_history_and_compat` ✅ — DDL + 6 function patches + 8-row backfill + COMMENTs (atomic)
-2. `cc_0017e_vcheck_fixture_seed` attempts 1+2 ❌ ROLLBACK (severity / category defects) → attempt 3 ✅ (severity='info', category='unclassified')
-3. `cc_0017e_drop_legacy_fn_triage_case_10arg` ✅ — corrective DROP of legacy 10-arg overload (CREATE OR REPLACE arity-change semantics)
-4. `cc_0017e_vcheck_audit_cleanup` ✅ — explicit dependency-ordered DELETEs (purge_test_case helper bypassed)
-5. `cc_0017e_chatgpt_review_close` ✅ — D-01 close UPDATE (schema-corrected for phantom columns)
+| File | New blob SHA | Items covered |
+|---|---|---|
+| `docs/briefs/cc-0017e/vchecks.md` | `9dc7ca7cb96bb067713e19a7406e5b608127d964` | 1 (severity), 2 (category), 3 (fixture naming + V-Z1 + step 10), V-A1 dual-overload note, V-Z1 cleanup note (helper coverage gap workaround) |
+| `docs/briefs/cc-0017e/migration-sql.md` | `fa5542e5e53a694adf73e7f90586e681153ee0b2` | 4 (explicit DROP statement + arity-change discipline + L-v2.86-a scope clarification + §3 preamble + apply ordering + COMMENT update) |
+| `docs/briefs/cc-0017e/risks-and-grants.md` | `5a7727ecdc76b6d3af47bbaad93234483feeb6af` | 5 (R4 reframe + grant-preservation caveat), 6 (§3 narrowed lockdown scope + R2 harness scope clarification) |
+| `docs/briefs/cc-0017e/d01-postapply-deferred.md` | `25a23ad7e05aa9d78a78a3cb462a9a0330f93205` | 7 (`resolved_at` phantom removed), 8 (`result_summary` phantom removed), all 4 §4 templates schema-corrected, apply-time discipline note added |
+| `docs/briefs/cc-0017e/lessons-metadata-changelog.md` | `9d2ea6443682ade79351d26d0f5937541fc5aae0` | 9 (L-v2.90-a through L-v2.90-f added; a/b HIGH-SIGNAL; §3.1 commit map + §3.2 file inventory + §3.4 session metadata + §4 changelog v1.1 v2.91 entry + §5 sign-off updated) |
 
-**Brief defects surfaced (5 + 3 phantom column refs = 8 v1.1 items):**
+**Pre-patch state-verification (after PK identical-directive loop):** PK re-sent v2.90 cleanup directive verbatim at v2.91 start. Claude hard-stopped, ran read-only state-verification probe (7 metrics: 29 cases / 29 events / 8 case_history / 8 backfill kind / 0 non-backfill / 0 vd_residue / d01 status=resolved — all AS_EXPECTED), presented 4 disposition options, awaited PK redirection. No re-execution; v2.90 state preserved intact. L-v2.88-a "identical PK-directive loop" pattern — 2nd documented occurrence (v2.88 + v2.91).
 
-1. vchecks.md V-D-setup — severity='low' invalid (case_severity_check allows info/warn/critical only)
-2. vchecks.md V-D-setup — category='cc-0017e/v-d/category' violates case_category_fkey (6 valid codes only)
-3. migration-sql.md §2 + risks-and-grants.md R4 — `CREATE OR REPLACE FUNCTION` with arity change creates a sibling overload, not a replacement; explicit `DROP FUNCTION` of prior signature required
-4. vchecks.md V-D-setup + V-Z1 — fixture naming `cc-0017e/v-d/...` doesn't match `purge_test_case` regex `^cc-[0-9]{4}[a-z]?-test/`
-5. cleanup path — `purge_test_case` helper is case_history-unaware (helper realised v2.86 pre-dated case_history)
-6. d01-postapply-deferred.md §4 — `resolved_at` column phantom (not in m.chatgpt_review schema)
-7. d01-postapply-deferred.md §4 — `result_summary` column phantom
-8. risks-and-grants.md §3 — broad-scope clause ("authenticated + anon have zero grants on friction.*") overclaims; actual lockdown scope is case + event + emit_error only
+**Hard stops respected:**
+- 0 production mutations / 0 Supabase calls / 0 D-01 fires / 0 memory edits / 0 decisions.md edits / 0 Wave 0f scope creep / 0 purge_test_case helper changes
+- 0 re-execution of cc-0017e apply instructions despite PK re-send
+- v2.90 apply state preserved intact (verified via read-only probe)
+- Atomic multi-file push_files per L-v2.85-e 1+2 split succeeded on first attempt; L-v2.89-a 1+1+1 fallback NOT invoked
 
-**V-check matrix (all PASS final state):**
+**Items closed v2.91:**
+- **cc-0017e v1.1 8-item doc patch** (P2 rank 1 v2.90) → **CLOSED** ✅ at `be4e6772`
 
-V-A1 (post-DROP) → only 11-arg fn_triage_case + 5 cc-0017d byte-stable; V-A2 → body recognition 4/4 markers; V-B1/B2 → SECURITY DEFINER + owner=postgres; V-C1 → postgres full + service_role SELECT only + no authenticated/anon; V-F1-4 → 8 backfill rows correct deltas; V-D1-D6 + PK-directed compat smoke (legacy 10-arg positional call shape on fixture-002 → 11-arg DEFAULT p_actor=NULL → current_user fallback → 'postgres') = 7 case_history rows; V-E1-E8 → all denials/rejections fire (23514, 23503, 42501×3, P0001×4, P0002); V-Z3 pre-cleanup → 15 (reconciled with PK +1 compat smoke); V-Z1/V-Z2/V-Z3 post-cleanup → 0 residue / 29 cases / 29 events / 8 backfill-only.
+**Items promoted v2.91 (rank shift per PK directive):**
+- **Reconciliation daily cadence diagnostic** (P1 rank 2 v2.90) → **rank 1 P1 v2.91**
+- **Health_check V-C3 + signal-production diagnostic** (P1 rank 3 v2.90) → rank 2 P1 v2.91
+- **Platform Reconciliation View brief authoring** (P2 rank 4 v2.90) → rank 3 P2 v2.91
+- **Close-the-loop sweep / Pre-sales criteria / `purge_test_case` helper extension** (P2/P3 rank 5 v2.90) → rank 4 P2/P3 v2.91
 
-**V-Z3 reconciliation:** brief expected 14 pre-cleanup; actual 15 = brief 14 + 1 compat smoke PK explicitly directed mid-session. Reported transparently. Post-cleanup: 8 (matches brief).
+**Lesson exercise v2.91:**
+- **L-v2.85-e**: re-applied **6th consecutive occurrence** (v2.86 + v2.87 + v2.88 + v2.89 + v2.90 + v2.91). 1+2 split close. Promotion-confirmed v2.88 carries forward.
+- **L-v2.83-a**: re-applied at doc patch commit + sync close commit. Cumulative **11+ STRONG**.
+- **L-v2.88-a "identical PK-directive loop"**: **2nd documented occurrence v2.91** (handled via hard-stop + read-only probe + disposition options; no re-execution). Watcher carries forward.
+- **L-v2.89-a**: atomic push_files succeeded; fallback NOT invoked. Not re-exercised.
+- **L-v2.85-a (HIGH-SIGNAL)**: not re-exercised v2.91 (doc-only).
+- **L-v2.90-a-f**: not re-exercised v2.91 (lessons codified documentationally, not empirically).
+- **L40 / L41 / L46 / L58 / L62**: not exercised v2.91 (no DB / no DDL / no D-01 / no apply).
+- **No new L-v2.91-X candidates surfaced.**
 
-**Hard stops respected (5 hard-stop events to PK during apply, each with PK-directed Path B-prime disposition):**
+**Sync close mechanics v2.91:**
+1. Doc patch commit `be4e6772` (5 files via push_files; earlier this session).
+2. Per-session detail commit `404475172ad54f022a6ccf6203aac06fb824b45d` standalone via `create_or_update_file` (13,800 B).
+3. sync_state.md + action_list.md atomic push_files (this commit, 2 files).
 
-1. Step 2 fixture seed severity FAIL → PK directed retry with severity='info'
-2. Step 2 retry category FAIL → PK directed continuation with constraint-surface check first
-3. V-A1 dual overload → PK directed `DROP FUNCTION` corrective
-4. Step 4 cleanup blocked → PK directed inline DELETE corrective (Option A)
-5. Close-the-loop phantom columns → non-blocking; closed with schema-correct columns
+Total git commits this session: 3.
 
-0 Wave 0f scope creep / 0 decisions.md edits / 0 memory edits / 0 state-capture overrides.
-
-**6 NEW L-v2.90 lesson candidates:** L-v2.90-a (V-D fixture constraint-surface probing — HIGH-SIGNAL) / L-v2.90-b (CREATE OR REPLACE arity-change → explicit DROP required — HIGH-SIGNAL) / L-v2.90-c (V-D naming must match purge_test_case regex) / L-v2.90-d (shadow tables + helper coverage gaps) / L-v2.90-e (close-the-loop SQL templates must validate against actual m.chatgpt_review schema) / L-v2.90-f (risk-and-grants verification clauses must match actual lockdown scope).
-
-**Items closed v2.90:**
-- **cc-0017e apply session** (rank 1 P1 v2.89) → **CLOSED-APPLIED-WITH-VCHECK-CORRECTION** ✅
-- **Gate 13.c** sub-gate → CLOSED v2.90
-- **Wave 0e** → APPLIED
-- D-01 `315baf84-...` → resolved/applied_with_correction
-
-**Items newly opened v2.90:**
-- **cc-0017e v1.1 doc patch (8-item)** — P2 carry, NEW. Authoring required for 5 vchecks.md/migration-sql.md/risks-and-grants.md/d01-postapply-deferred.md correction items + lessons-metadata-changelog.md (new L-v2.90 family).
-- **`purge_test_case` helper extension** — P3 future Wave candidate. Helper needs case_history coverage.
-
-**Lesson exercise v2.90:**
-- **L-v2.85-e**: re-applied **5th consecutive occurrence** (v2.86 + v2.87 + v2.88 + v2.89 + v2.90). Promotion-confirmed v2.88 carries forward. v2.90 1+2 split close attempted (per-session detail standalone + sync_state+action_list atomic push_files).
-- **L-v2.85-a (HIGH-SIGNAL)**: re-exercised — V-A1 strict signature byte-match surfaced Defect 3 (dual overload). 4th occurrence. Promotion-eligible carries forward.
-- **L-v2.85-d**: REALIZED helper (purge_test_case) bypassed this session due to regex mismatch + case_history coverage gap. Fresh re-exercise.
-- **L-v2.86-a (HIGH-SIGNAL)**: PARTIALLY exercised — P2 transactional EXEC harness disclosed as PARTIAL; defensive coverage via visual + cc-0017d precedent worked for substitution-class drift (none surfaced); value-class / schema-phantom / helper-coverage defects are outside harness scope.
-- **L41**: exercised 5× (apply_migration on k.schema_registry-registered friction schema).
-- **L40 / L46 / L58 / L62**: all exercised at appropriate gates.
-- **L-v2.83-a**: 9+ occurrences; STRONG candidate confirmed.
-- **L-v2.88-c** (probe re-verification gate at apply time): realised by full P-set re-run at apply.
-- **L-v2.89-a**: not exercised — atomic push_files at sync close attempted (1+2 split); if timeout occurs, 1+1+1 fallback.
-
-**Sync close mechanics v2.90:**
-1. cc-0017e migration applied (no git commit).
-2. Per-session detail file standalone via `create_or_update_file`: commit `77d09376d7cdc9e0dbc76c5ec0a937d0fd46adf2` (26,994 B).
-3. sync_state.md + action_list.md atomic push_files (1+2 split per L-v2.85-e baseline).
-
-Total git commits this session: 2 (per-session detail + atomic sync_state+action_list) if atomic succeeds; 3 if L-v2.89-a fallback to 1+1+1.
-
-**v2.90 honest limitations:**
-- **8-item v1.1 doc patch backlog** is significant. Brief AUTHORED but apply revealed gaps in: V-D fixture constraint-surface probing, CREATE OR REPLACE arity semantics, helper coverage, and template column-name validity.
-- **P2 transactional EXEC harness PARTIAL** — value-class defects (defects 1+2) would have surfaced earlier with full P2 harness on a branch DB; visual + precedent inspection caught substitution-class drift but missed value drift.
-- **`purge_test_case` helper case_history coverage gap** — separate future Wave brief candidate.
-- **fn_triage_case external callers** still not enumerable via SQL — defensive 11-arg patch correctly in place but caller-surface inventory remains weak evidence.
-- **22 outstanding close-the-loop UPDATEs unchanged** from prior sessions; +1 added this session (cc-0017e close).
-- **Gate 11 (1-week observation window) still Day 1 of 7** (same calendar day as v2.86-v2.89 closes).
-- **No mid-session compaction event v2.90** despite session length and complexity.
+**v2.91 honest limitations:**
+- **Doc-only patch close session.** No production schema change. No migration applied. No V-check executed. No fresh empirical evidence beyond v2.90 apply-time verification carried forward.
+- **friction.* schema state end of v2.91 = state end of v2.90** (10 tables, fn_triage_case 11-arg only, 8 case_history backfill rows, 8 acknowledged-NULL-triage cases backfilled).
+- **22 outstanding close-the-loop UPDATEs unchanged net** from v2.90.
+- **purge_test_case helper case_history coverage gap (L-v2.90-d)** remains open future Wave candidate. v1.1 documented workaround; helper itself unchanged.
+- **L-v2.85-e is now mechanical sync-close discipline** (6 consecutive occurrences). Pattern stable; promotion already confirmed v2.88.
 
 ---
 
-### 2026-05-19 Sydney evening — v2.89 close (brief)
+### 2026-05-19 Sydney evening — v2.90 close (brief)
 
-cc-0017e v1.1 doc patch CLOSED at commit `587ee4ac`. 2-file atomic push_files corrects m.chatgpt_review column-name anomaly in preflight-pset.md §P3.2 + d01-postapply-deferred.md §3-4. NEW L-v2.89-a candidate (push_files atomic timeout → 1+1+1 fallback). Apply path unblocked. **cc-0017e applied at v2.90 (see above) with 5 additional brief defects + 8-item v1.1 doc patch backlog surfacing during apply.**
+cc-0017e Wave 0e APPLIED-WITH-VCHECK-CORRECTION. Main migration `cc_0017e_friction_case_history_and_compat` applied. 5 brief defects + 4 Path B-prime corrective migrations. D-01 `315baf84-...` resolved/applied_with_correction. 8-item v1.1 doc patch backlog identified — **CLOSED at v2.91 (see above).** 6 NEW L-v2.90 candidates (a/b HIGH-SIGNAL; c/d/e/f). Per-session detail `77d09376`; sync close `7af9f2ff`.
 
-*(Full detail at `docs/runtime/sessions/2026-05-19-cc0017e-v1.1-doc-patch.md` commit `dca2a6e4`.)*
+*(Full detail at `docs/runtime/sessions/2026-05-19-cc0017e-applied.md`.)*
 
 ---
 
-## 🟡 Next session priorities (rebuilt v2.90)
+## 🟡 Next session priorities (rebuilt v2.91)
 
-1. **cc-0017e v1.1 doc patch (8-item)** — **P2 carry, rank 1 v2.90 (NEW)**. Authoring required across 5 brief files + lessons-metadata-changelog.md (new L-v2.90 family).
-2. **Reconciliation daily cadence diagnostic** — **P1 carry, rank 2**. First post-cc-0017e cron 85 fire pending; check after fire lands. Now unblocked from cc-0017e apply gating.
-3. **Health_check V-C3 + signal-production diagnostic** — **P1 carry, rank 3**. V-C3 still PENDING.
-4. **Platform Reconciliation View brief authoring** — **P2 carry, rank 4**. PK greenlight required.
-5. **5-row close-the-loop batch sweep / Pre-sales criteria refinement / `purge_test_case` helper case_history extension** — P2/P3 carries, rank 5 placeholder per PK direction.
+1. **Reconciliation daily cadence diagnostic** — **P1 carry, rank 1 v2.91 (NEW TOP)**. First post-cc-0017e cron 85 fire pending; check after fire lands. Unblocked from cc-0017e apply + doc-patch gating.
+2. **Health_check V-C3 + signal-production diagnostic** — **P1 carry, rank 2**. V-C3 still PENDING. Cowork brief v3.0 ready.
+3. **Platform Reconciliation View brief authoring** — **P2 carry, rank 3**. PK greenlight required.
+4. **5-row close-the-loop batch sweep / Pre-sales criteria refinement / `purge_test_case` helper case_history extension** — **P2/P3 carry, rank 4**. 22 outstanding close-the-loop UPDATEs; Pre-sales 3-clock criteria; helper extension future Wave candidate (L-v2.90-d).
 
 **Standing P0:** Personal businesses check-in. Crazy Domains follow-up carry from v2.51.
 
-Carries: cc-0015 friction-pool-view (Wave 7, still gated on observation window closing 2026-05-26); cc-0016 friction-capture-evidence (Wave 8, still gated on Wave 7); cc-0017c v1.2 doc patch; cc-0017a v1.2 doc patch; vchecks.md V-B4 doc patch; 22 close-the-loop outstanding (+1 from v2.90 if any); Dashboard PHASES 43rd deferral; minor doc patches; F-CRON-AUTO-APPROVER-SECRET-INLINE; lesson promotions (L-v2.78-a + L-v2.81-a eligible; L-v2.83-a STRONG 9+; L-v2.84-a/b/c/d watching; L-v2.85-a/b/c/d/e — **L-v2.85-e PROMOTION-CONFIRMED 5th consecutive v2.90**, L-v2.85-a HIGH-SIGNAL 4 occurrences watching; L-v2.86-a/b/c/d/e watching; L-v2.88-a/b/c/d candidates carried; L-v2.89-a candidate carried (not re-exercised v2.90); **6 NEW L-v2.90-a/b/c/d/e/f candidates** — L-v2.90-a/b HIGH-SIGNAL).
+Carries: cc-0015 friction-pool-view (Wave 7, still gated on observation window closing 2026-05-26); cc-0016 friction-capture-evidence (Wave 8, gated on Wave 7); cc-0017c v1.2 doc patch; cc-0017a v1.2 doc patch; vchecks.md V-B4 doc patch; minor doc patches (cc-0010A/0011/0012); Dashboard PHASES 44th deferral; F-CRON-AUTO-APPROVER-SECRET-INLINE; lesson promotions (L-v2.78-a + L-v2.81-a eligible; **L-v2.83-a STRONG 11+**; L-v2.84-a/b/c/d watching; L-v2.85-a HIGH-SIGNAL 4 occurrences; **L-v2.85-e PROMOTION-CONFIRMED 6th consecutive v2.91**; L-v2.86-a/b/c/d/e watching; L-v2.88-a/b/c/d candidates (a re-observed v2.91 — 2nd occurrence); L-v2.89-a candidate; **L-v2.90-a through L-v2.90-f** (a/b HIGH-SIGNAL; c/d/e/f candidates)).
 
 ---
 
 ## ⛔ Carried-forward "do not touch" state
 
-**v2.90 updates on standing items:**
+**v2.91 updates on standing items:**
 
-- **cc-0017e Wave 0e APPLIED-WITH-VCHECK-CORRECTION v2.90.** Migration `cc_0017e_friction_case_history_and_compat` applied. friction.case_history table exists with cc-0017c lockdown grants. fn_triage_case 11-arg patched (legacy 10-arg dropped via `cc_0017e_drop_legacy_fn_triage_case_10arg`). 5 cc-0017d mutation functions patched byte-stable. 8 acknowledged-legacy cases backfilled (triaged_at=reviewed_at, triaged_by='legacy_backfill'). 8 backfill rows in case_history (change_kind='backfill'). All V-checks final PASS. D-01 `315baf84-...` resolved/applied_with_correction.
-- **cc-0017e v1.1 doc patch (8-item) NEW v2.90.** P2 rank 1 v2.90. Authoring required for: vchecks.md V-D-setup (severity + category + naming), migration-sql.md §2 (DROP statement + arity-change discipline), risks-and-grants.md R4 + §3, d01-postapply-deferred.md §4 (4 template variants — resolved_at + result_summary phantoms), V-Z1 cleanup pattern, lessons-metadata-changelog.md (NEW L-v2.90 family).
-- **cc-0017e v1.1 doc patch CLOSED v2.89** at commit `587ee4ac894a50708611cf9a053253083ae39e2b` — unchanged.
-- **cc-0017e Wave 0e v1.0 brief AUTHORED-PENDING-APPLY** at commit chain `8502fc49 → 1659b293 → d349bdfe` — now APPLIED. Carry: brief commits remain on main for audit + v1.1 patch surfaces.
-- **`purge_test_case` helper case_history coverage gap NEW v2.90.** Helper realised v2.86 deletes from event + case + emit_error, NOT case_history. case_history.case_id is FK ON DELETE RESTRICT. Helper extension is a future Wave brief candidate. Workaround: inline dependency-ordered DELETEs (cc-0017e v2.90 precedent).
-- **cc-0017d v1.1 doc patch CLOSED v2.87** at commit `f0367405`. Unchanged.
-- **cc-0017d migration applied v2.86** — unchanged. `cc_0017d_friction_case_mutation_functions`. 6 SECURITY DEFINER mutation functions live. Note: 5 of the 6 (triage_case, resolve_case, reopen_case, mark_duplicate, record_first_view) patched byte-stable by cc-0017e v2.90. fn_triage_case patched (not part of cc-0017d).
-- **cc-0017d V-check artefacts** — unchanged from v2.86.
-- **m.chatgpt_review row `206d2258-...`** — unchanged from v2.86.
-- **m.chatgpt_review row `315baf84-...` NEW v2.90** — D-01 fire for cc-0017e v1.0 apply, status=resolved/applied_with_correction/resolved_by=cc-0017e-close-v2.90.
-- **m.chatgpt_review schema** confirmed v2.90: no `resolved_at` column; no `result_summary` column. d01-postapply-deferred.md §4 templates reference both phantoms — v1.1 doc patch required.
-- **Friction Register Consolidation Plan gate 13.c** (cc-0017e apply) → CLOSED v2.90. **Wave 0e APPLIED.** Next gate: PK direction on Wave 0f (B/E/F/G items deferred from cc-0017e + helper extension) OR cc-0015 / cc-0016 sequencing after observation window closes 2026-05-26.
-- **Gate 11** (1-week observation window 2026-05-19 → 2026-05-26) ACTIVE. Day 1 of 7 unchanged (v2.90 same calendar day as v2.86/v2.87/v2.88/v2.89 closes).
-- **Wave 0e — case history/audit** — APPLIED v2.90. v1.1 doc patch backlog (8 items) carries forward.
-- **Wave 0f** — NOT YET SCOPED. Items B/E/F/G deferred from cc-0017e + helper extension are candidates.
-- **m.chatgpt_review rows `d18fa6db-...`, `a37eff28-...`, `9e602a2d-...`, `b612a8e4-...`, `a6415afa-...`, `adcc8385-...`** all status=resolved (unchanged).
-- **cc-0017c APPLIED-WITH-VCHECK-CORRECTION v2.85** unchanged.
-- **cc-0017b APPLIED-WITH-CORRECTIVE v2.82 + v1.1 doc patch v2.83.** Unchanged.
-- **cc-0017a APPLIED v2.81.** Unchanged.
-- **cc-0014 CLOSED-ARCHIVED v2.77.** Unchanged.
-- **cc-0015 friction-pool-view** (Wave 7, commit `9a5dc155`): Wave 0e gate cleared v2.90; still gated on 1-week observation window closing 2026-05-26.
-- **cc-0016 friction-capture-evidence** (Wave 8, commit `f35f8ea4`): Wave 0e gate cleared v2.90; still gated on Wave 7 sequencing.
-- **Cowork brief `nightly-health-check-v1` FROZEN at v3.0** (commit `bc32e86`). Sunset 2026-06-15.
-- **PostgREST exposed_schemas includes `friction`** (carry).
-- **cron 85 daily** (since v2.77). First cc-0017e-post-apply cron 85 fire pending — diagnostic now P1 rank 2.
-- **L58 BASELINE v2.76** carried.
-- **L62 baseline-eligible v2.77** — exercised v2.90.
-- **L41**: exercised v2.90 (5× apply_migration on friction schema). Cumulative v2.80-v2.90 = 11.
-- **L40**: exercised v2.90 (close-the-loop UPDATE on m.chatgpt_review via apply_migration).
-- **L46**: exercised v2.90 (D-01 evidence gate; transparent weak_evidence disclosure).
-- **L-v2.78-a / L-v2.81-a / L-v2.83-a candidates**: L-v2.83-a re-exercised v2.90 (push_files file-count verification across all push commits); cumulative 9+ STRONG.
-- **L-v2.84-a/b/c/d candidates**: not re-exercised v2.90 in net new form (L-v2.84-d related to L-v2.90-a).
-- **L-v2.85-a/b/c/d/e candidates**: **L-v2.85-a HIGH-SIGNAL** re-exercised v2.90 — V-A1 surfaced Defect 3. 4 occurrences, promotion-eligible. **L-v2.85-d** (REALIZED helper) bypassed v2.90 due to regex + coverage gaps. **L-v2.85-e re-applied 5th consecutive occurrence — promotion-confirmed v2.88 carries forward**. Others not re-exercised v2.90.
-- **L-v2.86-a/b/c/d/e candidates**: L-v2.86-a HIGH-SIGNAL PARTIALLY exercised (P2 limitation disclosed); L-v2.86-b/c exercised throughout via byte-stable signatures + ROWTYPE quoting. Others carry.
-- **L-v2.76-a through L-v2.76-f**: not re-exercised v2.90.
-- **L-v2.88-a/b/c/d candidates**: L-v2.88-c realised v2.90 (probe re-verification at apply via P-set re-run). Others not re-exercised.
-- **L-v2.89-a candidate**: not re-exercised v2.90 (atomic push_files at sync close attempted; 1+1+1 fallback ready if timeout).
-- **6 NEW L-v2.90-X candidates v2.90.** See per-session detail Section 13 + action_list Process Upgrades.
-- **cc-0009 / cc-0010A / cc-0010B / cc-0010C / cc-0011 / cc-0012**: unchanged from v2.89.
-- **22 close-the-loop UPDATEs outstanding** unchanged from v2.89. v2.90 ADDED 1 (cc-0017e close itself: `315baf84-...` now resolved — net effect on outstanding queue: 0 additional; this was the new D-01 fired this session, closed in same session).
-- **T-MCP-02 quota: ~86 cumulative v2.90** (+1 D-01 fire this session). State-capture exceptions cumulative: 1 unchanged.
-- Cron 82-86 firing normally.
-- **Dashboard roadmap PHASES — 43rd consecutive deferral.** No file-touch v2.90.
+- **cc-0017e v1.1 8-item doc patch CLOSED v2.91** at commit `be4e6772f20a73d093f53f609230fb565b1fe0df`. 5 brief files patched atomically. All 9 backlog items covered (8 defects + L-v2.90 family addition). Apply state preserved.
+- **cc-0017e Wave 0e APPLIED-WITH-VCHECK-CORRECTION v2.90** — unchanged. friction.case_history table exists; fn_triage_case 11-arg only; 5 cc-0017d functions patched byte-stable; 8-row backfill executed; D-01 `315baf84-...` resolved.
+- **m.chatgpt_review row `315baf84-...`** — status=resolved/action_taken=applied_with_correction/resolved_by=cc-0017e-close-v2.90 (unchanged).
+- **m.chatgpt_review schema** — no `resolved_at` / no `result_summary` (documented in cc-0017e v1.1 d01-postapply-deferred.md §4).
+- **purge_test_case helper case_history coverage gap** — unchanged from v2.90. Future Wave brief candidate. v1.1 documented inline workaround pattern; helper itself unchanged.
+- **L-v2.88-a "identical PK-directive loop"** — re-observed v2.91 at session start. 2 occurrences total. Watcher.
+- **Friction Register Consolidation Plan** — Gate 13.c (cc-0017e apply) CLOSED v2.90 unchanged. Wave 0e APPLIED unchanged. No new gates v2.91.
+- **Gate 11** (1-week observation window 2026-05-19 → 2026-05-26) ACTIVE. Day 1 of 7 unchanged (v2.91 same calendar day as v2.86–v2.90 closes).
+- **Wave 0f** — NOT YET SCOPED. Items B/E/F/G deferred from cc-0017e + purge_test_case helper extension are candidates.
+- **cc-0017c APPLIED v2.85**, **cc-0017b APPLIED v2.82 + v1.1 v2.83**, **cc-0017a APPLIED v2.81**, **cc-0014 CLOSED-ARCHIVED v2.77** — all unchanged.
+- **cc-0015** (Wave 7) + **cc-0016** (Wave 8) — Wave 0e gate cleared v2.90; still gated on observation window + sequencing.
+- **Cowork brief `nightly-health-check-v1` FROZEN at v3.0** unchanged.
+- **cron 82-86** firing normally. First cc-0017e-post-apply cron 85 fire pending — diagnostic P1 rank 1 v2.91.
+- **L41**: cumulative v2.80-v2.91 = 11 (no new exercises v2.91 — doc-only).
+- **L40 / L46 / L58 / L62**: not exercised v2.91.
+- **L-v2.78-a / L-v2.81-a**: 2 occurrences each, promotion-eligible (unchanged).
+- **L-v2.83-a**: **11+ occurrences v2.91**. STRONG CANDIDATE confirmed.
+- **L-v2.84-a/b/c/d**: unchanged. L-v2.84-d related to L-v2.90-a.
+- **L-v2.85-a HIGH-SIGNAL**: 4 occurrences (unchanged v2.91; not re-exercised in doc-only).
+- **L-v2.85-b**: 4× occurrences from v2.90 carry; not re-exercised v2.91.
+- **L-v2.85-d**: REALIZED v2.86 + re-exercised v2.90 (helper bypass). Not re-exercised v2.91.
+- **L-v2.85-e**: **PROMOTION-CONFIRMED v2.88 carries forward; 6th consecutive occurrence v2.91**.
+- **L-v2.86-a (HIGH-SIGNAL)**: PARTIALLY exercised v2.90 (P2 disclosed as PARTIAL). Not re-exercised v2.91.
+- **L-v2.86-b/c**: exercised v2.90 byte-stable; not re-exercised v2.91.
+- **L-v2.88-a**: **2 occurrences (v2.88 + v2.91 identical-directive loop)**. Watcher.
+- **L-v2.88-b/c/d**: realised v2.90; carry forward.
+- **L-v2.89-a**: not re-exercised v2.91 (atomic succeeded; fallback not invoked).
+- **L-v2.90-a (HIGH-SIGNAL) / b (HIGH-SIGNAL) / c / d / e / f**: codified documentationally v2.91 (lessons-metadata-changelog.md §2). Not empirically re-exercised. Watchers.
+- **22 close-the-loop UPDATEs outstanding** unchanged net from v2.90. v2.91 added 0.
+- **T-MCP-02 quota: ~86 cumulative v2.91** unchanged from v2.90 (no D-01 v2.91). State-capture exceptions: 1 unchanged.
+- **Dashboard roadmap PHASES — 44th consecutive deferral.** No file-touch v2.91.
 - M-series total dead-letter rows cleared since 8 May 2026: 396.
 - Standing don't-redeploy three (heygen-avatar-creator, heygen-avatar-poller, draft-notifier).
 - **Cowork output pipeline V-C3 still PENDING.**
@@ -207,10 +172,10 @@ Carries: cc-0015 friction-pool-view (Wave 7, still gated on observation window c
 
 ## 📜 G1 convention (the rule)
 
-Unchanged. Per-session file `docs/runtime/sessions/2026-05-19-cc0017e-applied.md` written first as standalone commit (`77d09376`). sync_state and action_list updated as **atomic push_files commit** this session per L-v2.85-e baseline mitigation 1+2 split (5th consecutive occurrence — promotion-confirmed v2.88 carries forward). `decisions.md` not touched. Dashboard PHASES 43rd consecutive deferral — no file-touch. L-v2.89-a fallback (1+1+1) ready if atomic push_files times out — not invoked this session if first attempt succeeds.
+Unchanged. Per-session file `docs/runtime/sessions/2026-05-19-cc0017e-v1.1-8item-doc-patch.md` written first as standalone commit (`404475172ad54f022a6ccf6203aac06fb824b45d`, 13,800 B). sync_state and action_list updated as **atomic push_files commit** this session per L-v2.85-e baseline mitigation 1+2 split (6th consecutive occurrence — promotion-confirmed v2.88 carries forward). `decisions.md` not touched. Dashboard PHASES 44th consecutive deferral — no file-touch. L-v2.89-a fallback (1+1+1) ready if atomic push_files times out — **not invoked v2.91** (first attempt succeeded).
 
-**This file size**: ~24KB after this update.
+**This file size**: ~25KB after this update.
 
 ---
 
-*Last updated: 2026-05-19 Sydney evening — v2.90: cc-0017e Wave 0e APPLIED-WITH-VCHECK-CORRECTION. Main migration `cc_0017e_friction_case_history_and_compat` applied — friction.case_history shadow table live + fn_triage_case 11-arg patched (legacy 10-arg dropped via corrective) + 5 cc-0017d functions patched byte-stable + 8-row acknowledged-legacy backfill executed. D-01 review `315baf84-65ed-4086-9e58-cc2497737f5f` resolved/applied_with_correction. Final V-check matrix PASS (V-A1/A2/B/C/F/D/E/Z3 pre + V-Z1/Z2/Z3 post). 5 brief defects + 4 Path B-prime corrective migrations + 8-item v1.1 doc patch backlog identified. **6 NEW L-v2.90 candidates** (a/b HIGH-SIGNAL; c/d/e/f). T-MCP-02 cum ~86 (+1). State-capture exceptions cum 1 unchanged. Memory 19/30 unchanged. Gate 11 Day 1 of 7 unchanged. Dashboard PHASES 43rd deferral. L-v2.85-e 5th consecutive — promotion-confirmed carries forward. Per-session detail commit `77d09376`. sync_state + action_list atomic push_files this commit (1+2 split per L-v2.85-e baseline).*
+*Last updated: 2026-05-19 Sydney evening — v2.91: cc-0017e v1.1 8-item backlog doc patch CLOSED at commit `be4e6772f20a73d093f53f609230fb565b1fe0df`. 5 brief files patched atomically (vchecks.md + migration-sql.md + risks-and-grants.md + d01-postapply-deferred.md + lessons-metadata-changelog.md). All 9 items covered (8 backlog defects + L-v2.90 family addition). Reconciliation daily cadence diagnostic promoted P1 rank 1. L-v2.85-e 6th consecutive occurrence — promotion-confirmed carries forward. L-v2.83-a 11+ STRONG. L-v2.88-a "identical PK-directive loop" 2nd occurrence v2.91 (handled via hard-stop + read-only probe; no re-execution). T-MCP-02 cum ~86 unchanged. State-capture exceptions cum 1 unchanged. Memory 19/30 unchanged. Gate 11 Day 1 of 7 unchanged. Dashboard PHASES 44th deferral. 0 production mutations / 0 Supabase calls / 0 D-01 fires. Per-session detail commit `404475172ad54f022a6ccf6203aac06fb824b45d`. sync_state + action_list atomic push_files this commit (1+2 split per L-v2.85-e baseline; L-v2.89-a fallback ready but not invoked).*
