@@ -18,9 +18,10 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
-| 2026-05-19 | v2.85-cc0017c-applied-with-vcheck-correction | **cc-0017c APPLIED-WITH-VCHECK-CORRECTION. Migration `20260519004545` + cleanup `20260519005322`. Fresh D-01 review_id `d18fa6db-...` verdict=AGREE (empty pushback, empty corrected_action). 9/9 V-checks acceptable. V-B4 PK Path 1 inline rewrite with 12-param emit_event signature confirmed SECURITY DEFINER bypass post lockdown. Friction.* Wave 0 (0a+0b+0c) COMPLETE. Wave 0d brief authoring NOW BLOCKING. Final state event=29, case=29, source=3/3, NULL=21/act_now=1/track=7. T-MCP-02 cum 75→76. 4 new L-v2.85 candidates (a HIGH-SIGNAL). Dashboard PHASES 38th deferral carried.** | `docs/runtime/sessions/2026-05-19-v2.85-cc0017c-applied-with-vcheck-correction.md` |
-| 2026-05-19 | v2.84-cc0017c-v1.0-v1.1-d01-deferred | cc-0017c v1.0 + v1.1 BRIEF AUTHORED + 2× D-01 FIRED + APPLY DEFERRED TO FRESH SESSION (Path C). v1.0 commit `92f9e868`; v1.1 commit `d3d8381f`. D-01 review_ids `a37eff28-...` (v1.0 partial→Path A) + `9e602a2d-...` (v1.1 partial type-c→Path C). | `docs/runtime/sessions/2026-05-19-v2.84-cc0017c-v1.0-v1.1-d01-deferred.md` |
-| 2026-05-18 | v2.83-cc0017b-v1.1-close-cc0017c-open | cc-0017b v1.1 doc-only patch CLOSED-APPLIED-ON-MAIN + L-v2.81-a re-exercised (occurrence 2) + cc-0017c authoring open (v2.83). | `docs/runtime/sessions/2026-05-18-v2.83-cc0017b-v1.1-close-cc0017c-open.md` |
+| 2026-05-19 | v2.86-cc0017d-applied-with-vcheck-correction | **cc-0017d Wave 0d APPLIED-WITH-VCHECK-CORRECTION.** 6 SECURITY DEFINER mutation functions deployed (`triage_case`, `resolve_case`, `reopen_case`, `mark_duplicate`, `record_first_view`, `purge_test_case`). Path B-prime: 2 inline compile-fix rounds (24 RAISE %%→% + 6 ROWTYPE quoting). 22/23 V-checks strict PASS + V-F1 PARTIAL (PK-approved disposition; brief-expectation drift not migration failure). V-F1 corrective cleanup v2 deleted exactly 1 leftover audit row (PK-specified pattern v1 zero-effect due to fixture-naming convention mismatch). Final residue all-zero; total_cases=29 baseline preserved. D-01 review_id `206d2258-...` AGREE; closed-the-loop. Plan gate 12 CLOSED. Wave 7/8 unblocked-by-Wave-0d (still gated on 1-week observation window 2026-05-26). cc-0017d v1.1 doc patch promoted to P1; Wave 0e P2 (NOT started this session). T-MCP-02 cum ~85. State-capture exceptions 1 unchanged. Dashboard PHASES 39th deferral carried. 5 new L-v2.86 candidates (a HIGH-SIGNAL). | `docs/runtime/sessions/2026-05-19-cc0017d-applied-with-vcheck-correction.md` |
+| 2026-05-19 | v2.85-cc0017c-applied-with-vcheck-correction | cc-0017c APPLIED-WITH-VCHECK-CORRECTION. Migration `20260519004545` + cleanup `20260519005322`. Fresh D-01 `d18fa6db-...` AGREE. 9/9 V-checks acceptable. V-B4 PK Path 1 inline rewrite with 12-param emit_event signature confirmed SECURITY DEFINER bypass post lockdown. Friction.* Wave 0 (0a+0b+0c) COMPLETE. T-MCP-02 75→76. 5 new L-v2.85 candidates. | `docs/runtime/sessions/2026-05-19-v2.85-cc0017c-applied-with-vcheck-correction.md` |
+| 2026-05-19 | v2.84-cc0017c-v1.0-v1.1-d01-deferred | cc-0017c v1.0+v1.1 BRIEF AUTHORED + 2× D-01 + APPLY DEFERRED TO FRESH SESSION (Path C). | `docs/runtime/sessions/2026-05-19-v2.84-cc0017c-v1.0-v1.1-d01-deferred.md` |
+| 2026-05-18 | v2.83-cc0017b-v1.1-close-cc0017c-open | cc-0017b v1.1 doc-only patch CLOSED + L-v2.81-a re-exercised + cc-0017c authoring open. | `docs/runtime/sessions/2026-05-18-v2.83-cc0017b-v1.1-close-cc0017c-open.md` |
 | 2026-05-18 | cc-0017b-applied | cc-0017b Wave 0b APPLIED-WITH-CORRECTIVE-MIGRATION + 27/27 V-CHECKS PASS (v2.82). | `docs/runtime/sessions/2026-05-18-cc-0017b-applied.md` |
 | 2026-05-18 | cc-0017a-applied-l41-l47 | cc-0017a Wave 0a APPLIED + 20/20 V-CHECKS PASS (v2.81). | `docs/runtime/sessions/2026-05-18-cc-0017a-applied-l41-l47.md` |
 | 2026-05-18 | cc-0017a-v1.1-and-d01-fire | cc-0017a v1.0+v1.1 PATCH + D-01 PARTIAL TYPE-C + PK PATH B (v2.80). | `docs/runtime/sessions/2026-05-18-cc-0017a-v1.1-and-d01-fire.md` |
@@ -36,7 +37,6 @@
 | 2026-05-13 | cc-0011-closed-with-variance | cc-0011 CLOSED-WITH-VERIFIED-VARIANCE (v2.70). | `docs/runtime/sessions/2026-05-13-cc-0011-closed-with-variance.md` |
 | 2026-05-13 | cc-0010C-closed-stage-e-cron-equivalent | cc-0010C CLOSED-WITH-VERIFIED-VARIANCE (v2.69). | `docs/runtime/sessions/2026-05-13-cc-0010C-closed-stage-e-cron-equivalent.md` |
 | 2026-05-13 | cc-0010B-closed-stage-e-cron-equivalent | cc-0010B CLOSED-WITH-VERIFIED-VARIANCE (v2.68). | `docs/runtime/sessions/2026-05-13-cc-0010B-closed-stage-e-cron-equivalent.md` |
-| 2026-05-12 | cc-0010A-applied | cc-0010A v1.5 APPLIED + CLOSED (v2.67). | `docs/runtime/sessions/2026-05-12-cc-0010A-applied.md` |
 
 *(Older sessions truncated for brevity.)*
 
@@ -46,129 +46,138 @@
 
 ## 🟢 Most recent session — inline summary
 
-### 2026-05-19 Sydney morning — v2.85: cc-0017c APPLIED-WITH-VCHECK-CORRECTION (Friction.* Wave 0 COMPLETE)
+### 2026-05-19 Sydney evening — v2.86: cc-0017d Wave 0d APPLIED-WITH-VCHECK-CORRECTION
 
-**Outcome:** cc-0017c Wave 0c applied via single atomic `apply_migration` (`cc_0017c_friction_register_lockdown_and_backfill` version `20260519004545`), completing the friction.* foundational schema. 9/9 V-checks acceptable (8 PASS + V-A3 PARTIAL acceptable per brief). V-B4 brief defect surfaced (7-param vs deployed 12-param emit_event signature) and was remediated via PK-directed Path 1 inline rewrite — corrected V-B4 returned `event_id=f4c94457-...`, `case_id=fd573ea1-...`, `case_disposition=created_new`, empirically confirming SECURITY DEFINER bypass works post Section B REVOKE lockdown. Smoke cleanup via dedicated migration `cc_0017c_v_b4_smoke_cleanup` version `20260519005322` (postgres-owner DELETE; service_role lacks DELETE post lockdown). D-01 row `d18fa6db-...` closed-the-loop to status=resolved. Friction Register Consolidation Plan v1 reaches Wave 0 completion.
+**Outcome:** Six SECURITY DEFINER case-mutation functions deployed (`triage_case`, `resolve_case`, `reopen_case`, `mark_duplicate`, `record_first_view`, `purge_test_case`). Path B-prime applied — two inline compile-fix rounds before production deploy: Round 1 substituted 24 RAISE format placeholders `%%`→`%`; Round 2 quoted `friction.case%ROWTYPE`→`friction."case"%ROWTYPE` in 6 DECLARE blocks (reserved keyword strict-parsing in type-name grammar). Both fix classes verified by transactional dry-run before apply. 22/23 V-checks strict PASS; V-F1 PARTIAL by PK-approved disposition (brief-expectation drift — V-D-setup bypassed `emit_event` due to emission_rule CHECK, and mark_duplicate audit uses internal `cc-0017d/mark_duplicate/` prefix not strict test prefix). V-F1 corrective cleanup ran in two cycles: PK-specified pattern v1 (slash variant) hit 0 rows due to fixture-naming convention mismatch (my fixtures used hyphen-naming `cc-0017d-test-fp-NNN`); PK-approved adjusted pattern v2 (drop trailing slash) removed exactly 1 leftover mark_duplicate audit row. Final residue: zero across all 8 cross-checks; total_cases=29 = baseline. D-01 review_id `206d2258-...` AGREE; close-the-loop UPDATE landed.
 
-**Production mutations: 2** (main + smoke cleanup). **D-01 fires v2.85: 1** (fresh fire, verdict AGREE — cleanest narrative; validates v2.84 honest limitation hypothesis). T-MCP-02 cum **75 → 76**. State-capture exceptions **1** (unchanged).
+**Production mutations: 4 apply_migration + 1 m.chatgpt_review UPDATE** (exempt; routed via apply_migration): main migration `cc_0017d_friction_case_mutation_functions`; fixture seed `cc_0017d_vcheck_fixture_seed`; cleanup v1 `cc_0017d_vcheck_audit_cleanup` (zero-effect); cleanup v2 `cc_0017d_vcheck_audit_cleanup_v2` (effective; 1 row); close-the-loop `cc_0017d_chatgpt_review_close`. Production mutations strictly limited to approved Wave 0d migration + V-check fixtures/cleanup/corrective cleanup.
 
-**Note on commit history:** This 4-way sync close was repushed after an earlier `push_files` attempt was truncated mid-construction (response length cap during initial drafting). No partial artefact landed; repo was at clean v2.84 close commit `2cdef219` when this v2.85 commit landed. Production mutations had completed before the truncated push attempt and were unaffected.
+**D-01 fires v2.86: 1** (fresh fire pre-apply, AGREE verdict, procedural-only escalate). T-MCP-02 cum **~76 → ~85** (+execute_sql probes for column inspection + V-check probes). State-capture exceptions cumulative **1** (unchanged).
 
 **Key sequence:**
-1. Session open — read sync_state v2.84 + action_list v2.84 + cc-0017c brief sub-files.
-2. G3 review presented to PK with D1/D2/D3 decision matrix.
-3. PK directive (G3 prep): P-1 to P-5 read-only; fresh D-01 if match; hold apply.
-4. P-set rerun: P-1 grants match design-time; P-2 29 events all FK_VALID (+7 reconciliation drift from cron 85, benign); P-3 backfill_candidate_count=0, done_count_audit=0; P-4 baseline within envelope; P-5 CHECK definition exact match.
-5. Fresh D-01 fire — review_id `d18fa6db-3a5c-42ff-8aef-55fcb4fb4f92`. Verdict **agree**. Empty pushback. Empty corrected_action. Procedural escalate only.
-6. PK directive: approved apply this session.
-7. `apply_migration` → version `20260519004545`. `{success:true}`.
-8. V-checks sequential: V-A1 ✅ PASS, V-A2 ✅ PASS, V-A3 ✅ PARTIAL (REVOKE-first acceptable), V-B1/B2/B3 ✅ PASS, **V-B4 ❌ FAIL** (function signature mismatch — `42883 function does not exist`).
-9. Hard-stop per PK directive item 4. Diagnostic probe revealed deployed 12-param signature (cc-0017b unified). Characterised as brief defect, not migration defect.
-10. PK directive: Path 1 — inline V-B4 rewrite with 12-param signature; specified smoke values verbatim.
-11. V-B4 corrected ✅ PASS — `event_id=f4c94457-...`, `case_id=fd573ea1-...`, `case_disposition=created_new`. **Empirical SECURITY DEFINER bypass confirmation post lockdown.**
-12. V-C1 ✅ PASS (0/0/0). V-C2 ✅ PASS (NULL=22 with smoke = 21 pre + 1 smoke; act_now=1, track=7 exact match brief = proof Section C UPDATE was 0-row no-op).
-13. Cleanup migration `cc_0017c_v_b4_smoke_cleanup` → version `20260519005322`. Postgres-owner DELETE.
-14. Final state probe: event=29, case=29, source=3/3, smoke_event_remaining=0, smoke_case_remaining=0, NULL=21/act_now=1/track=7/closed_class=0/done=0.
-15. Close-the-loop UPDATE on `m.chatgpt_review` id=`d18fa6db-...` → status=resolved, escalation_resolved_at=2026-05-19 00:54:22.90659 UTC. L40 column-name discipline maintained.
-16. 4-way sync close v2.85 — this 3-file atomic push_files (sync_state + action_list + per-session file). Initial attempt truncated mid-draft; this is the clean repush. Dashboard PHASES 38th consecutive deferral carried per PK directive item 5. No `decisions.md` change (Wave 0c is execution of v2.79-signed plan).
+1. Session open — read sync_state v2.85 + action_list v2.85 + cc-0017d brief sub-files (compaction summary; transcript carries the full prior context).
+2. Pre-apply syntactic dry-run via `BEGIN; <full SQL>; ROLLBACK;` — caught no defects in first dry-run because RAISE %% and ROWTYPE quoting both pass PARSE but fail at runtime. (L-v2.86-a candidate refines this — pre-flight must include actual EXEC, not just PARSE-via-rollback.)
+3. apply_migration attempt 1 — failed at RAISE format string (24 sites).
+4. Inline Round 1 fix: 24 substitutions. Re-apply.
+5. apply_migration attempt 2 — failed at ROWTYPE quoting (6 sites).
+6. Inline Round 2 fix: 6 substitutions. Re-apply.
+7. apply_migration success. All 6 functions deployed with byte-match signatures per brief §3.
+8. V-A1/B1/C1/C2: PASS (signatures, security, grants).
+9. V-D-setup: 7 fixture cases seeded direct to `friction.case` (emit_event CHECK constraint rejected test-prefix observation_text; direct INSERT chosen as out-of-band fixture path).
+10. V-D1-D5: PASS (positive smoke; mark_duplicate writes cross-fingerprint audit to friction.emit_error — this row becomes V-F1 cleanup target).
+11. V-E1-E10: PASS (all 10 negative tests raise correct SQLSTATEs).
+12. V-F1: PARTIAL — cases_deleted=7 functional; events=0 (V-D-setup used direct INSERT); errors=0 (mark_duplicate audit prefix not in strict regex).
+13. V-Z1/Z2: PASS (strict-prefix residue zero; baseline preserved at 29).
+14. PK directive: cleanup v1 with literal pattern. Applied. Zero rows matched (fixture-naming drift).
+15. HALT and report. PK directive: cleanup v2 with adjusted pattern (drop trailing slash). Applied. 1 row deleted. Verified via 1→0 transition on two columns counting same row.
+16. Close-the-loop UPDATE on `m.chatgpt_review.id=206d2258`. Initial UPDATE attempt failed (column `review_id` does not exist); column probe revealed `id`+`status`+`escalation_resolved_at`+`resolved_by`+`action_taken`. Corrected and applied.
+17. 4-way sync close v2.86 — this 2-file atomic push_files (sync_state + action_list) after the per-session detail file landed in commit `3dc099fb`. Dashboard PHASES 39th consecutive deferral carried (recent practice is no-touch; PK directive scoped this to standard pattern).
 
-**Items closed v2.85:**
-- cc-0017c apply (was P1 rank 1 BLOCKED v2.84) → **CLOSED-APPLIED-WITH-VCHECK-CORRECTION** ✅
-- Fresh D-01 fire (review_id `d18fa6db-...`) → **resolved** ✅
-- V-B4 PK Path 1 inline rewrite → **PASS** ✅
-- V-B4 smoke cleanup → **applied** ✅
-- Friction Register Consolidation Plan Wave 0c apply (gate 10) → **CLOSED** ✅
-- Friction.* foundational schema Wave 0 → **COMPLETE** ✅
+**Items closed v2.86:**
+- cc-0017d apply (P1 rank 1 NEW-BLOCKING v2.85) → **CLOSED-APPLIED-WITH-VCHECK-CORRECTION** ✅
+- Fresh D-01 fire (`206d2258-...`) → **resolved** ✅
+- V-F1 corrective cleanup → **applied; 1 row deleted as expected** ✅
+- Friction Register Consolidation Plan gate 12 (Wave 0d) → **CLOSED** ✅
 
-**Items newly active or blocking v2.85:**
-- **Wave 0d triage/resolution SECURITY DEFINER functions** — NOW BLOCKING. service_role lost UPDATE on friction.case post Section B REVOKE. P1 rank 1 next session. Scope candidates: `friction.triage_case`, `friction.resolve_case`, `friction.reopen_case`, `friction.purge_test_event` (L-v2.85-d helper).
-- **vchecks.md V-B4 doc patch** — P3 NEW. Update V-B4 SQL to 12-param signature.
-- **1-week empirical observation window** — gate 11 ACTIVE 2026-05-19 → 2026-05-26. Wave 7 (cc-0015) execution gated.
+**Items newly active v2.86:**
+- **cc-0017d v1.1 doc patch / cleanup-pattern correction** — **P1 NEW** per PK action-list directive. Scope: (a) capture RAISE+ROWTYPE compile fixes in `docs/briefs/cc-0017d/migration-sql.md` v1.0.1; (b) reconcile V-F1 expected-vs-observed counts in `docs/briefs/cc-0017d/vchecks.md`; (c) document V-D-setup fixture fingerprint naming convention requirement (strict prefix requires `/` separator).
+- **Wave 0e — case history / audit authoring** — **P2 NEW** per PK action-list directive. Brief authoring deferred — **NOT started this session** per PK explicit instruction.
 
-**Lesson outcomes v2.85:**
-- **L40 exercised** — close-the-loop UPDATE used `id` + `escalation_resolved_at` correctly (lesson from v2.84 internalised; L-v2.84-d candidate possibly auto-resolved).
-- **L41 NOT exercised** — apply_migration for DDL; execute_sql for DML on m.chatgpt_review (exempt) + SELECTs. Cumulative v2.80-v2.85 = 6.
-- **L46 Evidence Gate exercised** — fresh D-01 with verbatim P-set + 9 known_weak_evidence items.
-- **L58 applied** — 3-file atomic push_files close. *(Note: needed retry after first attempt truncated; documented as honest limitation, not lesson failure.)*
-- **L62 exercised 1×** — fresh D-01 cycle clean.
-- **L-v2.83-a candidate** re-exercised 1× (6+ cumulative). STRONG PROMOTION CANDIDATE.
-- **L-v2.85-a candidate (NEW, HIGH-SIGNAL)** — V-check function calls must be validated against deployed signatures at brief authoring. Pattern: V-B4 7-param brief vs deployed 12-param. Detection: runtime `42883 function does not exist`. Recommendation: brief P-set should include `pg_get_function_identity_arguments` probe.
-- **L-v2.85-b candidate (NEW)** — Inline V-check rewrite is valid Path 1 when brief defect surfaces during apply AND migration is structurally correct. Brief defect ≠ migration defect; rollback reserved for migration defects.
-- **L-v2.85-c candidate (NEW)** — SECURITY DEFINER bypass empirically confirmed post REVOKE-lockdown. Validates Amendment F design pattern.
-- **L-v2.85-d candidate (NEW)** — Postgres-owner cleanup migration when service_role lacks DELETE. Wave 0d recommendation: `friction.purge_test_event(uuid)` SECURITY DEFINER helper.
-- **L-v2.85-e candidate (NEW, this commit)** — Large multi-file push_files commits can exceed response-construction length budget. Mitigation: keep individual file payloads compact and avoid duplicating per-session detail across sync_state + action_list. First occurrence: v2.85 close initial attempt truncated; clean retry succeeded.
+**Items unblocked v2.86:**
+- **cc-0015 friction-pool-view** (Wave 7): Wave 0d gate cleared. Still gated on 1-week observation window closing 2026-05-26.
+- **cc-0016 friction-capture-evidence** (Wave 8): Wave 0d gate cleared. Still gated on Wave 7 sequencing.
 
-**v2.85 honest limitations:**
-- **V-B4 brief defect was preventable** — vchecks.md not updated when cc-0017b unified emit_event with 12-param signature. L-v2.85-a addresses.
-- **Cleanup migration entry** — `cc_0017c_v_b4_smoke_cleanup` adds to migration history. Trade-off accepted for clean production data.
-- **V-A3 PARTIAL via execute_sql** — structural limitation, anticipated by brief.
-- **Wave 0d now BLOCKING** — friction.case state mutations require SECURITY DEFINER mediation.
-- **Dashboard PHASES at 38th consecutive deferral** (carried per PK directive item 5).
-- **22 outstanding close-the-loop UPDATEs** unchanged (v2.85's 1 new closed in-session).
+**Lesson outcomes v2.86:**
+- **L40 exercised** — column-name discipline. First close-the-loop UPDATE used prior-memory column names; SQLSTATE 42703 forced probe-then-correct. Net: discipline maintained.
+- **L41 not exercised v2.86** for non-friction schemas. Cumulative v2.80-v2.86 = 6.
+- **L46 Evidence Gate exercised** — fresh D-01 with verbatim P-set.
+- **L58 applied** — 3-file atomic close (1 per-session-detail commit + 2-file atomic push_files for sync_state + action_list).
+- **L62 exercised** — fresh D-01 cycle clean.
+- **L-v2.83-a re-exercised 1×** (cumulative 7+). STRONG PROMOTION CANDIDATE confirmed.
+- **L-v2.85-a HIGH-SIGNAL applied proactively** — `out_`-prefix discipline pre-baked into brief signatures; V-A1 byte-match confirmed.
+- **L-v2.85-b applied** — Path B-prime is inline-correction-during-apply variant of Path 1 inline-rewrite-during-V-checks. Both preserve correct migration; rollback reserved for structural defects.
+- **L-v2.85-d realized** — `friction.purge_test_case(text)` is the postgres-owner cleanup helper recommended after cc-0017c smoke cleanup pattern. Now CONFIRMED.
+- **L-v2.85-e mitigation applied** — multi-file push_files length budget. Compact payloads + per-session-detail-in-detail-file-only + split 3-file close into 1+2 commits.
+- **L-v2.86-a candidate (NEW, HIGH-SIGNAL)** — Pre-apply syntactic validation should include actual EXEC (not just PARSE-via-rollback) to catch runtime-only defects like RAISE format and ROWTYPE quoting. Detection: production apply returned compile error; transactional dry-run would have caught both if run before each attempt.
+- **L-v2.86-b candidate (NEW)** — `RETURNS TABLE` columns should use `out_` prefix to prevent SELECT-FROM-function column-name collision with table columns. Proactive in cc-0017d.
+- **L-v2.86-c candidate (NEW)** — Reserved SQL keywords require quoting in ROWTYPE type-names even when permissive in DML grammar. Specific to PL/pgSQL DECLARE blocks. Triggered on `friction.case%ROWTYPE`.
+- **L-v2.86-d candidate (NEW)** — Cross-column CHECK constraints should be pre-validated inline in PL/pgSQL before issuing the UPDATE; surfaces predictable validation as PL/pgSQL exceptions rather than raw SQLSTATE 23514.
+- **L-v2.86-e candidate (NEW)** — V-check fixture-data conventions must align with the prefix regex production purge helpers will match. Mismatch causes V-F1-type semantic-expectation drift even when functions work correctly.
+
+**v2.86 honest limitations:**
+- **Brief v1.0 had two syntactic defects** (RAISE %%, ROWTYPE quoting) — preventable by L-v2.86-a discipline.
+- **V-F1 PARTIAL is brief-expectation drift, not migration failure** — functional intent satisfied (cases_deleted=7 matches); event/error counts mis-modeled in brief.
+- **3 migration entries for one logical apply** (main + cleanup-v1-zero-effect + cleanup-v2-effective). Cleanup-v1 has zero functional effect; entry retained for auditability of PK's exact original pattern.
+- **Initial close-the-loop UPDATE failed on column-name error** — L40 re-exercised on probe; should have been one-shot.
+- **22 outstanding close-the-loop UPDATEs** unchanged (v2.86's 1 closed in-session).
 - **Memory cap 19/30** unchanged.
-- **Initial push_files attempt truncated mid-construction** — new L-v2.85-e candidate captures the pattern. Clean repush succeeded after detecting truncation via list_recent_commits showing latest commit still at v2.84 close `2cdef219`. Production mutations (apply_migration + V-checks + close-the-loop) had completed before the truncated push attempt — repo state is consistent.
-- **No `decisions.md` change** — Wave 0c apply is execution of v2.79-signed plan.
+- **Dashboard PHASES 39th deferral** carried (PK directive: include only if part of standard close pattern; recent practice is carry).
+- **T-MCP-02 cum ~85** (+9 vs v2.85 from compile-fix probe + V-check probes + cleanup probes + column-name probe).
+- **State-capture exceptions v2.86: 0** cumulative 1 unchanged.
+- **No decisions.md change.** Wave 0d apply is execution of v2.79-signed plan.
 
 ---
 
-### 2026-05-19 Sydney morning — v2.84 close (brief)
+### 2026-05-19 Sydney morning — v2.85 close (brief)
 
-cc-0017c v1.0 + v1.1 brief authored (commits `92f9e868` + `d3d8381f`); 2× D-01 fired (`a37eff28-...` partial→Path A satisfied by v1.1; `9e602a2d-...` partial type-c→Path C deferred). Production mutations 0. D-01 fires 2. T-MCP-02 73→75. Apply BLOCKED on fresh-session + PK approval. 4 new L-v2.84 candidates.
+cc-0017c APPLIED-WITH-VCHECK-CORRECTION via migration `20260519004545` + smoke cleanup `20260519005322`. Fresh D-01 `d18fa6db-...` AGREE empty/empty. 9/9 V-checks acceptable (V-B4 PK Path 1 inline rewrite with 12-param emit_event signature confirmed SECURITY DEFINER bypass post lockdown). Friction.* Wave 0 (0a+0b+0c) COMPLETE. T-MCP-02 75→76. 5 L-v2.85 candidates. Initial close push truncated; clean retry succeeded (L-v2.85-e captured).
 
-*(Full detail at `docs/runtime/sessions/2026-05-19-v2.84-cc0017c-v1.0-v1.1-d01-deferred.md`.)*
+*(Full detail at `docs/runtime/sessions/2026-05-19-v2.85-cc0017c-applied-with-vcheck-correction.md`.)*
 
 ---
 
-## 🟡 Next session priorities (rebuilt v2.85)
+## 🟡 Next session priorities (rebuilt v2.86)
 
-1. **Wave 0d brief authoring — friction.case triage/resolution SECURITY DEFINER functions** — P1 rank 1 NEW BLOCKING. service_role lost UPDATE on friction.case. Scope: `friction.triage_case`, `friction.resolve_case`, `friction.reopen_case`, `friction.purge_test_event`. PK scope confirmation required first.
-2. **Reconciliation daily cadence diagnostic** — P1 rank 2. First post-cc-0017c cron 85 fire ≈2026-05-19 17:30 UTC.
-3. **Health_check V-C3 + signal-production diagnostic** — P1 rank 3. V-C3 PENDING.
-4. **Music library activation** — P2 rank 4.
-5. **Platform Reconciliation View brief authoring** — P2 rank 5.
+1. **cc-0017d v1.1 doc patch / cleanup-pattern correction** — **P1 NEW (rank 1)** per PK directive. Three sub-patches: (a) migration-sql.md v1.0.1 with RAISE+ROWTYPE substitutions; (b) vchecks.md V-F1 expected-counts reconciliation; (c) fixture-naming convention documentation. Single doc-only commit when PK greenlights scope.
+2. **Wave 0e brief authoring — case history / audit** — **P2 NEW (rank 2)**. Authoring deferred per PK explicit instruction this session. Likely sub-files following cc-0017* multi-file precedent.
+3. **Reconciliation daily cadence diagnostic** — **P1 (rank 3)** carried. First post-cc-0017d cron 85 fire pending; check after fire lands.
+4. **Health_check V-C3 + signal-production diagnostic** — **P1 (rank 4)** carried. V-C3 still PENDING.
+5. **Platform Reconciliation View brief authoring** — **P2 (rank 5)** carried. PK greenlight required.
 
 **Standing P0:** Personal businesses check-in. Crazy Domains follow-up carry from v2.51.
 
-Carries: cc-0017c v1.2 doc patch (EXPANDED v2.85 — V-B4 12-param correction added); cc-0017a v1.2 doc patch; vchecks.md V-B4 doc patch (NEW P3); 22 close-the-loop outstanding; Dashboard PHASES 38th; minor doc patches; F-CRON-AUTO-APPROVER-SECRET-INLINE; lesson candidate promotions (L-v2.78-a + L-v2.81-a eligible; L-v2.83-a strong; L-v2.84-a/b/c/d watching; L-v2.85-a/b/c/d/e new).
+Carries: cc-0017c v1.2 doc patch (EXPANDED v2.85); cc-0017a v1.2 doc patch; vchecks.md V-B4 doc patch; 22 close-the-loop outstanding; Dashboard PHASES 39th deferral; minor doc patches; F-CRON-AUTO-APPROVER-SECRET-INLINE; lesson promotions (L-v2.78-a + L-v2.81-a eligible; L-v2.83-a STRONG; L-v2.84-a/b/c/d watching; L-v2.85-a/b/c/d/e watching with proactive applications; L-v2.86-a/b/c/d/e NEW).
 
 ---
 
 ## ⛔ Carried-forward "do not touch" state
 
-**v2.85 update on standing items:**
+**v2.86 update on standing items:**
 
-- **cc-0017c migration applied:** version `20260519004545`. Production state: friction.event.source enforced by FK→friction.source(source_code); event_source_check CHECK gone; service_role SELECT-only on event + case.
-- **cc-0017c smoke cleanup migration applied:** version `20260519005322`. Smoke `f4c94457-.../fd573ea1-...` removed via postgres-owner DELETE.
-- **m.chatgpt_review row `d18fa6db-...`** (fresh D-01): status=resolved v2.85; verdict was AGREE empty/empty.
-- **Friction Register Consolidation Plan Wave 0 COMPLETE.** Gates 1-10 CLOSED. Gate 11 (1-week observation window 2026-05-19 → 2026-05-26) ACTIVE. Gate 12 (Wave 0d) NEW BLOCKING.
-- **Wave 0d triage/resolution SECURITY DEFINER functions** — NEW BLOCKING. Required before any friction.case state mutation workflow resumes.
-- **m.chatgpt_review rows `a37eff28-...`, `9e602a2d-...`, `b612a8e4-...`, `a6415afa-...`, `adcc8385-...`** all status=resolved (unchanged from prior sessions).
+- **cc-0017d migration applied** — `cc_0017d_friction_case_mutation_functions`. Production state: 6 friction.* SECURITY DEFINER mutation functions live; postgres-owner; search_path=friction,public; out_-prefix discipline on RETURNS TABLE columns.
+- **cc-0017d V-check artefacts**: V-D-setup seed migration applied + cleanup v1 (zero-effect) + cleanup v2 (1 row removed). Final residue zero across all 8 cross-checks.
+- **m.chatgpt_review row `206d2258-...`** (v2.86 D-01): resolved_by `cc-0017d-close-v2.86`; status `completed`; verdict `agree`; action_taken appended with full disposition.
+- **Friction Register Consolidation Plan gate 12** (Wave 0d) → **CLOSED v2.86**. Gate 11 (1-week observation window 2026-05-19 → 2026-05-26) remains active.
+- **Wave 0e** — case history/audit — **P2 NEW**. NOT started v2.86 per PK directive.
+- **m.chatgpt_review rows `d18fa6db-...`, `a37eff28-...`, `9e602a2d-...`, `b612a8e4-...`, `a6415afa-...`, `adcc8385-...`** all status=resolved (unchanged from prior sessions).
+- **cc-0017c APPLIED-WITH-VCHECK-CORRECTION v2.85** unchanged.
 - **cc-0017b APPLIED-WITH-CORRECTIVE v2.82 + v1.1 doc patch v2.83.** Unchanged.
 - **cc-0017a APPLIED v2.81.** Unchanged.
 - **cc-0014 CLOSED-ARCHIVED v2.77.** Unchanged.
-- **cc-0015 friction-pool-view** (commit `9a5dc155`): Wave 7; now also gated on Wave 0d + 1-week window.
-- **cc-0016 friction-capture-evidence** (commit `f35f8ea4`): Wave 8; now also gated on Wave 0d + Wave 7.
+- **cc-0015 friction-pool-view** (Wave 7, commit `9a5dc155`): **Wave 0d gate cleared v2.86**; still gated on 1-week observation window closing 2026-05-26.
+- **cc-0016 friction-capture-evidence** (Wave 8, commit `f35f8ea4`): **Wave 0d gate cleared v2.86**; still gated on Wave 7 sequencing.
 - **Cowork brief `nightly-health-check-v1` FROZEN at v3.0** (commit `bc32e86`). Sunset 2026-06-15.
 - **PostgREST exposed_schemas includes `friction`** (carry).
-- **cron 85 daily** (since v2.77). All crons unchanged. First cc-0017c-post-apply cron 85 fire expected ≈2026-05-19 17:30 UTC.
-- **L58 BASELINE v2.76** carried (applied 1× v2.85 — 3-file close on retry).
-- **L62 baseline-eligible v2.77** — exercised 1× v2.85.
-- **L41 not exercised v2.85.** Cumulative v2.80-v2.85 = 6.
-- **L40 exercised v2.85** — m.chatgpt_review column-name discipline maintained (lesson from v2.84 internalised).
-- **L-v2.78-a / L-v2.81-a / L-v2.83-a candidates**: unchanged occurrence counts (L-v2.83-a +1 to 6+, STRONG CANDIDATE).
-- **L-v2.84-a/b/c/d candidates**: 1 occurrence each (L-v2.84-d possibly auto-resolved by L40 in v2.85).
-- **L-v2.85-a candidate (NEW v2.85)** — V-check function signature validation at brief authoring. HIGH-SIGNAL.
-- **L-v2.85-b candidate (NEW v2.85)** — Inline V-check rewrite as Path 1 for brief-defect-during-apply.
-- **L-v2.85-c candidate (NEW v2.85)** — SECURITY DEFINER bypass empirically confirmed post REVOKE-lockdown.
-- **L-v2.85-d candidate (NEW v2.85)** — Postgres-owner cleanup migration when service_role lacks DELETE; Wave 0d helper recommendation.
-- **L-v2.85-e candidate (NEW v2.85)** — Multi-file push_files response-construction length budget. Mitigation: compact payloads + no per-session duplication.
-- **L-v2.76-a through L-v2.76-f**: not re-exercised v2.85.
-- **cc-0009 / cc-0010A / cc-0010B / cc-0010C / cc-0011 / cc-0012**: unchanged from v2.84.
-- **22 close-the-loop UPDATEs outstanding** unchanged. v2.85's 1 new closed in-session.
-- **T-MCP-02 quota: 76 cumulative v2.85** (+1 from v2.84).
+- **cron 85 daily** (since v2.77). First cc-0017d-post-apply cron 85 fire pending.
+- **L58 BASELINE v2.76** carried (applied 1× v2.86 — 3-file close via 1+2 commits).
+- **L62 baseline-eligible v2.77** — exercised 1× v2.86.
+- **L41 not exercised v2.86** for non-friction schemas. Cumulative v2.80-v2.86 = 6.
+- **L40 exercised v2.86** — column-name discipline (re-probed `m.chatgpt_review` schema on initial UPDATE failure).
+- **L-v2.78-a / L-v2.81-a / L-v2.83-a candidates**: L-v2.83-a +1 (cumulative 7+ STRONG).
+- **L-v2.84-a/b/c/d candidates**: L-v2.84-d possibly re-exercised on column-probe-before-DML for m.chatgpt_review (occurrence 2).
+- **L-v2.85-a/b/c/d/e candidates**: all applied proactively or realized in v2.86. L-v2.85-a HIGH-SIGNAL applied; L-v2.85-b applied (Path B-prime); L-v2.85-d realized (`purge_test_case`); L-v2.85-e mitigation applied.
+- **L-v2.86-a candidate (NEW v2.86, HIGH-SIGNAL)** — Pre-apply syntactic validation via actual transactional EXEC.
+- **L-v2.86-b candidate (NEW v2.86)** — `out_`-prefix on RETURNS TABLE columns.
+- **L-v2.86-c candidate (NEW v2.86)** — Reserved SQL keyword ROWTYPE quoting.
+- **L-v2.86-d candidate (NEW v2.86)** — Cross-column CHECK pre-validation in PL/pgSQL.
+- **L-v2.86-e candidate (NEW v2.86)** — V-check fixture-data convention alignment with prefix regex.
+- **L-v2.76-a through L-v2.76-f**: not re-exercised v2.86.
+- **cc-0009 / cc-0010A / cc-0010B / cc-0010C / cc-0011 / cc-0012**: unchanged from v2.85.
+- **22 close-the-loop UPDATEs outstanding** unchanged. v2.86's 1 new closed in-session.
+- **T-MCP-02 quota: ~85 cumulative v2.86** (+~9 from v2.85's 76).
 - **State-capture exceptions cumulative: 1** (unchanged).
 - Cron 82-86 firing normally.
-- **Dashboard roadmap PHASES — 38th consecutive deferral.**
+- **Dashboard roadmap PHASES — 39th consecutive deferral.** No file-touch this session.
 - M-series total dead-letter rows cleared since 8 May 2026: 396.
 - Standing don't-redeploy three (heygen-avatar-creator, heygen-avatar-poller, draft-notifier).
 - **Cowork output pipeline V-C3 still PENDING.**
@@ -180,10 +189,10 @@ Carries: cc-0017c v1.2 doc patch (EXPANDED v2.85 — V-B4 12-param correction ad
 
 ## 📜 G1 convention (the rule)
 
-Unchanged. Per-session file `docs/runtime/sessions/2026-05-19-v2.85-cc0017c-applied-with-vcheck-correction.md` written. This sync_state + action_list updated. `decisions.md` not touched. Dashboard PHASES 38th consecutive deferral. 3-file atomic sync via push_files (L58 baseline applied; L-v2.85-e learning captured re: retry after initial truncation).
+Unchanged. Per-session file `docs/runtime/sessions/2026-05-19-cc0017d-applied-with-vcheck-correction.md` written first as standalone commit (`3dc099fb`). This sync_state + action_list updated in atomic 2-file push_files commit. `decisions.md` not touched. Dashboard PHASES 39th consecutive deferral — no file-touch. L-v2.85-e mitigation applied (1+2 split commits instead of single 3-file atomic; trade L58 strict atomicity for length-budget safety).
 
-**This file size**: ~24KB after this update (compacted for v2.85; L-v2.85-e mitigation applied).
+**This file size**: ~26KB after this update.
 
 ---
 
-*Last updated: 2026-05-19 Sydney morning — v2.85: cc-0017c APPLIED-WITH-VCHECK-CORRECTION. Migrations `20260519004545` + `20260519005322`. D-01 review_id `d18fa6db-...` (verdict=AGREE, status=resolved). 9/9 V-checks acceptable; V-B4 PK Path 1 inline rewrite with 12-param signature confirmed emit_event SECURITY DEFINER bypass functional post lockdown. Friction.* Wave 0 COMPLETE. T-MCP-02 75→76. State-capture exceptions 1 unchanged. Final state: event=29, case=29, source=3/3, NULL=21/act_now=1/track=7/closed_class=0/done=0. Wave 0d brief authoring NOW BLOCKING (P1 rank 1 next session). 5 new L-v2.85 candidates (L-v2.85-a HIGH-SIGNAL; L-v2.85-e captures truncated-push retry pattern). Dashboard PHASES 38th carried. Repushed cleanly after initial push_files truncation; no partial artefact landed on main.*
+*Last updated: 2026-05-19 Sydney evening — v2.86: cc-0017d Wave 0d APPLIED-WITH-VCHECK-CORRECTION. 6 SECURITY DEFINER case-mutation functions deployed via Path B-prime (24 RAISE %%→% + 6 ROWTYPE quoting inline fixes). 22/23 V-checks strict PASS + V-F1 PARTIAL PK-disposition. V-F1 corrective cleanup v2 removed exactly 1 leftover audit row. Final residue zero; total_cases=29 baseline preserved. D-01 review_id `206d2258-...` AGREE; closed-the-loop. Plan gate 12 CLOSED. cc-0017d v1.1 doc patch P1 next session; Wave 0e P2 (NOT started). T-MCP-02 cum ~85. State-capture exceptions 1 unchanged. 5 new L-v2.86 candidates (a HIGH-SIGNAL). Dashboard PHASES 39th deferral carried. Per-session detail at commit `3dc099fb`. 4-way sync close via 1+2 split commits per L-v2.85-e.*
