@@ -2,6 +2,7 @@
 
 **Part of:** [`cc-0017d-friction-case-mutation-functions.md`](../cc-0017d-friction-case-mutation-functions.md)
 **Prev:** [`preflight-pset.md`](preflight-pset.md) **Next:** [`vchecks.md`](vchecks.md)
+**Section version:** v1.0.1 (v1.1 doc patch — addendum added at top documenting compile-fix substitutions applied at production apply)
 
 ---
 
@@ -16,6 +17,94 @@ All 6 functions share these properties:
 - `SET search_path = friction, public`
 - Owner: `postgres` (implicit via apply_migration's role)
 - `RETURNS TABLE` columns named with `out_` prefix to avoid name collision with `friction.case` columns (per cc-0017b corrective migration learning re ambiguity)
+
+---
+
+## v1.1 Addendum — Compile-fix substitutions applied at production apply
+
+**Added 2026-05-19 Sydney evening (session v2.86, v1.1 doc patch). Doc-only.**
+
+The v1.0 SQL below required two byte-level substitution classes to compile under PostgreSQL 15.x as deployed by Supabase. Both substitutions were applied **inline during the v2.86 production apply** (Path B-prime) and are present in the deployed migration `cc_0017d_friction_case_mutation_functions`. The v1.0 SQL below this addendum is **preserved as authored** for historical record — readers using this brief as a template for future briefs should apply both substitutions before any production apply attempt.
+
+### Substitution class 1 — RAISE EXCEPTION format placeholders (`%%` → `%`)
+
+**Defect:** PL/pgSQL `RAISE EXCEPTION` format strings use a single `%` as a positional placeholder for arguments listed after the format string. The v1.0 brief uses `%%` (the PL/pgSQL escape sequence for a literal percent sign inside `format()`-style function calls). Under `RAISE EXCEPTION`, `%%` emits a literal `%` character and does NOT consume a positional argument — so when the number of positional arguments supplied exceeds the number of `%` placeholders consumed, PostgreSQL raises `too many parameters specified for RAISE` at production apply.
+
+**Affected sites:** **24 instances** across all 6 functions, in messages embedding `p_case_id`, `p_action_decision`, `p_effort_level`, `p_resolution_kind`, `v_current.resolved_at`, `v_current.action_decision`, `v_current.resolution_kind`, `p_predecessor_case_id`, and `p_pattern`.
+
+**Substitution rule:** at every position where a positional argument is intended to be interpolated into a `RAISE EXCEPTION` format string, replace `%%` with `%`.
+
+**Example (v1.0 → applied form):**
+```sql
+-- v1.0 as authored (rejects at apply):
+RAISE EXCEPTION 'triage_case: p_action_decision %% is closure-class or invalid; accepted: act_now/track/defer_intentionally', p_action_decision
+  USING ERRCODE = 'P0001';
+
+-- applied form (deployed in cc_0017d_friction_case_mutation_functions):
+RAISE EXCEPTION 'triage_case: p_action_decision % is closure-class or invalid; accepted: act_now/track/defer_intentionally', p_action_decision
+  USING ERRCODE = 'P0001';
+```
+
+**Detection:** production `apply_migration` returns the parse error. A `BEGIN; <CREATE FUNCTION>; ROLLBACK;` transactional dry-run that does NOT invoke the function will compile-pass — the RAISE format string is only validated at RAISE-execution time, not at function-CREATE time. Captured as **L-v2.86-a (HIGH-SIGNAL)**.
+
+### Substitution class 2 — Reserved SQL keyword in `%ROWTYPE` (quote `case`)
+
+**Defect:** `case` is a reserved SQL keyword (SQL:2016 reserved word, also a flow-control keyword in PL/pgSQL). PostgreSQL's DML grammar accepts unquoted `friction.case` because the schema-qualified context disambiguates against the `CASE WHEN ...` flow-control form, but the PL/pgSQL DECLARE `%ROWTYPE` type-name grammar applies strict reserved-keyword parsing and requires the table-identifier portion to be double-quoted.
+
+**Affected sites:** **6 instances** of `friction.case%ROWTYPE` in DECLARE blocks of `triage_case`, `resolve_case`, `reopen_case`, `mark_duplicate` (×2: both `v_current` and `v_predecessor`), and `record_first_view`.
+
+**Substitution rule:** at every DECLARE-block `%ROWTYPE` site, replace `friction.case%ROWTYPE` with `friction."case"%ROWTYPE`.
+
+**Example (v1.0 → applied form):**
+```sql
+-- v1.0 as authored (rejects at apply):
+DECLARE
+  v_current               friction.case%ROWTYPE;
+  v_effective_next_review timestamptz;
+
+-- applied form (deployed):
+DECLARE
+  v_current               friction."case"%ROWTYPE;
+  v_effective_next_review timestamptz;
+```
+
+**Detection:** production `apply_migration` returns `syntax error at or near "case"` pointing at the DECLARE line. Captured as **L-v2.86-c**.
+
+### Production apply sequence (Path B-prime)
+
+1. **Apply attempt 1** → fails on RAISE format (`too many parameters specified for RAISE`). Inline Round 1: 24 substitutions `%%` → `%` across the migration. Verified via transactional dry-run with a marker SELECT against one function body to force runtime PARSE of RAISE.
+2. **Apply attempt 2** → fails on ROWTYPE quoting (`syntax error at or near "case"`). Inline Round 2: 6 substitutions `friction.case%ROWTYPE` → `friction."case"%ROWTYPE`. Same dry-run verification.
+3. **Apply attempt 3** → success. All 6 functions deployed with byte-match signatures per main brief §3 / `vchecks.md` V-A1.
+
+Both substitution classes were applied **inline before commit** rather than via a corrective follow-up migration, because the failed `apply_migration` calls did not persist any state (Postgres DDL transaction-atomic). The migration name `cc_0017d_friction_case_mutation_functions` therefore represents a single logical migration that succeeded on the third attempt with the substitutions present.
+
+### Lesson: pre-apply discipline going forward (L-v2.86-a HIGH-SIGNAL)
+
+Future briefs producing PL/pgSQL function bodies SHOULD include a pre-apply discipline that exercises the function bodies at runtime, not just at function-CREATE time. The plain `BEGIN; <CREATE FUNCTION>; ROLLBACK;` form parses the SQL and creates the function within the transaction, but does NOT exercise the inner RAISE format-string semantics or the ROWTYPE resolution paths that depend on reserved-keyword grammar.
+
+**Recommended pre-apply check (transactional dry-run with marker invocation):**
+```sql
+BEGIN;
+  -- 1. Apply the full migration body
+  <full CREATE OR REPLACE FUNCTION ...> for all functions;
+
+  -- 2. Force runtime exercise of at least one RAISE path per function
+  DO $$
+  BEGIN
+    BEGIN
+      PERFORM friction.triage_case(
+        p_case_id := '00000000-0000-0000-0000-000000000000'::uuid,
+        p_action_decision := 'act_now'
+      );
+    EXCEPTION WHEN OTHERS THEN NULL; -- swallow expected raise
+    END;
+    -- repeat for each function; expects clean RAISE not parse error
+  END $$;
+
+ROLLBACK;
+```
+
+This pattern would have caught both substitution classes before the first production apply attempt. Brief authors should bake an equivalent marker block into the brief's preflight P-set.
 
 ---
 
@@ -297,6 +386,11 @@ BEGIN
   END IF;
 
   -- Audit warning if fingerprints diverge (best-effort, never blocks)
+  -- v1.1 note: this audit row is written under internal-prefix namespace
+  -- 'cc-0017d/mark_duplicate/...' which is intentionally OUTSIDE the
+  -- ^cc-[0-9]{4}[a-z]?-test/ regex that friction.purge_test_case enforces.
+  -- V-check fixture cleanup that triggers this audit path requires a
+  -- corrective pattern (see vchecks.md v1.1 Addendum, Drift 3).
   IF v_current.dedupe_fingerprint IS DISTINCT FROM v_predecessor.dedupe_fingerprint THEN
     BEGIN
       INSERT INTO friction.emit_error
@@ -343,7 +437,7 @@ END
 $function$;
 
 COMMENT ON FUNCTION friction.mark_duplicate(uuid, uuid, text) IS
-  'Wave 0d duplicate marker. Closes a case as duplicate of a predecessor: sets predecessor_case_id, triage_state=duplicate, action_decision=duplicate, resolution_kind=duplicate, resolved_at=now(). Cross-fingerprint dedupes allowed but logged to friction.emit_error as CROSS-FINGERPRINT-DUPLICATE for audit. Rejects self-link.';
+  'Wave 0d duplicate marker. Closes a case as duplicate of a predecessor: sets predecessor_case_id, triage_state=duplicate, action_decision=duplicate, resolution_kind=duplicate, resolved_at=now(). Cross-fingerprint dedupes allowed but logged to friction.emit_error as CROSS-FINGERPRINT-DUPLICATE under internal prefix cc-0017d/mark_duplicate/<case_id> for audit. Rejects self-link.';
 ```
 
 ## Step 5 — `friction.record_first_view`
@@ -457,7 +551,7 @@ END
 $function$;
 
 COMMENT ON FUNCTION friction.purge_test_case(text) IS
-  'Wave 0d V-check cleanup helper (L-v2.85-d candidate). Postgres-owner DELETE on friction.event + friction.case + friction.emit_error rows matching a strict regex prefix pattern. Pattern MUST match ^cc-[0-9]{4}[a-z]?-test/ (e.g. cc-0017d-test/%, cc-0018-test/%). EXECUTE granted to service_role ONLY (reduced blast radius). Future brief authors should use this prefix convention for test data.';
+  'Wave 0d V-check cleanup helper (L-v2.85-d realised at v2.86). Postgres-owner DELETE on friction.event + friction.case + friction.emit_error rows matching a strict regex prefix pattern. Pattern MUST match ^cc-[0-9]{4}[a-z]?-test/ (e.g. cc-0017d-test/%, cc-0018-test/%). EXECUTE granted to service_role ONLY (reduced blast radius). Does NOT clean cross-fingerprint audit rows under internal prefix cc-NNNN[a-z]?/mark_duplicate/<case_id> — those require a separate corrective pattern targeting raw_payload::text. Future brief authors should use the slash-prefix convention for test data.';
 ```
 
 ## Step 7 — GRANTs + REVOKEs
@@ -490,4 +584,4 @@ GRANT  EXECUTE ON FUNCTION friction.purge_test_case(text) TO service_role;
 
 ---
 
-**End of migration SQL.** All 6 functions + 6 grant blocks run atomically. Continue to [`vchecks.md`](vchecks.md).
+**End of migration SQL.** All 6 functions + 6 grant blocks run atomically. **Apply only after applying both v1.1 Addendum substitution classes (RAISE `%%`→`%` and `friction.case%ROWTYPE`→`friction."case"%ROWTYPE`) to the v1.0 SQL above** — the deployed migration `cc_0017d_friction_case_mutation_functions` already incorporates both substitutions. Continue to [`vchecks.md`](vchecks.md).
