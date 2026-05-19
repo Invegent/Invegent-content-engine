@@ -98,9 +98,9 @@ Cost of waiting: each day delays case_history audit-trail coverage by 1 day. No 
 Per P3.2 of preflight-pset.md, before firing the actual D-01:
 
 ```sql
-SELECT review_id, status, verdict, action_taken, resolved_by, created_at
+SELECT id, status, verdict, action_taken, resolved_by, created_at
 FROM m.chatgpt_review
-WHERE proposal_text ILIKE '%cc-0017e v1.0%'
+WHERE proposal ILIKE '%cc-0017e v1.0%'
   AND created_at >= now() - interval '24 hours'
 ORDER BY created_at DESC;
 ```
@@ -128,7 +128,7 @@ SET status         = 'resolved',
       now()::text,
       (SELECT count(*) FROM friction.case_history)::text
     )
-WHERE review_id = <d01-review-id-from-fire-response>;
+WHERE id = <d01-review-id-from-fire-response>;
 ```
 
 If apply succeeds but a V-check fails (Path B-prime in flight):
@@ -138,7 +138,7 @@ SET status         = 'applied',
     action_taken   = 'applied_with_correction_pending',
     resolved_by    = NULL,
     result_summary = 'cc-0017e v1.0 applied; V-check <ID> drift surfaced; Path B-prime corrective migration in progress.'
-WHERE review_id = <d01-review-id-from-fire-response>;
+WHERE id = <d01-review-id-from-fire-response>;
 ```
 
 Later, after corrective migration applies and V-checks clean:
@@ -149,7 +149,7 @@ SET status         = 'resolved',
     resolved_by    = 'cc-0017e-close-v<corrected-session-version>',
     resolved_at    = now(),
     result_summary = 'cc-0017e v1.0 applied with Path B-prime correction. Final V-check matrix PASS.'
-WHERE review_id = <d01-review-id-from-fire-response>;
+WHERE id = <d01-review-id-from-fire-response>;
 ```
 
 If D-01 returns DISAGREE/REFUSE and PK approves state-capture override:
@@ -160,7 +160,7 @@ SET status         = 'resolved',
     resolved_by    = 'pk-override-v<apply-session-version>',
     resolved_at    = now(),
     result_summary = 'D-01 returned <verdict>. PK state-capture override granted with rationale: <PK-rationale>. Applied at <timestamp>.'
-WHERE review_id = <d01-review-id-from-fire-response>;
+WHERE id = <d01-review-id-from-fire-response>;
 ```
 
 ---

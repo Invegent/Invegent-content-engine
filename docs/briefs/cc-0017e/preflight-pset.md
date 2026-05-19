@@ -112,9 +112,9 @@ Proposal must include:
 Verify no prior D-01 fire exists for cc-0017e v1.0 apply (same UTC day):
 
 ```sql
-SELECT review_id, status, verdict, created_at
+SELECT id, status, verdict, created_at
 FROM m.chatgpt_review
-WHERE proposal_text ILIKE '%cc-0017e v1.0%'
+WHERE proposal ILIKE '%cc-0017e v1.0%'
   AND created_at::date = current_date
 ORDER BY created_at DESC;
 ```
