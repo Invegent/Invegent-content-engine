@@ -18,9 +18,10 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
-| 2026-05-19 | v2.91-cc0017e-v1.1-8item-doc-patch | **cc-0017e v1.1 8-item backlog doc patch CLOSED** at commit `be4e6772f20a73d093f53f609230fb565b1fe0df`. 5-file atomic push_files (vchecks.md + migration-sql.md + risks-and-grants.md + d01-postapply-deferred.md + lessons-metadata-changelog.md). All 9 items covered: severity='info' + category='unclassified' + fixture naming `cc-0017e-test/...` (vchecks.md V-D-setup + V-Z1) + explicit `DROP FUNCTION` for fn_triage_case arity change (migration-sql.md §2) + R4 reframe + §3 narrowed lockdown scope (risks-and-grants.md) + phantom `resolved_at`/`result_summary` removal from 4 templates (d01-postapply-deferred.md §4) + L-v2.90-a through L-v2.90-f added (a/b HIGH-SIGNAL). Reconciliation daily cadence diagnostic promoted P1 rank 1. L-v2.85-e **6th consecutive occurrence** promotion-confirmed carries forward. L-v2.83-a **11+ STRONG**. L-v2.88-a "identical PK-directive loop" 2nd documented occurrence (PK re-sent v2.90 cleanup directive verbatim at v2.91 start; handled via hard-stop + read-only state-verification probe + disposition options; no re-execution). T-MCP-02 cum ~86 unchanged. State-capture exceptions cum 1 unchanged. Gate 11 Day 1 of 7 unchanged. Dashboard PHASES 44th deferral. 0 production mutations / 0 Supabase calls / 0 D-01 fires / 0 memory edits / 0 decisions.md edits. | `docs/runtime/sessions/2026-05-19-cc0017e-v1.1-8item-doc-patch.md` |
-| 2026-05-19 | v2.90-cc0017e-applied | cc-0017e Wave 0e APPLIED-WITH-VCHECK-CORRECTION. Main migration `cc_0017e_friction_case_history_and_compat` applied — case_history shadow table + lockdown grants + fn_triage_case 11-arg patched + 5 cc-0017d mutation functions patched byte-stable + 8-row acknowledged-legacy backfill. 5 brief defects + 4 Path B-prime corrective migrations: severity (case_severity_check), category (case_category_fkey), explicit `DROP FUNCTION` legacy 10-arg fn_triage_case (CREATE OR REPLACE arity-change semantics), explicit dependency-ordered cleanup DELETEs (purge_test_case regex mismatch + case_history coverage gap), schema-correct close-the-loop UPDATE (resolved_at + result_summary phantom columns). D-01 review `315baf84-65ed-4086-9e58-cc2497737f5f` AGREE → resolved/applied_with_correction. Final V-check matrix PASS. **8-item v1.1 doc patch backlog identified — CLOSED at v2.91 (see above).** | `docs/runtime/sessions/2026-05-19-cc0017e-applied.md` |
-| 2026-05-19 | v2.89-cc0017e-v1.1-doc-patch | cc-0017e v1.1 doc patch CLOSED at commit `587ee4ac894a50708611cf9a053253083ae39e2b`. 2-file atomic `push_files` corrects m.chatgpt_review column-name anomaly in preflight-pset.md §P3.2 + d01-postapply-deferred.md §3-4: 6× `review_id`→`id`, 2× `proposal_text`→`proposal`. L-v2.85-e extended to 1+1+1 split this session due to atomic push_files timeout. NEW L-v2.89-a candidate. | `docs/runtime/sessions/2026-05-19-cc0017e-v1.1-doc-patch.md` |
+| 2026-05-19 | v2.92-vc3-signal-production-closed | **Health_check V-C3 + signal-production diagnostic CLOSED-PASS**. Evidence anchored to 2026-05-17 `nightly-health-check-v1` v3.0 run (`run_id=nightly-health-check-v1/2026-05-17T160210Z`). 4 read-only checks PASS: (1) `friction.fn_emit_health_check_findings(text,text,jsonb)→jsonb` SECURITY DEFINER owner=postgres signature intact; (2) all 5 markdown finding_ids reconcile 1:1 with `friction.event` rows (source='health_check', severity='critical', category='pipeline_integrity', all case_linked); (3) 0 health_check `emit_error` rows; (4) all-time aggregate shows only the 2026-05-17 v3.0 run as expected (earlier 2026-05-02/04/05 markdown files predate v3.0 emission). Markdown footer `success_count=5 failure_count=0` empirically true. **NEW P2 follow-up spawned: Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** (rank 2). Of 5 calendar days since brief v3.0 published 2026-05-15, only 1 file produced (20% hit rate) — signal works when invoked; invocation sparse. **Platform Reconciliation View brief described as next practical planning item** per PK directive (rank 3 — positionally unchanged but now first non-wait, non-investigative item). L-v2.85-e **7th consecutive occurrence** (1+2 split close v2.92). L-v2.83-a 12+ STRONG. Dashboard PHASES **45th deferral**. T-MCP-02 cum ~86 unchanged. 0 production mutations / 0 Supabase mutations / 0 D-01 fires / 0 memory edits / 0 decisions.md edits / 0 Wave 0f work / 0 force-run of `nightly-health-check-v1` / 0 force-run of cron 85. Per-session detail commit `55d26d3d07346acd1ab9be91f3c3f92d3ed48842` (11,169 B). sync_state + action_list atomic this commit. | `docs/runtime/sessions/2026-05-19-vc3-signal-production-closed.md` |
+| 2026-05-19 | v2.91-cc0017e-v1.1-8item-doc-patch | **cc-0017e v1.1 8-item backlog doc patch CLOSED** at commit `be4e6772f20a73d093f53f609230fb565b1fe0df`. 5-file atomic push_files (vchecks.md + migration-sql.md + risks-and-grants.md + d01-postapply-deferred.md + lessons-metadata-changelog.md). All 9 items covered. Reconciliation daily cadence diagnostic promoted P1 rank 1. L-v2.85-e 6th consecutive occurrence. L-v2.83-a 11+ STRONG. L-v2.88-a 2nd documented occurrence. Dashboard PHASES 44th deferral. 0 production mutations / 0 Supabase calls / 0 D-01 fires. | `docs/runtime/sessions/2026-05-19-cc0017e-v1.1-8item-doc-patch.md` |
+| 2026-05-19 | v2.90-cc0017e-applied | cc-0017e Wave 0e APPLIED-WITH-VCHECK-CORRECTION. Main migration `cc_0017e_friction_case_history_and_compat` applied — case_history shadow table + lockdown grants + fn_triage_case 11-arg patched + 5 cc-0017d mutation functions patched byte-stable + 8-row acknowledged-legacy backfill. 5 brief defects + 4 Path B-prime corrective migrations. D-01 review `315baf84-65ed-4086-9e58-cc2497737f5f` AGREE → resolved/applied_with_correction. Final V-check matrix PASS. **8-item v1.1 doc patch backlog identified — CLOSED at v2.91.** | `docs/runtime/sessions/2026-05-19-cc0017e-applied.md` |
+| 2026-05-19 | v2.89-cc0017e-v1.1-doc-patch | cc-0017e v1.1 doc patch CLOSED at commit `587ee4ac894a50708611cf9a053253083ae39e2b`. 2-file atomic `push_files` corrects m.chatgpt_review column-name anomaly. L-v2.85-e extended to 1+1+1 split this session. NEW L-v2.89-a candidate. | `docs/runtime/sessions/2026-05-19-cc0017e-v1.1-doc-patch.md` |
 | 2026-05-19 | v2.88-cc0017e-v1.0-authored | cc-0017e Wave 0e v1.0 brief AUTHORED-PENDING-APPLY at commit chain `8502fc49 → 1659b293 → d349bdfe`. 8 files. Open anomaly: m.chatgpt_review column-name discrepancy — **resolved v2.89; surfaced 7 more brief defects at v2.90 apply; closed v2.91**. | `docs/runtime/sessions/2026-05-19-cc0017e-v1.0-authored.md` |
 | 2026-05-19 | v2.87-cc0017d-v1.1-doc-patch | cc-0017d v1.1 doc-only patch CLOSED at commit `f0367405`. 4 files patched + read-back verified. No production mutations. | `docs/runtime/sessions/2026-05-19-cc0017d-v1.1-doc-patch.md` |
 | 2026-05-19 | v2.86-cc0017d-applied-with-vcheck-correction | cc-0017d Wave 0d APPLIED-WITH-VCHECK-CORRECTION. 6 SECURITY DEFINER mutation functions deployed. | `docs/runtime/sessions/2026-05-19-cc0017d-applied-with-vcheck-correction.md` |
@@ -47,122 +48,123 @@
 
 ## 🟢 Most recent session — inline summary
 
-### 2026-05-19 Sydney evening — v2.91: cc-0017e v1.1 8-item backlog doc patch CLOSED
+### 2026-05-19 Sydney evening — v2.92: Health_check V-C3 signal-production CLOSED-PASS + Cowork-cadence WARN spawned
 
-**Outcome:** cc-0017e v1.1 8-item backlog doc patch CLOSED at commit `be4e6772f20a73d093f53f609230fb565b1fe0df`. 5 brief files patched in single atomic push_files. All 9 items covered. Apply state preserved (cc-0017e Wave 0e remains APPLIED-WITH-VCHECK-CORRECTION; D-01 `315baf84-...` remains resolved/applied_with_correction).
+**Outcome:** Health_check V-C3 + signal-production diagnostic CLOSED-PASS based on read-only evidence gathered earlier this session. Signal-production contract empirically validated against the 2026-05-17 `nightly-health-check-v1` v3.0 run. Separate Cowork-cadence WARN spawned as NEW P2 follow-up (rank 2): the brief is firing only ~20% of scheduled days since v3.0 publish on 2026-05-15.
 
-**Files patched (5):**
+**V-C3 evidence (4 read-only `execute_sql` queries; reproduced in per-session detail):**
 
-| File | New blob SHA | Items covered |
+| # | Check | Result |
 |---|---|---|
-| `docs/briefs/cc-0017e/vchecks.md` | `9dc7ca7cb96bb067713e19a7406e5b608127d964` | 1 (severity), 2 (category), 3 (fixture naming + V-Z1 + step 10), V-A1 dual-overload note, V-Z1 cleanup note (helper coverage gap workaround) |
-| `docs/briefs/cc-0017e/migration-sql.md` | `fa5542e5e53a694adf73e7f90586e681153ee0b2` | 4 (explicit DROP statement + arity-change discipline + L-v2.86-a scope clarification + §3 preamble + apply ordering + COMMENT update) |
-| `docs/briefs/cc-0017e/risks-and-grants.md` | `5a7727ecdc76b6d3af47bbaad93234483feeb6af` | 5 (R4 reframe + grant-preservation caveat), 6 (§3 narrowed lockdown scope + R2 harness scope clarification) |
-| `docs/briefs/cc-0017e/d01-postapply-deferred.md` | `25a23ad7e05aa9d78a78a3cb462a9a0330f93205` | 7 (`resolved_at` phantom removed), 8 (`result_summary` phantom removed), all 4 §4 templates schema-corrected, apply-time discipline note added |
-| `docs/briefs/cc-0017e/lessons-metadata-changelog.md` | `9d2ea6443682ade79351d26d0f5937541fc5aae0` | 9 (L-v2.90-a through L-v2.90-f added; a/b HIGH-SIGNAL; §3.1 commit map + §3.2 file inventory + §3.4 session metadata + §4 changelog v1.1 v2.91 entry + §5 sign-off updated) |
+| 1 | `friction.fn_emit_health_check_findings(text, text, jsonb) → jsonb` SECURITY DEFINER owner=postgres exists | PASS — matches v3.0 brief §12 contract |
+| 2 | 5 `friction.event` rows for run_id `nightly-health-check-v1/2026-05-17T160210Z` reconcile 1:1 with markdown finding_ids | PASS — source='health_check', severity='critical', category='pipeline_integrity', all case_linked=true, observed_at=2026-05-17 16:08:35 UTC |
+| 3 | `friction.emit_error` filtered for health_check pattern | PASS — 0 rows; markdown `failure_count=0` true |
+| 4 | All-time aggregate of `nightly-health-check-v1/%` source_event_ids | PASS — only 2026-05-17T160210Z run (5 events) appears; pre-v3.0 runs correctly absent |
 
-**Pre-patch state-verification (after PK identical-directive loop):** PK re-sent v2.90 cleanup directive verbatim at v2.91 start. Claude hard-stopped, ran read-only state-verification probe (7 metrics: 29 cases / 29 events / 8 case_history / 8 backfill kind / 0 non-backfill / 0 vd_residue / d01 status=resolved — all AS_EXPECTED), presented 4 disposition options, awaited PK redirection. No re-execution; v2.90 state preserved intact. L-v2.88-a "identical PK-directive loop" pattern — 2nd documented occurrence (v2.88 + v2.91).
+**Items closed v2.92:**
+- **Health_check V-C3 + signal-production diagnostic** (P1 rank 2 v2.91) → **CLOSED-PASS** ✅
 
-**Hard stops respected:**
-- 0 production mutations / 0 Supabase calls / 0 D-01 fires / 0 memory edits / 0 decisions.md edits / 0 Wave 0f scope creep / 0 purge_test_case helper changes
-- 0 re-execution of cc-0017e apply instructions despite PK re-send
-- v2.90 apply state preserved intact (verified via read-only probe)
-- Atomic multi-file push_files per L-v2.85-e 1+2 split succeeded on first attempt; L-v2.89-a 1+1+1 fallback NOT invoked
+**Items spawned v2.92:**
+- **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** (P2 NEW v2.92, rank 2). Of 5 days since brief v3.0 published 2026-05-15, only 1 file produced (20% hit rate). Root-cause candidates: Cowork agent uptime / idempotency-check false positives / schedule misconfiguration / task paused. Recommended next step: read-only probe of `docs/runtime/runs/nightly-health-check-v1-*.md` state files + Cowork agent run history.
 
-**Items closed v2.91:**
-- **cc-0017e v1.1 8-item doc patch** (P2 rank 1 v2.90) → **CLOSED** ✅ at `be4e6772`
+**Items promoted v2.92:**
+- **Platform Reconciliation View brief authoring** (rank 3 v2.91 → rank 3 v2.92, positionally unchanged but described as **next practical planning item** per PK directive — first non-wait, non-investigative item in the queue).
 
-**Items promoted v2.91 (rank shift per PK directive):**
-- **Reconciliation daily cadence diagnostic** (P1 rank 2 v2.90) → **rank 1 P1 v2.91**
-- **Health_check V-C3 + signal-production diagnostic** (P1 rank 3 v2.90) → rank 2 P1 v2.91
-- **Platform Reconciliation View brief authoring** (P2 rank 4 v2.90) → rank 3 P2 v2.91
-- **Close-the-loop sweep / Pre-sales criteria / `purge_test_case` helper extension** (P2/P3 rank 5 v2.90) → rank 4 P2/P3 v2.91
+**Items unchanged v2.92:**
+- **Reconciliation daily cadence diagnostic** — P1 rank 1, still pending first natural post-cc-0017e cron 85 fire. Next scheduled: 2026-05-19 17:30 UTC ≈ 2026-05-20 03:30 AEST. Latest fire visible in `cron.job_run_details` is 2026-05-18 17:30:00 UTC (succeeded, pre-cc-0017e).
+- **5-row close-the-loop batch / Pre-sales / `purge_test_case` helper extension** — P2/P3 rank 4.
 
-**Lesson exercise v2.91:**
-- **L-v2.85-e**: re-applied **6th consecutive occurrence** (v2.86 + v2.87 + v2.88 + v2.89 + v2.90 + v2.91). 1+2 split close. Promotion-confirmed v2.88 carries forward.
-- **L-v2.83-a**: re-applied at doc patch commit + sync close commit. Cumulative **11+ STRONG**.
-- **L-v2.88-a "identical PK-directive loop"**: **2nd documented occurrence v2.91** (handled via hard-stop + read-only probe + disposition options; no re-execution). Watcher carries forward.
-- **L-v2.89-a**: atomic push_files succeeded; fallback NOT invoked. Not re-exercised.
-- **L-v2.85-a (HIGH-SIGNAL)**: not re-exercised v2.91 (doc-only).
-- **L-v2.90-a-f**: not re-exercised v2.91 (lessons codified documentationally, not empirically).
-- **L40 / L41 / L46 / L58 / L62**: not exercised v2.91 (no DB / no DDL / no D-01 / no apply).
-- **No new L-v2.91-X candidates surfaced.**
+**Hard stops respected v2.92:**
+- 0 production mutations / 0 Supabase mutations (sync close itself) / 0 DDL / 0 apply_migration / 0 D-01 fires
+- 0 force-run of `nightly-health-check-v1`
+- 0 force-run of cron 85
+- 0 Wave 0f work
+- 0 production code edits
+- 0 memory edits / 0 decisions.md edits
+- 0 `purge_test_case` helper changes
+- 4 read-only `execute_sql` calls earlier this session for V-C3 evidence (reported in per-session detail) — diagnostic-only, no mutations
 
-**Sync close mechanics v2.91:**
-1. Doc patch commit `be4e6772` (5 files via push_files; earlier this session).
-2. Per-session detail commit `404475172ad54f022a6ccf6203aac06fb824b45d` standalone via `create_or_update_file` (13,800 B).
-3. sync_state.md + action_list.md atomic push_files (this commit, 2 files).
+**Sync close mechanics v2.92 (1+2 split per L-v2.85-e baseline — 7th consecutive occurrence):**
+1. Per-session detail standalone commit `55d26d3d07346acd1ab9be91f3c3f92d3ed48842` (`docs/runtime/sessions/2026-05-19-vc3-signal-production-closed.md`, 11,169 B) via `create_or_update_file`.
+2. sync_state + action_list atomic commit this commit via `push_files` (2 files).
 
-Total git commits this session: 3.
+Total git commits this session: 2. L-v2.89-a fallback (1+1+1) ready but not invoked.
 
-**v2.91 honest limitations:**
-- **Doc-only patch close session.** No production schema change. No migration applied. No V-check executed. No fresh empirical evidence beyond v2.90 apply-time verification carried forward.
-- **friction.* schema state end of v2.91 = state end of v2.90** (10 tables, fn_triage_case 11-arg only, 8 case_history backfill rows, 8 acknowledged-NULL-triage cases backfilled).
-- **22 outstanding close-the-loop UPDATEs unchanged net** from v2.90.
-- **purge_test_case helper case_history coverage gap (L-v2.90-d)** remains open future Wave candidate. v1.1 documented workaround; helper itself unchanged.
-- **L-v2.85-e is now mechanical sync-close discipline** (6 consecutive occurrences). Pattern stable; promotion already confirmed v2.88.
+**Lesson exercise v2.92:**
+- **L-v2.85-e**: re-applied **7th consecutive occurrence** (v2.86 → v2.92). Promotion-confirmed v2.88 carries forward.
+- **L-v2.83-a**: re-applied at sync close commit. Cumulative **12+ STRONG**.
+- **L-v2.88-a**: NOT re-occurring v2.92 (PK directive forward-looking close-and-spawn, not directive-loop).
+- **L-v2.89-a**: atomic push_files in flight; fallback ready.
+- **L-v2.85-a / L-v2.86-a / L-v2.90-a-f**: NOT re-exercised v2.92 (doc-sync only; no DB / no V-checks).
+- **L40 / L41 / L46 / L58 / L62**: NOT exercised v2.92.
 
----
+**No new L-v2.92-X candidates surfaced.** Mechanical close-and-spawn session.
 
-### 2026-05-19 Sydney evening — v2.90 close (brief)
-
-cc-0017e Wave 0e APPLIED-WITH-VCHECK-CORRECTION. Main migration `cc_0017e_friction_case_history_and_compat` applied. 5 brief defects + 4 Path B-prime corrective migrations. D-01 `315baf84-...` resolved/applied_with_correction. 8-item v1.1 doc patch backlog identified — **CLOSED at v2.91 (see above).** 6 NEW L-v2.90 candidates (a/b HIGH-SIGNAL; c/d/e/f). Per-session detail `77d09376`; sync close `7af9f2ff`.
-
-*(Full detail at `docs/runtime/sessions/2026-05-19-cc0017e-applied.md`.)*
+**v2.92 honest limitations:**
+- **V-C3 close is empirically anchored to a single v3.0 run** (2026-05-17T160210Z). Future runs continue to validate or break the contract daily. Cowork-cadence WARN means the contract is not being exercised daily as scheduled.
+- **No fresh production state change v2.92.** friction.* state end of v2.92 = state end of v2.91 (29 cases / 29 events / 8 case_history backfill rows / fn_triage_case 11-arg only).
+- **22 outstanding close-the-loop UPDATEs unchanged net from v2.91.**
+- **Dashboard PHASES 45th deferral** carried (was 44; +1 v2.92). No file-touch.
 
 ---
 
-## 🟡 Next session priorities (rebuilt v2.91)
+### 2026-05-19 Sydney evening — v2.91 close (brief)
 
-1. **Reconciliation daily cadence diagnostic** — **P1 carry, rank 1 v2.91 (NEW TOP)**. First post-cc-0017e cron 85 fire pending; check after fire lands. Unblocked from cc-0017e apply + doc-patch gating.
-2. **Health_check V-C3 + signal-production diagnostic** — **P1 carry, rank 2**. V-C3 still PENDING. Cowork brief v3.0 ready.
-3. **Platform Reconciliation View brief authoring** — **P2 carry, rank 3**. PK greenlight required.
-4. **5-row close-the-loop batch sweep / Pre-sales criteria refinement / `purge_test_case` helper case_history extension** — **P2/P3 carry, rank 4**. 22 outstanding close-the-loop UPDATEs; Pre-sales 3-clock criteria; helper extension future Wave candidate (L-v2.90-d).
+cc-0017e v1.1 8-item backlog doc patch CLOSED at commit `be4e6772f20a73d093f53f609230fb565b1fe0df`. 5 brief files patched atomically. All 9 items covered (8 backlog defects + L-v2.90 family addition). Reconciliation daily diagnostic promoted P1 rank 1. L-v2.85-e 6th consecutive occurrence. L-v2.83-a 11+ STRONG. L-v2.88-a 2nd documented occurrence. Per-session detail `40447517`; sync close `82b608c4`.
+
+*(Full detail at `docs/runtime/sessions/2026-05-19-cc0017e-v1.1-8item-doc-patch.md`.)*
+
+---
+
+## 🟡 Next session priorities (rebuilt v2.92)
+
+1. **Reconciliation daily cadence diagnostic** — **P1 carry, rank 1 v2.92 (UNCHANGED)**. First post-cc-0017e cron 85 fire still pending; next scheduled 2026-05-19 17:30 UTC ≈ 2026-05-20 03:30 AEST. Re-run 9-check diagnostic after natural fire lands.
+2. **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** — **P2 NEW, rank 2 v2.92**. Spawned from V-C3 close. Signal-production contract validated; invocation sparse. Read-only probe of state files + Cowork agent run history when PK directs.
+3. **Platform Reconciliation View brief authoring** — **P2 carry, rank 3 (described as next practical planning item per PK directive)**. PK greenlight required.
+4. **5-row close-the-loop batch sweep / Pre-sales criteria refinement / `purge_test_case` helper case_history extension** — **P2/P3 carry, rank 4**. 22 outstanding close-the-loop UPDATEs; Pre-sales 3-clock criteria; helper extension future Wave 0f candidate (L-v2.90-d).
 
 **Standing P0:** Personal businesses check-in. Crazy Domains follow-up carry from v2.51.
 
-Carries: cc-0015 friction-pool-view (Wave 7, still gated on observation window closing 2026-05-26); cc-0016 friction-capture-evidence (Wave 8, gated on Wave 7); cc-0017c v1.2 doc patch; cc-0017a v1.2 doc patch; vchecks.md V-B4 doc patch; minor doc patches (cc-0010A/0011/0012); Dashboard PHASES 44th deferral; F-CRON-AUTO-APPROVER-SECRET-INLINE; lesson promotions (L-v2.78-a + L-v2.81-a eligible; **L-v2.83-a STRONG 11+**; L-v2.84-a/b/c/d watching; L-v2.85-a HIGH-SIGNAL 4 occurrences; **L-v2.85-e PROMOTION-CONFIRMED 6th consecutive v2.91**; L-v2.86-a/b/c/d/e watching; L-v2.88-a/b/c/d candidates (a re-observed v2.91 — 2nd occurrence); L-v2.89-a candidate; **L-v2.90-a through L-v2.90-f** (a/b HIGH-SIGNAL; c/d/e/f candidates)).
+Carries: cc-0015 friction-pool-view (Wave 7, still gated on observation window closing 2026-05-26); cc-0016 friction-capture-evidence (Wave 8, gated on Wave 7); cc-0017c v1.2 doc patch; cc-0017a v1.2 doc patch; vchecks.md V-B4 doc patch; minor doc patches (cc-0010A/0011/0012); Dashboard PHASES **45th deferral**; F-CRON-AUTO-APPROVER-SECRET-INLINE; lesson promotions (L-v2.78-a + L-v2.81-a eligible; **L-v2.83-a STRONG 12+**; L-v2.84-a/b/c/d watching; L-v2.85-a HIGH-SIGNAL 4 occurrences; **L-v2.85-e PROMOTION-CONFIRMED 7th consecutive v2.92**; L-v2.86-a/b/c/d/e watching; L-v2.88-a/b/c/d candidates; L-v2.89-a candidate; **L-v2.90-a through L-v2.90-f** (a/b HIGH-SIGNAL; c/d/e/f candidates)).
 
 ---
 
 ## ⛔ Carried-forward "do not touch" state
 
-**v2.91 updates on standing items:**
+**v2.92 updates on standing items:**
 
-- **cc-0017e v1.1 8-item doc patch CLOSED v2.91** at commit `be4e6772f20a73d093f53f609230fb565b1fe0df`. 5 brief files patched atomically. All 9 backlog items covered (8 defects + L-v2.90 family addition). Apply state preserved.
+- **Health_check V-C3 + signal-production diagnostic CLOSED-PASS v2.92** — empirically validated against 2026-05-17 `nightly-health-check-v1` v3.0 run. Function signature intact (`fn_emit_health_check_findings(text,text,jsonb)→jsonb` SECURITY DEFINER owner=postgres); 5 finding_ids reconcile 1:1 with friction.event; 0 emit_errors; all-time aggregate clean.
+- **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** — NEW v2.92 follow-up. Brief published v3.0 on 2026-05-15; only 1 v3.0 run has fired since (2026-05-17). 20% hit rate over 5-day window. Signal-production contract works when invoked; invocation cadence sparse.
+- **cc-0017e v1.1 8-item doc patch CLOSED v2.91** at `be4e6772f20a73d093f53f609230fb565b1fe0df` — unchanged v2.92.
 - **cc-0017e Wave 0e APPLIED-WITH-VCHECK-CORRECTION v2.90** — unchanged. friction.case_history table exists; fn_triage_case 11-arg only; 5 cc-0017d functions patched byte-stable; 8-row backfill executed; D-01 `315baf84-...` resolved.
 - **m.chatgpt_review row `315baf84-...`** — status=resolved/action_taken=applied_with_correction/resolved_by=cc-0017e-close-v2.90 (unchanged).
-- **m.chatgpt_review schema** — no `resolved_at` / no `result_summary` (documented in cc-0017e v1.1 d01-postapply-deferred.md §4).
-- **purge_test_case helper case_history coverage gap** — unchanged from v2.90. Future Wave brief candidate. v1.1 documented inline workaround pattern; helper itself unchanged.
-- **L-v2.88-a "identical PK-directive loop"** — re-observed v2.91 at session start. 2 occurrences total. Watcher.
-- **Friction Register Consolidation Plan** — Gate 13.c (cc-0017e apply) CLOSED v2.90 unchanged. Wave 0e APPLIED unchanged. No new gates v2.91.
-- **Gate 11** (1-week observation window 2026-05-19 → 2026-05-26) ACTIVE. Day 1 of 7 unchanged (v2.91 same calendar day as v2.86–v2.90 closes).
+- **purge_test_case helper case_history coverage gap** — unchanged from v2.90. Future Wave 0f brief candidate (L-v2.90-d).
+- **Friction Register Consolidation Plan** — Gate 13.c CLOSED v2.90; Gate 13.d CLOSED v2.91. No new gates v2.92.
+- **Gate 11** (1-week observation window 2026-05-19 → 2026-05-26) ACTIVE Day 1 of 7 unchanged (v2.92 same calendar day as v2.86–v2.91 closes).
 - **Wave 0f** — NOT YET SCOPED. Items B/E/F/G deferred from cc-0017e + purge_test_case helper extension are candidates.
 - **cc-0017c APPLIED v2.85**, **cc-0017b APPLIED v2.82 + v1.1 v2.83**, **cc-0017a APPLIED v2.81**, **cc-0014 CLOSED-ARCHIVED v2.77** — all unchanged.
 - **cc-0015** (Wave 7) + **cc-0016** (Wave 8) — Wave 0e gate cleared v2.90; still gated on observation window + sequencing.
-- **Cowork brief `nightly-health-check-v1` FROZEN at v3.0** unchanged.
-- **cron 82-86** firing normally. First cc-0017e-post-apply cron 85 fire pending — diagnostic P1 rank 1 v2.91.
-- **L41**: cumulative v2.80-v2.91 = 11 (no new exercises v2.91 — doc-only).
-- **L40 / L46 / L58 / L62**: not exercised v2.91.
+- **Cowork brief `nightly-health-check-v1` FROZEN at v3.0** unchanged. **V-C3 signal-production CLOSED-PASS v2.92 (empirically validated)** — replaces prior "V-C3 PENDING" carry from v2.91.
+- **cron 82-86** firing normally. First cc-0017e-post-apply cron 85 fire still pending — diagnostic P1 rank 1 v2.92.
+- **L41**: cumulative v2.80-v2.92 = 11 (no new exercises v2.92 — doc-sync only).
+- **L40 / L46 / L58 / L62**: not exercised v2.92.
 - **L-v2.78-a / L-v2.81-a**: 2 occurrences each, promotion-eligible (unchanged).
-- **L-v2.83-a**: **11+ occurrences v2.91**. STRONG CANDIDATE confirmed.
-- **L-v2.84-a/b/c/d**: unchanged. L-v2.84-d related to L-v2.90-a.
-- **L-v2.85-a HIGH-SIGNAL**: 4 occurrences (unchanged v2.91; not re-exercised in doc-only).
-- **L-v2.85-b**: 4× occurrences from v2.90 carry; not re-exercised v2.91.
-- **L-v2.85-d**: REALIZED v2.86 + re-exercised v2.90 (helper bypass). Not re-exercised v2.91.
-- **L-v2.85-e**: **PROMOTION-CONFIRMED v2.88 carries forward; 6th consecutive occurrence v2.91**.
-- **L-v2.86-a (HIGH-SIGNAL)**: PARTIALLY exercised v2.90 (P2 disclosed as PARTIAL). Not re-exercised v2.91.
-- **L-v2.86-b/c**: exercised v2.90 byte-stable; not re-exercised v2.91.
-- **L-v2.88-a**: **2 occurrences (v2.88 + v2.91 identical-directive loop)**. Watcher.
+- **L-v2.83-a**: **12+ occurrences v2.92**. STRONG CANDIDATE confirmed.
+- **L-v2.84-a/b/c/d**: unchanged.
+- **L-v2.85-a HIGH-SIGNAL**: 4 occurrences unchanged (doc-sync only v2.92; not re-exercised).
+- **L-v2.85-b/c/d**: not re-exercised v2.92.
+- **L-v2.85-e**: **PROMOTION-CONFIRMED v2.88 carries forward; 7th consecutive occurrence v2.92**.
+- **L-v2.86-a (HIGH-SIGNAL)**: not re-exercised v2.92.
+- **L-v2.86-b/c/d/e**: not re-exercised v2.92.
+- **L-v2.88-a**: 2 occurrences (v2.88 + v2.91); NOT re-occurring v2.92.
 - **L-v2.88-b/c/d**: realised v2.90; carry forward.
-- **L-v2.89-a**: not re-exercised v2.91 (atomic succeeded; fallback not invoked).
-- **L-v2.90-a (HIGH-SIGNAL) / b (HIGH-SIGNAL) / c / d / e / f**: codified documentationally v2.91 (lessons-metadata-changelog.md §2). Not empirically re-exercised. Watchers.
-- **22 close-the-loop UPDATEs outstanding** unchanged net from v2.90. v2.91 added 0.
-- **T-MCP-02 quota: ~86 cumulative v2.91** unchanged from v2.90 (no D-01 v2.91). State-capture exceptions: 1 unchanged.
-- **Dashboard roadmap PHASES — 44th consecutive deferral.** No file-touch v2.91.
+- **L-v2.89-a**: atomic push_files in flight v2.92; fallback ready.
+- **L-v2.90-a-f**: codified documentationally v2.91. Not empirically re-exercised v2.92. Watchers.
+- **22 close-the-loop UPDATEs outstanding** unchanged net from v2.91. v2.92 added 0.
+- **T-MCP-02 quota: ~86 cumulative v2.92** unchanged (no D-01 v2.92). State-capture exceptions: 1 unchanged.
+- **Dashboard roadmap PHASES — 45th consecutive deferral.** No file-touch v2.92.
 - M-series total dead-letter rows cleared since 8 May 2026: 396.
 - Standing don't-redeploy three (heygen-avatar-creator, heygen-avatar-poller, draft-notifier).
-- **Cowork output pipeline V-C3 still PENDING.**
 - **Production FAB live on dashboard.invegent.com** unchanged.
 - **Localhost FAB cleanup pending** (`.env.local`).
 - **D-CC-0017B-Q1** (severity_override query-pattern note) carried.
@@ -172,10 +174,10 @@ Carries: cc-0015 friction-pool-view (Wave 7, still gated on observation window c
 
 ## 📜 G1 convention (the rule)
 
-Unchanged. Per-session file `docs/runtime/sessions/2026-05-19-cc0017e-v1.1-8item-doc-patch.md` written first as standalone commit (`404475172ad54f022a6ccf6203aac06fb824b45d`, 13,800 B). sync_state and action_list updated as **atomic push_files commit** this session per L-v2.85-e baseline mitigation 1+2 split (6th consecutive occurrence — promotion-confirmed v2.88 carries forward). `decisions.md` not touched. Dashboard PHASES 44th consecutive deferral — no file-touch. L-v2.89-a fallback (1+1+1) ready if atomic push_files times out — **not invoked v2.91** (first attempt succeeded).
+Unchanged. Per-session file `docs/runtime/sessions/2026-05-19-vc3-signal-production-closed.md` written first as standalone commit (`55d26d3d07346acd1ab9be91f3c3f92d3ed48842`, 11,169 B). sync_state and action_list updated as **atomic push_files commit** this session per L-v2.85-e baseline mitigation 1+2 split (**7th consecutive occurrence** — promotion-confirmed v2.88 carries forward). `decisions.md` not touched. Dashboard PHASES **45th consecutive deferral** — no file-touch. L-v2.89-a fallback (1+1+1) ready if atomic push_files times out — **not invoked v2.92** (first attempt succeeded).
 
-**This file size**: ~25KB after this update.
+**This file size**: ~22KB after this update.
 
 ---
 
-*Last updated: 2026-05-19 Sydney evening — v2.91: cc-0017e v1.1 8-item backlog doc patch CLOSED at commit `be4e6772f20a73d093f53f609230fb565b1fe0df`. 5 brief files patched atomically (vchecks.md + migration-sql.md + risks-and-grants.md + d01-postapply-deferred.md + lessons-metadata-changelog.md). All 9 items covered (8 backlog defects + L-v2.90 family addition). Reconciliation daily cadence diagnostic promoted P1 rank 1. L-v2.85-e 6th consecutive occurrence — promotion-confirmed carries forward. L-v2.83-a 11+ STRONG. L-v2.88-a "identical PK-directive loop" 2nd occurrence v2.91 (handled via hard-stop + read-only probe; no re-execution). T-MCP-02 cum ~86 unchanged. State-capture exceptions cum 1 unchanged. Memory 19/30 unchanged. Gate 11 Day 1 of 7 unchanged. Dashboard PHASES 44th deferral. 0 production mutations / 0 Supabase calls / 0 D-01 fires. Per-session detail commit `404475172ad54f022a6ccf6203aac06fb824b45d`. sync_state + action_list atomic push_files this commit (1+2 split per L-v2.85-e baseline; L-v2.89-a fallback ready but not invoked).*
+*Last updated: 2026-05-19 Sydney evening — v2.92: Health_check V-C3 + signal-production diagnostic CLOSED-PASS. Empirically validated against 2026-05-17 `nightly-health-check-v1` v3.0 run (`run_id=nightly-health-check-v1/2026-05-17T160210Z`). 4 read-only checks PASS: function signature intact / 5 finding_ids reconcile 1:1 with friction.event / 0 emit_errors / all-time aggregate clean. NEW P2 follow-up spawned rank 2: Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN (20% hit rate since brief v3.0 published 2026-05-15). Platform Reconciliation View brief described as next practical planning item per PK directive (rank 3, positionally unchanged). L-v2.85-e 7th consecutive occurrence — promotion-confirmed carries forward. L-v2.83-a 12+ STRONG. T-MCP-02 cum ~86 unchanged. State-capture exceptions cum 1 unchanged. Memory 19/30 unchanged. Gate 11 Day 1 of 7 unchanged. Dashboard PHASES 45th deferral. 0 production mutations / 0 Supabase mutations / 0 D-01 fires / 0 force-run of `nightly-health-check-v1` / 0 force-run of cron 85. Per-session detail commit `55d26d3d07346acd1ab9be91f3c3f92d3ed48842`. sync_state + action_list atomic push_files this commit (1+2 split per L-v2.85-e baseline; L-v2.89-a fallback ready but not invoked).*
