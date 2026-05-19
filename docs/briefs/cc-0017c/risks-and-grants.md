@@ -1,5 +1,7 @@
 # cc-0017c — §3 Risks + §4 Grants + Authorisation gates
 
+**Brief version:** v1.1 (doc-only patch — §3.4 revised to reflect Path A as final selected option per D-01 verdict `a37eff28-2ba1-4a7a-8fbd-3e9aba738c79`)
+
 ## §3 Risks
 
 ### §3.1 FK swap risk (Section A)
@@ -24,28 +26,34 @@
 
 **Risk:** UPDATE on friction.case where action_decision is in closed-class but resolved_at IS NULL.
 
-**Empirical state at v2.83 fact-finding (Query 3 result):** 0 candidate rows. action_decision distribution: NULL=14, track=7, act_now=1. No suppress/ignore/duplicate/done rows exist.
+**Empirical state at v2.83 fact-finding (Query 3 result):** 0 candidate rows. action_decision distribution: NULL=14, track=7, act_now=1. No suppress/ignore/duplicate rows exist (and `'done'` is not legal under `case_action_decision_check`).
 
 **Mitigation:** UPDATE is a no-op at apply time. Pattern is forward-looking — encodes the closure invariant for future rows. V-C1 confirms 0 rows affected matches pre-flight P-3 count.
 
 **Residual:** None at apply time. UPDATE cannot affect rows that don't exist. Forward-looking: write-side enforcement (CHECK or trigger) is deferred to a future wave — backfill UPDATE alone does not prevent future invariant violations.
 
-### §3.4 `'done'` not in legal CHECK domain — divergence from Amendment G framing
+### §3.4 `'done'` not in legal CHECK domain — v1.1 RESOLUTION: Path A SELECTED
 
-**Empirical finding (Query 3b):** `case_action_decision_check` legal domain is `('act_now', 'track', 'defer_intentionally', 'suppress', 'ignore', 'duplicate')`. `'done'` is **NOT** a legal value.
+**v1.1 status:** RESOLVED. Path A is the final selected option per D-01 verdict `a37eff28-2ba1-4a7a-8fbd-3e9aba738c79` (verdict: partial, corrected_action: Option A) + PK directive 2026-05-18 Sydney late evening ("Proceed with Path A").
 
-**PK directive used `('suppress','ignore','duplicate','done')` as the closed-class set.**
+**Empirical finding (Query 3b at v2.83 fact-finding):** `case_action_decision_check` legal domain is `('act_now', 'track', 'defer_intentionally', 'suppress', 'ignore', 'duplicate')`. `'done'` is **NOT** a legal value at apply time.
 
-**Resolution — Option C (selected; match PK directive verbatim, flag explicitly):**
-- Migration SQL §5.2-C uses all 4 values in WHERE clause
-- `'done'` branch in CASE expression maps to `'acted_on'` (most semantically aligned of legal `case_resolution_kind_check` values: `acted_on / tracked_done / deferred_done / suppressed / ignored / duplicate / reopened`)
-- `'done'` clause matches 0 rows at apply time (cannot match — domain restricts)
-- Forward-looking: if Amendment G later expands the CHECK domain to include `'done'`, backfill UPDATE already accounts for it
-- This Option C is **FLAGGED for PK redirection** during D-01 or pre-apply review
+**Path A — Final selected option (v1.1):**
+- Migration SQL `§5.2-C` uses **only current legal values** in WHERE clause: `('suppress','ignore','duplicate')`
+- CASE expression maps only current legal values: `suppress → suppressed`, `ignore → ignored`, `duplicate → duplicate`
+- `'done'` is **not** included in WHERE or CASE
+- Backfill matches 0 rows at apply time (no existing rows in closed-class state without resolved_at; consistent with v1.0 v2.83 fact-finding)
 
-**Alternative options not selected:**
-- **Option A** (drop `'done'` from WHERE): matches production exactly but diverges from PK directive verbatim
-- **Option B** (expand CHECK in this brief): scope expansion beyond PK 4-item directive; would require Amendment G in-line
+**Recording per PK directive item 4:** `'done'` is not currently legal under `case_action_decision_check`. It should only be introduced in a future lifecycle-domain expansion if needed. Such expansion would require:
+- A new brief (e.g., cc-0018 or Wave 0d follow-on)
+- Amendment G nomenclature alignment work
+- ALTER TABLE friction.case DROP CONSTRAINT case_action_decision_check + ADD CONSTRAINT with expanded domain
+- Corresponding update to resolution_kind mapping logic (likely `'done' → 'acted_on'` as semantic match, though final mapping is a design decision for the future brief)
+
+**Alternatives considered and not selected at v1.1:**
+
+- **Option B (CHECK domain expansion):** Expand `case_action_decision_check` to include `'done'` in this same brief. **Not selected** — scope expansion beyond PK 4-item directive verbatim; Amendment G nomenclature work not authorised at v2.84.
+- **Option C (forward-completeness with state-capture override):** Include `'done'` in WHERE/CASE for forward-completeness; map `'done' → 'acted_on'`; rely on domain restriction to match 0 rows. **Not selected** — D-01 verdict `a37eff28-...` flagged this as causing "potential scope expansion if 'done' is included in the WHERE clause linked to a closed-class" + "confusion regarding the legal compliance of the action_decision domain". PK accepted Path A over state-capture override.
 
 ### §3.5 Divergence from idealised Amendment F framing
 
@@ -63,7 +71,7 @@
 
 **Mitigation:** Pre-flight P-set rerun immediately before apply is the drift-detection gate. Hard-stop §5.4-A1 triggered on any drift between brief-authoring reference and apply-time capture.
 
-**Residual:** L-v2.81-a now at 2 occurrences (promotion-eligible per PK directive v2.83). Recurrence in cc-0017c apply session would be occurrence 3.
+**Residual:** L-v2.81-a now at 2 occurrences (promotion-eligible per PK directive v2.83). Parent SHA observation at v1.0 brief commit (`92f9e868` parent `586d30cd` vs compaction-summary v2.83 close HEAD `06a8421e`) was observed but not confirmed as occurrence 3 — not treated as blocker per PK directive.
 
 ## §4 Grant matrix snapshot (Query 2 at v2.83 fact-finding)
 
@@ -99,8 +107,9 @@
 
 ## §5 Authorisation gates
 
-- **G1 — Brief commit:** None required (this commit)
-- **G2 — D-01 fire:** PK explicit authorisation per v2.83 session directive
-- **G3 — Apply:** D-01 verdict + PK explicit approval; pre-flight P-set rerun must match brief-authoring reference (drift detection)
+- **G1 — Brief commit:** None required (v1.0 + v1.1 commits done)
+- **G2 — D-01 fire on v1.0:** COMPLETE (review_id `a37eff28-2ba1-4a7a-8fbd-3e9aba738c79`; verdict partial, corrected_action Option A accepted by PK)
+- **G2b — D-01 re-fire on v1.1:** PENDING (next step this session per PK directive)
+- **G3 — Apply:** GATED on v1.1 D-01 verdict + PK explicit approval; pre-flight P-set rerun must match brief-authoring reference (drift detection)
 - **G4 — Post-apply close-the-loop:** Automatic on V-check pass; UPDATE on m.chatgpt_review with action_taken summary
-- **G5 — Hard-stop:** Triggered by V-check failure or D-01 reject — see `hardstop-rollback.md` §5.4
+- **G5 — Hard-stop:** Triggered by V-check failure or D-01 reject — see `hardstop-rollback.md §5.4`

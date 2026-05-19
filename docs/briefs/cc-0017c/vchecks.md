@@ -1,5 +1,7 @@
 # cc-0017c — §5.3 V-checks
 
+**Brief version:** v1.1 (doc-only patch — V-C1 WHERE clause aligned to v1.1 migration body: `IN ('suppress','ignore','duplicate')`)
+
 **Per L41:** V-checks must use empirical SELECTs against live DB state post-apply. Do not rely on assumption-based verification.
 
 **Per L62:** V-checks run sequentially via `execute_sql` post-apply. All 9 must PASS before close-the-loop UPDATE on `m.chatgpt_review`.
@@ -141,26 +143,28 @@ END $$;
 
 **Caveat:** DELETE in cleanup requires postgres ownership. V-B4 ideally runs as the final step of the apply_migration body (still in postgres context) OR via a dedicated execute_sql call IF service_role retains DELETE (which Section B does not REVOKE — DELETE was never granted to service_role originally per Query 2). Re-verify DELETE permission at apply time before relying on V-B4 cleanup. If cleanup fails, the test event/case persist (acceptable but noisy — flag for manual cleanup).
 
-## V-C — Backfill verification (Section C)
+## V-C — Backfill verification (Section C) — v1.1: legal-domain-only
 
-### V-C1 — Backfill UPDATE affected expected row count
+### V-C1 — Backfill UPDATE affected expected row count (v1.1)
 
 ```sql
 SELECT
   COUNT(*) FILTER (
-    WHERE action_decision IN ('suppress','ignore','duplicate','done')
+    WHERE action_decision IN ('suppress','ignore','duplicate')
     AND resolved_at IS NULL
   ) AS still_unresolved_closed_class,
   COUNT(*) FILTER (
-    WHERE action_decision IN ('suppress','ignore','duplicate','done')
+    WHERE action_decision IN ('suppress','ignore','duplicate')
     AND resolved_at IS NOT NULL
     AND resolution_kind IS NOT NULL
-  ) AS resolved_with_kind_set
+  ) AS resolved_with_kind_set,
+  COUNT(*) FILTER (WHERE action_decision = 'done') AS done_count_audit
 FROM friction.case;
 ```
 **Expected (matching P-3 result of 0 candidate rows):**
 - `still_unresolved_closed_class = 0`
 - `resolved_with_kind_set = 0` (no rows to backfill at apply time)
+- `done_count_audit = 0` (`'done'` is not in legal `case_action_decision_check` domain; any non-zero indicates external CHECK domain expansion landed between brief authoring and apply — should not happen without parallel-session change)
 
 **Forward-state guarantee:** Any future row with closed-class action_decision MUST have resolved_at AND resolution_kind set. Enforcement (CHECK or trigger) is deferred — backfill UPDATE alone encodes the pattern, not the enforcement.
 
@@ -184,7 +188,7 @@ ORDER BY action_decision NULLS FIRST;
 | act_now | 1 | 0 | 0 |
 | track | 7 | 0 | 0 |
 
-**Hard-stop trigger:** Any change to NULL/act_now/track row counts indicates the UPDATE affected rows it shouldn't have (impossible per WHERE clause — defensive check).
+**Hard-stop trigger:** Any change to NULL/act_now/track row counts indicates the UPDATE affected rows it shouldn't have (impossible per v1.1 WHERE clause — defensive check).
 
 ## V-check execution order
 

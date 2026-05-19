@@ -1,5 +1,7 @@
 # cc-0017c — §5.4 Hard-stop matrix + §5.5 Rollback bodies
 
+**Brief version:** v1.1 (doc-only patch — §5.5-C snapshot WHERE clause aligned to v1.1 migration body: `IN ('suppress','ignore','duplicate')`)
+
 ## §5.4 Hard-stop matrix
 
 | Trigger | Condition | Response |
@@ -7,6 +9,7 @@
 | §5.4-A1 | P-set drift between brief-authoring (v2.83 reference) and apply-time | Pause; surface drift to PK; await explicit redirect |
 | §5.4-A2 | P-2 FK validity probe returns any `FK_VIOLATION_ORPHAN` row | Hard-stop; do not apply migration; PK decision required |
 | §5.4-A3 | P-3 backfill candidate count > 0 unexpectedly | Pause; surface to PK; redirect options: (a) proceed with non-zero count, (b) author resolution mapping for those rows, (c) defer |
+| §5.4-A3b | **P-3 `done_count_audit` > 0 (v1.1 NEW)** | Hard-stop; external CHECK domain expansion landed between brief authoring and apply; PK redirect required (may need to revert to Option C with documented rationale OR add `'done'` to migration body) |
 | §5.4-A4 | P-5 CHECK constraint definition diverges from expected | Pause; surface to PK; check for parallel-session schema change |
 | §5.4-A5 | P-4 total_source_count > 3 OR active_source_count < 3 | Pause; new source seed or deactivation needs FK handling; PK decision |
 | §5.4-B1 | apply_migration returns error | Migration rolled back by Postgres transaction semantics; pause; diagnose; surface to PK |
@@ -70,18 +73,18 @@ GRANT SELECT ON friction.event TO service_role;
 GRANT SELECT ON friction.case TO service_role;
 ```
 
-### §5.5-C — Section C rollback (backfill reverse)
+### §5.5-C — Section C rollback (backfill reverse) — v1.1: legal-domain-only
 
 **Empirical context:** Backfill UPDATE affects 0 rows at apply time (per P-3). Reverse is a no-op if 0 rows were affected.
 
 **If apply-time P-3 showed N > 0 rows backfilled:** Reverse is destructive (sets resolved_at + resolution_kind back to NULL). Must capture pre-update state via dedicated SELECT into temp table BEFORE Section C apply, then UPDATE-reverse using that snapshot.
 
 ```sql
--- C-rollback.1 — Pre-apply snapshot (executed IMMEDIATELY before Section C apply, NOT at rollback time)
+-- C-rollback.1 — Pre-apply snapshot (executed IMMEDIATELY before Section C apply, NOT at rollback time) — v1.1: legal-domain-only
 CREATE TEMP TABLE _cc0017c_backfill_pre_state AS
 SELECT case_id, resolved_at AS pre_resolved_at, resolution_kind AS pre_resolution_kind
 FROM friction.case
-WHERE action_decision IN ('suppress','ignore','duplicate','done')
+WHERE action_decision IN ('suppress','ignore','duplicate')
   AND resolved_at IS NULL;
 
 -- C-rollback.2 — Reverse using snapshot (executed at rollback time)
@@ -104,7 +107,7 @@ DROP TABLE _cc0017c_backfill_pre_state;
 Execute in reverse order: C-rollback → B-rollback → A-rollback. Verify with full V-check rerun.
 
 ```sql
--- 1. Section C reverse (no-op if P-3 = 0 at apply; uses pre-apply snapshot if P-3 > 0)
+-- 1. Section C reverse (no-op if P-3 = 0 at apply; uses pre-apply snapshot if P-3 > 0; v1.1: legal-domain-only)
 -- (See §5.5-C body above)
 
 -- 2. Section B reverse
@@ -129,7 +132,7 @@ CHECK ((source = ANY (ARRAY['reconciliation'::text, 'health_check'::text, 'manua
 
 ```
 Failure detected?
-├── Pre-flight P-set drift → §5.4-A1 to A5 → STOP before apply
+├── Pre-flight P-set drift → §5.4-A1 to A5 (incl. A3b done_count_audit) → STOP before apply
 ├── apply_migration error → Postgres auto-rollback → §5.4-B1 → diagnose
 ├── V-A failure → Section A only revert → §5.5-A
 ├── V-B failure (over-revoke V-B3) → §5.5-B-emergency only (no Section A revert)

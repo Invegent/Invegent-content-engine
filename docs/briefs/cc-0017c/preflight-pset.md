@@ -1,5 +1,7 @@
 # cc-0017c — §5.1 Pre-flight P-set
 
+**Brief version:** v1.1 (doc-only patch — P-3 WHERE clause aligned to v1.1 migration body: `IN ('suppress','ignore','duplicate')`; `done_count_audit` added as defensive observation)
+
 **Per L62 + ICE-PROC-001:** Pre-flight P-set must be re-run immediately before apply, AND results captured in D-01 evidence package. If drift detected between brief-authoring P-set (this file's expected values) and apply-time P-set, hard-stop per `hardstop-rollback.md §5.4-A1`.
 
 ## P-1 — Capture current grants on friction.event + friction.case as JSON
@@ -67,20 +69,23 @@ ORDER BY e.source;
 
 **Hard-stop trigger:** Any row with `fk_validity = 'FK_VIOLATION_ORPHAN'` → hard-stop per `hardstop-rollback.md §5.4-A2`. `FK_VALID_BUT_INACTIVE_SOURCE` is acceptable (FK references source_code as PK, which is active-agnostic; is_active is a soft flag).
 
-## P-3 — Backfill candidate count
+## P-3 — Backfill candidate count (v1.1: legal-domain-only)
 
 **Purpose:** Capture exact row count that will be affected by Section C UPDATE.
+
+**v1.1 change:** `backfill_candidate_count` filter narrowed to `IN ('suppress','ignore','duplicate')` to align with v1.1 migration body. `done_count_audit` added as defensive observation — detects if `'done'` rows somehow appear (would indicate external Amendment G work has landed and would require PK redirect before apply).
 
 **SQL:**
 ```sql
 SELECT
   COUNT(*) FILTER (
-    WHERE action_decision IN ('suppress','ignore','duplicate','done')
+    WHERE action_decision IN ('suppress','ignore','duplicate')
     AND resolved_at IS NULL
   ) AS backfill_candidate_count,
   COUNT(*) FILTER (
-    WHERE action_decision IN ('suppress','ignore','duplicate','done')
+    WHERE action_decision IN ('suppress','ignore','duplicate')
   ) AS closed_class_total,
+  COUNT(*) FILTER (WHERE action_decision = 'done') AS done_count_audit,
   COUNT(*) FILTER (WHERE action_decision IS NULL) AS null_count,
   COUNT(*) FILTER (WHERE action_decision = 'track') AS track_count,
   COUNT(*) FILTER (WHERE action_decision = 'act_now') AS act_now_count,
@@ -92,13 +97,14 @@ FROM friction.case;
 **Expected at apply (from v2.83 fact-finding):**
 - `backfill_candidate_count = 0`
 - `closed_class_total = 0`
+- `done_count_audit = 0` (and would currently fail `case_action_decision_check` if any row had this value)
 - `null_count = 14`
 - `track_count = 7`
 - `act_now_count = 1`
 - `defer_intentionally_count = 0`
 - `total_cases = 22`
 
-**Hard-stop trigger:** `backfill_candidate_count` value diverges from `0` AND PK has not explicitly approved the diverged count post-fact → hard-stop per `hardstop-rollback.md §5.4-A3`. Drift requires PK decision before proceeding.
+**Hard-stop trigger:** `backfill_candidate_count > 0` AND PK has not explicitly approved the diverged count post-fact → hard-stop per `hardstop-rollback.md §5.4-A3`. **`done_count_audit > 0` → hard-stop** (indicates external CHECK domain expansion landed; PK redirect required — may need to revert to Option C with documented rationale OR add `'done'` to the migration body).
 
 ## P-4 — Production baseline counts
 
@@ -154,7 +160,7 @@ D-01 fire payload must include verbatim P-set output in `current_evidence` field
 {
   "preflight_grants_snapshot": "<P-1 result>",
   "fk_validity_probe": "<P-2 result>",
-  "backfill_candidate_count": "<P-3 result>",
+  "backfill_candidate_count": "<P-3 result (including done_count_audit)>",
   "production_baseline": "<P-4 result>",
   "check_constraint_capture": "<P-5 result>",
   "captured_at": "<timestamp>",
@@ -165,7 +171,7 @@ D-01 fire payload must include verbatim P-set output in `current_evidence` field
 **Drift detection algorithm:**
 1. P-1: compare grant rows by `(grantee, privilege_type)` set. New entries OR missing entries = drift.
 2. P-2: any new `event_source_value` not in `{health_check, manual, reconciliation}` = drift. Any `FK_VIOLATION_ORPHAN` = hard-stop regardless of drift status.
-3. P-3: `backfill_candidate_count > 0` = drift.
+3. P-3: `backfill_candidate_count > 0` = drift. `done_count_audit > 0` = hard-stop (external schema change).
 4. P-4: `total_source_count != 3` OR `active_source_count != 3` = drift.
 5. P-5: definition mismatch = drift.
 

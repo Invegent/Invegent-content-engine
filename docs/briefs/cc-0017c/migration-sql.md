@@ -1,6 +1,8 @@
 # cc-0017c — §5.2 Migration SQL
 
-**Migration name:** `cc_0017c_friction_register_lockdown_and_backfill`
+**Brief version:** v1.1 (doc-only patch — Path A: drop `'done'` from backfill WHERE/CASE per D-01 verdict `a37eff28-2ba1-4a7a-8fbd-3e9aba738c79`)
+
+**Migration name:** `cc_0017c_friction_register_lockdown_and_backfill` (unchanged from v1.0; SQL body updated in v1.1)
 
 **Apply method:** Single `apply_migration` call via Supabase MCP (per L41 — apply_migration is the ONLY correct DDL path for friction.* schema given event-trigger registration in k.schema_registry).
 
@@ -65,17 +67,17 @@ REVOKE INSERT, UPDATE ON friction.case FROM anon;
 
 ---
 
-## Section C — `resolved_at` / `resolution_kind` backfill
+## Section C — `resolved_at` / `resolution_kind` backfill (v1.1: legal-domain-only)
 
 **Goal:** Encode the closure invariant — any case in closed-class `action_decision` must have `resolved_at` set and `resolution_kind` set.
 
 **Empirical context:** 0 rows match WHERE clause at apply time (per Query 3 at v2.83 fact-finding). UPDATE is a forward-looking invariant assertion, not a data correction.
 
-**`'done'` divergence from CHECK domain:** PK directive used `('suppress','ignore','duplicate','done')` as closed-class. `'done'` is NOT in `case_action_decision_check` legal domain `('act_now','track','defer_intentionally','suppress','ignore','duplicate')`. Option C selected: include `'done'` in WHERE for forward-completeness (matches PK directive verbatim); `'done'` clause matches 0 rows by domain restriction. Flagged at `risks-and-grants.md §3.4`.
+**v1.1 — Path A applied: legal-domain-only closed-class set.** Per D-01 verdict `a37eff28-2ba1-4a7a-8fbd-3e9aba738c79` (verdict: partial, corrected_action: Option A) + PK directive 2026-05-18 Sydney late evening. Migration WHERE and CASE restricted to current legal `case_action_decision_check` domain values: `('suppress','ignore','duplicate')`. `'done'` is not currently legal under `case_action_decision_check` and is not in scope for cc-0017c. It would only be introduced via a future lifecycle-domain expansion (Amendment G nomenclature work + new brief), if such expansion is deemed needed.
 
 **SQL:**
 ```sql
--- C.1 — Backfill resolved_at + resolution_kind for cases already in closed-class action_decision
+-- C.1 — Backfill resolved_at + resolution_kind for cases in current-legal closed-class action_decision (v1.1)
 UPDATE friction.case
 SET
   resolved_at = COALESCE(updated_at, created_at, now()),
@@ -83,22 +85,21 @@ SET
     WHEN 'suppress'  THEN 'suppressed'
     WHEN 'ignore'    THEN 'ignored'
     WHEN 'duplicate' THEN 'duplicate'
-    WHEN 'done'      THEN 'acted_on'   -- forward-looking; 'done' not in current CHECK domain
   END
-WHERE action_decision IN ('suppress','ignore','duplicate','done')
+WHERE action_decision IN ('suppress','ignore','duplicate')
   AND resolved_at IS NULL;
 ```
 
 **Notes:**
 - `COALESCE(updated_at, created_at, now())` — prefer `updated_at` as resolution proxy; fall back to `created_at`; defensive fallback to `now()` (should not be reachable — friction.case has NOT NULL on created_at).
 - `resolution_kind` mapping matches legal `case_resolution_kind_check` domain `(NULL OR 'acted_on'/'tracked_done'/'deferred_done'/'suppressed'/'ignored'/'duplicate'/'reopened')`.
-- `'done' → 'acted_on'` is the most semantically aligned mapping IF Amendment G later expands action_decision domain to include `'done'`.
+- WHERE clause restricted to the three closed-class values currently legal under `case_action_decision_check`. `'done'` removed per Path A.
 - All other CHECKs on friction.case preserved: `suppress_requires_reason`, `track_or_defer_requires_next_review`, `capture_reason_note_required_for_incrementality`, `quality_flag_requires_real_category`, `case_capture_reason_check`, `case_effort_level_check`, `case_severity_check`, `case_triage_state_check`.
 - **Forward-looking concern:** `suppress_requires_reason` requires a non-NULL reason field. If a future case has `action_decision='suppress'` with NULL reason AND is backfilled by this UPDATE, the UPDATE would violate the existing CHECK and fail. At apply time, 0 rows match, so this is moot. Flagged for Wave 0d enforcement design.
 
 ---
 
-## Combined migration body (apply order)
+## Combined migration body (apply order) — v1.1
 
 Single atomic migration:
 
@@ -119,7 +120,7 @@ REVOKE INSERT, UPDATE ON friction.case FROM PUBLIC;
 REVOKE INSERT, UPDATE ON friction.case FROM authenticated;
 REVOKE INSERT, UPDATE ON friction.case FROM anon;
 
--- cc-0017c — Section C: Backfill resolved_at + resolution_kind
+-- cc-0017c — Section C: Backfill resolved_at + resolution_kind (v1.1: legal-domain-only per Path A)
 UPDATE friction.case
 SET
   resolved_at = COALESCE(updated_at, created_at, now()),
@@ -127,9 +128,8 @@ SET
     WHEN 'suppress'  THEN 'suppressed'
     WHEN 'ignore'    THEN 'ignored'
     WHEN 'duplicate' THEN 'duplicate'
-    WHEN 'done'      THEN 'acted_on'
   END
-WHERE action_decision IN ('suppress','ignore','duplicate','done')
+WHERE action_decision IN ('suppress','ignore','duplicate')
   AND resolved_at IS NULL;
 ```
 
@@ -138,6 +138,6 @@ WHERE action_decision IN ('suppress','ignore','duplicate','done')
 **Expected apply outcome:**
 - Section A: 1 constraint dropped + 1 FK added
 - Section B: 8 REVOKE statements executed (2 effective on service_role; 6 no-op on PUBLIC/authenticated/anon)
-- Section C: 0 rows affected (per P-3 expected value)
+- Section C: 0 rows affected (per P-3 expected value; v1.1 WHERE restricted to current legal domain)
 
 **Total apply duration estimate:** < 200ms (DDL + small REVOKE block + 0-row UPDATE on 22-row table).
