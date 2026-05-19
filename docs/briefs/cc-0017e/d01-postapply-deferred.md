@@ -37,7 +37,7 @@ Production action: Run apply_migration with name 'cc_0017e_friction_case_history
 
 Migration content (7 atomic operations in one transaction):
   1. DDL: CREATE TABLE friction.case_history (mirrors emission_rule_history shape) + REVOKE/GRANT + index
-  2. CREATE OR REPLACE FUNCTION friction.fn_triage_case (refactored body, +p_actor 11th arg)
+  2. CREATE OR REPLACE FUNCTION friction.fn_triage_case (refactored body, +p_actor 11th arg; preceded by explicit DROP of legacy 10-arg signature per v1.1)
   3. CREATE OR REPLACE FUNCTION friction.triage_case (added case_history INSERT, signature stable)
   4. CREATE OR REPLACE FUNCTION friction.resolve_case (added case_history INSERT, signature stable)
   5. CREATE OR REPLACE FUNCTION friction.reopen_case (added case_history INSERT, signature stable)
@@ -113,55 +113,52 @@ If a prior same-day fire shows `status=fired` or `status=responded` but is not y
 
 ---
 
-## 4. Post-fire close-the-loop UPDATE template
+## 4. Post-fire close-the-loop UPDATE template (v1.1 — schema-corrected)
+
+**v1.1 doc-patch correction (Defects 6 + 7 / L-v2.90-e):** the v1.0 templates referenced two phantom columns on `m.chatgpt_review`: `resolved_at` and `result_summary`. Neither column exists in the production schema. The actual `m.chatgpt_review` schema columns relevant to close-the-loop are: `status`, `action_taken`, `resolved_by`, `escalated_at`, `escalation_resolved_at`, `error_message`, `escalation_reason`. There is no `resolved_at` column; there is no `result_summary` column.
+
+The schema-correct templates below use only the columns that actually exist. Rich close-the-loop narrative (which the v1.0 templates tried to inline into `result_summary`) belongs in the apply-session per-session detail file at `docs/runtime/sessions/YYYY-MM-DD-{slug}.md`, NOT in the m.chatgpt_review row. The row's terminal state is captured by `status='resolved'` + a descriptive `action_taken` enum value + a `resolved_by` identifier; full session narrative goes in the session detail file.
 
 After D-01 returns AGREE and apply_migration succeeds AND V-checks pass:
 
 ```sql
 UPDATE m.chatgpt_review
-SET status         = 'resolved',
-    action_taken   = 'applied',
-    resolved_by    = 'cc-0017e-close-v<apply-session-version>',
-    resolved_at    = now(),
-    result_summary = format(
-      'cc-0017e v1.0 applied. Migration cc_0017e_friction_case_history_and_compat at %s. V-check matrix PASS. 8-row backfill executed. case_history table created with %s rows (8 backfill + V-D fixtures awaiting cleanup).',
-      now()::text,
-      (SELECT count(*) FROM friction.case_history)::text
-    )
-WHERE id = <d01-review-id-from-fire-response>;
+SET status       = 'resolved',
+    action_taken = 'applied',
+    resolved_by  = 'cc-0017e-close-v<apply-session-version>'
+WHERE id = '<d01-review-id-from-fire-response>';
 ```
 
-If apply succeeds but a V-check fails (Path B-prime in flight):
+If apply succeeds but a V-check fails (Path B-prime in flight) — intermediate state, not terminal:
 ```sql
 UPDATE m.chatgpt_review
-SET status         = 'applied',
-    action_taken   = 'applied_with_correction_pending',
-    resolved_by    = NULL,
-    result_summary = 'cc-0017e v1.0 applied; V-check <ID> drift surfaced; Path B-prime corrective migration in progress.'
-WHERE id = <d01-review-id-from-fire-response>;
+SET status       = 'completed',
+    action_taken = 'applied_with_correction_pending',
+    resolved_by  = NULL
+WHERE id = '<d01-review-id-from-fire-response>';
 ```
 
 Later, after corrective migration applies and V-checks clean:
 ```sql
 UPDATE m.chatgpt_review
-SET status         = 'resolved',
-    action_taken   = 'applied_with_correction',
-    resolved_by    = 'cc-0017e-close-v<corrected-session-version>',
-    resolved_at    = now(),
-    result_summary = 'cc-0017e v1.0 applied with Path B-prime correction. Final V-check matrix PASS.'
-WHERE id = <d01-review-id-from-fire-response>;
+SET status       = 'resolved',
+    action_taken = 'applied_with_correction',
+    resolved_by  = 'cc-0017e-close-v<corrected-session-version>'
+WHERE id = '<d01-review-id-from-fire-response>';
 ```
 
 If D-01 returns DISAGREE/REFUSE and PK approves state-capture override:
 ```sql
 UPDATE m.chatgpt_review
-SET status         = 'resolved',
-    action_taken   = 'state_capture_override',
-    resolved_by    = 'pk-override-v<apply-session-version>',
-    resolved_at    = now(),
-    result_summary = 'D-01 returned <verdict>. PK state-capture override granted with rationale: <PK-rationale>. Applied at <timestamp>.'
-WHERE id = <d01-review-id-from-fire-response>;
+SET status       = 'resolved',
+    action_taken = 'state_capture_override',
+    resolved_by  = 'pk-override-v<apply-session-version>'
+WHERE id = '<d01-review-id-from-fire-response>';
 ```
+
+**Closure narrative location:** the rich summary of what was applied, which V-checks fired, which Path B-prime correctives ran, which lessons surfaced, etc., belongs in the apply-session per-session detail file at `docs/runtime/sessions/YYYY-MM-DD-{slug}.md`. The m.chatgpt_review row's three-column terminal state (status + action_taken + resolved_by) points an auditor to the session-detail file by date + session-version, where the full narrative lives.
+
+**Apply-time discipline (L-v2.90-e):** any close-the-loop SQL template MUST be validated against the actual `m.chatgpt_review` schema at brief authoring (or as a v1.1 doc-patch). Phantom column references cause apply-session close failures even when the migration applied cleanly. Use `information_schema.columns WHERE table_schema='m' AND table_name='chatgpt_review'` to verify column existence before authoring close-the-loop UPDATE templates.
 
 ---
 

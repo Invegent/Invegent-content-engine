@@ -31,13 +31,15 @@ END $harness$;
 
 Apply the harness BEFORE the real `apply_migration` call. If the harness fails, the migration SQL has a substitution-class drift — fix at brief level before re-applying. Documented per cc-0017d v1.1 Addendum.
 
+**v1.1 doc-patch note (L-v2.86-a scope clarification):** the harness catches substitution-class drift only. Value-class defects (CHECK / FK value violations), schema-resolution defects (`CREATE OR REPLACE` arity-change overload semantics — see §2 below), helper coverage gaps, and phantom-column references in close-the-loop templates are OUTSIDE the harness scope. v2.90 apply surfaced 5 brief defects of these other classes. The harness is necessary but not sufficient.
+
 ---
 
 ## Apply ordering (mandatory)
 
 1. **DDL:** create `friction.case_history` + grants + index
-2. **Function patch:** `fn_triage_case` (refactored body + `p_actor` arg)
-3. **Function patches (5 cc-0017d mutation functions):** `triage_case`, `resolve_case`, `reopen_case`, `mark_duplicate`, `record_first_view`
+2. **Function patch:** `fn_triage_case` — **DROP legacy 10-arg signature first**, then CREATE OR REPLACE 11-arg refactored body (see §2 v1.1 doc-patch note for the schema-resolution rationale)
+3. **Function patches (5 cc-0017d mutation functions):** `triage_case`, `resolve_case`, `reopen_case`, `mark_duplicate`, `record_first_view` (signatures byte-stable — no DROP needed)
 4. **Backfill:** single CTE statement, 8 rows expected
 5. **COMMENT statements**
 
@@ -89,7 +91,22 @@ GRANT  SELECT ON friction.case_history TO service_role;
 
 ## Section 2 — fn_triage_case patched body
 
-**Signature change:** adds 11th arg `p_actor text DEFAULT NULL` (signature-compatible — existing callers unaffected).
+**v1.1 doc-patch correction (Defect 3 / L-v2.90-b):**
+
+The v1.0 framing characterised the change as "signature-compatible — existing callers unaffected" because the new 11th argument `p_actor text DEFAULT NULL` allows existing callers passing 10 args (positional or named) to resolve cleanly via the DEFAULT.
+
+**This was wrong at the schema-resolution level.** Two distinctions are required:
+
+1. **Call-resolution compatibility (PRESERVED by DEFAULT NULL):** any caller passing 10 args positionally OR using named-argument syntax resolves to a function with the new 11-arg signature without changing call sites.
+2. **Schema-resolution compatibility (BROKEN by arity change):** PostgreSQL's `CREATE OR REPLACE FUNCTION` matches functions by `(schema, name, argument list)`. Adding an 11th argument creates a NEW function entry (different argument list) — it does NOT replace the legacy 10-arg function. After running `CREATE OR REPLACE FUNCTION friction.fn_triage_case(...11 args...)`, the production database has BOTH signatures co-existing:
+   - the legacy 10-arg `fn_triage_case` with its pre-patch body (no case_history INSERT, no triaged_at/triaged_by writes)
+   - the new 11-arg `fn_triage_case` with the refactored body
+
+   Any 10-arg positional call resolves to the LEGACY function. The patch is defeated for any caller path that doesn't pass the new arg. V-A1 strict signature byte-match surfaces this as a dual-overload condition.
+
+**Required apply pattern:** explicit `DROP FUNCTION IF EXISTS` of the prior 10-arg signature BEFORE the `CREATE OR REPLACE FUNCTION` of the new 11-arg signature. The DROP is the only way to retire the legacy entry from the schema; `CREATE OR REPLACE` alone is insufficient when the argument list changes.
+
+**Signature change:** retires the legacy 10-arg signature; adds an 11-arg signature that adds `p_actor text DEFAULT NULL` as the 11th argument. Call-resolution compatibility is preserved.
 
 **Body refactor:** loads `v_current` first, computes `v_new_triage_state`, conditionally sets `triaged_at`/`triaged_by` on first 'new'→non-'new' transition, INSERTs case_history with `change_kind='compat_legacy_triage'`.
 
@@ -97,6 +114,13 @@ GRANT  SELECT ON friction.case_history TO service_role;
 -- ============================================================
 -- Section 2: fn_triage_case compatibility patch
 -- ============================================================
+
+-- v1.1 doc-patch: explicit DROP of legacy 10-arg signature.
+-- Required because CREATE OR REPLACE FUNCTION with a different argument
+-- list creates a sibling overload, not a replacement. See §2 v1.1 note above.
+DROP FUNCTION IF EXISTS friction.fn_triage_case(
+  uuid, text, text, boolean, text, text, text, timestamptz, text, text
+);
 
 CREATE OR REPLACE FUNCTION friction.fn_triage_case(
   p_case_id              uuid,
@@ -183,6 +207,8 @@ END
 $function$;
 ```
 
+**Apply-time discipline (L-v2.90-b):** in any function patch that changes argument arity, the explicit `DROP FUNCTION IF EXISTS` of the prior signature MUST precede the `CREATE OR REPLACE FUNCTION`. The DROP is not a defensive guard — it is the only mechanism PostgreSQL provides to retire the prior signature when the argument list is changing. Skipping the DROP leaves a silent dual-overload state that V-A1 (or a 7th row in the expected matrix) surfaces.
+
 ---
 
 ## Section 3 — cc-0017d mutation function patches (5 functions)
@@ -192,7 +218,7 @@ Each function's existing logic is preserved byte-stable EXCEPT:
 - Post-UPDATE: `SELECT ... INTO v_after FROM friction."case" WHERE case_id = p_case_id`.
 - Post-UPDATE: INSERT into `friction.case_history` with appropriate `change_kind`.
 - For `record_first_view`: history INSERT skipped on the early-return idempotent path.
-- Function signatures byte-stable across all 5 (L-v2.85-a applied).
+- Function signatures byte-stable across all 5 (L-v2.85-a applied). **No DROP needed for these 5** — argument lists are unchanged, so `CREATE OR REPLACE FUNCTION` correctly replaces the prior body.
 
 ### 3.1 triage_case (change_kind='triage')
 
@@ -663,7 +689,7 @@ COMMENT ON COLUMN friction.case_history.changed_by IS
   'Actor source: operational triage rows = p_actor argument from mutation function; backfill rows = cc-0017e-backfill; compat_legacy_triage rows = COALESCE(p_actor, current_user::text).';
 
 COMMENT ON FUNCTION friction.fn_triage_case(uuid, text, text, boolean, text, text, text, timestamptz, text, text, text) IS
-  'cc-0017e v1.0 compatibility patch. Legacy 10-arg signature preserved + new optional p_actor (11th arg). Body refactored to load v_current first, conditionally set triaged_at/triaged_by on first new->non-new transition, INSERT case_history change_kind=compat_legacy_triage.';
+  'cc-0017e v1.0 compatibility patch. Legacy 10-arg signature retired via explicit DROP; new 11-arg signature with optional p_actor. Body refactored to load v_current first, conditionally set triaged_at/triaged_by on first new->non-new transition, INSERT case_history change_kind=compat_legacy_triage.';
 COMMENT ON FUNCTION friction.triage_case(uuid, text, text, text, timestamptz) IS
   'cc-0017d v1.0 + cc-0017e v1.0 history-INSERT patch. Triages a case to action_decision (act_now/track/defer_intentionally). Idempotent set-once on triaged_at/triaged_by. Writes case_history change_kind=triage.';
 COMMENT ON FUNCTION friction.resolve_case(uuid, text, text) IS

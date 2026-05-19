@@ -5,7 +5,7 @@
 
 All V-checks below are READ-ONLY SQL — they verify post-apply state. Execute via `execute_sql` after migration applies. No mutations.
 
-**Fixture-naming convention (reaffirmed from cc-0017d v1.1):** slash-prefix `cc-0017e/v-d/...` for ALL V-check fixtures. Strict-prefix residue cross-checks use `LIKE 'cc-0017e/%'` patterns. The hyphen-vs-slash mismatch that caused cc-0017d v2.86 Drift 3 is avoided here by adhering to slash-prefix discipline.
+**Fixture-naming convention (v1.1 doc-patch correction):** `cc-0017e-test/...` for ALL V-check fixtures. The pattern MUST match the `friction.purge_test_case` helper regex `^cc-[0-9]{4}[a-z]?-test/`. The earlier v1.0 convention `cc-0017e/v-d/...` was rejected at apply time (v2.90) because the helper regex requires the literal `-test/` suffix segment after the brief code. Slash-prefix discipline preserved; suffix corrected. Strict-prefix residue cross-checks use `LIKE 'cc-0017e-test/%'` patterns. See L-v2.90-c.
 
 ---
 
@@ -40,6 +40,8 @@ ORDER BY p.proname;
 | triage_case | p_case_id uuid, p_action_decision text, p_actor text, p_effort_level text, p_next_review_at timestamptz | TABLE(out_case_id uuid, out_triaged_at timestamptz, out_action_decision text, out_triage_state text) | true |
 
 L-v2.85-a discipline: signature deviation = STRICT FAIL.
+
+**v1.1 doc-patch note:** the expected matrix MUST be exactly 6 rows. If the query returns 7 rows (i.e., both a 10-arg and an 11-arg `fn_triage_case`), this is a Defect-3-class dual-overload condition surfaced by L-v2.90-b. Apply Path B-prime: `DROP FUNCTION IF EXISTS friction.fn_triage_case(uuid, text, text, boolean, text, text, text, timestamptz, text, text);` then re-run V-A1. See migration-sql.md §2 for the explicit DROP-before-CREATE pattern required by v1.1.
 
 ### V-A2 — fn_triage_case body contains triaged_at/triaged_by write logic (post-patch)
 
@@ -115,7 +117,7 @@ ORDER BY grantee, privilege_type;
 | postgres | UPDATE |
 | service_role | SELECT |
 
-NO grants for `authenticated`, `anon`, or `PUBLIC`. Cc-0017c lockdown pattern.
+NO grants for `authenticated`, `anon`, or `PUBLIC` on case_history. Cc-0017c lockdown pattern extended to the new shadow table. (Pre-existing SELECT grants on friction reference/config tables — `category`, `emission_rule`, `emission_rule_history`, `experiment_run`, `notification_policy`, `source` — are intentional and predate cc-0017c. They do NOT apply to case + event + emit_error + case_history. See risks-and-grants.md §3 for the narrowed lockdown verification scope.)
 
 ### V-C2 — service_role cannot directly INSERT into case_history
 
@@ -131,7 +133,12 @@ Verification via attempted DML — exercised in V-E negative tests (see V-E5).
 
 Note: cc-0017d v1.1 Drift 1 established that `emit_event`'s emission_rule may reject manual-source test-prefix payloads. Fallback: direct INSERT into friction.event followed by trigger-driven case promotion, OR direct INSERT into friction."case" if event-promotion path is undesired for V-D scope.
 
-**Recommended for cc-0017e V-D:** direct INSERT into friction."case" via service_role bypass (service_role has SELECT-only on case; use postgres-owner role via apply_migration for the seed). This avoids the emission_rule CHECK trap.
+**Recommended for cc-0017e V-D:** direct INSERT into friction."case" via postgres-owner role (apply_migration runs as postgres owner). This avoids the emission_rule CHECK trap.
+
+**v1.1 doc-patch corrections (L-v2.90-a + L-v2.90-c):**
+- `severity = 'info'` — `case_severity_check` enum accepts `{info, warn, critical}`. The earlier v1.0 value `'low'` violates the CHECK constraint (Defect 1 surfaced at v2.90 apply).
+- `category = 'unclassified'` — `case_category_fkey` references `friction.category` (6 valid codes: client_commitment, content_quality, external_dependency, operator_friction, pipeline_integrity, unclassified). The earlier v1.0 value `'cc-0017e/v-d/category'` violates the FK (Defect 2 surfaced at v2.90 apply).
+- Fixture titles use `cc-0017e-test/...` form to match `purge_test_case` regex `^cc-[0-9]{4}[a-z]?-test/` (Defect 4 surfaced at v2.90 apply; L-v2.90-c).
 
 ```sql
 -- V-D fixture seed (run via apply_migration as postgres owner)
@@ -141,9 +148,9 @@ INSERT INTO friction."case" (
 )
 VALUES (
   gen_random_uuid(),
-  'cc-0017e/v-d/fixture-001',
+  'cc-0017e-test/fixture-001',
   now(), now(), 1,
-  'low', 'cc-0017e/v-d/category', 'cc-0017e/v-d/problem-key-001',
+  'info', 'unclassified', 'cc-0017e-test/problem-key-001',
   'new', now(), now()
 )
 RETURNING case_id;  -- capture into v_d_case_id for subsequent V-D tests
@@ -156,7 +163,7 @@ RETURNING case_id;  -- capture into v_d_case_id for subsequent V-D tests
 SELECT * FROM friction.triage_case(
   p_case_id         := '<v_d_case_id>',
   p_action_decision := 'act_now',
-  p_actor           := 'cc-0017e/v-d/actor-1'
+  p_actor           := 'cc-0017e-test/actor-1'
 );
 
 -- Step 2: verify history row exists
@@ -177,7 +184,7 @@ WHERE case_id = '<v_d_case_id>'
 SELECT * FROM friction.resolve_case(
   p_case_id         := '<v_d_case_id>',
   p_resolution_kind := 'acted_on',
-  p_actor           := 'cc-0017e/v-d/actor-1'
+  p_actor           := 'cc-0017e-test/actor-1'
 );
 
 SELECT change_kind, (after_row->>'resolution_kind') AS after_resolution
@@ -192,7 +199,7 @@ Expected: 1 row. after_resolution='acted_on'.
 ```sql
 SELECT * FROM friction.reopen_case(
   p_case_id := '<v_d_case_id>',
-  p_actor   := 'cc-0017e/v-d/actor-1'
+  p_actor   := 'cc-0017e-test/actor-1'
 );
 
 SELECT change_kind, (after_row->>'resolved_at') AS after_resolved
@@ -208,13 +215,13 @@ Expected: 1 row. after_resolved=null (resolved_at cleared by reopen).
 -- First call: should write history
 SELECT * FROM friction.record_first_view(
   p_case_id := '<v_d_case_id>',
-  p_actor   := 'cc-0017e/v-d/actor-1'
+  p_actor   := 'cc-0017e-test/actor-1'
 );
 
 -- Second call: idempotent, should NOT write history
 SELECT * FROM friction.record_first_view(
   p_case_id := '<v_d_case_id>',
-  p_actor   := 'cc-0017e/v-d/actor-1'
+  p_actor   := 'cc-0017e-test/actor-1'
 );
 
 SELECT count(*) AS first_view_history_count
@@ -230,16 +237,16 @@ Expected: count = 1 (exactly one history row despite two function calls).
 -- Seed predecessor (run via apply_migration)
 INSERT INTO friction."case" (case_id, case_title, first_seen_at, last_seen_at, event_count,
                               severity, category, problem_key, triage_state, created_at, updated_at)
-VALUES (gen_random_uuid(), 'cc-0017e/v-d/fixture-002', now(), now(), 1,
-        'low', 'cc-0017e/v-d/category', 'cc-0017e/v-d/problem-key-002',
+VALUES (gen_random_uuid(), 'cc-0017e-test/fixture-002', now(), now(), 1,
+        'info', 'unclassified', 'cc-0017e-test/problem-key-002',
         'new', now(), now())
 RETURNING case_id;  -- v_d_predecessor_id
 
 -- Need a third 'open' case to mark as duplicate
 INSERT INTO friction."case" (case_id, case_title, first_seen_at, last_seen_at, event_count,
                               severity, category, problem_key, triage_state, created_at, updated_at)
-VALUES (gen_random_uuid(), 'cc-0017e/v-d/fixture-003', now(), now(), 1,
-        'low', 'cc-0017e/v-d/category', 'cc-0017e/v-d/problem-key-003',
+VALUES (gen_random_uuid(), 'cc-0017e-test/fixture-003', now(), now(), 1,
+        'info', 'unclassified', 'cc-0017e-test/problem-key-003',
         'new', now(), now())
 RETURNING case_id;  -- v_d_duplicate_id
 
@@ -247,7 +254,7 @@ RETURNING case_id;  -- v_d_duplicate_id
 SELECT * FROM friction.mark_duplicate(
   p_case_id             := '<v_d_duplicate_id>',
   p_predecessor_case_id := '<v_d_predecessor_id>',
-  p_actor               := 'cc-0017e/v-d/actor-1'
+  p_actor               := 'cc-0017e-test/actor-1'
 );
 
 SELECT change_kind, (after_row->>'triage_state') AS after_state
@@ -263,15 +270,15 @@ Use a 4th V-D fixture:
 ```sql
 INSERT INTO friction."case" (case_id, case_title, first_seen_at, last_seen_at, event_count,
                               severity, category, problem_key, triage_state, created_at, updated_at)
-VALUES (gen_random_uuid(), 'cc-0017e/v-d/fixture-004', now(), now(), 1,
-        'low', 'cc-0017e/v-d/category', 'cc-0017e/v-d/problem-key-004',
+VALUES (gen_random_uuid(), 'cc-0017e-test/fixture-004', now(), now(), 1,
+        'info', 'unclassified', 'cc-0017e-test/problem-key-004',
         'new', now(), now())
 RETURNING case_id;  -- v_d_compat_id
 
 SELECT friction.fn_triage_case(
   p_case_id      := '<v_d_compat_id>',
   p_triage_state := 'acknowledged',
-  p_actor        := 'cc-0017e/v-d/actor-1'
+  p_actor        := 'cc-0017e-test/actor-1'
 );
 
 SELECT change_kind, (after_row->>'triaged_at') IS NOT NULL AS triaged_at_set,
@@ -280,7 +287,7 @@ FROM friction.case_history
 WHERE case_id = '<v_d_compat_id>' AND change_kind = 'compat_legacy_triage';
 ```
 
-Expected: 1 row. triaged_at_set=true, triaged_by='cc-0017e/v-d/actor-1'.
+Expected: 1 row. triaged_at_set=true, triaged_by='cc-0017e-test/actor-1'.
 
 ---
 
@@ -418,7 +425,7 @@ Expected: triaged_at_delta_correct = 8 AND triaged_by_delta_correct = 8.
 >
 > Every brief introducing mutation functions OR shadow tables MUST include this V-Z section, verifying post-apply on the live database:
 >
-> 1. **V-Z1 (strict-prefix residue):** zero rows in target tables match the brief's fixture-prefix pattern (slash-prefix convention). Confirms V-D test fixtures fully purged.
+> 1. **V-Z1 (strict-prefix residue):** zero rows in target tables match the brief's fixture-prefix pattern. The fixture-prefix MUST conform to `friction.purge_test_case` helper regex `^cc-[0-9]{4}[a-z]?-test/` (per L-v2.90-c). Confirms V-D test fixtures fully purged.
 > 2. **V-Z2 (baseline count preservation):** baseline row counts in all affected tables equal the pre-apply baseline (after subtracting expected backfill / DDL-inserted rows). Confirms migration did not silently delete or duplicate non-fixture rows.
 > 3. **V-Z3 (shadow-table operation alignment):** for briefs introducing or writing to a shadow table, the count of shadow-table rows added during V-D positive smoke equals the count of V-D positive operations exercised. Confirms function patches actually emit the audit row they claim to emit; catches silent INSERT failures from CHECK mismatches, permissions gaps, or exception-swallowed code paths.
 >
@@ -429,18 +436,36 @@ Expected: triaged_at_delta_correct = 8 AND triaged_by_delta_correct = 8.
 ```sql
 SELECT
   (SELECT count(*) FROM friction."case"
-     WHERE case_title LIKE 'cc-0017e/%'
-        OR category LIKE 'cc-0017e/%'
-        OR problem_key LIKE 'cc-0017e/%') AS case_residue,
+     WHERE case_title LIKE 'cc-0017e-test/%'
+        OR category LIKE 'cc-0017e-test/%'
+        OR problem_key LIKE 'cc-0017e-test/%') AS case_residue,
   (SELECT count(*) FROM friction.case_history
-     WHERE changed_by LIKE 'cc-0017e/v-d/%') AS history_residue,
+     WHERE changed_by LIKE 'cc-0017e-test/%') AS history_residue,
   (SELECT count(*) FROM friction.emit_error
-     WHERE source_event_id LIKE 'cc-0017e/%') AS emit_error_residue;
+     WHERE source_event_id LIKE 'cc-0017e-test/%') AS emit_error_residue;
 ```
 
-Expected: all three = 0 AFTER V-D fixture cleanup via friction.purge_test_case('cc-0017e/v-d/%').
+Expected: all three = 0 AFTER V-D fixture cleanup.
 
-Note: `friction.purge_test_case` (cc-0017d L-v2.85-d realised) is the canonical purge helper.
+**v1.1 cleanup-path note (Defect 5 / L-v2.90-d):** `friction.purge_test_case('cc-0017e-test/%')` is the canonical purge helper per cc-0017d L-v2.85-d. HOWEVER, the helper realised v2.86 deletes from `friction.event` + `friction.case` + `friction.emit_error` only — it does NOT delete from `friction.case_history`. Since `case_history.case_id` is FK ON DELETE RESTRICT, calling the helper on any case with case_history rows FK-fails at the case DELETE step. Until the helper is extended (future Wave candidate), use the explicit dependency-ordered DELETE pattern (precedent: cc-0017e v2.90 apply session migration `cc_0017e_vcheck_audit_cleanup`):
+
+```sql
+-- 1. Delete case_history rows first (FK RESTRICT requires this precede case DELETE)
+DELETE FROM friction.case_history
+WHERE case_id IN (
+  SELECT case_id FROM friction."case" WHERE case_title LIKE 'cc-0017e-test/%'
+);
+
+-- 2. Defensive event + emit_error cleanup matching the helper pattern
+DELETE FROM friction.event
+WHERE source_event_id LIKE 'cc-0017e-test/%' OR observation_text LIKE 'cc-0017e-test/%';
+
+DELETE FROM friction.emit_error
+WHERE source_event_id LIKE 'cc-0017e-test/%' OR raw_payload::text LIKE '%cc-0017e-test/%';
+
+-- 3. Delete the V-D fixture cases
+DELETE FROM friction."case" WHERE case_title LIKE 'cc-0017e-test/%';
+```
 
 ### V-Z2 — baseline count preservation
 
@@ -506,11 +531,13 @@ ORDER BY change_kind;
 
 Total pre-cleanup: 14. **V-Z3 PASS condition: pre-cleanup totals match operation counts exactly.** Drift here = silent INSERT failure inside one of the mutation function patches.
 
+**v1.1 note (operational addendum):** if the apply session performs additional ad-hoc operations beyond the documented V-D1–V-D6 (e.g., a compat smoke on legacy 10-arg positional call shape), the pre-cleanup expected count increases by the number of such operations. Reconcile transparently; each additional operation writes its own case_history row.
+
 ---
 
 ## V-check execution order
 
-1. V-A1 (signature byte-match) — abort if FAIL before any further checks
+1. V-A1 (signature byte-match) — abort if FAIL before any further checks (apply Path B-prime per v1.1 if dual-overload Defect-3 condition surfaces; see migration-sql.md §2)
 2. V-A2 (fn_triage_case body recognition)
 3. V-B1, V-B2 (security attributes)
 4. V-C1 (grant matrix)
@@ -519,7 +546,7 @@ Total pre-cleanup: 14. **V-Z3 PASS condition: pre-cleanup totals match operation
 7. V-D1–V-D6 (positive smoke)
 8. V-E1–V-E8 (negative tests)
 9. V-Z3 (shadow-table alignment — pre-cleanup count snapshot)
-10. V-D fixture cleanup via friction.purge_test_case('cc-0017e/v-d/%')
+10. V-D fixture cleanup — explicit dependency-ordered DELETE pattern (see V-Z1 v1.1 note); `friction.purge_test_case('cc-0017e-test/%')` is NOT yet case_history-aware (Defect 5 / L-v2.90-d)
 11. V-Z1, V-Z2 (residue + baseline) — post-cleanup
 12. V-Z3 (post-cleanup count snapshot — 8 backfill rows survive)
 
@@ -531,13 +558,13 @@ Any strict FAIL = brief-level disposition (Path A re-author OR Path B-prime inli
 
 | V-check | Strict FAIL action |
 |---|---|
-| V-A1 | ABORT — substitution-class drift; fix migration-sql.md |
+| V-A1 | Path B-prime if dual-overload (Defect 3 / L-v2.90-b) — `DROP FUNCTION` legacy signature, re-run; otherwise ABORT (substitution-class drift; fix migration-sql.md) |
 | V-A2 | ABORT — body did not patch correctly; re-apply |
 | V-B1–B2 | ABORT — security attribute regression |
 | V-C1 | Path B-prime — inline GRANT/REVOKE correction migration |
 | V-D1–D6 | ABORT — function patch broken |
 | V-E1–E8 | PK escalation — security/validation regression |
 | V-F1–F4 | Path B-prime — backfill correction; investigate root cause |
-| V-Z1 | Path B-prime — cleanup migration v2 (cc-0017d pattern) |
+| V-Z1 | Path B-prime — explicit dependency-ordered DELETE pattern (see v1.1 note) |
 | V-Z2 | PK escalation — baseline count drift |
 | V-Z3 | PK escalation — silent INSERT failure in patch surface (CONVENTION GAP) |
