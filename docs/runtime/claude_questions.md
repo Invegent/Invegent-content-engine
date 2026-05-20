@@ -215,6 +215,42 @@ Under Option C: 2 friction.event rows already emitted (`priority-1/true-stuck-in
 
 ---
 
+## Q-nightly-health-check-v1-005
+
+Context:
+Executing `nightly-health-check-v1` brief v3.0 on 2026-05-20T16:02:37Z (Cowork run, Tier 0, second v3.0 scheduled fire after Q-004 resolution on 2026-05-20 Sydney). All 14 brief queries ran verbatim with 0 schema-drift fallbacks. Section 10 generated 7 P1+P2 bullets (5 P1 true-stuck clusters + 2 P2: `zero-counts-pub-published-30m`, `s17-escalation-rate`). Built the JSONB findings array per Section 12.2 schema and called `friction.fn_emit_health_check_findings('nightly-health-check-v1/2026-05-20T160237Z', 'docs/audit/health/2026-05-20.md', findings)`.
+
+Function returned `{success_count: 5, failure_count: 0, skipped_count: 2, run_id: 'nightly-health-check-v1/2026-05-20T160237Z'}`. Two divergences from brief v3.0 Section 12.3:
+
+1. **Return shape drift.** Brief v3.0 §12.3 documents the function as returning "`success_count`, `failure_count`, and `run_id`". Actual return on 2026-05-20 includes a fourth field `skipped_count`. Brief §12.5 "Error handling" only enumerates "function call itself failed" and "function returned but count mismatch" — no third case for `skipped_count > 0`.
+
+2. **Per-finding skip semantics.** The 5 P1 findings (problem_key shape `true-stuck-{platform}-{client_slug}`) emitted to `friction.event` cleanly. The 2 P2 findings (problem_keys `zero-counts-pub-published-30m` and `s17-escalation-rate`) were skipped and routed to `friction.emit_error` with:
+   - `error_code = 'CONDITION-KEY-UNRESOLVED'`
+   - `error_message = 'condition_key not derivable: no explicit field on finding and problem_key {key} does not match known patterns'`
+
+   This indicates the function's `problem_key`→`condition_key` pattern matcher (added between brief v3.0 lock 2026-05-15 and 2026-05-20, per cc-0014 verification expectations) only recognises the `true-stuck-{platform}-{slug}` shape; the brief's other documented P2 finding_id patterns (`zero-counts-{metric}`, `s17-escalation-rate`, `stuck-items-dilution`, `failed-images-present`) are not in the recogniser. Brief Section 12.2 JSONB schema does NOT include a `condition_key` field — so the function has no override input from the finding payload.
+
+Brief §12.4 says "If `success_count != number_of_P1_P2_bullets_in_Section_10`, do not edit Section 10 — write the discrepancy to the state file as a brief-author defect for next-day review." Cowork applied this default: kept Section 10 unchanged (7 bullets), updated Section 11 footer with `success_count=5 failure_count=0 skipped_count=2`, logged this Q-005 as the next-day review item. Markdown stands as canonical artefact.
+
+Note: this is **function-contract drift**, not Cowork bug and not strictly brief-author bug. The function evolved (added skipped_count + condition_key pattern matching) after the brief was locked. Q-005 is the resolution channel.
+
+Question:
+How should the brief contract + function contract be reconciled so future runs emit all P1+P2 findings to `friction.event` rather than splitting some into `friction.emit_error`?
+
+Options:
+A. Patch brief v3.0 → v3.1 Section 12.2 JSONB schema to require an explicit `condition_key` field per finding (e.g. `zero_count_metric_missing` for `zero-counts-*`, `s17_escalation_rate_breach` for `s17-escalation-rate`). Brief writer controls mapping; function consumes verbatim.
+B. Patch `friction.fn_emit_health_check_findings` (server-side) to extend its `problem_key`→`condition_key` pattern matcher to recognise all v3.0 brief finding_id shapes: `zero-counts-{ai-job|slot-fill-attempt|post-publish|canonical-content-body|pub-published-30m}`, `s17-escalation-rate`, `s17-failure-rate`, `stuck-items-dilution`, `failed-images-present`, `cron-consecutive-failures-{jobname}`, `worker-http-errors`, `pipeline-snapshot-stale`. Function evolves; brief unchanged.
+C. Accept the skip behaviour as cosmetic — update brief Section 12.4 success criteria to compute "matches Section 10" as `success_count + skipped_count == bullet count`. Skipped findings are still observable via `friction.emit_error` and the Day-19 audit can reconcile from there. No emission flow change.
+D. Re-categorise the 2 P2 finding shapes (`zero-counts-{metric}`, `s17-*`) as markdown-only (P3-equivalent for emission), and only emit P1 (and any P2 that has server-side pattern support). Brief Section 10 still tabulates them; brief Section 12.2 JSONB array excludes them; emission success_count would have been 5 of 5 P1, with the P2s purely informational like P3 today.
+
+Default:
+Proceeded with the contract-drift accommodation: kept Section 10 unchanged (per brief §12.4), updated Section 11 footer with `success_count=5 failure_count=0 skipped_count=2`, logged this question. No retry; no re-edit of `docs/audit/health/2026-05-20.md` beyond the footer line.
+
+Impact if wrong:
+Under Option A: brief v3.1 patch + retroactive `condition_key` on this run's 2 P2 findings (re-emit via direct INSERT or function re-call — function may need an idempotency-relaxing mode for re-fires); next-day brief produces all 7 emissions cleanly. Under Option B: function patch + apply_migration (Tier 2 work; out of Cowork scope); brief unchanged; next-day brief produces all 7 emissions cleanly. Under Option C: trivial brief-text edit; no data change; future runs produce same `success + skipped = N` shape and friction.emit_error fills with cosmetic skips. Under Option D: brief Section 10 still surfaces P2 to humans but emission excludes them — IOL signal scope narrows to P1-only, which simplifies cc-0014 Day-19 audit but loses two signal classes. **No re-emission required for 2026-05-20 under any option** — markdown is canonical and the 5 P1 emissions stand correctly.
+
+---
+
 ## Closed (resolution refs)
 
 When a question is resolved, append a resolution block here referencing the original Q-ID. Do NOT move the original question entry from the Open section — leave it where it was written. The resolution block here is a back-pointer.
