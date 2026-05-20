@@ -1,13 +1,18 @@
 # cc-0016 — Friction Capture Evidence Attachments
 
 **Brief ID:** cc-0016
-**Version:** v1.0
-**Status:** AUTHORED, PENDING_EXECUTION
-**Authored:** 2026-05-16 Sydney
-**Author:** Chat-side Claude with PK approval (session v2.76)
+**Version:** v1.1
+**Status:** AUTHORED, PENDING_EXECUTION. Stage A APPLIED v2.97. Stage C patched v1.1 2026-05-20 for cc-0017b pipeline compatibility (see Stage C patch history).
+**Authored:** 2026-05-16 Sydney (v1.0); patched 2026-05-20 Sydney (v1.1)
+**Author:** Chat-side Claude with PK approval (session v2.76); patch by CCD with PK directive (session v2.97)
 **Strategic anchor:** Extends cc-0014. Addresses the "words are a lossy codec for visual friction" gap exposed in v2.76 first-week capture pattern.
 **Depends on:** cc-0014 complete + Day-19 verdict resolved. Does not depend on cc-0015 (parallel-executable).
 **Schema:** modifies `friction.event` (adds attachment metadata columns). New Supabase Storage bucket.
+
+## Version history
+
+- **v1.0** (2026-05-16 Sydney) — initial authoring (session v2.76).
+- **v1.1** (2026-05-20 Sydney) — Stage C patched after v2.97 preflight found cc-0017b pipeline drift. The original v1.0 Stage C proposed a direct `INSERT INTO friction.event` from `fn_emit_manual_event`, which was correct against the cc-0014 production state but would regress the cc-0017b unified emit pipeline (delegation through `friction.emit_event`) that landed during Wave 0a-0e (v2.81-v2.91). v1.1 rewrites Stage C to **extend `friction.emit_event` with a `p_attachments` parameter** (preserving the canonical pipeline) and **route `fn_emit_manual_event` through the extended `emit_event`** (preserving dedupe, case attachment via `fn_attach_or_create_inner_v1`, emission rule routing, source/condition validation, idempotent replay, and dynamic_context capture). Overload behaviour resolved explicitly via `DROP FUNCTION` of the pre-patch signatures before `CREATE`. Rollback section rewritten with the captured production-safe function bodies. Stage A is unchanged by this patch (already APPLIED v2.97).
 
 ---
 
@@ -251,66 +256,333 @@ Remove `FrictionAttachmentPicker` component, revert `FrictionFAB` to cc-0014 tex
 
 ---
 
-## 5. Stage C — Extended emit function
+## 5. Stage C — Extended emit function (PATCHED v1.1 — 2026-05-20)
 
 ### Scope
 
-Extend `friction.fn_emit_manual_event` to accept attachments. Maintain backward compatibility (existing callers without attachments still work).
+**Path X (selected v1.1):** Extend the cc-0017b unified emit pipeline by adding a `p_attachments` parameter to `friction.emit_event` (which becomes a 13-arg signature). `friction.fn_emit_manual_event` is rewritten to delegate through the extended `emit_event` (rather than do a direct INSERT as v1.0 proposed). This preserves dedupe via `fn_compute_dedupe_fingerprint_v1`, case attachment via `fn_attach_or_create_inner_v1`, emission rule routing, source/condition FK validation, idempotent replay on `unique_violation`, and `dynamic_context` capture — all behaviour that landed in cc-0017b Wave 0b and that the v1.0 brief was unaware of.
+
+The function-layer attachment validation (array-shape, max-3, per-item `storage_path` + `mime_type`, MIME whitelist) lives at the `fn_emit_manual_event` layer for manual captures; a minimal array-shape + max-3 invariant is also enforced inside `emit_event` so that any future direct caller of `emit_event` with a non-conforming `p_attachments` is rejected at the canonical pipeline.
+
+**Overload behaviour resolved explicitly:** the migration `DROP`s the existing pre-patch signatures (`friction.emit_event(12 args)` and `friction.fn_emit_manual_event(6 args)`) BEFORE creating the new signatures. Without these DROPs, PostgreSQL would keep both old and new as separate overloads, and the live dashboard's 6-arg FAB calls would continue resolving to the OLD `fn_emit_manual_event` — bypassing attachment support entirely. DROP-then-CREATE ensures a single function exists at each name post-apply, with the new behaviour reached via parameter-default resolution for the 6-arg call shape that the live FAB uses today.
 
 ### Backend additions
 
 Migration name: `cc_0016_c_emit_manual_event_with_attachments`.
 
 ```sql
+-- =============================================================================
+-- cc-0016 Stage C — Path X — extend cc-0017b unified emit pipeline
+-- =============================================================================
+--
+-- Step 1: DROP pre-patch fn_emit_manual_event (6-arg).
+--   Required because the new 8-arg function is treated by PostgreSQL as a
+--   DIFFERENT overload, not a replacement. Without this DROP, both signatures
+--   would coexist and the live dashboard FAB (6-arg call shape) would continue
+--   calling the OLD 6-arg function and miss attachment support.
+
+DROP FUNCTION friction.fn_emit_manual_event(
+  text, text, text, text, jsonb, text
+);
+
+-- Step 2: DROP pre-patch emit_event (12-arg).
+--   Same overload-coexistence rationale — adding p_attachments creates a new
+--   13-arg overload unless we drop the 12-arg first.
+
+DROP FUNCTION friction.emit_event(
+  text, text, text, text, timestamptz, jsonb, text, jsonb, text, text, text, jsonb
+);
+
+-- Step 3: CREATE the new 13-arg friction.emit_event with p_attachments.
+--   Body is the cc-0017b production source captured at HEAD 307822b
+--   (v2.97 sync close, 2026-05-20) plus two additions:
+--     * p_attachments parameter (default '[]'::jsonb)
+--     * attachments column populated in INSERT INTO friction.event
+--   All other behaviour preserved verbatim:
+--     * input validation (p_source / p_condition_key / p_problem_key /
+--       p_source_event_id / p_observation_text / p_observed_at / p_reported_by /
+--       p_severity_override / p_category_override)
+--     * set_config('friction.emit_event_active', 'true', true)
+--     * friction.source FK lookup (raises if inactive)
+--     * friction.emission_rule lookup (raises if no enabled rule)
+--     * case_policy = 'suppress' short-circuit (writes to friction.emit_error,
+--       returns suppressed_by_rule)
+--     * severity/category override merging
+--     * v_final_context construction (severity_override + category_override
+--       provenance)
+--     * dedupe via friction.fn_compute_dedupe_fingerprint_v1
+--     * unique_violation EXCEPTION → idempotent_replay return
+--     * friction.fn_attach_or_create_inner_v1 case attachment
+--     * UPDATE with qualified WHERE (the "THE FIX" preserved)
+
+CREATE OR REPLACE FUNCTION friction.emit_event(
+  p_source              text,
+  p_condition_key       text,
+  p_problem_key         text,
+  p_source_event_id     text,
+  p_observed_at         timestamptz,
+  p_related_object      jsonb,
+  p_observation_text    text,
+  p_raw_payload         jsonb,
+  p_reported_by         text  DEFAULT 'system',
+  p_severity_override   text  DEFAULT NULL,
+  p_category_override   text  DEFAULT NULL,
+  p_dynamic_context     jsonb DEFAULT NULL,
+  p_attachments         jsonb DEFAULT '[]'::jsonb   -- NEW (13th arg)
+)
+RETURNS TABLE(event_id uuid, case_id uuid, case_disposition text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'friction', 'public'
+AS $$
+DECLARE
+  v_source_row       friction.source%ROWTYPE;
+  v_rule             friction.emission_rule%ROWTYPE;
+  v_dedupe           text;
+  v_severity         text;
+  v_category         text;
+  v_category_source  text;
+  v_event_id         uuid;
+  v_case_id          uuid;
+  v_disposition      text;
+  v_inner            RECORD;
+  v_final_context    jsonb;
+  v_rule_default_sev text;
+  v_rule_default_cat text;
+BEGIN
+  -- Input validation (preserved verbatim from cc-0017b production)
+  IF p_source IS NULL OR length(trim(p_source)) = 0 THEN
+    RAISE EXCEPTION 'emit_event: p_source is required' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_condition_key IS NULL OR length(trim(p_condition_key)) = 0 THEN
+    RAISE EXCEPTION 'emit_event: p_condition_key is required' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_problem_key IS NULL OR length(trim(p_problem_key)) = 0 THEN
+    RAISE EXCEPTION 'emit_event: p_problem_key is required' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_source_event_id IS NULL OR length(trim(p_source_event_id)) = 0 THEN
+    RAISE EXCEPTION 'emit_event: p_source_event_id is required (idempotency key)' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_observation_text IS NULL OR length(trim(p_observation_text)) < 5 THEN
+    RAISE EXCEPTION 'emit_event: p_observation_text required and must be >= 5 characters' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_observed_at IS NULL THEN
+    RAISE EXCEPTION 'emit_event: p_observed_at is required' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_observed_at > now() + interval '5 minutes' THEN
+    RAISE EXCEPTION 'emit_event: p_observed_at is in the future (clock skew?). value=%, now=%', p_observed_at, now()
+      USING ERRCODE = 'P0001';
+  END IF;
+  IF p_reported_by IS NULL OR p_reported_by NOT IN ('system','pk','client','vendor','unknown') THEN
+    RAISE EXCEPTION 'emit_event: p_reported_by must be one of system/pk/client/vendor/unknown; got %', p_reported_by
+      USING ERRCODE = 'P0001';
+  END IF;
+  IF p_severity_override IS NOT NULL AND p_severity_override NOT IN ('info','warn','critical') THEN
+    RAISE EXCEPTION 'emit_event: p_severity_override must be info/warn/critical or NULL; got %', p_severity_override
+      USING ERRCODE = 'P0001';
+  END IF;
+  IF p_category_override IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM friction.category
+       WHERE category_code = p_category_override AND is_active = true
+    ) THEN
+      RAISE EXCEPTION 'emit_event: p_category_override % is not an active friction.category code', p_category_override
+        USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+
+  -- NEW v1.1: attachments shape validation (array + max-3 invariant).
+  -- Per-item validation lives in friction.fn_emit_manual_event for the manual
+  -- path. Direct emit_event callers (cron emitters, triggers) typically pass
+  -- attachments='[]' via the default; here we enforce only the canonical-shape
+  -- invariant so any direct caller with a non-conforming p_attachments fails
+  -- fast at the pipeline.
+  IF jsonb_typeof(p_attachments) != 'array' THEN
+    RAISE EXCEPTION 'emit_event: p_attachments must be a JSON array' USING ERRCODE = 'P0001';
+  END IF;
+  IF jsonb_array_length(p_attachments) > 3 THEN
+    RAISE EXCEPTION 'emit_event: attachments limited to 3 per event' USING ERRCODE = 'P0001';
+  END IF;
+
+  PERFORM set_config('friction.emit_event_active', 'true', true);
+
+  SELECT * INTO v_source_row FROM friction.source
+   WHERE source_code = p_source AND is_active = true;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'emit_event: friction.source code % not found or inactive', p_source
+      USING ERRCODE = 'P0001',
+            HINT    = 'Register the source via INSERT INTO friction.source before emitting.';
+  END IF;
+
+  SELECT * INTO v_rule FROM friction.emission_rule
+   WHERE source = p_source AND condition_key = p_condition_key AND enabled = true;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'emit_event: no enabled emission_rule for (source=%, condition_key=%)',
+                    p_source, p_condition_key
+      USING ERRCODE = 'P0001',
+            HINT    = 'INSERT a row into friction.emission_rule before emitting under this condition_key.';
+  END IF;
+
+  IF v_rule.case_policy = 'suppress' THEN
+    BEGIN
+      INSERT INTO friction.emit_error
+        (source, source_event_id, error_message, error_code, raw_payload, emitter_version)
+      VALUES (
+        p_source, p_source_event_id,
+        format('emit_event: emission_rule.case_policy=suppress for (source=%s, condition_key=%s); event not written',
+               p_source, p_condition_key),
+        'POLICY-SUPPRESS',
+        COALESCE(p_raw_payload, '{}'::jsonb),
+        'cc-0017b-v1.0'
+      );
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    RETURN QUERY SELECT NULL::uuid, NULL::uuid, 'suppressed_by_rule'::text;
+    RETURN;
+  END IF;
+
+  v_rule_default_sev := COALESCE(v_rule.default_severity, v_source_row.default_severity);
+  v_rule_default_cat := COALESCE(v_rule.default_category_code, v_source_row.default_category_code);
+
+  v_severity := COALESCE(p_severity_override, v_rule_default_sev);
+  v_category := COALESCE(p_category_override, v_rule_default_cat);
+
+  v_category_source := CASE
+    WHEN p_reported_by = 'pk' AND p_category_override IS NOT NULL THEN 'manual_at_capture'
+    WHEN p_category_override IS NOT NULL                          THEN 'category_override'
+    ELSE                                                              'emitter_default'
+  END;
+
+  v_final_context := COALESCE(p_dynamic_context, '{}'::jsonb);
+
+  IF p_severity_override IS NOT NULL THEN
+    v_final_context := v_final_context || jsonb_build_object(
+      'severity_override', jsonb_build_object(
+        'applied',        p_severity_override,
+        'rule_default',   v_rule.default_severity,
+        'source_default', v_source_row.default_severity,
+        'effective_was',  v_rule_default_sev
+      )
+    );
+  END IF;
+
+  IF p_category_override IS NOT NULL THEN
+    v_final_context := v_final_context || jsonb_build_object(
+      'category_override', jsonb_build_object(
+        'applied',        p_category_override,
+        'rule_default',   v_rule.default_category_code,
+        'source_default', v_source_row.default_category_code,
+        'effective_was',  v_rule_default_cat
+      )
+    );
+  END IF;
+
+  IF v_final_context = '{}'::jsonb THEN v_final_context := NULL; END IF;
+
+  v_dedupe := friction.fn_compute_dedupe_fingerprint_v1(p_source, p_problem_key, p_related_object);
+
+  BEGIN
+    INSERT INTO friction.event (
+      event_id, source, source_event_id, observed_at,
+      severity, category, category_source, reported_by,
+      problem_key, observation_text, related_object, raw_payload,
+      dedupe_fingerprint, dynamic_context, case_id,
+      attachments                                  -- NEW v1.1
+    )
+    VALUES (
+      gen_random_uuid(), p_source, p_source_event_id, p_observed_at,
+      v_severity, v_category, v_category_source, p_reported_by,
+      p_problem_key, p_observation_text, p_related_object, p_raw_payload,
+      v_dedupe, v_final_context, NULL,
+      COALESCE(p_attachments, '[]'::jsonb)         -- NEW v1.1
+    )
+    RETURNING friction.event.event_id INTO v_event_id;
+
+  EXCEPTION WHEN unique_violation THEN
+    SELECT e.event_id, e.case_id INTO v_event_id, v_case_id
+    FROM friction.event e
+    WHERE e.source = p_source AND e.source_event_id = p_source_event_id;
+    v_disposition := 'idempotent_replay';
+    RETURN QUERY SELECT v_event_id, v_case_id, v_disposition;
+    RETURN;
+  END;
+
+  SELECT * INTO v_inner FROM friction.fn_attach_or_create_inner_v1(
+    v_dedupe, p_observed_at, v_severity, v_category, p_problem_key, p_observation_text
+  );
+  v_case_id     := v_inner.case_id;
+  v_disposition := v_inner.disposition;
+
+  -- THE FIX: qualify event_id in WHERE clause to disambiguate from RETURNS TABLE OUT param
+  UPDATE friction.event SET case_id = v_case_id WHERE friction.event.event_id = v_event_id;
+
+  RETURN QUERY SELECT v_event_id, v_case_id, v_disposition;
+END
+$$;
+
+REVOKE EXECUTE ON FUNCTION friction.emit_event(
+  text, text, text, text, timestamptz, jsonb, text, jsonb, text, text, text, jsonb, jsonb
+) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION friction.emit_event(
+  text, text, text, text, timestamptz, jsonb, text, jsonb, text, text, text, jsonb, jsonb
+) TO authenticated, service_role;
+
+-- Step 4: CREATE the new 8-arg friction.fn_emit_manual_event.
+--   Delegates to the extended emit_event. Adds attachment validation
+--   (array-shape + max-3 + per-item storage_path + mime_type + MIME whitelist)
+--   BEFORE forwarding to emit_event. Accepts p_event_id as a client-supplied
+--   UUID that becomes the source_event_id prefix (NOT the friction.event.event_id
+--   itself — that remains generated inside emit_event for consistency with
+--   other emitters). The storage_path strings inside p_attachments may use
+--   the client UUID as a path prefix; this is a convention enforced by the
+--   dashboard FAB (Stage B), not by the SQL layer.
+
 CREATE OR REPLACE FUNCTION friction.fn_emit_manual_event(
   p_observation_text  text,
   p_severity          text,
   p_category          text,
-  p_current_route     text DEFAULT NULL,
+  p_current_route     text  DEFAULT NULL,
   p_related_object    jsonb DEFAULT NULL,
-  p_notes             text DEFAULT NULL,
-  p_event_id          uuid DEFAULT NULL,         -- NEW: caller may supply
-  p_attachments       jsonb DEFAULT '[]'::jsonb  -- NEW: array of attachment metadata
+  p_notes             text  DEFAULT NULL,
+  p_event_id          uuid  DEFAULT NULL,            -- NEW v1.1
+  p_attachments       jsonb DEFAULT '[]'::jsonb      -- NEW v1.1
 )
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = friction, public
+SET search_path TO 'friction', 'public'
 AS $$
 DECLARE
-  v_event_id uuid;
-  v_severity text;
-  v_category text;
-  v_problem_key text;
-  v_dedupe_fingerprint text;
-  v_related_object jsonb;
-  v_attachment jsonb;
+  v_problem_key      text;
+  v_related_object   jsonb;
+  v_event_id         uuid;
+  v_case_id          uuid;
+  v_disposition      text;
+  v_attachment       jsonb;
+  v_source_event_id  text;
 BEGIN
-  -- Existing validation (unchanged from cc-0014)
+  -- Existing input validation (preserved verbatim from cc-0017b production)
   IF p_observation_text IS NULL OR length(trim(p_observation_text)) < 5 THEN
     RAISE EXCEPTION 'observation_text required and must be >= 5 characters';
   END IF;
-
-  v_severity := COALESCE(p_severity, 'info');
-  IF v_severity NOT IN ('info', 'warn', 'critical') THEN
+  IF COALESCE(p_severity, 'info') NOT IN ('info', 'warn', 'critical') THEN
     RAISE EXCEPTION 'severity must be info, warn, or critical';
   END IF;
-
-  v_category := COALESCE(p_category, 'unclassified');
-  IF NOT EXISTS (SELECT 1 FROM friction.category WHERE category_code = v_category AND is_active = true) THEN
-    RAISE EXCEPTION 'category % is not active', v_category;
+  IF NOT EXISTS (
+    SELECT 1 FROM friction.category
+     WHERE category_code = COALESCE(p_category, 'unclassified')
+       AND is_active = true
+  ) THEN
+    RAISE EXCEPTION 'category % is not active', COALESCE(p_category, 'unclassified');
   END IF;
 
-  -- NEW: attachments validation
+  -- NEW v1.1: per-attachment shape + MIME whitelist validation.
   IF jsonb_typeof(p_attachments) != 'array' THEN
     RAISE EXCEPTION 'attachments must be a JSON array';
   END IF;
-
   IF jsonb_array_length(p_attachments) > 3 THEN
     RAISE EXCEPTION 'attachments limited to 3 per event';
   END IF;
-
-  -- Per-attachment structure check
   FOR v_attachment IN SELECT jsonb_array_elements(p_attachments) LOOP
     IF v_attachment->>'storage_path' IS NULL OR v_attachment->>'mime_type' IS NULL THEN
       RAISE EXCEPTION 'each attachment must include storage_path and mime_type';
@@ -320,54 +592,62 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Existing fields (unchanged)
+  -- Existing field computation preserved.
   v_problem_key := lower(regexp_replace(substring(p_observation_text from 1 for 50), '[^a-z0-9]+', '_', 'g'));
   v_related_object := COALESCE(p_related_object, '{}'::jsonb);
   IF p_current_route IS NOT NULL THEN
     v_related_object := v_related_object || jsonb_build_object('dashboard_route', p_current_route);
   END IF;
-  v_dedupe_fingerprint := md5('manual' || '|' || v_problem_key || '|' || v_related_object::text || '|' || v_category);
 
-  -- Use provided event_id or generate new
-  v_event_id := COALESCE(p_event_id, gen_random_uuid());
+  -- Compose source_event_id. If caller supplied p_event_id (Stage B FAB after
+  -- the v1.1 dashboard update), use it as the prefix so the storage path on
+  -- the bucket side and the source_event_id on the row side share a
+  -- correlatable UUID. Otherwise generate one (preserves cc-0017b behaviour
+  -- for 6-arg callers via parameter defaults).
+  v_source_event_id := 'manual/' || COALESCE(p_event_id, gen_random_uuid())::text;
 
-  INSERT INTO friction.event (
-    event_id, source, source_event_id, observed_at, severity, category, category_source,
-    reported_by, problem_key, observation_text, related_object, raw_payload, dedupe_fingerprint,
-    attachments
-  ) VALUES (
-    v_event_id,
-    'manual',
-    'manual/' || v_event_id::text,
-    now(),
-    v_severity,
-    v_category,
-    CASE WHEN p_category IS NOT NULL THEN 'manual_at_capture' ELSE 'emitter_default' END,
-    'pk',
-    v_problem_key,
-    p_observation_text,
-    v_related_object,
-    jsonb_build_object('form_version', 'v2', 'notes', p_notes),
-    v_dedupe_fingerprint,
-    p_attachments
+  -- Delegate to extended emit_event (preserves unified pipeline).
+  SELECT event_id, case_id, case_disposition
+  INTO v_event_id, v_case_id, v_disposition
+  FROM friction.emit_event(
+    p_source             := 'manual',
+    p_condition_key      := 'manual_fab',
+    p_problem_key        := v_problem_key,
+    p_source_event_id    := v_source_event_id,
+    p_observed_at        := now(),
+    p_related_object     := v_related_object,
+    p_observation_text   := p_observation_text,
+    p_raw_payload        := jsonb_build_object(
+      'form_version', CASE WHEN jsonb_array_length(p_attachments) > 0 THEN 'v2' ELSE 'v1' END,
+      'notes',        p_notes
+    ),
+    p_reported_by        := 'pk',
+    p_severity_override  := COALESCE(p_severity, 'info'),
+    p_category_override  := CASE WHEN p_category IS NOT NULL THEN p_category ELSE NULL END,
+    p_dynamic_context    := jsonb_build_object(
+      'fab_emission',  true,
+      'current_route', p_current_route
+    ),
+    p_attachments        := p_attachments                  -- NEW v1.1: forward to emit_event
   );
 
   RETURN v_event_id;
-END $$;
+END
+$$;
 
--- Backward compatibility: keep the cc-0014 signature as an overload that calls the new one
--- (PostgreSQL handles this via parameter defaults if signature stays same; explicit overload below
--- for clarity if a separate function is preferred)
-
-REVOKE EXECUTE ON FUNCTION friction.fn_emit_manual_event(text, text, text, text, jsonb, text, uuid, jsonb) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION friction.fn_emit_manual_event(text, text, text, text, jsonb, text, uuid, jsonb) TO authenticated, service_role;
+REVOKE EXECUTE ON FUNCTION friction.fn_emit_manual_event(
+  text, text, text, text, jsonb, text, uuid, jsonb
+) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION friction.fn_emit_manual_event(
+  text, text, text, text, jsonb, text, uuid, jsonb
+) TO authenticated, service_role;
 ```
 
-**Note on function signature change:** because we're adding two parameters with defaults, PostgreSQL allows callers using the cc-0014 signature to continue working. No separate overload needed; the original 6-arg call resolves to the new 8-arg function with NULL/empty defaults for the new params.
+**Note on function signature change (v1.1 correction):** Because adding parameters with different defaults creates a NEW PostgreSQL function (distinct from the pre-patch signature by argument-list identity), the migration MUST `DROP` the pre-patch 6-arg `fn_emit_manual_event` and 12-arg `emit_event` BEFORE creating the new signatures. The v1.0 brief's comment ("PostgreSQL handles this via parameter defaults if signature stays same") was incorrect — parameter-default resolution only works when there is a single function at the name. The DROP-then-CREATE pattern restores that single-function invariant, and 6-arg callers (the live FAB at dashboard.invegent.com) then resolve to the new 8-arg function via defaults.
 
 ### V-checks for Stage C
 
-V-C1 — backward-compatible call (cc-0014 6-arg form):
+V-C1 — backward-compatible 6-arg call still works and creates `attachments = '[]'`:
 ```sql
 SELECT friction.fn_emit_manual_event(
   'cc-0016-test/v-c1 backward-compat smoke',
@@ -377,38 +657,44 @@ SELECT friction.fn_emit_manual_event(
   NULL,
   'test note'
 );
--- Must succeed, return uuid, attachments column = '[]'
+-- Must succeed, return uuid, friction.event row has attachments='[]'::jsonb
+-- (also verify the row went through emit_event: case_id IS NOT NULL on the
+--  new row, or case_disposition was returned via the unified pipeline).
 ```
 
-V-C2 — new call with attachments:
+V-C2 — 8-arg call with valid attachment JSON:
 ```sql
 SELECT friction.fn_emit_manual_event(
   p_observation_text := 'cc-0016-test/v-c2 with attachments',
-  p_severity := 'info',
-  p_category := 'operator_friction',
-  p_event_id := '00000000-0000-0000-0000-cc0016c001'::uuid,
-  p_attachments := '[
-    {"storage_path": "00000000-0000-0000-0000-cc0016c001/test1.png", "mime_type": "image/png", "filename_original": "test1.png", "size_bytes": 12345, "uploaded_at": "2026-05-16T00:00:00Z"}
+  p_severity         := 'info',
+  p_category         := 'operator_friction',
+  p_event_id         := '00000000-0000-0000-0000-cc0016c001'::uuid,
+  p_attachments      := '[
+    {"storage_path": "00000000-0000-0000-0000-cc0016c001/test1.png", "mime_type": "image/png", "filename_original": "test1.png", "size_bytes": 12345, "uploaded_at": "2026-05-20T00:00:00Z"}
   ]'::jsonb
 );
--- Must return the provided uuid
--- Verify row has attachments jsonb populated correctly
+-- Must succeed, return uuid (the friction.event.event_id; note this is NOT
+-- equal to p_event_id — emit_event generates it. The source_event_id is
+-- 'manual/00000000-0000-0000-0000-cc0016c001').
+-- Verify: friction.event row with source='manual', source_event_id='manual/00000000-0000-0000-0000-cc0016c001',
+--         attachments = the supplied JSONB.
 ```
 
-V-C3 — validation rejects bad input:
+V-C3a — 4 attachments rejected:
 ```sql
--- Too many attachments
 SELECT friction.fn_emit_manual_event(
-  'cc-0016-test/v-c3 too many',
+  'cc-0016-test/v-c3a too many',
   'info',
   'operator_friction',
-  p_attachments := '[{},{},{},{}]'::jsonb
+  p_attachments := '[{"storage_path":"a","mime_type":"image/png"},{"storage_path":"b","mime_type":"image/png"},{"storage_path":"c","mime_type":"image/png"},{"storage_path":"d","mime_type":"image/png"}]'::jsonb
 );
--- Must fail: attachments limited to 3
+-- Must fail: attachments limited to 3 per event
+```
 
--- Bad mime type
+V-C3b — bad MIME rejected:
+```sql
 SELECT friction.fn_emit_manual_event(
-  'cc-0016-test/v-c3 bad mime',
+  'cc-0016-test/v-c3b bad mime',
   'info',
   'operator_friction',
   p_attachments := '[{"storage_path": "x", "mime_type": "video/mp4"}]'::jsonb
@@ -416,25 +702,384 @@ SELECT friction.fn_emit_manual_event(
 -- Must fail: attachment mime_type video/mp4 not allowed
 ```
 
-V-C4 — test row cleanup:
+V-C3c — missing storage_path rejected:
+```sql
+SELECT friction.fn_emit_manual_event(
+  'cc-0016-test/v-c3c missing path',
+  'info',
+  'operator_friction',
+  p_attachments := '[{"mime_type": "image/png"}]'::jsonb
+);
+-- Must fail: each attachment must include storage_path and mime_type
+```
+
+V-C3d — missing mime_type rejected:
+```sql
+SELECT friction.fn_emit_manual_event(
+  'cc-0016-test/v-c3d missing mime',
+  'info',
+  'operator_friction',
+  p_attachments := '[{"storage_path": "x"}]'::jsonb
+);
+-- Must fail: each attachment must include storage_path and mime_type
+```
+
+V-C3e — non-array rejected:
+```sql
+SELECT friction.fn_emit_manual_event(
+  'cc-0016-test/v-c3e non-array',
+  'info',
+  'operator_friction',
+  p_attachments := '{"not": "an array"}'::jsonb
+);
+-- Must fail: attachments must be a JSON array
+```
+
+V-C4 — grants correct (authenticated + service_role can EXECUTE both functions; anon cannot):
+```sql
+SELECT
+  p.proname,
+  r.rolname AS grantee,
+  has_function_privilege(r.rolname, p.oid, 'EXECUTE') AS can_execute
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+CROSS JOIN (VALUES ('postgres'), ('service_role'), ('authenticated'), ('anon')) AS roles(rolname)
+LEFT JOIN pg_roles r ON r.rolname = roles.rolname
+WHERE n.nspname = 'friction' AND p.proname IN ('emit_event', 'fn_emit_manual_event')
+ORDER BY p.proname, roles.rolname;
+-- Must show: postgres + service_role + authenticated = true; anon = false
+-- for BOTH emit_event AND fn_emit_manual_event (the new signatures).
+```
+
+V-C5 — service_role direct call works (used by dashboard Server Action):
+```sql
+SET ROLE service_role;
+SELECT friction.fn_emit_manual_event(
+  'cc-0016-test/v-c5 service_role smoke',
+  'info',
+  'operator_friction',
+  '/test',
+  NULL,
+  'service_role smoke'
+);
+-- Must succeed under service_role.
+RESET ROLE;
+```
+
+V-C6 — test row cleanup:
 ```sql
 DELETE FROM friction.event WHERE observation_text LIKE 'cc-0016-test/%';
+-- Verify zero residual:
+SELECT COUNT(*) FROM friction.event WHERE observation_text LIKE 'cc-0016-test/%';
+-- Must return 0.
 ```
+
+V-A5 (Stage A carryover) — authenticated upload + read round-trip remains **DEFERRED to Stage B FAB ship**. Stage C alone cannot exercise V-A5 because the upload path requires the dashboard FAB (frontend) to authenticate and upload via Supabase JS client. The Stage C apply session validates the RPC contract; V-A5 closes when the Stage B FAB exists and PK exercises an end-to-end upload.
 
 ### Hard-stop conditions
 
-- Function fails to deploy
-- V-C1 breaks cc-0014 callers (backward incompatibility)
-- V-C2 fails
-- V-C3 fails to reject invalid input
+- Either DROP fails (some other dependency on the pre-patch signatures was not anticipated).
+- Either CREATE OR REPLACE fails to deploy.
+- V-C1 breaks 6-arg callers (backward-incompat regression).
+- V-C2 returns an event_id without an attachments-populated row.
+- V-C3a–V-C3e fails to reject the matching invalid input.
+- V-C4 shows anon CAN execute either function (overpermission) or authenticated/service_role CANNOT.
+- V-C5 fails for service_role (would break the dashboard Server Action).
+- V-C6 leaves residual cc-0016-test rows.
 
 ### Rollback path
 
-Restore cc-0014 signature:
+Restore the cc-0017b production-safe pipeline captured at HEAD `307822b827ad5b532af417cd53d16f9d8c596f85` (v2.97 sync close, 2026-05-20 — bodies captured via `pg_get_functiondef` immediately before this Stage C apply). The rollback is byte-stable against that production state.
+
 ```sql
-DROP FUNCTION IF EXISTS friction.fn_emit_manual_event(text, text, text, text, jsonb, text, uuid, jsonb);
--- Restore cc-0014 6-arg version
+-- =============================================================================
+-- Rollback for cc-0016 Stage C (Path X)
+-- =============================================================================
+
+-- Step 1: DROP the v1.1 Stage C signatures.
+DROP FUNCTION IF EXISTS friction.fn_emit_manual_event(
+  text, text, text, text, jsonb, text, uuid, jsonb
+);
+DROP FUNCTION IF EXISTS friction.emit_event(
+  text, text, text, text, timestamptz, jsonb, text, jsonb, text, text, text, jsonb, jsonb
+);
+
+-- Step 2: Restore cc-0017b 12-arg emit_event (production-safe body).
+
+CREATE OR REPLACE FUNCTION friction.emit_event(
+  p_source              text,
+  p_condition_key       text,
+  p_problem_key         text,
+  p_source_event_id     text,
+  p_observed_at         timestamptz,
+  p_related_object      jsonb,
+  p_observation_text    text,
+  p_raw_payload         jsonb,
+  p_reported_by         text  DEFAULT 'system',
+  p_severity_override   text  DEFAULT NULL,
+  p_category_override   text  DEFAULT NULL,
+  p_dynamic_context     jsonb DEFAULT NULL
+)
+RETURNS TABLE(event_id uuid, case_id uuid, case_disposition text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'friction', 'public'
+AS $$
+DECLARE
+  v_source_row       friction.source%ROWTYPE;
+  v_rule             friction.emission_rule%ROWTYPE;
+  v_dedupe           text;
+  v_severity         text;
+  v_category         text;
+  v_category_source  text;
+  v_event_id         uuid;
+  v_case_id          uuid;
+  v_disposition      text;
+  v_inner            RECORD;
+  v_final_context    jsonb;
+  v_rule_default_sev text;
+  v_rule_default_cat text;
+BEGIN
+  IF p_source IS NULL OR length(trim(p_source)) = 0 THEN
+    RAISE EXCEPTION 'emit_event: p_source is required' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_condition_key IS NULL OR length(trim(p_condition_key)) = 0 THEN
+    RAISE EXCEPTION 'emit_event: p_condition_key is required' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_problem_key IS NULL OR length(trim(p_problem_key)) = 0 THEN
+    RAISE EXCEPTION 'emit_event: p_problem_key is required' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_source_event_id IS NULL OR length(trim(p_source_event_id)) = 0 THEN
+    RAISE EXCEPTION 'emit_event: p_source_event_id is required (idempotency key)' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_observation_text IS NULL OR length(trim(p_observation_text)) < 5 THEN
+    RAISE EXCEPTION 'emit_event: p_observation_text required and must be >= 5 characters' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_observed_at IS NULL THEN
+    RAISE EXCEPTION 'emit_event: p_observed_at is required' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_observed_at > now() + interval '5 minutes' THEN
+    RAISE EXCEPTION 'emit_event: p_observed_at is in the future (clock skew?). value=%, now=%', p_observed_at, now()
+      USING ERRCODE = 'P0001';
+  END IF;
+  IF p_reported_by IS NULL OR p_reported_by NOT IN ('system','pk','client','vendor','unknown') THEN
+    RAISE EXCEPTION 'emit_event: p_reported_by must be one of system/pk/client/vendor/unknown; got %', p_reported_by
+      USING ERRCODE = 'P0001';
+  END IF;
+  IF p_severity_override IS NOT NULL AND p_severity_override NOT IN ('info','warn','critical') THEN
+    RAISE EXCEPTION 'emit_event: p_severity_override must be info/warn/critical or NULL; got %', p_severity_override
+      USING ERRCODE = 'P0001';
+  END IF;
+  IF p_category_override IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM friction.category
+       WHERE category_code = p_category_override AND is_active = true
+    ) THEN
+      RAISE EXCEPTION 'emit_event: p_category_override % is not an active friction.category code', p_category_override
+        USING ERRCODE = 'P0001';
+    END IF;
+  END IF;
+
+  PERFORM set_config('friction.emit_event_active', 'true', true);
+
+  SELECT * INTO v_source_row FROM friction.source
+   WHERE source_code = p_source AND is_active = true;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'emit_event: friction.source code % not found or inactive', p_source
+      USING ERRCODE = 'P0001',
+            HINT    = 'Register the source via INSERT INTO friction.source before emitting.';
+  END IF;
+
+  SELECT * INTO v_rule FROM friction.emission_rule
+   WHERE source = p_source AND condition_key = p_condition_key AND enabled = true;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'emit_event: no enabled emission_rule for (source=%, condition_key=%)',
+                    p_source, p_condition_key
+      USING ERRCODE = 'P0001',
+            HINT    = 'INSERT a row into friction.emission_rule before emitting under this condition_key.';
+  END IF;
+
+  IF v_rule.case_policy = 'suppress' THEN
+    BEGIN
+      INSERT INTO friction.emit_error
+        (source, source_event_id, error_message, error_code, raw_payload, emitter_version)
+      VALUES (
+        p_source, p_source_event_id,
+        format('emit_event: emission_rule.case_policy=suppress for (source=%s, condition_key=%s); event not written',
+               p_source, p_condition_key),
+        'POLICY-SUPPRESS',
+        COALESCE(p_raw_payload, '{}'::jsonb),
+        'cc-0017b-v1.0'
+      );
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    RETURN QUERY SELECT NULL::uuid, NULL::uuid, 'suppressed_by_rule'::text;
+    RETURN;
+  END IF;
+
+  v_rule_default_sev := COALESCE(v_rule.default_severity, v_source_row.default_severity);
+  v_rule_default_cat := COALESCE(v_rule.default_category_code, v_source_row.default_category_code);
+
+  v_severity := COALESCE(p_severity_override, v_rule_default_sev);
+  v_category := COALESCE(p_category_override, v_rule_default_cat);
+
+  v_category_source := CASE
+    WHEN p_reported_by = 'pk' AND p_category_override IS NOT NULL THEN 'manual_at_capture'
+    WHEN p_category_override IS NOT NULL                          THEN 'category_override'
+    ELSE                                                              'emitter_default'
+  END;
+
+  v_final_context := COALESCE(p_dynamic_context, '{}'::jsonb);
+
+  IF p_severity_override IS NOT NULL THEN
+    v_final_context := v_final_context || jsonb_build_object(
+      'severity_override', jsonb_build_object(
+        'applied',        p_severity_override,
+        'rule_default',   v_rule.default_severity,
+        'source_default', v_source_row.default_severity,
+        'effective_was',  v_rule_default_sev
+      )
+    );
+  END IF;
+
+  IF p_category_override IS NOT NULL THEN
+    v_final_context := v_final_context || jsonb_build_object(
+      'category_override', jsonb_build_object(
+        'applied',        p_category_override,
+        'rule_default',   v_rule.default_category_code,
+        'source_default', v_source_row.default_category_code,
+        'effective_was',  v_rule_default_cat
+      )
+    );
+  END IF;
+
+  IF v_final_context = '{}'::jsonb THEN v_final_context := NULL; END IF;
+
+  v_dedupe := friction.fn_compute_dedupe_fingerprint_v1(p_source, p_problem_key, p_related_object);
+
+  BEGIN
+    INSERT INTO friction.event (
+      event_id, source, source_event_id, observed_at,
+      severity, category, category_source, reported_by,
+      problem_key, observation_text, related_object, raw_payload,
+      dedupe_fingerprint, dynamic_context, case_id
+    )
+    VALUES (
+      gen_random_uuid(), p_source, p_source_event_id, p_observed_at,
+      v_severity, v_category, v_category_source, p_reported_by,
+      p_problem_key, p_observation_text, p_related_object, p_raw_payload,
+      v_dedupe, v_final_context, NULL
+    )
+    RETURNING friction.event.event_id INTO v_event_id;
+
+  EXCEPTION WHEN unique_violation THEN
+    SELECT e.event_id, e.case_id INTO v_event_id, v_case_id
+    FROM friction.event e
+    WHERE e.source = p_source AND e.source_event_id = p_source_event_id;
+    v_disposition := 'idempotent_replay';
+    RETURN QUERY SELECT v_event_id, v_case_id, v_disposition;
+    RETURN;
+  END;
+
+  SELECT * INTO v_inner FROM friction.fn_attach_or_create_inner_v1(
+    v_dedupe, p_observed_at, v_severity, v_category, p_problem_key, p_observation_text
+  );
+  v_case_id     := v_inner.case_id;
+  v_disposition := v_inner.disposition;
+
+  -- THE FIX: qualify event_id in WHERE clause to disambiguate from RETURNS TABLE OUT param
+  UPDATE friction.event SET case_id = v_case_id WHERE friction.event.event_id = v_event_id;
+
+  RETURN QUERY SELECT v_event_id, v_case_id, v_disposition;
+END
+$$;
+
+REVOKE EXECUTE ON FUNCTION friction.emit_event(
+  text, text, text, text, timestamptz, jsonb, text, jsonb, text, text, text, jsonb
+) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION friction.emit_event(
+  text, text, text, text, timestamptz, jsonb, text, jsonb, text, text, text, jsonb
+) TO authenticated, service_role;
+
+-- Step 3: Restore cc-0017b 6-arg fn_emit_manual_event (production-safe body).
+
+CREATE OR REPLACE FUNCTION friction.fn_emit_manual_event(
+  p_observation_text text,
+  p_severity         text,
+  p_category         text,
+  p_current_route    text  DEFAULT NULL,
+  p_related_object   jsonb DEFAULT NULL,
+  p_notes            text  DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'friction', 'public'
+AS $$
+DECLARE
+  v_problem_key    text;
+  v_related_object jsonb;
+  v_event_id       uuid;
+  v_case_id        uuid;
+  v_disposition    text;
+BEGIN
+  IF p_observation_text IS NULL OR length(trim(p_observation_text)) < 5 THEN
+    RAISE EXCEPTION 'observation_text required and must be >= 5 characters';
+  END IF;
+  IF COALESCE(p_severity, 'info') NOT IN ('info', 'warn', 'critical') THEN
+    RAISE EXCEPTION 'severity must be info, warn, or critical';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM friction.category
+     WHERE category_code = COALESCE(p_category, 'unclassified')
+       AND is_active = true
+  ) THEN
+    RAISE EXCEPTION 'category % is not active', COALESCE(p_category, 'unclassified');
+  END IF;
+
+  v_problem_key := lower(regexp_replace(substring(p_observation_text from 1 for 50), '[^a-z0-9]+', '_', 'g'));
+
+  v_related_object := COALESCE(p_related_object, '{}'::jsonb);
+  IF p_current_route IS NOT NULL THEN
+    v_related_object := v_related_object || jsonb_build_object('dashboard_route', p_current_route);
+  END IF;
+
+  SELECT event_id, case_id, case_disposition
+  INTO v_event_id, v_case_id, v_disposition
+  FROM friction.emit_event(
+    p_source             := 'manual',
+    p_condition_key      := 'manual_fab',
+    p_problem_key        := v_problem_key,
+    p_source_event_id    := 'manual/' || gen_random_uuid()::text,
+    p_observed_at        := now(),
+    p_related_object     := v_related_object,
+    p_observation_text   := p_observation_text,
+    p_raw_payload        := jsonb_build_object(
+      'form_version', 'v1',
+      'notes',        p_notes
+    ),
+    p_reported_by        := 'pk',
+    p_severity_override  := COALESCE(p_severity, 'info'),
+    p_category_override  := CASE WHEN p_category IS NOT NULL THEN p_category ELSE NULL END,
+    p_dynamic_context    := jsonb_build_object(
+      'fab_emission',  true,
+      'current_route', p_current_route
+    )
+  );
+
+  RETURN v_event_id;
+END
+$$;
+
+REVOKE EXECUTE ON FUNCTION friction.fn_emit_manual_event(
+  text, text, text, text, jsonb, text
+) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION friction.fn_emit_manual_event(
+  text, text, text, text, jsonb, text
+) TO authenticated, service_role;
 ```
+
+Rollback note: friction.event rows written between Stage C apply and rollback will have `attachments` populated. The column itself is not dropped by rollback (Stage A's column add is unaffected by Stage C). Rolling Stage C back leaves any populated attachments fields in place; they remain visible to direct table reads but no in-RPC validator exercises them post-rollback. If the dashboard FAB was already updated to send `p_attachments` to a now-rolled-back 6-arg function, those calls fail at the resolution layer (PostgreSQL cannot match 8-arg form to the restored 6-arg signature when named params for non-existent params are used). Coordinate with dashboard repo: Stage B FAB ship must NOT precede confidence in the Stage C apply.
 
 ---
 
