@@ -183,6 +183,8 @@ questions_pending  ←→  validation_pending
 review_required
   ↓
 done | failed | blocked
+  ↑
+  └── (recurring briefs return to `ready` for next fire; see Recurring-brief lifecycle below)
 ```
 
 Valid transitions:
@@ -191,13 +193,37 @@ Valid transitions:
 - `questions_pending → running` (API answered, Cowork correction pass applies overrides)
 - `running → validation_pending` (Cowork output ready for GitHub Actions)
 - `validation_pending → review_required` (validation passed, awaiting PK approval)
-- `review_required → done` (PK approved + applied)
+- `review_required → done` (one-shot brief: PK approved + applied)
+- `review_required → ready` (recurring brief: PK reviewed any pending findings/questions and the next scheduled fire is allowed to pick up the brief — see Recurring-brief lifecycle below)
+- `done → ready` (recurring brief next-fire reset, where the prior cycle ended at `done` rather than at `ready`)
 - `* → failed` (Cowork crashed, validation failed, escalation halted)
 - `* → blocked` (Tier 2/3 escalation; PK must reset to ready)
 
 **Failed brief stays failed** until PK manually resets to `ready`. No automatic retries.
 
-**Recurring briefs** (idempotent per-day, e.g. `nightly-health-check-v1`): the lifecycle above terminates at `done` for one-shot briefs. For briefs that should re-fire daily, PK currently resets the queue row to `ready` manually after morning review (gap surfaced 4 May; workflow refinement candidate).
+### Recurring-brief lifecycle (added 2026-05-20, v2.94)
+
+Recurring briefs (idempotent per-day, e.g. `nightly-health-check-v1`) need a path back to `ready` so the next scheduled Cowork fire is eligible. Without this, a single clean run that produced operational findings (a perfectly normal outcome) sits at `review_required` indefinitely and blocks the next fire.
+
+Use the following routing on cycle close:
+
+1. **Clean execution with operational findings.** The brief executed verbatim, produced its declared outputs, and any priority findings were routed to the appropriate downstream sink (e.g. `friction.event` via the v3.0 dual-write contract). Findings are an in-band signal from the brief, not a defect in the brief.
+   - → set queue row + brief frontmatter back to `status: ready`.
+   - Triage of the findings happens in the downstream sink (e.g. `friction.case` triage at `/operations`), not by gating the recurring brief.
+   - PK approval is not required to advance the brief itself; PK approval is required to act on the findings.
+
+2. **Execution / schema / emission failure.** The brief crashed, hit unrecoverable schema drift, or the emission contract failed (e.g. `friction.fn_emit_health_check_findings` returned an error code or wrote to `friction.emit_error`).
+   - → set queue row + brief frontmatter to `status: review_required`.
+   - This is the original "needs PK eyes" path. Subsequent reset to `ready` is a PK action after diagnosing the failure.
+
+3. **Brief-language ambiguity / questions.** Cowork ran successfully but logged a question in `claude_questions.md` about brief wording or default selection that does not affect execution safety (e.g. a categorisation overlap).
+   - → set queue row to `status: questions_pending` (or leave at the operational equivalent for that brief — for recurring briefs, this can co-exist with `status: ready` provided the question doesn't block the next fire).
+   - Specifically: a logged Q-NNN does NOT by itself force `review_required`. It is a PK-answer queue entry, separate from the lifecycle gate.
+   - PK answers in `claude_answers.md` (or chat) and the brief author patches the brief on the next cycle if needed.
+
+4. **One-shot briefs.** Briefs that complete once and never re-fire (e.g. column-purposes audits, migration drafts) use the legacy `review_required → done` terminal transition. No `→ ready` return path applies.
+
+Operationally: a clean recurring-brief run that produces findings should never sit at `review_required` and gate the next fire. If it does, treat it as a process bug — reset to `ready`, route any open question to the question queue, and triage findings in the downstream sink.
 
 ---
 

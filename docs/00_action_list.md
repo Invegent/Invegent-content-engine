@@ -4,7 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-20 Sydney (**v2.93 — Reconciliation daily cadence diagnostic CLOSED-PASS** on first post-cc-0017e cron 85 natural fire. Cron 85 fired 2026-05-20 03:30:00.762 AEST → downstream run_id `f24d0fcf-cfce-4a1d-ab31-da51ea162151` → `r.reconciliation_run.status='succeeded'` → 112 processed / 5 inserted / 0 updated / 107 skipped → `error_summary=NULL` → 5 `observer_stale` findings only (0 critical, 0 late, 0 missing) → MV refreshes completed 2026-05-19 17:30:05 UTC. **9-check diagnostic matrix retired** — CCH archive search found no authored 9-check; treated as undefined legacy carry text; no replacement matrix invented. Actual closure criterion logged: "Verify cron 85 natural fire succeeds + downstream r.reconciliation_run succeeds + cadence_drift_log writes expected operational findings + MV refreshes complete + zero critical failure signal." **D-FR-RECON-001 v1.0 brief authored at `fc726e3c`** — friction-surface reconciliation read-only baseline before PRV / cc-0016 / Wave 0f proceeds; corrects three drift points (/operations already exists; cc-0016 parallel-executable; documented friction counts not live-verified). **Cowork scheduling cadence WARN promoted to rank 1** (was P2 rank 2 v2.92; not closed by this directive). New rank ordering aligns with D-FR-RECON-001 next-work recommendation (B cc-0016 Stage A above C Wave 0f scoping above D PRV). 0 production mutations / 0 Supabase mutations / 0 D-01 fires / 0 force-run of cron 85 / 0 force-run of `nightly-health-check-v1` / 0 Wave 0f / 0 application code edits / 0 memory edits / 0 decisions.md edits. T-MCP-02 cum ~86 unchanged. State-capture exceptions cum 1 unchanged. Gate 11 Day 2 of 7 (window 2026-05-19 → 2026-05-26). Dashboard PHASES **46th deferral**. Per-session detail `docs/runtime/sessions/2026-05-20-v2.93-cron85-natural-fire-closed-9check-retired.md`. sync_state + action_list + session-file atomic commit this commit.) **Today/Next 5**: Cowork scheduling cadence WARN → rank 1 (P2 carry, promoted from rank 2 v2.92); cc-0016 Stage A (friction-capture-evidence Wave 8) → rank 2 (P2 PK call per D-FR-RECON-001); Wave 0f scoping → rank 3 (opportunistic during Gate 11 window per D-FR-RECON-001); Platform Reconciliation View brief authoring → rank 4 (P2 carry, **deferred until corrected baseline accepted** per D-FR-RECON-001); 5-row close-the-loop / pre-sales / `purge_test_case` helper case_history extension → rank 5 (P2/P3 carry).
+> Last updated: 2026-05-20 Sydney (**v2.94 — Cowork brief lifecycle gating WARN REFRAMED + nightly-health-check-v1 ready reset + recurring-brief lifecycle convention patched**. WARN previously labelled "Cowork scheduling cadence WARN" reframed: observed 16/19 days fire and 14/19 canonical 16:00 UTC fires (cadence is not primarily sparse). Real defect: `nightly-health-check-v1` v3.0 was stuck at `review_required` after the 2026-05-17 clean run with 5 P1 findings emitted to `friction.event` — operational findings should route to friction triage, not hard-block the recurring brief. **Status reset 2026-05-20 v2.94**: queue.md + brief frontmatter both set to `status: ready` — brief is eligible for the next 16:00 UTC Cowork fire. **Convention patched** in `docs/runtime/automation_v1_spec.md` Status flow §: codifies recurring-brief 4-case routing (clean+findings → ready / failure → review_required / language ambiguity → questions_pending / one-shot → done). **3 no-fire scheduler days (2026-05-16, 2026-05-18, 2026-05-19) remain as separate secondary lower-priority follow-up** — scheduler/agent-uptime investigation, distinct from the lifecycle-gating WARN. WARN explicitly NOT closed v2.94 — closure waits on PK observation of the next nightly fire landing under the new convention. 0 Q-004 resolution this directive (PK decision deferred). 0 P1 findings remediated this directive (out of scope). 0 production mutations / 0 Supabase mutations / 0 deploys / 0 application code edits. v2.93 close still stands at HEAD `279de91`.) **Today/Next 5 v2.94**: Cowork brief lifecycle gating WARN → rank 1 (reframed; reset complete; convention patched; WARN open); cc-0016 Stage A → rank 2; Wave 0f scoping → rank 3; PRV → rank 4 (deferred); close-the-loop → rank 5. **Secondary follow-up (separate from rank 1)**: 3 no-fire scheduler days investigation — P3, lower priority than lifecycle gating. v2.93 ADDITIONS preserved below for context (do not edit).
 
 ---
 
@@ -33,7 +33,7 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
   Brief next-work recommendation block lists four options: A retry cron 85 natural fire (now CLOSED-PASS by this v2.93), B cc-0016 Stage A (PK call, parallel to Gate 11 window), C scope Wave 0f opportunistically, D defer PRV until corrected baseline accepted. v2.93 rank ordering honours B above C above D.
 
 - **Rank reordering effective v2.93:**
-  - **Rank 1:** Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN (P2 carry, **promoted from rank 2 v2.92**; not closed by this directive — investigation still pending).
+  - **Rank 1:** Cowork brief lifecycle gating WARN — `nightly-health-check-v1` (P2 carry, **promoted from rank 2 v2.92**; not closed by this directive — investigation still pending).
   - **Rank 2:** cc-0016 Stage A — friction-capture-evidence Wave 8 first stage (P2; PK call per D-FR-RECON-001 §7.B; requires D-01 fire before DDL/storage/RLS work).
   - **Rank 3:** Wave 0f scoping (P3 brief-authoring only; opportunistic during Gate 11 observation window per D-FR-RECON-001 §7.C; candidates per L-v2.90-d + cc-0017e backlog items B/E/F/G + `purge_test_case` helper case_history extension).
   - **Rank 4:** Platform Reconciliation View brief authoring (P2 carry, **deferred until corrected baseline accepted** per D-FR-RECON-001 §7.D — was rank 3 v2.92).
@@ -49,7 +49,7 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
   - 0 memory edits / 0 decisions.md edits
   - 0 `purge_test_case` helper changes
   - 0 invention or backfill of a 9-check matrix
-  - 0 closure of the Cowork scheduling cadence WARN (kept open at rank 1)
+  - 0 closure of the Cowork brief lifecycle gating WARN (kept open at rank 1)
 
 - **Sync close mechanics v2.93 (1+2 split per L-v2.85-e baseline — 8th consecutive occurrence):**
   1. Per-session detail standalone file `docs/runtime/sessions/2026-05-20-v2.93-cron85-natural-fire-closed-9check-retired.md`.
@@ -70,7 +70,7 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 - **Closed Active rows v2.93:** Reconciliation daily cadence diagnostic (P1 rank 1 v2.92) → **CLOSED-PASS** ✅. Evidence preserved in upstream directive payload + per-session detail.
 - **Spawned Active rows v2.93:** none (cc-0016 Stage A + Wave 0f scoping are pre-existing carries newly promoted into the Today/Next 5 top ranks; not new investigations).
-- **Promoted Active rows v2.93:** Cowork scheduling cadence WARN (rank 2 v2.92 → **rank 1 v2.93**); cc-0016 Stage A (carry → **rank 2 v2.93**); Wave 0f scoping (carry → **rank 3 v2.93**); PRV brief authoring (rank 3 v2.92 → **rank 4 v2.93, deferred per D-FR-RECON-001 §7.D**); close-the-loop / pre-sales / helper extension (rank 4 v2.92 → **rank 5 v2.93**).
+- **Promoted Active rows v2.93:** Cowork brief lifecycle gating WARN (rank 2 v2.92 → **rank 1 v2.93**); cc-0016 Stage A (carry → **rank 2 v2.93**); Wave 0f scoping (carry → **rank 3 v2.93**); PRV brief authoring (rank 3 v2.92 → **rank 4 v2.93, deferred per D-FR-RECON-001 §7.D**); close-the-loop / pre-sales / helper extension (rank 4 v2.92 → **rank 5 v2.93**).
 
 - **Dashboard PHASES sync: 46th consecutive deferral** (was 45 at v2.92; +1 at v2.93). No file-touch v2.93.
 - **NO decisions.md change v2.93.** Doc-sync close; no new architectural decisions.
@@ -97,11 +97,11 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 ## ⭐ Today / Next 5
 
-> Last rebuilt: 2026-05-20 Sydney (v2.93).
+> Last rebuilt: 2026-05-20 Sydney (v2.94 — reframed from "scheduling cadence WARN" to "brief lifecycle gating WARN" + ready reset).
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
-| 1 | **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** | **P2 carry, promoted from rank 2 v2.92** | Signal-production layer remains CLOSED-PASS v2.92; cadence WARN unchanged — invocation cadence sparse (~20% hit rate since v3.0 publish 2026-05-15). Now top of queue with Reconciliation daily diagnostic closed v2.93. | chat → PK | Read-only probe of `docs/runtime/runs/nightly-health-check-v1-*.md` state files + Cowork agent run history. |
+| 1 | **Cowork brief lifecycle gating WARN — `nightly-health-check-v1`** | **P2 carry, reframed v2.94 (was rank 1 v2.93 as "scheduling cadence WARN")** | Reframed v2.94 after observing 16/19 days fire and 14/19 canonical 16:00 UTC fires — cadence is not primarily sparse. Real defect was `nightly-health-check-v1` v3.0 stuck at `review_required` after the 2026-05-17 clean run with 5 P1 findings emitted to `friction.event`; operational findings belong in friction triage, not a hard block on the recurring brief. **Ready reset complete v2.94** (queue.md + brief frontmatter both `status: ready`); brief is eligible for the next 16:00 UTC Cowork fire. **Convention patched v2.94** at `docs/runtime/automation_v1_spec.md` Status flow § (4-case routing). WARN explicitly NOT closed — closure waits on PK observation of the next nightly fire landing under the new convention. | chat → PK | Observe next 16:00 UTC fire under new convention; if brief returns to `ready` cleanly, close WARN in a follow-up sync. |
 | 2 | **cc-0016 friction-capture-evidence — Stage A** (Wave 8) | **P2, PK call per D-FR-RECON-001 §7.B** | cc-0016 is parallel-executable with cc-0015 per cc-0016 brief header + footer (corrected by D-FR-RECON-001 v1.0 at `fc726e3c`); not technically gated on Wave 7. Stage A touches `friction.event` + Storage bucket + RLS policies and requires a D-01 fire before DDL/storage work. Estimated ~1h build + ~15–30 min D-01 cycle. | PK → chat | When PK directs (either start now in parallel to Gate 11 window, or hold for cc-0015 Stage A/B per established Wave N+1 follows Wave N pattern). |
 | 3 | **Wave 0f scoping** | **P3 brief-authoring only, opportunistic during Gate 11 observation window per D-FR-RECON-001 §7.C** | Brief-authoring is non-mutating; converts dead Gate 11 window time into ready inventory. Candidates: items B/E/F/G deferred from cc-0017e + `purge_test_case` helper case_history extension (L-v2.90-d). Estimated ~2–3h chat to draft. | chat → PK | When PK directs (recommended during Gate 11 window 2026-05-19 → 2026-05-26). |
 | 4 | **Platform Reconciliation View brief authoring** | **P2 carry, deferred per D-FR-RECON-001 §7.D** | Recommended to defer until corrected baseline is accepted (D-FR-RECON-001 v1.0 PK-accepted), cc-0015 scoped against corrected baseline, and cc-0016 parallel-executable status reflected in action_list (all three now satisfied in spirit; PK accept of D-FR-RECON-001 is the remaining unblocker). Was rank 3 v2.92. | PK → chat | When PK directs. |
@@ -109,7 +109,9 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 **Standing P0:** Personal businesses check-in. Crazy Domains carry from v2.51.
 
-**Passive observation v2.93**: Cron 82-86 unchanged. **Cron 85 first post-cc-0017e natural fire 2026-05-20 03:30:00.762 AEST = succeeded** (downstream `r.reconciliation_run` `f24d0fcf` succeeded, 112 processed / 5 inserted / 0 critical, MV refresh 17:30:05 UTC). PRV v1 operator views queryable. friction.* state: 10 tables, 19 functions (fn_triage_case 11-arg only), 29 cases + 29 events (baseline preserved), 8 case_history rows (backfill only). Cowork brief `nightly-health-check-v1` v3.0 signal-production contract empirically validated v2.92 (invocation cadence still sparse). Next fires: cron 85 daily; cron 86 daily 01:15 UTC.
+**Secondary follow-up (separate from rank 1, lower priority)**: **3 no-fire scheduler days** for `nightly-health-check-v1` — 2026-05-16, 2026-05-18, 2026-05-19 (no daily file produced). P3 scheduler/agent-uptime investigation. Distinct from the brief lifecycle gating WARN at rank 1 (which is about the brief's status getting stuck after a successful fire, not the scheduler failing to fire). Read-only probe candidates: Cowork agent uptime / state files at `docs/runtime/runs/no-ready-briefs-*.md` for the no-fire days.
+
+**Passive observation v2.94**: Cron 82-86 unchanged. **Cron 85 first post-cc-0017e natural fire 2026-05-20 03:30:00.762 AEST = succeeded** (downstream `r.reconciliation_run` `f24d0fcf` succeeded, 112 processed / 5 inserted / 0 critical, MV refresh 17:30:05 UTC) — closed v2.93. PRV v1 operator views queryable. friction.* state: 10 tables, 19 functions (fn_triage_case 11-arg only), 29 cases + 29 events (baseline preserved), 8 case_history rows (backfill only). Cowork brief `nightly-health-check-v1` v3.0 signal-production contract empirically validated v2.92; **brief reset to `ready` v2.94** — next fire eligible. Next fires: cron 85 daily; cron 86 daily 01:15 UTC.
 
 ---
 
@@ -220,7 +222,7 @@ v2.93: **0 D-01 fires.** T-MCP-02 cum **~86 unchanged** v2.93. L46 NOT exercised
 
 ## 🤖 Cowork automation (D182)
 
-**v2.93 update:** Cron 82/83/86 firing normally. **Cron 85 first post-cc-0017e natural fire CLOSED-PASS v2.93** (2026-05-20 03:30:00.762 AEST → downstream `r.reconciliation_run` `f24d0fcf` succeeded → 5 `observer_stale` findings → MV refresh 2026-05-19 17:30:05 UTC). V-C3 signal-production CLOSED-PASS v2.92 carry unchanged. **Cowork scheduling cadence WARN promoted to rank 1 v2.93** — `nightly-health-check-v1` brief firing ~20% of scheduled days since v3.0 publish. Not closed by v2.93.
+**v2.93 update:** Cron 82/83/86 firing normally. **Cron 85 first post-cc-0017e natural fire CLOSED-PASS v2.93** (2026-05-20 03:30:00.762 AEST → downstream `r.reconciliation_run` `f24d0fcf` succeeded → 5 `observer_stale` findings → MV refresh 2026-05-19 17:30:05 UTC). V-C3 signal-production CLOSED-PASS v2.92 carry unchanged. **Cowork brief lifecycle gating WARN promoted to rank 1 v2.93** — `nightly-health-check-v1` brief firing ~20% of scheduled days since v3.0 publish. Not closed by v2.93.
 
 ---
 
@@ -228,7 +230,8 @@ v2.93: **0 D-01 fires.** T-MCP-02 cum **~86 unchanged** v2.93. L46 NOT exercised
 
 | ID | Item | Priority | Status | Owner | Next action |
 |---|---|---|---|---|---|
-| **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** | Brief firing ~20% of scheduled days since v3.0 publish 2026-05-15 | **P2 carry, rank 1 v2.93 (promoted from rank 2 v2.92)** | OPEN. V-C3 signal-production layer validated v2.92; invocation cadence sparse. Not closed by v2.93. | chat → PK | Read-only probe of state files + Cowork agent run history. |
+| **Cowork brief lifecycle gating WARN — `nightly-health-check-v1`** | Brief was stuck at `review_required` after 2026-05-17 clean run with 5 P1 findings emitted; operational findings belong in friction triage, not a hard block on the recurring brief. Cadence framing v2.93 corrected: observed 16/19 days fire and 14/19 canonical 16:00 UTC fires. | **P2 carry, rank 1 v2.94 (reframed; was "scheduling cadence WARN" v2.93)** | OPEN. **Ready reset complete v2.94** (queue.md + brief frontmatter `status: ready`). **Convention patched v2.94** (`docs/runtime/automation_v1_spec.md` Status flow § 4-case routing). Closure waits on PK observation of next nightly fire under the new convention. | chat → PK | Observe next 16:00 UTC fire; if brief returns to `ready` cleanly, close WARN in a follow-up sync. |
+| **3 no-fire scheduler days — `nightly-health-check-v1`** | 2026-05-16, 2026-05-18, 2026-05-19 — no daily file produced (separate from rank 1 lifecycle gating; scheduler did not fire on those 3 of 19 days) | **P3 secondary follow-up v2.94** | OPEN. Distinct from rank 1 — scheduler/agent-uptime concern, not status-gating. | chat → PK | Read-only probe of Cowork agent uptime + state files at `docs/runtime/runs/no-ready-briefs-*.md`. |
 | **cc-0016 friction-capture-evidence — Stage A** (Wave 8) | Per D-FR-RECON-001 §7.B parallel-executable with cc-0015; PK call whether to start now or hold | **P2, rank 2 v2.93** | NOT STARTED. Stage A touches `friction.event` + Storage bucket + RLS; requires D-01 fire before DDL/storage/RLS work. | PK → chat | When PK directs. |
 | **Wave 0f scoping** | Brief-authoring only; opportunistic during Gate 11 observation window per D-FR-RECON-001 §7.C | **P3, rank 3 v2.93** | NOT STARTED. Candidates: items B/E/F/G deferred from cc-0017e + `purge_test_case` helper case_history extension (L-v2.90-d). | chat → PK | When PK directs (recommended during Gate 11 window 2026-05-19 → 2026-05-26). |
 | **Platform Reconciliation View brief** | Reconciliation surface design | **P2 carry, rank 4 v2.93 (demoted from rank 3 v2.92; deferred per D-FR-RECON-001 §7.D)** | NOT STARTED. Defer until corrected friction-register baseline (D-FR-RECON-001) PK-accepted. | PK → chat | When PK directs. |
@@ -281,7 +284,7 @@ v2.93: **0 D-01 fires.** T-MCP-02 cum **~86 unchanged** v2.93. L46 NOT exercised
 - **Reconciliation daily cadence diagnostic** (P1 rank 1 v2.92) → **CLOSED-PASS** ✅. Closure criterion (anchored, not the legacy "9-check" placeholder): "Verify cron 85 natural fire succeeds + downstream r.reconciliation_run succeeds + cadence_drift_log writes expected operational findings + MV refreshes complete + zero critical failure signal." Mechanical evidence: cron 85 fired 2026-05-20 03:30:00.762 AEST; downstream `r.reconciliation_run` `f24d0fcf-cfce-4a1d-ab31-da51ea162151` succeeded; 112 processed / 5 inserted / 0 critical/late/missing (5 `observer_stale` only); error_summary=NULL; MV refresh 2026-05-19 17:30:05 UTC. "9-check diagnostic" reference retired as undefined legacy carry — CCH archive search found no authored 9-check matrix; no replacement matrix was invented.
 
 **Promoted v2.93:**
-- **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** (P2 rank 2 v2.92 → **rank 1 v2.93**). Not closed. Investigation still pending.
+- **Cowork brief lifecycle gating WARN — `nightly-health-check-v1`** (P2 rank 2 v2.92 → **rank 1 v2.93**). Not closed. Investigation still pending.
 - **cc-0016 Stage A** (Wave 8 first stage; was implicit in Active table → **rank 2 v2.93**). PK call per D-FR-RECON-001 §7.B.
 - **Wave 0f scoping** (was carry → **rank 3 v2.93**). Opportunistic during Gate 11 window per D-FR-RECON-001 §7.C.
 - **Platform Reconciliation View brief** (P2 rank 3 v2.92 → **rank 4 v2.93, deferred** per D-FR-RECON-001 §7.D).
@@ -312,7 +315,7 @@ Unchanged from v2.76-v2.91.
 **v2.93 state changes:**
 - **Reconciliation daily cadence diagnostic** (P1 rank 1 v2.92) → **CLOSED-PASS v2.93** on first post-cc-0017e cron 85 natural fire 2026-05-20 03:30:00.762 AEST. Closure anchored on actual mechanical criterion; "9-check diagnostic" reference retired as undefined legacy carry.
 - **D-FR-RECON-001 v1.0** authored at `fc726e3c` — friction-surface reconciliation read-side brief; 3 drift corrections captured.
-- **Cowork scheduling cadence WARN** → **promoted P2 rank 2 v2.92 → rank 1 v2.93**. Not closed.
+- **Cowork brief lifecycle gating WARN** → **promoted P2 rank 2 v2.92 → rank 1 v2.93**. Not closed.
 - **cc-0016 Stage A** → **promoted to rank 2 v2.93** (parallel-executable per D-FR-RECON-001 §7.B).
 - **Wave 0f scoping** → **promoted to rank 3 v2.93** (opportunistic during Gate 11 window per D-FR-RECON-001 §7.C).
 - **Platform Reconciliation View** → rank 3 v2.92 → **rank 4 v2.93, deferred** per D-FR-RECON-001 §7.D.
@@ -374,7 +377,7 @@ All candidates recommended for promotion at appropriate cycle once empirical evi
 - **Cron 85 closure is mechanically anchored to one natural fire** (2026-05-20 03:30:00.762 AEST → run_id `f24d0fcf`). Future cron 85 fires will continue to validate or break the closure expectation daily.
 - **"9-check diagnostic" was undefined legacy carry text.** CCH archive search found no authored matrix. This sync retires the reference without inventing a replacement. Any future "9-check" framing should be treated as historical until and unless an authored matrix is rediscovered or freshly drafted under a separate directive.
 - **D-FR-RECON-001 v1.0 is a read-side reconciliation brief**; it does not by itself reconcile the live state — PK accept of the corrected baseline is the gate that unblocks PRV authoring per §7.D.
-- **Cowork scheduling cadence WARN is now rank 1** but root-cause and remediation are still pending the read-only probe.
+- **Cowork brief lifecycle gating WARN is now rank 1** but root-cause and remediation are still pending the read-only probe.
 - **No fresh production state change v2.93.** Closure documents an externally-supplied mechanical observation; sync_state + action_list track the closure and rank reordering only.
 - **22 outstanding close-the-loop UPDATEs unchanged net from v2.92.**
 - **Memory cap 19/30** unchanged.
@@ -415,13 +418,13 @@ All candidates recommended for promotion at appropriate cycle once empirical evi
   - No decisions.md change.
   - No mid-session compaction event.
   - No state-capture override.
-  - Hard-stop discipline preserved end-to-end: 0 force-run of cron 85 (closure rests on natural fire only); 0 force-run of `nightly-health-check-v1`; 0 Wave 0f scope creep; 0 purge_test_case helper changes; 0 application code edits (Dashboard PHASES **46th deferral**); 0 invention or backfill of a 9-check matrix; 0 closure of the Cowork scheduling cadence WARN.
+  - Hard-stop discipline preserved end-to-end: 0 force-run of cron 85 (closure rests on natural fire only); 0 force-run of `nightly-health-check-v1`; 0 Wave 0f scope creep; 0 purge_test_case helper changes; 0 application code edits (Dashboard PHASES **46th deferral**); 0 invention or backfill of a 9-check matrix; 0 closure of the Cowork brief lifecycle gating WARN.
   - Closure budget: ~1h v2.93 (mechanical evidence supplied in directive payload + sync close drafting). Trailing-14-day ~33h.
   - Doc-sync: atomic single-commit per L-v2.85-e baseline (sync_state + action_list + session file).
 - **v2.92 (2026-05-19 Sydney evening, Health_check V-C3 signal-production CLOSED-PASS + Cowork-cadence WARN spawned):**
   - Build arc: session start → PK directive to close V-C3 using prior session read-only evidence + spawn Cowork-cadence WARN as new P2 + promote PRV brief to next practical planning item → compose per-session detail → standalone commit → compose sync_state + action_list updates → atomic push_files (this commit).
   - Health_check V-C3 + signal-production diagnostic CLOSED-PASS v2.92. Empirically validated against 2026-05-17 `nightly-health-check-v1` v3.0 run (`run_id=nightly-health-check-v1/2026-05-17T160210Z`). 4 read-only checks PASS.
-  - NEW Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN spawned as P2 rank 2 follow-up. ~20% hit rate over 5-day v3.0 window.
+  - NEW Cowork brief lifecycle gating WARN — `nightly-health-check-v1` spawned as P2 rank 2 follow-up. ~20% hit rate over 5-day v3.0 window.
   - Health_check V-C3 row in Active table (P1 rank 2 v2.91) → CLOSED-PASS v2.92.
   - Cowork scheduling diagnostic row added to Active table (P2 NEW v2.92).
   - Platform Reconciliation View → rank 3 unchanged positionally; described as next practical planning item per PK directive.
