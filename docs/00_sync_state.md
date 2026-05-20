@@ -18,6 +18,7 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
+| 2026-05-20 | v2.98-cc0016-stage-c-applied | **cc-0016 Stage C extended-emit-function APPLIED.** Migration `cc_0016_c_emit_manual_event_with_attachments` applied via `apply_migration` MCP after D-01 approval at `m.chatgpt_review` id `358c6fdd-fce3-4150-a780-9e4397fd2fc6` (verdict=agree, action_taken=proceed, risk_level=medium). 8 approved mutations applied atomically: DROP 6-arg `fn_emit_manual_event` + DROP 12-arg `emit_event` + CREATE 13-arg `emit_event` with trailing `p_attachments jsonb DEFAULT '[]'::jsonb` + CREATE 8-arg `fn_emit_manual_event` with trailing `p_event_id uuid DEFAULT NULL` + `p_attachments jsonb DEFAULT '[]'::jsonb` + REVOKE/GRANT on both new signatures (authenticated + service_role only). **cc-0017b unified emit pipeline preserved byte-stable** — `fn_emit_manual_event` delegates to `emit_event` via SELECT (no direct INSERT into `friction.event`). Attachment shape validation lives in two concordant layers (pipeline + manual). **V-C0/V-C1/V-C2/V-C3a/V-C3b/V-C3c/V-C3d/V-C3e/V-C4/V-C5/V-C6 PASS** (11/11 SQL V-checks); V-A5 (authenticated upload + read round-trip) carried to Stage B FAB ship. 3 D-01 review rows close-the-loop resolved (`56e65bb2` partial/high/escalated → resolved; `dbabb576` partial/high/escalated → resolved; `358c6fdd` agree/proceed/completed → annotated). All 3 `resolved_by='cc-0016-stage-c-apply-v2.98'`. Outstanding count 28 → **26** (–2 escalated). **cc-0016 Stage C APPLIED/CLOSED.** Next ranked action: **cc-0016 Stage B — dashboard FAB upload/read UX** (Stage C now provides the backend RPC contract; Stage B scope shifts forward to dashboard FAB implementation). Stage B authorization constraint carried (FAB application layer must verify authenticated operator owns the event/case before invoking `fn_emit_manual_event` with non-empty `p_attachments`). Cowork lifecycle gating WARN UNCHANGED at rank 1 (open). cc-0015 / PRV / mobile-viewport verification UNCHANGED. 0 Invegent-dashboard edits / 0 new migrations beyond Stage C / 0 storage objects created / 0 lifecycle cleanup / 0 retroactive attachment editing / 0 `fn_set_event_attachments` created / 0 cron / 0 EF deployed / 0 Stage B/D/E started / 0 alteration of reviewer history. L-v2.85-e 13th consecutive. L-v2.83-a 17+ STRONG. **L-v2.98-a NEW candidate (MEDIUM)**: DROP-then-CREATE explicit pattern for SECURITY DEFINER signature extensions (overload coexistence prevention). **L-v2.98-b NEW candidate (MEDIUM)**: Type-C echo pushback classification methodology — cite design element + V-check that proves structural resolution in next D-01 corrected_action rather than re-patching brief. **L-v2.98-c NEW candidate (minor)**: Supabase MCP `execute_sql` runs as `postgres` superuser; use `SET LOCAL ROLE <role>` for grant testing; temp tables not writable cross-role. **L46 + L48 + L58 + L62 re-exercised v2.98**. Files changed: 4 (session file + sync_state + action_list + brief v1.2 changelog line, atomic single commit). | `docs/runtime/sessions/2026-05-20-v2.98-cc0016-stage-c-applied.md` |
 | 2026-05-20 | v2.97-cc0016-stage-a-applied | **cc-0016 Stage A friction-capture-evidence APPLIED.** Migration `cc_0016_a_attachments_schema_and_bucket` applied via `apply_migration` MCP after D-01 third-fire approval at `m.chatgpt_review` id `9eb35144-5c70-4cc1-8086-e9ec4525bca5` (verdict=agree, action_taken=proceed). Objects created: private `friction-evidence` bucket (5MB, 3 MIME types — no GIF) + 3 storage.objects RLS policies (bucket_id-scoped only; no path segmentation) + `friction.event.attachments jsonb NOT NULL DEFAULT '[]'` + 2 CHECK constraints (`friction_event_attachments_is_array`, `friction_event_attachments_max_3`) + `idx_friction_event_has_attachments` partial index on `(case_id) WHERE jsonb_array_length(attachments) > 0` + `friction.case_with_attachment_count` view + SELECT grant on view to `authenticated` + `service_role`. **V-checks: V-A1/V-A2/V-A3/V-A4/V-A4b/V-A6 PASS; V-A5 DEFERRED to Stage B** (manual upload round-trip). 34 existing `friction.event` rows received `attachments='[]'` instantaneously via DEFAULT; 29 `friction.case` rows visible in attachment-count view (all `attachment_count=0`). **Close-the-loop on 3 D-01 review rows:** `6f2b8b1a` (partial/high/escalated → resolved), `f573e684` (partial/medium/escalated → resolved), `9eb35144` (agree/proceed/completed → annotated). All 3 marked `resolved_by='cc-0016-stage-a-apply-v2.97'`. Outstanding count 28 → **26** (–2 escalated). **cc-0016 Stage A APPLIED/CLOSED.** Next ranked action: **cc-0016 Stage B — attachment RPC/application contract** (must enforce operator authorization before Stage B can close). Cowork lifecycle gating WARN UNCHANGED (rank 1 open). cc-0015 / PRV / mobile-viewport verification UNCHANGED. 0 dashboard repo edits / 0 new migrations beyond Stage A / 0 lifecycle cleanup / 0 storage objects created or deleted / 0 cron / 0 EF deploy / 0 Stage B/C/D/E started. L-v2.85-e 12th consecutive. L-v2.83-a 16+ STRONG. **L-v2.97-a NEW candidate**: first private storage bucket pattern shipped — track production exercise across Stage B/C/D for one calendar week before treating pattern as repeatable for PRV evidence or other future projects. **L-v2.97-b NEW (minor)**: Postgres `SUM(integer)` returns `bigint` — note for cc-0016 v1.0.1 doc patch if authored. **L46 + L48 re-exercised v2.97** (D-01 corrected_action chain culminating in approved review id + atomic migration apply). Files changed: 3 (session file + sync_state + action_list, atomic single commit). | `docs/runtime/sessions/2026-05-20-v2.97-cc0016-stage-a-applied.md` |
 | 2026-05-20 | v2.96-dashboard-slices-4a-4b-recorded | **Dashboard slices 4A–4B recorded as completed visual/operator work.** Slice 4A `dashboard-status-strip-copy-links-v1` at `cd02402` — VISUAL PASS (StatusStrip copy clarified; critical/posts/drafts clusters linked; stuck-jobs link implemented but only visible when precedence permits). Slice 4B `dashboard-drafts-count-clarity-v1` at `f5a980f` — VISUAL PASS (Overview "Drafts to review" shows "Showing N of M drafts"; CCB observed `Showing 10 of 53 drafts`; M matched StatusStrip `53 drafts to review`). Count mismatch root cause confirmed: **copy/semantics, not cache/backend defect**. **Top alert bar count reconciliation CLOSED v2.96 for UI-copy/linkification scope.** Deeper backend/shared-metrics refactor remains deferred unless separately directed (not actively ranked). Cowork lifecycle gating WARN UNCHANGED (rank 1 open). cc-0015 / cc-0016 / PRV / mobile-viewport verification UNCHANGED (open). 0 production mutations / 0 Supabase mutations / 0 deploys / 0 dashboard edits this session / 0 D-01 fires / 0 application code edits / 0 memory edits / 0 backend metric refactor started. L-v2.85-e 11th consecutive. L-v2.83-a 15+ STRONG. Files changed: 3 (session file + sync_state + action_list, atomic single commit). | `docs/runtime/sessions/2026-05-20-v2.96-dashboard-slices-4a-4b-recorded.md` |
 | 2026-05-20 | v2.95-dashboard-slices-1-3-recorded | **Dashboard slices 1–3 recorded as completed visual/operator work.** Slice 1 `dashboard-nav-and-ops-copy-v1` at `af60953`; slice 2 `dashboard-operations-usability-v1` + remediation at `de4501b` + `37008e5`; slice 3 `dashboard-roadmap-phases-correction-v1` at `991a92b`. "Stop Claude" overlay confirmed external/non-app. Mobile/narrow Roadmap unverified (browser resize override) — P3 carry. **Dashboard PHASES 46-streak deferral BROKEN/CLOSED by Slice 3.** | `docs/runtime/sessions/2026-05-20-v2.95-dashboard-slices-1-3-recorded.md` |
@@ -48,6 +49,160 @@
 ---
 
 ## 🟢 Most recent session — inline summary
+
+### 2026-05-20 Sydney — v2.98: cc-0016 Stage C extended emit function APPLIED
+
+**Outcome:** cc-0016 Stage C v1.1 applied successfully via single `apply_migration` call after D-01 approval. `friction.emit_event` is now 13-arg (adds `p_attachments jsonb`); `friction.fn_emit_manual_event` is now 8-arg (adds `p_event_id uuid` + `p_attachments jsonb`). cc-0017b unified emit pipeline preserved byte-stable — `fn_emit_manual_event` delegates to `emit_event` rather than direct-inserting. Attachment shape validation lives in two concordant layers (pipeline + manual). 11/11 SQL V-checks PASS; V-A5 carried to Stage B FAB ship.
+
+**Migration applied:**
+
+- Name: `cc_0016_c_emit_manual_event_with_attachments`
+- MCP call: `apply_migration` → `{"success": true}`
+- D-01 approved review id: **`358c6fdd-fce3-4150-a780-9e4397fd2fc6`** (`verdict=agree, action_taken=proceed, risk_level=medium, requires_pk_escalation=false, status=completed`)
+- PK approval phrase present in apply directive
+- Brief commit gating apply: `8c9889c2594a492e25f9d01ec42804c3a14beb25` (v1.1)
+
+**8 approved mutations applied (single atomic call):**
+
+| # | Mutation | Object |
+|---|---|---|
+| 1 | DROP FUNCTION | `friction.fn_emit_manual_event(text,text,text,text,jsonb,text)` — 6-arg pre-patch |
+| 2 | DROP FUNCTION | `friction.emit_event(text,text,text,text,timestamptz,jsonb,text,jsonb,text,text,text,jsonb)` — 12-arg pre-patch |
+| 3 | CREATE OR REPLACE FUNCTION | `friction.emit_event(...13-arg)` with trailing `p_attachments jsonb DEFAULT '[]'::jsonb`; body byte-stable to cc-0017b production source captured at HEAD `307822b` plus the documented additions |
+| 4 | CREATE OR REPLACE FUNCTION | `friction.fn_emit_manual_event(...8-arg)` with trailing `p_event_id uuid DEFAULT NULL` + `p_attachments jsonb DEFAULT '[]'::jsonb`; delegates to `friction.emit_event` via SELECT (no direct INSERT into `friction.event`) |
+| 5 | REVOKE EXECUTE | `friction.emit_event(13-arg) FROM PUBLIC` |
+| 6 | GRANT EXECUTE | `friction.emit_event(13-arg) TO authenticated, service_role` |
+| 7 | REVOKE EXECUTE | `friction.fn_emit_manual_event(8-arg) FROM PUBLIC` |
+| 8 | GRANT EXECUTE | `friction.fn_emit_manual_event(8-arg) TO authenticated, service_role` |
+
+**V-check matrix v2.98 (11 PASS + 1 DEFERRED):**
+
+| # | V-check | Result |
+|---|---|---|
+| V-C0 | New signatures live; no overload coexistence | **PASS** — exactly one row per `proname` in `pg_proc` |
+| V-C1 | 6-arg backward-compat call returns uuid; `attachments='[]'`; `case_id IS NOT NULL` | **PASS** — event_id `9a1882c5`; case_id `14cd78fb`; form_version `v1` |
+| V-C2 | 8-arg call with valid PNG attachment stores verbatim; pipeline still attaches case; `form_version='v2'`; client UUID preserved | **PASS** — event_id `49ba8414`; case_id `5b3aba30`; full attachment object stored verbatim |
+| V-C3a | 4 attachments rejected | **PASS** — `attachments limited to 3 per event` (P0001) |
+| V-C3b | `video/mp4` rejected | **PASS** — `attachment mime_type video/mp4 not allowed` (P0001) |
+| V-C3c | missing `storage_path` rejected | **PASS** — `each attachment must include storage_path and mime_type` (P0001) |
+| V-C3d | missing `mime_type` rejected | **PASS** — `each attachment must include storage_path and mime_type` (P0001) |
+| V-C3e | non-array rejected | **PASS** — `attachments must be a JSON array` (P0001) |
+| V-C4 | grants correct on both signatures | **PASS** — authenticated + service_role allowed; anon + public denied |
+| V-C5 | service_role direct call works | **PASS** — `SET LOCAL ROLE service_role` then fn_emit_manual_event returned event_id `39bcf497` |
+| V-C6 | 0 residual `cc-0016-test%` rows | **PASS** — 3 test events + 3 orphan cases cleaned up; `friction.event` count back to 34 baseline |
+| V-A5 | authenticated upload + read round-trip | **DEFERRED to Stage B FAB ship** |
+
+**Existing-row state after apply:**
+
+- `friction.event` row count: 34 (unchanged) — V-C1/V-C2/V-C5 created 3 test events, V-C6 deleted them; baseline restored
+- `friction.case` row count: 29 (unchanged) — 3 orphaned test cases also deleted in V-C6
+- cc-0017b pipeline still active — V-C1 and V-C2 both attached `case_id IS NOT NULL` via `fn_attach_or_create_inner_v1`
+
+**Live function signatures (post-apply):**
+
+- `friction.emit_event(p_source, p_condition_key, p_problem_key, p_source_event_id, p_observed_at, p_related_object, p_observation_text, p_raw_payload, p_reported_by, p_severity_override, p_category_override, p_dynamic_context, p_attachments) RETURNS TABLE(event_id uuid, case_id uuid, case_disposition text)` — 13-arg, `SECURITY DEFINER`, `SET search_path TO 'friction', 'public'`
+- `friction.fn_emit_manual_event(p_observation_text, p_severity, p_category, p_current_route, p_related_object, p_notes, p_event_id, p_attachments) RETURNS uuid` — 8-arg, `SECURITY DEFINER`, `SET search_path TO 'friction', 'public'`
+
+**Grants (cc-0017c lockdown matrix):**
+
+| Function | authenticated | service_role | anon | public |
+|---|---|---|---|---|
+| `emit_event` 13-arg | ✓ EXECUTE | ✓ EXECUTE | ✗ denied | ✗ denied |
+| `fn_emit_manual_event` 8-arg | ✓ EXECUTE | ✓ EXECUTE | ✗ denied | ✗ denied |
+
+**Close-the-loop on 3 D-01 review rows (per directive):**
+
+| `id` | Created (UTC) | Before status / action_taken | After | Status |
+|---|---|---|---|---|
+| `56e65bb2-2799-4b13-87de-c9c453fb17ec` | 2026-05-20 09:27:12 | `escalated` / `escalate_explicit_flag` | `escalation_resolved_at` set, `resolved_by='cc-0016-stage-c-apply-v2.98'`, action_taken appended with Path A Type-B resolution chain to `358c6fdd` | RESOLVED |
+| `dbabb576-5b40-4e72-91cb-461c3b9499a4` | 2026-05-20 09:32:51 | `escalated` / `escalate_explicit_flag` | `escalation_resolved_at` set, `resolved_by='cc-0016-stage-c-apply-v2.98'`, action_taken appended with Type-C echo resolution chain to `358c6fdd` | RESOLVED |
+| `358c6fdd-fce3-4150-a780-9e4397fd2fc6` | 2026-05-20 09:43:59 | `completed` / `proceed` | `escalation_resolved_at` set, `resolved_by='cc-0016-stage-c-apply-v2.98'`, action_taken appended with apply outcome + V-check matrix + 8-mutation summary | COMPLETED (already; annotated) |
+
+Verdict / risk / escalation history preserved on all 3 rows (only close-the-loop resolution fields written).
+
+**Outstanding close-the-loop count: 28 → 26** (the 2 escalated rows transitioned to escalation_resolved; the approved row `358c6fdd` was already `status=completed` and not counted in the outstanding tally — its annotation is for traceability, not state transition). 26 remaining are unrelated to cc-0016 Stage C.
+
+**Items closed v2.98:**
+
+- **cc-0016 Stage C — extended emit function (attachment pipeline)** → **APPLIED/CLOSED**. Backend RPC contract live. Downstream stages B/D/E remain pending.
+
+**Items NOT closed v2.98 (per directive):**
+
+- **cc-0016 Stage B** (dashboard FAB upload/read UX) — next ranked action; Stage B authorization constraint carried.
+- **cc-0016 Stage D** (`/operations` evidence display) — pending after Stage B.
+- **cc-0016 Stage E** (lifecycle cleanup) — pending; separately approved with dry-run/report required.
+- **cc-0015 (Wave 7) UI** — gated on Gate 11 observation window closing 2026-05-26; unchanged.
+- **Platform Reconciliation View brief authoring** — deferred per D-FR-RECON-001 §7.D; unchanged.
+- **Cowork brief lifecycle gating WARN** — rank 1 open; unchanged.
+
+**Hard stops respected v2.98:**
+
+- 0 Invegent-dashboard touched
+- 0 new migrations beyond the approved Stage C (Stage C itself was the only migration this session, applied in prior turn; v2.98 sync close adds 0)
+- 0 storage objects created or deleted
+- 0 lifecycle cleanup / 0 destructive deletion
+- 0 retroactive attachment editing
+- 0 `fn_set_event_attachments` created
+- 0 operator-authorization checks added to Stage C (deferred to Stage B per brief v1.1 §5)
+- 0 cron created / 0 EF deployed
+- 0 Stage B/D/E work started
+- 0 closure of cc-0015 / PRV / Cowork WARN
+- 0 alteration of reviewer verdict / risk / escalation history (only close-the-loop fields written)
+- 0 dashboard evidence UI / 0 FAB upload UI / 0 `/operations` evidence display
+- 0 `execute_sql` for DDL (`apply_migration` only)
+
+**Sync close mechanics v2.98 (atomic single-commit per L-v2.85-e baseline — 13th consecutive occurrence):**
+
+1. Per-session detail `docs/runtime/sessions/2026-05-20-v2.98-cc0016-stage-c-applied.md`.
+2. sync_state + action_list + brief v1.2 changelog line + session file committed in one atomic CCD local-git push.
+
+L-v2.89-a fallback (1+1+1) ready but not invoked.
+
+**Lesson exercise v2.98:**
+
+- **L-v2.85-e** re-applied **13th consecutive occurrence** (v2.86 → v2.98). Promotion-confirmed v2.88 carries forward.
+- **L-v2.83-a** re-applied at sync close commit. Cumulative **17+ STRONG**.
+- **L46** re-exercised v2.98 (D-01 corrected_action chain: `56e65bb2` (Type-B) → `dbabb576` (3 Type-C echoes) → `358c6fdd` (approved); brief patched v1.0 → v1.1 mid-chain to address Type-C echoes structurally).
+- **L48** re-exercised v2.98 (single atomic `apply_migration` call covering 8 mutations — DROP + DROP + CREATE + CREATE + 4 REVOKE/GRANT).
+- **L58** re-exercised v2.98 (CCD local-git Path C for brief patch + sync close).
+- **L62** re-exercised v2.98 (Type-C echo classification on dbabb576 pushbacks — overload shadowing, pipeline regression, schema clarity — all 3 structurally resolved in brief v1.1 design).
+- **L-v2.97-a** carried (private storage bucket pattern continues to exercise across Stage B/C; track until calendar week elapses from v2.97).
+- **L-v2.97-b** carried (`SUM(integer)=bigint`).
+- **L-v2.98-a NEW candidate (MEDIUM-SIGNAL, watcher)**: DROP-then-CREATE explicit pattern for SECURITY DEFINER signature extensions when adding `DEFAULT`-bearing trailing parameters — PostgreSQL treats different `proargnames` lengths as distinct functions, not REPLACE targets. Tag for re-exercise next time a function signature extends.
+- **L-v2.98-b NEW candidate (MEDIUM-SIGNAL, methodology)**: Type-C echo pushback classification — cite design element + V-check that proves structural resolution in next D-01 corrected_action rather than re-patching brief. Avoid re-patching the brief in response to Type-C echoes (introduces drift).
+- **L-v2.98-c NEW candidate (minor, tooling)**: Supabase MCP `execute_sql` runs as `postgres` superuser. To test grants for non-superuser roles, use `SET LOCAL ROLE <role>` within the same transaction. Temp tables created by the superuser are NOT writable by the role-switched session — pass results via `SELECT` return rather than temp-table INSERT.
+- **L-v2.85-a / L-v2.86-a / L-v2.88-a / L-v2.89-a / L-v2.90-a-f**: not re-exercised v2.98.
+- **L40 / L41 / L47**: not exercised v2.98.
+
+**Forward constraints recorded v2.98 (per directive):**
+
+1. **Stage B cannot close until the dashboard/FAB application layer verifies the authenticated operator is allowed to attach evidence to the event/case.** The function-layer attachment validation enforces shape only (array + max-3 + per-item storage_path + mime_type + MIME whitelist); per-event ownership is the FAB's responsibility.
+2. **V-A5 (authenticated upload + read round-trip) carried to Stage B FAB ship.** Cannot be SQL-tested; requires real storage object upload via FAB UI.
+3. **No lifecycle cleanup or destructive deletion until separately approved with dry-run/report.** Stage E remains explicitly out of scope.
+4. **No dashboard evidence UI until Stage B ships** (Stage D follows Stage B).
+5. **cc-0015 / PRV / Cowork WARN** unchanged from v2.97.
+
+**v2.98 honest limitations:**
+
+- V-A5 unverified — manual frontend test in Stage B FAB.
+- Stage C function-layer attachment validation does NOT include per-event operator authorization — any session with EXECUTE on `fn_emit_manual_event` can attach arbitrary `storage_path` strings. Per-event ownership is deferred to Stage B application layer per brief v1.1 §5.
+- Storage `file_size_limit` enforced by Supabase Storage on upload (not by the SQL function).
+- Test cleanup deleted 3 orphaned cases (each had only the 1 test event). In production, deleting events that orphan cases would need a separate decision per brief Stage E.
+- Outstanding 26 close-the-loop UPDATEs not addressed this session — out of directive scope.
+- L-v2.98-a/b/c candidates need 1-2 more occurrences before promotion-eligible.
+- Brief v1.2 changelog line documents the apply event; brief itself remains structurally v1.1 (no Stage C content changes) — v1.2 is a changelog convention, not a structural revision.
+
+---
+
+### 2026-05-20 Sydney — v2.97 close (brief)
+
+cc-0016 Stage A friction-capture-evidence APPLIED. Migration `cc_0016_a_attachments_schema_and_bucket` applied via `apply_migration` MCP after D-01 third-fire approval at `m.chatgpt_review` id `9eb35144-5c70-4cc1-8086-e9ec4525bca5`. 10 atomic mutations: bucket + 3 RLS policies + attachments column + 2 CHECKs + partial index + view + grants. V-A1/A2/A3/A4/A4b/A6 PASS; V-A5 deferred to Stage B. 3 D-01 rows close-the-loop resolved; outstanding 28 → 26.
+
+*(Full detail at `docs/runtime/sessions/2026-05-20-v2.97-cc0016-stage-a-applied.md`.)*
+
+---
+
+### 2026-05-20 Sydney — v2.97 inline detail (preserved below for context)
 
 ### 2026-05-20 Sydney — v2.97: cc-0016 Stage A friction-capture-evidence APPLIED
 
@@ -240,20 +395,20 @@ Dashboard slices 1–3 RECORDED as completed visual/operator work. Slice 1 `dash
 
 ---
 
-## 🟡 Next session priorities (rebuilt v2.97)
+## 🟡 Next session priorities (rebuilt v2.98)
 
-**Core ICE ranks v2.97:**
+**Core ICE ranks v2.98:**
 
 1. **Cowork brief lifecycle gating WARN — `nightly-health-check-v1`** — P2 carry, rank 1 (unchanged). Ready reset complete v2.94; convention patched. Closure waits on PK observation of next 16:00 UTC fire under v2.94 convention. **Secondary (P3):** 3 no-fire scheduler days (2026-05-16, 2026-05-18, 2026-05-19).
-2. **cc-0016 friction-capture-evidence — Stage B (attachment RPC + operator authorization)** — **P2, rank 2 v2.97 (reframed from "Stage A" v2.96 → "Stage B" v2.97 after Stage A APPLIED/CLOSED)**. Next ranked action. Stage B must define the attach-evidence RPC/Server Action contract AND enforce per-event operator authorization in the application layer before Stage B can close. The Stage A RLS policies are bucket-scoped only — they do not enforce per-event ownership. **No lifecycle cleanup or destructive deletion until separately approved with dry-run/report.**
+2. **cc-0016 friction-capture-evidence — Stage B (dashboard FAB upload/read UX)** — **P2, rank 2 v2.98 (reframed from "Stage B backend RPC + operator authorization" v2.97 after Stage C APPLIED/CLOSED — the backend RPC contract is now live as of Stage C apply; Stage B's remaining work is the dashboard FAB implementation)**. Next ranked action. The FAB application layer must verify the authenticated operator is allowed to attach evidence to the event/case before invoking `fn_emit_manual_event` with non-empty `p_attachments` — function-layer validation enforces shape only, not per-event ownership. V-A5 (authenticated upload + read round-trip) carries to Stage B FAB ship. **No lifecycle cleanup or destructive deletion until separately approved with dry-run/report.**
 3. **Wave 0f scoping** — P3, rank 3 (unchanged). Opportunistic during Gate 11 window.
 4. **Platform Reconciliation View brief authoring** — P2 carry, rank 4 (unchanged; deferred per D-FR-RECON-001 §7.D).
-5. **5-row close-the-loop batch / Pre-sales / `purge_test_case` helper case_history extension** — P2/P3 carry, rank 5 (unchanged). 26 outstanding close-the-loop UPDATEs net (down from 28 v2.96 — the 2 cc-0016 escalated rows transitioned this session).
+5. **5-row close-the-loop batch / Pre-sales / `purge_test_case` helper case_history extension** — P2/P3 carry, rank 5 (unchanged). 26 outstanding close-the-loop UPDATEs net (unchanged from v2.97 — the 2 cc-0016 Stage C escalated rows transitioned this session, but `358c6fdd` was already `completed` and not counted).
 
-**Dashboard work (separately ranked v2.97 — UNCHANGED from v2.96):**
+**Dashboard work (separately ranked v2.98):**
 
 1. **D1**: cc-0015 friction-pool-view UI (slice 5) — P2, Gate 11 closes 2026-05-26.
-2. **D2**: cc-0016 evidence UI (slice 6) — P2, **now Stage B-gated** (was generically "backend-gated" v2.96; Stage A APPLIED removed the schema/bucket gate; Stage B RPC + operator authorization is the remaining backend prerequisite).
+2. **D2**: cc-0016 evidence UI (slice 6) — P2, **Stage B FAB implementation is now the active work-stream** (Stage A bucket + RLS live since v2.97; Stage C extended emit function live since v2.98; remaining backend gate is operator authorization in the FAB application layer). Stage D (`/operations` evidence display) follows after Stage B.
 3. **D3**: PRV surface (slice 7) — P2, brief authoring deferred.
 4. **D4**: Mobile/narrow viewport verification — P3 carry.
 
