@@ -4,7 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-21 Sydney (**v3.00 — cc-0016 Stage D /operations evidence display VISUAL PASS**. Dashboard Stage D shipped at `9082beb3e22df2e0f8d42924ed4e6f0a127c23ea` (files: `app/(dashboard)/operations/page.tsx`, `app/(dashboard)/operations/case-row.tsx`; typecheck PASS). CCB verified on production `/operations`: loads with recent 50 cases; V-A5 smoke case visible as "cc-0016 Stage B attachment smoke"; collapsed row purple paperclip badge 📎1; expanded row "Evidence (1)"; thumbnail renders; caption `va5-smoke.png · 861B · 10h ago`; thumbnail opens via signed URL `friction-evidence/9e314151-.../0_va5-smoke.png`; PNG in new tab `0_va5-smoke.png (64×64)`; unattached case renders normally; triage guardrail intact. **cc-0016 Stage D CLOSED/PASS.** cc-0016 evidence capture/display path COMPLETE through Stage D (A→B→C→D). Stage E future/separately-approved-only — do NOT start automatically. Cowork lifecycle WARN / cc-0015 / PRV / Stage E UNCHANGED (open). 0 Supabase mutations / 0 SQL-RPC-view-function changes / 0 lifecycle cleanup / 0 retroactive attachment editing / 0 upload-flow changes / 0 triage mutation during CCB verification / 0 unrelated dashboard mutations / 0 Invegent-dashboard edits / 0 smoke deletion / 0 D-01 fires / 0 memory edits / 0 decisions.md edits.) **Today/Next 5 core ranks v3.00**: Cowork lifecycle WARN → rank 1; **cc-0016 Stage E scoping/dry-run design ONLY → rank 2 conditional (Option A; replaced if PK picks Option B/C)**; Wave 0f scoping → rank 3; PRV → rank 4 (deferred); close-the-loop → rank 5.
+> Last updated: 2026-05-21 Sydney (**v3.00 — cc-0016 Stage D /operations evidence display VISUAL PASS**. Dashboard Stage D shipped at `9082beb3e22df2e0f8d42924ed4e6f0a127c23ea` (files: `app/(dashboard)/operations/page.tsx`, `app/(dashboard)/operations/case-row.tsx`; typecheck PASS). CCB verified on production `/operations`: loads with recent 50 cases; V-A5 smoke case visible as "cc-0016 Stage B attachment smoke"; collapsed row purple paperclip badge 📎1; expanded row "Evidence (1)"; thumbnail renders; caption `va5-smoke.png · 861B · 10h ago`; thumbnail opens via signed URL `friction-evidence/9e314151-.../0_va5-smoke.png`; PNG in new tab `0_va5-smoke.png (64×64)`; unattached case renders normally; triage guardrail intact. **cc-0016 Stage D CLOSED/PASS.** cc-0016 evidence capture/display path COMPLETE through Stage D (A→B→C→D). Stage E future/separately-approved-only — do NOT start automatically. Cowork lifecycle WARN / cc-0015 / PRV / Stage E UNCHANGED (open). 0 Supabase mutations / 0 SQL-RPC-view-function changes / 0 lifecycle cleanup / 0 retroactive attachment editing / 0 upload-flow changes / 0 triage mutation during CCB verification / 0 unrelated dashboard mutations / 0 Invegent-dashboard edits / 0 smoke deletion / 0 D-01 fires / 0 memory edits / 0 decisions.md edits. **v3.00.1 reconciliation patch:** stale v2.97/v2.98 placeholder note corrected — reconciled in v2.99.1 at `2db1656`.) **Today/Next 5 core ranks v3.00**: Cowork lifecycle WARN → rank 1; **cc-0016 Stage E scoping/dry-run design ONLY → rank 2 conditional (Option A; replaced if PK picks Option B/C)**; Wave 0f scoping → rank 3; PRV → rank 4 (deferred); close-the-loop → rank 5.
 
 ---
 
@@ -65,6 +65,8 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 - **NO decisions.md change v3.00.**
 - **Production mutations v3.00: 0. D-01 fires v3.00: 0. T-MCP-02 cum: ~92 unchanged. State-capture exceptions: 1 unchanged.**
 
+- **v3.00.1 reconciliation patch (2026-05-21):** stale "v2.97/v2.98 unverified placeholder" wording corrected across session file + sync_state + this file. Those session files were already verified to exist — ancestry clean, Stage A/C facts confirmed, placeholder rows patched — in **v2.99.1 at `2db16568bfc8eeb0036d9a8cbe377cc198e4c6a7`**. No outstanding placeholder issue remains.
+
 ---
 
 ## 📊 Closure budget tracking (per D186)
@@ -119,8 +121,8 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 | Stage | Scope | Status | Reference |
 |---|---|---|---|
-| A | bucket + attachments column + 2 CHECK + index + view + GRANT | CLOSED | D-01 `6f2b8b1a`/`f573e684`/`9eb35144`; applied v2.97-assumed |
-| C | DROP+CREATE emit_event 13-arg + fn_emit_manual_event 8-arg; cc-0017b preserved | CLOSED | D-01 `56e65bb2`/`dbabb576`/`358c6fdd`; applied v2.98-assumed |
+| A | bucket + attachments column + 2 CHECK + index + view + GRANT | CLOSED | D-01 `6f2b8b1a`/`f573e684`/`9eb35144`; applied v2.97 (session file verified in v2.99.1 at `2db1656`) |
+| C | DROP+CREATE emit_event 13-arg + fn_emit_manual_event 8-arg; cc-0017b preserved | CLOSED | D-01 `56e65bb2`/`dbabb576`/`358c6fdd`; applied v2.98 (session file verified in v2.99.1 at `2db1656`) |
 | B | FAB evidence upload/read UX | CLOSED/PASS v2.99 | dashboard `36fe6ad`; V-A5 PASS |
 | **D** | **/operations evidence display (badge + Evidence section + signed-URL thumbnail)** | **CLOSED/PASS v3.00** | dashboard `9082beb` |
 | E | lifecycle cleanup automation + dry-run report | FUTURE — separately approved only | Stage A CONSTRAINT 2 |
@@ -244,7 +246,7 @@ v3.00: **0 D-01 fires.** T-MCP-02 cum **~92 unchanged**. L46 / L62 not newly exe
 
 **Promoted v3.00:** cc-0016 Stage E scoping (Option A) → conditional core rank 2 (replaces closed Stage D). cc-0015 UI → dashboard D1 (leading dashboard build once Gate 11 clears).
 
-**Closed earlier:** v2.99 cc-0016 Stage B + V-A5; v2.98 cc-0016 Stage C apply (assumed); v2.97 cc-0016 Stage A apply (assumed); v2.96 dashboard slices 4A–4B + top alert bar reconciliation; v2.95 dashboard slices 1–3 + PHASES streak + "Stop Claude"; v2.93 Reconciliation daily cadence diagnostic; v2.92 Health_check V-C3; v2.91 cc-0017e v1.1 doc patch; v2.90 cc-0017e apply; v2.85 cc-0017c apply; v2.82 cc-0017b apply; v2.81 cc-0017a apply; v2.77 cc-0014 archived.
+**Closed earlier:** v2.99 cc-0016 Stage B + V-A5; v2.98 cc-0016 Stage C apply; v2.97 cc-0016 Stage A apply; v2.96 dashboard slices 4A–4B + top alert bar reconciliation; v2.95 dashboard slices 1–3 + PHASES streak + "Stop Claude"; v2.93 Reconciliation daily cadence diagnostic; v2.92 Health_check V-C3; v2.91 cc-0017e v1.1 doc patch; v2.90 cc-0017e apply; v2.85 cc-0017c apply; v2.82 cc-0017b apply; v2.81 cc-0017a apply; v2.77 cc-0014 archived.
 
 ---
 
@@ -275,7 +277,7 @@ Unchanged from v2.76-v2.99.
 - State-capture exceptions cum 1 unchanged.
 - L-v2.85-e 13th consecutive; L-v2.83-a 17+ STRONG; L62 strongly reinforced; L-v2.88-a watcher closed for cc-0016.
 - **No decisions.md change v3.00.**
-- **Cross-session reconciliation still flagged:** v2.97 + v2.98 session files not loaded in chat context; placeholders in index; reconcile next session.
+- **v3.00.1 reconciliation:** v2.97 + v2.98 session files confirmed to exist (reconciled in v2.99.1 at `2db1656`); placeholder concern closed; no outstanding placeholder issue remains.
 
 ---
 
@@ -306,7 +308,7 @@ L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d 
 
 - All v2.31–v2.99 limitations apply.
 - **Cross-repo recording only** — chat did not fetch dashboard repo HEAD or independently verify commit `9082beb`. Recorded per directive payload.
-- **Cross-session gap unchanged:** v2.97 (Stage A apply close) + v2.98 (Stage C apply close) session files NOT loaded in chat context; still unverified placeholders from v2.99. Reconcile next session.
+- *(v3.00.1 patch: the prior "cross-session gap" note was stale. v2.97 (Stage A apply close) + v2.98 (Stage C apply close) session files were already verified to exist — ancestry clean, Stage A/C facts confirmed, placeholder rows patched — in **v2.99.1 at `2db16568bfc8eeb0036d9a8cbe377cc198e4c6a7`**. No outstanding placeholder issue remains.)*
 - **"CCB VISUAL PASS" reflects operator browser walkthrough**, not automated test coverage.
 - **Signed-URL thumbnail render + new-tab open** are CCB functional confirmations; chat did not independently re-issue the signed URL this session (read-only recording).
 - **"10h ago" caption** is relative to CCB verification time, recorded verbatim; absolute timestamp not pinned.
@@ -328,8 +330,10 @@ L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d 
 - v2.94 (2026-05-20 Sydney): Cowork brief lifecycle gating WARN REFRAMED + ready reset + convention patched.
 - v2.95 (2026-05-20 Sydney): Dashboard slices 1–3 RECORDED. PHASES 46-streak deferral CLOSED.
 - v2.96 (2026-05-20 Sydney): Dashboard slices 4A–4B RECORDED + top alert bar count reconciliation CLOSED for UI scope.
-- *(v2.97 cc-0016 Stage A apply + v2.98 cc-0016 Stage C apply — own sessions; not loaded in v2.99/v3.00 chat context; reconcile next session.)*
+- v2.97 (2026-05-20 Sydney): cc-0016 Stage A apply — own session file at `docs/runtime/sessions/2026-05-20-v2.97-cc0016-stage-a-applied.md` (verified to exist in v2.99.1 at `2db1656`).
+- v2.98 (2026-05-20 Sydney): cc-0016 Stage C apply — own session file at `docs/runtime/sessions/2026-05-20-v2.98-cc0016-stage-c-applied.md` (verified to exist in v2.99.1 at `2db1656`).
 - v2.99 (2026-05-20 Sydney): cc-0016 Stage B FAB upload/read UX validated + V-A5 PASS. Stage B CLOSED/PASS.
+- v2.99.1 (2026-05-21 Sydney): reconciliation at `2db16568bfc8eeb0036d9a8cbe377cc198e4c6a7` — ancestry clean; v2.97 + v2.98 session files confirmed to exist; placeholder rows patched; Stage A/C facts confirmed.
 - **v3.00 (2026-05-21 Sydney, cc-0016 Stage D /operations evidence display VISUAL PASS):**
   - Build arc: pull main → read v2.99 close state → record Stage D directive payload (dashboard `9082beb`; CCB VISUAL PASS facts) → edit action_list (header + ADDITIONS + Today/Next 5 + dashboard ranking + cc-0016 status block + Active + Backlog + Lessons + Limitations + Changelog) → edit sync_state (index + inline + Next priorities + do-not-touch + footer) → write per-session file → atomic single-commit `push_files` (3 files).
   - cc-0016 Stage D at dashboard `9082beb3e22df2e0f8d42924ed4e6f0a127c23ea` (files: `app/(dashboard)/operations/page.tsx`, `app/(dashboard)/operations/case-row.tsx`; typecheck PASS) — CLOSED/PASS.
@@ -341,4 +345,4 @@ L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d 
   - L-v2.85-e re-applied 13th consecutive. L-v2.83-a 17+ STRONG. L62 strongly reinforced (carry). L-v2.88-a watcher CLOSED for cc-0016.
   - T-MCP-02 cum ~92 unchanged. State-capture exceptions cum 1 unchanged.
   - Closure budget: ~1h v3.00. Trailing-14-day ~37h.
-  - Cross-session note: v2.97 + v2.98 not loaded in chat context; placeholders; reconcile next session.
+- **v3.00.1 (2026-05-21 Sydney, reconciliation patch):** corrected the stale "v2.97/v2.98 unverified placeholder" wording across session file + sync_state + action_list. Those session files were already verified to exist in v2.99.1 at `2db1656`. No outstanding placeholder issue remains. 3 single-file `create_or_update_file` commits (session file `e052962`, sync_state `6ab1149`, action_list this commit). Non-mutating doc patch; cc-0016 Stage D remains CLOSED/PASS. 0 Supabase mutations / 0 dashboard edits / 0 Stage E start.
