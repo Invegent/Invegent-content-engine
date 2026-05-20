@@ -4,7 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-20 Sydney (**v2.99 — cc-0016 Stage B FAB upload/read UX validated + V-A5 PASS**. Dashboard Stage B shipped at `36fe6ad575a125870c9ac7eeb25a0da605a9c7d3` (files: `actions/emit-friction.ts`, `components/friction-form.tsx`; typecheck PASS). CCB verified FAB picker visible / no-attachment + one-attachment submit / max-3 enforced / GIF rejected / >5MB rejected. Chat/backend read-only confirmed no-attachment event `attachments=[]` / attachment event with one attachment / storage object exists / DB metadata matches. CCD read-back confirmed signed URL HTTP 200 / image/png / 861 bytes / PNG intact. **V-A5 now empirically PASS** (was DEFERRED across Stage A + Stage C). **cc-0016 Stage B CLOSED/PASS.** Stage A closed, Stage C closed, Stage B closed. Stage D (/operations evidence display) NEXT. Stage E future/separately-approved-only. Cowork lifecycle WARN / cc-0015 / PRV / Stage E UNCHANGED (open). 0 content-engine production code changes / 0 Supabase schema/function mutations / 0 Supabase mutations / 0 lifecycle cleanup / 0 retroactive attachment editing / 0 fn_set_event_attachments / 0 /operations evidence display / 0 Stage D/E work / 0 Invegent-dashboard edits / 0 smoke-object deletion / 0 D-01 fires / 0 memory edits / 0 decisions.md edits.) **Today/Next 5 core ranks v2.99**: Cowork lifecycle WARN → rank 1; **cc-0016 Stage D /operations evidence display → rank 2 (NEW; replaces closed Stage A/C)**; Wave 0f scoping → rank 3; PRV → rank 4 (deferred); close-the-loop → rank 5.
+> Last updated: 2026-05-21 Sydney (**v3.00 — cc-0016 Stage D /operations evidence display VISUAL PASS**. Dashboard Stage D shipped at `9082beb3e22df2e0f8d42924ed4e6f0a127c23ea` (files: `app/(dashboard)/operations/page.tsx`, `app/(dashboard)/operations/case-row.tsx`; typecheck PASS). CCB verified on production `/operations`: loads with recent 50 cases; V-A5 smoke case visible as "cc-0016 Stage B attachment smoke"; collapsed row purple paperclip badge 📎1; expanded row "Evidence (1)"; thumbnail renders; caption `va5-smoke.png · 861B · 10h ago`; thumbnail opens via signed URL `friction-evidence/9e314151-.../0_va5-smoke.png`; PNG in new tab `0_va5-smoke.png (64×64)`; unattached case renders normally; triage guardrail intact. **cc-0016 Stage D CLOSED/PASS.** cc-0016 evidence capture/display path COMPLETE through Stage D (A→B→C→D). Stage E future/separately-approved-only — do NOT start automatically. Cowork lifecycle WARN / cc-0015 / PRV / Stage E UNCHANGED (open). 0 Supabase mutations / 0 SQL-RPC-view-function changes / 0 lifecycle cleanup / 0 retroactive attachment editing / 0 upload-flow changes / 0 triage mutation during CCB verification / 0 unrelated dashboard mutations / 0 Invegent-dashboard edits / 0 smoke deletion / 0 D-01 fires / 0 memory edits / 0 decisions.md edits.) **Today/Next 5 core ranks v3.00**: Cowork lifecycle WARN → rank 1; **cc-0016 Stage E scoping/dry-run design ONLY → rank 2 conditional (Option A; replaced if PK picks Option B/C)**; Wave 0f scoping → rank 3; PRV → rank 4 (deferred); close-the-loop → rank 5.
 
 ---
 
@@ -12,63 +12,58 @@
 
 At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs Standing checks (S1–S29); (3) verifies D186 closure budget; (4) asks PK about Personal businesses; (5) surfaces Time-bound items.
 
-**Standing rules unchanged from v2.96.** D-01 + D-186 + D-YT-OAUTH-1 + D-PREV-16 + Lesson #62 (L46) + #68 + L33–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + **L-v2.83-a (STRONG; 16+ v2.99)** + L-v2.84-a/b/c/d + L-v2.85-a (HIGH-SIGNAL; 4 occurrences) + L-v2.85-b/c/d + **L-v2.85-e PROMOTION-CONFIRMED 12th consecutive v2.99** + 5 L-v2.86 candidates + **L-v2.88-a (watcher CLOSED for cc-0016; 2 prior occurrences carry for other contexts)** + L-v2.88-b/c/d + L-v2.89-a + **L-v2.90-a through L-v2.90-f** + **L62 strongly reinforced via cc-0016 6-fire D-01 series**. **D-IOL-001 (v2.77)** + **D-CC-0017B-Q1** carried.
+**Standing rules unchanged from v2.99.** D-01 + D-186 + D-YT-OAUTH-1 + D-PREV-16 + Lesson #62 (L46) + #68 + L33–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + **L-v2.83-a (STRONG; 17+ v3.00)** + L-v2.84-a/b/c/d + L-v2.85-a (HIGH-SIGNAL; 4 occurrences) + L-v2.85-b/c/d + **L-v2.85-e PROMOTION-CONFIRMED 13th consecutive v3.00** + 5 L-v2.86 candidates + **L-v2.88-a (watcher CLOSED for cc-0016; 2 prior occurrences carry)** + L-v2.88-b/c/d + L-v2.89-a + **L-v2.90-a through L-v2.90-f** + **L62 strongly reinforced via cc-0016 6-fire D-01 series**. **D-IOL-001 (v2.77)** + **D-CC-0017B-Q1** carried.
 
-**v2.99 ADDITIONS:**
+**v3.00 ADDITIONS:**
 
-- **cc-0016 Stage B RECORDED CLOSED/PASS v2.99.** FAB evidence upload/read UX shipped in Invegent-dashboard at `36fe6ad575a125870c9ac7eeb25a0da605a9c7d3` (files: `actions/emit-friction.ts`, `components/friction-form.tsx`; typecheck PASS). Cross-repo recording; no dashboard edits this session.
-  - **CCB frontend verified:** FAB picker visible; no-attachment submit; one-attachment submit; max 3 enforced; GIF rejected; >5MB rejected.
-  - **Chat/backend read-only confirmed:** no-attachment event `attachments=[]`; attachment event with one attachment; storage object exists in friction-evidence; DB metadata matches object.
-  - **CCD read-back confirmed:** signed URL HTTP 200; Content-Type image/png; Content-Length 861 bytes; PNG bytes intact.
-  - **V-A5 (storage round-trip) now empirically PASS** — was DEFERRED across Stage A (3 D-01 fires) + Stage C (3 D-01 fires).
-  - **Smoke artefacts retained as V-A5 evidence (DO NOT DELETE):** no-attachment event `2120b2f7-219f-4d0d-be56-512d81430873`; attachment event `75f0c981-1180-4047-9aa3-f725bec6eb9b`; storage object `friction-evidence/9e314151-be65-434e-8588-c913012f6591/0_va5-smoke.png` (861 bytes, image/png).
+- **cc-0016 Stage D RECORDED CLOSED/PASS v3.00.** /operations evidence display shipped in Invegent-dashboard at `9082beb3e22df2e0f8d42924ed4e6f0a127c23ea` (files: `app/(dashboard)/operations/page.tsx`, `app/(dashboard)/operations/case-row.tsx`; typecheck PASS). Cross-repo recording; no dashboard edits this session.
+  - **CCB verified VISUAL PASS:** /operations loads with recent 50 cases; V-A5 smoke case visible as "cc-0016 Stage B attachment smoke"; collapsed row purple paperclip badge 📎1; expanded row "Evidence (1)"; thumbnail renders; caption `va5-smoke.png · 861B · 10h ago`; thumbnail opens via signed URL `friction-evidence/9e314151-be65-434e-8588-c913012f6591/0_va5-smoke.png`; PNG in new tab `0_va5-smoke.png (64×64)`; unattached smoke case renders normally (no paperclip, no Evidence section); triage confirmation guardrail intact; no unrelated mutating actions.
+  - **Stage D features live:** paperclip evidence-count badge; Evidence (N) expanded section; signed-URL thumbnail display; attached smoke object visible from /operations; unattached cases render normally; triage guardrail unchanged.
 
-- **cc-0016 stage ledger v2.99:** Stage A CLOSED (v2.97-assumed); Stage C CLOSED (v2.98-assumed); **Stage B CLOSED/PASS (v2.99)**; Stage D NEXT (/operations evidence display); Stage E FUTURE — separately approved only.
+- **cc-0016 stage ledger v3.00 — evidence path COMPLETE through Stage D:** Stage A CLOSED; Stage C CLOSED; Stage B CLOSED/PASS (v2.99); **Stage D CLOSED/PASS (v3.00)**; Stage E FUTURE — separately approved only. capture (B) → store (A) → emit (C) → display (D). Only Stage E (lifecycle cleanup) remains.
 
-- **Next ranked action: cc-0016 Stage D — /operations evidence display/thumbnails.** Goal: make attached evidence visible from the operator surface. Constraints: Stage D MUST NOT implement lifecycle cleanup; MUST NOT add retroactive attachment editing; MUST NOT change upload flow unless required. Likely read-side only (existing `case_with_attachment_count` view + signed URLs); if a new read RPC is needed, D-01 required.
+- **Next ranked action — PK choice (do NOT start Stage E automatically):**
+  - **Option A** — cc-0016 Stage E scoping only (lifecycle cleanup dry-run design). Brief-authoring; non-mutating; first destructive run still requires separate PK approval + dry-run (Stage A answers 2 + 6 + 7; CONSTRAINT 2).
+  - **Option B** — pause cc-0016; return to Cowork lifecycle WARN (core rank 1) + cc-0015 Gate 11 watch (window closes 2026-05-26).
+  - **Option C** — mobile/narrow viewport verification (P3; opportunistic given fresh operator-surface UI).
 
-- **Items explicitly NOT closed v2.99 (per directive):**
-  - Cowork brief lifecycle gating WARN (`nightly-health-check-v1`) — core rank 1; preserved open.
-  - cc-0015 (Wave 7) — DRAFTED at `9a5dc155`; gated on Gate 11 closing 2026-05-26.
+- **Items explicitly NOT closed v3.00 (per directive):**
+  - Cowork brief lifecycle gating WARN — core rank 1; preserved open.
+  - cc-0015 (Wave 7) — DRAFTED `9a5dc155`; gated on Gate 11 closing 2026-05-26.
   - PRV brief authoring — deferred per D-FR-RECON-001 §7.D.
   - cc-0016 Stage E lifecycle cleanup — future/separately-approved-only.
   - Mobile/narrow viewport verification — P3 carry.
   - Backend/shared-metrics refactor — deferred carry; not actively ranked.
 
-- **Hard stops respected v2.99:**
-  - 0 content-engine production code changes for Stage B
-  - 0 Supabase schema/function mutations in Stage B
-  - 0 Supabase mutations this session (read-only verification only)
+- **Hard stops respected v3.00:**
+  - 0 Supabase mutations for Stage D
+  - 0 SQL / RPC / view / function changes
   - 0 lifecycle cleanup
   - 0 retroactive attachment editing
-  - 0 `fn_set_event_attachments` RPC
-  - 0 `/operations` evidence display (Stage D — not started)
-  - 0 Stage D/E work started
+  - 0 upload-flow changes
+  - 0 triage mutation during CCB verification
+  - 0 unrelated dashboard mutations
   - 0 Invegent-dashboard edits this session
-  - 0 deletion of the V-A5 smoke object
-  - 0 cleanup of test events
+  - 0 deletion of smoke object or test events
+  - 0 Stage E started / 0 cleanup run
   - 0 closure of Cowork WARN / cc-0015 / PRV / Stage E
-  - 0 D-01 fires this session
-  - 0 memory edits / 0 decisions.md edits
+  - 0 D-01 fires / 0 memory edits / 0 decisions.md edits
 
-- **Sync close mechanics v2.99 (atomic single-commit per L-v2.85-e baseline — 12th consecutive occurrence):**
-  1. Per-session detail file `docs/runtime/sessions/2026-05-20-v2.99-cc0016-stage-b-fab-upload-validated.md`.
+- **Sync close mechanics v3.00 (atomic single-commit per L-v2.85-e baseline — 13th consecutive occurrence):**
+  1. Per-session detail file `docs/runtime/sessions/2026-05-21-v3.00-cc0016-stage-d-evidence-display-visual-pass.md`.
   2. sync_state + action_list + session file committed in **one atomic push**.
-  L-v2.89-a fallback (1+1+1) ready but not invoked v2.99.
+  L-v2.89-a fallback (1+1+1) ready but not invoked v3.00.
 
-- **L-v2.85-e re-applied 12th consecutive occurrence**; promotion-confirmed v2.88 carries forward.
-- **L-v2.83-a re-applied** at sync close. Cumulative **16+ STRONG**.
-- **L62 strongly reinforced** via cc-0016 6-fire D-01 series (Stage A 3 fires + Stage C 3 fires) — both Stages converged via Path A satisfy-then-re-fire with NO state-capture override.
-- **L-v2.88-a watcher CLOSED for cc-0016** — no identical-loop pattern across 7 cumulative fires; each re-fire showed genuine progress.
-- **L40 / L41 / L46 / L58 NOT exercised v2.99** (read-only session; no DB mutation / no DDL / no apply).
-- **L-v2.90-a-f NOT empirically re-exercised v2.99** (Stage C apply at v2.98).
+- **L-v2.85-e re-applied 13th consecutive occurrence**; promotion-confirmed v2.88 carries forward.
+- **L-v2.83-a re-applied** at sync close. Cumulative **17+ STRONG**.
+- **L40 / L41 / L46 / L58 / L62 NOT exercised v3.00** (read-only session; L62 reinforcement noted but no new D-01).
+- **L-v2.90-a-f NOT empirically re-exercised v3.00.**
 
-- **No new L-v2.99-X candidates surfaced.**
+- **No new L-v3.00-X candidates surfaced.**
 
-- **Closed Active rows v2.99:** cc-0016 Stage B → CLOSED/PASS; V-A5 → PASS.
-- **Promoted Active rows v2.99:** cc-0016 Stage D promoted to core rank 2 (replaces closed Stage A/C).
-- **NO decisions.md change v2.99.**
-- **Production mutations v2.99: 0. D-01 fires v2.99: 0. T-MCP-02 cum: ~92 unchanged. State-capture exceptions: 1 unchanged.**
+- **Closed Active rows v3.00:** cc-0016 Stage D → CLOSED/PASS; cc-0016 evidence capture/display path → COMPLETE through Stage D.
+- **NO decisions.md change v3.00.**
+- **Production mutations v3.00: 0. D-01 fires v3.00: 0. T-MCP-02 cum: ~92 unchanged. State-capture exceptions: 1 unchanged.**
 
 ---
 
@@ -76,106 +71,112 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 | Metric | Current | Limit | Status |
 |---|---|---|---|
-| Open findings + investigations (P0+P1) | 0 (recon diagnostic CLOSED v2.93; PHASES streak CLOSED v2.95; top alert bar CLOSED v2.96; cc-0016 Stage B CLOSED v2.99) | 20 | ✅ within budget |
-| Trailing-14-day closure hours | ~36h (cumulative v2.83–v2.99) | 8.0 floor | ✅ above floor |
+| Open findings + investigations (P0+P1) | 0 (recon diagnostic CLOSED v2.93; PHASES streak CLOSED v2.95; top alert bar CLOSED v2.96; cc-0016 Stage B CLOSED v2.99; cc-0016 Stage D CLOSED v3.00) | 20 | ✅ within budget |
+| Trailing-14-day closure hours | ~37h (cumulative v2.83–v3.00) | 8.0 floor | ✅ above floor |
 | Pause trigger active? | NO | — | New automation authoring allowed |
 
-**v2.99 cycle: ~1h total** (cross-repo + cross-session state recording; read-only verification recording; sync close drafting). 0 schema mutations. 0 D-01 fires. 1 atomic git commit. **State-capture exception count v2.99: 0** (cumulative 1).
+**v3.00 cycle: ~1h total** (cross-repo state recording; read-only verification recording; sync close drafting). 0 schema mutations. 0 D-01 fires. 1 atomic git commit. **State-capture exception count v3.00: 0** (cumulative 1).
 
 ---
 
 ## ⭐ Today / Next 5 (core ICE ranks)
 
-> Last rebuilt: 2026-05-20 Sydney (v2.99 — cc-0016 Stage D promoted to rank 2 after Stage A/B/C closure).
+> Last rebuilt: 2026-05-21 Sydney (v3.00 — cc-0016 Stage D CLOSED; rank 2 now conditional on PK Option A/B/C choice).
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
 | 1 | **Cowork brief lifecycle gating WARN — `nightly-health-check-v1`** | **P2 carry, rank 1 (unchanged)** | Ready reset complete v2.94 + convention patched. WARN explicitly NOT closed. | chat → PK | Observe next 16:00 UTC fire under new convention. |
-| 2 | **cc-0016 Stage D — /operations evidence display/thumbnails** | **P2, rank 2 (NEW v2.99)** | Stage A/B/C all closed; V-A5 PASS. Stage D makes attached evidence visible from operator surface. Read-side likely (existing view + signed URLs). | PK → chat | Author Stage D brief. Must NOT add lifecycle cleanup / retroactive editing / upload-flow changes. If new read RPC needed, D-01 required. |
-| 3 | **Wave 0f scoping** | **P3 brief-authoring only, opportunistic during Gate 11 window** | Brief-authoring is non-mutating. Candidates: items B/E/F/G from cc-0017e + `purge_test_case` helper case_history extension (L-v2.90-d). | chat → PK | When PK directs (recommended during Gate 11 window 2026-05-19 → 2026-05-26). |
+| 2 | **cc-0016 Stage E scoping/dry-run design ONLY** (conditional — Option A) | **P2, rank 2 conditional** | cc-0016 evidence path complete A→B→C→D; only Stage E (lifecycle cleanup) remains. Option A = NON-MUTATING design + dry-run spec. First destructive run still requires separate PK approval. **Replaced if PK picks Option B (pause → Cowork/cc-0015) or Option C (mobile viewport).** | PK → chat | PK picks A/B/C. If A: author Stage E dry-run design (no execution). |
+| 3 | **Wave 0f scoping** | **P3 brief-authoring only, opportunistic during Gate 11 window** | Non-mutating. Candidates: items B/E/F/G from cc-0017e + `purge_test_case` helper case_history extension (L-v2.90-d). | chat → PK | When PK directs (recommended during Gate 11 window 2026-05-19 → 2026-05-26). |
 | 4 | **Platform Reconciliation View brief authoring** | **P2 carry, deferred per D-FR-RECON-001 §7.D** | Defer until corrected friction-register baseline accepted. | PK → chat | When PK directs. |
-| 5 | **5-row close-the-loop batch sweep / Pre-sales criteria / `purge_test_case` helper case_history extension** | **P2/P3 carry** | Outstanding close-the-loop UPDATEs (Stage C 3 rows assumed resolved at v2.98 apply; net not recomputed v2.99). | chat → PK | When PK directs. |
+| 5 | **5-row close-the-loop batch sweep / Pre-sales criteria / `purge_test_case` helper case_history extension** | **P2/P3 carry** | Outstanding close-the-loop UPDATEs (net not recomputed v3.00). | chat → PK | When PK directs. |
 
-## ⭐ Dashboard work (separately ranked v2.99)
+**Time-bound nudge:** cc-0015 Gate 11 observation window closes **2026-05-26** (~5 days out from 2026-05-21). cc-0015 friction-pool-view UI (Wave 7) unblocks then.
+
+## ⭐ Dashboard work (separately ranked v3.00)
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
-| D1 | **cc-0016 Stage D /operations evidence display** (= core rank 2) | P2 (NEW v2.99) | Active dashboard build after Stage B close. | PK → chat | Author Stage D brief. |
-| D2 | **cc-0015 friction-pool-view UI** (slice 5) | P2 carry | Backend already shipped. Gated on Gate 11 closing 2026-05-26. | PK → chat (Wave 7) | When window closes 2026-05-26. |
-| D3 | **Platform Reconciliation View surface** (slice 7) | P2 carry | PRV brief deferred per D-FR-RECON-001 §7.D. | PK → chat | When PRV brief authored + PK-accepted. |
-| D4 | **Mobile/narrow viewport verification** | P3 carry | Browser runtime overrode `resize_window`. Not blocking. | CCD or PK | Real-device verification. |
+| D1 | **cc-0015 friction-pool-view UI** (slice 5) | P2 carry | Backend already shipped. Gated on Gate 11 closing 2026-05-26. Leading dashboard build once gate clears (cc-0016 Stage D now shipped). | PK → chat (Wave 7) | When window closes 2026-05-26. |
+| D2 | **Platform Reconciliation View surface** (slice 7) | P2 carry | PRV brief deferred per D-FR-RECON-001 §7.D. | PK → chat | When PRV brief authored + PK-accepted. |
+| D3 | **Mobile/narrow viewport verification** | P3 carry (Option C candidate) | Browser runtime overrode `resize_window`. Opportunistic given fresh operator-surface UI just shipped. | CCD or PK | Real-device verification of /operations + /roadmap + sidebar. |
 
-**Deferred carry (not actively ranked):** Backend/shared-metrics refactor (deeper scope behind v2.95 count mismatch).
+**Deferred carry (not actively ranked):** Backend/shared-metrics refactor.
 
 **Standing P0:** Personal businesses check-in. Crazy Domains carry from v2.51.
 
 **Secondary follow-up (P3)**: 3 no-fire scheduler days for `nightly-health-check-v1` — 2026-05-16, 2026-05-18, 2026-05-19.
 
-**Passive observation v2.99**: Cron 82-86 firing normally. friction.* state assumed unchanged from Stage C apply (not re-probed). **Dashboard `dashboard.invegent.com`**: slices 1–3 + 4A–4B + cc-0016 Stage B (FAB evidence upload UX) all shipped + verified. **V-A5 smoke artefacts retained** — do not delete.
+**Passive observation v3.00**: Cron 82-86 firing normally. friction.* state assumed unchanged from Stage C apply (not re-probed). **Dashboard `dashboard.invegent.com`**: slices 1–3 + 4A–4B + cc-0016 Stage B (FAB upload) + cc-0016 Stage D (evidence display) all shipped + verified. **V-A5 smoke artefacts retained** — do not delete (now also the visible Stage D demo artefact on /operations).
 
 ---
 
-## 🟢 cc-0016 friction-capture-evidence — STATUS BLOCK (NEW/UPDATED v2.99)
+## 🟢 cc-0016 friction-capture-evidence — STATUS BLOCK (UPDATED v3.00)
 
-**Status v2.99: Stage A CLOSED + Stage C CLOSED + Stage B CLOSED/PASS. V-A5 PASS. Stage D NEXT. Stage E future/separately-approved-only.**
+**Status v3.00: Stage A CLOSED + Stage C CLOSED + Stage B CLOSED/PASS + Stage D CLOSED/PASS. Evidence capture/display path COMPLETE through Stage D. Stage E future/separately-approved-only.**
 
 **Stage ledger:**
 
 | Stage | Scope | Status | Reference |
 |---|---|---|---|
-| A | bucket + attachments column + 2 CHECK + index + view + GRANT | CLOSED | D-01 fires `6f2b8b1a` / `f573e684` / `9eb35144` (APPROVED); applied v2.97-assumed |
-| C | DROP+CREATE emit_event 13-arg + fn_emit_manual_event 8-arg; shape validation; cc-0017b preserved | CLOSED | D-01 fires `56e65bb2` / `dbabb576` / `358c6fdd` (APPROVED); applied v2.98-assumed |
-| **B** | **FAB evidence upload/read UX** | **CLOSED/PASS v2.99** | dashboard `36fe6ad`; V-A5 PASS |
-| D | /operations evidence display / thumbnails | **NEXT** | core rank 2 v2.99 |
+| A | bucket + attachments column + 2 CHECK + index + view + GRANT | CLOSED | D-01 `6f2b8b1a`/`f573e684`/`9eb35144`; applied v2.97-assumed |
+| C | DROP+CREATE emit_event 13-arg + fn_emit_manual_event 8-arg; cc-0017b preserved | CLOSED | D-01 `56e65bb2`/`dbabb576`/`358c6fdd`; applied v2.98-assumed |
+| B | FAB evidence upload/read UX | CLOSED/PASS v2.99 | dashboard `36fe6ad`; V-A5 PASS |
+| **D** | **/operations evidence display (badge + Evidence section + signed-URL thumbnail)** | **CLOSED/PASS v3.00** | dashboard `9082beb` |
 | E | lifecycle cleanup automation + dry-run report | FUTURE — separately approved only | Stage A CONSTRAINT 2 |
 
-**V-A5 evidence (DO NOT DELETE):**
+**Evidence path A→B→C→D complete:** capture (Stage B FAB upload) → store (Stage A bucket + column) → emit (Stage C RPC shape validation) → display (Stage D operator surface). Only lifecycle cleanup (Stage E) remains, intentionally gated.
+
+**Stage D features live on /operations:** paperclip evidence-count badge 📎N; Evidence (N) expanded section; signed-URL thumbnail; PNG opens in new tab; unattached cases render normally; triage guardrail unchanged.
+
+**V-A5 evidence (DO NOT DELETE; now also Stage D demo artefact):**
 - No-attachment smoke event `2120b2f7-219f-4d0d-be56-512d81430873` (attachments=[]).
-- Attachment smoke event `75f0c981-1180-4047-9aa3-f725bec6eb9b` (one attachment).
-- Storage object `friction-evidence/9e314151-be65-434e-8588-c913012f6591/0_va5-smoke.png` (861 bytes, image/png; signed-URL read-back PASS).
+- Attachment smoke event `75f0c981-1180-4047-9aa3-f725bec6eb9b` (one attachment; visible as "cc-0016 Stage B attachment smoke" on /operations).
+- Storage object `friction-evidence/9e314151-be65-434e-8588-c913012f6591/0_va5-smoke.png` (861 bytes, image/png; renders as thumbnail + opens 64×64 PNG).
 
 **PK forward constraints carried:**
-- CONSTRAINT 1 (operator-authorisation) — Stage B closure event. CCB verified the FAB flow; negative-path operator-auth test not explicitly asserted in directive (single-operator posture; flagged limitation).
+- CONSTRAINT 1 (operator-authorisation) — Stage B closure event. Negative-path test not explicitly asserted (single-operator posture; flagged limitation; Stage D read/display only, unaffected).
 - CONSTRAINT 2 (no lifecycle cleanup / destructive deletion) — binds Stage E; unchanged.
 
-**Stage D constraints (per directive):** no lifecycle cleanup; no retroactive attachment editing; no upload-flow changes unless required.
+**Next:** Stage E scoping (Option A) OR pause to Cowork/cc-0015 (Option B) OR mobile viewport (Option C) — PK choice. Do NOT start Stage E automatically.
 
 ---
 
-## 🟢 Dashboard slices — STATUS BLOCK (UPDATED v2.99)
+## 🟢 Dashboard slices — STATUS BLOCK (UPDATED v3.00)
 
-**Status v2.99: Slices 1–3 + 4A–4B RECORDED (v2.95+v2.96). cc-0016 Stage B FAB evidence upload UX CLOSED/PASS (v2.99). Cross-repo recording only; no dashboard edits this session.**
+**Status v3.00: Slices 1–3 + 4A–4B RECORDED (v2.95+v2.96). cc-0016 Stage B FAB upload (v2.99) + Stage D evidence display (v3.00) CLOSED/PASS. Cross-repo recording only; no dashboard edits this session.**
 
 - Slice 1 `af60953` / Slice 2 `de4501b` + `37008e5` / Slice 3 `991a92b` — VISUAL PASS (v2.95).
 - Slice 4A `cd02402` / Slice 4B `f5a980f` — VISUAL PASS (v2.96).
-- **cc-0016 Stage B at `36fe6ad`** (files: `actions/emit-friction.ts`, `components/friction-form.tsx`) — CLOSED/PASS (v2.99); V-A5 PASS.
+- cc-0016 Stage B at `36fe6ad` (`actions/emit-friction.ts`, `components/friction-form.tsx`) — CLOSED/PASS (v2.99).
+- **cc-0016 Stage D at `9082beb`** (`app/(dashboard)/operations/page.tsx`, `app/(dashboard)/operations/case-row.tsx`) — CLOSED/PASS (v3.00).
 
-**Remaining dashboard work:** Stage D /operations evidence display (D1 / core rank 2); cc-0015 UI (D2, gated); PRV (D3, deferred); mobile viewport (D4, P3).
-
----
-
-## 🟢 Friction Register Consolidation Plan v1 — STATUS BLOCK (v2.99 unchanged)
-
-Wave 0 + 0d + 0e COMPLETE. Gates 10+12+13 CLOSED. Gate 11 (1-week observation 2026-05-19 → 2026-05-26) ACTIVE. Day count not refreshed v2.99. Wave 0f scoping rank 3 carry. **cc-0016 Wave 8 now Stage A/B/C closed; Stage D next; Stage E future.**
+**Remaining dashboard work:** cc-0015 UI (D1, gated on Gate 11 closing 2026-05-26); PRV (D2, deferred); mobile viewport (D3, P3 / Option C).
 
 ---
 
-## 🟢 Cowork brief `nightly-health-check-v1` — STATUS BLOCK (v2.99 unchanged)
+## 🟢 Friction Register Consolidation Plan v1 — STATUS BLOCK (v3.00 unchanged)
 
-FROZEN at v3.0. Signal-production contract empirically validated v2.92 (V-C3 CLOSED-PASS). Lifecycle gating WARN unchanged — core rank 1; directive explicitly preserved as open v2.99. Brief reset to `ready` v2.94; convention patched v2.94. Closure waits on PK observation of next 16:00 UTC fire.
+Wave 0 + 0d + 0e COMPLETE. Gates 10+12+13 CLOSED. Gate 11 (1-week observation 2026-05-19 → 2026-05-26) ACTIVE — ~5 days out. Day count not refreshed v3.00. Wave 0f scoping rank 3 carry. **cc-0016 Wave 8 now Stage A/B/C/D closed; only Stage E (future/separately-approved) remains.**
 
 ---
 
-## 🟢 Process Upgrades — STATUS BLOCK (UPDATED v2.99)
+## 🟢 Cowork brief `nightly-health-check-v1` — STATUS BLOCK (v3.00 unchanged)
 
-**L41**: no new exercises v2.99 (read-only session).
-**L40 / L46 / L58**: not exercised v2.99.
-**L62**: strongly reinforced via cc-0016 6-fire D-01 series; both Stages converged via Path A with no state-capture override.
-**L-v2.83-a**: **16+ occurrences v2.99**. STRONG CANDIDATE confirmed.
+FROZEN at v3.0. Signal-production contract empirically validated v2.92. Lifecycle gating WARN unchanged — core rank 1; directive explicitly preserved as open v3.00. Brief reset to `ready` v2.94; convention patched v2.94. Closure waits on PK observation of next 16:00 UTC fire.
+
+---
+
+## 🟢 Process Upgrades — STATUS BLOCK (UPDATED v3.00)
+
+**L41**: no new exercises v3.00 (read-only session).
+**L40 / L46 / L58**: not exercised v3.00.
+**L62**: strongly reinforced via cc-0016 6-fire D-01 series; not newly exercised v3.00 (no D-01).
+**L-v2.83-a**: **17+ occurrences v3.00**. STRONG CANDIDATE confirmed.
 **L-v2.85-a HIGH-SIGNAL**: 4 occurrences (unchanged).
-**L-v2.85-e**: re-applied v2.99 — **12th consecutive occurrence**. PROMOTION-CONFIRMED v2.88 carries forward.
-**L-v2.88-a**: watcher CLOSED for cc-0016 (no identical-loop across 7 fires). 2 prior occurrences (v2.88 + v2.91) carry for other contexts.
-**L-v2.90-a-f**: not empirically re-exercised v2.99. Watchers.
+**L-v2.85-e**: re-applied v3.00 — **13th consecutive occurrence**. PROMOTION-CONFIRMED v2.88 carries forward.
+**L-v2.88-a**: watcher CLOSED for cc-0016. 2 prior occurrences carry for other contexts.
+**L-v2.90-a-f**: not empirically re-exercised v3.00. Watchers.
 
 ---
 
@@ -187,22 +188,22 @@ S1–S29 unchanged. S30 closed PASS v2.47.
 
 ## 🔴 Time-bound
 
-- **1-week empirical observation window** — 2026-05-19 → 2026-05-26. Wave 7 (cc-0015) gated. Day count not refreshed v2.99.
-- **Cowork `nightly-health-check-v1` lifecycle gating WARN** — core rank 1 carry; preserved open v2.99.
-- **cc-0016 Stage B CLOSED/PASS v2.99; V-A5 PASS.** Stage D next.
-- No new v2.99 calendar items.
+- **1-week empirical observation window** — 2026-05-19 → 2026-05-26. Wave 7 (cc-0015) gated. ~5 days out from 2026-05-21. Day count not refreshed v3.00.
+- **Cowork `nightly-health-check-v1` lifecycle gating WARN** — core rank 1 carry; preserved open v3.00.
+- **cc-0016 Stage D CLOSED/PASS v3.00; evidence path complete A→B→C→D.** Stage E future.
+- No new v3.00 calendar items.
 
 ---
 
 ## 🛠 Meta-tooling — ChatGPT Review MCP
 
-v2.99: **0 D-01 fires.** T-MCP-02 cum **~92 unchanged**. Across the cc-0016 series (Stage A 3 fires + Stage C 3 fires) T-MCP-02 burn was 6 fires; both Stages reached clean APPROVED via Path A. L62 strongly reinforced. State-capture exceptions v2.99: 0 (cum 1). Close-the-loop UPDATEs v2.99: 0 (Stage C 3 rows assumed resolved at v2.98 apply).
+v3.00: **0 D-01 fires.** T-MCP-02 cum **~92 unchanged**. L46 / L62 not newly exercised v3.00 (no D-01). State-capture exceptions v3.00: 0 (cum 1). Close-the-loop UPDATEs v3.00: 0.
 
 ---
 
 ## 🤖 Cowork automation (D182)
 
-**v2.99 update:** Cron 82/83/85/86 firing normally. Cowork brief lifecycle gating WARN — core rank 1 carry; preserved open v2.99.
+**v3.00 update:** Cron 82/83/85/86 firing normally. Cowork brief lifecycle gating WARN — core rank 1 carry; preserved open v3.00.
 
 ---
 
@@ -210,16 +211,17 @@ v2.99: **0 D-01 fires.** T-MCP-02 cum **~92 unchanged**. Across the cc-0016 seri
 
 | ID | Item | Priority | Status | Owner | Next action |
 |---|---|---|---|---|---|
-| **cc-0016 Stage B — FAB evidence upload/read UX** | dashboard `36fe6ad`; CCB + chat backend + CCD read-back verified; V-A5 PASS | RECORDED v2.99 | **CLOSED/PASS** | n/a (recorded) | n/a |
-| **cc-0016 V-A5 storage round-trip** | signed URL HTTP 200 / image/png / 861 bytes / PNG intact | RECORDED v2.99 | **PASS** | n/a (recorded) | n/a |
-| **cc-0016 Stage D — /operations evidence display** | Make attached evidence visible from operator surface; thumbnails | **P2, core rank 2 (NEW v2.99)** | NOT STARTED. Read-side likely. | PK → chat | Author Stage D brief; no cleanup / no retroactive editing / no upload-flow change. |
-| **cc-0016 Stage E — lifecycle cleanup** | Cleanup automation + dry-run report | FUTURE — separately approved only | NOT STARTED. CONSTRAINT 2 binds. | PK → chat | Separate approval + dry-run required. |
-| **Cowork brief lifecycle gating WARN — `nightly-health-check-v1`** | Reframed v2.94; ready reset; convention patched. Preserved open v2.99. | **P2 carry, core rank 1** | OPEN. Closure waits on PK observation of next 16:00 UTC fire. | chat → PK | Observe next fire. |
+| **cc-0016 Stage D — /operations evidence display** | dashboard `9082beb`; CCB VISUAL PASS; badge + Evidence section + signed-URL thumbnail | RECORDED v3.00 | **CLOSED/PASS** | n/a (recorded) | n/a |
+| **cc-0016 evidence capture/display path** | A→B→C→D complete | RECORDED v3.00 | **COMPLETE through Stage D** | n/a (recorded) | n/a |
+| **cc-0016 Stage B — FAB evidence upload/read UX** | dashboard `36fe6ad`; V-A5 PASS | RECORDED v2.99 | **CLOSED/PASS** | n/a (recorded) | n/a |
+| **cc-0016 Stage E — lifecycle cleanup** | Cleanup automation + dry-run report | FUTURE — separately approved only | NOT STARTED. CONSTRAINT 2 binds. Option A = scoping/dry-run design only. | PK → chat | Separate approval + dry-run required before any destructive run. |
+| **Cowork brief lifecycle gating WARN — `nightly-health-check-v1`** | Reframed v2.94; ready reset; convention patched. Preserved open v3.00. | **P2 carry, core rank 1** | OPEN. Closure waits on PK observation of next 16:00 UTC fire. | chat → PK | Observe next fire. |
 | **3 no-fire scheduler days — `nightly-health-check-v1`** | 2026-05-16, 2026-05-18, 2026-05-19 | **P3 secondary follow-up** | OPEN. | chat → PK | Read-only probe. |
 | **Wave 0f scoping** | Brief-authoring only; opportunistic during Gate 11 | **P3, core rank 3** | NOT STARTED. | chat → PK | When PK directs. |
 | **Platform Reconciliation View brief** | Deferred per D-FR-RECON-001 §7.D | **P2 carry, core rank 4** | NOT STARTED. | PK → chat | When PK directs. |
 | **5-row close-the-loop batch / Pre-sales / `purge_test_case` helper extension** | Close-the-loop UPDATEs + Pre-sales 3-clock + helper coverage gap | **P2/P3 carry, core rank 5** | OPEN. | chat → PK | When PK directs. |
 | **cc-0015 friction-pool-view brief** (Wave 7) | Authored PENDING_EXECUTION | P2 (gated on Gate 11 closing 2026-05-26) | DRAFTED `9a5dc155`. | chat → PK (Wave 7) | When window closes 2026-05-26. |
+| **Mobile/narrow viewport verification** | Browser runtime overrode `resize_window`; Option C candidate | P3 carry | OPEN. Not blocking. Opportunistic given fresh /operations UI. | CCD or PK | Real-device verification. |
 | **Music library activation** | video-worker v3.0.0 env-var gated | P2 carry | PENDING PK. | PK + chat | Bucket + tracks + env + smoke. |
 | **vchecks.md V-B4 doc patch** | Correct V-B4 to 12-param signature | P3 carry | Doc-only. | chat → PK | PK decides scope. |
 | **cc-0017c v1.2 doc patch candidate** | Date + 3 D-01 refs + V-B4 signature | P3 carry | Doc-only. | chat → PK | PK decides scope. |
@@ -227,23 +229,22 @@ v2.99: **0 D-01 fires.** T-MCP-02 cum **~92 unchanged**. Across the cc-0016 seri
 | **F-YT-PUB-AVATAR-EXCLUSION** | youtube-publisher filter | P2 carry | LOGGED. | chat → PK | Audit m.post_draft. |
 | **cc-0013 Dashboard Phase 0** | 7 confirm-defaults | P2 carry | OPEN. | PK | When PK directs. |
 | **Backend/shared-metrics refactor** | Deeper scope behind v2.95 count mismatch | DEFERRED carry | OPEN. Not actively ranked. | n/a | When separately directed. |
-| **Mobile/narrow viewport verification** | Browser runtime overrode `resize_window` | P3 carry | OPEN. Not blocking. | CCD or PK | Real-device verification. |
-| **L-v2.83-a promotion** | push_files response file-count verification | **P3 (16+ occurrences v2.99; STRONG)** | Re-applied at sync close v2.99. | chat → next lesson cycle | Promote. |
-| **L-v2.85-e** | push_files length budget — split-commit mitigation | **P3 (PROMOTION-CONFIRMED v2.88; 12th consecutive v2.99)** | Atomic single-commit close v2.99. | chat → next lesson cycle | **PROMOTE.** |
-| **L-v2.85-a (HIGH-SIGNAL)** | V-check function signature probe at brief authoring | P3 (4 occurrences; not re-exercised v2.99) | Promotion-eligible. | chat → next lesson cycle | Promote. |
-| **L62 reinforcement** | Type-B vs Type-C D-01 handling | P3 (strongly reinforced via cc-0016 6-fire series v2.99) | Both Stages converged via Path A; no state-capture override. | chat → next lesson cycle | Strong empirical record. |
+| **L-v2.83-a promotion** | push_files response file-count verification | **P3 (17+ occurrences v3.00; STRONG)** | Re-applied at sync close v3.00. | chat → next lesson cycle | Promote. |
+| **L-v2.85-e** | push_files length budget — split-commit mitigation | **P3 (PROMOTION-CONFIRMED v2.88; 13th consecutive v3.00)** | Atomic single-commit close v3.00. | chat → next lesson cycle | **PROMOTE.** |
+| **L-v2.85-a (HIGH-SIGNAL)** | V-check function signature probe at brief authoring | P3 (4 occurrences; not re-exercised v3.00) | Promotion-eligible. | chat → next lesson cycle | Promote. |
+| **L62 reinforcement** | Type-B vs Type-C D-01 handling | P3 (strongly reinforced via cc-0016 6-fire series) | Both Stages converged via Path A; no state-capture override. | chat → next lesson cycle | Strong empirical record. |
 | **L-v2.88-a** | Identical PK-directive loop watcher | P3 (watcher CLOSED for cc-0016; 2 prior occurrences carry) | No identical-loop across 7 cc-0016 fires. | chat → next lesson cycle | Pair-promote with L-v2.85-e if recurs elsewhere. |
-| **L-v2.90-a-f** | V-D fixture / arity DROP / etc. | P3 (not re-exercised v2.99) | Watchers. | chat → next session | Watcher. |
-| **L-v2.78-a / L-v2.81-a / L47 / L-v2.84-a-d / L-v2.85-b/c/d / L-v2.86-a-e / L-v2.88-b/c/d / L-v2.89-a** | Various candidates | P3 carry | Unchanged from v2.96. | chat → next session/lesson cycle | Various. |
-| **Other carries** | Minor doc patches (cc-0010A/0011/0012) / F-K-SCHEMA-REGISTRY-R-STALE / AI cost view / Publisher latent config / M8b / 94-row cohort / F-CRON-AUTO-APPROVER-SECRET-INLINE / morning-inbox-sweep-v1 / 22 escalated m.chatgpt_review rows / Memory cap 19/30 / Dashboard mobile / F-PUB-009 / CFW dead drafts / Vault service_role_key / 00_overview / F-AAP-NEEDS-REVIEW / F-AI-WORKER-PARSER-SKIP-BUG / 4× F-CRON-*-STALE / Emergency redeploy / f4a0dd85 health-check / feature branch `feature/cc-0009-stage-b-ef-source` / 3 pre-v2 forensic rows / Localhost FAB cleanup / 3 v2.77 D-01 close-the-loops | P2/P3 various | Unchanged from v2.96. | various | various |
+| **L-v2.90-a-f** | V-D fixture / arity DROP / etc. | P3 (not re-exercised v3.00) | Watchers. | chat → next session | Watcher. |
+| **L-v2.78-a / L-v2.81-a / L47 / L-v2.84-a-d / L-v2.85-b/c/d / L-v2.86-a-e / L-v2.88-b/c/d / L-v2.89-a** | Various candidates | P3 carry | Unchanged from v2.99. | chat → next session/lesson cycle | Various. |
+| **Other carries** | Minor doc patches (cc-0010A/0011/0012) / F-K-SCHEMA-REGISTRY-R-STALE / AI cost view / Publisher latent config / M8b / 94-row cohort / F-CRON-AUTO-APPROVER-SECRET-INLINE / morning-inbox-sweep-v1 / 22 escalated m.chatgpt_review rows / Memory cap 19/30 / Dashboard mobile / F-PUB-009 / CFW dead drafts / Vault service_role_key / 00_overview / F-AAP-NEEDS-REVIEW / F-AI-WORKER-PARSER-SKIP-BUG / 4× F-CRON-*-STALE / Emergency redeploy / f4a0dd85 health-check / feature branch `feature/cc-0009-stage-b-ef-source` / 3 pre-v2 forensic rows / Localhost FAB cleanup / 3 v2.77 D-01 close-the-loops | P2/P3 various | Unchanged from v2.99. | various | various |
 
-**Closed v2.99:**
-- **cc-0016 Stage B** → RECORDED-CLOSED/PASS (dashboard `36fe6ad`).
-- **cc-0016 V-A5 storage round-trip** → PASS.
+**Closed v3.00:**
+- **cc-0016 Stage D** → RECORDED-CLOSED/PASS (dashboard `9082beb`).
+- **cc-0016 evidence capture/display path** → COMPLETE through Stage D.
 
-**Promoted v2.99:** cc-0016 Stage D → core rank 2 (replaces closed Stage A/C).
+**Promoted v3.00:** cc-0016 Stage E scoping (Option A) → conditional core rank 2 (replaces closed Stage D). cc-0015 UI → dashboard D1 (leading dashboard build once Gate 11 clears).
 
-**Closed earlier:** v2.98 cc-0016 Stage C apply (assumed); v2.97 cc-0016 Stage A apply (assumed); v2.96 dashboard slices 4A–4B + top alert bar reconciliation; v2.95 dashboard slices 1–3 + PHASES streak + "Stop Claude"; v2.93 Reconciliation daily cadence diagnostic; v2.92 Health_check V-C3; v2.91 cc-0017e v1.1 doc patch; v2.90 cc-0017e apply; v2.85 cc-0017c apply; v2.82 cc-0017b apply; v2.81 cc-0017a apply; v2.77 cc-0014 archived.
+**Closed earlier:** v2.99 cc-0016 Stage B + V-A5; v2.98 cc-0016 Stage C apply (assumed); v2.97 cc-0016 Stage A apply (assumed); v2.96 dashboard slices 4A–4B + top alert bar reconciliation; v2.95 dashboard slices 1–3 + PHASES streak + "Stop Claude"; v2.93 Reconciliation daily cadence diagnostic; v2.92 Health_check V-C3; v2.91 cc-0017e v1.1 doc patch; v2.90 cc-0017e apply; v2.85 cc-0017c apply; v2.82 cc-0017b apply; v2.81 cc-0017a apply; v2.77 cc-0014 archived.
 
 ---
 
@@ -257,65 +258,67 @@ v2.99: **0 D-01 fires.** T-MCP-02 cum **~92 unchanged**. Across the cc-0016 seri
 
 ## 🌱 Future ideation
 
-Unchanged from v2.76-v2.96.
+Unchanged from v2.76-v2.99.
 
 ---
 
 ## 📌 Backlog
 
-**v2.99 state changes:**
-- **cc-0016 Stage B RECORDED CLOSED/PASS v2.99** (dashboard `36fe6ad`; V-A5 PASS).
-- **cc-0016 Stage D** promoted to core rank 2 (next evidence step).
-- **cc-0016 Stage E** carried as future/separately-approved-only.
-- **V-A5 smoke artefacts** retained (2 events + 1 storage object) — do not delete.
+**v3.00 state changes:**
+- **cc-0016 Stage D RECORDED CLOSED/PASS v3.00** (dashboard `9082beb`).
+- **cc-0016 evidence capture/display path COMPLETE through Stage D** (A→B→C→D).
+- **cc-0016 Stage E** carried as future/separately-approved-only; Option A = scoping/dry-run design only.
+- **V-A5 smoke artefacts** retained (2 events + 1 storage object) — do not delete; now also Stage D demo artefact.
 - Cowork lifecycle gating WARN unchanged at core rank 1.
 - cc-0015 / PRV unchanged — preserved open.
 - T-MCP-02 cum ~92 unchanged.
 - State-capture exceptions cum 1 unchanged.
-- L-v2.85-e 12th consecutive; L-v2.83-a 16+ STRONG; L62 strongly reinforced; L-v2.88-a watcher closed for cc-0016.
-- **No decisions.md change v2.99.**
-- **Cross-session reconciliation flagged at v2.99 — RECONCILED v2.99.1:** v2.97 + v2.98 session files were not loaded in v2.99 chat context, so the v2.97/v2.98 rows in `docs/00_sync_state.md` session index were authored as placeholders. v2.99.1 read-only verification confirmed ancestry clean (`307822b` v2.97 + `2885b0d` v2.98 both ancestors of `b54f014` v2.99) and both session files exist. Placeholder rows replaced with headlines drawn from commit `2885b0d`.
+- L-v2.85-e 13th consecutive; L-v2.83-a 17+ STRONG; L62 strongly reinforced; L-v2.88-a watcher closed for cc-0016.
+- **No decisions.md change v3.00.**
+- **Cross-session reconciliation still flagged:** v2.97 + v2.98 session files not loaded in chat context; placeholders in index; reconcile next session.
 
 ---
 
 ## 🧊 Frozen / Deferred
 
-Unchanged from v2.96. Plus: **cc-0016 Stage E lifecycle cleanup** — future/separately-approved-only. **Backend/shared-metrics refactor** — deferred carry.
+Unchanged from v2.99. **cc-0016 Stage E lifecycle cleanup** — future/separately-approved-only. **Backend/shared-metrics refactor** — deferred carry.
 
 ---
 
 ## 🎓 Canonical Lessons
 
-L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d + L-v2.85-a-e + L-v2.86-a-e + L-v2.88-a-d + L-v2.89-a + L-v2.90-a-f candidates carried per v2.99.
+L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d + L-v2.85-a-e + L-v2.86-a-e + L-v2.88-a-d + L-v2.89-a + L-v2.90-a-f candidates carried per v3.00.
 
-- **L40 / L41 / L46 / L58**: not exercised v2.99 (read-only session).
-- **L62**: strongly reinforced via cc-0016 6-fire D-01 series. Both Stages converged via Path A satisfy-then-re-fire with no state-capture override. Highest-confidence empirical record to date.
-- **L-v2.83-a**: **16+ occurrences v2.99**. STRONG CANDIDATE confirmed.
-- **L-v2.85-a HIGH-SIGNAL**: 4 occurrences (unchanged v2.99).
-- **L-v2.85-e**: **PROMOTION-CONFIRMED v2.88; 12th consecutive occurrence v2.99**.
-- **L-v2.88-a**: watcher CLOSED for cc-0016. 2 prior occurrences (v2.88 + v2.91) carry for other contexts.
-- **L-v2.90-a-f**: not empirically re-exercised v2.99. Watchers.
-- Other lessons unchanged from v2.96.
+- **L40 / L41 / L46 / L58**: not exercised v3.00 (read-only session).
+- **L62**: strongly reinforced via cc-0016 6-fire D-01 series. Highest-confidence empirical record to date. Not newly exercised v3.00 (no D-01).
+- **L-v2.83-a**: **17+ occurrences v3.00**. STRONG CANDIDATE confirmed.
+- **L-v2.85-a HIGH-SIGNAL**: 4 occurrences (unchanged v3.00).
+- **L-v2.85-e**: **PROMOTION-CONFIRMED v2.88; 13th consecutive occurrence v3.00**.
+- **L-v2.88-a**: watcher CLOSED for cc-0016. 2 prior occurrences carry for other contexts.
+- **L-v2.90-a-f**: not empirically re-exercised v3.00. Watchers.
+- Other lessons unchanged from v2.99.
 
-**L-v2.85-e + L-v2.85-a + L-v2.83-a remain highest-priority promotions at next lesson cycle. L62 now has a strong 6-fire empirical record. L-v2.88-a watcher closed for cc-0016.**
+**L-v2.85-e + L-v2.85-a + L-v2.83-a remain highest-priority promotions at next lesson cycle. L62 has a strong 6-fire empirical record. L-v2.88-a watcher closed for cc-0016.**
 
 ---
 
-## v2.99 honest limitations
+## v3.00 honest limitations
 
-- All v2.31–v2.96 limitations apply.
-- **Cross-session state recording (RECONCILED v2.99.1).** v2.97 (Stage A apply close) + v2.98 (Stage C apply close) were NOT loaded in v2.99 chat's context window at authoring time. Stage A/C were treated as CLOSED per directive assertion, not independently re-verified at v2.99 close. Session-index entries for v2.97 + v2.98 were initially placeholders. v2.99.1 read-only verification confirmed: ancestry clean (`307822b` v2.97 + `2885b0d` v2.98 are both ancestors of `b54f014` v2.99), session files exist at the recorded paths (`docs/runtime/sessions/2026-05-20-v2.97-...md`, `...v2.98-...md`), v2.97/v2.98 close-states intact in repo. Placeholders replaced with headlines drawn from commit `2885b0d`.
-- **Cross-repo recording only** — chat did not fetch dashboard repo HEAD or independently verify commit `36fe6ad`. Recorded per directive payload.
-- **"CCB verified" reflects operator browser walkthrough**, not automated test coverage.
-- **CONSTRAINT 1 operator-authorisation negative-path test** (unauthorised operator blocked) is not explicitly asserted in the directive payload. Acceptable under single-operator posture (Stage A approval item 5) but recorded as a gap for any future multi-operator hardening.
-- **Smoke artefacts retained** (2 events + 1 storage object) as V-A5 evidence; NOT to be cleaned up unless separately directed.
+- All v2.31–v2.99 limitations apply.
+- **Cross-repo recording only** — chat did not fetch dashboard repo HEAD or independently verify commit `9082beb`. Recorded per directive payload.
+- **Cross-session gap unchanged:** v2.97 (Stage A apply close) + v2.98 (Stage C apply close) session files NOT loaded in chat context; still unverified placeholders from v2.99. Reconcile next session.
+- **"CCB VISUAL PASS" reflects operator browser walkthrough**, not automated test coverage.
+- **Signed-URL thumbnail render + new-tab open** are CCB functional confirmations; chat did not independently re-issue the signed URL this session (read-only recording).
+- **"10h ago" caption** is relative to CCB verification time, recorded verbatim; absolute timestamp not pinned.
+- **Smoke artefacts retained** (2 events + 1 storage object) as V-A5 evidence + Stage D demo artefact; NOT to be cleaned up unless separately directed.
 - **friction.* schema state assumed unchanged** from Stage C apply (10 tables / view / 19 functions net / 29 cases / 29 events / 8 case_history); not re-probed this session.
-- **Outstanding close-the-loop UPDATEs**: 3 Stage C review rows (`56e65bb2`, `dbabb576`, `358c6fdd`) assumed resolved at Stage C apply (v2.98); net count not recomputed v2.99.
-- **T-MCP-02 cumulative ~92 unchanged** v2.99 (0 D-01 fires). State-capture exceptions cumulative 1.
-- **Gate 11 day count not refreshed v2.99.**
+- **CONSTRAINT 1 operator-authorisation negative-path test gap** (flagged v2.99) carries forward; Stage D is read/display only and does not affect it.
+- **Outstanding close-the-loop UPDATEs**: Stage C review rows assumed resolved at v2.98 apply; net count not recomputed v3.00.
+- **T-MCP-02 cumulative ~92 unchanged** v3.00 (0 D-01 fires). State-capture exceptions cumulative 1.
+- **Gate 11 day count not refreshed v3.00** (window closes 2026-05-26; ~5 days out).
 - **Memory cap 19/30** unchanged.
-- **Production mutations v2.99: 0.** Net schema deltas: 0. Supabase mutations: 0. apply_migration: 0. EF deploys: 0. Application code edits (either repo): 0.
-- **No decisions.md change. No Wave 0f work started. No mid-session compaction event. No state-capture override.**
+- **Production mutations v3.00: 0.** Net schema deltas: 0. Supabase mutations: 0. apply_migration: 0. EF deploys: 0. Application code edits (either repo): 0.
+- **No decisions.md change. No Wave 0f work started. No mid-session compaction event. No state-capture override. No Stage E work started.**
 
 ---
 
@@ -325,17 +328,17 @@ L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d 
 - v2.94 (2026-05-20 Sydney): Cowork brief lifecycle gating WARN REFRAMED + ready reset + convention patched.
 - v2.95 (2026-05-20 Sydney): Dashboard slices 1–3 RECORDED. PHASES 46-streak deferral CLOSED.
 - v2.96 (2026-05-20 Sydney): Dashboard slices 4A–4B RECORDED + top alert bar count reconciliation CLOSED for UI scope.
-- v2.97 (2026-05-20 Sydney): cc-0016 Stage A friction-capture-evidence APPLIED via `apply_migration` after D-01 third-fire approval (`9eb35144`). 10 atomic mutations (bucket + RLS + column + CHECKs + index + view + grants). V-A1/A2/A3/A4/A4b/A6 PASS; V-A5 deferred to Stage B. 3 D-01 rows close-the-loop resolved; outstanding 28→26.
-- v2.98 (2026-05-20 Sydney): cc-0016 Stage C extended-emit-function APPLIED via `apply_migration` after D-01 approval (`358c6fdd`). 8 atomic mutations (DROP+CREATE emit_event 13-arg + fn_emit_manual_event 8-arg + grants). cc-0017b pipeline preserved byte-stable. 11/11 SQL V-checks PASS; V-A5 carried to Stage B FAB ship. 3 D-01 rows close-the-loop resolved.
-- **v2.99 (2026-05-20 Sydney, cc-0016 Stage B FAB upload/read UX validated + V-A5 PASS):**
-  - Build arc: pull main → read v2.96 close state → record Stage B directive payload (dashboard `36fe6ad`; CCB + chat backend + CCD read-back; V-A5 PASS; smoke artefacts) → edit action_list (header + ADDITIONS + Today/Next 5 + dashboard ranking + cc-0016 status block + Active + Backlog + Lessons + Limitations + Changelog) → edit sync_state (index + inline + Next priorities + do-not-touch + footer) → write per-session file → atomic single-commit `push_files` (3 files).
-  - cc-0016 Stage B at dashboard `36fe6ad575a125870c9ac7eeb25a0da605a9c7d3` (files: `actions/emit-friction.ts`, `components/friction-form.tsx`; typecheck PASS) — CLOSED/PASS.
-  - V-A5 (storage round-trip) empirically PASS (signed URL HTTP 200 / image/png / 861 bytes / PNG intact).
-  - cc-0016 stage ledger: Stage A CLOSED / Stage C CLOSED / Stage B CLOSED/PASS / Stage D NEXT / Stage E future.
-  - cc-0016 Stage D promoted to core rank 2.
+- *(v2.97 cc-0016 Stage A apply + v2.98 cc-0016 Stage C apply — own sessions; not loaded in v2.99/v3.00 chat context; reconcile next session.)*
+- v2.99 (2026-05-20 Sydney): cc-0016 Stage B FAB upload/read UX validated + V-A5 PASS. Stage B CLOSED/PASS.
+- **v3.00 (2026-05-21 Sydney, cc-0016 Stage D /operations evidence display VISUAL PASS):**
+  - Build arc: pull main → read v2.99 close state → record Stage D directive payload (dashboard `9082beb`; CCB VISUAL PASS facts) → edit action_list (header + ADDITIONS + Today/Next 5 + dashboard ranking + cc-0016 status block + Active + Backlog + Lessons + Limitations + Changelog) → edit sync_state (index + inline + Next priorities + do-not-touch + footer) → write per-session file → atomic single-commit `push_files` (3 files).
+  - cc-0016 Stage D at dashboard `9082beb3e22df2e0f8d42924ed4e6f0a127c23ea` (files: `app/(dashboard)/operations/page.tsx`, `app/(dashboard)/operations/case-row.tsx`; typecheck PASS) — CLOSED/PASS.
+  - CCB VISUAL PASS: paperclip badge 📎1, Evidence (1) section, signed-URL thumbnail, PNG new tab (64×64), unattached cases normal, triage guardrail intact.
+  - cc-0016 stage ledger: Stage A CLOSED / Stage C CLOSED / Stage B CLOSED/PASS / Stage D CLOSED/PASS / Stage E future. Evidence path COMPLETE A→B→C→D.
+  - Next action = PK choice: Option A (Stage E scoping/dry-run design only), Option B (pause → Cowork WARN + cc-0015 Gate 11 watch), Option C (mobile viewport). Stage E NOT started automatically.
   - Cowork lifecycle gating WARN / cc-0015 / PRV / Stage E UNCHANGED — preserved open.
-  - 0 content-engine code changes; 0 Supabase mutations; 0 lifecycle cleanup; 0 retroactive editing; 0 fn_set_event_attachments; 0 /operations display; 0 Stage D/E; 0 dashboard edits; 0 smoke-object deletion; 0 D-01 fires; 0 memory edits; 0 decisions.md edits.
-  - L-v2.85-e re-applied 12th consecutive. L-v2.83-a 16+ STRONG. L62 strongly reinforced via cc-0016 6-fire series. L-v2.88-a watcher CLOSED for cc-0016.
+  - 0 Supabase mutations; 0 SQL/RPC/view/function changes; 0 lifecycle cleanup; 0 retroactive editing; 0 upload-flow changes; 0 triage mutation; 0 unrelated dashboard mutations; 0 dashboard edits; 0 smoke-object/test-event deletion; 0 Stage E start; 0 cleanup run; 0 D-01 fires; 0 memory edits; 0 decisions.md edits.
+  - L-v2.85-e re-applied 13th consecutive. L-v2.83-a 17+ STRONG. L62 strongly reinforced (carry). L-v2.88-a watcher CLOSED for cc-0016.
   - T-MCP-02 cum ~92 unchanged. State-capture exceptions cum 1 unchanged.
-  - Closure budget: ~1h v2.99. Trailing-14-day ~36h.
-  - Cross-session note: v2.97 + v2.98 not loaded in chat context at v2.99 authoring time; placeholders recorded. **RECONCILED v2.99.1** — ancestry verified clean, session files exist, placeholders replaced with headlines drawn from commit `2885b0d`.
+  - Closure budget: ~1h v3.00. Trailing-14-day ~37h.
+  - Cross-session note: v2.97 + v2.98 not loaded in chat context; placeholders; reconcile next session.
