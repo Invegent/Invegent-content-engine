@@ -4,7 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-19 Sydney evening (**v2.92 — Health_check V-C3 + signal-production diagnostic CLOSED-PASS**. Empirically validated against 2026-05-17 `nightly-health-check-v1` v3.0 run (`run_id=nightly-health-check-v1/2026-05-17T160210Z`). 4 read-only `execute_sql` checks PASS: (1) `friction.fn_emit_health_check_findings(text,text,jsonb)→jsonb` SECURITY DEFINER owner=postgres signature intact; (2) all 5 markdown finding_ids reconcile 1:1 with `friction.event` rows (source='health_check', severity='critical', category='pipeline_integrity', all case_linked); (3) 0 health_check `emit_error` rows; (4) all-time aggregate shows only the 2026-05-17 v3.0 run as expected. Markdown footer `success_count=5 failure_count=0` empirically true. **NEW P2 follow-up spawned: Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** (rank 2). Of 5 calendar days since brief v3.0 published 2026-05-15, only 1 file produced (20% hit rate). Signal-production contract works when invoked; invocation cadence sparse. **Platform Reconciliation View brief described as next practical planning item per PK directive** (rank 3 — positionally unchanged but first non-wait, non-investigative item). L-v2.85-e re-applied **7th consecutive occurrence** (1+2 split close v2.92). L-v2.83-a re-applied at sync close commit. Cumulative **12+ STRONG**. 0 production mutations / 0 Supabase mutations (sync close itself) / 0 D-01 fires / 0 memory edits / 0 decisions.md edits / 0 Wave 0f / 0 force-run of `nightly-health-check-v1` / 0 force-run of cron 85. T-MCP-02 cum ~86 unchanged. State-capture exceptions cum 1 unchanged. Gate 11 Day 1 of 7 unchanged. Dashboard PHASES **45th deferral**. Per-session detail `2026-05-19-vc3-signal-production-closed.md` commit `55d26d3d07346acd1ab9be91f3c3f92d3ed48842` (11,169 B). sync_state + action_list atomic push_files this commit (1+2 split per L-v2.85-e baseline; L-v2.89-a fallback ready but not invoked).) **Today/Next 4**: Reconciliation daily diagnostic → rank 1 (P1 carry, unchanged, pending natural cron 85 fire); Cowork scheduling diagnostic → rank 2 (P2 NEW); Platform Reconciliation View → rank 3 (P2 carry, **next practical planning item per PK directive**); 5-row close-the-loop / pre-sales / purge_test_case helper extension → rank 4 (P2/P3 carry).
+> Last updated: 2026-05-20 Sydney (**v2.93 — Reconciliation daily cadence diagnostic CLOSED-PASS** on first post-cc-0017e cron 85 natural fire. Cron 85 fired 2026-05-20 03:30:00.762 AEST → downstream run_id `f24d0fcf-cfce-4a1d-ab31-da51ea162151` → `r.reconciliation_run.status='succeeded'` → 112 processed / 5 inserted / 0 updated / 107 skipped → `error_summary=NULL` → 5 `observer_stale` findings only (0 critical, 0 late, 0 missing) → MV refreshes completed 2026-05-19 17:30:05 UTC. **9-check diagnostic matrix retired** — CCH archive search found no authored 9-check; treated as undefined legacy carry text; no replacement matrix invented. Actual closure criterion logged: "Verify cron 85 natural fire succeeds + downstream r.reconciliation_run succeeds + cadence_drift_log writes expected operational findings + MV refreshes complete + zero critical failure signal." **D-FR-RECON-001 v1.0 brief authored at `fc726e3c`** — friction-surface reconciliation read-only baseline before PRV / cc-0016 / Wave 0f proceeds; corrects three drift points (/operations already exists; cc-0016 parallel-executable; documented friction counts not live-verified). **Cowork scheduling cadence WARN promoted to rank 1** (was P2 rank 2 v2.92; not closed by this directive). New rank ordering aligns with D-FR-RECON-001 next-work recommendation (B cc-0016 Stage A above C Wave 0f scoping above D PRV). 0 production mutations / 0 Supabase mutations / 0 D-01 fires / 0 force-run of cron 85 / 0 force-run of `nightly-health-check-v1` / 0 Wave 0f / 0 application code edits / 0 memory edits / 0 decisions.md edits. T-MCP-02 cum ~86 unchanged. State-capture exceptions cum 1 unchanged. Gate 11 Day 2 of 7 (window 2026-05-19 → 2026-05-26). Dashboard PHASES **46th deferral**. Per-session detail `docs/runtime/sessions/2026-05-20-v2.93-cron85-natural-fire-closed-9check-retired.md`. sync_state + action_list + session-file atomic commit this commit.) **Today/Next 5**: Cowork scheduling cadence WARN → rank 1 (P2 carry, promoted from rank 2 v2.92); cc-0016 Stage A (friction-capture-evidence Wave 8) → rank 2 (P2 PK call per D-FR-RECON-001); Wave 0f scoping → rank 3 (opportunistic during Gate 11 window per D-FR-RECON-001); Platform Reconciliation View brief authoring → rank 4 (P2 carry, **deferred until corrected baseline accepted** per D-FR-RECON-001); 5-row close-the-loop / pre-sales / `purge_test_case` helper case_history extension → rank 5 (P2/P3 carry).
 
 ---
 
@@ -12,64 +12,74 @@
 
 At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs Standing checks (S1–S29); (3) verifies D186 closure budget; (4) asks PK about Personal businesses; (5) surfaces Time-bound items.
 
-**Standing rules unchanged from v2.91.** D-01 + D-186 + D-YT-OAUTH-1 + D-PREV-16 + Lesson #62 (L46) + #68 + v2.46-v2.58 + L33–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + **L-v2.83-a (STRONG; 12+ v2.92)** + L-v2.84-a/b/c/d + L-v2.85-a (HIGH-SIGNAL; 4 occurrences — promotion-eligible) + L-v2.85-b/c/d carried + **L-v2.85-e PROMOTION-CONFIRMED 7th consecutive v2.92 (carries forward from v2.88)** + 5 L-v2.86 candidates + **L-v2.88-a (2 occurrences — watcher)** + L-v2.88-b/c/d candidates + L-v2.89-a candidate (carry) + **L-v2.90-a through L-v2.90-f candidates** (a/b HIGH-SIGNAL; c/d/e/f candidates). **D-IOL-001 (v2.77)** carried. **D-CC-0017B-Q1** carried.
+**Standing rules unchanged from v2.92.** D-01 + D-186 + D-YT-OAUTH-1 + D-PREV-16 + Lesson #62 (L46) + #68 + v2.46-v2.58 + L33–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + **L-v2.83-a (STRONG; 13+ v2.93)** + L-v2.84-a/b/c/d + L-v2.85-a (HIGH-SIGNAL; 4 occurrences — promotion-eligible) + L-v2.85-b/c/d carried + **L-v2.85-e PROMOTION-CONFIRMED 8th consecutive v2.93 (carries forward from v2.88)** + 5 L-v2.86 candidates + **L-v2.88-a (2 occurrences — watcher)** + L-v2.88-b/c/d candidates + L-v2.89-a candidate (carry) + **L-v2.90-a through L-v2.90-f candidates** (a/b HIGH-SIGNAL; c/d/e/f candidates). **D-IOL-001 (v2.77)** carried. **D-CC-0017B-Q1** carried.
 
-**v2.92 ADDITIONS:**
+**v2.93 ADDITIONS:**
 
-- **Health_check V-C3 + signal-production diagnostic CLOSED-PASS v2.92**. Empirical evidence from 4 read-only `execute_sql` checks against project `mbkmaxqhsohbtwsqolns`:
-  1. `friction.fn_emit_health_check_findings(p_run_id text, p_markdown_path text, p_findings jsonb)` returns `jsonb`, SECURITY DEFINER, owner=postgres — matches `nightly-health-check-v1` v3.0 brief §12 pre-flight contract exactly.
-  2. 5 `friction.event` rows for run_id `nightly-health-check-v1/2026-05-17T160210Z` reconcile 1:1 with the 5 P1 finding_ids in `docs/audit/health/2026-05-17.md` Section 10:
-     - `priority-1/true-stuck-instagram-care-for-welfare-pty-ltd` → event_id `1e1ca526-…`
-     - `priority-1/true-stuck-instagram-invegent` → event_id `db2de5da-…`
-     - `priority-1/true-stuck-linkedin-property-pulse` → event_id `83b97248-…`
-     - `priority-1/true-stuck-youtube-ndis-yarns` → event_id `2b0f378e-…`
-     - `priority-1/true-stuck-youtube-property-pulse` → event_id `38cabb5e-…`
-     All 5: source='health_check', reported_by='system', severity='critical', category='pipeline_integrity', case_linked=true, observed_at=2026-05-17 16:08:35.202881 UTC.
-  3. `friction.emit_error` for health_check pattern: 0 rows. Markdown footer `failure_count=0` empirically true.
-  4. All-time aggregate: only run_id `2026-05-17T160210Z` appears with 5 events. Earlier markdown files (2026-05-02/04/05) predate v3.0 emission and correctly absent.
+- **Reconciliation daily cadence diagnostic CLOSED-PASS v2.93.** First post-cc-0017e cron 85 natural fire landed and is mechanically verified.
+  - Cron 85 fired **2026-05-20 03:30:00.762 AEST** (2026-05-19 17:30 UTC + scheduler skew).
+  - Downstream `r.reconciliation_run` row created: `run_id=f24d0fcf-cfce-4a1d-ab31-da51ea162151`, `status=succeeded`, `error_summary=NULL`.
+  - Run counters: 112 processed / 5 inserted / 0 updated / 107 skipped.
+  - `cadence_drift_log` writes: **5 `observer_stale` findings only** — 0 critical, 0 late, 0 missing. Operational findings shape matches expected baseline for steady-state post-cc-0017e.
+  - Materialized view refreshes completed at **2026-05-19 17:30:05 UTC** (~5 s after fire).
+  - **Closure criterion (logged for record):** "Verify cron 85 natural fire succeeds + downstream r.reconciliation_run succeeds + cadence_drift_log writes expected operational findings + MV refreshes complete + zero critical failure signal." Each of the 5 clauses is mechanically met by the run above.
 
-- **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** — NEW v2.92 follow-up, P2 rank 2. Cadence record over 18 calendar days from 2026-05-02 to 2026-05-19: 4 daily files (~22% hit rate). Over 5 days since brief v3.0 published 2026-05-15: 1 file (20% hit rate). Signal-production contract works when invoked; invocation cadence sparse. Root-cause candidates: Cowork agent uptime / idempotency-check false positives / schedule misconfiguration / task paused. Recommended next step (when PK directs): read-only probe of `docs/runtime/runs/nightly-health-check-v1-*.md` state files + Cowork agent run history.
+- **"9-check diagnostic" reference retired as undefined legacy carry text v2.93.** CCH archive search returned no authored 9-check diagnostic matrix. The phrase "re-run 9-check diagnostic after natural fire lands" that previously appeared in the Today/Next 5 and Active table for the Reconciliation daily diagnostic item is treated as unsourced legacy carry. **No replacement matrix was invented v2.93.** Closure was anchored on the directly observable mechanical criteria above. Future references to a 9-check matrix should be treated as historical until and unless an authored matrix is rediscovered or freshly drafted under a separate directive.
 
-- **Hard stops respected v2.92:**
-  - 0 production mutations / 0 Supabase mutations (sync close itself); 4 read-only `execute_sql` calls earlier for V-C3 evidence (already reported, no mutations)
+- **D-FR-RECON-001 v1.0 brief authored at `fc726e3c`** (Friction Surface Reconciliation, read-side only, no production mutation, no D-01 required). Stabilises the actual friction-register baseline before PRV, cc-0016, or Wave 0f proceeds. Corrects three drift points captured by the brief:
+  1. `/operations` already exists at cc-0014 Stage E (not absent as prior framing implied).
+  2. cc-0016 is **parallel-executable with cc-0015** per cc-0016 brief header + footer — **not technically gated on Wave 7**.
+  3. Documented friction counts (10 / 19 / 29 / 29 / 8) were not live-verified at the time of prior framing.
+  Brief next-work recommendation block lists four options: A retry cron 85 natural fire (now CLOSED-PASS by this v2.93), B cc-0016 Stage A (PK call, parallel to Gate 11 window), C scope Wave 0f opportunistically, D defer PRV until corrected baseline accepted. v2.93 rank ordering honours B above C above D.
+
+- **Rank reordering effective v2.93:**
+  - **Rank 1:** Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN (P2 carry, **promoted from rank 2 v2.92**; not closed by this directive — investigation still pending).
+  - **Rank 2:** cc-0016 Stage A — friction-capture-evidence Wave 8 first stage (P2; PK call per D-FR-RECON-001 §7.B; requires D-01 fire before DDL/storage/RLS work).
+  - **Rank 3:** Wave 0f scoping (P3 brief-authoring only; opportunistic during Gate 11 observation window per D-FR-RECON-001 §7.C; candidates per L-v2.90-d + cc-0017e backlog items B/E/F/G + `purge_test_case` helper case_history extension).
+  - **Rank 4:** Platform Reconciliation View brief authoring (P2 carry, **deferred until corrected baseline accepted** per D-FR-RECON-001 §7.D — was rank 3 v2.92).
+  - **Rank 5:** 5-row close-the-loop batch sweep / Pre-sales criteria refinement / `purge_test_case` helper case_history extension (P2/P3 carry; was rank 4 v2.92).
+
+- **Hard stops respected v2.93:**
+  - 0 production mutations / 0 Supabase mutations (sync close itself); 0 read-only `execute_sql` calls this directive (cron 85 evidence was upstream of this session and is restated from the directive payload)
   - 0 DDL / 0 apply_migration / 0 D-01 fires
-  - 0 Wave 0f scope creep
+  - 0 Wave 0f scope creep (rank 3 listing is a forward-look only; no authoring this session)
+  - 0 force-run of cron 85 (closure rests on the natural fire only)
   - 0 force-run of `nightly-health-check-v1`
-  - 0 force-run of cron 85
-  - 0 production code edits (Dashboard PHASES **45th consecutive deferral** carries forward)
+  - 0 application code edits (Dashboard PHASES **46th consecutive deferral** carries forward)
   - 0 memory edits / 0 decisions.md edits
   - 0 `purge_test_case` helper changes
-  - 0 re-execution of cc-0017e apply instructions
+  - 0 invention or backfill of a 9-check matrix
+  - 0 closure of the Cowork scheduling cadence WARN (kept open at rank 1)
 
-- **Sync close mechanics v2.92 (1+2 split per L-v2.85-e baseline — 7th consecutive occurrence):**
-  1. Per-session detail standalone commit `55d26d3d07346acd1ab9be91f3c3f92d3ed48842` (`docs/runtime/sessions/2026-05-19-vc3-signal-production-closed.md`, 11,169 B) via create_or_update_file.
-  2. sync_state + action_list atomic commit this commit via push_files (2 files).
-  
-  L-v2.89-a fallback (1+1+1) ready but not invoked unless atomic push_files times out.
+- **Sync close mechanics v2.93 (1+2 split per L-v2.85-e baseline — 8th consecutive occurrence):**
+  1. Per-session detail standalone file `docs/runtime/sessions/2026-05-20-v2.93-cron85-natural-fire-closed-9check-retired.md`.
+  2. sync_state + action_list + session-file atomic commit this commit (CCD local-git Path C; L-v2.85-e respected via single atomic push containing all three).
 
-- **L-v2.85-e re-applied 7th consecutive occurrence** (v2.86 + v2.87 + v2.88 + v2.89 + v2.90 + v2.91 + v2.92); promotion-confirmed v2.88 carries forward.
-- **L-v2.83-a re-applied** at sync close commit. Cumulative **12+ STRONG**.
-- **L-v2.88-a NOT re-occurring v2.92** — PK directive forward-looking close-and-spawn, not directive-loop. Watcher (2 occurrences total) carries forward.
-- **L-v2.89-a NOT actively exercised v2.92** — atomic push_files in flight; fallback ready.
-- **L-v2.85-a HIGH-SIGNAL NOT re-exercised v2.92** (doc-sync only; no V-check execution).
-- **L-v2.86-a HIGH-SIGNAL NOT re-exercised v2.92** (no apply).
-- **L-v2.90-a-f NOT re-exercised v2.92** (no apply; codified documentationally v2.91 only).
-- **L40 / L41 / L46 / L58 / L62 NOT exercised v2.92** (no DB / no DDL / no D-01 / no apply).
+  L-v2.89-a fallback (1+1+1) ready but not invoked.
 
-- **No new L-v2.92-X candidates surfaced.** Mechanical close-and-spawn session.
+- **L-v2.85-e re-applied 8th consecutive occurrence** (v2.86 + v2.87 + v2.88 + v2.89 + v2.90 + v2.91 + v2.92 + v2.93); promotion-confirmed v2.88 carries forward.
+- **L-v2.83-a re-applied** at sync close commit. Cumulative **13+ STRONG**.
+- **L-v2.88-a NOT re-occurring v2.93** — PK directive forward-looking close-and-promote, not directive-loop. Watcher (2 occurrences total) carries forward.
+- **L-v2.89-a NOT actively exercised v2.93** — atomic commit in flight; fallback ready.
+- **L-v2.85-a HIGH-SIGNAL NOT re-exercised v2.93** (doc-sync only; no V-check execution).
+- **L-v2.86-a HIGH-SIGNAL NOT re-exercised v2.93** (no apply).
+- **L-v2.90-a-f NOT re-exercised v2.93** (no apply; codified documentationally v2.91 only).
+- **L40 / L41 / L46 / L58 / L62 NOT exercised v2.93** (no DB / no DDL / no D-01 / no apply).
 
-- **Closed Active rows v2.92:** Health_check V-C3 + signal-production diagnostic (P1 rank 2 v2.91) → **CLOSED-PASS** ✅. Evidence preserved in `friction.event` rows + `docs/audit/health/2026-05-17.md` markdown + per-session detail.
-- **Spawned Active rows v2.92:** Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN (P2 NEW, rank 2).
-- **Promoted Active rows v2.92:** Platform Reconciliation View brief authoring (rank 3 v2.91 → rank 3 v2.92, positionally unchanged but **described as next practical planning item per PK directive**).
+- **No new L-v2.93-X candidates surfaced.** Mechanical close-promote-defer session.
 
-- **Dashboard PHASES sync: 45th consecutive deferral** (was 44 at v2.91; +1 at v2.92). No file-touch v2.92.
-- **NO decisions.md change v2.92.** Doc-sync close; no new architectural decisions.
-- **Session compaction event v2.92:** 0.
-- **Production mutations v2.92: 0.**
-- **D-01 fires v2.92: 0.**
-- **T-MCP-02 cum v2.92: ~86 unchanged** (no MCP probes; no ask_chatgpt_review called).
-- **State-capture exceptions v2.92: 0.** Cumulative: 1 unchanged.
-- **Close-the-loop UPDATEs v2.92: 0** (no D-01 fired). 22 outstanding unchanged.
+- **Closed Active rows v2.93:** Reconciliation daily cadence diagnostic (P1 rank 1 v2.92) → **CLOSED-PASS** ✅. Evidence preserved in upstream directive payload + per-session detail.
+- **Spawned Active rows v2.93:** none (cc-0016 Stage A + Wave 0f scoping are pre-existing carries newly promoted into the Today/Next 5 top ranks; not new investigations).
+- **Promoted Active rows v2.93:** Cowork scheduling cadence WARN (rank 2 v2.92 → **rank 1 v2.93**); cc-0016 Stage A (carry → **rank 2 v2.93**); Wave 0f scoping (carry → **rank 3 v2.93**); PRV brief authoring (rank 3 v2.92 → **rank 4 v2.93, deferred per D-FR-RECON-001 §7.D**); close-the-loop / pre-sales / helper extension (rank 4 v2.92 → **rank 5 v2.93**).
+
+- **Dashboard PHASES sync: 46th consecutive deferral** (was 45 at v2.92; +1 at v2.93). No file-touch v2.93.
+- **NO decisions.md change v2.93.** Doc-sync close; no new architectural decisions.
+- **Session compaction event v2.93:** 0.
+- **Production mutations v2.93: 0.**
+- **D-01 fires v2.93: 0.**
+- **T-MCP-02 cum v2.93: ~86 unchanged** (no MCP probes; no ask_chatgpt_review called).
+- **State-capture exceptions v2.93: 0.** Cumulative: 1 unchanged.
+- **Close-the-loop UPDATEs v2.93: 0** (no D-01 fired). 22 outstanding unchanged.
 
 ---
 
@@ -77,38 +87,40 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 | Metric | Current | Limit | Status |
 |---|---|---|---|
-| Open findings + investigations (P0+P1) | 1 (recon daily diagnostic — V-C3 closed v2.92) | 20 | ✅ within budget |
-| Trailing-14-day closure hours | ~32h (v2.83 1h + v2.84 ~2h + v2.85 ~3h + v2.86 ~3.5h + v2.87 ~0.5h + v2.88 ~1.5h + v2.89 ~1h + v2.90 ~4h + v2.91 ~1h + v2.92 ~1h) | 8.0 floor | ✅ above floor |
+| Open findings + investigations (P0+P1) | 0 (recon daily diagnostic CLOSED-PASS v2.93; cron 85 first natural post-cc-0017e fire mechanical evidence anchored) | 20 | ✅ within budget |
+| Trailing-14-day closure hours | ~33h (v2.83 1h + v2.84 ~2h + v2.85 ~3h + v2.86 ~3.5h + v2.87 ~0.5h + v2.88 ~1.5h + v2.89 ~1h + v2.90 ~4h + v2.91 ~1h + v2.92 ~1h + v2.93 ~1h) | 8.0 floor | ✅ above floor |
 | Pause trigger active? | NO | — | New automation authoring allowed |
 
-**v2.92 cycle: ~1h total** (V-C3 read-only diagnostic ~0.5h earlier + sync close ~0.5h). 0 schema mutations. 0 D-01 fires. 2 git commits (per-session detail standalone + sync_state+action_list atomic). **State-capture exception count v2.92: 0** (cumulative 1).
+**v2.93 cycle: ~1h total** (cron 85 mechanical evidence supplied in directive payload — no diagnostic SQL run this session + sync close ~1h). 0 schema mutations. 0 D-01 fires. 1 atomic git commit (sync_state + action_list + session file in single push per L-v2.85-e baseline). **State-capture exception count v2.93: 0** (cumulative 1).
 
 ---
 
 ## ⭐ Today / Next 5
 
-> Last rebuilt: 2026-05-19 Sydney evening (v2.92).
+> Last rebuilt: 2026-05-20 Sydney (v2.93).
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
-| 1 | **Reconciliation daily cadence diagnostic** | **P1 carry, rank 1 v2.92 (UNCHANGED)** | First post-cc-0017e cron 85 fire still pending. Next scheduled 2026-05-19 17:30 UTC ≈ 2026-05-20 03:30 AEST. Latest fire in `cron.job_run_details` is 2026-05-18 17:30:00 UTC (succeeded, pre-cc-0017e). | chat → PK | Re-run 9-check diagnostic after natural fire lands. |
-| 2 | **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** | **P2 NEW v2.92, rank 2** | Signal-production validated v2.92 (V-C3 CLOSED-PASS); only 1 v3.0 run since brief published 2026-05-15. Read-only investigation. | chat → PK | Read-only probe of `docs/runtime/runs/nightly-health-check-v1-*.md` state files + Cowork agent run history. |
-| 3 | **Platform Reconciliation View brief authoring** | **P2 carry, rank 3 (described as next practical planning item per PK directive)** | First non-wait, non-investigative item in queue. PK greenlight required. | PK → chat | When PK directs. |
-| 4 | **5-row close-the-loop batch sweep / Pre-sales criteria refinement / `purge_test_case` helper case_history extension** | **P2/P3 carry, rank 4** | 22 outstanding close-the-loop UPDATEs (unchanged net by v2.92); Pre-sales 3-clock criteria per memory entry; helper case_history extension future Wave 0f candidate (L-v2.90-d). | chat → PK | When PK directs. |
+| 1 | **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** | **P2 carry, promoted from rank 2 v2.92** | Signal-production layer remains CLOSED-PASS v2.92; cadence WARN unchanged — invocation cadence sparse (~20% hit rate since v3.0 publish 2026-05-15). Now top of queue with Reconciliation daily diagnostic closed v2.93. | chat → PK | Read-only probe of `docs/runtime/runs/nightly-health-check-v1-*.md` state files + Cowork agent run history. |
+| 2 | **cc-0016 friction-capture-evidence — Stage A** (Wave 8) | **P2, PK call per D-FR-RECON-001 §7.B** | cc-0016 is parallel-executable with cc-0015 per cc-0016 brief header + footer (corrected by D-FR-RECON-001 v1.0 at `fc726e3c`); not technically gated on Wave 7. Stage A touches `friction.event` + Storage bucket + RLS policies and requires a D-01 fire before DDL/storage work. Estimated ~1h build + ~15–30 min D-01 cycle. | PK → chat | When PK directs (either start now in parallel to Gate 11 window, or hold for cc-0015 Stage A/B per established Wave N+1 follows Wave N pattern). |
+| 3 | **Wave 0f scoping** | **P3 brief-authoring only, opportunistic during Gate 11 observation window per D-FR-RECON-001 §7.C** | Brief-authoring is non-mutating; converts dead Gate 11 window time into ready inventory. Candidates: items B/E/F/G deferred from cc-0017e + `purge_test_case` helper case_history extension (L-v2.90-d). Estimated ~2–3h chat to draft. | chat → PK | When PK directs (recommended during Gate 11 window 2026-05-19 → 2026-05-26). |
+| 4 | **Platform Reconciliation View brief authoring** | **P2 carry, deferred per D-FR-RECON-001 §7.D** | Recommended to defer until corrected baseline is accepted (D-FR-RECON-001 v1.0 PK-accepted), cc-0015 scoped against corrected baseline, and cc-0016 parallel-executable status reflected in action_list (all three now satisfied in spirit; PK accept of D-FR-RECON-001 is the remaining unblocker). Was rank 3 v2.92. | PK → chat | When PK directs. |
+| 5 | **5-row close-the-loop batch sweep / Pre-sales criteria refinement / `purge_test_case` helper case_history extension** | **P2/P3 carry, demoted from rank 4 v2.92** | 22 outstanding close-the-loop UPDATEs (unchanged net by v2.93); Pre-sales 3-clock criteria per memory entry; helper case_history extension future Wave 0f candidate (L-v2.90-d). | chat → PK | When PK directs. |
 
 **Standing P0:** Personal businesses check-in. Crazy Domains carry from v2.51.
 
-**Passive observation v2.92**: Cron 82-86 unchanged. PRV v1 operator views queryable. friction.* state: 10 tables, 19 functions (fn_triage_case 11-arg only), 29 cases + 29 events (baseline preserved), 8 case_history rows (backfill only). Cowork brief `nightly-health-check-v1` v3.0 signal-production contract empirically validated v2.92. Next fires: cron 85 daily; cron 86 daily 01:15 UTC.
+**Passive observation v2.93**: Cron 82-86 unchanged. **Cron 85 first post-cc-0017e natural fire 2026-05-20 03:30:00.762 AEST = succeeded** (downstream `r.reconciliation_run` `f24d0fcf` succeeded, 112 processed / 5 inserted / 0 critical, MV refresh 17:30:05 UTC). PRV v1 operator views queryable. friction.* state: 10 tables, 19 functions (fn_triage_case 11-arg only), 29 cases + 29 events (baseline preserved), 8 case_history rows (backfill only). Cowork brief `nightly-health-check-v1` v3.0 signal-production contract empirically validated v2.92 (invocation cadence still sparse). Next fires: cron 85 daily; cron 86 daily 01:15 UTC.
 
 ---
 
-## 🟢 Friction Register Consolidation Plan v1 + amendments — STATUS BLOCK (v2.92 unchanged from v2.91)
+## 🟢 Friction Register Consolidation Plan v1 + amendments — STATUS BLOCK (v2.93 unchanged from v2.92 except gate 11 day)
 
-**Status v2.92: ✅ Wave 0 + Wave 0d + Wave 0e COMPLETE. Gates 10+12+13 CLOSED. Gate 11 (1-week observation 2026-05-19 → 2026-05-26) ACTIVE Day 1 of 7. Wave 0f NOT YET SCOPED — candidates: items B/E/F/G deferred from cc-0017e + purge_test_case helper case_history extension.**
+**Status v2.93: ✅ Wave 0 + Wave 0d + Wave 0e COMPLETE. Gates 10+12+13 CLOSED. Gate 11 (1-week observation 2026-05-19 → 2026-05-26) ACTIVE Day 2 of 7. Wave 0f scoping promoted to rank 3 v2.93 (opportunistic during Gate 11 window per D-FR-RECON-001 §7.C) — candidates: items B/E/F/G deferred from cc-0017e + purge_test_case helper case_history extension.**
 
-**Documents (v2.92 changes):**
-- All briefs unchanged from v2.91. No new brief authored v2.92.
-- Per-session files: v2.79–v2.91 unchanged; **v2.92 at `2026-05-19-vc3-signal-production-closed.md` (commit `55d26d3d07346acd1ab9be91f3c3f92d3ed48842`, 11,169 B)**
+**Documents (v2.93 changes):**
+- **D-FR-RECON-001 v1.0 brief authored at `fc726e3c`** (read-side only, no production mutation, no D-01 required). Stabilises actual friction-register baseline before PRV / cc-0016 / Wave 0f proceeds.
+- All other briefs unchanged from v2.91/v2.92.
+- Per-session files: v2.79–v2.92 unchanged; **v2.93 at `docs/runtime/sessions/2026-05-20-v2.93-cron85-natural-fire-closed-9check-retired.md`**.
 
 **Open gates v2.92:**
 1-9. ✅ PK approval + cc-0017a/b/c brief authoring + D-01 cycles + cc-0017c v1.0+v1.1 D-01 fires
@@ -123,9 +135,9 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 ---
 
-## 🟢 cc-0017e Wave 0e — STATUS BLOCK (UPDATED v2.92)
+## 🟢 cc-0017e Wave 0e — STATUS BLOCK (UPDATED v2.93)
 
-**Status: ✅ APPLIED-WITH-VCHECK-CORRECTION v2.90 + v1.1 8-item BACKLOG CLOSED v2.91. Unchanged v2.92.**
+**Status: ✅ APPLIED-WITH-VCHECK-CORRECTION v2.90 + v1.1 8-item BACKLOG CLOSED v2.91. Unchanged v2.93. First post-cc-0017e cron 85 natural fire CLOSED-PASS v2.93 (see Reconciliation daily cadence diagnostic closure).**
 
 **Production state (post-v2.92 unchanged from v2.90+v2.91):**
 - `friction.case_history` exists with cc-0017c lockdown grants (postgres full + service_role SELECT only; no anon/auth/PUBLIC)
@@ -139,9 +151,9 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 ---
 
-## 🟢 Cowork brief `nightly-health-check-v1` — STATUS BLOCK (NEW v2.92)
+## 🟢 Cowork brief `nightly-health-check-v1` — STATUS BLOCK (UPDATED v2.93)
 
-**Status v2.92: ✅ FROZEN at v3.0. Signal-production contract EMPIRICALLY VALIDATED (V-C3 CLOSED-PASS). Cadence WARN flagged separately.**
+**Status v2.93: ✅ FROZEN at v3.0. Signal-production contract EMPIRICALLY VALIDATED v2.92 (V-C3 CLOSED-PASS). Cadence WARN unchanged — promoted to rank 1 v2.93 with Reconciliation daily diagnostic closed.**
 
 **Signal-production layer (V-C3) — CLOSED-PASS v2.92:**
 - Brief v3.0 published 2026-05-15. Adds dual-write to `friction.event` via `friction.fn_emit_health_check_findings(text, text, jsonb)` SECURITY DEFINER function.
@@ -153,35 +165,35 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
   4. All-time aggregate clean (only the 2026-05-17 v3.0 run appears).
 - Sunset review extended to 2026-06-15 per cc-0014 IOL Day-19 verdict pending.
 
-**Cadence layer — WARN v2.92 (separate from V-C3):**
-- Of 18 calendar days 2026-05-02 to 2026-05-19: 4 daily files (~22% hit rate).
+**Cadence layer — WARN v2.93 (separate from V-C3, promoted to rank 1):**
+- Of 18 calendar days 2026-05-02 to 2026-05-19: 4 daily files (~22% hit rate). v2.92 baseline.
 - Of 5 calendar days since v3.0 publish 2026-05-15: 1 file (20% hit rate). Missing: 2026-05-16, 2026-05-18, 2026-05-19.
-- Investigation deferred to next session per rank 2 P2 carry. Read-only probe candidates: state files at `docs/runtime/runs/nightly-health-check-v1-*.md`; Cowork agent run history.
+- Promoted to **rank 1 v2.93** with Reconciliation daily diagnostic closed. Read-only probe candidates: state files at `docs/runtime/runs/nightly-health-check-v1-*.md`; Cowork agent run history.
 
 ---
 
 ## 🟢 cc-0017d / cc-0017c / cc-0017b / cc-0017a / cc-0014 / cc-0015 / cc-0016 / cc-0012 / cc-0010A/B/C / cc-0011 / cc-0009 — STATUS BLOCKS
 
-**v2.92 updates:** unchanged from v2.91. All earlier waves preserved. cc-0015 (Wave 7) + cc-0016 (Wave 8) still gated on observation window + sequencing.
+**v2.93 updates:** unchanged from v2.92 for cc-0014/0015/0017a-e/0009-0012. **cc-0016 framing correction recorded** (per D-FR-RECON-001 v1.0): cc-0016 is parallel-executable with cc-0015 per cc-0016 brief header + footer — not technically gated on Wave 7. Sequencing remains a PK call, not a brief constraint. Gate 11 (1-week observation window 2026-05-19 → 2026-05-26) Day 2 of 7.
 
 ---
 
-## 🟢 Process Upgrades — STATUS BLOCK (UPDATED v2.92)
+## 🟢 Process Upgrades — STATUS BLOCK (UPDATED v2.93)
 
-**L41**: cumulative v2.80-v2.92 = 11 (no new exercises v2.92 — doc-sync only).
-**L40 / L46 / L58 / L62**: not exercised v2.92.
+**L41**: cumulative v2.80-v2.93 = 11 (no new exercises v2.93 — doc-sync only).
+**L40 / L46 / L58 / L62**: not exercised v2.93.
 **L-v2.78-a / L-v2.81-a**: 2 occurrences each, promotion-eligible (unchanged).
-**L-v2.83-a**: **12+ occurrences v2.92** (re-applied at sync close commit). STRONG CANDIDATE confirmed.
+**L-v2.83-a**: **13+ occurrences v2.93** (re-applied at sync close commit). STRONG CANDIDATE confirmed.
 **L-v2.84-a/b/c/d**: unchanged.
-**L-v2.85-a HIGH-SIGNAL**: 4 occurrences (unchanged v2.92; not re-exercised in doc-sync only).
-**L-v2.85-b/c/d**: not re-exercised v2.92.
-**L-v2.85-e**: **re-applied v2.92 — 7th consecutive occurrence** (v2.86 → v2.92). 1+2 split close. PROMOTION-CONFIRMED v2.88 carries forward.
-**L-v2.86-a HIGH-SIGNAL**: not re-exercised v2.92.
-**L-v2.86-b/c/d/e**: not re-exercised v2.92.
-**L-v2.88-a**: 2 occurrences (v2.88 + v2.91); NOT re-occurring v2.92. Watcher carries forward.
+**L-v2.85-a HIGH-SIGNAL**: 4 occurrences (unchanged v2.93; not re-exercised in doc-sync only).
+**L-v2.85-b/c/d**: not re-exercised v2.93.
+**L-v2.85-e**: **re-applied v2.93 — 8th consecutive occurrence** (v2.86 → v2.93). Atomic sync_state + action_list + session-file commit. PROMOTION-CONFIRMED v2.88 carries forward.
+**L-v2.86-a HIGH-SIGNAL**: not re-exercised v2.93.
+**L-v2.86-b/c/d/e**: not re-exercised v2.93.
+**L-v2.88-a**: 2 occurrences (v2.88 + v2.91); NOT re-occurring v2.93. Watcher carries forward.
 **L-v2.88-b/c/d**: realised v2.90; carry forward.
-**L-v2.89-a**: atomic push_files in flight v2.92; fallback ready but not actively exercised.
-**L-v2.90-a-f**: codified documentationally v2.91. Not empirically re-exercised v2.92. Watchers.
+**L-v2.89-a**: atomic commit in flight v2.93; fallback ready but not actively exercised.
+**L-v2.90-a-f**: codified documentationally v2.91. Not empirically re-exercised v2.93. Watchers.
 
 ---
 
@@ -193,22 +205,22 @@ S1–S29 unchanged. S30 closed PASS v2.47.
 
 ## 🔴 Time-bound
 
-- **1-week empirical observation window** — 2026-05-19 → 2026-05-26. Wave 7 (cc-0015) gated. Day 1 of 7 unchanged v2.92 (same calendar day as v2.86-v2.91 closes; no elapsed observation time).
-- **First cc-0017e-post-apply cron 85 fire** pending — diagnostic **P1 rank 1 v2.92** (unchanged).
-- **Cowork `nightly-health-check-v1` cadence WARN** — NEW v2.92. Investigation rank 2 P2.
-- No new v2.92 calendar items.
+- **1-week empirical observation window** — 2026-05-19 → 2026-05-26. Wave 7 (cc-0015) gated. **Day 2 of 7 v2.93** (first elapsed day; v2.86–v2.92 closes were all 2026-05-19).
+- **First cc-0017e-post-apply cron 85 fire** → **CLOSED-PASS v2.93** (2026-05-20 03:30:00.762 AEST natural fire; downstream `r.reconciliation_run` `f24d0fcf` succeeded; 5 `observer_stale` findings only; MV refresh 2026-05-19 17:30:05 UTC).
+- **Cowork `nightly-health-check-v1` cadence WARN** — Promoted to **rank 1 v2.93** (was rank 2 v2.92).
+- No new v2.93 calendar items.
 
 ---
 
 ## 🛠 Meta-tooling — ChatGPT Review MCP
 
-v2.92: **0 D-01 fires.** T-MCP-02 cum **~86 unchanged** v2.92. L46 NOT exercised v2.92 (no D-01). L62 NOT exercised v2.92. State-capture exceptions v2.92: 0 (cum 1). Close-the-loop UPDATEs v2.92: 0. **22 outstanding unchanged net.**
+v2.93: **0 D-01 fires.** T-MCP-02 cum **~86 unchanged** v2.93. L46 NOT exercised v2.93 (no D-01). L62 NOT exercised v2.93. State-capture exceptions v2.93: 0 (cum 1). Close-the-loop UPDATEs v2.93: 0. **22 outstanding unchanged net.**
 
 ---
 
 ## 🤖 Cowork automation (D182)
 
-**v2.92 update:** Cron 82/83/86 firing normally. **V-C3 signal-production CLOSED-PASS v2.92** (replaces prior v2.91 "V-C3 PENDING" — empirically validated against 2026-05-17 v3.0 run). **NEW: Cowork scheduling cadence WARN v2.92** — `nightly-health-check-v1` brief firing ~20% of scheduled days since v3.0 publish. Separate investigation item rank 2.
+**v2.93 update:** Cron 82/83/86 firing normally. **Cron 85 first post-cc-0017e natural fire CLOSED-PASS v2.93** (2026-05-20 03:30:00.762 AEST → downstream `r.reconciliation_run` `f24d0fcf` succeeded → 5 `observer_stale` findings → MV refresh 2026-05-19 17:30:05 UTC). V-C3 signal-production CLOSED-PASS v2.92 carry unchanged. **Cowork scheduling cadence WARN promoted to rank 1 v2.93** — `nightly-health-check-v1` brief firing ~20% of scheduled days since v3.0 publish. Not closed by v2.93.
 
 ---
 
@@ -216,10 +228,11 @@ v2.92: **0 D-01 fires.** T-MCP-02 cum **~86 unchanged** v2.92. L46 NOT exercised
 
 | ID | Item | Priority | Status | Owner | Next action |
 |---|---|---|---|---|---|
-| **Reconciliation daily diagnostic** | First post-cc-0017e cron 85 fire | **P1 carry, rank 1 v2.92 (UNCHANGED)** | OPEN. Next scheduled fire 2026-05-19 17:30 UTC ≈ 2026-05-20 03:30 AEST. | chat → PK | Re-run 9-check diagnostic after natural fire. |
-| **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** | Brief firing ~20% of scheduled days since v3.0 publish 2026-05-15 | **P2 NEW v2.92, rank 2** | OPEN. V-C3 signal-production layer validated v2.92; invocation cadence sparse. | chat → PK | Read-only probe of state files + Cowork agent run history. |
-| **Platform Reconciliation View brief** | Reconciliation surface design | **P2 carry, rank 3 (next practical planning item per PK directive v2.92)** | NOT YET STARTED. First non-wait, non-investigative item in queue. | PK → chat | When PK directs. |
-| **5-row close-the-loop batch / Pre-sales / `purge_test_case` helper case_history extension** | 22 outstanding CCH + 1 T-MCP-05 meta + Pre-sales 3-clock criteria + helper case_history coverage gap from cc-0017e v2.90 discovery (L-v2.90-d) | **P2/P3 carry, rank 4** | OPEN. Helper extension future Wave 0f candidate. | chat → PK | When PK directs. |
+| **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** | Brief firing ~20% of scheduled days since v3.0 publish 2026-05-15 | **P2 carry, rank 1 v2.93 (promoted from rank 2 v2.92)** | OPEN. V-C3 signal-production layer validated v2.92; invocation cadence sparse. Not closed by v2.93. | chat → PK | Read-only probe of state files + Cowork agent run history. |
+| **cc-0016 friction-capture-evidence — Stage A** (Wave 8) | Per D-FR-RECON-001 §7.B parallel-executable with cc-0015; PK call whether to start now or hold | **P2, rank 2 v2.93** | NOT STARTED. Stage A touches `friction.event` + Storage bucket + RLS; requires D-01 fire before DDL/storage/RLS work. | PK → chat | When PK directs. |
+| **Wave 0f scoping** | Brief-authoring only; opportunistic during Gate 11 observation window per D-FR-RECON-001 §7.C | **P3, rank 3 v2.93** | NOT STARTED. Candidates: items B/E/F/G deferred from cc-0017e + `purge_test_case` helper case_history extension (L-v2.90-d). | chat → PK | When PK directs (recommended during Gate 11 window 2026-05-19 → 2026-05-26). |
+| **Platform Reconciliation View brief** | Reconciliation surface design | **P2 carry, rank 4 v2.93 (demoted from rank 3 v2.92; deferred per D-FR-RECON-001 §7.D)** | NOT STARTED. Defer until corrected friction-register baseline (D-FR-RECON-001) PK-accepted. | PK → chat | When PK directs. |
+| **5-row close-the-loop batch / Pre-sales / `purge_test_case` helper case_history extension** | 22 outstanding CCH + 1 T-MCP-05 meta + Pre-sales 3-clock criteria + helper case_history coverage gap from cc-0017e v2.90 discovery (L-v2.90-d) | **P2/P3 carry, rank 5 v2.93** | OPEN. Helper extension future Wave 0f candidate. | chat → PK | When PK directs. |
 | **Music library activation** | video-worker v3.0.0 env-var gated | P2 carry | PENDING PK. | PK + chat | Bucket + tracks + env + smoke. |
 | **vchecks.md V-B4 doc patch** | Correct V-B4 to 12-param signature (L-v2.85-a follow-up) | P3 carry | Doc-only. May fold into cc-0017c v1.2. | chat → PK | PK decides scope. |
 | **cc-0017c v1.2 doc patch candidate** | Date correction + 3 D-01 references + V-B4 signature correction | P3 carry | Doc-only. | chat → PK | PK decides scope. |
@@ -264,13 +277,19 @@ v2.92: **0 D-01 fires.** T-MCP-02 cum **~86 unchanged** v2.92. L46 NOT exercised
 | **Parallel agent coordination (L47)** | informational | P3 carry | No interference v2.92. | chat → future | Passive. |
 | **Other carries** | Dashboard mobile / F-PUB-009 / CFW dead drafts / Vault service_role_key / 00_overview / F-AAP-NEEDS-REVIEW / F-AI-WORKER-PARSER-SKIP-BUG / 4× F-CRON-*-STALE / Emergency redeploy / f4a0dd85 health-check / feature branch `feature/cc-0009-stage-b-ef-source` / 3 pre-v2 forensic rows / Localhost FAB cleanup / 3 v2.77 D-01 close-the-loops | P2/P3 various | Unchanged from v2.86-v2.91. | various | various |
 
-**Closed v2.92:**
-- **Health_check V-C3 + signal-production diagnostic** (P1 rank 2 v2.91) → **CLOSED-PASS** ✅. Empirically validated against 2026-05-17 v3.0 run. Evidence preserved in `friction.event` rows + `docs/audit/health/2026-05-17.md` markdown + per-session detail `55d26d3d`.
+**Closed v2.93:**
+- **Reconciliation daily cadence diagnostic** (P1 rank 1 v2.92) → **CLOSED-PASS** ✅. Closure criterion (anchored, not the legacy "9-check" placeholder): "Verify cron 85 natural fire succeeds + downstream r.reconciliation_run succeeds + cadence_drift_log writes expected operational findings + MV refreshes complete + zero critical failure signal." Mechanical evidence: cron 85 fired 2026-05-20 03:30:00.762 AEST; downstream `r.reconciliation_run` `f24d0fcf-cfce-4a1d-ab31-da51ea162151` succeeded; 112 processed / 5 inserted / 0 critical/late/missing (5 `observer_stale` only); error_summary=NULL; MV refresh 2026-05-19 17:30:05 UTC. "9-check diagnostic" reference retired as undefined legacy carry — CCH archive search found no authored 9-check matrix; no replacement matrix was invented.
 
-**Spawned v2.92:**
-- **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** (P2 NEW, rank 2). Separate from signal-production layer.
+**Promoted v2.93:**
+- **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** (P2 rank 2 v2.92 → **rank 1 v2.93**). Not closed. Investigation still pending.
+- **cc-0016 Stage A** (Wave 8 first stage; was implicit in Active table → **rank 2 v2.93**). PK call per D-FR-RECON-001 §7.B.
+- **Wave 0f scoping** (was carry → **rank 3 v2.93**). Opportunistic during Gate 11 window per D-FR-RECON-001 §7.C.
+- **Platform Reconciliation View brief** (P2 rank 3 v2.92 → **rank 4 v2.93, deferred** per D-FR-RECON-001 §7.D).
+- **5-row close-the-loop / Pre-sales / `purge_test_case` helper extension** (P2/P3 rank 4 v2.92 → **rank 5 v2.93**).
 
-**Closed earlier:** v2.91 cc-0017e v1.1 8-item doc patch; v2.90 cc-0017e apply; v2.89 cc-0017e v1.1 column-name patch; v2.88 Wave 0e brief authoring; v2.87 cc-0017d v1.1 doc patch; v2.86 cc-0017d apply; v2.85 cc-0017c apply; v2.84 brief authoring + 2× D-01; v2.83 cc-0017b v1.1 doc patch; v2.82 cc-0017b apply; v2.81 cc-0017a apply; v2.80 cc-0017a authoring; v2.79 PK approval gate.
+**Spawned v2.93:** none (no new investigations).
+
+**Closed earlier:** v2.92 Health_check V-C3 + signal-production diagnostic; v2.91 cc-0017e v1.1 8-item doc patch; v2.90 cc-0017e apply; v2.89 cc-0017e v1.1 column-name patch; v2.88 Wave 0e brief authoring; v2.87 cc-0017d v1.1 doc patch; v2.86 cc-0017d apply; v2.85 cc-0017c apply; v2.84 brief authoring + 2× D-01; v2.83 cc-0017b v1.1 doc patch; v2.82 cc-0017b apply; v2.81 cc-0017a apply; v2.80 cc-0017a authoring; v2.79 PK approval gate.
 
 ---
 
@@ -290,23 +309,25 @@ Unchanged from v2.76-v2.91.
 
 ## 📌 Backlog
 
-**v2.92 state changes:**
-- **Health_check V-C3 + signal-production diagnostic** (P1 rank 2 v2.91) → **CLOSED-PASS v2.92**. Empirically validated.
-- **Cowork scheduling diagnostic — `nightly-health-check-v1` cadence WARN** → **NEW v2.92 P2 rank 2**.
-- Reconciliation daily diagnostic → **P1 rank 1 (UNCHANGED)** — still pending natural cron 85 fire.
-- Platform Reconciliation View → **rank 3 (UNCHANGED positionally; described as next practical planning item per PK directive v2.92)**.
-- close-the-loop sweep / pre-sales / purge_test_case helper extension → **rank 4 (UNCHANGED)**.
-- Friction Register Consolidation Plan: all 4 sub-gates of Gate 13 CLOSED — unchanged v2.92.
+**v2.93 state changes:**
+- **Reconciliation daily cadence diagnostic** (P1 rank 1 v2.92) → **CLOSED-PASS v2.93** on first post-cc-0017e cron 85 natural fire 2026-05-20 03:30:00.762 AEST. Closure anchored on actual mechanical criterion; "9-check diagnostic" reference retired as undefined legacy carry.
+- **D-FR-RECON-001 v1.0** authored at `fc726e3c` — friction-surface reconciliation read-side brief; 3 drift corrections captured.
+- **Cowork scheduling cadence WARN** → **promoted P2 rank 2 v2.92 → rank 1 v2.93**. Not closed.
+- **cc-0016 Stage A** → **promoted to rank 2 v2.93** (parallel-executable per D-FR-RECON-001 §7.B).
+- **Wave 0f scoping** → **promoted to rank 3 v2.93** (opportunistic during Gate 11 window per D-FR-RECON-001 §7.C).
+- **Platform Reconciliation View** → rank 3 v2.92 → **rank 4 v2.93, deferred** per D-FR-RECON-001 §7.D.
+- close-the-loop / pre-sales / purge_test_case helper extension → rank 4 v2.92 → **rank 5 v2.93**.
+- Friction Register Consolidation Plan: all 4 sub-gates of Gate 13 CLOSED — unchanged v2.93. Gate 11 Day 2 of 7.
 - T-MCP-02 cum ~86 unchanged.
 - State-capture exceptions cum 1 unchanged.
-- friction.* schema state: unchanged from v2.90+v2.91.
-- L-v2.85-e mitigation re-applied **7th consecutive occurrence v2.92** (promotion-confirmed v2.88 carries forward).
-- L-v2.83-a re-applied at sync close commit. Cumulative **12+ STRONG**.
-- L-v2.88-a NOT re-occurring v2.92. Watcher (2 occurrences total) carries forward.
-- L-v2.85-a HIGH-SIGNAL not re-exercised v2.92 (doc-sync only). 4 occurrences, promotion-eligible carries forward.
-- L-v2.90-a-f not re-exercised v2.92. Watchers.
-- Dashboard PHASES **45th deferral** carried (was 44; +1 v2.92). No file-touch.
-- **No decisions.md change v2.92.**
+- friction.* schema state: unchanged from v2.90-v2.92.
+- L-v2.85-e mitigation re-applied **8th consecutive occurrence v2.93** (promotion-confirmed v2.88 carries forward).
+- L-v2.83-a re-applied at sync close commit. Cumulative **13+ STRONG**.
+- L-v2.88-a NOT re-occurring v2.93. Watcher (2 occurrences total) carries forward.
+- L-v2.85-a HIGH-SIGNAL not re-exercised v2.93 (doc-sync only). 4 occurrences, promotion-eligible carries forward.
+- L-v2.90-a-f not re-exercised v2.93. Watchers.
+- Dashboard PHASES **46th deferral** carried (was 45; +1 v2.93). No file-touch.
+- **No decisions.md change v2.93.**
 
 ---
 
@@ -318,52 +339,55 @@ Unchanged from v2.85-v2.91.
 
 ## 🎓 Canonical Lessons
 
-L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d + L-v2.85-a-e + L-v2.86-a-e + L-v2.88-a-d + L-v2.89-a + L-v2.90-a-f candidates carried per v2.92.
+L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d + L-v2.85-a-e + L-v2.86-a-e + L-v2.88-a-d + L-v2.89-a + L-v2.90-a-f candidates carried per v2.93.
 
-- **L40 / L41 / L46 / L58 / L62**: not exercised v2.92 (doc-sync only).
-- **L-v2.76-a-f**: not re-exercised v2.92.
+- **L40 / L41 / L46 / L58 / L62**: not exercised v2.93 (doc-sync only).
+- **L-v2.76-a-f**: not re-exercised v2.93.
 - **L-v2.78-a**: 2 occurrences (unchanged).
 - **L47**: 1 occurrence (unchanged).
 - **L-v2.81-a**: 2 occurrences (unchanged).
-- **L-v2.83-a**: **12+ occurrences v2.92** (re-applied at sync close commit). STRONG CANDIDATE confirmed.
+- **L-v2.83-a**: **13+ occurrences v2.93** (re-applied at sync close commit). STRONG CANDIDATE confirmed.
 - **L-v2.84-a/b/c**: 1 occurrence each (unchanged).
 - **L-v2.84-d**: 2 occurrences unchanged; related to L-v2.90-a.
-- **L-v2.85-a HIGH-SIGNAL**: 4 occurrences (unchanged v2.92; not re-exercised in doc-sync only).
-- **L-v2.85-b**: 4× v2.90; not re-exercised v2.92.
+- **L-v2.85-a HIGH-SIGNAL**: 4 occurrences (unchanged v2.93; not re-exercised in doc-sync only).
+- **L-v2.85-b**: 4× v2.90; not re-exercised v2.93.
 - **L-v2.85-c**: 1 occurrence (unchanged).
-- **L-v2.85-d**: REALIZED v2.86 + re-exercised v2.90; not re-exercised v2.92.
-- **L-v2.85-e**: **PROMOTION-CONFIRMED v2.88; 7th consecutive occurrence v2.92**.
-- **L-v2.86-a (HIGH-SIGNAL)**: PARTIALLY exercised v2.90; not re-exercised v2.92.
-- **L-v2.86-b/c**: exercised v2.90 byte-stable; not re-exercised v2.92.
+- **L-v2.85-d**: REALIZED v2.86 + re-exercised v2.90; not re-exercised v2.93.
+- **L-v2.85-e**: **PROMOTION-CONFIRMED v2.88; 8th consecutive occurrence v2.93**.
+- **L-v2.86-a (HIGH-SIGNAL)**: PARTIALLY exercised v2.90; not re-exercised v2.93.
+- **L-v2.86-b/c**: exercised v2.90 byte-stable; not re-exercised v2.93.
 - **L-v2.86-d/e**: unchanged.
-- **L-v2.88-a**: 2 occurrences (v2.88 + v2.91); NOT re-occurring v2.92. Watcher.
+- **L-v2.88-a**: 2 occurrences (v2.88 + v2.91); NOT re-occurring v2.93. Watcher.
 - **L-v2.88-b**: realised v2.90 (V-Z3 live).
 - **L-v2.88-c**: REALISED v2.90 (probe re-verification at apply).
 - **L-v2.88-d**: realised v2.90.
-- **L-v2.89-a**: 1 occurrence v2.89; not re-exercised v2.92 (atomic push_files in flight; fallback ready).
-- **L-v2.90-a-f**: codified documentationally v2.91; not empirically re-exercised v2.92. Watchers.
+- **L-v2.89-a**: 1 occurrence v2.89; not re-exercised v2.93 (atomic commit in flight; fallback ready).
+- **L-v2.90-a-f**: codified documentationally v2.91; not empirically re-exercised v2.93. Watchers.
 
 All candidates recommended for promotion at appropriate cycle once empirical evidence accumulates. **L-v2.85-e + L-v2.85-a + L-v2.83-a remain the highest-priority promotions at next lesson cycle; L-v2.88-a now eligible (2 occurrences); L-v2.90-a + L-v2.90-b (both HIGH-SIGNAL) join the watch.**
 
 ---
 
-## v2.92 honest limitations
+## v2.93 honest limitations
 
-- All v2.31–v2.91 limitations apply.
-- **V-C3 close is empirically anchored to a single v3.0 run** (2026-05-17T160210Z). The contract validates correctly for that run; future runs will continue to validate or break the contract daily. The Cowork-cadence WARN means the contract is not being exercised daily as the schedule intends.
-- **No fresh production state change v2.92.** Sync close documents existing read-only diagnostic evidence; signal-production layer was already working when this session opened.
-- **22 outstanding close-the-loop UPDATEs unchanged net from v2.91.**
+- All v2.31–v2.92 limitations apply.
+- **Cron 85 closure is mechanically anchored to one natural fire** (2026-05-20 03:30:00.762 AEST → run_id `f24d0fcf`). Future cron 85 fires will continue to validate or break the closure expectation daily.
+- **"9-check diagnostic" was undefined legacy carry text.** CCH archive search found no authored matrix. This sync retires the reference without inventing a replacement. Any future "9-check" framing should be treated as historical until and unless an authored matrix is rediscovered or freshly drafted under a separate directive.
+- **D-FR-RECON-001 v1.0 is a read-side reconciliation brief**; it does not by itself reconcile the live state — PK accept of the corrected baseline is the gate that unblocks PRV authoring per §7.D.
+- **Cowork scheduling cadence WARN is now rank 1** but root-cause and remediation are still pending the read-only probe.
+- **No fresh production state change v2.93.** Closure documents an externally-supplied mechanical observation; sync_state + action_list track the closure and rank reordering only.
+- **22 outstanding close-the-loop UPDATEs unchanged net from v2.92.**
 - **Memory cap 19/30** unchanged.
-- **Action_list size at v2.92**: minor growth (v2.92 ADDITIONS block + Cowork brief STATUS BLOCK + Active table row swap); compaction not yet warranted.
-- **Per-session files v2.92**: 1 — `2026-05-19-vc3-signal-production-closed.md` (commit `55d26d3d07346acd1ab9be91f3c3f92d3ed48842`, 11,169 B).
-- **Doc-sync v2.92**: 1+2 split commit per L-v2.85-e baseline (per-session detail standalone + sync_state + action_list atomic via push_files). L-v2.89-a fallback (1+1+1) ready but NOT invoked v2.92.
-- **Close-the-loop UPDATEs v2.92: 0** (no D-01 fired). 22 outstanding unchanged.
-- **State-capture exceptions v2.92: 0**. Cumulative: 1.
-- **Production mutations v2.92: 0.**
-- **Dashboard PHASES 45th deferral** carried (was 44 at v2.91; +1 at v2.92). No file-touch v2.92.
+- **Action_list size at v2.93**: minor growth (v2.93 ADDITIONS block + Active table reshuffle + cc-0016 Stage A + Wave 0f scoping rows promoted); compaction not yet warranted.
+- **Per-session files v2.93**: 1 — `docs/runtime/sessions/2026-05-20-v2.93-cron85-natural-fire-closed-9check-retired.md`.
+- **Doc-sync v2.93**: 1-commit atomic per L-v2.85-e baseline (sync_state + action_list + session file in single push). L-v2.89-a fallback (1+1+1) ready but NOT invoked v2.93.
+- **Close-the-loop UPDATEs v2.93: 0** (no D-01 fired). 22 outstanding unchanged.
+- **State-capture exceptions v2.93: 0**. Cumulative: 1.
+- **Production mutations v2.93: 0.**
+- **Dashboard PHASES 46th deferral** carried (was 45 at v2.92; +1 at v2.93). No file-touch v2.93.
 - **No decisions.md change.**
-- **No Wave 0f work started v2.92** per PK explicit instruction.
-- **No mid-session compaction event v2.92.**
+- **No Wave 0f work started v2.93** (rank 3 listing is a forward-look; brief authoring is opportunistic and not started this directive).
+- **No mid-session compaction event v2.93.**
 
 ---
 
@@ -371,6 +395,29 @@ All candidates recommended for promotion at appropriate cycle once empirical evi
 
 - v1.0–v2.90: per commit history.
 - v2.91 (2026-05-19 Sydney evening, cc-0017e v1.1 8-item backlog doc patch CLOSED): see prior changelog.
+- **v2.93 (2026-05-20 Sydney, Reconciliation daily cadence diagnostic CLOSED-PASS + 9-check matrix retired + D-FR-RECON-001 documented + Cowork cadence WARN promoted to rank 1):**
+  - Build arc: pull main → read v2.92 close state → read D-FR-RECON-001 brief next-work recommendation → edit action_list (header + ADDITIONS + Today/Next 5 + Active + status blocks + Backlog + Lessons + Limitations + Changelog) → edit sync_state (index + inline + Next priorities + do-not-touch + footer) → write per-session file → atomic single-commit push.
+  - Reconciliation daily cadence diagnostic CLOSED-PASS v2.93 on first post-cc-0017e cron 85 natural fire. Mechanical evidence supplied in directive: cron 85 fired 2026-05-20 03:30:00.762 AEST; downstream `r.reconciliation_run f24d0fcf-cfce-4a1d-ab31-da51ea162151` succeeded; 112 processed / 5 inserted / 0 updated / 107 skipped; error_summary=NULL; 5 `observer_stale` findings only (0 critical / 0 late / 0 missing); MV refresh completed 2026-05-19 17:30:05 UTC.
+  - "9-check diagnostic" reference retired as undefined legacy carry text. CCH archive search found no authored 9-check matrix. **No replacement matrix invented.** Closure criterion logged: "Verify cron 85 natural fire succeeds + downstream r.reconciliation_run succeeds + cadence_drift_log writes expected operational findings + MV refreshes complete + zero critical failure signal."
+  - D-FR-RECON-001 v1.0 authored at `fc726e3c` recorded — friction-surface reconciliation read-side brief; 3 drift corrections.
+  - New rank ordering: Cowork cadence WARN promoted to rank 1; cc-0016 Stage A → rank 2; Wave 0f scoping → rank 3; PRV → rank 4 (deferred per D-FR-RECON-001 §7.D); close-the-loop → rank 5.
+  - Cowork cadence WARN explicitly NOT closed.
+  - 0 D-01 fires; T-MCP-02 cum ~86 unchanged. State-capture exceptions cumulative 1 unchanged.
+  - L-v2.85-e re-applied **8th consecutive occurrence** v2.93 (v2.86–v2.93). Promotion-confirmed v2.88 carries forward. Atomic single-commit close.
+  - L-v2.83-a re-applied at sync close commit. Cumulative **13+ STRONG**.
+  - L-v2.88-a NOT re-occurring v2.93 (PK directive close-promote-defer, not directive-loop). Watcher (2 occurrences total) carries forward.
+  - L-v2.89-a NOT actively exercised v2.93 (atomic commit in flight; fallback ready).
+  - L-v2.85-a HIGH-SIGNAL NOT re-exercised v2.93 (doc-sync only; no V-check execution).
+  - L-v2.90-a-f NOT empirically re-exercised v2.93.
+  - L40 / L41 / L46 / L58 / L62 NOT exercised v2.93.
+  - No new L-v2.93-X candidates surfaced.
+  - Production mutations: 0. Net schema deltas: 0. Supabase mutations: 0. apply_migration: 0. Edge-Function deploys: 0. Application code edits: 0.
+  - No decisions.md change.
+  - No mid-session compaction event.
+  - No state-capture override.
+  - Hard-stop discipline preserved end-to-end: 0 force-run of cron 85 (closure rests on natural fire only); 0 force-run of `nightly-health-check-v1`; 0 Wave 0f scope creep; 0 purge_test_case helper changes; 0 application code edits (Dashboard PHASES **46th deferral**); 0 invention or backfill of a 9-check matrix; 0 closure of the Cowork scheduling cadence WARN.
+  - Closure budget: ~1h v2.93 (mechanical evidence supplied in directive payload + sync close drafting). Trailing-14-day ~33h.
+  - Doc-sync: atomic single-commit per L-v2.85-e baseline (sync_state + action_list + session file).
 - **v2.92 (2026-05-19 Sydney evening, Health_check V-C3 signal-production CLOSED-PASS + Cowork-cadence WARN spawned):**
   - Build arc: session start → PK directive to close V-C3 using prior session read-only evidence + spawn Cowork-cadence WARN as new P2 + promote PRV brief to next practical planning item → compose per-session detail → standalone commit → compose sync_state + action_list updates → atomic push_files (this commit).
   - Health_check V-C3 + signal-production diagnostic CLOSED-PASS v2.92. Empirically validated against 2026-05-17 `nightly-health-check-v1` v3.0 run (`run_id=nightly-health-check-v1/2026-05-17T160210Z`). 4 read-only checks PASS.
