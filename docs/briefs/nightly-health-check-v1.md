@@ -1,7 +1,7 @@
 ---
 brief_id: nightly-health-check-v1
 brief_version: v3.0
-status: review_required
+status: ready
 risk_tier: 0
 owner: cowork
 created_by: PK + chat session 2026-05-02 Saturday afternoon Sydney (v1 first-run learnings + B investigation patches; v2.1 closes Q-002 SQL-syntax fix); v3.0 adds cc-0014 Stage C dual-write to friction.event via friction.fn_emit_health_check_findings (2026-05-15 Sydney)

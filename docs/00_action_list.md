@@ -4,7 +4,9 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-21 Sydney (**v3.00 — cc-0016 Stage D /operations evidence display VISUAL PASS**. Dashboard Stage D shipped at `9082beb3e22df2e0f8d42924ed4e6f0a127c23ea` (files: `app/(dashboard)/operations/page.tsx`, `app/(dashboard)/operations/case-row.tsx`; typecheck PASS). CCB verified on production `/operations`: loads with recent 50 cases; V-A5 smoke case visible as "cc-0016 Stage B attachment smoke"; collapsed row purple paperclip badge 📎1; expanded row "Evidence (1)"; thumbnail renders; caption `va5-smoke.png · 861B · 10h ago`; thumbnail opens via signed URL `friction-evidence/9e314151-.../0_va5-smoke.png`; PNG in new tab `0_va5-smoke.png (64×64)`; unattached case renders normally; triage guardrail intact. **cc-0016 Stage D CLOSED/PASS.** cc-0016 evidence capture/display path COMPLETE through Stage D (A→B→C→D). Stage E future/separately-approved-only — do NOT start automatically. Cowork lifecycle WARN / cc-0015 / PRV / Stage E UNCHANGED (open). 0 Supabase mutations / 0 SQL-RPC-view-function changes / 0 lifecycle cleanup / 0 retroactive attachment editing / 0 upload-flow changes / 0 triage mutation during CCB verification / 0 unrelated dashboard mutations / 0 Invegent-dashboard edits / 0 smoke deletion / 0 D-01 fires / 0 memory edits / 0 decisions.md edits. **v3.00.1 reconciliation patch:** stale v2.97/v2.98 placeholder note corrected — reconciled in v2.99.1 at `2db1656`.) **Today/Next 5 core ranks v3.00**: Cowork lifecycle WARN → rank 1; **cc-0016 Stage E scoping/dry-run design ONLY → rank 2 conditional (Option A; replaced if PK picks Option B/C)**; Wave 0f scoping → rank 3; PRV → rank 4 (deferred); close-the-loop → rank 5.
+> Last updated: 2026-05-21 Sydney (**v3.01 — Cowork brief lifecycle gating WARN CLOSED**. v2.94 lifecycle convention validated end-to-end on the first natural cycle: `nightly-health-check-v1` brief reset `ready → review_required → PK observed → ready` against the **2026-05-20T16:02:37Z** natural 16:00 UTC fire (`docs/runtime/runs/nightly-health-check-v1-2026-05-20T160237Z.md`; finished 16:08:30Z; 0 schema-drift fallbacks; all 14 SQL queries verbatim; dual-write fired — 5 P1 → `friction.event`, 2 P2 → `friction.emit_error` with `CONDITION-KEY-UNRESOLVED`). Brief frontmatter reset to `status: ready`; queue row updated with closure annotation (2026-05-20 history preserved verbatim). **WARN no longer at core rank 1.** New core rank 1 = **cc-0015 Gate 11 watch** (window closes 2026-05-26, ~5 days out). **Q-nightly-health-check-v1-005 remains OPEN as non-blocking function-contract drift** — handled as a future brief v3.1 / spec patch; NOT bundled into this closure. cc-0015 still gated. PRV deferred. cc-0016 Stage E future/separately-approved-only. Mobile/narrow viewport remains P3. 0 Supabase mutations / 0 SQL-RPC-view-function changes / 0 Invegent-dashboard touched / 0 nightly-health-check manual run / 0 Cowork forced execution / 0 Q-005 resolution / 0 Stage E started / 0 cleanup run / 0 cc-0015 advanced / 0 PRV closed / 0 retroactive editing / 0 fn_set_event_attachments / 0 lifecycle cleanup / 0 D-01 fires / 0 memory edits / 0 decisions.md edits. L-v2.85-e 14th consecutive. L-v2.83-a 18+ STRONG. **L-v2.94 convention lesson NEW candidate** (confirm across 2-3 more natural cycles before promotion-eligible). Files changed: 5 (brief frontmatter + queue row + session file + sync_state + action_list, atomic single commit).) **Today/Next 5 core ranks v3.01**: **cc-0015 Gate 11 watch → rank 1 (NEW; time-bound; closes 2026-05-26)**; cc-0016 Stage E scoping/dry-run design ONLY → rank 2 conditional (Option A); Wave 0f scoping → rank 3; PRV → rank 4 (deferred); close-the-loop → rank 5. Cowork lifecycle gating WARN no longer ranked (CLOSED v3.01).
+
+*v3.00 (+v3.00.1 reconciliation patch) — cc-0016 Stage D /operations evidence display VISUAL PASS*. Dashboard Stage D shipped at `9082beb3e22df2e0f8d42924ed4e6f0a127c23ea` (files: `app/(dashboard)/operations/page.tsx`, `app/(dashboard)/operations/case-row.tsx`; typecheck PASS). CCB verified on production `/operations`: loads with recent 50 cases; V-A5 smoke case visible as "cc-0016 Stage B attachment smoke"; collapsed row purple paperclip badge 📎1; expanded row "Evidence (1)"; thumbnail renders; caption `va5-smoke.png · 861B · 10h ago`; thumbnail opens via signed URL `friction-evidence/9e314151-.../0_va5-smoke.png`; PNG in new tab `0_va5-smoke.png (64×64)`; unattached case renders normally; triage guardrail intact. **cc-0016 Stage D CLOSED/PASS.** cc-0016 evidence capture/display path COMPLETE through Stage D (A→B→C→D). Stage E future/separately-approved-only — do NOT start automatically. Cowork lifecycle WARN / cc-0015 / PRV / Stage E UNCHANGED (open). 0 Supabase mutations / 0 SQL-RPC-view-function changes / 0 lifecycle cleanup / 0 retroactive attachment editing / 0 upload-flow changes / 0 triage mutation during CCB verification / 0 unrelated dashboard mutations / 0 Invegent-dashboard edits / 0 smoke deletion / 0 D-01 fires / 0 memory edits / 0 decisions.md edits. **v3.00.1 reconciliation patch:** stale v2.97/v2.98 placeholder note corrected — reconciled in v2.99.1 at `2db1656`.) **Today/Next 5 core ranks v3.00**: Cowork lifecycle WARN → rank 1; **cc-0016 Stage E scoping/dry-run design ONLY → rank 2 conditional (Option A; replaced if PK picks Option B/C)**; Wave 0f scoping → rank 3; PRV → rank 4 (deferred); close-the-loop → rank 5.
 
 ---
 
@@ -12,7 +14,69 @@
 
 At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs Standing checks (S1–S29); (3) verifies D186 closure budget; (4) asks PK about Personal businesses; (5) surfaces Time-bound items.
 
-**Standing rules unchanged from v2.99.** D-01 + D-186 + D-YT-OAUTH-1 + D-PREV-16 + Lesson #62 (L46) + #68 + L33–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + **L-v2.83-a (STRONG; 17+ v3.00)** + L-v2.84-a/b/c/d + L-v2.85-a (HIGH-SIGNAL; 4 occurrences) + L-v2.85-b/c/d + **L-v2.85-e PROMOTION-CONFIRMED 13th consecutive v3.00** + 5 L-v2.86 candidates + **L-v2.88-a (watcher CLOSED for cc-0016; 2 prior occurrences carry)** + L-v2.88-b/c/d + L-v2.89-a + **L-v2.90-a through L-v2.90-f** + **L62 strongly reinforced via cc-0016 6-fire D-01 series**. **D-IOL-001 (v2.77)** + **D-CC-0017B-Q1** carried.
+**Standing rules unchanged from v3.00.** D-01 + D-186 + D-YT-OAUTH-1 + D-PREV-16 + Lesson #62 (L46) + #68 + L33–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + **L-v2.83-a (STRONG; 18+ v3.01)** + L-v2.84-a/b/c/d + L-v2.85-a (HIGH-SIGNAL; 4 occurrences) + L-v2.85-b/c/d + **L-v2.85-e PROMOTION-CONFIRMED 14th consecutive v3.01** + 5 L-v2.86 candidates + **L-v2.88-a (watcher CLOSED for cc-0016; 2 prior occurrences carry)** + L-v2.88-b/c/d + L-v2.89-a + **L-v2.90-a through L-v2.90-f** + **L62 strongly reinforced via cc-0016 6-fire D-01 series** + **L-v2.94 convention NEW candidate (validated against 2026-05-20T160237Z natural fire; confirm across 2-3 more cycles before promotion-eligible)**. **D-IOL-001 (v2.77)** + **D-CC-0017B-Q1** carried.
+
+**v3.01 ADDITIONS:**
+
+- **Cowork brief lifecycle gating WARN CLOSED v3.01.** v2.94 lifecycle convention validated end-to-end against the 2026-05-20T16:02:37Z natural 16:00 UTC fire as convention-cycle-1 evidence:
+  - Run state: `docs/runtime/runs/nightly-health-check-v1-2026-05-20T160237Z.md`. Finished 16:08:30Z (~6 min). 0 schema-drift fallbacks. All 14 SQL queries verbatim. Markdown `docs/audit/health/2026-05-20.md` (canonical per brief §12.4).
+  - Dual-write contract: `friction.fn_emit_health_check_findings(…)` returned `{success_count: 5, failure_count: 0, skipped_count: 2}`. **5 P1 → `friction.event`** (visible on `/operations` post cc-0016 Stage D); **2 P2 → `friction.emit_error`** (`error_code=CONDITION-KEY-UNRESOLVED`; function pattern matcher only recognises `true-stuck-{platform}-{slug}`).
+  - Brief lifecycle: `ready → review_required → PK observed → ready` ✓.
+  - 0 Cowork forbidden-action violations.
+
+- **`docs/briefs/nightly-health-check-v1.md`** frontmatter reset: `status: review_required → status: ready`. brief_version unchanged (still v3.0). No other edits.
+
+- **`docs/briefs/queue.md`** Active row for `nightly-health-check-v1`: `status: review_required → ready`; closure annotation prepended; prior 2026-05-20 run history preserved verbatim.
+
+- **`Q-nightly-health-check-v1-005` remains OPEN as non-blocking carry.** Function-contract drift: brief §12.3 anticipated `{success_count, failure_count, run_id}` but function returns `+ skipped_count` and routes pattern-mismatches to `friction.emit_error` rather than per-row INSERT failure. Will be handled as a future brief v3.1 patch / `friction.fn_emit_health_check_findings` spec patch. **Explicitly NOT bundled into this closure per directive item 4.** Does NOT block the brief from running the next scheduled cycle.
+
+- **Core ranks rebuilt v3.01:**
+  - **Rank 1 (NEW): cc-0015 Gate 11 watch** — time-bound; window closes 2026-05-26 (~5 days out). Passive observation; when gate clears, cc-0015 friction-pool-view UI (Wave 7) unblocks as the leading dashboard build.
+  - Rank 2 (conditional): cc-0016 Stage E scoping/dry-run design ONLY (Option A from v3.00 PK choice) — NON-MUTATING; first destructive run still requires separate PK approval. Replaced if PK picks Option C (mobile viewport).
+  - Rank 3: Wave 0f scoping — P3 brief-authoring only; opportunistic during Gate 11 window.
+  - Rank 4: PRV brief authoring — deferred per D-FR-RECON-001 §7.D.
+  - Rank 5: 5-row close-the-loop batch / Pre-sales / `purge_test_case` helper case_history extension — P2/P3 carry.
+  - **Cowork lifecycle gating WARN no longer ranked** (CLOSED v3.01).
+
+- **Items explicitly NOT closed v3.01 (per directive):**
+  - cc-0015 (Wave 7) — STILL GATED on Gate 11 closing 2026-05-26.
+  - cc-0016 Stage E lifecycle cleanup — future/separately-approved-only.
+  - PRV brief authoring — deferred per D-FR-RECON-001 §7.D.
+  - Mobile/narrow viewport verification — P3 carry.
+  - Q-nightly-health-check-v1-005 — OPEN, non-blocking; deferred to future v3.1 brief patch / spec patch.
+
+- **Hard stops respected v3.01:**
+  - 0 Supabase mutations / 0 SQL / RPC / view / function changes
+  - 0 Invegent-dashboard touched
+  - 0 nightly-health-check manual run / 0 Cowork forced execution
+  - 0 Q-005 resolution / 0 closure of Q-005
+  - 0 Stage E started / 0 cleanup run
+  - 0 cc-0015 advanced / 0 PRV closed
+  - 0 retroactive editing / 0 fn_set_event_attachments / 0 lifecycle cleanup
+  - 0 D-01 fires / 0 memory edits / 0 decisions.md edits
+
+- **Sync close mechanics v3.01 (atomic single-commit per L-v2.85-e baseline — 14th consecutive occurrence):**
+  1. Per-session detail `docs/runtime/sessions/2026-05-21-v3.01-cowork-lifecycle-warn-closed.md`.
+  2. Brief frontmatter + queue + session file + sync_state + action_list in one push.
+
+  L-v2.89-a fallback (1+1+1) ready but not invoked v3.01.
+
+- **L-v2.85-e re-applied 14th consecutive occurrence**; promotion-confirmed v2.88 carries forward.
+- **L-v2.83-a re-applied** at sync close. Cumulative **18+ STRONG**.
+- **L-v2.94 convention NEW candidate (v3.01)** — the "ready → fire → review_required → PK observe → ready" lifecycle convention worked on the first natural cycle without manual intervention. Tag for confirmation across 2-3 more natural cycles before promotion-eligible.
+- **L40 / L41 / L46 / L58 / L62 NOT exercised v3.01** (no D-01, no migration).
+- **L-v2.97-a / L-v2.97-b / L-v2.98-a-c**: carried (no fresh occurrences).
+
+- **Closed Active rows v3.01:** Cowork brief lifecycle gating WARN.
+- **Promoted Active rows v3.01:** cc-0015 Gate 11 watch → new core rank 1 (replaces closed Cowork WARN; time-bound).
+- **Spawned Active rows v3.01:** Q-nightly-health-check-v1-005 as non-blocking carry (not actively ranked).
+- **NO decisions.md change v3.01.**
+- **Production mutations v3.01: 0. D-01 fires v3.01: 0. T-MCP-02 cum: ~92 unchanged. State-capture exceptions: 1 unchanged.**
+
+- **v3.01 honest limitations:**
+  - Single-cycle closure (PK accepted one healthy fire as sufficient). Multi-cycle observation would be stronger; not required.
+  - Q-005 deferred — the next 16:00 UTC fire will likely produce the same `skipped_count > 0` annotation until brief v3.1 / function pattern matcher updated.
+  - Pattern-matcher gap unresolved: `friction.fn_emit_health_check_findings` still only recognises `true-stuck-{platform}-{slug}` problem_keys.
 
 **v3.00 ADDITIONS:**
 
@@ -83,12 +147,12 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 ## ⭐ Today / Next 5 (core ICE ranks)
 
-> Last rebuilt: 2026-05-21 Sydney (v3.00 — cc-0016 Stage D CLOSED; rank 2 now conditional on PK Option A/B/C choice).
+> Last rebuilt: 2026-05-21 Sydney (v3.01 — Cowork lifecycle gating WARN CLOSED; cc-0015 Gate 11 watch promoted to rank 1).
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
-| 1 | **Cowork brief lifecycle gating WARN — `nightly-health-check-v1`** | **P2 carry, rank 1 (unchanged)** | Ready reset complete v2.94 + convention patched. WARN explicitly NOT closed. | chat → PK | Observe next 16:00 UTC fire under new convention. |
-| 2 | **cc-0016 Stage E scoping/dry-run design ONLY** (conditional — Option A) | **P2, rank 2 conditional** | cc-0016 evidence path complete A→B→C→D; only Stage E (lifecycle cleanup) remains. Option A = NON-MUTATING design + dry-run spec. First destructive run still requires separate PK approval. **Replaced if PK picks Option B (pause → Cowork/cc-0015) or Option C (mobile viewport).** | PK → chat | PK picks A/B/C. If A: author Stage E dry-run design (no execution). |
+| 1 | **cc-0015 Gate 11 watch** | **P2 carry, rank 1 (NEW v3.01)** | Time-bound. Window closes **2026-05-26** (~5 days out from 2026-05-21). Passive observation; when gate clears, cc-0015 friction-pool-view UI (Wave 7) unblocks as the leading dashboard build. | PK / chat | Observe close-date; no action needed until 2026-05-26. |
+| 2 | **cc-0016 Stage E scoping/dry-run design ONLY** (conditional — Option A) | **P2, rank 2 conditional** | cc-0016 evidence path complete A→B→C→D; only Stage E (lifecycle cleanup) remains. Option A = NON-MUTATING design + dry-run spec. First destructive run still requires separate PK approval. **Replaced if PK picks Option C (mobile viewport).** | PK → chat | PK picks A/C. If A: author Stage E dry-run design (no execution). |
 | 3 | **Wave 0f scoping** | **P3 brief-authoring only, opportunistic during Gate 11 window** | Non-mutating. Candidates: items B/E/F/G from cc-0017e + `purge_test_case` helper case_history extension (L-v2.90-d). | chat → PK | When PK directs (recommended during Gate 11 window 2026-05-19 → 2026-05-26). |
 | 4 | **Platform Reconciliation View brief authoring** | **P2 carry, deferred per D-FR-RECON-001 §7.D** | Defer until corrected friction-register baseline accepted. | PK → chat | When PK directs. |
 | 5 | **5-row close-the-loop batch sweep / Pre-sales criteria / `purge_test_case` helper case_history extension** | **P2/P3 carry** | Outstanding close-the-loop UPDATEs (net not recomputed v3.00). | chat → PK | When PK directs. |
@@ -163,9 +227,9 @@ Wave 0 + 0d + 0e COMPLETE. Gates 10+12+13 CLOSED. Gate 11 (1-week observation 20
 
 ---
 
-## 🟢 Cowork brief `nightly-health-check-v1` — STATUS BLOCK (v3.00 unchanged)
+## 🟢 Cowork brief `nightly-health-check-v1` — STATUS BLOCK (UPDATED v3.01)
 
-FROZEN at v3.0. Signal-production contract empirically validated v2.92. Lifecycle gating WARN unchanged — core rank 1; directive explicitly preserved as open v3.00. Brief reset to `ready` v2.94; convention patched v2.94. Closure waits on PK observation of next 16:00 UTC fire.
+FROZEN at v3.0. Signal-production contract empirically validated v2.92. **Lifecycle gating WARN CLOSED v3.01** against the 2026-05-20T16:02:37Z natural fire as convention-cycle-1 evidence (v2.94 lifecycle convention: `ready → fire → review_required → PK observed → ready` validated end-to-end). Brief frontmatter reset to `status: ready` for the next 16:00 UTC fire. **No longer at core rank 1.** Run state file: `docs/runtime/runs/nightly-health-check-v1-2026-05-20T160237Z.md`. Markdown output: `docs/audit/health/2026-05-20.md` (canonical per brief §12.4). Emission summary: 5 P1 → `friction.event` (visible on `/operations` post Stage D); 2 P2 → `friction.emit_error` (CONDITION-KEY-UNRESOLVED; pattern-matcher gap). **Q-nightly-health-check-v1-005 remains OPEN as non-blocking function-contract drift** (skipped_count + emit_error routing not documented in brief §12.3); deferred to future v3.1 brief patch / `friction.fn_emit_health_check_findings` spec patch. Does NOT block the brief from running the next scheduled cycle.
 
 ---
 
@@ -190,8 +254,8 @@ S1–S29 unchanged. S30 closed PASS v2.47.
 
 ## 🔴 Time-bound
 
-- **1-week empirical observation window** — 2026-05-19 → 2026-05-26. Wave 7 (cc-0015) gated. ~5 days out from 2026-05-21. Day count not refreshed v3.00.
-- **Cowork `nightly-health-check-v1` lifecycle gating WARN** — core rank 1 carry; preserved open v3.00.
+- **1-week empirical observation window** — 2026-05-19 → 2026-05-26. Wave 7 (cc-0015) gated. ~5 days out from 2026-05-21. Day count not refreshed v3.01.
+- **Cowork `nightly-health-check-v1` lifecycle gating WARN** — **CLOSED v3.01.** No longer time-bound; brief reset to `ready` for next natural 16:00 UTC fire. Q-005 carries non-blocking.
 - **cc-0016 Stage D CLOSED/PASS v3.00; evidence path complete A→B→C→D.** Stage E future.
 - No new v3.00 calendar items.
 
