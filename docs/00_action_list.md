@@ -66,7 +66,7 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 - **No new L-v2.99-X candidates surfaced.**
 
 - **Closed Active rows v2.99:** cc-0016 Stage B → CLOSED/PASS; V-A5 → PASS.
-- **Promoted Active rows v2.99:** cc-0016 Stage D promoted to core rank 2 (replaces closed Stage A/C placeholder).
+- **Promoted Active rows v2.99:** cc-0016 Stage D promoted to core rank 2 (replaces closed Stage A/C).
 - **NO decisions.md change v2.99.**
 - **Production mutations v2.99: 0. D-01 fires v2.99: 0. T-MCP-02 cum: ~92 unchanged. State-capture exceptions: 1 unchanged.**
 
@@ -241,7 +241,7 @@ v2.99: **0 D-01 fires.** T-MCP-02 cum **~92 unchanged**. Across the cc-0016 seri
 - **cc-0016 Stage B** → RECORDED-CLOSED/PASS (dashboard `36fe6ad`).
 - **cc-0016 V-A5 storage round-trip** → PASS.
 
-**Promoted v2.99:** cc-0016 Stage D → core rank 2 (replaces closed Stage A/C placeholder).
+**Promoted v2.99:** cc-0016 Stage D → core rank 2 (replaces closed Stage A/C).
 
 **Closed earlier:** v2.98 cc-0016 Stage C apply (assumed); v2.97 cc-0016 Stage A apply (assumed); v2.96 dashboard slices 4A–4B + top alert bar reconciliation; v2.95 dashboard slices 1–3 + PHASES streak + "Stop Claude"; v2.93 Reconciliation daily cadence diagnostic; v2.92 Health_check V-C3; v2.91 cc-0017e v1.1 doc patch; v2.90 cc-0017e apply; v2.85 cc-0017c apply; v2.82 cc-0017b apply; v2.81 cc-0017a apply; v2.77 cc-0014 archived.
 
@@ -274,7 +274,7 @@ Unchanged from v2.76-v2.96.
 - State-capture exceptions cum 1 unchanged.
 - L-v2.85-e 12th consecutive; L-v2.83-a 16+ STRONG; L62 strongly reinforced; L-v2.88-a watcher closed for cc-0016.
 - **No decisions.md change v2.99.**
-- **Cross-session reconciliation flagged:** v2.97 + v2.98 session files not loaded in chat context; placeholders in index; reconcile next session.
+- **Cross-session reconciliation flagged at v2.99 — RECONCILED v2.99.1:** v2.97 + v2.98 session files were not loaded in v2.99 chat context, so the v2.97/v2.98 rows in `docs/00_sync_state.md` session index were authored as placeholders. v2.99.1 read-only verification confirmed ancestry clean (`307822b` v2.97 + `2885b0d` v2.98 both ancestors of `b54f014` v2.99) and both session files exist. Placeholder rows replaced with headlines drawn from commit `2885b0d`.
 
 ---
 
@@ -304,7 +304,7 @@ L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d 
 ## v2.99 honest limitations
 
 - All v2.31–v2.96 limitations apply.
-- **Cross-session state recording.** v2.97 (Stage A apply close) + v2.98 (Stage C apply close) are NOT loaded in chat's current context window. Stage A/C treated as CLOSED per directive assertion, not independently re-verified this session. Session-index entries for v2.97 + v2.98 are placeholders — reconcile next session against actual session files (if they exist).
+- **Cross-session state recording (RECONCILED v2.99.1).** v2.97 (Stage A apply close) + v2.98 (Stage C apply close) were NOT loaded in v2.99 chat's context window at authoring time. Stage A/C were treated as CLOSED per directive assertion, not independently re-verified at v2.99 close. Session-index entries for v2.97 + v2.98 were initially placeholders. v2.99.1 read-only verification confirmed: ancestry clean (`307822b` v2.97 + `2885b0d` v2.98 are both ancestors of `b54f014` v2.99), session files exist at the recorded paths (`docs/runtime/sessions/2026-05-20-v2.97-...md`, `...v2.98-...md`), v2.97/v2.98 close-states intact in repo. Placeholders replaced with headlines drawn from commit `2885b0d`.
 - **Cross-repo recording only** — chat did not fetch dashboard repo HEAD or independently verify commit `36fe6ad`. Recorded per directive payload.
 - **"CCB verified" reflects operator browser walkthrough**, not automated test coverage.
 - **CONSTRAINT 1 operator-authorisation negative-path test** (unauthorised operator blocked) is not explicitly asserted in the directive payload. Acceptable under single-operator posture (Stage A approval item 5) but recorded as a gap for any future multi-operator hardening.
@@ -325,7 +325,8 @@ L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d 
 - v2.94 (2026-05-20 Sydney): Cowork brief lifecycle gating WARN REFRAMED + ready reset + convention patched.
 - v2.95 (2026-05-20 Sydney): Dashboard slices 1–3 RECORDED. PHASES 46-streak deferral CLOSED.
 - v2.96 (2026-05-20 Sydney): Dashboard slices 4A–4B RECORDED + top alert bar count reconciliation CLOSED for UI scope.
-- *(v2.97 cc-0016 Stage A apply + v2.98 cc-0016 Stage C apply — recorded in their own sessions; not loaded in v2.99 chat context; reconcile next session.)*
+- v2.97 (2026-05-20 Sydney): cc-0016 Stage A friction-capture-evidence APPLIED via `apply_migration` after D-01 third-fire approval (`9eb35144`). 10 atomic mutations (bucket + RLS + column + CHECKs + index + view + grants). V-A1/A2/A3/A4/A4b/A6 PASS; V-A5 deferred to Stage B. 3 D-01 rows close-the-loop resolved; outstanding 28→26.
+- v2.98 (2026-05-20 Sydney): cc-0016 Stage C extended-emit-function APPLIED via `apply_migration` after D-01 approval (`358c6fdd`). 8 atomic mutations (DROP+CREATE emit_event 13-arg + fn_emit_manual_event 8-arg + grants). cc-0017b pipeline preserved byte-stable. 11/11 SQL V-checks PASS; V-A5 carried to Stage B FAB ship. 3 D-01 rows close-the-loop resolved.
 - **v2.99 (2026-05-20 Sydney, cc-0016 Stage B FAB upload/read UX validated + V-A5 PASS):**
   - Build arc: pull main → read v2.96 close state → record Stage B directive payload (dashboard `36fe6ad`; CCB + chat backend + CCD read-back; V-A5 PASS; smoke artefacts) → edit action_list (header + ADDITIONS + Today/Next 5 + dashboard ranking + cc-0016 status block + Active + Backlog + Lessons + Limitations + Changelog) → edit sync_state (index + inline + Next priorities + do-not-touch + footer) → write per-session file → atomic single-commit `push_files` (3 files).
   - cc-0016 Stage B at dashboard `36fe6ad575a125870c9ac7eeb25a0da605a9c7d3` (files: `actions/emit-friction.ts`, `components/friction-form.tsx`; typecheck PASS) — CLOSED/PASS.
@@ -337,4 +338,4 @@ L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d 
   - L-v2.85-e re-applied 12th consecutive. L-v2.83-a 16+ STRONG. L62 strongly reinforced via cc-0016 6-fire series. L-v2.88-a watcher CLOSED for cc-0016.
   - T-MCP-02 cum ~92 unchanged. State-capture exceptions cum 1 unchanged.
   - Closure budget: ~1h v2.99. Trailing-14-day ~36h.
-  - Cross-session note: v2.97 + v2.98 not loaded in chat context; placeholders; reconcile next session.
+  - Cross-session note: v2.97 + v2.98 not loaded in chat context at v2.99 authoring time; placeholders recorded. **RECONCILED v2.99.1** — ancestry verified clean, session files exist, placeholders replaced with headlines drawn from commit `2885b0d`.
