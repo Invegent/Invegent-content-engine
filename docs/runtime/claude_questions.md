@@ -274,3 +274,9 @@ m schema docs coverage bump: 26.2% (180/686) → 28.4% (195/686).
 Closure-budget contribution: ~0.5h.
 
 Run state: `docs/runtime/runs/2026-05-03-f04-and-fpub007-fpub010-session.md`.
+
+## Resolved Q-nightly-health-check-v1-004
+
+Resolved by: A-nightly-health-check-v1-004 in `docs/runtime/claude_answers.md` (PK ratification, 2026-05-20 Sydney)
+Resolved at: 2026-05-20T02:43:00Z (approximate; see commit timestamp for precise mark)
+Outcome: **Option A** — PK ratifies Cowork's reading: Cat A is the platform-lock artefact (`profile_enabled=false`), regardless of platform. The `instagram + scheduled_for >= 25 Apr 2026` clause is dropped from the brief as a leaky heuristic now superseded by the canonical `cpp.publish_enabled` / `cpp.profile_enabled` signals. The two instagram clusters from the 2026-05-17 run (instagram × care-for-welfare-pty-ltd, instagram × invegent) are correctly classified as Cat C true-stuck per Q-true-stuck SQL ground truth, and the 5 P1 emissions to `friction.event` for that run stand as correct — no friction.event cleanup, no finding_id changes. Brief patched at `docs/briefs/nightly-health-check-v1.md` Section 6a simplifying Cat A wording. Underlying root cause for the two instagram clusters (jobid 53 `instagram-publisher-every-15m` is `is_active=false`) belongs in friction triage at `/operations`, not in the brief's Cat A definition.
