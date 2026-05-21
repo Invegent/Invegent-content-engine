@@ -4,7 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-21 Sydney (**v3.03 — Q-005 Option A trail recorded (A-005 + v3.1 + v3.1.1 emission-rule guard); brief now v3.1.1; Q-005 stays OPEN, next-fire watch**. A-nightly-health-check-v1-005 ratified Option A at `56e992b4`; v3.1 brief patch at `7005865` added the 9-key `condition_key` mapping; **CCD read-only verification found v3.1 would FAIL live emission** — `friction.emit_event` requires an enabled `friction.emission_rule` row for `(source, condition_key)` and only `health_check/true_stuck` is enabled, so v3.1's renamed `true_stuck_cluster` + 8 invented P2 keys would all be rejected (~`success_count=0, failure_count=5–7`), regressing the known-good P1 path; **v3.1.1 guard patch at `9ceb78a`** restores `condition_key=true_stuck` for true-stuck P1 emission and PARKS the other 8 P1/P2 keys (markdown-only; omitted from emission JSONB) pending a separate Supabase-approved `friction.emission_rule` seed patch. Next natural fire is SAFE (true-stuck emits; parked types appear in markdown but not emitted). **Q-005 OPEN, non-blocking, next-fire watch** — closes via fork (A) seed emission_rule rows + restore full mapping + verify, OR (B) PK formally narrows scope to P1-true-stuck-only + verify (`failure_count=0`/`skipped_count=0`). cc-0015 Gate 11 watch PRESERVED rank 1 (closes 2026-05-26). 0 Supabase / 0 dashboard / 0 nightly run / 0 re-emission / 0 cc-0015 start / 0 Stage E / 0 Q-005 closure / 0 full-file rewrite from stale context.) **Prior: v3.02 (+v3.02.1 +v3.02.2) — Dashboard mobile/narrow viewport verification CLOSED/PASS**; mobile fix `d17b604`; v3.02.1 restored v3.01 `00_` content clobbered by the original v3.02 push; v3.02.2 backfilled the mobile-fix SHA. **Today/Next 5 core ranks (unchanged v3.02/v3.03)**: **cc-0015 Gate 11 watch → rank 1 (closes 2026-05-26)**; cc-0016 Stage E scoping/dry-run design ONLY → rank 2 conditional; Wave 0f scoping → rank 3; PRV → rank 4 (deferred); close-the-loop → rank 5.
+> Last updated: 2026-05-21 Sydney (**v3.04 — Dashboard Slice 0A MERGED to `invegent-dashboard` main at `3ec489b`** (Pre-Phase 0 / Gate-11-window sidebar IA shell + Visual Tokens v1). Parent `d17b604`; squash merge of `e65b812` (initial slice) + `399c087` (CCB polish); committed 2026-05-21T08:17:18Z. Files: `components/sidebar.tsx` + `tailwind.config.ts` + `app/globals.css` (exactly 3). Typecheck exit 0; CCD review PASS / CCB visual QA PASS / CCB polish re-check PASS. Sidebar regrouped to locked target IA NOW/CLIENTS/CREATE/REPORTS/ADMIN (NOW split Daily + Investigate + collapsed Legacy); 5 semantic status colour scales + 10 typography/spacing token helpers added additively; `d17b604` mobile-drawer behaviour preserved verbatim; no routes added/removed, no redirects, no `page.tsx`/route/layout/middleware/Supabase touched, no Roadmap/PHASES touched. Commit SHA + content **independently verified** (Invegent GitHub `list_recent_commits` + live `sidebar.tsx` read — not taken on directive faith). **Slice 0A is NOT real Dashboard Phase 0** — review §9 Phase 0 schema groundwork (`m.attention_item`/`m.vw_pipeline_state`/`m.brief`/`m.action_event`) remains future/gated. Cross-repo documentation recording only. cc-0015 Gate 11 watch PRESERVED rank 1 (closes 2026-05-26); cc-0016 Stage E separately-approved-only; PRV deferred; Q-005 OPEN non-blocking next-fire watch. 0 Supabase / 0 dashboard edits / 0 Phase 0 schema / 0 cc-0015 start / 0 Stage E / 0 PRV / 0 Q-005 closure / 0 decisions.md change / 0 D-01 / 0 full-file rewrite from stale context.) **Prior: v3.03 — Q-005 Option A trail recorded (A-005 `56e992b4` + v3.1 `7005865` + CCD-FAIL finding + v3.1.1 guard `9ceb78a`); brief now v3.1.1; Q-005 stays OPEN, next-fire watch.** **Today/Next 5 core ranks (unchanged v3.02–v3.04)**: **cc-0015 Gate 11 watch → rank 1 (closes 2026-05-26)**; cc-0016 Stage E scoping/dry-run design ONLY → rank 2 conditional; Wave 0f scoping → rank 3; PRV → rank 4 (deferred); close-the-loop → rank 5.
 
 ---
 
@@ -12,9 +12,39 @@
 
 At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs Standing checks (S1–S29); (3) verifies D186 closure budget; (4) asks PK about Personal businesses; (5) surfaces Time-bound items.
 
-**Standing rules unchanged from v3.01.** D-01 + D-186 + D-YT-OAUTH-1 + D-PREV-16 + Lesson #62 (L46) + #68 + L33–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + **L-v2.83-a (STRONG; 18+)** + L-v2.84-a/b/c/d + L-v2.85-a (HIGH-SIGNAL; 4 occurrences) + L-v2.85-b/c/d + **L-v2.85-e PROMOTION-CONFIRMED** + 5 L-v2.86 candidates + **L-v2.88-a (watcher CLOSED for cc-0016; 2 prior occurrences carry; re-fired as identical-directive event at v3.02 re-send — recognised + not re-executed)** + L-v2.88-b/c/d + L-v2.89-a + **L-v2.90-a through L-v2.90-f** + **L62 strongly reinforced via cc-0016 6-fire D-01 series** + **L-v2.94 convention NEW candidate** + **L-v3.02-a NEW candidate (mobile breakpoint verification after primary operator-surface change)** + **L41 re-exercised v3.02.1 + reinforced v3.03 (full-file push from stale content clobbers intervening out-of-band commit — re-read HEAD first; surgical edits for 00_ index files)**. **D-IOL-001 (v2.77)** + **D-CC-0017B-Q1** carried.
+**Standing rules unchanged from v3.01.** D-01 + D-186 + D-YT-OAUTH-1 + D-PREV-16 + Lesson #62 (L46) + #68 + L33–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + **L-v2.83-a (STRONG; 18+)** + L-v2.84-a/b/c/d + L-v2.85-a (HIGH-SIGNAL; 4 occurrences) + L-v2.85-b/c/d + **L-v2.85-e PROMOTION-CONFIRMED** + 5 L-v2.86 candidates + **L-v2.88-a (watcher CLOSED for cc-0016; 2 prior occurrences carry; re-fired as identical-directive event at v3.02 re-send — recognised + not re-executed)** + L-v2.88-b/c/d + L-v2.89-a + **L-v2.90-a through L-v2.90-f** + **L62 strongly reinforced via cc-0016 6-fire D-01 series** + **L-v2.94 convention NEW candidate** + **L-v3.02-a NEW candidate (mobile breakpoint verification after primary operator-surface change)** + **L-v3.03-a NEW candidate (verify downstream acceptance gates before declaring a contract-reconciliation patch correct)** + **L41 re-exercised v3.02.1 + reinforced v3.03 + v3.04 (full-file push from stale content clobbers intervening out-of-band commit — re-read HEAD first; surgical edits for 00_ index files)**. **D-IOL-001 (v2.77)** + **D-CC-0017B-Q1** carried.
 
-**v3.03 ADDITIONS:**
+**v3.04 ADDITIONS:**
+
+- **Dashboard Slice 0A MERGED to `invegent-dashboard` main — RECORDED (documentation-only).** No Supabase, no dashboard edits, no Phase 0 schema work; the merge itself was applied by CCH locally + pushed, not by chat.
+  - **Dashboard main HEAD: `3ec489b6fb1e4ad706aac9d32f7fefa4ad43b9c5`** (short `3ec489b`); parent `d17b6047411ce177d6182d86a21a79f7302459af` (`d17b604`); **squash merge** of `e65b812` (initial slice) + `399c087` (CCB polish); committed 2026-05-21T08:17:18Z.
+  - **Files (exactly 3):** `components/sidebar.tsx` (NAV regrouped to NOW/CLIENTS/CREATE/REPORTS/ADMIN; NOW split Daily [Overview/Inbox/Pipeline→/queue] + Investigate [Flow/Pipeline Log/Visual Pipeline/Agents/Operations] + collapsed Legacy [Failures/EF Drift]; mobile drawer preserved verbatim); `tailwind.config.ts` (+5 status colour scales critical/warning/info/success/muted, additive; navy/cyan/signal-blue unchanged); `app/globals.css` (+`@layer components` 6 typography + 4 spacing helpers; existing blocks unchanged).
+  - **Validation:** typecheck `npx tsc --noEmit` exit 0; CCD review PASS; CCB visual QA PASS; CCB polish re-check PASS; Vercel success (per directive).
+  - **Verification by chat:** commit SHA, message, parent, and file scope confirmed via Invegent GitHub `list_recent_commits`; Slice 0A content confirmed by reading live `components/sidebar.tsx` on main (`NAV`/`NavGroup`/Legacy/`ChevronDown` present; mobile-drawer chrome intact). NOT recorded on directive faith.
+  - **No routes added/removed; no redirects; no page/route/layout/middleware/actions/lib/supabase files; no Roadmap/PHASES.** Some NOW > Investigate labels (Pipeline, Visual Pipeline, Agents, Operations) are transitional stand-ins over existing routes.
+  - **Slice 0A is NOT real Dashboard Phase 0.** The locked Phase 0 (dashboard-review §9) — `m.attention_item` / `m.vw_pipeline_state` / `m.brief` / `m.action_event` + the Inbox/Pipeline/Brief/Action-Layer data-backed surfaces — remains **future/gated** (S30 cleared + M5–M8 reconciliation prerequisites). Not started by this work.
+
+- **Items explicitly preserved v3.04:**
+  - cc-0015 Gate 11 watch — rank 1; window closes 2026-05-26; do NOT start before. *(Slice 0A merge does NOT start or advance cc-0015.)*
+  - cc-0016 Stage E lifecycle cleanup — future/separately-approved-only.
+  - PRV brief authoring — deferred per D-FR-RECON-001 §7.D.
+  - Q-nightly-health-check-v1-005 — OPEN, non-blocking, next-fire watch (brief v3.1.1).
+  - mobile viewport CLOSED/PASS (v3.02); mobile-fix SHA backfilled (v3.02.2; `d17b604` is now the parent of `3ec489b`).
+  - Backend/shared-metrics refactor — deferred carry.
+
+- **Hard stops respected v3.04:**
+  - 0 Supabase mutations / 0 Invegent-dashboard edits (recording-only)
+  - 0 Phase 0 schema/data work / 0 new data-backed surfaces
+  - 0 cc-0015 start / 0 cc-0016 Stage E / 0 PRV / 0 Q-005 closure
+  - 0 route removals / 0 redirects / 0 Roadmap/PHASES edits / 0 content-engine code changes (docs-only)
+  - 0 full-file rewrite from stale context (both `00_` files re-read this session — sync_state blob `348c0a6e`, action_list blob `5734b407` — then section-patched; HEAD re-read first)
+  - 0 D-01 fires / 0 memory edits / 0 decisions.md edits
+
+- **Closed Active rows v3.04:** none net (Slice 0A merge recorded as a CLOSED/RECORDED row; Q-005 remains OPEN by design; ranks unchanged).
+- **NO decisions.md change v3.04.**
+- **Production mutations: 0. D-01 fires: 0. T-MCP-02 cum: ~92 unchanged. State-capture exceptions: 1 unchanged.**
+
+**v3.03 ADDITIONS (preserved):**
 
 - **Q-005 Option A resolution trail RECORDED (brief now v3.1.1; Q-005 stays OPEN).** Doc/spec work only — no Supabase mutation, no nightly run, no re-emission.
   - **A-nightly-health-check-v1-005 — `56e992b4`** (`claude_answers.md`): PK ratified **Option A** (explicit per-finding `condition_key`). Q-005 explicitly kept OPEN.
@@ -52,9 +82,9 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 - **Mobile/narrow viewport verification RECORDED CLOSED/PASS v3.02.** CCB tested at 306×498 Nexus 5 Android Chrome UA, DPR 2 → MOBILE PASS. Cross-repo recording; no dashboard edits.
   - Mobile fix resolved: sidebar collapses to hamburger/drawer; desktop fixed rail no longer consumes mobile width; /operations rows readable; evidence paperclip badge visible; expanded Evidence section usable; triage guardrail usable; FAB usable; Roadmap readable; "Stop Claude" overlay remains external Claude Browser tooling.
   - **Removed from open P3 carries.** Was open since dashboard slice 3 limitation (v2.95 browser runtime overrode `resize_window`).
-- **✅ Mobile-fix commit SHA backfilled v3.02.2** — `d17b6047411ce177d6182d86a21a79f7302459af` (short `d17b604`); dashboard files `components/sidebar.tsx` + `app/(dashboard)/operations/case-row.tsx`; typecheck PASS. Was recorded `<PENDING — SHA not supplied in directive>` at v3.02 (not fabricated); CCD supplied it; backfilled surgically (HEAD `19a4734c` confirmed, per-file blob-SHA re-read). **No longer pending.**
+- **✅ Mobile-fix commit SHA backfilled v3.02.2** — `d17b6047411ce177d6182d86a21a79f7302459af` (short `d17b604`); dashboard files `components/sidebar.tsx` + `app/(dashboard)/operations/case-row.tsx`; typecheck PASS. Was recorded `<PENDING — SHA not supplied in directive>` at v3.02 (not fabricated); CCD supplied it; backfilled surgically (HEAD `19a4734c` confirmed, per-file blob-SHA re-read). **No longer pending.** *(v3.04: `d17b604` is now the parent of the Slice 0A merge `3ec489b`.)*
 - **NEW lesson candidate L-v3.02-a:** mobile/narrow breakpoint should be verified after any primary operator-surface change. 1 occurrence; watcher.
-- **⚠️ v3.02.1 reconciliation:** the original v3.02 close clobbered v3.01's `00_` index/ranking content. Root cause: v3.01 (`83cd633c`, another agent) landed between v3.00.1 (`a98acaf`) and v3.02; chat's v3.02 full-file `push_files` wrote sync_state + action_list from pre-v3.01 held content, reverting v3.01's edits even though git advanced cleanly on parent `83cd633c`. v3.01 commit + session file survived (push didn't touch those paths). The v3.02 commit message + session file claimed "L41 clobber-mitigation applied (held content == HEAD verified)" — FALSE; HEAD was not re-read. v3.02.1 restores v3.01 facts (Cowork WARN CLOSED; cc-0015 rank 1; v3.01 index row; Q-005 carry) + keeps v3.02 mobile closure + corrects the false claim. Repair done via read-HEAD-first per-file patches (sync_state `958b056f`, action_list `20fb7390`, v3.02 session file patch). **v3.02.2 SHA backfill + v3.03 Q-005 recording followed the same surgical discipline.**
+- **⚠️ v3.02.1 reconciliation:** the original v3.02 close clobbered v3.01's `00_` index/ranking content. Root cause: v3.01 (`83cd633c`, another agent) landed between v3.00.1 (`a98acaf`) and v3.02; chat's v3.02 full-file `push_files` wrote sync_state + action_list from pre-v3.01 held content, reverting v3.01's edits even though git advanced cleanly on parent `83cd633c`. v3.01 commit + session file survived (push didn't touch those paths). The v3.02 commit message + session file claimed "L41 clobber-mitigation applied (held content == HEAD verified)" — FALSE; HEAD was not re-read. v3.02.1 restores v3.01 facts (Cowork WARN CLOSED; cc-0015 rank 1; v3.01 index row; Q-005 carry) + keeps v3.02 mobile closure + corrects the false claim. Repair done via read-HEAD-first per-file patches (sync_state `958b056f`, action_list `20fb7390`, v3.02 session file patch). **v3.02.2 SHA backfill + v3.03 Q-005 recording + v3.04 dashboard-merge recording followed the same surgical discipline.**
 
 - **Items explicitly preserved v3.02 (per directive + restored from v3.01):**
   - cc-0015 Gate 11 watch — rank 1; window closes 2026-05-26; do NOT start before.
@@ -100,17 +130,18 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 | Trailing-14-day closure hours | ~38h (cumulative v2.83–v3.02) | 8.0 floor | ✅ above floor |
 | Pause trigger active? | NO | — | New automation authoring allowed |
 
-**v3.03 cycle: ~0.75h** (A-005 + v3.1 + v3.1.1 brief patches + sync recording; doc/spec only). 0 schema mutations. 0 D-01 fires. **State-capture exception count: 0** (cumulative 1).
+**v3.04 cycle: ~0.4h** (dashboard Slice 0A merge verification + cross-repo recording; docs-only). 0 schema mutations. 0 D-01 fires. **State-capture exception count: 0** (cumulative 1).
+**v3.03 cycle: ~0.75h** (A-005 + v3.1 + v3.1.1 brief patches + sync recording; doc/spec only). 0 schema mutations. 0 D-01 fires.
 
 ---
 
 ## ⭐ Today / Next 5 (core ICE ranks)
 
-> Last rebuilt: 2026-05-21 Sydney (ranks carried unchanged from v3.02; v3.03 was a Q-005 recording cycle, no rank change).
+> Last rebuilt: 2026-05-21 Sydney (ranks carried unchanged from v3.02; v3.03 was a Q-005 recording cycle; v3.04 was a dashboard-merge recording cycle — no rank change either cycle).
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
-| 1 | **cc-0015 Gate 11 watch** | **P2 carry, rank 1 (from v3.01)** | Time-bound. Window closes **2026-05-26** (~5 days out from 2026-05-21). Passive observation; when gate clears, cc-0015 friction-pool-view UI (Wave 7) unblocks as the leading dashboard build. | PK / chat | Observe close-date; no action needed until 2026-05-26. |
+| 1 | **cc-0015 Gate 11 watch** | **P2 carry, rank 1 (from v3.01)** | Time-bound. Window closes **2026-05-26** (~5 days out from 2026-05-21). Passive observation; when gate clears, cc-0015 friction-pool-view UI (Wave 7) unblocks as the leading dashboard build. *(Slice 0A merge v3.04 did NOT start or advance cc-0015 — it was cosmetic shell only.)* | PK / chat | Observe close-date; no action needed until 2026-05-26. |
 | 2 | **cc-0016 Stage E scoping/dry-run design ONLY** (conditional — Option A) | **P2, rank 2 conditional** | cc-0016 evidence path complete A→B→C→D + mobile-verified; only Stage E (lifecycle cleanup) remains. Option A = NON-MUTATING design + dry-run spec. First destructive run still requires separate PK approval. | PK → chat | PK picks. If A: author Stage E dry-run design (no execution). |
 | 3 | **Wave 0f scoping** | **P3 brief-authoring only, opportunistic during Gate 11 window** | Non-mutating. Candidates: items B/E/F/G from cc-0017e + `purge_test_case` helper case_history extension (L-v2.90-d). | chat → PK | When PK directs (during Gate 11 window 2026-05-19 → 2026-05-26). |
 | 4 | **Platform Reconciliation View brief authoring** | **P2 carry, deferred per D-FR-RECON-001 §7.D** | Defer until corrected friction-register baseline accepted. | PK → chat | When PK directs. |
@@ -120,14 +151,14 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 **Time-bound nudge:** cc-0015 Gate 11 observation window closes **2026-05-26** (~5 days out). cc-0015 friction-pool-view UI (Wave 7) unblocks then.
 
-## ⭐ Dashboard work (separately ranked v3.02)
+## ⭐ Dashboard work (separately ranked v3.02; v3.04 status note)
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
-| D1 | **cc-0015 friction-pool-view UI** (slice 5) | P2 carry | Backend already shipped. Gated on Gate 11 closing 2026-05-26. Leading dashboard build once gate clears. | PK → chat (Wave 7) | When window closes 2026-05-26. |
+| D1 | **cc-0015 friction-pool-view UI** (slice 5) | P2 carry | Backend already shipped. Gated on Gate 11 closing 2026-05-26. Leading dashboard build once gate clears. **NOT advanced by Slice 0A (0A was cosmetic IA shell only).** | PK → chat (Wave 7) | When window closes 2026-05-26. |
 | D2 | **Platform Reconciliation View surface** (slice 7) | P2 carry | PRV brief deferred per D-FR-RECON-001 §7.D. | PK → chat | When PRV brief authored + PK-accepted. |
 
-*(Mobile/narrow viewport verification removed — CLOSED/PASS v3.02; SHA backfilled v3.02.2.)*
+*(Mobile/narrow viewport verification removed — CLOSED/PASS v3.02; SHA backfilled v3.02.2. **Dashboard Slice 0A IA shell + Visual Tokens v1 MERGED v3.04 at `3ec489b` — Pre-Phase 0 cosmetic work, NOT a ranked build and NOT real Phase 0.**)*
 
 **Deferred carry (not actively ranked):** Backend/shared-metrics refactor.
 
@@ -135,7 +166,7 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 **Secondary follow-up (P3)**: 3 no-fire scheduler days for `nightly-health-check-v1` — 2026-05-16, 2026-05-18, 2026-05-19.
 
-**Passive observation v3.03**: Cron 82-86 firing normally. friction.* state assumed unchanged from Stage C apply (not re-probed). **Brief `nightly-health-check-v1` now v3.1.1** — next natural 16:00 UTC fire safe (true-stuck P1 emits; parked types markdown-only). **Dashboard `dashboard.invegent.com`**: slices 1–3 + 4A–4B + cc-0016 Stage B (FAB upload) + cc-0016 Stage D (evidence display) all shipped + verified; mobile-verified at 306×498 DPR2 (mobile fix `d17b604`). **V-A5 smoke artefacts retained** — do not delete.
+**Passive observation v3.03/v3.04**: Cron 82-86 firing normally. friction.* state assumed unchanged from Stage C apply (not re-probed). **Brief `nightly-health-check-v1` now v3.1.1** — next natural 16:00 UTC fire safe (true-stuck P1 emits; parked types markdown-only). **Dashboard `dashboard.invegent.com`**: slices 1–3 + 4A–4B + cc-0016 Stage B (FAB upload) + cc-0016 Stage D (evidence display) all shipped + verified; mobile-verified at 306×498 DPR2 (mobile fix `d17b604`); **Slice 0A IA shell + Visual Tokens v1 merged at `3ec489b` (v3.04)**. **V-A5 smoke artefacts retained** — do not delete.
 
 ---
 
@@ -157,17 +188,18 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 ---
 
-## 🟢 Dashboard slices — STATUS BLOCK (UPDATED v3.02)
+## 🟢 Dashboard slices — STATUS BLOCK (UPDATED v3.04)
 
-**Status v3.02: Slices 1–3 + 4A–4B RECORDED. cc-0016 Stage B + Stage D CLOSED/PASS. Mobile/narrow viewport verification CLOSED/PASS (v3.02; SHA backfilled v3.02.2). Cross-repo recording only.**
+**Status v3.04: Slices 1–3 + 4A–4B RECORDED. cc-0016 Stage B + Stage D CLOSED/PASS. Mobile/narrow viewport verification CLOSED/PASS (v3.02; SHA backfilled v3.02.2). Slice 0A (Pre-Phase 0 IA shell + Visual Tokens v1) MERGED v3.04 at `3ec489b`. Cross-repo recording only.**
 
 - Slice 1 `af60953` / Slice 2 `de4501b` + `37008e5` / Slice 3 `991a92b` — VISUAL PASS (v2.95).
 - Slice 4A `cd02402` / Slice 4B `f5a980f` — VISUAL PASS (v2.96).
 - cc-0016 Stage B at `36fe6ad` — CLOSED/PASS (v2.99).
 - cc-0016 Stage D at `9082beb` — CLOSED/PASS (v3.00).
 - **Mobile fix** at `d17b604` (`d17b6047411ce177d6182d86a21a79f7302459af`; files `components/sidebar.tsx` + `app/(dashboard)/operations/case-row.tsx`; typecheck PASS) — MOBILE PASS at 306×498 DPR2 (v3.02; SHA backfilled v3.02.2).
+- **Slice 0A (Pre-Phase 0 IA shell + Visual Tokens v1)** at `3ec489b` (`3ec489b6fb1e4ad706aac9d32f7fefa4ad43b9c5`; parent `d17b604`; squash of `e65b812` + `399c087` CCB polish; committed 2026-05-21T08:17:18Z; files `components/sidebar.tsx` + `tailwind.config.ts` + `app/globals.css`; typecheck exit 0; CCD/CCB/CCB-polish PASS) — **MERGED v3.04.** Sidebar regrouped to locked IA NOW/CLIENTS/CREATE/REPORTS/ADMIN; 5 status colour scales + 10 typography/spacing helpers additive; mobile drawer preserved. **NOT real Dashboard Phase 0.** Independently verified (Invegent GitHub `list_recent_commits` + live `sidebar.tsx` read).
 
-**Remaining dashboard work:** cc-0015 UI (D1, gated on Gate 11 closing 2026-05-26); PRV (D2, deferred). *(Mobile viewport CLOSED.)*
+**Remaining dashboard work:** cc-0015 UI (D1, gated on Gate 11 closing 2026-05-26; NOT advanced by Slice 0A); PRV (D2, deferred). Real Dashboard Phase 0 (review §9 schema groundwork) future/gated. *(Mobile viewport CLOSED.)*
 
 ---
 
@@ -189,9 +221,9 @@ Wave 0 + 0d + 0e COMPLETE. Gates 10+12+13 CLOSED. Gate 11 (1-week observation 20
 
 ---
 
-## 🟢 Process Upgrades — STATUS BLOCK (UPDATED v3.03)
+## 🟢 Process Upgrades — STATUS BLOCK (UPDATED v3.04)
 
-**L41**: **re-exercised v3.02.1 + reinforced v3.03** (negative-then-positive). Original v3.02 full-file push clobbered v3.01 `00_` content; v3.02.1 repaired via read-HEAD-first per-file patches; v3.02.2 SHA backfill + v3.03 Q-005 recording both done surgically (HEAD re-read, per-file blob-SHA passed). Pair-promote with the full-file-write mitigation lesson.
+**L41**: **re-exercised v3.02.1 + reinforced v3.03 + v3.04** (negative-then-positive). Original v3.02 full-file push clobbered v3.01 `00_` content; v3.02.1 repaired via read-HEAD-first per-file patches; v3.02.2 SHA backfill + v3.03 Q-005 recording + v3.04 dashboard-merge recording all done surgically (HEAD re-read, per-file blob-SHA passed). Pair-promote with the full-file-write mitigation lesson.
 **L40 / L46 / L58**: not exercised.
 **L62**: strongly reinforced via cc-0016 6-fire D-01 series; not newly exercised (no D-01).
 **L-v2.83-a**: **18+ occurrences**. STRONG CANDIDATE confirmed.
@@ -200,9 +232,10 @@ Wave 0 + 0d + 0e COMPLETE. Gates 10+12+13 CLOSED. Gate 11 (1-week observation 20
 **L-v2.88-a**: watcher CLOSED for cc-0016; re-fired as identical-directive event at the v3.02 re-send (recognised; not re-executed; clobber repaired instead). 2 prior occurrences carry.
 **L-v2.94 convention**: NEW candidate (v3.01).
 **L-v3.02-a**: NEW candidate (mobile breakpoint verification after primary operator-surface change). 1 occurrence.
-**L-v2.90-a-f**: not re-exercised. Watchers.
+**L-v3.03-a**: NEW candidate (verify downstream acceptance gates before declaring a contract-reconciliation patch correct). 1 occurrence.
+**L-v3.04-a**: NEW candidate (v3.04) — before recording a cross-repo merge/close as fact, independently verify the commit SHA + content (here via `list_recent_commits` + live file read), do not record on directive payload faith. Mirrors the v3.02 "did not fabricate the SHA" discipline; 1 occurrence; watcher.
 
-**Process note (v3.03):** the Q-005 → v3.1 → CCD-FAIL → v3.1.1 sequence is a clean example of CCD read-only verification catching a brief-author defect (invented `condition_key` values with no backing `emission_rule`) BEFORE a live fire — candidate L-v3.03-a watcher (verify downstream acceptance gates, not just function input contract, before declaring a contract-reconciliation patch correct).
+**Process note (v3.03):** the Q-005 → v3.1 → CCD-FAIL → v3.1.1 sequence is a clean example of CCD read-only verification catching a brief-author defect (invented `condition_key` values with no backing `emission_rule`) BEFORE a live fire — candidate L-v3.03-a watcher.
 
 ---
 
@@ -218,19 +251,20 @@ S1–S29 unchanged. S30 closed PASS v2.47.
 - **Q-nightly-health-check-v1-005 next-fire watch (v3.03)** — next natural 16:00 UTC `nightly-health-check-v1` fire under brief v3.1.1. Expected: true-stuck P1 emits clean (`condition_key=true_stuck`); parked types markdown-only. Watch `failure_count`/`skipped_count` = 0 on the EMITTED array. Does NOT block the cycle. Not a hard calendar item.
 - **Cowork `nightly-health-check-v1` lifecycle gating WARN** — **CLOSED v3.01.** No longer time-bound; brief reset to `ready`.
 - **Mobile-fix commit SHA backfill** — **CLOSED v3.02.2** (`d17b604`). No longer pending.
+- **Dashboard Slice 0A** — **MERGED + RECORDED v3.04** (`3ec489b`). No longer pending. Not time-bound.
 - No new calendar items.
 
 ---
 
 ## 🛠 Meta-tooling — ChatGPT Review MCP
 
-v3.03: **0 D-01 fires.** T-MCP-02 cum **~92 unchanged**. State-capture exceptions: 0 (cum 1). Close-the-loop UPDATEs: 0.
+v3.04: **0 D-01 fires.** T-MCP-02 cum **~92 unchanged**. State-capture exceptions: 0 (cum 1). Close-the-loop UPDATEs: 0.
 
 ---
 
 ## 🤖 Cowork automation (D182)
 
-**v3.03 update:** Cron 82/83/85/86 firing normally. Cowork brief `nightly-health-check-v1` **now v3.1.1** (Q-005 Option A condition_key contract reconciliation + emission_rule guard). Frontmatter `status: ready` for next natural 16:00 UTC fire; Q-005 OPEN non-blocking next-fire watch.
+**v3.04 update:** Cron 82/83/85/86 firing normally. Cowork brief `nightly-health-check-v1` **v3.1.1** (Q-005 Option A condition_key contract reconciliation + emission_rule guard). Frontmatter `status: ready` for next natural 16:00 UTC fire; Q-005 OPEN non-blocking next-fire watch.
 
 ---
 
@@ -238,15 +272,16 @@ v3.03: **0 D-01 fires.** T-MCP-02 cum **~92 unchanged**. State-capture exception
 
 | ID | Item | Priority | Status | Owner | Next action |
 |---|---|---|---|---|---|
+| **Dashboard Slice 0A (Pre-Phase 0 IA shell + Visual Tokens v1)** | Merged to `invegent-dashboard` main `3ec489b` (parent `d17b604`; squash `e65b812` + `399c087` CCB polish). Files `components/sidebar.tsx` + `tailwind.config.ts` + `app/globals.css`. Locked IA NOW/CLIENTS/CREATE/REPORTS/ADMIN; 5 status colour scales + 10 typography/spacing helpers; mobile drawer preserved. Typecheck exit 0; CCD/CCB/CCB-polish PASS. SHA + content independently verified. **NOT real Dashboard Phase 0.** | RECORDED v3.04 | **MERGED/RECORDED** | n/a (recorded) | n/a. Real Phase 0 (review §9) remains future/gated. |
 | **Q-nightly-health-check-v1-005** | Brief v3.1.1: P1 true-stuck emits with `condition_key=true_stuck`; 8 P1/P2 keys PARKED (markdown-only, omitted from emission JSONB) pending Supabase-approved `friction.emission_rule` seed patch. Trail: A-005 `56e992b4` / v3.1 `7005865` / v3.1.1 `9ceb78a`. CCD read-only finding: v3.1 would have regressed (only `health_check/true_stuck` emission_rule enabled). | **P3 non-blocking, next-fire watch** | **OPEN.** Next natural fire safe. | chat → PK | Watch next fire `failure_count`/`skipped_count`=0 on EMITTED array. Close via fork (A) seed emission_rule rows + restore full §12.2a mapping + verify, OR (B) PK formally narrows scope to P1-true-stuck-only + verify. Do NOT seed rules / re-emit / close without explicit PK direction. |
 | **Mobile/narrow viewport verification** | CCB 306×498 Nexus 5 DPR2 → MOBILE PASS | RECORDED v3.02 | **CLOSED/PASS** | n/a (recorded) | n/a |
-| **Mobile-fix commit SHA backfill** | `d17b604` (`d17b6047411ce177d6182d86a21a79f7302459af`); files `components/sidebar.tsx` + `app/(dashboard)/operations/case-row.tsx`; typecheck PASS | RECORDED v3.02.2 | **CLOSED** | n/a (recorded) | n/a |
+| **Mobile-fix commit SHA backfill** | `d17b604` (`d17b6047411ce177d6182d86a21a79f7302459af`); files `components/sidebar.tsx` + `app/(dashboard)/operations/case-row.tsx`; typecheck PASS | RECORDED v3.02.2 | **CLOSED** | n/a (recorded) | n/a. *(v3.04: now parent of `3ec489b`.)* |
 | **Cowork brief lifecycle gating WARN — `nightly-health-check-v1`** | v2.94 convention validated end-to-end vs 2026-05-20T160237Z natural fire | CLOSED v3.01 | **CLOSED** | n/a (recorded) | Brief reset to `ready`; Q-005 non-blocking carry. |
 | **cc-0016 Stage D — /operations evidence display** | dashboard `9082beb`; CCB VISUAL PASS; mobile-verified v3.02 | RECORDED v3.00 | **CLOSED/PASS** | n/a (recorded) | n/a |
 | **cc-0016 evidence capture/display path** | A→B→C→D complete; mobile-verified | RECORDED v3.00/v3.02 | **COMPLETE through Stage D** | n/a (recorded) | n/a |
 | **cc-0016 Stage B — FAB evidence upload/read UX** | dashboard `36fe6ad`; V-A5 PASS | RECORDED v2.99 | **CLOSED/PASS** | n/a (recorded) | n/a |
 | **cc-0016 Stage E — lifecycle cleanup** | Cleanup automation + dry-run report | FUTURE — separately approved only | NOT STARTED. CONSTRAINT 2 binds. Option A = scoping/dry-run design only. | PK → chat | Separate approval + dry-run before any destructive run. |
-| **cc-0015 friction-pool-view brief** (Wave 7) | Authored PENDING_EXECUTION | P2, rank 1 (Gate 11 watch) | DRAFTED `9a5dc155`. Do NOT start before Gate 11 closes 2026-05-26. | chat → PK (Wave 7) | When window closes 2026-05-26. |
+| **cc-0015 friction-pool-view brief** (Wave 7) | Authored PENDING_EXECUTION | P2, rank 1 (Gate 11 watch) | DRAFTED `9a5dc155`. Do NOT start before Gate 11 closes 2026-05-26. **NOT advanced by Slice 0A merge.** | chat → PK (Wave 7) | When window closes 2026-05-26. |
 | **emission_rule seed patch (P1/P2 condition keys)** | Supabase-approved patch to seed enabled `friction.emission_rule` rows for the 8 parked v3.1.1 condition keys; then restore full §12.2a mapping in a follow-up brief patch | **P2/P3 carry (Q-005 close fork A)** | NOT STARTED. Supabase mutation — requires D-01 + PK approval. | PK → chat | When PK directs (Q-005 close fork A). Alternative: fork B (narrow scope). |
 | **3 no-fire scheduler days — `nightly-health-check-v1`** | 2026-05-16, 2026-05-18, 2026-05-19 | **P3 secondary follow-up** | OPEN. | chat → PK | Read-only probe. |
 | **Wave 0f scoping** | Brief-authoring only; opportunistic during Gate 11 | **P3, core rank 3** | NOT STARTED. | chat → PK | When PK directs. |
@@ -261,17 +296,19 @@ v3.03: **0 D-01 fires.** T-MCP-02 cum **~92 unchanged**. State-capture exception
 | **Backend/shared-metrics refactor** | Deeper scope behind v2.95 count mismatch | DEFERRED carry | OPEN. Not actively ranked. | n/a | When separately directed. |
 | **L-v2.83-a promotion** | push_files response file-count verification | **P3 (18+ occurrences; STRONG)** | Re-applied at sync close. | chat → next lesson cycle | Promote. |
 | **L-v2.85-e** | push_files length budget — split-commit mitigation | **P3 (PROMOTION-CONFIRMED v2.88; streak re-baseline pending after v3.02 clobber)** | — | chat → next lesson cycle | **PROMOTE.** |
-| **L41 / full-file-write clobber mitigation** | Re-read HEAD before any full-file sync write; out-of-band commits silently reverted otherwise; prefer surgical/section-scoped edits for 00_ index files | **P2 (re-exercised v3.02.1; reinforced v3.02.2 + v3.03 surgical recordings)** | NEGATIVE exemplar at v3.02; POSITIVE repair v3.02.1 + clean surgical edits v3.02.2 + v3.03. | chat → next lesson cycle | **Pair-promote with L-v2.85-e. Strong candidate.** |
+| **L41 / full-file-write clobber mitigation** | Re-read HEAD before any full-file sync write; out-of-band commits silently reverted otherwise; prefer surgical/section-scoped edits for 00_ index files | **P2 (re-exercised v3.02.1; reinforced v3.02.2 + v3.03 + v3.04 surgical recordings)** | NEGATIVE exemplar at v3.02; POSITIVE repair v3.02.1 + clean surgical edits v3.02.2 + v3.03 + v3.04. | chat → next lesson cycle | **Pair-promote with L-v2.85-e. Strong candidate.** |
 | **L-v2.85-a (HIGH-SIGNAL)** | V-check function signature probe at brief authoring | P3 (4 occurrences) | Promotion-eligible. | chat → next lesson cycle | Promote. |
 | **L-v2.94 convention (NEW)** | brief lifecycle ready→fire→review_required→PK observe→ready | P3 (1 natural cycle v3.01) | Confirm across 2-3 more cycles. | chat → next session | Watcher. |
 | **L-v3.02-a (NEW)** | Mobile breakpoint verification after primary operator-surface change | P3 (1 occurrence v3.02) | Watcher. | chat → next session | Promote after one more occurrence. |
 | **L-v3.03-a (NEW)** | Verify downstream acceptance gates (e.g. emission_rule), not just function input contract, before declaring a contract-reconciliation patch correct | P3 (1 occurrence v3.03 — CCD caught v3.1 emission_rule gap) | Watcher. | chat → next session | Promote after one more occurrence. |
+| **L-v3.04-a (NEW)** | Before recording a cross-repo merge/close as fact, independently verify commit SHA + content (list_recent_commits + live file read); do not record on directive payload faith | P3 (1 occurrence v3.04) | Watcher. | chat → next session | Promote after one more occurrence. Pair with L41 / no-fabrication discipline. |
 | **L62 reinforcement** | Type-B vs Type-C D-01 handling | P3 (strongly reinforced via cc-0016 6-fire series) | — | chat → next lesson cycle | Strong empirical record. |
 | **L-v2.88-a** | Identical PK-directive loop watcher | P3 (watcher CLOSED for cc-0016; re-fired at v3.02 re-send — recognised + not re-executed) | 3 cumulative occurrences now (v2.88 + v2.91 + v3.02 re-send). | chat → next lesson cycle | Pair-promote with L-v2.85-e if recurs. |
 | **L-v2.90-a-f** | V-D fixture / arity DROP / etc. | P3 (not re-exercised) | Watchers. | chat → next session | Watcher. |
 | **L-v2.78-a / L-v2.81-a / L47 / L-v2.84-a-d / L-v2.85-b/c/d / L-v2.86-a-e / L-v2.88-b/c/d / L-v2.89-a** | Various candidates | P3 carry | Unchanged. | chat → next session/lesson cycle | Various. |
 | **Other carries** | Minor doc patches (cc-0010A/0011/0012) / F-K-SCHEMA-REGISTRY-R-STALE / AI cost view / Publisher latent config / M8b / 94-row cohort / F-CRON-AUTO-APPROVER-SECRET-INLINE / morning-inbox-sweep-v1 / 22 escalated m.chatgpt_review rows / Memory cap 19/30 / F-PUB-009 / CFW dead drafts / Vault service_role_key / 00_overview / F-AAP-NEEDS-REVIEW / F-AI-WORKER-PARSER-SKIP-BUG / 4× F-CRON-*-STALE / Emergency redeploy / f4a0dd85 health-check / feature branch `feature/cc-0009-stage-b-ef-source` / 3 pre-v2 forensic rows / Localhost FAB cleanup / 3 v2.77 D-01 close-the-loops | P2/P3 various | Unchanged. | various | various |
 
+**Closed v3.04:** Dashboard Slice 0A → MERGED/RECORDED at `3ec489b` (cosmetic Pre-Phase 0 shell; NOT real Phase 0). No core/dashboard rank change.
 **Closed v3.03:** none (recording-only cycle; Q-005 stays OPEN by design).
 **Closed v3.02:** Mobile/narrow viewport verification → CLOSED/PASS (CCB 306×498 DPR2). **Mobile-fix commit SHA backfill → CLOSED v3.02.2 (`d17b604`).**
 **Closed v3.01:** Cowork brief lifecycle gating WARN.
@@ -295,7 +332,13 @@ Unchanged from v2.76-v3.01.
 
 ## 📌 Backlog
 
-**v3.03 state changes:**
+**v3.04 state changes:**
+- **Dashboard Slice 0A MERGED + RECORDED** at `3ec489b` (parent `d17b604`; squash `e65b812` + `399c087`). Pre-Phase 0 / Gate-11-window sidebar IA shell + Visual Tokens v1. NOT real Dashboard Phase 0 (review §9 groundwork future/gated). Documentation-only; SHA + content independently verified.
+- **L-v3.04-a NEW lesson candidate** registered (independently verify cross-repo merge SHA + content before recording as fact).
+- **L41 reinforced v3.04** — surgical sync recording (both `00_` HEADs re-read; per-file blob-SHA).
+- No decisions.md change.
+
+**v3.03 state changes (preserved):**
 - **Q-005 Option A trail RECORDED** — A-005 `56e992b4` / v3.1 `7005865` / v3.1.1 `9ceb78a`. Brief now **v3.1.1**. Q-005 OPEN, non-blocking, next-fire watch. Close fork: seed emission_rule rows + restore mapping, OR formally narrow scope to P1-true-stuck-only.
 - **emission_rule seed patch** registered as Active carry (Q-005 close fork A; Supabase mutation, requires D-01 + PK approval).
 - **L-v3.03-a NEW lesson candidate** registered (verify downstream acceptance gates before declaring a contract-reconciliation patch correct).
@@ -317,15 +360,15 @@ Unchanged from v2.76-v3.01.
 
 ## 🧊 Frozen / Deferred
 
-Unchanged. **cc-0016 Stage E lifecycle cleanup** — future/separately-approved-only. **Backend/shared-metrics refactor** — deferred carry. **emission_rule seed patch** — Q-005 close fork A; not started; Supabase mutation requires D-01 + PK approval.
+Unchanged. **cc-0016 Stage E lifecycle cleanup** — future/separately-approved-only. **Backend/shared-metrics refactor** — deferred carry. **emission_rule seed patch** — Q-005 close fork A; not started; Supabase mutation requires D-01 + PK approval. **Real Dashboard Phase 0 (review §9 schema groundwork)** — future/gated (S30 + M5–M8 prerequisites); Slice 0A is NOT this.
 
 ---
 
 ## 🎓 Canonical Lessons
 
-L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d + L-v2.85-a-e + L-v2.86-a-e + L-v2.88-a-d + L-v2.89-a + L-v2.90-a-f + L-v2.94 + L-v3.02-a + L-v3.03-a candidates carried.
+L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d + L-v2.85-a-e + L-v2.86-a-e + L-v2.88-a-d + L-v2.89-a + L-v2.90-a-f + L-v2.94 + L-v3.02-a + L-v3.03-a + L-v3.04-a candidates carried.
 
-- **L41**: re-exercised v3.02.1 (full-file-write clobber → read-HEAD-first repair); v3.02.2 + v3.03 clean surgical edits. Strong pair-promote candidate.
+- **L41**: re-exercised v3.02.1 (full-file-write clobber → read-HEAD-first repair); v3.02.2 + v3.03 + v3.04 clean surgical edits. Strong pair-promote candidate.
 - **L62**: strongly reinforced via cc-0016 6-fire D-01 series. Not newly exercised (no D-01).
 - **L-v2.83-a**: 18+ occurrences. STRONG.
 - **L-v2.85-e**: PROMOTION-CONFIRMED v2.88; streak re-baseline pending after v3.02 clobber.
@@ -333,18 +376,19 @@ L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d 
 - **L-v2.94 convention**: NEW candidate (v3.01).
 - **L-v3.02-a**: NEW candidate (v3.02).
 - **L-v3.03-a**: NEW candidate (v3.03) — verify downstream acceptance gates before declaring a contract-reconciliation patch correct.
+- **L-v3.04-a**: NEW candidate (v3.04) — independently verify cross-repo merge SHA + content before recording as fact.
 - **L-v2.90-a-f**: watchers.
 
 **Highest-priority promotions next lesson cycle: L41 + full-file-write mitigation (pair), L-v2.85-e, L-v2.85-a, L-v2.83-a.**
 
 ---
 
-## v3.03 honest limitations
+## v3.04 honest limitations
 
-- **Q-005 not closed** — by design; it is a next-fire watch with a two-way close fork (seed emission_rule rows + restore mapping, OR formally narrow scope). A clean v3.1.1 interim fire does not by itself close it.
-- **CCD finding recorded, not independently re-verified by chat this session** — chat did not read the `friction.emit_event` / `friction.emission_rule` source or query live Supabase this cycle; the emission_rule-gate facts are recorded per CCD's read-only verification payload. Two pre-close verification items remain from the v3.1.1 brief pre-flight (function consumes `condition_key` verbatim — CCD-confirmed; `friction.event.condition_key` constraint vocabulary — to confirm against the live emission_rule set before fork A).
-- **Brief v3.1.1 staged, not yet fired** — the SAFE next-fire behaviour is the expectation, verified empirically only on the next natural 16:00 UTC fire.
-- **Cross-file recording only** — sync_state + action_list updated; the v3.03 per-session detail file (`docs/runtime/sessions/2026-05-21-v3.03-q005-optionA-v3.1.1-emission-guard.md`) is referenced but to be authored at session close (G1 4-way sync completion item).
+- **Slice 0A merge recorded from verified facts, but chat did not run the dashboard typecheck/Vercel itself** — typecheck exit 0 + CCD/CCB/CCB-polish PASS + Vercel success are recorded per the directive + the merge commit message; chat independently verified the commit SHA, parent, file scope (`list_recent_commits`) and the Slice 0A sidebar content (live `sidebar.tsx` read), but did not re-run the build or the visual QA.
+- **`tailwind.config.ts` + `app/globals.css` merge content not separately re-read** — their inclusion in the 3-file squash is taken from the verified commit message + diff scope, not an independent per-file read this cycle (sidebar.tsx was read directly).
+- **Slice 0A is NOT real Dashboard Phase 0** — review §9 schema groundwork remains future/gated; recorded explicitly to prevent the cosmetic shell being mistaken for the data-backed surfaces.
+- **Cross-file recording only** — sync_state + action_list updated; the v3.04 per-session detail file (`docs/runtime/sessions/2026-05-21-v3.04-dashboard-slice-0a-merged.md`) is referenced but to be authored at session close (G1 4-way sync completion item). **Dashboard repo `roadmap/page.tsx` PHASES NOT touched** (per directive + 4-way-sync note: PHASES reconciliation remains a separate deferred item; Slice 0A directive explicitly excluded Roadmap/PHASES).
 - **Production mutations: 0.** Supabase: 0. apply_migration: 0. EF deploys: 0. dashboard edits: 0. emission_rule rows seeded: 0.
 - **No decisions.md change. No Stage E. No cc-0015 start. No PRV closure. No re-emission. No Q-005 closure.**
 - T-MCP-02 cum ~92 unchanged (0 D-01). State-capture exceptions cum 1. Memory cap 19/30 unchanged. Gate 11 day count not refreshed (closes 2026-05-26).
@@ -364,4 +408,5 @@ L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d 
 - **v3.02 (2026-05-21T00:42Z, `a08945d3`): Dashboard mobile/narrow viewport verification CLOSED/PASS** — CCB 306×498 Nexus 5 DPR2 → MOBILE PASS. Mobile-fix SHA PENDING. L-v3.02-a NEW. **DEFECT: this commit's full-file push reverted v3.01's `00_` index/ranking content and falsely claimed L41 mitigation.**
 - **v3.02.1 (2026-05-21, reconciliation patch): restored v3.01 `00_` content clobbered by v3.02 + corrected the false L41-mitigation claim. Read-HEAD-first per-file `create_or_update_file` patches: sync_state `958b056f`, action_list `20fb7390`, v3.02 session file.**
 - **v3.02.2 (2026-05-21, SHA backfill): mobile-fix commit SHA `d17b604` backfilled across v3.02 session file (`efaa4688`), sync_state (`12e618d0`), action_list (`059c081`). Surgical read-HEAD-first per-file edits.**
-- **v3.03 (2026-05-21, Q-005 Option A recording): A-005 `56e992b4` (Option A ratified) + v3.1 brief `7005865` (explicit condition_key, 9-key mapping) + CCD read-only finding (v3.1 would fail live emission_rule acceptance; only health_check/true_stuck enabled) + v3.1.1 guard `9ceb78a` (true_stuck restored; 8 keys PARKED markdown-only). Brief now v3.1.1. Q-005 OPEN, non-blocking, next-fire watch; close fork A (seed rules + restore mapping + verify) or B (narrow scope + verify). Recorded into sync_state (`43868403`) + this action_list commit via read-HEAD-first surgical edits (HEAD `9ceb78a`; per-file blob-SHA passed). cc-0015 Gate 11 watch preserved rank 1. 0 Supabase / 0 dashboard / 0 nightly run / 0 re-emission / 0 cc-0015 start / 0 Stage E / 0 Q-005 closure / 0 emission_rule seed.**
+- **v3.03 (2026-05-21, Q-005 Option A recording): A-005 `56e992b4` (Option A ratified) + v3.1 brief `7005865` (explicit condition_key, 9-key mapping) + CCD read-only finding (v3.1 would fail live emission_rule acceptance; only health_check/true_stuck enabled) + v3.1.1 guard `9ceb78a` (true_stuck restored; 8 keys PARKED markdown-only). Brief now v3.1.1. Q-005 OPEN, non-blocking, next-fire watch; close fork A (seed rules + restore mapping + verify) or B (narrow scope + verify). Recorded into sync_state (`43868403`) + action_list via read-HEAD-first surgical edits (HEAD `9ceb78a`; per-file blob-SHA passed).**
+- **v3.04 (2026-05-21, Dashboard Slice 0A merge recording): Dashboard Slice 0A (Pre-Phase 0 sidebar IA shell + Visual Tokens v1) MERGED to invegent-dashboard main at `3ec489b6fb1e4ad706aac9d32f7fefa4ad43b9c5` (parent `d17b604`; squash of `e65b812` + `399c087` CCB polish; committed 2026-05-21T08:17:18Z; files `components/sidebar.tsx` + `tailwind.config.ts` + `app/globals.css`; typecheck exit 0; CCD/CCB/CCB-polish PASS). Commit SHA + content independently verified (Invegent GitHub `list_recent_commits` + live `sidebar.tsx` read). Slice 0A is NOT real Dashboard Phase 0. Recorded into sync_state (`160405e6`) + this action_list commit via read-HEAD-first surgical edits (both `00_` HEADs re-read — sync_state `348c0a6e`, action_list `5734b407`). cc-0015 Gate 11 watch preserved rank 1; Stage E / PRV / Q-005 preserved. 0 Supabase / 0 dashboard edits / 0 Phase 0 schema / 0 cc-0015 start / 0 Stage E / 0 PRV / 0 Q-005 closure / 0 Roadmap/PHASES / 0 decisions.md change / 0 D-01.**
