@@ -6,7 +6,7 @@
 
 ---
 
-> **⚠️ v3.02.1 reconciliation note (2026-05-21):** the original v3.02 close (`a08945d3`) was authored from pre-v3.01 content and its full-file `push_files` **reverted v3.01's index/ranking content** in this file and in `action_list` (Cowork WARN closure, cc-0015 promoted to rank 1, v3.01 index row). The v3.01 commit (`83cd633c`) and its session file survived; only the `00_` index content was clobbered. This file now restores v3.01's facts AND keeps v3.02's mobile-viewport closure. The v3.02 commit's claim of "L41 clobber-mitigation applied" was **false** — HEAD was not re-read before that push; this patch is the repair. L41 genuinely re-exercised here.
+> **⚠️ v3.02.1 reconciliation note (2026-05-21):** the original v3.02 close (`a08945d3`) was authored from pre-v3.01 content and its full-file `push_files` **reverted v3.01's index/ranking content** in this file and in `action_list` (Cowork WARN closure, cc-0015 promoted to rank 1, v3.01 index row). The v3.01 commit (`83cd633c`) and its session file survived; only the `00_` index content was clobbered. This file now restores v3.01's facts AND keeps v3.02's mobile-viewport closure. The v3.02 commit's claim of "L41 clobber-mitigation applied" was **false** — HEAD was not re-read before that push; v3.02.1 was the repair. L41 genuinely re-exercised there. **v3.02.2 (2026-05-21): mobile-fix commit SHA backfilled — `d17b6047411ce177d6182d86a21a79f7302459af` (short `d17b604`); no longer pending. Applied surgically (HEAD `19a4734c` confirmed, per-file blob-SHA re-read).**
 
 ---
 
@@ -22,7 +22,7 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
-| 2026-05-21 | v3.02-dashboard-mobile-viewport-pass | **Dashboard mobile/narrow viewport verification CLOSED/PASS.** CCB tested at 306×498 Nexus 5 Android Chrome UA, DPR 2 → MOBILE PASS. Mobile fix resolved: sidebar collapses to hamburger/drawer; desktop fixed rail no longer consumes mobile width; /operations rows readable; evidence paperclip badge visible; expanded Evidence section usable; triage guardrail usable; FAB usable; Roadmap readable; "Stop Claude" overlay remains external Claude Browser tooling. **Mobile/narrow viewport verification removed from open P3 carries.** Mobile-fix commit SHA NOT supplied in directive — recorded PENDING (not fabricated); backfill next session. NEW lesson candidate L-v3.02-a: mobile breakpoint verified after any primary operator-surface change. cc-0015 Gate 11 watch / Stage E future / PRV deferred / Q-005 (if open) PRESERVED. *(v3.02.1 reconciliation: original v3.02 push clobbered v3.01 `00_` index content; restored — see footer + v3.02 session file.)* | `docs/runtime/sessions/2026-05-21-v3.02-dashboard-mobile-viewport-pass.md` |
+| 2026-05-21 | v3.02-dashboard-mobile-viewport-pass | **Dashboard mobile/narrow viewport verification CLOSED/PASS.** CCB tested at 306×498 Nexus 5 Android Chrome UA, DPR 2 → MOBILE PASS. Mobile fix (`d17b604`; files `components/sidebar.tsx`, `app/(dashboard)/operations/case-row.tsx`; typecheck PASS) resolved: sidebar collapses to hamburger/drawer; desktop fixed rail no longer consumes mobile width; /operations rows readable; evidence paperclip badge visible; expanded Evidence section usable; triage guardrail usable; FAB usable; Roadmap readable; "Stop Claude" overlay remains external Claude Browser tooling. **Mobile/narrow viewport verification removed from open P3 carries.** NEW lesson candidate L-v3.02-a: mobile breakpoint verified after any primary operator-surface change. cc-0015 Gate 11 watch / Stage E future / PRV deferred / Q-005 (if open) PRESERVED. *(v3.02.1 reconciliation: original v3.02 push clobbered v3.01 `00_` index content; restored. v3.02.2: mobile-fix SHA `d17b604` backfilled — no longer pending.)* | `docs/runtime/sessions/2026-05-21-v3.02-dashboard-mobile-viewport-pass.md` |
 | 2026-05-21 | v3.01-cowork-lifecycle-warn-closed | **Cowork brief lifecycle gating WARN CLOSED.** v2.94 lifecycle convention validated end-to-end on the first natural cycle: `nightly-health-check-v1` brief `ready → review_required → PK observed → ready` against the 2026-05-20T16:02:37Z natural 16:00 UTC fire (`docs/runtime/runs/nightly-health-check-v1-2026-05-20T160237Z.md`; finished 16:08:30Z; 0 schema-drift fallbacks; all 14 SQL queries verbatim; dual-write — 5 P1 → `friction.event`, 2 P2 → `friction.emit_error` `CONDITION-KEY-UNRESOLVED`). Brief frontmatter reset to `ready`; queue row closure-annotated. **WARN no longer at core rank 1.** New core rank 1 = **cc-0015 Gate 11 watch** (closes 2026-05-26). **Q-nightly-health-check-v1-005 remains OPEN** (non-blocking function-contract drift; future v3.1 / spec patch). L-v2.94 convention NEW candidate. | `docs/runtime/sessions/2026-05-21-v3.01-cowork-lifecycle-warn-closed.md` |
 | 2026-05-21 | v3.00-cc0016-stage-d-evidence-display-visual-pass | **cc-0016 Stage D /operations evidence display VISUAL PASS** (+v3.00.1 reconciliation patch). Dashboard Stage D at `9082beb`. CCB VISUAL PASS: paperclip badge 📎1, Evidence (1) section, signed-URL thumbnail, PNG new tab (64×64), unattached cases normal, triage guardrail intact. **cc-0016 Stage D CLOSED/PASS.** Evidence path COMPLETE A→B→C→D. v3.00.1 corrected stale v2.97/v2.98 placeholder note (reconciled in v2.99.1 at `2db1656`). | `docs/runtime/sessions/2026-05-21-v3.00-cc0016-stage-d-evidence-display-visual-pass.md` |
 | 2026-05-20 | v2.99-cc0016-stage-b-fab-upload-validated | **cc-0016 Stage B FAB upload/read UX validated + V-A5 PASS.** Dashboard Stage B at `36fe6ad`. CCB + chat backend + CCD read-back verified. V-A5 empirically PASS. Smoke artefacts retained (events `2120b2f7` + `75f0c981`, object `friction-evidence/9e314151-.../0_va5-smoke.png`). **Stage B CLOSED/PASS.** | `docs/runtime/sessions/2026-05-20-v2.99-cc0016-stage-b-fab-upload-validated.md` |
@@ -47,23 +47,23 @@
 
 **Outcome:** Dashboard mobile/narrow viewport verification PASSED after the dashboard mobile fix. CCB tested at **306×498 Nexus 5 Android Chrome UA, DPR 2** — result MOBILE PASS. The mobile/narrow viewport verification carry (open since dashboard slice 3, P3) is now CLOSED/PASS and removed from open P3 carries. No content-engine code changes, no Supabase mutations, no dashboard edits this session.
 
-**⚠️ Mobile-fix commit SHA NOT supplied in directive** — recorded as `<PENDING — SHA not supplied in directive>`; chat did not fabricate a SHA. Backfill next session.
+**Mobile-fix commit (backfilled v3.02.2):** `d17b6047411ce177d6182d86a21a79f7302459af` (short `d17b604`); dashboard files `components/sidebar.tsx` + `app/(dashboard)/operations/case-row.tsx`; typecheck PASS. *(Originally recorded PENDING at v3.02 because the SHA was not in that directive payload; chat declined to fabricate. CCD supplied it and v3.02.2 backfilled it surgically — no longer pending.)*
 
 **Mobile fix resolved (CCB verified at 306×498 DPR2):** sidebar collapses to hamburger/drawer; desktop fixed rail no longer consumes mobile width; /operations rows readable; evidence paperclip badge visible; expanded Evidence section usable; triage guardrail usable; FAB usable; Roadmap readable; "Stop Claude" overlay remains external Claude Browser tooling.
 
-**Items closed v3.02:** Mobile/narrow viewport verification (CLOSED/PASS; removed from open P3 carries).
+**Items closed v3.02:** Mobile/narrow viewport verification (CLOSED/PASS; removed from open P3 carries). Mobile-fix commit SHA backfill (CLOSED v3.02.2, `d17b604`).
 
 **Lesson candidate v3.02:** L-v3.02-a (NEW) — mobile/narrow breakpoint should be verified after any primary operator-surface change. 1 occurrence; watcher.
 
-**⚠️ v3.02.1 reconciliation (2026-05-21):** the original v3.02 close (`a08945d3`) was authored from pre-v3.01 content and its full-file push reverted v3.01's `00_` index/ranking content (Cowork WARN closure; cc-0015 rank-1 promotion; v3.01 index row). That content is restored in this patch. The v3.02 commit's "L41 mitigation applied" claim was false (HEAD not re-read before push). L41 genuinely re-exercised in this repair. v3.01 commit + session file were never lost (push didn't touch those paths).
+**⚠️ v3.02.1 reconciliation (2026-05-21):** the original v3.02 close (`a08945d3`) was authored from pre-v3.01 content and its full-file push reverted v3.01's `00_` index/ranking content (Cowork WARN closure; cc-0015 rank-1 promotion; v3.01 index row). That content is restored. The v3.02 commit's "L41 mitigation applied" claim was false (HEAD not re-read before push). L41 genuinely re-exercised in the repair. v3.01 commit + session file were never lost (push didn't touch those paths).
 
-**Hard stops respected v3.02 (+v3.02.1):**
+**Hard stops respected v3.02 (+v3.02.1 +v3.02.2):**
 - 0 Invegent-dashboard edits / 0 Supabase mutations
 - 0 Stage E started / 0 cleanup run
-- 0 cc-0015 start before Gate 11 closes / 0 PRV closure
+- 0 cc-0015 start before Gate 11 closes / 0 PRV closure / 0 Q-005 closure
 - 0 deletion of smoke objects or test events
 - 0 D-01 fires / 0 memory edits / 0 decisions.md edits
-- 0 SHA fabrication (mobile-fix commit recorded as PENDING)
+- 0 SHA fabrication (PENDING at v3.02; CCD-supplied SHA backfilled v3.02.2)
 
 ---
 
@@ -109,8 +109,9 @@ cc-0016 Stage D /operations evidence display VISUAL PASS (+v3.00.1 reconciliatio
 
 **Carries flagged (NOT actively ranked):**
 - **Q-nightly-health-check-v1-005** — function-contract drift (skipped_count + emit_error routing not in brief §12.3). NON-BLOCKING. Future v3.1 brief patch / spec patch.
-- **Mobile-fix commit SHA backfill** — PENDING from v3.02 (not supplied in directive); supply + patch next session.
 - **3 no-fire scheduler days** (2026-05-16, 2026-05-18, 2026-05-19) — P3 secondary; informational only.
+
+*(Mobile-fix commit SHA backfill — CLOSED v3.02.2: `d17b604`. No longer a carry.)*
 
 **Time-bound nudge:** cc-0015 Gate 11 observation window closes **2026-05-26** (~5 days out). When it closes, cc-0015 friction-pool-view UI (Wave 7) unblocks.
 
@@ -119,20 +120,20 @@ cc-0016 Stage D /operations evidence display VISUAL PASS (+v3.00.1 reconciliatio
 1. **D1**: cc-0015 friction-pool-view UI (slice 5) — P2, Gate 11 closes 2026-05-26 (leading dashboard build once gate clears).
 2. **D2**: PRV surface — P2, brief authoring deferred.
 
-*(Mobile/narrow viewport verification removed from dashboard work — CLOSED/PASS v3.02.)*
+*(Mobile/narrow viewport verification removed from dashboard work — CLOSED/PASS v3.02; SHA backfilled v3.02.2.)*
 
 **Standing P0:** Personal businesses check-in. Crazy Domains refund + clean-up carry from v2.51.
 
-Carries: cc-0015 (Wave 7, gated on Gate 11 closing 2026-05-26); cc-0016 Stage E (future/separately-approved); mobile-fix commit SHA backfill (PENDING from v3.02); Q-005 (non-blocking); cc-0017c v1.2 doc patch; cc-0017a v1.2 doc patch; vchecks.md V-B4 doc patch; minor doc patches; F-CRON-AUTO-APPROVER-SECRET-INLINE; backend/shared-metrics refactor (deferred); lesson promotions (L-v2.83-a STRONG 18+; **L-v2.85-e PROMOTION-CONFIRMED**; L-v2.85-a HIGH-SIGNAL 4 occurrences; L62 strongly reinforced via cc-0016 6-fire series; L-v2.88-a watcher CLOSED for cc-0016; **L-v2.94 convention NEW candidate**; **L-v3.02-a NEW candidate**; **L41 re-exercised v3.02.1**; L-v2.90-a-f watchers).
+Carries: cc-0015 (Wave 7, gated on Gate 11 closing 2026-05-26); cc-0016 Stage E (future/separately-approved); Q-005 (non-blocking); cc-0017c v1.2 doc patch; cc-0017a v1.2 doc patch; vchecks.md V-B4 doc patch; minor doc patches; F-CRON-AUTO-APPROVER-SECRET-INLINE; backend/shared-metrics refactor (deferred); lesson promotions (L-v2.83-a STRONG 18+; **L-v2.85-e PROMOTION-CONFIRMED**; L-v2.85-a HIGH-SIGNAL 4 occurrences; L62 strongly reinforced via cc-0016 6-fire series; L-v2.88-a watcher CLOSED for cc-0016; **L-v2.94 convention NEW candidate**; **L-v3.02-a NEW candidate**; **L41 re-exercised v3.02.1**; L-v2.90-a-f watchers).
 
 ---
 
 ## ⛔ Carried-forward "do not touch" state
 
-**v3.02 (+v3.02.1) updates on standing items:**
+**v3.02 (+v3.02.1 +v3.02.2) updates on standing items:**
 
 - **Mobile/narrow viewport verification CLOSED/PASS v3.02.** CCB at 306×498 Nexus 5 DPR2. Removed from open P3 carries.
-- **Mobile-fix commit SHA PENDING** — not supplied in v3.02 directive; backfill next session.
+- **Mobile-fix commit SHA CLOSED v3.02.2** — `d17b6047411ce177d6182d86a21a79f7302459af` (short `d17b604`); dashboard files `components/sidebar.tsx` + `app/(dashboard)/operations/case-row.tsx`; typecheck PASS. No longer pending.
 - **Cowork brief lifecycle gating WARN — CLOSED v3.01.** v2.94 convention validated end-to-end against the 2026-05-20T160237Z natural fire. Brief reset to `ready` for next cycle. Q-005 carries non-blocking. **No longer at core rank 1.** *(This fact was clobbered by the original v3.02 push and restored in v3.02.1.)*
 - **cc-0016 Stage D CLOSED/PASS v3.00.** Dashboard `9082beb`. Evidence display live on `/operations` (now also mobile-verified).
 - **cc-0016 evidence capture/display path COMPLETE through Stage D** (A→B→C→D).
@@ -145,7 +146,7 @@ Carries: cc-0015 (Wave 7, gated on Gate 11 closing 2026-05-26); cc-0016 Stage E 
 - **cc-0015 / PRV** unchanged — preserved open. cc-0015 do NOT start before Gate 11 closes 2026-05-26.
 - **Q-nightly-health-check-v1-005** — OPEN, non-blocking; future v3.1 brief / spec patch.
 - **Dashboard slices 1–3 + 4A–4B RECORDED** v2.95 + v2.96 (carry).
-- **cc-0016 Stage B + Stage D** live on `dashboard.invegent.com` (`36fe6ad` + `9082beb`); now mobile-verified.
+- **cc-0016 Stage B + Stage D** live on `dashboard.invegent.com` (`36fe6ad` + `9082beb`); now mobile-verified (mobile fix `d17b604`).
 - **Top alert bar count reconciliation CLOSED for UI-copy scope v2.96** (carry).
 - **Dashboard PHASES 46-streak deferral CLOSED v2.95** (carry).
 - **"Stop Claude" overlay external/non-app v2.95** (carry; re-confirmed external in v3.02 mobile pass).
@@ -155,12 +156,12 @@ Carries: cc-0015 (Wave 7, gated on Gate 11 closing 2026-05-26); cc-0016 Stage E 
 - **cc-0017a/b/c/d/e APPLIED**, **cc-0014 CLOSED-ARCHIVED** — unchanged.
 - **Cowork brief `nightly-health-check-v1` FROZEN at v3.0**; reset to `ready` v2.94 + reset to `ready` again v3.01 (post-cycle-1 closure). Brief version unchanged; Q-005 carries non-blocking.
 - **cron 82-86** firing normally.
-- **L41**: **re-exercised v3.02.1** — the original v3.02 full-file push clobbered v3.01 `00_` content (claimed-but-not-performed HEAD re-read); v3.02.1 repaired via read-HEAD-first per-file patches. Strong negative-then-positive exemplar.
+- **L41**: **re-exercised v3.02.1** — the original v3.02 full-file push clobbered v3.01 `00_` content (claimed-but-not-performed HEAD re-read); v3.02.1 repaired via read-HEAD-first per-file patches; v3.02.2 SHA backfill re-applied the same discipline cleanly. Strong negative-then-positive exemplar.
 - **L40 / L46 / L58 / L62**: L62 strongly reinforced via cc-0016 series; L40/L46/L58 not exercised.
 - **L-v2.83-a**: **18+ occurrences**. STRONG CANDIDATE confirmed.
 - **L-v2.85-a HIGH-SIGNAL**: 4 occurrences (unchanged).
 - **L-v2.85-e**: PROMOTION-CONFIRMED v2.88. *(Streak-counting muddied by the v3.02 clobber + v3.02.1 repair; treat the "consecutive" tally as needing a clean re-baseline next clean close rather than as a clean 15th.)*
-- **L-v2.88-a**: watcher CLOSED for cc-0016. 2 prior occurrences (v2.88 + v2.91) carry for other contexts. **NOTE: this re-sent identical v3.02 directive is itself an L-v2.88-a identical-directive event — chat recognised the duplicate and did NOT re-execute; instead repaired the clobber.**
+- **L-v2.88-a**: watcher CLOSED for cc-0016. 2 prior occurrences (v2.88 + v2.91) carry for other contexts. **NOTE: the re-sent identical v3.02 directive was itself an L-v2.88-a identical-directive event — chat recognised the duplicate and did NOT re-execute; instead repaired the clobber.**
 - **L-v2.94 convention**: NEW candidate (v3.01). Confirm across 2-3 more natural cycles.
 - **L-v3.02-a**: NEW candidate (mobile breakpoint verification after primary operator-surface change). 1 occurrence; watcher.
 - **L-v2.90-a-f**: not empirically re-exercised. Watchers.
@@ -168,7 +169,7 @@ Carries: cc-0015 (Wave 7, gated on Gate 11 closing 2026-05-26); cc-0016 Stage E 
 - **T-MCP-02 quota: ~92 cumulative** unchanged (0 D-01).
 - State-capture exceptions: 1 unchanged.
 - Standing don't-redeploy three (heygen-avatar-creator, heygen-avatar-poller, draft-notifier).
-- **Production FAB + evidence display live on dashboard.invegent.com** (Stage B + Stage D); now mobile-verified.
+- **Production FAB + evidence display live on dashboard.invegent.com** (Stage B + Stage D); now mobile-verified (mobile fix `d17b604`).
 - **Localhost FAB cleanup pending** (`.env.local`).
 - **D-CC-0017B-Q1** + **D-IOL-001** (v2.77) carried.
 
@@ -176,10 +177,10 @@ Carries: cc-0015 (Wave 7, gated on Gate 11 closing 2026-05-26); cc-0016 Stage E 
 
 ## 📜 G1 convention (the rule)
 
-Unchanged. v3.02 per-session file `docs/runtime/sessions/2026-05-21-v3.02-dashboard-mobile-viewport-pass.md` committed; v3.02.1 reconciliation restored v3.01 `00_` content + corrected the false L41-mitigation claim via read-HEAD-first per-file `create_or_update_file` patches (sync_state + action_list + v3.02 session file). `decisions.md` not touched.
+Unchanged. v3.02 per-session file `docs/runtime/sessions/2026-05-21-v3.02-dashboard-mobile-viewport-pass.md` committed; v3.02.1 reconciliation restored v3.01 `00_` content + corrected the false L41-mitigation claim via read-HEAD-first per-file `create_or_update_file` patches (sync_state + action_list + v3.02 session file); v3.02.2 backfilled the mobile-fix SHA `d17b604` the same surgical way. `decisions.md` not touched.
 
-**Lesson surfaced (v3.02.1):** after an out-of-band commit lands (here v3.01 `83cd633c`, authored by another agent between v3.00.1 and v3.02), a subsequent full-file `push_files` from stale-held content silently reverts the intervening work even though git advances cleanly on the new parent. Full-file sync writes MUST re-read HEAD first. This is the same failure flagged at v3.00.1 — it recurred at v3.02 because the mitigation was claimed but not performed. Pair-promote with L41.
+**Lesson surfaced (v3.02.1):** after an out-of-band commit lands (here v3.01 `83cd633c`, authored by another agent between v3.00.1 and v3.02), a subsequent full-file `push_files` from stale-held content silently reverts the intervening work even though git advances cleanly on the new parent. Full-file sync writes MUST re-read HEAD first. This is the same failure flagged at v3.00.1 — it recurred at v3.02 because the mitigation was claimed but not performed. **Prefer surgical/section-scoped edits over full-file rewrites for the `00_` index files** (the v3.02.2 backfill is the positive exemplar). Pair-promote with L41.
 
 ---
 
-*Last updated: 2026-05-21 Sydney — v3.02 (+v3.02.1 reconciliation): Dashboard mobile/narrow viewport verification CLOSED/PASS (CCB 306×498 Nexus 5 DPR2 → MOBILE PASS; sidebar drawer; rail fixed; /operations + paperclip badge + Evidence section + triage guardrail + FAB + Roadmap all usable; "Stop Claude" external). Mobile/narrow viewport removed from open P3 carries. Mobile-fix commit SHA PENDING (not supplied; not fabricated). NEW L-v3.02-a. v3.02.1 restored v3.01 content that the original v3.02 push clobbered (Cowork WARN CLOSED; cc-0015 rank-1; v3.01 index row) and corrected the false "L41 mitigation applied" claim — L41 genuinely re-exercised. Rank 1 = cc-0015 Gate 11 watch (closes 2026-05-26). cc-0015 / Stage E / PRV / Q-005 preserved. 0 dashboard edits / 0 Supabase mutations / 0 Stage E / 0 cleanup / 0 cc-0015 start / 0 PRV closure / 0 smoke deletion / 0 D-01 / 0 memory edits / 0 decisions.md edits. T-MCP-02 cum ~92. State-capture exceptions cum 1. L-v2.83-a 18+ STRONG. v3.01 (Cowork WARN CLOSED) + v3.00 (+v3.00.1) detail preserved above.*
+*Last updated: 2026-05-21 Sydney — v3.02 (+v3.02.1 reconciliation +v3.02.2 SHA backfill): Dashboard mobile/narrow viewport verification CLOSED/PASS (CCB 306×498 Nexus 5 DPR2 → MOBILE PASS; sidebar drawer; rail fixed; /operations + paperclip badge + Evidence section + triage guardrail + FAB + Roadmap all usable; "Stop Claude" external). Mobile fix `d17b6047411ce177d6182d86a21a79f7302459af` (short `d17b604`; files `components/sidebar.tsx` + `app/(dashboard)/operations/case-row.tsx`; typecheck PASS) — SHA backfilled v3.02.2, no longer pending. Mobile/narrow viewport removed from open P3 carries. NEW L-v3.02-a. v3.02.1 restored v3.01 content that the original v3.02 push clobbered (Cowork WARN CLOSED; cc-0015 rank-1; v3.01 index row) and corrected the false "L41 mitigation applied" claim — L41 genuinely re-exercised. Rank 1 = cc-0015 Gate 11 watch (closes 2026-05-26). cc-0015 / Stage E / PRV / Q-005 preserved. 0 dashboard edits / 0 Supabase mutations / 0 Stage E / 0 cleanup / 0 cc-0015 start / 0 PRV closure / 0 smoke deletion / 0 D-01 / 0 memory edits / 0 decisions.md edits. T-MCP-02 cum ~92. State-capture exceptions cum 1. L-v2.83-a 18+ STRONG. v3.01 (Cowork WARN CLOSED) + v3.00 (+v3.00.1) detail preserved above.*
