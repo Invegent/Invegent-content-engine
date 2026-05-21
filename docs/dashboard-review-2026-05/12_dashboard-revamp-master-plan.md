@@ -6,6 +6,10 @@
 
 ---
 
+> **Operating mental model (read this first).** The conceptual frame behind this whole revamp — the production pipe, the diagnostic & repair shafts, the friction register as a *backlog* (not a log), and the dashboard as the operations plane on top — lives in `docs/concepts/ice-pipeline-operating-model.md`. That doc explains ICE itself; this §12 is the dashboard execution plan that follows from it. The four-planes → dashboard-surface mapping is recorded there as *design direction*, not a change to the §6-locked IA.
+
+---
+
 ## 1. Executive summary
 
 **Goal.** Convert the current ICE operations dashboard from a flat "admin template" sitemap into a calm operator command-centre built around the locked 5-section IA (NOW / CLIENTS / CREATE / REPORTS / ADMIN), with a real exception Inbox, a state-machine Pipeline, a daily Brief, and a complete action layer — so the operator can run a full daily loop without dropping to SQL-via-chat.
@@ -386,6 +390,8 @@ Operator mental model: **Flow** = altitude; **Pipeline Log** = forensics + fixes
 | "Daily" label drop is a refinement to a §6-locked grouping | Small risk of drifting from locked research if treated as an IA change | No — it's cosmetic (label only; items unchanged); safe in sidebar-only 0A.1 |
 | Brief is the highest product-risk item (§9): could be "just a nicer Overview" | If Brief misfires, Phase 3 effort is sunk | Watch — templated baseline first, PK sample-reads 2 weeks, go/no-go gate |
 
+> **Operating-model addendum (2026-05-21).** The mental-model work (`docs/concepts/ice-pipeline-operating-model.md`) raises two further IA directions to weigh — **not** decided here, recorded so they aren't lost: (1) whether **Friction Register** should become its own NOW item (peer to Overview/Inbox/Pipeline) rather than living only under Investigate>Operations; (2) whether `/operations` is eventually **renamed/absorbed into a Friction Register surface**, since the operating model makes the register the real operational pool. Both are candidates to settle alongside the cc-0015 build, against the §6.9 deferral of an `m.chatgpt_review` surface. The locked §6 IA is unchanged by this addendum.
+
 ---
 
 ## Honest limitations
@@ -400,4 +406,4 @@ Operator mental model: **Flow** = altitude; **Pipeline Log** = forensics + fixes
 
 ---
 
-*Created 2026-05-21 Sydney. §12 of the dashboard-review series — the single execution plan. Source of truth: §6 (final target design), §9 (implementation plan), §11 (final consolidation). Records Slice 0A complete (`3ec489b`) and explicitly NOT real Phase 0. Distinguishes: Slice 0A (done) · Slice 0A.1 sidebar polish (next) · real Phase 0 (gated on S30 + M5–M8) · Phases 1–4. Guardrails preserved: cc-0015 Gate 11 rank 1 to 2026-05-26; Stage E separately-approved; PRV deferred; Q-005 OPEN. Planning/documentation only.*
+*Created 2026-05-21 Sydney. §12 of the dashboard-review series — the single execution plan. Source of truth: §6 (final target design), §9 (implementation plan), §11 (final consolidation). Records Slice 0A complete (`3ec489b`) and explicitly NOT real Phase 0. Distinguishes: Slice 0A (done) · Slice 0A.1 sidebar polish (next) · real Phase 0 (gated on S30 + M5–M8) · Phases 1–4. Guardrails preserved: cc-0015 Gate 11 rank 1 to 2026-05-26; Stage E separately-approved; PRV deferred; Q-005 OPEN. Planning/documentation only. Operating model: docs/concepts/ice-pipeline-operating-model.md.*
