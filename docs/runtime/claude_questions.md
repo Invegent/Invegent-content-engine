@@ -251,6 +251,33 @@ Under Option A: brief v3.1 patch + retroactive `condition_key` on this run's 2 P
 
 ---
 
+## Q-nightly-health-check-v1-006
+
+Context:
+Executing `nightly-health-check-v1` brief v3.1.1 on 2026-05-21T16:03:02Z (Cowork run, Tier 0, scheduled fire). Q-stuck returned 8 platform×client rows. Seven classify cleanly into the Section 6a scheme (2 Cat A, 0 Cat B, 5 Cat C). One row matches none of the three categories:
+
+- `facebook × care-for-welfare-pty-ltd`: `approval_status=approved`, n=3, `zero_publish_attempts=0`, `profile_enabled=true`, scheduled 2026-05-21 08:00–08:30Z (overdue >1h).
+
+Section 6a Cat A is `profile_enabled=false` (row is true → not Cat A). Cat B is `approval_status=needs_review` (row is approved → not Cat B). Cat C requires `approval_status=approved` AND `profile_enabled=true` AND `zero_publish_attempts > 0` — this row has `zero_publish_attempts=0` (all 3 items already carry at least one `m.post_publish` row), so it fails the `> 0` clause and is NOT Cat C. Q-true-stuck (the Priority 1 ground-truth query, which requires zero publish attempts) correctly excludes the row. The brief "Likely questions and defaults" answer-key covers a Cat A vs Cat B overlap (Q4) but not a row that matches none of the three categories.
+
+These 3 items are approved, profile-enabled, overdue, but already attempted (≥1 publish attempt each) and still `status='queued'` — a retry-pending state, not zero-attempt true-stuck. Facebook is publishing normally (Q5: 3 published, 1 failed in 24h).
+
+Question:
+How should Q-stuck rows that are `approved + profile_enabled=true + overdue` but have `zero_publish_attempts=0` (already attempted, awaiting retry) be categorised, and should brief Section 6a add an explicit fourth bucket for them?
+
+Options:
+A. Add an explicit Cat D — "attempted-not-true-stuck: approved + profile_enabled=true + zero_publish_attempts=0" — transient retry-pending residue, non-actionable from this brief, not surfaced in Section 10 Priority 1. Patch Section 6a to define it.
+B. Treat as non-actionable and report under a Section 6a "does not match Cat A/B/C" note without a formal category; leave the three-category scheme unchanged.
+C. These items are genuinely stuck and should be Priority 1 — relax Cat C / Q-true-stuck to also include attempted-but-still-queued items.
+
+Default:
+Proceeded with Option B for this run — the `facebook × care-for-welfare-pty-ltd` row is reported in Section 6a under an explicit "Unclassified (does not match Cat A/B/C)" note, counted separately in the category totals (1 row, 3 items), treated as non-actionable (consistent with Q-true-stuck excluding it), and surfaced only as a Priority 3 informational line in Section 10. Not emitted to friction.event. No brief change this run.
+
+Impact if wrong:
+Under Option A: brief Section 6a gains a Cat D definition; this run's output is re-tabulated with the row as Cat D (cosmetic — same non-actionable outcome, no emission change). Under Option C: Q-true-stuck SQL + Cat C definition widen; the 3 facebook items would become a sixth Priority 1 true-stuck cluster and emit a sixth `friction.event` row — materially changes emission scope. Under Option B: no brief change; the same row shape recurs and is handled the same way each run.
+
+---
+
 ## Closed (resolution refs)
 
 When a question is resolved, append a resolution block here referencing the original Q-ID. Do NOT move the original question entry from the Open section — leave it where it was written. The resolution block here is a back-pointer.
