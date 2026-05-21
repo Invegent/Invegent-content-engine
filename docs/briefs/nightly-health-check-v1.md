@@ -1,10 +1,10 @@
 ---
 brief_id: nightly-health-check-v1
-brief_version: v3.1
+brief_version: v3.1.1
 status: ready
 risk_tier: 0
 owner: cowork
-created_by: PK + chat session 2026-05-02 Saturday afternoon Sydney (v1 first-run learnings + B investigation patches; v2.1 closes Q-002 SQL-syntax fix); v3.0 adds cc-0014 Stage C dual-write to friction.event via friction.fn_emit_health_check_findings (2026-05-15 Sydney); v3.1 adds explicit per-finding condition_key per Q-005 Option A (2026-05-21 Sydney)
+created_by: PK + chat session 2026-05-02 Saturday afternoon Sydney (v1 first-run learnings + B investigation patches; v2.1 closes Q-002 SQL-syntax fix); v3.0 adds cc-0014 Stage C dual-write to friction.event via friction.fn_emit_health_check_findings (2026-05-15 Sydney); v3.1 adds explicit per-finding condition_key per Q-005 Option A (2026-05-21 Sydney); v3.1.1 emission_rule-acceptance guard patch (2026-05-21 Sydney)
 default_action: write_markdown_and_emit
 allowed_paths:
   - docs/audit/health/**
@@ -26,10 +26,10 @@ idempotency_pattern: "docs/audit/health/{YYYY-MM-DD}.md"
 success_output:
   - docs/audit/health/{YYYY-MM-DD}.md
   - docs/runtime/runs/nightly-health-check-v1-{YYYY-MM-DDTHHMMSSZ}.md
-  - friction.event rows (one per P1+P2 finding, written via friction.fn_emit_health_check_findings; not a file)
+  - friction.event rows (one per EMITTED P1 finding, written via friction.fn_emit_health_check_findings; not a file)
 ---
 
-# Brief: Nightly Health Check (v3.1)
+# Brief: Nightly Health Check (v3.1.1)
 
 Generate a daily Supabase pipeline health snapshot. Read-only queries, markdown output, and dual-write of priority findings to `friction.event` via a SECURITY DEFINER function. Still Tier 0 — no direct table writes, no migrations, no production touch beyond the append-only register.
 
@@ -40,11 +40,12 @@ Generate a daily Supabase pipeline health snapshot. Read-only queries, markdown 
 - **v2.1** (2026-05-02 evening) — closes Q-nightly-health-check-v1-002. Q-true-stuck `array_agg(... ORDER BY ... LIMIT 5)` was invalid Postgres syntax (LIMIT not allowed inside aggregate). Replaced with slice notation `(array_agg(... ORDER BY ...))[1:5]` — single-aggregate-evaluation, idiomatic Postgres, semantically identical (top-5 earliest sample IDs per cluster). v2 first-run hit 7-of-7 measurable thresholds; v2.1 makes tomorrow's run verbatim-clean (no fallback recovery). **Lesson #61 (pre-flight discipline) extends from `information_schema.columns` lookup to also include EXPLAIN-ing every brief SQL block before authoring** — see automation_v1_spec.md.
 - **v3.0** (2026-05-15 Sydney, cc-0014 Stage C) — adds **dual-write to `friction.event`** via `friction.fn_emit_health_check_findings(run_id, markdown_path, findings)` SECURITY DEFINER function. v2.1 brief-lock is intentionally reopened to deliver cc-0014 Stage C per the friction register experiment brief §8. Each priority finding in Section 10 gets a stable `finding_id` of form `priority-N/short-key` (schema in new section below). Findings JSONB array is built during run; emission call follows markdown write; emission summary recorded in Section 11 footer. Brief remains Tier 0 — emission writes only to `friction.event` (append-only experiment register) and `friction.emit_error` (per-finding failure sink), both via SECURITY DEFINER. No source-table writes. Per cc-0014 brief §13, no new D-01 fires because Stage C execution matches the spec.
 - **v3.0 + Q-004 Cat A doc patch** (2026-05-20 Sydney, PK Option A ratification per A-nightly-health-check-v1-004 in `docs/runtime/claude_answers.md`) — simplifies Section 6a Cat A wording from "platform=instagram + scheduled_for >= 25 Apr 2026, OR `profile_enabled=false`" to "`profile_enabled=false` (regardless of platform)". The dropped `instagram + scheduled_for >= 25 Apr 2026` clause was a leaky heuristic from the period when the instagram disable was fresh; it is now superseded by the canonical `cpp.publish_enabled` / `cpp.profile_enabled` signals. **Prior 2026-05-17 emissions stand as correct** — Q-true-stuck SQL ground truth (filtering on `cpp.publish_enabled=true` + zero attempts) already correctly classified the two instagram clusters (care-for-welfare-pty-ltd, invegent) as Cat C true-stuck, matching the emissions. **No `friction.event` cleanup, no `finding_id` changes** required. Doc-only patch; no schema or contract change; brief frontmatter remains `brief_version: v3.0`. Cowork prompt + execution contract unchanged.
-- **v3.1** (2026-05-21 Sydney, PK Option A ratification per A-nightly-health-check-v1-005 in `docs/runtime/claude_answers.md`, resolving Q-nightly-health-check-v1-005) — reconciles the brief's emission contract with the live `friction.fn_emit_health_check_findings` function contract, which evolved after the v3.0 lock to (a) return a fourth field `skipped_count` and (b) only auto-derive a `condition_key` for the `true-stuck-{platform}-{client_slug}` problem-key shape. On the 2026-05-20 run that drift split emission `{success_count: 5, failure_count: 0, skipped_count: 2}`: the 5 P1 true-stuck findings emitted to `friction.event` cleanly, while the 2 P2 findings (`zero-counts-pub-published-30m`, `s17-escalation-rate`) had no derivable condition_key and were routed to `friction.emit_error` with `CONDITION-KEY-UNRESOLVED`. **Option A fix (brief-side, no Supabase mutation):** Section 12.2 now requires an explicit `condition_key` field on every P1/P2 finding object, with a complete mapping table for all finding_id patterns, so the function consumes the value verbatim and never falls back to the (incomplete) auto-deriver. Section 12.3 documents the actual four-field return shape including `skipped_count`. Section 12.4 reconciliation now compares `success_count + failure_count + skipped_count` against the P1+P2 bullet count AND treats any `skipped_count > 0` as a contract defect in its own right (under v3.1 every finding carries an explicit condition_key, so a skip means a finding type reached emission without a §12.2a mapping entry). Section 12.5 documents the per-finding `CONDITION-KEY-UNRESOLVED` skip semantics as a third handled case. Success-criteria row extended so a clean run requires `failure_count=0` AND `skipped_count=0`. **No `friction.event`/`friction.emit_error` cleanup; no re-emission of the 2026-05-20 P2 findings** (they remain in `friction.emit_error`; the fix is forward-only — the next scheduled fire emits all P1+P2 findings with explicit condition_key). Q-005 stays OPEN until the next natural fire is verified to emit all P1+P2 findings with `skipped_count=0`. Doc/spec-only patch; no schema or function change.
+- **v3.1** (2026-05-21 Sydney, PK Option A ratification per A-nightly-health-check-v1-005 in `docs/runtime/claude_answers.md`, resolving Q-nightly-health-check-v1-005) — reconciles the brief's emission contract with the live `friction.fn_emit_health_check_findings` function contract, which evolved after the v3.0 lock to (a) return a fourth field `skipped_count` and (b) only auto-derive a `condition_key` for the `true-stuck-{platform}-{client_slug}` problem-key shape. On the 2026-05-20 run that drift split emission `{success_count: 5, failure_count: 0, skipped_count: 2}`: the 5 P1 true-stuck findings emitted to `friction.event` cleanly, while the 2 P2 findings (`zero-counts-pub-published-30m`, `s17-escalation-rate`) had no derivable condition_key and were routed to `friction.emit_error` with `CONDITION-KEY-UNRESOLVED`. **Option A fix (brief-side, no Supabase mutation):** Section 12.2 requires an explicit `condition_key` field on every P1/P2 finding object, with a complete mapping table for all finding_id patterns. Section 12.3 documents the four-field return shape including `skipped_count`. Section 12.4 reconciliation compares `success_count + failure_count + skipped_count` against the P1+P2 bullet count and treats `skipped_count > 0` as a contract defect. Section 12.5 documents the per-finding `CONDITION-KEY-UNRESOLVED` skip semantics. **No re-emission of the 2026-05-20 P2 findings.** Doc/spec-only patch; no schema or function change.
+- **v3.1.1** (2026-05-21 Sydney, emission_rule-acceptance guard patch — CCD read-only verification of v3.1) — **v3.1 was correct at the function-input layer but FAILED live emission_rule acceptance, and would have regressed the known-good P1 path if fired as-is.** CCD read-only verification established: (1) `friction.fn_emit_health_check_findings` DOES consume an explicit `finding.condition_key` first (the v3.1 input-layer design was right); BUT (2) the live `friction.emit_event` path requires an **enabled `friction.emission_rule` row for `(source, condition_key)`**, and the only currently-enabled health_check rule is `condition_key = true_stuck`. Consequently **all 9 v3.1 mapping keys are currently rejected — including the renamed `true_stuck_cluster`** (the real enabled key is `true_stuck`, not `true_stuck_cluster`). If the next fire ran v3.1 as-authored it would likely produce `success_count=0` with `failure_count=5–7`, regressing the P1 true-stuck emissions that have worked since 2026-05-17. **v3.1.1 is a no-Supabase guard patch** that: (a) corrects the §12.2a true-stuck mapping to the live-enabled key `true_stuck` (NOT `true_stuck_cluster`); (b) for the 8 currently-unsupported P1/P2 finding types, **does NOT emit them with invented explicit condition_key values** — they are omitted from the emission JSONB array (markdown bullets + finding_id comments preserved) to avoid avoidable `emit_error` noise; (c) narrows the "explicit condition_key required" rule to apply only to finding types that have an enabled `emission_rule`; (d) reflects the interim state in §12.3–§12.5 + success criteria. The full v3.1 9-key `condition_key` mapping is **PARKED** as the target end-state, pending a separate Supabase-approved `friction.emission_rule` seed patch (one enabled rule per desired `(health_check, condition_key)` pair). **No `friction.event`/`friction.emit_error` cleanup; no re-emission of the 2026-05-20 P2 findings.** Q-005 remains OPEN and CANNOT close until EITHER the `emission_rule` rows are seeded for all desired P1/P2 keys (then restore the full §12.2a mapping in a follow-up brief patch) OR the brief formally narrows emission scope to P1-true-stuck-only as the accepted end-state. Doc/spec-only patch; no schema or function change.
 
 ## Purpose
 
-Automate the recurring Supabase pipeline health-check pattern. Output: a markdown file at `docs/audit/health/{YYYY-MM-DD}.md` that surfaces pipeline state, recent activity, and **actionable** anomalies (categorised so chat doesn't have to triage). v3.0 additionally emits each P1+P2 finding as one row in `friction.event` so the IOL friction register experiment can score the signal.
+Automate the recurring Supabase pipeline health-check pattern. Output: a markdown file at `docs/audit/health/{YYYY-MM-DD}.md` that surfaces pipeline state, recent activity, and **actionable** anomalies (categorised so chat doesn't have to triage). v3.0 additionally emits each EMITTABLE P1 finding as one row in `friction.event` so the IOL friction register experiment can score the signal. (v3.1.1: "emittable" = the finding type has an enabled `friction.emission_rule` row; currently only `true_stuck` qualifies — see §12.2a.)
 
 ## Idempotency
 
@@ -68,10 +69,16 @@ The following table shapes are authoritative — verified via `information_schem
 - `friction.fn_emit_health_check_findings(text, text, jsonb)` exists, SECURITY DEFINER, owner postgres, GRANT EXECUTE TO service_role. Reachable via `SELECT friction.fn_emit_health_check_findings(...)`.
 - `friction.event`, `friction.emit_error`, `friction.category` tables live. `pipeline_integrity` category active.
 
-**v3.1 additional pre-flight note** (Q-005 / A-005, 2026-05-21):
+**v3.1.1 additional pre-flight note** (CCD read-only verification, 2026-05-21 — supersedes the v3.1 note below):
+- **Confirmed:** `friction.fn_emit_health_check_findings` consumes an explicit `finding.condition_key` first (the v3.1 input-layer design was correct).
+- **Confirmed (the v3.1 defect):** the live `friction.emit_event` path requires an **enabled `friction.emission_rule` row for `(source, condition_key)`**. The only currently-enabled health_check rule is `condition_key = true_stuck`. Every other `condition_key` — including v3.1's renamed `true_stuck_cluster` — is rejected at the emission_rule gate.
+- **Live-enabled key is `true_stuck`** (NOT `true_stuck_cluster`). §12.2a is corrected accordingly in v3.1.1.
+- **Interim emission scope (v3.1.1):** emit ONLY P1 true-stuck findings with `condition_key = true_stuck`. All other P1/P2 finding types are surfaced in the markdown but OMITTED from the emission JSONB array until their `emission_rule` rows exist (see §12.2a). This avoids `emit_error` noise and prevents regressing the known-good P1 path.
+- **Parked work:** restoring the full v3.1 9-key `condition_key` mapping requires a separate Supabase-approved `friction.emission_rule` seed patch (one enabled rule per desired `(health_check, condition_key)` pair). Not in scope for this Tier 0 brief.
+
+**v3.1 additional pre-flight note** (Q-005 / A-005, 2026-05-21 — RETAINED for history; the emission_rule gate below was the missing piece):
 - The live function returns four fields `{success_count, failure_count, skipped_count, run_id}` (the `skipped_count` field was added after the v3.0 lock).
-- The function accepts an explicit per-finding `condition_key`; when absent it falls back to a `problem_key`→`condition_key` auto-deriver that recognises ONLY the `true-stuck-{platform}-{client_slug}` shape. v3.1 always supplies `condition_key` explicitly (Section 12.2a) so the auto-deriver is never relied upon.
-- **Open verification item (does NOT block this brief running):** before Q-005 is closed, confirm (i) the function consumes `finding.condition_key` verbatim rather than only as a fallback, and (ii) `friction.event.condition_key` has no CHECK/enum/category-FK that would reject the snake_case values in the Section 12.2a mapping. If a constraint exists, align the mapping to the accepted vocabulary in a follow-up patch.
+- The function accepts an explicit per-finding `condition_key`; when absent it falls back to a `problem_key`→`condition_key` auto-deriver that recognises ONLY the `true-stuck-{platform}-{client_slug}` shape.
 
 **Stuck-items semantic** (per producer code `m.take_pipeline_health_snapshot`):
 
@@ -280,7 +287,7 @@ A "true-stuck" item meets ALL of: queued + overdue + approved + publish_enabled=
 
 ## Finding ID schema (NEW v3.0)
 
-**Emission scope (PK rule, v3.0):** Only P1 and P2 findings are emitted to friction.event. P3 items are informational markdown-only observations and are excluded from friction emission and ID-level count matching.
+**Emission scope (PK rule, v3.0; narrowed in practice by v3.1.1):** Only P1 and P2 findings are *eligible* for emission to friction.event. P3 items are informational markdown-only observations and are excluded from friction emission and ID-level count matching. **v3.1.1 interim:** of the eligible P1/P2 types, only those with an enabled `friction.emission_rule` row are actually emitted — currently just P1 true-stuck (`condition_key = true_stuck`). See §12.2a.
 
 Each priority finding gets a stable `finding_id` of form `priority-N/short-key`. The `short-key` is deterministic across runs so the same kind of finding at the same target produces the same `finding_id` day-over-day. This allows the friction register experiment to detect recurrence via the `friction.case` 7-day lookup.
 
@@ -303,6 +310,8 @@ Each priority finding gets a stable `finding_id` of form `priority-N/short-key`.
 | S17 escalation rate > 40% AND calls >= 10 | `priority-2/s17-escalation-rate` | Single |
 | S17 failure rate > 5% AND calls >= 10 | `priority-2/s17-failure-rate` | Single |
 
+> **v3.1.1 emission status:** all P1/P2 finding types above remain in the markdown (Section 10) with their `finding_id` comments. Only the **true-stuck** type is currently emitted to `friction.event` (it has an enabled `emission_rule`); the other eight types are surfaced in markdown but NOT placed in the emission JSONB array (§12.2a). They become emittable once their `emission_rule` rows are seeded.
+
 **Priority 3 (Informational — NOT emitted):**
 
 Per cc-0014 brief §8 the function accepts any `priority` value, but this brief intentionally emits only P1 and P2 findings. P3 entries are documentary observations that the source brief itself explicitly marks "inform but do not flag" / "report but suppress alert". Emitting them would dilute the IOL signal. P3 entries remain in the markdown for human reading; they are not in the JSONB `findings` array passed to the function.
@@ -323,7 +332,7 @@ Write a single markdown file at `docs/audit/health/{YYYY-MM-DD}.md` with these s
 ```markdown
 # ICE Pipeline Health — {YYYY-MM-DD}
 
-> Generated by `nightly-health-check-v1` (v3.1 brief).
+> Generated by `nightly-health-check-v1` (v3.1.1 brief).
 > Run timestamp (UTC): {ISO-8601}
 > Window: 24h trailing where applicable.
 
@@ -405,7 +414,7 @@ Threshold check (per S17, with v2 minimum-n guard):
 
 ## 10. Notable signals
 
-List in priority order. **v3.0: every P1 and P2 bullet ends with `<!-- finding_id: priority-N/short-key -->` so the `finding_id` is independently derivable by reading the markdown.** Build the `findings` JSONB array in parallel with this section for the emission step in Section 12.
+List in priority order. **v3.0: every P1 and P2 bullet ends with `<!-- finding_id: priority-N/short-key -->` so the `finding_id` is independently derivable by reading the markdown.** Build the `findings` JSONB array in parallel with this section for the emission step in Section 12. **(v3.1.1: ALL P1/P2 bullets are written here regardless of emission status; only emittable types — currently true-stuck — go into the emission JSONB array per §12.2a.)**
 
 **PRIORITY 1 — Actionable:**
 - True-stuck items (Cat C from Section 6b) > 0 — always priority 1 if present. **One bullet per platform×client cluster**, with `<!-- finding_id: priority-1/true-stuck-{platform}-{client_slug} -->`.
@@ -428,18 +437,18 @@ If nothing notable: write "No anomalies above default thresholds. has_stuck_item
 
 ## 11. Footer
 
-- Brief: `nightly-health-check-v1` (v3.1)
+- Brief: `nightly-health-check-v1` (v3.1.1)
 - Run state file: `docs/runtime/runs/nightly-health-check-v1-{YYYY-MM-DDTHHMMSSZ}.md`
 - Idempotency check: `health_file_absent` → passed at start of run
-- Emission summary (v3.1): `success_count={N} failure_count={M} skipped_count={S} run_id={run_id}` (from Section 12 result)
+- Emission summary (v3.1.1): `success_count={N} failure_count={M} skipped_count={S} run_id={run_id}` (from Section 12 result). Also record `emitted_types` and `omitted_unsupported_types` per §12.4.
 - Next: PK reviews; if Section 10 has Priority 1 items, action; brief shape locked from v3.0 onward (sunset 2026-06-15)
 ```
 
-## 12. Emission to friction register (NEW v3.0; condition_key contract reconciled v3.1)
+## 12. Emission to friction register (NEW v3.0; condition_key contract reconciled v3.1; emission_rule guard v3.1.1)
 
-**Emission scope (PK rule, v3.0):** Only P1 and P2 findings are emitted to friction.event. P3 items are informational markdown-only observations and are excluded from friction emission and ID-level count matching.
+**Emission scope (PK rule, v3.0; narrowed by v3.1.1):** Only P1 and P2 findings are *eligible* for emission to friction.event; P3 items are markdown-only. **v3.1.1 interim:** of the eligible types, emit ONLY those with an enabled `friction.emission_rule` row — currently just P1 true-stuck. All other P1/P2 types are written to the markdown (Section 10) but OMITTED from the emission JSONB array.
 
-After writing the markdown file, build a JSONB findings array containing one object per P1+P2 bullet from Section 10, then call the emission function. **Do not emit P3.** **Do not emit anything if the markdown write failed.** Order of operations is markdown-first.
+After writing the markdown file, build a JSONB findings array containing one object per **emittable** P1/P2 bullet from Section 10 (see §12.2a for which types are emittable), then call the emission function. **Do not emit P3.** **Do not emit currently-unsupported P1/P2 types.** **Do not emit anything if the markdown write failed.** Order of operations is markdown-first.
 
 ### 12.1. Construct `run_id`
 
@@ -449,13 +458,13 @@ This makes `run_id` deterministic from run-start time and globally unique per ru
 
 ### 12.2. Build the `findings` JSONB array
 
-For each P1 and P2 bullet that was actually included in Section 10 (i.e. its trigger condition was true on this run's data), append one object to the array:
+For each **emittable** P1/P2 bullet that was actually included in Section 10 (i.e. its trigger condition was true on this run's data AND its finding type has an enabled `emission_rule` per §12.2a), append one object to the array:
 
 ```json
 {
   "finding_id": "priority-N/short-key",
   "priority": "1" | "2",
-  "condition_key": "<explicit value per the Section 12.2a mapping table>",
+  "condition_key": "<explicit value per the Section 12.2a mapping table — REQUIRED for emittable types>",
   "title": "<short human-readable title — first line of bullet>",
   "observation_text": "<full bullet text without the finding_id HTML comment>",
   "related_object": { "type": "...", ...keyed dimensions... },
@@ -463,9 +472,9 @@ For each P1 and P2 bullet that was actually included in Section 10 (i.e. its tri
 }
 ```
 
-**v3.1: `condition_key` is REQUIRED on every finding object.** The live function will auto-derive a `condition_key` only for the `true-stuck-{platform}-{client_slug}` shape; for every other finding type it has no fallback and will route the finding to `friction.emit_error` with `CONDITION-KEY-UNRESOLVED` (this is exactly what split the 2026-05-20 run 5/2). Supplying `condition_key` explicitly for all P1/P2 finding types removes that dependency — the function consumes the value verbatim. Use the Section 12.2a mapping table to set the value; never omit the field.
+**v3.1.1: `condition_key` is REQUIRED on every EMITTED finding object, and MUST be a key with an enabled `friction.emission_rule` row (currently only `true_stuck`).** The live emission path enforces TWO gates: (1) the function consumes an explicit `finding.condition_key` (verified — v3.1 design was right here); (2) `friction.emit_event` then requires an enabled `friction.emission_rule` row for `(source='health_check', condition_key)`. A `condition_key` without an enabled rule is REJECTED (it lands in `friction.emit_error`, contributing to `failure_count`). Therefore v3.1.1 only emits finding types whose `condition_key` is rule-backed. Do NOT invent explicit `condition_key` values for types lacking a rule — that produces avoidable `emit_error` noise and (for renamed keys) regresses the known-good path.
 
-`related_object` schema by finding type:
+`related_object` schema by finding type (retained for when each type becomes emittable):
 - `priority-1/true-stuck-{platform}-{client_slug}`: `{"type": "true_stuck_cluster", "platform": "...", "client_slug": "...", "true_stuck_n": N, "earliest_stuck": "...", "latest_stuck": "...", "sample_draft_ids": [...]}`
 - `priority-1/cron-consecutive-failures-{jobname}`: `{"type": "cron_failure", "jobname": "...", "consecutive_failures_at_end": N, "latest_error": "..."}`
 - `priority-1/worker-http-errors`: `{"type": "worker_http_errors", "clusters": [{"endpoint": "...", "status_code": N, "n": N}, ...]}`
@@ -476,15 +485,26 @@ For each P1 and P2 bullet that was actually included in Section 10 (i.e. its tri
 - `priority-2/s17-escalation-rate`: `{"type": "s17_metric", "metric": "escalation_rate", "rate": 0.NN, "calls": N}`
 - `priority-2/s17-failure-rate`: `{"type": "s17_metric", "metric": "failure_rate", "rate": 0.NN, "calls": N}`
 
-If no P1 or P2 bullets were generated this run, the findings array is `[]` and emission is still called (so the verification job can see "0 events / 0 errors" instead of "no run today").
+Note: `related_object.type` is descriptive metadata; the emission gate keys off `condition_key` (§12.2a), not `related_object.type`.
 
-### 12.2a. `condition_key` mapping (NEW v3.1)
+If no **emittable** P1/P2 bullets were generated this run, the findings array is `[]` and emission is still called (so the verification job can see "0 events / 0 errors" instead of "no run today").
 
-Every P1/P2 finding_id pattern maps to exactly one explicit `condition_key`. The `{platform}`, `{client_slug}`, `{jobname}`, and `{metric}` instance dimensions are carried in `related_object`, NOT in the `condition_key` — the `condition_key` is the stable *type* discriminator, deliberately instance-agnostic so recurrence detection groups by condition rather than by instance.
+### 12.2a. `condition_key` mapping + emission status (REVISED v3.1.1)
 
-| finding_id pattern | priority | `condition_key` |
+The live `friction.emit_event` path requires an enabled `friction.emission_rule` row for `(source='health_check', condition_key)`. Only finding types whose `condition_key` is rule-backed are emitted. The `{platform}`, `{client_slug}`, `{jobname}`, and `{metric}` instance dimensions are carried in `related_object`, NOT in the `condition_key`.
+
+**Currently EMITTABLE (enabled `emission_rule` exists):**
+
+| finding_id pattern | priority | `condition_key` (live-enabled) | Emit now? |
+|---|---|---|---|
+| `priority-1/true-stuck-{platform}-{client_slug}` | 1 | `true_stuck` | **YES** |
+
+> **Correction vs v3.1:** the enabled key is **`true_stuck`**, NOT `true_stuck_cluster`. v3.1 renamed it to `true_stuck_cluster`, which would have been rejected and regressed the only working emission path. v3.1.1 restores `true_stuck`.
+
+**PARKED — NOT emitted until a Supabase-approved `emission_rule` seed patch enables each `(health_check, condition_key)` pair.** These remain in the markdown (Section 10) with their `finding_id` comments, but are OMITTED from the emission JSONB array (do not invent explicit `condition_key` values for them; do not emit):
+
+| finding_id pattern | priority | target `condition_key` (parked) |
 |---|---|---|
-| `priority-1/true-stuck-{platform}-{client_slug}` | 1 | `true_stuck_cluster` |
 | `priority-1/cron-consecutive-failures-{jobname}` | 1 | `cron_consecutive_failures` |
 | `priority-1/worker-http-errors` | 1 | `worker_http_errors` |
 | `priority-1/pipeline-snapshot-stale` | 1 | `pipeline_snapshot_stale` |
@@ -494,10 +514,11 @@ Every P1/P2 finding_id pattern maps to exactly one explicit `condition_key`. The
 | `priority-2/s17-escalation-rate` | 2 | `s17_escalation_rate_breach` |
 | `priority-2/s17-failure-rate` | 2 | `s17_failure_rate_breach` |
 
-Rules:
-- Set `condition_key` from this table for every emitted finding. There is no "derive it" path in v3.1 — the brief always supplies it.
-- If a NEW finding type is ever added to Section 10 / the Finding ID schema, it MUST get a row here in the same patch. A finding type reaching emission without a mapping row is a brief-author defect and will surface as `skipped_count > 0` (see Section 12.4).
-- `zero-counts-{metric}` collapses all five metrics to the single `condition_key` `zero_count_metric_missing`; the specific metric lives in `related_object.metric`. This is intentional: "an activity table went to zero" is one condition type with five possible instances.
+Rules (v3.1.1):
+- **Emit** a finding ONLY if its type appears in the "EMITTABLE" table above. Set `condition_key` to the live-enabled value verbatim. Currently this is true-stuck → `true_stuck`.
+- **Omit** any finding whose type is in the "PARKED" table from the emission JSONB array. It is still written to Section 10 with its `finding_id` comment (signal preserved for human reading + future ID-level reconciliation). Record the omission in the state file (see §12.4) — this is an EXPECTED interim omission, NOT a defect.
+- Do NOT invent or guess a `condition_key` for a parked type, and do NOT emit it hoping the rule exists. Either action risks `emit_error` noise; the renamed-key variant additionally regresses the working path.
+- **Promotion path:** when a Supabase-approved patch seeds an enabled `emission_rule` for a parked `(health_check, condition_key)` pair, move that row from PARKED to EMITTABLE in a follow-up brief patch and begin emitting it. The target `condition_key` values are pre-named above so the seed patch and the brief patch agree.
 
 ### 12.3. Call the emission function
 
@@ -505,36 +526,41 @@ Rules:
 SELECT friction.fn_emit_health_check_findings(
   '{run_id}',
   'docs/audit/health/{YYYY-MM-DD}.md',
-  '{findings_jsonb_array}'::jsonb
+  '{findings_jsonb_array}'::jsonb   -- contains ONLY emittable types per §12.2a (currently true-stuck)
 );
 ```
 
 The function returns a JSONB row with **four** fields: `success_count`, `failure_count`, `skipped_count`, and `run_id`. **Capture all three counts** (`success_count`, `failure_count`, `skipped_count`).
 
 - `success_count` — findings inserted into `friction.event`.
-- `failure_count` — findings that hit a genuine INSERT error (routed to `friction.emit_error`).
-- `skipped_count` — findings the function declined to insert because their `condition_key` was neither explicitly supplied nor auto-derivable (routed to `friction.emit_error` with `CONDITION-KEY-UNRESOLVED`). **Under v3.1 this should always be 0**, because Section 12.2a supplies an explicit `condition_key` for every finding type. A non-zero value is a contract defect — see Section 12.4.
+- `failure_count` — findings that hit a genuine emission error, INCLUDING rejection at the `emission_rule` gate (a `condition_key` with no enabled rule). **Under v3.1.1 this should be 0** because the array contains only rule-backed `true_stuck` findings.
+- `skipped_count` — findings the function declined to insert because their `condition_key` was neither explicitly supplied nor auto-derivable (routed to `friction.emit_error` with `CONDITION-KEY-UNRESOLVED`). **Under v3.1.1 this should be 0** because every emitted finding carries the explicit, rule-backed `true_stuck` key.
 
 ### 12.4. Record outcome in Section 11 footer
 
-Update the "Emission summary" line in Section 11 with the captured `success_count`, `failure_count`, and `skipped_count` values.
+Update the "Emission summary" line in Section 11 with the captured `success_count`, `failure_count`, and `skipped_count` values. Also record:
+- `emitted_types`: the finding types actually placed in the emission array (v3.1.1: expected to be `true_stuck` only).
+- `omitted_unsupported_types`: the parked P1/P2 finding types that fired in Section 10 but were intentionally omitted from emission per §12.2a (EXPECTED, not a defect).
 
-**Reconciliation rule (v3.1):** the run is internally consistent when
+**Reconciliation rule (v3.1.1):** the run is internally consistent when
 
 ```
-success_count + failure_count + skipped_count == number_of_P1_P2_bullets_in_Section_10
+success_count + failure_count + skipped_count == number_of_EMITTED_findings_in_array
 ```
 
-If that arithmetic does NOT hold, **do not edit Section 10** — write the discrepancy to the state file as a brief-author defect for next-day review. The markdown remains the source of truth for what the brief identified; emission is a side-effect that may be partially fail-isolated.
+(i.e. count against the EMITTED array, NOT against the full Section 10 P1+P2 bullet count — because parked types are deliberately omitted from emission in v3.1.1). Separately, the markdown Section 10 remains the full record of everything the brief identified. If the arithmetic does NOT hold, **do not edit Section 10** — write the discrepancy to the state file as a brief-author defect for next-day review.
 
-**Additionally (v3.1): `skipped_count > 0` is a contract defect in its own right, even when the arithmetic above reconciles.** Under v3.1 every P1/P2 finding carries an explicit `condition_key` (Section 12.2a), so the function should never need to skip one. A `skipped_count > 0` means a finding type reached §12.2/§12.3 without a §12.2a mapping entry (or with a `condition_key` the function/`friction.event` rejected). Record it in the state file as `BRIEF_DEFECT: skipped_count={S}` with the offending finding_id(s) for next-day review. Do not edit Section 10; do not retry.
+**`failure_count > 0` or `skipped_count > 0` is a contract defect under v3.1.1** (the emission array contains only the rule-backed `true_stuck` key, so neither should occur). Record `BRIEF_DEFECT: failure_count={M} skipped_count={S}` with the offending finding_id(s) in the state file. Do not edit Section 10; do not retry. A non-zero `failure_count` most likely means the `true_stuck` `emission_rule` row was disabled/removed — flag for PK.
 
 ### 12.5. Error handling
 
 The function itself catches per-finding INSERT failures and routes them to `friction.emit_error`. The Cowork brief does NOT need to handle per-finding errors. The Cowork brief only needs to handle:
 - **Function call itself failed (e.g. database connection issue):** write the SQL error to the state file under a `EMISSION_FAILED` key. The markdown file remains unaffected. Section 11 records `success_count=unknown failure_count=unknown skipped_count=unknown` with the error code.
 - **Function returned but count mismatch (per the §12.4 reconciliation rule):** record in state file, do not retry.
-- **Per-finding `CONDITION-KEY-UNRESOLVED` skip (`skipped_count > 0`) — NEW v3.1:** the function declined to insert one or more findings because their `condition_key` was neither explicitly supplied (§12.2a) nor auto-derivable, routing each to `friction.emit_error` with `error_code = 'CONDITION-KEY-UNRESOLVED'`. This is NOT a hard run failure — the markdown remains canonical and the successfully-emitted findings stand. It IS a brief-author contract defect under v3.1 (every finding type should have a §12.2a `condition_key`). Record `BRIEF_DEFECT: skipped_count={S}` plus the affected finding_id(s) in the state file for next-day review (per §12.4). Do not retry, do not re-emit, do not edit Section 10. The fix is a §12.2a mapping addition in the next brief patch — not a re-run.
+- **`emission_rule`-gate rejection (`failure_count > 0`) — v3.1.1:** a finding's `condition_key` had no enabled `friction.emission_rule` row, so `friction.emit_event` rejected it (routed to `friction.emit_error`). Under v3.1.1 the emission array contains only the rule-backed `true_stuck` key, so this should not occur; if it does, the `true_stuck` rule was likely disabled — record `BRIEF_DEFECT: emission_rule_rejection` + finding_id in the state file and flag for PK. Do not retry, do not re-emit, do not edit Section 10.
+- **Per-finding `CONDITION-KEY-UNRESOLVED` skip (`skipped_count > 0`):** the function declined to insert one or more findings because their `condition_key` was neither explicitly supplied nor auto-derivable, routing each to `friction.emit_error` with `error_code = 'CONDITION-KEY-UNRESOLVED'`. NOT a hard run failure — the markdown remains canonical and successful findings stand. Under v3.1.1 this should not occur (emitted findings all carry the explicit `true_stuck` key). If it does, record `BRIEF_DEFECT: skipped_count={S}` + finding_id(s) for next-day review. Do not retry, do not re-emit, do not edit Section 10.
+
+**Intentional omission of parked types is NOT an error and is NOT logged as a defect** — it is recorded under `omitted_unsupported_types` per §12.4 as expected interim behaviour.
 
 ## Likely questions and defaults (answer-key)
 
@@ -545,13 +571,13 @@ The function itself catches per-finding INSERT failures and routes them to `fric
    **Default:** v2 queries Q3/Q4 already filter on `window_hours=24`. If a future schema adds window_hours=4 or other values, default to 24h for stability and note the additional windows in Section 4.
 
 3. **Q: `m.ai_job` returns 0 rows in 24h — anomaly or normal?**
-   **Default:** Report as factual zero. Reference F-PUB-004 (auto-approver starvation) is the known cause. Surface in Section 10 Priority 2 (`priority-2/zero-counts-ai-job`) not Priority 1.
+   **Default:** Report as factual zero. Reference F-PUB-004 (auto-approver starvation) is the known cause. Surface in Section 10 Priority 2 (`priority-2/zero-counts-ai-job`) not Priority 1. (v3.1.1: this P2 type is currently PARKED — markdown only, not emitted.)
 
 4. **Q: Q-stuck classification — what if a row matches both Cat A and Cat B (e.g. instagram + needs_review)?**
    **Default:** Cat A takes precedence (platform-lock is the upstream cause; Cat B starvation is downstream). Single classification per row.
 
 5. **Q: Q-true-stuck returned > 0 rows — how many is "too many"?**
-   **Default:** Any > 0 is Priority 1. Do not editorialise on count. One `priority-1/true-stuck-{platform}-{client_slug}` finding per cluster.
+   **Default:** Any > 0 is Priority 1. Do not editorialise on count. One `priority-1/true-stuck-{platform}-{client_slug}` finding per cluster, emitted with `condition_key = true_stuck`.
 
 6. **Q: `m.post_publish_queue.status` values — unfamiliar enum values appear?**
    **Default:** Report all status values returned, sorted by count descending. Do not filter.
@@ -569,7 +595,7 @@ The function itself catches per-finding INSERT failures and routes them to `fric
     **Default:** Per idempotency_check: skip. Write `already_applied` to state file and stop. **v3.0: also skip the emission step** (the prior run already emitted for today's run_id).
 
 11. **Q (v3.0): What if a P1/P2 bullet's trigger fires but a required `related_object` field is missing in the source data (e.g. NULL `client_slug` in a true-stuck row)?**
-    **Default:** Include the bullet in Section 10 with `(unknown)` substituted in the finding_id position. Build the corresponding finding object with `related_object.client_slug = null`. Set `condition_key` from §12.2a as normal (the missing instance dimension does not change the condition type). The function's per-finding error handler will catch any downstream issue. Do not skip the bullet — that hides signal.
+    **Default:** Include the bullet in Section 10 with `(unknown)` substituted in the finding_id position. If the type is emittable (true-stuck), build the corresponding finding object with `related_object.client_slug = null` and `condition_key = true_stuck`. Do not skip the bullet — that hides signal.
 
 12. **Q (v3.0): What if `friction.fn_emit_health_check_findings` does not exist when called (e.g. migration was rolled back)?**
     **Default:** Function call returns "function does not exist" error. Catch, write `EMISSION_FAILED: function_missing` to state file, complete the run with markdown only. Section 11 records `success_count=N/A`. Do NOT attempt to retry or recreate the function — that is migration scope.
@@ -577,8 +603,11 @@ The function itself catches per-finding INSERT failures and routes them to `fric
 13. **Q (v3.0): What if the Section 10 logic produces more than one bullet that would map to the same finding_id (e.g. two true-stuck clusters with identical platform×client_slug — should not happen but could if data is corrupted)?**
     **Default:** Emit both. The function uses `source_event_id = run_id/finding_id` as the UNIQUE constraint; duplicate finding_ids within one run would cause the second emission to violate UNIQUE and land in `friction.emit_error` — the right behaviour. Do not deduplicate at the brief layer.
 
-14. **Q (v3.1): A finding type fires in Section 10 but I cannot find a `condition_key` for it in the §12.2a mapping table.**
-    **Default:** This means a finding type reached Section 10 without a §12.2a row — a brief-author defect. Still emit the finding (do NOT invent a `condition_key`): omit the field so the function's behaviour is observable, expect it to land in `skipped_count` / `friction.emit_error` with `CONDITION-KEY-UNRESOLVED`, and record `BRIEF_DEFECT: condition_key_mapping_missing` plus the finding_id in the state file. The fix is a §12.2a mapping addition in the next patch, not a guessed key on this run.
+14. **Q (v3.1.1): A P1/P2 finding type fires in Section 10 but it is in the PARKED table (no enabled emission_rule).**
+    **Default:** Write the bullet to Section 10 with its `finding_id` comment (preserve the signal). Do NOT add it to the emission JSONB array, and do NOT invent a `condition_key` for it. Record it under `omitted_unsupported_types` in the state file (§12.4). This is EXPECTED interim behaviour, not a defect. Emission begins only after a Supabase-approved `emission_rule` seed patch promotes the type to EMITTABLE.
+
+15. **Q (v3.1.1): The only true-stuck finding emitted but `failure_count` came back > 0.**
+    **Default:** This should not happen — `true_stuck` is the live-enabled rule. The most likely cause is the `true_stuck` `emission_rule` row being disabled/removed. Record `BRIEF_DEFECT: emission_rule_rejection` + finding_id in the state file and flag for PK. Markdown stays canonical. Do not retry.
 
 If a decision arises NOT covered above and NOT obviously safe to default, write the question to `docs/runtime/claude_questions.md` per D182 default-and-continue, then proceed with your best-judgement default and note the divergence in the state file.
 
@@ -589,10 +618,10 @@ If a decision arises NOT covered above and NOT obviously safe to default, write 
 - Any query attempts a non-SELECT operation → you have a brief-author bug, write `BRIEF_ERROR` to state file, stop.
 - Any allowed_paths violation attempt → halt immediately.
 - **v3.0: Markdown write succeeded but emission call failed with an error other than per-finding (i.e. the function call itself returned an error, not just `failure_count > 0`).** Write `EMISSION_FAILED: {SQLSTATE}` and `EMISSION_ERROR_MESSAGE: {SQLERRM}` to state file. Markdown remains valid. Do not delete the markdown. Do not retry.
-- **v3.0: Section 10 was successfully generated but the findings array is empty AND there were P1 or P2 bullets in Section 10.** This is a brief-author bug in the build step (Section 12.2). Write `BRIEF_ERROR: findings_array_empty_but_section_10_has_priorities` to state file.
-- **v3.1: emission returned `skipped_count > 0`.** NOT a hard halt — complete the run, markdown stays canonical. Record `BRIEF_DEFECT: skipped_count={S}` + affected finding_id(s) in the state file per §12.4/§12.5. The fix is a §12.2a mapping addition next patch, not a re-run.
+- **v3.0: Section 10 was successfully generated but the EMITTED findings array is empty AND there were EMITTABLE P1/P2 bullets in Section 10.** (v3.1.1: judged against EMITTABLE types only — an empty array is correct when the only firing findings are parked types.) This is a brief-author bug in the build step (Section 12.2). Write `BRIEF_ERROR: emitted_array_empty_but_section_10_has_emittable_priorities` to state file.
+- **v3.1.1: emission returned `failure_count > 0` or `skipped_count > 0`.** NOT a hard halt — complete the run, markdown stays canonical. Record `BRIEF_DEFECT: failure_count={M} skipped_count={S}` + affected finding_id(s) in the state file per §12.4/§12.5 (likely the `true_stuck` rule was disabled). Do not retry, do not re-emit.
 
-## Success criteria for v3.0 scheduled run
+## Success criteria for v3.1.1 interim scheduled run
 
 | Metric | Good | Re-evaluate |
 |---|---|---|
@@ -601,30 +630,33 @@ If a decision arises NOT covered above and NOT obviously safe to default, write 
 | Schema bugs / SQL syntax bugs | 0 | > 0 |
 | Output file produced | yes | no |
 | Production writes via non-function path | 0 (mandatory) | any > 0 |
-| friction.event emission success_count | matches number of P1+P2 bullets in Section 10 | mismatch |
+| friction.event emission success_count | matches number of EMITTED (true-stuck) findings in the array | mismatch |
 | friction.event emission failure_count | 0 | > 0 |
-| friction.event emission skipped_count (v3.1) | 0 | > 0 |
+| friction.event emission skipped_count | 0 | > 0 |
+| Known-good P1 true-stuck path | emits cleanly (no regression vs 2026-05-17/2026-05-20) | regressed |
+| Parked P1/P2 types | present in Section 10 markdown; omitted from emission; recorded under `omitted_unsupported_types` | emitted prematurely / dropped from markdown |
 | PK review time (next morning) | ≤ 3 min | > 10 min |
-| Section 10 Priority 1 surfacing accuracy | matches independent chat triage | misses true-stuck or false-flags known-lock items |
 | Section 12 emission summary recorded in footer | yes | no |
 
-If 10-of-10 hit on the first scheduled v3.0 run: brief is locked indefinitely until cc-0014 verdict at Day 19 from experiment start. Sunset review extended to 2026-06-15.
+**v3.1.1 close-out gate for Q-005:** Q-nightly-health-check-v1-005 remains OPEN. It CANNOT close on the v3.1.1 interim state alone. It closes only when EITHER:
+- (a) `friction.emission_rule` rows are seeded (Supabase-approved patch) for all desired P1/P2 `condition_key` values, the full §12.2a mapping is restored in a follow-up brief patch, and a natural fire is verified to emit all P1+P2 findings with `failure_count=0` AND `skipped_count=0`; OR
+- (b) the brief formally narrows emission scope to P1-true-stuck-only as the accepted end-state (PK decision), and a natural fire is verified to emit the true-stuck findings with `failure_count=0` AND `skipped_count=0`.
 
-**v3.1 close-out gate for Q-005:** Q-nightly-health-check-v1-005 remains OPEN until the next natural scheduled fire is verified to emit all P1+P2 findings with `success_count == bullet_count`, `failure_count = 0`, AND `skipped_count = 0`. Only then append the `Resolved Q-005` back-pointer in `docs/runtime/claude_questions.md`.
+Until then, a clean v3.1.1 interim fire (true-stuck emits cleanly, parked types omitted) is the GOOD outcome — but it does NOT by itself close Q-005.
 
 ## Run lifecycle
 
 v3.0 adds one step to the v2.1 lifecycle:
 
 1. Cowork picks up brief, runs all 14 queries via Supabase MCP `execute_sql`
-2. Generates Section 10 priority findings and **simultaneously builds the JSONB findings array** per Section 12.2 (each finding carries an explicit `condition_key` per §12.2a — v3.1)
+2. Generates Section 10 priority findings (ALL P1/P2 types) and **simultaneously builds the JSONB findings array containing ONLY emittable types** per §12.2/§12.2a (v3.1.1: currently true-stuck, `condition_key = true_stuck`)
 3. Writes markdown file at `docs/audit/health/{YYYY-MM-DD}.md`
 4. **v3.0 NEW step:** calls `friction.fn_emit_health_check_findings(run_id, markdown_path, findings)` via Supabase MCP `execute_sql`
-5. Captures `success_count` + `failure_count` + `skipped_count` (v3.1) from function return; writes to Section 11 emission summary line via second markdown edit (or assemble before write — implementation choice)
+5. Captures `success_count` + `failure_count` + `skipped_count` from function return; writes to Section 11 emission summary line (plus `emitted_types` / `omitted_unsupported_types`) via second markdown edit (or assemble before write — implementation choice)
 6. Writes state file with run outcome
 7. Commits markdown + state file to git
 8. PK reviews via state file
 
 ## Sunset review
 
-If this brief is unchanged at 2026-06-15 (extended from 2026-06-02 by v3.0 cc-0014 reopening), evaluate: (a) is the data useful? (b) are there persistent questions that should become brief-spec'd? (c) ready to retire D182 v1 first-run-style oversight or extend the framework? (d) what did the cc-0014 IOL experiment verdict at Day 19 reveal about whether this dual-write was worth maintaining?
+If this brief is unchanged at 2026-06-15 (extended from 2026-06-02 by v3.0 cc-0014 reopening), evaluate: (a) is the data useful? (b) are there persistent questions that should become brief-spec'd? (c) ready to retire D182 v1 first-run-style oversight or extend the framework? (d) what did the cc-0014 IOL experiment verdict at Day 19 reveal about whether this dual-write was worth maintaining? (e) v3.1.1 carry: have the parked `emission_rule` rows been seeded so the full P1/P2 emission mapping can be restored, or has emission scope been formally narrowed to P1-true-stuck-only?
