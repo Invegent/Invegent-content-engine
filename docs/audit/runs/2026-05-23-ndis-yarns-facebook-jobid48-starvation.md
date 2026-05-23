@@ -120,3 +120,36 @@ facebook.enqueue.jobid48_head_of_line_starvation
 ## 9. No production mutation occurred
 
 Read-only throughout: `SELECT`/catalog reads via Supabase MCP `execute_sql` only. No deploy, no cron change, no queue rows created, no enqueue RPC called, no dead rows touched, no Supabase mutation, no `friction.case`/`friction.event` write, Q-005 left open, cc-0015 not started. Memo persisted via local git only (not the GitHub bridge write path).
+
+---
+
+## Addendum — Repair applied & verified (2026-05-23, post-PK-approval)
+
+§1–§9 above describe the read-only **diagnosis**. This addendum records the later **PK-approved execution** of Mutation A and its live verification. (The "no production mutation" statement in §9 applies to the diagnosis session only; the cron change below was made under explicit PK D-01 approval.)
+
+### Repair applied
+- **Migration path:** `supabase/migrations/20260523_fpub_jobid48_starvation_fix.sql`, applied through the Supabase migration path (`apply_migration` → `success: true`). Migration commit **`7a74949690214e0648f5a076eef319f473236f3d`**.
+- **Scope:** **Mutation A only** — `cron.alter_job` on **jobid 48** alone. The repair adds a `LEFT JOIN m.slot s2` + `AND COALESCE(pd2.scheduled_for, s2.scheduled_publish_at) IS NOT NULL` **inside** the inner sub-query, so unschedulable drafts are excluded **before** `DISTINCT ON`. A pre-apply drift gate confirmed the live command still matched the staged precondition (`md5 57bbafb19a51308a69db18607c8ad991`, len 2203) before applying.
+
+### Verification (live)
+- **jobid 48 command verified:** command changed (new `md5 89b6aadebd2d283367005e616de5c383`, len 2556); `active=true`; `schedule */5 * * * *`; preserved guards confirmed present — duplicate-queue guard, duplicate-published guard, F-PUB-010 `max_queued_per_platform` cap, `ON CONFLICT (post_draft_id, platform) DO NOTHING`, and one-row-per-(client,platform) `DISTINCT ON`.
+- **Poison cluster excluded:** post-fix dry-run NY/FB head candidate is `0181a606` (created 2026-05-02, `computed_scheduled_for = 2026-05-03 22:00`, non-null); the 19-draft `2026-04-17` NULL-schedule cluster is absent from schedulable candidates.
+- **Queue row landed:** jobid 48 ticks `08:40:00` and `08:45:00` UTC each succeeded with `INSERT 0 1` (one row/tick). 08:40 enqueued `0181a606`; 08:45 enqueued the next draft `81e147aa` (one-per-tick advancement, no duplicates).
+- **Live Facebook publish resumed:** `0181a606` published by the existing FB publisher at **2026-05-23 08:40:13 UTC** (`m.post_publish` status `published`, `platform_post_id 122112912003261740`) — first NDIS Yarns Facebook post since the 2026-05-07 22:00 UTC outage.
+
+### Non-actions confirmed
+- **No manual backfill** — drafts enqueued solely by the fixed jobid 48 cron.
+- **No poison draft update** — the 19-draft cluster (incl. `0de778a9`) was not scheduled, rejected, voided, or otherwise modified.
+- **No m8_* requeue** — the 110 `m8_*` dead rows remained at **110**, untouched (total NY/FB dead still 113).
+
+### Current status
+- **Repair successful** — pool `facebook.enqueue.jobid48_head_of_line_starvation` resolved at the cron level; NY/FB draining its backlog under the FB publisher's normal throttle.
+- Pool moved from **act_now → track/monitoring**; parent case `a6c6032f` set to track with **`next_review_at` 2026-05-24**.
+
+### Remaining carries
+- Monitor the back-dated queued drafts as jobid 48 + the FB publisher drain the NY/FB backlog (≈21 schedulable drafts) over subsequent ticks.
+- Decide whether the stale early-May content should publish as-is or be voided/rescheduled (NY/FB is currently publishing ~20-day-late scheduled posts to the live page as it catches up; the publisher throttle paces this).
+- Optional later housekeeping for the 19-draft `2026-04-17` poison cluster (e.g. void/resolve), now that it no longer affects enqueue selection — non-blocking.
+
+### Rollback
+**No rollback needed.** All verifications passed; no regression on other Facebook clients, no duplicate queue rows, no unexpected rows touched. The exact original command remains embedded as a rollback comment in the migration file if ever required.
