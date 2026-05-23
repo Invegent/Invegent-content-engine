@@ -155,7 +155,9 @@ async function processClient(
   //   3. then most recent published_at as tie-breaker.
   // Per-client limit preserved. client_id / cutoff are system-generated values
   // (UUID / ISO timestamp), interpolated the same way computeFormatPerformance
-  // already interpolates client_id.
+  // already interpolates client_id. D-01 hardening (2026-05-23): they are cast
+  // explicitly (::uuid / ::timestamptz) for defence-in-depth — a malformed
+  // value would fail the cast rather than alter the query shape.
   const selectSql = `
     SELECT pp.post_publish_id, pp.client_id, pp.platform_post_id, pp.destination_id,
            (perf.platform_post_id IS NULL) AS never_collected
@@ -163,11 +165,11 @@ async function processClient(
     LEFT JOIN m.post_performance perf
       ON perf.platform_post_id = pp.platform_post_id
      AND perf.insights_period = '${INSIGHTS_PERIOD}'
-    WHERE pp.client_id = '${profile.client_id}'
+    WHERE pp.client_id = '${profile.client_id}'::uuid
       AND pp.platform = 'facebook'
       AND pp.status = 'published'
       AND pp.platform_post_id IS NOT NULL
-      AND pp.published_at < '${cutoff}'
+      AND pp.published_at < '${cutoff}'::timestamptz
     ORDER BY (perf.platform_post_id IS NULL) DESC,
              perf.collected_at ASC NULLS FIRST,
              pp.published_at DESC
