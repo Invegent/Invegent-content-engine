@@ -1,6 +1,20 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const VERSION = "insights-worker-v14.0.0";
+const VERSION = "insights-worker-v14.1.0";
+// v14.1.0 (2026-05-23, pool observer.insights_ingestion_stalled_since_0506):
+//   Type C selection fix — never-collected-first ordering. The old query
+//   selected published FB posts with limit 50 and NO ordering, so it kept
+//   refreshing the same old subset (collected_at churn) while newer posts never
+//   received a first-time m.post_performance row. Selection now uses the
+//   worker's existing exec_sql pattern with a LEFT JOIN to m.post_performance,
+//   ordered: (1) posts with no perf row first, (2) then oldest collected_at,
+//   (3) then most recent published_at. Per-client limit preserved. Success
+//   metric is new post_performance rows (reported as first_time), not just
+//   collected_at refresh.
+//   Type B token-source fallback — use the credential_env_key env secret first;
+//   if it is NULL or unavailable, fall back to the inline
+//   client_publish_profile.page_access_token (same source the publisher uses).
+//   Token values are never logged/returned/persisted (only a source label).
 // v14.0.0: Fix impressions metric name.
 // 'post_impressions_unique_28d' is not a valid Facebook Graph API metric.
 // Correct names: 'post_impressions' (total) and 'post_impressions_unique' (unique reach).
@@ -44,6 +58,9 @@ type PublishProfile = {
   client_id: string;
   destination_id: string | null;
   credential_env_key: string | null;
+  // v14.1.0 Type B fallback: inline token used when credential_env_key is
+  // NULL/unavailable. Never logged, returned, or persisted.
+  page_access_token: string | null;
 };
 
 type PublishedPost = {
@@ -51,6 +68,7 @@ type PublishedPost = {
   client_id: string;
   platform_post_id: string;
   destination_id: string | null;
+  never_collected?: boolean;
 };
 
 async function fetchSingleMetric(
@@ -123,29 +141,50 @@ async function processClient(
   supabase: ReturnType<typeof getServiceClient>,
   profile: PublishProfile,
   pageToken: string,
-): Promise<{ processed: number; succeeded: number; failed: number; errors: any[] }> {
-  let processed = 0, succeeded = 0, failed = 0;
+): Promise<{ processed: number; succeeded: number; failed: number; first_time: number; errors: any[] }> {
+  let processed = 0, succeeded = 0, failed = 0, first_time = 0;
   const errors: any[] = [];
   const cutoff = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
 
-  const { data: posts, error: postsErr } = await supabase
-    .schema("m").from("post_publish")
-    .select("post_publish_id, client_id, platform_post_id, destination_id")
-    .eq("client_id", profile.client_id)
-    .eq("platform", "facebook")
-    .eq("status", "published")
-    .not("platform_post_id", "is", null)
-    .lt("published_at", cutoff)
-    .limit(MAX_POSTS_PER_CLIENT);
+  // Type C fix (v14.1.0): never-collected-first ordering. PostgREST cannot
+  // cleanly express "rows with no related m.post_performance row first, then
+  // stalest collected_at" across an embedded resource, so we use the worker's
+  // existing exec_sql pattern (same as computeFormatPerformance). Ordering:
+  //   1. posts with NO post_performance row (this insights_period) first,
+  //   2. then oldest collected_at,
+  //   3. then most recent published_at as tie-breaker.
+  // Per-client limit preserved. client_id / cutoff are system-generated values
+  // (UUID / ISO timestamp), interpolated the same way computeFormatPerformance
+  // already interpolates client_id.
+  const selectSql = `
+    SELECT pp.post_publish_id, pp.client_id, pp.platform_post_id, pp.destination_id,
+           (perf.platform_post_id IS NULL) AS never_collected
+    FROM m.post_publish pp
+    LEFT JOIN m.post_performance perf
+      ON perf.platform_post_id = pp.platform_post_id
+     AND perf.insights_period = '${INSIGHTS_PERIOD}'
+    WHERE pp.client_id = '${profile.client_id}'
+      AND pp.platform = 'facebook'
+      AND pp.status = 'published'
+      AND pp.platform_post_id IS NOT NULL
+      AND pp.published_at < '${cutoff}'
+    ORDER BY (perf.platform_post_id IS NULL) DESC,
+             perf.collected_at ASC NULLS FIRST,
+             pp.published_at DESC
+    LIMIT ${MAX_POSTS_PER_CLIENT}
+  `;
+
+  const { data: posts, error: postsErr } = await supabase.rpc("exec_sql", { query: selectSql });
 
   if (postsErr) {
     errors.push({ error: `load_posts_failed: ${postsErr.message}` });
-    return { processed, succeeded, failed, errors };
+    return { processed, succeeded, failed, first_time, errors };
   }
 
-  for (const post of posts ?? []) {
+  for (const post of (posts as any[]) ?? []) {
     const p = post as PublishedPost;
     processed++;
+    if (p.never_collected) first_time++;
     try {
       const metrics = await fetchPostInsights(p.platform_post_id, pageToken);
       const { error: upsertErr } = await supabase
@@ -184,7 +223,7 @@ async function processClient(
     }
   }
 
-  return { processed, succeeded, failed, errors };
+  return { processed, succeeded, failed, first_time, errors };
 }
 
 async function computeFormatPerformance(
@@ -269,14 +308,14 @@ Deno.serve(async (req: Request) => {
   if (req.method === "GET") return jsonResponse({ ok: true, function: "insights-worker", version: VERSION });
 
   const clientSummaries: Record<string, any> = {};
-  let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0;
+  let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalFirstTime = 0;
 
   try {
     const supabase = getServiceClient();
 
     const { data: profiles, error: profErr } = await supabase
       .schema("c").from("client_publish_profile")
-      .select("client_id, destination_id, credential_env_key")
+      .select("client_id, destination_id, credential_env_key, page_access_token")
       .eq("platform", "facebook")
       .eq("status", "active")
       .eq("publish_enabled", true);
@@ -287,16 +326,36 @@ Deno.serve(async (req: Request) => {
     if (!activeProfiles.length) return jsonResponse({ ok: true, version: VERSION, message: "no_active_profiles", total_processed: 0 });
 
     for (const profile of activeProfiles) {
+      // Type B token-source fallback (v14.1.0): env secret first, then inline
+      // profile.page_access_token. Token VALUES are never logged/returned/
+      // persisted — only the source label ("env" / "inline_profile").
       const tokenKey = (profile.credential_env_key ?? "").toString();
-      if (!tokenKey) { clientSummaries[profile.client_id] = { skipped: true, reason: "no_credential_env_key" }; continue; }
-      const pageToken = Deno.env.get(tokenKey);
-      if (!pageToken) { clientSummaries[profile.client_id] = { skipped: true, reason: `secret_not_found: ${tokenKey}` }; continue; }
+      let pageToken: string | undefined;
+      let tokenSource = "";
+      if (tokenKey) {
+        const envVal = Deno.env.get(tokenKey);
+        if (envVal) { pageToken = envVal; tokenSource = "env"; }
+      }
+      if (!pageToken && profile.page_access_token) {
+        pageToken = profile.page_access_token;
+        tokenSource = "inline_profile";
+      }
+      if (!pageToken) {
+        clientSummaries[profile.client_id] = {
+          skipped: true,
+          reason: "no_token_available",
+          credential_env_key_present: !!tokenKey,
+          inline_token_present: !!profile.page_access_token,
+        };
+        continue;
+      }
 
       const result = await processClient(supabase, profile, pageToken);
-      clientSummaries[profile.client_id] = result;
+      clientSummaries[profile.client_id] = { ...result, token_source: tokenSource };
       totalProcessed += result.processed;
       totalSucceeded += result.succeeded;
       totalFailed += result.failed;
+      totalFirstTime += result.first_time;
     }
 
     const allClientIds = activeProfiles.map(p => p.client_id);
@@ -306,6 +365,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({
       ok: true, version: VERSION,
       total_processed: totalProcessed, total_succeeded: totalSucceeded, total_failed: totalFailed,
+      total_first_time: totalFirstTime,
       format_performance: { windows_computed: formatPerfResult.windows_computed, errors: formatPerfResult.errors },
       clients: clientSummaries,
     });
