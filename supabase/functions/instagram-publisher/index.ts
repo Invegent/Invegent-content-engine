@@ -16,6 +16,71 @@
 // - Failure backoff with last_error captured on queue row
 // - Schedule check via get_next_publish_slot
 // - Platform validation: rejects any non-instagram queue row defensively
+//
+// v2.1.0 (2026-05-24) — throttle robustness (pool
+//   instagram.publisher.v2_deployed_cron_paused; staged, sequenced-both step 1):
+// - DEFENSIVE per-account throttle in the EF (does NOT modify the shared
+//   m.publisher_lock_queue_v2): before publishing, count this client's IG
+//   publishes over 7d by client_id+platform (a robust key that does NOT silently
+//   no-op on NULL destination_id, unlike the lock RPC's destination-keyed count),
+//   enforce max_per_day + min_gap_minutes, and SKIP/REQUEUE rather than publish
+//   when breached.
+// - destination_id WRITE GUARANTEE (blocking gate): require profile.destination_id
+//   non-null; skip rather than publish unthrottled. The success post_publish row
+//   writes that same destination_id (= cpp.destination_id) so the lock RPC count
+//   is reliable too.
+// - 2207051 / code 4 (IG content-publishing restriction / app request limit):
+//   auto-pause the affected profile via cpp.paused_until (honoured by the lock RPC).
+// - Decision logging for verification (profile / destination_id / daily count /
+//   last publish / cap+gap decision / skip-vs-publish).
+//
+// v2.2.0 (2026-05-24) — image-container readiness polling (fixes IG 400 code
+//   9007 / subcode 2207027 "Media ID is not available"):
+// - The v2.x image path created a container then called media_publish
+//   immediately; only the video path polled readiness. Now BOTH image and video
+//   (and carousel child + parent containers) poll GET
+//   /{creation_id}?fields=status_code,status until status_code='FINISHED' before
+//   media_publish, with a bounded timeout/retry window.
+// - On status_code ERROR/EXPIRED (or timeout): fail cleanly, capture status
+//   detail, and do NOT call media_publish.
+// - Observability: per-poll + final status_code, attempts, waited_ms (no token).
+// - All v2.1.0 throttle protections (destination_id gate, max_per_day, min_gap,
+//   2207051 auto-pause) are unchanged.
+//
+// v2.3.0 (2026-05-24) — image publish-retry; remove the image container GET
+//   (brief docs/briefs/ig-publisher-v2.3.0-image-publish-retry.md):
+// - Forensics: the proven-working v1.0.0 image path published with TWO calls
+//   only (POST /media -> POST /media_publish) and NEVER polled container status.
+//   v2.2.0's image-path container GET (/{id}?fields=status_code) fails with
+//   code 100 / subcode 33 GraphMethodException ("Authorization Error") on these
+//   FB-page-derived IG tokens — a GET the working path never made.
+// - FIX: the IMAGE path no longer calls pollContainerReady. It publishes
+//   directly and retries media_publish ONLY on the transient "media not ready"
+//   signal (9007 / 2207027) with bounded backoff (publishWithReadinessRetry).
+// - Any OTHER error propagates immediately: 2207051 / code 4 still reaches the
+//   v2.1.0 auto-pause catch; auth errors (190 / code 10 / 100) surface as real
+//   failures, not silent retries.
+// - VIDEO and CAROUSEL paths are UNCHANGED from v2.2.0 (they still poll via
+//   pollContainerReady, which remains defined and in use).
+// - Throttle / destination_id gate / 2207051 auto-pause: byte-unchanged.
+//
+// v2.4.0 (2026-05-24) — RE-B: bounded outer per-row retry cap (brief
+//   docs/briefs/ig-publisher-v2.3.0-image-publish-retry.md §7 RE-B carry):
+// - The outer catch previously requeued every failed row +10min WITHOUT
+//   incrementing attempt_count or capping retries → a persistently-failing row
+//   could retry indefinitely (a dead row was observed at attempt_count=734).
+// - FIX: increment attempt_count on every failure; once a NON-rate-limited row
+//   reaches MAX_PUBLISH_ATTEMPTS, mark it status='dead' (terminal) with a
+//   dead_reason instead of requeuing. Under the cap, the existing +10min
+//   requeue is preserved.
+// - Rate-limited failures (2207051 / code 4) are EXEMPT from the dead cap: the
+//   6h profile auto-pause is their containment, so an account/app-level
+//   restriction never kills otherwise-publishable content. They still increment
+//   attempt_count and requeue (pause-gated by the lock RPC).
+// - Auth/other persistent errors therefore die after MAX_PUBLISH_ATTEMPTS
+//   instead of retrying forever. The v2.3.0 in-attempt 9007/2207027 retry
+//   (publishWithReadinessRetry), the destination_id gate, and the defensive
+//   throttle are all byte-unchanged.
 
 import { Hono } from 'jsr:@hono/hono';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -28,9 +93,35 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
 };
 
-const VERSION = 'instagram-publisher-v2.0.0';
+const VERSION = 'instagram-publisher-v2.4.0';
 const IG_GRAPH_BASE = 'https://graph.facebook.com/v19.0';
 const IMAGE_HOLD_MINUTES = 30;
+// v2.1.0: on a 2207051 / code-4 IG restriction, pause the profile this long
+// (via cpp.paused_until, which m.publisher_lock_queue_v2 honours). Tunable.
+const RATE_LIMIT_PAUSE_HOURS = 6;
+// v2.2.0: media-container readiness polling before media_publish. Images
+// usually finish in seconds; reels can take minutes.
+const IMAGE_CONTAINER_POLL_MAX_MS = 120_000;
+const IMAGE_CONTAINER_POLL_INTERVAL_MS = 3_000;
+const VIDEO_CONTAINER_POLL_MAX_MS = 300_000;
+const VIDEO_CONTAINER_POLL_INTERVAL_MS = 10_000;
+// v2.3.0: image publish-retry (replaces the image container GET). Retry
+// media_publish ONLY on the transient "media not ready" signal (9007/2207027).
+// Bounded: 1 initial + 3 retries; total added wall-clock <= ~16s (+ pre-delay),
+// far under the EF limit and the 120s poll it replaces.
+const PUBLISH_RETRY_MAX_ATTEMPTS = 4;
+const PUBLISH_RETRY_BACKOFF_MS = [3_000, 5_000, 8_000];
+const PUBLISH_PRE_DELAY_MS = 2_000;
+// The transient not-ready codes (and ONLY these) trigger a retry. \b digit
+// boundaries keep this from matching a code embedded in an fbtrace_id, and it
+// deliberately does NOT match 2207051 (rate limit -> must propagate to pause).
+const PUBLISH_NOT_READY_RE = /\b(?:9007|2207027)\b/;
+// v2.4.0 (RE-B): OUTER per-row retry cap, distinct from the in-attempt 9007
+// retry above. After this many failed processing attempts, a NON-rate-limited
+// queue row is marked dead (terminal) rather than requeued indefinitely. Tight
+// because transient container-readiness is already absorbed in-attempt; ~40 min
+// of +10min backoffs before a genuinely-broken row dies. Tunable.
+const MAX_PUBLISH_ATTEMPTS = 5;
 
 const IG_IMAGE_FORMATS = new Set(['image_quote', 'carousel']);
 const IG_VIDEO_FORMATS = new Set([
@@ -110,18 +201,85 @@ async function igGet(url: string): Promise<any> {
   return data;
 }
 
-async function pollVideoStatus(creationId: string, accessToken: string, maxWaitMs = 300_000): Promise<void> {
-  const pollUrl = `${IG_GRAPH_BASE}/${creationId}?fields=status_code&access_token=${accessToken}`;
-  const deadline = Date.now() + maxWaitMs;
-  while (Date.now() < deadline) {
+// v2.2.0: poll a media container until status_code='FINISHED' before publishing.
+// Applies to images, reels, and carousel child/parent containers. Throws on
+// ERROR/EXPIRED or timeout (caller's try/catch requeues + audits; media_publish
+// is never reached for a non-FINISHED container). The poll URL carries the
+// access_token and is NEVER logged — only safe status fields + counters are.
+async function pollContainerReady(
+  creationId: string,
+  accessToken: string,
+  opts: { maxWaitMs: number; intervalMs: number; label: string },
+): Promise<{ status_code: string; attempts: number; waited_ms: number }> {
+  const pollUrl =
+    `${IG_GRAPH_BASE}/${encodeURIComponent(creationId)}?fields=status_code,status` +
+    `&access_token=${encodeURIComponent(accessToken)}`;
+  const start = Date.now();
+  let attempts = 0;
+  while (Date.now() - start < opts.maxWaitMs) {
+    attempts++;
     const data = await igGet(pollUrl);
-    const statusCode = data.status_code;
-    console.log(`[instagram-publisher] video status: ${statusCode}`);
-    if (statusCode === 'FINISHED') return;
-    if (statusCode === 'ERROR') throw new Error(`IG video processing failed: ${JSON.stringify(data)}`);
-    await new Promise(r => setTimeout(r, 10_000));
+    const statusCode = (data.status_code ?? '').toString();
+    const statusDetail = (data.status ?? '').toString().slice(0, 200);
+    console.log(`[instagram-publisher] ${opts.label} container poll attempt=${attempts} status_code=${statusCode} status=${statusDetail}`);
+    if (statusCode === 'FINISHED') {
+      const waited_ms = Date.now() - start;
+      console.log(`[instagram-publisher] ${opts.label} container FINISHED attempts=${attempts} waited_ms=${waited_ms}`);
+      return { status_code: statusCode, attempts, waited_ms };
+    }
+    if (statusCode === 'ERROR' || statusCode === 'EXPIRED') {
+      throw new Error(`IG container ${statusCode} (${opts.label}) after ${attempts} polls: ${statusDetail || JSON.stringify(data).slice(0, 200)}`);
+    }
+    await new Promise((r) => setTimeout(r, opts.intervalMs));
   }
-  throw new Error('IG video processing timed out after 5 minutes');
+  throw new Error(`IG ${opts.label} container not FINISHED within ${Math.round(opts.maxWaitMs / 1000)}s (polled ${attempts}x)`);
+}
+
+// v2.3.0: publish an already-created IMAGE container, retrying media_publish
+// ONLY on the transient "media not ready" signal (9007 / 2207027). This is the
+// image path's replacement for the v2.2.0 container-status GET (which fails
+// 100/33 with these tokens). Any other error — including 2207051 / code 4
+// (which MUST reach the v2.1.0 auto-pause catch) and auth errors (190 / code 10
+// / 100) — propagates immediately, so it surfaces as a real failure rather than
+// being silently retried. The publish URL carries the access_token and is NEVER
+// logged; only the creationId and counters are.
+async function publishWithReadinessRetry(
+  publishUrl: string,
+  creationId: string,
+  accessToken: string,
+  label: string,
+): Promise<string> {
+  if (PUBLISH_PRE_DELAY_MS > 0) {
+    await new Promise((r) => setTimeout(r, PUBLISH_PRE_DELAY_MS));
+  }
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= PUBLISH_RETRY_MAX_ATTEMPTS; attempt++) {
+    try {
+      const published = await igPost(publishUrl, {
+        creation_id: creationId,
+        access_token: accessToken,
+      });
+      const igMediaId: string = published.id;
+      if (!igMediaId) throw new Error('No ig_media_id returned from publish');
+      if (attempt > 1) {
+        console.log(`[instagram-publisher] ${label} publish recovered creation_id=${creationId} attempt=${attempt}`);
+      }
+      return igMediaId;
+    } catch (e: any) {
+      const msg = (e?.message ?? String(e)).toString();
+      const transient = PUBLISH_NOT_READY_RE.test(msg);
+      const hasRetryLeft = attempt < PUBLISH_RETRY_MAX_ATTEMPTS;
+      // Non-transient (incl. 2207051/code 4, 190, 100/33), or out of retries → rethrow.
+      if (!transient || !hasRetryLeft) throw e;
+      lastErr = e;
+      const backoff = PUBLISH_RETRY_BACKOFF_MS[attempt - 1] ?? PUBLISH_RETRY_BACKOFF_MS[PUBLISH_RETRY_BACKOFF_MS.length - 1];
+      const reason = /2207027/.test(msg) ? '2207027' : '9007';
+      console.log(`[instagram-publisher] ${label} publish retry attempt=${attempt} reason=${reason} creation_id=${creationId} backoff_ms=${backoff}`);
+      await new Promise((r) => setTimeout(r, backoff));
+    }
+  }
+  // The final attempt rethrows inside the loop; this only satisfies the type checker.
+  throw lastErr ?? new Error(`${label} publish failed after ${PUBLISH_RETRY_MAX_ATTEMPTS} attempts`);
 }
 
 async function publishSingleMedia(opts: {
@@ -152,16 +310,24 @@ async function publishSingleMedia(opts: {
   if (!creationId) throw new Error('No creation_id returned from IG media container');
 
   if (isVideo) {
-    await pollVideoStatus(creationId, accessToken);
+    // VIDEO path — UNCHANGED from v2.2.0: poll the reel container to FINISHED,
+    // then publish once. (No reel has published yet; left exactly as-is.)
+    await pollContainerReady(creationId, accessToken, {
+      maxWaitMs: VIDEO_CONTAINER_POLL_MAX_MS, intervalMs: VIDEO_CONTAINER_POLL_INTERVAL_MS, label: 'reel',
+    });
+    const published = await igPost(publishUrl, {
+      creation_id: creationId,
+      access_token: accessToken,
+    });
+    const igMediaId: string = published.id;
+    if (!igMediaId) throw new Error('No ig_media_id returned from publish');
+    return igMediaId;
   }
 
-  const published = await igPost(publishUrl, {
-    creation_id: creationId,
-    access_token: accessToken,
-  });
-  const igMediaId: string = published.id;
-  if (!igMediaId) throw new Error('No ig_media_id returned from publish');
-  return igMediaId;
+  // IMAGE path (v2.3.0) — do NOT poll the container status GET (it fails 100/33
+  // with these tokens; the proven-working v1.0.0 path never made it). Publish
+  // directly, retrying only on the transient 9007/2207027 "media not ready" signal.
+  return await publishWithReadinessRetry(publishUrl, creationId, accessToken, 'image');
 }
 
 async function publishCarousel(opts: {
@@ -182,6 +348,10 @@ async function publishCarousel(opts: {
       access_token: accessToken,
     });
     if (!child.id) throw new Error('Failed to create carousel child container');
+    // v2.2.0: each child must FINISH before it is attached to the parent.
+    await pollContainerReady(child.id, accessToken, {
+      maxWaitMs: IMAGE_CONTAINER_POLL_MAX_MS, intervalMs: IMAGE_CONTAINER_POLL_INTERVAL_MS, label: 'carousel_child',
+    });
     childIds.push(child.id);
   }
 
@@ -193,6 +363,11 @@ async function publishCarousel(opts: {
     access_token: accessToken,
   });
   if (!carousel.id) throw new Error('Failed to create carousel container');
+
+  // v2.2.0: wait for the parent carousel container to FINISH before publishing.
+  await pollContainerReady(carousel.id, accessToken, {
+    maxWaitMs: IMAGE_CONTAINER_POLL_MAX_MS, intervalMs: IMAGE_CONTAINER_POLL_INTERVAL_MS, label: 'carousel_parent',
+  });
 
   // Step 3: Publish
   const published = await igPost(publishUrl, {
@@ -225,6 +400,10 @@ type PublishProfile = {
   page_name: string | null;
   publish_enabled: boolean | null;
   test_prefix: string | null;
+  // v2.1.0 throttle fields (profile is loaded via select('*'))
+  max_per_day: number | null;
+  min_gap_minutes: number | null;
+  paused_until: string | null;
 };
 
 // ─── Routes ──────────────────────────────────────────────────────────────
@@ -274,6 +453,8 @@ app.post('*', async (c) => {
 
   for (const q of rows) {
     const queueId = q.queue_id;
+    // Hoisted so the catch can auto-pause this profile on a 2207051/code-4 restriction.
+    let profileForPause: PublishProfile | null = null;
 
     try {
       // ── DEFENSIVE PLATFORM CHECK ──────────────────────────────────────
@@ -325,6 +506,7 @@ app.post('*', async (c) => {
       if (profErr) throw new Error(`load_profile_failed: ${profErr.message}`);
       if (!prof) throw new Error('no_active_instagram_publish_profile');
       const profile = prof as unknown as PublishProfile;
+      profileForPause = profile;
 
       if (profile.publish_enabled === false) {
         await supabase.schema('m').from('post_publish_queue').update({
@@ -337,12 +519,24 @@ app.post('*', async (c) => {
         continue;
       }
 
-      // For Instagram: destination_id (or page_id) is the IG Business Account ID
-      const igUserId = (profile.destination_id ?? profile.page_id ?? '').toString();
+      // For Instagram the destination_id IS the IG Business Account ID (ig_user_id).
+      // BLOCKING GATE (v2.1.0): destination_id must be non-null. Both the throttle
+      // count and the post_publish audit row key on it, so without it the cap can't
+      // be enforced reliably — skip rather than publish unthrottled. We deliberately
+      // do NOT fall back to page_id here (that was the NULL-destination fragility).
       const accessToken = profile.page_access_token;
-
-      if (!igUserId) throw new Error('missing_ig_user_id');
+      const destinationId = (profile.destination_id ?? '').toString();
+      if (!destinationId) {
+        await supabase.schema('m').from('post_publish_queue').update({
+          status: 'skipped',
+          last_error: 'missing_destination_id_throttle_gate',
+          locked_at: null, locked_by: null, updated_at: nowIso(),
+        }).eq('queue_id', queueId);
+        results.push({ queue_id: queueId, status: 'skipped', reason: 'missing_destination_id' });
+        continue;
+      }
       if (!accessToken) throw new Error('missing_page_access_token');
+      const igUserId = destinationId; // guaranteed non-null; == cpp.destination_id
 
       // ── LOAD DRAFT ────────────────────────────────────────────────────
       // CRITICAL DIFFERENCE FROM v1.0.0:
@@ -496,6 +690,57 @@ app.post('*', async (c) => {
       const testPrefix = profile.mode === 'staging' ? (profile.test_prefix ?? '[TEST] ') : '';
       const caption = `${testPrefix}${title}${title && body ? '\n\n' : ''}${body}`.trim();
 
+      // ── DEFENSIVE THROTTLE (v2.1.0) ───────────────────────────────────
+      // Independent of m.publisher_lock_queue_v2's destination-keyed count (which
+      // silently no-ops when destination_id is NULL). Count this client's IG
+      // publishes over the last 7 days by client_id+platform (robust key), enforce
+      // max_per_day + min_gap_minutes, and SKIP/REQUEUE rather than publish when
+      // breached. Decision is logged for verification.
+      {
+        const maxPerDay = profile.max_per_day;
+        const minGapMin = profile.min_gap_minutes;
+        if (maxPerDay != null || minGapMin != null) {
+          const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60_000).toISOString();
+          const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0);
+          const dayStartIso = dayStart.toISOString();
+          const { data: recentPub, error: recentErr } = await supabase
+            .schema('m').from('post_publish')
+            .select('created_at')
+            .eq('client_id', q.client_id)
+            .eq('platform', 'instagram')
+            .eq('status', 'published')
+            .gte('created_at', sevenDaysAgo)
+            .order('created_at', { ascending: false });
+          if (recentErr) throw new Error(`throttle_count_failed: ${recentErr.message}`);
+          const recent = (recentPub ?? []) as Array<{ created_at: string }>;
+          const lastPublishedAt = recent[0]?.created_at ?? null;
+          const publishedToday = recent.filter((r) => r.created_at >= dayStartIso).length;
+          const gapMs = lastPublishedAt ? (Date.now() - new Date(lastPublishedAt).getTime()) : null;
+          const capBreached = maxPerDay != null && publishedToday >= maxPerDay;
+          const gapBreached = minGapMin != null && gapMs != null && gapMs < minGapMin * 60_000;
+          console.log(`[instagram-publisher] throttle client=${q.client_id} dest=${destinationId} published_today=${publishedToday} max_per_day=${maxPerDay ?? 'none'} last_published_at=${lastPublishedAt ?? 'none'} min_gap_min=${minGapMin ?? 'none'} cap_breached=${capBreached} gap_breached=${gapBreached} decision=${capBreached || gapBreached ? 'requeue' : 'publish'}`);
+          if (capBreached || gapBreached) {
+            const requeueFor = capBreached
+              ? new Date(dayStart.getTime() + 24 * 60 * 60_000).toISOString() // next UTC day
+              : new Date(new Date(lastPublishedAt as string).getTime() + (minGapMin as number) * 60_000).toISOString();
+            await supabase.schema('m').from('post_publish_queue').update({
+              status: 'queued',
+              scheduled_for: requeueFor,
+              last_error: capBreached
+                ? `throttle_max_per_day:${publishedToday}/${maxPerDay}`
+                : `throttle_min_gap:${Math.round((gapMs as number) / 60_000)}m<${minGapMin}m`,
+              locked_at: null, locked_by: null, updated_at: nowIso(),
+            }).eq('queue_id', queueId);
+            results.push({
+              queue_id: queueId, status: 'throttled',
+              reason: capBreached ? 'max_per_day' : 'min_gap',
+              published_today: publishedToday, scheduled_for: requeueFor,
+            });
+            continue;
+          }
+        }
+      }
+
       // ── PUBLISH ───────────────────────────────────────────────────────
       const startMs = Date.now();
       let igMediaId: string;
@@ -564,7 +809,7 @@ app.post('*', async (c) => {
         post_draft_id: q.post_draft_id,
         client_id: q.client_id,
         platform: 'instagram',
-        destination_id: igUserId,
+        destination_id: destinationId, // v2.1.0: guaranteed non-null, == cpp.destination_id (throttle-reliable)
         status: 'published',
         platform_post_id: igMediaId,
         published_at: nowIso(),
@@ -605,26 +850,67 @@ app.post('*', async (c) => {
 
     } catch (e: any) {
       const errMsg = (e?.message ?? String(e)).slice(0, 4000);
-      console.error(`[instagram-publisher] failed ${queueId}:`, errMsg);
+      // RE-B (v2.4.0): every entry into the catch is one processing attempt.
+      const newAttempt = (q.attempt_count ?? 0) + 1;
+      console.error(`[instagram-publisher] failed ${queueId} attempt=${newAttempt}/${MAX_PUBLISH_ATTEMPTS}:`, errMsg);
 
-      // Backoff: requeue 10 min from now with the error captured
-      const backoffIso = new Date(Date.now() + 10 * 60_000).toISOString();
-      await supabase.schema('m').from('post_publish_queue').update({
-        status: 'queued',
-        scheduled_for: backoffIso,
-        last_error: errMsg,
-        locked_at: null, locked_by: null,
-        updated_at: nowIso(),
-      }).eq('queue_id', queueId);
+      // v2.1.0: 2207051 / code 4 (IG content-publishing restriction / app request
+      // limit) → auto-pause this profile via cpp.paused_until (honoured by
+      // m.publisher_lock_queue_v2), so a restriction does not turn into a retry
+      // burst. Does not flip publish_enabled. (Unchanged.)
+      const rateLimited = /2207051|"code"\s*:\s*4\b|application request limit/i.test(errMsg);
+      if (rateLimited && profileForPause?.client_publish_profile_id) {
+        const pauseUntil = new Date(Date.now() + RATE_LIMIT_PAUSE_HOURS * 60 * 60_000).toISOString();
+        await supabase.schema('c').from('client_publish_profile')
+          .update({ paused_until: pauseUntil })
+          .eq('client_publish_profile_id', profileForPause.client_publish_profile_id);
+        console.warn(`[instagram-publisher] AUTO-PAUSED profile ${profileForPause.client_publish_profile_id} until ${pauseUntil} (rate-limit/2207051)`);
+      }
 
-      // Audit-trail failed publish row
+      // RE-B (v2.4.0): bounded outer retry. A NON-rate-limited row that has
+      // exhausted MAX_PUBLISH_ATTEMPTS is marked dead (terminal) instead of being
+      // requeued forever. Rate-limited rows are EXEMPT from the cap — the 6h
+      // auto-pause above is their containment; they always requeue (pause-gated
+      // by the lock RPC) so an account/app-level restriction never kills
+      // otherwise-publishable content.
+      const exhausted = !rateLimited && newAttempt >= MAX_PUBLISH_ATTEMPTS;
+
+      if (exhausted) {
+        const deadReason = `re_b_max_attempts:${newAttempt}/${MAX_PUBLISH_ATTEMPTS}`;
+        await supabase.schema('m').from('post_publish_queue').update({
+          status: 'dead',
+          attempt_count: newAttempt,
+          dead_reason: deadReason,
+          last_error: errMsg,
+          scheduled_for: null,
+          locked_at: null, locked_by: null,
+          updated_at: nowIso(),
+        }).eq('queue_id', queueId);
+        console.error(`[instagram-publisher] DEAD ${queueId} attempt=${newAttempt}/${MAX_PUBLISH_ATTEMPTS} dead_reason=${deadReason}`);
+      } else {
+        // Backoff: requeue 10 min from now with the error + attempt captured.
+        // (Rate-limited rows also carry scheduled_for here, but the profile pause
+        // dominates re-lock timing.)
+        const backoffIso = new Date(Date.now() + 10 * 60_000).toISOString();
+        await supabase.schema('m').from('post_publish_queue').update({
+          status: 'queued',
+          scheduled_for: backoffIso,
+          attempt_count: newAttempt,
+          last_error: errMsg,
+          locked_at: null, locked_by: null,
+          updated_at: nowIso(),
+        }).eq('queue_id', queueId);
+        console.log(`[instagram-publisher] requeue ${queueId} attempt=${newAttempt}/${MAX_PUBLISH_ATTEMPTS} rate_limited=${rateLimited} next=${backoffIso}`);
+      }
+
+      // Audit-trail failed publish row (unchanged behaviour)
       await supabase.schema('m').from('post_publish').insert({
         queue_id: queueId,
         ai_job_id: q.ai_job_id,
         post_draft_id: q.post_draft_id,
         client_id: q.client_id,
         platform: 'instagram',
-        destination_id: null,
+        destination_id: profileForPause?.destination_id ?? null,
         status: 'failed',
         platform_post_id: null,
         request_payload: null,
@@ -633,7 +919,14 @@ app.post('*', async (c) => {
         created_at: nowIso(),
       });
 
-      results.push({ queue_id: queueId, status: 'failed', error: errMsg });
+      results.push({
+        queue_id: queueId,
+        status: exhausted ? 'dead' : 'failed',
+        attempt_count: newAttempt,
+        error: errMsg,
+        auto_paused: rateLimited,
+        dead: exhausted,
+      });
     }
   }
 
