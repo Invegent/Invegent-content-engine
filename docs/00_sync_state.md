@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v3.05 YouTube restore (2026-05-24):** YouTube publishing **RESTORED**. Root cause definitively found — the Google OAuth app was in **Testing** publishing status, which caps refresh tokens at **7 days** (NY token lasted 7.00d, PP 7.92d after the 5 May reconnect; classic fingerprint). PK moved the OAuth app to **Production** + re-exchanged tokens (NY 10:48, PP 10:49 UTC); two single-draft live tests **published successfully** (PP `ma6EG1fz4XQ`, NY `qp-ZGm8lNIo`) confirming both channels' tokens now refresh with no `invalid_grant`. Backlog then **released** (fresh ≥12 May → `generated`: NY 6 + PP 7 = 13, draining 2/tick via jobid 34) and **soft-retired** (stale <12 May → `archived_stale`: NY 3 + PP 11 = 14; PK chose retire over hard-delete to preserve content/audit + avoid FK risk). Also: **cc-0019 brief** (publish-eligibility gate before AI draft generation) authored `81cb414` + hardened `01a6cdf`, plan_review `a75c78f6`→`ff05c65e` (clean) — **brief only, NOT implemented**; and a read-only slotting AI-cost-waste audit (fill_pending_slots spends tokens with no publish-eligibility check; materialise_slots reads `publish_enabled` only for format-selection, not skip). 3 apply_migration (draft `video_status` only, bounded+guarded) + 2 publisher invokes (real publishes). D-01 fires: `a75c78f6`/`ff05c65e` (plan_review) + `82443c8c`/`5f7bfc52` (sql_destructive). **NEW findings: F-YT-OAUTH-TESTING-MODE (root cause, RESOLVED — recorded so it stops being re-diagnosed as a token reconnect); F-YT-FAILED-NO-RETRY (publisher marks transient auth failure as terminal `failed` → bricks backlog silently; candidate brief); F-YT-EXPIRY-DISPLAY-FAKE (callback hardcodes now+5y expiry, masks dead tokens).** 0 cron change / 0 EF deploy / 0 client enablement change / 0 hard delete / 0 friction.* / 0 cc-0015 start / 0 Stage E / 0 Q-005 closure / 0 decisions.md change / 0 dashboard edit. Dashboard roadmap/PHASES leg N/A (operational, no phase change). **OWED: the pre-compaction 2026-05-24 IG-publish-restore arc (instagram-publisher v2.4.0; IG queue soft-purge; void+repurge; cron 53 enable) still needs its own 4-way close — flagged, not folded in (unverified SHAs in-context).**
+
+---
+
 > **✅ v3.04 dashboard recording (2026-05-21):** Dashboard **Slice 0A** (Pre-Phase 0 / Gate-11-window sidebar IA shell + Visual Tokens v1) **MERGED to `invegent-dashboard` main**. New dashboard main HEAD `3ec489b6fb1e4ad706aac9d32f7fefa4ad43b9c5` (short `3ec489b`); parent `d17b604`; squash merge of `e65b812` (initial slice) + `399c087` (CCB polish). Files: `components/sidebar.tsx` + `tailwind.config.ts` + `app/globals.css` (exactly 3). Typecheck exit 0; CCD PASS / CCB visual PASS / CCB polish re-check PASS. Verified independently via Invegent GitHub `list_recent_commits` + live `sidebar.tsx` read (commit SHA + content both confirmed, not taken on directive faith). **Slice 0A is NOT real Dashboard Phase 0** — the locked Phase 0 schema/data groundwork (`m.attention_item` / `m.vw_pipeline_state` / `m.brief` / `m.action_event`; dashboard-review §9) remains future/gated. Recorded documentation-only into the two `00_` index files via read-HEAD-first surgical edits (sync_state blob `348c0a6e` re-read this session). 0 Supabase / 0 dashboard edits / 0 Phase 0 schema work / 0 cc-0015 start / 0 Stage E / 0 PRV / 0 Q-005 closure / 0 decisions.md change / 0 D-01.
 
 ---
@@ -26,6 +30,7 @@
 
 | Date | Slug | Headline | File |
 |---|---|---|---|
+| 2026-05-24 | v3.05-youtube-oauth-production-restore | **YouTube publishing RESTORED.** Root cause = OAuth app in Google **Testing** status → refresh tokens capped at 7 days (NY 7.00d / PP 7.92d after 5 May reconnect). PK moved app → **Production** + re-exchanged tokens (NY 10:48 / PP 10:49 UTC); two live tests **published** (PP `ma6EG1fz4XQ`, NY `qp-ZGm8lNIo`). Backlog **released** (fresh ≥12 May → generated: NY 6 + PP 7 = 13, draining 2/tick jobid 34) + **soft-retired** (stale <12 May → archived_stale: NY 3 + PP 11 = 14; retire-not-delete to keep audit + dodge FK risk). Publisher v1.6.0 catch sets transient auth failure to terminal `failed` (never re-selected) → backlog was frozen invisible — **F-YT-FAILED-NO-RETRY** logged. Callback hardcodes now+5y expiry → fake "Valid 2031" masks dead tokens — **F-YT-EXPIRY-DISPLAY-FAKE**. **F-YT-OAUTH-TESTING-MODE** root cause RESOLVED + recorded (was always re-diagnosed as "reconnect token"). Also **cc-0019 brief** (publish-eligibility gate) authored `81cb414` + hardened `01a6cdf`; plan_review `a75c78f6`→`ff05c65e` clean — brief only. 3 apply_migration (draft video_status only, guarded) + 2 publisher invokes (real publishes). 4 D-01. 0 cron / 0 EF deploy / 0 enablement / 0 hard delete / 0 cc-0015 / 0 Stage E / 0 Q-005 closure / 0 decisions.md / 0 dashboard edit. IG-restore arc 4-way close OWED (flagged). | `docs/runtime/sessions/2026-05-24-v3.05-youtube-oauth-production-restore.md` |
 | 2026-05-21 | v3.04-dashboard-slice-0a-merged | **Dashboard Slice 0A (Pre-Phase 0 sidebar IA shell + Visual Tokens v1) MERGED to invegent-dashboard main at `3ec489b`** (parent `d17b604`; squash of `e65b812` + `399c087` CCB polish). Files: `components/sidebar.tsx` + `tailwind.config.ts` + `app/globals.css`. Typecheck exit 0; CCD PASS / CCB PASS / CCB polish PASS. Sidebar regrouped to locked IA NOW/CLIENTS/CREATE/REPORTS/ADMIN (NOW split Daily + Investigate + collapsed Legacy); 5 status colour scales + 10 typography/spacing token helpers added additively; mobile drawer behaviour preserved verbatim. **Slice 0A is NOT real Dashboard Phase 0** — review §9 Phase 0 schema groundwork remains future/gated. Commit SHA + content independently verified (Invegent GitHub `list_recent_commits` + live `sidebar.tsx` read). Cross-repo documentation recording only. cc-0015 Gate 11 watch rank 1 (closes 2026-05-26) / Stage E future / PRV deferred / Q-005 OPEN next-fire watch ALL PRESERVED. 0 Supabase / 0 dashboard edits / 0 Phase 0 schema / 0 cc-0015 start / 0 Stage E / 0 PRV / 0 Q-005 closure. | `docs/runtime/sessions/2026-05-21-v3.04-dashboard-slice-0a-merged.md` |
 | 2026-05-21 | v3.03-q005-optionA-v3.1.1-emission-guard | **Q-005 Option A trail recorded (A-005 + v3.1 + v3.1.1 guard); brief now v3.1.1; Q-005 stays OPEN, next-fire watch.** A-nightly-health-check-v1-005 ratified Option A (explicit per-finding `condition_key`) at `56e992b4`. v3.1 brief patch (`7005865`) added the 9-key mapping. **CCD read-only verification found v3.1 would FAIL live emission:** the function consumes explicit `condition_key` (correct) BUT `friction.emit_event` requires an enabled `friction.emission_rule` row for `(source, condition_key)`, and only `health_check/true_stuck` is enabled — v3.1's renamed `true_stuck_cluster` + 8 invented P2 keys would all be rejected (~`success_count=0, failure_count=5–7`), regressing the known-good P1 path. **v3.1.1 guard patch at `9ceb78a`** restores the live-enabled `condition_key=true_stuck` for true-stuck P1 emission and PARKS the other 8 P1/P2 keys (markdown-only; omitted from emission JSONB) pending a separate Supabase-approved `emission_rule` seed patch. Next natural fire is safe (true-stuck emits; parked types appear in markdown but not emitted). **Q-005 OPEN** — closes only when EITHER (A) emission_rule rows seeded + full mapping restored/verified, OR (B) PK formally narrows scope to P1-true-stuck-only + a natural fire verifies `failure_count=0`/`skipped_count=0`. cc-0015 Gate 11 watch / Stage E future / PRV deferred PRESERVED. 0 Supabase / 0 dashboard / 0 cc-0015 start / 0 Stage E / 0 nightly run / 0 re-emission. | `docs/runtime/sessions/2026-05-21-v3.03-q005-optionA-v3.1.1-emission-guard.md` |
 | 2026-05-21 | v3.02-dashboard-mobile-viewport-pass | **Dashboard mobile/narrow viewport verification CLOSED/PASS.** CCB tested at 306×498 Nexus 5 Android Chrome UA, DPR 2 → MOBILE PASS. Mobile fix (`d17b604`; files `components/sidebar.tsx`, `app/(dashboard)/operations/case-row.tsx`; typecheck PASS) resolved: sidebar collapses to hamburger/drawer; desktop fixed rail no longer consumes mobile width; /operations rows readable; evidence paperclip badge visible; expanded Evidence section usable; triage guardrail usable; FAB usable; Roadmap readable; "Stop Claude" overlay remains external Claude Browser tooling. **Mobile/narrow viewport verification removed from open P3 carries.** NEW lesson candidate L-v3.02-a: mobile breakpoint verified after any primary operator-surface change. cc-0015 Gate 11 watch / Stage E future / PRV deferred / Q-005 (if open) PRESERVED. *(v3.02.1 reconciliation: original v3.02 push clobbered v3.01 `00_` index content; restored. v3.02.2: mobile-fix SHA `d17b604` backfilled — no longer pending.)* | `docs/runtime/sessions/2026-05-21-v3.02-dashboard-mobile-viewport-pass.md` |
@@ -49,6 +54,48 @@
 
 ## 🟢 Most recent session — inline summary
 
+### 2026-05-24 Sydney — v3.05: YouTube OAuth Production restore (root cause found + both channels publishing)
+
+**Outcome:** YouTube publishing **RESTORED**. The prior (1 May) audit was stale; PK was right it had been fixed in early May then re-broke. **Root cause definitively identified: the Google OAuth app was in "Testing" publishing status, which caps refresh tokens at 7 days.** PK moved the app to Production + re-exchanged tokens; two single-draft live tests published successfully, proving both channels' tokens now refresh. Backlog released (fresh) + soft-retired (stale). Separately: cc-0019 brief authored + reviewed clean (brief only), and a read-only slotting AI-cost-waste audit.
+
+**Root-cause evidence (read-only):**
+| Fact | Value |
+|---|---|
+| Last successful publish | PP 12 May 07:45 UTC (11 total); NY 11 May 09:45 UTC (2 total) |
+| Re-break | Day after each last success; `invalid_grant: Token expired or revoked` |
+| Token lifetime post-5 May reconnect | **NY 7.00 days, PP 7.92 days** → Testing-mode 7-day cap fingerprint |
+| Stored token | Genuine `1//` refresh token (103 chars) in `c.client_channel.config`; no expiry field stored |
+| Dashboard "Expires 2031" | Cosmetic — callback hardcodes `now()+5y` ("tokens don't expire"); publisher never reads it |
+| OAuth flow | `auth/route.ts` correctly sets `access_type=offline`+`prompt=consent`; `callback/route.ts` stores token + fake expiry |
+
+**Fix + verification (governed):**
+| Step | Detail |
+|---|---|
+| Fix | PK moved OAuth app Testing→Production + re-exchanged (NY token_updated_at 10:48:22, PP 10:49:05 UTC) |
+| PP test | mig `yt_token_verify_reset_one_pp_draft_20260524` (draft `2afce74e…`) → invoke req 126325 → **`ma6EG1fz4XQ`** published 10:57:23 UTC |
+| NY test | mig `yt_token_verify_reset_one_ny_draft_20260524` (draft `b9860637…`) → invoke req 126339 → **`qp-ZGm8lNIo`** published 11:02:24 UTC |
+| Backlog | mig `yt_backlog_release_fresh_softretire_stale_20260524`: release ≥12 May (NY 6 + PP 7 = 13 → generated, draining); retire <12 May (NY 3 + PP 11 = 14 → archived_stale) |
+| Untouched | failed-out-of-guard NY 3 + PP 9 (non-uploadable format / non-approved); CFW + Invegent (never connected) |
+| D-01 | sql_destructive `82443c8c` (PP+NY tests), `5f7bfc52` (batch) — both partial/type-c, escalated, PK pre-approved |
+
+**Publisher reliability gap (F-YT-FAILED-NO-RETRY):** youtube-publisher v1.6.0 selects only `video_status='generated'`+`approval_status='approved'`; its catch handler sets failures to terminal `video_status='failed'`, which it never re-selects. A token outage therefore silently freezes the entire rendered backlog. Candidate brief: retryable vs terminal failure, or a retry sweep.
+
+**cc-0019 brief (publish-eligibility gate, brief only):** `docs/briefs/cc-0019-publish-eligibility-gate.md` — `81cb414` (create) → `01a6cdf` (harden §4 transition handling). Design: `m.is_publish_eligible(client_id, platform)` + fill-gate in `fill_pending_slots` + ai-worker preflight, to stop AI token spend on drafts with no live publish path (measured ~12% waste on disabled NY/PP IG). plan_review `a75c78f6` (partial/type-c) → re-fire `ff05c65e` (agree/clean). **NOT implemented** — execution gated on sql_destructive (Unit A migration) + ef_deploy (Unit B ai-worker) + PK approval.
+
+**Slotting audit bonus finding:** `m.materialise_slots` references `publish_enabled` only inside the per-platform format-preference lookup — a disabled profile yields NULL format → slot still inserted (defaults `image_quote`). Disablement was wired to format-selection, not skip. Two switches never unified: `client_publish_profile.publish_enabled` (publish) vs `client_publish_schedule.enabled` (materialise). cc-0019 is the unification.
+
+**Hard stops respected v3.05:**
+- cc-0019 brief only — 0 gate migration, 0 EF deploy, `fill_pending_slots` unchanged, `is_publish_eligible` not created
+- YT mutations: exactly 3 guarded migrations (draft `video_status` only) + 2 publisher invokes. 0 cron change / 0 EF deploy / 0 client enablement change / 0 queue/profile mutation / 0 hard delete
+- 0 friction.* write / Q-005 untouched / cc-0015 not started / cc-0016 Stage E not started / CFW+Invegent untouched
+- 0 decisions.md change / 0 memory edits / 0 dashboard edit (roadmap/PHASES leg N/A — operational session)
+
+**OWED:** pre-compaction 2026-05-24 IG-publish-restore arc (instagram-publisher v2.4.0 deploy; IG queue soft-purge; void+repurge migrations; cron 53 enable) has not had its own 4-way sync close. Flagged, not folded in (unverified SHAs in-context; detail in transcript `2026-05-24-07-57-08-ice-ig-restore-fresh-restart-cost-gate.txt`).
+
+*(Full detail at `docs/runtime/sessions/2026-05-24-v3.05-youtube-oauth-production-restore.md` — `f9ddd51`.)*
+
+---
+
 ### 2026-05-21 Sydney — v3.04: Dashboard Slice 0A (Pre-Phase 0 sidebar IA shell + Visual Tokens v1) MERGED at `3ec489b`
 
 **Outcome:** Dashboard **Slice 0A** merged to `invegent-dashboard` main. This is the Pre-Phase 0 / Gate-11-window reversible IA shell + lightweight visual tokens — the cosmetic work greenlit to use the Gate 11 waiting window, explicitly **not** the locked Dashboard Phase 0. Cross-repo **documentation recording only**; no dashboard edits and no Supabase from this session.
@@ -65,57 +112,19 @@
 | Review chain | CCD review PASS / CCB visual QA PASS / CCB polish re-check PASS |
 | Verification | Invegent GitHub `list_recent_commits` (SHA + message + parent) **+** live `components/sidebar.tsx` read on main (Slice 0A `NAV`/`NavGroup`/Legacy/`ChevronDown` present; mobile-drawer chrome preserved). Not taken on directive faith. |
 
-**What Slice 0A changed (dashboard side):**
-- `components/sidebar.tsx` — nav regrouped from the old Today/Monitor/Content/Configuration/System into the locked target IA: **NOW** (Daily: Overview `/overview`, Inbox `/inbox`, Pipeline `/queue`; Investigate: Flow `/monitor`, Pipeline Log `/pipeline-log`, Visual Pipeline `/visuals`, Agents `/diagnostics`, Operations `/operations`; collapsed **Legacy**: Failures `/failures`, EF Drift `/ef-drift`), **CLIENTS** (All Clients/Feeds/Onboarding/Connect), **CREATE** (Content Studio/Formats), **REPORTS** (Performance/Costs), **ADMIN** (Reviews/Compliance Rules/Subscriptions/Roadmap). All `d17b604` mobile-drawer behaviours preserved verbatim (hamburger, backdrop click, route-change close, Escape close, body-scroll lock, ARIA, desktop static rail).
-- `tailwind.config.ts` — added 5 semantic status colour scales (`critical`/`warning`/`info`/`success`/`muted`, each 50/500/600/700) additively after `cyan`; `navy`/`signal-blue`/`cyan`/`background`/`foreground` unchanged byte-for-byte.
-- `app/globals.css` — appended an `@layer components` block with 6 typography helpers + 4 spacing helpers; existing `@tailwind`/`:root`/`.dark`/`body` unchanged.
-- **No routes added or removed; no redirects; no `page.tsx`/route/layout/middleware/actions/lib/supabase touched; no Roadmap/PHASES touched.** Some NOW > Investigate labels (Pipeline, Visual Pipeline, Agents, Operations) are transitional stand-ins over existing routes until the data-backed surfaces ship.
-
 **Critical distinction preserved:** Slice 0A is **NOT** real Dashboard Phase 0. The locked Phase 0 (dashboard-review §9) — schema/data groundwork for `m.attention_item`, `m.vw_pipeline_state`, `m.brief`, `m.action_event`, the Inbox/Pipeline/Brief/Action-Layer surfaces — remains **future/gated** behind its own prerequisites (S30 cleared; M5–M8 reconciliation) and is not started by this work.
 
-**Hard stops respected v3.04:**
-- 0 Supabase mutations / 0 Invegent-dashboard edits (recording-only; the merge was applied by CCH locally + pushed, not by chat)
-- 0 Phase 0 schema/data work / 0 new data-backed surfaces
-- 0 cc-0015 start (Gate 11 still closes 2026-05-26) / 0 cc-0016 Stage E / 0 PRV / 0 Q-005 closure
-- 0 route removals / 0 redirects / 0 Roadmap/PHASES edits
-- 0 full-file rewrite from stale context (both `00_` files re-read this session — sync_state blob `348c0a6e`, action_list blob `5734b407` — then section-patched; HEAD re-read first)
-- 0 D-01 fires / 0 memory edits / 0 decisions.md edits
+**Hard stops respected v3.04:** 0 Supabase / 0 Invegent-dashboard edits (recording-only) / 0 Phase 0 schema / 0 cc-0015 start / 0 cc-0016 Stage E / 0 PRV / 0 Q-005 closure / 0 route removals / 0 redirects / 0 Roadmap/PHASES edits / 0 full-file rewrite from stale context (both `00_` files re-read — sync_state blob `348c0a6e`, action_list `5734b407`) / 0 D-01 / 0 memory edits / 0 decisions.md edits.
 
-*(Full detail at `docs/runtime/sessions/2026-05-21-v3.04-dashboard-slice-0a-merged.md` — to be authored at session close.)*
+*(Full detail at `docs/runtime/sessions/2026-05-21-v3.04-dashboard-slice-0a-merged.md`.)*
 
 ---
 
 ### 2026-05-21 Sydney — v3.03: Q-005 Option A trail (A-005 + v3.1 + v3.1.1 emission-rule guard); brief now v3.1.1; Q-005 OPEN
 
-**Outcome:** Recorded the full Q-nightly-health-check-v1-005 resolution trail. PK ratified **Option A** (explicit per-finding `condition_key`) via `A-nightly-health-check-v1-005` at `56e992b4`. The v3.1 brief patch (`7005865`) added a 9-key `condition_key` mapping. **CCD read-only verification then found v3.1 would FAIL live emission** and would have regressed the only working path. v3.1.1 guard patch (`9ceb78a`) corrects this. **Q-005 remains OPEN** — it is now a next-fire watch with a two-way close fork. No Supabase mutations, no dashboard touched, no nightly run, no re-emission, no cc-0015 start, no Stage E.
+**Outcome:** Recorded the full Q-nightly-health-check-v1-005 resolution trail. PK ratified **Option A** (explicit per-finding `condition_key`) via `A-nightly-health-check-v1-005` at `56e992b4`. The v3.1 brief patch (`7005865`) added a 9-key `condition_key` mapping. **CCD read-only verification then found v3.1 would FAIL live emission** and would have regressed the only working path. v3.1.1 guard patch (`9ceb78a`) corrects this. **Q-005 remains OPEN** — next-fire watch with a two-way close fork. No Supabase mutations, no dashboard touched, no nightly run, no re-emission, no cc-0015 start, no Stage E.
 
-**Commit trail:**
-| Step | Commit | What |
-|---|---|---|
-| A-005 ratified (Option A) | `56e992b4` | `claude_answers.md` — Option A; Q-005 stays OPEN until brief patch + next-fire verify |
-| v3.1 brief patch | `7005865` | brief v3.0 → v3.1; §12.2 explicit `condition_key` required; §12.2a 9-key mapping; §12.3 4-field return incl `skipped_count`; §12.4/§12.5 reconciliation + skip semantics |
-| v3.1.1 guard patch | `9ceb78a` | brief v3.1 → v3.1.1; emission_rule-acceptance guard (below) |
-
-**CCD read-only finding (the v3.1 defect):** the emission path has TWO gates. (1) `friction.fn_emit_health_check_findings` DOES consume an explicit `finding.condition_key` first — the v3.1 input-layer design was correct. (2) BUT `friction.emit_event` then requires an **enabled `friction.emission_rule` row for `(source='health_check', condition_key)`**, and the only currently-enabled health_check rule is `condition_key = true_stuck`. v3.1 renamed true-stuck's key to `true_stuck_cluster` and invented 8 P2 keys — **all 9 would have been rejected at the emission_rule gate**, likely producing `success_count=0` with `failure_count=5–7` and regressing the P1 true-stuck emissions that have worked since 2026-05-17.
-
-**v3.1.1 guard (no-Supabase):** (a) §12.2a corrected — true-stuck uses the live-enabled `condition_key = true_stuck` (NOT `true_stuck_cluster`); (b) the 8 unsupported P1/P2 types are **PARKED** — surfaced in Section 10 markdown with their `finding_id` comments but **omitted from the emission JSONB array** (no invented keys → no avoidable `emit_error` noise); (c) "explicit condition_key required" narrowed to apply only to finding types with an enabled emission_rule; (d) §12.3–§12.5 + success criteria reflect the interim. Full 9-key mapping **parked** pending a separate **Supabase-approved `friction.emission_rule` seed patch**.
-
-**Current brief version: v3.1.1.**
-
-**Next natural fire expected behaviour (safe):** P1 true-stuck findings emit to `friction.event` with `condition_key=true_stuck` (no regression); the parked unsupported P1/P2 types appear in the markdown but are omitted from the emission JSONB array (recorded under `omitted_unsupported_types`, expected, not a defect). Target counts: `failure_count=0`, `skipped_count=0` against the EMITTED (true-stuck-only) array.
-
-**Q-005 status: OPEN, non-blocking, next-fire watch.** Close fork:
-- **(A)** A separate Supabase-approved patch seeds `friction.emission_rule` rows for all desired P1/P2 `condition_key` values → restore the full §12.2a mapping in a follow-up brief patch → a natural fire verifies all P1+P2 emit with `failure_count=0` AND `skipped_count=0`; OR
-- **(B)** PK formally narrows emission scope to P1-true-stuck-only as the accepted end-state → a natural fire verifies the true-stuck emissions with `failure_count=0` AND `skipped_count=0`.
-
-A clean v3.1.1 interim fire is the GOOD outcome but does NOT by itself close Q-005.
-
-**Hard stops respected v3.03:**
-- 0 Supabase mutations / 0 Invegent-dashboard edits
-- 0 nightly-health-check run / 0 re-emission of 2026-05-20 P2 findings
-- 0 Q-005 closure / 0 cc-0015 start / 0 cc-0016 Stage E / 0 PRV closure
-- 0 full-file rewrite from stale context (sync_state + action_list patched surgically, HEAD `9ceb78a` re-read, per-file blob-SHA passed)
-- 0 D-01 fires / 0 memory edits / 0 decisions.md edits
+**Q-005 status: OPEN, non-blocking, next-fire watch.** Close fork: (A) seed `friction.emission_rule` rows + restore full mapping + verify; OR (B) PK formally narrows scope to P1-true-stuck-only + verify (`failure_count=0`/`skipped_count=0`).
 
 *(Full detail at `docs/runtime/sessions/2026-05-21-v3.03-q005-optionA-v3.1.1-emission-guard.md`.)*
 
@@ -123,45 +132,13 @@ A clean v3.1.1 interim fire is the GOOD outcome but does NOT by itself close Q-0
 
 ### 2026-05-21 Sydney — v3.02: Dashboard mobile/narrow viewport verification CLOSED/PASS
 
-**Outcome:** Dashboard mobile/narrow viewport verification PASSED after the dashboard mobile fix. CCB tested at **306×498 Nexus 5 Android Chrome UA, DPR 2** — result MOBILE PASS. The mobile/narrow viewport verification carry (open since dashboard slice 3, P3) is now CLOSED/PASS and removed from open P3 carries. No content-engine code changes, no Supabase mutations, no dashboard edits this session.
-
-**Mobile-fix commit (backfilled v3.02.2):** `d17b6047411ce177d6182d86a21a79f7302459af` (short `d17b604`); dashboard files `components/sidebar.tsx` + `app/(dashboard)/operations/case-row.tsx`; typecheck PASS. *(Originally recorded PENDING at v3.02 because the SHA was not in that directive payload; chat declined to fabricate. CCD supplied it and v3.02.2 backfilled it surgically — no longer pending.)*
-
-**Mobile fix resolved (CCB verified at 306×498 DPR2):** sidebar collapses to hamburger/drawer; desktop fixed rail no longer consumes mobile width; /operations rows readable; evidence paperclip badge visible; expanded Evidence section usable; triage guardrail usable; FAB usable; Roadmap readable; "Stop Claude" overlay remains external Claude Browser tooling.
-
-**Items closed v3.02:** Mobile/narrow viewport verification (CLOSED/PASS; removed from open P3 carries). Mobile-fix commit SHA backfill (CLOSED v3.02.2, `d17b604`).
-
-**Lesson candidate v3.02:** L-v3.02-a (NEW) — mobile/narrow breakpoint should be verified after any primary operator-surface change. 1 occurrence; watcher.
-
-**⚠️ v3.02.1 reconciliation (2026-05-21):** the original v3.02 close (`a08945d3`) was authored from pre-v3.01 content and its full-file push reverted v3.01's `00_` index/ranking content (Cowork WARN closure; cc-0015 rank-1 promotion; v3.01 index row). That content is restored. The v3.02 commit's "L41 mitigation applied" claim was false (HEAD not re-read before push). L41 genuinely re-exercised in the repair. v3.01 commit + session file were never lost (push didn't touch those paths).
-
-**Hard stops respected v3.02 (+v3.02.1 +v3.02.2):**
-- 0 Invegent-dashboard edits / 0 Supabase mutations
-- 0 Stage E started / 0 cleanup run
-- 0 cc-0015 start before Gate 11 closes / 0 PRV closure / 0 Q-005 closure
-- 0 deletion of smoke objects or test events
-- 0 D-01 fires / 0 memory edits / 0 decisions.md edits
-- 0 SHA fabrication (PENDING at v3.02; CCD-supplied SHA backfilled v3.02.2)
+**Outcome:** Dashboard mobile/narrow viewport verification PASSED after the dashboard mobile fix (`d17b604`). CCB tested at 306×498 Nexus 5 Android Chrome UA, DPR 2 — MOBILE PASS. The verification carry is CLOSED/PASS. *(v3.02.1 reconciliation restored v3.01 `00_` content clobbered by the original v3.02 push; v3.02.2 backfilled the mobile-fix SHA `d17b604`.)*
 
 ---
 
 ### 2026-05-21 Sydney — v3.01: Cowork brief lifecycle gating WARN CLOSED (preserved)
 
-**Outcome:** Cowork lifecycle gating WARN (open since v2.92 → reframed v2.94 → core rank 1 since v2.94) is **CLOSED**. The v2.94 lifecycle convention — `ready → (16:00 UTC natural fire) → review_required → PK observed → ready` — validated end-to-end against the **2026-05-20T16:02:37Z** natural fire as convention-cycle-1 evidence. PK accepted this single successful cycle as sufficient. `nightly-health-check-v1` brief frontmatter reset to `status: ready`. Q-nightly-health-check-v1-005 remains OPEN (non-blocking function-contract drift; future v3.1 brief / spec patch; NOT bundled into closure). No Supabase mutations; no dashboard touched; no manual/forced run.
-
-| Fact | Value |
-|---|---|
-| Run trigger | Natural 16:00 UTC cron (no manual force) |
-| Started → finished | 2026-05-20T16:02:37Z → 16:08:30Z (~6 min) |
-| Schema-drift fallbacks | 0 |
-| SQL queries | 14 / 14 verbatim |
-| Markdown output | `docs/audit/health/2026-05-20.md` |
-| Dual-write | `{success_count: 5, failure_count: 0, skipped_count: 2}` |
-| friction.event | 5 P1 (true-stuck-cluster; visible on `/operations` post Stage D) |
-| friction.emit_error | 2 P2 (`CONDITION-KEY-UNRESOLVED`) |
-| Lifecycle transition | `ready → review_required` (correct v2.94 behaviour) |
-
-**New core rank 1 = cc-0015 Gate 11 watch** (window closes 2026-05-26). Q-005 carries non-blocking. L-v2.94 convention NEW candidate (confirm across 2-3 more natural cycles before promotion-eligible).
+**Outcome:** Cowork lifecycle gating WARN CLOSED. The v2.94 lifecycle convention validated end-to-end against the 2026-05-20T16:02:37Z natural fire. `nightly-health-check-v1` brief reset to `ready`. Q-005 remains OPEN non-blocking. New core rank 1 = cc-0015 Gate 11 watch (closes 2026-05-26).
 
 *(Full detail at `docs/runtime/sessions/2026-05-21-v3.01-cowork-lifecycle-warn-closed.md`.)*
 
@@ -169,92 +146,103 @@ A clean v3.1.1 interim fire is the GOOD outcome but does NOT by itself close Q-0
 
 ### 2026-05-21 Sydney — v3.00 close (brief)
 
-cc-0016 Stage D /operations evidence display VISUAL PASS (+v3.00.1 reconciliation patch). Dashboard Stage D at `9082beb` (files: `app/(dashboard)/operations/page.tsx`, `app/(dashboard)/operations/case-row.tsx`; typecheck PASS). CCB VISUAL PASS: paperclip badge 📎1, Evidence (1) section, signed-URL thumbnail, PNG new tab (64×64). cc-0016 Stage D CLOSED/PASS; evidence path COMPLETE A→B→C→D. Stage E future/separately-approved-only. v3.00.1 corrected the stale v2.97/v2.98 placeholder note (reconciled in v2.99.1 at `2db1656`).
+cc-0016 Stage D /operations evidence display VISUAL PASS (+v3.00.1 reconciliation patch). Dashboard Stage D at `9082beb`. cc-0016 Stage D CLOSED/PASS; evidence path COMPLETE A→B→C→D.
 
 *(Full detail at `docs/runtime/sessions/2026-05-21-v3.00-cc0016-stage-d-evidence-display-visual-pass.md`.)*
 
 ---
 
-## 🟡 Next session priorities (rebuilt v3.02)
+## 🟡 Next session priorities (rebuilt v3.05)
 
-**Core ICE ranks:**
+**YouTube (NEW, from v3.05):**
 
-1. **cc-0015 Gate 11 watch** — P2 carry, rank 1 (from v3.01; Cowork WARN closed). Time-bound: window closes **2026-05-26** (~5 days out from 2026-05-21). Passive observation; when gate clears, cc-0015 friction-pool-view UI (Wave 7) unblocks as the leading dashboard build.
-2. **cc-0016 Stage E — scoping/dry-run design ONLY (if PK picks Option A)** — P2, rank 2 conditional. NON-MUTATING design work; first destructive cleanup run still requires separate PK approval + dry-run. Stage A CONSTRAINT 2 binds.
+- **YT backlog drain watch** — 13 `generated` drafts draining at 2/tick via jobid 34 (`:15/:45`). Verify `m.post_publish` youtube rows landing + `generated` counting down; re-promote any transient failures.
+- **YT token durability** — spot-check NY/PP tokens still work past ~31 May (confirms the Production change removed the 7-day cap, not just reset the clock).
+- **CFW + Invegent YouTube** — never connected (no `client_channel` YT row, no refresh token); CFW failed drafts also `approval_status='published'` not `approved`. Separate first-time onboarding when PK wants those channels live.
+- **F-YT-FAILED-NO-RETRY brief** — candidate (publisher: retryable vs terminal failure / retry sweep so a token blip self-heals).
+- **F-YT-EXPIRY-DISPLAY-FAKE cleanup** — candidate (dashboard callback hardcoded 5y expiry masks dead tokens).
+- **cc-0019 execution** — when PK directs: sql_destructive (Unit A migration recreating `fill_pending_slots` + `is_publish_eligible`) + ef_deploy (Unit B ai-worker preflight) + PK approval. Brief reviewed clean (`ff05c65e`).
+
+**Core ICE ranks (carried from v3.02–v3.04, unchanged):**
+
+1. **cc-0015 Gate 11 watch** — P2 carry, rank 1. Window closes **2026-05-26**. Passive; when gate clears, cc-0015 friction-pool-view UI (Wave 7) unblocks.
+2. **cc-0016 Stage E — scoping/dry-run design ONLY (if PK picks Option A)** — P2, rank 2 conditional. NON-MUTATING design; first destructive run requires separate PK approval + dry-run. Stage A CONSTRAINT 2 binds.
 3. **Wave 0f scoping** — P3, rank 3. Opportunistic during Gate 11 window.
 4. **Platform Reconciliation View brief authoring** — P2 carry, rank 4 (deferred per D-FR-RECON-001 §7.D).
 5. **5-row close-the-loop batch / Pre-sales / `purge_test_case` helper case_history extension** — P2/P3 carry, rank 5.
 
 **Carries flagged (NOT actively ranked):**
-- **Q-nightly-health-check-v1-005** — OPEN, non-blocking, **next-fire watch (v3.03)**. Brief now **v3.1.1**: P1 true-stuck emits with `condition_key=true_stuck`; 8 P2/P1 condition keys PARKED (markdown-only) pending a Supabase-approved `friction.emission_rule` seed patch. A-005 `56e992b4` / v3.1 `7005865` / v3.1.1 `9ceb78a`. **Closes only via fork (A) seed emission_rule rows + restore full mapping + verify, OR (B) PK formally narrows scope to P1-true-stuck-only + verify** (`failure_count=0`/`skipped_count=0` on a natural fire).
-- **3 no-fire scheduler days** (2026-05-16, 2026-05-18, 2026-05-19) — P3 secondary; informational only.
+- **Q-nightly-health-check-v1-005** — OPEN, non-blocking, next-fire watch. Brief **v3.1.1**: P1 true-stuck emits with `condition_key=true_stuck`; 8 P2/P1 keys PARKED pending a Supabase-approved `emission_rule` seed patch. Close fork (A) seed + restore + verify, OR (B) PK narrows scope + verify.
+- **OWED: IG-publish-restore arc 4-way close (2026-05-24, pre-compaction)** — instagram-publisher v2.4.0 deploy; IG queue soft-purge; void+repurge migrations; cron 53 enable. Detail in transcript `2026-05-24-07-57-08-ice-ig-restore-fresh-restart-cost-gate.txt`. Not folded into v3.05 (unverified SHAs in-context).
+- **3 no-fire scheduler days** (2026-05-16, 2026-05-18, 2026-05-19) — P3 informational.
 
-**Dashboard work (v3.04 update):** Slice 0A (Pre-Phase 0 IA shell + Visual Tokens v1) MERGED at `3ec489b`. **This does NOT advance the dashboard ranks below** — it was Gate-11-window cosmetic work, not Phase 0 and not cc-0015. Real Phase 0 (review §9 schema groundwork) remains future/gated; cc-0015 friction-pool-view (D1) still gated on Gate 11 closing 2026-05-26.
+**Dashboard work (unchanged from v3.04):** Slice 0A merged at `3ec489b` (cosmetic, NOT Phase 0, NOT cc-0015). Real Phase 0 (review §9) future/gated; cc-0015 friction-pool-view (D1) gated on Gate 11 closing 2026-05-26. PRV surface (D2) deferred.
 
-*(Mobile-fix commit SHA backfill — CLOSED v3.02.2: `d17b604`. No longer a carry.)*
-
-**Time-bound nudge:** cc-0015 Gate 11 observation window closes **2026-05-26** (~5 days out). When it closes, cc-0015 friction-pool-view UI (Wave 7) unblocks.
-
-**Dashboard work (separately ranked v3.02; v3.04 status note):**
-
-1. **D1**: cc-0015 friction-pool-view UI (slice 5) — P2, Gate 11 closes 2026-05-26 (leading dashboard build once gate clears). *(Unaffected by Slice 0A — 0A was cosmetic shell only.)*
-2. **D2**: PRV surface — P2, brief authoring deferred.
-
-*(Mobile/narrow viewport verification removed from dashboard work — CLOSED/PASS v3.02; SHA backfilled v3.02.2. Slice 0A IA shell MERGED v3.04 — cosmetic, not a ranked build.)*
+**Time-bound nudge:** cc-0015 Gate 11 window closes **2026-05-26**.
 
 **Standing P0:** Personal businesses check-in. Crazy Domains refund + clean-up carry from v2.51.
 
-Carries: cc-0015 (Wave 7, gated on Gate 11 closing 2026-05-26); cc-0016 Stage E (future/separately-approved); **Q-005 (OPEN, next-fire watch; brief v3.1.1; emission_rule seed-or-narrow fork)**; cc-0017c v1.2 doc patch; cc-0017a v1.2 doc patch; vchecks.md V-B4 doc patch; minor doc patches; F-CRON-AUTO-APPROVER-SECRET-INLINE; backend/shared-metrics refactor (deferred); lesson promotions (L-v2.83-a STRONG 18+; **L-v2.85-e PROMOTION-CONFIRMED**; L-v2.85-a HIGH-SIGNAL 4 occurrences; L62 strongly reinforced via cc-0016 6-fire series; L-v2.88-a watcher CLOSED for cc-0016; **L-v2.94 convention NEW candidate**; **L-v3.02-a NEW candidate**; **L-v3.03-a NEW candidate**; **L41 re-exercised v3.02.1 + reinforced v3.03/v3.04**; L-v2.90-a-f watchers).
+Carries: cc-0015 (Wave 7, gated on Gate 11 2026-05-26); cc-0016 Stage E (future/separately-approved); **Q-005 (OPEN, next-fire watch; brief v3.1.1)**; **YT backlog drain watch / YT token durability / CFW+Invegent YT onboarding / F-YT-FAILED-NO-RETRY brief / F-YT-EXPIRY-DISPLAY-FAKE cleanup / cc-0019 execution (NEW v3.05)**; cc-0017c v1.2 doc patch; cc-0017a v1.2 doc patch; vchecks.md V-B4 doc patch; minor doc patches; F-CRON-AUTO-APPROVER-SECRET-INLINE; backend/shared-metrics refactor (deferred); lesson promotions (L-v2.83-a STRONG 18+; **L-v2.85-e PROMOTION-CONFIRMED**; L-v2.85-a HIGH-SIGNAL 4 occurrences; L62 strongly reinforced; L-v2.88-a watcher; **L-v2.94 convention NEW candidate**; **L-v3.02-a / L-v3.03-a / L-v3.04-a NEW candidates**; **L-v3.05-a NEW candidate — record the root CAUSE not just the symptom (YT re-diagnosed as token-reconnect 3× because the Testing-mode cause was never written down)**; **L41 re-exercised v3.02.1 + reinforced v3.03/v3.04/v3.05**; L-v2.90-a-f watchers).
 
 ---
 
 ## ⛔ Carried-forward "do not touch" state
 
+**v3.05 update — YouTube:**
+
+- **YouTube RESTORED v3.05.** OAuth app moved to Production (PK); NY+PP tokens re-exchanged today (`1//`, 103 chars; NY 10:48 / PP 10:49 UTC). Both verified publishing (`ma6EG1fz4XQ`, `qp-ZGm8lNIo`). **Do NOT reconnect tokens as a "fix" again** — if YT breaks at a clean 7-day boundary, the cause is OAuth publishing status (Testing), not the token. Durability past ~31 May to be spot-checked.
+- **YT backlog state:** NY 6 + PP 7 = 13 `generated` (draining 2/tick via jobid 34); NY 3 + PP 11 = 14 `archived_stale` (soft-retired, reversible — do NOT hard-delete; preserve audit); NY 3 + PP 9 `failed`-out-of-guard (non-uploadable format / non-approved; untouched). **Do NOT bulk-reset `archived_stale` back to `generated`** without PK direction (they are deliberately retired stale content).
+- **youtube-publisher v1.6.0** unchanged. **F-YT-FAILED-NO-RETRY**: its catch handler sets transient auth failure to terminal `failed` (never re-selected). Reliability gap — candidate brief; do NOT treat `failed` YT drafts as auto-recoverable.
+- **F-YT-EXPIRY-DISPLAY-FAKE**: dashboard `app/api/youtube/callback/route.ts` hardcodes `token_expires_at = now()+5y`; the "Expires …2031" display is fabricated and does NOT reflect Google token validity. Candidate cleanup.
+- **CFW + Invegent YouTube** — never connected (no `c.client_channel` YT row, no refresh token). Separate onboarding; not a token reconnect.
+- **cc-0019 brief** (`docs/briefs/cc-0019-publish-eligibility-gate.md`, `01a6cdf`) reviewed clean (`ff05c65e`) — DRAFT, NOT implemented. `m.fill_pending_slots` unchanged; `m.is_publish_eligible` not created. Execution needs sql_destructive + ef_deploy D-01s + PK approval.
+- **OWED:** IG-publish-restore arc 4-way close (2026-05-24, pre-compaction) — see Next priorities.
+
 **v3.04 update on dashboard items:**
 
-- **Dashboard Slice 0A MERGED v3.04** — `invegent-dashboard` main now `3ec489b` (parent `d17b604`; squash of `e65b812` + `399c087`). Pre-Phase 0 / Gate-11-window sidebar IA shell + Visual Tokens v1. Files: `components/sidebar.tsx` + `tailwind.config.ts` + `app/globals.css`. Typecheck exit 0; CCD/CCB/CCB-polish PASS. **Slice 0A is NOT real Dashboard Phase 0** — review §9 Phase 0 schema groundwork (`m.attention_item`/`m.vw_pipeline_state`/`m.brief`/`m.action_event` + Inbox/Pipeline/Brief/Action-Layer surfaces) remains future/gated (S30 + M5–M8 prerequisites). Some NOW > Investigate labels are transitional stand-ins over existing routes. **No data-backed surface shipped; cc-0015 NOT started.**
+- **Dashboard Slice 0A MERGED v3.04** — `invegent-dashboard` main now `3ec489b` (parent `d17b604`; squash of `e65b812` + `399c087`). Pre-Phase 0 / Gate-11-window sidebar IA shell + Visual Tokens v1. Files: `components/sidebar.tsx` + `tailwind.config.ts` + `app/globals.css`. Typecheck exit 0; CCD/CCB/CCB-polish PASS. **Slice 0A is NOT real Dashboard Phase 0** — review §9 Phase 0 schema groundwork remains future/gated (S30 + M5–M8 prerequisites). **No data-backed surface shipped; cc-0015 NOT started.**
 
 **v3.02 (+v3.02.1 +v3.02.2) updates on standing items:**
 
 - **Mobile/narrow viewport verification CLOSED/PASS v3.02.** CCB at 306×498 Nexus 5 DPR2. Removed from open P3 carries.
-- **Mobile-fix commit SHA CLOSED v3.02.2** — `d17b6047411ce177d6182d86a21a79f7302459af` (short `d17b604`); dashboard files `components/sidebar.tsx` + `app/(dashboard)/operations/case-row.tsx`; typecheck PASS. No longer pending. *(v3.04: `d17b604` is now the parent of the Slice 0A merge `3ec489b`.)*
-- **Cowork brief lifecycle gating WARN — CLOSED v3.01.** v2.94 convention validated end-to-end against the 2026-05-20T160237Z natural fire. Brief reset to `ready` for next cycle. Q-005 carries non-blocking. **No longer at core rank 1.** *(This fact was clobbered by the original v3.02 push and restored in v3.02.1.)*
-- **cc-0016 Stage D CLOSED/PASS v3.00.** Dashboard `9082beb`. Evidence display live on `/operations` (now also mobile-verified).
+- **Mobile-fix commit SHA CLOSED v3.02.2** — `d17b6047411ce177d6182d86a21a79f7302459af` (short `d17b604`); dashboard files `components/sidebar.tsx` + `app/(dashboard)/operations/case-row.tsx`; typecheck PASS. *(v3.04: `d17b604` is now the parent of the Slice 0A merge `3ec489b`.)*
+- **Cowork brief lifecycle gating WARN — CLOSED v3.01.** Brief reset to `ready`. Q-005 carries non-blocking.
+- **cc-0016 Stage D CLOSED/PASS v3.00.** Dashboard `9082beb`. Evidence display live on `/operations` (mobile-verified).
 - **cc-0016 evidence capture/display path COMPLETE through Stage D** (A→B→C→D).
 - **cc-0016 Stage B CLOSED/PASS** (v2.99). Dashboard `36fe6ad`. V-A5 PASS.
-- **cc-0016 Stage A CLOSED** (applied v2.97; session file verified in v2.99.1 at `2db1656`).
-- **cc-0016 Stage C CLOSED** (applied v2.98; session file verified in v2.99.1 at `2db1656`).
+- **cc-0016 Stage A CLOSED** (v2.97; verified in v2.99.1 at `2db1656`).
+- **cc-0016 Stage C CLOSED** (v2.98; verified in v2.99.1 at `2db1656`).
 - **cc-0016 Stage E** — future/separately-approved-only. Stage A CONSTRAINT 2 binds. Do NOT start automatically.
 - **V-A5 smoke object** `friction-evidence/9e314151-be65-434e-8588-c913012f6591/0_va5-smoke.png` — DO NOT DELETE; Stage D demo artefact.
 - **Smoke events** `2120b2f7` + `75f0c981` — DO NOT cleanup unless separately directed.
-- **cc-0015 / PRV** unchanged — preserved open. cc-0015 do NOT start before Gate 11 closes 2026-05-26. *(v3.04: Slice 0A merge does NOT start cc-0015.)*
-- **Q-nightly-health-check-v1-005 — OPEN, non-blocking, next-fire watch (v3.03).** Brief patched to **v3.1.1** (A-005 `56e992b4` / v3.1 `7005865` / v3.1.1 `9ceb78a`). Live emission has TWO gates: function consumes explicit `condition_key` (OK) AND `friction.emit_event` requires an enabled `friction.emission_rule` row for `(health_check, condition_key)` — only `true_stuck` is enabled. v3.1.1 emits P1 true-stuck with `condition_key=true_stuck` and PARKS the other 8 P1/P2 keys (markdown-only; omitted from emission JSONB) pending a Supabase-approved `emission_rule` seed patch. **Do NOT seed emission_rule rows, re-emit, or close Q-005 without explicit PK direction.** Close fork: (A) seed rules + restore full mapping + verify, OR (B) PK formally narrows scope to P1-true-stuck-only + verify (`failure_count=0`/`skipped_count=0`).
+- **cc-0015 / PRV** unchanged — preserved open. cc-0015 do NOT start before Gate 11 closes 2026-05-26.
+- **Q-nightly-health-check-v1-005 — OPEN, non-blocking, next-fire watch (v3.03).** Brief **v3.1.1** (A-005 `56e992b4` / v3.1 `7005865` / v3.1.1 `9ceb78a`). Emits P1 true-stuck with `condition_key=true_stuck`; PARKS the other 8 P1/P2 keys (markdown-only) pending a Supabase-approved `emission_rule` seed patch. **Do NOT seed emission_rule rows, re-emit, or close Q-005 without explicit PK direction.**
 - **Dashboard slices 1–3 + 4A–4B RECORDED** v2.95 + v2.96 (carry).
-- **cc-0016 Stage B + Stage D** live on `dashboard.invegent.com` (`36fe6ad` + `9082beb`); now mobile-verified (mobile fix `d17b604`).
 - **Top alert bar count reconciliation CLOSED for UI-copy scope v2.96** (carry).
 - **Dashboard PHASES 46-streak deferral CLOSED v2.95** (carry).
-- **"Stop Claude" overlay external/non-app v2.95** (carry; re-confirmed external in v3.02 mobile pass).
+- **"Stop Claude" overlay external/non-app v2.95** (carry).
 - **Backend/shared-metrics refactor** — deferred carry; not actively ranked.
-- **Reconciliation daily cadence diagnostic CLOSED-PASS v2.93** — carry.
-- **D-FR-RECON-001 v1.0 at `fc726e3c`** — carry.
+- **Reconciliation daily cadence diagnostic CLOSED-PASS v2.93** — carry. **D-FR-RECON-001 v1.0 at `fc726e3c`** — carry.
 - **cc-0017a/b/c/d/e APPLIED**, **cc-0014 CLOSED-ARCHIVED** — unchanged.
-- **Cowork brief `nightly-health-check-v1`** — **now v3.1.1** (was FROZEN at v3.0; reopened for the Q-005 Option A condition_key contract reconciliation + v3.1.1 emission_rule guard). Frontmatter `status: ready`. Q-005 carries OPEN non-blocking (next-fire watch).
+- **Cowork brief `nightly-health-check-v1`** — **now v3.1.1**. Frontmatter `status: ready`. Q-005 carries OPEN non-blocking.
+- **cron 53 (instagram-publisher) ENABLED** (pre-compaction IG arc, 2026-05-24); cron 64 paused; NY/PP IG `publish_enabled=false`; CFW+Invegent IG enabled. *(Detail owed — see IG-restore close carry.)*
 - **cron 82-86** firing normally.
-- **L41**: **re-exercised v3.02.1** — the original v3.02 full-file push clobbered v3.01 `00_` content (claimed-but-not-performed HEAD re-read); v3.02.1 repaired via read-HEAD-first per-file patches; v3.02.2 SHA backfill re-applied the same discipline cleanly; **v3.03 sync recording also done surgically (HEAD re-read, per-file blob-SHA passed); v3.04 dashboard-merge recording likewise read both HEADs first (sync_state `348c0a6e`, action_list `5734b407`) before writing.** Strong negative-then-positive exemplar.
-- **L40 / L46 / L58 / L62**: L62 strongly reinforced via cc-0016 series; L40/L46/L58 not exercised.
+- **L41**: **re-exercised v3.02.1**, reinforced v3.02.2/v3.03/v3.04, **reinforced v3.05** (session file new; sync_state + action_list patched read-HEAD-first with sha passed). Strong negative-then-positive exemplar.
+- **L40 / L46 / L58 / L62**: L62 strongly reinforced via cc-0016 series; L40/L46/L58 not exercised. *(v3.05: L62 reinforced again — both YT sql_destructive D-01s `82443c8c`/`5f7bfc52` returned partial/type-c echoes, satisfied + proceeded on PK approval.)*
 - **L-v2.83-a**: **18+ occurrences**. STRONG CANDIDATE confirmed.
 - **L-v2.85-a HIGH-SIGNAL**: 4 occurrences (unchanged).
-- **L-v2.85-e**: PROMOTION-CONFIRMED v2.88. *(Streak-counting muddied by the v3.02 clobber + v3.02.1 repair; treat the "consecutive" tally as needing a clean re-baseline next clean close rather than as a clean 15th.)*
-- **L-v2.88-a**: watcher CLOSED for cc-0016. 2 prior occurrences (v2.88 + v2.91) carry for other contexts. **NOTE: the re-sent identical v3.02 directive was itself an L-v2.88-a identical-directive event — chat recognised the duplicate and did NOT re-execute; instead repaired the clobber.**
-- **L-v2.94 convention**: NEW candidate (v3.01). Confirm across 2-3 more natural cycles.
-- **L-v3.02-a**: NEW candidate (mobile breakpoint verification after primary operator-surface change). 1 occurrence; watcher.
-- **L-v3.03-a**: NEW candidate (verify downstream acceptance gates, not just function input contract, before declaring a contract-reconciliation patch correct). 1 occurrence; watcher.
+- **L-v2.85-e**: PROMOTION-CONFIRMED v2.88. *(Streak-counting muddied by the v3.02 clobber + v3.02.1 repair; re-baseline at next clean close.)*
+- **L-v2.88-a**: watcher; 3 cumulative occurrences (v2.88 + v2.91 + v3.02 re-send).
+- **L-v2.94 convention**: NEW candidate (v3.01).
+- **L-v3.02-a**: NEW candidate (mobile breakpoint verification). 1 occurrence.
+- **L-v3.03-a**: NEW candidate (verify downstream acceptance gates). 1 occurrence.
+- **L-v3.04-a**: NEW candidate (independently verify cross-repo merge SHA + content). 1 occurrence.
+- **L-v3.05-a**: NEW candidate (v3.05) — **record the root CAUSE, not just the symptom**: YouTube was re-diagnosed as "reconnect the token" across ≥3 sessions because the actual cause (OAuth app in Testing → 7-day token cap) was never written into the durable record. 1 occurrence; watcher. Pair with the "audit can be stale — verify against live data when the user pushes back" sub-lesson.
 - **L-v2.90-a-f**: not empirically re-exercised. Watchers.
-- **22 close-the-loop UPDATEs baseline** — Stage C 3 rows assumed resolved at v2.98 apply; net not recomputed.
-- **T-MCP-02 quota: ~92 cumulative** unchanged (0 D-01).
-- State-capture exceptions: 1 unchanged.
+- **22 close-the-loop UPDATEs baseline** — unchanged.
+- **T-MCP-02 quota: ~96 cumulative (v3.05 +4 D-01: 2 plan_review cc-0019 + 2 sql_destructive YT)**, ON TOP of an estimated ~+5 from the unrecorded pre-compaction IG arc → **treat cumulative as needing a clean re-baseline (~101–105 range)**, not a precise figure. State-capture exceptions: 1 unchanged.
 - Standing don't-redeploy three (heygen-avatar-creator, heygen-avatar-poller, draft-notifier).
-- **Production FAB + evidence display live on dashboard.invegent.com** (Stage B + Stage D); now mobile-verified (mobile fix `d17b604`).
+- **Production FAB + evidence display live on dashboard.invegent.com** (Stage B + Stage D); mobile-verified.
 - **Localhost FAB cleanup pending** (`.env.local`).
 - **D-CC-0017B-Q1** + **D-IOL-001** (v2.77) carried.
 
@@ -262,10 +250,10 @@ Carries: cc-0015 (Wave 7, gated on Gate 11 closing 2026-05-26); cc-0016 Stage E 
 
 ## 📜 G1 convention (the rule)
 
-Unchanged. v3.02 per-session file `docs/runtime/sessions/2026-05-21-v3.02-dashboard-mobile-viewport-pass.md` committed; v3.02.1 reconciliation restored v3.01 `00_` content + corrected the false L41-mitigation claim via read-HEAD-first per-file `create_or_update_file` patches (sync_state + action_list + v3.02 session file); v3.02.2 backfilled the mobile-fix SHA `d17b604` the same surgical way. **v3.03 recorded the Q-005 Option A / v3.1 / v3.1.1 trail into sync_state + action_list via read-HEAD-first surgical edits (HEAD `9ceb78a` re-read, per-file blob-SHA passed). v3.04 recorded the Dashboard Slice 0A merge (`3ec489b`) into sync_state + action_list the same way (both `00_` HEADs re-read first — sync_state `348c0a6e`, action_list `5734b407`).** `decisions.md` not touched.
+Unchanged. **v3.05 recorded via the surgical discipline: new session file `f9ddd51` created; sync_state + action_list patched with read-HEAD-first `create_or_update_file` calls passing the just-read blob SHAs (sync_state `7d2b0eb8`, action_list `ecaf50f8`) to detect concurrent edits.** Dashboard roadmap/PHASES leg N/A this cycle (operational session, no phase change). `decisions.md` not touched.
 
-**Lesson surfaced (v3.02.1):** after an out-of-band commit lands (here v3.01 `83cd633c`, authored by another agent between v3.00.1 and v3.02), a subsequent full-file `push_files` from stale-held content silently reverts the intervening work even though git advances cleanly on the new parent. Full-file sync writes MUST re-read HEAD first. This is the same failure flagged at v3.00.1 — it recurred at v3.02 because the mitigation was claimed but not performed. **Prefer surgical/section-scoped edits over full-file rewrites for the `00_` index files** (the v3.02.2 backfill + v3.03 recording + v3.04 recording are the positive exemplars). Pair-promote with L41.
+**Lesson surfaced (v3.05):** an audit committed to memory/docs goes stale — when YT was reported "fixed then broke again," the right move was to re-run the audit against live data rather than trust the 1 May finding. And recording only the *symptom*-level fix (reconnect token) let the same root cause (Testing-mode 7-day expiry) recur silently ≥3 times. Record causes, not just fixes (L-v3.05-a).
 
 ---
 
-*Last updated: 2026-05-21 Sydney — v3.04: Dashboard Slice 0A (Pre-Phase 0 sidebar IA shell + Visual Tokens v1) MERGED to invegent-dashboard main at `3ec489b6fb1e4ad706aac9d32f7fefa4ad43b9c5` (parent `d17b604`; squash of `e65b812` + `399c087` CCB polish; committed 2026-05-21T08:17:18Z). Files: `components/sidebar.tsx` + `tailwind.config.ts` + `app/globals.css` (exactly 3). Typecheck exit 0; CCD PASS / CCB PASS / CCB polish PASS. Commit SHA + content independently verified (Invegent GitHub list_recent_commits + live sidebar.tsx read). Slice 0A is NOT real Dashboard Phase 0 — review §9 schema groundwork remains future/gated. Cross-repo documentation recording only; recorded via read-HEAD-first surgical edits (sync_state blob `348c0a6e`). cc-0015 Gate 11 watch preserved rank 1 (closes 2026-05-26); cc-0016 Stage E separately-approved; PRV deferred; Q-005 OPEN non-blocking next-fire watch. 0 Supabase / 0 dashboard edits / 0 Phase 0 schema / 0 cc-0015 start / 0 Stage E / 0 PRV / 0 Q-005 closure / 0 decisions.md change / 0 D-01 / 0 memory edits. T-MCP-02 cum ~92. State-capture exceptions cum 1. v3.03 + v3.02 (+v3.02.1 +v3.02.2) + v3.01 + v3.00 detail preserved above.*
+*Last updated: 2026-05-24 Sydney — v3.05: YouTube OAuth Production restore. Root cause = OAuth app in Google "Testing" publishing status → refresh tokens capped at 7 days (NY 7.00d / PP 7.92d after 5 May reconnect). PK moved app → Production + re-exchanged tokens (NY token_updated_at 10:48:22, PP 10:49:05 UTC); two live tests published (PP `ma6EG1fz4XQ` 10:57 UTC, NY `qp-ZGm8lNIo` 11:02 UTC) — both channels' tokens refresh, no invalid_grant. Backlog released (fresh ≥12 May → generated: NY 6 + PP 7 = 13, draining 2/tick jobid 34) + soft-retired (stale <12 May → archived_stale: NY 3 + PP 11 = 14). Migrations: yt_token_verify_reset_one_pp_draft / yt_token_verify_reset_one_ny_draft / yt_backlog_release_fresh_softretire_stale (all 20260524). cc-0019 brief authored `81cb414` + hardened `01a6cdf`, plan_review `a75c78f6`→`ff05c65e` clean — brief only, NOT implemented. NEW: F-YT-OAUTH-TESTING-MODE (root cause RESOLVED+recorded), F-YT-FAILED-NO-RETRY (publisher terminal-fail gap, candidate brief), F-YT-EXPIRY-DISPLAY-FAKE (callback hardcoded 5y expiry). 4 D-01 (2 plan_review + 2 sql_destructive). 3 apply_migration + 2 publisher invokes. 0 cron change / 0 EF deploy / 0 enablement / 0 hard delete / 0 friction.* / 0 cc-0015 / 0 Stage E / 0 Q-005 closure / 0 decisions.md / 0 dashboard edit / 0 memory edit. T-MCP-02 cum ~96 (needs re-baseline incl. unrecorded IG arc). State-capture exceptions cum 1. cc-0015 Gate 11 watch preserved rank 1 (closes 2026-05-26); cc-0016 Stage E separately-approved; PRV deferred; Q-005 OPEN non-blocking. OWED: pre-compaction IG-publish-restore arc 4-way close. Session file `f9ddd51`. v3.04 + v3.03 + v3.02 (+.1 +.2) + v3.01 + v3.00 detail preserved above.*
