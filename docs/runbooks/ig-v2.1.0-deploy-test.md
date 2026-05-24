@@ -25,6 +25,11 @@ URL=https://mbkmaxqhsohbtwsqolns.supabase.co/functions/v1/instagram-publisher
 # headers used below: -H "apikey: $SUPABASE_ANON_KEY" -H "x-publisher-key: $PUBLISHER_API_KEY" -H "Content-Type: application/json"
 ```
 
+**Invoke timeout (REQUIRED — v2.2.0).** The EF now polls the image container (up to `IMAGE_CONTAINER_POLL_MAX_MS = 120s` + publish/write overhead, ~130s worst case; images normally finish in seconds). The caller must wait long enough:
+- **`net.http_post`**: set `timeout_milliseconds := 180000` (≥ 180000) — the pg_net default is only 5000 ms, which would record a false timeout while the EF keeps running. **This also applies to cron 53's `net.http_post` command and must be set there before any cron-53 re-enable.**
+- **curl**: use `-m 200` on the live Tests below (the dry-run is fast).
+- EF-side bound: the synchronous response is still capped by Supabase's **150s request idle timeout**; the image path's ~130s worst case stays under it (verified against Free 150s / Paid 400s wall-clock limits — this project is paid).
+
 ## Baseline (read-only)
 ```sql
 SELECT c.client_slug, cpp.destination_id, cpp.max_per_day, cpp.min_gap_minutes,
