@@ -63,6 +63,24 @@
 // - VIDEO and CAROUSEL paths are UNCHANGED from v2.2.0 (they still poll via
 //   pollContainerReady, which remains defined and in use).
 // - Throttle / destination_id gate / 2207051 auto-pause: byte-unchanged.
+//
+// v2.4.0 (2026-05-24) — RE-B: bounded outer per-row retry cap (brief
+//   docs/briefs/ig-publisher-v2.3.0-image-publish-retry.md §7 RE-B carry):
+// - The outer catch previously requeued every failed row +10min WITHOUT
+//   incrementing attempt_count or capping retries → a persistently-failing row
+//   could retry indefinitely (a dead row was observed at attempt_count=734).
+// - FIX: increment attempt_count on every failure; once a NON-rate-limited row
+//   reaches MAX_PUBLISH_ATTEMPTS, mark it status='dead' (terminal) with a
+//   dead_reason instead of requeuing. Under the cap, the existing +10min
+//   requeue is preserved.
+// - Rate-limited failures (2207051 / code 4) are EXEMPT from the dead cap: the
+//   6h profile auto-pause is their containment, so an account/app-level
+//   restriction never kills otherwise-publishable content. They still increment
+//   attempt_count and requeue (pause-gated by the lock RPC).
+// - Auth/other persistent errors therefore die after MAX_PUBLISH_ATTEMPTS
+//   instead of retrying forever. The v2.3.0 in-attempt 9007/2207027 retry
+//   (publishWithReadinessRetry), the destination_id gate, and the defensive
+//   throttle are all byte-unchanged.
 
 import { Hono } from 'jsr:@hono/hono';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -75,7 +93,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
 };
 
-const VERSION = 'instagram-publisher-v2.3.0';
+const VERSION = 'instagram-publisher-v2.4.0';
 const IG_GRAPH_BASE = 'https://graph.facebook.com/v19.0';
 const IMAGE_HOLD_MINUTES = 30;
 // v2.1.0: on a 2207051 / code-4 IG restriction, pause the profile this long
@@ -98,6 +116,12 @@ const PUBLISH_PRE_DELAY_MS = 2_000;
 // boundaries keep this from matching a code embedded in an fbtrace_id, and it
 // deliberately does NOT match 2207051 (rate limit -> must propagate to pause).
 const PUBLISH_NOT_READY_RE = /\b(?:9007|2207027)\b/;
+// v2.4.0 (RE-B): OUTER per-row retry cap, distinct from the in-attempt 9007
+// retry above. After this many failed processing attempts, a NON-rate-limited
+// queue row is marked dead (terminal) rather than requeued indefinitely. Tight
+// because transient container-readiness is already absorbed in-attempt; ~40 min
+// of +10min backoffs before a genuinely-broken row dies. Tunable.
+const MAX_PUBLISH_ATTEMPTS = 5;
 
 const IG_IMAGE_FORMATS = new Set(['image_quote', 'carousel']);
 const IG_VIDEO_FORMATS = new Set([
@@ -826,12 +850,14 @@ app.post('*', async (c) => {
 
     } catch (e: any) {
       const errMsg = (e?.message ?? String(e)).slice(0, 4000);
-      console.error(`[instagram-publisher] failed ${queueId}:`, errMsg);
+      // RE-B (v2.4.0): every entry into the catch is one processing attempt.
+      const newAttempt = (q.attempt_count ?? 0) + 1;
+      console.error(`[instagram-publisher] failed ${queueId} attempt=${newAttempt}/${MAX_PUBLISH_ATTEMPTS}:`, errMsg);
 
       // v2.1.0: 2207051 / code 4 (IG content-publishing restriction / app request
       // limit) → auto-pause this profile via cpp.paused_until (honoured by
       // m.publisher_lock_queue_v2), so a restriction does not turn into a retry
-      // burst. Does not flip publish_enabled.
+      // burst. Does not flip publish_enabled. (Unchanged.)
       const rateLimited = /2207051|"code"\s*:\s*4\b|application request limit/i.test(errMsg);
       if (rateLimited && profileForPause?.client_publish_profile_id) {
         const pauseUntil = new Date(Date.now() + RATE_LIMIT_PAUSE_HOURS * 60 * 60_000).toISOString();
@@ -841,17 +867,43 @@ app.post('*', async (c) => {
         console.warn(`[instagram-publisher] AUTO-PAUSED profile ${profileForPause.client_publish_profile_id} until ${pauseUntil} (rate-limit/2207051)`);
       }
 
-      // Backoff: requeue 10 min from now with the error captured
-      const backoffIso = new Date(Date.now() + 10 * 60_000).toISOString();
-      await supabase.schema('m').from('post_publish_queue').update({
-        status: 'queued',
-        scheduled_for: backoffIso,
-        last_error: errMsg,
-        locked_at: null, locked_by: null,
-        updated_at: nowIso(),
-      }).eq('queue_id', queueId);
+      // RE-B (v2.4.0): bounded outer retry. A NON-rate-limited row that has
+      // exhausted MAX_PUBLISH_ATTEMPTS is marked dead (terminal) instead of being
+      // requeued forever. Rate-limited rows are EXEMPT from the cap — the 6h
+      // auto-pause above is their containment; they always requeue (pause-gated
+      // by the lock RPC) so an account/app-level restriction never kills
+      // otherwise-publishable content.
+      const exhausted = !rateLimited && newAttempt >= MAX_PUBLISH_ATTEMPTS;
 
-      // Audit-trail failed publish row
+      if (exhausted) {
+        const deadReason = `re_b_max_attempts:${newAttempt}/${MAX_PUBLISH_ATTEMPTS}`;
+        await supabase.schema('m').from('post_publish_queue').update({
+          status: 'dead',
+          attempt_count: newAttempt,
+          dead_reason: deadReason,
+          last_error: errMsg,
+          scheduled_for: null,
+          locked_at: null, locked_by: null,
+          updated_at: nowIso(),
+        }).eq('queue_id', queueId);
+        console.error(`[instagram-publisher] DEAD ${queueId} attempt=${newAttempt}/${MAX_PUBLISH_ATTEMPTS} dead_reason=${deadReason}`);
+      } else {
+        // Backoff: requeue 10 min from now with the error + attempt captured.
+        // (Rate-limited rows also carry scheduled_for here, but the profile pause
+        // dominates re-lock timing.)
+        const backoffIso = new Date(Date.now() + 10 * 60_000).toISOString();
+        await supabase.schema('m').from('post_publish_queue').update({
+          status: 'queued',
+          scheduled_for: backoffIso,
+          attempt_count: newAttempt,
+          last_error: errMsg,
+          locked_at: null, locked_by: null,
+          updated_at: nowIso(),
+        }).eq('queue_id', queueId);
+        console.log(`[instagram-publisher] requeue ${queueId} attempt=${newAttempt}/${MAX_PUBLISH_ATTEMPTS} rate_limited=${rateLimited} next=${backoffIso}`);
+      }
+
+      // Audit-trail failed publish row (unchanged behaviour)
       await supabase.schema('m').from('post_publish').insert({
         queue_id: queueId,
         ai_job_id: q.ai_job_id,
@@ -867,7 +919,14 @@ app.post('*', async (c) => {
         created_at: nowIso(),
       });
 
-      results.push({ queue_id: queueId, status: 'failed', error: errMsg, auto_paused: rateLimited });
+      results.push({
+        queue_id: queueId,
+        status: exhausted ? 'dead' : 'failed',
+        attempt_count: newAttempt,
+        error: errMsg,
+        auto_paused: rateLimited,
+        dead: exhausted,
+      });
     }
   }
 
