@@ -9,7 +9,16 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.12.0";
+const VERSION = "ai-worker-v2.13.0";
+// v2.13.0 — cc-0019 publish-eligibility preflight (Unit B). After job lock +
+//   client/platform resolution and BEFORE any model call, re-check
+//   m.is_publish_eligible(client_id, platform). If ineligible, mark the job
+//   status='dead' + dead_reason='publish_path_disabled_preflight' (terminal — the
+//   lock RPC only re-picks 'queued', so no retry) and continue with ZERO token
+//   spend. Defence-in-depth backstop to the m.fill_pending_slots gate (Unit A):
+//   catches jobs queued just before a pause / any fill->disable race. Prompts,
+//   model selection, throttle, queue polling, and publish code are unchanged.
+//   Brief: docs/briefs/cc-0019-publish-eligibility-gate.md
 // v2.12.0 — F-YT-NY-FORMAT-SELECTION fix
 //   ROOT CAUSE: format-advisor-v1 received no platform context and the
 //   candidate-list filter in fetchFormatContext used opt-out semantics
@@ -571,6 +580,33 @@ app.post('*', async (c) => {
     let evergreenContent: { title: string; body: string } | null = null;
 
     try {
+      // ── cc-0019 Unit B — publish-eligibility preflight ──────────────────────
+      // Before ANY model call (and before canonical/evergreen processing), confirm
+      // this (client, platform) is still a live publish target via the canonical
+      // predicate. If not, abandon the job terminally with ZERO token spend.
+      // Backstop to the m.fill_pending_slots gate (Unit A): catches jobs queued
+      // just before a pause, or any fill->disable race. 'dead' is terminal — the
+      // lock RPC only re-picks 'queued', so attempts are not consumed and no retry
+      // loop is created.
+      {
+        const { data: eligible, error: eligErr } = await supabase
+          .schema('m').rpc('is_publish_eligible', { p_client_id: job.client_id, p_platform: platform });
+        if (eligErr) throw new Error(`publish_eligibility_check_failed:${eligErr.message}`);
+        if (eligible !== true) {
+          const { error: deadErr } = await supabase.schema('m').from('ai_job').update({
+            status: 'dead',
+            dead_reason: 'publish_path_disabled_preflight',
+            locked_by: null,
+            locked_at: null,
+            updated_at: nowIso(),
+          }).eq('ai_job_id', jobId);
+          if (deadErr) throw new Error(`preflight_dead_update_failed:${deadErr.message}`);
+          console.log(`[ai-worker] ${VERSION} — job ${jobId}: PUBLISH-INELIGIBLE PREFLIGHT (client=${job.client_id} platform=${platform}) -> dead, no model call`);
+          results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'dead', dead_reason: 'publish_path_disabled_preflight' });
+          continue;
+        }
+      }
+
       if (jobType === 'slot_fill_synthesis_v1') {
         const sp = job.input_payload ?? {};
         const synthesisMode: string = sp.synthesis_mode ?? 'single_item';
