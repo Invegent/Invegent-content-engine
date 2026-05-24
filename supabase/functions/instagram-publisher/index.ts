@@ -33,6 +33,19 @@
 //   auto-pause the affected profile via cpp.paused_until (honoured by the lock RPC).
 // - Decision logging for verification (profile / destination_id / daily count /
 //   last publish / cap+gap decision / skip-vs-publish).
+//
+// v2.2.0 (2026-05-24) — image-container readiness polling (fixes IG 400 code
+//   9007 / subcode 2207027 "Media ID is not available"):
+// - The v2.x image path created a container then called media_publish
+//   immediately; only the video path polled readiness. Now BOTH image and video
+//   (and carousel child + parent containers) poll GET
+//   /{creation_id}?fields=status_code,status until status_code='FINISHED' before
+//   media_publish, with a bounded timeout/retry window.
+// - On status_code ERROR/EXPIRED (or timeout): fail cleanly, capture status
+//   detail, and do NOT call media_publish.
+// - Observability: per-poll + final status_code, attempts, waited_ms (no token).
+// - All v2.1.0 throttle protections (destination_id gate, max_per_day, min_gap,
+//   2207051 auto-pause) are unchanged.
 
 import { Hono } from 'jsr:@hono/hono';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -45,12 +58,18 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
 };
 
-const VERSION = 'instagram-publisher-v2.1.0';
+const VERSION = 'instagram-publisher-v2.2.0';
 const IG_GRAPH_BASE = 'https://graph.facebook.com/v19.0';
 const IMAGE_HOLD_MINUTES = 30;
 // v2.1.0: on a 2207051 / code-4 IG restriction, pause the profile this long
 // (via cpp.paused_until, which m.publisher_lock_queue_v2 honours). Tunable.
 const RATE_LIMIT_PAUSE_HOURS = 6;
+// v2.2.0: media-container readiness polling before media_publish. Images
+// usually finish in seconds; reels can take minutes.
+const IMAGE_CONTAINER_POLL_MAX_MS = 120_000;
+const IMAGE_CONTAINER_POLL_INTERVAL_MS = 3_000;
+const VIDEO_CONTAINER_POLL_MAX_MS = 300_000;
+const VIDEO_CONTAINER_POLL_INTERVAL_MS = 10_000;
 
 const IG_IMAGE_FORMATS = new Set(['image_quote', 'carousel']);
 const IG_VIDEO_FORMATS = new Set([
@@ -130,18 +149,38 @@ async function igGet(url: string): Promise<any> {
   return data;
 }
 
-async function pollVideoStatus(creationId: string, accessToken: string, maxWaitMs = 300_000): Promise<void> {
-  const pollUrl = `${IG_GRAPH_BASE}/${creationId}?fields=status_code&access_token=${accessToken}`;
-  const deadline = Date.now() + maxWaitMs;
-  while (Date.now() < deadline) {
+// v2.2.0: poll a media container until status_code='FINISHED' before publishing.
+// Applies to images, reels, and carousel child/parent containers. Throws on
+// ERROR/EXPIRED or timeout (caller's try/catch requeues + audits; media_publish
+// is never reached for a non-FINISHED container). The poll URL carries the
+// access_token and is NEVER logged — only safe status fields + counters are.
+async function pollContainerReady(
+  creationId: string,
+  accessToken: string,
+  opts: { maxWaitMs: number; intervalMs: number; label: string },
+): Promise<{ status_code: string; attempts: number; waited_ms: number }> {
+  const pollUrl =
+    `${IG_GRAPH_BASE}/${encodeURIComponent(creationId)}?fields=status_code,status` +
+    `&access_token=${encodeURIComponent(accessToken)}`;
+  const start = Date.now();
+  let attempts = 0;
+  while (Date.now() - start < opts.maxWaitMs) {
+    attempts++;
     const data = await igGet(pollUrl);
-    const statusCode = data.status_code;
-    console.log(`[instagram-publisher] video status: ${statusCode}`);
-    if (statusCode === 'FINISHED') return;
-    if (statusCode === 'ERROR') throw new Error(`IG video processing failed: ${JSON.stringify(data)}`);
-    await new Promise(r => setTimeout(r, 10_000));
+    const statusCode = (data.status_code ?? '').toString();
+    const statusDetail = (data.status ?? '').toString().slice(0, 200);
+    console.log(`[instagram-publisher] ${opts.label} container poll attempt=${attempts} status_code=${statusCode} status=${statusDetail}`);
+    if (statusCode === 'FINISHED') {
+      const waited_ms = Date.now() - start;
+      console.log(`[instagram-publisher] ${opts.label} container FINISHED attempts=${attempts} waited_ms=${waited_ms}`);
+      return { status_code: statusCode, attempts, waited_ms };
+    }
+    if (statusCode === 'ERROR' || statusCode === 'EXPIRED') {
+      throw new Error(`IG container ${statusCode} (${opts.label}) after ${attempts} polls: ${statusDetail || JSON.stringify(data).slice(0, 200)}`);
+    }
+    await new Promise((r) => setTimeout(r, opts.intervalMs));
   }
-  throw new Error('IG video processing timed out after 5 minutes');
+  throw new Error(`IG ${opts.label} container not FINISHED within ${Math.round(opts.maxWaitMs / 1000)}s (polled ${attempts}x)`);
 }
 
 async function publishSingleMedia(opts: {
@@ -171,9 +210,15 @@ async function publishSingleMedia(opts: {
   const creationId: string = container.id;
   if (!creationId) throw new Error('No creation_id returned from IG media container');
 
-  if (isVideo) {
-    await pollVideoStatus(creationId, accessToken);
-  }
+  // v2.2.0: wait for the container to FINISH before publishing — BOTH image and
+  // video (previously only video polled, causing 9007/2207027 on images).
+  await pollContainerReady(
+    creationId,
+    accessToken,
+    isVideo
+      ? { maxWaitMs: VIDEO_CONTAINER_POLL_MAX_MS, intervalMs: VIDEO_CONTAINER_POLL_INTERVAL_MS, label: 'reel' }
+      : { maxWaitMs: IMAGE_CONTAINER_POLL_MAX_MS, intervalMs: IMAGE_CONTAINER_POLL_INTERVAL_MS, label: 'image' },
+  );
 
   const published = await igPost(publishUrl, {
     creation_id: creationId,
@@ -202,6 +247,10 @@ async function publishCarousel(opts: {
       access_token: accessToken,
     });
     if (!child.id) throw new Error('Failed to create carousel child container');
+    // v2.2.0: each child must FINISH before it is attached to the parent.
+    await pollContainerReady(child.id, accessToken, {
+      maxWaitMs: IMAGE_CONTAINER_POLL_MAX_MS, intervalMs: IMAGE_CONTAINER_POLL_INTERVAL_MS, label: 'carousel_child',
+    });
     childIds.push(child.id);
   }
 
@@ -213,6 +262,11 @@ async function publishCarousel(opts: {
     access_token: accessToken,
   });
   if (!carousel.id) throw new Error('Failed to create carousel container');
+
+  // v2.2.0: wait for the parent carousel container to FINISH before publishing.
+  await pollContainerReady(carousel.id, accessToken, {
+    maxWaitMs: IMAGE_CONTAINER_POLL_MAX_MS, intervalMs: IMAGE_CONTAINER_POLL_INTERVAL_MS, label: 'carousel_parent',
+  });
 
   // Step 3: Publish
   const published = await igPost(publishUrl, {

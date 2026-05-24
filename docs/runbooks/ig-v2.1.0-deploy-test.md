@@ -4,6 +4,8 @@
 
 **Deployed:** `instagram-publisher-v2.1.0` (commit `55bec57`, edge fn, project `mbkmaxqhsohbtwsqolns`). Verified via `GET /functions/v1/instagram-publisher/health`.
 
+**v2.2.0 (staged on this branch, not yet deployed):** adds **image-container readiness polling** before `media_publish` — fixes IG 400 `9007`/`2207027` "Media ID is not available". The image Tests **a / d** require **v2.2.0 deployed** to succeed; against v2.1.0 they will still hit `9007`. Once v2.2.0 is deployed, re-confirm the health version reports `instagram-publisher-v2.2.0`, and expect new log lines: `… container poll attempt=N status_code=… status=…` and `… container FINISHED attempts=N waited_ms=M` (label = image / reel / carousel_child / carousel_parent).
+
 ## Scope this session (RE-A2 — option 2 selected)
 This supervised deploy-test validates **three** paths only:
 - **(a) successful publish path** — Test a.
