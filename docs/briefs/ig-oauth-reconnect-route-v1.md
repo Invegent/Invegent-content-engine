@@ -1,5 +1,18 @@
 # Brief — Instagram OAuth Reconnect Route + `store_instagram_token` RPC
 
+> ## ⛔ ON HOLD — DO NOT BUILD/DEPLOY/APPLY (2026-05-24)
+> **Superseded for the immediate fix by `docs/briefs/ig-publisher-v2.3.0-image-publish-retry.md` (v2.3.0 Option-2 EF patch).**
+>
+> **Why held:** Source forensics (v1.0.0 commit `1a74f238` vs v2.2.0 `90602787`) + the full Graph error proved this brief's premise wrong. IG publishing **never used a dedicated Instagram OAuth**. v1.0.0 (22 successful image publishes, 19–25 Apr) published with only `POST /{ig_user_id}/media` → `POST /{ig_user_id}/media_publish` using the **stored `c.client_publish_profile.page_access_token`** (an FB-page token that carries IG) and did **no container-status GET for images**. The same token **creates the container and authenticates the publish call** (CFW reached `media_publish` → `9007`), so "token lacks read scope → needs new scoped OAuth" is the *weakest* explanation. The new `100/33` is on a container-status **GET that v2.2.0 introduced** and that the working path never made for images — i.e. a publish-path readiness/timing issue, not an auth-scope gap. The full error is `"Authorization Error" / GraphMethodException / code 100 / subcode 33` (object/method/permission), **not** "nonexisting field". Building `instagram_content_publish` OAuth would also require Meta App Review, which is not in place.
+>
+> **What stays valid from this brief (for FUTURE external-client use only):** a real per-client IG OAuth + `store_instagram_token` (with `destination_id` capture + `client_channel` provenance) is still the right long-term shape **if/when** external clients need self-serve IG connection under an approved Meta app. Internal clients (Invegent/CFW) do **not** need it — their `destination_id` values are already populated (2026-05-24) and their page tokens already publish.
+>
+> **Staged artifacts (leave shelved, do NOT push/merge/apply):** dashboard branch `feat/ig-oauth-reconnect` (commit `43ff72a`, routes `app/api/instagram/{auth,callback}`), content-engine branch `feat/ig-store-token-rpc` (migration `20260524000000_f_ig_store_instagram_token.sql` — NOT applied; runbook `docs/runbooks/ig-oauth-reconnect-and-retest.md`). Both local-only; nothing deployed or applied. Nothing to roll back.
+>
+> **Resume condition:** only revisit for external-client IG onboarding under an approved Meta app. Not for the current internal-client drain.
+
+---
+
 **Status:** DRAFT — for CCD. Build behind branch+PR. **D-01 required before migration apply and before dashboard deploy.**
 **Author:** CCH (chat)  ·  **Date:** 2026-05-24
 **Repos touched:** `invegent-dashboard` (new API routes + button is already wired) and `Invegent-content-engine` (one migration: new RPC).
@@ -19,6 +32,8 @@ Read-only diagnosis traced (2) to **token scope/provenance**, then PK hit a **40
 - The only Meta OAuth route that exists (`/api/facebook/auth` + `/callback`) is **Facebook-only**: it requests scopes `pages_manage_posts, pages_read_engagement, pages_show_list` (**no `instagram_basic`, no `instagram_content_publish`**), stores via `store_facebook_page_token` with `p_platform='facebook'`, and **never resolves the Instagram Business Account id** (no `destination_id`).
 
 Net: there is **no mechanism to mint a properly-scoped Instagram token** or populate the IG profile. The existing IG tokens were set outside any OAuth flow (no `c.client_channel` rows; `token_expires_at` = sentinel `2099-12-31`) and lack `instagram_basic` — exactly the read scope the container-status GET needs. This explains both the `100/33` and the missing provenance.
+
+> **NOTE (2026-05-24, post-forensics):** The clause above — "lack `instagram_basic` … the read scope the container-status GET needs" — is the disproven hypothesis. See the HOLD banner. The same token publishes; the `100/33` is a v2.2.0-introduced container GET, not a scope gap.
 
 ## 2. Goal / definition of done
 
