@@ -119,6 +119,20 @@ if (!eligible) {
 
 - Catches jobs queued just before a pause, and any race between fill and a state change. Confirm the worker's existing terminal-status vocabulary (`dead`/`succeeded` observed live; `queued` used by fill) and reuse it rather than introducing a new enum value.
 
+### 4. Eligibility transition handling
+
+The two enforcement points (Unit A fill-gate + Unit B ai-worker preflight) plus the **unchanged** publish-layer gate together cover the eligibility-transition edge cases. No additional fail-safe is required in v1 — each transition is absorbed by an existing layer:
+
+**a. Eligible → ineligible after slot fill but before ai-worker pickup.** A slot was filled (skeleton draft + queued `ai_job` created) while eligible, then the client/platform is disabled before the ai-worker processes the job. **Handled by Unit B:** the ai-worker preflight re-checks `is_publish_eligible` at pickup, finds it false, and abandons the job (terminal, `dead_reason='publish_path_disabled_preflight'`) **before any model call** — zero token spend.
+
+**b. Race — Unit A sees eligible, then the pair is disabled before the `ai_job` insert or before execution.** The gate's eligibility read and the subsequent `ai_job` INSERT are not atomic with the disable event. **Handled by Unit B:** the ai-worker preflight is the defence-in-depth layer — whatever slips past the fill-gate is re-checked at pickup and abandoned before token spend. The two layers are intentionally redundant for exactly this race.
+
+**c. Job already completed before disable.** The `ai_job` ran and the draft was synthesised while eligible; the pair is disabled afterwards. Token spend has **already occurred** and is not recoverable — but the **existing publish-layer gate** (`publish_enabled`/`paused_until`/active, enforced at the publisher + `publisher_lock_queue_v1`) prevents the finished draft from posting once eligibility is removed. No wrong publish, no new waste.
+
+**d. Ineligible → eligible later (re-enable).** Future `materialise_slots`/fill cycles create and fill fresh slots normally once eligibility returns. Past slots marked `status='skipped'` / `skip_reason='publish_path_disabled'` remain skipped and are **not** auto-promoted in v1 (their publish window has passed). Resumption is driven by continuous forward materialisation of new slots, not by reviving skipped ones.
+
+**Net:** ineligible work is suppressed at the earliest point (Unit A) with a pickup-time backstop (Unit B); already-spent work cannot mis-publish (existing publish gate); re-enablement resumes via normal forward slotting. The only residual is a single in-flight job already past the model call at the moment of disable (case c) — inherent, bounded to one job, and non-publishing.
+
 ## Migration / deploy needs
 
 - **Unit A — DB migration (apply via Supabase MCP `apply_migration`).** One migration: `CREATE FUNCTION m.is_publish_eligible` + `CREATE OR REPLACE FUNCTION m.fill_pending_slots` (exact current body + gate block). CC authors the file reproducing the current body verbatim plus only the gate insertion; verify via local diff that **nothing else** in the body changed. Well under the ICE-PROC-001 80KB stage-split threshold. `apply_migration` is the only sanctioned DDL path on `m.*`.
