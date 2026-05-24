@@ -46,6 +46,23 @@
 // - Observability: per-poll + final status_code, attempts, waited_ms (no token).
 // - All v2.1.0 throttle protections (destination_id gate, max_per_day, min_gap,
 //   2207051 auto-pause) are unchanged.
+//
+// v2.3.0 (2026-05-24) — image publish-retry; remove the image container GET
+//   (brief docs/briefs/ig-publisher-v2.3.0-image-publish-retry.md):
+// - Forensics: the proven-working v1.0.0 image path published with TWO calls
+//   only (POST /media -> POST /media_publish) and NEVER polled container status.
+//   v2.2.0's image-path container GET (/{id}?fields=status_code) fails with
+//   code 100 / subcode 33 GraphMethodException ("Authorization Error") on these
+//   FB-page-derived IG tokens — a GET the working path never made.
+// - FIX: the IMAGE path no longer calls pollContainerReady. It publishes
+//   directly and retries media_publish ONLY on the transient "media not ready"
+//   signal (9007 / 2207027) with bounded backoff (publishWithReadinessRetry).
+// - Any OTHER error propagates immediately: 2207051 / code 4 still reaches the
+//   v2.1.0 auto-pause catch; auth errors (190 / code 10 / 100) surface as real
+//   failures, not silent retries.
+// - VIDEO and CAROUSEL paths are UNCHANGED from v2.2.0 (they still poll via
+//   pollContainerReady, which remains defined and in use).
+// - Throttle / destination_id gate / 2207051 auto-pause: byte-unchanged.
 
 import { Hono } from 'jsr:@hono/hono';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -58,7 +75,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
 };
 
-const VERSION = 'instagram-publisher-v2.2.0';
+const VERSION = 'instagram-publisher-v2.3.0';
 const IG_GRAPH_BASE = 'https://graph.facebook.com/v19.0';
 const IMAGE_HOLD_MINUTES = 30;
 // v2.1.0: on a 2207051 / code-4 IG restriction, pause the profile this long
@@ -70,6 +87,17 @@ const IMAGE_CONTAINER_POLL_MAX_MS = 120_000;
 const IMAGE_CONTAINER_POLL_INTERVAL_MS = 3_000;
 const VIDEO_CONTAINER_POLL_MAX_MS = 300_000;
 const VIDEO_CONTAINER_POLL_INTERVAL_MS = 10_000;
+// v2.3.0: image publish-retry (replaces the image container GET). Retry
+// media_publish ONLY on the transient "media not ready" signal (9007/2207027).
+// Bounded: 1 initial + 3 retries; total added wall-clock <= ~16s (+ pre-delay),
+// far under the EF limit and the 120s poll it replaces.
+const PUBLISH_RETRY_MAX_ATTEMPTS = 4;
+const PUBLISH_RETRY_BACKOFF_MS = [3_000, 5_000, 8_000];
+const PUBLISH_PRE_DELAY_MS = 2_000;
+// The transient not-ready codes (and ONLY these) trigger a retry. \b digit
+// boundaries keep this from matching a code embedded in an fbtrace_id, and it
+// deliberately does NOT match 2207051 (rate limit -> must propagate to pause).
+const PUBLISH_NOT_READY_RE = /\b(?:9007|2207027)\b/;
 
 const IG_IMAGE_FORMATS = new Set(['image_quote', 'carousel']);
 const IG_VIDEO_FORMATS = new Set([
@@ -183,6 +211,53 @@ async function pollContainerReady(
   throw new Error(`IG ${opts.label} container not FINISHED within ${Math.round(opts.maxWaitMs / 1000)}s (polled ${attempts}x)`);
 }
 
+// v2.3.0: publish an already-created IMAGE container, retrying media_publish
+// ONLY on the transient "media not ready" signal (9007 / 2207027). This is the
+// image path's replacement for the v2.2.0 container-status GET (which fails
+// 100/33 with these tokens). Any other error — including 2207051 / code 4
+// (which MUST reach the v2.1.0 auto-pause catch) and auth errors (190 / code 10
+// / 100) — propagates immediately, so it surfaces as a real failure rather than
+// being silently retried. The publish URL carries the access_token and is NEVER
+// logged; only the creationId and counters are.
+async function publishWithReadinessRetry(
+  publishUrl: string,
+  creationId: string,
+  accessToken: string,
+  label: string,
+): Promise<string> {
+  if (PUBLISH_PRE_DELAY_MS > 0) {
+    await new Promise((r) => setTimeout(r, PUBLISH_PRE_DELAY_MS));
+  }
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= PUBLISH_RETRY_MAX_ATTEMPTS; attempt++) {
+    try {
+      const published = await igPost(publishUrl, {
+        creation_id: creationId,
+        access_token: accessToken,
+      });
+      const igMediaId: string = published.id;
+      if (!igMediaId) throw new Error('No ig_media_id returned from publish');
+      if (attempt > 1) {
+        console.log(`[instagram-publisher] ${label} publish recovered creation_id=${creationId} attempt=${attempt}`);
+      }
+      return igMediaId;
+    } catch (e: any) {
+      const msg = (e?.message ?? String(e)).toString();
+      const transient = PUBLISH_NOT_READY_RE.test(msg);
+      const hasRetryLeft = attempt < PUBLISH_RETRY_MAX_ATTEMPTS;
+      // Non-transient (incl. 2207051/code 4, 190, 100/33), or out of retries → rethrow.
+      if (!transient || !hasRetryLeft) throw e;
+      lastErr = e;
+      const backoff = PUBLISH_RETRY_BACKOFF_MS[attempt - 1] ?? PUBLISH_RETRY_BACKOFF_MS[PUBLISH_RETRY_BACKOFF_MS.length - 1];
+      const reason = /2207027/.test(msg) ? '2207027' : '9007';
+      console.log(`[instagram-publisher] ${label} publish retry attempt=${attempt} reason=${reason} creation_id=${creationId} backoff_ms=${backoff}`);
+      await new Promise((r) => setTimeout(r, backoff));
+    }
+  }
+  // The final attempt rethrows inside the loop; this only satisfies the type checker.
+  throw lastErr ?? new Error(`${label} publish failed after ${PUBLISH_RETRY_MAX_ATTEMPTS} attempts`);
+}
+
 async function publishSingleMedia(opts: {
   igUserId: string; accessToken: string;
   caption: string;
@@ -210,23 +285,25 @@ async function publishSingleMedia(opts: {
   const creationId: string = container.id;
   if (!creationId) throw new Error('No creation_id returned from IG media container');
 
-  // v2.2.0: wait for the container to FINISH before publishing — BOTH image and
-  // video (previously only video polled, causing 9007/2207027 on images).
-  await pollContainerReady(
-    creationId,
-    accessToken,
-    isVideo
-      ? { maxWaitMs: VIDEO_CONTAINER_POLL_MAX_MS, intervalMs: VIDEO_CONTAINER_POLL_INTERVAL_MS, label: 'reel' }
-      : { maxWaitMs: IMAGE_CONTAINER_POLL_MAX_MS, intervalMs: IMAGE_CONTAINER_POLL_INTERVAL_MS, label: 'image' },
-  );
+  if (isVideo) {
+    // VIDEO path — UNCHANGED from v2.2.0: poll the reel container to FINISHED,
+    // then publish once. (No reel has published yet; left exactly as-is.)
+    await pollContainerReady(creationId, accessToken, {
+      maxWaitMs: VIDEO_CONTAINER_POLL_MAX_MS, intervalMs: VIDEO_CONTAINER_POLL_INTERVAL_MS, label: 'reel',
+    });
+    const published = await igPost(publishUrl, {
+      creation_id: creationId,
+      access_token: accessToken,
+    });
+    const igMediaId: string = published.id;
+    if (!igMediaId) throw new Error('No ig_media_id returned from publish');
+    return igMediaId;
+  }
 
-  const published = await igPost(publishUrl, {
-    creation_id: creationId,
-    access_token: accessToken,
-  });
-  const igMediaId: string = published.id;
-  if (!igMediaId) throw new Error('No ig_media_id returned from publish');
-  return igMediaId;
+  // IMAGE path (v2.3.0) — do NOT poll the container status GET (it fails 100/33
+  // with these tokens; the proven-working v1.0.0 path never made it). Publish
+  // directly, retrying only on the transient 9007/2207027 "media not ready" signal.
+  return await publishWithReadinessRetry(publishUrl, creationId, accessToken, 'image');
 }
 
 async function publishCarousel(opts: {
