@@ -144,6 +144,17 @@ WHERE platform='instagram' GROUP BY client_id, status ORDER BY client_id, status
 - Do **not** write `friction.case` / `friction.event`; do **not** close Q-005; do **not** start cc-0015.
 - This brief is read-only planning; the §3 patch must be staged + D-01-reviewed + PK-approved before any of the §5 mutations.
 
+## 11. D-01 resolution (RE1–RE4) — patch staged 2026-05-24
+
+The §3 patch is now **staged** (source only, **not deployed**) as `instagram-publisher` **v2.1.0** on branch `fix/ig-publisher-throttle-robustness`.
+
+- **RE1 — patch-scope fork resolved as *sequenced-both*:** the defensive throttle is implemented **in the IG Edge Function only**; the shared `m.publisher_lock_queue_v2` is **NOT** modified in this patch. Hardening the lock RPC's destination-keyed count is tracked as a **separate future D-01-reviewed shared-infra change**, sequenced after this EF patch proves out.
+- **RE2 — destination_id write guarantee is a BLOCKING GATE:** the EF now requires `profile.destination_id` non-null before publishing (else skips with `missing_destination_id_throttle_gate`; **no page_id fallback**), and the success `m.post_publish` row writes that same `destination_id` (= `cpp.destination_id`) so both the EF throttle and the lock-RPC count are reliable.
+- **RE3 — v2.0.0 unverified-runtime gate named explicitly:** v2.0.0's throttle has never executed a *successful* IG publish in production (only 2 failed attempts on 2026-05-01 before the pause). Re-enable MUST include the controlled single-publish verification (§4 step 4) under v2.1.0 before steady-state is trusted.
+- **RE4 — cron 64 stays paused until backlog is healthy:** `seed-and-enqueue-instagram-every-10m` (jobid 64) remains `active=false` until the 123-row `queued` backlog has drained under throttle with **zero** 2207051; only then consider re-enabling the enqueuer.
+
+**v2.1.0 throttle enforcement (EF-side, defence-in-depth):** counts the client's IG `post_publish` (`status='published'`) over 7 days by `client_id + platform` (robust — does not no-op on NULL `destination_id`); enforces `max_per_day` (requeue → next UTC day) and `min_gap_minutes` (requeue → gap end); auto-pauses the profile via `cpp.paused_until` (+`RATE_LIMIT_PAUSE_HOURS`=6h, tunable) on `2207051`/code-4; logs profile / destination_id / daily count / last-publish / cap+gap decision. No shared-infra change; no `publish_enabled` flip.
+
 ---
 
 **Provenance (all read-only):** `cron.job` (53/64), `c.client_publish_profile` (IG throttle/enable/destination), `m.post_publish_queue` (queue status), `m.post_publish` (throttle-violation evidence + destination_id), `pg_get_functiondef('m.publisher_lock_queue_v2')`. Cross-references the 2026-05-23 IG deploy-verification memo. No production mutation; saved via local git only.

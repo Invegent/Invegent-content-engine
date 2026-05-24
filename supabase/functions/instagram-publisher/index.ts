@@ -16,6 +16,23 @@
 // - Failure backoff with last_error captured on queue row
 // - Schedule check via get_next_publish_slot
 // - Platform validation: rejects any non-instagram queue row defensively
+//
+// v2.1.0 (2026-05-24) — throttle robustness (pool
+//   instagram.publisher.v2_deployed_cron_paused; staged, sequenced-both step 1):
+// - DEFENSIVE per-account throttle in the EF (does NOT modify the shared
+//   m.publisher_lock_queue_v2): before publishing, count this client's IG
+//   publishes over 7d by client_id+platform (a robust key that does NOT silently
+//   no-op on NULL destination_id, unlike the lock RPC's destination-keyed count),
+//   enforce max_per_day + min_gap_minutes, and SKIP/REQUEUE rather than publish
+//   when breached.
+// - destination_id WRITE GUARANTEE (blocking gate): require profile.destination_id
+//   non-null; skip rather than publish unthrottled. The success post_publish row
+//   writes that same destination_id (= cpp.destination_id) so the lock RPC count
+//   is reliable too.
+// - 2207051 / code 4 (IG content-publishing restriction / app request limit):
+//   auto-pause the affected profile via cpp.paused_until (honoured by the lock RPC).
+// - Decision logging for verification (profile / destination_id / daily count /
+//   last publish / cap+gap decision / skip-vs-publish).
 
 import { Hono } from 'jsr:@hono/hono';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -28,9 +45,12 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
 };
 
-const VERSION = 'instagram-publisher-v2.0.0';
+const VERSION = 'instagram-publisher-v2.1.0';
 const IG_GRAPH_BASE = 'https://graph.facebook.com/v19.0';
 const IMAGE_HOLD_MINUTES = 30;
+// v2.1.0: on a 2207051 / code-4 IG restriction, pause the profile this long
+// (via cpp.paused_until, which m.publisher_lock_queue_v2 honours). Tunable.
+const RATE_LIMIT_PAUSE_HOURS = 6;
 
 const IG_IMAGE_FORMATS = new Set(['image_quote', 'carousel']);
 const IG_VIDEO_FORMATS = new Set([
@@ -225,6 +245,10 @@ type PublishProfile = {
   page_name: string | null;
   publish_enabled: boolean | null;
   test_prefix: string | null;
+  // v2.1.0 throttle fields (profile is loaded via select('*'))
+  max_per_day: number | null;
+  min_gap_minutes: number | null;
+  paused_until: string | null;
 };
 
 // ─── Routes ──────────────────────────────────────────────────────────────
@@ -274,6 +298,8 @@ app.post('*', async (c) => {
 
   for (const q of rows) {
     const queueId = q.queue_id;
+    // Hoisted so the catch can auto-pause this profile on a 2207051/code-4 restriction.
+    let profileForPause: PublishProfile | null = null;
 
     try {
       // ── DEFENSIVE PLATFORM CHECK ──────────────────────────────────────
@@ -325,6 +351,7 @@ app.post('*', async (c) => {
       if (profErr) throw new Error(`load_profile_failed: ${profErr.message}`);
       if (!prof) throw new Error('no_active_instagram_publish_profile');
       const profile = prof as unknown as PublishProfile;
+      profileForPause = profile;
 
       if (profile.publish_enabled === false) {
         await supabase.schema('m').from('post_publish_queue').update({
@@ -337,12 +364,24 @@ app.post('*', async (c) => {
         continue;
       }
 
-      // For Instagram: destination_id (or page_id) is the IG Business Account ID
-      const igUserId = (profile.destination_id ?? profile.page_id ?? '').toString();
+      // For Instagram the destination_id IS the IG Business Account ID (ig_user_id).
+      // BLOCKING GATE (v2.1.0): destination_id must be non-null. Both the throttle
+      // count and the post_publish audit row key on it, so without it the cap can't
+      // be enforced reliably — skip rather than publish unthrottled. We deliberately
+      // do NOT fall back to page_id here (that was the NULL-destination fragility).
       const accessToken = profile.page_access_token;
-
-      if (!igUserId) throw new Error('missing_ig_user_id');
+      const destinationId = (profile.destination_id ?? '').toString();
+      if (!destinationId) {
+        await supabase.schema('m').from('post_publish_queue').update({
+          status: 'skipped',
+          last_error: 'missing_destination_id_throttle_gate',
+          locked_at: null, locked_by: null, updated_at: nowIso(),
+        }).eq('queue_id', queueId);
+        results.push({ queue_id: queueId, status: 'skipped', reason: 'missing_destination_id' });
+        continue;
+      }
       if (!accessToken) throw new Error('missing_page_access_token');
+      const igUserId = destinationId; // guaranteed non-null; == cpp.destination_id
 
       // ── LOAD DRAFT ────────────────────────────────────────────────────
       // CRITICAL DIFFERENCE FROM v1.0.0:
@@ -496,6 +535,57 @@ app.post('*', async (c) => {
       const testPrefix = profile.mode === 'staging' ? (profile.test_prefix ?? '[TEST] ') : '';
       const caption = `${testPrefix}${title}${title && body ? '\n\n' : ''}${body}`.trim();
 
+      // ── DEFENSIVE THROTTLE (v2.1.0) ───────────────────────────────────
+      // Independent of m.publisher_lock_queue_v2's destination-keyed count (which
+      // silently no-ops when destination_id is NULL). Count this client's IG
+      // publishes over the last 7 days by client_id+platform (robust key), enforce
+      // max_per_day + min_gap_minutes, and SKIP/REQUEUE rather than publish when
+      // breached. Decision is logged for verification.
+      {
+        const maxPerDay = profile.max_per_day;
+        const minGapMin = profile.min_gap_minutes;
+        if (maxPerDay != null || minGapMin != null) {
+          const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60_000).toISOString();
+          const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0);
+          const dayStartIso = dayStart.toISOString();
+          const { data: recentPub, error: recentErr } = await supabase
+            .schema('m').from('post_publish')
+            .select('created_at')
+            .eq('client_id', q.client_id)
+            .eq('platform', 'instagram')
+            .eq('status', 'published')
+            .gte('created_at', sevenDaysAgo)
+            .order('created_at', { ascending: false });
+          if (recentErr) throw new Error(`throttle_count_failed: ${recentErr.message}`);
+          const recent = (recentPub ?? []) as Array<{ created_at: string }>;
+          const lastPublishedAt = recent[0]?.created_at ?? null;
+          const publishedToday = recent.filter((r) => r.created_at >= dayStartIso).length;
+          const gapMs = lastPublishedAt ? (Date.now() - new Date(lastPublishedAt).getTime()) : null;
+          const capBreached = maxPerDay != null && publishedToday >= maxPerDay;
+          const gapBreached = minGapMin != null && gapMs != null && gapMs < minGapMin * 60_000;
+          console.log(`[instagram-publisher] throttle client=${q.client_id} dest=${destinationId} published_today=${publishedToday} max_per_day=${maxPerDay ?? 'none'} last_published_at=${lastPublishedAt ?? 'none'} min_gap_min=${minGapMin ?? 'none'} cap_breached=${capBreached} gap_breached=${gapBreached} decision=${capBreached || gapBreached ? 'requeue' : 'publish'}`);
+          if (capBreached || gapBreached) {
+            const requeueFor = capBreached
+              ? new Date(dayStart.getTime() + 24 * 60 * 60_000).toISOString() // next UTC day
+              : new Date(new Date(lastPublishedAt as string).getTime() + (minGapMin as number) * 60_000).toISOString();
+            await supabase.schema('m').from('post_publish_queue').update({
+              status: 'queued',
+              scheduled_for: requeueFor,
+              last_error: capBreached
+                ? `throttle_max_per_day:${publishedToday}/${maxPerDay}`
+                : `throttle_min_gap:${Math.round((gapMs as number) / 60_000)}m<${minGapMin}m`,
+              locked_at: null, locked_by: null, updated_at: nowIso(),
+            }).eq('queue_id', queueId);
+            results.push({
+              queue_id: queueId, status: 'throttled',
+              reason: capBreached ? 'max_per_day' : 'min_gap',
+              published_today: publishedToday, scheduled_for: requeueFor,
+            });
+            continue;
+          }
+        }
+      }
+
       // ── PUBLISH ───────────────────────────────────────────────────────
       const startMs = Date.now();
       let igMediaId: string;
@@ -564,7 +654,7 @@ app.post('*', async (c) => {
         post_draft_id: q.post_draft_id,
         client_id: q.client_id,
         platform: 'instagram',
-        destination_id: igUserId,
+        destination_id: destinationId, // v2.1.0: guaranteed non-null, == cpp.destination_id (throttle-reliable)
         status: 'published',
         platform_post_id: igMediaId,
         published_at: nowIso(),
@@ -607,6 +697,19 @@ app.post('*', async (c) => {
       const errMsg = (e?.message ?? String(e)).slice(0, 4000);
       console.error(`[instagram-publisher] failed ${queueId}:`, errMsg);
 
+      // v2.1.0: 2207051 / code 4 (IG content-publishing restriction / app request
+      // limit) → auto-pause this profile via cpp.paused_until (honoured by
+      // m.publisher_lock_queue_v2), so a restriction does not turn into a retry
+      // burst. Does not flip publish_enabled.
+      const rateLimited = /2207051|"code"\s*:\s*4\b|application request limit/i.test(errMsg);
+      if (rateLimited && profileForPause?.client_publish_profile_id) {
+        const pauseUntil = new Date(Date.now() + RATE_LIMIT_PAUSE_HOURS * 60 * 60_000).toISOString();
+        await supabase.schema('c').from('client_publish_profile')
+          .update({ paused_until: pauseUntil })
+          .eq('client_publish_profile_id', profileForPause.client_publish_profile_id);
+        console.warn(`[instagram-publisher] AUTO-PAUSED profile ${profileForPause.client_publish_profile_id} until ${pauseUntil} (rate-limit/2207051)`);
+      }
+
       // Backoff: requeue 10 min from now with the error captured
       const backoffIso = new Date(Date.now() + 10 * 60_000).toISOString();
       await supabase.schema('m').from('post_publish_queue').update({
@@ -624,7 +727,7 @@ app.post('*', async (c) => {
         post_draft_id: q.post_draft_id,
         client_id: q.client_id,
         platform: 'instagram',
-        destination_id: null,
+        destination_id: profileForPause?.destination_id ?? null,
         status: 'failed',
         platform_post_id: null,
         request_payload: null,
@@ -633,7 +736,7 @@ app.post('*', async (c) => {
         created_at: nowIso(),
       });
 
-      results.push({ queue_id: queueId, status: 'failed', error: errMsg });
+      results.push({ queue_id: queueId, status: 'failed', error: errMsg, auto_paused: rateLimited });
     }
   }
 
