@@ -1,16 +1,17 @@
-// heygen-worker v1.2.0
+// heygen-worker v1.3.0
+// v1.3.0 — F-HEYGEN-WORKER-POLL-BUDGET: extend HeyGen polling window to 240s (30 × 8s) to avoid false timeout on valid avatar renders.
 // v1.2.0 — F-HEYGEN-WORKER-LANDSCAPE-DIMENSION: portrait 720x1280 render for Shorts-native avatar output.
 // v1.1.0 — Fix: also read stakeholder_role and render_style from draft_format.video_script
 //          (ai-worker writes via set_draft_video_script which nests inside video_script)
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION           = 'heygen-worker-v1.2.0';
+const VERSION           = 'heygen-worker-v1.3.0';
 const HEYGEN_GENERATE   = 'https://api.heygen.com/v2/video/generate';
 const HEYGEN_STATUS     = 'https://api.heygen.com/v1/video_status.get';
 const MAX_DRAFTS        = 3;
-const POLL_INTERVAL_MS  = 5000;
-const POLL_MAX_ATTEMPTS = 24;
+const POLL_INTERVAL_MS  = 8000;
+const POLL_MAX_ATTEMPTS = 30;   // 30 × 8s = 240s window (F-HEYGEN-WORKER-POLL-BUDGET)
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
