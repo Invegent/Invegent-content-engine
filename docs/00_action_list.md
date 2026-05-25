@@ -239,6 +239,63 @@ Wave 0 + 0d + 0e COMPLETE. Gates 10+12+13 CLOSED. Gate 11 (1-week observation 20
 
 ---
 
+## 🔵 cc-0020 — Generation Eligibility & Demand Modes — FUTURE DESIGN BLOCK (recorded CCD 2026-05-24; doc-only, non-blocking)
+
+**Origin:** follow-up identified during cc-0019 execution + CCH investigation. **Not** folded into cc-0019; cc-0019 stands as the v1 safety patch.
+
+**Problem statement.** Overlapping, mis-layered controls:
+- `c.client_publish_schedule.enabled` controls whether platform schedule demand can materialise into slots.
+- `c.client_publish_profile.publish_enabled` controls publishing eligibility and — after cc-0019 Unit A — drafting eligibility at fill time.
+- RSS/feed ingestion + signal accumulation run independently of publishing.
+- **CCH root-cause finding:** the earlier slot-driven architecture referenced `publish_enabled` only in the slot-materialisation path **for format-preference selection**, not for generation eligibility. So `publish_enabled=false` was effectively read as *"no preferred format available"* rather than *"do not generate AI drafting work."* Result: `client_publish_schedule.enabled=true` could still create slots; empty `format_preference` fell through to default format behaviour; disabled NY/PP IG could still progress toward draft/ai_job creation and token spend.
+
+**Where the urgent cost problem actually is.** Not RSS ingestion, not Supabase data accumulation — the costly transition is **slot → draft → ai_job → Claude/OpenAI spend**. The AI-spend gate belongs between slot/demand and drafting/ai_job creation.
+
+**Design principle.** Do **not** treat "not publishing" as equivalent to "stop collecting useful content intelligence."
+
+**Business context (why ingestion should not auto-stop on pause).** RSS.app (top plan) and Supabase are already paid for. Continued feed/signal retention has upside: client intelligence, newsletters, prospective-client demos, historical archive, reactivation, "what we could do for you" previews. If a client leaves/pauses/declines to publish, the feed/signal data may still be valuable. The correct pause/cost-control layer is slot/demand → drafting, **not necessarily** RSS ingestion.
+
+**Preferred control model — separate states (or equivalent policy):**
+1. `ingest_enabled` — should RSS/feed/signal collection continue?
+2. `slot_planning_enabled` — should the system plan demand/opportunities for this client/platform?
+3. `ai_generation_enabled` / `drafting_enabled` — should the system spend Claude/OpenAI tokens to create drafts?
+4. `publish_enabled` — should approved output be allowed to go live?
+
+**Suggested modes to evaluate:**
+1. **Live** — ingest=t, slot_planning=t, ai_generation=t, publish=t.
+2. **Paused publishing / no AI spend** — ingest=t, slot_planning=t/limited, ai_generation=f, publish=f.
+3. **Shadow/demo** — ingest=t, slot_planning=t, ai_generation=t, publish=f.
+4. **Newsletter/intelligence** — ingest=t, slot_planning=maybe separate pipeline, ai_generation=optional, publish=f.
+5. **Fully inactive** — ingest=f/archived, slot_planning=f, ai_generation=f, publish=f.
+
+**Future design questions:**
+1. Should feed ingestion be client-, platform-, or source-level?
+2. Should slots exist for paused/non-publishing clients as visible suppressed demand?
+3. Should paused clients produce: no slots / skipped slots / opportunity-demo-newsletter slots / normal slots that stop before drafting?
+4. Should "demo mode" allow AI drafting while publishing stays disabled?
+5. Should "newsletter mode" reuse the same slots or a separate opportunity pipeline?
+6. Retention/archive policy for raw feed items, `signal_pool` rows, low-value/noisy items?
+7. Should `materialise_slots` eventually call `m.is_publish_eligible`, or a different predicate such as `m.is_generation_eligible`?
+8. Should generation eligibility be platform-, client-, or mode-specific?
+9. What telemetry keeps suppressed demand visible without wasting tokens?
+
+**Preferred future-state architecture:**
+- Keep RSS/feed ingestion available unless explicitly disabled.
+- Keep content intelligence + signal scoring available where strategically useful.
+- Stop AI token spend unless the client/platform is in an allowed generation mode.
+- Stop publishing unless `publish_enabled=true`.
+- Preserve telemetry explaining why work was not drafted or published.
+- Keep the cc-0019 `fill_pending_slots` gate as defence-in-depth + the ai-worker preflight as the final pre-token backstop.
+
+**Spoil-sport / risk notes:**
+1. Supabase bloat is real even though paid — future work needs retention/archive rules for raw feeds, `signal_pool`, low-fitness items, old slots.
+2. Slots may be the wrong object for prospects/ex-clients/newsletters — consider "opportunity" or "demo/newsletter candidate" objects instead of platform publish slots.
+3. `publish_enabled=false` should **not** permanently mean "no AI drafting" — there are valid cases (demo/intelligence) where drafting is useful while publishing stays off.
+4. cc-0019 is a valid v1 safety patch (publish-eligibility as the AI-spend gate to stop current waste); the mature architecture should distinguish **generation** eligibility from **publishing** eligibility.
+5. Do **not** widen cc-0019 mid-execution — this is a follow-up design task, not a blocker to Unit B unless PK separately decides.
+
+---
+
 ## 🔄 Standing session-start checks
 
 S1–S29 unchanged. S30 closed PASS v2.47.
@@ -294,6 +351,7 @@ v3.04: **0 D-01 fires.** T-MCP-02 cum **~92 unchanged**. State-capture exception
 | **F-YT-PUB-AVATAR-EXCLUSION** | youtube-publisher filter | P2 carry | LOGGED. | chat → PK | Audit m.post_draft. |
 | **cc-0013 Dashboard Phase 0** | 7 confirm-defaults | P2 carry | OPEN. | PK | When PK directs. |
 | **Backend/shared-metrics refactor** | Deeper scope behind v2.95 count mismatch | DEFERRED carry | OPEN. Not actively ranked. | n/a | When separately directed. |
+| **cc-0020 — Generation Eligibility & Demand Modes** | Future-design follow-up from cc-0019. Separate the controls for ingest / slot-planning / AI-drafting / publishing; the AI-spend gate belongs at the **slot→draft→ai_job** boundary, not at publishing. Do NOT stop RSS/feed ingestion just because publishing is paused (feed/signal retention has business upside). CCH root cause: the prior slot design referenced `publish_enabled` only for **format preference**, not generation eligibility, so disabled platforms still created/filled slots + spent tokens. cc-0019 is the **v1 safety patch** (uses `m.is_publish_eligible` as the spend gate); this item is the mature architecture. See FUTURE DESIGN BLOCK below. | **P3 future design, non-blocking** | NOT STARTED. Recorded 2026-05-24 (CCD, doc-only). Does NOT block cc-0019 Unit B. | PK → chat | Own design brief when PK directs. |
 | **L-v2.83-a promotion** | push_files response file-count verification | **P3 (18+ occurrences; STRONG)** | Re-applied at sync close. | chat → next lesson cycle | Promote. |
 | **L-v2.85-e** | push_files length budget — split-commit mitigation | **P3 (PROMOTION-CONFIRMED v2.88; streak re-baseline pending after v3.02 clobber)** | — | chat → next lesson cycle | **PROMOTE.** |
 | **L41 / full-file-write clobber mitigation** | Re-read HEAD before any full-file sync write; out-of-band commits silently reverted otherwise; prefer surgical/section-scoped edits for 00_ index files | **P2 (re-exercised v3.02.1; reinforced v3.02.2 + v3.03 + v3.04 surgical recordings)** | NEGATIVE exemplar at v3.02; POSITIVE repair v3.02.1 + clean surgical edits v3.02.2 + v3.03 + v3.04. | chat → next lesson cycle | **Pair-promote with L-v2.85-e. Strong candidate.** |
