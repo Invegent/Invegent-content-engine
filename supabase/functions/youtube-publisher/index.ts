@@ -1,4 +1,8 @@
-// youtube-publisher v1.6.0
+// youtube-publisher v1.7.0
+// v1.7.0 (F-YT-PUB-AVATAR-EXCLUSION): add video_short_avatar to the eligible-format allow-list.
+//   Avatar now renders true 9:16 portrait Shorts (heygen-worker v2.0.0 async + 720x1280); dimension-first
+//   (Option B) satisfied. Uploads stay unlisted; metadata/MIME/upload path unchanged. Landscape proof
+//   draft ba5b34eb was retired (archived_stale) so only portrait avatars are publish-eligible.
 // v1.6.0 (T17, 1 May 2026): RESTORE APPROVAL GATE.
 //   Adds .eq('approval_status', 'approved') to draft SELECT.
 //   Mirrors WordPress publisher's fetch-time filter pattern (direct-read publisher).
@@ -10,7 +14,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'youtube-publisher-v1.6.0';
+const VERSION = 'youtube-publisher-v1.7.0';
 const YOUTUBE_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
 const YOUTUBE_UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status';
 
@@ -129,7 +133,7 @@ Deno.serve(async (req: Request) => {
     .eq('approval_status', 'approved')
     .is('draft_format->youtube_video_id', null)
     .not('video_url', 'is', null)
-    .in('recommended_format', ['video_short_kinetic','video_short_stat','video_short_kinetic_voice','video_short_stat_voice'])
+    .in('recommended_format', ['video_short_kinetic','video_short_stat','video_short_kinetic_voice','video_short_stat_voice','video_short_avatar'])
     .limit(2);
 
   for (const draft of (drafts ?? [])) {
