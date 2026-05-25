@@ -1,10 +1,11 @@
-// heygen-worker v1.1.0
-// Fix: also read stakeholder_role and render_style from draft_format.video_script
-// (ai-worker writes via set_draft_video_script which nests inside video_script)
+// heygen-worker v1.2.0
+// v1.2.0 — F-HEYGEN-WORKER-LANDSCAPE-DIMENSION: portrait 720x1280 render for Shorts-native avatar output.
+// v1.1.0 — Fix: also read stakeholder_role and render_style from draft_format.video_script
+//          (ai-worker writes via set_draft_video_script which nests inside video_script)
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION           = 'heygen-worker-v1.1.0';
+const VERSION           = 'heygen-worker-v1.2.0';
 const HEYGEN_GENERATE   = 'https://api.heygen.com/v2/video/generate';
 const HEYGEN_STATUS     = 'https://api.heygen.com/v1/video_status.get';
 const MAX_DRAFTS        = 3;
@@ -63,7 +64,7 @@ async function submitHeyGenJob(opts: {
       voice: { type: 'text', input_text: narrationText, voice_id: voiceId, speed: 1.0 },
       background: { type: 'color', value: bgColour },
     }],
-    dimension: { width: 1280, height: 720 },
+    dimension: { width: 720, height: 1280 },   // 9:16 portrait — YouTube Shorts native (F-HEYGEN-WORKER-LANDSCAPE-DIMENSION)
   };
   const resp = await fetch(HEYGEN_GENERATE, {
     method: 'POST',
