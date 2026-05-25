@@ -9,7 +9,17 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.12.0";
+const VERSION = "ai-worker-v2.13.0";
+// v2.13.0 — F-HEYGEN-NEVER-PRODUCED Option A (A2/A3): avatar YouTube support.
+//   Brief: docs/briefs/f-heygen-never-produced.md. A1 config (add youtube:true to
+//   video_short_avatar.platform_support in t."5.3_content_format") already applied.
+//   A2 — avatar-only override: after callFormatAdvisor, if the slot's
+//   input_payload.format === 'video_short_avatar', force decidedFormat to
+//   'video_short_avatar' (the YouTube palette excludes avatar so the advisor can
+//   never pick it) and record advisor_would_have=<prev decidedFormat> in
+//   advisorReason. NARROW — only video_short_avatar is overridden; no other format.
+//   A3 — generateVideoScript now has a video_short_avatar branch returning JSON
+//   { format:'avatar', narration_text, render_style:'realistic', total_duration_s }.
 // v2.12.0 — F-YT-NY-FORMAT-SELECTION fix
 //   ROOT CAUSE: format-advisor-v1 received no platform context and the
 //   candidate-list filter in fetchFormatContext used opt-out semantics
@@ -194,6 +204,29 @@ async function generateVideoScript(opts: {
       parsed.total_duration_s = 20;
       return parsed;
     } catch { console.error('[ai-worker] video_script_stat parse failed'); return null; }
+  }
+
+  if (formatKey === 'video_short_avatar') {
+    // F-HEYGEN Option A (A3) — talking-head avatar narration for HeyGen render.
+    const systemPrompt = `You are a script writer for a short talking-head avatar video for ${clientName}, a ${vertical} sector presence.\n\nConvert a social media post into a natural, first-person spoken narration for a realistic AI presenter (e.g. a HeyGen talking photo).\n\nRules:\n- narration_text: the exact words to be spoken, first person, conversational. 55-90 words (~25-40s at normal pace). One hook sentence, 1-2 value points, one engagement close.\n- No stage directions, scene labels, markdown, emojis, or hashtags — only the spoken words.\n- total_duration_s: estimated spoken length in seconds (integer, 20-45).\n\nReturn ONLY valid JSON:\n{\n  \"format\": \"avatar\",\n  \"narration_text\": string,\n  \"render_style\": \"realistic\",\n  \"total_duration_s\": number\n}`;
+    const userPrompt = `Post title: ${postTitle || '(none)'}\n\nPost body:\n${postBody.slice(0, 1000)}\n\nGenerate the avatar narration script.`;
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 500, temperature: 0.3, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
+    });
+    if (!resp.ok) { console.error('[ai-worker] video_script_avatar http', resp.status); return null; }
+    const data = await resp.json();
+    const raw = data?.content?.[0]?.text ?? '';
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (!parsed?.narration_text || String(parsed.narration_text).trim().length === 0) return null;
+      parsed.format = 'avatar';
+      parsed.render_style = 'realistic';
+      parsed.total_duration_s = Number(parsed.total_duration_s) || 30;
+      return parsed;
+    } catch { console.error('[ai-worker] video_script_avatar parse failed'); return null; }
   }
 
   return null;
@@ -776,6 +809,18 @@ app.post('*', async (c) => {
         } catch (advisorErr: any) {
           console.error(`[ai-worker] format advisor failed for ${jobId}, defaulting to text:`, advisorErr?.message);
         }
+      }
+
+      // F-HEYGEN Option A (A2) — avatar-only override. If the slot requested
+      // video_short_avatar, honour it regardless of the advisor's pick: the YouTube
+      // candidate palette excludes avatar, so callFormatAdvisor can never select it
+      // and would otherwise silently downgrade. Narrow by design — ONLY this one
+      // format is overridden. Record what the advisor would have chosen.
+      if (job.input_payload?.format === 'video_short_avatar') {
+        const advisorWouldHave = decidedFormat;
+        decidedFormat = 'video_short_avatar';
+        advisorReason = `avatar_override (F-HEYGEN A2); advisor_would_have=${advisorWouldHave}${advisorReason ? `; ${advisorReason}` : ''}`;
+        console.log(`[ai-worker] ${VERSION} — job ${jobId}: avatar override (advisor_would_have=${advisorWouldHave})`);
       }
 
       await writeVisualSpec(supabase, job.post_draft_id, decidedFormat, advisorReason, advisorImageHeadline, advisorDurationMs);
