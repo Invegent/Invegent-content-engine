@@ -4,7 +4,7 @@
 > Source-of-truth details remain in sync_state, run states, decisions, briefs, and commits.
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 >
-> Last updated: 2026-05-25 Sydney (**v3.06 — deployed↔repo drift close + cc-0019 correction.** IG publisher synced to repo v2.0.0→v2.4.0 (`bc78511e`, byte-verified — rollback hazard closed); 7 chat-applied 2026-05-24 migrations backfilled to `supabase/migrations/` (`8738c3a0`, recovered from `schema_migrations.statements`) — **DB→repo migration drift CLOSED**; F-YT-FAILED-NO-RETRY brief authored (`bee872aa`); **cc-0019 CORRECTED → Unit A IMPLEMENTED** (live DB has `m.is_publish_eligible` + `fill_pending_slots` gate; migration `20260524091020`; governed D-01 `a2e5f3f5` + PK approval per header) but **Unit B (ai-worker preflight) NOT implemented** (verified absent in deployed ai-worker v2.12.0). Session `1219aff0`. 0 production mutation; **F-YT-FAILED-NO-RETRY plan_review CLEAN** (`abf6f63c` partial/type-c → `f89c23cf` agree; prior partial resolved by the Unit-B 3-bucket brief patch `a3f329f3`) — **2 plan_review D-01, non-mutating**. IG-arc OWED close substantially discharged. PHASES leg N/A.) **Prior: v3.05 — YouTube OAuth Production restore.** Root cause definitively found: the Google OAuth app was in **Testing** publishing status → refresh tokens capped at **7 days** (NY token lasted 7.00d, PP 7.92d after the 5 May reconnect). PK moved the OAuth app → **Production** + re-exchanged tokens (NY token_updated_at 10:48:22, PP 10:49:05 UTC); two single-draft live tests **published successfully** (PP `ma6EG1fz4XQ` 10:57 UTC, NY `qp-ZGm8lNIo` 11:02 UTC) confirming both channels refresh with no `invalid_grant`. Backlog **released** (fresh ≥12 May → `generated`: NY 6 + PP 7 = 13, draining 2/tick jobid 34) + **soft-retired** (stale <12 May → `archived_stale`: NY 3 + PP 11 = 14; retire-not-delete to keep audit + dodge FK risk). Migrations `yt_token_verify_reset_one_pp_draft` / `yt_token_verify_reset_one_ny_draft` / `yt_backlog_release_fresh_softretire_stale` (all 20260524; draft `video_status` only, guarded). 2 publisher invokes (real publishes). NEW findings F-YT-OAUTH-TESTING-MODE (root cause RESOLVED+recorded), F-YT-FAILED-NO-RETRY (publisher marks transient auth failure terminal `failed` → silently freezes backlog; candidate brief), F-YT-EXPIRY-DISPLAY-FAKE (callback hardcodes now+5y expiry → fake "Valid 2031"). Also **cc-0019 brief** (publish-eligibility gate before AI draft generation) authored `81cb414` + hardened `01a6cdf`; plan_review `a75c78f6`→`ff05c65e` clean — **brief only, NOT implemented**. 4 D-01 (2 plan_review + 2 sql_destructive `82443c8c`/`5f7bfc52`). 0 cron change / 0 EF deploy / 0 client enablement / 0 hard delete / 0 friction.* / 0 cc-0015 start / 0 Stage E / 0 Q-005 closure / 0 decisions.md / 0 dashboard edit. Dashboard roadmap/PHASES leg N/A (operational, no phase change). OWED: pre-compaction IG-publish-restore arc 4-way close.) **Prior: v3.04 — Dashboard Slice 0A MERGED to `invegent-dashboard` main at `3ec489b`** (Pre-Phase 0 / Gate-11-window sidebar IA shell + Visual Tokens v1; NOT real Phase 0). **Today/Next 5 core ranks (unchanged v3.02–v3.05)**: **cc-0015 Gate 11 watch → rank 1 (closes 2026-05-26)**; cc-0016 Stage E scoping/dry-run design ONLY → rank 2 conditional; Wave 0f scoping → rank 3; PRV → rank 4 (deferred); close-the-loop → rank 5.
+> Last updated: 2026-05-25 Sydney (**v3.07 — doc-patch debt (repo doc-only; 0 production mutation).** cc-0017c **main brief → v1.2 PATCHED + CORRECTED** (`6d5c3ae6` apply-record backfill → `81dcb683` no-fabrication correction): status→APPLIED-WITH-VCHECK-CORRECTION, apply date 2026-05-19, migrations `20260519004545`+`20260519005322`, 3 D-01 refs (v1.0 `a37eff28-…` / v1.1 `9e602a2d-…` truncated-in-source / apply `d18fa6db-…` AGREE), V-B4 12-param pointer; correction softened an unverified `cc-0017d v2.90` successor tag. **cc-0017a / cc-0010A / cc-0011 / cc-0012 + cc-0017c/vchecks.md sub-file DEFERRED to CC** — insufficient documented scope + full-file re-emit risk (GitHub bridge has no str_replace; 49–107 KB briefs unsafe to chat-re-emit). **vchecks.md path located:** `docs/briefs/cc-0017c/vchecks.md` (the V-B4 12-param fix is grounded; sub-file edit → CC). **decisions.md still unlocated** (parked per PK steer; cc-0014 sync_state framing leg already moot per v3.06). **Lessons NOT promoted** — canonical L37–L65 home + numbering convention not locatable in repo; PK option (c): defer to next-lesson-cycle/CC; nothing promoted by assumption. Session `b94c042d`. PHASES leg N/A.) **Prior: v3.06 — deployed↔repo drift close + cc-0019 correction.** IG publisher synced to repo v2.0.0→v2.4.0 (`bc78511e`, byte-verified — rollback hazard closed); 7 chat-applied 2026-05-24 migrations backfilled to `supabase/migrations/` (`8738c3a0`, recovered from `schema_migrations.statements`) — **DB→repo migration drift CLOSED**; F-YT-FAILED-NO-RETRY brief authored (`bee872aa`); **cc-0019 CORRECTED → Unit A IMPLEMENTED** (live DB has `m.is_publish_eligible` + `fill_pending_slots` gate; migration `20260524091020`; governed D-01 `a2e5f3f5` + PK approval per header) but **Unit B (ai-worker preflight) NOT implemented** (verified absent in deployed ai-worker v2.12.0). Session `1219aff0`. 0 production mutation; **F-YT-FAILED-NO-RETRY plan_review CLEAN** (`abf6f63c` partial/type-c → `f89c23cf` agree; prior partial resolved by the Unit-B 3-bucket brief patch `a3f329f3`) — **2 plan_review D-01, non-mutating**. IG-arc OWED close substantially discharged. PHASES leg N/A.) **Prior: v3.05 — YouTube OAuth Production restore.** Root cause definitively found: the Google OAuth app was in **Testing** publishing status → refresh tokens capped at **7 days** (NY token lasted 7.00d, PP 7.92d after the 5 May reconnect). PK moved the OAuth app → **Production** + re-exchanged tokens (NY token_updated_at 10:48:22, PP 10:49:05 UTC); two single-draft live tests **published successfully** (PP `ma6EG1fz4XQ` 10:57 UTC, NY `qp-ZGm8lNIo` 11:02 UTC) confirming both channels refresh with no `invalid_grant`. Backlog **released** (fresh ≥12 May → `generated`: NY 6 + PP 7 = 13, draining 2/tick jobid 34) + **soft-retired** (stale <12 May → `archived_stale`: NY 3 + PP 11 = 14; retire-not-delete to keep audit + dodge FK risk). Migrations `yt_token_verify_reset_one_pp_draft` / `yt_token_verify_reset_one_ny_draft` / `yt_backlog_release_fresh_softretire_stale` (all 20260524; draft `video_status` only, guarded). 2 publisher invokes (real publishes). NEW findings F-YT-OAUTH-TESTING-MODE (root cause RESOLVED+recorded), F-YT-FAILED-NO-RETRY (publisher marks transient auth failure terminal `failed` → silently freezes backlog; candidate brief), F-YT-EXPIRY-DISPLAY-FAKE (callback hardcodes now+5y expiry → fake "Valid 2031"). Also **cc-0019 brief** (publish-eligibility gate before AI draft generation) authored `81cb414` + hardened `01a6cdf`; plan_review `a75c78f6`→`ff05c65e` clean — **brief only, NOT implemented**. 4 D-01 (2 plan_review + 2 sql_destructive `82443c8c`/`5f7bfc52`). 0 cron change / 0 EF deploy / 0 client enablement / 0 hard delete / 0 friction.* / 0 cc-0015 start / 0 Stage E / 0 Q-005 closure / 0 decisions.md / 0 dashboard edit. Dashboard roadmap/PHASES leg N/A (operational, no phase change). OWED: pre-compaction IG-publish-restore arc 4-way close.) **Prior: v3.04 — Dashboard Slice 0A MERGED to `invegent-dashboard` main at `3ec489b`** (Pre-Phase 0 / Gate-11-window sidebar IA shell + Visual Tokens v1; NOT real Phase 0). **Today/Next 5 core ranks (unchanged v3.02–v3.05)**: **cc-0015 Gate 11 watch → rank 1 (closes 2026-05-26)**; cc-0016 Stage E scoping/dry-run design ONLY → rank 2 conditional; Wave 0f scoping → rank 3; PRV → rank 4 (deferred); close-the-loop → rank 5.
 
 ---
 
@@ -80,12 +80,13 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 **v3.05 cycle: ~1.5h** (YouTube full-depth audit + root-cause + 2 live test publishes + backlog release/retire + cc-0019 brief authoring/harden/review + full session close). 3 apply_migration (draft video_status only). 2 publisher invokes. 4 D-01 fires. **State-capture exception count: 0** (cumulative 1).
 **v3.04 cycle: ~0.4h** (dashboard Slice 0A merge verification + cross-repo recording; docs-only). 0 schema mutations. 0 D-01.
+**v3.07 cycle: ~repo doc-only** (cc-0017c v1.2 patch + correction; large-brief + lesson deferrals; close). 0 production mutation. 0 Supabase. 0 D-01.
 
 ---
 
 ## ⭐ Today / Next 5 (core ICE ranks)
 
-> Last rebuilt: 2026-05-24 Sydney (core ranks carried unchanged from v3.02; v3.05 added YouTube + cc-0019 carries below the core table — no core rank change).
+> Last rebuilt: 2026-05-24 Sydney (core ranks carried unchanged from v3.02; v3.05 added YouTube + cc-0019 carries below the core table — no core rank change). v3.07: no core rank change (doc-only).
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
@@ -101,9 +102,9 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 - **CFW + Invegent YouTube onboarding** — never connected (no `c.client_channel` YT row, no refresh token); CFW failed drafts also `approval_status='published'`. First-time setup, not a reconnect.
 - **F-YT-FAILED-NO-RETRY brief** — **plan_review CLEAN v3.06** (`abf6f63c` partial/type-c → `f89c23cf` agree; brief `bee872aa` → Unit-B 3-bucket patch `a3f329f3`). Next: ef_deploy + sql_destructive at execution + PK approval (A-then-B).
 - **F-YT-EXPIRY-DISPLAY-FAKE cleanup** — candidate (dashboard callback hardcoded 5y expiry).
-- **cc-0019 execution** — when PK directs: sql_destructive (Unit A migration) + ef_deploy (Unit B ai-worker) + PK approval. Brief reviewed clean (`ff05c65e`).
+- **cc-0019 execution** — when PK directs: sql_destructive (Unit A migration) + ef_deploy (Unit B ai-worker) + PK approval. Brief reviewed clean (`ff05c65e`). *(v3.06: Unit A in fact IMPLEMENTED; Unit B optional.)*
 
-**Carries flagged (NOT actively ranked):** **Q-nightly-health-check-v1-005 (OPEN, non-blocking, next-fire watch; brief v3.1.1)**; **OWED IG-publish-restore arc 4-way close (pre-compaction 2026-05-24)**; 3 no-fire scheduler days (2026-05-16/18/19, P3 informational).
+**Carries flagged (NOT actively ranked):** **Q-nightly-health-check-v1-005 (OPEN, non-blocking, next-fire watch; brief v3.1.1)**; **OWED IG-publish-restore arc 4-way close (pre-compaction 2026-05-24)** *(v3.06: substantially discharged)*; 3 no-fire scheduler days (2026-05-16/18/19, P3 informational); **doc-patch debt residual (v3.07): cc-0017a v1.2 / cc-0010A / cc-0011 / cc-0012 / cc-0017c-vchecks.md V-B4 → CC surgical pass; lessons promotion → next-lesson-cycle/CC; decisions.md → locate first.**
 
 **Time-bound nudge:** cc-0015 Gate 11 observation window closes **2026-05-26** (~2 days out).
 
@@ -123,6 +124,23 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 **Secondary follow-up (P3)**: 3 no-fire scheduler days for `nightly-health-check-v1` — 2026-05-16, 2026-05-18, 2026-05-19.
 
 **Passive observation v3.05**: Cron 82-86 firing normally. **jobid 34 (youtube-publisher, `15,45 * * * *`) active — now draining the released YT backlog (2/tick).** Brief `nightly-health-check-v1` v3.1.1 — next 16:00 UTC fire safe. Dashboard `dashboard.invegent.com`: slices 1–3 + 4A–4B + cc-0016 Stage B/D shipped + verified; mobile-verified; Slice 0A IA shell merged at `3ec489b`. V-A5 smoke artefacts retained — do not delete.
+
+---
+
+## 🟢 Doc-patch debt — STATUS BLOCK (NEW v3.07)
+
+**cc-0017c main brief: PATCHED to v1.2 + CORRECTED. All other located briefs + lessons: DEFERRED.** Only the small cc-0017c main brief (5.8 KB, documented scope) was chat-safe; the rest hit either no-documented-scope or full-file re-emit risk.
+
+| Item | Outcome v3.07 |
+|---|---|
+| cc-0017c main brief | ✅ **v1.2 PATCHED + CORRECTED** (`6d5c3ae6`→`81dcb683`). APPLIED-WITH-VCHECK-CORRECTION; apply 2026-05-19; migrations `20260519004545`+`20260519005322`; 3 D-01 refs (v1.1 UUID truncated-in-source, not invented); V-B4 12-param pointer. Source: session `2026-05-19-v2.85`. |
+| cc-0017a v1.2 | ⛔ DEFERRED to CC. Facts confirmed (APPLIED v2.81; mig `20260518065610`; D-01 `adcc8385-…`; 20/20 V-checks) but **no documented v1.2 scope** + 72 KB full-file re-emit risk. |
+| cc-0010A / cc-0011 / cc-0012 | ⛔ DEFERRED to CC. "Minor doc patches" with **zero documented specifics** + 107/61/49 KB re-emit risk. |
+| cc-0017c/vchecks.md (sub-file) | ⛔ DEFERRED to CC. **Path located:** `docs/briefs/cc-0017c/vchecks.md`. V-B4 12-param fix grounded; sub-file re-emit → CC surgical. |
+| decisions.md (runtime) | ⏸ STILL UNLOCATED (parked). Not in root / `docs/` (index) / `docs/runtime/`. cc-0014 sync_state framing leg already moot per v3.06. |
+| Lessons (L41+L-v2.85-e, L-v2.83-a, L-v2.85-a) | ⏸ NOT PROMOTED. Canonical L37–L65 home + numbering convention not locatable in repo; PK option (c) — defer to next-lesson-cycle/CC; nothing promoted by assumption. |
+
+**Reason it stops here:** the GitHub bridge exposes only full-file writes (no str_replace), so 49–107 KB briefs + the canonical-lessons promotion (undocumented home/numbering) belong to CC's surgical path, not chat re-emit. Confirmed-facts-only; no blind patch; no fabricated lesson numbers.
 
 ---
 
@@ -198,13 +216,14 @@ Wave 0 + 0d + 0e COMPLETE. Gates 10+12+13 CLOSED. Gate 11 (1-week observation 20
 
 ## 🟢 Process Upgrades — STATUS BLOCK (v3.05)
 
-**L41**: re-exercised v3.02.1 + reinforced v3.02.2/v3.03/v3.04 + **reinforced v3.05** (session file new; sync_state + action_list patched read-HEAD-first with blob SHAs passed). Negative-then-positive exemplar.
+**L41**: re-exercised v3.02.1 + reinforced v3.02.2/v3.03/v3.04 + **reinforced v3.05** (session file new; sync_state + action_list patched read-HEAD-first with blob SHAs passed) + **reinforced v3.07** (cc-0017c small full-rewrite from fresh read; large briefs explicitly NOT chat-re-emitted; `00_` edits compact + sha-passed). Negative-then-positive exemplar.
 **L62**: strongly reinforced via cc-0016 6-fire series; **v3.05: reinforced again** — both YT sql_destructive D-01s (`82443c8c`/`5f7bfc52`) returned partial/type-c echoes (corrected_action = the verification already planned), satisfied + proceeded on PK approval.
 **L-v2.83-a**: 18+ occurrences. STRONG.
 **L-v2.85-e**: PROMOTION-CONFIRMED v2.88; streak re-baseline pending.
 **L-v2.88-a**: watcher; 3 cumulative.
 **L-v2.94 / L-v3.02-a / L-v3.03-a / L-v3.04-a**: NEW candidates (watchers).
 **L-v3.05-a**: NEW candidate (v3.05) — **record the root CAUSE, not just the symptom** (YouTube re-diagnosed as "reconnect token" ≥3× because the Testing-mode 7-day cause was never written into the durable record); sub-lesson: **re-run a stale audit against live data when the user reports the situation changed** (the 1 May YT audit was outdated; PK was right). 1 occurrence; watcher.
+**L-v3.07-a**: NEW candidate (v3.07) — **the GitHub bridge has no str_replace, so large files (briefs / canonical lessons) belong to CC's surgical path, not chat full-file re-emit** (full re-emit of 49–107 KB docs is the L-v2.85-e truncation + L41 clobber hazard). Pairs with L41 + L-v3.06-a. Also reinforces no-fabrication: undocumented scope / numbering → defer with explicit note, never invent. 1 occurrence; watcher.
 
 ---
 
@@ -216,7 +235,7 @@ S1–S29 unchanged. S30 closed PASS v2.47.
 
 ## 🔴 Time-bound
 
-- **1-week empirical observation window** — 2026-05-19 → 2026-05-26. Wave 7 (cc-0015) gated. ~2 days out.
+- **1-week empirical observation window** — 2026-05-19 → 2026-05-26. Wave 7 (cc-0015) gated. ~1 day out.
 - **YT token durability spot-check (v3.05)** — verify NY/PP YT tokens still work past ~31 May (proves Production removed the 7-day cap). Not a hard calendar item; soft watch.
 - **Q-nightly-health-check-v1-005 next-fire watch (v3.03)** — next natural 16:00 UTC fire under brief v3.1.1. Watch `failure_count`/`skipped_count`=0 on EMITTED array. Does NOT block the cycle.
 - No new hard calendar items.
@@ -228,6 +247,8 @@ S1–S29 unchanged. S30 closed PASS v2.47.
 v3.05: **4 D-01 fires** — plan_review `a75c78f6` (partial) + `ff05c65e` (agree); sql_destructive `82443c8c` (PP+NY YT tests) + `5f7bfc52` (YT batch). T-MCP-02 cum **~96 (v3.05 +4)**, BUT ~+5 from the unrecorded pre-compaction IG arc → **treat cumulative as needing a clean re-baseline (~101–105 range)**. State-capture exceptions: 0 (cum 1). Close-the-loop UPDATEs: 0.
 
 v3.06: **2 D-01 fires** — plan_review `abf6f63c` (partial/type-c) → `f89c23cf` (agree) on the F-YT-FAILED-NO-RETRY brief; both **non-mutating** (plan reviews). The prior partial was resolved by satisfying its corrected_action against live data (video_status confirmed `text`/no-CHECK; the 30 failed drafts live-bucketed 5/17/8) + patching Unit B to the 3-bucket recovery (`a3f329f3`), then re-firing clean — textbook L62 type-c resolution. T-MCP-02 cum **+2 (still pending the IG-arc re-baseline, ~103–107 range)**. State-capture exceptions: 0 (cum 1). Close-the-loop UPDATEs: 0.
+
+v3.07: **0 D-01 fires** (repo doc-only; no production mutation, no review needed). T-MCP-02 cum unchanged. State-capture exceptions: 0 (cum 1). Close-the-loop UPDATEs: 0.
 
 ---
 
@@ -241,12 +262,18 @@ v3.06: **2 D-01 fires** — plan_review `abf6f63c` (partial/type-c) → `f89c23c
 
 | ID | Item | Priority | Status | Owner | Next action |
 |---|---|---|---|---|---|
+| **Doc-patch debt (v3.07)** | cc-0017c main brief v1.2; cc-0017a/0010A/0011/0012 + cc-0017c/vchecks.md; decisions.md; lessons promotion | P2/P3 | **PARTIAL** — cc-0017c main brief DONE (`6d5c3ae6`→`81dcb683`); rest DEFERRED to CC (scope + re-emit risk); decisions.md unlocated; lessons not promoted | chat → CC | CC surgical pass for cc-0017a/0010A/0011/0012 + vchecks.md; locate decisions.md; lessons at next-lesson-cycle. |
 | **YouTube publishing restore** | OAuth app moved Testing→Production (PK) + tokens re-exchanged; PP `ma6EG1fz4XQ` + NY `qp-ZGm8lNIo` published; backlog released (13 generated, draining) + soft-retired (14 archived_stale). Root cause F-YT-OAUTH-TESTING-MODE (7-day Testing-mode token cap). | RESTORED v3.05 | **RESTORED/VERIFIED** | n/a (recorded) | Watch drain + token durability past ~31 May. |
 | **cc-0019 publish-eligibility-gate** | `m.is_publish_eligible` + fill-gate (Unit A) + ai-worker preflight (Unit B). Brief `81cb414`→`01a6cdf`; plan_review `ff05c65e` clean; migration `20260524091020` (backfilled `8738c3a0`). | P2 | **Unit A IMPLEMENTED (v3.06 correction); Unit B NOT implemented** (absent in ai-worker v2.12.0) | PK → chat | Optional: implement Unit B (ai-worker preflight) via ef_deploy D-01 + PK approval; else accept Unit-A-only (fill-gate already stops the main waste vector). |
 | **F-YT-FAILED-NO-RETRY** | youtube-publisher v1.6.0 catch sets transient auth failure to terminal `video_status='failed'` (never re-selected) → token outage silently freezes rendered backlog | **P2** | **BRIEF AUTHORED + plan_review CLEAN v3.06** (`docs/briefs/yt-publisher-failed-no-retry.md`; `bee872aa` → Unit-B 3-bucket patch `a3f329f3`; plan_review `abf6f63c` partial/type-c → `f89c23cf` agree — prior partial resolved by the patched brief) | chat → PK | ef_deploy (Unit A v1.7.0) + sql_destructive (Unit B 3-bucket recovery: 5 quota recover / 17 token-casualty recover-behind-no-upload-guard / 8 never-connected excluded) + PK approval at execution; A-then-B. |
 | **F-YT-EXPIRY-DISPLAY-FAKE** | dashboard `app/api/youtube/callback/route.ts` hardcodes `token_expires_at=now()+5y` → fabricated "Valid 2031" masks dead tokens | **P3 candidate cleanup** | LOGGED v3.05 | chat → PK | Record real expiry or omit; stop masking. |
 | **CFW + Invegent YouTube onboarding** | Never connected (no `c.client_channel` YT row, no refresh token); CFW failed drafts `approval_status='published'` | **P2/P3 carry** | OPEN | PK → chat | First-time OAuth connect (not a reconnect). |
 | **IG-publish-restore arc 4-way close** | Pre-compaction 2026-05-24: instagram-publisher v2.4.0 deploy; IG queue soft-purge; void+repurge migrations; cron 53 enable. | **P2 carry (sync hygiene)** | **CLOSED v3.06** — publisher synced to repo (`bc78511e`) + 7 migration files backfilled (`8738c3a0`); recording debt discharged. Residual = operational only. | PK | PK decides IG resume (re-enable enqueue cron 64, start CFW/Invegent); lower-risk now M12 root cause closed. |
+| **cc-0017a v1.2 doc patch** | apply-record backfill (APPLIED v2.81; mig `20260518065610`; D-01 `adcc8385-…`) | **P3 carry → CC** | DEFERRED v3.07 — no documented scope + 72 KB full-file re-emit risk | CC | Surgical str_replace on laptop; confirm scope first. |
+| **cc-0010A / cc-0011 / cc-0012 doc patches** | "minor doc patches" — no documented specifics | **P3 carry → CC** | DEFERRED v3.07 — zero scope + 107/61/49 KB re-emit risk | CC | Surgical str_replace; PK to specify scope. |
+| **cc-0017c/vchecks.md V-B4 doc patch** | sub-file `docs/briefs/cc-0017c/vchecks.md` — correct V-B4 to 12-param signature | **P3 carry → CC** | DEFERRED v3.07 — path LOCATED + fix grounded; sub-file re-emit → CC | CC | Surgical str_replace with 12-param signature. |
+| **decisions.md (runtime) location** | locate the runtime decisions log (cc-0014 framing leg) | **P3 carry** | UNLOCATED v3.07 — not in root/`docs/`/`docs/runtime/`; cc-0014 sync_state leg already moot | PK → chat | PK to point at path, or CC to locate. |
+| **Lessons promotion** | L41+L-v2.85-e (pair), L-v2.83-a, L-v2.85-a | **P3 carry → next-lesson-cycle/CC** | NOT PROMOTED v3.07 — canonical L37–L65 home + numbering convention not locatable; do NOT promote by assumption | next-lesson-cycle / CC | Promote once canonical home + numbering confirmed. |
 | **Q-nightly-health-check-v1-005** | Brief v3.1.1: P1 true-stuck emits `condition_key=true_stuck`; 8 keys PARKED pending Supabase-approved `friction.emission_rule` seed. A-005 `56e992b4` / v3.1 `7005865` / v3.1.1 `9ceb78a`. | **P3 non-blocking, next-fire watch** | **OPEN** | chat → PK | Watch next fire; close via fork (A) seed+restore+verify or (B) narrow scope+verify. Do NOT seed/re-emit/close without PK. |
 | **emission_rule seed patch (P1/P2 condition keys)** | Supabase-approved patch to seed enabled `friction.emission_rule` rows for the 8 parked keys; then restore full §12.2a mapping | **P2/P3 carry (Q-005 close fork A)** | NOT STARTED. Supabase mutation — D-01 + PK approval. | PK → chat | When PK directs (fork A). Alt: fork B. |
 | **Dashboard Slice 0A** | Merged `3ec489b` (Pre-Phase 0 IA shell + Visual Tokens v1; NOT real Phase 0) | RECORDED v3.04 | **MERGED/RECORDED** | n/a (recorded) | Real Phase 0 (review §9) future/gated. |
@@ -260,26 +287,28 @@ v3.06: **2 D-01 fires** — plan_review `abf6f63c` (partial/type-c) → `f89c23c
 | **Platform Reconciliation View brief** | Deferred per D-FR-RECON-001 §7.D | **P2 carry, core rank 4** | NOT STARTED. | PK → chat | When PK directs. |
 | **5-row close-the-loop batch / Pre-sales / `purge_test_case` helper extension** | Close-the-loop UPDATEs + Pre-sales 3-clock + helper coverage gap | **P2/P3 carry, core rank 5** | OPEN. | chat → PK | When PK directs. |
 | **Music library activation** | video-worker v3.0.0 env-var gated | P2 carry | PENDING PK. | PK + chat | Bucket + tracks + env + smoke. |
-| **vchecks.md V-B4 doc patch** | Correct V-B4 to 12-param signature | P3 carry | Doc-only. | chat → PK | PK decides scope. |
-| **cc-0017c v1.2 doc patch candidate** | Date + 3 D-01 refs + V-B4 signature | P3 carry | Doc-only. | chat → PK | PK decides scope. |
+| **vchecks.md V-B4 doc patch** | Correct V-B4 to 12-param signature | P3 carry | **Path LOCATED v3.07** (`docs/briefs/cc-0017c/vchecks.md`); fix grounded; DEFERRED to CC. | chat → CC | Surgical str_replace. |
+| **cc-0017c v1.2 doc patch candidate** | Date + 3 D-01 refs + V-B4 signature | P3 carry | **DONE v3.07** (`6d5c3ae6`→`81dcb683`). | n/a (recorded) | — |
 | **Invegent IG cap-throttle planning** | jobid 53 unblock | P2 carry | OBSERVED. *(v3.05: cron 53 enabled in pre-compaction IG arc; close owed.)* | chat → PK | Verify + dry-run + re-enable. |
 | **F-YT-PUB-AVATAR-EXCLUSION** | youtube-publisher format filter | P2 carry | LOGGED. *(v3.05: confirmed eligible formats = 4 kinetic/stat; `video_short_avatar` not in set.)* | chat → PK | Audit m.post_draft. |
 | **cc-0013 Dashboard Phase 0** | 7 confirm-defaults | P2 carry | OPEN. | PK | When PK directs. |
 | **Backend/shared-metrics refactor** | Deeper scope behind v2.95 count mismatch | DEFERRED carry | OPEN. Not actively ranked. | n/a | When separately directed. |
-| **L-v2.83-a promotion** | push_files response file-count verification | **P3 (18+; STRONG)** | Re-applied at sync close. | chat → next lesson cycle | Promote. |
-| **L-v2.85-e** | push_files length budget — split-commit mitigation | **P3 (PROMOTION-CONFIRMED v2.88)** | — | chat → next lesson cycle | **PROMOTE.** |
-| **L41 / full-file-write clobber mitigation** | Re-read HEAD before any full-file sync write; prefer surgical/sha-passed edits for 00_ index files | **P2 (re-exercised v3.02.1; reinforced v3.02.2/v3.03/v3.04/v3.05/v3.06)** | POSITIVE exemplars v3.02.2→v3.06 (all sha-passed surgical edits). | chat → next lesson cycle | **Pair-promote with L-v2.85-e.** |
-| **L-v2.85-a (HIGH-SIGNAL)** | V-check function signature probe at brief authoring | P3 (4 occurrences) | Promotion-eligible. | chat → next lesson cycle | Promote. |
+| **L-v2.83-a promotion** | push_files response file-count verification | **P3 (18+; STRONG)** | Re-applied at sync close. NOT promoted v3.07 (canonical home/numbering unresolved). | chat → next lesson cycle / CC | Promote. |
+| **L-v2.85-e** | push_files length budget — split-commit mitigation | **P3 (PROMOTION-CONFIRMED v2.88)** | NOT promoted v3.07 (canonical home/numbering unresolved). | chat → next lesson cycle / CC | **PROMOTE.** |
+| **L41 / full-file-write clobber mitigation** | Re-read HEAD before any full-file sync write; prefer surgical/sha-passed edits for 00_ index files | **P2 (re-exercised v3.02.1; reinforced v3.02.2/v3.03/v3.04/v3.05/v3.06/v3.07)** | POSITIVE exemplars v3.02.2→v3.07 (all sha-passed surgical edits). NOT promoted v3.07 (canonical home/numbering unresolved). | chat → next lesson cycle / CC | **Pair-promote with L-v2.85-e.** |
+| **L-v2.85-a (HIGH-SIGNAL)** | V-check function signature probe at brief authoring | P3 (4 occurrences) | Promotion-eligible. NOT promoted v3.07. | chat → next lesson cycle / CC | Promote. |
 | **L-v2.94 convention (NEW)** | brief lifecycle ready→fire→review_required→PK observe→ready | P3 (1 natural cycle v3.01) | Confirm across 2-3 more cycles. | chat → next session | Watcher. |
 | **L-v3.02-a / L-v3.03-a / L-v3.04-a (NEW)** | mobile breakpoint verify / downstream acceptance gates / independently verify cross-repo merge SHA | P3 (1 occurrence each) | Watchers. | chat → next session | Promote after one more occurrence each. |
 | **L-v3.05-a (NEW)** | Record root CAUSE not just symptom (YT re-diagnosed as token-reconnect ≥3×); re-run stale audits against live data on user pushback | P3 (1 occurrence v3.05) | Watcher. | chat → next session | Promote after one more occurrence. Pair with L41 / no-fabrication discipline. |
 | **L-v3.06-a (NEW)** | Deployed-vs-repo drift is a standing risk class: verify deployed EF/migration state against repo before any redeploy; backfill chat-applied migrations to `supabase/migrations/` same-session | P3 (1 occurrence v3.06 — IG publisher 4-version drift + 7 missing migration files) | Watcher. | chat → next session | Promote after one more occurrence. Pair with L41. |
+| **L-v3.07-a (NEW)** | GitHub bridge has no str_replace → large files (briefs/canonical lessons) belong to CC surgical path, not chat full-file re-emit; undocumented scope/numbering → defer with explicit note, never invent | P3 (1 occurrence v3.07) | Watcher. | chat → next session | Promote after one more occurrence. Pair with L41 + L-v3.06-a. |
 | **L62 reinforcement** | Type-B vs Type-C D-01 handling | P3 (cc-0016 6-fire series; v3.05 both YT sql_destructive partial/type-c; **v3.06 F-YT plan_review partial→clean type-c resolution**) | Strong empirical record. | chat → next lesson cycle | Strong. |
 | **L-v2.88-a** | Identical PK-directive loop watcher | P3 (3 cumulative) | — | chat → next lesson cycle | Pair-promote if recurs. |
 | **L-v2.90-a-f** | V-D fixture / arity DROP / etc. | P3 (not re-exercised) | Watchers. | chat → next session | Watcher. |
 | **L-v2.78-a / L-v2.81-a / L47 / L-v2.84-a-d / L-v2.85-b/c/d / L-v2.86-a-e / L-v2.88-b/c/d / L-v2.89-a** | Various candidates | P3 carry | Unchanged. | chat → next session/lesson cycle | Various. |
 | **Other carries** | Minor doc patches (cc-0010A/0011/0012) / F-K-SCHEMA-REGISTRY-R-STALE / AI cost view / Publisher latent config / M8b / 94-row cohort / F-CRON-AUTO-APPROVER-SECRET-INLINE / morning-inbox-sweep-v1 / 22 escalated m.chatgpt_review rows / Memory cap 19/30 / F-PUB-009 / CFW dead drafts / Vault service_role_key / 00_overview / F-AAP-NEEDS-REVIEW / F-AI-WORKER-PARSER-SKIP-BUG / 4× F-CRON-*-STALE / Emergency redeploy / f4a0dd85 health-check / feature branch `feature/cc-0009-stage-b-ef-source` / 3 pre-v2 forensic rows / Localhost FAB cleanup / 3 v2.77 D-01 close-the-loops | P2/P3 various | Unchanged. | various | various |
 
+**Closed v3.07:** cc-0017c v1.2 doc patch (DONE — `6d5c3ae6`→`81dcb683`; main brief only). NOT closed/deferred: cc-0017a/0010A/0011/0012 + cc-0017c/vchecks.md (→ CC), decisions.md (unlocated), lessons promotion (→ next-lesson-cycle/CC). 0 production mutation; 0 D-01.
 **Closed v3.06:** Deployed↔repo drift CLOSED (IG publisher `bc78511e`; 7 migration backfills `8738c3a0`). cc-0019 CORRECTED → Unit A implemented / Unit B not. IG-arc recording debt discharged. F-YT-FAILED-NO-RETRY brief authored (`bee872aa`) + **plan_review CLEAN** (`abf6f63c` partial/type-c → `f89c23cf` agree; Unit-B 3-bucket patch `a3f329f3`). 0 production mutation; 2 plan_review D-01 (non-mutating).
 **Closed v3.05:** YouTube publishing restore → RESTORED/VERIFIED (both channels publishing; backlog released + soft-retired). cc-0019 brief → reviewed CLEAN (ready for execution). No core/dashboard rank change.
 **Closed v3.04:** Dashboard Slice 0A → MERGED/RECORDED at `3ec489b`.
@@ -305,6 +334,15 @@ Unchanged from v2.76-v3.01.
 ---
 
 ## 📌 Backlog
+
+**v3.07 state changes:**
+- **cc-0017c main brief → v1.2 PATCHED + CORRECTED** (`6d5c3ae6`→`81dcb683`) — apply-record backfill (APPLIED v2.85; migrations `20260519004545`+`20260519005322`; 3 D-01 refs; V-B4 12-param pointer); correction softened an unverified cc-0017d successor version tag.
+- **cc-0017a / cc-0010A / cc-0011 / cc-0012 + cc-0017c/vchecks.md DEFERRED to CC** — insufficient documented scope + full-file re-emit risk (no str_replace on the bridge; 49–107 KB briefs).
+- **vchecks.md path located** — `docs/briefs/cc-0017c/vchecks.md` (V-B4 12-param fix grounded).
+- **decisions.md still unlocated** — parked.
+- **Lessons NOT promoted** — canonical home + numbering convention not locatable; PK option (c) defer to next-lesson-cycle/CC; nothing promoted by assumption.
+- **L-v3.07-a NEW lesson candidate** (no-str_replace → large files to CC; undocumented scope/numbering → defer not invent). L41 reinforced v3.07 (compact sha-passed `00_` edits; large briefs not chat-re-emitted).
+- 0 production mutation; 0 Supabase; 0 D-01; 0 dashboard edit. No decisions.md change. PHASES leg N/A.
 
 **v3.06 state changes:**
 - **Deployed↔repo drift CLOSED** — IG publisher v2.0.0→v2.4.0 synced (`bc78511e`); 7 chat-applied 2026-05-24 migrations backfilled to `supabase/migrations/` (`8738c3a0`, recovered from `schema_migrations.statements`).
@@ -335,25 +373,26 @@ Unchanged from v2.76-v3.01.
 
 ## 🧊 Frozen / Deferred
 
-Unchanged. **cc-0016 Stage E lifecycle cleanup** — future/separately-approved-only. **Backend/shared-metrics refactor** — deferred carry. **emission_rule seed patch** — Q-005 close fork A; Supabase mutation requires D-01 + PK approval. **Real Dashboard Phase 0 (review §9)** — future/gated. **cc-0019 Unit B (ai-worker preflight)** — optional; gated on ef_deploy D-01 + PK approval (Unit A already live). **F-YT-FAILED-NO-RETRY / F-YT-EXPIRY-DISPLAY-FAKE** — brief authored (plan_review CLEAN) / cleanup, not implemented.
+Unchanged. **cc-0016 Stage E lifecycle cleanup** — future/separately-approved-only. **Backend/shared-metrics refactor** — deferred carry. **emission_rule seed patch** — Q-005 close fork A; Supabase mutation requires D-01 + PK approval. **Real Dashboard Phase 0 (review §9)** — future/gated. **cc-0019 Unit B (ai-worker preflight)** — optional; gated on ef_deploy D-01 + PK approval (Unit A already live). **F-YT-FAILED-NO-RETRY / F-YT-EXPIRY-DISPLAY-FAKE** — brief authored (plan_review CLEAN) / cleanup, not implemented. **Large-brief doc patches (cc-0017a/0010A/0011/0012) + cc-0017c/vchecks.md** — DEFERRED to CC surgical pass (no str_replace on bridge; full-file re-emit risk). **Lessons promotion** — deferred to next-lesson-cycle/CC (canonical home + numbering unresolved).
 
 ---
 
 ## 🎓 Canonical Lessons
 
-L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d + L-v2.85-a-e + L-v2.86-a-e + L-v2.88-a-d + L-v2.89-a + L-v2.90-a-f + L-v2.94 + L-v3.02-a + L-v3.03-a + L-v3.04-a + L-v3.05-a + L-v3.06-a candidates carried.
+L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d + L-v2.85-a-e + L-v2.86-a-e + L-v2.88-a-d + L-v2.89-a + L-v2.90-a-f + L-v2.94 + L-v3.02-a + L-v3.03-a + L-v3.04-a + L-v3.05-a + L-v3.06-a + L-v3.07-a candidates carried.
 
-- **L41**: re-exercised v3.02.1; clean surgical sha-passed edits v3.02.2 + v3.03 + v3.04 + v3.05 + v3.06. Strong pair-promote candidate.
+- **L41**: re-exercised v3.02.1; clean surgical sha-passed edits v3.02.2 + v3.03 + v3.04 + v3.05 + v3.06 + v3.07. Strong pair-promote candidate.
 - **L62**: strongly reinforced via cc-0016 6-fire series; v3.05 both YT sql_destructive partial/type-c; v3.06 F-YT plan_review partial→clean (type-c resolution).
 - **L-v2.83-a**: 18+ occurrences. STRONG.
 - **L-v2.85-e**: PROMOTION-CONFIRMED v2.88.
 - **L-v2.88-a**: 3 cumulative.
-- **L-v2.94 / L-v3.02-a / L-v3.03-a / L-v3.04-a / L-v3.05-a / L-v3.06-a**: NEW candidates.
+- **L-v2.94 / L-v3.02-a / L-v3.03-a / L-v3.04-a / L-v3.05-a / L-v3.06-a / L-v3.07-a**: NEW candidates.
 - **L-v3.05-a**: record root CAUSE not just symptom; re-run stale audits against live data on user pushback.
 - **L-v3.06-a**: deployed-vs-repo drift verification before redeploy; backfill chat-applied migrations same-session.
+- **L-v3.07-a**: no str_replace on the GitHub bridge → large files (briefs/canonical lessons) to CC surgical path, not chat full-file re-emit; undocumented scope/numbering → defer with explicit note, never invent.
 - **L-v2.90-a-f**: watchers.
 
-**Highest-priority promotions next lesson cycle: L41 + full-file-write mitigation (pair), L-v2.85-e, L-v2.85-a, L-v2.83-a.**
+**Highest-priority promotions next lesson cycle: L41 + full-file-write mitigation (pair), L-v2.85-e, L-v2.85-a, L-v2.83-a.** *(v3.07: NOT promoted — canonical lessons home + numbering convention not locatable in repo; promotion deferred to next-lesson-cycle/CC where the convention is known. Do NOT assign baseline L-numbers by assumption.)*
 
 ---
 
@@ -368,6 +407,16 @@ L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d 
 - **No decisions.md change. No Stage E. No cc-0015 start. No Q-005 closure. No re-emission. CFW/Invegent untouched.**
 - Memory cap 19/30 unchanged. Gate 11 closes 2026-05-26 (~2 days).
 
+## v3.07 honest limitations
+
+- **Only cc-0017c main brief was chat-safe** — small file (5.8 KB) with a documented scope. cc-0017a/0010A/0011/0012 + cc-0017c/vchecks.md were NOT patched: no documented scope (except cc-0017a's facts) and/or 49–107 KB full-file re-emit risk (GitHub bridge has no str_replace).
+- **cc-0017c v1.1 D-01 UUID recorded truncated** — `9e602a2d-…`; the full UUID is not captured in the v2.85 source session. Tail NOT invented.
+- **cc-0017d successor version softened** — only "APPLIED" confirmed this session, not the specific v2.90 tag (cc-0017e v2.90/v2.91 retained per action_list).
+- **Lessons NOT promoted** — canonical L37–L65 definitions not locatable in repo (root / `docs/` index / `docs/runtime/` / handoff); promotion mechanic + numbering convention undocumented. Deferred (PK option c). Nothing promoted by assumption.
+- **decisions.md still unlocated** — parked.
+- **`00_` index edits done compact + sha-passed** (no large-brief chat re-emit; L41 / L-v2.85-e / L-v3.07-a discipline). Session detail in `docs/runtime/sessions/2026-05-25-v3.07-doc-patch-debt-cc0017c-v1.2.md`.
+- 0 production mutation. 0 Supabase. 0 EF deploy. 0 cron. 0 dashboard. 0 D-01. 0 memory edit. Memory cap 19/30 unchanged.
+
 ---
 
 ## Changelog
@@ -380,4 +429,5 @@ L37–L65 + L-v2.76-a-f + L-v2.78-a + L47 + L-v2.81-a + L-v2.83-a + L-v2.84-a-d 
 - v3.03 (2026-05-21): Q-005 Option A trail recorded; brief v3.1.1; Q-005 OPEN next-fire watch.
 - v3.04 (2026-05-21): Dashboard Slice 0A merge recorded at `3ec489b` (Pre-Phase 0; NOT real Phase 0).
 - **v3.05 (2026-05-24): YouTube OAuth Production restore. Root cause = OAuth app in Google Testing publishing status → refresh tokens capped at 7 days (NY 7.00d / PP 7.92d after 5 May reconnect). PK moved app → Production + re-exchanged tokens (NY token_updated_at 10:48:22, PP 10:49:05 UTC); two live tests published (PP `ma6EG1fz4XQ` 10:57 UTC, NY `qp-ZGm8lNIo` 11:02 UTC). Backlog released (fresh ≥12 May → generated: NY 6 + PP 7 = 13, draining 2/tick jobid 34) + soft-retired (stale <12 May → archived_stale: NY 3 + PP 11 = 14). Migrations yt_token_verify_reset_one_pp_draft / yt_token_verify_reset_one_ny_draft / yt_backlog_release_fresh_softretire_stale (20260524). cc-0019 brief `81cb414`→`01a6cdf`, plan_review `a75c78f6`→`ff05c65e` clean — brief only. NEW F-YT-OAUTH-TESTING-MODE (root cause RESOLVED+recorded) / F-YT-FAILED-NO-RETRY / F-YT-EXPIRY-DISPLAY-FAKE. 4 D-01 (2 plan_review + 2 sql_destructive). 3 apply_migration + 2 publisher invokes. 0 cron / 0 EF deploy / 0 enablement / 0 hard delete / 0 friction.* / 0 cc-0015 / 0 Stage E / 0 Q-005 closure / 0 decisions.md / 0 dashboard edit. Session file `f9ddd51`; sync_state `119e54e7`; this action_list commit. Recorded via read-HEAD-first sha-passed surgical edits (sync_state blob `7d2b0eb8`, action_list blob `ecaf50f8`). Dashboard roadmap/PHASES leg N/A (operational). OWED: pre-compaction IG-publish-restore arc 4-way close.**
-- **v3.06 (2026-05-25): Deployed↔repo drift close (repo reconciliation only — 0 production mutation). IG publisher v2.0.0→v2.4.0 synced (`bc78511e`, byte-verified — rollback hazard closed). 7 chat-applied 2026-05-24 migrations backfilled to `supabase/migrations/` (`8738c3a0`, recovered verbatim from `schema_migrations.statements`) — DB→repo migration drift CLOSED. F-YT-FAILED-NO-RETRY brief authored (`docs/briefs/yt-publisher-failed-no-retry.md`, `bee872aa`) + Unit-B patched to the live 3-bucket recovery spec (`a3f329f3`: 5 quota recover / 17 token-casualty recover-behind-no-upload-guard / 8 never-connected excluded as onboarding debt) + **plan_review fired + CLEAN** (`abf6f63c` partial/type-c → `f89c23cf` agree; prior partial resolved by satisfying its corrected_action against live data — video_status=text/no-CHECK confirmed + 30 failed drafts live-bucketed — then re-firing). **2 plan_review D-01 (non-mutating).** cc-0019 CORRECTED: Unit A IMPLEMENTED (live `m.is_publish_eligible` + `fill_pending_slots` gate, migration `20260524091020`, D-01 `a2e5f3f5` + PK approval per header) — Unit B (ai-worker preflight) verified NOT implemented in deployed ai-worker v2.12.0; v3.05's "brief only" was stale. IG-arc OWED 4-way close discharged (publisher + migration legs). Session `1219aff0`. sync_state + action_list patched read-HEAD-first with blob SHAs passed. Dashboard PHASES leg N/A (operational). Next: YT F-YT-FAILED-NO-RETRY Unit A/B execution (ef_deploy + sql_destructive + PK approval, A-then-B) when PK directs.**
+- **v3.06 (2026-05-25): Deployed↔repo drift close (repo reconciliation only — 0 production mutation). IG publisher v2.0.0→v2.4.0 synced (`bc78511e`, byte-verified — rollback hazard closed). 7 chat-applied 2026-05-24 migrations backfilled to `supabase/migrations/` (`8738c3a0`, recovered verbatim from `schema_migrations.statements`) — DB→repo migration drift CLOSED. F-YT-FAILED-NO-RETRY brief authored (`docs/briefs/yt-publisher-failed-no-retry.md`, `bee872aa`) + Unit-B patched to the live 3-bucket recovery spec (`a3f329f3`) + plan_review fired + CLEAN (`abf6f63c` partial/type-c → `f89c23cf` agree). 2 plan_review D-01 (non-mutating). cc-0019 CORRECTED: Unit A IMPLEMENTED (live `m.is_publish_eligible` + `fill_pending_slots` gate, migration `20260524091020`, D-01 `a2e5f3f5` + PK approval per header) — Unit B (ai-worker preflight) verified NOT implemented in deployed ai-worker v2.12.0. IG-arc OWED 4-way close discharged (publisher + migration legs). Session `1219aff0`. sync_state + action_list patched read-HEAD-first with blob SHAs passed. Dashboard PHASES leg N/A (operational).**
+- **v3.07 (2026-05-25): Doc-patch debt — repo doc-only, 0 production mutation. cc-0017c main brief → v1.2 PATCHED + CORRECTED (`6d5c3ae6` apply-record backfill: status→APPLIED-WITH-VCHECK-CORRECTION, apply 2026-05-19, migrations `20260519004545`+`20260519005322`, 3 D-01 refs (v1.1 UUID truncated-in-source, not invented), V-B4 12-param pointer; → `81dcb683` correction softened an unverified cc-0017d v2.90 successor tag). cc-0017a / cc-0010A / cc-0011 / cc-0012 + cc-0017c/vchecks.md sub-file DEFERRED to CC (insufficient documented scope + full-file re-emit risk; GitHub bridge has no str_replace; 49–107 KB briefs). vchecks.md path LOCATED: `docs/briefs/cc-0017c/vchecks.md`. decisions.md STILL UNLOCATED (parked). Lessons NOT promoted — canonical L37–L65 home + numbering convention not locatable; PK option (c) defer to next-lesson-cycle/CC; nothing promoted by assumption. L-v3.07-a NEW candidate. L41 reinforced (compact sha-passed `00_` edits; no large-brief chat re-emit). Session file `b94c042d`. sync_state + action_list patched read-HEAD-first with blob SHAs passed. Dashboard PHASES leg N/A (doc-only). 0 Supabase / 0 D-01 / 0 dashboard / 0 decisions.md / 0 memory edit.**
