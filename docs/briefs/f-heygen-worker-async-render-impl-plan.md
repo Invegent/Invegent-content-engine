@@ -2,7 +2,7 @@
 
 **Created:** 2026-05-25 Sydney
 **Author:** chat
-**Status:** PLAN — authored after `plan_review` D-01 `6fb98c05-417c-4293-9044-2ffe0d963325` (GENERIC-NON-BLOCKING per L46) + PK greenlight to proceed. **NOT implemented. NOT deployed.**
+**Status:** ✅ IMPLEMENTED (2026-05-25) — built as heygen-worker **v2.0.0** (deployed EF v33; repo `aa07252`) and **validated** (draft 40f9fa25 → portrait 720×1280 → published `sfQvSM2Osus`). Was: PLAN (after `plan_review` D-01 `6fb98c05-417c-4293-9044-2ffe0d963325`, GENERIC-NON-BLOCKING per L46, + PK greenlight). ef_deploy D-01 `24dcf55b` closed. Full closeout: `docs/operations/avatar-youtube-pipeline-status-2026-05-25.md`.
 **Design brief:** `docs/briefs/f-heygen-worker-async-render.md` (the what/why). This doc is the how/exact-code spec the `ef_deploy` will follow.
 **Target:** `supabase/functions/heygen-worker/index.ts` → **v2.0.0**. heygen-worker only. No youtube-publisher, no ai-worker, no schema migration.
 

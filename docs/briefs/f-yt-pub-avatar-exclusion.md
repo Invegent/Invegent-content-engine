@@ -2,7 +2,9 @@
 
 **Created:** 2026-05-25 Sydney
 **Author:** chat
-**Status:** AUTHORED — brief only, NOT implemented. Execution gated on PK's A-vs-B decision + the D-01 chain below.
+**Status:** ✅ IMPLEMENTED & VALIDATED (2026-05-25) — was: AUTHORED. **Option B (dimension-first) chosen and satisfied, then the publisher was enabled.**
+
+> **✅ FINAL OUTCOME (closeout 2026-05-25):** Shipped via **youtube-publisher v1.7.0** (deployed EF v47; repo `21e372d`) — `video_short_avatar` added to the eligible-format allow-list. Sequenced per Option B: the heygen-worker portrait render (v1.2.0 dimension → v2.0.0 async) landed FIRST, so the first publish is a true 9:16 Short. Controlled supervised first publish: **40f9fa25** (portrait 720×1280) → **YouTube sfQvSM2Osus** (unlisted, NDIS-Yarns), `m.post_publish` audit row written, idempotency guard holds (0 remaining eligible). The landscape proof **ba5b34eb** was **retired (`archived_stale`)** — row + MP4 preserved, non-publishable — so only portrait avatars publish. D-01 ef_deploy `c76aea38` (GENERIC-NON-BLOCKING per L46, closed). Full closeout: `docs/operations/avatar-youtube-pipeline-status-2026-05-25.md`.
 **Priority:** P2 (avatar generation + render now proven end-to-end via F-HEYGEN Option A; the only remaining gap is the publisher allow-list. No client-facing regression — avatar has never published, so this ships a differentiator, it does not restore a broken one.)
 **Result file:** `docs/briefs/results/f-yt-pub-avatar-exclusion.md` (created on completion)
 

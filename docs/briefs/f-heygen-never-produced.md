@@ -3,7 +3,9 @@
 **Created:** 2026-05-25 Sydney
 **Author:** chat
 **Executor:** TBD on PK's Option A/B decision — CC (migration-file authoring + ai-worker EF build); chat (migration apply via Supabase MCP); PK (manual EF deploy, decision authority)
-**Status:** AUTHORED — brief only, NOT implemented. Execution gated on PK's product decision + the D-01 chain below.
+**Status:** ✅ IMPLEMENTED & VALIDATED (2026-05-25) — was: AUTHORED. **PK chose Option A** (avatar IS a YouTube format) and it shipped end-to-end.
+
+> **✅ FINAL OUTCOME (avatar→YouTube closeout, 2026-05-25):** Option A delivered. A1 catalog (`youtube:true` re-added to `video_short_avatar.platform_support`, 2026-05-25 07:23); A2/A3 in **ai-worker v2.13.0** (deployed/live — avatar-format override + `generateVideoScript` avatar branch writing `narration_text`/`render_style`, drafts set `video_status='pending'`); render via **heygen-worker** (now **v2.0.0**, async). Avatar now generates → renders → publishes. Proof drafts: **ba5b34eb** (first render, landscape — later retired) and **40f9fa25** (portrait 720×1280, **published** to YouTube as **sfQvSM2Osus**, unlisted, NDIS-Yarns). Downstream dimension/publisher work: F-HEYGEN-WORKER-LANDSCAPE-DIMENSION / -POLL-BUDGET / -ASYNC-RENDER + F-YT-PUB-AVATAR-EXCLUSION. Full closeout: `docs/operations/avatar-youtube-pipeline-status-2026-05-25.md`.
 **Severity:** P2 (no live avatar output; no client-facing breakage — avatar is an unshipped differentiator, not a regression of a working feature)
 **Result file:** `docs/briefs/results/f-heygen-never-produced.md` (created on completion)
 

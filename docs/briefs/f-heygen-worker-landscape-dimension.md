@@ -2,7 +2,9 @@
 
 **Created:** 2026-05-25 Sydney
 **Author:** chat
-**Status:** AUTHORED — brief only, NOT implemented. Execution gated on PK approval + the `ef_deploy` D-01 below.
+**Status:** ✅ IMPLEMENTED & VALIDATED (2026-05-25) — was: AUTHORED. Portrait **720×1280** shipped (deployed first as heygen-worker **v1.2.0**, EF v31; the same dimension is carried forward in the current **v2.0.0**).
+
+> **✅ FINAL OUTCOME (closeout 2026-05-25):** `submitHeyGenJob` dimension switched `1280×720 → 720×1280` (9:16). Recommended `720×1280` (not `1080×1920`) held — HeyGen accepted it with no plan-tier rejection. Portrait **validated** on draft **40f9fa25**: stored MP4 confirmed **720×1280** (Windows shell props), avatar full-width with modest brand-colour top/bottom bands (mild letterbox — usable Short; full-bleed would need portrait-origin avatars → logged as a future enhancement). D-01 ef_deploy `a62a5ff6` (GENERIC-NON-BLOCKING per L46, closed). The dimension lives on in the current heygen-worker **v2.0.0**. Full closeout: `docs/operations/avatar-youtube-pipeline-status-2026-05-25.md`.
 **Priority:** P3 → effectively P2-blocking (it is the hard prerequisite for the recommended production path of F-YT-PUB-AVATAR-EXCLUSION). No client-facing regression — avatar has never published.
 **Result file:** `docs/briefs/results/f-heygen-worker-landscape-dimension.md` (created on completion)
 

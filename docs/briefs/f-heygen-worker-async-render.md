@@ -2,7 +2,9 @@
 
 **Created:** 2026-05-25 Sydney
 **Author:** chat
-**Status:** AUTHORED — brief only, NOT implemented. Execution gated on PK approval + the D-01 chain below.
+**Status:** ✅ IMPLEMENTED & VALIDATED (2026-05-25) — was: AUTHORED. Shipped as heygen-worker **v2.0.0** (deployed EF v33; repo `aa07252`).
+
+> **✅ FINAL OUTCOME (closeout 2026-05-25):** Async two-phase lifecycle live and **validated end-to-end** on draft **40f9fa25**: Tick 1 (submit) returned in ~3s → `video_status='rendering'` + `heygen_video_id=9d05ae6b…`; Tick 2 (poll) → `generated` + stored MP4, **same `heygen_video_id` (no duplicate render)**. State machine `pending→rendering→generated|failed` with all guards (no-resubmit, raw error JSON, stale max-age). No schema migration (per the §0/§5 audit — `video_status` unconstrained text; `rendering` ignored by all consumers). plan_review D-01 `6fb98c05` + ef_deploy D-01 `24dcf55b` (both GENERIC-NON-BLOCKING per L46, closed). Implementation spec: `docs/briefs/f-heygen-worker-async-render-impl-plan.md`. Full closeout: `docs/operations/avatar-youtube-pipeline-status-2026-05-25.md`.
 **Priority:** P2-blocking — this is the real fix for avatar rendering. The synchronous worker cannot complete renders that exceed the Supabase EF ~150s request limit, and HeyGen renders for production-length narration do exceed it. Blocks F-HEYGEN-WORKER-LANDSCAPE-DIMENSION portrait validation and all downstream avatar→YouTube enablement.
 **Supersedes (operationally):** F-HEYGEN-WORKER-POLL-BUDGET — that patch (v1.3.0, 240s poll) is shown below to be unrealizable on this platform; this brief replaces the "raise the budget" approach with an architecture that removes the time ceiling entirely.
 **Result file:** `docs/briefs/results/f-heygen-worker-async-render.md` (created on completion)

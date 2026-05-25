@@ -215,6 +215,16 @@ Carries: cc-0015 (Wave 7, gated on Gate 11 2026-05-26); cc-0016 Stage E (future/
 
 ## ⛔ Carried-forward "do not touch" state
 
+**Avatar→YouTube pipeline SHIPPED (2026-05-25 closeout — repo↔deploy accurate):**
+
+- **Deployed == repo for all three (do NOT redeploy from an older checkout):** **ai-worker v2.13.0** (GET-probe live; repo `5005b2b`), **heygen-worker v2.0.0** (EF v33; repo `aa07252`), **youtube-publisher v1.7.0** (EF v47; repo `21e372d`). All `verify_jwt=false` preserved.
+- **heygen-worker is now ASYNC two-phase** (Phase A submit → `video_status='rendering'` + `heygen_video_id`; Phase B per-tick poll → `generated`/`failed`). **Do NOT reintroduce a synchronous in-request poll loop** — it dies at the Supabase EF ~150s request idle-timeout. v1.1.0/v1.2.0/v1.3.0 are superseded; the 720×1280 portrait dimension is carried in v2.0.0.
+- **youtube-publisher allow-list now includes `video_short_avatar`**; uploads are **unlisted**. Draft **40f9fa25** published **`sfQvSM2Osus`** (NDIS-Yarns).
+- **`ba5b34eb` = `archived_stale`** (landscape 16:9 proof; row + MP4 preserved; non-publishable). **Do NOT bulk-revert `archived_stale`→`generated`** — it would publish a mislabeled 16:9 "Short". Seed avatar drafts `80d8d2b7`/`a501aa6a` stay blocked (null `video_url`).
+- **New `video_status` value `rendering`** is in live use for in-flight avatar renders; verified ignored by youtube-publisher (`='generated'`), instagram-publisher (`==='generated'`), video-worker (`='pending'`) — no consumer mishandles it. (Existing values: null/published/failed/archived_stale/generated/pending.)
+- **⚠️ Contradiction corrected:** the v3.06 cc-0019 note says "deployed ai-worker **v2.12.0**" — that is now **STALE**; live is **v2.13.0** (verified). cc-0019 Unit B ("ai-worker publish-eligibility preflight absent") should be **re-verified against v2.13.0** if cc-0019 is revisited (the avatar A2/A3 work is unrelated to the eligibility preflight, so the conclusion likely stands, but the version basis changed).
+- Closeout doc: `docs/operations/avatar-youtube-pipeline-status-2026-05-25.md`. Briefs F-HEYGEN-NEVER-PRODUCED / -WORKER-LANDSCAPE-DIMENSION / -WORKER-POLL-BUDGET(superseded) / -WORKER-ASYNC-RENDER / F-YT-PUB-AVATAR-EXCLUSION carry FINAL OUTCOME banners. D-01s `a62a5ff6`/`9a0813b7`/`6fb98c05`/`24dcf55b`/`c76aea38` all GNB-per-L46 + closed.
+
 **v3.07 update — doc-patch housekeeping (doc-only):**
 
 - **cc-0017c main brief is now v1.2** (`docs/briefs/cc-0017c-friction-register-lockdown-and-backfill.md`, commits `6d5c3ae6` + `81dcb683`) — APPLIED-WITH-VCHECK-CORRECTION apply-record backfilled. The brief's stale `AUTHORED_PENDING_D01_REFIRE` framing is corrected. No SQL/scope change.

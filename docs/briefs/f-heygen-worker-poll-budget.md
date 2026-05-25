@@ -2,7 +2,9 @@
 
 **Created:** 2026-05-25 Sydney
 **Author:** chat
-**Status:** AUTHORED — brief only, NOT implemented. Execution gated on PK approval + `ef_deploy` D-01.
+**Status:** ⚠️ IMPLEMENTED then SUPERSEDED (2026-05-25) — was: AUTHORED. Deployed as heygen-worker **v1.3.0** (240s poll budget, EF v32), then **superseded by F-HEYGEN-WORKER-ASYNC-RENDER (v2.0.0)**.
+
+> **⚠️ FINAL OUTCOME (closeout 2026-05-25):** v1.3.0 shipped the 30×8000ms (240s) poll budget and removed the prior false-timeout at 120s — BUT validation then revealed the **Supabase Edge Function ~150s request idle-timeout** is shorter than any in-request poll budget, so a 240s synchronous poll is unreachable (the EF is 504-killed at 150s; PK confirmed the HeyGen video still rendered). The poll-budget bump was therefore a stepping stone: **v2.0.0 removed the in-request poll loop entirely** (async two-phase) — the real fix. The 240s budget is **no longer in the live code**. D-01 ef_deploy `9a0813b7` (GENERIC-NON-BLOCKING per L46, closed). Successor: `docs/briefs/f-heygen-worker-async-render.md`. Full closeout: `docs/operations/avatar-youtube-pipeline-status-2026-05-25.md`.
 **Priority:** P2-blocking — blocks completion of F-HEYGEN-WORKER-LANDSCAPE-DIMENSION validation (the portrait MP4 cannot be produced until renders survive their poll window).
 **Relationship:** **Addendum to F-HEYGEN-WORKER-LANDSCAPE-DIMENSION** (`docs/briefs/f-heygen-worker-landscape-dimension.md`). Same function; discovered *during* that brief's validation render. Same governance, same scope discipline (heygen-worker only).
 **Result file:** `docs/briefs/results/f-heygen-worker-poll-budget.md` (created on completion)
