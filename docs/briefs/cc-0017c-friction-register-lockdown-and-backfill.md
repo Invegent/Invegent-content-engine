@@ -87,7 +87,7 @@ Single atomic apply_migration call. All three sections succeed or all roll back 
 ## §8 Predecessor + successor chain
 
 - **Predecessor (apply order):** cc-0017a (Wave 0a, schema foundation, APPLIED v2.81) → cc-0017b (Wave 0b, unified emit_event + v1.1 doc patch, APPLIED v2.82/v2.83) → **cc-0017c (this brief, Wave 0c, APPLIED v2.85)**
-- **Successors:** Wave 0d (triage/resolution SECURITY DEFINER functions — cc-0017d APPLIED v2.90) → Wave 0e (audit history shadow tables — cc-0017e APPLIED v2.90/v2.91) → cc-0015 (friction-pool-view, AUTHORED PENDING_EXECUTION at commit `9a5dc155`) → cc-0016 (friction-capture-evidence, AUTHORED PENDING_EXECUTION at commit `f35f8ea4`)
+- **Successors:** Wave 0d (triage/resolution SECURITY DEFINER functions — cc-0017d APPLIED 2026-05-19; exact session-version tag not reconfirmed in this v1.2 patch) → Wave 0e (audit history shadow tables — cc-0017e APPLIED; v2.90 apply + v1.1 doc patch v2.91 per action_list) → cc-0015 (friction-pool-view, AUTHORED PENDING_EXECUTION at commit `9a5dc155`) → cc-0016 (friction-capture-evidence, AUTHORED PENDING_EXECUTION at commit `f35f8ea4`)
 
 ---
 
