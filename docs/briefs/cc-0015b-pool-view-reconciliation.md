@@ -2,7 +2,7 @@
 
 **Brief ID:** cc-0015b (reconciliation re-brief for cc-0015 Stage B)
 **Version:** v1.0
-**Status:** **AUTHORED — PENDING PK DECISION + PENDING_EXECUTION.** Not implemented. No code, no migration, no deploy.
+**Status:** **EXECUTED (v3.13, 2026-05-26).** PK §5 decisions applied (COEXIST). Stage B RPC applied + verified; Stage B frontend (§8 package) built, CCB-preview-validated, merged to dashboard `main` `25bcdb7`, and deployed to production (`dpl_Hb2BkFnK3cL4cCAHXbkAz1tDnHjW`, `dashboard.invegent.com`). Repair Board v0 untouched (V-B5). cc-0015 NOT complete (Stage C/D/E + Stage A.5 still open).
 **Authored:** 2026-05-26 Sydney (CCD)
 **Why:** cc-0015 v1.0 (authored 2026-05-16) specified a category-based pool view for `/operations`. Seven days later a *different* "pools" surface shipped — the read-only **Pool / Repair Board v0** at `/operations/pools` (commit `9a4b446`, 2026-05-23). cc-0015 Stage B/C/D were **held** at the v3.12 readiness pass pending this reconciliation. Stage A (schema) + Stage F (operator copy) are already done; this brief unblocks Stage B only.
 **Depends on:** cc-0015 Stage A APPLIED (✅ `dashboard_ui` category + `friction.pool_session`), Stage F SHIPPED (✅ operator help live). Does NOT depend on Stage C/D/E/G.
@@ -111,13 +111,13 @@ The collision is **conceptual + naming**: both call themselves "pools," and cc-0
 
 ## 7. Status
 
-cc-0015 progress: **Stage A APPLIED + verified · Stage F SHIPPED (live + CCB smoke PASS).** This brief (cc-0015b) unblocks **Stage B only** pending PK's §5 decisions. Stages C/D/E/G remain future. **cc-0015 is NOT complete.** Repair Board v0 is **NOT** superseded or changed by this brief.
+cc-0015 progress: **Stage A APPLIED + verified · Stage F SHIPPED (live + CCB smoke PASS) · Stage B RPC APPLIED + verified · Stage B FRONTEND MERGED + DEPLOYED (v3.13, 2026-05-26).** Stage B frontend (filter bar + 5 saved views + category-description hydration on `/operations`) was built on dashboard prep branch `feat/cc-0015-stage-b-operations-filters` (`25bcdb7`), passed CCB preview visual (V-B3/V-B4/V-B5/V-B6 PASS; stale-wording CLEAN), FF-merged to dashboard `main` `25bcdb7`, and is live in production (Vercel `dpl_Hb2BkFnK3cL4cCAHXbkAz1tDnHjW`, `dashboard.invegent.com`; liveness OK). This brief's §8 execution package is now **EXECUTED** (COEXIST model). Stages C/D/E/G remain future; Stage A.5 recategorisation still pending; source filter + sort deferred. **cc-0015 is NOT complete.** Repair Board v0 is **NOT** superseded or changed — verified untouched (V-B5).
 
 ---
 
-## 8. Stage B execution package (concrete — PK §5 decisions applied; PENDING plan_review D-01 + PK)
+## 8. Stage B execution package (concrete — PK §5 decisions applied; EXECUTED v3.13)
 
-**Model:** COEXIST (PK 2026-05-26). `/operations/pools` Repair Board v0 **untouched**. Stage B = `/operations` filter + saved-view enhancement. **Excludes** Stage C (batch), Stage D (status-strip counts), Stage E (pool-session UI), and any v0 change.
+**Model:** COEXIST (PK 2026-05-26). `/operations/pools` Repair Board v0 **untouched**. Stage B = `/operations` filter + saved-view enhancement. **Excludes** Stage C (batch), Stage D (status-strip counts), Stage E (pool-session UI), and any v0 change. **STATUS: EXECUTED** — RPC applied (mig `cc_0015_b_fn_recent_cases_filters` v`20260526124005`); frontend merged to dashboard `main` `25bcdb7` + deployed (`dpl_Hb2BkFnK3cL4cCAHXbkAz1tDnHjW`); CCB preview V-B3/V-B4/V-B5/V-B6 PASS.
 
 ### 8.1 Backend — `fn_recent_cases` extension (prepared artifact)
 `docs/briefs/results/cc-0015-stage-b-fn-recent-cases.sql` — DROP+CREATE `friction.fn_recent_cases` adding `p_categories text[]`, `p_triage_states text[]`, `p_action_decisions text[]` (all DEFAULT NULL). **Return shape UNCHANGED.** Backward-compatible: NULL filters → byte-identical to current; verified **0 in-DB callers** (DROP safe). **Source filter + sort DEFERRED** (PK §6). `sql_destructive` D-01 at apply.
