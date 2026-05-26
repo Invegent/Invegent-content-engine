@@ -1,5 +1,5 @@
 # ICE — Documentation Index
-## Last updated: 21 April 2026
+## Last updated: 2026-05-26 (added `docs/process/` subdirectory — ICE-PROC-001/002)
 
 This is the reading map for the `/docs` folder. Every document is listed with its purpose, when to read it, and a freshness/authority marker so any reader (human or AI) knows whether the doc is current truth or historical reference.
 
@@ -105,6 +105,7 @@ If you find yourself reading anything in `docs/archive/`, ask: do I need history
 | `incidents/` | Post-mortem documents (`YYYY-MM-DD-incident-name.md`) |
 | `legal/` | Legal templates and pilot agreements |
 | `migrations/` | Documentation about applied migrations |
+| `process/` | ICE process docs (`ICE-PROC-NNN-*`) — operating rhythms / discipline frameworks. ICE-PROC-001 (patch severity), ICE-PROC-002 (pooled resolution). |
 | `quality/` | Quality control logs and checks |
 | `reviews/` | External reviewer outputs (digests, system audits) |
 | `skills/` | Skill configurations |
@@ -153,6 +154,7 @@ docs/
 ├── incidents/
 ├── legal/
 ├── migrations/
+├── process/                                ← ICE-PROC-NNN process docs
 ├── quality/
 ├── reviews/                               ← external reviewer digests + system audits
 ├── skills/
