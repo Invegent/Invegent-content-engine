@@ -1,4 +1,17 @@
-// youtube-publisher v1.9.0
+// youtube-publisher v1.10.0
+// v1.10.0 (F-YT-PUB-PUBLISH-AUDIT-GAP): fix the silently-dropped YouTube post_publish audit row for
+//   cross-posted drafts. m.post_publish has uq_publish_attempt UNIQUE(post_draft_id, attempt_no); the
+//   success path hardcoded attempt_no=1, which collides with the draft's existing Facebook row (also
+//   attempt_no=1) → the youtube audit INSERT was rejected, and the error was logged-not-thrown, so the
+//   draft was marked published while its YouTube post_publish row was silently lost. v1.10.0: (a) pick
+//   the NEXT available attempt_no per post_draft_id (max(attempt_no)+1) for the youtube insert so it no
+//   longer collides; (b) on a residual insert error, do NOT swallow it — write a durable
+//   youtube_audit_insert_failed marker into draft_format (the draft is already published, never
+//   re-selected, so no re-upload). No re-upload, no double-publish. Everything else byte-unchanged from
+//   v1.9.0: the approval predicate IN ('approved','published'), metadata, unlisted privacy, failure
+//   classification, bounded retry, channel auth-hold, the no-YT-id guard, the pre-upload reconcile guard,
+//   the format allow-list and the 2/tick cap. Pairs with the one-time backfill of historical missing
+//   youtube audit rows (Unit B; separate sql_destructive step) — brief docs/briefs/yt-publisher-publish-audit-gap.md.
 // v1.9.0 (F-YT-FAILED-NO-RETRY Unit B-2 — cross-platform approval predicate):
 //   Broaden the draft SELECT from approval_status='approved' to approval_status IN ('approved','published').
 //   FINDING (CCD read-only scoping 2026-05-26): all 17 B2 token-casualty drafts (the OAuth Testing-mode
@@ -54,7 +67,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'youtube-publisher-v1.9.0';
+const VERSION = 'youtube-publisher-v1.10.0';
 const YOUTUBE_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
 const YOUTUBE_UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status';
 
@@ -270,15 +283,37 @@ Deno.serve(async (req: Request) => {
       await supabase.schema('m').from('post_draft').update({
         draft_format: okDf, video_status: 'published', updated_at: nowIso(),
       }).eq('post_draft_id', draft.post_draft_id);
+      // v1.10.0 (F-YT-PUB-PUBLISH-AUDIT-GAP): pick the next available attempt_no for this draft so the
+      // youtube audit row does not collide with another platform's row on uq_publish_attempt
+      // (post_draft_id, attempt_no). A cross-posted draft already holds a Facebook row at attempt_no=1,
+      // so the old hardcoded attempt_no=1 was rejected and the YT audit row was silently lost.
+      let nextAttemptNo = 1;
+      try {
+        const { data: priorRows } = await supabase.schema('m').from('post_publish')
+          .select('attempt_no').eq('post_draft_id', draft.post_draft_id)
+          .order('attempt_no', { ascending: false }).limit(1);
+        nextAttemptNo = Number(priorRows?.[0]?.attempt_no ?? 0) + 1;
+      } catch (_) { nextAttemptNo = 1; }
       const { error: insertErr } = await supabase.schema('m').from('post_publish').insert({
         post_draft_id: draft.post_draft_id, client_id: draft.client_id,
         platform: 'youtube', platform_post_id: youtubeVideoId,
-        published_at: nowIso(), status: 'published', attempt_no: 1,
+        published_at: nowIso(), status: 'published', attempt_no: nextAttemptNo,
         response_payload: { youtube_url: youtubeUrl, privacy_status: 'unlisted', video_size_mb: videoSizeMb, duration_ms: durationMs },
       });
-      if (insertErr) console.error(`[youtube-publisher] post_publish INSERT failed:`, insertErr.message);
+      if (insertErr) {
+        // v1.10.0: do NOT swallow silently. The draft is already video_status='published' (so it will not be
+        // re-selected and never re-uploads) — record a durable, visible marker so any residual audit miss is
+        // discoverable + backfillable instead of invisible.
+        console.error(`[youtube-publisher] post_publish INSERT failed:`, insertErr.message);
+        try {
+          await supabase.schema('m').from('post_draft').update({
+            draft_format: { ...okDf, youtube_audit_insert_failed: insertErr.message ?? true, youtube_audit_insert_failed_at: nowIso() },
+            updated_at: nowIso(),
+          }).eq('post_draft_id', draft.post_draft_id);
+        } catch (_) { /* marker is best-effort */ }
+      }
       publishCount++;
-      results.push({ post_draft_id: draft.post_draft_id, status: 'published', youtube_video_id: youtubeVideoId, youtube_url: youtubeUrl, audit_row_inserted: !insertErr });
+      results.push({ post_draft_id: draft.post_draft_id, status: 'published', youtube_video_id: youtubeVideoId, youtube_url: youtubeUrl, audit_row_inserted: !insertErr, attempt_no: nextAttemptNo });
     } catch (e: any) {
       const msg = (e?.message ?? String(e)).slice(0, 2000);
 
