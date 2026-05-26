@@ -112,3 +112,55 @@ The collision is **conceptual + naming**: both call themselves "pools," and cc-0
 ## 7. Status
 
 cc-0015 progress: **Stage A APPLIED + verified · Stage F SHIPPED (live + CCB smoke PASS).** This brief (cc-0015b) unblocks **Stage B only** pending PK's §5 decisions. Stages C/D/E/G remain future. **cc-0015 is NOT complete.** Repair Board v0 is **NOT** superseded or changed by this brief.
+
+---
+
+## 8. Stage B execution package (concrete — PK §5 decisions applied; PENDING plan_review D-01 + PK)
+
+**Model:** COEXIST (PK 2026-05-26). `/operations/pools` Repair Board v0 **untouched**. Stage B = `/operations` filter + saved-view enhancement. **Excludes** Stage C (batch), Stage D (status-strip counts), Stage E (pool-session UI), and any v0 change.
+
+### 8.1 Backend — `fn_recent_cases` extension (prepared artifact)
+`docs/briefs/results/cc-0015-stage-b-fn-recent-cases.sql` — DROP+CREATE `friction.fn_recent_cases` adding `p_categories text[]`, `p_triage_states text[]`, `p_action_decisions text[]` (all DEFAULT NULL). **Return shape UNCHANGED.** Backward-compatible: NULL filters → byte-identical to current; verified **0 in-DB callers** (DROP safe). **Source filter + sort DEFERRED** (PK §6). `sql_destructive` D-01 at apply.
+
+### 8.2 Saved-view predicates (PK §4 names → predicates)
+| Saved view | Predicate |
+|---|---|
+| Dashboard UI | `category ∈ {dashboard_ui}` |
+| **Register reconciliation** | `category ∈ {client_commitment}` — ⚠️ **PK CONFIRM:** the reconciliation emitter writes `category='client_commitment'`, so this captures reconciliation-sourced cases **plus** any manually-filed client_commitment. A source-precise filter (`reported_by='system'`) needs the **deferred** source dimension. **Decide:** accept the `client_commitment` proxy now, or defer this saved view until the source filter exists? |
+| Pipeline/friction cases | `category ∈ {pipeline_integrity}` |
+| All tracked | `action_decision ∈ {track}` |
+| New/untriaged | `triage_state ∈ {new}` |
+
+### 8.3 Frontend files (`/operations` only)
+- `app/(dashboard)/operations/page.tsx` — parse URL params → pass arrays to `fn_recent_cases`; NEW read-only `friction.category` fetch (code/label/description/is_active) for category help; **preserve** cc-0016 evidence signing + the 2026-05-23 usability hydration + Stage F help.
+- `app/(dashboard)/operations/pool-filter-bar.tsx` *(NEW)* — category + triage_state + action_decision multi-selects + saved-views menu; URL shallow routing.
+- `app/(dashboard)/operations/saved-views.tsx` *(NEW)* — the 5 renamed configs (§8.2).
+- `components/friction-field-help.tsx` — extend the `category` field to render per-option `friction.category.description` from the hydrated map (folds in the §8.2 category-description follow-up; additive optional prop).
+- **NOT touched:** `pools/page.tsx`, `pool-card.tsx`, `friction-fab.tsx`, `friction-form.tsx`.
+
+### 8.4 URL param scheme (bookmarkable)
+`/operations?category=dashboard_ui,pipeline_integrity&triage=new&action=track` — comma-separated; absent/empty = no filter (= current `/operations`). Saved views set these.
+
+### 8.5 Category-description hydration
+Server-fetch `friction.category` once in `page.tsx` → pass `{code → {label, description}}` into `FrictionFieldHelp`; the category field's per-option help shows the live description. Read-only; no `fn_recent_cases` shape change.
+
+### 8.6 V-checks
+V-B1 RPC accepts new params + 12-col shape · V-B2 `fn_recent_cases(50)` == `(50,NULL,NULL,NULL)` (byte-identical = backward-compat) · V-B3 filter bar updates URL + reloads (manual) · V-B4 each saved view → expected list (manual) · **V-B5** distinct labelled purposes, no "Pipeline pool" collision, cross-links explain each surface (PK read-aloud) · **V-B6** `/operations/pools` renders unchanged.
+
+### 8.7 Rollback
+`DROP FUNCTION friction.fn_recent_cases(integer, text[], text[], text[])` + re-CREATE the prior single-arg definition (verbatim below); revert `/operations` frontend to its Stage-F state; `/operations/pools` untouched.
+
+Prior `fn_recent_cases(integer)` (rollback source-of-truth):
+```sql
+CREATE OR REPLACE FUNCTION friction.fn_recent_cases(p_limit integer DEFAULT 50)
+ RETURNS TABLE(case_id uuid, case_title text, first_seen_at timestamptz, last_seen_at timestamptz, event_count integer, severity text, category text, triage_state text, quality_flag boolean, action_decision text, next_review_at timestamptz, notes text)
+ LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'friction','public'
+AS $function$
+  SELECT case_id, case_title, first_seen_at, last_seen_at, event_count, severity, category, triage_state, quality_flag, action_decision, next_review_at, notes
+  FROM friction.case
+  ORDER BY CASE severity WHEN 'critical' THEN 1 WHEN 'warn' THEN 2 ELSE 3 END,
+           CASE triage_state WHEN 'new' THEN 1 WHEN 'acknowledged' THEN 2 ELSE 3 END,
+           last_seen_at DESC
+  LIMIT p_limit;
+$function$;
+```
