@@ -94,7 +94,7 @@ These are the behaviours pooled resolution exists to prevent. If a session drift
 
 ## Section 7 — Review
 
-This process gets its **first review after 4 weeks of use** (≈ 2026-06-23, the fourth Friday session). The review evaluates:
+This process gets its **first review after 4 weeks of use** (2026-06-26, the fourth Friday 09:00 Sydney session). The review evaluates:
 
 - **Are the saved views useful?** Which get used, which don't, whether the predicates match how cases actually cluster, and whether any view should be added, dropped, or re-scoped.
 - **Should Stage C / D / E proceed?** Whether real session experience justifies building batch resolution (Stage C), status-strip pool counts (Stage D), and/or the pool-session tracking UI (Stage E) — each still **held** (Section 9). The review produces a recommendation; the build remains separately PK-gated.
@@ -146,7 +146,7 @@ cc-0015 **coexists with** Repair Board v0; it does not supersede or modify it. P
 | Date | Change | Author |
 |---|---|---|
 | 2026-05-26 | Initial authoring (cc-0015 Stage G). Documentation-only; no production mutation. | PK CCD directive + CCD |
-| 2026-05-26 | **V-G1 approved** — PK confirmed this doc as the operating reference for the current cc-0015 `/operations` saved-views + pooled-resolution surface. Stage C/D/E remain held; cc-0015 NOT complete; +4-week process review due ≈ 2026-06-23. | PK + CCD |
+| 2026-05-26 | **V-G1 approved** — PK confirmed this doc as the operating reference for the current cc-0015 `/operations` saved-views + pooled-resolution surface. Stage C/D/E remain held; cc-0015 NOT complete; +4-week process review due ≈ 2026-06-26. | PK + CCD |
 
 ---
 
