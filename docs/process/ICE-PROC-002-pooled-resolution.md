@@ -1,8 +1,8 @@
 # ICE-PROC-002 — Pooled Resolution (Friction Register)
 
-**Status:** Active
+**Status:** Active — **V-G1 PK-approved 2026-05-26** as the operating reference for the current cc-0015 surface
 **Adopted:** 2026-05-26 Sydney
-**Authority:** PK CCD directive 2026-05-26 (cc-0015 Stage G)
+**Authority:** PK CCD directive 2026-05-26 (cc-0015 Stage G); V-G1 approval 2026-05-26
 **Scope:** Triage + resolution of `friction.case` rows via the `/operations` friction-register surface
 **Governs:** the weekly pool-session rhythm, triage defaults, suppression discipline, and the anti-patterns it exists to prevent
 **Related:** cc-0015 brief (`docs/briefs/cc-0015-friction-pool-view.md`); reconciliation re-brief (`docs/briefs/cc-0015b-pool-view-reconciliation.md`)
@@ -146,6 +146,7 @@ cc-0015 **coexists with** Repair Board v0; it does not supersede or modify it. P
 | Date | Change | Author |
 |---|---|---|
 | 2026-05-26 | Initial authoring (cc-0015 Stage G). Documentation-only; no production mutation. | PK CCD directive + CCD |
+| 2026-05-26 | **V-G1 approved** — PK confirmed this doc as the operating reference for the current cc-0015 `/operations` saved-views + pooled-resolution surface. Stage C/D/E remain held; cc-0015 NOT complete; +4-week process review due ≈ 2026-06-23. | PK + CCD |
 
 ---
 
