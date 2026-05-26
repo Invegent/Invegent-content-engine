@@ -2,7 +2,9 @@
 
 **Brief ID:** cc-0015
 **Version:** v1.0
-**Status:** AUTHORED, PENDING_EXECUTION
+**Status:** IN EXECUTION (v3.12, 2026-05-26). **Stage A APPLIED** (migration `cc_0015_a_pool_schema_additions` v`20260526110657`; plan_review D-01 `58d89efe` escalate→PK + PK approval phrase; V-A1–A4 PASS — `dashboard_ui` category active, `friction.pool_session` live with generated `duration_minutes`, grants authenticated=SELECT only / service_role=SELECT,INSERT,UPDATE, no CHECK on `cases_addressed`). **Stage F PREPARED** (help-copy dict on dashboard prep branch `feat/cc-0015-stage-f-operator-copy`, not merged/deployed; awaits PK V-F3 read-aloud → then wire `FrictionFieldHelp` into FAB + triage form). **Stage B/C/D HELD pending a re-brief** reconciling this category-based pool view vs the shipped notes-based Pools/Repair-Board v0 (`/operations/pools`, commit `9a4b446`) — v0 NOT superseded. Stage A.5 backfill recategorisation = separate manual PK-confirmed step. *(Brief drift: line 10 "one new column on friction.case / no new tables" contradicts §3 which adds the `pool_session` table and no column — §3 authoritative. Stage F dict lives at `lib/friction-help-copy.ts` not `app/lib/` per repo `@/*`→root convention.)*
+
+**Original status:** AUTHORED, PENDING_EXECUTION
 **Authored:** 2026-05-16 Sydney
 **Author:** Chat-side Claude with PK approval (session v2.76)
 **Strategic anchor:** Extends cc-0014. Operationalises the register as a *pool consumed in concentrated sessions*, not a queue triaged one-at-a-time.

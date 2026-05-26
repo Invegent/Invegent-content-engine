@@ -91,7 +91,7 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
-| 1 | **cc-0015 Gate 11 watch** | **P2 carry, rank 1 (from v3.01)** | Time-bound. Window closes **2026-05-26** (~2 days out from 2026-05-24). Passive observation; when gate clears, cc-0015 friction-pool-view UI (Wave 7) unblocks as the leading dashboard build. | PK / chat | Observe close-date; no action needed until 2026-05-26. |
+| 1 | **cc-0015 friction-pool-view — IN EXECUTION (v3.12)** | **P2, rank 1** | Gate PK-confirmed (cc-0014 early-close D-IOL-001). **Stage A APPLIED** (mig `cc_0015_a_pool_schema_additions` v`20260526110657`; D-01 `58d89efe`; V-A1–A4 PASS). **Stage F PREPARED** (copy dict, dashboard branch `feat/cc-0015-stage-f-operator-copy`, awaits PK V-F3). **Stage B/C/D HELD for re-brief** (category pools vs Repair-Board v0; v0 NOT superseded). | PK → CCD | (a) PK V-F3 read-aloud → wire FrictionFieldHelp; (b) PK directs Stage B re-brief; (c) Stage A.5 backfill recat when PK confirms. |
 | 2 | **cc-0016 Stage E scoping/dry-run design ONLY** (conditional — Option A) | **P2, rank 2 conditional** | cc-0016 evidence path complete A→B→C→D + mobile-verified; only Stage E (lifecycle cleanup) remains. Option A = NON-MUTATING design + dry-run spec. First destructive run still requires separate PK approval. | PK → chat | PK picks. If A: author Stage E dry-run design (no execution). |
 | 3 | **Wave 0f scoping** | **P3 brief-authoring only, opportunistic during Gate 11 window** | Non-mutating. Candidates: items B/E/F/G from cc-0017e + `purge_test_case` helper case_history extension (L-v2.90-d). | chat → PK | When PK directs (during Gate 11 window → 2026-05-26). |
 | 4 | **Platform Reconciliation View brief authoring** | **P2 carry, deferred per D-FR-RECON-001 §7.D** | Defer until corrected friction-register baseline accepted. | PK → chat | When PK directs. |
@@ -114,7 +114,7 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 | Rank | Item | Priority | Why now | Next action |
 |---|---|---|---|---|
-| D1 | **cc-0015 friction-pool-view UI** (slice 5) | P2 carry | Backend already shipped. Gated on Gate 11 closing 2026-05-26. Leading dashboard build once gate clears. NOT advanced by Slice 0A. | PK → chat (Wave 7) | When window closes 2026-05-26. |
+| D1 | **cc-0015 friction-pool-view UI** | P2, IN EXECUTION v3.12 | Stage A schema APPLIED. **Stage F (operator copy) prepared** on branch `feat/cc-0015-stage-f-operator-copy` (awaits PK V-F3 → wire FrictionFieldHelp). **Stage B/C/D (the pool-view UI) HELD for re-brief** — collides with the shipped `/operations/pools` Repair-Board v0 (notes-`pool_key` model vs cc-0015 category model); v0 NOT superseded. | PK → CCD | V-F3 copy review; then Stage B re-brief decision (supersede/coexist/re-scope). |
 | D2 | **Platform Reconciliation View surface** (slice 7) | P2 carry | PRV brief deferred per D-FR-RECON-001 §7.D. | PK → chat | When PRV brief authored + PK-accepted. |
 
 *(Mobile viewport CLOSED/PASS v3.02. **Dashboard Slice 0A IA shell + Visual Tokens v1 MERGED v3.04 at `3ec489b` — Pre-Phase 0 cosmetic, NOT a ranked build and NOT real Phase 0.**)*
