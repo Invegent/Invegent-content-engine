@@ -295,13 +295,13 @@ Surface `friction.category.description` as helper text under each dropdown optio
 
 #### 8.3 — `quality_flag` (triage form only)
 
-> **Quality flag** — Mark **TRUE** only if you'd want to act on this a week from now. **FALSE** = noise, transient, duplicate of something already known, or filed-in-error. Leave **unset** if unsure. Day-19 verdict counts only TRUE cases — but truthfulness matters more than the count. A FALSE mark is a legitimate triage outcome.
+> **Quality flag** — Mark **TRUE** only if you'd want to act on this a week from now. **FALSE** = noise, transient, duplicate of something already known, or filed-in-error. Leave **unset** if unsure. Quality reviews count only TRUE cases — but truthfulness matters more than the count. A FALSE mark is a legitimate triage outcome.
 
 Display rule: field disabled while `category = 'unclassified'` with tooltip "Reclassify the category first."
 
 #### 8.4 — `capture_reason` (both surfaces — the big one)
 
-| Option | Help text | Counts for criterion 5? |
+| Option | Help text | Counts as prevented loss? |
 |---|---|---|
 | `missed_without_register` | "Without filing this, the issue would have been **forgotten entirely**. Not just delayed — lost." | ✅ Counts |
 | `would_have_deferred` | "Without filing this, you'd have **noted it mentally and acted later, less effectively**, or in a less considered way." | ✅ Counts |
@@ -312,7 +312,7 @@ Display rule: field disabled while `category = 'unclassified'` with tooltip "Rec
 
 Form copy guidance directly above the dropdown:
 
-> **Capture reason** — In hindsight, what would have happened to this issue without the register? Pick the option closest to that counterfactual. The first three options indicate the register *prevented* something — these are the ones that count toward incrementality verdict.
+> **Capture reason** — In hindsight, what would have happened to this issue without the register? Pick the option closest to that counterfactual. The first three options indicate the register *prevented* something — these are the ones that count as prevented loss (the register's value).
 
 #### 8.5 — `capture_reason_note`
 
@@ -348,7 +348,7 @@ Help: "When should this case resurface? `track` defaults to next pool session (u
 
 #### 8.8 — Pool session help
 
-> **Pool sessions** are concentrated reviews of related cases. Start a session, work through the filtered cases together, end the session when done. Sessions are tracked in `friction.pool_session` for later review of the cadence.
+> **Pool sessions** are concentrated reviews of related cases. Start a session, work through the filtered cases together, end the session when done. Sessions are saved to the pool-session log for later review of the cadence.
 
 ### Frontend implementation pattern
 
