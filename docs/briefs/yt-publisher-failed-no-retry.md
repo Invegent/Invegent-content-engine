@@ -5,8 +5,25 @@
 **Author:** chat
 **Executor:** Claude Code (youtube-publisher EF build); chat (recovery migration apply via Supabase MCP); PK (manual EF deploy)
 **Status:** **Unit A DEPLOYED + verified live 2026-05-26 (v3.09).** `youtube-publisher` **v1.8.0** deployed via Supabase CLI from `main` @ `b983a38` (on-disk file byte-identical to EF commit `631fa93a`), `--no-verify-jwt` preserved; live GET returns `youtube-publisher-v1.8.0` (HTTP 200, unauthenticated). D-01 `ef_deploy` `818ee949` + PK directive. **Unit B1-only APPLIED + CCD-verified 2026-05-26** — migration `yt_failed_backlog_recovery_unit_b_b1_only_20260526` (version `20260526054427`), D-01 `sql_destructive` `33eeb164-8f1a-47b9-b9c8-071dbd441d7b` (`agree`/`completed`); 5 quota/transient drafts recovered (`failed` 31→26; zero quota errors remain). **B2 (17 token-casualty) + B3 (9 never-connected) UNTOUCHED — B2 held for a separate Unit B-2.** **A-then-B — A done, B1 done; full Unit B NOT complete.** *(Session `docs/runtime/sessions/2026-05-26-v3.09-youtube-publisher-v1.8.0-deploy.md`.)*
+**Unit B-2 prep (Strategy B) — PREPARED, NOT deployed/applied (2026-05-26):** `youtube-publisher` **v1.9.0** authored (approval predicate broadened `approved`→`IN ('approved','published')`; successful-publish path + all guards byte-unchanged) + bounded B2 recovery DML prepared as a non-executed artifact (`docs/briefs/results/yt-publisher-failed-no-retry-unit-b2-recovery.sql`). See §Unit B-2 (Strategy B) below. **No deploy. No SQL apply. B2 still untouched.**
 **Model / reference implementation:** `instagram-publisher` v2.4.0 (repo `supabase/functions/instagram-publisher/index.ts` @ `bc78511e`) — its RE-B bounded-retry + 2207051 channel auto-pause pattern is the template this brief ports to YouTube.
 **Result file:** `docs/briefs/results/yt-publisher-failed-no-retry.md` (created on completion)
+
+---
+
+## Unit B-2 (Strategy B) — cross-platform approval predicate (PREPARED 2026-05-26, not deployed/applied)
+
+**Decision:** after CCD read-only scoping of the 17 B2 token-casualty drafts, **Strategy B was selected** over the brief's original `published→approved` data-flip (Strategy A).
+
+**Reason (evidence):** all **17** B2 drafts have a **Facebook `m.post_publish` row and ZERO YouTube row** (no `youtube_video_id`, no YouTube post_publish). So `approval_status='published'` is **truthful cross-platform state** (they were published to Facebook), not a YouTube artifact — flipping it to `approved` (Strategy A) would falsify the FB-publish record and leave the publisher's predicate bug to recur. `approval_status` is a draft-level/cross-platform field and must NOT gate the YouTube leg; YouTube eligibility is governed by YouTube-specific guards only (no `youtube_video_id`, no YouTube `post_publish`, format + `video_url` + `video_status='generated'`).
+
+**Strategy B = two prepared artifacts, executed A-then-B at a later supervised step:**
+1. **`ef_deploy` — youtube-publisher v1.9.0.** Broadens the SELECT predicate `approval_status='approved'` → `IN ('approved','published')`. Successful-publish path, metadata, unlisted privacy, failure classification, bounded retry, channel auth-hold, the no-`youtube_video_id` guard, the pre-upload `m.post_publish` reconcile guard, the 5-format allow-list and the 2/tick cap are all byte-unchanged. `approval_status` is never written by the function. *(Built + committed; NOT deployed.)*
+2. **`sql_destructive` — bounded B2 recovery DML** (`docs/briefs/results/yt-publisher-failed-no-retry-unit-b2-recovery.sql`). Snapshot-first; hard-aborts unless exactly 17 rows match the B2 predicate + no-upload guard, on any B3/null-client leak, and on any UNKNOWN failed row. Sets `video_status` `failed→generated`, clears stale YouTube error/retry/dead keys, `youtube_upload_attempts=0`, adds an audit breadcrumb — **`approval_status` PRESERVED (never written)**. *(Prepared; NOT applied.)*
+
+**Behavior broadening (PK to acknowledge at deploy):** v1.9.0 also makes the 1 currently-`generated`/`published` row (and any future cross-posted draft) eligible for its YouTube leg — the intended cross-platform behavior, bounded by the unchanged no-duplicate guards.
+
+**Order:** deploy v1.9.0 (Unit A of B-2) → then apply the DML (Unit B of B-2). Each gated on its own D-01 + PK approval phrase. **Full Unit B is NOT complete until B2 is applied + verified. B3 (9 never-connected) remains onboarding debt, out of scope.**
 
 ---
 
@@ -148,7 +165,7 @@ Per `docs/runtime/mcp_review_protocol.md` + ICE-PROC-001:
 
 ~~v1.8.0 EF code authored + committed (`631fa93a`); Unit B recovery SQL prepared. **Do not deploy / apply** — execution is gated on the D-01 chain (#2 ef_deploy, #3 sql_destructive) + PK approval in a separate, supervised step, A-then-B.~~
 
-**Updated 2026-05-26 (v3.09):** Unit A **DEPLOYED + live-verified** (D-01 `ef_deploy` `818ee949`). **Unit B1-only APPLIED + CCD-verified** (migration `yt_failed_backlog_recovery_unit_b_b1_only_20260526`; D-01 `sql_destructive` `33eeb164…`; 5 quota recovered; B2/B3 untouched). New stop point: **B2 (17 token-casualty) NOT applied — held for a separate Unit B-2.** Do not apply B2 until a fresh D-01 `sql_destructive` + PK approval phrase. B3 (9 never-connected) is onboarding debt — out of scope. Full Unit B is NOT complete.
+**Updated 2026-05-26 (v3.09):** Unit A **DEPLOYED + live-verified** (D-01 `ef_deploy` `818ee949`). **Unit B1-only APPLIED + CCD-verified** (migration `yt_failed_backlog_recovery_unit_b_b1_only_20260526`; D-01 `sql_destructive` `33eeb164…`; 5 quota recovered; B2/B3 untouched). **Unit B-2 (Strategy B) PREPARED — NOT deployed/applied:** youtube-publisher v1.9.0 (predicate broadened) committed + the bounded B2 recovery DML staged (`docs/briefs/results/yt-publisher-failed-no-retry-unit-b2-recovery.sql`). New stop point: **deploy v1.9.0 then apply the B2 DML, A-then-B — each gated on its own D-01 (`ef_deploy`, then `sql_destructive`) + PK approval phrase.** No deploy, no SQL apply, no production mutation done in this prepare step; B2 still untouched. B3 (9 never-connected) is onboarding debt — out of scope. Full Unit B is NOT complete until B2 applied + verified.
 
 ---
 

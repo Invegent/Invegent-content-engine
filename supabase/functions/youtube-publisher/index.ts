@@ -1,4 +1,22 @@
-// youtube-publisher v1.8.0
+// youtube-publisher v1.9.0
+// v1.9.0 (F-YT-FAILED-NO-RETRY Unit B-2 — cross-platform approval predicate):
+//   Broaden the draft SELECT from approval_status='approved' to approval_status IN ('approved','published').
+//   FINDING (CCD read-only scoping 2026-05-26): all 17 B2 token-casualty drafts (the OAuth Testing-mode
+//   invalid_grant set) have a Facebook m.post_publish row and ZERO YouTube row — so their
+//   approval_status='published' is TRUTHFUL cross-platform state (they were published to Facebook), NOT a
+//   YouTube artifact. approval_status is a draft-level / cross-platform field and must NOT gate the YouTube
+//   leg. YouTube publish eligibility is correctly governed by YouTube-SPECIFIC guards only:
+//     - draft_format.youtube_video_id IS NULL                (no prior YT upload id)
+//     - no m.post_publish row with platform='youtube'        (pre-upload reconcile guard — unchanged)
+//     - recommended_format in the 5-format allow-list + video_url IS NOT NULL + video_status='generated'
+//   So a draft already published elsewhere stays eligible for its YouTube leg, behind those unchanged
+//   guards — no double-publish (a draft that already has a YT id / YT post row is skipped or reconciled,
+//   never re-uploaded). Everything else is byte-unchanged from v1.8.0: the successful-publish path,
+//   metadata, unlisted privacy, failure classification (auth/quota/transient/terminal), bounded retry,
+//   channel auth-hold, the no-YT-id guard, the format allow-list, and the 2/tick cap. approval_status is
+//   NOT written by this function. Pairs with the bounded Unit B-2 recovery DML (video_status
+//   failed->generated on the exact 17 ids; approval_status PRESERVED) — prepared, NOT yet applied:
+//   docs/briefs/results/yt-publisher-failed-no-retry-unit-b2-recovery.sql.
 // v1.8.0 (F-YT-FAILED-NO-RETRY): failure classification + bounded retry + channel-level auth hold.
 //   The v1.7.0 catch unconditionally set video_status='failed' and the SELECT only re-selects
 //   'generated' — so any transient failure (token blip, 5xx, quota, download fail) permanently
@@ -36,7 +54,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'youtube-publisher-v1.8.0';
+const VERSION = 'youtube-publisher-v1.9.0';
 const YOUTUBE_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
 const YOUTUBE_UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status';
 
@@ -171,10 +189,13 @@ Deno.serve(async (req: Request) => {
   // v1.6.0 (T17): approval gate at fetch time. v1.7.0: video_short_avatar in allow-list.
   // v1.8.0: SELECT predicates UNCHANGED in meaning (incl youtube_video_id-IS-NULL guard + 5-format list);
   //         limit bumped 2->5; backed-off/paused drafts skipped in JS; effective uploads capped at 2/tick.
+  // v1.9.0: approval predicate broadened 'approved' -> IN ('approved','published') — cross-platform fix
+  //         (a draft already published to e.g. Facebook still needs its YouTube leg). The no-YT-id guard
+  //         and the pre-upload m.post_publish reconcile guard below are what prevent double-upload.
   const { data: drafts } = await supabase.schema('m').from('post_draft')
     .select('post_draft_id, client_id, draft_title, draft_body, recommended_format, video_url, draft_format, approval_status')
     .eq('video_status', 'generated')
-    .eq('approval_status', 'approved')
+    .in('approval_status', ['approved', 'published'])
     .is('draft_format->youtube_video_id', null)
     .not('video_url', 'is', null)
     .in('recommended_format', ELIGIBLE_FORMATS)
