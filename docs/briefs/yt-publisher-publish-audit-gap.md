@@ -2,7 +2,11 @@
 
 **Created:** 2026-05-26 Sydney
 **Author:** CCD (Claude Code / laptop terminal)
-**Status:** **CANDIDATE — AUTHORED, NOT implemented.** No code patched, no EF deployed, no DML applied, no backfill run. Execution gated on D-01 + PK approval (see §Governance).
+**Status:** **✅ RESOLVED / APPLIED / CLOSED 2026-05-26 (v3.11).** Both units executed A-then-B.
+**Unit A:** `youtube-publisher` **v1.10.0 deployed + live** (ef_deploy D-01 `5bd19069`, clean agree/proceed; source commit `fe8729c`, pushed; `--no-verify-jwt`; live GET `youtube-publisher-v1.10.0`). Fix = next-available `attempt_no` per draft for the YouTube audit insert + non-silent `insertErr` marker; v1.9.0 predicate and all no-duplicate / retry / auth / quota guards preserved. Close-the-loop recorded.
+**Unit B:** historical audit-row backfill applied (backfill DML commit `538d9e1`; sql_destructive D-01 `998c90a3` — escalated because it touched historical audit records, then PK gave the exact approval phrase; migration `yt_pub_publish_audit_gap_backfill_20260526`; gates passed; `ROW_COUNT=11`). **Verified:** remaining gap = 0; 11 backfilled, all `platform='youtube'` with `platform_post_id` == the draft's `draft_format.youtube_video_id`, all at non-colliding `attempt_no=2`; 0 duplicate YouTube rows; Facebook rows untouched (736 unchanged); snapshot `m.yt_audit_backfill_snapshot_20260526` = 11; no draft mutation; no re-upload. Close-the-loop recorded with PK resolution.
+**Honest limitation (no over-claim):** `platform_post_id` (the YouTube video ID) is **authoritative** (read from `draft_format.youtube_video_id`). The historical rows' `published_at` is **reconstructed** from `draft_format.youtube_published`, and `response_payload` is **reconstructed** and `backfill`-tagged — because the **original YouTube API insert payload was never captured** for these drafts and cannot be recovered.
+**Session:** `docs/runtime/sessions/2026-05-26-v3.11-yt-publish-audit-gap-closed.md`.
 **Found:** during the v3.10 Unit B-2 B2-drain watch (`docs/runtime/sessions/2026-05-26-v3.10-unit-b2-deploy-recovery.md`).
 **Model / related:** `youtube-publisher` v1.9.0 (the now-live predicate that surfaced this); `docs/briefs/yt-publisher-failed-no-retry.md` (parent F-YT-FAILED-NO-RETRY work).
 **Result file:** `docs/briefs/results/yt-publisher-publish-audit-gap.md` (on completion).
@@ -118,4 +122,6 @@ Backfill `m.post_publish` youtube rows for the cohort:
 
 ## Stop condition
 
-Brief authored only. No `youtube-publisher` v1.10.0 code written/committed; no prepared backfill DML; no deploy; no DML; no backfill; B3 untouched. Execution is a separate, supervised, D-01-gated step (A-then-B) on PK direction.
+~~Brief authored only. No `youtube-publisher` v1.10.0 code written/committed; no prepared backfill DML; no deploy; no DML; no backfill; B3 untouched. Execution is a separate, supervised, D-01-gated step (A-then-B) on PK direction.~~
+
+**✅ EXECUTED + CLOSED v3.11 (2026-05-26):** Unit A (v1.10.0 ef_deploy `5bd19069`) → Unit B (backfill sql_destructive `998c90a3` + PK phrase, mig `yt_pub_publish_audit_gap_backfill_20260526`), A-then-B. Audit gap closed: v1.10.0 prevents new gaps; 11 historical rows backfilled (gap=0). B3 untouched (onboarding debt). See Status block for the verified results + the `published_at`/payload reconstruction limitation.
