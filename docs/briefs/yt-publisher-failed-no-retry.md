@@ -4,7 +4,7 @@
 **Reconciled:** 2026-05-26 Sydney (target v1.7.0 → **v1.8.0**; v1.7.0 was consumed by the avatar allow-list (F-YT-PUB-AVATAR-EXCLUSION); baseline + rollback + Unit B live-bucket counts + the two open decisions reconciled below)
 **Author:** chat
 **Executor:** Claude Code (youtube-publisher EF build); chat (recovery migration apply via Supabase MCP); PK (manual EF deploy)
-**Status:** **PK-approved 2026-05-26 (prepare + commit stage).** v1.8.0 EF source committed to `main` (`631fa93a`); Unit B recovery SQL prepared (not committed as a migration file, not applied). Awaiting: Unit A manual deploy (D-01 `ef_deploy` + PK phrase) → then Unit B apply (D-01 `sql_destructive` + PK phrase). **A-then-B.**
+**Status:** **Unit A DEPLOYED + verified live 2026-05-26 (v3.09).** `youtube-publisher` **v1.8.0** deployed via Supabase CLI from `main` @ `b983a38` (on-disk file byte-identical to EF commit `631fa93a`), `--no-verify-jwt` preserved; live GET returns `youtube-publisher-v1.8.0` (HTTP 200, unauthenticated). D-01 `ef_deploy` `818ee949` + PK directive. **Unit B1-only APPLIED + CCD-verified 2026-05-26** — migration `yt_failed_backlog_recovery_unit_b_b1_only_20260526` (version `20260526054427`), D-01 `sql_destructive` `33eeb164-8f1a-47b9-b9c8-071dbd441d7b` (`agree`/`completed`); 5 quota/transient drafts recovered (`failed` 31→26; zero quota errors remain). **B2 (17 token-casualty) + B3 (9 never-connected) UNTOUCHED — B2 held for a separate Unit B-2.** **A-then-B — A done, B1 done; full Unit B NOT complete.** *(Session `docs/runtime/sessions/2026-05-26-v3.09-youtube-publisher-v1.8.0-deploy.md`.)*
 **Model / reference implementation:** `instagram-publisher` v2.4.0 (repo `supabase/functions/instagram-publisher/index.ts` @ `bc78511e`) — its RE-B bounded-retry + 2207051 channel auto-pause pattern is the template this brief ports to YouTube.
 **Result file:** `docs/briefs/results/yt-publisher-failed-no-retry.md` (created on completion)
 
@@ -111,7 +111,7 @@ Triage DML (prepared; separately D-01-gated; `apply_migration` only). Snapshot-f
 
 ## Migration / deploy needs
 
-- **Unit A — `youtube-publisher` v1.8.0 EF deploy.** Built + committed (`631fa93a`); **PK deploys manually** from `C:\Users\parve\Invegent-content-engine` (Windows MCP PowerShell times out on `supabase functions deploy`). No DDL.
+- **Unit A — `youtube-publisher` v1.8.0 EF deploy. DONE 2026-05-26 (v3.09).** Built + committed (`631fa93a`); deployed by **CCD** (Claude Code / laptop terminal) via `supabase functions deploy youtube-publisher --no-verify-jwt --project-ref mbkmaxqhsohbtwsqolns` (CLI v2.75.0 — the manual laptop path the brief anticipated, since Windows MCP PowerShell times out on the deploy). Live-verified `v1.8.0`. No DDL.
 - **Unit B — recovery DML** via Supabase MCP `apply_migration` (the only sanctioned DML path on `m.*`).
 - **Order:** deploy Unit A first (so re-activated drafts hit the resilient publisher), then run Unit B. **A-then-B is required, not optional.**
 - **Rollback:** Unit A = redeploy **v1.7.0** (the avatar baseline — NOT v1.6.0; keep a copy). Unit B = the reset is forward-only data movement; the pre-state snapshot makes a manual revert to `failed` possible.
@@ -146,7 +146,9 @@ Per `docs/runtime/mcp_review_protocol.md` + ICE-PROC-001:
 
 ## Stop condition
 
-v1.8.0 EF code authored + committed (`631fa93a`); Unit B recovery SQL prepared. **Do not deploy / apply** — execution is gated on the D-01 chain (#2 ef_deploy, #3 sql_destructive) + PK approval in a separate, supervised step, A-then-B.
+~~v1.8.0 EF code authored + committed (`631fa93a`); Unit B recovery SQL prepared. **Do not deploy / apply** — execution is gated on the D-01 chain (#2 ef_deploy, #3 sql_destructive) + PK approval in a separate, supervised step, A-then-B.~~
+
+**Updated 2026-05-26 (v3.09):** Unit A **DEPLOYED + live-verified** (D-01 `ef_deploy` `818ee949`). **Unit B1-only APPLIED + CCD-verified** (migration `yt_failed_backlog_recovery_unit_b_b1_only_20260526`; D-01 `sql_destructive` `33eeb164…`; 5 quota recovered; B2/B3 untouched). New stop point: **B2 (17 token-casualty) NOT applied — held for a separate Unit B-2.** Do not apply B2 until a fresh D-01 `sql_destructive` + PK approval phrase. B3 (9 never-connected) is onboarding debt — out of scope. Full Unit B is NOT complete.
 
 ---
 
