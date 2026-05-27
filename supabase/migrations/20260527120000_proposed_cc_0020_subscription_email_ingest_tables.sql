@@ -1,5 +1,5 @@
 -- ============================================================================
--- cc-0020 Subscription Email Ingest — Stage 2 schema  (DRAFT — DO NOT APPLY)
+-- cc-0020 Subscription Email Ingest — Stage 2 (+2a) schema  (DRAFT — DO NOT APPLY)
 -- ============================================================================
 -- STATUS: DRAFT / UNAPPLIED. This file has NOT been applied to any database —
 --   no apply_migration, no `supabase db push`, no production mutation. Applying
@@ -18,6 +18,13 @@
 --   (one row per service, current-state only) remains the source of truth for
 --   WHAT the subscriptions are. THIS MIGRATION NEVER WRITES TO OR ALTERS THAT
 --   TABLE — the new tables only reference it via nullable FK (brief §1, §2).
+--
+-- TRANSACTION TYPING (Stage 2a): both tables carry `event_type`
+--   ∈ {charge, refund, credit, adjustment, unknown}. event_type is the
+--   AUTHORITATIVE semantic indicator — refunds/credits are NOT distinguished by
+--   sign alone. Convention: charges are positive; refunds/credits MAY be
+--   negative in `amount`/`amount_original`. Refund detection stays LOW
+--   confidence for MVP (parser maps event_type at ingest, Stage 3).
 --
 -- PRIVACY (brief §5): NO raw email body is stored — only structured extraction
 --   fields + minimal metadata: gmail_message_id, sender DOMAIN (never the full
@@ -63,11 +70,13 @@ CREATE TABLE IF NOT EXISTS k.subscription_import_candidate (
   vendor_raw              text,                             -- vendor string as seen (display name / domain)
   vendor_normalised       text,                             -- canonicalised brand for matching
   matched_subscription_id uuid REFERENCES k.subscription_register (subscription_id) ON DELETE SET NULL,
-  amount                  numeric,                          -- extracted amount magnitude (currency below)
+  amount                  numeric,                          -- charge: positive; refund/credit: may be negative (event_type authoritative)
   currency                text,                             -- AUD | USD | GBP | EUR
   billing_date            date,
   cadence                 text NOT NULL DEFAULT 'unknown'
                             CHECK (cadence IN ('monthly','annual','one-off','unknown')),
+  event_type              text NOT NULL DEFAULT 'unknown'
+                            CHECK (event_type IN ('charge','refund','credit','adjustment','unknown')),
   confidence              numeric CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
   source_from_domain      text,                             -- sender DOMAIN only (privacy — never full address)
   source_subject          text,                             -- subject line (allow-listed metadata)
@@ -89,12 +98,17 @@ COMMENT ON COLUMN k.subscription_import_candidate.source_from_domain IS
   'Sender DOMAIN only — the full email address is intentionally NOT stored (brief §5).';
 COMMENT ON COLUMN k.subscription_import_candidate.content_hash IS
   'Deterministic hash of the normalised extraction — secondary duplicate defence, independent of the message id.';
+COMMENT ON COLUMN k.subscription_import_candidate.event_type IS
+  'Authoritative transaction semantics: charge | refund | credit | adjustment | unknown. Convention: charges are positive; refunds/credits may be negative in `amount`. event_type — NOT the sign — is authoritative. Parser maps this at ingest (Stage 3); refunds stay LOW confidence for MVP.';
+COMMENT ON COLUMN k.subscription_import_candidate.amount IS
+  'Extracted amount. Charge: positive. Refund/credit: may be negative. See event_type (authoritative).';
 
 CREATE INDEX IF NOT EXISTS subscription_import_candidate_review_status_idx ON k.subscription_import_candidate (review_status);
 CREATE INDEX IF NOT EXISTS subscription_import_candidate_received_at_idx   ON k.subscription_import_candidate (source_received_at DESC);
 CREATE INDEX IF NOT EXISTS subscription_import_candidate_vendor_idx        ON k.subscription_import_candidate (vendor_normalised);
 CREATE INDEX IF NOT EXISTS subscription_import_candidate_content_hash_idx  ON k.subscription_import_candidate (content_hash);
 CREATE INDEX IF NOT EXISTS subscription_import_candidate_matched_sub_idx   ON k.subscription_import_candidate (matched_subscription_id);
+CREATE INDEX IF NOT EXISTS subscription_import_candidate_event_type_idx    ON k.subscription_import_candidate (event_type);
 
 -- ----------------------------------------------------------------------------
 -- 2. k.subscription_spend_event — confirmed historical spend ledger (append-only)
@@ -104,12 +118,14 @@ CREATE TABLE IF NOT EXISTS k.subscription_spend_event (
   subscription_id     uuid REFERENCES k.subscription_register (subscription_id) ON DELETE SET NULL,
   source_candidate_id uuid REFERENCES k.subscription_import_candidate (candidate_id) ON DELETE SET NULL,
   vendor_name         text,
-  amount_original     numeric NOT NULL,                     -- amount as charged, in `currency`
+  amount_original     numeric NOT NULL,                     -- charge: positive; refund/credit: may be negative (event_type authoritative)
   currency            text    NOT NULL,                     -- AUD | USD | GBP | EUR
   amount_aud          numeric,                              -- AUD-normalised; nullable until FX known
   charged_on          date    NOT NULL,
   cadence             text    NOT NULL DEFAULT 'unknown'
                         CHECK (cadence IN ('monthly','annual','one-off','unknown')),
+  event_type          text    NOT NULL DEFAULT 'charge'
+                        CHECK (event_type IN ('charge','refund','credit','adjustment','unknown')),
   source              text    NOT NULL DEFAULT 'gmail_email', -- provenance: gmail_email | manual | ...
   created_at          timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT subscription_spend_event_source_candidate_key UNIQUE (source_candidate_id)
@@ -121,10 +137,15 @@ COMMENT ON COLUMN k.subscription_spend_event.source_candidate_id IS
   'FK to the accepted candidate; UNIQUE so one accepted candidate yields at most one spend event (idempotent promotion). NULL allowed for manual entries (multiple NULLs permitted by SQL UNIQUE).';
 COMMENT ON COLUMN k.subscription_spend_event.amount_aud IS
   'AUD-normalised amount; nullable until an FX conversion is known.';
+COMMENT ON COLUMN k.subscription_spend_event.event_type IS
+  'Authoritative transaction semantics: charge | refund | credit | adjustment | unknown. Convention: charges are positive; refunds/credits may be negative in `amount_original`. event_type — NOT the sign — is authoritative. Defaults to charge for the ledger.';
+COMMENT ON COLUMN k.subscription_spend_event.amount_original IS
+  'Amount as charged, in `currency`. Charge: positive. Refund/credit: may be negative. See event_type (authoritative).';
 
 CREATE INDEX IF NOT EXISTS subscription_spend_event_subscription_idx ON k.subscription_spend_event (subscription_id);
 CREATE INDEX IF NOT EXISTS subscription_spend_event_charged_on_idx   ON k.subscription_spend_event (charged_on DESC);
 CREATE INDEX IF NOT EXISTS subscription_spend_event_vendor_idx       ON k.subscription_spend_event (vendor_name);
+CREATE INDEX IF NOT EXISTS subscription_spend_event_event_type_idx   ON k.subscription_spend_event (event_type);
 
 -- ----------------------------------------------------------------------------
 -- 3. Security — RLS enabled, deny-by-default, least-privilege grants
