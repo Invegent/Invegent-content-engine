@@ -1,10 +1,12 @@
-# Brief — Subscription Email Ingest MVP
+# Brief — cc-0020 Subscription Email Ingest MVP
 
+> **cc-number:** **cc-0020** (assigned by PK 2026-05-27).
 > **Lane:** Subscription Email Ingest → automated historical subscription-spend tracking.
 > **Owner (build):** CCD.  **Orchestrator / scope-control:** CCH (Chat).
-> **Status:** AUTHORED — awaiting CCD Stage 0 discovery + PK go.  **cc-number:** _unassigned — PK to assign against `00_action_list.md`._
-> **Branch (CCD):** `feat/subscription-email-ingest-mvp` (do NOT touch `main` until merge is separately gated).
-> **Lane isolation:** This lane is fully separate from the Instagram diagnosis lane. No shared files, branches, commits, summaries, or approvals.
+> **Status:** AUTHORED — cc-0020 assigned; Stage 5 boundary confirmed by PK 2026-05-27; awaiting CCD Stage 0 discovery.
+> **Branch (CCD):** `feat/cc-0020-subscription-email-ingest` (do NOT touch `main` until merge is separately gated).
+> **File-rename housekeeping:** this brief was first committed at `docs/briefs/subscription-email-ingest-mvp.md` (bridge has no rename/delete). CCD to `git mv` it to `docs/briefs/cc-0020-subscription-email-ingest.md` on the branch as Stage 0 housekeeping.
+> **Lane isolation:** fully separate from the Instagram diagnosis lane. No shared files, branches, commits, summaries, or approvals.
 > **Authored:** 2026-05-27.
 
 ---
@@ -48,7 +50,7 @@ Two new tables in `k.*`, both append-only, register untouched:
 | **2 — Migration DRAFT** | `supabase/migrations/` **draft file only — NOT applied anywhere.** Both tables, append-only, idempotency constraint, FKs. | Draft migration file | **NOT applied** — apply is a later PK+D-01 gate |
 | **3 — Ingest function scaffold** | EF/script scaffold: takes a message payload (fixture in MVP), runs parser, upserts candidate idempotently. **Gmail-fetch step stubbed/flagged OFF.** | Scaffold reading fixtures only | live fetch disabled |
 | **4 — Review surface (optional, if quick)** | Read-only admin table of candidates + accept/reject affordance (accept → spend_event). Local/preview only. | Dashboard candidate review view | no production deploy |
-| **5 — LIVE Gmail path (OUT OF MVP — separately gated)** | OAuth scope, token handling, real inbox read, cron. | — | **separate explicit PK approval + D-01; not part of this brief's deliverable** |
+| **5 — LIVE Gmail path (OUT OF MVP — separately gated)** | OAuth scope, token handling, real inbox read, cron/Pub/Sub, production apply, deploy. | — | **separate explicit PK approval + D-01; NOT part of this brief's deliverable** |
 
 ## 4. Idempotency (hard requirement)
 
@@ -61,21 +63,26 @@ The same Gmail message must never create a duplicate spend record. Enforce a **U
 - **Never print or store** tokens, refresh tokens, access tokens, client secrets, or DSNs — not in logs, not in tables, not in report-back.
 - Parser/tests run on **synthetic fixtures**, not PK's real mail.
 
-## 6. Hard stops (non-negotiable this lane)
+## 6. Hard stops (non-negotiable this lane) — Stage 5 wall CONFIRMED by PK 2026-05-27
 
-- No production deploy.  No production DB migration apply.
-- No Gmail OAuth consent changes.  No Gmail token creation/refresh/rotation/storage.
-- No reading PK's real Gmail inbox unless PK explicitly approves.
-- No printing email bodies / tokens / secrets / DSNs.
-- No cron enablement.  No automated recurring ingestion in production.
-- No destructive changes to `k.subscription_register` (or any existing register data).
-- No cross-contamination with the Instagram lane.
+CCD may build up to: the **disabled** live-Gmail scaffold, synthetic-fixture ingest, the parser library, the **draft** migration, and the optional review surface. CCD MUST STOP before any of:
+
+- Real Gmail inbox access / reading PK's real mail.
+- Gmail OAuth consent changes / OAuth flow / token creation, refresh, rotation, or storage.
+- Production DB migration **apply** (Stage 2 stays draft-only).
+- **Cron enablement or Pub/Sub** (topic/subscription/watch) setup — no automated recurring ingestion.
+- Any production **deploy**.
+- Printing or storing email bodies / tokens / secrets / DSNs.
+- Any destructive change to `k.subscription_register` or existing register data.
+- Cross-contamination with the Instagram lane.
+
+Each item above is unlocked only by a **separate explicit PK approval** (+ D-01 where it is a production mutation).
 
 ## 7. CCD report-back — acceptance criteria (CCH requires all 8, evidence-backed)
 
 1. **Existing register architecture** — `k.subscription_register` shape + the dashboard route/repo + read path + `k.*` PostgREST exposure finding.
 2. **Proposed target schema** — final candidate/spend-event DDL (or single-table justification).
-3. **Files changed** — exact paths + branch (`feat/subscription-email-ingest-mvp`), with SHAs.
+3. **Files changed** — exact paths + branch (`feat/cc-0020-subscription-email-ingest`), with SHAs.
 4. **Migration status** — confirm DRAFT/local only; **not applied** anywhere (state the project/branch explicitly).
 5. **Parser test results** — fixtures used + pass/fail counts + sample extraction (synthetic data only).
 6. **Duplicate-protection strategy** — the exact idempotency key + constraint + on-conflict behaviour, with a test proving a re-ingest is a no-op.
@@ -84,4 +91,4 @@ The same Gmail message must never create a duplicate spend record. Enforce a **U
 
 ## 8. Governance
 
-Build behind the branch. The Stage 2 migration is **draft-only**; applying it is a later `apply_migration` behind **D-01 + PK approval phrase**. Any later live-Gmail work (Stage 5) is separately gated. CCH (Chat) reviews CCD's report-back against §7 before any apply/deploy is proposed.
+Build behind the branch. The Stage 2 migration is **draft-only**; applying it is a later `apply_migration` behind **D-01 + PK approval phrase**. Any later live-Gmail work (Stage 5 — OAuth/token, real inbox, cron/Pub/Sub, deploy) is separately gated. CCH (Chat) reviews CCD's report-back against §7 before any apply/deploy is proposed.
