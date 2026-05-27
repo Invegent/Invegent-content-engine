@@ -1,5 +1,5 @@
 -- ============================================================================
--- cc-0020 Subscription Email Ingest — Stage 2 (+2a) schema  (DRAFT — DO NOT APPLY)
+-- cc-0020 Subscription Email Ingest — Stage 2 (+2a/+2b) schema  (DRAFT — DO NOT APPLY)
 -- ============================================================================
 -- STATUS: DRAFT / UNAPPLIED. This file has NOT been applied to any database —
 --   no apply_migration, no `supabase db push`, no production mutation. Applying
@@ -19,12 +19,19 @@
 --   WHAT the subscriptions are. THIS MIGRATION NEVER WRITES TO OR ALTERS THAT
 --   TABLE — the new tables only reference it via nullable FK (brief §1, §2).
 --
--- TRANSACTION TYPING (Stage 2a): both tables carry `event_type`
+-- TRANSACTION TYPING (Stage 2a + 2b): both tables carry `event_type`
 --   ∈ {charge, refund, credit, adjustment, unknown}. event_type is the
---   AUTHORITATIVE semantic indicator — refunds/credits are NOT distinguished by
---   sign alone. Convention: charges are positive; refunds/credits MAY be
---   negative in `amount`/`amount_original`. Refund detection stays LOW
---   confidence for MVP (parser maps event_type at ingest, Stage 3).
+--   AUTHORITATIVE semantic indicator (not sign alone) and is enforced by
+--   sign-vs-type CHECK constraints:
+--     • charge              ⇒ amount >= 0          (NULL allowed on candidate)
+--     • refund / credit     ⇒ amount <= 0          (negative or zero; NULL allowed on candidate)
+--     • adjustment / unknown ⇒ either sign allowed
+--   Candidate event_type is the parser/ingest HYPOTHESIS (DEFAULT 'unknown').
+--   Ledger event_type is the CONFIRMED promoted type — NOT NULL with NO DEFAULT,
+--   so it must be set explicitly at promotion. Refund detection stays LOW
+--   confidence for MVP (parser maps event_type at ingest, Stage 3). Mixed
+--   multi-line emails (multiple charges/refunds in one message) are OUT OF MVP
+--   SCOPE.
 --
 -- PRIVACY (brief §5): NO raw email body is stored — only structured extraction
 --   fields + minimal metadata: gmail_message_id, sender DOMAIN (never the full
@@ -70,7 +77,7 @@ CREATE TABLE IF NOT EXISTS k.subscription_import_candidate (
   vendor_raw              text,                             -- vendor string as seen (display name / domain)
   vendor_normalised       text,                             -- canonicalised brand for matching
   matched_subscription_id uuid REFERENCES k.subscription_register (subscription_id) ON DELETE SET NULL,
-  amount                  numeric,                          -- charge: positive; refund/credit: may be negative (event_type authoritative)
+  amount                  numeric,                          -- charge: >=0; refund/credit: <=0 (neg or zero); event_type authoritative
   currency                text,                             -- AUD | USD | GBP | EUR
   billing_date            date,
   cadence                 text NOT NULL DEFAULT 'unknown'
@@ -87,7 +94,16 @@ CREATE TABLE IF NOT EXISTS k.subscription_import_candidate (
                             CHECK (review_status IN ('candidate','accepted','rejected','duplicate')),
   created_at              timestamptz NOT NULL DEFAULT now(),
   updated_at              timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT subscription_import_candidate_gmail_message_id_key UNIQUE (gmail_message_id)
+  CONSTRAINT subscription_import_candidate_gmail_message_id_key UNIQUE (gmail_message_id),
+  -- Sign-vs-type (Stage 2b): event_type is authoritative; sign must agree.
+  CONSTRAINT subscription_import_candidate_amount_sign_chk CHECK (
+    CASE event_type
+      WHEN 'charge' THEN (amount IS NULL OR amount >= 0)
+      WHEN 'refund' THEN (amount IS NULL OR amount <= 0)
+      WHEN 'credit' THEN (amount IS NULL OR amount <= 0)
+      ELSE true   -- adjustment / unknown: either sign
+    END
+  )
 );
 
 COMMENT ON TABLE k.subscription_import_candidate IS
@@ -99,9 +115,9 @@ COMMENT ON COLUMN k.subscription_import_candidate.source_from_domain IS
 COMMENT ON COLUMN k.subscription_import_candidate.content_hash IS
   'Deterministic hash of the normalised extraction — secondary duplicate defence, independent of the message id.';
 COMMENT ON COLUMN k.subscription_import_candidate.event_type IS
-  'Authoritative transaction semantics: charge | refund | credit | adjustment | unknown. Convention: charges are positive; refunds/credits may be negative in `amount`. event_type — NOT the sign — is authoritative. Parser maps this at ingest (Stage 3); refunds stay LOW confidence for MVP.';
+  'Parser/ingest HYPOTHESIS of transaction semantics: charge | refund | credit | adjustment | unknown (DEFAULT unknown). Authoritative over sign, enforced by subscription_import_candidate_amount_sign_chk: charge ⇒ amount>=0; refund/credit ⇒ amount<=0 (NULL allowed); adjustment/unknown ⇒ either sign. Refunds stay LOW confidence for MVP.';
 COMMENT ON COLUMN k.subscription_import_candidate.amount IS
-  'Extracted amount. Charge: positive. Refund/credit: may be negative. See event_type (authoritative).';
+  'Extracted amount. Charge: positive. Refund/credit: negative or zero. adjustment/unknown: either sign. event_type is authoritative.';
 
 CREATE INDEX IF NOT EXISTS subscription_import_candidate_review_status_idx ON k.subscription_import_candidate (review_status);
 CREATE INDEX IF NOT EXISTS subscription_import_candidate_received_at_idx   ON k.subscription_import_candidate (source_received_at DESC);
@@ -118,17 +134,35 @@ CREATE TABLE IF NOT EXISTS k.subscription_spend_event (
   subscription_id     uuid REFERENCES k.subscription_register (subscription_id) ON DELETE SET NULL,
   source_candidate_id uuid REFERENCES k.subscription_import_candidate (candidate_id) ON DELETE SET NULL,
   vendor_name         text,
-  amount_original     numeric NOT NULL,                     -- charge: positive; refund/credit: may be negative (event_type authoritative)
+  amount_original     numeric NOT NULL,                     -- charge: >=0; refund/credit: <=0 (neg or zero); event_type authoritative
   currency            text    NOT NULL,                     -- AUD | USD | GBP | EUR
   amount_aud          numeric,                              -- AUD-normalised; nullable until FX known
   charged_on          date    NOT NULL,
   cadence             text    NOT NULL DEFAULT 'unknown'
                         CHECK (cadence IN ('monthly','annual','one-off','unknown')),
-  event_type          text    NOT NULL DEFAULT 'charge'
+  event_type          text    NOT NULL
                         CHECK (event_type IN ('charge','refund','credit','adjustment','unknown')),
   source              text    NOT NULL DEFAULT 'gmail_email', -- provenance: gmail_email | manual | ...
   created_at          timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT subscription_spend_event_source_candidate_key UNIQUE (source_candidate_id)
+  CONSTRAINT subscription_spend_event_source_candidate_key UNIQUE (source_candidate_id),
+  -- Sign-vs-type (Stage 2b): event_type is authoritative; sign must agree.
+  CONSTRAINT subscription_spend_event_amount_original_sign_chk CHECK (
+    CASE event_type
+      WHEN 'charge' THEN amount_original >= 0
+      WHEN 'refund' THEN amount_original <= 0
+      WHEN 'credit' THEN amount_original <= 0
+      ELSE true   -- adjustment / unknown: either sign
+    END
+  ),
+  -- amount_aud is nullable → NULL-safe sign check.
+  CONSTRAINT subscription_spend_event_amount_aud_sign_chk CHECK (
+    CASE event_type
+      WHEN 'charge' THEN (amount_aud IS NULL OR amount_aud >= 0)
+      WHEN 'refund' THEN (amount_aud IS NULL OR amount_aud <= 0)
+      WHEN 'credit' THEN (amount_aud IS NULL OR amount_aud <= 0)
+      ELSE true   -- adjustment / unknown: either sign
+    END
+  )
 );
 
 COMMENT ON TABLE k.subscription_spend_event IS
@@ -136,11 +170,11 @@ COMMENT ON TABLE k.subscription_spend_event IS
 COMMENT ON COLUMN k.subscription_spend_event.source_candidate_id IS
   'FK to the accepted candidate; UNIQUE so one accepted candidate yields at most one spend event (idempotent promotion). NULL allowed for manual entries (multiple NULLs permitted by SQL UNIQUE).';
 COMMENT ON COLUMN k.subscription_spend_event.amount_aud IS
-  'AUD-normalised amount; nullable until an FX conversion is known.';
+  'AUD-normalised amount; nullable until an FX conversion is known. When present, follows the same sign-vs-type rule (subscription_spend_event_amount_aud_sign_chk).';
 COMMENT ON COLUMN k.subscription_spend_event.event_type IS
-  'Authoritative transaction semantics: charge | refund | credit | adjustment | unknown. Convention: charges are positive; refunds/credits may be negative in `amount_original`. event_type — NOT the sign — is authoritative. Defaults to charge for the ledger.';
+  'CONFIRMED promoted transaction type: charge | refund | credit | adjustment | unknown. NOT NULL with NO DEFAULT — must be set explicitly on promotion (never defaulted). Authoritative over sign, enforced by the amount_original/amount_aud sign checks: charge ⇒ >=0; refund/credit ⇒ <=0; adjustment/unknown ⇒ either sign.';
 COMMENT ON COLUMN k.subscription_spend_event.amount_original IS
-  'Amount as charged, in `currency`. Charge: positive. Refund/credit: may be negative. See event_type (authoritative).';
+  'Amount as charged, in `currency`. Charge: positive. Refund/credit: negative or zero. adjustment/unknown: either sign. event_type is authoritative.';
 
 CREATE INDEX IF NOT EXISTS subscription_spend_event_subscription_idx ON k.subscription_spend_event (subscription_id);
 CREATE INDEX IF NOT EXISTS subscription_spend_event_charged_on_idx   ON k.subscription_spend_event (charged_on DESC);
