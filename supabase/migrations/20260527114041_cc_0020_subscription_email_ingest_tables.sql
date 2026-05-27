@@ -1,11 +1,10 @@
 -- ============================================================================
--- cc-0020 Subscription Email Ingest — Stage 2 (+2a/+2b) schema  (DRAFT — DO NOT APPLY)
+-- cc-0020 Subscription Email Ingest — Stage 2 (+2a/+2b) schema
 -- ============================================================================
--- STATUS: DRAFT / UNAPPLIED. This file has NOT been applied to any database —
---   no apply_migration, no `supabase db push`, no production mutation. Applying
---   it is a later, separately-gated step requiring D-01 + an explicit PK
---   approval phrase (brief docs/briefs/cc-0020-subscription-email-ingest.md
---   §3 Stage 2 + §8). The `proposed_` filename marker signals draft state.
+-- STATUS: APPLIED to production (project mbkmaxqhsohbtwsqolns) on 2026-05-27 as
+--   migration version 20260527114041. This file is the canonical source for the
+--   applied migration; this header was reconciled to match the applied state.
+--   The idempotency-abort guard below still protects any accidental re-run.
 --
 -- PURPOSE: append-only foundation for parsing subscription-billing emails into
 --   structured, reviewable spend history. Two new tables in schema `k`:

@@ -1,12 +1,15 @@
 -- ============================================================================
--- cc-0020 Subscription Email Ingest — Stage 4-B dashboard RPC layer (DRAFT — DO NOT APPLY)
+-- cc-0020 Subscription Email Ingest — Stage 4-B dashboard RPC layer
 -- ============================================================================
--- STATUS: DRAFT / UNAPPLIED. NOT applied to any database — no apply_migration,
---   no `supabase db push`, no production mutation. The `proposed_` filename
---   marker signals draft state. Applying it is a later, separately-gated step.
+-- STATUS: APPLIED to production (project mbkmaxqhsohbtwsqolns) on 2026-05-27 as
+--   migration version 20260527114144. This file is the canonical source for the
+--   applied migration; this header was reconciled to match the applied state.
+--   The anon/authenticated EXECUTE revoke in §5 was applied to prod as a
+--   follow-up (version 20260527114333) and is folded in here as the canonical
+--   end-state grant posture.
 --
 -- DEPENDS ON (apply order): this migration MUST be applied AFTER
---   20260527120000_proposed_cc_0020_subscription_email_ingest_tables.sql.
+--   20260527114041_cc_0020_subscription_email_ingest_tables.sql.
 --   The get_* functions are LANGUAGE sql and are validated AT CREATION, so
 --   k.subscription_import_candidate / k.subscription_spend_event (and the
 --   pre-existing k.subscription_register) must already exist when this runs.
@@ -291,13 +294,18 @@ COMMENT ON FUNCTION public.review_subscription_candidate(uuid, text, uuid) IS
   'cc-0020 Stage 4-B: transactional accept/reject of an email-import candidate. ACCEPT promotes idempotently into k.subscription_spend_event (UNIQUE source_candidate_id, explicit event_type); REJECT marks the candidate only. SECURITY DEFINER; service_role-only EXECUTE.';
 
 -- ----------------------------------------------------------------------------
--- 5. Grants — financial data: revoke the default PUBLIC EXECUTE, grant only to
---    service_role (the dashboard's server-side caller). NO anon/authenticated.
+-- 5. Grants — financial data: EXECUTE locked to service_role (the dashboard's
+--    server-side caller) only. No anon/authenticated/browser path exists.
+--    NOTE: `REVOKE ... FROM PUBLIC` alone is NOT sufficient on Supabase —
+--    Supabase default privileges GRANT EXECUTE on new public functions DIRECTLY
+--    to anon and authenticated, so those roles must be revoked explicitly too
+--    (verified in production: PUBLIC-only revoke left anon/authenticated with
+--    EXECUTE; applied as follow-up version 20260527114333).
 -- ----------------------------------------------------------------------------
-REVOKE EXECUTE ON FUNCTION public.get_subscription_import_candidates(text, integer) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.get_subscription_spend_events(integer)            FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.get_subscription_spend_trends(integer)            FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.review_subscription_candidate(uuid, text, uuid)   FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.get_subscription_import_candidates(text, integer) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_subscription_spend_events(integer)            FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_subscription_spend_trends(integer)            FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.review_subscription_candidate(uuid, text, uuid)   FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.get_subscription_import_candidates(text, integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.get_subscription_spend_events(integer)            TO service_role;
