@@ -1,4 +1,18 @@
-// youtube-publisher v1.10.0
+// youtube-publisher v1.11.0
+// v1.11.0 (visibility): default production YouTube visibility unlisted -> PUBLIC. Future production uploads
+//   now publish as Public (PK directive 2026-05-29; ICE Shorts/videos were going out Unlisted). The single
+//   source of truth is the named module constant DEFAULT_PRIVACY_STATUS = 'public', referenced from BOTH the
+//   YouTube upload privacyStatus AND the m.post_publish audit response_payload.privacy_status so the recorded
+//   metadata can never drift from the actual intended visibility. SAFETY DEPENDS ON THE APPROVAL GATE: a
+//   Public default is only safe because the draft SELECT below gates on approval_status IN ('approved',
+//   'published') AND video_status='generated' AND recommended_format in the format allow-list AND
+//   draft_format->youtube_video_id IS NULL. If that predicate is ever weakened, this Public default becomes
+//   unsafe and must be re-reviewed. NO env/config/UI/per-client setting, NO schema change, NO backfill, NO
+//   historical audit cleanup, NO YouTube API mutation of existing videos. Everything else byte-unchanged from
+//   v1.10.0: approval predicate, metadata, failure classification, bounded retry, channel auth-hold, the
+//   no-YT-id guard, the pre-upload reconcile guard, the format allow-list, the 2/tick cap, and the
+//   next-available attempt_no audit fix. Already-published drafts (youtube_video_id set / video_status not
+//   'generated') are never re-selected and never re-uploaded, so this does not touch any historical video.
 // v1.10.0 (F-YT-PUB-PUBLISH-AUDIT-GAP): fix the silently-dropped YouTube post_publish audit row for
 //   cross-posted drafts. m.post_publish has uq_publish_attempt UNIQUE(post_draft_id, attempt_no); the
 //   success path hardcoded attempt_no=1, which collides with the draft's existing Facebook row (also
@@ -67,7 +81,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'youtube-publisher-v1.10.0';
+const VERSION = 'youtube-publisher-v1.11.0';
 const YOUTUBE_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
 const YOUTUBE_UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status';
 
@@ -79,6 +93,9 @@ const YT_AUTH_PAUSE_HOURS     = 6;   // channel hold on auth failure (best-effor
 const MAX_PUBLISHES_PER_TICK  = 2;   // preserve existing publish cadence
 const SELECT_LIMIT            = 5;   // fetch a few extra so backed-off drafts don't starve fresh ones
 const ELIGIBLE_FORMATS = ['video_short_kinetic','video_short_stat','video_short_kinetic_voice','video_short_stat_voice','video_short_avatar'];
+// v1.11.0: single source of truth for future-publish visibility. Referenced by BOTH the upload privacyStatus
+// and the audit response_payload.privacy_status so recorded metadata never drifts from intended visibility.
+const DEFAULT_PRIVACY_STATUS: 'public' | 'private' | 'unlisted' = 'public';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -273,7 +290,7 @@ Deno.serve(async (req: Request) => {
       const videoBuffer = await videoResp.arrayBuffer();
       const videoSizeMb = Math.round(videoBuffer.byteLength / 1024 / 1024 * 10) / 10;
       const { title, description, tags, categoryId } = buildVideoMetadata(draft, vertical);
-      youtubeVideoId = await uploadToYouTube({ accessToken, videoBuffer, title, description, tags, categoryId, privacyStatus: 'unlisted' });
+      youtubeVideoId = await uploadToYouTube({ accessToken, videoBuffer, title, description, tags, categoryId, privacyStatus: DEFAULT_PRIVACY_STATUS });
       const youtubeUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
       const durationMs = Date.now() - startMs;
       // success: persist + CLEAR any retry metadata left from prior attempts
@@ -298,7 +315,7 @@ Deno.serve(async (req: Request) => {
         post_draft_id: draft.post_draft_id, client_id: draft.client_id,
         platform: 'youtube', platform_post_id: youtubeVideoId,
         published_at: nowIso(), status: 'published', attempt_no: nextAttemptNo,
-        response_payload: { youtube_url: youtubeUrl, privacy_status: 'unlisted', video_size_mb: videoSizeMb, duration_ms: durationMs },
+        response_payload: { youtube_url: youtubeUrl, privacy_status: DEFAULT_PRIVACY_STATUS, video_size_mb: videoSizeMb, duration_ms: durationMs },
       });
       if (insertErr) {
         // v1.10.0: do NOT swallow silently. The draft is already video_status='published' (so it will not be
