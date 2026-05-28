@@ -11,6 +11,11 @@
  * V-B4 (no token in logs / errors / output): forbid `console.log` of any
  *      string literal containing `refresh_token`, `access_token`, or
  *      `Bearer `; forbid raw `JSON.stringify(...)` of the token object.
+ * V-B7 (cc-0020 access rule): forbid any direct PostgREST access to schema
+ *      `k` from production code. All writes go through `public.*` SECURITY
+ *      DEFINER RPCs. Specifically: no `.schema("k")`, no `.from("…")` on
+ *      Supabase-shaped clients, no string literal containing `k.subscription_`
+ *      used as a PostgREST table name.
  */
 
 function assert(cond: boolean, msg: string): void {
@@ -95,6 +100,35 @@ Deno.test("V-B4 canary: no token/secret strings in production code's log lines",
   }
 });
 
+// -------- V-B7: no direct PostgREST access to schema `k` --------
+
+const FORBIDDEN_V_B7 = [
+  // Supabase JS direct-table access shape: `.schema("k")` / `.schema('k')`.
+  /\.schema\(\s*["']k["']\s*\)/,
+  // Generic `.schema(` in production code — even a non-"k" schema call would
+  // indicate the boundary contract has been widened beyond what Stage 5 Unit B
+  // codifies (RPC-only). Reads via RPC do not need .schema().
+  /\.schema\(/,
+  // Any literal `.from("subscription_…")` against an unknown schema is a
+  // bypass of the RPC boundary.
+  /\.from\(\s*["']subscription_(import_candidate|spend_event)["']\s*\)/,
+  // `k.subscription_…` table name used as a PostgREST table literal.
+  /["']k\.subscription_(import_candidate|spend_event)["']/,
+];
+
+Deno.test("V-B7 canary: no direct schema('k') / PostgREST access to k.* in production code", async () => {
+  for (const file of PROD_SOURCES) {
+    const src = await readSource(file);
+    const code = stripComments(src);
+    for (const pattern of FORBIDDEN_V_B7) {
+      const m = code.match(pattern);
+      assert(m === null,
+        `[${file}] V-B7 violation: cc-0020 access rule — forbidden pattern ${pattern} found at "${m?.[0]}". ` +
+        `All writes must go through public.* SECURITY DEFINER RPCs.`);
+    }
+  }
+});
+
 // -------- meta: confirm SUBSCRIPTION_GMAIL_INGEST_ENABLED is checked --------
 
 Deno.test("Kill-switch present: SUBSCRIPTION_GMAIL_INGEST_ENABLED is checked", async () => {
@@ -104,6 +138,24 @@ Deno.test("Kill-switch present: SUBSCRIPTION_GMAIL_INGEST_ENABLED is checked", a
     "gmail.ts must check SUBSCRIPTION_GMAIL_INGEST_ENABLED");
   assert(idx.includes("SUBSCRIPTION_GMAIL_INGEST_ENABLED") || idx.includes("gmailFetchEnabled"),
     "index.ts must check the kill switch (directly or via gmailFetchEnabled)");
+});
+
+// -------- meta: Unit C blocker note + RPC contract recorded --------
+
+Deno.test("RPC contract recorded: repository.ts names the public write RPC + its params", async () => {
+  const repo = await readSource("repository.ts");
+  assert(repo.includes("ingest_subscription_import_candidate"),
+    "repository.ts must name the public write RPC `ingest_subscription_import_candidate`");
+  assert(repo.includes("INGEST_CANDIDATE_RPC_PARAMS"),
+    "repository.ts must export INGEST_CANDIDATE_RPC_PARAMS so the eventual migration can be reviewed against the contract");
+});
+
+Deno.test("Unit C blocker note present in repository.ts header", async () => {
+  const repo = await readSource("repository.ts");
+  assert(repo.includes("Unit C") && repo.includes("BLOCKER"),
+    "repository.ts must carry a clear 'Stage 5 / Unit C BLOCKER' header note explaining the missing RPC migration");
+  assert(repo.includes("real-PG") || repo.includes("PGlite"),
+    "repository.ts must reference the real-PG / PGlite proof requirement before Unit C deploy");
 });
 
 // -------- meta: version banner reflects v1.0.0-disabled --------
