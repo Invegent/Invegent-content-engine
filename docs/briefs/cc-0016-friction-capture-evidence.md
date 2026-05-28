@@ -1136,6 +1136,8 @@ Remove AttachmentThumbnail + AttachmentLightbox components. Case rows render wit
 
 ## 7. Stage E — Lifecycle / cleanup
 
+> **Dry-run design (non-mutating) AUTHORED 2026-05-28:** [`docs/briefs/cc-0016/stage-e-dryrun-design.md`](cc-0016/stage-e-dryrun-design.md) defines the scope boundaries, read-only inspection queries, dry-run output format, acceptance criteria, separate future destructive gate, and risk/no-op guarantees. **The destructive Stage E run remains FUTURE/GATED** under the design's §6 (D-01 + PK exact approval phrase + ≥14-day operational maturity). Nothing in this brief or the dry-run design infers or pre-authorises that gate.
+
 ### Scope
 
 Storage cost cap: attachments older than 18 months get auto-deleted along with their reference from `friction.event.attachments`. Light-touch pg_cron job.
