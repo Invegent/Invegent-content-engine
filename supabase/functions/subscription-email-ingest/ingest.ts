@@ -1,13 +1,18 @@
 /**
- * cc-0020 Subscription Email Ingest — orchestration (Stage 3).
+ * cc-0020 Subscription Email Ingest — orchestration (Stage 3 + Stage 5 Unit B).
  *
- * Dev/manual mode: takes already-sanitized email payloads (fixtures in MVP),
- * runs the pure parser, maps to candidate rows, and upserts them idempotently
- * via the repository (ON CONFLICT (gmail_message_id) DO NOTHING). Also exposes
- * the accept→spend_event promotion, idempotent on the candidate.
+ * Takes already-sanitized email payloads (fixtures in dev mode, Gmail-metadata
+ * in production mode), runs the pure parser, maps to candidate rows, and
+ * upserts them idempotently via the repository (ON CONFLICT (gmail_message_id)
+ * DO NOTHING). Also exposes the accept→spend_event promotion, idempotent on
+ * the candidate.
  *
- * No live Gmail, no network, no DB connection (the repository is injected; in
- * MVP that is the in-memory stub). Never logs tokens or raw email bodies.
+ * The orchestrator is repo-agnostic — it accepts any IngestRepository (in-memory
+ * for dev/tests, ServiceRoleIngestRepository for live writes). Async surface so
+ * both paths drive through the same code.
+ *
+ * Privacy: never logs raw email bodies. Errors emit only the gmail_message_id +
+ * the error message — never the full row, never any token.
  */
 
 import { MIN_CANDIDATE_CONFIDENCE, parseEmail, type RawEmailInput } from "./parser.ts";
@@ -33,11 +38,11 @@ export interface IngestOptions {
  * Idempotent: re-ingesting the same gmail_message_id is a no-op (counted as a
  * duplicate, not re-created).
  */
-export function ingestEmails(
+export async function ingestEmails(
   emails: RawEmailInput[],
   repo: IngestRepository,
   opts: IngestOptions = {},
-): IngestCounts {
+): Promise<IngestCounts> {
   const minConfidence = opts.minConfidence ?? MIN_CANDIDATE_CONFIDENCE;
   const counts: IngestCounts = {
     messages_seen: emails.length,
@@ -55,7 +60,7 @@ export function ingestEmails(
         counts.low_confidence_skipped++;
         continue;
       }
-      const result = repo.insertCandidateOnConflictDoNothing(toCandidateRow(email, parsed));
+      const result = await repo.insertCandidateOnConflictDoNothing(toCandidateRow(email, parsed));
       if (result.inserted) counts.candidates_created++;
       else counts.duplicates_skipped++;
     } catch (e) {
@@ -81,12 +86,15 @@ export interface PromotionResult {
  * CandidateNotPromotableError if the candidate cannot satisfy the ledger's
  * NOT NULL columns (amount_original / currency / charged_on).
  */
-export function promoteCandidate(candidateId: string, repo: IngestRepository): PromotionResult {
-  const candidate = repo.getCandidate(candidateId);
+export async function promoteCandidate(
+  candidateId: string,
+  repo: IngestRepository,
+): Promise<PromotionResult> {
+  const candidate = await repo.getCandidate(candidateId);
   if (!candidate) throw new Error(`candidate not found: ${candidateId}`);
 
   const row = toSpendEventRow(candidate); // validates NOT NULL ledger columns
-  repo.setReviewStatus(candidateId, "accepted");
-  const result = repo.insertSpendEventOnConflictDoNothing(row);
+  await repo.setReviewStatus(candidateId, "accepted");
+  const result = await repo.insertSpendEventOnConflictDoNothing(row);
   return { spend_event_id: result.spend_event_id, created: result.inserted };
 }
