@@ -1,39 +1,8 @@
--- ============================================================================
--- cc-0020 Subscription Email Ingest — Stage 4-B dashboard RPC layer
--- ============================================================================
--- STATUS: APPLIED to production (project mbkmaxqhsohbtwsqolns) on 2026-05-27 as
---   migration version 20260527114144. This file is the canonical source for the
---   applied migration; this header was reconciled to match the applied state.
---   The anon/authenticated EXECUTE revoke in §5 was applied to prod as a
---   follow-up (version 20260527114333) and is folded in here as the canonical
---   end-state grant posture.
---
--- DEPENDS ON (apply order): this migration MUST be applied AFTER
---   20260527114041_cc_0020_subscription_email_ingest_tables.sql.
---   The get_* functions are LANGUAGE sql and are validated AT CREATION, so
---   k.subscription_import_candidate / k.subscription_spend_event (and the
---   pre-existing k.subscription_register) must already exist when this runs.
---
--- PURPOSE: the read/write path the invegent-dashboard /system/subscriptions
---   surface uses for the deny-by-default k.* ingest tables. schema k is NOT
---   PostgREST-exposed and the tables have RLS-deny-by-default + no anon/auth
---   grants, so all dashboard access goes through these SECURITY DEFINER RPCs in
---   public (mirroring public.get_subscriptions() for k.subscription_register).
---   The dashboard calls them with the SERVICE ROLE from a server route only.
---
--- SECURITY POSTURE (intentionally stricter than public.get_subscriptions, which
---   is granted to authenticated): these expose/mutate FINANCIAL data, so EXECUTE
---   is REVOKEd FROM PUBLIC (Postgres grants function EXECUTE to PUBLIC by
---   default — without the revoke, anon/authenticated could invoke them via
---   PostgREST) and granted ONLY to service_role. No browser/client path exists.
---   SECURITY DEFINER runs as the function owner (a superuser), so the bodies can
---   read/write the RLS-protected k.* tables; the EXECUTE grant is the only gate.
---
--- PRIVACY (brief §5): the read RPCs expose only the already-designed allow-listed
---   metadata — sender DOMAIN (source_from_domain), subject line (source_subject),
---   gmail_message_id (opaque RFC822 id), received timestamp. NO raw email body
---   exists or is returned. parser_version / content_hash stay internal.
--- ============================================================================
+-- cc-0020 — subscription email ingest, RPC layer.
+-- APPLIED TO PRODUCTION at version 20260527114144 (mbkmaxqhsohbtwsqolns).
+-- Supersedes draft 20260527130000_proposed_… (kept as no-op tombstone).
+-- The anon/authenticated EXECUTE revoke from hotfix 20260527114333 is folded
+-- into §5 below; the hotfix is also retained as a separate canonical file.
 
 -- ----------------------------------------------------------------------------
 -- 1. public.get_subscription_import_candidates(p_status, p_limit)
@@ -294,20 +263,24 @@ COMMENT ON FUNCTION public.review_subscription_candidate(uuid, text, uuid) IS
   'cc-0020 Stage 4-B: transactional accept/reject of an email-import candidate. ACCEPT promotes idempotently into k.subscription_spend_event (UNIQUE source_candidate_id, explicit event_type); REJECT marks the candidate only. SECURITY DEFINER; service_role-only EXECUTE.';
 
 -- ----------------------------------------------------------------------------
--- 5. Grants — financial data: EXECUTE locked to service_role (the dashboard's
---    server-side caller) only. No anon/authenticated/browser path exists.
---    NOTE: `REVOKE ... FROM PUBLIC` alone is NOT sufficient on Supabase —
---    Supabase default privileges GRANT EXECUTE on new public functions DIRECTLY
---    to anon and authenticated, so those roles must be revoked explicitly too
---    (verified in production: PUBLIC-only revoke left anon/authenticated with
---    EXECUTE; applied as follow-up version 20260527114333).
+-- 5. Grants — financial data: revoke the default PUBLIC EXECUTE, grant only to
+--    service_role (the dashboard's server-side caller). NO anon/authenticated.
 -- ----------------------------------------------------------------------------
-REVOKE EXECUTE ON FUNCTION public.get_subscription_import_candidates(text, integer) FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.get_subscription_spend_events(integer)            FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.get_subscription_spend_trends(integer)            FROM PUBLIC, anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.review_subscription_candidate(uuid, text, uuid)   FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_subscription_import_candidates(text, integer) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.get_subscription_spend_events(integer)            FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.get_subscription_spend_trends(integer)            FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.review_subscription_candidate(uuid, text, uuid)   FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION public.get_subscription_import_candidates(text, integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.get_subscription_spend_events(integer)            TO service_role;
 GRANT EXECUTE ON FUNCTION public.get_subscription_spend_trends(integer)            TO service_role;
 GRANT EXECUTE ON FUNCTION public.review_subscription_candidate(uuid, text, uuid)   TO service_role;
+
+-- Folded in from hotfix 20260527114333 — these RPCs are SECURITY DEFINER over the
+-- deny-by-default k.* financial tables and must be service_role-only (server-side).
+-- Explicitly revoke EXECUTE from anon + authenticated so there is no browser/PostgREST
+-- path to candidate/spend data or the review mutation.
+REVOKE EXECUTE ON FUNCTION public.get_subscription_import_candidates(text, integer) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_subscription_spend_events(integer)            FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_subscription_spend_trends(integer)            FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.review_subscription_candidate(uuid, text, uuid)   FROM anon, authenticated;
