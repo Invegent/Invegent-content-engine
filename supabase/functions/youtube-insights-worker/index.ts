@@ -266,6 +266,10 @@ Deno.serve(async (req: Request) => {
           // before writing: INSERT when absent; UPDATE only a row that is already platform='youtube'
           // (platform-scoped filter for defence-in-depth); SKIP + flag when the existing row is any other
           // platform. This does not rely on YouTube/FB id disjointness.
+          // PK column LIVE-VERIFIED 2026-05-29 as `performance_id` (constraint post_performance_pkey =
+          // PRIMARY KEY (performance_id)); using the real PK is REQUIRED for the UPDATE path to match a
+          // row, i.e. for idempotent re-invoke behaviour. (The brief's prose said "post_performance_id";
+          // the live schema is `performance_id` — code follows the live schema.)
           const { data: cur, error: curErr } = await supabase.schema('m').from('post_performance')
             .select('performance_id, platform')
             .eq('platform_post_id', v.platform_post_id).eq('insights_period', INSIGHTS_PERIOD)
