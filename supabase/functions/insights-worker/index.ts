@@ -1,6 +1,24 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const VERSION = "insights-worker-v14.1.0";
+const VERSION = "insights-worker-v14.2.0";
+// v14.2.0 (2026-05-29, FB wall-clock starvation fix — NY-FB + CFW-FB never reached):
+//   The all-client sequential loop exhausted the ~150s Edge wall-clock after ~2
+//   clients (Invegent + Property Pulse), so NDIS-Yarns + Care For Welfare
+//   (clients 3-4 in the unindexed profile order) were never processed — every run.
+//   - POST body may now carry a SELECTOR (precedence top→down):
+//       client_publish_profile_id | client_id | destination_id  (+ optional max_posts).
+//     When a selector is present, ONLY that one profile is processed. It is still
+//     validated as platform='facebook' AND status='active' AND publish_enabled=true
+//     (the selector is ANDed onto those filters); a selector that matches none
+//     returns HTTP 400 {error:"profile_not_eligible"}. Intended path: one cron
+//     call per client (see the per-client cron migration).
+//   - No-selector path preserved but GUARDED by a soft run budget
+//     (RUN_SOFT_BUDGET_MS): clients not reached are recorded skipped
+//     ("run_budget_exhausted") rather than silently dropped.
+//   - Per-client run summary persisted best-effort to m.insights_worker_run
+//     (observability) — never aborts the run. NO token values, NO raw Graph payloads.
+//   Graph version (v19.0), metrics, token resolution, and the upsert payload are
+//   UNCHANGED from v14.1.0.
 // v14.1.0 (2026-05-23, pool observer.insights_ingestion_stalled_since_0506):
 //   Type C selection fix — never-collected-first ordering. The old query
 //   selected published FB posts with limit 50 and NO ordering, so it kept
@@ -24,6 +42,10 @@ const VERSION = "insights-worker-v14.1.0";
 const GRAPH_VERSION = "v19.0";
 const MAX_POSTS_PER_CLIENT = 50;
 const INSIGHTS_PERIOD = "lifetime";
+// v14.2.0: soft wall-clock budget for the LEGACY no-selector all-client path.
+// Stops cleanly before the ~150s Edge hard limit and records skipped clients
+// instead of being silently killed. The per-client cron path never hits this.
+const RUN_SOFT_BUDGET_MS = 120_000;
 
 const METRICS_TO_TRY: { key: string; names: string[] }[] = [
   { key: "reach",         names: ["post_impressions_unique"] },
@@ -55,6 +77,7 @@ function getServiceClient() {
 }
 
 type PublishProfile = {
+  client_publish_profile_id: string; // v14.2.0: needed for the selector + run-log
   client_id: string;
   destination_id: string | null;
   credential_env_key: string | null;
@@ -141,6 +164,7 @@ async function processClient(
   supabase: ReturnType<typeof getServiceClient>,
   profile: PublishProfile,
   pageToken: string,
+  maxPosts: number = MAX_POSTS_PER_CLIENT, // v14.2.0: per-invocation cap (default unchanged)
 ): Promise<{ processed: number; succeeded: number; failed: number; first_time: number; errors: any[] }> {
   let processed = 0, succeeded = 0, failed = 0, first_time = 0;
   const errors: any[] = [];
@@ -173,7 +197,7 @@ async function processClient(
     ORDER BY (perf.platform_post_id IS NULL) DESC,
              perf.collected_at ASC NULLS FIRST,
              pp.published_at DESC
-    LIMIT ${MAX_POSTS_PER_CLIENT}
+    LIMIT ${maxPosts}
   `;
 
   const { data: posts, error: postsErr } = await supabase.rpc("exec_sql", { query: selectSql });
@@ -305,9 +329,58 @@ async function computeFormatPerformance(
   return { windows_computed, errors };
 }
 
+// v14.2.0: optional request selector. Token VALUES never appear here.
+type Selector = {
+  client_publish_profile_id?: string;
+  client_id?: string;
+  destination_id?: string;
+  max_posts?: number;
+};
+
+async function readSelector(req: Request): Promise<Selector> {
+  try {
+    const txt = await req.text();
+    if (!txt) return {};
+    const b = JSON.parse(txt) ?? {};
+    const mp = Number(b.max_posts);
+    return {
+      client_publish_profile_id: b.client_publish_profile_id ? String(b.client_publish_profile_id) : undefined,
+      client_id: b.client_id ? String(b.client_id) : undefined,
+      destination_id: b.destination_id ? String(b.destination_id) : undefined,
+      max_posts: Number.isFinite(mp) ? Math.max(1, Math.min(MAX_POSTS_PER_CLIENT, mp)) : undefined,
+    };
+  } catch {
+    return {}; // malformed/empty body → behave as no-selector (legacy) run
+  }
+}
+
+// Redact any token-shaped substring defensively. Graph/upsert error strings do
+// not normally contain tokens, but this guarantees no token ever lands in a log row.
+function safeErr(s: unknown): string {
+  let t = String(typeof s === "string" ? s : JSON.stringify(s ?? ""));
+  t = t.replace(/access_token=[^&\s"']+/g, "access_token=[REDACTED]")
+       .replace(/EAA[A-Za-z0-9]{12,}/g, "[REDACTED]");
+  return t.slice(0, 300);
+}
+
+// Best-effort per-client run summary → m.insights_worker_run. NEVER throws (a
+// logging failure must not abort the actual collection run). NO token, NO payload.
+async function writeRunLog(supabase: ReturnType<typeof getServiceClient>, row: Record<string, unknown>) {
+  try {
+    await supabase.schema("m").from("insights_worker_run").insert(row);
+  } catch (_e) { /* observability is best-effort */ }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  // GET stays strictly read-only (health/version only — no DB access, no writes).
   if (req.method === "GET") return jsonResponse({ ok: true, function: "insights-worker", version: VERSION });
+
+  const runId = crypto.randomUUID();
+  const runStart = Date.now();
+  const selector = await readSelector(req);
+  const perClient = !!(selector.client_publish_profile_id || selector.client_id || selector.destination_id);
+  const maxPosts = selector.max_posts ?? MAX_POSTS_PER_CLIENT;
 
   const clientSummaries: Record<string, any> = {};
   let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalFirstTime = 0;
@@ -315,19 +388,55 @@ Deno.serve(async (req: Request) => {
   try {
     const supabase = getServiceClient();
 
-    const { data: profiles, error: profErr } = await supabase
+    // Validation is enforced by ANDing the selector onto the mandatory
+    // facebook/active/publish_enabled filters: a selector pointing at a
+    // non-facebook / inactive / disabled profile simply matches zero rows → 400.
+    let q = supabase
       .schema("c").from("client_publish_profile")
-      .select("client_id, destination_id, credential_env_key, page_access_token")
+      .select("client_publish_profile_id, client_id, destination_id, credential_env_key, page_access_token")
       .eq("platform", "facebook")
       .eq("status", "active")
       .eq("publish_enabled", true);
+    if (selector.client_publish_profile_id) q = q.eq("client_publish_profile_id", selector.client_publish_profile_id);
+    else if (selector.client_id) q = q.eq("client_id", selector.client_id);
+    else if (selector.destination_id) q = q.eq("destination_id", selector.destination_id);
 
-    if (profErr) return jsonResponse({ ok: false, error: "load_profiles_failed", detail: profErr }, 500);
+    const { data: profiles, error: profErr } = await q;
+    if (profErr) return jsonResponse({ ok: false, run_id: runId, error: "load_profiles_failed", detail: profErr }, 500);
 
     const activeProfiles = (profiles ?? []) as PublishProfile[];
-    if (!activeProfiles.length) return jsonResponse({ ok: true, version: VERSION, message: "no_active_profiles", total_processed: 0 });
+
+    if (perClient && activeProfiles.length === 0) {
+      // selector did not resolve to an eligible facebook/active/enabled profile
+      return jsonResponse({
+        ok: false, run_id: runId, mode: "per_client", error: "profile_not_eligible",
+        detail: "selector matched no platform=facebook, status=active, publish_enabled=true profile",
+      }, 400);
+    }
+    if (!activeProfiles.length) {
+      return jsonResponse({ ok: true, run_id: runId, version: VERSION, message: "no_active_profiles", total_processed: 0 });
+    }
+
+    const processedClientIds: string[] = [];
 
     for (const profile of activeProfiles) {
+      const startedAt = nowIso();
+      const cStart = Date.now();
+
+      // Soft-budget guard — LEGACY no-selector path only. Per-client invocations
+      // (one profile) never trip this. Skipped clients are RECORDED, not dropped.
+      if (!perClient && (Date.now() - runStart) > RUN_SOFT_BUDGET_MS) {
+        clientSummaries[profile.client_id] = { skipped: true, reason: "run_budget_exhausted" };
+        await writeRunLog(supabase, {
+          run_id: runId, worker_version: VERSION, invocation_mode: "all_client",
+          client_id: profile.client_id, destination_id: profile.destination_id,
+          started_at: startedAt, finished_at: nowIso(), duration_ms: 0,
+          eligible_count: null, selected_count: 0, succeeded: 0, failed: 0,
+          skipped_reason: "run_budget_exhausted", first_error_code: null, first_error_message: null,
+        });
+        continue;
+      }
+
       // Type B token-source fallback (v14.1.0): env secret first, then inline
       // profile.page_access_token. Token VALUES are never logged/returned/
       // persisted — only the source label ("env" / "inline_profile").
@@ -349,29 +458,50 @@ Deno.serve(async (req: Request) => {
           credential_env_key_present: !!tokenKey,
           inline_token_present: !!profile.page_access_token,
         };
+        await writeRunLog(supabase, {
+          run_id: runId, worker_version: VERSION, invocation_mode: perClient ? "per_client" : "all_client",
+          client_id: profile.client_id, destination_id: profile.destination_id,
+          started_at: startedAt, finished_at: nowIso(), duration_ms: Date.now() - cStart,
+          eligible_count: null, selected_count: 0, succeeded: 0, failed: 0,
+          skipped_reason: "no_token_available", first_error_code: null, first_error_message: null,
+        });
         continue;
       }
 
-      const result = await processClient(supabase, profile, pageToken);
+      const result = await processClient(supabase, profile, pageToken, maxPosts);
       clientSummaries[profile.client_id] = { ...result, token_source: tokenSource };
       totalProcessed += result.processed;
       totalSucceeded += result.succeeded;
       totalFailed += result.failed;
       totalFirstTime += result.first_time;
+      processedClientIds.push(profile.client_id);
+
+      await writeRunLog(supabase, {
+        run_id: runId, worker_version: VERSION, invocation_mode: perClient ? "per_client" : "all_client",
+        client_id: profile.client_id, destination_id: profile.destination_id,
+        started_at: startedAt, finished_at: nowIso(), duration_ms: Date.now() - cStart,
+        // selected_count = posts the capped SELECT returned (= processed). eligible_count
+        // mirrors it in this minimal first pass (the SELECT is capped at maxPosts).
+        eligible_count: result.processed, selected_count: result.processed,
+        succeeded: result.succeeded, failed: result.failed,
+        skipped_reason: null, first_error_code: null,
+        first_error_message: result.errors.length ? safeErr(result.errors[0]?.error ?? result.errors[0]) : null,
+      });
     }
 
-    const allClientIds = activeProfiles.map(p => p.client_id);
-    const formatPerfResult = await computeFormatPerformance(supabase, allClientIds);
-    console.log(`[insights-worker] format_performance: ${formatPerfResult.windows_computed} windows, ${formatPerfResult.errors.length} errors`);
+    // Compute format performance only for clients actually processed this run.
+    const formatPerfResult = await computeFormatPerformance(supabase, processedClientIds);
+    console.log(`[insights-worker] run=${runId} mode=${perClient ? "per_client" : "all_client"} format_performance: ${formatPerfResult.windows_computed} windows, ${formatPerfResult.errors.length} errors`);
 
     return jsonResponse({
-      ok: true, version: VERSION,
+      ok: true, run_id: runId, version: VERSION,
+      mode: perClient ? "per_client" : "all_client",
       total_processed: totalProcessed, total_succeeded: totalSucceeded, total_failed: totalFailed,
       total_first_time: totalFirstTime,
       format_performance: { windows_computed: formatPerfResult.windows_computed, errors: formatPerfResult.errors },
       clients: clientSummaries,
     });
   } catch (e: any) {
-    return jsonResponse({ ok: false, version: VERSION, error: (e?.message ?? String(e)).slice(0, 800) }, 500);
+    return jsonResponse({ ok: false, run_id: runId, version: VERSION, error: (e?.message ?? String(e)).slice(0, 800) }, 500);
   }
 });
