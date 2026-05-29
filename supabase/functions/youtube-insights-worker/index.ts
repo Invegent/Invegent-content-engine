@@ -85,12 +85,16 @@ async function exchangeToken(refreshToken: string, oauthClientId: string, oauthS
 }
 
 // Resolve the refresh token the publisher uses; returns SOURCE LABEL only alongside the in-memory token.
-// WCCH Fix 2: both lookups go through PostgREST .eq() (parameterised) — NO string-interpolated SQL.
-// clientId is UUID-validated by the caller before this runs.
+// WCCH Fix 2 (revised review-3): the client_publish_profile lookup uses PostgREST .eq() (parameterised).
+// c.client_channel is NOT readable via PostgREST — the youtube-publisher and the Stage 0 probe both read
+// it via exec_sql — so its lookup uses exec_sql with a UUID-VALIDATED clientId interpolated (clientId is
+// validated by the caller AND re-checked here before interpolation; no other external value is built into
+// SQL). The earlier PostgREST attempt returned null and silently fell back to a stale credential_env_key
+// secret, causing token_exchange_400; this restores the working inline client_channel.config token path.
 async function resolveRefreshToken(supabase: ReturnType<typeof getServiceClient>, clientId: string): Promise<{ token: string | null; source: string }> {
-  const { data: ch } = await supabase.schema('c').from('client_channel')
-    .select('config').eq('client_id', clientId).eq('platform', 'youtube').limit(1).maybeSingle();
-  const inline = (ch as any)?.config?.refresh_token ?? null;
+  if (!isUuid(clientId)) return { token: null, source: 'invalid_client_id' }; // never interpolate a non-UUID into exec_sql
+  const { data: ch } = await supabase.rpc('exec_sql', { query: `SELECT config FROM c.client_channel WHERE client_id = '${clientId}' AND platform = 'youtube' LIMIT 1` });
+  const inline = (ch as any)?.[0]?.config?.refresh_token ?? null;
   if (inline) return { token: inline, source: 'client_channel.config' };
   const { data: prof } = await supabase.schema('c').from('client_publish_profile')
     .select('credential_env_key').eq('client_id', clientId).eq('platform', 'youtube').limit(1).maybeSingle();
