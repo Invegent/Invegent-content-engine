@@ -3,7 +3,7 @@
 **Created:** 2026-05-29 Sydney
 **Author:** Claude Code (CCD), read-only repo investigation
 **Executor (future):** TBD — CCD (function build) + PK (manual probe / EF deploy approval)
-**Status:** **STAGE 0 PROBE EXECUTED + PASSED (2026-05-29) — Stage 1 brief AUTHORED + WCCH-HARDENED, NOT implemented.** Stage 1 WCCH review (2026-05-29, "approve with changes") applied — see §11 (per-run cap + duplicate-safe selection §11.2; live unique-constraint verification + cross-platform guard §11.6; concrete token-rotation handling §11.6.1; engagement-rate divide-by-zero guard §11.4.1; lossy `viewCount→impressions` warning §11.5.1; v3.20 ARMED-not-closed §11.5.2/§7; history-loss + channel-grain limitations §11.12; code-constant allowlist §11.2.1; batch-of-50 chunking §11.3; V-checks §11.10; `known_weak_evidence` §11.13). Stage 0 ran via the temporary Option-B EF `youtube-scope-probe` (deployed → run once → deleted → verified absent) under a written `ef_deploy` D-01. Result: **Property Pulse + NDIS-Yarns = `STAGE1_READY`**; **CFW = `UNTESTED_NO_YOUTUBE_ROWS`** (0 YouTube published rows). No DB write, no schema, no cron, no YouTube mutation. See the Stage 0 result appendix (§10). Stage 1 (§11) is designed but **NOT built/deployed** — it fires its own `ef_deploy` D-01 (+ separate `sql_destructive` for cron) and PK approval before any production effect.
+**Status:** **STAGE 1 WORKER DEPLOYED + MANUALLY VERIFIED + MERGED TO MAIN (2026-05-29).** `youtube-insights-worker-v1.0.0` deployed from review commit `50332b6`, fast-forwarded into `main`; 62 YouTube rows written to `m.post_performance` (PP 46 + NDIS 16), FB rows unchanged (332), idempotent on re-invoke, no cron. v3.20 remains ARMED-not-closed. Full verification appendix at §12. _(Stage 0 history below retained.)_ **Prior status:** **STAGE 0 PROBE EXECUTED + PASSED (2026-05-29) — Stage 1 brief AUTHORED + WCCH-HARDENED, NOT implemented.** Stage 1 WCCH review (2026-05-29, "approve with changes") applied — see §11 (per-run cap + duplicate-safe selection §11.2; live unique-constraint verification + cross-platform guard §11.6; concrete token-rotation handling §11.6.1; engagement-rate divide-by-zero guard §11.4.1; lossy `viewCount→impressions` warning §11.5.1; v3.20 ARMED-not-closed §11.5.2/§7; history-loss + channel-grain limitations §11.12; code-constant allowlist §11.2.1; batch-of-50 chunking §11.3; V-checks §11.10; `known_weak_evidence` §11.13). Stage 0 ran via the temporary Option-B EF `youtube-scope-probe` (deployed → run once → deleted → verified absent) under a written `ef_deploy` D-01. Result: **Property Pulse + NDIS-Yarns = `STAGE1_READY`**; **CFW = `UNTESTED_NO_YOUTUBE_ROWS`** (0 YouTube published rows). No DB write, no schema, no cron, no YouTube mutation. See the Stage 0 result appendix (§10). Stage 1 (§11) is designed but **NOT built/deployed** — it fires its own `ef_deploy` D-01 (+ separate `sql_destructive` for cron) and PK approval before any production effect.
 **WCCH review (2026-05-29, at `becb85e`):** "Approve with changes" — not blocked, but Stage 0 is NOT approved to run until amended. This revision applies all 7 required changes: (1) OAuth token-rotation hazard + containment (§4.3.0, R6); (2) Step 0 Option-A/B decision up front, no mid-probe pivot (§4.3.1, R7); (3) Option A credential-handling hard rules (§4.3.2); (4) Option A now requires a *written* PK approval phrase, not verbal (§5, §9); (5) sample hardening — two video ids/client, batched, probe every client incl. CFW (§4.3.4); (6) required capability-matrix fields incl. `scopes_on_token`, `quota_units_consumed`, `probe_run_at`, `app_oauth_status`, `probe_video_count`, 3-value verdict (§4.4); (7) Option B mandatory delete-after, probe not closed until removed (§4.3.3). Stage 1 remains blocked; no probe executed.
 **Origin:** follow-on from the v3.20 youtube-publisher v1.11.0 Public-visibility fix (`supabase/functions/youtube-publisher/index.ts`). The open v3.20 runtime follow-up — authoritative post-publish `privacyStatus` verification — is satisfied durably by Stage 1 of this brief (see §7).
 **Scope discipline (PK directive 2026-05-29):** Stage 0 (token/scope probe) + Stage 1 (minimal MVP) only. Typed schema columns, dashboard UI, thumbnails, playlists, captions, comments, and the YouTube Analytics API are explicitly **Later/Deferred** (§6).
@@ -422,5 +422,30 @@ Until that credential path runs, the affected client is skipped; the publisher c
 
 ---
 
+## 12. Stage 1 deploy + manual verification appendix (COMPLETE 2026-05-29)
+
+**Provenance:** built + WCCH-hardened (3 review rounds) on `review/youtube-insights-worker-v1`; deployed from commit **`50332b6`**; **fast-forwarded into `main` (`6d31950`→`50332b6`)** — worker file is the only diff.
+
+**Deploy history (honest):** first deploy `9428b9d` **failed safe** on manual invoke (token_exchange_400 / NEEDS_RECONSENT both clients, 0 rows) — review-2 regression reading `c.client_channel` via PostgREST (not readable that way) → stale `credential_env_key` fallback. Fix `50332b6` reverted ONLY that lookup to UUID-validated `exec_sql` (Stage-0/publisher pattern). Redeployed and re-verified.
+
+**V-checks on `50332b6` — ALL PASS:**
+| V | Result |
+|---|---|
+| V-1 GET version | `youtube-insights-worker-v1.0.0` |
+| V-2 live schema | PK `performance_id`; unique `(platform_post_id, insights_period)` |
+| V-3 FB baseline | FB=332, YT=0 |
+| V-4 invoke #1 | `ok:true`; PP+NDIS only; token_source=`client_channel.config`; scopes incl. `youtube.readonly`; **62 upserted** (PP 46 + NDIS 16); all `raw_payload.privacy_status` populated; no NEEDS_RECONSENT; `rotation_detected=[]`; `cross_platform_collision_detected=false`; tokens never printed; quota=4 |
+| V-5 FB after | 332 (unchanged) |
+| V-6 YT rows | PP=46, NDIS=16 (62 total) |
+| V-7 zero-view guard | 42 zero/null-view → `engagement_rate` NULL; `bad_guard=0`; no Infinity/NaN |
+| V-8 idempotency (invoke #2) | `ok:true`; 62 processed/0 first_time; YT count stable 62 (no dupes); FB 332; `collected_at` advanced |
+| V-9 v3.20 | **ARMED, not closed** — 62 rows are historical; closure needs a post-v1.11.0 upload observed `public` |
+
+**No cron created** (gated manual invoke only). **Deferred (each its own gate):** cron schedule (`sql_destructive` D-01 + durable rotation/collision alerting before unattended runs — currently JSON-only), typed columns / `m.channel_performance` / dashboard / CFW onboarding / Analytics API / historical-snapshot trend lines.
+
+**⚠️ Process note:** a parallel FB `insights-worker` v14.2.0 lane shared the SAME git checkout; the local review branch pointer flipped to the FB lane's commits mid-task (no work lost — verified before every git write). **Recommend isolated git worktrees for concurrent CCD/FB-lane work.**
+
+---
+
 ## Hard stop (current state)
-Investigation + WCCH-hardened Stage 0 spec + **executed Stage 0 probe (passed)** + this Stage 1 brief are complete. **Stage 1 is NOT built or deployed; nothing writes to `m.post_performance`; no cron; no schema change; no further YouTube API calls; youtube-publisher v1.11.0 untouched.** Next action = PK review of the Stage 0 result and a separate directive to build/deploy Stage 1 (its own `ef_deploy` D-01).
+Stage 0 (probe, passed) + Stage 1 (worker **deployed + manually verified + merged to `main` @ `50332b6`**) are complete. **No cron; no schema change; no further YouTube API calls planned; youtube-publisher v1.11.0 untouched.** Next gated actions (separate directives): cron scheduling proposal (`sql_destructive` D-01 + durable alerting first), and v3.20 closure once a post-v1.11.0 upload is observed `public`.
