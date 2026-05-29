@@ -3,7 +3,7 @@
 **Created:** 2026-05-29 Sydney
 **Author:** Claude Code (CCD), read-only repo investigation
 **Executor (future):** TBD — CCD (function build) + PK (manual probe / EF deploy approval)
-**Status:** **INVESTIGATION COMPLETE + Stage 0 spec AUTHORED + WCCH-HARDENED — NOT implemented.** No code, no deploy, no migration, no cron, no DB write, no YouTube API call has been made. Every stage below fires its own D-01 + PK approval before any production effect.
+**Status:** **STAGE 0 PROBE EXECUTED + PASSED (2026-05-29) — Stage 1 brief AUTHORED, NOT implemented.** Stage 0 ran via the temporary Option-B EF `youtube-scope-probe` (deployed → run once → deleted → verified absent) under a written `ef_deploy` D-01. Result: **Property Pulse + NDIS-Yarns = `STAGE1_READY`**; **CFW = `UNTESTED_NO_YOUTUBE_ROWS`** (0 YouTube published rows). No DB write, no schema, no cron, no YouTube mutation. See the Stage 0 result appendix (§10). Stage 1 (§11) is designed but **NOT built/deployed** — it fires its own `ef_deploy` D-01 (+ separate `sql_destructive` for cron) and PK approval before any production effect.
 **WCCH review (2026-05-29, at `becb85e`):** "Approve with changes" — not blocked, but Stage 0 is NOT approved to run until amended. This revision applies all 7 required changes: (1) OAuth token-rotation hazard + containment (§4.3.0, R6); (2) Step 0 Option-A/B decision up front, no mid-probe pivot (§4.3.1, R7); (3) Option A credential-handling hard rules (§4.3.2); (4) Option A now requires a *written* PK approval phrase, not verbal (§5, §9); (5) sample hardening — two video ids/client, batched, probe every client incl. CFW (§4.3.4); (6) required capability-matrix fields incl. `scopes_on_token`, `quota_units_consumed`, `probe_run_at`, `app_oauth_status`, `probe_video_count`, 3-value verdict (§4.4); (7) Option B mandatory delete-after, probe not closed until removed (§4.3.3). Stage 1 remains blocked; no probe executed.
 **Origin:** follow-on from the v3.20 youtube-publisher v1.11.0 Public-visibility fix (`supabase/functions/youtube-publisher/index.ts`). The open v3.20 runtime follow-up — authoritative post-publish `privacyStatus` verification — is satisfied durably by Stage 1 of this brief (see §7).
 **Scope discipline (PK directive 2026-05-29):** Stage 0 (token/scope probe) + Stage 1 (minimal MVP) only. Typed schema columns, dashboard UI, thumbnails, playlists, captions, comments, and the YouTube Analytics API are explicitly **Later/Deferred** (§6).
@@ -226,5 +226,124 @@ The v3.20 follow-up requires authoritative proof = *YouTube Studio OR `videos.li
 
 ---
 
+## 10. Stage 0 result appendix (EXECUTED 2026-05-29)
+
+**Execution path:** Option B (Step 0 found Option A infeasible — `YOUTUBE_CLIENT_ID`/`YOUTUBE_CLIENT_SECRET` are Edge-Function-only secrets, unreachable from the supervised laptop). Written `ef_deploy` D-01 approved by PK. Lifecycle: `supabase functions deploy youtube-scope-probe --no-verify-jwt --project-ref mbkmaxqhsohbtwsqolns` → single POST invoke (gated by `x-probe-key == PUBLISHER_API_KEY`) → `supabase functions delete youtube-scope-probe` → verified absent (`functions list` + live GET 404). `probe_run_at = 2026-05-29T04:21:29Z`, `quota_units_consumed = 4`.
+
+| Field | Property Pulse | NDIS-Yarns |
+|---|---|---|
+| client_id | `4036a6b5-b4a3-406e-998d-c2fe14a8bbdd` | `fb98a472-ae4d-432d-8738-2273231c1ef4` |
+| youtube_published_count | 46 | 16 |
+| probe_video_count / ids | 2 — `QHw_4QYVXJE`, `o7uHvs6xvRM` | 2 — `yhDE0LaH9OI`, `oxOS15AxpWY` |
+| token_source | `client_channel.config` | `client_channel.config` |
+| scopes_on_token | `youtube.upload youtube.readonly` | `youtube.readonly youtube.upload` |
+| refresh_token_rotated | **false** | **false** |
+| videos.list | **pass** | **pass** |
+| privacyStatus | **public** | **public** |
+| viewCount / likeCount / commentCount | 71 / 0 / 0 | 96 / 1 / 0 |
+| channelId | `UCudcAtOaVbYNc-9mXvou7Wg` | `UCqCTvPSR1BwhIi5Cui9_9Mw` |
+| channels.list | **pass** (subs 1 / views 0 / videoCount 29) | **pass** (subs 1 / views 0 / videoCount 15) |
+| **verdict** | **STAGE1_READY** | **STAGE1_READY** |
+
+**Findings:** R1 (readonly not granted) and R6 (token rotation) did **not** materialize — both live tokens carry `youtube.readonly` and are non-rotating in practice. **CFW** has 0 YouTube published rows → not probed (`UNTESTED_NO_YOUTUBE_ROWS`, not a failure); the upload-only-scope concern is moot until CFW publishes a YouTube video, at which point a fresh probe is required before adding it to Stage 1. Both probed videos already report `privacyStatus: public` (consistent with PK's manual historical fix; these ids likely predate v1.11.0).
+
+---
+
+## 11. Stage 1 implementation brief — `youtube-insights-worker` MVP (NOT built)
+
+**Gate:** this section is design only. Stage 1 fires its own **`ef_deploy` D-01** + PK approval before any deploy; a cron entry is a **separate `sql_destructive` D-01**. **No schema migration** for the MVP.
+
+### 11.1 New Edge Function
+`supabase/functions/youtube-insights-worker/index.ts` — standalone (separate from the Facebook `insights-worker`, whose Graph-API flow and token model differ entirely). Reuses the publisher's `refreshAccessToken()`-style OAuth refresh→access exchange and the `insights-worker` structural pattern (never-collected-first selection, idempotent upsert, token-source labels only).
+
+### 11.2 Input source
+```sql
+SELECT pp.post_publish_id, pp.client_id, pp.platform_post_id,
+       (perf.platform_post_id IS NULL) AS never_collected
+FROM m.post_publish pp
+LEFT JOIN m.post_performance perf
+  ON perf.platform_post_id = pp.platform_post_id
+ AND perf.insights_period = 'lifetime' AND perf.platform = 'youtube'
+WHERE pp.platform = 'youtube' AND pp.status = 'published' AND pp.platform_post_id IS NOT NULL
+  AND pp.client_id IN (<STAGE1_READY client ids>)
+ORDER BY (perf.platform_post_id IS NULL) DESC, perf.collected_at ASC NULLS FIRST, pp.published_at DESC
+```
+- **Supported clients initially:** **Property Pulse** (`4036a6b5…`) + **NDIS-Yarns** (`fb98a472…`) — the two `STAGE1_READY` clients. Scope the client filter explicitly to these (allowlist), so an un-probed client cannot silently enter.
+- **CFW handling:** **skipped** until it has published YouTube rows AND passes a later scope probe. Do not add CFW to the allowlist on assumption.
+
+### 11.3 API calls (READ-only)
+- `GET videos.list?part=status,statistics,snippet&id=<≤50 ids>` — batched per channel, **1 quota unit/call**.
+- `GET channels.list?part=statistics&id=<channelId>` — once per distinct channel, 1 unit.
+- OAuth: `POST oauth2.googleapis.com/token` (refresh→access). **Carry the §4.3.0 rotation guard** (inspect response for a returned `refresh_token`; if present, do not discard — surface for a separate write step; never strand the publisher credential).
+
+### 11.4 Write target + mapping (reuse `m.post_performance`, NO DDL)
+Upsert into existing `m.post_performance` with `platform='youtube'`, `insights_period='lifetime'`, on conflict `(platform_post_id, insights_period)`:
+
+| post_performance column | YouTube source | note |
+|---|---|---|
+| platform | `'youtube'` | |
+| platform_post_id | videoId | upsert key |
+| post_publish_id / client_id | from input row | |
+| impressions | `statistics.viewCount` | YouTube views ≈ impressions (approximation, documented) |
+| reactions | `statistics.likeCount` | |
+| comments | `statistics.commentCount` | |
+| engaged_users | `likeCount + commentCount` | derived |
+| engagement_rate | `(likes+comments)/views` when views>0 else NULL | |
+| reach / shares / clicks | `NULL` | not exposed by YouTube Data API |
+| collected_at | now() | |
+| raw_payload | see §11.5 | authoritative fields live here |
+
+### 11.5 `raw_payload` contents (authoritative)
+```json
+{
+  "privacy_status": "public",              // AUTHORITATIVE status.privacyStatus
+  "upload_status": "processed",            // status.uploadStatus
+  "view_count": 71, "like_count": 0, "comment_count": 0,
+  "channel_id": "UC...", "channel_title": "Property Pulse",
+  "published_at": "2026-05-28T...Z",       // snippet.publishedAt
+  "channel_stats": { "subscriber_count": 1, "total_view_count": 0, "video_count": 29 },
+  "source_note": "youtube Data API; views→impressions approximation; reach/shares/clicks N/A",
+  "version": "youtube-insights-worker-v1.0.0"
+}
+```
+`privacy_status` here is the field that **durably closes the v3.20 verification** (§7).
+
+### 11.6 Idempotency
+Existing `onConflict:'platform_post_id,insights_period'` upsert → re-runs update the same row (latest-snapshot). YouTube video ids are disjoint from FB post ids → no cross-platform collision. No duplicates.
+
+### 11.7 Failure handling
+- **403 / insufficient scope:** skip the client, mark in the run summary as needs-reconsent, **no retry-storm** (do not loop). (Not expected for the two allowlisted clients per Stage 0, but coded defensively.)
+- **404 / video removed or private-to-token:** record `youtube_lookup_missing` in raw_payload for that video; do not fail the run.
+- **quota (403 quotaExceeded) / 5xx / network:** transient — abort the current tick gracefully and let the next scheduled run retry (no partial-write corruption; upserts are per-video and idempotent).
+- Per-video try/catch with an errors array in the response (mirrors `insights-worker`).
+
+### 11.8 Cron cadence proposal
+**Daily** lifetime snapshot (e.g. once/day off-peak) is ample at this volume (~62 videos ⇒ ~3 quota units/run). Mirror the existing `insights-worker` schedule/identity; confirm the live `cron.job` read-only at impl time. **Adding the cron entry is a separate `sql_destructive` D-01** — the worker can first be run manually (single invoke) for verification before any cron is scheduled.
+
+### 11.9 D-01 classification
+| Step | Classification |
+|---|---|
+| Worker deploy (`youtube-insights-worker`) | **`ef_deploy`** (written PK approval; runtime upserts to `m.post_performance` are worker behaviour like the live FB insights-worker, not a migration) |
+| Add `cron.schedule` | **separate `sql_destructive` D-01** |
+| Schema migration | **none for MVP** (zero DDL) |
+
+### 11.10 Verification plan
+1. GET health/version → `youtube-insights-worker-v1.0.0`.
+2. **Manual single invoke** (before any cron): assert response `ok:true`, processed = expected YouTube row count for the two clients, `total_first_time` > 0 on first run.
+3. Read-only check `m.post_performance WHERE platform='youtube'`: rows present for both clients; `raw_payload.privacy_status` populated; `impressions/reactions/comments` match the probe-era values within reason; no FB rows altered (FB row count unchanged).
+4. Re-invoke → confirm idempotency (no duplicate rows; `updated_at` advances, row count stable).
+5. Confirm `privacy_status` recorded = authoritative `videos.list` value (closes v3.20 durably).
+
+### 11.11 Rollback plan
+- Worker is read-from-YouTube / upsert-to-`m.post_performance` only. To stop it: remove the cron entry (if added) and/or delete/redeploy-disable the function. **No schema to revert** (no DDL).
+- The only data it writes is YouTube `m.post_performance` rows; if ever unwanted, they are deletable by `platform='youtube'` filter (a future, separately-gated `sql_destructive` cleanup) — FB rows are untouched (disjoint `platform`).
+- No effect on `youtube-publisher` v1.11.0 (separate function).
+
+### 11.12 Risks & deferred items
+- **Risk:** views→impressions semantic approximation (mitigated: authoritative raw fields in `raw_payload`). Channel `viewCount` may read 0/lagged (report as-returned). A client could lose `readonly` on a future re-consent → 403 handled defensively.
+- **Deferred (NOT in MVP):** typed columns (`views`/`privacy_status`/`upload_status`), `m.channel_performance` table, dashboard/UI, thumbnails, playlists, captions, comments, **YouTube Analytics API**, CFW onboarding, multi-window (`insights_period` ≠ lifetime) snapshots. Each is its own future gate.
+
+---
+
 ## Hard stop (current state)
-Investigation + this brief + the WCCH-hardened Stage 0 spec are complete. **The probe has NOT been run; no YouTube API call, no probe-function deploy, no DB/schema/cron mutation of any kind has occurred.** Next action = PK's **written** Stage 0 approval phrase (§9) after Step 0 fixes the Option-A/B path. Stage 1 worker build remains blocked until Stage 0 reports per-client `STAGE1_READY`.
+Investigation + WCCH-hardened Stage 0 spec + **executed Stage 0 probe (passed)** + this Stage 1 brief are complete. **Stage 1 is NOT built or deployed; nothing writes to `m.post_performance`; no cron; no schema change; no further YouTube API calls; youtube-publisher v1.11.0 untouched.** Next action = PK review of the Stage 0 result and a separate directive to build/deploy Stage 1 (its own `ef_deploy` D-01).
