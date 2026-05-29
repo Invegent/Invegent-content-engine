@@ -40,6 +40,9 @@ COMMENT ON TABLE m.insights_worker_run IS
 -- Deny-by-default. service_role bypasses RLS (the worker writes as service_role);
 -- anon/authenticated get nothing. Mirrors the repo''s deny-by-default convention.
 ALTER TABLE m.insights_worker_run ENABLE ROW LEVEL SECURITY;
+-- F5: explicit PUBLIC revoke (defense-in-depth; the cc-0020 lesson showed Supabase
+-- default-privilege grants can survive an anon/authenticated-only revoke).
+REVOKE ALL ON m.insights_worker_run FROM PUBLIC;
 REVOKE ALL ON m.insights_worker_run FROM anon, authenticated;
 GRANT SELECT, INSERT ON m.insights_worker_run TO service_role;
 

@@ -12,9 +12,10 @@ const VERSION = "insights-worker-v14.2.0";
 //     (the selector is ANDed onto those filters); a selector that matches none
 //     returns HTTP 400 {error:"profile_not_eligible"}. Intended path: one cron
 //     call per client (see the per-client cron migration).
-//   - No-selector path preserved but GUARDED by a soft run budget
-//     (RUN_SOFT_BUDGET_MS): clients not reached are recorded skipped
-//     ("run_budget_exhausted") rather than silently dropped.
+//   - Legacy no-selector path is CAPPED to one PROCESSED client per invocation
+//     (NO_SELECTOR_MAX_CLIENTS): remaining clients are recorded skipped
+//     ("run_budget_exhausted"), never silently dropped. Count-based + deterministic
+//     (profiles ordered), so it cannot hard-kill mid-client.
 //   - Per-client run summary persisted best-effort to m.insights_worker_run
 //     (observability) — never aborts the run. NO token values, NO raw Graph payloads.
 //   Graph version (v19.0), metrics, token resolution, and the upsert payload are
@@ -42,10 +43,12 @@ const VERSION = "insights-worker-v14.2.0";
 const GRAPH_VERSION = "v19.0";
 const MAX_POSTS_PER_CLIENT = 50;
 const INSIGHTS_PERIOD = "lifetime";
-// v14.2.0: soft wall-clock budget for the LEGACY no-selector all-client path.
-// Stops cleanly before the ~150s Edge hard limit and records skipped clients
-// instead of being silently killed. The per-client cron path never hits this.
-const RUN_SOFT_BUDGET_MS = 120_000;
+// v14.2.0 (F1): the LEGACY no-selector all-client path is capped to ONE processed
+// client per invocation (count-based, NOT time-based — one client ~70s is always
+// safely under the ~150s Edge hard limit). Remaining clients are recorded skipped
+// rather than risking a mid-client hard-kill. The per-client cron path (one
+// profile) is the production path and never hits this cap.
+const NO_SELECTOR_MAX_CLIENTS = 1;
 
 const METRICS_TO_TRY: { key: string; names: string[] }[] = [
   { key: "reach",         names: ["post_impressions_unique"] },
@@ -347,7 +350,8 @@ async function readSelector(req: Request): Promise<Selector> {
       client_publish_profile_id: b.client_publish_profile_id ? String(b.client_publish_profile_id) : undefined,
       client_id: b.client_id ? String(b.client_id) : undefined,
       destination_id: b.destination_id ? String(b.destination_id) : undefined,
-      max_posts: Number.isFinite(mp) ? Math.max(1, Math.min(MAX_POSTS_PER_CLIENT, mp)) : undefined,
+      // F2: floor to an integer AFTER clamping so a non-integer can never reach SQL LIMIT.
+      max_posts: Number.isFinite(mp) ? Math.max(1, Math.min(MAX_POSTS_PER_CLIENT, Math.floor(mp))) : undefined,
     };
   } catch {
     return {}; // malformed/empty body → behave as no-selector (legacy) run
@@ -377,7 +381,6 @@ Deno.serve(async (req: Request) => {
   if (req.method === "GET") return jsonResponse({ ok: true, function: "insights-worker", version: VERSION });
 
   const runId = crypto.randomUUID();
-  const runStart = Date.now();
   const selector = await readSelector(req);
   const perClient = !!(selector.client_publish_profile_id || selector.client_id || selector.destination_id);
   const maxPosts = selector.max_posts ?? MAX_POSTS_PER_CLIENT;
@@ -400,9 +403,12 @@ Deno.serve(async (req: Request) => {
     if (selector.client_publish_profile_id) q = q.eq("client_publish_profile_id", selector.client_publish_profile_id);
     else if (selector.client_id) q = q.eq("client_id", selector.client_id);
     else if (selector.destination_id) q = q.eq("destination_id", selector.destination_id);
+    // F1: deterministic order so the legacy one-client cap is stable (no unindexed row order).
+    q = q.order("client_publish_profile_id", { ascending: true });
 
     const { data: profiles, error: profErr } = await q;
-    if (profErr) return jsonResponse({ ok: false, run_id: runId, error: "load_profiles_failed", detail: profErr }, 500);
+    // F4: redact any returned error text (defensive — these carry no token today).
+    if (profErr) return jsonResponse({ ok: false, run_id: runId, error: "load_profiles_failed", detail: safeErr(profErr) }, 500);
 
     const activeProfiles = (profiles ?? []) as PublishProfile[];
 
@@ -418,14 +424,16 @@ Deno.serve(async (req: Request) => {
     }
 
     const processedClientIds: string[] = [];
+    let processedThisRun = 0; // F1: counts actually-processed clients (legacy cap)
 
     for (const profile of activeProfiles) {
       const startedAt = nowIso();
       const cStart = Date.now();
 
-      // Soft-budget guard — LEGACY no-selector path only. Per-client invocations
-      // (one profile) never trip this. Skipped clients are RECORDED, not dropped.
-      if (!perClient && (Date.now() - runStart) > RUN_SOFT_BUDGET_MS) {
+      // F1: LEGACY no-selector path is capped to ONE processed client per invocation.
+      // Count-based + deterministic (profiles ordered); cannot hard-kill mid-client.
+      // Per-client invocations (perClient) are never capped.
+      if (!perClient && processedThisRun >= NO_SELECTOR_MAX_CLIENTS) {
         clientSummaries[profile.client_id] = { skipped: true, reason: "run_budget_exhausted" };
         await writeRunLog(supabase, {
           run_id: runId, worker_version: VERSION, invocation_mode: "all_client",
@@ -469,7 +477,10 @@ Deno.serve(async (req: Request) => {
       }
 
       const result = await processClient(supabase, profile, pageToken, maxPosts);
-      clientSummaries[profile.client_id] = { ...result, token_source: tokenSource };
+      processedThisRun++; // F1: count only actually-processed clients toward the cap
+      // F4: redact per-post error strings before they enter the HTTP response.
+      const safeErrors = result.errors.map((e: any) => ({ ...e, error: safeErr(e?.error ?? e) }));
+      clientSummaries[profile.client_id] = { ...result, errors: safeErrors, token_source: tokenSource };
       totalProcessed += result.processed;
       totalSucceeded += result.succeeded;
       totalFailed += result.failed;
@@ -502,6 +513,7 @@ Deno.serve(async (req: Request) => {
       clients: clientSummaries,
     });
   } catch (e: any) {
-    return jsonResponse({ ok: false, run_id: runId, version: VERSION, error: (e?.message ?? String(e)).slice(0, 800) }, 500);
+    // F4: redact top-level error text too.
+    return jsonResponse({ ok: false, run_id: runId, version: VERSION, error: safeErr(e?.message ?? e) }, 500);
   }
 });

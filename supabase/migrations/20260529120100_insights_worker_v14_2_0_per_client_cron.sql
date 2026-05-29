@@ -42,7 +42,8 @@ END $$;
 
 -- 2) Explicit per-client jobs, staggered to avoid overlap. cron.schedule upserts
 --    by jobname (pg_cron >= 1.4), so re-running this migration is idempotent.
---    Each body carries a client_id selector; v14.2.0 processes ONLY that profile.
+--    F3: each body carries a client_publish_profile_id selector (guaranteed-unique
+--    PK) so each invocation targets EXACTLY one profile; v14.2.0 processes only it.
 
 -- NDIS-Yarns (NY-FB)
 SELECT cron.schedule('insights-worker-ny-fb', '0 3 * * *', $job$
@@ -53,7 +54,7 @@ SELECT cron.schedule('insights-worker-ny-fb', '0 3 * * *', $job$
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'service_role_key')
     ),
-    body := jsonb_build_object('client_id', 'fb98a472-ae4d-432d-8738-2273231c1ef4'),
+    body := jsonb_build_object('client_publish_profile_id', 'd469a8f3-775b-41e1-b6d8-77b6c8947f99'),
     timeout_milliseconds := 120000
   );
 $job$);
@@ -67,7 +68,7 @@ SELECT cron.schedule('insights-worker-cfw-fb', '5 3 * * *', $job$
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'service_role_key')
     ),
-    body := jsonb_build_object('client_id', '3eca32aa-e460-462f-a846-3f6ace6a3cae'),
+    body := jsonb_build_object('client_publish_profile_id', 'e15f5621-ca89-4ca2-b1a6-d6665b2a8b7a'),
     timeout_milliseconds := 120000
   );
 $job$);
@@ -81,7 +82,7 @@ SELECT cron.schedule('insights-worker-pp-fb', '10 3 * * *', $job$
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'service_role_key')
     ),
-    body := jsonb_build_object('client_id', '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd'),
+    body := jsonb_build_object('client_publish_profile_id', '1a30dd24-8751-4eb1-b973-6b75086247cd'),
     timeout_milliseconds := 120000
   );
 $job$);
@@ -95,7 +96,7 @@ SELECT cron.schedule('insights-worker-invegent-fb', '15 3 * * *', $job$
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'service_role_key')
     ),
-    body := jsonb_build_object('client_id', '93494a09-cc89-41d1-b364-cb63983063a6'),
+    body := jsonb_build_object('client_publish_profile_id', 'c83f6cc5-69a8-4c4b-a725-a721fdec87f7'),
     timeout_milliseconds := 120000
   );
 $job$);
