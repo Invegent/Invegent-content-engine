@@ -3,7 +3,8 @@
 **Created:** 2026-05-29 Sydney
 **Author:** Claude Code (CCD), read-only repo investigation
 **Executor (future):** TBD — CCD (function build) + PK (manual probe / EF deploy approval)
-**Status:** **INVESTIGATION COMPLETE + Stage 0 spec AUTHORED — NOT implemented.** No code, no deploy, no migration, no cron, no DB write, no YouTube API call has been made. Every stage below fires its own D-01 + PK approval before any production effect.
+**Status:** **INVESTIGATION COMPLETE + Stage 0 spec AUTHORED + WCCH-HARDENED — NOT implemented.** No code, no deploy, no migration, no cron, no DB write, no YouTube API call has been made. Every stage below fires its own D-01 + PK approval before any production effect.
+**WCCH review (2026-05-29, at `becb85e`):** "Approve with changes" — not blocked, but Stage 0 is NOT approved to run until amended. This revision applies all 7 required changes: (1) OAuth token-rotation hazard + containment (§4.3.0, R6); (2) Step 0 Option-A/B decision up front, no mid-probe pivot (§4.3.1, R7); (3) Option A credential-handling hard rules (§4.3.2); (4) Option A now requires a *written* PK approval phrase, not verbal (§5, §9); (5) sample hardening — two video ids/client, batched, probe every client incl. CFW (§4.3.4); (6) required capability-matrix fields incl. `scopes_on_token`, `quota_units_consumed`, `probe_run_at`, `app_oauth_status`, `probe_video_count`, 3-value verdict (§4.4); (7) Option B mandatory delete-after, probe not closed until removed (§4.3.3). Stage 1 remains blocked; no probe executed.
 **Origin:** follow-on from the v3.20 youtube-publisher v1.11.0 Public-visibility fix (`supabase/functions/youtube-publisher/index.ts`). The open v3.20 runtime follow-up — authoritative post-publish `privacyStatus` verification — is satisfied durably by Stage 1 of this brief (see §7).
 **Scope discipline (PK directive 2026-05-29):** Stage 0 (token/scope probe) + Stage 1 (minimal MVP) only. Typed schema columns, dashboard UI, thumbnails, playlists, captions, comments, and the YouTube Analytics API are explicitly **Later/Deferred** (§6).
 
@@ -74,46 +75,90 @@ Prove whether **each live YouTube client token** can read YouTube Data API **sta
 7. **Which clients require re-consent before Stage 1?** (= any client whose probe 403s on a readonly call.)
 
 ### 4.3 Exact proposed probe method
-**Preferred: supervised one-shot, NOT a deployed persistent worker.** Two execution options, in order of preference:
 
-- **Option A (preferred) — supervised manual/scripted one-shot.** A short read-only script (local Deno or a single supervised invocation) that, per client:
-  1. reads the refresh token from its stored source (DB inline first, else env secret),
-  2. exchanges it for a short-lived access token via the existing `oauth2.googleapis.com/token` flow (same as `refreshAccessToken()`),
-  3. issues **GET** `videos.list?part=status,statistics,snippet&id={videoId}` and (if channelId obtained) **GET** `channels.list?part=statistics&id={channelId}`,
-  4. records only booleans/enums/counts + HTTP status — **never** the token, never raw PII.
-  - This avoids any deployed surface and is trivially "rolled back" (nothing persists).
-  - **Caveat:** it needs read access to the stored refresh tokens (DB and/or the env secrets). If those secrets are only reachable from the Supabase Edge runtime, Option A from a laptop may not see them → use Option B.
+#### 4.3.0 ⚠️ OAuth token-rotation hazard (WCCH-required — read FIRST)
+The probe's OAuth `refresh_token` grant exchange (`POST oauth2.googleapis.com/token`, `grant_type=refresh_token`) **could theoretically rotate the refresh token** — Google may return a **new** `refresh_token` in the response under some app configurations (notably when refresh-token rotation is enabled). **Risk:** if a new refresh token is issued by Google but the probe does **not** capture and persist it, Google may invalidate the old one, and **the live `youtube-publisher` credential could become stale** → publisher breakage on the next real upload. This is the most dangerous side effect of an otherwise read-only probe.
 
-- **Option B (fallback) — temporary throwaway Edge Function `youtube-scope-probe`.** Justified **only** if secret access forces it (Edge-only env secrets). It performs the identical read-only calls inside the Edge runtime, returns the capability matrix as JSON, writes nothing, and is **deleted immediately after the probe**. Because it is deployed, it is classified `ef_deploy` and **must stop for D-01 approval before deployment** (see §5).
+**Containment (mandatory, before any probe runs):**
+1. **Confirm the Google OAuth app's posture is Production / non-rotating where it can be confirmed** (the v3.05 fix moved the app Testing→Production; Production-posture apps with `access_type=offline` typically return a refresh token only on first consent and do **not** rotate on every refresh). Record the confirmed status as `app_oauth_status` in the output.
+2. **The probe MUST inspect the token-exchange response for a `refresh_token` field.** If the response contains **no** `refresh_token` (the expected, safe case), proceed. 
+3. **If a NEW `refresh_token` IS returned, the probe MUST STOP immediately for that client** and either (a) the new token is captured and persisted safely into the same store the publisher reads (`c.client_channel.config.refresh_token` / the `credential_env_key` secret) under a separate explicitly-approved write step, or (b) abort that client's probe **before** the old token can be invalidated. **The probe must never discard a returned refresh token** — discarding it is what bricks the publisher. Mark such a client `ERROR_NEEDS_INVESTIGATION` and do not continue it.
 
-**Secrets/tokens used:** YouTube refresh tokens (from `c.client_channel.config.refresh_token` or the `credential_env_key` env secret) + `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` for the token exchange. **Values are never logged, returned, or persisted — only source labels and presence.**
+> This hazard means Stage 0, while read-only on the YouTube *content* side, touches a live publisher credential. That is why Option A requires a **written** PK approval phrase (§5, §9), not merely verbal.
+
+#### 4.3.1 Step 0 — resolve Option A vs Option B BEFORE the probe starts (WCCH-required)
+**Decide the execution path up front. Do NOT start Option A and pivot to Option B mid-probe.**
+
+> **Step 0 decision:** Determine whether the stored refresh tokens/secrets are **safely readable from the supervised/manual environment**:
+> - Can the supervised environment read `c.client_channel.config.refresh_token` (DB) **and/or** the `credential_env_key` env secrets that the publisher uses?
+> - **If YES → proceed with Option A** (supervised one-shot), fixed for the whole run.
+> - **If NO → STOP and request Option B `ef_deploy` D-01.** Do not attempt Option A first.
+
+The path chosen at Step 0 is **fixed for the entire probe**. A mid-probe pivot is prohibited (it risks partial reads under inconsistent credential handling).
+
+#### 4.3.2 Option A (preferred) — supervised manual/scripted one-shot
+A short read-only script (local Deno or a single supervised invocation) that, per client/channel:
+1. reads the refresh token from its stored source (DB inline first, else env secret),
+2. exchanges it for a short-lived access token via the existing `oauth2.googleapis.com/token` flow (same as `refreshAccessToken()`), **and applies the §4.3.0 rotation check to the response**,
+3. issues a single batched **GET** `videos.list?part=status,statistics,snippet&id={id1,id2}` (see §4.3.4 sample hardening) and (if channelId obtained) **GET** `channels.list?part=statistics&id={channelId}`,
+4. records only booleans/enums/counts + HTTP status + the §4.4 fields — **never** the token, never raw PII.
+
+**Option A credential handling — HARD rules (WCCH-required):**
+- Tokens held **in-memory only**, for the minimum duration of the exchange.
+- **No token value printed** to stdout/stderr/logs.
+- **No token value written to disk or any temp file.**
+- **No token value placed on the shell command line / copied into shell history** (read from the store programmatically; never paste a token as an argument).
+- **No token value returned in the probe output.**
+- Output reports **only**: source label, presence/absence, and pass/fail status (plus the non-secret §4.4 fields).
+
+#### 4.3.3 Option B (fallback) — temporary throwaway Edge Function `youtube-scope-probe`
+Justified **only** if Step 0 determines secrets are reachable solely from the Supabase Edge runtime. It performs the identical read-only calls (incl. the §4.3.0 rotation check) inside the Edge runtime, returns the §4.4 capability matrix as JSON, writes nothing, and is **deleted immediately after the probe**. Because it is deployed, it is classified `ef_deploy` and **must stop for D-01 approval before deployment** (see §5).
+
+**Option B delete-after hardening (WCCH-required, MANDATORY):** deletion of the temporary `youtube-scope-probe` function (`supabase functions delete youtube-scope-probe --project-ref mbkmaxqhsohbtwsqolns`) is a **mandatory post-step**, not optional. **The probe is NOT considered closed until the temporary function is confirmed removed** (verify via `supabase functions list` showing it absent / GET returning 404). A successful probe with the function still deployed is an **incomplete** probe.
+
+#### 4.3.4 Sample hardening (WCCH-recommended)
+- **Probe TWO existing published YouTube video IDs per client/channel where available:** (a) the most recent published video, (b) one fallback published video — so a single unlucky deleted/private video doesn't produce a false `NEEDS_RECONSENT`.
+- Use **one batched `videos.list` call per client/channel** where possible (`id=id1,id2`) — 1 quota unit regardless.
+- If only one video exists for a client, report `probe_video_count = 1`.
+- **Probe EVERY client/channel with ≥1 YouTube published row**, including any expected-to-fail client such as **CFW** if present — the expected-failures are exactly the signal we want.
+
+#### 4.3.5 Secrets, endpoints, and write-surface
+**Secrets/tokens used:** YouTube refresh tokens (from `c.client_channel.config.refresh_token` or the `credential_env_key` env secret) + `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` for the token exchange. **Values are never logged, returned, or persisted — only source labels and presence** (per §4.3.2 hard rules).
 
 **API endpoints called (READ-only):**
-- `POST https://oauth2.googleapis.com/token` (refresh→access exchange; standard OAuth, not a content mutation)
-- `GET https://www.googleapis.com/youtube/v3/videos?part=status,statistics,snippet&id={videoId}`
+- `POST https://oauth2.googleapis.com/token` (refresh→access exchange; standard OAuth — **but see the §4.3.0 rotation hazard**)
+- `GET https://www.googleapis.com/youtube/v3/videos?part=status,statistics,snippet&id={videoId(s)}`
 - `GET https://www.googleapis.com/youtube/v3/channels?part=statistics&id={channelId}`
 
-No `videos.update`, no `videos.insert`, no `videos.rate`, no playlist/caption/comment endpoints. **No write endpoint of any kind.**
+No `videos.update`, no `videos.insert`, no `videos.rate`, no playlist/caption/comment endpoints. **No write endpoint of any kind.** The only thing that could ever be written is a **rotated refresh token**, and that is governed by the §4.3.0 stop-and-capture rule.
 
 ### 4.4 Output Stage 0 reports (per client/channel)
-A capability matrix (printed/returned only — not written to any table):
+A capability matrix (printed/returned only — **not written to any table**; never contains token values):
 
-| Field | Example |
-|---|---|
-| client_id / client_name | `…/ NDIS-Yarns` |
-| youtube published count | `12` |
-| probe video id | `qp-ZGm8lNIo` |
-| token source | `client_channel.config` / `credential_env_key:YT_NY_REFRESH` |
-| token present | `true` |
-| videos.list HTTP | `200` |
-| privacyStatus | `public` |
-| viewCount / likeCount / commentCount | `134 / 5 / 0` |
-| channelId | `UC...` |
-| channels.list HTTP | `200` |
-| subscriberCount / viewCount / videoCount | `41 / 9.2k / 60` (or `hidden`) |
-| verdict | `STAGE1_READY` / `NEEDS_RECONSENT(403)` / `ERROR(<class>)` |
+| Field | Example | Notes |
+|---|---|---|
+| client_id / client_name | `…/ NDIS-Yarns` | |
+| youtube published count | `12` | from `m.post_publish` |
+| probe video ids | `qp-ZGm8lNIo, u-xYWGg1qWI` | up to 2 (§4.3.4) |
+| **probe_video_count** | `2` (or `1`) | WCCH-required |
+| token source | `client_channel.config` / `credential_env_key:YT_NY_REFRESH` | label only, never value |
+| token present | `true` | |
+| **scopes_on_token** | `youtube.readonly youtube.upload` **or** `unknown/not_returned` | WCCH-required; from token-introspection if available, else `unknown/not_returned` |
+| **app_oauth_status** | `production_confirmed` / `unknown` | WCCH-required (§4.3.0 containment 1) |
+| refresh_token_rotated | `false` (expected) / `true→STOPPED` | §4.3.0 rotation check |
+| videos.list HTTP | `200` | |
+| privacyStatus | `public` | per probed video |
+| viewCount / likeCount / commentCount | `134 / 5 / 0` | |
+| channelId | `UC...` | |
+| channels.list HTTP | `200` | |
+| subscriberCount / viewCount / videoCount | `41 / 9.2k / 60` (or `hidden`) | |
+| **quota_units_consumed** | `2` (observed/estimated) | WCCH-required |
+| **probe_run_at** | `2026-05-29T…Z` | WCCH-required (ISO timestamp) |
+| **verdict** | `STAGE1_READY` / `NEEDS_RECONSENT` / `ERROR_NEEDS_INVESTIGATION` | WCCH-required 3-value enum |
 
-Plus a one-line summary: `N clients ready, M need re-consent, K errored.`
+**Verdict semantics:** `STAGE1_READY` = `videos.list` returned 200 with the expected fields under current scope; `NEEDS_RECONSENT` = 403 / insufficient-scope (token is `youtube.upload`-only or readonly not granted) → re-consent required before Stage 1; `ERROR_NEEDS_INVESTIGATION` = anything else (token rotated and stopped per §4.3.0, network/5xx, malformed response, missing token, ambiguous result).
+
+Plus a one-line summary: `N STAGE1_READY, M NEEDS_RECONSENT, K ERROR_NEEDS_INVESTIGATION; total quota_units_consumed ≈ Q; probe_run_at <ISO>.`
 
 ### 4.5 Stage 0 constraints (hard)
 No DB writes · no schema changes · no cron changes · no deployed persistent worker · no YouTube mutation · no `videos.update` · no privacy change · no backfill · no dashboard/UI work · **read-only API calls only, after PK approval.**
@@ -124,8 +169,8 @@ No DB writes · no schema changes · no cron changes · no deployed persistent w
 
 | Step | Classification | Notes |
 |---|---|---|
-| **Stage 0 — Option A (manual/scripted one-shot)** | **No `ef_deploy`** — supervised read-only run under PK verbal approval. No deploy, no write. (Reads secrets → handle under the privacy contract: presence/labels only.) | Preferred |
-| **Stage 0 — Option B (temporary EF)** | **`ef_deploy` D-01** (stop for approval before deploy) + delete-after | Only if secret access requires it |
+| **Stage 0 — Option A (manual/scripted one-shot)** | **NOT `ef_deploy`** (no deploy, no DB/YouTube write) — **BUT requires PK's explicit *written* approval phrase, not merely verbal**, because it reads **production credentials** and performs **OAuth refresh exchanges** that carry the §4.3.0 token-rotation hazard. Token handling per §4.3.2 hard rules. | Preferred |
+| **Stage 0 — Option B (temporary EF)** | **`ef_deploy` D-01** (stop for written approval before deploy) + **mandatory delete-after** (§4.3.3 — probe not closed until function confirmed removed) | Only if Step 0 determines secret access requires it |
 | **Stage 1 — worker deploy** | **`ef_deploy` D-01** | Runtime DML upserts to `m.post_performance` are runtime worker behaviour (like the live FB insights-worker), not a migration — the deploy is the gated step. **No schema migration** (zero DDL for MVP). |
 | **Stage 1 — add `cron.schedule`** | **separate `sql_destructive` D-01** | Per established cron precedent |
 | **Later — typed columns / new table** | **`sql_destructive` D-01** | Only if/when promoted from Deferred |
@@ -159,23 +204,27 @@ The v3.20 follow-up requires authoritative proof = *YouTube Studio OR `videos.li
 | R1 | Per-client `readonly` not actually granted (esp. CFW upload-only) → `videos.list` 403 | This is precisely what Stage 0 detects; affected clients flagged `NEEDS_RECONSENT` before any Stage 1 build |
 | R2 | YouTube "views" ≠ FB "impressions/reach" semantics | Authoritative raw fields in `raw_payload`; column reuse documented as approximation |
 | R3 | `subscriberCount` may be hidden by channel settings | Tolerate null; record `hidden` in raw_payload |
-| R4 | Reading refresh tokens for the probe | Presence/source-label only; never log/return/persist token values (privacy contract, same discipline as cc-0020 Unit A) |
-| R5 | Probe via temp EF leaves a deployed surface | Delete-after; classified `ef_deploy`; stops for D-01 first |
+| R4 | Reading refresh tokens for the probe | Presence/source-label only; never log/return/persist token values (privacy contract, same discipline as cc-0020 Unit A); §4.3.2 hard rules (in-memory only, no disk/shell-history/output) |
+| R5 | Probe via temp EF leaves a deployed surface | **Mandatory** delete-after (§4.3.3); classified `ef_deploy`; stops for written D-01 first; **probe not closed until function confirmed removed** |
+| **R6** | **OAuth refresh exchange could rotate the refresh token; a returned-but-discarded new token would invalidate the live publisher credential → publisher breakage** | **§4.3.0 containment: confirm Production/non-rotating posture; inspect every token-exchange response for a `refresh_token`; if present, STOP that client and capture+persist under a separate approved write step or abort before invalidation — never discard a returned refresh token.** This is why Option A needs a written approval phrase (§5, §9). |
+| R7 | Mid-probe pivot Option A↔B under inconsistent credential handling | §4.3.1 Step 0 fixes the path up front; pivot prohibited |
 | OQ1 | Live `cron.job` for insights-worker to mirror? | Confirm read-only at Stage 1 impl (not in repo migrations — likely created out-of-band) |
 
-**Rollback / no-op statement:** Stage 0 performs **only HTTP GETs** against the YouTube Data API plus the standard OAuth refresh exchange. It **writes nothing** to the database, changes **no** schema/cron/secret, and **mutates nothing** on YouTube. Option A persists no artifact (nothing to roll back). Option B's only artifact is the temporary function, removed immediately after the run (`supabase functions delete youtube-scope-probe`), restoring the prior state byte-for-byte. There is therefore **no rollback to perform** beyond deleting the temp function (Option B only).
+**Rollback / no-op statement:** Stage 0 performs **only HTTP GETs** against the YouTube Data API plus the standard OAuth refresh exchange. It **writes nothing** to the database, changes **no** schema/cron/secret, and **mutates nothing** on YouTube content. **The one residual write-risk is a rotated refresh token** (R6 / §4.3.0) — contained by the stop-and-capture rule so the live publisher credential is never silently invalidated. Option A persists no artifact (nothing to roll back). Option B's only artifact is the temporary function, whose removal (`supabase functions delete youtube-scope-probe`) is a **mandatory close-step**, restoring the prior state byte-for-byte. There is therefore **no rollback to perform** beyond (a) the mandatory temp-function deletion (Option B only) and (b) persisting any rotated refresh token if R6 ever fires.
 
 ---
 
 ## 9. Approval gate wording for PK
 
-> **Stage 0 (probe) — choose the execution path and approve read-only run:**
-> - **If Option A (manual/scripted one-shot) is feasible** (the probe can read the stored refresh tokens/secrets from the supervised environment): *"PK approves running the Stage 0 YouTube scope probe — read-only `videos.list`/`channels.list` GETs against existing video ids, no writes, no mutations, token values never printed."*
-> - **If Option B (temporary Edge Function) is required** (secrets only reachable in the Edge runtime): this is an **`ef_deploy`** — CCD will **stop and request a separate `ef_deploy` D-01 + the exact approval phrase** before deploying `youtube-scope-probe`, and will delete it immediately after the run.
+> **Prerequisite — Step 0 (§4.3.1):** CCD first determines whether stored refresh tokens/secrets are safely readable from the supervised environment. The path chosen is fixed for the whole probe (no mid-probe pivot).
 >
-> **Stage 1 (worker) is NOT approved by the above** — it requires its own `ef_deploy` D-01 (+ a separate `sql_destructive` D-01 if a cron entry is added), after Stage 0 confirms which clients are ready.
+> **Stage 0 (probe) requires PK's explicit WRITTEN approval phrase** (not merely verbal) for **either** path, because the probe reads production credentials and performs OAuth refresh exchanges carrying the §4.3.0 token-rotation hazard:
+> - **If Step 0 → Option A (manual/scripted one-shot):** required written phrase — *"PK approves running the Stage 0 YouTube scope probe (Option A) — read-only `videos.list`/`channels.list` GETs against existing video ids, OAuth refresh-exchange with the §4.3.0 rotation stop-and-capture rule enforced, no DB/schema/cron/YouTube writes, token values never printed or persisted."*
+> - **If Step 0 → Option B (temporary Edge Function):** this is additionally an **`ef_deploy`** — CCD will **stop and request a separate `ef_deploy` D-01 + the exact written approval phrase** before deploying `youtube-scope-probe`, and **deletion of the temp function is a mandatory close-step** (the probe is not closed until the function is confirmed removed).
+>
+> **Stage 1 (worker) is NOT approved by the above** — it requires its own `ef_deploy` D-01 (+ a separate `sql_destructive` D-01 if a cron entry is added), after Stage 0 confirms which clients are `STAGE1_READY`.
 
 ---
 
 ## Hard stop (current state)
-Investigation + this brief + the Stage 0 spec are complete. **The probe has NOT been run; no YouTube API call, no probe-function deploy, no mutation of any kind has occurred.** Awaiting PK's Stage 0 execution-path choice and approval.
+Investigation + this brief + the WCCH-hardened Stage 0 spec are complete. **The probe has NOT been run; no YouTube API call, no probe-function deploy, no DB/schema/cron mutation of any kind has occurred.** Next action = PK's **written** Stage 0 approval phrase (§9) after Step 0 fixes the Option-A/B path. Stage 1 worker build remains blocked until Stage 0 reports per-client `STAGE1_READY`.
