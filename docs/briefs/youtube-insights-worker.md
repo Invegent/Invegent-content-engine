@@ -3,7 +3,7 @@
 **Created:** 2026-05-29 Sydney
 **Author:** Claude Code (CCD), read-only repo investigation
 **Executor (future):** TBD — CCD (function build) + PK (manual probe / EF deploy approval)
-**Status:** **STAGE 0 PROBE EXECUTED + PASSED (2026-05-29) — Stage 1 brief AUTHORED, NOT implemented.** Stage 0 ran via the temporary Option-B EF `youtube-scope-probe` (deployed → run once → deleted → verified absent) under a written `ef_deploy` D-01. Result: **Property Pulse + NDIS-Yarns = `STAGE1_READY`**; **CFW = `UNTESTED_NO_YOUTUBE_ROWS`** (0 YouTube published rows). No DB write, no schema, no cron, no YouTube mutation. See the Stage 0 result appendix (§10). Stage 1 (§11) is designed but **NOT built/deployed** — it fires its own `ef_deploy` D-01 (+ separate `sql_destructive` for cron) and PK approval before any production effect.
+**Status:** **STAGE 0 PROBE EXECUTED + PASSED (2026-05-29) — Stage 1 brief AUTHORED + WCCH-HARDENED, NOT implemented.** Stage 1 WCCH review (2026-05-29, "approve with changes") applied — see §11 (per-run cap + duplicate-safe selection §11.2; live unique-constraint verification + cross-platform guard §11.6; concrete token-rotation handling §11.6.1; engagement-rate divide-by-zero guard §11.4.1; lossy `viewCount→impressions` warning §11.5.1; v3.20 ARMED-not-closed §11.5.2/§7; history-loss + channel-grain limitations §11.12; code-constant allowlist §11.2.1; batch-of-50 chunking §11.3; V-checks §11.10; `known_weak_evidence` §11.13). Stage 0 ran via the temporary Option-B EF `youtube-scope-probe` (deployed → run once → deleted → verified absent) under a written `ef_deploy` D-01. Result: **Property Pulse + NDIS-Yarns = `STAGE1_READY`**; **CFW = `UNTESTED_NO_YOUTUBE_ROWS`** (0 YouTube published rows). No DB write, no schema, no cron, no YouTube mutation. See the Stage 0 result appendix (§10). Stage 1 (§11) is designed but **NOT built/deployed** — it fires its own `ef_deploy` D-01 (+ separate `sql_destructive` for cron) and PK approval before any production effect.
 **WCCH review (2026-05-29, at `becb85e`):** "Approve with changes" — not blocked, but Stage 0 is NOT approved to run until amended. This revision applies all 7 required changes: (1) OAuth token-rotation hazard + containment (§4.3.0, R6); (2) Step 0 Option-A/B decision up front, no mid-probe pivot (§4.3.1, R7); (3) Option A credential-handling hard rules (§4.3.2); (4) Option A now requires a *written* PK approval phrase, not verbal (§5, §9); (5) sample hardening — two video ids/client, batched, probe every client incl. CFW (§4.3.4); (6) required capability-matrix fields incl. `scopes_on_token`, `quota_units_consumed`, `probe_run_at`, `app_oauth_status`, `probe_video_count`, 3-value verdict (§4.4); (7) Option B mandatory delete-after, probe not closed until removed (§4.3.3). Stage 1 remains blocked; no probe executed.
 **Origin:** follow-on from the v3.20 youtube-publisher v1.11.0 Public-visibility fix (`supabase/functions/youtube-publisher/index.ts`). The open v3.20 runtime follow-up — authoritative post-publish `privacyStatus` verification — is satisfied durably by Stage 1 of this brief (see §7).
 **Scope discipline (PK directive 2026-05-29):** Stage 0 (token/scope probe) + Stage 1 (minimal MVP) only. Typed schema columns, dashboard UI, thumbnails, playlists, captions, comments, and the YouTube Analytics API are explicitly **Later/Deferred** (§6).
@@ -193,7 +193,7 @@ Typed columns (`views`, `privacy_status`, `upload_status`) · `m.channel_perform
 ---
 
 ## 7. Relation to the open v3.20 visibility verification
-The v3.20 follow-up requires authoritative proof = *YouTube Studio OR `videos.list?part=status` showing `status.privacyStatus == 'public'`.* **Stage 1 calls exactly `videos.list?part=status` and records `privacy_status` per video** → it satisfies and *durably closes* the v3.20 verification for every future video, automatically. v3.20 does **not** block on this worker (a single manual Studio check still closes it immediately); the worker just makes it self-verifying ongoing. **Stage 0** can also opportunistically confirm the current `privacyStatus` of a recently-published video as a read-only spot-check.
+The v3.20 follow-up requires authoritative proof = *YouTube Studio OR `videos.list?part=status` showing `status.privacyStatus == 'public'`.* **Stage 1 calls exactly `videos.list?part=status` and records `privacy_status` per video → it ARMS durable verification** (self-verifying ongoing once running). **It does NOT by itself close v3.20:** closure requires observing a **genuinely post-v1.11.0 upload** (one produced by the v1.11.0 publisher path, i.e. uploaded after 2026-05-29) reading `public`. The Stage 0 probe and any historical row showing `public` reflect **PK's manual historical fix**, which does not prove the v1.11.0 code path. v3.20 does not block on this worker (a single manual Studio check of a new upload still closes it). See §11.5.2.
 
 ---
 
@@ -256,42 +256,73 @@ The v3.20 follow-up requires authoritative proof = *YouTube Studio OR `videos.li
 ### 11.1 New Edge Function
 `supabase/functions/youtube-insights-worker/index.ts` — standalone (separate from the Facebook `insights-worker`, whose Graph-API flow and token model differ entirely). Reuses the publisher's `refreshAccessToken()`-style OAuth refresh→access exchange and the `insights-worker` structural pattern (never-collected-first selection, idempotent upsert, token-source labels only).
 
-### 11.2 Input source
+### 11.2 Input source (WCCH-hardened — capped + backpressured + duplicate-safe)
 ```sql
-SELECT pp.post_publish_id, pp.client_id, pp.platform_post_id,
+SELECT pp.post_publish_id, pp.client_id, pp.platform_post_id, pp.published_at,
        (perf.platform_post_id IS NULL) AS never_collected
 FROM m.post_publish pp
-LEFT JOIN m.post_performance perf
-  ON perf.platform_post_id = pp.platform_post_id
- AND perf.insights_period = 'lifetime' AND perf.platform = 'youtube'
+LEFT JOIN LATERAL (
+  -- one row max, even if m.post_performance contains unexpected duplicate snapshots
+  SELECT 1 AS platform_post_id, MIN(p.collected_at) AS collected_at
+  FROM m.post_performance p
+  WHERE p.platform_post_id = pp.platform_post_id
+    AND p.insights_period = 'lifetime' AND p.platform = 'youtube'
+) perf ON true
 WHERE pp.platform = 'youtube' AND pp.status = 'published' AND pp.platform_post_id IS NOT NULL
-  AND pp.client_id IN (<STAGE1_READY client ids>)
+  AND pp.client_id = ANY($1)              -- $1 = code-constant STAGE1_READY allowlist (see 11.2.1)
 ORDER BY (perf.platform_post_id IS NULL) DESC, perf.collected_at ASC NULLS FIRST, pp.published_at DESC
+LIMIT $2                                   -- $2 = MAX_VIDEOS_PER_RUN (explicit per-run cap)
 ```
-- **Supported clients initially:** **Property Pulse** (`4036a6b5…`) + **NDIS-Yarns** (`fb98a472…`) — the two `STAGE1_READY` clients. Scope the client filter explicitly to these (allowlist), so an un-probed client cannot silently enter.
-- **CFW handling:** **skipped** until it has published YouTube rows AND passes a later scope probe. Do not add CFW to the allowlist on assumption.
+**WCCH fixes baked in:**
+- **Explicit per-run cap — `MAX_VIDEOS_PER_RUN` (e.g. 100)** via `LIMIT`. The worker can **never** attempt every historical YouTube row in one run; never-collected rows are served first, so a backlog drains across runs with bounded blast radius.
+- **Duplicate-safe selection** — the `LEFT JOIN LATERAL (… aggregate …) ON true` collapses any unexpected duplicate `m.post_performance` rows to **at most one** per `pp.platform_post_id`, so the never-collected-first join **cannot multiply input rows** if the table already contains dup snapshots. (A plain `LEFT JOIN m.post_performance` would fan out on duplicates — explicitly avoided.)
+- **Backpressure** — `MAX_VIDEOS_PER_RUN` + the never-collected-first ordering = bounded work/tick; a large historical set is processed incrementally, not all at once.
 
-### 11.3 API calls (READ-only)
-- `GET videos.list?part=status,statistics,snippet&id=<≤50 ids>` — batched per channel, **1 quota unit/call**.
+#### 11.2.1 Client allowlist — CODE-LEVEL CONSTANT (WCCH-required)
+```ts
+// hard-coded, NOT a DB/config row for the MVP
+const STAGE1_CLIENT_ALLOWLIST = [
+  '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', // Property Pulse  (STAGE1_READY)
+  'fb98a472-ae4d-432d-8738-2273231c1ef4', // NDIS-Yarns      (STAGE1_READY)
+];
+const MAX_VIDEOS_PER_RUN = 100;
+```
+- **CFW deliberately excluded** until it has YouTube published rows AND passes a fresh scope probe. An un-probed client cannot silently enter — the allowlist is in code, reviewed at deploy time, not a runtime-editable row.
+
+### 11.3 API calls (READ-only) — batch-of-50 chunking IMPLEMENTED
+- `GET videos.list?part=status,statistics,snippet&id=<≤50 ids>` — **the worker MUST chunk the selected ids into batches of ≤50** (YouTube `videos.list` hard limit) and issue one call per chunk. This is an **implementation requirement, not just a description**:
+  ```ts
+  function chunk<T>(a: T[], n = 50): T[][] { const o: T[][] = []; for (let i = 0; i < a.length; i += n) o.push(a.slice(i, i + n)); return o; }
+  for (const ids of chunk(videoIds, 50)) { /* one videos.list call per chunk */ }
+  ```
+  With `MAX_VIDEOS_PER_RUN=100` that is ≤2 video calls/run. 1 quota unit/call.
 - `GET channels.list?part=statistics&id=<channelId>` — once per distinct channel, 1 unit.
-- OAuth: `POST oauth2.googleapis.com/token` (refresh→access). **Carry the §4.3.0 rotation guard** (inspect response for a returned `refresh_token`; if present, do not discard — surface for a separate write step; never strand the publisher credential).
+- OAuth: `POST oauth2.googleapis.com/token` (refresh→access). **Carry the §4.3.0 / §11.6.1 rotation guard.**
 
 ### 11.4 Write target + mapping (reuse `m.post_performance`, NO DDL)
-Upsert into existing `m.post_performance` with `platform='youtube'`, `insights_period='lifetime'`, on conflict `(platform_post_id, insights_period)`:
+Upsert into existing `m.post_performance` with `platform='youtube'`, `insights_period='lifetime'`. **Conflict target is determined by the LIVE unique constraint — see §11.6 (must be verified before implementation).**
 
 | post_performance column | YouTube source | note |
 |---|---|---|
-| platform | `'youtube'` | |
-| platform_post_id | videoId | upsert key |
+| platform | `'youtube'` | **also part of the runtime cross-platform guard (§11.6)** |
+| platform_post_id | videoId | part of upsert key |
 | post_publish_id / client_id | from input row | |
-| impressions | `statistics.viewCount` | YouTube views ≈ impressions (approximation, documented) |
+| impressions | `statistics.viewCount` | **LOSSY MVP mapping — see §11.5.1 semantics warning** |
 | reactions | `statistics.likeCount` | |
 | comments | `statistics.commentCount` | |
 | engaged_users | `likeCount + commentCount` | derived |
-| engagement_rate | `(likes+comments)/views` when views>0 else NULL | |
+| engagement_rate | **see §11.4.1 divide-by-zero guard** | NULL when views 0/missing |
 | reach / shares / clicks | `NULL` | not exposed by YouTube Data API |
 | collected_at | now() | |
-| raw_payload | see §11.5 | authoritative fields live here |
+| raw_payload | see §11.5 | authoritative raw counts live here |
+
+#### 11.4.1 engagement_rate divide-by-zero guard (WCCH-required)
+```ts
+const views = Number(stats.viewCount);                 // may be 0, undefined, or NaN
+const engaged = likeCount + commentCount;
+const engagement_rate = (Number.isFinite(views) && views > 0) ? engaged / views : null;
+```
+- If `viewCount` is **zero or missing**, `engagement_rate` is **`NULL`** (never a divide-by-zero / Infinity / NaN). **Raw counts are always preserved in `raw_payload`** regardless.
 
 ### 11.5 `raw_payload` contents (authoritative)
 ```json
@@ -302,23 +333,56 @@ Upsert into existing `m.post_performance` with `platform='youtube'`, `insights_p
   "channel_id": "UC...", "channel_title": "Property Pulse",
   "published_at": "2026-05-28T...Z",       // snippet.publishedAt
   "channel_stats": { "subscriber_count": 1, "total_view_count": 0, "video_count": 29 },
-  "source_note": "youtube Data API; views→impressions approximation; reach/shares/clicks N/A",
+  "source_note": "youtube Data API; views->impressions LOSSY approximation; reach/shares/clicks N/A",
   "version": "youtube-insights-worker-v1.0.0"
 }
 ```
-`privacy_status` here is the field that **durably closes the v3.20 verification** (§7).
+`privacy_status` here is the field that **arms (does not by itself close)** the v3.20 verification — see §11.5.2 and §7.
 
-### 11.6 Idempotency
-Existing `onConflict:'platform_post_id,insights_period'` upsert → re-runs update the same row (latest-snapshot). YouTube video ids are disjoint from FB post ids → no cross-platform collision. No duplicates.
+#### 11.5.1 YouTube metric semantics warning (WCCH-sharpened)
+- **`viewCount → impressions` is a LOSSY, platform-specific MVP mapping.** YouTube "views" are counted plays, NOT ad-style impressions or FB reach. The typed `impressions` column on a YouTube row is **NOT directly comparable** to a Facebook row's `impressions`.
+- **Cross-platform consumers MUST filter by `platform`** (or read `raw_payload`) before aggregating. Do **not** SUM/AVG `impressions` across FB+YouTube rows as if equivalent. This caveat is recorded in `raw_payload.source_note` and is a documented MVP limitation; a future typed-columns design (deferred) removes the overloading.
+
+#### 11.5.2 v3.20 visibility-verification — ARMED, not closed (WCCH-corrected)
+- Stage 1 **arms** durable verification by recording authoritative `status.privacyStatus` per video.
+- **v3.20 is only fully CLOSED once a genuinely post-v1.11.0 YouTube upload is observed by API with `privacyStatus='public'`.** The Stage 0 probe (and any historical row) showing `public` reflects **PK's manual historical fix**, which does **NOT** prove the v1.11.0 publisher code path produces Public. Closure requires observing a video that was *published by the v1.11.0 publisher* (i.e. uploaded after 2026-05-29) reading `public`.
+
+### 11.6 Idempotency + LIVE unique-constraint verification (WCCH-required, BEFORE implementation)
+**Do NOT assume `(platform_post_id, insights_period)` is a safe conflict target merely because YouTube and Facebook ID spaces differ.** Before building, run a read-only check of the live constraint/index on `m.post_performance` (see V-2 in §11.10):
+```sql
+SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+WHERE conrelid = 'm.post_performance'::regclass AND contype IN ('u','p');
+-- and unique indexes:
+SELECT indexname, indexdef FROM pg_indexes
+WHERE schemaname='m' AND tablename='post_performance';
+```
+Then choose the conflict target by what is **live**:
+- **If the live unique key includes `platform`** (i.e. `(platform, platform_post_id, insights_period)`): **use that** as the `onConflict` target — clean cross-platform isolation, no assumption needed.
+- **If the live unique key is only `(platform_post_id, insights_period)`** and adding `platform` would require DDL (out of MVP scope): **document this as a load-bearing MVP limitation** — correctness then *depends on* YouTube↔FB `platform_post_id` disjointness — AND add a **runtime cross-platform-clobber guard**: before upsert, if a row already exists for that `platform_post_id` + `insights_period` with a **different `platform`**, **skip and record `cross_platform_id_collision`** rather than overwrite a Facebook row. This guard makes the disjointness assumption fail safe instead of silently clobbering.
+
+This dependency is logged in `known_weak_evidence` (§11.13).
+
+#### 11.6.1 Unattended token-rotation behaviour (WCCH-required, concrete)
+If the OAuth refresh exchange returns a **new `refresh_token`** (rotation), the worker MUST, **for that client**:
+1. **Stop processing that client for the run** (do not continue its videos);
+2. **Never discard the new token** — but since the worker is not authorised to write credentials, it does **not** persist it inline; instead it surfaces the event (next item) for a separate approved credential-update path;
+3. **No retry-loop** on that client;
+4. **Create a durable, visible marker** — write a `friction.case` (or the project's existing alert mechanism) `F-YT-INSIGHTS-TOKEN-ROTATION` for that client **AND** mark the run result `ok:false` / include a `rotation_detected:[client_id]` field so it is visible in logs/result output. (If the safe-marker write itself is unavailable, **fail the run visibly** rather than continue silently.)
+5. **A cron-running worker MUST NOT silently continue** past a rotation event — the run is flagged degraded and the rotated client is excluded until a separate **approved credential update path** persists the new token into the store the publisher reads.
+
+Until that credential path runs, the affected client is skipped; the publisher credential is never stranded because the worker never invalidates it (it only reads; the rotation is Google-initiated and is surfaced, not swallowed).
 
 ### 11.7 Failure handling
-- **403 / insufficient scope:** skip the client, mark in the run summary as needs-reconsent, **no retry-storm** (do not loop). (Not expected for the two allowlisted clients per Stage 0, but coded defensively.)
-- **404 / video removed or private-to-token:** record `youtube_lookup_missing` in raw_payload for that video; do not fail the run.
-- **quota (403 quotaExceeded) / 5xx / network:** transient — abort the current tick gracefully and let the next scheduled run retry (no partial-write corruption; upserts are per-video and idempotent).
+- **403 / insufficient scope:** skip the client, mark `needs_reconsent` in the run summary, **no retry-storm**.
+- **404 / video removed or private-to-token:** record `youtube_lookup_missing` for that video; do not fail the run.
+- **quota (403 quotaExceeded) / 5xx / network:** transient — abort the current tick gracefully; next scheduled run retries (per-video idempotent upserts, no partial-write corruption).
+- **token rotation:** §11.6.1 (degraded run, durable marker, no silent continue).
+- **cross-platform id collision:** §11.6 guard (skip + record, never clobber a FB row).
+- **zero/missing views:** §11.4.1 (engagement_rate NULL).
 - Per-video try/catch with an errors array in the response (mirrors `insights-worker`).
 
 ### 11.8 Cron cadence proposal
-**Daily** lifetime snapshot (e.g. once/day off-peak) is ample at this volume (~62 videos ⇒ ~3 quota units/run). Mirror the existing `insights-worker` schedule/identity; confirm the live `cron.job` read-only at impl time. **Adding the cron entry is a separate `sql_destructive` D-01** — the worker can first be run manually (single invoke) for verification before any cron is scheduled.
+**Daily** lifetime snapshot (once/day off-peak) is ample (~62 videos ⇒ ≤2 video calls + ~2 channel calls ≈ ~4 quota units/run, well under cap). Mirror the existing `insights-worker` schedule/identity; confirm the live `cron.job` read-only at impl time. **Adding the cron entry is a separate `sql_destructive` D-01** — the worker is run **manually (single invoke)** for verification before any cron is scheduled, and a cron must not be added until §11.6.1 rotation handling is confirmed live (so an unattended run can't silently continue after rotation).
 
 ### 11.9 D-01 classification
 | Step | Classification |
@@ -327,21 +391,34 @@ Existing `onConflict:'platform_post_id,insights_period'` upsert → re-runs upda
 | Add `cron.schedule` | **separate `sql_destructive` D-01** |
 | Schema migration | **none for MVP** (zero DDL) |
 
-### 11.10 Verification plan
-1. GET health/version → `youtube-insights-worker-v1.0.0`.
-2. **Manual single invoke** (before any cron): assert response `ok:true`, processed = expected YouTube row count for the two clients, `total_first_time` > 0 on first run.
-3. Read-only check `m.post_performance WHERE platform='youtube'`: rows present for both clients; `raw_payload.privacy_status` populated; `impressions/reactions/comments` match the probe-era values within reason; no FB rows altered (FB row count unchanged).
-4. Re-invoke → confirm idempotency (no duplicate rows; `updated_at` advances, row count stable).
-5. Confirm `privacy_status` recorded = authoritative `videos.list` value (closes v3.20 durably).
+### 11.10 Verification plan (V-checks — WCCH list)
+1. **V-1:** GET health/version returns `youtube-insights-worker-v1.0.0`.
+2. **V-2 (pre-impl):** **live unique-constraint check** on `m.post_performance` (§11.6 SQL) — record whether `platform` is in the key; set the `onConflict` target accordingly OR enable the runtime cross-platform guard.
+3. **V-3:** manual single invoke returns `ok:true`.
+4. **V-4:** YouTube rows written for **both** Property Pulse and NDIS-Yarns.
+5. **V-5:** `raw_payload.privacy_status` populated on those rows.
+6. **V-6:** **FB row count unchanged before/after** the manual invoke (`SELECT count(*) FROM m.post_performance WHERE platform='facebook'` identical pre/post) — proves no cross-platform clobber.
+7. **V-7:** re-invoke proves idempotency — no duplicate rows, total row count stable, `updated_at` advances.
+8. **V-8:** `engagement_rate` handles zero-view videos safely (NULL, no Infinity/NaN); raw counts still present.
+9. **V-9:** `privacy_status` from the YouTube API **arms** v3.20 closure — but v3.20 is **not closed** until a **post-v1.11.0** upload is observed `public` (§11.5.2).
 
 ### 11.11 Rollback plan
 - Worker is read-from-YouTube / upsert-to-`m.post_performance` only. To stop it: remove the cron entry (if added) and/or delete/redeploy-disable the function. **No schema to revert** (no DDL).
-- The only data it writes is YouTube `m.post_performance` rows; if ever unwanted, they are deletable by `platform='youtube'` filter (a future, separately-gated `sql_destructive` cleanup) — FB rows are untouched (disjoint `platform`).
+- The only data it writes is YouTube `m.post_performance` rows; if ever unwanted, deletable by `platform='youtube'` filter (a future, separately-gated `sql_destructive` cleanup) — FB rows untouched (disjoint `platform`, plus the §11.6 guard).
 - No effect on `youtube-publisher` v1.11.0 (separate function).
 
 ### 11.12 Risks & deferred items
-- **Risk:** views→impressions semantic approximation (mitigated: authoritative raw fields in `raw_payload`). Channel `viewCount` may read 0/lagged (report as-returned). A client could lose `readonly` on a future re-consent → 403 handled defensively.
-- **Deferred (NOT in MVP):** typed columns (`views`/`privacy_status`/`upload_status`), `m.channel_performance` table, dashboard/UI, thumbnails, playlists, captions, comments, **YouTube Analytics API**, CFW onboarding, multi-window (`insights_period` ≠ lifetime) snapshots. Each is its own future gate.
+- **Risk — lossy metric mapping:** `viewCount→impressions` is platform-specific; cross-platform consumers must filter by `platform` (§11.5.1).
+- **Risk — constraint assumption:** if `platform` is not in the live unique key, correctness depends on YouTube↔FB id disjointness — contained by the §11.6 runtime guard; logged in `known_weak_evidence`.
+- **Risk — token rotation under cron:** contained by §11.6.1 (degraded run + durable marker + no silent continue).
+- **Limitation — HISTORY LOSS (named):** the lifetime latest-snapshot upsert **overwrites prior values** on each run. **This MVP cannot reconstruct day-by-day growth curves / trend lines.** Historical snapshots and trend history are **deferred** and require a later design (e.g. an append-only `m.post_performance_snapshot` keyed by `(platform_post_id, collected_date)`, or non-lifetime `insights_period` windows).
+- **Limitation — CHANNEL STATS AT VIDEO GRAIN (named):** channel stats are stored inside each video row's `raw_payload.channel_stats`. This is **acceptable for MVP proof only** — it is **not** a proper channel growth history (it duplicates per video and has no clean time series). The correct home for subscriber/channel growth is a future **`m.channel_performance`** (or equivalent) table — **deferred**.
+- **Deferred (NOT in MVP):** typed columns (`views`/`privacy_status`/`upload_status`), `m.channel_performance` table, dashboard/UI, thumbnails, playlists, captions, comments, **YouTube Analytics API**, CFW onboarding, multi-window/historical snapshots & trend lines. Each is its own future gate.
+
+### 11.13 `known_weak_evidence` (carried to the Stage 1 build D-01)
+- **Upsert conflict target / unique constraint MUST be live-verified** (V-2) before the worker is trusted — the brief does not assume the live key shape.
+- **Cross-platform `platform_post_id` disjointness is LOAD-BEARING** if `platform` is not in the live unique constraint; mitigated by the §11.6 runtime cross-platform-clobber guard, but the dependency is real.
+- **v3.20 visibility verification is ARMED, not COMPLETED**, until a genuinely **post-v1.11.0** YouTube upload is observed by API as `public` (§11.5.2). Historical `public` rows do not prove the v1.11.0 publisher path.
 
 ---
 
