@@ -39,6 +39,24 @@ const STAGE1_CLIENT_ALLOWLIST = [
 const MAX_VIDEOS_PER_RUN = 100; // explicit per-run cap / backpressure
 const VIDEOS_LIST_CHUNK  = 50;  // YouTube videos.list hard limit per call
 
+// WCCH Fix 2: strict ID validation before any interpolation/use. exec_sql has no parameter binding, so
+// every value reaching a raw SQL string is format-validated first; external IDs (YouTube video ids) are
+// NEVER interpolated and are also validated before use. PostgREST .eq() calls are parameterised.
+const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+const YTID_RE = /^[A-Za-z0-9_-]{11}$/;
+function isUuid(s: unknown): s is string { return typeof s === 'string' && UUID_RE.test(s); }
+function isYtId(s: unknown): s is string { return typeof s === 'string' && YTID_RE.test(s); }
+// Fail-closed: the code-constant allowlist must be valid UUIDs (caught at module load, not at runtime).
+if (!STAGE1_CLIENT_ALLOWLIST.every(isUuid)) throw new Error('STAGE1_CLIENT_ALLOWLIST contains a non-UUID entry');
+
+// WCCH Fix 3: distinguish a quota/rate-limit 403 from an insufficient-scope 403 via error.errors[].reason.
+function classify403(data: any): 'quota' | 'scope' | 'other' {
+  const reasons: string[] = (data?.error?.errors ?? []).map((e: any) => String(e?.reason ?? ''));
+  if (reasons.some(r => /quotaExceeded|rateLimitExceeded|userRateLimitExceeded|dailyLimitExceeded/i.test(r))) return 'quota';
+  if (reasons.some(r => /insufficientPermissions|insufficientScope|forbidden|authError/i.test(r))) return 'scope';
+  return 'other';
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'content-type, apikey, authorization, x-worker-key',
@@ -67,9 +85,12 @@ async function exchangeToken(refreshToken: string, oauthClientId: string, oauthS
 }
 
 // Resolve the refresh token the publisher uses; returns SOURCE LABEL only alongside the in-memory token.
+// WCCH Fix 2: both lookups go through PostgREST .eq() (parameterised) — NO string-interpolated SQL.
+// clientId is UUID-validated by the caller before this runs.
 async function resolveRefreshToken(supabase: ReturnType<typeof getServiceClient>, clientId: string): Promise<{ token: string | null; source: string }> {
-  const { data: ch } = await supabase.rpc('exec_sql', { query: `SELECT config FROM c.client_channel WHERE client_id = '${clientId}' AND platform = 'youtube' LIMIT 1` });
-  const inline = (ch as any)?.[0]?.config?.refresh_token ?? null;
+  const { data: ch } = await supabase.schema('c').from('client_channel')
+    .select('config').eq('client_id', clientId).eq('platform', 'youtube').limit(1).maybeSingle();
+  const inline = (ch as any)?.config?.refresh_token ?? null;
   if (inline) return { token: inline, source: 'client_channel.config' };
   const { data: prof } = await supabase.schema('c').from('client_publish_profile')
     .select('credential_env_key').eq('client_id', clientId).eq('platform', 'youtube').limit(1).maybeSingle();
@@ -95,10 +116,11 @@ Deno.serve(async (req: Request) => {
   const run_at = nowIso();
   let quota_units_consumed = 0;
   let okOverall = true;
+  let cross_platform_collision_detected = false; // WCCH Fix 4: distinct top-level flag
   const rotation_detected: string[] = [];
   const clients: Record<string, any> = {};
   const errors: any[] = [];
-  let total_processed = 0, total_upserted = 0, total_first_time = 0, total_skipped_collision = 0, total_missing = 0;
+  let total_processed = 0, total_upserted = 0, total_first_time = 0, total_skipped_collision = 0, total_missing = 0, total_invalid_id = 0;
 
   try {
     // ---- Input selection (duplicate-safe + capped + never-collected-first) ----
@@ -124,20 +146,21 @@ Deno.serve(async (req: Request) => {
     const videos = ((rows as any[]) ?? []) as { post_publish_id: string; client_id: string; platform_post_id: string; published_at: string; never_collected: boolean }[];
     if (!videos.length) return json({ ok: true, version: VERSION, run_at, message: 'no_youtube_rows_to_collect', quota_units_consumed: 0 });
 
-    // group video ids by client
+    // group video ids by client; validate client_id (UUID) and platform_post_id (YouTube id) — skip+report invalid.
     const byClient = new Map<string, typeof videos>();
-    for (const v of videos) { const a = byClient.get(v.client_id) ?? []; a.push(v); byClient.set(v.client_id, a); }
-
-    // ---- Cross-platform-clobber guard map: existing (platform_post_id -> platform) for these ids ----
-    const allIds = videos.map(v => v.platform_post_id);
-    const existingPlatform = new Map<string, string>();
-    for (const ids of chunk(allIds, 200)) {
-      const inList = ids.map(id => `'${id}'`).join(',');
-      const { data: ex } = await supabase.rpc('exec_sql', {
-        query: `SELECT platform_post_id, platform FROM m.post_performance WHERE insights_period = '${INSIGHTS_PERIOD}' AND platform_post_id IN (${inList})`,
-      });
-      for (const r of ((ex as any[]) ?? [])) existingPlatform.set(r.platform_post_id, r.platform);
+    for (const v of videos) {
+      if (!isUuid(v.client_id) || !isYtId(v.platform_post_id)) {
+        total_invalid_id++; okOverall = false;
+        errors.push({ client_id: v.client_id, error: `invalid_id_skipped:${String(v.platform_post_id).slice(0, 24)}` });
+        continue;
+      }
+      const a = byClient.get(v.client_id) ?? []; a.push(v); byClient.set(v.client_id, a);
     }
+
+    // NOTE (WCCH Fix 1): the cross-platform-clobber guard is enforced at WRITE TIME per row (immediate
+    // re-check + platform-scoped write below), NOT via a prefetch map — a prefetch is racy and the
+    // (platform_post_id, insights_period) upsert conflict target omits platform, so prefetch alone could
+    // not protect the write. See the per-video write block.
 
     for (const [clientId, vids] of byClient) {
       const summary: any = { token_source: 'none', processed: 0, upserted: 0, first_time: 0, skipped_cross_platform: 0, missing: 0, scopes_on_token: 'unknown/not_returned', errors: [] as any[] };
@@ -174,9 +197,16 @@ Deno.serve(async (req: Request) => {
           quota_units_consumed += 1;
           const data = await resp.json().catch(() => ({}));
           if (!resp.ok) {
-            const m = `videos_list_${resp.status}:${(data?.error?.message ?? '').slice(0, 120)}`;
-            if (resp.status === 403) { summary.verdict = 'NEEDS_RECONSENT'; summary.error = m; okOverall = false; }
-            else { summary.errors.push(m); errors.push({ client_id: clientId, error: m }); okOverall = false; } // 5xx/quota transient -> next run retries
+            const baseMsg = `videos_list_${resp.status}:${(data?.error?.message ?? '').slice(0, 120)}`;
+            if (resp.status === 403) {
+              const kind = classify403(data); // WCCH Fix 3: scope vs quota
+              if (kind === 'scope') { summary.verdict = 'NEEDS_RECONSENT'; summary.error = baseMsg; }
+              else if (kind === 'quota') { summary.errors.push(`quota:${baseMsg}`); errors.push({ client_id: clientId, error: `quota:${baseMsg}` }); } // transient -> next run retries
+              else { summary.errors.push(baseMsg); errors.push({ client_id: clientId, error: baseMsg }); }
+            } else {
+              summary.errors.push(baseMsg); errors.push({ client_id: clientId, error: baseMsg }); // 5xx/quota transient -> next run retries
+            }
+            okOverall = false;
             continue;
           }
           for (const it of (data?.items ?? [])) itemById.set(it.id, it);
@@ -196,19 +226,11 @@ Deno.serve(async (req: Request) => {
           } catch (_) { /* tolerate; channel stats are best-effort */ }
         }
 
-        // per-video map + guarded upsert
+        // per-video: build the row, then perform a WRITE-TIME platform-safe write (WCCH Fix 1).
         for (const v of vids) {
           summary.processed++; total_processed++;
           const it = itemById.get(v.platform_post_id);
           if (!it) { summary.missing++; total_missing++; summary.errors.push(`missing_video:${v.platform_post_id}`); continue; }
-
-          // cross-platform-clobber guard
-          const existing = existingPlatform.get(v.platform_post_id);
-          if (existing && existing !== 'youtube') {
-            summary.skipped_cross_platform++; total_skipped_collision++;
-            summary.errors.push(`cross_platform_id_collision:${v.platform_post_id}(existing=${existing})`);
-            okOverall = false; continue; // never overwrite a non-youtube row
-          }
 
           const stats = it.statistics ?? {};
           const views = Number(stats.viewCount);
@@ -228,18 +250,48 @@ Deno.serve(async (req: Request) => {
             source_note: 'youtube Data API; view_count->impressions is a LOSSY platform-specific mapping, NOT cross-platform comparable; reach/shares/clicks N/A',
             version: VERSION,
           };
-
-          const { error: upErr } = await supabase.schema('m').from('post_performance').upsert({
+          // non-key columns only (the keys platform/platform_post_id/insights_period are never changed on update)
+          const rowValues = {
             post_publish_id: v.post_publish_id, client_id: v.client_id,
-            platform: 'youtube', platform_post_id: v.platform_post_id,
             impressions: stats.viewCount != null ? Number(stats.viewCount) : null,   // LOSSY mapping (see raw_payload)
             reactions: likeCount, comments: commentCount,
             engaged_users: (likeCount != null || commentCount != null) ? engaged : null,
             engagement_rate, reach: null, shares: null, clicks: null,
-            collected_at: nowIso(), insights_period: INSIGHTS_PERIOD, raw_payload,
-          }, { onConflict: 'platform_post_id,insights_period' });
+            collected_at: nowIso(), raw_payload,
+          };
 
-          if (upErr) { summary.errors.push(`upsert_failed:${v.platform_post_id}:${upErr.message.slice(0, 120)}`); errors.push({ client_id: clientId, error: upErr.message.slice(0, 200) }); okOverall = false; continue; }
+          // WCCH Fix 1 — WRITE-TIME cross-platform-clobber guard. The live unique key is
+          // (platform_post_id, insights_period) and does NOT include platform, so an upsert with that
+          // conflict target could overwrite a non-youtube row. Instead, re-check the exact row IMMEDIATELY
+          // before writing: INSERT when absent; UPDATE only a row that is already platform='youtube'
+          // (platform-scoped filter for defence-in-depth); SKIP + flag when the existing row is any other
+          // platform. This does not rely on YouTube/FB id disjointness.
+          const { data: cur, error: curErr } = await supabase.schema('m').from('post_performance')
+            .select('performance_id, platform')
+            .eq('platform_post_id', v.platform_post_id).eq('insights_period', INSIGHTS_PERIOD)
+            .limit(1).maybeSingle();
+          if (curErr) { summary.errors.push(`recheck_failed:${v.platform_post_id}:${curErr.message.slice(0, 100)}`); errors.push({ client_id: clientId, error: curErr.message.slice(0, 160) }); okOverall = false; continue; }
+
+          if (cur && cur.platform !== 'youtube') {
+            cross_platform_collision_detected = true; // WCCH Fix 4: distinct top-level flag
+            summary.skipped_cross_platform++; total_skipped_collision++;
+            summary.errors.push(`cross_platform_id_collision:${v.platform_post_id}(existing=${cur.platform})`);
+            okOverall = false; continue; // NEVER overwrite a non-youtube row
+          }
+
+          let writeErr: any = null;
+          if (!cur) {
+            ({ error: writeErr } = await supabase.schema('m').from('post_performance').insert({
+              platform: 'youtube', platform_post_id: v.platform_post_id, insights_period: INSIGHTS_PERIOD, ...rowValues,
+            }));
+            // a race could insert a conflicting row between re-check and insert -> unique violation; fail safe (skip), never clobber
+            if (writeErr) { summary.errors.push(`insert_conflict_or_error:${v.platform_post_id}:${writeErr.message.slice(0, 100)}`); errors.push({ client_id: clientId, error: writeErr.message.slice(0, 160) }); okOverall = false; continue; }
+          } else {
+            // existing row is platform='youtube' -> update ONLY that row by PK, platform-scoped
+            ({ error: writeErr } = await supabase.schema('m').from('post_performance').update(rowValues)
+              .eq('performance_id', cur.performance_id).eq('platform', 'youtube'));
+            if (writeErr) { summary.errors.push(`update_failed:${v.platform_post_id}:${writeErr.message.slice(0, 100)}`); errors.push({ client_id: clientId, error: writeErr.message.slice(0, 160) }); okOverall = false; continue; }
+          }
           summary.upserted++; total_upserted++;
           if (v.never_collected) { summary.first_time++; total_first_time++; }
         }
@@ -250,10 +302,14 @@ Deno.serve(async (req: Request) => {
 
     return json({
       ok: okOverall, version: VERSION, run_at, quota_units_consumed,
+      cross_platform_collision_detected, // WCCH Fix 4: distinct top-level flag (not only per-client strings)
       rotation_detected,
-      totals: { total_processed, total_upserted, total_first_time, total_skipped_cross_platform: total_skipped_collision, total_missing },
+      totals: { total_processed, total_upserted, total_first_time, total_skipped_cross_platform: total_skipped_collision, total_missing, total_invalid_id },
       clients, errors,
-      note: 'v3.20 verification is ARMED (privacy_status recorded), not closed — closure needs a post-v1.11.0 upload observed public.',
+      // WCCH Fix 5: JSON-only surfacing of rotation/collision/quota is acceptable for the MANUAL invoke
+      // (a human reads ok/flags/errors). This MUST be revisited before any cron is added — an unattended
+      // run needs durable alerting (e.g. friction.case), not just response JSON, so degraded states are seen.
+      note: 'v3.20 verification is ARMED (privacy_status recorded), NOT closed — closure needs a post-v1.11.0 upload observed public. JSON-only alerting is manual-invoke-only; revisit before cron.',
     });
   } catch (e: any) {
     return json({ ok: false, version: VERSION, run_at, error: (e?.message ?? String(e)).slice(0, 500) }, 500);
