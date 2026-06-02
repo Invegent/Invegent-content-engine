@@ -1,5 +1,15 @@
 // video-worker v3.1.0
 // ============================================================================
+// v3.1.1 (2026-06-02, CREATOMATE-AUDIO-VOLUME-CONTRACT-FIX):
+//   Audio-only value-format fix. Creatomate's audio `volume` property is a
+//   PERCENTAGE string ("0%"–"100%", default "100%"), not a 0–1 fraction. The
+//   prior numeric values were misread by the renderer as ~1% — a measured
+//   ~40 dB voice attenuation (source mp3 ~-18.1 LUFS → final mp4 ~-58.2 LUFS).
+//   Fix: voice elements volume 1.0 → "100%" (kinetic + stat); music element
+//   volume 0.15 → "15%" (kinetic + stat; latent, env-gated off). NOTHING else
+//   changes — no captions/layout/timing/text/brand/storage/logging/DB/queue
+//   change, no VERSION-const bump, no deploy. Pure audio gain contract fix.
+//
 // v3.1.0 (2026-06-02, CREATOMATE-PASS-1-CAPTIONS):
 //   Burned-in captions for video_short_kinetic_voice ONLY. Additive render-
 //   spec layer — no pipeline/schema/selection/approval/queue/publisher change,
@@ -377,8 +387,8 @@ function buildKineticTextSpec(opts: {
   const elements: object[] = [];
 
   // v3.0.0 (A): Music bed first (under voice). Skipped silently if env-gated off.
-  if (musicUrl) elements.push({ type: 'audio', source: musicUrl, time: 0, duration: totalDuration, volume: 0.15 });
-  if (audioUrl) elements.push({ type: 'audio', source: audioUrl, time: 0, duration: totalDuration, volume: 1.0 });
+  if (musicUrl) elements.push({ type: 'audio', source: musicUrl, time: 0, duration: totalDuration, volume: '15%' });
+  if (audioUrl) elements.push({ type: 'audio', source: audioUrl, time: 0, duration: totalDuration, volume: '100%' });
 
   // v3.0.0 (C): brand bars moved off canvas edges to clear Shorts UI.
   elements.push({ type: 'shape', shape: 'rectangle', fill_color: secondaryColour, width: `${W}px`, height: '8px', x: '0px', y: '140px', x_anchor: '0%', y_anchor: '0%' });
@@ -447,8 +457,8 @@ function buildStatRevealSpec(opts: {
   const elements: object[] = [];
 
   // v3.0.0 (A): Music bed first (under voice). Skipped silently if env-gated off.
-  if (musicUrl) elements.push({ type: 'audio', source: musicUrl, time: 0, duration: 20, volume: 0.15 });
-  if (audioUrl) elements.push({ type: 'audio', source: audioUrl, time: 0, duration: 20, volume: 1.0 });
+  if (musicUrl) elements.push({ type: 'audio', source: musicUrl, time: 0, duration: 20, volume: '15%' });
+  if (audioUrl) elements.push({ type: 'audio', source: audioUrl, time: 0, duration: 20, volume: '100%' });
 
   // v3.0.0 (C): brand bars moved off canvas edges.
   elements.push({ type: 'shape', shape: 'rectangle', fill_color: secondaryColour, width: `${W}px`, height: '8px', x: '0px', y: '140px', x_anchor: '0%', y_anchor: '0%' });
