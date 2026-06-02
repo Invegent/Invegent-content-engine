@@ -306,10 +306,10 @@ type VideoScene = { type: 'hook' | 'point' | 'cta'; headline: string; body: stri
 const CAP_BAND = {
   x: 90, width: 900,             // ≥90px side margins (partial right-rail clear)
   scrimY: 1300, scrimHeight: 220, // scrim band 1300–1520
-  textY: 1330, textHeight: 170,   // 2 lines @ 52px/130%, centred in the scrim
-  fontSize: 52, lineHeight: '130%',
+  textY: 1330, textHeight: 170,   // 2 lines @ 40px/130%, centred in the scrim
+  fontSize: 40, lineHeight: '130%',
 };
-const CAP_MAX_CHARS = 64;   // ~2 lines at 52px in 900px
+const CAP_MAX_CHARS = 64;   // ~2 lines at 40px in 900px
 const CAP_MIN_S = 1.2;      // min on-screen seconds (shorter slices get merged)
 const CAP_MAX_S = 5.0;      // max on-screen seconds (then hides; brief gap)
 
@@ -364,12 +364,12 @@ function buildCaptionElements(narrationText: string | null | undefined, totalDur
       const shown = Math.min(Math.max(durs[i], CAP_MIN_S), CAP_MAX_S, totalDuration - t);
       if (shown <= 0) break;
       // scrim first (under) …
-      els.push({ type: 'shape', shape: 'rectangle', fill_color: '#0B1220', opacity: 0.55, border_radius: '24px',
+      els.push({ type: 'shape', shape: 'rectangle', fill_color: '#0B1220', opacity: 0.62, border_radius: '24px',
         width: `${CAP_BAND.width}px`, height: `${CAP_BAND.scrimHeight}px`, x: `${CAP_BAND.x}px`, y: `${CAP_BAND.scrimY}px`,
         x_anchor: '0%', y_anchor: '0%', time: t, duration: shown,
         enter: { effect: 'fade', duration: 0.15 }, exit: { effect: 'fade', duration: 0.15 } });
       // … then caption text (over).
-      els.push({ type: 'text', text: chunks[i], font_family: 'Montserrat', font_weight: '700',
+      els.push({ type: 'text', text: chunks[i], font_family: 'Montserrat', font_weight: '500',
         font_size: `${CAP_BAND.fontSize}px`, fill_color: '#FFFFFF', line_height: CAP_BAND.lineHeight,
         width: `${CAP_BAND.width}px`, height: `${CAP_BAND.textHeight}px`, x_alignment: '50%', y_alignment: '50%',
         x: `${CAP_BAND.x}px`, y: `${CAP_BAND.textY}px`, x_anchor: '0%', y_anchor: '0%', time: t, duration: shown,
