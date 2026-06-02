@@ -31,17 +31,25 @@ Resolved (each `resolution_kind='tracked_done'`, `action_decision` retained `tra
 
 Counts after Batch 1 + Batch 2a: 47 total / 30 open / 17 resolved / 1 new. 12 protected IDs verified untouched.
 
+## Batch 2b — YT straggler carry case + YouTube true-stuck tracked_done resolution (4 calls)
+
+Batch 2b executed under CCD inline D-01 + CCD count-change clearance + PK exact approval phrase PK APPROVES CC-0015 BATCH 2B CREATE YT-STRAGGLER CARRY CASE + RESOLVE 99DC50B6 0C92A8A9 TRACKED-DONE. No m.chatgpt_review row exists to close — CCD inline review, not a ChatGPT-Review-tool call; row not fabricated (per CCD ruling 2026-06-02). CCD confirmed option (a) intentionally changes the final target from 47/13/34 to 48/14/34 (extra open case = real carry-forward work, not noise).
+
+1. **Created** carry case via `fn_emit_manual_event` (severity `warn`, category `pipeline_integrity`) → event `c2700baa-14f8-4bf6-bc5c-cb735ff26795` → **case `79326fc8-fa1d-4f67-a4db-9fa19dc04f63`**.
+2. **Triaged** via `fn_triage_case` (p_actor='pk') → `acknowledged` / `pipeline_integrity` / `quality_flag=true` / `track` / `next_review_at=2026-06-09` / pool_key `youtube.queue.stale_stragglers_cleanup` (anchor). Verified open + track.
+3. **Resolved** `99dc50b6-f410-452d-84f2-e60ad87912d1` (yt-NDIS-Yarns) → `tracked_done` (action_decision retained `track`).
+4. **Resolved** `0c92a8a9-23ac-4746-9c11-ca5f0f8ca19d` (yt-Property-Pulse) → `tracked_done`.
+
+Carry case content: 20 stale YouTube `post_publish_queue` rows, status `queued`, never published — NDIS-Yarns 10 (scheduled 2026-05-06 → 2026-05-21) + Property Pulse 10 (2026-04-29 → 2026-05-14). Cleanup decision pending: archive_stale vs requeue.
+
+Counts after Batch 1 + 2a + 2b: **48 total / 29 open / 19 resolved / 1 new** (waypoint toward the 48/14/34 end-state). 12 protected IDs verified untouched.
+
 ## Held / not executed this session
 
-- Batch 2b (YouTube true-stuck `99dc50b6` / `0c92a8a9` tracked_done) — HELD pending CCD review of the carry-forward count change (option (a) adds a new tracking case → final 48 total / 14 open / 34 resolved). YouTube straggler carry-case NOT created.
 - Batch 3 (observer_stale suppressed, 13) — not executed.
 - Batch 4 (smoke resolve-ignored, 2) — not executed.
 - Batch 6 (`f633c279` first triage) — not executed.
 
-## Batch 2b carry-forward — verified straggler facts (for when 2b is cleared)
-
-20 stale YouTube `post_publish_queue` rows, status `queued`, never published: NDIS-Yarns 10 (scheduled 2026-05-06 → 2026-05-21) + Property Pulse 10 (scheduled 2026-04-29 → 2026-05-14). Carry-forward mechanism = option (a): a separate tracked friction case `youtube.queue.stale_stragglers_cleanup` (cleanup decision pending: archive_stale vs requeue), created via `fn_emit_manual_event` then triaged to `track`/`quality_flag=true`/`next_review_at=2026-06-09` before the two YouTube true-stuck cases are resolved.
-
 ## Protected IDs (must remain untouched across all batches)
 
-`26436794`, `877b7382`, `78afc70e`, `101935ba`, `53f3e533`, `2cf0cd4f`, `b7369dc9`, `22056313`, `6e148859`, `15d57015`, `c53f5af6`, `220bc43a` — verified open + `track` after both batches.
+`26436794`, `877b7382`, `78afc70e`, `101935ba`, `53f3e533`, `2cf0cd4f`, `b7369dc9`, `22056313`, `6e148859`, `15d57015`, `c53f5af6`, `220bc43a` — verified open + `track` after Batches 1, 2a, 2b.
