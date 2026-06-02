@@ -65,11 +65,24 @@ Both were cc-0016 Stage B smoke-test cases; the hard-guard `purge_test_case` pat
 
 Counts after Batch 1 + 2a + 2b + 3 + 4: **48 total / 14 open / 34 resolved / 1 new**. 12 protected IDs verified untouched. Carry case `79326fc8` remains open + `track`. `f633c279` remains `new` / open (held for Batch 6).
 
+## Batch 6 — f633c279 manual case first triage (1 call)
+
+Batch 6 (1× fn_triage_case, p_actor='pk') executed under CCD inline D-01 + PK exact approval phrase PK APPROVES CC-0015 F633C279 MANUAL CASE TRIAGE. No m.chatgpt_review row exists to close — CCD inline review, not a ChatGPT-Review-tool call; row not fabricated (per CCD ruling 2026-06-02).
+
+`f633c279-3592-4433-b80e-c170e4e33fd2` (manual PK FAB case, "Property Pulse kinetic shorts have no voice over") triaged → `acknowledged` / `client_commitment` / `quality_flag=true` / `track` / `next_review_at=2026-06-09` / `triaged_by=pk`. Kept **unpooled** (p_notes=NULL) so it surfaces through the Stage D unpooled / needs-assignment strip. Stays open + track. Root cause noted: PP YouTube shorts dominated by silent formats (video_short_kinetic / video_short_stat) vs under-routed voice/avatar variants — a real content-quality/format-routing gap.
+
+Counts after Batch 6 (session end-state): **48 total / 14 open / 34 resolved / 0 new**. 12 protected IDs verified untouched. Carry case `79326fc8` remains open + `track`.
+
+## Session complete — final end-state
+
+cc-0015 register hygiene COMPLETE for this session. Final register: **48 total / 14 open / 34 resolved / 0 new**. All mutations executed via SECURITY DEFINER friction RPCs, p_actor='pk', one call at a time, verified after each. Governance recorded per CCD-inline convention (no m.chatgpt_review rows fabricated). 12 protected IDs untouched throughout.
+
 ## Held / not executed this session
 
-- Batch 6 (`f633c279` first triage → track, quality_flag=true, next_review_at 2026-06-09) — not executed; clears the last `new` when run.
-- `00_sync_state.md` / `00_action_list.md` large-index updates — deferred to a later surgical pass (per PK, this sequence).
+- `00_sync_state.md` / `00_action_list.md` large-index updates — deferred to a later surgical pass (per PK, this sequence). cc-0015 progress NOT yet reflected in the `00_` indexes.
+- Stale YouTube queue cleanup (carry case `79326fc8`) — open decision: archive_stale vs requeue (next_review 2026-06-09).
+- Track-2 Stage D dashboard read-only UI (status strip + unpooled/needs-assignment strip on /operations/pools) — plan only, not built.
 
 ## Protected IDs (must remain untouched across all batches)
 
-`26436794`, `877b7382`, `78afc70e`, `101935ba`, `53f3e533`, `2cf0cd4f`, `b7369dc9`, `22056313`, `6e148859`, `15d57015`, `c53f5af6`, `220bc43a` — verified open + `track` after Batches 1, 2a, 2b, 3, 4.
+`26436794`, `877b7382`, `78afc70e`, `101935ba`, `53f3e533`, `2cf0cd4f`, `b7369dc9`, `22056313`, `6e148859`, `15d57015`, `c53f5af6`, `220bc43a` — verified open + `track` after Batches 1, 2a, 2b, 3, 4, 6.
