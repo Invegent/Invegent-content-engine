@@ -101,7 +101,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'video-worker-v3.1.2';
+const VERSION = 'video-worker-v3.1.3';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
