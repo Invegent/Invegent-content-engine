@@ -44,12 +44,23 @@ Carry case content: 20 stale YouTube `post_publish_queue` rows, status `queued`,
 
 Counts after Batch 1 + 2a + 2b: **48 total / 29 open / 19 resolved / 1 new** (waypoint toward the 48/14/34 end-state). 12 protected IDs verified untouched.
 
+## Batch 3 — observer_stale suppressed resolution (13 calls)
+
+Batch 3 (13× resolve_case(..., 'suppressed', 'pk')) executed under CCD inline D-01 + PK exact approval phrase PK APPROVES CC-0015 BATCH 3 OBSERVER_STALE SUPPRESS. No m.chatgpt_review row exists to close — CCD inline review, not a ChatGPT-Review-tool call; row not fabricated (per CCD ruling 2026-06-02).
+
+All 13 were observer_stale client_commitment/`suppress` cases pooled to now-resolved parent conditions (instagram.publisher.v2_deployed_cron_paused / youtube.truestuck.unpublishable_media / linkedin.enqueue.disabled_no_queue_rows); none Facebook — no overlap with the genuine CFW/NY Facebook-insights gap (those remain protected/track). Each resolved with `action_decision='suppress'` retained → `resolution_kind='suppressed'`, resolved (13 of 13 verified):
+`02708c23`, `07e11315`, `19fd3412`, `279df2da`, `38df8074`, `395ebab6`, `4322d0ba`, `685ed282`, `87e6e0f7`, `98f913f2`, `c5e34315`, `cd5e4f96`, `d5efc053`.
+
+(`279df2da` independently suppress-safe: PP × linkedin, LI-PP publishing 2026-05-31, stale residual, not the FB gap.)
+
+Counts after Batch 1 + 2a + 2b + 3: **48 total / 16 open / 32 resolved / 1 new**. 12 protected IDs verified untouched. Carry case `79326fc8` remains open + `track`. `f633c279` remains `new` (held for Batch 6).
+
 ## Held / not executed this session
 
-- Batch 3 (observer_stale suppressed, 13) — not executed.
 - Batch 4 (smoke resolve-ignored, 2) — not executed.
 - Batch 6 (`f633c279` first triage) — not executed.
+- `00_sync_state.md` / `00_action_list.md` large-index updates — deferred to a later surgical pass (per PK, this sequence).
 
 ## Protected IDs (must remain untouched across all batches)
 
-`26436794`, `877b7382`, `78afc70e`, `101935ba`, `53f3e533`, `2cf0cd4f`, `b7369dc9`, `22056313`, `6e148859`, `15d57015`, `c53f5af6`, `220bc43a` — verified open + `track` after Batches 1, 2a, 2b.
+`26436794`, `877b7382`, `78afc70e`, `101935ba`, `53f3e533`, `2cf0cd4f`, `b7369dc9`, `22056313`, `6e148859`, `15d57015`, `c53f5af6`, `220bc43a` — verified open + `track` after Batches 1, 2a, 2b, 3.
