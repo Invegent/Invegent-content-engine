@@ -77,11 +77,17 @@ Counts after Batch 6 (session end-state): **48 total / 14 open / 34 resolved / 0
 
 cc-0015 register hygiene COMPLETE for this session. Final register: **48 total / 14 open / 34 resolved / 0 new**. All mutations executed via SECURITY DEFINER friction RPCs, p_actor='pk', one call at a time, verified after each. Governance recorded per CCD-inline convention (no m.chatgpt_review rows fabricated). 12 protected IDs untouched throughout.
 
-## Held / not executed this session
+## Stage D Phase 1 UI — LIVE IN PRODUCTION
 
-- `00_sync_state.md` / `00_action_list.md` large-index updates — deferred to a later surgical pass (per PK, this sequence). cc-0015 progress NOT yet reflected in the `00_` indexes.
+Track-2 Stage D Phase 1 (read-only) was **implemented by CCD, preview-verified by CCB (PASS), merged to main at `668b6ae`, deployed to production, and production sanity-verified by CCB (PASS)**. Live on `/operations/pools`: status strip + collapsed pool-card indicators. No mutation surface added; read-only footer intact. (Supersedes the earlier "plan only / not built" and "pending merge / production verification" notes — those are stale.)
+
+## Carry-forwards (open follow-ups)
+
+- Stage D **Phase 2** `/operations` status strip — not yet built.
+- Optional cosmetic label-truncation cleanup on pool/case labels.
 - Stale YouTube queue cleanup (carry case `79326fc8`) — open decision: archive_stale vs requeue (next_review 2026-06-09).
-- Track-2 Stage D dashboard read-only UI (status strip + unpooled/needs-assignment strip on /operations/pools) — plan only, not built.
+- Overdue tracked-cases review sweep — several `track` cases have next_review dates in the past (2026-05-19 → 2026-05-30).
+- `00_sync_state.md` / `00_action_list.md` updated in the cc-0015 surgical index pass (2026-06-02) to record register-hygiene completion + Stage D Phase 1 live.
 
 ## Protected IDs (must remain untouched across all batches)
 
