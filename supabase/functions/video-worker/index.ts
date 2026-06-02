@@ -1,5 +1,21 @@
-// video-worker v3.0.0
+// video-worker v3.1.0
 // ============================================================================
+// v3.1.0 (2026-06-02, CREATOMATE-PASS-1-CAPTIONS):
+//   Burned-in captions for video_short_kinetic_voice ONLY. Additive render-
+//   spec layer — no pipeline/schema/selection/approval/queue/publisher change,
+//   no ai-worker change, NO DEPLOY in this change. Captions are manual
+//   Creatomate type:'text' elements over a per-caption dark scrim, derived from
+//   video_script.narration_text (the same text fed to ElevenLabs TTS), confined
+//   to a reserved band y1300–1520 that clears the kinetic content above and the
+//   9:16 platform safe area below (bottom bar y1620). Timing is deterministic,
+//   video-duration-proportional, with min/max clamps + underflow merge
+//   (word-accurate timing is Pass 2). Caption construction is pure + fail-safe
+//   (returns [] on any internal issue) so it can NEVER fail the TTS/render/
+//   storage path; the empty-narration throw is unchanged. When captions are on,
+//   the kinetic 'Keep watching' / 'Follow {client}' footer labels are
+//   suppressed and point.body is height-capped to keep the band collision-free.
+//   stat_voice + non-voice formats are byte-unchanged (Pass 2 / out of scope).
+//
 // v3.0.0 (2026-05-08, F-VIDEO-QUALITY-UPGRADE-A-B-C):
 //   THREE coordinated improvements landing in one EF deploy. All changes are
 //   render-spec-only — no pipeline logic, no schema, no ai-worker change,
@@ -65,7 +81,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'video-worker-v3.0.0';
+const VERSION = 'video-worker-v3.1.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -257,15 +273,103 @@ async function getBrand(supabase: ReturnType<typeof getServiceClient>, clientId:
 
 type VideoScene = { type: 'hook' | 'point' | 'cta'; headline: string; body: string | null; duration_s: number; };
 
+// === v3.1.0: burned-in captions (kinetic_voice only) ========================
+// Pass 1: deterministic, video-duration-proportional. Manual Creatomate
+// type:'text' over a per-caption dark scrim, confined to a reserved band that
+// clears the kinetic content above (hook/CTA boxes end ≤y1260, point.body
+// height-capped to ≤y1255) and the 9:16 platform safe area below (band bottom
+// y1520 < the y1620 bottom bar). Word-accurate (audio-synced) timing = Pass 2.
+const CAP_BAND = {
+  x: 90, width: 900,             // ≥90px side margins (partial right-rail clear)
+  scrimY: 1300, scrimHeight: 220, // scrim band 1300–1520
+  textY: 1330, textHeight: 170,   // 2 lines @ 52px/130%, centred in the scrim
+  fontSize: 52, lineHeight: '130%',
+};
+const CAP_MAX_CHARS = 64;   // ~2 lines at 52px in 900px
+const CAP_MIN_S = 1.2;      // min on-screen seconds (shorter slices get merged)
+const CAP_MAX_S = 5.0;      // max on-screen seconds (then hides; brief gap)
+
+// Split text into word-safe chunks of ≤ maxChars. Pure.
+function chunkCaption(text: string, maxChars: number): string[] {
+  const words = text.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  const chunks: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    if (!cur) { cur = w; continue; }
+    if ((cur.length + 1 + w.length) <= maxChars) cur += ' ' + w;
+    else { chunks.push(cur); cur = w; }
+  }
+  if (cur) chunks.push(cur);
+  return chunks;
+}
+
+// Build burned-in caption elements (scrim + text) across the full video.
+// PURE + FAIL-SAFE: never throws — returns [] on any internal issue so a caption
+// glitch can never fail the render/TTS/storage path. Timing is proportional to
+// each chunk's character length against the video's total duration, with an
+// underflow-merge (chunks < CAP_MIN_S fold into a neighbour) and a per-caption
+// min/max clamp. Captions are timed to the VIDEO duration (= Σ scene durations),
+// not the audio length, so they are approximate vs speech (Pass-1 limitation).
+function buildCaptionElements(narrationText: string | null | undefined, totalDuration: number): object[] {
+  try {
+    const text = (narrationText ?? '').replace(/\s+/g, ' ').trim();
+    if (!text || !(totalDuration > 0)) return [];
+    const chunks = chunkCaption(text, CAP_MAX_CHARS);
+    if (chunks.length === 0) return [];
+
+    const totalLen = chunks.reduce((n, c) => n + c.length, 0) || 1;
+    const durs = chunks.map(c => (c.length / totalLen) * totalDuration);
+
+    // Underflow merge: fold any chunk shorter than CAP_MIN_S into its neighbour
+    // (next, or previous if last), preserving Σdur == totalDuration.
+    for (let guard = 0; guard < chunks.length + 1; guard++) {
+      if (chunks.length <= 1) break;
+      const i = durs.findIndex(d => d < CAP_MIN_S);
+      if (i === -1) break;
+      const j = i < chunks.length - 1 ? i + 1 : i - 1;
+      chunks[j] = i < j ? `${chunks[i]} ${chunks[j]}` : `${chunks[j]} ${chunks[i]}`;
+      durs[j] += durs[i];
+      chunks.splice(i, 1);
+      durs.splice(i, 1);
+    }
+
+    const els: object[] = [];
+    let t = 0;
+    for (let i = 0; i < chunks.length; i++) {
+      if (t >= totalDuration) break;
+      const shown = Math.min(Math.max(durs[i], CAP_MIN_S), CAP_MAX_S, totalDuration - t);
+      if (shown <= 0) break;
+      // scrim first (under) …
+      els.push({ type: 'shape', shape: 'rectangle', fill_color: '#0B1220', opacity: 0.55, border_radius: '24px',
+        width: `${CAP_BAND.width}px`, height: `${CAP_BAND.scrimHeight}px`, x: `${CAP_BAND.x}px`, y: `${CAP_BAND.scrimY}px`,
+        x_anchor: '0%', y_anchor: '0%', time: t, duration: shown,
+        enter: { effect: 'fade', duration: 0.15 }, exit: { effect: 'fade', duration: 0.15 } });
+      // … then caption text (over).
+      els.push({ type: 'text', text: chunks[i], font_family: 'Montserrat', font_weight: '700',
+        font_size: `${CAP_BAND.fontSize}px`, fill_color: '#FFFFFF', line_height: CAP_BAND.lineHeight,
+        width: `${CAP_BAND.width}px`, height: `${CAP_BAND.textHeight}px`, x_alignment: '50%', y_alignment: '50%',
+        x: `${CAP_BAND.x}px`, y: `${CAP_BAND.textY}px`, x_anchor: '0%', y_anchor: '0%', time: t, duration: shown,
+        enter: { effect: 'fade', duration: 0.15 }, exit: { effect: 'fade', duration: 0.15 } });
+      t += durs[i]; // advance by the proportional slice to stay synced to total
+    }
+    return els;
+  } catch (_e) {
+    return [];
+  }
+}
+
 // === buildKineticTextSpec ====================================================
 // v3.0.0 changes: layout coords (C), animation polish (B), music layer (A).
+// v3.1.0: optional burned-in captions (kinetic_voice only) — see header.
 function buildKineticTextSpec(opts: {
   scenes: VideoScene[];
   clientName: string; primaryColour: string; secondaryColour: string; logoUrl: string | null;
   audioUrl?: string | null;
   musicUrl?: string | null;  // v3.0.0
+  captionText?: string | null;  // v3.1.0 — kinetic_voice captions only
 }): object {
-  const { scenes, clientName, primaryColour, secondaryColour, logoUrl, audioUrl, musicUrl } = opts;
+  const { scenes, clientName, primaryColour, secondaryColour, logoUrl, audioUrl, musicUrl, captionText } = opts;
+  const withCaptions = !!(captionText && captionText.trim());  // v3.1.0
   const W = 1080, H = 1920;
   let t = 0;
   const timings = scenes.map(s => { const e = { start: t, dur: s.duration_s }; t += s.duration_s; return e; });
@@ -295,12 +399,14 @@ function buildKineticTextSpec(opts: {
     if (scene.type === 'hook') {
       elements.push({ type: 'text', text: scene.headline, font_family: 'Montserrat', font_weight: '900', font_size: '76px', fill_color: '#FFFFFF', line_height: '130%', width: '960px', height: '700px', x_alignment: '50%', y_alignment: '50%', x: '60px', y: '560px', x_anchor: '0%', y_anchor: '0%', time: tStart + 0.4, duration: tDur - 0.8, enter: { effect: 'fade', duration: F }, exit: { effect: 'fade', duration: FO } });
       // v3.0.0 (C): subtitle moved up from y=1700 to y=1480 to clear bottom UI.
-      elements.push({ type: 'text', text: '\u2193 Keep watching', font_family: 'Montserrat', font_weight: '400', font_size: '26px', fill_color: secondaryColour, opacity: 0.75, width: `${W}px`, x_alignment: '50%', x: '0px', y: '1480px', x_anchor: '0%', y_anchor: '0%', time: tStart + 1.2, duration: tDur - 1.6, enter: { effect: 'fade', duration: 0.6 }, exit: { effect: 'fade', duration: FO } });
+      // v3.1.0: suppressed when captions are on (it sits inside the caption band).
+      if (!withCaptions) elements.push({ type: 'text', text: '\u2193 Keep watching', font_family: 'Montserrat', font_weight: '400', font_size: '26px', fill_color: secondaryColour, opacity: 0.75, width: `${W}px`, x_alignment: '50%', x: '0px', y: '1480px', x_anchor: '0%', y_anchor: '0%', time: tStart + 1.2, duration: tDur - 1.6, enter: { effect: 'fade', duration: 0.6 }, exit: { effect: 'fade', duration: FO } });
     } else if (scene.type === 'cta') {
       elements.push({ type: 'text', text: '?', font_family: 'Montserrat', font_weight: '900', font_size: '500px', fill_color: secondaryColour, opacity: 0.07, width: `${W}px`, x_alignment: '50%', x: '0px', y: '400px', x_anchor: '0%', y_anchor: '0%', time: tStart, duration: tDur });
       elements.push({ type: 'text', text: scene.headline, font_family: 'Montserrat', font_weight: '700', font_size: '62px', fill_color: '#FFFFFF', line_height: '130%', width: '880px', height: '600px', x_alignment: '50%', y_alignment: '50%', x: '100px', y: '650px', x_anchor: '0%', y_anchor: '0%', time: tStart + 0.3, duration: tDur - 0.6, enter: { effect: 'fade', duration: F }, exit: { effect: 'fade', duration: FO } });
       // v3.0.0 (C): footer moved up from y=1650 to y=1450.
-      elements.push({ type: 'text', text: `Follow ${clientName} for more`, font_family: 'Montserrat', font_weight: '400', font_size: '30px', fill_color: secondaryColour, opacity: 0.8, width: `${W}px`, x_alignment: '50%', x: '0px', y: '1450px', x_anchor: '0%', y_anchor: '0%', time: tStart + 0.9, duration: tDur - 1.1, enter: { effect: 'fade', duration: 0.5 } });
+      // v3.1.0: suppressed when captions are on (it sits inside the caption band).
+      if (!withCaptions) elements.push({ type: 'text', text: `Follow ${clientName} for more`, font_family: 'Montserrat', font_weight: '400', font_size: '30px', fill_color: secondaryColour, opacity: 0.8, width: `${W}px`, x_alignment: '50%', x: '0px', y: '1450px', x_anchor: '0%', y_anchor: '0%', time: tStart + 0.9, duration: tDur - 1.1, enter: { effect: 'fade', duration: 0.5 } });
     } else {
       pointNum++;
       const sliDir = slideDirForPoint(pointNum); // v3.0.0 (B): direction rotates 270 / 0 / 180
@@ -311,9 +417,18 @@ function buildKineticTextSpec(opts: {
       elements.push({ type: 'text', text: scene.headline, font_family: 'Montserrat', font_weight: '700', font_size: '64px', fill_color: '#FFFFFF', line_height: '130%', width: '880px', x: '100px', y: '480px', x_anchor: '0%', y_anchor: '0%', time: tStart + 0.50, duration: tDur - 0.8, enter: { effect: 'fade', duration: F }, exit: { effect: 'fade', duration: FO } });
       if (scene.body) {
         elements.push({ type: 'shape', shape: 'rectangle', fill_color: secondaryColour, opacity: 0.4, width: '880px', height: '2px', x: '100px', y: '870px', x_anchor: '0%', y_anchor: '0%', time: tStart + 0.75, duration: tDur - 1.0, enter: { effect: 'wipe', direction: sliDir, duration: 0.4 }, exit: { effect: 'fade', duration: 0.3 } });
-        elements.push({ type: 'text', text: scene.body, font_family: 'Montserrat', font_weight: '400', font_size: '40px', fill_color: '#CBD5E1', line_height: '145%', width: '880px', x: '100px', y: '895px', x_anchor: '0%', y_anchor: '0%', time: tStart + 0.90, duration: tDur - 1.0, enter: { effect: 'fade', duration: F }, exit: { effect: 'fade', duration: FO } });
+        // v3.1.0: when captions are on, height-cap the body (bottom ≤ ~y1255) and
+        // shrink long bodies so they cannot grow into the caption band (y1300+).
+        const bodyCap = withCaptions ? { height: '360px' } : {};
+        const bodyFont = withCaptions && scene.body.length > 150 ? '34px' : '40px';
+        elements.push({ type: 'text', text: scene.body, font_family: 'Montserrat', font_weight: '400', font_size: bodyFont, fill_color: '#CBD5E1', line_height: '145%', width: '880px', ...bodyCap, x: '100px', y: '895px', x_anchor: '0%', y_anchor: '0%', time: tStart + 0.90, duration: tDur - 1.0, enter: { effect: 'fade', duration: F }, exit: { effect: 'fade', duration: FO } });
       }
     }
+  }
+  // v3.1.0: burned-in captions layered on top (kinetic_voice only). Pure +
+  // fail-safe — returns [] on any internal issue, never fails the render.
+  if (withCaptions) {
+    for (const el of buildCaptionElements(captionText, totalDuration)) elements.push(el);
   }
   return { output_format: 'mp4', width: W, height: H, duration: totalDuration, frame_rate: 30, fill_color: primaryColour, elements };
 }
@@ -375,6 +490,7 @@ async function processDraft(opts: {
   const musicUrl = resolveMusicUrl(fmt);
 
   let audioUrl: string | null = null;
+  let captionText: string | null = null;  // v3.1.0 — kinetic_voice captions
   if (withVoice) {
     const voiceId = getVoiceId(b.clientSlug);
     if (!voiceId) throw new Error(`No voice ID configured for client ${b.clientSlug}`);
@@ -383,13 +499,14 @@ async function processDraft(opts: {
     const audioPath = `${b.clientSlug}/${draft.post_draft_id}_voice.mp3`;
     audioUrl = await generateAndUploadVoice(supabase, narration, voiceId, audioPath);
     if (!audioUrl) throw new Error('ElevenLabs TTS failed');
+    captionText = narration;  // captions derive from the same narration as the TTS
   }
   const isKinetic = fmt === 'video_short_kinetic' || fmt === 'video_short_kinetic_voice';
   const isStat    = fmt === 'video_short_stat'    || fmt === 'video_short_stat_voice';
   if (isKinetic) {
     if (!vs?.scenes || !Array.isArray(vs.scenes) || vs.scenes.length < 3)
       throw new Error('missing_or_invalid_video_script_scenes');
-    const spec = buildKineticTextSpec({ scenes: vs.scenes, ...b, audioUrl, musicUrl });
+    const spec = buildKineticTextSpec({ scenes: vs.scenes, ...b, audioUrl, musicUrl, captionText });
     const storagePath = `${b.clientSlug}/${draft.post_draft_id}_kinetic${withVoice ? '_voice' : ''}.mp4`;
     const videoUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: spec, storagePath, postDraftId: draft.post_draft_id, clientId: draft.client_id, iceFormatKey: fmt });
     await supabase.schema('m').from('post_draft').update({ video_url: videoUrl, video_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
