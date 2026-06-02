@@ -55,12 +55,21 @@ All 13 were observer_stale client_commitment/`suppress` cases pooled to now-reso
 
 Counts after Batch 1 + 2a + 2b + 3: **48 total / 16 open / 32 resolved / 1 new**. 12 protected IDs verified untouched. Carry case `79326fc8` remains open + `track`. `f633c279` remains `new` (held for Batch 6).
 
+## Batch 4 — cc-0016 Stage B smoke resolve-ignored (2 calls)
+
+Batch 4 (2× resolve_case(..., 'ignored', 'pk')) executed under CCD inline D-01 + PK exact approval phrase PK APPROVES CC-0015 BATCH 4 SMOKE RESOLVE-IGNORED. No m.chatgpt_review row exists to close — CCD inline review, not a ChatGPT-Review-tool call; row not fabricated (per CCD ruling 2026-06-02).
+
+Both were cc-0016 Stage B smoke-test cases; the hard-guard `purge_test_case` pattern does not match their titles, so resolved-ignored (not hard-deleted) — preserves them as an audit trail and the cc-0016 V-A5 protected artefacts. Each `action_decision='ignore'` retained → `resolution_kind='ignored'`, resolved (2 of 2 verified):
+- `66722f67-1243-47ce-b85e-50f0b7686807` — "cc-0016 Stage B attachment smoke"
+- `ce4442dc-d2a7-4cf3-8136-02a2ff3c3e39` — "cc-0016 Stage B no-attachment smoke"
+
+Counts after Batch 1 + 2a + 2b + 3 + 4: **48 total / 14 open / 34 resolved / 1 new**. 12 protected IDs verified untouched. Carry case `79326fc8` remains open + `track`. `f633c279` remains `new` / open (held for Batch 6).
+
 ## Held / not executed this session
 
-- Batch 4 (smoke resolve-ignored, 2) — not executed.
-- Batch 6 (`f633c279` first triage) — not executed.
+- Batch 6 (`f633c279` first triage → track, quality_flag=true, next_review_at 2026-06-09) — not executed; clears the last `new` when run.
 - `00_sync_state.md` / `00_action_list.md` large-index updates — deferred to a later surgical pass (per PK, this sequence).
 
 ## Protected IDs (must remain untouched across all batches)
 
-`26436794`, `877b7382`, `78afc70e`, `101935ba`, `53f3e533`, `2cf0cd4f`, `b7369dc9`, `22056313`, `6e148859`, `15d57015`, `c53f5af6`, `220bc43a` — verified open + `track` after Batches 1, 2a, 2b, 3.
+`26436794`, `877b7382`, `78afc70e`, `101935ba`, `53f3e533`, `2cf0cd4f`, `b7369dc9`, `22056313`, `6e148859`, `15d57015`, `c53f5af6`, `220bc43a` — verified open + `track` after Batches 1, 2a, 2b, 3, 4.
