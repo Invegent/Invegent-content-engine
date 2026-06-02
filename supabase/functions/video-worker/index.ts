@@ -1,5 +1,15 @@
 // video-worker v3.1.0
 // ============================================================================
+// v3.1.2 (2026-06-02, VOICE-MAPPING-GUARD):
+//   Narrow voice-selection guard. getVoiceId() no longer silently falls back to
+//   the NDIS voice for an unrecognised client_slug — it now returns null so the
+//   caller fails the draft loudly (video_status='failed' + post_render_log)
+//   rather than rendering a new brand in the wrong (NDIS) voice. Exact
+//   ELEVENLABS_VOICE_ID_<SLUG> still wins; the ndis/property(pp) legacy aliases
+//   are unchanged. Caller throw message clarified to include client_slug=<slug>.
+//   Voice-selection ONLY — no captions/layout/timing/audio-volume/format/storage
+//   change. (F-VOICE-SILENT-FALLBACK)
+//
 // v3.1.1 (2026-06-02, CREATOMATE-AUDIO-VOLUME-CONTRACT-FIX):
 //   Audio-only value-format fix. Creatomate's audio `volume` property is a
 //   PERCENTAGE string ("0%"–"100%", default "100%"), not a 0–1 fraction. The
@@ -91,7 +101,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'video-worker-v3.1.0';
+const VERSION = 'video-worker-v3.1.2';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -120,7 +130,11 @@ function getVoiceId(clientSlug: string): string | null {
   if (exact) return exact;
   if (clientSlug.toLowerCase().includes('ndis')) return Deno.env.get('ELEVENLABS_VOICE_ID_NDIS') ?? null;
   if (clientSlug.toLowerCase().includes('property') || clientSlug.toLowerCase().includes('pp')) return Deno.env.get('ELEVENLABS_VOICE_ID_PP') ?? null;
-  return Deno.env.get('ELEVENLABS_VOICE_ID_NDIS') ?? null;
+  // v3.1.2 guard: NO silent NDIS default for unrecognised slugs. A new brand must
+  // have an explicit ELEVENLABS_VOICE_ID_<SLUG> (or a known ndis/property alias),
+  // else this returns null and the caller fails the draft loudly — rather than
+  // rendering in the wrong (NDIS) voice. (F-VOICE-SILENT-FALLBACK)
+  return null;
 }
 
 // === v3.0.0 (A): Music library (env-gated, off-by-default) ==================
@@ -503,7 +517,7 @@ async function processDraft(opts: {
   let captionText: string | null = null;  // v3.1.0 — kinetic_voice captions
   if (withVoice) {
     const voiceId = getVoiceId(b.clientSlug);
-    if (!voiceId) throw new Error(`No voice ID configured for client ${b.clientSlug}`);
+    if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for client_slug=${b.clientSlug}`);
     const narration = vs?.narration_text ?? '';
     if (!narration) throw new Error('video_script.narration_text is empty');
     const audioPath = `${b.clientSlug}/${draft.post_draft_id}_voice.mp3`;
