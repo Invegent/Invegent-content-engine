@@ -1,5 +1,5 @@
 # ICE — Documentation Index
-## Last updated: 2026-05-26 (added `docs/process/` subdirectory — ICE-PROC-001/002)
+## Last updated: 2026-06-06 (added `docs/build-specs/asset-policy-stage0/` — Stage 0 OBS pre-build planning artefacts; prior: 2026-05-26 `docs/process/`)
 
 This is the reading map for the `/docs` folder. Every document is listed with its purpose, when to read it, and a freshness/authority marker so any reader (human or AI) knows whether the doc is current truth or historical reference.
 
@@ -98,6 +98,7 @@ If you find yourself reading anything in `docs/archive/`, ask: do I need history
 | `alerts/` | Alert configurations and runbooks |
 | `briefs/` | Claude Code task briefs (numbered + dated) |
 | `build-specs/` | Detailed build specs for larger features |
+| `build-specs/asset-policy-stage0/` | **Pre-build planning only.** Asset Production Policy & Provider Routing — Stage 0 OBS (out-of-band shadow observer) F-precondition artefacts (schema concept, evidence-class lattice, 0A→0B transform contract, 0A lint config) + CCD build handoff. **NOT authorised for build.** Gate: isolated `obs` project exists + concrete first-mutation plan + D-01 fired + PK exact-phrase approval. See the folder `00_README.md`. |
 | `compliance/` | Compliance rules and reviews |
 | `consent/` | Consent templates (avatar, photo, etc.) |
 | `cowork/` | Cowork scheduled task definitions |
@@ -147,6 +148,7 @@ docs/
 ├── alerts/
 ├── briefs/                                ← Claude Code task briefs
 ├── build-specs/
+│   └── asset-policy-stage0/                ← Stage 0 OBS pre-build planning (NOT build-authorised)
 ├── compliance/
 ├── consent/
 ├── cowork/
