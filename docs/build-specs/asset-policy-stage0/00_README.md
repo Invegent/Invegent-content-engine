@@ -6,7 +6,10 @@ This folder holds the fixed on-disk reference for the OBS (out-of-band shadow
 observer) build. These are planning/specification documents. Only the Stage 0
 schema/table **foundation** has been applied (to the isolated OBS project — see
 below); no observer code, read-path, runtime, cron, or 0B work has been built,
-deployed, or applied.
+deployed, or applied. A read-only diagnostic (`06_stage0_readonly_diagnostic_2026-06-08.md`)
+has since answered the Stage 0 questions from existing production evidence and
+recommends **holding 0A** (recommendation C — the residual gaps are
+source-instrumentation gaps, not observer-read gaps).
 
 ## Stage 0 foundation status — APPLIED (2026-06-08)
 
@@ -41,6 +44,7 @@ cron, provider call, or 0B work has occurred or is authorised.
 | `03_fprecond_transform_contract.md` | F-precondition artefact 3 — single named 0A→0B transform contract |
 | `04_fprecond_0A_lint_config.md` | F-precondition artefact 4 — 0A allowlist/denylist lint config (draft) |
 | `05_ccd_obs_build_handoff.md` | CCD build handoff — execution sequence (post-gate) |
+| `06_stage0_readonly_diagnostic_2026-06-08.md` | Stage 0 read-only diagnostic (2026-06-08) — Q1/Q3/Q5/Q7 answered from existing production evidence; **recommendation C (hold 0A)**; residual gaps are source-instrumentation, not observer-read |
 
 ## Source spec
 
