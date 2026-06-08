@@ -1,4 +1,14 @@
-// heygen-worker v2.0.0
+// heygen-worker v2.1.0
+// v2.1.0 — F-HEYGEN-RENDER-TELEMETRY: telemetry-only. Mirror each TERMINAL render outcome
+//          (succeeded | failed | timeout) into m.post_render_log via the existing engine-agnostic
+//          public.write_render_log RPC (render_engine='heygen'). Closes the gap where HeyGen renders
+//          were invisible in post_render_log (which was Creatomate-only). Best-effort + idempotent
+//          (per post_draft_id + provider_job_id); adds NO new HeyGen API calls (logs data already
+//          fetched); logs NO secrets/keys/headers; NEVER fails the render lifecycle. credits_used
+//          stays null (per-render cost is not exposed by the HeyGen API). Provider job id + submitted/
+//          completed timestamps + dimension/style live in render_spec; render_duration_ms is the
+//          submitted->completed wall-clock. No schema change. Submit-phase (pre-render) failures are
+//          intentionally NOT logged here (no provider_job_id yet; out of the terminal-outcome scope).
 // v2.0.0 — F-HEYGEN-WORKER-ASYNC-RENDER: async two-phase render lifecycle. Submit (Phase A) and
 //          poll (Phase B) are decoupled across cron ticks so no single invocation waits for the full
 //          HeyGen render — removes the synchronous in-request poll loop that died at the Supabase EF
@@ -11,7 +21,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION             = 'heygen-worker-v2.0.0';
+const VERSION             = 'heygen-worker-v2.1.0';
 const HEYGEN_GENERATE     = 'https://api.heygen.com/v2/video/generate';
 const HEYGEN_STATUS       = 'https://api.heygen.com/v1/video_status.get';
 const MAX_SUBMITS         = 3;                // Phase A: pending drafts to submit per tick
@@ -142,6 +152,75 @@ async function markFailed(supabase: Supa, draftId: string, fmt: any, errFields: 
   }).eq('post_draft_id', draftId);
 }
 
+// --- Telemetry-only: mirror the render outcome into m.post_render_log -------
+// Best-effort, idempotent, observational. Reuses the existing engine-agnostic
+// public.write_render_log SECURITY DEFINER RPC (the same writer the Creatomate
+// workers use). NEVER throws into the render lifecycle. Adds NO HeyGen API calls.
+// Logs no secrets. credits_used is null (cost not exposed by the HeyGen API).
+async function writeRenderLog(
+  supabase: Supa,
+  draft: { post_draft_id: string; client_id: string | null; draft_format: any },
+  opts: { status: 'succeeded' | 'failed' | 'timeout'; providerJobId: string | null; outputUrl?: string | null; storageUrl?: string | null; errorMessage?: string | null },
+): Promise<void> {
+  const draftId = draft.post_draft_id;
+  try {
+    const fmt = draft.draft_format ?? {};
+    const { status, providerJobId, outputUrl = null, storageUrl = null, errorMessage = null } = opts;
+
+    // Idempotency: skip if a HeyGen row already exists for this draft + provider job id.
+    if (providerJobId) {
+      const { data: existing } = await supabase.schema('m').from('post_render_log')
+        .select('render_log_id, render_spec')
+        .eq('post_draft_id', draftId)
+        .eq('render_engine', 'heygen');
+      const dup = (existing ?? []).some((r: any) => r?.render_spec?.provider_job_id === providerJobId);
+      if (dup) {
+        console.log(`[heygen-worker] render_log skip (already logged) ${draftId} job=${providerJobId}`);
+        return;
+      }
+    }
+
+    const submittedIso: string | null = fmt.heygen_submitted_at ?? null;
+    const submittedMs = submittedIso ? (Date.parse(submittedIso) || 0) : 0;
+    const durationMs = submittedMs ? (Date.now() - submittedMs) : null;
+    const renderStyle: string | null = fmt.render_style ?? fmt.video_script?.render_style ?? null;
+
+    const renderSpec = {
+      provider: 'heygen',
+      provider_job_id: providerJobId,
+      submitted_at: submittedIso,
+      completed_at: nowIso(),
+      render_dimension: fmt.render_dimension ?? RENDER_DIMENSION,
+      render_style: renderStyle,
+      telemetry_source: VERSION,
+    };
+
+    const { error } = await supabase.rpc('write_render_log', {
+      p_post_draft_id: draftId,
+      p_slide_id: null,
+      p_client_id: draft.client_id ?? null,
+      p_ice_format_key: 'video_short_avatar',
+      p_render_engine: 'heygen',
+      p_creatomate_render_id: null,
+      p_status: status,
+      p_output_url: outputUrl,
+      p_storage_url: storageUrl,
+      p_credits_used: null,
+      p_render_duration_ms: durationMs,
+      p_error_message: errorMessage,
+      p_render_spec: renderSpec,
+    });
+    if (error) {
+      console.log(`[heygen-worker] render_log write failed (non-fatal) ${draftId}: ${error.message ?? error}`);
+    } else {
+      console.log(`[heygen-worker] render_log ${status} ${draftId} job=${providerJobId ?? 'n/a'} dur=${durationMs ?? 'n/a'}ms`);
+    }
+  } catch (e: any) {
+    // Telemetry must NEVER break the render lifecycle.
+    console.log(`[heygen-worker] render_log telemetry error (non-fatal) ${draftId}: ${e?.message ?? e}`);
+  }
+}
+
 // --- Phase B: poll existing rendering jobs (one check per draft per tick) ----
 
 async function runPollPhase(supabase: Supa, apiKey: string): Promise<any[]> {
@@ -175,19 +254,28 @@ async function runPollPhase(supabase: Supa, apiKey: string): Promise<any[]> {
         const storagePath: string = fmt.storage_path ?? `${fmt.client_slug ?? draft.client_id.substring(0, 8)}/${draftId}_avatar_${renderStyle}.mp4`;
         const storageUrl = await downloadAndStore(supabase, st.videoUrl, storagePath);
         await markGenerated(supabase, draftId, fmt, storageUrl, st.videoUrl);
+        // telemetry-only: terminal success
+        await writeRenderLog(supabase, draft, { status: 'succeeded', providerJobId: videoId, outputUrl: st.videoUrl, storageUrl });
         console.log(`[heygen-worker] generated ${draftId} -> ${storageUrl}`);
         results.push({ post_draft_id: draftId, phase: 'poll', status: 'generated', storage_url: storageUrl });
       } catch (e: any) {
-        await markFailed(supabase, draftId, fmt, { heygen_error: `download_store_failed: ${(e?.message ?? String(e)).slice(0, 1000)}`, heygen_video_id: videoId });
+        const dlErr = `download_store_failed: ${(e?.message ?? String(e)).slice(0, 1000)}`;
+        await markFailed(supabase, draftId, fmt, { heygen_error: dlErr, heygen_video_id: videoId });
+        // telemetry-only: terminal failure (HeyGen completed but our download/store failed)
+        await writeRenderLog(supabase, draft, { status: 'failed', providerJobId: videoId, errorMessage: dlErr });
         results.push({ post_draft_id: draftId, phase: 'poll', status: 'failed', error: e?.message ?? String(e) });
       }
     } else if (st.state === 'failed') {
       await markFailed(supabase, draftId, fmt, { heygen_error: JSON.stringify(st.rawError).slice(0, 2000), heygen_video_id: videoId });
+      // telemetry-only: terminal failure (provider render failed)
+      await writeRenderLog(supabase, draft, { status: 'failed', providerJobId: videoId, errorMessage: `heygen_render_failed: ${JSON.stringify(st.rawError).slice(0, 1000)}` });
       results.push({ post_draft_id: draftId, phase: 'poll', status: 'failed', error: 'heygen_render_failed' });
     } else {
       // still processing — stale check
       if (submittedAt && (Date.now() - submittedAt) > STALE_RENDER_MAX_MS) {
         await markFailed(supabase, draftId, fmt, { heygen_error: 'stale_render_timeout', last_status: 'processing', heygen_video_id: videoId });
+        // telemetry-only: terminal timeout
+        await writeRenderLog(supabase, draft, { status: 'timeout', providerJobId: videoId, errorMessage: 'stale_render_timeout' });
         results.push({ post_draft_id: draftId, phase: 'poll', status: 'failed', error: 'stale_render_timeout' });
       } else {
         results.push({ post_draft_id: draftId, phase: 'poll', status: 'rendering' });
@@ -258,6 +346,8 @@ async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<any[]> {
       const msg = (e?.message ?? String(e)).slice(0, 2000);
       console.error(`[heygen-worker] submit failed ${draftId}:`, msg);
       await markFailed(supabase, draftId, fmt, { heygen_error: `submit_error: ${msg}` });
+      // NOTE: submit-phase (pre-render) failures are intentionally NOT written to post_render_log —
+      // no provider_job_id exists yet, and this telemetry is scoped to terminal RENDER outcomes.
       results.push({ post_draft_id: draftId, phase: 'submit', status: 'failed', error: msg });
     }
   }
