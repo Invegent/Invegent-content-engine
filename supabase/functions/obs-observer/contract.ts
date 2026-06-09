@@ -71,6 +71,9 @@ export const OBS_CONTRACT = {
     "skipped",
     "cancelled",
     "canceled",
+    // CCD step-5 reconciliation vs live production status vocab (2026-06-09):
+    "generated", // asset produced (image/video_status) — production lifecycle settled
+    "archived_stale", // video_status — soft-retired draft; settled, will not progress
   ],
   inFlightStatuses: [
     "pending",
@@ -84,5 +87,7 @@ export const OBS_CONTRACT = {
     "retry",
     "retrying",
     "awaiting",
+    // CCD step-5 reconciliation vs live production status vocab (2026-06-09):
+    "future", // slot.status — scheduled but not yet filled; in pipeline, not settled
   ],
 } as const;
