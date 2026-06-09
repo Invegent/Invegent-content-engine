@@ -43,7 +43,8 @@ Per-cell `evidence_class` is one of `observed_fact` \| `reconstructed_fact` \|
 | `write_client.ts` | Dedicated OBS append-only write into `obs.observation` (live column set). |
 | `contract.ts` | 0A types + single-source label/enum constants. |
 | `deno.json` | Import map (postgres client). |
-| `stage0_transform.ts` | RESERVED / INERT — name reserved for the future difference transform; holds no logic (CCD to `git rm`). |
+
+_(The name `stage0_transform` remains reserved by F-precondition 3 for the future 0A→0B difference transform; no such file exists in the 0A package.)_
 
 ## Environment (set as OBS-project secrets only — never in production)
 
