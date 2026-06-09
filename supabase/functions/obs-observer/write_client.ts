@@ -5,9 +5,10 @@
 // - Standalone: does NOT import any shared publisher/ai-worker DB client.
 // - NEVER connects to production. The DSN VALUE never appears in this repo — only the NAME.
 //
-// NOTE (RECONCILE-BEFORE-SMOKE): the obs.observation column list below mirrors the OBS
-// foundation design and is not live-verified by the authoring agent. A wrong column name
-// causes the INSERT to error at smoke (fail-safe: no partial/garbage rows). See contract.ts.
+// Insert columns match the LIVE OBS schema exactly (CCD-reconciled):
+//   post_draft_id, observer_version, stage, population, eligibility,
+//   policy_input_snapshot (jsonb), value_cells (jsonb).
+// Deliberately NOT inserted (not top-level columns): evidence_class, source, run_id.
 
 import { Client } from "postgres";
 import type { ObservationRecord } from "./contract.ts";
@@ -20,9 +21,9 @@ function writeDsn(): string {
 
 const INSERT_SQL = `
 INSERT INTO obs.observation
-  (post_draft_id, observer_version, stage, evidence_class, population, eligibility,
-   value_cells, source, observed_at, run_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9::timestamptz, $10)
+  (post_draft_id, observer_version, stage, population, eligibility,
+   policy_input_snapshot, value_cells)
+VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)
 ON CONFLICT (post_draft_id, observer_version, stage) DO NOTHING
 `;
 
@@ -39,13 +40,10 @@ export async function writeObservations(
         r.post_draft_id,
         r.observer_version,
         r.stage,
-        r.evidence_class,
         r.population,
         r.eligibility,
+        JSON.stringify(r.policy_input_snapshot),
         JSON.stringify(r.value_cells),
-        r.source,
-        r.observed_at,
-        r.run_id,
       ]);
       inserted += res.rowCount ?? 0; // 0 when ON CONFLICT skipped (idempotent re-run)
     }
