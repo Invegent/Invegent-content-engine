@@ -1,0 +1,24 @@
+-- Option C containment: disable the obs_readonly login credential.
+-- Reconciliation of the 2026-06-09 OBS Stage 0A production read-path (G-RP
+-- 20260609081127_obs_readonly_production_read_path_g_rp + G-RP-RLS
+-- 20260609103639_obs_readonly_rls_slot_origin_select_g_rp_rls) found that
+-- obs_readonly was not effectively read-only: reachable m.* / public.* SECURITY
+-- DEFINER functions formed a write-capable RPC surface. Containment makes the
+-- role unable to log in, neutralising that surface without dropping the role or
+-- its grants.
+--
+-- Approved by PK exact-phrase (D-01 review 18ba635d-9492-4910-bc03-4ba9ab77fd7a).
+-- Containment ONLY: NOT ratified, NOT rolled back, role NOT dropped. The four
+-- OBS-0A governance rows (51752332 / 5fed9a06 / c5a7cb3c / 9b03b489) remain
+-- open/escalated and are deliberately NOT closed.
+--
+-- NOTE (repo-parity backfill): this file is the password-free record of the
+-- migration already applied to production (mbkmaxqhsohbtwsqolns) and recorded in
+-- production migration history as
+-- 20260609221624_obs_readonly_contain_c_nologin_credential_disable. Verified at
+-- apply time: rolcanlogin true->false; NOBYPASSRLS preserved; no memberships; no
+-- write table grants; 45 column-level SELECT grants, the RLS policy, and prior
+-- migrations all preserved; zero active connections. This file contains no
+-- password, DSN, key, token, or credential.
+
+ALTER ROLE obs_readonly NOLOGIN;
