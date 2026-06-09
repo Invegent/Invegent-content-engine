@@ -2,13 +2,13 @@
 //
 // RUNTIME: the ISOLATED OBS project ONLY (project-ref cvprkjpmlfhlwflokzvv). NEVER production.
 // READS production ONLY via the obs_readonly role (column-scoped, read-only, bounded).
-// WRITES ONLY to OBS obs.observation (append-only).
+// WRITES ONLY to OBS obs.observation (append-only), ONE 0A row per (post_draft_id, observer_version).
 // Scheduler DISABLED by default. Manual smoke only (CCD / terminal).
-// No later-stage difference logic. No external provider calls. No publisher/render side effects.
+// No 0A->0B difference logic. No external provider calls. No publisher/render side effects.
 
 import { OBS_CONTRACT } from "./contract.ts";
 import { readProductionRows } from "./read_client.ts";
-import { transformStage0 } from "./stage0_transform.ts";
+import { buildRaw0AObservation } from "./raw_observation_0a.ts";
 import { writeObservations } from "./write_client.ts";
 
 function flagOn(v: string | undefined, def = false): boolean {
@@ -47,16 +47,15 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, reason: "unauthorised" }, 401);
   }
 
-  const runId = crypto.randomUUID();
+  const runId = crypto.randomUUID(); // response-only trace id; NOT written to OBS
   const maxRows = clampInt(Deno.env.get("MAX_ROWS_PER_RUN"), 200, 1, 1000);
-  const observedAt = new Date().toISOString();
 
   try {
     // 3. READ production (read-only, column-scoped, bounded) via obs_readonly.
     const rows = await readProductionRows(maxRows);
 
-    // 4. TRANSFORM into raw 0A observation records (the single named transform point).
-    const records = rows.flatMap((r) => transformStage0(r, runId, observedAt));
+    // 4. BUILD one raw 0A observation record per draft (no multi-row sub-stages).
+    const records = rows.map((r) => buildRaw0AObservation(r));
 
     // 5. WRITE append-only into OBS obs.observation (ON CONFLICT DO NOTHING => idempotent).
     const { inserted, skippedExisting } = await writeObservations(records);
