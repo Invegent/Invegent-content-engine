@@ -5,8 +5,8 @@
 #
 # Scoping rules:
 #   OBSDIR  = the observer source only (TS). Term/0B/egress/import/RPC scans target this.
-#   PKGALL  = the whole package EXCLUDING this CI dir (the CI dir contains the denylist
-#             patterns by design; scanning it would self-trigger). Secret scans use PKGALL.
+#   Secret scan covers the package EXCLUDING this CI dir (the CI dir holds the denylist
+#   patterns by design; scanning it would self-trigger).
 set -uo pipefail
 
 OBSDIR="supabase/functions/obs-observer"
@@ -31,8 +31,13 @@ if grep -REn "import .*(from )?['\"].*(_shared|ai-worker|publisher)/" $(ts_files
 else pass "no shared DB client imports"; fi
 
 # Gate 2 — Artefact-4 forbidden-term scan (later-stage difference/inference tokens).
+# Robust, portable: build a CR-stripped, blank-skipped alternation regex via awk, then a
+# single grep -E. Avoids `grep -f` (unreliable / SIGABRT on msys, breaks on CRLF terms).
 gate "2 artefact-4 forbidden-term scan"
-if grep -REnif "$CIDIR/artefact4_forbidden_terms.txt" $(ts_files) 2>/dev/null; then
+TERMS_RE="$(awk 'NF{gsub(/\r/,""); printf "%s%s", sep, $0; sep="|"}' "$CIDIR/artefact4_forbidden_terms.txt")"
+if [ -z "$TERMS_RE" ]; then
+  fail "forbidden-term denylist is empty / unreadable"
+elif grep -REin -- "$TERMS_RE" $(ts_files) 2>/dev/null; then
   fail "forbidden 0B/comparison/inference token in 0A source"
 else pass "no forbidden tokens in 0A source"; fi
 
@@ -70,9 +75,12 @@ if grep -REin "stage[ _-]?0b|counterfactual|provider_inferred|values_differ" $(t
 else pass "no 0B artefact in 0A source"; fi
 
 # Gate 8 — deno type check (only where deno is available; CI installs it).
-gate "8 deno check (type check)"
+# FIX: pass --config so the import map (deno.json) resolves the `postgres` import.
+gate "8 deno check (type check, with --config)"
 if command -v deno >/dev/null 2>&1; then
-  if deno check "$OBSDIR/index.ts" 2>/dev/null; then pass "deno check clean"; else fail "deno check failed"; fi
+  if deno check --config "$OBSDIR/deno.json" "$OBSDIR/index.ts" 2>/dev/null; then
+    pass "deno check clean (with --config)"
+  else fail "deno check failed"; fi
 else
   note "deno not present in this environment — gate enforced in CI (setup-deno). Skipping locally."
 fi
