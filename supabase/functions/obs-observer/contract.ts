@@ -3,7 +3,8 @@
 // Live OBS write model (reconciled OBS-side by CCD):
 //   obs.observation row columns inserted by the observer:
 //     post_draft_id, observer_version, stage, population, eligibility,
-//     policy_input_snapshot (jsonb object), value_cells (jsonb array)
+//     observed_at (now(), NOT NULL no-default), policy_input_snapshot (jsonb object),
+//     value_cells (jsonb array)
 //   Idempotency key: (post_draft_id, observer_version, stage). stage is always '0A',
 //   so this is effectively ONE 0A row per (post_draft_id, observer_version).
 //

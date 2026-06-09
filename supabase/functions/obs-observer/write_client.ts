@@ -7,7 +7,10 @@
 //
 // Insert columns match the LIVE OBS schema exactly (CCD-reconciled):
 //   post_draft_id, observer_version, stage, population, eligibility,
-//   policy_input_snapshot (jsonb), value_cells (jsonb).
+//   observed_at, policy_input_snapshot (jsonb), value_cells (jsonb).
+// observed_at is NOT NULL with no default in obs.observation, so it MUST be supplied;
+// it is stamped server-side as now() (the observation/write time) — provenance, and it
+// is NOT part of the idempotency key, so ON CONFLICT re-runs never change it.
 // Deliberately NOT inserted (not top-level columns): evidence_class, source, run_id.
 
 import { Client } from "postgres";
@@ -22,8 +25,8 @@ function writeDsn(): string {
 const INSERT_SQL = `
 INSERT INTO obs.observation
   (post_draft_id, observer_version, stage, population, eligibility,
-   policy_input_snapshot, value_cells)
-VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)
+   observed_at, policy_input_snapshot, value_cells)
+VALUES ($1, $2, $3, $4, $5, now(), $6::jsonb, $7::jsonb)
 ON CONFLICT (post_draft_id, observer_version, stage) DO NOTHING
 `;
 
