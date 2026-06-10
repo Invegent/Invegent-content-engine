@@ -58,7 +58,7 @@ function getServiceClient() {
 
 type Supa = ReturnType<typeof getServiceClient>;
 
-async function lookupAvatar(
+export async function lookupAvatar(
   supabase: Supa,
   clientId: string,
   stakeholderRole: string | null,
@@ -239,7 +239,7 @@ async function writeRenderLog(
 
 // --- Phase B: poll existing rendering jobs (one check per draft per tick) ----
 
-async function runPollPhase(supabase: Supa, apiKey: string): Promise<any[]> {
+export async function runPollPhase(supabase: Supa, apiKey: string): Promise<any[]> {
   const results: any[] = [];
   const { data: rendering } = await supabase.schema('m').from('post_draft')
     .select('post_draft_id, client_id, draft_format, recommended_format')
@@ -303,7 +303,7 @@ async function runPollPhase(supabase: Supa, apiKey: string): Promise<any[]> {
 
 // --- Phase A: submit new pending avatar jobs --------------------------------
 
-async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<any[]> {
+export async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<any[]> {
   const results: any[] = [];
   const { data: pending } = await supabase.schema('m').from('post_draft')
     .select('post_draft_id, client_id, draft_format, recommended_format')
@@ -385,7 +385,10 @@ async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<any[]> {
 
 // --- Entry ------------------------------------------------------------------
 
-Deno.serve(async (req: Request) => {
+// import.meta.main guard: lets the hermetic test import the exported phase functions
+// WITHOUT starting the HTTP server. In production the deployed module IS the entry point,
+// so import.meta.main === true and Deno.serve runs identically (zero behaviour change).
+if (import.meta.main) Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method === 'GET') return jsonResponse({ ok: true, function: 'heygen-worker', version: VERSION });
 
