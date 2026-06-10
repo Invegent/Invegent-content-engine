@@ -1,4 +1,14 @@
-// heygen-worker v2.1.0
+// heygen-worker v2.1.1
+// v2.1.1 — F-HEYGEN-AVATAR-IDENTITY-TELEMETRY: observability-only. Capture the ACTUAL avatar identity
+//          selected at SUBMIT time (talking_photo_id, voice_id, render_style, stakeholder_role,
+//          avatar_selected_by ∈ {role_filter | fallback_limit1 | preset}) into draft_format.avatar_identity
+//          via the existing markRendering `extra` object, then COPY it verbatim (NO re-derivation,
+//          NO reselection) into post_render_log.render_spec.avatar_identity at the terminal poll
+//          outcome via writeRenderLog. Records WHICH avatar was used. Does NOT change avatar selection,
+//          HeyGen payload semantics, rendering, publishing, routing, scheduling, or business logic.
+//          NO new HeyGen API call, NO schema change, NO migration, NO RPC change. avatar_identity is
+//          null for pre-v2.1.1 in-flight drafts (no backfill). Role-aware selection + multi-avatar
+//          dialogue remain OUT OF SCOPE.
 // v2.1.0 — F-HEYGEN-RENDER-TELEMETRY: telemetry-only. Mirror each TERMINAL render outcome
 //          (succeeded | failed | timeout) into m.post_render_log via the existing engine-agnostic
 //          public.write_render_log RPC (render_engine='heygen'). Closes the gap where HeyGen renders
@@ -21,7 +31,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION             = 'heygen-worker-v2.1.0';
+const VERSION             = 'heygen-worker-v2.1.1';
 const HEYGEN_GENERATE     = 'https://api.heygen.com/v2/video/generate';
 const HEYGEN_STATUS       = 'https://api.heygen.com/v1/video_status.get';
 const MAX_SUBMITS         = 3;                // Phase A: pending drafts to submit per tick
@@ -185,6 +195,11 @@ async function writeRenderLog(
     const durationMs = submittedMs ? (Date.now() - submittedMs) : null;
     const renderStyle: string | null = fmt.render_style ?? fmt.video_script?.render_style ?? null;
 
+    // v2.1.1 (observability-only): copy the avatar identity captured at SUBMIT time
+    // (draft_format.avatar_identity). Pure copy — poll NEVER re-derives or reselects the avatar.
+    // Null for pre-v2.1.1 in-flight drafts (no backfill).
+    const avatarIdentity = fmt.avatar_identity ?? null;
+
     const renderSpec = {
       provider: 'heygen',
       provider_job_id: providerJobId,
@@ -192,6 +207,7 @@ async function writeRenderLog(
       completed_at: nowIso(),
       render_dimension: fmt.render_dimension ?? RENDER_DIMENSION,
       render_style: renderStyle,
+      avatar_identity: avatarIdentity,
       telemetry_source: VERSION,
     };
 
@@ -317,11 +333,15 @@ async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<any[]> {
 
       let talkingPhotoId: string | null = fmt.talking_photo_id ?? fmt.avatar_id ?? null;
       let voiceId: string | null = fmt.voice_id ?? null;
+      // v2.1.1 (observability-only): record HOW the avatar was selected. Default 'preset' = identity
+      // already present in draft_format (no lookup). Does NOT influence which avatar is chosen.
+      let avatarSelectedBy: 'role_filter' | 'fallback_limit1' | 'preset' = 'preset';
       if (!talkingPhotoId) {
         const avatar = await lookupAvatar(supabase, clientId, stakeholderRole, renderStyle);
         if (!avatar) throw new Error(`No active ${renderStyle} avatar for client ${clientId}${stakeholderRole ? ` role ${stakeholderRole}` : ''}`);
         talkingPhotoId = avatar.talking_photo_id;
         voiceId = voiceId ?? avatar.voice_id;
+        avatarSelectedBy = stakeholderRole ? 'role_filter' : 'fallback_limit1';
       }
       if (!voiceId) throw new Error(`No voice_id for draft ${draftId}`);
 
@@ -339,6 +359,15 @@ async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<any[]> {
       // Persist immediately and return — no polling in this invocation.
       await markRendering(supabase, draftId, fmt, heygenVideoId, nowIso(), {
         render_style: renderStyle, storage_path: storagePath, client_slug: clientSlug,
+        // v2.1.1 (observability-only): capture the ACTUAL avatar identity selected for THIS submit.
+        // Copied verbatim into render_spec at poll/terminal — never re-derived or reselected.
+        avatar_identity: {
+          talking_photo_id: talkingPhotoId,
+          voice_id: voiceId,
+          render_style: renderStyle,
+          stakeholder_role: stakeholderRole,
+          avatar_selected_by: avatarSelectedBy,
+        },
       });
       console.log(`[heygen-worker] submitted ${draftId} -> heygen ${heygenVideoId} (rendering)`);
       results.push({ post_draft_id: draftId, phase: 'submit', status: 'rendering', heygen_video_id: heygenVideoId });
