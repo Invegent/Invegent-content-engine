@@ -1,5 +1,7 @@
 # ICE — Pipeline Operating Model
 
+> **ℹ AUTHORITY NOTE (2026-06-11):** The planes / friction-register / growth-loop model in this document remains **durable conceptual reference**. Its **mechanism and pipeline details are superseded by the T1 authority doc where they conflict** — in particular, the production-pipe stage table below reflects the digest-era flow, and the open question stating "Slots has no backing table" is no longer true: **`m.slot` is now the live demand engine and slots are a real pipeline stage** (`materialise_slots` → `fill_pending_slots`). For the live pipeline and decision tree read **`docs/architecture/current-ice-decision-tree.md`**.
+
 > The conceptual frame for the whole system: what ICE *is*, how it runs itself, and where the human fits. This doc is bigger than the dashboard — it explains ICE. The dashboard (see `docs/dashboard-review-2026-05/12_dashboard-revamp-master-plan.md`) is the operations plane *of* this model, and should be designed against it.
 >
 > Created 2026-05-21 Sydney. Conceptual/durable. No build state, no SHAs, no production actions — this is the mental model, not the implementation log.

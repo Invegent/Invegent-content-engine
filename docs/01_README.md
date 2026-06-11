@@ -12,6 +12,14 @@ ICE is a signal-centric AI content engine that transforms raw information stream
 - Analyses performance and feeds results back into scoring to improve over time
 
 ## Current Status
+
+> **→ For current state, start here:**
+> 1. **`docs/architecture/current-ice-decision-tree.md`** — T1 authority: how ICE actually works today (live pipeline + decision tree)
+> 2. **`docs/00_sync_state.md`** — live operational state, deployed versions, what is next
+> 3. **`docs/00_docs_index.md`** — reading map for the whole docs folder
+>
+> The status block below is a point-in-time snapshot and may lag the live system.
+
 **Phase 2 — In Progress**
 - Pipeline: ✅ Working (ingest → canonicalise → score → draft → approve → publish)
 - Clients: NDIS Yarns (disability services), Property Pulse (property investment)

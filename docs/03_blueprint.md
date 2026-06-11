@@ -1,5 +1,7 @@
 # ICE — Technical Blueprint
 
+> **⚠ AUTHORITY NOTICE (2026-06-11):** This document is **historical/reference** — authoritative for stack rationale, the schema-family map, frontend architecture, and original design decisions. Its **Pipeline Flow and agents sections describe the digest-era pipeline (`digest_run`/`digest_item`/`post_seed`, planner-hourly) and are SUPERSEDED for live production behaviour** — the live system is slot-demand-driven (`m.materialise_slots` → `m.fill_pending_slots` → ai-worker format advisor). Version numbers and cron listings below reflect the time of writing; live versions are in the EF drift register. For the current production pipeline and decision tree, read the T1 authority doc: **`docs/architecture/current-ice-decision-tree.md`** (established `160678b8`). This file is preserved as design history — do not modernise it.
+
 ## Architecture Overview
 
 ICE is built on a single Supabase backend serving multiple surfaces.
@@ -257,6 +259,8 @@ ERROR: 42703.
 
 ## Pipeline Flow
 
+> **⚠ SUPERSEDED for live production flow** — the flow below is digest-era and is preserved as history. The live chain (slot-demand-driven) is in `docs/architecture/current-ice-decision-tree.md` §2.
+
 ```
 INGEST
 pg_cron (every 6 hours)
@@ -353,6 +357,8 @@ This architecture means:
 ---
 
 ## The Four Agents
+
+> **⚠ Historical agent framing** — agent statuses below are point-in-time. Current decision ownership (including the format advisor as the live format decision-maker) is in `docs/architecture/current-ice-decision-tree.md` §3.
 
 ### Agent 1 — Auto-Approval Agent ✅ COMPLETE (v12)
 **Purpose:** Eliminate manual review of 80-90% of drafts

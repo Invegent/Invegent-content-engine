@@ -1,5 +1,7 @@
 # ICE — Project Phases & Deliverables
 
+> **ℹ AUTHORITY NOTE (2026-06-11):** This document is **phase history and planning context**. Individual item statuses are point-in-time and may lag the live system (several items marked pending/blocked below have since shipped). For live operational status read **`docs/00_sync_state.md`**; for how ICE actually works today read the T1 authority doc **`docs/architecture/current-ice-decision-tree.md`**.
+
 ## Primary Build Principle
 
 ICE is built for PK's personal businesses first, personal brand second, external clients third.
