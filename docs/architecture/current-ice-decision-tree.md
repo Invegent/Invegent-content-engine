@@ -6,7 +6,7 @@
 | **status** | T1 authoritative current-state — the repo's source of truth for "how ICE works now" |
 | **last_verified** | **2026-06-11** |
 | **verified_by** | CCH session 2026-06-11 (read-only verification against production) |
-| **verified_against** | project `mbkmaxqhsohbtwsqolns`; ai-worker `8204a5c7`; heygen-worker `9acb17e8`; live `cron.job` read 2026-06-11 (69 jobs); evidence audits `6fd5f4d`, `b74c8e50`, `e39fa3a9` |
+| **verified_against** | project `mbkmaxqhsohbtwsqolns`; ai-worker `8204a5c7`; heygen-worker `9acb17e8`; live `cron.job` read 2026-06-11 (69 jobs); live `pg_proc` source reads 2026-06-11; DB migration registry `20260422074318`/`20260422084148`/`20260425113754`/`20260426–27*`; evidence audits `6fd5f4d`, `b74c8e50`, `e39fa3a9` |
 | **supersedes** | `docs/03_blueprint.md` pipeline-flow and four-agents sections (digest-era; historical only for live production flow) |
 | **update_owner** | CCH authors/verifies · CCD applies if >80KB (patch-spec pattern, `b77f4f98`) · PK approves |
 
@@ -67,15 +67,21 @@ Live worker set: ingest-worker, content-fetch, ai-worker, image-worker, video-wo
 
 ## 6 — Known exceptions & gaps (pointer — these are tasks, tracked in `00_action_list.md`)
 
-Open carries against this tree: **A2 avatar-override policy** (three branches, held for fresh `avatar_identity` telemetry) · F-ADVISOR-RESPIN-ORPHAN-SLIDES (render against superseded spec — the one proven chain-integrity break) · F-YT-QUEUE-ORPHAN-RECURRENCE · F-FORMAT-MIX-UNWIRED · F-AIW-PREF-COL-HARDCODE · F-EFDRIFT-REGISTER-STALE-YTPUB. Proposed (v3.35): F-PUBLISH-LEDGER-STATUS-MISMATCH (P2 — drafts marked published with failed-only ledger) · F-IG-TEXT-PALETTE-GAP (advisor palette enforcement) · F-PUBLISHER-STATUS-FLIP-INCONSISTENT · F-CFW-COMPLIANCE-PREGEN (efficiency). Legacy observation: `digest-selector-every-30m` still fires but feeds nothing live.
+Open carries against this tree: **A2 avatar-override policy** (three branches, held for fresh `avatar_identity` telemetry) · F-ADVISOR-RESPIN-ORPHAN-SLIDES (render against superseded spec — the one proven chain-integrity break) · F-YT-QUEUE-ORPHAN-RECURRENCE · F-FORMAT-MIX-UNWIRED (see §7 — the table is part of a dormant demand-grid subsystem, not merely an orphan table) · F-AIW-PREF-COL-HARDCODE · F-EFDRIFT-REGISTER-STALE-YTPUB. Proposed (v3.35): F-PUBLISH-LEDGER-STATUS-MISMATCH (P2 — drafts marked published with failed-only ledger) · F-IG-TEXT-PALETTE-GAP (advisor palette enforcement) · F-PUBLISHER-STATUS-FLIP-INCONSISTENT · F-CFW-COMPLIANCE-PREGEN (efficiency). Legacy observation: `digest-selector-every-30m` still fires but feeds nothing live.
 
-## 7 — Intended vs actual
+## 7 — Intended vs actual: the dormant format policy subsystem
 
-`t.platform_format_mix_default` (the evidence-based portfolio mix seeded 2026-04-22) is **wired into nothing**. Actual output is a near-monoculture — FB/IG ≈ all image_quote, YouTube 100% avatar — produced by the FB preference column, the YT hardcode, the IG/LI COALESCE default, and advisor overrides. Do not read aspirational config as live behaviour.
+`t.platform_format_mix_default` (the evidence-cited portfolio mix, seeded 2026-04-22 as D145) is **not merely an unwired table**. It is the data layer of a **dormant demand-grid subsystem** that also includes `m.build_weekly_demand_grid` (envelope calculator: client × platform × format × weekly slot count, with per-client override substitution), `m.match_demand_to_canonicals` (the R5 matching layer), `m.diagnose_match_pool_adequacy`, and `c.client_format_mix_override` (0 rows ever).
+
+**History (proven 2026-06-11, format-policy-layer history audit):** the subsystem shipped as part of the D142–D145/R4–R6 router architecture and **ran live in production on the morning of 2026-04-25** (cutover retrospective: "signal → classifier → demand grid → R5 match → R6 seed"). That same evening the R6 cost explosion was discovered (477 drafts/day vs 32/day capacity, ~93% waste); the slot architecture was proposed, risk-reviewed, and built 26–27 Apr — and **the subsystem lost its live consumer in that emergency rebuild**. The slot proposal's stays/rebuilt/removed inventory never mentioned the demand grid or the mix table; the new `materialise_slots`/`fill_pending_slots` reference neither. **It was never formally rejected or superseded by any decision, review, or D-01.**
+
+**Current status: dormant/orphaned policy subsystem — structurally valid, not live.** Zero current callers, no cron entry; the functions still compile against extant tables. Actual live output is a near-monoculture — FB/IG ≈ all image_quote, YouTube 100% avatar — produced by the FB preference column, the YT hardcode (which inverts the seeded design: avatar was specified at 10% of YouTube output, the hardcode makes it 100%), the IG/LI COALESCE default, and advisor overrides. Do not read aspirational config as live behaviour.
+
+**Decision fork (open, PK's call):** (i) revive as a bounded policy envelope for the live slot/advisor chain; (ii) formally retire the subsystem with a decision record; (iii) keep dormant pending the A2/avatar telemetry evidence (the A2 carry and this fork share a decision surface). Until decided, this doc's live-chain description (§2–§3) stands unchanged: **Demand → Slot → Fill → Advisor → Draft → Render → Publish.**
 
 ## 8 — Evidence linkage
 
-Every claim above traces to: the content decision trace audit (`docs/runtime/sessions/2026-06-11-content-decision-trace-audit.md`, commit `6fd5f4d`), the slot-level decomposition (`docs/runtime/sessions/2026-06-11-slot-level-decision-tree-decomposition.md`, `b74c8e50`), the knowledge-capture & authority-promotion audit (`docs/runtime/sessions/2026-06-11-knowledge-capture-authority-promotion-audit.md`, `e39fa3a9`), production tables named inline, and code at the commits in the header. Evidence older than 30 days is never cited here as *current* state.
+Every claim above traces to: the content decision trace audit (`docs/runtime/sessions/2026-06-11-content-decision-trace-audit.md`, commit `6fd5f4d`), the slot-level decomposition (`docs/runtime/sessions/2026-06-11-slot-level-decision-tree-decomposition.md`, `b74c8e50`), the knowledge-capture & authority-promotion audit (`docs/runtime/sessions/2026-06-11-knowledge-capture-authority-promotion-audit.md`, `e39fa3a9`), production tables named inline, and code at the commits in the header. §7's history claims trace to primary sources: DB migration registry entries `20260422074318` (D145 seed, DDL rationale comments), `20260422084148` (override table + demand-grid router), `20260425113754` (risk-reviewer activation for the slot proposal); briefs `docs/briefs/2026-04-25-r6-cutover-retrospective.md` and `docs/briefs/2026-04-25-slot-driven-architecture-proposal.md`; and live `pg_proc`/`cron.job`/table-count reads of 2026-06-11. Evidence older than 30 days is never cited here as *current* state.
 
 ## 9 — What this document is NOT
 
@@ -96,3 +102,4 @@ This line carries the same standing as the walls confirmation. A change to the l
 | Date | Verified by | Verified against | Change |
 |---|---|---|---|
 | 2026-06-11 | CCH | production reads + audits `6fd5f4d`/`b74c8e50`/`e39fa3a9`; ai-worker `8204a5c7`; heygen-worker `9acb17e8`; cron register | Initial creation (v3.35 cycle; Rules 1, 2, 3, 7, 6a approved) |
+| 2026-06-11 | CCH | format-policy-layer history audit: migration registry `20260422074318`/`20260422084148`/`20260425113754`; briefs `r6-cutover-retrospective` + `slot-driven-architecture-proposal` (both 2026-04-25); live `pg_proc`/`cron.job` reads | §7 amended: dormant demand-grid subsystem documented (ran 2026-04-25, orphaned by slot rebuild, never rejected; decision fork open). Live chain unchanged |
