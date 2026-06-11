@@ -228,14 +228,16 @@ BEGIN
   -- telemetry: body availability + inputs available
   v_body_avail := (v_body IS NOT NULL AND length(btrim(v_body)) > 0);
   v_input_used := ARRAY[]::text[];
+  -- ::text casts force the array||element operator (bare literal resolves to
+  -- array||array -> "malformed array literal").
   IF v_title IS NOT NULL AND length(btrim(v_title)) > 0 THEN
-    v_input_used := v_input_used || 'title';
+    v_input_used := v_input_used || 'title'::text;
   END IF;
   IF v_body_avail THEN
-    v_input_used := v_input_used || 'body';
+    v_input_used := v_input_used || 'body'::text;
   END IF;
   IF v_source_types IS NOT NULL OR v_source_names IS NOT NULL THEN
-    v_input_used := v_input_used || 'source';
+    v_input_used := v_input_used || 'source'::text;
   END IF;
 
   -- 3. Current classifier version
@@ -291,7 +293,8 @@ BEGIN
 
       IF v_all_match THEN
         -- telemetry: representative rule + signal for the winning group
-        SELECT MIN(rule_id), string_agg(rule_type, '+' ORDER BY rule_type)
+        -- (array_agg(...)[1] — uuid has no MIN aggregate)
+        SELECT (array_agg(rule_id ORDER BY rule_id))[1], string_agg(rule_type, '+' ORDER BY rule_type)
         INTO v_m_rule_id, v_m_signal
         FROM t.content_class_rule
         WHERE content_class_id = v_class.content_class_id
