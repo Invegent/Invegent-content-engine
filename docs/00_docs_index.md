@@ -1,7 +1,21 @@
 # ICE — Documentation Index
-## Last updated: 2026-06-08 (Stage 0 OBS foundation applied to the isolated OBS project — 0A observer/read-path still gated; prior: 2026-06-06 added `docs/build-specs/asset-policy-stage0/`)
+## Last updated: 2026-06-11 (T1 authority established: `architecture/current-ice-decision-tree.md`; `03_blueprint.md` pipeline/four-agents content demoted to historical for live production flow; prior: 2026-06-08 Stage 0 OBS foundation applied to the isolated OBS project)
 
 This is the reading map for the `/docs` folder. Every document is listed with its purpose, when to read it, and a freshness/authority marker so any reader (human or AI) knows whether the doc is current truth or historical reference.
+
+---
+
+## AUTHORITY (T1) — current-state truth
+
+T1 docs are the repo's authoritative current state. Hard cap: **≤4 T1 docs repo-wide.** A T1 doc is authoritative because it was verified against production on a dated check (`last_verified` header), not because it carries a 🟢. A T1 doc whose `last_verified` is >30 days old is not authoritative until re-verified.
+
+| File | Covers | Status |
+|---|---|---|
+| `architecture/current-ice-decision-tree.md` | What ICE is · live production pipeline · current decision tree · decision ownership | T1 — `last_verified` 2026-06-11 |
+
+**Promotion rule (mandatory):** every session completion report must include `Authority impact: none` OR `Authority impact: patch queued → {file}`.
+
+T1 docs state truth. Session docs (`runtime/sessions/`) are **evidence, not authority**. `00_action_list.md` is a **task register, not truth-of-record**.
 
 ---
 
@@ -15,7 +29,8 @@ This is the reading map for the `/docs` folder. Every document is listed with it
 | ⚫ **archived** | Superseded by another doc. Lives in `docs/archive/`. Look in archive for the original; use the successor for current state. |
 
 When `living` and `snapshot` disagree, trust `living`.
-When the DB and any doc disagree, trust the DB.
+When a T1 authority doc and any lower-tier doc disagree, trust T1.
+When the DB disagrees with a T1 doc, that is a **staleness trigger** — log it and re-verify the T1 doc; it is not a reason to silently bypass the authority doc. (For non-T1 docs, the DB remains the better witness, but the divergence should still be reported.)
 
 ---
 
@@ -24,6 +39,7 @@ When the DB and any doc disagree, trust the DB.
 | File | Purpose | Freshness | When |
 |---|---|---|---|
 | `00_sync_state.md` | Live system state — deployed versions, pipeline health, what is next | 🟢 living | **Every session, before anything else** |
+| `architecture/current-ice-decision-tree.md` | T1 — how ICE actually works today (pipeline + decision tree + ownership) | T1 authority | Any session touching pipeline behaviour; any fresh start |
 | `00_docs_index.md` | This file — reading map for the docs folder | 🟢 living | Once per project, then when navigating an unfamiliar area |
 
 ---
@@ -45,7 +61,8 @@ When the DB and any doc disagree, trust the DB.
 
 | File | Purpose | Freshness |
 |---|---|---|
-| `03_blueprint.md` | Full technical architecture — stack, schema map, pipeline flow, the four agents | 🟢 living |
+| `architecture/current-ice-decision-tree.md` | **T1 authority — the live production pipeline and decision tree.** Read this, not the blueprint, for how ICE works today | T1 authority |
+| `03_blueprint.md` | Founding technical architecture — stack rationale, schema map, taxonomy design. **⚠ Pipeline-flow and four-agents sections are HISTORICAL (digest-era) and superseded for live production flow by `architecture/current-ice-decision-tree.md`** | 🟡 snapshot (pipeline/agents) · 🔵 reference (stack/schema rationale) |
 | `04_phases.md` | Phase deliverables with status — what is done, what is planned, done criteria | 🟢 living |
 | `06_decisions.md` | Architecture decisions log — D001 through current. Every significant decision recorded with reasoning | 🟢 living |
 | `02_scope.md` | Product scope — the four content types, signal sources, platforms, what ICE does not do | 🔵 reference |
@@ -94,6 +111,7 @@ If you find yourself reading anything in `docs/archive/`, ask: do I need history
 
 | Folder | Purpose |
 |---|---|
+| `architecture/` | **T1 authoritative current-state docs (≤4 cap).** `current-ice-decision-tree.md` = the live production pipeline and decision tree |
 | `archive/` | Superseded snapshots. See above. |
 | `alerts/` | Alert configurations and runbooks |
 | `briefs/` | Claude Code task briefs (numbered + dated) |
@@ -122,7 +140,7 @@ docs/
 ├── 00_docs_index.md                       🟢 this file
 ├── 01_README.md                           🔵
 ├── 02_scope.md                            🔵
-├── 03_blueprint.md                        🟢
+├── 03_blueprint.md                        🟡 pipeline/agents historical — see architecture/ for live flow
 ├── 04_phases.md                           🟢
 ├── 05_risks.md                            🟢
 ├── 06_decisions.md                        🟢
@@ -140,6 +158,8 @@ docs/
 ├── Invegent_Privacy_Policy.md             🟢
 ├── secrets_reference.md                   🟢
 ├── index.html                             (GitHub Pages landing)
+├── architecture/                          ★ T1 AUTHORITY
+│   └── current-ice-decision-tree.md       T1 — live pipeline + decision tree (last_verified 2026-06-11)
 ├── archive/                               ⚫ historical snapshots
 │   ├── 00_audit_report.md                 (was: docs/00_audit_report.md)
 │   ├── 10_consultant_audit_april_2026.md  (was: docs/10_consultant_audit_april_2026.md)
@@ -169,8 +189,9 @@ docs/
 
 **For a regular technical build session:**
 1. `00_sync_state.md` (always)
-2. `06_decisions.md` (last few entries for recent decisions)
-3. Relevant brief in `briefs/` if one exists
+2. `architecture/current-ice-decision-tree.md` (if the session touches pipeline behaviour)
+3. `06_decisions.md` (last few entries for recent decisions)
+4. Relevant brief in `briefs/` if one exists
 
 **For a strategy or planning session:**
 1. `00_sync_state.md`
@@ -180,8 +201,9 @@ docs/
 
 **For a new Claude instance with no memory:**
 1. `00_sync_state.md`
-2. `12_project_handoff.md`
-3. Then the technical or strategy layer as needed
+2. `architecture/current-ice-decision-tree.md` (how ICE actually works today)
+3. `12_project_handoff.md`
+4. Then the technical or strategy layer as needed
 
 **For pre-sales gate review:**
 1. `00_sync_state.md` (current operational state)
@@ -196,5 +218,6 @@ This file should be updated whenever a doc is added, archived, or its freshness 
 - **Living docs:** updated by the doc's owner whenever they change
 - **Reference docs:** review every quarter; mark stale if material changes
 - **Snapshot/archived:** never edited after the move; only re-archive new snapshots when they're created
+- **T1 authority docs:** governed by their own `last_verified` contract (header of each T1 doc). A T1 doc past 30 days is not authoritative until re-verified. T1 changes are driven by the mandatory `Authority impact:` completion-report line.
 
 Stale-marker rule: if a 🟢 living doc hasn't been updated in 30+ days and the system has changed materially, downgrade it to 🟡 snapshot or archive it.
