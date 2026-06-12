@@ -1,6 +1,22 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const VERSION = "insights-worker-v14.1.0";
+const VERSION = "insights-worker-v14.2.0";
+// v14.2.0 (2026-06-12, F-OPTIONC-ENGAGEMENT-EVIDENCE-NULL Fix 1, Stage R verified):
+//   - post_engaged_users and post_impressions REMOVED: both return (#100)
+//     invalid metric under the actually-served Graph version (v19 sunset →
+//     Meta silently served v24.0; version now pinned explicitly).
+//   - Engagement basis (canonical): reactions+comments+shares when the post
+//     fields call succeeds (200); else total reactions from
+//     post_reactions_by_type_total (proven 200 without pages_read_engagement).
+//     Clicks excluded from the basis. engaged_users column now stores this
+//     basis count. engagement_rate = basis/reach from trustworthy 200 inputs
+//     only; failed reads are NULL, never 0 (incl. reach — was coerced via ??0).
+//   - Fields call (R/C/S) retained behind failure-visible recording: it fails
+//     (#10) APP-level (denied App Review) — auto-heals when the Meta-side
+//     carry lands; per-row call record is the live permission signal.
+//   - raw_payload now carries per-call records {source, http_status,
+//     fb_error_code, fb_error_message, value_present} + engagement_basis_source.
+//   - L-StageR-paging: paging blocks deleted post-parse, never logged/persisted.
 // v14.1.0 (2026-05-23, pool observer.insights_ingestion_stalled_since_0506):
 //   Type C selection fix — never-collected-first ordering. The old query
 //   selected published FB posts with limit 50 and NO ordering, so it kept
@@ -21,16 +37,18 @@ const VERSION = "insights-worker-v14.1.0";
 // Also added 'post_engaged_users' as a direct metric.
 // Previously, impressions was failing silently for most posts causing null values.
 
-const GRAPH_VERSION = "v19.0";
+const GRAPH_VERSION = "v24.0"; // pinned to served version (v14.2.0) — v19 sunset; silent auto-upgrade caused the dead-metric failure mode
 const MAX_POSTS_PER_CLIENT = 50;
 const INSIGHTS_PERIOD = "lifetime";
 
-const METRICS_TO_TRY: { key: string; names: string[] }[] = [
-  { key: "reach",         names: ["post_impressions_unique"] },
-  { key: "impressions",   names: ["post_impressions"] },
-  { key: "engaged_users", names: ["post_engaged_users"] },
-  { key: "clicks",        names: ["post_clicks"] },
+type MetricSpec = { key: string; names: string[]; sumObjectValues?: boolean };
+const METRICS_TO_TRY: MetricSpec[] = [
+  { key: "reach",           names: ["post_impressions_unique"] },
+  { key: "clicks",          names: ["post_clicks"] },
+  { key: "reactions_total", names: ["post_reactions_by_type_total"], sumObjectValues: true },
 ];
+// v14.2.0: post_engaged_users + post_impressions removed — (#100) invalid
+// under served Graph version (Stage R 2026-06-12, all four clients/tokens).
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,69 +89,129 @@ type PublishedPost = {
   never_collected?: boolean;
 };
 
+type MetricCallRecord = {
+  source: string;                    // metric name or "post_fields_rcs"
+  http_status: number | null;
+  fb_error_code: number | null;
+  fb_error_message: string | null;   // truncated 140 chars; never raw body
+  value_present: boolean;            // true = trustworthy 200 read (0 is a REAL 0)
+};
+
 async function fetchSingleMetric(
-  postId: string, pageToken: string, metricNames: string[],
-): Promise<{ value: number; metricName: string } | null> {
-  for (const metricName of metricNames) {
+  postId: string, pageToken: string, spec: MetricSpec, calls: MetricCallRecord[],
+): Promise<{ value: number | null; metricName: string | null }> {
+  for (const metricName of spec.names) {
+    const rec: MetricCallRecord = { source: metricName, http_status: null, fb_error_code: null, fb_error_message: null, value_present: false };
     const url =
       `https://graph.facebook.com/${GRAPH_VERSION}/${encodeURIComponent(postId)}/insights` +
       `?metric=${metricName}&period=${INSIGHTS_PERIOD}&access_token=${encodeURIComponent(pageToken)}`;
     try {
       const resp = await fetch(url);
+      rec.http_status = resp.status;
       const text = await resp.text();
-      let parsed: any;
-      try { parsed = JSON.parse(text); } catch { continue; }
-      if (parsed?.error) { console.log(`[insights-worker] ${metricName} error: ${parsed.error.message}`); continue; }
-      const val = parsed?.data?.[0]?.values?.[0]?.value ?? parsed?.data?.[0]?.value;
-      if (val == null) continue;
-      return { value: Number(val) || 0, metricName };
-    } catch { continue; }
+      let parsed: any = null;
+      try { parsed = JSON.parse(text); } catch { parsed = null; }
+      if (parsed && typeof parsed === "object" && "paging" in parsed) delete parsed.paging; // L-StageR-paging: paging URLs echo the token
+      if (!parsed) { rec.fb_error_message = "unparseable_response"; calls.push(rec); continue; }
+      if (parsed.error) {
+        rec.fb_error_code = parsed.error.code ?? null;
+        rec.fb_error_message = String(parsed.error.message ?? "").slice(0, 140);
+        calls.push(rec); continue;
+      }
+      const raw = parsed?.data?.[0]?.values?.[0]?.value ?? parsed?.data?.[0]?.value;
+      if (spec.sumObjectValues && raw != null && typeof raw === "object") {
+        // post_reactions_by_type_total: by-type map; {} = genuine zero on 200
+        const total = Object.values(raw).reduce((a: number, b: any) => a + (Number(b) || 0), 0);
+        rec.value_present = true; calls.push(rec);
+        return { value: total, metricName };
+      }
+      if (raw == null) { rec.fb_error_message = "no_value_in_200"; calls.push(rec); continue; }
+      const n = Number(raw);
+      if (!Number.isFinite(n)) { rec.fb_error_message = "non_numeric_value"; calls.push(rec); continue; }
+      rec.value_present = true; calls.push(rec);
+      return { value: n, metricName };
+    } catch (e: any) {
+      rec.fb_error_message = String(e?.message ?? e).slice(0, 140);
+      calls.push(rec); continue;
+    }
   }
-  return null;
+  return { value: null, metricName: null }; // NULL on failure — never 0
 }
 
 async function fetchPostInsights(platformPostId: string, pageToken: string) {
   const metricResults: Record<string, number | null> = {};
   const metricNamesUsed: Record<string, string> = {};
   const failedMetrics: string[] = [];
+  const calls: MetricCallRecord[] = [];
 
-  for (const { key, names } of METRICS_TO_TRY) {
-    const result = await fetchSingleMetric(platformPostId, pageToken, names);
-    if (result) { metricResults[key] = result.value; metricNamesUsed[key] = result.metricName; }
-    else { metricResults[key] = null; failedMetrics.push(key); }
+  for (const spec of METRICS_TO_TRY) {
+    const result = await fetchSingleMetric(platformPostId, pageToken, spec, calls);
+    metricResults[spec.key] = result.value;
+    if (result.metricName) metricNamesUsed[spec.key] = result.metricName;
+    if (result.value == null) failedMetrics.push(spec.key);
   }
 
-  // Post-level fields: reactions, comments, shares (always attempt)
+  // Post-level fields: reactions, comments, shares. Known-failing (#10) at
+  // APP level (Stage R + new-token retest 2026-06-12 — fails even on tokens
+  // whose debug_token shows pages_read_engagement). Retained behind
+  // failure-visible recording: auto-heals with zero deploys when the
+  // Meta-side carry (§3a) lands; the per-row record is the live signal.
+  const fieldsRec: MetricCallRecord = { source: "post_fields_rcs", http_status: null, fb_error_code: null, fb_error_message: null, value_present: false };
+  let fReactions: number | null = null, fComments: number | null = null, fShares: number | null = null;
   const postUrl =
     `https://graph.facebook.com/${GRAPH_VERSION}/${encodeURIComponent(platformPostId)}` +
     `?fields=reactions.summary(true),comments.limit(0).summary(true),shares` +
     `&access_token=${encodeURIComponent(pageToken)}`;
-  let postParsed: any = {};
   try {
     const postResp = await fetch(postUrl);
+    fieldsRec.http_status = postResp.status;
     const postText = await postResp.text();
-    try { postParsed = JSON.parse(postText); } catch { postParsed = {}; }
-    if (postParsed?.error) { console.log(`[insights-worker] post fields error: ${postParsed.error.message}`); postParsed = {}; }
-  } catch { postParsed = {}; }
+    let postParsed: any = null;
+    try { postParsed = JSON.parse(postText); } catch { postParsed = null; }
+    if (postParsed && typeof postParsed === "object" && "paging" in postParsed) delete postParsed.paging; // L-StageR-paging
+    if (postParsed?.error) {
+      fieldsRec.fb_error_code = postParsed.error.code ?? null;
+      fieldsRec.fb_error_message = String(postParsed.error.message ?? "").slice(0, 140);
+    } else if (postResp.status === 200 && postParsed) {
+      fieldsRec.value_present = true; // genuine read — zeros below are REAL zeros
+      fReactions = Number(postParsed?.reactions?.summary?.total_count ?? 0) || 0;
+      fComments  = Number(postParsed?.comments?.summary?.total_count ?? 0) || 0;
+      fShares    = Number(postParsed?.shares?.count ?? 0) || 0;
+    } else {
+      fieldsRec.fb_error_message = "unparseable_or_non_200";
+    }
+  } catch (e: any) {
+    fieldsRec.fb_error_message = String(e?.message ?? e).slice(0, 140);
+  }
+  calls.push(fieldsRec);
 
-  const reactions = Number(postParsed?.reactions?.summary?.total_count) || 0;
-  const comments  = Number(postParsed?.comments?.summary?.total_count)  || 0;
-  const shares    = Number(postParsed?.shares?.count) || 0;
-  
-  // Use direct engaged_users metric if available, else derive
-  const directEngaged = metricResults["engaged_users"];
-  const derivedEngaged = reactions + comments + shares;
-  const engaged_users = directEngaged ?? (derivedEngaged > 0 ? derivedEngaged : null);
+  // Engagement basis (v14.2.0 canonical): trustworthy 200 inputs ONLY.
+  const reactionsTotal = metricResults["reactions_total"];
+  let engagementBasis: number | null = null;
+  let engagementBasisSource: string | null = null;
+  if (fieldsRec.value_present) {
+    engagementBasis = (fReactions ?? 0) + (fComments ?? 0) + (fShares ?? 0);
+    engagementBasisSource = "fields_rcs";
+  } else if (reactionsTotal != null) {
+    engagementBasis = reactionsTotal;
+    engagementBasisSource = "reactions_by_type_total";
+  }
 
-  const reach = metricResults["reach"] ?? 0;
-  const impressions = metricResults["impressions"] ?? null;
-  const clicks = metricResults["clicks"] ?? null;
-  const engagementRate = reach > 0 && engaged_users != null ? engaged_users / reach : null;
+  const reach = metricResults["reach"];   // NULL-preserving (was `?? 0`)
+  const clicks = metricResults["clicks"];
+  const reactions = fieldsRec.value_present ? fReactions : reactionsTotal; // same quantity, two endpoints
+  const comments  = fieldsRec.value_present ? fComments : null;
+  const shares    = fieldsRec.value_present ? fShares : null;
+  const engaged_users = engagementBasis;  // semantic change: canonical basis count
+  const impressions: number | null = null; // post_impressions removed; column kept for compat
+  const engagement_rate = reach != null && reach > 0 && engagementBasis != null
+    ? engagementBasis / reach : null;
 
   return {
     impressions, reach, engaged_users, reactions, comments, shares, clicks,
-    engagement_rate: engagementRate,
-    metricNamesUsed, failedMetrics,
+    engagement_rate,
+    metricNamesUsed, failedMetrics, calls,
+    engagementBasisSource,
   };
 }
 
@@ -209,6 +287,8 @@ async function processClient(
           raw_payload: {
             metric_names_used: metrics.metricNamesUsed,
             failed_metrics:    metrics.failedMetrics,
+            calls:             metrics.calls,
+            engagement_basis_source: metrics.engagementBasisSource,
             version:           VERSION,
           },
         }, { onConflict: "platform_post_id,insights_period" });
