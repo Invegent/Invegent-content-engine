@@ -9,7 +9,20 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.13.0";
+const VERSION = "ai-worker-v2.14.0";
+// v2.14.0 — T0: Content Studio governed path (manual slots).
+//   slot_fill_synthesis_v1 gains synthesis_mode === 'manual': the seed is the
+//   slot-carried operator brief (input_payload.source_material) mapped onto the
+//   existing rewrite_v1 path — the global canonical pool is NEVER consulted for
+//   operator briefs. The draft then passes the identical Advisor + compliance +
+//   approval chain as automated content.
+//   Advisor preference visibility: when a manual job carries an EXPLICIT
+//   operator format preference (format_preference_explicit === true), that
+//   preference is passed to callFormatAdvisor as the preferred format (same
+//   bias-instruction mechanism as the client platform preference). Preference
+//   only — the Advisor retains format authority. Scheduled/breaking slots are
+//   unchanged (their input_payload.format is a fill-time fallback, not an
+//   operator pick, and is NOT surfaced as a preference).
 // v2.13.0 — F-HEYGEN-NEVER-PRODUCED Option A (A2/A3): avatar YouTube support.
 //   Brief: docs/briefs/f-heygen-never-produced.md. A1 config (add youtube:true to
 //   video_short_avatar.platform_support in t."5.3_content_format") already applied.
@@ -621,6 +634,21 @@ app.post('*', async (c) => {
             title: String(evergreen.title ?? '').trim(),
             body: String(evergreen.body ?? '').trim(),
           };
+        } else if (synthesisMode === 'manual') {
+          // T0 — manual operator brief carried on the slot. The canonical pool
+          // is never consulted for operator briefs; the brief is the seed and
+          // flows through the same rewrite_v1 → Advisor → compliance chain.
+          const briefText = String(sp.source_material ?? '').trim();
+          if (!briefText) throw new Error('manual_fill_no_source_material');
+          effectivePayload = {
+            digest_item: {
+              title: briefText.slice(0, 80),
+              body_text: briefText,
+              url: '',
+            },
+            slot_meta: { slot_id: sp.slot_id, format: sp.format, manual: true, created_by: sp.created_by ?? null },
+          };
+          effectiveJobType = 'rewrite_v1';
         } else {
           const canonicalIds: string[] = Array.isArray(sp.canonical_ids) ? sp.canonical_ids : [];
           if (!canonicalIds.length) throw new Error('slot_fill_no_canonical_ids');
@@ -772,6 +800,16 @@ app.post('*', async (c) => {
 
       const { formats, perfSummary, preferredFormat } = await fetchFormatContext(supabase, job.client_id, platform);
 
+      // T0 — explicit operator format preference (manual slots only). Surfaced
+      // to the Advisor via the existing preference-bias mechanism; the Advisor
+      // retains format authority. Scheduled/breaking slots never reach this
+      // (their input_payload.format is a fill-time fallback, not a preference).
+      const operatorPreferredFormat: string | null =
+        (job.input_payload?.synthesis_mode === 'manual' && job.input_payload?.format_preference_explicit === true)
+          ? (String(job.input_payload?.format ?? '') || null)
+          : null;
+      const effectivePreferredFormat = operatorPreferredFormat ?? preferredFormat;
+
       const rawPayload = effectivePayload;
       let seedTitle = String(rawPayload.title ?? rawPayload.headline ?? '');
       let seedBody  = String(rawPayload.body ?? rawPayload.content ?? rawPayload.excerpt ?? rawPayload.summary ?? '');
@@ -803,7 +841,7 @@ app.post('*', async (c) => {
       let decidedFormat = 'text', advisorReason = '', advisorImageHeadline = '', advisorDurationMs = 0;
       if (anthropicKey && formats.length > 0) {
         try {
-          const advised = await callFormatAdvisor({ anthropicKey, seedTitle, seedBody, clientName, vertical, formats, perfSummary, preferredFormat, platform });
+          const advised = await callFormatAdvisor({ anthropicKey, seedTitle, seedBody, clientName, vertical, formats, perfSummary, preferredFormat: effectivePreferredFormat, platform });
           decidedFormat = advised.formatKey; advisorReason = advised.reason; advisorImageHeadline = advised.imageHeadline; advisorDurationMs = advised.durationMs;
           console.log(`[ai-worker] ${VERSION} — job ${jobId}: advisor chose ${decidedFormat} (${advisorDurationMs}ms) seedTitle=\"${seedTitle.slice(0, 60)}\"`);
         } catch (advisorErr: any) {
