@@ -1,5 +1,6 @@
 import { Hono } from "jsr:@hono/hono";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { classifyFbFormat, decideAssetGuard, IMAGE_HOLD_MINUTES } from "./guard.ts";
 
 const app = new Hono();
 
@@ -9,19 +10,20 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "publisher-v1.8.0";
+const VERSION = "publisher-v1.9.0";
+// v1.9.0 (14 Jun 2026): INTERIM ASSETLESS-RELEASE GUARD (Facebook only).
+//   Live incident: an image_quote draft with image_status='failed' (no image_url)
+//   fell through the old gate (which only caught image_status='pending'),
+//   hasImage=false, and silently published as a TEXT feed post.
+//   Fix: classify each draft by the asset FB can actually publish (classifyFbFormat)
+//   and a single pure decision (decideAssetGuard) that refuses to publish an
+//   asset-required format without its rendered asset. NO silent text fallback.
+//   text→feed; image_quote→photo; carousel→multi-photo; video/animated/unknown→
+//   FB has no publish path → blocked (never text). No DB/schema change. FB only.
+//   Not T2 (no OCR/transcript/visual QA).
 // v1.8.0 (T18, 1 May 2026): APPROVAL GATE added — mirror IG v2.0.0 per-row pattern.
-//   Previously selected approval_status from the draft but never checked it.
-//   F-PUB-005-class fix. Holds non-approved drafts in queue with 60min cooldown;
-//   no post_publish row written. ChatGPT-reviewed in 4 rounds; cleared by
-//   round-4 publisher track verdict + go/no-go pre-deploy query.
-//   Go/no-go finding: all 13 currently-queued FB rows reference 'needs_review'
-//   drafts; deployment will INTENTIONALLY PAUSE FB until T08 + auto-approver
-//   produce fresh approvals (or human review approves them).
 // v1.7.0 — Schedule-aware publishing.
 // v1.6.0 — Organic carousel.
-
-const IMAGE_HOLD_MINUTES = 30;
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -177,6 +179,28 @@ function resolvePageToken(p: PublishProfile) {
   return k ? (Deno.env.get(k) ?? null) : null;
 }
 
+// v1.9.0: terminal, reviewable block — no publish, draft preserved, reason recorded.
+async function assetGuardBlock(supabase: any, q: PublishQueueRow, queueId: string, pageId: string | null, reason: string) {
+  await supabase.schema("m").from("post_publish_queue").update({
+    status: "skipped", last_error: `asset_guard_blocked:${reason}`,
+    locked_at: null, locked_by: null, updated_at: nowIso(),
+  }).eq("queue_id", queueId);
+  await supabase.schema("m").from("post_publish").insert({
+    queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id,
+    client_id: q.client_id, platform: "facebook", destination_id: pageId,
+    status: "failed", platform_post_id: null,
+    request_payload: { asset_guard: true, reason }, response_payload: null,
+    error: `asset_guard_blocked:${reason}`, created_at: nowIso(),
+  });
+}
+// v1.9.0: retryable hold — requeue, no post_publish row (mirrors pending pattern).
+async function assetGuardHold(supabase: any, queueId: string, reason: string, minutes: number) {
+  await supabase.schema("m").from("post_publish_queue").update({
+    status: "queued", scheduled_for: new Date(Date.now() + minutes * 60_000).toISOString(),
+    last_error: reason, locked_at: null, locked_by: null, updated_at: nowIso(),
+  }).eq("queue_id", queueId);
+}
+
 app.options("*", () => new Response(null, { status: 204, headers: corsHeaders }));
 
 app.get("*", async (c) => {
@@ -234,9 +258,6 @@ app.post("*", async (c) => {
     const queueId = q.queue_id;
     try {
       // ── SCHEDULE CHECK ───────────────────────────────────────
-      // If no scheduled_for yet, check c.client_publish_schedule for a slot.
-      // The lock function already ensures items WITH scheduled_for are only
-      // picked up when scheduled_for <= NOW(), so those are ready to publish.
       if (!q.scheduled_for) {
         const { data: nextSlot, error: slotErr } = await supabase.rpc("get_next_publish_slot", {
           p_client_id: q.client_id,
@@ -244,17 +265,13 @@ app.post("*", async (c) => {
         });
         if (!slotErr && nextSlot && new Date(nextSlot as string).getTime() > Date.now()) {
           await supabase.schema("m").from("post_publish_queue").update({
-            status: "queued",
-            scheduled_for: nextSlot as string,
-            locked_at: null,
-            locked_by: null,
-            updated_at: nowIso(),
+            status: "queued", scheduled_for: nextSlot as string,
+            locked_at: null, locked_by: null, updated_at: nowIso(),
           }).eq("queue_id", queueId);
           console.log(`[publisher] scheduled ${queueId} for ${nextSlot} (client=${q.client_id}, platform=${q.platform})`);
           results.push({ queue_id: queueId, status: "scheduled", scheduled_for: nextSlot });
           continue;
         }
-        // null or past slot or error → publish immediately (no schedule configured)
       }
       // ── END SCHEDULE CHECK ──────────────────────────────────
 
@@ -288,21 +305,16 @@ app.post("*", async (c) => {
       }
 
       const { data: draft, error: draftErr } = await supabase.schema("m").from("post_draft")
-        .select("post_draft_id, draft_title, draft_body, approval_status, image_url, image_status, recommended_format, approved_at")
+        .select("post_draft_id, draft_title, draft_body, approval_status, image_url, image_status, video_url, video_status, recommended_format, approved_at")
         .eq("post_draft_id", q.post_draft_id).maybeSingle();
       if (draftErr) throw new Error(`load_draft_failed: ${draftErr.message}`);
       if (!draft) throw new Error("post_draft_not_found");
 
-      // v1.8.0 (T18, 1 May 2026): APPROVAL GATE (mirror IG v2.0.0 per-row pattern).
-      // FB publisher previously had no gate — F-PUB-005-class fix.
-      // Holds non-approved drafts in queue with cooldown; no post_publish row created.
+      // v1.8.0: APPROVAL GATE — hold non-approved drafts (no post_publish row).
       if (draft.approval_status !== 'approved') {
         await supabase.schema("m").from("post_publish_queue").update({
-          status: "queued",
-          scheduled_for: new Date(Date.now() + 60 * 60_000).toISOString(),
-          last_error: `not_approved:${draft.approval_status}`,
-          locked_at: null, locked_by: null,
-          updated_at: nowIso(),
+          status: "queued", scheduled_for: new Date(Date.now() + 60 * 60_000).toISOString(),
+          last_error: `not_approved:${draft.approval_status}`, locked_at: null, locked_by: null, updated_at: nowIso(),
         }).eq("queue_id", queueId);
         results.push({ queue_id: queueId, status: "held", reason: "not_approved", draft_status: draft.approval_status });
         continue;
@@ -313,98 +325,46 @@ app.post("*", async (c) => {
       if (!title && !body) throw new Error("empty_draft");
       const msg = `${profile.mode === "staging" ? (profile.test_prefix ?? "[TEST] ") : ""}${title}${title && body ? "\n\n" : ""}${body}`.trim();
 
-      // ── CAROUSEL PATH ──────────────────────────────────────────────
-      if (draft.recommended_format === "carousel") {
-        if (draft.image_status !== "generated") {
-          const approvedAt = draft.approved_at ? new Date(draft.approved_at).getTime() : null;
-          const minutesWaiting = approvedAt ? (Date.now() - approvedAt) / 60_000 : 0;
-          const requeueFor = new Date(Date.now() + 15 * 60_000).toISOString();
-          await supabase.schema("m").from("post_publish_queue").update({
-            status: "queued", scheduled_for: requeueFor,
-            last_error: `carousel_waiting_for_image_worker:${Math.round(minutesWaiting)}m_elapsed:status=${draft.image_status}`,
-            locked_at: null, locked_by: null, updated_at: nowIso(),
-          }).eq("queue_id", queueId);
-          results.push({ queue_id: queueId, status: "held", reason: "carousel_image_not_ready", image_status: draft.image_status }); continue;
-        }
+      // ══ INTERIM ASSETLESS-RELEASE GUARD (v1.9.0) ════════════════════════
+      const assetClass = classifyFbFormat(draft.recommended_format);
 
+      // Carousel needs its generated slide count before deciding.
+      let slides: Array<{ slide_index: number; image_url: string }> = [];
+      let slideCount: number | undefined = undefined;
+      if (assetClass === "carousel" && draft.image_status === "generated") {
         const { data: slidesRaw } = await supabase.rpc("exec_sql", {
           query: `SELECT slide_index, image_url FROM m.post_carousel_slide
                   WHERE post_draft_id = '${q.post_draft_id}' AND image_status = 'generated'
                   ORDER BY slide_index ASC`
         });
-        const slides: Array<{ slide_index: number; image_url: string }> = slidesRaw ?? [];
-
-        if (slides.length < 2) {
-          console.warn(`[publisher] carousel ${q.post_draft_id} has only ${slides.length} generated slides — publishing as single image`);
-        } else {
-          if (dryRun) {
-            const requeueFor = new Date(Date.now() + dryRunHoldMin * 60_000).toISOString();
-            await supabase.schema("m").from("post_publish_queue").update({ status: "queued", scheduled_for: requeueFor, last_error: "dry_run_ok", locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
-            results.push({ queue_id: queueId, status: "dry_run_ok", publish_method: "carousel", slide_count: slides.length }); continue;
-          }
-
-          const maxPerDay = Number(profile.max_per_day ?? 0);
-          if (maxPerDay > 0) {
-            const { count: todayCount } = await supabase.schema("m").from("post_publish").select("post_publish_id", { count: "exact", head: true }).eq("destination_id", pageId).eq("status", "published").gte("created_at", startOfUtcDayIso());
-            if ((todayCount ?? 0) >= maxPerDay) {
-              const rf = startOfNextUtcDayIso();
-              await supabase.schema("m").from("post_publish_queue").update({ status: "queued", scheduled_for: rf, last_error: `throttled:max_per_day:${maxPerDay}`, locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
-              results.push({ queue_id: queueId, status: "throttled", reason: "max_per_day" }); continue;
-            }
-          }
-          const minGap = Number(profile.min_gap_minutes ?? 0);
-          if (minGap > 0) {
-            const { data: lastPub } = await supabase.schema("m").from("post_publish").select("created_at").eq("destination_id", pageId).eq("status", "published").order("created_at", { ascending: false }).limit(1);
-            const lastAt = lastPub?.[0]?.created_at ? new Date(lastPub[0].created_at).getTime() : null;
-            if (lastAt && Date.now() - lastAt < minGap * 60_000) {
-              const rf = new Date(lastAt + minGap * 60_000).toISOString();
-              await supabase.schema("m").from("post_publish_queue").update({ status: "queued", scheduled_for: rf, last_error: `throttled:min_gap:${minGap}m`, locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
-              results.push({ queue_id: queueId, status: "throttled", reason: "min_gap" }); continue;
-            }
-          }
-
-          console.log(`[publisher] carousel ${q.post_draft_id}: uploading ${slides.length} slides`);
-          const photoIds: string[] = [];
-          for (const slide of slides) {
-            const photoId = await fbUploadSlideUnpublished({ graphVersion, pageId, pageToken, imageUrl: slide.image_url });
-            photoIds.push(photoId);
-            console.log(`[publisher] slide ${slide.slide_index} uploaded: ${photoId}`);
-          }
-
-          const fbResp = await fbPostCarousel({ graphVersion, pageId, pageToken, message: msg, photoIds });
-          const platformPostId = fbResp?.id ?? null;
-
-          await supabase.schema("m").from("post_publish").insert({
-            queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id,
-            client_id: q.client_id, platform: "facebook", destination_id: pageId,
-            status: "published", platform_post_id: platformPostId, published_at: nowIso(),
-            request_payload: { endpoint: `/${pageId}/feed`, graph_version: graphVersion, publish_method: "organic_carousel", slide_count: slides.length, token_source: tokenSource, dry_run: false },
-            response_payload: fbResp, error: null, created_at: nowIso(),
-          });
-          await supabase.schema("m").from("post_publish_queue").update({ status: "published", last_error: null, locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
-          await supabase.schema("m").from("post_draft").update({ approval_status: "published", updated_at: nowIso() }).eq("post_draft_id", q.post_draft_id);
-          results.push({ queue_id: queueId, status: "published", publish_method: "organic_carousel", slide_count: slides.length, platform_post_id: platformPostId });
-          continue;
-        }
+        slides = (slidesRaw ?? []).filter((s: any) => s && s.image_url);
+        slideCount = slides.length;
       }
-      // ── END CAROUSEL PATH ──────────────────────────────────────────────
 
-      // ── IMAGE HOLD GATE (image_quote) ─────────────────────────────────
-      const wantsImage = !!(draft.recommended_format && draft.recommended_format !== "text");
-      const imageReady = !!(draft.image_url && draft.image_status === "generated");
-      if (wantsImage && draft.image_status === "pending" && !imageReady) {
-        const approvedAt = draft.approved_at ? new Date(draft.approved_at).getTime() : null;
-        const minutesWaiting = approvedAt ? (Date.now() - approvedAt) / 60_000 : IMAGE_HOLD_MINUTES;
-        if (minutesWaiting < IMAGE_HOLD_MINUTES) {
-          const requeueFor = new Date(Date.now() + 15 * 60_000).toISOString();
-          await supabase.schema("m").from("post_publish_queue").update({ status: "queued", scheduled_for: requeueFor, last_error: `image_pending:${Math.round(minutesWaiting)}m`, locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
-          results.push({ queue_id: queueId, status: "held", reason: "image_pending", minutes_waited: Math.round(minutesWaiting) }); continue;
-        }
-        console.warn(`[publisher] image hold timeout ${q.post_draft_id} — publishing as text`);
+      const approvedAt = draft.approved_at ? new Date(draft.approved_at).getTime() : null;
+      const minutesWaiting = approvedAt ? (Date.now() - approvedAt) / 60_000 : 0;
+      const decision = decideAssetGuard({
+        assetClass,
+        image_status: draft.image_status, image_url: draft.image_url,
+        video_status: draft.video_status, video_url: draft.video_url,
+        minutesWaiting, holdMinutes: IMAGE_HOLD_MINUTES, slideCount,
+      });
+
+      if (decision.kind === "hold") {
+        await assetGuardHold(supabase, queueId, decision.reason, decision.minutes);
+        results.push({ queue_id: queueId, status: "held", reason: decision.reason, asset_class: assetClass });
+        continue;
       }
-      // ────────────────────────────────────────────────────
+      if (decision.kind === "block") {
+        await assetGuardBlock(supabase, q, queueId, pageId, decision.reason);
+        results.push({ queue_id: queueId, status: "blocked", reason: decision.reason, asset_class: assetClass });
+        continue;
+      }
+      // decision.kind === "publish" → method text | image | carousel
+      const publishMethod = decision.method;
+      // ══ END ASSETLESS-RELEASE GUARD ═════════════════════════════════════
 
-      // Throttle
+      // Throttle (applies to all publishable methods)
       const maxPerDay = Number(profile.max_per_day ?? 0);
       if (maxPerDay > 0) {
         const { count: todayCount } = await supabase.schema("m").from("post_publish").select("post_publish_id", { count: "exact", head: true }).eq("destination_id", pageId).eq("status", "published").gte("created_at", startOfUtcDayIso());
@@ -428,25 +388,39 @@ app.post("*", async (c) => {
       if (dryRun) {
         const rf = new Date(Date.now() + dryRunHoldMin * 60_000).toISOString();
         await supabase.schema("m").from("post_publish_queue").update({ status: "queued", scheduled_for: rf, last_error: "dry_run_ok", locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
-        results.push({ queue_id: queueId, status: "dry_run_ok" }); continue;
+        results.push({ queue_id: queueId, status: "dry_run_ok", publish_method: publishMethod, asset_class: assetClass }); continue;
       }
 
-      // Single image or text publish
-      const hasImage = !!(draft.image_url && draft.image_status === "generated");
-      let fbResp: any; let publishMethod: string;
-      if (hasImage) {
+      // ── PUBLISH ───────────────────────────────────────────────────────
+      let fbResp: any; let endpoint: string; let slideCountOut: number | null = null;
+      if (publishMethod === "carousel") {
+        console.log(`[publisher] carousel ${q.post_draft_id}: uploading ${slides.length} slides`);
+        const photoIds: string[] = [];
+        for (const slide of slides) {
+          const photoId = await fbUploadSlideUnpublished({ graphVersion, pageId, pageToken, imageUrl: slide.image_url });
+          photoIds.push(photoId);
+        }
+        fbResp = await fbPostCarousel({ graphVersion, pageId, pageToken, message: msg, photoIds });
+        endpoint = `/${pageId}/feed`; slideCountOut = slides.length;
+      } else if (publishMethod === "image") {
         fbResp = await fbPostWithPhoto({ graphVersion, pageId, pageToken, message: msg, imageUrl: draft.image_url! });
-        publishMethod = "photo";
+        endpoint = `/${pageId}/photos`;
       } else {
         fbResp = await fbPostToFeed({ graphVersion, pageId, pageToken, message: msg });
-        publishMethod = "feed";
+        endpoint = `/${pageId}/feed`;
       }
       const platformPostId = fbResp?.id ?? null;
 
-      await supabase.schema("m").from("post_publish").insert({ queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id, client_id: q.client_id, platform: "facebook", destination_id: pageId, status: "published", platform_post_id: platformPostId, published_at: nowIso(), request_payload: { endpoint: hasImage ? `/${pageId}/photos` : `/${pageId}/feed`, graph_version: graphVersion, publish_method: publishMethod, has_image: hasImage, token_source: tokenSource }, response_payload: fbResp, error: null, created_at: nowIso() });
+      await supabase.schema("m").from("post_publish").insert({
+        queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id,
+        client_id: q.client_id, platform: "facebook", destination_id: pageId,
+        status: "published", platform_post_id: platformPostId, published_at: nowIso(),
+        request_payload: { endpoint, graph_version: graphVersion, publish_method: publishMethod, has_image: publishMethod !== "text", asset_class: assetClass, slide_count: slideCountOut, token_source: tokenSource },
+        response_payload: fbResp, error: null, created_at: nowIso(),
+      });
       await supabase.schema("m").from("post_publish_queue").update({ status: "published", last_error: null, locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
       await supabase.schema("m").from("post_draft").update({ approval_status: "published", updated_at: nowIso() }).eq("post_draft_id", q.post_draft_id);
-      results.push({ queue_id: queueId, status: "published", publish_method: publishMethod, has_image: hasImage, platform_post_id: platformPostId });
+      results.push({ queue_id: queueId, status: "published", publish_method: publishMethod, platform_post_id: platformPostId, slide_count: slideCountOut });
 
     } catch (e: any) {
       const errMsg = (e?.message ?? String(e)).slice(0, 4000);
@@ -460,4 +434,5 @@ app.post("*", async (c) => {
   return jsonResponse({ ok: true, version: VERSION, worker_id: workerId, locked: rows.length, processed: results.length, results });
 });
 
-Deno.serve(app.fetch);
+// Only start the server when run as the entrypoint (not when imported by tests).
+if (import.meta.main) Deno.serve(app.fetch);
