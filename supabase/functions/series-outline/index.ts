@@ -1,7 +1,34 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// series-outline v1.2.0
-const VERSION = "series-outline-v1.2.0";
+// series-outline v1.3.0
+// v1.3.0 (Stage 3.5a — platform-aware outline): the outline generator is now
+//   capability-aware. Previously it received only series.platform (singular) and
+//   hard-clamped recommended_format to text|image_quote|carousel in BOTH the prompt
+//   and the validation whitelist — so a YouTube-targeted series was STRUCTURALLY
+//   incapable of emitting a video format, and every YouTube child was rejected
+//   downstream by the capability gate (zero YouTube output). v1.3.0:
+//   (a) reads series.platforms[] (falls back to [series.platform]);
+//   (b) calls public.get_studio_capabilities(client_id) — the SAME resolver Single
+//       Post / Studio uses — to learn per-platform/per-format state;
+//   (c) computes the VALID format set = formats whose state ∈ {enabled,
+//       enabled_unproven} on EVERY selected eligible platform (intersection, so a
+//       single episode format works on all targets), and whether any selected
+//       platform is video_only (YouTube);
+//   (d) feeds that valid set into the prompt AND uses it as the validation
+//       whitelist (resolver-driven, NOT a hardcoded list) — so video formats can
+//       now be emitted for video-inclusive series, and text is excluded where a
+//       platform (e.g. Instagram) does not support it;
+//   (e) if NO format is valid across the selected set, FAILS LOUD
+//       (no_valid_format_for_platform_set, HTTP 422) — never silently picks text.
+//   DOWNSTREAM GATES UNCHANGED: fan_out_episode, create_manual_slot_internal, the
+//   per-platform capability rejection, Advisor, compliance, render, publisher are
+//   all untouched. The whitelist + the downstream gate remain hard backstops, so a
+//   bad model choice is still rejected, never published invalid.
+//   NOTE: branch creation via the GitHub bridge is unavailable, so this lands on
+//   main UNDEPLOYED (dev direct-push convention). Production behaviour is unchanged
+//   until a separate CLI deploy, which is gated on D-01 + PK approval.
+//   v1.2.0 (prior): static text|image_quote|carousel clamp, singular platform.
+const VERSION = "series-outline-v1.3.0";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type, apikey, authorization, x-series-key", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" };
 function jsonResponse(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
@@ -9,10 +36,67 @@ function nowIso() { return new Date().toISOString(); }
 function getServiceClient() { const url = Deno.env.get("SUPABASE_URL"); const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"); if (!url || !key) throw new Error("Missing credentials"); return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } }); }
 function safeParseJson<T>(raw: string): { ok: true; value: T } | { ok: false; error: string } { try { return { ok: true, value: JSON.parse(raw) as T }; } catch (e: any) { return { ok: false, error: e?.message ?? "invalid_json" }; } }
 
-async function generateOutline(opts: { apiKey: string; model: string; title: string; topic: string; goal: string | null; audienceNotes: string | null; toneNotes: string | null; episodeCount: number; platform: string; brandIdentityPrompt: string | null }): Promise<{ series_summary: string; episodes: any[] }> {
-  const { apiKey, model, title, topic, goal, audienceNotes, toneNotes, episodeCount, platform, brandIdentityPrompt } = opts;
-  const systemPrompt = [brandIdentityPrompt ?? "", `You are an expert content strategist planning a ${episodeCount}-episode social media series for ${platform}.\nReturn ONLY valid JSON \u2014 no markdown, no preamble.`].filter(Boolean).join("\n\n");
-  const userPrompt = `Plan a ${episodeCount}-episode content series.\n\nSeries title: ${title}\nTopic: ${topic}\n${goal ? `Goal: ${goal}` : ""}\n${audienceNotes ? `Target audience: ${audienceNotes}` : ""}\n${toneNotes ? `Tone guidance: ${toneNotes}` : ""}\nPlatform: ${platform}\n\nReturn this exact JSON structure:\n{\n  "series_summary": "1-2 sentence overview",\n  "episodes": [{\n    "position": 1,\n    "episode_title": "max 10 words",\n    "episode_angle": "key message (1-2 sentences)",\n    "episode_hook": "opening line (1 sentence)",\n    "cta_type": "question",\n    "recommended_format": "image_quote",\n    "image_headline": "10-15 word pull quote"\n  }]\n}\n\ncta_type: question|link|save|share|comment\nrecommended_format: text|image_quote|carousel\nReturn exactly ${episodeCount} episodes.`;
+// Stage 3.5a: cta vocabulary is unchanged from v1.2.0.
+const CTA_TYPES = ["question", "link", "save", "share", "comment"];
+
+// Stage 3.5a: resolve the set of episode formats that are valid across the
+// selected platform set, using public.get_studio_capabilities(client_id).
+// A format is valid only if its state is 'enabled' or 'enabled_unproven' on
+// EVERY selected, eligible platform (intersection). This guarantees the single
+// per-episode recommended_format never produces an impossible platform/format
+// combination downstream.
+type CapFormat = { format: string; supported: boolean; state: string; reason: string | null; proven: boolean };
+type CapPlatform = { platform: string; eligible: boolean; video_only: boolean; formats: CapFormat[] };
+const VALID_STATES = new Set(["enabled", "enabled_unproven"]);
+
+function resolveValidFormats(capabilities: any, selectedPlatforms: string[]): {
+  validFormats: string[];
+  videoOnlyInSet: boolean;
+  eligibleSelected: string[];
+  ineligibleSelected: string[];
+  perPlatformValid: Record<string, string[]>;
+} {
+  const platforms: CapPlatform[] = Array.isArray(capabilities?.platforms) ? capabilities.platforms : [];
+  const byPlatform = new Map<string, CapPlatform>();
+  for (const p of platforms) byPlatform.set(p.platform, p);
+
+  const eligibleSelected: string[] = [];
+  const ineligibleSelected: string[] = [];
+  const perPlatformValid: Record<string, string[]> = {};
+  let videoOnlyInSet = false;
+
+  for (const sel of selectedPlatforms) {
+    const cap = byPlatform.get(sel);
+    if (!cap || cap.eligible !== true) { ineligibleSelected.push(sel); continue; }
+    eligibleSelected.push(sel);
+    if (cap.video_only === true) videoOnlyInSet = true;
+    const valid = (cap.formats ?? [])
+      .filter((f) => f.supported === true && VALID_STATES.has(f.state))
+      .map((f) => f.format);
+    perPlatformValid[sel] = valid;
+  }
+
+  // Intersection across all eligible selected platforms: a format must be valid
+  // on every one of them so the single episode format is publishable everywhere
+  // it is fanned out to.
+  let validFormats: string[] = [];
+  const eligibleLists = eligibleSelected.map((p) => new Set(perPlatformValid[p] ?? []));
+  if (eligibleLists.length > 0) {
+    const [first, ...rest] = eligibleLists;
+    validFormats = [...first].filter((fmt) => rest.every((s) => s.has(fmt)));
+  }
+  validFormats.sort();
+  return { validFormats, videoOnlyInSet, eligibleSelected, ineligibleSelected, perPlatformValid };
+}
+
+async function generateOutline(opts: { apiKey: string; model: string; title: string; topic: string; goal: string | null; audienceNotes: string | null; toneNotes: string | null; episodeCount: number; platformsLabel: string; validFormats: string[]; videoOnlyInSet: boolean; brandIdentityPrompt: string | null }): Promise<{ series_summary: string; episodes: any[] }> {
+  const { apiKey, model, title, topic, goal, audienceNotes, toneNotes, episodeCount, platformsLabel, validFormats, videoOnlyInSet, brandIdentityPrompt } = opts;
+  const formatList = validFormats.join("|");
+  const videoNote = videoOnlyInSet
+    ? `\nIMPORTANT: this series targets a video-only platform (e.g. YouTube). Every episode's recommended_format MUST be one of the video formats in the allowed list so it can be published to all selected platforms.`
+    : "";
+  const systemPrompt = [brandIdentityPrompt ?? "", `You are an expert content strategist planning a ${episodeCount}-episode social media series for ${platformsLabel}.\nReturn ONLY valid JSON \u2014 no markdown, no preamble.`].filter(Boolean).join("\n\n");
+  const userPrompt = `Plan a ${episodeCount}-episode content series.\n\nSeries title: ${title}\nTopic: ${topic}\n${goal ? `Goal: ${goal}` : ""}\n${audienceNotes ? `Target audience: ${audienceNotes}` : ""}\n${toneNotes ? `Tone guidance: ${toneNotes}` : ""}\nTarget platforms: ${platformsLabel}${videoNote}\n\nReturn this exact JSON structure:\n{\n  "series_summary": "1-2 sentence overview",\n  "episodes": [{\n    "position": 1,\n    "episode_title": "max 10 words",\n    "episode_angle": "key message (1-2 sentences)",\n    "episode_hook": "opening line (1 sentence)",\n    "cta_type": "question",\n    "recommended_format": "${validFormats[0]}",\n    "image_headline": "10-15 word pull quote"\n  }]\n}\n\ncta_type: question|link|save|share|comment\nrecommended_format: ${formatList}\n(Choose recommended_format ONLY from that list — these are the formats valid for ALL selected platforms.)\nReturn exactly ${episodeCount} episodes.`;
   const resp = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model, max_tokens: 4000, temperature: 0.75, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] }) });
   const text = await resp.text();
   if (!resp.ok) throw new Error(`anthropic_http_${resp.status}: ${text.slice(0, 800)}`);
@@ -41,15 +125,50 @@ Deno.serve(async (req: Request) => {
     if (!seriesData) throw new Error("series_not_found");
     const series = seriesData as any;
     if (!['draft', 'outline_pending'].includes(series.status)) return jsonResponse({ ok: false, error: "series_already_outlined", status: series.status });
+
+    // Stage 3.5a: selected platforms = series.platforms[] if present, else the singular series.platform.
+    const selectedPlatforms: string[] = Array.isArray(series.platforms) && series.platforms.length > 0
+      ? series.platforms
+      : (series.platform ? [series.platform] : []);
+    if (selectedPlatforms.length === 0) return jsonResponse({ ok: false, error: "no_target_platforms" }, 400);
+
+    // Stage 3.5a: resolve capability-valid formats BEFORE moving the series to outline_pending,
+    // so a capability failure leaves the series in its original status.
+    const { data: capData, error: capErr } = await supabase.rpc("get_studio_capabilities", { p_client_id: series.client_id });
+    if (capErr) throw new Error(`get_studio_capabilities_failed: ${capErr.message}`);
+    const cap = resolveValidFormats(capData, selectedPlatforms);
+
+    // Fail loud if no format is valid across the selected platform set — never silently pick text.
+    if (cap.validFormats.length === 0) {
+      return jsonResponse({
+        ok: false,
+        error: "no_valid_format_for_platform_set",
+        version: VERSION,
+        detail: "no buildable+supported format is valid for every selected platform; adjust the platform selection or client eligibility",
+        selected_platforms: selectedPlatforms,
+        eligible_selected: cap.eligibleSelected,
+        ineligible_selected: cap.ineligibleSelected,
+        per_platform_valid: cap.perPlatformValid,
+      }, 422);
+    }
+
     await supabase.rpc("update_series_status", { p_series_id: seriesId, p_status: "outline_pending" });
     const { data: brandData } = await supabase.rpc("get_client_brand_for_series", { p_client_id: series.client_id });
     const brand = brandData as any; const model = brand?.model ?? "claude-sonnet-4-6";
-    const outline = await generateOutline({ apiKey: anthropicKey, model, title: series.title, topic: series.topic, goal: series.goal, audienceNotes: series.audience_notes, toneNotes: series.tone_notes, episodeCount: series.episode_count, platform: series.platform, brandIdentityPrompt: brand?.brand_identity_prompt ?? null });
+    const platformsLabel = cap.eligibleSelected.join(", ") || selectedPlatforms.join(", ");
+    const outline = await generateOutline({ apiKey: anthropicKey, model, title: series.title, topic: series.topic, goal: series.goal, audienceNotes: series.audience_notes, toneNotes: series.tone_notes, episodeCount: series.episode_count, platformsLabel, validFormats: cap.validFormats, videoOnlyInSet: cap.videoOnlyInSet, brandIdentityPrompt: brand?.brand_identity_prompt ?? null });
     const episodes = outline.episodes.slice(0, series.episode_count);
-    const episodeRows = episodes.map((ep: any, i: number) => ({ client_id: series.client_id, position: Number(ep.position ?? (i + 1)), episode_title: String(ep.episode_title ?? "").trim(), episode_angle: String(ep.episode_angle ?? "").trim(), episode_hook: String(ep.episode_hook ?? "").trim(), cta_type: ["question","link","save","share","comment"].includes(ep.cta_type) ? ep.cta_type : "question", recommended_format: ["text","image_quote","carousel"].includes(ep.recommended_format) ? ep.recommended_format : "image_quote", image_headline: String(ep.image_headline ?? ep.episode_title ?? "").trim() }));
+
+    // Stage 3.5a: validation whitelist is now the resolver-driven valid set (NOT a hardcoded
+    // text|image_quote|carousel). A model choice outside the valid set is clamped to the first
+    // valid format (deterministic, capability-safe) — never to a hardcoded static format.
+    const validSet = new Set(cap.validFormats);
+    const fallbackFormat = cap.validFormats[0];
+    const episodeRows = episodes.map((ep: any, i: number) => ({ client_id: series.client_id, position: Number(ep.position ?? (i + 1)), episode_title: String(ep.episode_title ?? "").trim(), episode_angle: String(ep.episode_angle ?? "").trim(), episode_hook: String(ep.episode_hook ?? "").trim(), cta_type: CTA_TYPES.includes(ep.cta_type) ? ep.cta_type : "question", recommended_format: validSet.has(ep.recommended_format) ? ep.recommended_format : fallbackFormat, image_headline: String(ep.image_headline ?? ep.episode_title ?? "").trim() }));
+
     const { error: saveErr } = await supabase.rpc("save_series_outline", { p_series_id: seriesId, p_series_summary: outline.series_summary ?? null, p_outline_json: episodes, p_episode_rows: episodeRows });
     if (saveErr) throw new Error(`save_series_outline_failed: ${saveErr.message}`);
-    return jsonResponse({ ok: true, version: VERSION, series_id: seriesId, series_summary: outline.series_summary, episode_count: episodes.length, episodes: episodeRows });
+    return jsonResponse({ ok: true, version: VERSION, series_id: seriesId, series_summary: outline.series_summary, episode_count: episodes.length, valid_formats: cap.validFormats, video_only_in_set: cap.videoOnlyInSet, episodes: episodeRows });
   } catch (e: any) {
     const msg = e?.message ?? String(e);
     await supabase.rpc("update_series_status", { p_series_id: seriesId, p_status: "draft" });
