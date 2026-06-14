@@ -1,6 +1,15 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// series-outline v1.3.0
+// series-outline v1.4.0
+// v1.4.0 (persona capture — additive over v1.3.0): the outline prompt now also
+//   asks the model for per-episode persona fields (persona_label /
+//   avatar_preference / persona_notes), and episodeRows maps them through
+//   (sanitised via cleanStr -> trimmed string or null) so save_series_outline
+//   persists them into the Stage-1 episode persona columns (the RPC already
+//   accepts these keys — verified). PERSONA IS CAPTURED AS PLANNING INTENT ONLY:
+//   NO HeyGen / avatar / brand_avatar / A2 / Branch-A change, NO Stage 4 work, and
+//   the v1.3.0 platform-aware capability resolver / whitelist / fail-loud logic is
+//   UNCHANGED. verify_jwt=false preserved.
 // v1.3.0 (Stage 3.5a — platform-aware outline): the outline generator is now
 //   capability-aware. Previously it received only series.platform (singular) and
 //   hard-clamped recommended_format to text|image_quote|carousel in BOTH the prompt
@@ -28,13 +37,15 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 //   main UNDEPLOYED (dev direct-push convention). Production behaviour is unchanged
 //   until a separate CLI deploy, which is gated on D-01 + PK approval.
 //   v1.2.0 (prior): static text|image_quote|carousel clamp, singular platform.
-const VERSION = "series-outline-v1.3.0";
+const VERSION = "series-outline-v1.4.0";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type, apikey, authorization, x-series-key", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" };
 function jsonResponse(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 function nowIso() { return new Date().toISOString(); }
 function getServiceClient() { const url = Deno.env.get("SUPABASE_URL"); const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"); if (!url || !key) throw new Error("Missing credentials"); return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } }); }
 function safeParseJson<T>(raw: string): { ok: true; value: T } | { ok: false; error: string } { try { return { ok: true, value: JSON.parse(raw) as T }; } catch (e: any) { return { ok: false, error: e?.message ?? "invalid_json" }; } }
+// v1.4.0: sanitise a model-supplied persona string field -> trimmed string or null.
+function cleanStr(v: unknown): string | null { const s = (v ?? "").toString().trim(); return s.length > 0 ? s : null; }
 
 // Stage 3.5a: cta vocabulary is unchanged from v1.2.0.
 const CTA_TYPES = ["question", "link", "save", "share", "comment"];
@@ -96,7 +107,7 @@ async function generateOutline(opts: { apiKey: string; model: string; title: str
     ? `\nIMPORTANT: this series targets a video-only platform (e.g. YouTube). Every episode's recommended_format MUST be one of the video formats in the allowed list so it can be published to all selected platforms.`
     : "";
   const systemPrompt = [brandIdentityPrompt ?? "", `You are an expert content strategist planning a ${episodeCount}-episode social media series for ${platformsLabel}.\nReturn ONLY valid JSON \u2014 no markdown, no preamble.`].filter(Boolean).join("\n\n");
-  const userPrompt = `Plan a ${episodeCount}-episode content series.\n\nSeries title: ${title}\nTopic: ${topic}\n${goal ? `Goal: ${goal}` : ""}\n${audienceNotes ? `Target audience: ${audienceNotes}` : ""}\n${toneNotes ? `Tone guidance: ${toneNotes}` : ""}\nTarget platforms: ${platformsLabel}${videoNote}\n\nReturn this exact JSON structure:\n{\n  "series_summary": "1-2 sentence overview",\n  "episodes": [{\n    "position": 1,\n    "episode_title": "max 10 words",\n    "episode_angle": "key message (1-2 sentences)",\n    "episode_hook": "opening line (1 sentence)",\n    "cta_type": "question",\n    "recommended_format": "${validFormats[0]}",\n    "image_headline": "10-15 word pull quote"\n  }]\n}\n\ncta_type: question|link|save|share|comment\nrecommended_format: ${formatList}\n(Choose recommended_format ONLY from that list — these are the formats valid for ALL selected platforms.)\nReturn exactly ${episodeCount} episodes.`;
+  const userPrompt = `Plan a ${episodeCount}-episode content series.\n\nSeries title: ${title}\nTopic: ${topic}\n${goal ? `Goal: ${goal}` : ""}\n${audienceNotes ? `Target audience: ${audienceNotes}` : ""}\n${toneNotes ? `Tone guidance: ${toneNotes}` : ""}\nTarget platforms: ${platformsLabel}${videoNote}\n\nReturn this exact JSON structure:\n{\n  "series_summary": "1-2 sentence overview",\n  "episodes": [{\n    "position": 1,\n    "episode_title": "max 10 words",\n    "episode_angle": "key message (1-2 sentences)",\n    "episode_hook": "opening line (1 sentence)",\n    "cta_type": "question",\n    "recommended_format": "${validFormats[0]}",\n    "image_headline": "10-15 word pull quote",\n    "persona_label": "the audience persona this episode speaks to, e.g. \\"Priya — First-Time Investor\\" (or null)",\n    "avatar_preference": "preferred on-screen presenter / voice persona for this episode if any (or null)",\n    "persona_notes": "one sentence of persona / tone nuance for this episode (or null)"\n  }]\n}\n\ncta_type: question|link|save|share|comment\nrecommended_format: ${formatList}\n(Choose recommended_format ONLY from that list — these are the formats valid for ALL selected platforms.)\npersona_label / avatar_preference / persona_notes: OPTIONAL audience-persona capture — set any to null if not applicable; do NOT invent a persona that conflicts with the series audience.\nReturn exactly ${episodeCount} episodes.`;
   const resp = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model, max_tokens: 4000, temperature: 0.75, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] }) });
   const text = await resp.text();
   if (!resp.ok) throw new Error(`anthropic_http_${resp.status}: ${text.slice(0, 800)}`);
@@ -164,7 +175,7 @@ Deno.serve(async (req: Request) => {
     // valid format (deterministic, capability-safe) — never to a hardcoded static format.
     const validSet = new Set(cap.validFormats);
     const fallbackFormat = cap.validFormats[0];
-    const episodeRows = episodes.map((ep: any, i: number) => ({ client_id: series.client_id, position: Number(ep.position ?? (i + 1)), episode_title: String(ep.episode_title ?? "").trim(), episode_angle: String(ep.episode_angle ?? "").trim(), episode_hook: String(ep.episode_hook ?? "").trim(), cta_type: CTA_TYPES.includes(ep.cta_type) ? ep.cta_type : "question", recommended_format: validSet.has(ep.recommended_format) ? ep.recommended_format : fallbackFormat, image_headline: String(ep.image_headline ?? ep.episode_title ?? "").trim() }));
+    const episodeRows = episodes.map((ep: any, i: number) => ({ client_id: series.client_id, position: Number(ep.position ?? (i + 1)), episode_title: String(ep.episode_title ?? "").trim(), episode_angle: String(ep.episode_angle ?? "").trim(), episode_hook: String(ep.episode_hook ?? "").trim(), cta_type: CTA_TYPES.includes(ep.cta_type) ? ep.cta_type : "question", recommended_format: validSet.has(ep.recommended_format) ? ep.recommended_format : fallbackFormat, image_headline: String(ep.image_headline ?? ep.episode_title ?? "").trim(), persona_label: cleanStr(ep.persona_label), avatar_preference: cleanStr(ep.avatar_preference), persona_notes: cleanStr(ep.persona_notes) }));
 
     const { error: saveErr } = await supabase.rpc("save_series_outline", { p_series_id: seriesId, p_series_summary: outline.series_summary ?? null, p_outline_json: episodes, p_episode_rows: episodeRows });
     if (saveErr) throw new Error(`save_series_outline_failed: ${saveErr.message}`);
