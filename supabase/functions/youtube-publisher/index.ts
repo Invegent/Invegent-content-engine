@@ -1,4 +1,18 @@
-// youtube-publisher v1.11.0
+// youtube-publisher v1.12.0
+// v1.12.0 (F-YT-PLATFORM-ISOLATION) — P0 cross-platform publish fix. youtube-publisher is a DIRECT-READ
+//   publisher: it SELECTs m.post_draft itself (not the platform-tagged queue the FB/IG publishers use). The
+//   v1.11.0 SELECT had NO platform predicate, so for NY/PP — where the series-outline v1.3.0 format
+//   intersection collapses all four platform drafts to video_short_avatar — it picked up the Facebook,
+//   Instagram AND LinkedIn drafts and uploaded each to YouTube (public since v1.11.0). Read-only audit
+//   2026-06-14 sized it as facebook/instagram/linkedin -> youtube cross-publishes spanning ~2 months across
+//   NY+PP (M12 cross-platform class — the same bug instagram-publisher was refactored out of in v2.0.0).
+//   FIX (isolation only): (a) add 'platform' to the SELECT columns + a HARD .eq('platform','youtube') filter;
+//   (b) a defensive per-row `draft.platform !== 'youtube'` skip in the loop (defence-in-depth, mirrors
+//   instagram-publisher v2.0.0). NOTHING else changes: upload path, DEFAULT_PRIVACY_STATUS (public), approval
+//   predicate, ELIGIBLE_FORMATS (still includes video_short_avatar), no-YT-id guard, pre-upload reconcile
+//   guard, failure classification, retry/backoff, channel hold, 2/tick cap, attempt_no audit fix — all
+//   byte-unchanged. NO render-worker change, NO queue change, NO visibility change, NO historical remediation
+//   of the already-uploaded cross-posts (separate lane). D-01 e0c87546; PK exact-phrase 2026-06-15.
 // v1.11.0 (visibility): default production YouTube visibility unlisted -> PUBLIC. Future production uploads
 //   now publish as Public (PK directive 2026-05-29; ICE Shorts/videos were going out Unlisted). The single
 //   source of truth is the named module constant DEFAULT_PRIVACY_STATUS = 'public', referenced from BOTH the
@@ -81,7 +95,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'youtube-publisher-v1.11.0';
+const VERSION = 'youtube-publisher-v1.12.0';
 const YOUTUBE_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
 const YOUTUBE_UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status';
 
@@ -222,8 +236,13 @@ Deno.serve(async (req: Request) => {
   // v1.9.0: approval predicate broadened 'approved' -> IN ('approved','published') — cross-platform fix
   //         (a draft already published to e.g. Facebook still needs its YouTube leg). The no-YT-id guard
   //         and the pre-upload m.post_publish reconcile guard below are what prevent double-upload.
+  // v1.12.0 (F-YT-PLATFORM-ISOLATION): HARD platform filter — this direct-read publisher must only ever
+  //         select YouTube-targeted drafts. Without it, every video_short_avatar draft (fb/ig/li included)
+  //         was eligible and got uploaded to YouTube. 'platform' is now selected + gated here, with a
+  //         defensive per-row re-check in the loop below (mirrors instagram-publisher v2.0.0).
   const { data: drafts } = await supabase.schema('m').from('post_draft')
-    .select('post_draft_id, client_id, draft_title, draft_body, recommended_format, video_url, draft_format, approval_status')
+    .select('post_draft_id, platform, client_id, draft_title, draft_body, recommended_format, video_url, draft_format, approval_status')
+    .eq('platform', 'youtube')
     .eq('video_status', 'generated')
     .in('approval_status', ['approved', 'published'])
     .is('draft_format->youtube_video_id', null)
@@ -249,6 +268,14 @@ Deno.serve(async (req: Request) => {
 
   for (const draft of (drafts ?? [])) {
     if (publishCount >= MAX_PUBLISHES_PER_TICK) break;
+
+    // v1.12.0 (F-YT-PLATFORM-ISOLATION) defence-in-depth: never upload a non-youtube draft even if a future
+    // SELECT change or code path lets one through. Exact M12 cross-platform class.
+    if (draft.platform !== 'youtube') {
+      console.error(`[youtube-publisher] platform_isolation_skip post_draft_id=${draft.post_draft_id} platform=${draft.platform}`);
+      results.push({ post_draft_id: draft.post_draft_id, status: 'skipped_platform_isolation', platform: draft.platform });
+      continue;
+    }
 
     // channel hold (persistent best-effort OR in-run)
     const heldUntil = pausedUntil.get(draft.client_id);
