@@ -30,6 +30,25 @@
 --   retry invocation and reused across the platform loop.
 --
 -- Rollback: re-apply the prior definition (md5 d85366fda2b12cd1e0f9d3b56f6f0bb8).
+--
+-- APPLY STATE (2026-06-14): APPLIED / VERIFIED in production.
+--   The originating commit (5fc0fa40f45cbb07088c10061fdad0189ae9caaf) described
+--   this migration as STAGED / NOT APPLIED (gated on D-01 + PK); that is now
+--   SUPERSEDED — apply_migration has run and the change is live & verified.
+--   Apply facts:
+--     - migration:      stage3_5b_retry_episode_platform_aware
+--     - D-01:           6917cc0e-a944-40b2-ab98-77ec27f448ad (proceed / agree / medium / high)
+--     - prior md5:      d85366fda2b12cd1e0f9d3b56f6f0bb8
+--     - production md5: 3d21cd0f...   (live retry_episode after apply; signature unchanged)
+--   Verified in production: invalid YouTube image_quote retry repaired ->
+--   video_short_avatar; valid Facebook image_quote kept unchanged;
+--   no_valid_format_for_platform branch confirmed; published children protected
+--   (already_published); in-flight children protected (in_flight_preserved);
+--   dead/failed history preserved; no production series mutated.
+--   Stage 3.5b APPLIED & VERIFIED; Stage 3.5 overall CLOSED in the registers
+--   (docs/00_action_list.md + docs/00_sync_state.md v3.46).
+--   NOTE: comments-only cleanup — the executable SQL below is UNCHANGED and was
+--   NOT re-applied by this edit.
 
 CREATE OR REPLACE FUNCTION public.retry_episode(p_episode_id uuid, p_mode text DEFAULT 'refan_out'::text, p_created_by text DEFAULT 'series-v2-retry'::text)
  RETURNS jsonb
