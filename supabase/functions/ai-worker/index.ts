@@ -9,7 +9,17 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.14.0";
+const VERSION = "ai-worker-v2.15.0";
+// v2.15.0 — F-SERIES-AVATAR-DIFFERENTIATION Stage 1 (shadow avatar-role suggestion).
+//   OBSERVABILITY-ONLY. For video_short_avatar drafts, derive a SUGGESTED presenter
+//   stakeholder role (constrained to the brand's active c.brand_stakeholder.role_code
+//   set) from the episode persona (persona_label / avatar_preference / persona_notes,
+//   read via slot -> creative_intent) and store it under
+//   draft_format.video_script.avatar_role_suggestion — a field heygen-worker does NOT
+//   read for avatar selection. Does NOT write stakeholder_role (the consumed field),
+//   which stays NULL/unchanged; does NOT alter avatar selection, rendering, the HeyGen
+//   payload, or the draft lifecycle. Best-effort + never throws. No schema change, no
+//   migration. Role promotion to the consumed field is a later, separately-gated stage.
 // v2.14.0 — T0: Content Studio governed path (manual slots).
 //   slot_fill_synthesis_v1 gains synthesis_mode === 'manual': the seed is the
 //   slot-carried operator brief (input_payload.source_material) mapped onto the
@@ -245,6 +255,100 @@ async function generateVideoScript(opts: {
   return null;
 }
 
+// v2.15.0 — F-SERIES-AVATAR-DIFFERENTIATION Stage 1 (shadow, observability-only).
+// Map an episode persona to ONE of the brand's ACTIVE stakeholder role_codes and return
+// a SUGGESTION object. The caller stores it under video_script.avatar_role_suggestion —
+// a field heygen-worker does NOT read for avatar selection. NEVER writes stakeholder_role
+// (the consumed field). Best-effort: returns a null-role object on any miss and NEVER
+// throws, so it cannot affect the draft or render. No schema change.
+async function suggestAvatarRole(
+  supabase: ReturnType<typeof getServiceClient>,
+  anthropicKey: string,
+  opts: { clientId: string; slotId: string | null },
+): Promise<Record<string, unknown>> {
+  const at = nowIso();
+  const base = { shadow: true, stage: 1, feature: 'F-SERIES-AVATAR-DIFFERENTIATION', at };
+  try {
+    const { data: roleRows } = await supabase.rpc('exec_sql', {
+      query: `SELECT role_code, role_label, COALESCE(demographic_hint, '') AS demographic_hint
+              FROM c.brand_stakeholder
+              WHERE client_id = '${opts.clientId}' AND is_active = true
+              ORDER BY sort_order ASC, role_code ASC`,
+    });
+    const roles = (roleRows ?? []) as Array<{ role_code: string; role_label: string; demographic_hint: string }>;
+    if (!roles.length) {
+      return { ...base, suggested_stakeholder_role: null, suggested_stakeholder_role_confidence: 0,
+        suggested_stakeholder_role_reason: 'no_active_brand_roles', role_source: 'none',
+        persona_signal: null, candidate_roles: [], model: null };
+    }
+    let personaLabel: string | null = null, avatarPreference: string | null = null, personaNotes: string | null = null;
+    if (opts.slotId) {
+      const { data: personaRows } = await supabase.rpc('exec_sql', {
+        query: `SELECT ci.source_material->'persona'->>'persona_label'     AS persona_label,
+                       ci.source_material->'persona'->>'avatar_preference' AS avatar_preference,
+                       ci.source_material->'persona'->>'persona_notes'     AS persona_notes
+                FROM m.slot s
+                JOIN m.creative_intent ci ON ci.intent_id = s.intent_id
+                WHERE s.slot_id = '${opts.slotId}'
+                LIMIT 1`,
+      });
+      const p = ((personaRows ?? []) as any[])[0] ?? {};
+      personaLabel = p.persona_label ?? null;
+      avatarPreference = p.avatar_preference ?? null;
+      personaNotes = p.persona_notes ?? null;
+    }
+    if (!personaLabel && !avatarPreference && !personaNotes) {
+      return { ...base, suggested_stakeholder_role: null, suggested_stakeholder_role_confidence: 0,
+        suggested_stakeholder_role_reason: 'no_persona_available', role_source: 'none',
+        persona_signal: null, candidate_roles: roles.map(r => r.role_code), model: null };
+    }
+    const roleList = roles.map(r => `- ${r.role_code} (${r.role_label})${r.demographic_hint ? ` — ${r.demographic_hint}` : ''}`).join('\n');
+    const validRoleCodes = roles.map(r => r.role_code);
+    const sgModel = 'claude-sonnet-4-6';
+    const systemPrompt = `You choose the single best PRESENTER role for a short talking-head video, mapping a content persona to one role from a FIXED list.\n\nAllowed role_codes (choose exactly one, or null if none is a reasonable presenter):\n${roleList}\n\nGuidance:\n- "avatar_preference" describes the PRESENTER who delivers the video — weight it most heavily.\n- "persona_label" often describes the AUDIENCE/subject; use it as secondary context. If the presenter is meant to embody that subject at peer level (first-person lived experience), map to the matching role; otherwise prefer the role the avatar_preference describes.\n- "persona_notes" gives tone/nuance only.\n- If the persona is composite or multi-role, pick the single most appropriate PRIMARY presenter.\n- role_code MUST be exactly one of the allowed codes, or null. Never invent a code.\n\nReturn ONLY valid JSON: {"role_code": string|null, "confidence": number (0.0-1.0), "reason": string (max 25 words)}`;
+    const userPrompt = `persona_label: ${personaLabel ?? '(none)'}\navatar_preference: ${avatarPreference ?? '(none)'}\npersona_notes: ${personaNotes ?? '(none)'}\n\nChoose the presenter role_code.`;
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: sgModel, max_tokens: 200, temperature: 0.0, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
+    });
+    const personaSignal = { persona_label: personaLabel, avatar_preference: avatarPreference, persona_notes: personaNotes };
+    if (!resp.ok) {
+      return { ...base, suggested_stakeholder_role: null, suggested_stakeholder_role_confidence: 0,
+        suggested_stakeholder_role_reason: `suggest_http_${resp.status}`, role_source: 'llm_error',
+        persona_signal: personaSignal, candidate_roles: validRoleCodes, model: sgModel };
+    }
+    const data = await resp.json();
+    const raw = data?.content?.[0]?.text ?? '';
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    let parsed: any = null;
+    try { parsed = JSON.parse(cleaned); } catch { parsed = null; }
+    const rawRole = parsed && typeof parsed.role_code === 'string' ? parsed.role_code.trim() : null;
+    const role = rawRole && validRoleCodes.includes(rawRole) ? rawRole : null;
+    let conf = Number(parsed?.confidence);
+    if (!Number.isFinite(conf)) conf = 0;
+    conf = Math.max(0, Math.min(1, conf));
+    const reason = role
+      ? String(parsed?.reason ?? '').slice(0, 240)
+      : (rawRole ? `rejected_out_of_set:${String(rawRole).slice(0, 40)}` : (parsed ? 'no_confident_role' : 'suggest_parse_failed'));
+    return {
+      ...base,
+      suggested_stakeholder_role: role,
+      suggested_stakeholder_role_confidence: role ? conf : 0,
+      suggested_stakeholder_role_reason: reason,
+      role_source: 'llm',
+      persona_signal: personaSignal,
+      candidate_roles: validRoleCodes,
+      model: sgModel,
+    };
+  } catch (e: any) {
+    // Best-effort: NEVER throw into the draft/render lifecycle.
+    return { ...base, suggested_stakeholder_role: null, suggested_stakeholder_role_confidence: 0,
+      suggested_stakeholder_role_reason: `suggest_error: ${(e?.message ?? String(e)).slice(0, 200)}`,
+      role_source: 'error', persona_signal: null, candidate_roles: [], model: null };
+  }
+}
+
 type FormatInfo = { ice_format_key: string; format_name: string; advisor_description: string; best_for: string; min_content_signals: string; };
 
 async function fetchFormatContext(supabase: ReturnType<typeof getServiceClient>, clientId: string, platform: string): Promise<{ formats: FormatInfo[]; perfSummary: string; preferredFormat: string | null }> {
@@ -256,7 +360,7 @@ async function fetchFormatContext(supabase: ReturnType<typeof getServiceClient>,
           COALESCE(f.best_for,'') AS best_for,
           COALESCE(f.min_content_signals,'') AS min_content_signals,
           COALESCE(f.platform_support,'{}')::text AS platform_support_raw
-        FROM \"t\".\"5.3_content_format\" f
+        FROM "t"."5.3_content_format" f
         WHERE f.is_buildable = true AND f.ice_format_key IS NOT NULL
           AND (
             EXISTS (SELECT 1 FROM c.client_format_config cfc
@@ -360,7 +464,7 @@ async function fetchComplianceBlock(
       query: `
         SELECT DISTINCT ON (rule_key)
           rule_name, rule_text, risk_level, enforcement, examples_good, examples_bad, sort_order
-        FROM t.\"5.7_compliance_rule\"
+        FROM t."5.7_compliance_rule"
         WHERE is_active = true
           AND (
             (
@@ -992,6 +1096,17 @@ app.post('*', async (c) => {
         try {
           const videoScript = await generateVideoScript({ anthropicKey, formatKey: decidedFormat, postTitle: result.title, postBody: result.body, clientName, vertical });
           if (videoScript) {
+            // v2.15.0 — F-SERIES-AVATAR-DIFFERENTIATION Stage 1 (shadow, observability-only):
+            // attach a SUGGESTED presenter role under video_script.avatar_role_suggestion.
+            // heygen-worker does NOT read this key; stakeholder_role (the consumed field)
+            // stays NULL/unchanged. suggestAvatarRole never throws; the extra guard ensures
+            // a suggestion failure can never block the video_script write.
+            if (decidedFormat === 'video_short_avatar') {
+              try {
+                const roleSuggestion = await suggestAvatarRole(supabase, anthropicKey, { clientId: job.client_id, slotId: job.slot_id });
+                (videoScript as any).avatar_role_suggestion = roleSuggestion;
+              } catch (rsErr: any) { console.error('[ai-worker] suggestAvatarRole threw (non-fatal):', rsErr?.message); }
+            }
             const { error: vsErr } = await supabase.rpc('set_draft_video_script', { p_post_draft_id: job.post_draft_id, p_video_script: videoScript as any });
             if (vsErr) console.error('[ai-worker] set_draft_video_script error:', vsErr.message);
             else videoScriptGenerated = true;
