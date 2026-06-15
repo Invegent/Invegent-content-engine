@@ -1,56 +1,48 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// series-outline v1.5.0
-// v1.5.0 (Stage 2 — F-SERIES-FORMAT-DIVERSITY per-platform): resolveValidFormats now
-//   returns the UNION of capability-valid formats across the eligible selected
-//   platforms (a format is offered if valid on AT LEAST ONE), replacing the v1.3.0
-//   INTERSECTION. Rationale: with publisher-real platform_support (Stage 0), no single
-//   format is valid across a {fb,ig,li,yt} set (YouTube needs video, LinkedIn needs
-//   text, Facebook needs non-video — mutually exclusive), so the intersection is empty
-//   and the v1.4.0 outline 422s (no_valid_format_for_platform_set) for every
-//   YouTube-inclusive series. The episode recommended_format is now a PREFERRED hint;
-//   fan_out_episode (Stage 1) re-resolves the final per-platform format (keep-if-valid /
-//   deterministic-first-valid / fail-loud) at fan-out. Fail-loud HERE triggers ONLY when
-//   the union is empty (the client has no buildable+supported format on ANY selected
-//   platform). Persona capture, save_series_outline, the whitelist clamp, and all
-//   downstream gates are UNCHANGED. verify_jwt=false preserved.
-// v1.4.0 (persona capture — additive over v1.3.0): the outline prompt now also
-//   asks the model for per-episode persona fields (persona_label /
-//   avatar_preference / persona_notes), and episodeRows maps them through
-//   (sanitised via cleanStr -> trimmed string or null) so save_series_outline
-//   persists them into the Stage-1 episode persona columns (the RPC already
-//   accepts these keys — verified). PERSONA IS CAPTURED AS PLANNING INTENT ONLY:
-//   NO HeyGen / avatar / brand_avatar / A2 / Branch-A change, NO Stage 4 work, and
-//   the v1.3.0 platform-aware capability resolver / whitelist / fail-loud logic is
-//   UNCHANGED. verify_jwt=false preserved.
-// v1.3.0 (Stage 3.5a — platform-aware outline): the outline generator is now
-//   capability-aware. Previously it received only series.platform (singular) and
-//   hard-clamped recommended_format to text|image_quote|carousel in BOTH the prompt
-//   and the validation whitelist — so a YouTube-targeted series was STRUCTURALLY
-//   incapable of emitting a video format, and every YouTube child was rejected
-//   downstream by the capability gate (zero YouTube output). v1.3.0:
-//   (a) reads series.platforms[] (falls back to [series.platform]);
-//   (b) calls public.get_studio_capabilities(client_id) — the SAME resolver Single
-//       Post / Studio uses — to learn per-platform/per-format state;
-//   (c) computes the VALID format set = formats whose state ∈ {enabled,
-//       enabled_unproven} on EVERY selected eligible platform (intersection, so a
-//       single episode format works on all targets), and whether any selected
-//       platform is video_only (YouTube);
-//   (d) feeds that valid set into the prompt AND uses it as the validation
-//       whitelist (resolver-driven, NOT a hardcoded list) — so video formats can
-//       now be emitted for video-inclusive series, and text is excluded where a
-//       platform (e.g. Instagram) does not support it;
-//   (e) if NO format is valid across the selected set, FAILS LOUD
-//       (no_valid_format_for_platform_set, HTTP 422) — never silently picks text.
-//   DOWNSTREAM GATES UNCHANGED: fan_out_episode, create_manual_slot_internal, the
-//   per-platform capability rejection, Advisor, compliance, render, publisher are
-//   all untouched. The whitelist + the downstream gate remain hard backstops, so a
-//   bad model choice is still rejected, never published invalid.
-//   NOTE: branch creation via the GitHub bridge is unavailable, so this lands on
-//   main UNDEPLOYED (dev direct-push convention). Production behaviour is unchanged
-//   until a separate CLI deploy, which is gated on D-01 + PK approval.
+// series-outline v1.6.0
+// v1.6.0 (Stage 1.5 — F-SERIES-AVATAR-DIFFERENTIATION, Hybrid narrator model; PK
+//   approved Option C). ADDITIVE, OPT-IN, SHADOW-ONLY DOWNSTREAM. Adds a conservative
+//   Multi-Perspective presenter mode to the outline generator while preserving the
+//   default Brand Host behaviour byte-for-byte in the common case.
+//   WHAT CHANGED vs v1.5.0:
+//   (a) detectMultiPerspective(title, topic, goal, roles): a conservative detector.
+//       It returns true ONLY when the topic/goal/title contains an explicit
+//       multi-perspective signal phrase OR names >= 3 distinct active brand role
+//       labels/codes. If unsure → false → Brand Host mode (unchanged path).
+//   (b) When (and only when) multi-perspective is detected, fetch the client's ACTIVE
+//       c.brand_stakeholder taxonomy (role_code / role_label / demographic_hint) via
+//       the same read the ai-worker shadow suggester uses, and inject it into the
+//       prompt with instructions to: keep persona_label = audience/subject; set
+//       avatar_preference = a PRESENTER role drawn from the closed taxonomy, encoded
+//       as "role_code=<code>; presenter=<plain English>"; vary the presenter role
+//       across episodes where the topic supports it; never invent a role; fall back to
+//       the brand host where no stakeholder presenter fits.
+//   (c) Brand Host mode is the DEFAULT and is unchanged: same systemPrompt
+//       (brand_identity_prompt + strategist line), same userPrompt persona block,
+//       same "do NOT invent a persona that conflicts with the series audience" wording.
+//   STRICTLY OUT OF SCOPE (unchanged): resolveValidFormats / UNION resolver, the
+//   format whitelist + clamp, fail-loud, save_series_outline, the episode schema, and
+//   ALL downstream gates. avatar_preference remains FREE TEXT in the same column; no
+//   new DB column; no migration. Downstream this is SHADOW-ONLY: the ai-worker Stage 1
+//   suggester reads avatar_preference and writes avatar_role_suggestion
+//   (observability), but the CONSUMED stakeholder_role stays NULL, heygen-worker is
+//   untouched, avatar selection stays fallback_limit1 to the A2-pinned host, and there
+//   is NO render change. verify_jwt=false preserved.
+//   v1.5.0 (Stage 2 — F-SERIES-FORMAT-DIVERSITY per-platform): resolveValidFormats now
+//     returns the UNION of capability-valid formats across the eligible selected
+//     platforms (a format is offered if valid on AT LEAST ONE), replacing the v1.3.0
+//     INTERSECTION. The episode recommended_format is a PREFERRED hint; fan_out_episode
+//     re-resolves the final per-platform format. Persona capture, save_series_outline,
+//     the whitelist clamp, and all downstream gates UNCHANGED. verify_jwt=false.
+//   v1.4.0 (persona capture — additive over v1.3.0): the outline prompt asks the model
+//     for per-episode persona fields (persona_label / avatar_preference / persona_notes),
+//     episodeRows maps them (cleanStr) so save_series_outline persists them. PERSONA IS
+//     CAPTURED AS PLANNING INTENT ONLY.
+//   v1.3.0 (Stage 3.5a — platform-aware outline): capability-aware resolver +
+//     resolver-driven whitelist + fail-loud. Downstream gates unchanged.
 //   v1.2.0 (prior): static text|image_quote|carousel clamp, singular platform.
-const VERSION = "series-outline-v1.5.0";
+const VERSION = "series-outline-v1.6.0";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type, apikey, authorization, x-series-key", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" };
 function jsonResponse(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
@@ -63,12 +55,62 @@ function cleanStr(v: unknown): string | null { const s = (v ?? "").toString().tr
 // Stage 3.5a: cta vocabulary is unchanged from v1.2.0.
 const CTA_TYPES = ["question", "link", "save", "share", "comment"];
 
+// ---------------------------------------------------------------------------
+// v1.6.0 (Stage 1.5): brand stakeholder role type + conservative mode detector.
+// ---------------------------------------------------------------------------
+type BrandRole = { role_code: string; role_label: string; demographic_hint: string | null };
+
+// Explicit multi-perspective SIGNAL PHRASES. Conservative: presence of any one of
+// these in title/topic/goal is a strong opt-in signal. Matched case-insensitively on
+// word/substring boundaries. Kept deliberately small and unambiguous.
+const MULTI_PERSPECTIVE_SIGNALS = [
+  "multi-perspective", "multi perspective", "multiple perspectives",
+  "different perspectives", "different lenses", "different lens",
+  "seven perspectives", "perspectives of", "perspective of each",
+  "from the view of", "from the viewpoint of", "through the eyes of",
+  "through the lens of", "each stakeholder", "different stakeholders",
+  "stakeholder perspectives", "different avatars", "different presenters",
+];
+
+// v1.6.0: detect explicit opt-in Multi-Perspective mode. Two independent triggers:
+//   (1) an explicit signal phrase appears in title/topic/goal; OR
+//   (2) the combined text names >= 2 DISTINCT active brand role labels or codes.
+// Conservative by design: if neither trigger fires, return false (Brand Host mode).
+// Returns the matched roles (for telemetry/prompt) when triggered by role-naming.
+function detectMultiPerspective(
+  title: string | null, topic: string | null, goal: string | null, roles: BrandRole[],
+): { multi: boolean; trigger: string; namedRoles: string[] } {
+  const hay = [title ?? "", topic ?? "", goal ?? ""].join("\n").toLowerCase();
+  if (!hay.trim()) return { multi: false, trigger: "empty", namedRoles: [] };
+
+  // Trigger 1 — explicit signal phrase.
+  for (const sig of MULTI_PERSPECTIVE_SIGNALS) {
+    if (hay.includes(sig)) return { multi: true, trigger: `signal_phrase:${sig}`, namedRoles: [] };
+  }
+
+  // Trigger 2 — >= 3 distinct active brand roles named (by label or code).
+  // Threshold is 3 (not 2) deliberately: a 2-role mention is frequently incidental
+  // (e.g. "what a buyer's agent wishes first home buyers knew") or a single-narrator
+  // comparison, and flipping those into presenter mode would be too broad. Explicit
+  // multi-perspective REQUESTS are already caught by the signal phrases above, so the
+  // role-count path only needs to catch genuine multi-stakeholder enumerations, which
+  // in practice list 3+ roles. Conservative-by-design: when unsure, stay Brand Host.
+  const named = new Set<string>();
+  for (const r of roles) {
+    const label = (r.role_label ?? "").toLowerCase().trim();
+    const code = (r.role_code ?? "").toLowerCase().trim();
+    const codeAsWords = code.replace(/_/g, " ");
+    if (label && hay.includes(label)) { named.add(r.role_code); continue; }
+    if (code && hay.includes(code)) { named.add(r.role_code); continue; }
+    if (codeAsWords && hay.includes(codeAsWords)) { named.add(r.role_code); continue; }
+  }
+  if (named.size >= 3) return { multi: true, trigger: "role_naming", namedRoles: [...named] };
+
+  return { multi: false, trigger: "none", namedRoles: [] };
+}
+
 // Stage 3.5a / Stage 2: resolve the set of episode formats offered to the outline,
-// using public.get_studio_capabilities(client_id). A format is valid on a platform
-// only if its state is 'enabled' or 'enabled_unproven' there. v1.5.0 returns the
-// UNION across eligible selected platforms (valid on >= 1 platform); fan_out_episode
-// re-resolves the final per-platform format, so the single per-episode
-// recommended_format is a PREFERRED hint, not an all-platform guarantee.
+// using public.get_studio_capabilities(client_id). UNCHANGED from v1.5.0.
 type CapFormat = { format: string; supported: boolean; state: string; reason: string | null; proven: boolean };
 type CapPlatform = { platform: string; eligible: boolean; video_only: boolean; formats: CapFormat[] };
 const VALID_STATES = new Set(["enabled", "enabled_unproven"]);
@@ -100,11 +142,6 @@ function resolveValidFormats(capabilities: any, selectedPlatforms: string[]): {
     perPlatformValid[sel] = valid;
   }
 
-  // v1.5.0: UNION across eligible selected platforms — a format is offered if it
-  // is valid on AT LEAST ONE eligible selected platform. fan_out_episode re-resolves
-  // the final per-platform format at fan-out, so the single episode recommended_format
-  // is only a preferred hint. This removes the impossible {fb,ig,li,yt} empty
-  // intersection (which 422'd every YouTube-inclusive series) and the avatar collapse.
   const unionSet = new Set<string>();
   for (const p of eligibleSelected) {
     for (const fmt of (perPlatformValid[p] ?? [])) unionSet.add(fmt);
@@ -114,14 +151,34 @@ function resolveValidFormats(capabilities: any, selectedPlatforms: string[]): {
   return { validFormats, videoOnlyInSet, eligibleSelected, ineligibleSelected, perPlatformValid };
 }
 
-async function generateOutline(opts: { apiKey: string; model: string; title: string; topic: string; goal: string | null; audienceNotes: string | null; toneNotes: string | null; episodeCount: number; platformsLabel: string; validFormats: string[]; videoOnlyInSet: boolean; brandIdentityPrompt: string | null }): Promise<{ series_summary: string; episodes: any[] }> {
-  const { apiKey, model, title, topic, goal, audienceNotes, toneNotes, episodeCount, platformsLabel, validFormats, videoOnlyInSet, brandIdentityPrompt } = opts;
+async function generateOutline(opts: { apiKey: string; model: string; title: string; topic: string; goal: string | null; audienceNotes: string | null; toneNotes: string | null; episodeCount: number; platformsLabel: string; validFormats: string[]; videoOnlyInSet: boolean; brandIdentityPrompt: string | null; multiPerspective: boolean; brandRoles: BrandRole[] }): Promise<{ series_summary: string; episodes: any[] }> {
+  const { apiKey, model, title, topic, goal, audienceNotes, toneNotes, episodeCount, platformsLabel, validFormats, videoOnlyInSet, brandIdentityPrompt, multiPerspective, brandRoles } = opts;
   const formatList = validFormats.join("|");
   const videoNote = videoOnlyInSet
     ? `\nIMPORTANT: this series includes a video-only platform (e.g. YouTube). Prefer a video format for recommended_format so the video platform is served well; fan-out adapts the non-video platforms automatically.`
     : "";
   const systemPrompt = [brandIdentityPrompt ?? "", `You are an expert content strategist planning a ${episodeCount}-episode social media series for ${platformsLabel}.\nReturn ONLY valid JSON \u2014 no markdown, no preamble.`].filter(Boolean).join("\n\n");
-  const userPrompt = `Plan a ${episodeCount}-episode content series.\n\nSeries title: ${title}\nTopic: ${topic}\n${goal ? `Goal: ${goal}` : ""}\n${audienceNotes ? `Target audience: ${audienceNotes}` : ""}\n${toneNotes ? `Tone guidance: ${toneNotes}` : ""}\nTarget platforms: ${platformsLabel}${videoNote}\n\nReturn this exact JSON structure:\n{\n  "series_summary": "1-2 sentence overview",\n  "episodes": [{\n    "position": 1,\n    "episode_title": "max 10 words",\n    "episode_angle": "key message (1-2 sentences)",\n    "episode_hook": "opening line (1 sentence)",\n    "cta_type": "question",\n    "recommended_format": "${validFormats[0]}",\n    "image_headline": "10-15 word pull quote",\n    "persona_label": "the audience persona this episode speaks to, e.g. \\"Priya — First-Time Investor\\" (or null)",\n    "avatar_preference": "preferred on-screen presenter / voice persona for this episode if any (or null)",\n    "persona_notes": "one sentence of persona / tone nuance for this episode (or null)"\n  }]\n}\n\ncta_type: question|link|save|share|comment\nrecommended_format: ${formatList}\n(Choose recommended_format ONLY from that list. It is a PREFERRED hint — each platform's final format is adapted automatically at fan-out, so pick the best primary format for this episode.)\npersona_label / avatar_preference / persona_notes: OPTIONAL audience-persona capture — set any to null if not applicable; do NOT invent a persona that conflicts with the series audience.\nReturn exactly ${episodeCount} episodes.`;
+
+  // v1.6.0: the persona-field instruction block is mode-dependent. DEFAULT (Brand
+  // Host) is byte-identical to v1.5.0. MULTI-PERSPECTIVE injects the closed role
+  // taxonomy and a presenter-diversity instruction; avatar_preference becomes a
+  // role-encoded presenter intent ("role_code=<code>; presenter=<plain English>").
+  const personaInstruction = (!multiPerspective || brandRoles.length === 0)
+    ? `persona_label / avatar_preference / persona_notes: OPTIONAL audience-persona capture — set any to null if not applicable; do NOT invent a persona that conflicts with the series audience.`
+    : [
+        `MULTI-PERSPECTIVE PRESENTER MODE is ON for this series (an explicit multi-perspective request was detected).`,
+        `Available presenter roles for this brand (choose ONLY from this closed set; never invent a role):`,
+        brandRoles.map(r => `- role_code=${r.role_code} (${r.role_label})${r.demographic_hint ? ` — ${r.demographic_hint}` : ""}`).join("\n"),
+        `For each episode:`,
+        `- persona_label = the AUDIENCE / subject the episode speaks to (who is watching).`,
+        `- avatar_preference = the PRESENTER who delivers this episode, encoded EXACTLY as: "role_code=<one code from the list>; presenter=<plain-English description of that presenter>". Keep the brand voice as overall framing, but the presenter role MAY differ from the default brand host.`,
+        `- VARY the presenter role across episodes where the topic supports distinct stakeholder viewpoints. Do not collapse every episode to the same role unless the topic genuinely calls for it.`,
+        `- If no stakeholder presenter fits an episode, set avatar_preference to "role_code=brand_host; presenter=<the default brand host>" and keep the brand's default voice.`,
+        `- persona_notes = one sentence of tone/nuance.`,
+        `Do NOT invent role codes outside the list above (the only extra allowed value is brand_host).`,
+      ].join("\n");
+
+  const userPrompt = `Plan a ${episodeCount}-episode content series.\n\nSeries title: ${title}\nTopic: ${topic}\n${goal ? `Goal: ${goal}` : ""}\n${audienceNotes ? `Target audience: ${audienceNotes}` : ""}\n${toneNotes ? `Tone guidance: ${toneNotes}` : ""}\nTarget platforms: ${platformsLabel}${videoNote}\n\nReturn this exact JSON structure:\n{\n  "series_summary": "1-2 sentence overview",\n  "episodes": [{\n    "position": 1,\n    "episode_title": "max 10 words",\n    "episode_angle": "key message (1-2 sentences)",\n    "episode_hook": "opening line (1 sentence)",\n    "cta_type": "question",\n    "recommended_format": "${validFormats[0]}",\n    "image_headline": "10-15 word pull quote",\n    "persona_label": "the audience persona this episode speaks to, e.g. \\"Priya — First-Time Investor\\" (or null)",\n    "avatar_preference": "preferred on-screen presenter / voice persona for this episode if any (or null)",\n    "persona_notes": "one sentence of persona / tone nuance for this episode (or null)"\n  }]\n}\n\ncta_type: question|link|save|share|comment\nrecommended_format: ${formatList}\n(Choose recommended_format ONLY from that list. It is a PREFERRED hint — each platform's final format is adapted automatically at fan-out, so pick the best primary format for this episode.)\n${personaInstruction}\nReturn exactly ${episodeCount} episodes.`;
   const resp = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model, max_tokens: 4000, temperature: 0.75, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] }) });
   const text = await resp.text();
   if (!resp.ok) throw new Error(`anthropic_http_${resp.status}: ${text.slice(0, 800)}`);
@@ -151,19 +208,15 @@ Deno.serve(async (req: Request) => {
     const series = seriesData as any;
     if (!['draft', 'outline_pending'].includes(series.status)) return jsonResponse({ ok: false, error: "series_already_outlined", status: series.status });
 
-    // Stage 3.5a: selected platforms = series.platforms[] if present, else the singular series.platform.
     const selectedPlatforms: string[] = Array.isArray(series.platforms) && series.platforms.length > 0
       ? series.platforms
       : (series.platform ? [series.platform] : []);
     if (selectedPlatforms.length === 0) return jsonResponse({ ok: false, error: "no_target_platforms" }, 400);
 
-    // Stage 3.5a: resolve capability-valid formats BEFORE moving the series to outline_pending,
-    // so a capability failure leaves the series in its original status.
     const { data: capData, error: capErr } = await supabase.rpc("get_studio_capabilities", { p_client_id: series.client_id });
     if (capErr) throw new Error(`get_studio_capabilities_failed: ${capErr.message}`);
     const cap = resolveValidFormats(capData, selectedPlatforms);
 
-    // Fail loud if no format is valid on ANY selected platform — never silently pick text.
     if (cap.validFormats.length === 0) {
       return jsonResponse({
         ok: false,
@@ -181,19 +234,34 @@ Deno.serve(async (req: Request) => {
     const { data: brandData } = await supabase.rpc("get_client_brand_for_series", { p_client_id: series.client_id });
     const brand = brandData as any; const model = brand?.model ?? "claude-sonnet-4-6";
     const platformsLabel = cap.eligibleSelected.join(", ") || selectedPlatforms.join(", ");
-    const outline = await generateOutline({ apiKey: anthropicKey, model, title: series.title, topic: series.topic, goal: series.goal, audienceNotes: series.audience_notes, toneNotes: series.tone_notes, episodeCount: series.episode_count, platformsLabel, validFormats: cap.validFormats, videoOnlyInSet: cap.videoOnlyInSet, brandIdentityPrompt: brand?.brand_identity_prompt ?? null });
+
+    // v1.6.0 (Stage 1.5): fetch the active brand role taxonomy ONLY to run the
+    // conservative detector. Read-only; same shape the ai-worker shadow suggester
+    // reads. If this read fails for any reason, fall back to Brand Host mode (the
+    // detector receives [] and returns multi=false) — NEVER block outline generation.
+    let brandRoles: BrandRole[] = [];
+    try {
+      const { data: roleRows } = await supabase.rpc("exec_sql", {
+        query: `SELECT role_code, role_label, COALESCE(demographic_hint, '') AS demographic_hint
+                FROM c.brand_stakeholder
+                WHERE client_id = '${series.client_id}' AND is_active = true
+                ORDER BY sort_order ASC, role_code ASC`,
+      });
+      brandRoles = ((roleRows ?? []) as any[]).map(r => ({ role_code: r.role_code, role_label: r.role_label, demographic_hint: r.demographic_hint || null }));
+    } catch (_e) { brandRoles = []; }
+
+    const mp = detectMultiPerspective(series.title, series.topic, series.goal, brandRoles);
+
+    const outline = await generateOutline({ apiKey: anthropicKey, model, title: series.title, topic: series.topic, goal: series.goal, audienceNotes: series.audience_notes, toneNotes: series.tone_notes, episodeCount: series.episode_count, platformsLabel, validFormats: cap.validFormats, videoOnlyInSet: cap.videoOnlyInSet, brandIdentityPrompt: brand?.brand_identity_prompt ?? null, multiPerspective: mp.multi, brandRoles });
     const episodes = outline.episodes.slice(0, series.episode_count);
 
-    // Stage 3.5a: validation whitelist is the resolver-driven valid set (NOT a hardcoded
-    // text|image_quote|carousel). A model choice outside the valid set is clamped to the first
-    // valid format (deterministic, capability-safe) — never to a hardcoded static format.
     const validSet = new Set(cap.validFormats);
     const fallbackFormat = cap.validFormats[0];
     const episodeRows = episodes.map((ep: any, i: number) => ({ client_id: series.client_id, position: Number(ep.position ?? (i + 1)), episode_title: String(ep.episode_title ?? "").trim(), episode_angle: String(ep.episode_angle ?? "").trim(), episode_hook: String(ep.episode_hook ?? "").trim(), cta_type: CTA_TYPES.includes(ep.cta_type) ? ep.cta_type : "question", recommended_format: validSet.has(ep.recommended_format) ? ep.recommended_format : fallbackFormat, image_headline: String(ep.image_headline ?? ep.episode_title ?? "").trim(), persona_label: cleanStr(ep.persona_label), avatar_preference: cleanStr(ep.avatar_preference), persona_notes: cleanStr(ep.persona_notes) }));
 
     const { error: saveErr } = await supabase.rpc("save_series_outline", { p_series_id: seriesId, p_series_summary: outline.series_summary ?? null, p_outline_json: episodes, p_episode_rows: episodeRows });
     if (saveErr) throw new Error(`save_series_outline_failed: ${saveErr.message}`);
-    return jsonResponse({ ok: true, version: VERSION, series_id: seriesId, series_summary: outline.series_summary, episode_count: episodes.length, valid_formats: cap.validFormats, video_only_in_set: cap.videoOnlyInSet, episodes: episodeRows });
+    return jsonResponse({ ok: true, version: VERSION, series_id: seriesId, series_summary: outline.series_summary, episode_count: episodes.length, valid_formats: cap.validFormats, video_only_in_set: cap.videoOnlyInSet, narrator_mode: mp.multi ? "multi_perspective" : "brand_host", narrator_mode_trigger: mp.trigger, episodes: episodeRows });
   } catch (e: any) {
     const msg = e?.message ?? String(e);
     await supabase.rpc("update_series_status", { p_series_id: seriesId, p_status: "draft" });
