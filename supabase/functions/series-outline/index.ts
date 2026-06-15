@@ -1,6 +1,19 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// series-outline v1.4.0
+// series-outline v1.5.0
+// v1.5.0 (Stage 2 — F-SERIES-FORMAT-DIVERSITY per-platform): resolveValidFormats now
+//   returns the UNION of capability-valid formats across the eligible selected
+//   platforms (a format is offered if valid on AT LEAST ONE), replacing the v1.3.0
+//   INTERSECTION. Rationale: with publisher-real platform_support (Stage 0), no single
+//   format is valid across a {fb,ig,li,yt} set (YouTube needs video, LinkedIn needs
+//   text, Facebook needs non-video — mutually exclusive), so the intersection is empty
+//   and the v1.4.0 outline 422s (no_valid_format_for_platform_set) for every
+//   YouTube-inclusive series. The episode recommended_format is now a PREFERRED hint;
+//   fan_out_episode (Stage 1) re-resolves the final per-platform format (keep-if-valid /
+//   deterministic-first-valid / fail-loud) at fan-out. Fail-loud HERE triggers ONLY when
+//   the union is empty (the client has no buildable+supported format on ANY selected
+//   platform). Persona capture, save_series_outline, the whitelist clamp, and all
+//   downstream gates are UNCHANGED. verify_jwt=false preserved.
 // v1.4.0 (persona capture — additive over v1.3.0): the outline prompt now also
 //   asks the model for per-episode persona fields (persona_label /
 //   avatar_preference / persona_notes), and episodeRows maps them through
@@ -37,7 +50,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 //   main UNDEPLOYED (dev direct-push convention). Production behaviour is unchanged
 //   until a separate CLI deploy, which is gated on D-01 + PK approval.
 //   v1.2.0 (prior): static text|image_quote|carousel clamp, singular platform.
-const VERSION = "series-outline-v1.4.0";
+const VERSION = "series-outline-v1.5.0";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type, apikey, authorization, x-series-key", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" };
 function jsonResponse(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
@@ -50,12 +63,12 @@ function cleanStr(v: unknown): string | null { const s = (v ?? "").toString().tr
 // Stage 3.5a: cta vocabulary is unchanged from v1.2.0.
 const CTA_TYPES = ["question", "link", "save", "share", "comment"];
 
-// Stage 3.5a: resolve the set of episode formats that are valid across the
-// selected platform set, using public.get_studio_capabilities(client_id).
-// A format is valid only if its state is 'enabled' or 'enabled_unproven' on
-// EVERY selected, eligible platform (intersection). This guarantees the single
-// per-episode recommended_format never produces an impossible platform/format
-// combination downstream.
+// Stage 3.5a / Stage 2: resolve the set of episode formats offered to the outline,
+// using public.get_studio_capabilities(client_id). A format is valid on a platform
+// only if its state is 'enabled' or 'enabled_unproven' there. v1.5.0 returns the
+// UNION across eligible selected platforms (valid on >= 1 platform); fan_out_episode
+// re-resolves the final per-platform format, so the single per-episode
+// recommended_format is a PREFERRED hint, not an all-platform guarantee.
 type CapFormat = { format: string; supported: boolean; state: string; reason: string | null; proven: boolean };
 type CapPlatform = { platform: string; eligible: boolean; video_only: boolean; formats: CapFormat[] };
 const VALID_STATES = new Set(["enabled", "enabled_unproven"]);
@@ -87,15 +100,16 @@ function resolveValidFormats(capabilities: any, selectedPlatforms: string[]): {
     perPlatformValid[sel] = valid;
   }
 
-  // Intersection across all eligible selected platforms: a format must be valid
-  // on every one of them so the single episode format is publishable everywhere
-  // it is fanned out to.
-  let validFormats: string[] = [];
-  const eligibleLists = eligibleSelected.map((p) => new Set(perPlatformValid[p] ?? []));
-  if (eligibleLists.length > 0) {
-    const [first, ...rest] = eligibleLists;
-    validFormats = [...first].filter((fmt) => rest.every((s) => s.has(fmt)));
+  // v1.5.0: UNION across eligible selected platforms — a format is offered if it
+  // is valid on AT LEAST ONE eligible selected platform. fan_out_episode re-resolves
+  // the final per-platform format at fan-out, so the single episode recommended_format
+  // is only a preferred hint. This removes the impossible {fb,ig,li,yt} empty
+  // intersection (which 422'd every YouTube-inclusive series) and the avatar collapse.
+  const unionSet = new Set<string>();
+  for (const p of eligibleSelected) {
+    for (const fmt of (perPlatformValid[p] ?? [])) unionSet.add(fmt);
   }
+  let validFormats: string[] = [...unionSet];
   validFormats.sort();
   return { validFormats, videoOnlyInSet, eligibleSelected, ineligibleSelected, perPlatformValid };
 }
@@ -104,10 +118,10 @@ async function generateOutline(opts: { apiKey: string; model: string; title: str
   const { apiKey, model, title, topic, goal, audienceNotes, toneNotes, episodeCount, platformsLabel, validFormats, videoOnlyInSet, brandIdentityPrompt } = opts;
   const formatList = validFormats.join("|");
   const videoNote = videoOnlyInSet
-    ? `\nIMPORTANT: this series targets a video-only platform (e.g. YouTube). Every episode's recommended_format MUST be one of the video formats in the allowed list so it can be published to all selected platforms.`
+    ? `\nIMPORTANT: this series includes a video-only platform (e.g. YouTube). Prefer a video format for recommended_format so the video platform is served well; fan-out adapts the non-video platforms automatically.`
     : "";
   const systemPrompt = [brandIdentityPrompt ?? "", `You are an expert content strategist planning a ${episodeCount}-episode social media series for ${platformsLabel}.\nReturn ONLY valid JSON \u2014 no markdown, no preamble.`].filter(Boolean).join("\n\n");
-  const userPrompt = `Plan a ${episodeCount}-episode content series.\n\nSeries title: ${title}\nTopic: ${topic}\n${goal ? `Goal: ${goal}` : ""}\n${audienceNotes ? `Target audience: ${audienceNotes}` : ""}\n${toneNotes ? `Tone guidance: ${toneNotes}` : ""}\nTarget platforms: ${platformsLabel}${videoNote}\n\nReturn this exact JSON structure:\n{\n  "series_summary": "1-2 sentence overview",\n  "episodes": [{\n    "position": 1,\n    "episode_title": "max 10 words",\n    "episode_angle": "key message (1-2 sentences)",\n    "episode_hook": "opening line (1 sentence)",\n    "cta_type": "question",\n    "recommended_format": "${validFormats[0]}",\n    "image_headline": "10-15 word pull quote",\n    "persona_label": "the audience persona this episode speaks to, e.g. \\"Priya — First-Time Investor\\" (or null)",\n    "avatar_preference": "preferred on-screen presenter / voice persona for this episode if any (or null)",\n    "persona_notes": "one sentence of persona / tone nuance for this episode (or null)"\n  }]\n}\n\ncta_type: question|link|save|share|comment\nrecommended_format: ${formatList}\n(Choose recommended_format ONLY from that list — these are the formats valid for ALL selected platforms.)\npersona_label / avatar_preference / persona_notes: OPTIONAL audience-persona capture — set any to null if not applicable; do NOT invent a persona that conflicts with the series audience.\nReturn exactly ${episodeCount} episodes.`;
+  const userPrompt = `Plan a ${episodeCount}-episode content series.\n\nSeries title: ${title}\nTopic: ${topic}\n${goal ? `Goal: ${goal}` : ""}\n${audienceNotes ? `Target audience: ${audienceNotes}` : ""}\n${toneNotes ? `Tone guidance: ${toneNotes}` : ""}\nTarget platforms: ${platformsLabel}${videoNote}\n\nReturn this exact JSON structure:\n{\n  "series_summary": "1-2 sentence overview",\n  "episodes": [{\n    "position": 1,\n    "episode_title": "max 10 words",\n    "episode_angle": "key message (1-2 sentences)",\n    "episode_hook": "opening line (1 sentence)",\n    "cta_type": "question",\n    "recommended_format": "${validFormats[0]}",\n    "image_headline": "10-15 word pull quote",\n    "persona_label": "the audience persona this episode speaks to, e.g. \\"Priya — First-Time Investor\\" (or null)",\n    "avatar_preference": "preferred on-screen presenter / voice persona for this episode if any (or null)",\n    "persona_notes": "one sentence of persona / tone nuance for this episode (or null)"\n  }]\n}\n\ncta_type: question|link|save|share|comment\nrecommended_format: ${formatList}\n(Choose recommended_format ONLY from that list. It is a PREFERRED hint — each platform's final format is adapted automatically at fan-out, so pick the best primary format for this episode.)\npersona_label / avatar_preference / persona_notes: OPTIONAL audience-persona capture — set any to null if not applicable; do NOT invent a persona that conflicts with the series audience.\nReturn exactly ${episodeCount} episodes.`;
   const resp = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" }, body: JSON.stringify({ model, max_tokens: 4000, temperature: 0.75, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] }) });
   const text = await resp.text();
   if (!resp.ok) throw new Error(`anthropic_http_${resp.status}: ${text.slice(0, 800)}`);
@@ -149,13 +163,13 @@ Deno.serve(async (req: Request) => {
     if (capErr) throw new Error(`get_studio_capabilities_failed: ${capErr.message}`);
     const cap = resolveValidFormats(capData, selectedPlatforms);
 
-    // Fail loud if no format is valid across the selected platform set — never silently pick text.
+    // Fail loud if no format is valid on ANY selected platform — never silently pick text.
     if (cap.validFormats.length === 0) {
       return jsonResponse({
         ok: false,
         error: "no_valid_format_for_platform_set",
         version: VERSION,
-        detail: "no buildable+supported format is valid for every selected platform; adjust the platform selection or client eligibility",
+        detail: "no buildable+supported format is valid for ANY selected platform; adjust the platform selection or client eligibility",
         selected_platforms: selectedPlatforms,
         eligible_selected: cap.eligibleSelected,
         ineligible_selected: cap.ineligibleSelected,
@@ -170,7 +184,7 @@ Deno.serve(async (req: Request) => {
     const outline = await generateOutline({ apiKey: anthropicKey, model, title: series.title, topic: series.topic, goal: series.goal, audienceNotes: series.audience_notes, toneNotes: series.tone_notes, episodeCount: series.episode_count, platformsLabel, validFormats: cap.validFormats, videoOnlyInSet: cap.videoOnlyInSet, brandIdentityPrompt: brand?.brand_identity_prompt ?? null });
     const episodes = outline.episodes.slice(0, series.episode_count);
 
-    // Stage 3.5a: validation whitelist is now the resolver-driven valid set (NOT a hardcoded
+    // Stage 3.5a: validation whitelist is the resolver-driven valid set (NOT a hardcoded
     // text|image_quote|carousel). A model choice outside the valid set is clamped to the first
     // valid format (deterministic, capability-safe) — never to a hardcoded static format.
     const validSet = new Set(cap.validFormats);
