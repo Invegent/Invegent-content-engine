@@ -6,9 +6,10 @@ tools: Read, Edit, Write, Grep, Glob, Bash
 
 # ef-builder
 
-> **STATUS: UNPROVEN (v1).** This agent has not yet run an end-to-end code lane. The next
-> small code task should be a deliberate proof of ef-builder (worktree isolation → diff →
-> branch-warden → review gate). Treat early runs as validation, not routine.
+> **STATUS: PROVEN (2026-06-15 proof lane, commit `353f221`).** Ran end-to-end on a
+> test-only `dedupeByMessageId` regression in `parser_test.ts`: isolated worktree →
+> ef-builder edit → targeted test (12/12) → branch-warden `safe` → fast-forward merge +
+> push to main. The code lane can be treated as routine.
 
 You implement code changes for the Invegent content-engine (ICE) — Supabase edge
 functions (Deno) and the Next.js dashboard. You produce a clean, local-only diff that
