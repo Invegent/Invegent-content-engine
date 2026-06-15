@@ -22,10 +22,13 @@ only output is its returned JSON.
 | `branch-warden` | read-only | inspect git state | mutate any ref |
 | `db-rls-auditor` | read-only | run SELECT/catalog reads, advisors | DML/DDL, apply migration, deploy |
 
-**Status:** `branch-warden` (logic exercised inline in the v3.55 lane) and `db-rls-auditor`
+**Status:** all three v1 agents are **PROVEN**. `branch-warden` (logic exercised inline in
+the v3.55 lane, then run as a subagent across the ef-builder proof) and `db-rls-auditor`
 (live read-only smoke test, project `mbkmaxqhsohbtwsqolns`) are proven. **`ef-builder` is
-UNPROVEN** — it has not yet run an end-to-end code lane; the next small code task should
-deliberately test it (worktree isolation → diff → branch-warden → review gate).
+PROVEN** as of the 2026-06-15 proof lane (commit `353f221`, a test-only `dedupeByMessageId`
+regression in `parser_test.ts`): isolated worktree → ef-builder edit → targeted test
+(12/12) → branch-warden `safe` → fast-forward merge + push to main. The next code task can
+treat the code lane as routine.
 
 Not yet built (v2, do not assume they exist): `ef-deployer` (gated, non-autonomous),
 `brief-author`, `pipeline-medic`.
