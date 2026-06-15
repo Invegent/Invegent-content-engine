@@ -136,3 +136,12 @@ Deno.test("privacy: no body / no full email address in output", () => {
   assert(!json.includes("billing@acmesaas.example"), "full From address not stored");
   assertEquals(parseEmail(monthlyReceipt).source_from_domain, "acmesaas.example", "domain only");
 });
+
+Deno.test("dedupeByMessageId: keeps first occurrence, preserves order, flags later dups", () => {
+  const base = parseEmail(monthlyReceipt);
+  const mk = (id: string): ParsedCandidate => ({ ...base, gmail_message_id: id });
+  const rows = [mk("A"), mk("B"), mk("A"), mk("C"), mk("B")];
+  const { kept, duplicates } = dedupeByMessageId(rows);
+  assertEquals(kept.map((c) => c.gmail_message_id), ["A", "B", "C"], "first-wins, order preserved");
+  assertEquals(duplicates.map((c) => c.gmail_message_id), ["A", "B"], "later dups flagged in order");
+});
