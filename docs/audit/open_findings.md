@@ -15,7 +15,7 @@
 | Severity | Open | Closed (last 30d) |
 |---|---|---|
 | Critical | 0 | 0 |
-| High | 0 | 2 |
+| High | 1 | 3 |
 | Medium | 0 | 4 |
 | Low | 0 | 2 |
 | Info | 0 | 0 |
@@ -41,6 +41,20 @@ Retroactive grading of cycles 1-2 against the Decision 6 metric:
 ---
 
 ## Open findings
+
+### D-2026-06-16-002  ·  HIGH  ·  open  (systemic SECURITY DEFINER exposure)
+**Role:** db-rls-auditor (read-only confirmation) · **Raised:** 2026-06-16 Sydney
+**Issue:** The `advance_avatar_*` exposure closed in D-2026-06-16-001 is **not isolated** — it is one instance of a systemic pattern across the `public` schema:
+- **85** SECURITY DEFINER functions in `public` that are exposed and **mutating** (run with owner rights and write data).
+- **43** of those also **lack a pinned `search_path`** (`function_search_path_mutable` — search_path-injection surface).
+- **125** functions are **public + anon-executable** (callable without signing in).
+- **125** functions are **public + authenticated-executable**.
+**Highest-risk subset:** credential/token-writing SECURITY DEFINER functions within the 85 (functions that write secrets / credentials / tokens) — the priority lockdown targets; precise enumeration deferred to Phase 1 (see next step).
+**Scope vs D-2026-06-16-001:** D-001 remediated **only** `advance_avatar_*` (2 functions). The remaining systemic surface is untouched.
+**Status:** OPEN — confirmation only. No revoke, no migration, no fix applied (per task scope).
+**Recommended remediation (NOT applied; PK-gated):** a **phased, batched lockdown** — `REVOKE EXECUTE FROM anon, authenticated, PUBLIC` (service_role retained) + pin `search_path`, applied in reviewed batches via new sequentially-named migrations, highest-risk (credential/token writers) first, each batch caller-confirmed to avoid breaking legitimate callers. PUBLIC-only revoke is insufficient on Supabase.
+**Next gated step:** **Phase 1 — credential/token-writer caller-confirmation + D-01 review** before any revoke; subsequent phases batch the remaining functions.
+**Source:** CCH systemic SECURITY DEFINER exposure scan, 2026-06-16 (counts above). This register pass is docs-only — no SQL run by CCD this task.
 
 ### D-2026-06-16-001  ·  HIGH  ·  closed-action-taken  (remediated + verified 2026-06-16)
 **Role:** db-rls-auditor (read-only confirmation) · **Raised:** 2026-06-16 Sydney
