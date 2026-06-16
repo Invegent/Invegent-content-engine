@@ -15,7 +15,7 @@
 | Severity | Open | Closed (last 30d) |
 |---|---|---|
 | Critical | 0 | 0 |
-| High | 1 | 1 |
+| High | 0 | 2 |
 | Medium | 0 | 4 |
 | Low | 0 | 2 |
 | Info | 0 | 0 |
@@ -42,7 +42,7 @@ Retroactive grading of cycles 1-2 against the Decision 6 metric:
 
 ## Open findings
 
-### D-2026-06-16-001  ·  HIGH  ·  open  (security carry — confirmation only, no fix)
+### D-2026-06-16-001  ·  HIGH  ·  closed-action-taken  (remediated + verified 2026-06-16)
 **Role:** db-rls-auditor (read-only confirmation) · **Raised:** 2026-06-16 Sydney
 **Issue:** Two pre-existing `public.advance_avatar_*` SECURITY DEFINER functions are executable by `anon` and `authenticated` (and PUBLIC) and mutate `c.brand_avatar` with owner (postgres) rights — an unauthenticated REST/RPC caller can drive avatar generation-state transitions:
 - `public.advance_avatar_to_creating(p_brand_avatar_id uuid, p_group_id text, p_image_url_list jsonb)` (oid 92380) — sets group_id/image_url_list, flips `avatar_gen_status`→'training'.
@@ -50,9 +50,18 @@ Retroactive grading of cycles 1-2 against the Decision 6 metric:
 Both `prosecdef=true`, owner=postgres; `proacl` grants EXECUTE to anon, authenticated, PUBLIC, service_role. Confirmed via Supabase security advisor (`anon_security_definer_function_executable`, `authenticated_security_definer_function_executable`). Related advisor flag: `function_search_path_mutable` (no `SET search_path`) on both.
 **Provenance:** PRE-EXISTING — migration `20260409122159_heygen_avatar_secdef_functions`; unrelated to `agp_d01_2_migration_brand_avatar_priority_default_markers` (20260616015419). Surfaced during v3.58 verification.
 **Repo/prod drift:** `advance_avatar_to_training` has no repo migration capturing its current definition (only `advance_avatar_to_creating`, in `supabase/migrations/20260508003500_f_heygen_rpc_migrations_missing.sql`, which explicitly deferred grant hardening — never written).
-**Status:** OPEN — confirmation only. No revoke, no migration, no fix applied (per task scope).
+**Status:** CLOSED-ACTION-TAKEN — lockdown applied + verified 2026-06-16 (see Resolution below).
 **Recommended remediation (NOT applied; PK-gated, separate lane):** via a NEW sequentially-named migration — `REVOKE EXECUTE ON FUNCTION public.advance_avatar_to_creating(uuid, text, jsonb), public.advance_avatar_to_training(uuid, text) FROM anon, authenticated, PUBLIC;` (leaving service_role only); add `SET search_path = ''` to both; re-capture `advance_avatar_to_training` in repo for parity. PUBLIC-only revoke is insufficient on Supabase.
 **Evidence:** db-rls-auditor read-only confirmation (agentId a0e5e7c3d491298b6), 2026-06-16.
+**Resolution (2026-06-16) — CLOSED-ACTION-TAKEN, lockdown applied + verified:**
+- **Migration:** `sec_d_2026_06_16_001_advance_avatar_rpc_lockdown` (via Supabase `apply_migration`).
+- **D-01 review:** `f3b2fd2a-3948-454f-acd1-bfa7fb4a6af4`.
+- **Grants:** `REVOKE EXECUTE` from PUBLIC, anon, authenticated on both `advance_avatar_to_creating(uuid, text, jsonb)` and `advance_avatar_to_training(uuid, text)`; **service_role retained**.
+- **Hardening:** `search_path` pinned on both functions (closes `function_search_path_mutable`).
+- **Function bodies unchanged**; **`c.brand_avatar` data unchanged** (no backfill, no DML).
+- **Advisor:** `advance_avatar_*` findings **cleared** (no longer flagged under `anon_/authenticated_security_definer_function_executable`).
+- **Rollback:** available (re-grant EXECUTE if needed).
+- **Residual:** broader systemic SECURITY DEFINER / `search_path` exposure across other functions noted as **separate and non-blocking** (out of scope for this finding).
 
 ---
 
