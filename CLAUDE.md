@@ -21,8 +21,16 @@ only output is its returned JSON.
 | `ef-builder` | write, isolated worktree | edit/write code, run local checks | deploy, migrate, push, merge |
 | `branch-warden` | read-only | inspect git state | mutate any ref |
 | `db-rls-auditor` | read-only | run SELECT/catalog reads, advisors | DML/DDL, apply migration, deploy |
+| `security-auditor` | read-only | security triage: classify exposure, caller/blast-radius, GREEN/AMBER/RED, design remediation batches + D-01 packets | apply migration, REVOKE/GRANT, ALTER FUNCTION, write DB, edit repo, close findings |
 
-**Status:** all three v1 agents are **PROVEN**. `branch-warden` (logic exercised inline in
+**Security triage lanes:** use `security-auditor` **after** `db-rls-auditor` has gathered the DB
+evidence — `db-rls-auditor` collects facts (grants, defs, advisors); `security-auditor` adds the
+cross-repo caller analysis, the intended-principal call, blast-radius, and the GREEN/AMBER/RED
+remediation-batch + D-01 packet. **`security-auditor` is PROPOSED v1 until proven by a real lane**
+— suggested first proof: D-2026-06-16-002 **Phase 1b** (`search_path` hardening for
+`store_linkedin_org_token`) or the `upsert_publish_profile` AMBER resolution.
+
+**Status:** all three original v1 agents are **PROVEN**. `branch-warden` (logic exercised inline in
 the v3.55 lane, then run as a subagent across the ef-builder proof) and `db-rls-auditor`
 (live read-only smoke test, project `mbkmaxqhsohbtwsqolns`) are proven. **`ef-builder` is
 PROVEN** as of the 2026-06-15 proof lane (commit `353f221`, a test-only `dedupeByMessageId`
