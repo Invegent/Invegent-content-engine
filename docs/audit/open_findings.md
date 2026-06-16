@@ -15,7 +15,7 @@
 | Severity | Open | Closed (last 30d) |
 |---|---|---|
 | Critical | 0 | 0 |
-| High | 0 | 1 |
+| High | 1 | 1 |
 | Medium | 0 | 4 |
 | Low | 0 | 2 |
 | Info | 0 | 0 |
@@ -42,7 +42,17 @@ Retroactive grading of cycles 1-2 against the Decision 6 metric:
 
 ## Open findings
 
-_No open findings._
+### D-2026-06-16-001  ·  HIGH  ·  open  (security carry — confirmation only, no fix)
+**Role:** db-rls-auditor (read-only confirmation) · **Raised:** 2026-06-16 Sydney
+**Issue:** Two pre-existing `public.advance_avatar_*` SECURITY DEFINER functions are executable by `anon` and `authenticated` (and PUBLIC) and mutate `c.brand_avatar` with owner (postgres) rights — an unauthenticated REST/RPC caller can drive avatar generation-state transitions:
+- `public.advance_avatar_to_creating(p_brand_avatar_id uuid, p_group_id text, p_image_url_list jsonb)` (oid 92380) — sets group_id/image_url_list, flips `avatar_gen_status`→'training'.
+- `public.advance_avatar_to_training(p_brand_avatar_id uuid, p_group_id text)` (oid 92367).
+Both `prosecdef=true`, owner=postgres; `proacl` grants EXECUTE to anon, authenticated, PUBLIC, service_role. Confirmed via Supabase security advisor (`anon_security_definer_function_executable`, `authenticated_security_definer_function_executable`). Related advisor flag: `function_search_path_mutable` (no `SET search_path`) on both.
+**Provenance:** PRE-EXISTING — migration `20260409122159_heygen_avatar_secdef_functions`; unrelated to `agp_d01_2_migration_brand_avatar_priority_default_markers` (20260616015419). Surfaced during v3.58 verification.
+**Repo/prod drift:** `advance_avatar_to_training` has no repo migration capturing its current definition (only `advance_avatar_to_creating`, in `supabase/migrations/20260508003500_f_heygen_rpc_migrations_missing.sql`, which explicitly deferred grant hardening — never written).
+**Status:** OPEN — confirmation only. No revoke, no migration, no fix applied (per task scope).
+**Recommended remediation (NOT applied; PK-gated, separate lane):** via a NEW sequentially-named migration — `REVOKE EXECUTE ON FUNCTION public.advance_avatar_to_creating(uuid, text, jsonb), public.advance_avatar_to_training(uuid, text) FROM anon, authenticated, PUBLIC;` (leaving service_role only); add `SET search_path = ''` to both; re-capture `advance_avatar_to_training` in repo for parity. PUBLIC-only revoke is insufficient on Supabase.
+**Evidence:** db-rls-auditor read-only confirmation (agentId a0e5e7c3d491298b6), 2026-06-16.
 
 ---
 
