@@ -51,10 +51,17 @@ Retroactive grading of cycles 1-2 against the Decision 6 metric:
 - **125** functions are **public + authenticated-executable**.
 **Highest-risk subset:** credential/token-writing SECURITY DEFINER functions within the 85 (functions that write secrets / credentials / tokens) — the priority lockdown targets; precise enumeration deferred to Phase 1 (see next step).
 **Scope vs D-2026-06-16-001:** D-001 remediated **only** `advance_avatar_*` (2 functions). The remaining systemic surface is untouched.
-**Status:** OPEN — confirmation only. No revoke, no migration, no fix applied (per task scope).
+**Status:** OPEN — Phase 1 lockdown APPLIED + VERIFIED (5 GREEN functions, 2026-06-16); remaining systemic surface + Phase 1b still open.
 **Recommended remediation (NOT applied; PK-gated):** a **phased, batched lockdown** — `REVOKE EXECUTE FROM anon, authenticated, PUBLIC` (service_role retained) + pin `search_path`, applied in reviewed batches via new sequentially-named migrations, highest-risk (credential/token writers) first, each batch caller-confirmed to avoid breaking legitimate callers. PUBLIC-only revoke is insufficient on Supabase.
-**Next gated step:** **Phase 1 — credential/token-writer caller-confirmation + D-01 review** before any revoke; subsequent phases batch the remaining functions.
+**Next gated step:** **Phase 1b** — pin `search_path` on `store_linkedin_org_token` (body-aware: `pg_catalog, extensions`, or schema-qualify `gen_random_uuid()`); then batch the remaining systemic functions (each caller-confirmed + D-01). `upsert_publish_profile` stays AMBER/excluded pending manual-SQL-only confirmation.
 **Source:** CCH systemic SECURITY DEFINER exposure scan, 2026-06-16 (counts above). This register pass is docs-only — no SQL run by CCD this task.
+**Phase 1 — APPLIED + VERIFIED (2026-06-16):** migration `sec_d_2026_06_16_002_phase1_oauth_publish_rpc_lockdown` (version `20260616054727`) via Supabase `apply_migration`; review `d90b9d87` resolved PK-approved; PK phrase recorded. **REVOKE EXECUTE FROM PUBLIC, anon, authenticated** (service_role retained; no body/search_path/schema/data change) on the 5 GREEN functions:
+- `store_youtube_channel_token(uuid,text,text,text,text,timestamptz)` — caller: invegent-dashboard YouTube OAuth callback (service-role).
+- `store_linkedin_org_token(uuid,text,text,text,timestamptz)` — caller: invegent-dashboard LinkedIn OAuth callback (service-role). **search_path still mutable → Phase 1b.**
+- `store_facebook_page_token(uuid,text,text,text,text,timestamptz)` — caller: invegent-dashboard Facebook callback + select-page (service-role).
+- `store_platform_token(uuid,text,text,text,text,timestamptz)` — callers: **invegent-portal/app/api/connect/facebook/callback/route.ts + invegent-portal/app/api/connect/linkedin/callback/route.ts**, both via **`createServiceClient()` (`SUPABASE_SERVICE_ROLE_KEY`)** — service-role provenance confirmed.
+- `save_publish_schedule(uuid,text,jsonb)` — caller: invegent-dashboard schedule server action (service-role).
+**Verification (read-only):** all 5 now anon=false / authenticated=false / service_role=true (ACL `{postgres, service_role}`); security advisor 0028/0029 cleared for all 5. **EXCLUDED:** `upsert_publish_profile` remains **AMBER** (no programmatic caller located; manual admin SQL only). **Remaining systemic surface (broader 85 SECDEF set) stays OPEN.**
 
 ### D-2026-06-16-001  ·  HIGH  ·  closed-action-taken  (remediated + verified 2026-06-16)
 **Role:** db-rls-auditor (read-only confirmation) · **Raised:** 2026-06-16 Sydney
