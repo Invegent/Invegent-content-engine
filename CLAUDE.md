@@ -26,9 +26,10 @@ only output is its returned JSON.
 **Security triage lanes:** use `security-auditor` **after** `db-rls-auditor` has gathered the DB
 evidence — `db-rls-auditor` collects facts (grants, defs, advisors); `security-auditor` adds the
 cross-repo caller analysis, the intended-principal call, blast-radius, and the GREEN/AMBER/RED
-remediation-batch + D-01 packet. **`security-auditor` is PROPOSED v1 until proven by a real lane**
-— suggested first proof: D-2026-06-16-002 **Phase 1b** (`search_path` hardening for
-`store_linkedin_org_token`) or the `upsert_publish_profile` AMBER resolution.
+remediation-batch + D-01 packet. **`security-auditor` is PROVEN** (2026-06-16 — D-2026-06-16-002
+**Phase 1b** `store_linkedin_org_token` search_path triage: classified the lane GREEN, caught and
+corrected the earlier `gen_random_uuid()` / `search_path=''` assumption (PG13+ core built-in),
+produced D-01 readiness + proof/rollback reasoning, no hard-rule violations).
 
 **Status:** all three original v1 agents are **PROVEN**. `branch-warden` (logic exercised inline in
 the v3.55 lane, then run as a subagent across the ef-builder proof) and `db-rls-auditor`
