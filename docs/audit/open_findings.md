@@ -15,7 +15,7 @@
 | Severity | Open | Closed (last 30d) |
 |---|---|---|
 | Critical | 0 | 0 |
-| High | 1 | 2 |
+| High | 2 | 2 |
 | Medium | 0 | 4 |
 | Low | 0 | 2 |
 | Info | 0 | 0 |
@@ -41,6 +41,30 @@ Retroactive grading of cycles 1-2 against the Decision 6 metric:
 ---
 
 ## Open findings
+
+### D-2026-06-17-003  ·  HIGH  ·  open  (Supabase advisor `rls_disabled_in_public` — 22 tables RLS-off, exposed-schemas confirmed)
+**Role:** CCH (read-only verification) · **Raised:** 2026-06-17 Sydney
+**Lane:** SEPARATE RLS lane — **not** part of the `D-2026-06-16-002` SECURITY DEFINER (SECDEF) remediation. D-002 covers `public` SECDEF *function* grants; this finding covers *table* RLS. Distinct migrations, distinct review IDs. D-002 is not touched or closed by this finding.
+**Issue:** Supabase weekly security advisor (email 2026-06-16, valid; `noreply@supabase.com`) flags advisor class **`rls_disabled_in_public`** on project `mbkmaxqhsohbtwsqolns` (content_engine): **22 tables with RLS disabled; affected schemas (`c`, `m`, `r`, `friction`, `public`) confirmed exposed through the Data API.** The flagged tables are therefore reachable by `anon`/`authenticated` per their grants — not lint noise.
+**Status:** OPEN — read-only verification complete; exposed-schemas confirmed; D-01 review ready; no remediation applied.
+**Severity rationale — HIGH · open:** `c.client_ai_profile` is in an exposed schema (`c`), RLS disabled, anon+authenticated SELECT-able → **confirmed true exposure of sensitive IP/config** (system prompts, persona, platform rules, tool policy; **no credentials**). Confirmed exposure of sensitive IP justifies HIGH.
+**Evidence:**
+- **PK manual dashboard verification, 2026-06-17** (Supabase → Integrations → Data API → Settings → Exposed schemas): Data API exposed schemas include **`c`, `m`, `r`, `friction`, and `public`** (10 of 12 schemas exposed; also `f`, `k`, `t`, `graphql_public`, likely `a`). Data API panel: 3 of 248 tables / 126 of 319 functions surfaced; extra search_path `public, extensions, k`. **Exposed-schema uncertainty is closed.** *(The 3/248 + 126/319 counters are PK-reported context; the operative reachability basis is confirmed schema exposure × the verified anon/auth grants below.)*
+- **CCH read-only checks, 2026-06-17 (0 writes):** all 22 tables `relrowsecurity=false`. Grant reach: anon USAGE+SELECT → `public.feed_suggestion`, `c.client_ai_profile`, all 12 `r.*`; authenticated USAGE+SELECT → `c.client_ai_profile`, all 7 `friction.*`; **neither** API role has schema USAGE on `m`.
+- **Combined conclusion (schema-exposed × grants × RLS-off):**
+  - `c.client_ai_profile` — **TRUE EXPOSURE CONFIRMED** (anon+auth readable now); HIGH IP/config.
+  - `public.feed_suggestion` — **TRUE EXPOSURE CONFIRMED** (anon readable now); low sensitivity intake/review.
+  - `r.*` (12) — **TRUE EXPOSURE CONFIRMED** (anon readable now); low–moderate (`r.country`/`country_subdivision`/`country_timezone` reference data — 249/5,049/422 rows).
+  - `friction.*` (7) — **TRUE EXPOSURE to authenticated** (logged-in API user required; anon cannot reach); low sensitivity ops register.
+  - `m.ef_drift_log` — **lower / effectively unreachable** (schema exposed but no anon/auth schema USAGE); RLS remains safe hardening.
+- **Repo dependency grep (CCD / security-auditor lane):** clean — no legitimate anon/authenticated/browser direct-table dependency on any of the 22; all direct runtime access is service-role or SECURITY DEFINER RPC path, expected unaffected by table RLS. *(CCH did not independently run this grep — the GitHub bridge has no grep and `invegent-web` is not on the CCH whitelist; recorded on CCD/security-auditor attestation. Not a blocker on this finding.)*
+**Tables (22):** `c.client_ai_profile` · `public.feed_suggestion` · `m.ef_drift_log` · `r.*` (12): ice_publication_evidence, country, country_subdivision, country_timezone, platform_observation, platform_manual_observation, platform_observer_health, matcher_config, cadence_drift_log, reconciliation_match, reconciliation_run, expected_publication · `friction.*` (7): category, experiment_run, source, emission_rule, emission_rule_history, notification_policy, pool_session.
+**Impact:** `c.client_ai_profile` IP/config anon/authenticated-readable now (no credential exposure — tokens live in `c.client_channel`/`client_publish_profile`). `public.feed_suggestion` + all 12 `r.*` anon-readable now; `friction.*` authenticated-readable; `m.ef_drift_log` not API-reachable. Read-exposure posture; remediation is fail-closed RLS.
+**Recommended remediation (NOT applied; D-01 review-ready):** one migration `sec_d_2026_06_17_003_enable_rls_on_advisor_flagged_tables` — **ENABLE RLS on all 22 tables only.** No policies, no grants, no data change, no schema-shape change. `service_role`/`postgres`/SECURITY DEFINER RPC/`exec_sql` paths expected unaffected (bypass RLS); `anon`/`authenticated` direct-table access fails closed until an explicit policy is added. Low breakage risk per the CCD grep.
+**Next gated step:** D-01 review (`sql_destructive`) → PK exact phrase → `apply_migration` → proof.
+**Expected PK exact phrase (apply):** `PK APPROVES SEC-D-2026-06-17-003 ENABLE RLS ON ADVISOR-FLAGGED TABLES APPLY`
+**Non-goals (this finding):** no policy creation; no GRANT/REVOKE; no data change; no schema-shape change; no SECDEF function change (separate `D-2026-06-16-002` lane); no AGP change; Branch B remains NOT AUTHORISED; no `D-002` edit beyond the Summary count.
+**Source:** CCH read-only verification 2026-06-17 (advisor pull; grants/RLS/USAGE/row-count SELECTs; repo config + `lib/supabase` reads) + PK manual dashboard exposed-schemas verification 2026-06-17. Docs-only entry — **0 SQL / 0 migration / 0 DDL / 0 RLS / 0 policy / 0 grant / 0 DB write applied this task.**
 
 ### D-2026-06-16-002  ·  HIGH  ·  open  (systemic SECURITY DEFINER exposure)
 **Role:** db-rls-auditor (read-only confirmation) · **Raised:** 2026-06-16 Sydney
