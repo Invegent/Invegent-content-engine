@@ -15,7 +15,7 @@
 | Severity | Open | Closed (last 30d) |
 |---|---|---|
 | Critical | 0 | 0 |
-| High | 2 | 2 |
+| High | 1 | 3 |
 | Medium | 0 | 4 |
 | Low | 0 | 2 |
 | Info | 0 | 0 |
@@ -42,11 +42,11 @@ Retroactive grading of cycles 1-2 against the Decision 6 metric:
 
 ## Open findings
 
-### D-2026-06-17-003  ·  HIGH  ·  open  (Supabase advisor `rls_disabled_in_public` — 22 tables RLS-off, exposed-schemas confirmed)
+### D-2026-06-17-003  ·  HIGH  ·  closed-action-taken  (RLS enabled on all 22 advisor-flagged tables, applied + verified 2026-06-17)
 **Role:** CCH (read-only verification) · **Raised:** 2026-06-17 Sydney
 **Lane:** SEPARATE RLS lane — **not** part of the `D-2026-06-16-002` SECURITY DEFINER (SECDEF) remediation. D-002 covers `public` SECDEF *function* grants; this finding covers *table* RLS. Distinct migrations, distinct review IDs. D-002 is not touched or closed by this finding.
 **Issue:** Supabase weekly security advisor (email 2026-06-16, valid; `noreply@supabase.com`) flags advisor class **`rls_disabled_in_public`** on project `mbkmaxqhsohbtwsqolns` (content_engine): **22 tables with RLS disabled; affected schemas (`c`, `m`, `r`, `friction`, `public`) confirmed exposed through the Data API.** The flagged tables are therefore reachable by `anon`/`authenticated` per their grants — not lint noise.
-**Status:** OPEN — read-only verification complete; exposed-schemas confirmed; D-01 review ready; no remediation applied.
+**Status:** CLOSED-ACTION-TAKEN — RLS enabled on all 22 advisor-flagged tables, applied + verified 2026-06-17.
 **Severity rationale — HIGH · open:** `c.client_ai_profile` is in an exposed schema (`c`), RLS disabled, anon+authenticated SELECT-able → **confirmed true exposure of sensitive IP/config** (system prompts, persona, platform rules, tool policy; **no credentials**). Confirmed exposure of sensitive IP justifies HIGH.
 **Evidence:**
 - **PK manual dashboard verification, 2026-06-17** (Supabase → Integrations → Data API → Settings → Exposed schemas): Data API exposed schemas include **`c`, `m`, `r`, `friction`, and `public`** (10 of 12 schemas exposed; also `f`, `k`, `t`, `graphql_public`, likely `a`). Data API panel: 3 of 248 tables / 126 of 319 functions surfaced; extra search_path `public, extensions, k`. **Exposed-schema uncertainty is closed.** *(The 3/248 + 126/319 counters are PK-reported context; the operative reachability basis is confirmed schema exposure × the verified anon/auth grants below.)*
@@ -65,6 +65,16 @@ Retroactive grading of cycles 1-2 against the Decision 6 metric:
 **Expected PK exact phrase (apply):** `PK APPROVES SEC-D-2026-06-17-003 ENABLE RLS ON ADVISOR-FLAGGED TABLES APPLY`
 **Non-goals (this finding):** no policy creation; no GRANT/REVOKE; no data change; no schema-shape change; no SECDEF function change (separate `D-2026-06-16-002` lane); no AGP change; Branch B remains NOT AUTHORISED; no `D-002` edit beyond the Summary count.
 **Source:** CCH read-only verification 2026-06-17 (advisor pull; grants/RLS/USAGE/row-count SELECTs; repo config + `lib/supabase` reads) + PK manual dashboard exposed-schemas verification 2026-06-17. Docs-only entry — **0 SQL / 0 migration / 0 DDL / 0 RLS / 0 policy / 0 grant / 0 DB write applied this task.**
+**Resolution — APPLIED + VERIFIED (2026-06-17):** migration `sec_d_2026_06_17_003_enable_rls_on_advisor_flagged_tables` (version `20260616214246`) via Supabase `apply_migration`; review `b5ccaa5a-5035-4803-b594-aa8312dd55c6` — **escalated → PK override, Path A (full 22-table RLS enable)**; PK phrase received (`PK APPROVES SEC-D-2026-06-17-003 ENABLE RLS ON ADVISOR-FLAGGED TABLES APPLY`). `ALTER TABLE … ENABLE ROW LEVEL SECURITY` on all 22 (no policies). **Proof points (CCD read-only verification 2026-06-17):**
+- RLS enabled on all 22 (`pg_class.relrowsecurity = true`).
+- Zero policies created (`pg_policy` count = 0 on all 22).
+- Advisor `rls_disabled_in_public` **cleared 22 → 0**.
+- Expected **`rls_enabled_no_policy` INFO posture** confirmed — the 22 now appear under that INFO advisory in place of the HIGH finding.
+- service_role / postgres reads intact (`rolbypassrls = true`).
+- anon / authenticated direct reads **fail closed** (`rolbypassrls = false` + RLS-on + no-policy = deny-all).
+- Row counts unchanged except organic cron append (RLS-enable is metadata-only DDL — no DML; cannot alter data by construction).
+**Rollback:** `ALTER TABLE <schema>.<table> DISABLE ROW LEVEL SECURITY;` per table (metadata-only, instant, no data change).
+**Scope:** D-002 SECDEF lane unchanged; AGP untouched; Branch B NOT AUTHORISED.
 
 ### D-2026-06-16-002  ·  HIGH  ·  open  (systemic SECURITY DEFINER exposure)
 **Role:** db-rls-auditor (read-only confirmation) · **Raised:** 2026-06-16 Sydney
