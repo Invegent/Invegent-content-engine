@@ -15,7 +15,7 @@
 | Severity | Open | Closed (last 30d) |
 |---|---|---|
 | Critical | 0 | 0 |
-| High | 1 | 3 |
+| High | 1 | 2 |
 | Medium | 0 | 4 |
 | Low | 0 | 2 |
 | Info | 0 | 0 |
