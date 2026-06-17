@@ -84,6 +84,7 @@
 
 import { Hono } from 'jsr:@hono/hono';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { requireAssetPresent } from './asset_backstop.ts';
 
 const app = new Hono();
 
@@ -93,7 +94,18 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
 };
 
-const VERSION = 'instagram-publisher-v2.4.0';
+const VERSION = 'instagram-publisher-v2.5.0';
+// v2.5.0 (2026-06-17) — UNIFORM FINAL-ASSERTION BACKSTOP (Lane A). Adds a single
+//   pure final assertion (requireAssetPresent in ./asset_backstop.ts) as the LAST
+//   gate immediately before the IG POST, AFTER the existing image/video hold gates
+//   and the defensive throttle (all byte-unchanged). Defence-in-depth only: refuses
+//   to publish an asset-required format without its rendered asset, on
+//   render_failed/render_pending, on an unknown asset-required format, and on a
+//   non-approved draft ('approved' only). On publish:false the row is re-queued
+//   (+15m) and skipped (last_error=backstop:<reason>), logged skipped:<reason>;
+//   processing continues. STRICTLY OUT OF SCOPE: the existing hold gates, throttle,
+//   carousel single-image fallback, container polling and retry logic are NOT
+//   replaced/weakened; no schema/DB change; no T2.
 const IG_GRAPH_BASE = 'https://graph.facebook.com/v19.0';
 const IMAGE_HOLD_MINUTES = 30;
 // v2.1.0: on a 2207051 / code-4 IG restriction, pause the profile this long
@@ -740,6 +752,34 @@ app.post('*', async (c) => {
           }
         }
       }
+
+      // ══ UNIFORM FINAL-ASSERTION BACKSTOP (v2.5.0) ═════════════════════
+      // Last gate before the IG POST, AFTER the existing image/video hold gates
+      // and the defensive throttle above (all unchanged). Defence-in-depth:
+      // never publish an asset-required format without its rendered asset, never
+      // publish a non-approved draft. On publish:false → re-queue (+15m) and skip,
+      // log skipped:<reason>. carouselSlideCount is left undefined here — IG's own
+      // carousel path loads slides below and applies its single-image fallback.
+      {
+        const backstop = requireAssetPresent({
+          recommended_format: draft.recommended_format,
+          image_url: draft.image_url, image_status: draft.image_status,
+          video_url: draft.video_url, video_status: draft.video_status,
+          approval_status: draft.approval_status,
+        });
+        if (!backstop.publish) {
+          const backoffIso = new Date(Date.now() + 15 * 60_000).toISOString();
+          await supabase.schema('m').from('post_publish_queue').update({
+            status: 'queued', scheduled_for: backoffIso,
+            last_error: `backstop:${backstop.reason}`,
+            locked_at: null, locked_by: null, updated_at: nowIso(),
+          }).eq('queue_id', queueId);
+          console.log(`[instagram-publisher] backstop skipped:${backstop.reason} draft=${q.post_draft_id} format=${recFormat}`);
+          results.push({ queue_id: queueId, status: 'skipped', reason: `backstop:${backstop.reason}`, format: recFormat });
+          continue;
+        }
+      }
+      // ══ END BACKSTOP ════════════════════════════════════════════════════
 
       // ── PUBLISH ───────────────────────────────────────────────────────
       const startMs = Date.now();

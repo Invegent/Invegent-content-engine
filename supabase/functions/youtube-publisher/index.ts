@@ -94,8 +94,23 @@
 // v1.5.0: Fix INSERT into m.post_publish (column names + attempt_no).
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { requireAssetPresent } from './asset_backstop.ts';
 
-const VERSION = 'youtube-publisher-v1.12.0';
+const VERSION = 'youtube-publisher-v1.13.0';
+// v1.13.0 (2026-06-17) — UNIFORM FINAL-ASSERTION BACKSTOP + explicit no-video guard
+//   (Lane A). Adds (a) an explicit `!draft.video_url` skip immediately before the
+//   video download/upload (records skipped:no_video_url, continues), and (b) the
+//   shared requireAssetPresent (./asset_backstop.ts) as a final defence-in-depth
+//   assertion before upload. CRITICAL: youtube-publisher uses approval_status as a
+//   CROSS-PLATFORM field gated IN ('approved','published') (v1.9.0) and uses
+//   video_status (not approval_status) as its YT publish marker — so the backstop is
+//   called with allowPublishedApproval:true to NOT regress drafts already published
+//   elsewhere. video_status is ADDED to the SELECT column list only; the existing
+//   .eq('video_status','generated') filter and .in('approval_status',
+//   ['approved','published']) predicate are byte-unchanged. STRICTLY OUT OF SCOPE:
+//   the select predicates, platform isolation, DEFAULT_PRIVACY_STATUS=public, the
+//   no-YT-id / pre-upload reconcile guards, retry/backoff, attempt_no audit, 2/tick
+//   cap — all byte-unchanged; no schema/DB change; no T2; no historical remediation.
 const YOUTUBE_TOKEN_URL  = 'https://oauth2.googleapis.com/token';
 const YOUTUBE_UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status';
 
@@ -241,7 +256,7 @@ Deno.serve(async (req: Request) => {
   //         was eligible and got uploaded to YouTube. 'platform' is now selected + gated here, with a
   //         defensive per-row re-check in the loop below (mirrors instagram-publisher v2.0.0).
   const { data: drafts } = await supabase.schema('m').from('post_draft')
-    .select('post_draft_id, platform, client_id, draft_title, draft_body, recommended_format, video_url, draft_format, approval_status')
+    .select('post_draft_id, platform, client_id, draft_title, draft_body, recommended_format, video_url, video_status, draft_format, approval_status')
     .eq('platform', 'youtube')
     .eq('video_status', 'generated')
     .in('approval_status', ['approved', 'published'])
@@ -305,6 +320,32 @@ Deno.serve(async (req: Request) => {
         continue;
       }
     } catch (_) { /* if the guard read fails, fall through to the normal upload path */ }
+
+    // v1.13.0: EXPLICIT no-video guard — never attempt a YT upload without a source
+    // URL. Also covered by the backstop below, but kept explicit per Lane A brief.
+    if (!draft.video_url) {
+      console.log(`[youtube-publisher] skipped:no_video_url post_draft_id=${draft.post_draft_id}`);
+      results.push({ post_draft_id: draft.post_draft_id, status: 'skipped', reason: 'no_video_url' });
+      continue;
+    }
+
+    // v1.13.0: UNIFORM FINAL-ASSERTION BACKSTOP — last defence-in-depth gate before
+    // the upload, AFTER the select predicates / platform isolation / reconcile guard
+    // (all unchanged). allowPublishedApproval:true because YT gates approval_status
+    // IN ('approved','published') as a cross-platform field. On publish:false →
+    // skip + continue (the row is left for the next selection; no DB mutation here so
+    // the existing video_status='generated' selection still governs re-pickup).
+    {
+      const backstop = requireAssetPresent(
+        { recommended_format: draft.recommended_format, draft_format: draft.draft_format, video_url: draft.video_url, video_status: draft.video_status, approval_status: draft.approval_status },
+        { allowPublishedApproval: true },
+      );
+      if (!backstop.publish) {
+        console.log(`[youtube-publisher] backstop skipped:${backstop.reason} post_draft_id=${draft.post_draft_id} format=${draft.recommended_format}`);
+        results.push({ post_draft_id: draft.post_draft_id, status: 'skipped', reason: `backstop:${backstop.reason}` });
+        continue;
+      }
+    }
 
     let youtubeVideoId: string | null = null;
     const startMs = Date.now();

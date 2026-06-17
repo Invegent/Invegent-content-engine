@@ -1,6 +1,7 @@
 import { Hono } from "jsr:@hono/hono";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { classifyFbFormat, decideAssetGuard, IMAGE_HOLD_MINUTES } from "./guard.ts";
+import { requireAssetPresent } from "./asset_backstop.ts";
 
 const app = new Hono();
 
@@ -10,7 +11,19 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "publisher-v1.9.0";
+const VERSION = "publisher-v1.10.0";
+// v1.10.0 (17 Jun 2026): UNIFORM FINAL-ASSERTION BACKSTOP (Lane A).
+//   Adds a single pure final assertion (requireAssetPresent in ./asset_backstop.ts)
+//   as the LAST gate immediately before the FB POST, AFTER the existing
+//   decideAssetGuard hold/block logic. Defence-in-depth only: refuses to publish an
+//   asset-required format without its rendered asset (missing_image/missing_video),
+//   on render_failed/render_pending, on an unknown asset-required format, and on a
+//   non-approved draft (approval backstop, 'approved' only for FB). On publish:false
+//   the row is re-queued (+15m) and skipped with last_error=backstop:<reason>; the
+//   item is logged skipped:<reason> and processing continues. NEVER publish-empty.
+//   STRICTLY OUT OF SCOPE: the existing decideAssetGuard/classifyFbFormat logic is
+//   byte-unchanged (NOT replaced, NOT weakened); no new asset path; no schema/DB
+//   change; no T2 (no OCR/transcript/visual QA); no throttle/schedule change.
 // v1.9.0 (14 Jun 2026): INTERIM ASSETLESS-RELEASE GUARD (Facebook only).
 //   Live incident: an image_quote draft with image_status='failed' (no image_url)
 //   fell through the old gate (which only caught image_status='pending'),
@@ -390,6 +403,24 @@ app.post("*", async (c) => {
         await supabase.schema("m").from("post_publish_queue").update({ status: "queued", scheduled_for: rf, last_error: "dry_run_ok", locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
         results.push({ queue_id: queueId, status: "dry_run_ok", publish_method: publishMethod, asset_class: assetClass }); continue;
       }
+
+      // ══ UNIFORM FINAL-ASSERTION BACKSTOP (v1.10.0) ═════════════════════
+      // Last gate before the FB POST, AFTER the existing decideAssetGuard hold/
+      // block logic above (which is unchanged). Defence-in-depth: never publish
+      // an asset-required format without its rendered asset, and never publish a
+      // non-approved draft. On publish:false → re-queue + skip, log skipped:<reason>.
+      const backstop = requireAssetPresent(
+        { recommended_format: draft.recommended_format, image_url: draft.image_url, image_status: draft.image_status, video_url: draft.video_url, video_status: draft.video_status, approval_status: draft.approval_status },
+        { carouselSlideCount: assetClass === "carousel" ? slideCount : undefined },
+      );
+      if (!backstop.publish) {
+        const backoffIso = new Date(Date.now() + 15 * 60_000).toISOString();
+        await supabase.schema("m").from("post_publish_queue").update({ status: "queued", scheduled_for: backoffIso, last_error: `backstop:${backstop.reason}`, locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
+        console.log(`[publisher] backstop skipped:${backstop.reason} draft=${q.post_draft_id} asset_class=${assetClass}`);
+        results.push({ queue_id: queueId, status: "skipped", reason: `backstop:${backstop.reason}`, asset_class: assetClass });
+        continue;
+      }
+      // ══ END BACKSTOP ════════════════════════════════════════════════════
 
       // ── PUBLISH ───────────────────────────────────────────────────────
       let fbResp: any; let endpoint: string; let slideCountOut: number | null = null;
