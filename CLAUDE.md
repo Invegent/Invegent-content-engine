@@ -55,6 +55,30 @@ multiple coordinated steps. Rules:
    timeout. Treat any non-clean verdict as **stop → surface to PK**.
 3. Reviews are idempotent per UTC day on identical inputs — fine for cost; do not
    exploit it to skip re-review after a change.
+4. **`reviewed_input_hash` is mandatory.** Every review result/report must record the
+   hash of the **exact** packet/diff it reviewed. A review is valid **only** for that hash:
+   if the packet/diff changes, the review is **stale** and must be re-run. The orchestrator
+   STOPs when `reviewed_input_hash` ≠ the current packet/diff hash (this machine-enforces
+   rule 1 — an approval never carries across a change).
+5. **Mandatory triage classification.** Every review result must carry one or more of these
+   triage classes (ranked when more than one applies) — a non-clean verdict is never handled
+   generically:
+   - `concrete_defect` — a real bug in the diff/plan.
+   - `missing_evidence` — a claim is unverified.
+   - `structural_DDL_DML_escalation` — touches DDL/DML / schema / grant state.
+   - `policy_decision` — a judgment call, not a defect.
+   - `scope_design_concern` — out-of-scope or architectural.
+   - `runtime_verification_required` — needs post-deploy/post-apply proof.
+
+**Triage routing** (the orchestrator routes by class):
+
+- `concrete_defect` → **stop → fix → re-review**.
+- `missing_evidence` → **stop → gather evidence → re-review**.
+- `structural_DDL_DML_escalation` → **PK judgment gate** (hard stop).
+- `policy_decision` → **PK decision gate** (PK decides; not a defect to "fix").
+- `scope_design_concern` → **PK / product decision gate**.
+- `runtime_verification_required` → proceed **only if** an explicit post-deploy/post-apply
+  verification gate is named; otherwise treat as stop.
 
 ## PK gates (hard stops — orchestrator must pause for PK)
 
