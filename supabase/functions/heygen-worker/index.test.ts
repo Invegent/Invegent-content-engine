@@ -220,6 +220,143 @@ Deno.test('poll: COPIES captured avatar_identity into render_spec and does NOT r
   } finally { restoreFetch(); }
 });
 
+// --- AGP-D01-3 shadow-resolver telemetry (additive, flag-gated, fail-open) ----
+
+function shadowCalls(supa: ReturnType<typeof makeSupa>) {
+  return supa.__rpcCalls.filter((c) => c.name === 'resolve_and_record_avatar_shadow');
+}
+
+Deno.test('shadow OFF: AVATAR_SHADOW_TELEMETRY unset => no shadow rpc call (no-op)', async () => {
+  const prev = Deno.env.get('AVATAR_SHADOW_TELEMETRY');
+  Deno.env.delete('AVATAR_SHADOW_TELEMETRY');
+  const supa = makeSupa({
+    pending: [{
+      post_draft_id: 'd1', client_id: 'client-uuid-1', recommended_format: 'video_short_avatar',
+      draft_format: { video_script: { stakeholder_role: 'founder', render_style: 'realistic', narration_text: 'Hello there' } },
+    }],
+    avatarRow: { heygen_avatar_id: 'AV_ROLE', heygen_voice_id: 'VOICE_ROLE' },
+    brandRow: { brand_colour_primary: '#123456', client_slug: 'acme' },
+  });
+  installFetch();
+  try {
+    await runSubmitPhase(supa as any, 'fake-key');
+    // submit still completed (live path unaffected)
+    assertExists(supa.__updates.find((u) => u.payload?.video_status === 'rendering'), 'submit must still complete with flag off');
+    // strict no-op: zero shadow rpc calls
+    assertEquals(shadowCalls(supa).length, 0, 'flag off must not call the shadow rpc');
+  } finally {
+    restoreFetch();
+    if (prev === undefined) Deno.env.delete('AVATAR_SHADOW_TELEMETRY'); else Deno.env.set('AVATAR_SHADOW_TELEMETRY', prev);
+  }
+});
+
+Deno.test('shadow ON: exactly one shadow rpc call with the ACTUAL live pick (role_filter)', async () => {
+  const prev = Deno.env.get('AVATAR_SHADOW_TELEMETRY');
+  Deno.env.set('AVATAR_SHADOW_TELEMETRY', 'true');
+  const supa = makeSupa({
+    pending: [{
+      post_draft_id: 'd1', client_id: 'client-uuid-1', recommended_format: 'video_short_avatar',
+      draft_format: { video_script: { stakeholder_role: 'founder', render_style: 'realistic', narration_text: 'Hello there' } },
+    }],
+    avatarRow: { heygen_avatar_id: 'AV_ROLE', heygen_voice_id: 'VOICE_ROLE' },
+    brandRow: { brand_colour_primary: '#123456', client_slug: 'acme' },
+  });
+  const fetchCalls = installFetch();
+  try {
+    await runSubmitPhase(supa as any, 'fake-key');
+
+    const calls = shadowCalls(supa);
+    assertEquals(calls.length, 1, 'flag on must call the shadow rpc exactly once');
+    const p = calls[0].params;
+
+    // args carry the ACTUAL live pick == what was submitted to HeyGen
+    const sent = JSON.parse(fetchCalls.find((c) => c.url.includes('/v2/video/generate'))!.body).video_inputs[0];
+    assertEquals(p.p_post_draft_id, 'd1');
+    assertEquals(p.p_client_id, 'client-uuid-1');
+    assertEquals(p.p_stakeholder_role, 'founder');
+    assertEquals(p.p_render_style, 'realistic');
+    assertEquals(p.p_live_avatar_id, 'AV_ROLE');
+    assertEquals(p.p_live_voice_id, 'VOICE_ROLE');
+    assertEquals(p.p_live_avatar_id, sent.character.talking_photo_id);   // shadow live id == submitted id
+    assertEquals(p.p_live_voice_id, sent.voice.voice_id);
+    assertEquals(p.p_live_selected_by, 'role_filter');
+
+    // shadow must NOT have changed the live pick captured into draft_format
+    const ai = supa.__updates.find((u) => u.payload?.video_status === 'rendering')!.payload.draft_format.avatar_identity;
+    assertEquals(ai.talking_photo_id, 'AV_ROLE');
+    assertEquals(ai.avatar_selected_by, 'role_filter');
+  } finally {
+    restoreFetch();
+    if (prev === undefined) Deno.env.delete('AVATAR_SHADOW_TELEMETRY'); else Deno.env.set('AVATAR_SHADOW_TELEMETRY', prev);
+  }
+});
+
+Deno.test('shadow ON (preset): live_selected_by=preset and live id = the preset id', async () => {
+  const prev = Deno.env.get('AVATAR_SHADOW_TELEMETRY');
+  Deno.env.set('AVATAR_SHADOW_TELEMETRY', '1');
+  const supa = makeSupa({
+    pending: [{
+      post_draft_id: 'd2', client_id: 'c2', recommended_format: 'video_short_avatar',
+      draft_format: { talking_photo_id: 'AV_PRESET', voice_id: 'VOICE_PRESET', render_style: 'realistic', narration_text: 'Yo' },
+    }],
+    brandRow: { brand_colour_primary: '#000000', client_slug: 'beta' },
+  });
+  installFetch();
+  try {
+    await runSubmitPhase(supa as any, 'fake-key');
+    const calls = shadowCalls(supa);
+    assertEquals(calls.length, 1, 'preset submit with flag on still records shadow exactly once');
+    const p = calls[0].params;
+    assertEquals(p.p_live_selected_by, 'preset');
+    assertEquals(p.p_live_avatar_id, 'AV_PRESET');
+    assertEquals(p.p_live_voice_id, 'VOICE_PRESET');
+    assertEquals(p.p_stakeholder_role, null);
+    // preset path must STILL not run a brand_avatar lookup (live path byte-identical)
+    assertEquals(lookupQueries(supa).length, 0, 'preset must not run a brand_avatar lookup even with shadow on');
+  } finally {
+    restoreFetch();
+    if (prev === undefined) Deno.env.delete('AVATAR_SHADOW_TELEMETRY'); else Deno.env.set('AVATAR_SHADOW_TELEMETRY', prev);
+  }
+});
+
+Deno.test('shadow ON: fail-open — when the shadow rpc throws, submit still completes and does NOT throw', async () => {
+  const prev = Deno.env.get('AVATAR_SHADOW_TELEMETRY');
+  Deno.env.set('AVATAR_SHADOW_TELEMETRY', 'true');
+  const supa = makeSupa({
+    pending: [{
+      post_draft_id: 'd1', client_id: 'c1', recommended_format: 'video_short_avatar',
+      draft_format: { render_style: 'realistic', narration_text: 'Hi' },
+    }],
+    avatarRow: { heygen_avatar_id: 'AV_FB', heygen_voice_id: 'VOICE_FB' },
+    brandRow: { brand_colour_primary: '#0A2A4A', client_slug: 'gamma' },
+  });
+  // Make ONLY the shadow rpc throw; everything else behaves normally.
+  const baseRpc = supa.rpc.bind(supa);
+  (supa as any).rpc = (name: string, params: any) => {
+    if (name === 'resolve_and_record_avatar_shadow') {
+      supa.__rpcCalls.push({ name, params });
+      throw new Error('simulated shadow rpc failure');
+    }
+    return baseRpc(name, params);
+  };
+  installFetch();
+  try {
+    // must NOT throw
+    const results = await runSubmitPhase(supa as any, 'fake-key');
+    // submit reached the rendering state (render proceeded past the shadow hook)
+    const upd = supa.__updates.find((u) => u.payload?.video_status === 'rendering');
+    assertExists(upd, 'submit must complete to rendering despite shadow rpc failure');
+    // a HeyGen submit actually happened (the live lifecycle was not interrupted)
+    const r = results.find((x: any) => x.post_draft_id === 'd1' && x.phase === 'submit');
+    assertEquals(r?.status, 'rendering', 'submit phase result must be rendering (fail-open)');
+    // the shadow rpc was attempted exactly once
+    assertEquals(shadowCalls(supa).length, 1, 'shadow rpc attempted once even though it threw');
+  } finally {
+    restoreFetch();
+    if (prev === undefined) Deno.env.delete('AVATAR_SHADOW_TELEMETRY'); else Deno.env.set('AVATAR_SHADOW_TELEMETRY', prev);
+  }
+});
+
 Deno.test('role-selection behaviour unchanged: lookupAvatar builds role-filtered vs fallback SQL', async () => {
   const queries: string[] = [];
   const supaSpy: any = {

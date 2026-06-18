@@ -1,4 +1,16 @@
-// heygen-worker v2.1.1
+// heygen-worker v2.2.0
+// v2.2.0 — AGP-D01-3 AVATAR-SHADOW-RESOLVER-TELEMETRY: shadow-only, additive, FLAG-GATED (default OFF).
+//          After runSubmitPhase resolves the LIVE avatar pick (lookupAvatar fallback/role OR the
+//          preset branch), and ONLY when env AVATAR_SHADOW_TELEMETRY is truthy, fire-and-best-effort
+//          call the typed RPC public.resolve_and_record_avatar_shadow with the ACTUAL live pick
+//          (p_live_avatar_id/voice/selected_by) so the shadow resolver can re-derive a deterministic
+//          pick and record drift telemetry into r.avatar_resolution_shadow. FAIL-OPEN: any RPC error
+//          is swallowed (console.error) — the render proceeds byte-identically. The shadow result is
+//          NEVER read back and NEVER influences selection. lookupAvatar and the live selection/submit
+//          path are UNCHANGED (byte-identical). Uses the existing service-role client and a typed
+//          .rpc (NOT exec_sql). STRICTLY OUT OF SCOPE: no avatar activation, no A2 pin change, no
+//          brand_avatar marker backfill, no stakeholder_role logic change, no Branch B, no write to
+//          c.brand_avatar or any selection state. The migration (table + RPC) is a separate gated apply.
 // v2.1.1 — F-HEYGEN-AVATAR-IDENTITY-TELEMETRY: observability-only. Capture the ACTUAL avatar identity
 //          selected at SUBMIT time (talking_photo_id, voice_id, render_style, stakeholder_role,
 //          avatar_selected_by ∈ {role_filter | fallback_limit1 | preset}) into draft_format.avatar_identity
@@ -31,7 +43,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION             = 'heygen-worker-v2.1.1';
+const VERSION             = 'heygen-worker-v2.2.0';
 const HEYGEN_GENERATE     = 'https://api.heygen.com/v2/video/generate';
 const HEYGEN_STATUS       = 'https://api.heygen.com/v1/video_status.get';
 const MAX_SUBMITS         = 3;                // Phase A: pending drafts to submit per tick
@@ -301,6 +313,48 @@ export async function runPollPhase(supabase: Supa, apiKey: string): Promise<any[
   return results;
 }
 
+// --- Shadow-only avatar-resolution telemetry (AGP-D01-3) --------------------
+// FLAG-GATED (AVATAR_SHADOW_TELEMETRY, default OFF) + FAIL-OPEN. Records the LIVE
+// pick alongside a deterministic shadow pick via the public.resolve_and_record_avatar_shadow
+// RPC (writes ONLY r.avatar_resolution_shadow). NEVER read back, NEVER influences
+// selection, NEVER throws into the render lifecycle. Uses the typed .rpc (NOT exec_sql).
+function shadowTelemetryEnabled(): boolean {
+  const v = (Deno.env.get('AVATAR_SHADOW_TELEMETRY') ?? '').trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
+
+export async function recordAvatarShadow(
+  supabase: Supa,
+  args: {
+    postDraftId: string;
+    clientId: string;
+    stakeholderRole: string | null;
+    renderStyle: string;
+    liveAvatarId: string;
+    liveVoiceId: string | null;
+    liveSelectedBy: string;
+    runId?: string | null;
+  },
+): Promise<void> {
+  if (!shadowTelemetryEnabled()) return;   // flag OFF => strict no-op (no RPC call)
+  try {
+    const { error } = await supabase.rpc('resolve_and_record_avatar_shadow', {
+      p_post_draft_id:    args.postDraftId,
+      p_client_id:        args.clientId,
+      p_stakeholder_role: args.stakeholderRole,
+      p_render_style:     args.renderStyle,
+      p_live_avatar_id:   args.liveAvatarId,
+      p_live_voice_id:    args.liveVoiceId,
+      p_live_selected_by: args.liveSelectedBy,
+      p_run_id:           args.runId ?? null,
+    });
+    if (error) console.error('[heygen-worker] shadow telemetry failed (non-fatal)', error?.message ?? error);
+  } catch (e) {
+    // FAIL-OPEN: never break the render lifecycle. Swallow and continue.
+    console.error('[heygen-worker] shadow telemetry failed (non-fatal)', e);
+  }
+}
+
 // --- Phase A: submit new pending avatar jobs --------------------------------
 
 export async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<any[]> {
@@ -344,6 +398,20 @@ export async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<an
         avatarSelectedBy = stakeholderRole ? 'role_filter' : 'fallback_limit1';
       }
       if (!voiceId) throw new Error(`No voice_id for draft ${draftId}`);
+
+      // AGP-D01-3 shadow telemetry (additive, flag-gated, fail-open): record the ACTUAL
+      // live pick (talkingPhotoId/voiceId/avatarSelectedBy) so the shadow resolver can
+      // measure ordering nondeterminism. Result is NEVER read back; selection is unchanged.
+      await recordAvatarShadow(supabase, {
+        postDraftId:     draftId,
+        clientId,
+        stakeholderRole,
+        renderStyle,
+        liveAvatarId:    talkingPhotoId,
+        liveVoiceId:     voiceId,
+        liveSelectedBy:  avatarSelectedBy,
+        runId:           null,
+      });
 
       const { data: brandRows } = await supabase.rpc('exec_sql', {
         query: `SELECT brand_colour_primary, cl.client_slug FROM c.client_brand_profile cbp JOIN c.client cl ON cl.client_id = cbp.client_id WHERE cbp.client_id = '${clientId}' AND cbp.is_active = true LIMIT 1`,
