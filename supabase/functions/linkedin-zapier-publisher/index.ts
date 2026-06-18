@@ -1,6 +1,22 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { classifyLinkedinFormat, decideLinkedinAssetGuard } from './guard.ts';
 
-const VERSION = 'linkedin-zapier-publisher-v1.1.0';
+const VERSION = 'linkedin-zapier-publisher-v1.2.0';
+// v1.2.0 (18 Jun 2026): INTERIM ASSETLESS-PUBLISH GUARD (LinkedIn) — F-PUBLISHER-ASSETGUARD-LINKEDIN.
+//   Ports the proven FB interim asset guard. This Zapier bridge is TEXT-ONLY (the webhook
+//   carries { text, title, ... } with no media fields), so a draft whose recommended_format
+//   requires a rendered visual (image_quote/carousel/video) and whose asset is missing/
+//   failed/pending was previously published as a TEXT-only post, silently losing the format.
+//   Fix: classifyLinkedinFormat + decideLinkedinAssetGuard({ mediaPublishSupported: false })
+//   after the approval gate. text→publish (existing Zapier POST unchanged); any non-text
+//   format → BLOCK (queue status='skipped', last_error='asset_guard_blocked:<reason>',
+//   m.post_publish status='failed' audit row, draft preserved, NO Zapier POST); never text-
+//   fallback. Also adds a defensive platform-isolation skip (mirror YT v1.12.0 / IG v2.0.0):
+//   a loaded draft whose platform != 'linkedin' is skipped (status='skipped',
+//   last_error='platform_isolation_skip', lock cleared) — no stuck lock.
+//   STRICTLY OUT OF SCOPE: no new LinkedIn media-publish path (image/carousel/video posting);
+//   the existing approval gate + text Zapier POST path are byte-unchanged; no DB/schema/
+//   migration; no throttle/schedule change; no T2 (no OCR/transcript/visual QA).
 // v1.1.0 (T13, 1 May 2026): APPROVAL GATE added — mirror IG v2.0.0 per-row pattern.
 //   v1.0.0 had NO approval gate (didn't even SELECT approval_status).
 //   28+ unreviewed posts published in 14d before this patch (T16 audit window).
@@ -105,10 +121,12 @@ Deno.serve(async (req: Request) => {
 
       // Load draft
       // v1.1.0 (T13): added approval_status to SELECT for gate check below
+      // v1.2.0: added platform + asset-status columns for the platform-isolation skip
+      //         and the interim asset guard.
       const { data: draft } = await supabase
         .schema('m')
         .from('post_draft')
-        .select('post_draft_id, draft_title, draft_body, approval_status')
+        .select('post_draft_id, draft_title, draft_body, approval_status, platform, recommended_format, image_status, image_url, video_status, video_url')
         .eq('post_draft_id', q.post_draft_id)
         .maybeSingle();
 
@@ -127,6 +145,70 @@ Deno.serve(async (req: Request) => {
         results.push({ queue_id: queueId, status: 'held', reason: 'not_approved', draft_status: draft.approval_status });
         continue;
       }
+
+      // v1.2.0: DEFENSIVE PLATFORM-ISOLATION SKIP (mirror YT v1.12.0 / IG v2.0.0).
+      // The queue is locked with p_platform:'linkedin', but defend in depth: never POST a
+      // non-linkedin draft even if a future SELECT/code path lets one through. Skip the
+      // row (no stuck lock), no Zapier POST.
+      if (draft.platform !== 'linkedin') {
+        console.error(`[zapier-pub] platform_isolation_skip post_draft_id=${q.post_draft_id} platform=${draft.platform}`);
+        await supabase.schema('m').from('post_publish_queue').update({
+          status: 'skipped',
+          last_error: 'platform_isolation_skip',
+          locked_at: null, locked_by: null, updated_at: nowIso(),
+        }).eq('queue_id', queueId);
+        results.push({ queue_id: queueId, status: 'skipped', reason: 'platform_isolation_skip', platform: draft.platform });
+        continue;
+      }
+
+      // ══ INTERIM ASSETLESS-PUBLISH GUARD (v1.2.0) ════════════════════════════
+      // This Zapier bridge is TEXT-ONLY (no media path) → mediaPublishSupported:false.
+      // text → publish (existing POST path); any non-text format → block, never text.
+      const assetClass = classifyLinkedinFormat(draft.recommended_format);
+      const decision = decideLinkedinAssetGuard({
+        assetClass,
+        image_status: draft.image_status, image_url: draft.image_url,
+        video_status: draft.video_status, video_url: draft.video_url,
+      }, { mediaPublishSupported: false });
+
+      if (decision.kind === 'hold') {
+        // retryable hold — requeue, no post_publish row, NO Zapier POST.
+        // (not reachable this lane with mediaPublishSupported:false; kept for parity)
+        await supabase.schema('m').from('post_publish_queue').update({
+          status: 'queued',
+          scheduled_for: new Date(Date.now() + decision.minutes * 60_000).toISOString(),
+          last_error: decision.reason,
+          locked_at: null, locked_by: null, updated_at: nowIso(),
+        }).eq('queue_id', queueId);
+        results.push({ queue_id: queueId, status: 'held', reason: decision.reason, asset_class: assetClass });
+        continue;
+      }
+      if (decision.kind === 'block') {
+        // terminal, reviewable block — no Zapier POST, draft preserved, reason recorded.
+        await supabase.schema('m').from('post_publish_queue').update({
+          status: 'skipped',
+          last_error: `asset_guard_blocked:${decision.reason}`,
+          locked_at: null, locked_by: null, updated_at: nowIso(),
+        }).eq('queue_id', queueId);
+        await supabase.schema('m').from('post_publish').insert({
+          queue_id: queueId,
+          post_draft_id: q.post_draft_id,
+          client_id: q.client_id,
+          platform: 'linkedin',
+          destination_id: orgUrn,
+          status: 'failed',
+          platform_post_id: null,
+          request_payload: { asset_guard: true, reason: decision.reason, asset_class: assetClass },
+          response_payload: null,
+          error: `asset_guard_blocked:${decision.reason}`,
+          created_at: nowIso(),
+        });
+        results.push({ queue_id: queueId, status: 'blocked', reason: decision.reason, asset_class: assetClass });
+        continue;
+      }
+      // decision.kind === 'publish' (method 'text' this lane) → fall through to the
+      // existing empty_draft check + text build + Zapier POST path UNCHANGED.
+      // ══ END ASSETLESS-PUBLISH GUARD ═════════════════════════════════════════
 
       const title = (draft.draft_title ?? '').trim();
       const draftBody = (draft.draft_body ?? '').trim();
