@@ -1,4 +1,21 @@
-// heygen-worker v2.1.1
+// heygen-worker v2.2.0
+// v2.2.0 — AGP-D01-3-SHADOW-RESOLVER-TELEMETRY (Phase 3.1): observability-only, production-INERT.
+//          Immediately AFTER the authoritative live avatar pick (lookupAvatar) returns and BEFORE
+//          submit, IF env flag AVATAR_SHADOW_TELEMETRY is on (default OFF), call the read-only
+//          public.resolve_avatar_shadow RPC with the IDENTICAL inputs and INSERT one row into
+//          r.avatar_resolution_shadow capturing: the ACTUAL live pick (from lookupAvatar — NOT a
+//          re-derivation), the shadow record, candidate_count, agree (= shadow_avatar_id IS NOT
+//          DISTINCT FROM live_avatar_id), drift_class (none|ordering_drift|marker_drift|
+//          candidate_empty|multi_primary|multi_default_host|input_anomaly), and a
+//          brand_avatar_snapshot_hash for deterministic replay. The ENTIRE hook is wrapped in
+//          try/catch and is FAIL-OPEN: any error is swallowed + logged and the render proceeds on
+//          the live pick regardless. The hook NEVER alters the live pick, avatar_identity, submit,
+//          or poll behaviour. lookupAvatar is BYTE-UNCHANGED; the live LIMIT-1 branch is
+//          BYTE-UNCHANGED; flag default OFF (toggle without redeploy). NO production selection
+//          object touched, NO marker backfill, NO avatar activation, NO Branch B, NO #4 cutover.
+//          The r.avatar_resolution_shadow table + public.resolve_avatar_shadow function are added by
+//          a SEPARATE, PK-gated migration (Phase 3.2); this code no-ops if they are absent (flag off
+//          by default; fail-open if on before the migration is applied).
 // v2.1.1 — F-HEYGEN-AVATAR-IDENTITY-TELEMETRY: observability-only. Capture the ACTUAL avatar identity
 //          selected at SUBMIT time (talking_photo_id, voice_id, render_style, stakeholder_role,
 //          avatar_selected_by ∈ {role_filter | fallback_limit1 | preset}) into draft_format.avatar_identity
@@ -31,7 +48,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION             = 'heygen-worker-v2.1.1';
+const VERSION             = 'heygen-worker-v2.2.0';
 const HEYGEN_GENERATE     = 'https://api.heygen.com/v2/video/generate';
 const HEYGEN_STATUS       = 'https://api.heygen.com/v1/video_status.get';
 const MAX_SUBMITS         = 3;                // Phase A: pending drafts to submit per tick
@@ -79,6 +96,137 @@ export async function lookupAvatar(
   const row = (rows as any)?.[0];
   if (!row?.heygen_avatar_id) return null;
   return { talking_photo_id: row.heygen_avatar_id, voice_id: row.heygen_voice_id ?? null };
+}
+
+// --- AGP D-01 Gate-3 shadow resolver + telemetry (production-INERT) ----------
+// Additive, side-effect-free observer. Gated by AVATAR_SHADOW_TELEMETRY (default
+// OFF). Called immediately AFTER the authoritative live pick returns and BEFORE
+// submit. NEVER alters the live pick, avatar_identity, submit, or poll. The whole
+// path is fail-open (see runShadowResolution).
+
+export function shadowTelemetryEnabled(): boolean {
+  const v = (Deno.env.get('AVATAR_SHADOW_TELEMETRY') ?? '').trim().toLowerCase();
+  return v === 'on' || v === 'true' || v === '1';
+}
+
+// Stable, dependency-free FNV-1a hash (hex) of the candidate snapshot → lets a
+// later run replay the same (client, style) decision offline. No crypto import.
+export function snapshotHash(input: unknown): string {
+  const s = JSON.stringify(input ?? null);
+  let h = 0x811c9dc5; // FNV offset basis
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i) & 0xff;
+    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0; // *16777619 mod 2^32
+  }
+  return ('0000000' + h.toString(16)).slice(-8);
+}
+
+// Pure parity computation. live = the ACTUAL pick (from lookupAvatar); shadow =
+// the resolver record. Returns { agree, drift_class } per brief §E taxonomy.
+export function computeParity(
+  live: { avatar_id: string | null },
+  shadow: {
+    shadow_avatar_id: string | null;
+    candidate_count: number;
+    shadow_rule: string | null;
+    multi_primary?: boolean;
+    multi_default_host?: boolean;
+  },
+  inputs: { render_style: string | null },
+): { agree: boolean; drift_class: string } {
+  // null-safe equality (IS NOT DISTINCT FROM)
+  const agree = (live.avatar_id ?? null) === (shadow.shadow_avatar_id ?? null);
+
+  // Integrity alarms first (should be impossible given the partial unique indexes).
+  if (shadow.multi_primary)      return { agree, drift_class: 'multi_primary' };
+  if (shadow.multi_default_host) return { agree, drift_class: 'multi_default_host' };
+
+  // Input anomaly: null/blank render_style (ai-worker is expected to always set it).
+  if (inputs.render_style == null || String(inputs.render_style).trim() === '') {
+    return { agree, drift_class: 'input_anomaly' };
+  }
+
+  // Empty candidate set (no active avatar): live throws upstream; shadow records.
+  if ((shadow.candidate_count ?? 0) === 0) return { agree, drift_class: 'candidate_empty' };
+
+  if (agree) return { agree: true, drift_class: 'none' };
+
+  // Disagreement: a marker fired (markers dormant in Gate-3 ⇒ this must be 0) vs
+  // pure unordered-LIMIT-1 nondeterminism (the expected, informative finding).
+  if (shadow.shadow_rule === 'primary' || shadow.shadow_rule === 'default_host') {
+    return { agree: false, drift_class: 'marker_drift' };
+  }
+  return { agree: false, drift_class: 'ordering_drift' };
+}
+
+// The shadow hook. Fail-open: ANY error is swallowed + logged. Returns nothing;
+// the caller's live pick / submit path is never affected by this call.
+async function runShadowResolution(
+  supabase: Supa,
+  ctx: {
+    postDraftId: string;
+    clientId: string | null;
+    stakeholderRole: string | null;
+    renderStyle: string | null;
+    livePick: { avatar_id: string | null; voice_id: string | null; selected_by: string | null };
+    runId?: string | null;
+  },
+): Promise<void> {
+  if (!shadowTelemetryEnabled()) return; // default OFF — no-op
+  try {
+    const { data, error } = await supabase.rpc('resolve_avatar_shadow', {
+      p_client_id: ctx.clientId,
+      p_stakeholder_role: ctx.stakeholderRole,
+      p_render_style: ctx.renderStyle,
+    });
+    if (error) throw new Error(`resolve_avatar_shadow rpc: ${error.message ?? error}`);
+
+    const rec: any = data ?? {};
+    const candidateSet = rec.candidate_set ?? [];
+    const shadowPick = rec.shadow_pick ?? null;
+    const shadowAvatarId: string | null = shadowPick?.heygen_avatar_id ?? null;
+    const shadowVoiceId: string | null = shadowPick?.heygen_voice_id ?? null;
+    const candidateCount: number = rec.candidate_count ?? 0;
+
+    const { agree, drift_class } = computeParity(
+      { avatar_id: ctx.livePick.avatar_id },
+      {
+        shadow_avatar_id: shadowAvatarId,
+        candidate_count: candidateCount,
+        shadow_rule: rec.shadow_rule ?? null,
+        multi_primary: rec.multi_primary ?? false,
+        multi_default_host: rec.multi_default_host ?? false,
+      },
+      { render_style: ctx.renderStyle },
+    );
+
+    const { error: insErr } = await supabase.schema('r').from('avatar_resolution_shadow').insert({
+      post_draft_id: ctx.postDraftId,
+      client_id: ctx.clientId,
+      stakeholder_role: ctx.stakeholderRole,
+      render_style: ctx.renderStyle,
+      // ACTUAL live pick — recorded verbatim, never re-derived.
+      live_avatar_id: ctx.livePick.avatar_id,
+      live_voice_id: ctx.livePick.voice_id,
+      live_selected_by: ctx.livePick.selected_by,
+      shadow_avatar_id: shadowAvatarId,
+      shadow_voice_id: shadowVoiceId,
+      shadow_rule: rec.shadow_rule ?? null,
+      candidate_set: candidateSet,
+      rejection_reasons: rec.rejection_reasons ?? [],
+      candidate_count: candidateCount,
+      agree,
+      drift_class,
+      brand_avatar_snapshot_hash: snapshotHash(candidateSet),
+      created_by_run_id: ctx.runId ?? null,
+    });
+    if (insErr) throw new Error(`avatar_resolution_shadow insert: ${insErr.message ?? insErr}`);
+
+    console.log(`[heygen-worker] shadow ${ctx.postDraftId} agree=${agree} drift=${drift_class} cand=${candidateCount} rule=${rec.shadow_rule ?? 'n/a'}`);
+  } catch (e: any) {
+    // FAIL-OPEN: shadow telemetry must NEVER alter or break the render.
+    console.log(`[heygen-worker] shadow telemetry error (non-fatal) ${ctx.postDraftId}: ${e?.message ?? e}`);
+  }
 }
 
 // --- HeyGen calls -----------------------------------------------------------
@@ -344,6 +492,19 @@ export async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<an
         avatarSelectedBy = stakeholderRole ? 'role_filter' : 'fallback_limit1';
       }
       if (!voiceId) throw new Error(`No voice_id for draft ${draftId}`);
+
+      // AGP D-01 Gate-3 SHADOW HOOK (production-INERT, flag-gated, fail-open).
+      // The live pick above (talkingPhotoId/voiceId/avatarSelectedBy) is now the
+      // authoritative result. Observe-only, immediately BEFORE submit. This call
+      // NEVER alters the live pick, avatar_identity, submit, or poll behaviour;
+      // any failure is swallowed inside runShadowResolution (default OFF).
+      await runShadowResolution(supabase, {
+        postDraftId: draftId,
+        clientId,
+        stakeholderRole,
+        renderStyle,
+        livePick: { avatar_id: talkingPhotoId, voice_id: voiceId, selected_by: avatarSelectedBy },
+      });
 
       const { data: brandRows } = await supabase.rpc('exec_sql', {
         query: `SELECT brand_colour_primary, cl.client_slug FROM c.client_brand_profile cbp JOIN c.client cl ON cl.client_id = cbp.client_id WHERE cbp.client_id = '${clientId}' AND cbp.is_active = true LIMIT 1`,
