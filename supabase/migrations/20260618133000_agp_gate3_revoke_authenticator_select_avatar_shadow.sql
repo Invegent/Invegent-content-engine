@@ -1,0 +1,38 @@
+-- ============================================================================
+-- AGP-GATE3-AUTHENTICATOR-REVOKE-CLEANUP — defence-in-depth posture alignment
+-- ============================================================================
+-- Follow-up to AGP D-01 Gate-3 (migration 20260618084054 /
+-- 20260618090000_agp_d01_3_avatar_shadow_resolver_telemetry).
+--
+-- AUTHORED, NOT APPLIED. Applying is a SEPARATE, PK-gated step (apply_migration).
+-- Migration name = permanent identity (new number + distinct name; never an
+-- in-place edit to an existing migration).
+--
+-- WHY: r.avatar_resolution_shadow inherited a SELECT grant to the `authenticator`
+-- role from the schema-r default ACL (pg_default_acl: `authenticator=r`). The
+-- Gate-3 migration granted service_role and revoked anon, but left this inherited
+-- `authenticator` SELECT in place. This migration removes it so the table's grant
+-- surface is strictly service-role-only, matching the hardened posture of the
+-- rest of the telemetry/append-only objects.
+--
+-- NOT A LIVE EXPOSURE (this is hardening, not a fix for an active hole):
+--   * RLS is ENABLED with ZERO policies → deny-by-default for any role that is
+--     not BYPASSRLS (service_role bypasses; authenticator does not).
+--   * schema `r` is NOT exposed over PostgREST → unreachable via REST (PGRST106).
+--   * `authenticator` is the pre-role-switch connection role, not a client-
+--     reachable principal (clients are SET ROLE to anon/authenticated).
+--
+-- SCOPE — this migration does EXACTLY ONE thing and nothing else:
+--   * REVOKE SELECT ON r.avatar_resolution_shadow FROM authenticator.
+-- It does NOT touch: the resolver function (public.resolve_and_record_avatar_shadow),
+-- service_role grants, RLS, policies, search_path, the telemetry schema/table shape,
+-- Edge Functions, the AVATAR_SHADOW_TELEMETRY flag, markers, or any runtime/telemetry
+-- behaviour. anon is intentionally NOT targeted: it already holds no SELECT on this
+-- relation (absent from relacl; has_table_privilege('anon', …, 'SELECT') = false), so
+-- there is nothing to revoke.
+--
+-- A bare REVOKE is idempotent — re-running is a harmless no-op (emits a NOTICE if
+-- the privilege is already absent).
+-- ============================================================================
+
+REVOKE SELECT ON r.avatar_resolution_shadow FROM authenticator;
