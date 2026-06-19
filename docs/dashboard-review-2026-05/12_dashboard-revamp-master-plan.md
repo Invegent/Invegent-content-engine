@@ -3,6 +3,8 @@
 > **Single execution plan for the dashboard revamp.** Converts the saved dashboard architecture review (§00–§11) into one phased, build-ready document. The saved research is the source of truth; this file does **not** reopen the IA debate — it sequences and visualises what is already locked.
 >
 > Created 2026-05-21 Sydney. Built on dashboard-review §6 (final target design), §9 (implementation plan), §11 (final consolidation), and the v3.04 Slice 0A merge record. Planning/documentation only — no dashboard edits, no Supabase, no implementation.
+>
+> **🧭 OWNERSHIP (planning-docs boundary):** Authoritative **for the dashboard build/revamp plan** — separate scope; the dashboard lives in the **`invegent-dashboard`** repo, not this one. Not the ICE product roadmap. Sibling: product roadmap → `04_phases.md`.
 
 ---
 

@@ -17,6 +17,8 @@ T1 docs are the repo's authoritative current state. Hard cap: **≤4 T1 docs rep
 
 T1 docs state truth. Session docs (`runtime/sessions/`) are **evidence, not authority**. `00_action_list.md` is a **task register, not truth-of-record**.
 
+**🧭 Planning-docs ownership boundary.** Four planning docs each own one scope — do not conflate: product/implementation roadmap → `04_phases.md`; active task queue → `00_action_list.md`; sales-readiness gates → `15_pre_post_sales_criteria.md`; dashboard build/revamp plan → `docs/dashboard-review-2026-05/12_dashboard-revamp-master-plan.md`. Live truth-of-stack is always `00_sync_state.md`.
+
 ---
 
 ## How to read the freshness column

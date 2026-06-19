@@ -1,6 +1,8 @@
 # ICE — Project Phases & Deliverables
 
 > **ℹ AUTHORITY NOTE (2026-06-11):** This document is **phase history and planning context**. Individual item statuses are point-in-time and may lag the live system (several items marked pending/blocked below have since shipped). For live operational status read **`docs/00_sync_state.md`**; for how ICE actually works today read the T1 authority doc **`docs/architecture/current-ice-decision-tree.md`**.
+>
+> **🧭 OWNERSHIP (planning-docs boundary):** This doc is authoritative **for the ICE product/implementation roadmap** — phases, deliverables, done-criteria. Not the task queue, the sales-readiness gate, or the dashboard plan. Siblings: active task queue → `00_action_list.md` · sales-readiness → `15_pre_post_sales_criteria.md` · dashboard build plan → `docs/dashboard-review-2026-05/12_dashboard-revamp-master-plan.md` · authority map → `00_docs_index.md` · live truth-of-stack → `00_sync_state.md`.
 
 ## Primary Build Principle
 

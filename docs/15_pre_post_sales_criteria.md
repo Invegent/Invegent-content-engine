@@ -2,6 +2,9 @@
 
 ## Generated: 2026-04-18 (v1 morning, v2 afternoon, v3 late evening) · v4 update 2026-04-21 (A24 closed) · v4.1 update 2026-04-21 evening (Q1 sprint item closed, D163 scoping documented) · v4.2 update 2026-04-21 late evening (M2 closed — CFW schedule save bug fixed, M5 opened) · v4.3 update 2026-04-22 evening (full sprint day + evening router-build pivot)
 ## Type: Classification document — supersedes `docs/14_pre_sales_audit_inventory.md` Section 12
+
+> **🧭 OWNERSHIP (planning-docs boundary):** Authoritative **for sales-readiness classification** (pre-/post-sales gates) — **not** a roadmap. Siblings: product roadmap → `04_phases.md` · live closure truth → `00_sync_state.md`.
+
 ## Inputs: audit inventory (38 items + 13 open questions), 3-clock framework, consultant audit (8 Apr), legal register L001–L008, PK answers 18 Apr, decisions D147–D167, 22 Apr full sprint day + evening router build
 
 ---
