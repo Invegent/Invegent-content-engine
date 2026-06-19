@@ -1,6 +1,12 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const VERSION = "insights-worker-v14.4.0";
+const VERSION = "insights-worker-v14.4.1";
+// v14.4.1 (2026-06-19, F-INSIGHTS-WORKER-COLLECTION-RUNTIME): runtime tuning only —
+//   MAX_POSTS_PER_CLIENT 50→25 so a per-client collection run (~3s/post observed) finishes
+//   ~75s, comfortably under the ~150s EF wall-clock and the 120s cron net.http_post timeout.
+//   Coverage preserved by the v14.1.0 never-collected-first / stalest-collected_at ordering
+//   across the per-client daily crons (large clients cycle in ~10 days, inside the 30-day
+//   window). No logic change — pure constant + version bump.
 // v14.4.0 (2026-06-19, F-INSIGHTS-WORKER-WINDOW30-90-FRESHNESS): complete recovery.
 //   - Per-client cron selector now HONORED: the 4 crons POST a JSON body
 //     {"client_publish_profile_id":"<uuid>"} (one client each). The handler parses
@@ -64,7 +70,7 @@ const VERSION = "insights-worker-v14.4.0";
 // Previously, impressions was failing silently for most posts causing null values.
 
 const GRAPH_VERSION = "v24.0"; // pinned to served version (v14.2.0) — v19 sunset; silent auto-upgrade caused the dead-metric failure mode
-const MAX_POSTS_PER_CLIENT = 50;
+const MAX_POSTS_PER_CLIENT = 25; // v14.4.1 F-INSIGHTS-WORKER-COLLECTION-RUNTIME: ~3s/post → ≤25 keeps a per-client run ~75s, under the EF wall-clock + 120s cron timeout (was 50 → ~150s overrun)
 const INSIGHTS_PERIOD = "lifetime";
 
 type MetricSpec = { key: string; names: string[]; sumObjectValues?: boolean };
