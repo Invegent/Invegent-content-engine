@@ -1,6 +1,18 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const VERSION = "insights-worker-v14.4.1";
+const VERSION = "insights-worker-v14.5.0";
+// v14.5.0 (2026-06-19, ENGAGEMENT-SIGNAL-RECOVERY A1): reach metric FAIL-SAFE fallback list.
+//   post_impressions_unique now returns (#100) for Invegent (deprecated / mid-rollout per
+//   Session-2 A0) while post_clicks + post_reactions_by_type_total return 200 on the same objects
+//   → Invegent reach was all NULL. Fix (add-fallbacks-only, no new logic): the reach MetricSpec now
+//   tries ["post_impressions_unique", "post_impressions"]. post_impressions_unique
+//   stays FIRST so still-working cases are unchanged; fetchSingleMetric already iterates names and
+//   records EVERY attempt in raw_payload.calls; the first 200 wins; if ALL fail, reach stays NULL
+//   (no false zero) and engagement_rate stays NULL. No backfill — normal collection self-probes and
+//   reveals which metric lands. NB: v14.2.0 found post_impressions #100 across all four clients on
+//   2026-06-12; re-added here ONLY as a fail-safe self-probe candidate (rollout is in flux → may now
+//   200 for some objects; harmless if it #100s). (post_media_view was considered but DROPPED after
+//   Session-2 review flagged its validity as unverified — A1 scope forbids a live Graph probe.)
 // v14.4.1 (2026-06-19, F-INSIGHTS-WORKER-COLLECTION-RUNTIME): runtime tuning only —
 //   MAX_POSTS_PER_CLIENT 50→25 so a per-client collection run (~3s/post observed) finishes
 //   ~75s, comfortably under the ~150s EF wall-clock and the 120s cron net.http_post timeout.
@@ -75,7 +87,11 @@ const INSIGHTS_PERIOD = "lifetime";
 
 type MetricSpec = { key: string; names: string[]; sumObjectValues?: boolean };
 const METRICS_TO_TRY: MetricSpec[] = [
-  { key: "reach",           names: ["post_impressions_unique"] },
+  // v14.5.0 A1: reach fail-safe fallback list — tried in order, every attempt recorded in
+  // raw_payload.calls; first 200 wins; all-fail → reach NULL (no false zero). post_impressions_unique
+  // stays FIRST (working cases unchanged); it now #100s for Invegent (Session-2 A0) so the fallbacks
+  // self-probe a working reach metric without a live Graph probe or any backfill.
+  { key: "reach",           names: ["post_impressions_unique", "post_impressions"] },
   { key: "clicks",          names: ["post_clicks"] },
   { key: "reactions_total", names: ["post_reactions_by_type_total"], sumObjectValues: true },
 ];
