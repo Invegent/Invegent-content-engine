@@ -1,6 +1,32 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const VERSION = "insights-worker-v14.2.0";
+const VERSION = "insights-worker-v14.4.0";
+// v14.4.0 (2026-06-19, F-INSIGHTS-WORKER-WINDOW30-90-FRESHNESS): complete recovery.
+//   - Per-client cron selector now HONORED: the 4 crons POST a JSON body
+//     {"client_publish_profile_id":"<uuid>"} (one client each). The handler parses
+//     the body defensively (try/catch around req.json(); any error/non-JSON → {})
+//     and scopes the heavy collection loop to a SINGLE profile, ending the ~150s
+//     all-client sweep that exhausted the wall-clock budget.
+//   - D-A2 aggregation-only fallback: scope_mode is decided after aggregation —
+//       client_publish_profile_id present → collect only that profile ("client_scoped");
+//       all_clients===true → collect all profiles ("all_clients_explicit");
+//       otherwise (no/invalid body, no selector) → collect NOTHING ("no_client_scope").
+//     The empty-collection default is deliberate: a malformed cron body must NOT
+//     silently re-trigger the full multi-client sweep.
+//   - Aggregation-first RETAINED (v14.3.0): computeFormatPerformance() still runs
+//     FIRST and GLOBALLY over ALL active FB client_ids every run, before any
+//     collection, so windows 30/90 can never be starved by the collection loop.
+//   - Additive only: PublishProfile gains client_publish_profile_id (PK column) +
+//     the profile SELECT loads it; the success response gains a scope_mode field.
+//     computeFormatPerformance, fetchPostInsights, fetchSingleMetric, processClient,
+//     METRICS_TO_TRY, token handling, engagement/NULL semantics, and raw_payload are
+//     all byte-identical to v14.2.0/v14.3.0.
+// v14.3.0 (2026-06-19, F-INSIGHTS-WORKER-WINDOW30-90-FRESHNESS): pure statement
+//   reorder — computeFormatPerformance() (windows 30/90 aggregation) now runs
+//   FIRST, right after activeProfiles is resolved and BEFORE the heavy per-client
+//   Facebook collection loop, so the ~150s wall-clock kill in collection can no
+//   longer starve the cheap window aggregation (frozen since 2026-06-12). No
+//   behavioural/shape change; final response still returns formatPerfResult.
 // v14.2.0 (2026-06-12, F-OPTIONC-ENGAGEMENT-EVIDENCE-NULL Fix 1, Stage R verified):
 //   - post_engaged_users and post_impressions REMOVED: both return (#100)
 //     invalid metric under the actually-served Graph version (v19 sunset →
@@ -73,6 +99,7 @@ function getServiceClient() {
 }
 
 type PublishProfile = {
+  client_publish_profile_id: string; // PK (uuid) — v14.4.0 per-client cron selector
   client_id: string;
   destination_id: string | null;
   credential_env_key: string | null;
@@ -389,6 +416,15 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
   if (req.method === "GET") return jsonResponse({ ok: true, function: "insights-worker", version: VERSION });
 
+  // v14.4.0: parse optional scope from the request body DEFENSIVELY. The 4 crons
+  // POST {"client_publish_profile_id":"<uuid>"} (one client each). Any error or
+  // non-JSON body is treated as {} — a bad body must NEVER throw or widen scope.
+  let body: { client_publish_profile_id?: string; all_clients?: boolean } = {};
+  try {
+    const parsed = await req.json();
+    if (parsed && typeof parsed === "object") body = parsed;
+  } catch { body = {}; }
+
   const clientSummaries: Record<string, any> = {};
   let totalProcessed = 0, totalSucceeded = 0, totalFailed = 0, totalFirstTime = 0;
 
@@ -397,7 +433,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: profiles, error: profErr } = await supabase
       .schema("c").from("client_publish_profile")
-      .select("client_id, destination_id, credential_env_key, page_access_token")
+      .select("client_publish_profile_id, client_id, destination_id, credential_env_key, page_access_token")
       .eq("platform", "facebook")
       .eq("status", "active")
       .eq("publish_enabled", true);
@@ -407,7 +443,39 @@ Deno.serve(async (req: Request) => {
     const activeProfiles = (profiles ?? []) as PublishProfile[];
     if (!activeProfiles.length) return jsonResponse({ ok: true, version: VERSION, message: "no_active_profiles", total_processed: 0 });
 
-    for (const profile of activeProfiles) {
+    // v14.3.0 (F-INSIGHTS-WORKER-WINDOW30-90-FRESHNESS): run the cheap window-30/90
+    // aggregation FIRST. It reads only already-collected m.post_performance rows
+    // (collection upserts those incrementally and stays fresh on its own), so it
+    // must not sit behind the heavy per-client Facebook collection loop — that loop
+    // exhausts the ~150s wall-clock budget and was killing this tail before it
+    // committed, freezing windows 30/90 since 2026-06-12.
+    const allClientIds = activeProfiles.map(p => p.client_id);
+    const formatPerfResult = await computeFormatPerformance(supabase, allClientIds);
+    console.log(`[insights-worker] format_performance: ${formatPerfResult.windows_computed} windows, ${formatPerfResult.errors.length} errors`);
+
+    // v14.4.0 D-A2: scope the heavy collection loop. Aggregation above stays
+    // GLOBAL; only collection is scoped by the cron body.
+    //   - client_publish_profile_id (non-empty string) → that one profile.
+    //   - all_clients === true → every profile (explicit opt-in).
+    //   - otherwise (no/invalid body, no selector) → NOTHING (aggregation-only).
+    // The empty default is the safety property: a malformed cron body must not
+    // silently re-trigger the full multi-client sweep that exhausts wall-clock.
+    let profilesToCollect: PublishProfile[];
+    let scope_mode: string;
+    if (typeof body.client_publish_profile_id === "string" && body.client_publish_profile_id.length > 0) {
+      const target = body.client_publish_profile_id;
+      profilesToCollect = activeProfiles.filter(p => p.client_publish_profile_id === target);
+      scope_mode = "client_scoped";
+    } else if (body.all_clients === true) {
+      profilesToCollect = activeProfiles;
+      scope_mode = "all_clients_explicit";
+    } else {
+      profilesToCollect = [];
+      scope_mode = "no_client_scope";
+    }
+    console.log(`[insights-worker] scope_mode=${scope_mode} profiles_to_collect=${profilesToCollect.length}`);
+
+    for (const profile of profilesToCollect) {
       // Type B token-source fallback (v14.1.0): env secret first, then inline
       // profile.page_access_token. Token VALUES are never logged/returned/
       // persisted — only the source label ("env" / "inline_profile").
@@ -440,12 +508,9 @@ Deno.serve(async (req: Request) => {
       totalFirstTime += result.first_time;
     }
 
-    const allClientIds = activeProfiles.map(p => p.client_id);
-    const formatPerfResult = await computeFormatPerformance(supabase, allClientIds);
-    console.log(`[insights-worker] format_performance: ${formatPerfResult.windows_computed} windows, ${formatPerfResult.errors.length} errors`);
-
     return jsonResponse({
       ok: true, version: VERSION,
+      scope_mode,
       total_processed: totalProcessed, total_succeeded: totalSucceeded, total_failed: totalFailed,
       total_first_time: totalFirstTime,
       format_performance: { windows_computed: formatPerfResult.windows_computed, errors: formatPerfResult.errors },
