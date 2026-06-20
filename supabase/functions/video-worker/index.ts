@@ -1,5 +1,24 @@
 // video-worker v3.1.0
 // ============================================================================
+// v3.1.4 (2026-06-20, VOICE-ID-RESOLUTION-HARDENING):
+//   Resolve the ElevenLabs voice by client_id (always present on the draft),
+//   not by getBrand().clientSlug. Root cause: service_role lacks SELECT on
+//   c.client, so getBrand()'s PostgREST read of client_slug returns null and
+//   falls back to the client UUID; the old getVoiceId(clientSlug) then received
+//   a UUID, matched no property/pp/ndis alias, returned null, and the voice
+//   render failed before ElevenLabs ("No ElevenLabs voice ID configured for
+//   client_slug=<uuid>"). Fix: getVoiceIdForDraft({clientId,clientSlug,format})
+//   in the new pure module ./voice_id.ts resolves by client_id first; a
+//   UUID-valued clientSlug NEVER enters the substring-alias path; a real
+//   (non-UUID) slug still works as a secondary path. The fail-loud throw is
+//   enriched with client_id, observed slug, method, and format. getBrand() is
+//   UNCHANGED and still used for brand colour/logo/profile — only voice identity
+//   stops depending on its slug fallback. STRICTLY OUT OF SCOPE: no DB grant /
+//   migration, no secret read/write, no render_engine string change
+//   ('creatomate' / 'creatomate+elevenlabs' unchanged), no change to
+//   captions/music/layout/timing/storage paths/write_render_log args/draft
+//   selection/queue logic, no publisher change. (F-VOICE-ID-RESOLUTION)
+//
 // v3.1.2 (2026-06-02, VOICE-MAPPING-GUARD):
 //   Narrow voice-selection guard. getVoiceId() no longer silently falls back to
 //   the NDIS voice for an unrecognised client_slug — it now returns null so the
@@ -100,8 +119,9 @@
 // ============================================================================
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { getVoiceIdForDraft } from './voice_id.ts';
 
-const VERSION = 'video-worker-v3.1.3';
+const VERSION = 'video-worker-v3.1.4';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -124,18 +144,9 @@ function getServiceClient() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-function getVoiceId(clientSlug: string): string | null {
-  const slugUpper = clientSlug.toUpperCase().replace(/-/g, '_');
-  const exact = Deno.env.get(`ELEVENLABS_VOICE_ID_${slugUpper}`);
-  if (exact) return exact;
-  if (clientSlug.toLowerCase().includes('ndis')) return Deno.env.get('ELEVENLABS_VOICE_ID_NDIS') ?? null;
-  if (clientSlug.toLowerCase().includes('property') || clientSlug.toLowerCase().includes('pp')) return Deno.env.get('ELEVENLABS_VOICE_ID_PP') ?? null;
-  // v3.1.2 guard: NO silent NDIS default for unrecognised slugs. A new brand must
-  // have an explicit ELEVENLABS_VOICE_ID_<SLUG> (or a known ndis/property alias),
-  // else this returns null and the caller fails the draft loudly — rather than
-  // rendering in the wrong (NDIS) voice. (F-VOICE-SILENT-FALLBACK)
-  return null;
-}
+// v3.1.4: voice-id resolution moved to ./voice_id.ts (getVoiceIdForDraft),
+// resolving by client_id first. See header. The v3.1.2 slug guard (no silent
+// NDIS default) is preserved there as the secondary, non-UUID slug path.
 
 // === v3.0.0 (A): Music library (env-gated, off-by-default) ==================
 //
@@ -516,8 +527,8 @@ async function processDraft(opts: {
   let audioUrl: string | null = null;
   let captionText: string | null = null;  // v3.1.0 — kinetic_voice captions
   if (withVoice) {
-    const voiceId = getVoiceId(b.clientSlug);
-    if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for client_slug=${b.clientSlug}`);
+    const { voiceId, method } = getVoiceIdForDraft({ clientId: draft.client_id, clientSlug: b.clientSlug, format: fmt });
+    if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for client_id=${draft.client_id} client_slug=${b.clientSlug} method=${method} format=${fmt}`);
     const narration = vs?.narration_text ?? '';
     if (!narration) throw new Error('video_script.narration_text is empty');
     const audioPath = `${b.clientSlug}/${draft.post_draft_id}_voice.mp3`;
