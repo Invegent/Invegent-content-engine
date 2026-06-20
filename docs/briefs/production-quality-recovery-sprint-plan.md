@@ -34,6 +34,16 @@ NOT guaranteed calendar days** (each irreversible step waits for PK; the clock i
 section is the sprint-level summary + the two folded-in items (Provider Specialist v0, low-volume
 backfill).
 
+> **✅ D1 COMPLETE / RESOLVED 2026-06-20 (supersedes the candidate-secret framing in D1.1–D1.3; see
+> registers v3.73).** The planning hypothesis "PP likely missing secret" (D1.2) was **DISPROVEN** — the
+> PP/NDIS voice secrets were **present all along**, and it was **NOT** a stale PostgREST schema cache.
+> **Proven root cause:** `service_role` lacks `SELECT` on `c.client` → `getBrand()` returns the client
+> **UUID** → `getVoiceId(UUID)` resolves nothing. **Fix:** `video-worker` **v3.1.4** (`e388c33`, fn
+> version 50) — **client_id-first** voice resolution decoupled from `getBrand().clientSlug`; the grant
+> was **NOT** widened, `getBrand()`/storage behaviour left unchanged. **Secondary:** invalid
+> `ELEVENLABS_API_KEY` (`401`) → **PK rotated**. **Verified:** PP + NDIS controlled renders both
+> **succeeded** end-to-end (ElevenLabs → Creatomate → storage), 0 queue/0 publish.
+
 ### D1.1 Confirmed root cause (read-only, re-verified 2026-06-20)
 
 - The `creatomate+elevenlabs` failures are **genuine voice-format failures** — **all 9 failed renders
@@ -56,7 +66,8 @@ backfill).
 `getVoiceId` resolves the **exact** `ELEVENLABS_VOICE_ID_<SLUG_UPPER>` first, then a legacy alias:
 
 - **Property Pulse** → `ELEVENLABS_VOICE_ID_PROPERTY_PULSE` (exact) **or** `ELEVENLABS_VOICE_ID_PP`
-  (alias). **PP is the likely missing/regressed mapping.**
+  (alias). **[CORRECTED: PP was NOT missing — the secret was present; see the D1 RESOLVED banner. The
+  alias was simply never reached because `getVoiceId` got the UUID, not the slug.]**
 - **NDIS-Yarns** → `ELEVENLABS_VOICE_ID_NDIS_YARNS` (exact) **or** `ELEVENLABS_VOICE_ID_NDIS` (alias).
 
 Setting any one of the pair to a valid ElevenLabs voice id makes `getVoiceId` resolve non-null. **Secret

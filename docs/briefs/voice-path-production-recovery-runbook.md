@@ -13,6 +13,24 @@
 
 ---
 
+> **✅ RESOLVED 2026-06-20 (supersedes the planning hypotheses below; see registers v3.73).** This runbook
+> was authored as read-only PLANNING and its early framing ("missing voice-ID secret", §1/§4 Option A) was
+> **DISPROVEN by live test** — keep the body as the audit trail, but the **proven root cause** is:
+> **`service_role` lacks `SELECT` on `c.client`**, so `getBrand()`'s PostgREST read of `client_slug`
+> returned null and fell back to the **client UUID**; `getVoiceId(UUID)` then matched no `pp`/`ndis` alias
+> and returned null. The PP/NDIS voice secrets (`ELEVENLABS_VOICE_ID_PP` / `ELEVENLABS_VOICE_ID_NDIS`) were
+> **present all along** (red herring), and it was **NOT** a stale PostgREST schema cache (a cache reload
+> was tested and did not fix it — a reload re-reads the catalog but grants nothing). **Fix shipped:**
+> `video-worker` **v3.1.4** (commit/merged `e388c33`, deployed fn version 50, `verify_jwt=false`) added
+> **client_id-first** voice resolution (`getVoiceIdForDraft`) that does not depend on `getBrand().clientSlug`;
+> a UUID-valued slug never enters the alias path. We **did NOT grant** `SELECT` on `c.client`
+> (code-hardening chosen instead); **`getBrand().clientSlug` and the storage-path behaviour were left
+> intentionally unchanged**. **Secondary blocker:** `ELEVENLABS_API_KEY` was invalid (`401 invalid_api_key`)
+> → **PK manually rotated** it. **Verified end-to-end:** controlled PP + NDIS renders both **succeeded**
+> (ElevenLabs → Creatomate → Supabase storage), 0 queue rows, 0 publish rows, nothing published.
+
+---
+
 ## 1. Confirmed code path (read-only, `video-worker/index.ts`)
 
 The failure is a **deliberate fail-loud guard**, firing BEFORE any external call:
@@ -31,8 +49,12 @@ The failure is a **deliberate fail-loud guard**, firing BEFORE any external call
    throw, the worker sets `video_status='failed'` and writes `m.post_render_log` with
    `p_render_engine='creatomate+elevenlabs'`, status `failed` (≈line 582–583).
 
-**Conclusion:** the path matches PK's description exactly. The failure is a **missing voice-ID secret**,
-not a provider/render fault. No ElevenLabs or Creatomate spend is incurred on the failing renders.
+**Conclusion (CORRECTED — see RESOLVED banner above):** the path matches PK's description, and no
+ElevenLabs/Creatomate spend is incurred on the failing renders. But the failure was **NOT a missing
+voice-ID secret** (this planning-time conclusion was disproven) — `getVoiceId` received the **client
+UUID** because `getBrand()`'s `c.client` read is denied to `service_role` (missing `SELECT` grant), so it
+never reached the present PP/NDIS secrets. Root cause = the **grant gap**, fixed in code by client_id-first
+resolution (v3.1.4).
 
 ## 2. Confirmed `client_slug` population (read-only, `c.client`, 2026-06-20)
 
