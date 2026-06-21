@@ -1,5 +1,21 @@
 // video-worker v3.1.0
 // ============================================================================
+// v3.1.5 (2026-06-21, QA-VISIBILITY-V0):
+//   ADDITIVE / OBSERVABILITY-ONLY. Attach a normalized `qa` object to every
+//   write_render_log call's render_spec (previously always null in video-worker).
+//   New pure, fail-safe module ./qa.ts (buildRenderQa + safeQa) — no side effects.
+//   A minimal qaCtx is threaded from processDraft into renderUploadAndLog and a
+//   qa.{success,catch} object is set at the two in-render log sites plus the
+//   per-draft outer Deno.serve catch (engine='creatomate', render_mode=
+//   'composition', duration_semantics='render_wallclock', dimension=
+//   '1080x1920', aspect='9:16'). file_size_bytes at success reuses the already-
+//   in-scope render buffer length (NO re-fetch/probe). STRICTLY OUT OF SCOPE:
+//   no DB migration, no render/poll/storage/status/queue/publish/selection
+//   change, p_render_engine values byte-unchanged ('creatomate' /
+//   'creatomate+elevenlabs'), no provider call added, no secret access, no
+//   audio_present/loudness/true-duration/true-dimension/cost-value/legibility,
+//   no publish-blocking verdict (all DEFERRED). (QA-VISIBILITY-V0)
+//
 // v3.1.4 (2026-06-20, VOICE-ID-RESOLUTION-HARDENING):
 //   Resolve the ElevenLabs voice by client_id (always present on the draft),
 //   not by getBrand().clientSlug. Root cause: service_role lacks SELECT on
@@ -120,8 +136,9 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { getVoiceIdForDraft } from './voice_id.ts';
+import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (additive)
 
-const VERSION = 'video-worker-v3.1.4';
+const VERSION = 'video-worker-v3.1.5';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -236,6 +253,16 @@ async function pollRender(renderId: string, apiKey: string, startMs: number): Pr
   throw new Error('Render timed out after 2 minutes');
 }
 
+// v3.1.5 (QA-VISIBILITY-V0): minimal, render-derived QA context threaded from
+// processDraft. Pure data already in scope — no probe, no fetch, no secret read.
+type QaCtx = {
+  withVoice: boolean;
+  expectedFormat: string;
+  captionsExpected: boolean;
+  captionsPresent: boolean;
+  sceneCount: number | null;
+};
+
 async function renderUploadAndLog(opts: {
   supabase: ReturnType<typeof getServiceClient>;
   creatomateKey: string;
@@ -244,8 +271,9 @@ async function renderUploadAndLog(opts: {
   postDraftId: string;
   clientId: string;
   iceFormatKey: string;
+  qaCtx: QaCtx;  // v3.1.5: QA-VISIBILITY-V0 (additive observability)
 }): Promise<string> {
-  const { supabase, creatomateKey, renderScript, storagePath, postDraftId, clientId, iceFormatKey } = opts;
+  const { supabase, creatomateKey, renderScript, storagePath, postDraftId, clientId, iceFormatKey, qaCtx } = opts;
   const startMs = Date.now();
   let renderId: string | null = null;
   try {
@@ -265,26 +293,85 @@ async function renderUploadAndLog(opts: {
     if (upErr) throw new Error(`Storage upload: ${upErr.message}`);
     const storageUrl = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/post-videos/${storagePath}`;
     try {
+      // v3.1.5 (QA-VISIBILITY-V0): additive render-QA on the SUCCESS log. file_size_bytes
+      // reuses the already-fetched render buffer (vidBuf) — no re-fetch/probe.
+      const renderSpec = {
+        qa: safeQa(() => buildRenderQa({
+          expected_format: qaCtx.expectedFormat,
+          engine: 'creatomate', render_mode: 'composition',
+          duration_semantics: 'render_wallclock',
+          dimension: '1080x1920', aspect: '9:16',
+          status: 'succeeded', failure_stage: null,
+          provider_job_id_present: !!renderId,
+          output_url_present: !!renderUrl,
+          storage_url_present: !!storageUrl,
+          duration_ms: durationMs,
+          file_size_bytes: vidBuf.byteLength,
+          audio_expected: qaCtx.withVoice,
+          voice_expected: qaCtx.withVoice,
+          tts_provider: qaCtx.withVoice ? 'elevenlabs' : null,
+          captions_expected: qaCtx.captionsExpected,
+          captions_present: qaCtx.captionsPresent,
+          scene_count: qaCtx.sceneCount,
+          avatar_expected: false,
+          fallback_taken: false,
+          cost_present: creditsUsed != null,
+          cost_estimated_flag: false,
+        })),
+      };
       const { error: logErr } = await supabase.rpc('write_render_log', {
         p_post_draft_id: postDraftId, p_slide_id: null, p_client_id: clientId,
         p_ice_format_key: iceFormatKey, p_render_engine: 'creatomate',
         p_creatomate_render_id: renderId, p_status: 'succeeded',
         p_output_url: renderUrl, p_storage_url: storageUrl,
         p_credits_used: creditsUsed, p_render_duration_ms: durationMs,
-        p_error_message: null, p_render_spec: null,
+        p_error_message: null, p_render_spec: renderSpec,
       });
       if (logErr) console.error('[video-worker] write_render_log error:', logErr.message);
     } catch (logEx: any) { console.error('[video-worker] write_render_log threw:', logEx?.message); }
     return storageUrl;
   } catch (e: any) {
     const errMsg = (e?.message ?? String(e)).slice(0, 500);
+    const isTimeout = errMsg.includes('timed out');
+    // v3.1.5 (QA-VISIBILITY-V0): classify the render failure stage (observational).
+    const failureStage = isTimeout ? 'timeout'
+      : /submit/i.test(errMsg) ? 'submit'
+      : /Creatomate failed|Poll failed/i.test(errMsg) ? 'render'
+      : /Storage upload|No render ID/i.test(errMsg) ? 'download_store'
+      : 'render';
     try {
+      // v3.1.5 (QA-VISIBILITY-V0): additive render-QA on the in-render CATCH log.
+      const renderSpec = {
+        qa: safeQa(() => buildRenderQa({
+          expected_format: qaCtx.expectedFormat,
+          engine: 'creatomate', render_mode: 'composition',
+          duration_semantics: 'render_wallclock',
+          dimension: '1080x1920', aspect: '9:16',
+          status: isTimeout ? 'timeout' : 'failed',
+          failure_stage: failureStage,
+          provider_job_id_present: !!renderId,
+          output_url_present: false,
+          storage_url_present: false,
+          duration_ms: Date.now() - startMs,
+          file_size_bytes: null,
+          audio_expected: qaCtx.withVoice,
+          voice_expected: qaCtx.withVoice,
+          tts_provider: qaCtx.withVoice ? 'elevenlabs' : null,
+          captions_expected: qaCtx.captionsExpected,
+          captions_present: qaCtx.captionsPresent,
+          scene_count: qaCtx.sceneCount,
+          avatar_expected: false,
+          fallback_taken: false,
+          cost_present: false,
+          cost_estimated_flag: false,
+        })),
+      };
       await supabase.rpc('write_render_log', {
         p_post_draft_id: postDraftId, p_slide_id: null, p_client_id: clientId,
         p_ice_format_key: iceFormatKey, p_render_engine: 'creatomate',
-        p_creatomate_render_id: renderId, p_status: errMsg.includes('timed out') ? 'timeout' : 'failed',
+        p_creatomate_render_id: renderId, p_status: isTimeout ? 'timeout' : 'failed',
         p_output_url: null, p_storage_url: null, p_credits_used: null,
-        p_render_duration_ms: Date.now() - startMs, p_error_message: errMsg, p_render_spec: null,
+        p_render_duration_ms: Date.now() - startMs, p_error_message: errMsg, p_render_spec: renderSpec,
       });
     } catch (logEx: any) { console.error('[video-worker] write_render_log (fail) threw:', logEx?.message); }
     throw e;
@@ -536,6 +623,15 @@ async function processDraft(opts: {
     if (!audioUrl) throw new Error('ElevenLabs TTS failed');
     captionText = narration;  // captions derive from the same narration as the TTS
   }
+  // v3.1.5 (QA-VISIBILITY-V0): minimal QA context — render-derived data already in scope.
+  const narrationForQa = vs?.narration_text ?? '';
+  const qaCtx: QaCtx = {
+    withVoice,
+    expectedFormat: fmt,
+    captionsExpected: (fmt === 'video_short_kinetic_voice'),
+    captionsPresent: (fmt === 'video_short_kinetic_voice' && !!narrationForQa),
+    sceneCount: (vs?.scenes?.length ?? null),
+  };
   const isKinetic = fmt === 'video_short_kinetic' || fmt === 'video_short_kinetic_voice';
   const isStat    = fmt === 'video_short_stat'    || fmt === 'video_short_stat_voice';
   if (isKinetic) {
@@ -543,7 +639,7 @@ async function processDraft(opts: {
       throw new Error('missing_or_invalid_video_script_scenes');
     const spec = buildKineticTextSpec({ scenes: vs.scenes, ...b, audioUrl, musicUrl, captionText });
     const storagePath = `${b.clientSlug}/${draft.post_draft_id}_kinetic${withVoice ? '_voice' : ''}.mp4`;
-    const videoUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: spec, storagePath, postDraftId: draft.post_draft_id, clientId: draft.client_id, iceFormatKey: fmt });
+    const videoUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: spec, storagePath, postDraftId: draft.post_draft_id, clientId: draft.client_id, iceFormatKey: fmt, qaCtx });
     await supabase.schema('m').from('post_draft').update({ video_url: videoUrl, video_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
     return { post_draft_id: draft.post_draft_id, format: fmt, status: 'generated', video_url: videoUrl };
   }
@@ -551,7 +647,7 @@ async function processDraft(opts: {
     if (!vs?.stat_value) throw new Error('missing_video_script_stat_value');
     const spec = buildStatRevealSpec({ statValue: vs.stat_value, statLabel: vs.stat_label ?? 'key statistic', contextLine: vs.context_line ?? '', ctaText: vs.cta_text ?? 'What does this mean for you?', ...b, audioUrl, musicUrl });
     const storagePath = `${b.clientSlug}/${draft.post_draft_id}_stat${withVoice ? '_voice' : ''}.mp4`;
-    const videoUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: spec, storagePath, postDraftId: draft.post_draft_id, clientId: draft.client_id, iceFormatKey: fmt });
+    const videoUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: spec, storagePath, postDraftId: draft.post_draft_id, clientId: draft.client_id, iceFormatKey: fmt, qaCtx });
     await supabase.schema('m').from('post_draft').update({ video_url: videoUrl, video_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
     return { post_draft_id: draft.post_draft_id, format: fmt, status: 'generated', video_url: videoUrl };
   }
@@ -591,7 +687,39 @@ Deno.serve(async (req: Request) => {
       const msg = (e?.message ?? String(e)).slice(0, 2000);
       console.error(`[video-worker] failed ${draft.post_draft_id}:`, msg);
       await supabase.schema('m').from('post_draft').update({ video_status: 'failed', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
-      try { await supabase.rpc('write_render_log', { p_post_draft_id: draft.post_draft_id, p_slide_id: null, p_client_id: draft.client_id, p_ice_format_key: draft.recommended_format, p_render_engine: withVoice ? 'creatomate+elevenlabs' : 'creatomate', p_creatomate_render_id: null, p_status: 'failed', p_output_url: null, p_storage_url: null, p_credits_used: null, p_render_duration_ms: 0, p_error_message: msg, p_render_spec: null }); } catch { }
+      // v3.1.5 (QA-VISIBILITY-V0): additive render-QA on the OUTER per-draft pre-render
+      // catch. p_render_engine is LEFT EXACTLY as-is; qa.engine is the normalized label.
+      const outerFmt = draft.recommended_format;
+      const outerFailureStage = /No ElevenLabs voice ID/i.test(msg) ? 'voice_id_resolution'
+        : /TTS failed/i.test(msg) ? 'tts'
+        : /narration_text is empty/i.test(msg) ? 'narration'
+        : /scenes|stat_value/i.test(msg) ? 'validation'
+        : 'pre_render';
+      const outerRenderSpec = {
+        qa: safeQa(() => buildRenderQa({
+          expected_format: outerFmt,
+          engine: 'creatomate', render_mode: 'composition',
+          duration_semantics: 'render_wallclock',
+          dimension: '1080x1920', aspect: '9:16',
+          status: 'failed', failure_stage: outerFailureStage,
+          provider_job_id_present: false,
+          output_url_present: false,
+          storage_url_present: false,
+          duration_ms: 0,
+          file_size_bytes: null,
+          audio_expected: withVoice,
+          voice_expected: withVoice,
+          tts_provider: withVoice ? 'elevenlabs' : null,
+          captions_expected: (outerFmt === 'video_short_kinetic_voice'),
+          captions_present: false,
+          scene_count: (draft.draft_format?.video_script?.scenes?.length ?? null),
+          avatar_expected: false,
+          fallback_taken: null,
+          cost_present: false,
+          cost_estimated_flag: false,
+        })),
+      };
+      try { await supabase.rpc('write_render_log', { p_post_draft_id: draft.post_draft_id, p_slide_id: null, p_client_id: draft.client_id, p_ice_format_key: draft.recommended_format, p_render_engine: withVoice ? 'creatomate+elevenlabs' : 'creatomate', p_creatomate_render_id: null, p_status: 'failed', p_output_url: null, p_storage_url: null, p_credits_used: null, p_render_duration_ms: 0, p_error_message: msg, p_render_spec: outerRenderSpec }); } catch { }
       results.push({ post_draft_id: draft.post_draft_id, format: draft.recommended_format, status: 'failed', error: msg });
     }
   }

@@ -1,4 +1,16 @@
 // heygen-worker v2.2.0
+// v2.3.0 — QA-VISIBILITY-V0: ADDITIVE / OBSERVABILITY-ONLY. Add a normalized `qa` object
+//          (engine='heygen', render_mode='identity', duration_semantics=
+//          'submit_to_poll_detection') INTO the existing writeRenderLog render_spec, built
+//          via the new pure, fail-safe module ./qa.ts (buildRenderQa + safeQa). All existing
+//          render_spec fields (provider/provider_job_id/avatar_identity/etc.) are preserved.
+//          An optional opts.failureStage threads the terminal stage from the 4 callers
+//          (success → null; download/store catch → 'download_store'; provider-render-failed →
+//          'render'; stale-timeout → 'timeout'). STRICTLY OUT OF SCOPE: no migration, no
+//          provider call added, no secret access, no file-size/dimension probe (file_size_bytes
+//          stays null; dimension read from existing fmt.render_dimension), no change to
+//          markGenerated/markFailed/poll/submit/shadow/selection/publish logic, p_render_engine
+//          unchanged ('heygen'), no publish-blocking verdict. (QA-VISIBILITY-V0)
 // v2.2.0 — AGP-D01-3 AVATAR-SHADOW-RESOLVER-TELEMETRY: shadow-only, additive, FLAG-GATED (default OFF).
 //          After runSubmitPhase resolves the LIVE avatar pick (lookupAvatar fallback/role OR the
 //          preset branch), and ONLY when env AVATAR_SHADOW_TELEMETRY is truthy, fire-and-best-effort
@@ -42,8 +54,9 @@
 //          (ai-worker writes via set_draft_video_script which nests inside video_script)
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { buildRenderQa, safeQa } from './qa.ts';  // v2.3.0: QA-VISIBILITY-V0 (additive)
 
-const VERSION             = 'heygen-worker-v2.2.0';
+const VERSION             = 'heygen-worker-v2.3.0';
 const HEYGEN_GENERATE     = 'https://api.heygen.com/v2/video/generate';
 const HEYGEN_STATUS       = 'https://api.heygen.com/v1/video_status.get';
 const MAX_SUBMITS         = 3;                // Phase A: pending drafts to submit per tick
@@ -182,12 +195,12 @@ async function markFailed(supabase: Supa, draftId: string, fmt: any, errFields: 
 async function writeRenderLog(
   supabase: Supa,
   draft: { post_draft_id: string; client_id: string | null; draft_format: any },
-  opts: { status: 'succeeded' | 'failed' | 'timeout'; providerJobId: string | null; outputUrl?: string | null; storageUrl?: string | null; errorMessage?: string | null },
+  opts: { status: 'succeeded' | 'failed' | 'timeout'; providerJobId: string | null; outputUrl?: string | null; storageUrl?: string | null; errorMessage?: string | null; failureStage?: string | null },
 ): Promise<void> {
   const draftId = draft.post_draft_id;
   try {
     const fmt = draft.draft_format ?? {};
-    const { status, providerJobId, outputUrl = null, storageUrl = null, errorMessage = null } = opts;
+    const { status, providerJobId, outputUrl = null, storageUrl = null, errorMessage = null, failureStage = null } = opts;
 
     // Idempotency: skip if a HeyGen row already exists for this draft + provider job id.
     if (providerJobId) {
@@ -221,6 +234,32 @@ async function writeRenderLog(
       render_style: renderStyle,
       avatar_identity: avatarIdentity,
       telemetry_source: VERSION,
+      // v2.3.0 (QA-VISIBILITY-V0): additive normalized render-QA. All inputs are
+      // already-in-scope render facts — no probe, no fetch, no secret read.
+      qa: safeQa(() => buildRenderQa({
+        expected_format: 'video_short_avatar',
+        engine: 'heygen', render_mode: 'identity',
+        provider_job_id_present: !!providerJobId,
+        output_url_present: !!outputUrl,
+        storage_url_present: !!storageUrl,
+        status,
+        failure_stage: failureStage ?? null,
+        duration_ms: durationMs,
+        duration_semantics: 'submit_to_poll_detection',
+        file_size_bytes: null,  // NOT captured at the log site (downloadAndStore untouched)
+        dimension: (fmt.render_dimension ?? '720x1280'),
+        aspect: '9:16',
+        audio_expected: true,
+        voice_expected: true,
+        tts_provider: 'heygen',
+        captions_expected: false,
+        captions_present: false,
+        scene_count: 1,
+        avatar_expected: true,
+        fallback_taken: (fmt.avatar_identity?.avatar_selected_by === 'fallback_limit1'),
+        cost_present: false,
+        cost_estimated_flag: false,
+      })),
     };
 
     const { error } = await supabase.rpc('write_render_log', {
@@ -290,20 +329,20 @@ export async function runPollPhase(supabase: Supa, apiKey: string): Promise<any[
         const dlErr = `download_store_failed: ${(e?.message ?? String(e)).slice(0, 1000)}`;
         await markFailed(supabase, draftId, fmt, { heygen_error: dlErr, heygen_video_id: videoId });
         // telemetry-only: terminal failure (HeyGen completed but our download/store failed)
-        await writeRenderLog(supabase, draft, { status: 'failed', providerJobId: videoId, errorMessage: dlErr });
+        await writeRenderLog(supabase, draft, { status: 'failed', providerJobId: videoId, errorMessage: dlErr, failureStage: 'download_store' });
         results.push({ post_draft_id: draftId, phase: 'poll', status: 'failed', error: e?.message ?? String(e) });
       }
     } else if (st.state === 'failed') {
       await markFailed(supabase, draftId, fmt, { heygen_error: JSON.stringify(st.rawError).slice(0, 2000), heygen_video_id: videoId });
       // telemetry-only: terminal failure (provider render failed)
-      await writeRenderLog(supabase, draft, { status: 'failed', providerJobId: videoId, errorMessage: `heygen_render_failed: ${JSON.stringify(st.rawError).slice(0, 1000)}` });
+      await writeRenderLog(supabase, draft, { status: 'failed', providerJobId: videoId, errorMessage: `heygen_render_failed: ${JSON.stringify(st.rawError).slice(0, 1000)}`, failureStage: 'render' });
       results.push({ post_draft_id: draftId, phase: 'poll', status: 'failed', error: 'heygen_render_failed' });
     } else {
       // still processing — stale check
       if (submittedAt && (Date.now() - submittedAt) > STALE_RENDER_MAX_MS) {
         await markFailed(supabase, draftId, fmt, { heygen_error: 'stale_render_timeout', last_status: 'processing', heygen_video_id: videoId });
         // telemetry-only: terminal timeout
-        await writeRenderLog(supabase, draft, { status: 'timeout', providerJobId: videoId, errorMessage: 'stale_render_timeout' });
+        await writeRenderLog(supabase, draft, { status: 'timeout', providerJobId: videoId, errorMessage: 'stale_render_timeout', failureStage: 'timeout' });
         results.push({ post_draft_id: draftId, phase: 'poll', status: 'failed', error: 'stale_render_timeout' });
       } else {
         results.push({ post_draft_id: draftId, phase: 'poll', status: 'rendering' });
