@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://invegent/creative-library/intake/asset-intake-manifest.schema.json",
+  "title": "Creative Library Asset Intake Manifest v0",
+  "description": "JSON-compatible schema for a PROPOSED brand asset candidate. Proposal-only: this manifest is produced by the creative-library-intake subagent and reviewed by PK; it is NOT a write to c.client_brand_asset. Hard rule: no license -> no governance (a candidate with missing/ambiguous license is blocked_license and cannot reach 'governed').",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["asset_key", "client_slug", "asset_type", "approval_status"],
+  "x-governance-storage": {
+    "$comment": "Where each field lands IF/when governed into c.client_brand_asset (post-PK). No migration in Lane 1; no new columns.",
+    "real_columns": {
+      "asset_type": "CHECK-constrained column (allowed enum only)",
+      "client_id": "resolved from client_slug",
+      "asset_url": "derived from source_path -> public bucket URL",
+      "asset_name": "column",
+      "is_active": "column",
+      "platform_scope": "column (text[])"
+    },
+    "asset_meta_jsonb": [
+      "asset_key", "usage", "source_path", "bucket", "license", "source_url",
+      "attribution_required", "approved", "approved_by", "approved_at", "approval_status",
+      "location", "scene_type", "mood", "topic_fit", "safe_for_text_overlay", "has_people",
+      "has_text", "aspect_ratio", "dominant_colours", "visual_style", "property_context",
+      "platform_fit", "notes", "creative_score"
+    ]
+  },
+  "x-required-at-governed": {
+    "$comment": "Fields that MUST be present + valid before approval_status may become 'governed'. license is mandatory (no-license-no-governance).",
+    "fields": ["asset_key", "client_slug", "asset_type", "usage", "source_path", "source_url", "license", "approved", "approved_by", "approved_at"]
+  },
+  "properties": {
+    "asset_key": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_]*$",
+      "description": "Human-readable stable identifier; lives in asset_meta.asset_key (NOT a column). e.g. bg_sydney_cbd."
+    },
+    "client_slug": {
+      "type": "string",
+      "description": "Brand slug; resolved to client_id (FK) at governance time. e.g. property-pulse."
+    },
+    "asset_type": {
+      "type": "string",
+      "description": "Maps to the CHECK-constrained c.client_brand_asset.asset_type column. MUST be one of the allowed values (no new types in v0).",
+      "enum": [
+        "logo_primary", "logo_dark", "logo_light", "logo_icon", "brand_colour_set",
+        "intro_clip", "outro_clip", "background_music", "voiceover_profile",
+        "font_primary", "font_secondary", "watermark", "other"
+      ]
+    },
+    "usage": {
+      "type": "string",
+      "description": "Intended use, e.g. 'background', 'logo'. Stored in asset_meta.",
+      "examples": ["background", "logo", "watermark"]
+    },
+    "source_path": {
+      "type": ["string", "null"],
+      "description": "Proposed storage object path within the bucket (e.g. Property_Pulse/Backgrounds/Sydney_CBD_Suburbs.jpg). Stored in asset_meta; asset_url is derived from it at governance time. Null until the upload location is decided (PK)."
+    },
+    "approved": {
+      "type": "boolean",
+      "default": false,
+      "description": "PK approval flag (asset_meta). false until PK approves."
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Maps to the is_active column at governance time."
+    },
+    "source_url": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "description": "Origin/source of the candidate (where it came from); evidence for the licence. Stored in asset_meta."
+    },
+    "license": {
+      "type": ["string", "null"],
+      "description": "Explicit licence identifier/terms (e.g. 'CC0', 'CC-BY-4.0', 'licensed:Shutterstock#123', 'client-owned'). REQUIRED before governance. Null/empty -> blocked_license.",
+      "examples": ["CC0", "CC-BY-4.0", "client-owned", "licensed:provider#id"]
+    },
+    "attribution_required": {
+      "type": ["boolean", "null"],
+      "description": "Whether the licence requires visible attribution. Stored in asset_meta."
+    },
+    "approved_by": {
+      "type": ["string", "null"],
+      "description": "Person who approved (PK). asset_meta; set only at/after PK approval."
+    },
+    "approved_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Approval timestamp (ISO-8601). asset_meta; set only at/after PK approval."
+    },
+    "approval_status": {
+      "type": "string",
+      "description": "Intake lifecycle state. asset_meta. Transitions: candidate -> pending_review -> {approved|rejected|blocked_license} -> governed.",
+      "enum": ["candidate", "pending_review", "approved", "rejected", "blocked_license", "governed"],
+      "default": "candidate"
+    },
+
+    "location": { "type": ["string", "null"], "description": "Geographic/place context, e.g. 'Sydney'. (creative metadata)" },
+    "scene_type": { "type": ["string", "null"], "description": "e.g. 'cityscape', 'aerial', 'street', 'interior'." },
+    "mood": { "type": ["string", "null"], "description": "e.g. 'bright', 'corporate', 'warm'." },
+    "topic_fit": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Topics/verticals the asset suits, e.g. ['market-update','price-news']."
+    },
+    "safe_for_text_overlay": {
+      "type": ["string", "boolean", "null"],
+      "description": "Whether the asset has clear space for headline/scrim overlay. Use 'needs_scrim' | true | false.",
+      "examples": ["needs_scrim", true, false]
+    },
+    "has_people": { "type": ["boolean", "null"], "description": "Recognisable people present (consent/likeness flag)." },
+    "has_text": { "type": ["boolean", "null"], "description": "Baked-in text present in the image." },
+    "aspect_ratio": { "type": ["string", "null"], "description": "e.g. '16:9', '9:16', '1:1'." },
+    "dominant_colours": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Dominant colours (hex or names), e.g. ['#1B3A5B','sky-blue']."
+    },
+    "visual_style": { "type": ["string", "null"], "description": "e.g. 'photographic', 'illustration', 'flat'." },
+    "property_context": { "type": ["string", "null"], "description": "Property-domain context, e.g. 'residential-suburb', 'cbd-skyline'." },
+    "platform_fit": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "Platforms the asset suits, e.g. ['facebook','instagram','youtube']."
+    },
+    "notes": { "type": ["string", "null"], "description": "Free-text subagent/PK notes." },
+
+    "creative_score": {
+      "type": ["object", "null"],
+      "description": "Advisory Creative Score (asset). See creative-score.md. Advisory only; never overrides PK or the no-license rule.",
+      "additionalProperties": true
+    }
+  }
+}
