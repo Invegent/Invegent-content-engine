@@ -167,10 +167,17 @@ sibling to `render_spec.qa`** (QA Visibility v0) — **no new evidence table**, 
 > dropped, gradient still renders — no visual blocker). Secondary ratios (9:16/1:1/4:5) were **not**
 > created at Gate A.
 >
-> **GATE B — the manual smoke render (after Gate A):** the steps below. Also separately PK-gated (a render
-> = a provider call + credits).
+> **GATE B1 — ✅ DONE (2026-06-22): manual provider VISUAL export.** A manual Creatomate export produced a
+> correct **1920×1080** image (headline readable, subtitle/logo/scrim OK, no SafeMargin visible, background
+> correct; minor non-blocking notes: logo slightly dominant, large top sky, footer/date tunable). **This is
+> provider-side VISUAL proof ONLY** — it does NOT touch ICE, `m.post_render_log`, `render_spec.template`,
+> `render_spec.qa`, storage, or publish.
+>
+> **GATE C — the ICE-controlled evidence smoke (NEXT, separately PK-gated):** drive the template through
+> the ICE render path so a real `m.post_render_log` row is written, then verify the evidence. A render =
+> a provider call + credits → its own gate. **NOT done.** Steps:
 
-**Gate B — smoke steps:**
+**Gate C — ICE-controlled evidence smoke steps:**
 
 1. **One controlled template render** of the variant with fixed, PK-approved props (a real-estate/news
    headline + the PK-supplied/licensed seed photo + the PP logo).
