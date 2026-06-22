@@ -22,6 +22,7 @@ only output is its returned JSON.
 | `branch-warden` | read-only | inspect git state | mutate any ref |
 | `db-rls-auditor` | read-only | run SELECT/catalog reads, advisors | DML/DDL, apply migration, deploy |
 | `security-auditor` | read-only | security triage: classify exposure, caller/blast-radius, GREEN/AMBER/RED, design remediation batches + D-01 packets | apply migration, REVOKE/GRANT, ALTER FUNCTION, write DB, edit repo, close findings |
+| `creative-graph-auditor` | read-only (`Read`/`Grep`/`Glob`) | static-audit the Creative Library v2 declarative object graph (`docs/creative-library/*.json` + `registry-schema-v2.md`): JSON/schema shape, key uniqueness, reference resolution, evidence-SHAPE, runtime-import guard, vendored-registry drift; return a PASS/FAIL/ESCALATE verdict | query the DB, verify live render logs, judge style-guide conformance, approve/mark-proven any creative object, mutate/commit/deploy |
 
 **Security triage lanes:** use `security-auditor` **after** `db-rls-auditor` has gathered the DB
 evidence — `db-rls-auditor` collects facts (grants, defs, advisors); `security-auditor` adds the
@@ -30,6 +31,19 @@ remediation-batch + D-01 packet. **`security-auditor` is PROVEN** (2026-06-16 �
 **Phase 1b** `store_linkedin_org_token` search_path triage: classified the lane GREEN, caught and
 corrected the earlier `gen_random_uuid()` / `search_path=''` assumption (PG13+ core built-in),
 produced D-01 readiness + proof/rollback reasoning, no hard-rule violations).
+
+**Creative Library static lane:** use `creative-graph-auditor` on any Creative Library v2 registry
+change BEFORE the PK gate. It is the **static** counterpart to `db-rls-auditor`: it analyses the
+declarative object graph (`style_guide → patterns + assets → template_families → variants →
+evidence`) for shape, key uniqueness, reference resolution, evidence-SHAPE, the runtime-import guard
+(no production worker may read the declarative registry), and vendored-registry drift, and returns a
+PASS/FAIL/ESCALATE verdict. It does **not** query Supabase, verify live `m.post_render_log` rows,
+validate RLS/grants, audit `resolve_brand_assets()` runtime behaviour, judge style-guide
+**conformance**, approve or mark `proven` any creative object, or mutate/commit/deploy — live DB /
+asset / render truth is a handoff to `db-rls-auditor`, and brand-conformance judgment stays with PK.
+**Status:** built and committed (`37021c5`); its spec was exercised manually in the A1.4 lane
+(registers v3.90) because the agent-type was not registered as invocable that session — not yet run
+as a registered subagent.
 
 **Status:** all three original v1 agents are **PROVEN**. `branch-warden` (logic exercised inline in
 the v3.55 lane, then run as a subagent across the ef-builder proof) and `db-rls-auditor`
