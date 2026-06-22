@@ -1,3 +1,18 @@
+// image-worker v3.11.0
+// v3.11.0 — CREATIVE-LIBRARY-V0.1 LANE 3B: additive, manual-only governed render mode
+//   `creative_library_manual_render`. Resolves governed asset_keys via the
+//   service_role-only RPC public.resolve_brand_assets (NO raw-URL fallback — fail
+//   loud on resolver error/shortfall), renders the proven PP 16:9 news template with
+//   the RESOLVED governed asset URLs, and writes render_spec GOVERNED evidence:
+//   label='creative_library_manual_governed_render' + render_spec.template carrying
+//   implementation_id/creative_intent/capability/provider/provider_template_id +
+//   asset_keys + asset_ids + resolver_used=true + fallback_taken=false. Returns BEFORE
+//   production draft selection; touches NO post_draft/queue/publish/advisor. New pure
+//   module ./manual_render.ts (no side effects). renderUploadAndLog UNCHANGED (reuses
+//   the v3.10.x renderSpec + logMustSucceed opts). The existing template_smoke branch
+//   and all production loops are byte-unchanged. No migration, no new governed
+//   ice_format_key (the render-log ice_format_key='image_quote' is a governed label).
+//
 // image-worker v3.10.2
 // v3.10.2 — CREATIVE-LIBRARY-V0 GATE C fix (PK Option A): m.post_render_log.ice_format_key is
 //   NOT NULL + FK to t."5.3_content_format", so null was rejected. The template_smoke row now uses
@@ -26,8 +41,9 @@
 // v3.9.1 context: client_id resolve fix, video fallback renderer, carousel image_url write fix.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { MANUAL_RENDER_MODE, MANUAL_RENDER_LABEL, PP_NEWS_STATIC_16x9, isManualRenderRequest, mapResolvedAssets, buildManualModifications, computePropsHash, buildGovernedTemplateSpec } from './manual_render.ts';  // v3.11.0: LANE 3B
 
-const VERSION = 'image-worker-v3.10.2';
+const VERSION = 'image-worker-v3.11.0';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -309,6 +325,40 @@ Deno.serve(async (req: Request) => {
     const renderSpec = { label: 'creative_library_smoke', template: { template_id: 'pp-news-centred-scrim-16x9', template_version: 'v1', template_family: 'property-pulse-news', template_variant: 'centred-scrim-16x9', provider: 'creatomate', provider_template_id: TEMPLATE_ID, props_hash, asset_ids: [], fallback_taken: false } };
     const storageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: '_smoke/pp_news_centred_scrim_16x9_v1.jpg', mimeType: 'image/jpeg', postDraftId: null, clientId: null, iceFormatKey: 'image_quote', renderSpec, logMustSucceed: true });
     return jsonResponse({ ok: true, mode: 'template_smoke', template: 'PP_NEWS_CENTRED_SCRIM_16x9_v1', storage_url: storageUrl, props_hash });
+  }
+
+  // ── CREATIVE-LIBRARY-V0.1 LANE 3B: manual governed render ────────────────────
+  // Isolated, opt-in. Resolves governed asset_keys via the service_role-only RPC
+  // public.resolve_brand_assets (NO raw-URL fallback — fail loud), renders the proven
+  // PP 16:9 news template with the RESOLVED governed asset URLs, and writes
+  // render_spec.template GOVERNED evidence (asset_keys + asset_ids + resolver_used).
+  // Returns BEFORE production draft selection. Touches NO post_draft/queue/publish.
+  if (isManualRenderRequest(body)) {
+    const supabase = getServiceClient();
+    const clientSlug = body?.client_slug;
+    const implId = body?.implementation_id;
+    const logoKey = body?.asset_keys?.logo;
+    const bgKey = body?.asset_keys?.background;
+    const fields = body?.fields ?? {};
+    if (clientSlug !== 'property-pulse' || implId !== PP_NEWS_STATIC_16x9.implementation_id || !logoKey || !bgKey) {
+      return jsonResponse({ ok: false, error: 'creative_library_manual_render requires client_slug=property-pulse, implementation_id=pp_news_static_16x9_v1, asset_keys.logo, asset_keys.background' }, 400);
+    }
+    if (!fields?.headline) {
+      return jsonResponse({ ok: false, error: 'creative_library_manual_render requires fields.headline (hard-gate field)' }, 400);
+    }
+    // Resolve governed assets (service_role-only RPC). Fail loud on resolver error or shortfall — NO raw-URL fallback.
+    const { data: resolved, error: resErr } = await supabase.rpc('resolve_brand_assets', { p_client_slug: clientSlug, p_asset_keys: [logoKey, bgKey] });
+    if (resErr) return jsonResponse({ ok: false, error: `resolver_failed: ${resErr.message}` }, 500);
+    let mapped;
+    try { mapped = mapResolvedAssets(resolved as any, { logo: logoKey, background: bgKey }); }
+    catch (e: any) { return jsonResponse({ ok: false, error: e?.message ?? String(e) }, 422); }
+    const modifications = buildManualModifications({ fields, logoUrl: mapped.logo.asset_url, backgroundUrl: mapped.background.asset_url });
+    const renderScript = { template_id: PP_NEWS_STATIC_16x9.provider_template_id, modifications, output_format: PP_NEWS_STATIC_16x9.output_format };
+    const props_hash = await computePropsHash(modifications);
+    const templateSpec = buildGovernedTemplateSpec({ propsHash: props_hash, logo: mapped.logo, background: mapped.background });
+    const renderSpec = { label: MANUAL_RENDER_LABEL, template: templateSpec };
+    const storageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: '_smoke/pp_news_centred_scrim_16x9_manual_governed.jpg', mimeType: 'image/jpeg', postDraftId: null, clientId: null, iceFormatKey: 'image_quote', renderSpec, logMustSucceed: true });
+    return jsonResponse({ ok: true, mode: MANUAL_RENDER_MODE, implementation_id: implId, storage_url: storageUrl, props_hash, asset_keys: templateSpec.asset_keys, asset_ids: templateSpec.asset_ids, resolver_used: true, render_spec_label: MANUAL_RENDER_LABEL });
   }
 
   const supabase = getServiceClient();
