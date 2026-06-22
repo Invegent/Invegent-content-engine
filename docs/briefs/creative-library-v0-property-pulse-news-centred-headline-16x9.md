@@ -101,10 +101,10 @@ when a field is absent.
 
 ## 6. Creatomate mapping (template + modification keys)
 
-- **Provider template name:** **`PP_NEWS_CENTRED_SCRIM_16x9_v1`** (created at Gate A, §8).
-- **`provider_template_id`:** `<PLACEHOLDER — pending the real Creatomate template, §10>` (the id is captured
-  into `render_spec.template` once the template exists; the *name* above is stable).
-- **Aspect ratio:** 16:9; **output 1920×1080**.
+- **Provider template name:** **`PP_NEWS_CENTRED_SCRIM_16x9_v1`** (created at Gate A, §8 — **DONE 2026-06-22**).
+- **`provider_template_id`:** **`48cba556-0a53-4001-90f0-05420d10efc0`** (Gate A complete; Creatomate template
+  exists). URL: `https://creatomate.com/projects/2f8d12c7-5149-4655-bef2-8f9b5587fd11/templates/48cba556-0a53-4001-90f0-05420d10efc0`.
+- **Aspect ratio:** 16:9; **output 1920×1080**, **JPEG**.
 - **Editable / exported layers** = the 8 modification keys below.
 - **`Scrim`** = a **FIXED shape layer** (a constant darkening overlay for headline legibility) — part of the
   exported template but **NOT a modification key** (no prop drives it; it never changes per render).
@@ -143,7 +143,7 @@ sibling to `render_spec.qa`** (QA Visibility v0) — **no new evidence table**, 
     "template_family":      "property-pulse-news",
     "template_variant":     "centred-scrim-16x9",
     "provider":             "creatomate",
-    "provider_template_id": "<creatomate template id for PP_NEWS_CENTRED_SCRIM_16x9_v1>", // hosted template ref
+    "provider_template_id": "48cba556-0a53-4001-90f0-05420d10efc0", // PP_NEWS_CENTRED_SCRIM_16x9_v1 (Gate A)
     "props_hash":           "<hash of the resolved field values>", // reproducibility / dedupe
     "asset_ids":            ["<logo asset ref>", "<background asset ref>"], // refs, not bytes
     "fallback_taken":       false                              // true if any §4 fallback fired
@@ -159,11 +159,12 @@ sibling to `render_spec.qa`** (QA Visibility v0) — **no new evidence table**, 
 
 ## 8. Gate sequence + smoke test plan (later, separately gated — NOT run by this brief)
 
-> **GATE A — NEXT provider-side gate (template creation only, NO render):** create exactly **one**
-> Creatomate template named **`PP_NEWS_CENTRED_SCRIM_16x9_v1`**, **16:9 / 1920×1080 only**, exposing the
-> §6 modification keys + the fixed `Scrim` (and no `SafeMargin`). **No render smoke at Gate A** — Gate A
-> produces the template only. Gate A is a **separate PK-gated provider step** (it touches Creatomate);
-> it is **NOT** part of this docs brief and is **NOT** done now. Secondary ratios (9:16/1:1/4:5) are not
+> **GATE A — ✅ DONE (2026-06-22): template created, NO render.** One Creatomate template
+> **`PP_NEWS_CENTRED_SCRIM_16x9_v1`** (id `48cba556-0a53-4001-90f0-05420d10efc0`), **16:9 / 1920×1080 JPEG**,
+> exposing the §6 modification keys + the fixed `Scrim`, no `SafeMargin`. **No render smoke was run.**
+> Deviations recorded in §10.2 (temporary Unsplash background + placeholder logo to replace via
+> `Logo.source`; CategoryBadge letter-spacing removed for Creatomate validation; Scrim `fill_rotation`
+> dropped, gradient still renders — no visual blocker). Secondary ratios (9:16/1:1/4:5) were **not**
 > created at Gate A.
 >
 > **GATE B — the manual smoke render (after Gate A):** the steps below. Also separately PK-gated (a render
@@ -199,10 +200,12 @@ sibling to `render_spec.qa`** (QA Visibility v0) — **no new evidence table**, 
    smoke is a hand-driven Creatomate render with fixed props; it is **not** bound to any existing
    `ice_format_key` and introduces **no new** key. A pipeline/format-key binding is a future, separately
    PK-approved step (not v0).
-2. **Final Creatomate template id → DECIDED: PLACEHOLDER stands.** `provider_template_id` (§6/§7) stays a
-   placeholder until the real Creatomate template is created — that creation is a separate gated step
-   (not this brief, not v0's manual smoke necessarily). The real id is captured into `render_spec.template`
-   when it exists.
+2. **Final Creatomate template id → RESOLVED at Gate A (2026-06-22):** `provider_template_id` =
+   **`48cba556-0a53-4001-90f0-05420d10efc0`** (template `PP_NEWS_CENTRED_SCRIM_16x9_v1`, 1920×1080 JPEG).
+   **Gate A deviations (recorded, no visual blocker):** background is a **temporary Unsplash placeholder**;
+   logo is a **temporary placeholder** (must be replaced via `Logo.source`); `CategoryBadge` letter-spacing
+   removed (Creatomate validation); the `Scrim` gradient persists visually but the unsupported
+   `fill_rotation` was dropped (no visual blocker). **No render smoke was run at Gate A.**
 3. **Font → DECIDED: Montserrat (primary), else an existing PP-compatible Creatomate font.** Montserrat
    matches the current ICE render specs (the existing `video-worker` already renders in `Montserrat`), so
    it is the consistent default; if a licensing/availability issue arises, substitute a PP-compatible
