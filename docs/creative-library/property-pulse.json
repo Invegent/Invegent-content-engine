@@ -1,12 +1,136 @@
 {
-  "_about": "Creative Library registry (repo/config, evidence-first). Property Pulse pilot. NOT consumed by any worker yet — declarative reference only. Model: creative_intent -> capability -> implementation -> provider_template -> evidence. No DB table, no new taxonomy key; compatible_ice_format_key reuses existing governed format keys. Asset references use asset_key (governed in c.client_brand_asset), never raw URLs.",
+  "_about": "Creative Library registry (repo/config, evidence-first), Property Pulse pilot. v0.2 evolves to the Creative Library v2 model (Governed Creative Design System): Style Guide -> (governs) -> Assets + Patterns (SIBLING libraries; patterns may reference assets) -> (compose) -> Template Families -> (instantiate as) -> Creative Instances -> Evidence. Asset references use asset_key (governed in c.client_brand_asset via resolve_brand_assets), never raw URLs. Schema: docs/creative-library/registry-schema-v2.md.",
   "registry": "creative-library",
-  "registry_version": "v0.1",
-  "model": "creative_intent -> capability -> implementation -> provider_template -> evidence",
+  "registry_version": "v0.2",
+  "model": "style_guide -> (governs) -> assets + patterns -> (compose) -> template_families -> (instantiate as) -> creative_instances -> evidence",
   "client_slug": "property-pulse",
   "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd",
-  "lane": "creative-library-v0.1-lane2-registry-config",
+  "lane": "creative-library-v2-a1.1-registry-schema-evolution",
   "status": "active",
+  "posture": {
+    "declarative_only": "Declarative only — not consumed by production workers.",
+    "no_resolver_change": true,
+    "no_dashboard_change": true,
+    "no_runtime_behaviour_change": true,
+    "no_db_backed_registry": true,
+    "source_of_truth": "ICE governance",
+    "providers": "renderers only",
+    "pk_approval": "PK approval authority unchanged; AI proposes, never approves",
+    "vendoring_drift_note": "The dashboard vendors a COPY of this file (lib/creative-library/registry.ts @ a prior source_commit); the dashboard does NOT read these v0.2 fields and must be re-vendored if/when a dashboard lane (A1.5) surfaces them."
+  },
+
+  "style_guide": {
+    "style_guide_key": "property-pulse-styleguide-v1",
+    "client_slug": "property-pulse",
+    "version": "v1",
+    "status": "draft",
+    "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+    "palette": { "note": "Derived (declarative) from the proven PP News templates; formal palette pending PK.", "scrim": "dark scrim ~#0B1220 at ~62% opacity (from the proven caption scrim)" },
+    "typography": { "font_family": "Montserrat", "note": "Matches existing ICE render specs." },
+    "spacing": { "note": "Declarative placeholder — side margins + safe-area bands per the proven templates; formalisation pending." },
+    "logo_rules": { "asset_type": "logo_primary", "placement": "top-left", "slot": "Logo.source" },
+    "safe_area_rules": { "note": "9:16 reserves top/bottom brand bands (per video-worker layout, y140 / y1620); 16:9 uses a centred scrim. Declarative reference." },
+    "scrim_rules": { "purpose": "headline legibility over photographic backgrounds", "applies_when": "a background photo is present (backgrounds flagged needs_scrim)" },
+    "voice_tone_rules": { "note": "Property market news — factual, concise. Formalisation pending PK." },
+    "accessibility_rules": { "note": "Text-over-image contrast via scrim; min font sizes per the proven templates. Formalisation pending PK." },
+    "evidence": { "status": "draft", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": "8166dda", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "Declarative DRAFT derived from the proven PP News templates; NOT independently proven. A style guide is not a render-based object — no render_log_id is claimed." }
+  },
+
+  "patterns": [
+    {
+      "pattern_key": "pp_branding_strip_v1", "client_slug": "property-pulse", "version": "v1", "status": "draft",
+      "pattern_type": "branding_strip", "conforms_to_style_guide": "property-pulse-styleguide-v1",
+      "references_assets": ["pp_logo_primary"], "required_fields": ["footer"], "optional_fields": [],
+      "layout_rules": { "note": "Brand bars + logo (or wordmark fallback) + footer label. Declarative; maps to Logo.source + Footer.text (documentation only, not a runtime binding)." },
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "evidence": { "status": "draft", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": "8166dda", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "Decomposition of the proven PP News templates; NOT independently proven as a pattern object." }
+    },
+    {
+      "pattern_key": "pp_headline_block_v1", "client_slug": "property-pulse", "version": "v1", "status": "draft",
+      "pattern_type": "headline_block", "conforms_to_style_guide": "property-pulse-styleguide-v1",
+      "references_assets": [], "required_fields": ["headline"], "optional_fields": ["subtitle"],
+      "layout_rules": { "note": "Centred headline + subtitle over scrim. Maps to Headline.text + Subtitle.text (documentation only)." },
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "evidence": { "status": "draft", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": "8166dda", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "Decomposition of the proven PP News templates; NOT independently proven." }
+    },
+    {
+      "pattern_key": "pp_stat_card_v1", "client_slug": "property-pulse", "version": "v1", "status": "draft",
+      "pattern_type": "stat_card", "conforms_to_style_guide": "property-pulse-styleguide-v1",
+      "references_assets": [], "required_fields": [], "optional_fields": ["stat_value", "stat_label", "context_line"],
+      "layout_rules": { "note": "Stat-reveal composition (used by the animated 9:16 video-stat variant). Declarative only." },
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "evidence": { "status": "draft", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": "8166dda", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "Decomposition; NOT independently proven." }
+    },
+    {
+      "pattern_key": "pp_category_badge_v1", "client_slug": "property-pulse", "version": "v1", "status": "draft",
+      "pattern_type": "category_badge", "conforms_to_style_guide": "property-pulse-styleguide-v1",
+      "references_assets": [], "required_fields": ["category"], "optional_fields": ["location", "date"],
+      "layout_rules": { "note": "Category badge + location/date line. Maps to CategoryBadge.text / Location.text / Date.text (documentation only)." },
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "evidence": { "status": "draft", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": "8166dda", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "Decomposition; NOT independently proven." }
+    },
+    {
+      "pattern_key": "pp_background_plus_scrim_v1", "client_slug": "property-pulse", "version": "v1", "status": "draft",
+      "pattern_type": "background_plus_scrim", "conforms_to_style_guide": "property-pulse-styleguide-v1",
+      "references_assets": ["bg_perth_cbd", "bg_sydney_cbd", "bg_brisbane_cbd"], "required_fields": ["background"], "optional_fields": [],
+      "layout_rules": { "note": "Full-bleed background photo + dark scrim for legibility. Maps to Background.source + scrim (documentation only). Backgrounds are flagged needs_scrim." },
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "evidence": { "status": "draft", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": "8166dda", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "Decomposition; NOT independently proven. References the 3 governed PP backgrounds (all exist in c.client_brand_asset)." }
+    }
+  ],
+
+  "template_families": [
+    {
+      "template_family_key": "property-pulse-news",
+      "client_slug": "property-pulse",
+      "version": "v1",
+      "status": "active",
+      "compatible_ice_format_keys": ["image_quote", "video_short_stat"],
+      "composed_of_patterns": ["pp_branding_strip_v1", "pp_headline_block_v1", "pp_category_badge_v1", "pp_background_plus_scrim_v1", "pp_stat_card_v1"],
+      "expected_assets": ["pp_logo_primary", "bg_perth_cbd"],
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "evidence": { "status": "active", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "proven_variants": ["centred-scrim-16x9", "centred-scrim-9x16-video"], "source_commit": "9d1c411", "review_packet": null, "approved_by": "PK", "approved_at": null, "notes": "The family object is a COMPOSITION, not a single render — it holds NO independent render-based proof (proof_status=unproven, render_log_id=null). Proof lives at the VARIANT level: centred-scrim-16x9 (Gate C, render_log_id 7243e040-2ef2-4d08-902b-94cee26af2d3) and centred-scrim-9x16-video (Gate D2, render_log_id 508b4365-9dfc-4ec8-b491-2a3a1014d26b) are each independently proven. See proven_variants." },
+      "variants": [
+        {
+          "template_variant_key": "centred-scrim-16x9",
+          "aspect_ratio": "16:9",
+          "output_type": "jpg",
+          "render_engine": "creatomate",
+          "provider": "creatomate",
+          "provider_template_id": "48cba556-0a53-4001-90f0-05420d10efc0",
+          "required_fields": ["headline", "subtitle", "category", "location", "date", "footer", "background", "logo"],
+          "expected_assets": ["pp_logo_primary", "bg_perth_cbd"],
+          "proof_status": "proven",
+          "proof_gate": "Gate C",
+          "evidence": { "status": "proven", "proof_status": "proven", "proof_gate": "Gate C", "render_log_id": "7243e040-2ef2-4d08-902b-94cee26af2d3", "render_spec_template_id": "pp-news-centred-scrim-16x9", "source_commit": "b1feb54", "review_packet": null, "approved_by": "PK", "approved_at": null, "notes": "Gate C ICE-controlled template smoke (registers v3.81). Also has a governed manual render 'e7d096b8-6d6c-4af8-a245-dc35f83bd291' (Intake Lane 3B) with resolver_used=true / fallback_taken=false." }
+        },
+        {
+          "template_variant_key": "centred-scrim-9x16-video",
+          "aspect_ratio": "9:16",
+          "output_type": "mp4",
+          "render_engine": "creatomate",
+          "provider": "creatomate",
+          "provider_template_id": "bc32f52f-f9da-4749-90aa-03f7572f0719",
+          "required_fields": ["headline", "subtitle", "category", "location", "date", "footer", "background", "logo"],
+          "expected_assets": ["pp_logo_primary", "bg_perth_cbd"],
+          "proof_status": "proven",
+          "proof_gate": "Gate D2",
+          "evidence": { "status": "proven", "proof_status": "proven", "proof_gate": "Gate D2", "render_log_id": "508b4365-9dfc-4ec8-b491-2a3a1014d26b", "render_spec_template_id": "pp-news-centred-scrim-9x16-video", "source_commit": "9d1c411", "review_packet": null, "approved_by": "PK", "approved_at": null, "notes": "Gate D2 ICE-controlled animated/video template smoke (registers v3.82)." }
+        }
+      ]
+    }
+  ],
+
+  "creative_instances": {
+    "_note": "Creative Instances are NOT authored here — they are produced render events represented by m.post_render_log + render_spec.template + render_spec.qa. The registry declares families/variants; instances live in the evidence spine.",
+    "known_instances": [
+      { "render_log_id": "e7d096b8-6d6c-4af8-a245-dc35f83bd291", "kind": "governed_manual_render", "template_variant_key": "centred-scrim-16x9", "notes": "Intake Lane 3B governed render; resolver_used=true, fallback_taken=false." },
+      { "render_log_id": "7243e040-2ef2-4d08-902b-94cee26af2d3", "kind": "smoke", "template_variant_key": "centred-scrim-16x9", "notes": "Gate C still-image smoke." },
+      { "render_log_id": "508b4365-9dfc-4ec8-b491-2a3a1014d26b", "kind": "smoke", "template_variant_key": "centred-scrim-9x16-video", "notes": "Gate D2 video smoke." }
+    ]
+  },
+
+  "_implementations_note": "v0.1 LEGACY view — superseded by template_families[] in v0.2; retained verbatim for back-compat / traceability. New work should read template_families[].",
   "implementations": [
     {
       "implementation_id": "pp_news_static_16x9_v1",
@@ -69,10 +193,11 @@
       }
     }
   ],
-  "carries_for_lane3": [
-    "Defer Sydney/Brisbane backgrounds (bg_sydney_cbd, bg_brisbane_cbd) — not uploaded yet (404); add to expected_assets when governed.",
-    "Field -> Creatomate modification-key mapping (Headline.text/Subtitle.text/CategoryBadge.text/Location.text/Date.text/Footer.text/Background.source/Logo.source) intentionally NOT bound here — registry is declarative only; binding belongs to a worker/render lane.",
-    "service_role has no SELECT grant on c.client_brand_asset and schema c is not REST-exposed — any downstream registry/asset read lane needs a grant + RPC/view.",
-    "No registry consumer wired (no worker/advisor/publish/dashboard reads this file yet) — intentional in v0.1."
+  "carries": [
+    "A1.2 Pattern Library v1 — formalise the draft patterns (and Style Guide v1 in A1.3); they remain draft/unproven until then.",
+    "Style Guide + Patterns are declarative DRAFTs derived from the proven templates — NOT independently proven; no render_log_id is claimed for them.",
+    "Field -> Creatomate modification-key mapping is documented in pattern layout_rules as REFERENCE only; binding stays a future worker/render lane (no production consumption).",
+    "Registry vendoring drift: the dashboard's vendored copy predates v0.2 and does not read the new fields (re-vendor under A1.5).",
+    "No registry consumer wired (no worker/advisor/publish/dashboard reads this file) — intentional; declarative only."
   ]
 }
