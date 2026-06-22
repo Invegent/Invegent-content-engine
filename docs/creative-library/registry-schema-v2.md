@@ -54,13 +54,17 @@ of Assets; **may reference** Assets; **composed by** Template Families.
 | `version` | ✓ | |
 | `status` | ✓ | `draft` \| `candidate` \| `active` |
 | `pattern_type` | ✓ | enum below |
+| `purpose` | ✓ | one-line statement of what the pattern is for |
+| `used_by_template_families` | ✓ | array of `template_family_key` that compose this pattern (may be empty for an unbound candidate) |
 | `conforms_to_style_guide` | ✓ | a `style_guide_key` |
 | `references_assets` | ✓ | array of `asset_key` (may be empty) — references, never nesting |
 | `required_fields` | ✓ | logical fields the pattern needs |
 | `optional_fields` | ✓ | |
 | `layout_rules` | ✓ | declarative layout/composition notes (may note the provider modification key, e.g. `Headline.text`, as documentation only — NOT a runtime binding) |
+| `accessibility_rules` | ✓ | contrast / legibility / min font size notes |
 | `governance` | ✓ | |
-| `evidence` | ✓ | see §6 |
+| `proof_posture` | ✓ | `draft` \| `candidate` \| `supported_by_host_render` \| `proven` (see §5) |
+| `evidence` | ✓ | see §5 (a pattern is **not** a render output by itself — no independent `render_log_id`; may list `supporting_render_log_ids` of proven host variants) |
 
 **`pattern_type` enum (initial):** `branding_strip` · `headline_block` · `stat_card` ·
 `category_badge` · `background_plus_scrim` · `cta_strip` · `source_attribution`.
@@ -133,7 +137,14 @@ Every governed object carries an `evidence` block.
 | `source_commit` | the commit the object/proof was landed at |
 | `review_packet` | path to the PK review packet, if any |
 | `approved_by` / `approved_at` | PK approval trail |
+| `supporting_render_log_ids` | (patterns) real `render_log_id`s of proven host variants that exercise the pattern — SUPPORTING evidence, NOT proof of the pattern itself |
 | `notes` | free text |
+
+**`proof_posture` vocabulary (patterns; advisory, distinct from the binding `proof_status`):**
+- `draft` — proposed; contract not yet complete.
+- `candidate` — contract-complete governed candidate; **not** yet shown in a proven host render (`used_by_template_families` may be empty).
+- `supported_by_host_render` — appears in one or more **proven** host-variant renders (record those in `supporting_render_log_ids`) — SUPPORTING evidence only; the pattern is still not independently render-proven.
+- `proven` — independently render-proven (requires a real `render_log_id`). In practice only **variants** reach this; a pattern does not, since a pattern is not a render output by itself.
 
 **Proof discipline (binding):**
 - **No object may claim `proven` without evidence.**

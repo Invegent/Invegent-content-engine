@@ -5,7 +5,7 @@
   "model": "style_guide -> (governs) -> assets + patterns -> (compose) -> template_families -> (instantiate as) -> creative_instances -> evidence",
   "client_slug": "property-pulse",
   "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd",
-  "lane": "creative-library-v2-a1.1-registry-schema-evolution",
+  "lane": "creative-library-v2-a1.2-pattern-library-v1",
   "status": "active",
   "posture": {
     "declarative_only": "Declarative only — not consumed by production workers.",
@@ -38,44 +38,95 @@
 
   "patterns": [
     {
-      "pattern_key": "pp_branding_strip_v1", "client_slug": "property-pulse", "version": "v1", "status": "draft",
-      "pattern_type": "branding_strip", "conforms_to_style_guide": "property-pulse-styleguide-v1",
+      "pattern_key": "pp_branding_strip_v1", "client_slug": "property-pulse", "version": "v1", "status": "candidate",
+      "pattern_type": "branding_strip", "purpose": "Brand identity strip — logo, brand bars, and footer/website label that frame the creative.",
+      "used_by_template_families": ["property-pulse-news"], "conforms_to_style_guide": "property-pulse-styleguide-v1",
       "references_assets": ["pp_logo_primary"], "required_fields": ["footer"], "optional_fields": [],
-      "layout_rules": { "note": "Brand bars + logo (or wordmark fallback) + footer label. Declarative; maps to Logo.source + Footer.text (documentation only, not a runtime binding)." },
+      "layout_rules": {
+        "logo_placement": "Top-left, ~44px inset, ~90px contained; clears the platform top overlay (9:16 logo moved to y160).",
+        "brand_text_footer_treatment": "Footer/website label, bottom-centred small caps; wordmark text fallback if no logo asset.",
+        "website_or_cta_text": "The footer slot carries the WEBSITE (e.g. propertypulse.com.au). A distinct call-to-action is OUT OF SCOPE of this pattern (see pp_cta_strip — deferred, evidence insufficient).",
+        "spacing": "≥44px side insets; brand bars off the canvas edges in the 9:16 safe layout (bars at y140 / y1620).",
+        "safe_area": "Logo + footer kept inside the platform safe area; 9:16 reserves top y140 / bottom y1620.",
+        "asset_dependencies": "pp_logo_primary (logo_primary). Maps to Logo.source + Footer.text (documentation only, not a runtime binding)."
+      },
+      "accessibility_rules": { "note": "Logo legible against the dark scrim/background; footer kept at a legible minimum size." },
       "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
-      "evidence": { "status": "draft", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": "8166dda", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "Decomposition of the proven PP News templates; NOT independently proven as a pattern object." }
+      "proof_posture": "supported_by_host_render",
+      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "supporting_render_log_ids": ["7243e040-2ef2-4d08-902b-94cee26af2d3", "508b4365-9dfc-4ec8-b491-2a3a1014d26b"], "source_commit": "e194dc0", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "SUPPORTING evidence only — the logo + footer strip appears in BOTH proven PP News host variants (Gate C 7243e040, Gate D2 508b4365). The pattern object itself is NOT independently render-proven." }
     },
     {
-      "pattern_key": "pp_headline_block_v1", "client_slug": "property-pulse", "version": "v1", "status": "draft",
-      "pattern_type": "headline_block", "conforms_to_style_guide": "property-pulse-styleguide-v1",
+      "pattern_key": "pp_headline_block_v1", "client_slug": "property-pulse", "version": "v1", "status": "candidate",
+      "pattern_type": "headline_block", "purpose": "Primary message — a required headline with an optional subtitle, set over the scrim.",
+      "used_by_template_families": ["property-pulse-news"], "conforms_to_style_guide": "property-pulse-styleguide-v1",
       "references_assets": [], "required_fields": ["headline"], "optional_fields": ["subtitle"],
-      "layout_rules": { "note": "Centred headline + subtitle over scrim. Maps to Headline.text + Subtitle.text (documentation only)." },
+      "layout_rules": {
+        "required_headline": "headline is the hard-gate field (a render must not proceed without it).",
+        "optional_subtitle": "subtitle renders below the headline when present.",
+        "max_line_guidance": "Headline ~2–3 lines; subtitle ~1–2 lines (declarative guidance, not a hard cap).",
+        "alignment": "Centred (16:9); centred within the content band (9:16).",
+        "text_hierarchy": "Headline is the dominant element (heavy weight, large); subtitle is lighter and smaller.",
+        "fallback_long_text": "Long headlines wrap within the reserved text box; overflow handling is the render engine's responsibility within the band — declarative guidance only, no code binding.",
+        "maps_to": "Headline.text + Subtitle.text (documentation only)."
+      },
+      "accessibility_rules": { "note": "White text over the dark scrim for contrast; minimum font sizes per the proven templates." },
       "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
-      "evidence": { "status": "draft", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": "8166dda", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "Decomposition of the proven PP News templates; NOT independently proven." }
+      "proof_posture": "supported_by_host_render",
+      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "supporting_render_log_ids": ["7243e040-2ef2-4d08-902b-94cee26af2d3", "508b4365-9dfc-4ec8-b491-2a3a1014d26b"], "source_commit": "e194dc0", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "SUPPORTING evidence only — headline + subtitle appear in BOTH proven PP News host variants (Gate C 7243e040, Gate D2 508b4365). The pattern object is NOT independently render-proven." }
     },
     {
-      "pattern_key": "pp_stat_card_v1", "client_slug": "property-pulse", "version": "v1", "status": "draft",
-      "pattern_type": "stat_card", "conforms_to_style_guide": "property-pulse-styleguide-v1",
-      "references_assets": [], "required_fields": [], "optional_fields": ["stat_value", "stat_label", "context_line"],
-      "layout_rules": { "note": "Stat-reveal composition (used by the animated 9:16 video-stat variant). Declarative only." },
+      "pattern_key": "pp_stat_card_v1", "client_slug": "property-pulse", "version": "v1", "status": "candidate",
+      "pattern_type": "stat_card", "purpose": "Numeric stat emphasis — a hero stat value with a label and optional context/movement.",
+      "used_by_template_families": [], "conforms_to_style_guide": "property-pulse-styleguide-v1",
+      "references_assets": [], "required_fields": ["stat_value"], "optional_fields": ["stat_label", "context_line", "movement"],
+      "layout_rules": {
+        "required_stat_value": "stat_value is the hero number (formatted for screen, e.g. $1.6M, +3.7%).",
+        "stat_label": "Short label describing what the number is.",
+        "optional_context": "One context line giving the stat meaning.",
+        "number_emphasis": "Stat value is the largest, heaviest element (scale/bounce entrance in motion contexts).",
+        "comparison_movement": "Optional +/- movement indicator (e.g. +3.7%) — declarative; not yet present in a proven host render.",
+        "maps_to": "Forward-looking — corresponds to the existing video stat-reveal composition; NOT part of the proven PP News template family today."
+      },
+      "accessibility_rules": { "note": "Stat value high-contrast and dominant; label legible." },
       "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
-      "evidence": { "status": "draft", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": "8166dda", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "Decomposition; NOT independently proven." }
+      "proof_posture": "candidate",
+      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "supporting_render_log_ids": [], "source_commit": "e194dc0", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "FORWARD-LOOKING candidate — NOT present in any proven PP News render (the proven variants render a headline, not a stat reveal). No host-render support yet; used_by_template_families is empty and it is NOT in property-pulse-news.composed_of_patterns. Remains unproven until a host variant renders it." }
     },
     {
-      "pattern_key": "pp_category_badge_v1", "client_slug": "property-pulse", "version": "v1", "status": "draft",
-      "pattern_type": "category_badge", "conforms_to_style_guide": "property-pulse-styleguide-v1",
+      "pattern_key": "pp_category_badge_v1", "client_slug": "property-pulse", "version": "v1", "status": "candidate",
+      "pattern_type": "category_badge", "purpose": "Theme/category label (e.g. MARKET NEWS) with an optional location/date line.",
+      "used_by_template_families": ["property-pulse-news"], "conforms_to_style_guide": "property-pulse-styleguide-v1",
       "references_assets": [], "required_fields": ["category"], "optional_fields": ["location", "date"],
-      "layout_rules": { "note": "Category badge + location/date line. Maps to CategoryBadge.text / Location.text / Date.text (documentation only)." },
+      "layout_rules": {
+        "category_field": "category is the badge label (short, upper-case treatment).",
+        "approved_label_treatment": "Small caps / badge style per the proven templates; concise wording.",
+        "placement": "Above the headline block; location/date as a secondary line.",
+        "fallback_missing_category": "If category is absent the badge is omitted (headline still renders) — declarative guidance; the field is otherwise expected.",
+        "maps_to": "CategoryBadge.text / Location.text / Date.text (documentation only)."
+      },
+      "accessibility_rules": { "note": "Badge text legible against scrim; not the dominant element." },
       "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
-      "evidence": { "status": "draft", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": "8166dda", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "Decomposition; NOT independently proven." }
+      "proof_posture": "supported_by_host_render",
+      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "supporting_render_log_ids": ["7243e040-2ef2-4d08-902b-94cee26af2d3", "508b4365-9dfc-4ec8-b491-2a3a1014d26b"], "source_commit": "e194dc0", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "SUPPORTING evidence only — category badge + location/date appear in BOTH proven PP News host variants (Gate C 7243e040, Gate D2 508b4365). NOT independently render-proven." }
     },
     {
-      "pattern_key": "pp_background_plus_scrim_v1", "client_slug": "property-pulse", "version": "v1", "status": "draft",
-      "pattern_type": "background_plus_scrim", "conforms_to_style_guide": "property-pulse-styleguide-v1",
+      "pattern_key": "pp_background_plus_scrim_v1", "client_slug": "property-pulse", "version": "v1", "status": "candidate",
+      "pattern_type": "background_plus_scrim", "purpose": "Full-bleed governed background photo with a dark scrim that guarantees text legibility.",
+      "used_by_template_families": ["property-pulse-news"], "conforms_to_style_guide": "property-pulse-styleguide-v1",
       "references_assets": ["bg_perth_cbd", "bg_sydney_cbd", "bg_brisbane_cbd"], "required_fields": ["background"], "optional_fields": [],
-      "layout_rules": { "note": "Full-bleed background photo + dark scrim for legibility. Maps to Background.source + scrim (documentation only). Backgrounds are flagged needs_scrim." },
+      "layout_rules": {
+        "background_asset_requirement": "background MUST resolve to a governed asset (asset_key) via resolve_brand_assets — never a raw URL.",
+        "scrim_requirement": "A dark scrim is applied over the photo (the governed PP backgrounds are flagged needs_scrim).",
+        "text_safety": "Headline/category text sits over the scrim band, not bare photo.",
+        "contrast_rules": "Scrim opacity chosen so white text meets contrast over varied photography.",
+        "fallback_background": "If no governed background resolves, the host render fails loud (NO raw-URL fallback) — consistent with the proven governed render path.",
+        "governed_asset_dependency": "References the 3 governed PP backgrounds (bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd — all exist in c.client_brand_asset).",
+        "maps_to": "Background.source + scrim (documentation only)."
+      },
+      "accessibility_rules": { "note": "Scrim ensures text-over-image contrast across bright/dark photos; needs_scrim enforced." },
       "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
-      "evidence": { "status": "draft", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": "8166dda", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "Decomposition; NOT independently proven. References the 3 governed PP backgrounds (all exist in c.client_brand_asset)." }
+      "proof_posture": "supported_by_host_render",
+      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "supporting_render_log_ids": ["7243e040-2ef2-4d08-902b-94cee26af2d3", "508b4365-9dfc-4ec8-b491-2a3a1014d26b"], "source_commit": "e194dc0", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "SUPPORTING evidence only — background photo + scrim appear in BOTH proven PP News host variants (Gate C 7243e040, Gate D2 508b4365). NOT independently render-proven." }
     }
   ],
 
@@ -86,7 +137,7 @@
       "version": "v1",
       "status": "active",
       "compatible_ice_format_keys": ["image_quote", "video_short_stat"],
-      "composed_of_patterns": ["pp_branding_strip_v1", "pp_headline_block_v1", "pp_category_badge_v1", "pp_background_plus_scrim_v1", "pp_stat_card_v1"],
+      "composed_of_patterns": ["pp_branding_strip_v1", "pp_headline_block_v1", "pp_category_badge_v1", "pp_background_plus_scrim_v1"],
       "expected_assets": ["pp_logo_primary", "bg_perth_cbd"],
       "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
       "evidence": { "status": "active", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "proven_variants": ["centred-scrim-16x9", "centred-scrim-9x16-video"], "source_commit": "9d1c411", "review_packet": null, "approved_by": "PK", "approved_at": null, "notes": "The family object is a COMPOSITION, not a single render — it holds NO independent render-based proof (proof_status=unproven, render_log_id=null). Proof lives at the VARIANT level: centred-scrim-16x9 (Gate C, render_log_id 7243e040-2ef2-4d08-902b-94cee26af2d3) and centred-scrim-9x16-video (Gate D2, render_log_id 508b4365-9dfc-4ec8-b491-2a3a1014d26b) are each independently proven. See proven_variants." },
