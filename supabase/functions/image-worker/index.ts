@@ -1,7 +1,25 @@
-// image-worker v3.9.2
-// Fix: carousel deadlock — image-worker was gating carousel on approval_status='approved',
-// but carousel images must be generated BEFORE auto-approver can score them.
-// Result: neither image-worker nor auto-approver would act — infinite hold.
+// image-worker v3.10.2
+// v3.10.2 — CREATIVE-LIBRARY-V0 GATE C fix (PK Option A): m.post_render_log.ice_format_key is
+//   NOT NULL + FK to t."5.3_content_format", so null was rejected. The template_smoke row now uses
+//   ice_format_key='image_quote' (nearest governed static-image key); render_spec.label=
+//   'creative_library_smoke' keeps the smoke row identifiable + distinct from real image_quote
+//   renders; render_spec.template (unchanged) carries the true Creative Library identity.
+// v3.10.1 — CREATIVE-LIBRARY-V0 GATE C fix: the template_smoke render-log row now uses
+//   iceFormatKey=null (m.post_render_log.ice_format_key is FK-constrained to the governed
+//   taxonomy t."5.3_content_format"; the prior 'creative_library_smoke' label violated the FK
+//   and the evidence row was silently dropped). Template identity stays in render_spec.template.
+//   Also: for template_smoke ONLY (logMustSucceed=true), a render-log write failure is now a HARD
+//   error (no silent swallow) so missing evidence can never masquerade as success. Production image
+//   renders are UNCHANGED (logMustSucceed defaults false -> existing best-effort swallow).
+// CREATIVE-LIBRARY-V0 GATE C: additive manual-only template-mode smoke branch (gated by
+// body.mode==='template_smoke'); renderUploadAndLog gains optional renderSpec; writes
+// render_spec.template; NO production-loop/advisor/publish/queue change; render_engine
+// unchanged ('creatomate'); no migration; no new governed ice_format_key (the render-log
+// ice_format_key label 'creative_library_smoke' is a telemetry label only).
+//
+// v3.9.2 context: carousel deadlock fix — image-worker was gating carousel on
+// approval_status='approved', but carousel images must be generated BEFORE auto-approver
+// can score them. Result: neither image-worker nor auto-approver would act — infinite hold.
 // Fix: carousel query now uses image_status='pending' only (no approval_status gate).
 // Other formats (image_quote, animated_text_reveal, animated_data) retain approval gate.
 //
@@ -9,7 +27,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = 'image-worker-v3.9.2';
+const VERSION = 'image-worker-v3.10.2';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -74,10 +92,12 @@ async function renderUploadAndLog(opts: {
   renderScript: object;
   storagePath: string;
   mimeType: string;
-  postDraftId: string;
-  clientId: string;
-  iceFormatKey: string;
+  postDraftId: string | null;
+  clientId: string | null;
+  iceFormatKey: string | null;
   slideId?: string | null;
+  renderSpec?: object | null;
+  logMustSucceed?: boolean;  // v3.10.1: when true (template_smoke only), a render-log write failure is a HARD error
 }): Promise<string> {
   const { supabase, creatomateKey, renderScript, storagePath, mimeType, postDraftId, clientId, iceFormatKey, slideId } = opts;
   const startMs = Date.now();
@@ -107,10 +127,17 @@ async function renderUploadAndLog(opts: {
         p_post_draft_id: postDraftId, p_slide_id: slideId ?? null, p_client_id: clientId,
         p_ice_format_key: iceFormatKey, p_render_engine: 'creatomate', p_creatomate_render_id: renderId,
         p_status: 'succeeded', p_output_url: renderUrl, p_storage_url: storageUrl,
-        p_credits_used: creditsUsed, p_render_duration_ms: durationMs, p_error_message: null, p_render_spec: null,
+        p_credits_used: creditsUsed, p_render_duration_ms: durationMs, p_error_message: null, p_render_spec: opts.renderSpec ?? null,
       });
-      if (logErr) console.error('[image-worker] write_render_log error:', logErr.message);
-    } catch (logEx: any) { console.error('[image-worker] write_render_log threw:', logEx?.message); }
+      if (logErr) {
+        console.error('[image-worker] write_render_log error:', logErr.message);
+        // v3.10.1: template_smoke requires the evidence row to persist — surface, do not swallow.
+        if (opts.logMustSucceed) throw new Error(`write_render_log failed: ${logErr.message}`);
+      }
+    } catch (logEx: any) {
+      console.error('[image-worker] write_render_log threw:', logEx?.message);
+      if (opts.logMustSucceed) throw (logEx instanceof Error ? logEx : new Error(String(logEx)));
+    }
 
     return storageUrl;
 
@@ -122,7 +149,7 @@ async function renderUploadAndLog(opts: {
         p_post_draft_id: postDraftId, p_slide_id: slideId ?? null, p_client_id: clientId,
         p_ice_format_key: iceFormatKey, p_render_engine: 'creatomate', p_creatomate_render_id: renderId,
         p_status: errMsg.includes('timed out') ? 'timeout' : 'failed', p_output_url: null, p_storage_url: null,
-        p_credits_used: null, p_render_duration_ms: durationMs, p_error_message: errMsg, p_render_spec: null,
+        p_credits_used: null, p_render_duration_ms: durationMs, p_error_message: errMsg, p_render_spec: opts.renderSpec ?? null,
       });
       if (logErr) console.error('[image-worker] write_render_log (failure) error:', logErr.message);
     } catch (logEx: any) { console.error('[image-worker] write_render_log (failure) threw:', logEx?.message); }
@@ -251,6 +278,38 @@ Deno.serve(async (req: Request) => {
   if (!creatomateKey) return jsonResponse({ ok: false, error: 'CREATOMATE_API_KEY not set' }, 500);
   const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
   if (!anthropicKey) return jsonResponse({ ok: false, error: 'ANTHROPIC_API_KEY not set' }, 500);
+
+  // ── CREATIVE-LIBRARY-V0 GATE C: manual-only template-mode smoke ──────────────
+  // Isolated, opt-in branch. Runs ONLY when the exact mode/template flags are present,
+  // and returns BEFORE any production draft selection. No publish/queue/advisor touch.
+  let body: any = {};
+  try { body = await req.json(); } catch {}
+  if (body?.mode === 'template_smoke' && body?.template === 'PP_NEWS_CENTRED_SCRIM_16x9_v1') {
+    const supabase = getServiceClient();
+    const TEMPLATE_ID = '48cba556-0a53-4001-90f0-05420d10efc0';
+    const modifications: Record<string, string | null> = {
+      'CategoryBadge.text': 'MARKET NEWS',
+      'Headline.text': 'Sydney median house price hits record $1.6M',
+      'Subtitle.text': 'Auction clearance rates climb for a third straight week',
+      'Location.text': 'Sydney, NSW',
+      'Date.text': '21 June 2026',
+      'Footer.text': 'propertypulse.com.au',
+      'Background.source': body.background_url ?? null,
+      'Logo.source': body.logo_url ?? null,
+    };
+    if (!modifications['Background.source'] || !modifications['Logo.source']) {
+      return jsonResponse({ ok: false, error: 'template_smoke requires background_url and logo_url in body' }, 400);
+    }
+    const renderScript = { template_id: TEMPLATE_ID, modifications, output_format: 'jpg' };
+    const hashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(modifications)));
+    const props_hash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    // v3.10.2: ice_format_key='image_quote' (NOT NULL + FK to t.5.3_content_format; image_quote is the
+    // nearest governed static-image key — PK Option A). render_spec.label distinguishes this smoke row
+    // from real image_quote renders; render_spec.template carries the true Creative Library identity.
+    const renderSpec = { label: 'creative_library_smoke', template: { template_id: 'pp-news-centred-scrim-16x9', template_version: 'v1', template_family: 'property-pulse-news', template_variant: 'centred-scrim-16x9', provider: 'creatomate', provider_template_id: TEMPLATE_ID, props_hash, asset_ids: [], fallback_taken: false } };
+    const storageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: '_smoke/pp_news_centred_scrim_16x9_v1.jpg', mimeType: 'image/jpeg', postDraftId: null, clientId: null, iceFormatKey: 'image_quote', renderSpec, logMustSucceed: true });
+    return jsonResponse({ ok: true, mode: 'template_smoke', template: 'PP_NEWS_CENTRED_SCRIM_16x9_v1', storage_url: storageUrl, props_hash });
+  }
 
   const supabase = getServiceClient();
   const results: any[] = [];
