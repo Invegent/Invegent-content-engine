@@ -1,0 +1,78 @@
+{
+  "_about": "Creative Library registry (repo/config, evidence-first). Property Pulse pilot. NOT consumed by any worker yet — declarative reference only. Model: creative_intent -> capability -> implementation -> provider_template -> evidence. No DB table, no new taxonomy key; compatible_ice_format_key reuses existing governed format keys. Asset references use asset_key (governed in c.client_brand_asset), never raw URLs.",
+  "registry": "creative-library",
+  "registry_version": "v0.1",
+  "model": "creative_intent -> capability -> implementation -> provider_template -> evidence",
+  "client_slug": "property-pulse",
+  "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd",
+  "lane": "creative-library-v0.1-lane2-registry-config",
+  "status": "active",
+  "implementations": [
+    {
+      "implementation_id": "pp_news_static_16x9_v1",
+      "client_slug": "property-pulse",
+      "creative_intent": "pp_news",
+      "capability": "static_news",
+      "provider": "creatomate",
+      "provider_template_id": "48cba556-0a53-4001-90f0-05420d10efc0",
+      "template_name": "PP_NEWS_CENTRED_SCRIM_16x9_v1",
+      "template_family": "property-pulse-news",
+      "template_variant": "centred-scrim-16x9",
+      "aspect_ratio": "16:9",
+      "output_type": "jpg",
+      "compatible_ice_format_key": "image_quote",
+      "worker": "image-worker",
+      "proof_status": "proven",
+      "proof_gate": "Gate C",
+      "expected_assets": ["pp_logo_primary", "bg_perth_cbd"],
+      "required_fields": ["headline", "subtitle", "category", "location", "date", "footer", "background", "logo"],
+      "status": "active",
+      "version": "v1",
+      "evidence": {
+        "proof_gate": "Gate C",
+        "proof_status": "proven",
+        "render_log_id": "7243e040-2ef2-4d08-902b-94cee26af2d3",
+        "render_spec_label": "creative_library_smoke",
+        "render_spec_template_id": "pp-news-centred-scrim-16x9",
+        "merged_commit": "b1feb54",
+        "register": "registers v3.81"
+      }
+    },
+    {
+      "implementation_id": "pp_news_animated_9x16_v1",
+      "client_slug": "property-pulse",
+      "creative_intent": "pp_news",
+      "capability": "animated_news",
+      "provider": "creatomate",
+      "provider_template_id": "bc32f52f-f9da-4749-90aa-03f7572f0719",
+      "template_name": "PP_NEWS_CENTRED_SCRIM_9x16_VIDEO_v1",
+      "template_family": "property-pulse-news",
+      "template_variant": "centred-scrim-9x16-video",
+      "aspect_ratio": "9:16",
+      "output_type": "mp4",
+      "compatible_ice_format_key": "video_short_stat",
+      "worker": "video-worker",
+      "proof_status": "proven",
+      "proof_gate": "Gate D2",
+      "expected_assets": ["pp_logo_primary", "bg_perth_cbd"],
+      "required_fields": ["headline", "subtitle", "category", "location", "date", "footer", "background", "logo"],
+      "status": "active",
+      "version": "v1",
+      "evidence": {
+        "proof_gate": "Gate D2",
+        "proof_status": "proven",
+        "render_log_id": "508b4365-9dfc-4ec8-b491-2a3a1014d26b",
+        "render_spec_label": "creative_library_video_smoke",
+        "render_spec_template_id": "pp-news-centred-scrim-9x16-video",
+        "merged_commit": "9d1c411",
+        "register": "registers v3.82"
+      }
+    }
+  ],
+  "carries_for_lane3": [
+    "Defer Sydney/Brisbane backgrounds (bg_sydney_cbd, bg_brisbane_cbd) — not uploaded yet (404); add to expected_assets when governed.",
+    "Field -> Creatomate modification-key mapping (Headline.text/Subtitle.text/CategoryBadge.text/Location.text/Date.text/Footer.text/Background.source/Logo.source) intentionally NOT bound here — registry is declarative only; binding belongs to a worker/render lane.",
+    "service_role has no SELECT grant on c.client_brand_asset and schema c is not REST-exposed — any downstream registry/asset read lane needs a grant + RPC/view.",
+    "No registry consumer wired (no worker/advisor/publish/dashboard reads this file yet) — intentional in v0.1."
+  ]
+}
