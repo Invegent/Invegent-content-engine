@@ -173,6 +173,15 @@ sibling to `render_spec.qa`** (QA Visibility v0) — **no new evidence table**, 
 > provider-side VISUAL proof ONLY** — it does NOT touch ICE, `m.post_render_log`, `render_spec.template`,
 > `render_spec.qa`, storage, or publish.
 >
+> **GATE C — ✅ COMPLETE / PROVEN (2026-06-22, registers v3.81; shipped `image-worker` v3.10.2, merged
+> main `b1feb54`).** One ICE-controlled `template_smoke` render wrote a verified `m.post_render_log` row:
+> `status=succeeded`, `render_engine=creatomate`, `ice_format_key='image_quote'` (PK Option A — the column
+> is NOT NULL + FK to `t."5.3_content_format"`, so the smoke uses the nearest governed key; identity lives
+> in `render_spec.template`, smoke marker in `render_spec.label='creative_library_smoke'`), null draft/client,
+> full `render_spec.template` (`provider_template_id=48cba556…`, `props_hash`, `fallback_taken=false`),
+> storage+output URLs; 0 queue/0 publish/0 draft side effects; `render_spec.qa` absent (image-worker not
+> QA-instrumented — future gap). Original steps (now satisfied):
+
 > **GATE C — the ICE-controlled evidence smoke (NEXT, separately PK-gated):** drive the template through
 > the ICE render path so a real `m.post_render_log` row is written, then verify the evidence. A render =
 > a provider call + credits → its own gate. **NOT done.** Steps:
