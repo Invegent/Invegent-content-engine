@@ -29,16 +29,21 @@ Brand-level governing rules that constrain everything below.
 | `client_slug` | ✓ | |
 | `version` | ✓ | |
 | `status` | ✓ | `draft` \| `candidate` \| `active` |
+| `purpose` | ✓ | one-line statement of the brand constitution's role |
 | `governance` | ✓ | `{ owner, approval, ai_role }` (ICE owns · PK approves · AI propose-only) |
-| `palette` | ✓ | colours / scrim colour+opacity |
-| `typography` | ✓ | font family/weights |
+| `palette` | ✓ | colours / scrim colour+opacity. Unknown brand colours marked `to_be_confirmed` (never invented) |
+| `typography` | ✓ | font family/weights/hierarchy (`to_be_confirmed` if undocumented) |
 | `spacing` | ✓ | spacing/margins |
 | `logo_rules` | ✓ | placement, which `logo_*` asset_type |
 | `safe_area_rules` | ✓ | platform safe areas |
 | `scrim_rules` | ✓ | when/how a scrim is applied for legibility |
-| `voice_tone_rules` | ✓ | |
-| `accessibility_rules` | ✓ | contrast / min font size |
-| `evidence` | ✓ | see §6 (a style guide is **not** a render-based object — no `render_log_id`) |
+| `voice_tone_rules` | ✓ | tone (`to_be_confirmed` if undocumented; never invented) |
+| `accessibility_rules` | ✓ | contrast / min font size / text-over-image |
+| `asset_rules` | ✓ | how governed assets (by `asset_key`) are used — assets governed separately; `resolve_brand_assets()` unchanged |
+| `pattern_rules` | ✓ | which patterns the guide governs (patterns stay `candidate`) |
+| `template_family_rules` | ✓ | template families must conform; the guide does not render |
+| `proof_posture` | ✓ | for a style guide: `governance_candidate` (see §5) |
+| `evidence` | ✓ | see §5 (a style guide is **not** a render-based object — no `render_log_id`; may list `supporting_render_log_ids`) |
 
 ---
 
@@ -145,6 +150,7 @@ Every governed object carries an `evidence` block.
 - `candidate` — contract-complete governed candidate; **not** yet shown in a proven host render (`used_by_template_families` may be empty).
 - `supported_by_host_render` — appears in one or more **proven** host-variant renders (record those in `supporting_render_log_ids`) — SUPPORTING evidence only; the pattern is still not independently render-proven.
 - `proven` — independently render-proven (requires a real `render_log_id`). In practice only **variants** reach this; a pattern does not, since a pattern is not a render output by itself.
+- `governance_candidate` — (Style Guides) a contract-complete governing object awaiting PK ratification. A style guide is **not** a render output, so it never carries `proven`/`render_log_id`; conformance may be **supported** by host renders (listed in `supporting_render_log_ids`). Stays `candidate` until PK ratification is formally recorded.
 
 **Proof discipline (binding):**
 - **No object may claim `proven` without evidence.**

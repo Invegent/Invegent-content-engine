@@ -23,17 +23,50 @@
     "style_guide_key": "property-pulse-styleguide-v1",
     "client_slug": "property-pulse",
     "version": "v1",
-    "status": "draft",
-    "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
-    "palette": { "note": "Derived (declarative) from the proven PP News templates; formal palette pending PK.", "scrim": "dark scrim ~#0B1220 at ~62% opacity (from the proven caption scrim)" },
-    "typography": { "font_family": "Montserrat", "note": "Matches existing ICE render specs." },
-    "spacing": { "note": "Declarative placeholder — side margins + safe-area bands per the proven templates; formalisation pending." },
-    "logo_rules": { "asset_type": "logo_primary", "placement": "top-left", "slot": "Logo.source" },
-    "safe_area_rules": { "note": "9:16 reserves top/bottom brand bands (per video-worker layout, y140 / y1620); 16:9 uses a centred scrim. Declarative reference." },
-    "scrim_rules": { "purpose": "headline legibility over photographic backgrounds", "applies_when": "a background photo is present (backgrounds flagged needs_scrim)" },
-    "voice_tone_rules": { "note": "Property market news — factual, concise. Formalisation pending PK." },
-    "accessibility_rules": { "note": "Text-over-image contrast via scrim; min font sizes per the proven templates. Formalisation pending PK." },
-    "evidence": { "status": "draft", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": "8166dda", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "Declarative DRAFT derived from the proven PP News templates; NOT independently proven. A style guide is not a render-based object — no render_log_id is claimed." }
+    "status": "candidate",
+    "purpose": "The Property Pulse brand constitution — the brand-level rules that GOVERN Property Pulse Assets, Patterns, and Template Families across static, carousel, and video formats.",
+    "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only", "note": "Governs the brand's creative objects; PK ratifies. AI may propose, never approves." },
+    "palette": {
+      "primary": "to_be_confirmed",
+      "secondary": "to_be_confirmed",
+      "scrim": "dark scrim ~#0B1220 at ~62% opacity (evidence-derived from the proven caption/headline scrim)",
+      "note": "Brand primary/secondary colours are sourced at render time from c.client_brand_profile (brand_colour_primary/secondary) and are NOT documented here — marked to_be_confirmed. Only the scrim colour is evidence-derived. No brand colours invented."
+    },
+    "typography": {
+      "font_family": "Montserrat",
+      "hierarchy": "Headline dominant (heavy/large) > category badge / labels > subtitle (lighter/smaller) > footer (small).",
+      "note": "Montserrat is evidence-derived from the existing ICE render specs (worker templates). Exact weights/sizes per format are to_be_confirmed; no font names invented."
+    },
+    "spacing": { "note": "Side margins + safe-area bands per the proven templates; exact spacing scale to_be_confirmed. Declarative reference." },
+    "logo_rules": { "asset_type": "logo_primary", "placement": "top-left", "slot": "Logo.source", "fallback": "wordmark text if no logo asset", "note": "Logo referenced as a governed asset (asset_key pp_logo_primary); see asset_rules." },
+    "safe_area_rules": { "note": "9:16 reserves top/bottom brand bands (per video-worker layout, y140 / y1620); 16:9 uses a centred scrim/text panel. Keep logo + footer inside the platform safe area." },
+    "scrim_rules": { "purpose": "headline legibility over photographic backgrounds", "applies_when": "a background photo is present (governed backgrounds flagged needs_scrim)", "requirement": "dark scrim over the photo so text-over-image meets contrast" },
+    "voice_tone_rules": { "tone": "Property market news — factual, concise, informative.", "note": "Evidence-derived from the proven PP News content (market-update / price-news headlines); marketing personality beyond this is to_be_confirmed. Nothing invented." },
+    "accessibility_rules": {
+      "minimum_contrast": "white text over the dark scrim for legible contrast (exact ratio to_be_confirmed)",
+      "readable_text": "minimum legible font sizes per the proven templates",
+      "text_over_image": "no text over a busy photo without the scrim",
+      "safe_area_awareness": "text / logo / footer kept inside platform safe areas",
+      "logo_visibility": "logo legible against the scrim/background"
+    },
+    "asset_rules": {
+      "note": "Assets are governed SEPARATELY (a sibling library) in c.client_brand_asset and referenced by asset_key — never raw URLs. The style guide may constrain HOW assets are used (placement, scrim) but does not own the files.",
+      "resolution": "Asset resolution stays via resolve_brand_assets() — UNCHANGED; this style guide introduces NO new resolver behaviour.",
+      "logo": "logo_primary (pp_logo_primary)",
+      "backgrounds": "governed PP backgrounds (bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd); must be governed before use; needs_scrim"
+    },
+    "pattern_rules": {
+      "note": "Governs the Pattern Library v1 candidates — each conforms_to_style_guide=property-pulse-styleguide-v1.",
+      "governs_patterns": ["pp_branding_strip_v1", "pp_headline_block_v1", "pp_stat_card_v1", "pp_category_badge_v1", "pp_background_plus_scrim_v1"],
+      "posture": "patterns remain candidate; the style guide does NOT promote them to proven."
+    },
+    "template_family_rules": {
+      "note": "Template Families MUST conform to this style guide. The style guide governs but does NOT render — variants carry the render proof.",
+      "governs_families": ["property-pulse-news"],
+      "posture": "style-guide conformance may be SUPPORTED by host renders; the style guide itself is not a render output."
+    },
+    "proof_posture": "governance_candidate",
+    "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "supporting_render_log_ids": ["7243e040-2ef2-4d08-902b-94cee26af2d3", "508b4365-9dfc-4ec8-b491-2a3a1014d26b"], "source_commit": "c4fb892", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "GOVERNANCE candidate — a style guide is NOT a render output, so no render_log_id is claimed. Supporting evidence (conformance, not proof): the proven PP News host renders (Gate C 7243e040, Gate D2 508b4365) + Pattern Library v1 + the governed static render e7d096b8. No PK ratification is formally recorded yet, so status stays candidate. No false proof." }
   },
 
   "patterns": [
