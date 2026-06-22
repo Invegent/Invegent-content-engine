@@ -1,3 +1,24 @@
+// video-worker v3.2.0
+// ============================================================================
+// v3.2.0 (2026-06-22, CREATIVE-LIBRARY-V0 GATE D2 — template-mode VIDEO smoke):
+//   ADDITIVE, manual-only. New isolated smoke branch in Deno.serve, gated by
+//   isSmokeRequest(body) (mode==='template_smoke' AND template===
+//   'PP_NEWS_CENTRED_SCRIM_9x16_VIDEO_v1'), that runs BEFORE any production
+//   draft selection and RETURNS before it. It renders the proven Creatomate
+//   animated Property Pulse news template (template mode; provider template
+//   bc32f52f-f9da-4749-90aa-03f7572f0719; MP4 1080x1920), stores the MP4 to
+//   post-videos/_smoke/, and writes ONE m.post_render_log row whose render_spec
+//   carries BOTH qa (preserved) and template (additive sibling) plus a label
+//   'creative_library_video_smoke'. ice_format_key='video_short_stat' is a
+//   governed LABEL only — true identity lives in render_spec.template. New pure
+//   module ./template_smoke.ts (no side effects). renderUploadAndLog gains
+//   optional templateSpec/renderSpecLabel/logMustSucceed opts and nullable
+//   postDraftId/clientId (smoke passes null — touches NO post_draft). The three
+//   PRODUCTION callers are byte-unchanged (no extras => render_spec === { qa }).
+//   STRICTLY OUT OF SCOPE: no DB migration, no new taxonomy/format key, no
+//   publish/queue/advisor wiring, no production-path render/selection change,
+//   p_render_engine values byte-unchanged, NO DEPLOY in this change. (GATE D2)
+//
 // video-worker v3.1.0
 // ============================================================================
 // v3.1.5 (2026-06-21, QA-VISIBILITY-V0):
@@ -137,8 +158,9 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { getVoiceIdForDraft } from './voice_id.ts';
 import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (additive)
+import { SMOKE_TEMPLATE_NAME, SMOKE_RENDER_SPEC_LABEL, isSmokeRequest, buildSmokeModifications, buildTemplateRenderScript, computePropsHash, buildRenderSpecTemplate, composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2
 
-const VERSION = 'video-worker-v3.1.5';
+const VERSION = 'video-worker-v3.2.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -268,10 +290,13 @@ async function renderUploadAndLog(opts: {
   creatomateKey: string;
   renderScript: object;
   storagePath: string;
-  postDraftId: string;
-  clientId: string;
+  postDraftId: string | null;
+  clientId: string | null;
   iceFormatKey: string;
   qaCtx: QaCtx;  // v3.1.5: QA-VISIBILITY-V0 (additive observability)
+  templateSpec?: Record<string, unknown> | null;  // v3.2.0 GATE D2: render_spec.template (smoke only)
+  renderSpecLabel?: string | null;                // v3.2.0 GATE D2: render_spec.label (smoke only)
+  logMustSucceed?: boolean;                        // v3.2.0 GATE D2: smoke requires the evidence row to persist
 }): Promise<string> {
   const { supabase, creatomateKey, renderScript, storagePath, postDraftId, clientId, iceFormatKey, qaCtx } = opts;
   const startMs = Date.now();
@@ -295,8 +320,8 @@ async function renderUploadAndLog(opts: {
     try {
       // v3.1.5 (QA-VISIBILITY-V0): additive render-QA on the SUCCESS log. file_size_bytes
       // reuses the already-fetched render buffer (vidBuf) — no re-fetch/probe.
-      const renderSpec = {
-        qa: safeQa(() => buildRenderQa({
+      const renderSpec = composeRenderSpec(
+        safeQa(() => buildRenderQa({
           expected_format: qaCtx.expectedFormat,
           engine: 'creatomate', render_mode: 'composition',
           duration_semantics: 'render_wallclock',
@@ -318,7 +343,8 @@ async function renderUploadAndLog(opts: {
           cost_present: creditsUsed != null,
           cost_estimated_flag: false,
         })),
-      };
+        { label: opts.renderSpecLabel, template: opts.templateSpec },
+      );
       const { error: logErr } = await supabase.rpc('write_render_log', {
         p_post_draft_id: postDraftId, p_slide_id: null, p_client_id: clientId,
         p_ice_format_key: iceFormatKey, p_render_engine: 'creatomate',
@@ -327,8 +353,14 @@ async function renderUploadAndLog(opts: {
         p_credits_used: creditsUsed, p_render_duration_ms: durationMs,
         p_error_message: null, p_render_spec: renderSpec,
       });
-      if (logErr) console.error('[video-worker] write_render_log error:', logErr.message);
-    } catch (logEx: any) { console.error('[video-worker] write_render_log threw:', logEx?.message); }
+      if (logErr) {
+        console.error('[video-worker] write_render_log error:', logErr.message);
+        if (opts.logMustSucceed) throw new Error(`write_render_log failed: ${logErr.message}`);
+      }
+    } catch (logEx: any) {
+      console.error('[video-worker] write_render_log threw:', logEx?.message);
+      if (opts.logMustSucceed) throw (logEx instanceof Error ? logEx : new Error(String(logEx)));
+    }
     return storageUrl;
   } catch (e: any) {
     const errMsg = (e?.message ?? String(e)).slice(0, 500);
@@ -341,8 +373,8 @@ async function renderUploadAndLog(opts: {
       : 'render';
     try {
       // v3.1.5 (QA-VISIBILITY-V0): additive render-QA on the in-render CATCH log.
-      const renderSpec = {
-        qa: safeQa(() => buildRenderQa({
+      const renderSpec = composeRenderSpec(
+        safeQa(() => buildRenderQa({
           expected_format: qaCtx.expectedFormat,
           engine: 'creatomate', render_mode: 'composition',
           duration_semantics: 'render_wallclock',
@@ -365,7 +397,8 @@ async function renderUploadAndLog(opts: {
           cost_present: false,
           cost_estimated_flag: false,
         })),
-      };
+        { label: opts.renderSpecLabel, template: opts.templateSpec },
+      );
       await supabase.rpc('write_render_log', {
         p_post_draft_id: postDraftId, p_slide_id: null, p_client_id: clientId,
         p_ice_format_key: iceFormatKey, p_render_engine: 'creatomate',
@@ -665,6 +698,35 @@ Deno.serve(async (req: Request) => {
 
   const creatomateKey = Deno.env.get('CREATOMATE_API_KEY');
   if (!creatomateKey) return jsonResponse({ ok: false, error: 'CREATOMATE_API_KEY not set' }, 500);
+
+  // ── CREATIVE-LIBRARY-V0 GATE D2: manual-only template-mode VIDEO smoke ──────
+  // Isolated, opt-in branch. Runs ONLY for the exact mode/template flags and
+  // returns BEFORE any production draft selection. Touches NO post_draft, queue,
+  // advisor, or publish path. Renders the proven Property Pulse animated news
+  // template (Creatomate template mode), stores the MP4, and writes ONE
+  // post_render_log row whose render_spec carries BOTH qa (preserved) and
+  // template (additive sibling). ice_format_key='video_short_stat' is a governed
+  // LABEL only; true identity lives in render_spec.template.
+  let smokeBody: any = {};
+  try { smokeBody = await req.json(); } catch { /* no/invalid body => not a smoke request */ }
+  if (isSmokeRequest(smokeBody)) {
+    const supabase = getServiceClient();
+    const modifications = buildSmokeModifications(smokeBody);
+    if (!modifications['Background.source'] || !modifications['Logo.source']) {
+      return jsonResponse({ ok: false, error: 'template_smoke requires background_url and logo_url in body' }, 400);
+    }
+    const renderScript = buildTemplateRenderScript(modifications);
+    const props_hash = await computePropsHash(modifications);
+    const templateSpec = buildRenderSpecTemplate(props_hash);
+    const qaCtx: QaCtx = { withVoice: false, expectedFormat: 'video_short_stat', captionsExpected: false, captionsPresent: false, sceneCount: null };
+    const storageUrl = await renderUploadAndLog({
+      supabase, creatomateKey, renderScript,
+      storagePath: '_smoke/pp_news_centred_scrim_9x16_video_v1.mp4',
+      postDraftId: null, clientId: null, iceFormatKey: 'video_short_stat',
+      qaCtx, templateSpec, renderSpecLabel: SMOKE_RENDER_SPEC_LABEL, logMustSucceed: true,
+    });
+    return jsonResponse({ ok: true, mode: 'template_smoke', template: SMOKE_TEMPLATE_NAME, storage_url: storageUrl, props_hash, render_spec_label: SMOKE_RENDER_SPEC_LABEL });
+  }
 
   const supabase = getServiceClient();
   const results: any[] = [];
