@@ -2,6 +2,7 @@ import { Hono } from "jsr:@hono/hono";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { classifyFbFormat, decideAssetGuard, IMAGE_HOLD_MINUTES } from "./guard.ts";
 import { requireAssetPresent } from "./asset_backstop.ts";
+import { decideStudioMinGap, isStudioOrigin, STUDIO_MIN_GAP_MINUTES } from "./origin.ts";
 
 const app = new Hono();
 
@@ -11,7 +12,24 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "publisher-v1.10.0";
+const VERSION = "publisher-v1.11.0";
+// v1.11.0 (23 Jun 2026): PUBLISHING-ORIGIN — Content Studio cadence bypass.
+//   Reads m.post_publish_queue.publish_origin (new column; migration
+//   20260623150000_publish_origin_studio_cadence_bypass.sql). For studio rows
+//   (publish_origin='studio', i.e. created_by='content-studio' intent): SKIP the
+//   max_per_day and profile min_gap throttles and instead apply a fixed
+//   STUDIO_MIN_GAP_MINUTES=10 burst floor (decideStudioMinGap, ./origin.ts) so an
+//   operator cannot publish a client+platform more than once / 10m; studio rows
+//   also skip the get_next_publish_slot reassignment (they publish ASAP — their
+//   scheduled_for is NOW() from enqueue or the operator's explicit time). Origin
+//   is fetched per-row from the queue right after locking (publisher_lock_queue_v1
+//   returns a fixed column list WITHOUT publish_origin; the lock RPC is NOT
+//   changed — a lightweight read-only select keeps this to a single migration).
+//   STRICTLY OUT OF SCOPE: feed rows (publish_origin!='studio') keep the
+//   max_per_day + min_gap logic BYTE-UNCHANGED; ALL hard gates (approval, token
+//   validation, publish_enabled/paused, decideAssetGuard, v1.10.0 backstop,
+//   dry_run) are unchanged and apply to studio identically; no provider/render/
+//   schema change beyond the additive queue column; no existing queued row mutated.
 // v1.10.0 (17 Jun 2026): UNIFORM FINAL-ASSERTION BACKSTOP (Lane A).
 //   Adds a single pure final assertion (requireAssetPresent in ./asset_backstop.ts)
 //   as the LAST gate immediately before the FB POST, AFTER the existing
@@ -174,6 +192,10 @@ type PublishQueueRow = {
   client_id: string; platform: string; status: string;
   scheduled_for: string | null; attempt_count: number | null;
   last_error: string | null; locked_at: string | null; locked_by: string | null;
+  // v1.11.0: Publishing-Origin. publisher_lock_queue_v1 returns a fixed column
+  // list WITHOUT this column, so it is populated by a per-row read-only fetch
+  // after locking (see below). Defaults to 'feed' when absent => feed cadence.
+  publish_origin?: string | null;
 };
 
 type PublishProfile = {
@@ -265,13 +287,30 @@ app.post("*", async (c) => {
   const rows = (lockedRows ?? []) as PublishQueueRow[];
   if (!rows.length) return jsonResponse({ ok: true, message: "no_publish_jobs", worker_id: workerId, locked: 0 });
 
+  // v1.11.0: publisher_lock_queue_v1 returns a fixed column list WITHOUT
+  // publish_origin, so hydrate it with a single read-only fetch over the locked
+  // queue ids (does NOT modify the lock RPC — keeps this to one migration). Any
+  // row missing an origin (e.g. column absent pre-migration) defaults to 'feed'.
+  {
+    const queueIds = rows.map((r) => r.queue_id);
+    const { data: originRows } = await supabase.schema("m").from("post_publish_queue")
+      .select("queue_id, publish_origin").in("queue_id", queueIds);
+    const originById = new Map<string, string | null>(
+      (originRows ?? []).map((o: any) => [o.queue_id as string, o.publish_origin ?? null]),
+    );
+    for (const r of rows) r.publish_origin = originById.get(r.queue_id) ?? "feed";
+  }
+
   const results: any[] = [];
 
   for (const q of rows) {
     const queueId = q.queue_id;
+    const isStudio = isStudioOrigin(q.publish_origin);
     try {
       // ── SCHEDULE CHECK ───────────────────────────────────────
-      if (!q.scheduled_for) {
+      // v1.11.0: studio rows publish ASAP (scheduled_for already NOW()/operator
+      // time from enqueue) — do NOT reassign get_next_publish_slot for them.
+      if (!q.scheduled_for && !isStudio) {
         const { data: nextSlot, error: slotErr } = await supabase.rpc("get_next_publish_slot", {
           p_client_id: q.client_id,
           p_platform: q.platform,
@@ -378,6 +417,21 @@ app.post("*", async (c) => {
       // ══ END ASSETLESS-RELEASE GUARD ═════════════════════════════════════
 
       // Throttle (applies to all publishable methods)
+      // v1.11.0: STUDIO origin bypasses max_per_day AND profile min_gap; instead a
+      // fixed STUDIO_MIN_GAP_MINUTES=10 burst floor (decideStudioMinGap) defers a
+      // too-soon studio post — mirroring the feed min_gap defer mechanics with the
+      // studio constant, NOT profile.min_gap_minutes/max_per_day. FEED rows keep
+      // the max_per_day + min_gap logic below BYTE-UNCHANGED.
+      if (isStudio) {
+        const { data: lastPub } = await supabase.schema("m").from("post_publish").select("created_at").eq("destination_id", pageId).eq("status", "published").order("created_at", { ascending: false }).limit(1);
+        const lastAt = lastPub?.[0]?.created_at ? new Date(lastPub[0].created_at).getTime() : null;
+        const gap = decideStudioMinGap(lastAt, Date.now(), STUDIO_MIN_GAP_MINUTES);
+        if (gap.defer) {
+          const rf = new Date(gap.scheduledForMs).toISOString();
+          await supabase.schema("m").from("post_publish_queue").update({ status: "queued", scheduled_for: rf, last_error: gap.reason, locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
+          results.push({ queue_id: queueId, status: "throttled", reason: "studio_min_gap_floor", publish_origin: "studio" }); continue;
+        }
+      } else {
       const maxPerDay = Number(profile.max_per_day ?? 0);
       if (maxPerDay > 0) {
         const { count: todayCount } = await supabase.schema("m").from("post_publish").select("post_publish_id", { count: "exact", head: true }).eq("destination_id", pageId).eq("status", "published").gte("created_at", startOfUtcDayIso());
@@ -397,6 +451,7 @@ app.post("*", async (c) => {
           results.push({ queue_id: queueId, status: "throttled", reason: "min_gap" }); continue;
         }
       }
+      } // end feed-cadence branch (v1.11.0: studio bypasses max_per_day + min_gap above)
 
       if (dryRun) {
         const rf = new Date(Date.now() + dryRunHoldMin * 60_000).toISOString();
