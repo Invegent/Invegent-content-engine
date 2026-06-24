@@ -1,3 +1,27 @@
+// image-worker v3.12.0
+// v3.12.0 — CREATIVE-LIBRARY BRANCH B / LANE B-PROOF: additive, NON-PUBLISHING
+//   governed-render MECHANISM proof, gated by mode='creative_library_draft_proof'.
+//   Mirrors the v3.11.0 manual branch but sources the render fields from a REAL
+//   m.post_draft row READ-ONLY (no LLM): validates client_slug=property-pulse,
+//   implementation_id=pp_news_static_16x9_v1, post_draft_id, asset_keys.logo/.background;
+//   reads the draft (select image_headline/client_id/recommended_format) and hard-gates
+//   on recommended_format='image_quote' (422) + non-blank image_headline (422); builds
+//   deterministic proof fields via ./branch_b_proof.ts buildProofFieldsFromDraft();
+//   resolves governed asset_keys via the service_role-only RPC public.resolve_brand_assets
+//   (NO raw-URL/legacy fallback — fail loud); renders the proven PP 16:9 news template
+//   with the RESOLVED governed asset URLs; writes render_spec GOVERNED evidence with
+//   render_spec.label='creative_library_draft_proof' (+ source_post_draft_id) and the
+//   v3.11.0 render_spec.template (resolver_used=true, fallback_taken=false). Returns
+//   BEFORE production draft selection. HARD INVARIANTS: NO m.post_draft UPDATE of any
+//   kind (image_url/image_status/updated_at) — the draft is READ-ONLY; NO publish/queue/
+//   advisor/production-loop change; storage ONLY to _smoke/...; governed-only fail-loud
+//   (resolver/render failure returns an error, never a legacy render). New pure module
+//   ./branch_b_proof.ts (no side effects). renderUploadAndLog UNCHANGED. The
+//   template_smoke + creative_library_manual_render branches and ALL production loops are
+//   BYTE-UNCHANGED. No migration, no new secret, no new governed ice_format_key (the
+//   render-log ice_format_key='image_quote' is the existing governed label; render_spec.label
+//   distinguishes the proof). NO docs-registry / DB-backed registry import at runtime.
+//
 // image-worker v3.11.0
 // v3.11.0 — CREATIVE-LIBRARY-V0.1 LANE 3B: additive, manual-only governed render mode
 //   `creative_library_manual_render`. Resolves governed asset_keys via the
@@ -42,8 +66,9 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { MANUAL_RENDER_MODE, MANUAL_RENDER_LABEL, PP_NEWS_STATIC_16x9, isManualRenderRequest, mapResolvedAssets, buildManualModifications, computePropsHash, buildGovernedTemplateSpec } from './manual_render.ts';  // v3.11.0: LANE 3B
+import { DRAFT_PROOF_MODE, DRAFT_PROOF_LABEL, buildProofFieldsFromDraft } from './branch_b_proof.ts';  // v3.12.0: BRANCH B / LANE B-PROOF
 
-const VERSION = 'image-worker-v3.11.0';
+const VERSION = 'image-worker-v3.12.0';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -359,6 +384,62 @@ Deno.serve(async (req: Request) => {
     const renderSpec = { label: MANUAL_RENDER_LABEL, template: templateSpec };
     const storageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: '_smoke/pp_news_centred_scrim_16x9_manual_governed.jpg', mimeType: 'image/jpeg', postDraftId: null, clientId: null, iceFormatKey: 'image_quote', renderSpec, logMustSucceed: true });
     return jsonResponse({ ok: true, mode: MANUAL_RENDER_MODE, implementation_id: implId, storage_url: storageUrl, props_hash, asset_keys: templateSpec.asset_keys, asset_ids: templateSpec.asset_ids, resolver_used: true, render_spec_label: MANUAL_RENDER_LABEL });
+  }
+
+  // ── CREATIVE-LIBRARY BRANCH B / LANE B-PROOF: draft-sourced governed render ───
+  // Isolated, opt-in. Mirrors the v3.11.0 manual branch but sources the render fields
+  // from a REAL m.post_draft row READ-ONLY (deterministic, NO LLM). Resolves governed
+  // asset_keys via the service_role-only RPC public.resolve_brand_assets (NO raw-URL/
+  // legacy fallback — fail loud), renders the proven PP 16:9 news template with the
+  // RESOLVED governed URLs, and writes render_spec GOVERNED evidence.
+  //
+  // HARD INVARIANTS (this branch):
+  //   - NO m.post_draft UPDATE of any kind (no image_url, no image_status, no
+  //     updated_at). The draft is consumed READ-ONLY (a single SELECT).
+  //   - NO publish, NO queue, NO advisor, NO production-loop change.
+  //   - Storage ONLY to _smoke/... ; returns BEFORE production draft selection.
+  //   - Governed-only, fail-loud: any resolver/render failure returns an error,
+  //     NEVER a legacy render. No new ice_format_key (render-log ='image_quote';
+  //     render_spec.label='creative_library_draft_proof' distinguishes the proof).
+  if (body?.mode === DRAFT_PROOF_MODE) {
+    const supabase = getServiceClient();
+    const clientSlug = body?.client_slug;
+    const implId = body?.implementation_id;
+    const postDraftId = body?.post_draft_id;
+    const logoKey = body?.asset_keys?.logo;
+    const bgKey = body?.asset_keys?.background;
+    if (clientSlug !== 'property-pulse' || implId !== PP_NEWS_STATIC_16x9.implementation_id || !postDraftId || !logoKey || !bgKey) {
+      return jsonResponse({ ok: false, error: 'creative_library_draft_proof requires client_slug=property-pulse, implementation_id=pp_news_static_16x9_v1, post_draft_id, asset_keys.logo, asset_keys.background' }, 400);
+    }
+    // Read the draft READ-ONLY (single SELECT, no mutation anywhere in this branch).
+    const { data: draft, error: draftErr } = await supabase.schema('m').from('post_draft')
+      .select('image_headline, client_id, recommended_format')
+      .eq('post_draft_id', postDraftId).limit(1).maybeSingle();
+    if (draftErr) return jsonResponse({ ok: false, error: `draft_read_failed: ${draftErr.message}` }, 500);
+    if (!draft) return jsonResponse({ ok: false, error: `post_draft not found: ${postDraftId}` }, 404);
+    if (draft.recommended_format !== 'image_quote') {
+      return jsonResponse({ ok: false, error: `creative_library_draft_proof requires recommended_format=image_quote (got ${draft.recommended_format ?? 'null'})` }, 422);
+    }
+    if (!(draft.image_headline ?? '').trim()) {
+      return jsonResponse({ ok: false, error: 'missing image_headline hard-gate field' }, 422);
+    }
+    // Deterministic proof fields from the draft (NO LLM). Throws if image_headline blank (guarded above).
+    let fields;
+    try { fields = buildProofFieldsFromDraft(draft); }
+    catch (e: any) { return jsonResponse({ ok: false, error: e?.message ?? String(e) }, 422); }
+    // Resolve governed assets (service_role-only RPC). Fail loud on resolver error/shortfall — NO raw-URL fallback.
+    const { data: resolved, error: resErr } = await supabase.rpc('resolve_brand_assets', { p_client_slug: clientSlug, p_asset_keys: [logoKey, bgKey] });
+    if (resErr) return jsonResponse({ ok: false, error: `resolver_failed: ${resErr.message}` }, 500);
+    let mapped;
+    try { mapped = mapResolvedAssets(resolved as any, { logo: logoKey, background: bgKey }); }
+    catch (e: any) { return jsonResponse({ ok: false, error: e?.message ?? String(e) }, 422); }
+    const modifications = buildManualModifications({ fields, logoUrl: mapped.logo.asset_url, backgroundUrl: mapped.background.asset_url });
+    const renderScript = { template_id: PP_NEWS_STATIC_16x9.provider_template_id, modifications, output_format: PP_NEWS_STATIC_16x9.output_format };
+    const props_hash = await computePropsHash(modifications);
+    const templateSpec = buildGovernedTemplateSpec({ propsHash: props_hash, logo: mapped.logo, background: mapped.background });
+    const renderSpec = { label: DRAFT_PROOF_LABEL, source_post_draft_id: postDraftId, template: templateSpec };
+    const storageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: `_smoke/branch_b_proof_${postDraftId}.jpg`, mimeType: 'image/jpeg', postDraftId, clientId: draft.client_id, iceFormatKey: 'image_quote', renderSpec, logMustSucceed: true });
+    return jsonResponse({ ok: true, mode: DRAFT_PROOF_MODE, implementation_id: implId, post_draft_id: postDraftId, storage_url: storageUrl, props_hash, asset_keys: templateSpec.asset_keys, asset_ids: templateSpec.asset_ids, resolver_used: true, render_spec_label: DRAFT_PROOF_LABEL });
   }
 
   const supabase = getServiceClient();
