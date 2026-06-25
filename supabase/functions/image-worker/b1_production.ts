@@ -1,0 +1,52 @@
+// b1_production.ts — CREATIVE-LIBRARY BRANCH B / LANE B1-v1 (image-worker).
+//
+// Pure helper module for the SMALLEST-SAFE production slice: a Property-Pulse-ONLY
+// governed branch inside the EXISTING production `image_quote` loop. Every non-PP
+// client and every other format stays byte-unchanged on the legacy path.
+//
+// NO side effects: no Deno.serve, no network/DB/storage/secret access. This module only
+// exposes the PP gate predicate, the fixed governed asset-key contract, the production
+// label, and a MINIMAL headline-length hard-gate (cut-plan decision D — cheap insurance
+// against the B0 overflow defect going public; NOT a precise fit guarantee, and NOT an
+// AI rewrite). Governed-only / fail-loud: assertHeadlineWithinGate THROWS rather than
+// truncating, so the caller's existing production catch fails the draft
+// (image_status='failed') — there is NO fallback to the legacy buildImageQuoteScript for PP.
+
+// The ONLY client slug B1-v1 routes onto the governed branch. Every other slug stays legacy.
+export const B1_GOVERNED_CLIENT_SLUG = 'property-pulse';
+
+// Fixed governed asset-key contract for B1-v1 (cut-plan decisions B + the PP pilot).
+// logo = pp_logo_primary; background = fixed default bg_perth_cbd (no rotation/selection yet).
+export const B1_LOGO_KEY = 'pp_logo_primary';
+export const B1_BACKGROUND_KEY = 'bg_perth_cbd';
+
+// Minimal headline-length hard-gate (cut-plan decision D). PROVISIONAL / to_be_calibrated:
+// a minimal hard-gate, NOT a precise fit guarantee. No truncation, no AI rewrite in v1.
+export const B1_HEADLINE_MAX_CHARS = 90; // PROVISIONAL / to_be_calibrated (cut-plan decision D)
+
+// render_spec.label that marks the B1-v1 production governed render (distinct from the
+// B0 _smoke/ proof label and from legacy renders). Keeps governed rows identifiable.
+export const B1_PRODUCTION_LABEL = 'creative_library_b1_production';
+
+// The two governed asset keys the resolver must return, in the {logo, background} shape
+// mapResolvedAssets() consumes.
+export const B1_ASSET_KEYS = { logo: B1_LOGO_KEY, background: B1_BACKGROUND_KEY } as const;
+
+// True ONLY for the single governed B1-v1 client slug. Every other slug → false → legacy path.
+export function isB1GovernedImageQuote(clientSlug: string): boolean {
+  return clientSlug === B1_GOVERNED_CLIENT_SLUG;
+}
+
+// Minimal headline-length hard-gate. Trims; throws (fail loud) BEFORE any Creatomate /
+// resolver call when the headline is blank or exceeds B1_HEADLINE_MAX_CHARS. No truncation.
+export function assertHeadlineWithinGate(headline: string | null | undefined): void {
+  const trimmed = (headline ?? '').trim();
+  if (!trimmed) {
+    throw new Error('b1: missing image_headline');
+  }
+  if (trimmed.length > B1_HEADLINE_MAX_CHARS) {
+    throw new Error(
+      `b1: headline length ${trimmed.length} exceeds B1_HEADLINE_MAX_CHARS=${B1_HEADLINE_MAX_CHARS} (no truncation / no AI rewrite in v1)`,
+    );
+  }
+}

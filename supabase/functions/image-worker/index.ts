@@ -1,3 +1,31 @@
+// image-worker v3.14.0
+// v3.14.0 (2026-06-26) — CREATIVE-LIBRARY BRANCH B / LANE B1-v1: smallest-safe PRODUCTION
+//   slice — a Property-Pulse-ONLY governed branch INSIDE the EXISTING production
+//   `image_quote` loop. WHAT CHANGED: (1) new pure module ./b1_production.ts (no side
+//   effects) exporting B1_GOVERNED_CLIENT_SLUG='property-pulse', the fixed governed asset
+//   contract B1_ASSET_KEYS={logo:'pp_logo_primary', background:'bg_perth_cbd'}, the
+//   B1_PRODUCTION_LABEL, the minimal headline-length hard-gate (B1_HEADLINE_MAX_CHARS=90,
+//   PROVISIONAL/to_be_calibrated — cut-plan decision D), isB1GovernedImageQuote(), and
+//   assertHeadlineWithinGate(); (2) inside the image_quote loop, AFTER getBrandAndSlug and
+//   the existing isImageEnabled skip, a PP-gated governed branch runs BEFORE the legacy
+//   buildImageQuoteScript render: minimal headline gate → resolve_brand_assets RPC for
+//   [pp_logo_primary, bg_perth_cbd] (NO legacy fallback — throw on error) → mapResolvedAssets
+//   (throws on shortfall) → buildProofFieldsFromDraft → buildManualModifications →
+//   computePropsHash → buildGovernedTemplateSpec(NEWS_STATIC_CENTERED_SCRIM_1x1, …) →
+//   renderUploadAndLog to the PRODUCTION path `property-pulse/<draft>.jpg` (image/jpeg,
+//   iceFormatKey stays 'image_quote', render_spec.label=B1_PRODUCTION_LABEL) → normal
+//   production write image_url + image_status='generated' → skip the legacy render for that
+//   draft. The whole branch is inside the EXISTING per-draft try/catch, so any
+//   resolver/headline/render failure hits the EXISTING production failure semantics
+//   (image_status='failed'). WHAT IS STRICTLY OUT OF SCOPE: non-PP image_quote stays
+//   BYTE-UNCHANGED (legacy buildImageQuoteScript, png, brand-profile logo); NO change to
+//   video/avatar/carousel/animated/text formats, queue logic, publisher logic, the
+//   manual-render + _smoke/ proof + 16:9 paths, legacy Creatomate templates, dashboard, or
+//   DB/schema; NO AI headline rewrite; NO alternate-template selection; NO background
+//   rotation/selection (fixed bg_perth_cbd); NO multi-brand activation; NO Advisor-driven
+//   selection; NO new ice_format_key (render-log stays 'image_quote'); NO migration, NO new
+//   secret. PP becomes resolver-dependent on this path by design (fail-loud).
+//
 // image-worker v3.13.0
 // v3.13.0 (2026-06-25) — CREATIVE-LIBRARY BRANCH B / LANE B0: additive, NON-PUBLISHING
 //   support for a NEW brand-agnostic 1:1 governed implementation
@@ -90,8 +118,9 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { MANUAL_RENDER_MODE, MANUAL_RENDER_LABEL, PP_NEWS_STATIC_16x9, NEWS_STATIC_CENTERED_SCRIM_1x1, isManualRenderRequest, mapResolvedAssets, buildManualModifications, computePropsHash, buildGovernedTemplateSpec } from './manual_render.ts';  // v3.11.0: LANE 3B; v3.13.0: + B0 1:1 impl
 import { DRAFT_PROOF_MODE, DRAFT_PROOF_LABEL, buildProofFieldsFromDraft } from './branch_b_proof.ts';  // v3.12.0: BRANCH B / LANE B-PROOF
+import { B1_ASSET_KEYS, B1_PRODUCTION_LABEL, isB1GovernedImageQuote, assertHeadlineWithinGate } from './b1_production.ts';  // v3.14.0: BRANCH B / LANE B1-v1 (PP-only governed image_quote)
 
-const VERSION = 'image-worker-v3.13.0';
+const VERSION = 'image-worker-v3.14.0';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -502,6 +531,27 @@ Deno.serve(async (req: Request) => {
       if (!clientId) { results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'skipped', reason: 'client_id_unresolvable' }); continue; }
       if (!(await isImageEnabled(clientId))) { await supabase.schema('m').from('post_draft').update({ image_status: 'skipped', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'skipped' }); continue; }
       const b = await getBrandAndSlug(clientId);
+      // ── v3.14.0 BRANCH B / LANE B1-v1: Property-Pulse-ONLY governed image_quote branch.
+      // Runs INSIDE this existing try/catch, so any failure (headline gate / resolver /
+      // render) hits the EXISTING production failure path → image_status='failed'. There is
+      // NO fallback to the legacy buildImageQuoteScript for PP — governed-only, fail-loud.
+      // Every non-PP client falls through to the byte-unchanged legacy path below.
+      if (isB1GovernedImageQuote(b.clientSlug)) {
+        assertHeadlineWithinGate(draft.image_headline);  // minimal hard-gate, BEFORE any resolver/Creatomate call
+        const { data: resolved, error: resolveErr } = await supabase.rpc('resolve_brand_assets', { p_client_slug: b.clientSlug, p_asset_keys: [B1_ASSET_KEYS.logo, B1_ASSET_KEYS.background] });
+        if (resolveErr) throw new Error(`b1 resolver_failed: ${resolveErr.message}`);
+        const mapped = mapResolvedAssets(resolved as any, B1_ASSET_KEYS);  // throws on shortfall — governed-only
+        const fields = buildProofFieldsFromDraft({ image_headline: draft.image_headline, client_id: clientId, recommended_format: 'image_quote' });
+        const modifications = buildManualModifications({ fields, logoUrl: mapped.logo.asset_url, backgroundUrl: mapped.background.asset_url });
+        const props_hash = await computePropsHash(modifications);
+        const templateSpec = buildGovernedTemplateSpec(NEWS_STATIC_CENTERED_SCRIM_1x1, { propsHash: props_hash, logo: mapped.logo, background: mapped.background });
+        const renderScript = { template_id: NEWS_STATIC_CENTERED_SCRIM_1x1.provider_template_id, modifications, output_format: NEWS_STATIC_CENTERED_SCRIM_1x1.output_format };
+        const renderSpec = { label: B1_PRODUCTION_LABEL, template: templateSpec };
+        const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: `${b.clientSlug}/${draft.post_draft_id}.jpg`, mimeType: 'image/jpeg', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote', renderSpec });
+        await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
+        results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'generated', image_url: imageUrl, governed: true });
+        continue;
+      }
       const headline = (draft.image_headline ?? '').trim() || 'Insights for providers and professionals';
       const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildImageQuoteScript({ headline, ...b }), storagePath: `${b.clientSlug}/${draft.post_draft_id}.png`, mimeType: 'image/png', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote' });
       await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
