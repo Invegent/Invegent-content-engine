@@ -5,6 +5,7 @@
 import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import {
   MANUAL_RENDER_MODE, MANUAL_RENDER_LABEL, PP_NEWS_STATIC_16x9,
+  NEWS_STATIC_CENTERED_SCRIM_1x1,
   isManualRenderRequest, mapResolvedAssets, buildManualModifications,
   computePropsHash, buildGovernedTemplateSpec,
 } from './manual_render.ts';
@@ -56,7 +57,7 @@ Deno.test('buildGovernedTemplateSpec records governed keys/ids + resolver_used +
   const mods = buildManualModifications({ fields:{ headline:'x' }, logoUrl: LOGO.asset_url, backgroundUrl: BG.asset_url });
   const h = await computePropsHash(mods);
   const m = mapResolvedAssets([LOGO, BG], want);
-  const t = buildGovernedTemplateSpec({ propsHash: h, logo: m.logo, background: m.background }) as any;
+  const t = buildGovernedTemplateSpec(PP_NEWS_STATIC_16x9, { propsHash: h, logo: m.logo, background: m.background }) as any;
   assertEquals(t.implementation_id, 'pp_news_static_16x9_v1');
   assertEquals(t.creative_intent, 'pp_news');
   assertEquals(t.capability, 'static_news');
@@ -68,6 +69,38 @@ Deno.test('buildGovernedTemplateSpec records governed keys/ids + resolver_used +
   assertEquals(t.resolver_used, true);
   assertEquals(t.fallback_taken, false);
   assertEquals(t.props_hash, h);
+});
+
+// B0: the same parametrized builder emits the NEW brand-agnostic 1:1 governed identity.
+Deno.test('buildGovernedTemplateSpec(NEWS_STATIC_CENTERED_SCRIM_1x1, …) emits the generic 1:1 identity', async () => {
+  const mods = buildManualModifications({ fields:{ headline:'x' }, logoUrl: LOGO.asset_url, backgroundUrl: BG.asset_url });
+  const h = await computePropsHash(mods);
+  const m = mapResolvedAssets([LOGO, BG], want);
+  const t = buildGovernedTemplateSpec(NEWS_STATIC_CENTERED_SCRIM_1x1, { propsHash: h, logo: m.logo, background: m.background }) as any;
+  assertEquals(t.implementation_id, 'news_static_centered_scrim_1x1_v1');
+  assertEquals(t.provider_template_id, 'fb9820f8-3fee-4448-b324-3d500fa74b40');
+  assertEquals(t.creative_intent, 'news_static');
+  assertEquals(t.template_family, 'news-static');
+  assertEquals(t.template_variant, 'centered-scrim-1x1');
+  assertEquals(t.capability, 'static_news');
+  assertEquals(t.resolver_used, true);
+  assertEquals(t.fallback_taken, false);
+  // Governed asset evidence is identical (PP pilot assets bound to the reusable template).
+  assertEquals(t.asset_keys, ['pp_logo_primary', 'bg_perth_cbd']);
+  assertEquals(t.asset_ids, ['b7530c55-c320-43be-90d9-98c804694921', 'f9caed52-0859-4e22-91f6-7dc998485d77']);
+});
+
+// B0 regression: the 16:9 impl still emits its exact prior identity through the new signature.
+Deno.test('buildGovernedTemplateSpec(PP_NEWS_STATIC_16x9, …) still emits the 16:9 identity (regression)', async () => {
+  const mods = buildManualModifications({ fields:{ headline:'x' }, logoUrl: LOGO.asset_url, backgroundUrl: BG.asset_url });
+  const h = await computePropsHash(mods);
+  const m = mapResolvedAssets([LOGO, BG], want);
+  const t = buildGovernedTemplateSpec(PP_NEWS_STATIC_16x9, { propsHash: h, logo: m.logo, background: m.background }) as any;
+  assertEquals(t.implementation_id, 'pp_news_static_16x9_v1');
+  assertEquals(t.provider_template_id, '48cba556-0a53-4001-90f0-05420d10efc0');
+  assertEquals(t.creative_intent, 'pp_news');
+  assertEquals(t.template_family, 'property-pulse-news');
+  assertEquals(t.template_variant, 'centred-scrim-16x9');
 });
 
 Deno.test('computePropsHash deterministic 64-hex; changes on input', async () => {

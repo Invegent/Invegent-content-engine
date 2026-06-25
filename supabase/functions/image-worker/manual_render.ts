@@ -11,8 +11,26 @@
 export const MANUAL_RENDER_MODE = 'creative_library_manual_render';
 export const MANUAL_RENDER_LABEL = 'creative_library_manual_governed_render';
 
-// Registry-pinned identity for the ONE implementation supported in Lane 3B.
-export const PP_NEWS_STATIC_16x9 = {
+// Shared SHAPE for a registry-pinned governed implementation identity. Both the proven
+// 16:9 PP implementation and the new brand-agnostic 1:1 implementation conform to this
+// one type so they cannot drift apart structurally.
+export type GovernedImpl = {
+  implementation_id: string;
+  template_name: string;
+  template_id: string;
+  template_version: string;
+  template_family: string;
+  template_variant: string;
+  creative_intent: string;
+  capability: string;
+  provider: string;
+  provider_template_id: string;
+  ice_format_key: string;
+  output_format: string;
+};
+
+// Registry-pinned identity for the proven 16:9 PP implementation (Lane 3B / B-Proof).
+export const PP_NEWS_STATIC_16x9: GovernedImpl = {
   implementation_id: 'pp_news_static_16x9_v1',
   template_name: 'PP_NEWS_CENTRED_SCRIM_16x9_v1',
   template_id: 'pp-news-centred-scrim-16x9',
@@ -25,6 +43,25 @@ export const PP_NEWS_STATIC_16x9 = {
   provider_template_id: '48cba556-0a53-4001-90f0-05420d10efc0',
   ice_format_key: 'image_quote',
   output_format: 'jpg',
+} as const;
+
+// Branch B / Lane B0: NEW brand-agnostic 1:1 governed identity. The layout is reusable —
+// brand identity (logo, background, text) arrives via the existing 8 modification inputs;
+// nothing PP-specific is baked into this identity (family/intent are generic). PP is the
+// pilot proof brand only. Provider template + output format authored/supplied by PK.
+export const NEWS_STATIC_CENTERED_SCRIM_1x1: GovernedImpl = {
+  implementation_id: 'news_static_centered_scrim_1x1_v1',
+  template_name: 'news_static_centered_scrim_1x1_v1',
+  template_id: 'news_static_centered_scrim_1x1_v1',
+  template_version: 'v1',
+  template_family: 'news-static',          // generic — NOT brand-scoped, NOT property-pulse-news
+  template_variant: 'centered-scrim-1x1',
+  creative_intent: 'news_static',          // generic — NOT pp_news
+  capability: 'static_news',
+  provider: 'creatomate',
+  provider_template_id: 'fb9820f8-3fee-4448-b324-3d500fa74b40',
+  ice_format_key: 'image_quote',
+  output_format: 'jpg',                     // Creatomate token; storage mime image/jpeg
 } as const;
 
 export type ResolvedAsset = {
@@ -89,10 +126,13 @@ export async function computePropsHash(modifications: Record<string, string>): P
 }
 
 // render_spec.template GOVERNED evidence (Lane 3B shape).
-export function buildGovernedTemplateSpec(opts: {
+// The governed implementation identity is supplied by the caller (parametrized in B0 so
+// the same builder serves both PP_NEWS_STATIC_16x9 and NEWS_STATIC_CENTERED_SCRIM_1x1);
+// the body is otherwise identical to the proven 16:9 path.
+export function buildGovernedTemplateSpec(impl: GovernedImpl, opts: {
   propsHash: string; logo: ResolvedAsset; background: ResolvedAsset;
 }): Record<string, unknown> {
-  const t = PP_NEWS_STATIC_16x9;
+  const t = impl;
   return {
     implementation_id: t.implementation_id,
     template_id: t.template_id,

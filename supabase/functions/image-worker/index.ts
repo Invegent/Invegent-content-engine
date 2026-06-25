@@ -1,3 +1,26 @@
+// image-worker v3.13.0
+// v3.13.0 (2026-06-25) — CREATIVE-LIBRARY BRANCH B / LANE B0: additive, NON-PUBLISHING
+//   support for a NEW brand-agnostic 1:1 governed implementation
+//   `news_static_centered_scrim_1x1_v1` (provider_template_id
+//   fb9820f8-3fee-4448-b324-3d500fa74b40, output jpg / image/jpeg) in the existing
+//   `creative_library_draft_proof` branch. WHAT CHANGED: (1) manual_render.ts adds a
+//   shared GovernedImpl type applied to BOTH PP_NEWS_STATIC_16x9 and the new
+//   NEWS_STATIC_CENTERED_SCRIM_1x1 constant (generic template_family='news-static',
+//   creative_intent='news_static'); (2) buildGovernedTemplateSpec is parametrized to take
+//   the impl as its first argument (body otherwise identical — still resolver_used=true,
+//   fallback_taken=false, asset_keys/asset_ids from opts); (3) the manual-render call site
+//   passes PP_NEWS_STATIC_16x9 explicitly (behaviour/output byte-identical); (4) the
+//   draft-proof branch resolves the impl by implementation_id from a 2-entry map, accepts
+//   either known id, and derives the _smoke/ storage ext+mime + a DISTINCT path suffix from
+//   impl.output_format. WHAT IS STRICTLY OUT OF SCOPE: no production/queue/publisher/advisor
+//   wiring; NO m.post_draft mutation (image_url/image_status/updated_at) — draft READ-ONLY;
+//   no change to buildManualModifications (the 8 keys stay); no new ice_format_key
+//   (render-log stays 'image_quote'); no migration, no new secret, no shared-family registry
+//   schema change; no colour modification keys; the 16:9 proof path (gate, renderScript,
+//   _smoke/branch_b_proof_${id}.jpg path, image/jpeg mime) is BYTE-UNCHANGED in behaviour;
+//   the template_smoke + creative_library_manual_render branches and ALL production loops
+//   remain byte-unchanged; B1 production consumption stays BLOCKED.
+//
 // image-worker v3.12.0
 // v3.12.0 — CREATIVE-LIBRARY BRANCH B / LANE B-PROOF: additive, NON-PUBLISHING
 //   governed-render MECHANISM proof, gated by mode='creative_library_draft_proof'.
@@ -65,10 +88,10 @@
 // v3.9.1 context: client_id resolve fix, video fallback renderer, carousel image_url write fix.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { MANUAL_RENDER_MODE, MANUAL_RENDER_LABEL, PP_NEWS_STATIC_16x9, isManualRenderRequest, mapResolvedAssets, buildManualModifications, computePropsHash, buildGovernedTemplateSpec } from './manual_render.ts';  // v3.11.0: LANE 3B
+import { MANUAL_RENDER_MODE, MANUAL_RENDER_LABEL, PP_NEWS_STATIC_16x9, NEWS_STATIC_CENTERED_SCRIM_1x1, isManualRenderRequest, mapResolvedAssets, buildManualModifications, computePropsHash, buildGovernedTemplateSpec } from './manual_render.ts';  // v3.11.0: LANE 3B; v3.13.0: + B0 1:1 impl
 import { DRAFT_PROOF_MODE, DRAFT_PROOF_LABEL, buildProofFieldsFromDraft } from './branch_b_proof.ts';  // v3.12.0: BRANCH B / LANE B-PROOF
 
-const VERSION = 'image-worker-v3.12.0';
+const VERSION = 'image-worker-v3.13.0';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -380,7 +403,7 @@ Deno.serve(async (req: Request) => {
     const modifications = buildManualModifications({ fields, logoUrl: mapped.logo.asset_url, backgroundUrl: mapped.background.asset_url });
     const renderScript = { template_id: PP_NEWS_STATIC_16x9.provider_template_id, modifications, output_format: PP_NEWS_STATIC_16x9.output_format };
     const props_hash = await computePropsHash(modifications);
-    const templateSpec = buildGovernedTemplateSpec({ propsHash: props_hash, logo: mapped.logo, background: mapped.background });
+    const templateSpec = buildGovernedTemplateSpec(PP_NEWS_STATIC_16x9, { propsHash: props_hash, logo: mapped.logo, background: mapped.background });
     const renderSpec = { label: MANUAL_RENDER_LABEL, template: templateSpec };
     const storageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: '_smoke/pp_news_centred_scrim_16x9_manual_governed.jpg', mimeType: 'image/jpeg', postDraftId: null, clientId: null, iceFormatKey: 'image_quote', renderSpec, logMustSucceed: true });
     return jsonResponse({ ok: true, mode: MANUAL_RENDER_MODE, implementation_id: implId, storage_url: storageUrl, props_hash, asset_keys: templateSpec.asset_keys, asset_ids: templateSpec.asset_ids, resolver_used: true, render_spec_label: MANUAL_RENDER_LABEL });
@@ -408,8 +431,11 @@ Deno.serve(async (req: Request) => {
     const postDraftId = body?.post_draft_id;
     const logoKey = body?.asset_keys?.logo;
     const bgKey = body?.asset_keys?.background;
-    if (clientSlug !== 'property-pulse' || implId !== PP_NEWS_STATIC_16x9.implementation_id || !postDraftId || !logoKey || !bgKey) {
-      return jsonResponse({ ok: false, error: 'creative_library_draft_proof requires client_slug=property-pulse, implementation_id=pp_news_static_16x9_v1, post_draft_id, asset_keys.logo, asset_keys.background' }, 400);
+    // B0: resolve the governed implementation identity by id from the two known impls
+    // (proven 16:9 + new brand-agnostic 1:1). Additive — the 16:9 path is unchanged.
+    const impl = { [PP_NEWS_STATIC_16x9.implementation_id]: PP_NEWS_STATIC_16x9, [NEWS_STATIC_CENTERED_SCRIM_1x1.implementation_id]: NEWS_STATIC_CENTERED_SCRIM_1x1 }[implId];
+    if (clientSlug !== 'property-pulse' || !impl || !postDraftId || !logoKey || !bgKey) {
+      return jsonResponse({ ok: false, error: 'creative_library_draft_proof requires client_slug=property-pulse, implementation_id in {pp_news_static_16x9_v1, news_static_centered_scrim_1x1_v1}, post_draft_id, asset_keys.logo, asset_keys.background' }, 400);
     }
     // Read the draft READ-ONLY (single SELECT, no mutation anywhere in this branch).
     const { data: draft, error: draftErr } = await supabase.schema('m').from('post_draft')
@@ -434,11 +460,18 @@ Deno.serve(async (req: Request) => {
     try { mapped = mapResolvedAssets(resolved as any, { logo: logoKey, background: bgKey }); }
     catch (e: any) { return jsonResponse({ ok: false, error: e?.message ?? String(e) }, 422); }
     const modifications = buildManualModifications({ fields, logoUrl: mapped.logo.asset_url, backgroundUrl: mapped.background.asset_url });
-    const renderScript = { template_id: PP_NEWS_STATIC_16x9.provider_template_id, modifications, output_format: PP_NEWS_STATIC_16x9.output_format };
+    const renderScript = { template_id: impl.provider_template_id, modifications, output_format: impl.output_format };
     const props_hash = await computePropsHash(modifications);
-    const templateSpec = buildGovernedTemplateSpec({ propsHash: props_hash, logo: mapped.logo, background: mapped.background });
+    const templateSpec = buildGovernedTemplateSpec(impl, { propsHash: props_hash, logo: mapped.logo, background: mapped.background });
     const renderSpec = { label: DRAFT_PROOF_LABEL, source_post_draft_id: postDraftId, template: templateSpec };
-    const storageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: `_smoke/branch_b_proof_${postDraftId}.jpg`, mimeType: 'image/jpeg', postDraftId, clientId: draft.client_id, iceFormatKey: 'image_quote', renderSpec, logMustSucceed: true });
+    // Storage ext + mime from the impl's output_format (jpg→jpg/image/jpeg, png→png/image/png).
+    // The proven 16:9 impl keeps its EXACT prior path `_smoke/branch_b_proof_${postDraftId}.jpg`;
+    // the new 1:1 impl gets a DISTINCT `_smoke/branch_b_proof_${postDraftId}_1x1.jpg` path.
+    const ext = impl.output_format === 'png' ? 'png' : 'jpg';
+    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+    const variantSuffix = impl.implementation_id === PP_NEWS_STATIC_16x9.implementation_id ? '' : '_1x1';
+    const storagePath = `_smoke/branch_b_proof_${postDraftId}${variantSuffix}.${ext}`;
+    const storageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath, mimeType, postDraftId, clientId: draft.client_id, iceFormatKey: 'image_quote', renderSpec, logMustSucceed: true });
     return jsonResponse({ ok: true, mode: DRAFT_PROOF_MODE, implementation_id: implId, post_draft_id: postDraftId, storage_url: storageUrl, props_hash, asset_keys: templateSpec.asset_keys, asset_ids: templateSpec.asset_ids, resolver_used: true, render_spec_label: DRAFT_PROOF_LABEL });
   }
 
