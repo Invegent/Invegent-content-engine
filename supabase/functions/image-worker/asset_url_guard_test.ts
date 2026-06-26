@@ -6,7 +6,6 @@ import {
   validateAssetUrl,
   resolveLegacyLogo,
   assertGovernedAssetReachable,
-  RenderAssetTransientError,
   type AssetVerdict,
 } from './asset_url_guard.ts';
 
@@ -104,22 +103,30 @@ Deno.test('resolveLegacyLogo: malformed → {logoUrl:null}', async () => {
   const r = await resolveLegacyLogo('not a url', new Map());
   assertEquals(r.logoUrl, null);
 });
-Deno.test('resolveLegacyLogo: 5xx → throws RenderAssetTransientError', async () => {
+// PROCEED-ON-TRANSIENT: resolveLegacyLogo NEVER throws on a transient pre-flight result —
+// it returns the ORIGINAL logo URL so the render proceeds (Creatomate is source of truth).
+Deno.test('resolveLegacyLogo: 5xx → proceeds with original URL (no throw)', async () => {
   stubStatus(503);
   try {
-    await assertRejects(() => resolveLegacyLogo('https://x/logo.png', new Map()), RenderAssetTransientError);
+    const r = await resolveLegacyLogo('https://x/logo.png', new Map());
+    assertEquals(r.logoUrl, 'https://x/logo.png');
+    assertEquals(r.fallback, 'transient_proceed');
   } finally { restore(); }
 });
-Deno.test('resolveLegacyLogo: timeout → throws RenderAssetTransientError', async () => {
+Deno.test('resolveLegacyLogo: timeout → proceeds with original URL (no throw)', async () => {
   stubAbort();
   try {
-    await assertRejects(() => resolveLegacyLogo('https://x/logo.png', new Map()), RenderAssetTransientError);
+    const r = await resolveLegacyLogo('https://x/logo.png', new Map());
+    assertEquals(r.logoUrl, 'https://x/logo.png');
+    assertEquals(r.fallback, 'transient_proceed');
   } finally { restore(); }
 });
-Deno.test('resolveLegacyLogo: network → throws RenderAssetTransientError', async () => {
+Deno.test('resolveLegacyLogo: network → proceeds with original URL (no throw)', async () => {
   stubNetworkError();
   try {
-    await assertRejects(() => resolveLegacyLogo('https://x/logo.png', new Map()), RenderAssetTransientError);
+    const r = await resolveLegacyLogo('https://x/logo.png', new Map());
+    assertEquals(r.logoUrl, 'https://x/logo.png');
+    assertEquals(r.fallback, 'transient_proceed');
   } finally { restore(); }
 });
 Deno.test('resolveLegacyLogo: memoizes — same URL fetched exactly once', async () => {

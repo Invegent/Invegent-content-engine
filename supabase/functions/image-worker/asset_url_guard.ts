@@ -6,10 +6,6 @@ export type AssetVerdict =
   | { ok: true; status: number; reason: 'ok' }
   | { ok: false; status: number | null; reason: 'broken_4xx' | 'transient_5xx' | 'timeout' | 'network' | 'malformed' };
 
-export class RenderAssetTransientError extends Error {
-  constructor(message: string) { super(message); this.name = 'RenderAssetTransientError'; }
-}
-
 // Single ranged GET (bytes=0-0) with an AbortController timeout. Classifies the URL.
 export async function validateAssetUrl(url: string, timeoutMs = 4000): Promise<AssetVerdict> {
   try { new URL(url); } catch { return { ok: false, status: null, reason: 'malformed' }; }
@@ -31,20 +27,28 @@ export async function validateAssetUrl(url: string, timeoutMs = 4000): Promise<A
   }
 }
 
-// Legacy logo resolver, per-run memoized. Returns the logo URL to use, or null to
-// trigger the EXISTING wordmark/no-logo fallback. Throws on transient so the
-// existing failure path logs + retries (never silently drops a good logo).
+// Legacy logo resolver, per-run memoized. NEVER throws. Returns the logo URL to use,
+// or null to trigger the EXISTING wordmark/no-logo fallback:
+//   - null/empty raw URL        → { logoUrl: null,    fallback: 'null_logo' }
+//   - reachable (2xx/206)       → { logoUrl: rawUrl }
+//   - definitively broken       → { logoUrl: null,    fallback: 'logo_4xx' }   (4xx/malformed → wordmark)
+//   - transient (5xx/timeout/   → { logoUrl: rawUrl,  fallback: 'transient_proceed' }
+//     network)
+// PROCEED-ON-TRANSIENT: a storage/network blip on the pre-flight ranged GET must NOT
+// fail the render early — pass the ORIGINAL logo URL through and let Creatomate be the
+// source of truth. Only a definitive 4xx/malformed drops the logo to the wordmark path.
 export async function resolveLegacyLogo(
   rawUrl: string | null | undefined,
   memo: Map<string, Promise<AssetVerdict>>,
-): Promise<{ logoUrl: string | null; fallback?: 'null_logo' | 'logo_4xx' }> {
+): Promise<{ logoUrl: string | null; fallback?: 'null_logo' | 'logo_4xx' | 'transient_proceed' }> {
   if (!rawUrl) return { logoUrl: null, fallback: 'null_logo' };
   let p = memo.get(rawUrl);
   if (!p) { p = validateAssetUrl(rawUrl); memo.set(rawUrl, p); }
   const v = await p;
   if (v.ok) return { logoUrl: rawUrl };
   if (v.reason === 'broken_4xx' || v.reason === 'malformed') return { logoUrl: null, fallback: 'logo_4xx' };
-  throw new RenderAssetTransientError(`logo_unreachable_transient:${v.reason}:${rawUrl}`);
+  // transient_5xx | timeout | network → proceed with the original URL (do NOT fail early).
+  return { logoUrl: rawUrl, fallback: 'transient_proceed' };
 }
 
 // Governed assets: fail loud, NEVER fallback.

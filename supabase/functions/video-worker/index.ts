@@ -1,5 +1,15 @@
-// video-worker v3.3.0
+// video-worker v3.3.1
 // ============================================================================
+// v3.3.1 (2026-06-26, H2 POLICY REFINEMENT — PROCEED-ON-TRANSIENT):
+//   resolveLegacyLogo() NO LONGER throws on a transient pre-flight result; the
+//   RenderAssetTransientError class is removed. A storage/network blip on the
+//   bounded ranged GET (transient_5xx | timeout | network) now returns the ORIGINAL
+//   logo URL ({ logoUrl: rawUrl, fallback: 'transient_proceed' }) so the render
+//   proceeds with the logo passed through to Creatomate (source of truth) — exactly
+//   the pre-H2 behaviour for that case. Only a DEFINITIVE 4xx/malformed still drops
+//   the logo to the wordmark/no-logo path ({ logoUrl: null }); null stays null_logo;
+//   2xx/206 stays pass-through. The per-draft try/catch is unchanged.
+//
 // v3.3.0 (2026-06-26, H2 — ASSET-URL VALIDATION BEFORE CREATOMATE):
 //   ADDITIVE. A non-null but UNREACHABLE brand logo URL previously hard-failed
 //   Creatomate; the kinetic/stat builders only drop the logo element on a NULL
@@ -10,9 +20,8 @@
 //   BEFORE the kinetic/stat spec is built; the VALIDATED logoUrl OVERRIDES b.logoUrl
 //   into buildKineticTextSpec/buildStatRevealSpec (their `if (logoUrl)` guard already
 //   drops the logo element on null → wordmark fallback). A 4xx/malformed logo →
-//   wordmark fallback; a TRANSIENT error (5xx/timeout/network) throws
-//   RenderAssetTransientError, which propagates to the EXISTING per-draft failure path
-//   (video_status='failed' + post_render_log). STRICTLY OUT OF SCOPE: NO change to the
+//   wordmark fallback; a transient result is handled per v3.3.1 above
+//   (proceed-on-transient). STRICTLY OUT OF SCOPE: NO change to the
 //   voice/TTS path, captions, music, draft selection, queue, publisher, retry, DB,
 //   p_render_engine values, or the template_smoke branch (its Logo/Background come from
 //   the request body, NOT a resolver — there is no governed resolver render path in
@@ -181,7 +190,7 @@ import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (a
 import { SMOKE_TEMPLATE_NAME, SMOKE_RENDER_SPEC_LABEL, isSmokeRequest, buildSmokeModifications, buildTemplateRenderScript, computePropsHash, buildRenderSpecTemplate, composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2
 import { resolveLegacyLogo, type AssetVerdict } from './asset_url_guard.ts';  // v3.3.0: H2 asset-URL validation before Creatomate
 
-const VERSION = 'video-worker-v3.3.0';
+const VERSION = 'video-worker-v3.3.1';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -662,9 +671,10 @@ async function processDraft(opts: {
   const fmt = draft.recommended_format;
   const vs  = draft.draft_format?.video_script;
   const brand = await getBrand(supabase, draft.client_id);
-  // v3.3.0 (H2): validate the brand logo BEFORE building the render spec; a 4xx/malformed
+  // v3.3.1 (H2): validate the brand logo BEFORE building the render spec; a 4xx/malformed
   // logo falls back to the existing wordmark/no-logo path (logoUrl=null overrides
-  // brand.logoUrl); a transient error throws into the EXISTING per-draft failure path.
+  // brand.logoUrl); a transient blip PROCEEDS with the original logo (Creatomate is source
+  // of truth — resolveLegacyLogo never throws).
   const { logoUrl } = await resolveLegacyLogo(brand.logoUrl, logoMemo);
   const b   = { ...brand, logoUrl };
 

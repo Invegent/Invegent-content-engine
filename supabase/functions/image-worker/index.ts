@@ -1,4 +1,15 @@
-// image-worker v3.15.0
+// image-worker v3.15.1
+// v3.15.1 (2026-06-26) — H2 POLICY REFINEMENT: LEGACY paths now PROCEED-ON-TRANSIENT.
+//   resolveLegacyLogo() NO LONGER throws on a transient pre-flight result; the
+//   RenderAssetTransientError class is removed. A storage/network blip on the bounded
+//   ranged GET (transient_5xx | timeout | network) now returns the ORIGINAL logo URL
+//   ({ logoUrl: rawUrl, fallback: 'transient_proceed' }) so the legacy render proceeds
+//   with the logo passed through to Creatomate (Creatomate is the source of truth) —
+//   exactly the pre-H2 behaviour for that case. Only a DEFINITIVE 4xx/malformed still
+//   drops the logo to the EXISTING wordmark/no-logo path ({ logoUrl: null }); null/empty
+//   stays null_logo; 2xx/206 stays pass-through. The per-format try/catch is unchanged
+//   (it still catches genuine render failures). GOVERNED fail-loud is UNCHANGED.
+//
 // v3.15.0 (2026-06-26) — H2: ASSET-URL VALIDATION BEFORE CREATOMATE. A non-null but
 //   UNREACHABLE logo/asset URL previously hard-failed Creatomate (the worker only
 //   wordmark-fell-back on a NULL logo). WHAT CHANGED: (1) new pure module
@@ -9,9 +20,8 @@
 //   video-fallback image_quote loop) the brand logo is validated via resolveLegacyLogo()
 //   BEFORE building, and the VALIDATED logoUrl OVERRIDES b.logoUrl in the builder spread.
 //   On a 4xx/malformed logo the legacy path falls back to the EXISTING wordmark/no-logo
-//   behaviour (logoUrl=null); a TRANSIENT error (5xx/timeout/network) throws
-//   RenderAssetTransientError, which propagates into the EXISTING per-format catch that
-//   sets image_status='failed' (no new handling). (3) For the GOVERNED paths
+//   behaviour (logoUrl=null); a transient result is handled per v3.15.1 above
+//   (proceed-on-transient). (3) For the GOVERNED paths
 //   (creative_library_manual_render, creative_library_draft_proof, and the B1 production
 //   governed image_quote branch), a fail-loud assertGovernedAssetReachable() check on the
 //   RESOLVED logo + background runs immediately BEFORE the Creatomate submit — governed
@@ -19,8 +29,7 @@
 //   502 jsonResponse; draft-proof + B1 branches surface through their existing error path).
 //   One logoMemo Map per request dedupes repeated validations. WHAT IS STRICTLY OUT OF
 //   SCOPE: NO change to render-selection / draft eligibility / the B1 PP flag/gate / queue
-//   / publisher / retry cap / DB / schema; NO migration, NO new secret; transient errors
-//   are NOT fallbacks (they propagate to the existing failure path); NO deploy in this
+//   / publisher / retry cap / DB / schema; NO migration, NO new secret; NO deploy in this
 //   change. Default legacy render output for a REACHABLE logo is byte-unchanged.
 //
 // image-worker v3.14.1
@@ -169,7 +178,7 @@ import { DRAFT_PROOF_MODE, DRAFT_PROOF_LABEL, buildProofFieldsFromDraft } from '
 import { B1_ASSET_KEYS, B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, isB1GovernedImageQuote, assertHeadlineWithinGate } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug to resolver)
 import { resolveLegacyLogo, assertGovernedAssetReachable, type AssetVerdict } from './asset_url_guard.ts';  // v3.15.0: H2 asset-URL validation before Creatomate
 
-const VERSION = 'image-worker-v3.15.0';
+const VERSION = 'image-worker-v3.15.1';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -634,9 +643,9 @@ Deno.serve(async (req: Request) => {
         continue;
       }
       const headline = (draft.image_headline ?? '').trim() || 'Insights for providers and professionals';
-      // v3.15.0 (H2): validate the legacy brand logo BEFORE building; a 4xx/malformed logo
-      // falls back to the existing wordmark/no-logo path (logoUrl=null overrides b.logoUrl),
-      // a transient error throws into the existing per-format catch (image_status='failed').
+      // v3.15.1 (H2): validate the legacy brand logo BEFORE building; a 4xx/malformed logo
+      // falls back to the existing wordmark/no-logo path (logoUrl=null overrides b.logoUrl);
+      // a transient blip PROCEEDS with the original logo (Creatomate is source of truth).
       const { logoUrl } = await resolveLegacyLogo(b.logoUrl, logoMemo);
       const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildImageQuoteScript({ headline, ...b, logoUrl }), storagePath: `${b.clientSlug}/${draft.post_draft_id}.png`, mimeType: 'image/png', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote' });
       await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
@@ -698,9 +707,9 @@ Deno.serve(async (req: Request) => {
       const { data: scope } = await supabase.rpc('exec_sql', { query: `SELECT cv.vertical_name FROM c.client_content_scope ccs JOIN t.content_vertical cv ON cv.vertical_id = ccs.vertical_id WHERE ccs.client_id = '${clientId}' AND ccs.is_primary = true LIMIT 1` });
       const vertical = (scope as any)?.[0]?.vertical_name ?? 'professional services';
       const spec = await callContentAdvisor({ anthropicKey, postBody: draft.draft_body ?? '', postTitle: draft.draft_title ?? '', clientName: b.clientName, vertical });
-      // v3.15.0 (H2): validate the legacy logo ONCE per carousel draft (before the slide
+      // v3.15.1 (H2): validate the legacy logo ONCE per carousel draft (before the slide
       // loop); the validated logoUrl overrides b.logoUrl for every slide. 4xx/malformed →
-      // wordmark fallback; transient → throws into the existing per-format catch.
+      // wordmark fallback; transient blip → proceed with the original logo.
       const { logoUrl } = await resolveLegacyLogo(b.logoUrl, logoMemo);
       const slideResults: any[] = [];
       let firstSlideUrl: string | null = null;
