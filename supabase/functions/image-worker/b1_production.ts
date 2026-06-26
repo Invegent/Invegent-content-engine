@@ -12,7 +12,15 @@
 // truncating, so the caller's existing production catch fails the draft
 // (image_status='failed') — there is NO fallback to the legacy buildImageQuoteScript for PP.
 
-// The ONLY client slug B1-v1 routes onto the governed branch. Every other slug stays legacy.
+// The Property-Pulse client_id — the RELIABLE gate identity for B1-v1. The governed branch
+// keys on this client_id (NOT a slug) because getBrandAndSlug() falls back to the client-id
+// UUID when the PostgREST c.client.client_slug read returns null, which silently sent the
+// governed branch back to legacy in production (v3.14.0 defect).
+export const B1_GOVERNED_CLIENT_ID = '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd';
+
+// The CANONICAL Property-Pulse slug passed to resolve_brand_assets + used in the storage
+// path for the governed branch. This is a fixed constant — it is NO LONGER derived from
+// getBrandAndSlug (whose slug can be the UUID fallback). Every non-PP client stays legacy.
 export const B1_GOVERNED_CLIENT_SLUG = 'property-pulse';
 
 // Fixed governed asset-key contract for B1-v1 (cut-plan decisions B + the PP pilot).
@@ -32,9 +40,14 @@ export const B1_PRODUCTION_LABEL = 'creative_library_b1_production';
 // mapResolvedAssets() consumes.
 export const B1_ASSET_KEYS = { logo: B1_LOGO_KEY, background: B1_BACKGROUND_KEY } as const;
 
-// True ONLY for the single governed B1-v1 client slug. Every other slug → false → legacy path.
-export function isB1GovernedImageQuote(clientSlug: string): boolean {
-  return clientSlug === B1_GOVERNED_CLIENT_SLUG;
+// True ONLY for the single governed B1-v1 client_id. The gate keys on client_id (NOT slug)
+// because getBrandAndSlug() can fall back to the client-id UUID when the c.client.client_slug
+// read returns null — gating on the slug then yielded false and silently routed PP back to
+// legacy. client_id is the reliable identity; the canonical slug (B1_GOVERNED_CLIENT_SLUG) is
+// passed to the resolver/path explicitly, never derived from getBrandAndSlug. Every other
+// client_id → false → legacy path.
+export function isB1GovernedImageQuote(clientId: string): boolean {
+  return clientId === B1_GOVERNED_CLIENT_ID;
 }
 
 // Minimal headline-length hard-gate. Trims; throws (fail loud) BEFORE any Creatomate /

@@ -1,3 +1,26 @@
+// image-worker v3.14.1
+// v3.14.1 (2026-06-26) — CREATIVE-LIBRARY BRANCH B / LANE B1-v1 FIX-FORWARD: the v3.14.0
+//   governed image_quote branch never fired in production. WHAT CHANGED: the PP gate now
+//   keys on the loop's resolved client_id (the reliable PP identity 4036a6b5-…) instead of
+//   b.clientSlug. Root cause: getBrandAndSlug() falls back to the client-id UUID when the
+//   PostgREST c.client.client_slug read returns null, so isB1GovernedImageQuote(UUID) was
+//   false and PP silently rendered on the legacy buildImageQuoteScript path. The fix:
+//   (1) b1_production.ts adds B1_GOVERNED_CLIENT_ID='4036a6b5-b4a3-406e-998d-c2fe14a8bbdd'
+//   and changes isB1GovernedImageQuote() to gate on client_id; (2) inside the governed
+//   branch, resolve_brand_assets and the storage path use the CANONICAL slug constant
+//   B1_GOVERNED_CLIENT_SLUG='property-pulse' (NEVER b.clientSlug, which can be the UUID
+//   fallback) — so the resolver always receives 'property-pulse' and the path is always
+//   property-pulse/<draft>.jpg. renderUploadAndLog still passes the real clientId so
+//   render_log.client_id records the canonical PP identity; render_spec stays governed
+//   (label creative_library_b1_production, NEWS_STATIC_CENTERED_SCRIM_1x1 →
+//   fb9820f8-3fee-4448-b324-3d500fa74b40, resolver_used=true, fallback_taken=false). WHAT IS
+//   STRICTLY OUT OF SCOPE: behaviour of v3.14.0 is otherwise unchanged — non-PP image_quote
+//   stays BYTE-UNCHANGED legacy; governed-only fail-loud for PP unchanged (no legacy
+//   fallback); NO change to video/avatar/carousel/animated/text formats, queue logic,
+//   publisher logic, manual-render + _smoke/ proof + 16:9 paths, legacy templates, dashboard,
+//   or DB/schema; NO migration, NO new secret, NO new ice_format_key (stays 'image_quote');
+//   NO AI rewrite / alternate-template / background rotation / multi-brand / Advisor.
+//
 // image-worker v3.14.0
 // v3.14.0 (2026-06-26) — CREATIVE-LIBRARY BRANCH B / LANE B1-v1: smallest-safe PRODUCTION
 //   slice — a Property-Pulse-ONLY governed branch INSIDE the EXISTING production
@@ -118,9 +141,9 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { MANUAL_RENDER_MODE, MANUAL_RENDER_LABEL, PP_NEWS_STATIC_16x9, NEWS_STATIC_CENTERED_SCRIM_1x1, isManualRenderRequest, mapResolvedAssets, buildManualModifications, computePropsHash, buildGovernedTemplateSpec } from './manual_render.ts';  // v3.11.0: LANE 3B; v3.13.0: + B0 1:1 impl
 import { DRAFT_PROOF_MODE, DRAFT_PROOF_LABEL, buildProofFieldsFromDraft } from './branch_b_proof.ts';  // v3.12.0: BRANCH B / LANE B-PROOF
-import { B1_ASSET_KEYS, B1_PRODUCTION_LABEL, isB1GovernedImageQuote, assertHeadlineWithinGate } from './b1_production.ts';  // v3.14.0: BRANCH B / LANE B1-v1 (PP-only governed image_quote)
+import { B1_ASSET_KEYS, B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, isB1GovernedImageQuote, assertHeadlineWithinGate } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug to resolver)
 
-const VERSION = 'image-worker-v3.14.0';
+const VERSION = 'image-worker-v3.14.1';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -531,14 +554,19 @@ Deno.serve(async (req: Request) => {
       if (!clientId) { results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'skipped', reason: 'client_id_unresolvable' }); continue; }
       if (!(await isImageEnabled(clientId))) { await supabase.schema('m').from('post_draft').update({ image_status: 'skipped', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'skipped' }); continue; }
       const b = await getBrandAndSlug(clientId);
-      // ── v3.14.0 BRANCH B / LANE B1-v1: Property-Pulse-ONLY governed image_quote branch.
-      // Runs INSIDE this existing try/catch, so any failure (headline gate / resolver /
-      // render) hits the EXISTING production failure path → image_status='failed'. There is
-      // NO fallback to the legacy buildImageQuoteScript for PP — governed-only, fail-loud.
-      // Every non-PP client falls through to the byte-unchanged legacy path below.
-      if (isB1GovernedImageQuote(b.clientSlug)) {
+      // ── v3.14.1 BRANCH B / LANE B1-v1: Property-Pulse-ONLY governed image_quote branch.
+      // The gate keys on the loop's resolved clientId (the RELIABLE PP identity), NOT
+      // b.clientSlug — getBrandAndSlug falls back to the client-id UUID when c.client.client_slug
+      // is null, which made the v3.14.0 slug gate false and silently routed PP back to legacy.
+      // Inside the branch, resolve_brand_assets + the storage path use the CANONICAL slug
+      // constant B1_GOVERNED_CLIENT_SLUG, never b.clientSlug. Runs INSIDE this existing
+      // try/catch, so any failure (headline gate / resolver / render) hits the EXISTING
+      // production failure path → image_status='failed'. There is NO fallback to the legacy
+      // buildImageQuoteScript for PP — governed-only, fail-loud. Every non-PP client falls
+      // through to the byte-unchanged legacy path below.
+      if (isB1GovernedImageQuote(clientId)) {
         assertHeadlineWithinGate(draft.image_headline);  // minimal hard-gate, BEFORE any resolver/Creatomate call
-        const { data: resolved, error: resolveErr } = await supabase.rpc('resolve_brand_assets', { p_client_slug: b.clientSlug, p_asset_keys: [B1_ASSET_KEYS.logo, B1_ASSET_KEYS.background] });
+        const { data: resolved, error: resolveErr } = await supabase.rpc('resolve_brand_assets', { p_client_slug: B1_GOVERNED_CLIENT_SLUG, p_asset_keys: [B1_ASSET_KEYS.logo, B1_ASSET_KEYS.background] });
         if (resolveErr) throw new Error(`b1 resolver_failed: ${resolveErr.message}`);
         const mapped = mapResolvedAssets(resolved as any, B1_ASSET_KEYS);  // throws on shortfall — governed-only
         const fields = buildProofFieldsFromDraft({ image_headline: draft.image_headline, client_id: clientId, recommended_format: 'image_quote' });
@@ -547,7 +575,7 @@ Deno.serve(async (req: Request) => {
         const templateSpec = buildGovernedTemplateSpec(NEWS_STATIC_CENTERED_SCRIM_1x1, { propsHash: props_hash, logo: mapped.logo, background: mapped.background });
         const renderScript = { template_id: NEWS_STATIC_CENTERED_SCRIM_1x1.provider_template_id, modifications, output_format: NEWS_STATIC_CENTERED_SCRIM_1x1.output_format };
         const renderSpec = { label: B1_PRODUCTION_LABEL, template: templateSpec };
-        const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: `${b.clientSlug}/${draft.post_draft_id}.jpg`, mimeType: 'image/jpeg', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote', renderSpec });
+        const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: `${B1_GOVERNED_CLIENT_SLUG}/${draft.post_draft_id}.jpg`, mimeType: 'image/jpeg', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote', renderSpec });
         await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
         results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'generated', image_url: imageUrl, governed: true });
         continue;

@@ -7,8 +7,8 @@
 
 import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import {
-  B1_GOVERNED_CLIENT_SLUG, B1_LOGO_KEY, B1_BACKGROUND_KEY, B1_HEADLINE_MAX_CHARS,
-  B1_PRODUCTION_LABEL, B1_ASSET_KEYS,
+  B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, B1_LOGO_KEY, B1_BACKGROUND_KEY,
+  B1_HEADLINE_MAX_CHARS, B1_PRODUCTION_LABEL, B1_ASSET_KEYS,
   isB1GovernedImageQuote, assertHeadlineWithinGate,
 } from './b1_production.ts';
 import {
@@ -18,14 +18,32 @@ import {
 const LOGO = { client_slug:'property-pulse', client_id:'4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', asset_id:'b7530c55-c320-43be-90d9-98c804694921', asset_key:'pp_logo_primary', asset_type:'logo_primary', asset_name:'Property Pulse primary logo', asset_url:'https://ex/logo.png', bucket:'brand-assets', source_path:'Property_Pulse/Logos/PP_logo_2.png', usage:'logo', location:null, approved:true, is_active:true };
 const BG = { client_slug:'property-pulse', client_id:'4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', asset_id:'f9caed52-0859-4e22-91f6-7dc998485d77', asset_key:'bg_perth_cbd', asset_type:'other', asset_name:'Perth CBD suburbs background', asset_url:'https://ex/bg.jpg', bucket:'brand-assets', source_path:'Property_Pulse/Backgrounds/Perth_CBD_Suburbs.jpg', usage:'background', location:'Perth', approved:true, is_active:true };
 
-// (1) PP chooses the governed branch.
-Deno.test('B1-1: isB1GovernedImageQuote(property-pulse) === true', () => {
-  assert(isB1GovernedImageQuote('property-pulse'));
+// (1) PP client_id fires the governed branch (the gate keys on client_id, NOT slug).
+Deno.test('B1-1: isB1GovernedImageQuote(B1_GOVERNED_CLIENT_ID) === true', () => {
+  assert(isB1GovernedImageQuote(B1_GOVERNED_CLIENT_ID));
+  assertEquals(B1_GOVERNED_CLIENT_ID, '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd');
+});
+
+// (2) UUID-fallback regression: the gate is client_id-based, so it fires on the PP client_id
+// REGARDLESS of what slug getBrandAndSlug returns. The v3.14.0 defect was gating on the slug,
+// which getBrandAndSlug returns as the client-id UUID when c.client.client_slug is null — that
+// made the slug gate false. Now the loop passes the resolved client_id straight to the gate, so
+// a UUID-as-slug from getBrandAndSlug can no longer affect routing: the SAME PP client_id value
+// is exactly what the gate matches. We assert the gate fires on the client_id and that the
+// (now unused-for-gating) slug constant is the canonical slug, not the UUID.
+Deno.test('B1-2: client_id gate is immune to the getBrandAndSlug UUID-slug fallback', () => {
+  // The loop calls isB1GovernedImageQuote(clientId) — clientId is the PP client_id.
+  assert(isB1GovernedImageQuote(B1_GOVERNED_CLIENT_ID));
+  // The canonical slug constant (passed to the resolver/path) is the slug, never the UUID.
+  assert((B1_GOVERNED_CLIENT_SLUG as string) !== (B1_GOVERNED_CLIENT_ID as string));
   assertEquals(B1_GOVERNED_CLIENT_SLUG, 'property-pulse');
 });
 
-// (2)+(3) the fixed governed asset-key contract.
-Deno.test('B1-2/3: B1_ASSET_KEYS pins pp_logo_primary + bg_perth_cbd', () => {
+// (3) Resolver receives 'property-pulse' (the canonical slug constant the governed branch
+// passes to resolve_brand_assets), not a UUID; client_id is the gate identity.
+Deno.test('B1-3: governed branch sends canonical slug to resolver; asset contract pinned', () => {
+  assertEquals(B1_GOVERNED_CLIENT_SLUG, 'property-pulse');
+  assertEquals(B1_GOVERNED_CLIENT_ID, '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd');
   assertEquals(B1_ASSET_KEYS.logo, 'pp_logo_primary');
   assertEquals(B1_ASSET_KEYS.background, 'bg_perth_cbd');
   assertEquals(B1_LOGO_KEY, 'pp_logo_primary');
@@ -33,13 +51,15 @@ Deno.test('B1-2/3: B1_ASSET_KEYS pins pp_logo_primary + bg_perth_cbd', () => {
   assertEquals(B1_PRODUCTION_LABEL, 'creative_library_b1_production');
 });
 
-// (4) non-PP stays legacy.
-Deno.test('B1-4: non-PP slugs stay legacy (governed gate === false)', () => {
+// (4) non-PP stays legacy, and a slug string is NOT the client_id → does not trigger governed
+// (proves the gate is id-based, not slug-based).
+Deno.test('B1-4: non-PP client_ids stay legacy; slug strings never trigger the gate', () => {
+  assert(!isB1GovernedImageQuote('11111111-2222-3333-4444-555555555555')); // some other client UUID
+  assert(!isB1GovernedImageQuote('property-pulse')); // a slug string is NOT the client_id
   assert(!isB1GovernedImageQuote('ndis'));
   assert(!isB1GovernedImageQuote('invegent'));
-  assert(!isB1GovernedImageQuote('property-pulse-v2'));
   assert(!isB1GovernedImageQuote(''));
-  assert(!isB1GovernedImageQuote('Property-Pulse')); // case-sensitive — only the exact slug routes
+  assert(!isB1GovernedImageQuote('4036A6B5-B4A3-406E-998D-C2FE14A8BBDD')); // case-sensitive — only the exact id
 });
 
 // (5) minimal headline-length hard-gate: long throws BEFORE any Creatomate call; short passes; blank throws.
