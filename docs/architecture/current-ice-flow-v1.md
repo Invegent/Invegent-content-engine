@@ -1,5 +1,15 @@
 # Current ICE Architecture / Operator Flow — v1 snapshot
 
+> **⚠️ SUPERSEDED 2026-06-26 by [`current-ice-flow-v2.md`](./current-ice-flow-v2.md).** v2
+> corrects the B0 status (now **PROVEN proof-only / `_smoke/` only / zero production leakage**,
+> not "planned / Creatomate-blocked"), records **B1-v1** as a committed-off-tree `carry_deferred`
+> (`branch-b-lane-b1-v1` `00b48b1`, not merged/deployed/proved), removes the stale B0→B1
+> Creatomate edge, refreshes anchors to **CE `b855ced` / dashboard `53cb569`**, fixes the L3
+> legacy demand-grid labelling (`platform_format_mix_default` is a **table**, not a function),
+> and adds the layered **L0–L8** map with an embedded legend — backed by the `db-rls-auditor`
+> **PASS 8/8 (2026-06-26)**. This v1 file is retained as the historical first snapshot; the
+> B0/B1 labels below are **stale** — read v2.
+
 > **What this is:** a point-in-time, evidence-grounded snapshot of the ICE content-production
 > spine, produced by the read-only `ice-architecture-cartographer` subagent (Proving Run #1)
 > and reconciled by the orchestrator against git. **Generated, not hand-drawn.**
