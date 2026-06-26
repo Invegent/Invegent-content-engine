@@ -1,3 +1,28 @@
+// image-worker v3.15.0
+// v3.15.0 (2026-06-26) — H2: ASSET-URL VALIDATION BEFORE CREATOMATE. A non-null but
+//   UNREACHABLE logo/asset URL previously hard-failed Creatomate (the worker only
+//   wordmark-fell-back on a NULL logo). WHAT CHANGED: (1) new pure module
+//   ./asset_url_guard.ts (single bounded ranged GET, no DB/secret/side-effect) that
+//   classifies a URL ok / broken_4xx / transient_5xx / timeout / network / malformed;
+//   (2) for EACH LEGACY logo build site (image_quote, animated_text_reveal,
+//   animated_data, carousel — resolved ONCE per draft before the slide loop — and the
+//   video-fallback image_quote loop) the brand logo is validated via resolveLegacyLogo()
+//   BEFORE building, and the VALIDATED logoUrl OVERRIDES b.logoUrl in the builder spread.
+//   On a 4xx/malformed logo the legacy path falls back to the EXISTING wordmark/no-logo
+//   behaviour (logoUrl=null); a TRANSIENT error (5xx/timeout/network) throws
+//   RenderAssetTransientError, which propagates into the EXISTING per-format catch that
+//   sets image_status='failed' (no new handling). (3) For the GOVERNED paths
+//   (creative_library_manual_render, creative_library_draft_proof, and the B1 production
+//   governed image_quote branch), a fail-loud assertGovernedAssetReachable() check on the
+//   RESOLVED logo + background runs immediately BEFORE the Creatomate submit — governed
+//   assets NEVER fall back; an unreachable governed asset throws (manual branch returns a
+//   502 jsonResponse; draft-proof + B1 branches surface through their existing error path).
+//   One logoMemo Map per request dedupes repeated validations. WHAT IS STRICTLY OUT OF
+//   SCOPE: NO change to render-selection / draft eligibility / the B1 PP flag/gate / queue
+//   / publisher / retry cap / DB / schema; NO migration, NO new secret; transient errors
+//   are NOT fallbacks (they propagate to the existing failure path); NO deploy in this
+//   change. Default legacy render output for a REACHABLE logo is byte-unchanged.
+//
 // image-worker v3.14.1
 // v3.14.1 (2026-06-26) — CREATIVE-LIBRARY BRANCH B / LANE B1-v1 FIX-FORWARD: the v3.14.0
 //   governed image_quote branch never fired in production. WHAT CHANGED: the PP gate now
@@ -142,8 +167,9 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { MANUAL_RENDER_MODE, MANUAL_RENDER_LABEL, PP_NEWS_STATIC_16x9, NEWS_STATIC_CENTERED_SCRIM_1x1, isManualRenderRequest, mapResolvedAssets, buildManualModifications, computePropsHash, buildGovernedTemplateSpec } from './manual_render.ts';  // v3.11.0: LANE 3B; v3.13.0: + B0 1:1 impl
 import { DRAFT_PROOF_MODE, DRAFT_PROOF_LABEL, buildProofFieldsFromDraft } from './branch_b_proof.ts';  // v3.12.0: BRANCH B / LANE B-PROOF
 import { B1_ASSET_KEYS, B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, isB1GovernedImageQuote, assertHeadlineWithinGate } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug to resolver)
+import { resolveLegacyLogo, assertGovernedAssetReachable, type AssetVerdict } from './asset_url_guard.ts';  // v3.15.0: H2 asset-URL validation before Creatomate
 
-const VERSION = 'image-worker-v3.14.1';
+const VERSION = 'image-worker-v3.15.0';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -457,6 +483,15 @@ Deno.serve(async (req: Request) => {
     const props_hash = await computePropsHash(modifications);
     const templateSpec = buildGovernedTemplateSpec(PP_NEWS_STATIC_16x9, { propsHash: props_hash, logo: mapped.logo, background: mapped.background });
     const renderSpec = { label: MANUAL_RENDER_LABEL, template: templateSpec };
+    // v3.15.0 (H2): governed assets are fail-loud — verify the RESOLVED logo + background
+    // are reachable BEFORE the Creatomate submit. NO fallback (governed); unreachable → 502.
+    const manualMemo = new Map<string, Promise<AssetVerdict>>();
+    try {
+      await assertGovernedAssetReachable('logo', mapped.logo.asset_url, manualMemo);
+      await assertGovernedAssetReachable('background', mapped.background.asset_url, manualMemo);
+    } catch (e: any) {
+      return jsonResponse({ ok: false, error: e?.message ?? String(e) }, 502);
+    }
     const storageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: '_smoke/pp_news_centred_scrim_16x9_manual_governed.jpg', mimeType: 'image/jpeg', postDraftId: null, clientId: null, iceFormatKey: 'image_quote', renderSpec, logMustSucceed: true });
     return jsonResponse({ ok: true, mode: MANUAL_RENDER_MODE, implementation_id: implId, storage_url: storageUrl, props_hash, asset_keys: templateSpec.asset_keys, asset_ids: templateSpec.asset_ids, resolver_used: true, render_spec_label: MANUAL_RENDER_LABEL });
   }
@@ -516,6 +551,15 @@ Deno.serve(async (req: Request) => {
     const props_hash = await computePropsHash(modifications);
     const templateSpec = buildGovernedTemplateSpec(impl, { propsHash: props_hash, logo: mapped.logo, background: mapped.background });
     const renderSpec = { label: DRAFT_PROOF_LABEL, source_post_draft_id: postDraftId, template: templateSpec };
+    // v3.15.0 (H2): governed assets are fail-loud — verify the RESOLVED logo + background
+    // are reachable BEFORE the Creatomate submit. NO fallback (governed); unreachable → 502.
+    const draftProofMemo = new Map<string, Promise<AssetVerdict>>();
+    try {
+      await assertGovernedAssetReachable('logo', mapped.logo.asset_url, draftProofMemo);
+      await assertGovernedAssetReachable('background', mapped.background.asset_url, draftProofMemo);
+    } catch (e: any) {
+      return jsonResponse({ ok: false, error: e?.message ?? String(e) }, 502);
+    }
     // Storage ext + mime from the impl's output_format (jpg→jpg/image/jpeg, png→png/image/png).
     // The proven 16:9 impl keeps its EXACT prior path `_smoke/branch_b_proof_${postDraftId}.jpg`;
     // the new 1:1 impl gets a DISTINCT `_smoke/branch_b_proof_${postDraftId}_1x1.jpg` path.
@@ -529,6 +573,10 @@ Deno.serve(async (req: Request) => {
 
   const supabase = getServiceClient();
   const results: any[] = [];
+  // v3.15.0 (H2): ONE asset-URL validation memo per request, shared across every legacy
+  // logo resolution + every governed reachability check below (a logo URL is validated at
+  // most once per request even when many drafts share the same brand logo).
+  const logoMemo = new Map<string, Promise<AssetVerdict>>();
 
   async function getBrandAndSlug(clientId: string) {
     const { data: brand } = await supabase.schema('c').from('client_brand_profile').select('brand_colour_primary,brand_colour_secondary,brand_logo_url,brand_name').eq('client_id', clientId).limit(1).maybeSingle();
@@ -575,13 +623,22 @@ Deno.serve(async (req: Request) => {
         const templateSpec = buildGovernedTemplateSpec(NEWS_STATIC_CENTERED_SCRIM_1x1, { propsHash: props_hash, logo: mapped.logo, background: mapped.background });
         const renderScript = { template_id: NEWS_STATIC_CENTERED_SCRIM_1x1.provider_template_id, modifications, output_format: NEWS_STATIC_CENTERED_SCRIM_1x1.output_format };
         const renderSpec = { label: B1_PRODUCTION_LABEL, template: templateSpec };
+        // v3.15.0 (H2): governed assets are fail-loud — verify the RESOLVED logo + background
+        // are reachable BEFORE the Creatomate submit. NO fallback (governed). A throw here hits
+        // the EXISTING per-draft catch → image_status='failed'. Does NOT touch the B1 gate.
+        await assertGovernedAssetReachable('logo', mapped.logo.asset_url, logoMemo);
+        await assertGovernedAssetReachable('background', mapped.background.asset_url, logoMemo);
         const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: `${B1_GOVERNED_CLIENT_SLUG}/${draft.post_draft_id}.jpg`, mimeType: 'image/jpeg', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote', renderSpec });
         await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
         results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'generated', image_url: imageUrl, governed: true });
         continue;
       }
       const headline = (draft.image_headline ?? '').trim() || 'Insights for providers and professionals';
-      const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildImageQuoteScript({ headline, ...b }), storagePath: `${b.clientSlug}/${draft.post_draft_id}.png`, mimeType: 'image/png', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote' });
+      // v3.15.0 (H2): validate the legacy brand logo BEFORE building; a 4xx/malformed logo
+      // falls back to the existing wordmark/no-logo path (logoUrl=null overrides b.logoUrl),
+      // a transient error throws into the existing per-format catch (image_status='failed').
+      const { logoUrl } = await resolveLegacyLogo(b.logoUrl, logoMemo);
+      const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildImageQuoteScript({ headline, ...b, logoUrl }), storagePath: `${b.clientSlug}/${draft.post_draft_id}.png`, mimeType: 'image/png', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote' });
       await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
       results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'generated', image_url: imageUrl });
     } catch (e: any) { const msg = (e?.message ?? String(e)).slice(0, 2000); await supabase.schema('m').from('post_draft').update({ image_status: 'failed', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'failed', error: msg }); }
@@ -596,7 +653,8 @@ Deno.serve(async (req: Request) => {
       if (!(await isImageEnabled(clientId))) { await supabase.schema('m').from('post_draft').update({ image_status: 'skipped', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'animated_text_reveal', status: 'skipped' }); continue; }
       const b = await getBrandAndSlug(clientId);
       const headline = (draft.image_headline ?? '').trim() || 'Insights for providers and professionals';
-      const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildAnimatedTextRevealScript({ headline, ...b }), storagePath: `${b.clientSlug}/${draft.post_draft_id}.gif`, mimeType: 'image/gif', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'animated_text_reveal' });
+      const { logoUrl } = await resolveLegacyLogo(b.logoUrl, logoMemo);  // v3.15.0 (H2)
+      const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildAnimatedTextRevealScript({ headline, ...b, logoUrl }), storagePath: `${b.clientSlug}/${draft.post_draft_id}.gif`, mimeType: 'image/gif', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'animated_text_reveal' });
       await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
       results.push({ post_draft_id: draft.post_draft_id, format: 'animated_text_reveal', status: 'generated', image_url: imageUrl });
     } catch (e: any) { const msg = (e?.message ?? String(e)).slice(0, 2000); await supabase.schema('m').from('post_draft').update({ image_status: 'failed', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'animated_text_reveal', status: 'failed', error: msg }); }
@@ -611,7 +669,8 @@ Deno.serve(async (req: Request) => {
       if (!(await isImageEnabled(clientId))) { await supabase.schema('m').from('post_draft').update({ image_status: 'skipped', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'animated_data', status: 'skipped' }); continue; }
       const b = await getBrandAndSlug(clientId);
       const spec = await extractStatSpec({ anthropicKey, postBody: draft.draft_body ?? '', imageHeadline: draft.image_headline ?? '', clientName: b.clientName });
-      const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildAnimatedDataScript({ statValue: spec.stat_value, statLabel: spec.stat_label, contextLine: spec.context_line, ...b }), storagePath: `${b.clientSlug}/${draft.post_draft_id}.gif`, mimeType: 'image/gif', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'animated_data' });
+      const { logoUrl } = await resolveLegacyLogo(b.logoUrl, logoMemo);  // v3.15.0 (H2)
+      const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildAnimatedDataScript({ statValue: spec.stat_value, statLabel: spec.stat_label, contextLine: spec.context_line, ...b, logoUrl }), storagePath: `${b.clientSlug}/${draft.post_draft_id}.gif`, mimeType: 'image/gif', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'animated_data' });
       await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
       results.push({ post_draft_id: draft.post_draft_id, format: 'animated_data', status: 'generated', stat_value: spec.stat_value, image_url: imageUrl });
     } catch (e: any) { const msg = (e?.message ?? String(e)).slice(0, 2000); await supabase.schema('m').from('post_draft').update({ image_status: 'failed', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'animated_data', status: 'failed', error: msg }); }
@@ -639,6 +698,10 @@ Deno.serve(async (req: Request) => {
       const { data: scope } = await supabase.rpc('exec_sql', { query: `SELECT cv.vertical_name FROM c.client_content_scope ccs JOIN t.content_vertical cv ON cv.vertical_id = ccs.vertical_id WHERE ccs.client_id = '${clientId}' AND ccs.is_primary = true LIMIT 1` });
       const vertical = (scope as any)?.[0]?.vertical_name ?? 'professional services';
       const spec = await callContentAdvisor({ anthropicKey, postBody: draft.draft_body ?? '', postTitle: draft.draft_title ?? '', clientName: b.clientName, vertical });
+      // v3.15.0 (H2): validate the legacy logo ONCE per carousel draft (before the slide
+      // loop); the validated logoUrl overrides b.logoUrl for every slide. 4xx/malformed →
+      // wordmark fallback; transient → throws into the existing per-format catch.
+      const { logoUrl } = await resolveLegacyLogo(b.logoUrl, logoMemo);
       const slideResults: any[] = [];
       let firstSlideUrl: string | null = null;
       for (let i = 0; i < spec.slides.length; i++) {
@@ -647,7 +710,7 @@ Deno.serve(async (req: Request) => {
           await supabase.rpc('upsert_carousel_slide', { p_post_draft_id: draft.post_draft_id, p_slide_index: slideIndex, p_slide_type: slide.type, p_headline: slide.headline, p_sub_text: slide.sub_text ?? null, p_image_url: null, p_image_status: 'pending', p_render_id: null });
           const { data: slideRow } = await supabase.rpc('exec_sql', { query: `SELECT slide_id FROM m.post_carousel_slide WHERE post_draft_id = '${draft.post_draft_id}' AND slide_index = ${slideIndex} LIMIT 1` });
           const slideId: string | null = (slideRow as any)?.[0]?.slide_id ?? null;
-          const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildCarouselSlideScript({ slide, slideIndex, totalSlides: spec.slides.length, ...b }), storagePath: `${b.clientSlug}/${draft.post_draft_id}/slide_${slideIndex}.png`, mimeType: 'image/png', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'carousel', slideId });
+          const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildCarouselSlideScript({ slide, slideIndex, totalSlides: spec.slides.length, ...b, logoUrl }), storagePath: `${b.clientSlug}/${draft.post_draft_id}/slide_${slideIndex}.png`, mimeType: 'image/png', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'carousel', slideId });
           if (!firstSlideUrl) firstSlideUrl = imageUrl;
           await supabase.rpc('upsert_carousel_slide', { p_post_draft_id: draft.post_draft_id, p_slide_index: slideIndex, p_slide_type: slide.type, p_headline: slide.headline, p_sub_text: slide.sub_text ?? null, p_image_url: imageUrl, p_image_status: 'generated', p_render_id: '' });
           slideResults.push({ slide_index: slideIndex, type: slide.type, status: 'generated' });
@@ -685,9 +748,10 @@ Deno.serve(async (req: Request) => {
       }
       const b = await getBrandAndSlug(clientId);
       const headline = (draft.image_headline ?? '').trim() || 'Insights for providers and professionals';
+      const { logoUrl } = await resolveLegacyLogo(b.logoUrl, logoMemo);  // v3.15.0 (H2)
       const imageUrl = await renderUploadAndLog({
         supabase, creatomateKey,
-        renderScript: buildImageQuoteScript({ headline, ...b }),
+        renderScript: buildImageQuoteScript({ headline, ...b, logoUrl }),
         storagePath: `${b.clientSlug}/${draft.post_draft_id}.png`,
         mimeType: 'image/png',
         postDraftId: draft.post_draft_id,
