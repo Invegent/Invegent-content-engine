@@ -8,8 +8,8 @@
 import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import {
   B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, B1_LOGO_KEY, B1_BACKGROUND_KEY,
-  B1_HEADLINE_MAX_CHARS, B1_PRODUCTION_LABEL, B1_ASSET_KEYS,
-  isB1GovernedImageQuote, assertHeadlineWithinGate,
+  B1_BACKGROUND_KEYS, B1_HEADLINE_MAX_CHARS, B1_PRODUCTION_LABEL, B1_ASSET_KEYS,
+  isB1GovernedImageQuote, assertHeadlineWithinGate, selectB1BackgroundKey,
 } from './b1_production.ts';
 import {
   NEWS_STATIC_CENTERED_SCRIM_1x1, mapResolvedAssets, buildGovernedTemplateSpec,
@@ -90,6 +90,64 @@ Deno.test('B1-6: resolver shortfall throws (no legacy fallback)', () => {
   assertThrows(() => mapResolvedAssets([LOGO], B1_ASSET_KEYS), Error, 'expected exactly 2 resolved assets, got 1');
   // wrong-key shortfall (2 rows but missing the background key) also throws.
   assertThrows(() => mapResolvedAssets([LOGO, { ...LOGO, asset_id: 'dup', asset_key: 'pp_logo_secondary' }], B1_ASSET_KEYS), Error);
+});
+
+// ── B1-v2: deterministic background rotation (selectB1BackgroundKey) ─────────────
+// A small fixed set of UUID-shaped sample ids used across the rotation tests.
+const SAMPLE_IDS = [
+  '11111111-1111-4111-8111-111111111111',
+  '22222222-2222-4222-8222-222222222222',
+  '33333333-3333-4333-8333-333333333333',
+  '44444444-4444-4444-8444-000000000000',
+  'edf01c52-0000-4000-8000-000000000000',
+  'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+];
+
+// (v2-1) Determinism: the SAME id yields the SAME key across many repeated calls.
+Deno.test('B1-v2-1: selectB1BackgroundKey is deterministic (same id → same key, repeated)', () => {
+  for (const id of SAMPLE_IDS) {
+    const first = selectB1BackgroundKey(id);
+    for (let i = 0; i < 1000; i++) {
+      assertEquals(selectB1BackgroundKey(id), first);
+    }
+  }
+});
+
+// (v2-2) Membership: output is ALWAYS one of the 3 governed background keys.
+Deno.test('B1-v2-2: selectB1BackgroundKey output is always a member of B1_BACKGROUND_KEYS', () => {
+  assertEquals(B1_BACKGROUND_KEYS as readonly string[], ['bg_perth_cbd', 'bg_brisbane_cbd', 'bg_sydney_cbd']);
+  for (let i = 0; i < 2000; i++) {
+    const id = `id-${i}-${(i * 2654435761 >>> 0).toString(16)}-${i}`;
+    assert((B1_BACKGROUND_KEYS as readonly string[]).includes(selectB1BackgroundKey(id)));
+  }
+});
+
+// (v2-3) Distribution coverage: over ≥300 distinct ids, every one of the 3 keys appears.
+Deno.test('B1-v2-3: selectB1BackgroundKey covers all 3 keys over ≥300 distinct ids', () => {
+  const seen = new Set<string>();
+  for (let i = 0; i < 500; i++) {
+    seen.add(selectB1BackgroundKey(`distinct-${i}-${(i * 40503 >>> 0).toString(16)}`));
+  }
+  assertEquals(seen.size, 3);
+  for (const k of B1_BACKGROUND_KEYS) assert(seen.has(k), `expected key ${k} to be selected at least once`);
+});
+
+// (v2-4) Stability pins: fixed UUID literals locked to their COMPUTED key. These cover
+// all 3 keys and lock the FNV-1a hash against accidental change. If the hash, the key
+// order, or the modulo ever changes, these break.
+Deno.test('B1-v2-4: selectB1BackgroundKey stability pins (locks the FNV-1a hash)', () => {
+  assertEquals(selectB1BackgroundKey('11111111-1111-4111-8111-111111111111'), 'bg_brisbane_cbd');
+  assertEquals(selectB1BackgroundKey('22222222-2222-4222-8222-222222222222'), 'bg_sydney_cbd');
+  assertEquals(selectB1BackgroundKey('44444444-4444-4444-8444-000000000000'), 'bg_perth_cbd');
+});
+
+// (v2-5) Back-compat: the v1 fixed default constant remains index 0 of the rotation set.
+Deno.test('B1-v2-5: B1_BACKGROUND_KEY stays bg_perth_cbd (rotation-set index 0); logo key fixed', () => {
+  assertEquals(B1_BACKGROUND_KEY, 'bg_perth_cbd');
+  assertEquals(B1_BACKGROUND_KEYS[0], 'bg_perth_cbd');
+  assertEquals(B1_LOGO_KEY, 'pp_logo_primary');
+  // B1_ASSET_KEYS still pins the v1 default background (back-compat surface unchanged).
+  assertEquals(B1_ASSET_KEYS.background, 'bg_perth_cbd');
 });
 
 // Governed evidence shape for B1: the 1:1 impl carries the proven provider_template_id and

@@ -1,3 +1,18 @@
+// image-worker v3.16.0
+// v3.16.0 (2026-06-26) — B1-v2: deterministic PP image_quote background rotation. The
+//   Property-Pulse governed image_quote branch no longer keys on the FIXED background
+//   bg_perth_cbd; it now selects deterministically over the 3 governed PP backgrounds
+//   (bg_perth_cbd, bg_brisbane_cbd, bg_sydney_cbd) via selectB1BackgroundKey() — a pure
+//   FNV-1a 32-bit hash of post_draft_id (same draft -> same background, ALWAYS; no
+//   randomness/Date/crypto/I-O). The selected key is recorded in render_spec.background_key
+//   and flows into render_spec.template.asset_keys/asset_ids via the resolved asset. The
+//   governed fail-loud assertGovernedAssetReachable() still runs on the RESOLVED selected
+//   background. WHAT IS STRICTLY OUT OF SCOPE: NO change to the PP client_id gate, the
+//   canonical slug to resolver/path, the storage path property-pulse/<id>.jpg, the label,
+//   the headline gate, the fixed logo key pp_logo_primary, any non-PP / legacy / other-
+//   format path; NO multi-brand, NO template selection, NO AI rewrite, NO DB/migration,
+//   NO dashboard; NO deploy in this change.
+//
 // image-worker v3.15.1
 // v3.15.1 (2026-06-26) — H2 POLICY REFINEMENT: LEGACY paths now PROCEED-ON-TRANSIENT.
 //   resolveLegacyLogo() NO LONGER throws on a transient pre-flight result; the
@@ -175,10 +190,10 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { MANUAL_RENDER_MODE, MANUAL_RENDER_LABEL, PP_NEWS_STATIC_16x9, NEWS_STATIC_CENTERED_SCRIM_1x1, isManualRenderRequest, mapResolvedAssets, buildManualModifications, computePropsHash, buildGovernedTemplateSpec } from './manual_render.ts';  // v3.11.0: LANE 3B; v3.13.0: + B0 1:1 impl
 import { DRAFT_PROOF_MODE, DRAFT_PROOF_LABEL, buildProofFieldsFromDraft } from './branch_b_proof.ts';  // v3.12.0: BRANCH B / LANE B-PROOF
-import { B1_ASSET_KEYS, B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, isB1GovernedImageQuote, assertHeadlineWithinGate } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug to resolver)
+import { B1_ASSET_KEYS, B1_LOGO_KEY, B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, isB1GovernedImageQuote, assertHeadlineWithinGate, selectB1BackgroundKey } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug to resolver). v3.16.0: B1-v2 deterministic background rotation (selectB1BackgroundKey).
 import { resolveLegacyLogo, assertGovernedAssetReachable, type AssetVerdict } from './asset_url_guard.ts';  // v3.15.0: H2 asset-URL validation before Creatomate
 
-const VERSION = 'image-worker-v3.15.1';
+const VERSION = 'image-worker-v3.16.0';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -623,15 +638,17 @@ Deno.serve(async (req: Request) => {
       // through to the byte-unchanged legacy path below.
       if (isB1GovernedImageQuote(clientId)) {
         assertHeadlineWithinGate(draft.image_headline);  // minimal hard-gate, BEFORE any resolver/Creatomate call
-        const { data: resolved, error: resolveErr } = await supabase.rpc('resolve_brand_assets', { p_client_slug: B1_GOVERNED_CLIENT_SLUG, p_asset_keys: [B1_ASSET_KEYS.logo, B1_ASSET_KEYS.background] });
+        const backgroundKey = selectB1BackgroundKey(draft.post_draft_id);          // B1-v2: deterministic per-draft background
+        const b1AssetKeys = { logo: B1_LOGO_KEY, background: backgroundKey };       // B1-v2: per-draft asset contract (logo fixed)
+        const { data: resolved, error: resolveErr } = await supabase.rpc('resolve_brand_assets', { p_client_slug: B1_GOVERNED_CLIENT_SLUG, p_asset_keys: [b1AssetKeys.logo, b1AssetKeys.background] });
         if (resolveErr) throw new Error(`b1 resolver_failed: ${resolveErr.message}`);
-        const mapped = mapResolvedAssets(resolved as any, B1_ASSET_KEYS);  // throws on shortfall — governed-only
+        const mapped = mapResolvedAssets(resolved as any, b1AssetKeys);  // throws on shortfall — governed-only
         const fields = buildProofFieldsFromDraft({ image_headline: draft.image_headline, client_id: clientId, recommended_format: 'image_quote' });
         const modifications = buildManualModifications({ fields, logoUrl: mapped.logo.asset_url, backgroundUrl: mapped.background.asset_url });
         const props_hash = await computePropsHash(modifications);
         const templateSpec = buildGovernedTemplateSpec(NEWS_STATIC_CENTERED_SCRIM_1x1, { propsHash: props_hash, logo: mapped.logo, background: mapped.background });
         const renderScript = { template_id: NEWS_STATIC_CENTERED_SCRIM_1x1.provider_template_id, modifications, output_format: NEWS_STATIC_CENTERED_SCRIM_1x1.output_format };
-        const renderSpec = { label: B1_PRODUCTION_LABEL, template: templateSpec };
+        const renderSpec = { label: B1_PRODUCTION_LABEL, template: templateSpec, background_key: backgroundKey };  // B1-v2: record selected background in evidence
         // v3.15.0 (H2): governed assets are fail-loud — verify the RESOLVED logo + background
         // are reachable BEFORE the Creatomate submit. NO fallback (governed). A throw here hits
         // the EXISTING per-draft catch → image_status='failed'. Does NOT touch the B1 gate.

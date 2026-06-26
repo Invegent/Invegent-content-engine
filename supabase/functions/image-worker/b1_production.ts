@@ -23,10 +23,27 @@ export const B1_GOVERNED_CLIENT_ID = '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd';
 // getBrandAndSlug (whose slug can be the UUID fallback). Every non-PP client stays legacy.
 export const B1_GOVERNED_CLIENT_SLUG = 'property-pulse';
 
-// Fixed governed asset-key contract for B1-v1 (cut-plan decisions B + the PP pilot).
-// logo = pp_logo_primary; background = fixed default bg_perth_cbd (no rotation/selection yet).
+// Fixed governed logo key for B1 (cut-plan decisions B + the PP pilot). Logo stays FIXED.
 export const B1_LOGO_KEY = 'pp_logo_primary';
-export const B1_BACKGROUND_KEY = 'bg_perth_cbd';
+
+// B1-v2: the 3 governed Property-Pulse background keys, in canonical order.
+// bg_perth_cbd stays index 0 (the v1 default), so this set is a superset of v1.
+export const B1_BACKGROUND_KEYS = ['bg_perth_cbd', 'bg_brisbane_cbd', 'bg_sydney_cbd'] as const;
+
+// Back-compat: the v1 fixed-default background key is the rotation set's index 0.
+export const B1_BACKGROUND_KEY = B1_BACKGROUND_KEYS[0];
+
+// Deterministic, pure, synchronous background selection. FNV-1a 32-bit over the
+// post_draft_id string, modulo the set length. Same draft id -> same key, ALWAYS.
+// No randomness, no Date, no crypto.subtle (async), no I/O. Stable across redeploys.
+export function selectB1BackgroundKey(postDraftId: string): string {
+  let h = 0x811c9dc5;                       // FNV offset basis
+  for (let i = 0; i < postDraftId.length; i++) {
+    h ^= postDraftId.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);           // FNV prime
+  }
+  return B1_BACKGROUND_KEYS[(h >>> 0) % B1_BACKGROUND_KEYS.length];
+}
 
 // Minimal headline-length hard-gate (cut-plan decision D). PROVISIONAL / to_be_calibrated:
 // a minimal hard-gate, NOT a precise fit guarantee. No truncation, no AI rewrite in v1.
