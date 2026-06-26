@@ -1,5 +1,14 @@
 # Current ICE Architecture / Operator Flow — v2 snapshot
 
+> **⚠️ SUPERSEDED 2026-06-26 by [`current-ice-flow-v3.md`](./current-ice-flow-v3.md).** v3
+> reconciles the **Branch B B1-v1 production release**: B1-v1 `carry_deferred` → **`live_production`
+> (PP-only `image_quote`, RELEASED, image-worker v3.14.1)**, adds the **one governed production
+> edge into L5**, scopes the logo-source carry (PP `image_quote` → governed resolver; all else
+> legacy brand_profile), flips `governed_nonsmoke_renders` 0 → **≥1 by design**, refreshes
+> anchors to **CE `6fcbda0` / dashboard `11775ef`**, and records **Creative Library Dashboard
+> Slice 1** shipped. **B0 remains `proven_proof_only`; broad Creative Library wiring remains
+> `planned`.** v2's B1 labels are stale — read v3.
+
 > **What this is:** a point-in-time, evidence-grounded snapshot of the ICE content-production
 > spine, refreshed to a layered (L0–L8) map by the read-only `ice-architecture-cartographer`
 > and reconciled by the orchestrator. **Generated, not hand-drawn.** Supersedes
