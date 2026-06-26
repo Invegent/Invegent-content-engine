@@ -1,19 +1,35 @@
-// pipeline-fixer v1.1.0
+// pipeline-fixer v1.2.0
 // Tier 2 AI Diagnostic Agent — Layer A
 // Runs every 30 minutes via pg_cron (:25 and :55).
 // Executes pre-approved auto-fix actions + escalation detection.
 // Writes structured log to m.pipeline_fixer_log.
 // Does NOT modify: draft content, approval status, client config, published posts, feeds.
+//
+// v1.2.0 (2026-06-26): H3.2 render retry cap — fixFailedImages now dead-letters capped
+//   single-render formats (image_quote, animated_text_reveal, animated_data) after
+//   RENDER_ATTEMPT_CAP (5) failed/timeout renders (sets dead_reason='render_attempts_exhausted',
+//   leaves image_status='failed') instead of resetting them forever. Carousel stays UNCAPPED
+//   (multi-slide renders inflate the failed-row count). FixResult gains optional dead_lettered/
+//   dead_ids. STRICTLY OUT OF SCOPE: no change to the other fixes, auth, the Deno.serve handler,
+//   escalation logic, approval_status, or any schema/DB/migration.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const VERSION = "pipeline-fixer-v1.1.0";
+const VERSION = "pipeline-fixer-v1.2.0";
 
 type FixResult = {
   fix: string;
   count: number;
   ids: string[];
+  dead_lettered?: number;
+  dead_ids?: string[];
 };
+
+// ─── FIX 2 render-attempt cap consts (H3.2) — module scope so tests can reference ─────────
+export const RENDER_ATTEMPT_CAP = 5;
+export const CAPPED_FORMATS = ["image_quote", "animated_text_reveal", "animated_data"];
+export const UNCAPPED_RETRY_FORMATS = ["carousel"];
+export const DEAD_REASON_RENDER_EXHAUSTED = "render_attempts_exhausted";
 
 type SB = ReturnType<typeof getServiceClient>;
 
@@ -45,24 +61,55 @@ async function fixLockedAiJobs(sb: SB): Promise<FixResult> {
   return { fix: "unstick_locked_jobs", count: ids.length, ids };
 }
 
-// ─── FIX 2: Reset failed image generation for retry ─────────────────────────
-// Approved image-format drafts that failed > 2 hours ago get another chance.
-async function fixFailedImages(sb: SB): Promise<FixResult> {
+// ─── FIX 2: Reset failed image generation for retry — WITH RENDER-ATTEMPT CAP (H3.2) ─────────
+// Capped single-render formats are dead-lettered after RENDER_ATTEMPT_CAP failed/timeout renders
+// (image_status stays 'failed', dead_reason set) instead of being reset forever. Carousel is NOT
+// capped in v1 (multi-slide renders inflate the failed-row count; carousel failures are bounded).
+export async function fixFailedImages(sb: SB): Promise<FixResult> {
   const { data: failed } = await sb.schema("m").from("post_draft")
-    .select("post_draft_id")
+    .select("post_draft_id, recommended_format")
     .eq("image_status", "failed")
     .eq("approval_status", "approved")
     .lt("updated_at", agoIso(120))
-    .in("recommended_format", ["image_quote", "carousel", "animated_text_reveal", "animated_data"]);
+    .is("dead_reason", null)
+    .in("recommended_format", [...CAPPED_FORMATS, ...UNCAPPED_RETRY_FORMATS]);
 
-  const ids = (failed ?? []).map((r: any) => r.post_draft_id);
-  if (ids.length === 0) return { fix: "reset_failed_images", count: 0, ids: [] };
+  const candidates = failed ?? [];
+  if (candidates.length === 0) return { fix: "reset_failed_images", count: 0, ids: [] };
 
-  await sb.schema("m").from("post_draft")
-    .update({ image_status: "pending", updated_at: nowIso() })
-    .in("post_draft_id", ids);
+  // Source of truth: fresh failed/timeout render count (NOT stored attempt_number).
+  const candIds = candidates.map((r: any) => r.post_draft_id);
+  const { data: renderRows } = await sb.schema("m").from("post_render_log")
+    .select("post_draft_id, status")
+    .in("post_draft_id", candIds)
+    .in("status", ["failed", "timeout"]);
 
-  return { fix: "reset_failed_images", count: ids.length, ids };
+  const failCount: Record<string, number> = {};
+  for (const r of (renderRows ?? [])) failCount[r.post_draft_id] = (failCount[r.post_draft_id] ?? 0) + 1;
+
+  const toReset: string[] = [];
+  const toDeadLetter: string[] = [];
+  for (const c of candidates) {
+    const isCapped = CAPPED_FORMATS.includes(c.recommended_format);
+    if (isCapped && (failCount[c.post_draft_id] ?? 0) >= RENDER_ATTEMPT_CAP) toDeadLetter.push(c.post_draft_id);
+    else toReset.push(c.post_draft_id);
+  }
+
+  if (toReset.length > 0) {
+    await sb.schema("m").from("post_draft")
+      .update({ image_status: "pending", updated_at: nowIso() })
+      .in("post_draft_id", toReset);
+  }
+  if (toDeadLetter.length > 0) {
+    await sb.schema("m").from("post_draft")
+      .update({ dead_reason: DEAD_REASON_RENDER_EXHAUSTED, updated_at: nowIso() })
+      .in("post_draft_id", toDeadLetter);
+  }
+
+  return {
+    fix: "reset_failed_images", count: toReset.length, ids: toReset,
+    ...(toDeadLetter.length > 0 ? { dead_lettered: toDeadLetter.length, dead_ids: toDeadLetter } : {}),
+  } as FixResult;
 }
 
 // ─── FIX 3: Kill orphaned publish queue items ────────────────────────────────
@@ -184,8 +231,12 @@ async function detectEscalations(sb: SB): Promise<string[]> {
 }
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
+// Guarded by import.meta.main so importing this module for unit tests does not bind a
+// port. Under the Supabase EF runtime this module IS the entrypoint (import.meta.main =
+// true), so the handler binds and behaves byte-for-byte as before.
 
-Deno.serve(async (req: Request) => {
+if (import.meta.main) {
+  Deno.serve(async (req: Request) => {
   if (req.method === "GET") {
     return new Response(JSON.stringify({ ok: true, version: VERSION }), {
       headers: { "Content-Type": "application/json" },
@@ -258,4 +309,5 @@ Deno.serve(async (req: Request) => {
     escalations,
     health_ok: healthOk,
   }), { headers: { "Content-Type": "application/json" } });
-});
+  });
+}
