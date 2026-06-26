@@ -9,7 +9,8 @@ import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import {
   B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, B1_LOGO_KEY, B1_BACKGROUND_KEY,
   B1_BACKGROUND_KEYS, B1_HEADLINE_MAX_CHARS, B1_PRODUCTION_LABEL, B1_ASSET_KEYS,
-  isB1GovernedImageQuote, assertHeadlineWithinGate, selectB1BackgroundKey,
+  B1_SUBTITLE_MAX_CHARS, isB1GovernedImageQuote, assertHeadlineWithinGate,
+  selectB1BackgroundKey, deriveB1Subtitle,
 } from './b1_production.ts';
 import {
   NEWS_STATIC_CENTERED_SCRIM_1x1, mapResolvedAssets, buildGovernedTemplateSpec,
@@ -148,6 +149,70 @@ Deno.test('B1-v2-5: B1_BACKGROUND_KEY stays bg_perth_cbd (rotation-set index 0);
   assertEquals(B1_LOGO_KEY, 'pp_logo_primary');
   // B1_ASSET_KEYS still pins the v1 default background (back-compat surface unchanged).
   assertEquals(B1_ASSET_KEYS.background, 'bg_perth_cbd');
+});
+
+// ── B1-v2: governed subtitle derived from draft_body (deriveB1Subtitle) ──────────
+// Pure / hermetic. The subtitle is DERIVED + OPTIONAL (unlike the headline hard-gate):
+// empty/whitespace/absent body → ''; an over-length first paragraph is TRUNCATED.
+
+// (v2-sub-1) empty / null / undefined / whitespace-only body → '' (no subtitle; proceeds).
+Deno.test('B1-v2-sub-1: empty/null/undefined/whitespace body → empty subtitle', () => {
+  assertEquals(deriveB1Subtitle(''), '');
+  assertEquals(deriveB1Subtitle(null), '');
+  assertEquals(deriveB1Subtitle(undefined), '');
+  assertEquals(deriveB1Subtitle('   '), '');
+  assertEquals(deriveB1Subtitle('\n\n   \n\n'), '');
+  assertEquals(deriveB1Subtitle('\t  \r\n  \t'), '');
+});
+
+// (v2-sub-2) single short paragraph (≤ max) → returned verbatim (trimmed).
+Deno.test('B1-v2-sub-2: short single paragraph returned verbatim', () => {
+  const body = 'Perth median house price hits a new record this quarter.';
+  assert(body.length <= B1_SUBTITLE_MAX_CHARS);
+  assertEquals(deriveB1Subtitle(body), body);
+  // surrounding whitespace is trimmed off the paragraph.
+  assertEquals(deriveB1Subtitle('   ' + body + '   '), body);
+});
+
+// (v2-sub-3) single long paragraph (> max) → truncated: ends with '…', length ≤ max,
+// and NOT cut mid-word (char before '…' is a whole-word char; no trailing space/punct).
+Deno.test('B1-v2-sub-3: long single paragraph is truncated word-boundary + ellipsis', () => {
+  const body = 'Perth median house prices have climbed sharply across every inner-city suburb this quarter according to the latest figures released today.';
+  assert(body.length > B1_SUBTITLE_MAX_CHARS);
+  const out = deriveB1Subtitle(body);
+  assert(out.endsWith('…'), `expected trailing ellipsis, got: ${out}`);
+  assert(out.length <= B1_SUBTITLE_MAX_CHARS, `length ${out.length} must be ≤ ${B1_SUBTITLE_MAX_CHARS}`);
+  // the char immediately before the ellipsis is NOT a space or trailing punctuation.
+  const beforeEllipsis = out.slice(0, -1);
+  assert(!/[\s.,;:!?-]$/.test(beforeEllipsis), `must not end on space/punct before '…': ${out}`);
+  // not cut mid-word: the truncated head is a whole-word prefix of the original body.
+  assert(body.startsWith(beforeEllipsis), 'truncated head must be a prefix of the body');
+  assert(body[beforeEllipsis.length] === ' ' || beforeEllipsis === body.slice(0, beforeEllipsis.length),
+    'the truncation boundary is a word boundary');
+});
+
+// (v2-sub-4) multi-paragraph body → only the FIRST non-empty paragraph is used; a string
+// that appears ONLY in a later paragraph must be absent from the subtitle.
+Deno.test('B1-v2-sub-4: only the first non-empty paragraph is used', () => {
+  const body = 'First paragraph headline sentence.\n\nSECOND_PARA_MARKER should never appear.\n\nThird para too.';
+  const out = deriveB1Subtitle(body);
+  assertEquals(out, 'First paragraph headline sentence.');
+  assert(!out.includes('SECOND_PARA_MARKER'));
+  assert(!out.includes('Third'));
+});
+
+// (v2-sub-5) leading blank / whitespace-only paragraphs then real text → first NON-EMPTY.
+Deno.test('B1-v2-sub-5: skips leading blank/whitespace-only paragraphs', () => {
+  const body = '\n\n   \n\n   \n\nReal first paragraph here.\n\nLater paragraph.';
+  assertEquals(deriveB1Subtitle(body), 'Real first paragraph here.');
+});
+
+// (v2-sub-6) \r\n (and lone \r) line endings are normalized before paragraph splitting.
+Deno.test('B1-v2-sub-6: CRLF / CR line endings are normalized', () => {
+  const crlf = 'First CRLF paragraph.\r\n\r\nSecond CRLF paragraph marker.';
+  assertEquals(deriveB1Subtitle(crlf), 'First CRLF paragraph.');
+  const cr = 'First CR paragraph.\r\rSecond CR paragraph marker.';
+  assertEquals(deriveB1Subtitle(cr), 'First CR paragraph.');
 });
 
 // Governed evidence shape for B1: the 1:1 impl carries the proven provider_template_id and

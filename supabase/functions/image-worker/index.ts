@@ -1,3 +1,9 @@
+// image-worker v3.17.0
+// v3.17.0 (2026-06-27) — B1-v2: governed subtitle derived from draft_body (first non-empty
+//   paragraph, truncated to B1_SUBTITLE_MAX_CHARS=headline limit; derived+optional →
+//   truncate/empty, never fail-loud). WHAT IS OUT OF SCOPE: no new column, no AI, no other
+//   mode/path, no DB/migration/dashboard.
+//
 // image-worker v3.16.0
 // v3.16.0 (2026-06-26) — B1-v2: deterministic PP image_quote background rotation. The
 //   Property-Pulse governed image_quote branch no longer keys on the FIXED background
@@ -190,10 +196,10 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { MANUAL_RENDER_MODE, MANUAL_RENDER_LABEL, PP_NEWS_STATIC_16x9, NEWS_STATIC_CENTERED_SCRIM_1x1, isManualRenderRequest, mapResolvedAssets, buildManualModifications, computePropsHash, buildGovernedTemplateSpec } from './manual_render.ts';  // v3.11.0: LANE 3B; v3.13.0: + B0 1:1 impl
 import { DRAFT_PROOF_MODE, DRAFT_PROOF_LABEL, buildProofFieldsFromDraft } from './branch_b_proof.ts';  // v3.12.0: BRANCH B / LANE B-PROOF
-import { B1_ASSET_KEYS, B1_LOGO_KEY, B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, isB1GovernedImageQuote, assertHeadlineWithinGate, selectB1BackgroundKey } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug to resolver). v3.16.0: B1-v2 deterministic background rotation (selectB1BackgroundKey).
+import { B1_ASSET_KEYS, B1_LOGO_KEY, B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, isB1GovernedImageQuote, assertHeadlineWithinGate, selectB1BackgroundKey, deriveB1Subtitle } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug to resolver). v3.16.0: B1-v2 deterministic background rotation (selectB1BackgroundKey). v3.17.0: B1-v2 governed subtitle from draft_body (deriveB1Subtitle).
 import { resolveLegacyLogo, assertGovernedAssetReachable, type AssetVerdict } from './asset_url_guard.ts';  // v3.15.0: H2 asset-URL validation before Creatomate
 
-const VERSION = 'image-worker-v3.16.0';
+const VERSION = 'image-worker-v3.17.0';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -619,7 +625,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── image_quote ─────────────────────────────────────────────────────────────
-  const { data: quoteDrafts } = await supabase.schema('m').from('post_draft').select('post_draft_id, client_id, image_headline').eq('approval_status', 'approved').eq('image_status', 'pending').eq('recommended_format', 'image_quote').limit(3);
+  const { data: quoteDrafts } = await supabase.schema('m').from('post_draft').select('post_draft_id, client_id, image_headline, draft_body').eq('approval_status', 'approved').eq('image_status', 'pending').eq('recommended_format', 'image_quote').limit(3);
   for (const draft of (quoteDrafts ?? [])) {
     try {
       const clientId = await resolveClientId(supabase, draft.post_draft_id, draft.client_id);
@@ -644,11 +650,12 @@ Deno.serve(async (req: Request) => {
         if (resolveErr) throw new Error(`b1 resolver_failed: ${resolveErr.message}`);
         const mapped = mapResolvedAssets(resolved as any, b1AssetKeys);  // throws on shortfall — governed-only
         const fields = buildProofFieldsFromDraft({ image_headline: draft.image_headline, client_id: clientId, recommended_format: 'image_quote' });
-        const modifications = buildManualModifications({ fields, logoUrl: mapped.logo.asset_url, backgroundUrl: mapped.background.asset_url });
+        const subtitle = deriveB1Subtitle(draft.draft_body);   // B1-v2: governed subtitle from draft_body (first non-empty paragraph, truncated)
+        const modifications = buildManualModifications({ fields: { ...fields, subtitle }, logoUrl: mapped.logo.asset_url, backgroundUrl: mapped.background.asset_url });
         const props_hash = await computePropsHash(modifications);
         const templateSpec = buildGovernedTemplateSpec(NEWS_STATIC_CENTERED_SCRIM_1x1, { propsHash: props_hash, logo: mapped.logo, background: mapped.background });
         const renderScript = { template_id: NEWS_STATIC_CENTERED_SCRIM_1x1.provider_template_id, modifications, output_format: NEWS_STATIC_CENTERED_SCRIM_1x1.output_format };
-        const renderSpec = { label: B1_PRODUCTION_LABEL, template: templateSpec, background_key: backgroundKey };  // B1-v2: record selected background in evidence
+        const renderSpec = { label: B1_PRODUCTION_LABEL, template: templateSpec, background_key: backgroundKey, subtitle_chars: subtitle.length };  // B1-v2: record selected background + subtitle length in evidence
         // v3.15.0 (H2): governed assets are fail-loud — verify the RESOLVED logo + background
         // are reachable BEFORE the Creatomate submit. NO fallback (governed). A throw here hits
         // the EXISTING per-draft catch → image_status='failed'. Does NOT touch the B1 gate.

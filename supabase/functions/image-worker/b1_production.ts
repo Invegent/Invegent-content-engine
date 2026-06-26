@@ -49,6 +49,24 @@ export function selectB1BackgroundKey(postDraftId: string): string {
 // a minimal hard-gate, NOT a precise fit guarantee. No truncation, no AI rewrite in v1.
 export const B1_HEADLINE_MAX_CHARS = 90; // PROVISIONAL / to_be_calibrated (cut-plan decision D)
 
+// B1-v2 subtitle (PK contract 2026-06-27): "same overflow limit as the headline".
+export const B1_SUBTITLE_MAX_CHARS = B1_HEADLINE_MAX_CHARS; // 90; to_be_calibrated
+
+// Derive the governed subtitle from draft_body: the FIRST non-empty paragraph, truncated
+// (word-boundary + ellipsis) to B1_SUBTITLE_MAX_CHARS. Pure / deterministic / no I/O.
+// UNLIKE the headline (a REQUIRED hard-gate that THROWS on overflow), the subtitle is
+// DERIVED + OPTIONAL: empty/whitespace/absent body -> '' (no subtitle; render proceeds),
+// and an over-length first paragraph is TRUNCATED, never failed.
+export function deriveB1Subtitle(draftBody: string | null | undefined, maxChars: number = B1_SUBTITLE_MAX_CHARS): string {
+  const normalized = (draftBody ?? '').replace(/\r\n?/g, '\n');
+  const firstPara = normalized.split(/\n\s*\n/).map((p) => p.trim()).find((p) => p.length > 0) ?? '';
+  if (firstPara.length <= maxChars) return firstPara;
+  const slice = firstPara.slice(0, maxChars - 1);            // leave room for the ellipsis
+  const lastSpace = slice.lastIndexOf(' ');
+  const head = (lastSpace > 0 ? slice.slice(0, lastSpace) : slice).replace(/[\s.,;:!?-]+$/, '');
+  return head + '…';
+}
+
 // render_spec.label that marks the B1-v1 production governed render (distinct from the
 // B0 _smoke/ proof label and from legacy renders). Keeps governed rows identifiable.
 export const B1_PRODUCTION_LABEL = 'creative_library_b1_production';
