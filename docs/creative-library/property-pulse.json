@@ -1,7 +1,7 @@
 {
   "_about": "Creative Library registry (repo/config, evidence-first), Property Pulse pilot. v0.2 evolves to the Creative Library v2 model (Governed Creative Design System): Style Guide -> (governs) -> Assets + Patterns (SIBLING libraries; patterns may reference assets) -> (compose) -> Template Families -> (instantiate as) -> Creative Instances -> Evidence. Asset references use asset_key (governed in c.client_brand_asset via resolve_brand_assets), never raw URLs. Schema: docs/creative-library/registry-schema-v2.md.",
   "registry": "creative-library",
-  "registry_version": "v0.2",
+  "registry_version": "v0.3",
   "model": "style_guide -> (governs) -> assets + patterns -> (compose) -> template_families -> (instantiate as) -> creative_instances -> evidence",
   "client_slug": "property-pulse",
   "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd",
@@ -176,7 +176,7 @@
       "expected_assets": ["pp_logo_primary", "bg_perth_cbd"],
       "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
       "proof_posture": "governance_candidate",
-      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "proven_variants": ["centred-scrim-16x9", "centred-scrim-9x16-video"], "source_commit": "0838757", "review_packet": null, "approved_by": "PK", "approved_at": null, "notes": "DISTINCTION — Family = governed composition candidate; Variant = render-proven implementation target; Instance = produced render event (m.post_render_log). The family object is a COMPOSITION, NOT a single render: it holds NO independent render-based proof (proof_status=unproven, render_log_id=null). Proof lives at the VARIANT level (proven_variants): centred-scrim-16x9 (Gate C, 7243e040-2ef2-4d08-902b-94cee26af2d3) + centred-scrim-9x16-video (Gate D2, 508b4365-9dfc-4ec8-b491-2a3a1014d26b). Status is 'candidate' as a formalised v2 family object (the underlying templates are proven via the variants; the legacy implementations[] view is retained verbatim)." },
+      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "proven_variants": ["centred-scrim-16x9", "centred-scrim-9x16-video", "centred-scrim-1x1"], "source_commit": "0838757", "review_packet": null, "approved_by": "PK", "approved_at": null, "notes": "DISTINCTION — Family = governed composition candidate; Variant = render-proven implementation target; Instance = produced render event (m.post_render_log). The family object is a COMPOSITION, NOT a single render: it holds NO independent render-based proof (proof_status=unproven, render_log_id=null). Proof lives at the VARIANT level (proven_variants): centred-scrim-16x9 (Gate C, 7243e040-2ef2-4d08-902b-94cee26af2d3) + centred-scrim-9x16-video (Gate D2, 508b4365-9dfc-4ec8-b491-2a3a1014d26b). Status is 'candidate' as a formalised v2 family object (the underlying templates are proven via the variants; the legacy implementations[] view is retained verbatim)." },
       "variants": [
         {
           "template_variant_key": "centred-scrim-16x9",
@@ -217,6 +217,26 @@
           "proof_posture": "proven",
           "known_limitations": "The ice_format_key is 'video_short_stat', but the PROVEN render composes the NEWS patterns (headline/subtitle/category over background+scrim) — NOT a stat reveal. pp_stat_card_v1 is a forward-looking pattern NOT rendered by this variant (hence excluded from composed_of_patterns). No voice/captions in the proven smoke.",
           "evidence": { "status": "proven", "proof_status": "proven", "proof_gate": "Gate D2", "render_log_id": "508b4365-9dfc-4ec8-b491-2a3a1014d26b", "render_spec_template_id": "pp-news-centred-scrim-9x16-video", "source_commit": "9d1c411", "review_packet": null, "approved_by": "PK", "approved_at": null, "notes": "Gate D2 ICE-controlled animated/video template smoke (registers v3.82)." }
+        },
+        {
+          "template_variant_key": "centred-scrim-1x1",
+          "purpose": "Static 1:1 news card (still image) — the LIVE Branch B B1-v2 PRODUCTION Property Pulse News image variant rendered by the image-worker governed image_quote path.",
+          "aspect_ratio": "1:1",
+          "output_type": "jpg",
+          "compatible_ice_format_key": "image_quote",
+          "render_engine": "creatomate",
+          "provider": "creatomate",
+          "provider_template_id": "fb9820f8-3fee-4448-b324-3d500fa74b40",
+          "required_fields": ["headline", "category", "date", "footer", "background", "logo"],
+          "optional_fields": ["subtitle", "location"],
+          "expected_assets": ["pp_logo_primary", "bg_perth_cbd", "bg_brisbane_cbd", "bg_sydney_cbd"],
+          "composed_of_patterns": ["pp_branding_strip_v1", "pp_headline_block_v1", "pp_category_badge_v1", "pp_background_plus_scrim_v1"],
+          "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+          "proof_status": "proven",
+          "proof_gate": "B0 1:1 template smoke",
+          "proof_posture": "proven",
+          "known_limitations": "1:1 static image only. In the LIVE production path: headline is the only AI-authored REQUIRED field (hard-gated, max 90, fail-loud on blank/overflow); subtitle is DERIVED from the first non-empty draft_body paragraph (optional, max 90, truncated — never failed); category ('PROPERTY NEWS'), date (render date), footer ('propertypulse.com.au') are renderer-FIXED; location is empty in v0; background ROTATES deterministically per post_draft_id across [bg_perth_cbd, bg_brisbane_cbd, bg_sydney_cbd] (B1-v2 v3.16.0); logo is fixed pp_logo_primary. Governed-only fail-loud — NO legacy fallback for PP. RUNTIME IDENTITY DRIFT: the worker emits render_spec.template.template_variant='centered-scrim-1x1' (American spelling) + implementation_id='news_static_centered_scrim_1x1_v1'; this registry uses 'centred-scrim-1x1' (British, sibling convention). Reconciled in capability_contracts[].maps_to_variant.",
+          "evidence": { "status": "proven", "proof_status": "proven", "proof_gate": "B0 1:1 template smoke", "render_log_id": "50f09ca2-cfae-462f-bfd5-07aac83c96de", "render_spec_template_id": "pp-news-centred-scrim-1x1", "source_commit": "4ebec3b", "review_packet": null, "approved_by": "PK", "approved_at": null, "notes": "B0 reusable 1:1 governed-template smoke (registers v3.98 / image-worker v3.13.0; _smoke/ only, resolver_used=true, fallback_taken=false, output 1080x1080 JPEG). LIVE PRODUCTION INSTANCE: B1-v1/v2 governed image_quote render_log 52165857-ba7e-4a0f-82f0-92fd5f66537e (registers v4.00, label=creative_library_b1_production, resolver_used=true). This is the variant the live PP image_quote path renders." }
         }
       ]
     }
@@ -227,9 +247,74 @@
     "known_instances": [
       { "render_log_id": "e7d096b8-6d6c-4af8-a245-dc35f83bd291", "kind": "governed_manual_render", "template_variant_key": "centred-scrim-16x9", "notes": "Intake Lane 3B governed render; resolver_used=true, fallback_taken=false." },
       { "render_log_id": "7243e040-2ef2-4d08-902b-94cee26af2d3", "kind": "smoke", "template_variant_key": "centred-scrim-16x9", "notes": "Gate C still-image smoke." },
-      { "render_log_id": "508b4365-9dfc-4ec8-b491-2a3a1014d26b", "kind": "smoke", "template_variant_key": "centred-scrim-9x16-video", "notes": "Gate D2 video smoke." }
+      { "render_log_id": "508b4365-9dfc-4ec8-b491-2a3a1014d26b", "kind": "smoke", "template_variant_key": "centred-scrim-9x16-video", "notes": "Gate D2 video smoke." },
+      { "render_log_id": "50f09ca2-cfae-462f-bfd5-07aac83c96de", "kind": "smoke", "template_variant_key": "centred-scrim-1x1", "notes": "B0 1:1 governed-template smoke (registers v3.98); _smoke/ only, resolver_used=true, fallback_taken=false." },
+      { "render_log_id": "52165857-ba7e-4a0f-82f0-92fd5f66537e", "kind": "governed_production_render", "template_variant_key": "centred-scrim-1x1", "notes": "B1-v1/v2 LIVE governed image_quote production render (registers v4.00); label=creative_library_b1_production, resolver_used=true, fallback_taken=false." }
     ]
   },
+
+  "capability_contracts": [
+    {
+      "contract_key": "property_pulse.image_quote.news_card.v1",
+      "contract_ref": "property_pulse.image_quote.news_card",
+      "contract_version": "v1",
+      "client_slug": "property-pulse",
+      "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd",
+      "status": "candidate",
+      "purpose": "Canonical capability contract for the LIVE Property Pulse image_quote governed render path (B1-v2). Declares the variant identity, field classes + limits, governed assets, fallback, and the evidence later ACI slices stamp. Declarative source of truth; the runtime consumes a VENDORED projection (no live JSON import).",
+      "gate": { "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd", "recommended_format": "image_quote", "note": "Deterministic resolver inputs ONLY — no AI, no mix, no scoring. Any other client_id or format resolves to null (legacy path)." },
+      "maps_to_variant": {
+        "template_family_key": "property-pulse-news",
+        "template_variant_key": "centred-scrim-1x1",
+        "provider": "creatomate",
+        "provider_template_id": "fb9820f8-3fee-4448-b324-3d500fa74b40",
+        "implementation_id": "news_static_centered_scrim_1x1_v1",
+        "runtime_render_spec_template_variant": "centered-scrim-1x1",
+        "identity_drift_note": "Registry variant key uses British 'centred-scrim-1x1' (sibling convention); the worker emits render_spec.template.template_variant='centered-scrim-1x1' (American) + implementation_id='news_static_centered_scrim_1x1_v1'. The vendored projection must reconcile this so later-slice evidence stamping matches the live render_spec."
+      },
+      "fields": {
+        "ai_authored": [
+          { "field": "headline", "required": true, "max_chars": 90, "policy": "hard_gate_throw", "note": "B1_HEADLINE_MAX_CHARS=90 (PROVISIONAL/to_be_calibrated). Blank or overflow fails loud (image_status='failed') — no truncation, no AI rewrite in v0. Slice E adds one bounded repair." }
+        ],
+        "derived": [
+          { "field": "subtitle", "required": false, "max_chars": 90, "source": "first non-empty paragraph of draft_body (renderer-derived; LOCKED v0)", "policy": "truncate_optional", "note": "Empty/absent body -> '' (render proceeds). Over-length first paragraph is truncated (word-boundary + ellipsis), never failed. Authorship stays in image-worker for v0; the AI is only GUIDED (Slice D) to make the first paragraph subtitle-suitable." }
+        ],
+        "renderer_fixed": [
+          { "field": "category", "value": "PROPERTY NEWS" },
+          { "field": "date", "value": "render date (today)" },
+          { "field": "footer", "value": "propertypulse.com.au" },
+          { "field": "location", "value": "" }
+        ],
+        "governed_assets": {
+          "logo": { "asset_key": "pp_logo_primary", "policy": "fixed" },
+          "background": { "asset_keys": ["bg_perth_cbd", "bg_brisbane_cbd", "bg_sydney_cbd"], "policy": "deterministic_rotation_per_post_draft_id", "note": "FNV-1a 32-bit over post_draft_id mod 3 (B1-v2 v3.16.0). bg_perth_cbd is index 0 (the v1 default)." }
+        }
+      },
+      "fallback_policy": "governed_only_fail_loud",
+      "validator_policy": {
+        "slice_a": "none (declarative identity + projection only — no validator, no AI change, no behaviour change)",
+        "slice_c": "validate headline (<=90, present) + subtitle (<=90) + governed-asset reachability against THIS contract BEFORE render; record render_spec.contract_validation {pass|fail, failed_fields[]}; no repair yet",
+        "slice_e": "exactly ONE bounded repair on failure, then fail loud; no loop; no attempt_number as control"
+      },
+      "evidence_fields_for_renderer": ["variant_key", "contract_ref", "contract_version", "selector_reason"],
+      "selector_reason_default": "pp_image_quote_default",
+      "runtime_consumption": "vendored projection only; NO live JSON import (runtime-import guard preserved). The vendored runtime-safe constant is derived from this entry and cites its source_commit.",
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "evidence": {
+        "status": "candidate",
+        "proof_status": "proven_via_mapped_variant",
+        "proof_gate": "B0 1:1 template smoke",
+        "render_log_id": "50f09ca2-cfae-462f-bfd5-07aac83c96de",
+        "production_instances": ["52165857-ba7e-4a0f-82f0-92fd5f66537e"],
+        "render_spec_template_id": "pp-news-centred-scrim-1x1",
+        "source_commit": "c552f91",
+        "review_packet": "docs/briefs/aci-foundation-v0-capability-contract-spine-brief.md",
+        "approved_by": null,
+        "approved_at": null,
+        "notes": "The contract adds NO new render proof — proof is the mapped variant centred-scrim-1x1 (B0 1:1 smoke 50f09ca2) with the live production instance 52165857. status='candidate' until PK ratifies; approved_by null (no false approval)."
+      }
+    }
+  ],
 
   "_implementations_note": "v0.1 LEGACY view — superseded by template_families[] in v0.2; retained verbatim for back-compat / traceability. New work should read template_families[].",
   "implementations": [
@@ -299,6 +384,10 @@
     "Style Guide + Patterns are declarative DRAFTs derived from the proven templates — NOT independently proven; no render_log_id is claimed for them.",
     "Field -> Creatomate modification-key mapping is documented in pattern layout_rules as REFERENCE only; binding stays a future worker/render lane (no production consumption).",
     "Registry vendoring drift: the dashboard's vendored copy predates v0.2 and does not read the new fields (re-vendor under A1.5).",
-    "No registry consumer wired (no worker/advisor/publish/dashboard reads this file) — intentional; declarative only."
+    "No registry consumer wired (no worker/advisor/publish/dashboard reads this file) — intentional; declarative only.",
+    "v0.3 (ACI Foundation v0 Slice A): added the LIVE 1:1 production variant centred-scrim-1x1 (it was missing — the registry previously declared only 16:9 + 9:16 while production renders the 1:1 fb9820f8 template) and the first capability_contract property_pulse.image_quote.news_card.v1. Docs/source-of-truth only — still NO runtime consumer.",
+    "ACI Slice A2 (next, gated): a VENDORED runtime-safe projection of property_pulse.image_quote.news_card.v1 + a deterministic resolver(client_id, recommended_format) in the worker layer, with Deno tests, UNWIRED (no behaviour change, no deploy). Runtime code -> external review.",
+    "Identity drift to reconcile in the vendored projection: registry 'centred-scrim-1x1' (British) vs worker render_spec template_variant 'centered-scrim-1x1' (American) + implementation_id 'news_static_centered_scrim_1x1_v1'.",
+    "Contract field limits (headline/subtitle max 90) are PROVISIONAL/to_be_calibrated (B1 cut-plan decision D) — the contract is the single source of truth; the worker's hardcoded B1_HEADLINE_MAX_CHARS is reconciled to it when the vendored projection is wired (Slice A2/B)."
   ]
 }

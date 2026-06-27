@@ -175,13 +175,55 @@ Every governed object carries an `evidence` block.
 
 ---
 
-## 7. Validation notes
+## 7. Capability Contract (v0.3 — runtime-projection source of truth)
+
+> **Added v0.3 (ACI Foundation v0 — Slice A).** A **Capability Contract** is the canonical,
+> machine-projectable description of what a single governed **variant** requires when it is
+> produced in a specific live path. It is the **source of truth** the runtime consumes via a
+> **vendored projection** — the registry stays declarative; **no production worker imports this
+> JSON at runtime** (the runtime-import guard is unchanged). A contract does NOT add render
+> proof — it points at a variant whose proof lives in §6 evidence.
+
+A `capability_contracts[]` entry has this shape:
+
+| Field | Required | Notes |
+|---|---|---|
+| `contract_key` | ✓ | the canonical **variant_key**, e.g. `property_pulse.image_quote.news_card.v1` |
+| `contract_ref` | ✓ | stable ref without the version, e.g. `property_pulse.image_quote.news_card` |
+| `contract_version` | ✓ | semver, e.g. `v1` — bumped only when fields/limits/policy change |
+| `client_slug` / `client_id` | ✓ | the scoped client |
+| `status` | ✓ | `draft` \| `candidate` \| `active` (PK ratifies; a contract is not auto-`active`) |
+| `gate` | ✓ | the **deterministic resolver inputs**: `{ client_id, recommended_format }` (the only inputs that select this contract; no AI, no scoring) |
+| `maps_to_variant` | ✓ | `{ template_family_key, template_variant_key, provider, provider_template_id, implementation_id, runtime_render_spec_template_variant }` — binds the contract to a variant defined in §3 and to the **runtime** template identity. Record any spelling/identity drift between the registry `template_variant_key` and the worker's emitted `render_spec.template.template_variant` here. |
+| `fields` | ✓ | field classes: `ai_authored[]` (e.g. headline — `{field, required, max_chars, policy}`), `derived[]` (e.g. subtitle — `{field, source, required, max_chars, policy}`), `renderer_fixed[]` (`{field, value}`), `governed_assets` (`{logo:{asset_key,policy}, background:{asset_keys,policy}}`) |
+| `fallback_policy` | ✓ | e.g. `governed_only_fail_loud` (no legacy fallback) |
+| `validator_policy` | ✓ | declares later-slice behaviour: v0 records what each ACI slice will enforce (C = check, E = one bounded repair then fail-loud). Declarative in Slice A. |
+| `evidence_fields_for_renderer` | ✓ | the jsonb keys later slices STAMP into `draft_format` / `render_spec`: `variant_key`, `contract_ref`, `contract_version`, `selector_reason` |
+| `selector_reason_default` | ✓ | the deterministic `selector_reason` value, e.g. `pp_image_quote_default` |
+| `runtime_consumption` | ✓ | MUST state: vendored projection only; no live JSON import |
+| `governance` | ✓ | `{ owner, approval, ai_role }` |
+| `evidence` | ✓ | points at the mapped variant's proof (`render_log_id`) + any production instance(s); the contract itself adds NO new render proof. Its `proof_status` is `unproven` (no proof yet) or `proven_via_mapped_variant` (proof is INHERITED from the variant in `maps_to_variant`, never independent) — a contract never claims a bare `proven`. |
+
+**Contract discipline (binding):**
+- A contract **adds no render proof.** Its proof is the proof of the variant it `maps_to_variant`
+  (which must satisfy §6 — a real `render_log_id` to claim `proven`).
+- `gate` must be **deterministic** (config inputs only — `client_id` + `recommended_format`).
+  No AI, no mix, no scoring selects a contract.
+- The runtime consumes a **vendored projection** of the contract; a registry edit adds **no**
+  runtime import (the guard in §6/§8 is unchanged).
+- A contract is `candidate` until PK ratifies; it is never auto-`active`.
+
+---
+
+## 8. Validation notes
 
 - JSON must parse; markdown must render.
 - Every `references_assets` / `expected_assets` `asset_key` must already exist as a governed
   asset OR be explicitly marked expected/unverified.
 - Every `composed_of_patterns` entry must reference a `pattern_key` defined in the same registry.
 - Every variant `proof_status:"proven"` must carry a real `render_log_id`.
+- Every `capability_contracts[].maps_to_variant` must reference a `template_variant_key`
+  defined in the same registry; its `evidence.render_log_id` must be a real proven render.
 - No runtime import/code reference is added by a registry edit (declarative files only).
 
 > **Next phase:** A1.2 Pattern Library v1 (define the first governed Creative Patterns, declarative).
