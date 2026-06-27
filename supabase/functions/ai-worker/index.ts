@@ -1,5 +1,7 @@
 import { Hono } from "jsr:@hono/hono";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { resolveCreativeContract } from "./creative_contract.ts";
+import { buildContractStamp } from "./contract_stamp.ts";
 
 const app = new Hono();
 
@@ -9,7 +11,21 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.15.0";
+const VERSION = "ai-worker-v2.16.0";
+// v2.16.0 (2026-06-27) — ACI Foundation v0 / Slice B1: creative-contract stamp.
+//   ADDITIVE METADATA ONLY. When ai-worker writes a Property-Pulse image_quote draft,
+//   it now resolves the vendored creative contract (resolveCreativeContract, gated on
+//   client_id + recommended_format === 'image_quote') and stamps a compact provenance
+//   record into m.post_draft.draft_format.contract (variant_key / contract_ref /
+//   contract_version / selector_reason / registry_version / source_commit / resolved_at).
+//   For ANY non-PP client OR non-image_quote format the resolver returns null and NO
+//   `contract` key is added — the draft_format shape is byte-unchanged on the default path.
+//   Vendored per-worker copy of creative_contract.ts (Slice A2 image-worker projection,
+//   registry v0.3 @ 2ac172b); buildContractStamp is a pure helper (injected nowIso, no I/O).
+//   STRICTLY OUT OF SCOPE: no AI-prompt change, no format-selection change (recommended_format
+//   untouched), no callFormatAdvisor / writeVisualSpec change, no validation/repair, no render
+//   change, no image-worker runtime change, no DB schema/migration, no dashboard. Inert for all
+//   non-PP-image_quote drafts; reviewed by diff at the single call site.
 // v2.15.0 — F-SERIES-AVATAR-DIFFERENTIATION Stage 1 (shadow avatar-role suggestion).
 //   OBSERVABILITY-ONLY. For video_short_avatar drafts, derive a SUGGESTED presenter
 //   stakeholder role (constrained to the brand's active c.brand_stakeholder.role_code
@@ -965,6 +981,12 @@ app.post('*', async (c) => {
         console.log(`[ai-worker] ${VERSION} — job ${jobId}: avatar override (advisor_would_have=${advisorWouldHave})`);
       }
 
+      // ACI v0 / Slice B1 — resolve the vendored creative contract for the FINAL decidedFormat.
+      // Deterministic + pure; returns non-null ONLY for the governed PP image_quote gate,
+      // null for everything else. Used downstream to stamp additive draft_format.contract
+      // metadata; no effect on format selection, the prompt, or rendering.
+      const creativeContract = resolveCreativeContract(job.client_id, decidedFormat);
+
       await writeVisualSpec(supabase, job.post_draft_id, decidedFormat, advisorReason, advisorImageHeadline, advisorDurationMs);
 
       const { systemPrompt, systemBlocks, userPrompt, model, temperature, maxOutputTokens, usedLegacy, complianceRuleCount } =
@@ -1067,6 +1089,14 @@ app.post('*', async (c) => {
           is_shadow: job.is_shadow,
         },
       };
+
+      // ACI v0 / Slice B1 — additive contract stamp. ONLY when the resolver returned a
+      // contract (governed PP image_quote): add a top-level sibling of draftMeta.ai. When
+      // creativeContract is null (all other clients/formats) NO key is added — draft_format
+      // shape is byte-unchanged on the default path.
+      if (creativeContract) {
+        (draftMeta as any).contract = buildContractStamp(creativeContract, nowIso);
+      }
 
       const baseUpdate: any = {
         draft_title: result.title,
