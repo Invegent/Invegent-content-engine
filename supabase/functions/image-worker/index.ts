@@ -1,3 +1,10 @@
+// image-worker v3.19.0
+// v3.19.0 (2026-06-28) — ACI v0 Slice C: warn-only contract_validation. Adds an additive
+//   render_spec.contract_validation evidence block (status pass|warn; checks: contract_identity,
+//   headline, subtitle, assets) to the governed PP image_quote branch via the pure, never-throws
+//   validateContract helper (./contract_validation.ts). Evidence-only: does NOT gate render,
+//   alter image_status, or change queue/publish. No new failure mode.
+//
 // image-worker v3.18.0
 // v3.18.0 (2026-06-27) — ACI v0 Slice B2 — echo draft_format.contract (4 identity fields)
 //   into render_spec for the governed PP image_quote branch; additive evidence-only; safe
@@ -202,11 +209,12 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { MANUAL_RENDER_MODE, MANUAL_RENDER_LABEL, PP_NEWS_STATIC_16x9, NEWS_STATIC_CENTERED_SCRIM_1x1, isManualRenderRequest, mapResolvedAssets, buildManualModifications, computePropsHash, buildGovernedTemplateSpec } from './manual_render.ts';  // v3.11.0: LANE 3B; v3.13.0: + B0 1:1 impl
 import { DRAFT_PROOF_MODE, DRAFT_PROOF_LABEL, buildProofFieldsFromDraft } from './branch_b_proof.ts';  // v3.12.0: BRANCH B / LANE B-PROOF
-import { B1_ASSET_KEYS, B1_LOGO_KEY, B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, isB1GovernedImageQuote, assertHeadlineWithinGate, selectB1BackgroundKey, deriveB1Subtitle } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug to resolver). v3.16.0: B1-v2 deterministic background rotation (selectB1BackgroundKey). v3.17.0: B1-v2 governed subtitle from draft_body (deriveB1Subtitle).
+import { B1_ASSET_KEYS, B1_LOGO_KEY, B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, B1_HEADLINE_MAX_CHARS, B1_SUBTITLE_MAX_CHARS, isB1GovernedImageQuote, assertHeadlineWithinGate, selectB1BackgroundKey, deriveB1Subtitle } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug to resolver). v3.16.0: B1-v2 deterministic background rotation (selectB1BackgroundKey). v3.17.0: B1-v2 governed subtitle from draft_body (deriveB1Subtitle).
 import { resolveLegacyLogo, assertGovernedAssetReachable, type AssetVerdict } from './asset_url_guard.ts';  // v3.15.0: H2 asset-URL validation before Creatomate
 import { echoContractToRenderSpec } from './contract_echo.ts';  // v3.18.0: ACI v0 Slice B2 — echo draft_format.contract identity fields into render_spec (governed PP image_quote; evidence-only)
+import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C: warn-only contract validation (evidence-only, never throws)
 
-const VERSION = 'image-worker-v3.18.0';
+const VERSION = 'image-worker-v3.19.0';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -664,12 +672,22 @@ Deno.serve(async (req: Request) => {
         const renderScript = { template_id: NEWS_STATIC_CENTERED_SCRIM_1x1.provider_template_id, modifications, output_format: NEWS_STATIC_CENTERED_SCRIM_1x1.output_format };
         const renderSpec = { label: B1_PRODUCTION_LABEL, template: templateSpec, background_key: backgroundKey, subtitle_chars: subtitle.length };  // B1-v2: record selected background + subtitle length in evidence
         const renderSpecWithContract = echoContractToRenderSpec(renderSpec, (draft as any).draft_format);  // v3.18.0 (ACI v0 B2): echo the four draft_format.contract identity fields into render_spec; evidence-only, safe no-op when contract absent/malformed (validation = Slice C)
+        const contract_validation = validateContract({
+          draftFormat: (draft as any).draft_format,
+          headline: draft.image_headline,
+          subtitle,
+          logoUrl: mapped.logo.asset_url,
+          backgroundUrl: mapped.background.asset_url,
+          headlineLimit: B1_HEADLINE_MAX_CHARS,
+          subtitleLimit: B1_SUBTITLE_MAX_CHARS,
+        }, nowIso);  // ACI v0 Slice C: warn-only contract validation; pure, never throws; additive evidence
+        const renderSpecWithValidation = { ...renderSpecWithContract, contract_validation };
         // v3.15.0 (H2): governed assets are fail-loud — verify the RESOLVED logo + background
         // are reachable BEFORE the Creatomate submit. NO fallback (governed). A throw here hits
         // the EXISTING per-draft catch → image_status='failed'. Does NOT touch the B1 gate.
         await assertGovernedAssetReachable('logo', mapped.logo.asset_url, logoMemo);
         await assertGovernedAssetReachable('background', mapped.background.asset_url, logoMemo);
-        const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: `${B1_GOVERNED_CLIENT_SLUG}/${draft.post_draft_id}.jpg`, mimeType: 'image/jpeg', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote', renderSpec: renderSpecWithContract });
+        const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: `${B1_GOVERNED_CLIENT_SLUG}/${draft.post_draft_id}.jpg`, mimeType: 'image/jpeg', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote', renderSpec: renderSpecWithValidation });
         await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
         results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'generated', image_url: imageUrl, governed: true });
         continue;
