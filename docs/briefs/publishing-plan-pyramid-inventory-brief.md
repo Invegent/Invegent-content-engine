@@ -35,7 +35,7 @@ headers as record-only text, not production truth.**
   Pyramid read surface.
 - **NOT ready for editable implementation** — the write-side, the schema-exposure path, and a
   pre-existing privilege remediation must land first (see §14). The first build slice is
-  **strictly read-only** (§15).
+  **strictly read-only** (§16; readiness in §15).
 
 ---
 
@@ -242,22 +242,92 @@ extension once a `c.client_format_variant_*` model is designed.
 6. **No variant work** until the variant model exists (§11).
 7. **No editable controls** until server-side validations + an audit path exist.
 
-## 15. Recommended next implementation slice
+## 15. Implementation Readiness Addendum
 
-**Publishing Plan Pyramid Slice 1 — read-only Schedule-tab surface.**
+Added before any build, to connect the last month of ICE work to the Publishing Plan Pyramid and to
+fix exactly what Slice 1 includes, excludes, and depends on.
 
-Scope:
-- **Layer 1:** publishing goal / schedule summary (platforms, cadence, max/day, min gap, enabled).
-- **Layer 2:** read-only Format Mix Matrix (platform × format, cell states + allocation + source +
-  enforcement + blocked-reason).
-- **Side drawer:** read-only eligibility / proof details + operator actions.
-- **Layer 3:** Variant Mix **placeholder only**.
+### 15.1 Last-month capability map (how recent ICE work feeds the Pyramid)
 
-Technical requirement:
-- Build behind a **service-role read RPC or safe server action** (resolves the `t.*`/`m.*`
-  exposure problem cleanly).
-- Reuse existing Creative Mix config-audit logic where possible.
-- **No writes. No editing. No schedule-behaviour change. No variant implementation.**
+| Recent ICE work | Contribution to the Pyramid | In Slice 1? |
+|---|---|---|
+| Publishing reliability / YouTube recovery / publisher guards (asset-guard, publish_origin) | **Publishing confidence & platform state** — Layer 1 eligibility signal (publish path proven, throttles, paused state) | Read-only signal only |
+| Content Studio T0/T1 | **Operator-created content path** — feeds planned volume, but a different surface | **No** (not Slice 1) |
+| Series v2 | **Future input into planned content volume / creative planning** | **No** (not Slice 1) |
+| Avatar governance / AGP / A2 (shadow resolver, brand-host) | **Avatar/persona eligibility + future variant proof layer** (Layer 3) | Read-only eligibility input later; not Slice 1 |
+| Creative Library / ACI / Branch B (capability contracts, B0 governed template) | **Contract/template proof + governed creative paths** — the proof spine behind variant eligibility | Evidence source; variant build is later |
+| Format Mix Enforcement Phase 1 | **Backend now obeys format mix for Property Pulse** at materialise time | Layer 2 enforcement truth (read) |
+| Control Tower P1 | **Governed enrollment model replaces the hardcoded PP gate** (`c.client_control_tower_enrollment` + DB-backed `m.format_mix_enrolled`) | Layer 2 enforcement state (read) |
+| Creative Mix dashboard slices (evidence + config-gap audit) | **Evidence / config-gap source** to be restyled into Pyramid diagnostics (not rebuilt) | Reused as Layer 2 read-side |
+| Security / governance remediation (search_path, REVOKE, RLS posture) | **The reason write/edit paths remain gated** — privilege must be safe before editable UI | Constraint, not a feature |
+| Insights workers / performance evidence | **Future feedback layer** (did the mix perform?) | **No** (not a Slice 1 blocker) |
+
+### 15.2 Slice 1 explicit exclusions
+
+Publishing Plan Pyramid **Slice 1 is read-only only** and must **NOT** include: editable format
+controls · dry-run save/activation flow · write RPCs · variant mix implementation · multi-client
+rollout · schedule behaviour changes · publisher/render changes · Insights Fix 2 · OBS work ·
+Gmail ingest · PRV deploy · YouTube onboarding debt · avatar character expansion · broader ledger
+drift reconciliation · Slice C proof execution · Phase 1 post-fill confirmation execution.
+
+### 15.3 Evidence maturity labels (use in cells + side drawers)
+
+A format must **not look fully safe merely because it appears in config.** The Pyramid should label
+each cell/format with its real maturity:
+
+- **Proven in production** — observed working end-to-end (render + publish evidence).
+- **Configured and enforced** — config present and the enforcement gate is active.
+- **Configured but not smoke-proven** — config present, no governed smoke/proof yet.
+- **Policy exists but no render/publish proof** — synthesis/quality policy present, never produced.
+- **Supported in theory only** — platform/worker could support it, no client config.
+- **Blocked** — a prerequisite is missing (see §10); shows the exact operator action.
+- **Not modelled yet** — no backing model exists (e.g. variant mix).
+
+### 15.4 Operational mode labels (client/control state)
+
+- **legacy** — no governed enrollment; pre-Control-Tower behaviour.
+- **shadow** — enrollment present, observing only, not enforcing.
+- **pilot** — enforcing for a limited scope.
+- **enforce** — fully enforced.
+- **editable-disabled** — read-only surface only; no write path wired.
+- **editable-ready** — write path + server-side validation + audit exist.
+
+**Current Property Pulse truth:** Format Mix = **enforce** · Enrollment = **governed DB row**
+(`c.client_control_tower_enrollment`, 1 active/approved/enforce row) · Variant Mix = **not modelled**
+· Editable UI = **disabled**.
+
+### 15.5 Carry impact matrix
+
+| Carry | Blocks Slice 1 read-only? | Blocks editable later? | Note |
+|---|---|---|---|
+| Phase 1 post-fill confirmation | No | No | Matters for confidence, not a read-only blocker |
+| ACI Slice C proof | No | No | Matters for ACI/contract confidence; label affected cells accordingly |
+| `t.*` / `m.*` exposure problem | **Yes — unless solved via service-role RPC/server action** | Yes | `t` unreachable by any role over REST; `m` service-role-only — the data contract MUST route around it |
+| `m.materialise_slots` anon/auth EXECUTE (SECDEF writer) | No | **Should be remediated before broad editable UI** | Pre-existing privilege smell; security-auditor + PK gate |
+| `m.fill_pending_slots` / `m.build_weekly_demand_grid` search_path | No | Should be remediated before editable | Unpinned search_path; hygiene before write paths |
+| Global picker URL/client mismatch | No (URL-param Slice 1 is fine) | **Yes — blocks editable/activation UI** | Decide picker model before editable |
+| Variant model missing | No (placeholder only) | **Yes — blocks variant matrix** | Needs `c.client_format_variant_*` model |
+| `max_per_week` not enforced | No | No | Read-only display ok, but must be **labelled configured/not enforced** |
+| Broader historical ledger drift | No | No | Admin debt; separate PK-gated reconciliation |
+| v4.08 B1/B2 clarification | No | No | No production `render_spec.contract` echo observed yet; reconcile separately |
+| Duplicate `/client-profile` + prompt editors | No | No | Retire/merge later (§12); not a Pyramid blocker |
+
+## 16. Recommended next implementation slice
+
+**Publishing Plan Pyramid Slice 1A — read-only data contract (service-role read RPC or safe server
+action) for the matrix.**
+
+Build order is **data contract first, UI second**:
+- **Slice 1A (next):** author and prove a **service-role read RPC or safe server action** that
+  resolves the full matrix shape (Layer 1 schedule summary + Layer 2 platform × format cells with
+  eligibility/allocation/source/enforcement/maturity, and the side-drawer detail payload). This is
+  what resolves the `t.*`/`m.*` exposure problem cleanly. **Prove the data contract before any UI.**
+- **Slice 1B (after 1A proven):** render the read-only matrix + side drawer UI on the Schedule tab
+  (Layer 1 summary, Layer 2 matrix, Layer 3 variant **placeholder only**), consuming the 1A
+  contract. Reuse existing Creative Mix config-audit logic where possible.
+
+Hard constraints for both: **no writes · no editing · no variant implementation · no schedule
+behaviour change.**
 
 ---
 
