@@ -15,8 +15,12 @@
 --
 -- AMENDMENT A (week-anchored, position-indexed, convergent allocation):
 --   For each enrolled (client, platform), the FULL ISO-week occurrence set
---   is enumerated (Monday-anchored, past + future, NO future-filter) so each
---   occurrence has a STABLE 1-based ordinal. A Hamilton (largest-remainder)
+--   is enumerated by mirroring m.compute_rule_slot_times EXACTLY — generate
+--   the 7 week dates and keep those where EXTRACT(isodow FROM d)=day_of_week
+--   (isodow 1=Mon..7=Sun; production day_of_week=0=Sunday matches nothing and
+--   is excluded, as in compute_rule_slot_times) — past + future, NO future-
+--   filter — so each occurrence has a STABLE 1-based ordinal. A Hamilton
+--   (largest-remainder)
 --   allocation over the ACTUAL occurrence count N is spread via smooth
 --   weighted round-robin; the slot at ordinal k gets assignment[k]. Because
 --   the ordinal set is anchored to the week (not to "now"), re-running the
@@ -72,6 +76,7 @@ CREATE OR REPLACE FUNCTION m.format_mix_enrolled(p_client_id uuid)
   RETURNS boolean
   LANGUAGE sql
   IMMUTABLE
+  SET search_path TO 'public','pg_temp'   -- pure; behavior-neutral, clears function_search_path_mutable advisor
 AS $$
   SELECT p_client_id = '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd'::uuid;
 $$;
@@ -97,6 +102,7 @@ CREATE OR REPLACE FUNCTION m.allocate_week_formats(p_formats jsonb, p_n integer)
   RETURNS text[]
   LANGUAGE plpgsql
   IMMUTABLE
+  SET search_path TO 'public','pg_temp'   -- pure; behavior-neutral, clears function_search_path_mutable advisor
 AS $$
 DECLARE
   v_m           integer;        -- number of distinct formats
@@ -215,6 +221,26 @@ $$;
 
 
 -- ---------------------------------------------------------------------
+-- GRANT HYGIENE for the two NEW helpers (fail-closed; least privilege).
+-- These helpers are invoked ONLY by m.materialise_slots, which is SECURITY
+-- DEFINER owned by postgres and runs as its owner -> owner postgres retains
+-- EXECUTE implicitly, so NO service_role / authenticated grant is required.
+-- Revoke the default PUBLIC EXECUTE (and anon/authenticated explicitly, since
+-- REVOKE FROM PUBLIC alone is insufficient on Supabase). If a future DIRECT
+-- caller needs either helper, grant service_role explicitly then.
+-- (db-rls-auditor to confirm.) This does NOT touch grants on the two REPLACED
+-- functions (build_weekly_demand_grid, materialise_slots) — CREATE OR REPLACE
+-- preserves their existing owner + ACL.
+-- ---------------------------------------------------------------------
+REVOKE EXECUTE ON FUNCTION m.format_mix_enrolled(uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION m.format_mix_enrolled(uuid) FROM anon;
+REVOKE EXECUTE ON FUNCTION m.format_mix_enrolled(uuid) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION m.allocate_week_formats(jsonb, integer) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION m.allocate_week_formats(jsonb, integer) FROM anon;
+REVOKE EXECUTE ON FUNCTION m.allocate_week_formats(jsonb, integer) FROM authenticated;
+
+
+-- ---------------------------------------------------------------------
 -- m.build_weekly_demand_grid — v2 (same signature, same return columns)
 -- STABLE (NOT security definer) — preserved from original.
 --
@@ -237,7 +263,11 @@ $$;
 --   (4) Unsupported platform/format pairs are excluded by (1)-(3).
 --   (5) Normalise surviving shares to sum 100 over the allocatable set.
 --   (6) weekly_slot_count = Hamilton over slots_per_platform.weekly_slots
---       using the normalised shares (backward-compat only).
+--       using the normalised shares. RETAINED FOR BACKWARD-COMPAT ONLY:
+--       m.materialise_slots v2 INTENTIONALLY allocates over the ACTUAL
+--       enumerated week occurrences (N, matched via isodow like
+--       compute_rule_slot_times), NOT over weekly_slot_count. Any divergence
+--       between the two is expected and not a bug.
 --   (7) Return rows only for the allocatable set; ORDER BY platform,
 --       share_pct DESC, ice_format_key.
 -- ---------------------------------------------------------------------
@@ -389,12 +419,18 @@ $$;
 --   Fail-closed to legacy if: not enrolled, no grid rows, N=0, or S not found
 --   in the enumerated set.
 --
---   Occurrence formula matches m.compute_rule_slot_times exactly:
---     occ_ts = (wk_monday + (day_of_week-1) days + publish_time)::timestamp
---                AT TIME ZONE client_tz
---   isodow: 1=Mon..7=Sun; date_trunc('week', d) = Monday.
+--   Occurrence enumeration mirrors m.compute_rule_slot_times EXACTLY: a rule
+--   fires on ISO-week date d iff EXTRACT(isodow FROM d) = day_of_week
+--   (isodow 1=Mon..7=Sun); occ_ts = (d::date + publish_time)::timestamp
+--   AT TIME ZONE client_tz. We generate_series the 7 week dates and filter by
+--   isodow — we do NOT use wk_monday+(day_of_week-1). Production day_of_week is
+--   {0..6} (0=Sunday); a day_of_week=0 (or any value outside 1..7) matches no
+--   isodow, so it produces ZERO occurrences in compute_rule_slot_times and is
+--   correctly excluded from N and the ordinal set here. N == the count of
+--   timestamps compute_rule_slot_times actually emits for those rules.
+--   date_trunc('week', d) = Monday.
 --
--- The per-(platform, week) allocation is cached in a temp table so it is
+-- The per-(platform, week) allocation is cached in a jsonb map so it is
 --   computed once and reused across that week's slots — the per-slot result
 --   is byte-identical to the per-slot algorithm and convergence holds.
 --
@@ -478,9 +514,19 @@ BEGIN
           FROM m.build_weekly_demand_grid(v_rule.client_id, v_wk_monday) g
           WHERE g.platform = v_rule.platform;
 
-          -- (b) full ISO-week occurrence count N for this client+platform.
+          -- (b) full-week occurrence count N. Mirror m.compute_rule_slot_times
+          --     EXACTLY: a rule fires on date d iff EXTRACT(isodow FROM d) =
+          --     day_of_week (isodow 1=Mon..7=Sun). Enumerate the 7 ISO-week
+          --     dates and filter by isodow, NEVER wk_monday+(day_of_week-1).
+          --     This excludes day_of_week=0 and any value outside 1..7 from N
+          --     (those produce ZERO occurrences in compute_rule_slot_times),
+          --     so N == the count of timestamps that function actually emits.
+          --     N is the matched-occurrence count, NOT a raw schedule-row count
+          --     and NOT grid.weekly_slot_count.
           SELECT COUNT(*)::integer INTO v_n
           FROM c.client_publish_schedule s
+          JOIN generate_series(v_wk_monday, v_wk_monday + 6, interval '1 day') d
+            ON EXTRACT(isodow FROM d)::integer = s.day_of_week
           WHERE s.client_id = v_rule.client_id AND s.platform = v_rule.platform AND s.enabled = TRUE;
 
           IF v_shares_json IS NULL OR v_n IS NULL OR v_n = 0 THEN
@@ -495,18 +541,26 @@ BEGIN
           );
         END IF;
 
-        -- ordinal of S within the full ISO-week occurrence set (past+future).
+        -- ordinal of S within the full-week occurrence set. SAME enumeration as
+        -- N (and as m.compute_rule_slot_times): generate_series over the ISO
+        -- week filtered by isodow, occ_ts = (d::date + publish_time)::timestamp
+        -- AT TIME ZONE tz. No future-filter -> ordinals stable across nights.
+        -- LIMIT 1: occ_ts within a (client,platform,week) is expected unique;
+        -- if a duplicate ever exists, take the first deterministically, never error.
         SELECT occ.ordinal INTO v_ordinal
         FROM (
-          SELECT s.schedule_id,
-                 (v_wk_monday + (s.day_of_week - 1) + s.publish_time)::timestamp AT TIME ZONE v_tz AS occ_ts,
+          SELECT (d::date + s.publish_time)::timestamp AT TIME ZONE v_tz AS occ_ts,
                  row_number() OVER (
-                   ORDER BY (v_wk_monday + (s.day_of_week - 1) + s.publish_time)::timestamp AT TIME ZONE v_tz ASC
+                   ORDER BY (d::date + s.publish_time)::timestamp AT TIME ZONE v_tz ASC
                  ) AS ordinal
           FROM c.client_publish_schedule s
+          JOIN generate_series(v_wk_monday, v_wk_monday + 6, interval '1 day') d
+            ON EXTRACT(isodow FROM d)::integer = s.day_of_week
           WHERE s.client_id = v_rule.client_id AND s.platform = v_rule.platform AND s.enabled = TRUE
         ) occ
-        WHERE occ.occ_ts = v_slot_time;
+        WHERE occ.occ_ts = v_slot_time
+        ORDER BY occ.ordinal ASC
+        LIMIT 1;
 
         -- read the cached assignment for this platform+week.
         v_assignment := ARRAY(
