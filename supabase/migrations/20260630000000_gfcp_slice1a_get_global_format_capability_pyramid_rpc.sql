@@ -55,11 +55,23 @@
 --   'not_modelled'; variant_capability[] is a placeholder unless p_include_variants=true,
 --   in which case it carries production render evidence only (still evidence, never an allowlist).
 --
--- STATUS: NOT YET APPLIED. PK-gated apply later. Validated read-only against live
---   production data (project mbkmaxqhsohbtwsqolns) via the Slice 1A read-only proof
---   (4 platforms / 13 formats / 52 cells / no-secret PASS / diagnostics surfaced).
---   This file is the REVIEW packet record-of-truth for db-rls-auditor + security +
---   external review; it MUST NOT be applied without the PK apply gate.
+-- STATUS: APPLIED / PROVEN (2026-06-29, register v4.19). Live in production
+--   (project mbkmaxqhsohbtwsqolns). reviewed_input_hash
+--   e10ad5a89097bbd431be150a4f60c9c206598ee151994646d60b4318428a77be.
+--   Reviews: db-rls-auditor PASS, security-auditor GREEN/CLEAN, external review
+--   agree/proceed (review_id 267a5ae7-eb12-4555-81ea-760c10c82631).
+--   APPLY PATH: applied via execute_sql FALLBACK under explicit PK authorization
+--   because apply_migration was harness-denied before mutation (same proven pattern
+--   as PPP Slice 1A / Control Tower P1). The supabase_migrations ledger was then
+--   BACKFILLED: version 20260630000000 / name
+--   gfcp_slice1a_get_global_format_capability_pyramid_rpc recorded exactly once.
+--   Live proof: 4 platforms / 13 formats / 52 cells; maturity Proven-in-production 14 /
+--   Conflict 13 / Supported-in-theory 10 / Blocked 8 / Policy-only 5 /
+--   Configured-and-enforceable 1 / Smoke-proven 1; publisher proven 21 / unknown 17 /
+--   unsupported 14 (no publisher_inferred); website channel_outside_model diagnostic only;
+--   no-secret scan PASS; no raw render_spec dump; advisor no new finding.
+--   This file is the SQL-of-record for the applied function; the body below was applied
+--   BYTE-FOR-BYTE (only this STATUS comment block changed post-apply).
 -- =====================================================================
 
 CREATE OR REPLACE FUNCTION public.get_global_format_capability_pyramid(

@@ -175,10 +175,46 @@ Decision 2 required no SQL change.
 ### Decision
 **CLEAN_READY_FOR_PK_APPLY_GATE** — the corrected candidate (hash `e10ad5a8…77be`) is technically
 clean and safe across all three gates (db-rls-auditor PASS, security-auditor GREEN, external
-`agree`/`proceed`), and reflects the ratified v0 model. **No apply** until the PK apply HARD STOP is
-cleared. The apply is additive read-only DDL (`CREATE FUNCTION` + function REVOKE/GRANT); rollback is
-a single `DROP FUNCTION public.get_global_format_capability_pyramid(text, text, boolean)`. Any further
-SQL change re-invalidates the review (re-run required).
+`agree`/`proceed`), and reflects the ratified v0 model. The apply is additive read-only DDL
+(`CREATE FUNCTION` + function REVOKE/GRANT); rollback is a single
+`DROP FUNCTION public.get_global_format_capability_pyramid(text, text, boolean)`.
+
+---
+
+## 13. Apply + post-apply proof + ledger backfill (recorded 2026-06-29 — register v4.19)
+
+### 13a. Apply path
+- **`apply_migration` (normal path) was harness-denied before mutation** → HARD STOP, reported,
+  no mutation occurred (`fn_exists=0` confirmed post-denial).
+- **PK authorized the `execute_sql` fallback** (proven PPP Slice 1A / Control Tower P1 pattern). The
+  **exact reviewed SQL (hash `e10ad5a8…77be`, unedited)** was applied via `execute_sql` → DDL success.
+
+### 13b. Post-apply validation (live, project `mbkmaxqhsohbtwsqolns`) — **APPLIED_AND_PROVEN**
+- **Function exists & callable:** `public.get_global_format_capability_pyramid(text,text,boolean)`, 1
+  overload (no ambiguity). owner `postgres` · **SECURITY DEFINER** · **STABLE** · `search_path="public, pg_temp"`.
+- **Grants:** `service_role` + `postgres` EXECUTE only; **PUBLIC/anon/authenticated → none**.
+- **No table grants widened, no RLS change, no source-table mutation** (only `CREATE FUNCTION` + function REVOKE/GRANT).
+- **Security advisor:** no new finding (0 references to the function across the advisor set).
+- **Live payload:** all 12 sections; 4 platforms / 13 formats / **52 cells**; filters facebook→13,
+  image_quote→4, both→1; `p_include_variants=true` → production-evidence-only.
+- **Maturity dist (exact match to review proof, no drift):** Proven in production **14** · Conflict/diagnostic **13** ·
+  Supported in theory only **10** · Blocked **8** · Policy-only **5** · Configured & enforceable **1** · Smoke-proven **1**.
+- **Publisher dist:** proven 21 / unknown 17 / unsupported 14 — **no `publisher_inferred`**.
+- **Website** not in matrix (`channel_outside_model` diagnostic only). **No-secret scan PASS**
+  (access_token / credential_env_key / destination_id / page_access_token / client_id / output_url /
+  storage_url all absent); **no raw `render_spec` dump**.
+
+### 13c. Ledger backfill
+- `apply_migration` does not auto-record under the `execute_sql` fallback, so the
+  `supabase_migrations.schema_migrations` ledger was **backfilled** (established marker-row method):
+  **version `20260630000000` / name `gfcp_slice1a_get_global_format_capability_pyramid_rpc`** recorded
+  **exactly once** (no duplicate). GFCP is now the latest applied migration (after PPP `20260629120000`).
+- **Migration SHA256 ledger drift RESOLVED** — repo SQL-of-record =
+  `supabase/migrations/20260630000000_…rpc.sql`.
+
+### Final status
+**APPLIED_AND_PROVEN.** GFCP Slice 1A backend RPC is live, proven, and ledger-backed. Next gate:
+**GFCP Slice 1B read-only dashboard UI** (Create → Format Capability) — separate authorization, gated.
 
 ---
 
