@@ -236,7 +236,7 @@
           "proof_gate": "B0 1:1 template smoke",
           "proof_posture": "proven",
           "known_limitations": "1:1 static image only. In the LIVE production path: headline is the only AI-authored REQUIRED field (hard-gated, max 90, fail-loud on blank/overflow); subtitle is DERIVED from the first non-empty draft_body paragraph (optional, max 90, truncated — never failed); category ('PROPERTY NEWS'), date (render date), footer ('propertypulse.com.au') are renderer-FIXED; location is empty in v0; background ROTATES deterministically per post_draft_id across [bg_perth_cbd, bg_brisbane_cbd, bg_sydney_cbd] (B1-v2 v3.16.0); logo is fixed pp_logo_primary. Governed-only fail-loud — NO legacy fallback for PP. RUNTIME IDENTITY DRIFT: the worker emits render_spec.template.template_variant='centered-scrim-1x1' (American spelling) + implementation_id='news_static_centered_scrim_1x1_v1'; this registry uses 'centred-scrim-1x1' (British, sibling convention). Reconciled in capability_contracts[].maps_to_variant.",
-          "evidence": { "status": "proven", "proof_status": "proven", "proof_gate": "B0 1:1 template smoke", "render_log_id": "50f09ca2-cfae-462f-bfd5-07aac83c96de", "render_spec_template_id": "pp-news-centred-scrim-1x1", "source_commit": "4ebec3b", "review_packet": null, "approved_by": "PK", "approved_at": null, "notes": "B0 reusable 1:1 governed-template smoke (registers v3.98 / image-worker v3.13.0; _smoke/ only, resolver_used=true, fallback_taken=false, output 1080x1080 JPEG). LIVE PRODUCTION INSTANCE: B1-v1/v2 governed image_quote render_log 52165857-ba7e-4a0f-82f0-92fd5f66537e (registers v4.00, label=creative_library_b1_production, resolver_used=true). This is the variant the live PP image_quote path renders." }
+          "evidence": { "status": "proven", "proof_status": "proven", "proof_gate": "B0 1:1 template smoke", "render_log_id": "50f09ca2-cfae-462f-bfd5-07aac83c96de", "render_spec_template_id": "pp-news-centred-scrim-1x1", "source_commit": "4ebec3b", "review_packet": null, "approved_by": "PK", "approved_at": null, "notes": "B0 reusable 1:1 governed-template smoke (registers v3.98 / image-worker v3.13.0; _smoke/ only, resolver_used=true, fallback_taken=false, output 1080x1080 JPEG). LIVE PRODUCTION INSTANCES (image_quote news_card.v1, label=creative_library_b1_production, resolver_used=true): render_log fcbe5993-9791-45a6-98fc-a82c8ffd579f, 5b821214-63c4-4451-ad59-7090b00793d3, 53575bc8-f0e2-4c40-a99a-a7706da48513, 5f7cfc89-5895-44af-af80-56d76e9e856e; published to facebook (post_publish 1472a6fa-c338-46d3-abb3-be100696033b, 2026-06-29) + instagram (post_publish 88ee578a-f65b-49e7-a0df-67c57ba384cd, 2026-06-29). This is the variant the live PP image_quote path renders. (Prior render_log 52165857-ba7e-4a0f-82f0-92fd5f66537e was a stale/non-existent citation — corrected 2026-06-30; full proof set: docs/creative-library/format-variant-intake-pp-image-quote-pilot-v1.md.)" }
         }
       ]
     }
@@ -249,7 +249,10 @@
       { "render_log_id": "7243e040-2ef2-4d08-902b-94cee26af2d3", "kind": "smoke", "template_variant_key": "centred-scrim-16x9", "notes": "Gate C still-image smoke." },
       { "render_log_id": "508b4365-9dfc-4ec8-b491-2a3a1014d26b", "kind": "smoke", "template_variant_key": "centred-scrim-9x16-video", "notes": "Gate D2 video smoke." },
       { "render_log_id": "50f09ca2-cfae-462f-bfd5-07aac83c96de", "kind": "smoke", "template_variant_key": "centred-scrim-1x1", "notes": "B0 1:1 governed-template smoke (registers v3.98); _smoke/ only, resolver_used=true, fallback_taken=false." },
-      { "render_log_id": "52165857-ba7e-4a0f-82f0-92fd5f66537e", "kind": "governed_production_render", "template_variant_key": "centred-scrim-1x1", "notes": "B1-v1/v2 LIVE governed image_quote production render (registers v4.00); label=creative_library_b1_production, resolver_used=true, fallback_taken=false." }
+      { "render_log_id": "fcbe5993-9791-45a6-98fc-a82c8ffd579f", "kind": "governed_production_render", "template_variant_key": "centred-scrim-1x1", "notes": "LIVE governed image_quote production render (news_card.v1); post_draft 1d6c8bab-fd4b-4270-8da6-4561e06ef6df; label=creative_library_b1_production. The v4.08 ACI B1/B2 natural-evidence draft; published to facebook (post_publish 1472a6fa-c338-46d3-abb3-be100696033b, 2026-06-29T06:05:14Z)." },
+      { "render_log_id": "5b821214-63c4-4451-ad59-7090b00793d3", "kind": "governed_production_render", "template_variant_key": "centred-scrim-1x1", "notes": "LIVE governed image_quote production render (news_card.v1); post_draft 33b171fc-e68f-48aa-930f-2fe2ac9bfd94; label=creative_library_b1_production; published to instagram (post_publish 88ee578a-f65b-49e7-a0df-67c57ba384cd, 2026-06-29T00:00:26Z)." },
+      { "render_log_id": "53575bc8-f0e2-4c40-a99a-a7706da48513", "kind": "governed_production_render", "template_variant_key": "centred-scrim-1x1", "notes": "LIVE governed image_quote production render (news_card.v1); post_draft b4e811da-2bae-4b59-86cc-1b81a37f3131; label=creative_library_b1_production." },
+      { "render_log_id": "5f7cfc89-5895-44af-af80-56d76e9e856e", "kind": "governed_production_render", "template_variant_key": "centred-scrim-1x1", "notes": "LIVE governed image_quote production render (news_card.v1); post_draft b4e44eef-b8bd-42fd-aba3-e64d6a15b64e; label=creative_library_b1_production." }
     ]
   },
 
@@ -260,7 +263,7 @@
       "contract_version": "v1",
       "client_slug": "property-pulse",
       "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd",
-      "status": "candidate",
+      "status": "active",
       "purpose": "Canonical capability contract for the LIVE Property Pulse image_quote governed render path (B1-v2). Declares the variant identity, field classes + limits, governed assets, fallback, and the evidence later ACI slices stamp. Declarative source of truth; the runtime consumes a VENDORED projection (no live JSON import).",
       "gate": { "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd", "recommended_format": "image_quote", "note": "Deterministic resolver inputs ONLY — no AI, no mix, no scoring. Any other client_id or format resolves to null (legacy path)." },
       "maps_to_variant": {
@@ -301,17 +304,17 @@
       "runtime_consumption": "vendored projection only; NO live JSON import (runtime-import guard preserved). The vendored runtime-safe constant is derived from this entry and cites its source_commit.",
       "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
       "evidence": {
-        "status": "candidate",
+        "status": "active",
         "proof_status": "proven_via_mapped_variant",
-        "proof_gate": "B0 1:1 template smoke",
+        "proof_gate": "B0 1:1 template smoke + live production render+publish (PP image_quote, facebook+instagram)",
         "render_log_id": "50f09ca2-cfae-462f-bfd5-07aac83c96de",
-        "production_instances": ["52165857-ba7e-4a0f-82f0-92fd5f66537e"],
+        "production_instances": ["fcbe5993-9791-45a6-98fc-a82c8ffd579f", "5b821214-63c4-4451-ad59-7090b00793d3", "53575bc8-f0e2-4c40-a99a-a7706da48513", "5f7cfc89-5895-44af-af80-56d76e9e856e"],
         "render_spec_template_id": "pp-news-centred-scrim-1x1",
         "source_commit": "c552f91",
         "review_packet": "docs/briefs/aci-foundation-v0-capability-contract-spine-brief.md",
-        "approved_by": null,
-        "approved_at": null,
-        "notes": "The contract adds NO new render proof — proof is the mapped variant centred-scrim-1x1 (B0 1:1 smoke 50f09ca2) with the live production instance 52165857. status='candidate' until PK ratifies; approved_by null (no false approval)."
+        "approved_by": "PK",
+        "approved_at": "2026-06-30",
+        "notes": "PK-ratified ACTIVE 2026-06-30 (Format Variant Intake Slice 1B reconciliation). Proof is INHERITED from the mapped variant centred-scrim-1x1 (B0 1:1 smoke 50f09ca2) and is now PRODUCTION-PROVEN by real render + publish for PP image_quote on FACEBOOK + INSTAGRAM ONLY: production renders = production_instances above; publishes = facebook post_publish 1472a6fa-c338-46d3-abb3-be100696033b (draft 1d6c8bab, 2026-06-29T06:05:14Z) + instagram post_publish 88ee578a-f65b-49e7-a0df-67c57ba384cd (draft 33b171fc, 2026-06-29T00:00:26Z). Other platforms are NOT production_proven (no publish evidence). The contract adds NO new render proof of its own. The contract resolver (resolveCreativeContract) is wired in ai-worker for ADDITIVE draft_format.contract evidence stamping ONLY (Slice B1, register v4.06) — it does NOT drive format selection or render behaviour; the image-worker render path renders via the vendored b1_production constants. 'active' ratifies the contract DEFINITION + its inherited production proof, NOT a format-selection/render change; the vendored projection (creative_contract.ts) carries only contract-identity fields (no status/evidence) and is unchanged. Prior citation of render_log 52165857 was stale/non-existent — corrected to the real IDs above. Full structured proof set: docs/creative-library/format-variant-intake-pp-image-quote-pilot-v1.md."
       }
     }
   ],
