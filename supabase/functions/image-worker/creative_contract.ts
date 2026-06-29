@@ -9,9 +9,12 @@
 // registry at render time (runtime-import guard). Pure constants from ./b1_production.ts are
 // referenced ONLY by the test's no-drift consistency guard, not by this projection.
 //
-// UNWIRED: there is NO production consumer yet — no render path imports resolveCreativeContract
-// or PP_IMAGE_QUOTE_NEWS_CARD_V1. Slice B/C/D will wire it. This file introduces NO behaviour
-// change to any existing path; it is additive and inert until explicitly consumed.
+// WIRED (ADDITIVE STAMPING ONLY): ai-worker imports resolveCreativeContract to stamp the additive
+// m.post_draft.draft_format.contract evidence (variant_key / contract_ref / contract_version /
+// selector_reason) on the gated PP image_quote path (Slice B1). It does NOT select formats, does NOT
+// change render selection, and enables NO variant. The image-worker render path does NOT import this
+// module (it renders via the vendored b1_production constants). No format-selection / render-behaviour
+// change on any path; the projection remains a pure vendored snapshot.
 
 // ---------------------------------------------------------------------------
 // Type definitions
