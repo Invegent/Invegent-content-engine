@@ -5,9 +5,14 @@
 > Advisor / Content-Studio change, no production enablement, no deploy.
 > **Produced:** 2026-06-30 (CE session). **Type:** docs/registry only.
 > **Scope (D-V1):** v0 lifecycle state lives in **declarative registry evidence blocks** — this file —
-> NOT in DB-backed `c.client_format_variant_*` tables. **`property-pulse.json` is NOT edited** (it
-> feeds a runtime-vendored projection / runtime-import guard); these records reference its objects by
-> key. **No schema file edited.**
+> NOT in DB-backed `c.client_format_variant_*` tables. **`property-pulse.json` was NOT edited in
+> Slice 1** (it feeds a runtime-vendored projection / runtime-import guard); these records reference
+> its objects by key. **No schema file edited.**
+> **UPDATE — Slice 1B (commit `e2e782f`, register v4.22):** the `news_card.v1` registry record in
+> `property-pulse.json` was subsequently reconciled (R1 + R2 below — stale render citation retired,
+> contract ratified `active`/production-proven for PP × facebook+instagram only). creative-graph-auditor
+> **PASS**; the runtime / vendored `creative_contract.ts` projection (contract-identity fields only) is
+> **unaffected** (9 + 13 worker tests pass; runtime-import guard intact). No schema change; no DB/deploy.
 > **Decides against:** `docs/briefs/format-variant-intake-v0-slice0-decision-record.md` (D-V1…D-V5)
 > and `docs/briefs/format-variant-intake-v0-proof-chain-design.md` (proof chain §3, evidence §6).
 > **CE state at write time:** `main == origin/main == b9240cca596601f7503448a4b4202ea1d669f5ba`;
@@ -66,15 +71,18 @@ are not production_proven (no publish evidence).
 variant `centred-scrim-1x1`, provider `fb9820f8-3fee-4448-b324-3d500fa74b40`). Owner ICE · approval PK
 · AI propose-only.
 
-> **Honest findings (surfaced, not fixed here):**
-> 1. **Stale registry citation:** `property-pulse.json` cites a `render_log 52165857-ba7e-4a0f-82f0-92fd5f66537e`
->    as the "LIVE PRODUCTION INSTANCE" — that render_log_id **does NOT exist** in the live
->    `m.post_render_log`. The real production renders are the 4 IDs above. This is a registry
->    evidence-citation discrepancy to reconcile separately (registry edit is out of this Slice's scope).
-> 2. **Governance-record gap:** the `capability_contract` `status` in `property-pulse.json` is
->    `candidate` (formal PK `active` ratification not recorded), even though the variant is render- and
->    publish-proven in production. The lifecycle reached `production_proven` ahead of a recorded
->    `governed` ratification — a record gap (not a render/publish gap) to reconcile under the PK gate.
+> **Findings — both RECONCILED in Slice 1B (commit `e2e782f`, creative-graph-auditor PASS):**
+> 1. **Stale registry citation — RECONCILED.** `property-pulse.json` had cited a
+>    `render_log 52165857-ba7e-4a0f-82f0-92fd5f66537e` as the "LIVE PRODUCTION INSTANCE", but that
+>    render_log_id does **NOT exist** in `m.post_render_log`. Slice 1B **retired** it and wired the 4
+>    real production render IDs (above) into `production_instances` / `known_instances` / the variant
+>    notes; `52165857` now survives only as an explicit "corrected/stale" note.
+> 2. **Governance-record gap — RECONCILED.** The `news_card.v1` `capability_contract` was `candidate`
+>    despite production proof. Slice 1B **ratified** it: top-level + evidence `status` → `active`,
+>    `approved_by` → PK, `approved_at` → 2026-06-30, `proof_status` `proven_via_mapped_variant`, scoped
+>    to **PP × facebook+instagram only**. The vendored projection (which carries no status/evidence) is
+>    unaffected; the resolver was noted as wired in ai-worker for additive contract-stamping only (no
+>    format-selection/render change).
 
 ---
 
@@ -143,12 +151,12 @@ only. `news_card.v1` was already live (this backfills its lifecycle state from r
 
 ## 5. Risks / open questions
 
-- **R1 — stale registry citation:** `property-pulse.json` cites a non-existent
-  `render_log 52165857`; the real production renders are the 4 cited here. Reconcile the registry
-  citation separately (registry-JSON edit + re-vendor review; out of this Slice's scope). *(carry)*
-- **R2 — governance-record gap:** `news_card.v1` reached `production_proven` while its
-  `capability_contract.status` is still `candidate` (no recorded PK `active` ratification). Record the
-  governance ratification under the PK gate to align the registry with reality. *(carry)*
+- **R1 — stale registry citation — RECONCILED (Slice 1B, commit `e2e782f`).** The non-existent
+  `render_log 52165857` citation was retired and replaced with the 4 real production render IDs;
+  creative-graph-auditor PASS. *(closed)*
+- **R2 — governance-record gap — RECONCILED (Slice 1B, commit `e2e782f`).** `news_card.v1` ratified
+  `active` / production-proven (PP × facebook+instagram only), PK approval trail recorded;
+  creative-graph-auditor PASS. *(closed)*
 - **R3 — worked-example forward path needs render work:** taking `market_update.v1` past `proposed`
   needs a real template-family variant + governed render — render work outside declarative Slice 1.
   A later gated slice (Branch-B-style) would do that. *(carry)*
@@ -157,9 +165,11 @@ only. `news_card.v1` was already live (this backfills its lifecycle state from r
 
 ## 6. Recommended next gate
 
-- Reconcile the two `news_card.v1` registry discrepancies (R1 stale render_log citation, R2 governance
-  ratification) in a separate PK-gated `property-pulse.json` registry pass (with the re-vendor / runtime
-  guard review).
+- ~~Reconcile the two `news_card.v1` registry discrepancies (R1, R2) in a separate PK-gated
+  `property-pulse.json` pass.~~ **DONE — Slice 1B (commit `e2e782f`, register v4.22):** R1 + R2
+  reconciled, creative-graph-auditor PASS, runtime unaffected. Residual: the vendored
+  `creative_contract.ts` header comment still says "UNWIRED" (stale; runtime-code doc drift) and the
+  dashboard `lib/creative-library/registry.ts` v0.2 re-vendor remain separate carries.
 - The GFCP Layer 3 read-only projection (D-V3) and any DB-backed variant store (D-V1 future) remain
   **not started**.
 - `market_update.v1` / `quote_card.v1` advance only via a separately-gated slice that includes real
