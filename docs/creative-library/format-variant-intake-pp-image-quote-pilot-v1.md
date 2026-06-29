@@ -163,26 +163,88 @@ schema/reference-resolution).
 
 ---
 
-## 3. `property_pulse.image_quote.quote_card.v1` — second candidate
+## 3. `property_pulse.image_quote.quote_card.v1` — second candidate (DEFINED, Slice 2B)
 
 | Field | Value |
 |---|---|
 | `variant_key` | `property_pulse.image_quote.quote_card.v1` |
-| `format` | `image_quote` |
-| `scope` | global variant-level (gates 1–5) |
-| `proof_state` | **`proposed`** |
+| `family / brand` | Property Pulse (`property-pulse`); intended family `property-pulse-news` |
+| `format` | `image_quote` (existing `ice_format_key`; no new taxonomy) |
+| `version` | `v1` |
+| `scope` | global variant-level (gates 1–5) — content definition only; not yet platform/client scoped |
+| `proof_state` | **`defined`** (Slice 2B — declarative content/field-contract definition authored; NO render/publish/governance/production evidence yet) |
 
-**Evidence block (verified read-only):** **none.** 0 succeeded renders carrying this `variant_key`;
-0 publishes; no `capability_contract` for this key in the registry. (Live check confirms the **only**
-PP `image_quote` `variant_key` present in production is `news_card.v1`.)
+### 3.1 Purpose
+A Property Pulse **quote-card** `image_quote` treatment for **short expert commentary, buyer/seller
+insight, market education, or a brand-safe advisory quote**. Quote-led (a single short quotation is
+the hero), distinct from `news_card.v1` (headline-led news) and `market_update.v1` (one market
+signal/stat). Factual, concise, credible — aligned to the PP style-guide voice/tone
+(`property-pulse-styleguide-v1`).
 
-**missing_gates:** `defined` (needs field contract + `maps_to_variant` binding — none exists),
-`governed`, `renderable` (needs a real render — out of this Slice's scope), `visually_approved`,
-`platform_safe`, `client_enabled`, `production_proven`.
+### 3.2 Content field contract (declarative — intent, not yet a runtime contract)
+| Field | Required | Notes (aligned to PP content rules; limits PROVISIONAL/to_be_calibrated) |
+|---|---|---|
+| `quote_text` | required | the hero quotation; **short** (provisional ≤ ~140 chars to stay readable mobile-first); hard-gate on overflow/blank at render time (later gate) |
+| `attribution` / `speaker_role` | optional | who said it + role (e.g. "PP market analyst", "buyer's agent") — shown only if present |
+| `short_context` | optional | ≤1 line framing the quote |
+| `topic_label` | optional | category badge text (e.g. "MARKET INSIGHT", "BUYER TIP") |
+| `source_context` | optional | attribution / source line |
+| `suburb_region` | optional | suburb / region label |
+| `callout` | optional | short tag |
 
-**governance refs:** none yet. Owner ICE · approval PK · AI propose-only.
+Authorship policy intent: `quote_text` AI-authored (hard-gated, length-bounded), attribution/context
+optional; no AI rewrite in v0 (one bounded repair deferred to a later ACI slice). **No fabricated
+attribution** — `attribution` only rendered when a real speaker is supplied.
 
-> **Honest state:** `proposed` only — no template, no contract, no evidence. No overclaim.
+### 3.3 Visual / layout intent (NOT yet rendered)
+Brand-safe `image_quote`: **quote-led** layout (the short quote dominates), 1:1 first (mirroring the
+proven `centred-scrim-1x1` treatment family), strong readability (large quote type, generous
+spacing), optional attribution line, optional `topic_label` category badge, background photo +
+legibility scrim, governed logo — **short quote only, no clutter**, mobile-first, meeting the
+style-guide `accessibility_rules` (contrast / min font size / text-over-image). *Intent only* — no
+template renders it yet (see missing gates).
+
+### 3.4 Governance / style-guide references
+- Style guide: `property-pulse-styleguide-v1` (active) — voice/tone, palette, scrim, logo, safe-area,
+  accessibility rules govern this variant.
+- Intended composing patterns (all currently `candidate`, not variant-proven):
+  `pp_headline_block_v1` (repurposed for the quote block), `pp_category_badge_v1` (topic label),
+  `pp_background_plus_scrim_v1`, `pp_branding_strip_v1`.
+- **Forward pointer (NOT a renderable claim):** a sibling Creatomate template
+  `news_quote_insight_1x1_v1` (provider_template_id `490ad9ea-7473-49e4-9d3c-e1ae8a12d790`) was
+  *created but NOT wired/registered* during B0 (register v3.98). It is a **candidate** future
+  `maps_to_variant` target — it is **not** a registered template-family variant and is **not** proven;
+  binding/registering it is a later, separately-gated step.
+- Governed assets (intended): logo `pp_logo_primary`, backgrounds `bg_perth_cbd`/`bg_brisbane_cbd`/
+  `bg_sydney_cbd` (via `resolve_brand_assets`, unchanged). Owner ICE · approval PK · AI propose-only.
+
+### 3.5 Platform intent
+Intended **facebook + instagram first** (mirroring the proven `news_card.v1` pairs). This is *intent
+only* — **NOT `platform_safe`** until per-platform render/safe-area evidence exists.
+
+### 3.6 Evidence + missing gates (honest)
+**Evidence (verified read-only, unchanged):** **none** — 0 succeeded renders carrying this
+`variant_key` in `m.post_render_log`, 0 publishes, **no `capability_contract` for this key in
+`property-pulse.json`** (intentionally not added — a registry contract requires a `maps_to_variant`
+template-family variant, which does not exist yet; the `news_quote_insight_1x1_v1` template is
+created-but-unwired, not a registered variant, so adding a contract now would break the
+schema/reference-resolution).
+
+**Missing gates (all still open):**
+- **template binding (`maps_to_variant`)** — no *registered* template-family variant exists for
+  `quote_card`; the unwired `news_quote_insight_1x1_v1` Creatomate template is a candidate target only.
+- **governed** — PK ratification + a style-guide conformance review are not done.
+- **renderable** — no governed render (render work is explicitly OUT of this declarative slice).
+- **visually_approved** — none.
+- **platform_safe** — none.
+- **client_enabled** — none.
+- **production_proven** — none.
+
+> **Honest state:** `defined` — the content field contract, visual intent, governance refs, and
+> platform intent are now authored. It is **NOT** governed/renderable/visually_approved/platform_safe/
+> client_enabled/production_proven; **no proof is borrowed from `news_card.v1`** (a distinct variant).
+> Advancing to `renderable` requires wiring/registering a real template variant + a governed render in
+> a later, separately-gated slice.
 
 ---
 
@@ -192,13 +254,13 @@ PP `image_quote` `variant_key` present in production is `news_card.v1`.)
 |---|---|---|---|---|
 | `…news_card.v1` | **production_proven** (PP × fb+ig) | 4 governed production renders (cited) | 2 publishes — fb + ig (cited) | no — fully evidenced |
 | `…market_update.v1` | **defined** (Slice 2A — §2) | none (not yet renderable) | none | no — content/contract defined; all proof gates open |
-| `…quote_card.v1` | **proposed** | none | none | no — honest earliest state |
+| `…quote_card.v1` | **defined** (Slice 2B — §3) | none (not yet renderable) | none | no — content/contract defined; all proof gates open |
 
 **This pilot enables nothing new in production** — it is evidence / intake / governance recording
 only. `news_card.v1` was already live (its lifecycle state backfilled from real evidence; registry
-reconciled in Slice 1B); `market_update.v1` is now **`defined`** (declarative content/field-contract
-definition only — no render/publish/governance/production evidence, enables nothing); `quote_card.v1`
-remains a reserved key at `proposed` and gates nothing.
+reconciled in Slice 1B); `market_update.v1` (Slice 2A) and `quote_card.v1` (Slice 2B) are now both
+**`defined`** (declarative content/field-contract definitions only — no render/publish/governance/
+production evidence, enabling nothing). All three records remain honest at their evidenced state.
 
 ---
 
