@@ -369,8 +369,47 @@ brief stage — the security *review* itself is a Slice 1A gate, not a Slice 0 b
 
 ---
 
+## 15. PK source decisions (RECORDED 2026-06-29 — §13 resolved)
+
+> Full record: `docs/briefs/global-format-capability-pyramid-slice0-decision-record.md`.
+> **PK approved moving forward.** No implementation occurred at decision time.
+
+**Framing (load-bearing):** Global Format Capability Pyramid **v0 = evidence-and-reconciliation
+view**, **NOT** the final canonical source-of-truth architecture. The later **Canonical Capability
+Model v1** is the normalized source-of-truth architecture (forward carry — see below).
+
+- **D1 — APPROVED:** adopt the layered evidence model for v0 (declared support · configured defaults
+  · governed readiness · render proof · publish proof · Creative Library/contract proof where safe ·
+  diagnostics/conflicts). **Clarification:** layered evidence is the **v0 reconciliation model**, not
+  the permanent canonical decision brain.
+- **D2 — APPROVED:** Slice 1A uses a new **service-role-only SECURITY DEFINER RPC**
+  `public.get_global_format_capability_pyramid(...)`, **unless security review blocks it** (then
+  server-action-only fallback).
+- **D3 — APPROVED:** `publisher_path_status` v0 = evidence/inference with honest uncertainty; allowed
+  labels include `publisher_proven` · `publisher_inferred` · `publisher_unknown` ·
+  `publisher_blocked` · `publisher_unsupported`. **Do not invent publisher certainty.**
+- **D4 — APPROVED:** Creative Library / variant proof v0 = **production-evidence-only where safe**;
+  docs JSON is **not** runtime authority; no full variant model is claimed; Layer 3 stays mostly
+  `not_modelled` until a real variant capability model exists.
+- **D5 — APPROVED:** page location = **Create → Format Capability** (the surface spans platform,
+  format, policy, render, publish, proof, creative evidence, and diagnostics — bigger than Formats or
+  Creative Library alone).
+
+**Status change:** **Slice 1A may now be briefed** as a **read-only backend / data-contract slice**
+(RPC + validation harness + db-rls-auditor / security / external review + PK apply gate). **Slice 1A
+is NOT implemented here — only unblocked-to-brief.**
+
+**Future architecture carry — Canonical Capability Model v1:** after the v0 view exposes enough
+conflicts/gaps, design normalized capability tables/catalogs to become the long-term source of truth
+for Advisor, Studio, the client Publishing Plan Pyramid, render eligibility, and publish eligibility.
+Future, PK-gated, **not started.**
+
+---
+
 ## Cross-references
 
+- Decision record: `docs/briefs/global-format-capability-pyramid-slice0-decision-record.md`
+  (PK D1–D5 + Canonical Capability Model v1 carry).
 - Inventory + readiness source: `docs/briefs/publishing-plan-pyramid-inventory-brief.md`
   (§7 source map, §10 eligibility model, §11 variant gap, §14 risks, §15 readiness addendum).
 - Proven client-level pattern: `docs/briefs/ppp-slice1a-data-contract-validation.md`
