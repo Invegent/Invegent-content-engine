@@ -86,29 +86,80 @@ variant `centred-scrim-1x1`, provider `fb9820f8-3fee-4448-b324-3d500fa74b40`). O
 
 ---
 
-## 2. `property_pulse.image_quote.market_update.v1` — worked example
+## 2. `property_pulse.image_quote.market_update.v1` — worked example (DEFINED, Slice 2A)
 
 | Field | Value |
 |---|---|
 | `variant_key` | `property_pulse.image_quote.market_update.v1` |
-| `format` | `image_quote` |
-| `scope` | global variant-level (gates 1–5) — not yet platform/client scoped |
-| `proof_state` | **`proposed`** |
+| `family / brand` | Property Pulse (`property-pulse`); intended family `property-pulse-news` |
+| `format` | `image_quote` (existing `ice_format_key`; no new taxonomy) |
+| `version` | `v1` |
+| `scope` | global variant-level (gates 1–5) — content definition only; not yet platform/client scoped |
+| `proof_state` | **`defined`** (Slice 2A — declarative content/field-contract definition authored; NO render/publish/governance/production evidence yet) |
 
-**Evidence block (verified read-only):** **none.** 0 succeeded renders carrying this `variant_key`
-(`m.post_render_log`); 0 publishes; **no `capability_contract` for this key in the registry**.
+### 2.1 Purpose
+A Property Pulse **market-update** `image_quote` treatment for a single, concise real-estate market
+signal — rate movement, price/rent movement, auction/clearance context, or buyer/seller-market
+commentary. Distinct from `news_card.v1` (headline-led news): `market_update.v1` **foregrounds one
+market signal** (optionally a hero stat), not a news headline. Factual, concise, informative —
+aligned to the PP style-guide voice/tone (`property-pulse-styleguide-v1`).
 
-**missing_gates:** `defined` (needs a complete intake record: field contract + **`maps_to_variant`
-template-family-variant binding** — no template family variant exists for `market_update` yet),
-`governed`, `renderable` (needs a real governed render — explicitly **out of this declarative
-Slice's scope**), `visually_approved`, `platform_safe`, `client_enabled`, `production_proven`.
+### 2.2 Content field contract (declarative — intent, not yet a runtime contract)
+| Field | Required | Notes (aligned to PP content rules; limits PROVISIONAL/to_be_calibrated) |
+|---|---|---|
+| `headline` | required | concise market-signal headline; max ~90 chars (mirrors news_card provisional limit); hard-gate on overflow/blank at render time (later gate) |
+| `market_signal` | required | the ONE clear movement, e.g. "Cash rate held at 4.35%", "Perth median +1.2% MoM" |
+| `supporting_stat` | optional | hero numeric stat (value + label) — would compose `pp_stat_card_v1` |
+| `short_context` | optional | ≤1 line of context |
+| `source_context` | optional | attribution / source line |
+| `callout` | optional | short tag, e.g. "Buyer's market" |
+| `suburb_region` | optional | suburb / region label |
+| `timeframe` | optional | period, e.g. "May 2026", "QoQ" |
 
-**governance refs:** none yet (no contract). Owner ICE · approval PK · AI propose-only.
+Authorship policy intent: `headline`/`market_signal` AI-authored (hard-gated), `supporting_stat`/
+context/callout optional; no AI rewrite in v0 (one bounded repair deferred to a later ACI slice).
 
-> **Honest state:** `proposed` only. Advancing to `defined`→`renderable` (the design's "worked
-> example" forward path) requires a real Creatomate template-family variant + a governed smoke/render —
-> render work that is **outside** the declarative Slice 1 scope (no render in this slice). Recorded
-> honestly at `proposed`; no overclaim.
+### 2.3 Visual / layout intent (NOT yet rendered)
+Brand-safe `image_quote`: 1:1 first (mirroring the proven `centred-scrim-1x1` treatment family),
+**one clear market signal**, concise headline, optional hero-stat callout, a category badge
+("MARKET UPDATE"), background photo + legibility scrim, governed logo — **no clutter**, mobile-first
+readable, meeting the style-guide `accessibility_rules` (contrast / min font size / text-over-image).
+This is *intent only* — no template renders it yet (see missing gates).
+
+### 2.4 Governance / style-guide references
+- Style guide: `property-pulse-styleguide-v1` (active) — voice/tone, palette, scrim, logo, safe-area,
+  accessibility rules govern this variant.
+- Intended composing patterns (all currently `candidate`, not variant-proven):
+  `pp_headline_block_v1`, `pp_stat_card_v1` (for the optional hero stat — a forward-looking pattern
+  not yet rendered by any proven variant), `pp_category_badge_v1`, `pp_background_plus_scrim_v1`.
+- Governed assets (intended): logo `pp_logo_primary`, backgrounds `bg_perth_cbd`/`bg_brisbane_cbd`/
+  `bg_sydney_cbd` (via `resolve_brand_assets`, unchanged). Owner ICE · approval PK · AI propose-only.
+
+### 2.5 Platform intent
+Intended **facebook + instagram first** (mirroring the proven `news_card.v1` pairs). This is *intent
+only* — **NOT `platform_safe`** until per-platform render/safe-area evidence exists.
+
+### 2.6 Evidence + missing gates (honest)
+**Evidence (verified read-only, unchanged):** **none** — 0 succeeded renders carrying this
+`variant_key` in `m.post_render_log`, 0 publishes, **no `capability_contract` for this key in
+`property-pulse.json`** (intentionally not added — a registry contract requires a `maps_to_variant`
+template-family variant, which does not exist yet; adding a contract without it would break the
+schema/reference-resolution).
+
+**Missing gates (all still open):**
+- **template binding (`maps_to_variant`)** — no Creatomate template-family variant exists for
+  `market_update` yet (a new provider template, or an extended PP-news family variant, is required).
+- **governed** — PK ratification + a style-guide conformance review are not done.
+- **renderable** — no governed render (render work is explicitly OUT of this declarative slice).
+- **visually_approved** — none.
+- **platform_safe** — none.
+- **client_enabled** — none.
+- **production_proven** — none.
+
+> **Honest state:** `defined` — the content field contract, visual intent, governance refs, and
+> platform intent are now authored. It is **NOT** governed/renderable/visually_approved/platform_safe/
+> client_enabled/production_proven; **no proof is borrowed from `news_card.v1`** (a distinct variant).
+> Advancing to `renderable` requires real template + render work in a later, separately-gated slice.
 
 ---
 
@@ -139,13 +190,15 @@ PP `image_quote` `variant_key` present in production is `news_card.v1`.)
 
 | Variant | proof_state | render evidence | publish evidence | overclaim? |
 |---|---|---|---|---|
-| `…news_card.v1` | **production_proven** | 4 governed production renders (cited) | 2 publishes — fb + ig (cited) | no — fully evidenced |
-| `…market_update.v1` | **proposed** | none | none | no — honest earliest state |
+| `…news_card.v1` | **production_proven** (PP × fb+ig) | 4 governed production renders (cited) | 2 publishes — fb + ig (cited) | no — fully evidenced |
+| `…market_update.v1` | **defined** (Slice 2A — §2) | none (not yet renderable) | none | no — content/contract defined; all proof gates open |
 | `…quote_card.v1` | **proposed** | none | none | no — honest earliest state |
 
 **This pilot enables nothing new in production** — it is evidence / intake / governance recording
-only. `news_card.v1` was already live (this backfills its lifecycle state from real evidence);
-`market_update.v1` and `quote_card.v1` are reserved keys at `proposed` and gate nothing.
+only. `news_card.v1` was already live (its lifecycle state backfilled from real evidence; registry
+reconciled in Slice 1B); `market_update.v1` is now **`defined`** (declarative content/field-contract
+definition only — no render/publish/governance/production evidence, enables nothing); `quote_card.v1`
+remains a reserved key at `proposed` and gates nothing.
 
 ---
 
