@@ -355,8 +355,31 @@ blocks the design (so not `BLOCKED`).
 
 ---
 
+## 19. Slice 0 decisions recorded (2026-06-29)
+
+The §16 open decisions are resolved by PK — full record:
+`docs/briefs/format-variant-intake-v0-slice0-decision-record.md`.
+
+- **D-V1 — APPROVED:** v0 source = **declarative Creative Library registry evidence blocks**; **no
+  DB-backed `c.client_format_variant_*` tables** in v0 (prove vocabulary/shape/evidence first).
+- **D-V2 — APPROVED:** the 8-state chain + `deprecated`/`blocked`, at grain global (gates 1–5) /
+  platform×variant (gate 6) / client×platform×variant (gates 7–8); evidence-gated, PK-authorised, no
+  auto-promotion.
+- **D-V3 — APPROVED (later slice):** a read-only, service-role projection may later feed GFCP Layer 3;
+  **not built in Slice 0.**
+- **D-V4 — APPROVED:** pilot = Property Pulse `image_quote` (`news_card.v1` anchor +
+  `market_update.v1` + `quote_card.v1`); **enables nothing new in production.**
+- **D-V5 — APPROVED:** v0 is **declarative + read-only**; no change to render selection, publisher,
+  Advisor, or Content Studio until later gated slices.
+
+**Next gate:** Slice 1 — PP `image_quote` pilot intake records + anchor backfill (docs/registry only,
+no runtime change).
+
+---
+
 ## Cross-references
 
+- Slice 0 decision record: `docs/briefs/format-variant-intake-v0-slice0-decision-record.md` (PK D-V1…D-V5).
 - Creative Library v2 schema: `docs/creative-library/registry-schema-v2.md` (Variant object §3;
   capability contracts §7; proof discipline §5/§6).
 - Concrete variant evidence: `docs/creative-library/property-pulse.json` (registry v0.3;
