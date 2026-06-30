@@ -71,7 +71,7 @@ sanitize.
 NEEDS_TEMPLATE_EDIT / NEEDS_NEW_TEMPLATE — those require the element list; not
 BLOCKED_UNSUITABLE_TEMPLATE — suitability is unknown without the inventory).
 
-**Next action (unblock options — each a later, separately-gated slice):**
+**Next action (unblock options — each a later, separately-gated slice; the safe access pattern + security controls for these are defined in `docs/briefs/provider-inventory-read-access-pattern-v1.md` — CI-4B, register v4.31):**
 1. **CI-4 implementation slice (recommended):** a small **read-only edge function endpoint** that holds
    `CREATOMATE_API_KEY` server-side (Deno.env), calls `GET https://api.creatomate.com/v1/templates/490ad9ea…`,
    and returns **sanitized element metadata only** (names/types/dimensions — no secrets, no render). This
