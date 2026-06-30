@@ -1,0 +1,3 @@
+# ICE CCF-01: hook dry-run logs are never committed (Directive 003 correction).
+# Tracked: *.mjs hook scripts + *.test.mjs tests + this file. Ignored: all logs.
+*.log

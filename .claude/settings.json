@@ -1,0 +1,49 @@
+{
+  "_comment": "ICE CCF-01 Phase 1 governed hook wiring (cc-0026). All guards are wired in --log-only (dry-run) mode; none is enforcing. Bootstrap is inform-only (SessionStart, no enforcing mode). This file is committed/governed; the existing sql-content-gate wiring stays in settings.local.json and is intentionally NOT duplicated here. Enforcing flips happen one guard at a time, each behind a PK gate, after >=3 clean dry-run sessions per guard (cc-0026 §D).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "C:/Users/parve/Invegent-content-engine/.claude/hooks/session-bootstrap.mjs"
+            ]
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "C:/Users/parve/Invegent-content-engine/.claude/hooks/deploy-verify-jwt-guard.mjs",
+              "--log-only"
+            ]
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "C:/Users/parve/Invegent-content-engine/.claude/hooks/worktree-junction-guard.mjs",
+              "--log-only"
+            ]
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "C:/Users/parve/Invegent-content-engine/.claude/hooks/commit-branch-guard.mjs",
+              "--log-only"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
