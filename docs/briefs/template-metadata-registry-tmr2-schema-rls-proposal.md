@@ -1,5 +1,11 @@
 # Template Metadata Registry — TMR-2 Supabase Schema / RLS Proposal (DESIGN ONLY)
 
+> **🔁 Superseded by the final design review:**
+> `docs/briefs/template-metadata-registry-tmr2-final-schema-rls-review.md` (register v4.34) — which
+> resolves OD-1…OD-7 and gives the migration-packet-ready position. This proposal remains
+> **historical / design context** (consolidated in v4.33, reconciled against TMR-1 v4.32 / `f900eb8`).
+> Still **design-only**: no migration, DB mutation, RLS/grant change, or implementation is authorised.
+
 > **Status:** schema/RLS **design proposal only** (reconciled against final TMR-1 v4.32 / `f900eb8`; a
 > **proposal for review, not a migration packet**). **No Supabase table, no
 > migration, no `execute_sql`, no `apply_migration`, no DDL, no DML, no RLS change, no grant change,
