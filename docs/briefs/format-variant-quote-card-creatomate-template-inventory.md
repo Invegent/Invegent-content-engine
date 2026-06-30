@@ -31,6 +31,61 @@ renderable, not platform_safe, not client_enabled, not production_proven.
 
 ---
 
+## CI-4 — Creatomate read-only inventory read attempt (2026-06-30, register v4.30)
+
+> **CI-4 verdict: `BLOCKED_NO_SAFE_READ_PATH`.** A read-only Creatomate template-metadata read for
+> `490ad9ea-7473-49e4-9d3c-e1ae8a12d790` was **authorized** for this slice but **could not be performed
+> safely**, for the same root cause Slice 3D found — now confirmed by direct investigation of the
+> integration. **No Creatomate API call was made. No provider mutation, no render, no publish.**
+> `quote_card.v1` **remains `defined` / unwired / blocked** — unchanged.
+
+**Prior status (Slice 3D):** BLOCKED — element inventory UNVERIFIED; no safe read path identified.
+
+**Read method attempted (CI-4):** read-only investigation of the local Creatomate integration to find a
+safe metadata read path. Findings (no secret printed or stored):
+- **Key handling:** `CREATOMATE_API_KEY` is loaded via `Deno.env.get('CREATOMATE_API_KEY')`
+  (`supabase/functions/image-worker/index.ts:464`, also `video-worker`) — a **runtime secret held only
+  in the Supabase edge-function environment**. It is **not** in the repo (no `.env` present; the name
+  appears only as a `Deno.env.get` reference + in docs — the **value never appears anywhere in-repo**).
+- **Endpoints used:** the workers call only `https://api.creatomate.com/v2/renders` (render **submit** +
+  render-**status** GET), each with `Authorization: Bearer <runtime key>`. There is **no
+  template-metadata read endpoint** (`GET /v1/templates/{id}`) wired anywhere in the codebase.
+- **No connector:** there is **no Creatomate MCP/connector** in this session (the only render-provider
+  MCP is HeyGen HyperFrames).
+- **Why no safe path:** performing `GET /v1/templates/490ad9ea…` requires the `CREATOMATE_API_KEY`.
+  The only ways to obtain it here are (a) extract the runtime secret and place it in a local
+  shell/network call — **unsafe credential exposure, explicitly forbidden**; or (b) run the read inside
+  an edge function that already holds the key — but **no read-only template-metadata endpoint exists**,
+  and creating/deploying one is **out of this slice's scope** (no runtime edit, no deploy). Invoking the
+  existing render path would **create a render** — forbidden. So **no safe read-only path is available**.
+
+**Sanitized inventory result (CI-4):** **none captured** — the read was not performed (no safe path).
+The candidate's actual element list remains **UNVERIFIED** (see §2.1). No payload, no secret, nothing to
+sanitize.
+
+**Field mapping to `quote_card.v1` (CI-4):** **still UNVERIFIED for every field** (`quote_text`,
+`attribution`/`speaker_role`, `topic_label`, `short_context`, `source_context`, suburb/region, callout,
+`background_image`, `logo`) — unchanged from §3; no element list to map against.
+
+**Classification (CI-4):** **`BLOCKED_NO_SAFE_READ_PATH`** (not READY_FOR_TEMPLATE_DEFINITION /
+NEEDS_TEMPLATE_EDIT / NEEDS_NEW_TEMPLATE — those require the element list; not
+BLOCKED_UNSUITABLE_TEMPLATE — suitability is unknown without the inventory).
+
+**Next action (unblock options — each a later, separately-gated slice):**
+1. **CI-4 implementation slice (recommended):** a small **read-only edge function endpoint** that holds
+   `CREATOMATE_API_KEY` server-side (Deno.env), calls `GET https://api.creatomate.com/v1/templates/490ad9ea…`,
+   and returns **sanitized element metadata only** (names/types/dimensions — no secrets, no render). This
+   is a separate PK-gated runtime + deploy lane (out of this docs slice).
+2. **Creatomate connector/MCP** that holds the key and exposes a read-only template-metadata tool.
+3. **PK runs the read manually** with safe key handling and pastes the **sanitized** element list for
+   capture into this doc.
+
+**Proof-gate impact (CI-4):** **none.** `quote_card.v1` does **not** advance — it stays `defined` /
+unwired / blocked at `template_inventory_captured`. No binding, no governance, no render proof, no
+approval. No proof borrowed from `news_card.v1`.
+
+---
+
 ## 0. Creatomate read access — determination (preflight step 8/9)
 
 | Question | Finding |
