@@ -218,7 +218,8 @@ import { echoContractToRenderSpec } from './contract_echo.ts';  // v3.18.0: ACI 
 import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C: warn-only contract validation (evidence-only, never throws)
 import { isTmrSmokeRequest, handleTmrSmoke } from './tmr_smoke.ts';  // v3.20.0: TMR G2b isolated smoke branch (renders 490ad9ea to _smoke/tmr/ ONLY; no post_render_log)
 
-const VERSION = 'image-worker-v3.20.0';
+// v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
+const VERSION = 'image-worker-v3.20.1';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
