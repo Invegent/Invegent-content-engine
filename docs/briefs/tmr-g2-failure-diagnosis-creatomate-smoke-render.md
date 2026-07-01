@@ -6,6 +6,17 @@
 
 ---
 
+## 0a. Provider Confirmation (2026-07-01) — CAUSE CONFIRMED
+
+PK inspected the Creatomate console (Option 4). The failure is **provider-confirmed**:
+- **Creatomate render id:** `8f8dbafd-c582-4b39-a266-f608d37b2b16` (template `news_quote_insight_1x1_v1`; Status **Failed**; Jul 1 2026, 2:46 PM).
+- **Provider error:** *"Image file is damaged or unsupported: …/post-images/_smoke/tmr/news_quote_insight_1x1_v1/a73a537c-…/inputs/background.png **(element Background)**"*.
+- **Confirmed cause:** the **1×1 neutral placeholder background image was rejected by Creatomate** as "damaged or unsupported". **URL/accessibility was NOT the issue** — Creatomate fetched the file, then judged it unsupported.
+- **Keys/element name confirmed correct:** the error names **element `Background`**, so our `Background.source` key + the `Background` element name match. → **Options 3 (key fix) and 5 (template edit) are NOT indicated.**
+- **Confirmed fix = Option 2:** replace the 1×1 placeholders with **valid larger neutral synthetic images** — a **1080×1080** neutral background PNG + a **modest neutral logo** PNG; both brand-free; both under `_smoke/.../inputs/`. (Logo would fail the same way; Creatomate stops at the first bad image = Background.)
+
+This supersedes the "reason not yet captured" note in §4/§10/§13 below — the leading cause is now provider-confirmed.
+
 ## 1. Preflight Result
 
 PASS. branch `main`; `HEAD == origin/main == 7acbbef`; `0/0`; registers v4.67; tree clean except scrap. Read-only: proof rows 0; template `platform_candidate`; G2–G5 events 0; **no output object**; **2 `_smoke/.../inputs/` placeholder PNGs present + untouched** (70 bytes each, `image/png`); no `_smoke/tmr/` `m.post_render_log` / `m.post_publish`; image-worker **v3.20.0 live**; `tmr_template_smoke` branch live.
