@@ -1,3 +1,6 @@
+// image-worker v3.20.0
+// v3.20.0 — TMR G2b: isolated tmr_template_smoke branch (renders 490ad9ea to _smoke/tmr/ ONLY; no post_render_log; synthetic placeholders; secret stays in EF)
+//
 // image-worker v3.19.0
 // v3.19.0 (2026-06-28) — ACI v0 Slice C: warn-only contract_validation. Adds an additive
 //   render_spec.contract_validation evidence block (status pass|warn; checks: contract_identity,
@@ -213,8 +216,9 @@ import { B1_ASSET_KEYS, B1_LOGO_KEY, B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID,
 import { resolveLegacyLogo, assertGovernedAssetReachable, type AssetVerdict } from './asset_url_guard.ts';  // v3.15.0: H2 asset-URL validation before Creatomate
 import { echoContractToRenderSpec } from './contract_echo.ts';  // v3.18.0: ACI v0 Slice B2 — echo draft_format.contract identity fields into render_spec (governed PP image_quote; evidence-only)
 import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C: warn-only contract validation (evidence-only, never throws)
+import { isTmrSmokeRequest, handleTmrSmoke } from './tmr_smoke.ts';  // v3.20.0: TMR G2b isolated smoke branch (renders 490ad9ea to _smoke/tmr/ ONLY; no post_render_log)
 
-const VERSION = 'image-worker-v3.19.0';
+const VERSION = 'image-worker-v3.20.0';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -471,6 +475,17 @@ Deno.serve(async (req: Request) => {
   // and returns BEFORE any production draft selection. No publish/queue/advisor touch.
   let body: any = {};
   try { body = await req.json(); } catch {}
+
+  // ── TMR G2b: isolated tmr_template_smoke branch ──────────────────────────────
+  // Opt-in, non-production smoke render of the governed inventory CANDIDATE template
+  // 490ad9ea… (news_quote_insight_1x1_v1) with FIXED SYNTHETIC placeholders, writing
+  // ONLY under _smoke/tmr/. Uses a NEW no-log helper — writes NO m.post_render_log, NO
+  // publish/queue/draft/proof. Returns BEFORE any production draft selection. The
+  // CREATOMATE_API_KEY stays in the EF. See ./tmr_smoke.ts for the hard invariants.
+  if (isTmrSmokeRequest(body)) {
+    return await handleTmrSmoke({ body, supabase: getServiceClient(), creatomateKey });
+  }
+
   if (body?.mode === 'template_smoke' && body?.template === 'PP_NEWS_CENTRED_SCRIM_16x9_v1') {
     const supabase = getServiceClient();
     const TEMPLATE_ID = '48cba556-0a53-4001-90f0-05420d10efc0';
