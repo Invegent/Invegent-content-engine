@@ -34,6 +34,22 @@ const ALLOW = [
   ['values', 'VALUES (1),(2)'],
   ['function read', 'SELECT pg_sleep(0)'],
   ['table shorthand', 'TABLE t'],
+  // --- CCF-01.1 masking regressions: read-only queries with keyword-looking literals ---
+  ['execute privilege literal', "SELECT has_function_privilege('anon', p.oid, 'EXECUTE') AS can_exec FROM pg_proc p"],
+  ['into inside ILIKE literal', "SELECT p.proname FROM pg_proc p WHERE pg_get_functiondef(p.oid) ILIKE '%into m.post_publish_queue%'"],
+  ['truncate in value label', "WITH e(id, kase) AS (VALUES ('a','long-truncate')) SELECT * FROM e"],
+  ['do/copy words in literal', "SELECT 'we do a copy here' AS note"],
+  ['semicolon inside string literal', "SELECT 'a;b;c' AS s"],
+  ['double-dash inside string literal', "SELECT 'value -- not a comment' AS s"],
+  ['quoted identifier named execute', 'SELECT "execute" FROM t'],
+  ['read-only multi-statement batch', 'SELECT 1; SELECT 2'],
+  ['read-only batch trailing semicolon', 'SELECT 1; SELECT now();'],
+  // --- CCF-01.1 adversarial edges (external-review revision): cases where the
+  // masker and the Postgres lexer AGREE, so masking must not over- or under-reach ---
+  ['unicode string benign', "SELECT U&'d\\0061t\\0061' AS s"],
+  ['nested different-tag dollar literal', 'SELECT $o$ $i$ drop table x $i$ $o$ AS lit'],
+  ['positional params are not dollar-quotes', 'SELECT $1::int AS v'],
+  ['CRLF line comment in read-only batch', 'SELECT 1; -- note\r\nSELECT 2'],
 ];
 for (const [name, sql] of ALLOW) check(`ALLOW/${name}`, classifySql(sql).decision, 'allow');
 
@@ -68,6 +84,28 @@ const DENY = [
   ['empty string', ''],
   ['whitespace only', '   '],
   ['comment only', '/* only a comment */'],
+  // --- CCF-01.1: fail-closed + preserved write detection ---
+  ['unterminated string literal', "SELECT 'abc"],
+  ['unterminated quoted identifier', 'SELECT "abc FROM t'],
+  ['batch with a write', 'SELECT 1; DROP TABLE x'],
+  ['batch with hidden update', 'SELECT * FROM t; UPDATE t SET a=1'],
+  ['dollar-quoted DO still denies', 'DO $$ BEGIN PERFORM 1; END $$'],
+  ['writable CTE still denies (masking)', 'WITH x AS (INSERT INTO t VALUES (1) RETURNING id) SELECT * FROM x'],
+  // --- CCF-01.1 adversarial edges (external-review revision): every masker/lexer
+  // divergence must land on deny (fail-closed or over-deny), never false-allow.
+  // Postgres ends a -- comment at \r OR \n (scan.l non_newline = [^\n\r]); a
+  // masker that runs past a lone \r would hide live SQL inside the comment.
+  ['lone-CR comment cannot hide a write', 'SELECT 1; -- c\rDROP TABLE t'],
+  // E'..' strings: the masker has no backslash handling, so it closes at a
+  // backslash-escaped quote where Postgres keeps the string open. The masked
+  // span is always a PREFIX of the real string, so text can only leak OUT of
+  // the literal (extra keywords become visible) — over-denial, never hiding.
+  ["E-string over-denies (masker sees '' pair, unterminated)", "SELECT E'\\''"],
+  ['E-string leak exposes write text (over-deny)', "SELECT E'\\'; DROP TABLE t; --'"],
+  ['unicode string batch with write', "SELECT U&'x'; UPDATE t SET a=1"],
+  ['mismatched dollar tags fail closed', 'SELECT $a$ oops $b$'],
+  ['case-mismatched dollar tags fail closed', 'SELECT $Tag$ x $tag$'],
+  ['nested unterminated block comment fails closed', 'SELECT 1 /* outer /* inner */'],
 ];
 for (const [name, sql] of DENY) check(`DENY/${name}`, classifySql(sql).decision, 'deny');
 

@@ -56,13 +56,118 @@ const WRITE_KEYWORDS = [
 // Only these may BEGIN a statement for it to be considered read-only.
 const READ_STARTERS = ['select', 'with', 'explain', 'show', 'table', 'values'];
 
-function stripComments(sql) {
-  // Remove /* block */ then -- line comments. May over-strip inside string
-  // literals that contain these sequences; that only ever causes OVER-denial,
-  // which is the safe direction for this gate.
-  let s = sql.replace(/\/\*[\s\S]*?\*\//g, ' ');
-  s = s.replace(/--[^\n\r]*/g, ' ');
-  return s;
+// Mask comments AND string/dollar/identifier spans so keyword and structural
+// scans never match text inside them. Masking only ever REMOVES non-command
+// text — a real command verb lives OUTSIDE quotes and is still detected (the
+// safe direction). Returns { ok:true, masked } or { ok:false, reason } when a
+// span is unterminated (fail-closed / ambiguous → the caller denies).
+export function maskSpans(sql) {
+  let out = '';
+  let i = 0;
+  const n = sql.length;
+  while (i < n) {
+    const c = sql[i];
+    const c2 = sql[i + 1];
+
+    // line comment -- ... to end of line. Postgres ends the comment at \r OR
+    // \n (scan.l non_newline = [^\n\r]); stopping only at \n would swallow
+    // live SQL after a lone \r into the masked comment (false-allow).
+    if (c === '-' && c2 === '-') {
+      i += 2;
+      while (i < n && sql[i] !== '\n' && sql[i] !== '\r') i += 1;
+      out += ' ';
+      continue;
+    }
+    // block comment /* ... */ (Postgres allows nesting)
+    if (c === '/' && c2 === '*') {
+      let depth = 1;
+      i += 2;
+      while (i < n && depth > 0) {
+        if (sql[i] === '/' && sql[i + 1] === '*') { depth += 1; i += 2; }
+        else if (sql[i] === '*' && sql[i + 1] === '/') { depth -= 1; i += 2; }
+        else i += 1;
+      }
+      if (depth > 0) return { ok: false, reason: 'unterminated block comment (ambiguous)' };
+      out += ' ';
+      continue;
+    }
+    // single-quoted string literal, with '' escape
+    if (c === "'") {
+      i += 1;
+      let closed = false;
+      while (i < n) {
+        if (sql[i] === "'") {
+          if (sql[i + 1] === "'") { i += 2; continue; } // escaped quote inside literal
+          i += 1; closed = true; break;
+        }
+        i += 1;
+      }
+      if (!closed) return { ok: false, reason: 'unterminated string literal (ambiguous)' };
+      out += " '' ";
+      continue;
+    }
+    // dollar-quoted string $$...$$ or $tag$...$tag$ (NOT $1 positional params)
+    if (c === '$') {
+      const m = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(sql.slice(i));
+      if (m) {
+        const tag = m[0];
+        const start = i + tag.length;
+        const end = sql.indexOf(tag, start);
+        if (end === -1) return { ok: false, reason: 'unterminated dollar-quoted string (ambiguous)' };
+        i = end + tag.length;
+        out += " '' ";
+        continue;
+      }
+      // not a dollar-quote → fall through and treat '$' as an ordinary char
+    }
+    // double-quoted identifier, with "" escape
+    if (c === '"') {
+      i += 1;
+      let closed = false;
+      while (i < n) {
+        if (sql[i] === '"') {
+          if (sql[i + 1] === '"') { i += 2; continue; } // escaped quote inside identifier
+          i += 1; closed = true; break;
+        }
+        i += 1;
+      }
+      if (!closed) return { ok: false, reason: 'unterminated quoted identifier (ambiguous)' };
+      out += ' _id_ ';
+      continue;
+    }
+
+    out += c;
+    i += 1;
+  }
+  return { ok: true, masked: out };
+}
+
+// Classify ONE already-masked statement (no comments/strings/semicolons within).
+function classifyStatement(stmt) {
+  const noTrail = stmt;
+  const lower = noTrail.toLowerCase();
+
+  // Locking reads.
+  if (/\bfor\s+(no\s+key\s+)?(update|share)\b/i.test(noTrail)) {
+    return { decision: 'deny', reason: 'locking read (FOR UPDATE/SHARE) — treated as write' };
+  }
+  // SELECT ... INTO creates a table.
+  if (/\bselect\b[\s\S]*\binto\b/i.test(noTrail)) {
+    return { decision: 'deny', reason: 'SELECT ... INTO creates a table (DDL)' };
+  }
+  // Embedded write/DDL verb anywhere (catches writable CTEs, EXPLAIN <write>).
+  for (const kw of WRITE_KEYWORDS) {
+    if (new RegExp('\\b' + kw + '\\b', 'i').test(lower)) {
+      return { decision: 'deny', reason: `write/structural keyword detected: ${kw.toUpperCase()}` };
+    }
+  }
+  // First significant token must be a recognised read-only starter.
+  const m = noTrail.replace(/^[\s(]+/, '').match(/^([a-zA-Z_]+)/);
+  const firstTok = m ? m[1].toLowerCase() : null;
+  if (!firstTok || !READ_STARTERS.includes(firstTok)) {
+    return { decision: 'deny', reason: `does not begin with a read-only keyword (got: ${firstTok || 'none'})` };
+  }
+  return { decision: 'allow', reason: 'read-only statement' };
 }
 
 export function classifySql(rawSql) {
@@ -74,43 +179,35 @@ export function classifySql(rawSql) {
     return { decision: 'deny', reason: 'empty SQL (ambiguous)' };
   }
 
-  let body = stripComments(trimmed).trim();
+  // Mask comments + string/dollar/identifier spans BEFORE any keyword or
+  // structural scan. An unterminated span is ambiguous → fail closed (deny).
+  const masked = maskSpans(trimmed);
+  if (!masked.ok) {
+    return { decision: 'deny', reason: masked.reason };
+  }
+  const body = masked.masked.trim();
   if (body === '') {
     return { decision: 'deny', reason: 'SQL contains only comments (ambiguous)' };
   }
 
-  // Multi-statement: strip one trailing ';' then any remaining ';' => batch.
-  const noTrail = body.replace(/;\s*$/, '');
-  if (noTrail.includes(';')) {
-    return { decision: 'deny', reason: 'multiple statements detected (semicolon-separated batch)' };
+  // Split into statements on semicolons — safe now that all quotes are masked.
+  // Allow ONLY when EVERY statement is read-only; any mutating/unsafe statement
+  // denies the whole batch (per-statement read-only batch policy).
+  const statements = body.split(';').map((s) => s.trim()).filter((s) => s !== '');
+  if (statements.length === 0) {
+    return { decision: 'deny', reason: 'no executable statement (ambiguous)' };
   }
-  const lower = noTrail.toLowerCase();
-
-  // Locking reads.
-  if (/\bfor\s+(no\s+key\s+)?(update|share)\b/i.test(noTrail)) {
-    return { decision: 'deny', reason: 'locking read (FOR UPDATE/SHARE) — treated as write' };
-  }
-
-  // SELECT ... INTO creates a table.
-  if (/\bselect\b[\s\S]*\binto\b/i.test(noTrail)) {
-    return { decision: 'deny', reason: 'SELECT ... INTO creates a table (DDL)' };
-  }
-
-  // Embedded write/DDL verb anywhere (catches writable CTEs, EXPLAIN <write>).
-  for (const kw of WRITE_KEYWORDS) {
-    if (new RegExp('\\b' + kw + '\\b', 'i').test(lower)) {
-      return { decision: 'deny', reason: `write/structural keyword detected: ${kw.toUpperCase()}` };
+  const multi = statements.length > 1;
+  for (const stmt of statements) {
+    const r = classifyStatement(stmt);
+    if (r.decision === 'deny') {
+      return {
+        decision: 'deny',
+        reason: multi ? `batch contains a non-read-only statement (${r.reason})` : r.reason,
+      };
     }
   }
-
-  // First significant token must be a recognised read-only starter.
-  const m = noTrail.replace(/^[\s(]+/, '').match(/^([a-zA-Z_]+)/);
-  const firstTok = m ? m[1].toLowerCase() : null;
-  if (!firstTok || !READ_STARTERS.includes(firstTok)) {
-    return { decision: 'deny', reason: `does not begin with a read-only keyword (got: ${firstTok || 'none'})` };
-  }
-
-  return { decision: 'allow', reason: 'read-only statement' };
+  return { decision: 'allow', reason: multi ? 'read-only statement batch' : 'read-only statement' };
 }
 
 export function extractSql(toolInput) {
