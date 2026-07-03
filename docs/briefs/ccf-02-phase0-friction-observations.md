@@ -1,6 +1,11 @@
-# CCF-02 — Phase 0: Review-Lane Friction Observations (DRAFT v1)
+# CCF-02 — Phase 0: Review-Lane Friction Observations (DRAFT v2)
 
-> **Status: DRAFT for PK review — observation only.** This document records where time and
+> **v2 (2026-07-03): PK-ratified revision after review** — O-2 merged into O-5 (hash
+> checkpoints are pipeline steps; identical Phase 1 fix), ranking revised (O-3 demoted pending
+> wall-clock measurement), evidence caveats made explicit on O-1/O-3/O-4. Observation IDs kept
+> stable — register v4.85 cites O-1..O-7.
+>
+> **Status: DRAFT — observation only.** This document records where time and
 > reliability are lost in ICE review lanes today. It authorises nothing, changes nothing, and
 > proposes no automation. Its only consumer is the future Phase 1 orchestration-contract doc.
 >
@@ -22,27 +27,25 @@ calls** (rows `3465f576`, `51229b6e`, `26e60ad6`, `86544b78`, `5d08942e` — 3 o
 polluting the escalation queue), one PK connector-reconnect that changed nothing, and two
 packet re-cuts. The working shape (full packet in `proposal`, minimal `context`, diff pinned by
 `reviewed_input_hash`) exists only in session memory.
+**Evidence caveat:** the "≳4.5KB proposal ceiling" rests on exactly two data points (5.6KB
+fail / 4.3KB pass) — the boundary is bracketed, not located, and the connector-layer root
+cause is unidentified. The friction claim stands regardless; the threshold is approximate.
 **Phase 1 implication:** the contract doc should specify the canonical review-packet shape
 (and size budget) so every lane cuts a passing packet on the first attempt.
 
-## O-2 — Hash discipline is manual and repeated per gate (MEDIUM friction, load-bearing)
-
-`reviewed_input_hash` is recomputed and compared by hand at every step: packet cut → review
-call → pre-apply → post-merge → pre-push (CCF-01.1 did this 5 times; Lane 0 v4.84 re-verified
-after an auditor-forced fix re-cut). The discipline is correct and has caught real drift
-(v4.84's corrected citation re-hash) — the friction is that each lane re-invents the
-verify-or-abort sequence in prose.
-**Phase 1 implication:** name the hash points once in the contract (cut / review / apply /
-merge / push) so lanes execute them as a checklist, not from memory.
-
-## O-3 — Read-only agents run serially even when independent (MEDIUM friction)
+## O-3 — Read-only agents run serially even where independent (rank pending measurement)
 
 Today's lanes chain warden → db-rls-auditor → security-auditor → external review strictly in
-sequence, even where inputs don't depend on each other (branch-warden and db-rls-auditor read
-disjoint state; v4.81 S0 and v4.84 Lane 0 both waited on full serial chains). Wall-clock cost
-per lane is one agent-latency per stage.
-**Phase 1 implication:** the contract should mark which agents are safe to fan out in parallel
-per lane type (PK's CCF-02 item 2), with db-rls-auditor conditional on DB involvement.
+sequence (v4.81 S0 and v4.84 Lane 0 both waited on full serial chains). **Reframed at review
+(2026-07-03):** part of this ordering is by design, not friction — CLAUDE.md mandates
+security-auditor AFTER db-rls-auditor (facts before judgement), and external review must see
+the FINAL diff — so the genuinely parallelizable subset is essentially
+**branch-warden ∥ db-rls-auditor** (disjoint read state), narrower than v1 implied. The
+existence of serialization is proven; its wall-clock cost is **asserted, not measured** — no
+lane has per-stage timing data yet.
+**Phase 1 implication:** the contract should mark the (small) parallel-safe subset per lane
+type, with db-rls-auditor conditional on DB involvement — sized by the timing data Phase 0
+still needs to collect.
 
 ## O-4 — Agent output shapes are non-uniform (MEDIUM friction, causes prose interpretation)
 
@@ -55,14 +58,24 @@ composing a gate report, and register entries re-narrate each shape in prose.
 **Phase 1 implication:** PK's CCF-02 item 3 findings contract
 (`verdict/risk/files_checked/findings/required_changes/confidence`) maps cleanly onto all
 five — adoption is a per-agent prompt change, no new agents.
+**Evidence caveat:** the vocabularies are verifiable facts; the interpretation cost is
+qualitative — no gate has yet been mis-routed by vocabulary confusion. Ranked on breadth
+(every lane pays it), not on a recorded incident.
 
-## O-5 — The review pipeline is re-derived from CLAUDE.md every lane (LOW-MEDIUM friction)
+## O-5 — The pipeline and its checkpoints exist only as prose, re-derived per lane (MERGED with O-2; MEDIUM friction)
 
+*(v2: absorbs former O-2 "manual hash discipline" — hash checkpoints ARE pipeline steps and
+the Phase 1 fix is identical: write the flow once.)*
 The proof-lane flow exists as prose in CLAUDE.md and is re-instantiated by judgment each time;
-v4.77–v4.85 register entries each hand-write the same "gate trail" sentence. Nothing is lost
-today (discipline holds), but the repetition is exactly what PK's CCF-02 item 1 standard
-pipeline would remove.
-**Phase 1 implication:** the contract doc IS this pipeline, written once, referenced by name.
+v4.77–v4.85 register entries each hand-write the same "gate trail" sentence. The strongest
+concrete instance is **hash discipline**: `reviewed_input_hash` is recomputed and compared by
+hand at every step — packet cut → review call → pre-apply → post-merge → pre-push (CCF-01.1
+did this 5 times; Lane 0 v4.84 re-verified after an auditor-forced fix re-cut). The discipline
+is correct and load-bearing (it caught real drift twice on 2026-07-03) — the friction is that
+each lane re-invents the verify-or-abort sequence from memory.
+**Phase 1 implication:** the contract doc IS this pipeline, written once and referenced by
+name, with the hash checkpoints named as an executable checklist (cut / review / apply /
+merge / push).
 
 ## O-6 — Register version-collision races between parallel lanes (LOW friction, real)
 
@@ -84,15 +97,20 @@ lane can consult, which is how a candidate agent could silently be treated as pr
 
 ---
 
-## Ranking for Phase 1 (highest observed cost first)
+## Ranking for Phase 1 (PK-ratified v2 — highest evidence-backed cost first)
 
-1. **O-1** review-packet shape (measured multi-attempt loss + queue pollution)
-2. **O-4** findings contract (every lane pays interpretation cost)
-3. **O-3** parallel fan-out rules (wall-clock per lane)
-4. **O-2** named hash checkpoints (cheap to write, prevents the worst class of error)
-5. **O-5** pipeline written once (mostly subsumes itself once 1–4 exist)
-6. **O-7** proving checklist (small table, closes a governance gap)
-7. **O-6** version-collision convention (note-level only)
+1. **O-1** review-packet shape (the only MEASURED loss: 3 failed attempts + 5 diagnostic rows
+   + queue pollution in one lane)
+2. **O-4** findings contract (breadth: every lane pays interpretation cost; facts verified,
+   cost unquantified)
+3. **O-5 (+O-2 merged)** pipeline + hash checkpoints written once (strong evidence — 5 manual
+   hash points per lane, caught real drift twice; cheap to write)
+4. **O-3** parallel fan-out rules (existence proven, magnitude UNMEASURED — demoted pending
+   per-stage wall-clock data from the next lanes; parallel-safe subset is narrow by design)
+5. **O-7** proving checklist (small table, closes a governance gap)
+6. **O-6** version-collision convention (note-level only; discipline has held every time —
+   corroborated again 2026-07-03 when the S1 lane's uncommitted v4.86 register edits landed in
+   the shared tree during the Phase 0 review itself)
 
 ## What Phase 0 is NOT claiming
 
@@ -100,3 +118,8 @@ No automation is proposed here. No agent behaviour changes. No enforcement. The 
 above are inputs to the Phase 1 contract doc, which is itself PK-gated. Observation continues:
 the next 2–3 lanes run under current practice, and any new friction gets appended here with
 the same evidence-citation standard.
+
+**Open PK decision (from the 2026-07-03 review, NOT yet ratified):** whether the next lanes
+passively record (a) per-gate-stage wall-clock and (b) packet-cut attempts per external
+review — the two measurements that would settle O-3's rank and tighten O-1's threshold
+bracket. Until ratified, lanes record nothing new.
