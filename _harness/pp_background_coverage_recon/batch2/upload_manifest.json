@@ -1,0 +1,72 @@
+[
+ {
+  "upload_file": "upload_staging/bg_pp_perth_skyline_dawn_moody.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_perth_skyline_dawn_moody.jpg",
+  "bytes": 3205720,
+  "width": 4480,
+  "height": 2471,
+  "sha256": "8279d87d9464c2bb86cfaa6f198b2ae96a516ec56c14e7fae9f5e0166c0ce8d3",
+  "asset_key": "bg_pp_perth_skyline_dawn_moody",
+  "source_candidate": "images/cand_r2b_fadder8_RESEQty1uvc.jpg"
+ },
+ {
+  "upload_file": "upload_staging/bg_pp_au_suburb_aerial_grid.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_au_suburb_aerial_grid.jpg",
+  "bytes": 2665506,
+  "width": 4000,
+  "height": 2250,
+  "sha256": "68c8bd645b61c220b897f9f109640c8fd1fcd6c8ea34909fd7444d8bd4b8c5ce",
+  "asset_key": "bg_pp_au_suburb_aerial_grid",
+  "source_candidate": "images/cand_r3_tomrumble.jpg"
+ },
+ {
+  "upload_file": "upload_staging/bg_pp_modern_home_exterior_front.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_modern_home_exterior_front.jpg",
+  "bytes": 4908899,
+  "width": 3840,
+  "height": 5760,
+  "sha256": "836d2cf62a0cac5704e956fb96d237287a77929dcc495c6229915fadfc3a28ec",
+  "asset_key": "bg_pp_modern_home_exterior_front",
+  "source_candidate": "images/cand_r4_tmortier_sIsiRYz3VKk.jpg"
+ },
+ {
+  "upload_file": "upload_staging/bg_pp_for_sale_sign_street.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_for_sale_sign_street.jpg",
+  "bytes": 5461528,
+  "width": 6000,
+  "height": 4000,
+  "sha256": "65e8d9c4ba5653aff4c273d38deabdc6e6963d42a76aee00cea7d7612aca55a7",
+  "asset_key": "bg_pp_for_sale_sign_street",
+  "source_candidate": "images/cand_r5_rbell_z1EIv3nsHJQ.jpg"
+ },
+ {
+  "upload_file": "upload_staging/bg_pp_sold_sign_closeup.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_sold_sign_closeup.jpg",
+  "bytes": 4862585,
+  "width": 4271,
+  "height": 6406,
+  "sha256": "d566d622b28f8ecc291d848436e6399ca326bf4f87a29557abee7ee09d0c31a0",
+  "asset_key": "bg_pp_sold_sign_closeup",
+  "source_candidate": "images/cand_r6b_thirdman_8470834.jpg"
+ },
+ {
+  "upload_file": "upload_staging/bg_pp_home_keys_contract_table.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_home_keys_contract_table.jpg",
+  "bytes": 1129174,
+  "width": 4592,
+  "height": 3448,
+  "sha256": "b900cb592db498c67f4dbdba58004eb97717c5a887b2e237146e45a9d06293a2",
+  "asset_key": "bg_pp_home_keys_contract_table",
+  "source_candidate": "images/cand_r7_tmallorca_rgJ1J8SDEAY.jpg"
+ },
+ {
+  "upload_file": "upload_staging/bg_pp_open_home_entry.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_open_home_entry.jpg",
+  "bytes": 2596565,
+  "width": 4945,
+  "height": 3297,
+  "sha256": "e929cca84c1d7376a2c9984636d0fe84c4d1387054de0670e9e03b28f2840aa2",
+  "asset_key": "bg_pp_open_home_entry",
+  "source_candidate": "images/cand_r9_ftosolini_XcVm8mn7NUM.jpg"
+ }
+]

@@ -1,0 +1,17 @@
+{
+ "verdict": "pass",
+ "live_state_satisfies_preconditions": true,
+ "security_auditor_needed": false,
+ "key_findings": [
+  "INSERT-only artifact; storage.objects only SELECTed; the lane's only DELETE lives in the rollback script",
+  "0 collisions live: 7 fixed asset_ids, 7 asset_keys, lane marker all absent; PP exactly 4 rows, all approved+active \u2014 end-state assertions satisfiable",
+  "Double fence verified against both resolver definitions (is_active filter, then approved filter)",
+  "Upload prechecks match manifest bucket/paths/byte-sizes; targets currently ABSENT so artifact fails closed pre-upload (by design)",
+  "WARN: in-transaction precheck is size-only \u2014 post-upload sha256 verification via public URL is MANDATORY before running the SQL",
+  "Rollback quadruple-guarded, refuses promoted rows, aborts wholesale with manual-review escape; storage objects intentionally not deleted",
+  "All 7 asset_meta jsonb literals parse; asset_type/usage convention matches existing governed backgrounds; no triggers; service-role-only posture unchanged; advisors clean; idempotent re-run",
+  "security-auditor not needed: no grants/policies/SECURITY DEFINER/REST exposure touched"
+ ],
+ "reviewed_artifacts_hash_note": "audit valid for batch2_apply.sql sha256 89e42bb0256dcd0641cd520a5d70ee8e492b6c3437ce4e6da9ae7de3aa8027f1",
+ "date_utc": "2026-07-03"
+}

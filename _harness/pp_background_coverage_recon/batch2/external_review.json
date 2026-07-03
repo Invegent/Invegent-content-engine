@@ -1,0 +1,15 @@
+{
+ "review_id": "a77497a7-dc93-40df-9f84-559529b69d2d",
+ "decision": "escalate_explicit_flag",
+ "verdict": "agree",
+ "risk_level": "medium",
+ "confidence": "high",
+ "pushback_points": [],
+ "reviewed_input_hash": "89e42bb0256dcd0641cd520a5d70ee8e492b6c3437ce4e6da9ae7de3aa8027f1",
+ "reviewed_artifact": "batch2_apply.sql (structure + per-asset rows embedded in review context)",
+ "triage_classes": [
+  "structural_DDL_DML_escalation"
+ ],
+ "triage_note": "Reviewer agrees with the design; escalation flag = production DML requires the human gate \u2014 which is this lane's designed stop (PK hard stop). No defect, no missing evidence.",
+ "date_utc": "2026-07-03"
+}

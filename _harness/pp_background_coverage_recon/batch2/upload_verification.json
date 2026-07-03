@@ -1,0 +1,51 @@
+[
+ {
+  "path": "Property_Pulse/Backgrounds/bg_pp_perth_skyline_dawn_moody.jpg",
+  "bytes": 3205720,
+  "sha256": "8279d87d9464c2bb86cfaa6f198b2ae96a516ec56c14e7fae9f5e0166c0ce8d3",
+  "expected_sha256": "8279d87d9464c2bb86cfaa6f198b2ae96a516ec56c14e7fae9f5e0166c0ce8d3",
+  "match": true
+ },
+ {
+  "path": "Property_Pulse/Backgrounds/bg_pp_au_suburb_aerial_grid.jpg",
+  "bytes": 2665506,
+  "sha256": "68c8bd645b61c220b897f9f109640c8fd1fcd6c8ea34909fd7444d8bd4b8c5ce",
+  "expected_sha256": "68c8bd645b61c220b897f9f109640c8fd1fcd6c8ea34909fd7444d8bd4b8c5ce",
+  "match": true
+ },
+ {
+  "path": "Property_Pulse/Backgrounds/bg_pp_modern_home_exterior_front.jpg",
+  "bytes": 4908899,
+  "sha256": "836d2cf62a0cac5704e956fb96d237287a77929dcc495c6229915fadfc3a28ec",
+  "expected_sha256": "836d2cf62a0cac5704e956fb96d237287a77929dcc495c6229915fadfc3a28ec",
+  "match": true
+ },
+ {
+  "path": "Property_Pulse/Backgrounds/bg_pp_for_sale_sign_street.jpg",
+  "bytes": 5461528,
+  "sha256": "65e8d9c4ba5653aff4c273d38deabdc6e6963d42a76aee00cea7d7612aca55a7",
+  "expected_sha256": "65e8d9c4ba5653aff4c273d38deabdc6e6963d42a76aee00cea7d7612aca55a7",
+  "match": true
+ },
+ {
+  "path": "Property_Pulse/Backgrounds/bg_pp_sold_sign_closeup.jpg",
+  "bytes": 4862585,
+  "sha256": "d566d622b28f8ecc291d848436e6399ca326bf4f87a29557abee7ee09d0c31a0",
+  "expected_sha256": "d566d622b28f8ecc291d848436e6399ca326bf4f87a29557abee7ee09d0c31a0",
+  "match": true
+ },
+ {
+  "path": "Property_Pulse/Backgrounds/bg_pp_home_keys_contract_table.jpg",
+  "bytes": 1129174,
+  "sha256": "b900cb592db498c67f4dbdba58004eb97717c5a887b2e237146e45a9d06293a2",
+  "expected_sha256": "b900cb592db498c67f4dbdba58004eb97717c5a887b2e237146e45a9d06293a2",
+  "match": true
+ },
+ {
+  "path": "Property_Pulse/Backgrounds/bg_pp_open_home_entry.jpg",
+  "bytes": 2596565,
+  "sha256": "e929cca84c1d7376a2c9984636d0fe84c4d1387054de0670e9e03b28f2840aa2",
+  "expected_sha256": "e929cca84c1d7376a2c9984636d0fe84c4d1387054de0670e9e03b28f2840aa2",
+  "match": true
+ }
+]
