@@ -119,7 +119,12 @@ above are inputs to the Phase 1 contract doc, which is itself PK-gated. Observat
 the next 2–3 lanes run under current practice, and any new friction gets appended here with
 the same evidence-citation standard.
 
-**Open PK decision (from the 2026-07-03 review, NOT yet ratified):** whether the next lanes
-passively record (a) per-gate-stage wall-clock and (b) packet-cut attempts per external
-review — the two measurements that would settle O-3's rank and tighten O-1's threshold
-bracket. Until ratified, lanes record nothing new.
+**PK-RATIFIED (2026-07-03): the two Phase 0 measurements are active.** From the next lane
+onward, each governed lane passively records in its result/register notes:
+(a) **per-gate-stage wall-clock** — rough start/end per stage (build / warden / db-rls-auditor
+/ security-auditor / external review / PK gate), minute granularity is enough;
+(b) **packet-cut attempts per external review** — how many `ask_chatgpt_review` calls it took
+to get a verdict on the final packet (target: 1).
+These settle O-3's rank and tighten O-1's threshold bracket. Passive only: no tooling, no
+hooks, no behaviour change — just two extra lines in the lane record. Phase 1 cuts after 2–3
+lanes carry these numbers.
