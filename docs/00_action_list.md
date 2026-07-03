@@ -101,6 +101,19 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 
 ---
 
+## ⭐ TMR / Creative decision-spine — PK-ratified next-work queue (NEW v4.83+, 2026-07-03)
+
+> **PK-ratified order (2026-07-03), supersedes any prior ordering of the TMR/Creative carries.** Each item is its own gated lane (brief/packet → review chain → PK hard stops). **Nothing starts without a PK directive.** Current state: full read-only decision spine live+dark (v4.76–v4.79); S0 shadow evidence recorded (v4.81); shadow panel shipped to dashboard prod (v4.83); selectable set = 10; TMR controls nothing.
+
+| Order | Lane | Notes / gates |
+|---|---|---|
+| **0 (prereq)** | **B1 Registry Capture** — capture the live production template `fb9820f8…` (`news_static_centered_scrim_1x1_v1`) into the TMR registry as a client-scoped, production-proven entry | **Hard prerequisite for S1** (v4.80 ratified decision 5): upgrades shadow comparison from blanket `expected_structural_divergence` to honest template-level agreement/disagreement. Registry capture lane: packet → auditors → PK apply. |
+| 1 | **S1 Forward Shadow Stamping** — record TMR would-have picks for NEW PP events as they happen | **Only after item 0.** v4.80 decision 3 standing recommendation: isolated cron-EF (`tmr-shadow-stamper`, reads prod + writes only `c.tmr_shadow_decision`); own design + build + deploy gates; ai-worker-extension alternative documented. |
+| 2 | **Needs-tweak template fixes → re-render → re-review** — market_insight (location mismatch) · testimonial (real-source content guard) · carousel closing (CTA/website duplication) · youtube thumbnail (title/EP placement) | Grows the selectable set beyond 10. Creatomate template edits → Lane-B-pattern re-render (only the 4 units) → PK gallery re-review → recording packet. Testimonial additionally blocked on the source-guard governance rule. |
+| 3 | **Scrim-48 recalibration** — `resolve_slot_assets` v1.1 constants: `needs_scrim` default 64→**48**; 64 reserved busy-backgrounds/dense-text (needs a "busy" definition decision); 80 excluded | Small SECDEF function-change lane, full review chain (PK gallery decision 2026-07-03 is the authority). |
+| 4 | **Rotation alignment** — B1 canonical order `[perth,brisbane,sydney]` vs resolver rank order `[perth,sydney,brisbane]` (same FNV-1a hash, different index mapping; **data-backed 5/17 agreement** from S0) | PK policy decision first (align vs accept divergence), then a small change lane on whichever side aligns. |
+| 5 | **P0 background promotion review** — select best 2–3 of the 7 INACTIVE intake candidates (v4.82) for per-asset promotion gates | Promotion review → per-asset PK gates; enriches rotation for lanes 2–4; rest stay inactive. |
+
 ## ⭐ Today / Next 5 (core ICE ranks)
 
 > Last rebuilt: 2026-05-24 Sydney (core ranks carried unchanged from v3.02; v3.05 added YouTube + cc-0019 carries below the core table — no core rank change). v3.07: no core rank change (doc-only). v3.08: no core rank change (repo reconciliation, doc-only).
