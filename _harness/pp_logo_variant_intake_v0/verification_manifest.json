@@ -1,0 +1,1070 @@
+{
+ "pil_available": true,
+ "file_count": 37,
+ "files": [
+  {
+   "rel_path": "Logo_Kit_Contact_Sheet-print-1anzf8b.dc.html",
+   "bytes": 43895,
+   "sha256": "f2c26f5924dc2551e8d9f9528a06f0006153cfff91d3970e9350f605a86c49e5",
+   "format": "html",
+   "ext_matches_format": true
+  },
+  {
+   "rel_path": "Logo_Kit_Contact_Sheet.dc.html",
+   "bytes": 25584,
+   "sha256": "d9e545dd628e7688a5947abc2a3ec949bf5e7d3b1a23651996965b9178a0d9ec",
+   "format": "html",
+   "ext_matches_format": true
+  },
+  {
+   "rel_path": "assets/pp_logo_dark_transparent.png",
+   "bytes": 89318,
+   "sha256": "d78def1cd55195bac7f60a12f769302a2a2a71d11d75db056c93dc540439e2ce",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 547,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 86.5,
+   "dominant_colours": [
+    {
+     "hex": "#182030",
+     "pct": 99.7
+    },
+    {
+     "hex": "#202030",
+     "pct": 0.2
+    },
+    {
+     "hex": "#182830",
+     "pct": 0.0
+    },
+    {
+     "hex": "#202830",
+     "pct": 0.0
+    }
+   ]
+  },
+  {
+   "rel_path": "assets/pp_logo_full_colour_transparent.png",
+   "bytes": 94387,
+   "sha256": "c10dba390eb36aca2715464ccd19e85323b7cdea100153c362087c14bbd14dcd",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 547,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 86.5,
+   "dominant_colours": [
+    {
+     "hex": "#182030",
+     "pct": 47.4
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 38.6
+    },
+    {
+     "hex": "#f0a028",
+     "pct": 13.0
+    },
+    {
+     "hex": "#e89828",
+     "pct": 0.8
+    },
+    {
+     "hex": "#202030",
+     "pct": 0.1
+    },
+    {
+     "hex": "#f8a828",
+     "pct": 0.1
+    }
+   ]
+  },
+  {
+   "rel_path": "assets/pp_logo_horizontal_transparent_1024.png",
+   "bytes": 94387,
+   "sha256": "c10dba390eb36aca2715464ccd19e85323b7cdea100153c362087c14bbd14dcd",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 547,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 86.5,
+   "dominant_colours": [
+    {
+     "hex": "#182030",
+     "pct": 47.4
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 38.6
+    },
+    {
+     "hex": "#f0a028",
+     "pct": 13.0
+    },
+    {
+     "hex": "#e89828",
+     "pct": 0.8
+    },
+    {
+     "hex": "#202030",
+     "pct": 0.1
+    },
+    {
+     "hex": "#f8a828",
+     "pct": 0.1
+    }
+   ]
+  },
+  {
+   "rel_path": "assets/pp_logo_horizontal_white_transparent_1024.png",
+   "bytes": 66920,
+   "sha256": "1bbcbebe58542c4856e16d5f5c5cc52f91162eda483ac6656dc94b85ad197327",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 547,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 86.5,
+   "dominant_colours": [
+    {
+     "hex": "#f8f8f8",
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rel_path": "assets/pp_logo_mark_only_transparent_1024.png",
+   "bytes": 71599,
+   "sha256": "5c612982d3e67020cceefd777e701ab283ff695c964546a3b1287f5bc87b0e37",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 1024,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 96.1,
+   "dominant_colours": [
+    {
+     "hex": "#e8a028",
+     "pct": 41.0
+    },
+    {
+     "hex": "#f8f8f8",
+     "pct": 39.4
+    },
+    {
+     "hex": "#f0a028",
+     "pct": 17.0
+    },
+    {
+     "hex": "#f8a830",
+     "pct": 1.2
+    },
+    {
+     "hex": "#f8a828",
+     "pct": 0.6
+    },
+    {
+     "hex": "#e89828",
+     "pct": 0.6
+    }
+   ]
+  },
+  {
+   "rel_path": "assets/pp_logo_mark_only_transparent_512.png",
+   "bytes": 21082,
+   "sha256": "5a05207747a09e68f0ba7fe05745cc7738bdfdac74df2b74bef2db242e06b092",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 512,
+   "height": 512,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 96.1,
+   "dominant_colours": [
+    {
+     "hex": "#f8f8f8",
+     "pct": 39.3
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 38.4
+    },
+    {
+     "hex": "#f0a028",
+     "pct": 14.6
+    },
+    {
+     "hex": "#e89828",
+     "pct": 5.6
+    },
+    {
+     "hex": "#f8a830",
+     "pct": 1.0
+    },
+    {
+     "hex": "#f8a828",
+     "pct": 0.6
+    }
+   ]
+  },
+  {
+   "rel_path": "assets/pp_logo_master_transparent.png",
+   "bytes": 84678,
+   "sha256": "8d6808479863622dc38a4fd5cf06ef44bad5ad87c4bc0a61a7a7fe899dd8669d",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 547,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 86.5,
+   "dominant_colours": [
+    {
+     "hex": "#f8f8f8",
+     "pct": 47.5
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 38.6
+    },
+    {
+     "hex": "#f0a028",
+     "pct": 13.0
+    },
+    {
+     "hex": "#e89828",
+     "pct": 0.8
+    },
+    {
+     "hex": "#f8a828",
+     "pct": 0.1
+    },
+    {
+     "hex": "#f0a828",
+     "pct": 0.0
+    }
+   ]
+  },
+  {
+   "rel_path": "assets/pp_logo_metadata.csv",
+   "bytes": 2468,
+   "sha256": "85e4114fc02c9337609cc9fe60009098fd5541e8b7da818ed672350492b28b2d",
+   "format": "other",
+   "ext_matches_format": true
+  },
+  {
+   "rel_path": "assets/pp_logo_square_navy_bg_1024.png",
+   "bytes": 73754,
+   "sha256": "0956757dcc6488d6955549eae0875a5fb08ea1d0990086a279160cf2726cea3c",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 1024,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 255,
+   "alpha_max": 255,
+   "alpha_used": false,
+   "fully_transparent_pct": 0.0,
+   "dominant_colours": [
+    {
+     "hex": "#182030",
+     "pct": 94.0
+    },
+    {
+     "hex": "#f8f8f8",
+     "pct": 1.0
+    },
+    {
+     "hex": "#f0a028",
+     "pct": 0.6
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 0.5
+    },
+    {
+     "hex": "#101828",
+     "pct": 0.4
+    },
+    {
+     "hex": "#102030",
+     "pct": 0.3
+    }
+   ]
+  },
+  {
+   "rel_path": "assets/pp_logo_square_navy_bg_512.png",
+   "bytes": 30592,
+   "sha256": "4d51bba8e1d775e00bb624d74ec8a649a6c08a12ee8e0ad5c09333e65a2a4966",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 512,
+   "height": 512,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 255,
+   "alpha_max": 255,
+   "alpha_used": false,
+   "fully_transparent_pct": 0.0,
+   "dominant_colours": [
+    {
+     "hex": "#182030",
+     "pct": 94.0
+    },
+    {
+     "hex": "#f8f8f8",
+     "pct": 1.0
+    },
+    {
+     "hex": "#f0a028",
+     "pct": 0.5
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 0.5
+    },
+    {
+     "hex": "#182028",
+     "pct": 0.3
+    },
+    {
+     "hex": "#101828",
+     "pct": 0.3
+    }
+   ]
+  },
+  {
+   "rel_path": "assets/pp_logo_watermark_white_transparent.png",
+   "bytes": 45489,
+   "sha256": "dc4734d561c985f9496f74a9c8d6fec4413785ce54f07310d7571d3a584ed497",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 800,
+   "height": 428,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 86.5,
+   "dominant_colours": [
+    {
+     "hex": "#f8f8f8",
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rel_path": "assets/pp_logo_white_transparent.png",
+   "bytes": 66920,
+   "sha256": "1bbcbebe58542c4856e16d5f5c5cc52f91162eda483ac6656dc94b85ad197327",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 547,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 86.5,
+   "dominant_colours": [
+    {
+     "hex": "#f8f8f8",
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rel_path": "uploads/PP_logo.png",
+   "bytes": 237798,
+   "sha256": "feafee4e4452663636d547af070bdec24e38094a12565ed7a3e3ccb49183da5e",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 1024,
+   "png_color_type": 2,
+   "has_alpha_channel": false,
+   "alpha_min": 255,
+   "alpha_max": 255,
+   "alpha_used": false,
+   "fully_transparent_pct": 0.0,
+   "dominant_colours": [
+    {
+     "hex": "#182838",
+     "pct": 93.9
+    },
+    {
+     "hex": "#f8f8f8",
+     "pct": 0.6
+    },
+    {
+     "hex": "#102038",
+     "pct": 0.4
+    },
+    {
+     "hex": "#102030",
+     "pct": 0.4
+    },
+    {
+     "hex": "#182038",
+     "pct": 0.4
+    },
+    {
+     "hex": "#e89828",
+     "pct": 0.3
+    }
+   ]
+  },
+  {
+   "rel_path": "uploads/PP_logo_2.png",
+   "bytes": 237798,
+   "sha256": "feafee4e4452663636d547af070bdec24e38094a12565ed7a3e3ccb49183da5e",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 1024,
+   "png_color_type": 2,
+   "has_alpha_channel": false,
+   "alpha_min": 255,
+   "alpha_max": 255,
+   "alpha_used": false,
+   "fully_transparent_pct": 0.0,
+   "dominant_colours": [
+    {
+     "hex": "#182838",
+     "pct": 93.9
+    },
+    {
+     "hex": "#f8f8f8",
+     "pct": 0.6
+    },
+    {
+     "hex": "#102038",
+     "pct": 0.4
+    },
+    {
+     "hex": "#102030",
+     "pct": 0.4
+    },
+    {
+     "hex": "#182038",
+     "pct": 0.4
+    },
+    {
+     "hex": "#e89828",
+     "pct": 0.3
+    }
+   ]
+  },
+  {
+   "rel_path": "uploads/primary_colors.txt",
+   "bytes": 613,
+   "sha256": "2ff8f2185dfdc589e2954248ffa0c3e025cfc9167a4b79e4c3d40cbdcf59692d",
+   "format": "other",
+   "ext_matches_format": true
+  },
+  {
+   "rel_path": "vector/comparison_raster_vs_svg.png",
+   "bytes": 479786,
+   "sha256": "f3d8dd1a9c9bf06c8dce63be8d5afbf36dea145008f41a53a95c71c10559380f",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1000,
+   "height": 1363,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 255,
+   "alpha_max": 255,
+   "alpha_used": false,
+   "fully_transparent_pct": 0.0,
+   "dominant_colours": [
+    {
+     "hex": "#182030",
+     "pct": 39.8
+    },
+    {
+     "hex": "#182838",
+     "pct": 38.9
+    },
+    {
+     "hex": "#f8f8f8",
+     "pct": 3.3
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 1.5
+    },
+    {
+     "hex": "#102030",
+     "pct": 1.1
+    },
+    {
+     "hex": "#e89828",
+     "pct": 1.0
+    }
+   ]
+  },
+  {
+   "rel_path": "vector/font_compare.png",
+   "bytes": 175241,
+   "sha256": "135ad0f005495e236bd85b179cec2028b041a11f298e4afa69e92b27243e181c",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 900,
+   "height": 594,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 255,
+   "alpha_max": 255,
+   "alpha_used": false,
+   "fully_transparent_pct": 0.0,
+   "dominant_colours": [
+    {
+     "hex": "#182030",
+     "pct": 56.1
+    },
+    {
+     "hex": "#182838",
+     "pct": 17.4
+    },
+    {
+     "hex": "#f8f8f8",
+     "pct": 6.6
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 2.3
+    },
+    {
+     "hex": "#f0a028",
+     "pct": 1.2
+    },
+    {
+     "hex": "#101828",
+     "pct": 1.0
+    }
+   ]
+  },
+  {
+   "rel_path": "vector/font_compare2.png",
+   "bytes": 230511,
+   "sha256": "90ca0e3951224264bfef06c9182d696f67ab335b16ab40544e011e4f1cb5549c",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 900,
+   "height": 980,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 255,
+   "alpha_max": 255,
+   "alpha_used": false,
+   "fully_transparent_pct": 0.0,
+   "dominant_colours": [
+    {
+     "hex": "#182030",
+     "pct": 61.3
+    },
+    {
+     "hex": "#182838",
+     "pct": 9.8
+    },
+    {
+     "hex": "#f8f8f8",
+     "pct": 7.0
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 2.0
+    },
+    {
+     "hex": "#101828",
+     "pct": 1.9
+    },
+    {
+     "hex": "#f0a028",
+     "pct": 1.3
+    }
+   ]
+  },
+  {
+   "rel_path": "vector/pp_logo_dark.svg",
+   "bytes": 6951,
+   "sha256": "b1800cd2e63ceec21e4570416f43e4c088cf8e229711724659b4a8ed37c91553",
+   "format": "svg",
+   "ext_matches_format": true,
+   "is_real_vector": true,
+   "embedded_raster": false,
+   "viewBox": "125 254 752 402",
+   "svg_width": null,
+   "svg_height": null,
+   "path_count": 4,
+   "text_element_count": 0,
+   "uses_font_family": false,
+   "fill_colours": [
+    "#1E2532"
+   ],
+   "bytes_text": 6951
+  },
+  {
+   "rel_path": "vector/pp_logo_dark_1024.png",
+   "bytes": 60522,
+   "sha256": "af725d11040d03d0320ac5424f7cb8385eb9a53157ddef3ac5a90c427b74ad61",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 547,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 88.1,
+   "dominant_colours": [
+    {
+     "hex": "#182030",
+     "pct": 99.4
+    },
+    {
+     "hex": "#202030",
+     "pct": 0.4
+    },
+    {
+     "hex": "#202830",
+     "pct": 0.2
+    }
+   ]
+  },
+  {
+   "rel_path": "vector/pp_logo_full_colour.svg",
+   "bytes": 6951,
+   "sha256": "f12765b3d84fccc2191f4998788f8806a05b6dfb00f64d30f6c31ef4f166ecb0",
+   "format": "svg",
+   "ext_matches_format": true,
+   "is_real_vector": true,
+   "embedded_raster": false,
+   "viewBox": "125 254 752 402",
+   "svg_width": null,
+   "svg_height": null,
+   "path_count": 4,
+   "text_element_count": 0,
+   "uses_font_family": false,
+   "fill_colours": [
+    "#1E2532",
+    "#ECA02D"
+   ],
+   "bytes_text": 6951
+  },
+  {
+   "rel_path": "vector/pp_logo_full_colour_1024.png",
+   "bytes": 61891,
+   "sha256": "9423a7b619bed6117e8c1f926a50b34c983af8ee695caae3c885996795cf7864",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 547,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 88.1,
+   "dominant_colours": [
+    {
+     "hex": "#182030",
+     "pct": 47.9
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 33.0
+    },
+    {
+     "hex": "#f0a028",
+     "pct": 13.9
+    },
+    {
+     "hex": "#e89828",
+     "pct": 4.4
+    },
+    {
+     "hex": "#f8a830",
+     "pct": 0.2
+    },
+    {
+     "hex": "#f8a828",
+     "pct": 0.1
+    }
+   ]
+  },
+  {
+   "rel_path": "vector/pp_logo_mark_only.svg",
+   "bytes": 623,
+   "sha256": "3cb8563bb1621c80db92ce7a19ba02e09ef511bf77b98f2658372c0a852fe115",
+   "format": "svg",
+   "ext_matches_format": true,
+   "is_real_vector": true,
+   "embedded_raster": false,
+   "viewBox": "189 266 624 266",
+   "svg_width": null,
+   "svg_height": null,
+   "path_count": 2,
+   "text_element_count": 0,
+   "uses_font_family": false,
+   "fill_colours": [
+    "#ECA02D",
+    "#FFFFFF"
+   ],
+   "bytes_text": 623
+  },
+  {
+   "rel_path": "vector/pp_logo_mark_only_dark.svg",
+   "bytes": 623,
+   "sha256": "0c2892c76eb37ef15e5bdbfe719299171673d7366ef4c0229875395a49550ee2",
+   "format": "svg",
+   "ext_matches_format": true,
+   "is_real_vector": true,
+   "embedded_raster": false,
+   "viewBox": "189 266 624 266",
+   "svg_width": null,
+   "svg_height": null,
+   "path_count": 2,
+   "text_element_count": 0,
+   "uses_font_family": false,
+   "fill_colours": [
+    "#1E2532",
+    "#ECA02D"
+   ],
+   "bytes_text": 623
+  },
+  {
+   "rel_path": "vector/pp_logo_master.svg",
+   "bytes": 6951,
+   "sha256": "71923fd4642a062c1edb1e185808db192f1957aa7d2663091a8daabebd9ef053",
+   "format": "svg",
+   "ext_matches_format": true,
+   "is_real_vector": true,
+   "embedded_raster": false,
+   "viewBox": "125 254 752 402",
+   "svg_width": null,
+   "svg_height": null,
+   "path_count": 4,
+   "text_element_count": 0,
+   "uses_font_family": false,
+   "fill_colours": [
+    "#ECA02D",
+    "#FFFFFF"
+   ],
+   "bytes_text": 6951
+  },
+  {
+   "rel_path": "vector/pp_logo_master_editable.svg",
+   "bytes": 800,
+   "sha256": "e971759e807f822793bc55020bdbe16f670a07ea52b9d0f14be04ac32a8b31fe",
+   "format": "svg",
+   "ext_matches_format": true,
+   "is_real_vector": true,
+   "embedded_raster": false,
+   "viewBox": "125 254 752 402",
+   "svg_width": null,
+   "svg_height": null,
+   "path_count": 2,
+   "text_element_count": 2,
+   "uses_font_family": false,
+   "fill_colours": [
+    "#ECA02D",
+    "#FFFFFF"
+   ],
+   "bytes_text": 800
+  },
+  {
+   "rel_path": "vector/pp_logo_master_transparent_1024.png",
+   "bytes": 57316,
+   "sha256": "69d9697c220bd64fe09cce9a6ad5396541dd85cbe35e481c28ceb7259b2e5697",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 547,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 88.1,
+   "dominant_colours": [
+    {
+     "hex": "#f8f8f8",
+     "pct": 48.2
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 33.0
+    },
+    {
+     "hex": "#f0a028",
+     "pct": 13.9
+    },
+    {
+     "hex": "#e89828",
+     "pct": 4.4
+    },
+    {
+     "hex": "#f8a830",
+     "pct": 0.2
+    },
+    {
+     "hex": "#f8a828",
+     "pct": 0.1
+    }
+   ]
+  },
+  {
+   "rel_path": "vector/pp_logo_master_transparent_2048.png",
+   "bytes": 136752,
+   "sha256": "308cc34c2b0ff2875cb91224865750500d7d5e951768766f654a4a599430086f",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 2048,
+   "height": 1095,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 88.5,
+   "dominant_colours": [
+    {
+     "hex": "#f8f8f8",
+     "pct": 48.2
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 32.2
+    },
+    {
+     "hex": "#f0a028",
+     "pct": 14.1
+    },
+    {
+     "hex": "#e89828",
+     "pct": 4.9
+    },
+    {
+     "hex": "#f8a830",
+     "pct": 0.3
+    },
+    {
+     "hex": "#f8a828",
+     "pct": 0.1
+    }
+   ]
+  },
+  {
+   "rel_path": "vector/pp_logo_master_transparent_512.png",
+   "bytes": 25361,
+   "sha256": "88cc62acb980e9494908aa5184bd4299aee4a2989d9071220efc6b5ac8926751",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 512,
+   "height": 274,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 87.4,
+   "dominant_colours": [
+    {
+     "hex": "#f8f8f8",
+     "pct": 48.7
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 35.0
+    },
+    {
+     "hex": "#f0a028",
+     "pct": 11.9
+    },
+    {
+     "hex": "#e89828",
+     "pct": 4.2
+    },
+    {
+     "hex": "#f8a828",
+     "pct": 0.1
+    },
+    {
+     "hex": "#f8a830",
+     "pct": 0.1
+    }
+   ]
+  },
+  {
+   "rel_path": "vector/pp_logo_vector_metadata.csv",
+   "bytes": 1865,
+   "sha256": "8325a3f1aae8541444ae0aed6dbae095d94fbf271a85d36ea62ef8723dd16cba",
+   "format": "other",
+   "ext_matches_format": true
+  },
+  {
+   "rel_path": "vector/pp_logo_white.svg",
+   "bytes": 6951,
+   "sha256": "29d2fff49a25a7cf3f27d7b02790703eca3d51b4a0bf1f0387ffef1a4944368b",
+   "format": "svg",
+   "ext_matches_format": true,
+   "is_real_vector": true,
+   "embedded_raster": false,
+   "viewBox": "125 254 752 402",
+   "svg_width": null,
+   "svg_height": null,
+   "path_count": 4,
+   "text_element_count": 0,
+   "uses_font_family": false,
+   "fill_colours": [
+    "#FFFFFF"
+   ],
+   "bytes_text": 6951
+  },
+  {
+   "rel_path": "vector/pp_logo_white_1024.png",
+   "bytes": 50690,
+   "sha256": "8f90163fd5968867423997670e05eba67f8cfcad742596906c923de9b8cee1b5",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1024,
+   "height": 547,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 0,
+   "alpha_max": 255,
+   "alpha_used": true,
+   "fully_transparent_pct": 88.1,
+   "dominant_colours": [
+    {
+     "hex": "#f8f8f8",
+     "pct": 100.0
+    }
+   ]
+  },
+  {
+   "rel_path": "vector/text_closeup.png",
+   "bytes": 515484,
+   "sha256": "c59790b1f5b1694ca9d42738914e61fb7e3f654640674fb7eb663f9ee69693ad",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1420,
+   "height": 860,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 255,
+   "alpha_max": 255,
+   "alpha_used": false,
+   "fully_transparent_pct": 0.0,
+   "dominant_colours": [
+    {
+     "hex": "#182838",
+     "pct": 39.2
+    },
+    {
+     "hex": "#182030",
+     "pct": 31.0
+    },
+    {
+     "hex": "#f8f8f8",
+     "pct": 6.8
+    },
+    {
+     "hex": "#e89828",
+     "pct": 2.3
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 2.2
+    },
+    {
+     "hex": "#102030",
+     "pct": 1.0
+    }
+   ]
+  },
+  {
+   "rel_path": "vector/traced.json",
+   "bytes": 918,
+   "sha256": "374edf36c12877e1f80924dfdea228fd9f08ff5f67f25c8908f62e3860268e66",
+   "format": "other",
+   "ext_matches_format": true
+  },
+  {
+   "rel_path": "vector/weight_compare.png",
+   "bytes": 311653,
+   "sha256": "32103229614c6b28519467585b331f3aa4802c5bf59bd42c66cfaf9ed250f624",
+   "format": "png",
+   "ext_matches_format": true,
+   "width": 1420,
+   "height": 890,
+   "png_color_type": 6,
+   "has_alpha_channel": true,
+   "alpha_min": 255,
+   "alpha_max": 255,
+   "alpha_used": false,
+   "fully_transparent_pct": 0.0,
+   "dominant_colours": [
+    {
+     "hex": "#182030",
+     "pct": 54.2
+    },
+    {
+     "hex": "#182838",
+     "pct": 19.7
+    },
+    {
+     "hex": "#f8f8f8",
+     "pct": 6.2
+    },
+    {
+     "hex": "#e8a028",
+     "pct": 1.9
+    },
+    {
+     "hex": "#101828",
+     "pct": 1.4
+    },
+    {
+     "hex": "#e89828",
+     "pct": 1.2
+    }
+   ]
+  }
+ ]
+}

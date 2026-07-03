@@ -1,0 +1,206 @@
+{
+ "lane": "pp-logo-variant-intake-v0 (2026-07-03)",
+ "bucket": "brand-assets",
+ "overwrite": "disabled (upsert=false)",
+ "post_upload_verification": "HTTP 200 on public_url + byte size match + sha256 match vs local source",
+ "files": [
+  {
+   "order": 1,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/vector/pp_logo_master.svg",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_master.svg",
+   "content_type": "image/svg+xml",
+   "bytes": 6951,
+   "sha256": "71923fd4642a062c1edb1e185808db192f1957aa7d2663091a8daabebd9ef053",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_master.svg"
+  },
+  {
+   "order": 2,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/vector/pp_logo_master_editable.svg",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_master_editable.svg",
+   "content_type": "image/svg+xml",
+   "bytes": 800,
+   "sha256": "e971759e807f822793bc55020bdbe16f670a07ea52b9d0f14be04ac32a8b31fe",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_master_editable.svg"
+  },
+  {
+   "order": 3,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/vector/pp_logo_full_colour.svg",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_full_colour.svg",
+   "content_type": "image/svg+xml",
+   "bytes": 6951,
+   "sha256": "f12765b3d84fccc2191f4998788f8806a05b6dfb00f64d30f6c31ef4f166ecb0",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_full_colour.svg"
+  },
+  {
+   "order": 4,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/vector/pp_logo_white.svg",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_white.svg",
+   "content_type": "image/svg+xml",
+   "bytes": 6951,
+   "sha256": "29d2fff49a25a7cf3f27d7b02790703eca3d51b4a0bf1f0387ffef1a4944368b",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_white.svg"
+  },
+  {
+   "order": 5,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/vector/pp_logo_dark.svg",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_dark.svg",
+   "content_type": "image/svg+xml",
+   "bytes": 6951,
+   "sha256": "b1800cd2e63ceec21e4570416f43e4c088cf8e229711724659b4a8ed37c91553",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_dark.svg"
+  },
+  {
+   "order": 6,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/vector/pp_logo_mark_only.svg",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_mark_only.svg",
+   "content_type": "image/svg+xml",
+   "bytes": 623,
+   "sha256": "3cb8563bb1621c80db92ce7a19ba02e09ef511bf77b98f2658372c0a852fe115",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_mark_only.svg"
+  },
+  {
+   "order": 7,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/vector/pp_logo_mark_only_dark.svg",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_mark_only_dark.svg",
+   "content_type": "image/svg+xml",
+   "bytes": 623,
+   "sha256": "0c2892c76eb37ef15e5bdbfe719299171673d7366ef4c0229875395a49550ee2",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_mark_only_dark.svg"
+  },
+  {
+   "order": 8,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/vector/pp_logo_master_transparent_512.png",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_master_transparent_512.png",
+   "content_type": "image/png",
+   "bytes": 25361,
+   "sha256": "88cc62acb980e9494908aa5184bd4299aee4a2989d9071220efc6b5ac8926751",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_master_transparent_512.png"
+  },
+  {
+   "order": 9,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/vector/pp_logo_master_transparent_1024.png",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_master_transparent_1024.png",
+   "content_type": "image/png",
+   "bytes": 57316,
+   "sha256": "69d9697c220bd64fe09cce9a6ad5396541dd85cbe35e481c28ceb7259b2e5697",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_master_transparent_1024.png"
+  },
+  {
+   "order": 10,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/vector/pp_logo_master_transparent_2048.png",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_master_transparent_2048.png",
+   "content_type": "image/png",
+   "bytes": 136752,
+   "sha256": "308cc34c2b0ff2875cb91224865750500d7d5e951768766f654a4a599430086f",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_master_transparent_2048.png"
+  },
+  {
+   "order": 11,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/vector/pp_logo_full_colour_1024.png",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_full_colour_1024.png",
+   "content_type": "image/png",
+   "bytes": 61891,
+   "sha256": "9423a7b619bed6117e8c1f926a50b34c983af8ee695caae3c885996795cf7864",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_full_colour_1024.png"
+  },
+  {
+   "order": 12,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/vector/pp_logo_white_1024.png",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_white_1024.png",
+   "content_type": "image/png",
+   "bytes": 50690,
+   "sha256": "8f90163fd5968867423997670e05eba67f8cfcad742596906c923de9b8cee1b5",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_white_1024.png"
+  },
+  {
+   "order": 13,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/vector/pp_logo_dark_1024.png",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_dark_1024.png",
+   "content_type": "image/png",
+   "bytes": 60522,
+   "sha256": "af725d11040d03d0320ac5424f7cb8385eb9a53157ddef3ac5a90c427b74ad61",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_dark_1024.png"
+  },
+  {
+   "order": 14,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/assets/pp_logo_mark_only_transparent_512.png",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_mark_only_transparent_512.png",
+   "content_type": "image/png",
+   "bytes": 21082,
+   "sha256": "5a05207747a09e68f0ba7fe05745cc7738bdfdac74df2b74bef2db242e06b092",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_mark_only_transparent_512.png"
+  },
+  {
+   "order": 15,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/assets/pp_logo_mark_only_transparent_1024.png",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_mark_only_transparent_1024.png",
+   "content_type": "image/png",
+   "bytes": 71599,
+   "sha256": "5c612982d3e67020cceefd777e701ab283ff695c964546a3b1287f5bc87b0e37",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_mark_only_transparent_1024.png"
+  },
+  {
+   "order": 16,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/assets/pp_logo_square_navy_bg_512.png",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_square_navy_bg_512.png",
+   "content_type": "image/png",
+   "bytes": 30592,
+   "sha256": "4d51bba8e1d775e00bb624d74ec8a649a6c08a12ee8e0ad5c09333e65a2a4966",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_square_navy_bg_512.png"
+  },
+  {
+   "order": 17,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/assets/pp_logo_square_navy_bg_1024.png",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_square_navy_bg_1024.png",
+   "content_type": "image/png",
+   "bytes": 73754,
+   "sha256": "0956757dcc6488d6955549eae0875a5fb08ea1d0990086a279160cf2726cea3c",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_square_navy_bg_1024.png"
+  },
+  {
+   "order": 18,
+   "local_path": "_harness/pp_logo_variant_intake_v0/source/assets/pp_logo_watermark_white_transparent.png",
+   "bucket": "brand-assets",
+   "target_path": "Property_Pulse/Logos/pp_logo_watermark_white_transparent.png",
+   "content_type": "image/png",
+   "bytes": 45489,
+   "sha256": "dc4734d561c985f9496f74a9c8d6fec4413785ce54f07310d7571d3a584ed497",
+   "upsert": false,
+   "public_url": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/pp_logo_watermark_white_transparent.png"
+  }
+ ]
+}

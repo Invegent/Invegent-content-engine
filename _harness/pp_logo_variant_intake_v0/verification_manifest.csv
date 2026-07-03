@@ -1,0 +1,38 @@
+rel_path,format,bytes,width,height,has_alpha_channel,alpha_used,fully_transparent_pct,path_count,embedded_raster,is_real_vector,viewBox,ext_matches_format,sha256
+Logo_Kit_Contact_Sheet-print-1anzf8b.dc.html,html,43895,,,,,,,,,,True,f2c26f5924dc2551e8d9f9528a06f0006153cfff91d3970e9350f605a86c49e5
+Logo_Kit_Contact_Sheet.dc.html,html,25584,,,,,,,,,,True,d9e545dd628e7688a5947abc2a3ec949bf5e7d3b1a23651996965b9178a0d9ec
+assets/pp_logo_dark_transparent.png,png,89318,1024,547,True,True,86.5,,,,,True,d78def1cd55195bac7f60a12f769302a2a2a71d11d75db056c93dc540439e2ce
+assets/pp_logo_full_colour_transparent.png,png,94387,1024,547,True,True,86.5,,,,,True,c10dba390eb36aca2715464ccd19e85323b7cdea100153c362087c14bbd14dcd
+assets/pp_logo_horizontal_transparent_1024.png,png,94387,1024,547,True,True,86.5,,,,,True,c10dba390eb36aca2715464ccd19e85323b7cdea100153c362087c14bbd14dcd
+assets/pp_logo_horizontal_white_transparent_1024.png,png,66920,1024,547,True,True,86.5,,,,,True,1bbcbebe58542c4856e16d5f5c5cc52f91162eda483ac6656dc94b85ad197327
+assets/pp_logo_mark_only_transparent_1024.png,png,71599,1024,1024,True,True,96.1,,,,,True,5c612982d3e67020cceefd777e701ab283ff695c964546a3b1287f5bc87b0e37
+assets/pp_logo_mark_only_transparent_512.png,png,21082,512,512,True,True,96.1,,,,,True,5a05207747a09e68f0ba7fe05745cc7738bdfdac74df2b74bef2db242e06b092
+assets/pp_logo_master_transparent.png,png,84678,1024,547,True,True,86.5,,,,,True,8d6808479863622dc38a4fd5cf06ef44bad5ad87c4bc0a61a7a7fe899dd8669d
+assets/pp_logo_metadata.csv,other,2468,,,,,,,,,,True,85e4114fc02c9337609cc9fe60009098fd5541e8b7da818ed672350492b28b2d
+assets/pp_logo_square_navy_bg_1024.png,png,73754,1024,1024,True,False,0.0,,,,,True,0956757dcc6488d6955549eae0875a5fb08ea1d0990086a279160cf2726cea3c
+assets/pp_logo_square_navy_bg_512.png,png,30592,512,512,True,False,0.0,,,,,True,4d51bba8e1d775e00bb624d74ec8a649a6c08a12ee8e0ad5c09333e65a2a4966
+assets/pp_logo_watermark_white_transparent.png,png,45489,800,428,True,True,86.5,,,,,True,dc4734d561c985f9496f74a9c8d6fec4413785ce54f07310d7571d3a584ed497
+assets/pp_logo_white_transparent.png,png,66920,1024,547,True,True,86.5,,,,,True,1bbcbebe58542c4856e16d5f5c5cc52f91162eda483ac6656dc94b85ad197327
+uploads/PP_logo.png,png,237798,1024,1024,False,False,0.0,,,,,True,feafee4e4452663636d547af070bdec24e38094a12565ed7a3e3ccb49183da5e
+uploads/PP_logo_2.png,png,237798,1024,1024,False,False,0.0,,,,,True,feafee4e4452663636d547af070bdec24e38094a12565ed7a3e3ccb49183da5e
+uploads/primary_colors.txt,other,613,,,,,,,,,,True,2ff8f2185dfdc589e2954248ffa0c3e025cfc9167a4b79e4c3d40cbdcf59692d
+vector/comparison_raster_vs_svg.png,png,479786,1000,1363,True,False,0.0,,,,,True,f3d8dd1a9c9bf06c8dce63be8d5afbf36dea145008f41a53a95c71c10559380f
+vector/font_compare.png,png,175241,900,594,True,False,0.0,,,,,True,135ad0f005495e236bd85b179cec2028b041a11f298e4afa69e92b27243e181c
+vector/font_compare2.png,png,230511,900,980,True,False,0.0,,,,,True,90ca0e3951224264bfef06c9182d696f67ab335b16ab40544e011e4f1cb5549c
+vector/pp_logo_dark.svg,svg,6951,,,,,,4,False,True,125 254 752 402,True,b1800cd2e63ceec21e4570416f43e4c088cf8e229711724659b4a8ed37c91553
+vector/pp_logo_dark_1024.png,png,60522,1024,547,True,True,88.1,,,,,True,af725d11040d03d0320ac5424f7cb8385eb9a53157ddef3ac5a90c427b74ad61
+vector/pp_logo_full_colour.svg,svg,6951,,,,,,4,False,True,125 254 752 402,True,f12765b3d84fccc2191f4998788f8806a05b6dfb00f64d30f6c31ef4f166ecb0
+vector/pp_logo_full_colour_1024.png,png,61891,1024,547,True,True,88.1,,,,,True,9423a7b619bed6117e8c1f926a50b34c983af8ee695caae3c885996795cf7864
+vector/pp_logo_mark_only.svg,svg,623,,,,,,2,False,True,189 266 624 266,True,3cb8563bb1621c80db92ce7a19ba02e09ef511bf77b98f2658372c0a852fe115
+vector/pp_logo_mark_only_dark.svg,svg,623,,,,,,2,False,True,189 266 624 266,True,0c2892c76eb37ef15e5bdbfe719299171673d7366ef4c0229875395a49550ee2
+vector/pp_logo_master.svg,svg,6951,,,,,,4,False,True,125 254 752 402,True,71923fd4642a062c1edb1e185808db192f1957aa7d2663091a8daabebd9ef053
+vector/pp_logo_master_editable.svg,svg,800,,,,,,2,False,True,125 254 752 402,True,e971759e807f822793bc55020bdbe16f670a07ea52b9d0f14be04ac32a8b31fe
+vector/pp_logo_master_transparent_1024.png,png,57316,1024,547,True,True,88.1,,,,,True,69d9697c220bd64fe09cce9a6ad5396541dd85cbe35e481c28ceb7259b2e5697
+vector/pp_logo_master_transparent_2048.png,png,136752,2048,1095,True,True,88.5,,,,,True,308cc34c2b0ff2875cb91224865750500d7d5e951768766f654a4a599430086f
+vector/pp_logo_master_transparent_512.png,png,25361,512,274,True,True,87.4,,,,,True,88cc62acb980e9494908aa5184bd4299aee4a2989d9071220efc6b5ac8926751
+vector/pp_logo_vector_metadata.csv,other,1865,,,,,,,,,,True,8325a3f1aae8541444ae0aed6dbae095d94fbf271a85d36ea62ef8723dd16cba
+vector/pp_logo_white.svg,svg,6951,,,,,,4,False,True,125 254 752 402,True,29d2fff49a25a7cf3f27d7b02790703eca3d51b4a0bf1f0387ffef1a4944368b
+vector/pp_logo_white_1024.png,png,50690,1024,547,True,True,88.1,,,,,True,8f90163fd5968867423997670e05eba67f8cfcad742596906c923de9b8cee1b5
+vector/text_closeup.png,png,515484,1420,860,True,False,0.0,,,,,True,c59790b1f5b1694ca9d42738914e61fb7e3f654640674fb7eb663f9ee69693ad
+vector/traced.json,other,918,,,,,,,,,,True,374edf36c12877e1f80924dfdea228fd9f08ff5f67f25c8908f62e3860268e66
+vector/weight_compare.png,png,311653,1420,890,True,False,0.0,,,,,True,32103229614c6b28519467585b331f3aa4802c5bf59bd42c66cfaf9ed250f624
