@@ -53,7 +53,7 @@
       "note": "Assets are governed SEPARATELY (a sibling library) in c.client_brand_asset and referenced by asset_key — never raw URLs. The style guide may constrain HOW assets are used (placement, scrim) but does not own the files.",
       "resolution": "Asset resolution stays via resolve_brand_assets() — UNCHANGED; this style guide introduces NO new resolver behaviour.",
       "logo": "logo_primary (pp_logo_primary)",
-      "backgrounds": "governed PP backgrounds (bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd); must be governed before use; needs_scrim"
+      "backgrounds": "governed PP backgrounds (bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd, bg_pp_au_suburb_aerial_grid, bg_pp_home_keys_contract_table); must be governed before use; needs_scrim"
     },
     "pattern_rules": {
       "note": "Governs the Pattern Library v1 candidates — each conforms_to_style_guide=property-pulse-styleguide-v1.",
@@ -146,14 +146,14 @@
       "pattern_key": "pp_background_plus_scrim_v1", "client_slug": "property-pulse", "version": "v1", "status": "candidate",
       "pattern_type": "background_plus_scrim", "purpose": "Full-bleed governed background photo with a dark scrim that guarantees text legibility.",
       "used_by_template_families": ["property-pulse-news"], "conforms_to_style_guide": "property-pulse-styleguide-v1",
-      "references_assets": ["bg_perth_cbd", "bg_sydney_cbd", "bg_brisbane_cbd"], "required_fields": ["background"], "optional_fields": [],
+      "references_assets": ["bg_perth_cbd", "bg_sydney_cbd", "bg_brisbane_cbd", "bg_pp_au_suburb_aerial_grid", "bg_pp_home_keys_contract_table"], "required_fields": ["background"], "optional_fields": [],
       "layout_rules": {
         "background_asset_requirement": "background MUST resolve to a governed asset (asset_key) via resolve_brand_assets — never a raw URL.",
         "scrim_requirement": "A dark scrim is applied over the photo (the governed PP backgrounds are flagged needs_scrim).",
         "text_safety": "Headline/category text sits over the scrim band, not bare photo.",
         "contrast_rules": "Scrim opacity chosen so white text meets contrast over varied photography.",
         "fallback_background": "If no governed background resolves, the host render fails loud (NO raw-URL fallback) — consistent with the proven governed render path.",
-        "governed_asset_dependency": "References the 3 governed PP backgrounds (bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd — all exist in c.client_brand_asset).",
+        "governed_asset_dependency": "References the 5 governed PP backgrounds (bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd, bg_pp_au_suburb_aerial_grid, bg_pp_home_keys_contract_table — all exist in c.client_brand_asset; pool 3→5 per PK 2026-07-04 promotion + B1-v3 resolver-rank alignment).",
         "maps_to": "Background.source + scrim (documentation only)."
       },
       "accessibility_rules": { "note": "Scrim ensures text-over-image contrast across bright/dark photos; needs_scrim enforced." },
@@ -220,7 +220,7 @@
         },
         {
           "template_variant_key": "centred-scrim-1x1",
-          "purpose": "Static 1:1 news card (still image) — the LIVE Branch B B1-v2 PRODUCTION Property Pulse News image variant rendered by the image-worker governed image_quote path.",
+          "purpose": "Static 1:1 news card (still image) — the LIVE Branch B B1-v3 PRODUCTION Property Pulse News image variant rendered by the image-worker governed image_quote path.",
           "aspect_ratio": "1:1",
           "output_type": "jpg",
           "compatible_ice_format_key": "image_quote",
@@ -229,13 +229,13 @@
           "provider_template_id": "fb9820f8-3fee-4448-b324-3d500fa74b40",
           "required_fields": ["headline", "category", "date", "footer", "background", "logo"],
           "optional_fields": ["subtitle", "location"],
-          "expected_assets": ["pp_logo_primary", "bg_perth_cbd", "bg_brisbane_cbd", "bg_sydney_cbd"],
+          "expected_assets": ["pp_logo_primary", "bg_perth_cbd", "bg_sydney_cbd", "bg_brisbane_cbd", "bg_pp_au_suburb_aerial_grid", "bg_pp_home_keys_contract_table"],
           "composed_of_patterns": ["pp_branding_strip_v1", "pp_headline_block_v1", "pp_category_badge_v1", "pp_background_plus_scrim_v1"],
           "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
           "proof_status": "proven",
           "proof_gate": "B0 1:1 template smoke",
           "proof_posture": "proven",
-          "known_limitations": "1:1 static image only. In the LIVE production path: headline is the only AI-authored REQUIRED field (hard-gated, max 90, fail-loud on blank/overflow); subtitle is DERIVED from the first non-empty draft_body paragraph (optional, max 90, truncated — never failed); category ('PROPERTY NEWS'), date (render date), footer ('propertypulse.com.au') are renderer-FIXED; location is empty in v0; background ROTATES deterministically per post_draft_id across [bg_perth_cbd, bg_brisbane_cbd, bg_sydney_cbd] (B1-v2 v3.16.0); logo is fixed pp_logo_primary. Governed-only fail-loud — NO legacy fallback for PP. RUNTIME IDENTITY DRIFT: the worker emits render_spec.template.template_variant='centered-scrim-1x1' (American spelling) + implementation_id='news_static_centered_scrim_1x1_v1'; this registry uses 'centred-scrim-1x1' (British, sibling convention). Reconciled in capability_contracts[].maps_to_variant.",
+          "known_limitations": "1:1 static image only. In the LIVE production path: headline is the only AI-authored REQUIRED field (hard-gated, max 90, fail-loud on blank/overflow); subtitle is DERIVED from the first non-empty draft_body paragraph (optional, max 90, truncated — never failed); category ('PROPERTY NEWS'), date (render date), footer ('propertypulse.com.au') are renderer-FIXED; location is empty in v0; background ROTATES deterministically per post_draft_id across [bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd, bg_pp_au_suburb_aerial_grid, bg_pp_home_keys_contract_table] (B1-v3 v3.21.0 — pool 3→5, aligned to the governed resolver rank order, PK 2026-07-04); logo is fixed pp_logo_primary. Governed-only fail-loud — NO legacy fallback for PP. RUNTIME IDENTITY DRIFT: the worker emits render_spec.template.template_variant='centered-scrim-1x1' (American spelling) + implementation_id='news_static_centered_scrim_1x1_v1'; this registry uses 'centred-scrim-1x1' (British, sibling convention). Reconciled in capability_contracts[].maps_to_variant.",
           "evidence": { "status": "proven", "proof_status": "proven", "proof_gate": "B0 1:1 template smoke", "render_log_id": "50f09ca2-cfae-462f-bfd5-07aac83c96de", "render_spec_template_id": "pp-news-centred-scrim-1x1", "source_commit": "4ebec3b", "review_packet": null, "approved_by": "PK", "approved_at": null, "notes": "B0 reusable 1:1 governed-template smoke (registers v3.98 / image-worker v3.13.0; _smoke/ only, resolver_used=true, fallback_taken=false, output 1080x1080 JPEG). LIVE PRODUCTION INSTANCES (image_quote news_card.v1, label=creative_library_b1_production, resolver_used=true): render_log fcbe5993-9791-45a6-98fc-a82c8ffd579f, 5b821214-63c4-4451-ad59-7090b00793d3, 53575bc8-f0e2-4c40-a99a-a7706da48513, 5f7cfc89-5895-44af-af80-56d76e9e856e; published to facebook (post_publish 1472a6fa-c338-46d3-abb3-be100696033b, 2026-06-29) + instagram (post_publish 88ee578a-f65b-49e7-a0df-67c57ba384cd, 2026-06-29). This is the variant the live PP image_quote path renders. (Prior render_log 52165857-ba7e-4a0f-82f0-92fd5f66537e was a stale/non-existent citation — corrected 2026-06-30; full proof set: docs/creative-library/format-variant-intake-pp-image-quote-pilot-v1.md.)" }
         }
       ]
@@ -260,11 +260,11 @@
     {
       "contract_key": "property_pulse.image_quote.news_card.v1",
       "contract_ref": "property_pulse.image_quote.news_card",
-      "contract_version": "v1",
+      "contract_version": "v2",
       "client_slug": "property-pulse",
       "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd",
       "status": "active",
-      "purpose": "Canonical capability contract for the LIVE Property Pulse image_quote governed render path (B1-v2). Declares the variant identity, field classes + limits, governed assets, fallback, and the evidence later ACI slices stamp. Declarative source of truth; the runtime consumes a VENDORED projection (no live JSON import).",
+      "purpose": "Canonical capability contract for the LIVE Property Pulse image_quote governed render path (B1-v3). Declares the variant identity, field classes + limits, governed assets, fallback, and the evidence later ACI slices stamp. Declarative source of truth; the runtime consumes a VENDORED projection (no live JSON import).",
       "gate": { "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd", "recommended_format": "image_quote", "note": "Deterministic resolver inputs ONLY — no AI, no mix, no scoring. Any other client_id or format resolves to null (legacy path)." },
       "maps_to_variant": {
         "template_family_key": "property-pulse-news",
@@ -290,7 +290,7 @@
         ],
         "governed_assets": {
           "logo": { "asset_key": "pp_logo_primary", "policy": "fixed" },
-          "background": { "asset_keys": ["bg_perth_cbd", "bg_brisbane_cbd", "bg_sydney_cbd"], "policy": "deterministic_rotation_per_post_draft_id", "note": "FNV-1a 32-bit over post_draft_id mod 3 (B1-v2 v3.16.0). bg_perth_cbd is index 0 (the v1 default)." }
+          "background": { "asset_keys": ["bg_perth_cbd", "bg_sydney_cbd", "bg_brisbane_cbd", "bg_pp_au_suburb_aerial_grid", "bg_pp_home_keys_contract_table"], "policy": "deterministic_rotation_per_post_draft_id", "note": "FNV-1a 32-bit over post_draft_id mod 5 (B1-v3 v3.21.0 — contract v2: pool 3→5, aligned to the resolve_slot_assets eligible-pool rank order, PK decision 2026-07-04 'Option A-now-D-later'; alignment holds only while the governed pool is exactly these 5 in this order). bg_perth_cbd is index 0 (the v1 default)." }
         }
       },
       "fallback_policy": "governed_only_fail_loud",
@@ -314,7 +314,7 @@
         "review_packet": "docs/briefs/aci-foundation-v0-capability-contract-spine-brief.md",
         "approved_by": "PK",
         "approved_at": "2026-06-30",
-        "notes": "PK-ratified ACTIVE 2026-06-30 (Format Variant Intake Slice 1B reconciliation). Proof is INHERITED from the mapped variant centred-scrim-1x1 (B0 1:1 smoke 50f09ca2) and is now PRODUCTION-PROVEN by real render + publish for PP image_quote on FACEBOOK + INSTAGRAM ONLY: production renders = production_instances above; publishes = facebook post_publish 1472a6fa-c338-46d3-abb3-be100696033b (draft 1d6c8bab, 2026-06-29T06:05:14Z) + instagram post_publish 88ee578a-f65b-49e7-a0df-67c57ba384cd (draft 33b171fc, 2026-06-29T00:00:26Z). Other platforms are NOT production_proven (no publish evidence). The contract adds NO new render proof of its own. The contract resolver (resolveCreativeContract) is wired in ai-worker for ADDITIVE draft_format.contract evidence stamping ONLY (Slice B1, register v4.06) — it does NOT drive format selection or render behaviour; the image-worker render path renders via the vendored b1_production constants. 'active' ratifies the contract DEFINITION + its inherited production proof, NOT a format-selection/render change; the vendored projection (creative_contract.ts) carries only contract-identity fields (no status/evidence) and is unchanged. Prior citation of render_log 52165857 was stale/non-existent — corrected to the real IDs above. Full structured proof set: docs/creative-library/format-variant-intake-pp-image-quote-pilot-v1.md."
+        "notes": "PK-ratified ACTIVE 2026-06-30 (Format Variant Intake Slice 1B reconciliation). Proof is INHERITED from the mapped variant centred-scrim-1x1 (B0 1:1 smoke 50f09ca2) and is now PRODUCTION-PROVEN by real render + publish for PP image_quote on FACEBOOK + INSTAGRAM ONLY: production renders = production_instances above; publishes = facebook post_publish 1472a6fa-c338-46d3-abb3-be100696033b (draft 1d6c8bab, 2026-06-29T06:05:14Z) + instagram post_publish 88ee578a-f65b-49e7-a0df-67c57ba384cd (draft 33b171fc, 2026-06-29T00:00:26Z). Other platforms are NOT production_proven (no publish evidence). The contract adds NO new render proof of its own. The contract resolver (resolveCreativeContract) is wired in ai-worker for ADDITIVE draft_format.contract evidence stamping ONLY (Slice B1, register v4.06) — it does NOT drive format selection or render behaviour; the image-worker render path renders via the vendored b1_production constants. 'active' ratifies the contract DEFINITION + its inherited production proof, NOT a format-selection/render change; the vendored projection (creative_contract.ts) carries only contract-identity fields (no status/evidence) and is unchanged. Prior citation of render_log 52165857 was stale/non-existent — corrected to the real IDs above. Full structured proof set: docs/creative-library/format-variant-intake-pp-image-quote-pilot-v1.md. CONTRACT_VERSION v2 (2026-07-04): PK decision 'Approve Option A-now-D-later' (Lane 4, docs/briefs/lane4-rotation-alignment-packet.md) — governed_assets.background pool 3->5 aligned to the resolve_slot_assets eligible-pool rank order; the v1 ratification above covers the contract DEFINITION and inherited proof; the v2 revision changes ONLY the background pool binding (identity fields unchanged)."
       }
     }
   ],

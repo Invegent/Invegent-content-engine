@@ -118,7 +118,7 @@ export interface CreativeContract {
 export const PP_IMAGE_QUOTE_NEWS_CARD_V1: CreativeContract = Object.freeze({
   contract_key: 'property_pulse.image_quote.news_card.v1',
   contract_ref: 'property_pulse.image_quote.news_card',
-  contract_version: 'v1',
+  contract_version: 'v2',
   client_id: '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd',
   client_slug: 'property-pulse',
   gate: Object.freeze({
@@ -163,7 +163,9 @@ export const PP_IMAGE_QUOTE_NEWS_CARD_V1: CreativeContract = Object.freeze({
         policy: 'fixed' as const,
       }),
       background: Object.freeze({
-        asset_keys: Object.freeze(['bg_perth_cbd', 'bg_brisbane_cbd', 'bg_sydney_cbd']),
+        // v2 (2026-07-04, PK decision "Option A-now-D-later"): background pool 3→5, aligned to
+        // the governed resolver (resolve_slot_assets) eligible-pool rank order (B1-v3).
+        asset_keys: Object.freeze(['bg_perth_cbd', 'bg_sydney_cbd', 'bg_brisbane_cbd', 'bg_pp_au_suburb_aerial_grid', 'bg_pp_home_keys_contract_table']),
         policy: 'deterministic_rotation_per_post_draft_id' as const,
       }),
     }),
@@ -180,7 +182,7 @@ export const PP_IMAGE_QUOTE_NEWS_CARD_V1: CreativeContract = Object.freeze({
     registry_version: 'v0.3',
     source_commit: '2ac172b',
     contract_ref: 'property_pulse.image_quote.news_card',
-    contract_version: 'v1',
+    contract_version: 'v2',
   }),
 });
 

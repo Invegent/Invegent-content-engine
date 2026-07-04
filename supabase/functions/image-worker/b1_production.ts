@@ -26,9 +26,15 @@ export const B1_GOVERNED_CLIENT_SLUG = 'property-pulse';
 // Fixed governed logo key for B1 (cut-plan decisions B + the PP pilot). Logo stays FIXED.
 export const B1_LOGO_KEY = 'pp_logo_primary';
 
-// B1-v2: the 3 governed Property-Pulse background keys, in canonical order.
-// bg_perth_cbd stays index 0 (the v1 default), so this set is a superset of v1.
-export const B1_BACKGROUND_KEYS = ['bg_perth_cbd', 'bg_brisbane_cbd', 'bg_sydney_cbd'] as const;
+// B1-v3: the 5 governed Property-Pulse background keys, aligned to the governed resolver
+// (`resolve_slot_assets`) eligible-pool rank order — text-safe class, created_at ASC,
+// asset_id ASC — per PK decision 2026-07-04 (Option A-now-D-later). NOTE: this alignment
+// holds ONLY while the governed eligible pool is exactly these 5 keys in this order; any
+// future promotion/deactivation re-diverges it silently. This constant is a STOPGAP until
+// B1 consumes the TMR selection spine (select_template/resolve_slot_assets) directly
+// (Option D), at which point it is deleted. bg_perth_cbd stays index 0 (the v1 default),
+// so the B1_BACKGROUND_KEY back-compat surface is unchanged.
+export const B1_BACKGROUND_KEYS = ['bg_perth_cbd', 'bg_sydney_cbd', 'bg_brisbane_cbd', 'bg_pp_au_suburb_aerial_grid', 'bg_pp_home_keys_contract_table'] as const;
 
 // Back-compat: the v1 fixed-default background key is the rotation set's index 0.
 export const B1_BACKGROUND_KEY = B1_BACKGROUND_KEYS[0];

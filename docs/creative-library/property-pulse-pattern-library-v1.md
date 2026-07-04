@@ -31,7 +31,7 @@ they are **not** rendered or consumed at runtime in this phase.
 | `pp_branding_strip_v1` | branding_strip | footer / — | `pp_logo_primary` | supported_by_host_render |
 | `pp_headline_block_v1` | headline_block | headline / subtitle | — | supported_by_host_render |
 | `pp_category_badge_v1` | category_badge | category / location, date | — | supported_by_host_render |
-| `pp_background_plus_scrim_v1` | background_plus_scrim | background / — | `bg_perth_cbd`, `bg_sydney_cbd`, `bg_brisbane_cbd` | supported_by_host_render |
+| `pp_background_plus_scrim_v1` | background_plus_scrim | background / — | `bg_perth_cbd`, `bg_sydney_cbd`, `bg_brisbane_cbd`, `bg_pp_au_suburb_aerial_grid`, `bg_pp_home_keys_contract_table` | supported_by_host_render |
 | `pp_stat_card_v1` | stat_card | stat_value / stat_label, context_line, movement | — | candidate (not yet host-rendered) |
 
 The first four appear in **both** proven PP News host variants (Gate C still-image `7243e040…`,

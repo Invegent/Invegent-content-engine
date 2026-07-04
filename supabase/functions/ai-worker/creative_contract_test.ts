@@ -63,7 +63,8 @@ Deno.test('resolveCreativeContract: non-PP client_id + image_quote -> null', () 
 Deno.test('contract identifiers exact', () => {
   assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.contract_key, 'property_pulse.image_quote.news_card.v1');
   assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.contract_ref, 'property_pulse.image_quote.news_card');
-  assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.contract_version, 'v1');
+  // v2 (2026-07-04): contract CONTENT revision — background pool 3→5 (resolver-rank alignment).
+  assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.contract_version, 'v2');
 });
 
 // Test 5 — mapped variant / provider / template IDs exact.

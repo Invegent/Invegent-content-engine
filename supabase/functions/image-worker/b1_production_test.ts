@@ -114,32 +114,41 @@ Deno.test('B1-v2-1: selectB1BackgroundKey is deterministic (same id → same key
   }
 });
 
-// (v2-2) Membership: output is ALWAYS one of the 3 governed background keys.
+// (v2-2) Membership: output is ALWAYS one of the 5 governed background keys.
+// B1-v3 (2026-07-04): pool 3→5, aligned to the governed resolver rank order (PK Option A).
 Deno.test('B1-v2-2: selectB1BackgroundKey output is always a member of B1_BACKGROUND_KEYS', () => {
-  assertEquals(B1_BACKGROUND_KEYS as readonly string[], ['bg_perth_cbd', 'bg_brisbane_cbd', 'bg_sydney_cbd']);
+  assertEquals(B1_BACKGROUND_KEYS as readonly string[], ['bg_perth_cbd', 'bg_sydney_cbd', 'bg_brisbane_cbd', 'bg_pp_au_suburb_aerial_grid', 'bg_pp_home_keys_contract_table']);
   for (let i = 0; i < 2000; i++) {
     const id = `id-${i}-${(i * 2654435761 >>> 0).toString(16)}-${i}`;
     assert((B1_BACKGROUND_KEYS as readonly string[]).includes(selectB1BackgroundKey(id)));
   }
 });
 
-// (v2-3) Distribution coverage: over ≥300 distinct ids, every one of the 3 keys appears.
-Deno.test('B1-v2-3: selectB1BackgroundKey covers all 3 keys over ≥300 distinct ids', () => {
+// (v2-3) Distribution coverage: over ≥300 distinct ids, every one of the 5 keys appears.
+Deno.test('B1-v2-3: selectB1BackgroundKey covers all 5 keys over ≥300 distinct ids', () => {
   const seen = new Set<string>();
   for (let i = 0; i < 500; i++) {
     seen.add(selectB1BackgroundKey(`distinct-${i}-${(i * 40503 >>> 0).toString(16)}`));
   }
-  assertEquals(seen.size, 3);
+  assertEquals(seen.size, 5);
   for (const k of B1_BACKGROUND_KEYS) assert(seen.has(k), `expected key ${k} to be selected at least once`);
 });
 
 // (v2-4) Stability pins: fixed UUID literals locked to their COMPUTED key. These cover
-// all 3 keys and lock the FNV-1a hash against accidental change. If the hash, the key
-// order, or the modulo ever changes, these break.
+// all 5 keys and lock the FNV-1a hash against accidental change. If the hash, the key
+// order, or the modulo ever changes, these break. Re-pinned for B1-v3 (pool 3→5, mod 5,
+// resolver-rank order — PK 2026-07-04): the SAME hash over the SAME seed now lands on
+// different keys because both the modulus and the array changed; all pins below were
+// RECOMPUTED by running selectB1BackgroundKey, not hand-derived.
 Deno.test('B1-v2-4: selectB1BackgroundKey stability pins (locks the FNV-1a hash)', () => {
-  assertEquals(selectB1BackgroundKey('11111111-1111-4111-8111-111111111111'), 'bg_brisbane_cbd');
-  assertEquals(selectB1BackgroundKey('22222222-2222-4222-8222-222222222222'), 'bg_sydney_cbd');
-  assertEquals(selectB1BackgroundKey('44444444-4444-4444-8444-000000000000'), 'bg_perth_cbd');
+  assertEquals(selectB1BackgroundKey('11111111-1111-4111-8111-111111111111'), 'bg_pp_home_keys_contract_table');
+  assertEquals(selectB1BackgroundKey('22222222-2222-4222-8222-222222222222'), 'bg_pp_home_keys_contract_table');
+  assertEquals(selectB1BackgroundKey('44444444-4444-4444-8444-000000000000'), 'bg_pp_home_keys_contract_table');
+  // B1-v3 additions so EVERY key in the 5-key pool is pinned by at least one fixed literal:
+  assertEquals(selectB1BackgroundKey('99999999-9999-4999-8999-999999999999'), 'bg_perth_cbd');
+  assertEquals(selectB1BackgroundKey('88888888-8888-4888-8888-888888888888'), 'bg_sydney_cbd');
+  assertEquals(selectB1BackgroundKey('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'), 'bg_brisbane_cbd');
+  assertEquals(selectB1BackgroundKey('55555555-5555-4555-8555-555555555555'), 'bg_pp_au_suburb_aerial_grid');
 });
 
 // (v2-5) Back-compat: the v1 fixed default constant remains index 0 of the rotation set.

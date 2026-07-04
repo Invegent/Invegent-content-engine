@@ -9,7 +9,11 @@
 
 export const EXPECTED_VARIANT_KEY = 'property_pulse.image_quote.news_card.v1';
 export const EXPECTED_CONTRACT_REF = 'property_pulse.image_quote.news_card';
-export const EXPECTED_CONTRACT_VERSION = 'v1';
+// v2 (2026-07-04, B1-v3): contract CONTENT revision — background pool 3→5, resolver-rank
+// alignment (PK "Option A-now-D-later"). Identity keys above are UNCHANGED. In-flight drafts
+// stamped 'v1' before the ai-worker v2.17.0 deploy will transiently warn here (warn-only,
+// evidence-only — correct: they carry the old-contract stamp).
+export const EXPECTED_CONTRACT_VERSION = 'v2';
 
 export interface ContractValidationCheck {
   name: 'contract_identity' | 'headline' | 'subtitle' | 'assets';

@@ -1,3 +1,24 @@
+// image-worker v3.21.0
+// v3.21.0 (2026-07-04) — LANE 4 / B1-v3: PP image_quote background rotation ALIGNED to the
+//   governed resolver rank order (PK decision 2026-07-04 "Option A-now-D-later"). WHAT
+//   CHANGED: B1_BACKGROUND_KEYS (b1_production.ts) goes 3→5, reordered to the
+//   resolve_slot_assets eligible-pool rank order (text-safe class, created_at ASC,
+//   asset_id ASC): [bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd,
+//   bg_pp_au_suburb_aerial_grid, bg_pp_home_keys_contract_table] — the 2 newly PK-promoted
+//   governed backgrounds (bg_pp_au_suburb_aerial_grid, bg_pp_home_keys_contract_table)
+//   enter the production rotation, and selectB1BackgroundKey() now takes FNV-1a mod 5
+//   (same hash, same seed post_draft_id; per-seed picks change). Vendored creative
+//   contract (creative_contract.ts, BOTH image-worker + ai-worker copies) bumps
+//   contract_version v1→v2 with the same 5-key pool (contract_key / contract_ref /
+//   variant identity unchanged). Alignment is a STOPGAP: it holds only while the governed
+//   eligible pool is exactly these 5 in this order; the durable fix is B1 consuming
+//   select_template/resolve_slot_assets directly (Option D), then the constant dies.
+//   WHAT IS STRICTLY OUT OF SCOPE: NO change to the FNV-1a hash logic, the PP client_id
+//   gate, the canonical slug, the fixed logo key pp_logo_primary, the headline/subtitle
+//   gates, the label, the storage path, any legacy / non-PP / other-format / other-mode
+//   path, the resolver/select_template/stamper/publisher/dashboard, S0 shadow rows;
+//   NO DB/migration, NO re-render of existing outputs, NO deploy in this change.
+//
 // image-worker v3.20.0
 // v3.20.0 — TMR G2b: isolated tmr_template_smoke branch (renders 490ad9ea to _smoke/tmr/ ONLY; no post_render_log; synthetic placeholders; secret stays in EF)
 //

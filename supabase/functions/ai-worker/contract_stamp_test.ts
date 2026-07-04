@@ -20,7 +20,8 @@ Deno.test('buildContractStamp: PP image_quote -> exact expected stamp', () => {
   assertEquals(stamp, {
     variant_key: 'property_pulse.image_quote.news_card.v1',
     contract_ref: 'property_pulse.image_quote.news_card',
-    contract_version: 'v1',
+    contract_version: 'v2', // v2 (2026-07-04, B1-v3): background pool 3→5, resolver-rank alignment
+
     selector_reason: 'pp_image_quote_default',
     registry_version: 'v0.3',
     source_commit: '2ac172b',

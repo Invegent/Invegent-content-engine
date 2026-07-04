@@ -11,7 +11,12 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.16.0";
+const VERSION = "ai-worker-v2.17.0";
+// v2.17.0 (2026-07-04) — LANE 4 / B1-v3: vendored creative contract v2 — background pool
+//   3→5, aligned to the governed resolver (resolve_slot_assets) eligible-pool rank order
+//   (PK decision 2026-07-04 "Option A-now-D-later"). contract_version stamped into
+//   draft_format.contract goes v1→v2; contract_key/contract_ref/variant identity and the
+//   stamping gate/path are UNCHANGED. No AI-prompt/format-selection/render change.
 // v2.16.0 (2026-06-27) — ACI Foundation v0 / Slice B1: creative-contract stamp.
 //   ADDITIVE METADATA ONLY. When ai-worker writes a Property-Pulse image_quote draft,
 //   it now resolves the vendored creative contract (resolveCreativeContract, gated on
