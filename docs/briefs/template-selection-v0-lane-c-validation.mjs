@@ -5,10 +5,10 @@
 //
 // Loads BOTH real migration files verbatim (roles are created in the
 // fixture so the actual artifacts load unmodified):
-//   1. supabase/migrations/20260703002813_create_resolve_slot_assets_v1.sql
-//      (the composed dependency — Slice-1 slot resolver)
-//   2. supabase/migrations/20260703120000_create_select_template_v1.sql
-//      (Lane C — the artifact under test)
+//   1. supabase/migrations/20260704090000_update_resolve_slot_assets_v1_1_scrim48.sql
+//      (the composed dependency — Slice-1 slot resolver, v1.1 scrim 48)
+//   2. supabase/migrations/20260703035154_create_select_template_v1.sql
+//      (Lane C — applied 2026-07-03; ledger-renamed file)
 // into PGlite (WASM Postgres with plpgsql), builds a minimal `c` schema
 // fixture mirroring live (16-generic-template registry shape, PP governed
 // assets, assignment lifecycle states, assignment-scoped visual proofs),
@@ -29,10 +29,10 @@ import { dirname, join } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RESOLVE_SQL = process.env.RESOLVE_SQL_PATH || join(
   __dirname, '..', '..',
-  'supabase', 'migrations', '20260703002813_create_resolve_slot_assets_v1.sql');
+  'supabase', 'migrations', '20260704090000_update_resolve_slot_assets_v1_1_scrim48.sql');
 const SELECT_SQL = process.env.SELECT_SQL_PATH || join(
   __dirname, '..', '..',
-  'supabase', 'migrations', '20260703120000_create_select_template_v1.sql');
+  'supabase', 'migrations', '20260703035154_create_select_template_v1.sql');
 
 let pass = 0, fail = 0;
 const fails = [];
@@ -328,10 +328,10 @@ const rcMap = (res) => Object.fromEntries(res.rejected.map(x => [x.template_id, 
         ['format_match','generic_scope','platform_declared','assignment_visually_approved','visual_proof_passed','assets_resolved']),
       JSON.stringify(s.reasons));
     check('slot_resolution embedded and ok', happy.slot_resolution && happy.slot_resolution.status === 'ok', JSON.stringify(happy.slot_resolution));
-    check('slot_resolution carries modifications (Background+Logo+Scrim.opacity=64)',
+    check('slot_resolution carries modifications (Background+Logo+Scrim.opacity=48, resolver v1.1)',
       typeof happy.slot_resolution.modifications['Background.source'] === 'string'
       && typeof happy.slot_resolution.modifications['Logo.source'] === 'string'
-      && Number(happy.slot_resolution.modifications['Scrim.opacity']) === 64,
+      && Number(happy.slot_resolution.modifications['Scrim.opacity']) === 48,
       JSON.stringify(happy.slot_resolution.modifications));
     const rc = rcMap(happy);
     check('proposed assignments rejected as assignment_not_approved (TQ3+TQ4)',

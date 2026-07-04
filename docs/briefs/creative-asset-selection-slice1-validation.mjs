@@ -4,11 +4,13 @@
 // Slice-1: public.resolve_slot_assets (read-only slot-resolver RPC).
 //
 // Loads the ENTIRE migration file
-//   supabase/migrations/20260703040000_create_resolve_slot_assets_v1.sql
-// (function + REVOKE/GRANT posture — roles are created in the fixture so
-// the real artifact loads verbatim) into PGlite (WASM Postgres with
-// plpgsql), builds a minimal `c` schema fixture mirroring live PP, and
-// runs the brief's required cases. This is the ACTUAL SQL — not a mirror.
+//   supabase/migrations/20260704090000_update_resolve_slot_assets_v1_1_scrim48.sql
+// (v1.1 scrim recalibration: needs_scrim default 48 PK-calibrated +
+// governed per-asset asset_meta scrim_opacity_override; function +
+// REVOKE/GRANT posture — roles are created in the fixture so the real
+// artifact loads verbatim) into PGlite (WASM Postgres with plpgsql),
+// builds a minimal `c` schema fixture mirroring live PP, and runs the
+// brief's required cases. This is the ACTUAL SQL — not a mirror.
 //
 // Run:  node docs/briefs/creative-asset-selection-slice1-validation.mjs
 //   (requires @electric-sql/pglite; installed dev-only OUTSIDE the repo,
@@ -25,7 +27,7 @@ import { dirname, join } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATION = process.env.MIGRATION_SQL_PATH || join(
   __dirname, '..', '..',
-  'supabase', 'migrations', '20260703040000_create_resolve_slot_assets_v1.sql'
+  'supabase', 'migrations', '20260704090000_update_resolve_slot_assets_v1_1_scrim48.sql'
 );
 
 let pass = 0, fail = 0;
@@ -53,6 +55,11 @@ async function q(text, params) { return (await db.query(text, params)).rows; }
 const PP = '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd'; // live PP client_id
 const NG = '22222222-2222-2222-2222-222222222202'; // no-governed-assets client
 const NL = '33333333-3333-3333-3333-333333333303'; // backgrounds-but-no-logo client
+// v1.1 scrim_opacity_override clients (single eligible background each => deterministic winner)
+const OVA = '44444444-4444-4444-4444-444444444401'; // bg needs_scrim override 70 (number) + logo w/ override (ignored)
+const OVB = '44444444-4444-4444-4444-444444444402'; // bg needs_scrim override "150" (string) => clamped 100
+const OVC = '44444444-4444-4444-4444-444444444403'; // bg needs_scrim override "abc" => invalid, class constant 48
+const OVD = '44444444-4444-4444-4444-444444444404'; // bg 'true'-class no override => 40; logo w/ override (ignored)
 const T1 = '11111111-1111-1111-1111-111111111101'; // Background + Logo + Scrim (+text)
 const T2 = '11111111-1111-1111-1111-111111111102'; // Logo only (no Background, no Scrim)
 const T3 = '11111111-1111-1111-1111-111111111103'; // Background + Logo + FaceObject (no Scrim)
@@ -127,7 +134,11 @@ async function resolve(slug, platform, format, templateId, seed = null) {
     INSERT INTO c.client(client_id, client_slug, status) VALUES
       ('${PP}', 'property-pulse',     'active'),
       ('${NG}', 'no-governed-client', 'active'),
-      ('${NL}', 'no-logo-client',     'active');
+      ('${NL}', 'no-logo-client',     'active'),
+      ('${OVA}', 'ov-a-client',       'active'),
+      ('${OVB}', 'ov-b-client',       'active'),
+      ('${OVC}', 'ov-c-client',       'active'),
+      ('${OVD}', 'ov-d-client',       'active');
   `);
 
   // ── PP assets — mirrors live v4.75 governed shape (asset_meta jsonb keys) ──
@@ -204,6 +215,45 @@ async function resolve(slug, platform, format, templateId, seed = null) {
        'https://x.supabase.co/storage/nl1.jpg',
        '{"asset_key":"nl_bg","usage":"background","bucket":"brand-assets","approved":true,"license_type":"licence_free","safe_for_text_overlay":"needs_scrim"}',
        NULL, true, '2026-06-01T00:00:00Z');
+
+    -- v1.1 scrim_opacity_override clients (each: exactly ONE eligible background => deterministic pick)
+    INSERT INTO c.client_brand_asset(asset_id, client_id, asset_type, asset_name, asset_url, asset_meta, platform_scope, is_active, created_at) VALUES
+      -- OVA: busy background, PK-set override 70 (JSON NUMBER); logo also carries an override (must be ignored)
+      ('dddddddd-0000-0000-0000-000000000001', '${OVA}', 'other', 'ova busy bg',
+       'https://x.supabase.co/storage/ova-bg.jpg',
+       '{"asset_key":"ova_bg_busy","usage":"background","bucket":"brand-assets","approved":true,"license_type":"licence_free","safe_for_text_overlay":"needs_scrim","scrim_opacity_override":70}',
+       NULL, true, '2026-06-01T00:00:00Z'),
+      ('dddddddd-0000-0000-0000-000000000002', '${OVA}', 'logo_primary', 'ova logo (override must be ignored)',
+       'https://x.supabase.co/storage/ova-logo.png',
+       '{"asset_key":"ova_logo","usage":"logo","bucket":"brand-assets","approved":true,"license_type":"brand_owned_or_pk_authorised","scrim_opacity_override":5}',
+       NULL, true, '2026-06-02T00:00:00Z'),
+      -- OVB: override "150" (STRING) — must clamp to 100
+      ('dddddddd-0000-0000-0000-000000000003', '${OVB}', 'other', 'ovb bg override 150',
+       'https://x.supabase.co/storage/ovb-bg.jpg',
+       '{"asset_key":"ovb_bg","usage":"background","bucket":"brand-assets","approved":true,"license_type":"licence_free","safe_for_text_overlay":"needs_scrim","scrim_opacity_override":"150"}',
+       NULL, true, '2026-06-01T00:00:00Z'),
+      ('dddddddd-0000-0000-0000-000000000004', '${OVB}', 'logo_primary', 'ovb logo',
+       'https://x.supabase.co/storage/ovb-logo.png',
+       '{"asset_key":"ovb_logo","usage":"logo","bucket":"brand-assets","approved":true,"license_type":"brand_owned_or_pk_authorised"}',
+       NULL, true, '2026-06-02T00:00:00Z'),
+      -- OVC: override "abc" (NON-NUMERIC) — ignored, warning scrim_override_invalid, class constant 48
+      ('dddddddd-0000-0000-0000-000000000005', '${OVC}', 'other', 'ovc bg override abc',
+       'https://x.supabase.co/storage/ovc-bg.jpg',
+       '{"asset_key":"ovc_bg","usage":"background","bucket":"brand-assets","approved":true,"license_type":"licence_free","safe_for_text_overlay":"needs_scrim","scrim_opacity_override":"abc"}',
+       NULL, true, '2026-06-01T00:00:00Z'),
+      ('dddddddd-0000-0000-0000-000000000006', '${OVC}', 'logo_primary', 'ovc logo',
+       'https://x.supabase.co/storage/ovc-logo.png',
+       '{"asset_key":"ovc_logo","usage":"logo","bucket":"brand-assets","approved":true,"license_type":"brand_owned_or_pk_authorised"}',
+       NULL, true, '2026-06-02T00:00:00Z'),
+      -- OVD: 'true'-class background, NO override => 40; logo carries an override (must be ignored)
+      ('dddddddd-0000-0000-0000-000000000007', '${OVD}', 'other', 'ovd text-safe bg',
+       'https://x.supabase.co/storage/ovd-bg.jpg',
+       '{"asset_key":"ovd_bg","usage":"background","bucket":"brand-assets","approved":true,"license_type":"licence_free","safe_for_text_overlay":"true"}',
+       NULL, true, '2026-06-01T00:00:00Z'),
+      ('dddddddd-0000-0000-0000-000000000008', '${OVD}', 'logo_primary', 'ovd logo (override must be ignored)',
+       'https://x.supabase.co/storage/ovd-logo.png',
+       '{"asset_key":"ovd_logo","usage":"logo","bucket":"brand-assets","approved":true,"license_type":"brand_owned_or_pk_authorised","scrim_opacity_override":90}',
+       NULL, true, '2026-06-02T00:00:00Z');
   `);
 
   // Ranked eligible PP backgrounds (must match the RPC's rank rule):
@@ -212,7 +262,7 @@ async function resolve(slug, platform, format, templateId, seed = null) {
   const bgKeyOf = (res) => (res.selected.find(s => s.slot === 'Background') || {}).asset_key;
 
   // =====================================================================
-  console.log('\nTest 1: PP happy path (Background+Logo+Scrim) — needs_scrim pick => Scrim.opacity 64');
+  console.log('\nTest 1: PP happy path (Background+Logo+Scrim) — needs_scrim pick => Scrim.opacity 48 (v1.1 PK-calibrated)');
   {
     // probe seeds until FNV-1a picks a needs_scrim background (index 1 or 2)
     let seed = null;
@@ -224,7 +274,7 @@ async function resolve(slug, platform, format, templateId, seed = null) {
     check('status ok', res.status === 'ok', JSON.stringify(res));
     check('Background.source present', typeof res.modifications['Background.source'] === 'string', JSON.stringify(res.modifications));
     check('Logo.source present', typeof res.modifications['Logo.source'] === 'string', JSON.stringify(res.modifications));
-    check('Scrim.opacity == 64 for needs_scrim pick', Number(res.modifications['Scrim.opacity']) === 64, JSON.stringify(res.modifications));
+    check('Scrim.opacity == 48 for needs_scrim pick (v1.1)', Number(res.modifications['Scrim.opacity']) === 48, JSON.stringify(res.modifications));
     check('picked background matches JS FNV-1a expectation',
       bgKeyOf(res) === RANKED[fnv1a32(seed) % 3], `${bgKeyOf(res)} vs ${RANKED[fnv1a32(seed) % 3]}`);
     const bgSel = res.selected.find(s => s.slot === 'Background');
@@ -395,6 +445,58 @@ async function resolve(slug, platform, format, templateId, seed = null) {
       rcFb.bg_instagram_only === 'platform_excluded', JSON.stringify(rcFb));
     check('non-NULL platform: no platform_input_missing warning',
       !fb.warnings.includes('platform_input_missing'), JSON.stringify(fb.warnings));
+  }
+
+  console.log('\nTest 14 (v1.1): governed per-asset scrim_opacity_override (backgrounds only, fail-safe)');
+  {
+    // (a) numeric override 70 on the selected background => Scrim.opacity 70 + provenance reason
+    const ra = await resolve('ov-a-client', 'facebook', 'image_quote', T1, null);
+    check('OVA status ok', ra.status === 'ok', JSON.stringify(ra));
+    check('OVA Scrim.opacity == 70 (override used, not class constant 48)',
+      Number(ra.modifications['Scrim.opacity']) === 70, JSON.stringify(ra.modifications));
+    const raBg = ra.selected.find(s => s.slot === 'Background');
+    check("OVA Background reasons include 'scrim_override_applied' (appended after v1 reasons)",
+      JSON.stringify(raBg.reasons) === JSON.stringify(
+        ['governed','license_ok','text_safe_needs_scrim','client_match','scrim_override_applied']),
+      JSON.stringify(raBg.reasons));
+    check('OVA no scrim_override_invalid warning (override was valid)',
+      !ra.warnings.includes('scrim_override_invalid'), JSON.stringify(ra.warnings));
+    // (e) override on the LOGO row is ignored: no provenance reason on Logo, opacity from the bg
+    const raLogo = ra.selected.find(s => s.slot === 'Logo');
+    check("OVA Logo reasons do NOT include 'scrim_override_applied' (logo override ignored)",
+      !raLogo.reasons.includes('scrim_override_applied'), JSON.stringify(raLogo.reasons));
+    check('OVA Scrim.opacity is NOT the logo override value 5', Number(ra.modifications['Scrim.opacity']) !== 5,
+      JSON.stringify(ra.modifications));
+
+    // (b) override '150' (string) => clamped to 100 via LEAST(GREATEST(x,0),100)
+    const rb = await resolve('ov-b-client', 'facebook', 'image_quote', T1, null);
+    check('OVB status ok', rb.status === 'ok', JSON.stringify(rb));
+    check("OVB Scrim.opacity == 100 (override '150' clamped)",
+      Number(rb.modifications['Scrim.opacity']) === 100, JSON.stringify(rb.modifications));
+    check('OVB Background reasons include scrim_override_applied (clamped override still applied)',
+      rb.selected.find(s => s.slot === 'Background').reasons.includes('scrim_override_applied'),
+      JSON.stringify(rb.selected));
+
+    // (c) non-numeric override 'abc' => IGNORED with warning, class constant 48, never fails
+    const rc = await resolve('ov-c-client', 'facebook', 'image_quote', T1, null);
+    check('OVC status ok (invalid override never fails the resolution)', rc.status === 'ok', JSON.stringify(rc));
+    check('OVC Scrim.opacity == 48 (class constant fallback)',
+      Number(rc.modifications['Scrim.opacity']) === 48, JSON.stringify(rc.modifications));
+    check("OVC warning 'scrim_override_invalid' present ONCE",
+      rc.warnings.filter(w => w === 'scrim_override_invalid').length === 1, JSON.stringify(rc.warnings));
+    check('OVC Background reasons do NOT include scrim_override_applied',
+      !rc.selected.find(s => s.slot === 'Background').reasons.includes('scrim_override_applied'),
+      JSON.stringify(rc.selected));
+
+    // (d) 'true'-class background (no bg override) => 40 unchanged; logo override 90 ignored
+    const rd = await resolve('ov-d-client', 'facebook', 'image_quote', T1, null);
+    check('OVD status ok', rd.status === 'ok', JSON.stringify(rd));
+    check("OVD Scrim.opacity == 40 ('true'-class constant unchanged; logo override 90 ignored)",
+      Number(rd.modifications['Scrim.opacity']) === 40, JSON.stringify(rd.modifications));
+    check('OVD no scrim_override_applied reason anywhere (only backgrounds consult the key)',
+      rd.selected.every(s => !s.reasons.includes('scrim_override_applied')), JSON.stringify(rd.selected));
+    check('OVD no scrim_override_invalid warning', !rd.warnings.includes('scrim_override_invalid'),
+      JSON.stringify(rd.warnings));
   }
 
   console.log('\n======================================================');
