@@ -176,3 +176,24 @@ Rules for this lane:
 - **Push is still a hard stop.** Local commit on PK instruction; push only when PK says so.
   On push rejection (diverged remote), do NOT force-push — inspect the remote commit
   read-only, and only fast-forward/rebase when provably conflict-free, else surface to PK.
+
+## Workflow acceleration conventions (v1 — ratified 2026-07-05: conventions 1–2 only)
+
+> Source packet: `docs/briefs/ice-workflow-acceleration-convention-packet.md` (hash `df4c31bd…`,
+> external review `4864c9cf…`). PK ratified conventions 1 and 2 on 2026-07-05. Convention 3
+> (risk-tiered review chains) is NOT ratified — it remains a pending PK decision in the packet;
+> until then, lane chains follow the existing proof-lane / docs-lane precedents.
+
+1. **Recording compression.** The result doc is the canonical lane record. `00_sync_state.md`
+   and `00_action_list.md` receive POINTER entries only (≤5 lines: version · verdict · identity/
+   hash · result-doc link · next gate/queue impact). Long facts are written once, in the result doc.
+   Result docs stay full-evidence and are never compressed; no historical rewrite of old entries.
+
+2. **Conditional sequence approvals.** PK may approve a multi-step sequence (incl. deploy/apply/
+   push) in one gate when the approval pins the artifact hash, names the ordered steps, and
+   states STOP conditions. Mandatory STOPs (non-removable): hash mismatch · unexpected origin
+   movement (unless independently verified benign and unrelated) · any non-clean review verdict ·
+   named live pre-check failure · deployed/applied artifact mismatch · unexpected files in the
+   change set · invalidated rollback path. A tripped STOP voids the remainder of the sequence;
+   resumption requires a fresh PK gate. This is how PK exercises deploy authority in one
+   sitting — not a delegation of it. Non-negotiables (§4 of the packet) are unchanged.
