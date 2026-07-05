@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v5.08 CCF-03 PHASE 0 OPENED — ORCHESTRATOR-LITE OBSERVATION PILOT PK-APPROVED (T1 · SAFETY_GATE, docs-only)** — packet hash `fe61dd29…` = commit `6c33f87` pushed; pilot ACTIVE (practice only — silent observation + 5 exception-message triggers, zero authority, NO BOARD.md/helper/agent/automation; gate batching presentation-only; window 5 multi-session days / ~10 lanes; metrics → evening boards) · chain: brief-author DRAFT_READY clean · warden safe · PK approved (Q1 window as proposed, Q3 shape) · canonical: docs/briefs/ccf-03-phase0-orchestrator-lite-packet.md · result: docs/briefs/results/ccf-03-phase0-packet-result.md · carries: Q2 R2-rider hygiene text · Phase-0 verdict at window close · queue impact: none.
+
+---
+
 > **✅ v5.07 TMR DEAD-REF CLEANUP LANE W — WORKERS DEPLOYED · CLEANUP PLAN CLOSED (T3 · SAFETY_GATE)** — pin `17e2ed3a…` = commit `89088eb` pushed; image-worker **v3.23.0** + video-worker **v3.4.0** live `--no-verify-jwt`; 4 dead opt-in surfaces → post-auth HTTP-410 guards (fall-through hazard closed); −751 lines; production byte-identical (proven 3 ways); 410 probes exact, zero side-effects; chain: deno 78/78+39/39 · security GREEN · warden safe · external agree `48bf856c…`; one self-caught artifact-mismatch (version probe worked as designed) · canonical: docs/briefs/results/tmr-dead-ref-cleanup-lane-w-result.md · **plan D→B→W complete** · carries: contract v3 · drift probe · vendor re-sync · next: D6 (21:30Z) · register commit pending.
 
 ---
