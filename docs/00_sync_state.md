@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v4.97 cc-0027 IMAGE HARVESTER v0 MINI-PROOF — WORKFLOW PASS as SIDE_PROVING (T2 by mapping) + CCF-02 PHASE 2 OBSERVATION #1** — 2-stage harvest→review proven on the PK 2-row manifest (8 candidates, 8/8 constraint-clean, 7 honest rejects; invariants byte-identical; 14/14 hashes verified) · review `0dc99a6f` agree first-attempt · both agents remain CANDIDATE · **zero images approved/promoted** · friction PHASE2-FRICTION-001 recorded (orchestrator-reads vs db-rls-auditor rule needed) · canonical: `docs/briefs/results/cc-0027-image-harvester-agent-v0-result.md` · next gates: PK visual verdicts on 8 candidates · queue impact: none.
+
+---
+
 > **✅ v4.96 CCF-02 PHASE 1 — ORCHESTRATION CONTRACT RATIFIED + APPLIED (Convention 3 successor + findings contract + lane labels + claim protocol)** — packet hash `f967c81e…` · external review `09cac646…` agree/zero-pushback (after `3792e950` partial→answered in-packet) · PK ratified all 7 decisions 2026-07-05 · CLAUDE.md amended (conventions 1–3 + CCF-02 Phase-1 section) · canonical record: `docs/briefs/results/ccf-02-phase1-orchestration-contract-result.md` · next gate: PK commit · queue impact: every new Gate 1 now states tier + label; Phase 2 = next 2–3 lanes run the contract manually.
 
 ---
