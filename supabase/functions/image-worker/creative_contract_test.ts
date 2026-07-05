@@ -20,11 +20,18 @@ import {
 import {
   B1_GOVERNED_CLIENT_ID,
   B1_GOVERNED_CLIENT_SLUG,
-  B1_LOGO_KEY,
-  B1_BACKGROUND_KEYS,
   B1_HEADLINE_MAX_CHARS,
   B1_SUBTITLE_MAX_CHARS,
 } from './b1_production.ts';
+
+// OPTION D (v3.22.0, 2026-07-05): B1_LOGO_KEY / B1_BACKGROUND_KEYS were RETIRED from
+// b1_production.ts (the production branch now consumes select_template's slot_resolution;
+// "the constant dies", D5). The v2 contract's fixed-logo + 5-key background pool text is
+// recorded STALE-BY-SUCCESSION (D4 — contract v3 `policy: tmr_spine` is a separate docs
+// carry), so the no-drift guard below pins the v2 contract CONTENT with literals instead
+// of cross-checking retired runtime constants.
+const V2_CONTRACT_LOGO_KEY = 'pp_logo_primary';
+const V2_CONTRACT_BACKGROUND_KEYS = ['bg_perth_cbd', 'bg_sydney_cbd', 'bg_brisbane_cbd', 'bg_pp_au_suburb_aerial_grid', 'bg_pp_home_keys_contract_table'];
 
 const PP_CLIENT_ID = '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd';
 
@@ -78,10 +85,10 @@ Deno.test('no-drift consistency with b1_production.ts runtime constants', () => 
   const c = PP_IMAGE_QUOTE_NEWS_CARD_V1;
   assertEquals(c.client_id, B1_GOVERNED_CLIENT_ID);
   assertEquals(c.client_slug, B1_GOVERNED_CLIENT_SLUG);
-  assertEquals(c.fields.governed_assets.logo.asset_key, B1_LOGO_KEY);
+  assertEquals(c.fields.governed_assets.logo.asset_key, V2_CONTRACT_LOGO_KEY);
   assertEquals(
     c.fields.governed_assets.background.asset_keys,
-    Array.from(B1_BACKGROUND_KEYS),
+    V2_CONTRACT_BACKGROUND_KEYS,
   );
 
   const headline = c.fields.ai_authored.find((f) => f.field === 'headline');

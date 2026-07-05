@@ -1,3 +1,42 @@
+// image-worker v3.22.0
+// v3.22.0 (2026-07-05) — OPTION D / TMR-LIVE B1 SLICE (PK Gate-1, decisions D1–D7 approved
+//   as written; docs/briefs/option-d-tmr-live-b1-slice-packet.md). INCIDENT CONTEXT: the
+//   legacy B1 production template fb9820f8-3fee-4448-b324-3d500fa74b40 was DELETED from
+//   Creatomate during template cleanup — PP image_quote production DOWN since 2026-07-04
+//   21:45Z (first failed draft 8bbbd34c…, fail-safe held). This change RESTORES service by
+//   moving the PP-gated B1 image_quote production branch onto the live TMR spine instead of
+//   rebuilding the dead artifact. WHAT CHANGED: (1) the B1 branch no longer uses the dead
+//   legacy template + hardcoded rotation — ONE RPC public.select_template('property-pulse',
+//   platform, 'image_quote', NULL, seed=post_draft_id) returns the winner template AND the
+//   embedded slot_resolution (governed Background.source / Logo.source URLs + Scrim.opacity,
+//   scrim 48 per resolver v1.1); platform comes from ONE m.slot read (filled_draft_id →
+//   platform, NULL when unresolvable — selector warns visibly, D2); (2) b1_production.ts
+//   RETIRES B1_BACKGROUND_KEYS / B1_BACKGROUND_KEY / B1_ASSET_KEYS / B1_LOGO_KEY /
+//   selectB1BackgroundKey ("the constant dies", D5) and ADDS the D1 fail-closed winner
+//   allowlist TMR_WINNER_TEXT_FIELDS (v1 maps ONLY generic_market_insight_card_1x1_v1 —
+//   whose field schema matches the legacy value set 1:1) + the pure buildTmrRenderPlan()
+//   (throws tmr_selector_fail_closed / tmr_winner_unmapped / tmr_slot_resolution_incomplete
+//   — NEVER guesses a layout, NO legacy fallback); (3) render_spec.label STAYS
+//   'creative_library_b1_production' (S1 stamper predicate, D3); render_spec.template now
+//   reflects the WINNER identity (registry template_id, runtime provider_template_id,
+//   asset_keys/asset_ids from slot_resolution.selected, resolver_used=true,
+//   fallback_taken=false); NEW additive render_spec.tmr evidence block (winner, ids,
+//   variant_key, seed, slot reasons/warnings, D3); (4) governed fail-loud
+//   assertGovernedAssetReachable now runs on the slot_resolution URLs; contract echo +
+//   warn-only validateContract calls UNCHANGED and fed the slot_resolution URLs (D4);
+//   props_hash computed over the NEW modifications; (5) VERSION const bumped (was stale at
+//   v3.20.1 — recorded carry). WHAT IS STRICTLY OUT OF SCOPE: ai-worker UNTOUCHED (contract
+//   stays v2, its background-pool text recorded stale-by-succession — contract v3 is a
+//   separate docs carry, D4); NO change to the PP client_id gate, canonical slug, headline/
+//   subtitle gates, per-draft try/catch failure semantics (image_status='failed'), storage
+//   path property-pulse/<draft>.jpg, mimeType image/jpeg, iceFormatKey 'image_quote', output
+//   jpg, any legacy / non-PP / other-format / manual / draft-proof / tmr_smoke path, queue/
+//   publisher/dashboard/cron, S0 shadow rows; NO DB/migration (RPCs already live), NO new
+//   secret, NO registry status change (D6 = separate PK gate), NO deploy in this change.
+//   KNOWN-DEGRADED (reported, out of scope): the manual_render + draft-proof branches still
+//   reference NEWS_STATIC_CENTERED_SCRIM_1x1 → deleted provider template fb9820f8… and will
+//   fail at Creatomate if invoked (manual/opt-in surfaces only; carry).
+//
 // image-worker v3.21.0
 // v3.21.0 (2026-07-04) — LANE 4 / B1-v3: PP image_quote background rotation ALIGNED to the
 //   governed resolver rank order (PK decision 2026-07-04 "Option A-now-D-later"). WHAT
@@ -233,14 +272,15 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { MANUAL_RENDER_MODE, MANUAL_RENDER_LABEL, PP_NEWS_STATIC_16x9, NEWS_STATIC_CENTERED_SCRIM_1x1, isManualRenderRequest, mapResolvedAssets, buildManualModifications, computePropsHash, buildGovernedTemplateSpec } from './manual_render.ts';  // v3.11.0: LANE 3B; v3.13.0: + B0 1:1 impl
 import { DRAFT_PROOF_MODE, DRAFT_PROOF_LABEL, buildProofFieldsFromDraft } from './branch_b_proof.ts';  // v3.12.0: BRANCH B / LANE B-PROOF
-import { B1_ASSET_KEYS, B1_LOGO_KEY, B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, B1_HEADLINE_MAX_CHARS, B1_SUBTITLE_MAX_CHARS, isB1GovernedImageQuote, assertHeadlineWithinGate, selectB1BackgroundKey, deriveB1Subtitle } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug to resolver). v3.16.0: B1-v2 deterministic background rotation (selectB1BackgroundKey). v3.17.0: B1-v2 governed subtitle from draft_body (deriveB1Subtitle).
+import { B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, B1_HEADLINE_MAX_CHARS, B1_SUBTITLE_MAX_CHARS, isB1GovernedImageQuote, assertHeadlineWithinGate, deriveB1Subtitle, buildTmrRenderPlan, type TmrSelectorResponse } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug). v3.17.0: B1-v2 governed subtitle from draft_body (deriveB1Subtitle). v3.22.0: OPTION D — TMR selector consumption (buildTmrRenderPlan); rotation constants retired.
 import { resolveLegacyLogo, assertGovernedAssetReachable, type AssetVerdict } from './asset_url_guard.ts';  // v3.15.0: H2 asset-URL validation before Creatomate
 import { echoContractToRenderSpec } from './contract_echo.ts';  // v3.18.0: ACI v0 Slice B2 — echo draft_format.contract identity fields into render_spec (governed PP image_quote; evidence-only)
 import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C: warn-only contract validation (evidence-only, never throws)
 import { isTmrSmokeRequest, handleTmrSmoke } from './tmr_smoke.ts';  // v3.20.0: TMR G2b isolated smoke branch (renders 490ad9ea to _smoke/tmr/ ONLY; no post_render_log)
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
-const VERSION = 'image-worker-v3.20.1';
+// v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
+const VERSION = 'image-worker-v3.22.0';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -684,46 +724,84 @@ Deno.serve(async (req: Request) => {
       if (!clientId) { results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'skipped', reason: 'client_id_unresolvable' }); continue; }
       if (!(await isImageEnabled(clientId))) { await supabase.schema('m').from('post_draft').update({ image_status: 'skipped', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'skipped' }); continue; }
       const b = await getBrandAndSlug(clientId);
-      // ── v3.14.1 BRANCH B / LANE B1-v1: Property-Pulse-ONLY governed image_quote branch.
+      // ── v3.14.1 BRANCH B / LANE B1: Property-Pulse-ONLY governed image_quote branch.
       // The gate keys on the loop's resolved clientId (the RELIABLE PP identity), NOT
       // b.clientSlug — getBrandAndSlug falls back to the client-id UUID when c.client.client_slug
       // is null, which made the v3.14.0 slug gate false and silently routed PP back to legacy.
-      // Inside the branch, resolve_brand_assets + the storage path use the CANONICAL slug
+      // Inside the branch, select_template + the storage path use the CANONICAL slug
       // constant B1_GOVERNED_CLIENT_SLUG, never b.clientSlug. Runs INSIDE this existing
-      // try/catch, so any failure (headline gate / resolver / render) hits the EXISTING
+      // try/catch, so any failure (headline gate / selector / render) hits the EXISTING
       // production failure path → image_status='failed'. There is NO fallback to the legacy
       // buildImageQuoteScript for PP — governed-only, fail-loud. Every non-PP client falls
       // through to the byte-unchanged legacy path below.
+      //
+      // v3.22.0 OPTION D: the branch consumes the live TMR spine. ONE RPC
+      // public.select_template(slug, platform, 'image_quote', NULL, seed=post_draft_id)
+      // returns the winner template AND the embedded slot_resolution (governed
+      // Background.source / Logo.source + Scrim.opacity). The dead legacy template
+      // (fb9820f8…, deleted provider-side) and the hardcoded rotation are GONE (D5).
       if (isB1GovernedImageQuote(clientId)) {
-        assertHeadlineWithinGate(draft.image_headline);  // minimal hard-gate, BEFORE any resolver/Creatomate call
-        const backgroundKey = selectB1BackgroundKey(draft.post_draft_id);          // B1-v2: deterministic per-draft background
-        const b1AssetKeys = { logo: B1_LOGO_KEY, background: backgroundKey };       // B1-v2: per-draft asset contract (logo fixed)
-        const { data: resolved, error: resolveErr } = await supabase.rpc('resolve_brand_assets', { p_client_slug: B1_GOVERNED_CLIENT_SLUG, p_asset_keys: [b1AssetKeys.logo, b1AssetKeys.background] });
-        if (resolveErr) throw new Error(`b1 resolver_failed: ${resolveErr.message}`);
-        const mapped = mapResolvedAssets(resolved as any, b1AssetKeys);  // throws on shortfall — governed-only
+        assertHeadlineWithinGate(draft.image_headline);  // minimal hard-gate, BEFORE any selector/Creatomate call
+        // D2: the draft's slot platform when resolvable; NULL otherwise (the selector then
+        // emits the visible 'platform_input_missing' warning — permissive, never silent).
+        const { data: slotRow } = await supabase.schema('m').from('slot').select('platform').eq('filled_draft_id', draft.post_draft_id).limit(1).maybeSingle();
+        const b1Platform: string | null = slotRow?.platform ?? null;
+        // ONE selector call. p_seed = post_draft_id (background rotation only — the winner
+        // template NEVER depends on the seed). RPC error = fail loud; legacy path is gone.
+        const { data: selection, error: selectErr } = await supabase.rpc('select_template', { p_client_slug: B1_GOVERNED_CLIENT_SLUG, p_platform: b1Platform, p_format: 'image_quote', p_variant_intent: null, p_seed: draft.post_draft_id });
+        if (selectErr) throw new Error(`b1 tmr_selector_rpc_failed: ${selectErr.message}`);
         const fields = buildProofFieldsFromDraft({ image_headline: draft.image_headline, client_id: clientId, recommended_format: 'image_quote' });
         const subtitle = deriveB1Subtitle(draft.draft_body);   // B1-v2: governed subtitle from draft_body (first non-empty paragraph, truncated)
-        const modifications = buildManualModifications({ fields: { ...fields, subtitle }, logoUrl: mapped.logo.asset_url, backgroundUrl: mapped.background.asset_url });
-        const props_hash = await computePropsHash(modifications);
-        const templateSpec = buildGovernedTemplateSpec(NEWS_STATIC_CENTERED_SCRIM_1x1, { propsHash: props_hash, logo: mapped.logo, background: mapped.background });
-        const renderScript = { template_id: NEWS_STATIC_CENTERED_SCRIM_1x1.provider_template_id, modifications, output_format: NEWS_STATIC_CENTERED_SCRIM_1x1.output_format };
-        const renderSpec = { label: B1_PRODUCTION_LABEL, template: templateSpec, background_key: backgroundKey, subtitle_chars: subtitle.length };  // B1-v2: record selected background + subtitle length in evidence
+        // Pure plan builder: throws tmr_selector_fail_closed / tmr_winner_unmapped (D1) /
+        // tmr_slot_resolution_incomplete — never guesses a layout, no fallback.
+        const plan = buildTmrRenderPlan(selection as TmrSelectorResponse, { ...fields, subtitle }, fields.date);
+        const modifications = plan.modifications;
+        const tmrSelected = (selection as TmrSelectorResponse)?.selected ?? null;
+        const slotSelected = (selection as TmrSelectorResponse)?.slot_resolution?.selected ?? [];
+        const props_hash = await computePropsHash(modifications as Record<string, string>);  // JSON-stringify hash; Scrim.opacity number serialises deterministically
+        // render_spec.template now reflects the WINNER (registry identity + runtime
+        // provider_template_id + slot_resolution asset evidence). Shape kept close to the
+        // legacy governed block where sensible (provider/props_hash/asset_keys/asset_ids/
+        // resolver_used/fallback_taken retained).
+        const templateSpec = {
+          implementation_id: plan.tmrEvidence.winner,
+          template_id: plan.tmrEvidence.registry_template_id,
+          variant_key: tmrSelected?.variant_key ?? null,
+          format_key: tmrSelected?.format_key ?? null,
+          aspect_ratio: tmrSelected?.aspect_ratio ?? null,
+          provider: 'creatomate',
+          provider_template_id: plan.providerTemplateId,
+          props_hash,
+          asset_keys: slotSelected.map((s) => s?.asset_key ?? null),
+          asset_ids: slotSelected.map((s) => s?.asset_id ?? null),
+          resolver_used: true,
+          fallback_taken: false,
+        };
+        const renderScript = { template_id: plan.providerTemplateId, modifications, output_format: 'jpg' };
+        // D3: label UNCHANGED (S1 stamper predicate) + NEW additive render_spec.tmr evidence.
+        // background_key: TOP-LEVEL, legacy field name preserved EXACTLY — stamp_tmr_shadow_forward
+        // computes v_background_match from render_spec->>'background_key'; omitting it would stamp
+        // every Option-D render background_match=false (db-rls-auditor must-fix, this lane).
+        const renderSpec = { label: B1_PRODUCTION_LABEL, template: templateSpec, tmr: plan.tmrEvidence, background_key: plan.backgroundAssetKey, subtitle_chars: subtitle.length };
         const renderSpecWithContract = echoContractToRenderSpec(renderSpec, (draft as any).draft_format);  // v3.18.0 (ACI v0 B2): echo the four draft_format.contract identity fields into render_spec; evidence-only, safe no-op when contract absent/malformed (validation = Slice C)
+        const b1LogoUrl = String(modifications['Logo.source']);
+        const b1BackgroundUrl = String(modifications['Background.source']);
         const contract_validation = validateContract({
           draftFormat: (draft as any).draft_format,
           headline: draft.image_headline,
           subtitle,
-          logoUrl: mapped.logo.asset_url,
-          backgroundUrl: mapped.background.asset_url,
+          logoUrl: b1LogoUrl,
+          backgroundUrl: b1BackgroundUrl,
           headlineLimit: B1_HEADLINE_MAX_CHARS,
           subtitleLimit: B1_SUBTITLE_MAX_CHARS,
-        }, nowIso);  // ACI v0 Slice C: warn-only contract validation; pure, never throws; additive evidence
+        }, nowIso);  // ACI v0 Slice C: warn-only contract validation; pure, never throws; additive evidence (D4 — fed the slot_resolution URLs)
         const renderSpecWithValidation = { ...renderSpecWithContract, contract_validation };
         // v3.15.0 (H2): governed assets are fail-loud — verify the RESOLVED logo + background
-        // are reachable BEFORE the Creatomate submit. NO fallback (governed). A throw here hits
-        // the EXISTING per-draft catch → image_status='failed'. Does NOT touch the B1 gate.
-        await assertGovernedAssetReachable('logo', mapped.logo.asset_url, logoMemo);
-        await assertGovernedAssetReachable('background', mapped.background.asset_url, logoMemo);
+        // (now sourced from slot_resolution.modifications) are reachable BEFORE the Creatomate
+        // submit. NO fallback (governed). A throw here hits the EXISTING per-draft catch →
+        // image_status='failed'. Does NOT touch the B1 gate.
+        await assertGovernedAssetReachable('logo', b1LogoUrl, logoMemo);
+        await assertGovernedAssetReachable('background', b1BackgroundUrl, logoMemo);
         const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: `${B1_GOVERNED_CLIENT_SLUG}/${draft.post_draft_id}.jpg`, mimeType: 'image/jpeg', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote', renderSpec: renderSpecWithValidation });
         await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
         results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'generated', image_url: imageUrl, governed: true });

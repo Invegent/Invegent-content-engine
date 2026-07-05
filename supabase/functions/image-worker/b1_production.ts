@@ -1,58 +1,39 @@
-// b1_production.ts — CREATIVE-LIBRARY BRANCH B / LANE B1-v1 (image-worker).
+// b1_production.ts — CREATIVE-LIBRARY BRANCH B / LANE B1 (image-worker).
 //
-// Pure helper module for the SMALLEST-SAFE production slice: a Property-Pulse-ONLY
-// governed branch inside the EXISTING production `image_quote` loop. Every non-PP
-// client and every other format stays byte-unchanged on the legacy path.
+// Pure helper module for the Property-Pulse-ONLY governed branch inside the EXISTING
+// production `image_quote` loop. Every non-PP client and every other format stays
+// byte-unchanged on the legacy path.
 //
-// NO side effects: no Deno.serve, no network/DB/storage/secret access. This module only
-// exposes the PP gate predicate, the fixed governed asset-key contract, the production
-// label, and a MINIMAL headline-length hard-gate (cut-plan decision D — cheap insurance
-// against the B0 overflow defect going public; NOT a precise fit guarantee, and NOT an
-// AI rewrite). Governed-only / fail-loud: assertHeadlineWithinGate THROWS rather than
-// truncating, so the caller's existing production catch fails the draft
-// (image_status='failed') — there is NO fallback to the legacy buildImageQuoteScript for PP.
+// OPTION D (2026-07-05, TMR-live B1 slice — PK Gate-1 D1–D7): the legacy hardcoded
+// rotation is RETIRED ("the constant dies"). B1_BACKGROUND_KEYS / B1_BACKGROUND_KEY /
+// B1_ASSET_KEYS / B1_LOGO_KEY / selectB1BackgroundKey are DELETED — the production
+// branch now consumes the live TMR spine: ONE RPC `public.select_template(...)` returns
+// the winner template AND its embedded slot_resolution (governed Background.source /
+// Logo.source URLs + Scrim.opacity). This module contributes the PURE pieces of that
+// consumption: the D1 fail-closed winner→text-field mapping (TMR_WINNER_TEXT_FIELDS)
+// and the pure render-plan builder (buildTmrRenderPlan) that turns a selector response
+// + draft-derived fields into { providerTemplateId, modifications, tmrEvidence } — or
+// THROWS (fail loud, never guesses a layout).
+//
+// NO side effects: no Deno.serve, no network/DB/storage/secret access, no Date.now
+// inside the pure functions (renderDate is injected). Governed-only / fail-loud:
+// assertHeadlineWithinGate + buildTmrRenderPlan THROW rather than falling back, so the
+// caller's existing production catch fails the draft (image_status='failed') — there is
+// NO fallback to the legacy buildImageQuoteScript for PP.
 
-// The Property-Pulse client_id — the RELIABLE gate identity for B1-v1. The governed branch
+// The Property-Pulse client_id — the RELIABLE gate identity for B1. The governed branch
 // keys on this client_id (NOT a slug) because getBrandAndSlug() falls back to the client-id
 // UUID when the PostgREST c.client.client_slug read returns null, which silently sent the
 // governed branch back to legacy in production (v3.14.0 defect).
 export const B1_GOVERNED_CLIENT_ID = '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd';
 
-// The CANONICAL Property-Pulse slug passed to resolve_brand_assets + used in the storage
+// The CANONICAL Property-Pulse slug passed to select_template + used in the storage
 // path for the governed branch. This is a fixed constant — it is NO LONGER derived from
 // getBrandAndSlug (whose slug can be the UUID fallback). Every non-PP client stays legacy.
 export const B1_GOVERNED_CLIENT_SLUG = 'property-pulse';
 
-// Fixed governed logo key for B1 (cut-plan decisions B + the PP pilot). Logo stays FIXED.
-export const B1_LOGO_KEY = 'pp_logo_primary';
-
-// B1-v3: the 5 governed Property-Pulse background keys, aligned to the governed resolver
-// (`resolve_slot_assets`) eligible-pool rank order — text-safe class, created_at ASC,
-// asset_id ASC — per PK decision 2026-07-04 (Option A-now-D-later). NOTE: this alignment
-// holds ONLY while the governed eligible pool is exactly these 5 keys in this order; any
-// future promotion/deactivation re-diverges it silently. This constant is a STOPGAP until
-// B1 consumes the TMR selection spine (select_template/resolve_slot_assets) directly
-// (Option D), at which point it is deleted. bg_perth_cbd stays index 0 (the v1 default),
-// so the B1_BACKGROUND_KEY back-compat surface is unchanged.
-export const B1_BACKGROUND_KEYS = ['bg_perth_cbd', 'bg_sydney_cbd', 'bg_brisbane_cbd', 'bg_pp_au_suburb_aerial_grid', 'bg_pp_home_keys_contract_table'] as const;
-
-// Back-compat: the v1 fixed-default background key is the rotation set's index 0.
-export const B1_BACKGROUND_KEY = B1_BACKGROUND_KEYS[0];
-
-// Deterministic, pure, synchronous background selection. FNV-1a 32-bit over the
-// post_draft_id string, modulo the set length. Same draft id -> same key, ALWAYS.
-// No randomness, no Date, no crypto.subtle (async), no I/O. Stable across redeploys.
-export function selectB1BackgroundKey(postDraftId: string): string {
-  let h = 0x811c9dc5;                       // FNV offset basis
-  for (let i = 0; i < postDraftId.length; i++) {
-    h ^= postDraftId.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);           // FNV prime
-  }
-  return B1_BACKGROUND_KEYS[(h >>> 0) % B1_BACKGROUND_KEYS.length];
-}
-
 // Minimal headline-length hard-gate (cut-plan decision D). PROVISIONAL / to_be_calibrated:
-// a minimal hard-gate, NOT a precise fit guarantee. No truncation, no AI rewrite in v1.
+// a minimal hard-gate, NOT a precise fit guarantee. No truncation, no AI rewrite.
 export const B1_HEADLINE_MAX_CHARS = 90; // PROVISIONAL / to_be_calibrated (cut-plan decision D)
 
 // B1-v2 subtitle (PK contract 2026-06-27): "same overflow limit as the headline".
@@ -73,26 +54,24 @@ export function deriveB1Subtitle(draftBody: string | null | undefined, maxChars:
   return head + '…';
 }
 
-// render_spec.label that marks the B1-v1 production governed render (distinct from the
-// B0 _smoke/ proof label and from legacy renders). Keeps governed rows identifiable.
+// render_spec.label that marks the B1 production governed render (distinct from the
+// B0 _smoke/ proof label and from legacy renders). UNCHANGED under Option D (design
+// decision D3): the S1 stamper's scan predicate keys on this label, so forward TMR
+// shadow rows continue automatically.
 export const B1_PRODUCTION_LABEL = 'creative_library_b1_production';
 
-// The two governed asset keys the resolver must return, in the {logo, background} shape
-// mapResolvedAssets() consumes.
-export const B1_ASSET_KEYS = { logo: B1_LOGO_KEY, background: B1_BACKGROUND_KEY } as const;
-
-// True ONLY for the single governed B1-v1 client_id. The gate keys on client_id (NOT slug)
+// True ONLY for the single governed B1 client_id. The gate keys on client_id (NOT slug)
 // because getBrandAndSlug() can fall back to the client-id UUID when the c.client.client_slug
 // read returns null — gating on the slug then yielded false and silently routed PP back to
 // legacy. client_id is the reliable identity; the canonical slug (B1_GOVERNED_CLIENT_SLUG) is
-// passed to the resolver/path explicitly, never derived from getBrandAndSlug. Every other
+// passed to select_template/path explicitly, never derived from getBrandAndSlug. Every other
 // client_id → false → legacy path.
 export function isB1GovernedImageQuote(clientId: string): boolean {
   return clientId === B1_GOVERNED_CLIENT_ID;
 }
 
 // Minimal headline-length hard-gate. Trims; throws (fail loud) BEFORE any Creatomate /
-// resolver call when the headline is blank or exceeds B1_HEADLINE_MAX_CHARS. No truncation.
+// selector call when the headline is blank or exceeds B1_HEADLINE_MAX_CHARS. No truncation.
 export function assertHeadlineWithinGate(headline: string | null | undefined): void {
   const trimmed = (headline ?? '').trim();
   if (!trimmed) {
@@ -103,4 +82,179 @@ export function assertHeadlineWithinGate(headline: string | null | undefined): v
       `b1: headline length ${trimmed.length} exceeds B1_HEADLINE_MAX_CHARS=${B1_HEADLINE_MAX_CHARS} (no truncation / no AI rewrite in v1)`,
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────
+// OPTION D — TMR selector consumption (pure).
+// ─────────────────────────────────────────────────────────────────────────────────────
+
+// The 6 draft-derived text fields (same value set the legacy path used); asset URLs +
+// scrim arrive via slot_resolution.modifications, NEVER via this shape.
+export type B1Fields = {
+  category: string;
+  headline: string;
+  subtitle: string;
+  location: string;
+  date: string;
+  footer: string;
+};
+
+// Minimal structural view of the `public.select_template` jsonb response — ONLY the
+// fields this module consumes (source of truth: supabase/migrations/
+// 20260703035154_create_select_template_v1.sql + 20260704002811_update_resolve_slot_assets_v1_1_scrim48.sql).
+export type TmrSlotSelected = {
+  slot?: string;
+  asset_key?: string;
+  asset_id?: string;
+  asset_url?: string;
+  reasons?: unknown[];
+};
+
+export type TmrSlotResolution = {
+  status?: string;
+  modifications?: Record<string, unknown>;
+  selected?: TmrSlotSelected[];
+  rejected?: unknown[];
+  warnings?: unknown[];
+  fail_reason?: string | null;
+  context?: Record<string, unknown>;
+};
+
+export type TmrSelectorResponse = {
+  status?: string;
+  selected?: {
+    assignment_id?: string;
+    template_id?: string;
+    provider_template_id?: string;
+    provider_template_name?: string;
+    variant_key?: string;
+    format_key?: string;
+    aspect_ratio?: string;
+    assignment_status?: string;
+    reasons?: unknown[];
+    proof?: Record<string, unknown>;
+  } | null;
+  slot_resolution?: TmrSlotResolution | null;
+  alternatives?: unknown[];
+  rejected?: unknown[];
+  warnings?: unknown[];
+  fail_reason?: string | null;
+  context?: Record<string, unknown>;
+};
+
+// D1 — fail-closed winner allowlist. v1 ships a vendored text-field mapping for
+// `generic_market_insight_card_1x1_v1` ONLY (its dynamic field set is EXACTLY the legacy
+// one — CategoryBadge/Headline/Subtitle/Location/Date/Footer + Background/Logo/Scrim from
+// slot_resolution). If the selector ever returns a winner without a mapping (ranking flip,
+// approval change, future intent calls), buildTmrRenderPlan THROWS — the render fails loud
+// (image_status='failed'), it never guesses a layout. quote_card / intent support =
+// follow-up mapping additions.
+export const TMR_WINNER_TEXT_FIELDS: Record<string, (f: B1Fields) => Record<string, string>> = {
+  'generic_market_insight_card_1x1_v1': (f) => ({
+    'CategoryBadge.text': f.category,
+    'Headline.text': f.headline,
+    'Subtitle.text': f.subtitle,
+    'Location.text': f.location,
+    'Date.text': f.date,
+    'Footer.text': f.footer,
+  }),
+};
+
+// Additive render_spec.tmr evidence block (design decision D3).
+export type TmrEvidence = {
+  winner: string;
+  provider_template_id: string;
+  registry_template_id: string | null;
+  assignment_id: string | null;
+  variant_key: string | null;
+  seed: string | null;
+  slot_reasons: Array<{ slot: string | null; asset_key: string | null; reasons: unknown[] }>;
+  slot_warnings: unknown[];
+  selector_status: 'ok';
+};
+
+export type TmrRenderPlan = {
+  providerTemplateId: string;
+  modifications: Record<string, string | number>;
+  tmrEvidence: TmrEvidence;
+  // db-rls-auditor must-fix (Option D lane): the selected Background/Logo asset_keys from
+  // slot_resolution.selected. backgroundAssetKey feeds the TOP-LEVEL render_spec.background_key
+  // field (legacy field name preserved EXACTLY) that stamp_tmr_shadow_forward reads via
+  // render_spec->>'background_key' to compute v_background_match — omitting it would stamp
+  // every Option-D render background_match=false ('background_divergence'), inverting the
+  // D7 supervised proof. logoAssetKey is exposed for symmetry (template.asset_keys carries both).
+  backgroundAssetKey: string;
+  logoAssetKey: string;
+};
+
+// PURE render-plan builder. Turns a select_template response + the draft-derived text
+// fields into the Creatomate template-mode plan. Fail-loud contract:
+//   - selector status !== 'ok'                 → throw tmr_selector_fail_closed
+//   - slot_resolution missing / status !== 'ok' → throw tmr_selector_fail_closed
+//   - winner missing / not in TMR_WINNER_TEXT_FIELDS (D1) → throw tmr_winner_unmapped
+//   - slot_resolution.modifications missing Background.source / Logo.source URLs
+//                                              → throw tmr_slot_resolution_incomplete
+// `renderDate` is injected (no Date.now here) — it becomes Date.text via the winner map.
+// Text fields are spread AFTER slot modifications; the winner map deliberately contains
+// NO asset/scrim keys, so slot_resolution stays authoritative for Background/Logo/Scrim.
+export function buildTmrRenderPlan(
+  selectorResponse: TmrSelectorResponse | null | undefined,
+  fields: B1Fields,
+  renderDate: string,
+): TmrRenderPlan {
+  const resp = selectorResponse ?? {};
+  if (resp.status !== 'ok') {
+    throw new Error(`tmr_selector_fail_closed: ${resp.fail_reason ?? 'unknown'}`);
+  }
+  const slot = resp.slot_resolution;
+  if (!slot || slot.status !== 'ok') {
+    throw new Error(`tmr_selector_fail_closed: slot_resolution:${slot?.fail_reason ?? 'missing'}`);
+  }
+  const selected = resp.selected;
+  const winnerName = selected?.provider_template_name ?? '';
+  const textFieldsFor = TMR_WINNER_TEXT_FIELDS[winnerName];
+  if (!winnerName || !textFieldsFor) {
+    // D1: never guess a layout — an unmapped winner is a HARD failure.
+    throw new Error(`tmr_winner_unmapped: ${winnerName || '(missing provider_template_name)'}`);
+  }
+  const providerTemplateId = selected?.provider_template_id ?? '';
+  if (!providerTemplateId) {
+    throw new Error('tmr_selector_fail_closed: missing_provider_template_id');
+  }
+  const slotMods = slot.modifications ?? {};
+  const backgroundUrl = slotMods['Background.source'];
+  const logoUrl = slotMods['Logo.source'];
+  if (typeof backgroundUrl !== 'string' || !backgroundUrl || typeof logoUrl !== 'string' || !logoUrl) {
+    throw new Error('tmr_slot_resolution_incomplete: missing Background.source / Logo.source');
+  }
+  // Selected per-slot asset_keys (stamper contract: the Background key must reach the
+  // TOP-LEVEL render_spec.background_key under the legacy field name — see TmrRenderPlan
+  // comment). Absent/blank entries = incomplete slot evidence → throw (consistent with above).
+  const slotSelectedEntries = slot.selected ?? [];
+  const backgroundAssetKey = slotSelectedEntries.find((s) => s?.slot === 'Background')?.asset_key ?? '';
+  const logoAssetKey = slotSelectedEntries.find((s) => s?.slot === 'Logo')?.asset_key ?? '';
+  if (!backgroundAssetKey || !logoAssetKey) {
+    throw new Error('tmr_slot_resolution_incomplete: missing Background/Logo selected entry (asset_key)');
+  }
+  const textFields = textFieldsFor({ ...fields, date: renderDate });
+  const modifications: Record<string, string | number> = {
+    ...(slotMods as Record<string, string | number>),
+    ...textFields,
+  };
+  const tmrEvidence: TmrEvidence = {
+    winner: winnerName,
+    provider_template_id: providerTemplateId,
+    registry_template_id: selected?.template_id ?? null,
+    assignment_id: selected?.assignment_id ?? null,
+    variant_key: selected?.variant_key ?? null,
+    seed: (resp.context?.seed as string | null | undefined) ?? null,
+    slot_reasons: (slot.selected ?? []).map((s) => ({
+      slot: s?.slot ?? null,
+      asset_key: s?.asset_key ?? null,
+      reasons: Array.isArray(s?.reasons) ? s.reasons : [],
+    })),
+    slot_warnings: Array.isArray(slot.warnings) ? slot.warnings : [],
+    selector_status: 'ok',
+  };
+  return { providerTemplateId, modifications, tmrEvidence, backgroundAssetKey, logoAssetKey };
 }

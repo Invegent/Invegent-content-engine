@@ -1,23 +1,30 @@
-// b1_production_test.ts — CREATIVE-LIBRARY BRANCH B / LANE B1-v1 hermetic tests.
+// b1_production_test.ts — CREATIVE-LIBRARY BRANCH B / LANE B1 hermetic tests.
 // Fully hermetic: NO DB, NO network, NO Deno.serve, NO Creatomate. Exercises
-// ./b1_production.ts (the PP gate + asset contract + minimal headline hard-gate) and the
-// governed evidence shape from ./manual_render.ts. Proves the governed path errors rather
-// than yielding a legacy script when the resolver shorts (mapResolvedAssets throws).
+// ./b1_production.ts (the PP gate + minimal headline hard-gate + governed subtitle +
+// the OPTION D TMR selector consumption: the D1 fail-closed winner allowlist and the
+// pure buildTmrRenderPlan). Proves the governed path THROWS rather than yielding a
+// legacy script when the selector fails closed, the winner is unmapped, or the
+// slot_resolution is incomplete.
+//
+// OPTION D (2026-07-05): the v2-1..v2-5 rotation tests are RETIRED with the rotation
+// constants (B1_BACKGROUND_KEYS / selectB1BackgroundKey deleted — "the constant dies",
+// D5). The selector-consuming path is covered here hermetically with a live-shape
+// fixture (shape cross-checked against supabase/migrations/
+// 20260703035154_create_select_template_v1.sql + 20260704002811_update_resolve_slot_assets_v1_1_scrim48.sql
+// and the PGlite harness docs/briefs/option-d-validation.mjs).
 // Run: deno test supabase/functions/image-worker/b1_production_test.ts
 
 import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import {
-  B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, B1_LOGO_KEY, B1_BACKGROUND_KEY,
-  B1_BACKGROUND_KEYS, B1_HEADLINE_MAX_CHARS, B1_PRODUCTION_LABEL, B1_ASSET_KEYS,
-  B1_SUBTITLE_MAX_CHARS, isB1GovernedImageQuote, assertHeadlineWithinGate,
-  selectB1BackgroundKey, deriveB1Subtitle,
+  B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG,
+  B1_HEADLINE_MAX_CHARS, B1_SUBTITLE_MAX_CHARS, B1_PRODUCTION_LABEL,
+  isB1GovernedImageQuote, assertHeadlineWithinGate, deriveB1Subtitle,
+  TMR_WINNER_TEXT_FIELDS, buildTmrRenderPlan,
+  type B1Fields, type TmrSelectorResponse,
 } from './b1_production.ts';
-import {
-  NEWS_STATIC_CENTERED_SCRIM_1x1, mapResolvedAssets, buildGovernedTemplateSpec,
-} from './manual_render.ts';
+import { mapResolvedAssets } from './manual_render.ts';
 
 const LOGO = { client_slug:'property-pulse', client_id:'4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', asset_id:'b7530c55-c320-43be-90d9-98c804694921', asset_key:'pp_logo_primary', asset_type:'logo_primary', asset_name:'Property Pulse primary logo', asset_url:'https://ex/logo.png', bucket:'brand-assets', source_path:'Property_Pulse/Logos/PP_logo_2.png', usage:'logo', location:null, approved:true, is_active:true };
-const BG = { client_slug:'property-pulse', client_id:'4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', asset_id:'f9caed52-0859-4e22-91f6-7dc998485d77', asset_key:'bg_perth_cbd', asset_type:'other', asset_name:'Perth CBD suburbs background', asset_url:'https://ex/bg.jpg', bucket:'brand-assets', source_path:'Property_Pulse/Backgrounds/Perth_CBD_Suburbs.jpg', usage:'background', location:'Perth', approved:true, is_active:true };
 
 // (1) PP client_id fires the governed branch (the gate keys on client_id, NOT slug).
 Deno.test('B1-1: isB1GovernedImageQuote(B1_GOVERNED_CLIENT_ID) === true', () => {
@@ -29,26 +36,19 @@ Deno.test('B1-1: isB1GovernedImageQuote(B1_GOVERNED_CLIENT_ID) === true', () => 
 // REGARDLESS of what slug getBrandAndSlug returns. The v3.14.0 defect was gating on the slug,
 // which getBrandAndSlug returns as the client-id UUID when c.client.client_slug is null — that
 // made the slug gate false. Now the loop passes the resolved client_id straight to the gate, so
-// a UUID-as-slug from getBrandAndSlug can no longer affect routing: the SAME PP client_id value
-// is exactly what the gate matches. We assert the gate fires on the client_id and that the
-// (now unused-for-gating) slug constant is the canonical slug, not the UUID.
+// a UUID-as-slug from getBrandAndSlug can no longer affect routing.
 Deno.test('B1-2: client_id gate is immune to the getBrandAndSlug UUID-slug fallback', () => {
-  // The loop calls isB1GovernedImageQuote(clientId) — clientId is the PP client_id.
   assert(isB1GovernedImageQuote(B1_GOVERNED_CLIENT_ID));
-  // The canonical slug constant (passed to the resolver/path) is the slug, never the UUID.
   assert((B1_GOVERNED_CLIENT_SLUG as string) !== (B1_GOVERNED_CLIENT_ID as string));
   assertEquals(B1_GOVERNED_CLIENT_SLUG, 'property-pulse');
 });
 
-// (3) Resolver receives 'property-pulse' (the canonical slug constant the governed branch
-// passes to resolve_brand_assets), not a UUID; client_id is the gate identity.
-Deno.test('B1-3: governed branch sends canonical slug to resolver; asset contract pinned', () => {
+// (3) The selector receives 'property-pulse' (the canonical slug constant the governed
+// branch passes to select_template), not a UUID; the production label is unchanged (D3 —
+// the S1 stamper predicate keys on it).
+Deno.test('B1-3: canonical slug + production label pinned (D3: label unchanged)', () => {
   assertEquals(B1_GOVERNED_CLIENT_SLUG, 'property-pulse');
   assertEquals(B1_GOVERNED_CLIENT_ID, '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd');
-  assertEquals(B1_ASSET_KEYS.logo, 'pp_logo_primary');
-  assertEquals(B1_ASSET_KEYS.background, 'bg_perth_cbd');
-  assertEquals(B1_LOGO_KEY, 'pp_logo_primary');
-  assertEquals(B1_BACKGROUND_KEY, 'bg_perth_cbd');
   assertEquals(B1_PRODUCTION_LABEL, 'creative_library_b1_production');
 });
 
@@ -84,80 +84,15 @@ Deno.test('B1-5: assertHeadlineWithinGate — long throws, short passes, blank t
   assertHeadlineWithinGate('   ' + 'z'.repeat(B1_HEADLINE_MAX_CHARS) + '   ');
 });
 
-// (6) resolver-failure-no-fallback: mapResolvedAssets THROWS on empty + on 1-row shortfall —
-// proving the governed path errors rather than yielding a legacy script.
-Deno.test('B1-6: resolver shortfall throws (no legacy fallback)', () => {
-  assertThrows(() => mapResolvedAssets([], B1_ASSET_KEYS), Error, 'expected exactly 2 resolved assets, got 0');
-  assertThrows(() => mapResolvedAssets([LOGO], B1_ASSET_KEYS), Error, 'expected exactly 2 resolved assets, got 1');
+// (6) resolver-failure-no-fallback (manual/draft-proof surfaces still use mapResolvedAssets):
+// it THROWS on empty + on 1-row shortfall — the governed helpers error rather than yielding
+// a legacy script.
+Deno.test('B1-6: mapResolvedAssets shortfall throws (no legacy fallback)', () => {
+  const wanted = { logo: 'pp_logo_primary', background: 'bg_perth_cbd' };
+  assertThrows(() => mapResolvedAssets([], wanted), Error, 'expected exactly 2 resolved assets, got 0');
+  assertThrows(() => mapResolvedAssets([LOGO], wanted), Error, 'expected exactly 2 resolved assets, got 1');
   // wrong-key shortfall (2 rows but missing the background key) also throws.
-  assertThrows(() => mapResolvedAssets([LOGO, { ...LOGO, asset_id: 'dup', asset_key: 'pp_logo_secondary' }], B1_ASSET_KEYS), Error);
-});
-
-// ── B1-v2: deterministic background rotation (selectB1BackgroundKey) ─────────────
-// A small fixed set of UUID-shaped sample ids used across the rotation tests.
-const SAMPLE_IDS = [
-  '11111111-1111-4111-8111-111111111111',
-  '22222222-2222-4222-8222-222222222222',
-  '33333333-3333-4333-8333-333333333333',
-  '44444444-4444-4444-8444-000000000000',
-  'edf01c52-0000-4000-8000-000000000000',
-  'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
-];
-
-// (v2-1) Determinism: the SAME id yields the SAME key across many repeated calls.
-Deno.test('B1-v2-1: selectB1BackgroundKey is deterministic (same id → same key, repeated)', () => {
-  for (const id of SAMPLE_IDS) {
-    const first = selectB1BackgroundKey(id);
-    for (let i = 0; i < 1000; i++) {
-      assertEquals(selectB1BackgroundKey(id), first);
-    }
-  }
-});
-
-// (v2-2) Membership: output is ALWAYS one of the 5 governed background keys.
-// B1-v3 (2026-07-04): pool 3→5, aligned to the governed resolver rank order (PK Option A).
-Deno.test('B1-v2-2: selectB1BackgroundKey output is always a member of B1_BACKGROUND_KEYS', () => {
-  assertEquals(B1_BACKGROUND_KEYS as readonly string[], ['bg_perth_cbd', 'bg_sydney_cbd', 'bg_brisbane_cbd', 'bg_pp_au_suburb_aerial_grid', 'bg_pp_home_keys_contract_table']);
-  for (let i = 0; i < 2000; i++) {
-    const id = `id-${i}-${(i * 2654435761 >>> 0).toString(16)}-${i}`;
-    assert((B1_BACKGROUND_KEYS as readonly string[]).includes(selectB1BackgroundKey(id)));
-  }
-});
-
-// (v2-3) Distribution coverage: over ≥300 distinct ids, every one of the 5 keys appears.
-Deno.test('B1-v2-3: selectB1BackgroundKey covers all 5 keys over ≥300 distinct ids', () => {
-  const seen = new Set<string>();
-  for (let i = 0; i < 500; i++) {
-    seen.add(selectB1BackgroundKey(`distinct-${i}-${(i * 40503 >>> 0).toString(16)}`));
-  }
-  assertEquals(seen.size, 5);
-  for (const k of B1_BACKGROUND_KEYS) assert(seen.has(k), `expected key ${k} to be selected at least once`);
-});
-
-// (v2-4) Stability pins: fixed UUID literals locked to their COMPUTED key. These cover
-// all 5 keys and lock the FNV-1a hash against accidental change. If the hash, the key
-// order, or the modulo ever changes, these break. Re-pinned for B1-v3 (pool 3→5, mod 5,
-// resolver-rank order — PK 2026-07-04): the SAME hash over the SAME seed now lands on
-// different keys because both the modulus and the array changed; all pins below were
-// RECOMPUTED by running selectB1BackgroundKey, not hand-derived.
-Deno.test('B1-v2-4: selectB1BackgroundKey stability pins (locks the FNV-1a hash)', () => {
-  assertEquals(selectB1BackgroundKey('11111111-1111-4111-8111-111111111111'), 'bg_pp_home_keys_contract_table');
-  assertEquals(selectB1BackgroundKey('22222222-2222-4222-8222-222222222222'), 'bg_pp_home_keys_contract_table');
-  assertEquals(selectB1BackgroundKey('44444444-4444-4444-8444-000000000000'), 'bg_pp_home_keys_contract_table');
-  // B1-v3 additions so EVERY key in the 5-key pool is pinned by at least one fixed literal:
-  assertEquals(selectB1BackgroundKey('99999999-9999-4999-8999-999999999999'), 'bg_perth_cbd');
-  assertEquals(selectB1BackgroundKey('88888888-8888-4888-8888-888888888888'), 'bg_sydney_cbd');
-  assertEquals(selectB1BackgroundKey('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'), 'bg_brisbane_cbd');
-  assertEquals(selectB1BackgroundKey('55555555-5555-4555-8555-555555555555'), 'bg_pp_au_suburb_aerial_grid');
-});
-
-// (v2-5) Back-compat: the v1 fixed default constant remains index 0 of the rotation set.
-Deno.test('B1-v2-5: B1_BACKGROUND_KEY stays bg_perth_cbd (rotation-set index 0); logo key fixed', () => {
-  assertEquals(B1_BACKGROUND_KEY, 'bg_perth_cbd');
-  assertEquals(B1_BACKGROUND_KEYS[0], 'bg_perth_cbd');
-  assertEquals(B1_LOGO_KEY, 'pp_logo_primary');
-  // B1_ASSET_KEYS still pins the v1 default background (back-compat surface unchanged).
-  assertEquals(B1_ASSET_KEYS.background, 'bg_perth_cbd');
+  assertThrows(() => mapResolvedAssets([LOGO, { ...LOGO, asset_id: 'dup', asset_key: 'pp_logo_secondary' }], wanted), Error);
 });
 
 // ── B1-v2: governed subtitle derived from draft_body (deriveB1Subtitle) ──────────
@@ -224,16 +159,200 @@ Deno.test('B1-v2-sub-6: CRLF / CR line endings are normalized', () => {
   assertEquals(deriveB1Subtitle(cr), 'First CR paragraph.');
 });
 
-// Governed evidence shape for B1: the 1:1 impl carries the proven provider_template_id and
-// resolver_used=true / fallback_taken=false.
-Deno.test('B1-evidence: buildGovernedTemplateSpec(NEWS_STATIC_CENTERED_SCRIM_1x1) carries governed shape', () => {
-  const mapped = mapResolvedAssets([LOGO, BG], B1_ASSET_KEYS);
-  const spec = buildGovernedTemplateSpec(NEWS_STATIC_CENTERED_SCRIM_1x1, { propsHash: 'deadbeef', logo: mapped.logo, background: mapped.background });
-  assertEquals(spec.provider_template_id, 'fb9820f8-3fee-4448-b324-3d500fa74b40');
-  assertEquals(spec.resolver_used, true);
-  assertEquals(spec.fallback_taken, false);
-  assertEquals(spec.implementation_id, 'news_static_centered_scrim_1x1_v1');
-  assertEquals(spec.asset_keys, ['pp_logo_primary', 'bg_perth_cbd']);
-  assertEquals(spec.asset_ids, [LOGO.asset_id, BG.asset_id]);
-  assertEquals(NEWS_STATIC_CENTERED_SCRIM_1x1.output_format, 'jpg');
+// ── OPTION D: TMR selector consumption (buildTmrRenderPlan) ─────────────────────
+// Live-shape fixture: mirrors the verified public.select_template response for
+// ('property-pulse','facebook','image_quote',NULL,seed) — winner
+// generic_market_insight_card_1x1_v1 (provider 48cba556…), embedded slot_resolution
+// with Background.source / Logo.source / Scrim.opacity 48 (resolver v1.1) and the
+// per-slot selected[] evidence entries. Shape cross-checked against the migration
+// SQL and the PGlite harness (docs/briefs/option-d-validation.mjs).
+
+const WINNER_PROVIDER_ID = '48cba556-0a53-4001-90f0-05420d10efc0';
+const BG_URL = 'https://x.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Backgrounds/Perth_CBD_Suburbs.jpg';
+const LOGO_URL = 'https://x.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png';
+
+const FIELDS: B1Fields = {
+  category: 'PROPERTY NEWS',
+  headline: 'Perth median house price hits new record this quarter',
+  subtitle: 'Auction clearance rates climb for a third straight week.',
+  location: '',
+  date: 'IGNORED — renderDate is injected separately',
+  footer: 'propertypulse.com.au',
+};
+
+function liveShapeFixture(): TmrSelectorResponse {
+  return {
+    status: 'ok',
+    context: {
+      client_slug: 'property-pulse', platform: 'facebook', format: 'image_quote',
+      variant_intent: null, seed: 'edf01c52-0000-4000-8000-000000000000',
+      selectable_definition: 'visually_approved+ AND passed visual_approval proof',
+    },
+    rejected: [],
+    selected: {
+      assignment_id: 'aaaaaaaa-1111-1111-1111-111111111101',
+      template_id: '11111111-1111-1111-1111-111111111101',
+      provider_template_id: WINNER_PROVIDER_ID,
+      provider_template_name: 'generic_market_insight_card_1x1_v1',
+      variant_key: 'market_insight.v1',
+      format_key: 'image_quote',
+      aspect_ratio: '1:1',
+      assignment_status: 'visually_approved',
+      reasons: ['format_match', 'generic_scope', 'platform_declared', 'assignment_visually_approved', 'visual_proof_passed', 'assets_resolved'],
+      proof: { visual_approval: 'passed', occurred_at: '2026-06-21T01:00:00Z', evidence_reference: 'render:smoke:mi' },
+    },
+    warnings: ['platform_suitability_unproven'],
+    fail_reason: null,
+    alternatives: [],
+    slot_resolution: {
+      status: 'ok',
+      modifications: {
+        'Background.source': BG_URL,
+        'Logo.source': LOGO_URL,
+        'Scrim.opacity': 48,
+      },
+      selected: [
+        { slot: 'Background', asset_key: 'bg_perth_cbd', asset_id: 'f9caed52-0859-4e22-91f6-7dc998485d77', asset_url: BG_URL, reasons: ['governed', 'license_ok', 'text_safe_needs_scrim', 'client_match'] },
+        { slot: 'Logo', asset_key: 'pp_logo_primary', asset_id: 'b7530c55-c320-43be-90d9-98c804694921', asset_url: LOGO_URL, reasons: ['governed', 'license_ok', 'client_match'] },
+      ],
+      rejected: [],
+      warnings: [],
+      fail_reason: null,
+      context: {},
+    },
+  };
+}
+
+// (D-1) The D1 allowlist maps ONLY the market-insight winner in v1.
+Deno.test('B1-D-1: TMR_WINNER_TEXT_FIELDS v1 allowlist = generic_market_insight_card_1x1_v1 only', () => {
+  assertEquals(Object.keys(TMR_WINNER_TEXT_FIELDS), ['generic_market_insight_card_1x1_v1']);
+});
+
+// (D-2) Happy path: exact 9-key modification set (3 slot keys + 6 text keys), Scrim 48
+// passthrough, slot_resolution authoritative for assets, renderDate injected into Date.text.
+Deno.test('B1-D-2: buildTmrRenderPlan builds the exact 9-key modification set from the live-shape fixture', () => {
+  const plan = buildTmrRenderPlan(liveShapeFixture(), FIELDS, '5 July 2026');
+  assertEquals(plan.providerTemplateId, WINNER_PROVIDER_ID);
+  assertEquals(Object.keys(plan.modifications).sort(), [
+    'Background.source', 'CategoryBadge.text', 'Date.text', 'Footer.text',
+    'Headline.text', 'Location.text', 'Logo.source', 'Scrim.opacity', 'Subtitle.text',
+  ]);
+  assertEquals(plan.modifications['CategoryBadge.text'], 'PROPERTY NEWS');
+  assertEquals(plan.modifications['Headline.text'], FIELDS.headline);
+  assertEquals(plan.modifications['Subtitle.text'], FIELDS.subtitle);
+  assertEquals(plan.modifications['Location.text'], '');
+  assertEquals(plan.modifications['Date.text'], '5 July 2026');            // injected renderDate, NOT fields.date
+  assertEquals(plan.modifications['Footer.text'], 'propertypulse.com.au');
+  assertEquals(plan.modifications['Background.source'], BG_URL);           // from slot_resolution ONLY
+  assertEquals(plan.modifications['Logo.source'], LOGO_URL);               // from slot_resolution ONLY
+  assertEquals(plan.modifications['Scrim.opacity'], 48);                   // resolver v1.1 scrim 48 passthrough (numeric)
+  // db-rls-auditor must-fix: the selected slot asset_keys are exposed on the plan —
+  // backgroundAssetKey feeds the TOP-LEVEL render_spec.background_key (legacy name) that
+  // stamp_tmr_shadow_forward reads to compute background_match.
+  assertEquals(plan.backgroundAssetKey, 'bg_perth_cbd');
+  assertEquals(plan.logoAssetKey, 'pp_logo_primary');
+});
+
+// (D-3) Determinism: pure function — same inputs, same output; no Date.now inside
+// (renderDate is caller-injected; two calls with different renderDate differ ONLY in Date.text).
+Deno.test('B1-D-3: buildTmrRenderPlan is pure/deterministic; renderDate fully caller-controlled', () => {
+  const a = buildTmrRenderPlan(liveShapeFixture(), FIELDS, '5 July 2026');
+  const b = buildTmrRenderPlan(liveShapeFixture(), FIELDS, '5 July 2026');
+  assertEquals(JSON.stringify(a), JSON.stringify(b));
+  const c = buildTmrRenderPlan(liveShapeFixture(), FIELDS, '6 July 2026');
+  assertEquals(c.modifications['Date.text'], '6 July 2026');
+  const { 'Date.text': _da, ...restA } = a.modifications;
+  const { 'Date.text': _dc, ...restC } = c.modifications;
+  assertEquals(JSON.stringify(restA), JSON.stringify(restC));
+});
+
+// (D-4) tmrEvidence carries the D3 evidence block (winner, ids, variant, seed, trimmed
+// slot reasons, warnings, selector_status).
+Deno.test('B1-D-4: tmrEvidence shape (winner/ids/variant/seed/slot_reasons/slot_warnings)', () => {
+  const plan = buildTmrRenderPlan(liveShapeFixture(), FIELDS, '5 July 2026');
+  const ev = plan.tmrEvidence;
+  assertEquals(ev.winner, 'generic_market_insight_card_1x1_v1');
+  assertEquals(ev.provider_template_id, WINNER_PROVIDER_ID);
+  assertEquals(ev.registry_template_id, '11111111-1111-1111-1111-111111111101');
+  assertEquals(ev.assignment_id, 'aaaaaaaa-1111-1111-1111-111111111101');
+  assertEquals(ev.variant_key, 'market_insight.v1');
+  assertEquals(ev.seed, 'edf01c52-0000-4000-8000-000000000000');
+  assertEquals(ev.selector_status, 'ok');
+  assertEquals(ev.slot_reasons, [
+    { slot: 'Background', asset_key: 'bg_perth_cbd', reasons: ['governed', 'license_ok', 'text_safe_needs_scrim', 'client_match'] },
+    { slot: 'Logo', asset_key: 'pp_logo_primary', reasons: ['governed', 'license_ok', 'client_match'] },
+  ]);
+  assertEquals(ev.slot_warnings, []);
+});
+
+// (D-5) fail-closed selector status → throw (no fallback, fail_reason surfaced).
+Deno.test('B1-D-5: selector status fail_closed → throws tmr_selector_fail_closed', () => {
+  const fx = liveShapeFixture();
+  fx.status = 'fail_closed';
+  fx.fail_reason = 'no_selectable_template';
+  fx.selected = null;
+  fx.slot_resolution = null;
+  assertThrows(() => buildTmrRenderPlan(fx, FIELDS, '5 July 2026'), Error, 'tmr_selector_fail_closed: no_selectable_template');
+  // null/undefined response is equally fail-closed.
+  assertThrows(() => buildTmrRenderPlan(null, FIELDS, '5 July 2026'), Error, 'tmr_selector_fail_closed');
+});
+
+// (D-6) embedded slot_resolution fail_closed (or missing) → throw.
+Deno.test('B1-D-6: slot_resolution fail_closed/missing → throws tmr_selector_fail_closed', () => {
+  const fx = liveShapeFixture();
+  fx.slot_resolution = { status: 'fail_closed', modifications: {}, selected: [], rejected: [], warnings: [], fail_reason: 'no_governed_background' };
+  assertThrows(() => buildTmrRenderPlan(fx, FIELDS, '5 July 2026'), Error, 'tmr_selector_fail_closed: slot_resolution:no_governed_background');
+  const fx2 = liveShapeFixture();
+  fx2.slot_resolution = null;
+  assertThrows(() => buildTmrRenderPlan(fx2, FIELDS, '5 July 2026'), Error, 'tmr_selector_fail_closed: slot_resolution:missing');
+});
+
+// (D-7) D1 fail-closed allowlist: an unmapped winner (e.g. quote_card) → throw, never guess.
+Deno.test('B1-D-7: unmapped winner (quote_card) → throws tmr_winner_unmapped', () => {
+  const fx = liveShapeFixture();
+  fx.selected = { ...fx.selected!, provider_template_name: 'generic_quote_card_1x1_v1' };
+  assertThrows(() => buildTmrRenderPlan(fx, FIELDS, '5 July 2026'), Error, 'tmr_winner_unmapped: generic_quote_card_1x1_v1');
+  const fx2 = liveShapeFixture();
+  fx2.selected = { ...fx2.selected!, provider_template_name: undefined };
+  assertThrows(() => buildTmrRenderPlan(fx2, FIELDS, '5 July 2026'), Error, 'tmr_winner_unmapped');
+});
+
+// (D-8) slot_resolution warnings are carried into tmrEvidence.slot_warnings verbatim.
+Deno.test('B1-D-8: slot_resolution warnings carried into tmrEvidence', () => {
+  const fx = liveShapeFixture();
+  fx.slot_resolution!.warnings = ['scrim_override_invalid', 'optional_slot_unfilled:FaceObject'];
+  const plan = buildTmrRenderPlan(fx, FIELDS, '5 July 2026');
+  assertEquals(plan.tmrEvidence.slot_warnings, ['scrim_override_invalid', 'optional_slot_unfilled:FaceObject']);
+});
+
+// (D-9) incomplete slot modifications (missing Background.source / Logo.source) → throw.
+Deno.test('B1-D-9: missing Background.source / Logo.source → throws tmr_slot_resolution_incomplete', () => {
+  const fx = liveShapeFixture();
+  delete fx.slot_resolution!.modifications!['Logo.source'];
+  assertThrows(() => buildTmrRenderPlan(fx, FIELDS, '5 July 2026'), Error, 'tmr_slot_resolution_incomplete');
+  const fx2 = liveShapeFixture();
+  fx2.slot_resolution!.modifications = { 'Scrim.opacity': 48 };
+  assertThrows(() => buildTmrRenderPlan(fx2, FIELDS, '5 July 2026'), Error, 'tmr_slot_resolution_incomplete');
+});
+
+// (D-9b) db-rls-auditor must-fix: slot_resolution.selected missing the Background (or Logo)
+// entry → throw (the stamper's background_key evidence would otherwise be unbuildable).
+Deno.test('B1-D-9b: missing Background/Logo selected entry → throws tmr_slot_resolution_incomplete', () => {
+  const fx = liveShapeFixture();
+  fx.slot_resolution!.selected = fx.slot_resolution!.selected!.filter((s) => s.slot !== 'Background');
+  assertThrows(() => buildTmrRenderPlan(fx, FIELDS, '5 July 2026'), Error, 'tmr_slot_resolution_incomplete: missing Background/Logo selected entry');
+  const fx2 = liveShapeFixture();
+  fx2.slot_resolution!.selected = fx2.slot_resolution!.selected!.filter((s) => s.slot !== 'Logo');
+  assertThrows(() => buildTmrRenderPlan(fx2, FIELDS, '5 July 2026'), Error, 'tmr_slot_resolution_incomplete: missing Background/Logo selected entry');
+  const fx3 = liveShapeFixture();
+  fx3.slot_resolution!.selected = [];
+  assertThrows(() => buildTmrRenderPlan(fx3, FIELDS, '5 July 2026'), Error, 'tmr_slot_resolution_incomplete');
+});
+
+// (D-10) missing provider_template_id on a mapped winner → fail loud (never submit an
+// empty template_id to Creatomate).
+Deno.test('B1-D-10: mapped winner without provider_template_id → throws', () => {
+  const fx = liveShapeFixture();
+  fx.selected = { ...fx.selected!, provider_template_id: undefined };
+  assertThrows(() => buildTmrRenderPlan(fx, FIELDS, '5 July 2026'), Error, 'tmr_selector_fail_closed: missing_provider_template_id');
 });
