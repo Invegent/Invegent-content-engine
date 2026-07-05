@@ -247,3 +247,17 @@ Rules for this lane:
 - **Parallel-session claims:** before cutting any register entry, claim via the result-doc stub
   (`CLAIMED vX.YZ · lane · worktree · gate · timestamp` as line 1), after fetch + head read +
   stub scan; re-verify at commit; earlier timestamp keeps the number, later claimant renumbers.
+- **Phase 2/3 refinements (ratified 2026-07-05):** R1 orchestrator read-only checks OK for
+  invariant fingerprints + triage evidence where the DB is not the lane's subject; db-rls-auditor
+  required when it is, and in every T3 chain — substitutions named in the lane record. R2 secret
+  POSTURE change = T3; read-only secret USE = T2 + mandatory Gate-1 secret-handling rider (which
+  secret · conveyance · never-in-transcript · use-vs-change). R3 lanes mid-flight at a contract
+  ratification pick up new requirements at their next gate. R4 one harness sub-root per
+  session/run; shared-root files append-only with attribution; never push another session's
+  unpushed commit without explicit PK authorization.
+- **Phase 3 posture:** automation is limited to four zero-authority helpers (hash checkpoints ·
+  claim stubs · review-packet template · register-pointer template), each its own future
+  PK-gated T2 lane; judgment stays manual; approval/promotion/deploy/enforcement are never
+  automated. CCF-02's phase plan is complete — the contract is living and amends only by PK
+  ratification. (Synthesis packet: `docs/briefs/ccf-02-phase3-synthesis-packet.md`, hash
+  `63211221…`, reviews `0fe63030`/`e28e39ad` partial→PK ratified as-is 2026-07-05.)

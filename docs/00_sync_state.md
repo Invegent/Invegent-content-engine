@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v5.05 CCF-02 PHASE 2→3 SYNTHESIS — RATIFIED AS-IS + APPLIED; CCF-02 PHASE PLAN CLOSED (T1 · SAFETY_GATE)** — R1–R4 friction rules in force (orchestrator-reads rule · **R2 secret USE = T2+rider, PK's deliberate de-escalation ratified with full delta analysis** · mid-flight rule · harness sub-roots/never-push-foreign-commits) · Phase 3 = four zero-authority helpers only (NONE built; each a future PK-gated T2 lane); judgment manual; approval/promotion/deploy/enforcement never automated · packet hash `63211221…`, reviews `0fe63030`/`e28e39ad` partial→PK ratified · CLAUDE.md amended · canonical: `docs/briefs/ccf-02-phase3-synthesis-packet.md` · contract now LIVING (amends only by PK ratification) · next gate: PK commit · queue impact: none.
+
+---
+
 > **✅ v5.04 IMAGE-HARVESTER + IMAGE-REVIEWER — PROMOTED CANDIDATE→PROVEN-SCOPED (PK option 1 with mitigations; T1 · SAFETY_GATE)** — scope: governed background-image sourcing/review under PK-gated intake/promotion; NOT proven: people-forward · auction/crowd · CC unlocks · paid flows · commissioned · non-PP · auto-approval · evidence: cc-0027 v4.97 + registered runs + day-hero stress + **v5.01→v5.02 product chain with witnessed live selection `wit-1`** · charters byte-unchanged `b09ebf2b…`/`f582915a…` · promotion review `docs/briefs/image-agents-promotion-review-v1.md` hash `45a4b2b6…`, reviews `4701ef73`/`729b2e1d` partial→PK decision · **mitigations contractual: signage→REJECT calibration rule + two-stage coupling as scope condition + signage watch item** · CLAUDE.md rows + findings appendices applied · next gate: PK commit · queue impact: none.
 
 ---
