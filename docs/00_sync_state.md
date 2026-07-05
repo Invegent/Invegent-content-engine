@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v5.09 D6 RECORDED — market_insight PRODUCTION_PROVEN (PK conditional apply, hash `af74058b…`)** — first TMR-controlled render PUBLISHED to facebook on schedule (`post_publish 6e8c2705…` @ 2026-07-05T21:30:23Z, image == render `23024f4c…`) · assignment `7806fa5e…` flipped `visually_approved`→`production_proven` + platform_publish/passed proof · selectable set still 16 · production_proven total 2 · **Option D chain complete: select→resolve→render→shadow-agree→publish→proven** · canonical: `docs/briefs/results/option-d-tmr-live-b1-result.md` §7 · next: S1 hourly cron gate (D-01) · register commit pending.
+
+---
+
 > **✅ v5.08 CCF-03 PHASE 0 OPENED — ORCHESTRATOR-LITE OBSERVATION PILOT PK-APPROVED (T1 · SAFETY_GATE, docs-only)** — packet hash `fe61dd29…` = commit `6c33f87` pushed; pilot ACTIVE (practice only — silent observation + 5 exception-message triggers, zero authority, NO BOARD.md/helper/agent/automation; gate batching presentation-only; window 5 multi-session days / ~10 lanes; metrics → evening boards) · chain: brief-author DRAFT_READY clean · warden safe · PK approved (Q1 window as proposed, Q3 shape) · canonical: docs/briefs/ccf-03-phase0-orchestrator-lite-packet.md · result: docs/briefs/results/ccf-03-phase0-packet-result.md · carries: Q2 R2-rider hygiene text · Phase-0 verdict at window close · queue impact: none.
 
 ---

@@ -30,3 +30,9 @@ deno **90/90 + 17/17** · PGlite shape-proof vs real migrations **24/24 ×2** ·
 ## 6. Boundaries held
 
 PP image_quote slice only · every non-PP client + other format byte-unchanged · no publisher/queue/dashboard/Format-Mix/cron change · ai-worker runtime untouched (contract stays v2, staleness recorded) · no migration · registry statuses untouched (D6 pending) · rollback floor honestly recorded (fn84 restores code not service; irrelevant now that v3.22.0 is proven live).
+
+## 7. D6 ADDENDUM — production_proven RECORDED (2026-07-05/06, PK conditional apply on hash `af74058b…`)
+
+The first TMR-controlled render **published to Facebook on schedule**: `post_publish 6e8c2705-1b52-431f-bb1c-9c696af0d8a1`, `published_at 2026-07-05T21:30:23Z`, image identity == render `23024f4c…` (verified). D6 recording applied (artifact `_harness/option-d-production-proven-recording.sql`, hash re-verified pre-apply; all fail-loud asserts passed incl. the A2 publish-evidence gate): assignment `7806fa5e…` (PP × `generic_market_insight_card_1x1_v1`) **`visually_approved` → `production_proven`** + one `platform_publish/passed` proof event at the publish timestamp. Post-apply: selectable set still **16** (invariant held); `production_proven` total = 2 (this + the historical `fb9820f8` row). **The Option D evidence chain is complete end-to-end: select → resolve → render → shadow-agree → publish → production_proven.**
+
+**PK VISUAL GATE PASS (2026-07-06, screenshot on record):** post live on the Property Pulse Facebook page — market_insight layout, bg_brisbane_cbd background, Scrim 48 legibility, pp_logo_primary, badge/date/footer all present; rendered artifact matches the recorded decision chain field-for-field.
