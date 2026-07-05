@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v5.01 PP DAY-HERO BACKGROUND INTAKE — APPLIED + VERIFIED (T2 · PRODUCT_PROOF; 1 PK-authorised upload + 1 INSERT-only double-fenced intake candidate; POOL-NEUTRAL PROVEN)** — cc-0027 run-2 best-pick `gl7nkS_h4lo` (Joshua Leong, Unsplash, bright-day Perth CBD 4000×2250) intaken under the PK-reserved key `bg_pp_perth_cbd_skyline_day_wide` (asset_id `b2a10008…`, is_active=false + approved=false + intake_candidate + production_use_allowed=false; Option-D promotion warning embedded in-row) · apply `96746e53…` (db-rls-auditor PASS + external review agree `f60a4afb…`; upload sha256-verified via public URL `620c77b4…`) · **eligible background pool UNCHANGED at exactly 5 — machine-asserted in-transaction AND live-proven on the production market_insight template (winner still `bg_perth_cbd`, day-hero rejected `inactive`)** · bright-day Perth skyline sourcing carry CLOSED (sourced by CANDIDATE agents image-harvester/image-reviewer, stress-proven, PK-accepted, intaken) · canonical: `_harness/image_harvester_v0/run2_stress/dayhero_intake/DAYHERO_RESULT.md` (packet commit `90892cd`; rollback `229553ec…` promotion-guarded standing) · next gate: day-hero PROMOTION = its own PK gate and a LIVE production-rotation change (pool 5→6 under Option D) · queue impact: none. Supersedes → v5.00.
+
+---
+
 > **✅ v5.00 TMR DEAD-REF CLEANUP LANE D — CE DECLARATIVE REGISTRY TRUTH PASS APPLIED (T1 · SAFETY_GATE, docs-only)** — registry v0.4: 3 PP news variants RETIRED as live truth (48cba556 artwork-repurposed [C4 silent-wrong] · fb9820f8 + bc32f52f provider-deleted) + 2fd50302 never-wired record + flow-v2 pointer note + family-matrix 1x1 row added · evidence 51/51 preserved (warden-verified) · creative-graph-auditor PASS (2 advisories delivered in-lane, 4 carried) · canonical: docs/briefs/results/tmr-dead-ref-cleanup-lane-d-result.md · next gate: PK commit (exact 6-file pathspec — parallel brief-author.md edit EXCLUDED) · then Lane B Gate 1 · D6 preempts.
 
 ---

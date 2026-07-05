@@ -1,3 +1,4 @@
+CLAIMED v5.01 · pp-bg-dayhero-intake · shared-main-docs · register-commit-gate · 2026-07-05T05:55Z
 # Day-hero intake (gl7nkS_h4lo) — RESULT
 
 **APPLIED + VERIFIED** — 2026-07-05, project mbkmaxqhsohbtwsqolns, exact PK-approved artifact (hash re-verified `96746e53…` immediately pre-apply), applied as postgres.
