@@ -25,6 +25,8 @@ only output is its returned JSON.
 | `creative-graph-auditor` | read-only (`Read`/`Grep`/`Glob`) | static-audit the Creative Library v2 declarative object graph (`docs/creative-library/*.json` + `registry-schema-v2.md`): JSON/schema shape, key uniqueness, reference resolution, evidence-SHAPE, runtime-import guard, vendored-registry drift; return a PASS/FAIL/ESCALATE verdict | query the DB, verify live render logs, judge style-guide conformance, approve/mark-proven any creative object, mutate/commit/deploy |
 | `ice-architecture-cartographer` | read-only (`Read`/`Grep`/`Glob`) | generate a grounded, fully-cited current-architecture / operator-flow snapshot (map + Mermaid + source-of-truth table + stale list) from CE + dashboard docs/registers/worker source; classify every node `live_production`/`proven_proof_only`/`planned_not_implemented`/`carry_deferred`/`stale_uncertain`; return PASS/WARN/NO_GOVERNING_RULE | invent architecture without citation, verify live/DB/deploy/git truth, reconcile registers, build dashboard UI, approve/mark-proven, mutate/commit/deploy |
 | `brief-author` | read-only (`Read`/`Grep`/`Glob`) | draft ONE brief per PK-named task in the house template, every material claim evidence-cited, register hold-states reflected in Forbidden actions, unknowns → open questions / named handoffs; return DRAFT_READY/DRAFT_BLOCKED/ESCALATE (+ findings-contract block) | write/edit any file (returned draft only — orchestrator persists), approve/issue/accept any brief, author result docs, edit registers/CLAUDE.md, choose/split/expand tasks, invent uncited facts, query DB/network/git, mark anything proven |
+| `image-harvester` | network GET (allow-listed sources only) + writes confined to `_harness/image_harvester_v0/**`; `Read`/`Glob`/`Grep`/`Bash`/`Write`/`WebSearch`/`WebFetch` | licence-safe background-image sourcing per a PK mini-manifest: download candidates + full provenance (sha256 of bytes), contact sheets, honest `not_harvestable_licence_safe` returns; readable third-party signage/branding in crop area → REJECT (calibration rule); output ALWAYS passes `image-reviewer` before PK (scope condition) | touch DB/storage buckets/repo files outside its package, POST/auth'd APIs, git, deploy, offer CC/paid/AI-generated material, approve or promote anything |
+| `image-reviewer` | read-only (`Read`/`Glob`/`Grep`) | pixel-level suitability + risk review of a harvest package (P0 verdict vocabulary, suggestive only), package-consistency checks, licence/rights posture from recorded metadata | fetch from network, re-harvest, write files, recompute byte-hashes (named orchestrator step), touch DB/storage/git, use approval language, decide anything — PK visual review is the only deciding act |
 
 **Security triage lanes:** use `security-auditor` **after** `db-rls-auditor` has gathered the DB
 evidence — `db-rls-auditor` collects facts (grants, defs, advisors); `security-auditor` adds the
@@ -81,8 +83,18 @@ Creatomate Provider Reconciliation packet [lane PASS, TMR-GOV-PROVIDER-1 ratifie
 drafts PK-accepted at gate 1, zero charter violations; promotion review
 `docs/briefs/brief-author-promotion-review-v1.md`, external review `74ba8e6e` → PK decision).
 **PK scoped note:** proven on docs/planning-shaped briefs — its first code-lane or DB-lane
-brief gets candidate-level scrutiny before breadth is treated as proven. Candidate agents
-`image-harvester` / `image-reviewer` (cc-0027 exceptions) remain CANDIDATES outside this table.
+brief gets candidate-level scrutiny before breadth is treated as proven.
+
+**Image sourcing/review lane:** `image-harvester` + `image-reviewer` are **PROVEN-SCOPED**
+(2026-07-05 PK promotion with mitigations — promotion review
+`docs/briefs/image-agents-promotion-review-v1.md`, hash `45a4b2b6…`): proven for **governed
+background-image sourcing/review under PK-gated intake/promotion** (evidence: cc-0027 v4.97 ·
+registered runs · day-hero stress proof · the v5.01→v5.02 product chain with witnessed live
+selection `wit-1`). NOT yet proven (candidate-level scrutiny on first attempt): people-forward
+images · auction/crowd imagery · CC BY / CC BY-SA unlocks · paid-stock exception flows ·
+commissioned-shoot sourcing · non-Property-Pulse brands · automatic approval or promotion.
+**Standing conditions:** harvester output always passes image-reviewer before PK presentation;
+readable-signage decisions named in every lane's result doc.
 
 Not yet built (v2, do not assume they exist): `ef-deployer` (gated, non-autonomous),
 `pipeline-medic`.

@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v5.04 IMAGE-HARVESTER + IMAGE-REVIEWER — PROMOTED CANDIDATE→PROVEN-SCOPED (PK option 1 with mitigations; T1 · SAFETY_GATE)** — scope: governed background-image sourcing/review under PK-gated intake/promotion; NOT proven: people-forward · auction/crowd · CC unlocks · paid flows · commissioned · non-PP · auto-approval · evidence: cc-0027 v4.97 + registered runs + day-hero stress + **v5.01→v5.02 product chain with witnessed live selection `wit-1`** · charters byte-unchanged `b09ebf2b…`/`f582915a…` · promotion review `docs/briefs/image-agents-promotion-review-v1.md` hash `45a4b2b6…`, reviews `4701ef73`/`729b2e1d` partial→PK decision · **mitigations contractual: signage→REJECT calibration rule + two-stage coupling as scope condition + signage watch item** · CLAUDE.md rows + findings appendices applied · next gate: PK commit · queue impact: none.
+
+---
+
 > **✅ v5.03 TMR DEAD-REF CLEANUP LANE B — DASHBOARD TRUTH REFRESH DEPLOYED (T2 · SAFETY_GATE)** — dashboard main `40eb0f0..0856dcb` pushed, Vercel prod live: B1 card = Option-D truth (TMR winner-driven · market_insight · v3.22.0 · legacy retired 2026-07-04) · vendored registry v0.2→v0.4 (3 retirements + 1x1 added + RETIRED chips + 5-key pool) · pin 448220d9… · chain: tsc/build ×2 · creative-graph-auditor PASS (3/4 advisories folded) · warden safe · external agree 95563b0a… · zero STOPs · canonical: docs/briefs/results/tmr-dead-ref-cleanup-lane-b-result.md · carry: day-hero promotion (v5.02) already outdates the 5-key vendor — next registry pass sweeps · next: Lane W Gate 1 · D6 preempts (21:30Z).
 
 ---
