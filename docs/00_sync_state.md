@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v4.94 BRIEF-AUTHOR AGENT v1 — BUILT AS CANDIDATE (PK-authorized single-agent exception to the CCF-02 "no new agents" deferral)** — read-only Read/Grep/Glob · returned-draft-only (orchestrator writes files) · gate 1 (PK brief approval) unchanged · external review `6a5a9769…` agree/low/high zero-pushback (first packet attempt) on agent-file hash `e3226708…` · canonical record: `docs/briefs/brief-author-agent-v1-spec.md` · next gate: proving run on first real brief (CCF-02 ladder; ef-deployer/pipeline-medic remain not-built) · queue impact: none.
+
+---
+
 > **✅ v4.93 WORKFLOW ACCELERATION CONVENTIONS 1+2 — RATIFIED + APPLIED (docs-only)** — packet hash `df4c31bd…` · external review `4864c9cf…` · CLAUDE.md amended (recording compression + conditional sequence approvals; convention 3 risk-tiering NOT ratified, pending PK) · canonical record: `docs/briefs/ice-workflow-acceleration-convention-packet.md` · next gate: PK commit instruction · queue impact: none (process only). *(First entry in the ratified compressed format.)*
 
 ---
