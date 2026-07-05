@@ -9,12 +9,14 @@
 //   - The draft is READ-ONLY. This builder NEVER mutates the draft.
 //   - Deterministic: same draft → same fields. NO LLM, NO randomness.
 //   - The hard-gate field is image_headline — throws if missing/blank.
-//   - Field shape matches EXACTLY the 6 text keys buildManualModifications() consumes
-//     (category/headline/subtitle/location/date/footer); governed asset URLs are
-//     supplied separately by the resolver path, NOT here.
-
-export const DRAFT_PROOF_MODE = 'creative_library_draft_proof';
-export const DRAFT_PROOF_LABEL = 'creative_library_draft_proof';
+//   - Field shape is the 6 text keys (category/headline/subtitle/location/date/footer);
+//     governed asset URLs are supplied separately by the resolver path, NOT here.
+//
+// LANE W TRIM (2026-07-05, image-worker v3.23.0): DRAFT_PROOF_MODE / DRAFT_PROOF_LABEL
+// were removed with the retired creative_library_draft_proof branch (its only impls
+// pinned deleted/repurposed provider templates — see
+// docs/briefs/tmr-dead-reference-cleanup-plan-packet.md). buildProofFieldsFromDraft
+// stays LIVE: the Option-D B1 TMR production branch in index.ts consumes it.
 
 // Minimal read-only view of the post_draft columns the proof consumes.
 export type ProofDraftRow = {

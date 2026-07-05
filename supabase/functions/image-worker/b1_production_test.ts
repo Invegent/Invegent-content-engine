@@ -22,9 +22,9 @@ import {
   TMR_WINNER_TEXT_FIELDS, buildTmrRenderPlan,
   type B1Fields, type TmrSelectorResponse,
 } from './b1_production.ts';
-import { mapResolvedAssets } from './manual_render.ts';
-
-const LOGO = { client_slug:'property-pulse', client_id:'4036a6b5-b4a3-406e-998d-c2fe14a8bbdd', asset_id:'b7530c55-c320-43be-90d9-98c804694921', asset_key:'pp_logo_primary', asset_type:'logo_primary', asset_name:'Property Pulse primary logo', asset_url:'https://ex/logo.png', bucket:'brand-assets', source_path:'Property_Pulse/Logos/PP_logo_2.png', usage:'logo', location:null, approved:true, is_active:true };
+// LANE W (2026-07-05, v3.23.0): the mapResolvedAssets import + test B1-6 were removed —
+// mapResolvedAssets was retired with the manual/draft-proof surfaces (its only callers);
+// the B1 production branch consumes slot_resolution from select_template instead.
 
 // (1) PP client_id fires the governed branch (the gate keys on client_id, NOT slug).
 Deno.test('B1-1: isB1GovernedImageQuote(B1_GOVERNED_CLIENT_ID) === true', () => {
@@ -84,16 +84,8 @@ Deno.test('B1-5: assertHeadlineWithinGate — long throws, short passes, blank t
   assertHeadlineWithinGate('   ' + 'z'.repeat(B1_HEADLINE_MAX_CHARS) + '   ');
 });
 
-// (6) resolver-failure-no-fallback (manual/draft-proof surfaces still use mapResolvedAssets):
-// it THROWS on empty + on 1-row shortfall — the governed helpers error rather than yielding
-// a legacy script.
-Deno.test('B1-6: mapResolvedAssets shortfall throws (no legacy fallback)', () => {
-  const wanted = { logo: 'pp_logo_primary', background: 'bg_perth_cbd' };
-  assertThrows(() => mapResolvedAssets([], wanted), Error, 'expected exactly 2 resolved assets, got 0');
-  assertThrows(() => mapResolvedAssets([LOGO], wanted), Error, 'expected exactly 2 resolved assets, got 1');
-  // wrong-key shortfall (2 rows but missing the background key) also throws.
-  assertThrows(() => mapResolvedAssets([LOGO, { ...LOGO, asset_id: 'dup', asset_key: 'pp_logo_secondary' }], wanted), Error);
-});
+// (6) RETIRED (Lane W): B1-6 exercised mapResolvedAssets, which was removed with the
+// manual/draft-proof surfaces. The B1 fail-closed behaviour is covered by B1-D-5..D-10.
 
 // ── B1-v2: governed subtitle derived from draft_body (deriveB1Subtitle) ──────────
 // Pure / hermetic. The subtitle is DERIVED + OPTIONAL (unlike the headline hard-gate):

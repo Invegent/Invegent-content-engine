@@ -1,3 +1,31 @@
+// image-worker v3.23.0
+// v3.23.0 (2026-07-05) — LANE W / TMR DEAD-REFERENCE CLEANUP (governing plan
+//   docs/briefs/tmr-dead-reference-cleanup-plan-packet.md Lane W, candidates C1/C2/C4;
+//   recon result docs/briefs/results/creatomate-provider-reconciliation-v0-result.md;
+//   guard rule TMR-GOV-PROVIDER-1). WHAT CHANGED: the provider-dead OPT-IN surfaces are
+//   RETIRED. (1) The creative_library_manual_render, creative_library_draft_proof,
+//   template_smoke (PP_NEWS_CENTRED_SCRIM_16x9_v1) and tmr_template_smoke branch BODIES
+//   are removed; each mode now returns an EXPLICIT 410 guard ({ ok:false,
+//   error:'<mode>_retired', note:'retired 2026-07-05 Lane W …' }) so a stray manual
+//   request can NEVER fall through toward the production loop (design D-W1 — guards,
+//   not silent removal). Why dead: fb9820f8… (1:1) and 490ad9ea… (tmr smoke) were
+//   DELETED provider-side 2026-07-04; 48cba556… was paste-repurposed to the live 1:1
+//   market-insight card, so the 16:9 manual/template_smoke surfaces would have rendered
+//   WRONG output silently (C4 — the sharpest case). (2) manual_render.ts is TRIMMED to
+//   its single LIVE export computePropsHash (PP_NEWS_STATIC_16x9,
+//   NEWS_STATIC_CENTERED_SCRIM_1x1, GovernedImpl, ResolvedAsset, isManualRenderRequest,
+//   mapResolvedAssets, buildManualModifications, buildGovernedTemplateSpec,
+//   MANUAL_RENDER_MODE/LABEL removed); branch_b_proof.ts is TRIMMED to its LIVE exports
+//   (buildProofFieldsFromDraft, formatProofDate, ProofDraftRow; DRAFT_PROOF_MODE/LABEL
+//   removed); tmr_smoke.ts is DELETED; dead tests removed (template_smoke_test.ts) or
+//   trimmed to live-export coverage (manual_render_test.ts, branch_b_proof_test.ts,
+//   b1_production_test.ts B1-6). WHAT IS STRICTLY OUT OF SCOPE: the Option-D B1 TMR
+//   production branch and every legacy/non-PP/other-format production path are
+//   BYTE-UNCHANGED except the import lines above them; creative_contract.ts (BOTH
+//   vendored copies) keeps its fb9820f8 contract pin — contract v3 is a separate carry
+//   (D-W3); NO change to queue/publisher/dashboard/cron/stamper, NO DB/migration, NO
+//   registry row/status change, NO new secret, NO deploy in this change.
+//
 // image-worker v3.22.0
 // v3.22.0 (2026-07-05) — OPTION D / TMR-LIVE B1 SLICE (PK Gate-1, decisions D1–D7 approved
 //   as written; docs/briefs/option-d-tmr-live-b1-slice-packet.md). INCIDENT CONTEXT: the
@@ -270,17 +298,17 @@
 // v3.9.1 context: client_id resolve fix, video fallback renderer, carousel image_url write fix.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { MANUAL_RENDER_MODE, MANUAL_RENDER_LABEL, PP_NEWS_STATIC_16x9, NEWS_STATIC_CENTERED_SCRIM_1x1, isManualRenderRequest, mapResolvedAssets, buildManualModifications, computePropsHash, buildGovernedTemplateSpec } from './manual_render.ts';  // v3.11.0: LANE 3B; v3.13.0: + B0 1:1 impl
-import { DRAFT_PROOF_MODE, DRAFT_PROOF_LABEL, buildProofFieldsFromDraft } from './branch_b_proof.ts';  // v3.12.0: BRANCH B / LANE B-PROOF
+import { computePropsHash } from './manual_render.ts';  // v3.23.0 LANE W: module trimmed to this single live export (B1 props_hash); the manual/draft-proof governed impls + builders are retired
+import { buildProofFieldsFromDraft } from './branch_b_proof.ts';  // v3.12.0: BRANCH B / LANE B-PROOF; v3.23.0 LANE W: DRAFT_PROOF_MODE/LABEL retired with the draft-proof branch — this field builder stays LIVE (B1 TMR branch)
 import { B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, B1_HEADLINE_MAX_CHARS, B1_SUBTITLE_MAX_CHARS, isB1GovernedImageQuote, assertHeadlineWithinGate, deriveB1Subtitle, buildTmrRenderPlan, type TmrSelectorResponse } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug). v3.17.0: B1-v2 governed subtitle from draft_body (deriveB1Subtitle). v3.22.0: OPTION D — TMR selector consumption (buildTmrRenderPlan); rotation constants retired.
 import { resolveLegacyLogo, assertGovernedAssetReachable, type AssetVerdict } from './asset_url_guard.ts';  // v3.15.0: H2 asset-URL validation before Creatomate
 import { echoContractToRenderSpec } from './contract_echo.ts';  // v3.18.0: ACI v0 Slice B2 — echo draft_format.contract identity fields into render_spec (governed PP image_quote; evidence-only)
 import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C: warn-only contract validation (evidence-only, never throws)
-import { isTmrSmokeRequest, handleTmrSmoke } from './tmr_smoke.ts';  // v3.20.0: TMR G2b isolated smoke branch (renders 490ad9ea to _smoke/tmr/ ONLY; no post_render_log)
+// v3.23.0 LANE W: tmr_smoke.ts import removed — module DELETED (provider template 490ad9ea… deleted; mode now 410-guarded below)
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.22.0';
+const VERSION = 'image-worker-v3.23.0';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -532,165 +560,46 @@ Deno.serve(async (req: Request) => {
   const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
   if (!anthropicKey) return jsonResponse({ ok: false, error: 'ANTHROPIC_API_KEY not set' }, 500);
 
-  // ── CREATIVE-LIBRARY-V0 GATE C: manual-only template-mode smoke ──────────────
-  // Isolated, opt-in branch. Runs ONLY when the exact mode/template flags are present,
-  // and returns BEFORE any production draft selection. No publish/queue/advisor touch.
+  // Body parse (needed by the retired-mode 410 guards below). Guards return BEFORE
+  // any production draft selection; an absent/invalid body falls through to production.
   let body: any = {};
   try { body = await req.json(); } catch {}
 
-  // ── TMR G2b: isolated tmr_template_smoke branch ──────────────────────────────
-  // Opt-in, non-production smoke render of the governed inventory CANDIDATE template
-  // 490ad9ea… (news_quote_insight_1x1_v1) with FIXED SYNTHETIC placeholders, writing
-  // ONLY under _smoke/tmr/. Uses a NEW no-log helper — writes NO m.post_render_log, NO
-  // publish/queue/draft/proof. Returns BEFORE any production draft selection. The
-  // CREATOMATE_API_KEY stays in the EF. See ./tmr_smoke.ts for the hard invariants.
-  if (isTmrSmokeRequest(body)) {
-    return await handleTmrSmoke({ body, supabase: getServiceClient(), creatomateKey });
+  // ── LANE W (v3.23.0): tmr_template_smoke RETIRED — explicit 410 guard (D-W1) ──
+  // The TMR G2b smoke branch rendered 490ad9ea… (news_quote_insight_1x1_v1), which was
+  // DELETED provider-side (recon 2026-07-05). The branch body + ./tmr_smoke.ts are
+  // removed; the mode returns an explicit 410 so a stray manual request can NEVER fall
+  // through toward the production loop.
+  if (body?.mode === 'tmr_template_smoke') {
+    return jsonResponse({ ok: false, error: 'tmr_template_smoke_retired', note: 'retired 2026-07-05 Lane W — provider templates deleted; see docs/governance/tmr-gov-provider-1-pre-cleanup-guard.md' }, 410);
   }
 
-  if (body?.mode === 'template_smoke' && body?.template === 'PP_NEWS_CENTRED_SCRIM_16x9_v1') {
-    const supabase = getServiceClient();
-    const TEMPLATE_ID = '48cba556-0a53-4001-90f0-05420d10efc0';
-    const modifications: Record<string, string | null> = {
-      'CategoryBadge.text': 'MARKET NEWS',
-      'Headline.text': 'Sydney median house price hits record $1.6M',
-      'Subtitle.text': 'Auction clearance rates climb for a third straight week',
-      'Location.text': 'Sydney, NSW',
-      'Date.text': '21 June 2026',
-      'Footer.text': 'propertypulse.com.au',
-      'Background.source': body.background_url ?? null,
-      'Logo.source': body.logo_url ?? null,
-    };
-    if (!modifications['Background.source'] || !modifications['Logo.source']) {
-      return jsonResponse({ ok: false, error: 'template_smoke requires background_url and logo_url in body' }, 400);
-    }
-    const renderScript = { template_id: TEMPLATE_ID, modifications, output_format: 'jpg' };
-    const hashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(modifications)));
-    const props_hash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
-    // v3.10.2: ice_format_key='image_quote' (NOT NULL + FK to t.5.3_content_format; image_quote is the
-    // nearest governed static-image key — PK Option A). render_spec.label distinguishes this smoke row
-    // from real image_quote renders; render_spec.template carries the true Creative Library identity.
-    const renderSpec = { label: 'creative_library_smoke', template: { template_id: 'pp-news-centred-scrim-16x9', template_version: 'v1', template_family: 'property-pulse-news', template_variant: 'centred-scrim-16x9', provider: 'creatomate', provider_template_id: TEMPLATE_ID, props_hash, asset_ids: [], fallback_taken: false } };
-    const storageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: '_smoke/pp_news_centred_scrim_16x9_v1.jpg', mimeType: 'image/jpeg', postDraftId: null, clientId: null, iceFormatKey: 'image_quote', renderSpec, logMustSucceed: true });
-    return jsonResponse({ ok: true, mode: 'template_smoke', template: 'PP_NEWS_CENTRED_SCRIM_16x9_v1', storage_url: storageUrl, props_hash });
+  // ── LANE W (v3.23.0): template_smoke RETIRED — explicit 410 guard (D-W1) ──────
+  // The Gate C smoke branch pinned 48cba556… as PP_NEWS_CENTRED_SCRIM_16x9_v1; that
+  // provider ID was paste-repurposed to the LIVE 1:1 market-insight card, so this
+  // surface would have rendered wrong output SILENTLY (C4). Guard fires on the mode
+  // alone (any template value) so nothing under this retired mode reaches production.
+  if (body?.mode === 'template_smoke') {
+    return jsonResponse({ ok: false, error: 'template_smoke_retired', note: 'retired 2026-07-05 Lane W — provider templates deleted; see docs/governance/tmr-gov-provider-1-pre-cleanup-guard.md' }, 410);
   }
 
-  // ── CREATIVE-LIBRARY-V0.1 LANE 3B: manual governed render ────────────────────
-  // Isolated, opt-in. Resolves governed asset_keys via the service_role-only RPC
-  // public.resolve_brand_assets (NO raw-URL fallback — fail loud), renders the proven
-  // PP 16:9 news template with the RESOLVED governed asset URLs, and writes
-  // render_spec.template GOVERNED evidence (asset_keys + asset_ids + resolver_used).
-  // Returns BEFORE production draft selection. Touches NO post_draft/queue/publish.
-  if (isManualRenderRequest(body)) {
-    const supabase = getServiceClient();
-    const clientSlug = body?.client_slug;
-    const implId = body?.implementation_id;
-    const logoKey = body?.asset_keys?.logo;
-    const bgKey = body?.asset_keys?.background;
-    const fields = body?.fields ?? {};
-    if (clientSlug !== 'property-pulse' || implId !== PP_NEWS_STATIC_16x9.implementation_id || !logoKey || !bgKey) {
-      return jsonResponse({ ok: false, error: 'creative_library_manual_render requires client_slug=property-pulse, implementation_id=pp_news_static_16x9_v1, asset_keys.logo, asset_keys.background' }, 400);
-    }
-    if (!fields?.headline) {
-      return jsonResponse({ ok: false, error: 'creative_library_manual_render requires fields.headline (hard-gate field)' }, 400);
-    }
-    // Resolve governed assets (service_role-only RPC). Fail loud on resolver error or shortfall — NO raw-URL fallback.
-    const { data: resolved, error: resErr } = await supabase.rpc('resolve_brand_assets', { p_client_slug: clientSlug, p_asset_keys: [logoKey, bgKey] });
-    if (resErr) return jsonResponse({ ok: false, error: `resolver_failed: ${resErr.message}` }, 500);
-    let mapped;
-    try { mapped = mapResolvedAssets(resolved as any, { logo: logoKey, background: bgKey }); }
-    catch (e: any) { return jsonResponse({ ok: false, error: e?.message ?? String(e) }, 422); }
-    const modifications = buildManualModifications({ fields, logoUrl: mapped.logo.asset_url, backgroundUrl: mapped.background.asset_url });
-    const renderScript = { template_id: PP_NEWS_STATIC_16x9.provider_template_id, modifications, output_format: PP_NEWS_STATIC_16x9.output_format };
-    const props_hash = await computePropsHash(modifications);
-    const templateSpec = buildGovernedTemplateSpec(PP_NEWS_STATIC_16x9, { propsHash: props_hash, logo: mapped.logo, background: mapped.background });
-    const renderSpec = { label: MANUAL_RENDER_LABEL, template: templateSpec };
-    // v3.15.0 (H2): governed assets are fail-loud — verify the RESOLVED logo + background
-    // are reachable BEFORE the Creatomate submit. NO fallback (governed); unreachable → 502.
-    const manualMemo = new Map<string, Promise<AssetVerdict>>();
-    try {
-      await assertGovernedAssetReachable('logo', mapped.logo.asset_url, manualMemo);
-      await assertGovernedAssetReachable('background', mapped.background.asset_url, manualMemo);
-    } catch (e: any) {
-      return jsonResponse({ ok: false, error: e?.message ?? String(e) }, 502);
-    }
-    const storageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: '_smoke/pp_news_centred_scrim_16x9_manual_governed.jpg', mimeType: 'image/jpeg', postDraftId: null, clientId: null, iceFormatKey: 'image_quote', renderSpec, logMustSucceed: true });
-    return jsonResponse({ ok: true, mode: MANUAL_RENDER_MODE, implementation_id: implId, storage_url: storageUrl, props_hash, asset_keys: templateSpec.asset_keys, asset_ids: templateSpec.asset_ids, resolver_used: true, render_spec_label: MANUAL_RENDER_LABEL });
+  // ── LANE W (v3.23.0): creative_library_manual_render RETIRED — 410 guard (D-W1) ──
+  // The Lane 3B manual governed render pinned PP_NEWS_STATIC_16x9 → 48cba556…, whose
+  // artwork was paste-repurposed to the LIVE 1:1 market-insight card — invoking it
+  // would have rendered wrong output under a 16:9 PP-news label (C4). Branch body
+  // removed; explicit 410 so nothing under this mode falls through to production.
+  if (body?.mode === 'creative_library_manual_render') {
+    return jsonResponse({ ok: false, error: 'creative_library_manual_render_retired', note: 'retired 2026-07-05 Lane W — provider templates deleted; see docs/governance/tmr-gov-provider-1-pre-cleanup-guard.md' }, 410);
   }
 
-  // ── CREATIVE-LIBRARY BRANCH B / LANE B-PROOF: draft-sourced governed render ───
-  // Isolated, opt-in. Mirrors the v3.11.0 manual branch but sources the render fields
-  // from a REAL m.post_draft row READ-ONLY (deterministic, NO LLM). Resolves governed
-  // asset_keys via the service_role-only RPC public.resolve_brand_assets (NO raw-URL/
-  // legacy fallback — fail loud), renders the proven PP 16:9 news template with the
-  // RESOLVED governed URLs, and writes render_spec GOVERNED evidence.
-  //
-  // HARD INVARIANTS (this branch):
-  //   - NO m.post_draft UPDATE of any kind (no image_url, no image_status, no
-  //     updated_at). The draft is consumed READ-ONLY (a single SELECT).
-  //   - NO publish, NO queue, NO advisor, NO production-loop change.
-  //   - Storage ONLY to _smoke/... ; returns BEFORE production draft selection.
-  //   - Governed-only, fail-loud: any resolver/render failure returns an error,
-  //     NEVER a legacy render. No new ice_format_key (render-log ='image_quote';
-  //     render_spec.label='creative_library_draft_proof' distinguishes the proof).
-  if (body?.mode === DRAFT_PROOF_MODE) {
-    const supabase = getServiceClient();
-    const clientSlug = body?.client_slug;
-    const implId = body?.implementation_id;
-    const postDraftId = body?.post_draft_id;
-    const logoKey = body?.asset_keys?.logo;
-    const bgKey = body?.asset_keys?.background;
-    // B0: resolve the governed implementation identity by id from the two known impls
-    // (proven 16:9 + new brand-agnostic 1:1). Additive — the 16:9 path is unchanged.
-    const impl = { [PP_NEWS_STATIC_16x9.implementation_id]: PP_NEWS_STATIC_16x9, [NEWS_STATIC_CENTERED_SCRIM_1x1.implementation_id]: NEWS_STATIC_CENTERED_SCRIM_1x1 }[implId];
-    if (clientSlug !== 'property-pulse' || !impl || !postDraftId || !logoKey || !bgKey) {
-      return jsonResponse({ ok: false, error: 'creative_library_draft_proof requires client_slug=property-pulse, implementation_id in {pp_news_static_16x9_v1, news_static_centered_scrim_1x1_v1}, post_draft_id, asset_keys.logo, asset_keys.background' }, 400);
-    }
-    // Read the draft READ-ONLY (single SELECT, no mutation anywhere in this branch).
-    const { data: draft, error: draftErr } = await supabase.schema('m').from('post_draft')
-      .select('image_headline, client_id, recommended_format')
-      .eq('post_draft_id', postDraftId).limit(1).maybeSingle();
-    if (draftErr) return jsonResponse({ ok: false, error: `draft_read_failed: ${draftErr.message}` }, 500);
-    if (!draft) return jsonResponse({ ok: false, error: `post_draft not found: ${postDraftId}` }, 404);
-    if (draft.recommended_format !== 'image_quote') {
-      return jsonResponse({ ok: false, error: `creative_library_draft_proof requires recommended_format=image_quote (got ${draft.recommended_format ?? 'null'})` }, 422);
-    }
-    if (!(draft.image_headline ?? '').trim()) {
-      return jsonResponse({ ok: false, error: 'missing image_headline hard-gate field' }, 422);
-    }
-    // Deterministic proof fields from the draft (NO LLM). Throws if image_headline blank (guarded above).
-    let fields;
-    try { fields = buildProofFieldsFromDraft(draft); }
-    catch (e: any) { return jsonResponse({ ok: false, error: e?.message ?? String(e) }, 422); }
-    // Resolve governed assets (service_role-only RPC). Fail loud on resolver error/shortfall — NO raw-URL fallback.
-    const { data: resolved, error: resErr } = await supabase.rpc('resolve_brand_assets', { p_client_slug: clientSlug, p_asset_keys: [logoKey, bgKey] });
-    if (resErr) return jsonResponse({ ok: false, error: `resolver_failed: ${resErr.message}` }, 500);
-    let mapped;
-    try { mapped = mapResolvedAssets(resolved as any, { logo: logoKey, background: bgKey }); }
-    catch (e: any) { return jsonResponse({ ok: false, error: e?.message ?? String(e) }, 422); }
-    const modifications = buildManualModifications({ fields, logoUrl: mapped.logo.asset_url, backgroundUrl: mapped.background.asset_url });
-    const renderScript = { template_id: impl.provider_template_id, modifications, output_format: impl.output_format };
-    const props_hash = await computePropsHash(modifications);
-    const templateSpec = buildGovernedTemplateSpec(impl, { propsHash: props_hash, logo: mapped.logo, background: mapped.background });
-    const renderSpec = { label: DRAFT_PROOF_LABEL, source_post_draft_id: postDraftId, template: templateSpec };
-    // v3.15.0 (H2): governed assets are fail-loud — verify the RESOLVED logo + background
-    // are reachable BEFORE the Creatomate submit. NO fallback (governed); unreachable → 502.
-    const draftProofMemo = new Map<string, Promise<AssetVerdict>>();
-    try {
-      await assertGovernedAssetReachable('logo', mapped.logo.asset_url, draftProofMemo);
-      await assertGovernedAssetReachable('background', mapped.background.asset_url, draftProofMemo);
-    } catch (e: any) {
-      return jsonResponse({ ok: false, error: e?.message ?? String(e) }, 502);
-    }
-    // Storage ext + mime from the impl's output_format (jpg→jpg/image/jpeg, png→png/image/png).
-    // The proven 16:9 impl keeps its EXACT prior path `_smoke/branch_b_proof_${postDraftId}.jpg`;
-    // the new 1:1 impl gets a DISTINCT `_smoke/branch_b_proof_${postDraftId}_1x1.jpg` path.
-    const ext = impl.output_format === 'png' ? 'png' : 'jpg';
-    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
-    const variantSuffix = impl.implementation_id === PP_NEWS_STATIC_16x9.implementation_id ? '' : '_1x1';
-    const storagePath = `_smoke/branch_b_proof_${postDraftId}${variantSuffix}.${ext}`;
-    const storageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath, mimeType, postDraftId, clientId: draft.client_id, iceFormatKey: 'image_quote', renderSpec, logMustSucceed: true });
-    return jsonResponse({ ok: true, mode: DRAFT_PROOF_MODE, implementation_id: implId, post_draft_id: postDraftId, storage_url: storageUrl, props_hash, asset_keys: templateSpec.asset_keys, asset_ids: templateSpec.asset_ids, resolver_used: true, render_spec_label: DRAFT_PROOF_LABEL });
+  // ── LANE W (v3.23.0): creative_library_draft_proof RETIRED — 410 guard (D-W1/D-W2) ──
+  // The Branch-B draft-proof branch's ONLY two governed impls are the two dead ones
+  // (pp_news_static_16x9_v1 → 48cba556… repurposed; news_static_centered_scrim_1x1_v1 →
+  // fb9820f8… deleted provider-side), so the branch body is removed with them (D-W2 —
+  // this hunk is intentionally separable). Explicit 410 so nothing under this mode
+  // falls through to production.
+  if (body?.mode === 'creative_library_draft_proof') {
+    return jsonResponse({ ok: false, error: 'creative_library_draft_proof_retired', note: 'retired 2026-07-05 Lane W — provider templates deleted; see docs/governance/tmr-gov-provider-1-pre-cleanup-guard.md' }, 410);
   }
 
   const supabase = getServiceClient();

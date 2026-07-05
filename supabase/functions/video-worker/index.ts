@@ -1,3 +1,25 @@
+// video-worker v3.4.0
+// ============================================================================
+// v3.4.0 (2026-07-05, LANE W / TMR DEAD-REFERENCE CLEANUP — C3):
+//   Governing plan docs/briefs/tmr-dead-reference-cleanup-plan-packet.md Lane W;
+//   recon result docs/briefs/results/creatomate-provider-reconciliation-v0-result.md;
+//   guard rule TMR-GOV-PROVIDER-1. WHAT CHANGED: the manual-only Gate D2 video
+//   template_smoke surface is RETIRED — its provider template bc32f52f… (PP 9:16
+//   news video) was DELETED provider-side in the 2026-07-04 cleanup (recon Leg-3
+//   discovery). The smoke branch BODY in Deno.serve is removed and the mode now
+//   returns an EXPLICIT 410 guard ({ ok:false, error:'template_smoke_retired',
+//   note:'retired 2026-07-05 Lane W …' }) so a stray manual request can NEVER fall
+//   through toward the production loop (design D-W1 — guards, not silent removal).
+//   ./template_smoke.ts is TRIMMED to its single LIVE export composeRenderSpec
+//   (consumed by the PRODUCTION renderUploadAndLog at all 4 render_spec log sites);
+//   SMOKE_TEMPLATE_NAME/SMOKE_PROVIDER_TEMPLATE_ID/SMOKE_RENDER_SPEC_LABEL/
+//   isSmokeRequest/buildSmokeModifications/buildTemplateRenderScript/computePropsHash/
+//   buildRenderSpecTemplate are removed; template_smoke_test.ts trimmed to
+//   composeRenderSpec coverage. WHAT IS STRICTLY OUT OF SCOPE: renderUploadAndLog and
+//   EVERY production render path (kinetic/stat/voice/captions/music/QA) are
+//   BYTE-UNCHANGED except the import line; NO change to draft selection, queue,
+//   publisher, p_render_engine values, DB/migration, secrets; NO deploy in this change.
+//
 // video-worker v3.3.1
 // ============================================================================
 // v3.3.1 (2026-06-26, H2 POLICY REFINEMENT — PROCEED-ON-TRANSIENT):
@@ -187,10 +209,10 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { getVoiceIdForDraft } from './voice_id.ts';
 import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (additive)
-import { SMOKE_TEMPLATE_NAME, SMOKE_RENDER_SPEC_LABEL, isSmokeRequest, buildSmokeModifications, buildTemplateRenderScript, computePropsHash, buildRenderSpecTemplate, composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2
+import { composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2; v3.4.0 LANE W: module trimmed to this single live export (production render_spec composer) — the smoke surface is retired
 import { resolveLegacyLogo, type AssetVerdict } from './asset_url_guard.ts';  // v3.3.0: H2 asset-URL validation before Creatomate
 
-const VERSION = 'video-worker-v3.3.1';
+const VERSION = 'video-worker-v3.4.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -736,33 +758,16 @@ Deno.serve(async (req: Request) => {
   const creatomateKey = Deno.env.get('CREATOMATE_API_KEY');
   if (!creatomateKey) return jsonResponse({ ok: false, error: 'CREATOMATE_API_KEY not set' }, 500);
 
-  // ── CREATIVE-LIBRARY-V0 GATE D2: manual-only template-mode VIDEO smoke ──────
-  // Isolated, opt-in branch. Runs ONLY for the exact mode/template flags and
-  // returns BEFORE any production draft selection. Touches NO post_draft, queue,
-  // advisor, or publish path. Renders the proven Property Pulse animated news
-  // template (Creatomate template mode), stores the MP4, and writes ONE
-  // post_render_log row whose render_spec carries BOTH qa (preserved) and
-  // template (additive sibling). ice_format_key='video_short_stat' is a governed
-  // LABEL only; true identity lives in render_spec.template.
+  // ── LANE W (v3.4.0): template_smoke RETIRED — explicit 410 guard (D-W1) ─────
+  // The Gate D2 smoke branch rendered bc32f52f… (PP 9:16 news video), which was
+  // DELETED provider-side (recon Leg-3, 2026-07-05). The branch body + the smoke
+  // exports of ./template_smoke.ts are removed; the mode returns an explicit 410
+  // (fires on the mode alone, any template value) so a stray manual request can
+  // NEVER fall through toward the production loop.
   let smokeBody: any = {};
   try { smokeBody = await req.json(); } catch { /* no/invalid body => not a smoke request */ }
-  if (isSmokeRequest(smokeBody)) {
-    const supabase = getServiceClient();
-    const modifications = buildSmokeModifications(smokeBody);
-    if (!modifications['Background.source'] || !modifications['Logo.source']) {
-      return jsonResponse({ ok: false, error: 'template_smoke requires background_url and logo_url in body' }, 400);
-    }
-    const renderScript = buildTemplateRenderScript(modifications);
-    const props_hash = await computePropsHash(modifications);
-    const templateSpec = buildRenderSpecTemplate(props_hash);
-    const qaCtx: QaCtx = { withVoice: false, expectedFormat: 'video_short_stat', captionsExpected: false, captionsPresent: false, sceneCount: null };
-    const storageUrl = await renderUploadAndLog({
-      supabase, creatomateKey, renderScript,
-      storagePath: '_smoke/pp_news_centred_scrim_9x16_video_v1.mp4',
-      postDraftId: null, clientId: null, iceFormatKey: 'video_short_stat',
-      qaCtx, templateSpec, renderSpecLabel: SMOKE_RENDER_SPEC_LABEL, logMustSucceed: true,
-    });
-    return jsonResponse({ ok: true, mode: 'template_smoke', template: SMOKE_TEMPLATE_NAME, storage_url: storageUrl, props_hash, render_spec_label: SMOKE_RENDER_SPEC_LABEL });
+  if (smokeBody?.mode === 'template_smoke') {
+    return jsonResponse({ ok: false, error: 'template_smoke_retired', note: 'retired 2026-07-05 Lane W — provider templates deleted; see docs/governance/tmr-gov-provider-1-pre-cleanup-guard.md' }, 410);
   }
 
   const supabase = getServiceClient();
