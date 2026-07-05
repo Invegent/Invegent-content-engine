@@ -24,6 +24,7 @@ only output is its returned JSON.
 | `security-auditor` | read-only | security triage: classify exposure, caller/blast-radius, GREEN/AMBER/RED, design remediation batches + D-01 packets | apply migration, REVOKE/GRANT, ALTER FUNCTION, write DB, edit repo, close findings |
 | `creative-graph-auditor` | read-only (`Read`/`Grep`/`Glob`) | static-audit the Creative Library v2 declarative object graph (`docs/creative-library/*.json` + `registry-schema-v2.md`): JSON/schema shape, key uniqueness, reference resolution, evidence-SHAPE, runtime-import guard, vendored-registry drift; return a PASS/FAIL/ESCALATE verdict | query the DB, verify live render logs, judge style-guide conformance, approve/mark-proven any creative object, mutate/commit/deploy |
 | `ice-architecture-cartographer` | read-only (`Read`/`Grep`/`Glob`) | generate a grounded, fully-cited current-architecture / operator-flow snapshot (map + Mermaid + source-of-truth table + stale list) from CE + dashboard docs/registers/worker source; classify every node `live_production`/`proven_proof_only`/`planned_not_implemented`/`carry_deferred`/`stale_uncertain`; return PASS/WARN/NO_GOVERNING_RULE | invent architecture without citation, verify live/DB/deploy/git truth, reconcile registers, build dashboard UI, approve/mark-proven, mutate/commit/deploy |
+| `brief-author` | read-only (`Read`/`Grep`/`Glob`) | draft ONE brief per PK-named task in the house template, every material claim evidence-cited, register hold-states reflected in Forbidden actions, unknowns → open questions / named handoffs; return DRAFT_READY/DRAFT_BLOCKED/ESCALATE (+ findings-contract block) | write/edit any file (returned draft only — orchestrator persists), approve/issue/accept any brief, author result docs, edit registers/CLAUDE.md, choose/split/expand tasks, invent uncited facts, query DB/network/git, mark anything proven |
 
 **Security triage lanes:** use `security-auditor` **after** `db-rls-auditor` has gathered the DB
 evidence — `db-rls-auditor` collects facts (grants, defs, advisors); `security-auditor` adds the
@@ -71,8 +72,20 @@ IA conformance linter; `Read`/`Grep`/`Glob`; PASS/WARN/BLOCK/NO_GOVERNING_RULE) 
 proven**, so it is intentionally not listed in the team table above; it stays candidate until
 it has audited at least one real dashboard diff.
 
+**Brief-authoring lane:** use `brief-author` to draft the gate-1 brief for any PK-named task —
+it reads template/registers/CLAUDE.md/prior briefs/source as evidence and returns the draft as
+JSON only (the orchestrator writes files; gate 1 is unchanged — a PROVEN brief-author still
+only proposes). **`brief-author` is PROVEN** (2026-07-05 — 3 same-day proving lanes: cc-0027
+Image Harvester brief [lane PASS v4.97], CCF-02 Phase 1 packet skeleton [ratified v4.96],
+Creatomate Provider Reconciliation packet [lane PASS, TMR-GOV-PROVIDER-1 ratified v4.98]; all
+drafts PK-accepted at gate 1, zero charter violations; promotion review
+`docs/briefs/brief-author-promotion-review-v1.md`, external review `74ba8e6e` → PK decision).
+**PK scoped note:** proven on docs/planning-shaped briefs — its first code-lane or DB-lane
+brief gets candidate-level scrutiny before breadth is treated as proven. Candidate agents
+`image-harvester` / `image-reviewer` (cc-0027 exceptions) remain CANDIDATES outside this table.
+
 Not yet built (v2, do not assume they exist): `ef-deployer` (gated, non-autonomous),
-`brief-author`, `pipeline-medic`.
+`pipeline-medic`.
 
 ## External review gate (cross-model adversary)
 

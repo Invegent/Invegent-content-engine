@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v4.99 BRIEF-AUTHOR v1 — PROMOTED CANDIDATE→PROVEN (PK option 2: scoped promotion; SAFETY_GATE, T1-escalated)** — 3 proving lanes (cc-0027 PASS v4.97 · Phase-1 packet ratified v4.96 · provider recon PASS v4.98), all drafts PK-accepted, zero charter violations, charter byte-unchanged `e3226708…` · promotion review `docs/briefs/brief-author-promotion-review-v1.md` hash `97bb4ee5…`, external review `74ba8e6e` partial→PK decision · **scoped note: proven on docs/planning briefs; first code/DB-lane brief = candidate-level scrutiny** · CLAUDE.md team table + findings-contract appendix applied · image-harvester/image-reviewer remain CANDIDATE · next gate: PK commit/push · queue impact: none.
+
+---
+
 > **✅ v4.98 CREATOMATE PROVIDER RECONCILIATION v0 — COMPLETE + TMR-GOV-PROVIDER-1 RATIFIED (SAFETY_GATE side lane, read-only)** — verdict PASS: provider↔registry PERFECT 1:1 (16==16, zero un-governed drift) · VC1/VC2/VC3 all settled (fb9820f8+490ad9ea provider-ABSENT confirmed; 48cba556 = 1:1 market_insight, registry RIGHT) · NEW: bc32f52f Gate-D2 video template also deleted (video smoke branch dead; production video unaffected) · guard rule ratified: docs/governance/tmr-gov-provider-1-pre-cleanup-guard.md · canonical: docs/briefs/results/creatomate-provider-reconciliation-v0-result.md + _harness/creatomate_provider_recon/ · brief-author v1 proving run SUCCESSFUL (promotion = PK) · next: dead-ref cleanup lanes (carried) · D6 unaffected.
 
 ---
