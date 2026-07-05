@@ -1,0 +1,16 @@
+{
+ "review_id": "8cc1a406-ae83-48d3-92ff-15092fbd63fa",
+ "decision": "proceed",
+ "verdict": "agree",
+ "risk_level": "medium",
+ "confidence": "high",
+ "pushback_points": [],
+ "reviewed_input_hash": "635275548c47d53f2ff59db9113c4df457a3878913ca408b620063be14e206fd",
+ "reviewed_artifact": "promotion_apply.sql",
+ "triage_classes": [
+  "structural_DDL_DML_escalation",
+  "runtime_verification_required"
+ ],
+ "triage_note": "Production DML -> T3 PK gate (designed stop). Post-apply verification gate NAMED in packet: fb inclusion + seeded day-hero witness + ig platform_excluded + unseeded winner + counts.",
+ "date_utc": "2026-07-05"
+}

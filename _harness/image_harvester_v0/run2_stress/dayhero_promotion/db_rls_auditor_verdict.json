@@ -1,0 +1,18 @@
+{
+ "verdict": "pass",
+ "live_state_matches_guards": true,
+ "per_platform_divergence_confirmed": true,
+ "no_hardcoded_pool_assumptions": true,
+ "rollback_fidelity_ok": true,
+ "security_auditor_needed": false,
+ "key_findings": [
+  "CAS guards all verified live; row pristine; PK-keyed max-1-row",
+  "Replica pool==6 consistent with per-platform reality fb/li=6 ig=5 (license_expires_at vacuous; all prior rows carry full platform_scope)",
+  "Day-hero ranks LAST (created_at latest); existing 5-row order + unseeded bg_perth_cbd winner unchanged on all platforms",
+  "Production consumers pool-size-generic (no literal 5/mod-5 in live functions); vendored v2 contract 5-key list = stamp-metadata only -> reinforces contract-v3 carry",
+  "Rollback byte-exact (meta+notes probed true), pool 6->5 asserted, idempotent",
+  "LOW: before_state.json does not capture platform_scope column (neither script writes it \u2014 fidelity holds; noted for result doc)"
+ ],
+ "reviewed_artifacts_hash_note": "audit valid for promotion_apply.sql sha256 635275548c47d53f2ff59db9113c4df457a3878913ca408b620063be14e206fd",
+ "date_utc": "2026-07-05"
+}
