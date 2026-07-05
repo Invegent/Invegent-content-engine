@@ -177,12 +177,13 @@ Rules for this lane:
   On push rejection (diverged remote), do NOT force-push — inspect the remote commit
   read-only, and only fast-forward/rebase when provably conflict-free, else surface to PK.
 
-## Workflow acceleration conventions (v1 — ratified 2026-07-05: conventions 1–2 only)
+## Workflow acceleration conventions (v1 — conventions 1–3 ratified 2026-07-05)
 
 > Source packet: `docs/briefs/ice-workflow-acceleration-convention-packet.md` (hash `df4c31bd…`,
 > external review `4864c9cf…`). PK ratified conventions 1 and 2 on 2026-07-05. Convention 3
-> (risk-tiered review chains) is NOT ratified — it remains a pending PK decision in the packet;
-> until then, lane chains follow the existing proof-lane / docs-lane precedents.
+> (risk-tiered review chains) was ratified 2026-07-05 via
+> `docs/briefs/ccf-02-phase1-orchestration-contract-packet.md` (hash `f967c81e…`, external review
+> `09cac646…`) — successor text; supersedes the pending §3 draft in the original conventions packet.
 
 1. **Recording compression.** The result doc is the canonical lane record. `00_sync_state.md`
    and `00_action_list.md` receive POINTER entries only (≤5 lines: version · verdict · identity/
@@ -197,3 +198,27 @@ Rules for this lane:
    change set · invalidated rollback path. A tripped STOP voids the remainder of the sequence;
    resumption requires a fresh PK gate. This is how PK exercises deploy authority in one
    sitting — not a delegation of it. Non-negotiables (§4 of the packet) are unchanged.
+
+3. **Risk-tiered review chains.** Gate 1 assigns a tier; doubt/mixed scope → higher tier.
+   T1 (docs/read-only): verify-or-abort + branch-warden + readback; external review only on
+   escalation triggers. T2 (dark/additive DB · isolated code · read-only dashboard · candidate
+   agents): scope-relevant auditors + branch-warden + hermetic tests + external review pinned to
+   hash; rollback written+validated before apply. T3 (production-touching / deploy / publish /
+   posture / secrets / irreversible): full chain + independent lead re-verification + explicit PK
+   gate (or a Convention-2 sequence) + named live pre-check STOPs + rollback proven before apply;
+   nothing waived. DML/DDL ≥ T2; callers/grants/deploy/publish/secrets → T3; escalation up free,
+   de-escalation needs a fresh Gate 1. Triage classes and Conventions 1–2 unchanged.
+
+## CCF-02 orchestration contract (Phase 1 — ratified 2026-07-05)
+
+- **Findings contract:** subagents/auditors return the 10-field findings JSON
+  (verdict{normalized,native} · confidence · must_fix · should_fix · observations · evidence ·
+  scope_boundary · open_questions · recommended_next_gate · non_claims — schema + vocabulary map:
+  packet §2). Orchestrator advances only on normalized `clean`; concerns→fix-or-PK; block→halt;
+  escalate→PK. Adopted lazily per agent as a T1 charter edit; no tool/permission changes.
+- **Lane classification:** Gate 1 admits every lane under exactly one of PRODUCT_PROOF /
+  SAFETY_GATE / SIDE_PROVING / PARKED, alongside its tier. PARKED runs only on explicit PK
+  override.
+- **Parallel-session claims:** before cutting any register entry, claim via the result-doc stub
+  (`CLAIMED vX.YZ · lane · worktree · gate · timestamp` as line 1), after fetch + head read +
+  stub scan; re-verify at commit; earlier timestamp keeps the number, later claimant renumbers.

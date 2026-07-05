@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v4.96 CCF-02 PHASE 1 — ORCHESTRATION CONTRACT RATIFIED + APPLIED (Convention 3 successor + findings contract + lane labels + claim protocol)** — packet hash `f967c81e…` · external review `09cac646…` agree/zero-pushback (after `3792e950` partial→answered in-packet) · PK ratified all 7 decisions 2026-07-05 · CLAUDE.md amended (conventions 1–3 + CCF-02 Phase-1 section) · canonical record: `docs/briefs/results/ccf-02-phase1-orchestration-contract-result.md` · next gate: PK commit · queue impact: every new Gate 1 now states tier + label; Phase 2 = next 2–3 lanes run the contract manually.
+
+---
+
 > **✅ v4.95 OPTION D — TMR-LIVE B1 SLICE DEPLOYED + LIVE-PROVEN** — TMR controls the PP image_quote production slice (product-proof gate 4) + PP image_quote service RESTORED (template-deletion incident) + **S1 live stamping proof CLOSED: first-ever `agreement` shadow row** (`background_match=true`) · identity: pin `3bf13a35…` = commit `82f5c55` (pushed), image-worker fn87/v3.22.0 `--no-verify-jwt`, first TMR render `23024f4c…` 2026-07-05T00:30Z · chain: deno 90/90 · PGlite 24/24×2 · warden safe ×2 · db-rls concerns→must-fix FIXED (`background_key`) · security GREEN · external agree `afb6d83f…` · PK sequence zero STOPs · canonical record: `docs/briefs/results/option-d-tmr-live-b1-result.md` · next gates: production_proven recording (post-publish, D6) · S1 hourly cron (D-01) · register commit pending.
 
 ---
