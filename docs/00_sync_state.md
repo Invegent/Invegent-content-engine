@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v4.95 OPTION D — TMR-LIVE B1 SLICE DEPLOYED + LIVE-PROVEN** — TMR controls the PP image_quote production slice (product-proof gate 4) + PP image_quote service RESTORED (template-deletion incident) + **S1 live stamping proof CLOSED: first-ever `agreement` shadow row** (`background_match=true`) · identity: pin `3bf13a35…` = commit `82f5c55` (pushed), image-worker fn87/v3.22.0 `--no-verify-jwt`, first TMR render `23024f4c…` 2026-07-05T00:30Z · chain: deno 90/90 · PGlite 24/24×2 · warden safe ×2 · db-rls concerns→must-fix FIXED (`background_key`) · security GREEN · external agree `afb6d83f…` · PK sequence zero STOPs · canonical record: `docs/briefs/results/option-d-tmr-live-b1-result.md` · next gates: production_proven recording (post-publish, D6) · S1 hourly cron (D-01) · register commit pending.
+
+---
+
 > **✅ v4.94 BRIEF-AUTHOR AGENT v1 — BUILT AS CANDIDATE (PK-authorized single-agent exception to the CCF-02 "no new agents" deferral)** — read-only Read/Grep/Glob · returned-draft-only (orchestrator writes files) · gate 1 (PK brief approval) unchanged · external review `6a5a9769…` agree/low/high zero-pushback (first packet attempt) on agent-file hash `e3226708…` · canonical record: `docs/briefs/brief-author-agent-v1-spec.md` · next gate: proving run on first real brief (CCF-02 ladder; ef-deployer/pipeline-medic remain not-built) · queue impact: none.
 
 ---
