@@ -1,0 +1,258 @@
+{
+  "verdict": "HARVEST_COMPLETE",
+  "summary": "Both PK mini-manifest rows harvested licence-safe: 4 offered candidates per row (Unsplash+Pexels only), best picks staged in final/, full provenance + sha256 from downloaded bytes, per-row + overall contact sheets; 3 downloads recorded rejected (off-region architecture, people/cash handover, hand-dominant portrait); freshness-excluded slugs/hashes not re-offered.",
+  "run_id": "cc0027-mm-harvest-20260705",
+  "rows": [
+    {
+      "row_key": "mm_a_au_suburb_texture",
+      "status": "candidates_offered",
+      "candidates": [
+        {
+          "candidate_id": "mm_a_au_suburb_texture-01",
+          "file": "images/cand_mm_a_martin-david_9A0-pmpF7-c.jpg",
+          "best_pick": true,
+          "final_file": "final/mm_a_au_suburb_texture_bestpick.jpg",
+          "disposition": "best_pick",
+          "source_platform": "unsplash",
+          "source_url": "https://unsplash.com/photos/an-aerial-view-of-a-city-9A0-pmpF7-c",
+          "download_url": "https://unsplash.com/photos/9A0-pmpF7-c/download?force=true",
+          "creator": "Martin David",
+          "creator_verified": true,
+          "licence_name": "Unsplash License",
+          "licence_url": "https://unsplash.com/license",
+          "attribution_required": false,
+          "attribution_text": "Photo by Martin David on Unsplash (courtesy credit; attribution not legally required)",
+          "width": 5343,
+          "height": 3559,
+          "bytes": 4935702,
+          "sha256": "2f5bf534bb12275c7fe0a5f74ccac5d2cf8ea49f40847b6fa87caa1b08be4777",
+          "visual_description": "Oblique drone aerial of an Australian regional town (Blue Mountains NSW character): low-rise houses, varied rooftops, heavy tree cover, bushland-hill horizon; no landmark skyline, no faces, no readable signage",
+          "text_safe_notes": "Even mid-frequency rooftop/tree texture across frame; muted dusk palette sits well under a dark scrim; horizon band top ~12% is calm",
+          "suggested_scrim_opacity": 55,
+          "warnings": []
+        },
+        {
+          "candidate_id": "mm_a_au_suburb_texture-02",
+          "file": "images/cand_mm_a_scotty-mcdonald_4XW0cxjNCuk.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "disposition": "alternate",
+          "source_platform": "unsplash",
+          "source_url": "https://unsplash.com/photos/an-aerial-view-of-a-city-with-lots-of-buildings-4XW0cxjNCuk",
+          "download_url": "https://unsplash.com/photos/4XW0cxjNCuk/download?force=true",
+          "creator": "Scotty McDonald",
+          "creator_verified": true,
+          "licence_name": "Unsplash License",
+          "licence_url": "https://unsplash.com/license",
+          "attribution_required": false,
+          "attribution_text": "Photo by Scotty McDonald on Unsplash (courtesy credit; attribution not legally required)",
+          "width": 4000,
+          "height": 2250,
+          "bytes": 2109836,
+          "sha256": "b99403154fad6b1abdd1d3176c95f74ebbec0c64dd1e6132de18ba7c20ad62db",
+          "visual_description": "Drone aerial of a Brisbane suburb (Coorparoo character): timber-and-tin houses, unit blocks, school campus, mid-rise cluster right background, smoke plume on horizon",
+          "text_safe_notes": "Clear sky top ~25% gives good negative space; lower rooftops busy",
+          "suggested_scrim_opacity": 55,
+          "warnings": [
+            "readable building name 'Villanova College' on school facade (never best-pick per rule)",
+            "mid-rise towers right background (not a landmark skyline)",
+            "distant smoke plume on horizon"
+          ]
+        },
+        {
+          "candidate_id": "mm_a_au_suburb_texture-03",
+          "file": "images/cand_mm_a_martin-david_4415uJ8nxAs.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "disposition": "alternate",
+          "source_platform": "unsplash",
+          "source_url": "https://unsplash.com/photos/an-aerial-view-of-a-city-4415uJ8nxAs",
+          "download_url": "https://unsplash.com/photos/4415uJ8nxAs/download?force=true",
+          "creator": "Martin David",
+          "creator_verified": true,
+          "licence_name": "Unsplash License",
+          "licence_url": "https://unsplash.com/license",
+          "attribution_required": false,
+          "attribution_text": "Photo by Martin David on Unsplash (courtesy credit; attribution not legally required)",
+          "width": 5464,
+          "height": 3640,
+          "bytes": 5470579,
+          "sha256": "97385adf1640ba0ea0004868ef8cbaf3ddb1078fb427313a2752b6385d099796",
+          "visual_description": "High oblique aerial of Sydney eastern-suburbs rooftop fabric toward harbour; dense terracotta/white rooftop texture, coastline top right",
+          "text_safe_notes": "Dense even texture reads as pattern under scrim; top band hazy water/sky is calmest zone",
+          "suggested_scrim_opacity": 60,
+          "warnings": [
+            "faint distant Sydney CBD skyline visible in top-left haze (background, not the subject)",
+            "construction crane mid-left"
+          ]
+        },
+        {
+          "candidate_id": "mm_a_au_suburb_texture-04",
+          "file": "images/cand_mm_a_nenmanz_14650436.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "disposition": "alternate",
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/14650436/",
+          "download_url": "https://images.pexels.com/photos/14650436/pexels-photo-14650436.jpeg",
+          "creator": "nenmanz",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by nenmanz on Pexels (courtesy credit; attribution not legally required)",
+          "width": 3024,
+          "height": 4032,
+          "bytes": 4806383,
+          "sha256": "5aceda6b1f30641e07cdc15bab971f1cd2e357b7c0fa6457e75cf511ec965ca0",
+          "visual_description": "Straight-down drone shot of a Melbourne suburb: tiled hip roofs, backyards, curving streets; calm generic AU suburban pattern, no skyline possible (nadir view)",
+          "text_safe_notes": "Very even top-down texture, ideal under scrim; crops cleanly to landscape",
+          "suggested_scrim_opacity": 55,
+          "warnings": [
+            "portrait orientation 3024x4032 (row prefers landscape; nadir view crops to landscape without loss of subject)"
+          ]
+        }
+      ],
+      "rejected_count": 1,
+      "rejected_reasons": [
+        "constraint: off-brief region (European-style suburb, Pexels 7937274)",
+        "discovery-level: Unsplash+/Getty premium results skipped (e.g. 3af4TaOi5Qw, CMkpq964x9E, zdwmkEU8HRA, VToPcnqTW6c, R-RPNzFhG5k)",
+        "freshness: 7lvzopTxjOU + RESEQty1uvc/sIsiRYz3VKk/z1EIv3nsHJQ/XcVm8mn7NUM excluded, not re-offered"
+      ]
+    },
+    {
+      "row_key": "mm_b_transaction_keys_table",
+      "status": "candidates_offered",
+      "candidates": [
+        {
+          "candidate_id": "mm_b_transaction_keys_table-01",
+          "file": "images/cand_mm_b_freestockpro_12955837.jpg",
+          "best_pick": true,
+          "final_file": "final/mm_b_transaction_keys_table_bestpick.jpg",
+          "disposition": "best_pick",
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/12955837/",
+          "download_url": "https://images.pexels.com/photos/12955837/pexels-photo-12955837.jpeg",
+          "creator": "FreeStockPro",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by FreeStockPro on Pexels (courtesy credit; attribution not legally required)",
+          "width": 6000,
+          "height": 4000,
+          "bytes": 2932809,
+          "sha256": "6008d5526e9df1b3b150d76654e4ea07a9a8b97a3bf83037525e8f08c2e99318",
+          "visual_description": "Laser-cut wooden house model and a bunch of keys resting on a printed contract/agreement sheet, flat teal-blue table; no people, no faces",
+          "text_safe_notes": "Large flat teal negative space left/bottom-left; document text is template-only (Ukrainian form words, no personal data legible at scale); very clean under dark scrim",
+          "suggested_scrim_opacity": 48,
+          "warnings": [
+            "document carries small generic template text + barcode fragment — illegible at post scale, no personal details"
+          ]
+        },
+        {
+          "candidate_id": "mm_b_transaction_keys_table-02",
+          "file": "images/cand_mm_b_jakub-zerdzicki_sCV3336RlIw.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "disposition": "alternate",
+          "source_platform": "unsplash",
+          "source_url": "https://unsplash.com/photos/folder-with-house-drawings-and-keys-miniature-houses-sCV3336RlIw",
+          "download_url": "https://unsplash.com/photos/sCV3336RlIw/download?force=true",
+          "creator": "Jakub Żerdzicki",
+          "creator_verified": true,
+          "licence_name": "Unsplash License",
+          "licence_url": "https://unsplash.com/license",
+          "attribution_required": false,
+          "attribution_text": "Photo by Jakub Żerdzicki on Unsplash (courtesy credit; attribution not legally required)",
+          "width": 3000,
+          "height": 2001,
+          "bytes": 480918,
+          "sha256": "a99ce8160c81005bfcb7d9a42962e354b303d59b43eeadd461423d57ec596fe0",
+          "visual_description": "Dark desk scene: document folder with paperwork, sticky notes with house sketches, keys with house-shaped fob, rows of miniature house models; moody office feel, no people",
+          "text_safe_notes": "Dark low-key frame is inherently overlay-friendly; busy centre-left where documents sit",
+          "suggested_scrim_opacity": 40,
+          "warnings": [
+            "near-duplicate of Pexels 34135038 (same shoot by same photographer)"
+          ]
+        },
+        {
+          "candidate_id": "mm_b_transaction_keys_table-03",
+          "file": "images/cand_mm_b_jakub-zerdzicki_34135038.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "disposition": "alternate",
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/34135038/",
+          "download_url": "https://images.pexels.com/photos/34135038/pexels-photo-34135038.jpeg",
+          "creator": "Jakub Zerdzicki",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by Jakub Zerdzicki on Pexels (courtesy credit; attribution not legally required)",
+          "width": 3000,
+          "height": 2001,
+          "bytes": 267061,
+          "sha256": "5e69efc5f4c0dee49f77ef957668766012db7af9afa6b869b6b75abc67466a68",
+          "visual_description": "Same dark desk scene as sCV3336RlIw: folder with documents, house-sketch sticky notes, keys, miniature house models on black table",
+          "text_safe_notes": "As sCV3336RlIw; slightly smaller file (heavier compression)",
+          "suggested_scrim_opacity": 40,
+          "warnings": [
+            "near-duplicate of Unsplash sCV3336RlIw (same shoot); lower byte weight for same 3000x2001 pixels"
+          ]
+        },
+        {
+          "candidate_id": "mm_b_transaction_keys_table-04",
+          "file": "images/cand_mm_b_rcxyz_-o90yRQoXAM.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "disposition": "alternate",
+          "source_platform": "unsplash",
+          "source_url": "https://unsplash.com/photos/a-close-up-of-a-key-on-a-table--o90yRQoXAM",
+          "download_url": "https://unsplash.com/photos/-o90yRQoXAM/download?force=true",
+          "creator": "rc.xyz NFT gallery",
+          "creator_verified": true,
+          "licence_name": "Unsplash License",
+          "licence_url": "https://unsplash.com/license",
+          "attribution_required": false,
+          "attribution_text": "Photo by rc.xyz NFT gallery on Unsplash (courtesy credit; attribution not legally required)",
+          "width": 4728,
+          "height": 3156,
+          "bytes": 958260,
+          "sha256": "2ec5eb4d4912e6a4c4e89546fdfa18abd60c2590783d1ce1bfa3bf1e17661e56",
+          "visual_description": "Minimal close-up of a single silver key standing on a dark reflective table, soft reflection; no people, no documents",
+          "text_safe_notes": "Huge dark negative space all around — best text-overlay surface of the set; lighter on the 'transaction/paperwork' story",
+          "suggested_scrim_opacity": 30,
+          "warnings": [
+            "no paperwork/contract element — covers only the 'keys on table' half of the brief"
+          ]
+        }
+      ],
+      "rejected_count": 2,
+      "rejected_reasons": [
+        "rights/constraint: people prominent + EUR cash handover (Pexels 7937717)",
+        "constraint: hand-dominant portrait, weak table/paperwork fit (Pexels 7599735)",
+        "discovery-level: Unsplash+/Getty premium results skipped (e.g. xhTZG7Ji4gs, nSpdl07d68U, FjXdEgJpF5s, HjZ9R3PWHIc); faces-visible Pexels results skipped undownloaded (7642004, 8293654, 7579206, 8482871)",
+        "freshness: rgJ1J8SDEAY + PxiAc1aElFQ + Pexels 8470834 excluded, not re-offered"
+      ]
+    }
+  ],
+  "contact_sheets": [
+    "sheets/contact_sheet_mm_a_au_suburb_texture.jpg",
+    "sheets/contact_sheet_mm_b_transaction_keys_table.jpg",
+    "sheets/contact_sheet_all.jpg"
+  ],
+  "package_root": "_harness/image_harvester_v0/",
+  "non_claims": [
+    "nothing approved/uploaded/inserted; PK visual review is the only deciding act",
+    "licence-hold and rights-blocked items recorded, not offered",
+    "no DB/storage/git/pool surface touched"
+  ],
+  "notes": [
+    "prior same-day run (different row keys bg_generic_residential_suburb/bg_property_transaction_keys) preserved untouched at prior_run_20260705T1056/ inside the package root",
+    "all sha256 values computed from the downloaded bytes; both freshness-excluded hashes checked against every download (no match)",
+    "no Wikimedia/Openverse fallback needed — allow-listed Unsplash/Pexels yielded on-brief candidates for both rows",
+    "no CC BY / CC BY-SA items encountered in the offered set; nothing on licence hold this run"
+  ]
+}

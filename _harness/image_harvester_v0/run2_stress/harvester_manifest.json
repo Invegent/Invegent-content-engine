@@ -1,0 +1,78 @@
+{
+  "status": "complete",
+  "run_id": "cc0027-run2-stress-20260705",
+  "rows": [
+    {
+      "row_id": "mm_c_perth_cbd_day_hero",
+      "verdict": "harvested",
+      "best_pick": {
+        "candidate_id": "mm_c-01",
+        "file": "images/cand_mm_c_perth_cbd_day_hero_joshualeong_gl7nkS_h4lo.jpg",
+        "final_file": "final/perth_cbd_day_hero.jpg",
+        "source_platform": "unsplash",
+        "source_url": "https://unsplash.com/photos/gl7nkS_h4lo",
+        "download_url": "https://unsplash.com/photos/gl7nkS_h4lo/download?force=true",
+        "creator": "Joshua Leong (@jleonnn)",
+        "creator_verified": true,
+        "licence_name": "Unsplash License",
+        "licence_url": "https://unsplash.com/license",
+        "attribution_required": false,
+        "attribution_text": "Photo by Joshua Leong on Unsplash",
+        "width": 4000,
+        "height": 2250,
+        "bytes": 2386153,
+        "sha256": "620c77b43edc557a7f1790b15c27c4f2c993fd1588afb1322ee001c2073743cb",
+        "visual_description": "Bright daytime Perth CBD skyline from Kings Park: vivid blue sky with scattered white clouds (top ~45%), full CBD tower cluster mid-lower frame, Swan River to the right, green parkland foreground; native 16:9 (4000x2250)",
+        "text_safe_notes": "Generous clean sky across the top for headline under a scrim; skyline occupies lower half; no faces; corporate tower logos only at small scale",
+        "warnings": [
+          "elevated Kings Park vantage rather than across-water (water visible right)",
+          "construction cranes present in skyline"
+        ]
+      },
+      "candidates_count": 3,
+      "rejected_count": 9,
+      "licence_holds": [],
+      "warnings": [
+        "best pick is an elevated Kings Park vantage (water right of frame) rather than strictly across-water; closest across-water composition (Unsplash guguFi5GTw4) was rejected on the explicit bright-day mood rule and is in the package for PK visibility",
+        "mm_c-03 contains small distant people (appear non-identifiable) and readable corporate tower signage at full resolution - reviewer to confirm"
+      ],
+      "search_summary": "Commons API + Openverse (cc0/pdm) + Unsplash + Pexels searched; 12 downloads screened, 3 offered (2 Unsplash / 1 Pexels), 9 rejected (7 mood: dusk/night/golden-hour/overcast, 2 composition); freshness-excluded slugs/files honoured; bulk of Commons Perth material is CC BY-SA / CC BY and stays on existing holds"
+    },
+    {
+      "row_id": "mm_d_auction_crowd_au",
+      "verdict": "not_harvestable_licence_safe",
+      "best_pick": null,
+      "candidates_count": 0,
+      "rejected_count": 0,
+      "licence_holds": [
+        {
+          "title": "File:Melbourne Real Estate Auctioneer.jpg (Wikimedia Commons)",
+          "url": "https://commons.wikimedia.org/wiki/File:Melbourne_Real_Estate_Auctioneer.jpg",
+          "creator": "Commons user Nksy87",
+          "licence": "CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0)",
+          "why_held": "CC BY-SA = hold-list per PK Q5; additionally unusable regardless of licence rule: 960x640 (< 2000px min) and thumbnail check shows a crowd of fully identifiable faces incl. children - would be rights-rejected"
+        },
+        {
+          "title": "Clock + Dining Table - Passed-in - $2.7mil Beaconsfield (Flickr, avlxyz)",
+          "url": "https://www.flickr.com/photos/10559879@N00/2911640772",
+          "creator": "avlxyz (Alpha)",
+          "licence": "CC BY-SA 2.0",
+          "why_held": "CC BY-SA = hold-list; also portrait 768x1024 (< 2000px min) - Melbourne auction event, closest Flickr subject match found"
+        }
+      ],
+      "warnings": [
+        "previously_evaluated: Flickr lakemartinvoice/4093096908 rediscovered via Openverse - stays rejected (identifiable faces / US scene), not re-offered"
+      ],
+      "search_summary": "7 Openverse queries + 3 Commons API searches + Unsplash 'house auction' + Pexels 'auction' screened; on-brief hits exist ONLY under CC BY-SA (held) or as editorial/premium (excluded); Pexels/Unsplash auction stock is gavels, flea/cattle markets or Unsplash+ Getty - offering them would be padding; genuine licence-safe gap (P0 row-8 precedent)"
+    }
+  ],
+  "package_root": "_harness/image_harvester_v0/run2_stress/",
+  "files_written": 39,
+  "notes": [
+    "nothing approved/uploaded/inserted; PK visual review is the only deciding act",
+    "licence-hold (CC BY-SA / CC BY) and rights-blocked items recorded, not offered; no NEW holds recorded for row mm_c beyond those already held in prior lanes",
+    "no DB/storage/git/pool surface touched; writes confined to _harness/image_harvester_v0/run2_stress/",
+    "network use: GET only to commons/upload.wikimedia.org, api.openverse.org, unsplash.com, pexels.com/images.pexels.com; Unsplash napi endpoint bot-blocked, public /download endpoint used instead",
+    "raw search-response JSON retained in tmp/ as search evidence backing search_log.md"
+  ]
+}
