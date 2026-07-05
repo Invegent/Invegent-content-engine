@@ -1,0 +1,15 @@
+{
+ "review_id": "f60a4afb-2cc6-4596-aead-0f1cdb6b655e",
+ "decision": "proceed",
+ "verdict": "agree",
+ "risk_level": "medium",
+ "confidence": "high",
+ "pushback_points": [],
+ "reviewed_input_hash": "96746e53f1d7baac03b38e956f9041d25bd43468c8fc5c1cd33cdf63bf2ab26c",
+ "reviewed_artifact": "dayhero_apply.sql",
+ "triage_classes": [
+  "structural_DDL_DML_escalation"
+ ],
+ "triage_note": "Production DML -> PK hash-pinned gate (designed stop). Pool neutrality machine-asserted + auditor-proven.",
+ "date_utc": "2026-07-05"
+}

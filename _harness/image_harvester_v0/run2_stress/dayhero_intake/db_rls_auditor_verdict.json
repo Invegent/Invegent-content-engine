@@ -1,0 +1,17 @@
+{
+ "verdict": "pass",
+ "live_state_matches_preconditions": true,
+ "pool_neutrality_sound": true,
+ "assertion_scoping_sound": true,
+ "security_auditor_needed": false,
+ "key_findings": [
+  "INSERT-only, single-row constant, NOT-EXISTS dedup, idempotent; rollback = only DELETE, promotion-guarded fail-closed",
+  "Pre-state clean: 0 collisions (id/key/sha/storage); pool exactly 5 == the 5 governed keys in rank order",
+  "Pool neutrality PROVEN from live function bodies (is_active first filter in resolve_slot_assets; hard WHERE in resolve_brand_assets)",
+  "Marker+pool+governed-set assertion scoping ruled sound vs brittle total-count (concurrent lanes active)",
+  "LOW: pool replica omits license_expires_at/platform_scope (vacuous on live pool; re-cut if a pool row ever carries either)",
+  "LOW: apply fails closed if run before upload (by design; target verified absent)"
+ ],
+ "reviewed_artifacts_hash_note": "audit valid for dayhero_apply.sql sha256 96746e53f1d7baac03b38e956f9041d25bd43468c8fc5c1cd33cdf63bf2ab26c",
+ "date_utc": "2026-07-05"
+}
