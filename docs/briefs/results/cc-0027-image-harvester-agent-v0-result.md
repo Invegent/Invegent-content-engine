@@ -28,3 +28,15 @@ Lane wall-clock ~35 min (harvest ~14 min dominant) · external review **1 packet
 PK visual verdicts on the 8 candidates (P0 taxonomy; any outcome incl. full rejection completes v0) · promotion decisions for `image-harvester` (stand-in caveat: one registered-type run recommended before promotion), `image-reviewer` (registered run complete), `brief-author` (2 registered runs complete; provisional pass standing) · licence-edge rules CC BY + AI imagery (Q5 defaults hold) · successor lanes if any images pass: storage upload → quadruple-fenced intake (v4.87 pattern) → per-asset promotion (re-enters pool-coupling rule) — none started.
 
 **Non-claims:** nothing approved/active/selectable/production-safe · no storage/DB/render/publish/deploy touched · D6 untouched · agent candidacies unchanged · the local `_harness` package is evidence, not inventory.
+
+---
+
+## Addendum (2026-07-05) — registered-type run: image-harvester proving caveat CLOSED
+
+PK-directed re-proof (T2 / SIDE_PROVING; external review **`8e333186` agree/low/high, first packet attempt**, pinned to the unchanged committed agent-spec hash `b09ebf2b…`). The REGISTERED `image-harvester` type executed one fresh proving row (`bg_moving_day_boxes`, max 2 candidates) with all writes confined to the isolated sub-root `_harness/image_harvester_v0/run2_registered_proof/` so this result doc's hash-pinned run-1 evidence stayed byte-intact.
+
+**Outcome: `HARVEST_COMPLETE`** — 2 licence-safe Pexels candidates (full provenance, sha256-of-downloaded-bytes, contact sheet, best-pick staged). Reject discipline demonstrated live: an **Unsplash+ paid-tier item refused at the licence gate** (never downloaded) and a candidate with **readable printed box labels downloaded → visually inspected → failed → deleted from the package** (`constraint_readable_box_labels`, recorded in rejected_reasons).
+
+**Verification (orchestrator, independent):** run-1 inventory **20/20 hashes recompute byte-identical** (evidence untouched) · run-2 inventory 6/6 · zero writes outside the sub-root · pre/post `c.client_brand_asset` + `brand-assets` storage fingerprint byte-identical (`198b0923…`).
+
+**Status effects:** the stand-in caveat on `image-harvester` is **closed** — all three cc-0027-era candidates (brief-author ×2 runs, image-reviewer ×1, image-harvester ×1) now have clean registered-type executions on record. **Candidacy unchanged; promotion remains a PK decision.** Run-2 artifacts are **proving-only** — not intake candidates, nothing offered for approval; the 8 run-1 candidates still await PK visual verdicts.
