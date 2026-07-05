@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v4.98 CREATOMATE PROVIDER RECONCILIATION v0 — COMPLETE + TMR-GOV-PROVIDER-1 RATIFIED (SAFETY_GATE side lane, read-only)** — verdict PASS: provider↔registry PERFECT 1:1 (16==16, zero un-governed drift) · VC1/VC2/VC3 all settled (fb9820f8+490ad9ea provider-ABSENT confirmed; 48cba556 = 1:1 market_insight, registry RIGHT) · NEW: bc32f52f Gate-D2 video template also deleted (video smoke branch dead; production video unaffected) · guard rule ratified: docs/governance/tmr-gov-provider-1-pre-cleanup-guard.md · canonical: docs/briefs/results/creatomate-provider-reconciliation-v0-result.md + _harness/creatomate_provider_recon/ · brief-author v1 proving run SUCCESSFUL (promotion = PK) · next: dead-ref cleanup lanes (carried) · D6 unaffected.
+
+---
+
 > **✅ v4.97 cc-0027 IMAGE HARVESTER v0 MINI-PROOF — WORKFLOW PASS as SIDE_PROVING (T2 by mapping) + CCF-02 PHASE 2 OBSERVATION #1** — 2-stage harvest→review proven on the PK 2-row manifest (8 candidates, 8/8 constraint-clean, 7 honest rejects; invariants byte-identical; 14/14 hashes verified) · review `0dc99a6f` agree first-attempt · both agents remain CANDIDATE · **zero images approved/promoted** · friction PHASE2-FRICTION-001 recorded (orchestrator-reads vs db-rls-auditor rule needed) · canonical: `docs/briefs/results/cc-0027-image-harvester-agent-v0-result.md` · next gates: PK visual verdicts on 8 candidates · queue impact: none.
 
 ---
