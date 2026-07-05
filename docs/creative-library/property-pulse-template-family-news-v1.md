@@ -57,8 +57,9 @@ render-proof claim. Proof lives at the variant level via `proven_variants:
 
 | Variant | aspect | output | ice_format_key | provider_template_id | composes | proof | render_log_id |
 |---|---|---|---|---|---|---|---|
-| `centred-scrim-16x9` | 16:9 | jpg | `image_quote` | `48cba556…` | 4 patterns | **proven** (Gate C) | `7243e040…` |
-| `centred-scrim-9x16-video` | 9:16 | mp4 | `video_short_stat` | `bc32f52f…` | 4 patterns | **proven** (Gate D2) | `508b4365…` |
+| `centred-scrim-16x9` | 16:9 | jpg | `image_quote` | `48cba556…` | 4 patterns | **proven** (Gate C) — **RETIRED 2026-07: provider ID repurposed to `generic_market_insight_card_1x1_v1` (1:1); 16:9 artwork gone** | `7243e040…` (history) |
+| `centred-scrim-9x16-video` | 9:16 | mp4 | `video_short_stat` | `bc32f52f…` | 4 patterns | **proven** (Gate D2) — **RETIRED 2026-07: provider template deleted** | `508b4365…` (history) |
+| `centred-scrim-1x1` | 1:1 | jpg | `image_quote` | `fb9820f8…` | 4 patterns | **proven** (B0) + production_proven (B1) — **RETIRED 2026-07-04: provider template deleted; superseded by Option D winner-driven rendering** *(row added 2026-07-05 — variant existed in registry v0.3 but was missing from this matrix)* | `50f09ca2…` (history) |
 
 Both variants render via Creatomate (provider `creatomate`); required fields = headline, subtitle,
 category, location, date, footer, background, logo.

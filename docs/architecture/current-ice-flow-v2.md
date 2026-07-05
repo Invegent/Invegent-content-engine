@@ -49,6 +49,11 @@
   output `image/jpeg`); final proof `render_log 50f09ca2` (1080×1080 JPEG,
   `post-images/_smoke/branch_b_proof_edf01c52…_1x1.jpg`, `resolver_used=true`,
   `fallback_taken=false`); 18/18 deno tests; 16:9 + manual path byte-unchanged.
+  *(2026-07-05 pointer: provider template `fb9820f8…` was DELETED provider-side in the
+  2026-07-02/03 Creatomate cleanup — B0 proof evidence remains valid history, but the
+  template no longer exists; PP image_quote production is now Option-D winner-driven
+  (image-worker v3.22.0). See `docs/creative-library/property-pulse.json` v0.4 retirements +
+  `docs/briefs/results/creatomate-provider-reconciliation-v0-result.md`.)*
 - **B1-v1 — re-worded.** v1 said "B1 broad wiring blocked after B0." Reality: **B1-v1 is a
   Property-Pulse-only production cut, committed off-tree on branch `branch-b-lane-b1-v1`
   (`00b48b1`), NOT merged / NOT deployed / NOT proved** (git-confirmed unmerged into main).

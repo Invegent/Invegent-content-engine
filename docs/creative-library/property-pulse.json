@@ -1,7 +1,7 @@
 {
   "_about": "Creative Library registry (repo/config, evidence-first), Property Pulse pilot. v0.2 evolves to the Creative Library v2 model (Governed Creative Design System): Style Guide -> (governs) -> Assets + Patterns (SIBLING libraries; patterns may reference assets) -> (compose) -> Template Families -> (instantiate as) -> Creative Instances -> Evidence. Asset references use asset_key (governed in c.client_brand_asset via resolve_brand_assets), never raw URLs. Schema: docs/creative-library/registry-schema-v2.md.",
   "registry": "creative-library",
-  "registry_version": "v0.3",
+  "registry_version": "v0.4",
   "model": "style_guide -> (governs) -> assets + patterns -> (compose) -> template_families -> (instantiate as) -> creative_instances -> evidence",
   "client_slug": "property-pulse",
   "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd",
@@ -180,13 +180,15 @@
       "variants": [
         {
           "template_variant_key": "centred-scrim-16x9",
-          "purpose": "Static 16:9 news card (still image) — the proven Property Pulse News image variant.",
+          "purpose": "RETIRED 2026-07 (artwork repurposed — see provider_status): was the proven Property Pulse News 16:9 image variant.",
           "aspect_ratio": "16:9",
           "output_type": "jpg",
           "compatible_ice_format_key": "image_quote",
           "render_engine": "creatomate",
           "provider": "creatomate",
           "provider_template_id": "48cba556-0a53-4001-90f0-05420d10efc0",
+          "provider_status": "retired_artwork_repurposed",
+          "provider_status_note": "2026-07-02/03 cleanup PASTE-REPURPOSED this provider ID: it now hosts generic_market_insight_card_1x1_v1 (1080x1080 1:1, TMR generic library; API-verified 2026-07-05, Provider Reconciliation v0). The 16:9 artwork no longer exists; rendering this ID yields the 1:1 market-insight design. Historical Gate C proofs below remain valid history.",
           "required_fields": ["headline", "subtitle", "category", "location", "date", "footer", "background", "logo"],
           "optional_fields": [],
           "expected_assets": ["pp_logo_primary", "bg_perth_cbd"],
@@ -200,13 +202,15 @@
         },
         {
           "template_variant_key": "centred-scrim-9x16-video",
-          "purpose": "Animated 9:16 news card (MP4) — the proven Property Pulse News video variant.",
+          "purpose": "RETIRED 2026-07 (provider template deleted — see provider_status): was the proven Property Pulse News video variant.",
           "aspect_ratio": "9:16",
           "output_type": "mp4",
           "compatible_ice_format_key": "video_short_stat",
           "render_engine": "creatomate",
           "provider": "creatomate",
           "provider_template_id": "bc32f52f-f9da-4749-90aa-03f7572f0719",
+          "provider_status": "retired_provider_deleted",
+          "provider_status_note": "Deleted provider-side in the 2026-07-02/03 Creatomate cleanup (absence API-verified 2026-07-05, Provider Reconciliation v0). Gate D2 render evidence remains valid history. Future PP video work re-authors from scratch.",
           "required_fields": ["headline", "subtitle", "category", "location", "date", "footer", "background", "logo"],
           "optional_fields": [],
           "expected_assets": ["pp_logo_primary", "bg_perth_cbd"],
@@ -220,13 +224,15 @@
         },
         {
           "template_variant_key": "centred-scrim-1x1",
-          "purpose": "Static 1:1 news card (still image) — the LIVE Branch B B1-v3 PRODUCTION Property Pulse News image variant rendered by the image-worker governed image_quote path.",
+          "purpose": "RETIRED 2026-07-04 (provider template deleted; superseded by Option D): was the LIVE B1 production 1:1 news variant. PP image_quote production is now TMR winner-driven (select_template; current winner generic_market_insight_card_1x1_v1).",
           "aspect_ratio": "1:1",
           "output_type": "jpg",
           "compatible_ice_format_key": "image_quote",
           "render_engine": "creatomate",
           "provider": "creatomate",
           "provider_template_id": "fb9820f8-3fee-4448-b324-3d500fa74b40",
+          "provider_status": "retired_provider_deleted",
+          "provider_status_note": "Deleted provider-side in the 2026-07-02/03 cleanup -> 2026-07-04 production outage -> Option D (image-worker v3.22.0, commit 82f5c55): PP image_quote now renders the TMR selector winner at runtime; this variant is historical. B0/B1 proofs + production instances below remain the valid historical record (registry row c0b10001-...-0002 kept as production_proven history).",
           "required_fields": ["headline", "category", "date", "footer", "background", "logo"],
           "optional_fields": ["subtitle", "location"],
           "expected_assets": ["pp_logo_primary", "bg_perth_cbd", "bg_sydney_cbd", "bg_brisbane_cbd", "bg_pp_au_suburb_aerial_grid", "bg_pp_home_keys_contract_table"],
@@ -235,7 +241,7 @@
           "proof_status": "proven",
           "proof_gate": "B0 1:1 template smoke",
           "proof_posture": "proven",
-          "known_limitations": "1:1 static image only. In the LIVE production path: headline is the only AI-authored REQUIRED field (hard-gated, max 90, fail-loud on blank/overflow); subtitle is DERIVED from the first non-empty draft_body paragraph (optional, max 90, truncated — never failed); category ('PROPERTY NEWS'), date (render date), footer ('propertypulse.com.au') are renderer-FIXED; location is empty in v0; background ROTATES deterministically per post_draft_id across [bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd, bg_pp_au_suburb_aerial_grid, bg_pp_home_keys_contract_table] (B1-v3 v3.21.0 — pool 3→5, aligned to the governed resolver rank order, PK 2026-07-04); logo is fixed pp_logo_primary. Governed-only fail-loud — NO legacy fallback for PP. RUNTIME IDENTITY DRIFT: the worker emits render_spec.template.template_variant='centered-scrim-1x1' (American spelling) + implementation_id='news_static_centered_scrim_1x1_v1'; this registry uses 'centred-scrim-1x1' (British, sibling convention). Reconciled in capability_contracts[].maps_to_variant.",
+          "known_limitations": "HISTORICAL (pre-Option-D behaviour, accurate through 2026-07-04): 1:1 static image only. In the then-LIVE production path: headline is the only AI-authored REQUIRED field (hard-gated, max 90, fail-loud on blank/overflow); subtitle is DERIVED from the first non-empty draft_body paragraph (optional, max 90, truncated — never failed); category ('PROPERTY NEWS'), date (render date), footer ('propertypulse.com.au') are renderer-FIXED; location is empty in v0; background ROTATES deterministically per post_draft_id across [bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd, bg_pp_au_suburb_aerial_grid, bg_pp_home_keys_contract_table] (B1-v3 v3.21.0 — pool 3→5, aligned to the governed resolver rank order, PK 2026-07-04); logo is fixed pp_logo_primary. Governed-only fail-loud — NO legacy fallback for PP. RUNTIME IDENTITY DRIFT: the worker emits render_spec.template.template_variant='centered-scrim-1x1' (American spelling) + implementation_id='news_static_centered_scrim_1x1_v1'; this registry uses 'centred-scrim-1x1' (British, sibling convention). Reconciled in capability_contracts[].maps_to_variant.",
           "evidence": { "status": "proven", "proof_status": "proven", "proof_gate": "B0 1:1 template smoke", "render_log_id": "50f09ca2-cfae-462f-bfd5-07aac83c96de", "render_spec_template_id": "pp-news-centred-scrim-1x1", "source_commit": "4ebec3b", "review_packet": null, "approved_by": "PK", "approved_at": null, "notes": "B0 reusable 1:1 governed-template smoke (registers v3.98 / image-worker v3.13.0; _smoke/ only, resolver_used=true, fallback_taken=false, output 1080x1080 JPEG). LIVE PRODUCTION INSTANCES (image_quote news_card.v1, label=creative_library_b1_production, resolver_used=true): render_log fcbe5993-9791-45a6-98fc-a82c8ffd579f, 5b821214-63c4-4451-ad59-7090b00793d3, 53575bc8-f0e2-4c40-a99a-a7706da48513, 5f7cfc89-5895-44af-af80-56d76e9e856e; published to facebook (post_publish 1472a6fa-c338-46d3-abb3-be100696033b, 2026-06-29) + instagram (post_publish 88ee578a-f65b-49e7-a0df-67c57ba384cd, 2026-06-29). This is the variant the live PP image_quote path renders. (Prior render_log 52165857-ba7e-4a0f-82f0-92fd5f66537e was a stale/non-existent citation — corrected 2026-06-30; full proof set: docs/creative-library/format-variant-intake-pp-image-quote-pilot-v1.md.)" }
         }
       ]
@@ -314,7 +320,7 @@
         "review_packet": "docs/briefs/aci-foundation-v0-capability-contract-spine-brief.md",
         "approved_by": "PK",
         "approved_at": "2026-06-30",
-        "notes": "PK-ratified ACTIVE 2026-06-30 (Format Variant Intake Slice 1B reconciliation). Proof is INHERITED from the mapped variant centred-scrim-1x1 (B0 1:1 smoke 50f09ca2) and is now PRODUCTION-PROVEN by real render + publish for PP image_quote on FACEBOOK + INSTAGRAM ONLY: production renders = production_instances above; publishes = facebook post_publish 1472a6fa-c338-46d3-abb3-be100696033b (draft 1d6c8bab, 2026-06-29T06:05:14Z) + instagram post_publish 88ee578a-f65b-49e7-a0df-67c57ba384cd (draft 33b171fc, 2026-06-29T00:00:26Z). Other platforms are NOT production_proven (no publish evidence). The contract adds NO new render proof of its own. The contract resolver (resolveCreativeContract) is wired in ai-worker for ADDITIVE draft_format.contract evidence stamping ONLY (Slice B1, register v4.06) — it does NOT drive format selection or render behaviour; the image-worker render path renders via the vendored b1_production constants. 'active' ratifies the contract DEFINITION + its inherited production proof, NOT a format-selection/render change; the vendored projection (creative_contract.ts) carries only contract-identity fields (no status/evidence) and is unchanged. Prior citation of render_log 52165857 was stale/non-existent — corrected to the real IDs above. Full structured proof set: docs/creative-library/format-variant-intake-pp-image-quote-pilot-v1.md. CONTRACT_VERSION v2 (2026-07-04): PK decision 'Approve Option A-now-D-later' (Lane 4, docs/briefs/lane4-rotation-alignment-packet.md) — governed_assets.background pool 3->5 aligned to the resolve_slot_assets eligible-pool rank order; the v1 ratification above covers the contract DEFINITION and inherited proof; the v2 revision changes ONLY the background pool binding (identity fields unchanged)."
+        "notes": "PK-ratified ACTIVE 2026-06-30 (Format Variant Intake Slice 1B reconciliation). Proof is INHERITED from the mapped variant centred-scrim-1x1 (B0 1:1 smoke 50f09ca2) and is now PRODUCTION-PROVEN by real render + publish for PP image_quote on FACEBOOK + INSTAGRAM ONLY: production renders = production_instances above; publishes = facebook post_publish 1472a6fa-c338-46d3-abb3-be100696033b (draft 1d6c8bab, 2026-06-29T06:05:14Z) + instagram post_publish 88ee578a-f65b-49e7-a0df-67c57ba384cd (draft 33b171fc, 2026-06-29T00:00:26Z). Other platforms are NOT production_proven (no publish evidence). The contract adds NO new render proof of its own. The contract resolver (resolveCreativeContract) is wired in ai-worker for ADDITIVE draft_format.contract evidence stamping ONLY (Slice B1, register v4.06) — it does NOT drive format selection or render behaviour; the image-worker render path renders via the vendored b1_production constants. 'active' ratifies the contract DEFINITION + its inherited production proof, NOT a format-selection/render change; the vendored projection (creative_contract.ts) carries only contract-identity fields (no status/evidence) and is unchanged. Prior citation of render_log 52165857 was stale/non-existent — corrected to the real IDs above. Full structured proof set: docs/creative-library/format-variant-intake-pp-image-quote-pilot-v1.md. CONTRACT_VERSION v2 (2026-07-04): PK decision 'Approve Option A-now-D-later' (Lane 4, docs/briefs/lane4-rotation-alignment-packet.md) — governed_assets.background pool 3->5 aligned to the resolve_slot_assets eligible-pool rank order; the v1 ratification above covers the contract DEFINITION and inherited proof; the v2 revision changes ONLY the background pool binding (identity fields unchanged). 2026-07-05 NOTE: the mapped variant centred-scrim-1x1's provider template was deleted (see variant provider_status); production rendering is now Option-D winner-driven. Contract v3 (policy: tmr_spine) remains a separate gated carry — this note is truth-annotation only."
       }
     }
   ],
@@ -329,6 +335,7 @@
       "provider": "creatomate",
       "provider_template_id": "48cba556-0a53-4001-90f0-05420d10efc0",
       "template_name": "PP_NEWS_CENTRED_SCRIM_16x9_v1",
+      "provider_status": "retired_artwork_repurposed",
       "template_family": "property-pulse-news",
       "template_variant": "centred-scrim-16x9",
       "aspect_ratio": "16:9",
@@ -359,6 +366,7 @@
       "provider": "creatomate",
       "provider_template_id": "bc32f52f-f9da-4749-90aa-03f7572f0719",
       "template_name": "PP_NEWS_CENTRED_SCRIM_9x16_VIDEO_v1",
+      "provider_status": "retired_provider_deleted",
       "template_family": "property-pulse-news",
       "template_variant": "centred-scrim-9x16-video",
       "aspect_ratio": "9:16",
@@ -388,6 +396,7 @@
     "Field -> Creatomate modification-key mapping is documented in pattern layout_rules as REFERENCE only; binding stays a future worker/render lane (no production consumption).",
     "Registry vendoring drift: the dashboard's vendored copy predates v0.2 and does not read the new fields (re-vendor under A1.5).",
     "No registry consumer wired (no worker/advisor/publish/dashboard reads this file) — intentional; declarative only.",
+    "v0.4 (2026-07-05, Lane D dead-reference truth pass): all three PP news variants RETIRED as live truth (16:9 artwork repurposed to generic_market_insight_card_1x1_v1; 9:16 video + 1:1 provider templates deleted in the 2026-07-02/03 Creatomate cleanup — 1:1 deletion caused the 2026-07-04 outage, resolved by Option D winner-driven rendering). Evidence blocks kept verbatim as history. Also recorded: news_static_lower_third_1x1_v1 (provider 2fd50302-0e8c-45cb-bbfb-a89a6024f457) was authored in the B0 era but NEVER WIRED (no code/registry/provider trace) — no registry entry needed. Source: Provider Reconciliation v0 (docs/briefs/results/creatomate-provider-reconciliation-v0-result.md) + TMR-GOV-PROVIDER-1.",
     "v0.3 (ACI Foundation v0 Slice A): added the LIVE 1:1 production variant centred-scrim-1x1 (it was missing — the registry previously declared only 16:9 + 9:16 while production renders the 1:1 fb9820f8 template) and the first capability_contract property_pulse.image_quote.news_card.v1. Docs/source-of-truth only — still NO runtime consumer.",
     "ACI Slice A2 (next, gated): a VENDORED runtime-safe projection of property_pulse.image_quote.news_card.v1 + a deterministic resolver(client_id, recommended_format) in the worker layer, with Deno tests, UNWIRED (no behaviour change, no deploy). Runtime code -> external review.",
     "Identity drift to reconcile in the vendored projection: registry 'centred-scrim-1x1' (British) vs worker render_spec template_variant 'centered-scrim-1x1' (American) + implementation_id 'news_static_centered_scrim_1x1_v1'.",

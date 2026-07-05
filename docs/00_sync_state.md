@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v5.00 TMR DEAD-REF CLEANUP LANE D — CE DECLARATIVE REGISTRY TRUTH PASS APPLIED (T1 · SAFETY_GATE, docs-only)** — registry v0.4: 3 PP news variants RETIRED as live truth (48cba556 artwork-repurposed [C4 silent-wrong] · fb9820f8 + bc32f52f provider-deleted) + 2fd50302 never-wired record + flow-v2 pointer note + family-matrix 1x1 row added · evidence 51/51 preserved (warden-verified) · creative-graph-auditor PASS (2 advisories delivered in-lane, 4 carried) · canonical: docs/briefs/results/tmr-dead-ref-cleanup-lane-d-result.md · next gate: PK commit (exact 6-file pathspec — parallel brief-author.md edit EXCLUDED) · then Lane B Gate 1 · D6 preempts.
+
+---
+
 > **✅ v4.99 BRIEF-AUTHOR v1 — PROMOTED CANDIDATE→PROVEN (PK option 2: scoped promotion; SAFETY_GATE, T1-escalated)** — 3 proving lanes (cc-0027 PASS v4.97 · Phase-1 packet ratified v4.96 · provider recon PASS v4.98), all drafts PK-accepted, zero charter violations, charter byte-unchanged `e3226708…` · promotion review `docs/briefs/brief-author-promotion-review-v1.md` hash `97bb4ee5…`, external review `74ba8e6e` partial→PK decision · **scoped note: proven on docs/planning briefs; first code/DB-lane brief = candidate-level scrutiny** · CLAUDE.md team table + findings-contract appendix applied · image-harvester/image-reviewer remain CANDIDATE · next gate: PK commit/push · queue impact: none.
 
 ---
