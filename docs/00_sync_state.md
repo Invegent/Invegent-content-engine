@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v5.07 TMR DEAD-REF CLEANUP LANE W — WORKERS DEPLOYED · CLEANUP PLAN CLOSED (T3 · SAFETY_GATE)** — pin `17e2ed3a…` = commit `89088eb` pushed; image-worker **v3.23.0** + video-worker **v3.4.0** live `--no-verify-jwt`; 4 dead opt-in surfaces → post-auth HTTP-410 guards (fall-through hazard closed); −751 lines; production byte-identical (proven 3 ways); 410 probes exact, zero side-effects; chain: deno 78/78+39/39 · security GREEN · warden safe · external agree `48bf856c…`; one self-caught artifact-mismatch (version probe worked as designed) · canonical: docs/briefs/results/tmr-dead-ref-cleanup-lane-w-result.md · **plan D→B→W complete** · carries: contract v3 · drift probe · vendor re-sync · next: D6 (21:30Z) · register commit pending.
+
+---
+
 > **✅ v5.06 EVENING BOARD 2026-07-05 — RECONCILED + D6 HANDOVER CUT (T1 · SAFETY_GATE, docs-only)** — git truth 5c137a6 parity 0/0 clean · **D6 armed artifact re-verified byte-intact `af74058b…`** (apply only post-publish of draft 8bbbd34c…, slot 21:30Z, 7-step sequence + STOPs in the handover) · board: CCF-02 closed · Lane W pending (T3, own Gate 1) · 18 image verdicts open · day-hero live fb/li=6 ig=5 (rollback 3c5a8e2556…) · canonical: `docs/briefs/results/evening-board-2026-07-05.md` · next gate: D6 post-publish sequence · queue impact: none.
 
 ---
