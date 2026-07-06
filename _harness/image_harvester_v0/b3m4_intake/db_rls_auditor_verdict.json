@@ -1,0 +1,15 @@
+{
+ "verdict": "pass",
+ "must_fix": [],
+ "pool_neutrality_sound": true,
+ "all_jsonb_parses": true,
+ "security_auditor_needed": false,
+ "live_state_matches_preconditions": true,
+ "low_notes": [
+  "eligibility replica omits license_expires_at/platform_scope \u2014 conservative-safe tripwire, vacuous here",
+  "suggested_scrim_opacity 0-1 fractions, not resolver-consumed (advisory only; consistent units this run)",
+  "storage precheck size-only \u2014 post-upload public-URL sha256 step covers content"
+ ],
+ "reviewed_artifacts_hash_note": "valid for b3m4_intake_apply.sql sha256 4772c0a57ae3d3f97d3b4c868dabdf15631786e07d6944017163b54cf195829c",
+ "date_utc": "2026-07-06"
+}

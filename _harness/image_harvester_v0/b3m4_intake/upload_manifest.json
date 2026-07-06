@@ -1,0 +1,16 @@
+[
+ {
+  "asset_key": "bg_pp_advisory_desk_flatlay",
+  "upload_file": "upload_staging/bg_pp_advisory_desk_flatlay.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_advisory_desk_flatlay.jpg",
+  "bytes": 2948464,
+  "sha256": "97e00405eb8c260c2376b3efd05ba6cebeb0ba4a8dfc2ddb7c646f3a3d0cf98a"
+ },
+ {
+  "asset_key": "bg_pp_contract_signing_closeup",
+  "upload_file": "upload_staging/bg_pp_contract_signing_closeup.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_contract_signing_closeup.jpg",
+  "bytes": 277280,
+  "sha256": "ff4d3682f7a758cf5bba58c53b8dc16d4223a5a1f43c241b65012c9133283b82"
+ }
+]

@@ -1,0 +1,21 @@
+{
+ "review_id": "511ae9a8-aaa2-4d9a-b710-dc724f90aba9",
+ "decision": "escalate_explicit_flag",
+ "verdict": "partial",
+ "risk_level": "medium",
+ "confidence": "medium",
+ "reviewed_input_hash": "4772c0a57ae3d3f97d3b4c868dabdf15631786e07d6944017163b54cf195829c",
+ "reviewed_artifact": "b3m4_intake_apply.sql",
+ "triage_class": "structural_DDL_DML_escalation",
+ "verified_claims": [
+  "insert-only 2 rows, 0 deletes in apply",
+  "storage prechecks + dedup in place",
+  "follows v5.12 batch pattern",
+  "db-rls-auditor passed"
+ ],
+ "pushback_points": [
+  "generic: rollback complexity if governing conditions unmet"
+ ],
+ "orchestrator_note": "No concrete defect raised (same reflexive production-DML escalation as the v5.12 batch review fe9d7372, which PK approved + applied clean). The one pushback + the 'unverified' platform-governance point are already machine-enforced: the apply's in-txn asserts (2 fenced / 0 true-flag / pool 6/6/6/5 / governed 6) force full rollback on any unmet condition. Auto-escalation routes to the PK judgment gate \u2014 this lane's designed stop. Surfaced to PK per contract (non-clean \u2192 stop \u2192 PK).",
+ "date_utc": "2026-07-06"
+}
