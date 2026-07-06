@@ -1,7 +1,7 @@
 {
   "_about": "Creative Library registry (repo/config, evidence-first), Property Pulse pilot. v0.2 evolves to the Creative Library v2 model (Governed Creative Design System): Style Guide -> (governs) -> Assets + Patterns (SIBLING libraries; patterns may reference assets) -> (compose) -> Template Families -> (instantiate as) -> Creative Instances -> Evidence. Asset references use asset_key (governed in c.client_brand_asset via resolve_brand_assets), never raw URLs. Schema: docs/creative-library/registry-schema-v2.md.",
   "registry": "creative-library",
-  "registry_version": "v0.4",
+  "registry_version": "v0.5",
   "model": "style_guide -> (governs) -> assets + patterns -> (compose) -> template_families -> (instantiate as) -> creative_instances -> evidence",
   "client_slug": "property-pulse",
   "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd",
@@ -53,7 +53,7 @@
       "note": "Assets are governed SEPARATELY (a sibling library) in c.client_brand_asset and referenced by asset_key — never raw URLs. The style guide may constrain HOW assets are used (placement, scrim) but does not own the files.",
       "resolution": "Asset resolution stays via resolve_brand_assets() — UNCHANGED; this style guide introduces NO new resolver behaviour.",
       "logo": "logo_primary (pp_logo_primary)",
-      "backgrounds": "governed PP backgrounds (bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd, bg_pp_au_suburb_aerial_grid, bg_pp_home_keys_contract_table); must be governed before use; needs_scrim"
+      "backgrounds": "governed PP backgrounds (bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd, bg_pp_au_suburb_aerial_grid, bg_pp_home_keys_contract_table, bg_pp_perth_cbd_skyline_day_wide); must be governed before use; needs_scrim. PLATFORM NOTE (v0.5, day-hero promoted 2026-07-05): the resolver eligible pool is 6 for facebook/linkedin and 5 for instagram — bg_pp_perth_cbd_skyline_day_wide carries platform_scope={facebook,linkedin} so instagram excludes it"
     },
     "pattern_rules": {
       "note": "Governs the Pattern Library v1 candidates — each conforms_to_style_guide=property-pulse-styleguide-v1.",
@@ -146,14 +146,14 @@
       "pattern_key": "pp_background_plus_scrim_v1", "client_slug": "property-pulse", "version": "v1", "status": "candidate",
       "pattern_type": "background_plus_scrim", "purpose": "Full-bleed governed background photo with a dark scrim that guarantees text legibility.",
       "used_by_template_families": ["property-pulse-news"], "conforms_to_style_guide": "property-pulse-styleguide-v1",
-      "references_assets": ["bg_perth_cbd", "bg_sydney_cbd", "bg_brisbane_cbd", "bg_pp_au_suburb_aerial_grid", "bg_pp_home_keys_contract_table"], "required_fields": ["background"], "optional_fields": [],
+      "references_assets": ["bg_perth_cbd", "bg_sydney_cbd", "bg_brisbane_cbd", "bg_pp_au_suburb_aerial_grid", "bg_pp_home_keys_contract_table", "bg_pp_perth_cbd_skyline_day_wide"], "required_fields": ["background"], "optional_fields": [],
       "layout_rules": {
         "background_asset_requirement": "background MUST resolve to a governed asset (asset_key) via resolve_brand_assets — never a raw URL.",
         "scrim_requirement": "A dark scrim is applied over the photo (the governed PP backgrounds are flagged needs_scrim).",
         "text_safety": "Headline/category text sits over the scrim band, not bare photo.",
         "contrast_rules": "Scrim opacity chosen so white text meets contrast over varied photography.",
         "fallback_background": "If no governed background resolves, the host render fails loud (NO raw-URL fallback) — consistent with the proven governed render path.",
-        "governed_asset_dependency": "References the 5 governed PP backgrounds (bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd, bg_pp_au_suburb_aerial_grid, bg_pp_home_keys_contract_table — all exist in c.client_brand_asset; pool 3→5 per PK 2026-07-04 promotion + B1-v3 resolver-rank alignment).",
+        "governed_asset_dependency": "References the 6 governed PP backgrounds (bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd, bg_pp_au_suburb_aerial_grid, bg_pp_home_keys_contract_table, bg_pp_perth_cbd_skyline_day_wide — all exist in c.client_brand_asset; pool 3→5 per PK 2026-07-04, then 5→6 per the day-hero promotion PK 2026-07-05 v5.02). Per-platform: facebook/linkedin resolve all 6; instagram resolves 5 (bg_pp_perth_cbd_skyline_day_wide is platform_scope-fenced to {facebook,linkedin}). The resolver computes the eligible set live; this list is the governed superset.",
         "maps_to": "Background.source + scrim (documentation only)."
       },
       "accessibility_rules": { "note": "Scrim ensures text-over-image contrast across bright/dark photos; needs_scrim enforced." },
@@ -235,7 +235,7 @@
           "provider_status_note": "Deleted provider-side in the 2026-07-02/03 cleanup -> 2026-07-04 production outage -> Option D (image-worker v3.22.0, commit 82f5c55): PP image_quote now renders the TMR selector winner at runtime; this variant is historical. B0/B1 proofs + production instances below remain the valid historical record (registry row c0b10001-...-0002 kept as production_proven history).",
           "required_fields": ["headline", "category", "date", "footer", "background", "logo"],
           "optional_fields": ["subtitle", "location"],
-          "expected_assets": ["pp_logo_primary", "bg_perth_cbd", "bg_sydney_cbd", "bg_brisbane_cbd", "bg_pp_au_suburb_aerial_grid", "bg_pp_home_keys_contract_table"],
+          "expected_assets": ["pp_logo_primary", "bg_perth_cbd", "bg_sydney_cbd", "bg_brisbane_cbd", "bg_pp_au_suburb_aerial_grid", "bg_pp_home_keys_contract_table", "bg_pp_perth_cbd_skyline_day_wide"],
           "composed_of_patterns": ["pp_branding_strip_v1", "pp_headline_block_v1", "pp_category_badge_v1", "pp_background_plus_scrim_v1"],
           "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
           "proof_status": "proven",
@@ -396,6 +396,7 @@
     "Field -> Creatomate modification-key mapping is documented in pattern layout_rules as REFERENCE only; binding stays a future worker/render lane (no production consumption).",
     "Registry vendoring drift: the dashboard's vendored copy predates v0.2 and does not read the new fields (re-vendor under A1.5).",
     "No registry consumer wired (no worker/advisor/publish/dashboard reads this file) — intentional; declarative only.",
+    "v0.5 (2026-07-06, AP-3 declarative drift sweep): background pool 5→6 — added bg_pp_perth_cbd_skyline_day_wide (day-hero, PK-promoted 2026-07-05 v5.02) to the governed-superset declarations (style_guide backgrounds prose, pp_background_plus_scrim_v1.references_assets, governed_asset_dependency, centred-scrim-1x1.expected_assets). NEW platform note: fb/li resolve 6, instagram resolves 5 via bg_pp_perth_cbd_skyline_day_wide platform_scope={facebook,linkedin}. Historical pre-Option-D rotation prose (centred-scrim-1x1.known_limitations) LEFT as-is (accurate through 2026-07-04, predates day-hero — no historical rewrite). capability_contracts[].governed_assets.background (\"mod 5\") LEFT for AP-4 contract v3. Clears the AP-2 probe marker_declarative lag. Source: docs/briefs/ap3-declarative-dashboard-drift-sweep-v0-packet.md.",
     "v0.4 (2026-07-05, Lane D dead-reference truth pass): all three PP news variants RETIRED as live truth (16:9 artwork repurposed to generic_market_insight_card_1x1_v1; 9:16 video + 1:1 provider templates deleted in the 2026-07-02/03 Creatomate cleanup — 1:1 deletion caused the 2026-07-04 outage, resolved by Option D winner-driven rendering). Evidence blocks kept verbatim as history. Also recorded: news_static_lower_third_1x1_v1 (provider 2fd50302-0e8c-45cb-bbfb-a89a6024f457) was authored in the B0 era but NEVER WIRED (no code/registry/provider trace) — no registry entry needed. Source: Provider Reconciliation v0 (docs/briefs/results/creatomate-provider-reconciliation-v0-result.md) + TMR-GOV-PROVIDER-1.",
     "v0.3 (ACI Foundation v0 Slice A): added the LIVE 1:1 production variant centred-scrim-1x1 (it was missing — the registry previously declared only 16:9 + 9:16 while production renders the 1:1 fb9820f8 template) and the first capability_contract property_pulse.image_quote.news_card.v1. Docs/source-of-truth only — still NO runtime consumer.",
     "ACI Slice A2 (next, gated): a VENDORED runtime-safe projection of property_pulse.image_quote.news_card.v1 + a deterministic resolver(client_id, recommended_format) in the worker layer, with Deno tests, UNWIRED (no behaviour change, no deploy). Runtime code -> external review.",
