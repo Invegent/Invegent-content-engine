@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v5.11 AP-1 — POOL-CHANGE DRIFT EVIDENCE (Autopilot sprint 1/5, read-only)** — **NO SILENT DRIFT proven**: pool now 6 (day-hero rank 6) · all post-promotion renders in-pool · forward shadow 2/2 `agreement` incl. post-change render (the retired Lane-4 constant would have silently diverged — Option D architecture evidence-backed) · known lag = 3 display/evidence surfaces (declarative v0.4 · dashboard vendor · contract v2 pool), zero production impact · = AP-2 probe blind-acceptance case + AP-3/AP-4 sweep list · canonical: `docs/briefs/results/ap1-pool-change-drift-evidence.md` · next: AP-2 drift probe Gate 1 · register commit pending.
+
+---
+
 > **✅ v5.10 TMR PILOT CLOSED — S1 CRON LIVE, SHADOW LOOP AUTOMATIC (D-01)** — cron jobid 91 `tmr-shadow-stamp-hourly` `5 * * * *` scheduled (artifact `_harness/s1-hourly-cron-schedule.sql` hash `5a2c7f09…` · external review `57e3ade3…` · PK directive) · **first unattended tick 2026-07-06T00:05Z stamped natural render `94afdff5…` as `agreement` in 0.6s — automation PROVEN** · shadow 19 rows · unshadowed 0 · rollback = `cron.unschedule` one call · **pilot closeout (canonical): `docs/briefs/results/tmr-pilot-closeout.md`** — product-proof gates 1-4+7 closed, next = Lane A safety gates · register commit pending.
 
 ---
