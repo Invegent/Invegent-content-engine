@@ -57,8 +57,14 @@ export interface CreativeContractGovernedAssets {
     readonly policy: CreativeContractFieldPolicy;
   };
   readonly background: {
-    readonly asset_keys: readonly string[];
-    readonly policy: CreativeContractFieldPolicy;
+    // AP-4 contract v3 (2026-07-06): rebound from a hardcoded asset_keys pool to a
+    // POLICY REFERENCE (policy: 'tmr_spine', resolver: 'resolve_slot_assets'). asset_keys
+    // is now OPTIONAL — the shape expresses EITHER the legacy key list OR the policy
+    // reference (absence of asset_keys is the load-bearing property of the v3 shape).
+    readonly policy: string;
+    readonly asset_keys?: readonly string[];
+    readonly resolver?: string;
+    readonly note?: string;
   };
 }
 
@@ -163,10 +169,13 @@ export const PP_IMAGE_QUOTE_NEWS_CARD_V1: CreativeContract = Object.freeze({
         policy: 'fixed' as const,
       }),
       background: Object.freeze({
-        // v2 (2026-07-04, PK decision "Option A-now-D-later"): background pool 3→5, aligned to
-        // the governed resolver (resolve_slot_assets) eligible-pool rank order (B1-v3).
-        asset_keys: Object.freeze(['bg_perth_cbd', 'bg_sydney_cbd', 'bg_brisbane_cbd', 'bg_pp_au_suburb_aerial_grid', 'bg_pp_home_keys_contract_table']),
-        policy: 'deterministic_rotation_per_post_draft_id' as const,
+        // AP-4 contract v3 (2026-07-06): rebound from a hardcoded 5-key asset_keys pool to a
+        // policy reference. NO asset_keys — the contract declares no hardcoded pool (its
+        // absence is the load-bearing property). contract_version STAYS 'v2': governed_assets
+        // is an inert annotation, never stamped into render evidence (D-AP4-2).
+        policy: 'tmr_spine',
+        resolver: 'resolve_slot_assets',
+        note: 'Runtime background resolved per-render by the TMR spine (buildTmrRenderPlan -> select_template -> resolve_slot_assets); contract declares NO hardcoded pool — ends per-key contract lag permanently (Option D, v4.95+). contract_version stays v2: governed_assets.background is an annotation, never stamped into render evidence.',
       }),
     }),
   }),

@@ -31,13 +31,15 @@ import {
 
 // OPTION D (image-worker v3.22.0, 2026-07-05): B1_LOGO_KEY / B1_BACKGROUND_KEYS were
 // RETIRED from image-worker/b1_production.ts (the B1 production branch now consumes
-// select_template's slot_resolution; "the constant dies", D5). The v2 contract's fixed-logo
-// + 5-key background pool text is recorded STALE-BY-SUCCESSION (D4 — contract v3
-// `policy: tmr_spine` is a separate docs carry; ai-worker + this vendored contract are
-// otherwise UNTOUCHED this lane), so the no-drift guard below pins the v2 contract
-// CONTENT with literals instead of cross-checking retired runtime constants.
+// select_template's slot_resolution; "the constant dies", D5). The contract's fixed-logo
+// binding is pinned with a literal instead of cross-checking retired runtime constants.
+//
+// AP-4 contract v3 (2026-07-06): governed_assets.background was rebound from a hardcoded
+// 5-key asset_keys pool to a POLICY REFERENCE (policy: 'tmr_spine', resolver:
+// 'resolve_slot_assets', NO asset_keys) identically across BOTH vendored copies (parity).
+// The absence of asset_keys is the load-bearing property; contract_version STAYS 'v2'
+// (the field is an inert annotation, never stamped).
 const V2_CONTRACT_LOGO_KEY = 'pp_logo_primary';
-const V2_CONTRACT_BACKGROUND_KEYS = ['bg_perth_cbd', 'bg_sydney_cbd', 'bg_brisbane_cbd', 'bg_pp_au_suburb_aerial_grid', 'bg_pp_home_keys_contract_table'];
 
 const PP_CLIENT_ID = '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd';
 
@@ -71,7 +73,8 @@ Deno.test('resolveCreativeContract: non-PP client_id + image_quote -> null', () 
 Deno.test('contract identifiers exact', () => {
   assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.contract_key, 'property_pulse.image_quote.news_card.v1');
   assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.contract_ref, 'property_pulse.image_quote.news_card');
-  // v2 (2026-07-04): contract CONTENT revision — background pool 3→5 (resolver-rank alignment).
+  // contract_version STAYS 'v2' after AP-4 contract v3: governed_assets.background rebound
+  // to policy:tmr_spine is an inert annotation, never stamped — no stamped-version bump.
   assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.contract_version, 'v2');
 });
 
@@ -86,16 +89,21 @@ Deno.test('maps_to_variant identifiers exact', () => {
   assertEquals(v.runtime_render_spec_template_variant, 'centered-scrim-1x1');
 });
 
-// Test 6 — CONSISTENCY with b1_production.ts runtime constants (no-drift guard).
+// Test 6 — CONSISTENCY with b1_production.ts runtime constants (no-drift guard) +
+// AP-4 contract v3 background policy-reference shape.
 Deno.test('no-drift consistency with b1_production.ts runtime constants', () => {
   const c = PP_IMAGE_QUOTE_NEWS_CARD_V1;
   assertEquals(c.client_id, B1_GOVERNED_CLIENT_ID);
   assertEquals(c.client_slug, B1_GOVERNED_CLIENT_SLUG);
   assertEquals(c.fields.governed_assets.logo.asset_key, V2_CONTRACT_LOGO_KEY);
-  assertEquals(
-    c.fields.governed_assets.background.asset_keys,
-    V2_CONTRACT_BACKGROUND_KEYS,
-  );
+
+  // AP-4 contract v3: background is a POLICY REFERENCE, not a hardcoded pool.
+  const bg = c.fields.governed_assets.background;
+  assertEquals(bg.policy, 'tmr_spine');
+  assertEquals(bg.resolver, 'resolve_slot_assets');
+  // The ABSENCE of asset_keys is the load-bearing property of the v3 shape.
+  assert(!('asset_keys' in bg), 'v3 background must declare NO hardcoded asset_keys pool');
+  assertExists(bg.note);
 
   const headline = c.fields.ai_authored.find((f) => f.field === 'headline');
   assertExists(headline);
