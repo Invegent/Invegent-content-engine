@@ -1,0 +1,15 @@
+{
+ "verdict": "pass",
+ "must_fix": [],
+ "live_state_matches_guards": true,
+ "per_platform_growth_confirmed": true,
+ "no_hardcoded_pool_assumptions": true,
+ "rollback_fidelity_ok": true,
+ "security_auditor_needed": false,
+ "low_notes": [
+  "eligibility replica omits license_expired filter \u2014 inert (no live bg carries license_expires_at)",
+  "vendored v2 creative_contract key-list grows staler \u2014 pre-existing contract-v3 carry, metadata-only, cannot fail a render"
+ ],
+ "reviewed_artifacts_hash_note": "valid for promotion_apply.sql sha256 9a76f6603e3f1bbf7330a0971f61363c66c58a34c782ddd1e745975f794c5d85",
+ "date_utc": "2026-07-06"
+}

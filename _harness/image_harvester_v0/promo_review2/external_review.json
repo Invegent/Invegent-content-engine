@@ -1,0 +1,19 @@
+{
+ "review_id": "9ea170e6-232b-497a-8444-a5b391a8fb75",
+ "decision": "escalate_explicit_flag",
+ "verdict": "partial",
+ "risk_level": "high",
+ "confidence": "medium",
+ "reviewed_input_hash": "9a76f6603e3f1bbf7330a0971f61363c66c58a34c782ddd1e745975f794c5d85",
+ "reviewed_artifact": "promotion_apply.sql",
+ "triage_class": "structural_DDL_DML_escalation",
+ "verified_claims": [
+  "promotes 2 assets to governed/active (broader platform integration)",
+  "rollback restores byte-exact pre-promotion state"
+ ],
+ "pushback_points": [
+  "generic: live production impact + rollback-failure risk warrants PK oversight"
+ ],
+ "orchestrator_note": "Escalation is SUBSTANTIVELY CORRECT here (unlike the fenced-intake escalations fe9d7372/511ae9a8 which misread zero-impact inserts): this IS a genuine LIVE production rotation change (Option D, pool fb/li 6\u21928 ig 5\u21927), so high-risk + PK-oversight is the right call \u2014 the T3 gate is that oversight. No concrete defect raised; the one pushback (rollback could fail) is covered \u2014 rollback is fail-closed with its own pool 8\u21926 assertion and was live-verified byte-exact 2/2. db-rls-auditor PASS zero-must-fix. Surfaced to PK per contract.",
+ "date_utc": "2026-07-06"
+}
