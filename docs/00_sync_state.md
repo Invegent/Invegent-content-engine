@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v5.10 TMR PILOT CLOSED — S1 CRON LIVE, SHADOW LOOP AUTOMATIC (D-01)** — cron jobid 91 `tmr-shadow-stamp-hourly` `5 * * * *` scheduled (artifact `_harness/s1-hourly-cron-schedule.sql` hash `5a2c7f09…` · external review `57e3ade3…` · PK directive) · **first unattended tick 2026-07-06T00:05Z stamped natural render `94afdff5…` as `agreement` in 0.6s — automation PROVEN** · shadow 19 rows · unshadowed 0 · rollback = `cron.unschedule` one call · **pilot closeout (canonical): `docs/briefs/results/tmr-pilot-closeout.md`** — product-proof gates 1-4+7 closed, next = Lane A safety gates · register commit pending.
+
+---
+
 > **✅ v5.09 D6 RECORDED — market_insight PRODUCTION_PROVEN (PK conditional apply, hash `af74058b…`)** — first TMR-controlled render PUBLISHED to facebook on schedule (`post_publish 6e8c2705…` @ 2026-07-05T21:30:23Z, image == render `23024f4c…`) · assignment `7806fa5e…` flipped `visually_approved`→`production_proven` + platform_publish/passed proof · selectable set still 16 · production_proven total 2 · **Option D chain complete: select→resolve→render→shadow-agree→publish→proven** · canonical: `docs/briefs/results/option-d-tmr-live-b1-result.md` §7 · next: S1 hourly cron gate (D-01) · register commit pending.
 
 ---
