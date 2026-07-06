@@ -140,3 +140,8 @@ verify_jwt = false
 
 [functions.weekly-manager-report]
 verify_jwt = false
+
+# tmr-drift-probe (AP-2, 2026-07-06): fired by pg_cron 'tmr-drift-probe-daily'
+# with a service-role Bearer header (no JWT) — service-role pattern.
+[functions.tmr-drift-probe]
+verify_jwt = false
