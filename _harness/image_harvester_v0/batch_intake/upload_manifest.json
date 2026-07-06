@@ -1,0 +1,58 @@
+[
+ {
+  "asset_key": "bg_pp_au_suburb_texture",
+  "upload_file": "batch_intake/upload_staging/bg_pp_au_suburb_texture.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_au_suburb_texture.jpg",
+  "bytes": 4935702,
+  "sha256": "2f5bf534bb12275c7fe0a5f74ccac5d2cf8ea49f40847b6fa87caa1b08be4777"
+ },
+ {
+  "asset_key": "bg_pp_transaction_keys_contract",
+  "upload_file": "batch_intake/upload_staging/bg_pp_transaction_keys_contract.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_transaction_keys_contract.jpg",
+  "bytes": 2932809,
+  "sha256": "6008d5526e9df1b3b150d76654e4ea07a9a8b97a3bf83037525e8f08c2e99318"
+ },
+ {
+  "asset_key": "bg_pp_kitchen_living_open_plan",
+  "upload_file": "batch_intake/upload_staging/bg_pp_kitchen_living_open_plan.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_kitchen_living_open_plan.jpg",
+  "bytes": 12141430,
+  "sha256": "c889522be3da733e2b19a6b62b20a268e9c989de90430b40896f6b85b6325c27"
+ },
+ {
+  "asset_key": "bg_pp_family_backyard_summer",
+  "upload_file": "batch_intake/upload_staging/bg_pp_family_backyard_summer.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_family_backyard_summer.jpg",
+  "bytes": 1620206,
+  "sha256": "3b9074f670c003a0daac40a3bc75f2fd008aab3b618fa97dfd24fce2bcdba7a4"
+ },
+ {
+  "asset_key": "bg_pp_new_build_construction_site",
+  "upload_file": "batch_intake/upload_staging/bg_pp_new_build_construction_site.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_new_build_construction_site.jpg",
+  "bytes": 3477929,
+  "sha256": "6e32a1e292e0c8fdd244ab630619e8b1a317a7fa608baf80d10c44172087b780"
+ },
+ {
+  "asset_key": "bg_pp_subdivision_land_estate",
+  "upload_file": "batch_intake/upload_staging/bg_pp_subdivision_land_estate.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_subdivision_land_estate.jpg",
+  "bytes": 2024110,
+  "sha256": "03482fe2586ea23cbc1e1f6a63476bca62160b4cb29e46c308cfca6103785b68"
+ },
+ {
+  "asset_key": "bg_pp_mortgage_calculator_keys",
+  "upload_file": "batch_intake/upload_staging/bg_pp_mortgage_calculator_keys.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_mortgage_calculator_keys.jpg",
+  "bytes": 176472,
+  "sha256": "84dbab66a9fe2550a673a0e66bbc2b5fe7a21362d60c2b9459d157670cadd842"
+ },
+ {
+  "asset_key": "bg_pp_inspection_checklist_clipboard",
+  "upload_file": "batch_intake/upload_staging/bg_pp_inspection_checklist_clipboard.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_inspection_checklist_clipboard.jpg",
+  "bytes": 179237,
+  "sha256": "5db1fbe3677babc38cb66aa071d3c9e52a5a3bfcdab1600eb51a09d8f4d4b634"
+ }
+]

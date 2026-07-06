@@ -1,0 +1,17 @@
+{
+ "review_id": "fe9d7372-d86e-486f-b898-4f4d9e29fec4",
+ "decision": "escalate_explicit_flag",
+ "verdict": "partial",
+ "risk_level": "medium",
+ "confidence": "high",
+ "reviewed_input_hash": "4c1f84a177b7ac005a790f097effdd415127c22f225c8acf32c47b4e3c3cc12f",
+ "reviewed_artifact": "batch_intake_apply.sql",
+ "triage_class": "structural_DDL_DML_escalation",
+ "escalation_reason_as_returned": "'involves irreversible deletions' \u2014 NOTE: this MISREADS the artifact. The apply is INSERT-ONLY (8 inserts, 0 deletes); the only DELETE lives in the SEPARATE, unused rollback script. db-rls-auditor independently confirmed apply = INSERT-only, no DDL/DELETE.",
+ "pushback_points": [
+  "complete all verification steps before proceeding",
+  "ensure no asset moves to live production via misconfiguration"
+ ],
+ "orchestrator_note": "No concrete defect raised; both pushback points are already machine-enforced by the packet (in-txn pool-neutrality + fenced-state + 0-true-flag assertions \u2192 full rollback on any miss). Auto-escalation routes to the PK judgment gate, which is exactly where this lane stops. Surfaced to PK per contract (non-clean verdict \u2192 stop \u2192 PK).",
+ "date_utc": "2026-07-06"
+}

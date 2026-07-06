@@ -1,0 +1,16 @@
+{
+ "verdict": "pass",
+ "must_fix": [],
+ "live_state_matches_preconditions": true,
+ "pool_neutrality_sound": true,
+ "all_jsonb_parses": true,
+ "assertion_scoping_sound": true,
+ "security_auditor_needed": false,
+ "low_notes": [
+  "pool replica omits license_expires_at filter \u2014 vacuous on live pool (0 expired), both compute 6/6/6/5; is_active first-filter is the real neutrality guard",
+  "suggested_scrim_opacity mixes 0-100 (mm_a/mm_b) and 0-1 (B3) units \u2014 METADATA ONLY, not resolver-consumed; CARRY: normalize before any scrim_opacity_override at the promotion gate",
+  "storage precheck is size-only \u2014 mandatory post-upload public-URL sha256 step covers content integrity"
+ ],
+ "reviewed_artifacts_hash_note": "audit valid for batch_intake_apply.sql sha256 4c1f84a177b7ac005a790f097effdd415127c22f225c8acf32c47b4e3c3cc12f",
+ "date_utc": "2026-07-06"
+}

@@ -1,0 +1,58 @@
+[
+ {
+  "asset_key": "bg_pp_au_suburb_texture",
+  "path": "Property_Pulse/Backgrounds/bg_pp_au_suburb_texture.jpg",
+  "sha256": "2f5bf534bb12275c7fe0a5f74ccac5d2cf8ea49f40847b6fa87caa1b08be4777",
+  "bytes": 4935702,
+  "match": true
+ },
+ {
+  "asset_key": "bg_pp_transaction_keys_contract",
+  "path": "Property_Pulse/Backgrounds/bg_pp_transaction_keys_contract.jpg",
+  "sha256": "6008d5526e9df1b3b150d76654e4ea07a9a8b97a3bf83037525e8f08c2e99318",
+  "bytes": 2932809,
+  "match": true
+ },
+ {
+  "asset_key": "bg_pp_kitchen_living_open_plan",
+  "path": "Property_Pulse/Backgrounds/bg_pp_kitchen_living_open_plan.jpg",
+  "sha256": "c889522be3da733e2b19a6b62b20a268e9c989de90430b40896f6b85b6325c27",
+  "bytes": 12141430,
+  "match": true
+ },
+ {
+  "asset_key": "bg_pp_family_backyard_summer",
+  "path": "Property_Pulse/Backgrounds/bg_pp_family_backyard_summer.jpg",
+  "sha256": "3b9074f670c003a0daac40a3bc75f2fd008aab3b618fa97dfd24fce2bcdba7a4",
+  "bytes": 1620206,
+  "match": true
+ },
+ {
+  "asset_key": "bg_pp_new_build_construction_site",
+  "path": "Property_Pulse/Backgrounds/bg_pp_new_build_construction_site.jpg",
+  "sha256": "6e32a1e292e0c8fdd244ab630619e8b1a317a7fa608baf80d10c44172087b780",
+  "bytes": 3477929,
+  "match": true
+ },
+ {
+  "asset_key": "bg_pp_subdivision_land_estate",
+  "path": "Property_Pulse/Backgrounds/bg_pp_subdivision_land_estate.jpg",
+  "sha256": "03482fe2586ea23cbc1e1f6a63476bca62160b4cb29e46c308cfca6103785b68",
+  "bytes": 2024110,
+  "match": true
+ },
+ {
+  "asset_key": "bg_pp_mortgage_calculator_keys",
+  "path": "Property_Pulse/Backgrounds/bg_pp_mortgage_calculator_keys.jpg",
+  "sha256": "84dbab66a9fe2550a673a0e66bbc2b5fe7a21362d60c2b9459d157670cadd842",
+  "bytes": 176472,
+  "match": true
+ },
+ {
+  "asset_key": "bg_pp_inspection_checklist_clipboard",
+  "path": "Property_Pulse/Backgrounds/bg_pp_inspection_checklist_clipboard.jpg",
+  "sha256": "5db1fbe3677babc38cb66aa071d3c9e52a5a3bfcdab1600eb51a09d8f4d4b634",
+  "bytes": 179237,
+  "match": true
+ }
+]
