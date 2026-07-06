@@ -4,10 +4,12 @@
 //
 // Run: deno test supabase/functions/tmr-drift-probe/compare_test.ts
 //
-// Anchors the AP-1 blind acceptance case (docs/briefs/results/
-// ap1-pool-change-drift-evidence.md): provider↔registry 16==16 clean; DB union
-// pool = 6 keys vs three 5-key vendored markers -> EXACTLY three lagging flags
-// and nothing else; fb9820f8 classified known_historical, never drift.
+// Anchors the AP-3 acceptance case (docs/briefs/
+// ap3-declarative-dashboard-drift-sweep-v0-packet.md D-AP3-4): provider↔registry
+// 16==16 clean; DB union pool = 6 keys vs the post-AP-3 markers (declarative v0.5 +
+// dashboard v0.5 now 6-key, contract v2 still 5-key) -> EXACTLY ONE lagging flag
+// (marker_contract) and nothing else, down from the AP-2 three; fb9820f8 classified
+// known_historical, never drift.
 
 import {
   assert,
@@ -281,7 +283,7 @@ Deno.test("pool filter: asset_key falls back to asset_id when asset_meta lacks a
 // Check (b): marker comparison — the AP-1 blind acceptance case
 // ---------------------------------------------------------------------------
 
-Deno.test("BLIND ACCEPTANCE (AP-1): union pool 6 vs three 5-key markers -> exactly 3 lagging flags, day-hero the only diff", () => {
+Deno.test("ACCEPTANCE (AP-3): union pool 6 vs post-AP-3 markers (declarative/dashboard 6-key, contract 5-key) -> exactly 1 lagging flag (marker_contract), day-hero the only diff", () => {
   const pools = poolsFor(makeApOneAssetRows());
   const res = comparePoolToMarkers(pools, POOL_MARKERS);
 
@@ -290,28 +292,58 @@ Deno.test("BLIND ACCEPTANCE (AP-1): union pool 6 vs three 5-key markers -> exact
   assert(res.drift);
 
   const lagging = res.markers.filter((m) => m.status === "lagging");
-  assertEquals(lagging.length, 3, "exactly three lagging surfaces and nothing else");
+  assertEquals(lagging.length, 1, "exactly one lagging surface (contract) and nothing else");
   assertEquals(
     lagging.map((m) => m.marker).sort(),
-    ["marker_contract", "marker_dashboard", "marker_declarative"],
+    ["marker_contract"],
   );
-  for (const m of lagging) {
-    assertEquals(m.missing_from_marker, [DAY_HERO]);
+  // Only the vendored worker contract still lags — it is missing day-hero.
+  assertEquals(lagging[0].missing_from_marker, [DAY_HERO]);
+  assertEquals(lagging[0].extra_in_marker, []);
+
+  // The refreshed display/evidence surfaces are now current (6-key vs union 6).
+  const current = res.markers.filter((m) => m.status === "current");
+  assertEquals(
+    current.map((m) => m.marker).sort(),
+    ["marker_dashboard", "marker_declarative"],
+  );
+  for (const m of current) {
+    assertEquals(m.missing_from_marker, []);
     assertEquals(m.extra_in_marker, []);
   }
 });
 
-Deno.test("marker comparison: 5-key union pool vs 5-key markers -> all current, no drift", () => {
+Deno.test("marker comparison (post-AP-3): a 5-key union pool now makes the 6-key display markers lag (day-hero extra_in_marker); only 5-key contract is current", () => {
+  // Hypothetical: if day-hero were removed from the LIVE pool again, the union
+  // drops to 5 while the AP-3-refreshed declarative/dashboard markers still declare
+  // 6 -> those two would show day-hero as extra_in_marker; the 5-key contract marker
+  // would then be the current one. (Direction-of-drift regression guard.)
   const rows = makeApOneAssetRows().filter(
     (r) => r.asset_meta!.asset_key !== DAY_HERO,
   );
   const res = comparePoolToMarkers(poolsFor(rows), POOL_MARKERS);
   assertEquals(res.union_pool.sort(), [...FIVE_KEYS].sort());
-  assertEquals(res.markers.filter((m) => m.status === "lagging"), []);
-  assertFalse(res.drift);
+  assert(res.drift);
+
+  const lagging = res.markers.filter((m) => m.status === "lagging");
+  assertEquals(
+    lagging.map((m) => m.marker).sort(),
+    ["marker_dashboard", "marker_declarative"],
+  );
+  for (const m of lagging) {
+    assertEquals(m.extra_in_marker, [DAY_HERO]);
+    assertEquals(m.missing_from_marker, []);
+  }
+
+  const contract = res.markers.find((m) => m.marker === "marker_contract")!;
+  assertEquals(contract.status, "current");
 });
 
 Deno.test("marker comparison: a key removed from the live pool shows as extra_in_marker (deactivation direction)", () => {
+  // Remove bg_sydney_cbd from the live pool but keep day-hero live -> union =
+  // {perth, brisbane, aerial_grid, home_keys, day_hero} (5). All three markers still
+  // declare sydney (extra_in_marker) so all lag; only the 5-key contract marker is
+  // ALSO missing day-hero.
   const rows = makeApOneAssetRows().filter(
     (r) => r.asset_meta!.asset_key !== "bg_sydney_cbd",
   );
@@ -320,11 +352,18 @@ Deno.test("marker comparison: a key removed from the live pool shows as extra_in
   for (const m of res.markers) {
     assertEquals(m.status, "lagging");
     assert(m.extra_in_marker.includes("bg_sydney_cbd"));
-    assert(m.missing_from_marker.includes(DAY_HERO));
   }
+  // Only the 5-key contract marker is missing day-hero from its declaration; the
+  // AP-3-refreshed 6-key markers already declare it.
+  const contract = res.markers.find((m) => m.marker === "marker_contract")!;
+  assert(contract.missing_from_marker.includes(DAY_HERO));
+  const declarative = res.markers.find((m) => m.marker === "marker_declarative")!;
+  const dashboard = res.markers.find((m) => m.marker === "marker_dashboard")!;
+  assertEquals(declarative.missing_from_marker, []);
+  assertEquals(dashboard.missing_from_marker, []);
 });
 
-Deno.test("marker constants: three markers, each declaring the vendored 5-key pool with a citation", () => {
+Deno.test("marker constants (post-AP-3): declarative + dashboard declare the 6-key pool (v0.5); contract stays 5-key (v2)", () => {
   assertEquals(POOL_MARKERS.length, 3);
   assertEquals(
     POOL_MARKERS.map((m) => m.marker),
@@ -332,10 +371,19 @@ Deno.test("marker constants: three markers, each declaring the vendored 5-key po
   );
   assertEquals(
     POOL_MARKERS.map((m) => m.version),
-    ["v0.4", "v2", "v0.4@b9d02ca"],
+    ["v0.5", "v2", "v0.5@003bdb0"],
   );
+  const byMarker = new Map(POOL_MARKERS.map((m) => [m.marker, m]));
+
+  // AP-3 refreshed the display/evidence surfaces to 6 keys.
+  assertEquals([...byMarker.get("marker_declarative")!.keys], SIX_KEYS);
+  assertEquals([...byMarker.get("marker_dashboard")!.keys], SIX_KEYS);
+
+  // The vendored worker contract stays 5-key by design (AP-4/contract-v3 clears it).
+  assertEquals([...byMarker.get("marker_contract")!.keys], FIVE_KEYS);
+  assertFalse(byMarker.get("marker_contract")!.keys.includes(DAY_HERO));
+
   for (const m of POOL_MARKERS) {
-    assertEquals([...m.keys], FIVE_KEYS);
     assert(m.source.length > 0);
   }
 });
