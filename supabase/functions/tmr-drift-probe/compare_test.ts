@@ -5,11 +5,13 @@
 // Run: deno test supabase/functions/tmr-drift-probe/compare_test.ts
 //
 // Anchors the AP-4 acceptance case (docs/briefs/ap4-capability-contract-v3-packet.md
-// D-AP4-4): provider↔registry 16==16 clean; DB union pool = 6 keys vs the post-AP-4
-// markers (declarative v0.5 + dashboard v0.5, both 6-key; marker_contract RETIRED
-// because the vendored worker contract rebound to policy:tmr_spine) -> ZERO lagging
-// flags, the loop self-reports fully green (down from AP-3's one, AP-2's three);
-// fb9820f8 classified known_historical, never drift.
+// D-AP4-4) with the 6→8 background pool fold-in (PP promotion v2 @ v5.16): provider↔
+// registry 16==16 clean; DB union pool = 8 keys (fb/li=8, ig=7 — only day-hero is
+// platform-fenced OFF instagram; the two new promotions are ALL-PLATFORM) vs the markers
+// (declarative v0.6 + dashboard v0.6, both 8-key; marker_contract RETIRED because the
+// vendored worker contract rebound to policy:tmr_spine) -> ZERO lagging flags, the loop
+// self-reports fully green (down from AP-3's one, AP-2's three); fb9820f8 classified
+// known_historical, never drift.
 
 import {
   assert,
@@ -75,6 +77,12 @@ const FIVE_KEYS = [
 ];
 const DAY_HERO = "bg_pp_perth_cbd_skyline_day_wide";
 const SIX_KEYS = [...FIVE_KEYS, DAY_HERO];
+// PP promotion v2 (@ v5.16): two ALL-PLATFORM backgrounds promoted on top of day-hero.
+const NEW_ALL_PLATFORM_KEYS = [
+  "bg_pp_advisory_desk_flatlay",
+  "bg_pp_kitchen_living_open_plan",
+];
+const EIGHT_KEYS = [...SIX_KEYS, ...NEW_ALL_PLATFORM_KEYS];
 
 const NOW = new Date("2026-07-06T00:00:00Z");
 
@@ -103,9 +111,11 @@ function makeAssetRow(
 }
 
 /**
- * Live-DB fixture mirroring the AP-1 state: 6 eligible backgrounds; the
- * day-hero is platform-fenced OFF instagram (fb/li pool = 6, ig = 5,
- * registers v5.02 fence fact).
+ * Live-DB fixture mirroring the post-6→8 state (PP promotion v2 @ v5.16): 8 eligible
+ * backgrounds. The day-hero is platform-fenced OFF instagram; the two new promotions
+ * (bg_pp_advisory_desk_flatlay + bg_pp_kitchen_living_open_plan) are ALL-PLATFORM
+ * (platform_scope NULL), so the per-platform pools are fb/li = 8, ig = 7. The comparator
+ * diffs markers vs the UNION (8), so ig's 7-key set is never the marker comparison basis.
  */
 function makeApOneAssetRows(): BrandAssetRow[] {
   const rows = FIVE_KEYS.map((k, i) => makeAssetRow(k, i + 1));
@@ -114,6 +124,9 @@ function makeApOneAssetRows(): BrandAssetRow[] {
       platform_scope: ["facebook", "linkedin"],
     }),
   );
+  // The two v5.16 promotions are ALL-PLATFORM (platform_scope stays null via default).
+  rows.push(makeAssetRow(NEW_ALL_PLATFORM_KEYS[0], 8));
+  rows.push(makeAssetRow(NEW_ALL_PLATFORM_KEYS[1], 9));
   return rows;
 }
 
@@ -200,36 +213,42 @@ Deno.test("provider check: null registry name never counts as renamed", () => {
 // Check (b): eligible-pool filter chain replica
 // ---------------------------------------------------------------------------
 
-Deno.test("pool filter: AP-1 per-platform sets — fb/li = 6, instagram = 5 via platform_scope fence", () => {
+Deno.test("pool filter: post-6→8 per-platform sets — fb/li = 8, instagram = 7 via platform_scope fence (only day-hero fenced; 2 new promotions ALL-PLATFORM)", () => {
   const pools = poolsFor(makeApOneAssetRows());
-  assertEquals(pools.facebook.length, 6);
-  assertEquals(pools.linkedin.length, 6);
-  assertEquals(pools.instagram.length, 5);
+  assertEquals(pools.facebook.length, 8);
+  assertEquals(pools.linkedin.length, 8);
+  assertEquals(pools.instagram.length, 7);
   assert(pools.facebook.includes(DAY_HERO));
   assert(pools.linkedin.includes(DAY_HERO));
   assertFalse(pools.instagram.includes(DAY_HERO));
+  // The two v5.16 promotions are ALL-PLATFORM — present on every platform incl. instagram.
+  for (const k of NEW_ALL_PLATFORM_KEYS) {
+    assert(pools.facebook.includes(k));
+    assert(pools.linkedin.includes(k));
+    assert(pools.instagram.includes(k));
+  }
 });
 
 Deno.test("pool filter: each rejection reason excludes the row (mirrors resolve_slot_assets v1.1 chain)", () => {
   const base = makeApOneAssetRows();
   const cases: [string, BrandAssetRow][] = [
-    ["inactive", makeAssetRow("bg_x_inactive", 8, { is_active: false })],
-    ["is_active null", makeAssetRow("bg_x_nullactive", 8, { is_active: null })],
-    ["not approved", makeAssetRow("bg_x_unapproved", 8, {}, { approved: "false" })],
-    ["approved missing", makeAssetRow("bg_x_noapprove", 8, {}, { approved: null })],
-    ["approved garbage text", makeAssetRow("bg_x_badapprove", 8, {}, { approved: "maybe" })],
-    ["license missing", makeAssetRow("bg_x_nolicense", 8, {}, { license_type: null, license: null })],
-    ["license expired", makeAssetRow("bg_x_expired", 8, {}, { license_expires_at: "2025-01-01T00:00:00Z" })],
-    ["wrong bucket", makeAssetRow("bg_x_bucket", 8, {}, { bucket: "post-media" })],
-    ["bucket missing", makeAssetRow("bg_x_nobucket", 8, {}, { bucket: null })],
-    ["not text safe", makeAssetRow("bg_x_unsafe", 8, {}, { safe_for_text_overlay: "false" })],
-    ["text safety unknown", makeAssetRow("bg_x_sfto_null", 8, {}, { safe_for_text_overlay: null })],
-    ["unrecognised safety tag", makeAssetRow("bg_x_sfto_odd", 8, {}, { safe_for_text_overlay: "sometimes" })],
-    ["not a background", makeAssetRow("bg_x_logo", 8, {}, { usage: "logo" })],
+    ["inactive", makeAssetRow("bg_x_inactive", 10, { is_active: false })],
+    ["is_active null", makeAssetRow("bg_x_nullactive", 10, { is_active: null })],
+    ["not approved", makeAssetRow("bg_x_unapproved", 10, {}, { approved: "false" })],
+    ["approved missing", makeAssetRow("bg_x_noapprove", 10, {}, { approved: null })],
+    ["approved garbage text", makeAssetRow("bg_x_badapprove", 10, {}, { approved: "maybe" })],
+    ["license missing", makeAssetRow("bg_x_nolicense", 10, {}, { license_type: null, license: null })],
+    ["license expired", makeAssetRow("bg_x_expired", 10, {}, { license_expires_at: "2025-01-01T00:00:00Z" })],
+    ["wrong bucket", makeAssetRow("bg_x_bucket", 10, {}, { bucket: "post-media" })],
+    ["bucket missing", makeAssetRow("bg_x_nobucket", 10, {}, { bucket: null })],
+    ["not text safe", makeAssetRow("bg_x_unsafe", 10, {}, { safe_for_text_overlay: "false" })],
+    ["text safety unknown", makeAssetRow("bg_x_sfto_null", 10, {}, { safe_for_text_overlay: null })],
+    ["unrecognised safety tag", makeAssetRow("bg_x_sfto_odd", 10, {}, { safe_for_text_overlay: "sometimes" })],
+    ["not a background", makeAssetRow("bg_x_logo", 10, {}, { usage: "logo" })],
   ];
   for (const [label, row] of cases) {
     const pool = computeEligiblePool([...base, row], "facebook", NOW);
-    assertEquals(pool.length, 6, `case '${label}' should be excluded`);
+    assertEquals(pool.length, 8, `case '${label}' should be excluded`);
     assertFalse(
       pool.includes(row.asset_meta!.asset_key as string),
       `case '${label}' leaked into the pool`,
@@ -240,7 +259,7 @@ Deno.test("pool filter: each rejection reason excludes the row (mirrors resolve_
 Deno.test("pool filter: pg-boolean approved literals accepted ('t','1','yes'); jsonb boolean true accepted", () => {
   const base = makeApOneAssetRows();
   for (const approved of ["t", "1", "yes", "TRUE", true]) {
-    const row = makeAssetRow("bg_x_approved_variant", 8, {}, { approved });
+    const row = makeAssetRow("bg_x_approved_variant", 10, {}, { approved });
     const pool = computeEligiblePool([...base, row], "facebook", NOW);
     assert(
       pool.includes("bg_x_approved_variant"),
@@ -251,11 +270,11 @@ Deno.test("pool filter: pg-boolean approved literals accepted ('t','1','yes'); j
 
 Deno.test("pool filter: license via 'license' key alone passes; unexpired expiry passes", () => {
   const base = makeApOneAssetRows();
-  const viaLicense = makeAssetRow("bg_x_license_only", 8, {}, {
+  const viaLicense = makeAssetRow("bg_x_license_only", 10, {}, {
     license_type: null,
     license: "stock-standard",
   });
-  const unexpired = makeAssetRow("bg_x_unexpired", 9, {}, {
+  const unexpired = makeAssetRow("bg_x_unexpired", 11, {}, {
     license_expires_at: "2030-01-01T00:00:00Z",
   });
   const pool = computeEligiblePool([...base, viaLicense, unexpired], "facebook", NOW);
@@ -283,20 +302,24 @@ Deno.test("pool filter: asset_key falls back to asset_id when asset_meta lacks a
 // Check (b): marker comparison — the AP-1 blind acceptance case
 // ---------------------------------------------------------------------------
 
-Deno.test("ACCEPTANCE (AP-4): union pool 6 vs post-AP-4 markers (declarative + dashboard both 6-key; marker_contract RETIRED) -> ZERO lagging flags, loop fully green", () => {
+Deno.test("ACCEPTANCE (AP-4 + 6→8 fold-in): union pool 8 vs markers (declarative + dashboard both 8-key v0.6; marker_contract RETIRED) -> ZERO lagging flags, loop fully green", () => {
   const pools = poolsFor(makeApOneAssetRows());
   const res = comparePoolToMarkers(pools, POOL_MARKERS);
 
-  assertEquals(res.union_pool.length, 6);
+  assertEquals(res.union_pool.length, 8);
+  assertEquals([...res.union_pool].sort(), [...EIGHT_KEYS].sort());
   assert(res.union_pool.includes(DAY_HERO));
+  for (const k of NEW_ALL_PLATFORM_KEYS) assert(res.union_pool.includes(k));
   // AP-4 dropped marker_contract (the vendored worker contract rebound to policy:tmr_spine,
-  // no pool). The two remaining markers both declare 6 keys and match the union -> no drift.
+  // no pool). The two remaining markers both declare 8 keys and match the union -> no drift.
+  // instagram (7 keys) is never the marker comparison basis — the comparator diffs markers
+  // vs the UNION (8), so an 8-key marker vs union(8) is current, not lagging.
   assertFalse(res.drift);
 
   const lagging = res.markers.filter((m) => m.status === "lagging");
   assertEquals(lagging.length, 0, "zero lagging surfaces — the loop self-reports fully green");
 
-  // Both surviving display/evidence surfaces are current (6-key vs union 6).
+  // Both surviving display/evidence surfaces are current (8-key vs union 8).
   const current = res.markers.filter((m) => m.status === "current");
   assertEquals(
     current.map((m) => m.marker).sort(),
@@ -308,16 +331,19 @@ Deno.test("ACCEPTANCE (AP-4): union pool 6 vs post-AP-4 markers (declarative + d
   }
 });
 
-Deno.test("marker comparison (post-AP-4): a 5-key union pool makes both surviving 6-key markers lag (day-hero extra_in_marker)", () => {
+Deno.test("marker comparison (post-6→8): a 7-key union pool (day-hero removed) makes both 8-key markers lag (day-hero extra_in_marker)", () => {
   // Direction-of-drift regression guard: if day-hero were removed from the LIVE pool
-  // again, the union drops to 5 while the AP-3-refreshed declarative/dashboard markers
-  // still declare 6 -> both show day-hero as extra_in_marker. (marker_contract was
-  // retired by AP-4, so there is no longer a 5-key marker to be "current" here.)
+  // again, the union drops to 7 (5 base + 2 ALL-PLATFORM promotions) while the refreshed
+  // declarative/dashboard markers still declare 8 -> both show day-hero as extra_in_marker.
+  // (marker_contract was retired by AP-4, so there is no lower-key marker to be "current".)
   const rows = makeApOneAssetRows().filter(
     (r) => r.asset_meta!.asset_key !== DAY_HERO,
   );
   const res = comparePoolToMarkers(poolsFor(rows), POOL_MARKERS);
-  assertEquals(res.union_pool.sort(), [...FIVE_KEYS].sort());
+  assertEquals(
+    [...res.union_pool].sort(),
+    [...FIVE_KEYS, ...NEW_ALL_PLATFORM_KEYS].sort(),
+  );
   assert(res.drift);
 
   const lagging = res.markers.filter((m) => m.status === "lagging");
@@ -353,7 +379,7 @@ Deno.test("marker comparison: a key removed from the live pool shows as extra_in
   assertEquals(dashboard.missing_from_marker, []);
 });
 
-Deno.test("marker constants (post-AP-4): only declarative + dashboard remain, both 6-key (v0.5); marker_contract RETIRED", () => {
+Deno.test("marker constants (post-6→8): only declarative + dashboard remain, both 8-key (v0.6); marker_contract RETIRED", () => {
   assertEquals(POOL_MARKERS.length, 2);
   assertEquals(
     POOL_MARKERS.map((m) => m.marker),
@@ -361,13 +387,13 @@ Deno.test("marker constants (post-AP-4): only declarative + dashboard remain, bo
   );
   assertEquals(
     POOL_MARKERS.map((m) => m.version),
-    ["v0.5", "v0.5@003bdb0"],
+    ["v0.6", "v0.6"],
   );
   const byMarker = new Map(POOL_MARKERS.map((m) => [m.marker, m]));
 
-  // AP-3 refreshed the display/evidence surfaces to 6 keys; AP-4 leaves them UNTOUCHED.
-  assertEquals([...byMarker.get("marker_declarative")!.keys], SIX_KEYS);
-  assertEquals([...byMarker.get("marker_dashboard")!.keys], SIX_KEYS);
+  // AP-3 refreshed the surfaces to 6 keys; the 6→8 fold-in raises both to 8 keys.
+  assertEquals([...byMarker.get("marker_declarative")!.keys], EIGHT_KEYS);
+  assertEquals([...byMarker.get("marker_dashboard")!.keys], EIGHT_KEYS);
 
   // marker_contract is gone after AP-4 (the vendored worker contract rebound to
   // policy:tmr_spine — no pool to compare, so no marker).
@@ -383,14 +409,14 @@ Deno.test("marker constants (post-AP-4): only declarative + dashboard remain, bo
 // ---------------------------------------------------------------------------
 
 Deno.test("render sanity: all keys in pool -> clean", () => {
-  const renders = SIX_KEYS.map((k, i) => ({
+  const renders = EIGHT_KEYS.map((k, i) => ({
     render_log_id: `r${i}`,
     created_at: "2026-07-05T00:00:00Z",
     background_key: k,
     has_tmr_evidence: true,
   }));
-  const res = checkRenderSanity(renders, SIX_KEYS);
-  assertEquals(res.checked, 6);
+  const res = checkRenderSanity(renders, EIGHT_KEYS);
+  assertEquals(res.checked, 8);
   assertEquals(res.violations, []);
   assertEquals(res.legacy_shape, []);
   assertFalse(res.drift);
@@ -403,7 +429,7 @@ Deno.test("render sanity: out-of-pool key and tmr-present-but-key-missing are bo
     // Option-D contract guarantees background_key when the tmr block is present:
     { render_log_id: "r3", created_at: "t", background_key: null, has_tmr_evidence: true },
   ];
-  const res = checkRenderSanity(renders, SIX_KEYS);
+  const res = checkRenderSanity(renders, EIGHT_KEYS);
   assertEquals(res.violations.length, 2);
   assertEquals(res.violations[0].render_log_id, "r2");
   assertEquals(res.violations[0].reason, "background_key_not_in_pool");
@@ -420,7 +446,7 @@ Deno.test("render sanity (db-rls C2): legacy pre-Option-D shape (no background_k
     { render_log_id: "r1", created_at: "t", background_key: "bg_perth_cbd", has_tmr_evidence: true },
     { render_log_id: "c3c7489b", created_at: "2026-06-26T00:00:00Z", background_key: null, has_tmr_evidence: false },
   ];
-  const res = checkRenderSanity(renders, SIX_KEYS);
+  const res = checkRenderSanity(renders, EIGHT_KEYS);
   assertEquals(res.violations, []);
   assertEquals(res.legacy_shape.length, 1);
   assertEquals(res.legacy_shape[0].render_log_id, "c3c7489b");
@@ -428,7 +454,7 @@ Deno.test("render sanity (db-rls C2): legacy pre-Option-D shape (no background_k
 });
 
 Deno.test("render sanity: zero renders -> clean (no rows is not a violation)", () => {
-  const res = checkRenderSanity([], SIX_KEYS);
+  const res = checkRenderSanity([], EIGHT_KEYS);
   assertEquals(res.checked, 0);
   assertFalse(res.drift);
 });
