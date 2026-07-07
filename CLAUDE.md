@@ -234,6 +234,39 @@ Rules for this lane:
    nothing waived. DML/DDL ≥ T2; callers/grants/deploy/publish/secrets → T3; escalation up free,
    de-escalation needs a fresh Gate 1. Triage classes and Conventions 1–2 unchanged.
 
+## Image workflow acceleration (v1 — P1–P6 ratified 2026-07-06)
+
+> Source packet: `docs/briefs/image-workflow-acceleration-packet-v1.md` (RATIFIED, hash `dd3c3156…`).
+> Governs the cc-0027 image sourcing→intake→promotion lanes. PK ratified all six over an explicit
+> `policy_decision` escalation (rev-1 review `2866370a` raised "define shape" → fixed; rev-2 review
+> `634bbb74` verified the fix, no concrete defect, escalated only the human-judgment policy call).
+> Trims ceremony; the §2 non-negotiables below are unchanged.
+
+- **P1 — Batch-first is the default.** The unit of work is a theme-set manifest (N candidates across
+  related rows), one `image-reviewer` pass, one crop-proof pass, one PK visual gate for the whole set.
+  Solo sourcing runs only by explicit PK exception.
+- **P2 — Tier-right-sized intake review.** The full `db-rls-auditor` + external chain runs ONCE per
+  *shape*, not per asset. **"Same shape" is a MECHANICAL structural-diff gate** (any diff → new shape →
+  full chain; when in doubt → new shape): same table · same `asset_type` · identical written-column set ·
+  all four fences present-and-false (is_active/approved/production_use_allowed/approval_status) ·
+  same eligibility-relevant `asset_meta` key set (usage·bucket·license/license_type·safe_for_text_overlay·
+  sha256·asset_key) · no new eligibility-touching keys · bucket=brand-assets · no DDL · no GRANT/REVOKE ·
+  no ON CONFLICT/upsert. **Per-apply guards NEVER waived (every intake, any shape):** byte-verify +
+  public-URL sha256 + the in-txn fail-closed pool-neutrality assertion + branch-warden.
+- **P3 — PK may fast-path an asset at the visual gate** ("→ promote directly"): one T3 lane
+  (upload → governed INSERT approved=true → full T3 chain → PK gate → apply → live proof) instead of
+  intake-then-promotion. Fenced-first stays the default; fast-path is an explicit per-asset PK election.
+  (This deliberately relaxes the prior "never combine intake and promotion" rule, scoped to PK's choice.)
+- **P4 — One register pointer per batch terminal state** (Convention 1 applied), not per asset per step.
+- **P5 — `image-harvester` rejects legible text/signage at discovery** (before the crop-proof) to cut
+  re-source loops; the crop-proof remains the authoritative text-safety gate.
+- **P6 — Independent review stages run concurrently** (`db-rls-auditor`/external/`branch-warden`).
+
+**§2 non-negotiables (UNCHANGED):** PK visual verdict is the only deciding act · text-safety crop proof
+before any accept · licence safety + sha256 provenance · pool-neutrality machine-assertion on EVERY
+intake · full T3 chain + live proof + rollback-proven on EVERY production rotation change · fenced-until-
+approved default · CAS/fail-closed. The goal is to shrink ceremony, never these guards.
+
 ## CCF-02 orchestration contract (Phase 1 — ratified 2026-07-05)
 
 - **Findings contract:** subagents/auditors return the 10-field findings JSON
