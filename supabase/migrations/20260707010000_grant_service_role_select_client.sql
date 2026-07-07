@@ -1,0 +1,27 @@
+-- Migration: grant_service_role_select_client
+-- Spine Generalisation v1 — post-apply backend grant fix (T3 grant lane).
+--
+-- WHY: supervised acceptance of the generalised tmr-drift-probe v2.0.0 revealed a grant
+-- gap. fetchGovernedClients() joins c.client_creative_governance -> c.client to resolve
+-- client_slug, but service_role (the probe's identity) had NO grant on c.client (only
+-- postgres). The live run returned an HONEST error row:
+--   "governed_clients: governed_clients_select: permission denied for table client"
+-- The probe is dark/evidence-only, so nothing rendered or published broke — it fail-closed
+-- and wrote exactly one error row. v1 never read c.client, so the gap was latent until now.
+--
+-- WHAT: grant table-level SELECT on c.client to ONLY service_role — the trusted backend
+-- role (never anon / authenticated / browser). This is the slug<->id resolution the
+-- client-generic spine needs everywhere (also the future v2 live gate). Mirrors the
+-- existing service_role SELECT grants on c.client_brand_asset and c.creative_provider_template.
+--
+-- SAFETY: additive, backend-only, benign. c.client holds no secrets (secrets live in the
+-- vault). The grant names ONLY service_role — anon/authenticated/PUBLIC are untouched and
+-- gain NOTHING. Access guarantee: c.client has ZERO anon/authenticated/PUBLIC grants and RLS
+-- is off, so the GRANTEE is the sole access gate — untrusted principals cannot read it, and
+-- Supabase security advisors raise no exposure finding for c.client. (anon/authenticated do
+-- hold schema-c USAGE, but USAGE without a table grant yields no path to c.client.)
+--
+-- PREPARED, NOT APPLIED — PK-gated (grants = T3).
+-- ROLLBACK (reference only): REVOKE SELECT ON c.client FROM service_role;
+
+GRANT SELECT ON c.client TO service_role;
