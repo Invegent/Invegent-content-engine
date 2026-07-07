@@ -1,0 +1,16 @@
+[
+ {
+  "asset_key": "bg_pp_city_skyline_vantage",
+  "upload_file": "upload_staging/bg_pp_city_skyline_vantage.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_city_skyline_vantage.jpg",
+  "bytes": 1254714,
+  "sha256": "2ef9d39b15ba0e683e7e3bd3b3114a91e3b6df6b38aa0e3529155e58fb45c66d"
+ },
+ {
+  "asset_key": "bg_pp_coastal_waterfront",
+  "upload_file": "upload_staging/bg_pp_coastal_waterfront.jpg",
+  "target_path": "brand-assets/Property_Pulse/Backgrounds/bg_pp_coastal_waterfront.jpg",
+  "bytes": 1613937,
+  "sha256": "b164c47a28edd1f5e24ab09fed932ba4d18cd3a53f595c009cd1debcea346966"
+ }
+]
