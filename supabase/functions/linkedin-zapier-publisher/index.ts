@@ -1,7 +1,26 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { classifyLinkedinFormat, decideLinkedinAssetGuard } from './guard.ts';
+import { resolveZapierAction } from './media_action.ts';
 
-const VERSION = 'linkedin-zapier-publisher-v1.2.0';
+const VERSION = 'linkedin-zapier-publisher-v1.3.0';
+// v1.3.0 (06 Jul 2026): IMAGE_QUOTE MEDIA-PUBLISH PATH (LinkedIn) — cc-0028 image_quote-first v0.
+//   Adds a real single-image media POST for image_quote drafts. mediaPublishSupported flipped
+//   false→true at the guard call site, so the guard's forward-compat branch (guard.ts) may now
+//   return { kind:'publish', method:'image' } for a generated image + url. The publish path is
+//   fail-closed on a decision.method ALLOWLIST — supported methods are EXACTLY 'text' and 'image'
+//   (resolveZapierAction, pure + unit-tested). method 'image' requires image_status==='generated'
+//   AND a non-empty image_url or it BLOCKS (never text-fallback). Any other method (carousel /
+//   video / unknown) BLOCKS via the shared terminal-block writer. For method 'image' the Zapier
+//   body carries the SAME fields as text (text, title, client_name, post_draft_id, queue_id) PLUS
+//   image_url mapped to the Zap single Media/Image URL field; the text-only body is byte-identical
+//   to v1.2.0. dry_run reports the resolved method + whether an image_url would be sent, POSTs
+//   nothing. guard.ts is byte-unchanged.
+//   STRICTLY OUT OF SCOPE: carousel publishing (stays BLOCKED/held pending a separate Zapier
+//   ordered-slide lane) — carousel GFCP NOT flipped; video publishing (stays hard-BLOCKED) — video
+//   GFCP NOT flipped; the direct linkedin-publisher EF (B24/F06, repo-only); Zapier action
+//   restructuring beyond the single image/media URL field; approval gate / platform-isolation skip /
+//   seeding / throttle / empty_draft semantics (all byte-unchanged); dashboard; worker platform
+//   filters (named carry); broad platform expansion.
 // v1.2.0 (18 Jun 2026): INTERIM ASSETLESS-PUBLISH GUARD (LinkedIn) — F-PUBLISHER-ASSETGUARD-LINKEDIN.
 //   Ports the proven FB interim asset guard. This Zapier bridge is TEXT-ONLY (the webhook
 //   carries { text, title, ... } with no media fields), so a draft whose recommended_format
@@ -161,15 +180,17 @@ Deno.serve(async (req: Request) => {
         continue;
       }
 
-      // ══ INTERIM ASSETLESS-PUBLISH GUARD (v1.2.0) ════════════════════════════
-      // This Zapier bridge is TEXT-ONLY (no media path) → mediaPublishSupported:false.
-      // text → publish (existing POST path); any non-text format → block, never text.
+      // ══ ASSET-PUBLISH GUARD (v1.3.0 — cc-0028 image_quote media path) ═══════
+      // mediaPublishSupported:true → the guard's forward-compat branch may return
+      // publish:image for a generated image + url (guard.ts:72). text still → publish:text.
+      // carousel/video/unknown still → block (guard.ts). The publish path below is
+      // fail-closed on a decision.method allowlist (text + image only) via resolveZapierAction.
       const assetClass = classifyLinkedinFormat(draft.recommended_format);
       const decision = decideLinkedinAssetGuard({
         assetClass,
         image_status: draft.image_status, image_url: draft.image_url,
         video_status: draft.video_status, video_url: draft.video_url,
-      }, { mediaPublishSupported: false });
+      }, { mediaPublishSupported: true });
 
       if (decision.kind === 'hold') {
         // retryable hold — requeue, no post_publish row, NO Zapier POST.
@@ -183,11 +204,14 @@ Deno.serve(async (req: Request) => {
         results.push({ queue_id: queueId, status: 'held', reason: decision.reason, asset_class: assetClass });
         continue;
       }
-      if (decision.kind === 'block') {
-        // terminal, reviewable block — no Zapier POST, draft preserved, reason recorded.
+      // Shared terminal-block writer — used by BOTH the guard's kind:'block' path and
+      // the resolveZapierAction fail-closed block path (identical records; no divergent logic).
+      // queue → status='skipped', last_error='asset_guard_blocked:<reason>';
+      // m.post_publish → status='failed', request_payload { asset_guard:true, reason, asset_class }.
+      const writeTerminalBlock = async (reason: string) => {
         await supabase.schema('m').from('post_publish_queue').update({
           status: 'skipped',
-          last_error: `asset_guard_blocked:${decision.reason}`,
+          last_error: `asset_guard_blocked:${reason}`,
           locked_at: null, locked_by: null, updated_at: nowIso(),
         }).eq('queue_id', queueId);
         await supabase.schema('m').from('post_publish').insert({
@@ -198,17 +222,35 @@ Deno.serve(async (req: Request) => {
           destination_id: orgUrn,
           status: 'failed',
           platform_post_id: null,
-          request_payload: { asset_guard: true, reason: decision.reason, asset_class: assetClass },
+          request_payload: { asset_guard: true, reason, asset_class: assetClass },
           response_payload: null,
-          error: `asset_guard_blocked:${decision.reason}`,
+          error: `asset_guard_blocked:${reason}`,
           created_at: nowIso(),
         });
-        results.push({ queue_id: queueId, status: 'blocked', reason: decision.reason, asset_class: assetClass });
+        results.push({ queue_id: queueId, status: 'blocked', reason, asset_class: assetClass });
+      };
+
+      if (decision.kind === 'block') {
+        // terminal, reviewable block — no Zapier POST, draft preserved, reason recorded.
+        await writeTerminalBlock(decision.reason);
         continue;
       }
-      // decision.kind === 'publish' (method 'text' this lane) → fall through to the
-      // existing empty_draft check + text build + Zapier POST path UNCHANGED.
-      // ══ END ASSETLESS-PUBLISH GUARD ═════════════════════════════════════════
+
+      // decision.kind === 'publish' → resolve the concrete Zapier action on a fail-closed
+      // method allowlist (text + image only). A method-level block writes the SAME terminal
+      // records as the guard block above (never a text-only fallback for an image_quote draft).
+      const action = resolveZapierAction(decision, {
+        image_status: draft.image_status, image_url: draft.image_url,
+      });
+      if (action.action === 'block') {
+        await writeTerminalBlock(action.reason);
+        continue;
+      }
+      // action.action === 'post' → method is 'text' or 'image'; fall through to the
+      // empty_draft check + text build + Zapier POST (image_url added when includeImage).
+      // ══ END ASSET-PUBLISH GUARD ═════════════════════════════════════════════
+
+      const imageUrl = action.includeImage ? (draft.image_url ?? '').trim() : '';
 
       const title = (draft.draft_title ?? '').trim();
       const draftBody = (draft.draft_body ?? '').trim();
@@ -217,27 +259,35 @@ Deno.serve(async (req: Request) => {
       const text = `${title}${title && draftBody ? '\n\n' : ''}${draftBody}`.trim().slice(0, 3000);
 
       if (dryRun) {
+        // v1.3.0: report the resolved method + whether an image_url would be sent; POST nothing.
         await supabase.schema('m').from('post_publish_queue').update({
           status: 'queued',
           scheduled_for: new Date(Date.now() + 60 * 60_000).toISOString(),
           last_error: 'dry_run_ok',
           locked_at: null, locked_by: null, updated_at: nowIso(),
         }).eq('queue_id', queueId);
-        results.push({ queue_id: queueId, status: 'dry_run_ok', text_length: text.length });
+        results.push({
+          queue_id: queueId, status: 'dry_run_ok', text_length: text.length,
+          method: action.method, would_send_image: action.includeImage,
+        });
         continue;
       }
 
-      // POST to Zapier webhook
+      // POST to Zapier webhook.
+      // v1.3.0: text-only body is byte-identical to v1.2.0 (text, title, client_name,
+      // post_draft_id, queue_id). method 'image' adds image_url (single Zap Media/Image URL field).
+      const zapBody: Record<string, unknown> = {
+        text,
+        title,
+        client_name: prof.page_name,
+        post_draft_id: q.post_draft_id,
+        queue_id: queueId,
+      };
+      if (action.includeImage) zapBody.image_url = imageUrl;
       const zapResp = await fetch(zapierWebhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          title,
-          client_name: prof.page_name,
-          post_draft_id: q.post_draft_id,
-          queue_id: queueId,
-        }),
+        body: JSON.stringify(zapBody),
       });
 
       const zapText = await zapResp.text();
@@ -256,7 +306,7 @@ Deno.serve(async (req: Request) => {
         status: 'published',
         platform_post_id: platformPostId,
         published_at: nowIso(),
-        request_payload: { webhook_prefix: zapierWebhookUrl.slice(0, 60), text_length: text.length },
+        request_payload: { webhook_prefix: zapierWebhookUrl.slice(0, 60), text_length: text.length, method: action.method, image_sent: action.includeImage },
         response_payload: { zapier_response: zapText.slice(0, 200), duration_ms: durationMs },
         error: null,
         created_at: nowIso(),
