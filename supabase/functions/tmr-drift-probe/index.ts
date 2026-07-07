@@ -1,86 +1,111 @@
 // supabase/functions/tmr-drift-probe/index.ts
 //
-// tmr-drift-probe-v1.0.0 — TMR Provider/Registry Drift Probe v0 (AP-2).
+// tmr-drift-probe-v2.0.0 — TMR Provider/Registry Drift Probe (client-driven).
 //
-// Scheduled, read-only-against-the-world probe that mechanizes the manual
-// Creatomate Provider Reconciliation v0 and the TMR-GOV-PROVIDER-1 guard's
-// checks 1/6/7. Rationale: 15 of the 16 live-selectable generics have zero
-// code anchors — the registry is the ONLY deletion guard; the fb9820f8
-// provider-side deletion took PP image_quote production down ~27h.
-// Gate-1 packet: docs/briefs/ap2-tmr-drift-probe-v0-packet.md (PK-approved,
-// D-AP2-1..5 as recommended).
+// Scheduled, read-only-against-the-world probe. It mechanizes the manual
+// Creatomate Provider Reconciliation and the TMR-GOV-PROVIDER-1 guard's provider
+// checks, plus a per-governed-client live-pool + render-sanity sweep. Rationale:
+// 15 of the 16 live-selectable generics have zero code anchors — the registry is
+// the ONLY deletion guard; the fb9820f8 provider-side deletion took PP image_quote
+// production down ~27h.
 //
-// Three checks per run (D-AP2-2):
+// Gate-1 packets:
+//   AP-2 (v1): docs/briefs/ap2-tmr-drift-probe-v0-packet.md
+//   Spine Generalisation v1 (v2, THIS version, D3):
+//     docs/briefs/spine-generalisation-v1-packet.md (PK-approved, D1–D5 as
+//     recommended).
+//
+// WHAT CHANGED IN v2.0.0 (Spine Generalisation v1, D3) — de-hardcode, dark:
+//   · REMOVED the PP hardcodes: PP_CLIENT_ID and B1_PRODUCTION_LABEL are gone.
+//   · REMOVED the vendored-marker machinery entirely: markers.ts (POOL_MARKERS /
+//     EIGHT_KEY_POOL) is DELETED and comparePoolToMarkers is retired. The
+//     "markers lag the live pool" concept is RETIRED by design (D3) — the probe
+//     now DERIVES each client's expected pool LIVE from the resolver, so there is
+//     nothing to lag. Declarative-doc lag is now a separate audit/dashboard concern.
+//   · ADDED fetchGovernedClients(): reads c.client_creative_governance WHERE
+//     enabled = true (the Spine Generalisation v1 governance source) joined to
+//     c.client for the slug. Today this returns EXACTLY ONE row (Property Pulse ×
+//     image_quote), so behaviour is byte-identical for PP; a second governed
+//     client will be a pure DATA change (a governance row), no code fork.
+//   · Per governed client (loop; today one iteration): fetch that client's
+//     background assets, compute the live eligible pool per platform, union =
+//     the client's live-derived expected pool, then render-sanity that client's
+//     recent succeeded renders labelled with the row's render_label against it.
+//   · Provider check (a) STAYS GLOBAL and UNCHANGED (Creatomate templates vs
+//     c.creative_provider_template — it is not client-scoped).
+//
+// STRICTLY OUT OF SCOPE (this lane): the live image-worker/ai-worker gate + the
+// contract resolver (v2 T3); onboarding any client / populating a second
+// governance row (v3 data lane); any provider write; any write outside
+// c.tmr_drift_probe_run; new secrets; enforcement/blocking behaviour. The probe
+// still INFORMS only — it never blocks, gates, or auto-remediates.
+//
+// Two checks per run (D3):
 //   (a) provider↔registry — GET creatomate /v1/templates (GET ONLY; the probe
 //       performs NO provider mutation of any kind) vs c.creative_provider_template:
 //       provider_missing[] (the outage class; fb9820f8 allowlisted as
 //       known_historical — see compare.ts), provider_unregistered[], renamed[].
-//   (b) pool-lag — live resolver eligible background pool for PP, replicating
-//       the resolve_slot_assets v1.1 filter chain per platform (facebook /
-//       instagram / linkedin), union diffed against three BUILD-TIME-VENDORED
-//       markers (markers.ts — declarative v0.4 / contract v2 / dashboard
-//       v0.4@b9d02ca). The declarative registry is NEVER read at runtime
-//       (runtime-import guard).
-//   (c) render sanity — last 20 succeeded m.post_render_log rows labelled
-//       creative_library_b1_production: render_spec->>'background_key' must be
-//       in the union pool.
+//       GLOBAL, not client-scoped.
+//   (b+c) per governed client — live eligible background pool per platform
+//       (replicating resolve_slot_assets v1.1), union = live-derived expected pool;
+//       then render sanity: each recent succeeded render labelled with the client's
+//       render_label must have render_spec->>'background_key' in that live union.
+//       The declarative registry is NEVER read at runtime (runtime-import guard).
 //
-// Verdict: 'ok' (no drift) | 'drift' (any divergence) | 'error' (any check
-// failed). The probe INFORMS only — it never blocks, gates, or auto-remediates.
+// Verdict: 'ok' (no drift) | 'drift' (provider drift OR any client render-sanity
+// violation) | 'error' (any check failed). The probe INFORMS only.
 //
-// Hard guarantees (drift-check sibling pattern):
+// Hard guarantees (unchanged from v1):
 //   - Missing required env -> HTTP 500 JSON, no DB writes.
-//   - Per-check failure -> recorded in that check's error slot; the run
-//     CONTINUES and the row is still written with status 'error'.
+//   - Inbound service-role Bearer auth gate (verify_jwt=false pinned in
+//     config.toml) — mismatch/missing -> HTTP 401, zero DB writes, zero provider
+//     calls.
+//   - Per-check / per-client failure -> recorded in that slot; the run CONTINUES
+//     and the row is still written with status 'error'.
 //   - EXACTLY ONE evidence row written per run to c.tmr_drift_probe_run
-//     (the probe's ONLY write surface — it writes to no other table).
+//     (the probe's ONLY write surface — it writes to no other table; the jsonb
+//     columns absorb the v2 shape change, no ALTER of that table).
 //   - If the evidence write itself fails -> HTTP 500 with the full payload in
 //     the response body (fail-loud, never an empty success).
 //
 // Invocation
-//   POST /functions/v1/tmr-drift-probe   (no parameters in v0)
+//   POST /functions/v1/tmr-drift-probe   (no parameters)
 //
 // Auth
 //   verify_jwt:false (service-role-pattern; pinned in supabase/config.toml),
-//   PLUS an in-handler inbound gate (AP-2 security triage, PK-disclosed):
-//   Authorization must equal `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` — anything
-//   else -> HTTP 401, zero DB writes, zero provider calls. The house cron
-//   pattern already sends exactly this Bearer (drift-check-daily-fire
-//   precedent), so the cron step needs nothing extra.
-//   Fired daily by pg_cron 'tmr-drift-probe-daily' 35 17 * * * UTC (the
-//   packet-recommended 30 17 slot is OCCUPIED by active jobid 85,
-//   cadence_drift_checker_weekly — db-rls-auditor C1) — the cron is scheduled
-//   ONLY as the final step of the PK conditional sequence (D-AP2-5); nothing
-//   in this repo applies it.
+//   PLUS an in-handler inbound gate: Authorization must equal
+//   `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` — anything else -> HTTP 401.
+//   Fired daily by pg_cron 'tmr-drift-probe-daily' 35 17 * * * UTC.
 //
 // Required env
 //   SUPABASE_URL                  (auto-injected)
 //   SUPABASE_SERVICE_ROLE_KEY     (auto-injected)
-//   CREATOMATE_API_KEY            (existing project secret; v0 reuses it —
-//                                  the CREATOMATE_GENERICS_API_KEY split is an
-//                                  explicit non-goal per the packet)
-//
-// STRICTLY OUT OF SCOPE (packet forbidden list): fixing found drift (AP-3/AP-4),
-// dashboard surfacing (D-AP2-4 follow-up), alerting infra, any provider write,
-// any write outside c.tmr_drift_probe_run, new secrets, enforcement behaviour.
+//   CREATOMATE_API_KEY            (existing project secret)
 //
 // Changelog
+//   v2.0.0 (2026-07-07) — Spine Generalisation v1 (D3): de-hardcode. Governance
+//                         source c.client_creative_governance drives the checked
+//                         client set (today {PP}); expected pool DERIVED LIVE from
+//                         the resolver per client; vendored markers.ts + the
+//                         marker-lag check RETIRED. Provider check (a) unchanged
+//                         and global. Behaviour byte-identical for PP; no live
+//                         production change. STRICTLY OUT OF SCOPE: live-gate /
+//                         contract rewire (v2 T3), client onboarding (v3),
+//                         provider writes, enforcement.
 //   v1.0.0 (2026-07-06) — initial AP-2 build: three checks, one evidence row
-//                         per run, fail-loud doctrine, vendored pool markers.
-//                         Pre-deploy audit fold-ins (same lane commit):
-//                         service-role inbound auth gate (security triage);
-//                         legacy-shape render classification (db-rls C2);
-//                         provider pagination guard (db-rls C5).
+//                         per run, fail-loud doctrine, vendored pool markers,
+//                         service-role inbound auth gate, legacy-shape render
+//                         classification, provider pagination guard.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import {
   type BrandAssetRow,
   checkRenderSanity,
   compareProviderRegistry,
-  comparePoolToMarkers,
   computeEligiblePool,
+  computeUnionPool,
   computeVerdict,
-  type PoolCheckResult,
+  type LivePoolResult,
   type ProviderCheckResult,
   type ProviderTemplate,
   type RegistryTemplate,
@@ -90,16 +115,8 @@ import {
   PROVIDER_PAGE_LIMIT,
   providerListPossiblyTruncated,
 } from "./compare.ts";
-import { POOL_MARKERS } from "./markers.ts";
 
-const VERSION = "tmr-drift-probe-v1.0.0";
-
-// Property Pulse client_id — the governed B1 client (same constant as the
-// vendored contract v2, creative_contract.ts gate.client_id).
-const PP_CLIENT_ID = "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd";
-
-// S1 stamper / B1 production render_spec label (image-worker b1_production.ts).
-const B1_PRODUCTION_LABEL = "creative_library_b1_production";
+const VERSION = "tmr-drift-probe-v2.0.0";
 
 const CREATOMATE_TEMPLATES_URL =
   "https://api.creatomate.com/v1/templates?limit=100";
@@ -143,7 +160,63 @@ function makeClient(env: RequiredEnv): SupabaseClient {
   });
 }
 
-// ---------- check (a): provider ↔ registry ----------
+// ---------- governance source: which clients are governed ----------
+
+/** One governed (client, format) row resolved for a probe sweep. */
+interface GovernedClient {
+  client_id: string;
+  client_slug: string;
+  format: string;
+  contract_ref: string | null;
+  declarative_registry_ref: string | null;
+  render_label: string | null;
+}
+
+/**
+ * Reads the Spine Generalisation v1 governance source
+ * (c.client_creative_governance WHERE enabled = true) joined to c.client for the
+ * slug. This is the ONLY place the probe learns which clients to check — no PP
+ * literal remains. Today this returns EXACTLY ONE row (Property Pulse ×
+ * image_quote), so the sweep is byte-identical to v1's PP-only behaviour.
+ */
+async function fetchGovernedClients(
+  supabase: SupabaseClient,
+): Promise<GovernedClient[]> {
+  const { data, error } = await supabase
+    .schema("c")
+    .from("client_creative_governance")
+    .select(
+      "client_id, format, contract_ref, declarative_registry_ref, render_label, client:client_id(client_slug)",
+    )
+    .eq("enabled", true);
+  if (error) throw new Error(`governed_clients_select: ${error.message}`);
+  return ((data ?? []) as {
+    client_id: string;
+    format: string;
+    contract_ref: string | null;
+    declarative_registry_ref: string | null;
+    render_label: string | null;
+    client: { client_slug: string | null } | null;
+  }[]).map((r) => {
+    const slug = r.client?.client_slug;
+    if (!slug) {
+      // Fail-loud: a governed row must resolve to a client slug.
+      throw new Error(
+        `governed_client_slug_missing: client_id=${r.client_id} format=${r.format}`,
+      );
+    }
+    return {
+      client_id: r.client_id,
+      client_slug: slug,
+      format: r.format,
+      contract_ref: r.contract_ref,
+      declarative_registry_ref: r.declarative_registry_ref,
+      render_label: r.render_label,
+    };
+  });
+}
+
+// ---------- check (a): provider ↔ registry (GLOBAL, unchanged) ----------
 
 async function fetchProviderTemplates(
   env: RequiredEnv,
@@ -197,43 +270,33 @@ async function runProviderCheck(
   return compareProviderRegistry(provider, registry);
 }
 
-// ---------- check (b): pool-lag ----------
+// ---------- per-client check (b+c): live pool + render sanity ----------
 
 async function fetchBrandAssetRows(
   supabase: SupabaseClient,
+  clientId: string,
 ): Promise<BrandAssetRow[]> {
   const { data, error } = await supabase
     .schema("c")
     .from("client_brand_asset")
     .select("asset_id, is_active, platform_scope, created_at, asset_meta")
-    .eq("client_id", PP_CLIENT_ID)
+    .eq("client_id", clientId)
     .eq("asset_meta->>usage", "background");
   if (error) throw new Error(`brand_asset_select: ${error.message}`);
   return (data ?? []) as BrandAssetRow[];
 }
 
-async function runPoolCheck(
+async function fetchRecentRenders(
   supabase: SupabaseClient,
-): Promise<PoolCheckResult> {
-  const rows = await fetchBrandAssetRows(supabase);
-  const now = new Date();
-  const poolsByPlatform: Record<string, string[]> = {};
-  for (const platform of PROBE_PLATFORMS) {
-    poolsByPlatform[platform] = computeEligiblePool(rows, platform, now);
-  }
-  return comparePoolToMarkers(poolsByPlatform, POOL_MARKERS);
-}
-
-// ---------- check (c): render sanity ----------
-
-async function fetchRecentB1Renders(
-  supabase: SupabaseClient,
+  clientId: string,
+  renderLabel: string,
 ): Promise<RenderRow[]> {
   const { data, error } = await supabase
     .schema("m")
     .from("post_render_log")
-    .select("render_log_id, created_at, render_spec")
-    .eq("render_spec->>label", B1_PRODUCTION_LABEL)
+    .select("render_log_id, created_at, render_spec, client_id")
+    .eq("client_id", clientId)
+    .eq("render_spec->>label", renderLabel)
     .eq("status", "succeeded")
     .order("created_at", { ascending: false })
     .limit(RENDER_SANITY_LIMIT);
@@ -255,6 +318,66 @@ async function fetchRecentB1Renders(
         "tmr" in r.render_spec,
     };
   });
+}
+
+/** Per-governed-client result (live-derived pool + render sanity, both fenced). */
+interface ClientCheckResult {
+  client_id: string;
+  client_slug: string;
+  format: string;
+  contract_ref: string | null;
+  declarative_registry_ref: string | null;
+  render_label: string | null;
+  live_pool: LivePoolResult | null;
+  render_check: RenderCheckResult | null;
+  error: string | null;
+}
+
+async function runClientCheck(
+  supabase: SupabaseClient,
+  gc: GovernedClient,
+  now: Date,
+): Promise<ClientCheckResult> {
+  const base: Omit<ClientCheckResult, "live_pool" | "render_check" | "error"> = {
+    client_id: gc.client_id,
+    client_slug: gc.client_slug,
+    format: gc.format,
+    contract_ref: gc.contract_ref,
+    declarative_registry_ref: gc.declarative_registry_ref,
+    render_label: gc.render_label,
+  };
+  try {
+    // (b) live-derived expected pool
+    const rows = await fetchBrandAssetRows(supabase, gc.client_id);
+    const poolsByPlatform: Record<string, string[]> = {};
+    for (const platform of PROBE_PLATFORMS) {
+      poolsByPlatform[platform] = computeEligiblePool(rows, platform, now);
+    }
+    const live_pool = computeUnionPool(poolsByPlatform);
+
+    // (c) render sanity against this client's live union pool. A governed row
+    // without a render_label cannot be render-checked — that is a config error.
+    if (!gc.render_label) {
+      throw new Error(
+        `render_label_missing: client=${gc.client_slug} format=${gc.format}`,
+      );
+    }
+    const renders = await fetchRecentRenders(
+      supabase,
+      gc.client_id,
+      gc.render_label,
+    );
+    const render_check = checkRenderSanity(renders, live_pool.union_pool);
+
+    return { ...base, live_pool, render_check, error: null };
+  } catch (e) {
+    return {
+      ...base,
+      live_pool: null,
+      render_check: null,
+      error: (e as Error).message,
+    };
+  }
 }
 
 // ---------- evidence writer ----------
@@ -304,11 +427,9 @@ Deno.serve(async (req) => {
   }
   const env = envRes.env;
 
-  // Inbound auth gate (AP-2 security triage, PK-disclosed policy fix; precedent:
-  // cadence-drift-checker's inbound check): with verify_jwt=false the gateway
-  // enforces nothing, so the handler requires the service-role Bearer the house
-  // cron pattern already sends (drift-check-daily-fire). Mismatch/missing ->
-  // HTTP 401, ZERO DB writes, ZERO provider calls.
+  // Inbound auth gate (verify_jwt=false, so the gateway enforces nothing): the
+  // handler requires the service-role Bearer the house cron pattern already sends.
+  // Mismatch/missing -> HTTP 401, ZERO DB writes, ZERO provider calls.
   if (
     req.headers.get("Authorization") !==
       `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`
@@ -320,9 +441,9 @@ Deno.serve(async (req) => {
   }
 
   const supabase = makeClient(env);
+  const now = new Date();
 
-  // Each check is independently fenced: a failure is recorded and the run
-  // CONTINUES (per-check error doctrine), ending in status 'error'.
+  // Check (a): provider ↔ registry — GLOBAL, independently fenced.
   let providerResult: ProviderCheckResult | null = null;
   let providerError: string | null = null;
   try {
@@ -331,57 +452,69 @@ Deno.serve(async (req) => {
     providerError = (e as Error).message;
   }
 
-  let poolResult: PoolCheckResult | null = null;
-  let poolError: string | null = null;
+  // Governance source: which clients are governed (today: exactly {PP}). If this
+  // read fails there is no client set to sweep — recorded, run still writes 'error'.
+  let governed: GovernedClient[] = [];
+  let governedError: string | null = null;
   try {
-    poolResult = await runPoolCheck(supabase);
+    governed = await fetchGovernedClients(supabase);
   } catch (e) {
-    poolError = (e as Error).message;
+    governedError = (e as Error).message;
   }
 
-  // Check (c) evaluates against the union pool from check (b); if the pool
-  // check failed there is no trustworthy pool to validate against.
-  let renderResult: RenderCheckResult | null = null;
-  let renderError: string | null = null;
-  if (poolResult === null) {
-    renderError = "skipped: pool check failed, no union pool to validate against";
-  } else {
-    try {
-      const renders = await fetchRecentB1Renders(supabase);
-      renderResult = checkRenderSanity(renders, poolResult.union_pool);
-    } catch (e) {
-      renderError = (e as Error).message;
-    }
+  // Per-governed-client check (b+c), each independently fenced.
+  const clientResults: ClientCheckResult[] = [];
+  for (const gc of governed) {
+    clientResults.push(await runClientCheck(supabase, gc, now));
   }
+
+  // Verdict: provider drift OR any client render-sanity violation -> drift; any
+  // check/client error (incl. the governance read) -> error.
+  const anyClientRenderDrift = clientResults.some(
+    (c) => c.render_check?.drift === true,
+  );
+  const clientErrors = clientResults
+    .filter((c) => c.error !== null)
+    .map((c) => `client_check[${c.client_slug}]: ${c.error}`);
 
   const status = computeVerdict([
     { drift: providerResult?.drift ?? null, error: providerError },
-    { drift: poolResult?.drift ?? null, error: poolError },
-    { drift: renderResult?.drift ?? null, error: renderError },
+    { drift: governedError !== null ? null : anyClientRenderDrift, error: governedError },
+    // Each client error contributes an error outcome (no drift bit).
+    ...clientErrors.map((e) => ({ drift: null, error: e })),
   ]);
 
   const errors = [
     providerError ? `provider_check: ${providerError}` : null,
-    poolError ? `pool_check: ${poolError}` : null,
-    renderError ? `render_check: ${renderError}` : null,
+    governedError ? `governed_clients: ${governedError}` : null,
+    ...clientErrors,
   ].filter((e): e is string => e !== null);
+
+  const governedClientSlugs = clientResults.map((c) => c.client_slug);
 
   const divergenceSummary = {
     status,
+    // Provider (a) — global, unchanged summary fields.
     provider_drift: providerResult?.drift ?? null,
     provider_missing_count: providerResult?.provider_missing.length ?? null,
     provider_unregistered_count: providerResult?.provider_unregistered.length ?? null,
     renamed_count: providerResult?.renamed.length ?? null,
     known_historical_count: providerResult?.known_historical.length ?? null,
-    pool_drift: poolResult?.drift ?? null,
-    lagging_markers: poolResult?.markers
-      .filter((m) => m.status === "lagging")
-      .map((m) => m.marker) ?? null,
-    union_pool_size: poolResult?.union_pool.length ?? null,
-    render_drift: renderResult?.drift ?? null,
-    render_violation_count: renderResult?.violations.length ?? null,
-    render_legacy_shape_count: renderResult?.legacy_shape.length ?? null, // informational (db-rls C2), never drift
-    renders_checked: renderResult?.checked ?? null,
+    // Client sweep (b+c) — D3: governed set + per-client live pool + render sanity.
+    // NOTE: the v1 `lagging_markers` field is RETIRED by design (D3) — declarative
+    // -doc lag is now a separate audit/dashboard concern, not a probe verdict.
+    governed_clients: governedClientSlugs,
+    governed_client_count: governedClientSlugs.length,
+    clients: clientResults.map((c) => ({
+      client_slug: c.client_slug,
+      format: c.format,
+      render_label: c.render_label,
+      live_pool_size: c.live_pool?.union_pool.length ?? null,
+      render_violation_count: c.render_check?.violations.length ?? null,
+      render_legacy_shape_count: c.render_check?.legacy_shape.length ?? null, // informational (db-rls C2), never drift
+      renders_checked: c.render_check?.checked ?? null,
+      error: c.error,
+    })),
     errors,
   };
 
@@ -389,8 +522,25 @@ Deno.serve(async (req) => {
     probe_version: VERSION,
     status,
     provider_check: providerResult ?? { error: providerError },
-    pool_check: poolResult ?? { error: poolError },
-    render_check: renderResult ?? { error: renderError },
+    // pool_check now carries the per-client live-derived pools (marker machinery gone).
+    pool_check: {
+      governed_clients: governedClientSlugs,
+      clients: clientResults.map((c) => ({
+        client_slug: c.client_slug,
+        format: c.format,
+        live_pool: c.live_pool,
+        error: c.error,
+      })),
+      error: governedError,
+    },
+    render_check: {
+      clients: clientResults.map((c) => ({
+        client_slug: c.client_slug,
+        render_label: c.render_label,
+        render_check: c.render_check,
+        error: c.error,
+      })),
+    },
     divergence_summary: divergenceSummary,
     error_detail: errors.length > 0 ? errors.join(" | ") : null,
   };
@@ -426,8 +576,8 @@ Deno.serve(async (req) => {
         run_at: written.run_at,
         divergence_summary: divergenceSummary,
         provider_check: providerResult ?? { error: providerError },
-        pool_check: poolResult ?? { error: poolError },
-        render_check: renderResult ?? { error: renderError },
+        pool_check: evidenceRow.pool_check,
+        render_check: evidenceRow.render_check,
         duration_ms: Date.now() - startedAt,
       },
       null,

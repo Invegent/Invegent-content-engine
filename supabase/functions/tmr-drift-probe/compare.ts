@@ -1,20 +1,21 @@
 // supabase/functions/tmr-drift-probe/compare.ts
 //
-// tmr-drift-probe v1.0.0 — PURE comparison logic for the three probe checks.
+// tmr-drift-probe v2.0.0 — PURE comparison logic for the probe checks.
 //
 // This module is side-effect free (no network, no DB, no Deno APIs, no Date.now
 // except where a caller injects `now`). Everything here is deterministic and
 // fixture-testable — the deno tests in compare_test.ts drive exactly these
-// functions, including the AP-1 blind acceptance case.
+// functions.
 //
-// Checks (Gate-1 packet D-AP2-2, docs/briefs/ap2-tmr-drift-probe-v0-packet.md):
+// Checks (Spine Generalisation v1, D3 — docs/briefs/spine-generalisation-v1-packet.md):
 //   (a) provider↔registry — Creatomate /v1/templates id+name set vs
-//       c.creative_provider_template (the fb9820f8 outage class).
-//   (b) pool-lag — live resolver eligible background pool (full filter chain,
-//       per-platform) vs the build-time-vendored markers (markers.ts).
-//   (c) render sanity — recent B1 renders' background_key ∈ the union pool.
-
-import type { PoolMarker } from "./markers.ts";
+//       c.creative_provider_template (the fb9820f8 outage class). GLOBAL, unchanged.
+//   (b) live-derived expected pool — PER GOVERNED CLIENT, the live resolver
+//       eligible background pool (full filter chain, per-platform), unioned across
+//       platforms. There is NO longer any vendored-marker comparison: the expected
+//       pool is DERIVED LIVE from the resolver (D3), so the AP-3/AP-4 marker-lag
+//       machinery (markers.ts / comparePoolToMarkers) is RETIRED by design.
+//   (c) render sanity — recent renders' background_key ∈ the client's live union pool.
 
 // ---------------------------------------------------------------------------
 // Check (a): provider ↔ registry
@@ -136,12 +137,13 @@ export function compareProviderRegistry(
 }
 
 // ---------------------------------------------------------------------------
-// Check (b): resolver eligible pool (filter-chain replica) vs vendored markers
+// Check (b): resolver eligible pool (filter-chain replica) — live-derived
 // ---------------------------------------------------------------------------
 
 /**
- * Raw c.client_brand_asset row shape the probe SELECTs (PP client, usage filter
- * applied in SQL; the FULL chain is re-applied here so the logic is pure-testable).
+ * Raw c.client_brand_asset row shape the probe SELECTs (per governed client,
+ * usage filter applied in SQL; the FULL chain is re-applied here so the logic is
+ * pure-testable).
  */
 export interface BrandAssetRow {
   asset_id: string;
@@ -252,28 +254,24 @@ export function computeEligiblePool(
   return [...trueClass, ...needsClass].map((e) => e.key);
 }
 
-export interface MarkerComparison {
-  marker: string;
-  version: string;
-  source: string;
-  status: "current" | "lagging";
-  /** Keys in the live union pool the marker does not declare. */
-  missing_from_marker: string[];
-  /** Keys the marker declares that are no longer in the live union pool. */
-  extra_in_marker: string[];
-}
-
-export interface PoolCheckResult {
+/**
+ * A governed client's live-derived expected background pool (D3): the per-platform
+ * eligible pools plus their union. There is NO drift verdict here — the union is the
+ * live-derived EXPECTED pool that check (c) validates a client's renders against.
+ * (The former vendored-marker lag comparison is retired by design.)
+ */
+export interface LivePoolResult {
   live_pools_by_platform: Record<string, string[]>;
   union_pool: string[];
-  markers: MarkerComparison[];
-  drift: boolean;
 }
 
-export function comparePoolToMarkers(
+/**
+ * Union the per-platform eligible pools into the client's live-derived expected
+ * pool, preserving first-seen order (resolver rank order within each platform).
+ */
+export function computeUnionPool(
   poolsByPlatform: Record<string, string[]>,
-  markers: readonly PoolMarker[],
-): PoolCheckResult {
+): LivePoolResult {
   const unionSet = new Set<string>();
   const union_pool: string[] = [];
   for (const platform of Object.keys(poolsByPlatform)) {
@@ -284,28 +282,7 @@ export function comparePoolToMarkers(
       }
     }
   }
-
-  const comparisons: MarkerComparison[] = markers.map((m) => {
-    const markerSet = new Set(m.keys);
-    const missing_from_marker = union_pool.filter((k) => !markerSet.has(k));
-    const extra_in_marker = m.keys.filter((k) => !unionSet.has(k));
-    const lagging = missing_from_marker.length > 0 || extra_in_marker.length > 0;
-    return {
-      marker: m.marker,
-      version: m.version,
-      source: m.source,
-      status: lagging ? "lagging" : "current",
-      missing_from_marker,
-      extra_in_marker,
-    };
-  });
-
-  return {
-    live_pools_by_platform: poolsByPlatform,
-    union_pool,
-    markers: comparisons,
-    drift: comparisons.some((c) => c.status === "lagging"),
-  };
+  return { live_pools_by_platform: poolsByPlatform, union_pool };
 }
 
 // ---------------------------------------------------------------------------
