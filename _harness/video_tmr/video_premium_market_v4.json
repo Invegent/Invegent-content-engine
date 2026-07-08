@@ -1,0 +1,184 @@
+{
+  "output_format": "mp4",
+  "width": 1080,
+  "height": 1920,
+  "frame_rate": 30,
+  "duration": 12,
+  "fill_color": "#1E2532",
+  "elements": [
+    {
+      "name": "Background",
+      "type": "image",
+      "track": 1,
+      "time": 0,
+      "x": "50%",
+      "y": "50%",
+      "width": "100%",
+      "height": "100%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Backgrounds/Perth_CBD_Suburbs.jpg",
+      "fit": "cover",
+      "x_scale": [
+        { "time": 0, "value": "108%" },
+        { "time": 12, "easing": "linear", "value": "134%" }
+      ],
+      "y_scale": [
+        { "time": 0, "value": "108%" },
+        { "time": 12, "easing": "linear", "value": "134%" }
+      ],
+      "dynamic": true
+    },
+    {
+      "type": "shape",
+      "track": 2,
+      "time": 0,
+      "x": "50%",
+      "y": "50%",
+      "width": "100%",
+      "height": "100%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "path": "M 0 0 L 100 0 L 100 100 L 0 100 L 0 0 Z",
+      "fill_color": "rgba(18,25,50,0.55)"
+    },
+    {
+      "type": "shape",
+      "track": 3,
+      "time": 0,
+      "x": "50%",
+      "y": "9.6%",
+      "width": "84%",
+      "height": "0.42%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "path": "M 0 0 L 100 0 L 100 100 L 0 100 L 0 0 Z",
+      "fill_color": "#ECA02D"
+    },
+    {
+      "name": "Logo",
+      "type": "image",
+      "track": 4,
+      "time": 0,
+      "x": "50%",
+      "y": "5.6%",
+      "width": "44 vmin",
+      "height": "13 vmin",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png",
+      "fit": "contain",
+      "dynamic": true
+    },
+    {
+      "type": "text",
+      "track": 5,
+      "time": 0.6,
+      "x": "50%",
+      "y": "40%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "text": "MARKET UPDATE",
+      "font_family": "Montserrat",
+      "font_weight": "700",
+      "font_size": "3.6 vmin",
+      "letter_spacing": "38%",
+      "fill_color": "#ECA02D",
+      "animations": [
+        { "time": 0, "duration": 0.6, "easing": "quadratic-out", "type": "text-slide", "scope": "split-clip", "split": "line", "direction": "up" }
+      ]
+    },
+    {
+      "name": "StatValue",
+      "type": "text",
+      "track": 6,
+      "time": 1.0,
+      "x": "50%",
+      "y": "49%",
+      "width": "92%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "x_alignment": "50%",
+      "text": "34.2%",
+      "font_family": "Montserrat",
+      "font_weight": "900",
+      "font_size": "20 vmin",
+      "fill_color": "#FFFFFF",
+      "dynamic": true,
+      "animations": [
+        { "time": 0, "duration": 0.7, "easing": "back-out", "type": "text-fly", "split": "word", "track": 0 }
+      ]
+    },
+    {
+      "name": "StatLabel",
+      "type": "text",
+      "track": 7,
+      "time": 2.4,
+      "x": "50%",
+      "y": "62%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "x_alignment": "50%",
+      "text": "MEDIAN PRICE GROWTH",
+      "font_family": "Montserrat",
+      "font_weight": "700",
+      "font_size": "4.2 vmin",
+      "letter_spacing": "6%",
+      "fill_color": "#1E2532",
+      "background_color": "#ECA02D",
+      "background_x_padding": "58%",
+      "background_y_padding": "38%",
+      "background_border_radius": "40%",
+      "dynamic": true,
+      "animations": [
+        { "time": 0, "duration": 0.8, "easing": "quadratic-out", "type": "text-slide", "scope": "split-clip", "split": "line", "direction": "up", "background_effect": "scaling-clip" }
+      ]
+    },
+    {
+      "name": "ContextLine",
+      "type": "text",
+      "track": 8,
+      "time": 4.2,
+      "x": "50%",
+      "y": "72%",
+      "width": "84%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "x_alignment": "50%",
+      "text": "Perth dwelling values over the past 12 months, outpacing the national average.",
+      "font_family": "Montserrat",
+      "font_weight": "400",
+      "font_size": "3.9 vmin",
+      "line_height": "142%",
+      "fill_color": "#F1F5F9",
+      "dynamic": true,
+      "animations": [
+        { "time": 0, "duration": 0.7, "easing": "quadratic-out", "type": "text-slide", "scope": "split-clip", "split": "line", "direction": "up" }
+      ]
+    },
+    {
+      "name": "CtaText",
+      "type": "text",
+      "track": 9,
+      "time": 6.4,
+      "x": "50%",
+      "y": "85%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "x_alignment": "50%",
+      "text": "Thinking of selling? Let's talk numbers.",
+      "font_family": "Montserrat",
+      "font_weight": "700",
+      "font_size": "4.4 vmin",
+      "fill_color": "#1E2532",
+      "background_color": "#FFFFFF",
+      "background_x_padding": "52%",
+      "background_y_padding": "44%",
+      "background_border_radius": "50%",
+      "dynamic": true,
+      "animations": [
+        { "time": 0, "duration": 0.7, "easing": "back-out", "type": "text-slide", "scope": "split-clip", "split": "line", "direction": "up", "background_effect": "scaling-clip" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+# regenerable render outputs — do not commit (repo bloat); reference by URL / re-render from the JSON
+renders/
+*.mp4
+*.mp3

@@ -1,0 +1,28 @@
+{
+  "output_format": "mp4",
+  "width": 1080,
+  "height": 1920,
+  "duration": 20,
+  "frame_rate": 30,
+  "fill_color": "#1E2532",
+  "elements": [
+    { "type": "shape", "shape": "ellipse", "fill_color": "#33495E", "opacity": 0.38, "width": "1180px", "height": "1180px", "x": "50%", "y": "42%", "x_anchor": "50%", "y_anchor": "50%", "time": 0, "enter": { "effect": "scale", "duration": 1.2, "easing": "ease-out" } },
+    { "type": "shape", "shape": "ellipse", "fill_color": "#ECA02D", "opacity": 0.10, "width": "620px", "height": "620px", "x": "50%", "y": "40%", "x_anchor": "50%", "y_anchor": "50%", "time": 0, "enter": { "effect": "scale", "duration": 1.4, "easing": "ease-out" } },
+
+    { "type": "shape", "shape": "rectangle", "fill_color": "#ECA02D", "width": "1080px", "height": "8px", "x": "0px", "y": "150px", "x_anchor": "0%", "y_anchor": "0%" },
+    { "name": "Logo", "type": "image", "source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png", "width": "104px", "height": "104px", "x": "48px", "y": "182px", "x_anchor": "0%", "y_anchor": "0%", "fit": "contain" },
+    { "type": "shape", "shape": "rectangle", "fill_color": "#ECA02D", "width": "1080px", "height": "8px", "x": "0px", "y": "1620px", "x_anchor": "0%", "y_anchor": "100%" },
+
+    { "name": "StatValue", "type": "text", "text": "34.2%", "font_family": "Montserrat", "font_weight": "900", "font_size": "210px", "fill_color": "#FFFFFF", "width": "1080px", "x_alignment": "50%", "x": "0px", "y": "660px", "x_anchor": "0%", "y_anchor": "0%", "time": 1.4, "enter": { "effect": "scale", "duration": 0.9, "easing": "bounce" } },
+
+    { "type": "shape", "shape": "rectangle", "border_radius": "44px", "fill_color": "#ECA02D", "width": "660px", "height": "84px", "x": "50%", "y": "1055px", "x_anchor": "50%", "y_anchor": "0%", "time": 3.2, "enter": { "effect": "scale", "duration": 0.5, "easing": "ease-out" } },
+    { "name": "StatLabel", "type": "text", "text": "MEDIAN PRICE GROWTH", "font_family": "Montserrat", "font_weight": "700", "font_size": "36px", "fill_color": "#1E2532", "width": "1080px", "x_alignment": "50%", "x": "0px", "y": "1097px", "x_anchor": "0%", "y_anchor": "50%", "time": 3.5, "enter": { "effect": "fade", "duration": 0.5 } },
+
+    { "name": "ContextLine", "type": "text", "text": "Perth dwelling values over the past 12 months, outpacing the national average.", "font_family": "Montserrat", "font_weight": "400", "font_size": "35px", "fill_color": "#CBD5E1", "line_height": "146%", "width": "880px", "x_alignment": "50%", "x": "100px", "y": "1220px", "x_anchor": "0%", "y_anchor": "0%", "time": 6.0, "enter": { "effect": "fade", "duration": 0.7 } },
+
+    { "type": "shape", "shape": "rectangle", "border_radius": "62px", "fill_color": "#ECA02D", "width": "800px", "height": "124px", "x": "50%", "y": "1400px", "x_anchor": "50%", "y_anchor": "0%", "time": 9.4, "enter": { "effect": "scale", "duration": 0.5, "easing": "ease-out" } },
+    { "name": "CtaText", "type": "text", "text": "Thinking of selling? Let's talk numbers.", "font_family": "Montserrat", "font_weight": "700", "font_size": "40px", "fill_color": "#1E2532", "line_height": "120%", "width": "760px", "x_alignment": "50%", "x": "160px", "y": "1462px", "x_anchor": "0%", "y_anchor": "50%", "time": 9.7, "enter": { "effect": "fade", "duration": 0.6 } },
+
+    { "type": "text", "text": "Property Pulse", "font_family": "Montserrat", "font_weight": "500", "font_size": "30px", "fill_color": "#D9E1E6", "opacity": 0.62, "width": "1080px", "x_alignment": "50%", "x": "0px", "y": "1560px", "x_anchor": "0%", "y_anchor": "0%", "time": 13.0, "enter": { "effect": "fade", "duration": 0.5 } }
+  ]
+}

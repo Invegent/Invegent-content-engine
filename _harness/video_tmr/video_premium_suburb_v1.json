@@ -1,0 +1,67 @@
+{
+  "output_format": "mp4",
+  "width": 1080,
+  "height": 1920,
+  "frame_rate": 30,
+  "duration": 14,
+  "fill_color": "#1E2532",
+  "elements": [
+    {
+      "name": "Background", "type": "image", "track": 1, "time": 0,
+      "x": "50%", "y": "50%", "width": "100%", "height": "100%", "x_anchor": "50%", "y_anchor": "50%",
+      "source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Backgrounds/bg_pp_au_suburb_aerial_grid.jpg",
+      "fit": "cover",
+      "x_scale": [ { "time": 0, "value": "110%" }, { "time": 14, "easing": "linear", "value": "136%" } ],
+      "y_scale": [ { "time": 0, "value": "110%" }, { "time": 14, "easing": "linear", "value": "136%" } ],
+      "dynamic": true
+    },
+    { "type": "shape", "track": 2, "time": 0, "x": "50%", "y": "50%", "width": "100%", "height": "100%", "x_anchor": "50%", "y_anchor": "50%", "path": "M 0 0 L 100 0 L 100 100 L 0 100 L 0 0 Z", "fill_color": "rgba(18,25,50,0.52)" },
+    {
+      "name": "Logo", "type": "image", "track": 3, "time": 0,
+      "x": "50%", "y": "6.0%", "width": "44 vmin", "height": "13 vmin", "x_anchor": "50%", "y_anchor": "50%",
+      "source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png", "fit": "contain", "dynamic": true
+    },
+    { "type": "shape", "track": 4, "time": 0, "x": "50%", "y": "11.4%", "width": "84%", "height": "0.42%", "x_anchor": "50%", "y_anchor": "50%", "path": "M 0 0 L 100 0 L 100 100 L 0 100 L 0 0 Z", "fill_color": "#ECA02D" },
+    {
+      "type": "text", "track": 5, "time": 0.6, "x": "50%", "y": "34%", "x_anchor": "50%", "y_anchor": "50%",
+      "text": "SUBURB SPOTLIGHT", "font_family": "Montserrat", "font_weight": "700", "font_size": "3.8 vmin", "letter_spacing": "34%", "fill_color": "#ECA02D",
+      "animations": [ { "time": 0, "duration": 0.6, "easing": "quadratic-out", "type": "text-slide", "scope": "split-clip", "split": "line", "direction": "up" } ]
+    },
+    {
+      "name": "SuburbName", "type": "text", "track": 6, "time": 1.0,
+      "x": "50%", "y": "43%", "width": "92%", "x_anchor": "50%", "y_anchor": "50%", "x_alignment": "50%",
+      "text": "Scarborough", "font_family": "Montserrat", "font_weight": "900", "font_size": "13 vmin", "fill_color": "#FFFFFF",
+      "dynamic": true,
+      "animations": [ { "time": 0, "duration": 0.7, "easing": "back-out", "type": "text-fly", "split": "letter", "track": 0 } ]
+    },
+    { "type": "shape", "track": 7, "time": 2.6, "x": "50%", "y": "62%", "width": "0.3%", "height": "16%", "x_anchor": "50%", "y_anchor": "50%", "path": "M 0 0 L 100 0 L 100 100 L 0 100 L 0 0 Z", "fill_color": "rgba(236,160,45,0.6)", "animations": [ { "time": 0, "duration": 0.4, "type": "fade" } ] },
+    {
+      "name": "Stat1Value", "type": "text", "track": 8, "time": 2.4, "x": "28%", "y": "60%", "x_anchor": "50%", "y_anchor": "50%", "x_alignment": "50%",
+      "text": "$1.24M", "font_family": "Montserrat", "font_weight": "900", "font_size": "8.5 vmin", "fill_color": "#FFFFFF", "dynamic": true,
+      "animations": [ { "time": 0, "duration": 0.6, "easing": "back-out", "type": "text-fly", "split": "word", "track": 0 } ]
+    },
+    {
+      "name": "Stat1Label", "type": "text", "track": 9, "time": 2.8, "x": "28%", "y": "67%", "x_anchor": "50%", "y_anchor": "50%", "x_alignment": "50%",
+      "text": "MEDIAN HOUSE", "font_family": "Montserrat", "font_weight": "700", "font_size": "2.9 vmin", "letter_spacing": "6%", "fill_color": "#ECA02D", "dynamic": true,
+      "animations": [ { "time": 0, "duration": 0.5, "easing": "quadratic-out", "type": "text-slide", "scope": "split-clip", "split": "line", "direction": "up" } ]
+    },
+    {
+      "name": "Stat2Value", "type": "text", "track": 10, "time": 3.2, "x": "72%", "y": "60%", "x_anchor": "50%", "y_anchor": "50%", "x_alignment": "50%",
+      "text": "+9.1%", "font_family": "Montserrat", "font_weight": "900", "font_size": "8.5 vmin", "fill_color": "#FFFFFF", "dynamic": true,
+      "animations": [ { "time": 0, "duration": 0.6, "easing": "back-out", "type": "text-fly", "split": "word", "track": 0 } ]
+    },
+    {
+      "name": "Stat2Label", "type": "text", "track": 11, "time": 3.6, "x": "72%", "y": "67%", "x_anchor": "50%", "y_anchor": "50%", "x_alignment": "50%",
+      "text": "12-MONTH GROWTH", "font_family": "Montserrat", "font_weight": "700", "font_size": "2.9 vmin", "letter_spacing": "6%", "fill_color": "#ECA02D", "dynamic": true,
+      "animations": [ { "time": 0, "duration": 0.5, "easing": "quadratic-out", "type": "text-slide", "scope": "split-clip", "split": "line", "direction": "up" } ]
+    },
+    {
+      "name": "CtaText", "type": "text", "track": 12, "time": 6.4, "x": "50%", "y": "85%", "x_anchor": "50%", "y_anchor": "50%", "x_alignment": "50%",
+      "text": "Curious what your home is worth? Ask us.",
+      "font_family": "Montserrat", "font_weight": "700", "font_size": "4.2 vmin", "fill_color": "#1E2532",
+      "background_color": "#ECA02D", "background_x_padding": "52%", "background_y_padding": "46%", "background_border_radius": "50%",
+      "dynamic": true,
+      "animations": [ { "time": 0, "duration": 0.7, "easing": "back-out", "type": "text-slide", "scope": "split-clip", "split": "line", "direction": "up", "background_effect": "scaling-clip" } ]
+    }
+  ]
+}

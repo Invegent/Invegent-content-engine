@@ -1,0 +1,192 @@
+{
+  "output_format": "mp4",
+  "width": 1080,
+  "height": 1920,
+  "frame_rate": 30,
+  "duration": 13,
+  "fill_color": "#1E2532",
+  "elements": [
+    {
+      "name": "Background",
+      "type": "image",
+      "track": 1,
+      "time": 0,
+      "x": "50%",
+      "y": "50%",
+      "width": "100%",
+      "height": "100%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Backgrounds/Perth_CBD_Suburbs.jpg",
+      "fit": "cover",
+      "x_scale": [
+        { "time": 0, "value": "108%" },
+        { "time": 13, "easing": "linear", "value": "132%" }
+      ],
+      "y_scale": [
+        { "time": 0, "value": "108%" },
+        { "time": 13, "easing": "linear", "value": "132%" }
+      ],
+      "dynamic": true
+    },
+    {
+      "type": "shape",
+      "track": 2,
+      "time": 0,
+      "x": "50%",
+      "y": "50%",
+      "width": "100%",
+      "height": "100%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "path": "M 0 0 L 100 0 L 100 100 L 0 100 L 0 0 Z",
+      "fill_color": "rgba(18,25,50,0.62)"
+    },
+    {
+      "name": "Logo",
+      "type": "image",
+      "track": 3,
+      "time": 0,
+      "x": "50%",
+      "y": "6.0%",
+      "width": "44 vmin",
+      "height": "13 vmin",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png",
+      "fit": "contain",
+      "dynamic": true
+    },
+    {
+      "type": "shape",
+      "track": 4,
+      "time": 0,
+      "x": "50%",
+      "y": "11.4%",
+      "width": "84%",
+      "height": "0.42%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "path": "M 0 0 L 100 0 L 100 100 L 0 100 L 0 0 Z",
+      "fill_color": "#ECA02D"
+    },
+    {
+      "name": "Title",
+      "type": "text",
+      "track": 5,
+      "time": 0.5,
+      "x": "50%",
+      "y": "22%",
+      "width": "86%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "x_alignment": "50%",
+      "text": "3 Things To Check\nBefore You Sell",
+      "font_family": "Montserrat",
+      "font_weight": "800",
+      "font_size": "6.4 vmin",
+      "line_height": "112%",
+      "fill_color": "#FFFFFF",
+      "dynamic": true,
+      "animations": [
+        { "time": 0, "duration": 0.7, "easing": "quadratic-out", "type": "text-slide", "scope": "split-clip", "split": "line", "direction": "up" }
+      ]
+    },
+    {
+      "name": "Point1",
+      "type": "text",
+      "track": 6,
+      "time": 2.2,
+      "x": "50%",
+      "y": "42%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "x_alignment": "50%",
+      "text": "Know your suburb's median before you list",
+      "font_family": "Montserrat",
+      "font_weight": "600",
+      "font_size": "4.0 vmin",
+      "fill_color": "#1E2532",
+      "background_color": "#FFFFFF",
+      "background_x_padding": "48%",
+      "background_y_padding": "44%",
+      "background_border_radius": "48%",
+      "dynamic": true,
+      "animations": [
+        { "time": 0, "duration": 0.6, "easing": "back-out", "type": "text-slide", "scope": "split-clip", "split": "line", "direction": "up", "background_effect": "scaling-clip" }
+      ]
+    },
+    {
+      "name": "Point2",
+      "type": "text",
+      "track": 7,
+      "time": 3.4,
+      "x": "50%",
+      "y": "55%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "x_alignment": "50%",
+      "text": "Fix the small stuff buyers notice first",
+      "font_family": "Montserrat",
+      "font_weight": "600",
+      "font_size": "4.0 vmin",
+      "fill_color": "#1E2532",
+      "background_color": "#FFFFFF",
+      "background_x_padding": "48%",
+      "background_y_padding": "44%",
+      "background_border_radius": "48%",
+      "dynamic": true,
+      "animations": [
+        { "time": 0, "duration": 0.6, "easing": "back-out", "type": "text-slide", "scope": "split-clip", "split": "line", "direction": "up", "background_effect": "scaling-clip" }
+      ]
+    },
+    {
+      "name": "Point3",
+      "type": "text",
+      "track": 8,
+      "time": 4.6,
+      "x": "50%",
+      "y": "68%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "x_alignment": "50%",
+      "text": "Time your launch to the market, not the calendar",
+      "font_family": "Montserrat",
+      "font_weight": "600",
+      "font_size": "4.0 vmin",
+      "fill_color": "#1E2532",
+      "background_color": "#FFFFFF",
+      "background_x_padding": "48%",
+      "background_y_padding": "44%",
+      "background_border_radius": "48%",
+      "dynamic": true,
+      "animations": [
+        { "time": 0, "duration": 0.6, "easing": "back-out", "type": "text-slide", "scope": "split-clip", "split": "line", "direction": "up", "background_effect": "scaling-clip" }
+      ]
+    },
+    {
+      "name": "CtaText",
+      "type": "text",
+      "track": 9,
+      "time": 7.0,
+      "x": "50%",
+      "y": "85%",
+      "x_anchor": "50%",
+      "y_anchor": "50%",
+      "x_alignment": "50%",
+      "text": "Book your free appraisal today",
+      "font_family": "Montserrat",
+      "font_weight": "700",
+      "font_size": "4.4 vmin",
+      "fill_color": "#1E2532",
+      "background_color": "#ECA02D",
+      "background_x_padding": "54%",
+      "background_y_padding": "46%",
+      "background_border_radius": "50%",
+      "dynamic": true,
+      "animations": [
+        { "time": 0, "duration": 0.7, "easing": "back-out", "type": "text-slide", "scope": "split-clip", "split": "line", "direction": "up", "background_effect": "scaling-clip" }
+      ]
+    }
+  ]
+}
