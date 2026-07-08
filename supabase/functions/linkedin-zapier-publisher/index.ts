@@ -1,8 +1,26 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { classifyLinkedinFormat, decideLinkedinAssetGuard } from './guard.ts';
-import { resolveZapierAction } from './media_action.ts';
+import { resolveZapierAction, nextAttemptNoFrom } from './media_action.ts';
 
-const VERSION = 'linkedin-zapier-publisher-v1.3.0';
+const VERSION = 'linkedin-zapier-publisher-v1.4.0';
+// v1.4.0 (08 Jul 2026): ATTEMPT_NO AUDIT-GAP FIX — cc-0029 step 1; mirrors youtube-publisher
+//   v1.10.0 F-YT-PUB-PUBLISH-AUDIT-GAP. Both m.post_publish inserts (the published-path insert and
+//   the shared writeTerminalBlock insert) previously omitted attempt_no, so it defaulted to 1 and
+//   collided with a prior/cross-posted platform's row on uq_publish_attempt (post_draft_id,
+//   attempt_no); the collision .error was never checked, so the audit row was SILENTLY lost while
+//   the queue was still marked published (observed in the cc-0028 proof). Fix: derive the next
+//   free attempt_no per post_draft_id (nextAttemptNoFrom, pure + unit-tested) immediately before
+//   each insert, set attempt_no on the payload, and CAPTURE + check the insert .error.
+//   PUBLISHED PATH: on insertErr, log + surface audit_row_inserted:false but do NOT throw — the
+//   Zapier POST already fired, so throwing would route to catch → requeue → RE-FIRE → duplicate
+//   post; the queue still goes 'published' (the post is live). writeTerminalBlock PATH: no post was
+//   sent, so log + reflect audit_row_inserted:false, no duplicate risk. Each result entry now
+//   carries audit_row_inserted + attempt_no.
+//   STRICTLY OUT OF SCOPE: the Zapier POST + text/image body, mediaPublishSupported, resolveZapier-
+//   Action, guard logic, approval gate, platform-isolation skip, dry_run branch, throttle/seeding
+//   (all byte-unchanged); guard.ts (byte-unchanged); no DB/schema/migration; the identical latent
+//   defect in the sibling publishers (publisher/instagram-publisher/linkedin-publisher) — flagged
+//   as a carry, not fixed here.
 // v1.3.0 (06 Jul 2026): IMAGE_QUOTE MEDIA-PUBLISH PATH (LinkedIn) — cc-0028 image_quote-first v0.
 //   Adds a real single-image media POST for image_quote drafts. mediaPublishSupported flipped
 //   false→true at the guard call site, so the guard's forward-compat branch (guard.ts) may now
@@ -214,20 +232,36 @@ Deno.serve(async (req: Request) => {
           last_error: `asset_guard_blocked:${reason}`,
           locked_at: null, locked_by: null, updated_at: nowIso(),
         }).eq('queue_id', queueId);
-        await supabase.schema('m').from('post_publish').insert({
+        // v1.4.0 (cc-0029): pick the next free attempt_no for this draft so the failed-audit row
+        // never collides with a prior/cross-posted platform's row on uq_publish_attempt
+        // (post_draft_id, attempt_no). No post was sent on this path, so there is no duplicate risk.
+        let nextAttemptNo = 1;
+        try {
+          const { data: priorRows } = await supabase.schema('m').from('post_publish')
+            .select('attempt_no').eq('post_draft_id', q.post_draft_id)
+            .order('attempt_no', { ascending: false }).limit(1);
+          nextAttemptNo = nextAttemptNoFrom(priorRows);
+        } catch (_) { nextAttemptNo = 1; }
+        const { error: insertErr } = await supabase.schema('m').from('post_publish').insert({
           queue_id: queueId,
           post_draft_id: q.post_draft_id,
           client_id: q.client_id,
           platform: 'linkedin',
           destination_id: orgUrn,
           status: 'failed',
+          attempt_no: nextAttemptNo,
           platform_post_id: null,
           request_payload: { asset_guard: true, reason, asset_class: assetClass },
           response_payload: null,
           error: `asset_guard_blocked:${reason}`,
           created_at: nowIso(),
         });
-        results.push({ queue_id: queueId, status: 'blocked', reason, asset_class: assetClass });
+        if (insertErr) {
+          // v1.4.0: do NOT swallow — surface so a residual audit miss is discoverable. No post was
+          // sent, so no re-fire risk; the queue is already 'skipped'.
+          console.error('[zapier-pub] post_publish INSERT failed:', insertErr.message);
+        }
+        results.push({ queue_id: queueId, status: 'blocked', reason, asset_class: assetClass, attempt_no: nextAttemptNo, audit_row_inserted: !insertErr });
       };
 
       if (decision.kind === 'block') {
@@ -296,14 +330,27 @@ Deno.serve(async (req: Request) => {
       const durationMs = Date.now() - startMs;
       const platformPostId = `zapier-li-${Date.now()}`;
 
+      // v1.4.0 (cc-0029, F-YT-PUB-PUBLISH-AUDIT-GAP mirror): pick the next free attempt_no for this
+      // draft so the published audit row does not collide with a prior/cross-posted platform's row
+      // on uq_publish_attempt (post_draft_id, attempt_no) — the old hardcoded default of 1 was
+      // rejected and the audit row was silently lost (cc-0028 proof).
+      let nextAttemptNo = 1;
+      try {
+        const { data: priorRows } = await supabase.schema('m').from('post_publish')
+          .select('attempt_no').eq('post_draft_id', q.post_draft_id)
+          .order('attempt_no', { ascending: false }).limit(1);
+        nextAttemptNo = nextAttemptNoFrom(priorRows);
+      } catch (_) { nextAttemptNo = 1; }
+
       // Write post_publish record
-      await supabase.schema('m').from('post_publish').insert({
+      const { error: insertErr } = await supabase.schema('m').from('post_publish').insert({
         queue_id: queueId,
         post_draft_id: q.post_draft_id,
         client_id: q.client_id,
         platform: 'linkedin',
         destination_id: orgUrn,
         status: 'published',
+        attempt_no: nextAttemptNo,
         platform_post_id: platformPostId,
         published_at: nowIso(),
         request_payload: { webhook_prefix: zapierWebhookUrl.slice(0, 60), text_length: text.length, method: action.method, image_sent: action.includeImage },
@@ -311,8 +358,15 @@ Deno.serve(async (req: Request) => {
         error: null,
         created_at: nowIso(),
       });
+      if (insertErr) {
+        // v1.4.0: PUBLISHED PATH — the Zapier POST already fired (the post is LIVE on LinkedIn), so
+        // NEVER throw here: a throw would route to catch → requeue → RE-FIRE → duplicate post.
+        // Log + surface audit_row_inserted:false so the residual audit miss is discoverable and
+        // backfillable, and still mark the queue 'published' below (the post exists).
+        console.error('[zapier-pub] post_publish INSERT failed:', insertErr.message);
+      }
 
-      // Update queue
+      // Update queue — post is live regardless of the audit insert outcome (never re-send).
       await supabase.schema('m').from('post_publish_queue').update({
         status: 'published',
         last_error: null,
@@ -326,6 +380,8 @@ Deno.serve(async (req: Request) => {
         platform_post_id: platformPostId,
         client: prof.page_name,
         duration_ms: durationMs,
+        attempt_no: nextAttemptNo,
+        audit_row_inserted: !insertErr,
       });
 
       console.log(`[zapier-pub] ${VERSION} → ${prof.page_name} in ${durationMs}ms`);

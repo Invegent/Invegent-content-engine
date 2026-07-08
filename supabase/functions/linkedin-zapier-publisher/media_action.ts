@@ -31,3 +31,19 @@ export function resolveZapierAction(
   }
   return { action: 'block', reason: `method_not_enabled_v0:${method ?? 'null'}` };
 }
+
+// nextAttemptNoFrom — pure helper for the v1.4.0 attempt_no audit-gap fix (cc-0029 step 1;
+// mirrors youtube-publisher v1.10.0 F-YT-PUB-PUBLISH-AUDIT-GAP). Given the highest-attempt_no
+// row already present for a post_draft_id (m.post_publish is ordered attempt_no DESC, limit 1),
+// return the next free attempt number so a new audit insert never collides with a prior/cross-
+// posted platform's row on uq_publish_attempt (post_draft_id, attempt_no).
+//   - no prior rows (null/undefined/empty)      → 1
+//   - prior top attempt_no = N (numeric or num-string) → N + 1
+//   - non-numeric / missing attempt_no on the row → treated as 0 → 1 (fail-safe to first attempt)
+export function nextAttemptNoFrom(
+  priorRows: Array<{ attempt_no?: number | string | null }> | null | undefined,
+): number {
+  const top = priorRows?.[0]?.attempt_no;
+  const parsed = Number(top ?? 0);
+  return (Number.isFinite(parsed) ? parsed : 0) + 1;
+}
