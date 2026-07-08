@@ -4,7 +4,7 @@
 //   * resolveZapierAction (media_action.ts): fail-closed method allowlist (text + image only).
 //   * decideLinkedinAssetGuard (guard.ts): proves video stays blocked with mediaPublishSupported:true.
 import { assertEquals, assert } from 'jsr:@std/assert@1';
-import { resolveZapierAction } from './media_action.ts';
+import { resolveZapierAction, nextAttemptNoFrom } from './media_action.ts';
 import { classifyLinkedinFormat, decideLinkedinAssetGuard } from './guard.ts';
 
 // ── resolveZapierAction: text ──────────────────────────────────────────────
@@ -105,4 +105,33 @@ Deno.test('defence-in-depth: publish:image reaching resolver unready still block
   );
   assertEquals(r.action, 'block');
   assert(r.action === 'block' && r.reason.startsWith('image_method_no_image_url'));
+});
+
+// ── nextAttemptNoFrom: attempt_no audit-gap helper (cc-0029 step 1) ─────────
+Deno.test('nextAttemptNoFrom: no prior rows → 1', () => {
+  assertEquals(nextAttemptNoFrom([]), 1);
+});
+
+Deno.test('nextAttemptNoFrom: prior top attempt_no=1 → 2', () => {
+  assertEquals(nextAttemptNoFrom([{ attempt_no: 1 }]), 2);
+});
+
+Deno.test('nextAttemptNoFrom: prior top attempt_no=3 → 4', () => {
+  assertEquals(nextAttemptNoFrom([{ attempt_no: 3 }]), 4);
+});
+
+Deno.test('nextAttemptNoFrom: null → 1', () => {
+  assertEquals(nextAttemptNoFrom(null), 1);
+});
+
+Deno.test('nextAttemptNoFrom: undefined → 1', () => {
+  assertEquals(nextAttemptNoFrom(undefined), 1);
+});
+
+Deno.test('nextAttemptNoFrom: numeric-string attempt_no="2" → 3 (PostgREST may return strings)', () => {
+  assertEquals(nextAttemptNoFrom([{ attempt_no: '2' }]), 3);
+});
+
+Deno.test('nextAttemptNoFrom: row with null attempt_no → 1 (fail-safe to first)', () => {
+  assertEquals(nextAttemptNoFrom([{ attempt_no: null }]), 1);
 });
