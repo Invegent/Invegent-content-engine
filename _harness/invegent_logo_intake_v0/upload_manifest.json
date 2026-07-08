@@ -1,0 +1,121 @@
+[
+ {
+  "asset_key": "invegent_logo_master",
+  "upload_file": "upload_staging/invegent_logo_master_outlined.svg",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_master_outlined.svg",
+  "bytes": 15097,
+  "sha256": "2a1afe949bfbc6cdcebfdb87d94746397606623b6a38b4437f249527891fe36a"
+ },
+ {
+  "asset_key": "invegent_logo_master_editable_svg",
+  "upload_file": "upload_staging/invegent_logo_master_editable.svg",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_master_editable.svg",
+  "bytes": 1273,
+  "sha256": "b95e9726cacb1076ba5fe69f3a9d0bb3b9b54c4fc5d02a1b38e0e0c1e10149ac"
+ },
+ {
+  "asset_key": "invegent_logo_dark_svg",
+  "upload_file": "upload_staging/invegent_logo_dark_transparent.svg",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_dark_transparent.svg",
+  "bytes": 15097,
+  "sha256": "a042501d539ddc17638220a4c3417d9505aea9ad50c1a0e6ec9b6b373754c2a7"
+ },
+ {
+  "asset_key": "invegent_logo_white_svg",
+  "upload_file": "upload_staging/invegent_logo_white_transparent.svg",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_white_transparent.svg",
+  "bytes": 15097,
+  "sha256": "be592edfa1b66347e785265a99638d333464855882492b449779b14ba8f08c33"
+ },
+ {
+  "asset_key": "invegent_logo_horizontal_kwts_svg",
+  "upload_file": "upload_staging/invegent_logo_horizontal_know_what_to_say_transparent.svg",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_horizontal_know_what_to_say_transparent.svg",
+  "bytes": 11618,
+  "sha256": "22665be499b16ee216e906157996bdff1641c3fd7c4318c279ac4d11746718af"
+ },
+ {
+  "asset_key": "invegent_logo_mark_only_svg",
+  "upload_file": "upload_staging/invegent_logo_mark_only_transparent.svg",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_mark_only_transparent.svg",
+  "bytes": 737,
+  "sha256": "dcee1639db7f5347411243c213425d19e7f2f6aa975f58a8d3cd09bca7416131"
+ },
+ {
+  "asset_key": "invegent_logo_mark_only_navy_svg",
+  "upload_file": "upload_staging/invegent_logo_mark_only_navy_transparent.svg",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_mark_only_navy_transparent.svg",
+  "bytes": 737,
+  "sha256": "a1e6dc021a6dd5587cc0423c5ba03e4d3a7a585311d0a9a4ecf1386536aabbe9"
+ },
+ {
+  "asset_key": "invegent_logo_watermark_white_svg",
+  "upload_file": "upload_staging/invegent_logo_watermark_white_transparent.svg",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_watermark_white_transparent.svg",
+  "bytes": 737,
+  "sha256": "c8242dc29a8f52f12065d29fc18f589f32329d7ffa198d28f8d1d7a29e80f1ef"
+ },
+ {
+  "asset_key": "invegent_logo_square_brand_bg_svg",
+  "upload_file": "upload_staging/invegent_logo_square_brand_bg.svg",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_square_brand_bg.svg",
+  "bytes": 842,
+  "sha256": "96efe991484270f3f9233b8f39647c4d0ee6b5806e09fc94f2c6cc1027aa6008"
+ },
+ {
+  "asset_key": "invegent_logo_full_colour",
+  "upload_file": "upload_staging/invegent_logo_full_colour_transparent.png",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_full_colour_transparent.png",
+  "bytes": 36809,
+  "sha256": "bc71e0e1b39289b38ffe06db306d07796f48b88367670c76d393fb388bfe8993"
+ },
+ {
+  "asset_key": "invegent_logo_white",
+  "upload_file": "upload_staging/invegent_logo_white_transparent.png",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_white_transparent.png",
+  "bytes": 29838,
+  "sha256": "7adedfd0f703e9825d9ccb345e186cdb241df9b393e7c97b9b610b12c61a4589"
+ },
+ {
+  "asset_key": "invegent_logo_dark",
+  "upload_file": "upload_staging/invegent_logo_dark_transparent.png",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_dark_transparent.png",
+  "bytes": 39911,
+  "sha256": "151883805a170125242f2a2a02acd113ee9977e93b468f3c94f4a8d24802d7e5"
+ },
+ {
+  "asset_key": "invegent_logo_horizontal_kwts",
+  "upload_file": "upload_staging/invegent_logo_horizontal_know_what_to_say_transparent.png",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_horizontal_know_what_to_say_transparent.png",
+  "bytes": 36570,
+  "sha256": "4b02e979df6f9ce879540ad1601b2278be21f0e424c0b1adaed3913766456865"
+ },
+ {
+  "asset_key": "invegent_logo_mark_only",
+  "upload_file": "upload_staging/invegent_logo_mark_only_transparent_1024.png",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_mark_only_transparent_1024.png",
+  "bytes": 11805,
+  "sha256": "fc2c0f47226475de0b5840c1ac26dc0a5f02979bfe121dedf4f9dd48c2633399"
+ },
+ {
+  "asset_key": "invegent_logo_mark_only_navy",
+  "upload_file": "upload_staging/invegent_logo_mark_only_navy_transparent_1024.png",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_mark_only_navy_transparent_1024.png",
+  "bytes": 11903,
+  "sha256": "34a57bbbf3725a8d004dc8633d40f667092aabbfe91aa17f9814023e323cde4b"
+ },
+ {
+  "asset_key": "invegent_logo_watermark_white",
+  "upload_file": "upload_staging/invegent_logo_watermark_white_transparent.png",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_watermark_white_transparent.png",
+  "bytes": 10436,
+  "sha256": "5e4bc017331c4e126413c3c935f649f104351405058dd38e26943271b81b4ab6"
+ },
+ {
+  "asset_key": "invegent_logo_square_brand_bg",
+  "upload_file": "upload_staging/invegent_logo_square_brand_bg_1024.png",
+  "target_path": "brand-assets/Invegent/Logos/invegent_logo_square_brand_bg_1024.png",
+  "bytes": 11355,
+  "sha256": "b927c948775c70c569a539f5f4f9c618145143fe5ca8d4874fcab9ac16b498a7"
+ }
+]

@@ -1,0 +1,114 @@
+[
+ {
+  "asset_key": "cfw_logo_master",
+  "upload_file": "upload_staging/cfw_logo_master_outlined.svg",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_master_outlined.svg",
+  "bytes": 8341,
+  "sha256": "b9e105c38c32de0630bcc7cf050bc91fee9eb7afebc3d907691d52c9453e7a94"
+ },
+ {
+  "asset_key": "cfw_logo_full_colour_svg",
+  "upload_file": "upload_staging/cfw_logo_full_colour_transparent.svg",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_full_colour_transparent.svg",
+  "bytes": 8402,
+  "sha256": "9e0c7418e5403667b8d64bfeb6fca668815275bba54e6d000af45c93becbd02d"
+ },
+ {
+  "asset_key": "cfw_logo_dark_svg",
+  "upload_file": "upload_staging/cfw_logo_dark_transparent.svg",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_dark_transparent.svg",
+  "bytes": 8586,
+  "sha256": "2671035d8610288b7c577f067fecf92080f56a85503d6952b13f12a28b3a0437"
+ },
+ {
+  "asset_key": "cfw_logo_white_svg",
+  "upload_file": "upload_staging/cfw_logo_white_transparent.svg",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_white_transparent.svg",
+  "bytes": 8590,
+  "sha256": "efb17d79aa802d2fa2e6c1531eee4b5bebb9fe228ecfb7f72979823393a769db"
+ },
+ {
+  "asset_key": "cfw_logo_mark_only_svg",
+  "upload_file": "upload_staging/cfw_logo_mark_only_transparent.svg",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_mark_only_transparent.svg",
+  "bytes": 2727,
+  "sha256": "d0f941aaca232d54f9f7ae3734daa33958be578872ba29c48db82aa004dd2118"
+ },
+ {
+  "asset_key": "cfw_logo_mark_only_dark_svg",
+  "upload_file": "upload_staging/cfw_logo_mark_only_dark_transparent.svg",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_mark_only_dark_transparent.svg",
+  "bytes": 2627,
+  "sha256": "1df9a4f7c6fc86959d26ce9e6fdf6f70aebf4ccdfbea3442a0d41a29cf46c926"
+ },
+ {
+  "asset_key": "cfw_logo_mark_only_white_svg",
+  "upload_file": "upload_staging/cfw_logo_mark_only_white_transparent.svg",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_mark_only_white_transparent.svg",
+  "bytes": 2627,
+  "sha256": "b3b7b45703f5821432032d747a2d9e244fcadf66036326e8b1259cc87687f131"
+ },
+ {
+  "asset_key": "cfw_logo_square_brand_bg_svg",
+  "upload_file": "upload_staging/cfw_logo_square_brand_bg.svg",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_square_brand_bg.svg",
+  "bytes": 2789,
+  "sha256": "3388a70cb85a78f9cbbd77fee5dc2ea7212a7ce505e810c4b7cfd2699be4746c"
+ },
+ {
+  "asset_key": "cfw_logo_watermark_white_svg",
+  "upload_file": "upload_staging/cfw_logo_watermark_white_transparent.svg",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_watermark_white_transparent.svg",
+  "bytes": 2968,
+  "sha256": "5a53864e5d6f8a342bc86f9dc4c9bd30e6bf895c4d8eca579bb2ac74a1b33528"
+ },
+ {
+  "asset_key": "cfw_logo_full_colour",
+  "upload_file": "upload_staging/cfw_logo_full_colour_transparent.png",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_full_colour_transparent.png",
+  "bytes": 86682,
+  "sha256": "7dc3694cf77ddeb1f6b2db831b20c4ef658cb681bbf5b5b9afaee763eeec6cc2"
+ },
+ {
+  "asset_key": "cfw_logo_white",
+  "upload_file": "upload_staging/cfw_logo_white_transparent.png",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_white_transparent.png",
+  "bytes": 85949,
+  "sha256": "9aefddbe4dda9d9ccb14442776e3adf9c3e6396957d8f397d36daca031aaf453"
+ },
+ {
+  "asset_key": "cfw_logo_dark",
+  "upload_file": "upload_staging/cfw_logo_dark_transparent.png",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_dark_transparent.png",
+  "bytes": 74687,
+  "sha256": "d14f8da64754bcbc7e366b7d7a53069c08cdde04c99111512611d0d10e685f67"
+ },
+ {
+  "asset_key": "cfw_logo_mark_only",
+  "upload_file": "upload_staging/cfw_logo_mark_only_transparent_1024.png",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_mark_only_transparent_1024.png",
+  "bytes": 60046,
+  "sha256": "c91396d48ff927b6004f0df9fa2810feeb441a29001272018a89917848ebf392"
+ },
+ {
+  "asset_key": "cfw_logo_mark_only_white",
+  "upload_file": "upload_staging/cfw_logo_mark_only_white_transparent_1024.png",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_mark_only_white_transparent_1024.png",
+  "bytes": 55368,
+  "sha256": "9cccfcfdf189696f6f748d6355e9a05c0a31a5744a6c2f61852de6cb345e4801"
+ },
+ {
+  "asset_key": "cfw_logo_watermark_white",
+  "upload_file": "upload_staging/cfw_logo_watermark_white_transparent.png",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_watermark_white_transparent.png",
+  "bytes": 54545,
+  "sha256": "d475f74544873e81d022e3df1f2895fb0eec5da7e7ac6ff082d4af88d4749e39"
+ },
+ {
+  "asset_key": "cfw_logo_square_brand_bg",
+  "upload_file": "upload_staging/cfw_logo_square_brand_bg_1024.png",
+  "target_path": "brand-assets/Care_for_Welfare/Logos/cfw_logo_square_brand_bg_1024.png",
+  "bytes": 23397,
+  "sha256": "25e5f9af9374f7fc04a3f2cc060dd7d09e8f3d03a18008a9323501fff612dd0f"
+ }
+]
