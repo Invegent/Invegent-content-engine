@@ -1,8 +1,25 @@
-# Result — Creatomate Video TMR Sprint · Phase 2 (Milestone 1: dark V3/V4/V5 landed + governance seed APPLIED)
+# Result — Creatomate Video TMR Sprint · Phase 2 (M1: dark V3/V4/V5 + governance seed APPLIED · M2: V1 provider-template registered)
 
-**Created:** 2026-07-09 Sydney · **Tier:** T3 (dark authoring landed + additive DML seed applied) · **Label:** PRODUCT_PROOF
+**Created:** 2026-07-09 Sydney · **Tier:** T3 · **Label:** PRODUCT_PROOF
 **Brief:** `docs/briefs/creatomate-video-tmr-sprint-phase2-packet-v2.md` (PK Gate 1 approved 2026-07-09)
-**Status:** ✅ Milestone 1 complete — the first governed video slice is authored + landed on `main` and its DARK governance hook is LIVE (`enabled=false`). The lane continues (V1 provider template · V2 governed worker branch · one render-and-inspect) at the next gate. **PUSHED to origin 2026-07-09** (fast-forward `43358ff..345f1ca`, parity 0/0) after a push-safety gate where PK explicitly authorised the 3 register-entangled prior-session Music Library commits alongside the 4 TMR commits.
+**Status:** ✅ Milestone 1 (dark authoring + governance seed) PUSHED to origin. ✅ **Milestone 2 (V1 provider-template register) APPLIED to prod** (register v5.41, commit `ec0cff1`, **push held**). The lane continues (V2 governed worker branch · one render-and-inspect · flip `enabled=true`) at later gates.
+
+---
+
+## Milestone 2 — V1 provider-template register (APPLIED 2026-07-09, register v5.41)
+
+Registered the governed `vid_market_stat_reveal` Creatomate **video** provider template — provider-template-bound (D1a), still-image Ken-Burns (D2 baked), 0.55 scrim, `output_type=video`, 9:16, 12s.
+
+- **Template authored by PK** in the Creatomate editor from the spec `_harness/video_tmr/vid_market_stat_reveal_v1_provider_template_source.json`; **verified in-account via read-only API GET** (key out-of-transcript): id `901a30ce-292a-4e4f-8e46-fef93f71e098`, name `vid_market_stat_reveal_v1`, mp4/12s/30fps, **Background baked** (not dynamic), source `Perth_CBD_Suburbs.jpg` (`bg_perth_cbd`), scrim `rgba(18,25,50,0.55)`, **5 dynamic fields** (Logo, StatValue, StatLabel, ContextLine, CtaText).
+- **DB:** one additive INSERT into `c.creative_provider_template` — `provider_template_name=video_stat_reveal_9x16_v1`, family `c0b10001-…-001` (property-pulse-news), scope=client PP, `output_type=video`, mp4, 1080×1920/9:16, `duration_seconds=12`, `status=governance_reviewed`. **Applied** via PK-authorised temporary `apply_migration` deny-lift (guard restored byte-exact, settings sha `6a698857…`), **prod ledger `20260709055112`** (migration file committed to match).
+- **Declarative v0.7→v0.8:** `provider_template_id` pinned at the variant + capability contract; `provider_status` pending_authoring→registered; `motion.duration_seconds` reconciled 20→12 (matches the verified template).
+- **Review chain:** db-rls-auditor **pass** zero-must-fix · creative-graph-auditor **PASS** · external **partial→PK** (generic "verify legacy first" caution, **no concrete defect**, medium/high) on reviewed sha256 `c1cd5f8e`.
+- **Post-apply proof GREEN (inertness verified):** exactly **1 row** inserted; **17 static_image rows untouched**; `select_template` image_quote winner **UNCHANGED** (fb+ig `48cba556…` / generic_market_insight_card); `select_template` `video_short_stat` **still `fail_closed`/`format_unmapped`** — the new `governance_reviewed` row is **not selectable** (concretely answering the external caution). Legacy inline video path + live image spine byte-untouched.
+- **Still dark / NOT done:** no worker deploy, no render, no `enabled=true` flip, no publish. `provider_status=registered` ≠ proven (proof is the render gate).
+
+---
+
+**Status (M1):** ✅ Milestone 1 complete — the first governed video slice authored + landed on `main` and its DARK governance hook LIVE (`enabled=false`). **PUSHED to origin 2026-07-09** (fast-forward `43358ff..345f1ca`, parity 0/0) after a push-safety gate where PK explicitly authorised the 3 register-entangled prior-session Music Library commits alongside the 4 TMR commits.
 
 ## What this milestone did
 
