@@ -1,8 +1,21 @@
-# Result — Creatomate Video TMR Sprint · Phase 2 (M1: dark V3/V4/V5 + governance seed APPLIED · M2: V1 provider-template registered)
+# Result — Creatomate Video TMR Sprint · Phase 2 (M1: dark V3/V4/V5 + seed · M2: V1 provider template · M3: V2 governed video-worker DEPLOYED)
 
 **Created:** 2026-07-09 Sydney · **Tier:** T3 · **Label:** PRODUCT_PROOF
 **Brief:** `docs/briefs/creatomate-video-tmr-sprint-phase2-packet-v2.md` (PK Gate 1 approved 2026-07-09)
-**Status:** ✅ Milestone 1 (dark authoring + governance seed) PUSHED to origin. ✅ **Milestone 2 (V1 provider-template register) APPLIED to prod + PUSHED** (register v5.41, commits `ec0cff1` + `47bb3f5`, pushed to origin 2026-07-09 `eb50f56..47bb3f5` parity 0/0 — the parallel-session music-harvester commit `e4e4078` PK-authorised at the same push-safety gate). The lane continues (V2 governed worker branch · one render-and-inspect · flip `enabled=true`) at later gates.
+**Status:** ✅ M1 (dark authoring + governance seed) PUSHED. ✅ M2 (V1 provider-template register) APPLIED + PUSHED. ✅ **M3 (V2 governed video-worker branch) DEPLOYED dark + PUSHED** (register v5.44, commit `cec3569`, video-worker **v3.5.0** live). NEXT: supervised **smoke render** (needs Creatomate-key-account confirmation) → PK visual approval → `enabled=true` flip (own T3 gate).
+
+---
+
+## Milestone 3 — V2 governed video-worker branch (DEPLOYED dark 2026-07-09, register v5.44)
+
+A Property-Pulse-ONLY governed `video_short_stat` branch added to the production `video-worker` (v3.4.0 → **v3.5.0**), mirroring the proven image-worker B1 pattern. **Behaviour-preserving + ships DARK.**
+
+- **New pure module `b1_video_stat.ts`** (mirrors `b1_production.ts`): `isB1GovernedVideoStat` (PP + `video_short_stat`, `_voice` excluded) · `assertStatFieldsWithinGate` (hard-gate the 4 text fields to contract max_chars, fail-loud, no truncation) · `buildGovernedVideoStatPlan` (**direct-bind** to `901a30ce` + template-mode modifications `{StatValue,StatLabel,ContextLine,CtaText,Logo.source}`; Background **baked**, logo the only governed asset). No side effects. + 19 hermetic tests.
+- **`index.ts`:** `isVideoGovernanceEnabled` (service-role read of `c.client_creative_governance.enabled`, **fail-closed**) · `renderGovernedVideoStat` (reuses the **UNMODIFIED** polymorphic `renderUploadAndLog`) · an **early-return fork** before the legacy `isKinetic`/`isStat` block · a supervised `governed_video_stat_smoke` entrypoint (sample data → `_smoke/`, doesn't touch drafts/enabled/publish).
+- **DARK + behaviour-preserving:** the `(PP, video_short_stat)` governance row is `enabled=false` → the fork is **inert** → the legacy `isStat` path renders **byte-identically**; every other client/format unchanged. The **only** changed line outside pure additions is the VERSION const.
+- **Review chain:** `deno check` clean + `deno test` **58/0** · db-rls-auditor **pass** (governance read service-role/deny-all safe, `maybeSingle` correct, no new grant/DDL) · branch-warden **safe** (procedural: path-scoped) · external **agree/medium/high** on reviewed sha256 `2079c1c…`.
+- **Deploy:** `safe-deploy.sh` false-blocked on a **stale advisory drift log** (2026-07-07, `A-LE`, no `A-LE` override flag) — deployed via the raw `supabase functions deploy video-worker` under a **PK-authorised temporary deploy-deny-lift** (guard restored byte-exact, settings sha `6a698857…`); `config.toml` pins `verify_jwt=false`. **Verified:** `GET video-worker → version video-worker-v3.5.0`; unauth GET returns JSON (verify_jwt=false, `x-video-worker-key` caller intact). Commit `cec3569` pushed `4a141d0..cec3569`.
+- **NOT done:** no live production render (fork dark), no `enabled=true` flip, no publish. The smoke render is the next step (dependency: the deployed `CREATOMATE_API_KEY` account must contain template `901a30ce` — the operator's Downloads key; confirm at smoke).
 
 ---
 
