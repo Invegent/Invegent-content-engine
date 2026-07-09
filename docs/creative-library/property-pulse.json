@@ -1,7 +1,7 @@
 {
   "_about": "Creative Library registry (repo/config, evidence-first), Property Pulse pilot. v0.2 evolves to the Creative Library v2 model (Governed Creative Design System): Style Guide -> (governs) -> Assets + Patterns (SIBLING libraries; patterns may reference assets) -> (compose) -> Template Families -> (instantiate as) -> Creative Instances -> Evidence. Asset references use asset_key (governed in c.client_brand_asset via resolve_brand_assets), never raw URLs. Schema: docs/creative-library/registry-schema-v2.md.",
   "registry": "creative-library",
-  "registry_version": "v0.8",
+  "registry_version": "v0.9",
   "model": "style_guide -> (governs) -> assets + patterns -> (compose) -> template_families -> (instantiate as) -> creative_instances -> evidence",
   "client_slug": "property-pulse",
   "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd",
@@ -265,6 +265,28 @@
           "proof_posture": "governance_candidate",
           "known_limitations": "SILENT (no voice/captions — voice is a later lane); 9:16 only; background is a BAKED still-image (Ken-Burns over a governed 17-pool Perth-CBD still + 0.55 scrim) fixed in the PP-specific template — NOT a governed rotating pool (governed-video-background pool = deferred later gate); PP accent #ECA02D baked; 4 modifiable text fields (stat_value/stat_label/context_line/cta_text) + governed logo (the only GOVERNED asset). UNPROVEN — awaiting template authoring + first governed render proof.",
           "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": null, "review_packet": "docs/briefs/creatomate-video-tmr-sprint-phase2-packet-v2.md", "approved_by": null, "approved_at": null, "notes": "Authored DARK (Phase 2 V3). Layout derived from the proven buildStatRevealSpec (already renders in production); premium look per D2 baked still-image design _harness/video_tmr/video_premium_market_v4.json. Awaiting: PK Creatomate template authoring (provider_template_id) + the first governed render proof." }
+        },
+        {
+          "template_variant_key": "stat-reveal-9x16-video-v2",
+          "purpose": "GOVERNED PP stat-reveal video with COMBO AUDIO (voiceover + music bed) — cc-0032. VISUALS BYTE-IDENTICAL to v1 (901a30ce): same baked Ken-Burns Perth-CBD still, 0.55 scrim, Logo + MARKET UPDATE + StatValue + StatLabel + ContextLine + CtaText. The ONLY additions are two NAMED AUDIO elements the video-worker drives by modification: MusicBed (governed music bed) + VoiceAudio (ElevenLabs VO). Supersedes v1 as the governed render target once proven; v1 (901a30ce) remains the SILENT baseline.",
+          "aspect_ratio": "9:16",
+          "output_type": "mp4",
+          "compatible_ice_format_key": "video_short_stat",
+          "render_engine": "creatomate",
+          "provider": "creatomate",
+          "provider_template_id": "c11bb8ab-18bd-45ff-aedd-0a59cb3773ab",
+          "provider_status": "registered",
+          "provider_status_note": "V2 (register v0.9, 2026-07-09, cc-0032): registered as c.creative_provider_template (provider_template_name video_stat_reveal_9x16_v2, output_type=video, scope=client PP, 9:16 1080x1920, 12s). Authored provider-side by PK from spec _harness/video_tmr/vid_market_stat_reveal_v2_provider_template_source.json; id c11bb8ab-18bd-45ff-aedd-0a59cb3773ab VERIFIED present via read-only Creatomate API GET 2026-07-09 (name vid_market_stat_reveal_v2, 11 elements incl. audio MusicBed + VoiceAudio; co-resident with 901a30ce in the deployed render account). ADDS two named audio elements vs v1: MusicBed (default source = the ONE PK-approved bed Drifting Piano / calm_piano_drifting_006, approval_status=approved_scoped, -27.2 LUFS; volume 70% FIRST-ESTIMATE, tuned at smoke) + VoiceAudio (worker sets .source at render with the ElevenLabs VO, volume 100%). Background still BAKED; logo still the only GOVERNED visual asset. Still UNPROVEN — awaiting the first combo-audio render proof (step-6 smoke) before proof/enabled=true.",
+          "required_fields": ["stat_value", "stat_label", "context_line", "cta_text", "logo"],
+          "optional_fields": [],
+          "expected_assets": ["pp_logo_primary"],
+          "composed_of_patterns": ["pp_stat_card_v1", "pp_branding_strip_v1"],
+          "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+          "proof_status": "unproven",
+          "proof_gate": null,
+          "proof_posture": "governance_candidate",
+          "known_limitations": "COMBO AUDIO added (VO + music bed) but UNPROVEN — awaiting the step-6 smoke render + PK visual+aural approval. VO narration is composed deterministically from the 4 stat fields (cc-0032 D3; no dedicated narration field). Music bed = the single approved track Drifting Piano at a 70% first-estimate level (bed is quiet at -27.2 LUFS; per-track level/normalisation is the #1 smoke-tune parameter). Bed source is worker-selected (future select_music RPC); VoiceAudio.source is worker-injected. 9:16 only; background BAKED still (Ken-Burns 17-pool Perth-CBD + 0.55 scrim), NOT a governed rotating pool (deferred); PP accent #ECA02D baked. select_music RPC + governed combo branch (steps 5) not yet built.",
+          "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": null, "review_packet": "docs/briefs/cc-0032-governed-video-combo-audio-vo-music-bed.md", "approved_by": null, "approved_at": null, "notes": "Registered v0.9 (cc-0032 step 4b). Provider template API-verified present 2026-07-09 (id in the variant's provider_template_id field); audio elements MusicBed + VoiceAudio confirmed. render_spec_template_id stays null until a real render exists (matches sibling v1). Awaiting the governed combo branch (step 5) + first smoke (step 6). No proof/enabled until PK visual+aural approval." }
         }
       ]
     }
