@@ -2,7 +2,7 @@
 
 **Created:** 2026-07-09 Sydney · **Tier:** T3 · **Label:** PRODUCT_PROOF
 **Brief:** `docs/briefs/creatomate-video-tmr-sprint-phase2-packet-v2.md` (PK Gate 1 approved 2026-07-09)
-**Status:** ✅ Milestone 1 (dark authoring + governance seed) PUSHED to origin. ✅ **Milestone 2 (V1 provider-template register) APPLIED to prod** (register v5.41, commit `ec0cff1`, **push held**). The lane continues (V2 governed worker branch · one render-and-inspect · flip `enabled=true`) at later gates.
+**Status:** ✅ Milestone 1 (dark authoring + governance seed) PUSHED to origin. ✅ **Milestone 2 (V1 provider-template register) APPLIED to prod + PUSHED** (register v5.41, commits `ec0cff1` + `47bb3f5`, pushed to origin 2026-07-09 `eb50f56..47bb3f5` parity 0/0 — the parallel-session music-harvester commit `e4e4078` PK-authorised at the same push-safety gate). The lane continues (V2 governed worker branch · one render-and-inspect · flip `enabled=true`) at later gates.
 
 ---
 
