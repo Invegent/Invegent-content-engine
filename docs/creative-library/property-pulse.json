@@ -1,7 +1,7 @@
 {
   "_about": "Creative Library registry (repo/config, evidence-first), Property Pulse pilot. v0.2 evolves to the Creative Library v2 model (Governed Creative Design System): Style Guide -> (governs) -> Assets + Patterns (SIBLING libraries; patterns may reference assets) -> (compose) -> Template Families -> (instantiate as) -> Creative Instances -> Evidence. Asset references use asset_key (governed in c.client_brand_asset via resolve_brand_assets), never raw URLs. Schema: docs/creative-library/registry-schema-v2.md.",
   "registry": "creative-library",
-  "registry_version": "v0.6",
+  "registry_version": "v0.7",
   "model": "style_guide -> (governs) -> assets + patterns -> (compose) -> template_families -> (instantiate as) -> creative_instances -> evidence",
   "client_slug": "property-pulse",
   "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd",
@@ -110,7 +110,7 @@
     {
       "pattern_key": "pp_stat_card_v1", "client_slug": "property-pulse", "version": "v1", "status": "candidate",
       "pattern_type": "stat_card", "purpose": "Numeric stat emphasis — a hero stat value with a label and optional context/movement.",
-      "used_by_template_families": [], "conforms_to_style_guide": "property-pulse-styleguide-v1",
+      "used_by_template_families": ["property-pulse-news"], "conforms_to_style_guide": "property-pulse-styleguide-v1",
       "references_assets": [], "required_fields": ["stat_value"], "optional_fields": ["stat_label", "context_line", "movement"],
       "layout_rules": {
         "required_stat_value": "stat_value is the hero number (formatted for screen, e.g. $1.6M, +3.7%).",
@@ -123,7 +123,7 @@
       "accessibility_rules": { "note": "Stat value high-contrast and dominant; label legible." },
       "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
       "proof_posture": "candidate",
-      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "supporting_render_log_ids": [], "source_commit": "e194dc0", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "FORWARD-LOOKING candidate — NOT present in any proven PP News render (the proven variants render a headline, not a stat reveal). No host-render support yet; used_by_template_families is empty and it is NOT in property-pulse-news.composed_of_patterns. Remains unproven until a host variant renders it." }
+      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "supporting_render_log_ids": [], "source_commit": "e194dc0", "review_packet": null, "approved_by": null, "approved_at": null, "notes": "FORWARD-LOOKING candidate — NOT present in any proven PP News render (the proven variants render a headline, not a stat reveal). Now COMPOSED by property-pulse-news via the (unproven) stat-reveal-9x16-video-v1 variant (Phase 2 governed-video authoring): used_by_template_families=[\"property-pulse-news\"] and present in the family composed_of_patterns (back-reference symmetric). No PROVEN host render yet. Remains unproven until that governed video variant renders." }
     },
     {
       "pattern_key": "pp_category_badge_v1", "client_slug": "property-pulse", "version": "v1", "status": "candidate",
@@ -172,7 +172,7 @@
       "purpose": "Property Pulse News — the governed COMPOSITION of the brand's news-card creative (branding strip + headline + category badge + background/scrim) across a static 16:9 variant and an animated 9:16 variant.",
       "compatible_ice_format_keys": ["image_quote", "video_short_stat"],
       "conforms_to_style_guide": "property-pulse-styleguide-v1",
-      "composed_of_patterns": ["pp_branding_strip_v1", "pp_headline_block_v1", "pp_category_badge_v1", "pp_background_plus_scrim_v1"],
+      "composed_of_patterns": ["pp_branding_strip_v1", "pp_headline_block_v1", "pp_category_badge_v1", "pp_background_plus_scrim_v1", "pp_stat_card_v1"],
       "expected_assets": ["pp_logo_primary", "bg_perth_cbd"],
       "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
       "proof_posture": "governance_candidate",
@@ -243,6 +243,28 @@
           "proof_posture": "proven",
           "known_limitations": "HISTORICAL (pre-Option-D behaviour, accurate through 2026-07-04): 1:1 static image only. In the then-LIVE production path: headline is the only AI-authored REQUIRED field (hard-gated, max 90, fail-loud on blank/overflow); subtitle is DERIVED from the first non-empty draft_body paragraph (optional, max 90, truncated — never failed); category ('PROPERTY NEWS'), date (render date), footer ('propertypulse.com.au') are renderer-FIXED; location is empty in v0; background ROTATES deterministically per post_draft_id across [bg_perth_cbd, bg_sydney_cbd, bg_brisbane_cbd, bg_pp_au_suburb_aerial_grid, bg_pp_home_keys_contract_table] (B1-v3 v3.21.0 — pool 3→5, aligned to the governed resolver rank order, PK 2026-07-04); logo is fixed pp_logo_primary. Governed-only fail-loud — NO legacy fallback for PP. RUNTIME IDENTITY DRIFT: the worker emits render_spec.template.template_variant='centered-scrim-1x1' (American spelling) + implementation_id='news_static_centered_scrim_1x1_v1'; this registry uses 'centred-scrim-1x1' (British, sibling convention). Reconciled in capability_contracts[].maps_to_variant.",
           "evidence": { "status": "proven", "proof_status": "proven", "proof_gate": "B0 1:1 template smoke", "render_log_id": "50f09ca2-cfae-462f-bfd5-07aac83c96de", "render_spec_template_id": "pp-news-centred-scrim-1x1", "source_commit": "4ebec3b", "review_packet": null, "approved_by": "PK", "approved_at": null, "notes": "B0 reusable 1:1 governed-template smoke (registers v3.98 / image-worker v3.13.0; _smoke/ only, resolver_used=true, fallback_taken=false, output 1080x1080 JPEG). LIVE PRODUCTION INSTANCES (image_quote news_card.v1, label=creative_library_b1_production, resolver_used=true): render_log fcbe5993-9791-45a6-98fc-a82c8ffd579f, 5b821214-63c4-4451-ad59-7090b00793d3, 53575bc8-f0e2-4c40-a99a-a7706da48513, 5f7cfc89-5895-44af-af80-56d76e9e856e; published to facebook (post_publish 1472a6fa-c338-46d3-abb3-be100696033b, 2026-06-29) + instagram (post_publish 88ee578a-f65b-49e7-a0df-67c57ba384cd, 2026-06-29). This is the variant the live PP image_quote path renders. (Prior render_log 52165857-ba7e-4a0f-82f0-92fd5f66537e was a stale/non-existent citation — corrected 2026-06-30; full proof set: docs/creative-library/format-variant-intake-pp-image-quote-pilot-v1.md.)" }
+        },
+        {
+          "template_variant_key": "stat-reveal-9x16-video-v1",
+          "purpose": "GOVERNED PP stat-reveal video (silent, Creatomate) — first governed video slice (Video TMR Sprint Phase 2). Derived byte-for-layout from the PROVEN production composition buildStatRevealSpec (video-worker/index.ts:645-683). Distinct from the retired centred-scrim-9x16-video (which composed NEWS patterns, not a stat reveal).",
+          "aspect_ratio": "9:16",
+          "output_type": "mp4",
+          "compatible_ice_format_key": "video_short_stat",
+          "render_engine": "creatomate",
+          "provider": "creatomate",
+          "provider_template_id": "PENDING_CREATOMATE_AUTHORING",
+          "provider_status": "pending_authoring",
+          "provider_status_note": "Template not yet authored provider-side; premium design source _harness/video_tmr/video_premium_market_v4.json (D2 PK ruling 2026-07-09: baked still-image Ken-Burns background from the governed 17-pool [Perth_CBD_Suburbs.jpg] + 0.55 scrim, PP accent baked; layout derived from the proven buildStatRevealSpec composition). Background is BAKED into the provider template (single fixed still — NOT a governed rotating pool; the governed-video-background pool remains a deferred later gate); logo is the only GOVERNED asset. PK authors it in the Creatomate editor → provider_template_id pinned then.",
+          "required_fields": ["stat_value", "stat_label", "context_line", "cta_text", "logo"],
+          "optional_fields": [],
+          "expected_assets": ["pp_logo_primary"],
+          "composed_of_patterns": ["pp_stat_card_v1", "pp_branding_strip_v1"],
+          "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+          "proof_status": "unproven",
+          "proof_gate": null,
+          "proof_posture": "governance_candidate",
+          "known_limitations": "SILENT (no voice/captions — voice is a later lane); 9:16 only; background is a BAKED still-image (Ken-Burns over a governed 17-pool Perth-CBD still + 0.55 scrim) fixed in the PP-specific template — NOT a governed rotating pool (governed-video-background pool = deferred later gate); PP accent #ECA02D baked; 4 modifiable text fields (stat_value/stat_label/context_line/cta_text) + governed logo (the only GOVERNED asset). UNPROVEN — awaiting template authoring + first governed render proof.",
+          "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": null, "review_packet": "docs/briefs/creatomate-video-tmr-sprint-phase2-packet-v2.md", "approved_by": null, "approved_at": null, "notes": "Authored DARK (Phase 2 V3). Layout derived from the proven buildStatRevealSpec (already renders in production); premium look per D2 baked still-image design _harness/video_tmr/video_premium_market_v4.json. Awaiting: PK Creatomate template authoring (provider_template_id) + the first governed render proof." }
         }
       ]
     }
@@ -322,6 +344,41 @@
         "approved_at": "2026-06-30",
         "notes": "PK-ratified ACTIVE 2026-06-30 (Format Variant Intake Slice 1B reconciliation). Proof is INHERITED from the mapped variant centred-scrim-1x1 (B0 1:1 smoke 50f09ca2) and is now PRODUCTION-PROVEN by real render + publish for PP image_quote on FACEBOOK + INSTAGRAM ONLY: production renders = production_instances above; publishes = facebook post_publish 1472a6fa-c338-46d3-abb3-be100696033b (draft 1d6c8bab, 2026-06-29T06:05:14Z) + instagram post_publish 88ee578a-f65b-49e7-a0df-67c57ba384cd (draft 33b171fc, 2026-06-29T00:00:26Z). Other platforms are NOT production_proven (no publish evidence). The contract adds NO new render proof of its own. The contract resolver (resolveCreativeContract) is wired in ai-worker for ADDITIVE draft_format.contract evidence stamping ONLY (Slice B1, register v4.06) — it does NOT drive format selection or render behaviour; the image-worker render path renders via the vendored b1_production constants. 'active' ratifies the contract DEFINITION + its inherited production proof, NOT a format-selection/render change; the vendored projection (creative_contract.ts) carries only contract-identity fields (no status/evidence) and is unchanged. Prior citation of render_log 52165857 was stale/non-existent — corrected to the real IDs above. Full structured proof set: docs/creative-library/format-variant-intake-pp-image-quote-pilot-v1.md. CONTRACT_VERSION v2 (2026-07-04): PK decision 'Approve Option A-now-D-later' (Lane 4, docs/briefs/lane4-rotation-alignment-packet.md) — governed_assets.background pool 3->5 aligned to the resolve_slot_assets eligible-pool rank order; the v1 ratification above covers the contract DEFINITION and inherited proof; the v2 revision changes ONLY the background pool binding (identity fields unchanged). 2026-07-05 NOTE: the mapped variant centred-scrim-1x1's provider template was deleted (see variant provider_status); production rendering is now Option-D winner-driven. Contract v3 APPLIED (AP-4, 2026-07-06, registers v5.16): governed_assets.background rebound to policy:tmr_spine (no hardcoded pool — resolver-driven per-render); contract_version kept at v2 (governed_assets is an unstamped annotation, so no stamped-version bump / no worker redeploy — Option B). This clears the AP-2 probe marker_contract, flipping the daily drift probe (jobid 92) to status=ok."
       }
+    },
+    {
+      "contract_key": "property_pulse.video_short_stat.market_stat.v1",
+      "contract_ref": "property_pulse.video_short_stat.market_stat",
+      "contract_version": "v1",
+      "client_slug": "property-pulse",
+      "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd",
+      "status": "candidate",
+      "purpose": "Capability contract for the governed PP video_short_stat (silent Creatomate stat reveal) render path — first governed video slice. Declares the variant identity, field classes (incl. the NEW motion class the image contract lacks), governed assets, fallback, evidence. Declarative source of truth; runtime will consume a vendored projection (no live JSON import). CANDIDATE — unproven until the first governed render.",
+      "gate": { "client_id": "4036a6b5-b4a3-406e-998d-c2fe14a8bbdd", "recommended_format": "video_short_stat", "note": "Deterministic resolver inputs ONLY. Any other client_id or format resolves null (legacy video path)." },
+      "maps_to_variant": {
+        "template_family_key": "property-pulse-news",
+        "template_variant_key": "stat-reveal-9x16-video-v1",
+        "provider": "creatomate",
+        "provider_template_id": "PENDING_CREATOMATE_AUTHORING",
+        "implementation_id": "video_stat_reveal_9x16_v1",
+        "runtime_render_spec_template_variant": "stat-reveal-9x16-video"
+      },
+      "fields": {
+        "ai_authored": [
+          { "field": "stat_value", "required": true, "max_chars": 12, "policy": "hard_gate_throw", "note": "from draft video_script.stat_value; blank/overflow fails loud (no truncation slice 1)." },
+          { "field": "stat_label", "required": true, "max_chars": 48, "policy": "hard_gate_throw", "note": "from video_script.stat_label; rendered UPPERCASE." },
+          { "field": "context_line", "required": true, "max_chars": 160, "policy": "hard_gate_throw", "note": "from video_script.context_line." },
+          { "field": "cta_text", "required": true, "max_chars": 90, "policy": "hard_gate_throw", "note": "from video_script.cta_text." }
+        ],
+        "governed_assets": { "logo": { "asset_key": "pp_logo_primary", "policy": "fixed" } },
+        "motion": { "duration_seconds": 20, "aspect_ratio": "9:16", "frame_rate": 30, "output_type": "mp4", "audio": "none", "note": "NEW field class (video). Silent for slice 1 — voice/captions are a later lane. Brand colours baked in the PP-specific template." }
+      },
+      "fallback_policy": "governed_only_fail_loud",
+      "validator_policy": { "slice_1": "declarative identity + projection only — no validator, no behaviour change (dark authoring)", "future": "validate the 4 text fields + logo reachability against THIS contract before render." },
+      "evidence_fields_for_renderer": ["variant_key", "contract_ref", "contract_version", "selector_reason"],
+      "selector_reason_default": "pp_video_short_stat_default",
+      "runtime_consumption": "vendored projection only; NO live JSON import.",
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "production_instances": [], "render_spec_template_id": null, "source_commit": null, "review_packet": "docs/briefs/creatomate-video-tmr-sprint-phase2-packet-v2.md", "approved_by": null, "approved_at": null, "notes": "Authored DARK (Phase 2 V3, dark-first). UNPROVEN. Blocks-on: PK Creatomate template authoring (provider_template_id) → register c.creative_provider_template → wire governed video-worker branch (V2) → first governed render proof. governance row seeded enabled=false (V4)." }
     }
   ],
 
@@ -396,6 +453,7 @@
     "Field -> Creatomate modification-key mapping is documented in pattern layout_rules as REFERENCE only; binding stays a future worker/render lane (no production consumption).",
     "Registry vendoring drift: the dashboard's vendored copy predates v0.2 and does not read the new fields (re-vendor under A1.5).",
     "No registry consumer wired (no worker/advisor/publish/dashboard reads this file) — intentional; declarative only.",
+    "v0.7 (2026-07-08, Video TMR Sprint Phase 2 — V3 DARK video authoring): added the FIRST governed video slice DARK (behaviour-preserving, no runtime consumer). (1) NEW variant stat-reveal-9x16-video-v1 in property-pulse-news.variants[] — silent PP stat-reveal video (9:16 mp4, Creatomate), derived byte-for-layout from the PROVEN production composition buildStatRevealSpec (video-worker/index.ts:645-683); provider_template_id='PENDING_CREATOMATE_AUTHORING' placeholder (premium design source _harness/video_tmr/video_premium_market_v4.json — D2 PK ruling 2026-07-09: baked still-image Ken-Burns background from the governed 17-pool + 0.55 scrim, background BAKED into the template [NOT a governed pool], logo the only GOVERNED asset; PK authors the Creatomate template → id pinned); provider_status=pending_authoring; unproven/governance_candidate. Composes pp_stat_card_v1 + pp_branding_strip_v1. Distinct from the retired centred-scrim-9x16-video (which composed NEWS patterns, not a stat reveal). (2) NEW capability contract property_pulse.video_short_stat.market_stat.v1 in capability_contracts[] — declares variant identity + field classes (4 ai_authored text fields + governed logo + the NEW motion class the image contract lacks: duration/aspect/frame_rate/output_type/audio=none), fallback governed_only_fail_loud, evidence candidate/unproven; maps_to_variant.provider_template_id='PENDING_CREATOMATE_AUTHORING' placeholder. (3) pp_stat_card_v1.used_by_template_families [] → ['property-pulse-news'] (now composed by the new variant). Pairs with the additive c.client_creative_governance video_short_stat seed row (enabled=false, DARK — drift probe does NOT yet check it) prepared in migration 20260708000000_seed_client_creative_governance_video_short_stat_v1.sql. NO runtime/worker/render/publish change; NO deploy/apply. Blocks-on: PK Creatomate template authoring → provider_template_id pinned at the 2 placeholder sites → register c.creative_provider_template → wire governed video-worker branch (V2) → first governed render proof → flip enabled=true. Source: docs/briefs/creatomate-video-tmr-sprint-phase2-packet-v2.md (Gate-1 approved 2026-07-09; D2=baked still-image).",
     "v0.6 (2026-07-06, AP-4 fold-in): background pool 6→8 — added bg_pp_advisory_desk_flatlay + bg_pp_kitchen_living_open_plan (PP background promotion v2, PK v5.16, all-platform) to the 4 governed-superset sites; per-platform now fb/li=8, ig=7 (only day-hero fenced). ALSO capability_contracts[].governed_assets.background REBOUND to policy:tmr_spine (contract v3, no hardcoded pool — resolver-driven per-render; contract_version kept v2 [unstamped annotation]); registry-schema-v2.md admits the policy-reference background form. Clears the AP-2 probe marker_contract + refreshes marker_declarative/marker_dashboard to 8 → probe flips status=ok. Source: docs/briefs/ap4-capability-contract-v3-packet.md.",
     "v0.5 (2026-07-06, AP-3 declarative drift sweep): background pool 5→6 — added bg_pp_perth_cbd_skyline_day_wide (day-hero, PK-promoted 2026-07-05 v5.02) to the governed-superset declarations (style_guide backgrounds prose, pp_background_plus_scrim_v1.references_assets, governed_asset_dependency, centred-scrim-1x1.expected_assets). NEW platform note: fb/li resolve 6, instagram resolves 5 via bg_pp_perth_cbd_skyline_day_wide platform_scope={facebook,linkedin}. Historical pre-Option-D rotation prose (centred-scrim-1x1.known_limitations) LEFT as-is (accurate through 2026-07-04, predates day-hero — no historical rewrite). capability_contracts[].governed_assets.background (\"mod 5\") LEFT for AP-4 contract v3. Clears the AP-2 probe marker_declarative lag. Source: docs/briefs/ap3-declarative-dashboard-drift-sweep-v0-packet.md.",
     "v0.4 (2026-07-05, Lane D dead-reference truth pass): all three PP news variants RETIRED as live truth (16:9 artwork repurposed to generic_market_insight_card_1x1_v1; 9:16 video + 1:1 provider templates deleted in the 2026-07-02/03 Creatomate cleanup — 1:1 deletion caused the 2026-07-04 outage, resolved by Option D winner-driven rendering). Evidence blocks kept verbatim as history. Also recorded: news_static_lower_third_1x1_v1 (provider 2fd50302-0e8c-45cb-bbfb-a89a6024f457) was authored in the B0 era but NEVER WIRED (no code/registry/provider trace) — no registry entry needed. Source: Provider Reconciliation v0 (docs/briefs/results/creatomate-provider-reconciliation-v0-result.md) + TMR-GOV-PROVIDER-1.",
