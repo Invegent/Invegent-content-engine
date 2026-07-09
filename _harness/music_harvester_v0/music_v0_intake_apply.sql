@@ -16,7 +16,7 @@ BEGIN;
 DO $$ BEGIN
   PERFORM 1 FROM storage.objects WHERE bucket_id = 'post-music'
     AND name = 'global/warm/warm_acoustic_simple_001.mp3' AND (metadata->>'size')::bigint = 2339200;
-  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/%% missing or wrong size — rolled back', 'global/warm/warm_acoustic_simple_001.mp3'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/warm/warm_acoustic_simple_001.mp3'; END IF;
 END $$;
 WITH ins AS (
   INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, notes)
@@ -31,7 +31,7 @@ SELECT ins.track_id, 'cc0', 'CC0 1.0 Universal (Public Domain Dedication)', 'htt
 DO $$ BEGIN
   PERFORM 1 FROM storage.objects WHERE bucket_id = 'post-music'
     AND name = 'global/warm/warm_acoustic_ducklin_002.mp3' AND (metadata->>'size')::bigint = 5579737;
-  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/%% missing or wrong size — rolled back', 'global/warm/warm_acoustic_ducklin_002.mp3'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/warm/warm_acoustic_ducklin_002.mp3'; END IF;
 END $$;
 WITH ins AS (
   INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, notes)
@@ -46,7 +46,7 @@ SELECT ins.track_id, 'cc0', 'CC0 1.0 Universal (Public Domain Dedication)', 'htt
 DO $$ BEGIN
   PERFORM 1 FROM storage.objects WHERE bucket_id = 'post-music'
     AND name = 'global/calm/calm_ambient_glen_003.mp3' AND (metadata->>'size')::bigint = 2589184;
-  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/%% missing or wrong size — rolled back', 'global/calm/calm_ambient_glen_003.mp3'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/calm/calm_ambient_glen_003.mp3'; END IF;
 END $$;
 WITH ins AS (
   INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, notes)
@@ -61,7 +61,7 @@ SELECT ins.track_id, 'cc0', 'CC0 1.0 Universal (Public Domain Dedication)', 'htt
 DO $$ BEGIN
   PERFORM 1 FROM storage.objects WHERE bucket_id = 'post-music'
     AND name = 'global/neutral/neutral_jazz_saxpiano_004.mp3' AND (metadata->>'size')::bigint = 3796121;
-  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/%% missing or wrong size — rolled back', 'global/neutral/neutral_jazz_saxpiano_004.mp3'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/neutral/neutral_jazz_saxpiano_004.mp3'; END IF;
 END $$;
 WITH ins AS (
   INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, notes)
@@ -76,7 +76,7 @@ SELECT ins.track_id, 'cc0', 'CC0 1.0 Universal (Public Domain Dedication)', 'htt
 DO $$ BEGIN
   PERFORM 1 FROM storage.objects WHERE bucket_id = 'post-music'
     AND name = 'global/neutral/neutral_piano_spring_005.mp3' AND (metadata->>'size')::bigint = 3673165;
-  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/%% missing or wrong size — rolled back', 'global/neutral/neutral_piano_spring_005.mp3'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/neutral/neutral_piano_spring_005.mp3'; END IF;
 END $$;
 WITH ins AS (
   INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, notes)
@@ -91,7 +91,7 @@ SELECT ins.track_id, 'cc0', 'CC0 1.0 Universal (Public Domain Dedication)', 'htt
 DO $$ BEGIN
   PERFORM 1 FROM storage.objects WHERE bucket_id = 'post-music'
     AND name = 'global/calm/calm_piano_drifting_006.mp3' AND (metadata->>'size')::bigint = 4420963;
-  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/%% missing or wrong size — rolled back', 'global/calm/calm_piano_drifting_006.mp3'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/calm/calm_piano_drifting_006.mp3'; END IF;
 END $$;
 WITH ins AS (
   INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, notes)
@@ -106,7 +106,7 @@ SELECT ins.track_id, 'cc0', 'CC0 1.0 Universal (Public Domain Dedication)', 'htt
 DO $$ BEGIN
   PERFORM 1 FROM storage.objects WHERE bucket_id = 'post-music'
     AND name = 'global/uplifting/uplifting_composed_pluto_007.mp3' AND (metadata->>'size')::bigint = 9211405;
-  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/%% missing or wrong size — rolled back', 'global/uplifting/uplifting_composed_pluto_007.mp3'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/uplifting/uplifting_composed_pluto_007.mp3'; END IF;
 END $$;
 WITH ins AS (
   INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, notes)
@@ -121,7 +121,7 @@ SELECT ins.track_id, 'cc0', 'CC0 1.0 Universal (Public Domain Dedication)', 'htt
 DO $$ BEGIN
   PERFORM 1 FROM storage.objects WHERE bucket_id = 'post-music'
     AND name = 'global/corporate/corporate_theme_medieval_008.mp3' AND (metadata->>'size')::bigint = 2512270;
-  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/%% missing or wrong size — rolled back', 'global/corporate/corporate_theme_medieval_008.mp3'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/corporate/corporate_theme_medieval_008.mp3'; END IF;
 END $$;
 WITH ins AS (
   INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, notes)
@@ -136,7 +136,7 @@ SELECT ins.track_id, 'cc0', 'CC0 1.0 Universal (Public Domain Dedication)', 'htt
 DO $$ BEGIN
   PERFORM 1 FROM storage.objects WHERE bucket_id = 'post-music'
     AND name = 'global/neutral/neutral_short_4mei_009.mp3' AND (metadata->>'size')::bigint = 2661335;
-  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/%% missing or wrong size — rolled back', 'global/neutral/neutral_short_4mei_009.mp3'; END IF;
+  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/neutral/neutral_short_4mei_009.mp3'; END IF;
 END $$;
 WITH ins AS (
   INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, notes)
@@ -153,10 +153,10 @@ DECLARE batch int; selectable int;
 BEGIN
   SELECT count(*) INTO batch FROM m.music_track WHERE notes = 'music-harvester-v0 starter intake (2026-07-09) — fenced candidate, not selectable'
     AND is_active IS FALSE AND approved IS FALSE AND approval_status = 'intake_candidate' AND production_use_allowed IS FALSE;
-  IF batch <> 9 THEN RAISE EXCEPTION 'music-intake verify: %% fenced rows in batch, expected 9 — rolled back', batch; END IF;
+  IF batch <> 9 THEN RAISE EXCEPTION 'music-intake verify: % fenced rows in batch, expected 9 — rolled back', batch; END IF;
   SELECT count(*) INTO selectable FROM m.music_track
     WHERE is_active IS TRUE OR approved IS TRUE OR approval_status = 'approved_scoped' OR production_use_allowed IS TRUE;
-  IF selectable <> 0 THEN RAISE EXCEPTION 'music-intake verify: %% selectable tracks, expected 0 (pool must stay neutral) — rolled back', selectable; END IF;
+  IF selectable <> 0 THEN RAISE EXCEPTION 'music-intake verify: % selectable tracks, expected 0 (pool must stay neutral) — rolled back', selectable; END IF;
 END $$;
 
 COMMIT;
