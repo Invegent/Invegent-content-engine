@@ -1,3 +1,45 @@
+// video-worker v3.5.0
+// ============================================================================
+// v3.5.0 (2026-07-09, CREATIVE-LIBRARY VIDEO TMR PHASE 2 — GOVERNED video_short_stat, DARK):
+//   ADDITIVE + SHIPS DARK. New Property-Pulse-ONLY governed VIDEO stat-reveal branch in
+//   processDraft, the VIDEO counterpart of the proven image-worker B1 governed image_quote
+//   branch. Governing brief docs/briefs/creatomate-video-tmr-sprint-phase2-packet-v2.md
+//   (PK Gate 1 2026-07-09; D1(a) provider-template-bound, D2=baked still-image background).
+//   WHAT CHANGED (all additive; every existing branch body + helper is BYTE-UNCHANGED):
+//     (1) NEW pure module ./b1_video_stat.ts (no side effects) — isB1GovernedVideoStat(
+//         clientId, format) [gate keys on client_id + 'video_short_stat', NOT the _voice
+//         variant], assertStatFieldsWithinGate (4 hard-gates: stat_value≤12 / stat_label≤48 /
+//         context_line≤160 / cta_text≤90, policy hard_gate_throw, no truncation), and the
+//         PURE buildGovernedVideoStatPlan → { providerTemplateId, modifications, templateSpec }.
+//     (2) NEW async isVideoGovernanceEnabled(supabase, clientId, format) reads
+//         c.client_creative_governance.enabled (service-role, read-only, fail-closed: any
+//         error/missing → false). The (PP, video_short_stat) row is enabled=FALSE today
+//         (migration 20260708000000, seeded DARK), so the gate is FALSE → the governed branch
+//         does NOT fire → the legacy isStat path runs → behaviour byte-identical.
+//     (3) NEW async renderGovernedVideoStat(...) — DIRECT-BIND to provider template
+//         901a30ce-292a-4e4f-8e46-fef93f71e098 (PK-pinned; select_template routing REPLACES
+//         this once the render is visually approved — see b1_video_stat.ts). Template-mode
+//         renderScript = { template_id, modifications, output_format:'mp4' } (Background BAKED;
+//         5 dynamic mods StatValue/StatLabel/ContextLine/CtaText/Logo.source). Reuses the
+//         UNMODIFIED renderUploadAndLog (polymorphic on renderScript shape); stamps render_spec
+//         label='creative_library_video_stat_production' + a nested tmr evidence block via the
+//         EXISTING templateSpec/renderSpecLabel opts (renderUploadAndLog byte-unchanged).
+//     (4) EARLY-RETURN fork at the top of processDraft, BEFORE the isKinetic/isStat block:
+//         if (isB1GovernedVideoStat && await isVideoGovernanceEnabled) → render governed → return.
+//         Because the row is DARK, this fork is never taken today.
+//     (5) NEW supervised SMOKE entrypoint (mode==='governed_video_stat_smoke') in Deno.serve,
+//         BEFORE draft selection, mirroring the retired B0 image/video smoke mechanism: renders
+//         the governed template with SAMPLE fields to post-videos/_smoke/, writes ONE
+//         post_render_log row (postDraftId=null, clientId=null, logMustSucceed=true), and
+//         RETURNS. It does NOT read a production draft, does NOT require enabled=true, does NOT
+//         flip enabled, does NOT publish.
+//   STRICTLY OUT OF SCOPE: buildStatRevealSpec / renderUploadAndLog / pollRender / getBrand /
+//   getVoiceIdForDraft / resolveMusicUrl / generateAndUploadVoice / buildKineticTextSpec and
+//   EVERY kinetic/voice/captions/music/QA path are BYTE-UNCHANGED; the _voice variant is NOT
+//   governed; NO DB migration/apply, NO grant/revoke, NO new secret, NO flag flip, NO deploy,
+//   NO live render in this change. Every format other than PP video_short_stat, and every other
+//   client, is byte-identical.
+//
 // video-worker v3.4.0
 // ============================================================================
 // v3.4.0 (2026-07-05, LANE W / TMR DEAD-REFERENCE CLEANUP — C3):
@@ -211,8 +253,9 @@ import { getVoiceIdForDraft } from './voice_id.ts';
 import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (additive)
 import { composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2; v3.4.0 LANE W: module trimmed to this single live export (production render_spec composer) — the smoke surface is retired
 import { resolveLegacyLogo, type AssetVerdict } from './asset_url_guard.ts';  // v3.3.0: H2 asset-URL validation before Creatomate
+import { isB1GovernedVideoStat, buildGovernedVideoStatPlan, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, type B1VideoStatFields } from './b1_video_stat.ts';  // v3.5.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat (DARK)
 
-const VERSION = 'video-worker-v3.4.0';
+const VERSION = 'video-worker-v3.5.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -682,6 +725,77 @@ function buildStatRevealSpec(opts: {
   return { output_format: 'mp4', width: W, height: H, duration: 20, frame_rate: 30, fill_color: primaryColour, elements };
 }
 
+// === v3.5.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat (DARK) ===============
+//
+// DARK governance gate. Reads c.client_creative_governance.enabled (service-role, read-only)
+// for (clientId, format). FAIL-CLOSED: any error / missing row / null → false → the governed
+// branch does NOT fire → the legacy isStat path runs (behaviour byte-identical). The (PP,
+// video_short_stat) row is seeded enabled=false today (migration 20260708000000), so this
+// returns false in production until PK flips it AFTER the render is visually approved.
+async function isVideoGovernanceEnabled(
+  supabase: ReturnType<typeof getServiceClient>,
+  clientId: string,
+  format: string,
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.schema('c').from('client_creative_governance')
+      .select('enabled').eq('client_id', clientId).eq('format', format).maybeSingle();
+    if (error) { console.error('[video-worker] governance read error (fail-closed → false):', error.message); return false; }
+    return data?.enabled === true;
+  } catch (e: any) {
+    console.error('[video-worker] governance read threw (fail-closed → false):', e?.message);
+    return false;
+  }
+}
+
+// Governed VIDEO stat-reveal render. Mirrors the proven image-worker B1 governed image_quote
+// branch: hard-gate the 4 text fields → build the DIRECT-BIND template-mode plan → reuse the
+// UNMODIFIED renderUploadAndLog (polymorphic; template-mode renderScript). Background is BAKED
+// into the provider template; Logo is the only governed asset modification. render_spec carries
+// label='creative_library_video_stat_production' + a nested tmr evidence block (via the existing
+// templateSpec/renderSpecLabel opts — renderUploadAndLog stays byte-unchanged). Governed-only /
+// fail-loud: any throw (field gate / missing logo / render) hits the caller's per-draft catch →
+// video_status='failed'. There is NO fallback to the legacy buildStatRevealSpec for this branch.
+async function renderGovernedVideoStat(opts: {
+  supabase: ReturnType<typeof getServiceClient>;
+  creatomateKey: string;
+  draft: { post_draft_id: string; client_id: string; draft_format: any; recommended_format: string; };
+  brand: { primaryColour: string; secondaryColour: string; clientName: string; logoUrl: string | null; clientSlug: string };
+  qaCtx: QaCtx;
+}): Promise<object> {
+  const { supabase, creatomateKey, draft, brand, qaCtx } = opts;
+  const fmt = draft.recommended_format;
+  const vs  = draft.draft_format?.video_script;
+
+  // Fields sourced from the draft video_script (same source the legacy stat path reads); the plan
+  // builder hard-gates all four (fail loud, no truncation) before any Creatomate call.
+  const fields: B1VideoStatFields = {
+    statValue:   vs?.stat_value   ?? '',
+    statLabel:   vs?.stat_label   ?? '',
+    contextLine: vs?.context_line ?? '',
+    ctaText:     vs?.cta_text     ?? '',
+  };
+  const plan = buildGovernedVideoStatPlan(fields, brand.logoUrl);
+
+  // Template-mode renderScript (Creatomate v2/renders template-mode): { template_id, modifications,
+  // output_format:'mp4' }. output_format is the template-mode video output field (mirrors the
+  // image-worker's { template_id, modifications, output_format:'jpg' }; renderUploadAndLog is
+  // polymorphic on the renderScript shape and passes it verbatim to the provider).
+  const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'mp4' };
+
+  // render_spec: label + nested tmr evidence carried via the EXISTING templateSpec/renderSpecLabel
+  // opts (renderUploadAndLog emits render_spec.template verbatim → the tmr block rides inside it).
+  const storagePath = `${brand.clientSlug}/${draft.post_draft_id}_stat_governed.mp4`;
+  const videoUrl = await renderUploadAndLog({
+    supabase, creatomateKey, renderScript, storagePath,
+    postDraftId: draft.post_draft_id, clientId: draft.client_id, iceFormatKey: fmt, qaCtx,
+    templateSpec: plan.templateSpec as unknown as Record<string, unknown>,
+    renderSpecLabel: B1_VIDEO_PRODUCTION_LABEL,
+  });
+  await supabase.schema('m').from('post_draft').update({ video_url: videoUrl, video_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
+  return { post_draft_id: draft.post_draft_id, format: fmt, status: 'generated', video_url: videoUrl, governed: true };
+}
+
 async function processDraft(opts: {
   supabase: ReturnType<typeof getServiceClient>;
   creatomateKey: string;
@@ -724,6 +838,17 @@ async function processDraft(opts: {
     captionsPresent: (fmt === 'video_short_kinetic_voice' && !!narrationForQa),
     sceneCount: (vs?.scenes?.length ?? null),
   };
+  // ── v3.5.0 CREATIVE-LIBRARY VIDEO TMR: Property-Pulse-ONLY governed video_short_stat branch.
+  // Runs BEFORE the legacy isKinetic/isStat block with an EARLY RETURN, so both legacy branch
+  // bodies stay byte-untouched. Gate keys on client_id + format (NOT the _voice variant) AND the
+  // DARK governance flag (fail-closed). The (PP, video_short_stat) row is enabled=false today, so
+  // this fork is NOT taken → the legacy isStat path runs → behaviour byte-identical. Governed-only,
+  // fail-loud: any throw hits the existing per-draft catch → video_status='failed' (no legacy
+  // fallback for this branch). Every other client / format falls through unchanged.
+  if (isB1GovernedVideoStat(draft.client_id, fmt) && await isVideoGovernanceEnabled(supabase, draft.client_id, B1_VIDEO_GOVERNED_FORMAT)) {
+    return await renderGovernedVideoStat({ supabase, creatomateKey, draft, brand: b, qaCtx });
+  }
+
   const isKinetic = fmt === 'video_short_kinetic' || fmt === 'video_short_kinetic_voice';
   const isStat    = fmt === 'video_short_stat'    || fmt === 'video_short_stat_voice';
   if (isKinetic) {
@@ -768,6 +893,42 @@ Deno.serve(async (req: Request) => {
   try { smokeBody = await req.json(); } catch { /* no/invalid body => not a smoke request */ }
   if (smokeBody?.mode === 'template_smoke') {
     return jsonResponse({ ok: false, error: 'template_smoke_retired', note: 'retired 2026-07-05 Lane W — provider templates deleted; see docs/governance/tmr-gov-provider-1-pre-cleanup-guard.md' }, 410);
+  }
+
+  // ── v3.5.0: SUPERVISED GOVERNED VIDEO STAT SMOKE (mode==='governed_video_stat_smoke') ──────
+  // Renders the DIRECT-BIND governed stat template (901a30ce…) with SAMPLE video_script fields to
+  // post-videos/_smoke/ and writes ONE post_render_log row (postDraftId=null, clientId=null,
+  // logMustSucceed=true), then RETURNS — mirroring the retired B0 image/video smoke mechanism.
+  // It does NOT read a production draft, does NOT require governance enabled=true, does NOT flip
+  // enabled, does NOT publish. Same x-video-worker-key auth as the production path (already
+  // checked above). Optional body.fields overrides let the supervisor vary the sample copy; blank
+  // fields fall back to the built-in sample (each within its contract max_chars).
+  if (smokeBody?.mode === 'governed_video_stat_smoke') {
+    try {
+      const sf = smokeBody?.fields ?? {};
+      const sampleFields: B1VideoStatFields = {
+        statValue:   String(sf.stat_value   ?? '$782K'),
+        statLabel:   String(sf.stat_label   ?? 'Perth median house price'),
+        contextLine: String(sf.context_line ?? 'Up 3.7% over the past quarter — the strongest capital-city growth in the country.'),
+        ctaText:     String(sf.cta_text     ?? 'What does this mean for your next move?'),
+      };
+      const sampleLogo = String(smokeBody?.logo_url ?? 'https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png');
+      const plan = buildGovernedVideoStatPlan(sampleFields, sampleLogo);
+      const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'mp4' };
+      const smokeSupabase = getServiceClient();
+      const storageUrl = await renderUploadAndLog({
+        supabase: smokeSupabase, creatomateKey, renderScript,
+        storagePath: '_smoke/governed_video_stat_v1.mp4',
+        postDraftId: null, clientId: null, iceFormatKey: B1_VIDEO_GOVERNED_FORMAT,
+        qaCtx: { withVoice: false, expectedFormat: B1_VIDEO_GOVERNED_FORMAT, captionsExpected: false, captionsPresent: false, sceneCount: null },
+        templateSpec: plan.templateSpec as unknown as Record<string, unknown>,
+        renderSpecLabel: B1_VIDEO_PRODUCTION_LABEL,
+        logMustSucceed: true,
+      });
+      return jsonResponse({ ok: true, mode: 'governed_video_stat_smoke', provider_template_id: plan.providerTemplateId, render_spec_label: B1_VIDEO_PRODUCTION_LABEL, storage_url: storageUrl, version: VERSION });
+    } catch (e: any) {
+      return jsonResponse({ ok: false, mode: 'governed_video_stat_smoke', error: (e?.message ?? String(e)).slice(0, 500), version: VERSION }, 500);
+    }
   }
 
   const supabase = getServiceClient();
