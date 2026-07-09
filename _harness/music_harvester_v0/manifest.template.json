@@ -1,0 +1,60 @@
+{
+  "lane": "music-harvester-v0-starter",
+  "status": "scaffold_no_tracks_yet",
+  "schema_target": "m.music_track + m.music_license (live migration 20260708224532)",
+  "constraints": {
+    "license_types_allowed": ["cc0", "public_domain", "royalty_free_no_attrib"],
+    "attribution_required_allowed": false,
+    "vocals": "instrumental_only",
+    "moods_allowed": ["calm", "corporate", "uplifting", "warm", "neutral"],
+    "energy_allowed": ["low", "medium", "high"],
+    "tempo_band_allowed": ["slow", "mid", "up"],
+    "genre_allowed": ["ambient", "corporate", "acoustic", "electronic", "orchestral", "other"],
+    "target_count": "5-10",
+    "storage_path_pattern": "post-music/global/<mood>/<track_key>.mp3"
+  },
+  "tracks": [
+    {
+      "__comment__": "TEMPLATE ROW — one object per candidate. Delete this comment row when filling. Every fail-closed boolean must be set EXPLICITLY from the source licence; leave null ONLY where genuinely unknown (null => ineligible for that use).",
+      "track_key": "calm_corporate_neutral_001",
+      "title": "",
+      "creator": "",
+      "source": "manual_harvest",
+      "source_url": "",
+      "local_file": "candidates/<track_key>.mp3",
+      "sha256": "",
+      "bytes": null,
+      "mime": "audio/mpeg",
+      "duration_seconds": null,
+      "loudness_lufs": null,
+      "bpm": null,
+      "mood": "calm",
+      "energy": "low",
+      "tempo_band": "slow",
+      "genre": "corporate",
+      "vocals": "instrumental_only",
+      "text_overlay_safe": null,
+      "storage_bucket": "post-music",
+      "storage_path": "post-music/global/calm/calm_corporate_neutral_001.mp3",
+      "license": {
+        "license_type": "royalty_free_no_attrib",
+        "license_name": "",
+        "source_url": "",
+        "license_snapshot_path": "candidates/<track_key>.license.txt",
+        "license_snapshot_hash": "",
+        "commercial_use_allowed": null,
+        "social_use_allowed": null,
+        "modification_allowed": null,
+        "paid_ads_allowed": null,
+        "attribution_required": null,
+        "content_id_safe": null,
+        "expiry_date": null
+      },
+      "review": {
+        "aural_reviewed": false,
+        "licence_reviewed": false,
+        "reviewer_notes": ""
+      }
+    }
+  ]
+}

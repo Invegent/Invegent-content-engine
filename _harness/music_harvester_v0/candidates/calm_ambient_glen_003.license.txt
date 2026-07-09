@@ -1,0 +1,27 @@
+MUSIC LIBRARY v0 — LICENCE EVIDENCE SNAPSHOT
+track_key: calm_ambient_glen_003
+artist / creator: Maarten Schellekens
+source: Free Music Archive (freemusicarchive.org) — manual_harvest
+track_page_url: https://freemusicarchive.org/music/maarten-schellekens/public-domain-1/whispers-of-the-glen/
+album_page_url: https://freemusicarchive.org/music/maarten-schellekens/public-domain-1
+direct_download_cdn_host: files.freemusicarchive.org/storage-freemusicarchive-org/tracks/*.mp3
+
+=== LICENCE AS STATED ON SOURCE (verbatim) ===
+license_type: CC0 1.0 Universal (Public Domain Dedication)
+license_url: https://creativecommons.org/publicdomain/zero/1.0/
+album_license_statement (verbatim from FMA album page):
+"Songs in this album are licensed under CC0, which means they are completely free to use." — Maarten Schellekens / Free Music Archive album page ("PUBLIC DOMAIN" album).
+
+=== CC0 1.0 UNIVERSAL DEED — VERBATIM WAIVER (from https://creativecommons.org/publicdomain/zero/1.0/) ===
+No Copyright. The person who associated a work with this deed has dedicated the work to the public domain by waiving all of his or her rights to the work worldwide under copyright law, including all related and neighboring rights, to the extent allowed by law. You can copy, modify, distribute and perform the work, even for commercial purposes, all without asking permission.
+
+=== SIX LICENCE BOOLEANS — DERIVATION (fail-closed) ===
+commercial_use_allowed = TRUE  — CC0 deed: "even for commercial purposes ... without asking permission".
+social_use_allowed     = TRUE  — CC0 waives all rights worldwide; social/platform use permitted.
+modification_allowed   = TRUE  — CC0 deed: "You can copy, modify, distribute and perform the work".
+paid_ads_allowed       = TRUE  — CC0 imposes NO use restriction (incl. paid advertising).
+attribution_required   = FALSE — CC0 waives copyright; no attribution obligation. (Publisher: attribution appreciated but NOT required.)
+content_id_safe        = FALSE/UNKNOWN — FAIL-CLOSED per PK gate-1 decision #3. CC0 waives the uploader's copyright but does NOT guarantee the absence of a third-party YouTube Content-ID claim. NOT YouTube-eligible in v0.
+
+NOTE: This is a downloaded-evidence snapshot captured mechanically during sourcing. No aural QA,
+no approval, no upload. PK performs the aural + final licence judgment. Evidence-only.

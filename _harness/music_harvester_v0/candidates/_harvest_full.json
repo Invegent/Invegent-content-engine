@@ -1,0 +1,101 @@
+{
+  "warm_acoustic_simple_001": {
+    "track_key": "warm_acoustic_simple_001",
+    "page_url": "https://freemusicarchive.org/music/maarten-schellekens/public-domain-1/a-simple-theme/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/h8ksYcGg3y87f2mNiXom94VkCLeaBKHv7zNwbUIA.mp3",
+    "local_file": "candidates/warm_acoustic_simple_001.mp3",
+    "bytes": 2339200,
+    "sha256": "e870e4994da2d7238b6bfa5bf1e96f2e432f71b7285f834edd332737ac747512",
+    "mime": "audio/mpeg",
+    "duration_seconds": 97.296,
+    "bitrate": 192000
+  },
+  "warm_acoustic_ducklin_002": {
+    "track_key": "warm_acoustic_ducklin_002",
+    "page_url": "https://freemusicarchive.org/music/maarten-schellekens/public-domain-1/little-ducklin/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/BJreS7oawWIkyhDV8KZnOMIrWadicyKQoX1jVZ9c.mp3",
+    "local_file": "candidates/warm_acoustic_ducklin_002.mp3",
+    "bytes": 5579737,
+    "sha256": "ebfa2223640001f245f93388544efe60e3fc5418a46f010f8846eb018dde46ce",
+    "mime": "audio/mpeg",
+    "duration_seconds": 138.792,
+    "bitrate": 320000
+  },
+  "calm_ambient_glen_003": {
+    "track_key": "calm_ambient_glen_003",
+    "page_url": "https://freemusicarchive.org/music/maarten-schellekens/public-domain-1/whispers-of-the-glen/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/GP2wACoXIlIsL0bq27muowQztPcRSZ3oVM85CUHJ.mp3",
+    "local_file": "candidates/calm_ambient_glen_003.mp3",
+    "bytes": 2589184,
+    "sha256": "bba42f8a7d828d3631b2ed66f05455b19c5f88b59b3895e4a28a8533b07b6ae4",
+    "mime": "audio/mpeg",
+    "duration_seconds": 161.568,
+    "bitrate": 128000
+  },
+  "neutral_jazz_saxpiano_004": {
+    "track_key": "neutral_jazz_saxpiano_004",
+    "page_url": "https://freemusicarchive.org/music/maarten-schellekens/public-domain-1/sax-and-piano-free-track/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/TO9pespKwvOS6RWH79akyO4eAyurS0ZSQgQXvdAX.mp3",
+    "local_file": "candidates/neutral_jazz_saxpiano_004.mp3",
+    "bytes": 3796121,
+    "sha256": "83b8c88b10bbb21788636bccca8f0aa6817d195ef91557507d0981f323865ff1",
+    "mime": "audio/mpeg",
+    "duration_seconds": 94.201,
+    "bitrate": 320000
+  },
+  "neutral_piano_spring_005": {
+    "track_key": "neutral_piano_spring_005",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/background-music/spring-on-the-horizon/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/XaPEssVQ1Ks8r4GzowzzHsP5xfIi2FcDxVmEM3Bn.mp3",
+    "local_file": "candidates/neutral_piano_spring_005.mp3",
+    "bytes": 3673165,
+    "sha256": "3776c85ecae4f6052c4fe4645bef02f51de35ba7257380bca3e0707853d1aa6e",
+    "mime": "audio/mpeg",
+    "duration_seconds": 91.8,
+    "bitrate": 320000
+  },
+  "calm_piano_drifting_006": {
+    "track_key": "calm_piano_drifting_006",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/background-music/drifting-piano/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/uGFgbWaUKc0LLRnbLShVKZ7yhiK5nsxczsKgpcvW.mp3",
+    "local_file": "candidates/calm_piano_drifting_006.mp3",
+    "bytes": 4420963,
+    "sha256": "5d1d80af901c244bcedb618b5350b83874167258ba4fa17da83a2a005a26f95e",
+    "mime": "audio/mpeg",
+    "duration_seconds": 110.496,
+    "bitrate": 320000
+  },
+  "uplifting_composed_pluto_007": {
+    "track_key": "uplifting_composed_pluto_007",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/background-music/a-small-town-on-pluto-composed/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/uPhnUKjg6CDKQlyXOYUBUYFTJ8M89KTiExRdcggs.mp3",
+    "local_file": "candidates/uplifting_composed_pluto_007.mp3",
+    "bytes": 9211405,
+    "sha256": "da6426f0753d11173a39dfdf0b6078afa833d4b1ec499a0b2b02550e8cd7501b",
+    "mime": "audio/mpeg",
+    "duration_seconds": 230.256,
+    "bitrate": 320000
+  },
+  "corporate_theme_medieval_008": {
+    "track_key": "corporate_theme_medieval_008",
+    "page_url": "https://freemusicarchive.org/music/maarten-schellekens/public-domain-1/medieval-theme/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/iuMMQc2RWtRrOV9HQHWKS4qB0RIVBuWz3y3lCgA0.mp3",
+    "local_file": "candidates/corporate_theme_medieval_008.mp3",
+    "bytes": 2512270,
+    "sha256": "c8e0f62c730001b881fdff86fc52a262e1654e778382661f97ce78f39c681ea7",
+    "mime": "audio/mpeg",
+    "duration_seconds": 156.761,
+    "bitrate": 128000
+  },
+  "neutral_short_4mei_009": {
+    "track_key": "neutral_short_4mei_009",
+    "page_url": "https://freemusicarchive.org/music/maarten-schellekens/public-domain-1/4-mei/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/s5XxAPo2rk6ScI2PkSypPWRm0xfBiyt3lciRCZpF.mp3",
+    "local_file": "candidates/neutral_short_4mei_009.mp3",
+    "bytes": 2661335,
+    "sha256": "956f7e96b736d729906092eceab484c7b803922f63e04a4f3f54406493e01283",
+    "mime": "audio/mpeg",
+    "duration_seconds": 65.832,
+    "bitrate": 320000
+  }
+}

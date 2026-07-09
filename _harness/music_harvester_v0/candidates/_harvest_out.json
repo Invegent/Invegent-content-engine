@@ -1,0 +1,50 @@
+[
+  {
+    "track_key": "calm_piano_drifting_006",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/background-music/drifting-piano/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/uGFgbWaUKc0LLRnbLShVKZ7yhiK5nsxczsKgpcvW.mp3",
+    "local_file": "candidates/calm_piano_drifting_006.mp3",
+    "bytes": 4420963,
+    "sha256": "5d1d80af901c244bcedb618b5350b83874167258ba4fa17da83a2a005a26f95e",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 110.496,
+    "bitrate": 320000
+  },
+  {
+    "track_key": "uplifting_composed_pluto_007",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/background-music/a-small-town-on-pluto-composed/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/uPhnUKjg6CDKQlyXOYUBUYFTJ8M89KTiExRdcggs.mp3",
+    "local_file": "candidates/uplifting_composed_pluto_007.mp3",
+    "bytes": 9211405,
+    "sha256": "da6426f0753d11173a39dfdf0b6078afa833d4b1ec499a0b2b02550e8cd7501b",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 230.256,
+    "bitrate": 320000
+  },
+  {
+    "track_key": "corporate_theme_medieval_008",
+    "page_url": "https://freemusicarchive.org/music/maarten-schellekens/public-domain-1/medieval-theme/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/iuMMQc2RWtRrOV9HQHWKS4qB0RIVBuWz3y3lCgA0.mp3",
+    "local_file": "candidates/corporate_theme_medieval_008.mp3",
+    "bytes": 2512270,
+    "sha256": "c8e0f62c730001b881fdff86fc52a262e1654e778382661f97ce78f39c681ea7",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 156.761,
+    "bitrate": 128000
+  },
+  {
+    "track_key": "neutral_short_4mei_009",
+    "page_url": "https://freemusicarchive.org/music/maarten-schellekens/public-domain-1/4-mei/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/s5XxAPo2rk6ScI2PkSypPWRm0xfBiyt3lciRCZpF.mp3",
+    "local_file": "candidates/neutral_short_4mei_009.mp3",
+    "bytes": 2661335,
+    "sha256": "956f7e96b736d729906092eceab484c7b803922f63e04a4f3f54406493e01283",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 65.832,
+    "bitrate": 320000
+  }
+]
