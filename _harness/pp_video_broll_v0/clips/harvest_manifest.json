@@ -1,0 +1,31 @@
+{
+  "_note": "PP video B-roll harvest provenance — Batch 1 pilot. sha256 computed from the actual downloaded bytes. Fenced harness artifact; NOT intaken to DB, NOT approved. PK visual verdict + crop/motion-safety proof remain the deciding gates before any intake.",
+  "batch": "batch1_pilot",
+  "theme": "broll_pp_city_skyline_vantage",
+  "mirrors_static_bg": "bg_pp_city_skyline_vantage",
+  "client": "property-pulse (4036a6b5-b4a3-406e-998d-c2fe14a8bbdd)",
+  "harvested_utc": "2026-07-08",
+  "source_policy": "Pexels Video (PK-approved starter) — Pexels License (free commercial, no attribution)",
+  "clips": [
+    {
+      "local_file": "broll_pp_city_skyline_vantage_c1_37643438.mp4",
+      "pexels_id": "37643438",
+      "title": "Dramatic Aerial View of Cityscape Overcast",
+      "author": "Efrem Efre",
+      "preview_url": "https://www.pexels.com/video/dramatic-aerial-view-of-cityscape-overcast-37643438/",
+      "download_url": "https://www.pexels.com/download/video/37643438/",
+      "licence": "Pexels License (free for commercial use, no attribution required)",
+      "sha256": "77d8c2f0a60640b088c3b0eeedf3d6e4dbffa47b20f1558732b7597cd3b7cc2b",
+      "bytes": 24380731,
+      "container": "mp4 (fragmented, ftyp iso5/iso6/mp41)",
+      "width": 2160,
+      "height": 3840,
+      "orientation": "portrait_9x16",
+      "duration_s": "TBD (fragmented MP4 — header duration=0; measure at template stage)",
+      "motion": "calm aerial drift (not timelapse)",
+      "generic": true,
+      "readable_signage_in_frame": "none per page metadata — CROP/MOTION-SAFETY PROOF STILL REQUIRED on actual pixels before accept",
+      "status": "harvested_fenced_for_review"
+    }
+  ]
+}
