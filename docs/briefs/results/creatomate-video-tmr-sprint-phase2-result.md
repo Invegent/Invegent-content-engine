@@ -2,7 +2,7 @@
 
 **Created:** 2026-07-09 Sydney · **Tier:** T3 (dark authoring landed + additive DML seed applied) · **Label:** PRODUCT_PROOF
 **Brief:** `docs/briefs/creatomate-video-tmr-sprint-phase2-packet-v2.md` (PK Gate 1 approved 2026-07-09)
-**Status:** ✅ Milestone 1 complete — the first governed video slice is authored + landed on `main` and its DARK governance hook is LIVE (`enabled=false`). The lane continues (V1 provider template · V2 governed worker branch · one render-and-inspect) at the next gate. **Push HELD** for explicit PK instruction.
+**Status:** ✅ Milestone 1 complete — the first governed video slice is authored + landed on `main` and its DARK governance hook is LIVE (`enabled=false`). The lane continues (V1 provider template · V2 governed worker branch · one render-and-inspect) at the next gate. **PUSHED to origin 2026-07-09** (fast-forward `43358ff..345f1ca`, parity 0/0) after a push-safety gate where PK explicitly authorised the 3 register-entangled prior-session Music Library commits alongside the 4 TMR commits.
 
 ## What this milestone did
 
@@ -37,14 +37,14 @@ Landed the held dark V3/V4/V5 authoring for the first governed PP video slice (`
 - **Ledger version `20260709010032`** (server-UTC 2026-07-09T01:00:32Z); repo file renamed from the placeholder `20260708000000` prefix to match — repo↔prod reconciled (mirrors the Music Library v0 apply).
 - **Post-apply proof GREEN:** `c.client_creative_governance` now **2 rows** — `(PP, image_quote, enabled=true)` untouched + new `(PP, video_short_stat, enabled=false)` with the exact `contract_ref`. Security advisor: **no new ERROR/WARN** (INSERT-only introduces zero advisors; the table still carries only the intended INFO `rls_enabled_no_policy` deny-all; the project's 3 ERROR / 186 WARN are the pre-existing baseline).
 
-## Commits on `main` (unpushed — push HELD)
+## Commits on `main` (PUSHED to origin 2026-07-09, ff `43358ff..345f1ca`, parity 0/0)
 
 - `b59db96` — docs: register v5.39 (Gate-1 approval pointer)
 - `c6d68cd` — feat(creative-library): v0.7 dark video authoring
 - `4f20d56` — chore(migrations): reconcile seed filename to applied ledger `20260709010032`
 - (+ this result doc + v5.40 register pointer, docs commit)
 
-All commits **path-scoped** — the two pre-session staged `tmr-readiness-workbook…` files were never swept in (branch-warden hazard respected). `main` ahead of origin (3 pre-existing prior-session commits + this session's), **not pushed**.
+All commits **path-scoped** — the two pre-session staged `tmr-readiness-workbook…` files were never swept in (branch-warden hazard respected) and were NOT pushed (still uncommitted locally). Push-safety gate (2026-07-09): origin/main confirmed unmoved at `43358ff`; branch-warden R4 STOP flagged the 3 register-entangled Music Library commits as another session's unpushed work; PK explicitly authorised all 7; fast-forward push, parity 0/0.
 
 ## Governance note — hard-stop hole found (hardening carry)
 
