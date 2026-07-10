@@ -6,6 +6,15 @@
 
 ---
 
+> **✅ v5.50 C1 CLOSURE STEP 1 — `geo_scope` BACKFILL APPLIED (T3 · SAFETY_GATE; vocabulary RATIFIED; C1 STILL OPEN)** — brief canonical: `docs/briefs/c1-step1-geo-scope-backfill-draft.md`.
+> · **PK ratified** the closed vocabulary (`none`·`unidentified`·`au_generic`·`au_wa_perth`·`au_nsw`·`au_qld`·`non_au`) and the pairing rule — **`au_generic` MAY sit under a Perth headline**; `au_nsw` under Perth is a lie; `non_au` pairs with no place label.
+> · **Applied:** `geo_scope` written to **31** PP rows; **7 deliberately ABSENT** (the fenced backgrounds nobody has pixel-verified, incl. `bg_pp_perth_skyline_dawn_moody` + `bg_pp_for_sale_sign_street`). **The gap IS the guard** — absent ⇒ fails closed ⇒ cannot be re-approved without verification. Statement asserts no unverified asset gets a value. Logos assigned BY PREDICATE (`none`) — a name-list typo would become `missing_required_logo`. Pool unmoved **20** (neutrality asserted: `geo_scope` is unread, so movement ⇒ a fence was touched).
+> · **`broll_pp_au_suburb_aerial` = `au_nsw`,** not `au_generic`. It IS Sydney. PK's "national stats only" intent lives in the PAIRING RULE, not in a mislabelled asset.
+> · **🚨 NEW: multi-tenant precondition for step 5.** 3 other clients hold **23** bg/logo assets with NO `geo_scope` (0 live today). `resolve_slot_assets` is not PP-scoped — when enforcement fails closed, their first governed render dies `missing_required_logo`. **Hard gate:** backfill all clients before the flip, OR scope the assert to opted-in clients.
+> · **⚠ C1 STILL OPEN — nothing reads `geo_scope`.** Documentation with a named consumer (§6 steps 4–5). If unfunded, DELETE the key rather than leave an unread field implying a guard. The wall is unchanged: `B1Fields.location` is hardcoded `''`, no `image_location` column exists, the place name lives in free-text `image_headline`. **Step 3 (structured geo on the copy) is the real work.** Supersedes → v5.49.
+
+---
+
 > **✅ v5.49 C1 LIVE EXPOSURE CONTAINED — 5 GEO/SIGNAGE-WRONG BACKGROUNDS DEACTIVATED (T3 · SAFETY_GATE; applied+proven, C1 NOT closed)** — result doc canonical: `docs/briefs/results/c1-live-exposure-containment-result.md`.
 > · **Why:** PP is a Perth brand; `label_constraint`/`geography` are read by NOTHING (carry C1), so a Perth headline could render over São Paulo. Live on the IMAGE path, not a future B-roll risk.
 > · **Pixel-verified all 17 live backgrounds.** Both Perth-named assets ARE Perth (inverse hazard did not fire). 🚨 **NEW DEFECT:** `bg_pp_modern_home_exterior_front` carries a legible street blade “MIDDLEBOROUGH TCE”/“NORTHAM” — a text-safety breach, verdict was `PASS_WITH_NOTE`.
