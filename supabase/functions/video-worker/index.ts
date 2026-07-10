@@ -253,9 +253,19 @@ import { getVoiceIdForDraft } from './voice_id.ts';
 import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (additive)
 import { composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2; v3.4.0 LANE W: module trimmed to this single live export (production render_spec composer) — the smoke surface is retired
 import { resolveLegacyLogo, type AssetVerdict } from './asset_url_guard.ts';  // v3.3.0: H2 asset-URL validation before Creatomate
-import { isB1GovernedVideoStat, buildGovernedVideoStatPlan, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, type B1VideoStatFields } from './b1_video_stat.ts';  // v3.5.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat (DARK)
+import { isB1GovernedVideoStat, buildGovernedVideoStatPlan, composeGovernedVideoNarration, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO (DARK)
 
-const VERSION = 'video-worker-v3.5.0';
+// v3.6.0 (cc-0032 step 5, DARK): governed PP video_short_stat now renders COMBO AUDIO — a voiceover
+// over an optional governed music bed — binding the registered v2 template c11bb8ab (VoiceAudio +
+// MusicBed slots). renderGovernedVideoStat + the governed_video_stat_smoke entrypoint compose the VO
+// narration (composeGovernedVideoNarration, CTA visual-only), generate it via generateAndUploadVoice
+// (PP voice), resolve the bed via the service-role public.select_music RPC (empty result set → '' =
+// silent bed per N1; an RPC ERROR THROWS b1_video_missing_music_rpc — never a silent degrade), and pass
+// both audio URLs into buildGovernedVideoStatPlan. The enabled=false gate,
+// fork placement, renderUploadAndLog, and every legacy path (isKinetic/isStat/_voice, MUSIC_LIBRARY/
+// resolveMusicUrl) are BYTE-UNCHANGED. STRICTLY OUT OF SCOPE: enabled=true flip, live render/publish,
+// worker deploy (held on the c11bb8ab key-identity precondition), the select_music apply (ledger-held).
+const VERSION = 'video-worker-v3.6.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -355,6 +365,38 @@ async function generateAndUploadVoice(
   const { error: upErr } = await supabase.storage.from('post-videos').upload(storagePath, audioBuf, { contentType: 'audio/mpeg', upsert: true });
   if (upErr) { console.error('[video-worker] audio upload failed:', upErr.message); return null; }
   return `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/post-videos/${storagePath}`;
+}
+
+// v3.6.0 (cc-0032 step 5): resolve the governed music bed via the service-role public.select_music
+// RPC. Contract is OWNED by the TMR Music Lane (packet cc-0032 §2/§3); this worker only CALLS it:
+//   select_music(p_scope_kind, p_scope_value, p_min_duration_seconds DEFAULT 12, p_mood DEFAULT NULL)
+//   RETURNS TABLE(track_id, track_key, title, mood, duration_seconds, loudness_lufs,
+//                 storage_bucket, storage_path)
+// An EMPTY RESULT SET is the "no bed" signal (packet line 65) → '' (legitimate silent bed; N1 —
+// MusicBed.source:'' DISABLES the element, verified R1 in EMPTY_BED_TEST_RESULT). storage_path is
+// returned RAW and already bucket-prefixed ('post-music/global/…'), so the public URL is
+// …/object/public/<storage_path> (do NOT double-prefix — cc-0032 storage_path carry).
+// FAIL LOUD on error (PK 2026-07-10): an RPC error THROWS (b1_video_missing_music_rpc), mirroring the
+// b1_video_missing_voiceover / b1_video_missing_governed_logo guards. A swallowed RPC error is exactly
+// how a silent-bed defect ships — never degrade an error to ''. Only an EMPTY result set means "no bed".
+// Consequence: the governed combo branch cannot render until select_music exists in the DB. Correct.
+async function resolveGovernedMusicBedUrl(
+  supabase: ReturnType<typeof getServiceClient>,
+  opts: { scopeKind: string; scopeValue: string },
+): Promise<string> {
+  const { data, error } = await supabase.rpc('select_music', {
+    p_scope_kind: opts.scopeKind,
+    p_scope_value: opts.scopeValue,
+  });
+  if (error) {
+    // FAIL LOUD — an RPC error is never a silent bed (PK 2026-07-10).
+    throw new Error(`b1_video_missing_music_rpc: select_music failed (${error.message})`);
+  }
+  const rows = (data ?? []) as Array<{ storage_path?: string | null }>;
+  if (rows.length === 0) return '';  // empty result set = "no bed" → silent (N1)
+  const storagePath = String(rows[0]?.storage_path ?? '');  // already bucket-prefixed
+  if (!storagePath) return '';
+  return `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/${storagePath}`;
 }
 
 async function pollRender(renderId: string, apiKey: string, startMs: number): Promise<{ url: string; creditsUsed: number | null; durationMs: number }> {
@@ -775,7 +817,21 @@ async function renderGovernedVideoStat(opts: {
     contextLine: vs?.context_line ?? '',
     ctaText:     vs?.cta_text     ?? '',
   };
-  const plan = buildGovernedVideoStatPlan(fields, brand.logoUrl);
+
+  // v3.6.0 (cc-0032 step 5): COMBO AUDIO. Compose the concise VO narration (CTA visual-only),
+  // resolve the PP voice by client_id (fail-loud if unresolved — existing behaviour), generate the
+  // VO, and resolve the governed music bed via select_music (empty result → '' silent bed per N1; an
+  // RPC error throws b1_video_missing_music_rpc).
+  const narration = composeGovernedVideoNarration(fields);
+  const { voiceId, method } = getVoiceIdForDraft({ clientId: draft.client_id, clientSlug: brand.clientSlug, format: fmt });
+  if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for client_id=${draft.client_id} client_slug=${brand.clientSlug} method=${method} format=${fmt} (governed video_short_stat)`);
+  const voicePath = `${brand.clientSlug}/${draft.post_draft_id}_stat_governed_voice.mp3`;
+  const voiceUrl = await generateAndUploadVoice(supabase, narration, voiceId, voicePath);
+  if (!voiceUrl) throw new Error('b1_video_governed_voiceover_failed');
+
+  const bedUrl = await resolveGovernedMusicBedUrl(supabase, { scopeKind: 'format', scopeValue: B1_VIDEO_GOVERNED_FORMAT });
+
+  const plan = buildGovernedVideoStatPlan(fields, brand.logoUrl, voiceUrl, bedUrl);
 
   // Template-mode renderScript (Creatomate v2/renders template-mode): { template_id, modifications,
   // output_format:'mp4' }. output_format is the template-mode video output field (mirrors the
@@ -785,10 +841,12 @@ async function renderGovernedVideoStat(opts: {
 
   // render_spec: label + nested tmr evidence carried via the EXISTING templateSpec/renderSpecLabel
   // opts (renderUploadAndLog emits render_spec.template verbatim → the tmr block rides inside it).
+  // qaCtx marked withVoice=true (combo audio) so the render-QA reflects the VO.
+  const comboQaCtx: QaCtx = { ...qaCtx, withVoice: true, captionsExpected: false, captionsPresent: false };
   const storagePath = `${brand.clientSlug}/${draft.post_draft_id}_stat_governed.mp4`;
   const videoUrl = await renderUploadAndLog({
     supabase, creatomateKey, renderScript, storagePath,
-    postDraftId: draft.post_draft_id, clientId: draft.client_id, iceFormatKey: fmt, qaCtx,
+    postDraftId: draft.post_draft_id, clientId: draft.client_id, iceFormatKey: fmt, qaCtx: comboQaCtx,
     templateSpec: plan.templateSpec as unknown as Record<string, unknown>,
     renderSpecLabel: B1_VIDEO_PRODUCTION_LABEL,
   });
@@ -913,19 +971,31 @@ Deno.serve(async (req: Request) => {
         ctaText:     String(sf.cta_text     ?? 'What does this mean for your next move?'),
       };
       const sampleLogo = String(smokeBody?.logo_url ?? 'https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png');
-      const plan = buildGovernedVideoStatPlan(sampleFields, sampleLogo);
-      const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'mp4' };
       const smokeSupabase = getServiceClient();
+
+      // v3.6.0 (cc-0032 step 5): COMBO AUDIO in the smoke — compose the concise VO narration,
+      // resolve the PP voice by the governed client_id (slug 'property-pulse'), generate the VO
+      // (fail-loud if unresolved), and resolve the governed bed via select_music (empty result → ''
+      // silent bed per N1; RPC error throws). Voice-id resolution is identical to the production branch.
+      const narration = composeGovernedVideoNarration(sampleFields);
+      const { voiceId, method } = getVoiceIdForDraft({ clientId: B1_VIDEO_GOVERNED_CLIENT_ID, clientSlug: 'property-pulse', format: B1_VIDEO_GOVERNED_FORMAT });
+      if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for governed smoke (client_id=${B1_VIDEO_GOVERNED_CLIENT_ID} method=${method})`);
+      const smokeVoiceUrl = await generateAndUploadVoice(smokeSupabase, narration, voiceId, '_smoke/governed_video_stat_v1_voice.mp3');
+      if (!smokeVoiceUrl) throw new Error('b1_video_governed_smoke_voiceover_failed');
+      const smokeBedUrl = await resolveGovernedMusicBedUrl(smokeSupabase, { scopeKind: 'format', scopeValue: B1_VIDEO_GOVERNED_FORMAT });
+
+      const plan = buildGovernedVideoStatPlan(sampleFields, sampleLogo, smokeVoiceUrl, smokeBedUrl);
+      const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'mp4' };
       const storageUrl = await renderUploadAndLog({
         supabase: smokeSupabase, creatomateKey, renderScript,
         storagePath: '_smoke/governed_video_stat_v1.mp4',
         postDraftId: null, clientId: null, iceFormatKey: B1_VIDEO_GOVERNED_FORMAT,
-        qaCtx: { withVoice: false, expectedFormat: B1_VIDEO_GOVERNED_FORMAT, captionsExpected: false, captionsPresent: false, sceneCount: null },
+        qaCtx: { withVoice: true, expectedFormat: B1_VIDEO_GOVERNED_FORMAT, captionsExpected: false, captionsPresent: false, sceneCount: null },
         templateSpec: plan.templateSpec as unknown as Record<string, unknown>,
         renderSpecLabel: B1_VIDEO_PRODUCTION_LABEL,
         logMustSucceed: true,
       });
-      return jsonResponse({ ok: true, mode: 'governed_video_stat_smoke', provider_template_id: plan.providerTemplateId, render_spec_label: B1_VIDEO_PRODUCTION_LABEL, storage_url: storageUrl, version: VERSION });
+      return jsonResponse({ ok: true, mode: 'governed_video_stat_smoke', provider_template_id: plan.providerTemplateId, render_spec_label: B1_VIDEO_PRODUCTION_LABEL, music_bed: !!smokeBedUrl, storage_url: storageUrl, version: VERSION });
     } catch (e: any) {
       return jsonResponse({ ok: false, mode: 'governed_video_stat_smoke', error: (e?.message ?? String(e)).slice(0, 500), version: VERSION }, 500);
     }

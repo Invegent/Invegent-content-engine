@@ -15,6 +15,16 @@
 // AND c.client_creative_governance.enabled (read at runtime, fail-closed). The governance row for
 // (PP, video_short_stat) is enabled=false today, so the branch does NOT fire and the legacy
 // isStat path runs byte-identically. See index.ts for the gate + early return.
+//
+// v3.6.0 (cc-0032 step 5 — COMBO AUDIO, DARK): the governed plan is re-pointed to the registered v2
+// provider template c11bb8ab (VoiceAudio + MusicBed slots) and now drives combo audio — a voiceover
+// over an optional music bed. buildGovernedVideoStatPlan takes voiceUrl (REQUIRED — throws
+// b1_video_missing_voiceover if blank) and musicBedUrl (OPTIONAL — '' = explicitly silent bed, N1),
+// adding 'VoiceAudio.source' + 'MusicBed.source' to the existing 5 mods. composeGovernedVideoNarration
+// composes a concise (~≤40-word) spoken form of the stat fields (N2 — CTA stays VISUAL, never spoken)
+// so the VO fits the 12s template. Bed level stays TEMPLATE-controlled (70%, N3 — the worker never
+// sets MusicBed.volume). STRICTLY OUT OF SCOPE: the enabled=true flip, any live render/publish, the
+// legacy _voice/MUSIC_LIBRARY paths, non-PP clients, and the step-6 smoke execution.
 
 // The Property-Pulse client_id — the RELIABLE gate identity (a client_id, NOT a slug: getBrand()
 // falls back to the client-id UUID when the c.client.client_slug read returns null, which would
@@ -25,26 +35,30 @@ export const B1_VIDEO_GOVERNED_CLIENT_ID = '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd
 // (voice is a later lane — brief IMPLEMENTATION #1).
 export const B1_VIDEO_GOVERNED_FORMAT = 'video_short_stat';
 
-// DIRECT-BIND provider template id (PK-confirmed 2026-07-09). The provider template is the
-// PP-specific baked-background 9:16 stat-reveal (D2 ruling: baked still-image Ken-Burns over a
-// governed Perth-CBD still + 0.55 scrim; PP accent baked; logo the ONLY governed asset).
+// DIRECT-BIND provider template id — v2 COMBO-AUDIO template (cc-0032 step 5, 2026-07-09).
+// Re-pointed from the v1 silent baseline 901a30ce to the REGISTERED v2 template c11bb8ab, which
+// carries the VoiceAudio + MusicBed audio elements (ledger 20260709205827,
+// register_video_provider_template_vid_market_stat_reveal_v2). The PP-specific baked-background
+// 9:16 stat-reveal (D2 ruling: baked still-image Ken-Burns over a governed Perth-CBD still + 0.55
+// scrim; PP accent baked; logo the ONLY governed VISUAL asset) is unchanged; v2 adds the two audio
+// slots the governed combo branch drives (VO over a music bed). The v1 template 901a30ce stays the
+// SILENT baseline (no audio elements) and is NOT used by this branch any more.
 //
-// NOTE — this is a DIRECT bind, NOT a select_template resolution. select_template fail-closes for
-// video_short_stat because the variant is not visually-approved yet (property-pulse.json evidence:
-// proof_status='unproven'). The registry therefore carries the placeholder
-// provider_template_id='PENDING_CREATOMATE_AUTHORING' at the variant + contract sites; this
-// constant is the concrete id PK pinned for the DARK build + supervised smoke. When the render is
-// visually approved, select_template routing (mirroring image-worker/b1_production.buildTmrRenderPlan)
-// REPLACES this constant and the placeholder registry ids are pinned — this constant then dies.
-export const B1_VIDEO_PROVIDER_TEMPLATE_ID = '901a30ce-292a-4e4f-8e46-fef93f71e098';
+// NOTE — this is still a DIRECT bind, NOT a select_template resolution. select_template fail-closes
+// for video_short_stat because the variant is not visually-approved yet (property-pulse.json
+// evidence: proof_status='unproven'). This constant is the concrete id PK pinned for the DARK build
+// + supervised smoke. When the render is visually approved, select_template routing (mirroring
+// image-worker/b1_production.buildTmrRenderPlan) REPLACES this constant.
+export const B1_VIDEO_PROVIDER_TEMPLATE_ID = 'c11bb8ab-18bd-45ff-aedd-0a59cb3773ab';
 
 // render_spec.label that marks the governed video stat production render (matches the seeded
 // c.client_creative_governance.render_label for (PP, video_short_stat) — migration
 // 20260708000000_seed_client_creative_governance_video_short_stat_v1.sql).
 export const B1_VIDEO_PRODUCTION_LABEL = 'creative_library_video_stat_production';
 
-// Registry identities (property-pulse.json v0.7 — variant + capability contract).
-export const B1_VIDEO_VARIANT_KEY = 'stat-reveal-9x16-video-v1';
+// Registry identities (property-pulse.json v0.9 — variant + capability contract). The v2 combo-audio
+// variant (registered ledger 20260709205827) supersedes the v1 silent variant for this branch.
+export const B1_VIDEO_VARIANT_KEY = 'stat-reveal-9x16-video-v2';
 export const B1_VIDEO_CONTRACT_REF = 'property_pulse.video_short_stat.market_stat';
 
 // Per-field hard-gate limits (capability contract property_pulse.video_short_stat.market_stat.v1
@@ -93,6 +107,21 @@ export function assertStatFieldsWithinGate(fields: B1VideoStatFields): void {
   }
 }
 
+// PURE narration composer (cc-0032 step 5 D3 / N2). Deterministic spoken form of the governed stat
+// fields for the ElevenLabs voiceover. CONCISE by design: statLabel + statValue + contextLine ONLY —
+// the CTA is DELIBERATELY NOT spoken (N2: the CTA stays a VISUAL element), so the VO fits the 12s
+// template. No Date/random/network — same inputs → same string. Trims each field; the caller runs
+// assertStatFieldsWithinGate first (via buildGovernedVideoStatPlan), so blanks/overflows are already
+// rejected fail-loud before this is spoken. Shape: "Market update. {statLabel} is {statValue}. {contextLine}".
+export function composeGovernedVideoNarration(fields: B1VideoStatFields): string {
+  const statLabel   = (fields.statLabel   ?? '').trim();
+  const statValue   = (fields.statValue   ?? '').trim();
+  const contextLine = (fields.contextLine ?? '').trim();
+  // Ensure the context clause ends with terminal punctuation for natural TTS phrasing.
+  const contextSpoken = /[.!?]$/.test(contextLine) ? contextLine : `${contextLine}.`;
+  return `Market update. ${statLabel} is ${statValue}. ${contextSpoken}`;
+}
+
 // Additive render_spec.tmr evidence block (mirrors b1_production.TmrEvidence shape for the video
 // slice). DIRECT-BIND variant: there is no live selector response, so assignment_id/seed are null
 // and selector_status marks the bind mode.
@@ -103,6 +132,9 @@ export type B1VideoTmrEvidence = {
   bind_mode: 'direct_bind_pre_select_template';
   resolver_used: false;
   fallback_taken: false;
+  // v3.6.0 (cc-0032 step 5): combo-audio evidence. voiceover is always true on the governed branch
+  // (VO is REQUIRED). music_bed reflects whether a bed URL was bound (false = explicitly silent, N1).
+  audio: { voiceover: true; music_bed: boolean };
 };
 
 // The render_spec.template sub-object (nested inside the templateSpec passed to renderUploadAndLog
@@ -129,33 +161,53 @@ export type B1VideoStatPlan = {
   templateSpec: B1VideoTemplateSpec;
 };
 
-// PURE plan builder. Turns the gated + validated text fields + the governed logo URL into the
-// Creatomate template-mode plan (provider template id + modifications + evidence). Fail-loud:
+// PURE plan builder. Turns the gated + validated text fields + the governed logo URL + the combo
+// audio URLs into the Creatomate template-mode plan (provider template id + modifications +
+// evidence). Fail-loud:
 //   - any of the 4 text fields blank/overflow  → assertStatFieldsWithinGate throws (call FIRST)
 //   - blank governed logo URL                   → throw b1_video_missing_governed_logo
-// Background is BAKED into the provider template and is deliberately NOT a modification.
+//   - blank voiceover URL                       → throw b1_video_missing_voiceover (VO is REQUIRED)
+// The music bed is OPTIONAL: musicBedUrl='' (or null/undefined) binds an EXPLICITLY SILENT bed
+// ('MusicBed.source'='') — N1: fail-closed music means "no bed", NOT "baked bed". Bed LEVEL stays
+// template-controlled (N3 — this builder NEVER sets MusicBed.volume). Background is BAKED into the
+// provider template and is deliberately NOT a modification.
 export function buildGovernedVideoStatPlan(
   fields: B1VideoStatFields,
   logoUrl: string | null | undefined,
+  voiceUrl: string | null | undefined,
+  musicBedUrl: string | null | undefined,
 ): B1VideoStatPlan {
   // Hard-gate the four text fields (fail loud) BEFORE building anything.
   assertStatFieldsWithinGate(fields);
 
   const resolvedLogo = (logoUrl ?? '').trim();
   if (!resolvedLogo) {
-    // Governed branch: the logo is the ONLY governed asset — a missing/blank logo is a HARD
+    // Governed branch: the logo is the ONLY governed VISUAL asset — a missing/blank logo is a HARD
     // failure (no wordmark fallback in the governed video path; fail loud → video_status='failed').
     throw new Error('b1_video_missing_governed_logo');
   }
 
-  // Template-mode modifications for the 5 dynamic slots. Element-name keys mirror the authored
-  // Creatomate template + the image-worker '<Element>.<prop>' convention. Background is BAKED.
+  const resolvedVoice = (voiceUrl ?? '').trim();
+  if (!resolvedVoice) {
+    // Combo branch: the voiceover is REQUIRED (the whole point of v2 is audio). A blank VO is a
+    // HARD failure — never render a silent video on the governed combo branch (fail loud).
+    throw new Error('b1_video_missing_voiceover');
+  }
+
+  // N1: the bed is optional. '' binds an explicitly silent MusicBed — no throw.
+  const resolvedBed = (musicBedUrl ?? '').trim();
+
+  // Template-mode modifications: 5 dynamic visual/text slots + 2 audio slots. Element-name keys
+  // mirror the authored Creatomate template + the image-worker '<Element>.<prop>' convention.
+  // Background is BAKED. MusicBed.volume is NOT set (N3 — template-controlled at 70%).
   const modifications: Record<string, string> = {
     'StatValue': fields.statValue.trim(),
     'StatLabel': fields.statLabel.trim(),
     'ContextLine': fields.contextLine.trim(),
     'CtaText': fields.ctaText.trim(),
     'Logo.source': resolvedLogo,
+    'VoiceAudio.source': resolvedVoice,
+    'MusicBed.source': resolvedBed,
   };
 
   const tmr: B1VideoTmrEvidence = {
@@ -165,6 +217,7 @@ export function buildGovernedVideoStatPlan(
     bind_mode: 'direct_bind_pre_select_template',
     resolver_used: false,
     fallback_taken: false,
+    audio: { voiceover: true, music_bed: resolvedBed.length > 0 },
   };
 
   const templateSpec: B1VideoTemplateSpec = {
