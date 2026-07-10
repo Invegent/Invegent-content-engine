@@ -1,3 +1,43 @@
+// video-worker v3.7.0
+// ============================================================================
+// v3.7.0 (2026-07-10, cc-0034 — GOVERNED MUSIC-USAGE RECORDING, DARK/ADDITIVE):
+//   ADDITIVE. A governed video render now records WHICH governed music track it consumed, into
+//   m.music_usage_event, via the NEW RPC public.record_music_usage. WHAT CHANGED (all additive):
+//     (1) resolveGovernedMusicBedUrl now returns { url, trackId } instead of a bare url string —
+//         select_music already returns track_id in its row, so the track_id is no longer discarded.
+//         SEMANTICS UNCHANGED: an RPC error still THROWS b1_video_missing_music_rpc (never a silent
+//         degrade); an empty result set → { url:'', trackId:null }. (row→bed mapping = the pure
+//         mapSelectMusicRow in ./music_usage.ts.)
+//     (2) renderUploadAndLog gains ONE optional opt, musicUsage?: { trackId, format } | null. AFTER
+//         a SUCCESSFUL render, AFTER the existing write_render_log call, and OUTSIDE the render
+//         try/catch, if musicUsage is present AND the Creatomate renderId is non-null it calls
+//         public.record_music_usage (p_render_id = the CREATOMATE render UUID; p_platform = NULL
+//         deliberately — a draft fans out to many platforms). Idempotent per render id (RPC ON
+//         CONFLICT DO NOTHING). A USAGE-WRITE FAILURE NEVER FAILS THE RENDER (PK 2026-07-10, reversing
+//         the earlier strict-throw): recordMusicUsage returns a result and never throws; on failure
+//         the render is kept and we LOG the stable code b1_video_music_usage_write_failed —
+//         console.error for production drafts, console.warn for the supervised smoke — then continue.
+//         *** CONSEQUENCE (do not soften): a governed PRODUCTION render can now succeed and PUBLISH
+//         with NO usage row if the record_music_usage write fails. Music provenance is BEST-EFFORT,
+//         not guaranteed. The loud console.error is the ONLY signal — there is no durable alarm and
+//         no retry here (a pipeline_incident row is a separate lane). *** This trade was chosen
+//         because failing the render would set post_draft.video_status='failed', write a SECOND
+//         'failed' render_log, and RETRY — re-rendering and re-spending Creatomate credits on an
+//         artifact that already succeeded; losing a bookkeeping write must not destroy a paid render.
+//         Every existing caller passes NO musicUsage, so their behaviour is byte-identical (the
+//         record helper no-ops when musicUsage is absent).
+//     (3) renderGovernedVideoStat + the governed_video_stat_smoke entrypoint pass
+//         musicUsage = bed.trackId ? { trackId, format } : null (musicUsageFromBed) — so zero
+//         eligible tracks (silent bed) → no musicUsage → NO usage row (D3: record ONLY when a bed
+//         was actually bound). MusicBed.source binding is UNCHANGED ('' when no bed, key always
+//         present — buildGovernedVideoStatPlan untouched).
+//   NOTE — public.record_music_usage is written but NOT YET APPLIED, so the call 404s until the
+//   migration lands; that is EXPECTED (the governed combo branch is DARK; the smoke follows the
+//   apply). STRICTLY OUT OF SCOPE: select_music SQL, write_render_log, the legacy MUSIC_LIBRARY/
+//   resolveMusicUrl/VIDEO_WORKER_MUSIC_ENABLED path, isKinetic/isStat/_voice, buildGovernedVideo
+//   StatPlan modifications keys, assertStatFieldsWithinGate, the enabled governance gate, pollRender,
+//   composeRenderSpec — all BYTE-UNCHANGED. No migration/apply, grant, secret, flag flip, or deploy.
+//
 // video-worker v3.5.0
 // ============================================================================
 // v3.5.0 (2026-07-09, CREATIVE-LIBRARY VIDEO TMR PHASE 2 — GOVERNED video_short_stat, DARK):
@@ -254,6 +294,7 @@ import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (a
 import { composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2; v3.4.0 LANE W: module trimmed to this single live export (production render_spec composer) — the smoke surface is retired
 import { resolveLegacyLogo, type AssetVerdict } from './asset_url_guard.ts';  // v3.3.0: H2 asset-URL validation before Creatomate
 import { isB1GovernedVideoStat, buildGovernedVideoStatPlan, composeGovernedVideoNarration, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO (DARK)
+import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsageDescriptor } from './music_usage.ts';  // v3.7.0 (cc-0034): governed music-usage recording (record_music_usage)
 
 // v3.6.0 (cc-0032 step 5, DARK): governed PP video_short_stat now renders COMBO AUDIO — a voiceover
 // over an optional governed music bed — binding the registered v2 template c11bb8ab (VoiceAudio +
@@ -265,7 +306,7 @@ import { isB1GovernedVideoStat, buildGovernedVideoStatPlan, composeGovernedVideo
 // fork placement, renderUploadAndLog, and every legacy path (isKinetic/isStat/_voice, MUSIC_LIBRARY/
 // resolveMusicUrl) are BYTE-UNCHANGED. STRICTLY OUT OF SCOPE: enabled=true flip, live render/publish,
 // worker deploy (held on the c11bb8ab key-identity precondition), the select_music apply (ledger-held).
-const VERSION = 'video-worker-v3.6.0';
+const VERSION = 'video-worker-v3.7.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -380,10 +421,15 @@ async function generateAndUploadVoice(
 // b1_video_missing_voiceover / b1_video_missing_governed_logo guards. A swallowed RPC error is exactly
 // how a silent-bed defect ships — never degrade an error to ''. Only an EMPTY result set means "no bed".
 // Consequence: the governed combo branch cannot render until select_music exists in the DB. Correct.
+// v3.7.0 (cc-0034): returns { url, trackId } instead of a bare url — select_music already returns
+// track_id in its row, so it is no longer discarded (needed to record which track a render consumed).
+// SEMANTICS UNCHANGED: RPC error → THROW; empty result set → { url:'', trackId:null }. The row→bed
+// mapping is the pure mapSelectMusicRow (./music_usage.ts); trackId is null whenever url is '' so
+// "bed bound" ⟺ trackId !== null (D3).
 async function resolveGovernedMusicBedUrl(
   supabase: ReturnType<typeof getServiceClient>,
   opts: { scopeKind: string; scopeValue: string },
-): Promise<string> {
+): Promise<{ url: string; trackId: string | null }> {
   const { data, error } = await supabase.rpc('select_music', {
     p_scope_kind: opts.scopeKind,
     p_scope_value: opts.scopeValue,
@@ -392,11 +438,9 @@ async function resolveGovernedMusicBedUrl(
     // FAIL LOUD — an RPC error is never a silent bed (PK 2026-07-10).
     throw new Error(`b1_video_missing_music_rpc: select_music failed (${error.message})`);
   }
-  const rows = (data ?? []) as Array<{ storage_path?: string | null }>;
-  if (rows.length === 0) return '';  // empty result set = "no bed" → silent (N1)
-  const storagePath = String(rows[0]?.storage_path ?? '');  // already bucket-prefixed
-  if (!storagePath) return '';
-  return `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/${storagePath}`;
+  const rows = (data ?? []) as Array<{ storage_path?: string | null; track_id?: string | null }>;
+  const publicObjectBaseUrl = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/`;
+  return mapSelectMusicRow(rows, publicObjectBaseUrl);
 }
 
 async function pollRender(renderId: string, apiKey: string, startMs: number): Promise<{ url: string; creditsUsed: number | null; durationMs: number }> {
@@ -422,7 +466,10 @@ type QaCtx = {
   sceneCount: number | null;
 };
 
-async function renderUploadAndLog(opts: {
+// v3.7.0 (cc-0034): exported for the hermetic renderUploadAndLog sequencing test (the D5-strict
+// "write_render_log runs exactly once as 'succeeded' AND the usage throw propagates without a
+// spurious 'failed' log" invariant). Production behaviour is unchanged — the export is inert.
+export async function renderUploadAndLog(opts: {
   supabase: ReturnType<typeof getServiceClient>;
   creatomateKey: string;
   renderScript: object;
@@ -434,10 +481,16 @@ async function renderUploadAndLog(opts: {
   templateSpec?: Record<string, unknown> | null;  // v3.2.0 GATE D2: render_spec.template (smoke only)
   renderSpecLabel?: string | null;                // v3.2.0 GATE D2: render_spec.label (smoke only)
   logMustSucceed?: boolean;                        // v3.2.0 GATE D2: smoke requires the evidence row to persist
+  musicUsage?: MusicUsageDescriptor | null;        // v3.7.0 (cc-0034): governed track consumed → record_music_usage (null / absent = no bed bound = no row)
 }): Promise<string> {
   const { supabase, creatomateKey, renderScript, storagePath, postDraftId, clientId, iceFormatKey, qaCtx } = opts;
   const startMs = Date.now();
   let renderId: string | null = null;
+  // v3.7.0 (cc-0034): hoisted so the success value survives the try/catch — the music-usage write
+  // runs OUTSIDE this try (below), where a strict D5 throw cannot be swallowed into a 'failed'
+  // render_log by the outer catch. The catch always rethrows, so control only reaches past the
+  // block when storageUrl was assigned on the success path.
+  let storageUrl: string;
   try {
     const submitResp = await fetch(CREATOMATE_API, {
       method: 'POST',
@@ -453,7 +506,7 @@ async function renderUploadAndLog(opts: {
     const vidBuf = await (await fetch(renderUrl)).arrayBuffer();
     const { error: upErr } = await supabase.storage.from('post-videos').upload(storagePath, vidBuf, { contentType: 'video/mp4', upsert: true });
     if (upErr) throw new Error(`Storage upload: ${upErr.message}`);
-    const storageUrl = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/post-videos/${storagePath}`;
+    storageUrl = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/post-videos/${storagePath}`;
     try {
       // v3.1.5 (QA-VISIBILITY-V0): additive render-QA on the SUCCESS log. file_size_bytes
       // reuses the already-fetched render buffer (vidBuf) — no re-fetch/probe.
@@ -498,7 +551,6 @@ async function renderUploadAndLog(opts: {
       console.error('[video-worker] write_render_log threw:', logEx?.message);
       if (opts.logMustSucceed) throw (logEx instanceof Error ? logEx : new Error(String(logEx)));
     }
-    return storageUrl;
   } catch (e: any) {
     const errMsg = (e?.message ?? String(e)).slice(0, 500);
     const isTimeout = errMsg.includes('timed out');
@@ -546,6 +598,25 @@ async function renderUploadAndLog(opts: {
     } catch (logEx: any) { console.error('[video-worker] write_render_log (fail) threw:', logEx?.message); }
     throw e;
   }
+  // v3.7.0 (cc-0034): record which governed music track this SUCCESSFUL render consumed. Placed
+  // OUTSIDE the render try/catch on purpose and — per PK 2026-07-10 — a usage-write failure NEVER
+  // fails the render. recordMusicUsage never throws; it returns a result. No-ops unless a bed was
+  // actually bound (musicUsage present — D3) AND a Creatomate renderId is present (FIX 2). On a
+  // real write failure we LOG LOUD and CONTINUE: console.error for production drafts, console.warn
+  // for the supervised smoke — both carrying the stable, greppable code
+  // b1_video_music_usage_write_failed. write_render_log has already run EXACTLY ONCE with status
+  // 'succeeded'; the render is NOT retried, credits are NOT re-spent, and provenance is best-effort
+  // (see the v3.7.0 file header). Idempotent per render id (record_music_usage ON CONFLICT DO NOTHING).
+  const musicUsageResult = await recordMusicUsage(supabase, { musicUsage: opts.musicUsage, renderId, clientId, postDraftId });
+  if (opts.musicUsage && !musicUsageResult.recorded && musicUsageResult.error) {
+    const detail = `b1_video_music_usage_write_failed: ${musicUsageResult.error} (track_id=${opts.musicUsage.trackId}, render_id=${renderId})`;
+    if (postDraftId !== null) {
+      console.error(`[video-worker] ${detail}`);  // production: loud alarm — provenance best-effort, render kept
+    } else {
+      console.warn(`[video-worker] ${detail}`);   // supervised smoke
+    }
+  }
+  return storageUrl;
 }
 
 async function getBrand(supabase: ReturnType<typeof getServiceClient>, clientId: string) {
@@ -829,9 +900,9 @@ async function renderGovernedVideoStat(opts: {
   const voiceUrl = await generateAndUploadVoice(supabase, narration, voiceId, voicePath);
   if (!voiceUrl) throw new Error('b1_video_governed_voiceover_failed');
 
-  const bedUrl = await resolveGovernedMusicBedUrl(supabase, { scopeKind: 'format', scopeValue: B1_VIDEO_GOVERNED_FORMAT });
+  const bed = await resolveGovernedMusicBedUrl(supabase, { scopeKind: 'format', scopeValue: B1_VIDEO_GOVERNED_FORMAT });
 
-  const plan = buildGovernedVideoStatPlan(fields, brand.logoUrl, voiceUrl, bedUrl);
+  const plan = buildGovernedVideoStatPlan(fields, brand.logoUrl, voiceUrl, bed.url);
 
   // Template-mode renderScript (Creatomate v2/renders template-mode): { template_id, modifications,
   // output_format:'mp4' }. output_format is the template-mode video output field (mirrors the
@@ -849,6 +920,8 @@ async function renderGovernedVideoStat(opts: {
     postDraftId: draft.post_draft_id, clientId: draft.client_id, iceFormatKey: fmt, qaCtx: comboQaCtx,
     templateSpec: plan.templateSpec as unknown as Record<string, unknown>,
     renderSpecLabel: B1_VIDEO_PRODUCTION_LABEL,
+    // v3.7.0 (cc-0034): record the governed track consumed — null when no bed was bound (D3).
+    musicUsage: musicUsageFromBed(bed, fmt),
   });
   await supabase.schema('m').from('post_draft').update({ video_url: videoUrl, video_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
   return { post_draft_id: draft.post_draft_id, format: fmt, status: 'generated', video_url: videoUrl, governed: true };
@@ -982,9 +1055,9 @@ Deno.serve(async (req: Request) => {
       if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for governed smoke (client_id=${B1_VIDEO_GOVERNED_CLIENT_ID} method=${method})`);
       const smokeVoiceUrl = await generateAndUploadVoice(smokeSupabase, narration, voiceId, '_smoke/governed_video_stat_v1_voice.mp3');
       if (!smokeVoiceUrl) throw new Error('b1_video_governed_smoke_voiceover_failed');
-      const smokeBedUrl = await resolveGovernedMusicBedUrl(smokeSupabase, { scopeKind: 'format', scopeValue: B1_VIDEO_GOVERNED_FORMAT });
+      const smokeBed = await resolveGovernedMusicBedUrl(smokeSupabase, { scopeKind: 'format', scopeValue: B1_VIDEO_GOVERNED_FORMAT });
 
-      const plan = buildGovernedVideoStatPlan(sampleFields, sampleLogo, smokeVoiceUrl, smokeBedUrl);
+      const plan = buildGovernedVideoStatPlan(sampleFields, sampleLogo, smokeVoiceUrl, smokeBed.url);
       const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'mp4' };
       const storageUrl = await renderUploadAndLog({
         supabase: smokeSupabase, creatomateKey, renderScript,
@@ -994,8 +1067,11 @@ Deno.serve(async (req: Request) => {
         templateSpec: plan.templateSpec as unknown as Record<string, unknown>,
         renderSpecLabel: B1_VIDEO_PRODUCTION_LABEL,
         logMustSucceed: true,
+        // v3.7.0 (cc-0034): smoke has no draft (postDraftId null) → D5 LENIENT; format = the governed
+        // format. null when no bed was bound (D3).
+        musicUsage: musicUsageFromBed(smokeBed, B1_VIDEO_GOVERNED_FORMAT),
       });
-      return jsonResponse({ ok: true, mode: 'governed_video_stat_smoke', provider_template_id: plan.providerTemplateId, render_spec_label: B1_VIDEO_PRODUCTION_LABEL, music_bed: !!smokeBedUrl, storage_url: storageUrl, version: VERSION });
+      return jsonResponse({ ok: true, mode: 'governed_video_stat_smoke', provider_template_id: plan.providerTemplateId, render_spec_label: B1_VIDEO_PRODUCTION_LABEL, music_bed: !!smokeBed.url, storage_url: storageUrl, version: VERSION });
     } catch (e: any) {
       return jsonResponse({ ok: false, mode: 'governed_video_stat_smoke', error: (e?.message ?? String(e)).slice(0, 500), version: VERSION }, 500);
     }
