@@ -1,5 +1,6 @@
 {
   "_comment": "ICE CCF-01 Phase 1 governed hook wiring (cc-0026). All guards are wired in --log-only (dry-run) mode; none is enforcing. Bootstrap is inform-only (SessionStart, no enforcing mode). This file is committed/governed; the existing sql-content-gate wiring stays in settings.local.json and is intentionally NOT duplicated here. Enforcing flips happen one guard at a time, each behind a PK gate, after >=3 clean dry-run sessions per guard (cc-0026 §D).",
+  "_permissions_comment": "READ-ONLY allowances only. Deliberately absent: mcp__supabase__execute_sql (stays in settings.local.json `ask` — the same tool serves SELECT and DML, and permission matching cannot distinguish them; allowing it would punch a hole through the apply_migration/deploy_edge_function hard stops). Also absent: mcp__ccd_session_mgmt__send_message (the harness always prompts for it by design; it cannot be allowlisted). Every entry below is non-mutating.",
   "hooks": {
     "SessionStart": [
       {
@@ -44,6 +45,28 @@
           }
         ]
       }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git fetch)",
+      "Bash(git fetch:*)",
+      "Bash(git rev-list:*)",
+      "Bash(git worktree list:*)",
+      "Bash(git cat-file:*)",
+      "Bash(git merge-base:*)",
+      "mcp__supabase__list_projects",
+      "mcp__supabase__list_extensions",
+      "mcp__supabase__search_docs",
+      "mcp__supabase__get_project",
+      "mcp__39a0f413-34bd-42f5-a856-0ad78bb503ef__get_edge_function",
+      "mcp__39a0f413-34bd-42f5-a856-0ad78bb503ef__list_migrations",
+      "mcp__83e7ae1d-c101-4687-ab43-28c042fd7a04__get_deployment_build_logs",
+      "mcp__ccd_session_mgmt__list_sessions",
+      "mcp__ccd_session_mgmt__get_session",
+      "mcp__ccd_session_mgmt__list_events",
+      "mcp__ccd_session_mgmt__search_session_transcripts",
+      "mcp__ccd_session__mark_chapter"
     ]
   }
 }
