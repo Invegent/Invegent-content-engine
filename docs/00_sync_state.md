@@ -6,6 +6,15 @@
 
 ---
 
+> **✅ v5.51 THE SEVEN — PIXEL-VERIFIED + `geo_scope` BACKFILL COMPLETE (T3 · SAFETY_GATE; 38/38 coverage, all 7 still fenced, C1 STILL OPEN)** — result doc canonical: `docs/briefs/results/c1-seven-verification-result.md`.
+> · **The v5.50 gap earned its keep.** Of 7 fenced backgrounds never pixel-verified: **`bg_pp_open_home_entry` is a NORTH AMERICAN house** (→ `non_au`, PK-ratified) · **`bg_pp_perth_skyline_dawn_moody` IS genuinely Perth BUT its towers carry legible AMP/Citibank/Westpac signage** · **`bg_pp_transaction_keys_contract` holds a UKRAINIAN document** (`Отримав (ла)`/`Дата і підпис`). **`PASS_WITH_NOTE` sat on the American house AND the bank-logo skyline.**
+> · **`bg_pp_au_suburb_texture` → `au_nsw`, NOT `au_generic`** — its prose said "NSW regional town"; `au_generic` would have permitted a Perth headline over a NSW town (the `broll_pp_au_suburb_aerial` mistake).
+> · **Applied:** 7 rows scoped; **coverage 38/38, 0 absent**. Guards: 31-pre / rowcount=7 / vocabulary+jsonb-string / **fences untouched (`geo_scope` must never approve)** / pool 20→20 / branch-warden BEFORE apply.
+> · **⚠ Two hazards recorded ONLY in markdown.** The Perth skyline (bank logos) + the Ukrainian flat-lay are geographically CORRECT; their defects are **text-safety**, and no field the system reads records them. Re-approving the skyline "because it really is Perth" ships AMP/Citibank. **Require a render-scale crop-proof before either is re-approved.** C1's shape one level down.
+> · **⚠ C1 STILL OPEN — nothing reads `geo_scope`.** Step 1 complete for **PP only**; 3 other clients hold **23 unscoped** bg/logo assets (0 live) — `resolve_slot_assets` is not PP-scoped, so a fail-closed flip kills their first render with `missing_required_logo`. Real work remains **step 3** (structured geo on the copy; `B1Fields.location` hardcoded `''`, no `image_location` column). Supersedes → v5.50.
+
+---
+
 > **✅ v5.50 C1 CLOSURE STEP 1 — `geo_scope` BACKFILL APPLIED (T3 · SAFETY_GATE; vocabulary RATIFIED; C1 STILL OPEN)** — brief canonical: `docs/briefs/c1-step1-geo-scope-backfill-draft.md`.
 > · **PK ratified** the closed vocabulary (`none`·`unidentified`·`au_generic`·`au_wa_perth`·`au_nsw`·`au_qld`·`non_au`) and the pairing rule — **`au_generic` MAY sit under a Perth headline**; `au_nsw` under Perth is a lie; `non_au` pairs with no place label.
 > · **Applied:** `geo_scope` written to **31** PP rows; **7 deliberately ABSENT** (the fenced backgrounds nobody has pixel-verified, incl. `bg_pp_perth_skyline_dawn_moody` + `bg_pp_for_sale_sign_street`). **The gap IS the guard** — absent ⇒ fails closed ⇒ cannot be re-approved without verification. Statement asserts no unverified asset gets a value. Logos assigned BY PREDICATE (`none`) — a name-list typo would become `missing_required_logo`. Pool unmoved **20** (neutrality asserted: `geo_scope` is unread, so movement ⇒ a fence was touched).
