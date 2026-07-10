@@ -9,6 +9,21 @@ CLAIMED v5.45 · cc-0032-combo-audio-enabled-live (consolidated night terminal) 
 
 ---
 
+> **[SUPERSEDED-IN-PART — 2026-07-10 · register v5.45 (`94b70f3`) · record-reconciliation lane]**
+>
+> This document records **cc-0032's own lane end-state**, which was correct when the lane closed:
+> the governed combo branch shipped **DARK** (`enabled=false`), and the `enabled=true` production
+> flip was explicitly held as a **separate PK gate**.
+>
+> **Current live state is `enabled=true`** for Property Pulse `video_short_stat`
+> (`c.client_creative_governance`, client `4036a6b5-…`, `updated_at 2026-07-10 04:25:44.819707+00`),
+> recorded by **register v5.45** (`94b70f3`) and independently verified against the live DB.
+>
+> The "DARK / `enabled=false`" statements below — **Outcome** (line 8), **§8 State → Live**, and
+> **§9 Non-claims** — are **true as this lane's record** and are **retained unedited**. They are the
+> evidence that the flip was a distinct gate, not something this lane performed.
+> **Do not read them as current state.**
+
 ## 1. PK verdict (the deciding act)
 
 **PK watched and listened to the smoke render and verdicted PASS — visual + aural — on 2026-07-10.**
