@@ -31,9 +31,12 @@
 //         eligible tracks (silent bed) → no musicUsage → NO usage row (D3: record ONLY when a bed
 //         was actually bound). MusicBed.source binding is UNCHANGED ('' when no bed, key always
 //         present — buildGovernedVideoStatPlan untouched).
-//   NOTE — public.record_music_usage is written but NOT YET APPLIED, so the call 404s until the
-//   migration lands; that is EXPECTED (the governed combo branch is DARK; the smoke follows the
-//   apply). STRICTLY OUT OF SCOPE: select_music SQL, write_render_log, the legacy MUSIC_LIBRARY/
+//   NOTE — public.record_music_usage is APPLIED (ledger 20260710121423, 2026-07-10). It REQUIRES a
+//   non-NULL p_render_id (a NULL cannot be deduplicated by the partial unique index) and is idempotent
+//   per Creatomate render id. Note also that select_music now REQUIRES content_id_safe (ledger
+//   20260710115043) and NO track in the library is Content-ID-safe — so today every governed render
+//   binds no bed, writes no usage row, and emits no alarm (the D3 no-op, not a failure).
+//   STRICTLY OUT OF SCOPE: select_music SQL, write_render_log, the legacy MUSIC_LIBRARY/
 //   resolveMusicUrl/VIDEO_WORKER_MUSIC_ENABLED path, isKinetic/isStat/_voice, buildGovernedVideo
 //   StatPlan modifications keys, assertStatFieldsWithinGate, the enabled governance gate, pollRender,
 //   composeRenderSpec — all BYTE-UNCHANGED. No migration/apply, grant, secret, flag flip, or deploy.
