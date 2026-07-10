@@ -1,0 +1,20 @@
+{
+  "P1a_control": {
+    "id": "18c2a62a-1363-4611-92cb-dd72c915c552",
+    "status": "succeeded",
+    "url": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/18c2a62a-1363-4611-92cb-dd72c915c552.png",
+    "error": null
+  },
+  "P1b_subtitle_y": {
+    "id": "866a2523-14a5-4aab-95f8-faba2f5b7820",
+    "status": "succeeded",
+    "url": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/866a2523-14a5-4aab-95f8-faba2f5b7820.png",
+    "error": null
+  },
+  "P1c_autoshrink": {
+    "id": "38a20bb9-aa18-4ab5-aa04-bd473ad786a0",
+    "status": "succeeded",
+    "url": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/38a20bb9-aa18-4ab5-aa04-bd473ad786a0.png",
+    "error": null
+  }
+}

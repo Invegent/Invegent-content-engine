@@ -1,0 +1,12 @@
+{
+  "id": "ef26146e-c307-494d-b868-80c437da8673",
+  "status": "succeeded",
+  "headline_chars": 90,
+  "modifications": {
+    "Headline.height": "22%",
+    "Headline.font_size": null,
+    "Headline.font_size_minimum": "30 px",
+    "Headline.font_size_maximum": "74 px",
+    "Subtitle.y": "60%"
+  }
+}
