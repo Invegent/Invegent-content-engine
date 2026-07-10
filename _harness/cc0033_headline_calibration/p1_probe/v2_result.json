@@ -1,0 +1,12 @@
+{
+  "id": "81584717-1cc2-4844-94bb-fa2ee4e90303",
+  "endpoint": "https://api.creatomate.com/v2/renders",
+  "status": "succeeded",
+  "output_format": "jpg",
+  "modifications_sent": {
+    "Headline.height": "22%",
+    "Headline.font_size": null,
+    "Headline.font_size_minimum": "30 px",
+    "Headline.font_size_maximum": "74 px"
+  }
+}

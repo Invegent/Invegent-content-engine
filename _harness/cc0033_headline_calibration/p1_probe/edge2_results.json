@@ -1,0 +1,18 @@
+{
+  "E1x_control_noguard": {
+    "id": "6218e5b1-6c6a-4387-a7b7-7e472f6f98cf",
+    "status": "succeeded",
+    "guard_keys": []
+  },
+  "E1y_guard_plus_width": {
+    "id": "8b17b31e-e614-49f0-b10e-a577188747f1",
+    "status": "succeeded",
+    "guard_keys": [
+      "Headline.font_size",
+      "Headline.font_size_maximum",
+      "Headline.font_size_minimum",
+      "Headline.height",
+      "Headline.width"
+    ]
+  }
+}

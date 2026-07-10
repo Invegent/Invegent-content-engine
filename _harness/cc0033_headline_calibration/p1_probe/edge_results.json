@@ -1,0 +1,29 @@
+{
+  "endpoint": "https://api.creatomate.com/v2/renders",
+  "guard": {
+    "Headline.height": "22%",
+    "Headline.font_size": null,
+    "Headline.font_size_minimum": "30 px",
+    "Headline.font_size_maximum": "74 px"
+  },
+  "cases": {
+    "E1_unbreakable_token": {
+      "id": "04e892c1-e811-40b5-a938-e302adbc7ee4",
+      "chars": 84,
+      "admissible": true,
+      "status": "succeeded"
+    },
+    "E2_cjk": {
+      "id": "9ee55081-3649-4918-bca6-bd7f8f98afad",
+      "chars": 62,
+      "admissible": true,
+      "status": "succeeded"
+    },
+    "E3_mixed_longtoken": {
+      "id": "7699009b-fa65-46cc-87e1-e9501ce95d6a",
+      "chars": 80,
+      "admissible": true,
+      "status": "succeeded"
+    }
+  }
+}

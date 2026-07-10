@@ -113,7 +113,7 @@ Order is deliberate and must be preserved: `slotMods` carries `Background.source
 ## Scope
 
 **In scope:** the four items above; hermetic tests; the deploy plan.
-**Out of scope:** the contract `limits` shape and the ai-worker writer budget (→ **cc-0033b**, unopened); `assertHeadlineWithinGate` reading the contract; format selection / TMR spine / render selection; `contract_validation` (`limit_source` stays `'fallback_constant'`); any non-PP client or non-`image_quote` format; carries C1/C2/C3; background promotion; cc-0035; Spine Gen v2.
+**Out of scope:** the contract `limits` shape and the ai-worker writer budget (→ **cc-0033b**, unopened); `assertHeadlineWithinGate` reading the contract; **the max-token-length assert (→ carry C5 below — an input-gate change, deliberately not made here)**; format selection / TMR spine / render selection; `contract_validation` (`limit_source` stays `'fallback_constant'`); any non-PP client or non-`image_quote` format; carries C1/C2/C3; background promotion; cc-0035; Spine Gen v2.
 
 ## Allowed actions
 
@@ -141,6 +141,48 @@ Order is deliberate and must be preserved: `slotMods` carries `Background.source
 - External review pinned to the final diff `sha256`, verdict clean.
 - Deploy command prepared with `--no-verify-jwt`, rollback written and validated **before** apply.
 - Post-deploy: one governed render on a real PP `image_quote` draft renders 3 clean lines, no overprint. **PK visual verdict is the deciding act.**
+
+## Named carry C5 — unbreakable-token overflow (PRE-EXISTING, surfaced by this lane, NOT fixed by it)
+
+**Status: OPEN CARRY. Not a regression. Not a blocker on cc-0033a.**
+
+Raised as an "untested edge case" by external review `0a63f124` (`partial` / high risk). Answered by
+five renders on the production `/v2/renders` endpoint; full record and images in
+`_harness/cc0033_headline_calibration/p1_probe/P1_FINDINGS.md` §4c.
+
+**The defect.** An admissible headline (≤ `B1_HEADLINE_MAX_CHARS` = 90) consisting of a single token
+with no break opportunity — 84 chars, no spaces — overflows the right canvas edge and is clipped.
+`assertHeadlineWithinGate` bounds total *length*; it does not bound *token* length.
+
+**It is pre-existing, and the layout guard strictly improves it.** Control render
+`E1x_control_noguard.jpg` — the same token with the guard keys absent, i.e. exactly what production
+renders today — overflows **worse**: the font never shrinks and clips ~30 chars earlier. With the
+guard (`E1_unbreakable_token.jpg`) the font auto-shrinks and strictly more of the token is visible.
+**Shipping cc-0033a makes this case better, never worse.** It is therefore not a reason to hold the
+fix.
+
+**It cannot be fixed in the `modifications` map.** `E1y_guard_plus_width.jpg` adds
+`Headline.width: '88%'` and renders **pixel-equivalent** to the unbounded case: Creatomate will not
+break a token that offers no break opportunity, regardless of box width. No combination of geometry
+keys closes it.
+
+**Real-world exposure: nil.** `Headline.text` binds to `post_draft.image_headline` — AI-written prose.
+No card in the 16-row governed published population carries a token long enough to overflow. E1 is a
+synthetic worst case, not an observed one. Adjacent classes are clean: CJK wraps correctly
+(`E2_cjk.jpg`, breaks between glyphs) and the realistic hybrid — prose + a 55-char URL — renders with
+no overprint, flush to the right margin (`E3_mixed_longtoken.jpg`). An **empty** headline is
+unreachable: `assertHeadlineWithinGate` throws `b1: missing image_headline` before a plan is built.
+
+**Proposed fix (a separate lane, PK's gate).** Add a max-token-length assert to
+`assertHeadlineWithinGate` — fail-loud, consistent with the existing gate's contract (throw → the
+caller's catch fails the draft, `image_status='failed'`; never a bad post). It is an **input-gate**
+change, orthogonal to the layout guard, and lands cleanly after cc-0033a.
+
+**Constraint inherited from this lane:** the assert's threshold is **derived from geometry, not
+guessed**. Do not encode a token-length constant the way `B1_HEADLINE_MAX_CHARS = 90` and
+`max_lines: 3` were encoded — both were declared, recorded, and wrong. The threshold must be
+established by render probe at the guard's `font_size_minimum` (`30 px`) against the headline box
+width, or the assert repeats the disease this lane exists to cure.
 
 ## Deploy collision — cc-0037 owns uncommitted changes to the SAME files
 
