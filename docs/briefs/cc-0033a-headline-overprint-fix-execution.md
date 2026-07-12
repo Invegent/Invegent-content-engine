@@ -27,7 +27,7 @@
 
 ## Task
 
-Close **D5**'s named carry: the headline/subtitle overprint that affects **7 of 17** real governed PP static renders (41%). Apply the fix P1 proved — a winner-scoped **layout guard** injected into the Creatomate template-mode `modifications` map, bounding the headline's height and letting its font auto-shrink to fit.
+Close **D5**'s named carry: the headline/subtitle overprint that affects **7 of 16 PUBLISHED** governed cards (44%; FB 5/8, IG 2/8 — measured, see §Exposure below). Apply the fix P1 proved — a winner-scoped **layout guard** injected into the Creatomate template-mode `modifications` map, bounding the headline's height and letting its font auto-shrink to fit.
 
 No provider-template write. No writer-prompt change. No tightening. **No `max_lines` constant anywhere.**
 
@@ -192,16 +192,16 @@ This is not only a deploy collision — it is a **file collision**. cc-0033a edi
 
 - **Two lanes cannot deploy `image-worker` concurrently**, and cc-0033a cannot cut a clean diff of `b1_production.ts` without inheriting or conflicting with cc-0037's staged edits.
 - **cc-0037's external review is pinned to a hash that does not include cc-0033a's change.** Combining them into one worker version **invalidates that review** — it must be re-run on the combined diff (contract rule 1 + `reviewed_input_hash`).
-**PK RULING 2026-07-10: SERIALISE.** cc-0037 deploys first; cc-0033a then rebases onto the post-cc-0037 HEAD and runs its own full T3 chain. Consequences for this lane:
+**PK RULING 2026-07-10: SERIALISE — cc-0033a FIRST** (this supersedes the earlier draft ordering; see the SUPERSEDED header above and register v5.52). cc-0033a opens, lands, and deploys on **its own minimal diff cut from current HEAD**. **cc-0037 is PARKED behind it** and rebases + re-runs its full chain afterwards. Consequences for this lane:
 
-- cc-0037's external review (`010abb01…dee4`) **stays valid** — its diff is unchanged. Combining would have invalidated it; serialising does not.
-- cc-0033a's `ef-builder` worktree must be cut **from the commit that contains cc-0037's merged change**, not from `2d8b092`. Cutting early reproduces the file collision.
-- cc-0033a's external review must be pinned to **its own post-rebase diff hash**. No review of the pre-rebase diff carries across.
-- **cc-0033a is BLOCKED-ON-cc-0037, and cc-0037 is parked at PK's deploy gate.** The blocker cannot start until PK releases a lane this lane does not own. **Standing risk: the defect keeps publishing while it waits** — see below.
+- cc-0033a is **NOT blocked on cc-0037.** It cuts its worktree from current HEAD and owns the next `image-worker` deploy. The earlier "cut from the post-cc-0037 commit" instruction is **void** — cc-0037 has not deployed and now follows this lane.
+- **cc-0037's external review (`010abb01…dee4`) VOIDS when cc-0037 rebases** onto the post-cc-0033a HEAD: its diff changes, so its whole chain re-runs (`deno check` · tests · branch-warden · db-rls-auditor · fresh external review pinned to the new hash). No approval carries across. (Confirmed by the cc-0037 lane, 2026-07-11.)
+- cc-0033a's own external review is pinned to **its own diff hash** (`aeecb588…`). Combining the two lanes was rejected precisely to keep each review valid for exactly its bytes.
+- **Cost PK accepted, unchanged:** cc-0033a deploys a BLOCKER fix to the live governed render path with **no supervised smoke surface** — that surface *is* cc-0037, which now ships after. Post-deploy verification rests on the pre-deploy probe evidence (P1 4 renders + V2 2 renders on the production `/v2` endpoint) plus observation of real production renders.
 
-**Bleed rate during serialisation (stated so nobody has to re-derive it).** PP publishes governed `image_quote` cards near-daily. Measured overprint rate is **44% overall, 63% on Facebook**. Every governed card that overprints has reached production. Each day cc-0033a waits is, in expectation, roughly one more published card with a ~44% chance of the defect. **This is not an argument against serialising** — it is the cost of it, and PK should be the one holding it, not discover it later.
+**Bleed rate while cc-0033a clears its gates (stated so nobody has to re-derive it).** PP publishes governed `image_quote` cards near-daily. Measured overprint rate is **44% overall, 63% on Facebook**. Every governed card that overprints has reached production. Each day until cc-0033a deploys is, in expectation, roughly one more published card with a ~44% chance of the defect. **This is not an argument against the gates** — it is the cost of holding them, and PK should be the one holding it, not discover it later. (cc-0033a is now FIRST, so this cost is only the remaining Gate-1 + deploy gate, not a wait on another lane.)
 
-**Zero-deploy interim levers, if PK wants the bleeding stopped while cc-0037 clears** (none are free; none are this lane's to run): (a) shorten `image_headline` on approved-but-unrendered PP drafts (`image_status='pending'`) so they wrap to ≤3 lines — a production DML, per-draft, **T3**; (b) pause PP publishing — stops good cards with the bad. **No code-free flip exists** (see above: the governance row is inert on this path). Recommendation: **do neither by default.** Surface them only because "wait for cc-0037" should be a chosen cost, not an assumed one.
+**Zero-deploy interim levers, if PK wants the bleeding stopped while cc-0033a clears its gates** (none are free; none are this lane's to run): (a) shorten `image_headline` on approved-but-unrendered PP drafts (`image_status='pending'`) so they wrap to ≤3 lines — a production DML, per-draft, **T3**; (b) pause PP publishing — stops good cards with the bad. **No code-free flip exists** (see above: the governance row is inert on this path). Recommendation: **do neither by default.** Surface them only because holding cc-0033a at its gates should be a chosen cost, not an assumed one.
 
 **Deploy mechanics (when the gate opens).** Do **not** request a `deploy_edge_function` deny-lift. `drift-check` reads GitHub `main`, not local disk, so an unpushed commit classifies **A-LE** and `safe-deploy.sh` hard-blocks with no override. **Push first**, refresh drift to **B-FD**, then `safe-deploy.sh image-worker --allow-warn`. Validate the rollback command form **before** the forward deploy. (This is the same pattern the video-worker v3.6.0 lane proved — a push clears the A-LE false-block.)
 
