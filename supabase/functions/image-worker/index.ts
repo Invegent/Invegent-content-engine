@@ -1,4 +1,12 @@
-// image-worker v3.23.0
+// image-worker v3.24.0
+// v3.24.0 (2026-07-16) — cc-0033a HEADER/VERSION BUMP ONLY (no logic change in this file).
+//   Makes the headline/subtitle overprint fix in b1_production.ts visible to the drift-check
+//   gate, which hashes ONLY this entrypoint file — a helper-only change classifies A-LE and
+//   safe-deploy.sh hard-blocks it. The actual fix (winner-scoped TMR_WINNER_LAYOUT_GUARD:
+//   Headline.height bound + font auto-shrink) lives in b1_production.ts and shipped in the
+//   preceding commit; this bump only re-syncs the deployable entrypoint so the governed
+//   drift gate reclassifies A-LE -> B-FD. index.ts behaviour is byte-unchanged apart from
+//   these header lines and the VERSION const string below.
 // v3.23.0 (2026-07-05) — LANE W / TMR DEAD-REFERENCE CLEANUP (governing plan
 //   docs/briefs/tmr-dead-reference-cleanup-plan-packet.md Lane W, candidates C1/C2/C4;
 //   recon result docs/briefs/results/creatomate-provider-reconciliation-v0-result.md;
@@ -308,7 +316,7 @@ import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C:
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.23.0';
+const VERSION = 'image-worker-v3.24.0';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
