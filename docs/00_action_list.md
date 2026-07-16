@@ -9,6 +9,18 @@
 
 ---
 
+## 🧭 Active parallel lanes (2026-07-16 — session coordination)
+
+> Three lanes advancing TMR. **One writer per edge function; scope lanes by the artifact they own, not by topic.** Two lanes on the same file/EF do not parallelize — they serialize at the deploy gate (see cc-0033a↔cc-0037).
+>
+> - **TMR Lane Orchestrator** — sequencer/gatekeeper (register + gates + review chains). Read-only; does **not** build.
+> - **TMR Image FixUp** — owns `b1_production.ts` · image-worker EF. Runs **cc-0033a (BLOCKER) → then cc-0037**, serialized (same file, same deploy). **No other window may edit this EF.**
+> - **Video B-roll progress** — owns video-worker EF · `broll_*` assets · music library. Disjoint → parallel-safe.
+>
+> **Rules:** claim-stub before any register cut (prevents the v5.51/v5.52 version collision) · isolated worktrees for all builds · deploy sequencing held by the orchestrator (never two lanes deploying the same EF) · deploy stays a **PK hard-stop**. **Creatomate/TMR-4 intake stays UNOPENED** until the image blocker clears, so no two production-touching fronts share the deploy chokepoint.
+
+---
+
 ## How this file works
 
 At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs Standing checks (S1–S29); (3) verifies D186 closure budget; (4) asks PK about Personal businesses; (5) surfaces Time-bound items.
