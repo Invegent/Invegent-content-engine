@@ -17,8 +17,8 @@
 import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import {
   B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG,
-  B1_HEADLINE_MAX_CHARS, B1_SUBTITLE_MAX_CHARS, B1_PRODUCTION_LABEL,
-  isB1GovernedImageQuote, assertHeadlineWithinGate, deriveB1Subtitle,
+  B1_HEADLINE_MAX_CHARS, B1_SUBTITLE_MAX_CHARS, B1_PRODUCTION_LABEL, B1_SMOKE_LABEL,
+  isB1GovernedImageQuote, assertHeadlineWithinGate, assertExpectedProviderTemplate, deriveB1Subtitle,
   TMR_WINNER_TEXT_FIELDS, TMR_WINNER_LAYOUT_GUARD, buildTmrRenderPlan,
   type B1Fields, type TmrSelectorResponse,
 } from './b1_production.ts';
@@ -415,4 +415,40 @@ Deno.test('B1-LG-4: unmapped winner still throws tmr_winner_unmapped (fail-close
   assertThrows(() => buildTmrRenderPlan(fx, FIELDS, '5 July 2026'), Error, 'tmr_winner_unmapped: generic_quote_card_1x1_v1');
   // and the winner carries no guard entry (would merge {} — behaviour identical to today).
   assertEquals(TMR_WINNER_LAYOUT_GUARD['generic_quote_card_1x1_v1'], undefined);
+});
+
+// ── cc-0037: SUPERVISED GOVERNED IMAGE_QUOTE SMOKE (b1_production.ts contributions) ──────
+// The smoke's stamper-safety invariant + its fail-loud provider-drift assert are pure and
+// hermetic; they are the two testable pieces the smoke branch depends on.
+
+// (smoke-1) B1_SMOKE_LABEL is the exact registered smoke label.
+Deno.test('cc-0037 smoke-1: B1_SMOKE_LABEL === "creative_library_b1_smoke"', () => {
+  assertEquals(B1_SMOKE_LABEL, 'creative_library_b1_smoke');
+});
+
+// (smoke-2) THE STAMPER-SAFETY INVARIANT: the smoke label must NOT equal the production label.
+// stamp_tmr_shadow_forward keys on render_spec->>'label' = B1_PRODUCTION_LABEL AND
+// post_draft_id IS NOT NULL; the distinct smoke label is defence-in-depth. If this ever fails,
+// the smoke could become stampable were the null-draft-id clause dropped.
+Deno.test('cc-0037 smoke-2: B1_SMOKE_LABEL !== B1_PRODUCTION_LABEL (stamper-safety invariant)', () => {
+  assert((B1_SMOKE_LABEL as string) !== (B1_PRODUCTION_LABEL as string));
+  assertEquals(B1_PRODUCTION_LABEL, 'creative_library_b1_production');
+});
+
+// (smoke-3) assertExpectedProviderTemplate PASS path: equal ids → no throw.
+Deno.test('cc-0037 smoke-3: assertExpectedProviderTemplate passes on a match', () => {
+  assertExpectedProviderTemplate(WINNER_PROVIDER_ID, WINNER_PROVIDER_ID);  // no throw
+});
+
+// (smoke-4) assertExpectedProviderTemplate THROW path: mismatch throws, naming BOTH ids
+// (converts silent C4 provider drift into a loud failure).
+Deno.test('cc-0037 smoke-4: assertExpectedProviderTemplate throws naming both ids on drift', () => {
+  const drifted = 'deadbeef-0000-4000-8000-000000000000';
+  const err = assertThrows(
+    () => assertExpectedProviderTemplate(drifted, WINNER_PROVIDER_ID),
+    Error,
+    'provider drift',
+  );
+  assert(String(err).includes(WINNER_PROVIDER_ID), 'message must name the EXPECTED id');
+  assert(String(err).includes(drifted), 'message must name the ACTUAL id');
 });

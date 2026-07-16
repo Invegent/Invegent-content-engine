@@ -63,6 +63,17 @@ export function deriveB1Subtitle(draftBody: string | null | undefined, maxChars:
 // shadow rows continue automatically.
 export const B1_PRODUCTION_LABEL = 'creative_library_b1_production';
 
+// cc-0037 (v3.25.0) — render_spec.label for the SUPERVISED SMOKE surface
+// (mode==='governed_image_quote_smoke'). DELIBERATELY DISTINCT from B1_PRODUCTION_LABEL:
+// stamp_tmr_shadow_forward's candidate-pool AND remaining-count queries BOTH filter
+// render_spec->>'label' = 'creative_library_b1_production' AND post_draft_id IS NOT NULL
+// (supabase/migrations/20260703130939_create_stamp_tmr_shadow_forward_v1.sql:147-152, :289-293).
+// A smoke row already carries post_draft_id IS NULL (structurally unstampable); this distinct
+// label is defence-in-depth if that NOT NULL clause is ever dropped. The invariant
+// B1_SMOKE_LABEL !== B1_PRODUCTION_LABEL is what the stamper safety rests on, and is unit-tested.
+// The label lives HERE, beside its production sibling, so the invariant travels with the pair.
+export const B1_SMOKE_LABEL = 'creative_library_b1_smoke';
+
 // True ONLY for the single governed B1 client_id. The gate keys on client_id (NOT slug)
 // because getBrandAndSlug() can fall back to the client-id UUID when the c.client.client_slug
 // read returns null — gating on the slug then yielded false and silently routed PP back to
@@ -83,6 +94,22 @@ export function assertHeadlineWithinGate(headline: string | null | undefined): v
   if (trimmed.length > B1_HEADLINE_MAX_CHARS) {
     throw new Error(
       `b1: headline length ${trimmed.length} exceeds B1_HEADLINE_MAX_CHARS=${B1_HEADLINE_MAX_CHARS} (no truncation / no AI rewrite in v1)`,
+    );
+  }
+}
+
+// cc-0037 (v3.25.0, OQ-1 option B) — fail-loud provider-drift guard for the supervised smoke.
+// The smoke derives its provider template BY CONSTRUCTION (select_template + buildTmrRenderPlan),
+// never by a hardcoded pin, then calls this to assert the derived id equals the id-of-record.
+// A hardcoded template_smoke pin is exactly what Lane W retired: 48cba556… had been
+// paste-repurposed to the live 1:1 market-insight card, so a pinned surface rendered WRONG
+// output SILENTLY (the C4 hazard — see the template_smoke 410 guard comment in index.ts). This
+// converts that silent drift into a LOUD, immediate throw naming BOTH the expected and actual
+// ids. The caller MUST NOT render on mismatch. Pure / no I/O — unit-tested pass + throw paths.
+export function assertExpectedProviderTemplate(actual: string, expected: string): void {
+  if (actual !== expected) {
+    throw new Error(
+      `governed_image_quote_smoke provider drift: expected ${expected} (generic_market_insight_card_1x1_v1), got ${actual} — refusing to render (cc-0037 option B assert)`,
     );
   }
 }

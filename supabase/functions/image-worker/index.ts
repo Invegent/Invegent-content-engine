@@ -1,3 +1,42 @@
+// image-worker v3.25.0
+// v3.25.0 (2026-07-16) — cc-0037 SUPERVISED GOVERNED IMAGE_QUOTE SMOKE ENTRYPOINT
+//   (brief docs/briefs/cc-0037-image-worker-supervised-smoke-entrypoint.md; Gate-1
+//   APPROVED — OQ-1 option B, OQ-2/3/4 at recommended defaults). Re-applied onto the
+//   post-cc-0033a base (v3.24.0 already shipped by cc-0033a — this cc-0037 slice is
+//   renumbered v3.24.0 -> v3.25.0). WHAT CHANGED: ONE new additive mode branch
+//   mode==='governed_image_quote_smoke', placed AFTER the four 410 guards and BEFORE
+//   production draft selection; it reuses the single body parse (:565), fires on body.mode
+//   alone, and RETURNS in every path (nothing falls through to the production loop). It
+//   restores a supervised, non-production way to render a governed PP image_quote card (the
+//   four manual surfaces were retired to 410s in Lane W). Behaviour: (a) OQ-1 option B /
+//   SELECTOR-DERIVED BIND — the smoke calls the SAME read-only select_template RPC +
+//   buildTmrRenderPlan the production path uses (supervisor-supplied seed + optional
+//   platform), so it exercises the real governed background/logo/scrim and real card
+//   geometry (now including the cc-0033a TMR_WINNER_LAYOUT_GUARD: Headline.height +
+//   font_size:null in modifications — the smoke legitimately proves the FIXED geometry);
+//   (b) THE ASSERT — after buildTmrRenderPlan it asserts plan.providerTemplateId ===
+//   EXPECTED_SMOKE_PROVIDER_TEMPLATE_ID (48cba556…, generic_market_insight_card_1x1_v1) via
+//   the pure assertExpectedProviderTemplate() and THROWS on mismatch, converting the silent
+//   provider-drift (C4) that killed template_smoke into a loud failure — it NEVER renders on
+//   mismatch; (c) governed logo+background reachability asserted (fresh local memo) before
+//   Creatomate; (d) renders to post-images/_smoke/governed_image_quote_v1.jpg via
+//   renderUploadAndLog with postDraftId=null, clientId=null, logMustSucceed=true. (e) OQ-2
+//   LABEL DIVERGENCE — the smoke render_spec uses the NEW B1_SMOKE_LABEL=
+//   'creative_library_b1_smoke', NOT B1_PRODUCTION_LABEL: stamp_tmr_shadow_forward keys on
+//   label='creative_library_b1_production' AND post_draft_id IS NOT NULL, so the null
+//   draft-id already excludes the row and the distinct label is defence-in-depth. This
+//   DELIBERATELY DIVERGES from the video smoke, which reuses its production label
+//   (video-worker/index.ts:995). (f) OQ-3 HEADLINE GATE — the smoke keeps
+//   assertHeadlineWithinGate but catches its throw and returns a clean 422
+//   (error:'headline_gate_rejected' + headline_chars + max_chars) so a supervisor probing the
+//   gate sees the rejection; every other failure returns 500 (mirrors the video smoke catch).
+//   WHAT IS STRICTLY OUT OF SCOPE: NO m.post_draft read/insert/update, NO image_url/image_status
+//   write, NO publish/scheduler/slot-fill, NO read or flip of c.client_creative_governance.enabled
+//   (the smoke does not require enabled=true), NO change to the four 410 guards, to the production
+//   image_quote branch, to buildTmrRenderPlan/select_template/the stamper, to the cc-0033a
+//   layout guard; NO DDL/DML/migration, NO dashboard change, NO un-retiring of any 410 mode,
+//   NO deploy in this change (deploy is a PK gate; the deploy command MUST include --no-verify-jwt).
+//
 // image-worker v3.24.0
 // v3.24.0 (2026-07-16) — cc-0033a HEADER/VERSION BUMP ONLY (no logic change in this file).
 //   Makes the headline/subtitle overprint fix in b1_production.ts visible to the drift-check
@@ -308,7 +347,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { computePropsHash } from './manual_render.ts';  // v3.23.0 LANE W: module trimmed to this single live export (B1 props_hash); the manual/draft-proof governed impls + builders are retired
 import { buildProofFieldsFromDraft } from './branch_b_proof.ts';  // v3.12.0: BRANCH B / LANE B-PROOF; v3.23.0 LANE W: DRAFT_PROOF_MODE/LABEL retired with the draft-proof branch — this field builder stays LIVE (B1 TMR branch)
-import { B1_PRODUCTION_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, B1_HEADLINE_MAX_CHARS, B1_SUBTITLE_MAX_CHARS, isB1GovernedImageQuote, assertHeadlineWithinGate, deriveB1Subtitle, buildTmrRenderPlan, type TmrSelectorResponse } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug). v3.17.0: B1-v2 governed subtitle from draft_body (deriveB1Subtitle). v3.22.0: OPTION D — TMR selector consumption (buildTmrRenderPlan); rotation constants retired.
+import { B1_PRODUCTION_LABEL, B1_SMOKE_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, B1_HEADLINE_MAX_CHARS, B1_SUBTITLE_MAX_CHARS, isB1GovernedImageQuote, assertHeadlineWithinGate, assertExpectedProviderTemplate, deriveB1Subtitle, buildTmrRenderPlan, type TmrSelectorResponse } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug). v3.17.0: B1-v2 governed subtitle from draft_body (deriveB1Subtitle). v3.22.0: OPTION D — TMR selector consumption (buildTmrRenderPlan); rotation constants retired. v3.25.0: cc-0037 supervised smoke (B1_SMOKE_LABEL, assertExpectedProviderTemplate).
 import { resolveLegacyLogo, assertGovernedAssetReachable, type AssetVerdict } from './asset_url_guard.ts';  // v3.15.0: H2 asset-URL validation before Creatomate
 import { echoContractToRenderSpec } from './contract_echo.ts';  // v3.18.0: ACI v0 Slice B2 — echo draft_format.contract identity fields into render_spec (governed PP image_quote; evidence-only)
 import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C: warn-only contract validation (evidence-only, never throws)
@@ -316,7 +355,16 @@ import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C:
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.24.0';
+const VERSION = 'image-worker-v3.25.0';
+// cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
+// Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
+// provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1
+// option B) — a loud throw on drift, never the silent wrong render (C4) that retired the old
+// hardcoded template_smoke pin.
+const EXPECTED_SMOKE_PROVIDER_TEMPLATE_ID = '48cba556-0a53-4001-90f0-05420d10efc0';
+// Fixed default seed so an UNSUPERVISED smoke is reproducible (deliberately NOT
+// crypto.randomUUID()); the supervisor overrides body.seed to rotate the governed background.
+const SMOKE_SEED = '00000000-0000-4000-8000-0000cc003700';
 const CREATOMATE_API = 'https://api.creatomate.com/v2/renders';
 const ANTHROPIC_API  = 'https://api.anthropic.com/v1/messages';
 const POLL_INTERVAL_MS  = 1500;
@@ -608,6 +656,91 @@ Deno.serve(async (req: Request) => {
   // falls through to production.
   if (body?.mode === 'creative_library_draft_proof') {
     return jsonResponse({ ok: false, error: 'creative_library_draft_proof_retired', note: 'retired 2026-07-05 Lane W — provider templates deleted; see docs/governance/tmr-gov-provider-1-pre-cleanup-guard.md' }, 410);
+  }
+
+  // ── cc-0037 (v3.25.0): SUPERVISED GOVERNED IMAGE_QUOTE SMOKE (mode==='governed_image_quote_smoke') ──
+  // Renders a governed Property-Pulse image_quote card to post-images/_smoke/ and RETURNS in
+  // every path — it does NOT read/insert/update m.post_draft, does NOT write image_url/image_status,
+  // does NOT publish/enqueue/fill a slot, does NOT read or flip c.client_creative_governance.enabled
+  // (the smoke does not require enabled=true). Same x-image-worker-key auth as production (checked
+  // above). Fires on body.mode ALONE, exactly like the four 410 guards; an absent/invalid body left
+  // body={} at :565 and reaches production unchanged. Mirrors video-worker/index.ts:956-1002
+  // (governed_video_stat_smoke) in shape, with two DELIBERATE divergences (the assert + the label).
+  //
+  // OQ-1 option B (SELECTOR-DERIVED BIND): the smoke calls the SAME read-only select_template RPC +
+  // buildTmrRenderPlan the production path uses, so it exercises the real governed background/logo/
+  // scrim and real card geometry — then ASSERTS the derived provider id equals the id of record.
+  // This binds "the current live template" BY CONSTRUCTION and converts silent provider drift (the
+  // C4 hazard that retired template_smoke — see its 410 guard comment above) into a LOUD throw.
+  if (body?.mode === 'governed_image_quote_smoke') {
+    // OQ-3: keep the headline hard-gate (as production :653 does), BEFORE any selector/Creatomate
+    // call — but catch its throw and return a clean 422 with the offending length, so a supervisor
+    // probing the D5 overprint defect sees the rejection, not an opaque 500. Every OTHER failure
+    // returns 500 (mirrors the video smoke catch).
+    const smokeHeadline = String(body?.fields?.headline ?? 'Perth median house price climbs to a new quarterly record');
+    const smokeSubtitleRaw = String(body?.fields?.subtitle ?? 'Auction clearance rates held above 70% for a third straight week.');
+    const smokePlatform: string | null = body?.platform ?? null;
+    const smokeSeed = String(body?.seed ?? SMOKE_SEED);
+    try {
+      assertHeadlineWithinGate(smokeHeadline);
+    } catch {
+      return jsonResponse({ ok: false, mode: 'governed_image_quote_smoke', error: 'headline_gate_rejected', headline_chars: smokeHeadline.trim().length, max_chars: B1_HEADLINE_MAX_CHARS }, 422);
+    }
+    try {
+      const smokeSupabase = getServiceClient();
+      // SAME selector RPC as production (:660). Read-only; NO writes. p_seed rotates the governed
+      // background only — the winner template never depends on the seed. RPC error = fail loud.
+      const { data: selection, error: selectErr } = await smokeSupabase.rpc('select_template', { p_client_slug: B1_GOVERNED_CLIENT_SLUG, p_platform: smokePlatform, p_format: 'image_quote', p_variant_intent: null, p_seed: smokeSeed });
+      if (selectErr) throw new Error(`governed_image_quote_smoke tmr_selector_rpc_failed: ${selectErr.message}`);
+      // Fields via the SAME builder production uses (:662) — it supplies category/date/footer. The
+      // subtitle is supervisor-supplied directly here (no draft_body → NOT deriveB1Subtitle), but is
+      // bounded to B1_SUBTITLE_MAX_CHARS exactly as production's derived subtitle is.
+      const smokeFields = buildProofFieldsFromDraft({ image_headline: smokeHeadline, client_id: B1_GOVERNED_CLIENT_ID, recommended_format: 'image_quote' });
+      const smokeSubtitle = smokeSubtitleRaw.slice(0, B1_SUBTITLE_MAX_CHARS);
+      const plan = buildTmrRenderPlan(selection as TmrSelectorResponse, { ...smokeFields, subtitle: smokeSubtitle }, smokeFields.date);
+      // THE OPTION-B ASSERT: the derived provider id MUST equal the id of record. Throws (naming
+      // BOTH ids) on mismatch — converts silent C4 drift into an immediate failure, never renders.
+      assertExpectedProviderTemplate(plan.providerTemplateId, EXPECTED_SMOKE_PROVIDER_TEMPLATE_ID);
+      // Governed assets are fail-loud, as production (:712-713). Fresh local memo for this request.
+      const smokeMemo = new Map<string, Promise<AssetVerdict>>();
+      const smokeLogoUrl = String(plan.modifications['Logo.source']);
+      const smokeBackgroundUrl = String(plan.modifications['Background.source']);
+      await assertGovernedAssetReachable('logo', smokeLogoUrl, smokeMemo);
+      await assertGovernedAssetReachable('background', smokeBackgroundUrl, smokeMemo);
+      const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'jpg' };  // matches production :689
+      // render_spec mirrors production's template block (:675-688) + tmr/background_key/subtitle_chars,
+      // EXCEPT the label. OQ-2: B1_SMOKE_LABEL, NOT B1_PRODUCTION_LABEL — stamp_tmr_shadow_forward keys
+      // on render_spec->>'label' = 'creative_library_b1_production' AND post_draft_id IS NOT NULL
+      // (…stamp_tmr_shadow_forward_v1.sql:147-152, :289-293). The null draft-id already excludes this
+      // row; the distinct label is defence-in-depth if that clause is ever dropped. This DELIBERATELY
+      // DIVERGES from the video smoke, which reuses its production label (video-worker/index.ts:995).
+      const tmrSelected = (selection as TmrSelectorResponse)?.selected ?? null;
+      const slotSelected = (selection as TmrSelectorResponse)?.slot_resolution?.selected ?? [];
+      const smokeTemplateSpec = {
+        implementation_id: plan.tmrEvidence.winner,
+        template_id: plan.tmrEvidence.registry_template_id,
+        variant_key: tmrSelected?.variant_key ?? null,
+        format_key: tmrSelected?.format_key ?? null,
+        aspect_ratio: tmrSelected?.aspect_ratio ?? null,
+        provider: 'creatomate',
+        provider_template_id: plan.providerTemplateId,
+        props_hash: await computePropsHash(plan.modifications as Record<string, string>),
+        asset_keys: slotSelected.map((s) => s?.asset_key ?? null),
+        asset_ids: slotSelected.map((s) => s?.asset_id ?? null),
+        resolver_used: true,
+        fallback_taken: false,
+      };
+      const smokeRenderSpec = { label: B1_SMOKE_LABEL, template: smokeTemplateSpec, tmr: plan.tmrEvidence, background_key: plan.backgroundAssetKey, subtitle_chars: smokeSubtitle.length };
+      const storageUrl = await renderUploadAndLog({
+        supabase: smokeSupabase, creatomateKey, renderScript,
+        storagePath: '_smoke/governed_image_quote_v1.jpg', mimeType: 'image/jpeg',
+        postDraftId: null, clientId: null, iceFormatKey: 'image_quote',
+        renderSpec: smokeRenderSpec, logMustSucceed: true,
+      });
+      return jsonResponse({ ok: true, mode: 'governed_image_quote_smoke', provider_template_id: plan.providerTemplateId, render_spec_label: B1_SMOKE_LABEL, storage_url: storageUrl, seed: smokeSeed, platform: smokePlatform, version: VERSION });
+    } catch (e: any) {
+      return jsonResponse({ ok: false, mode: 'governed_image_quote_smoke', error: (e?.message ?? String(e)).slice(0, 500), version: VERSION }, 500);
+    }
   }
 
   const supabase = getServiceClient();
