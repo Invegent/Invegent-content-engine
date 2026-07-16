@@ -19,7 +19,7 @@ import {
   B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG,
   B1_HEADLINE_MAX_CHARS, B1_SUBTITLE_MAX_CHARS, B1_PRODUCTION_LABEL,
   isB1GovernedImageQuote, assertHeadlineWithinGate, deriveB1Subtitle,
-  TMR_WINNER_TEXT_FIELDS, buildTmrRenderPlan,
+  TMR_WINNER_TEXT_FIELDS, TMR_WINNER_LAYOUT_GUARD, buildTmrRenderPlan,
   type B1Fields, type TmrSelectorResponse,
 } from './b1_production.ts';
 // LANE W (2026-07-05, v3.23.0): the mapResolvedAssets import + test B1-6 were removed —
@@ -220,14 +220,17 @@ Deno.test('B1-D-1: TMR_WINNER_TEXT_FIELDS v1 allowlist = generic_market_insight_
   assertEquals(Object.keys(TMR_WINNER_TEXT_FIELDS), ['generic_market_insight_card_1x1_v1']);
 });
 
-// (D-2) Happy path: exact 9-key modification set (3 slot keys + 6 text keys), Scrim 48
-// passthrough, slot_resolution authoritative for assets, renderDate injected into Date.text.
-Deno.test('B1-D-2: buildTmrRenderPlan builds the exact 9-key modification set from the live-shape fixture', () => {
+// (D-2) Happy path: exact 13-key modification set (3 slot keys + 4 layout-guard keys +
+// 6 text keys), Scrim 48 passthrough, slot_resolution authoritative for assets, renderDate
+// injected into Date.text. The 4 guard keys are cc-0033a's winner-scoped layout guard.
+Deno.test('B1-D-2: buildTmrRenderPlan builds the exact 13-key modification set (incl. layout guard) from the live-shape fixture', () => {
   const plan = buildTmrRenderPlan(liveShapeFixture(), FIELDS, '5 July 2026');
   assertEquals(plan.providerTemplateId, WINNER_PROVIDER_ID);
   assertEquals(Object.keys(plan.modifications).sort(), [
     'Background.source', 'CategoryBadge.text', 'Date.text', 'Footer.text',
-    'Headline.text', 'Location.text', 'Logo.source', 'Scrim.opacity', 'Subtitle.text',
+    'Headline.font_size', 'Headline.font_size_maximum', 'Headline.font_size_minimum',
+    'Headline.height', 'Headline.text', 'Location.text', 'Logo.source',
+    'Scrim.opacity', 'Subtitle.text',
   ]);
   assertEquals(plan.modifications['CategoryBadge.text'], 'PROPERTY NEWS');
   assertEquals(plan.modifications['Headline.text'], FIELDS.headline);
@@ -347,4 +350,69 @@ Deno.test('B1-D-10: mapped winner without provider_template_id → throws', () =
   const fx = liveShapeFixture();
   fx.selected = { ...fx.selected!, provider_template_id: undefined };
   assertThrows(() => buildTmrRenderPlan(fx, FIELDS, '5 July 2026'), Error, 'tmr_selector_fail_closed: missing_provider_template_id');
+});
+
+// ── cc-0033a: winner-scoped layout guard (headline/subtitle overprint structural fix) ──
+
+// (LG-1) The layout guard is present in the built modifications for the mapped winner, with
+// the EXACT geometry values — including Headline.font_size === null (the auto-fit selector,
+// not expressible in the pre-fix Record<string, string | number> type).
+Deno.test('B1-LG-1: layout guard injected for generic_market_insight_card_1x1_v1 with exact values', () => {
+  const plan = buildTmrRenderPlan(liveShapeFixture(), FIELDS, '5 July 2026');
+  assertEquals(plan.modifications['Headline.height'], '22%');
+  assertEquals(plan.modifications['Headline.font_size'], null);
+  assertEquals(plan.modifications['Headline.font_size_minimum'], '30 px');
+  assertEquals(plan.modifications['Headline.font_size_maximum'], '74 px');
+  // sanity: the guard const itself carries exactly these four keys for the mapped winner.
+  assertEquals(TMR_WINNER_LAYOUT_GUARD['generic_market_insight_card_1x1_v1'], {
+    'Headline.height': '22%',
+    'Headline.font_size': null,
+    'Headline.font_size_minimum': '30 px',
+    'Headline.font_size_maximum': '74 px',
+  });
+});
+
+// (LG-2) The guard sits BETWEEN slotMods and textFields, so neither can clobber the geometry.
+// Inject decoy geometry into slotMods (spread BEFORE the guard) → the guard's values win.
+// The text field (spread AFTER the guard, but carries only `.text` keys — no geometry overlap)
+// coexists: Headline.text is intact and the guard geometry is untouched.
+Deno.test('B1-LG-2: guard is not overridden by slotMods (or clobbered by textFields)', () => {
+  const fx = liveShapeFixture();
+  // decoy geometry in slotMods that would collide with the guard keys if ordering were wrong.
+  fx.slot_resolution!.modifications = {
+    ...fx.slot_resolution!.modifications!,
+    'Headline.height': '99%',
+    'Headline.font_size': '200 px',
+    'Headline.font_size_minimum': '1 px',
+    'Headline.font_size_maximum': '999 px',
+  };
+  const plan = buildTmrRenderPlan(fx, FIELDS, '5 July 2026');
+  // guard (later spread) overrides the slotMods decoys.
+  assertEquals(plan.modifications['Headline.height'], '22%');
+  assertEquals(plan.modifications['Headline.font_size'], null);
+  assertEquals(plan.modifications['Headline.font_size_minimum'], '30 px');
+  assertEquals(plan.modifications['Headline.font_size_maximum'], '74 px');
+  // textFields (spread last) touches only `.text` — geometry survives, headline text present.
+  assertEquals(plan.modifications['Headline.text'], FIELDS.headline);
+});
+
+// (LG-3) The `null` value survives spread + assignment into the modifications map (i.e. the
+// widened Record<string, string | number | null> is doing real work — a lost/coerced null
+// would silently disable Creatomate auto-fit).
+Deno.test('B1-LG-3: Headline.font_size null survives into the modifications map', () => {
+  const plan = buildTmrRenderPlan(liveShapeFixture(), FIELDS, '5 July 2026');
+  assert('Headline.font_size' in plan.modifications);
+  assertEquals(plan.modifications['Headline.font_size'], null);
+  assert(plan.modifications['Headline.font_size'] === null); // strict null, not undefined/absent
+});
+
+// (LG-4) An unmapped winner still throws tmr_winner_unmapped BEFORE any guard lookup —
+// fail-closed behaviour unchanged. (Complements D-7; a guard-absent winner never reaches
+// the merge, so it can neither be un-guarded silently nor guessed.)
+Deno.test('B1-LG-4: unmapped winner still throws tmr_winner_unmapped (fail-closed unchanged)', () => {
+  const fx = liveShapeFixture();
+  fx.selected = { ...fx.selected!, provider_template_name: 'generic_quote_card_1x1_v1' };
+  assertThrows(() => buildTmrRenderPlan(fx, FIELDS, '5 July 2026'), Error, 'tmr_winner_unmapped: generic_quote_card_1x1_v1');
+  // and the winner carries no guard entry (would merge {} — behaviour identical to today).
+  assertEquals(TMR_WINNER_LAYOUT_GUARD['generic_quote_card_1x1_v1'], undefined);
 });

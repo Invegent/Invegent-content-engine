@@ -32,9 +32,12 @@ export const B1_GOVERNED_CLIENT_ID = '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd';
 // getBrandAndSlug (whose slug can be the UUID fallback). Every non-PP client stays legacy.
 export const B1_GOVERNED_CLIENT_SLUG = 'property-pulse';
 
-// Minimal headline-length hard-gate (cut-plan decision D). PROVISIONAL / to_be_calibrated:
-// a minimal hard-gate, NOT a precise fit guarantee. No truncation, no AI rewrite.
-export const B1_HEADLINE_MAX_CHARS = 90; // PROVISIONAL / to_be_calibrated (cut-plan decision D)
+// Headline-length OUTER SANITY BOUND. This is NOT a fit guarantee and never was — it
+// never fired on any real collision; fit is owned by TMR_WINNER_LAYOUT_GUARD (bounded
+// height + font auto-shrink). Its only job is to keep input far above the auto-shrink
+// floor (at 90 chars the font lands nowhere near the 30px minimum — probe P1d) and to
+// reject absurd/blank input fail-loud. No truncation, no AI rewrite.
+export const B1_HEADLINE_MAX_CHARS = 90; // outer sanity bound, not a fit guarantee
 
 // B1-v2 subtitle (PK contract 2026-06-27): "same overflow limit as the headline".
 export const B1_SUBTITLE_MAX_CHARS = B1_HEADLINE_MAX_CHARS; // 90; to_be_calibrated
@@ -160,6 +163,27 @@ export const TMR_WINNER_TEXT_FIELDS: Record<string, (f: B1Fields) => Record<stri
   }),
 };
 
+// Layout guard — the STRUCTURAL fix for the headline/subtitle overprint (cc-0033a).
+// The provider template under-specifies the card: `Subtitle` carries no `y` (it falls back to
+// the provider default, 50% → 540px) while `Headline` is top-anchored at 26% with NO height
+// bound, so it grows downward without limit and prints through the subtitle. Bounding the
+// headline's height and letting its font auto-shrink makes overflow structurally impossible:
+// no headline length can collide, so nothing has to be rejected to keep the card readable.
+//
+// These values are geometry for template `generic_market_insight_card_1x1_v1` ONLY. They are
+// NOT a portable constant and NOT a line budget — a line count is a CONSEQUENCE of this
+// geometry, never an input to it. (The earlier "max_lines: 3" was the budget implied by the
+// OLD geometry; it does not survive the fix. Do not re-derive it, do not encode it.)
+// Evidence: _harness/cc0033_headline_calibration/p1_probe/P1_FINDINGS.md
+export const TMR_WINNER_LAYOUT_GUARD: Record<string, Record<string, string | number | null>> = {
+  'generic_market_insight_card_1x1_v1': {
+    'Headline.height': '22%',           // top 26% + 22% = bottom 518.4px, above Subtitle's 540px
+    'Headline.font_size': null,         // null => auto-fit within the bounded height
+    'Headline.font_size_minimum': '30 px',
+    'Headline.font_size_maximum': '74 px', // the template's authored size; never grow past it
+  },
+};
+
 // Additive render_spec.tmr evidence block (design decision D3).
 export type TmrEvidence = {
   winner: string;
@@ -175,7 +199,7 @@ export type TmrEvidence = {
 
 export type TmrRenderPlan = {
   providerTemplateId: string;
-  modifications: Record<string, string | number>;
+  modifications: Record<string, string | number | null>;
   tmrEvidence: TmrEvidence;
   // db-rls-auditor must-fix (Option D lane): the selected Background/Logo asset_keys from
   // slot_resolution.selected. backgroundAssetKey feeds the TOP-LEVEL render_spec.background_key
@@ -237,8 +261,10 @@ export function buildTmrRenderPlan(
     throw new Error('tmr_slot_resolution_incomplete: missing Background/Logo selected entry (asset_key)');
   }
   const textFields = textFieldsFor({ ...fields, date: renderDate });
-  const modifications: Record<string, string | number> = {
-    ...(slotMods as Record<string, string | number>),
+  const layoutGuard = TMR_WINNER_LAYOUT_GUARD[winnerName] ?? {};
+  const modifications: Record<string, string | number | null> = {
+    ...(slotMods as Record<string, string | number | null>),
+    ...layoutGuard,
     ...textFields,
   };
   const tmrEvidence: TmrEvidence = {
