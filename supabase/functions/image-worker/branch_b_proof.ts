@@ -18,6 +18,8 @@
 // docs/briefs/tmr-dead-reference-cleanup-plan-packet.md). buildProofFieldsFromDraft
 // stays LIVE: the Option-D B1 TMR production branch in index.ts consumes it.
 
+import { B1_GOVERNED_CLIENT_ID } from './b1_production.ts';
+
 // Minimal read-only view of the post_draft columns the proof consumes.
 export type ProofDraftRow = {
   image_headline: string | null;
@@ -45,6 +47,17 @@ export function buildProofFieldsFromDraft(
   const headline = (draft?.image_headline ?? '').trim();
   if (!headline) {
     throw new Error('missing image_headline hard-gate field');
+  }
+  // FAIL-CLOSED brand-payload guard (TMR D6-5): the category/footer literals below are
+  // Property Pulse (PP) brand strings. This builder used to emit them unconditionally,
+  // which fails OPEN — a non-PP client would silently carry PP branding. Refuse to
+  // produce any PP literal unless the draft is the governed PP client. The upstream gate
+  // at index.ts:793 (isB1GovernedImageQuote) already ensures PP-only today; this is
+  // defence-in-depth for when Spine Gen v2 lifts that gate — no PP literal can ever reach
+  // a non-PP render. Placed AFTER the headline hard-gate so a missing-headline draft still
+  // throws the headline error first, regardless of client_id.
+  if ((draft?.client_id ?? '') !== B1_GOVERNED_CLIENT_ID) {
+    throw new Error('brand_payload_non_pp_fail_closed');
   }
   return {
     category: 'PROPERTY NEWS',

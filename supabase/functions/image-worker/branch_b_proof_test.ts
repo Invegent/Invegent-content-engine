@@ -9,6 +9,7 @@
 
 import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import { buildProofFieldsFromDraft, formatProofDate } from './branch_b_proof.ts';
+import { B1_GOVERNED_CLIENT_ID } from './b1_production.ts';
 
 const FIXED = new Date(Date.UTC(2026, 5, 24)); // 24 June 2026 (month index 5 = June)
 
@@ -20,7 +21,7 @@ Deno.test('formatProofDate renders "D Month YYYY" (UTC, en month names)', () => 
 
 Deno.test('buildProofFieldsFromDraft returns draft headline + deterministic defaults', () => {
   const f = buildProofFieldsFromDraft(
-    { image_headline: 'Perth median rent climbs to record high', client_id: 'c1', recommended_format: 'image_quote' },
+    { image_headline: 'Perth median rent climbs to record high', client_id: B1_GOVERNED_CLIENT_ID, recommended_format: 'image_quote' },
     FIXED,
   );
   assertEquals(f.headline, 'Perth median rent climbs to record high');
@@ -33,14 +34,14 @@ Deno.test('buildProofFieldsFromDraft returns draft headline + deterministic defa
 
 Deno.test('buildProofFieldsFromDraft trims surrounding whitespace from headline', () => {
   const f = buildProofFieldsFromDraft(
-    { image_headline: '   Spaced headline   ', client_id: null, recommended_format: 'image_quote' },
+    { image_headline: '   Spaced headline   ', client_id: B1_GOVERNED_CLIENT_ID, recommended_format: 'image_quote' },
     FIXED,
   );
   assertEquals(f.headline, 'Spaced headline');
 });
 
 Deno.test('buildProofFieldsFromDraft is deterministic for a fixed date (same draft → same fields)', () => {
-  const draft = { image_headline: 'Stable', client_id: 'c', recommended_format: 'image_quote' };
+  const draft = { image_headline: 'Stable', client_id: B1_GOVERNED_CLIENT_ID, recommended_format: 'image_quote' };
   assertEquals(buildProofFieldsFromDraft(draft, FIXED), buildProofFieldsFromDraft(draft, FIXED));
 });
 
@@ -53,9 +54,30 @@ Deno.test('buildProofFieldsFromDraft fails loud on missing/blank/null image_head
   assertThrows(() => buildProofFieldsFromDraft(undefined, FIXED), Error, 'missing image_headline hard-gate field');
 });
 
+Deno.test('buildProofFieldsFromDraft fails CLOSED for a non-PP client_id (present headline)', () => {
+  // A present headline passes the headline gate, so the fail-closed brand-payload guard
+  // (TMR D6-5) is what must throw here — no PP literal is producible for a non-PP client.
+  const base = { image_headline: 'A valid headline', recommended_format: 'image_quote' };
+  assertThrows(
+    () => buildProofFieldsFromDraft({ ...base, client_id: '11111111-1111-1111-1111-111111111111' }, FIXED),
+    Error,
+    'brand_payload_non_pp_fail_closed',
+  );
+  assertThrows(
+    () => buildProofFieldsFromDraft({ ...base, client_id: null }, FIXED),
+    Error,
+    'brand_payload_non_pp_fail_closed',
+  );
+  assertThrows(
+    () => buildProofFieldsFromDraft({ ...base, client_id: '' }, FIXED),
+    Error,
+    'brand_payload_non_pp_fail_closed',
+  );
+});
+
 Deno.test('proof fields have EXACTLY the 6 text keys the B1 field consumer expects', () => {
   const f = buildProofFieldsFromDraft(
-    { image_headline: 'h', client_id: 'c', recommended_format: 'image_quote' },
+    { image_headline: 'h', client_id: B1_GOVERNED_CLIENT_ID, recommended_format: 'image_quote' },
     FIXED,
   );
   assertEquals(Object.keys(f).sort(), ['category', 'date', 'footer', 'headline', 'location', 'subtitle']);

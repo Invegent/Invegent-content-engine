@@ -1,3 +1,8 @@
+// image-worker v3.26.0
+// v3.26.0 (2026-07-17) — TMR D6-5 SAFETY: brand-payload fail-closed guard added in
+//   branch_b_proof.ts (buildProofFieldsFromDraft now throws for any non-PP client_id,
+//   so no PP brand literal can reach a non-PP render). THIS FILE carries ONLY the
+//   version bump to reclassify the drift gate A-LE->B-FD — NO logic change here.
 // image-worker v3.25.0
 // v3.25.0 (2026-07-16) — cc-0037 SUPERVISED GOVERNED IMAGE_QUOTE SMOKE ENTRYPOINT
 //   (brief docs/briefs/cc-0037-image-worker-supervised-smoke-entrypoint.md; Gate-1
@@ -355,7 +360,7 @@ import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C:
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.25.0';
+const VERSION = 'image-worker-v3.26.0';
 // cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
 // Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
 // provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1
