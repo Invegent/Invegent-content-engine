@@ -38,6 +38,14 @@ export interface ValidateContractInput {
   backgroundUrl: string | null | undefined;
   headlineLimit: number;
   subtitleLimit: number;
+  // Spine Gen v2 D6-4: the EXPECTED contract identity for THIS render, derived from the
+  // resolved creative contract for the client — so per-variant expectations are a DATA input,
+  // not a PP-frozen constant. OPTIONAL: when omitted, each falls back to the PP EXPECTED_*
+  // constant (byte-identical to pre-v3.27.0 behaviour for the single-brand PP call site). A
+  // second governed brand supplies these three values from its own resolved contract.
+  expectedVariantKey?: string;
+  expectedContractRef?: string;
+  expectedContractVersion?: string;
 }
 
 // WARN-ONLY: never throws. Any structural surprise becomes a warning, not an exception.
@@ -54,15 +62,19 @@ export function validateContract(input: ValidateContractInput, nowIso: () => str
       ? 'contract'
       : 'fallback_constant';
 
-  // 1. contract_identity
+  // 1. contract_identity — compared against the EXPECTED identity for THIS render (D6-4:
+  // parameterised; defaults to the PP EXPECTED_* constants when the caller passes nothing).
   {
+    const expectedVariantKey = input.expectedVariantKey ?? EXPECTED_VARIANT_KEY;
+    const expectedContractRef = input.expectedContractRef ?? EXPECTED_CONTRACT_REF;
+    const expectedContractVersion = input.expectedContractVersion ?? EXPECTED_CONTRACT_VERSION;
     const variant_key = contractPresent ? (contract as any).variant_key : undefined;
     const contract_ref = contractPresent ? (contract as any).contract_ref : undefined;
     const contract_version = contractPresent ? (contract as any).contract_version : undefined;
     const ok = contractPresent
-      && variant_key === EXPECTED_VARIANT_KEY
-      && contract_ref === EXPECTED_CONTRACT_REF
-      && contract_version === EXPECTED_CONTRACT_VERSION;
+      && variant_key === expectedVariantKey
+      && contract_ref === expectedContractRef
+      && contract_version === expectedContractVersion;
     const detail = !contractPresent
       ? 'contract absent or not an object'
       : ok

@@ -196,26 +196,32 @@ export const PP_IMAGE_QUOTE_NEWS_CARD_V1: CreativeContract = Object.freeze({
 });
 
 // ---------------------------------------------------------------------------
-// Deterministic resolver
+// Per-(client_id, recommended_format) contract registry + deterministic resolver
 // ---------------------------------------------------------------------------
 
 /**
- * DETERMINISTIC, pure resolver. Returns PP_IMAGE_QUOTE_NEWS_CARD_V1 ONLY when the
- * client_id matches the governed Property-Pulse client AND the recommended_format is
- * exactly 'image_quote'; otherwise returns null.
- *
- * Keys on client_id, NEVER on slug (getBrandAndSlug can return the UUID as the slug —
- * see b1_production.ts). No side effects.
+ * In-module contract registry keyed on `${gate.client_id}::${gate.recommended_format}`.
+ * Spine Gen v2 D6-3 (2026-07-17): the resolver is NO LONGER hardcoded to the single PP UUID
+ * literal — it is a registry lookup, so PP behaviour is IDENTICAL but a second governed brand
+ * becomes a DATA addition (one entry), not a code edit. The registry currently holds ONLY the
+ * PP entry; its key is derived from the contract's OWN gate.client_id / gate.recommended_format
+ * so the gate identity stays single-sourced on the frozen contract object.
+ */
+const CREATIVE_CONTRACT_REGISTRY: Readonly<Record<string, CreativeContract>> = Object.freeze({
+  [`${PP_IMAGE_QUOTE_NEWS_CARD_V1.gate.client_id}::${PP_IMAGE_QUOTE_NEWS_CARD_V1.gate.recommended_format}`]:
+    PP_IMAGE_QUOTE_NEWS_CARD_V1,
+});
+
+/**
+ * DETERMINISTIC, pure resolver. Returns the registered CreativeContract for the
+ * (clientId, recommendedFormat) pair, or null. Keys on client_id, NEVER on slug
+ * (getBrandAndSlug can return the UUID as the slug — see b1_production.ts). No side effects.
+ * For PP + 'image_quote' this returns PP_IMAGE_QUOTE_NEWS_CARD_V1 exactly as before; every
+ * other pair (non-PP client, or PP + non-image_quote format) → null.
  */
 export function resolveCreativeContract(
   clientId: string,
   recommendedFormat: string,
 ): CreativeContract | null {
-  if (
-    clientId === '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd' &&
-    recommendedFormat === 'image_quote'
-  ) {
-    return PP_IMAGE_QUOTE_NEWS_CARD_V1;
-  }
-  return null;
+  return CREATIVE_CONTRACT_REGISTRY[`${clientId}::${recommendedFormat}`] ?? null;
 }

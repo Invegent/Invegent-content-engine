@@ -147,3 +147,17 @@ Deno.test('resolver determinism + selector_reason_default', () => {
   assertStrictEquals(a, b);
   assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.selector_reason_default, 'pp_image_quote_default');
 });
+
+// Test 10 — Spine Gen v2 D6-3: the resolver is now a registry lookup (no PP-UUID literal
+// branch), keyed on gate.client_id + gate.recommended_format. Behaviour is identical: PP +
+// image_quote → the PP contract; unknown client, and PP + a non-image_quote format → null.
+// This pins the data-driven, brand-extensible contract (a second brand = one registry entry).
+Deno.test('D6-3 registry resolver: PP image_quote → PP contract; unknown client / other format → null', () => {
+  assertStrictEquals(resolveCreativeContract(PP_CLIENT_ID, 'image_quote'), PP_IMAGE_QUOTE_NEWS_CARD_V1);
+  // gate identity is single-sourced on the frozen contract's gate.
+  assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.gate.client_id, PP_CLIENT_ID);
+  assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.gate.recommended_format, 'image_quote');
+  assertEquals(resolveCreativeContract('11111111-2222-3333-4444-555555555555', 'image_quote'), null);
+  assertEquals(resolveCreativeContract(PP_CLIENT_ID, 'video_short_stat'), null);
+  assertEquals(resolveCreativeContract('', ''), null);
+});

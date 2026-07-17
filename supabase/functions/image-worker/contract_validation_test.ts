@@ -132,3 +132,41 @@ Deno.test('validateContract: null backgroundUrl → assets warn', () => {
   assertEquals(v.status, 'warn');
   assertFalse(check(v.checks, 'assets').ok);
 });
+
+// ── Spine Gen v2 D6-4: per-variant expected identity (parameterised) ─────────────
+
+// 9. Omitting the expected-identity inputs falls back to the PP EXPECTED_* constants — a
+// PP-stamped draft still validates pass (byte-identical to pre-v3.27.0 single-brand behaviour).
+Deno.test('validateContract D6-4: no expected-identity params → PP constant fallback → pass', () => {
+  const v = validateContract(validInput(), nowIso);   // validInput stamps the PP identity
+  assertEquals(v.status, 'pass');
+  assert(check(v.checks, 'contract_identity').ok);
+});
+
+// 10. A SECOND brand: a draft stamped with brand-B identity, validated against brand-B's
+// EXPECTED identity supplied as inputs → contract_identity ok (data-driven, no code edit).
+Deno.test('validateContract D6-4: brand-B stamp validated against brand-B expected identity → pass', () => {
+  const brandB = {
+    variant_key: 'ndis_yarns.image_quote.news_card.v1',
+    contract_ref: 'ndis_yarns.image_quote.news_card',
+    contract_version: 'v1',
+    selector_reason: 'ndis_default',
+  };
+  const v = validateContract(validInput({
+    draftFormat: { contract: { ...brandB } },
+    expectedVariantKey: brandB.variant_key,
+    expectedContractRef: brandB.contract_ref,
+    expectedContractVersion: brandB.contract_version,
+  }), nowIso);
+  assert(check(v.checks, 'contract_identity').ok, check(v.checks, 'contract_identity').detail);
+  assertEquals(v.status, 'pass');
+});
+
+// 11. Supplying an expected identity that does NOT match the draft's stamp → contract_identity
+// warn (proves the comparison uses the passed expectation, not the frozen PP constants).
+Deno.test('validateContract D6-4: expected identity mismatching the stamp → contract_identity warn', () => {
+  // draft carries the PP stamp, but we assert a DIFFERENT expected variant_key.
+  const v = validateContract(validInput({ expectedVariantKey: 'ndis_yarns.image_quote.news_card.v1' }), nowIso);
+  assertEquals(v.status, 'warn');
+  assertFalse(check(v.checks, 'contract_identity').ok);
+});

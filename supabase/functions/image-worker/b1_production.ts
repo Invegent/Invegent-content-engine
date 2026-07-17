@@ -74,12 +74,14 @@ export const B1_PRODUCTION_LABEL = 'creative_library_b1_production';
 // The label lives HERE, beside its production sibling, so the invariant travels with the pair.
 export const B1_SMOKE_LABEL = 'creative_library_b1_smoke';
 
-// True ONLY for the single governed B1 client_id. The gate keys on client_id (NOT slug)
-// because getBrandAndSlug() can fall back to the client-id UUID when the c.client.client_slug
-// read returns null — gating on the slug then yielded false and silently routed PP back to
-// legacy. client_id is the reliable identity; the canonical slug (B1_GOVERNED_CLIENT_SLUG) is
-// passed to select_template/path explicitly, never derived from getBrandAndSlug. Every other
-// client_id → false → legacy path.
+// RETIRED FROM PRODUCTION (v3.27.0, Spine Gen v2 D6-1): the production image_quote gate no
+// longer calls this — it now uses the runtime governance lookup isImageGovernanceEnabled
+// (image_governance.ts, reads c.client_creative_governance.enabled), so a second governed
+// brand is a data addition, not a code edit. This pure predicate is retained ONLY for the
+// hermetic B1 identity tests (and documents the former PP-UUID gate); it gates nothing live.
+// The gate keyed on client_id (NOT slug) because getBrandAndSlug() can fall back to the
+// client-id UUID when the c.client.client_slug read returns null — gating on the slug then
+// yielded false and silently routed PP back to legacy (the v3.14.0 defect).
 export function isB1GovernedImageQuote(clientId: string): boolean {
   return clientId === B1_GOVERNED_CLIENT_ID;
 }

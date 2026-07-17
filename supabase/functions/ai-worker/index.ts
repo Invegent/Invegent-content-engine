@@ -11,7 +11,16 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.17.0";
+const VERSION = "ai-worker-v2.18.0";
+// v2.18.0 (2026-07-17) — SPINE GEN v2 D6-3 (parity with image-worker): the vendored
+//   resolveCreativeContract in creative_contract.ts is now a per-(client_id, recommended_format)
+//   REGISTRY lookup instead of the hardcoded PP-UUID literal branch. PP behaviour is IDENTICAL
+//   (same frozen PP_IMAGE_QUOTE_NEWS_CARD_V1 for PP+image_quote; null for every other pair —
+//   the contract-stamp gate/path is byte-unchanged), but a second governed brand is now a DATA
+//   addition (one registry entry) rather than a code edit. Both vendored copies stay
+//   byte-identical (parity guard unchanged). STRICTLY OUT OF SCOPE: no AI-prompt/format-selection/
+//   stamp-shape/render change, no new stamped fields, no DB schema/migration, no image-worker
+//   runtime change here, no dashboard. VERSION bump only for the resolver-internals change.
 // v2.17.0 (2026-07-04) — LANE 4 / B1-v3: vendored creative contract v2 — background pool
 //   3→5, aligned to the governed resolver (resolve_slot_assets) eligible-pool rank order
 //   (PK decision 2026-07-04 "Option A-now-D-later"). contract_version stamped into

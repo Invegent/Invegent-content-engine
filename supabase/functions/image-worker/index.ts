@@ -1,3 +1,28 @@
+// image-worker v3.27.0
+// v3.27.0 (2026-07-17) — SPINE GEN v2: de-hardcode the governed image_quote render path so
+//   it is no longer bound to the Property-Pulse literal (brief spine-gen-v2-image-path-rewire).
+//   FOUR units, ONE change set. D6-1+D6-2 (ATOMIC): the production governed gate at the
+//   image_quote loop no longer calls isB1GovernedImageQuote(clientId) (the PP-UUID literal);
+//   it now calls the runtime governance lookup isImageGovernanceEnabled(supabase, clientId,
+//   'image_quote') (reads c.client_creative_governance.enabled, FAIL-CLOSED on error/missing/
+//   null — same table + contract as the proven video-worker gate), and the governed branch
+//   resolves the client slug from c.client.client_slug via getGovernedClientSlug (THROWS
+//   governed_slug_unresolved on null — NEVER the getBrandAndSlug UUID fallback) for BOTH the
+//   select_template p_client_slug arg AND the storage path, instead of the frozen
+//   B1_GOVERNED_CLIENT_SLUG constant. PP behaviour is byte-identical (PP's governance row is
+//   enabled=true live; its client_slug resolves to 'property-pulse'), but a second governed
+//   brand is now a DATA addition (a governance row + a slug), not a code edit. Both helpers
+//   live in the new image-worker-local ./image_governance.ts (testable; NOT _shared). D6-3:
+//   resolveCreativeContract (creative_contract.ts, both vendored copies) is now a registry
+//   lookup keyed on gate.client_id+gate.recommended_format instead of the PP-UUID literal
+//   branch (PP contract identical; brand-extensible). D6-4: validateContract
+//   (contract_validation.ts, warn-only, still never throws) now accepts the expected contract
+//   identity as parameters (defaulting to the PP EXPECTED_* constants), so per-variant
+//   expectations are a data addition. STRICTLY OUT OF SCOPE: D6-5 brand-payload guard
+//   (branch_b_proof.ts / buildProofFieldsFromDraft) UNTOUCHED (stays v3.26.0 baseline); the
+//   cc-0037 supervised smoke branch UNTOUCHED (still PP-pinned by design); NO video-worker
+//   change; NO DB write / migration (NDIS governance/assignment rows are a separate lane); NO
+//   _shared module; NO change to select_template / resolve_slot_assets / the stamper.
 // image-worker v3.26.0
 // v3.26.0 (2026-07-17) — TMR D6-5 SAFETY: brand-payload fail-closed guard added in
 //   branch_b_proof.ts (buildProofFieldsFromDraft now throws for any non-PP client_id,
@@ -352,7 +377,8 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { computePropsHash } from './manual_render.ts';  // v3.23.0 LANE W: module trimmed to this single live export (B1 props_hash); the manual/draft-proof governed impls + builders are retired
 import { buildProofFieldsFromDraft } from './branch_b_proof.ts';  // v3.12.0: BRANCH B / LANE B-PROOF; v3.23.0 LANE W: DRAFT_PROOF_MODE/LABEL retired with the draft-proof branch — this field builder stays LIVE (B1 TMR branch)
-import { B1_PRODUCTION_LABEL, B1_SMOKE_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, B1_HEADLINE_MAX_CHARS, B1_SUBTITLE_MAX_CHARS, isB1GovernedImageQuote, assertHeadlineWithinGate, assertExpectedProviderTemplate, deriveB1Subtitle, buildTmrRenderPlan, type TmrSelectorResponse } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug). v3.17.0: B1-v2 governed subtitle from draft_body (deriveB1Subtitle). v3.22.0: OPTION D — TMR selector consumption (buildTmrRenderPlan); rotation constants retired. v3.25.0: cc-0037 supervised smoke (B1_SMOKE_LABEL, assertExpectedProviderTemplate).
+import { B1_PRODUCTION_LABEL, B1_SMOKE_LABEL, B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG, B1_HEADLINE_MAX_CHARS, B1_SUBTITLE_MAX_CHARS, assertHeadlineWithinGate, assertExpectedProviderTemplate, deriveB1Subtitle, buildTmrRenderPlan, type TmrSelectorResponse } from './b1_production.ts';  // v3.14.1: BRANCH B / LANE B1-v1 (PP-only governed image_quote; gate keys on client_id, canonical slug). v3.17.0: B1-v2 governed subtitle from draft_body (deriveB1Subtitle). v3.22.0: OPTION D — TMR selector consumption (buildTmrRenderPlan); rotation constants retired. v3.25.0: cc-0037 supervised smoke (B1_SMOKE_LABEL, assertExpectedProviderTemplate). v3.27.0: isB1GovernedImageQuote no longer imported — the production gate is now runtime governance (image_governance.ts); B1_GOVERNED_CLIENT_ID/SLUG kept for the cc-0037 supervised smoke branch only.
+import { isImageGovernanceEnabled, getGovernedClientSlug } from './image_governance.ts';  // v3.27.0 (Spine Gen v2 D6-1+D6-2): runtime governance gate + governed-slug resolver for the PRODUCTION image_quote path (replaces the PP-UUID literal gate + the frozen slug constant); image-worker-local, NOT _shared.
 import { resolveLegacyLogo, assertGovernedAssetReachable, type AssetVerdict } from './asset_url_guard.ts';  // v3.15.0: H2 asset-URL validation before Creatomate
 import { echoContractToRenderSpec } from './contract_echo.ts';  // v3.18.0: ACI v0 Slice B2 — echo draft_format.contract identity fields into render_spec (governed PP image_quote; evidence-only)
 import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C: warn-only contract validation (evidence-only, never throws)
@@ -360,7 +386,7 @@ import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C:
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.26.0';
+const VERSION = 'image-worker-v3.27.0';
 // cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
 // Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
 // provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1
@@ -795,15 +821,26 @@ Deno.serve(async (req: Request) => {
       // returns the winner template AND the embedded slot_resolution (governed
       // Background.source / Logo.source + Scrim.opacity). The dead legacy template
       // (fb9820f8…, deleted provider-side) and the hardcoded rotation are GONE (D5).
-      if (isB1GovernedImageQuote(clientId)) {
+      // v3.27.0 (Spine Gen v2 D6-1, ATOMIC with D6-2): the production gate is now the runtime
+      // governance lookup, NOT the PP-UUID literal isB1GovernedImageQuote. Reads
+      // c.client_creative_governance.enabled for (clientId, 'image_quote'); FAIL-CLOSED (any
+      // error/missing/null → false → legacy path). PP's row is enabled=true live → PP still
+      // enters this branch, identical routing.
+      if (await isImageGovernanceEnabled(supabase, clientId, 'image_quote')) {
         assertHeadlineWithinGate(draft.image_headline);  // minimal hard-gate, BEFORE any selector/Creatomate call
+        // v3.27.0 (Spine Gen v2 D6-2): resolve the CANONICAL slug from c.client.client_slug —
+        // THROWS governed_slug_unresolved on null (→ existing per-draft catch → image_status=
+        // 'failed'), NEVER the getBrandAndSlug UUID fallback. Used for BOTH select_template's
+        // p_client_slug AND the storage path below. select_template resolves slug→client_id→
+        // that client's own assignment + resolve_slot_assets, so the real slug is correct.
+        const governedSlug = await getGovernedClientSlug(supabase, clientId);
         // D2: the draft's slot platform when resolvable; NULL otherwise (the selector then
         // emits the visible 'platform_input_missing' warning — permissive, never silent).
         const { data: slotRow } = await supabase.schema('m').from('slot').select('platform').eq('filled_draft_id', draft.post_draft_id).limit(1).maybeSingle();
         const b1Platform: string | null = slotRow?.platform ?? null;
         // ONE selector call. p_seed = post_draft_id (background rotation only — the winner
         // template NEVER depends on the seed). RPC error = fail loud; legacy path is gone.
-        const { data: selection, error: selectErr } = await supabase.rpc('select_template', { p_client_slug: B1_GOVERNED_CLIENT_SLUG, p_platform: b1Platform, p_format: 'image_quote', p_variant_intent: null, p_seed: draft.post_draft_id });
+        const { data: selection, error: selectErr } = await supabase.rpc('select_template', { p_client_slug: governedSlug, p_platform: b1Platform, p_format: 'image_quote', p_variant_intent: null, p_seed: draft.post_draft_id });
         if (selectErr) throw new Error(`b1 tmr_selector_rpc_failed: ${selectErr.message}`);
         const fields = buildProofFieldsFromDraft({ image_headline: draft.image_headline, client_id: clientId, recommended_format: 'image_quote' });
         const subtitle = deriveB1Subtitle(draft.draft_body);   // B1-v2: governed subtitle from draft_body (first non-empty paragraph, truncated)
@@ -857,7 +894,7 @@ Deno.serve(async (req: Request) => {
         // image_status='failed'. Does NOT touch the B1 gate.
         await assertGovernedAssetReachable('logo', b1LogoUrl, logoMemo);
         await assertGovernedAssetReachable('background', b1BackgroundUrl, logoMemo);
-        const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: `${B1_GOVERNED_CLIENT_SLUG}/${draft.post_draft_id}.jpg`, mimeType: 'image/jpeg', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote', renderSpec: renderSpecWithValidation });
+        const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript, storagePath: `${governedSlug}/${draft.post_draft_id}.jpg`, mimeType: 'image/jpeg', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote', renderSpec: renderSpecWithValidation });
         await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
         results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'generated', image_url: imageUrl, governed: true });
         continue;
