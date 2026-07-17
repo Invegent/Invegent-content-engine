@@ -6,6 +6,11 @@
 
 ---
 
+> **✅ v5.62 — TMR D6-5 BRAND-PAYLOAD FAIL-CLOSED SAFETY FIX: DEPLOYED (image-worker `v3.25.0→v3.26.0`; T3 · SAFETY_GATE)** — canonical record: `docs/briefs/results/tmr-d6-brand-payload-hardcode-safety-fix.md`.
+> · `buildProofFieldsFromDraft` (`branch_b_proof.ts`) now throws `brand_payload_non_pp_fail_closed` for any non-PP `client_id` (strict `!== B1_GOVERNED_CLIENT_ID`) — the fail-**OPEN** PP brand-payload hardcode (D6-5: `category:'PROPERTY NEWS'`/`footer:'propertypulse.com.au'`) becomes fail-**CLOSED**; PP output byte-identical. Commit `75c72fa` (3 files, +45/−5, diff sha256 `51462ca1…`); `index.ts` = cosmetic v3.26.0 bump only.
+> · Chain: ef-builder isolated worktree · branch-warden `safe` ×2 · external `43b47b39` **partial→PK policy_decision** (no concrete defect; strict-equality guard complete by construction) · PK Convention-2 hash-pinned deploy (deploy stayed manual/fenced). Live proof: deployed VERSION=`v3.26.0` + guard present + `verify_jwt=false`; drift refreshed **severity=none/0 errors** (class `A-LE` — memory `drift-check-hashes-only-entrypoint` A-LE/B-FD semantics to reconcile).
+> · D6-5 **fail-open severity CLOSED** via the safety net; **D6 stays an OPEN hard gate**; D6-5 *elimination* (spine-derived `category`/`footer`) still owned by **Spine Gen v2 (PK-held)**.
+
 > **✅ v5.61 — TMR D6 CHOKEPOINT INVENTORY = DENOMINATOR OF RECORD (PK-ratified: 4th hardcode class + behavioural unit def + count; T1 · SAFETY_GATE · read-only + 1 docs write held)** — canonical record: `docs/briefs/tmr-d6-chokepoint-inventory-v2.md` (supersedes census v1 draft).
 > · **Count of record** at HEAD `7a9d85d` (3-worker src byte-unchanged since `9a61bfc`): **9 de-hardcoding units · 30 literal lines · 8 files** — scope = image/video/ai-worker; excludes drift-probe (CLOSED Spine Gen v1) + `property-pulse.json` registry. Ratified: `brand-payload-hardcode` = 4th class (D6-5, fails OPEN); a unit = production reads a hardcoded constant instead of the TMR/client spine.
 > · **Reconciliation:** DoD "net 6" CORRECTED → 9/30/8; Spine Gen v1 closed **0** three-worker chokepoints (it closed the out-of-scope drift-probe); video lane added ≥3 brand literals +2 token-invisible spine-bypasses.
