@@ -1,3 +1,18 @@
+// image-worker v3.28.0
+// v3.28.0 (2026-07-17) — TMR D6-5 BRAND-PAYLOAD DE-HARDCODE (brief G0b / D6-5). The proof
+//   field builder buildProofFieldsFromDraft (branch_b_proof.ts) no longer bakes the PP
+//   category/footer/location literals: it now sources them from the D6-3 governed contract
+//   registry via resolveCreativeContract(client_id, recommended_format), FAIL-CLOSED —
+//   throws brand_payload_contract_unresolved on an unresolved contract (replacing the old
+//   brand_payload_non_pp_fail_closed guard) and brand_payload_contract_incomplete when the
+//   resolved contract is missing category/footer. The image RENDER path now imports
+//   resolveCreativeContract (it did not before). PP output is BYTE-IDENTICAL (its registry
+//   entry carries category='PROPERTY NEWS' / footer='propertypulse.com.au' / location=''),
+//   and the two call sites here (smoke ~729, production ~845) already pass client_id +
+//   recommended_format:'image_quote', so they resolve identically with NO call-site change.
+//   STRICTLY OUT OF SCOPE: no logic change in THIS file (version bump + header/comment only);
+//   NO video-worker / ai-worker change; NO DB write / migration / schema change; NO _shared
+//   module edit; NO change to select_template / resolve_slot_assets / the stamper / geometry.
 // image-worker v3.27.0
 // v3.27.0 (2026-07-17) — SPINE GEN v2: de-hardcode the governed image_quote render path so
 //   it is no longer bound to the Property-Pulse literal (brief spine-gen-v2-image-path-rewire).
@@ -19,7 +34,9 @@
 //   (contract_validation.ts, warn-only, still never throws) now accepts the expected contract
 //   identity as parameters (defaulting to the PP EXPECTED_* constants), so per-variant
 //   expectations are a data addition. STRICTLY OUT OF SCOPE: D6-5 brand-payload guard
-//   (branch_b_proof.ts / buildProofFieldsFromDraft) UNTOUCHED (stays v3.26.0 baseline); the
+//   (branch_b_proof.ts / buildProofFieldsFromDraft) UNTOUCHED here in v3.27.0 [SUPERSEDED by
+//   v3.28.0: D6-5 landed — the guard is now the governed resolveCreativeContract read, see the
+//   top block; buildProofFieldsFromDraft NO LONGER simply "throws for any non-PP client_id"]; the
 //   cc-0037 supervised smoke branch UNTOUCHED (still PP-pinned by design); NO video-worker
 //   change; NO DB write / migration (NDIS governance/assignment rows are a separate lane); NO
 //   _shared module; NO change to select_template / resolve_slot_assets / the stamper.
@@ -386,7 +403,7 @@ import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C:
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.27.0';
+const VERSION = 'image-worker-v3.28.0';
 // cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
 // Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
 // provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1

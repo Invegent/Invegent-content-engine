@@ -9,7 +9,8 @@
 
 import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import { buildProofFieldsFromDraft, formatProofDate } from './branch_b_proof.ts';
-import { B1_GOVERNED_CLIENT_ID } from './b1_production.ts';
+import { B1_GOVERNED_CLIENT_ID, TMR_WINNER_TEXT_FIELDS } from './b1_production.ts';
+import type { CreativeContract } from './creative_contract.ts';
 
 const FIXED = new Date(Date.UTC(2026, 5, 24)); // 24 June 2026 (month index 5 = June)
 
@@ -54,24 +55,25 @@ Deno.test('buildProofFieldsFromDraft fails loud on missing/blank/null image_head
   assertThrows(() => buildProofFieldsFromDraft(undefined, FIXED), Error, 'missing image_headline hard-gate field');
 });
 
-Deno.test('buildProofFieldsFromDraft fails CLOSED for a non-PP client_id (present headline)', () => {
-  // A present headline passes the headline gate, so the fail-closed brand-payload guard
-  // (TMR D6-5) is what must throw here — no PP literal is producible for a non-PP client.
+Deno.test('buildProofFieldsFromDraft fails CLOSED (contract_unresolved) for an unregistered client_id', () => {
+  // A present headline passes the headline gate, so the governed brand-payload read
+  // (TMR D6-5) is what must throw here — the REAL resolver returns null for these
+  // unregistered client_ids, so no PP literal is producible for a non-PP client.
   const base = { image_headline: 'A valid headline', recommended_format: 'image_quote' };
   assertThrows(
     () => buildProofFieldsFromDraft({ ...base, client_id: '11111111-1111-1111-1111-111111111111' }, FIXED),
     Error,
-    'brand_payload_non_pp_fail_closed',
+    'brand_payload_contract_unresolved',
   );
   assertThrows(
     () => buildProofFieldsFromDraft({ ...base, client_id: null }, FIXED),
     Error,
-    'brand_payload_non_pp_fail_closed',
+    'brand_payload_contract_unresolved',
   );
   assertThrows(
     () => buildProofFieldsFromDraft({ ...base, client_id: '' }, FIXED),
     Error,
-    'brand_payload_non_pp_fail_closed',
+    'brand_payload_contract_unresolved',
   );
 });
 
@@ -88,4 +90,67 @@ Deno.test('proof fields have EXACTLY the 6 text keys the B1 field consumer expec
   assertEquals(f.date, '24 June 2026');
   assertEquals(f.footer, 'propertypulse.com.au');
   assert(!('elements' in f));
+});
+
+// A minimal fake CreativeContract carrying only the renderer_fixed entries the builder reads.
+// Cast through `unknown` because we deliberately omit the rest of the (large) contract shape —
+// buildProofFieldsFromDraft only touches contract.fields.renderer_fixed.
+function fakeContract(rendererFixed: ReadonlyArray<{ field: string; value: string }>): CreativeContract {
+  return { fields: { renderer_fixed: rendererFixed } } as unknown as CreativeContract;
+}
+
+Deno.test('D6-5 non-PP populated profile (injected resolver): emits the governed brand fields, no PP leak', () => {
+  const ndis = fakeContract([
+    { field: 'category', value: 'DISABILITY NEWS' },
+    { field: 'footer', value: 'ndisyarns.com.au' },
+    { field: 'location', value: '' },
+  ]);
+  const f = buildProofFieldsFromDraft(
+    { image_headline: 'x', client_id: '22222222-2222-2222-2222-222222222222', recommended_format: 'image_quote' },
+    FIXED,
+    () => ndis,
+  );
+  assertEquals(f.category, 'DISABILITY NEWS');
+  assertEquals(f.footer, 'ndisyarns.com.au');
+  assert(f.category !== 'PROPERTY NEWS');
+  assert(f.footer !== 'propertypulse.com.au');
+
+  // D7-C3: assert on the EMITTED modifications payload — compose the fields through the real
+  // winner→text-field mapping and prove the governed values reach the render keys, PP-free.
+  const emitted = TMR_WINNER_TEXT_FIELDS['generic_market_insight_card_1x1_v1'](f);
+  assertEquals(emitted['CategoryBadge.text'], 'DISABILITY NEWS');
+  assertEquals(emitted['Footer.text'], 'ndisyarns.com.au');
+  for (const v of Object.values(emitted)) {
+    assert(!v.includes('PROPERTY NEWS'), `emitted value leaked PP category: ${v}`);
+    assert(!v.includes('propertypulse'), `emitted value leaked PP footer: ${v}`);
+  }
+});
+
+Deno.test('D6-5 contract-incomplete fail-closed (injected resolver): missing footer throws', () => {
+  const missingFooter = fakeContract([
+    { field: 'category', value: 'DISABILITY NEWS' },
+    { field: 'location', value: '' },
+  ]);
+  assertThrows(
+    () => buildProofFieldsFromDraft(
+      { image_headline: 'x', client_id: '22222222-2222-2222-2222-222222222222', recommended_format: 'image_quote' },
+      FIXED,
+      () => missingFooter,
+    ),
+    Error,
+    'brand_payload_contract_incomplete',
+  );
+});
+
+Deno.test('D6-5 headline-gate precedence: missing headline + unregistered client throws the HEADLINE error', () => {
+  // The headline hard-gate must run BEFORE contract resolution: a null-headline draft for an
+  // unregistered client throws the headline error, NOT brand_payload_contract_unresolved.
+  assertThrows(
+    () => buildProofFieldsFromDraft(
+      { image_headline: null, client_id: 'unregistered', recommended_format: 'image_quote' },
+      FIXED,
+    ),
+    Error,
+    'missing image_headline hard-gate field',
+  );
 });
