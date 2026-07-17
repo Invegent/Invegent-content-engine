@@ -296,3 +296,26 @@ label — the label column is a *proposal* for PK. Does not re-derive the Video/
 record). The D4 figure is a live read on 2026-07-17 and is itself volatile. Does not adopt the uncommitted
 "Amendment 4" working-tree draft (superseded; see the lane's handback for the disposition of its still-valid
 sub-findings).
+
+---
+
+## DoD SUPERSEDE — 2026-07-17 (PP Static TMR Done ratified TRUE · D4 redefined to an invariant) · v5.63
+
+*Additive/dated. Every ruling above — including the 2026-07-10 corrections and the earlier 2026-07-17 block (`88ec060`) — is RETAINED unedited. This block (a) RATIFIES PP Static TMR Done = TRUE and (b) REPLACES the scalar D4 gate with an invariant.*
+
+### (a) PP Static TMR Done — RATIFIED TRUE (PK, 2026-07-17).
+
+Upgrades the *"proposed TRUE"* recorded in the earlier 2026-07-17 block (`88ec060`) to a ratified ruling: **PP Static TMR Done = TRUE.** Supersedes lines 15 / 79's *"WITHHELD / FALSE"* (both retained unedited) — Static Done stands. Evidence accepted by PK:
+1. The headline/subtitle overprint blocker is **fixed + deployed** — image-worker **v3.24.0** (`a130665` + `4b70506`).
+2. **PK visual PASS** on the two real cards that had overprinted — Instagram `604c3dfb` + Facebook `a3ac9129`.
+3. **C-OQ1 carousel** second-surface overprint measured **non-blocking at 0/600** (carousel body-slide investigation, task `task_8c5dab3b`).
+
+**C1 (geo-pairing) · C2 (scrim) · C3 (crop) · C4 (LinkedIn) remain named carries, NOT blockers** — Level A (line 35) admits them as enumerated carries; Static Done being TRUE does not close them.
+
+### (b) D4 — REDEFINED to an invariant (supersedes the scalar gate).
+
+The scalar form of D4 — *"`property-pulse.json` pool == live governed+active pool == register figure"* (line 45), refreshed to `11-vs-9` (2026-07-10) then `12/12/11/9` (`88ec060`) — is **RETIRED as the gate**. Cause, on the record: the `12/12/11/9` snapshot went stale **within hours** (live moved to `16/16/15/13` at 2026-07-17 02:06 when four fenced rows were reactivated). A scalar equality over a live-mutated pool is unstable by construction.
+
+**D4 (HARD GATE) is now the invariant:** *Every active / approved / production-use governed PP asset must be either (a) declared in the declarative registry, (b) intentionally exempt with a recorded reason, or (c) deactivated.* D4 is **closed** when the invariant holds AND is continuously machine-evaluated by `tmr-drift-probe` check (d) (Option 3: fetches `property-pulse.json` from pushed GitHub `main`) — not at a manual snapshot. The per-platform triple is recorded as evidence, never as the pass condition.
+
+**D4-close status (this lane, v5.63):** Apply A back-declared the 9 previously-undeclared live/governed keys into `property-pulse.json` (registry v0.10; background pool 8→17 — the 9th, `bg_pp_modern_home_exterior_front`, was promoted since the packet and PK-confirmed at the fresh gate; the invariant predicate is active∧approved∧production_use_allowed, so the 5 active+approved-but-not-production-use keys are outside the must-declare set and intentionally not declared), each verified `active+approved+production_use=governed` at apply time; 0 exemptions; **the invariant now holds** (declared 17 == live must-declare 17). Apply B extends `tmr-drift-probe` (check (d), Option 3) to evaluate the invariant continuously against pushed `main`. **D4 formally CLOSES when Apply B is live and its first probe run confirms `declarative_coverage.status='ok'` against pushed main.** Until then: invariant-holds, continuous-proof-pending. D5's overprint entry is closed (see (a)); **D6 remains an OPEN hard gate.**
