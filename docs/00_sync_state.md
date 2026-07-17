@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v5.66 — Spine Gen v2 (image path) DEPLOYED + main reconciled (T3 · PRODUCT_PROOF)** — record: `docs/briefs/results/spine-gen-v2-image-path-rewire-v1.md`.
+> · De-hardcoded the PP-literal governed `image_quote` path: **D6-1+D6-2 atomic** (production gate `isB1GovernedImageQuote`→runtime `client_creative_governance` lookup, fail-closed + resolved client slug via `getGovernedClientSlug`, never the UUID fallback) · **D6-3** contract registry (PP identical) · **D6-4** per-variant validation. **image-worker v3.27.0 + ai-worker v2.18.0 LIVE**; PP byte-identical; commit `9b1b222`, diff sha256 `0bb0a62b…`; branch-warden safe · external `10901cd5` partial→PK (no defect) · post-deploy pre-checks (a)(b)(c) green; first deploy hit the OLD source (main-checkout) → caught by deployed-artifact verify, re-deployed from worktree.
+> · **D6-5 brand-payload guard + video path untouched.** WATCH (pending): live governed PP render proof — no PP `image_quote` draft has flowed through v3.27.0 yet; confirm on next PP draft. NDIS enablement = separate downstream lane (governance row + assignment + visual proof + logo/background promotion + D6-5). (v5.64 abandoned — stranded below head; renumbered v5.66.) **D6 still OPEN** (image gate/slug/contract units closed; video D6-6/7/8/9 remain).
+>
 > **✅ v5.65 — D4 FORMALLY CLOSED + `tmr-drift-probe` v2.1.0 DEPLOYED (T3 · probe deploy + D4 close-out)** — record: `docs/briefs/results/d4-close-lane-result.md`.
 > · **D4 CLOSED** (Apply B): `tmr-drift-probe` v2.1.0 check (d) DEPLOYED (commit `651362b`; Option 3 fetches `property-pulse.json` from GitHub main); first run confirmed `declarative_coverage.status='ok'` (must_declare 17 == declared 17, 0 violations, `github:main` v0.10) → the D4 invariant is continuously machine-checked and **holds**. `verify_jwt=false`; post-deploy drift clean (A-LE, deployed==repo).
 > · Pairs with **v5.63** (Apply A: registry back-declare 8→17 + DoD supersede + Static Done TRUE). D5 closed · **D6 still OPEN**. (v5.64 = F-spinegen; this lane renumbered v5.64→v5.65 per PK.)
