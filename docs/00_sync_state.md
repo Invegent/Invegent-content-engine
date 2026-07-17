@@ -6,6 +6,10 @@
 
 ---
 
+> **✅ v5.65 — D4 FORMALLY CLOSED + `tmr-drift-probe` v2.1.0 DEPLOYED (T3 · probe deploy + D4 close-out)** — record: `docs/briefs/results/d4-close-lane-result.md`.
+> · **D4 CLOSED** (Apply B): `tmr-drift-probe` v2.1.0 check (d) DEPLOYED (commit `651362b`; Option 3 fetches `property-pulse.json` from GitHub main); first run confirmed `declarative_coverage.status='ok'` (must_declare 17 == declared 17, 0 violations, `github:main` v0.10) → the D4 invariant is continuously machine-checked and **holds**. `verify_jwt=false`; post-deploy drift clean (A-LE, deployed==repo).
+> · Pairs with **v5.63** (Apply A: registry back-declare 8→17 + DoD supersede + Static Done TRUE). D5 closed · **D6 still OPEN**. (v5.64 = F-spinegen; this lane renumbered v5.64→v5.65 per PK.)
+>
 > **✅ v5.63 — D4 CLOSE (Path B, Apply A) + PP Static TMR Done RATIFIED TRUE (T1 · docs-only additive)** — record: the **2026-07-17 SUPERSEDE block** in `docs/governance/pp-tmr-definition-of-done-v1.md` + `docs/creative-library/property-pulse.json` v0.10 (result doc follows Apply B).
 > · **PP Static TMR Done = TRUE** (PK-ratified): overprint fixed+deployed (image-worker v3.24.0), PK visual PASS IG (`604c3dfb`) + FB (`a3ac9129`), C-OQ1 carousel 0/600 non-blocking (`task_8c5dab3b`); **C1–C4 remain named carries**, not blockers.
 > · **D4 REDEFINED** scalar→invariant ('active/approved/production-use governed PP asset -> declared-or-exempt-or-deactivated'). **Apply A** back-declared the **9** previously-undeclared live/governed backgrounds → `property-pulse.json` pool 8→**17** (registry v0.10; invariant now holds: declared 17 == live must-declare 17; the 9th, `bg_pp_modern_home_exterior_front`, promoted-since-packet, PK-confirmed at a fresh gate; 5 active+approved-not-production-use keys OUTSIDE the invariant, not declared). **Apply B next** = extend `tmr-drift-probe` check (d) Option 3 (fetch JSON from pushed main); **D4 formally CLOSES** on its first `declarative_coverage.status=ok` run. **D5 overprint closed · D6 still OPEN.**
