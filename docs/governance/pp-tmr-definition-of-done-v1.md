@@ -185,3 +185,114 @@ and `B1_HEADLINE_MAX_CHARS = 90`: **a governed number with no defined referent.*
 act on; PP's real winner is the generic `generic_market_insight_card_1x1_v1` (provider
 `48cba556-0a53-4001-90f0-05420d10efc0`). A second brand consequently needs **no** client-scoped provider
 template — scoring its absence as a gap is incorrect.
+
+---
+
+## Corrections — additive · forward-only · 2026-07-17 · record-reconciliation lane · HEAD `e368c6f`
+
+*Forward-corrects the 2026-07-10 corrections block above to the state AFTER the cc-0033a overprint fix and
+cc-0037 supervised-smoke surface deployed on 2026-07-16. Every prior line — including the 2026-07-10
+block — is **retained unedited**; the earlier rulings were true when made. Re-derived fresh against committed
+HEAD, not adopted from any prior draft. This block **closes exactly one Ultimate hard gate's sub-finding**
+(D5's overprint entry) and **refreshes D4's figure**; it does not resolve D4 or D6 by judgment.*
+
+### A-OQ1 / D5 overprint — RESOLVED. The blocker is CLOSED (fix DEPLOYED, PK visual PASS).
+
+The 2026-07-10 amendment reversed A-OQ1 to a **BLOCKER** and **WITHHELD** "PP Static TMR Done" because the
+overprint reached published production posts with **no shipped fix**. **That fix has now shipped and is
+live-proven.** image-worker **v3.24.0** (commits `a130665` + `4b70506`, deployed 2026-07-16 through the
+governed drift gate; `verify_jwt=false` confirmed) injects a winner-scoped layout guard
+(`TMR_WINNER_LAYOUT_GUARD`: `Headline.height:'22%'` + `Headline.font_size:null` auto-shrink + 30/74px
+min/max) into the Creatomate template-mode modifications — **no provider-template write, and zero drafts
+rejected**. This is exactly the *"durable capability … `headline_bottom < subtitle_top`"* that the 2026-07-10
+D5 paragraph (lines 139–140) prescribed: a bounded headline box makes overflow structurally impossible.
+
+**PK visual verdict PASS (the deciding act) on the two real cards that had overprinted:**
+- Instagram — draft `604c3dfb` (*"Australia's build-to-rent market now has a $10 billion benchmark"*) — PASS.
+- Facebook — draft `a3ac9129` (*"Banks are cutting rates. The RBA hasn't moved. Your loan might still be wrong."*, 78 chars, worst case) — PASS.
+- Controlled renders were publish-safe (already-published draft exclusion) and fully restored; nothing re-published.
+- Record of the lane: `docs/briefs/results/cc-0033a-headline-overprint-fix.md`.
+
+| | 2026-07-10 ruling (retained above) | 2026-07-17 current ruling |
+|---|---|---|
+| Overprint defect (A-OQ1) | BLOCKER, open | **RESOLVED — fix deployed + visual PASS** |
+| D5 overprint entry (line 82) | *"requires the defect **closed**; carry branch unavailable"* | **the defect IS closed** — the governed image path now renders through the guard |
+| PP Static TMR Done (lines 15/79) | WITHHELD (label FALSE) | **withholding blocker discharged** — see label note |
+
+**"PP Static TMR Done" — proposed TRUE (PK ratifies at the commit gate).** The single blocker that WITHHELD
+Static Done (the published overprint) is closed, and FB PASS + IG PASS are both proven (the cc-0033a live
+gate). The remaining Level-A items are the **enumerated carries** C1 (geo-pairing) · C2 (scrim) · C3 (crop) ·
+C4 (LinkedIn) — which Level A (line 35) explicitly admits as *named carries*, not blockers. On that basis the
+label is **proposed TRUE (carries named)**. Flipping a governance label is PK's ratification, not this lane's.
+
+**Scope note (upholds the 2026-07-10 caveat, lines 93–96):** a D5 closure proven on PP's headline corpus does
+**not** transfer to another brand's corpus — overprint is text-length against box geometry, and corpora
+differ; **D7's second-brand readiness is unaffected** by this closure. Carry **C5** (an admissible ≤90-char
+*single unbreakable token* can still overflow horizontally) is pre-existing, has nil real-world exposure, and
+is deferred to a separate input-gate lane — it is **not** a reopening of the overprint.
+
+### `max_lines: 3` — retirement CONFIRMED and now REALIZED in production.
+
+The 2026-07-10 block (lines 133–143) retired `max_lines: 3` as the prescribed fix. The deployed fix confirms
+that retirement **empirically**: it encodes **no line-count constant** — the guard bounds the box and lets the
+font auto-shrink, so a line count is a *consequence* of geometry, never an input. The prediction *"encoding 3
+would repeat the `B1_HEADLINE_MAX_CHARS` error"* is upheld; the shipped fix encodes no such number.
+
+### D4 — figure REFRESHED. The 2026-07-10 "17" is itself now stale (the pool is a moving quantity).
+
+`db-rls-auditor` re-derived the eligibility predicate from live `public.resolve_slot_assets` on 2026-07-17.
+PP's eligible **background** pool TODAY:
+
+| p_platform | eligible | (2026-07-10 was) |
+|---|---|---|
+| NULL (agnostic) | **12** | 17 |
+| facebook | **12** | 17 |
+| linkedin | **11** | 15 |
+| instagram | **9** | 14 |
+
+24 background rows total, **12 fenced-inactive** (up from 7). The −5 delta is **entirely `is_active`
+deactivations** — a whole-pool governance sweep landed 2026-07-10; **no predicate / license / approval /
+platform-fence change**, and no new rows entered the pool. **That the "17" was correct on 2026-07-10 and is
+**12** today is itself the D4 finding** — it upholds line 128 (*"recording it as a single scalar is the
+defect"*): the figure is volatile, so D4 must compare the declarative pool against the **fb/li/ig triple**,
+never one number.
+
+**Live-vs-declarative delta:** `docs/creative-library/property-pulse.json` declares **8** background keys;
+live agnostic-eligible is **12**; they diverge **both ways** — **2 declared keys are dead** (`bg_sydney_cbd`,
+`bg_brisbane_cbd`, both `inactive`) and **6 live-eligible keys are undeclared** (`bg_pp_sold_sign_closeup`,
+`bg_pp_new_build_construction_site`, `bg_pp_subdivision_land_estate`, `bg_pp_mortgage_calculator_keys`,
+`bg_pp_inspection_checklist_clipboard`, `bg_pp_market_data_chart_grid`); intersection = 6. The JSON's own
+*"eligible pool is 8 fb/li, 7 ig"* note is stale in both directions. **D4 stays an OPEN hard gate** — this
+refreshes its figure only. The declarative-registry drift is a separate registry-reconciliation item (handoff).
+
+### D6 — STILL OPEN (unchanged posture; not closed by, and no PP-identity literal added by, the 2026-07-16 deploys).
+
+The 2026-07-10 block recorded the D6 chokepoint regression and — decisively — that **D6 has no defined
+denominator** (lines 168–180): it cannot be gated on *"trending to 0"* until the doc defines (a) the
+governed-worker-path file set and (b) what counts as one unit. **That remains true and unaddressed.** The
+2026-07-16 image-worker deploys did not close it and did not add a PP-*identity* literal: cc-0033a's
+`TMR_WINNER_LAYOUT_GUARD` keys on the **generic** template name `generic_market_insight_card_1x1_v1` (not a PP
+literal), and cc-0037's new constants (`B1_SMOKE_LABEL='creative_library_b1_smoke'`,
+`EXPECTED_SMOKE_PROVIDER_TEMPLATE_ID='48cba556…'`, `SMOKE_SEED`) reference the generic template / provider
+UUID / a smoke label — not PP brand identity. A full re-census remains a separate lane. **D6 stays an OPEN
+hard gate, carried;** defining its denominator is the thing to fix first.
+
+### The three labels (proposed reconciliation; PK ratifies at the commit gate)
+
+| Label | 2026-07-10 | 2026-07-17 proposed | basis |
+|---|---|---|---|
+| **PP Static TMR Done** | WITHHELD (FALSE) | **TRUE** — blocker closed | overprint fixed+deployed (v3.24.0), FB+IG PASS, C1–C4 named carries |
+| **PP Video TMR First Proof Done** | FALSE | **TRUE** — *per cc-0038, not re-derived here* | Level B CLOSED by cc-0038 B4 (register v5.55); B3 restored TRUE by cc-0039 (v5.54). Sourced to those lanes' records |
+| **PP Ultimate TMR Done** | FALSE (D4/D5/D6 open) | **FALSE** — D4 + D6 remain open | D5's overprint entry is closed; D4 figure refreshed but gate open; D6 undefined-denominator unresolved |
+
+D5's overprint entry is the **only** one of the three Ultimate hard gates this reconciliation closes. **Ultimate
+stays FALSE.** The Video label change is recorded for table completeness and is **sourced to cc-0038/cc-0039,
+not derived by this lane.**
+
+### Non-claims
+
+Closes no gate other than D5's overprint sub-finding. D4 and D6 remain OPEN hard gates. Does not ratify any
+label — the label column is a *proposal* for PK. Does not re-derive the Video/Level-B closure (cc-0038's
+record). The D4 figure is a live read on 2026-07-17 and is itself volatile. Does not adopt the uncommitted
+"Amendment 4" working-tree draft (superseded; see the lane's handback for the disposition of its still-valid
+sub-findings).
