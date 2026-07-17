@@ -28,10 +28,13 @@ import {
   type BrandAssetRow,
   checkRenderSanity,
   compareProviderRegistry,
+  computeDeclarativeCoverage,
   computeEligiblePool,
+  computeMustDeclareSet,
   computeUnionPool,
   computeVerdict,
   KNOWN_HISTORICAL_PROVIDER_IDS,
+  normaliseExemptions,
   PROBE_PLATFORMS,
   PROVIDER_PAGE_LIMIT,
   providerListPossiblyTruncated,
@@ -487,6 +490,170 @@ Deno.test("SWEEP (multi-client shape): the loop generalises — a second governe
   assertFalse(results[0].render_check.drift);
   assertFalse(results[1].render_check.drift);
   assertEquals(sweepVerdict(false, results), "ok");
+});
+
+// ---------------------------------------------------------------------------
+// Check (d): declarative coverage (D4 invariant) — v2.1.0
+// ---------------------------------------------------------------------------
+
+/**
+ * A governed-background asset row for the must_declare filter (usage=background,
+ * is_active, approved, production_use_allowed). Defaults are eligible; overrides
+ * exercise each exclusion.
+ */
+function makeGovernedBg(
+  key: string,
+  idx: number,
+  metaOverrides: Record<string, unknown> = {},
+  overrides: Partial<BrandAssetRow> = {},
+): BrandAssetRow {
+  return {
+    asset_id: `d000000${idx}-0000-4000-8000-000000000000`,
+    is_active: true,
+    platform_scope: null,
+    created_at: `2026-07-0${(idx % 9) + 1}T00:00:00Z`,
+    asset_meta: {
+      asset_key: key,
+      usage: "background",
+      approved: "true",
+      production_use_allowed: "true",
+      ...metaOverrides,
+    },
+    ...overrides,
+  };
+}
+
+Deno.test("must_declare: keeps live governed backgrounds; production_use_allowed ABSENT is allowed (COALESCE=true)", () => {
+  const rows: BrandAssetRow[] = [
+    makeGovernedBg("bg_a", 1),
+    // production_use_allowed absent -> COALESCE(...,true)=true -> included
+    makeGovernedBg("bg_b", 2, { production_use_allowed: null }),
+  ];
+  assertEquals(computeMustDeclareSet(rows), ["bg_a", "bg_b"]);
+});
+
+Deno.test("must_declare: excludes inactive / unapproved / production_use_allowed=false / non-background / keyless", () => {
+  const rows: BrandAssetRow[] = [
+    makeGovernedBg("bg_keep", 1),
+    makeGovernedBg("bg_inactive", 2, {}, { is_active: false }),
+    makeGovernedBg("bg_unapproved", 3, { approved: "false" }),
+    makeGovernedBg("bg_no_prod", 4, { production_use_allowed: "false" }),
+    makeGovernedBg("bg_logo", 5, { usage: "logo" }),
+    makeGovernedBg("bg_keyless", 6, { asset_key: null }),
+  ];
+  assertEquals(computeMustDeclareSet(rows), ["bg_keep"]);
+});
+
+Deno.test("must_declare: broader than check (b) — no license/bucket/text-safety fence excludes a governed bg", () => {
+  // A governed background with NO license + wrong bucket + not text-safe would be
+  // resolver-INELIGIBLE (check b), but is STILL must_declare for D4 (check d).
+  const rows: BrandAssetRow[] = [
+    makeGovernedBg("bg_governed_but_ineligible", 1, {
+      license: null,
+      license_type: null,
+      bucket: "post-media",
+      safe_for_text_overlay: "false",
+    }),
+  ];
+  assertEquals(computeMustDeclareSet(rows), ["bg_governed_but_ineligible"]);
+  // ...and it is NOT in the resolver eligible pool.
+  assertEquals(computeEligiblePool(rows, "facebook", NOW), []);
+});
+
+Deno.test("normaliseExemptions: string entries, {key} objects, mixed, empty, and non-array all handled", () => {
+  assertEquals(normaliseExemptions([]), []); // empty = no exemptions
+  assertEquals(normaliseExemptions(undefined), []); // missing field
+  assertEquals(normaliseExemptions(null), []);
+  assertEquals(normaliseExemptions(["bg_x", "bg_y"]), ["bg_x", "bg_y"]);
+  assertEquals(
+    normaliseExemptions([{ key: "bg_x", reason: "legacy" }, { key: "bg_y" }]),
+    ["bg_x", "bg_y"],
+  );
+  assertEquals(
+    normaliseExemptions(["bg_x", { key: "bg_y" }, { reason: "no key" }, "", 42]),
+    ["bg_x", "bg_y"],
+  );
+});
+
+Deno.test("coverage (ok): declared ⊇ must_declare -> ok, zero violations", () => {
+  const res = computeDeclarativeCoverage(
+    ["bg_a", "bg_b", "bg_c"], // declared
+    [], // exempt
+    ["bg_a", "bg_b"], // must_declare
+  );
+  assertEquals(res.status, "ok");
+  assertEquals(res.violation_keys, []);
+  assertEquals(res.must_declare_count, 2);
+  assertEquals(res.declared_count, 3);
+  assertEquals(res.exempt_count, 0);
+});
+
+Deno.test("coverage (drift): a must_declare key neither declared nor exempt -> drift + violation listed", () => {
+  const res = computeDeclarativeCoverage(
+    ["bg_a"], // declared
+    [], // exempt
+    ["bg_a", "bg_undeclared"], // must_declare
+  );
+  assertEquals(res.status, "drift");
+  assertEquals(res.violation_keys, ["bg_undeclared"]);
+  assertEquals(res.must_declare_count, 2);
+  assertEquals(res.declared_count, 1);
+});
+
+Deno.test("coverage (exempt-covers): a must_declare key in exempt_set -> ok (declared ∪ exempt covers it)", () => {
+  const res = computeDeclarativeCoverage(
+    ["bg_a"], // declared
+    ["bg_exempted"], // exempt
+    ["bg_a", "bg_exempted"], // must_declare
+  );
+  assertEquals(res.status, "ok");
+  assertEquals(res.violation_keys, []);
+  assertEquals(res.exempt_count, 1);
+});
+
+Deno.test("coverage (empty exemptions): [] behaves as zero exemptions — undeclared must_declare drifts", () => {
+  const exempt = normaliseExemptions([]); // the live registry's current value
+  assertEquals(exempt, []);
+  const res = computeDeclarativeCoverage(["bg_a"], exempt, ["bg_a", "bg_b"]);
+  assertEquals(res.status, "drift");
+  assertEquals(res.violation_keys, ["bg_b"]);
+});
+
+Deno.test("coverage: violations are in must_declare order and de-duplicated", () => {
+  const res = computeDeclarativeCoverage(
+    ["bg_a"],
+    [],
+    ["bg_z", "bg_a", "bg_y", "bg_z"], // bg_z repeated
+  );
+  assertEquals(res.violation_keys, ["bg_z", "bg_y"]);
+  assertEquals(res.must_declare_count, 3); // distinct must_declare keys
+});
+
+Deno.test("coverage (end-to-end D4 shape): live must_declare from rows vs declared+exempt from registry", () => {
+  // 3 live governed backgrounds; registry declares 2, exempts 1 -> ok.
+  const rows: BrandAssetRow[] = [
+    makeGovernedBg("bg_perth_cbd", 1),
+    makeGovernedBg("bg_sydney_cbd", 2),
+    makeGovernedBg("bg_intentionally_exempt", 3),
+  ];
+  const mustDeclare = computeMustDeclareSet(rows);
+  const declared = ["bg_perth_cbd", "bg_sydney_cbd"];
+  const exempt = normaliseExemptions([
+    { key: "bg_intentionally_exempt", reason: "held back deliberately" },
+  ]);
+  const okRes = computeDeclarativeCoverage(declared, exempt, mustDeclare);
+  assertEquals(okRes.status, "ok");
+  assertEquals(okRes.violation_keys, []);
+
+  // Now a 4th live governed background appears, undeclared + unexempted -> drift.
+  rows.push(makeGovernedBg("bg_new_live_undeclared", 4));
+  const driftRes = computeDeclarativeCoverage(
+    declared,
+    exempt,
+    computeMustDeclareSet(rows),
+  );
+  assertEquals(driftRes.status, "drift");
+  assertEquals(driftRes.violation_keys, ["bg_new_live_undeclared"]);
 });
 
 // ---------------------------------------------------------------------------

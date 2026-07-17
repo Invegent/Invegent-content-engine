@@ -1,6 +1,6 @@
 // supabase/functions/tmr-drift-probe/compare.ts
 //
-// tmr-drift-probe v2.0.0 — PURE comparison logic for the probe checks.
+// tmr-drift-probe v2.1.0 — PURE comparison logic for the probe checks.
 //
 // This module is side-effect free (no network, no DB, no Deno APIs, no Date.now
 // except where a caller injects `now`). Everything here is deterministic and
@@ -16,6 +16,14 @@
 //       pool is DERIVED LIVE from the resolver (D3), so the AP-3/AP-4 marker-lag
 //       machinery (markers.ts / comparePoolToMarkers) is RETIRED by design.
 //   (c) render sanity — recent renders' background_key ∈ the client's live union pool.
+//   (d) declarative coverage (D4 invariant, v2.1.0 — pp-tmr-definition-of-done-v1.md):
+//       PER GOVERNED CLIENT, every LIVE governed background (usage=background,
+//       is_active, approved, production_use_allowed) must be DECLARED in the pushed
+//       declarative registry (pp_background_plus_scrim_v1.references_assets) OR
+//       listed as an explicit exemption. must_declare − (declared ∪ exempt) =
+//       violation_keys; any violation → 'drift'. INFORMS only (like the whole probe).
+//       The SET math is pure here; the GitHub fetch/parse of the registry is impure
+//       and lives in index.ts.
 
 // ---------------------------------------------------------------------------
 // Check (a): provider ↔ registry
@@ -364,6 +372,122 @@ export function checkRenderSanity(
     violations,
     legacy_shape,
     drift: violations.length > 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Check (d): declarative coverage (D4 invariant) — v2.1.0
+// ---------------------------------------------------------------------------
+//
+// The D4 invariant (pp-tmr-definition-of-done-v1.md, 2026-07-17): every
+// active/approved/production-use governed background MUST be declared in the
+// pushed declarative registry OR explicitly exempted (or deactivated). This
+// mechanises the "declared control production never reads" failure mode in the
+// OTHER direction — it catches a LIVE governed asset that was never back-declared.
+// All logic here is pure SET/shape math; the network+JSON fetch of the registry
+// (references_assets + exemptions) is impure and lives in index.ts.
+
+/**
+ * An exemption entry as it may appear in
+ * pp_background_plus_scrim_v1.layout_rules.background_declaration_exemptions —
+ * either a bare key string OR a { key, reason? } object. Empty array = no
+ * exemptions.
+ */
+export type DeclarationExemption = string | { key: string; reason?: string };
+
+/**
+ * Normalise the raw exemptions array to a de-duplicated list of keys. Accepts
+ * string entries and { key } objects; ignores anything else. A non-array input
+ * (missing/undefined field) normalises to [] — "empty = no exemptions".
+ */
+export function normaliseExemptions(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const e of raw) {
+    let key: string | null = null;
+    if (typeof e === "string") {
+      key = e;
+    } else if (
+      e && typeof e === "object" &&
+      typeof (e as { key?: unknown }).key === "string"
+    ) {
+      key = (e as { key: string }).key;
+    }
+    if (key && key.length > 0 && !seen.has(key)) {
+      seen.add(key);
+      out.push(key);
+    }
+  }
+  return out;
+}
+
+/**
+ * must_declare_set — the LIVE governed background keys that the D4 invariant
+ * requires to be declared-or-exempt. From the SAME c.client_brand_asset rows the
+ * probe already fetches for check (b) (usage=background), keep the rows that are
+ * is_active AND approved AND production_use_allowed (COALESCE(...,true)=true —
+ * an ABSENT production_use_allowed means allowed). Deduplicated asset_key list.
+ *
+ * NOTE: this filter is DELIBERATELY BROADER than check (b)'s eligible-pool chain
+ * (no license / bucket / platform / text-safety fences): D4 asks "is this a live
+ * governed asset that must be declared", NOT "is it resolver-eligible right now".
+ */
+export function computeMustDeclareSet(rows: BrandAssetRow[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const meta = r.asset_meta;
+    if (metaText(meta, "usage") !== "background") continue;
+    if (r.is_active !== true) continue;
+    if (!pgBooleanIsTrue(metaText(meta, "approved"))) continue;
+    // COALESCE((asset_meta->>'production_use_allowed')::bool, true) = true:
+    // absent -> allowed; present-and-not-true -> excluded.
+    const pua = metaText(meta, "production_use_allowed");
+    if (pua !== null && !pgBooleanIsTrue(pua)) continue;
+    const key = metaText(meta, "asset_key");
+    if (!key) continue; // a governed asset with no asset_key cannot be declared
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(key);
+    }
+  }
+  return out;
+}
+
+/** The pure D4 coverage verdict (index.ts adds registry_version + registry_source). */
+export interface DeclarativeCoverageResult {
+  status: "ok" | "drift";
+  must_declare_count: number;
+  declared_count: number;
+  exempt_count: number;
+  violation_keys: string[];
+}
+
+/**
+ * Pure D4 predicate: violation_keys = must_declare − (declared ∪ exempt), in
+ * must_declare order, deduplicated. status = 'drift' iff any violation, else 'ok'.
+ */
+export function computeDeclarativeCoverage(
+  declaredKeys: string[],
+  exemptKeys: string[],
+  mustDeclareKeys: string[],
+): DeclarativeCoverageResult {
+  const covered = new Set<string>([...declaredKeys, ...exemptKeys]);
+  const violation_keys: string[] = [];
+  const seenViol = new Set<string>();
+  for (const k of mustDeclareKeys) {
+    if (!covered.has(k) && !seenViol.has(k)) {
+      seenViol.add(k);
+      violation_keys.push(k);
+    }
+  }
+  return {
+    status: violation_keys.length > 0 ? "drift" : "ok",
+    must_declare_count: new Set(mustDeclareKeys).size,
+    declared_count: new Set(declaredKeys).size,
+    exempt_count: new Set(exemptKeys).size,
+    violation_keys,
   };
 }
 
