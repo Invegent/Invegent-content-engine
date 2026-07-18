@@ -2,7 +2,7 @@ CLAIMED v5.68–v5.69 · tmr-d7-second-brand-governed-image-proof · main-checko
 
 # Result — TMR D7 · NDIS Yarns second-brand governed-image proof
 
-**Status:** IN PROGRESS — build-out lane open (steps 2–7); every apply/flip/deploy/render is a PK gate.
+**Status:** ✅ **CLOSED — D7 static-image second-brand proof COMPLETE (PK PASS 2026-07-18, v5.75).** NDIS Yarns is the first proven second brand on the governed `image_quote` spine. Carries (non-blocking): rotate Creatomate key · authoritative NDIS logo swap · IG/LI extension after FB.
 **Brief:** [`docs/briefs/tmr-d7-second-brand-exit-test-v1.md`](../tmr-d7-second-brand-exit-test-v1.md) + [`docs/briefs/spine-gen-v2-image-path-rewire-brief-v1.md`](../spine-gen-v2-image-path-rewire-brief-v1.md) (N1–N7).
 **Lane class / tier:** PRODUCT_PROOF · steps span T2 (declarative/dark-additive) → T3 (asset promotion · code+deploy · governance flip · render).
 **Orchestration:** PK is driving this lane through the TMR Lane Orchestrator (confirmed 2026-07-18); orchestrator coordination carries PK intent; applies remain PK gates.
@@ -48,11 +48,11 @@ NDIS → generic (registry `0e006c5c…`): `assignment_status='visually_approved
 ### Step 5 (N3) proof event — ✅ APPLIED
 `visual_approval / passed / facebook / local_render_file`, evidence = render `b997c38a…` + recipe. `select_template` steps **d+e now satisfied** for NDIS (with N4/N5 = step f).
 
-### Step 6 (N1) governance flip — ⛔ HELD (sequencing hazard)
-`INSERT (NDIS, image_quote, enabled=true)`. **HELD until cc-0040 v3.31.0 lands** — flipping before the footer deploy risks a pending NDIS draft auto-rendering `footer=''` (the pre-revision blank look). PK gate; T3 (+ fail-closed pre-check + external review).
+### Step 6 (N1) governance flip — ✅ APPLIED (PK gate 2026-07-18, v5.75)
+Precondition verified on LIVE source (image-worker v3.31.0 + ai-worker v2.20.0, NDIS contract footer='NDIS Yarns', gate 180). External review `8307bfb4` **agree/low/high** (packet `d1da274f…`). `DO`-block with fail-closed pre-check (logo/bg/assignment/proof all ≥1) + CAS + in-txn assert → `c.client_creative_governance (NDIS, image_quote, enabled=true)` inserted (contract_ref `ndis_yarns.image_quote.news_card`, render_label `creative_library_b1_production`, registry `ndis-yarns.json`). PP untouched. `isImageGovernanceEnabled(NDIS,'image_quote')`=true. Rollback = DELETE the row.
 
-### Step 7 — NDIS FB governed proof render — waits on v3.31.0 + N1
-Pass = `status!=failed` + `selector_status=ok` + NDIS `asset_id`s / **no PP string** + PK final visual. Should match the approved Option-B card.
+### Step 7 — NDIS FB governed proof render — ✅ PASS (PK final visual 2026-07-18, v5.75)
+**The live end-to-end D7 proof.** Controlled publish-safe re-render (cc-0033a pattern) of already-published FB draft `5aa4a548` ("SCCP funding…", real 73-char headline): flipped `published/generated`→`approved/pending` (CAS) → image-worker v3.31.0 cron rendered governed → **restored byte-clean** (`published/generated/.png`, `new_publish_rows=0`, live post untouched). Evidence `render_log 6a2cdeed`: `label=creative_library_b1_production` · `selector_status=ok` · winner `generic_market_insight_card_1x1_v1` · Background `bg_ny_brand_texture_navy_waves` + Logo `ny_logo_mark_only` (governed/client_match) · **no PP string**. **PK visual PASS**: mark-only logo · `NDIS UPDATE` badge · `NDIS Yarns` footer · navy bg · real draft-derived subtitle · **no overprint at 73 chars**. Output `…/3d79d14e….jpg`. **D7 static-image second-brand exit test SATISFIED.**
 
 ### Step 1 (consumed) — `TMR-supp-ndis-bg` — P0 set FENCED; (c) intake ENVELOPE
 PK decision (2026-07-18): **`brand_texture-01` = SOLE P0 background** for the FB-first proof; `civic_neutral-04` crop routed back to `TMR-supp-ndis-bg`.
