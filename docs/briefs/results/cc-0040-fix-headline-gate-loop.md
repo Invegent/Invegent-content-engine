@@ -1,18 +1,19 @@
-# Result cc-0040 — fix-headline-gate-loop (Step 1 of 3)
+# Result cc-0040 — fix-headline-gate-loop (COMPLETE — all steps)
 
 **Brief file:** `docs/briefs/cc-0040-fix-headline-gate-loop.md`  
 **Executed by:** Claude Code (orchestrator + ef-builder) · deploy authorised & sequenced by PK  
-**Completed:** 2026-07-18 Sydney (Step 1 only — Steps 2 & 3 queued)
+**Completed:** 2026-07-18 Sydney (Step 1 + Combined Step 2/3 & D7 footer fold-in — all DEPLOYED)
 
 ---
 
 ## 1. Result status
 
-`Partial` — **Step 1 (dead-letter loop fix) COMPLETE & DEPLOYED**. Steps 2 (ai-worker char budget) and 3 (gate recalibration probe) are ratified-and-queued, not yet started.
+`Complete` — **all cc-0040 steps DEPLOYED & VERIFIED.** Step 1 = dead-letter loop fix (image-worker v3.30.0). Combined = Step 2 (advisor ≤60-char budget), Step 3 (gate 90→180 + unbreakable-token assert + subtitle decouple), and D7 footer fold-in (NDIS footer 'NDIS Yarns') → image-worker v3.31.0 + ai-worker v2.20.0.
 
 ## 2. Commit(s)
 
-- `8b44c94` — fix(cc-0040): image-worker Step 1 — render-log on pre-render throw (dead-letter loop fix) [v3.30.0]. Fast-forwarded onto `main` over base `5f684ba`; pushed to `origin/main` (`dd61931..8b44c94`, clean ff, no force).
+- `8b44c94` — fix(cc-0040): image-worker Step 1 — render-log on pre-render throw (dead-letter loop fix) [v3.30.0]. FF onto `main` over base `5f684ba`; pushed `dd61931..8b44c94`.
+- `70a9629` — fix(cc-0040): image-worker v3.31.0 + ai-worker v2.20.0 — headline gate 90→180 + unbreakable-token assert (S3), advisor ≤60-char budget (S2), NDIS footer 'NDIS Yarns' (D7 fold-in). FF onto `main` over base `50f3ec3`; pushed `50f3ec3..70a9629` (10 files, diff sha256 `bae5b2a5…`). Chain: ef-builder 138+22 tests · branch-warden safe · external review `ee68ad46` agree/proceed · deployed via `safe-deploy.sh --allow-warn`; verified image-worker=v3.31.0 / ai-worker=v2.20.0, drift clean, verify_jwt=false preserved. **D7 footer scope reconstructed** (ref diff `282515818d93` unreachable in this checkout) — minimal (footer value + 3 direct assertions); flagged for D7-lane reconciliation.
 
 ## 3. Files changed
 

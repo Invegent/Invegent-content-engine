@@ -3,7 +3,9 @@
 **Created:** 2026-07-18 Sydney  
 **Author:** chat (orchestrator, read-only Gate-1 design)  
 **Executor:** Claude Code (ef-builder, per-step isolated worktrees) → PK deploy gates  
-**Status:** Gate-1 RATIFIED. **Step 1 DEPLOYED & VERIFIED (image-worker v3.30.0, `8b44c94`, live 2026-07-18).** Result: `docs/briefs/results/cc-0040-fix-headline-gate-loop.md`. Steps 2 & 3 ratified-and-queued.  
+**Status:** ✅ **COMPLETE — all steps DEPLOYED & VERIFIED (2026-07-18).** Step 1 (loop fix, image-worker v3.30.0, `8b44c94`) + Combined Step 2+3 & D7 footer fold-in (image-worker v3.31.0 · ai-worker v2.20.0, `70a9629`). Result: `docs/briefs/results/cc-0040-fix-headline-gate-loop.md`.  
+
+**Combined deploy record (2026-07-18):** commit `70a9629` (base `50f3ec3`, 10 files, diff sha256 `bae5b2a5…`). Changes: gate `B1_HEADLINE_MAX_CHARS` 90→**180** (render-probe verified — no clip <380 chars; PK visual-confirmed 180) · new `B1_HEADLINE_MAX_TOKEN_CHARS=40` unbreakable-token assert · `B1_SUBTITLE_MAX_CHARS` decoupled→90 · advisor `image_headline` reframed to ≤60 chars (ai-worker) · contract PP+NDIS headline `max_chars`→180 (both twins) · **D7 fold-in: NDIS footer ''→'NDIS Yarns'** (both twins + assertions). Chain: ef-builder 138+22 tests · branch-warden **safe** · external review **agree/proceed** (`ee68ad46`, hash `bae5b2a5…`) · PK-authorised deploy via `safe-deploy.sh --allow-warn`. Verified: image-worker=v3.31.0 / ai-worker=v2.20.0, drift clean, verify_jwt=false preserved.  
 
 **Step 1 chain record (2026-07-18):** worktree `…/scratchpad/wt-cc0040` branch `lane/cc-0040-image-worker-loopfix` on base `5f684ba`; diff sha256 `ede6e4cea530879d1ae68fc6a5a0b8266ef725c68329a61afe5aac7979335ff4`; image-worker `v3.28.0→v3.30.0`; files = `image-worker/index.ts` + new `image-worker/handle_render_failure_test.ts`. Verdicts: ef-builder ✓ (137 suite + 7 hermetic pass, `deno check` clean) · branch-warden **safe** · db-rls-auditor **pass** (null-render_id `failed` row inserts & is counted — loop-fix effective) · external review **agree/proceed** (review_id `5e0ae7fa`, pinned hash `ede6e4ce…`).  
 **Result file:** `docs/briefs/results/cc-0040-fix-headline-gate-loop.md` (created on completion)  
@@ -90,6 +92,31 @@ Report the Gate-1 design (this brief) to PK for approval. On approval, execute S
 - **D3 — Gate value → recalibrate to the real floor via a bounded probe (Step 3 runs now).** Run the supervised Creatomate calibration probe to find where the 30px minimum actually clips `generic_market_insight_card_1x1_v1`, set `B1_HEADLINE_MAX_CHARS` from geometry, keep it fail-loud. **No truncation / no AI-rewrite in the render worker.**
 - **D4 — Loop-fix breadth → all pre-render throws, all single-render capped formats.** Step 1 applies the render-log-on-failure fix to every capped-format catch (`image_quote`, `animated_text_reveal`, `animated_data`) so slug/selector/asset throws are covered too. Carousel is out (already uncapped by design).
 - **D5 — Ordering → Step 1 alone first; Step 2 in parallel; Step 3 last.** Steps 1 & 3 both touch image-worker → one deploy at a time, Step 1 first. Step 2 (ai-worker) interleaves; its number is pinned by the Step 3 probe.
+
+## Step 3 findings (2026-07-18 — probe answered from existing cc-0033a evidence; awaiting PK decisions)
+
+The Step 3 calibration probe is **largely already answered** by the cc-0033a calibration harness — no new render is strictly required (wrap model validated 3/3 + 5 edge cases against real Creatomate renders). Evidence: `_harness/cc0033_headline_calibration/CALIBRATION_FINDINGS.md`, `_harness/cc0033_headline_calibration/p1_probe/P1_FINDINGS.md`.
+
+- **Multi-line auto-shrink floor ≈ 330–360 chars** at the DEPLOYED guard (`Headline.height:22%` = 237.6px, `font_size_minimum:30px` → ~7.5 lines × ~48 chars/line). So the 90 gate is wildly conservative; the live 94-char failure would have rendered fine. (Probe P1c measured ~8 lines at 24%; deployed is 22%.)
+- **Char count is the WRONG guard for the real failure.** The one genuine overflow is a single unbreakable token (`E1`: 84-char no-space token overflows the right edge). No `Headline.width`/`height` bound fixes it (`E1y` proved a width bound is pixel-equivalent) — only an **input-side max-single-token-length assert** does. cc-0033a proposed exactly this as a named carry. Exposure is nil in practice (AI prose has no such tokens), but it is the only real render-break.
+- **CALIBRATION_FINDINGS §4b caution:** don't repeat the "pick a better number" mistake — 90 was a proxy for a line budget nobody computed. The deployed auto-shrink guard already makes overflow structurally impossible up to the floor, so deterministic wrap-enforcement is NOT needed; raising the char bound + adding the token assert is the right minimal move.
+
+**Recommendation (pending the 4 PK decisions surfaced 2026-07-18):**
+- Gate → raise `B1_HEADLINE_MAX_CHARS` to a **safety bound** well under the ~330 floor (recommend **180**, room for NDIS long headlines), documented as a safety bound not a fit limit.
+- Add a **max-single-token assert** (~40 chars) to `assertHeadlineWithinGate` (the cc-0033a E1 carry) — the actual overflow guard.
+- Step 2 advisor budget → **quality target ~60 chars / ≤3-line sweet spot** (char budget, not word count), far under the gate.
+- Confirmatory render: optional (model validated); would need PK to convey the production Creatomate key (local env key invalid, digest `df13b951…`; prod digest `8ab5a356…`).
+
+## Steps 2 & 3 build state (2026-07-18 — BUILT in worktrees, local-only; BLOCKED on one PK decision)
+
+PK ratified: gate→180 · add ~40-char token assert · advisor→60 chars · skip confirmatory render. Both steps built green for their own scope; **not committed/deployed**.
+
+- **Step 3 (image-worker)** — worktree `…/scratchpad/wt-cc0040-step3`, branch `lane/cc-0040-step3-image-gate`, base `36e43ba`. Files: `b1_production.ts` (`B1_HEADLINE_MAX_CHARS` 90→180 as a documented safety bound; `B1_SUBTITLE_MAX_CHARS` decoupled → explicit 90; new `B1_HEADLINE_MAX_TOKEN_CHARS=40` + token-split assert in `assertHeadlineWithinGate`) · `index.ts` (VERSION→v3.31.0 + header, drift-gate bump only) · `b1_production_test.ts` (31/31). `deno check` clean. Smoke 422 now reports `max_chars:180` automatically.
+- **Step 2 (ai-worker)** — worktree `…/scratchpad/wt-cc0040-step2`, branch `lane/cc-0040-step2-advisor-charbudget`, base `36e43ba`. Files: `ai-worker/index.ts` (`image_headline` reframed word-count→≤60-char budget in `buildFormatOutputSchema:655` + `callFormatAdvisor:443`; VERSION→v2.20.0; `buildFormatOutputSchema` exported + `Deno.serve` wrapped in `import.meta.main` — proven house test pattern, deployed behaviour byte-identical) · new `format_output_schema_test.ts` (8/8). `deno check` clean. ai-worker `config.toml` `verify_jwt=false` confirmed.
+
+**⛔ BLOCKED — pending PK decision (asked 2026-07-18):** raising `B1_HEADLINE_MAX_CHARS`→180 breaks a **no-drift guard test** in `creative_contract_test.ts` (both workers) because `creative_contract.ts` hardcodes headline `max_chars:90` (declared-but-not-consulted per cc-0033a §4b; only the test reads it). Recommended: set contract `max_chars`→180 in both vendored copies (test re-passes unchanged; contract = render ceiling). This **pulls `creative_contract.ts` into both workers' diffs**, coupling Step 2 & Step 3 at the ai-worker deploy. On decision: re-run ef-builder to add the contract edit(s), then per-step review chains (branch-warden + external review pinned to final hash) + PK deploy gates. Sequencing: image-worker (Step 3) is one deploy; ai-worker (Step 2 + contract) is one deploy.
+
+**Carry (pre-existing, not cc-0040):** `creative_contract_test.ts` "runtime-import guard: no live JSON" FAILS on clean main HEAD `36e43ba` in both workers (guard strips comments then asserts no `.json` reference; the v2.19.0 N7b registry data appears to trip it). Spawned as a separate task.
 
 ## Notes
 
