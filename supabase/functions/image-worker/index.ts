@@ -1,3 +1,22 @@
+// image-worker v3.30.0
+// v3.30.0 (2026-07-18) — cc-0040 Step 1: RENDER-LOG-ON-PRE-RENDER-THROW (dead-letter loop fix,
+//   PK decisions D1+D4). A governed draft that throws BEFORE renderUploadAndLog (e.g. the
+//   headline gate assertHeadlineWithinGate, governed_slug_unresolved, the selector RPC, asset
+//   reachability) previously set image_status='failed' but wrote NO m.post_render_log row.
+//   pipeline-fixer counts post_render_log rows with status IN ('failed','timeout') per draft and
+//   only dead-letters after RENDER_ATTEMPT_CAP=5; with zero rows the cap never trips and it resets
+//   failed->pending forever. FIX: the per-draft catch of the THREE single-render capped formats
+//   (image_quote / animated_text_reveal / animated_data) now calls handleRenderFailure(), a
+//   best-effort helper that FIRST writes a status='failed' post_render_log row (reusing the
+//   existing failure-path write_render_log payload shape; swallowed — a log failure NEVER changes
+//   behaviour) and THEN performs the SAME image_status='failed' update as before. So the existing
+//   pipeline-fixer cap now counts these throws. p_client_id uses the loop's raw draft.client_id
+//   (the resolved clientId is not in scope in the catch); all three loops already select client_id.
+//   STRICTLY OUT OF SCOPE: the carousel catch (uncapped by design — untouched) and the
+//   video-fallback catch (recommends a VIDEO format pipeline-fixer never selects — untouched);
+//   renderUploadAndLog, the headline gate itself, b1_production.ts, ai-worker, pipeline-fixer,
+//   RENDER_ATTEMPT_CAP; NO DB write/migration/schema change; NO _shared module edit; the production
+//   Deno.serve hot path and every success path are byte-identical.
 // image-worker v3.29.0
 // v3.29.0 (2026-07-18) — TMR D7 N7b — register NDIS_IMAGE_QUOTE_NEWS_CARD_V1 in
 //   CREATIVE_CONTRACT_REGISTRY; data addition, no logic change. (Entrypoint version bump only,
@@ -406,7 +425,7 @@ import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C:
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.28.0';
+const VERSION = 'image-worker-v3.30.0';  // cc-0040 Step 1: re-synced with the header (had lagged at v3.28.0 through v3.29.0's data-only bump)
 // cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
 // Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
 // provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1
@@ -432,6 +451,32 @@ function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 function nowIso() { return new Date().toISOString(); }
+// cc-0040 Step 1 (PK D1+D4): per-draft render-failure handler for the THREE single-render capped
+// formats (image_quote / animated_text_reveal / animated_data). A pre-render throw used to set
+// image_status='failed' with NO post_render_log row, so pipeline-fixer's RENDER_ATTEMPT_CAP never
+// tripped and the draft reset failed->pending forever. This writes a best-effort status='failed'
+// post_render_log row (so the existing cap counts the throw) and THEN performs the SAME
+// image_status='failed' update as before. The log write is SWALLOWED — a logging failure must NEVER
+// change the image_status='failed' behaviour. p_client_id uses the loop's raw draft.client_id (the
+// resolved clientId is declared inside the per-draft try and is not in scope in the catch). Exported
+// for hermetic testing. NOT used by the carousel catch (uncapped) or the video-fallback catch.
+export async function handleRenderFailure(
+  supabase: any,
+  draft: { post_draft_id: string; client_id: string | null },
+  iceFormatKey: string,
+  msg: string,
+): Promise<void> {
+  try {
+    await supabase.rpc('write_render_log', {
+      p_post_draft_id: draft.post_draft_id, p_slide_id: null, p_client_id: draft.client_id,
+      p_ice_format_key: iceFormatKey, p_render_engine: 'creatomate', p_creatomate_render_id: null,
+      p_status: 'failed', p_output_url: null, p_storage_url: null,
+      p_credits_used: null, p_render_duration_ms: null, p_error_message: msg, p_render_spec: null,
+    });
+  } catch (logEx: any) { console.error('[image-worker] cc-0040 failure-log threw:', logEx?.message); }
+  // Existing behaviour, byte-identical to the prior inline update — MUST always run.
+  await supabase.schema('m').from('post_draft').update({ image_status: 'failed', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
+}
 function getServiceClient() {
   const url = Deno.env.get('SUPABASE_URL'); const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
@@ -927,7 +972,7 @@ Deno.serve(async (req: Request) => {
       const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildImageQuoteScript({ headline, ...b, logoUrl }), storagePath: `${b.clientSlug}/${draft.post_draft_id}.png`, mimeType: 'image/png', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'image_quote' });
       await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
       results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'generated', image_url: imageUrl });
-    } catch (e: any) { const msg = (e?.message ?? String(e)).slice(0, 2000); await supabase.schema('m').from('post_draft').update({ image_status: 'failed', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'failed', error: msg }); }
+    } catch (e: any) { const msg = (e?.message ?? String(e)).slice(0, 2000); await handleRenderFailure(supabase, draft, 'image_quote', msg); results.push({ post_draft_id: draft.post_draft_id, format: 'image_quote', status: 'failed', error: msg }); }
   }
 
   // ── animated_text_reveal ────────────────────────────────────────────────────
@@ -943,7 +988,7 @@ Deno.serve(async (req: Request) => {
       const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildAnimatedTextRevealScript({ headline, ...b, logoUrl }), storagePath: `${b.clientSlug}/${draft.post_draft_id}.gif`, mimeType: 'image/gif', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'animated_text_reveal' });
       await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
       results.push({ post_draft_id: draft.post_draft_id, format: 'animated_text_reveal', status: 'generated', image_url: imageUrl });
-    } catch (e: any) { const msg = (e?.message ?? String(e)).slice(0, 2000); await supabase.schema('m').from('post_draft').update({ image_status: 'failed', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'animated_text_reveal', status: 'failed', error: msg }); }
+    } catch (e: any) { const msg = (e?.message ?? String(e)).slice(0, 2000); await handleRenderFailure(supabase, draft, 'animated_text_reveal', msg); results.push({ post_draft_id: draft.post_draft_id, format: 'animated_text_reveal', status: 'failed', error: msg }); }
   }
 
   // ── animated_data ───────────────────────────────────────────────────────────
@@ -959,7 +1004,7 @@ Deno.serve(async (req: Request) => {
       const imageUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: buildAnimatedDataScript({ statValue: spec.stat_value, statLabel: spec.stat_label, contextLine: spec.context_line, ...b, logoUrl }), storagePath: `${b.clientSlug}/${draft.post_draft_id}.gif`, mimeType: 'image/gif', postDraftId: draft.post_draft_id, clientId, iceFormatKey: 'animated_data' });
       await supabase.schema('m').from('post_draft').update({ image_url: imageUrl, image_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
       results.push({ post_draft_id: draft.post_draft_id, format: 'animated_data', status: 'generated', stat_value: spec.stat_value, image_url: imageUrl });
-    } catch (e: any) { const msg = (e?.message ?? String(e)).slice(0, 2000); await supabase.schema('m').from('post_draft').update({ image_status: 'failed', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id); results.push({ post_draft_id: draft.post_draft_id, format: 'animated_data', status: 'failed', error: msg }); }
+    } catch (e: any) { const msg = (e?.message ?? String(e)).slice(0, 2000); await handleRenderFailure(supabase, draft, 'animated_data', msg); results.push({ post_draft_id: draft.post_draft_id, format: 'animated_data', status: 'failed', error: msg }); }
   }
 
   // ── carousel ────────────────────────────────────────────────────────────────
