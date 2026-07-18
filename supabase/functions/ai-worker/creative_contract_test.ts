@@ -19,8 +19,11 @@ import {
 
 import {
   PP_IMAGE_QUOTE_NEWS_CARD_V1,
+  NDIS_IMAGE_QUOTE_NEWS_CARD_V1,
   resolveCreativeContract,
 } from './creative_contract.ts';
+
+const NDIS_CLIENT_ID = 'fb98a472-ae4d-432d-8738-2273231c1ef4';
 
 import {
   B1_GOVERNED_CLIENT_ID,
@@ -152,4 +155,29 @@ Deno.test('resolver determinism + selector_reason_default', () => {
   const b = resolveCreativeContract(PP_CLIENT_ID, 'image_quote');
   assertStrictEquals(a, b);
   assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.selector_reason_default, 'pp_image_quote_default');
+});
+
+// Test 10 — TMR D7 N7b: NDIS_IMAGE_QUOTE_NEWS_CARD_V1 is registered and resolves for the
+// NDIS Yarns client_id + image_quote; PP is unchanged; every cross/negative pair is null.
+Deno.test('D7 N7b registry: NDIS image_quote → NDIS contract; PP unchanged; negatives null', () => {
+  assertStrictEquals(resolveCreativeContract(NDIS_CLIENT_ID, 'image_quote'), NDIS_IMAGE_QUOTE_NEWS_CARD_V1);
+  assertEquals(NDIS_IMAGE_QUOTE_NEWS_CARD_V1.contract_key, 'ndis_yarns.image_quote.news_card.v1');
+  assertEquals(NDIS_IMAGE_QUOTE_NEWS_CARD_V1.client_slug, 'ndis-yarns');
+  assertEquals(NDIS_IMAGE_QUOTE_NEWS_CARD_V1.gate.client_id, NDIS_CLIENT_ID);
+  assertEquals(NDIS_IMAGE_QUOTE_NEWS_CARD_V1.gate.recommended_format, 'image_quote');
+
+  // PP pair is byte-unchanged by the NDIS addition.
+  assertStrictEquals(resolveCreativeContract(PP_CLIENT_ID, 'image_quote'), PP_IMAGE_QUOTE_NEWS_CARD_V1);
+
+  // NDIS + non-image_quote format → null; unknown client + image_quote → null.
+  assertEquals(resolveCreativeContract(NDIS_CLIENT_ID, 'carousel'), null);
+  assertEquals(resolveCreativeContract(NDIS_CLIENT_ID, 'video_short_stat'), null);
+  assertEquals(resolveCreativeContract('00000000-0000-0000-0000-000000000000', 'image_quote'), null);
+
+  // NDIS renderer-fixed brand payload: category='NDIS UPDATE', footer='' (empty), location=''.
+  const rf = (n: string) => NDIS_IMAGE_QUOTE_NEWS_CARD_V1.fields.renderer_fixed.find((e) => e.field === n)?.value;
+  assertEquals(rf('category'), 'NDIS UPDATE');
+  assertEquals(rf('footer'), '');
+  assertEquals(rf('location'), '');
+  assertEquals(NDIS_IMAGE_QUOTE_NEWS_CARD_V1.selector_reason_default, 'ndis_image_quote_default');
 });

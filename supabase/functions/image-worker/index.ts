@@ -1,4 +1,7 @@
-// image-worker v3.28.0
+// image-worker v3.29.0
+// v3.29.0 (2026-07-18) — TMR D7 N7b — register NDIS_IMAGE_QUOTE_NEWS_CARD_V1 in
+//   CREATIVE_CONTRACT_REGISTRY; data addition, no logic change. (Entrypoint version bump only,
+//   to reclassify the drift gate off A-LE — the actual change is in creative_contract.ts.)
 // v3.28.0 (2026-07-17) — TMR D6-5 BRAND-PAYLOAD DE-HARDCODE (brief G0b / D6-5). The proof
 //   field builder buildProofFieldsFromDraft (branch_b_proof.ts) no longer bakes the PP
 //   category/footer/location literals: it now sources them from the D6-3 governed contract

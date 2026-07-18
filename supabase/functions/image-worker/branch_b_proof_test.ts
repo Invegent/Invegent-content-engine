@@ -142,6 +142,25 @@ Deno.test('D6-5 contract-incomplete fail-closed (injected resolver): missing foo
   );
 });
 
+Deno.test('D7 N7b empty-footer-resolves-clean (REAL resolver): NDIS resolves, footer "" does NOT throw', () => {
+  // Uses the DEFAULT (real) resolver — proves NDIS is registered end-to-end via
+  // resolveCreativeContract, and that the `=== undefined` completeness guard treats an
+  // empty-string footer ('') as RESOLVED (present-but-empty), not missing.
+  const NDIS_CLIENT_ID = 'fb98a472-ae4d-432d-8738-2273231c1ef4';
+  const f = buildProofFieldsFromDraft(
+    { image_headline: 'Test headline', client_id: NDIS_CLIENT_ID, recommended_format: 'image_quote' },
+    new Date('2026-07-18T00:00:00Z'),
+  );
+  assertEquals(f, {
+    category: 'NDIS UPDATE',
+    footer: '',
+    location: '',
+    headline: 'Test headline',
+    subtitle: '',
+    date: '18 July 2026',
+  });
+});
+
 Deno.test('D6-5 headline-gate precedence: missing headline + unregistered client throws the HEADLINE error', () => {
   // The headline hard-gate must run BEFORE contract resolution: a null-headline draft for an
   // unregistered client throws the headline error, NOT brand_payload_contract_unresolved.

@@ -11,7 +11,10 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.18.0";
+const VERSION = "ai-worker-v2.19.0";
+// v2.19.0 (2026-07-18) — TMR D7 N7b — register NDIS_IMAGE_QUOTE_NEWS_CARD_V1 in
+//   CREATIVE_CONTRACT_REGISTRY; data addition, no logic change. (Entrypoint version bump only,
+//   to reclassify the drift gate off A-LE — the actual change is in creative_contract.ts.)
 // v2.18.0 (2026-07-17) — SPINE GEN v2 D6-3 (parity with image-worker): the vendored
 //   resolveCreativeContract in creative_contract.ts is now a per-(client_id, recommended_format)
 //   REGISTRY lookup instead of the hardcoded PP-UUID literal branch. PP behaviour is IDENTICAL

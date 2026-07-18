@@ -195,6 +195,60 @@ export const PP_IMAGE_QUOTE_NEWS_CARD_V1: CreativeContract = Object.freeze({
   }),
 });
 
+/**
+ * Vendored projection of `ndis_yarns.image_quote.news_card.v1` (TMR D7 N7b).
+ * Frozen (deeply) so it is immutable at runtime. Registered alongside PP so the governed
+ * image_quote path resolves NDIS Yarns instead of throwing brand_payload_contract_unresolved.
+ * Background is a POLICY REFERENCE (policy:tmr_spine, resolver:resolve_slot_assets, NO
+ * hardcoded pool) — same v3 shape as PP; runtime background resolved per-render by the TMR spine.
+ */
+export const NDIS_IMAGE_QUOTE_NEWS_CARD_V1: CreativeContract = Object.freeze({
+  contract_key: 'ndis_yarns.image_quote.news_card.v1',
+  contract_ref: 'ndis_yarns.image_quote.news_card',
+  contract_version: 'v1',
+  client_id: 'fb98a472-ae4d-432d-8738-2273231c1ef4',
+  client_slug: 'ndis-yarns',
+  gate: Object.freeze({
+    client_id: 'fb98a472-ae4d-432d-8738-2273231c1ef4',
+    recommended_format: 'image_quote',
+  }),
+  maps_to_variant: Object.freeze({
+    template_family_key: 'ndis-yarns-news',
+    template_variant_key: 'generic-market-insight-1x1',
+    provider: 'creatomate',
+    provider_template_id: '48cba556-0a53-4001-90f0-05420d10efc0',
+    implementation_id: 'generic_market_insight_card_1x1_v1',
+    runtime_render_spec_template_variant: 'generic-market-insight-1x1',
+  }),
+  fields: Object.freeze({
+    ai_authored: Object.freeze([
+      Object.freeze({ field: 'headline', required: true, max_chars: 90, policy: 'hard_gate_throw' as const }),
+    ]),
+    derived: Object.freeze([
+      Object.freeze({ field: 'subtitle', source: 'first non-empty paragraph of draft_body', required: false, max_chars: 90, policy: 'truncate_optional' as const }),
+    ]),
+    renderer_fixed: Object.freeze([
+      Object.freeze({ field: 'category', value: 'NDIS UPDATE' }),
+      Object.freeze({ field: 'date', value: 'render date (today)' }),
+      Object.freeze({ field: 'footer', value: '' }),
+      Object.freeze({ field: 'location', value: '' }),
+    ]),
+    governed_assets: Object.freeze({
+      logo: Object.freeze({ asset_key: 'ny_logo_full_colour', policy: 'fixed' as const }),
+      background: Object.freeze({ policy: 'tmr_spine', resolver: 'resolve_slot_assets', note: 'No hardcoded pool; runtime background resolved per-render by the TMR spine.' }),
+    }),
+  }),
+  fallback_policy: 'governed_only_fail_loud',
+  evidence_fields_for_renderer: Object.freeze(['variant_key', 'contract_ref', 'contract_version', 'selector_reason']),
+  selector_reason_default: 'ndis_image_quote_default',
+  source: Object.freeze({
+    registry_version: 'v0.1',
+    source_commit: 'c15245a',
+    contract_ref: 'ndis_yarns.image_quote.news_card',
+    contract_version: 'v1',
+  }),
+});
+
 // ---------------------------------------------------------------------------
 // Per-(client_id, recommended_format) contract registry + deterministic resolver
 // ---------------------------------------------------------------------------
@@ -210,6 +264,8 @@ export const PP_IMAGE_QUOTE_NEWS_CARD_V1: CreativeContract = Object.freeze({
 const CREATIVE_CONTRACT_REGISTRY: Readonly<Record<string, CreativeContract>> = Object.freeze({
   [`${PP_IMAGE_QUOTE_NEWS_CARD_V1.gate.client_id}::${PP_IMAGE_QUOTE_NEWS_CARD_V1.gate.recommended_format}`]:
     PP_IMAGE_QUOTE_NEWS_CARD_V1,
+  [`${NDIS_IMAGE_QUOTE_NEWS_CARD_V1.gate.client_id}::${NDIS_IMAGE_QUOTE_NEWS_CARD_V1.gate.recommended_format}`]:
+    NDIS_IMAGE_QUOTE_NEWS_CARD_V1,
 });
 
 /**
