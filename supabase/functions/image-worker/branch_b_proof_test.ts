@@ -142,10 +142,11 @@ Deno.test('D6-5 contract-incomplete fail-closed (injected resolver): missing foo
   );
 });
 
-Deno.test('D7 N7b empty-footer-resolves-clean (REAL resolver): NDIS resolves, footer "" does NOT throw', () => {
+Deno.test('D7 N7b NDIS resolves-clean (REAL resolver): NDIS footer "NDIS Yarns" (D7 fold-in); empty location/subtitle resolve clean', () => {
   // Uses the DEFAULT (real) resolver — proves NDIS is registered end-to-end via
-  // resolveCreativeContract, and that the `=== undefined` completeness guard treats an
-  // empty-string footer ('') as RESOLVED (present-but-empty), not missing.
+  // resolveCreativeContract. cc-0040 D7 fold-in: the NDIS footer is now 'NDIS Yarns'.
+  // The `=== undefined` completeness guard still treats empty-string fields (location '',
+  // subtitle '') as RESOLVED (present-but-empty), not missing.
   const NDIS_CLIENT_ID = 'fb98a472-ae4d-432d-8738-2273231c1ef4';
   const f = buildProofFieldsFromDraft(
     { image_headline: 'Test headline', client_id: NDIS_CLIENT_ID, recommended_format: 'image_quote' },
@@ -153,7 +154,7 @@ Deno.test('D7 N7b empty-footer-resolves-clean (REAL resolver): NDIS resolves, fo
   );
   assertEquals(f, {
     category: 'NDIS UPDATE',
-    footer: '',
+    footer: 'NDIS Yarns',
     location: '',
     headline: 'Test headline',
     subtitle: '',

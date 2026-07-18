@@ -17,7 +17,7 @@
 import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import {
   B1_GOVERNED_CLIENT_ID, B1_GOVERNED_CLIENT_SLUG,
-  B1_HEADLINE_MAX_CHARS, B1_SUBTITLE_MAX_CHARS, B1_PRODUCTION_LABEL, B1_SMOKE_LABEL,
+  B1_HEADLINE_MAX_CHARS, B1_HEADLINE_MAX_TOKEN_CHARS, B1_SUBTITLE_MAX_CHARS, B1_PRODUCTION_LABEL, B1_SMOKE_LABEL,
   isB1GovernedImageQuote, assertHeadlineWithinGate, assertExpectedProviderTemplate, deriveB1Subtitle,
   TMR_WINNER_TEXT_FIELDS, TMR_WINNER_LAYOUT_GUARD, buildTmrRenderPlan,
   type B1Fields, type TmrSelectorResponse,
@@ -63,16 +63,22 @@ Deno.test('B1-4: non-PP client_ids stay legacy; slug strings never trigger the g
   assert(!isB1GovernedImageQuote('4036A6B5-B4A3-406E-998D-C2FE14A8BBDD')); // case-sensitive — only the exact id
 });
 
-// (5) minimal headline-length hard-gate: long throws BEFORE any Creatomate call; short passes; blank throws.
-Deno.test('B1-5: assertHeadlineWithinGate — long throws, short passes, blank throws', () => {
-  const tooLong = 'x'.repeat(B1_HEADLINE_MAX_CHARS + 1); // 91 chars
-  assertEquals(tooLong.length, 91);
-  const err = assertThrows(() => assertHeadlineWithinGate(tooLong), Error);
-  assert(String(err).includes('exceeds B1_HEADLINE_MAX_CHARS=90'));
-  assert(String(err).includes('headline length 91'));
+// (5) headline hard-gate: over-length (multi-word) throws BEFORE any Creatomate call;
+// an at-bound multi-word headline passes; blank throws. cc-0040: bound is 180 chars.
+Deno.test('B1-5: assertHeadlineWithinGate — length bound (180), boundary passes, blank throws', () => {
+  assertEquals(B1_HEADLINE_MAX_CHARS, 180);
+  // 181-char MULTI-WORD headline (no single token > 40) → length throw.
+  // build from 45 four-char words joined by spaces = 45*4 + 44 = 224; slice to 181.
+  const words181 = Array.from({ length: 60 }, () => 'abcd').join(' ').slice(0, 181);
+  assertEquals(words181.length, 181);
+  const err = assertThrows(() => assertHeadlineWithinGate(words181), Error);
+  assert(String(err).includes('exceeds B1_HEADLINE_MAX_CHARS=180'));
+  assert(String(err).includes('headline length 181'));
 
-  // boundary: exactly 90 passes; 89 passes.
-  assertHeadlineWithinGate('y'.repeat(B1_HEADLINE_MAX_CHARS)); // no throw
+  // boundary: an exactly-180-char MULTI-WORD headline (each token ≤ 40) passes.
+  const words180 = Array.from({ length: 60 }, () => 'abcd').join(' ').slice(0, 180);
+  assertEquals(words180.length, 180);
+  assertHeadlineWithinGate(words180); // no throw
   assertHeadlineWithinGate('Perth median house price hits new record this quarter'); // short, no throw
 
   // blank / whitespace-only / null → missing-headline throw.
@@ -80,8 +86,28 @@ Deno.test('B1-5: assertHeadlineWithinGate — long throws, short passes, blank t
   assertThrows(() => assertHeadlineWithinGate('   '), Error, 'b1: missing image_headline');
   assertThrows(() => assertHeadlineWithinGate(null), Error, 'b1: missing image_headline');
 
-  // trims before measuring: a 90-char core padded with whitespace still passes.
-  assertHeadlineWithinGate('   ' + 'z'.repeat(B1_HEADLINE_MAX_CHARS) + '   ');
+  // trims before measuring: a 180-char multi-word core padded with whitespace still passes.
+  assertHeadlineWithinGate('   ' + words180 + '   ');
+});
+
+// (5b) cc-0040 unbreakable-token guard: a single whitespace-free token longer than
+// B1_HEADLINE_MAX_TOKEN_CHARS throws EVEN when the total length is within 180; a 40-char
+// token (boundary, inclusive) passes.
+Deno.test('B1-5b: assertHeadlineWithinGate — 41-char token throws, 40-char token passes', () => {
+  assertEquals(B1_HEADLINE_MAX_TOKEN_CHARS, 40);
+  // a lone 41-char token (total length 41 ≤ 180) → token-guard throw.
+  const token41 = 'a'.repeat(41);
+  assertEquals(token41.length, 41);
+  assert(token41.length <= B1_HEADLINE_MAX_CHARS);
+  const err = assertThrows(() => assertHeadlineWithinGate(token41), Error);
+  assert(String(err).includes('token length 41'));
+  assert(String(err).includes('B1_HEADLINE_MAX_TOKEN_CHARS=40'));
+
+  // an over-long token embedded in otherwise-short copy still throws.
+  assertThrows(() => assertHeadlineWithinGate('Perth ' + 'z'.repeat(41) + ' record'), Error, 'token length 41');
+
+  // boundary: a lone 40-char token passes (inclusive).
+  assertHeadlineWithinGate('b'.repeat(B1_HEADLINE_MAX_TOKEN_CHARS)); // no throw
 });
 
 // (6) RETIRED (Lane W): B1-6 exercised mapResolvedAssets, which was removed with the

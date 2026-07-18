@@ -11,7 +11,22 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.19.0";
+const VERSION = "ai-worker-v2.20.0";
+// v2.20.0 (2026-07-18) — cc-0040 Step 2 (advisor image_headline char budget) + the shared
+//   creative_contract.ts cc-0040 edits (PP+NDIS headline max_chars 90→180; NDIS footer
+//   ''→'NDIS Yarns' — D7 fold-in), applied IDENTICALLY to the ai-worker vendored twin
+//   (parity guard unchanged). Two prompt-only changes tighten the AUTHORED headline toward a
+//   single strong pull-quote line: (1) callFormatAdvisor system prompt gains a FIELD RULE
+//   "image_headline should be ≤ ~60 characters"; (2) buildFormatOutputSchema replaces the
+//   "10-15 word pull quote" framing with a ≤~60-character budget (Starting-point seed kept).
+//   No truncation/assert here — the RENDER worker (image-worker) owns the hard gate (now 180
+//   + a 40-char unbreakable-token guard). buildFormatOutputSchema is EXPORTED and the
+//   top-level Deno.serve is guarded with `if (import.meta.main)` so it is hermetically
+//   unit-testable; deployed behaviour is byte-identical (proven pattern — heygen-worker/
+//   pipeline-fixer). STRICTLY OUT OF SCOPE: no format-SELECTION change (recommended_format
+//   untouched), no video/other-format branch change beyond the shared image_headline
+//   instruction, no truncation/validation/repair, no render change, no image-worker runtime
+//   change, no DB schema/migration, no dashboard, no stamp-shape change.
 // v2.19.0 (2026-07-18) — TMR D7 N7b — register NDIS_IMAGE_QUOTE_NEWS_CARD_V1 in
 //   CREATIVE_CONTRACT_REGISTRY; data addition, no logic change. (Entrypoint version bump only,
 //   to reclassify the drift gate off A-LE — the actual change is in creative_contract.ts.)
@@ -440,7 +455,7 @@ async function callFormatAdvisor(opts: { anthropicKey: string; seedTitle: string
   const preferredFormatInstruction = preferredFormat
     ? `\n\nCLIENT FORMAT PREFERENCE:\nThis client prefers ${preferredFormat} format. When the content quality is borderline (e.g., has one reasonably interesting insight but not a definitive standout stat), bias toward ${preferredFormat} over text. Only fall back to text if the content is genuinely conversational/reactive with no visual potential whatsoever.`
     : '';
-  const systemPrompt = `You are a content format advisor for ${clientName}, a ${vertical} sector social media presence.\n\nTarget platform: ${platform}. Choose only formats compatible with ${platform}.\n\nYour task: read a content seed and select the optimal format from the available palette.\n\nAVAILABLE FORMATS:\n${formatPalette}\n${perfSummary}\nDECISION RULES:\n- Choose the format that best serves the content's natural structure\n- Default to text if the content is conversational, reactive, or opinionated\n- carousel requires 3+ distinct structured points and minimum 200 words\n- image_quote requires one interesting stat, insight, or key message that works as a visual headline — it doesn't need to be a hard number, a clear declarative statement about a sector development works\n- video_short_kinetic requires 3+ distinct points expressible in 60 chars each\n- video_short_stat requires one striking numeric stat that anchors the story\n- Never choose a visual format to add interest if the content doesn't support it${preferredFormatInstruction}\n\nReturn ONLY valid JSON: {\"format_key\": string, \"reason\": string, \"image_headline\": string}`;
+  const systemPrompt = `You are a content format advisor for ${clientName}, a ${vertical} sector social media presence.\n\nTarget platform: ${platform}. Choose only formats compatible with ${platform}.\n\nYour task: read a content seed and select the optimal format from the available palette.\n\nAVAILABLE FORMATS:\n${formatPalette}\n${perfSummary}\nDECISION RULES:\n- Choose the format that best serves the content's natural structure\n- Default to text if the content is conversational, reactive, or opinionated\n- carousel requires 3+ distinct structured points and minimum 200 words\n- image_quote requires one interesting stat, insight, or key message that works as a visual headline — it doesn't need to be a hard number, a clear declarative statement about a sector development works\n- video_short_kinetic requires 3+ distinct points expressible in 60 chars each\n- video_short_stat requires one striking numeric stat that anchors the story\n- Never choose a visual format to add interest if the content doesn't support it${preferredFormatInstruction}\n\nFIELD RULES:\n- image_headline should be ≤ ~60 characters — a single strong pull-quote line.\n\nReturn ONLY valid JSON: {\"format_key\": string, \"reason\": string, \"image_headline\": string}`;
   const userPrompt = `Content seed:\nTitle: ${seedTitle || '(no title)'}\nBody preview: ${seedBody.slice(0, 600)}${seedBody.length > 600 ? '...' : ''}\n\nSelect the optimal format.`;
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -648,11 +663,11 @@ async function callOpenAI(opts: { apiKey: string; model: string; systemPrompt: s
   }
 }
 
-function buildFormatOutputSchema(decidedFormat: string, advisorImageHeadline: string): string {
+export function buildFormatOutputSchema(decidedFormat: string, advisorImageHeadline: string): string {
   const needsImage = ['image_quote', 'carousel', 'animated_text_reveal', 'animated_data'].includes(decidedFormat);
   const isVideo = VIDEO_FORMATS.has(decidedFormat);
   const imageHeadlineInstruction = needsImage
-    ? `- image_headline: 10-15 word pull quote for the visual overlay. Starting point: \"${advisorImageHeadline}\"`
+    ? `- image_headline: a single strong pull-quote line for the visual overlay, target ≤ ~60 characters (one line; keep it well under the render limit). Starting point: \"${advisorImageHeadline}\"`
     : `- image_headline: empty string`;
   const formatInstruction = isVideo
     ? `This post will be published as a ${decidedFormat} YouTube Short. Write a structured, informative post with clear distinct points. The video scenes will be generated separately from this body.`
@@ -1192,4 +1207,10 @@ app.post('*', async (c) => {
 
 app.all('*', (c) => jsonResponse({ ok: false, error: 'route_not_found', version: VERSION }, 404));
 
-Deno.serve(app.fetch);
+// Guard the top-level server so pure helpers (e.g. buildFormatOutputSchema) can be imported
+// by hermetic unit tests without starting the listener. Deployed behaviour is byte-identical:
+// under `deno run`/the edge runtime `import.meta.main` is true, so Deno.serve still fires.
+// (Proven house pattern — heygen-worker / pipeline-fixer.)
+if (import.meta.main) {
+  Deno.serve(app.fetch);
+}

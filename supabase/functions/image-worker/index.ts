@@ -1,3 +1,23 @@
+// image-worker v3.31.0
+// v3.31.0 (2026-07-18) — cc-0040 Step 2+3 & D7 footer fold-in (combined). NO logic change in
+//   THIS entrypoint — version bump + header only, to reclassify the drift gate off A-LE (the
+//   drift gate hashes ONLY index.ts, so a helper-only change stays A-LE without this bump). The
+//   actual changes live in the helpers/contract:
+//   • Step 3 (b1_production.ts): B1_HEADLINE_MAX_CHARS 90→180 (deliberate quality/safety bound,
+//     NOT a fit limit — render-probe: no clip until >380 chars); B1_SUBTITLE_MAX_CHARS pinned to
+//     an explicit 90 (decoupled from the headline bound; effective behaviour unchanged); NEW
+//     B1_HEADLINE_MAX_TOKEN_CHARS=40 unbreakable-token guard in assertHeadlineWithinGate (fail-
+//     loud, no truncation).
+//   • cc-0040 (creative_contract.ts, BOTH vendored twins byte-identically except header): PP +
+//     NDIS headline max_chars 90→180; both subtitles stay 90.
+//   • D7 fold-in (creative_contract.ts): NDIS footer ''→'NDIS Yarns' (PP footer unchanged).
+//     branch_b_proof.ts reads the contract footer, so the value flows through with no logic edit.
+//   • Step 2 (ai-worker, separate deploy): advisor image_headline ≤~60-char budget — prompt-only,
+//     the render gate here remains the authority.
+//   The 422 smoke path already reports max_chars: B1_HEADLINE_MAX_CHARS, so it now auto-reports
+//   180. STRICTLY OUT OF SCOPE: no logic change in this file; NO video path; NO DB write /
+//   migration / schema change; NO _shared module edit; NO select_template / resolve_slot_assets /
+//   stamper / geometry change; the production Deno.serve hot path is byte-identical.
 // image-worker v3.30.0
 // v3.30.0 (2026-07-18) — cc-0040 Step 1: RENDER-LOG-ON-PRE-RENDER-THROW (dead-letter loop fix,
 //   PK decisions D1+D4). A governed draft that throws BEFORE renderUploadAndLog (e.g. the
@@ -425,7 +445,7 @@ import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C:
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.30.0';  // cc-0040 Step 1: re-synced with the header (had lagged at v3.28.0 through v3.29.0's data-only bump)
+const VERSION = 'image-worker-v3.31.0';  // cc-0040 Step 2+3 & D7 footer fold-in — entrypoint bump only (drift-gate reclassify); logic changes are in the helpers/contract
 // cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
 // Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
 // provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1

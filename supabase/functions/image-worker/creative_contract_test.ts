@@ -183,10 +183,10 @@ Deno.test('D7 N7b registry: NDIS image_quote → NDIS contract; PP unchanged; ne
   assertEquals(resolveCreativeContract(NDIS_CLIENT_ID, 'video_short_stat'), null);
   assertEquals(resolveCreativeContract('00000000-0000-0000-0000-000000000000', 'image_quote'), null);
 
-  // NDIS renderer-fixed brand payload: category='NDIS UPDATE', footer='' (empty), location=''.
+  // NDIS renderer-fixed brand payload: category='NDIS UPDATE', footer='NDIS Yarns' (D7 fold-in), location=''.
   const rf = (n: string) => NDIS_IMAGE_QUOTE_NEWS_CARD_V1.fields.renderer_fixed.find((e) => e.field === n)?.value;
   assertEquals(rf('category'), 'NDIS UPDATE');
-  assertEquals(rf('footer'), '');
+  assertEquals(rf('footer'), 'NDIS Yarns');
   assertEquals(rf('location'), '');
   assertEquals(NDIS_IMAGE_QUOTE_NEWS_CARD_V1.selector_reason_default, 'ndis_image_quote_default');
 });

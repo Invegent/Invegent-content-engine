@@ -144,7 +144,7 @@ export const PP_IMAGE_QUOTE_NEWS_CARD_V1: CreativeContract = Object.freeze({
       Object.freeze({
         field: 'headline',
         required: true,
-        max_chars: 90,
+        max_chars: 180,
         policy: 'hard_gate_throw' as const,
       }),
     ]),
@@ -222,7 +222,7 @@ export const NDIS_IMAGE_QUOTE_NEWS_CARD_V1: CreativeContract = Object.freeze({
   }),
   fields: Object.freeze({
     ai_authored: Object.freeze([
-      Object.freeze({ field: 'headline', required: true, max_chars: 90, policy: 'hard_gate_throw' as const }),
+      Object.freeze({ field: 'headline', required: true, max_chars: 180, policy: 'hard_gate_throw' as const }),
     ]),
     derived: Object.freeze([
       Object.freeze({ field: 'subtitle', source: 'first non-empty paragraph of draft_body', required: false, max_chars: 90, policy: 'truncate_optional' as const }),
@@ -230,7 +230,7 @@ export const NDIS_IMAGE_QUOTE_NEWS_CARD_V1: CreativeContract = Object.freeze({
     renderer_fixed: Object.freeze([
       Object.freeze({ field: 'category', value: 'NDIS UPDATE' }),
       Object.freeze({ field: 'date', value: 'render date (today)' }),
-      Object.freeze({ field: 'footer', value: '' }),
+      Object.freeze({ field: 'footer', value: 'NDIS Yarns' }),
       Object.freeze({ field: 'location', value: '' }),
     ]),
     governed_assets: Object.freeze({

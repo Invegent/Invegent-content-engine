@@ -32,15 +32,24 @@ export const B1_GOVERNED_CLIENT_ID = '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd';
 // getBrandAndSlug (whose slug can be the UUID fallback). Every non-PP client stays legacy.
 export const B1_GOVERNED_CLIENT_SLUG = 'property-pulse';
 
-// Headline-length OUTER SANITY BOUND. This is NOT a fit guarantee and never was — it
-// never fired on any real collision; fit is owned by TMR_WINNER_LAYOUT_GUARD (bounded
-// height + font auto-shrink). Its only job is to keep input far above the auto-shrink
-// floor (at 90 chars the font lands nowhere near the 30px minimum — probe P1d) and to
-// reject absurd/blank input fail-loud. No truncation, no AI rewrite.
-export const B1_HEADLINE_MAX_CHARS = 90; // outer sanity bound, not a fit guarantee
+// Headline-length OUTER SANITY BOUND. This is a DELIBERATE SAFETY / QUALITY bound, NOT a
+// fit limit. cc-0040 render-probe evidence: the card does not clip until >380 chars (fit is
+// owned by TMR_WINNER_LAYOUT_GUARD — bounded height + font auto-shrink). 180 is chosen so the
+// card still READS AS A HEADLINE (a single strong line, not a paragraph) rather than to prevent
+// clipping, and leaves generous margin for NDIS copy. Still fail-loud on blank / over-bound
+// input — no truncation, no AI rewrite.
+export const B1_HEADLINE_MAX_CHARS = 180; // deliberate quality/safety bound (not a fit limit)
 
-// B1-v2 subtitle (PK contract 2026-06-27): "same overflow limit as the headline".
-export const B1_SUBTITLE_MAX_CHARS = B1_HEADLINE_MAX_CHARS; // 90; to_be_calibrated
+// Longest single whitespace-free token permitted in a headline. Render-probe validated
+// (cc-0040): a 40-char token renders with margin while 48 is tight against the right edge —
+// an unbreakable token (no wrap point) can overflow horizontally even when the total length is
+// within B1_HEADLINE_MAX_CHARS. Fail-loud, no truncation.
+export const B1_HEADLINE_MAX_TOKEN_CHARS = 40;
+
+// B1-v2 subtitle bound — deliberately DECOUPLED from the headline bound (subtitle geometry
+// differs), so it is now an explicit literal rather than tracking B1_HEADLINE_MAX_CHARS.
+// Unchanged effective behaviour = 90.
+export const B1_SUBTITLE_MAX_CHARS = 90; // decoupled from the headline bound (subtitle geometry differs)
 
 // Derive the governed subtitle from draft_body: the FIRST non-empty paragraph, truncated
 // (word-boundary + ellipsis) to B1_SUBTITLE_MAX_CHARS. Pure / deterministic / no I/O.
@@ -86,8 +95,10 @@ export function isB1GovernedImageQuote(clientId: string): boolean {
   return clientId === B1_GOVERNED_CLIENT_ID;
 }
 
-// Minimal headline-length hard-gate. Trims; throws (fail loud) BEFORE any Creatomate /
-// selector call when the headline is blank or exceeds B1_HEADLINE_MAX_CHARS. No truncation.
+// Minimal headline hard-gate. Trims; throws (fail loud) BEFORE any Creatomate / selector
+// call when the headline is blank, exceeds B1_HEADLINE_MAX_CHARS, or contains a single
+// whitespace-free token longer than B1_HEADLINE_MAX_TOKEN_CHARS (an unbreakable token can
+// overflow horizontally even within the length bound). No truncation.
 export function assertHeadlineWithinGate(headline: string | null | undefined): void {
   const trimmed = (headline ?? '').trim();
   if (!trimmed) {
@@ -96,6 +107,12 @@ export function assertHeadlineWithinGate(headline: string | null | undefined): v
   if (trimmed.length > B1_HEADLINE_MAX_CHARS) {
     throw new Error(
       `b1: headline length ${trimmed.length} exceeds B1_HEADLINE_MAX_CHARS=${B1_HEADLINE_MAX_CHARS} (no truncation / no AI rewrite in v1)`,
+    );
+  }
+  const longestToken = trimmed.split(/\s+/).reduce((max, tok) => (tok.length > max ? tok.length : max), 0);
+  if (longestToken > B1_HEADLINE_MAX_TOKEN_CHARS) {
+    throw new Error(
+      `b1: headline token length ${longestToken} exceeds B1_HEADLINE_MAX_TOKEN_CHARS=${B1_HEADLINE_MAX_TOKEN_CHARS} (unbreakable token would overflow; no truncation / no AI rewrite)`,
     );
   }
 }
