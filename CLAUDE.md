@@ -45,9 +45,13 @@ PASS/FAIL/ESCALATE verdict. It does **not** query Supabase, verify live `m.post_
 validate RLS/grants, audit `resolve_brand_assets()` runtime behaviour, judge style-guide
 **conformance**, approve or mark `proven` any creative object, or mutate/commit/deploy — live DB /
 asset / render truth is a handoff to `db-rls-auditor`, and brand-conformance judgment stays with PK.
-**Status:** built and committed (`37021c5`); its spec was exercised manually in the A1.4 lane
-(registers v3.90) because the agent-type was not registered as invocable that session — not yet run
-as a registered subagent.
+**Status:** **PROVEN** (2026-07-18 — v5.68 D7 N7a proving run). Run as a **registered subagent** on
+`docs/creative-library/ndis-yarns.json`, it returned a real **FAIL→fix→PASS**: it caught a MISSING
+`validator_policy` and a downgraded/over-claimed family+variant `proof_posture`, returned normalized
+`clean` after the fix with zero false proof, and confirmed the registry is NOT read at runtime
+(runtime-import guard). Record: `docs/briefs/results/tmr-d7-second-brand-proof-v1.md`. Built + committed
+(`37021c5`); the earlier A1.4-lane exercise (registers v3.90) was a manual smoke because the agent-type
+was not registered as invocable that session.
 
 **Status:** all three original v1 agents are **PROVEN**. `branch-warden` (logic exercised inline in
 the v3.55 lane, then run as a subagent across the ef-builder proof) and `db-rls-auditor`
