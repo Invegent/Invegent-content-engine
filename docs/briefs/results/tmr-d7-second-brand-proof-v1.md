@@ -33,23 +33,33 @@ PK visual selection gate: **#1 full-colour master `d1b10010`** (accept reconstru
 
 **Brand decision (PK 2026-07-18):** category `NDIS UPDATE` (fixed v1 badge); footer explicitly BLANK `''` (no URL/handle/name/tagline); backgrounds = `brand_texture-01` sole P0.
 
-### Step 4 — assignment (N2) — BLOCKED (needs N5 bg eligible + N7)
-Bind NDIS → generic `generic_market_insight_card_1x1_v1` (provider `48cba556…`, registry `0e006c5c…`) at `visually_approved`+. T3.
+### Step-A / N3 visual — ✅ PK PASS (Option B) 2026-07-18
+PK-run controlled Creatomate render (/v2 TEMPLATE mode, template 48cba556 + live-resolved governed assets + deployed contract + cc-0033a guard). Iteration: Option A (full-colour logo + blank footer) → **PK revised → Option B (mark-only logo + `NDIS Yarns` footer)**. **PK visual PASS on Option-B render `b997c38a…`:** P8 **no overprint**, footer clean, `NDIS UPDATE` badge, NDIS assets, **no PP string**. Recipe `docs/briefs/tmr-d7-step-a-render-recipe-v1.md`. ⚠ Creatomate API key was pasted into the transcript during the run → **PK to rotate the key**.
 
-### Step 5 — visual-proof event (N3) — BLOCKED (mirror PP bootstrap)
-Controlled proof render → PK visual PASS (this is where **P8 overprint is re-evidenced on NDIS's stat-led corpus** — a PP closure does not transfer) → write assignment + proof event. T3.
+### Rework 1 — logo re-promotion — ✅ APPLIED (PK-gated 2026-07-18)
+Un-fenced mark-only `d1b10015` (`ny_logo_mark_only`), re-fenced full-colour `d1b10010`, via `DO`-block in-txn assertions (exactly 1 eligible NDIS logo = mark-only; PP 8 unchanged). `resolve_slot_assets` Logo.source now = mark-only URL. Supersedes the step-2/v5.68 full-colour pick (forward-correction).
 
-### Step 6 — governance flip (N1) — BLOCKED
-INSERT `(NDIS, image_quote, enabled=true)` ONLY after N2–N5/N7 ready + fail-closed verified. T3.
+### Rework 2 — contract footer '' → 'NDIS Yarns' — FOLDED into cc-0040
+ef-builder built + branch-warden safe + external `a115e8f5` **agree/low/high** (diff `282515818d93`, image v3.30.0→v3.31.0 / ai v2.19.0→v2.20.0), but the **deploy folded into cc-0040's combined `creative_contract.ts` deploy** (max_chars + footer → one v3.31.0). My Rework-2 worktree torn down; cc-0040 carries the footer value + the 3 test-assertion updates. **Step-7 waits on cc-0040 v3.31.0.**
 
-### Step 7 — NDIS governed proof render — BLOCKED on steps 1–6 (G0a/G0b now clear)
-FB-first. Pass = `status!=failed` + `selector_status=ok` + emitted `modifications` with NDIS's own `asset_id`s and **no PP string** + PK visual PASS. Apply the text-safety crop-proof (no legible signage) before the visual gate.
+### Step 4 (N2) assignment — ✅ APPLIED
+NDIS → generic (registry `0e006c5c…`): `assignment_status='visually_approved'`, `assignment_scope='generic_allowed'`, `approved_by=PK`. `DO`-block guard (no prior assignment); count 1.
+
+### Step 5 (N3) proof event — ✅ APPLIED
+`visual_approval / passed / facebook / local_render_file`, evidence = render `b997c38a…` + recipe. `select_template` steps **d+e now satisfied** for NDIS (with N4/N5 = step f).
+
+### Step 6 (N1) governance flip — ⛔ HELD (sequencing hazard)
+`INSERT (NDIS, image_quote, enabled=true)`. **HELD until cc-0040 v3.31.0 lands** — flipping before the footer deploy risks a pending NDIS draft auto-rendering `footer=''` (the pre-revision blank look). PK gate; T3 (+ fail-closed pre-check + external review).
+
+### Step 7 — NDIS FB governed proof render — waits on v3.31.0 + N1
+Pass = `status!=failed` + `selector_status=ok` + NDIS `asset_id`s / **no PP string** + PK final visual. Should match the approved Option-B card.
 
 ### Step 1 (consumed) — `TMR-supp-ndis-bg` — P0 set FENCED; (c) intake ENVELOPE
 PK decision (2026-07-18): **`brand_texture-01` = SOLE P0 background** for the FB-first proof; `civic_neutral-04` crop routed back to `TMR-supp-ndis-bg`.
 - **(c) fenced intake — ✅ APPLIED (PK-approved 2026-07-18).** Envelope `docs/briefs/tmr-d7-c-ndis-background-intake-envelope-v1.md`. Upload → `brand-assets/NDIS_Yarns/Backgrounds/bg_ny_brand_texture_navy_waves.jpg` (x-upsert:false, HTTP 200); pre-upload byte-verify + public-URL sha256 both == manifest `40fb69b4…` (57991 bytes, 1920×2877). Fenced INSERT via PL/pgSQL `DO` block with in-txn fail-closed assertions (fence-state + pool-neutrality) → asset_id `225eb232-e4d0-49ec-ad5d-f0e34d4bcfd0`. Post-verify: rowcount 1 · all 4 fences OFF (is_active/approved/production_use_allowed=false, approval_status=intake_candidate) · NDIS eligible-bg still **0** · PP eligible pool **22 unchanged** · no STOP tripped. **db-rls-auditor PASS** (zero must-fix; RLS/grants intact, not anon-reachable, resolver double-fences, pool-neutral, no dup/upsert). Secret rider (R2): service_role key used for upload — env-conveyed, never in transcript, USE-only (no posture change).
 - **NOTE:** the uploaded asset is the source-identical uncropped portrait (1920×2877) — consistent with PP (generic template Background covers/crops to 1:1); pre-crop optional (`TMR-supp-ndis-bg`).
-- **Promotion (un-fence → eligible) = SEPARATE PK gate** (crop-proof/visual, sets authoritative `safe_for_text_overlay`). Surface DISJOINT from N7b → was parallel-safe.
+- **Promotion — ✅ APPLIED (PK-approved 2026-07-18, crop-proof visual PASS).** Crop-proof `orch_cropproof/ndis_bg_brand_texture-01__proof.jpg` (abstract navy, zero legible signage, legible under scrim) — verified. Fence-flip `225eb232…` → is_active/approved/production_use_allowed=true, approval_status='governed', safe_for_text_overlay='needs_scrim', via `DO`-block in-txn assertions (rowcount 1 · NDIS eligible-bg **0→1** · PP pool 22 unchanged · fences-on). Post-verify: `resolve_slot_assets` Background slot RESOLVES for NDIS (eligible = `bg_ny_brand_texture_navy_waves`). **db-rls-auditor PASS** (0 must-fix; exactly 1 row flipped, PP untouched). **N5 COMPLETE.** Governed-not-live: NDIS gov=0 → still fails closed. Recorded v5.74.
+- Both NDIS governed slots now resolve (logo `ny_logo_mark_only` N4 [Option B; full-colour re-fenced] + background `bg_ny_brand_texture_navy_waves` N5). Step-A stat-headline (PK 2026-07-18): "160,000 people may lose NDIS access".
 
 ## Register pointers (DRAFT — hold for PK commit; claimed v5.68 via orchestrator)
 Commit message per PK instruction; no trailer unless PK asks; push only on explicit PK instruction. Re-verify v5.68 free at commit.
