@@ -1,0 +1,192 @@
+[
+  {
+    "row_key": "ndis_bg_brand_texture",
+    "candidate_id": "ndis_bg_w-bt-a",
+    "pexels_photo_id": "7629924",
+    "desc": "dark blue cosmic starry pattern",
+    "download_url": "https://images.pexels.com/photos/7629924/pexels-photo-7629924.jpeg?auto=compress&cs=tinysrgb&w=1920",
+    "fetch_status": "ok",
+    "bytes": 120089,
+    "sha256": "96445e0bdf5ad1ea9182069ef130452f1a1d9afa106d7c6d0c48eb43c65cf4ff",
+    "width": 1920,
+    "height": 2880,
+    "centre_band_luma": 14.7,
+    "centre_band_stddev": 6.1,
+    "centre_rgb_mean": [
+      8.0,
+      15.0,
+      32.0
+    ]
+  },
+  {
+    "row_key": "ndis_bg_brand_texture",
+    "candidate_id": "ndis_bg_w-bt-b",
+    "pexels_photo_id": "13568041",
+    "desc": "metallic blue fluid waves texture",
+    "download_url": "https://images.pexels.com/photos/13568041/pexels-photo-13568041.jpeg?auto=compress&cs=tinysrgb&w=1920",
+    "fetch_status": "ok",
+    "bytes": 111448,
+    "sha256": "279de9b1c5462a0e8774f192bb2aebf937a67dfdfd84ce71af29f851f35c7dd1",
+    "width": 1920,
+    "height": 1080,
+    "centre_band_luma": 61.9,
+    "centre_band_stddev": 56.2,
+    "centre_rgb_mean": [
+      44.0,
+      67.0,
+      80.0
+    ]
+  },
+  {
+    "row_key": "ndis_bg_brand_texture",
+    "candidate_id": "ndis_bg_w-bt-c",
+    "pexels_photo_id": "10997877",
+    "desc": "fluid art swirling blue/black",
+    "download_url": "https://images.pexels.com/photos/10997877/pexels-photo-10997877.jpeg?auto=compress&cs=tinysrgb&w=1920",
+    "fetch_status": "ok",
+    "bytes": 537519,
+    "sha256": "1641d31ceeff6fe9dc49896f35215c570c3ff1b08bb90ff70340736b55436627",
+    "width": 1920,
+    "height": 2557,
+    "centre_band_luma": 43.6,
+    "centre_band_stddev": 31.1,
+    "centre_rgb_mean": [
+      25.0,
+      48.0,
+      69.0
+    ]
+  },
+  {
+    "row_key": "ndis_bg_brand_texture",
+    "candidate_id": "ndis_bg_w-bt-d",
+    "pexels_photo_id": "31032753",
+    "desc": "sleek curved dark blue/black (UP Modern series)",
+    "download_url": "https://images.pexels.com/photos/31032753/pexels-photo-31032753.jpeg?auto=compress&cs=tinysrgb&w=1920",
+    "fetch_status": "ok",
+    "bytes": 76014,
+    "sha256": "735bf4669ac4c66ab72fb0058fd4ab98b7c38b0d06dfcd4853bfd1f1a78d8297",
+    "width": 1920,
+    "height": 2880,
+    "centre_band_luma": 12.1,
+    "centre_band_stddev": 24.0,
+    "centre_rgb_mean": [
+      10.0,
+      10.0,
+      29.0
+    ]
+  },
+  {
+    "row_key": "ndis_bg_brand_texture",
+    "candidate_id": "ndis_bg_w-bt-e",
+    "pexels_photo_id": "7630006",
+    "desc": "dark blue textured blurred",
+    "download_url": "https://images.pexels.com/photos/7630006/pexels-photo-7630006.jpeg?auto=compress&cs=tinysrgb&w=1920",
+    "fetch_status": "ok",
+    "bytes": 42170,
+    "sha256": "f0f385dc13b832d73050ed64897d7fff8c61d1b7fe66825ba58afb25fb46f615",
+    "width": 1920,
+    "height": 2880,
+    "centre_band_luma": 13.4,
+    "centre_band_stddev": 1.1,
+    "centre_rgb_mean": [
+      10.0,
+      13.0,
+      25.0
+    ]
+  },
+  {
+    "row_key": "ndis_bg_brand_texture",
+    "candidate_id": "ndis_bg_w-bt-f",
+    "pexels_photo_id": "8193814",
+    "desc": "blue smoke swirling dark",
+    "download_url": "https://images.pexels.com/photos/8193814/pexels-photo-8193814.jpeg?auto=compress&cs=tinysrgb&w=1920",
+    "fetch_status": "ok",
+    "bytes": 62778,
+    "sha256": "a99671f1e5b76a1f14d1b614bb2dd5c1e51057bc165f51d5f5bbd5eee9f9515c",
+    "width": 1920,
+    "height": 1280,
+    "centre_band_luma": 40.0,
+    "centre_band_stddev": 39.4,
+    "centre_rgb_mean": [
+      14.0,
+      46.0,
+      80.0
+    ]
+  },
+  {
+    "row_key": "ndis_bg_brand_texture",
+    "candidate_id": "ndis_bg_w-bt-g",
+    "pexels_photo_id": "28428584",
+    "desc": "3D geometric shapes deep blue",
+    "download_url": "https://images.pexels.com/photos/28428584/pexels-photo-28428584.jpeg?auto=compress&cs=tinysrgb&w=1920",
+    "fetch_status": "ok",
+    "bytes": 76004,
+    "sha256": "2afc7409fe8e9ff223fc7df971b7998b14e07adcc13b57931b3f1fb8a8c7aeb1",
+    "width": 1920,
+    "height": 1080,
+    "centre_band_luma": 55.8,
+    "centre_band_stddev": 38.0,
+    "centre_rgb_mean": [
+      41.0,
+      58.0,
+      81.0
+    ]
+  },
+  {
+    "row_key": "ndis_bg_brand_texture",
+    "candidate_id": "ndis_bg_w-bt-h",
+    "pexels_photo_id": "37955296",
+    "desc": "deep blue circular textured",
+    "download_url": "https://images.pexels.com/photos/37955296/pexels-photo-37955296.jpeg?auto=compress&cs=tinysrgb&w=1920",
+    "fetch_status": "ok",
+    "bytes": 1005438,
+    "sha256": "5afa5d48241cf70829bc6913767e3bfc4db37ab958b31c8ccc3e90a053b704fa",
+    "width": 1920,
+    "height": 2880,
+    "centre_band_luma": 19.9,
+    "centre_band_stddev": 32.1,
+    "centre_rgb_mean": [
+      13.0,
+      17.0,
+      53.0
+    ]
+  },
+  {
+    "row_key": "ndis_bg_data_grid",
+    "candidate_id": "ndis_bg_w-dg-a",
+    "pexels_photo_id": "34851018",
+    "desc": "dark blue abstract grid texture wavy",
+    "download_url": "https://images.pexels.com/photos/34851018/pexels-photo-34851018.jpeg?auto=compress&cs=tinysrgb&w=1920",
+    "fetch_status": "ok",
+    "bytes": 327198,
+    "sha256": "014d2f6b08898bc6c3df837d96fa43b0c51f85c119f87c03099ed89a0d30bcfc",
+    "width": 1920,
+    "height": 1440,
+    "centre_band_luma": 19.4,
+    "centre_band_stddev": 13.8,
+    "centre_rgb_mean": [
+      11.0,
+      19.0,
+      44.0
+    ]
+  },
+  {
+    "row_key": "ndis_bg_data_grid",
+    "candidate_id": "ndis_bg_w-dg-b",
+    "pexels_photo_id": "12707786",
+    "desc": "dark blue tunnel motion/depth",
+    "download_url": "https://images.pexels.com/photos/12707786/pexels-photo-12707786.jpeg?auto=compress&cs=tinysrgb&w=1920",
+    "fetch_status": "ok",
+    "bytes": 243036,
+    "sha256": "413c47c05d270a7a37cf66e89d677517d3fa5b09c14bc4a8505ec872ffb4fab4",
+    "width": 1920,
+    "height": 2880,
+    "centre_band_luma": 18.0,
+    "centre_band_stddev": 13.6,
+    "centre_rgb_mean": [
+      3.0,
+      19.0,
+      51.0
+    ]
+  }
+]
