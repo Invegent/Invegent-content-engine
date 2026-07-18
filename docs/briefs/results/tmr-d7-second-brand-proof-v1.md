@@ -2,7 +2,7 @@ CLAIMED v5.68–v5.69 · tmr-d7-second-brand-governed-image-proof · main-checko
 
 # Result — TMR D7 · NDIS Yarns second-brand governed-image proof
 
-**Status:** ✅ **CLOSED — D7 static-image second-brand proof COMPLETE (PK PASS 2026-07-18, v5.75).** NDIS Yarns is the first proven second brand on the governed `image_quote` spine. Carries (non-blocking): rotate Creatomate key · authoritative NDIS logo swap · IG/LI extension after FB.
+**Status:** ✅ **CLOSED — D7 static-image second-brand proof COMPLETE + EXTENDED to all 3 platforms (PK PASS FB v5.75, IG+LI v5.76, 2026-07-18).** NDIS Yarns is the first proven second brand on the governed `image_quote` spine (FB + IG + LI). Carries (non-blocking): rotate Creatomate key · authoritative NDIS logo swap.
 **Brief:** [`docs/briefs/tmr-d7-second-brand-exit-test-v1.md`](../tmr-d7-second-brand-exit-test-v1.md) + [`docs/briefs/spine-gen-v2-image-path-rewire-brief-v1.md`](../spine-gen-v2-image-path-rewire-brief-v1.md) (N1–N7).
 **Lane class / tier:** PRODUCT_PROOF · steps span T2 (declarative/dark-additive) → T3 (asset promotion · code+deploy · governance flip · render).
 **Orchestration:** PK is driving this lane through the TMR Lane Orchestrator (confirmed 2026-07-18); orchestrator coordination carries PK intent; applies remain PK gates.
@@ -53,6 +53,12 @@ Precondition verified on LIVE source (image-worker v3.31.0 + ai-worker v2.20.0, 
 
 ### Step 7 — NDIS FB governed proof render — ✅ PASS (PK final visual 2026-07-18, v5.75)
 **The live end-to-end D7 proof.** Controlled publish-safe re-render (cc-0033a pattern) of already-published FB draft `5aa4a548` ("SCCP funding…", real 73-char headline): flipped `published/generated`→`approved/pending` (CAS) → image-worker v3.31.0 cron rendered governed → **restored byte-clean** (`published/generated/.png`, `new_publish_rows=0`, live post untouched). Evidence `render_log 6a2cdeed`: `label=creative_library_b1_production` · `selector_status=ok` · winner `generic_market_insight_card_1x1_v1` · Background `bg_ny_brand_texture_navy_waves` + Logo `ny_logo_mark_only` (governed/client_match) · **no PP string**. **PK visual PASS**: mark-only logo · `NDIS UPDATE` badge · `NDIS Yarns` footer · navy bg · real draft-derived subtitle · **no overprint at 73 chars**. Output `…/3d79d14e….jpg`. **D7 static-image second-brand exit test SATISFIED.**
+
+### IG + LI extension — ✅ PASS both (PK final visual 2026-07-18, v5.76)
+Per-platform machine proof (D7 P6): `select_template` + `resolve_slot_assets` resolve `ok` on FB/IG/LI (null-scope background eligible everywhere; single FB `visual_approval` proof event covers all platforms — no per-platform proof needed; `platform_suitability_unproven` warning is expected, PP emits it too). Controlled publish-safe re-renders (cc-0033a pattern) of already-published drafts:
+- **Instagram** `1780bfc6` (66-char headline) → governed render succeeded, `label=creative_library_b1_production`, `selector_status=ok`, Background `bg_ny_brand_texture_navy_waves` + Logo `ny_logo_mark_only`, **no PP string**; PK visual PASS (mark-only · `NDIS UPDATE` · `NDIS Yarns` footer · navy bg · no overprint). Output `…/81e15d67….jpg`.
+- **LinkedIn** `8aebf7bb` (**81-char** headline — longest overprint stress) → same governed evidence; PK visual PASS, **no overprint** (guard held at 81 chars). Output `…/41cdfe5c….jpg`.
+Both drafts restored byte-clean (`.png`, original statuses), `new_publish_rows=0` (live posts untouched). Render mechanism note: image-worker cron is ~15-min (`:00/:15/:30/:45`); triggered directly via `x-image-worker-key`=PUBLISHER_API_KEY (secret rider: env-conveyed, never-in-transcript, USE-only) to avoid the wait — same production run the cron does. **NDIS Yarns governed `image_quote` now PROVEN on FB + IG + LI.**
 
 ### Step 1 (consumed) — `TMR-supp-ndis-bg` — P0 set FENCED; (c) intake ENVELOPE
 PK decision (2026-07-18): **`brand_texture-01` = SOLE P0 background** for the FB-first proof; `civic_neutral-04` crop routed back to `TMR-supp-ndis-bg`.
