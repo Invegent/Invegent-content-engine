@@ -56,9 +56,11 @@
 //         PURE buildGovernedVideoStatPlan → { providerTemplateId, modifications, templateSpec }.
 //     (2) NEW async isVideoGovernanceEnabled(supabase, clientId, format) reads
 //         c.client_creative_governance.enabled (service-role, read-only, fail-closed: any
-//         error/missing → false). The (PP, video_short_stat) row is enabled=FALSE today
-//         (migration 20260708000000, seeded DARK), so the gate is FALSE → the governed branch
-//         does NOT fire → the legacy isStat path runs → behaviour byte-identical.
+//         error/missing → false). At v3.5.0 ship the (PP, video_short_stat) row was enabled=FALSE
+//         (migration 20260708000000, seeded DARK), so the gate was FALSE → the governed branch did
+//         not fire → the legacy isStat path ran → behaviour byte-identical. (The row was later
+//         armed enabled=true on 2026-07-10; see the isVideoGovernanceEnabled doc below for the
+//         current ARMED state.)
 //     (3) NEW async renderGovernedVideoStat(...) — DIRECT-BIND to provider template
 //         901a30ce-292a-4e4f-8e46-fef93f71e098 (PK-pinned; select_template routing REPLACES
 //         this once the render is visually approved — see b1_video_stat.ts). Template-mode
@@ -69,7 +71,8 @@
 //         EXISTING templateSpec/renderSpecLabel opts (renderUploadAndLog byte-unchanged).
 //     (4) EARLY-RETURN fork at the top of processDraft, BEFORE the isKinetic/isStat block:
 //         if (isB1GovernedVideoStat && await isVideoGovernanceEnabled) → render governed → return.
-//         Because the row is DARK, this fork is never taken today.
+//         At v3.5.0 ship the row was DARK so this fork was never taken; the row is now armed
+//         (enabled=true, 2026-07-10) → the fork IS taken for PP video_short_stat.
 //     (5) NEW supervised SMOKE entrypoint (mode==='governed_video_stat_smoke') in Deno.serve,
 //         BEFORE draft selection, mirroring the retired B0 image/video smoke mechanism: renders
 //         the governed template with SAMPLE fields to post-videos/_smoke/, writes ONE
@@ -841,13 +844,14 @@ function buildStatRevealSpec(opts: {
   return { output_format: 'mp4', width: W, height: H, duration: 20, frame_rate: 30, fill_color: primaryColour, elements };
 }
 
-// === v3.5.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat (DARK) ===============
+// === v3.5.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat (ARMED) ==============
 //
-// DARK governance gate. Reads c.client_creative_governance.enabled (service-role, read-only)
+// Governance gate. Reads c.client_creative_governance.enabled (service-role, read-only)
 // for (clientId, format). FAIL-CLOSED: any error / missing row / null → false → the governed
 // branch does NOT fire → the legacy isStat path runs (behaviour byte-identical). The (PP,
-// video_short_stat) row is seeded enabled=false today (migration 20260708000000), so this
-// returns false in production until PK flips it AFTER the render is visually approved.
+// video_short_stat) row is enabled=true (armed 2026-07-10; migration 20260708000000 seeded it
+// DARK, PK flipped it after the combo render was visually+audibly approved), so this returns true
+// for the governed PP client + format in production. Every other (clientId, format) still fails closed.
 async function isVideoGovernanceEnabled(
   supabase: ReturnType<typeof getServiceClient>,
   clientId: string,
@@ -975,10 +979,11 @@ async function processDraft(opts: {
   // ── v3.5.0 CREATIVE-LIBRARY VIDEO TMR: Property-Pulse-ONLY governed video_short_stat branch.
   // Runs BEFORE the legacy isKinetic/isStat block with an EARLY RETURN, so both legacy branch
   // bodies stay byte-untouched. Gate keys on client_id + format (NOT the _voice variant) AND the
-  // DARK governance flag (fail-closed). The (PP, video_short_stat) row is enabled=false today, so
-  // this fork is NOT taken → the legacy isStat path runs → behaviour byte-identical. Governed-only,
-  // fail-loud: any throw hits the existing per-draft catch → video_status='failed' (no legacy
-  // fallback for this branch). Every other client / format falls through unchanged.
+  // governance flag (fail-closed). The (PP, video_short_stat) row is enabled=true (armed
+  // 2026-07-10), so this fork IS taken for the governed PP client + video_short_stat → the governed
+  // render runs (it has produced draft-linked render 8c41689a). Governed-only, fail-loud: any throw
+  // hits the existing per-draft catch → video_status='failed' (no legacy fallback for this branch).
+  // Every other client / format falls through unchanged (fail-closed).
   if (isB1GovernedVideoStat(draft.client_id, fmt) && await isVideoGovernanceEnabled(supabase, draft.client_id, B1_VIDEO_GOVERNED_FORMAT)) {
     return await renderGovernedVideoStat({ supabase, creatomateKey, draft, brand: b, qaCtx });
   }

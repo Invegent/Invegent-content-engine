@@ -11,10 +11,12 @@
 // production catch fails the draft (video_status='failed') — there is NO fallback to the legacy
 // buildStatRevealSpec for the governed PP video_short_stat branch.
 //
-// DARK: the governed branch that consumes this module is gated on BOTH isB1GovernedVideoStat()
-// AND c.client_creative_governance.enabled (read at runtime, fail-closed). The governance row for
-// (PP, video_short_stat) is enabled=false today, so the branch does NOT fire and the legacy
-// isStat path runs byte-identically. See index.ts for the gate + early return.
+// ARMED (PP only): the governed branch that consumes this module is gated on BOTH
+// isB1GovernedVideoStat() AND c.client_creative_governance.enabled (read at runtime, fail-closed).
+// The governance row for (PP, video_short_stat) is enabled=true (armed 2026-07-10), so the branch
+// FIRES for the single governed PP client_id + video_short_stat and has produced a draft-linked
+// governed render (m.post_render_log 8c41689a, 2026-07-10). Every other client_id / format stays
+// fail-closed on the legacy isStat path, byte-identically. See index.ts for the gate + early return.
 //
 // v3.6.0 (cc-0032 step 5 — COMBO AUDIO, DARK): the governed plan is re-pointed to the registered v2
 // provider template c11bb8ab (VoiceAudio + MusicBed slots) and now drives combo audio — a voiceover
