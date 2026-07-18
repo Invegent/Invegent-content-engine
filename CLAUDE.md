@@ -271,6 +271,34 @@ before any accept · licence safety + sha256 provenance · pool-neutrality machi
 intake · full T3 chain + live proof + rollback-proven on EVERY production rotation change · fenced-until-
 approved default · CAS/fail-closed. The goal is to shrink ceremony, never these guards.
 
+## NDIS sensitive real-imagery intake (staged lane — ratified 2026-07-19)
+
+> Source policy: `docs/briefs/ndis-sensitive-real-imagery-intake-policy-v1.md` (rev-2, hash
+> `93825466…`, external review `02efbc94` agree/med/high). Governs any move of NDIS Yarns
+> backgrounds beyond abstract into REAL imagery. **Adds gates to the image-workflow §2
+> non-negotiables above; subtracts none.** Closeout-only ratification — authorises NO sourcing.
+
+- **Staged phases:** Phase 0 abstract (live) · **Phase 1 REAL but PERSON-FREE / non-identifying**
+  (accessible environments, assistive tech without a user, hands-with-no-identity, distant/soft-focus
+  where identity/disability/service-status is not inferable — enters the rotation pool; opens only via
+  its **own** Gate-1 brief) · **Phase 2 identifiable adults — CLOSED** · **Phase 3** minors ·
+  participant stories · clinical/personal-care · First-Nations-specific — **HELD + purpose-bound**.
+- **Evidence-based rights rule (not free-vs-paid):** identifiable-people imagery is prohibited by
+  default; it proceeds only on **asset-specific documented rights** covering commercial+social use AND
+  disability/accessibility/NDIS-adjacent context AND no false participant claim. A platform copyright
+  licence or payment alone is insufficient (disability info = sensitive health info, OAIC).
+- **Two held specialist prerequisites (NOT appointed):** a **disability-led representation reviewer**
+  (Phase 2, PASS/PASS-WITH-RESTRICTIONS/REJECT) and a **First-Nations adviser + community-consultation**
+  route (cultural content). **An unfilled specialist role is NEVER permission to proceed** — the
+  dependent phase stays closed/hard-blocked; a lane that finds either prerequisite unmet STOPs and
+  surfaces to PK. Roles are stood up only by a separate deliberate PK decision, never to satisfy the doc.
+- **Purpose-binding:** participant + culturally specific imagery attaches to an individually approved
+  story/campaign and NEVER auto-enters the reusable background pool, even after approval.
+- **Charter fences (§I):** `image-harvester` sources only Phase-1 person-free NDIS backgrounds
+  (candidate-level, fenced-first) and cannot source Phase 2/3; `image-reviewer` gains an
+  identity-leak+dignity+exclusion+cultural-flag checklist (suggestive only; cultural element → ESCALATE,
+  never PASS). Real-people/cultural imagery is always candidate-level + mandatory human review.
+
 ## CCF-02 orchestration contract (Phase 1 — ratified 2026-07-05)
 
 - **Findings contract:** subagents/auditors return the 10-field findings JSON
