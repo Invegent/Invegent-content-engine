@@ -1,0 +1,249 @@
+{
+  "_about": "Creative Library registry (repo/config, evidence-first), NDIS Yarns — SECOND governed brand (D7 second-brand exit test). SKELETON v0.1 (2026-07-17): authored ahead of the brand decision on category/footer (both to_be_confirmed) and ahead of N5 background intake (asset_keys pending). NDIS Yarns has NEVER rendered a governed image_quote — every object here is status=candidate / proof_status=unproven / render_log_id=null. No proof is claimed. Declarative only, NOT consumed by production workers (runtime-import guard); the runtime reads a VENDORED projection (creative_contract.ts) which is a SEPARATE T3 code+deploy lane (N7b). Schema: docs/creative-library/registry-schema-v2.md. Model mirrors property-pulse.json.",
+  "registry": "creative-library",
+  "registry_version": "v0.1",
+  "model": "style_guide -> (governs) -> assets + patterns -> (compose) -> template_families -> (instantiate as) -> creative_instances -> evidence",
+  "client_slug": "ndis-yarns",
+  "client_id": "fb98a472-ae4d-432d-8738-2273231c1ef4",
+  "lane": "tmr-d7-second-brand-governed-image-proof",
+  "status": "candidate",
+  "posture": {
+    "declarative_only": "Declarative only — not consumed by production workers.",
+    "no_resolver_change": true,
+    "no_dashboard_change": true,
+    "no_runtime_behaviour_change": true,
+    "no_db_backed_registry": true,
+    "source_of_truth": "ICE governance",
+    "providers": "renderers only",
+    "pk_approval": "PK approval authority unchanged; AI proposes, never approves",
+    "skeleton_note": "v0.1: the two gating brand values are now DECIDED (PK 2026-07-18: category='NDIS UPDATE', footer='' [intentional resolved blank]); background asset_keys remain to_be_confirmed until N5 intake (sole P0 = brand_texture-01, PK 2026-07-18). The vendored code projection (creative_contract.ts CREATIVE_CONTRACT_REGISTRY entry) is the render-critical N7b lane and is NOT authored by this declarative file: post-G0b the image-worker fail-closes brand_payload_contract_unresolved for NDIS until that vendored entry deploys."
+  },
+
+  "style_guide": {
+    "style_guide_key": "ndis-yarns-styleguide-v1",
+    "client_slug": "ndis-yarns",
+    "version": "v1",
+    "status": "candidate",
+    "purpose": "The NDIS Yarns brand constitution — brand-level rules that GOVERN NDIS Yarns Assets, Patterns, and Template Families for the governed image_quote format (second-brand exit test scope).",
+    "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only", "note": "Governs the brand's creative objects; PK ratifies. AI may propose, never approves." },
+    "palette": {
+      "primary": "to_be_confirmed",
+      "secondary": "to_be_confirmed",
+      "scrim": "dark scrim (opacity resolved per-background by resolve_slot_assets safe_for_text_overlay; PP precedent ~0.55-0.58)",
+      "note": "Brand primary/secondary colours are sourced at render time from c.client_brand_profile (documented values brand_colour_primary=#0A2A4A, brand_colour_secondary=#1C8A8A; accent_hex is null) and are NOT re-declared here — marked to_be_confirmed per the PP convention. No brand colours invented."
+    },
+    "typography": {
+      "font_family": "to_be_confirmed",
+      "hierarchy": "Headline dominant > category badge / labels > subtitle > footer (small).",
+      "note": "The generic market-insight card's font is a property of the shared generic template (generic_market_insight_card_1x1_v1), not documented for NDIS. Marked to_be_confirmed; no font invented."
+    },
+    "spacing": { "note": "Inherited from the shared generic template; exact spacing to_be_confirmed. Declarative reference." },
+    "logo_rules": { "asset_type": "logo_primary", "placement": "per generic template Logo slot", "slot": "Logo.source", "fallback": "fail-closed (missing_required_logo) — no wordmark fallback on the governed path", "note": "Logo referenced as a governed asset (asset_key ny_logo_full_colour); promoted/eligible 2026-07-17 (asset_id d1b10010, D7 step 2). Reconstruction accepted for the proof; authoritative-logo swap is a separate PK gate." },
+    "safe_area_rules": { "note": "Inherited from the generic 1:1 template safe area; keep logo + footer inside the platform safe area." },
+    "scrim_rules": { "purpose": "headline legibility over photographic backgrounds", "applies_when": "a governed background photo is present (needs_scrim / true class per resolve_slot_assets)", "requirement": "dark scrim so text-over-image meets contrast" },
+    "voice_tone_rules": { "tone": "Plain-English NDIS/disability-sector news — warm, grounded, practitioner-voice, calm, honest.", "note": "Evidence-derived from c.client_brand_profile.brand_voice_keywords + brand_values; card-surface tone beyond this is to_be_confirmed. Nothing invented." },
+    "accessibility_rules": {
+      "minimum_contrast": "white/brand text over the dark scrim (exact ratio to_be_confirmed)",
+      "readable_text": "minimum legible font sizes per the generic template",
+      "text_over_image": "no text over a busy photo without the scrim",
+      "safe_area_awareness": "text / logo / footer kept inside platform safe areas",
+      "logo_visibility": "logo legible against the scrim/background",
+      "overprint_note": "D5/P8 — the PP overprint fix (winner-scoped layout guard, image-worker v3.24.0) is generic (keys on generic_market_insight_card_1x1_v1) and applies to NDIS too, BUT overprint is text-length-against-geometry: it MUST be re-evidenced on NDIS's own (stat-led) headline corpus at the step-5/step-7 PK visual gate. A PP closure does not transfer."
+    },
+    "asset_rules": {
+      "note": "Assets are governed SEPARATELY in c.client_brand_asset and referenced by asset_key — never raw URLs. The style guide constrains HOW assets are used, not the files.",
+      "resolution": "Asset resolution via resolve_slot_assets (governed TMR path) — UNCHANGED; this style guide introduces NO resolver behaviour.",
+      "logo": "logo_primary (ny_logo_full_colour) — eligible (D7 step 2, 2026-07-17)",
+      "backgrounds": "PENDING N5 intake. PK-approved P0 set = brand_texture-01 (deep navy silky waves; sha256 40fb69b42a881533e9f1bb73380330073f6f89e3a2150cabf7ca045ab7b788f5) + civic_neutral-04 (curved silver/glass facade; sha256 17c54fa3d5abee123ccd817daf9e028a40210a429b1c3f36ea038a887bb42e2f). Both Pexels License, attribution not required. asset_keys to_be_confirmed at intake. Neither is DB-intaken yet (0 NDIS backgrounds live); until at least one is intaken AND promoted eligible, resolve_slot_assets Background slot fail-closes. Backgrounds enter FENCED (approved=false) and are un-fenced at a separate promotion gate."
+    },
+    "pattern_rules": {
+      "note": "Governs the NDIS pattern candidates — each conforms_to_style_guide=ndis-yarns-styleguide-v1.",
+      "governs_patterns": ["ny_branding_strip_v1", "ny_headline_block_v1", "ny_category_badge_v1", "ny_background_plus_scrim_v1"],
+      "posture": "patterns remain candidate; the style guide does NOT promote them to proven."
+    },
+    "template_family_rules": {
+      "note": "Template Families MUST conform to this style guide. NDIS binds the SHARED GENERIC template (no client-scoped template — select_template rejects scope<>'generic'). The style guide governs but does NOT render.",
+      "governs_families": ["ndis-yarns-news"],
+      "posture": "unproven — no NDIS render exists yet."
+    },
+    "proof_posture": "governance_candidate",
+    "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "supporting_render_log_ids": [], "source_commit": null, "review_packet": null, "approved_by": null, "approved_at": null, "notes": "GOVERNANCE candidate — a style guide is not a render output. NDIS Yarns has produced NO governed render; there is NO supporting render evidence. Nothing proven. No false proof." }
+  },
+
+  "patterns": [
+    {
+      "pattern_key": "ny_branding_strip_v1", "client_slug": "ndis-yarns", "version": "v1", "status": "candidate",
+      "pattern_type": "branding_strip", "purpose": "Brand identity strip — logo + footer/handle label framing the creative.",
+      "used_by_template_families": ["ndis-yarns-news"], "conforms_to_style_guide": "ndis-yarns-styleguide-v1",
+      "references_assets": ["ny_logo_full_colour"], "required_fields": ["footer"], "optional_fields": [],
+      "layout_rules": {
+        "logo_placement": "Per the generic template Logo slot.",
+        "brand_text_footer_treatment": "Footer/handle label per the generic template Footer slot.",
+        "website_or_cta_text": "Footer RESOLVED BLANK (PK 2026-07-18, footer='') — no URL/handle/brand-name/tagline. The Footer element must suppress cleanly (step-7 visual check).",
+        "asset_dependencies": "ny_logo_full_colour (logo_primary). Maps to Logo.source + Footer.text (documentation only)."
+      },
+      "accessibility_rules": { "note": "Logo legible against the dark scrim; footer kept at a legible minimum size." },
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "proof_posture": "candidate",
+      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "supporting_render_log_ids": [], "source_commit": null, "review_packet": null, "approved_by": null, "approved_at": null, "notes": "No NDIS render exists — no supporting evidence. Unproven." }
+    },
+    {
+      "pattern_key": "ny_headline_block_v1", "client_slug": "ndis-yarns", "version": "v1", "status": "candidate",
+      "pattern_type": "headline_block", "purpose": "Primary message — a required headline with an optional subtitle over the scrim.",
+      "used_by_template_families": ["ndis-yarns-news"], "conforms_to_style_guide": "ndis-yarns-styleguide-v1",
+      "references_assets": [], "required_fields": ["headline"], "optional_fields": ["subtitle"],
+      "layout_rules": {
+        "required_headline": "headline is the hard-gate field (render must not proceed without it).",
+        "optional_subtitle": "subtitle renders below the headline when present.",
+        "text_hierarchy": "Headline dominant (heavy/large); subtitle lighter/smaller.",
+        "overprint_guard": "The generic winner-scoped layout guard (image-worker v3.24.0) bounds the headline box; overprint must still be re-evidenced on NDIS's stat-led corpus (P8).",
+        "maps_to": "Headline.text + Subtitle.text (documentation only)."
+      },
+      "accessibility_rules": { "note": "White/brand text over the dark scrim; minimum font sizes per the generic template." },
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "proof_posture": "candidate",
+      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "supporting_render_log_ids": [], "source_commit": null, "review_packet": null, "approved_by": null, "approved_at": null, "notes": "No NDIS render exists — unproven." }
+    },
+    {
+      "pattern_key": "ny_category_badge_v1", "client_slug": "ndis-yarns", "version": "v1", "status": "candidate",
+      "pattern_type": "category_badge", "purpose": "Theme/category label with an optional location/date line.",
+      "used_by_template_families": ["ndis-yarns-news"], "conforms_to_style_guide": "ndis-yarns-styleguide-v1",
+      "references_assets": [], "required_fields": ["category"], "optional_fields": ["location", "date"],
+      "layout_rules": {
+        "category_field": "category is the badge label (short, upper-case treatment). VALUE 'NDIS UPDATE' (PK 2026-07-18, fixed v1 badge).",
+        "placement": "Above the headline block; location/date as a secondary line.",
+        "maps_to": "Category.text / Location.text / Date.text (documentation only)."
+      },
+      "accessibility_rules": { "note": "Badge text legible against scrim; not the dominant element." },
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "proof_posture": "candidate",
+      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "supporting_render_log_ids": [], "source_commit": null, "review_packet": null, "approved_by": null, "approved_at": null, "notes": "No NDIS render exists — unproven. category value to_be_confirmed." }
+    },
+    {
+      "pattern_key": "ny_background_plus_scrim_v1", "client_slug": "ndis-yarns", "version": "v1", "status": "candidate",
+      "pattern_type": "background_plus_scrim", "purpose": "Full-bleed governed background photo with a dark scrim guaranteeing text legibility.",
+      "used_by_template_families": ["ndis-yarns-news"], "conforms_to_style_guide": "ndis-yarns-styleguide-v1",
+      "references_assets": [], "required_fields": ["background"], "optional_fields": [],
+      "layout_rules": {
+        "background_asset_requirement": "background MUST resolve to a governed asset (asset_key) via resolve_slot_assets — never a raw URL.",
+        "scrim_requirement": "A dark scrim is applied over the photo (governed NDIS backgrounds flagged needs_scrim / true).",
+        "fallback_background": "If no governed background resolves, the host render fails loud (NO raw-URL fallback).",
+        "governed_asset_dependency": "PENDING N5 intake — references_assets is EMPTY until the P0 set (brand_texture-01, civic_neutral-04) is intaken + promoted; asset_keys to_be_confirmed. This is why the Background slot fail-closes for NDIS today.",
+        "maps_to": "Background.source + scrim (documentation only)."
+      },
+      "accessibility_rules": { "note": "Scrim ensures text-over-image contrast; needs_scrim enforced." },
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "proof_posture": "candidate",
+      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "supporting_render_log_ids": [], "source_commit": null, "review_packet": null, "approved_by": null, "approved_at": null, "notes": "No NDIS render exists — unproven. Background asset_keys pending N5 intake." }
+    }
+  ],
+
+  "template_families": [
+    {
+      "template_family_key": "ndis-yarns-news",
+      "client_slug": "ndis-yarns",
+      "version": "v1",
+      "status": "candidate",
+      "purpose": "NDIS Yarns News — the governed COMPOSITION of the brand's image_quote news card (branding strip + headline + category badge + background/scrim) on the SHARED GENERIC market-insight template.",
+      "compatible_ice_format_keys": ["image_quote"],
+      "conforms_to_style_guide": "ndis-yarns-styleguide-v1",
+      "composed_of_patterns": ["ny_branding_strip_v1", "ny_headline_block_v1", "ny_category_badge_v1", "ny_background_plus_scrim_v1"],
+      "expected_assets": ["ny_logo_full_colour"],
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "proof_posture": "candidate",
+      "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "proven_variants": [], "source_commit": null, "review_packet": null, "approved_by": null, "approved_at": null, "notes": "COMPOSITION candidate; NDIS has NO proven variant and NO render. Proof would live at the variant level once the D7 dry-run (step 7) passes a PK visual gate." },
+      "variants": [
+        {
+          "template_variant_key": "generic-market-insight-1x1",
+          "purpose": "NDIS binding of the SHARED GENERIC 1:1 market-insight card (the fleet template PP's live image_quote also renders). NDIS-specific artwork is NOT authored — only the governed data (logo/background/contract literals) differs per brand.",
+          "aspect_ratio": "1:1",
+          "output_type": "jpg",
+          "compatible_ice_format_key": "image_quote",
+          "render_engine": "creatomate",
+          "provider": "creatomate",
+          "provider_template_id": "48cba556-0a53-4001-90f0-05420d10efc0",
+          "registry_template_id": "0e006c5c-45aa-4829-82ec-89dd282a8c56",
+          "provider_status": "generic_shared",
+          "provider_status_note": "generic_market_insight_card_1x1_v1 (scope=generic, provider 48cba556-0a53-4001-90f0-05420d10efc0, registry template 0e006c5c-45aa-4829-82ec-89dd282a8c56). Shared fleet-wide; select_template's candidate pool. NDIS reaches it via a client assignment (N2, pending) at visually_approved+ with a passed visual_approval proof (N3, pending).",
+          "required_fields": ["headline", "category", "date", "footer", "background", "logo"],
+          "optional_fields": ["subtitle", "location"],
+          "expected_assets": ["ny_logo_full_colour"],
+          "composed_of_patterns": ["ny_branding_strip_v1", "ny_headline_block_v1", "ny_category_badge_v1", "ny_background_plus_scrim_v1"],
+          "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+          "proof_status": "unproven",
+          "proof_gate": null,
+          "proof_posture": "candidate",
+          "known_limitations": "UNPROVEN for NDIS. Blocked on: N2 assignment, N3 visual-proof event, N5 background intake+promotion, N7b vendored contract deploy (category/footer), and G0a (PP no-regression proof, now DB-confirmed). Category/footer literals to_be_confirmed. No NDIS render exists.",
+          "evidence": { "status": "candidate", "proof_status": "unproven", "proof_gate": null, "render_log_id": null, "render_spec_template_id": null, "source_commit": null, "review_packet": "docs/briefs/tmr-d7-second-brand-exit-test-v1.md", "approved_by": null, "approved_at": null, "notes": "Authored DARK. NDIS Yarns has never rendered. Proof requires the step-7 governed dry-run (FB first) + PK visual PASS (status + emitted modifications with NO PP string + composed pixels, per the D7 pass condition)." }
+        }
+      ]
+    }
+  ],
+
+  "creative_instances": {
+    "_note": "Creative Instances are produced render events (m.post_render_log). NDIS Yarns has NONE.",
+    "known_instances": []
+  },
+
+  "capability_contracts": [
+    {
+      "contract_key": "ndis_yarns.image_quote.news_card.v1",
+      "contract_ref": "ndis_yarns.image_quote.news_card",
+      "contract_version": "v1",
+      "client_slug": "ndis-yarns",
+      "client_id": "fb98a472-ae4d-432d-8738-2273231c1ef4",
+      "status": "candidate",
+      "purpose": "Capability contract for the NDIS Yarns image_quote governed render path (second brand). Declares variant identity, field classes, governed assets, fallback, evidence. Declarative source of truth; the RUNTIME consumes a VENDORED projection (creative_contract.ts CREATIVE_CONTRACT_REGISTRY) — a SEPARATE T3 code+deploy lane (N7b). CANDIDATE — unproven; NDIS has never rendered.",
+      "gate": { "client_id": "fb98a472-ae4d-432d-8738-2273231c1ef4", "recommended_format": "image_quote", "note": "Deterministic resolver inputs ONLY. resolveCreativeContract keys on `${client_id}::${recommended_format}`. Until this contract is vendored into CREATIVE_CONTRACT_REGISTRY and deployed, resolveCreativeContract returns null for NDIS -> image-worker fail-closes brand_payload_contract_unresolved (post-G0b)." },
+      "maps_to_variant": {
+        "template_family_key": "ndis-yarns-news",
+        "template_variant_key": "generic-market-insight-1x1",
+        "provider": "creatomate",
+        "provider_template_id": "48cba556-0a53-4001-90f0-05420d10efc0",
+        "implementation_id": "generic_market_insight_card_1x1_v1",
+        "runtime_render_spec_template_variant": "generic-market-insight-1x1"
+      },
+      "fields": {
+        "ai_authored": [
+          { "field": "headline", "required": true, "max_chars": 90, "policy": "hard_gate_throw", "note": "Hard-gate; blank/overflow fails loud. max_chars mirrors PP; re-confirm against NDIS corpus." }
+        ],
+        "derived": [
+          { "field": "subtitle", "required": false, "max_chars": 90, "source": "first non-empty paragraph of draft_body", "policy": "truncate_optional", "note": "Empty body -> '' (render proceeds); over-length truncated, never failed." }
+        ],
+        "renderer_fixed": [
+          { "field": "category", "value": "NDIS UPDATE", "note": "PK DECISION 2026-07-18: fixed v1 badge 'NDIS UPDATE' (broad fallback for the initial governed static path; content-aware badges e.g. NDIS EXPLAINER/NDIS NEWS are out of this proof)." },
+          { "field": "date", "value": "render date (today)" },
+          { "field": "footer", "value": "", "note": "PK DECISION 2026-07-18: footer explicitly RESOLVED BLANK — an intentional empty string '' (NOT null/absent, NOT a URL/handle/brand-name/tagline). Verified: buildProofFieldsFromDraft (image-worker v3.28.0:83) checks `footer === undefined`, so '' passes the completeness guard (RESOLVED, not brand_payload_contract_incomplete). Renderer must suppress the Footer element cleanly (no placeholder/divider/orphan spacing) — a render-level property confirmed at the step-7 visual gate (supported by PP's empty Location='' precedent on the same generic template; Footer is a distinct element, so confirm specifically)." },
+          { "field": "location", "value": "" }
+        ],
+        "governed_assets": {
+          "logo": { "asset_key": "ny_logo_full_colour", "policy": "fixed", "note": "Eligible 2026-07-17 (D7 step 2, asset_id d1b10010). Reconstruction accepted for proof; authoritative swap = separate PK gate." },
+          "background": { "policy": "tmr_spine", "resolver": "resolve_slot_assets", "note": "No hardcoded pool (mirrors PP contract v3). Resolved per-render by the TMR spine. PENDING: at least one governed+eligible NDIS background (P0 set brand_texture-01 / civic_neutral-04) must be intaken+promoted or the Background slot fail-closes." }
+        }
+      },
+      "fallback_policy": "governed_only_fail_loud",
+      "validator_policy": {
+        "slice_1": "none (declarative identity + projection only — no validator, no AI change, no behaviour change)",
+        "pre_render": "validate headline (present, <=90) + subtitle (<=90) + governed-asset reachability (logo + >=1 eligible background) against THIS contract BEFORE render; record render_spec.contract_validation {pass|fail, failed_fields[]}",
+        "note": "Mirrors the PP contract's validator_policy shape (property-pulse.json). Declarative only; the runtime validator lives in the vendored image-worker path (contract_validation.ts), not this file."
+      },
+      "evidence_fields_for_renderer": ["variant_key", "contract_ref", "contract_version", "selector_reason"],
+      "selector_reason_default": "ndis_image_quote_default",
+      "runtime_consumption": "vendored projection only; NO live JSON import (runtime-import guard). The vendored runtime-safe constant (N7b) is derived from THIS entry and must cite its source_commit. N7b is a T3 ef-builder + deploy lane on image-worker + ai-worker (adds one CREATIVE_CONTRACT_REGISTRY entry ×2), render-critical, PK deploy gate.",
+      "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+      "evidence": {
+        "status": "candidate",
+        "proof_status": "unproven",
+        "proof_gate": null,
+        "render_log_id": null,
+        "production_instances": [],
+        "render_spec_template_id": null,
+        "source_commit": null,
+        "review_packet": "docs/briefs/tmr-d7-second-brand-exit-test-v1.md",
+        "approved_by": null,
+        "approved_at": null,
+        "notes": "CANDIDATE / UNPROVEN. NDIS Yarns has produced NO governed render and NO publish. This contract is not yet vendored (resolveCreativeContract returns null for NDIS). Proof requires: N7b vendored+deployed (with concrete category/footer), N2/N3 assignment+proof, N5 background eligible, then the step-7 dry-run + PK visual PASS. No proof claimed."
+      }
+    }
+  ]
+}
