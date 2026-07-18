@@ -1,0 +1,98 @@
+{
+ "images/ndis_bg_civic_neutral-01.jpg": {
+  "sha256": "26a2697de4067d9926787dcba8f4e7a1e439fd1f09ea5a24170317747f3180e8",
+  "bytes": 340577,
+  "width": 1920,
+  "height": 1280
+ },
+ "final/ndisyarns_bg_civic_neutral_v1.jpg": {
+  "sha256": "26a2697de4067d9926787dcba8f4e7a1e439fd1f09ea5a24170317747f3180e8",
+  "bytes": 340577,
+  "width": 1920,
+  "height": 1280
+ },
+ "images/ndis_bg_civic_neutral-02.jpg": {
+  "sha256": "4c79ebacbdcb01e9cab6c340e37b5548d97d1a2851d1f9eb8f86cbc10efa6055",
+  "bytes": 313167,
+  "width": 1920,
+  "height": 1280
+ },
+ "images/ndis_bg_civic_neutral-03.jpg": {
+  "sha256": "1b616bf87326ffe4bf25fc9f648df2ef66d3916aae3bb30f850a0b29ba017157",
+  "bytes": 321038,
+  "width": 1920,
+  "height": 1280
+ },
+ "images/ndis_bg_civic_neutral-04.jpg": {
+  "sha256": "17c54fa3d5abee123ccd817daf9e028a40210a429b1c3f36ea038a887bb42e2f",
+  "bytes": 590632,
+  "width": 1920,
+  "height": 2400
+ },
+ "images/ndis_bg_civic_neutral-05.jpg": {
+  "sha256": "1facbb7593418e81b38f7a1c0f13faf483f00bd8c48a833ab37eac79c9f3562d",
+  "bytes": 194468,
+  "width": 1920,
+  "height": 1284
+ },
+ "images/ndis_bg_brand_texture-01.jpg": {
+  "sha256": "40fb69b42a881533e9f1bb73380330073f6f89e3a2150cabf7ca045ab7b788f5",
+  "bytes": 57991,
+  "width": 1920,
+  "height": 2877
+ },
+ "final/ndisyarns_bg_brand_texture_v1.jpg": {
+  "sha256": "40fb69b42a881533e9f1bb73380330073f6f89e3a2150cabf7ca045ab7b788f5",
+  "bytes": 57991,
+  "width": 1920,
+  "height": 2877
+ },
+ "images/ndis_bg_brand_texture-02.jpg": {
+  "sha256": "58ee7d2240ac48c6e338355a3a787ba4abd19db56e9ddf4280da425c8c5a2c81",
+  "bytes": 54396,
+  "width": 1920,
+  "height": 2880
+ },
+ "images/ndis_bg_brand_texture-03.jpg": {
+  "sha256": "5f3ceb631d4e8734dc7cc366c5daac55a223e3c4b226cfa7d3fc59cb4d0c722d",
+  "bytes": 40809,
+  "width": 1920,
+  "height": 2880
+ },
+ "images/ndis_bg_brand_texture-04.jpg": {
+  "sha256": "f8800059a5e2e1a6e66e50797e9066d2f9955c90f25cd181bb831f004bd6b821",
+  "bytes": 129535,
+  "width": 1920,
+  "height": 2880
+ },
+ "images/ndis_bg_data_grid-01.jpg": {
+  "sha256": "874049f829bb685bc48e642b7de2684b7d7d73646d3f82ce3e267afb080e41c0",
+  "bytes": 373097,
+  "width": 1920,
+  "height": 2880
+ },
+ "final/ndisyarns_bg_data_grid_v1.jpg": {
+  "sha256": "874049f829bb685bc48e642b7de2684b7d7d73646d3f82ce3e267afb080e41c0",
+  "bytes": 373097,
+  "width": 1920,
+  "height": 2880
+ },
+ "images/ndis_bg_data_grid-02.jpg": {
+  "sha256": "4341d96103580a60e3e3b4baf66dc022f5b80e50727f0a1dad3e6631e97438fa",
+  "bytes": 133138,
+  "width": 1920,
+  "height": 1280
+ },
+ "images/ndis_bg_data_grid-03.jpg": {
+  "sha256": "fe2f49bc1976be05e410cc622ef0ad08d57d2f88064df51f31d2cd1430144a7d",
+  "bytes": 1315615,
+  "width": 1920,
+  "height": 2880
+ },
+ "images/ndis_bg_data_grid-04.jpg": {
+  "sha256": "2586860e3a0fcb106ac4b1aba35a7e532018cf8327e5a4b6044a15ece4ba45e6",
+  "bytes": 247458,
+  "width": 1920,
+  "height": 1280
+ }
+}

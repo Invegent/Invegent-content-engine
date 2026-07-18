@@ -1,0 +1,429 @@
+{
+  "verdict": "HARVEST_PARTIAL",
+  "summary": "All 3 NDIS Yarns background rows returned licence-safe person-free candidates (13 offered: civic 5, brand-texture 4, data-grid 4); PARTIAL reflects NON-PP out-of-proven-scope brand (candidate-level scrutiny) + a genuinely thin/marginal data-grid row (CC0 alone was not harvestable \u2014 Pexels-licence used).",
+  "run_id": "ndis-bg-20260717",
+  "rows": [
+    {
+      "row_key": "ndis_bg_civic_neutral",
+      "status": "candidates_offered",
+      "candidates": [
+        {
+          "candidate_id": "ndis_bg_civic_neutral-01",
+          "file": "images/ndis_bg_civic_neutral-01.jpg",
+          "best_pick": true,
+          "final_file": "final/ndisyarns_bg_civic_neutral_v1.jpg",
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/reflections-on-modern-glass-architecture-32613903/",
+          "download_url": "https://images.pexels.com/photos/32613903/pexels-photo-32613903.jpeg?auto=compress&cs=tinysrgb&w=1920",
+          "creator": "Mineia Martins",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by Mineia Martins on Pexels",
+          "width": 1920,
+          "height": 1280,
+          "bytes": 340577,
+          "sha256": "26a2697de4067d9926787dcba8f4e7a1e439fd1f09ea5a24170317747f3180e8",
+          "visual_description": "Abstract blue glass office facade filling the frame: a reflective curtain-wall window grid in deep navy/blue tones, geometric and sky-free.",
+          "text_safe_notes": "Self-check 1080 centre-crop @0.55 scrim: even mid-detail window grid, no single focal object competing at centre; deep navy reads well behind white/teal headline. Legible.",
+          "warnings": [
+            "uniform window-grid detail spans the whole frame; confirm headline contrast under scrim"
+          ]
+        },
+        {
+          "candidate_id": "ndis_bg_civic_neutral-02",
+          "file": "images/ndis_bg_civic_neutral-02.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/modern-office-building-18731497/",
+          "download_url": "https://images.pexels.com/photos/18731497/pexels-photo-18731497.jpeg?auto=compress&cs=tinysrgb&w=1920",
+          "creator": "Jan van der Wolf",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by Jan van der Wolf on Pexels",
+          "width": 1920,
+          "height": 1280,
+          "bytes": 313167,
+          "sha256": "4c79ebacbdcb01e9cab6c340e37b5548d97d1a2851d1f9eb8f86cbc10efa6055",
+          "visual_description": "Teal glass curtain wall with regular vertical brass/gold mullions on a diagonal composition.",
+          "text_safe_notes": "Self-check: regular vertical striping, low focal clutter; teal matches brand palette; gold mullions add a warm accent. Legible.",
+          "warnings": [
+            "regular diagonal lines may interfere with a centred text baseline",
+            "warm gold accent alongside teal"
+          ]
+        },
+        {
+          "candidate_id": "ndis_bg_civic_neutral-03",
+          "file": "images/ndis_bg_civic_neutral-03.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/modern-glass-facade-reflecting-sky-patterns-28733236/",
+          "download_url": "https://images.pexels.com/photos/28733236/pexels-photo-28733236.jpeg?auto=compress&cs=tinysrgb&w=1920",
+          "creator": "Jan van der Wolf",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by Jan van der Wolf on Pexels",
+          "width": 1920,
+          "height": 1280,
+          "bytes": 321038,
+          "sha256": "1b616bf87326ffe4bf25fc9f648df2ef66d3916aae3bb30f850a0b29ba017157",
+          "visual_description": "Modern glass building corner against a clear blue sky; upper area is clean open sky.",
+          "text_safe_notes": "Self-check: upper sky provides clean negative space, centre is the building edge; scrim keeps headline legible. Best placed mid-lower.",
+          "warnings": [
+            "bright high-key sky at top; keep headline off the brightest sky zone"
+          ]
+        },
+        {
+          "candidate_id": "ndis_bg_civic_neutral-04",
+          "file": "images/ndis_bg_civic_neutral-04.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/windows-of-modern-building-16566144/",
+          "download_url": "https://images.pexels.com/photos/16566144/pexels-photo-16566144.jpeg?auto=compress&cs=tinysrgb&w=1920",
+          "creator": "Mikitayo",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by Mikitayo on Pexels",
+          "width": 1920,
+          "height": 2400,
+          "bytes": 590632,
+          "sha256": "17c54fa3d5abee123ccd817daf9e028a40210a429b1c3f36ea038a887bb42e2f",
+          "visual_description": "Sweeping curved silver/white modern architecture \u2014 a smooth metal-and-glass curve (portrait framing).",
+          "text_safe_notes": "Self-check: smooth curved surfaces, low text competition, cool neutral tone; legible under scrim.",
+          "warnings": [
+            "some bright highlights along the curve"
+          ]
+        },
+        {
+          "candidate_id": "ndis_bg_civic_neutral-05",
+          "file": "images/ndis_bg_civic_neutral-05.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/rectangular-green-and-clear-glass-panels-1407487/",
+          "download_url": "https://images.pexels.com/photos/1407487/pexels-photo-1407487.jpeg?auto=compress&cs=tinysrgb&w=1920",
+          "creator": "Ronald van Eendenburg",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by Ronald van Eendenburg on Pexels",
+          "width": 1920,
+          "height": 1284,
+          "bytes": 194468,
+          "sha256": "1facbb7593418e81b38f7a1c0f13faf483f00bd8c48a833ab37eac79c9f3562d",
+          "visual_description": "Teal-green rectangular cladding/glass panels in regular diagonal rows (building-facade texture).",
+          "text_safe_notes": "Self-check: regular low-detail panel grid, teal-green brand-compatible, even under scrim. Legible.",
+          "warnings": [
+            "regular panel seams; verify no moire against text"
+          ]
+        }
+      ],
+      "rejected_count": 16,
+      "rejected_reasons": [
+        "off_category_residential_interior_and_furniture_renders (10 CC0 hits from interior queries)",
+        "messy_graffitied_concrete_facade (1 CC0)",
+        "busy_warm_construction_girders_no_clean_negative_space (px20273065)",
+        "busy_foreground_railing_mixed_scene (px34522993)",
+        "high_key_white_sky_poor_dark_scrim (px3137038, px3137050)",
+        "fetch_failed_404 (px20697911)"
+      ]
+    },
+    {
+      "row_key": "ndis_bg_brand_texture",
+      "status": "candidates_offered",
+      "candidates": [
+        {
+          "candidate_id": "ndis_bg_brand_texture-01",
+          "file": "images/ndis_bg_brand_texture-01.jpg",
+          "best_pick": true,
+          "final_file": "final/ndisyarns_bg_brand_texture_v1.jpg",
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/smooth-dark-blue-pattern-12306417/",
+          "download_url": "https://images.pexels.com/photos/12306417/pexels-photo-12306417.jpeg?auto=compress&cs=tinysrgb&w=1920",
+          "creator": "Allec Gomes",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by Allec Gomes on Pexels",
+          "width": 1920,
+          "height": 2877,
+          "bytes": 57991,
+          "sha256": "40fb69b42a881533e9f1bb73380330073f6f89e3a2150cabf7ca045ab7b788f5",
+          "visual_description": "Deep navy silky soft waves \u2014 a smooth dark gradient texture with very low detail across the whole frame.",
+          "text_safe_notes": "Self-check: dark uniform navy negative space everywhere; ideal scrim backdrop; excellent headline legibility. Matches brand navy.",
+          "warnings": []
+        },
+        {
+          "candidate_id": "ndis_bg_brand_texture-02",
+          "file": "images/ndis_bg_brand_texture-02.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/graphic-illustration-of-dark-blue-color-gradient-7629493/",
+          "download_url": "https://images.pexels.com/photos/7629493/pexels-photo-7629493.jpeg?auto=compress&cs=tinysrgb&w=1920",
+          "creator": "Eva Bronzini",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by Eva Bronzini on Pexels",
+          "width": 1920,
+          "height": 2880,
+          "bytes": 54396,
+          "sha256": "58ee7d2240ac48c6e338355a3a787ba4abd19db56e9ddf4280da425c8c5a2c81",
+          "visual_description": "Dark teal-to-navy horizontal gradient wash with a subtle teal band.",
+          "text_safe_notes": "Self-check: very low detail, dark, clean; brand teal/navy; excellent overlay legibility.",
+          "warnings": []
+        },
+        {
+          "candidate_id": "ndis_bg_brand_texture-03",
+          "file": "images/ndis_bg_brand_texture-03.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/a-clear-blue-night-sky-7605260/",
+          "download_url": "https://images.pexels.com/photos/7605260/pexels-photo-7605260.jpeg?auto=compress&cs=tinysrgb&w=1920",
+          "creator": "Eva Bronzini",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by Eva Bronzini on Pexels",
+          "width": 1920,
+          "height": 2880,
+          "bytes": 40809,
+          "sha256": "5f3ceb631d4e8734dc7cc366c5daac55a223e3c4b226cfa7d3fc59cb4d0c722d",
+          "visual_description": "Deep navy near-solid gradient (a dark blue night-sky wash).",
+          "text_safe_notes": "Self-check: almost flat dark navy, maximal negative space; excellent headline legibility.",
+          "warnings": []
+        },
+        {
+          "candidate_id": "ndis_bg_brand_texture-04",
+          "file": "images/ndis_bg_brand_texture-04.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/modern-abstract-3d-render-with-gradient-curves-31032752/",
+          "download_url": "https://images.pexels.com/photos/31032752/pexels-photo-31032752.jpeg?auto=compress&cs=tinysrgb&w=1920",
+          "creator": "UP Modern",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by UP Modern on Pexels",
+          "width": 1920,
+          "height": 2880,
+          "bytes": 129535,
+          "sha256": "f8800059a5e2e1a6e66e50797e9066d2f9955c90f25cd181bb831f004bd6b821",
+          "visual_description": "Predominantly black frame with a soft lavender/blue light curve in the lower-left (3D render).",
+          "text_safe_notes": "Self-check: predominantly black negative space, minimal detail; headline sits clean over black.",
+          "warnings": [
+            "accent curve leans lavender/purple \u2014 slightly off the navy/teal palette; predominantly black so low impact"
+          ]
+        }
+      ],
+      "rejected_count": 18,
+      "rejected_reasons": [
+        "off_palette_orange_red_ink_in_water (3 CC0)",
+        "white_background_blob_not_a_calm_backdrop (2 CC0)",
+        "bright_green_busy_off_palette_smoke (3 CC0)",
+        "recognisable_place_night_street_neon (1 CC0)",
+        "warm_city_bokeh_off_palette (1 CC0)",
+        "light_low_contrast_or_busy_centre (5 CC0)",
+        "off_brand_purple_magenta_gradient (px6985132)",
+        "busy_purple_marble_high_detail_centre (px3109820)",
+        "fetch_failed_404 (px11394981)"
+      ]
+    },
+    {
+      "row_key": "ndis_bg_data_grid",
+      "status": "candidates_offered",
+      "candidates": [
+        {
+          "candidate_id": "ndis_bg_data_grid-01",
+          "file": "images/ndis_bg_data_grid-01.jpg",
+          "best_pick": true,
+          "final_file": "final/ndisyarns_bg_data_grid_v1.jpg",
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/abstract-blue-light-streaks-in-motion-35496838/",
+          "download_url": "https://images.pexels.com/photos/35496838/pexels-photo-35496838.jpeg?auto=compress&cs=tinysrgb&w=1920",
+          "creator": "Evija Ciematniece",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by Evija Ciematniece on Pexels",
+          "width": 1920,
+          "height": 2880,
+          "bytes": 373097,
+          "sha256": "874049f829bb685bc48e642b7de2684b7d7d73646d3f82ce3e267afb080e41c0",
+          "visual_description": "Radial blue light streaks emanating from a dark central vanishing point on deep navy \u2014 a calm motion/information-flow register.",
+          "text_safe_notes": "Self-check: the dark centre is clean negative space with the headline zone in the calmest area; streaks radiate to the edges. Legible if headline kept central.",
+          "warnings": [
+            "radial streaks toward the edges; keep headline within the central dark zone"
+          ]
+        },
+        {
+          "candidate_id": "ndis_bg_data_grid-02",
+          "file": "images/ndis_bg_data_grid-02.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/abstract-blue-lines-and-drops-on-black-background-6956433/",
+          "download_url": "https://images.pexels.com/photos/6956433/pexels-photo-6956433.jpeg?auto=compress&cs=tinysrgb&w=1920",
+          "creator": "Solen Feyissa",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by Solen Feyissa on Pexels",
+          "width": 1920,
+          "height": 1280,
+          "bytes": 133138,
+          "sha256": "4341d96103580a60e3e3b4baf66dc022f5b80e50727f0a1dad3e6631e97438fa",
+          "visual_description": "Teal connected lines and scattered dots/bubbles on black \u2014 a connected-dots / node register.",
+          "text_safe_notes": "Self-check: large black negative space; the dots-and-lines motif reads as network/connection; legible.",
+          "warnings": [
+            "some brighter dot clusters in the upper area"
+          ]
+        },
+        {
+          "candidate_id": "ndis_bg_data_grid-03",
+          "file": "images/ndis_bg_data_grid-03.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/abstract-blue-grid-pattern-design-36536054/",
+          "download_url": "https://images.pexels.com/photos/36536054/pexels-photo-36536054.jpeg?auto=compress&cs=tinysrgb&w=1920",
+          "creator": "Valentin Ivantsov",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by Valentin Ivantsov on Pexels",
+          "width": 1920,
+          "height": 2880,
+          "bytes": 1315615,
+          "sha256": "fe2f49bc1976be05e410cc622ef0ad08d57d2f88064df51f31d2cd1430144a7d",
+          "visual_description": "Bright blue folded line-mesh grid surface \u2014 an abstract grid/mesh.",
+          "text_safe_notes": "Self-check: the grid/mesh fills the frame and is brighter/busier; competes more with a headline; calmest near edges. Alternate only.",
+          "warnings": [
+            "bright saturated blue and busy mesh lower text-contrast; offered as an alternate, not for the calmest layouts"
+          ]
+        },
+        {
+          "candidate_id": "ndis_bg_data_grid-04",
+          "file": "images/ndis_bg_data_grid-04.jpg",
+          "best_pick": false,
+          "final_file": null,
+          "source_platform": "pexels",
+          "source_url": "https://www.pexels.com/photo/3d-image-of-a-clear-glass-ball-14314638/",
+          "download_url": "https://images.pexels.com/photos/14314638/pexels-photo-14314638.jpeg?auto=compress&cs=tinysrgb&w=1920",
+          "creator": "Merlin",
+          "creator_verified": true,
+          "licence_name": "Pexels License",
+          "licence_url": "https://www.pexels.com/license/",
+          "attribution_required": false,
+          "attribution_text": "Photo by Merlin on Pexels",
+          "width": 1920,
+          "height": 1280,
+          "bytes": 247458,
+          "sha256": "2586860e3a0fcb106ac4b1aba35a7e532018cf8327e5a4b6044a15ece4ba45e6",
+          "visual_description": "Two glowing wireframe network spheres joined by a luminous bridge on teal (plexus/node render).",
+          "text_safe_notes": "Self-check: the bright connection glows through the centre and competes with a centred headline; corners are darker. Consider a lower/off-centre headline.",
+          "warnings": [
+            "bright centre bridge reduces central legibility"
+          ]
+        }
+      ],
+      "rejected_count": 6,
+      "rejected_reasons": [
+        "cc0_pool_off_category_irrelevant (4: rust-infected leaves / arcade machines / blue clipart) \u2014 NOT harvestable from CC0 alone",
+        "busy_circuit_render_no_clean_negative_space (px12537427)",
+        "off_palette_red_molecule_and_ai_render_provenance_ambiguous (px25626518, Google DeepMind)"
+      ]
+    }
+  ],
+  "contact_sheets": [
+    "sheets/contact_ALL_rows.png",
+    "sheets/cropproof_ALL_rows.png",
+    "sheets/contact_ndis_bg_civic_neutral.png",
+    "sheets/cropproofsheet_ndis_bg_civic_neutral.png",
+    "sheets/contact_ndis_bg_brand_texture.png",
+    "sheets/cropproofsheet_ndis_bg_brand_texture.png",
+    "sheets/contact_ndis_bg_data_grid.png",
+    "sheets/cropproofsheet_ndis_bg_data_grid.png"
+  ],
+  "package_root": "_harness/image_harvester_v0/ndis_bg_20260717/",
+  "non_claims": [
+    "nothing approved/uploaded/inserted; image-reviewer then PK visual review is the only deciding act",
+    "licence-hold (CC BY / CC BY-SA), paid-premium and AI-generated material recorded-conceptually and never offered \u2014 none appear in this package",
+    "no DB/storage/git/pool/deploy surface touched; writes confined to _harness/image_harvester_v0/ndis_bg_20260717/**",
+    "creator names were read from the Pexels source listing pages, not re-confirmed on each individual photo page \u2014 flagged for reviewer"
+  ],
+  "findings_contract": {
+    "verdict": {
+      "normalized": "concerns",
+      "native": "HARVEST_PARTIAL"
+    },
+    "confidence": "moderate",
+    "must_fix": [],
+    "should_fix": [
+      "data-grid row is thin and text-safety-marginal: -03 (bright mesh) is alternate-only lower-contrast; -04 has a bright central node bridge \u2014 reviewer/PK should weigh whether the data-grid register clears the bar or should be re-scoped.",
+      "re-confirm each creator on its individual Pexels photo page (names taken from listing pages)."
+    ],
+    "observations": [
+      "No people/faces, no flags/crests/gov-identifying buildings, no readable third-party signage, and no legible text survived the 1080 centre-crop @0.55 scrim in any offered candidate.",
+      "No First-Nations / cultural visual language and no medical/clinical disability stereotypes offered \u2014 scope was deliberately person-free/abstract.",
+      "Brand-texture and civic rows are strong; brand-texture best-picks (deep navy/teal washes) give the cleanest overlay negative space.",
+      "CC0-only sourcing under-served all three rows (civic pool skewed to interior-design renders; data-grid CC0 was off-target); on-target candidates came from Pexels-licence stock, which policy permits."
+    ],
+    "evidence": [
+      {
+        "claim": "ndis_bg_civic_neutral best-pick provenance",
+        "candidate_id": "ndis_bg_civic_neutral-01",
+        "source_url": "https://www.pexels.com/photo/reflections-on-modern-glass-architecture-32613903/",
+        "sha256": "26a2697de4067d9926787dcba8f4e7a1e439fd1f09ea5a24170317747f3180e8",
+        "licence": "Pexels License"
+      },
+      {
+        "claim": "ndis_bg_brand_texture best-pick provenance",
+        "candidate_id": "ndis_bg_brand_texture-01",
+        "source_url": "https://www.pexels.com/photo/smooth-dark-blue-pattern-12306417/",
+        "sha256": "40fb69b42a881533e9f1bb73380330073f6f89e3a2150cabf7ca045ab7b788f5",
+        "licence": "Pexels License"
+      },
+      {
+        "claim": "ndis_bg_data_grid best-pick provenance",
+        "candidate_id": "ndis_bg_data_grid-01",
+        "source_url": "https://www.pexels.com/photo/abstract-blue-light-streaks-in-motion-35496838/",
+        "sha256": "874049f829bb685bc48e642b7de2684b7d7d73646d3f82ce3e267afb080e41c0",
+        "licence": "Pexels License"
+      }
+    ],
+    "scope_boundary": "NON-Property-Pulse brand (NDIS Yarns) \u2014 outside the image-harvester PROVEN scope, so first-attempt candidate-level scrutiny applies. Person-free / abstract scoping was chosen deliberately to stay clear of the people-forward disability category and the First-Nations sensitive category (no cultural sign-off exists for this lane). Sources searched: Openverse CC0/PDM API and Pexels-licence CDN; Unsplash and Wikimedia Commons were not deeply mined this pass. Nothing here is approved.",
+    "open_questions": [
+      "Is Pexels-licence stock acceptable for NDIS Yarns, or does this non-PP brand require CC0-only? (CC0 alone was insufficient, especially for data-grid.)",
+      "Does the data-grid 'information/connection' register suit a compliance-strict explainer brand, or should it be dropped in favour of civic + brand-texture only?"
+    ],
+    "recommended_next_gate": "image-reviewer pass, then PK visual review (NON-PP \u2192 candidate-level scrutiny)",
+    "non_claims": [
+      "nothing approved/uploaded/inserted; image-reviewer then PK visual review is the only deciding act",
+      "licence-hold (CC BY / CC BY-SA), paid-premium and AI-generated material recorded-conceptually and never offered \u2014 none appear in this package",
+      "no DB/storage/git/pool/deploy surface touched; writes confined to _harness/image_harvester_v0/ndis_bg_20260717/**",
+      "creator names were read from the Pexels source listing pages, not re-confirmed on each individual photo page \u2014 flagged for reviewer"
+    ]
+  }
+}
