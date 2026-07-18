@@ -67,5 +67,15 @@ Rationale: two clean PASS anchors (one calm branded backdrop + one neutral civic
 4. Confirm `data_grid-04` dropped (AI-provenance).
 5. (After accept) whether to proceed to a separate PK-gated intake gate — NOT part of this lane.
 
+## Follow-up: `civic_neutral-04` pre-crop (2026-07-18, routed back from v5.71)
+PK requested a pre-crop of `civic_neutral-04` (the v5.71 NDIS intake used `brand_texture-01` as sole P0 and routed the civic crop back to this lane).
+
+- **Deliverable (fenced):** `final/ndisyarns_bg_civic_neutral_04_precrop_1x1.jpg` — 1600×1600 1:1, **453669 B**, sha256 `9801dfdd…`. Provenance: `precrop/civic04_precrop_provenance.json`.
+- **Op:** pure 1:1 crop, no scaling/colour edit — `src_box_xywh=[320,320,1600,1600]` of the 1920×2400 source (Mikitayo, Pexels, source sha `17c54fa3…`).
+- **Why not the template center-cover:** a center square lands the headline partly on the bright metal sweep; this crop shifts right+down into the dark-glass band, dropping central-band luminance **110→95** for clean white-headline contrast while keeping the diagonal architecture as top/bottom framing.
+- **Safety re-confirmed:** no text/signage, no people, no gov/NDIS-identifying markers, no cultural motifs; text-safe under the 0.55-scrim centred-headline proof.
+- **Evidence:** `precrop/PRECROP_finalists.jpg` (center vs optimized), `precrop/PRECROP_candidates.jpg`, `precrop/proof_optimized.jpg`.
+- **Status:** FENCED prep only. Any civic-04 DB intake is a **separate later PK gate** (as brand_texture-01's was) — not part of this step.
+
 ## Non-claims
 Nothing here is approved or production-safe. No DB promotion, no production activation, no governance flip. This lane STOPS at the PK visual/source approval gate.

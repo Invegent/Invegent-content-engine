@@ -1,0 +1,31 @@
+{
+  "asset": "ndisyarns_bg_civic_neutral_04_precrop_1x1.jpg",
+  "derived_from_candidate": "ndis_bg_civic_neutral-04",
+  "source_url": "https://www.pexels.com/photo/windows-of-modern-building-16566144/",
+  "creator": "Mikitayo",
+  "licence": "Pexels License",
+  "source_sha256": "17c54fa3d5abee123ccd817daf9e028a40210a429b1c3f36ea038a887bb42e2f",
+  "source_dims": [
+    1920,
+    2400
+  ],
+  "precrop_op": {
+    "type": "1:1 square crop (no scaling, no colour edit)",
+    "src_box_xywh": [
+      320,
+      320,
+      1600,
+      1600
+    ]
+  },
+  "precrop_dims": [
+    1600,
+    1600
+  ],
+  "precrop_bytes": 453669,
+  "precrop_sha256": "9801dfddc5369129dc4f29b9779f529335cfb4e513d3d8273d4f3237cce0aebf",
+  "rationale": "Center-cover would land the headline partly on the bright metal sweep; this crop (shifted right+down into the dark glass band) drops central-band luminance 110->95 for clean white-headline contrast while keeping the diagonal architecture as top/bottom framing. Text-safe (no signage/text/people); on brief (neutral civic, no gov/NDIS-identifying markers).",
+  "fenced": true,
+  "no_db": true,
+  "no_promotion": true
+}
