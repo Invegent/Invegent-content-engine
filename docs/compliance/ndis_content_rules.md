@@ -1,8 +1,8 @@
 # NDIS Content Rules — AI Writer Instruction Set
 
-**Version:** 1.0
+**Version:** 1.1
 **Sources:** NDIS Code of Conduct (Rules 2018, Provider Guidance April 2024), NDIS Practice Standards and Quality Indicators (Version 4, November 2021), NDIS Pricing Arrangements, NDIS Fraud Factsheet (November 2024), Price Differentiation guides (NDIS Commission)
-**Last updated:** 20 March 2026
+**Last updated:** 19 July 2026
 **Status:** ACTIVE — document-sourced rules only. No opinion or operational experience content.
 
 ---
@@ -215,6 +215,35 @@ verifiable consent.
 **Permitted:** General descriptions of the population served:
 "Children accessing early intervention OT may work toward goals such as..."
 
+### Rule 3.5 — Never use identifiable real-participant or person-with-disability imagery without verifiable consent
+*Source: Code of Conduct Rule 2 (respect the privacy of people with disability); Code of Conduct Provider Guidance April 2024, Part 2, Element 2, paras 31-35 — personal information includes "details about their health or disability" (para 32). Applied to imagery by analogy to Rule 3.4: no NDIS paragraph specific to photographic/visual depiction is on file, so this rule rests on the privacy principle above, extended from written participant scenarios to their visual equivalent.*
+
+Code of Conduct Rule 2 requires providers to "respect the privacy of people
+with disability" and comply with Commonwealth and State privacy laws.
+(Provider Guidance, para 31-35.) Personal information includes "details about
+their health or disability." (Para 32.) An identifiable image of a real NDIS
+participant — or of an identifiable person depicted as a person with
+disability — is use of personal information and, exactly as Rule 3.4 treats a
+written participant scenario, may not be used without documented, verifiable
+consent for the specific use. Because such imagery is consent-bound to the
+client that holds the consent, it must remain client-scoped and is structurally
+ineligible for any shared or reused generic pool.
+
+**Prohibited:**
+- Any identifiable image of a real NDIS participant (or a person depicted as a person with disability) without documented, verifiable consent for the specific use
+- Reusing or pooling any participant or consent-bound imagery across clients
+
+**Permitted:**
+- Non-identifying, population-level representation consistent with Rules 3.1-3.3
+- Client-scoped imagery used only for the client that holds the documented consent/rights basis
+
+*Scope note: this rule governs the participant-privacy/consent dimension only.
+Brand- and affiliation-neutrality of shared/generic imagery (no NDIS logo,
+civic/organisational cue, competitor branding) is a distinct concern governed
+by the shared-asset-pool `brand_neutral` mechanism (risk 4.1 of
+`docs/briefs/generic-shared-asset-pool-assessment-v1.md`), not by this privacy
+rule.*
+
 ---
 
 ## RULE GROUP 4 — Transparency and Conflict of Interest
@@ -358,5 +387,6 @@ industry commentary, news articles, or social media.
 
 ## Changelog
 
+- v1.1 (19 Jul 2026): Rule 3.5 added (Rule Group 3) — identifiable real-participant / person-with-disability imagery requires verifiable consent and must stay client-scoped, structurally ineligible for any shared/generic pool. Grounded on Code of Conduct Rule 2 + Provider Guidance para 31-35 / para 32, applied to imagery by analogy to Rule 3.4 (no imagery-specific NDIS paragraph on file — analogy grounding, PK election 2026-07-19). Brand/affiliation-neutrality explicitly scoped out to the shared-asset-pool `brand_neutral` mechanism (risk 4.1). Closes OQ-1 of `docs/briefs/generic-shared-asset-pool-assessment-v1.md`.
 - v1.0 (20 Mar 2026): All rules sourced from NDIS documents only. Removed all [PK REVIEW NEEDED] sections. Rules 2.4, 2.5, 4.2, 5.3 rewritten from source documents. Rule 5.4 added (fraud factsheet). Source citations added to every rule group.
 - v0.1 (20 Mar 2026): Initial draft, partial document sourcing.
