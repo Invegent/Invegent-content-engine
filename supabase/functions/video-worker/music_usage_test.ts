@@ -3,11 +3,22 @@
 // No env, no network, no DB — the supabase client is a plain in-memory stub.
 import { assertEquals } from 'jsr:@std/assert@1';
 import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type ResolvedMusicBed } from './music_usage.ts';
-import { buildGovernedVideoStatPlan, type B1VideoStatFields } from './b1_video_stat.ts';
+import { buildGovernedVideoStatPlan, type B1VideoStatFields, type TmrSelectorResponse } from './b1_video_stat.ts';
 
 const BASE = 'https://proj.supabase.co/storage/v1/object/public/';
 const TRACK = 'a1111111-1111-1111-1111-111111111111';
 const STORAGE = 'post-music/global/calm/drifting_piano.mp3';
+
+// v3.8.0: the plan builder is spine-driven — provider id + Logo.source come from a select_template
+// response. A minimal valid (baked-bg) fixture so the MusicBed chain tests below still exercise the
+// real builder without depending on the selector shape details (covered fully in b1_video_stat_test.ts).
+function selectorFixture(): TmrSelectorResponse {
+  return {
+    status: 'ok',
+    selected: { provider_template_id: 'c11bb8ab-18bd-45ff-aedd-0a59cb3773ab', provider_template_name: 'vid_market_stat_reveal_v2', variant_key: 'stat-reveal-9x16-video-v2', template_id: 't', format_key: 'video_short_stat', aspect_ratio: '9:16' },
+    slot_resolution: { status: 'ok', modifications: { 'Logo.source': 'https://x/logo.png' }, selected: [{ slot: 'Logo', asset_key: 'pp_logo_primary', reasons: [] }], warnings: [] },
+  };
+}
 
 // ── mapSelectMusicRow (pure) ────────────────────────────────────────────────────
 Deno.test('map: row with track_id + storage_path → url + trackId', () => {
@@ -46,7 +57,7 @@ Deno.test('descriptor: zero eligible (trackId null) → null → NO usage (D3)',
 Deno.test('chain: bed bound → MusicBed.source = the bound url; volume never set', () => {
   const fields: B1VideoStatFields = { statValue: '$782K', statLabel: 'Perth median', contextLine: 'Up 3.7%.', ctaText: 'Learn more' };
   const bed = mapSelectMusicRow([{ storage_path: STORAGE, track_id: TRACK }], BASE);
-  const plan = buildGovernedVideoStatPlan(fields, 'https://x/logo.png', 'https://x/voice.mp3', bed.url);
+  const plan = buildGovernedVideoStatPlan(selectorFixture(), fields, 'https://x/voice.mp3', bed.url);
   assertEquals('MusicBed.source' in plan.modifications, true);
   assertEquals(plan.modifications['MusicBed.source'], `${BASE}${STORAGE}`);
   assertEquals('MusicBed.volume' in plan.modifications, false);
@@ -54,7 +65,7 @@ Deno.test('chain: bed bound → MusicBed.source = the bound url; volume never se
 Deno.test('chain: no bed → MusicBed.source present and "", volume never set', () => {
   const fields: B1VideoStatFields = { statValue: '$782K', statLabel: 'Perth median', contextLine: 'Up 3.7%.', ctaText: 'Learn more' };
   const bed = mapSelectMusicRow([], BASE);
-  const plan = buildGovernedVideoStatPlan(fields, 'https://x/logo.png', 'https://x/voice.mp3', bed.url);
+  const plan = buildGovernedVideoStatPlan(selectorFixture(), fields, 'https://x/voice.mp3', bed.url);
   assertEquals('MusicBed.source' in plan.modifications, true);
   assertEquals(plan.modifications['MusicBed.source'], '');
   assertEquals('MusicBed.volume' in plan.modifications, false);

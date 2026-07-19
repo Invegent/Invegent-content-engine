@@ -1,67 +1,57 @@
 // b1_video_stat.ts — CREATIVE-LIBRARY VIDEO TMR / GOVERNED video_short_stat (video-worker).
 //
-// Pure helper module for the Property-Pulse-ONLY governed VIDEO stat-reveal branch inside the
-// EXISTING production video-worker loop. It is the VIDEO counterpart of image-worker/
-// b1_production.ts: every non-PP client and every format other than video_short_stat stays
+// Pure helper module for the governed VIDEO stat-reveal branch inside the EXISTING production
+// video-worker loop. It is the VIDEO counterpart of image-worker/b1_production.ts: every client
+// without a governance-enabled row and every format other than video_short_stat stays
 // byte-unchanged on the legacy processDraft() path.
 //
 // NO side effects: no Deno.serve, no network/DB/storage/secret access, no Date.now inside the
-// pure functions (renderDate is injected). Governed-only / fail-loud: assertStatFieldsWithinGate
-// + buildGovernedVideoStatPlan THROW rather than falling back, so the caller's existing
-// production catch fails the draft (video_status='failed') — there is NO fallback to the legacy
-// buildStatRevealSpec for the governed PP video_short_stat branch.
+// pure functions. Governed-only / fail-loud: assertStatFieldsWithinGate + buildGovernedVideoStatPlan
+// THROW rather than falling back, so the caller's existing production catch fails the draft
+// (video_status='failed') — there is NO fallback to the legacy buildStatRevealSpec for the governed
+// video_short_stat branch.
 //
-// ARMED (PP only): the governed branch that consumes this module is gated on BOTH
-// isB1GovernedVideoStat() AND c.client_creative_governance.enabled (read at runtime, fail-closed).
-// The governance row for (PP, video_short_stat) is enabled=true (armed 2026-07-10), so the branch
-// FIRES for the single governed PP client_id + video_short_stat and has produced a draft-linked
-// governed render (m.post_render_log 8c41689a, 2026-07-10). Every other client_id / format stays
-// fail-closed on the legacy isStat path, byte-identically. See index.ts for the gate + early return.
-//
-// v3.6.0 (cc-0032 step 5 — COMBO AUDIO, DARK): the governed plan is re-pointed to the registered v2
-// provider template c11bb8ab (VoiceAudio + MusicBed slots) and now drives combo audio — a voiceover
-// over an optional music bed. buildGovernedVideoStatPlan takes voiceUrl (REQUIRED — throws
+// v3.6.0 (cc-0032 step 5 — COMBO AUDIO): the governed plan drives combo audio — a voiceover over an
+// optional music bed. buildGovernedVideoStatPlan takes voiceUrl (REQUIRED — throws
 // b1_video_missing_voiceover if blank) and musicBedUrl (OPTIONAL — '' = explicitly silent bed, N1),
-// adding 'VoiceAudio.source' + 'MusicBed.source' to the existing 5 mods. composeGovernedVideoNarration
-// composes a concise (~≤40-word) spoken form of the stat fields (N2 — CTA stays VISUAL, never spoken)
-// so the VO fits the 12s template. Bed level stays TEMPLATE-controlled (70%, N3 — the worker never
-// sets MusicBed.volume). STRICTLY OUT OF SCOPE: the enabled=true flip, any live render/publish, the
-// legacy _voice/MUSIC_LIBRARY paths, non-PP clients, and the step-6 smoke execution.
+// adding 'VoiceAudio.source' + 'MusicBed.source' to the existing text/logo mods.
+// composeGovernedVideoNarration composes a concise (~≤40-word) spoken form of the stat fields (N2 —
+// CTA stays VISUAL, never spoken). Bed level stays TEMPLATE-controlled (70%, N3 — the worker never
+// sets MusicBed.volume).
+//
+// v3.8.0 (Video D6 Lane 3 — SPINE DE-HARDCODE, D6-8 + D6-6 + D6-7, ATOMIC): the governed branch now
+// consumes the LIVE TMR spine instead of the direct bind, mirroring image-worker/b1_production.
+// buildGovernedVideoStatPlan is REWRITTEN to take the public.select_template(...) response and derive:
+//   • provider_template_id ← selected.provider_template_id  (RETIRES the B1_VIDEO_PROVIDER_TEMPLATE_ID constant)
+//   • Logo.source          ← slot_resolution.modifications['Logo.source']  (RETIRES brand.logoUrl)
+//   • variant_key          ← selected.variant_key  (RETIRES the B1_VIDEO_VARIANT_KEY constant)
+// The evidence is now resolver-driven (bind_mode:'resolved', resolver_used:true) and contract_ref is
+// DROPPED entirely (D6-7 — mirrors image TmrEvidence, which carries none; B1_VIDEO_CONTRACT_REF is
+// deleted). BAKED-BG DIVERGENCE FROM IMAGE: the builder requires Logo.source ONLY, never
+// Background.source — the video background is BAKED into template c11bb8ab (D2 ruling), so the resolver
+// returns no Background slot for this template. This is the single deliberate difference from the image
+// buildTmrRenderPlan, which requires both. Fail-loud: selector status!='ok' / slot_resolution.status
+// !='ok' / missing provider_template_id / missing Logo.source → throw (→ video_status='failed', no
+// fallback). isB1GovernedVideoStat is RETAINED for reference/tests but is no longer the production gate
+// (index.ts now gates on the runtime governance lookup, mirroring image's isImageGovernanceEnabled).
+// STRICTLY OUT OF SCOPE: the governance enable/flip, any registry mutation, the _voice variant / voice
+// map (Lane 4), non-video-worker functions, and any DDL.
 
-// The Property-Pulse client_id — the RELIABLE gate identity (a client_id, NOT a slug: getBrand()
-// falls back to the client-id UUID when the c.client.client_slug read returns null, which would
-// silently mis-gate a slug-keyed check). Mirrors b1_production.B1_GOVERNED_CLIENT_ID.
+// The Property-Pulse client_id — retained as the reference identity for the hermetic gate tests and
+// the governed smoke. It no longer gates the production path (index.ts gates on the runtime
+// governance lookup, so a second governed brand is a DATA addition, not a code edit). A client_id,
+// NOT a slug: getBrand() falls back to the client-id UUID when the c.client.client_slug read returns
+// null. Mirrors b1_production.B1_GOVERNED_CLIENT_ID.
 export const B1_VIDEO_GOVERNED_CLIENT_ID = '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd';
 
 // The governed VIDEO format this branch owns. The _voice variant is DELIBERATELY EXCLUDED
-// (voice is a later lane — brief IMPLEMENTATION #1).
+// (voice is a later lane — Lane 4).
 export const B1_VIDEO_GOVERNED_FORMAT = 'video_short_stat';
-
-// DIRECT-BIND provider template id — v2 COMBO-AUDIO template (cc-0032 step 5, 2026-07-09).
-// Re-pointed from the v1 silent baseline 901a30ce to the REGISTERED v2 template c11bb8ab, which
-// carries the VoiceAudio + MusicBed audio elements (ledger 20260709205827,
-// register_video_provider_template_vid_market_stat_reveal_v2). The PP-specific baked-background
-// 9:16 stat-reveal (D2 ruling: baked still-image Ken-Burns over a governed Perth-CBD still + 0.55
-// scrim; PP accent baked; logo the ONLY governed VISUAL asset) is unchanged; v2 adds the two audio
-// slots the governed combo branch drives (VO over a music bed). The v1 template 901a30ce stays the
-// SILENT baseline (no audio elements) and is NOT used by this branch any more.
-//
-// NOTE — this is still a DIRECT bind, NOT a select_template resolution. select_template fail-closes
-// for video_short_stat because the variant is not visually-approved yet (property-pulse.json
-// evidence: proof_status='unproven'). This constant is the concrete id PK pinned for the DARK build
-// + supervised smoke. When the render is visually approved, select_template routing (mirroring
-// image-worker/b1_production.buildTmrRenderPlan) REPLACES this constant.
-export const B1_VIDEO_PROVIDER_TEMPLATE_ID = 'c11bb8ab-18bd-45ff-aedd-0a59cb3773ab';
 
 // render_spec.label that marks the governed video stat production render (matches the seeded
 // c.client_creative_governance.render_label for (PP, video_short_stat) — migration
 // 20260708000000_seed_client_creative_governance_video_short_stat_v1.sql).
 export const B1_VIDEO_PRODUCTION_LABEL = 'creative_library_video_stat_production';
-
-// Registry identities (property-pulse.json v0.9 — variant + capability contract). The v2 combo-audio
-// variant (registered ledger 20260709205827) supersedes the v1 silent variant for this branch.
-export const B1_VIDEO_VARIANT_KEY = 'stat-reveal-9x16-video-v2';
-export const B1_VIDEO_CONTRACT_REF = 'property_pulse.video_short_stat.market_stat';
 
 // Per-field hard-gate limits (capability contract property_pulse.video_short_stat.market_stat.v1
 // — property-pulse.json capability_contracts[].fields; policy 'hard_gate_throw' for all four).
@@ -70,15 +60,17 @@ export const B1_VIDEO_STAT_LABEL_MAX_CHARS = 48;
 export const B1_VIDEO_CONTEXT_LINE_MAX_CHARS = 160;
 export const B1_VIDEO_CTA_TEXT_MAX_CHARS = 90;
 
-// True ONLY for the single governed PP client_id AND the video_short_stat format (NOT the _voice
-// variant). Every other client_id / format → false → legacy processDraft path. Mirrors
-// b1_production.isB1GovernedImageQuote (gate keys on the reliable client_id).
+// RETAINED FOR REFERENCE/TESTS ONLY (v3.8.0): the production gate no longer calls this — index.ts now
+// gates on `fmt === B1_VIDEO_GOVERNED_FORMAT && await isVideoGovernanceEnabled(...)` (runtime
+// governance, fail-closed), so a second governed brand is a data addition, not a code edit. This pure
+// predicate documents the former PP-UUID gate and is exercised by the hermetic identity tests; it
+// gates nothing live. Mirrors b1_production.isB1GovernedImageQuote (retained, not the gate).
 export function isB1GovernedVideoStat(clientId: string, format: string): boolean {
   return clientId === B1_VIDEO_GOVERNED_CLIENT_ID && format === B1_VIDEO_GOVERNED_FORMAT;
 }
 
 // The four AI-authored text fields the governed template exposes (Background is BAKED — never a
-// modification; Logo is a governed asset modification handled in the plan builder).
+// modification; Logo is a governed asset modification supplied by the resolver in the plan builder).
 export type B1VideoStatFields = {
   statValue: string;
   statLabel: string;
@@ -124,84 +116,158 @@ export function composeGovernedVideoNarration(fields: B1VideoStatFields): string
   return `Market update. ${statLabel} is ${statValue}. ${contextSpoken}`;
 }
 
-// Additive render_spec.tmr evidence block (mirrors b1_production.TmrEvidence shape for the video
-// slice). DIRECT-BIND variant: there is no live selector response, so assignment_id/seed are null
-// and selector_status marks the bind mode.
+// ─────────────────────────────────────────────────────────────────────────────────────
+// v3.8.0 — TMR selector consumption (pure). Mirrors image-worker/b1_production.ts.
+// ─────────────────────────────────────────────────────────────────────────────────────
+
+// Minimal structural view of the `public.select_template` jsonb response — ONLY the fields this
+// module consumes (source of truth: supabase/migrations/20260703035154_create_select_template_v1.sql
+// + the resolve_slot_assets migration). Names mirror b1_production's TmrSelectorResponse verbatim so
+// the two modules read identically.
+export type TmrSlotSelected = {
+  slot?: string;
+  asset_key?: string;
+  asset_id?: string;
+  asset_url?: string;
+  reasons?: unknown[];
+};
+
+export type TmrSlotResolution = {
+  status?: string;
+  modifications?: Record<string, unknown>;
+  selected?: TmrSlotSelected[];
+  rejected?: unknown[];
+  warnings?: unknown[];
+  fail_reason?: string | null;
+  context?: Record<string, unknown>;
+};
+
+export type TmrSelectorResponse = {
+  status?: string;
+  selected?: {
+    assignment_id?: string;
+    template_id?: string;
+    provider_template_id?: string;
+    provider_template_name?: string;
+    variant_key?: string;
+    format_key?: string;
+    aspect_ratio?: string;
+    assignment_status?: string;
+    reasons?: unknown[];
+    proof?: Record<string, unknown>;
+  } | null;
+  slot_resolution?: TmrSlotResolution | null;
+  alternatives?: unknown[];
+  rejected?: unknown[];
+  warnings?: unknown[];
+  fail_reason?: string | null;
+  context?: Record<string, unknown>;
+};
+
+// Additive render_spec.tmr evidence block. RESOLVER-DRIVEN (v3.8.0): bind_mode='resolved',
+// resolver_used=true — this is the live spine, not the retired direct bind. Mirrors
+// b1_production.TmrEvidence (winner/ids/variant/seed/slot_reasons/slot_warnings/selector_status) and
+// ADDS the video-specific combo-audio block. There is NO contract_ref (D6-7 — dropped, mirroring
+// image). BAKED-BG: slot_reasons carries only the Logo slot for this template (no Background slot).
 export type B1VideoTmrEvidence = {
+  winner: string | null;                 // selected.provider_template_name (informational)
   provider_template_id: string;
-  registry_template_variant: string;
-  contract_ref: string;
-  bind_mode: 'direct_bind_pre_select_template';
-  resolver_used: false;
+  registry_template_id: string | null;
+  assignment_id: string | null;
+  variant_key: string | null;            // v3.8.0: from selected.variant_key (was the B1_VIDEO_VARIANT_KEY literal)
+  seed: string | null;
+  bind_mode: 'resolved';                 // v3.8.0: was 'direct_bind_pre_select_template'
+  resolver_used: true;                   // v3.8.0: was false
   fallback_taken: false;
-  // v3.6.0 (cc-0032 step 5): combo-audio evidence. voiceover is always true on the governed branch
-  // (VO is REQUIRED). music_bed reflects whether a bed URL was bound (false = explicitly silent, N1).
+  slot_reasons: Array<{ slot: string | null; asset_key: string | null; reasons: unknown[] }>;
+  slot_warnings: unknown[];
+  selector_status: 'ok';
+  // combo-audio evidence: voiceover is always true on the governed branch (VO REQUIRED). music_bed
+  // reflects whether a bed URL was bound (false = explicitly silent, N1).
   audio: { voiceover: true; music_bed: boolean };
 };
 
-// The render_spec.template sub-object (nested inside the templateSpec passed to renderUploadAndLog
-// — that caller emits render_spec.template verbatim via composeRenderSpec, so nesting the tmr
-// evidence here keeps renderUploadAndLog BYTE-UNCHANGED). label is applied by the caller via the
-// renderSpecLabel opt.
+// The render_spec.template sub-object (nested inside the templateSpec passed to renderUploadAndLog,
+// which emits render_spec.template verbatim — nesting the tmr evidence here keeps renderUploadAndLog
+// BYTE-UNCHANGED). No contract_ref (D6-7). resolver_used=true (v3.8.0). Identity fields now come from
+// the selector response (variant_key/format_key/aspect_ratio/template_id), mirroring the image smoke's
+// resolver-derived templateSpec shape.
 export type B1VideoTemplateSpec = {
-  implementation_id: string;
+  implementation_id: string | null;      // winner (provider_template_name)
+  template_id: string | null;            // registry template id
   provider: 'creatomate';
   provider_template_id: string;
-  variant_key: string;
-  contract_ref: string;
-  resolver_used: false;
+  variant_key: string | null;
+  format_key: string | null;
+  aspect_ratio: string | null;
+  resolver_used: true;
   fallback_taken: false;
   tmr: B1VideoTmrEvidence;
 };
 
 export type B1VideoStatPlan = {
   providerTemplateId: string;
-  // Creatomate template-mode modifications. Keys mirror the image-worker convention exactly
-  // ('<ElementName>.<property>' for asset sources, '<ElementName>' bare — here '.text' style is
-  // matched to the authored template element names). Background is BAKED — NOT present here.
+  // Creatomate template-mode modifications. All string-valued for this template (4 text slots + Logo +
+  // 2 audio slots). Background is BAKED — NOT present here.
   modifications: Record<string, string>;
   templateSpec: B1VideoTemplateSpec;
 };
 
-// PURE plan builder. Turns the gated + validated text fields + the governed logo URL + the combo
-// audio URLs into the Creatomate template-mode plan (provider template id + modifications +
-// evidence). Fail-loud:
-//   - any of the 4 text fields blank/overflow  → assertStatFieldsWithinGate throws (call FIRST)
-//   - blank governed logo URL                   → throw b1_video_missing_governed_logo
-//   - blank voiceover URL                       → throw b1_video_missing_voiceover (VO is REQUIRED)
-// The music bed is OPTIONAL: musicBedUrl='' (or null/undefined) binds an EXPLICITLY SILENT bed
-// ('MusicBed.source'='') — N1: fail-closed music means "no bed", NOT "baked bed". Bed LEVEL stays
-// template-controlled (N3 — this builder NEVER sets MusicBed.volume). Background is BAKED into the
-// provider template and is deliberately NOT a modification.
+// PURE spine-driven plan builder (v3.8.0). Turns a public.select_template response + the validated
+// text fields + the combo audio URLs into the Creatomate template-mode plan. Fail-loud contract:
+//   - any of the 4 text fields blank/overflow   → assertStatFieldsWithinGate throws (call FIRST)
+//   - selector status !== 'ok'                   → throw tmr_video_selector_fail_closed
+//   - slot_resolution missing / status !== 'ok'  → throw tmr_video_selector_fail_closed
+//   - missing selected.provider_template_id      → throw tmr_video_selector_fail_closed
+//   - missing/blank slot_resolution Logo.source  → throw tmr_video_slot_resolution_incomplete
+//   - blank voiceover URL                        → throw b1_video_missing_voiceover (VO is REQUIRED)
+// BAKED-BG DIVERGENCE FROM IMAGE: require Logo.source ONLY — Background is baked into the provider
+// template (D2), so the resolver returns no Background slot; this builder never reads/requires
+// Background.source (the one deliberate difference from b1_production.buildTmrRenderPlan). The music
+// bed is OPTIONAL: musicBedUrl='' (or null/undefined) binds an EXPLICITLY SILENT bed
+// ('MusicBed.source'='') — N1. Bed LEVEL stays template-controlled (N3 — never sets MusicBed.volume).
 export function buildGovernedVideoStatPlan(
+  selectorResponse: TmrSelectorResponse | null | undefined,
   fields: B1VideoStatFields,
-  logoUrl: string | null | undefined,
   voiceUrl: string | null | undefined,
   musicBedUrl: string | null | undefined,
 ): B1VideoStatPlan {
-  // Hard-gate the four text fields (fail loud) BEFORE building anything.
+  // Hard-gate the four text fields (fail loud) BEFORE consuming the selector.
   assertStatFieldsWithinGate(fields);
 
-  const resolvedLogo = (logoUrl ?? '').trim();
-  if (!resolvedLogo) {
-    // Governed branch: the logo is the ONLY governed VISUAL asset — a missing/blank logo is a HARD
-    // failure (no wordmark fallback in the governed video path; fail loud → video_status='failed').
-    throw new Error('b1_video_missing_governed_logo');
+  const resp = selectorResponse ?? {};
+  if (resp.status !== 'ok') {
+    throw new Error(`tmr_video_selector_fail_closed: ${resp.fail_reason ?? 'unknown'}`);
+  }
+  const slot = resp.slot_resolution;
+  if (!slot || slot.status !== 'ok') {
+    throw new Error(`tmr_video_selector_fail_closed: slot_resolution:${slot?.fail_reason ?? 'missing'}`);
+  }
+  const selected = resp.selected;
+  const providerTemplateId = (selected?.provider_template_id ?? '').trim();
+  if (!providerTemplateId) {
+    throw new Error('tmr_video_selector_fail_closed: missing_provider_template_id');
   }
 
+  // BAKED-BG: require Logo.source ONLY (never Background.source — baked into the provider template).
+  const slotMods = slot.modifications ?? {};
+  const logoUrlRaw = slotMods['Logo.source'];
+  const resolvedLogo = typeof logoUrlRaw === 'string' ? logoUrlRaw.trim() : '';
+  if (!resolvedLogo) {
+    throw new Error('tmr_video_slot_resolution_incomplete: missing Logo.source');
+  }
+
+  // Combo branch: the voiceover is REQUIRED — a blank VO is a HARD failure (never render a silent
+  // governed video; fail loud). The bed is OPTIONAL: '' binds an explicitly silent MusicBed (N1).
   const resolvedVoice = (voiceUrl ?? '').trim();
   if (!resolvedVoice) {
-    // Combo branch: the voiceover is REQUIRED (the whole point of v2 is audio). A blank VO is a
-    // HARD failure — never render a silent video on the governed combo branch (fail loud).
     throw new Error('b1_video_missing_voiceover');
   }
-
-  // N1: the bed is optional. '' binds an explicitly silent MusicBed — no throw.
   const resolvedBed = (musicBedUrl ?? '').trim();
 
-  // Template-mode modifications: 5 dynamic visual/text slots + 2 audio slots. Element-name keys
-  // mirror the authored Creatomate template + the image-worker '<Element>.<prop>' convention.
-  // Background is BAKED. MusicBed.volume is NOT set (N3 — template-controlled at 70%).
+  // Template-mode modifications: 4 dynamic text slots + Logo + 2 audio slots. Background is BAKED.
+  // MusicBed.volume is NOT set (N3 — template-controlled at 70%). Key presence is the guard for the
+  // silent bed (N1: MusicBed.source is ALWAYS a key; omitting it plays the baked default).
   const modifications: Record<string, string> = {
     'StatValue': fields.statValue.trim(),
     'StatLabel': fields.statLabel.trim(),
@@ -212,26 +278,40 @@ export function buildGovernedVideoStatPlan(
     'MusicBed.source': resolvedBed,
   };
 
+  const slotReasons = (slot.selected ?? []).map((s) => ({
+    slot: s?.slot ?? null,
+    asset_key: s?.asset_key ?? null,
+    reasons: Array.isArray(s?.reasons) ? s.reasons : [],
+  }));
+
   const tmr: B1VideoTmrEvidence = {
-    provider_template_id: B1_VIDEO_PROVIDER_TEMPLATE_ID,
-    registry_template_variant: B1_VIDEO_VARIANT_KEY,
-    contract_ref: B1_VIDEO_CONTRACT_REF,
-    bind_mode: 'direct_bind_pre_select_template',
-    resolver_used: false,
+    winner: selected?.provider_template_name ?? null,
+    provider_template_id: providerTemplateId,
+    registry_template_id: selected?.template_id ?? null,
+    assignment_id: selected?.assignment_id ?? null,
+    variant_key: selected?.variant_key ?? null,
+    seed: (resp.context?.seed as string | null | undefined) ?? null,
+    bind_mode: 'resolved',
+    resolver_used: true,
     fallback_taken: false,
+    slot_reasons: slotReasons,
+    slot_warnings: Array.isArray(slot.warnings) ? slot.warnings : [],
+    selector_status: 'ok',
     audio: { voiceover: true, music_bed: resolvedBed.length > 0 },
   };
 
   const templateSpec: B1VideoTemplateSpec = {
-    implementation_id: B1_VIDEO_VARIANT_KEY,
+    implementation_id: selected?.provider_template_name ?? null,
+    template_id: selected?.template_id ?? null,
     provider: 'creatomate',
-    provider_template_id: B1_VIDEO_PROVIDER_TEMPLATE_ID,
-    variant_key: B1_VIDEO_VARIANT_KEY,
-    contract_ref: B1_VIDEO_CONTRACT_REF,
-    resolver_used: false,
+    provider_template_id: providerTemplateId,
+    variant_key: selected?.variant_key ?? null,
+    format_key: selected?.format_key ?? null,
+    aspect_ratio: selected?.aspect_ratio ?? null,
+    resolver_used: true,
     fallback_taken: false,
     tmr,
   };
 
-  return { providerTemplateId: B1_VIDEO_PROVIDER_TEMPLATE_ID, modifications, templateSpec };
+  return { providerTemplateId, modifications, templateSpec };
 }

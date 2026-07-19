@@ -299,7 +299,7 @@ import { getVoiceIdForDraft } from './voice_id.ts';
 import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (additive)
 import { composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2; v3.4.0 LANE W: module trimmed to this single live export (production render_spec composer) — the smoke surface is retired
 import { resolveLegacyLogo, type AssetVerdict } from './asset_url_guard.ts';  // v3.3.0: H2 asset-URL validation before Creatomate
-import { isB1GovernedVideoStat, buildGovernedVideoStatPlan, composeGovernedVideoNarration, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO (DARK)
+import { buildGovernedVideoStatPlan, composeGovernedVideoNarration, assertStatFieldsWithinGate, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields, type TmrSelectorResponse } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO. v3.8.0 (Video D6 Lane 3): spine de-hardcode — buildGovernedVideoStatPlan consumes select_template; isB1GovernedVideoStat no longer imported (production gate is now runtime governance).
 import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsageDescriptor } from './music_usage.ts';  // v3.7.0 (cc-0034): governed music-usage recording (record_music_usage)
 
 // v3.6.0 (cc-0032 step 5, DARK): governed PP video_short_stat now renders COMBO AUDIO — a voiceover
@@ -312,7 +312,23 @@ import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsage
 // fork placement, renderUploadAndLog, and every legacy path (isKinetic/isStat/_voice, MUSIC_LIBRARY/
 // resolveMusicUrl) are BYTE-UNCHANGED. STRICTLY OUT OF SCOPE: enabled=true flip, live render/publish,
 // worker deploy (held on the c11bb8ab key-identity precondition), the select_music apply (ledger-held).
-const VERSION = 'video-worker-v3.7.0';
+//
+// v3.8.0 (Video D6 Lane 3 — SPINE DE-HARDCODE, D6-8 + D6-6 + D6-7, ATOMIC): the governed
+// video_short_stat branch now routes through the LIVE TMR spine, mirroring the proven image path.
+//   D6-8: renderGovernedVideoStat + governed_video_stat_smoke call public.select_template(slug, null,
+//         'video_short_stat', null, seed) and feed the response to the REWRITTEN buildGovernedVideoStatPlan
+//         (provider_template_id ← selected; Logo.source ← slot_resolution; BAKED-BG → Logo-only, no
+//         Background required). The direct-bind template constant + brand.logoUrl are RETIRED.
+//   D6-6: the production gate drops isB1GovernedVideoStat (PP-UUID) and gates on
+//         `fmt === B1_VIDEO_GOVERNED_FORMAT && await isVideoGovernanceEnabled(...)` — governance-driven,
+//         generalizes to any enabled client, fail-closed; video_short_stat_voice stays EXCLUDED.
+//   D6-7: variant_key comes from the selector; contract_ref is dropped; evidence is resolver-driven.
+// The canonical governed slug for select_template is resolved fail-loud (getGovernedVideoClientSlug —
+// NEVER the getBrand() UUID fallback). Every legacy path and renderUploadAndLog stay BYTE-UNCHANGED.
+// STRICTLY OUT OF SCOPE: any governance flip, registry mutation, second-brand enable, publish, the
+// _voice/voice-map (Lane 4), image-worker/ai-worker, and any DDL. Entrypoint VERSION bump covers the
+// drift-gate reclassification (A-LE→B-FD).
+const VERSION = 'video-worker-v3.8.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -868,14 +884,37 @@ async function isVideoGovernanceEnabled(
   }
 }
 
+// v3.8.0 (Video D6 Lane 3, D6-8) — resolve the governed client's CANONICAL slug for
+// select_template. Reads c.client.client_slug keyed on client_id and THROWS
+// `governed_slug_unresolved` on a read error or a null/empty slug. Deliberately NOT
+// getBrand().clientSlug, which falls back to the client-id UUID when c.client.client_slug is null
+// (the v3.14.0-class defect) — a UUID passed to select_template would fail its slug→client_id
+// resolution. A throw here hits the EXISTING per-draft catch → video_status='failed' (fail loud,
+// never a wrong-slug/silent-fallback render). Mirrors image-worker/image_governance.getGovernedClientSlug.
+async function getGovernedVideoClientSlug(
+  supabase: ReturnType<typeof getServiceClient>,
+  clientId: string,
+): Promise<string> {
+  const { data, error } = await supabase.schema('c').from('client')
+    .select('client_slug').eq('client_id', clientId).limit(1).maybeSingle();
+  if (error) throw new Error(`governed_slug_unresolved: ${error.message}`);
+  const slug = (data?.client_slug ?? '').trim();
+  if (!slug) throw new Error('governed_slug_unresolved');
+  return slug;
+}
+
 // Governed VIDEO stat-reveal render. Mirrors the proven image-worker B1 governed image_quote
-// branch: hard-gate the 4 text fields → build the DIRECT-BIND template-mode plan → reuse the
-// UNMODIFIED renderUploadAndLog (polymorphic; template-mode renderScript). Background is BAKED
-// into the provider template; Logo is the only governed asset modification. render_spec carries
-// label='creative_library_video_stat_production' + a nested tmr evidence block (via the existing
-// templateSpec/renderSpecLabel opts — renderUploadAndLog stays byte-unchanged). Governed-only /
-// fail-loud: any throw (field gate / missing logo / render) hits the caller's per-draft catch →
-// video_status='failed'. There is NO fallback to the legacy buildStatRevealSpec for this branch.
+// branch: hard-gate the 4 text fields → resolve the LIVE TMR spine (public.select_template) →
+// build the SPINE-DRIVEN, BAKED-BG template-mode plan → reuse the UNMODIFIED renderUploadAndLog
+// (polymorphic; template-mode renderScript). v3.8.0 (D6-8): provider_template_id + Logo.source now
+// come from the selector response (the direct-bind constant + brand.logoUrl are RETIRED). Background
+// is BAKED into the provider template — the resolver returns no Background slot and the plan builder
+// requires Logo.source ONLY (the deliberate baked-bg divergence from the image path). render_spec
+// carries label='creative_library_video_stat_production' + a resolver-driven tmr evidence block (via
+// the existing templateSpec/renderSpecLabel opts — renderUploadAndLog stays byte-unchanged).
+// Governed-only / fail-loud: any throw (field gate / slug / selector / missing Logo.source / render)
+// hits the caller's per-draft catch → video_status='failed'. There is NO fallback to the legacy
+// buildStatRevealSpec for this branch.
 async function renderGovernedVideoStat(opts: {
   supabase: ReturnType<typeof getServiceClient>;
   creatomateKey: string;
@@ -887,14 +926,26 @@ async function renderGovernedVideoStat(opts: {
   const fmt = draft.recommended_format;
   const vs  = draft.draft_format?.video_script;
 
-  // Fields sourced from the draft video_script (same source the legacy stat path reads); the plan
-  // builder hard-gates all four (fail loud, no truncation) before any Creatomate call.
+  // Fields sourced from the draft video_script (same source the legacy stat path reads).
   const fields: B1VideoStatFields = {
     statValue:   vs?.stat_value   ?? '',
     statLabel:   vs?.stat_label   ?? '',
     contextLine: vs?.context_line ?? '',
     ctaText:     vs?.cta_text     ?? '',
   };
+  // v3.8.0 (D6-8): hard-gate the four text fields FAIL-FAST — BEFORE any slug/selector/VO/Creatomate
+  // work (no wasted VO generation on bad input). The plan builder re-gates them (idempotent).
+  assertStatFieldsWithinGate(fields);
+
+  // v3.8.0 (D6-8): resolve the LIVE TMR spine BEFORE the expensive VO generation, so a fail-closed
+  // selector (e.g. an unproven/unapproved variant, or a non-governed brand) fails loud early. Slug is
+  // the CANONICAL c.client.client_slug (fail-loud, NEVER the getBrand UUID fallback). Platform = NULL
+  // (design decision 1a): video is ONE 9:16 render, not per-platform — accept the selector's
+  // platform_input_missing / platform_suitability_unproven warnings, exactly as the image path does.
+  // p_seed = post_draft_id (mirrors image; the winner never depends on the seed). RPC error = fail loud.
+  const governedSlug = await getGovernedVideoClientSlug(supabase, draft.client_id);
+  const { data: selection, error: selectErr } = await supabase.rpc('select_template', { p_client_slug: governedSlug, p_platform: null, p_format: B1_VIDEO_GOVERNED_FORMAT, p_variant_intent: null, p_seed: draft.post_draft_id });
+  if (selectErr) throw new Error(`b1_video tmr_selector_rpc_failed: ${selectErr.message}`);
 
   // v3.6.0 (cc-0032 step 5): COMBO AUDIO. Compose the concise VO narration (CTA visual-only),
   // resolve the PP voice by client_id (fail-loud if unresolved — existing behaviour), generate the
@@ -909,7 +960,10 @@ async function renderGovernedVideoStat(opts: {
 
   const bed = await resolveGovernedMusicBedUrl(supabase, { scopeKind: 'format', scopeValue: B1_VIDEO_GOVERNED_FORMAT });
 
-  const plan = buildGovernedVideoStatPlan(fields, brand.logoUrl, voiceUrl, bed.url);
+  // v3.8.0 (D6-8): SPINE-DRIVEN, BAKED-BG plan. Throws tmr_video_selector_fail_closed /
+  // tmr_video_slot_resolution_incomplete (missing Logo.source) / b1_video_missing_voiceover — never
+  // guesses, no fallback. provider_template_id + Logo.source come from `selection`.
+  const plan = buildGovernedVideoStatPlan(selection as TmrSelectorResponse, fields, voiceUrl, bed.url);
 
   // Template-mode renderScript (Creatomate v2/renders template-mode): { template_id, modifications,
   // output_format:'mp4' }. output_format is the template-mode video output field (mirrors the
@@ -976,15 +1030,18 @@ async function processDraft(opts: {
     captionsPresent: (fmt === 'video_short_kinetic_voice' && !!narrationForQa),
     sceneCount: (vs?.scenes?.length ?? null),
   };
-  // ── v3.5.0 CREATIVE-LIBRARY VIDEO TMR: Property-Pulse-ONLY governed video_short_stat branch.
+  // ── v3.5.0 CREATIVE-LIBRARY VIDEO TMR: governed video_short_stat branch.
   // Runs BEFORE the legacy isKinetic/isStat block with an EARLY RETURN, so both legacy branch
-  // bodies stay byte-untouched. Gate keys on client_id + format (NOT the _voice variant) AND the
-  // governance flag (fail-closed). The (PP, video_short_stat) row is enabled=true (armed
-  // 2026-07-10), so this fork IS taken for the governed PP client + video_short_stat → the governed
-  // render runs (it has produced draft-linked render 8c41689a). Governed-only, fail-loud: any throw
-  // hits the existing per-draft catch → video_status='failed' (no legacy fallback for this branch).
-  // Every other client / format falls through unchanged (fail-closed).
-  if (isB1GovernedVideoStat(draft.client_id, fmt) && await isVideoGovernanceEnabled(supabase, draft.client_id, B1_VIDEO_GOVERNED_FORMAT)) {
+  // bodies stay byte-untouched. v3.8.0 (D6-6): the gate is now RUNTIME GOVERNANCE, not the PP-UUID
+  // literal — `fmt === B1_VIDEO_GOVERNED_FORMAT && await isVideoGovernanceEnabled(...)`. It fires for
+  // ANY governance-enabled client on the exact 'video_short_stat' format (the _voice variant is
+  // EXCLUDED: B1_VIDEO_GOVERNED_FORMAT is 'video_short_stat', so 'video_short_stat_voice' does not
+  // match). PP's (video_short_stat) row is enabled=true (armed 2026-07-10) → PP still enters this
+  // branch, identical routing, now data-driven. Mirrors image's isImageGovernanceEnabled gate (the
+  // PP-UUID isB1GovernedVideoStat is retained in b1_video_stat.ts for tests but no longer gates).
+  // Governed-only, fail-loud: any throw hits the existing per-draft catch → video_status='failed' (no
+  // legacy fallback for this branch). Every other client / format falls through unchanged (fail-closed).
+  if (fmt === B1_VIDEO_GOVERNED_FORMAT && await isVideoGovernanceEnabled(supabase, draft.client_id, B1_VIDEO_GOVERNED_FORMAT)) {
     return await renderGovernedVideoStat({ supabase, creatomateKey, draft, brand: b, qaCtx });
   }
 
@@ -1035,13 +1092,17 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── v3.5.0: SUPERVISED GOVERNED VIDEO STAT SMOKE (mode==='governed_video_stat_smoke') ──────
-  // Renders the DIRECT-BIND governed stat template (901a30ce…) with SAMPLE video_script fields to
-  // post-videos/_smoke/ and writes ONE post_render_log row (postDraftId=null, clientId=null,
-  // logMustSucceed=true), then RETURNS — mirroring the retired B0 image/video smoke mechanism.
-  // It does NOT read a production draft, does NOT require governance enabled=true, does NOT flip
-  // enabled, does NOT publish. Same x-video-worker-key auth as the production path (already
-  // checked above). Optional body.fields overrides let the supervisor vary the sample copy; blank
-  // fields fall back to the built-in sample (each within its contract max_chars).
+  // Renders the governed stat template with SAMPLE video_script fields to post-videos/_smoke/ and
+  // writes ONE post_render_log row (postDraftId=null, clientId=null, logMustSucceed=true), then
+  // RETURNS. v3.8.0 (D6-8): the smoke now goes through the SAME spine path as production — it calls
+  // public.select_template('property-pulse', null, 'video_short_stat', null, seed) and feeds the
+  // response to buildGovernedVideoStatPlan, so the parity proof exercises the REAL de-hardcoded code.
+  // The provider template AND the Logo.source come from the resolver (the hardcoded sampleLogo
+  // constant is GONE — the spine supplies Logo.source). It does NOT read a production draft, does NOT
+  // require governance enabled=true, does NOT flip enabled, does NOT publish. Same x-video-worker-key
+  // auth as the production path (already checked above). Optional body.fields overrides let the
+  // supervisor vary the sample copy; blank fields fall back to the built-in sample (each within its
+  // contract max_chars).
   if (smokeBody?.mode === 'governed_video_stat_smoke') {
     try {
       const sf = smokeBody?.fields ?? {};
@@ -1051,8 +1112,15 @@ Deno.serve(async (req: Request) => {
         contextLine: String(sf.context_line ?? 'Up 3.7% over the past quarter — the strongest capital-city growth in the country.'),
         ctaText:     String(sf.cta_text     ?? 'What does this mean for your next move?'),
       };
-      const sampleLogo = String(smokeBody?.logo_url ?? 'https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png');
       const smokeSupabase = getServiceClient();
+
+      // v3.8.0 (D6-8): resolve the LIVE spine. Slug 'property-pulse' (or an override); platform NULL
+      // (design decision 1a — accept the platform_input_missing/suitability warnings); STABLE seed
+      // (the smoke has no draft). RPC error = fail loud. Feeds buildGovernedVideoStatPlan below.
+      const smokeSlug = String(smokeBody?.client_slug ?? 'property-pulse');
+      const smokeSeed = String(smokeBody?.seed ?? 'governed_video_stat_smoke_v1');
+      const { data: selection, error: selectErr } = await smokeSupabase.rpc('select_template', { p_client_slug: smokeSlug, p_platform: null, p_format: B1_VIDEO_GOVERNED_FORMAT, p_variant_intent: null, p_seed: smokeSeed });
+      if (selectErr) throw new Error(`governed_video_stat_smoke tmr_selector_rpc_failed: ${selectErr.message}`);
 
       // v3.6.0 (cc-0032 step 5): COMBO AUDIO in the smoke — compose the concise VO narration,
       // resolve the PP voice by the governed client_id (slug 'property-pulse'), generate the VO
@@ -1065,7 +1133,8 @@ Deno.serve(async (req: Request) => {
       if (!smokeVoiceUrl) throw new Error('b1_video_governed_smoke_voiceover_failed');
       const smokeBed = await resolveGovernedMusicBedUrl(smokeSupabase, { scopeKind: 'format', scopeValue: B1_VIDEO_GOVERNED_FORMAT });
 
-      const plan = buildGovernedVideoStatPlan(sampleFields, sampleLogo, smokeVoiceUrl, smokeBed.url);
+      // v3.8.0 (D6-8): SPINE-DRIVEN, BAKED-BG plan (Logo.source from the resolver, no hardcoded logo).
+      const plan = buildGovernedVideoStatPlan(selection as TmrSelectorResponse, sampleFields, smokeVoiceUrl, smokeBed.url);
       const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'mp4' };
       const storageUrl = await renderUploadAndLog({
         supabase: smokeSupabase, creatomateKey, renderScript,

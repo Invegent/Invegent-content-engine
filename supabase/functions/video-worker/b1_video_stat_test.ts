@@ -1,25 +1,30 @@
-// Hermetic unit tests for the governed PP video_short_stat pure helpers (v3.5.0).
+// Hermetic unit tests for the governed PP video_short_stat pure helpers.
+// v3.8.0 (Video D6 Lane 3): the plan builder is now SPINE-DRIVEN + BAKED-BG — it consumes a
+// public.select_template response and derives provider_template_id + Logo.source from it (the
+// direct-bind constants are retired). These tests exercise the new fail-loud contract and the
+// deliberate baked-bg divergence (Logo.source required, Background.source NOT required).
 // Run: deno test supabase/functions/video-worker/b1_video_stat_test.ts
 // Pure module — no env, no network, no DB, no side effects.
-import { assertEquals, assertThrows } from 'jsr:@std/assert@1';
+import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import {
   isB1GovernedVideoStat,
   assertStatFieldsWithinGate,
   buildGovernedVideoStatPlan,
   composeGovernedVideoNarration,
   B1_VIDEO_GOVERNED_CLIENT_ID,
-  B1_VIDEO_PROVIDER_TEMPLATE_ID,
+  B1_VIDEO_GOVERNED_FORMAT,
   B1_VIDEO_PRODUCTION_LABEL,
-  B1_VIDEO_VARIANT_KEY,
-  B1_VIDEO_CONTRACT_REF,
   type B1VideoStatFields,
+  type TmrSelectorResponse,
 } from './b1_video_stat.ts';
 
 const PP_ID = '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd';
 const NDIS_ID = 'fb98a472-ae4d-432d-8738-2273231c1ef4';
-const LOGO = 'https://example.test/pp_logo.png';
 const VOICE = 'https://example.test/pp_voice.mp3';
 const BED = 'https://example.test/post-music/global/calm/drifting_piano.mp3';
+const PROVIDER_ID = 'c11bb8ab-18bd-45ff-aedd-0a59cb3773ab';
+const LOGO_URL = 'https://x.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png';
+
 const okFields: B1VideoStatFields = {
   statValue: '$782K',
   statLabel: 'Perth median house price',
@@ -27,13 +32,59 @@ const okFields: B1VideoStatFields = {
   ctaText: 'What does this mean for you?',
 };
 
-// ── gate ──────────────────────────────────────────────────────────────────────
+// Live-shape fixture for public.select_template('property-pulse', null, 'video_short_stat', null, seed).
+// BAKED-BG: slot_resolution carries ONLY the Logo slot (NO Background) — the video background is baked
+// into template c11bb8ab (D2 ruling), so the resolver returns no Background slot for this template.
+// Shape mirrors b1_production's live-shape fixture, minus the Background/Scrim slots.
+function liveShapeFixture(): TmrSelectorResponse {
+  return {
+    status: 'ok',
+    context: {
+      client_slug: 'property-pulse', platform: null, format: 'video_short_stat',
+      variant_intent: null, seed: 'edf01c52-0000-4000-8000-000000000000',
+    },
+    rejected: [],
+    selected: {
+      assignment_id: 'aaaaaaaa-1111-1111-1111-111111111102',
+      template_id: '22222222-2222-2222-2222-222222222202',
+      provider_template_id: PROVIDER_ID,
+      provider_template_name: 'vid_market_stat_reveal_v2',
+      variant_key: 'stat-reveal-9x16-video-v2',
+      format_key: 'video_short_stat',
+      aspect_ratio: '9:16',
+      assignment_status: 'visually_approved',
+      reasons: ['format_match', 'generic_scope', 'assignment_visually_approved', 'assets_resolved'],
+      proof: { visual_approval: 'passed', occurred_at: '2026-07-10T01:00:00Z', evidence_reference: 'render:8c41689a' },
+    },
+    warnings: ['platform_input_missing', 'platform_suitability_unproven'],
+    fail_reason: null,
+    alternatives: [],
+    slot_resolution: {
+      status: 'ok',
+      modifications: {
+        'Logo.source': LOGO_URL,
+      },
+      selected: [
+        { slot: 'Logo', asset_key: 'pp_logo_primary', asset_id: 'b7530c55-c320-43be-90d9-98c804694921', asset_url: LOGO_URL, reasons: ['governed', 'license_ok', 'client_match'] },
+      ],
+      rejected: [],
+      warnings: [],
+      fail_reason: null,
+      context: {},
+    },
+  };
+}
+
+// ── gate (retained for reference — no longer the production gate) ─────────────────
 Deno.test('gate: PP + video_short_stat is governed', () => {
   assertEquals(isB1GovernedVideoStat(PP_ID, 'video_short_stat'), true);
   assertEquals(B1_VIDEO_GOVERNED_CLIENT_ID, PP_ID);
 });
 Deno.test('gate: PP + video_short_stat_voice is NOT governed (_voice excluded)', () => {
   assertEquals(isB1GovernedVideoStat(PP_ID, 'video_short_stat_voice'), false);
+  // the exact format constant excludes the _voice variant (index.ts gates on this constant).
+  assertEquals(B1_VIDEO_GOVERNED_FORMAT, 'video_short_stat');
+  assert((B1_VIDEO_GOVERNED_FORMAT as string) !== 'video_short_stat_voice');
 });
 Deno.test('gate: PP + other video formats are NOT governed', () => {
   assertEquals(isB1GovernedVideoStat(PP_ID, 'video_short_kinetic'), false);
@@ -43,7 +94,7 @@ Deno.test('gate: other client + video_short_stat is NOT governed', () => {
   assertEquals(isB1GovernedVideoStat(NDIS_ID, 'video_short_stat'), false);
 });
 
-// ── field hard-gates ───────────────────────────────────────────────────────────
+// ── field hard-gates (unchanged contract) ────────────────────────────────────────
 Deno.test('gate: valid fields pass', () => {
   assertStatFieldsWithinGate(okFields);
 });
@@ -78,85 +129,166 @@ Deno.test('gate: exact-limit values pass (boundary)', () => {
   });
 });
 
-// ── plan builder (v3.6.0 combo audio) ─────────────────────────────────────────────
-Deno.test('plan: binds v2 provider template id c11bb8ab', () => {
-  const plan = buildGovernedVideoStatPlan(okFields, LOGO, VOICE, BED);
-  assertEquals(plan.providerTemplateId, B1_VIDEO_PROVIDER_TEMPLATE_ID);
-  assertEquals(B1_VIDEO_PROVIDER_TEMPLATE_ID, 'c11bb8ab-18bd-45ff-aedd-0a59cb3773ab');
-  assertEquals(B1_VIDEO_VARIANT_KEY, 'stat-reveal-9x16-video-v2');
-});
-Deno.test('plan: 7 modifications = 5 visual/text + 2 audio (Background baked, not present)', () => {
-  const plan = buildGovernedVideoStatPlan(okFields, LOGO, VOICE, BED);
+// ── SPINE-DRIVEN plan builder (v3.8.0) ────────────────────────────────────────────
+
+// (1) SUCCESS PATH: provider_template_id from selected, Logo.source from slot mods, the 4 text mods,
+// VoiceAudio.source, MusicBed.source. Background is BAKED — NOT a modification key.
+Deno.test('plan: success — provider id + Logo.source resolved; exact 7-key modification set (Background baked)', () => {
+  const plan = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
+  assertEquals(plan.providerTemplateId, PROVIDER_ID);           // from selected.provider_template_id
   assertEquals(plan.modifications, {
     'StatValue': '$782K',
     'StatLabel': 'Perth median house price',
     'ContextLine': 'Up 3.7% over the past quarter.',
     'CtaText': 'What does this mean for you?',
-    'Logo.source': LOGO,
+    'Logo.source': LOGO_URL,                                    // from slot_resolution.modifications
     'VoiceAudio.source': VOICE,
     'MusicBed.source': BED,
   });
   // Background is BAKED — must NOT be a modification key.
   assertEquals(Object.keys(plan.modifications).some((k) => k.startsWith('Background')), false);
-  // N1/N3 SETTLED (cc-0032, EMPTY_BED_TEST_RESULT R0/R1/R2, 2026-07-10): R0 = OMITTING MusicBed.source
-  // plays c11bb8ab's baked Drifting Piano default; R1 = MusicBed.source:'' DISABLES the element (no
-  // audio stream); R2 = adding volume:0 is byte-identical to R1 (a no-op). So the guard is KEY
-  // PRESENCE, not volume — MusicBed.source is ALWAYS a modification key (N1) and MusicBed.volume is
-  // NEVER set (N3 — template-controlled at 70% when a bed IS bound).
+  // MusicBed.source ALWAYS present (key presence is the silent-bed guard, N1); volume NEVER set (N3).
   assertEquals('MusicBed.source' in plan.modifications, true);
   assertEquals('MusicBed.volume' in plan.modifications, false);
 });
-Deno.test('plan: mods include both audio sources', () => {
-  const plan = buildGovernedVideoStatPlan(okFields, LOGO, VOICE, BED);
-  assertEquals(plan.modifications['VoiceAudio.source'], VOICE);
-  assertEquals(plan.modifications['MusicBed.source'], BED);
+
+// (1b) determinism: pure — same inputs, same output.
+Deno.test('plan: pure/deterministic — same inputs give same output', () => {
+  const a = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
+  const b = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
+  assertEquals(JSON.stringify(a), JSON.stringify(b));
 });
-// N1/N3 SETTLED (cc-0032, EMPTY_BED_TEST_RESULT R1/R2, 2026-07-10): Creatomate treats MusicBed.source:''
-// as DISABLED (R1 = no audio stream) and volume:0 as a no-op (R2 ≡ R1); the baked Drifting Piano default
-// plays ONLY if the key is OMITTED (R0). So the fail-closed silent bed = MusicBed.source PRESENT and
-// EMPTY — never omit the key. Key presence is the guard.
+
+// (2) FAIL-LOUD: selector status !== 'ok' → throw (no fallback, fail_reason surfaced); null response too.
+Deno.test('plan: selector status fail_closed → throws tmr_video_selector_fail_closed', () => {
+  const fx = liveShapeFixture();
+  fx.status = 'fail_closed';
+  fx.fail_reason = 'variant_not_visually_approved';
+  fx.selected = null;
+  fx.slot_resolution = null;
+  assertThrows(() => buildGovernedVideoStatPlan(fx, okFields, VOICE, BED), Error, 'tmr_video_selector_fail_closed: variant_not_visually_approved');
+  // null/undefined response is equally fail-closed.
+  assertThrows(() => buildGovernedVideoStatPlan(null, okFields, VOICE, BED), Error, 'tmr_video_selector_fail_closed');
+  assertThrows(() => buildGovernedVideoStatPlan(undefined, okFields, VOICE, BED), Error, 'tmr_video_selector_fail_closed');
+});
+
+// (3) FAIL-LOUD: embedded slot_resolution fail_closed (or missing) → throw.
+Deno.test('plan: slot_resolution fail_closed/missing → throws tmr_video_selector_fail_closed', () => {
+  const fx = liveShapeFixture();
+  fx.slot_resolution = { status: 'fail_closed', modifications: {}, selected: [], rejected: [], warnings: [], fail_reason: 'no_governed_logo' };
+  assertThrows(() => buildGovernedVideoStatPlan(fx, okFields, VOICE, BED), Error, 'tmr_video_selector_fail_closed: slot_resolution:no_governed_logo');
+  const fx2 = liveShapeFixture();
+  fx2.slot_resolution = null;
+  assertThrows(() => buildGovernedVideoStatPlan(fx2, okFields, VOICE, BED), Error, 'tmr_video_selector_fail_closed: slot_resolution:missing');
+});
+
+// (4) FAIL-LOUD: missing/blank Logo.source → throw (Logo is the ONLY governed visual asset).
+Deno.test('plan: missing/blank Logo.source → throws tmr_video_slot_resolution_incomplete', () => {
+  const fx = liveShapeFixture();
+  delete fx.slot_resolution!.modifications!['Logo.source'];
+  assertThrows(() => buildGovernedVideoStatPlan(fx, okFields, VOICE, BED), Error, 'tmr_video_slot_resolution_incomplete: missing Logo.source');
+  const fx2 = liveShapeFixture();
+  fx2.slot_resolution!.modifications = { 'Logo.source': '   ' };
+  assertThrows(() => buildGovernedVideoStatPlan(fx2, okFields, VOICE, BED), Error, 'tmr_video_slot_resolution_incomplete: missing Logo.source');
+});
+
+// (5) FAIL-LOUD: blank voiceover → throw (VO REQUIRED — never render a silent governed video).
+Deno.test('plan: blank voiceover throws b1_video_missing_voiceover (VO required)', () => {
+  assertThrows(() => buildGovernedVideoStatPlan(liveShapeFixture(), okFields, null, BED), Error, 'b1_video_missing_voiceover');
+  assertThrows(() => buildGovernedVideoStatPlan(liveShapeFixture(), okFields, '   ', BED), Error, 'b1_video_missing_voiceover');
+  assertThrows(() => buildGovernedVideoStatPlan(liveShapeFixture(), okFields, '', ''), Error, 'b1_video_missing_voiceover');
+});
+
+// (6) BAKED-BG CONTRACT: it does NOT throw when Background.source is absent (the fixture has none),
+// and even if a Background.source were present in slot mods it is NOT copied into modifications
+// (baked-bg: the builder never reads Background). This is the deliberate divergence from image.
+Deno.test('plan: baked-bg — no throw when Background.source absent; Background never entered into mods', () => {
+  // absent Background (the normal video case) → builds cleanly.
+  const plan = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
+  assert(plan.providerTemplateId === PROVIDER_ID);
+  // a stray Background.source in slot mods is IGNORED (not required, not copied).
+  const fx = liveShapeFixture();
+  fx.slot_resolution!.modifications = { 'Logo.source': LOGO_URL, 'Background.source': 'https://x.test/should_be_ignored.jpg' };
+  const plan2 = buildGovernedVideoStatPlan(fx, okFields, VOICE, BED);
+  assertEquals('Background.source' in plan2.modifications, false);
+  assertEquals(plan2.modifications['Logo.source'], LOGO_URL);
+});
+
+// (7) FAIL-LOUD: mapped response without provider_template_id → throw (never submit an empty id).
+Deno.test('plan: missing selected.provider_template_id → throws', () => {
+  const fx = liveShapeFixture();
+  fx.selected = { ...fx.selected!, provider_template_id: undefined };
+  assertThrows(() => buildGovernedVideoStatPlan(fx, okFields, VOICE, BED), Error, 'tmr_video_selector_fail_closed: missing_provider_template_id');
+});
+
+// (8) N1 silent bed: blank/absent bed → MusicBed.source present + empty; music_bed evidence false.
 Deno.test('plan: N1 — blank bed → MusicBed.source present + empty = silent (key presence is the guard)', () => {
   for (const blankBed of ['', '   ', null, undefined]) {
-    const plan = buildGovernedVideoStatPlan(okFields, LOGO, VOICE, blankBed as string | null | undefined);
-    assertEquals('MusicBed.source' in plan.modifications, true);   // key ALWAYS present (omitting it → baked default plays)
-    assertEquals(plan.modifications['MusicBed.source'], '');       // empty string = disabled/silent (R1)
-    assertEquals('MusicBed.volume' in plan.modifications, false);  // volume:0 is a no-op (R2); N3 template-controlled
+    const plan = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, blankBed as string | null | undefined);
+    assertEquals('MusicBed.source' in plan.modifications, true);
+    assertEquals(plan.modifications['MusicBed.source'], '');
+    assertEquals('MusicBed.volume' in plan.modifications, false);
     assertEquals(plan.modifications['VoiceAudio.source'], VOICE);
     assertEquals(plan.templateSpec.tmr.audio, { voiceover: true, music_bed: false });
   }
 });
-Deno.test('plan: blank voiceover throws b1_video_missing_voiceover (VO required)', () => {
-  assertThrows(() => buildGovernedVideoStatPlan(okFields, LOGO, null, BED), Error, 'b1_video_missing_voiceover');
-  assertThrows(() => buildGovernedVideoStatPlan(okFields, LOGO, '   ', BED), Error, 'b1_video_missing_voiceover');
-  assertThrows(() => buildGovernedVideoStatPlan(okFields, LOGO, '', ''), Error, 'b1_video_missing_voiceover');
+
+// (9) D6-7 EVIDENCE: resolver-driven, variant_key from selector, NO contract_ref anywhere.
+Deno.test('plan: D6-7 evidence is resolver-driven (variant_key from selector, no contract_ref)', () => {
+  const plan = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
+  const ev = plan.templateSpec.tmr;
+  assertEquals(ev.provider_template_id, PROVIDER_ID);
+  assertEquals(ev.registry_template_id, '22222222-2222-2222-2222-222222222202');
+  assertEquals(ev.assignment_id, 'aaaaaaaa-1111-1111-1111-111111111102');
+  assertEquals(ev.variant_key, 'stat-reveal-9x16-video-v2');   // FROM selected.variant_key (D6-7), not a literal
+  assertEquals(ev.winner, 'vid_market_stat_reveal_v2');
+  assertEquals(ev.seed, 'edf01c52-0000-4000-8000-000000000000');
+  assertEquals(ev.bind_mode, 'resolved');                      // was 'direct_bind_pre_select_template'
+  assertEquals(ev.resolver_used, true);                        // was false
+  assertEquals(ev.fallback_taken, false);
+  assertEquals(ev.selector_status, 'ok');
+  assertEquals(ev.audio, { voiceover: true, music_bed: true });
+  // baked-bg: slot_reasons carries only the Logo slot (no Background slot).
+  assertEquals(ev.slot_reasons, [
+    { slot: 'Logo', asset_key: 'pp_logo_primary', reasons: ['governed', 'license_ok', 'client_match'] },
+  ]);
+  // contract_ref is DROPPED everywhere (D6-7 — mirrors image TmrEvidence).
+  assertEquals('contract_ref' in (ev as unknown as Record<string, unknown>), false);
+  assertEquals('contract_ref' in (plan.templateSpec as unknown as Record<string, unknown>), false);
 });
-Deno.test('plan: templateSpec tmr audio evidence reflects bound bed', () => {
-  const plan = buildGovernedVideoStatPlan(okFields, LOGO, VOICE, BED);
-  assertEquals(plan.templateSpec.tmr.audio, { voiceover: true, music_bed: true });
-});
-Deno.test('plan: templateSpec carries label-independent tmr evidence (direct_bind)', () => {
-  const plan = buildGovernedVideoStatPlan(okFields, LOGO, VOICE, BED);
+
+// (9b) templateSpec identity fields come from the selector; resolver_used true; no contract_ref.
+Deno.test('plan: templateSpec is resolver-derived (variant/format/aspect from selector)', () => {
+  const plan = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
   assertEquals(plan.templateSpec.provider, 'creatomate');
-  assertEquals(plan.templateSpec.provider_template_id, B1_VIDEO_PROVIDER_TEMPLATE_ID);
-  assertEquals(plan.templateSpec.variant_key, B1_VIDEO_VARIANT_KEY);
-  assertEquals(plan.templateSpec.contract_ref, B1_VIDEO_CONTRACT_REF);
-  assertEquals(plan.templateSpec.resolver_used, false);
+  assertEquals(plan.templateSpec.provider_template_id, PROVIDER_ID);
+  assertEquals(plan.templateSpec.variant_key, 'stat-reveal-9x16-video-v2');
+  assertEquals(plan.templateSpec.format_key, 'video_short_stat');
+  assertEquals(plan.templateSpec.aspect_ratio, '9:16');
+  assertEquals(plan.templateSpec.implementation_id, 'vid_market_stat_reveal_v2');
+  assertEquals(plan.templateSpec.resolver_used, true);
   assertEquals(plan.templateSpec.fallback_taken, false);
-  assertEquals(plan.templateSpec.tmr.bind_mode, 'direct_bind_pre_select_template');
-  assertEquals(plan.templateSpec.tmr.provider_template_id, B1_VIDEO_PROVIDER_TEMPLATE_ID);
 });
-Deno.test('plan: missing governed logo throws (no wordmark fallback in governed video path)', () => {
-  assertThrows(() => buildGovernedVideoStatPlan(okFields, null, VOICE, BED), Error, 'b1_video_missing_governed_logo');
-  assertThrows(() => buildGovernedVideoStatPlan(okFields, '   ', VOICE, BED), Error, 'b1_video_missing_governed_logo');
+
+// (10) slot_resolution warnings carried verbatim into evidence.
+Deno.test('plan: slot_resolution warnings carried into tmr evidence', () => {
+  const fx = liveShapeFixture();
+  fx.slot_resolution!.warnings = ['optional_slot_unfilled:Watermark'];
+  const plan = buildGovernedVideoStatPlan(fx, okFields, VOICE, BED);
+  assertEquals(plan.templateSpec.tmr.slot_warnings, ['optional_slot_unfilled:Watermark']);
 });
-Deno.test('plan: field gate runs first — blank field throws before logo/voice check', () => {
-  assertThrows(() => buildGovernedVideoStatPlan({ ...okFields, statValue: '' }, null, null, null), Error, 'missing stat_value');
+
+// (11) field gate runs FIRST — a blank field throws before any selector/logo/voice check.
+Deno.test('plan: field gate runs first — blank field throws before selector/logo/voice', () => {
+  // even with a null response + null voice, the field gate fires first.
+  assertThrows(() => buildGovernedVideoStatPlan(null, { ...okFields, statValue: '' }, null, null), Error, 'missing stat_value');
 });
+
 Deno.test('plan: label constant matches the seeded governance render_label', () => {
   assertEquals(B1_VIDEO_PRODUCTION_LABEL, 'creative_library_video_stat_production');
 });
 
-// ── narration composer (v3.6.0 D3 / N2) ───────────────────────────────────────────
+// ── narration composer (unchanged) ────────────────────────────────────────────────
 Deno.test('narration: deterministic — same inputs give same string', () => {
   assertEquals(composeGovernedVideoNarration(okFields), composeGovernedVideoNarration({ ...okFields }));
 });
@@ -177,7 +309,6 @@ Deno.test('narration: reasonable length for a 12s VO (<= 40 words)', () => {
 Deno.test('narration: adds terminal punctuation when contextLine lacks it', () => {
   const n = composeGovernedVideoNarration({ ...okFields, contextLine: 'Strongest growth in the country' });
   assertEquals(n.endsWith('.'), true);
-  // does not double-punctuate when already terminal
   const n2 = composeGovernedVideoNarration({ ...okFields, contextLine: 'Big move!' });
   assertEquals(n2.endsWith('!'), true);
   assertEquals(n2.endsWith('!.'), false);
