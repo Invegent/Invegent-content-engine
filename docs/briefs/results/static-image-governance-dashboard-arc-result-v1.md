@@ -56,3 +56,18 @@ At the Slice-1 dynamic-keys promote, the panel auto-reflected a pool that had gr
 - Dashboard: revert any slice commit / roll the Vercel production alias back to a prior READY deploy (`isRollbackCandidate` deploys exist).
 - `list_client_governed_assets`: `DROP FUNCTION IF EXISTS public.list_client_governed_assets(text);` (in-file, reference). Read-only, service-role-only — dropping it degrades the dashboard panel to empty, touches no data.
 - No data / governance state was mutated by any part of this arc; all reads.
+
+---
+
+## Follow-up (post-closeout) — geo_scope in Slot Eligibility · v5.96 (CLOSED, LIVE)
+
+CLAIMED v5.96 · geo_scope Slot Eligibility carry closeout · isolated worktree off origin/main · 2026-07-19 (v5.92–v5.95 taken by concurrent lanes; the local unpushed deploy-verifier v5.94 was NOT touched, per PK — R4).
+
+The `geo_scope in Slot Eligibility` carry from this arc is now **CLOSED — LIVE in production** (dashboard `main == fda2b51`, prod deploy `dpl_8K9SqCqhY562WNY3iKgYWmNSvnJ6`, `dashboard.invegent.com`).
+
+- **What shipped:** the Slot Eligibility panel now renders a subtle `geo <value>` chip on **SELECTED** assets. `resolve_slot_assets` does NOT return `geo_scope` and is a LIVE production RPC (image-worker) — it was **NOT modified**. The server action joins `geo_scope` onto each selected item **in-process** from the `list_client_governed_assets` pool it already fetches (by `asset_key`). The chip is omitted for null/`none`. REJECTED/fenced assets are excluded from the eligible-only reader, so they intentionally carry no geo (no misleading empty column) — a full-pool reader would be needed to surface geo on fenced rejects.
+- **Files:** `actions/creative-library.ts` + `components/creative-library/SlotEligibility.tsx` (dashboard). Diff sha256 `5ce90fa3bca1a252e1bdb0b9dbeaecd44f1a32080b914005c9cd03e3def7e256`.
+- **T2 chain:** `tsc` + `next build` PASS · branch-warden safe (base dashboard `80ceb44`, isolated worktree) · external review partial/med/high → PK escalation with **no concrete defect** (null-safety statically verified: `Map<string,string|null>`, `.get() ?? null`, chip guarded on non-null/non-'none') · **self-verified live on both clients** (PP selected bg `bg_pp_open_home_entry` → `geo non_au`; NDIS all-null → no chip; rejected rows clean) · PK visual PASS · FF dashboard `main` `80ceb44..fda2b51` → prod READY.
+- **Residual carry (now the ONLY remaining item for the whole arc):** Templates panel → link out to `/create/templates` Template Registry (per D-H).
+- **Rollback:** revert `fda2b51` / roll the Vercel production alias to a prior READY deploy. Additive, read-only; no DB/RPC/migration touched.
+- **Closeout mechanics:** recorded via an isolated worktree off `origin/main` because the shared CE `main` checkout was diverged (behind 6 / ahead 1) amid concurrent register churn; the ahead-1 local commit (another lane's unpushed deploy-verifier v5.94) was left untouched per PK/R4.
