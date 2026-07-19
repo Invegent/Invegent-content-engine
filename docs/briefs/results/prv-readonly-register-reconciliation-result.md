@@ -40,7 +40,9 @@ CLAIMED v5.81 · prv_readonly register drift reconciliation (register-reconciler
 
 ## 6. Open issues / handoff
 
-- **`db-rls-auditor` handoff (named, not yet run):** confirm whether role `prv_readonly` exists on project `mbkmaxqhsohbtwsqolns` with the recorded least-privilege attributes + `op.*` SELECT grants, and whether it still exists given the v3.23 Stage-5 drop plan. Git cannot establish live-DB state. Also relevant to the sibling "Permission friction / read-only DB" lane.
+- **`db-rls-auditor` handoff — ✅ RESOLVED 2026-07-19 (v5.82 follow-up).** Live read-only audit of project `mbkmaxqhsohbtwsqolns` established definite ground truth: role **`prv_readonly` EXISTS** in production (LOGIN, non-super, non-bypassrls, non-inheriting, no memberships); **least-privilege confirmed** — SELECT-only on the `op.*` reconciliation views, zero write/DDL on any `op.*`/`m.*`/`public` app-data table (only ambient pg_net/pg_cron extension grants every role carries); all three named `op.*` views exist; `op` is **not** REST-reachable (anon/authenticated USAGE=false — PGRST106 posture intact). The **v3.23 Stage-5 DROP was NOT executed** — the role is live. So the v5.81 "live-state unasserted" record was **upgraded to live-verified** in the v5.82 cut.
+  - **⚠️ Divergence flagged (for whoever reconciles file-vs-live before any merge/re-apply of `7287a1e`):** the LIVE role holds SELECT on **five** `op.*` views (adds `v_per_client_rollup`, `v_per_platform_rollup`) but the branch-only migration file `20260527011420` names only **three** — the branch file is **not a faithful description of the live grant set**. Mild hardening note: the login role has no `rolvaliduntil` expiry.
+  - Also relevant to the sibling "Permission friction / read-only DB" lane (it inherits this live-verified posture).
 
 ## 7. Next recommended step
 
