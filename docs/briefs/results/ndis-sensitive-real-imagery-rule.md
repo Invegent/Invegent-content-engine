@@ -69,3 +69,15 @@ None required to close OQ-1. Downstream (separate future PK gates, unchanged): b
 - The external adversary earned its cost: rev-1 caught a genuine scope-bleed (privacy rule silently absorbing brand-neutrality) that contradicted PK's own OQ-D — a defect a single pass would have shipped.
 - Loop-termination discipline: rev-2's generic "a human must judge this compliance rule" is a `policy_decision`, not a defect to keep fixing — re-reviewing it forever would be the ceremony-drag failure mode. Terminating at the PK gate was correct.
 - Reusable pattern: when a rule's grounding is analogy-based (no direct source), state the analogy and the missing-source fact in the rule's own source line — honesty travels with the artifact, not just the result doc.
+
+---
+
+## 10. Follow-on — shared-pool current-state map sync (2026-07-19)
+
+PK follow-up ("update the D7 architecture map for the new rule"). No file is named "D7 architecture map"; PK directed the update to the **shared-asset-pool assessment §1 current-state map** (`generic-shared-asset-pool-assessment-v1.md`) — the map where the sensitive fence + Rule 3.5 architecturally live. `docs/architecture/current-ice-flow-v3.md` (whole-spine, cartographer-generated, dated 2026-06-26 / register v4.00) was **not** touched — it predates the D7 arc and is regenerated, not hand-edited.
+
+- Added **§1.7 — "Governing rule for sensitive / consent-bound imagery"** to `generic-shared-asset-pool-assessment-v1.md`: records that Rule 3.5 is now the current/ratified governing citation, replacing the never-existent `v5.79` seed; explicitly separates the **ratified rule (current)** from the **enforcing fence (future — risk 4.3 / §5 P2, unbuilt)**, and keeps brand/affiliation-neutrality with risk 4.1 per OQ-D.
+- Purely additive · no live/DB/resolver claim changed · risk 4.3 (§4) already carried the Rule 3.5 citation from the v5.73 commit.
+- Committed as a follow-on to `c973284` (this lane); branch-warden `safe`.
+
+**Same-commit, separate concern — shared-pool design fold-in (external input, reconciled).** Batched into the same commit (same packet file) but NOT a Rule 3.5 outcome: PK shared an external (ChatGPT) design proposal for the shared asset pool; it was evaluated and found to **converge** with the existing music-precedent design (validation, not redesign). Three additions were folded into `generic-shared-asset-pool-assessment-v1.md` as **§3.6 + OQ-6/OQ-7**: (1) per-client `asset_pool_policy` enum (`client_only`/`client_preferred`/`best_fit`) — closes a real gap (no way to express client exclusivity today); (2) `purpose_bound` no-auto-rotation class + `sensitivity_class` + `cultural_review_required` — strengthens **Rule 3.5** (fences consent-bound imagery out of rotation even within its own client); (3) pool-attribution in explainability. Three ICE overrides recorded (no new bucket · scoped rows not a flat enum/arrays · `production_use_allowed` is not a live fence today = a T3 resolver change). The packet remains **DRAFT / pre-Gate-1** — these are proposed OQs for the P1 design-ratification lane, nothing ratified or built.
