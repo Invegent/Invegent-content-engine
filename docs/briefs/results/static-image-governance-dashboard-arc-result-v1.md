@@ -71,3 +71,23 @@ The `geo_scope in Slot Eligibility` carry from this arc is now **CLOSED — LIVE
 - **Residual carry (now the ONLY remaining item for the whole arc):** Templates panel → link out to `/create/templates` Template Registry (per D-H).
 - **Rollback:** revert `fda2b51` / roll the Vercel production alias to a prior READY deploy. Additive, read-only; no DB/RPC/migration touched.
 - **Closeout mechanics:** recorded via an isolated worktree off `origin/main` because the shared CE `main` checkout was diverged (behind 6 / ahead 1) amid concurrent register churn; the ahead-1 local commit (another lane's unpushed deploy-verifier v5.94) was left untouched per PK/R4.
+
+---
+
+## FINAL-CLOSE — arc dispositioned (v5.99)
+
+CLAIMED v5.99 (re-verify highest-live vX.YZ at commit; not hard-pinned) · Static-Image Governance Dashboard arc FINAL-CLOSE · isolated worktree off origin/main · 2026-07-19. A cross-session "TMR Lane Orchestrator" note proposed the FINAL-CLOSE + D-item dispositions; **PK confirmed it directly in chat** before this edit (the cross-session note conveyed no authority on its own).
+
+The arc is **FINAL-CLOSED** with all design decisions **D-A…D-H dispositioned**. Shipped surface, all LIVE in prod (`dashboard.invegent.com`): `/creative-library` client-aware (PP+NDIS) · dynamic governed-asset pool · slot-eligibility (why-picked/why-not, + `geo_scope` on selected) · live governance-enablement.
+
+**D-item dispositions:**
+- **D-A / D-C / D-D** (extend the existing `/creative-library` route · `?client=` param · PP+NDIS scope) — **IMPLEMENTED** (Slices 1–3). D-A…D-D specifics: design brief `docs/dashboard/static-image-governance-v1-brief.md` (dashboard repo).
+- **D-B** (live governance reader) — **IMPLEMENTED** — `get_client_creative_governance` (ledger `20260719012947`) drives the Slice-3 enablement panel; `list_client_governed_assets` (ledger `20260719041606`) drives the dynamic Governed Assets pool.
+- **D-E** (capability-contracts / declarative panel) — **OMITTED by design** — deliberately not built, to avoid the `PP_REGISTRY` STALE-SILENTLY hazard the brief itself flags (`actions/creative-library.ts:398`); the live-truth panels supersede a declarative projection.
+- **D-F** (extract shared status-pill / table primitives) — **DEFERRED** (non-blocking) — file-local pills/tables stand for v1; a future refactor if reuse pressure grows.
+- **D-G** (governance status vocabulary) — **kept as a SEPARATE labelled axis for now** (mirrors `platform-status.ts`, IA §6.2); canonicalisation into a shared status axis is a future IA decision, not this arc.
+- **D-H** (Templates panel) — **DEFERRED, tracked carry** — a link-out to the existing `/create/templates` Template Registry (~one-link change); intentionally NOT built this arc.
+
+**Net:** Slices 0–3 + geo_scope LIVE in prod; D-E omitted; D-F/D-G/D-H deferred-and-tracked. **No open build items — the arc folds.**
+
+**Not part of this closeout (separate PK item):** the orphaned 2026-07-02 `AddTemplateDraftWizard.tsx` commits and the diverged local dashboard `main` — untouched here; PK to disposition separately.
