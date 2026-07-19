@@ -9,6 +9,7 @@ import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@1';
 import {
   isB1GovernedVideoStat,
   assertStatFieldsWithinGate,
+  assertExpectedVideoProviderTemplate,
   buildGovernedVideoStatPlan,
   composeGovernedVideoNarration,
   B1_VIDEO_GOVERNED_CLIENT_ID,
@@ -286,6 +287,25 @@ Deno.test('plan: field gate runs first — blank field throws before selector/lo
 
 Deno.test('plan: label constant matches the seeded governance render_label', () => {
   assertEquals(B1_VIDEO_PRODUCTION_LABEL, 'creative_library_video_stat_production');
+});
+
+// ── SMOKE-ONLY provider-template parity guard (PK follow-up, external review 747bc701) ──────
+// The smoke asserts the RESOLVED provider id equals the template it proves render parity against.
+// Production (renderGovernedVideoStat) NEVER calls this — it stays fully spine-driven.
+Deno.test('smoke-guard: assertExpectedVideoProviderTemplate passes on a match', () => {
+  assertExpectedVideoProviderTemplate(PROVIDER_ID, PROVIDER_ID);  // no throw
+  // the id the smoke proves against is the currently-mapped video template.
+  assertEquals(PROVIDER_ID, 'c11bb8ab-18bd-45ff-aedd-0a59cb3773ab');
+});
+Deno.test('smoke-guard: assertExpectedVideoProviderTemplate throws naming both ids on drift', () => {
+  const drifted = 'deadbeef-0000-4000-8000-000000000000';
+  const err = assertThrows(
+    () => assertExpectedVideoProviderTemplate(drifted, PROVIDER_ID),
+    Error,
+    'provider drift',
+  );
+  assert(String(err).includes(PROVIDER_ID), 'message must name the EXPECTED id');
+  assert(String(err).includes(drifted), 'message must name the ACTUAL id');
 });
 
 // ── narration composer (unchanged) ────────────────────────────────────────────────

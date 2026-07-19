@@ -299,7 +299,7 @@ import { getVoiceIdForDraft } from './voice_id.ts';
 import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (additive)
 import { composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2; v3.4.0 LANE W: module trimmed to this single live export (production render_spec composer) — the smoke surface is retired
 import { resolveLegacyLogo, type AssetVerdict } from './asset_url_guard.ts';  // v3.3.0: H2 asset-URL validation before Creatomate
-import { buildGovernedVideoStatPlan, composeGovernedVideoNarration, assertStatFieldsWithinGate, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields, type TmrSelectorResponse } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO. v3.8.0 (Video D6 Lane 3): spine de-hardcode — buildGovernedVideoStatPlan consumes select_template; isB1GovernedVideoStat no longer imported (production gate is now runtime governance).
+import { buildGovernedVideoStatPlan, composeGovernedVideoNarration, assertStatFieldsWithinGate, assertExpectedVideoProviderTemplate, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields, type TmrSelectorResponse } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO. v3.8.0 (Video D6 Lane 3): spine de-hardcode — buildGovernedVideoStatPlan consumes select_template; isB1GovernedVideoStat no longer imported (production gate is now runtime governance); assertExpectedVideoProviderTemplate is the SMOKE-ONLY parity guard.
 import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsageDescriptor } from './music_usage.ts';  // v3.7.0 (cc-0034): governed music-usage recording (record_music_usage)
 
 // v3.6.0 (cc-0032 step 5, DARK): governed PP video_short_stat now renders COMBO AUDIO — a voiceover
@@ -323,6 +323,9 @@ import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsage
 //         `fmt === B1_VIDEO_GOVERNED_FORMAT && await isVideoGovernanceEnabled(...)` — governance-driven,
 //         generalizes to any enabled client, fail-closed; video_short_stat_voice stays EXCLUDED.
 //   D6-7: variant_key comes from the selector; contract_ref is dropped; evidence is resolver-driven.
+// PK follow-up (external review 747bc701 policy point): the SMOKE ONLY asserts the resolved provider
+// id equals the template it proves render parity against (assertExpectedVideoProviderTemplate) — a
+// proof-harness guard; the production render carries NO expected-id assert (stays spine-driven).
 // The canonical governed slug for select_template is resolved fail-loud (getGovernedVideoClientSlug —
 // NEVER the getBrand() UUID fallback). Every legacy path and renderUploadAndLog stay BYTE-UNCHANGED.
 // STRICTLY OUT OF SCOPE: any governance flip, registry mutation, second-brand enable, publish, the
@@ -1135,6 +1138,13 @@ Deno.serve(async (req: Request) => {
 
       // v3.8.0 (D6-8): SPINE-DRIVEN, BAKED-BG plan (Logo.source from the resolver, no hardcoded logo).
       const plan = buildGovernedVideoStatPlan(selection as TmrSelectorResponse, sampleFields, smokeVoiceUrl, smokeBed.url);
+      // v3.8.0 (PK follow-up — external review 747bc701): SMOKE-ONLY parity guard. The template the
+      // smoke proves render parity against (proven render 8c41689a's template). This is a PROOF-HARNESS
+      // constraint ONLY — production (renderGovernedVideoStat) stays fully spine-driven and carries NO
+      // expected-id assert. A drift here means the live selector no longer resolves the proven template,
+      // so the smoke refuses to render rather than prove against a different surface.
+      const EXPECTED_SMOKE_VIDEO_PROVIDER_TEMPLATE_ID = 'c11bb8ab-18bd-45ff-aedd-0a59cb3773ab';
+      assertExpectedVideoProviderTemplate(plan.providerTemplateId, EXPECTED_SMOKE_VIDEO_PROVIDER_TEMPLATE_ID);
       const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'mp4' };
       const storageUrl = await renderUploadAndLog({
         supabase: smokeSupabase, creatomateKey, renderScript,

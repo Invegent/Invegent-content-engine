@@ -69,6 +69,23 @@ export function isB1GovernedVideoStat(clientId: string, format: string): boolean
   return clientId === B1_VIDEO_GOVERNED_CLIENT_ID && format === B1_VIDEO_GOVERNED_FORMAT;
 }
 
+// v3.8.0 (Video D6 Lane 3, PK follow-up — external review 747bc701 policy point) — SMOKE-ONLY
+// fail-loud provider-drift guard. The governed_video_stat_smoke harness derives its provider template
+// BY CONSTRUCTION (select_template + buildGovernedVideoStatPlan) and then asserts the derived id
+// equals the id the smoke PROVES RENDER PARITY AGAINST (proven render 8c41689a's template). A
+// mismatch means the live selector no longer resolves the template the parity proof was taken on, so
+// the smoke must refuse to render rather than silently prove against a different surface (the C4-class
+// hazard the image path retired). Mirrors image-worker/b1_production.assertExpectedProviderTemplate.
+// This is a PROOF-HARNESS constraint ONLY — it is NEVER called on the production render path
+// (renderGovernedVideoStat stays fully spine-driven). Pure / no I/O — unit-tested pass + throw paths.
+export function assertExpectedVideoProviderTemplate(actual: string, expected: string): void {
+  if (actual !== expected) {
+    throw new Error(
+      `governed_video_stat_smoke provider drift: expected ${expected} (the template the smoke proves render parity against), got ${actual} — refusing to render (smoke parity guard)`,
+    );
+  }
+}
+
 // The four AI-authored text fields the governed template exposes (Background is BAKED — never a
 // modification; Logo is a governed asset modification supplied by the resolver in the plan builder).
 export type B1VideoStatFields = {
