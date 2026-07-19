@@ -59,6 +59,21 @@ First apply attempt **fail-closed and rolled back (0 rows)**: PRECHECK caught th
 - **Rollback standing:** `promote_rollback.sql` (re-fence exactly the 8, pool 13→5).
 - **Acknowledged:** no-seed default pick now a real photo (warm default); per-post seed spreads rotation across all 13.
 
-## 7. Next recommended step
+## 6d. Promotion #2 — 8 more real backgrounds LIVE + Phase-1 CLOSED (T3, applied + live-proven 2026-07-19)
+
+- **PK-elected set #2 (8):** `bg_ny_accessible_home_interior` · `bg_ny_inclusive_public_space` (generic-only) · `bg_ny_community_facility` (generic-only) · `bg_ny_assistive_tech_no_user` (cane) · `bg_ny_accessible_transport_v2` (real scene, generic-only) · `bg_ny_assistive_tech_home` (stairlift) · `bg_ny_library_reading_nook` · `bg_ny_makerspace_studio`.
+- **T3 chain:** db-rls-auditor **pass/clean/high** + external `842b188c` agree/med/high, pinned hash `8ffae9d7`. Same proven CAS-flip pattern as promo #1; `scrim_opacity_override=55`; hardened rollback.
+- **Apply (CAS-guarded, fail-closed):** `promote_apply.sql` (`_harness/image_harvester_v0/ndis_phase1_promo2_20260719/`) flipped exactly **8** fenced→governed.
+- **Live proof:** NDIS active bg pool **13 → 21** — eligible pool = **5 abstract textures + 16 real photos**; all 8 `governed`+`scrim_opacity_override=55`; **exactly 1 real candidate still fenced** = `bg_ny_accessible_transport` (round-1 weak paving texture, **RETIRED** — superseded by the real `_v2` scene now live).
+- **Rollback standing:** `promote_rollback.sql` (re-fence exactly the 8, pool 21→13).
+
+## 7. Phase-1 status: COMPLETE (priority intakes done — no further sourcing)
+
+Phase-1 person-free real imagery is **complete and closed**: policy (v5.79) → 2 sourcing rounds → 17 fenced intake → **16 promoted live** (2 T3 promotions) → 1 retired texture fenced. **NDIS live background rotation = 21 (16 real + 5 abstract).** No further Phase-1 sourcing. **Phase 2 stays CLOSED · Phase 3 HELD · the v5.79 sensitive-imagery policy + charter deltas remain LIVE** (this pauses activity, it does not retire governance; the lane re-opens only via its own Gate-1).
+
+### Handoff (flag only — belongs to the Asset-Gap lane, NOT this shutdown)
+The person-free real backgrounds now live — especially the 3 generic-only (`inclusive_public_space`, `community_facility`, `accessible_transport_v2`) plus the neutral interiors/spaces (`home_interior`, `library_reading_nook`, `makerspace_studio`) — are prime candidates to register into **`c.shared_creative_asset`** with per-client suitability metadata, so they become **reusable generic inventory** rather than NDIS-siloed. That registration is a later **governed** step owned by **Asset-Gap** (which owns `c.shared_creative_asset`) — not executed here.
+
+## Next recommended step (superseded)
 
 Round 2 sourcing (new person-free set + accessible-transport reshoot) — launched. Cut the register pointer + commit this record when the shared worktree is clean. Promotion of any of these 9 from fenced→eligible remains a separate future T3 gate.
