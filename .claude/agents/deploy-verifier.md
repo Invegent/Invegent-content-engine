@@ -206,7 +206,7 @@ When genuinely unsure on a **content** check, prefer `MISMATCH` — a false-PASS
 trust-killer; a false-MISMATCH on a good deploy costs only a human re-check. Never fabricate any
 value; always name `source_read`.
 
-## §9 backtest — status: PROVEN-SCOPED (content checks); native re-run OUTSTANDING
+## §9 backtest — status: PROVEN (content checks; manual smoke + native re-run PASSED)
 
 **Ran as a manual blind backtest and PASSED for the deploy-content classifier (checks 1–3)** at a
 PK-reviewed gate (2026-07-19). Independent ground truth was established on live `image-worker`, then
@@ -223,12 +223,12 @@ this charter was run blind on three scenarios:
 In all three it named `source_read` and **refused to fabricate** the drift class. Record:
 `docs/briefs/results/deploy-verifier-build-lane-result-v1.md`.
 
-**Status: PROVEN-SCOPED** — deploy-content classifier (checks 1–3) passed the manual blind backtest;
-drift is advisory. **Native registered-agent re-run is OUTSTANDING**: this was a manual smoke because
-the `deploy-verifier` agent-type was not invocable that session (same two-step as
-`creative-graph-auditor`). When the registered agent-type becomes invocable in a fresh session,
-re-run the same three blind scenarios; **promote to fully PROVEN only after the native run passes.**
-Standing replay set (read-only, no deploy): wrong-source→content `MISMATCH` · known-good→content
-`PASS` (drift may be `UNREADABLE`→`PASS_WITH_FLAG`) · `verify_jwt`-regression→content `MISMATCH` ·
-stale-`A-LE`→`drift_verdict=DRIFT_DETECTED`+`write_refresh_needed`, content unaffected. Promotion
-trusts only the classifier — never authority to deploy, refresh, or decide.
+**Status: PROVEN** (2026-07-19) — deploy-content classifier (checks 1–3) passed the manual blind
+backtest **and** the **native registered-agent re-run** (this charter run as the registered
+`deploy-verifier` subagent on the same three blind scenarios: wrong-source→content `MISMATCH` ·
+known-good→content `PASS`/`overall=PASS_WITH_FLAG` · `verify_jwt`-regression→content `MISMATCH`; zero
+false content-MISMATCH, `source_read` named, drift never fabricated). Drift is advisory. Listed in the
+CLAUDE.md team table. Standing replay set (read-only, no deploy): wrong-source→content `MISMATCH` ·
+known-good→content `PASS` (drift may be `UNREADABLE`→`PASS_WITH_FLAG`) · `verify_jwt`-regression→
+content `MISMATCH` · stale-`A-LE`→`drift_verdict=DRIFT_DETECTED`+`write_refresh_needed`, content
+unaffected. Proof trusts only the classifier — never authority to deploy, refresh, or decide.

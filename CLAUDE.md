@@ -27,6 +27,7 @@ only output is its returned JSON.
 | `brief-author` | read-only (`Read`/`Grep`/`Glob`) | draft ONE brief per PK-named task in the house template, every material claim evidence-cited, register hold-states reflected in Forbidden actions, unknowns → open questions / named handoffs; return DRAFT_READY/DRAFT_BLOCKED/ESCALATE (+ findings-contract block) | write/edit any file (returned draft only — orchestrator persists), approve/issue/accept any brief, author result docs, edit registers/CLAUDE.md, choose/split/expand tasks, invent uncited facts, query DB/network/git, mark anything proven |
 | `image-harvester` | network GET (allow-listed sources only) + writes confined to `_harness/image_harvester_v0/**`; `Read`/`Glob`/`Grep`/`Bash`/`Write`/`WebSearch`/`WebFetch` | licence-safe background-image sourcing per a PK mini-manifest: download candidates + full provenance (sha256 of bytes), contact sheets, honest `not_harvestable_licence_safe` returns; readable third-party signage/branding in crop area → REJECT (calibration rule); output ALWAYS passes `image-reviewer` before PK (scope condition) | touch DB/storage buckets/repo files outside its package, POST/auth'd APIs, git, deploy, offer CC/paid/AI-generated material, approve or promote anything |
 | `image-reviewer` | read-only (`Read`/`Glob`/`Grep`) | pixel-level suitability + risk review of a harvest package (P0 verdict vocabulary, suggestive only), package-consistency checks, licence/rights posture from recorded metadata | fetch from network, re-harvest, write files, recompute byte-hashes (named orchestrator step), touch DB/storage/git, use approval language, decide anything — PK visual review is the only deciding act |
+| `deploy-verifier` | read-only (`Read`/`Grep`/`Glob`/`Bash`/`get_edge_function`/`list_edge_functions`/`get_advisors`) | post-deploy verification Governor (runs AFTER a PK deploy): recompute live deploy state from ground truth (never the plan's claimed values) → `deploy_content_verdict` (marker-in-deployed-bundle/bundles-from-CWD guard · VERSION==repo · verify_jwt; content MISMATCH = hard STOP) + advisory `drift_verdict` (drift unreadable → FLAG, never a content STOP) → `overall` PASS/MISMATCH/PASS_WITH_FLAG; always name `source_read` | deploy, redeploy, gate/trigger a deploy, refresh drift (`drift-check?write=true`), edit repo/EF/DB, migrate, GRANT/REVOKE, git-mutate, handle an `x-series-key`, fabricate a value, approve/mark-proven, or decide proceed/abort |
 
 **Security triage lanes:** use `security-auditor` **after** `db-rls-auditor` has gathered the DB
 evidence — `db-rls-auditor` collects facts (grants, defs, advisors); `security-auditor` adds the
@@ -86,15 +87,13 @@ bundles-from-CWD "old code shipped" guard, naming its source) · VERSION==repo �
 guard) · drift class (A-LE/B-FD, read/flag only); **advisory only** — it never deploys, redeploys,
 refreshes drift, approves, or decides. Its output is now a **two-verdict contract** (PK ruling 2026-07-19): an independent
 `deploy_content_verdict` (checks 1–3) and an advisory `drift_verdict` (drift unreadable → FLAG, never
-a content STOP), rolled into `overall` = PASS / MISMATCH / PASS_WITH_FLAG. **Status: PROVEN-SCOPED**
-— the deploy-content classifier (checks 1–3) PASSED a manual blind §9 backtest at a PK gate
-(2026-07-19, on live `image-worker`: wrong-source→content MISMATCH · known-good→content PASS /
-`overall=PASS_WITH_FLAG` · verify_jwt-regression→content MISMATCH; zero false content-MISMATCH,
-`source_read` always named, drift never fabricated). Drift is advisory. It stays **out of the team
-table** and a **native registered-agent re-run is OUTSTANDING** (this was a manual smoke — the
-`deploy-verifier` agent-type was not invocable that session, same two-step as `creative-graph-auditor`);
-promote to fully **PROVEN** only after the native run passes. Record:
-`docs/briefs/results/deploy-verifier-build-lane-result-v1.md`.
+a content STOP), rolled into `overall` = PASS / MISMATCH / PASS_WITH_FLAG. **Status: PROVEN**
+(2026-07-19) — the deploy-content classifier (checks 1–3) PASSED **both** a manual blind §9 backtest
+**and** the **native registered-agent re-run** at a PK gate (on live `image-worker`: wrong-source→
+content MISMATCH · known-good→content PASS / `overall=PASS_WITH_FLAG` · verify_jwt-regression→content
+MISMATCH; zero false content-MISMATCH, `source_read` always named, drift never fabricated). Drift is
+advisory. **Now listed in the team table above.** Deploy remains the PK hard stop — the agent confirms,
+never acts. Record: `docs/briefs/results/deploy-verifier-build-lane-result-v1.md`.
 
 **Brief-authoring lane:** use `brief-author` to draft the gate-1 brief for any PK-named task —
 it reads template/registers/CLAUDE.md/prior briefs/source as evidence and returns the draft as
