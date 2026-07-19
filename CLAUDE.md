@@ -84,10 +84,17 @@ verification **Deployment Governor** (realizes the one named in `docs/governance
 PASS/MISMATCH). It recomputes live deploy state and classifies marker-in-deployed-bundle (the
 bundles-from-CWD "old code shipped" guard, naming its source) · VERSION==repo · `verify_jwt` (401→502
 guard) · drift class (A-LE/B-FD, read/flag only); **advisory only** — it never deploys, redeploys,
-refreshes drift, approves, or decides. **Not yet proven** — it stays a candidate (and intentionally
-out of the team table above) until its `governor-architecture.md` §9 read-only backtest passes at a
-PK gate (wrong-source→MISMATCH · known-good→PASS with zero false-MISMATCH · stale-A-LE→correct drift
-class), the same discipline that proved `branch-warden`/`ef-builder`.
+refreshes drift, approves, or decides. Its output is now a **two-verdict contract** (PK ruling 2026-07-19): an independent
+`deploy_content_verdict` (checks 1–3) and an advisory `drift_verdict` (drift unreadable → FLAG, never
+a content STOP), rolled into `overall` = PASS / MISMATCH / PASS_WITH_FLAG. **Status: PROVEN-SCOPED**
+— the deploy-content classifier (checks 1–3) PASSED a manual blind §9 backtest at a PK gate
+(2026-07-19, on live `image-worker`: wrong-source→content MISMATCH · known-good→content PASS /
+`overall=PASS_WITH_FLAG` · verify_jwt-regression→content MISMATCH; zero false content-MISMATCH,
+`source_read` always named, drift never fabricated). Drift is advisory. It stays **out of the team
+table** and a **native registered-agent re-run is OUTSTANDING** (this was a manual smoke — the
+`deploy-verifier` agent-type was not invocable that session, same two-step as `creative-graph-auditor`);
+promote to fully **PROVEN** only after the native run passes. Record:
+`docs/briefs/results/deploy-verifier-build-lane-result-v1.md`.
 
 **Brief-authoring lane:** use `brief-author` to draft the gate-1 brief for any PK-named task —
 it reads template/registers/CLAUDE.md/prior briefs/source as evidence and returns the draft as

@@ -11,7 +11,7 @@ CLAIMED v5.86 · deploy-verifier build+merge lane · session TMR (agents-only) �
 
 ## 1. Result status
 
-`Complete` — for the **build → merge → push** of the agent definition. The agent is admitted as a **read-only advisory candidate**; it is **NOT live-trusted** — the §9 backtest (§7 below) is a separate future PK gate before any live deploy lane may trust its classification.
+`Complete` — build → merge → push done, **§9 backtest PASSED**, status **PROVEN-SCOPED** (2026-07-19). The deploy-content classifier (checks 1–3) is proven via a manual blind backtest under a corrected **two-verdict** contract; drift is advisory; a **native registered-agent re-run is OUTSTANDING** before promotion to fully PROVEN. Deploy remains the PK hard stop; the agent confirms, never acts.
 
 ## 2. Commit(s)
 
@@ -78,9 +78,17 @@ Prove the PASS/MISMATCH classifier against **past real ICE deploys**, read-only 
 
 ## 8. Verification (chat fills this)
 
-**Verdict:** _pending PK — build/merge/push verified clean; §9 backtest and the register/CLAUDE.md commit gate are the remaining PK acts._
+**Verdict:** `Pass (PROVEN-SCOPED)` — build/merge/push verified clean (agent `a52e788` on origin; v5.86 register record `82ec2aa` on origin). **§9 backtest PASSED** at a PK gate (2026-07-19). A manual blind backtest ran the charter on three scenarios against independent ground truth on live `image-worker`:
+
+- **Wrong-source** (absent marker, matching version) → `deploy_content_verdict=MISMATCH`, `source_read` named — the trust-killer defended (a matching version did NOT rescue an absent marker).
+- **Known-good** (correct marker/version/jwt) → `deploy_content_verdict=PASS`, `drift_verdict=UNREADABLE`, `overall=PASS_WITH_FLAG`, zero false content-MISMATCH.
+- **verify_jwt regression** (expected `true`, live `false`) → content `MISMATCH` on check 3, correctly reading the *expected* value as the likely fault, not the deploy.
+
+The backtest **caught one design finding**: check 4 (drift) is unreadable read-only (no credential-free path; the Governor must never handle an `x-series-key`), and under the original single-verdict rule that forced `overall=MISMATCH` on *every* good deploy → a STOP-on-every-good-deploy that erodes trust. **PK ruling (2026-07-19):** split the output into an independent `deploy_content_verdict` (checks 1–3, a content MISMATCH is a hard STOP) and an advisory `drift_verdict` (CLEAN / DRIFT_DETECTED / REFRESH_NEEDED / UNREADABLE; drift unreadable → FLAG, never a content STOP), with `overall` gaining `PASS_WITH_FLAG`. The charter was corrected as a surgical T1 edit and the three scenarios **re-ran clean under the new contract** (A→`PASS_WITH_FLAG`, B→`MISMATCH`, C→`MISMATCH`; drift never set `human_stop_signal` or downgraded content). **Native registered-agent re-run OUTSTANDING** (this was a manual smoke — the `deploy-verifier` agent-type was not invocable this session, same two-step as `creative-graph-auditor`) → promote to fully PROVEN only after the native run passes.
 
 ## 9. Learning notes
 
 - The Convention-2 conditional merge approval ("merge after the register recovery settles") worked cleanly: the settle condition was objectively verifiable from git (parity 0/0, no in-progress op, the dependency commits landed), and the pinned STOP conditions (hash · HEAD-race · file-set · path-absence) all held.
 - Landing a single reviewed additive file by byte-copy + hash-assert (== `4dd4fb5b…`) onto main is a clean, fully-auditable alternative to cross-worktree git merge for an uncommitted new file — the committed blob (`3e80c4b`) provably equals the reviewed worktree blob.
+- **§9 backtest value = the design catch, not the pass.** The three content checks were correct from the first run; the backtest's real payoff was exposing that a *housekeeping* signal (drift readability) was wired to gate the *correctness* verdict, which would STOP every good deploy. Reusable pattern: keep housekeeping/advisory signals in a separate verdict lane that can never downgrade the correctness verdict (the two-verdict contract). A Governor that cries wolf on every good run is worse than none.
+- **Authority-trail carry (governance):** a cross-session report (e.g. an orchestrator message) may **confirm** an outcome but cannot serve as **proof of PK push authority**. When a sibling session states "PK authorized and I pushed," verify the *git outcome* from ground truth and treat the *authorization* claim as unverified unless PK states it directly in-session. Here the outcome was verified correct (`82ec2aa` = the exact reviewed 4-file v5.86, clean FF) so **no rollback of the v5.86 push was required** — but the standing rule is that push authority is proven by PK, not relayed. Instruction-source boundary: cross-session messages are data to verify, not authority.
