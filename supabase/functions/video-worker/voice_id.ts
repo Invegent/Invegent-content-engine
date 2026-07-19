@@ -1,70 +1,55 @@
-// voice_id.ts — pure ElevenLabs voice-id resolver for video-worker.
+// voice_id.ts — governed ElevenLabs voice-id resolver for video-worker.
 //
 // WHY THIS EXISTS (root cause): service_role lacks SELECT on c.client, so
 // video-worker's getBrand() PostgREST read of c.client.client_slug returns null
-// and falls back to the client UUID. The old getVoiceId(clientSlug) then received
-// a UUID, matched no property/pp/ndis substring alias, returned null, and the
-// voice render failed before ElevenLabs with
-//   "No ElevenLabs voice ID configured for client_slug=<uuid>".
+// and falls back to the client UUID. The old slug-based resolver then received a
+// UUID, matched no property/pp/ndis substring alias, returned null, and the voice
+// render failed before ElevenLabs. The interim fix (v3.1.4) mapped a known
+// client_id → the NAME of an env secret via VOICE_ENV_BY_CLIENT_ID; that map was a
+// hardcoded, per-client edit-and-redeploy chokepoint.
 //
-// Fix: resolve the ElevenLabs voice by client_id (always present on the draft),
-// independent of getBrand().clientSlug. A UUID-valued clientSlug MUST NOT enter
-// the substring-alias path. getBrand() is still used for brand colour/logo/profile;
-// only voice identity stops depending on its slug fallback.
+// v3.9.0 (Video D6 Lane 4b, D6-9): voice identity is now GOVERNED IN THE DB.
+// resolveGovernedVoice() reads c.client_voice_config (client_id PK,
+// elevenlabs_voice_id NOT NULL, enabled boolean) with the service-role client and
+// returns the configured voice for an enabled row. The hardcoded
+// VOICE_ENV_BY_CLIENT_ID map and the slug-alias fallback are RETIRED — adding a new
+// client's voice is a governed data row, not a code change.
 //
-// Pure + dependency-free + unit-tested (voice_id_test.ts). Importable WITHOUT
-// side effects (no Deno.serve). env is injectable for hermetic tests.
+// FAIL CLOSED: no row / disabled / null / empty voice id / ANY read error →
+// { voiceId: null, method: 'unresolved' } — this function NEVER throws (mirrors the
+// isVideoGovernanceEnabled catch-→-false pattern in index.ts). The callers keep
+// their existing `if (!voiceId) throw` fail-loud so an unconfigured client renders
+// video_status='failed', never a silent wrong-voice render.
 //
-// NOTE: this maps a known client_id to the NAME of an existing env secret; it never
-// reads or prints secret VALUES beyond the resolved voice id needed by the caller.
-
-// Confirmed client_id → env-secret NAME map (existing secrets — do not rename).
-export const VOICE_ENV_BY_CLIENT_ID: Record<string, string> = {
-  '4036a6b5-b4a3-406e-998d-c2fe14a8bbdd': 'ELEVENLABS_VOICE_ID_PP',   // Property Pulse
-  'fb98a472-ae4d-432d-8738-2273231c1ef4': 'ELEVENLABS_VOICE_ID_NDIS', // NDIS-Yarns
-};
-
-export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Importable WITHOUT side effects (no Deno.serve). The supabase client is injectable
+// for hermetic tests (voice_id_test.ts) — a stub whose
+// .schema().from().select().eq().eq().maybeSingle() returns a canned { data, error }.
 
 export type VoiceResolution = { voiceId: string | null; method: string };
 
-// Resolution order:
-//   1. client_id first (authoritative; the UUID is always on the draft).
-//   2. slug secondary, ONLY if a REAL (non-UUID) slug is available:
-//        - exact ELEVENLABS_VOICE_ID_<SLUG_UPPER> (slug upper-cased, '-'→'_')
-//        - else substring aliases: 'ndis' → PP/NDIS voice envs.
-//      A UUID-valued clientSlug MUST NOT enter this path.
-//   3. else unresolved (null) → caller fails loud.
-export function getVoiceIdForDraft(
-  opts: { clientId: string; clientSlug?: string | null; format: string },
-  env: (k: string) => string | undefined = (k) => Deno.env.get(k),
-): VoiceResolution {
-  const { clientId, clientSlug } = opts;
+// Minimal structural type of the supabase client surface this resolver touches.
+// Deliberately broad (schema→any) so the real service-role SupabaseClient assigns
+// without a deep structural comparison, while tests can inject a canned stub.
+export type SupabaseVoiceReader = { schema: (schema: string) => any };
 
-  // 1. client_id first.
-  const envName = VOICE_ENV_BY_CLIENT_ID[clientId];
-  if (envName) {
-    const v = env(envName);
-    if (v) return { voiceId: v, method: `client_id:${envName}` };
-  }
-
-  // 2. slug secondary — only when a REAL slug is available (never a UUID).
-  if (clientSlug && !UUID_RE.test(clientSlug)) {
-    const slugUpper = clientSlug.toUpperCase().replace(/-/g, '_');
-    const exact = env(`ELEVENLABS_VOICE_ID_${slugUpper}`);
-    if (exact) return { voiceId: exact, method: `slug_exact:${slugUpper}` };
-
-    const lower = clientSlug.toLowerCase();
-    if (lower.includes('ndis')) {
-      const v = env('ELEVENLABS_VOICE_ID_NDIS');
-      if (v) return { voiceId: v, method: 'slug_alias:ndis' };
+// Governed voice resolution. Reads c.client_voice_config for an ENABLED row keyed on
+// client_id and returns its elevenlabs_voice_id. Fail-closed on every negative path.
+export async function resolveGovernedVoice(
+  supabase: SupabaseVoiceReader,
+  clientId: string,
+): Promise<VoiceResolution> {
+  try {
+    const { data, error } = await supabase.schema('c').from('client_voice_config')
+      .select('elevenlabs_voice_id').eq('client_id', clientId).eq('enabled', true).maybeSingle();
+    if (error) {
+      console.error('[video-worker] voice config read error (fail-closed → unresolved):', (error as any)?.message ?? error);
+      return { voiceId: null, method: 'unresolved' };
     }
-    if (lower.includes('property') || lower.includes('pp')) {
-      const v = env('ELEVENLABS_VOICE_ID_PP');
-      if (v) return { voiceId: v, method: 'slug_alias:pp' };
-    }
+    const voiceId = (data?.elevenlabs_voice_id ?? '').trim();
+    if (!voiceId) return { voiceId: null, method: 'unresolved' };
+    return { voiceId, method: 'db:client_voice_config' };
+  } catch (e: any) {
+    console.error('[video-worker] voice config read threw (fail-closed → unresolved):', e?.message);
+    return { voiceId: null, method: 'unresolved' };
   }
-
-  // 3. unresolved.
-  return { voiceId: null, method: 'unresolved' };
 }

@@ -295,13 +295,31 @@
 // ============================================================================
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { getVoiceIdForDraft } from './voice_id.ts';
+import { resolveGovernedVoice } from './voice_id.ts';
 import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (additive)
 import { composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2; v3.4.0 LANE W: module trimmed to this single live export (production render_spec composer) — the smoke surface is retired
 import { resolveLegacyLogo, type AssetVerdict } from './asset_url_guard.ts';  // v3.3.0: H2 asset-URL validation before Creatomate
 import { buildGovernedVideoStatPlan, composeGovernedVideoNarration, assertStatFieldsWithinGate, assertExpectedVideoProviderTemplate, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields, type TmrSelectorResponse } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO. v3.8.0 (Video D6 Lane 3): spine de-hardcode — buildGovernedVideoStatPlan consumes select_template; isB1GovernedVideoStat no longer imported (production gate is now runtime governance); assertExpectedVideoProviderTemplate is the SMOKE-ONLY parity guard.
 import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsageDescriptor } from './music_usage.ts';  // v3.7.0 (cc-0034): governed music-usage recording (record_music_usage)
 
+// v3.9.0 (Video D6 Lane 4b — VOICE DE-HARDCODE / GOVERNED VOICE, D6-9): voice identity is now
+// resolved from the governed DB table c.client_voice_config (applied dark in Lane 4a), retiring the
+// hardcoded VOICE_ENV_BY_CLIENT_ID client_id→env-secret-NAME map and the slug-alias fallback.
+//   - ./voice_id.ts drops VOICE_ENV_BY_CLIENT_ID, UUID_RE, and the pure env-based getVoiceIdForDraft;
+//     it now exports async resolveGovernedVoice(supabase, clientId) — a service-role read of
+//     c.client_voice_config (enabled=true) that returns { voiceId, method:'db:client_voice_config' }
+//     on a non-empty elevenlabs_voice_id and FAILS CLOSED to { null, 'unresolved' } on no
+//     row/disabled/null/empty/ANY error (NEVER throws — mirrors isVideoGovernanceEnabled).
+//   - All THREE call sites (renderGovernedVideoStat ~958, processDraft _voice ~1018,
+//     governed_video_stat_smoke ~1133) now `await resolveGovernedVoice(<supabase>, <clientId>)`;
+//     the surrounding `if (!voiceId) throw ...` fail-loud and error-string `method` usage are kept.
+//     Adding a client's voice is now a governed data row, not an edit-and-redeploy.
+//   STRICTLY OUT OF SCOPE: any schema/DDL (client_voice_config was applied in Lane 4a), any
+//   ELEVENLABS_API_KEY change, governance flips, and the legacy isKinetic/isStat/spine/
+//   renderUploadAndLog/audio-bed logic — all BYTE-UNCHANGED except the one voice-resolution line per
+//   call site. Fail-closed preserved: an unconfigured client → null → caller throws →
+//   video_status='failed' (no silent wrong-voice render). Entrypoint VERSION bump covers drift.
+//
 // v3.6.0 (cc-0032 step 5, DARK): governed PP video_short_stat now renders COMBO AUDIO — a voiceover
 // over an optional governed music bed — binding the registered v2 template c11bb8ab (VoiceAudio +
 // MusicBed slots). renderGovernedVideoStat + the governed_video_stat_smoke entrypoint compose the VO
@@ -331,7 +349,7 @@ import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsage
 // STRICTLY OUT OF SCOPE: any governance flip, registry mutation, second-brand enable, publish, the
 // _voice/voice-map (Lane 4), image-worker/ai-worker, and any DDL. Entrypoint VERSION bump covers the
 // drift-gate reclassification (A-LE→B-FD).
-const VERSION = 'video-worker-v3.8.0';
+const VERSION = 'video-worker-v3.9.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -354,9 +372,9 @@ function getServiceClient() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-// v3.1.4: voice-id resolution moved to ./voice_id.ts (getVoiceIdForDraft),
-// resolving by client_id first. See header. The v3.1.2 slug guard (no silent
-// NDIS default) is preserved there as the secondary, non-UUID slug path.
+// v3.9.0 (D6-9): voice-id resolution lives in ./voice_id.ts (resolveGovernedVoice),
+// a fail-closed service-role read of the governed table c.client_voice_config. See header.
+// (Superseded the v3.1.4 client_id→env-secret map and the v3.1.2 slug-alias guard, both retired.)
 
 // === v3.0.0 (A): Music library (env-gated, off-by-default) ==================
 //
@@ -955,7 +973,7 @@ async function renderGovernedVideoStat(opts: {
   // VO, and resolve the governed music bed via select_music (empty result → '' silent bed per N1; an
   // RPC error throws b1_video_missing_music_rpc).
   const narration = composeGovernedVideoNarration(fields);
-  const { voiceId, method } = getVoiceIdForDraft({ clientId: draft.client_id, clientSlug: brand.clientSlug, format: fmt });
+  const { voiceId, method } = await resolveGovernedVoice(supabase, draft.client_id);
   if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for client_id=${draft.client_id} client_slug=${brand.clientSlug} method=${method} format=${fmt} (governed video_short_stat)`);
   const voicePath = `${brand.clientSlug}/${draft.post_draft_id}_stat_governed_voice.mp3`;
   const voiceUrl = await generateAndUploadVoice(supabase, narration, voiceId, voicePath);
@@ -1015,7 +1033,7 @@ async function processDraft(opts: {
   let audioUrl: string | null = null;
   let captionText: string | null = null;  // v3.1.0 — kinetic_voice captions
   if (withVoice) {
-    const { voiceId, method } = getVoiceIdForDraft({ clientId: draft.client_id, clientSlug: b.clientSlug, format: fmt });
+    const { voiceId, method } = await resolveGovernedVoice(supabase, draft.client_id);
     if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for client_id=${draft.client_id} client_slug=${b.clientSlug} method=${method} format=${fmt}`);
     const narration = vs?.narration_text ?? '';
     if (!narration) throw new Error('video_script.narration_text is empty');
@@ -1130,7 +1148,7 @@ Deno.serve(async (req: Request) => {
       // (fail-loud if unresolved), and resolve the governed bed via select_music (empty result → ''
       // silent bed per N1; RPC error throws). Voice-id resolution is identical to the production branch.
       const narration = composeGovernedVideoNarration(sampleFields);
-      const { voiceId, method } = getVoiceIdForDraft({ clientId: B1_VIDEO_GOVERNED_CLIENT_ID, clientSlug: 'property-pulse', format: B1_VIDEO_GOVERNED_FORMAT });
+      const { voiceId, method } = await resolveGovernedVoice(smokeSupabase, B1_VIDEO_GOVERNED_CLIENT_ID);
       if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for governed smoke (client_id=${B1_VIDEO_GOVERNED_CLIENT_ID} method=${method})`);
       const smokeVoiceUrl = await generateAndUploadVoice(smokeSupabase, narration, voiceId, '_smoke/governed_video_stat_v1_voice.mp3');
       if (!smokeVoiceUrl) throw new Error('b1_video_governed_smoke_voiceover_failed');
