@@ -181,6 +181,12 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 - **CARRIES (not actively ranked):** **B0** = prove a 1:1 / 4:5 governed variant (legacy `image_quote` aspect is 1:1); **B1** = production Branch B wiring AFTER B0; global / top-right client picker; Analyse relocation (likely → REPORTS); Campaign taxonomy decision; Ideas/Series naming + UI-hierarchy refinement; future narrow `dashboard-ia-lint` ONLY after the IA spec is accepted + checkable rules are clear.
 - **DO NOT START (unprompted):** HeyGen · broad dashboard IA overhaul · B0/B1. **Broad 16:9 `image_quote` production wiring NOT approved.**
 
+## 🟢 Static-Image Governance Dashboard (`/creative-library`) — STATUS BLOCK (NEW v5.91 — ARC CLOSED / all LIVE prod)
+
+- **CLOSED (v5.91; record `docs/briefs/results/static-image-governance-dashboard-arc-result-v1.md`):** `/creative-library` is client-aware (PP+NDIS) with the full live governed-asset pool + slot-eligibility (why-picked/why-not) + live governance-enablement — dashboard `main == 80ceb44` (`dashboard.invegent.com`). **DONE:** Slice 1 client-aware `?client=` · Slice 2 `resolve_slot_assets` eligibility · Slice 3 `get_client_creative_governance` enablement panel · Slice-1 dynamic-keys (Governed Assets reads the live pool via new `list_client_governed_assets`, no hardcoded keys). Both reader RPCs live + committed (D-B ledger `20260719012947`; `list_client_governed_assets` ledger `20260719041606`, source backfilled to main).
+- **CARRIES (not actively ranked, non-blocking):** `geo_scope` in the **Slot Eligibility** panel (Slice 2 `resolve_slot_assets` does not return it; the Governed Assets panel already shows it) · **Templates panel** → link out to the existing `/create/templates` Template Registry (per D-H).
+- **DO NOT START (unprompted):** re-opening closed slices · broad `/creative-library` redesign.
+
 ## ⭐ Dashboard work (separately ranked; v3.04 status note)
 
 | Rank | Item | Priority | Why now | Next action |
