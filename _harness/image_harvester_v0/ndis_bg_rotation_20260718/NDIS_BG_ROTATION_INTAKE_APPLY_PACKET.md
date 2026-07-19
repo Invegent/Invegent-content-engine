@@ -24,6 +24,15 @@
   - `b2f617a9-9b7c-488e-87ba-40d2fbe00868` · bg_ny_datagrid_connected_dots
 - **Rollback (if needed):** `DELETE FROM c.client_brand_asset WHERE asset_id IN (<14 ids above>);` + delete the 14 storage objects. No dependents (fenced, unreferenced).
 
+## PROMOTION — APPLIED (2026-07-19, 4 of 14)
+PK visual PASS on the 4 strongest (crop-proof `promo_cropproof/PROMO_FINALISTS_4.jpg`, 0.55-scrim + 74-char headline, post-scrim band-luma 30–34). Promoted via `promote_update.sql` (sha256 `898cc349e1e0100b5a8740fbd3ed7741c32d04619bafb9ff7470cf8e25e92f91`), CAS-guarded fail-closed `DO` txn — returned clean.
+- **Promoted (fenced→governed; is_active/approved/production_use_allowed=true, approval_status='governed', safe_for_text_overlay='needs_scrim'):**
+  - `a6eba9f9-…` bg_ny_brand_texture_flat_navy · `c2143420-…` bg_ny_brand_texture_deep_navy_solid · `a7a1de90-…` bg_ny_brand_texture_teal_navy_gradient · `6849877f-…` bg_ny_datagrid_navy_grid
+- **Post-verify (live):** NDIS eligible-bg **1→5** (navy_waves + these 4) · PP eligible **30 unchanged** · 10 rotation rows remain fenced.
+- **Guards:** db-rls-auditor **PASS 0-must-fix** (real `resolve_slot_assets` predicate 1→5 confirmed, PP untouched, CAS idempotent-safe, no DDL/GRANT/exposure) · external `786654cb` partial/high→**PK escalation decision: PROCEED** (concerns were generic T3 caution; per-row eligibility already evidenced by db-rls).
+- **Rollback (re-fence):** `UPDATE c.client_brand_asset SET is_active=false, asset_meta=(asset_meta - 'promoted_by') || jsonb_build_object('approved',false,'production_use_allowed',false,'approval_status','intake_candidate') WHERE client_id='fb98a472-…' AND asset_id IN (<4>) AND asset_meta->>'approval_status'='governed';`
+- **Held fenced (10):** civic (5, bright/text-marginal), remaining brand-texture (w-bt-a, w-bt-f), remaining data-grid (data_grid-01, data_grid-02, w-dg-b) — future per-asset PK gates.
+
 ---
 
 **(original packet below — pre-apply)**
