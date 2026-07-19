@@ -78,6 +78,17 @@ IA conformance linter; `Read`/`Grep`/`Glob`; PASS/WARN/BLOCK/NO_GOVERNING_RULE) 
 proven**, so it is intentionally not listed in the team table above; it stays candidate until
 it has audited at least one real dashboard diff.
 
+`deploy-verifier` is built and committed (`a52e788`) as a read-only **candidate** — a post-deploy
+verification **Deployment Governor** (realizes the one named in `docs/governance/governor-architecture.md`
+§3/§10; `Read`/`Grep`/`Glob`/read-only `Bash`/`get_edge_function`/`list_edge_functions`/`get_advisors`;
+PASS/MISMATCH). It recomputes live deploy state and classifies marker-in-deployed-bundle (the
+bundles-from-CWD "old code shipped" guard, naming its source) · VERSION==repo · `verify_jwt` (401→502
+guard) · drift class (A-LE/B-FD, read/flag only); **advisory only** — it never deploys, redeploys,
+refreshes drift, approves, or decides. **Not yet proven** — it stays a candidate (and intentionally
+out of the team table above) until its `governor-architecture.md` §9 read-only backtest passes at a
+PK gate (wrong-source→MISMATCH · known-good→PASS with zero false-MISMATCH · stale-A-LE→correct drift
+class), the same discipline that proved `branch-warden`/`ef-builder`.
+
 **Brief-authoring lane:** use `brief-author` to draft the gate-1 brief for any PK-named task —
 it reads template/registers/CLAUDE.md/prior briefs/source as evidence and returns the draft as
 JSON only (the orchestrator writes files; gate 1 is unchanged — a PROVEN brief-author still
