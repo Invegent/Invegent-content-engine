@@ -76,7 +76,14 @@
       "mcp__supabase__get_project_url",
       "mcp__supabase__get_publishable_keys",
       "mcp__ccd_session_mgmt__set_session_title",
-      "Bash(python scripts/db-read.py:*)"
+      "Bash(python scripts/db-read.py:*)",
+      "mcp__Claude_Browser__get_page_text",
+      "mcp__Claude_Browser__read_page",
+      "mcp__Claude_Browser__find",
+      "mcp__Claude_Browser__read_console_messages",
+      "mcp__Claude_Browser__read_network_requests",
+      "mcp__Claude_Browser__preview_logs",
+      "mcp__Claude_Browser__tabs_context"
     ]
   }
 }
