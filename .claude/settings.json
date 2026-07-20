@@ -11,6 +11,14 @@
             "args": [
               "C:/Users/parve/Invegent-content-engine/.claude/hooks/session-bootstrap.mjs"
             ]
+          },
+          {
+            "type": "command",
+            "command": "python",
+            "args": [
+              "C:/Users/parve/Invegent-content-engine/scripts/db-read-adoption.py",
+              "--pulse"
+            ]
           }
         ]
       }
