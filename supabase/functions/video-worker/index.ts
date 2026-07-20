@@ -349,7 +349,20 @@ import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsage
 // STRICTLY OUT OF SCOPE: any governance flip, registry mutation, second-brand enable, publish, the
 // _voice/voice-map (Lane 4), image-worker/ai-worker, and any DDL. Entrypoint VERSION bump covers the
 // drift-gate reclassification (A-LE→B-FD).
-const VERSION = 'video-worker-v3.9.0';
+//
+// v3.10.0 (cc-0044 Checkpoint E — OPTION B, DYNAMIC VIDEO BACKGROUND + second-client smoke):
+//   (1) buildGovernedVideoStatPlan binds Background.source OPTIONALLY (present → governed dynamic bg;
+//       absent → baked-bg variant unchanged) — see b1_video_stat.ts. Retires the hard baked-bg
+//       divergence for generic variants; every baked-bg template renders byte-identically.
+//   (2) The governed_video_stat_smoke entrypoint de-hardcodes its VOICE client: it resolves the
+//       voiceover for smokeBody.client_id (defaults to the PP governed client_id → PP smoke unchanged),
+//       so a second governed client (e.g. NDIS Yarns) can be smoked through the SAME generic spine with
+//       background + logo + voice all supplied as governed data. The smoke's provider-parity guard is
+//       unchanged (a V-B generic variant reuses provider c11bb8ab, so the assert still holds).
+//   Production (renderGovernedVideoStat) and every legacy/renderUploadAndLog path stay BYTE-UNCHANGED.
+//   STRICTLY OUT OF SCOPE (unchanged): governance flip, registry mutation, production second-client
+//   enable, publish, DDL. Entrypoint VERSION bump covers the drift-gate reclassification (A-LE→B-FD).
+const VERSION = 'video-worker-v3.10.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -1139,17 +1152,24 @@ Deno.serve(async (req: Request) => {
       // (design decision 1a — accept the platform_input_missing/suitability warnings); STABLE seed
       // (the smoke has no draft). RPC error = fail loud. Feeds buildGovernedVideoStatPlan below.
       const smokeSlug = String(smokeBody?.client_slug ?? 'property-pulse');
+      // v3.10.0 (cc-0044 Checkpoint E): de-hardcode the smoke's voice client so a SECOND governed
+      // client (e.g. NDIS Yarns) can be smoked through the same generic spine. The voiceover resolves
+      // for the SMOKED client_id, supplied by the supervisor alongside client_slug (service_role lacks
+      // SELECT on c.client, so slug→id cannot be read here — the supervisor passes both, and they MUST
+      // identify the same client). Defaults to the PP governed client_id so the PP smoke is byte-
+      // unchanged. Production (renderGovernedVideoStat) is untouched — it resolves voice from its draft.
+      const smokeClientId = String(smokeBody?.client_id ?? B1_VIDEO_GOVERNED_CLIENT_ID);
       const smokeSeed = String(smokeBody?.seed ?? 'governed_video_stat_smoke_v1');
       const { data: selection, error: selectErr } = await smokeSupabase.rpc('select_template', { p_client_slug: smokeSlug, p_platform: null, p_format: B1_VIDEO_GOVERNED_FORMAT, p_variant_intent: null, p_seed: smokeSeed });
       if (selectErr) throw new Error(`governed_video_stat_smoke tmr_selector_rpc_failed: ${selectErr.message}`);
 
       // v3.6.0 (cc-0032 step 5): COMBO AUDIO in the smoke — compose the concise VO narration,
-      // resolve the PP voice by the governed client_id (slug 'property-pulse'), generate the VO
+      // resolve the smoked client's voice by client_id (v3.10.0 — was the PP constant), generate the VO
       // (fail-loud if unresolved), and resolve the governed bed via select_music (empty result → ''
       // silent bed per N1; RPC error throws). Voice-id resolution is identical to the production branch.
       const narration = composeGovernedVideoNarration(sampleFields);
-      const { voiceId, method } = await resolveGovernedVoice(smokeSupabase, B1_VIDEO_GOVERNED_CLIENT_ID);
-      if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for governed smoke (client_id=${B1_VIDEO_GOVERNED_CLIENT_ID} method=${method})`);
+      const { voiceId, method } = await resolveGovernedVoice(smokeSupabase, smokeClientId);
+      if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for governed smoke (client_id=${smokeClientId} method=${method})`);
       const smokeVoiceUrl = await generateAndUploadVoice(smokeSupabase, narration, voiceId, '_smoke/governed_video_stat_v1_voice.mp3');
       if (!smokeVoiceUrl) throw new Error('b1_video_governed_smoke_voiceover_failed');
       const smokeBed = await resolveGovernedMusicBedUrl(smokeSupabase, { scopeKind: 'format', scopeValue: B1_VIDEO_GOVERNED_FORMAT });

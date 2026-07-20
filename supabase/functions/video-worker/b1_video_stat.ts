@@ -27,15 +27,24 @@
 //   • variant_key          ← selected.variant_key  (RETIRES the B1_VIDEO_VARIANT_KEY constant)
 // The evidence is now resolver-driven (bind_mode:'resolved', resolver_used:true) and contract_ref is
 // DROPPED entirely (D6-7 — mirrors image TmrEvidence, which carries none; B1_VIDEO_CONTRACT_REF is
-// deleted). BAKED-BG DIVERGENCE FROM IMAGE: the builder requires Logo.source ONLY, never
-// Background.source — the video background is BAKED into template c11bb8ab (D2 ruling), so the resolver
-// returns no Background slot for this template. This is the single deliberate difference from the image
-// buildTmrRenderPlan, which requires both. Fail-loud: selector status!='ok' / slot_resolution.status
+// deleted). BAKED-BG DIVERGENCE FROM IMAGE (v3.8.0): the builder required Logo.source ONLY, never
+// Background.source — the video background was BAKED into template c11bb8ab (D2 ruling), so the resolver
+// returned no Background slot for this template. Fail-loud: selector status!='ok' / slot_resolution.status
 // !='ok' / missing provider_template_id / missing Logo.source → throw (→ video_status='failed', no
 // fallback). isB1GovernedVideoStat is RETAINED for reference/tests but is no longer the production gate
 // (index.ts now gates on the runtime governance lookup, mirroring image's isImageGovernanceEnabled).
-// STRICTLY OUT OF SCOPE: the governance enable/flip, any registry mutation, the _voice variant / voice
-// map (Lane 4), non-video-worker functions, and any DDL.
+//
+// v3.10.0 (cc-0044 Checkpoint E — OPTION B, DYNAMIC VIDEO BACKGROUND): the baked-bg divergence is now
+// CONDITIONAL, not absolute. buildGovernedVideoStatPlan binds Background.source OPTIONALLY — when the
+// resolver returns a Background.source (a generic video variant carrying a Background field mapping, the
+// image-path pattern), the client's background is supplied by GOVERNED DATA; when the resolver returns
+// no Background.source (a baked-bg variant, e.g. the PP client-scoped template with no Background field),
+// the key is OMITTED and the provider template's baked background renders BYTE-UNCHANGED. This mirrors
+// the existing optional MusicBed handling (present → bind, absent → template default) and lets a second
+// client use the SAME generic video spine with its own background as data — no new Creatomate template,
+// no per-client code (the c11bb8ab provider template already exposes an addressable `Background` image
+// element). Logo.source stays REQUIRED (fail-loud). STRICTLY OUT OF SCOPE: the governance enable/flip,
+// any registry mutation, the _voice variant / voice map (Lane 4), non-video-worker functions, and any DDL.
 
 // The Property-Pulse client_id — retained as the reference identity for the hermetic gate tests and
 // the governed smoke. It no longer gates the production path (index.ts gates on the runtime
@@ -86,8 +95,9 @@ export function assertExpectedVideoProviderTemplate(actual: string, expected: st
   }
 }
 
-// The four AI-authored text fields the governed template exposes (Background is BAKED — never a
-// modification; Logo is a governed asset modification supplied by the resolver in the plan builder).
+// The four AI-authored text fields the governed template exposes (Logo — and, for a generic variant,
+// Background — are governed asset modifications supplied by the resolver in the plan builder; a baked-bg
+// variant supplies no Background and its baked background renders unchanged, v3.10.0).
 export type B1VideoStatFields = {
   statValue: string;
   statLabel: string;
@@ -185,7 +195,8 @@ export type TmrSelectorResponse = {
 // resolver_used=true — this is the live spine, not the retired direct bind. Mirrors
 // b1_production.TmrEvidence (winner/ids/variant/seed/slot_reasons/slot_warnings/selector_status) and
 // ADDS the video-specific combo-audio block. There is NO contract_ref (D6-7 — dropped, mirroring
-// image). BAKED-BG: slot_reasons carries only the Logo slot for this template (no Background slot).
+// image). slot_reasons carries the Logo slot, plus the Background slot for a generic (Option-B) variant
+// and only the Logo slot for a baked-bg variant (v3.10.0).
 export type B1VideoTmrEvidence = {
   winner: string | null;                 // selected.provider_template_name (informational)
   provider_template_id: string;
@@ -224,8 +235,9 @@ export type B1VideoTemplateSpec = {
 
 export type B1VideoStatPlan = {
   providerTemplateId: string;
-  // Creatomate template-mode modifications. All string-valued for this template (4 text slots + Logo +
-  // 2 audio slots). Background is BAKED — NOT present here.
+  // Creatomate template-mode modifications. All string-valued (4 text slots + Logo + 2 audio slots,
+  // plus an OPTIONAL Background.source for a generic Option-B variant; a baked-bg variant omits it,
+  // v3.10.0).
   modifications: Record<string, string>;
   templateSpec: B1VideoTemplateSpec;
 };
@@ -266,13 +278,21 @@ export function buildGovernedVideoStatPlan(
     throw new Error('tmr_video_selector_fail_closed: missing_provider_template_id');
   }
 
-  // BAKED-BG: require Logo.source ONLY (never Background.source — baked into the provider template).
+  // Logo.source is REQUIRED (fail-loud). Background.source is OPTIONAL (v3.10.0 — Option B): a generic
+  // video variant with a Background field mapping supplies it; a baked-bg variant does not.
   const slotMods = slot.modifications ?? {};
   const logoUrlRaw = slotMods['Logo.source'];
   const resolvedLogo = typeof logoUrlRaw === 'string' ? logoUrlRaw.trim() : '';
   if (!resolvedLogo) {
     throw new Error('tmr_video_slot_resolution_incomplete: missing Logo.source');
   }
+
+  // v3.10.0 (cc-0044 Checkpoint E — OPTION B, DYNAMIC VIDEO BACKGROUND): read Background.source
+  // OPTIONALLY. Present + non-blank → the client's governed background is bound below (dynamic bg).
+  // Absent/blank → the key is OMITTED and the provider template's BAKED background renders unchanged
+  // (the PP client-scoped variant path stays byte-identical). Mirrors the optional MusicBed contract.
+  const backgroundUrlRaw = slotMods['Background.source'];
+  const resolvedBackground = typeof backgroundUrlRaw === 'string' ? backgroundUrlRaw.trim() : '';
 
   // Combo branch: the voiceover is REQUIRED — a blank VO is a HARD failure (never render a silent
   // governed video; fail loud). The bed is OPTIONAL: '' binds an explicitly silent MusicBed (N1).
@@ -282,9 +302,9 @@ export function buildGovernedVideoStatPlan(
   }
   const resolvedBed = (musicBedUrl ?? '').trim();
 
-  // Template-mode modifications: 4 dynamic text slots + Logo + 2 audio slots. Background is BAKED.
-  // MusicBed.volume is NOT set (N3 — template-controlled at 70%). Key presence is the guard for the
-  // silent bed (N1: MusicBed.source is ALWAYS a key; omitting it plays the baked default).
+  // Template-mode modifications: 4 dynamic text slots + Logo + 2 audio slots (+ optional Background,
+  // v3.10.0). MusicBed.volume is NOT set (N3 — template-controlled at 70%). Key presence is the guard
+  // for the silent bed (N1: MusicBed.source is ALWAYS a key; omitting it plays the baked default).
   const modifications: Record<string, string> = {
     'StatValue': fields.statValue.trim(),
     'StatLabel': fields.statLabel.trim(),
@@ -294,6 +314,12 @@ export function buildGovernedVideoStatPlan(
     'VoiceAudio.source': resolvedVoice,
     'MusicBed.source': resolvedBed,
   };
+  // OPTION B (v3.10.0): bind the dynamic background ONLY when the resolver supplied one. Unlike
+  // MusicBed (always a key, '' = silent), Background.source is OMITTED when absent so a baked-bg
+  // template's background is left untouched — sending Background.source='' would blank the element.
+  if (resolvedBackground) {
+    modifications['Background.source'] = resolvedBackground;
+  }
 
   const slotReasons = (slot.selected ?? []).map((s) => ({
     slot: s?.slot ?? null,

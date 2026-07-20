@@ -1,8 +1,9 @@
 // Hermetic unit tests for the governed PP video_short_stat pure helpers.
-// v3.8.0 (Video D6 Lane 3): the plan builder is now SPINE-DRIVEN + BAKED-BG — it consumes a
-// public.select_template response and derives provider_template_id + Logo.source from it (the
-// direct-bind constants are retired). These tests exercise the new fail-loud contract and the
-// deliberate baked-bg divergence (Logo.source required, Background.source NOT required).
+// v3.8.0 (Video D6 Lane 3): the plan builder is now SPINE-DRIVEN — it consumes a public.select_template
+// response and derives provider_template_id + Logo.source from it (the direct-bind constants are
+// retired). v3.10.0 (cc-0044 Checkpoint E — Option B): Background.source is OPTIONAL — present (a generic
+// variant) → bound as a dynamic bg; absent (a baked-bg variant) → omitted so the baked background is
+// unchanged. Logo.source stays REQUIRED (fail-loud). These tests exercise both paths.
 // Run: deno test supabase/functions/video-worker/b1_video_stat_test.ts
 // Pure module — no env, no network, no DB, no side effects.
 import { assert, assertEquals, assertThrows } from 'jsr:@std/assert@1';
@@ -153,6 +154,47 @@ Deno.test('plan: success — provider id + Logo.source resolved; exact 7-key mod
   assertEquals('MusicBed.volume' in plan.modifications, false);
 });
 
+// (1b) OPTION B (v3.10.0): the resolver supplies Background.source (a generic video variant carrying a
+// Background field mapping — the image-path pattern) → the plan BINDS it as a modification. Proves the
+// dynamic-bg path: a second client uses the SAME generic spine with its background supplied by governed
+// data (no new Creatomate template; c11bb8ab already exposes an addressable Background element).
+Deno.test('plan: OPTION B — Background.source resolved → bound (8-key set, dynamic bg)', () => {
+  const NDIS_BG = 'https://x.supabase.co/storage/v1/object/public/brand-assets/NDIS_Yarns/Backgrounds/navy_waves.jpg';
+  const fx = liveShapeFixture();
+  fx.slot_resolution!.modifications!['Background.source'] = NDIS_BG;
+  fx.slot_resolution!.selected!.push(
+    { slot: 'Background', asset_key: 'ndis_bg_navy_waves', asset_id: 'c1c1c1c1-0000-4000-8000-000000000001', asset_url: NDIS_BG, reasons: ['governed', 'license_ok', 'client_match'] },
+  );
+  const plan = buildGovernedVideoStatPlan(fx, okFields, VOICE, BED);
+  assertEquals(plan.modifications['Background.source'], NDIS_BG);
+  // exact 8-key set now (the 7 baked-bg keys + Background.source), nothing else.
+  assertEquals(Object.keys(plan.modifications).sort(), [
+    'Background.source', 'ContextLine', 'CtaText', 'Logo.source', 'MusicBed.source', 'StatLabel', 'StatValue', 'VoiceAudio.source',
+  ]);
+  // Logo stays required + present; the slot evidence now carries the Background slot too.
+  assertEquals(plan.modifications['Logo.source'], LOGO_URL);
+  assertEquals(plan.templateSpec.tmr.slot_reasons.some((s) => s.slot === 'Background'), true);
+});
+
+// (1c) OPTION B: blank/whitespace Background.source → OMITTED (baked-bg preserved). Unlike MusicBed
+// (always a key, '' = silent), sending Background.source='' would BLANK the element — so a baked-bg
+// variant that returns no usable bg leaves the provider template's baked background untouched.
+Deno.test('plan: OPTION B — blank Background.source → OMITTED (baked-bg preserved)', () => {
+  const fx = liveShapeFixture();
+  fx.slot_resolution!.modifications!['Background.source'] = '   ';
+  const plan = buildGovernedVideoStatPlan(fx, okFields, VOICE, BED);
+  assertEquals('Background.source' in plan.modifications, false);
+  assertEquals(Object.keys(plan.modifications).length, 7);
+});
+
+// (1d) OPTION B: non-string Background.source (defensive) → OMITTED (never coerced into the render).
+Deno.test('plan: OPTION B — non-string Background.source → OMITTED', () => {
+  const fx = liveShapeFixture();
+  (fx.slot_resolution!.modifications as Record<string, unknown>)['Background.source'] = 12345;
+  const plan = buildGovernedVideoStatPlan(fx, okFields, VOICE, BED);
+  assertEquals('Background.source' in plan.modifications, false);
+});
+
 // (1b) determinism: pure — same inputs, same output.
 Deno.test('plan: pure/deterministic — same inputs give same output', () => {
   const a = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
@@ -200,19 +242,16 @@ Deno.test('plan: blank voiceover throws b1_video_missing_voiceover (VO required)
   assertThrows(() => buildGovernedVideoStatPlan(liveShapeFixture(), okFields, '', ''), Error, 'b1_video_missing_voiceover');
 });
 
-// (6) BAKED-BG CONTRACT: it does NOT throw when Background.source is absent (the fixture has none),
-// and even if a Background.source were present in slot mods it is NOT copied into modifications
-// (baked-bg: the builder never reads Background). This is the deliberate divergence from image.
-Deno.test('plan: baked-bg — no throw when Background.source absent; Background never entered into mods', () => {
-  // absent Background (the normal video case) → builds cleanly.
+// (6) BAKED-BG CONTRACT (v3.10.0, Option B — now CONDITIONAL): when the resolver returns NO
+// Background.source (a baked-bg variant, e.g. the PP client-scoped template), the builder does NOT
+// throw (Background is OPTIONAL, not required) and Background is NOT a modification key → the provider
+// template's baked background renders unchanged. When a Background.source IS present it is now bound —
+// see the OPTION B tests above. This is the D2 divergence, retained ONLY for baked-bg variants.
+Deno.test('plan: baked-bg — Background.source absent → no throw, not a modification key (baked bg unchanged)', () => {
   const plan = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
   assert(plan.providerTemplateId === PROVIDER_ID);
-  // a stray Background.source in slot mods is IGNORED (not required, not copied).
-  const fx = liveShapeFixture();
-  fx.slot_resolution!.modifications = { 'Logo.source': LOGO_URL, 'Background.source': 'https://x.test/should_be_ignored.jpg' };
-  const plan2 = buildGovernedVideoStatPlan(fx, okFields, VOICE, BED);
-  assertEquals('Background.source' in plan2.modifications, false);
-  assertEquals(plan2.modifications['Logo.source'], LOGO_URL);
+  assertEquals('Background.source' in plan.modifications, false);
+  assertEquals(Object.keys(plan.modifications).length, 7);
 });
 
 // (7) FAIL-LOUD: mapped response without provider_template_id → throw (never submit an empty id).
