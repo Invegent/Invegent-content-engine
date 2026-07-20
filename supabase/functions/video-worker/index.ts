@@ -362,7 +362,16 @@ import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsage
 //   Production (renderGovernedVideoStat) and every legacy/renderUploadAndLog path stay BYTE-UNCHANGED.
 //   STRICTLY OUT OF SCOPE (unchanged): governance flip, registry mutation, production second-client
 //   enable, publish, DDL. Entrypoint VERSION bump covers the drift-gate reclassification (A-LE→B-FD).
-const VERSION = 'video-worker-v3.10.0';
+//
+// v3.11.0 (cc-0044 Checkpoint E — NARRATION DE-HARDCODE): `composeGovernedVideoNarration` takes a
+// governed `brandIntro` (the client's `brand_name`) instead of the hardcoded real-estate "Market update."
+// prefix; blank/null intro → neutral narration (no wrong-brand hook). getBrand exposes raw `brandName`;
+// renderGovernedVideoStat passes `brand.brandName`; the smoke resolves + passes the smoked client's
+// brand_name. Retires the last PP/real-estate hardcode on the video narration path so a second client's
+// governed video reads correctly (e.g. NDIS no longer says "Market update."). PP's spoken intro changes
+// "Market update." → its governed brand_name ("Property Pulse") — covered by the coupled PP re-proof.
+// Entrypoint VERSION bump covers the drift-gate reclassification (A-LE→B-FD).
+const VERSION = 'video-worker-v3.11.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -685,6 +694,10 @@ async function getBrand(supabase: ReturnType<typeof getServiceClient>, clientId:
     primaryColour:   brand?.brand_colour_primary   ?? '#0A2A4A',
     secondaryColour: brand?.brand_colour_secondary ?? '#1C8A8A',
     clientName:      brand?.brand_name             ?? 'ICE',
+    // v3.11.0: RAW governed brand name (null when unconfigured), for the governed narration intro.
+    // Distinct from clientName (which coalesces to the 'ICE' sentinel) so an unconfigured client yields
+    // a NEUTRAL narration rather than a spoken "ICE.".
+    brandName:       brand?.brand_name             ?? null,
     logoUrl:         brand?.brand_logo_url         ?? null,
     clientSlug:      cl?.client_slug               ?? clientId,
   };
@@ -953,7 +966,7 @@ async function renderGovernedVideoStat(opts: {
   supabase: ReturnType<typeof getServiceClient>;
   creatomateKey: string;
   draft: { post_draft_id: string; client_id: string; draft_format: any; recommended_format: string; };
-  brand: { primaryColour: string; secondaryColour: string; clientName: string; logoUrl: string | null; clientSlug: string };
+  brand: { primaryColour: string; secondaryColour: string; clientName: string; brandName: string | null; logoUrl: string | null; clientSlug: string };
   qaCtx: QaCtx;
 }): Promise<object> {
   const { supabase, creatomateKey, draft, brand, qaCtx } = opts;
@@ -985,7 +998,8 @@ async function renderGovernedVideoStat(opts: {
   // resolve the PP voice by client_id (fail-loud if unresolved — existing behaviour), generate the
   // VO, and resolve the governed music bed via select_music (empty result → '' silent bed per N1; an
   // RPC error throws b1_video_missing_music_rpc).
-  const narration = composeGovernedVideoNarration(fields);
+  // v3.11.0 (cc-0044 CP-E): governed narration intro from the client's brand_name (neutral when null).
+  const narration = composeGovernedVideoNarration(fields, brand.brandName);
   const { voiceId, method } = await resolveGovernedVoice(supabase, draft.client_id);
   if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for client_id=${draft.client_id} client_slug=${brand.clientSlug} method=${method} format=${fmt} (governed video_short_stat)`);
   const voicePath = `${brand.clientSlug}/${draft.post_draft_id}_stat_governed_voice.mp3`;
@@ -1167,7 +1181,11 @@ Deno.serve(async (req: Request) => {
       // resolve the smoked client's voice by client_id (v3.10.0 — was the PP constant), generate the VO
       // (fail-loud if unresolved), and resolve the governed bed via select_music (empty result → ''
       // silent bed per N1; RPC error throws). Voice-id resolution is identical to the production branch.
-      const narration = composeGovernedVideoNarration(sampleFields);
+      // v3.11.0 (cc-0044 CP-E): the narration intro is GOVERNED — resolve the smoked client's brand_name
+      // and pass it (neutral when null), mirroring production, so a second client's smoke reads correctly
+      // (e.g. NDIS says "NDIS Yarns…", not "Market update…").
+      const smokeBrand = await getBrand(smokeSupabase, smokeClientId);
+      const narration = composeGovernedVideoNarration(sampleFields, smokeBrand.brandName);
       const { voiceId, method } = await resolveGovernedVoice(smokeSupabase, smokeClientId);
       if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for governed smoke (client_id=${smokeClientId} method=${method})`);
       const smokeVoiceUrl = await generateAndUploadVoice(smokeSupabase, narration, voiceId, '_smoke/governed_video_stat_v1_voice.mp3');

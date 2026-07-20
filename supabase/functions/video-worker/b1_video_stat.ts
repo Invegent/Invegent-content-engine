@@ -133,14 +133,26 @@ export function assertStatFieldsWithinGate(fields: B1VideoStatFields): void {
 // the CTA is DELIBERATELY NOT spoken (N2: the CTA stays a VISUAL element), so the VO fits the 12s
 // template. No Date/random/network — same inputs → same string. Trims each field; the caller runs
 // assertStatFieldsWithinGate first (via buildGovernedVideoStatPlan), so blanks/overflows are already
-// rejected fail-loud before this is spoken. Shape: "Market update. {statLabel} is {statValue}. {contextLine}".
-export function composeGovernedVideoNarration(fields: B1VideoStatFields): string {
+// rejected fail-loud before this is spoken.
+//
+// v3.11.0 (cc-0044 Checkpoint E — NARRATION DE-HARDCODE): the spoken intro is now GOVERNED, not the
+// hardcoded real-estate "Market update." — it comes from `brandIntro` (the caller passes the client's
+// governed `brand_name`, e.g. "Property Pulse" / "NDIS Yarns"). A blank/absent/whitespace intro yields a
+// NEUTRAL narration (no prefix) — never a wrong-brand hook. This retires the last PP/real-estate hardcode
+// on the video narration path so a second client's governed video reads correctly (e.g. NDIS no longer
+// says "Market update."). Shape: "{brandIntro}. {statLabel} is {statValue}. {contextLine}" (intro omitted
+// when blank). brandIntro is optional → every existing call is byte-compatible (neutral narration).
+export function composeGovernedVideoNarration(fields: B1VideoStatFields, brandIntro?: string | null): string {
   const statLabel   = (fields.statLabel   ?? '').trim();
   const statValue   = (fields.statValue   ?? '').trim();
   const contextLine = (fields.contextLine ?? '').trim();
   // Ensure the context clause ends with terminal punctuation for natural TTS phrasing.
   const contextSpoken = /[.!?]$/.test(contextLine) ? contextLine : `${contextLine}.`;
-  return `Market update. ${statLabel} is ${statValue}. ${contextSpoken}`;
+  // Governed intro (client brand name), neutral when blank/absent. Strip any trailing punctuation the
+  // brand name may carry so we always emit exactly one separating period.
+  const intro = (brandIntro ?? '').trim().replace(/[.!?]+$/, '');
+  const introSpoken = intro ? `${intro}. ` : '';
+  return `${introSpoken}${statLabel} is ${statValue}. ${contextSpoken}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────

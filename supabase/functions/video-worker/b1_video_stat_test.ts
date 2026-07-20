@@ -372,3 +372,36 @@ Deno.test('narration: adds terminal punctuation when contextLine lacks it', () =
   assertEquals(n2.endsWith('!'), true);
   assertEquals(n2.endsWith('!.'), false);
 });
+
+// ── v3.11.0 (cc-0044 CP-E): governed narration intro (de-hardcode of "Market update.") ────────────
+// REGRESSION: no code path emits the retired hardcoded real-estate prefix.
+Deno.test('narration: NEVER contains the retired "Market update." hardcode', () => {
+  assertEquals(composeGovernedVideoNarration(okFields).includes('Market update'), false);              // neutral (no intro)
+  assertEquals(composeGovernedVideoNarration(okFields, 'Property Pulse').includes('Market update'), false); // governed intro
+  assertEquals(composeGovernedVideoNarration(okFields, null).includes('Market update'), false);
+});
+Deno.test('narration: governed brandIntro is spoken as the prefix', () => {
+  const n = composeGovernedVideoNarration(okFields, 'NDIS Yarns');
+  assertEquals(n.startsWith('NDIS Yarns. '), true);
+  assertEquals(n.includes(okFields.statLabel), true);   // stat body still present
+  assertEquals(n.includes(okFields.statValue), true);
+});
+Deno.test('narration: blank/absent/whitespace brandIntro → NEUTRAL (no prefix, no leading period)', () => {
+  const neutral = `${okFields.statLabel} is ${okFields.statValue}. ${okFields.contextLine}`;
+  assertEquals(composeGovernedVideoNarration(okFields), neutral);                 // no arg (back-compat)
+  assertEquals(composeGovernedVideoNarration(okFields, ''), neutral);
+  assertEquals(composeGovernedVideoNarration(okFields, '   '), neutral);
+  assertEquals(composeGovernedVideoNarration(okFields, null), neutral);
+  assertEquals(composeGovernedVideoNarration(okFields, undefined), neutral);
+  assertEquals(neutral.startsWith('.'), false);
+});
+Deno.test('narration: brandIntro trailing punctuation is normalized to one separating period', () => {
+  // "NDIS Yarns." must not yield a doubled period "NDIS Yarns.. …".
+  const n = composeGovernedVideoNarration(okFields, 'NDIS Yarns.');
+  assertEquals(n.startsWith('NDIS Yarns. '), true);
+  assertEquals(n.includes('NDIS Yarns.. '), false);
+  assertEquals(n.includes('NDIS Yarns..'), false);
+});
+Deno.test('narration: brandIntro is trimmed', () => {
+  assertEquals(composeGovernedVideoNarration(okFields, '  Property Pulse  ').startsWith('Property Pulse. '), true);
+});
