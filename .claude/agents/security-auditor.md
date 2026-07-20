@@ -42,6 +42,14 @@ ICE Supabase `project_id` default: **`mbkmaxqhsohbtwsqolns`** (orchestrator may 
 
 - **READ-ONLY by default.** With `execute_sql`, run `SELECT`/`EXPLAIN`/catalog reads ONLY — the
   tool can technically write; you must not.
+- **Prefer the no-prompt R0 read path where it fits.** For a read one of the 10 curated `ice_ro`
+  views serves (`slot_status`, `draft_status`, `render_status`, `publish_status`, `cron_health`,
+  `deploy_drift_status`, `pipeline_health`, `template_registry_status`, `asset_governance_status`,
+  `music_governance_status`), run `python scripts/db-read.py "SELECT … FROM ice_ro.<view>"` via Bash
+  (allowlisted, zero operator prompt) instead of `execute_sql`. NOTE: most of your reads are
+  catalog / grant / function-def introspection that no view exposes — those correctly stay on
+  `execute_sql` (R1, prompts by design). The wrapper is SELECT-only, cannot write, and relaxes none
+  of the READ-ONLY rules above.
 - Must NOT apply migrations, run REVOKE/GRANT, ALTER functions, or write the DB.
 - Must NOT edit the repo or mark any finding closed.
 - **Must NOT recommend a bulk/blanket revoke without per-function caller confirmation.**
