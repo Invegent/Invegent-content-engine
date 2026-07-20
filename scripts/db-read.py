@@ -31,7 +31,10 @@ Credential (never argv, never printed) is loaded from the FIRST of:
         ~/ice_readonly_dsn.txt     (default file)
 Env:    ICE_READONLY_ROW_CAP       (optional int, default 5000)
         ICE_READONLY_AUDIT_LOG     (optional path, default ~/.ice_readonly_audit.log)
-        ICE_READONLY_SSL_CA        (optional path to a CA cert to pin for strict verify)
+        ICE_READONLY_SSL_CA        (optional path to a CA cert to pin for strict verify;
+                                    if unset, the first present of ~/.ice_readonly_pooler_ca.pem
+                                    or scripts/supabase-pooler-ca.pem (repo, Supabase Root 2021 CA)
+                                    is used → zero-warning strict verify with no env setup)
         ICE_READONLY_SSL_INSECURE  (optional "1" => encrypt without CA/hostname verify,
                                     i.e. psql sslmode=require. Default: verify, and
                                     auto-fall-back to require ONLY on a cert-verify error
@@ -137,6 +140,15 @@ def connect(pg, conn_kwargs: dict):
     timeout = CONNECT_TIMEOUT_SECONDS
     if os.environ.get("ICE_READONLY_SSL_INSECURE") != "1":
         ca = os.environ.get("ICE_READONLY_SSL_CA")
+        if not ca:
+            for cand in (
+                os.path.expanduser("~/.ice_readonly_pooler_ca.pem"),
+                os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             "supabase-pooler-ca.pem"),
+            ):
+                if os.path.isfile(cand):
+                    ca = cand
+                    break
         ctx = ssl.create_default_context(cafile=ca) if ca else ssl.create_default_context()
         try:
             return pg.connect(ssl_context=ctx, timeout=timeout, **conn_kwargs)
