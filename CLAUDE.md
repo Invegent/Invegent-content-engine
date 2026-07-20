@@ -193,9 +193,12 @@ The read-only DB path (v5.87, `67760d0`) exists to kill the operator prompt-floo
 - **`execute_sql` stays the R1 path (still `ask` — meant to prompt):** raw/ad-hoc reads, any column
   or table not surfaced by a view, and all writes/DML. Reaching for `execute_sql` on a read a view
   could serve is the friction leak — check the view list first.
-- **Subagent caveat:** read-only auditor agents (`db-rls-auditor`, `security-auditor`) carry
-  `execute_sql`, not the Bash wrapper, so their SELECTs still prompt by design — that is expected
-  residual, not a regression. Only main-loop reads can use `db-read.py` today.
+- **Subagent read-routing (2026-07-20):** both read-only auditor agents now carry `Bash` and the
+  R0 rule (`db-rls-auditor` + `security-auditor`), so their view-coverable and world-readable-catalog
+  (`pg_catalog`/`information_schema`, proven routable) SELECTs go through `db-read.py` with no prompt.
+  Their Bash is **read-only-scoped by instruction** (the read wrapper + read-only shell only — never a
+  write/mutate/deploy). Their `m.*`/`c.*` data reads still use `execute_sql` (still `ask`) — expected
+  residual, not a regression.
 - **Coverage gap → new view, not a workaround:** if a recurring read has no view, that is a signal to
   add a secret-free `ice_ro` view under the normal T2/T3 gate — never to widen the `execute_sql`
   allowance. Kill switch for the whole path: `ALTER ROLE ice_readonly NOLOGIN`.
