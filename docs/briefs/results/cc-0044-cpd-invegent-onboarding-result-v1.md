@@ -102,10 +102,29 @@ Disposition (per the CLOSEOUT stance + ICE convention):
   (header + faithful applied DDL body, body sha `b38e36f3…`; rollback ref recorded). This is the clearest ledger
   candidate — it changes a function definition.
 - **The five data applies** (logo promote + `brand_logo_url`, shared-bg promote, pool-policy, governance,
-  assignment/proof) → recorded **here + in the v6.05 register pointer**, **not** as migration files: they are
-  UUID-specific, CAS/idempotency-guarded governed DML — record-only, not replayable schema. (Two earlier
-  in-progress backfill-record files for shared-bg/pool-policy exist untracked on the stale local main working
-  tree; their facts are folded into this doc and they are intentionally not carried into this commit.)
+  assignment/proof) → recorded **here + in the v6.05 register pointer**. Originally these were kept doc-only (as
+  the v6.05 pointer states); **superseded by the ledger reconciliation below.**
+
+### Ledger reconciliation (post-v6.05, PK decision "keep both")
+
+A parallel same-day PK commit (`82679b7`, unpushed on the then-stale local main) had backfilled **all five applies
+as migration-record files**, colliding with v6.05 at version `20260720190000` (governance there vs the published
+B2 fix here). PK ruled **keep both, reconcile onto origin**. Result — the four DATA applies are now carried as
+non-replayable BACKFILL-RECORD migration files on origin (each "NOT for replay", verified live-matching):
+
+| version | migration | note |
+|---|---|---|
+| `20260720170000` | `…cpd_invegent_shared_bg_promote_scoped_v1` | as-authored |
+| `20260720180000` | `…cpd_invegent_pool_policy_v1` | as-authored |
+| **`20260720190000`** | `…b2_run_asset_gap_analysis_shared_attribution_fix_v1` | **published B2 fix (v6.05) — identity kept** |
+| `20260720195000` | `…cpd_invegent_governance_image_quote_v1` | **renumbered `190000→195000`** to clear the published B2 identity |
+| `20260720200000` | `…cpd_invegent_quote_card_assignment_and_proof_v1` | as-authored |
+
+The `82679b7` **B2-fix duplicate at `20260720210000` was dropped** (redundant with the published `190000`). The
+**logo promote** stays doc-only — a rotation change, superseded by v6.04, no ledger entry (consistent with v6.04's
+"data rotation → no migration-ledger entry"). **Live-DB caveat:** at reconciliation time `schema_migrations` (live)
+held none of `170000…210000`; these five files are **repo-only records** until matching ledger rows are inserted
+at a PK gate.
 
 ## Chain / tier / guardrails honoured
 
