@@ -177,6 +177,29 @@ multiple coordinated steps. Rules:
   never the same name with different SQL.
 - Re-verify HEAD/branch before any commit (shared-worktree race); prefer isolated worktrees.
 
+## Operator read path (R0 — prefer `db-read.py` over gated `execute_sql` for reads)
+
+The read-only DB path (v5.87, `67760d0`) exists to kill the operator prompt-flood, but it is
+**opt-in and only pays off if the orchestrator actually routes reads through it.** Default rule:
+
+> For any read that a curated `ice_ro` view can serve, run
+> `python scripts/db-read.py "SELECT … FROM ice_ro.<view>"` — it is allowlisted (**zero prompt**),
+> confined by schema-USAGE to 10 secret-free views, and cannot write, reach `m.*`/`c.*`, or call any
+> writer function (proven live 2026-07-19: raw-credential writes all blocked 42501).
+
+- **The 10 R0 views:** `slot_status`, `draft_status`, `render_status`, `publish_status`,
+  `cron_health`, `deploy_drift_status`, `pipeline_health`, `template_registry_status`,
+  `asset_governance_status`, `music_governance_status`.
+- **`execute_sql` stays the R1 path (still `ask` — meant to prompt):** raw/ad-hoc reads, any column
+  or table not surfaced by a view, and all writes/DML. Reaching for `execute_sql` on a read a view
+  could serve is the friction leak — check the view list first.
+- **Subagent caveat:** read-only auditor agents (`db-rls-auditor`, `security-auditor`) carry
+  `execute_sql`, not the Bash wrapper, so their SELECTs still prompt by design — that is expected
+  residual, not a regression. Only main-loop reads can use `db-read.py` today.
+- **Coverage gap → new view, not a workaround:** if a recurring read has no view, that is a signal to
+  add a secret-free `ice_ro` view under the normal T2/T3 gate — never to widen the `execute_sql`
+  allowance. Kill switch for the whole path: `ALTER ROLE ice_readonly NOLOGIN`.
+
 ## The proof lane (v1 end-to-end flow)
 
 ```
