@@ -106,6 +106,24 @@ Applied via `execute_sql` at the T3 gate (apply_migration deny-listed). Pre-chec
 
 **STOPPED for separate T3 Step 2 authorization. No Artifact 2 apply, Artifact 3 backfill, merge, deploy, sourcing, or drain activation performed.**
 
+## 7c. T3 STEP 2 — APPLIED (Artifact 2 only), PK-authorized 2026-07-21. Step 3 remains UNAUTHORIZED.
+
+Applied via `execute_sql` (one transaction, committed, no error). Pre-apply reconciliation: HEAD `b062dc3` (== origin, 0/0; child of `d8b58f4` — the apply ran at `d8b58f4`, `b062dc3` is the Step-1 record commit; the temporal note is resolved), Artifact 2 full sha256 `367aae63d8d1aae7d27c066cdea7d26add78f1e275b3d48a6bdc688a9f129ace` == reviewed, Artifact 1 intact (cols=6/constraint=1/index=1/fns=5), rollback (3 prior bodies) present, 0 in-flight. Fresh baseline captured before apply.
+
+- **Applied hash:** `367aae63…` (Artifact 2, full). Replaces `resolve_slot_assets` + `analyze_asset_gap` + `run_asset_gap_analysis`.
+- **Function-def pre/post proof:** exactly the 3 intended bodies changed — resolve `1977f492→75d59925`, analyze `b4a3f4f8→d343e267`, writer `91b6fc25→ec2bb745`. No other function altered.
+- **Security posture (post):** resolve/analyze `STABLE SECURITY DEFINER search_path=""`; writer `VOLATILE SECURITY DEFINER search_path=""`; all ACL `postgres=X ; service_role=X` only — no PUBLIC/anon/authenticated EXECUTE.
+- **Resolver compatibility:** all **8/8** `resolve_slot_assets` outputs byte-identical to the pre-apply baseline (value-identical; the shared `derive_template_vertical` returns the same vertical the inline block did; the `vertical_shared` path is dormant live).
+- **Analyzer legacy-identity:** all **8/8** `analyze_asset_gap` legacy-key projections (output minus the 7 new keys) byte-identical to baseline — `primary_route`/`asset_gap_detected`/`asset_gap_drainability`/`why_needed`/`slot_kind`/appetite/signature/scope all unchanged.
+- **New classification (additive):** 3 carousel (`9dfb…`/`5658…`/`7658…` → wait, sigs `9dfb4526bb`/`568bc2839a`/`765828991b`) → `(assignment, unassigned)` / `config_repair`; PP YouTube (`012a8b2ead`) → `(platform_config, misconfigured)` / `config_repair`; **0 live rows → `governed_sourcing`**.
+- **Writer dry-run equivalence:** `run_asset_gap_analysis(p_dry_run=true)` output `b8ec7311…` == baseline (counters, accepted/rejected set, fail-closed validation behaviour identical).
+- **No-side-effect proof:** table snapshot md5 `c369ea40…` == baseline (no row mutation); all 6 new columns still NULL; rows still 8 (open=4, resolved=4); no candidate/assignment/suitability/claim/status/sourcing mutation.
+- **Vertical-contract proof:** live defs confirm `resolve_slot_assets` **and** `probe_asset_inventory` both consume the shared `derive_template_vertical(p_template_id)`; the inline duplicate derivation is gone from resolve (`NONE (contract only)`) — no independent duplicate vertical derivation.
+- **Ledger proof:** `20260721110000 · cc0046_analyze_and_writer_orthogonal_v1` recorded (sha256 + value-identity note in `statements`), after all verification passed.
+- **Rollback readiness:** `_harness/cc0046_ddl/rollback_functions.sql` restores the byte-exact prior resolve/analyze/writer bodies. Ready if needed.
+
+**STOPPED for separate T3 Step 3 decision. No Artifact 3 backfill, merge, deploy, sourcing, or drain activation performed.**
+
 ## 8. Verification / review chain
 
 **Hermetic + live proofs:** PASS (see §4).
