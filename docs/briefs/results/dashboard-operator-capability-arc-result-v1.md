@@ -105,6 +105,31 @@ the inert "Capability Matrix is not enabled in this environment." notice, and th
 4. **Authenticated nav hidden + direct route inert** — identical build to the one PK just eyeballed on preview, with the production flag unset → same dark behavior. Behavioral confirmation on production likewise requires an authenticated session (PK); PK's preview eyeball on this exact build already proved the gate. ⚠ (boundary; PK may re-eyeball production if desired)
 5. **No CE/backend/DB changes** — confirmed (git-only FF to main; no CE code/migration/EF; no DB writes). ✅
 
+### 6c. Activation authorized (PK ruling #3, 2026-07-21) — execution boundary + live reference
+
+PK authorized production activation (set `DASHBOARD_CAPABILITY_MATRIX_ENABLED=true`). **Execution boundary
+recorded honestly:** this session has **no Vercel env-var management tool** (the available Vercel MCP surface is
+get/list project + deployments, web_fetch, deploy-new-project, toolbar, billing — none set a project env var),
+and **no authenticated in-app session** is available (Supabase login; no credentials; not logged into production).
+Therefore the flag-set (step 2) and the authenticated confirmations (steps 1, 4) must be performed by PK/someone
+with Vercel project settings + an app login. I did NOT set the flag and did NOT fake any authenticated check.
+
+**Live-truth reference (read-only, `mbkmaxqhsohbtwsqolns`, 2026-07-21) — what the activated matrix must show:**
+- `ice_ro.template_registry_status` = **25** templates (17 `static_image` + 8 `video`) → inventory non-empty (kills empty-TMR).
+- `ice_ro.asset_governance_status` = **5** rows (all enabled) across **2** formats (`image_quote`, `video_short_stat`) → governance populated.
+- `t."5.3_content_format"` = **13** ICE formats, **7 with NULL `format_category`** → the "Uncategorised format-type" group must be visible.
+
+**Fail-loud boundary (step 5):** the error-surfacing path is **code-reviewed** — `readSelect()` returns
+`{ok:false,error}` on any `exec_sql` error and the view renders the red "LIVE READ FAILED — not shown as empty"
+card per source (never a silent empty). No **safe, reversible** method exists to induce a live read failure
+without a forbidden mutation (CE / DB perms / views / production data). Per PK's step-5 fallback: **recorded as
+code-reviewed, NOT destructively exercised** (scope not expanded to build a failure mechanism).
+
+**Rollback readiness (steps 6–7):** activation is a pure Vercel env-var toggle on the already-live production
+build `f0ab7422`. Rollback = remove/set `DASHBOARD_CAPABILITY_MATRIX_ENABLED` to false/unset + redeploy, or
+Vercel instant-rollback to the current dark production deployment `dpl_7X4A1M…` (which *is* `f0ab7422`). No code
+revert needed; the dark build is the current production deployment.
+
 ## 7. ICE review chain (T2) — pinned to `d11d612b…`
 
 - **branch-warden → clean / safe.** Exactly the 5-file set, isolated worktree, main checkout clean, origin parity, clean FF.
