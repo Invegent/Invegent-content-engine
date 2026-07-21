@@ -187,6 +187,12 @@ At session start, chat reads this file and: (1) rebuilds Today/Next 5; (2) runs 
 - **D-ITEMS FINAL-CLOSED (v5.99):** D-A/D-C/D-D implemented (route · `?client=` · PP+NDIS) · D-B implemented (`get_client_creative_governance` + `list_client_governed_assets`) · ✅ `geo_scope` **DONE v5.96** (`fda2b51`) · **D-E OMITTED by design** (avoids `PP_REGISTRY` stale-silently hazard) · **D-F DEFERRED** (file-local pills stand for v1) · **D-G separate labelled axis for now** (canonicalisation = future IA) · **D-H DEFERRED tracked carry** = Templates panel → link-out to `/create/templates` (not built; ~one-link if wanted). **No open build items — arc folds.**
 - **DO NOT START (unprompted):** re-opening closed slices · broad `/creative-library` redesign · the orphaned 2026-07-02 `AddTemplateDraftWizard.tsx` commits + diverged local dashboard `main` (**SEPARATE PK item**, not part of this arc).
 
+## 🟢 cc-0046 Orthogonal Gap Classification & Routing Precision — STATUS BLOCK (v6.06 — LIVE + CLOSED + reconciled to main)
+
+- **CLOSED (v6.06; record `docs/briefs/results/cc-0046-orthogonal-gap-classification.md`):** classifier/routing substrate LIVE in production. All three migration identities applied (`20260721100000` DDL+helpers · `20260721110000` analyze+writer replace · `20260721120000` backfill open rows) and reconciled to `origin/main` at `a741335` (fast-forward, exact applied bytes). Four open tickets classified: three carousel → `(assignment, unassigned)` / `config_repair`; PP YouTube → `(platform_config, misconfigured)` / `config_repair`. **Zero rows route to `governed_sourcing`;** historical resolved rows remain unclassified.
+- **FUTURE (gated, NOT started):** **Backgrounds-only static-image drain — requires a new brief and separate PK Gate-1. Not started.**
+- **DO NOT START (unprompted):** any image search/download/provider call · drain dispatcher · claim-state · automatic assignment/suitability mutation · candidate promotion — all remain behind the future drain lane's own Gate-1.
+
 ## ⭐ Dashboard work (separately ranked; v3.04 status note)
 
 | Rank | Item | Priority | Why now | Next action |

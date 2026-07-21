@@ -2,7 +2,7 @@
 
 **Created:** 2026-07-21 Sydney · **rev-3** (final Gate-1 revisions folded in: full inventory-probe universe; candidate-store completeness proof; template-remediation corrections; deterministic tie contract; mechanical sole-sourcing CHECK; drain-time freshness + atomic claim; fixed-identity 3-artifact migration packaging). rev-2 accepted: Option R · `format_unmapped=unsupported` default · platform-`negative` split.
 **Author:** chat (orchestrator) · **Executor:** Claude Code (ef-builder) + PK gates
-**Status:** draft — **Gate-1 review pending (rev-3). Do NOT build until PK authorizes.**
+**Status:** **CLOSED — production applied, proven, and reconciled to origin/main.** Final main commit: `a7413357151d3e5a4fa2556c614fd4f24a502c06`. (Classifier/routing substrate LIVE; three migration identities applied `20260721100000`/`20260721110000`/`20260721120000`; result: `docs/briefs/results/cc-0046-orthogonal-gap-classification.md`. Backgrounds-only static-image drain NOT opened — requires a new brief + separate PK Gate-1.)
 **Result file:** `docs/briefs/results/cc-0046-orthogonal-gap-classification.md` (created on completion)
 **Lane class / tier:** SIDE_PROVING → **T2** for the additive/dark DB + isolated-function change; the three apply artifacts (DDL+helpers · function replacement · backfill) are **three separate T3 PK gates**.
 
