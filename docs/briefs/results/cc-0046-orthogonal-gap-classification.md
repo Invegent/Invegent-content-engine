@@ -124,6 +124,23 @@ Applied via `execute_sql` (one transaction, committed, no error). Pre-apply reco
 
 **STOPPED for separate T3 Step 3 decision. No Artifact 3 backfill, merge, deploy, sourcing, or drain activation performed.**
 
+## 7d. T3 STEP 3 — APPLIED (Artifact 3 backfill), PK-authorized 2026-07-21. **cc-0046 PRODUCTION APPLY COMPLETE.**
+
+Applied via `execute_sql` (one transaction, exact reviewed UPDATE + fail-closed assertions; committed only because all assertions passed). Pre-apply: HEAD `d00f66d` (==origin, 0/0, clean), Artifact 3 full sha256 `5ef9cca35dcfbdd7306e074cd5ee385f19261311615291c96f40218774900fca` == reviewed, rollback intact, both prior ledger identities present, A1 intact, A2 fn-defs == Step-2 hashes, target frozen (8 rows / open=4 / resolved=4 / 0 in-flight / open new-fields NULL), the 4 targets confirmed exactly (CFW/fb, CFW/li, INV/li carousel + PP/YouTube `video_short_stat`).
+
+- **Applied hash:** `5ef9cca3…` (Artifact 3, full).
+- **Transactional fail-closed assertions (all held → commit):** exactly 4 rows backfilled · 0 non-open backfilled · 0 open left unfilled · 0 historical rows mutated · total=8/open=4/resolved=4 · 0 `governed_sourcing` · legacy snapshot `3b13f769…` unchanged.
+- **Persisted diagnoses (== required):** CFW/fb, CFW/li, INV/li carousel → `(assignment, unassigned)` / route `config_repair` / auto `operator_manual`; PP/YouTube `video_short_stat` → `(platform_config, misconfigured)` / `config_repair` / `operator_manual`. All: `classifier_version=cc0046-backfill-v1`, `diagnosed_at` set, `diagnostic_evidence` set (deepest_layer 4=assignment / 3=platform), `evidence_confidence=conclusive`. **Analyzer live output AGREES with the persisted pair for all 4.**
+- **Zero-sourcing:** 0 rows derive `governed_sourcing`.
+- **Historical non-mutation:** all 4 resolved rows retain NULL classification fields (no present-day inference written as historical truth).
+- **Legacy / no-side-effect:** legacy-only snapshot `3b13f769…` == pre-apply baseline; total 8, open=4/resolved=4; new columns populated only on the 4 open rows.
+- **Writer dry-run:** `b8ec7311…` == Step-2 baseline (counters + validation unchanged).
+- **Advisors (post-apply):** security + performance advisors run; **no new finding names any cc-0046 object** (0 occurrences for all 5 functions / the index / the constraint); pre-existing project baseline unchanged. Not a STOP.
+- **Ledger:** all three recorded — `20260721100000`, `20260721110000`, `20260721120000`.
+- **Rollback readiness:** `_harness/cc0046_backfill/rollback.sql` NULLs only `classifier_version='cc0046-backfill-v1'` rows (legacy untouched). Ready if needed.
+
+**cc-0046 (classifier/routing substrate) is now LIVE and proven in production.** The backgrounds-only drain lane is NOT opened — it requires a new brief + separate PK Gate-1.
+
 ## 8. Verification / review chain
 
 **Hermetic + live proofs:** PASS (see §4).
