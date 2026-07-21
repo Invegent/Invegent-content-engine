@@ -1,80 +1,80 @@
 # Brief cc-0046 — Orthogonal Gap Classification & Routing Precision (precursor lane)
 
-**Created:** 2026-07-21 Sydney · **rev-2** (Gate-1 REVISE folded in: orthogonal `(subject_kind, failure_state)` model; genuine-absence inventory proof; tie determinism; `format_unmapped` default; Option R changes; backfill correction; expanded sole-sourcing invariant)
-**Author:** chat (orchestrator)
-**Executor:** Claude Code (ef-builder) + PK gates
-**Status:** draft — **Gate-1 review pending (rev-2). Do NOT build until PK authorizes.**
+**Created:** 2026-07-21 Sydney · **rev-3** (final Gate-1 revisions folded in: full inventory-probe universe; candidate-store completeness proof; template-remediation corrections; deterministic tie contract; mechanical sole-sourcing CHECK; drain-time freshness + atomic claim; fixed-identity 3-artifact migration packaging). rev-2 accepted: Option R · `format_unmapped=unsupported` default · platform-`negative` split.
+**Author:** chat (orchestrator) · **Executor:** Claude Code (ef-builder) + PK gates
+**Status:** draft — **Gate-1 review pending (rev-3). Do NOT build until PK authorizes.**
 **Result file:** `docs/briefs/results/cc-0046-orthogonal-gap-classification.md` (created on completion)
-**Lane class / tier:** SIDE_PROVING → **T2** for the additive/dark DB + isolated-function change; DDL apply, function apply, and backfill UPDATE are each **T3 PK gates**.
+**Lane class / tier:** SIDE_PROVING → **T2** for the additive/dark DB + isolated-function change; the three apply artifacts (DDL+helpers · function replacement · backfill) are **three separate T3 PK gates**.
 
-> **Standing constraint (PK):** the *Gap Taxonomy & Drain Routing Decision Packet v1* is accepted as architectural direction. **This lane lands and proves the classifier/routing substrate ONLY — it does not begin the backgrounds-only sourcing drain.** No gap may trigger an outward-facing sourcing action until this precursor is proven and a *separate* drain lane is gated. No build, migration, apply, backfill, or sourcing is authorized by this brief.
+> **Standing constraint (PK):** the *Gap Taxonomy & Drain Routing Decision Packet v1* is accepted direction. **This lane lands and proves the classifier/routing substrate ONLY — it does not begin the backgrounds-only sourcing drain.** No gap may trigger an outward-facing sourcing action until this precursor is proven and a *separate* drain lane is gated. No build, apply, backfill, or sourcing is authorized by this brief.
 
 ---
 
 ## Task
 
-Upgrade ICE's asset-gap classifier so it distinguishes — **orthogonally** — *what* a demand is about (`subject_kind`) from *why* it cannot be filled (`failure_state`), and derives a remediation route + automation posture from the **pair**, not from a single collapsed code. Today `public.analyze_asset_gap` flattens the full `select_template` reject set into one coarse `primary_route` by first-match priority, which mislabels real cases (proven live). Critically, the classifier must **prove genuine static-background absence** against the broader governed/candidate inventory before it may emit a sourcing verdict — an existing-but-ungoverned background must route to operator/config/manual, never to sourcing. This lane finalizes the orthogonal contract, decides storage, upgrades precision (incl. deterministic tie handling and component-level multi-part diagnostics), adds routing output (additive/dark), preserves full legacy compatibility, and proves the result against named live + controlled fixtures — so a later, separate lane can drive a backgrounds-only drain on a **hard, non-fabricable `governed_sourcing` entry condition**.
+Upgrade ICE's asset-gap classifier so it distinguishes — orthogonally — *what* a demand is about (`subject_kind`) from *why* it cannot be filled (`failure_state`), deriving remediation route + automation posture from the **pair**. Today `analyze_asset_gap` collapses the full `select_template` reject set into one coarse route by first-match priority, mislabelling real cases (proven live). The classifier must **prove genuine static-background absence against the complete defined inventory universe** — including relevant *near-match* items that exist but fail a configurable fence — before it may emit a sourcing verdict, and must declare coverage **inconclusive** (→ `unresolved`, never source) whenever any authoritative candidate store cannot be checked. This lane finalizes the orthogonal contract, decides storage, upgrades precision (deterministic tie handling; component-level multi-part diagnostics; mechanical protection of the sole-sourcing pair), adds routing output additive/dark, preserves legacy compatibility, and proves the result against named fixtures — so a later, separate lane drives a backgrounds-only drain on a **hard, freshly-revalidated, non-fabricable `governed_sourcing` entry condition**.
 
 ## Source context
 
 **Producer / classifier (changed here):**
-- `supabase/migrations/20260720160000_analyze_asset_gap_v1_1_permitted_text_cast.sql` — live `analyze_asset_gap(client_slug, platform, format, seed)`. First-match reject collapse = lines **95–110**. STABLE/SECDEF/`search_path=''`/service-role-only.
-- `supabase/migrations/20260703035154_create_select_template_v1.sql` — `select_template`; **authoritative reject vocabulary** (§4; lines 191–280): `wrong_scope`, `status_below_smoke`, `platform_unsuitable` (`no_suitability_row_for_platform` | `suitability_status_negative`), `no_assignment`, `assignment_not_approved`, `assignment_blocked`, `not_visually_proven`, `assets_fail_closed:<echoed>`; `fail_reason` ∈ `client_not_found | format_unmapped | no_selectable_template`.
-- `derive_asset_appetite` (status ∈ `ok|ambiguous|fail_closed`) and `resolve_slot_assets` (`fail_reason` ∈ `no_governed_background | missing_required_logo | …`).
+- `supabase/migrations/20260720160000_analyze_asset_gap_v1_1_permitted_text_cast.sql` — live `analyze_asset_gap`; first-match collapse = lines **95–110**. STABLE/SECDEF/`search_path=''`/service-role-only.
+- `supabase/migrations/20260703035154_create_select_template_v1.sql` — `select_template`; authoritative reject vocabulary (§4; lines 191–280).
+- `derive_asset_appetite` (`ok|ambiguous|fail_closed`) · `resolve_slot_assets` (`no_governed_background | missing_required_logo | …`).
 
-**Inventory (the genuine-absence proof — grounded 2026-07-21):**
-- `c.client_brand_asset` — client-specific assets. Fences: `is_active` (column) + `asset_meta` jsonb keys (`approved`/`approval_status`/`production_use_allowed`); typed by `asset_type`; `platform_scope`.
-- `c.shared_creative_asset` — shared/generic assets. Fences: `is_active`/`approval_status`/`production_use_allowed`/`purpose_bound` (columns); relevance via `governance_scope`/`vertical_key`/`allowed_clients`/`excluded_clients`; typed by `asset_kind`.
+**Inventory universe (genuine-absence proof — schema-grounded 2026-07-21):**
+- `c.client_brand_asset` — client-specific assets; fences `is_active` (col) + `asset_meta` jsonb keys (`approved`/`approval_status`/`production_use_allowed`); typed `asset_type`; `platform_scope`.
+- `c.shared_creative_asset` — shared/generic; fences `is_active`/`approval_status`/`production_use_allowed`/`purpose_bound`; relevance `governance_scope`/`vertical_key`/`allowed_clients`/`excluded_clients`; typed `asset_kind`.
+- **Exhaustiveness evidence:** a `create table … (asset|candidate|intake|staging|harvest|brand|creative)` sweep of `supabase/migrations/**` returns only these two image-asset stores (plus the *template* registry tables and `c.music_*`, which are not image inventory). Every `_harness/**/*_intake_apply.sql` promotes candidates by **INSERTing fenced rows into these two tables** — so DB-intaken candidates are visible here in their fenced state. **Pre-intake filesystem harvest packages** (`_harness/image_harvester_v0/**`) are *not* DB-visible — see D2.2.
 
 **Consumer / storage (extended additively):**
-- `docs/briefs/cc-0041-asset-gap-analysis-ddl-packet-v1.sql` — applied shape of `m.asset_gap_suggestion` (live column set confirmed identical, 36 cols).
-- `supabase/migrations/20260720190000_cc0044_b2_run_asset_gap_analysis_shared_attribution_fix_v1.sql` — live `run_asset_gap_analysis` **writer**; its fail-closed validation (lines **92–107**) is the **only** live consumer of the analyzer's classification keys.
+- `docs/briefs/cc-0041-asset-gap-analysis-ddl-packet-v1.sql` — applied shape of `m.asset_gap_suggestion` (live 36-col set confirmed).
+- `supabase/migrations/20260720190000_cc0044_b2_run_asset_gap_analysis_shared_attribution_fix_v1.sql` — live `run_asset_gap_analysis` **writer**; its fail-closed validation (lines 92–107) is the **only** live consumer of the analyzer's classification keys.
 
-**Compatibility surface (grounded):** `gap_type` does **not** exist in the CE repo (0 hits). Neither CE nor `invegent-dashboard` has any reader of `asset_gap_suggestion`/`primary_route`/`drainability` (0 hits). Live legacy fields = `primary_route`, `asset_gap_detected`, `asset_gap_drainability`, `why_needed`, `slot_kind`.
+**Compatibility (grounded):** `gap_type` does not exist in CE (0 hits). No reader of `asset_gap_suggestion`/`primary_route`/`drainability` in CE or `invegent-dashboard` (0 hits). Live legacy fields = `primary_route`, `asset_gap_detected`, `asset_gap_drainability`, `why_needed`, `slot_kind`.
 
-**Governance that constrains routing:** `CLAUDE.md` → *Image workflow §2 non-negotiables* + *NDIS staged real-imagery policy*. A `governed_sourcing` verdict is **necessary, not sufficient** — the drain lane still applies every §2/NDIS gate.
+**Governance:** `CLAUDE.md` → Image-workflow §2 non-negotiables + NDIS staged real-imagery policy. `governed_sourcing` is necessary, not sufficient.
 
-### Live fixture evidence (read-only, project `mbkmaxqhsohbtwsqolns`, 2026-07-21)
+### Live fixture evidence (read-only, `mbkmaxqhsohbtwsqolns`, 2026-07-21)
 
-| Fixture (live row) | `select_template` truth | Current output | **Correct (subject_kind, failure_state) → route** |
+| Fixture (live) | `select_template` truth | Current output | **Correct `(subject_kind, failure_state)` → route** |
 |---|---|---|---|
-| carousel — CFW/fb `0532d311`, CFW/li `3b7b0d36`, INV/li `273626e5` | `fail_closed`; **all deepest candidates = `no_assignment`** | `governance_gap` / detected=false / **ambiguous=true** | `(assignment, unassigned)` → **`config_repair`** |
-| PP YouTube `22d3df93` (`video_short_stat`) | `fail_closed`; deepest = `platform_unsuitable` | `template_gap` / detected=**true** / why=`no_governed_background` | `(platform_config, misconfigured)` → **`config_repair`**; never sources (video subject) |
-| INV image_quote/fb `cf02a8e4` (happy) | `ok`; reject codes are noise on non-winners | route=`none` ✓ | `(none, none)` → no gap |
-| true static-background absence | *(controlled — D6/F5)* | — | `(static_background, absent)` → **`governed_sourcing`** — only after the inventory proof |
+| carousel ×3 (CFW/fb `0532d311`, CFW/li `3b7b0d36`, INV/li `273626e5`) | `fail_closed`; all deepest = `no_assignment` | `governance_gap` / detected=false / ambiguous=true | `(assignment, unassigned)` → **`config_repair`** |
+| PP YouTube `22d3df93` (`video_short_stat`) | `fail_closed`; deepest = `platform_unsuitable` | `template_gap` / detected=true / why=`no_governed_background` | `(platform_config, misconfigured)` → **`config_repair`**; never sources (video) |
+| INV image_quote/fb `cf02a8e4` (happy) | `ok`; rejects are non-winner noise | route=`none` ✓ | `(none, none)` → no gap |
+| true static-bg absence | *(controlled — D6/G5)* | — | `(static_background, absent)` → **`governed_sourcing`** — only after the complete-inventory proof |
 
 ## Scope
 
-**In scope:** (1) finalize the **orthogonal** contract — five axes with an **independent, subject-free `failure_state` vocabulary**, routing/automation derived from the **pair** `(subject_kind, failure_state)`; (2) decide storage (D1); (3) upgrade precision (D4) — diagnose beyond the first reject; distinguish `unsupported`/`absent`/`unassigned`/`unapproved`/`unproven`/`blocked`/`misconfigured`/`negative`; **prove genuine inventory absence before any sourcing verdict**; deterministic tie handling; component-level multi-part diagnostics; preserve `unresolved` over guessing; (4) add routing output additive/dark; (5) prove against named live + controlled fixtures (D6); (6) preserve compatibility (D5).
+**In scope:** finalize the orthogonal `(subject_kind, failure_state)` contract; storage (D1); precision upgrade (D4) incl. the complete inventory universe + candidate-store completeness (D2.1/D2.2), deterministic ties (D2.3), multi-part component diagnostics, mechanical sole-sourcing protection (D3), drain-time freshness handoff (D8); additive/dark routing output; proof against named live + controlled fixtures (D6); legacy compatibility (D5).
 
-**Out of scope (hard boundaries — PK):** no image search/download/provider call; no drain dispatcher; no ticket claim-state execution; no automatic assignment or platform-suitability mutation; no candidate promotion; no browser automation; no production deployment; no video/logo/generative/NDIS-sensitive expansion. **Config repair here = detect → classify → prepare the operator route; it does NOT mean creating assignments or suitability rows.**
+**Out of scope (hard boundaries — PK):** no image search/download/provider call; no drain dispatcher; no claim-state execution; no automatic assignment or suitability mutation; no candidate promotion; no browser automation; no production deploy; no video/logo/generative/NDIS-sensitive expansion. **Config repair = detect → classify → prepare the operator route; never create assignments or suitability rows.**
 
 ## Allowed actions
 
-- Read-only DB probes (`select_template`, `analyze_asset_gap`, `derive_asset_appetite`, `resolve_slot_assets`, inventory tables, catalog) via `execute_sql` (R1) / `db-read.py` (R0) to design and validate.
-- Author in an **isolated worktree** (ef-builder): the additive/dark DDL; the new read-only inventory-probe helper; the upgraded `analyze_asset_gap` + `run_asset_gap_analysis` bodies; hermetic fixture tests.
-- Run hermetic tests + read-only re-probes to prove the fixture matrix **before** any apply; prepare exact apply + rollback; route through the full T2/T3 chain (db-rls-auditor + external review pinned to hash + branch-warden).
+- Read-only DB probes to design/validate. Author in an **isolated worktree**: the three apply artifacts (D3), the read-only `probe_asset_inventory` helper, the upgraded `analyze_asset_gap` + `run_asset_gap_analysis`, and hermetic fixture tests. Run hermetic tests + read-only re-probes before any apply; route through the full T2/T3 chain (db-rls-auditor + external review pinned to each artifact hash + branch-warden).
 
 ## Forbidden actions
 
-- **No migration apply, DML/DDL against production, deploy, or merge** without an explicit PK gate. DDL apply, function apply, and backfill are **T3 hard stops**.
-- No sourcing/download/provider call; no drain dispatcher; no claim-state; no assignment/suitability/candidate mutation; no promotion; no browser automation.
-- No change to any legacy output key, vocabulary, or the writer's fail-closed validation semantics that could reject a row that validates today.
-- **Active hold-states (from `docs/00_sync_state.md`):** NDIS production video enablement stays OFF (`c.client_creative_governance` untouched); the diverged local `invegent-dashboard` `main` + orphaned `AddTemplateDraftWizard.tsx` commits are a separate PK item — untouched; no logo/video/generative sourcing.
-- Do not mark anything proven/approved/resolved as a side effect of classification.
+- **No migration apply, DML/DDL against production, deploy, or merge** without an explicit PK gate. Each of the three artifacts is a **T3 hard stop**.
+- No sourcing/download/provider call; no drain; no claim-state; no assignment/suitability/candidate mutation; no promotion; no browser automation.
+- No change to any legacy output key, vocabulary, or writer validation semantics that could reject a today-valid row.
+- **Active hold-states (`docs/00_sync_state.md`):** NDIS production video enablement OFF (`c.client_creative_governance` untouched); the diverged local `invegent-dashboard` `main` + orphaned `AddTemplateDraftWizard.tsx` commits are a separate PK item — untouched; no logo/video/generative sourcing.
+- Do not mark anything proven/approved/resolved as a side effect.
 
 ## Success criteria
 
-1. **Orthogonal contract (D1):** `failure_state` carries **no subject**; route + automation are pure functions of the **pair** `(subject_kind, failure_state)`, single-source-derived (cannot drift).
-2. **Diagnostic matrix (D2):** every reject/`fail_reason`/derive/inventory outcome maps to exactly one `(subject_kind, failure_state)` → route/automation, with least-blocked-layer diagnosis **and** deterministic tie handling (divergent deepest candidates → `unresolved/manual_triage` unless a justified conservative rule applies).
-3. **Genuine-absence proof (D4/D8):** `governed_sourcing` is emitted **iff** `subject_kind=static_background` ∧ `failure_state=absent` ∧ evidence conclusive ∧ no governed selection exists ∧ **no relevant existing candidate/inventory item exists in any state**. Existing-but-ungoverned static backgrounds route to operator/config/manual. `missing_required_logo` alone never proves logo absence → `unresolved` when inventory can't distinguish.
-4. **Precision proven (D6):** carousel ×3 → `config_repair`; PP YouTube → `config_repair` (platform), no sourcing; the 5 static-background governance fixtures classify distinctly (unapproved/unproven/blocked/unassigned-misconfigured/**absent**), and **only `absent` → `governed_sourcing`**; ambiguous/unresolved fixtures never source.
-5. **Compatibility (D5):** legacy keys byte-identical; writer accepts exactly today's set; new columns born NULL; **open** rows re-diagnosed from current evidence, **resolved/historical** rows get a precise class only from contemporaneous evidence else NULL/`unresolved`.
-6. **Handoff (D8) written;** full T2/T3 chain clean before any apply; apply + backfill only at their PK gates.
+1. **Orthogonal contract (D1):** `failure_state` carries no subject; route + automation are pure functions of the pair, single-source-derived.
+2. **Complete-inventory absence proof (D2.1/D2.2):** `governed_sourcing` iff `subject_kind=static_background` ∧ `failure_state=absent` ∧ `evidence_confidence=conclusive` ∧ no governed selection ∧ `n_inventory_total=0` over the complete defined universe ∧ `coverage_conclusive=true`. Any uncheckable authoritative store → `coverage_conclusive=false` → `unresolved`. Existing near-match/ungoverned items are **diagnosed, not filtered out**.
+3. **Deterministic ties (D2.3):** materially divergent deepest diagnoses **always** → `(none, unresolved)`, `insufficient`, `manual_triage`. No optional outcomes.
+4. **Template remediation corrected (D2):** `(template,absent)`→`operator_template_build`; `(template,unproven)`→`operator_approval`; `(template,misconfigured)`→`config_repair` when safely diagnosable else `manual_triage`; `status_below_smoke` never routes to template build; `wrong_scope` never assumes a new template unless config/reuse provably cannot resolve.
+5. **Mechanical protection (D3/#5):** a DB CHECK forbids persisting `(static_background, absent)` unless `evidence_confidence='conclusive'`.
+6. **Fixtures (D6):** carousel→`config_repair`; PP YouTube→`config_repair`; the 5 static-bg governance fixtures classify distinctly, only **absent → `governed_sourcing`**; coverage-inconclusive → `unresolved`; ties/ambiguity never source.
+7. **Compatibility (D5):** legacy keys byte-identical; writer accepts exactly today's set; open rows re-diagnosed from current evidence; resolved/historical rows precise only from contemporaneous evidence, else NULL/`unresolved`.
+8. **Packaging (D3/#7):** three fixed-identity, separately reviewable + rollbackable artifacts; reviewed hash == applied artifact (no apply-time mint). Handoff (D8) with drain-time freshness + atomic claim written. Full chain clean before any apply.
 
 ## Stop condition
 
-Deliver D1–D8 for Gate-1 review and **stop**. On authorization: build in isolated worktree, prove D6 locally, run the chain, stop again at the T3 apply gate. Report per result template. Any tripped STOP (D7) voids the remainder → fresh PK gate.
+Deliver D1–D8 for Gate-1 review and **stop**. On authorization: build in isolated worktree, prove D6 locally, run the chain per artifact, stop at each T3 apply gate. Report per result template. Any tripped STOP (D7) voids the remainder → fresh PK gate.
 
 ---
 
@@ -84,83 +84,101 @@ Deliver D1–D8 for Gate-1 review and **stop**. On authorization: build in isola
 
 ### D1.1 Five orthogonal axes — `failure_state` is subject-free
 
-| Axis | Question | Vocabulary |
-|---|---|---|
-| **`subject_kind`** | *What* is remediated? | `static_background`, `logo`, `image`, `video_broll`, `template`, `assignment`, `platform_config`, `appetite`, `none` |
-| **`failure_state`** | *Why* (subject-independent) | **`absent` · `unassigned` · `unapproved` · `unproven` · `blocked` · `misconfigured` · `negative` · `unsupported` · `ambiguous` · `unresolved` · `none`** |
-| **`remediation_route`** | *Who/what* fixes it | `governed_sourcing` · `operator_approval` · `config_repair` · `operator_template_build` · `manual_triage` · `capability_backlog` |
-| **`automation_class`** | *May automation act?* | `governed_auto_sourcing` (drain-eligible) · `operator_manual` · `no_automation` · `backlog` |
-| candidate-governance posture | posture a produced candidate must take | `fenced_until_approved` (default) · `not_applicable` — **not a ticket column** (candidate/package data) |
+| Axis | Vocabulary |
+|---|---|
+| **`subject_kind`** | `static_background`, `logo`, `image`, `video_broll`, `template`, `assignment`, `platform_config`, `appetite`, `none` |
+| **`failure_state`** (subject-free) | `absent` · `unassigned` · `unapproved` · `unproven` · `blocked` · `misconfigured` · `negative` · `unsupported` · `ambiguous` · `unresolved` · `none` |
+| **`remediation_route`** | `governed_sourcing` · `operator_approval` · `config_repair` · `operator_template_build` · `manual_triage` · `capability_backlog` |
+| **`automation_class`** | `governed_auto_sourcing` (drain-eligible) · `operator_manual` · `no_automation` · `backlog` |
+| candidate-governance posture | `fenced_until_approved` / `not_applicable` — **not a ticket column** (candidate/package data) |
 
-**Orthogonality guarantee:** `subject_kind` and `failure_state` are *diagnosed* independently. `remediation_route` and `automation_class` are **pure functions of the pair** `(subject_kind, failure_state)` (D2 map) — never independently written, so they cannot contradict the diagnosis. The same `failure_state` routes differently per subject (e.g. `misconfigured`: `platform_config` → `config_repair`, `template` → `operator_template_build`), which is exactly why routing keys on the pair.
+Route + automation are pure functions of the **pair** `(subject_kind, failure_state)` (D2), never independently written → cannot contradict the diagnosis.
 
-### D1.2 Storage decision (Option R, revised per Gate-1 #6)
+### D1.2 Storage (Option R — accepted rev-2, finalized)
 
-**Canonical on `m.asset_gap_suggestion` (additive, dark):** `subject_kind`, `failure_state`, `classifier_version`, `diagnostic_evidence jsonb`, `diagnosed_at timestamptz`, `evidence_confidence text` (`conclusive|insufficient`).
-- **Route + automation are DERIVED from the pair** via two IMMUTABLE functions `public.asset_gap_route(subject_kind, failure_state)` and `public.asset_gap_automation(subject_kind, failure_state)` — single derivation source ⇒ cannot drift.
-- **Index the canonical pair** `(subject_kind, failure_state)`. **No functional route index this lane** (removed per #6).
-- **Candidate-level governance state stays candidate/package data.** The ticket keeps only its existing aggregate lifecycle (`status` + `candidates_ref`); no `candidate_governance_posture` column is added. Add a named aggregate ticket state later only under its own gate.
+Canonical additive/dark columns: `subject_kind`, `failure_state`, `classifier_version`, `diagnostic_evidence jsonb`, `diagnosed_at timestamptz`, `evidence_confidence text` (`conclusive|insufficient`). Route/automation derived via `public.asset_gap_route(subject, state)` / `public.asset_gap_automation(subject, state)` (immutable, single source). Index the pair `(subject_kind, failure_state)`; no functional route index. Plus the mechanical sole-sourcing CHECK (#5, D3). Candidate-level governance stays candidate/package data.
 
-> **Open decision D1-a (PK / db-rls-auditor):** ratify Option R (derive via pair functions + pair index). Generated-column and CHECK variants are recorded as alternatives; no sourcing behaviour depends on the choice.
+## D2 — Reject → `(subject_kind, failure_state)` diagnostic matrix
 
-## D2 — Reject-code → `(subject_kind, failure_state)` diagnostic matrix
+**Least-blocked-candidate rule.** On `fail_closed / no_selectable_template`, find the deepest layer any candidate reached: `f. assets_fail_closed > e. not_visually_proven > d. assignment_{blocked|unapproved|absent} > c. platform_unsuitable > b. status_below_smoke > a. wrong_scope`.
 
-**Least-blocked-candidate rule.** On `fail_closed / no_selectable_template`, find the **deepest layer** any candidate reached (furthest wins):
-`f. assets_fail_closed > e. not_visually_proven > d. assignment_{blocked|unapproved|absent} > c. platform_unsuitable > b. status_below_smoke > a. wrong_scope`.
-
-**Tie determinism (Gate-1 #4).** Collect **all** candidates at that deepest layer. If they yield the **same** `(subject_kind, failure_state)` → use it (`evidence_confidence=conclusive`). If they yield **materially different** diagnoses → do **not** take array[0]: set `(none/appetite, ambiguous)` or `(…, unresolved)` → `manual_triage`, `evidence_confidence=insufficient`, and record **every** competing diagnosis in `diagnostic_evidence`. A conservative precedence rule may override **only** if explicitly justified — and **sourcing is never reachable through a tie**: any divergence that includes a non-sourcing diagnosis blocks sourcing.
-
-| Binding evidence | `subject_kind` | `failure_state` | `remediation_route` | `automation_class` |
+| Binding evidence | `subject_kind` | `failure_state` | route | automation |
 |---|---|---|---|---|
 | `fail_reason=client_not_found` | `none` | `unresolved` | `manual_triage` | `no_automation` |
-| `fail_reason=format_unmapped` **(no registry proof — default)** | `template` | `unsupported` | `capability_backlog` | `backlog` |
-| `format_unmapped` **and** authoritative registry proves format supported | `template` | `absent` | `operator_template_build` | `operator_manual` |
-| deepest = `wrong_scope` | `template` | `misconfigured` | `operator_template_build` | `operator_manual` |
-| deepest = `status_below_smoke` | `template` | `unproven` | `operator_template_build` | `operator_manual` |
+| `format_unmapped` (no registry proof — default) | `template` | `unsupported` | `capability_backlog` | `backlog` |
+| `format_unmapped` + authoritative registry proves supported | `template` | `absent` | `operator_template_build` | `operator_manual` |
+| deepest = `wrong_scope`, config/reuse **can** resolve (safely diagnosable) | `template` | `misconfigured` | `config_repair` | `operator_manual` |
+| deepest = `wrong_scope`, config/reuse **cannot** resolve (not safely diagnosable) | `none` | `unresolved` | `manual_triage` | `no_automation` |
+| deepest = `status_below_smoke` | `template` | `unproven` | `operator_approval` | `operator_manual` |
 | deepest = `platform_unsuitable`/`no_suitability_row_for_platform` | `platform_config` | `misconfigured` | `config_repair` | `operator_manual` |
 | deepest = `platform_unsuitable`/`suitability_status_negative` | `platform_config` | `negative` | `manual_triage` | `no_automation` |
 | deepest = `no_assignment` | `assignment` | `unassigned` | **`config_repair`** | `operator_manual` |
 | deepest = `assignment_not_approved` | `assignment` | `unapproved` | `operator_approval` | `operator_manual` |
 | deepest = `not_visually_proven` | `assignment` | `unproven` | `operator_approval` | `operator_manual` |
 | deepest = `assignment_blocked` | `assignment` | `blocked` | `manual_triage` | `no_automation` |
-| **asset layer, `static_background`** — see D2.1 inventory proof | `static_background` | `absent` \| `unapproved` \| `unproven` \| `blocked` \| `unassigned` \| `misconfigured` \| `unresolved` | per pair (below) | per pair |
-| `assets_fail_closed:missing_required_logo` — see D2.1 | `logo` | `absent` \| `unapproved` \| `unproven` \| `unresolved` | `operator_approval` (`unresolved`→`manual_triage`) | `operator_manual` / `no_automation` |
-| asset layer, `image`/`video_broll` (out-of-scope subjects) | `image`/`video_broll` | `absent`→`capability_backlog`; ungoverned→`operator_approval`/`manual_triage` | — | `backlog`/`operator_manual`/`no_automation` |
-| `derive=ambiguous` **and no higher failure**, or divergent tie | `appetite` | `ambiguous` | `manual_triage` | `no_automation` |
+| asset layer `static_background` — **D2.1 complete-inventory proof** | `static_background` | `absent`\|`unapproved`\|`unproven`\|`blocked`\|`unassigned`\|`misconfigured`\|`unresolved` | per pair | per pair |
+| `assets_fail_closed:missing_required_logo` — D2.1 (never sourcing) | `logo` | `absent`\|`unapproved`\|`unproven`\|`unresolved` | `operator_approval` (`unresolved`→`manual_triage`) | per pair |
+| asset layer `image`/`video_broll` | `image`/`video_broll` | `absent`→`capability_backlog`; ungoverned→`operator_approval`; else `manual_triage` | — | per pair |
+| **materially divergent deepest candidates (tie — D2.3)** | `none` | `unresolved` | `manual_triage` | `no_automation` |
+| `derive=ambiguous` **and no stronger binding failure** | `appetite` | `ambiguous` | `manual_triage` | `no_automation` |
 | `derive=fail_closed` | `appetite` | `unresolved` | `manual_triage` | `no_automation` |
 | unmapped / insufficient | `none` | `unresolved` | `manual_triage` | `no_automation` |
 
-**Static-background pair routes (D2.1 output):** `(static_background, absent)` → **`governed_sourcing` / `governed_auto_sourcing`** (the ONLY sourcing pair); `unapproved`/`unproven` → `operator_approval`; `unassigned`/`misconfigured` → `config_repair`; `blocked` → `manual_triage`; `unresolved` → `manual_triage`. None but `absent` is drain-eligible.
+**Template corrections (#3):** `status_below_smoke` → `(template, unproven)` → `operator_approval` (**not** template build). `wrong_scope` → `(template, misconfigured)` → `config_repair` **only** when the classifier can safely diagnose that re-scoping/reuse resolves it; otherwise `(none, unresolved)` → `manual_triage` (a new build is a downstream human decision, never assumed). `(template, absent)` (registry-proven only) → `operator_template_build`.
 
-### D2.1 Genuine static-background / logo absence proof (Gate-1 #2, #3, #8)
+### D2.1 Complete static-background / logo inventory proof (#1)
 
-`resolve_slot_assets=no_governed_background` proves only that **no governed-selectable** asset exists — **not** absence. Before any `absent` verdict, a read-only inventory probe `public.probe_asset_inventory(p_client_slug, p_vertical_key, p_slot_kind)` (STABLE/SECDEF/`search_path=''`/service-role-only) enumerates **every relevant item in every state**:
-- `c.client_brand_asset` where `client_id=client` ∧ `asset_type=<slot type>` — **all** `is_active`/`asset_meta`-fence states.
-- `c.shared_creative_asset` where `asset_kind=<slot type>` ∧ relevant to the client (`governance_scope`/`vertical_key` match, `client ∈ allowed_clients` or empty, `client ∉ excluded_clients`) — **all** `is_active`/`approval_status`/`production_use_allowed`/`purpose_bound` states.
+Read-only helper `public.probe_asset_inventory(p_client_slug, p_vertical_key, p_slot_kind)` (STABLE/SECDEF/`search_path=''`/service-role-only) enumerates the **complete defined universe** and, crucially, **does not filter near-matches out before diagnosing them**. Returns:
 
-Returns `{ n_relevant_total, n_governed_selectable, n_existing_ungoverned, ungoverned_breakdown, relevance_conclusive }`. Classifier decision for `static_background` when `resolve=no_governed_background`:
+- `n_inventory_total` — every item of the slot type in the universe (client rows + relevant shared rows), **before** any configurable fence.
+- `n_currently_eligible` — items passing all governance fences (governed + usable now).
+- `n_governed_selectable` — subset `resolve_slot_assets` would actually pick (adds platform / text-safety).
+- `n_near_match` — items relevant-in-principle that fail a **configurable** fence (no assignment / client-scope / `allowed_clients` allow-list / `excluded_clients` / `platform_scope`).
+- `n_existing_ungoverned` — items that fail a **governance** fence (`is_active`/`approved`/`approval_status`/`production_use_allowed`/`purpose_bound`).
+- `near_match_breakdown` — per-item jsonb naming the exact failing fence.
+- `coverage_conclusive` — true **only** if every declared store (D2.2) was enumerable.
+
+**Decision for `static_background` when `resolve=no_governed_background`:**
 
 | Probe outcome | `failure_state` | `evidence_confidence` | route |
 |---|---|---|---|
-| `relevance_conclusive=false` (scope/vertical match ambiguous) | `unresolved` | insufficient | `manual_triage` |
-| `n_relevant_total = 0` (nothing exists in any state) | **`absent`** | conclusive | **`governed_sourcing`** |
-| exists, all inactive / intake_candidate / approval pending | `unapproved` | conclusive | `operator_approval` |
-| exists, approved+active but no visual proof | `unproven` | conclusive | `operator_approval` |
-| exists, `purpose_bound`/held/deprecated | `blocked` | conclusive | `manual_triage` |
-| exists, governed elsewhere but not scoped/assigned to this client | `misconfigured`/`unassigned` | conclusive | `config_repair` |
-| ungoverned states mixed/indistinguishable | `unresolved` | insufficient | `manual_triage` |
+| `coverage_conclusive=false` | `unresolved` | `insufficient` | `manual_triage` |
+| `n_inventory_total = 0` (universe empty, incl. near-matches) | **`absent`** | `conclusive` | **`governed_sourcing`** |
+| `n_existing_ungoverned>0`, all inactive / intake_candidate / approval-pending | `unapproved` | `conclusive` | `operator_approval` |
+| ungoverned, approved+active, no visual proof | `unproven` | `conclusive` | `operator_approval` |
+| ungoverned, `purpose_bound`/held/deprecated | `blocked` | `conclusive` | `manual_triage` |
+| `n_near_match>0` — governed elsewhere but fails allow-list / scope / assignment / platform for this client | `misconfigured`/`unassigned` | `conclusive` | `config_repair` |
+| mixed / indistinguishable near-match+ungoverned | `unresolved` | `insufficient` | `manual_triage` |
 
-**`missing_required_logo`** uses the same probe on `logo`; where inventory cannot distinguish absent from ungoverned → `unresolved`. Logo never reaches `governed_sourcing` regardless (sourcing forbidden for logos).
+`missing_required_logo` runs the same probe on `logo`; indistinguishable absent-vs-ungoverned → `unresolved`. Logo never reaches `governed_sourcing`.
 
-## D3 — Additive migration plan (⛔ NOT APPLIED; T3 apply gate)
+### D2.2 Candidate-store completeness (#2)
 
-Identity minted at apply (> latest `20260720200000`): `cc0046_asset_gap_orthogonal_classification_v1`. Additive/dark; RLS/grants inherit table posture.
+**Authoritative locations an asset candidate may exist, and their checkability:**
+
+| Store | Location | Checkable by the DB probe? |
+|---|---|---|
+| Governed client assets (incl. fenced intake rows) | `c.client_brand_asset` | **Yes** — all states |
+| Governed shared assets (incl. fenced intake rows) | `c.shared_creative_asset` | **Yes** — all states |
+| In-flight demand / candidate reference for this signature | `m.asset_gap_suggestion` (`status∈harvesting/candidates_ready`, `candidates_ref`/`harvest_manifest_ref` non-null) | **Yes** |
+| Pre-intake filesystem harvest/review packages | `_harness/image_harvester_v0/**` (contact sheets, manifests) | **No — not DB-visible** |
+
+**Exhaustiveness verdict:** `c.client_brand_asset` + `c.shared_creative_asset` are exhaustive for **DB-intaken** inventory (intake writes fenced rows there — grounded above), and the in-flight demand check covers active harvests. **Pre-intake filesystem packages are outside DB visibility.** Therefore `coverage_conclusive=true` is asserted **only** over the DB universe + in-flight-demand check; the residual (a harvested-but-not-yet-intaken package) is handled by two mechanisms: (a) the future drain is the **sole** harvest initiator and is gated on this verdict, so it will not double-source; (b) **drain-time freshness re-validation** (D8). **Rule:** if any declared store cannot be read at classification time (probe error, permission, or a store added later that the helper does not yet cover) → `coverage_conclusive=false` → `unresolved`. **Never source from incomplete coverage.** *(Build-time db-rls-auditor step: confirm via `list_tables` that no image-asset store beyond the two tables exists at build; if one is found, extend the helper before the probe is trusted.)*
+
+### D2.3 Deterministic tie contract (#4)
+
+Collect **all** candidates at the deepest layer. If they yield the **same** `(subject_kind, failure_state)` → use it, `evidence_confidence=conclusive`. If they yield **materially different** diagnoses → **always** emit exactly: `subject_kind=none`, `failure_state=unresolved`, `evidence_confidence=insufficient`, route `manual_triage`; record every competing diagnosis in `diagnostic_evidence`. **No optional/`or` outcomes; no conservative-precedence override.** `(appetite, ambiguous)` is reserved **solely** for a genuine appetite-ambiguity result with no stronger binding failure. Multi-part/carousel: diagnose each component into `diagnostic_evidence`; divergent components are a tie → `(none, unresolved)`.
+
+## D3 — Additive migration plan — three fixed-identity artifacts (⛔ NOT APPLIED; three T3 gates) (#7)
+
+**No apply-time mint.** Names + contents are fixed **now**, before external review, so each reviewed hash exactly equals the applied artifact. Apply is via `execute_sql` at the T3 gate (apply_migration is harness-deny-listed); the ledger row is backfilled with the **same** fixed identity — not a fresh apply-time version. Each artifact has its own rollback file under `_harness/cc0046_*/` and is reviewed/applied/rolled-back independently.
+
+**Artifact 1 — `supabase/migrations/20260721100000_cc0046_asset_gap_orthogonal_classification_ddl_v1.sql`** (columns + CHECK + derivation fns + probe helper + pair index + grants):
 
 ```sql
--- ⛔ DESIGN — NOT APPLIED. T3 PK apply gate. Additive + dark; zero legacy-column change.
+-- ⛔ DESIGN — NOT APPLIED. T3 gate #1. Additive + dark; zero legacy-column change.
 begin;
 
--- 1) Canonical diagnosed columns (born NULL = dark) --------------------------------
 alter table m.asset_gap_suggestion
   add column subject_kind        text
     check (subject_kind is null or subject_kind in
@@ -173,146 +191,148 @@ alter table m.asset_gap_suggestion
   add column diagnostic_evidence jsonb,
   add column diagnosed_at        timestamptz,
   add column evidence_confidence text
-    check (evidence_confidence is null or evidence_confidence in ('conclusive','insufficient'));
+    check (evidence_confidence is null or evidence_confidence in ('conclusive','insufficient')),
+  -- #5 mechanical protection: the sole-sourcing pair cannot persist without conclusive evidence
+  add constraint gap_absent_static_bg_requires_conclusive
+    check ( subject_kind  is distinct from 'static_background'
+         or failure_state is distinct from 'absent'
+         or evidence_confidence is not distinct from 'conclusive' );
 
--- 2) Non-drifting derivation from the PAIR (single source) -------------------------
 create or replace function public.asset_gap_route(p_subject text, p_state text)
 returns text language sql immutable set search_path = '' as $$
   select case
     when p_subject is null or p_state is null then null
     when p_state = 'none' then null
-    when p_subject = 'static_background' and p_state = 'absent'                       then 'governed_sourcing'
-    when p_subject = 'static_background' and p_state in ('unapproved','unproven')     then 'operator_approval'
-    when p_subject = 'static_background' and p_state in ('unassigned','misconfigured') then 'config_repair'
-    when p_subject = 'static_background'                                              then 'manual_triage'
-    when p_subject = 'logo' and p_state in ('absent','unapproved','unproven')         then 'operator_approval'
-    when p_subject = 'logo'                                                           then 'manual_triage'
-    when p_subject in ('image','video_broll') and p_state = 'absent'                  then 'capability_backlog'
+    when p_subject='static_background' and p_state='absent'                          then 'governed_sourcing'
+    when p_subject='static_background' and p_state in ('unapproved','unproven')       then 'operator_approval'
+    when p_subject='static_background' and p_state in ('unassigned','misconfigured')  then 'config_repair'
+    when p_subject='static_background'                                               then 'manual_triage'
+    when p_subject='logo' and p_state in ('absent','unapproved','unproven')           then 'operator_approval'
+    when p_subject='logo'                                                            then 'manual_triage'
+    when p_subject in ('image','video_broll') and p_state='absent'                    then 'capability_backlog'
     when p_subject in ('image','video_broll') and p_state in ('unapproved','unproven') then 'operator_approval'
     when p_subject in ('image','video_broll')                                        then 'manual_triage'
-    when p_subject = 'template' and p_state = 'unsupported'                           then 'capability_backlog'
-    when p_subject = 'template' and p_state in ('absent','misconfigured','unproven')  then 'operator_template_build'
-    when p_subject = 'assignment' and p_state = 'unassigned'                          then 'config_repair'
-    when p_subject = 'assignment' and p_state in ('unapproved','unproven')            then 'operator_approval'
-    when p_subject = 'assignment' and p_state = 'blocked'                             then 'manual_triage'
-    when p_subject = 'platform_config' and p_state = 'misconfigured'                  then 'config_repair'
-    when p_subject = 'platform_config'                                                then 'manual_triage'  -- incl. negative
-    else 'manual_triage'  -- appetite/none/unresolved/ambiguous
+    when p_subject='template' and p_state='unsupported'                              then 'capability_backlog'
+    when p_subject='template' and p_state='absent'                                   then 'operator_template_build'
+    when p_subject='template' and p_state='unproven'                                 then 'operator_approval'
+    when p_subject='template' and p_state='misconfigured'                            then 'config_repair'
+    when p_subject='template'                                                        then 'manual_triage'
+    when p_subject='assignment' and p_state='unassigned'                             then 'config_repair'
+    when p_subject='assignment' and p_state in ('unapproved','unproven')              then 'operator_approval'
+    when p_subject='assignment'                                                      then 'manual_triage'
+    when p_subject='platform_config' and p_state='misconfigured'                     then 'config_repair'
+    when p_subject='platform_config'                                                 then 'manual_triage'  -- negative
+    else 'manual_triage'
   end;
 $$;
 
 create or replace function public.asset_gap_automation(p_subject text, p_state text)
 returns text language sql immutable set search_path = '' as $$
   select case
-    when p_subject is null or p_state is null then null
-    when public.asset_gap_route(p_subject, p_state) is null                     then null
-    when p_subject = 'static_background' and p_state = 'absent'                 then 'governed_auto_sourcing'
-    when public.asset_gap_route(p_subject, p_state) = 'capability_backlog'      then 'backlog'
-    when public.asset_gap_route(p_subject, p_state) = 'manual_triage'           then 'no_automation'
+    when p_subject is null or p_state is null                              then null
+    when public.asset_gap_route(p_subject,p_state) is null                 then null
+    when p_subject='static_background' and p_state='absent'                then 'governed_auto_sourcing'
+    when public.asset_gap_route(p_subject,p_state) = 'capability_backlog'  then 'backlog'
+    when public.asset_gap_route(p_subject,p_state) = 'manual_triage'       then 'no_automation'
     else 'operator_manual'
   end;
 $$;
 
--- 3) Index the canonical PAIR (no functional route index) -------------------------
+-- read-only complete-inventory probe (D2.1/D2.2). Body scans the two asset tables across ALL
+-- states (near-matches retained), plus the in-flight-demand check; sets coverage_conclusive.
+-- (full body authored in the worktree; db-rls-auditor reviews grants + fence logic)
+create or replace function public.probe_asset_inventory(p_client_slug text, p_vertical_key text, p_slot_kind text)
+returns jsonb language plpgsql stable security definer set search_path = '' as $$ /* … */ $$;
+
 create index asset_gap_suggestion_diag_pair_idx
   on m.asset_gap_suggestion (subject_kind, failure_state);
 
-revoke all on function public.asset_gap_route(text,text)      from public, anon, authenticated;
-revoke all on function public.asset_gap_automation(text,text) from public, anon, authenticated;
-grant execute on function public.asset_gap_route(text,text)      to service_role;
-grant execute on function public.asset_gap_automation(text,text) to service_role;
+revoke all on function public.asset_gap_route(text,text)          from public, anon, authenticated;
+revoke all on function public.asset_gap_automation(text,text)     from public, anon, authenticated;
+revoke all on function public.probe_asset_inventory(text,text,text) from public, anon, authenticated;
+grant execute on function public.asset_gap_route(text,text)          to service_role;
+grant execute on function public.asset_gap_automation(text,text)     to service_role;
+grant execute on function public.probe_asset_inventory(text,text,text) to service_role;
 
 commit;
--- ROLLBACK (reference): drop index asset_gap_suggestion_diag_pair_idx;
---   drop function public.asset_gap_route(text,text); drop function public.asset_gap_automation(text,text);
---   alter table m.asset_gap_suggestion drop column evidence_confidence, drop column diagnosed_at,
---     drop column diagnostic_evidence, drop column classifier_version, drop column failure_state, drop column subject_kind;
+-- ROLLBACK (_harness/cc0046_ddl/rollback.sql): drop index …_diag_pair_idx; drop the 3 functions;
+--   alter table … drop constraint gap_absent_static_bg_requires_conclusive, drop the 6 columns.
 ```
 
-The new read-only helper `public.probe_asset_inventory(...)` (D2.1) is a separate object in the same migration (SECDEF/STABLE/service-role-only; db-rls-auditor reviews its grants). A secret-free `ice_ro` read view over the pair is proposed as R0 coverage (its own small T2/T3 add) — named so the coverage gap is closed properly, not via widened `execute_sql`.
+**Artifact 2 — `20260721110000_cc0046_analyze_and_writer_orthogonal_v1.sql`** — `CREATE OR REPLACE` of `analyze_asset_gap` (adds the diagnosis block, calls `probe_asset_inventory`, emits additive keys; legacy keys byte-identical) and `run_asset_gap_analysis` (persists the new columns; validation not tightened). Rollback = byte-exact prior bodies (captured live pre-apply, like the cc-0044 precedent).
+
+**Artifact 3 — `20260721120000_cc0046_backfill_open_rows_v1.sql`** — evidence-gated backfill UPDATE (open rows only; D5). Rollback = set the new columns back to NULL for the touched ids.
+
+A secret-free `ice_ro` read view over the pair is proposed as R0 coverage in its own later T2 add (named so the gap is closed properly, not via widened `execute_sql`).
 
 ## D4 — Analyzer / function change plan
 
-**`analyze_asset_gap` (CREATE OR REPLACE; STABLE/SECDEF/`search_path=''`):**
-1. Keep the body and **every legacy key byte-identical** (`primary_route`, `asset_gap_detected`, `asset_gap_drainability`, `why_needed`, `slot_kind`, appetite/signature/scope keys). No legacy semantics change; `asset_gap_detected` and the auto-close oracle unchanged.
-2. Add a **diagnosis block**: iterate the full `rejected[]`, compute the deepest layer, collect **all** deepest candidates, apply the tie rule (D2), fold in `fail_reason`, `derive` status (ambiguity only when no higher failure), and — for `static_background`/`logo` asset-layer cases — call `probe_asset_inventory` (D2.1) to separate genuine `absent` from ungoverned. Emit additive keys: `subject_kind`, `failure_state`, `remediation_route = asset_gap_route(subject_kind, failure_state)`, `automation_class = asset_gap_automation(...)`, `evidence_confidence`, `candidate_governance_posture` (`fenced_until_approved` iff route=`governed_sourcing`, else `not_applicable`), and `diagnostic_evidence` = { deepest_layer, all competing diagnoses, observed reject codes, inventory-probe summary, ambiguity flag, **per-component diagnostics for multi-part/carousel** }.
-3. **Multi-part (carousel):** diagnose each component; record all in `diagnostic_evidence`; **never force a single sourcing route** when components differ — divergence → `ambiguous`/`unresolved` → `manual_triage`.
-4. Preserve `unresolved` for any unmapped/mixed/insufficient evidence; never guess a sourcing route.
+`analyze_asset_gap`: keep body + **every legacy key byte-identical**; add the diagnosis block (deepest-layer scan → D2.3 tie contract → `fail_reason`/`derive` fold-in → `probe_asset_inventory` for asset-layer → pair emission); emit additive keys `subject_kind`, `failure_state`, `remediation_route`, `automation_class`, `evidence_confidence`, `candidate_governance_posture`, `diagnostic_evidence` (deepest layer · competing diagnoses · reject codes · **full probe summary incl. `coverage_conclusive`** · per-component multi-part diagnostics). **`(static_background, absent)` is emitted only when `coverage_conclusive=true` ∧ `n_inventory_total=0` ∧ `resolve=no_governed_background`**, with `evidence_confidence=conclusive` — otherwise a non-sourcing pair. `run_asset_gap_analysis`: persist new columns; no validation tightening; no detect/close-pass semantic change. Built in an isolated worktree; hermetic proof before apply.
 
-**`run_asset_gap_analysis` (writer; CREATE OR REPLACE):**
-1. Persist the new columns (`subject_kind`, `failure_state`, `classifier_version`, `diagnostic_evidence`, `diagnosed_at`, `evidence_confidence`) on INSERT/UPDATE; route/automation are derived, not written.
-2. **Do not tighten** fail-closed validation on new keys in any way that could reject a today-valid row; legacy validation unchanged.
-3. No detect/drain/close-pass semantic change; drain *entry* precision is a read-side contract for the future lane (D8).
+## D5 — Compatibility & backfill
 
-Built in an **isolated worktree**; local + hermetic proof before any apply.
-
-## D5 — Compatibility & backfill strategy
-
-- **Legacy unchanged (hermetic diff):** for all 8 live rows + fixtures, assert pre/post analyzer legacy keys **identical**, and the writer's `inserted/updated/rejected` counters identical on a dry-run over the same inputs. Any delta = STOP.
-- **No live reader breaks:** grounded — only the writer consumes the keys.
-- **Backfill (data-only UPDATE, T3, evidence-gated — corrected per #7):**
-  - **Open rows** — re-diagnose from **current** evidence (re-probe + inventory probe); set `subject_kind`/`failure_state`/`diagnosed_at`/`evidence_confidence` where the diagnosis is conclusive, else `failure_state=unresolved` / leave NULL.
-  - **Resolved / historical rows** — a current re-probe is **not** their historical diagnosis. Assign a precise class **only** from contemporaneous evidence (e.g. `diagnostic_evidence`/observations captured at the time); otherwise leave the new fields **NULL** (or `unresolved`). No retroactive precise classification from today's state.
-  - Backfill writes **no** route/automation (derived) and triggers **no** sourcing. Expected on current data: 3 carousel (open) → `(assignment, unassigned)`; PP YouTube (open) → `(platform_config, misconfigured)`; resolved rows → NULL unless contemporaneous evidence exists.
-- **Rollout order (each its own T3 gate; rollback proven first):** DDL + helper apply → function apply → backfill. Migration name = permanent identity.
+- **Legacy unchanged (hermetic diff):** pre/post analyzer legacy keys identical for all 8 rows + fixtures; writer `inserted/updated/rejected` counters identical on dry-run. Any delta = STOP.
+- **Backfill (Artifact 3, T3, evidence-gated):** **open** rows re-diagnosed from **current** evidence (incl. inventory probe); set fields where conclusive, else `unresolved`/NULL. **Resolved/historical** rows get a precise class **only** from contemporaneous evidence (captured `diagnostic_evidence`/observations); otherwise NULL — no retroactive classification from today's state. Writes no route/automation (derived); triggers no sourcing.
 
 ## D6 — Named fixture & test matrix
 
 | # | Fixture | Kind | Expected `(subject_kind, failure_state)` | route | `governed_sourcing`? |
 |---|---|---|---|---|---|
-| F1–F3 | carousel CFW/fb `0532d311`, CFW/li `3b7b0d36`, INV/li `273626e5` | live | `(assignment, unassigned)` | `config_repair` | **no** |
-| F4 | PP/youtube `video_short_stat` `22d3df93` | live | `(platform_config, misconfigured)` | `config_repair` | **no** (video subject) |
-| F5 | happy INV/fb image_quote `cf02a8e4` | live | `(none, none)` | — | **no** |
-| **G1** | static-bg exists but **unapproved** (intake_candidate / inactive) | controlled | `(static_background, unapproved)` | `operator_approval` | **no** |
-| **G2** | static-bg exists, approved+active, **not visually proven** | controlled | `(static_background, unproven)` | `operator_approval` | **no** |
-| **G3** | static-bg exists but **blocked/held** (`purpose_bound`/deprecated) | controlled | `(static_background, blocked)` | `manual_triage` | **no** |
-| **G4** | static-bg exists but **unassigned/misconfigured** for this client (scope/allow-list) | controlled | `(static_background, misconfigured)` | `config_repair` | **no** |
-| **G5** | **genuinely absent** — zero relevant static-bg rows in either table, any state; `resolve=no_governed_background`; probe conclusive | controlled | `(static_background, absent)` | **`governed_sourcing`** | **YES (only)** |
-| L1 | `missing_required_logo`, inventory cannot distinguish absent vs ungoverned | controlled | `(logo, unresolved)` | `manual_triage` | **no** |
-| A1 | appetite ambiguous, template selectable, no higher failure | controlled | `(appetite, ambiguous)` | `manual_triage` | **no** |
-| T1 | divergent deepest candidates (materially different diagnoses) | controlled | `(none, unresolved)` `evidence_confidence=insufficient` | `manual_triage` | **no** |
-| U1 | unmapped/mixed reject set | controlled | `(none, unresolved)` | `manual_triage` | **no** |
+| F1–F3 | carousel CFW/fb, CFW/li, INV/li | live | `(assignment, unassigned)` | `config_repair` | no |
+| F4 | PP/youtube `video_short_stat` | live | `(platform_config, misconfigured)` | `config_repair` | no |
+| F5 | happy INV/fb image_quote | live | `(none, none)` | — | no |
+| G1 | static-bg exists, **unapproved** (intake_candidate/inactive) | controlled | `(static_background, unapproved)` | `operator_approval` | no |
+| G2 | static-bg exists, approved+active, **unproven** | controlled | `(static_background, unproven)` | `operator_approval` | no |
+| G3 | static-bg exists, **blocked/held** (`purpose_bound`/deprecated) | controlled | `(static_background, blocked)` | `manual_triage` | no |
+| G4 | static-bg exists, governed elsewhere, **near-match** (allow-list/scope/assignment) | controlled | `(static_background, misconfigured)` | `config_repair` | no |
+| **G5** | **genuinely absent** — `n_inventory_total=0`, `coverage_conclusive=true`, `resolve=no_governed_background` | controlled | `(static_background, absent)` | **`governed_sourcing`** | **YES (only)** |
+| C1 | **coverage inconclusive** — a declared store unreadable | controlled | `(static_background, unresolved)` `insufficient` | `manual_triage` | no |
+| L1 | `missing_required_logo`, absent-vs-ungoverned indistinguishable | controlled | `(logo, unresolved)` | `manual_triage` | no |
+| S1 | `status_below_smoke` (template below smoke rung) | controlled | `(template, unproven)` | `operator_approval` | no |
+| W1 | `wrong_scope`, re-scope/reuse resolves | controlled | `(template, misconfigured)` | `config_repair` | no |
+| W2 | `wrong_scope`, not safely diagnosable | controlled | `(none, unresolved)` | `manual_triage` | no |
+| A1 | genuine appetite ambiguity, no stronger failure | controlled | `(appetite, ambiguous)` | `manual_triage` | no |
+| T1 | divergent deepest candidates (tie) | controlled | `(none, unresolved)` `insufficient` | `manual_triage` | no |
 
-G1–G5 must be built **read-only** (hermetic fixture / `ROLLBACK` transaction — never a live INSERT). **Invariant test:** across the whole matrix, `governed_sourcing` appears **iff** the D8 conjunction holds; **zero** false `governed_sourcing`; G5 is the only YES.
+G1–G5/C1 built **read-only** (hermetic fixture / `ROLLBACK` txn — never a live INSERT). **Invariant test:** across the matrix, `governed_sourcing` appears **iff** the D8 conjunction holds; **zero** false `governed_sourcing`; G5 is the only YES; the CHECK constraint rejects a hand-forged `(static_background, absent)` with `evidence_confidence≠conclusive`.
 
 ## D7 — STOP conditions
 
-Any voids the remainder → fresh PK gate:
-- A legacy output key changes value for any row/fixture.
-- Any fixture other than G5 produces `governed_sourcing`, or G5 fails to.
-- `governed_sourcing` reached without the full D8 conjunction (esp. `evidence_confidence=conclusive` + probe `n_relevant_total=0`), or reached through a tie.
-- Route/automation observed to disagree with `(subject_kind, failure_state)` (derivation drift).
-- Writer begins rejecting a today-valid row, or dry-run counters diverge from baseline.
-- Backfill would assign a precise class on insufficient/non-contemporaneous evidence.
-- Any hard-boundary action attempted (sourcing, drain, claim-state, assignment/suitability mutation, promotion, deploy, browser).
-- External review non-clean; `reviewed_input_hash` ≠ current hash; unexpected origin movement / files; rollback path invalidated.
-- Apply attempted without its explicit T3 PK gate.
+Any voids the remainder → fresh PK gate: a legacy key changes value · any fixture but G5 yields `governed_sourcing`, or G5 does not · `governed_sourcing` reached without the full D8 conjunction (esp. `coverage_conclusive=true` ∧ `n_inventory_total=0` ∧ `evidence_confidence=conclusive`) or through a tie · a tie yields anything but `(none, unresolved)/insufficient/manual_triage` · route/automation disagree with the pair · the CHECK constraint fails to reject a forged absent pair · writer rejects a today-valid row or dry-run counters diverge · backfill would classify on insufficient/non-contemporaneous evidence · any hard-boundary action attempted · external review non-clean / `reviewed_input_hash` ≠ artifact hash / unexpected origin movement or files / rollback invalidated · apply attempted without its T3 gate.
 
 ## D8 — Handoff contract for the backgrounds-only drain lane (later, separate)
 
-The future drain **must not** re-derive routing. Its **hard entry condition** — the expanded sole-sourcing invariant (Gate-1 #8), all required:
+The drain **must not** re-derive routing and **must not** trust a stale classifier result. Its posture is **validate-and-claim, atomically** (#6):
 
 ```
-status = 'open'
-AND asset_gap_detected = true
-AND subject_kind  = 'static_background'
-AND failure_state = 'absent'
-AND evidence_confidence = 'conclusive'
-AND asset_gap_route(subject_kind, failure_state)      = 'governed_sourcing'
-AND asset_gap_automation(subject_kind, failure_state) = 'governed_auto_sourcing'
--- guaranteed by the classifier before 'absent' is written (re-assert at drain time):
---   • no governed selection exists (resolve_slot_assets = no_governed_background)
---   • no relevant existing candidate/inventory item exists in ANY state (probe n_relevant_total = 0)
+-- single transaction, race-resistant:
+BEGIN;
+  SELECT pg_advisory_xact_lock(hashtext('agap:'||appetite_signature));   -- serialize per signature
+  -- 1) re-read the stored verdict; 2) FRESHLY re-run the probe NOW:
+  probe := public.probe_asset_inventory(client_slug, vertical_key, 'static_background');
+  -- proceed to claim ONLY if ALL hold on fresh evidence:
+  --   subject_kind='static_background' AND failure_state='absent'
+  --   AND evidence_confidence='conclusive'
+  --   AND asset_gap_route(subject_kind,failure_state)='governed_sourcing'
+  --   AND asset_gap_automation(...)='governed_auto_sourcing'
+  --   AND (probe->>'coverage_conclusive')::bool = true          -- coverage still conclusive
+  --   AND resolve_slot_assets(...)->>'fail_reason' = 'no_governed_background'  -- no governed selection
+  --   AND (probe->>'n_inventory_total')::int = 0                -- relevant inventory STILL zero
+  -- CAS claim (never touch a moved row):
+  UPDATE m.asset_gap_suggestion
+     SET status='harvesting', claimed_by=:worker, claim_expires_at=now()+interval '…'
+   WHERE id=:id AND status='open' AND subject_kind='static_background' AND failure_state='absent'
+   RETURNING id;   -- zero rows ⇒ lost the race / state moved ⇒ abort, do not source
+COMMIT;
 ```
 
-Rows failing any clause are **out of scope for sourcing** — routed to operator/config/manual/backlog elsewhere, never sourced. The drain additionally, non-negotiably, applies every downstream gate this classifier does not replace: Image-workflow §2 non-negotiables (fenced-until-approved; PK visual verdict is the only deciding act; sha256+licence; pool-neutrality; full T3 + live proof + rollback-proven), and the NDIS staged real-imagery policy (Phase-1 person-free only; Phase 2/3 held) for NDIS-vertical rows. `governed_sourcing` is *eligibility in principle*, not licence to source people/cultural imagery. Subject gating keeps `logo`/`image`/`video_broll` out of sourcing entirely.
+A stale classifier result **never** independently authorizes sourcing — the fresh probe + zero-inventory + conclusive-coverage re-assertion inside the locked, CAS-guarded claim is mandatory. Rows failing any clause are out of scope for sourcing. The drain still applies every downstream gate this classifier does not replace: Image-workflow §2 non-negotiables (fenced-until-approved · PK visual verdict is the only deciding act · sha256+licence · pool-neutrality · full T3 + live proof + rollback-proven) and the NDIS staged real-imagery policy (Phase-1 person-free only; Phase 2/3 held). `governed_sourcing` is eligibility in principle. Subject gating keeps `logo`/`image`/`video_broll` out of sourcing entirely.
 
 ---
 
-## Notes / open decisions for PK (Gate-1 rev-2)
+## Notes for PK (Gate-1 rev-3)
 
-- **D1-a** — ratify Option R (pair-derived route/automation + pair index; no functional route index). *Recommend R.*
-- **D2-a** — `format_unmapped` default is now `(template, unsupported)` → `capability_backlog` (per #5); `operator_template_build` only with authoritative registry proof that the format is supported. A known-formats registry is a follow-up lane. *Confirm.*
-- **D2-b (new)** — `platform_config` `negative` (explicit `not_suitable`/`blocked` suitability) routes to `manual_triage` (conservative — overriding a deliberate negative is a human call); `misconfigured` (no suitability row, e.g. PP YouTube) → `config_repair`. *Confirm the split.*
-- **Tiering** — additive/dark DDL + helper + isolated functions = T2; DDL apply, function apply, backfill UPDATE are each T3. External review pinned to the final migration+function hash before any apply.
-- cc-0046 is the next free number. Brief is **uncommitted-to-main / feature-branch only**, pending Gate-1. Nothing is applied by drafting this.
+- All seven final revisions folded: (1) full probe universe with near-match retention; (2) candidate-store completeness + `coverage_conclusive`; (3) template-remediation corrections + `status_below_smoke`/`wrong_scope` fixes; (4) deterministic tie contract; (5) mechanical `(static_background,absent)` CHECK; (6) drain-time freshness + atomic validate-and-claim in D8; (7) three fixed-identity, separately-reviewable/rollbackable artifacts, reviewed-hash == applied.
+- Accepted rev-2 items retained: Option R · `format_unmapped=unsupported` default · `platform_config negative`→`manual_triage`.
+- Tiering: additive/dark DDL+helpers = T2 authoring; the three apply artifacts are three separate T3 gates, external review pinned per-artifact hash.
+- Brief is feature-branch only, **uncommitted-to-main**, pending Gate-1. Nothing is applied by drafting this.
