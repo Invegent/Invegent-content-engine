@@ -91,6 +91,21 @@ After all three: this precursor is proven and the **separate** backgrounds-only 
 
 ---
 
+## 7b. T3 STEP 1 — APPLIED (Artifact 1 only), PK-authorized 2026-07-21. Steps 2 & 3 remain UNAUTHORIZED.
+
+Applied via `execute_sql` at the T3 gate (apply_migration deny-listed). Pre-checks all passed (HEAD `d8b58f4`, origin 0/0, full sha256 `466bb7d83f7753bec8d985ac0c97fe917cf46560b6ab129bb7add1f8e269f11d` == reviewed, objects absent, 0 in-flight, rollback intact). Transaction committed, no error.
+
+- **Applied hash:** `466bb7d83f7753bec8d985ac0c97fe917cf46560b6ab129bb7add1f8e269f11d` (Artifact 1, full).
+- **Object inventory (live):** 6 columns (`subject_kind`/`failure_state` text+vocab-CHECK, `classifier_version` text, `diagnostic_evidence` jsonb, `diagnosed_at` timestamptz, `evidence_confidence` text+CHECK) · constraint `gap_absent_static_bg_requires_conclusive` (exact reviewed def) · index `asset_gap_suggestion_diag_pair_idx` on `(subject_kind, failure_state)` · 5 functions: `asset_gap_route(text,text)`+`asset_gap_automation(text,text)`+`diagnose_gap(jsonb,jsonb,jsonb,text)` (immutable), `derive_template_vertical(uuid)`+`probe_asset_inventory(text,text,uuid,text)` (stable security definer); all `search_path=""`.
+- **Grant proof:** every function ACL = `postgres=X ; service_role=X` only — no `anon`/`authenticated`/PUBLIC EXECUTE. No table grant/RLS change on `m.asset_gap_suggestion`.
+- **Constraint proof (live):** forged `(static_background, absent, insufficient)` and `(static_background, absent, NULL)` both rejected by `check_violation` via rolled-back UPDATE on a real row; no row modified.
+- **No-side-effect proof:** rows still **8** (status open=4, resolved=4 — unchanged); all 6 new columns NULL on every existing row; legacy columns intact; 0 `harvesting`/`candidates_ready`, 0 `claimed_by`. No sourcing / status transition / candidate / assignment / operational side effect.
+- **Ledger proof:** `supabase_migrations.schema_migrations` row `20260721100000 · cc0046_asset_gap_orthogonal_classification_ddl_v1` recorded (sha256 + provenance in `statements`).
+- **Rollback readiness:** `_harness/cc0046_ddl/rollback.sql` proven complete (apply→rollback→0 orphans; correct 4-arg probe + `derive_template_vertical` drops; dependency-safe order). Ready if needed.
+- **Branch/origin:** HEAD `d8b58f4`, origin parity 0/0, working tree clean (apply was DB-only; no git change).
+
+**STOPPED for separate T3 Step 2 authorization. No Artifact 2 apply, Artifact 3 backfill, merge, deploy, sourcing, or drain activation performed.**
+
 ## 8. Verification / review chain
 
 **Hermetic + live proofs:** PASS (see §4).
