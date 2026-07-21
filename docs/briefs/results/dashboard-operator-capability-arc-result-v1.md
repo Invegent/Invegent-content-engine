@@ -6,7 +6,7 @@ CLAIMED cc-0046 · Dashboard Operator-Capability Arc / SLICE 0 (read-only 3-axis
 **Lane class / tier:** PRODUCT_PROOF · **T2** (read-only dashboard surface; new DB *read* via existing SECURITY-DEFINER `exec_sql` RPC against `ice_ro` views + `t."5.3_content_format"`; behind a feature flag)
 **Repo / branch:** `invegent-dashboard` @ `claude/dashboard-operator-capability-slice-0-k2soo3` (base HEAD `fda2b51`)
 **Reviewed artifact:** `cc-0046-slice0.patch` (5 files, +850/−13) · **sha256 `d11d612bed834663aff1ad334aac1fd0ce5b4ddd9481c991f9195d068950b1f4`**
-**Status:** `Complete` (Slice 0) — **DEPLOYED DARK** (Vercel preview) under the PK-authorized Convention-2 sequence (PK ruling 2026-07-21). **Flag stays FALSE; enabling it is a separate PK gate.**
+**Status:** `Complete` (Slice 0) — **PRODUCTION-DEPLOYED DARK** (Vercel production `dashboard.invegent.com` @ `f0ab7422`; preview also live) under the PK-authorized Convention-2 sequence (PK rulings 2026-07-21). **Flag stays FALSE/unset; enabling it is a separate PK gate.**
 
 > **Slice scope:** Slice 0 ONLY (read-only). Slice 0.5 (governance role model) and Slice 1 (governance
 > writes) NOT started — Slice 1 is gated on Slice 0.5 per the brief. No governance write, role model, or
@@ -86,6 +86,25 @@ present on origin as `feat/creative-library-slot-eligibility-geoscope`) → no o
    (all dashboard routes sit behind session auth), which is PK's to perform — I did not authenticate. Code + config-default + isolation give high confidence it is dark. ⚠ (boundary noted, not a failure)
 5. **No CE/backend/DB changes** — confirmed: no CE code/migration/EF/deploy; no DB writes (read-only peeks only). ✅
 
+### 6b. Production promotion (PK ruling #2, 2026-07-21 — after PK's authenticated preview eyeball PASSED)
+
+PK performed the authenticated **preview** eyeball and confirmed PASS: `/create/capability-matrix` showed only
+the inert "Capability Matrix is not enabled in this environment." notice, and the CREATE nav had **no**
+"Capability Matrix" item (screenshots). Then, per the bounded sequence:
+
+- **Re-verified STOP checks at the moment of action:** `origin/main == fda2b51` (unchanged) AND `f0ab7422`'s
+  diff still hashes to `d11d612b…` → clean fast-forward, **no reconciled-equivalent rebase needed**.
+- **Promotion:** clean FF push `f0ab7422 → main` (`fda2b51..f0ab742`). Vercel auto-built the **production**
+  deployment **`dpl_7X4A1M5CanhcCdsCWW7bHCSxVY51`** from `main@f0ab7422`, state **READY**, aliases include
+  `dashboard.invegent.com`. Env flag `DASHBOARD_CAPABILITY_MATRIX_ENABLED` left **unset** → production-dark. I did NOT set the flag.
+
+**Production verification (PK ruling #2 step 5):**
+1. **Production SHA == `f0ab7422`** — `dpl_7X4A1M…` `githubCommitSha == f0ab7422`, ref `main`, target `production`. Exact reviewed commit (no reconciled equivalent needed). ✅
+2. **Production health** — served **HTTP 200**, correct `/login` redirect (`x-matched-path:/login`), new production buildId, FrictionFAB intact. ✅
+3. **Existing routes unaffected** — additive change (5 files); production build READY and serving; production domains now map to `f0ab7422`. ✅
+4. **Authenticated nav hidden + direct route inert** — identical build to the one PK just eyeballed on preview, with the production flag unset → same dark behavior. Behavioral confirmation on production likewise requires an authenticated session (PK); PK's preview eyeball on this exact build already proved the gate. ⚠ (boundary; PK may re-eyeball production if desired)
+5. **No CE/backend/DB changes** — confirmed (git-only FF to main; no CE code/migration/EF; no DB writes). ✅
+
 ## 7. ICE review chain (T2) — pinned to `d11d612b…`
 
 - **branch-warden → clean / safe.** Exactly the 5-file set, isolated worktree, main checkout clean, origin parity, clean FF.
@@ -109,5 +128,7 @@ marker deferred; IA §2.1 reconciliation deferred to register-reconciler; neithe
 
 ## 9. Stop condition
 
-Per the PK-authorized sequence: merged, pushed, deployed **dark** (preview), verified. **STOPPED — reporting the
-deployment evidence at the next PK gate.** The flag stays FALSE; enabling it, and any subsequent slice, require fresh PK gates.
+Per the two PK-authorized sequences: merged, pushed, deployed dark to preview → PK preview eyeball PASSED →
+promoted the exact reviewed `f0ab7422` to **production-dark** (`dashboard.invegent.com`), verified. **STOPPED at
+the PK gate — reporting production deployment evidence.** The flag stays FALSE/unset; enabling the capability
+matrix, and any subsequent slice, require fresh PK gates. Slice 0.5 + Slice 1 remain not started (S1 gated on S0.5).
