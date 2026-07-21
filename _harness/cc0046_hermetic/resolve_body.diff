@@ -1,0 +1,14 @@
+240,247c240,243
+<       SELECT COALESCE(
+<         (SELECT (array_agg(DISTINCT tt.value ORDER BY tt.value))[1]
+<            FROM c.creative_provider_template_tag tt
+<            WHERE tt.template_id = p_template_id AND tt.namespace = 'vertical'),
+<         (SELECT (array_agg(DISTINCT ft.value ORDER BY ft.value))[1]
+<            FROM c.creative_template_family_tag ft
+<            WHERE ft.family_id = v_family_id AND ft.namespace = 'vertical')
+<       ) INTO v_vertical;
+---
+>       -- cc-0046 Concern-1: consume the ONE authoritative vertical-basis contract
+>       -- (public.derive_template_vertical) shared with probe_asset_inventory, instead of an inline
+>       -- duplicate derivation. VALUE-IDENTICAL (same template-tag -> family-tag fallback).
+>       v_vertical := public.derive_template_vertical(p_template_id)->>'vertical_key';

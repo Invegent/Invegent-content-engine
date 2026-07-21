@@ -38,15 +38,18 @@
 >       'evidence_confidence', v_diag->>'evidence_confidence',
 >       'candidate_governance_posture', 'not_applicable',
 >       'diagnostic_evidence', v_diag->'diagnostic_evidence');
-132a157,163
+132a157,166
 >   -- cc-0046 additive: run the complete-inventory probe ONLY on the asset-fail path (D2.1/D2.2),
 >   -- then the pure orthogonal diagnosis. Legacy keys below are unchanged.
+>   -- Concern-1: pass the EXACT candidate template whose resolution reached assets_fail_closed
+>   -- (v_cand_tid — the same template resolve_slot_assets was called with above). The probe derives
+>   -- the vertical via the SAME authoritative contract (derive_template_vertical) resolve consumes.
 >   v_probe := case when v_client_short and v_slot_kind in ('static_background','logo')
->                   then public.probe_asset_inventory(p_client_slug, v_vertical, v_slot_kind)
+>                   then public.probe_asset_inventory(p_client_slug, p_platform, v_cand_tid, v_slot_kind)
 >                   else null end;
 >   v_diag  := public.diagnose_gap(v_st, v_derive, v_probe, v_slot_kind);
 > 
-151c182,192
+151c185,195
 <     'context', v_context);
 ---
 >     'context', v_context,

@@ -64,7 +64,7 @@ Upgrade ICE's asset-gap classifier so it distinguishes — orthogonally — *wha
 ## Success criteria
 
 1. **Orthogonal contract (D1):** `failure_state` carries no subject; route + automation are pure functions of the pair, single-source-derived.
-2. **Complete-inventory absence proof (D2.1/D2.2):** `governed_sourcing` iff `subject_kind=static_background` ∧ `failure_state=absent` ∧ `evidence_confidence=conclusive` ∧ no governed selection ∧ `n_inventory_total=0` over the complete defined universe ∧ `coverage_conclusive=true`. Any uncheckable authoritative store → `coverage_conclusive=false` → `unresolved`. Existing near-match/ungoverned items are **diagnosed, not filtered out**.
+2. **Complete-inventory absence proof (D2.1/D2.2):** `governed_sourcing` iff `subject_kind=static_background` ∧ `failure_state=absent` ∧ `evidence_confidence=conclusive` ∧ **proven resolver/probe vertical alignment (`vertical_basis_conclusive=true`)** ∧ no governed selection ∧ `n_inventory_total=0` over the complete defined universe ∧ `coverage_conclusive=true`. (Concern-1 fix, PK 2026-07-21: probe + resolver both consume the single authoritative `public.derive_template_vertical(candidate_template_id)` — no divergent derivation; platform_scope is a configurable near-match on both origins.) Any uncheckable authoritative store → `coverage_conclusive=false` → `unresolved`. Existing near-match/ungoverned items are **diagnosed, not filtered out**.
 3. **Deterministic ties (D2.3):** materially divergent deepest diagnoses **always** → `(none, unresolved)`, `insufficient`, `manual_triage`. No optional outcomes.
 4. **Template remediation corrected (D2):** `(template,absent)`→`operator_template_build`; `(template,unproven)`→`operator_approval`; `(template,misconfigured)`→`config_repair` when safely diagnosable else `manual_triage`; `status_below_smoke` never routes to template build; `wrong_scope` never assumes a new template unless config/reuse provably cannot resolve.
 5. **Mechanical protection (D3/#5):** a DB CHECK forbids persisting `(static_background, absent)` unless `evidence_confidence='conclusive'`.
@@ -309,12 +309,15 @@ The drain **must not** re-derive routing and **must not** trust a stale classifi
 BEGIN;
   SELECT pg_advisory_xact_lock(hashtext('agap:'||appetite_signature));   -- serialize per signature
   -- 1) re-read the stored verdict; 2) FRESHLY re-run the probe NOW:
-  probe := public.probe_asset_inventory(client_slug, vertical_key, 'static_background');
+  -- fresh probe MUST use the SAME authoritative vertical basis (candidate_template_id), never a
+  -- re-derivation — probe_asset_inventory and resolve_slot_assets both consume public.derive_template_vertical.
+  probe := public.probe_asset_inventory(client_slug, platform, candidate_template_id, 'static_background');
   -- proceed to claim ONLY if ALL hold on fresh evidence:
   --   subject_kind='static_background' AND failure_state='absent'
   --   AND evidence_confidence='conclusive'
   --   AND asset_gap_route(subject_kind,failure_state)='governed_sourcing'
   --   AND asset_gap_automation(...)='governed_auto_sourcing'
+  --   AND (probe->>'vertical_basis_conclusive')::bool = true    -- proven resolver/probe vertical alignment
   --   AND (probe->>'coverage_conclusive')::bool = true          -- coverage still conclusive
   --   AND resolve_slot_assets(...)->>'fail_reason' = 'no_governed_background'  -- no governed selection
   --   AND (probe->>'n_inventory_total')::int = 0                -- relevant inventory STILL zero
