@@ -2,7 +2,8 @@
 -- Reverses 20260721100000_cc0046_asset_gap_orthogonal_classification_ddl_v1.sql.
 begin;
 drop index if exists m.asset_gap_suggestion_diag_pair_idx;
-drop function if exists public.probe_asset_inventory(text,text,text);
+drop function if exists public.probe_asset_inventory(text,text,uuid,text);
+drop function if exists public.derive_template_vertical(uuid);
 drop function if exists public.diagnose_gap(jsonb,jsonb,jsonb,text);
 drop function if exists public.asset_gap_automation(text,text);
 drop function if exists public.asset_gap_route(text,text);
