@@ -1,0 +1,21 @@
+126c126,127
+<               analyzer_version, inventory_policy_version
+---
+>               analyzer_version, inventory_policy_version,
+>               subject_kind, failure_state, classifier_version, diagnostic_evidence, diagnosed_at, evidence_confidence
+136c137,139
+<               c_analyzer_version, coalesce(v_g#>>'{context,appetite_policy_version}', 'v2')
+---
+>               c_analyzer_version, coalesce(v_g#>>'{context,appetite_policy_version}', 'v2'),
+>               v_g->>'subject_kind', v_g->>'failure_state', 'cc0046-classifier-v1',
+>               v_g->'diagnostic_evidence', now(), v_g->>'evidence_confidence'
+147c150,156
+<               source_of_demand      = excluded.source_of_demand
+---
+>               source_of_demand      = excluded.source_of_demand,
+>               subject_kind          = excluded.subject_kind,
+>               failure_state         = excluded.failure_state,
+>               classifier_version    = excluded.classifier_version,
+>               diagnostic_evidence   = excluded.diagnostic_evidence,
+>               diagnosed_at          = excluded.diagnosed_at,
+>               evidence_confidence   = excluded.evidence_confidence

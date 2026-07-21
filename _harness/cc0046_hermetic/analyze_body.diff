@@ -1,0 +1,62 @@
+35a36,38
+>   -- cc-0046 additive-only: orthogonal classification (all legacy declares above are unchanged)
+>   v_probe      jsonb;
+>   v_diag       jsonb;
+41a45
+>     v_diag := public.diagnose_gap(null::jsonb, null::jsonb, null::jsonb, null::text);
+43c47,53
+<       'asset_gap_drainability','triage_only','why_needed','client_not_found','context',v_context);
+---
+>       'asset_gap_drainability','triage_only','why_needed','client_not_found','context',v_context,
+>       'subject_kind', v_diag->>'subject_kind', 'failure_state', v_diag->>'failure_state',
+>       'remediation_route', public.asset_gap_route(v_diag->>'subject_kind', v_diag->>'failure_state'),
+>       'automation_class', public.asset_gap_automation(v_diag->>'subject_kind', v_diag->>'failure_state'),
+>       'evidence_confidence', v_diag->>'evidence_confidence',
+>       'candidate_governance_posture', 'not_applicable',
+>       'diagnostic_evidence', v_diag->'diagnostic_evidence');
+60a71
+>     v_diag := public.diagnose_gap(v_st, null::jsonb, null::jsonb, null::text);
+63c74,80
+<       'select_template_status','ok','context',v_context);
+---
+>       'select_template_status','ok','context',v_context,
+>       'subject_kind', v_diag->>'subject_kind', 'failure_state', v_diag->>'failure_state',
+>       'remediation_route', public.asset_gap_route(v_diag->>'subject_kind', v_diag->>'failure_state'),
+>       'automation_class', public.asset_gap_automation(v_diag->>'subject_kind', v_diag->>'failure_state'),
+>       'evidence_confidence', v_diag->>'evidence_confidence',
+>       'candidate_governance_posture', 'not_applicable',
+>       'diagnostic_evidence', v_diag->'diagnostic_evidence');
+84a102
+>     v_diag := public.diagnose_gap(v_st, v_derive, null::jsonb, null::text);
+87c105,111
+<       'appetite_descriptor', v_derive, 'client_pool_policy', v_pool_policy, 'slot_kind','none','context',v_context);
+---
+>       'appetite_descriptor', v_derive, 'client_pool_policy', v_pool_policy, 'slot_kind','none','context',v_context,
+>       'subject_kind', v_diag->>'subject_kind', 'failure_state', v_diag->>'failure_state',
+>       'remediation_route', public.asset_gap_route(v_diag->>'subject_kind', v_diag->>'failure_state'),
+>       'automation_class', public.asset_gap_automation(v_diag->>'subject_kind', v_diag->>'failure_state'),
+>       'evidence_confidence', v_diag->>'evidence_confidence',
+>       'candidate_governance_posture', 'not_applicable',
+>       'diagnostic_evidence', v_diag->'diagnostic_evidence');
+132a157,163
+>   -- cc-0046 additive: run the complete-inventory probe ONLY on the asset-fail path (D2.1/D2.2),
+>   -- then the pure orthogonal diagnosis. Legacy keys below are unchanged.
+>   v_probe := case when v_client_short and v_slot_kind in ('static_background','logo')
+>                   then public.probe_asset_inventory(p_client_slug, v_vertical, v_slot_kind)
+>                   else null end;
+>   v_diag  := public.diagnose_gap(v_st, v_derive, v_probe, v_slot_kind);
+> 
+151c182,192
+<     'context', v_context);
+---
+>     'context', v_context,
+>     -- cc-0046 additive orthogonal classification keys (legacy keys above unchanged) --
+>     'subject_kind', v_diag->>'subject_kind',
+>     'failure_state', v_diag->>'failure_state',
+>     'remediation_route', public.asset_gap_route(v_diag->>'subject_kind', v_diag->>'failure_state'),
+>     'automation_class', public.asset_gap_automation(v_diag->>'subject_kind', v_diag->>'failure_state'),
+>     'evidence_confidence', v_diag->>'evidence_confidence',
+>     'candidate_governance_posture',
+>       case when public.asset_gap_route(v_diag->>'subject_kind', v_diag->>'failure_state') = 'governed_sourcing'
+>            then 'fenced_until_approved' else 'not_applicable' end,
+>     'diagnostic_evidence', v_diag->'diagnostic_evidence');
