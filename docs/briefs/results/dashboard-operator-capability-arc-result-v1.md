@@ -6,7 +6,7 @@ CLAIMED cc-0046 · Dashboard Operator-Capability Arc / SLICE 0 (read-only 3-axis
 **Lane class / tier:** PRODUCT_PROOF · **T2** (read-only dashboard surface; new DB *read* via existing SECURITY-DEFINER `exec_sql` RPC against `ice_ro` views + `t."5.3_content_format"`; behind a feature flag)
 **Repo / branch:** `invegent-dashboard` @ `claude/dashboard-operator-capability-slice-0-k2soo3` (base HEAD `fda2b51`)
 **Reviewed artifact:** `cc-0046-slice0.patch` (5 files, +850/−13) · **sha256 `d11d612bed834663aff1ad334aac1fd0ce5b4ddd9481c991f9195d068950b1f4`**
-**Status:** `Complete` (Slice 0) — **PRODUCTION-DEPLOYED DARK** (Vercel production `dashboard.invegent.com` @ `f0ab7422`; preview also live) under the PK-authorized Convention-2 sequence (PK rulings 2026-07-21). **Flag stays FALSE/unset; enabling it is a separate PK gate.**
+**Status:** `Complete` (Slice 0) — **ACTIVATED / LIVE IN PRODUCTION** (`dashboard.invegent.com` @ `f0ab7422`, deployment `dpl_6KgpPCbNkce…`; `DASHBOARD_CAPABILITY_MATRIX_ENABLED=true`, Production scope). PK set the flag and redeployed; orchestrator verification read-only. Authenticated dark pre-check + post-activation verification both PASSED (§6d). Preview remains dark (flag not set there). **Two advisories raised, not acted on — §6d / §8.**
 
 > **Slice scope:** Slice 0 ONLY (read-only). Slice 0.5 (governance role model) and Slice 1 (governance
 > writes) NOT started — Slice 1 is gated on Slice 0.5 per the brief. No governance write, role model, or
@@ -130,6 +130,106 @@ build `f0ab7422`. Rollback = remove/set `DASHBOARD_CAPABILITY_MATRIX_ENABLED` to
 Vercel instant-rollback to the current dark production deployment `dpl_7X4A1M…` (which *is* `f0ab7422`). No code
 revert needed; the dark build is the current production deployment.
 
+### 6d. ACTIVATED (2026-07-21/22) — flag ON in production, authenticated verification PASSED
+
+PK elected the Vercel-UI path at the activation gate (this laptop session had a Vercel CLI blocked by an
+**invalid `VERCEL_TOKEN`** — User-scope, len 60, `vercel whoami` rejects it — and the connected Vercel MCP still
+exposes **no env-var management tool**). **PK set the flag and ran the redeploy; the orchestrator performed only
+read-only verification.** No CE, DB, EF, migration, or dashboard-code change was made in this step.
+
+**Activated deployment identity:**
+- **`dpl_6KgpPCbNkceTzgnehRMsB3QhEuvK`** — `state=READY`, `target=production`, `source=redeploy`,
+  `action=redeploy`, `originalDeploymentId=dpl_7X4A1M5CanhcCdsCWW7bHCSxVY51`.
+- **`githubCommitSha = f0ab74229318b9616fb731f72d47ae5d1dca9f7a`**, ref `main`, `githubCommitVerification=verified`
+  → **the exact reviewed commit; no code change, env-only rebuild.** Reviewed patch hash `d11d612b…` unchanged.
+- Alias now resolves: `dashboard.invegent.com` → `dpl_6KgpPCbNkce…` (also `invegent-dashboard.vercel.app`,
+  `…-git-main-…`). `aliasError: null`. Built 2026-07-21 22:56Z → ready 22:57Z.
+- **Flag state:** `DASHBOARD_CAPABILITY_MATRIX_ENABLED = true`, **Production scope only** (set by PK in Vercel
+  project settings; Preview/Development left unset — preview therefore remains dark).
+
+**Dark pre-check BEFORE the flip (authenticated, production, step 1) — PASS.** On `dpl_7X4A1M…`:
+no "Capability Matrix" item anywhere in the CREATE nav (full nav read: Content Studio · Creative Library ·
+Formats · Format Capability · Template Registry · Creative Intake · Background Assets); `/create/capability-matrix`
+rendered exactly `Capability Matrix is not enabled in this environment.`; nearby Create routes normal. This closes
+the §6.4/§6b step-4 boundary that earlier sessions could only infer — **the gated state is now behaviorally proven
+on production, not just on preview.**
+
+**Authenticated verification AFTER the flip (step 4) — all checks PASS:**
+
+| Check | Expected | Observed live |
+|---|---|---|
+| "Capability Matrix" in CREATE nav | exactly once; route loads | **once** (`/create/capability-matrix`), placed after Template Registry; route renders ✅ |
+| Template inventory non-empty | 25 (17 static_image + 8 video) | **25 live templates**; section headers "17 live templates (static_image)" + "8 live templates (video)" ✅ |
+| Governance populated from `ice_ro` | 5 rows; `image_quote` + `video_short_stat` | **5 governance rows** (CFW, PP, Invegent, NDIS Yarns × `image_quote`; PP × `video_short_stat`), all `enabled` ✅ |
+| "Uncategorised format-type" group present | 7 of 13 formats NULL `format_category` | group present and labelled "NULL format-type — never hidden"; **7 formats** under it, **13** formats total across all groups ✅ |
+| No vendored snapshot served as live | — | all three panels name their live source inline (`t."5.3_content_format"`, `ice_ro.template_registry_status`, `ice_ro.asset_governance_status`) with a request-time read timestamp ✅ |
+| No false empty-TMR | — | inventory renders 25 templates, not empty ✅ |
+| Nearby Create routes fine | — | `/create/format-capability` (52 cells, 13×4, diagnostics), `/create/templates` (25 templates / 17 families), `/content-studio` all render normally ✅ |
+| No secret / PII / `advisor_description` exposure | — | full page text read; none present ✅ |
+| Client-side errors | — | **no console errors or exceptions** ✅ |
+
+**Independent cross-check of the overlay counts** (read-only, project `mbkmaxqhsohbtwsqolns`, via allowlisted
+`scripts/db-read.py`): `ice_ro.template_registry_status` = **25**, `ice_ro.asset_governance_status` = **5** —
+both match the rendered surface exactly. **Boundary named honestly:** the 7-of-13 `format_category` figure could
+**not** be independently re-derived here — `t` is outside the R0 grant (`db-read.py` → `42501 permission denied
+for schema t`), so that number is confirmed from the rendered surface (which reads that source live) and from the
+prior session's `execute_sql` reading, not from a second independent read in this session.
+
+**Two advisories for PK — neither is a rollback trigger, neither was acted on:**
+
+1. **The "empty Template Registry" claim is stale and now user-visible.** The surface renders the copy
+   *"25 live templates — the honest replacement for the empty Template Registry"* (and the same premise appears in
+   the commit message and §1 above). But the live `/create/templates` Template Registry **is not empty** — it shows
+   **25 templates / 17 families** from the same source. The matrix's *data* is correct; the *justification copy*
+   overstates. This matches the standing register note that the TMR registry is populated, not empty. **Copy-only;
+   PK's call whether to correct it in a follow-up.**
+2. **The nav/purpose overlap with `/create/format-capability` is materially stronger than the
+   `dashboard-ia-lint` WARN conveyed.** The lint flagged only the adjacent word "Capability". In live production the
+   two surfaces are near-twins by stated purpose: the pre-existing Format Capability page also renders a
+   *"Capability matrix — format × platform"* over the **same 13 formats × 4 platforms**, and additionally carries the
+   proof chain, conflict diagnostics and per-cell evidence the new surface does not. They now sit two items apart in
+   the same CREATE group. This is adjacent to the named **"confusing duplicate nav"** rollback trigger. **Not acted
+   on** — the fence says keep the label "Capability Matrix", no relabel/re-pin. **Flagged for PK ruling.**
+
+**Fail-loud (step 5) — unchanged from §6c: recorded as CODE-REVIEWED, not destructively exercised.** No safe,
+reversible way exists to induce a live read failure without a forbidden mutation; per PK's step-5 fallback no
+failure mechanism was built. The live surface did not exercise the error path (all three reads succeeded).
+
+**Rollback readiness (steps 6–7) — verified available, not needed.** No rollback trigger fired: live reads all
+succeeded; no failed read shown as empty; no nav/Create regression; no secret/PII/`advisor_description` exposure;
+production health normal. Rollback remains a pure env toggle on an unchanged build — remove/false
+`DASHBOARD_CAPABILITY_MATRIX_ENABLED` + redeploy, **or** Vercel instant-rollback to `dpl_7X4A1M…`
+(still listed `isRollbackCandidate: true`, and it *is* the same `f0ab7422`). No code revert path required.
+
+### 6e. PK RULING — Slice 0 ACCEPTED (2026-07-22)
+
+**Verdict: `PRODUCTION-ENABLED · VERIFIED LIVE · READ-ONLY PROVEN`.** PK accepted the §6d evidence in full —
+deployment `dpl_6KgpPCbNkce…`, reviewed SHA `f0ab74229318…`, reviewed input hash `d11d612b…` unchanged,
+dark-before-flip confirmed in production, activated nav + route verified, 25 templates (17 `static_image` +
+8 `video`), 5 governance rows across `image_quote` + `video_short_stat`, Uncategorised grouping visible for
+7 of 13 formats, no PII / secrets / `advisor_description` / console errors / empty-TMR falsehood /
+neighbouring-route regression, rollback deployment available. **Fail-loud as code-reviewed-but-not-
+destructively-exercised is explicitly ACCEPTED.**
+
+- **`DASHBOARD_CAPABILITY_MATRIX_ENABLED` stays `true`. No rollback required.**
+- **Advisory 1 (stale copy) — UPHELD.** The "empty Template Registry" claim "must not remain as durable
+  operator copy". PK authorized a **separate copy-only follow-up** replacing it with neutral current wording
+  (e.g. *"25 live templates from the current Template Registry"* / *"Live template inventory sourced from the
+  current registry"*), and it must **not** imply `/create/templates` is empty, superseded, or non-live.
+  **It changes the reviewed production patch → it must be independently hashed and re-reviewed, and must NOT
+  be folded into this closeout-record commit.** Not started.
+- **Advisory 2 (duplicate capability surfaces) — UPHELD as a confirmed IA reconciliation requirement**, not a
+  naming preference. PK opened **`cc-0046 Slice 0.1 — Capability surface IA reconciliation`** (read-only
+  analysis + presentation design ONLY; no implement, rename, nav removal, route redirect, or flag change).
+- **Sequencing:** Slice 0 stays enabled while Slice 0.1 runs · **Slice 0.5 NOT authorized** · Slice 1 remains
+  blocked on Slice 0.5 · no governance writes, role-model implementation, Content Studio edits, CE/backend
+  changes, DB changes, migrations, or unrelated cleanup authorized.
+
+PK authorized commit + push of this docs-only closeout set (exact 3-file set; fetch + re-read origin first;
+never from the shared main checkout; stop if reconciliation alters substantive closeout content or the file
+set). Origin re-read at commit time: lane branch `0/0` vs origin — **no reconciliation was needed**
+(CE `origin/main` had independently advanced to `8cf573e`; unrelated to this branch, not merged here).
+
 ## 7. ICE review chain (T2) — pinned to `d11d612b…`
 
 - **branch-warden → clean / safe.** Exactly the 5-file set, isolated worktree, main checkout clean, origin parity, clean FF.
@@ -147,13 +247,32 @@ marker deferred; IA §2.1 reconciliation deferred to register-reconciler; neithe
 
 ## 8. Open issues / next gate
 
-- **Flag enable is the next PK gate** — `DASHBOARD_CAPABILITY_MATRIX_ENABLED=true` must NOT be set without separate PK authorization.
-- Behavioral confirmation of the gated state on the preview needs an authenticated session (PK) — see §6.4 boundary.
+- **Slice 0 is ACCEPTED, ACTIVATED and LIVE** (§6d evidence, §6e ruling) — `PRODUCTION-ENABLED · VERIFIED LIVE ·
+  READ-ONLY PROVEN`; flag `true`, Production scope, on `dpl_6KgpPCbNkce…` = `f0ab7422`. No remaining Slice 0
+  execution step; no rollback required.
+- **Advisory #1 → authorized copy-only follow-up (NOT STARTED).** Replace the stale "empty Template Registry"
+  claim with neutral current wording; must not imply `/create/templates` is empty/superseded/non-live.
+  **Changes the reviewed production patch → independently hashed + re-reviewed; never folded into a record commit.**
+- **Advisory #2 → `cc-0046 Slice 0.1 — Capability surface IA reconciliation` OPENED (read-only).** Compare the
+  two surfaces on primary operator question · live data source · axes · proof/governance overlays · conflict
+  diagnostics · intended operator action · audience+frequency; recommend ONE durable model (merge / retain both
+  with distinct jobs+names / drill-down / retire one preserving unique diagnostics) plus the smallest
+  implementation option. **No implement, rename, nav removal, route redirect, or flag change in Slice 0.1.**
+- Deferred, unchanged: primary-question marker; IA §2.1 route-inventory reconciliation (→ `register-reconciler`).
+- **Independent-read boundary:** the 7-of-13 `format_category` figure is UI-derived + prior-session `execute_sql`;
+  `t` is outside the R0 `ice_ro` grant, so it has no second independent read in this session. A curated
+  secret-free `ice_ro` view for the format taxonomy would close this gap under the normal T2/T3 gate.
 - Slice 0.5 (governance role model) and Slice 1 (governance writes) remain **not started**; S1 gated on S0.5.
 
 ## 9. Stop condition
 
-Per the two PK-authorized sequences: merged, pushed, deployed dark to preview → PK preview eyeball PASSED →
-promoted the exact reviewed `f0ab7422` to **production-dark** (`dashboard.invegent.com`), verified. **STOPPED at
-the PK gate — reporting production deployment evidence.** The flag stays FALSE/unset; enabling the capability
-matrix, and any subsequent slice, require fresh PK gates. Slice 0.5 + Slice 1 remain not started (S1 gated on S0.5).
+Per the three PK-authorized sequences: merged, pushed, deployed dark to preview → PK preview eyeball PASSED →
+promoted the exact reviewed `f0ab7422` to production-dark → **PK set the flag and redeployed; orchestrator ran
+read-only verification only.** Authenticated dark pre-check PASSED, authenticated post-activation verification
+PASSED on every named check, rollback verified available and not needed, two advisories raised and **not** acted
+on → **PK ACCEPTED Slice 0 as `PRODUCTION-ENABLED · VERIFIED LIVE · READ-ONLY PROVEN` and authorized this
+docs-only closeout push (§6e).** Both advisories were upheld as separate authorized work: a copy-only
+follow-up (independently hashed + re-reviewed) and read-only `Slice 0.1`. **STOPPING after this push and the
+Slice 0.1 IA recommendation — both return at the next PK gate.** Slice 0.5 is NOT authorized; Slice 1 stays
+blocked on Slice 0.5; no governance write, role model, Content Studio edit, CE/backend/DB change, migration,
+or unrelated cleanup is authorized.
