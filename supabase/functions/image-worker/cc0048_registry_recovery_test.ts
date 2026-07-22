@@ -126,6 +126,9 @@ Deno.test('T4 Invegent resolves a valid contract with the PK-authored brand valu
   assertEquals(INVEGENT_IMAGE_QUOTE_QUOTE_CARD_V1.contract_ref, 'invegent.image_quote.quote_card');
   assertEquals(INVEGENT_IMAGE_QUOTE_QUOTE_CARD_V1.fields.governed_assets.background.policy, 'tmr_spine');
   assertEquals(INVEGENT_IMAGE_QUOTE_QUOTE_CARD_V1.fields.governed_assets.background.asset_keys, undefined);
+  // cc-0049: Invegent's contract now also declares attribution + source_label (its governed
+  // winner is the quote card, whose Attribution/SourceLabel elements no B1Fields member fed).
+  // Those two keys are emitted ONLY for clients that declare them — see T7.
   assertEquals(buildProofFieldsFromDraft(draft(INV_ID), FIXED), {
     category: 'AI & AUTOMATION',
     headline: HEADLINE,
@@ -133,6 +136,8 @@ Deno.test('T4 Invegent resolves a valid contract with the PK-authored brand valu
     location: '',
     date: EXPECTED_DATE,
     footer: 'Invegent',
+    attribution: 'Invegent — AI & Automation',
+    source_label: 'invegent.com',
   });
 });
 
@@ -219,12 +224,23 @@ Deno.test('T7 patch changes contract resolution only — surrounding behaviour u
     );
   }
   // (b) The emitted field shape is still EXACTLY the 6 keys, for every registered client.
-  for (const id of [PP_ID, NDIS_ID, CFW_ID, INV_ID]) {
+  // cc-0049: clients that declare NO attribution/source_label still emit EXACTLY the original
+  // 6 keys (byte-identical shape); Invegent additionally emits those two — asserted separately
+  // below so the no-shape-change guarantee for PP/NDIS/CFW stays explicit.
+  for (const id of [PP_ID, NDIS_ID, CFW_ID]) {
     const f = buildProofFieldsFromDraft(draft(id), FIXED);
     assertEquals(Object.keys(f).sort(), ['category', 'date', 'footer', 'headline', 'location', 'subtitle']);
     assertEquals(f.headline, HEADLINE);   // headline still passes through untouched
     assertEquals(f.subtitle, '');         // subtitle still derived downstream, not here
     assertEquals(f.date, EXPECTED_DATE);  // date still render-time via the injectable clock
+  }
+  {
+    const f = buildProofFieldsFromDraft(draft(INV_ID), FIXED);
+    assertEquals(Object.keys(f).sort(),
+      ['attribution', 'category', 'date', 'footer', 'headline', 'location', 'source_label', 'subtitle']);
+    assertEquals(f.headline, HEADLINE);
+    assertEquals(f.subtitle, '');
+    assertEquals(f.date, EXPECTED_DATE);
   }
   // (c) The new entries declare NO hardcoded background pool, so template selection and asset
   //     resolution remain the TMR spine's job — this patch cannot influence either.
