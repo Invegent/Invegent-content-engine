@@ -1,4 +1,15 @@
-// image-worker v3.31.0
+// image-worker v3.32.0
+// v3.32.0 (2026-07-22) — cc-0048 INCIDENT RECOVERY. NO logic change in THIS entrypoint —
+//   version bump + header only, to reclassify the drift gate off A-LE (the drift gate hashes
+//   ONLY index.ts, so a helper-only change would stay A-LE forever and safe-deploy would
+//   hard-block it). The actual change is a DATA addition in creative_contract.ts: registry
+//   entries for care-for-welfare-pty-ltd and invegent, whose absence made
+//   resolveCreativeContract return null and the v3.28.0 fail-closed guard throw
+//   brand_payload_contract_unresolved on every image_quote render for those two clients
+//   (304 failed renders, 2026-07-20 15:30Z → 2026-07-22). The guard is UNCHANGED and still
+//   fails closed for any unregistered (client_id, recommended_format) pair. category/footer
+//   in the new entries are EXPLICIT PK-AUTHORED brand values (Gate-1 2026-07-22), not derived.
+//   NO change to template selection, asset resolution, render, or publish behaviour.
 // v3.31.0 (2026-07-18) — cc-0040 Step 2+3 & D7 footer fold-in (combined). NO logic change in
 //   THIS entrypoint — version bump + header only, to reclassify the drift gate off A-LE (the
 //   drift gate hashes ONLY index.ts, so a helper-only change stays A-LE without this bump). The
@@ -445,7 +456,7 @@ import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C:
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.31.0';  // cc-0040 Step 2+3 & D7 footer fold-in — entrypoint bump only (drift-gate reclassify); logic changes are in the helpers/contract
+const VERSION = 'image-worker-v3.32.0';  // cc-0048 incident recovery — entrypoint bump only (drift-gate reclassify); the change is a registry DATA addition in creative_contract.ts
 // cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
 // Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
 // provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1
