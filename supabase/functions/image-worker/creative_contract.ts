@@ -357,6 +357,14 @@ export const INVEGENT_IMAGE_QUOTE_QUOTE_CARD_V1: CreativeContract = Object.freez
       Object.freeze({ field: 'date', value: 'render date (today)' }),
       Object.freeze({ field: 'footer', value: 'Invegent' }),
       Object.freeze({ field: 'location', value: '' }),
+      // cc-0049: the quote-card winner (generic_quote_card_1x1_v1) has Attribution +
+      // SourceLabel dynamic text elements that no B1Fields member fed. These are PK-AUTHORED
+      // brand values (Gate-1 2026-07-22) and live HERE, per-client, NOT in the template-keyed
+      // winner map — a template-keyed literal would leak Invegent's brand onto any other
+      // client selecting the same winner (property-pulse holds a visually_approved assignment
+      // on this exact template).
+      Object.freeze({ field: 'attribution', value: 'Invegent — AI & Automation' }),
+      Object.freeze({ field: 'source_label', value: 'invegent.com' }),
     ]),
     governed_assets: Object.freeze({
       logo: Object.freeze({ asset_key: 'invegent_logo_square_brand_bg', policy: 'fixed' as const }),

@@ -57,7 +57,7 @@ export function buildProofFieldsFromDraft(
   draft: ProofDraftRow | null | undefined,
   today: Date = new Date(),
   resolve: (clientId: string, recommendedFormat: string) => CreativeContract | null = resolveCreativeContract,
-): { category: string; headline: string; subtitle: string; location: string; date: string; footer: string } {
+): { category: string; headline: string; subtitle: string; location: string; date: string; footer: string; attribution?: string; source_label?: string } {
   // (1) Headline hard-gate FIRST — a missing-headline draft throws the headline error
   // regardless of client_id, so this MUST precede the contract resolution below.
   const headline = (draft?.image_headline ?? '').trim();
@@ -84,9 +84,9 @@ export function buildProofFieldsFromDraft(
     throw new Error('brand_payload_contract_incomplete');
   }
   const location = fixedValue('location') ?? '';
-  // (4) Emit the fixed 6-key field shape. date stays render-time via the injectable `today`
+  // (4) Emit the 6-key field shape. date stays render-time via the injectable `today`
   // (the contract's renderer_fixed 'date' entry is a descriptive placeholder, not a literal).
-  return {
+  const out: Record<string, string> = {
     category,
     headline,
     subtitle: '',
@@ -94,4 +94,15 @@ export function buildProofFieldsFromDraft(
     date: formatProofDate(today),
     footer,
   };
+  // (5) cc-0049 — OPTIONAL per-client extras, emitted ONLY when the client's contract declares
+  // them. The quote-card winner needs Attribution + SourceLabel; the market-insight winner does
+  // not. Keeping them optional means every contract that does NOT declare them (PP, NDIS, CFW)
+  // emits the EXACT same 6 keys as before — byte-identical output, no consumer change.
+  // These are per-client brand values by design: they live in the client's contract, never in
+  // the template-keyed winner map (which has no client context and would leak across brands).
+  const attribution = fixedValue('attribution');
+  if (attribution !== undefined) out.attribution = attribution;
+  const sourceLabel = fixedValue('source_label');
+  if (sourceLabel !== undefined) out.source_label = sourceLabel;
+  return out as { category: string; headline: string; subtitle: string; location: string; date: string; footer: string; attribution?: string; source_label?: string };
 }

@@ -146,6 +146,11 @@ export type B1Fields = {
   location: string;
   date: string;
   footer: string;
+  // cc-0049 — OPTIONAL per-client brand values, present only when the client's creative
+  // contract declares them (quote-card winner needs them; market-insight does not). Optional
+  // by design so every existing caller/consumer is unchanged.
+  attribution?: string;
+  source_label?: string;
 };
 
 // Minimal structural view of the `public.select_template` jsonb response — ONLY the
@@ -207,6 +212,32 @@ export const TMR_WINNER_TEXT_FIELDS: Record<string, (f: B1Fields) => Record<stri
     'Date.text': f.date,
     'Footer.text': f.footer,
   }),
+  // cc-0049 — quote-card winner. Element names/types/dynamic flags read from the AUTHORITATIVE
+  // governed capture c.creative_provider_template_field for template
+  // 2140ca19-d075-49d3-9dc9-30d924805e22 (populated from live Creatomate by the v4.71
+  // fresh-capture) — NOT inferred from a label, screenshot, prior render payload, or the
+  // market-insight mapping. That template's dynamic text elements are exactly: QuoteText
+  // (required_for_render=true), Attribution, SourceLabel, Footer. QuoteMark (the baked '"')
+  // and Scrim are dynamic=false and are deliberately NOT mapped. Background/Logo/Scrim.opacity
+  // stay authoritative from slot_resolution. The '<Element>.text' key form is the form proven
+  // in production by the market-insight winner above.
+  'generic_quote_card_1x1_v1': (f) => {
+    // FAIL CLOSED: Attribution/SourceLabel are PER-CLIENT brand values carried on the client's
+    // creative contract (never in this template-keyed map, which has no client context and
+    // would leak one brand onto another — property-pulse also holds a visually_approved
+    // assignment on this template). If a client selects this winner without declaring them,
+    // throw rather than render the template's placeholder defaults ("Attribution name, role" /
+    // "Source label"). Same doctrine as the unmapped-winner guard: never guess brand payload.
+    if (f.attribution === undefined || f.source_label === undefined) {
+      throw new Error('tmr_winner_brand_fields_missing: generic_quote_card_1x1_v1 requires contract attribution + source_label');
+    }
+    return {
+      'QuoteText.text': f.headline,
+      'Attribution.text': f.attribution,
+      'SourceLabel.text': f.source_label,
+      'Footer.text': f.footer,
+    };
+  },
 };
 
 // Layout guard — the STRUCTURAL fix for the headline/subtitle overprint (cc-0033a).

@@ -1,4 +1,17 @@
-// image-worker v3.32.0
+// image-worker v3.33.0
+// v3.33.0 (2026-07-22) — cc-0049 INCIDENT RECOVERY (Invegent quote-card winner mapping).
+//   NO logic change in THIS entrypoint — version bump + header only (the drift gate hashes
+//   ONLY index.ts). Actual changes: (1) TMR_WINNER_TEXT_FIELDS gains
+//   generic_quote_card_1x1_v1, mapped from the AUTHORITATIVE governed element capture
+//   c.creative_provider_template_field (QuoteText/Attribution/SourceLabel/Footer), fixing
+//   tmr_winner_unmapped for invegent; (2) B1Fields + buildProofFieldsFromDraft gain OPTIONAL
+//   attribution/source_label emitted only when the client's contract declares them, so PP,
+//   NDIS and CFW output stays byte-identical at 6 keys; (3) Invegent's contract gains those
+//   two PK-AUTHORED brand values. Per-client brand values stay in the per-client contract,
+//   NEVER in the template-keyed winner map (which has no client context and would leak
+//   across brands). Unmapped winners still fail closed; a quote-card client missing the two
+//   brand fields fails closed too. NO change to template selection, asset resolution,
+//   render or publish behaviour.
 // v3.32.0 (2026-07-22) — cc-0048 INCIDENT RECOVERY. NO logic change in THIS entrypoint —
 //   version bump + header only, to reclassify the drift gate off A-LE (the drift gate hashes
 //   ONLY index.ts, so a helper-only change would stay A-LE forever and safe-deploy would
@@ -456,7 +469,7 @@ import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C:
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.32.0';  // cc-0048 incident recovery — entrypoint bump only (drift-gate reclassify); the change is a registry DATA addition in creative_contract.ts
+const VERSION = 'image-worker-v3.33.0';  // cc-0049 incident recovery — entrypoint bump only (drift-gate reclassify); the changes are the quote-card winner mapping + optional contract-sourced brand fields
 // cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
 // Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
 // provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1

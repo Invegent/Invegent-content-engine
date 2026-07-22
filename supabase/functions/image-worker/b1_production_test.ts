@@ -242,8 +242,11 @@ function liveShapeFixture(): TmrSelectorResponse {
 }
 
 // (D-1) The D1 allowlist maps ONLY the market-insight winner in v1.
-Deno.test('B1-D-1: TMR_WINNER_TEXT_FIELDS v1 allowlist = generic_market_insight_card_1x1_v1 only', () => {
-  assertEquals(Object.keys(TMR_WINNER_TEXT_FIELDS), ['generic_market_insight_card_1x1_v1']);
+// cc-0049: the allowlist gained generic_quote_card_1x1_v1 (Invegent's governed winner). The
+// allowlist is still CLOSED — any winner outside it fails loud (see B1-D-7 / B1-LG-4).
+Deno.test('B1-D-1: TMR_WINNER_TEXT_FIELDS allowlist = market-insight + quote-card ONLY', () => {
+  assertEquals(Object.keys(TMR_WINNER_TEXT_FIELDS).sort(),
+    ['generic_market_insight_card_1x1_v1', 'generic_quote_card_1x1_v1']);
 });
 
 // (D-2) Happy path: exact 13-key modification set (3 slot keys + 4 layout-guard keys +
@@ -329,10 +332,12 @@ Deno.test('B1-D-6: slot_resolution fail_closed/missing → throws tmr_selector_f
 });
 
 // (D-7) D1 fail-closed allowlist: an unmapped winner (e.g. quote_card) → throw, never guess.
-Deno.test('B1-D-7: unmapped winner (quote_card) → throws tmr_winner_unmapped', () => {
+// cc-0049: generic_quote_card_1x1_v1 is now MAPPED, so this test uses a genuinely unregistered
+// winner instead. The fail-closed contract itself is unchanged.
+Deno.test('B1-D-7: unmapped winner → throws tmr_winner_unmapped', () => {
   const fx = liveShapeFixture();
-  fx.selected = { ...fx.selected!, provider_template_name: 'generic_quote_card_1x1_v1' };
-  assertThrows(() => buildTmrRenderPlan(fx, FIELDS, '5 July 2026'), Error, 'tmr_winner_unmapped: generic_quote_card_1x1_v1');
+  fx.selected = { ...fx.selected!, provider_template_name: 'generic_unregistered_card_1x1_v9' };
+  assertThrows(() => buildTmrRenderPlan(fx, FIELDS, '5 July 2026'), Error, 'tmr_winner_unmapped: generic_unregistered_card_1x1_v9');
   const fx2 = liveShapeFixture();
   fx2.selected = { ...fx2.selected!, provider_template_name: undefined };
   assertThrows(() => buildTmrRenderPlan(fx2, FIELDS, '5 July 2026'), Error, 'tmr_winner_unmapped');
@@ -437,10 +442,12 @@ Deno.test('B1-LG-3: Headline.font_size null survives into the modifications map'
 // the merge, so it can neither be un-guarded silently nor guessed.)
 Deno.test('B1-LG-4: unmapped winner still throws tmr_winner_unmapped (fail-closed unchanged)', () => {
   const fx = liveShapeFixture();
-  fx.selected = { ...fx.selected!, provider_template_name: 'generic_quote_card_1x1_v1' };
-  assertThrows(() => buildTmrRenderPlan(fx, FIELDS, '5 July 2026'), Error, 'tmr_winner_unmapped: generic_quote_card_1x1_v1');
-  // and the winner carries no guard entry (would merge {} — behaviour identical to today).
+  fx.selected = { ...fx.selected!, provider_template_name: 'generic_unregistered_card_1x1_v9' };
+  assertThrows(() => buildTmrRenderPlan(fx, FIELDS, '5 July 2026'), Error, 'tmr_winner_unmapped: generic_unregistered_card_1x1_v9');
+  // cc-0049: the now-MAPPED quote card still carries NO layout guard (merges {} — the
+  // market-insight geometry is explicitly non-portable and must never be reused for it).
   assertEquals(TMR_WINNER_LAYOUT_GUARD['generic_quote_card_1x1_v1'], undefined);
+  assertEquals(TMR_WINNER_LAYOUT_GUARD['generic_unregistered_card_1x1_v9'], undefined);
 });
 
 // ── cc-0037: SUPERVISED GOVERNED IMAGE_QUOTE SMOKE (b1_production.ts contributions) ──────
