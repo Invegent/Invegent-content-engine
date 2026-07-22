@@ -30,7 +30,7 @@
 | 4 | **pg_default_acl trap** (F.2, A2-INV-4/6) | public tables born anon/auth=arwdDxtm; public fns anon/auth=X; c no fn row | `public` objtype `r` = **`anon=arwdDxtm, authenticated=arwdDxtm`**; objtype `f` = **`anon=X, authenticated=X`**; schema `c` has **no `f` (function) default-ACL row** | ✅ match² |
 | 5 | **portal_user + auth_client_id precedent** (N-6 qual, A2-INV-6) | RLS on-not-forced, born-open ACL, 1 SELECT policy; fn mutable search_path + PUBLIC EXECUTE | `portal_user`: relrowsecurity=**true**, relforcerowsecurity=**false**, relacl=**`{…anon=arwdDxtm, authenticated=arwdDxtm…}`**, **1** policy, cmd=**SELECT**; `auth_client_id()`: proconfig=**NULL**, prosecdef=**true**, proacl leading **`=X`** (PUBLIC), owner=postgres, STABLE | ✅ match (all 3 defects live) |
 | 6 | **Actor-FK feasibility** (E-Q6, E.5.1) | postgres REFERENCES=TRUE; only auth→auth FKs | `has_table_privilege('postgres','auth.users','REFERENCES')`=**true**; FKs referencing `auth.users`=**8**; from a **non-auth** schema=**0** | ✅ match³ |
-| 7 | **Four F-5 privileged fns** (F-5/F-6) | each SECDEF, owner postgres, `{postgres,service_role}` only | `exec_sql`, `draft_approve_and_enqueue`, `approve_onboarding` — each **prosecdef=true**, owner=**postgres**, proacl=**`{postgres=X, service_role=X}`** (anon/authenticated/PUBLIC absent) | ✅ match |
+| 7 | **F-5 privileged fns** (F-5/F-6) — 3 named, verified | each SECDEF, owner postgres, `{postgres,service_role}` only | `exec_sql`, `draft_approve_and_enqueue`, `approve_onboarding` — each **prosecdef=true**, owner=**postgres**, proacl=**`{postgres=X, service_role=X}`** (anon/authenticated/PUBLIC absent) | ✅ match⁴ |
 
 **Footnotes (honest nuances — recorded, not buried):**
 
@@ -43,6 +43,10 @@
   **with** anon/authenticated USAGE (item 3) **and** has no function default-ACL row, so a new `c` *function* falls back
   to the PostgreSQL built-in EXECUTE-TO-PUBLIC default (the more-dangerous, easier-to-miss half — brief F.2.1). The
   fenced-schema recommendation (`audit`/`authz`) is the correct home regardless.
+- **⁴** Count nuance: F-5 names **three** functions while the brief's F-6 prose says "the four functions named in
+  F-5" (a self-inconsistency at brief lines 103–104). This lane verified the **three** named (`exec_sql`,
+  `draft_approve_and_enqueue`, `approve_onboarding`); all are `{postgres, service_role}`-only, so the count
+  discrepancy is not security-material. Flagged for the brief's own cleanup, not a finding against the placement rulings.
 - **³** The brief states "18 existing FKs into `auth` are all auth→auth"; this lane measured **8** FKs referencing
   specifically `auth.users` (a subset of the `auth`-schema total — consistent, not contradictory). The load-bearing
   claim — **zero** FKs into `auth.users` from a non-auth schema — is confirmed, so the proposed actor FK would indeed

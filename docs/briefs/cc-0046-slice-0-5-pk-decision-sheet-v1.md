@@ -19,7 +19,7 @@
 |---|---|---|---|
 | **A-Q0** | **A — architecture blocker** | Role source: A1 / **A2** / A3 | **A2** — governed CE table, on audit-feasibility first |
 | **A-Q1** | **A — architecture blocker** | Environment separation of role state | Carry a nullable `environment` column (free under A2, impossible under A1) |
-| **B-Q0** | **A — architecture blocker** | Is the 3-role set right? | **Yes** — `viewer` / `governance_operator` / `administrator` |
+| **B-Q0** | **A — architecture blocker** | Is the 3-role set right? | **Recommended (not settled)** — `viewer` / `governance_operator` / `administrator` |
 | **B-Q1** | **A — architecture blocker** | Per-client scoping | **Model now** (nullable `client_id`, NULL=global), **enforce global-only in v1** |
 | **E-Q3** | **A — architecture blocker** (evidence-settled) | Which schemas does PostgREST expose? | `public` **and** `c` are exposed → neither may host role/audit tables. Reconfirm via E-Q11 |
 | **E-Q10** | **A — architecture blocker** | Which schema hosts role + audit tables? | A **non-exposed, USAGE-fenced** schema (`audit` or new `authz`). **Not `public`, not `c`** |
@@ -28,7 +28,7 @@
 | **E-Q2** | **C — sequencing (rule now)** | Ordering vs Batch 2 | **Close both `exec_sql` sinks before enforcement is switched on.** May design/build in parallel |
 | **D-Q4** | **C — sequencing (rule now)** | Sequence CE governed-write lane, or re-scope Slice 1 | **Slice 0.5 alone does NOT unblock Slice 1** — a separate CE-side write-RPC lane is required |
 | **G-1** | **C — sequencing (rule now)** | Merge arc brief `9e6bccf` to main, or supersede | Take at this gate — D.1/D.3/D.5 cite an unmerged commit |
-| **E-Q11** | **Requires new evidence** | Re-confirm exposed-schema list in Supabase UI | **Immediately before any apply** — platform config, mutable, has changed once |
+| **E-Q11** | **Requires new evidence** *(brief classed [A]; re-bucketed here — see note)* | Re-confirm exposed-schema list in Supabase UI | **Immediately before any apply** — platform config, mutable, has changed once |
 | **E-Q4** | **Requires new evidence** | Is a Next 14.2.35 server action invocable from an *arbitrary* route? | Untested. If yes, the two public middleware carve-outs become an anonymous entry point |
 | **E-Q8** | **Requires new evidence** | `verify_jwt` posture of `onboarding-notifier` (called with no auth header) | Either anonymously callable, or these emails silently fail. Handoff |
 | **E-Q1** | **B — implementation detail** | Kill-switch substrate | **Vercel instant-rollback to a pinned pre-enforcement deployment ID** (recorded before enforcement) |
@@ -44,6 +44,11 @@
 
 *(23 substantive decisions. The seed named 21; review split two forks out — E-Q13 and E-Q14 — during the
 security-auditor passes. G-2 and G-3 below are register housekeeping, not decisions on this architecture.)*
+
+> **Note on the [A] set (transparency).** The brief carried **nine** [A]-items; this sheet's detailed blocker table
+> (§2) lists **eight** because **E-Q11 is deliberately re-bucketed to "Requires new evidence."** Its force is fully
+> preserved — it cannot be "settled now" (it is mutable platform config), so it is a **non-negotiable pre-apply
+> re-check** (§2 evidence rider, §8), not an omission. No other [A]-item is dropped.
 
 ---
 
@@ -106,7 +111,10 @@ list **immediately before any apply**. A stale exposure assumption silently inva
    existing admin).
 7. **Enforcement boundaries →** six, matrix in appendix §D. Server-side at the **privileged server boundary**: C-1 server
    actions (mandatory, first statement, above `createServiceClient()`), C-2 route handlers (mandatory), C-3 DB
-   defence-in-depth (RLS ineffective on the `postgres` definer path — **not** primary), C-4 UI hiding (**convenience
+   defence-in-depth (RLS ineffective on this path — **not** primary — for **two independent reasons**, both of which
+   must be stated together so a future "fix" doesn't drop `SECURITY DEFINER` and wrongly conclude RLS now applies:
+   `service_role` itself has `rolbypassrls=TRUE` **and** the definer functions execute as `postgres`, which also has it —
+   brief C.1), C-4 UI hiding (**convenience
    only, never enforcement**), C-5 middleware (auth only, unchanged), **C-6 direct PostgREST (grants+RLS are the SOLE
    boundary — the one C-1…C-5 cannot cover).** Existing service-role/`SECURITY DEFINER` paths **can** bypass a UI/route
    check — that is exactly why enforcement must sit at the server/DB boundary, and why N-9's ~18 REST-reachable functions
