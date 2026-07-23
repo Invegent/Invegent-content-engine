@@ -163,3 +163,53 @@ Applied via `execute_sql` (one transaction, exact reviewed UPDATE + fail-closed 
 - Making the entire decision matrix a PURE function (`diagnose_gap`, jsonb→jsonb) let the full D6 matrix be proven hermetically with zero schema, and let the live fixtures be proven by feeding real `select_template` output through the same proven function — decoupling classification logic from data-gathering paid off for both testability and review.
 - `client_brand_asset` backgrounds are `asset_type='other'` with `asset_meta->>'usage'='background'` (NOT `asset_type='static_background'`) — a naive type match would have mis-scoped the probe; mirroring `resolve_slot_assets` exactly was essential.
 - Building the function-replacement artifact by copying the verbatim prior body and applying only additive edits made legacy byte-identity mechanically provable via diff.
+
+## 10. PK ruling 2026-07-23 (Sydney) — lane purpose COMPLETE · drain PARKED · asset-gap follow-ups re-routed
+
+cc-0046 has completed its intended purpose: the orthogonal classifier and routing substrate
+are LIVE, and **no current row qualifies for governed sourcing.** PK ruling recorded verbatim.
+
+**Backgrounds-only sourcing drain — DO NOT draft or open at this time.**
+Recorded status: **`PARKED — MECHANICALLY READY, ZERO ELIGIBLE LIVE ROWS`.**
+Entry condition (unchanged):
+- `subject_kind = "static_background"`
+- `failure_state = "absent"`
+- conclusive fresh inventory proof
+- zero governed inventory
+- fresh validate-and-claim at drain time
+- all existing image-workflow and NDIS gates satisfied
+
+Do **not** implement, schedule, or dry-run a production drain merely to prove an empty queue.
+
+**Do NOT open a single config_repair lane for all four existing rows.** Revised routing:
+
+1. **Three carousel rows** → future lane **"Carousel Governed Execution-Spine Onboarding."**
+   Do not create assignments or visual proofs. Binding issue: active carousel production does
+   not consume the governed selector/resolver spine. Classification posture:
+   - binding diagnosis: **execution path unintegrated**
+   - route: **capability backlog**
+   - subordinate evidence: assignment unassigned
+   - tickets remain open
+   - no cosmetic closure through governed records that production does not consume
+
+2. **Property Pulse YouTube `video_short_stat`** → separate candidate lane
+   **"PP YouTube Platform-Configuration Investigation."** Start **read-only** and prove:
+   - the exact platform configuration defect;
+   - whether the deployed video production path consumes the proposed setting;
+   - authoritative client attribution for the governed video proof;
+   - whether the repair would affect current production;
+   - whether another downstream blocker would remain.
+   Do **not** authorize automated config repair until those facts are proven.
+
+**Sequence:** (1) finish the current image-worker incident/recovery arc → (2) complete or
+reconcile cc-0047 execution-spine coverage work → (3) then consider the PP YouTube
+investigation → (4) defer carousel onboarding until it has its own architecture brief and capacity.
+
+**Numbering convention (PK-directed):** "cc-0046" has since been reused by the Dashboard
+Governance arc (unrelated identifier reuse). Assign **fresh canonical brief numbers** to all
+future asset-gap follow-ups, and reference this lane by its **full title + result-document path**
+(`cc-0046 — Orthogonal Gap Classification & Routing Precision`,
+`docs/briefs/results/cc-0046-orthogonal-gap-classification.md`) rather than number alone.
+
+**No new lane is opened by this ruling.** Recording only. No production, database, worker,
+ticket, sourcing, drain, or configuration action authorized.
