@@ -28,24 +28,46 @@ interface SupaOpts {
   existingRenderLogs?: any[];
 }
 
+// A recorded query-builder chain invocation (used to assert lookupAvatar's chain shape).
+interface QbRecord {
+  schema: string | null;
+  table: string;
+  select: string | null;
+  eqCalls: Array<[string, unknown]>;
+  limit: number | undefined;
+  orderCalled: boolean;
+}
+
 function makeSupa(opts: SupaOpts) {
   const updates: Array<{ table: string; payload: any; id: any }> = [];
   const rpcCalls: Array<{ name: string; params: any }> = [];
+  // v2.4.0 (CC-0048): lookupAvatar now uses the query-builder (schema('c').from('brand_avatar')…),
+  // NOT exec_sql. Record every brand_avatar chain invocation so tests can assert its exact shape.
+  const avatarLookups: QbRecord[] = [];
 
-  function builder(table: string) {
+  function builder(table: string, schemaName: string | null) {
     const filters: Record<string, unknown> = {};
+    const eqCalls: Array<[string, unknown]> = [];
+    let selectArg: string | null = null;
+    let limitArg: number | undefined = undefined;
+    let orderCalled = false;
     let updatePayload: any = null;
     const b: any = {
-      select() { return b; },
-      eq(col: string, val: unknown) { filters[col] = val; return b; },
+      select(arg?: string) { selectArg = arg ?? null; return b; },
+      eq(col: string, val: unknown) { filters[col] = val; eqCalls.push([col, val]); return b; },
       in() { return b; },
       not() { return b; },
-      limit() { return b; },
+      order() { orderCalled = true; return b; },
+      limit(n?: number) { limitArg = n; return b; },
       update(payload: any) { updatePayload = payload; return b; },
       then(resolve: (v: any) => void) {
         if (updatePayload !== null) {
           updates.push({ table, payload: updatePayload, id: filters['post_draft_id'] });
           return Promise.resolve({ data: null, error: null }).then(resolve);
+        }
+        if (table === 'brand_avatar') {
+          avatarLookups.push({ schema: schemaName, table, select: selectArg, eqCalls: [...eqCalls], limit: limitArg, orderCalled });
+          return Promise.resolve({ data: opts.avatarRow ? [opts.avatarRow] : [], error: null }).then(resolve);
         }
         if (table === 'post_render_log') {
           return Promise.resolve({ data: opts.existingRenderLogs ?? [], error: null }).then(resolve);
@@ -61,13 +83,14 @@ function makeSupa(opts: SupaOpts) {
   }
 
   return {
-    schema() { return { from: (t: string) => builder(t) }; },
-    from: (t: string) => builder(t),
+    schema(name: string) { return { from: (t: string) => builder(t, name) }; },
+    from: (t: string) => builder(t, null),
     rpc(name: string, params: any) {
       rpcCalls.push({ name, params });
       if (name === 'exec_sql') {
         const q: string = params?.query ?? '';
-        if (q.includes('brand_avatar')) return Promise.resolve({ data: opts.avatarRow ? [opts.avatarRow] : [], error: null });
+        // brand_avatar is NO LONGER an exec_sql path (v2.4.0); only the brand-colour lookup
+        // (client_brand_profile) remains on exec_sql — left byte-unchanged by this lane.
         if (q.includes('client_brand_profile')) return Promise.resolve({ data: opts.brandRow ? [opts.brandRow] : [], error: null });
         return Promise.resolve({ data: [], error: null });
       }
@@ -77,6 +100,7 @@ function makeSupa(opts: SupaOpts) {
     storage: { from() { return { upload() { return Promise.resolve({ error: null }); } }; } },
     __updates: updates,
     __rpcCalls: rpcCalls,
+    __avatarLookups: avatarLookups,
   };
 }
 
@@ -104,10 +128,10 @@ function installFetch(): Array<{ url: string; method: string; body: any }> {
 const realFetch = globalThis.fetch;
 function restoreFetch() { globalThis.fetch = realFetch; }
 
-function lookupQueries(supa: ReturnType<typeof makeSupa>): string[] {
-  return supa.__rpcCalls
-    .filter((c) => c.name === 'exec_sql' && String(c.params?.query ?? '').includes('brand_avatar'))
-    .map((c) => String(c.params.query));
+// v2.4.0 (CC-0048): a brand_avatar lookup is now a query-builder chain, not an exec_sql call.
+// This returns the recorded brand_avatar chain invocations (empty => no lookup ran).
+function avatarLookups(supa: ReturnType<typeof makeSupa>): QbRecord[] {
+  return supa.__avatarLookups;
 }
 
 // --- tests ------------------------------------------------------------------
@@ -166,7 +190,7 @@ Deno.test('submit (preset): avatar_selected_by=preset and NO lookupAvatar query'
     assertEquals(ai.talking_photo_id, 'AV_PRESET');
     assertEquals(ai.voice_id, 'VOICE_PRESET');
     assertEquals(ai.talking_photo_id, sent.character.talking_photo_id);
-    assertEquals(lookupQueries(supa).length, 0, 'preset must not run a brand_avatar lookup');
+    assertEquals(avatarLookups(supa).length, 0, 'preset must not run a brand_avatar lookup');
   } finally { restoreFetch(); }
 });
 
@@ -216,7 +240,7 @@ Deno.test('poll: COPIES captured avatar_identity into render_spec and does NOT r
     // the captured identity is copied verbatim into render_spec
     assertEquals(wr!.params.p_render_spec.avatar_identity, captured);
     // poll never re-derived / reselected the avatar
-    assertEquals(lookupQueries(supa).length, 0, 'poll must not run any brand_avatar lookup');
+    assertEquals(avatarLookups(supa).length, 0, 'poll must not run any brand_avatar lookup');
   } finally { restoreFetch(); }
 });
 
@@ -312,7 +336,7 @@ Deno.test('shadow ON (preset): live_selected_by=preset and live id = the preset 
     assertEquals(p.p_live_voice_id, 'VOICE_PRESET');
     assertEquals(p.p_stakeholder_role, null);
     // preset path must STILL not run a brand_avatar lookup (live path byte-identical)
-    assertEquals(lookupQueries(supa).length, 0, 'preset must not run a brand_avatar lookup even with shadow on');
+    assertEquals(avatarLookups(supa).length, 0, 'preset must not run a brand_avatar lookup even with shadow on');
   } finally {
     restoreFetch();
     if (prev === undefined) Deno.env.delete('AVATAR_SHADOW_TELEMETRY'); else Deno.env.set('AVATAR_SHADOW_TELEMETRY', prev);
@@ -357,18 +381,121 @@ Deno.test('shadow ON: fail-open — when the shadow rpc throws, submit still com
   }
 });
 
-Deno.test('role-selection behaviour unchanged: lookupAvatar builds role-filtered vs fallback SQL', async () => {
-  const queries: string[] = [];
-  const supaSpy: any = {
-    rpc(_name: string, params: any) { queries.push(String(params.query)); return Promise.resolve({ data: [{ heygen_avatar_id: 'X', heygen_voice_id: 'Y' }] }); },
+// --- CC-0048 (v2.4.0): lookupAvatar query-builder parity ---------------------
+// The exec_sql string-interpolation was replaced by a supabase-js query-builder call at STRICT
+// behavioural parity. These tests record the chain (schema/table/select-embed/eq/limit/order) and
+// prove selection behaviour is unchanged. NOTE: the PostgREST inner-join embed RESOLUTION and live
+// selection parity are NOT provable here (the client is mocked) — that is a required POST-DEPLOY
+// live-parity verification, named in the deploy plan.
+
+// Focused recording spy for lookupAvatar's chain (independent of makeSupa).
+function makeQbSpy(result: { data: any; error?: any }) {
+  const rec: QbRecord = { schema: null, table: null as any, select: null, eqCalls: [], limit: undefined, orderCalled: false };
+  const qb: any = {
+    select(arg: string) { rec.select = arg; return qb; },
+    eq(col: string, val: unknown) { rec.eqCalls.push([col, val]); return qb; },
+    order() { rec.orderCalled = true; return qb; },
+    limit(n: number) { rec.limit = n; return qb; },
+    then(resolve: (v: any) => void) { return Promise.resolve({ error: null, ...result }).then(resolve); },
   };
+  const supa: any = { schema(name: string) { rec.schema = name; return { from(t: string) { rec.table = t; return qb; } }; } };
+  return { supa, rec };
+}
 
-  const withRole = await lookupAvatar(supaSpy, 'cid', 'founder', 'realistic');
-  assertEquals(withRole, { talking_photo_id: 'X', voice_id: 'Y' });
-  assert(queries[0].includes("role_code = 'founder'"), 'role provided => SQL must filter by role_code');
-  assert(queries[0].includes("render_style = 'realistic'"), 'render_style filter preserved');
+function eqVal(rec: QbRecord, col: string): unknown {
+  const hit = rec.eqCalls.find(([c]) => c === col);
+  return hit ? hit[1] : undefined;
+}
+function hasEq(rec: QbRecord, col: string): boolean {
+  return rec.eqCalls.some(([c]) => c === col);
+}
 
-  queries.length = 0;
-  await lookupAvatar(supaSpy, 'cid', null, 'realistic');
-  assert(!queries[0].includes('role_code'), 'null role => SQL must NOT filter by role_code');
+// live-oracle fixtures
+const PP_ROW = { heygen_avatar_id: '5d03454fbd0c469692f1a27ccbe6a000', heygen_voice_id: 'D2UxCOjgDceKldjA4JrK' };
+const NY_ROW = { heygen_avatar_id: '7e98bd3860f14ee18c9b4909e46ac77c', heygen_voice_id: 'P2AIevlJPypjV8xL6zXE' };
+
+Deno.test('lookupAvatar (role): correct chain shape + PP row mapping', async () => {
+  const { supa, rec } = makeQbSpy({ data: [PP_ROW] });
+  const out = await lookupAvatar(supa, 'pp-client', 'founder', 'realistic');
+
+  // mapping
+  assertEquals(out, { talking_photo_id: PP_ROW.heygen_avatar_id, voice_id: PP_ROW.heygen_voice_id });
+
+  // schema c, table brand_avatar
+  assertEquals(rec.schema, 'c');
+  assertEquals(rec.table, 'brand_avatar');
+
+  // inner-join embed on brand_stakeholder + both selected columns
+  assert(rec.select!.includes('brand_stakeholder!brand_avatar_stakeholder_id_fkey!inner(role_code)'), 'inner-join embed on brand_stakeholder must be present');
+  assert(rec.select!.includes('heygen_avatar_id'), 'select must include heygen_avatar_id');
+  assert(rec.select!.includes('heygen_voice_id'), 'select must include heygen_voice_id');
+
+  // exact filters (no more, no less on the non-role fences)
+  assertEquals(eqVal(rec, 'client_id'), 'pp-client');
+  assertEquals(eqVal(rec, 'is_active'), true);
+  assertEquals(eqVal(rec, 'render_style'), 'realistic');
+
+  // role filter applied when a role is passed
+  assert(hasEq(rec, 'brand_stakeholder.role_code'), 'role provided => role_code filter must be applied');
+  assertEquals(eqVal(rec, 'brand_stakeholder.role_code'), 'founder');
+
+  // LIMIT 1, no ORDER BY
+  assertEquals(rec.limit, 1);
+  assertEquals(rec.orderCalled, false, 'must NOT add ordering (parity: LIMIT 1 with no ORDER BY)');
+});
+
+Deno.test('lookupAvatar (no role): role_code filter is NOT applied; inner join still present', async () => {
+  const { supa, rec } = makeQbSpy({ data: [NY_ROW] });
+  const out = await lookupAvatar(supa, 'ny-client', null, 'realistic');
+
+  assertEquals(out, { talking_photo_id: NY_ROW.heygen_avatar_id, voice_id: NY_ROW.heygen_voice_id });
+  assertEquals(rec.schema, 'c');
+  assertEquals(rec.table, 'brand_avatar');
+  // inner join preserved EVEN with null role (avatar with no matching stakeholder stays ineligible)
+  assert(rec.select!.includes('brand_stakeholder!brand_avatar_stakeholder_id_fkey!inner(role_code)'), 'inner-join embed must be present even with null role');
+  // role filter must NOT be present
+  assert(!hasEq(rec, 'brand_stakeholder.role_code'), 'null role => role_code filter must NOT be applied');
+  // other filters intact
+  assertEquals(eqVal(rec, 'client_id'), 'ny-client');
+  assertEquals(eqVal(rec, 'is_active'), true);
+  assertEquals(eqVal(rec, 'render_style'), 'realistic');
+  assertEquals(rec.limit, 1);
+  assertEquals(rec.orderCalled, false);
+});
+
+Deno.test('lookupAvatar: missing voice_id maps to null', async () => {
+  const { supa } = makeQbSpy({ data: [{ heygen_avatar_id: 'AV_NOVOICE' }] });   // no heygen_voice_id
+  const out = await lookupAvatar(supa, 'c', 'role', 'realistic');
+  assertEquals(out, { talking_photo_id: 'AV_NOVOICE', voice_id: null });
+});
+
+Deno.test('lookupAvatar: heygen_voice_id null maps to null', async () => {
+  const { supa } = makeQbSpy({ data: [{ heygen_avatar_id: 'AV_X', heygen_voice_id: null }] });
+  const out = await lookupAvatar(supa, 'c', null, 'realistic');
+  assertEquals(out, { talking_photo_id: 'AV_X', voice_id: null });
+});
+
+Deno.test('lookupAvatar: empty result ([]) returns null (Invegent/CFW zero-candidate)', async () => {
+  const { supa } = makeQbSpy({ data: [] });
+  const out = await lookupAvatar(supa, 'invegent', null, 'realistic');
+  assertEquals(out, null);
+});
+
+Deno.test('lookupAvatar: null data returns null (zero-candidate)', async () => {
+  const { supa } = makeQbSpy({ data: null });
+  const out = await lookupAvatar(supa, 'cfw', 'role', 'realistic');
+  assertEquals(out, null);
+});
+
+Deno.test('lookupAvatar: row without heygen_avatar_id returns null', async () => {
+  const { supa } = makeQbSpy({ data: [{ heygen_voice_id: 'V_ONLY' }] });
+  const out = await lookupAvatar(supa, 'c', null, 'realistic');
+  assertEquals(out, null);
+});
+
+Deno.test('lookupAvatar: error-swallow parity — data undefined on error returns null (no throw)', async () => {
+  // Parity invariant 6: the impl destructures ONLY `data`; an error yields null (caller then throws).
+  const { supa } = makeQbSpy({ data: undefined, error: { message: 'boom' } });
+  const out = await lookupAvatar(supa, 'c', 'role', 'realistic');
+  assertEquals(out, null);   // must NOT throw here
 });

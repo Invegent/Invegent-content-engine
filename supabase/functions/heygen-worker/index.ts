@@ -1,4 +1,16 @@
 // heygen-worker v2.2.0
+// v2.4.0 — CC-0048 AVATAR-LOOKUP-TYPED-RESOLVER: replace lookupAvatar's string-interpolated
+//          exec_sql with a supabase-js query-builder call at STRICT parity (schema c,
+//          brand_avatar ⋈ brand_stakeholder!inner, same filters/LIMIT-1/return/null-on-no-row).
+//          Uses schema('c').from('brand_avatar').select(embed inner-join on
+//          brand_stakeholder!brand_avatar_stakeholder_id_fkey!inner(role_code)) with
+//          .eq(client_id)/.eq(is_active,true)/.eq(render_style) and a conditional
+//          .eq('brand_stakeholder.role_code', role) applied ONLY when a role is passed, then
+//          .limit(1) with NO .order (mirrors LIMIT 1 / no ORDER BY). Destructures ONLY `data`
+//          (error unchecked, preserved) → null on no usable row → caller throws "No active
+//          avatar…" unchanged. No selection-behaviour change; hardening + typed seam only.
+//          STRICTLY OUT OF SCOPE: shadow hook, the brand-profile exec_sql, markers, activation,
+//          persona/role logic, DB objects.
 // v2.3.0 — QA-VISIBILITY-V0: ADDITIVE / OBSERVABILITY-ONLY. Add a normalized `qa` object
 //          (engine='heygen', render_mode='identity', duration_semantics=
 //          'submit_to_poll_detection') INTO the existing writeRenderLog render_spec, built
@@ -56,7 +68,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { buildRenderQa, safeQa } from './qa.ts';  // v2.3.0: QA-VISIBILITY-V0 (additive)
 
-const VERSION             = 'heygen-worker-v2.3.0';
+const VERSION             = 'heygen-worker-v2.4.0';
 const HEYGEN_GENERATE     = 'https://api.heygen.com/v2/video/generate';
 const HEYGEN_STATUS       = 'https://api.heygen.com/v1/video_status.get';
 const MAX_SUBMITS         = 3;                // Phase A: pending drafts to submit per tick
@@ -89,19 +101,23 @@ export async function lookupAvatar(
   stakeholderRole: string | null,
   renderStyle: string,
 ): Promise<{ talking_photo_id: string; voice_id: string | null } | null> {
-  const { data: rows } = await supabase.rpc('exec_sql', {
-    query: `
-      SELECT ba.heygen_avatar_id, ba.heygen_voice_id
-      FROM c.brand_avatar ba
-      JOIN c.brand_stakeholder bs ON bs.stakeholder_id = ba.stakeholder_id
-      WHERE ba.client_id = '${clientId}'
-        AND ba.is_active = true
-        AND ba.render_style = '${renderStyle}'
-        ${stakeholderRole ? `AND bs.role_code = '${stakeholderRole}'` : ''}
-      LIMIT 1
-    `,
-  });
-  const row = (rows as any)?.[0];
+  // v2.4.0 (CC-0048): query-builder equivalent of the prior exec_sql, at STRICT parity.
+  // INNER-join embed (brand_stakeholder!brand_avatar_stakeholder_id_fkey!inner) replicates the
+  // original INNER `JOIN c.brand_stakeholder` — applied EVEN when role is null (an avatar with no
+  // matching stakeholder stays ineligible, exactly as before). Filters, LIMIT 1 (no ORDER BY),
+  // return shape, and null-on-no-row are unchanged. Error is intentionally NOT checked (only `data`
+  // is destructured) — a query error yields null and the caller throws "No active avatar…" exactly
+  // as the exec_sql version did. Selection behaviour is byte-equivalent.
+  let q = supabase.schema('c').from('brand_avatar')
+    .select('heygen_avatar_id, heygen_voice_id, brand_stakeholder!brand_avatar_stakeholder_id_fkey!inner(role_code)')
+    .eq('client_id', clientId)
+    .eq('is_active', true)
+    .eq('render_style', renderStyle);
+  if (stakeholderRole) {
+    q = q.eq('brand_stakeholder.role_code', stakeholderRole);
+  }
+  const { data } = await q.limit(1);
+  const row = (data as any)?.[0];
   if (!row?.heygen_avatar_id) return null;
   return { talking_photo_id: row.heygen_avatar_id, voice_id: row.heygen_voice_id ?? null };
 }
