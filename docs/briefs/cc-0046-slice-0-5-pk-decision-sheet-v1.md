@@ -1,5 +1,14 @@
 # PK Decision Sheet — cc-0046 Slice 0.5: Dashboard Governance Authorization Model
 
+> ## ✅ RULED 2026-07-23 — all 8 architecture blockers + 3 sequencing rulings APPROVED as tabled.
+> Role source **A2** (A3 rejected; A1 documented-not-selected) · nullable `environment` column · **3 roles**, no-role=no-authority ·
+> model-now/enforce-global-v1 client scope · schema **not `public`/`c`**, fresh Supabase verification required before apply ·
+> **non-`BYPASSRLS` owner + FORCE RLS + demonstrated minimal policy set** · server-verified role mutation · **Batch 2 before
+> enable (no exceptions)** · Slice 0.5 does not unblock Slice 1 · merge/supersede the arc brief. **PK added a permanent
+> invariant — INV-9 (UI-independent enforceability), §5 below.** Canonical record + program order:
+> `docs/briefs/results/cc-0046-slice-0-5-dashboard-governance-authorization-model-result-v1.md`. **Authorizes no
+> implementation — next is a separate T3 Gate-2 (program step 5), enforcement gated on Batch 2 closeout.**
+
 **Created:** 2026-07-22 Sydney · **Lane class/tier:** SAFETY_GATE · T1 (docs/architecture only — authorizes NO implementation)
 **Source brief (PK-APPROVED Gate 1, v6.10):** `docs/briefs/cc-0046-slice-0-5-dashboard-governance-authorization-model-brief-v1.md` (sha256 `cf1e19f9…`)
 **Evidence base re-verified against canonical:** CE `origin/main` `194e43e` · dashboard `origin/main` `1572fbd` (= the brief's evidence SHA — no drift). **All 7 [A]-blocker DB fact-sets re-derived LIVE from the catalog this lane (project `mbkmaxqhsohbtwsqolns`, orchestrator `execute_sql`), zero material contradictions** — appendix §B; the two open `exec_sql` sinks re-confirmed open in-file.
@@ -144,6 +153,7 @@ testable architectural statements:
 | 6 | **Privileged mutations are auditable** — actor FK + immutable snapshot; append-only w.r.t. the app principal; self-mods flagged | E-5/E.5; A2-INV-5; E-Q6; E.8 |
 | 7 | **Administrator bootstrap and recovery are controlled** — governed SQL under PK gate; last-admin protection in the DB | E.7/E.8 |
 | 8 | **Service-role paths do not silently bypass operator authorization** — enforcement at the server/DB boundary; N-9 REST surface named as an explicit limitation | C.1/C.4a; E-Q12 handoff |
+| **9** | **⭐ INV-9 (PK, permanent) — UI-independent enforceability.** Every privileged operation fails safely even if UI checks are removed · routes are called directly · API clients are constructed manually · requests are replayed. Boundary-level (holds regardless of role source) | C-1/C-2/C-6; F.4 negative tests (guard-deleted · guard-reordered · direct-invocation caught) — **Gate-2 acceptance** |
 
 ---
 
