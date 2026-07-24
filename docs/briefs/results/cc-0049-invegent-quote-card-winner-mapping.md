@@ -1,6 +1,6 @@
 # Result cc-0049 — Invegent Governed Quote-Card Winner Mapping Recovery
 
-**Status:** `DEPLOYED · INVEGENT RECOVERED · NO-REGRESSION PROOF PARTIAL · GEOMETRY/VISUAL ACCEPTANCE NOT SUPPLIED`
+**Status:** `DEPLOYED · INVEGENT RECOVERED · NO-REGRESSION PROOF PARTIAL · GEOMETRY/VISUAL ACCEPTANCE PK-ACCEPTED 2026-07-24 (SCOPED) · cc-0049 OPEN — NOT PROVEN`
 **Lane classification (CCF-02):** SAFETY_GATE / production incident · T2 build · T3 deploy · T3 containment DML
 **Recorded:** 2026-07-24 (retrospective — governance recovery lane)
 **Brief:** `docs/briefs/cc-0049-invegent-quote-card-winner-mapping-brief.md` (rev-2)
@@ -99,7 +99,15 @@ as **observed**; its authorization artifact is **UNRECONSTRUCTABLE** (§6.2).
 ## 5. ⚠ Proof matrix — render success is NOT geometry acceptance
 
 The no-regression obligation is **explicitly not discharged** by Invegent and CFW recovering. Two
-distinct obligations are tracked separately, and neither is complete.
+distinct obligations are tracked separately. As at 2026-07-24 **one is complete and one is not.**
+
+| Obligation | Status |
+|---|---|
+| §5a — post-v3.33.0 render evidence, all four clients | 🔴 **PENDING** — property-pulse outstanding |
+| §5b — geometry / visual acceptance, Invegent quote card | ✅ **PROVEN** — PK visual PASS 2026-07-24, scoped to the two renders named below |
+
+**cc-0049 therefore remains OPEN and NOT PROVEN overall.** A geometry acceptance does not
+substitute for the missing PP render evidence, and neither substitutes for the other.
 
 ### 5a. Post-v3.33.0 render evidence (deploy boundary = 2026-07-23T04:38:06Z)
 
@@ -117,14 +125,48 @@ was made to do so.
 
 ### 5b. Geometry / visual acceptance
 
-🔴 **NOT SUPPLIED.** The commit itself states the first controlled production render is the mandatory
-geometry/visual-proof gate, because the market-insight geometry is non-portable to the quote card.
-Two Invegent renders returned `succeeded` — **that is the provider reporting a completed render, and
-says nothing about whether the quote-card layout is correct.** Text could overflow, overprint, or
-mis-anchor and still return `succeeded`.
+✅ **PK-ACCEPTED 2026-07-24 — SCOPED to the two renders named below.**
 
-**No PK visual PASS exists for the Invegent quote card. This document does not claim one.** The
-`succeeded` rows in §4 are recorded as render outcomes only.
+The commit itself states the first controlled production render is the mandatory geometry/visual-proof
+gate, because the market-insight geometry is non-portable to the quote card. **That gate has now been
+satisfied by direct visual inspection of the artefacts — not by their render status.**
+
+**The distinction that produced this answer stands and is not retired by its satisfaction.** Two
+Invegent renders returned `succeeded` — **that is the provider reporting a completed render, and says
+nothing about whether the quote-card layout is correct.** Text could overflow, overprint, or
+mis-anchor and still return `succeeded`. The `succeeded` rows in §4 remain recorded as render
+outcomes only. The acceptance below rests **solely** on PK opening and inspecting the two images.
+
+**What was inspected.** The two governed production renders — not a synthetic smoke. Both were
+produced by the live production path (`render_spec.label = creative_library_b1_production`) on the
+Invegent governed winner:
+
+| # | Creatomate render | Draft | Storage artefact |
+|---|---|---|---|
+| A | `654b7a6d-23ff-4071-a62d-69b6d5809c32` (2026-07-23T05:15:17Z) | `26aaa129-9ebb-4fce-a1a7-509be62ca468` | `https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/post-images/invegent/26aaa129-9ebb-4fce-a1a7-509be62ca468.jpg` |
+| B | `bc8e97ce-e240-4428-967b-7af9e530205b` (2026-07-23T06:30:10Z) | `e7867c8c-a687-4cbe-8e64-5b9fe58d8541` | `https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/post-images/invegent/e7867c8c-a687-4cbe-8e64-5b9fe58d8541.jpg` |
+
+**Template identity of both renders** (read from live `m.post_render_log.render_spec`, 2026-07-24):
+implementation `generic_quote_card_1x1_v1` · provider template `2140ca19-d075-49d3-9dc9-30d924805e22` ·
+variant `quote_card.v1` · format `image_quote` · aspect `1:1`.
+
+**PK verdict, verbatim (2026-07-24):**
+
+> "PASS BOTH — I visually inspected renders 654b7a6d… and bc8e97ce…. Both have correct quote-card
+> geometry, no overflow or clipping, no cross-client brand leak, coherent field placement, intact
+> quote mark and scrim, the correct square Invegent badge, sufficient background contrast, safe-area
+> compliance, and complete headlines. cc-0049 §5b geometry acceptance is approved. This verdict does
+> not discharge §5a or close cc-0049."
+
+**Scope of the acceptance — read this before citing it.** The verdict covers **these two renders on
+this template**. It is **NOT a standing waiver for future quote-card renders**: no layout guard was
+added by `e232607`, so geometry remains unenforced in code and a future render with different field
+lengths, a different background, or a changed template can still overflow, overprint or mis-anchor
+and still return `succeeded`. Citing this section as blanket quote-card approval would be a
+misreading.
+
+**What this does not close.** §5a remains **PENDING** — the Property Pulse post-v3.33.0 render
+obligation is untouched by this verdict. **cc-0049 remains OPEN and NOT PROVEN.**
 
 ### 5c. Narrowest governed proof action to discharge the remainder
 
@@ -157,5 +199,8 @@ Prepared, **not executed** — it requires a controlled production event and the
 
 `PLANNED` no · `DEPLOYED` **yes** (image-worker v3.33.0, fn version 101, content-verified §3) ·
 `ROLLED_BACK` no · `RECOVERED` **yes, Invegent** (render-success sense) ·
-`PROVEN` **NO** — PP render evidence pending §5a, geometry/visual acceptance not supplied §5b ·
-`PK-ACCEPTED` **no artifact found**.
+`PROVEN` **NO** — **solely** because §5a Property Pulse post-v3.33.0 render evidence is still
+pending. §5b geometry/visual acceptance is **PK-ACCEPTED 2026-07-24** (scoped to the two named
+renders, not a standing waiver) ·
+`PK-ACCEPTED` **no artifact found for the gate-2 deploy** (§6.1 — unchanged). A PK artifact exists
+for the §5b geometry acceptance only; it does not retrospectively supply the deploy gate.
