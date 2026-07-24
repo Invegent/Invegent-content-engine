@@ -1,0 +1,101 @@
+[
+  {
+    "key": "cfw_navy_waves",
+    "name": "CFW CLIENT \u2014 brand navy waves (LIVE, the only one)",
+    "status": "LIVE client asset",
+    "sfto": "needs_scrim",
+    "bytes": 57991,
+    "px": "1920x2877",
+    "sha256_actual": "40fb69b42a881533e9f1bb73380330073f6f89e3a2150cabf7ca045ab7b788f5",
+    "sha256_recorded": null,
+    "sha256_match": null
+  },
+  {
+    "key": "shared_soft_blue_gradient",
+    "name": "SHARED 1 \u2014 Soft blue gradient",
+    "status": "FENCED",
+    "sfto": "true",
+    "bytes": 32078,
+    "px": "1920x1280",
+    "sha256_actual": "f4932e8508a347059464d16747e1c1c9c07cab323464b3f9a94b55749bbf4015",
+    "sha256_recorded": "f4932e8508a347059464d16747e1c1c9c07cab323464b3f9a94b55749bbf4015",
+    "sha256_match": true
+  },
+  {
+    "key": "shared_neutral_concrete",
+    "name": "SHARED 2 \u2014 Neutral concrete texture",
+    "status": "FENCED",
+    "sfto": "true",
+    "bytes": 638468,
+    "px": "1920x2880",
+    "sha256_actual": "a37a805b63650e4dc942226b03465eff5ad3146a2b031edc071778429dd387f3",
+    "sha256_recorded": "a37a805b63650e4dc942226b03465eff5ad3146a2b031edc071778429dd387f3",
+    "sha256_match": true
+  },
+  {
+    "key": "shared_soft_grey_bokeh",
+    "name": "SHARED 3 \u2014 Soft grey bokeh",
+    "status": "FENCED",
+    "sfto": "true",
+    "bytes": 102895,
+    "px": "1920x1440",
+    "sha256_actual": "34ce12cfa83128d9a8cad313e921a334e00c092a353efe9ee45a474f7bfaca10",
+    "sha256_recorded": "34ce12cfa83128d9a8cad313e921a334e00c092a353efe9ee45a474f7bfaca10",
+    "sha256_match": true
+  },
+  {
+    "key": "shared_abstract_wall_sky",
+    "name": "SHARED 4 \u2014 Abstract wall & sky",
+    "status": "FENCED",
+    "sfto": "true",
+    "bytes": 33838,
+    "px": "1920x1280",
+    "sha256_actual": "57bf4d2e78bca2e0ca847e574b2b61d6ff8fe0a6e3dd759bec5d30c390140c2b",
+    "sha256_recorded": "57bf4d2e78bca2e0ca847e574b2b61d6ff8fe0a6e3dd759bec5d30c390140c2b",
+    "sha256_match": true
+  },
+  {
+    "key": "shared_contemporary_home",
+    "name": "SHARED 5 \u2014 Contemporary home exterior",
+    "status": "FENCED",
+    "sfto": "true",
+    "bytes": 560760,
+    "px": "1920x1281",
+    "sha256_actual": "e03456f4447bb17f2c0361b0c6983ef5edc78ab2a5e8c23623602d29bc6ad4da",
+    "sha256_recorded": "e03456f4447bb17f2c0361b0c6983ef5edc78ab2a5e8c23623602d29bc6ad4da",
+    "sha256_match": true
+  },
+  {
+    "key": "shared_glass_office_tower",
+    "name": "SHARED 6 \u2014 Modern glass office tower",
+    "status": "FENCED",
+    "sfto": "true",
+    "bytes": 151236,
+    "px": "1920x1254",
+    "sha256_actual": "39d96cb916a4a86c13f6bb5e30bff57def8c5b99b805b80b20092062d7cddfac",
+    "sha256_recorded": "39d96cb916a4a86c13f6bb5e30bff57def8c5b99b805b80b20092062d7cddfac",
+    "sha256_match": true
+  },
+  {
+    "key": "shared_landscaped_garden",
+    "name": "SHARED 7 \u2014 Landscaped formal garden",
+    "status": "FENCED",
+    "sfto": "true",
+    "bytes": 683207,
+    "px": "1920x2880",
+    "sha256_actual": "8b207c2511ba5ffc1a3d8fc1836a76f675dc7895968100233a8366a183166570",
+    "sha256_recorded": "8b207c2511ba5ffc1a3d8fc1836a76f675dc7895968100233a8366a183166570",
+    "sha256_match": true
+  },
+  {
+    "key": "shared_datacentre_server",
+    "name": "SHARED 8 \u2014 Data-centre server (GOVERNED, Invegent-only)",
+    "status": "GOVERNED (invegent allowlist)",
+    "sfto": "true",
+    "bytes": 126334,
+    "px": "1920x1278",
+    "sha256_actual": "c30f186f05566068bba6903234b17280fc947c8cde9bd580ed9f8c34d4f26af5",
+    "sha256_recorded": "c30f186f05566068bba6903234b17280fc947c8cde9bd580ed9f8c34d4f26af5",
+    "sha256_match": true
+  }
+]

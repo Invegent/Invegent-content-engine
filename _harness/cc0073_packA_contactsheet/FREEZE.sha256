@@ -1,0 +1,12 @@
+# cc-0073 FREEZE MANIFEST — origin/main ce3e4b8 — 2026-07-24
+# Authoritative hashes for shared-checkout handoff. Abort recording on any drift.
+
+e14e6dd1b4fa6881da4ba27363ce8a26b391e9cb992da9edf013cad1add65073  docs/briefs/cc-0073-backgrounds-only-asset-gap-drain.md
+87f3339b39f3d5d6666ef98ccbf287b31774e00f0519d00ac06e503466a06928  docs/briefs/cc-0073-decision-packs-a-b-c.md
+c1f31a861c067a72acaf5a277ba40bd140d38ca1c711a51a97b4ada6dbf48cc4  docs/briefs/cc-0073-scrim-remediation-gate1-packet.md
+fc8e7a132aa9abdb13f70d28cb721a8e8411cc926f4c5e37f9d3a7a158c5b3c8  docs/briefs/cc-0073-scrim-remediation-apply-packet-v1.md
+dbe51d09f6a9deb0462c71a0e1f0103891f3b52e5b8e7ce46372bebc190e9c5d  _harness/cc0073_packA_contactsheet/contact_sheet_raw.jpg
+2defab2ab4cc401358cad6f81d276584ef4c83e59f5c04c0201da8232c20281a  _harness/cc0073_packA_contactsheet/contact_sheet_as_rendered.jpg
+378af2b6c1eebd44839989d95cf2b25e4034d78e0dcad8788f2bb79b69d4d223  _harness/cc0073_packA_contactsheet/contact_sheet_proposed_scrim62.jpg
+4ecc203e868a60571a61a1fededb37cd67890c475b58724732c6c2169d3dd387  _harness/cc0073_packA_contactsheet/integrity_report.json
+12e99624f2dc99a87ab5db512717a45b68f089c5f2e271113d9732af9c8fd2aa  docs/briefs/cc-0073-scrim-apply-gate-final-v1.md
