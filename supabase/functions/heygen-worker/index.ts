@@ -1,4 +1,32 @@
 // heygen-worker v2.2.0
+// v2.4.1 — cc-0063 STEP B: GOVERNED-HOST-DESIGNATION-RESOLVER. Make the LIVE avatar resolver
+//          CONSUME the governed host designation step A wrote. lookupAvatar now (a) SELECTs
+//          ba.is_default_host, ba.is_primary, (b) applies the PK-ruled TOTAL order
+//          `ORDER BY ba.is_default_host DESC, ba.is_primary DESC, ba.created_at ASC,
+//          ba.brand_avatar_id ASC` (rank-1 "explicit governed assignment" is a RESERVED,
+//          currently-inapplicable position — no such column exists — intentionally absent),
+//          (c) changes `is_active = true` → `is_active IS TRUE` (nullable column; both exclude
+//          NULL identically), (d) CHECKS the exec_sql `error` (the `:92` repair — a failed query
+//          can no longer be reported as "no avatar"), and (e) returns a DISCRIMINATED UNION
+//          {default_host|primary_fallback|undesignated_tiebreak | no_eligible_avatar |
+//          resolution_failed} instead of a bare row-or-null. The reason code is derived testing
+//          `is_default_host` FIRST per §1.4 — this INTENTIONALLY DIVERGES from
+//          public.resolve_and_record_avatar_shadow (is_primary-first): is_default_host outranks
+//          is_primary by PK ruling; the shadow resolver is SUPERSEDED ON ORDERING — a CARRY, NOT
+//          an edit (its SQL is untouched). runSubmitPhase branches on the four outcomes; the two
+//          failure outcomes call markFailed with a STRUCTURED `avatar_resolution_outcome`
+//          ('no_eligible_avatar' vs 'resolution_failed') alongside the human heygen_error string,
+//          so cases 3 and 4 are queryable apart without parsing text (R-B). avatarSelectedBy union
+//          widened to default_host|primary_fallback|undesignated_tiebreak|preset (role_filter/
+//          fallback_limit1 retired from EMISSION; historical stored values untouched, :259's
+//          runtime compare still reads old rows). VERSION v2.4.1 (NOT v2.4.0 — heygen-worker was
+//          rolled back FROM a v2.4.0 during cc-0052; a fresh, never-deployed string keeps the
+//          drift/deploy-verifier VERSION bookkeeping unambiguous). STRICTLY OUT OF SCOPE: NO
+//          migration / NO new DB object · NO new string interpolation (still only clientId,
+//          renderStyle, stakeholderRole) · the `:427` preset short-circuit precedence UNCHANGED ·
+//          the `:455` brand-profile error-discard site UNTOUCHED (different function) · the
+//          compliance loader UNTOUCHED · ai-worker UNTOUCHED · no avatar activation / no step C ·
+//          no shadow-flag flip. (cc-0063-step-b: governed-host-designation-resolver)
 // v2.3.0 — QA-VISIBILITY-V0: ADDITIVE / OBSERVABILITY-ONLY. Add a normalized `qa` object
 //          (engine='heygen', render_mode='identity', duration_semantics=
 //          'submit_to_poll_detection') INTO the existing writeRenderLog render_spec, built
@@ -56,7 +84,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { buildRenderQa, safeQa } from './qa.ts';  // v2.3.0: QA-VISIBILITY-V0 (additive)
 
-const VERSION             = 'heygen-worker-v2.3.0';
+const VERSION             = 'heygen-worker-v2.4.1';  // cc-0063-step-b: governed-host-designation-resolver
 const HEYGEN_GENERATE     = 'https://api.heygen.com/v2/video/generate';
 const HEYGEN_STATUS       = 'https://api.heygen.com/v1/video_status.get';
 const MAX_SUBMITS         = 3;                // Phase A: pending drafts to submit per tick
@@ -83,27 +111,50 @@ function getServiceClient() {
 
 type Supa = ReturnType<typeof getServiceClient>;
 
+// cc-0063 Step B: consume the governed host designation. PK-ruled TOTAL order is
+//   1 explicit governed assignment (RESERVED — no such column exists today; intentionally
+//     ABSENT from the ORDER BY so a future key slots in above designation without renumbering),
+//   2 is_default_host DESC  (the governed designation — LIVE, load-bearing),
+//   3 is_primary DESC       (secondary fallback only — currently inert),
+//   4 created_at ASC, brand_avatar_id ASC  (deterministic tie-breakers — total order, never ties).
+// The reason code is derived testing is_default_host FIRST (§1.4). This INTENTIONALLY DIVERGES
+// from public.resolve_and_record_avatar_shadow (is_primary-first) — is_default_host outranks
+// is_primary by PK ruling; the shadow resolver is SUPERSEDED ON ORDERING, a carry not an edit
+// (its applied SQL is untouched). The exec_sql `error` is CHECKED (the :92 repair): a failed
+// query returns 'resolution_failed', NEVER a false 'no_eligible_avatar'. No new interpolation —
+// the only interpolated values remain clientId, renderStyle, stakeholderRole.
+export type AvatarResolution =
+  | { outcome: 'default_host' | 'primary_fallback' | 'undesignated_tiebreak';
+      talking_photo_id: string; voice_id: string | null }
+  | { outcome: 'no_eligible_avatar' }
+  | { outcome: 'resolution_failed'; error_detail: string };
+
 export async function lookupAvatar(
   supabase: Supa,
   clientId: string,
   stakeholderRole: string | null,
   renderStyle: string,
-): Promise<{ talking_photo_id: string; voice_id: string | null } | null> {
-  const { data: rows } = await supabase.rpc('exec_sql', {
+): Promise<AvatarResolution> {
+  const { data: rows, error } = await supabase.rpc('exec_sql', {
     query: `
-      SELECT ba.heygen_avatar_id, ba.heygen_voice_id
+      SELECT ba.heygen_avatar_id, ba.heygen_voice_id, ba.is_default_host, ba.is_primary
       FROM c.brand_avatar ba
       JOIN c.brand_stakeholder bs ON bs.stakeholder_id = ba.stakeholder_id
       WHERE ba.client_id = '${clientId}'
-        AND ba.is_active = true
+        AND ba.is_active IS TRUE
         AND ba.render_style = '${renderStyle}'
         ${stakeholderRole ? `AND bs.role_code = '${stakeholderRole}'` : ''}
+      ORDER BY ba.is_default_host DESC, ba.is_primary DESC, ba.created_at ASC, ba.brand_avatar_id ASC
       LIMIT 1
     `,
   });
+  if (error) return { outcome: 'resolution_failed', error_detail: (error.message ?? String(error)).slice(0, 500) };
   const row = (rows as any)?.[0];
-  if (!row?.heygen_avatar_id) return null;
-  return { talking_photo_id: row.heygen_avatar_id, voice_id: row.heygen_voice_id ?? null };
+  if (!row?.heygen_avatar_id) return { outcome: 'no_eligible_avatar' };
+  const outcome = row.is_default_host ? 'default_host'
+                : row.is_primary      ? 'primary_fallback'
+                :                        'undesignated_tiebreak';
+  return { outcome, talking_photo_id: row.heygen_avatar_id, voice_id: row.heygen_voice_id ?? null };
 }
 
 // --- HeyGen calls -----------------------------------------------------------
@@ -428,13 +479,34 @@ export async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<an
       let voiceId: string | null = fmt.voice_id ?? null;
       // v2.1.1 (observability-only): record HOW the avatar was selected. Default 'preset' = identity
       // already present in draft_format (no lookup). Does NOT influence which avatar is chosen.
-      let avatarSelectedBy: 'role_filter' | 'fallback_limit1' | 'preset' = 'preset';
+      // cc-0063 Step B: 'role_filter'/'fallback_limit1' are RETIRED FROM EMISSION; the resolver now
+      // emits the governed codes default_host|primary_fallback|undesignated_tiebreak. 'preset' is
+      // retained — the :427 short-circuit is carried governance debt (unchanged precedence).
+      let avatarSelectedBy: 'default_host' | 'primary_fallback' | 'undesignated_tiebreak' | 'preset' = 'preset';
       if (!talkingPhotoId) {
-        const avatar = await lookupAvatar(supabase, clientId, stakeholderRole, renderStyle);
-        if (!avatar) throw new Error(`No active ${renderStyle} avatar for client ${clientId}${stakeholderRole ? ` role ${stakeholderRole}` : ''}`);
-        talkingPhotoId = avatar.talking_photo_id;
-        voiceId = voiceId ?? avatar.voice_id;
-        avatarSelectedBy = stakeholderRole ? 'role_filter' : 'fallback_limit1';
+        const res = await lookupAvatar(supabase, clientId, stakeholderRole, renderStyle);
+        // cc-0063 Step B: fail closed on a query error, DISTINCT from a genuinely empty candidate
+        // set (the 2026-07-23 non-collapse). The structured avatar_resolution_outcome is the
+        // downstream-observable discriminator (R-B); the heygen_error string is for humans.
+        if (res.outcome === 'resolution_failed') {
+          await markFailed(supabase, draftId, fmt, {
+            heygen_error: `submit_error: avatar resolution failed for client ${clientId}: ${res.error_detail}`,
+            avatar_resolution_outcome: 'resolution_failed',
+          });
+          results.push({ post_draft_id: draftId, phase: 'submit', status: 'failed', error: 'resolution_failed' });
+          continue;
+        }
+        if (res.outcome === 'no_eligible_avatar') {
+          await markFailed(supabase, draftId, fmt, {
+            heygen_error: `submit_error: No active ${renderStyle} avatar for client ${clientId}${stakeholderRole ? ` role ${stakeholderRole}` : ''}`,
+            avatar_resolution_outcome: 'no_eligible_avatar',
+          });
+          results.push({ post_draft_id: draftId, phase: 'submit', status: 'failed', error: 'no_eligible_avatar' });
+          continue;
+        }
+        talkingPhotoId = res.talking_photo_id;
+        voiceId = voiceId ?? res.voice_id;
+        avatarSelectedBy = res.outcome;   // default_host | primary_fallback | undesignated_tiebreak
       }
       if (!voiceId) throw new Error(`No voice_id for draft ${draftId}`);
 
