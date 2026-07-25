@@ -1,0 +1,37 @@
+{
+  "now": "2026-07-25T10:01:05.000Z",
+  "request": {
+    "artifacts": [
+      {
+        "path": "p.md",
+        "sourceIdentity": "committed-ref"
+      }
+    ],
+    "lane": "lane-sup",
+    "purpose": "register-pointer",
+    "ref": "0123456789abcdef0123456789abcdef01234567",
+    "lifecycle": {
+      "supersededBy": "v4 (sha 89abcdef0123456789abcdef0123456789abcdef)"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "p.md",
+      "sourceIdentity": "committed-ref",
+      "gitBlob": {
+        "present": true,
+        "hashRaw": "1111111111111111111111111111111111111111111111111111111111111111",
+        "hashLF": "1111111111111111111111111111111111111111111111111111111111111111",
+        "blobId": "b",
+        "pathAtRef": "p.md"
+      }
+    }
+  ],
+  "refResolution": {
+    "requestedRef": "0123456789abcdef0123456789abcdef01234567",
+    "resolvedShas": [
+      "0123456789abcdef0123456789abcdef01234567"
+    ],
+    "isExactShaInput": true
+  }
+}

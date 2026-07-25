@@ -1,0 +1,55 @@
+{
+  "now": "2026-07-25T10:01:05.000Z",
+  "request": {
+    "artifacts": [
+      {
+        "path": "src/a.ts",
+        "sourceIdentity": "committed-ref",
+        "alsoReadWorkingTree": true
+      }
+    ],
+    "lane": "lane-eol",
+    "purpose": "review-handoff",
+    "ref": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "artifacts": [
+    {
+      "path": "src/a.ts",
+      "sourceIdentity": "committed-ref",
+      "gitBlob": {
+        "present": true,
+        "hashRaw": "1111111111111111111111111111111111111111111111111111111111111111",
+        "hashLF": "3333333333333333333333333333333333333333333333333333333333333333",
+        "blobId": "blob-lf",
+        "pathAtRef": "src/a.ts"
+      },
+      "reads": [
+        {
+          "at": "2026-07-25T10:00:00.000Z",
+          "exists": true,
+          "size": 100,
+          "mtimeMs": 1800000000000,
+          "inode": 555,
+          "hashRaw": "2222222222222222222222222222222222222222222222222222222222222222",
+          "hashLF": "3333333333333333333333333333333333333333333333333333333333333333"
+        },
+        {
+          "at": "2026-07-25T10:01:05.000Z",
+          "exists": true,
+          "size": 100,
+          "mtimeMs": 1800000000000,
+          "inode": 555,
+          "hashRaw": "2222222222222222222222222222222222222222222222222222222222222222",
+          "hashLF": "3333333333333333333333333333333333333333333333333333333333333333"
+        }
+      ]
+    }
+  ],
+  "refResolution": {
+    "requestedRef": "0123456789abcdef0123456789abcdef01234567",
+    "resolvedShas": [
+      "0123456789abcdef0123456789abcdef01234567"
+    ],
+    "isExactShaInput": true
+  }
+}

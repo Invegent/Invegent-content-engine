@@ -1,0 +1,38 @@
+{
+  "now": "2026-07-25T10:01:05.000Z",
+  "request": {
+    "artifacts": [
+      {
+        "path": "src/index.ts",
+        "sourceIdentity": "committed-ref"
+      }
+    ],
+    "lane": "lane-z",
+    "purpose": "apply-handoff",
+    "ref": "0123456789abcdef0123456789abcdef01234567",
+    "quietInterval": 10,
+    "expectedHash": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "artifacts": [
+    {
+      "path": "src/index.ts",
+      "sourceIdentity": "committed-ref",
+      "expectedHash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "gitBlob": {
+        "present": true,
+        "hashRaw": "1111111111111111111111111111111111111111111111111111111111111111",
+        "hashLF": "1111111111111111111111111111111111111111111111111111111111111111",
+        "blobId": "blob-1",
+        "pathAtRef": "src/index.ts"
+      }
+    }
+  ],
+  "refResolution": {
+    "requestedRef": "0123456789abcdef0123456789abcdef01234567",
+    "resolvedShas": [
+      "0123456789abcdef0123456789abcdef01234567"
+    ],
+    "isExactShaInput": true,
+    "repoId": "/tmp/repo"
+  }
+}

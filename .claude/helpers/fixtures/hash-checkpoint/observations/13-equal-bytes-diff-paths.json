@@ -1,0 +1,49 @@
+{
+  "now": "2026-07-25T10:01:05.000Z",
+  "request": {
+    "artifacts": [
+      {
+        "path": "one/x.md",
+        "sourceIdentity": "committed-ref"
+      },
+      {
+        "path": "two/y.md",
+        "sourceIdentity": "committed-ref"
+      }
+    ],
+    "lane": "lane-dup",
+    "purpose": "apply-handoff",
+    "ref": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "artifacts": [
+    {
+      "path": "one/x.md",
+      "sourceIdentity": "committed-ref",
+      "gitBlob": {
+        "present": true,
+        "hashRaw": "1111111111111111111111111111111111111111111111111111111111111111",
+        "hashLF": "1111111111111111111111111111111111111111111111111111111111111111",
+        "blobId": "b1",
+        "pathAtRef": "one/x.md"
+      }
+    },
+    {
+      "path": "two/y.md",
+      "sourceIdentity": "committed-ref",
+      "gitBlob": {
+        "present": true,
+        "hashRaw": "1111111111111111111111111111111111111111111111111111111111111111",
+        "hashLF": "1111111111111111111111111111111111111111111111111111111111111111",
+        "blobId": "b2",
+        "pathAtRef": "two/y.md"
+      }
+    }
+  ],
+  "refResolution": {
+    "requestedRef": "0123456789abcdef0123456789abcdef01234567",
+    "resolvedShas": [
+      "0123456789abcdef0123456789abcdef01234567"
+    ],
+    "isExactShaInput": true
+  }
+}

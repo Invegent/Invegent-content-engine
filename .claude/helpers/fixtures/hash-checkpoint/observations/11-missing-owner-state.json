@@ -1,0 +1,40 @@
+{
+  "now": "2026-07-25T10:01:05.000Z",
+  "request": {
+    "artifacts": [
+      {
+        "path": "doc.md"
+      }
+    ],
+    "lane": "lane-noowner",
+    "purpose": "author-freeze",
+    "quietInterval": 65
+  },
+  "artifacts": [
+    {
+      "path": "doc.md",
+      "sourceIdentity": "working-tree",
+      "reads": [
+        {
+          "at": "2026-07-25T10:00:00.000Z",
+          "exists": true,
+          "size": 100,
+          "mtimeMs": 1800000000000,
+          "inode": 555,
+          "hashRaw": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "hashLF": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        {
+          "at": "2026-07-25T10:01:05.000Z",
+          "exists": true,
+          "size": 100,
+          "mtimeMs": 1800000000000,
+          "inode": 555,
+          "hashRaw": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "hashLF": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    }
+  ],
+  "refResolution": null
+}

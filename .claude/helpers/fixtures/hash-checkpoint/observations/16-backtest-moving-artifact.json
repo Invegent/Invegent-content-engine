@@ -1,0 +1,50 @@
+{
+  "now": "2026-07-25T10:01:05.000Z",
+  "request": {
+    "artifacts": [
+      {
+        "path": "halt-doc.md"
+      }
+    ],
+    "lane": "S1",
+    "purpose": "author-freeze",
+    "quietInterval": 65,
+    "ownerState": [
+      {
+        "at": "2026-07-25T09:59:58.000Z",
+        "status": "idle"
+      },
+      {
+        "at": "2026-07-25T10:01:07.000Z",
+        "status": "idle"
+      }
+    ]
+  },
+  "artifacts": [
+    {
+      "path": "halt-doc.md",
+      "sourceIdentity": "working-tree",
+      "reads": [
+        {
+          "at": "2026-07-25T10:00:00.000Z",
+          "exists": true,
+          "size": 100,
+          "mtimeMs": 1800000000000,
+          "inode": 555,
+          "hashRaw": "191e2dafa5000000000000000000000000000000000000000000000000000000",
+          "hashLF": "191e2dafa5000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "at": "2026-07-25T10:01:05.000Z",
+          "exists": true,
+          "size": 100,
+          "mtimeMs": 1800000000000,
+          "inode": 555,
+          "hashRaw": "07d61a1600000000000000000000000000000000000000000000000000000000",
+          "hashLF": "07d61a1600000000000000000000000000000000000000000000000000000000"
+        }
+      ]
+    }
+  ],
+  "refResolution": null
+}
