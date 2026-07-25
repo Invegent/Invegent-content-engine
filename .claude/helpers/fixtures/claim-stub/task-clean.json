@@ -1,0 +1,13 @@
+{
+  "_note": "Synthetic. Clean task-id set from brief filenames + register text; highest cc-0031 -> PROPOSED cc-0032 / clean.",
+  "request": { "claimType": "task", "lane": "demo-lane", "worktree": "/wt/demo", "gate": "gate-1" },
+  "now": "2026-08-01T00:00:00.000Z",
+  "sources": [
+    { "id": "local:action", "label": "local:docs/00_action_list.md", "kind": "register-text", "required": true, "available": true, "text": "open: cc-0029, cc-0030" },
+    { "id": "brief-filenames", "label": "docs/briefs/**:filenames", "kind": "filenames", "required": true, "available": true, "names": [
+      "docs/briefs/cc-0028-thing.md",
+      "docs/briefs/cc-0031-other.md"
+    ] }
+  ],
+  "reserved": []
+}

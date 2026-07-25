@@ -1,0 +1,9 @@
+{
+  "_note": "RESERVED-HOLD vector (e), task variant. Clean max cc-0031; the successor cc-0032 is RESERVED to an unmerged branch. Expect INCOMPLETE, proposedIdentifier null, and NO auto-skip to cc-0033 (auto-resolution is banned). Synthetic data.",
+  "request": { "claimType": "task", "lane": "demo-lane", "worktree": "/wt/demo", "gate": "gate-1" },
+  "now": "2026-08-01T00:00:00.000Z",
+  "sources": [
+    { "id": "fn", "label": "docs/briefs/**:filenames", "kind": "filenames", "required": true, "available": true, "names": ["docs/briefs/cc-0030-a.md", "docs/briefs/cc-0031-b.md"] }
+  ],
+  "reserved": ["cc-0032"]
+}

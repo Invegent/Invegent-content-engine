@@ -1,0 +1,9 @@
+{
+  "_note": "B-1 REGRESSION. A higher-major marker v7.4 must be scanned correctly and win over v6.99 -- proving the highest is derived GENERICALLY (highest major then minor) with NO hardcoded major. Expect PROPOSED v7.5.",
+  "request": { "claimType": "register", "lane": "demo-lane", "worktree": "/wt/demo", "gate": "gate-1" },
+  "now": "2026-08-01T00:00:00.000Z",
+  "sources": [
+    { "id": "local:sync", "label": "local:docs/00_sync_state.md", "kind": "register-text", "required": true, "available": true, "text": "old line v6.99 ... current head v7.4 (major bumped)" }
+  ],
+  "reserved": []
+}

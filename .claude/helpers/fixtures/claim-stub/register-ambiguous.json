@@ -1,0 +1,9 @@
+{
+  "_note": "Synthetic. A malformed version-like marker 'v3.4O' (letter O) sits at/above the clean max v3.27 -> the true highest is unreadable. Expect INCOMPLETE, never a guessed successor (no false-free).",
+  "request": { "claimType": "register", "lane": "demo-lane", "worktree": "/wt/demo", "gate": "gate-1" },
+  "now": "2026-08-01T00:00:00.000Z",
+  "sources": [
+    { "id": "local:sync", "label": "local:docs/00_sync_state.md", "kind": "register-text", "required": true, "available": true, "text": "clean head v3.27 but see draft v3.4O pending" }
+  ],
+  "reserved": []
+}

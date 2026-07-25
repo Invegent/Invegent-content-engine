@@ -1,0 +1,9 @@
+{
+  "_note": "Synthetic. Clean max v3.10; the successor v3.11 is RESERVED to an unmerged branch. Expect INCOMPLETE (hold honoured) -- never propose the reserved number, never auto-skip to v3.12.",
+  "request": { "claimType": "register", "lane": "demo-lane", "worktree": "/wt/demo", "gate": "gate-1" },
+  "now": "2026-08-01T00:00:00.000Z",
+  "sources": [
+    { "id": "origin:sync", "label": "origin/main:docs/00_sync_state.md", "kind": "register-text", "required": true, "available": true, "text": "head v3.10" }
+  ],
+  "reserved": ["v3.11"]
+}

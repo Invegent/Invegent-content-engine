@@ -1,0 +1,13 @@
+{
+  "_note": "Synthetic. origin register head < local register head < an open result-doc stub. The stub's higher number must win the overall max; proposal = its successor. No historical/live number is load-bearing here.",
+  "request": { "claimType": "register", "lane": "demo-lane", "worktree": "/wt/demo", "gate": "gate-1" },
+  "now": "2026-08-01T00:00:00.000Z",
+  "sources": [
+    { "id": "origin:sync", "label": "origin/main:docs/00_sync_state.md", "kind": "register-text", "required": true, "available": true, "text": "register head v3.40 ... prior v3.39" },
+    { "id": "local:sync", "label": "local:docs/00_sync_state.md", "kind": "register-text", "required": true, "available": true, "text": "local head v3.41 (unpushed)" },
+    { "id": "result-stubs", "label": "docs/briefs/results/**:line1", "kind": "stub-lines", "required": true, "available": true, "entries": [
+      { "locator": "docs/briefs/results/demo-a.md", "text": "CLAIMED v3.43 · lane-a · /wt/a · gate-1 · 2026-08-01T00:00:00.000Z" }
+    ] }
+  ],
+  "reserved": []
+}

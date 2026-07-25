@@ -1,0 +1,9 @@
+{
+  "_note": "Mitigation proof for the real-register foreign-token problem. The register text embeds foreign version tokens ('Graph v24.0', 'insights-worker v14.5.0', 'v19.0') mid-sentence. With mode:'register-entry' only the ENTRY-HEADER markers (v3.20, v3.21) are read, so the highest is v3.21 (NOT the foreign v24.0) and the proposal is v3.22. Numbers here are synthetic fixture data; the anchor stays generic (no hardcoded major).",
+  "request": { "claimType": "register", "lane": "demo-lane", "worktree": "/wt/demo", "gate": "gate-1" },
+  "now": "2026-08-01T00:00:00.000Z",
+  "sources": [
+    { "id": "sync", "label": "docs/00_sync_state.md", "kind": "register-text", "required": true, "mode": "register-entry", "available": true, "text": "# ICE Sync State\n\n> **🧾 v3.21 SOMETHING LANDED** — pinned Graph v24.0; insights-worker v14.5.0 deployed; earlier v19.0 sunset.\n>\n> **✅ v3.20 PRIOR EVENT** — see brief; A1 v14.4.1 note." }
+  ],
+  "reserved": []
+}

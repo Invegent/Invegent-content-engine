@@ -1,0 +1,15 @@
+{
+  "_note": "GENERIC BACKTEST (fixture DATA only). Replays the historical task-ID collision where cc-0047 AND cc-0048 each had two live lanes. Two brief filenames assert each id. The helper must DETECT + REPORT both from generic rules and NEVER pick a winner.",
+  "request": { "claimType": "task", "lane": "backtest-lane", "worktree": "/wt/backtest", "gate": "gate-1" },
+  "now": "2026-08-01T00:00:00.000Z",
+  "sources": [
+    { "id": "brief-filenames", "label": "docs/briefs/**:filenames", "kind": "filenames", "required": true, "available": true, "names": [
+      "docs/briefs/cc-0047-lane-alpha.md",
+      "docs/briefs/cc-0047-lane-beta.md",
+      "docs/briefs/cc-0048-lane-gamma.md",
+      "docs/briefs/cc-0048-lane-delta.md",
+      "docs/briefs/cc-0046-single.md"
+    ] }
+  ],
+  "reserved": []
+}

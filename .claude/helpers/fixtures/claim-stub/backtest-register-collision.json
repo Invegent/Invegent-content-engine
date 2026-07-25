@@ -1,0 +1,15 @@
+{
+  "_note": "GENERIC BACKTEST (fixture DATA only -- these numbers are NOT special-cased anywhere in the module). Replays the historical register-version collision from the 2026-07-24 governance-recovery lane where two unmerged branch commits both claimed v6.11 AND v6.12 while main skipped to v6.13. The helper must DETECT + REPORT both collisions from generic rules and NEVER resolve/renumber.",
+  "request": { "claimType": "register", "lane": "backtest-lane", "worktree": "/wt/backtest", "gate": "gate-1" },
+  "now": "2026-08-01T00:00:00.000Z",
+  "sources": [
+    { "id": "origin:sync", "label": "origin/main:docs/00_sync_state.md", "kind": "register-text", "required": true, "available": true, "text": "main head v6.13 (skipped past the collided band)" },
+    { "id": "result-stubs", "label": "docs/briefs/results/**:line1", "kind": "stub-lines", "required": true, "available": true, "entries": [
+      { "locator": "docs/briefs/results/branch-2c5a503-a.md", "text": "CLAIMED v6.11 · branch-a · /wt/2c5a503 · gate-1 · 2026-07-24T01:00:00.000Z" },
+      { "locator": "docs/briefs/results/branch-af0d9b7-a.md", "text": "CLAIMED v6.11 · branch-b · /wt/af0d9b7 · gate-1 · 2026-07-24T02:00:00.000Z" },
+      { "locator": "docs/briefs/results/branch-2c5a503-b.md", "text": "CLAIMED v6.12 · branch-a · /wt/2c5a503 · gate-1 · 2026-07-24T01:05:00.000Z" },
+      { "locator": "docs/briefs/results/branch-af0d9b7-b.md", "text": "CLAIMED v6.12 · branch-b · /wt/af0d9b7 · gate-1 · 2026-07-24T02:05:00.000Z" }
+    ] }
+  ],
+  "reserved": []
+}
