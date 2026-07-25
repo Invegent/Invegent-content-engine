@@ -11,7 +11,22 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.20.0";
+const VERSION = "ai-worker-v2.21.0";
+// v2.21.0 (2026-07-25) — R3a resolver-enforcement SHADOW wiring. ADDITIVE + SHADOW-ONLY.
+//   On both draft-write paths (main success path baseUpdate + evergreen path) the worker now
+//   makes a BEST-EFFORT call to the governed DB resolver m.resolve_final_format(client_id,
+//   platform, requested_format, format_mode, advisor_format) and stamps its jsonb decision into
+//   NEW nullable m.post_draft columns ONLY: advisor_format · requested_format · format_mode ·
+//   shadow_resolved_format · final_format_authority · final_format_reason · format_policy_version ·
+//   format_resolved_at · resolver_evidence. The resolver call is FAIL-SAFE (helper resolveShadow:
+//   any RPC error/throw → null, draft proceeds normally with shadow columns null +
+//   final_format_reason 'resolver_unavailable') — shadow must never reduce production reliability.
+//   recommended_format / recommended_reason keep their EXACT current values AND current writers on
+//   every path (the Advisor pick on the main path; job.input_payload?.format ?? 'text' verbatim on
+//   the evergreen path). STRICTLY OUT OF SCOPE: no format-SELECTION change, no prompt/advisor
+//   change, no render change, no change to what recommended_format/recommended_reason write, no
+//   DB schema/migration here (the shadow columns + resolver fn are applied separately), no
+//   dashboard. Nothing downstream reads the shadow columns yet.
 // v2.20.0 (2026-07-18) — cc-0040 Step 2 (advisor image_headline char budget) + the shared
 //   creative_contract.ts cc-0040 edits (PP+NDIS headline max_chars 90→180; NDIS footer
 //   ''→'NDIS Yarns' — D7 fold-in), applied IDENTICALLY to the ai-worker vendored twin
@@ -192,6 +207,38 @@ function getServiceClient() {
 }
 
 function nowIso() { return new Date().toISOString(); }
+
+// R3a SHADOW — best-effort call to the governed DB resolver m.resolve_final_format.
+// FAIL-SAFE: a resolver error/throw NEVER breaks the draft; it returns null and the
+// caller stamps the shadow columns null (+ final_format_reason 'resolver_unavailable').
+// Writes ONLY the additive m.post_draft shadow columns downstream — it does NOT influence
+// format SELECTION and does NOT touch recommended_format / recommended_reason.
+async function resolveShadow(
+  supabase: ReturnType<typeof getServiceClient>,
+  clientId: string,
+  platform: string,
+  requestedFormat: string | null,
+  formatMode: string | null,
+  advisorFormat: string,
+): Promise<any | null> {
+  try {
+    const { data, error } = await supabase.schema('m').rpc('resolve_final_format', {
+      p_client_id: clientId,
+      p_platform: platform,
+      p_requested_format: requestedFormat,
+      p_format_mode: formatMode,
+      p_advisor_format: advisorFormat,
+    });
+    if (error) {
+      console.error('[ai-worker] resolve_final_format shadow error', { code: error.code, message: error.message });
+      return null;
+    }
+    return data;
+  } catch (e) {
+    console.error('[ai-worker] resolve_final_format shadow threw', { message: e instanceof Error ? e.message : String(e) });
+    return null;
+  }
+}
 
 function trimSeedPayload(raw: any, jobType: string): any {
   if (!raw || typeof raw !== 'object') return raw;
@@ -864,6 +911,12 @@ app.post('*', async (c) => {
       }
 
       if (isEvergreenRender && evergreenContent) {
+        // R3a SHADOW — evergreen path. Advisor pick == the evergreen format. Shadow-only:
+        // recommended_format below keeps its exact current value/writer.
+        const evergreenFormat = job.input_payload?.format ?? 'text';
+        const evergreenRequestedFormat = (job.input_payload?.requested_format ?? null) as string | null;
+        const evergreenFormatMode = (job.input_payload?.format_mode ?? null) as string | null;
+        const evergreenShadow = await resolveShadow(supabase, job.client_id, platform, evergreenRequestedFormat, evergreenFormatMode, evergreenFormat);
         const { error: evergreenDraftErr } = await supabase.schema('m').from('post_draft').update({
           draft_title: evergreenContent.title,
           draft_body: evergreenContent.body,
@@ -873,6 +926,16 @@ app.post('*', async (c) => {
           image_headline: '',
           compliance_flags: [],
           updated_at: nowIso(),
+          // R3a SHADOW additive columns (nullable) — do NOT gate rendering/selection.
+          advisor_format: evergreenFormat,
+          requested_format: evergreenRequestedFormat,
+          format_mode: evergreenFormatMode,
+          shadow_resolved_format: evergreenShadow?.effective_format ?? null,
+          final_format_authority: evergreenShadow?.authority ?? null,
+          final_format_reason: evergreenShadow?.reason ?? (evergreenShadow === null ? 'resolver_unavailable' : null),
+          format_policy_version: evergreenShadow?.policy_version ?? null,
+          format_resolved_at: evergreenShadow ? nowIso() : null,
+          resolver_evidence: evergreenShadow ?? null,
         }).eq('post_draft_id', job.post_draft_id);
         if (evergreenDraftErr) throw new Error(`evergreen_post_draft_update_failed:${evergreenDraftErr.message}`);
 
@@ -1130,6 +1193,12 @@ app.post('*', async (c) => {
         (draftMeta as any).contract = buildContractStamp(creativeContract, nowIso);
       }
 
+      // R3a SHADOW — read planner intent (may be absent) and call the governed resolver
+      // best-effort. Shadow-only: recommended_format/recommended_reason below are UNCHANGED.
+      const requestedFormat = (job.input_payload?.requested_format ?? null) as string | null;
+      const formatMode = (job.input_payload?.format_mode ?? null) as string | null;
+      const shadow = await resolveShadow(supabase, job.client_id, platform, requestedFormat, formatMode, decidedFormat);
+
       const baseUpdate: any = {
         draft_title: result.title,
         draft_body: result.body,
@@ -1140,6 +1209,16 @@ app.post('*', async (c) => {
         image_headline: finalImageHeadline,
         compliance_flags: [],
         updated_at: nowIso(),
+        // R3a SHADOW additive columns (nullable) — do NOT gate rendering/selection.
+        advisor_format: decidedFormat,
+        requested_format: requestedFormat,
+        format_mode: formatMode,
+        shadow_resolved_format: shadow?.effective_format ?? null,
+        final_format_authority: shadow?.authority ?? null,
+        final_format_reason: shadow?.reason ?? (shadow === null ? 'resolver_unavailable' : null),
+        format_policy_version: shadow?.policy_version ?? null,
+        format_resolved_at: shadow ? nowIso() : null,
+        resolver_evidence: shadow ?? null,
       };
 
       const { error: successDraftErr } = await supabase.schema('m').from('post_draft').update(baseUpdate).eq('post_draft_id', job.post_draft_id);
