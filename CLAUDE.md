@@ -28,6 +28,7 @@ only output is its returned JSON.
 | `image-harvester` | network GET (allow-listed sources only) + writes confined to `_harness/image_harvester_v0/**`; `Read`/`Glob`/`Grep`/`Bash`/`Write`/`WebSearch`/`WebFetch` | licence-safe background-image sourcing per a PK mini-manifest: download candidates + full provenance (sha256 of bytes), contact sheets, honest `not_harvestable_licence_safe` returns; readable third-party signage/branding in crop area → REJECT (calibration rule); output ALWAYS passes `image-reviewer` before PK (scope condition) | touch DB/storage buckets/repo files outside its package, POST/auth'd APIs, git, deploy, offer CC/paid/AI-generated material, approve or promote anything |
 | `image-reviewer` | read-only (`Read`/`Glob`/`Grep`) | pixel-level suitability + risk review of a harvest package (P0 verdict vocabulary, suggestive only), package-consistency checks, licence/rights posture from recorded metadata | fetch from network, re-harvest, write files, recompute byte-hashes (named orchestrator step), touch DB/storage/git, use approval language, decide anything — PK visual review is the only deciding act |
 | `deploy-verifier` | read-only (`Read`/`Grep`/`Glob`/`Bash`/`get_edge_function`/`list_edge_functions`/`get_advisors`) | post-deploy verification Governor (runs AFTER a PK deploy): recompute live deploy state from ground truth (never the plan's claimed values) → `deploy_content_verdict` (marker-in-deployed-bundle/bundles-from-CWD guard · VERSION==repo · verify_jwt; content MISMATCH = hard STOP) + advisory `drift_verdict` (drift unreadable → FLAG, never a content STOP) → `overall` PASS/MISMATCH/PASS_WITH_FLAG; always name `source_read` | deploy, redeploy, gate/trigger a deploy, refresh drift (`drift-check?write=true`), edit repo/EF/DB, migrate, GRANT/REVOKE, git-mutate, handle an `x-series-key`, fabricate a value, approve/mark-proven, or decide proceed/abort |
+| `apply-harness-auditor` | read-only (`Read`/`Grep`/`Glob`) | STATICALLY audit an ICE apply packet's declared safety harness BEFORE freeze (ten mechanical checks: declared-STOP→executable enforcement · prose-only abort · fail-closed row counts · atomicity vs a NAMED single-call channel · pooled multi-call composition · baseline coverage · apply/rollback identity · executable vs declared order · non-aborting failure branch · missing channel/register); return PASS/CONCERNS/INCOMPLETE → CCF-02 clean/concerns/block with findings enumerated independently of the verdict; fail-closed to INCOMPLETE on any parse/internal error; **registered SHADOW MODE — its PASS clears no gate** | approve/decide any apply, hold/clear any gate, issue proceed/abort, judge payload/business/architecture/RLS-privilege correctness (beyond flagging a specialist review is needed), verify live/DB/deploy/git truth, replace or gate `db-rls-auditor`, run as the deciding step inside an active production apply gate, write/edit/commit/deploy/migrate, or mark anything proven |
 
 **Security triage lanes:** use `security-auditor` **after** `db-rls-auditor` has gathered the DB
 evidence — `db-rls-auditor` collects facts (grants, defs, advisors); `security-auditor` adds the
@@ -94,6 +95,26 @@ content MISMATCH · known-good→content PASS / `overall=PASS_WITH_FLAG` · veri
 MISMATCH; zero false content-MISMATCH, `source_read` always named, drift never fabricated). Drift is
 advisory. **Now listed in the team table above.** Deploy remains the PK hard stop — the agent confirms,
 never acts. Record: `docs/briefs/results/deploy-verifier-build-lane-result-v1.md`.
+
+**Apply-harness static lane:** use `apply-harness-auditor` at packet AUTHORING, BEFORE freeze, on any
+apply packet carrying a safety harness — the STATIC, pre-freeze counterpart to `deploy-verifier`. It flags
+where a packet DECLARES a protection its executable SQL does not enforce (the cc-0079 Slice-2 failure
+class — comment-only STOPs · pooled-call transaction non-composition · uncovered assertion baselines ·
+apply/rollback identity mismatch). Ten mechanical checks → PASS/CONCERNS/INCOMPLETE (CCF-02
+clean/concerns/block), findings enumerated **independently of the verdict**, **fail-closed to INCOMPLETE**.
+It is **advisory, zero-authority** — it never approves an apply, holds a gate, or replaces `db-rls-auditor`;
+live/DB/privilege truth is a `db-rls-auditor`/`security-auditor` handoff and git/HEAD a `branch-warden` one.
+**Status: REGISTERED 2026-07-25 in OFFLINE ADVISORY / SHADOW MODE (PK)** — proven via the two-hand build
+protocol (82 hermetic tests · known-fixture regression v2/v3/v4 · **independent sealed blind grading
+15/15**, which itself caught two check-7 defects the known-fixture regression missed). **In shadow mode its
+PASS clears NO gate**; CONCERNS/INCOMPLETE is an author-review signal only; every specialist + PK gate runs
+unchanged above it; the invoker owns any shadow-comparison record (audit left to the invoker, PK 2026-07-25).
+Watch **check 7 (apply/rollback identity)** first — the hardest to get right in the build. Backed by
+`.claude/helpers/apply-harness-auditor.mjs` (`c3e7395f…`); records: build/proof
+`docs/briefs/apply-harness-auditor-gate2-packet-v1.md`, registration
+`docs/briefs/apply-harness-auditor-registration-packet-v1.md`. **Carry:** CCF-04 helper-sequence placement
+vs Claim Stub / Hash Checkpoint (O-5) is an open portfolio-order question, deferred until after live
+shadow-mode use.
 
 **Brief-authoring lane:** use `brief-author` to draft the gate-1 brief for any PK-named task —
 it reads template/registers/CLAUDE.md/prior briefs/source as evidence and returns the draft as
