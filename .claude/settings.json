@@ -57,6 +57,14 @@
               "C:/Users/parve/Invegent-content-engine/.claude/hooks/commit-branch-guard.mjs",
               "--log-only"
             ]
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "C:/Users/parve/Invegent-content-engine/.claude/hooks/claim-stub-register-guard.mjs",
+              "--log-only"
+            ]
           }
         ]
       }
