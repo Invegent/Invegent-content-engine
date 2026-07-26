@@ -19,6 +19,13 @@
               "C:/Users/parve/Invegent-content-engine/scripts/db-read-adoption.py",
               "--pulse"
             ]
+          },
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "C:/Users/parve/Invegent-content-engine/.claude/hooks/source-truth-session-hook.mjs"
+            ]
           }
         ]
       }
