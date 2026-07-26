@@ -11,7 +11,27 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.21.0";
+const VERSION = "ai-worker-v2.22.0";
+// v2.22.0 (2026-07-26) — Schedule-authority pin for the governed video_short_stat golden path
+//   + a deterministic stat-script field clamp. ADDITIVE + NARROW. THREE changes:
+//   (1) new fail-closed helper isVideoStatGovernanceEnabled() — mirrors video-worker's
+//       isVideoGovernanceEnabled: reads c.client_creative_governance(enabled) for
+//       (client_id, format='video_short_stat'); any error/throw/missing → false.
+//   (2) a one-format schedule-authority pin placed immediately AFTER the F-HEYGEN A2 avatar
+//       override: when the SCHEDULE demands video_short_stat on YouTube (the only platform where
+//       it is valid) AND the client is governance-enabled, the schedule's choice survives the
+//       Advisor into recommended_format so the governed Creatomate video path fires. Records what
+//       the advisor would have chosen (schedule_authority_pin reason). Every other Advisor power
+//       is intact; guard checks input_payload.format + platform (cheap) BEFORE the async read.
+//   (3) a deterministic clampField() applied to the stat generator's parsed output
+//       (stat_value≤12 · stat_label≤35 · context_line≤75 · cta_text≤65 — all ≤ the video
+//       contract maxima), truncating at a word boundary. No-op for already-compliant fields;
+//       narration_text untouched. Stops an over-long model stat field (observed cta_text=133)
+//       from dying fail-loud at video-worker's contract gate.
+//   STRICTLY OUT OF SCOPE: no Advisor/prompt change beyond the single pin, no change to any
+//   OTHER format's selection, no render change, no DB schema/migration, no dashboard, no change
+//   to the R3a shadow columns or recommended_reason writers. Only the pinned format's
+//   recommended_format value changes, and only for governed YouTube video_short_stat slots.
 // v2.21.0 (2026-07-25) — R3a resolver-enforcement SHADOW wiring. ADDITIVE + SHADOW-ONLY.
 //   On both draft-write paths (main success path baseUpdate + evergreen path) the worker now
 //   makes a BEST-EFFORT call to the governed DB resolver m.resolve_final_format(client_id,
@@ -199,11 +219,53 @@ function safeParseJson<T>(raw: string): { ok: true; value: T } | { ok: false; er
   catch (e: any) { return { ok: false, error: e?.message ?? "invalid_json" }; }
 }
 
+// v2.22.0 — deterministic length clamp for the video_short_stat generator's fields.
+// Pure + no-op for already-compliant input (the common case). Truncates at a word
+// boundary when over `max`; falls back to a hard slice when the tail has no usable space
+// (the last space sits before 60% of max). null/undefined → ''. Used to keep stat fields
+// within the generator's own stated prompt limits, all of which are ≤ the downstream
+// video-worker contract maxima, so a clamped draft always survives the render contract gate.
+export function clampField(s: unknown, max: number): string {
+  const v = String(s ?? '').trim();
+  if (v.length <= max) return v;
+  const cut = v.slice(0, max);
+  const sp = cut.lastIndexOf(' ');
+  return (sp >= Math.floor(max * 0.6) ? cut.slice(0, sp) : cut).trim();
+}
+
 function getServiceClient() {
   const url = Deno.env.get("SUPABASE_URL");
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+// v2.22.0 — mirrors video-worker's isVideoGovernanceEnabled. Returns whether a client has an
+// ENABLED governed video_short_stat row in c.client_creative_governance. FAIL-CLOSED: any
+// query error, throw, or missing/disabled row → false, so it can never push a draft onto the
+// governed video path by accident and never throws into the draft lifecycle.
+export async function isVideoStatGovernanceEnabled(
+  supabase: ReturnType<typeof getServiceClient>,
+  clientId: string,
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.schema('c').from('client_creative_governance')
+      .select('enabled').eq('client_id', clientId).eq('format', 'video_short_stat').maybeSingle();
+    if (error) return false;                 // fail-closed
+    return data?.enabled === true;
+  } catch { return false; }                  // never throws into the draft lifecycle
+}
+
+// v2.22.0 — pure predicate for the schedule-authority pin (the async governance read stays
+// separate so this is trivially testable). The pin fires ONLY when the schedule authoritatively
+// requested video_short_stat, the platform is YouTube (the only platform where video_short_stat
+// is valid), AND the client is governance-enabled for it.
+export function shouldPinVideoStat(
+  inputFormat: string | null | undefined,
+  platform: string | null | undefined,
+  governanceEnabled: boolean,
+): boolean {
+  return inputFormat === 'video_short_stat' && platform === 'youtube' && governanceEnabled === true;
 }
 
 function nowIso() { return new Date().toISOString(); }
@@ -319,6 +381,14 @@ async function generateVideoScript(opts: {
     try {
       const parsed = JSON.parse(cleaned);
       if (!parsed?.stat_value) return null;
+      // v2.22.0 — deterministic field clamp to the generator's own stated prompt limits (all ≤
+      // the downstream video-worker contract maxima) so an over-long model field (observed
+      // cta_text=133) cannot die fail-loud at the render contract gate. No-op when compliant;
+      // narration_text is left untouched.
+      parsed.stat_value = clampField(parsed.stat_value, 12);
+      parsed.stat_label = clampField(parsed.stat_label, 35);
+      parsed.context_line = clampField(parsed.context_line, 75);
+      parsed.cta_text = clampField(parsed.cta_text, 65);
       parsed.total_duration_s = 20;
       return parsed;
     } catch { console.error('[ai-worker] video_script_stat parse failed'); return null; }
@@ -1074,6 +1144,21 @@ app.post('*', async (c) => {
         decidedFormat = 'video_short_avatar';
         advisorReason = `avatar_override (F-HEYGEN A2); advisor_would_have=${advisorWouldHave}${advisorReason ? `; ${advisorReason}` : ''}`;
         console.log(`[ai-worker] ${VERSION} — job ${jobId}: avatar override (advisor_would_have=${advisorWouldHave})`);
+      }
+
+      // Schedule-authority pin (golden-path): when the SCHEDULE authoritatively demands the governed
+      // video_short_stat format on YouTube (the only platform where video_short_stat is platform-valid)
+      // AND the client is governance-enabled for it, the schedule's choice must survive the Advisor to
+      // recommended_format so the governed Creatomate video path fires. Mirrors the A2 avatar override:
+      // narrow, one-format, records what the Advisor would have chosen. Every other Advisor power is intact.
+      // Cheap guards (input_payload.format + platform) are checked BEFORE the async governance read.
+      if (job.input_payload?.format === 'video_short_stat'
+          && platform === 'youtube'
+          && await isVideoStatGovernanceEnabled(supabase, job.client_id)) {
+        const advisorWouldHave = decidedFormat;
+        decidedFormat = 'video_short_stat';
+        advisorReason = `schedule_authority_pin (video_short_stat golden-path); advisor_would_have=${advisorWouldHave}${advisorReason ? `; ${advisorReason}` : ''}`;
+        console.log(`[ai-worker] ${VERSION} — job ${jobId}: schedule-authority pin video_short_stat (advisor_would_have=${advisorWouldHave})`);
       }
 
       // ACI v0 / Slice B1 — resolve the vendored creative contract for the FINAL decidedFormat.
