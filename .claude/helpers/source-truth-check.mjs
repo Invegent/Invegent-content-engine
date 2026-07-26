@@ -17,7 +17,8 @@
 //   1. git fetch origin — the ONLY network/git action; refreshes remote-tracking
 //      refs only (never pull/merge/rebase/reset/checkout/a working file).
 //   2. origin/main HEAD SHA + the LIVE origin register head version (highest
-//      v5.NN marker read from docs/00_sync_state.md on origin/main — never hardcoded).
+//      vMAJOR.MINOR ENTRY-HEADER marker read from docs/00_sync_state.md on
+//      origin/main — generic major, never hardcoded).
 //   3. local main vs origin/main: ahead N / behind M and whether they DIVERGED
 //      (both moved past the merge-base).
 //   4. working-tree state: dirty / staged / untracked summary (status --porcelain).
@@ -47,19 +48,36 @@ import { pathToFileURL } from 'node:url';
 // Risk levels (severity ordering for display / sorting).
 export const RISK = { INFO: 'INFO', DECISION: 'DECISION', UNKNOWN: 'UNKNOWN' };
 
-// Parse the highest v5.NN register head marker from sync_state text.
-// Returns the marker string (e.g. "v5.33") or null when none is found.
-// Numeric max over the minor component — never relies on file ordering.
+// A register VERSION marker HEADS an entry line: after an optional blockquote /
+// bullet prefix and a bold "**" + a short status glyph, the line STARTS with
+// vMAJOR.MINOR (e.g. "> **🧾 v6.28 — ..."). Anchoring to the entry header is what
+// keeps FOREIGN version tokens in register PROSE out of the head computation — a
+// naive /\bv(\d+)\.(\d+)\b/ max over the real sync_state would wrongly pick a
+// mid-sentence "Graph v24.0" / "insights-worker v14.5" / a prose "v6.70". This
+// mirrors the PROVEN entry-header anchor in claim-stub.mjs, and REPLACES the old
+// hardcoded /\bv5\.(\d+)\b/ which silently returned null once the registers
+// reached v6 (the whole reason this helper was reporting a stale/empty head).
+const REGISTER_ENTRY_HEAD = /^\s*(?:>|·|-|\*)?\s*\*\*[^\n]{0,10}?\bv(\d+)\.(\d+)\b/;
+
+// Parse the register HEAD version from sync_state text: the HIGHEST (major, minor)
+// among ENTRY-HEADER markers. Generic major (NEVER hardcoded); numeric max over
+// the (major, minor) TUPLE, never file ordering. Returns "vMAJOR.MINOR" or null.
+// Fail-toward-caution: an unreadable head returns null ("UNKNOWN") — it can never
+// report a FALSE-HIGH from a foreign prose token.
 export function parseRegisterHead(syncStateText) {
   if (typeof syncStateText !== 'string' || syncStateText === '') return null;
-  const re = /\bv5\.(\d+)\b/g;
-  let best = null;
-  let m;
-  while ((m = re.exec(syncStateText)) !== null) {
-    const minor = Number.parseInt(m[1], 10);
-    if (Number.isFinite(minor) && (best === null || minor > best)) best = minor;
+  let best = null; // { major, minor }
+  for (const line of syncStateText.split('\n')) {
+    const m = REGISTER_ENTRY_HEAD.exec(line);
+    if (!m) continue;
+    const major = Number.parseInt(m[1], 10);
+    const minor = Number.parseInt(m[2], 10);
+    if (!Number.isFinite(major) || !Number.isFinite(minor)) continue;
+    if (best === null || major > best.major || (major === best.major && minor > best.minor)) {
+      best = { major, minor };
+    }
   }
-  return best === null ? null : `v5.${best}`;
+  return best === null ? null : `v${best.major}.${best.minor}`;
 }
 
 // Classify the gathered git state into a list of {level, message} risks.
@@ -256,8 +274,12 @@ export function computeReport(gitState) {
 // ---------------------------------------------------------------------------
 
 // Run a git command read-only. Returns { ok, stdout, stderr, code }.
+// maxBuffer is raised to 64 MB: the ICE registers (docs/00_sync_state.md) have
+// grown past Node's DEFAULT 1 MB spawnSync buffer, so `git show origin/main:...`
+// otherwise fails ENOBUFS and the register-head signal silently reads UNKNOWN.
+// (Mirrors claim-stub.mjs, which sets the same 64 MB ceiling for the same reason.)
 function git(args, { cwd } = {}) {
-  const r = spawnSync('git', args, { cwd, encoding: 'utf-8' });
+  const r = spawnSync('git', args, { cwd, encoding: 'utf-8', maxBuffer: 64 * 1024 * 1024 });
   if (r.error) return { ok: false, stdout: '', stderr: r.error.message, code: null };
   return { ok: r.status === 0, stdout: (r.stdout || ''), stderr: (r.stderr || ''), code: r.status };
 }

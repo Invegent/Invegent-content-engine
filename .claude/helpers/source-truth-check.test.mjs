@@ -27,20 +27,48 @@ function has(report, phrase) {
 }
 
 // ===========================================================================
-// parseRegisterHead — picks the HIGHEST v5.NN, not the first / last.
+// parseRegisterHead — picks the HIGHEST (major,minor) ENTRY-HEADER marker,
+// GENERIC major (never hardcoded), and ignores FOREIGN prose version tokens.
 // ===========================================================================
-test('parseRegisterHead picks the highest v5.NN from sample sync_state text', () => {
+test('parseRegisterHead picks the highest entry-header marker from sample sync_state text', () => {
   const sample = [
-    '> **v5.33 CCF-04 — MECHANICAL ASSISTANTS CHARTER**',
-    '> **v5.32 NDIS YARNS LOGO-VARIANT INTAKE**',
-    '> **v5.9 something older**',
-    '> **v5.29 CCF-03 PHASE 0**',
+    '> **🧾 v6.28 — THREE LANDED APPLY/DEPLOY EVENTS**',
+    '> **🧾 v6.27 — THREE CE PRODUCTION EVENTS**',
+    '> **🧾 v6.9 — something older**',
+    '> **🧾 v6.14 — earlier block**',
   ].join('\n');
-  assert.equal(parseRegisterHead(sample), 'v5.33');
+  assert.equal(parseRegisterHead(sample), 'v6.28');
 });
 
-test('parseRegisterHead is numeric, not lexical (v5.9 < v5.33)', () => {
-  assert.equal(parseRegisterHead('v5.9 then v5.10 then v5.7'), 'v5.10');
+test('parseRegisterHead is GENERIC over the major (v6.x beats v5.x — not hardcoded)', () => {
+  const sample = [
+    '> **✅ v5.99 old series head**',
+    '> **🧾 v6.14 — new series**',
+  ].join('\n');
+  assert.equal(parseRegisterHead(sample), 'v6.14');
+});
+
+test('parseRegisterHead is numeric, not lexical (v6.9 < v6.28)', () => {
+  const sample = [
+    '> **🧾 v6.9 — nine**',
+    '> **🧾 v6.28 — twenty-eight**',
+    '> **🧾 v6.7 — seven**',
+  ].join('\n');
+  assert.equal(parseRegisterHead(sample), 'v6.28');
+});
+
+// The bug this fix closes: a naive /\bv(\d+)\.(\d+)\b/ max over the REAL sync_state
+// would pick a mid-sentence "Graph v24.0". The entry-header anchor rejects it.
+test('parseRegisterHead ignores FOREIGN version tokens in entry PROSE (no false-high)', () => {
+  const line =
+    '> **🧾 v6.28 — records include Graph v24.0, insights-worker v14.5.0, and a prose v6.70 reference**';
+  assert.equal(parseRegisterHead(line), 'v6.28');
+});
+
+test('parseRegisterHead returns null for bare (non-entry-header) tokens — fail toward UNKNOWN, never a false-high', () => {
+  // A version-like token NOT at an entry-header position is not a register head.
+  assert.equal(parseRegisterHead('see also v9.99 in this sentence'), null);
+  assert.equal(parseRegisterHead('v6.9 then v6.10 then v6.7'), null);
 });
 
 test('parseRegisterHead returns null when no marker / bad input', () => {
@@ -173,7 +201,7 @@ test('computeReport with zero risks does NOT emit an all-clear certification', (
 // ===========================================================================
 test('pure core returns a report string / risk array (no side-effect channel)', () => {
   // Exercise every pure-core branch; all return values, none perform I/O.
-  assert.equal(parseRegisterHead('v5.1 v5.33 v5.2'), 'v5.33');
+  assert.equal(parseRegisterHead('> **🧾 v6.1 — a**\n> **🧾 v6.28 — b**\n> **🧾 v6.2 — c**'), 'v6.28');
   assert.ok(Array.isArray(classifyRisks({ ahead: 1, behind: 1, dirtyFiles: ['x'], hintProvided: true, hintMatches: [] })));
   assert.ok(Array.isArray(classifyRisks({ error: 'e' })));
   const out = computeReport({
@@ -193,6 +221,15 @@ test('module source imports NO fs write surface (static guarantee it cannot writ
   for (const banned of ['writeFileSync', 'appendFileSync', 'mkdirSync', 'createWriteStream', 'rmSync', 'unlinkSync', 'renameSync']) {
     assert.ok(!src.includes(banned), `does not reference ${banned}`);
   }
+});
+
+test('git runner raises maxBuffer above the default 1 MB (registers exceed it — else head reads UNKNOWN)', () => {
+  const src = readFileSync(MODULE, 'utf-8');
+  // The register file is > 1 MB; without an explicit maxBuffer, `git show
+  // origin/main:docs/00_sync_state.md` overflows Node's 1 MB default and the
+  // register-head signal silently fails to UNKNOWN. Guard the override stays.
+  assert.ok(/maxBuffer\s*:/.test(src), 'git() sets an explicit maxBuffer');
+  assert.ok(/maxBuffer\s*:\s*64\s*\*\s*1024\s*\*\s*1024/.test(src), 'maxBuffer is 64 MB');
 });
 
 test('module source contains NO resolving git verb (never mutates a working file/branch)', () => {
@@ -251,7 +288,9 @@ test('module does not modify the working tree it runs in (read-only)', () => {
 // Sanity: parse the REAL sync_state fixture shipped in the repo (if reachable).
 // ===========================================================================
 test('parseRegisterHead handles the real sync_state marker format', () => {
-  // Mimic the exact live blockquote format: "> **✅ v5.33 CCF-04 — ...".
-  const real = '> **✅ v5.33 CCF-04 — MECHANICAL ASSISTANTS CHARTER RECORDED**';
-  assert.equal(parseRegisterHead(real), 'v5.33');
+  // Mimic the exact live blockquote format: "> **🧾 v6.28 — ...".
+  const real = '> **🧾 v6.28 — THREE LANDED APPLY/DEPLOY EVENTS FORWARD-RECORDED**';
+  assert.equal(parseRegisterHead(real), 'v6.28');
+  // The older ✅-glyph format is still read (glyph-agnostic within the head anchor).
+  assert.equal(parseRegisterHead('> **✅ v5.33 CCF-04 — CHARTER RECORDED**'), 'v5.33');
 });
