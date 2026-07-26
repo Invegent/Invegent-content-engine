@@ -379,7 +379,10 @@ test('schema + option are stamped (Option A zero-write)', () => {
 // ===========================================================================
 // Strip line comments so documentation of what the tool does NOT do is not
 // mistaken for the tool doing it.
-const stripComments = (src) => src.split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+// Split CRLF-tolerantly: on a CRLF checkout (autocrlf) a trailing \r would survive
+// split('\n') and block /\/\/.*$/ from stripping a line-comment (`.` won't cross \r),
+// leaving comment words like "writeFileSync" to false-trip the read-only assertions.
+const stripComments = (src) => src.split(/\r?\n/).map((l) => l.replace(/\/\/.*$/, '')).join('\n');
 
 test('module makes no fs WRITE call (Option A zero-write) and imports no write API', () => {
   const code = stripComments(readFileSync(MODULE, 'utf-8'));
@@ -407,6 +410,64 @@ test('module hardcodes NO historical number as match logic (v5/v6/cc-004x free o
   assert.ok(!/\bv\d+\.\d+\b/.test(src), 'no concrete vN.M literal may appear in executable code');
   // No hardcoded cc-#### literal in executable code.
   assert.ok(!/\bcc-\d{2,}\b/.test(src), 'no concrete cc-NNNN literal may appear in executable code');
+});
+
+// ===========================================================================
+// RESERVED-BLOCK AWARENESS (2026-07-26) — the tool SURFACES the sequential
+// register head+1 ALONGSIDE the ratified highest-across-all proposal, and NEVER
+// auto-decides. Motivated by cc-0081's PK-authorized reserved block, whose CLAIM
+// stubs read far ABOVE the sequential register head; the ratified proposal is
+// preserved (brief point 1 / FIX1), the sequential number is added for judgment.
+// ===========================================================================
+function regObs(registerText, stubTexts = []) {
+  return {
+    request: { claimType: 'register', lane: 'L', worktree: '/wt', gate: 'g' },
+    now: '2026-08-01T00:00:00.000Z',
+    sources: [
+      { id: 'reg', label: 'origin:sync', kind: 'register-text', required: true, mode: 'register-entry', available: true, text: registerText },
+      { id: 'stubs', label: 'result-stubs', kind: 'stub-lines', required: true, available: true,
+        entries: stubTexts.map((t, i) => ({ locator: `d${i}.md`, text: t })) },
+    ],
+    reserved: [], caveats: [],
+  };
+}
+
+test('reserved-block: a claim ABOVE the sequential head surfaces both numbers + an INFO advisory (proposal UNCHANGED)', () => {
+  const r = computeResult(regObs(
+    '> **🧾 v6.29 — HEAD**\n> **🧾 v6.28 — prior**',
+    ['CLAIMED v7.08 · cc-lane · /wt · g · 2026-07-24T00:00:00.000Z'],
+  ));
+  // Ratified highest-across-all proposal is UNCHANGED (collision-safe above ALL claims).
+  assert.equal(r.scan.overallHighest, 'v7.8');
+  assert.equal(r.proposedIdentifier, 'v7.9');
+  assert.equal(r.verdict, VERDICT.PROPOSED);            // an INFO advisory never changes the verdict
+  // NEW: the sequential head + the normal-cut number are surfaced.
+  assert.equal(r.scan.sequentialHighest, 'v6.29');
+  assert.equal(r.scan.sequentialNextFree, 'v6.30');
+  const adv = r.findings.find((f) => f.code === 'reserved-or-ahead-claim');
+  assert.ok(adv, 'advisory finding present');
+  assert.equal(adv.severity, SEVERITY.INFO);            // SURFACE, never decide
+  assert.ok(has(renderReport(r), 'NORMAL cut v6.30'));  // both numbers visible in the report
+});
+
+test('reserved-block: NO advisory when the highest claim IS the sequential head (normal contiguous cut)', () => {
+  const r = computeResult(regObs('> **🧾 v6.29 — HEAD**', [])); // no ahead claim
+  assert.equal(r.proposedIdentifier, 'v6.30');
+  assert.equal(r.scan.sequentialNextFree, 'v6.30');
+  assert.equal(r.proposedIdentifier, r.scan.sequentialNextFree); // equal -> no advisory
+  assert.ok(!codes(r).includes('reserved-or-ahead-claim'));
+});
+
+test('reserved-block: sequential fields are null for a TASK claim (register-only awareness)', () => {
+  const r = computeResult({
+    request: { claimType: 'task', lane: 'L', worktree: '/wt', gate: 'g' },
+    now: '2026-08-01T00:00:00.000Z',
+    sources: [{ id: 'reg', label: 'r', kind: 'register-text', required: true, available: true, text: 'cc-0047 cc-0048' }],
+    reserved: [], caveats: [],
+  });
+  assert.equal(r.scan.sequentialHighest, null);
+  assert.equal(r.scan.sequentialNextFree, null);
+  assert.ok(!codes(r).includes('reserved-or-ahead-claim'));
 });
 
 // ===========================================================================

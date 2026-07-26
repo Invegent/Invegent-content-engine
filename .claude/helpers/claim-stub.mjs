@@ -405,6 +405,8 @@ export function computeResult(observations) {
   const sources = Array.isArray(obs.sources) ? obs.sources : [];
   const perSource = [];
   const allMarkers = [];   // {major,minor} or {n}
+  const entryHeaderMarkers = []; // {major,minor} from REGISTER ENTRY-HEADERS only —
+                                 // the authoritative SEQUENTIAL cuts (reserved-block awareness).
   const allSuspects = [];  // suspect records
   const claimants = [];    // for collision detection
   let anyRegisterTextAvailable = false;
@@ -448,6 +450,9 @@ export function computeResult(observations) {
         anyRegisterTextAvailable = true;
         const { markers, suspects } = entryMode ? extractRegisterEntryHeaders(text) : parseRegisterMarkers(text);
         allMarkers.push(...markers);
+        // ENTRY-MODE markers are the authoritative SEQUENTIAL register cuts — used
+        // to surface the sequential head+1 alongside the highest-across-all proposal.
+        if (entryMode) entryHeaderMarkers.push(...markers);
         allSuspects.push(...suspects);
         entryOut.count = markers.length;
         entryOut.highest = fmtRegister(highestRegister(markers));
@@ -535,6 +540,8 @@ export function computeResult(observations) {
   let overallHighest = null;
   let proposed = null;
   let ambiguous = false;
+  let sequentialHighest = null;  // register ENTRY-HEADER head (reserved-block awareness)
+  let sequentialNextFree = null; // sequential head + 1 (the normal-cut number)
 
   if (claimType === CLAIM_TYPE.REGISTER) {
     const hi = highestRegister(allMarkers);
@@ -559,6 +566,40 @@ export function computeResult(observations) {
     } else {
       const succ = successorRegister(hi);
       proposed = fmtRegister(succ);
+    }
+
+    // ---- reserved-block AWARENESS (CCF-04 charter: SURFACE, never auto-decide) --
+    // `proposed` above is "highest-across-ALL-claims + 1" — ratified so it never
+    // proposes an already-claimed number (collision-safe). But an ICE RESERVED-BLOCK
+    // claim (e.g. cc-0081's PK-declared v7.00–09) sits ABOVE the sequential register
+    // head yet is NOT the normal sequential frontier, so the raw proposal can read far
+    // above the head (v7.9 while the head is v6.29). Compute the SEQUENTIAL head+1 from
+    // the register ENTRY-HEADERS and surface it ALONGSIDE, so a human cutting normally
+    // sees the real sequential number and DECIDES which they are cutting. The tool never
+    // picks, never auto-skips a block, and does NOT change `proposed` (that would remove
+    // judgment and break the ratified highest-across-sources contract — brief point 1).
+    const seqHi = highestRegister(entryHeaderMarkers);
+    sequentialHighest = fmtRegister(seqHi);
+    sequentialNextFree = seqHi ? fmtRegister(successorRegister(seqHi)) : null;
+    if (seqHi && proposed && sequentialNextFree && proposed !== sequentialNextFree) {
+      add('reserved-or-ahead-claim', SEVERITY.INFO, {
+        identifier: sequentialNextFree,
+        observed: {
+          highestAcrossAllClaims: overallHighest,
+          proposedAboveAllClaims: proposed,
+          sequentialRegisterHead: sequentialHighest,
+          sequentialNextFree,
+        },
+        whyItMatters:
+          `the proposed next-free ${proposed} is above ALL claims (collision-safe), but the ` +
+          `SEQUENTIAL register head is ${sequentialHighest} — a claim sits ABOVE the head ` +
+          `(e.g. a PK-authorized reserved block held for another lane). A NORMAL sequential ` +
+          `cut is ${sequentialNextFree}, NOT ${proposed}`,
+        suggestedAction:
+          `decide which you are cutting — a normal sequential cut -> ${sequentialNextFree}; a ` +
+          `reserved-block / continuation cut -> ${proposed} (or that block's own next). The tool ` +
+          `surfaces both and never picks (CCF-04: remove effort, not judgment).`,
+      });
     }
   } else {
     const nums = allMarkers.map((x) => x.n).filter((n) => Number.isFinite(n));
@@ -646,6 +687,8 @@ export function computeResult(observations) {
   const scan = {
     perSource,
     overallHighest,
+    sequentialHighest,   // register ENTRY-HEADER head (null for task claims / no entry markers)
+    sequentialNextFree,  // sequential head + 1 — the NORMAL-cut number, surfaced alongside `proposed`
     reservedHonored: [...reservedSet].sort(),
   };
 
@@ -702,6 +745,11 @@ export function renderReport(result) {
   L.push('');
   L.push(`claim type   : ${result.claimType ?? 'UNKNOWN'}`);
   L.push(`scanned high : ${result.scan.overallHighest ?? 'UNKNOWN (no basis)'}`);
+  if (result.scan.sequentialNextFree && result.proposedIdentifier &&
+      result.scan.sequentialNextFree !== result.proposedIdentifier) {
+    L.push(`sequential   : register head ${result.scan.sequentialHighest} → NORMAL cut ${result.scan.sequentialNextFree}  ` +
+      `(⚠ differs from PROPOSED ${result.proposedIdentifier}: a claim sits ABOVE the head — reserved block? see the reserved-or-ahead advisory)`);
+  }
   L.push('');
   L.push('--- SCAN BASIS (per source: highest / count) ---');
   if (result.scan.perSource.length === 0) {
