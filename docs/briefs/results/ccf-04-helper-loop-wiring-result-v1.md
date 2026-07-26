@@ -61,12 +61,18 @@ v6.29 lands AND the stale v7.x frontier (§4) is reconciled.
 
 ## 4 · Findings surfaced (not resolved here — each a future pick)
 
-- **⚠ Stale v7.x CLAIM stubs.** On the claim-stub guard's first live run, the allocation frontier read
-  **v7.8 / next-free v7.9** while the register head is v6.28/29. Source: two S8 result docs
-  (`cc-0081-lever-applied-result-v1.md` `CLAIMED v7.08`, `cc-0081-mcp-github-bridge-reconciliation-result-v1.md`
-  `CLAIMED v7.00`) — v7.x versions claimed 2026-07-24 that never cut into the register. They inflate every
-  future next-free proposal. **`register-reconciler` item.** (This result doc deliberately carries NO
-  `CLAIMED vX.Y` line-1 stub, so it does not add to that frontier.)
+- **✅ CORRECTED — the v7.x CLAIM stubs are NOT stale.** (Original v1 of this doc called them "stale"; that
+  was wrong.) On the claim-stub guard's first live run the allocation frontier read **v7.8 / next-free v7.9**
+  while the register head was v6.29. The two S8 result docs (`cc-0081-lever-applied-result-v1.md` `CLAIMED
+  v7.08`, `cc-0081-mcp-github-bridge-reconciliation-result-v1.md` `CLAIMED v7.00`) are **PK-authorized
+  reserved-block reservations** for the OPEN cc-0081 lane — `docs/00_sync_state.md` line 127 ("New lane
+  cc-0081 OPENED in S8 (register block v7.00–v7.09)") + line 129 (the reserved-block scheme "…v6.70–79
+  (cc-0078) / v6.90–99 (cc-0080) / v7.00–09 (cc-0081) all as-is"). **They must NOT be edited/removed.** The
+  real issue is a claim-stub reliability gap: its ratified "highest-across-all-claims" model (correct for
+  collision-avoidance) is not reserved-block-aware, so its raw proposal (v7.9) is above the sequential head
+  rather than the normal sequential cut (register head v6.29 → v6.30). Addressed by an ADDITIVE advisory
+  (claim-stub now surfaces the sequential head+1 alongside, and names the reserved-block situation — it does
+  NOT auto-decide, per the charter). (This result doc carries NO `CLAIMED vX.Y` line-1 stub.)
 - **Pre-existing `claim-stub.test.mjs` CRLF failure** — a static import-line assertion sensitive to autocrlf
   checkout line-endings; a one-line fix, not touched here.
 - **Worktree hygiene** — 81 active worktrees; the merged `apply-harness-auditor-build` one is redundant
