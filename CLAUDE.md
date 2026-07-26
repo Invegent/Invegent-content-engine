@@ -390,3 +390,33 @@ approved default · CAS/fail-closed. The goal is to shrink ceremony, never these
   automated. CCF-02's phase plan is complete — the contract is living and amends only by PK
   ratification. (Synthesis packet: `docs/briefs/ccf-02-phase3-synthesis-packet.md`, hash
   `63211221…`, reviews `0fe63030`/`e28e39ad` partial→PK ratified as-is 2026-07-05.)
+
+## CCF-04 helper loop (when each zero-authority assistant fires)
+
+The four CCF-04 mechanical assistants are **zero-authority, inform/log-only**: a PASS/clean/PROPOSED
+verdict **never clears a gate**, and every specialist + PK gate runs unchanged above them. Two now
+**auto-fire** as hooks (wired inform-only — they never block); two have no natural trigger and are
+**invoked deliberately**. Use this as the standing checklist for which helper belongs at which moment.
+
+1. **`source-truth-check` — AUTO-FIRES at SessionStart** (adapter `.claude/hooks/source-truth-session-hook.mjs`,
+   wired `e3d4c34`; helper `.claude/helpers/source-truth-check.mjs`). Every session gets the "am I working
+   from truth?" panel: a fresh `git fetch` + the **parsed register head** + ahead/behind/dirty/already-landed
+   risk flags. Complements `session-bootstrap` (which is fetch-free, so its parity can be stale — the
+   digest-lag failure). Also run **by hand before a lane** when you want the already-landed check:
+   `node .claude/helpers/source-truth-check.mjs [--hint <paths,slug>]`. UNKNOWN is fail-closed, never all-clear.
+2. **`claim-stub` — AUTO-FIRES as a PreToolUse `--log-only` guard** (`.claude/hooks/claim-stub-register-guard.mjs`,
+   wired `3b94016`; helper `.claude/helpers/claim-stub.mjs`) whenever a `git commit` lands with a **register
+   file staged** (a version cut): it surfaces scanned-highest + next-free + any collision. It **never blocks**
+   (no deny channel); a collision is a human reconcile, never auto-resolved. Also run **by hand before cutting
+   a register version**: `node .claude/helpers/claim-stub.mjs --claim register --lane … --worktree … --gate …`.
+3. **`hash-checkpoint` — NO auto-trigger; invoke by hand when FREEZING/PINNING an artifact** (before a review
+   packet or an immutable-ref placement): `node .claude/helpers/hash-checkpoint.mjs …` → STABLE/UNSTABLE/
+   INCOMPLETE/MISMATCH; "IMMUTABLE CHECKPOINT" only on an exact-commit-SHA byte reproduction.
+4. **`apply-harness-auditor` — NO auto-trigger; invoke the registered SHADOW agent at apply-packet AUTHORING,
+   BEFORE freeze** (team-table row above). SHADOW MODE: its PASS clears no gate; CONCERNS/INCOMPLETE is an
+   author-review signal only.
+
+**Settled CCF-04 build order (PK O-5):** 1 Source Truth Check · 2 Apply Harness Auditor · 3 Hash Checkpoint ·
+4 Claim Stub — **all built**; 1 + 4 now hook-wired (this section). 5 Review-Packet-Template (built, PK Gate-2
+pending) · 6 Register-Pointer-Template (not started). The two wirings are additive and log/inform-only — no
+existing guard or gate changed.
