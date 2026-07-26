@@ -83,3 +83,25 @@ v6.29 lands AND the stale v7.x frontier (§4) is reconciled.
   (connector down — PK action item); acceptable for T2 zero-authority local helpers.
 - **This lane is CODE/HELPER only — helpers #3/#4/#6 are helper-only (no charter/team-table/registration).**
   The register pointer in §3 is HELD; folding it into the next register cut is a separate step.
+
+## 6 · source-truth-check two-file fix — focused record (PK "Current outcome complete")
+
+The source-truth-check repair (`3536a7a`, the two files below) is on `origin/main`; PK declared it the
+completed current outcome. Its focused, standalone register pointer — composed by the #6 helper
+(`register-pointer.mjs`) — is recorded here, HELD for the next register cut (the arc pointer in §3
+supersedes it in a single v6.30 cut; this narrower one exists per PK's per-outcome framing).
+
+- **Files:** `.claude/helpers/source-truth-check.mjs` + `.claude/helpers/source-truth-check.test.mjs`.
+- **Proof:** current register versions detected correctly at v6+ (generic-major, entry-header-anchored,
+  foreign-token-rejecting); large-register reads no longer overflow (64 MB `git()` buffer vs the >1 MB
+  register); **tests 23/23**; live `origin register head` reads correctly.
+
+**sync_state block (HELD):**
+
+```
+> **🧾 v6.30 — source-truth-check REPAIRED + PROVEN (two-file fix) — register-head detection restored at v6+** — records: `docs/briefs/results/ccf-04-helper-loop-wiring-result-v1.md`.
+> · **Verdict:** generic-major entry-header parse + 64MB git buffer; large-register reads no longer overflow; live head reads correctly; tests 23/23.
+> · **Identity:** commit 3536a7a — .claude/helpers/source-truth-check.mjs + .test.mjs (pushed origin/main).
+> · **NEXT GATE:** none — landed + pushed; version PROVISIONAL (fold into next register cut after v6.29).
+>
+```
