@@ -14,12 +14,13 @@
 //
 // Run: deno test --allow-read --allow-env supabase/functions/ai-worker/dialogue_script_test.ts
 
-import { assert, assertEquals, assertFalse } from 'jsr:@std/assert@1';
+import { assert, assertEquals, assertExists, assertFalse } from 'jsr:@std/assert@1';
 import {
   resolveParticipatingRoles,
   normalizeDialogueTurns,
   dialogueIsRenderable,
   estimateDialogueDurationS,
+  persistDialogueDraft,
 } from './index.ts';
 
 const ACTIVE = ['local_area_coordinator', 'participant', 'support_coordinator'];
@@ -201,4 +202,91 @@ Deno.test('cc-0084 duration: sums per-turn estimates, >= 4s floor per turn', () 
   const d = estimateDialogueDurationS([{ line: 'one two three' }, { line: 'four' }]);
   assert(d >= 8);                     // two turns, each floored at 4s
   assertEquals(estimateDialogueDurationS([]), 0);
+});
+
+// --- persistDialogueDraft: WRITE ORDER (v2.24.1 clobber-bug regression) -----------------------------
+// A draft-store stub that faithfully models the two write semantics:
+//   * .update({ draft_format }) is a FULL-COLUMN REPLACE of draft_format.
+//   * set_draft_video_script (rpc) MERGES video_script into the CURRENT draft_format (jsonb `||`).
+// It seeds draft_format with the earlier baseUpdate meta (as production does), records every write,
+// and exposes the FINAL draft_format so we can prove both scene_count AND video_script survive.
+function draftStoreStub(opts?: { failUpdate?: boolean; failRpc?: boolean }) {
+  const state: { draft_format: Record<string, unknown> } = {
+    // Seeded as after baseUpdate: caption/compliance meta, NO video_script yet.
+    draft_format: { ai: { model: 'claude' }, compliance_ok: true },
+  };
+  const writes: Array<{ kind: 'update' | 'rpc'; payload: any }> = [];
+  const chainUpdate = {
+    update(payload: any) {
+      writes.push({ kind: 'update', payload });
+      return {
+        async eq(_k: string, _v: unknown) {
+          if (opts?.failUpdate) return { error: { message: 'update boom' } };
+          // FULL REPLACE of draft_format (the production .update semantics).
+          state.draft_format = payload.draft_format;
+          return { error: null };
+        },
+      };
+    },
+  };
+  const supabase: any = {
+    schema: (_s: string) => ({ from: (_t: string) => chainUpdate }),
+    async rpc(fn: string, args: any) {
+      writes.push({ kind: 'rpc', payload: { fn, args } });
+      if (fn !== 'set_draft_video_script') return { error: { message: `unexpected rpc ${fn}` } };
+      if (opts?.failRpc) return { error: { message: 'rpc boom' } };
+      // MERGE video_script into the CURRENT draft_format (jsonb `||`), like the DB function.
+      state.draft_format = { ...state.draft_format, video_script: args.p_video_script };
+      return { error: null };
+    },
+  };
+  return { supabase, state, writes };
+}
+
+const DRAFT_META = { ai: { model: 'claude' }, compliance_ok: true };
+const DLG = {
+  format: 'avatar_dialogue' as const,
+  render_style: 'realistic' as const,
+  total_duration_s: 24,
+  dialogue: [
+    { speaker_role: 'local_area_coordinator', line: 'Here is how your plan works.' },
+    { speaker_role: 'participant', line: 'That is really helpful, thank you.' },
+  ],
+};
+
+// THE regression: final draft_format must carry BOTH scene_count AND video_script.dialogue (the
+// pre-fix order clobbered video_script -> null). Also proves the write ORDER: update BEFORE rpc.
+Deno.test('cc-0084 persist: final draft_format has BOTH scene_count AND video_script.dialogue', async () => {
+  const { supabase, state, writes } = draftStoreStub();
+  const ok = await persistDialogueDraft(supabase, 'draft-1', DRAFT_META, DLG);
+  assertEquals(ok, true);
+
+  // scene_count survived AND video_script survived (the bug made video_script null).
+  assertEquals(state.draft_format.scene_count, 2);
+  assertExists(state.draft_format.video_script);
+  assertEquals((state.draft_format.video_script as any).dialogue.length, 2);
+  assertEquals((state.draft_format.video_script as any).dialogue[0].speaker_role, 'local_area_coordinator');
+  // Earlier caption/compliance meta is still present too.
+  assertEquals(state.draft_format.compliance_ok, true);
+
+  // Order proof: the scene_count .update() ran BEFORE the set_draft_video_script rpc.
+  assertEquals(writes.map((w) => w.kind), ['update', 'rpc']);
+  assertEquals((writes[0].payload.draft_format as any).scene_count, 2);
+  assertEquals(writes[1].payload.fn, 'set_draft_video_script');
+});
+
+// Fail-safe: a failed scene_count update => false, and the rpc is NOT attempted (caller -> monologue).
+Deno.test('cc-0084 persist: scene_count update failure => false, rpc not attempted', async () => {
+  const { supabase, writes } = draftStoreStub({ failUpdate: true });
+  const ok = await persistDialogueDraft(supabase, 'draft-1', DRAFT_META, DLG);
+  assertEquals(ok, false);
+  assertEquals(writes.map((w) => w.kind), ['update']);   // rpc never reached
+});
+
+// Fail-safe: a failed video_script rpc => false (caller degrades to monologue).
+Deno.test('cc-0084 persist: video_script rpc failure => false', async () => {
+  const { supabase, writes } = draftStoreStub({ failRpc: true });
+  const ok = await persistDialogueDraft(supabase, 'draft-1', DRAFT_META, DLG);
+  assertEquals(ok, false);
+  assertEquals(writes.map((w) => w.kind), ['update', 'rpc']);
 });

@@ -11,7 +11,17 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.24.0";
+const VERSION = "ai-worker-v2.24.1";
+// v2.24.1 (2026-07-28) — cc-0084 Slice 2 write-order fix (Slice 3 live proof). marker unchanged:
+//   ai-worker-cc0084-dialogue-script. The dialogue-success path was persisting video_script via
+//   set_draft_video_script (a jsonb `||` MERGE into draft_format) and THEN doing a plain
+//   .update({ draft_format: { ...draftMeta, scene_count } }) — a FULL COLUMN REPLACE that clobbered
+//   the just-merged video_script (live: draft_format.video_script=null → heygen-worker found no
+//   dialogue[] → no multi-scene render). FIX: stamp draft_format scene_count FIRST (safe full replace —
+//   video_script not written yet), THEN call set_draft_video_script so its `||` merge adds video_script
+//   on top → final draft_format = { ...draftMeta, scene_count, video_script }. dialogueHandled flips
+//   true ONLY after BOTH writes succeed; either failure → monologue fallback (unchanged). No other
+//   behaviour changed; monologue path untouched.
 // v2.24.0 (2026-07-27) — cc-0084 Slice 2 (multi-character dialogue script generation). ADDITIVE.
 //   marker: ai-worker-cc0084-dialogue-script (grep-able in the deployed bundle). NEW avatar format
 //   video_short_avatar_dialogue: when input_payload.format === 'video_short_avatar_dialogue', a
@@ -713,6 +723,33 @@ async function generateDialogueScript(opts: {
     console.error('[ai-worker] generateDialogueScript error (non-fatal):', (e?.message ?? String(e)).slice(0, 200));
     return null;
   }
+}
+
+// cc-0084 Slice 2 (v2.24.1) — persist a dialogue draft with the CORRECT write order. WHY ORDER MATTERS:
+// a plain .update({ draft_format }) is a FULL-COLUMN REPLACE, but set_draft_video_script MERGES
+// video_script into draft_format via jsonb `||`. If the plain update runs SECOND it clobbers the
+// just-merged video_script (Slice 3 live: draft_format.video_script=null → heygen-worker found no
+// dialogue[] → no multi-scene render). So we (1) stamp draft_format = { ...draftMeta, scene_count }
+// FIRST — a safe full replace, video_script is not written yet — then (2) call set_draft_video_script
+// so its merge adds video_script ON TOP → final draft_format = { ...draftMeta, scene_count, video_script }.
+// Returns true ONLY when BOTH writes succeed; either failure → false so the caller degrades to the
+// monologue fallback. Extracted (from the request loop) purely so the ordered writes are hermetically
+// unit-testable — behaviour at the call site is unchanged.
+export async function persistDialogueDraft(
+  supabase: ReturnType<typeof getServiceClient>,
+  postDraftId: string,
+  draftMeta: Record<string, unknown>,
+  dlg: { dialogue: Array<{ speaker_role: string; line: string }> } & Record<string, unknown>,
+): Promise<boolean> {
+  // (1) scene_count stamp FIRST (full replace is safe — video_script not yet written).
+  const { error: scErr } = await supabase.schema('m').from('post_draft')
+    .update({ draft_format: { ...draftMeta, scene_count: dlg.dialogue.length }, updated_at: nowIso() })
+    .eq('post_draft_id', postDraftId);
+  if (scErr) { console.error('[ai-worker] dialogue scene_count update error:', scErr.message); return false; }
+  // (2) THEN merge video_script on top via the RPC's jsonb `||`.
+  const { error: vsErr } = await supabase.rpc('set_draft_video_script', { p_post_draft_id: postDraftId, p_video_script: dlg as any });
+  if (vsErr) { console.error('[ai-worker] set_draft_video_script (dialogue) error:', vsErr.message); return false; }
+  return true;
 }
 
 type FormatInfo = { ice_format_key: string; format_name: string; advisor_description: string; best_for: string; min_content_signals: string; };
@@ -1540,29 +1577,26 @@ app.post('*', async (c) => {
 
       // cc-0084 Slice 2 — dialogue avatar path. Fires ONLY when the slot requested
       // video_short_avatar_dialogue (dialogueMode). generateDialogueScript emits the { speaker_role,
-      // line } dialogue heygen-worker v2.6.0 renders; on success we persist it via set_draft_video_script
-      // (recommended_format is already 'video_short_avatar', its pickup key) and stamp
-      // draft_format.scene_count = dialogue.length (heygen qa.scene_count reads it). On ANY miss
-      // (null return / write error) dialogueHandled stays false → the UNCHANGED monologue block below runs
-      // as the fallback (degrade to cc-0083). Best-effort: never throws into the draft lifecycle.
+      // line } dialogue heygen-worker v2.6.0 renders (recommended_format is already 'video_short_avatar',
+      // its pickup key). WRITE ORDER MATTERS (v2.24.1 fix): a plain .update() REPLACES the whole
+      // draft_format column, but set_draft_video_script MERGES video_script into it via jsonb `||`.
+      // So we (1) stamp draft_format = { ...draftMeta, scene_count } FIRST (heygen qa.scene_count reads
+      // it), then (2) call set_draft_video_script so its `||` merge adds video_script ON TOP of the
+      // scene_count-bearing draft_format → final draft_format = { ...draftMeta, scene_count, video_script }.
+      // Doing the plain update SECOND clobbered the just-written video_script (Slice 3 live: video_script
+      // null → heygen found no dialogue[] → no multi-scene render). dialogueHandled flips true ONLY after
+      // BOTH writes succeed. On ANY miss (null return / either write error) dialogueHandled stays false →
+      // the UNCHANGED monologue block below runs as the fallback. Best-effort: never throws.
       if (dialogueMode && decidedFormat === 'video_short_avatar' && anthropicKey) {
         try {
           const brief = String(job.input_payload?.source_material ?? '').trim() || String(result.body ?? '').trim();
           const dlg = await generateDialogueScript({ supabase, anthropicKey, clientId: job.client_id, brief, dialogueRoles: job.input_payload?.dialogue_roles, clientName, vertical });
-          if (dlg) {
-            const { error: vsErr } = await supabase.rpc('set_draft_video_script', { p_post_draft_id: job.post_draft_id, p_video_script: dlg as any });
-            if (vsErr) { console.error('[ai-worker] set_draft_video_script (dialogue) error:', vsErr.message); }
-            else {
-              videoScriptGenerated = true;
-              dialogueHandled = true;
-              // Stamp scene_count onto draft_format (additive; draftMeta was written above at baseUpdate).
-              const { error: scErr } = await supabase.schema('m').from('post_draft')
-                .update({ draft_format: { ...draftMeta, scene_count: dlg.dialogue.length }, updated_at: nowIso() })
-                .eq('post_draft_id', job.post_draft_id);
-              if (scErr) console.error('[ai-worker] dialogue scene_count update error:', scErr.message);
-            }
+          if (dlg && await persistDialogueDraft(supabase, job.post_draft_id, draftMeta, dlg)) {
+            videoScriptGenerated = true;
+            dialogueHandled = true;
           }
-          // dlg === null → fall through to the monologue fallback below (dialogueHandled stays false).
+          // dlg === null OR a persist write failed → fall through to the monologue fallback below
+          // (dialogueHandled stays false).
         } catch (dlgErr: any) { console.error('[ai-worker] generateDialogueScript threw (non-fatal):', dlgErr?.message); }
       }
 
