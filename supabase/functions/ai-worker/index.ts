@@ -11,7 +11,27 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.23.0";
+const VERSION = "ai-worker-v2.24.0";
+// v2.24.0 (2026-07-27) — cc-0084 Slice 2 (multi-character dialogue script generation). ADDITIVE.
+//   marker: ai-worker-cc0084-dialogue-script (grep-able in the deployed bundle). NEW avatar format
+//   video_short_avatar_dialogue: when input_payload.format === 'video_short_avatar_dialogue', a
+//   dialogue OVERRIDE (sibling of the A2 avatar override) forces decidedFormat='video_short_avatar'
+//   (so prompt/visual-spec/recommended_format all behave EXACTLY like the monologue avatar format —
+//   heygen-worker keys pickup on recommended_format='video_short_avatar', then detects dialogue[])
+//   and flags dialogueMode. At the video_script write, a NEW generateDialogueScript() emits
+//   { format:'avatar_dialogue', dialogue:[{speaker_role, line}], render_style:'realistic',
+//   total_duration_s } from the brief (input_payload.source_material) + input_payload.dialogue_roles
+//   validated against the client's ACTIVE c.brand_stakeholder role_code set (same query
+//   suggestAvatarRole uses). draft_format.scene_count = dialogue.length (heygen qa.scene_count reads
+//   it). Pure helpers resolveParticipatingRoles / normalizeDialogueTurns / dialogueIsRenderable do
+//   the validation/repair (drop/repair any turn whose role ∉ participating valid set; require ≥2
+//   distinct roles AND ≥2 turns; each speaker_role exactly one participating valid role; a returned
+//   role_code is mapped to speaker_role). FAIL-SAFE: missing/invalid dialogue_roles, generation
+//   failure, or a non-renderable result → DEGRADE to the existing single-role monologue avatar path
+//   (cc-0083) so a bad dialogue signal still yields a video; generateDialogueScript NEVER throws into
+//   the draft lifecycle. STRICTLY OUT OF SCOPE: the monologue path (byte-identical — its block body is
+//   unchanged, only guarded by !dialogueHandled) · persona-derived role selection · >4 turns · any
+//   heygen-worker change (Slice 1, LIVE) · any DB schema/migration · any deploy/publish.
 // v2.23.0 (2026-07-27) — cc-0083 Slice B (selection seam): PROMOTE the presenter-role
 //   suggestion into the CONSUMED field. cc-0083-marker: ai-worker-cc0083-stakeholder-role-promote.
 //   The v2.15.0 shadow suggestion (video_script.avatar_role_suggestion) is UNCHANGED and still
@@ -202,6 +222,13 @@ const VIDEO_FORMATS = new Set([
   'video_short_avatar', 'video_long_explainer', 'video_long_podcast_clip',
 ]);
 
+// cc-0084 Slice 2 — grep-able marker string for the deployed bundle (bundles-from-CWD guard).
+const CC0084_DIALOGUE_MARKER = 'ai-worker-cc0084-dialogue-script';
+// cc-0084 Slice 2 — dialogue caps. Keeps the whole multi-scene HeyGen video within its ~2-min
+// ceiling: at most DIALOGUE_MAX_TURNS talking-head cuts, each line clamped to a concise length.
+const DIALOGUE_MAX_TURNS = 4;
+const DIALOGUE_LINE_MAX_CHARS = 320;   // ~55 words → ~20s per cut; 4 cuts ≈ 80s ≤ HeyGen ceiling
+
 // cc-0083 (Slice B) — minimum suggestion confidence to PROMOTE a presenter role suggestion
 // into the CONSUMED field video_script.stakeholder_role. Below this (or no single clear role),
 // stakeholder_role is left unset → heygen-worker resolves the client default host. Tunable;
@@ -217,6 +244,72 @@ export function promoteAvatarRole(roleSuggestion: unknown): string | null {
   const sr = (roleSuggestion as any)?.suggested_stakeholder_role;
   const srConf = Number((roleSuggestion as any)?.suggested_stakeholder_role_confidence ?? 0);
   return (typeof sr === 'string' && sr && Number.isFinite(srConf) && srConf >= AVATAR_ROLE_MIN_CONFIDENCE) ? sr : null;
+}
+
+// cc-0084 Slice 2 — pure helper: resolve the SLICE-2 dialogue signal (input_payload.dialogue_roles)
+// against the client's ACTIVE role_code set. Returns the ordered, de-duplicated list of participating
+// role_codes that are BOTH requested AND active. The dialogue path requires >= 2 distinct valid roles;
+// fewer → the caller degrades to the monologue path. Hermetically testable; never throws.
+export function resolveParticipatingRoles(dialogueRoles: unknown, activeRoles: unknown): string[] {
+  const active = new Set((Array.isArray(activeRoles) ? activeRoles : [])
+    .map((r) => (typeof r === 'string' ? r.trim() : '')).filter(Boolean));
+  const seen = new Set<string>();
+  const out: string[] = [];
+  if (!Array.isArray(dialogueRoles)) return out;
+  for (const r of dialogueRoles) {
+    const role = typeof r === 'string' ? r.trim() : '';
+    if (role && active.has(role) && !seen.has(role)) { seen.add(role); out.push(role); }
+  }
+  return out;
+}
+
+// cc-0084 Slice 2 — pure helper: validate/repair raw LLM dialogue turns into the exact shape
+// heygen-worker v2.6.0 consumes ({ speaker_role, line }). Drops any turn whose role is not one of the
+// participating valid roles, whose line is empty, or that is malformed; maps a returned `role_code`
+// onto `speaker_role`; trims lines and caps them at maxLineChars; caps the number of turns at maxTurns.
+// Purely structural (no renderability decision here — that is dialogueIsRenderable). Never throws.
+export function normalizeDialogueTurns(
+  rawTurns: unknown,
+  participatingRoles: string[],
+  opts?: { maxTurns?: number; maxLineChars?: number },
+): Array<{ speaker_role: string; line: string }> {
+  const maxTurns = opts?.maxTurns ?? DIALOGUE_MAX_TURNS;
+  const maxLineChars = opts?.maxLineChars ?? DIALOGUE_LINE_MAX_CHARS;
+  const valid = new Set(participatingRoles);
+  const out: Array<{ speaker_role: string; line: string }> = [];
+  if (!Array.isArray(rawTurns)) return out;
+  for (const t of rawTurns) {
+    if (out.length >= maxTurns) break;
+    if (!t || typeof t !== 'object') continue;
+    const roleRaw = (t as any).speaker_role ?? (t as any).role_code;   // map role_code -> speaker_role
+    const role = typeof roleRaw === 'string' ? roleRaw.trim() : '';
+    if (!role || !valid.has(role)) continue;                            // drop out-of-set / missing role
+    const lineRaw = (t as any).line;
+    if (typeof lineRaw !== 'string') continue;                          // drop non-string (garbage) lines
+    const line = clampField(lineRaw, maxLineChars);
+    if (!line) continue;                                                // drop empty / whitespace-only lines
+    out.push({ speaker_role: role, line });
+  }
+  return out;
+}
+
+// cc-0084 Slice 2 — pure helper: a dialogue is renderable only with >= 2 turns AND >= 2 DISTINCT
+// speaker roles (an actual conversation). Below that the caller degrades to the monologue path.
+export function dialogueIsRenderable(turns: Array<{ speaker_role: string }>): boolean {
+  if (!Array.isArray(turns) || turns.length < 2) return false;
+  return new Set(turns.map((t) => t.speaker_role)).size >= 2;
+}
+
+// cc-0084 Slice 2 — pure helper: estimate total spoken seconds for a dialogue (sum of per-turn
+// estimates at ~150 wpm, min 4s per cut). Used only for total_duration_s telemetry; capped turns +
+// clamped lines already keep the video within HeyGen's ceiling.
+export function estimateDialogueDurationS(turns: Array<{ line: string }>): number {
+  let total = 0;
+  for (const t of turns) {
+    const words = String(t?.line ?? '').trim().split(/\s+/).filter(Boolean).length;
+    total += Math.max(4, Math.ceil(words / 2.5));
+  }
+  return total;
 }
 
 // D157 ID003: hard fetch timeout applied to both LLM providers.
@@ -545,6 +638,80 @@ async function suggestAvatarRole(
     return { ...base, suggested_stakeholder_role: null, suggested_stakeholder_role_confidence: 0,
       suggested_stakeholder_role_reason: `suggest_error: ${(e?.message ?? String(e)).slice(0, 200)}`,
       role_source: 'error', persona_signal: null, candidate_roles: [], model: null };
+  }
+}
+
+// cc-0084 Slice 2 — generate the multi-character dialogue script that heygen-worker v2.6.0 renders.
+// Given a brief + the SLICE-2 participating roles (input_payload.dialogue_roles), validated against the
+// client's ACTIVE c.brand_stakeholder role_code set (SAME query suggestAvatarRole uses), it produces an
+// ordered, alternating conversation as { speaker_role, line } turns — the EXACT keys heygen-worker reads.
+// Returns { format:'avatar_dialogue', dialogue, render_style:'realistic', total_duration_s } on success,
+// or null to signal FALLBACK (the caller then degrades to the monologue avatar path). Hard validation via
+// the pure helpers: drop/repair any turn whose role ∉ participating valid set; require >= 2 distinct roles
+// AND >= 2 turns. Best-effort — NEVER throws into the draft/render lifecycle (mirrors suggestAvatarRole).
+async function generateDialogueScript(opts: {
+  supabase: ReturnType<typeof getServiceClient>;
+  anthropicKey: string;
+  clientId: string;
+  brief: string;
+  dialogueRoles: unknown;
+  clientName: string;
+  vertical: string;
+}): Promise<
+  | { format: 'avatar_dialogue'; dialogue: Array<{ speaker_role: string; line: string }>; render_style: 'realistic'; total_duration_s: number }
+  | null
+> {
+  const { supabase, anthropicKey, clientId, brief, dialogueRoles, clientName, vertical } = opts;
+  try {
+    // Active-role source: reuse the SAME query suggestAvatarRole uses (the client's active roles).
+    const { data: roleRows } = await supabase.rpc('exec_sql', {
+      query: `SELECT role_code, role_label, COALESCE(demographic_hint, '') AS demographic_hint
+              FROM c.brand_stakeholder
+              WHERE client_id = '${clientId}' AND is_active = true
+              ORDER BY sort_order ASC, role_code ASC`,
+    });
+    const roles = (roleRows ?? []) as Array<{ role_code: string; role_label: string; demographic_hint: string }>;
+    const activeRoleCodes = roles.map((r) => r.role_code);
+
+    // Participating roles = the requested dialogue_roles that are ALSO active. Require >= 2 distinct.
+    const participatingRoles = resolveParticipatingRoles(dialogueRoles, activeRoleCodes);
+    if (participatingRoles.length < 2) {
+      console.log(`[ai-worker] ${VERSION} — dialogue fallback: <2 valid participating roles (requested=${JSON.stringify(dialogueRoles)}, active=${JSON.stringify(activeRoleCodes)})`);
+      return null;
+    }
+    const briefText = String(brief ?? '').trim();
+    if (!briefText) {
+      console.log(`[ai-worker] ${VERSION} — dialogue fallback: empty brief`);
+      return null;
+    }
+
+    const labelByRole = new Map(roles.map((r) => [r.role_code, r.role_label]));
+    const roleList = participatingRoles.map((rc) => `- ${rc} (${labelByRole.get(rc) ?? rc})`).join('\n');
+    const systemPrompt = `You are a script writer for a short multi-speaker talking-head video for ${clientName}, a ${vertical} sector presence.\n\nWrite a natural, ALTERNATING conversation between the following speakers about the brief topic. Each speaker is a realistic AI presenter (HeyGen talking photo) delivered as a separate cut.\n\nSpeakers (use these role_code values EXACTLY, no others):\n${roleList}\n\nRules:\n- Produce ${DIALOGUE_MAX_TURNS <= 2 ? 2 : `2-${DIALOGUE_MAX_TURNS}`} turns total, ALTERNATING between the speakers so it reads as a real conversation.\n- Each turn: one speaker's concise spoken line (first person, conversational, no stage directions, no markdown, no emojis, no hashtags) — the exact words to be spoken. Keep each line short enough for a brief talking-head clip.\n- Every role_code MUST be exactly one of the allowed codes above. Use at least two DISTINCT speakers.\n- Order the turns as the conversation flows.\n\nReturn ONLY valid JSON:\n{\n  \"dialogue\": [\n    {\"role_code\": string, \"line\": string}\n  ]\n}`;
+    const userPrompt = `Brief:\n${briefText.slice(0, 1200)}\n\nWrite the alternating dialogue.`;
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 700, temperature: 0.3, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
+    });
+    if (!resp.ok) { console.error('[ai-worker] video_script_dialogue http', resp.status); return null; }
+    const data = await resp.json();
+    const raw = data?.content?.[0]?.text ?? '';
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    let parsed: any = null;
+    try { parsed = JSON.parse(cleaned); } catch { console.error('[ai-worker] video_script_dialogue parse failed'); return null; }
+
+    // HARD validation / repair — drop out-of-set roles, empty lines; cap turns + line length.
+    const dialogue = normalizeDialogueTurns(parsed?.dialogue, participatingRoles, { maxTurns: DIALOGUE_MAX_TURNS, maxLineChars: DIALOGUE_LINE_MAX_CHARS });
+    if (!dialogueIsRenderable(dialogue)) {
+      console.log(`[ai-worker] ${VERSION} — dialogue fallback: not renderable after validation (turns=${dialogue.length})`);
+      return null;
+    }
+    return { format: 'avatar_dialogue', dialogue, render_style: 'realistic', total_duration_s: estimateDialogueDurationS(dialogue) };
+  } catch (e: any) {
+    // Best-effort: NEVER throw into the draft/render lifecycle → caller degrades to monologue.
+    console.error('[ai-worker] generateDialogueScript error (non-fatal):', (e?.message ?? String(e)).slice(0, 200));
+    return null;
   }
 }
 
@@ -1158,6 +1325,7 @@ app.post('*', async (c) => {
       } catch { }
 
       let decidedFormat = 'text', advisorReason = '', advisorImageHeadline = '', advisorDurationMs = 0;
+      let dialogueMode = false;   // cc-0084 Slice 2 — set by the dialogue override below
       if (anthropicKey && formats.length > 0) {
         try {
           const advised = await callFormatAdvisor({ anthropicKey, seedTitle, seedBody, clientName, vertical, formats, perfSummary, preferredFormat: effectivePreferredFormat, platform });
@@ -1178,6 +1346,22 @@ app.post('*', async (c) => {
         decidedFormat = 'video_short_avatar';
         advisorReason = `avatar_override (F-HEYGEN A2); advisor_would_have=${advisorWouldHave}${advisorReason ? `; ${advisorReason}` : ''}`;
         console.log(`[ai-worker] ${VERSION} — job ${jobId}: avatar override (advisor_would_have=${advisorWouldHave})`);
+      }
+
+      // cc-0084 Slice 2 (${CC0084_DIALOGUE_MARKER}) — dialogue override, a sibling of the A2 avatar
+      // override. When the slot requested video_short_avatar_dialogue, force decidedFormat to
+      // 'video_short_avatar' (so prompt assembly, visual-spec, recommended_format and the monologue
+      // fallback all behave EXACTLY like the monologue avatar format — heygen-worker keys pickup on
+      // recommended_format='video_short_avatar', then detects video_script.dialogue[]) and flag
+      // dialogueMode so the video_script write below emits the dialogue script. Narrow, one-format,
+      // records what the advisor would have chosen; input_payload.format is one exact string so this
+      // is mutually exclusive with the avatar override above.
+      if (job.input_payload?.format === 'video_short_avatar_dialogue') {
+        const advisorWouldHave = decidedFormat;
+        decidedFormat = 'video_short_avatar';
+        dialogueMode = true;
+        advisorReason = `avatar_dialogue_override (cc-0084 Slice 2); advisor_would_have=${advisorWouldHave}${advisorReason ? `; ${advisorReason}` : ''}`;
+        console.log(`[ai-worker] ${VERSION} — job ${jobId}: dialogue override ${CC0084_DIALOGUE_MARKER} (advisor_would_have=${advisorWouldHave})`);
       }
 
       // Schedule-authority pin (golden-path): when the SCHEDULE authoritatively demands the governed
@@ -1352,7 +1536,37 @@ app.post('*', async (c) => {
       }
 
       let videoScriptGenerated = false;
-      if (VIDEO_FORMATS.has(decidedFormat) && anthropicKey) {
+      let dialogueHandled = false;
+
+      // cc-0084 Slice 2 — dialogue avatar path. Fires ONLY when the slot requested
+      // video_short_avatar_dialogue (dialogueMode). generateDialogueScript emits the { speaker_role,
+      // line } dialogue heygen-worker v2.6.0 renders; on success we persist it via set_draft_video_script
+      // (recommended_format is already 'video_short_avatar', its pickup key) and stamp
+      // draft_format.scene_count = dialogue.length (heygen qa.scene_count reads it). On ANY miss
+      // (null return / write error) dialogueHandled stays false → the UNCHANGED monologue block below runs
+      // as the fallback (degrade to cc-0083). Best-effort: never throws into the draft lifecycle.
+      if (dialogueMode && decidedFormat === 'video_short_avatar' && anthropicKey) {
+        try {
+          const brief = String(job.input_payload?.source_material ?? '').trim() || String(result.body ?? '').trim();
+          const dlg = await generateDialogueScript({ supabase, anthropicKey, clientId: job.client_id, brief, dialogueRoles: job.input_payload?.dialogue_roles, clientName, vertical });
+          if (dlg) {
+            const { error: vsErr } = await supabase.rpc('set_draft_video_script', { p_post_draft_id: job.post_draft_id, p_video_script: dlg as any });
+            if (vsErr) { console.error('[ai-worker] set_draft_video_script (dialogue) error:', vsErr.message); }
+            else {
+              videoScriptGenerated = true;
+              dialogueHandled = true;
+              // Stamp scene_count onto draft_format (additive; draftMeta was written above at baseUpdate).
+              const { error: scErr } = await supabase.schema('m').from('post_draft')
+                .update({ draft_format: { ...draftMeta, scene_count: dlg.dialogue.length }, updated_at: nowIso() })
+                .eq('post_draft_id', job.post_draft_id);
+              if (scErr) console.error('[ai-worker] dialogue scene_count update error:', scErr.message);
+            }
+          }
+          // dlg === null → fall through to the monologue fallback below (dialogueHandled stays false).
+        } catch (dlgErr: any) { console.error('[ai-worker] generateDialogueScript threw (non-fatal):', dlgErr?.message); }
+      }
+
+      if (!dialogueHandled && VIDEO_FORMATS.has(decidedFormat) && anthropicKey) {
         try {
           const videoScript = await generateVideoScript({ anthropicKey, formatKey: decidedFormat, postTitle: result.title, postBody: result.body, clientName, vertical });
           if (videoScript) {
