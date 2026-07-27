@@ -1,7 +1,7 @@
-# Result — Automated Image Intake v1: Slice 1 (reject store) + Slice 2 (shortage detector)
+# Result — Automated Image Intake v1: Slices 1–3a (reject store · shortage detector · dedup filter) + runbook
 
 **Date:** 2026-07-27 · **Lane:** PRODUCT_PROOF · **Tier:** T2 · **Brief:** `docs/briefs/automated-image-intake-v1.md` (Gate-1 approved 2026-07-27, PK)
-**Status:** Slice 1 + Slice 2 APPLIED + verified live. Slice 3 (orchestration) NOT built (next outcome).
+**Status:** Slices 1, 2, 3a APPLIED + verified live; orchestration runbook authored. Slice 3 PROOF RUN (live harvest + fenced intake) NOT yet run (next step). Runbook: `docs/briefs/automated-image-intake-v1-runbook.md`.
 **Canonical ID:** `cc-NNNN` (central registrar to assign; not invented here).
 
 ## Outcome
@@ -19,10 +19,19 @@ Two foundational DB objects for the automated background-intake pipeline are liv
 - Chain: db-rls-auditor BLOCK→fix→re-audit PASS; external review partial/no-defect; packet sha256 `8d32b763…`; rollback `DROP FUNCTION` + `REVOKE SELECT`.
 - **Runtime proof (as `service_role` via `SET LOCAL ROLE`):** no 42501; at floor 6, Invegent + CFW correctly flagged (supply 4, shortfall 2, priority 1), PP/NDIS (15-17) excluded.
 
+### Slice 3a — `m.filter_new_candidates(jsonb)` (migration `automated_image_intake_v1_slice3_filter_new_candidates`)
+- Read-only dedup filter, **SECURITY INVOKER**, search_path-pinned, `service_role` EXECUTE only, NO new grant (service_role already reads c.shared_creative_asset + m.rejected_asset_fingerprint).
+- Given harvested candidate fingerprints (provider, provider_asset_id, sha256, source_url), returns per-candidate `is_new` + `exclusion_reason`, matching the shared pool (`c.shared_creative_asset` sha256/source_url) and the reject store (`m.rejected_asset_fingerprint` sha256 / (provider,provider_asset_id) / source_url). This is the S6 stage — where Slice-1's reject store gates the flow. v1 does not dedup against `c.client_brand_asset` (documented limitation).
+- Chain: db-rls-auditor **clean/pass** (INVOKER correct, injection-safe, no new advisor, apply/rollback identity) · external review **agree/proceed** (first fully-clean external verdict in the lane) · logic dry-run-validated for ALL paths (pool sha256/source_url + all 3 reject paths + new; reject paths via rolled-back INSERT). Packet sha256 `96695a54…`; rollback `DROP FUNCTION`.
+- Verified live as service_role: existing-pool candidate → `dup_pool_sha256`; new candidate → `is_new`.
+
+### Orchestration runbook (Slice 3 spec)
+`docs/briefs/automated-image-intake-v1-runbook.md` — the S1–S8 procedure (detect → manifest → harvest → review → crop-proof → dedup → fenced intake → PK shortlist), §2 guardrails verbatim, STOP-at-PK-gate / zero-auto-promotion invariant. Deterministic spine (S1 detector + S6 dedup) is APPLIED; S2/S7/S8 are orchestration templates exercised by the proof run; S3/S4/S5 reuse the proven image agents + crop-proof recipe.
+
 ## Verification
 - Slice 1 live: RLS forced, grants = service_role + inspector_ro; anon/authenticated SELECT = false; 4 indexes present.
 - Slice 2 live: `prosecdef=false` (INVOKER), search_path pinned, EXECUTE service_role-only, `service_role` can read the schedule; shortage detection demonstrated as the real principal.
 
 ## Carries / next
-- **Slice 3 (next outcome):** orchestration runbook — detector → auto-manifest → `image-harvester` → `image-reviewer` → crop-proof → dedup (vs pool + `m.rejected_asset_fingerprint`) → fenced INSERT → PK shortlist, **STOP at the PK visual gate, zero auto-promotion**. Proof: shortage → candidates → rejected fingerprints excluded → PK shortlist, no production promotion. Detector already emits the shortage input; proof drives a seeded-real shortage (raised floor) since the pool sits at 4 post-cc-0073.
+- **Slice 3 PROOF RUN (next step):** execute the runbook S2–S8 live for Invegent + CFW against a seeded-real shortage (floor 6): `image-harvester` → `image-reviewer` → crop-proof → `m.filter_new_candidates` dedup → fenced INSERT (S7, PK-gated T3 intake per §2) → PK shortlist. Deterministic spine (S1 + S6) already applied; proof exercises S2/S7/S8 + the agents. Zero production promotion — STOP at the PK visual gate.
 - Migration `apply_migration` mints its own ledger version — repo/harness `.sql` filenames diverge from the ledger names (standing gotcha); `_harness/img_intake_v1_20260727/` packets remain local.

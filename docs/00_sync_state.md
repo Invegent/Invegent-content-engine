@@ -6,6 +6,11 @@
 
 ---
 
+> **🧾 v6.34 — AUTOMATED IMAGE INTAKE v1 Slice 3a (dedup filter `m.filter_new_candidates`) APPLIED + orchestration runbook authored (T2, additive/dark read-only fn; deterministic pipeline spine S1 detector + S6 dedup now COMPLETE; NO promotion/render/publish)** — records: `docs/briefs/results/automated-image-intake-v1-slice1-2-result.md` (updated) + `docs/briefs/automated-image-intake-v1-runbook.md` (NEW).
+> · **Slice 3a** `m.filter_new_candidates(jsonb)` (migration `…slice3_filter_new_candidates`): read-only SECURITY INVOKER, NO new grant; dedups harvested candidates vs shared pool + `m.rejected_asset_fingerprint` (composite match: sha256 / provider+asset_id / source_url). Chain: db-rls-auditor CLEAN/pass · external review AGREE/proceed (first fully-clean external in the lane) · all match paths dry-run-validated (reject paths via rolled-back INSERT) · verified live as service_role.
+> · **Runbook** S1–S8 (detect → manifest → harvest → review → crop-proof → dedup → fenced intake → PK shortlist); §2 guardrails verbatim; STOP-at-PK-gate, zero auto-promotion.
+> · **NEXT:** Slice 3 PROOF RUN — live harvest for Invegent+CFW (seeded floor 6) → reviewed/deduped/fenced shortlist → PK visual gate. S7 fenced INSERT is a PK-gated T3 intake.
+>
 > **🧾 v6.33 — AUTOMATED IMAGE INTAKE v1: Slice 1 (reject store) + Slice 2 (shortage detector) APPLIED (T2; two additive/dark DB objects in schema `m`; each through full T2 chain + PK apply gate; NO promotion, NO render, NO publish)** — record: `docs/briefs/results/automated-image-intake-v1-slice1-2-result.md` (NEW this cut).
 > · **Gate-1 approved 2026-07-27** (run-on-demand/T2, backgrounds-only, proof clients Invegent+CFW; composite reject-key, ≥4 floor prioritised by scheduled demand, existing providers, pHash→v2). Brief `docs/briefs/automated-image-intake-v1.md`.
 > · **Slice 1** `m.rejected_asset_fingerprint` (migration `…slice1_rejected_fingerprint`, ledger `20260727012219`): composite dedup key (provider+provider_asset_id / sha256 / md5(source_url)), RLS enabled+forced, service_role-only, schema `m` not REST-exposed; v1 rejects GLOBAL. db-rls-auditor concerns→2 fixes→clean · external partial/no-defect.
