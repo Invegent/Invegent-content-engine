@@ -42,6 +42,11 @@ interface SupaOpts {
   // avatarRow — every pre-existing test is byte-unchanged (they set only avatarRow).
   roleAvatarRow?: AvatarStubRow;
   noRoleAvatarRow?: AvatarStubRow;
+  // cc-0084 Slice 1: role-VALUE-aware resolution for multi-scene dialogue tests. When present, a
+  // role-filtered brand_avatar query returns the row keyed by the exact role_code in the SQL (an
+  // absent key => empty set => the role-less default-host fallback path). Backward-compatible: every
+  // pre-cc-0084 test leaves this unset and keeps the avatarRow/roleAvatarRow behaviour byte-unchanged.
+  roleAvatarByCode?: Record<string, AvatarStubRow>;
   avatarError?: { message?: string } | null;   // cc-0063 Step B: inject an exec_sql error on the brand_avatar query
   brandRow?: { brand_colour_primary: string; client_slug: string } | null;
   existingRenderLogs?: any[];
@@ -93,8 +98,15 @@ function makeSupa(opts: SupaOpts) {
           // else fall back to avatarRow (backward-compatible with all existing tests).
           const isRoleQuery = q.includes('role_code');
           let row: AvatarStubRow = opts.avatarRow ?? null;
-          if (isRoleQuery && 'roleAvatarRow' in opts) row = opts.roleAvatarRow ?? null;
-          if (!isRoleQuery && 'noRoleAvatarRow' in opts) row = opts.noRoleAvatarRow ?? null;
+          if (isRoleQuery && opts.roleAvatarByCode) {
+            // cc-0084: resolve by the EXACT role_code in the SQL (absent key => empty set).
+            const m = q.match(/role_code = '([^']+)'/);
+            const code = m?.[1] ?? '';
+            row = (code in opts.roleAvatarByCode) ? (opts.roleAvatarByCode[code] ?? null) : null;
+          } else {
+            if (isRoleQuery && 'roleAvatarRow' in opts) row = opts.roleAvatarRow ?? null;
+            if (!isRoleQuery && 'noRoleAvatarRow' in opts) row = opts.noRoleAvatarRow ?? null;
+          }
           return Promise.resolve({ data: row ? [row] : [], error: null });
         }
         if (q.includes('client_brand_profile')) return Promise.resolve({ data: opts.brandRow ? [opts.brandRow] : [], error: null });
@@ -608,5 +620,157 @@ Deno.test('cc-0083 (d) no role requested + default host present => default host,
     const qs = lookupQueries(supa);
     assertEquals(qs.length, 1, 'no role => a single role-less lookup, no fallback');
     assert(!qs[0].includes('role_code'), 'the single lookup is role-less');
+  } finally { restoreFetch(); }
+});
+
+// --- cc-0084 Slice 1 — multi-scene dialogue render (cut-based) -------------------------------
+//
+// A non-empty video_script.dialogue[] ({speaker_role, line}) makes submitHeyGenJob receive an
+// ORDERED N-element scenes[] (one video_input per turn). Each DISTINCT speaker_role is resolved
+// once (cached) with the cc-0083 per-scene default-host fallback. The monologue path is unchanged
+// (a 1-element payload). Hermetic — the stub returns per-role rows via roleAvatarByCode.
+
+// (a) 2-turn dialogue, 2 distinct active roles => 2-element scenes[] with the correct per-role
+//     talking_photo_id / voice_id in TURN ORDER; scene_count=2.
+Deno.test('cc-0084 (a) 2-turn dialogue, 2 distinct active roles => 2-scene payload in turn order, scene_count=2', async () => {
+  const supa = makeSupa({
+    pending: [{
+      post_draft_id: 'dDlgA', client_id: 'cNDIS', recommended_format: 'video_short_avatar',
+      draft_format: { video_script: { render_style: 'realistic', dialogue: [
+        { speaker_role: 'local_area_coordinator', line: 'Welcome, how can I help today?' },
+        { speaker_role: 'participant', line: 'I want to understand my plan.' },
+      ] } },
+    }],
+    roleAvatarByCode: {
+      local_area_coordinator: { heygen_avatar_id: 'AV_LAC', heygen_voice_id: 'V_LAC', is_default_host: true, is_primary: false },
+      participant:            { heygen_avatar_id: 'AV_PART', heygen_voice_id: 'V_PART', is_default_host: false, is_primary: false },
+    },
+    brandRow: { brand_colour_primary: '#0A2A4A', client_slug: 'ndis-yarns' },
+  });
+  const fetchCalls = installFetch();
+  try {
+    await runSubmitPhase(supa as any, 'fake-key');
+
+    const gen = fetchCalls.find((c) => c.url.includes('/v2/video/generate'));
+    assertExists(gen, 'HeyGen generate call must have been made');
+    const vinputs = JSON.parse(gen!.body).video_inputs;
+    assertEquals(vinputs.length, 2, 'two dialogue turns => two video_inputs scenes');
+    // turn order + per-role identity
+    assertEquals(vinputs[0].character.talking_photo_id, 'AV_LAC');
+    assertEquals(vinputs[0].voice.voice_id, 'V_LAC');
+    assertEquals(vinputs[0].voice.input_text, 'Welcome, how can I help today?');
+    assertEquals(vinputs[1].character.talking_photo_id, 'AV_PART');
+    assertEquals(vinputs[1].voice.voice_id, 'V_PART');
+    assertEquals(vinputs[1].voice.input_text, 'I want to understand my plan.');
+
+    const upd = supa.__updates.find((u) => u.payload?.video_status === 'rendering');
+    assertExists(upd, 'a valid 2-role dialogue must submit (rendering)');
+    assertEquals(upd!.payload.draft_format.scene_count, 2, 'draft_format.scene_count drives qa.scene_count');
+    const ai = upd!.payload.draft_format.avatar_identity;
+    assertEquals(ai.mode, 'dialogue');
+    assertEquals(ai.scene_count, 2);
+    assertEquals(ai.dialogue_identities.length, 2);
+    assertEquals(ai.dialogue_identities[0].speaker_role, 'local_area_coordinator');
+    assertEquals(ai.dialogue_identities[0].talking_photo_id, 'AV_LAC');
+    assertEquals(ai.dialogue_identities[1].speaker_role, 'participant');
+    assertEquals(ai.dialogue_identities[1].role_fallback_to_default_host, false);
+  } finally { restoreFetch(); }
+});
+
+// (b) a dialogue turn with an inactive/unknown role => that scene falls back to the client default
+//     host (role_fallback_to_default_host=true for that scene); the render still submits.
+Deno.test('cc-0084 (b) dialogue turn with unknown/inactive role => that scene falls back to default host, render still submits', async () => {
+  const supa = makeSupa({
+    pending: [{
+      post_draft_id: 'dDlgB', client_id: 'cNDIS', recommended_format: 'video_short_avatar',
+      draft_format: { video_script: { render_style: 'realistic', dialogue: [
+        { speaker_role: 'participant', line: 'Hello there.' },
+        { speaker_role: 'unknown_role', line: 'And here is my reply.' },
+      ] } },
+    }],
+    roleAvatarByCode: {
+      participant: { heygen_avatar_id: 'AV_PART', heygen_voice_id: 'V_PART', is_default_host: false, is_primary: false },
+      // 'unknown_role' absent => role query empty => role-less default-host fallback (noRoleAvatarRow)
+    },
+    noRoleAvatarRow: { heygen_avatar_id: 'AV_HOST', heygen_voice_id: 'V_HOST', is_default_host: true, is_primary: false },
+    brandRow: { brand_colour_primary: '#0A2A4A', client_slug: 'ndis-yarns' },
+  });
+  const fetchCalls = installFetch();
+  try {
+    await runSubmitPhase(supa as any, 'fake-key');
+
+    const upd = supa.__updates.find((u) => u.payload?.video_status === 'rendering');
+    assertExists(upd, 'an unknown role must fall back to the default host, not fail the whole render');
+    const vinputs = JSON.parse(fetchCalls.find((c) => c.url.includes('/v2/video/generate'))!.body).video_inputs;
+    assertEquals(vinputs.length, 2);
+    assertEquals(vinputs[0].character.talking_photo_id, 'AV_PART', 'known role uses its avatar');
+    assertEquals(vinputs[1].character.talking_photo_id, 'AV_HOST', 'unknown role falls back to default host');
+
+    const ids = upd!.payload.draft_format.avatar_identity.dialogue_identities;
+    assertEquals(ids[0].role_fallback_to_default_host, false, 'the known role is not a fallback');
+    assertEquals(ids[1].role_fallback_to_default_host, true, 'the unknown role fell back to the default host');
+    assertEquals(ids[1].talking_photo_id, 'AV_HOST');
+    assertEquals(ids[1].avatar_selected_by, 'default_host');
+  } finally { restoreFetch(); }
+});
+
+// (c) a monologue draft (no dialogue[]) => the pre-cc-0084 single-scene payload (exactly one
+//     video_input); regression-safe (the monologue path is unchanged).
+Deno.test('cc-0084 (c) monologue draft (no dialogue[]) => unchanged single-scene payload (1 video_input)', async () => {
+  const supa = makeSupa({
+    pending: [{
+      post_draft_id: 'dMono', client_id: 'cM', recommended_format: 'video_short_avatar',
+      draft_format: { talking_photo_id: 'AV_PRESET', voice_id: 'VOICE_PRESET', render_style: 'realistic', narration_text: 'Single speaker line' },
+    }],
+    brandRow: { brand_colour_primary: '#000000', client_slug: 'mono' },
+  });
+  const fetchCalls = installFetch();
+  try {
+    await runSubmitPhase(supa as any, 'fake-key');
+
+    const vinputs = JSON.parse(fetchCalls.find((c) => c.url.includes('/v2/video/generate'))!.body).video_inputs;
+    assertEquals(vinputs.length, 1, 'monologue => exactly one video_input (byte-identical shape)');
+    assertEquals(vinputs[0].character.talking_photo_id, 'AV_PRESET');
+    assertEquals(vinputs[0].voice.voice_id, 'VOICE_PRESET');
+    assertEquals(vinputs[0].voice.input_text, 'Single speaker line');
+
+    const upd = supa.__updates.find((u) => u.payload?.video_status === 'rendering');
+    assertEquals(upd!.payload.draft_format.scene_count, 1);
+    const ai = upd!.payload.draft_format.avatar_identity;
+    assertEquals(ai.talking_photo_id, 'AV_PRESET');
+    assertEquals(ai.avatar_selected_by, 'preset');
+    assertEquals(ai.dialogue_identities, undefined, 'monologue avatar_identity has no dialogue_identities');
+  } finally { restoreFetch(); }
+});
+
+// (d) a repeated role across two turns => lookupAvatar is called ONCE for that role (cache);
+//     both scenes get the same avatar.
+Deno.test('cc-0084 (d) repeated role across two turns => lookupAvatar called ONCE (cache), both scenes share the avatar', async () => {
+  const supa = makeSupa({
+    pending: [{
+      post_draft_id: 'dDlgD', client_id: 'cNDIS', recommended_format: 'video_short_avatar',
+      draft_format: { video_script: { render_style: 'realistic', dialogue: [
+        { speaker_role: 'participant', line: 'First turn.' },
+        { speaker_role: 'participant', line: 'Second turn, same speaker.' },
+      ] } },
+    }],
+    roleAvatarByCode: {
+      participant: { heygen_avatar_id: 'AV_PART', heygen_voice_id: 'V_PART', is_default_host: false, is_primary: false },
+    },
+    brandRow: { brand_colour_primary: '#0A2A4A', client_slug: 'ndis-yarns' },
+  });
+  const fetchCalls = installFetch();
+  try {
+    await runSubmitPhase(supa as any, 'fake-key');
+
+    // cache: exactly ONE brand_avatar lookup for the repeated role (no second resolve)
+    assertEquals(lookupQueries(supa).length, 1, 'a repeated role must be resolved once (cached)');
+
+    const vinputs = JSON.parse(fetchCalls.find((c) => c.url.includes('/v2/video/generate'))!.body).video_inputs;
+    assertEquals(vinputs.length, 2);
+    assertEquals(vinputs[0].character.talking_photo_id, 'AV_PART');
+    assertEquals(vinputs[1].character.talking_photo_id, 'AV_PART', 'both scenes reuse the cached avatar');
+    assertEquals(vinputs[0].voice.input_text, 'First turn.');
+    assertEquals(vinputs[1].voice.input_text, 'Second turn, same speaker.');
   } finally { restoreFetch(); }
 });

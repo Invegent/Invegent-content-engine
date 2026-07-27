@@ -1,4 +1,25 @@
 // heygen-worker v2.2.0
+// v2.6.0 — cc-0084 Slice 1: MULTI-SCENE DIALOGUE RENDER (cut-based). cc-0084-marker:
+//          heygen-worker-cc0084-multiscene-dialogue. submitHeyGenJob is generalized from a single
+//          hardcoded speaker to an ORDERED array of scenes (video_inputs = scenes.map(...)) so ONE
+//          HeyGen render can contain N speaker turns stitched into a back-and-forth conversation.
+//          runSubmitPhase now detects a non-empty video_script.dialogue[] ({speaker_role,line}); on
+//          that path it resolves each DISTINCT speaker_role via lookupAvatar ONCE (cached by role),
+//          reusing the cc-0083 per-scene default-host fallback (a role with no eligible avatar retries
+//          role-less; only a genuinely-no-avatar client hard-fails no_eligible_avatar; a query error
+//          fails closed as resolution_failed — unchanged semantics), builds scenes[] in turn order,
+//          and submits via the generalized submitHeyGenJob. Telemetry: avatar_identity records
+//          {mode:'dialogue', scene_count, dialogue_identities:[{speaker_role, talking_photo_id,
+//          voice_id, avatar_selected_by, role_fallback_to_default_host}]}; draft_format.scene_count
+//          drives qa.scene_count at poll (was hardcoded 1). The narration_text requirement does NOT
+//          apply on the dialogue path (per-turn `line`s are the text; empty lines fail closed). The
+//          single-speaker MONOLOGUE path is UNCHANGED: it wraps its one {talkingPhotoId,voiceId,
+//          narrationText} as a 1-element scenes[] so its HeyGen payload is BYTE-IDENTICAL to v2.5.0,
+//          and its selection/shadow-telemetry/results are untouched. STRICTLY OUT OF SCOPE: NO
+//          ai-worker edit (that is Slice 2 — heygen must consume dialogue[] before ai-worker emits
+//          it) · NO schema/migration (dialogue[] is free-form jsonb already) · NO change to the
+//          monologue selection/shadow/poll logic · NO side-by-side/two-shot composition · NO publish/
+//          deploy here · lookupAvatar SQL/order UNCHANGED. (cc-0084-slice1: multiscene-dialogue-render)
 // v2.5.0 — cc-0083 Slice B: ROLE-REQUESTED DEFAULT-HOST FALLBACK. cc-0083-marker:
 //          heygen-worker-cc0083-role-fallback-default-host. When a stakeholder_role IS requested
 //          (ai-worker v2.23.0 now promotes a clear/confident role into video_script.stakeholder_role)
@@ -99,7 +120,10 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { buildRenderQa, safeQa } from './qa.ts';  // v2.3.0: QA-VISIBILITY-V0 (additive)
 
-const VERSION             = 'heygen-worker-v2.5.0';  // cc-0083-sliceB: role-requested-default-host-fallback
+const VERSION             = 'heygen-worker-v2.6.0';  // cc-0084-slice1: multiscene-dialogue-render
+// cc-0084 Slice 1 deployed-bundle marker: a STRING LITERAL (survives esbuild — comments do not) so a
+// `grep` of the shipped bundle can confirm the multi-scene code is actually live (bundles-from-CWD guard).
+const CC0084_MARKER       = 'heygen-worker-cc0084-multiscene-dialogue';
 const HEYGEN_GENERATE     = 'https://api.heygen.com/v2/video/generate';
 const HEYGEN_STATUS       = 'https://api.heygen.com/v1/video_status.get';
 const MAX_SUBMITS         = 3;                // Phase A: pending drafts to submit per tick
@@ -174,17 +198,22 @@ export async function lookupAvatar(
 
 // --- HeyGen calls -----------------------------------------------------------
 
+// cc-0084 Slice 1: one HeyGen scene = one speaker turn (talking_photo + voice + line).
+export type HeyGenScene = { talkingPhotoId: string; voiceId: string; text: string };
+
+// cc-0084 Slice 1: generalized from a single hardcoded speaker to an ORDERED array of scenes.
+// video_inputs is built as scenes.map(...) so N turns stitch into one video. The monologue caller
+// passes a 1-element `scenes` array, making its payload BYTE-IDENTICAL to the pre-cc-0084 submit.
 async function submitHeyGenJob(opts: {
-  apiKey: string; talkingPhotoId: string; voiceId: string;
-  narrationText: string; bgColour?: string;
+  apiKey: string; scenes: HeyGenScene[]; bgColour?: string;
 }): Promise<string> {
-  const { apiKey, talkingPhotoId, voiceId, narrationText, bgColour = '#F0F4F8' } = opts;
+  const { apiKey, scenes, bgColour = '#F0F4F8' } = opts;
   const payload = {
-    video_inputs: [{
-      character: { type: 'talking_photo', talking_photo_id: talkingPhotoId },
-      voice: { type: 'text', input_text: narrationText, voice_id: voiceId, speed: 1.0 },
+    video_inputs: scenes.map((s) => ({
+      character: { type: 'talking_photo', talking_photo_id: s.talkingPhotoId },
+      voice: { type: 'text', input_text: s.text, voice_id: s.voiceId, speed: 1.0 },
       background: { type: 'color', value: bgColour },
-    }],
+    })),
     dimension: { width: 720, height: 1280 },   // 9:16 portrait — YouTube Shorts native
   };
   const resp = await fetch(HEYGEN_GENERATE, {
@@ -320,7 +349,9 @@ async function writeRenderLog(
         tts_provider: 'heygen',
         captions_expected: false,
         captions_present: false,
-        scene_count: 1,
+        // cc-0084 Slice 1: driven by draft_format.scene_count persisted at submit (monologue=1,
+        // dialogue=N). Defaults to 1 for pre-cc-0084 in-flight drafts (no backfill).
+        scene_count: (typeof fmt.scene_count === 'number' ? fmt.scene_count : 1),
         avatar_expected: true,
         fallback_taken: (fmt.avatar_identity?.avatar_selected_by === 'fallback_limit1'),
         cost_present: false,
@@ -460,6 +491,103 @@ export async function recordAvatarShadow(
   }
 }
 
+// --- cc-0084 Slice 1: resolve a dialogue[] into ordered HeyGen scenes --------
+// Each DISTINCT speaker_role is resolved via lookupAvatar ONCE (cached by role_code and reused),
+// applying the cc-0083 per-scene default-host fallback: a role with no eligible avatar retries
+// role-less (default host); only a genuinely-no-avatar client (default host ALSO missing) hard-fails
+// no_eligible_avatar; a query error fails closed as resolution_failed (never a false no_eligible).
+// Returns ok:true with scenes[] in turn order + per-scene identities, or ok:false with the SAME
+// structured errFields the monologue no-avatar / resolution-error path writes (so the caller markFails
+// once and moves to the next draft — identical fail semantics). Empty per-turn lines fail closed.
+type DialogueBuild =
+  | { ok: true; scenes: HeyGenScene[]; identities: Array<Record<string, unknown>> }
+  | { ok: false; errFields: Record<string, unknown>; resultError: string };
+
+async function buildDialogueScenes(
+  supabase: Supa,
+  clientId: string,
+  renderStyle: string,
+  dialogue: any[],
+): Promise<DialogueBuild> {
+  // Cache one resolution per DISTINCT role_code (null role => default host, keyed '__default__').
+  const roleCache = new Map<string, { talkingPhotoId: string; voiceId: string; selectedBy: string; roleFallback: boolean }>();
+  const scenes: HeyGenScene[] = [];
+  const identities: Array<Record<string, unknown>> = [];
+
+  for (const turn of dialogue) {
+    const role: string | null = (turn?.speaker_role ?? null) as string | null;
+    const line: string = (turn?.line ?? '').toString();
+    if (!line.trim()) {
+      // Guard: dialogue turns must carry non-empty lines (per-turn line IS the text on this path).
+      return { ok: false, errFields: { heygen_error: `submit_error: dialogue turn with empty line (role ${role ?? 'null'})` }, resultError: 'empty_dialogue_line' };
+    }
+
+    const cacheKey = role ?? '__default__';
+    let resolved = roleCache.get(cacheKey);
+    if (!resolved) {
+      const res = await lookupAvatar(supabase, clientId, role, renderStyle);
+      if (res.outcome === 'resolution_failed') {
+        return { ok: false, errFields: {
+          heygen_error: `submit_error: avatar resolution failed for client ${clientId} (dialogue role ${role ?? 'null'}): ${res.error_detail}`,
+          avatar_resolution_outcome: 'resolution_failed',
+        }, resultError: 'resolution_failed' };
+      }
+
+      let talkingPhotoId: string;
+      let voiceId: string | null;
+      let selectedBy: string;
+      let roleFallback = false;
+
+      if (res.outcome === 'no_eligible_avatar') {
+        // cc-0083 fallback: retry role-less (default host) for this scene. Only when a role was
+        // requested — a null-role miss has nothing left to fall back to.
+        const fb = role ? await lookupAvatar(supabase, clientId, null, renderStyle) : res;
+        if (role && (fb.outcome === 'default_host' || fb.outcome === 'primary_fallback' || fb.outcome === 'undesignated_tiebreak')) {
+          talkingPhotoId = fb.talking_photo_id;
+          voiceId = fb.voice_id;
+          selectedBy = fb.outcome;
+          roleFallback = true;
+        } else if (role && fb.outcome === 'resolution_failed') {
+          return { ok: false, errFields: {
+            heygen_error: `submit_error: avatar resolution failed for client ${clientId} (dialogue default-host fallback for role ${role}): ${fb.error_detail}`,
+            avatar_resolution_outcome: 'resolution_failed',
+          }, resultError: 'resolution_failed' };
+        } else {
+          // role avatar missing AND no default host (or a null-role miss) => genuine hard fail.
+          return { ok: false, errFields: {
+            heygen_error: `submit_error: No active ${renderStyle} avatar for client ${clientId} (dialogue role ${role ?? 'null'} unavailable AND no default host)`,
+            avatar_resolution_outcome: 'no_eligible_avatar',
+          }, resultError: 'no_eligible_avatar' };
+        }
+      } else {
+        talkingPhotoId = res.talking_photo_id;
+        voiceId = res.voice_id;
+        selectedBy = res.outcome;
+      }
+
+      if (!voiceId) {
+        return { ok: false, errFields: {
+          heygen_error: `submit_error: No voice_id for dialogue role ${role ?? 'null'} (client ${clientId})`,
+        }, resultError: 'no_voice_id' };
+      }
+
+      resolved = { talkingPhotoId, voiceId, selectedBy, roleFallback };
+      roleCache.set(cacheKey, resolved);
+    }
+
+    scenes.push({ talkingPhotoId: resolved.talkingPhotoId, voiceId: resolved.voiceId, text: line });
+    identities.push({
+      speaker_role: role,
+      talking_photo_id: resolved.talkingPhotoId,
+      voice_id: resolved.voiceId,
+      avatar_selected_by: resolved.selectedBy,
+      role_fallback_to_default_host: resolved.roleFallback,
+    });
+  }
+
+  return { ok: true, scenes, identities };
+}
+
 // --- Phase A: submit new pending avatar jobs --------------------------------
 
 export async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<any[]> {
@@ -486,101 +614,121 @@ export async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<an
 
     try {
       const renderStyle: string = fmt.render_style ?? vs.render_style ?? 'realistic';
-      const stakeholderRole: string | null = fmt.stakeholder_role ?? vs.stakeholder_role ?? null;
-      const narrationText: string = fmt.narration_text ?? vs.narration_text ?? '';
-      if (!narrationText) throw new Error(`narration_text missing for draft ${draftId}`);
 
-      let talkingPhotoId: string | null = fmt.talking_photo_id ?? fmt.avatar_id ?? null;
-      let voiceId: string | null = fmt.voice_id ?? null;
-      // v2.1.1 (observability-only): record HOW the avatar was selected. Default 'preset' = identity
-      // already present in draft_format (no lookup). Does NOT influence which avatar is chosen.
-      // cc-0063 Step B: 'role_filter'/'fallback_limit1' are RETIRED FROM EMISSION; the resolver now
-      // emits the governed codes default_host|primary_fallback|undesignated_tiebreak. 'preset' is
-      // retained — the :427 short-circuit is carried governance debt (unchanged precedence).
-      let avatarSelectedBy: 'default_host' | 'primary_fallback' | 'undesignated_tiebreak' | 'preset' = 'preset';
-      // cc-0083 Slice B: set true iff a requested stakeholder_role had no eligible avatar and we
-      // fell back to the client default host (role-less re-resolve). Telemetry only (see §4).
-      let roleFallbackToDefaultHost = false;
-      if (!talkingPhotoId) {
-        const res = await lookupAvatar(supabase, clientId, stakeholderRole, renderStyle);
-        // cc-0063 Step B: fail closed on a query error, DISTINCT from a genuinely empty candidate
-        // set (the 2026-07-23 non-collapse). The structured avatar_resolution_outcome is the
-        // downstream-observable discriminator (R-B); the heygen_error string is for humans.
-        if (res.outcome === 'resolution_failed') {
-          await markFailed(supabase, draftId, fmt, {
-            heygen_error: `submit_error: avatar resolution failed for client ${clientId}: ${res.error_detail}`,
-            avatar_resolution_outcome: 'resolution_failed',
-          });
-          results.push({ post_draft_id: draftId, phase: 'submit', status: 'failed', error: 'resolution_failed' });
+      // cc-0084 Slice 1: a non-empty video_script.dialogue[] ({speaker_role, line}) routes the
+      // MULTI-SCENE (cut-based dialogue) path. When absent, the EXISTING single-speaker monologue
+      // path runs UNCHANGED — its one speaker is wrapped as a 1-element scenes[] for the generalized
+      // submitHeyGenJob, keeping its HeyGen payload byte-identical to v2.5.0.
+      const dialogue: any[] | null = Array.isArray(vs.dialogue) ? vs.dialogue : null;
+
+      let scenes: HeyGenScene[];
+      let avatarIdentity: Record<string, unknown>;
+
+      if (dialogue && dialogue.length > 0) {
+        // ---- DIALOGUE PATH (cc-0084 Slice 1) ----
+        // No single narration_text on this path: each turn's `line` IS its text. Per-role avatar
+        // resolution + fallback live in buildDialogueScenes; failures return the SAME structured
+        // errFields the monologue no-avatar / resolution-error path writes (markFail once + continue).
+        const built = await buildDialogueScenes(supabase, clientId, renderStyle, dialogue);
+        if (!built.ok) {
+          await markFailed(supabase, draftId, fmt, built.errFields);
+          results.push({ post_draft_id: draftId, phase: 'submit', status: 'failed', error: built.resultError });
           continue;
         }
-        if (res.outcome === 'no_eligible_avatar') {
-          if (stakeholderRole) {
-            // cc-0083 Slice B: a role was requested but no active avatar carries it → fall back to
-            // the client default host (role-less resolve). Only a genuinely-no-avatar client (default
-            // host ALSO missing) still hard-fails. resolution_failed stays a hard fail above (unchanged).
-            const fb = await lookupAvatar(supabase, clientId, null, renderStyle);
-            if (fb.outcome === 'default_host' || fb.outcome === 'primary_fallback' || fb.outcome === 'undesignated_tiebreak') {
-              talkingPhotoId = fb.talking_photo_id;
-              voiceId = voiceId ?? fb.voice_id;
-              avatarSelectedBy = fb.outcome;      // the host actually used
-              roleFallbackToDefaultHost = true;   // telemetry (see §4)
+        scenes = built.scenes;
+        avatarIdentity = {
+          mode: 'dialogue',
+          render_style: renderStyle,
+          scene_count: scenes.length,
+          dialogue_identities: built.identities,
+        };
+        console.log(`[heygen-worker] submit ${draftId} DIALOGUE scenes=${scenes.length} style=${renderStyle}`);
+      } else {
+        // ---- MONOLOGUE PATH (cc-0083, UNCHANGED behaviour) ----
+        const stakeholderRole: string | null = fmt.stakeholder_role ?? vs.stakeholder_role ?? null;
+        const narrationText: string = fmt.narration_text ?? vs.narration_text ?? '';
+        if (!narrationText) throw new Error(`narration_text missing for draft ${draftId}`);
+
+        let talkingPhotoId: string | null = fmt.talking_photo_id ?? fmt.avatar_id ?? null;
+        let voiceId: string | null = fmt.voice_id ?? null;
+        // v2.1.1 (observability-only): record HOW the avatar was selected. Default 'preset' = identity
+        // already present in draft_format (no lookup). Does NOT influence which avatar is chosen.
+        // cc-0063 Step B: 'role_filter'/'fallback_limit1' are RETIRED FROM EMISSION; the resolver now
+        // emits the governed codes default_host|primary_fallback|undesignated_tiebreak. 'preset' is
+        // retained — the :427 short-circuit is carried governance debt (unchanged precedence).
+        let avatarSelectedBy: 'default_host' | 'primary_fallback' | 'undesignated_tiebreak' | 'preset' = 'preset';
+        // cc-0083 Slice B: set true iff a requested stakeholder_role had no eligible avatar and we
+        // fell back to the client default host (role-less re-resolve). Telemetry only (see §4).
+        let roleFallbackToDefaultHost = false;
+        if (!talkingPhotoId) {
+          const res = await lookupAvatar(supabase, clientId, stakeholderRole, renderStyle);
+          // cc-0063 Step B: fail closed on a query error, DISTINCT from a genuinely empty candidate
+          // set (the 2026-07-23 non-collapse). The structured avatar_resolution_outcome is the
+          // downstream-observable discriminator (R-B); the heygen_error string is for humans.
+          if (res.outcome === 'resolution_failed') {
+            await markFailed(supabase, draftId, fmt, {
+              heygen_error: `submit_error: avatar resolution failed for client ${clientId}: ${res.error_detail}`,
+              avatar_resolution_outcome: 'resolution_failed',
+            });
+            results.push({ post_draft_id: draftId, phase: 'submit', status: 'failed', error: 'resolution_failed' });
+            continue;
+          }
+          if (res.outcome === 'no_eligible_avatar') {
+            if (stakeholderRole) {
+              // cc-0083 Slice B: a role was requested but no active avatar carries it → fall back to
+              // the client default host (role-less resolve). Only a genuinely-no-avatar client (default
+              // host ALSO missing) still hard-fails. resolution_failed stays a hard fail above (unchanged).
+              const fb = await lookupAvatar(supabase, clientId, null, renderStyle);
+              if (fb.outcome === 'default_host' || fb.outcome === 'primary_fallback' || fb.outcome === 'undesignated_tiebreak') {
+                talkingPhotoId = fb.talking_photo_id;
+                voiceId = voiceId ?? fb.voice_id;
+                avatarSelectedBy = fb.outcome;      // the host actually used
+                roleFallbackToDefaultHost = true;   // telemetry (see §4)
+              } else {
+                await markFailed(supabase, draftId, fmt, {
+                  heygen_error: `submit_error: No active ${renderStyle} avatar for client ${clientId} (role ${stakeholderRole} unavailable AND no default host)`,
+                  avatar_resolution_outcome: 'no_eligible_avatar',
+                });
+                results.push({ post_draft_id: draftId, phase: 'submit', status: 'failed', error: 'no_eligible_avatar' });
+                continue;
+              }
             } else {
+              // no role requested AND no avatar at all → genuine hard fail (unchanged)
               await markFailed(supabase, draftId, fmt, {
-                heygen_error: `submit_error: No active ${renderStyle} avatar for client ${clientId} (role ${stakeholderRole} unavailable AND no default host)`,
+                heygen_error: `submit_error: No active ${renderStyle} avatar for client ${clientId}`,
                 avatar_resolution_outcome: 'no_eligible_avatar',
               });
               results.push({ post_draft_id: draftId, phase: 'submit', status: 'failed', error: 'no_eligible_avatar' });
               continue;
             }
           } else {
-            // no role requested AND no avatar at all → genuine hard fail (unchanged)
-            await markFailed(supabase, draftId, fmt, {
-              heygen_error: `submit_error: No active ${renderStyle} avatar for client ${clientId}`,
-              avatar_resolution_outcome: 'no_eligible_avatar',
-            });
-            results.push({ post_draft_id: draftId, phase: 'submit', status: 'failed', error: 'no_eligible_avatar' });
-            continue;
+            talkingPhotoId = res.talking_photo_id;
+            voiceId = voiceId ?? res.voice_id;
+            avatarSelectedBy = res.outcome;   // default_host | primary_fallback | undesignated_tiebreak
           }
-        } else {
-          talkingPhotoId = res.talking_photo_id;
-          voiceId = voiceId ?? res.voice_id;
-          avatarSelectedBy = res.outcome;   // default_host | primary_fallback | undesignated_tiebreak
         }
-      }
-      if (!voiceId) throw new Error(`No voice_id for draft ${draftId}`);
+        if (!voiceId) throw new Error(`No voice_id for draft ${draftId}`);
 
-      // AGP-D01-3 shadow telemetry (additive, flag-gated, fail-open): record the ACTUAL
-      // live pick (talkingPhotoId/voiceId/avatarSelectedBy) so the shadow resolver can
-      // measure ordering nondeterminism. Result is NEVER read back; selection is unchanged.
-      await recordAvatarShadow(supabase, {
-        postDraftId:     draftId,
-        clientId,
-        stakeholderRole,
-        renderStyle,
-        liveAvatarId:    talkingPhotoId,
-        liveVoiceId:     voiceId,
-        liveSelectedBy:  avatarSelectedBy,
-        runId:           null,
-      });
+        // AGP-D01-3 shadow telemetry (additive, flag-gated, fail-open): record the ACTUAL
+        // live pick (talkingPhotoId/voiceId/avatarSelectedBy) so the shadow resolver can
+        // measure ordering nondeterminism. Result is NEVER read back; selection is unchanged.
+        // cc-0084: shadow telemetry stays MONOLOGUE-only (a single pick) — the dialogue path has no
+        // single live pick and this shadow path is unchanged (default-OFF, out of Slice-1 scope).
+        await recordAvatarShadow(supabase, {
+          postDraftId:     draftId,
+          clientId,
+          stakeholderRole,
+          renderStyle,
+          liveAvatarId:    talkingPhotoId,
+          liveVoiceId:     voiceId,
+          liveSelectedBy:  avatarSelectedBy,
+          runId:           null,
+        });
 
-      const { data: brandRows } = await supabase.rpc('exec_sql', {
-        query: `SELECT brand_colour_primary, cl.client_slug FROM c.client_brand_profile cbp JOIN c.client cl ON cl.client_id = cbp.client_id WHERE cbp.client_id = '${clientId}' AND cbp.is_active = true LIMIT 1`,
-      });
-      const brand = (brandRows as any)?.[0];
-      const bgColour = brand?.brand_colour_primary ?? '#0A2A4A';
-      const clientSlug = brand?.client_slug ?? clientId.substring(0, 8);
-      const storagePath = `${clientSlug}/${draftId}_avatar_${renderStyle}.mp4`;
-
-      console.log(`[heygen-worker] submit ${draftId} avatar=${talkingPhotoId} style=${renderStyle} role=${stakeholderRole ?? 'any'}`);
-      const heygenVideoId = await submitHeyGenJob({ apiKey, talkingPhotoId, voiceId, narrationText, bgColour });
-
-      // Persist immediately and return — no polling in this invocation.
-      await markRendering(supabase, draftId, fmt, heygenVideoId, nowIso(), {
-        render_style: renderStyle, storage_path: storagePath, client_slug: clientSlug,
+        scenes = [{ talkingPhotoId: talkingPhotoId!, voiceId, text: narrationText }];
         // v2.1.1 (observability-only): capture the ACTUAL avatar identity selected for THIS submit.
         // Copied verbatim into render_spec at poll/terminal — never re-derived or reselected.
-        avatar_identity: {
+        avatarIdentity = {
           talking_photo_id: talkingPhotoId,
           voice_id: voiceId,
           render_style: renderStyle,
@@ -590,7 +738,27 @@ export async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<an
           // requested-but-unavailable role fell back to the client default host.
           requested_stakeholder_role: stakeholderRole,
           role_fallback_to_default_host: roleFallbackToDefaultHost,
-        },
+        };
+        console.log(`[heygen-worker] submit ${draftId} avatar=${talkingPhotoId} style=${renderStyle} role=${stakeholderRole ?? 'any'}`);
+      }
+
+      // ---- shared submit tail (both paths) ----
+      const { data: brandRows } = await supabase.rpc('exec_sql', {
+        query: `SELECT brand_colour_primary, cl.client_slug FROM c.client_brand_profile cbp JOIN c.client cl ON cl.client_id = cbp.client_id WHERE cbp.client_id = '${clientId}' AND cbp.is_active = true LIMIT 1`,
+      });
+      const brand = (brandRows as any)?.[0];
+      const bgColour = brand?.brand_colour_primary ?? '#0A2A4A';
+      const clientSlug = brand?.client_slug ?? clientId.substring(0, 8);
+      const storagePath = `${clientSlug}/${draftId}_avatar_${renderStyle}.mp4`;
+
+      const heygenVideoId = await submitHeyGenJob({ apiKey, scenes, bgColour });
+
+      // Persist immediately and return — no polling in this invocation.
+      await markRendering(supabase, draftId, fmt, heygenVideoId, nowIso(), {
+        render_style: renderStyle, storage_path: storagePath, client_slug: clientSlug,
+        // cc-0084 Slice 1: qa.scene_count reads this at poll (monologue=1, dialogue=N).
+        scene_count: scenes.length,
+        avatar_identity: avatarIdentity,
       });
       console.log(`[heygen-worker] submitted ${draftId} -> heygen ${heygenVideoId} (rendering)`);
       results.push({ post_draft_id: draftId, phase: 'submit', status: 'rendering', heygen_video_id: heygenVideoId });
@@ -613,7 +781,7 @@ export async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<an
 // so import.meta.main === true and Deno.serve runs identically (zero behaviour change).
 if (import.meta.main) Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
-  if (req.method === 'GET') return jsonResponse({ ok: true, function: 'heygen-worker', version: VERSION });
+  if (req.method === 'GET') return jsonResponse({ ok: true, function: 'heygen-worker', version: VERSION, marker: CC0084_MARKER });
 
   const expected = Deno.env.get('PUBLISHER_API_KEY');
   const provided = req.headers.get('x-heygen-worker-key');
