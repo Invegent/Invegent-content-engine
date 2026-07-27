@@ -1,4 +1,4 @@
-// youtube-publisher v1.14.0
+// youtube-publisher v1.15.0
 // v1.14.0 (F-YT-RELEASE-CONTROL) — publish only at the authorised release time. Until now youtube-publisher
 //   was a direct-read publisher whose draft SELECT had NO release-time gate: it published any eligible draft on
 //   the next tick regardless of scheduled_for. v1.14.0 adds a release-time gate in TWO layers:
@@ -112,7 +112,26 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { requireAssetPresent } from './asset_backstop.ts';
 
-const VERSION = 'youtube-publisher-v1.14.0';
+const VERSION = 'youtube-publisher-v1.15.0';
+// v1.15.0 (2026-07-27, F-YT-PUBLISH-CLAIM) — close the concurrent-double-PUBLIC-publish race with an
+//   ATOMIC single-row claim immediately before uploadToYouTube. The existing m.post_publish idempotency
+//   reconcile guard only catches a COMPLETED prior publish (a landed row), NOT a CONCURRENT one: two
+//   invocations on the same tick both pass every guard and both upload -> duplicate PUBLIC video.
+//   v1.15.0 adds, as the LAST guard before the irreversible upload, a guarded UPDATE that stamps
+//   draft_format.yt_publish_claim_at ONLY if the draft is still video_status='generated', unpublished
+//   (draft_format->youtube_video_id IS NULL) and unclaimed (or the prior claim is stale >
+//   YT_PUBLISH_CLAIM_TTL_MIN). Under READ COMMITTED the loser's WHERE re-evaluates after the winner
+//   commits -> 0 rows -> it yields (status='skipped_publish_claim_lost'). The marker is
+//   draft_format.yt_publish_claim_at (ISO-8601-Z; lexicographic == chronological); video_status STAYS
+//   'generated' so the whole retry/auth/quota/pause/release state machine is BYTE-UNCHANGED. The marker
+//   is auto-dropped by EVERY downstream draft_format rebuild from the pre-claim `df` (no explicit clear
+//   is added anywhere). Crash-before-upload self-heals via the 15-min stale reclaim; crash-after-upload
+//   is covered by the existing idempotency guard (never re-uploads). STRICTLY OUT OF SCOPE /
+//   byte-unchanged: the draft SELECT, platform isolation, the release-time gate, channel-pause, the
+//   idempotency reconcile guard, the no-video / backstop guards, uploadToYouTube, the success path, ALL
+//   retry lanes (auth/quota/transient/terminal) + their constants, classifyYouTubeFailure, the
+//   attempt_no audit, MAX_PUBLISHES_PER_TICK. NO DB/DDL/DML, NO new secret, NO status-machine change,
+//   NO deploy in this change. Entrypoint VERSION bump covers the drift-gate reclass.
 // v1.13.0 (2026-06-17) — UNIFORM FINAL-ASSERTION BACKSTOP + explicit no-video guard
 //   (Lane A). Adds (a) an explicit `!draft.video_url` skip immediately before the
 //   video download/upload (records skipped:no_video_url, continues), and (b) the
@@ -136,6 +155,7 @@ const YT_RETRY_BACKOFF_MIN   = 30;   // standard transient backoff (minutes)
 const YT_QUOTA_BACKOFF_MIN    = 360; // quota = park 6h, NOT counted (YouTube quota is project/day-wide)
 const YT_AUTH_PAUSE_HOURS     = 6;   // channel hold on auth failure (best-effort persist)
 const MAX_PUBLISHES_PER_TICK  = 2;   // preserve existing publish cadence
+const YT_PUBLISH_CLAIM_TTL_MIN = 15; // v1.15.0 F-YT-PUBLISH-CLAIM: stale-claim reclaim window (min)
 const SELECT_LIMIT            = 5;   // fetch a few extra so backed-off drafts don't starve fresh ones
 const ELIGIBLE_FORMATS = ['video_short_kinetic','video_short_stat','video_short_kinetic_voice','video_short_stat_voice','video_short_avatar'];
 // v1.11.0: single source of truth for future-publish visibility. Referenced by BOTH the upload privacyStatus
@@ -376,6 +396,33 @@ Deno.serve(async (req: Request) => {
         results.push({ post_draft_id: draft.post_draft_id, status: 'skipped', reason: `backstop:${backstop.reason}` });
         continue;
       }
+    }
+
+    // v1.15.0 (F-YT-PUBLISH-CLAIM): ATOMIC single-row claim — the LAST guard before the irreversible
+    // public upload. Two concurrent invocations both pass the guards above (the idempotency check only
+    // catches a COMPLETED prior publish, not a concurrent one) and would both upload -> duplicate PUBLIC
+    // video. This guarded UPDATE stamps draft_format.yt_publish_claim_at ONLY if the draft is still
+    // 'generated', unpublished, and unclaimed (or the prior claim is stale > YT_PUBLISH_CLAIM_TTL_MIN).
+    // Under READ COMMITTED the loser's WHERE re-evaluates after the winner commits -> 0 rows -> it yields.
+    // video_status stays 'generated'; the marker is auto-dropped by every downstream draft_format rebuild
+    // from `df`. Timestamps are ISO-8601-Z (lexicographic == chronological).
+    const claimStaleCutoff = futureIso(-YT_PUBLISH_CLAIM_TTL_MIN * 60 * 1000);
+    const { data: claimRows, error: claimErr } = await supabase.schema('m').from('post_draft')
+      .update({ draft_format: { ...df, yt_publish_claim_at: nowIso() }, updated_at: nowIso() })
+      .eq('post_draft_id', draft.post_draft_id)
+      .eq('video_status', 'generated')
+      .is('draft_format->youtube_video_id', null)
+      .or(`draft_format->>yt_publish_claim_at.is.null,draft_format->>yt_publish_claim_at.lt.${claimStaleCutoff}`)
+      .select('post_draft_id');
+    if (claimErr) {
+      console.error(`[youtube-publisher] publish_claim_error post_draft_id=${draft.post_draft_id}: ${claimErr.message}`);
+      results.push({ post_draft_id: draft.post_draft_id, status: 'skipped_publish_claim_error' });
+      continue;
+    }
+    if (!claimRows?.length) {
+      console.log(`[youtube-publisher] publish_claim_lost post_draft_id=${draft.post_draft_id} (another invocation is publishing this draft)`);
+      results.push({ post_draft_id: draft.post_draft_id, status: 'skipped_publish_claim_lost' });
+      continue;
     }
 
     let youtubeVideoId: string | null = null;
