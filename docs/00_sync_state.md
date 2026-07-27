@@ -6,6 +6,12 @@
 
 ---
 
+> **🧾 v6.32 — CCF-04 HELPER-PATH MEASUREMENT (cc-0080 packet, path-to-freeze) — COMPLETE** — records: `docs/briefs/results/ccf-04-helper-path-measurement-cc0080-result-v1.md`.
+> · **Verdict:** Path proved effort-reducing; NO new agent; PK authority unchanged. No apply/deploy/DML — STOPPED at PK apply gate as scoped.
+> · **Identity:** frozen artifact SQL `713ab4ae…` (23774 B, blob `dba13c42…`) IMMUTABLE @ commit `e41987083cb1e6c5f3a69eaa82901719f54012cb`.
+> · 5 CCF-04 helpers / 8 firings (source-truth-check caught origin-move + already-landed byte-identical; hash-checkpoint STABLE/IMMUTABLE closed the 'v3' ambiguity = SQL v3 file NOT dead-pin d227fefc; claim-stub → v6.32; branch-warden `safe`); apply-harness-auditor SHADOW=CONCERNS (3 medium, NON-BLOCKING, cleared no gate — quiescence/count-RAISE/txn-channel) carried to the future cc-0080 apply lane.
+> · **NEXT GATE:** cc-0080 REAL apply remains PK-hard-blocked (SoD gate + independent rehearsal + focused v3-delta re-review + external review + PK apply gate) — separate future lane carrying the 3 shadow findings; this measurement lane STOPS here.
+>
 > **🧾 v6.31 — cc-0073 D2 GOVERNED BACKGROUND-POOL PROMOTION APPLIED & PROVEN (production DML on `c.shared_creative_asset`; ONE atomic `execute_sql` DO-block, 4 fail-closed assertions passed; ADDITIVE — no client lost access; NO schema, NO spine mutation, NO publish)** — record: `docs/briefs/results/cc-0073-d2-background-pool-promotion-result.md` (NEW this cut).
 > · **Outcome:** Invegent background rotation pool **1→4** (abstract, datacentre, blue, bokeh) · CFW **2→4** (navy own, datacentre, garden, bokeh) on fb/ig/li; PP (9) + NDIS (9) provably NEUTRAL (identical keys, zero `Shared/` leakage). 5 of 8 shared bgs now governed, 3 still fenced. Asset 08 (datacentre) shared by BOTH per PK's additive picks.
 > · **Chain (all clear):** apply-harness-auditor (SHADOW) PASS/clean 10/10 · db-rls-auditor `concerns`/advisory zero-must-fix no-blocker · external `b2764527` partial→escalate, sole cross-client-leak concern ANSWERED by a committed-nothing dry-run · sha256 public-URL match (3 promoted) · rollback written + apply/rollback identity verified · pre-state re-verified at gate.
