@@ -371,11 +371,50 @@ import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsage
 // governed video reads correctly (e.g. NDIS no longer says "Market update."). PP's spoken intro changes
 // "Market update." → its governed brand_name ("Property Pulse") — covered by the coupled PP re-proof.
 // Entrypoint VERSION bump covers the drift-gate reclassification (A-LE→B-FD).
-const VERSION = 'video-worker-v3.11.0';
+// video-worker v3.12.0
+// ============================================================================
+// v3.12.0 (2026-07-27, F-VIDEO-RENDER-RETRY — VISIBLE bounded retry for render timeout/transient):
+//   A render timeout (pollRender throws 'Render timed out after 2 minutes') previously drove the
+//   OUTER per-draft catch to UNCONDITIONALLY set video_status='failed' — terminal, never retried;
+//   the slot silently yields no video (the SELECT only re-picks video_status='pending'). This makes
+//   a timeout / transient failure VISIBLY retry under a cap, then terminalise with a CLEAR reason —
+//   mirroring the proven youtube-publisher v1.8.0 retry model. WHAT CHANGED (surgical):
+//     (1) New module consts MAX_VIDEO_RENDER_ATTEMPTS=3, VIDEO_RETRY_BACKOFF_MIN=10 (+ futureIso helper).
+//     (2) New PURE exported classifyRenderFailure(msg) → 'transient' | 'terminal'. transient =
+//         /timed out|timeout|\b5\d\d\b|fetch failed|network|temporar|failed to download/i; everything
+//         else (validation like missing_video_script_stat_value, voice/tts/narration, unsupported
+//         format) → terminal. Default terminal (FAIL-FAST) — an UNKNOWN error is never retried forever.
+//     (3) The OUTER per-draft catch no longer unconditionally fails. On transient-under-cap it KEEPS
+//         video_status as-is ('pending', re-selected next tick) and records draft_format
+//         .{video_render_attempts, video_retry_after=now+10m, video_last_error} + logs
+//         render_retry_queued (the "visibly retries" path). On terminal OR transient-at/over-cap it
+//         sets video_status='failed' WITH draft_format.{video_dead_reason (max_render_attempts:n/3 |
+//         terminal:render), video_last_error} + logs render_failed_terminal (a visible terminal reason,
+//         not a silently stuck slot — the "recovers visibly" path). The additive v3.1.5 QA-visibility
+//         write_render_log block that FOLLOWS the update is UNCHANGED.
+//     (4) New per-draft backoff skip at the TOP of the draft loop: draft_format.video_retry_after in
+//         the future → log render_backoff_skip, push status 'skipped_render_backoff', continue.
+//     (5) All THREE video_status='generated' success updates (renderGovernedVideoStat, processDraft
+//         kinetic + stat) now also write draft_format=clearVideoRetryMeta(draft.draft_format), stripping
+//         video_render_attempts / video_retry_after / video_last_error / video_dead_reason so a
+//         recovered render carries no stale retry state.
+//   Retry state lives ENTIRELY in the existing draft_format jsonb (already in the SELECT column list);
+//   video_status is free text (no CHECK) — NO DDL, NO migration, NO new column.
+//   STRICTLY OUT OF SCOPE / BYTE-UNCHANGED: POLL_MAX_ATTEMPTS + the 2-min pollRender ceiling, the render
+//   spec / composeRenderSpec, audio/voice/TTS, templates, the governed spine + select_template/
+//   select_music, the SELECT predicate columns/filters (ONLY the in-JS loop backoff skip is added — the
+//   query itself is untouched), the publish path, write_render_log args, and every render builder. No
+//   deploy, no grant, no secret, no flag flip in this change.
+//
+// v3.11.0 (cc-0044 Checkpoint E — NARRATION DE-HARDCODE): see the block below the import list.
+const VERSION = 'video-worker-v3.12.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
 const POLL_MAX_ATTEMPTS = 48;  // 2 min max
+// F-VIDEO-RENDER-RETRY (v3.12.0): bounded VISIBLE retry knobs for render timeout / transient failures.
+const MAX_VIDEO_RENDER_ATTEMPTS = 3;   // transient failures terminalise at this many attempts
+const VIDEO_RETRY_BACKOFF_MIN   = 10;  // transient backoff (minutes) before the draft is re-selected
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -386,12 +425,38 @@ function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
 function nowIso() { return new Date().toISOString(); }
+function futureIso(ms: number) { return new Date(Date.now() + ms).toISOString(); }  // v3.12.0 F-VIDEO-RENDER-RETRY
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 function getServiceClient() {
   const url = Deno.env.get('SUPABASE_URL');
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!url || !key) throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+// v3.12.0 (F-VIDEO-RENDER-RETRY): classify a thrown render-failure message into a retry class.
+// PURE + exported for the focused unit test. Word-boundary digit matching (\b5\d\d\b) so a 5xx code
+// embedded in an id/trace string is not falsely matched. Mirrors youtube-publisher's classifyYouTubeFailure
+// intent but returns only 'transient' | 'terminal' (no auth/quota lanes here). transient = timeout / 5xx /
+// network / download blips (bounded retry). Everything else — validation (missing_video_script_stat_value,
+// missing_or_invalid_video_script_scenes), voice/tts/narration, unsupported format, AND any UNKNOWN error —
+// defaults to 'terminal' (FAIL-FAST): an unknown error is NOT retried forever.
+export function classifyRenderFailure(msg: string): 'transient' | 'terminal' {
+  const m = (msg || '').toLowerCase();
+  if (/timed out|timeout|\b5\d\d\b|fetch failed|network|temporar|failed to download/.test(m)) return 'transient';
+  return 'terminal';
+}
+
+// v3.12.0 (F-VIDEO-RENDER-RETRY): strip the retry bookkeeping keys from a draft_format so a render that
+// SUCCEEDS (possibly after prior retries) carries no stale retry state. PURE; returns a fresh object.
+// deno-lint-ignore no-explicit-any
+function clearVideoRetryMeta(df: any): any {
+  const out = { ...(df ?? {}) };
+  delete out.video_render_attempts;
+  delete out.video_retry_after;
+  delete out.video_last_error;
+  delete out.video_dead_reason;
+  return out;
 }
 
 // v3.9.0 (D6-9): voice-id resolution lives in ./voice_id.ts (resolveGovernedVoice),
@@ -1032,7 +1097,8 @@ async function renderGovernedVideoStat(opts: {
     // v3.7.0 (cc-0034): record the governed track consumed — null when no bed was bound (D3).
     musicUsage: musicUsageFromBed(bed, fmt),
   });
-  await supabase.schema('m').from('post_draft').update({ video_url: videoUrl, video_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
+  // v3.12.0 (F-VIDEO-RENDER-RETRY): also clear any retry bookkeeping so a recovered render carries no stale state.
+  await supabase.schema('m').from('post_draft').update({ video_url: videoUrl, video_status: 'generated', draft_format: clearVideoRetryMeta(draft.draft_format), updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
   return { post_draft_id: draft.post_draft_id, format: fmt, status: 'generated', video_url: videoUrl, governed: true };
 }
 
@@ -1101,7 +1167,8 @@ async function processDraft(opts: {
     const spec = buildKineticTextSpec({ scenes: vs.scenes, ...b, audioUrl, musicUrl, captionText });
     const storagePath = `${b.clientSlug}/${draft.post_draft_id}_kinetic${withVoice ? '_voice' : ''}.mp4`;
     const videoUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: spec, storagePath, postDraftId: draft.post_draft_id, clientId: draft.client_id, iceFormatKey: fmt, qaCtx });
-    await supabase.schema('m').from('post_draft').update({ video_url: videoUrl, video_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
+    // v3.12.0 (F-VIDEO-RENDER-RETRY): also clear any retry bookkeeping so a recovered render carries no stale state.
+    await supabase.schema('m').from('post_draft').update({ video_url: videoUrl, video_status: 'generated', draft_format: clearVideoRetryMeta(draft.draft_format), updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
     return { post_draft_id: draft.post_draft_id, format: fmt, status: 'generated', video_url: videoUrl };
   }
   if (isStat) {
@@ -1109,7 +1176,8 @@ async function processDraft(opts: {
     const spec = buildStatRevealSpec({ statValue: vs.stat_value, statLabel: vs.stat_label ?? 'key statistic', contextLine: vs.context_line ?? '', ctaText: vs.cta_text ?? 'What does this mean for you?', ...b, audioUrl, musicUrl });
     const storagePath = `${b.clientSlug}/${draft.post_draft_id}_stat${withVoice ? '_voice' : ''}.mp4`;
     const videoUrl = await renderUploadAndLog({ supabase, creatomateKey, renderScript: spec, storagePath, postDraftId: draft.post_draft_id, clientId: draft.client_id, iceFormatKey: fmt, qaCtx });
-    await supabase.schema('m').from('post_draft').update({ video_url: videoUrl, video_status: 'generated', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
+    // v3.12.0 (F-VIDEO-RENDER-RETRY): also clear any retry bookkeeping so a recovered render carries no stale state.
+    await supabase.schema('m').from('post_draft').update({ video_url: videoUrl, video_status: 'generated', draft_format: clearVideoRetryMeta(draft.draft_format), updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
     return { post_draft_id: draft.post_draft_id, format: fmt, status: 'generated', video_url: videoUrl };
   }
   throw new Error(`Unsupported format: ${fmt}`);
@@ -1235,6 +1303,15 @@ Deno.serve(async (req: Request) => {
     .limit(4);
 
   for (const draft of (pendingDrafts ?? [])) {
+    // v3.12.0 (F-VIDEO-RENDER-RETRY): per-draft backoff skip — a draft queued for retry waits out its
+    // window before it is re-attempted (mirrors youtube-publisher's per-draft backoff). draft_format is
+    // already in the SELECT column list; the SELECT predicate is UNCHANGED (this is an in-JS guard only).
+    const renderRetryAfter = draft.draft_format?.video_retry_after;
+    if (renderRetryAfter && new Date(renderRetryAfter).getTime() > Date.now()) {
+      console.log(`[video-worker] render_backoff_skip ${draft.post_draft_id} retry_after=${renderRetryAfter}`);
+      results.push({ post_draft_id: draft.post_draft_id, status: 'skipped_render_backoff' });
+      continue;
+    }
     const withVoice = draft.recommended_format.endsWith('_voice');
     try {
       const result = await processDraft({ supabase, creatomateKey, draft, withVoice, logoMemo });
@@ -1243,7 +1320,32 @@ Deno.serve(async (req: Request) => {
     } catch (e: any) {
       const msg = (e?.message ?? String(e)).slice(0, 2000);
       console.error(`[video-worker] failed ${draft.post_draft_id}:`, msg);
-      await supabase.schema('m').from('post_draft').update({ video_status: 'failed', updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
+      // v3.12.0 (F-VIDEO-RENDER-RETRY): a render timeout / transient failure now VISIBLY retries under a
+      // cap instead of terminalising silently. Retry state lives in the existing draft_format jsonb
+      // (video_status is free text / no CHECK — no DDL). Genuine terminal errors (bad input / validation /
+      // voice) still FAIL FAST. Replaces the prior unconditional video_status='failed' update.
+      const renderCls = classifyRenderFailure(msg);
+      const df = draft.draft_format ?? {};
+      const priorAttempts = Number(df.video_render_attempts ?? 0);
+      if (renderCls === 'transient' && (priorAttempts + 1) < MAX_VIDEO_RENDER_ATTEMPTS) {
+        // Visibly retries: DO NOT set failed — record attempt + backoff and leave video_status as-is
+        // ('pending'), so the draft is re-selected on the next tick after the backoff window.
+        await supabase.schema('m').from('post_draft').update({
+          draft_format: { ...df, video_render_attempts: priorAttempts + 1, video_retry_after: futureIso(VIDEO_RETRY_BACKOFF_MIN * 60 * 1000), video_last_error: msg },
+          updated_at: nowIso(),
+        }).eq('post_draft_id', draft.post_draft_id);
+        console.log(`[video-worker] render_retry_queued attempt=${priorAttempts + 1}/${MAX_VIDEO_RENDER_ATTEMPTS} ${draft.post_draft_id} cls=${renderCls}`);
+      } else {
+        // Recovers visibly: terminal (bad input) OR transient at/over the cap → video_status='failed'
+        // WITH a clear terminal reason (not a silently stuck slot).
+        const deadReason = renderCls === 'transient' ? `max_render_attempts:${priorAttempts + 1}/${MAX_VIDEO_RENDER_ATTEMPTS}` : 'terminal:render';
+        await supabase.schema('m').from('post_draft').update({
+          video_status: 'failed',
+          draft_format: { ...df, video_dead_reason: deadReason, video_last_error: msg },
+          updated_at: nowIso(),
+        }).eq('post_draft_id', draft.post_draft_id);
+        console.error(`[video-worker] render_failed_terminal ${draft.post_draft_id} reason=${deadReason} cls=${renderCls}`);
+      }
       // v3.1.5 (QA-VISIBILITY-V0): additive render-QA on the OUTER per-draft pre-render
       // catch. p_render_engine is LEFT EXACTLY as-is; qa.engine is the normalized label.
       const outerFmt = draft.recommended_format;

@@ -1,4 +1,20 @@
-// youtube-publisher v1.12.0
+// youtube-publisher v1.14.0
+// v1.14.0 (F-YT-RELEASE-CONTROL) — publish only at the authorised release time. Until now youtube-publisher
+//   was a direct-read publisher whose draft SELECT had NO release-time gate: it published any eligible draft on
+//   the next tick regardless of scheduled_for. v1.14.0 adds a release-time gate in TWO layers:
+//   (a) the SELECT now also fetches scheduled_for and adds `.or(scheduled_for.is.null,scheduled_for.lte.<now>)`,
+//       so a draft is eligible only when scheduled_for IS NULL (non-scheduled / studio drafts — unchanged
+//       today's behaviour, matching the enqueue cron's COALESCE(pd.scheduled_for, NOW())) OR its scheduled_for
+//       has arrived; a future scheduled_for now WAITS instead of publishing early;
+//   (b) a defensive per-row future-date skip at the top of the publish loop (release_gate_skip →
+//       status='skipped_not_yet_scheduled') — defence-in-depth in case a future SELECT change lets one through,
+//       mirroring the v1.12.0 platform-isolation per-row skip.
+//   UNCHANGED / STRICTLY OUT OF SCOPE (byte-unchanged): the approval predicate IN ('approved','published'),
+//   DEFAULT_PRIVACY_STATUS='public', platform isolation (.eq/skip), the no-YT-id guard, the pre-upload
+//   reconcile guard, failure classification, bounded retry/backoff, channel auth-hold, the next-available
+//   attempt_no audit fix, the 2/tick publish cap, the ELIGIBLE_FORMATS allow-list, and the asset backstop.
+//   NO schema/DB change (scheduled_for is an existing m.post_draft column; SELECT-only read), NO new secret,
+//   NO deploy in this change.
 // v1.12.0 (F-YT-PLATFORM-ISOLATION) — P0 cross-platform publish fix. youtube-publisher is a DIRECT-READ
 //   publisher: it SELECTs m.post_draft itself (not the platform-tagged queue the FB/IG publishers use). The
 //   v1.11.0 SELECT had NO platform predicate, so for NY/PP — where the series-outline v1.3.0 format
@@ -96,7 +112,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { requireAssetPresent } from './asset_backstop.ts';
 
-const VERSION = 'youtube-publisher-v1.13.0';
+const VERSION = 'youtube-publisher-v1.14.0';
 // v1.13.0 (2026-06-17) — UNIFORM FINAL-ASSERTION BACKSTOP + explicit no-video guard
 //   (Lane A). Adds (a) an explicit `!draft.video_url` skip immediately before the
 //   video download/upload (records skipped:no_video_url, continues), and (b) the
@@ -255,14 +271,20 @@ Deno.serve(async (req: Request) => {
   //         select YouTube-targeted drafts. Without it, every video_short_avatar draft (fb/ig/li included)
   //         was eligible and got uploaded to YouTube. 'platform' is now selected + gated here, with a
   //         defensive per-row re-check in the loop below (mirrors instagram-publisher v2.0.0).
+  // v1.14.0 (F-YT-RELEASE-CONTROL): compute the release cutoff once, then gate the SELECT so a draft is
+  //   only eligible when scheduled_for IS NULL (non-scheduled / studio drafts — today's behaviour) OR
+  //   scheduled_for <= now (its authorised release time has arrived). NULL preserves the pre-v1.14.0 path,
+  //   matching the enqueue cron's COALESCE(pd.scheduled_for, NOW()); a future scheduled_for now waits.
+  const releaseCutoff = nowIso();
   const { data: drafts } = await supabase.schema('m').from('post_draft')
-    .select('post_draft_id, platform, client_id, draft_title, draft_body, recommended_format, video_url, video_status, draft_format, approval_status')
+    .select('post_draft_id, platform, client_id, draft_title, draft_body, recommended_format, video_url, video_status, draft_format, approval_status, scheduled_for')
     .eq('platform', 'youtube')
     .eq('video_status', 'generated')
     .in('approval_status', ['approved', 'published'])
     .is('draft_format->youtube_video_id', null)
     .not('video_url', 'is', null)
     .in('recommended_format', ELIGIBLE_FORMATS)
+    .or(`scheduled_for.is.null,scheduled_for.lte.${releaseCutoff}`)
     .limit(SELECT_LIMIT);
 
   // v1.8.0: best-effort preload of channel holds (paused_until). Correctness does NOT depend on this —
@@ -289,6 +311,15 @@ Deno.serve(async (req: Request) => {
     if (draft.platform !== 'youtube') {
       console.error(`[youtube-publisher] platform_isolation_skip post_draft_id=${draft.post_draft_id} platform=${draft.platform}`);
       results.push({ post_draft_id: draft.post_draft_id, status: 'skipped_platform_isolation', platform: draft.platform });
+      continue;
+    }
+
+    // v1.14.0 (F-YT-RELEASE-CONTROL) defence-in-depth: never publish a future-dated draft even if a future
+    // SELECT change or code path lets one through. The .or() release gate above is the guarantee; this is
+    // the belt-and-braces per-row re-check (mirrors the v1.12.0 platform-isolation skip pattern).
+    if (draft.scheduled_for && new Date(draft.scheduled_for).getTime() > Date.now()) {
+      console.log(`[youtube-publisher] release_gate_skip post_draft_id=${draft.post_draft_id} scheduled_for=${draft.scheduled_for}`);
+      results.push({ post_draft_id: draft.post_draft_id, status: 'skipped_not_yet_scheduled', scheduled_for: draft.scheduled_for });
       continue;
     }
 
