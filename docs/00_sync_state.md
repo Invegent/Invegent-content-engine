@@ -6,6 +6,12 @@
 
 ---
 
+> **🧾 v6.33 — AUTOMATED IMAGE INTAKE v1: Slice 1 (reject store) + Slice 2 (shortage detector) APPLIED (T2; two additive/dark DB objects in schema `m`; each through full T2 chain + PK apply gate; NO promotion, NO render, NO publish)** — record: `docs/briefs/results/automated-image-intake-v1-slice1-2-result.md` (NEW this cut).
+> · **Gate-1 approved 2026-07-27** (run-on-demand/T2, backgrounds-only, proof clients Invegent+CFW; composite reject-key, ≥4 floor prioritised by scheduled demand, existing providers, pHash→v2). Brief `docs/briefs/automated-image-intake-v1.md`.
+> · **Slice 1** `m.rejected_asset_fingerprint` (migration `…slice1_rejected_fingerprint`, ledger `20260727012219`): composite dedup key (provider+provider_asset_id / sha256 / md5(source_url)), RLS enabled+forced, service_role-only, schema `m` not REST-exposed; v1 rejects GLOBAL. db-rls-auditor concerns→2 fixes→clean · external partial/no-defect.
+> · **Slice 2** `m.detect_background_shortage` (migration `…slice2_shortage_detector`): read-only SECURITY INVOKER, supply=`select_template` sweep (existing gap fns only catch fail-closed), demand=enabled `c.client_publish_schedule`, ≥4 floor + demand-priority + category_spread. **db-rls-auditor BLOCK (MF-1: service_role lacked SELECT on the schedule → 42501 under INVOKER; dry-run masked it as postgres) → PK ruling: INVOKER + narrow `GRANT SELECT … TO service_role` → re-audit PASS.** external partial/no-defect. Proven as service_role at floor 6 → Invegent+CFW flagged.
+> · **NEXT:** Slice 3 orchestration (detector → harvester → reviewer → crop-proof → dedup vs `m.rejected_asset_fingerprint` → fenced INSERT → PK shortlist, STOP at PK visual gate, zero auto-promotion). Both migrations LIVE in ledger.
+>
 > **🧾 v6.32 — CCF-04 HELPER-PATH MEASUREMENT (cc-0080 packet, path-to-freeze) — COMPLETE** — records: `docs/briefs/results/ccf-04-helper-path-measurement-cc0080-result-v1.md`.
 > · **Verdict:** Path proved effort-reducing; NO new agent; PK authority unchanged. No apply/deploy/DML — STOPPED at PK apply gate as scoped.
 > · **Identity:** frozen artifact SQL `713ab4ae…` (23774 B, blob `dba13c42…`) IMMUTABLE @ commit `e41987083cb1e6c5f3a69eaa82901719f54012cb`.
