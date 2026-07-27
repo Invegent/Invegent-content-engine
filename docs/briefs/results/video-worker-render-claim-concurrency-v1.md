@@ -66,13 +66,27 @@ stale reclaim (> the 2-min render ceiling, so a killed invocation costs at most 
   so `SELECT * FROM public.claim_pending_video_drafts(4)` returned `[]` — RPC live, callable by
   service_role, correct TABLE shape, **zero mutation**.
 
-## Proof posture / carries
+## Live concurrency proof (2026-07-27, PK-directed — "GO", required-proof list)
+
+Executed against the live function with **synthetic, fingerprinted, NON-renderable** drafts (no
+`video_script` → the worker cannot submit a Creatomate render for them even if seen), 0 real pending
+drafts present, run at minute :10 (clear of the `*/30` cron jobid 33), fully cleaned up.
+
+| Required proof | Result | Evidence |
+|---|---|---|
+| Two concurrent invocations claim a draft only once | ✅ | Seeded 6; two parallel HTTP claims (separate txns, `p_limit=4`): **A=4, B=2, overlap=∅, union=all 6 each once**. A genuine `SKIP LOCKED` split. |
+| Exactly one Creatomate render submitted | ✅ (by construction) | Deployed bundle has **exactly one** `fetch(CREATOMATE_API,` submit site, reached only inside `processDraft`, which runs once per claimed draft; claim-once (above) ⟹ ≤1 render/draft/cycle. In-flight (fresh) re-claim returned **0**. No real render submitted (synthetic rows non-renderable by design). |
+| Crash does not permanently strand the draft; 15-min stale claim recovers | ✅ | Backdated 3 of 6 rows' `render_claim_at` to −20 min (simulated crash); next claim recovered **exactly those 3** (`[1,2,3]`), leaving the 3 fresh in-flight rows untouched. |
+| Existing retry timing + dead-letter unchanged | ✅ | Deployed bundle: `MAX_VIDEO_RENDER_ATTEMPTS=3` · `VIDEO_RETRY_BACKOFF_MIN=10` · `classifyRenderFailure` · `video_retry_after`/`video_render_attempts`/`video_dead_reason` · `max_render_attempts:`/`terminal:render` all byte-present; only `'rendering'→'pending'` reset added to the requeue branch. 8/8 unit tests passed at build. |
+| No unrelated worker/publisher behaviour modified | ✅ | branch-warden 3-file set (video-worker `index.ts` + test + migration only); single EF deployed; deployed bundle changed only the selection→claim path. youtube-publisher (same class of race) untouched. |
+
+Cleanup verified: 6/6 synthetic rows deleted, 0 remaining, 0 publish-queue refs created (AFTER-UPDATE
+triggers correctly no-op'd for the `pending→rendering` flip), real pending count unchanged (0).
+
+## Carries
 
 - Concurrency guarantee rests on `FOR UPDATE SKIP LOCKED` (house-proven in `m.fill_pending_slots`,
-  db-rls-auditor-verified here) + the verified deployed seam + 8 unit tests. A **forced live double-render
-  race was deliberately NOT run** — it would burn Creatomate credits and disrupt real drafts (the exact
-  harm being prevented). **Optional next:** a monitored real cron-tick observation once video drafts are
-  pending, confirming claim→render with no duplicate `m.post_render_log` rows.
+  db-rls-auditor-verified here) + the verified deployed seam + 8 unit tests + the live proof above.
 - youtube-publisher shares the same unlocked-SELECT race (out of scope; separate lane if desired).
 - Rollback (if ever needed): redeploy v3.12.0 (does not call the RPC) **before** `DROP FUNCTION
   public.claim_pending_video_drafts(int)`.
