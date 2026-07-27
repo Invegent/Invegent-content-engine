@@ -371,6 +371,39 @@ import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsage
 // governed video reads correctly (e.g. NDIS no longer says "Market update."). PP's spoken intro changes
 // "Market update." → its governed brand_name ("Property Pulse") — covered by the coupled PP re-proof.
 // Entrypoint VERSION bump covers the drift-gate reclassification (A-LE→B-FD).
+// video-worker v3.13.0
+// ============================================================================
+// v3.13.0 (2026-07-27, F-VIDEO-RENDER-CLAIM — race-safe claim against concurrent double-processing):
+//   Two overlapping video-worker invocations could both SELECT the same video_status='pending' draft
+//   (the v3.12.0 SELECT took no lock) and double-render it, wasting Creatomate credits. This makes
+//   draft acquisition ATOMIC via the NEW SECURITY DEFINER public.claim_pending_video_drafts (migration
+//   20260727120000_video_render_claim_rpc.sql — additive fn, NO table DDL, NO new column; owner postgres,
+//   service_role-only EXECUTE). WHAT CHANGED (surgical):
+//     (1) The unlocked draft SELECT is REPLACED by a single supabase.rpc('claim_pending_video_drafts')
+//         call. The RPC uses the house FOR UPDATE SKIP LOCKED idiom (cf. m.fill_pending_slots) to
+//         atomically claim up to 4 drafts: it folds in the SAME approval + recommended_format + backoff
+//         (video_retry_after) predicates the JS previously enforced, ADDS stale-'rendering' reclaim
+//         (>15 min since render_claim_at), flips video_status 'pending'->'rendering', and stamps
+//         draft_format.render_claim_at. Two concurrent invocations can no longer claim the same row.
+//     (2) The in-JS per-draft backoff-skip block (v3.12.0) is REMOVED — backed-off drafts are never
+//         returned by the claim RPC, so that JS guard is dead code.
+//     (3) The OUTER per-draft transient-under-cap REQUEUE now resets video_status 'rendering'->'pending'
+//         (the row was claimed) and strips render_claim_at, so the draft is re-claimable after backoff.
+//     (4) The terminal / at-cap branch also strips render_claim_at (cleanliness). deadReason UNCHANGED.
+//     (5) clearVideoRetryMeta additionally strips render_claim_at, so all THREE success updates clear
+//         the claim marker on a completed render. It is now EXPORTED (inert, like classifyRenderFailure)
+//         for the focused unit test (clear_video_retry_meta_test.ts) — no production caller imports it.
+//   The retry/backoff MODEL (v3.12.0) is otherwise UNCHANGED (MAX_VIDEO_RENDER_ATTEMPTS,
+//   VIDEO_RETRY_BACKOFF_MIN, futureIso, classifyRenderFailure). Retry + claim state live ENTIRELY in
+//   the existing draft_format jsonb; video_status is free text (no CHECK) so the transient 'rendering'
+//   value needs NO schema change. NO table DDL, NO new column.
+//   Entrypoint VERSION bump covers the drift-gate reclass.
+//   STRICTLY OUT OF SCOPE / BYTE-UNCHANGED: pollRender + POLL_MAX_ATTEMPTS + the 2-min ceiling, the
+//   render spec / composeRenderSpec, audio/voice/TTS, templates, the governed spine + select_template/
+//   select_music, the publish path, write_render_log args, every render builder, the QA-visibility
+//   blocks, classifyRenderFailure, MAX_VIDEO_RENDER_ATTEMPTS/VIDEO_RETRY_BACKOFF_MIN/futureIso. No
+//   deploy, no apply, no grant, no secret, no flag flip in this change (apply + deploy are PK gates).
+//
 // video-worker v3.12.0
 // ============================================================================
 // v3.12.0 (2026-07-27, F-VIDEO-RENDER-RETRY — VISIBLE bounded retry for render timeout/transient):
@@ -407,7 +440,7 @@ import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsage
 //   deploy, no grant, no secret, no flag flip in this change.
 //
 // v3.11.0 (cc-0044 Checkpoint E — NARRATION DE-HARDCODE): see the block below the import list.
-const VERSION = 'video-worker-v3.12.0';
+const VERSION = 'video-worker-v3.13.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -449,13 +482,17 @@ export function classifyRenderFailure(msg: string): 'transient' | 'terminal' {
 
 // v3.12.0 (F-VIDEO-RENDER-RETRY): strip the retry bookkeeping keys from a draft_format so a render that
 // SUCCEEDS (possibly after prior retries) carries no stale retry state. PURE; returns a fresh object.
+// v3.13.0 (F-VIDEO-RENDER-CLAIM): also strips render_claim_at (the claim marker), so all three success
+// updates clear the claim on a completed render. Exported (inert, like classifyRenderFailure) for the
+// focused unit test only — no production caller imports it.
 // deno-lint-ignore no-explicit-any
-function clearVideoRetryMeta(df: any): any {
+export function clearVideoRetryMeta(df: any): any {
   const out = { ...(df ?? {}) };
   delete out.video_render_attempts;
   delete out.video_retry_after;
   delete out.video_last_error;
   delete out.video_dead_reason;
+  delete out.render_claim_at;
   return out;
 }
 
@@ -1294,24 +1331,21 @@ Deno.serve(async (req: Request) => {
   // logo resolution (a brand logo URL is validated at most once per request).
   const logoMemo = new Map<string, Promise<AssetVerdict>>();
 
-  // Pick drafts: video formats, video_status='pending', approval in (approved, published).
-  const { data: pendingDrafts } = await supabase.schema('m').from('post_draft')
-    .select('post_draft_id, client_id, draft_format, recommended_format')
-    .in('approval_status', ['approved', 'published'])
-    .eq('video_status', 'pending')
-    .in('recommended_format', ['video_short_kinetic','video_short_stat','video_short_kinetic_voice','video_short_stat_voice'])
-    .limit(4);
+  // v3.13.0 (F-VIDEO-RENDER-CLAIM): atomically CLAIM up to 4 pending video drafts via the
+  // SECURITY DEFINER public.claim_pending_video_drafts (FOR UPDATE SKIP LOCKED) so overlapping
+  // invocations can never double-render. The claim folds in the approval + format + backoff
+  // predicates and stale-'rendering' reclaim, flips video_status 'pending'->'rendering', and stamps
+  // draft_format.render_claim_at. Replaces the prior unlocked SELECT.
+  const { data: pendingDrafts, error: claimErr } = await supabase.rpc('claim_pending_video_drafts', { p_limit: 4 });
+  if (claimErr) {
+    console.error(`[video-worker] claim_pending_video_drafts failed: ${claimErr.message}`);
+    return jsonResponse({ ok: false, error: `claim_failed: ${claimErr.message}`, version: VERSION }, 500);
+  }
 
   for (const draft of (pendingDrafts ?? [])) {
-    // v3.12.0 (F-VIDEO-RENDER-RETRY): per-draft backoff skip — a draft queued for retry waits out its
-    // window before it is re-attempted (mirrors youtube-publisher's per-draft backoff). draft_format is
-    // already in the SELECT column list; the SELECT predicate is UNCHANGED (this is an in-JS guard only).
-    const renderRetryAfter = draft.draft_format?.video_retry_after;
-    if (renderRetryAfter && new Date(renderRetryAfter).getTime() > Date.now()) {
-      console.log(`[video-worker] render_backoff_skip ${draft.post_draft_id} retry_after=${renderRetryAfter}`);
-      results.push({ post_draft_id: draft.post_draft_id, status: 'skipped_render_backoff' });
-      continue;
-    }
+    // v3.13.0 (F-VIDEO-RENDER-CLAIM): the per-draft in-JS backoff-skip guard (v3.12.0) was removed —
+    // backed-off drafts (draft_format.video_retry_after in the future) are never returned by the claim
+    // RPC, so backoff is now enforced at claim time.
     const withVoice = draft.recommended_format.endsWith('_voice');
     try {
       const result = await processDraft({ supabase, creatomateKey, draft, withVoice, logoMemo });
@@ -1328,20 +1362,26 @@ Deno.serve(async (req: Request) => {
       const df = draft.draft_format ?? {};
       const priorAttempts = Number(df.video_render_attempts ?? 0);
       if (renderCls === 'transient' && (priorAttempts + 1) < MAX_VIDEO_RENDER_ATTEMPTS) {
-        // Visibly retries: DO NOT set failed — record attempt + backoff and leave video_status as-is
-        // ('pending'), so the draft is re-selected on the next tick after the backoff window.
+        // Visibly retries: DO NOT terminalise — record attempt + backoff. v3.13.0 (F-VIDEO-RENDER-CLAIM):
+        // the draft was claimed to 'rendering', so reset video_status to 'pending' and strip render_claim_at
+        // so it is re-claimable after the backoff window.
+        const requeueDf = { ...df, video_render_attempts: priorAttempts + 1, video_retry_after: futureIso(VIDEO_RETRY_BACKOFF_MIN * 60 * 1000), video_last_error: msg };
+        delete (requeueDf as any).render_claim_at;
         await supabase.schema('m').from('post_draft').update({
-          draft_format: { ...df, video_render_attempts: priorAttempts + 1, video_retry_after: futureIso(VIDEO_RETRY_BACKOFF_MIN * 60 * 1000), video_last_error: msg },
+          video_status: 'pending',   // v3.13.0: reset from the 'rendering' claim so it is re-selected after the backoff window
+          draft_format: requeueDf,
           updated_at: nowIso(),
         }).eq('post_draft_id', draft.post_draft_id);
         console.log(`[video-worker] render_retry_queued attempt=${priorAttempts + 1}/${MAX_VIDEO_RENDER_ATTEMPTS} ${draft.post_draft_id} cls=${renderCls}`);
       } else {
         // Recovers visibly: terminal (bad input) OR transient at/over the cap → video_status='failed'
-        // WITH a clear terminal reason (not a silently stuck slot).
+        // WITH a clear terminal reason (not a silently stuck slot). v3.13.0: strip render_claim_at too.
         const deadReason = renderCls === 'transient' ? `max_render_attempts:${priorAttempts + 1}/${MAX_VIDEO_RENDER_ATTEMPTS}` : 'terminal:render';
+        const deadDf = { ...df, video_dead_reason: deadReason, video_last_error: msg };
+        delete (deadDf as any).render_claim_at;
         await supabase.schema('m').from('post_draft').update({
           video_status: 'failed',
-          draft_format: { ...df, video_dead_reason: deadReason, video_last_error: msg },
+          draft_format: deadDf,
           updated_at: nowIso(),
         }).eq('post_draft_id', draft.post_draft_id);
         console.error(`[video-worker] render_failed_terminal ${draft.post_draft_id} reason=${deadReason} cls=${renderCls}`);
