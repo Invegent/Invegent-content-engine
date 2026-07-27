@@ -1,7 +1,7 @@
 # Result — Automated Image Intake v1: Slices 1–3a (reject store · shortage detector · dedup filter) + runbook
 
 **Date:** 2026-07-27 · **Lane:** PRODUCT_PROOF · **Tier:** T2 · **Brief:** `docs/briefs/automated-image-intake-v1.md` (Gate-1 approved 2026-07-27, PK)
-**Status:** Slices 1, 2, 3a APPLIED + verified live; orchestration runbook authored. Slice 3 PROOF RUN (live harvest + fenced intake) NOT yet run (next step). Runbook: `docs/briefs/automated-image-intake-v1-runbook.md`.
+**Status:** COMPLETE — Slices 1, 2, 3a APPLIED + verified; **Slice 3 end-to-end PROOF RUN PASSED** (2026-07-27): 6 candidates → fenced intake for Invegent + CFW, zero production promotion. Runbook: `docs/briefs/automated-image-intake-v1-runbook.md`.
 **Canonical ID:** `cc-NNNN` (central registrar to assign; not invented here).
 
 ## Outcome
@@ -33,5 +33,12 @@ Two foundational DB objects for the automated background-intake pipeline are liv
 - Slice 2 live: `prosecdef=false` (INVOKER), search_path pinned, EXECUTE service_role-only, `service_role` can read the schedule; shortage detection demonstrated as the real principal.
 
 ## Carries / next
-- **Slice 3 PROOF RUN (next step):** execute the runbook S2–S8 live for Invegent + CFW against a seeded-real shortage (floor 6): `image-harvester` → `image-reviewer` → crop-proof → `m.filter_new_candidates` dedup → fenced INSERT (S7, PK-gated T3 intake per §2) → PK shortlist. Deterministic spine (S1 + S6) already applied; proof exercises S2/S7/S8 + the agents. Zero production promotion — STOP at the PK visual gate.
+- **Slice 3 PROOF RUN — PASSED (2026-07-27):** ran the runbook S1–S8 live for Invegent + CFW, seeded shortage floor 6.
+  - S1 detect → Invegent + CFW shortfall 2 (as service_role). S3 `image-harvester` → 8 candidates (allow-list: 3 Wikimedia CC0 / 4 Pexels / 1 Unsplash) + 1 honest discovery-reject (Pexels circuit board, legible chip/brand markings).
+  - S4 `image-reviewer` **upgraded 2 harvester "clean" notes to flags** (inv-03 branded floor strip + taped-doc PII; cfw-02 far-wall lettering + EXIT sign + co-working read) → both DROPPED. 6 survivors.
+  - S6 `m.filter_new_candidates` (live, service_role) → all 6 `is_new` (no pool/reject collision). S5 crop-proof → all 6 clean at scrim 62 (3 Wikimedia rendered from the bucket after a source-side 429).
+  - S7 fenced intake: 6 uploaded to `brand-assets` (x-upsert:false), **public-URL sha256 verified**, then one atomic fenced INSERT (migration-free `execute_sql`) with the 4-client pool-neutrality assertion. Verified: 6/6 fenced (`intake_candidate`/inactive/`allowed_clients={}`); eligible pools UNCHANGED (Invegent 4 · CFW 4 · PP 9 · NDIS 9). db-rls-auditor PASS on the packet.
+  - **Proof criterion MET:** detected shortage → licence-safe, deduplicated, brand-filtered, reviewed shortlist → fenced intake, with NO manual sourcing and ZERO production promotion. Fail-closed working: a CRLF staged-hash false-positive halted the upload before any write until corrected.
+  - Keys (all `Shared/Backgrounds/`, fenced): `bg_shared_geometric_abstract` · `colour_gradient` · `fiber_optic_data` (Invegent-suited) · `warm_living_room` · `leaves_droplets` · `warm_linen_texture` (CFW-suited). Package `_harness/image_harvester_v0/img_intake_v1_proof_20260727/` + crop-proofs `_harness/img_intake_v1_20260727/cropproof/`.
+- **Carries:** promotion of any of the 6 fenced backgrounds into a live pool = the separate manual PK gate (cc-0073 D2 pattern); optional — write inv-03 / cfw-02 fingerprints to `m.rejected_asset_fingerprint` (review-excluded, not visual-gate-rejected — PK's call).
 - Migration `apply_migration` mints its own ledger version — repo/harness `.sql` filenames diverge from the ledger names (standing gotcha); `_harness/img_intake_v1_20260727/` packets remain local.
