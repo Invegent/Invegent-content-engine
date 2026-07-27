@@ -1,4 +1,19 @@
 // heygen-worker v2.2.0
+// v2.5.0 — cc-0083 Slice B: ROLE-REQUESTED DEFAULT-HOST FALLBACK. cc-0083-marker:
+//          heygen-worker-cc0083-role-fallback-default-host. When a stakeholder_role IS requested
+//          (ai-worker v2.23.0 now promotes a clear/confident role into video_script.stakeholder_role)
+//          but no active avatar carries it, runSubmitPhase no longer fails closed: it RE-RESOLVES
+//          role-less (lookupAvatar(supabase, clientId, null, renderStyle)); if that yields
+//          default_host|primary_fallback|undesignated_tiebreak it uses that host (sets talkingPhotoId,
+//          voiceId, avatarSelectedBy) and flags roleFallbackToDefaultHost=true. Only a genuinely-no-
+//          avatar client (default host ALSO missing) still hard-fails no_eligible_avatar. When NO role
+//          was requested, the no_eligible_avatar hard-fail is UNCHANGED. The 'resolution_failed'
+//          branch is UNCHANGED (a query error never masquerades as a fallback). Telemetry: the
+//          submit-time avatar_identity object gains requested_stakeholder_role (string|null) and
+//          role_fallback_to_default_host (boolean). STRICTLY OUT OF SCOPE: NO lookupAvatar SQL/order
+//          change · NO migration/DB object · NO new interpolation · the preset short-circuit
+//          precedence UNCHANGED · poller/dashboard display UNTOUCHED (§6) · ai-worker not edited here.
+//          (cc-0083-sliceB: role-requested-default-host-fallback)
 // v2.4.1 — cc-0063 STEP B: GOVERNED-HOST-DESIGNATION-RESOLVER. Make the LIVE avatar resolver
 //          CONSUME the governed host designation step A wrote. lookupAvatar now (a) SELECTs
 //          ba.is_default_host, ba.is_primary, (b) applies the PK-ruled TOTAL order
@@ -84,7 +99,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { buildRenderQa, safeQa } from './qa.ts';  // v2.3.0: QA-VISIBILITY-V0 (additive)
 
-const VERSION             = 'heygen-worker-v2.4.1';  // cc-0063-step-b: governed-host-designation-resolver
+const VERSION             = 'heygen-worker-v2.5.0';  // cc-0083-sliceB: role-requested-default-host-fallback
 const HEYGEN_GENERATE     = 'https://api.heygen.com/v2/video/generate';
 const HEYGEN_STATUS       = 'https://api.heygen.com/v1/video_status.get';
 const MAX_SUBMITS         = 3;                // Phase A: pending drafts to submit per tick
@@ -483,6 +498,9 @@ export async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<an
       // emits the governed codes default_host|primary_fallback|undesignated_tiebreak. 'preset' is
       // retained — the :427 short-circuit is carried governance debt (unchanged precedence).
       let avatarSelectedBy: 'default_host' | 'primary_fallback' | 'undesignated_tiebreak' | 'preset' = 'preset';
+      // cc-0083 Slice B: set true iff a requested stakeholder_role had no eligible avatar and we
+      // fell back to the client default host (role-less re-resolve). Telemetry only (see §4).
+      let roleFallbackToDefaultHost = false;
       if (!talkingPhotoId) {
         const res = await lookupAvatar(supabase, clientId, stakeholderRole, renderStyle);
         // cc-0063 Step B: fail closed on a query error, DISTINCT from a genuinely empty candidate
@@ -497,16 +515,38 @@ export async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<an
           continue;
         }
         if (res.outcome === 'no_eligible_avatar') {
-          await markFailed(supabase, draftId, fmt, {
-            heygen_error: `submit_error: No active ${renderStyle} avatar for client ${clientId}${stakeholderRole ? ` role ${stakeholderRole}` : ''}`,
-            avatar_resolution_outcome: 'no_eligible_avatar',
-          });
-          results.push({ post_draft_id: draftId, phase: 'submit', status: 'failed', error: 'no_eligible_avatar' });
-          continue;
+          if (stakeholderRole) {
+            // cc-0083 Slice B: a role was requested but no active avatar carries it → fall back to
+            // the client default host (role-less resolve). Only a genuinely-no-avatar client (default
+            // host ALSO missing) still hard-fails. resolution_failed stays a hard fail above (unchanged).
+            const fb = await lookupAvatar(supabase, clientId, null, renderStyle);
+            if (fb.outcome === 'default_host' || fb.outcome === 'primary_fallback' || fb.outcome === 'undesignated_tiebreak') {
+              talkingPhotoId = fb.talking_photo_id;
+              voiceId = voiceId ?? fb.voice_id;
+              avatarSelectedBy = fb.outcome;      // the host actually used
+              roleFallbackToDefaultHost = true;   // telemetry (see §4)
+            } else {
+              await markFailed(supabase, draftId, fmt, {
+                heygen_error: `submit_error: No active ${renderStyle} avatar for client ${clientId} (role ${stakeholderRole} unavailable AND no default host)`,
+                avatar_resolution_outcome: 'no_eligible_avatar',
+              });
+              results.push({ post_draft_id: draftId, phase: 'submit', status: 'failed', error: 'no_eligible_avatar' });
+              continue;
+            }
+          } else {
+            // no role requested AND no avatar at all → genuine hard fail (unchanged)
+            await markFailed(supabase, draftId, fmt, {
+              heygen_error: `submit_error: No active ${renderStyle} avatar for client ${clientId}`,
+              avatar_resolution_outcome: 'no_eligible_avatar',
+            });
+            results.push({ post_draft_id: draftId, phase: 'submit', status: 'failed', error: 'no_eligible_avatar' });
+            continue;
+          }
+        } else {
+          talkingPhotoId = res.talking_photo_id;
+          voiceId = voiceId ?? res.voice_id;
+          avatarSelectedBy = res.outcome;   // default_host | primary_fallback | undesignated_tiebreak
         }
-        talkingPhotoId = res.talking_photo_id;
-        voiceId = voiceId ?? res.voice_id;
-        avatarSelectedBy = res.outcome;   // default_host | primary_fallback | undesignated_tiebreak
       }
       if (!voiceId) throw new Error(`No voice_id for draft ${draftId}`);
 
@@ -546,6 +586,10 @@ export async function runSubmitPhase(supabase: Supa, apiKey: string): Promise<an
           render_style: renderStyle,
           stakeholder_role: stakeholderRole,
           avatar_selected_by: avatarSelectedBy,
+          // cc-0083 Slice B telemetry (§4): the role heygen-worker filtered on, and whether a
+          // requested-but-unavailable role fell back to the client default host.
+          requested_stakeholder_role: stakeholderRole,
+          role_fallback_to_default_host: roleFallbackToDefaultHost,
         },
       });
       console.log(`[heygen-worker] submitted ${draftId} -> heygen ${heygenVideoId} (rendering)`);

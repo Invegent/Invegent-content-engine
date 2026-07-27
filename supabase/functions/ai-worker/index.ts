@@ -11,7 +11,20 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.22.0";
+const VERSION = "ai-worker-v2.23.0";
+// v2.23.0 (2026-07-27) — cc-0083 Slice B (selection seam): PROMOTE the presenter-role
+//   suggestion into the CONSUMED field. cc-0083-marker: ai-worker-cc0083-stakeholder-role-promote.
+//   The v2.15.0 shadow suggestion (video_script.avatar_role_suggestion) is UNCHANGED and still
+//   written for observability. NEW: in the SAME non-fatal avatar guard, when the suggestion has a
+//   non-empty single role_code AND suggested_stakeholder_role_confidence >= AVATAR_ROLE_MIN_CONFIDENCE
+//   (0.6), the worker ALSO sets video_script.stakeholder_role = that role — the field heygen-worker
+//   actually filters avatars on. Otherwise stakeholder_role is LEFT UNSET → heygen-worker resolves
+//   the client default host (cc-0083 Slice B change 2). Fail-open: reads off the best-effort
+//   suggestion object, stays inside the existing try, NEVER throws, and never blocks the video_script
+//   write. STRICTLY OUT OF SCOPE: no change to avatar_role_suggestion (still written verbatim), no
+//   change to suggestAvatarRole's role derivation, no format-selection/prompt/render change, no
+//   stakeholder_role write for non-video_short_avatar formats, no heygen-worker/poller change here,
+//   no DB schema/migration, no dashboard.
 // v2.22.0 (2026-07-26) — Schedule-authority pin for the governed video_short_stat golden path
 //   + a deterministic stat-script field clamp. ADDITIVE + NARROW. THREE changes:
 //   (1) new fail-closed helper isVideoStatGovernanceEnabled() — mirrors video-worker's
@@ -188,6 +201,23 @@ const VIDEO_FORMATS = new Set([
   'video_short_kinetic_voice', 'video_short_stat_voice',
   'video_short_avatar', 'video_long_explainer', 'video_long_podcast_clip',
 ]);
+
+// cc-0083 (Slice B) — minimum suggestion confidence to PROMOTE a presenter role suggestion
+// into the CONSUMED field video_script.stakeholder_role. Below this (or no single clear role),
+// stakeholder_role is left unset → heygen-worker resolves the client default host. Tunable;
+// documents PK's "default_host only when there is no clear role" rule.
+const AVATAR_ROLE_MIN_CONFIDENCE = 0.6;
+
+// cc-0083 (Slice B) — the promotion GATE, factored out as a pure fn so it is hermetically
+// unit-testable (house pattern: clampField / buildFormatOutputSchema). Returns the role string to
+// write into video_script.stakeholder_role, or null to leave it unset (→ default host). Reads off
+// the best-effort suggestAvatarRole object; never throws; a non-string / empty / below-threshold /
+// null-confidence suggestion → null. Deployed behaviour is identical to the inline guard.
+export function promoteAvatarRole(roleSuggestion: unknown): string | null {
+  const sr = (roleSuggestion as any)?.suggested_stakeholder_role;
+  const srConf = Number((roleSuggestion as any)?.suggested_stakeholder_role_confidence ?? 0);
+  return (typeof sr === 'string' && sr && Number.isFinite(srConf) && srConf >= AVATAR_ROLE_MIN_CONFIDENCE) ? sr : null;
+}
 
 // D157 ID003: hard fetch timeout applied to both LLM providers.
 // Generous enough for large responses, tight enough to prevent indefinite hangs
@@ -423,9 +453,13 @@ async function generateVideoScript(opts: {
 // v2.15.0 — F-SERIES-AVATAR-DIFFERENTIATION Stage 1 (shadow, observability-only).
 // Map an episode persona to ONE of the brand's ACTIVE stakeholder role_codes and return
 // a SUGGESTION object. The caller stores it under video_script.avatar_role_suggestion —
-// a field heygen-worker does NOT read for avatar selection. NEVER writes stakeholder_role
-// (the consumed field). Best-effort: returns a null-role object on any miss and NEVER
+// a field heygen-worker does NOT read for avatar selection. This function itself NEVER
+// writes stakeholder_role. Best-effort: returns a null-role object on any miss and NEVER
 // throws, so it cannot affect the draft or render. No schema change.
+// v2.23.0 — cc-0083 Slice B: the CALLER now ALSO conditionally promotes this suggestion into
+// the consumed field video_script.stakeholder_role — only when suggested_stakeholder_role is a
+// non-empty single role_code AND suggested_stakeholder_role_confidence >= AVATAR_ROLE_MIN_CONFIDENCE.
+// The promotion lives at the call site (not here); this helper's shape/contract is unchanged.
 async function suggestAvatarRole(
   supabase: ReturnType<typeof getServiceClient>,
   anthropicKey: string,
@@ -1324,13 +1358,19 @@ app.post('*', async (c) => {
           if (videoScript) {
             // v2.15.0 — F-SERIES-AVATAR-DIFFERENTIATION Stage 1 (shadow, observability-only):
             // attach a SUGGESTED presenter role under video_script.avatar_role_suggestion.
-            // heygen-worker does NOT read this key; stakeholder_role (the consumed field)
-            // stays NULL/unchanged. suggestAvatarRole never throws; the extra guard ensures
-            // a suggestion failure can never block the video_script write.
+            // heygen-worker does NOT read this key. suggestAvatarRole never throws; the extra
+            // guard ensures a suggestion failure can never block the video_script write.
+            // v2.23.0 — cc-0083 Slice B: in the SAME guard, PROMOTE a clear, confident single-role
+            // suggestion into the CONSUMED field video_script.stakeholder_role (heygen-worker reads
+            // this to filter avatars). Left unset otherwise → default host. Fail-open, never throws.
             if (decidedFormat === 'video_short_avatar') {
               try {
                 const roleSuggestion = await suggestAvatarRole(supabase, anthropicKey, { clientId: job.client_id, slotId: job.slot_id });
-                (videoScript as any).avatar_role_suggestion = roleSuggestion;
+                (videoScript as any).avatar_role_suggestion = roleSuggestion;   // KEEP — observability unchanged
+                // cc-0083: promote a CLEAR, confident single-role suggestion into the CONSUMED field.
+                const promotedRole = promoteAvatarRole(roleSuggestion);
+                if (promotedRole) (videoScript as any).stakeholder_role = promotedRole;
+                // else: leave stakeholder_role unset → heygen-worker resolves the default host.
               } catch (rsErr: any) { console.error('[ai-worker] suggestAvatarRole threw (non-fatal):', rsErr?.message); }
             }
             const { error: vsErr } = await supabase.rpc('set_draft_video_script', { p_post_draft_id: job.post_draft_id, p_video_script: videoScript as any });

@@ -31,10 +31,17 @@ import { lookupAvatar, runPollPhase, runSubmitPhase } from './index.ts';
 
 // --- in-memory Supabase stub ------------------------------------------------
 
+type AvatarStubRow = { heygen_avatar_id: string; heygen_voice_id: string | null; is_default_host?: boolean; is_primary?: boolean } | null;
+
 interface SupaOpts {
   pending?: any[];
   rendering?: any[];
-  avatarRow?: { heygen_avatar_id: string; heygen_voice_id: string | null; is_default_host?: boolean; is_primary?: boolean } | null;
+  avatarRow?: AvatarStubRow;
+  // cc-0083 Slice B: let the ROLE-filtered resolve and the ROLE-LESS (default-host) resolve return
+  // DIFFERENT rows, so the default-host fallback can be exercised. When unset, both fall back to
+  // avatarRow — every pre-existing test is byte-unchanged (they set only avatarRow).
+  roleAvatarRow?: AvatarStubRow;
+  noRoleAvatarRow?: AvatarStubRow;
   avatarError?: { message?: string } | null;   // cc-0063 Step B: inject an exec_sql error on the brand_avatar query
   brandRow?: { brand_colour_primary: string; client_slug: string } | null;
   existingRenderLogs?: any[];
@@ -81,7 +88,14 @@ function makeSupa(opts: SupaOpts) {
         const q: string = params?.query ?? '';
         if (q.includes('brand_avatar')) {
           if (opts.avatarError) return Promise.resolve({ data: null, error: opts.avatarError });
-          return Promise.resolve({ data: opts.avatarRow ? [opts.avatarRow] : [], error: null });
+          // cc-0083 Slice B: a role-filtered resolve carries `role_code`; a role-less (default-host)
+          // resolve does not. Return the role/no-role specific row when the test supplied one,
+          // else fall back to avatarRow (backward-compatible with all existing tests).
+          const isRoleQuery = q.includes('role_code');
+          let row: AvatarStubRow = opts.avatarRow ?? null;
+          if (isRoleQuery && 'roleAvatarRow' in opts) row = opts.roleAvatarRow ?? null;
+          if (!isRoleQuery && 'noRoleAvatarRow' in opts) row = opts.noRoleAvatarRow ?? null;
+          return Promise.resolve({ data: row ? [row] : [], error: null });
         }
         if (q.includes('client_brand_profile')) return Promise.resolve({ data: opts.brandRow ? [opts.brandRow] : [], error: null });
         return Promise.resolve({ data: [], error: null });
@@ -495,5 +509,104 @@ Deno.test('Step B resolution_failed distinct from no_eligible_avatar: query erro
       'a query error must NOT collapse into no_eligible_avatar');
     // fail-closed: no HeyGen submit occurred
     assertEquals(supa.__updates.find((u) => u.payload?.video_status === 'rendering'), undefined, 'no submit on a resolution error');
+  } finally { restoreFetch(); }
+});
+
+// --- cc-0083 Slice B — role-requested default-host fallback (§3) + telemetry (§4) -----------
+//
+// The selection seam: ai-worker now writes video_script.stakeholder_role for a clear/confident
+// role. heygen-worker consumes it, but a requested-yet-unavailable role must fall back to the
+// client default host (PK ruling) rather than fail closed. Telemetry (avatar_identity):
+// requested_stakeholder_role (string|null) + role_fallback_to_default_host (boolean).
+
+// A pending avatar draft carrying a stakeholder_role; role/no-role resolves configured per case.
+function submitSupaWithRole(role: string | null, extra: Partial<SupaOpts>) {
+  return makeSupa({
+    pending: [{
+      post_draft_id: 'dR', client_id: 'cR', recommended_format: 'video_short_avatar',
+      draft_format: { video_script: { stakeholder_role: role, render_style: 'realistic', narration_text: 'Hi' } },
+    }],
+    brandRow: { brand_colour_primary: '#0A2A4A', client_slug: 'rho' },
+    ...extra,
+  });
+}
+
+// (a) role requested + an eligible avatar for that role => role-matched pick, NO fallback.
+Deno.test('cc-0083 (a) role requested + eligible avatar => role-matched pick, role_fallback_to_default_host=false', async () => {
+  const supa = submitSupaWithRole('participant', {
+    roleAvatarRow: { heygen_avatar_id: 'AV_PART', heygen_voice_id: 'V_PART', is_default_host: false, is_primary: false },
+    noRoleAvatarRow: { heygen_avatar_id: 'AV_HOST', heygen_voice_id: 'V_HOST', is_default_host: true, is_primary: false },
+  });
+  installFetch();
+  try {
+    await runSubmitPhase(supa as any, 'fake-key');
+    const ai = supa.__updates.find((u) => u.payload?.video_status === 'rendering')!.payload.draft_format.avatar_identity;
+    assertEquals(ai.talking_photo_id, 'AV_PART', 'role avatar chosen, not the default host');
+    assertEquals(ai.requested_stakeholder_role, 'participant');
+    assertEquals(ai.role_fallback_to_default_host, false);
+    // exactly one brand_avatar lookup (the role query) — no fallback re-resolve needed
+    assertEquals(lookupQueries(supa).length, 1, 'a matched role must not trigger the fallback lookup');
+    assert(lookupQueries(supa)[0].includes("role_code = 'participant'"), 'the single lookup is role-filtered');
+  } finally { restoreFetch(); }
+});
+
+// (b) role requested + NO eligible avatar for it + a default host present => fall back to host, flag true.
+Deno.test('cc-0083 (b) role requested + role unavailable + default host present => fallback to default host, role_fallback_to_default_host=true', async () => {
+  const supa = submitSupaWithRole('participant', {
+    roleAvatarRow: null,   // role query returns empty
+    noRoleAvatarRow: { heygen_avatar_id: 'AV_HOST', heygen_voice_id: 'V_HOST', is_default_host: true, is_primary: false },
+  });
+  installFetch();
+  try {
+    await runSubmitPhase(supa as any, 'fake-key');
+    const upd = supa.__updates.find((u) => u.payload?.video_status === 'rendering');
+    assertExists(upd, 'a requested-but-unavailable role must NOT hard-fail when a default host exists');
+    const ai = upd!.payload.draft_format.avatar_identity;
+    assertEquals(ai.talking_photo_id, 'AV_HOST', 'the client default host is used');
+    assertEquals(ai.avatar_selected_by, 'default_host');
+    assertEquals(ai.requested_stakeholder_role, 'participant', 'telemetry records the role that was requested');
+    assertEquals(ai.role_fallback_to_default_host, true);
+    // two lookups: the role-filtered one (empty) then the role-less fallback
+    const qs = lookupQueries(supa);
+    assertEquals(qs.length, 2, 'role miss must trigger a second, role-less lookup');
+    assert(qs[0].includes("role_code = 'participant'"), 'first lookup is role-filtered');
+    assert(!qs[1].includes('role_code'), 'second (fallback) lookup is role-less');
+  } finally { restoreFetch(); }
+});
+
+// (c) role requested + no avatar at all (default host also missing) => genuine hard fail (unchanged).
+Deno.test('cc-0083 (c) role requested + no avatar at all => hard fail (no_eligible_avatar)', async () => {
+  const supa = submitSupaWithRole('participant', {
+    roleAvatarRow: null,
+    noRoleAvatarRow: null,   // even the role-less fallback finds nothing
+  });
+  installFetch();
+  try {
+    await runSubmitPhase(supa as any, 'fake-key');
+    const upd = supa.__updates.find((u) => u.payload?.video_status === 'failed');
+    assertExists(upd, 'no role avatar AND no default host must still hard-fail');
+    assertEquals(upd!.payload.draft_format.avatar_resolution_outcome, 'no_eligible_avatar');
+    // fail-closed: no submit
+    assertEquals(supa.__updates.find((u) => u.payload?.video_status === 'rendering'), undefined, 'no submit when nothing resolves');
+  } finally { restoreFetch(); }
+});
+
+// (d) no role requested + default host present => default host, requested role null, no fallback flag.
+Deno.test('cc-0083 (d) no role requested + default host present => default host, requested_stakeholder_role=null, role_fallback_to_default_host=false', async () => {
+  const supa = submitSupaWithRole(null, {
+    noRoleAvatarRow: { heygen_avatar_id: 'AV_HOST', heygen_voice_id: 'V_HOST', is_default_host: true, is_primary: false },
+  });
+  installFetch();
+  try {
+    await runSubmitPhase(supa as any, 'fake-key');
+    const ai = supa.__updates.find((u) => u.payload?.video_status === 'rendering')!.payload.draft_format.avatar_identity;
+    assertEquals(ai.talking_photo_id, 'AV_HOST');
+    assertEquals(ai.avatar_selected_by, 'default_host');
+    assertEquals(ai.requested_stakeholder_role, null);
+    assertEquals(ai.role_fallback_to_default_host, false, 'no role requested => this was never a fallback');
+    // exactly one (role-less) lookup — no fallback path taken
+    const qs = lookupQueries(supa);
+    assertEquals(qs.length, 1, 'no role => a single role-less lookup, no fallback');
+    assert(!qs[0].includes('role_code'), 'the single lookup is role-less');
   } finally { restoreFetch(); }
 });
