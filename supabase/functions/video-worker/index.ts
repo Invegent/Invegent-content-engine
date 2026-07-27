@@ -1,3 +1,48 @@
+// video-worker v3.14.0
+// ============================================================================
+// v3.14.0 (2026-07-27, F-VIDEO-AUDIO-FAILCLOSED — Phase A, AUDIO-EXPECTED fail-close, DENO-NATIVE):
+//   SITS ON TOP OF v3.13.0's race-safe claim (F-VIDEO-RENDER-CLAIM, claim_pending_video_drafts) — that
+//   claim logic is UNCHANGED here; this change is purely additive audio guards inside renderUploadAndLog.
+//   A render with NO audio track (or the known -58 LUFS "volume as a 0..1 fraction, not a percentage
+//   string" misconfig) could previously be marked video_status='generated' and AUTO-PUBLISHED silent —
+//   the QA layer (v3.1.5) only OBSERVES audio, never blocks. This lands two Deno-native guards so a
+//   render that was SUPPOSED to have audio but goes silent FAILS CLOSED (video_status='failed' + a
+//   visible terminal reason) and never publishes. ffmpeg cannot run in an Edge Function, so this is a
+//   byte/spec heuristic; a true integrated-LUFS probe (Phase B) is a SEPARATE later lane, DEFERRED here.
+//   WHAT CHANGED (surgical; both guards live INSIDE renderUploadAndLog's existing try, so a throw is
+//   logged as a failed render_log by the in-render catch and rethrown to the v3.12.0 OUTER per-draft
+//   catch — where classifyRenderFailure returns TERMINAL for both, fail-fast, NOT an infinite retry):
+//     (1) POST-RENDER audio-STREAM check (PRIMARY), SCOPED to AUDIO-EXPECTED renders (PK option A): new
+//         PURE exported mp4HasAudioTrack(bytes) scans the rendered mp4 ArrayBuffer (already fetched for
+//         the storage upload) for the ASCII 'soun' (0x73 6f 75 6e) hdlr handler_type of an audio track
+//         (proven governed renders carry ['vide','soun','mdir']). The check FIRES ONLY WHEN the render
+//         spec declared audio — specHasAudio(renderScript) true (≥1 non-empty audio source). If audio
+//         was expected and there is no 'soun' → THROW AUDIO_STREAM_MISSING BEFORE upload / BEFORE any
+//         caller sets video_status='generated'. If the spec has NO audio (a legitimately-silent format,
+//         e.g. PP video_short_kinetic with music env-gated off and no voice) → the check is SKIPPED and
+//         a visible `audio_check_skipped:no_audio_in_spec` line is logged. A voiced/music render that
+//         loses its audio fails closed; a by-design-silent kinetic still publishes.
+//     (2) PRE-RENDER audio-SPEC assert (DEFENCE-IN-DEPTH, cheap): new PURE exported assertAudioSpec(
+//         renderScript) runs before the Creatomate submit and NO-OPS when there are no audio elements.
+//         Composition spec (elements[]): every type:'audio' element must have a non-empty string source
+//         AND a volume that is a percentage STRING /^\d{1,3}%$/ (catches the -58 LUFS fraction class
+//         before spending a render). Template-mode spec (modifications{}): a present 'VoiceAudio.source'
+//         must be a non-empty string; MusicBed.source='' is an INTENTIONAL silent bed (N1), NOT asserted;
+//         audio VOLUME is BAKED into the provider template (not in the spec) so it cannot be — and is not
+//         — asserted (Phase-A residual). Violation → THROW AUDIO_SPEC_ASSERT_FAILED.
+//   CLASSIFICATION: both AUDIO_STREAM_MISSING and AUDIO_SPEC_ASSERT_FAILED are TERMINAL — their wording
+//   contains none of the v3.12.0 transient tokens (/timed out|timeout|\b5\d\d\b|fetch failed|network|
+//   temporar|failed to download/); assertAudioSpec deliberately reports typeof (not the raw numeric
+//   volume) so a value in 500-599 can never trip \b5\d\d\b. An audio-config failure is a fail-fast
+//   visible terminal, never an infinite retry.
+//   STRICTLY OUT OF SCOPE / BYTE-UNCHANGED: the v3.13.0 race-safe claim (claim_pending_video_drafts +
+//   its migration), the v3.12.0 render-retry model + classifyRenderFailure regex, POLL_MAX_ATTEMPTS +
+//   the 2-min pollRender ceiling, the render spec builders (buildStatRevealSpec / buildKineticTextSpec /
+//   buildGovernedVideoStatPlan — read only, for the assert), templates, voice/TTS generation,
+//   select_template/select_music, the SELECT/claim path, the publish path, write_render_log args, and
+//   Phase-B true integrated-LUFS loudness (EXPLICITLY DEFERRED). No DDL, no migration, no new column,
+//   no grant, no secret, no flag flip, no deploy in this change.
+//
 // video-worker v3.7.0
 // ============================================================================
 // v3.7.0 (2026-07-10, cc-0034 — GOVERNED MUSIC-USAGE RECORDING, DARK/ADDITIVE):
@@ -440,7 +485,7 @@ import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsage
 //   deploy, no grant, no secret, no flag flip in this change.
 //
 // v3.11.0 (cc-0044 Checkpoint E — NARRATION DE-HARDCODE): see the block below the import list.
-const VERSION = 'video-worker-v3.13.0';
+const VERSION = 'video-worker-v3.14.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -478,6 +523,78 @@ export function classifyRenderFailure(msg: string): 'transient' | 'terminal' {
   const m = (msg || '').toLowerCase();
   if (/timed out|timeout|\b5\d\d\b|fetch failed|network|temporar|failed to download/.test(m)) return 'transient';
   return 'terminal';
+}
+
+// v3.14.0 (F-VIDEO-AUDIO-FAILCLOSED Phase A, layer 1 — PRIMARY, PURE + exported for the focused test):
+// scan a rendered mp4's bytes for an AUDIO track — the ASCII 'soun' (0x73 6f 75 6e) hdlr handler_type
+// (the proven governed renders carried handlers ['vide','soun','mdir']). Returns true IFF the 4-byte
+// 'soun' sequence is present. A false NEGATIVE (real audio, no 'soun' found) over-blocks = fail-closed
+// safe; the heuristic accepts a small false-POSITIVE chance (a coincidental 'soun' in raw bytes) —
+// Phase A only; the true integrated-LUFS probe is Phase B (separate lane).
+export function mp4HasAudioTrack(bytes: Uint8Array): boolean {
+  const S = 0x73, O = 0x6f, U = 0x75, N = 0x6e;  // 's','o','u','n'
+  for (let i = 0; i + 3 < bytes.length; i++) {
+    if (bytes[i] === S && bytes[i + 1] === O && bytes[i + 2] === U && bytes[i + 3] === N) return true;
+  }
+  return false;
+}
+
+// v3.14.0 (F-VIDEO-AUDIO-FAILCLOSED Phase A): the ONE traversal both audio helpers share. Collects every
+// audio "source" the render spec declares, across BOTH live spec shapes, so assertAudioSpec (validate)
+// and specHasAudio (audio-expected gate) can never drift on WHICH fields count as audio. PURE.
+//   • composition spec (renderScript.elements[]): each type:'audio' element → { source, volume } with
+//     hasVolume=true (composition volume IS in the spec).
+//   • template-mode spec (renderScript.modifications{}): the 'VoiceAudio.source' + 'MusicBed.source'
+//     values → { source } with hasVolume=false (volume is baked into the provider template, not the spec).
+interface SpecAudio { where: string; source: unknown; volume: unknown; hasVolume: boolean }
+function collectSpecAudio(renderScript: unknown): SpecAudio[] {
+  // deno-lint-ignore no-explicit-any
+  const rs = renderScript as any;
+  const out: SpecAudio[] = [];
+  if (Array.isArray(rs?.elements)) {
+    rs.elements.forEach((el: Record<string, unknown>, i: number) => {
+      if (el && el.type === 'audio') out.push({ where: `element[${i}]`, source: el.source, volume: el.volume, hasVolume: true });
+    });
+  }
+  if (rs?.modifications && typeof rs.modifications === 'object') {
+    const mods = rs.modifications as Record<string, unknown>;
+    for (const key of ['VoiceAudio.source', 'MusicBed.source']) {
+      if (mods[key] !== undefined) out.push({ where: key, source: mods[key], volume: undefined, hasVolume: false });
+    }
+  }
+  return out;
+}
+
+// v3.14.0 (F-VIDEO-AUDIO-FAILCLOSED Phase A, layer 2 — DEFENCE-IN-DEPTH, PURE + exported). Assert every
+// audio element in a render spec is well-formed BEFORE spending a Creatomate render. NO-OP when the spec
+// declares no audio (a legitimately-silent format). Throws AUDIO_SPEC_ASSERT_FAILED (TERMINAL — the
+// message never contains a v3.12.0 transient token, and no raw numeric volume is echoed so a 5xx-range
+// value cannot trip \b5\d\d\b). Fail-closed: on any malformed audio element the render is refused.
+//   • a declared audio source must be a non-empty string (empty source = a silent slot).
+//   • where the spec carries the volume (composition elements), it must be a percentage STRING
+//     /^\d{1,3}%$/ (the -58 LUFS fraction class). Template-mode volume is baked in the template (absent
+//     from the spec) → not asserted. MusicBed.source='' is an INTENTIONAL silent bed (N1) → not asserted
+//     as a defect: it is simply "no audio here", handled by the source-empty branch being SKIPPED for
+//     the '' bed... see below.
+export function assertAudioSpec(renderScript: unknown): void {
+  const PCT = /^\d{1,3}%$/;
+  for (const a of collectSpecAudio(renderScript)) {
+    // MusicBed.source='' is a deliberate silent bed (N1) — that is "no audio here", NOT a malformed
+    // element; skip it rather than throwing. Every OTHER present source must be a non-empty string.
+    if (a.where === 'MusicBed.source' && a.source === '') continue;
+    if (typeof a.source !== 'string' || a.source.trim() === '')
+      throw new Error(`AUDIO_SPEC_ASSERT_FAILED: audio ${a.where} source is empty (silent render refused)`);
+    if (a.hasVolume && (typeof a.volume !== 'string' || !PCT.test(a.volume)))
+      throw new Error(`AUDIO_SPEC_ASSERT_FAILED: audio ${a.where} volume must be a percent string like "100%" (bad type=${typeof a.volume})`);
+  }
+}
+
+// v3.14.0 (F-VIDEO-AUDIO-FAILCLOSED Phase A — PK option A, PURE + exported): was audio INTENDED for this
+// render? True iff the spec declares ≥1 audio source that is a non-empty string (same traversal/fields
+// as assertAudioSpec). Gates the post-render mp4HasAudioTrack enforcement: a by-design-silent format
+// (no audio in the spec — e.g. music-off kinetic) is EXEMPT; a voiced/music render is enforced.
+export function specHasAudio(renderScript: unknown): boolean {
+  return collectSpecAudio(renderScript).some((a) => typeof a.source === 'string' && a.source.trim() !== '');
 }
 
 // v3.12.0 (F-VIDEO-RENDER-RETRY): strip the retry bookkeeping keys from a draft_format so a render that
@@ -659,6 +776,11 @@ export async function renderUploadAndLog(opts: {
   // block when storageUrl was assigned on the success path.
   let storageUrl: string;
   try {
+    // v3.14.0 (F-VIDEO-AUDIO-FAILCLOSED Phase A, layer 2): pre-render audio-SPEC assert — fail CLOSED
+    // BEFORE spending a render if any DECLARED audio element is malformed (empty source / non-percent
+    // volume = the -58 LUFS fraction misconfig). No-ops when the spec declares no audio. Throws
+    // AUDIO_SPEC_ASSERT_FAILED (terminal) → in-render catch logs a failed render_log and rethrows.
+    assertAudioSpec(renderScript);
     const submitResp = await fetch(CREATOMATE_API, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${creatomateKey}`, 'Content-Type': 'application/json' },
@@ -671,6 +793,19 @@ export async function renderUploadAndLog(opts: {
     if (!renderId) throw new Error('No render ID in Creatomate response');
     const { url: renderUrl, creditsUsed, durationMs } = await pollRender(renderId, creatomateKey, startMs);
     const vidBuf = await (await fetch(renderUrl)).arrayBuffer();
+    // v3.14.0 (F-VIDEO-AUDIO-FAILCLOSED Phase A, layer 1 — PRIMARY, PK option A): if the spec declared
+    // audio, the rendered mp4 MUST carry an audio track (a 'soun' hdlr handler_type). A voiced/music
+    // render that lost its audio ⇒ silent output ⇒ FAIL CLOSED here, BEFORE the storage upload and
+    // BEFORE any caller sets video_status='generated' (which auto-publishes). Throws AUDIO_STREAM_MISSING
+    // (terminal — not in the transient regex). A by-design-silent format (no audio in the spec) is
+    // EXEMPT and logs a visible skip. Phase B (true integrated-LUFS loudness) is a separate later lane.
+    if (specHasAudio(renderScript)) {
+      if (!mp4HasAudioTrack(new Uint8Array(vidBuf))) {
+        throw new Error('AUDIO_STREAM_MISSING: rendered mp4 has no soun audio track (fail-closed, not published)');
+      }
+    } else {
+      console.log(`[video-worker] audio_check_skipped:no_audio_in_spec ${postDraftId ?? '_smoke'} ${iceFormatKey}`);
+    }
     const { error: upErr } = await supabase.storage.from('post-videos').upload(storagePath, vidBuf, { contentType: 'video/mp4', upsert: true });
     if (upErr) throw new Error(`Storage upload: ${upErr.message}`);
     storageUrl = `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/post-videos/${storagePath}`;
