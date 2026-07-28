@@ -63,8 +63,34 @@ self-rolled-back via a terminal `PROOF|…` RAISE.
 - **Governed-teardown runbook** for who may set `authz.allow_last_admin_delete='on'` (and its audit) — open,
   non-blocking (security-auditor open question).
 
+## Repo reconciliation + Git↔DB parity proof (2026-07-28, PK-gated — v6.44)
+The in-repo record is now **RECONCILED TO `main`** (this supersedes the "uncommitted" carry below).
+Merge commit `83571fc` (`--no-ff`, from `origin/claude/sleepy-spence-56ff87` @ `3d1443c`) — additive only:
+**4 paths, 234 insertions, 0 deletions**, zero collisions. The production migration was **NOT re-applied**.
+
+**Parity is byte-exact, derived independently from both sides:**
+
+| Evidence | Result |
+|---|---|
+| Migration file exists on `main` | ✅ `git ls-tree` — both `…090000_…v1.sql` + `…090001_…rollback_v1.sql` present |
+| Content ≡ live guard | ✅ file **read from the merged `main` git object store**, minus its 7 comment-only post-apply annotation lines (11–17) + trailing newline → sha256 **`ad6c02fe415e0743e57881c60386b315c2d66337fc8c2d2c4589f847ad5ddfe6`**, **identical** to `sha256(supabase_migrations.schema_migrations.statements[1])` for the applied version |
+| Ledger identity recorded | ✅ version `20260728000335`, name `authz_last_admin_delete_guard_v1`; **exactly 1** ledger row matching `%last_admin_delete%` (no duplicate apply) |
+| Git↔DB drift | ✅ **CLOSED** — live `authz.prevent_last_admin_delete()` present (1) + `trg_prevent_last_admin_delete` present (1), non-internal |
+| No dashboard enforcement enabled | ✅ change set contains **zero** code/`.ts`/`.tsx`/middleware/`requireRole` files; dashboard branch `claude/cc0046-requirerole-inert` @ `3b68557` **not merged, not deployed** |
+| No role assignments changed | ✅ `authz.user_role` = 1 row (`pk@invegent.com`=administrator, `client_id` NULL); `authz.role_audit` = 1 row, still the original `2026-07-27 09:04:45Z` bootstrap seed — **no new role event**; the three alternates (`parveenkumar11@hotmail.com`, `pk+cfw@invegent.com`, `reviewer@invegent.com`) remain unseeded |
+
+**⚠ Open provenance gap (not a defect).** Line 12 of the migration file pins
+`Reviewed SQL sha256 = 55c782e9…` (the hash external review `1aa1a893` was pinned to). That hash is **NOT
+reproducible** from the artifact under 12 canonicalizations (full file · LF/CRLF · annotation-stripped ·
+comment-stripped · rollback alone · both files concatenated). The live guard and the repo file match each other
+**exactly**, so this is a CLAUDE.md rule-4 *traceability* gap in the review pin, not a content discrepancy.
+**Use `ad6c02fe…` (applied-SQL hash) as the parity anchor** — it is independently re-derivable from either side.
+PK was notified before the merge and authorized proceeding as-is.
+
+**Not pushed.** `main` is ahead of `origin/main` by 3 commits; push remains a separate PK gate.
+
 ## Carry / next
-Phase 0 complete. In-repo record: the two migration files + this result doc are **uncommitted** (commit is a
-separate PK-instructed step). Parent lane resumes at **Phase 1 — seed v1 roles** (needs PK to name roles for
+Phase 0 complete + repo-reconciled. Parent lane resumes at **Phase 1 — seed v1 roles** (needs PK to name roles for
 `reviewer@invegent.com`, `pk+cfw@invegent.com`, `parveenkumar11@hotmail.com`; a 2nd administrator would also
-soften F-DEL-1). Enforcement stays OFF until the separate deploy gate (Phase 4).
+soften F-DEL-1). Enforcement stays OFF until the separate deploy gate (Phase 4). **Held behind a fresh PK gate:**
+dashboard merge + Vercel deploy · kill-switch drill · administrator/governance_operator/viewer three-tier proof.
