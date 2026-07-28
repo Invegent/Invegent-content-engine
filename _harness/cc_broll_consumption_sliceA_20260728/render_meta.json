@@ -1,0 +1,25 @@
+{
+  "slice": "A",
+  "template_id": "46c5c4ac-4d35-488c-b57c-44e05d790fb9",
+  "render_id": "950a88d9-e747-4033-9d3d-03b4e31aa672",
+  "final_status": "succeeded",
+  "wall_clock_s": 17.6,
+  "under_2min_ceiling": true,
+  "url": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/950a88d9-e747-4033-9d3d-03b4e31aa672.mp4",
+  "broll_source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Broll/broll_pp_au_suburb_aerial.mp4",
+  "broll_asset_id": "2d62b04e-c1b5-44df-b382-59cbb991e166",
+  "logo_source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png",
+  "music_source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/post-music/global/neutral/neutral_piano_spring_005.mp3",
+  "modifications": {
+    "Background.source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Broll/broll_pp_au_suburb_aerial.mp4",
+    "Logo.source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png",
+    "MusicBed.source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/post-music/global/neutral/neutral_piano_spring_005.mp3",
+    "StatValue": "42%",
+    "StatLabel": "of Australian renters plan to buy within two years",
+    "ContextLine": "Buyer demand keeps building across the national market.",
+    "CtaText": "Property Pulse \u2014 the numbers that matter."
+  },
+  "mp4_bytes": 4429318,
+  "mp4_sha256": "58fd69c13eb34da54c681c02722da65b4e8a06b4e18d3cb48c98c6ee72150882",
+  "mp4_out": "C:\\Users\\parve\\Invegent-content-engine\\_harness\\cc_broll_consumption_sliceA_20260728\\renders\\slice_a_broll_au_suburb.mp4"
+}

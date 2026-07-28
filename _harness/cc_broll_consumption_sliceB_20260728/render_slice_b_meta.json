@@ -1,0 +1,15 @@
+{
+  "slice": "B",
+  "proof": "auto-selection (resolver-selected Background.source, no asset-id)",
+  "template_id": "46c5c4ac-4d35-488c-b57c-44e05d790fb9",
+  "render_id": "ba739160-f1f9-4cf5-971e-be83ccd99776",
+  "final_status": "succeeded",
+  "wall_clock_s": 13.5,
+  "under_2min_ceiling": true,
+  "url": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/ba739160-f1f9-4cf5-971e-be83ccd99776.mp4",
+  "resolved_background": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Broll/broll_pp_au_suburb_aerial.mp4",
+  "resolved_logo": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png",
+  "mp4_bytes": 4429318,
+  "mp4_sha256": "58fd69c13eb34da54c681c02722da65b4e8a06b4e18d3cb48c98c6ee72150882",
+  "mp4_out": "C:\\Users\\parve\\Invegent-content-engine\\_harness\\cc_broll_consumption_sliceB_20260728\\renders\\slice_b_autoselected.mp4"
+}
