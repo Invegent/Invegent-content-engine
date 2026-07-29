@@ -1,3 +1,30 @@
+// image-worker v3.35.0
+// v3.35.0 (2026-07-30) — Creatomate Global Static Graduation Batch 1, Part A (Open Question 1,
+//   option (a) — docs/briefs/creatomate-global-static-graduation-batch1-gate1-brief-v1.md): the
+//   PRODUCTION image_quote branch's ONE select_template call (line ~987) hardcoded
+//   p_variant_intent: null, which meant NO real m.post_draft-backed render could ever select
+//   generic_announcement_card_1x1_v1 (or any other non-default strong_candidate winner) without
+//   either a premature selector-ranking change or routing through the supervised
+//   governed_image_quote_smoke entrypoint (cc-0037), which never writes m.post_draft and is
+//   explicitly excluded by PK's "no forced test-only substitutions" instruction. This is a small,
+//   scoped, PK-approved per-draft override on the real production branch, additive/dark by
+//   default: (1) a new nullable m.post_draft.b1_variant_intent_override column (migration
+//   supabase/migrations/20260730120000_add_post_draft_b1_variant_intent_override.sql — bare
+//   ADD COLUMN, no backfill/constraint/index/trigger); (2) the quoteDrafts select() now reads
+//   that column; (3) the select_template call now passes
+//   p_variant_intent: draft.b1_variant_intent_override ?? null instead of the hardcoded null —
+//   for every existing row (column is NULL) this is BYTE-IDENTICAL to v3.34.0 behaviour; it only
+//   diverges for a row where the column has been explicitly, deliberately set (e.g. to
+//   'announcement_card' to steer that one draft toward generic_announcement_card_1x1_v1 for the
+//   Gate-1 brief's "real production-shaped draft" step). (4) templateSpec gains two ADDITIVE
+//   evidence fields — variant_intent_override_used / variant_intent_override_value — so every
+//   future render_spec self-documents whether it was an unforced selector win or a disclosed,
+//   supervised per-draft steer (audit trail for the brief's recent-template-repetition /
+//   registry-integrity concerns). STRICTLY OUT OF SCOPE (this change): buildTmrRenderPlan,
+//   stat_hero_card support, carousel body/closing mappings, select_template's own ranking/registry
+//   rows, the governed_image_quote_smoke entrypoint, any DDL beyond the bare additive column, any
+//   deploy or migration apply (both are a later PK gate). NO backfill; NO default value change;
+//   every non-PP client / every existing PP row is unaffected.
 // image-worker v3.34.0
 // v3.34.0 (2026-07-29) — TMR winner-allowlist ext: generic_announcement_card_1x1_v1 +
 //   generic_carousel_cover_1x1_v1 mapping (fail-closed allowlist extension). Changes:
@@ -489,7 +516,7 @@ import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C:
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.34.0';  // TMR winner-allowlist ext — announcement_card + carousel_cover mapping + additive governed_image_quote_smoke optional overrides (variant_intent/format/expected_provider_template_id/cta/slide_number); stat_hero_card explicitly out of scope
+const VERSION = 'image-worker-v3.35.0';  // Creatomate Global Static Graduation Batch 1 Part A (OQ-1 option a) — additive per-draft b1_variant_intent_override column + select_template override + templateSpec evidence fields; NULL column = byte-identical to v3.34.0
 // cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
 // Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
 // provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1
@@ -942,7 +969,10 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── image_quote ─────────────────────────────────────────────────────────────
-  const { data: quoteDrafts } = await supabase.schema('m').from('post_draft').select('post_draft_id, client_id, image_headline, draft_body, draft_format').eq('approval_status', 'approved').eq('image_status', 'pending').eq('recommended_format', 'image_quote').limit(3);
+  // v3.35.0: b1_variant_intent_override added to the select — additive nullable column
+  // (docs/briefs/creatomate-global-static-graduation-batch1-gate1-brief-v1.md, OQ-1 option a);
+  // NULL for every row unless a supervisor has explicitly set it on one draft.
+  const { data: quoteDrafts } = await supabase.schema('m').from('post_draft').select('post_draft_id, client_id, image_headline, draft_body, draft_format, b1_variant_intent_override').eq('approval_status', 'approved').eq('image_status', 'pending').eq('recommended_format', 'image_quote').limit(3);
   for (const draft of (quoteDrafts ?? [])) {
     try {
       const clientId = await resolveClientId(supabase, draft.post_draft_id, draft.client_id);
@@ -984,7 +1014,11 @@ Deno.serve(async (req: Request) => {
         const b1Platform: string | null = slotRow?.platform ?? null;
         // ONE selector call. p_seed = post_draft_id (background rotation only — the winner
         // template NEVER depends on the seed). RPC error = fail loud; legacy path is gone.
-        const { data: selection, error: selectErr } = await supabase.rpc('select_template', { p_client_slug: governedSlug, p_platform: b1Platform, p_format: 'image_quote', p_variant_intent: null, p_seed: draft.post_draft_id });
+        // v3.35.0: p_variant_intent now reads draft.b1_variant_intent_override ?? null instead of
+        // a hardcoded null. Every existing/unset row has the column NULL, so `?? null` collapses
+        // to the exact prior literal — BYTE-IDENTICAL selector call for 100% of drafts today. Only
+        // a row where a supervisor has explicitly set the new column diverges (OQ-1 option a).
+        const { data: selection, error: selectErr } = await supabase.rpc('select_template', { p_client_slug: governedSlug, p_platform: b1Platform, p_format: 'image_quote', p_variant_intent: (draft as any).b1_variant_intent_override ?? null, p_seed: draft.post_draft_id });
         if (selectErr) throw new Error(`b1 tmr_selector_rpc_failed: ${selectErr.message}`);
         const fields = buildProofFieldsFromDraft({ image_headline: draft.image_headline, client_id: clientId, recommended_format: 'image_quote' });
         const subtitle = deriveB1Subtitle(draft.draft_body);   // B1-v2: governed subtitle from draft_body (first non-empty paragraph, truncated)
@@ -1012,6 +1046,12 @@ Deno.serve(async (req: Request) => {
           asset_ids: slotSelected.map((s) => s?.asset_id ?? null),
           resolver_used: true,
           fallback_taken: false,
+          // v3.35.0 (ADDITIVE, evidence-only): self-documents whether this render was an
+          // unforced select_template win (override false/null, the default for every row today)
+          // or a disclosed, supervised per-draft steer via b1_variant_intent_override — audit
+          // trail for the Gate-1 brief's recent-template-repetition / registry-integrity concerns.
+          variant_intent_override_used: Boolean((draft as any).b1_variant_intent_override),
+          variant_intent_override_value: (draft as any).b1_variant_intent_override ?? null,
         };
         const renderScript = { template_id: plan.providerTemplateId, modifications, output_format: 'jpg' };
         // D3: label UNCHANGED (S1 stamper predicate) + NEW additive render_spec.tmr evidence.
