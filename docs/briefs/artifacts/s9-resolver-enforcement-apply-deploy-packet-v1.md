@@ -26,9 +26,14 @@
 Change set is exactly 4 files (2 new migrations, 1 modified EF, 1 new test). Zero out-of-scope files.
 
 **Baseline provenance (verified, not assumed):** live `m.fill_pending_slots` `prosrc` md5 =
-`afd62a2116d23cb0a03d089d108e6a36`, length 27080 — **byte-identical** to
-`supabase/migrations/20260613020000_t1_creative_intent.sql`. No drift; the repo baseline was
-safe to edit from.
+`afd62a2116d23cb0a03d089d108e6a36`, length 27080. The migration's embedded pre-change body matches
+that **exactly**. No drift; the baseline was safe to edit from.
+
+> **Correction (`db-rls-auditor`, 2026-07-29):** an earlier draft of this line also claimed the body was
+> "byte-identical to `supabase/migrations/20260613020000_t1_creative_intent.sql`". That is imprecise —
+> the repo file is CRLF-encoded, so it matches only after newline normalisation. **The authoritative
+> comparison is against the LIVE `prosrc`, which matches exactly**, so the safety case is unaffected;
+> the secondary repo-file claim is withdrawn.
 
 ---
 
@@ -107,6 +112,39 @@ and it should be explicit in the apply decision.
 **I did not implement any of these.** Adding a `text` carve-out unilaterally is exactly the class of
 silent exception PK ruling 3 exists to prevent, and choosing between A and B is a contract decision,
 not a build detail. The build implements the approved spec faithfully; the spec needs a ruling.
+
+---
+
+## 1A. ⛔ SECOND BLOCKER — a capability-blocked slot is **TERMINAL** (found by `db-rls-auditor`, not by me)
+
+**This was not in the original packet and materially changes the cost of "apply now, rule later".**
+
+`db-rls-auditor` traced every live path that could re-open a skipped slot:
+
+| mechanism | predicate | re-opens a `skipped` slot? |
+|---|---|---|
+| `m.recover_stuck_slots` | `WHERE s.status='fill_in_progress'` | **no** |
+| `m.promote_slots_to_pending` | `WHERE status='future'` | **no** |
+| `m.materialise_slots` | re-inserts with `ON CONFLICT DO NOTHING` | **no** |
+
+⇒ Once the gate writes `status='skipped'`, **that slot never returns to `pending_fill` by any live mechanism.**
+
+**Consequences PK must weigh:**
+
+- **Good:** there is no re-block churn loop and no unbounded `slot_fill_attempt` growth.
+- **Bad:** the architecture's framing that the desired format is *"preserved as unmet demand"* is true
+  **only as an audit record**. Even after §1 is ruled and `text` is unblocked, slots skipped in the
+  interim stay dead — they are not refilled, and **rollback explicitly restores future behaviour only**.
+  So the damage window is **not** bounded by how fast a rollback happens: every 10-minute cron tick
+  running with the gate live converts up to 5 slots into **permanently lost publishing occasions**.
+
+**Timing nuance that makes this worse, not better:** all 16 currently-blocked slots are
+`status='future'`, not `pending_fill`. The gate only fires once `m.promote_slots_to_pending` walks them
+in (at `scheduled_publish_at` − 1440 min). So a post-apply monitoring window looks **deceptively quiet
+at first**, then quietly consumes slots every tick.
+
+**Open question for PK:** does a re-open path for capability-skipped slots need to exist (its own lane)
+*before* Layer 1 goes live, or is permanent loss of the affected occasions accepted in writing?
 
 ---
 
@@ -197,6 +235,59 @@ to update. This is asserted by two dedicated tests.
 **Nothing was applied, deployed, merged, or pushed.** Both DB exercises ran inside transactions that
 were aborted; the dry run deliberately terminated with `RAISE EXCEPTION` so the abort is guaranteed
 rather than relying on an explicit `ROLLBACK` reaching the server.
+
+### 3.1 T3 review chain — both verdicts NON-CLEAN, lane halted
+
+| Reviewer | Verdict | Substance |
+|---|---|---|
+| `branch-warden` | **`stop`** | **The lane artifact itself passed every requested check**: based on `origin/main @ 2b5e44b`, exactly 1 commit ahead / 0 behind, changed-file set exactly the 5 approved paths (1 M + 4 A), nothing on `main`, lane branch absent from origin (nothing pushed), lane worktree clean and genuinely isolated, no other worktree's branch touched. The `stop` is on the **environment**, see §3.2. |
+| `db-rls-auditor` | **`block`** | SQL is mechanically clean, privilege-neutral, DDL-free, constraint-compatible, fault-isolated and perfectly reversible — **but** confirms §1 independently and adds §1A. Not applyable without a PK ruling. |
+
+**`db-rls-auditor` proved apply/rollback identity to a stronger standard than this packet claimed:**
+it diffed forward vs rollback body line-by-line — exactly **2 insertion hunks (+7 DECLARE, +91 gate),
+98 additions, 0 deletions, 0 modifications** across the 27,080-char body. The forward migration is
+provably *baseline-plus-pure-insertion*, and the rollback is a true and complete inverse.
+
+It independently re-derived §1 (agreeing in full, including that the `render_engine='none'` discriminator
+behind Option A is factually correct — true for `text` and nothing else across all 13 populated format
+rows) and independently confirmed §1.2 (every NDIS slot cc-0019-ineligible today). It counted **84**
+ready-unaffected slots vs this packet's 85 — immaterial slot movement between the two measurements,
+not a discrepancy in kind.
+
+Its check on the brief's two named must-fixes (the ones I most wanted verified by someone else):
+> "(a) SCOPE IS MINIMAL — the `BEGIN…EXCEPTION` block spans exactly two statements … the INSERT, the
+> UPDATE, the results accumulation and the `CONTINUE` are ALL outside it. (b) NEVER RE-RAISES — no
+> `RAISE EXCEPTION` and no bare `RAISE`, so no exception can escape to abort the batch."
+
+Additional findings it contributed: no bypass path (`try_urgent_breaking_fills` /
+`create_manual_slot_internal` create slots only, so they *are* gated); classifier latency 37–84 ms/call
+⇒ ~0.2–0.4 s per 10-min tick, negligible; zero new advisor lints; **latent NDIS exposure — 5 LinkedIn +
+3 Facebook `text` slots block the instant containment lifts**, which should be recorded as a named
+precondition on the containment-lift lane.
+
+**External review (`ask_chatgpt_review`) was deliberately NOT run.** The contract pins a review to the
+**final** artifact hash, and both auditors returned non-clean on findings that will change the artifact
+(any §1 ruling other than "apply unchanged" re-cuts the migration and invalidates every hash in §0 plus
+the `e1544399…` post-apply assertion). Reviewing now would produce evidence that is stale on arrival.
+External review is the **first step after PK rules on §1/§1A**, pinned to the re-cut hash.
+
+### 3.2 ⚠ Shared-checkout hazard flagged by `branch-warden` (environment, not this artifact)
+
+The shared default checkout `C:/Users/parve/Invegent-content-engine` carries **5 modified TRACKED
+files** from a **concurrent, still-active lane** — `docs/00_action_list.md`, `docs/00_sync_state.md`,
+`supabase/functions/video-worker/{b1_video_stat.ts, b1_video_stat_test.ts, index.ts}` (~354 insertions).
+Mtimes show that lane was writing *during* and *one second after* this lane's commit.
+
+Consequences for gate 2:
+1. **Any `git commit -a` or broad `git add` from the shared checkout would bundle another lane's
+   uncommitted register + video-worker work** — precisely the v6.52 process exception repeating.
+2. **`supabase functions deploy` bundles the CWD**, and the shared checkout is at `2b5e44b`, which does
+   **not** contain v2.25.0 — deploying `ai-worker` from there would ship **old code**. The deploy must
+   run from `C:/Users/parve/ice-worktrees/s9-resolver-enforcement` (copy in
+   `supabase/.temp/{project-ref,linked-project.json}` first), and `drift-check` reads GitHub `main`,
+   where this commit does not yet exist.
+3. The lane branch's upstream is `origin/main` (from `--track`), so a bare `git push` from the lane
+   worktree would target **main**. Name the full refspec explicitly if PK ever pushes it.
 
 ---
 
@@ -291,8 +382,18 @@ Avatar remains paused; nothing in this change alters that.
 
 ## 7. Carries surfaced (not fixed here)
 
-1. **§1 blocker** — needs a PK ruling before apply.
-2. `20260729120000` (S5 classifier extension) still has **no `schema_migrations` ledger row** — that
-   timestamp remains free for a future collision. Belongs to that lane; re-confirmed still open.
-3. `youtube-publisher`'s fail-open `paused_until` preload (`try{}catch(_){}`) — architecture §1.4,
+1. **§1 blocker** (`text` blocked for every client) — needs a PK ruling before apply.
+2. **§1A blocker** (capability-skipped slots are terminal / unrecoverable) — needs a PK ruling: is a
+   re-open lane required first, or is permanent loss accepted in writing?
+3. **Latent NDIS exposure** — 5 LinkedIn + 3 Facebook `text` slots classify blocked the moment the
+   containment pause lifts. Should be a named precondition on the containment-lift lane.
+4. `20260729120000` (S5 classifier extension) still has **no `schema_migrations` ledger row** —
+   re-confirmed still open. Compounding risk now that two ledger-less files sit in `supabase/migrations/`:
+   a future `supabase db push` would treat **both** as pending and replay them in timestamp order.
+5. A **rejected** draft (`m.handle_draft_rejection`) whose slot returns toward `pending_fill` now
+   terminates permanently at `'skipped'` when its format is blocked. Confirm this is intended.
+6. `m.fill_pending_slots` carries no `SET search_path` (pre-existing advisor WARN). Deliberately **not**
+   fixed here — changing the header would invalidate the pinned `e1544399…` assertion. Separate lane.
+7. `youtube-publisher`'s fail-open `paused_until` preload (`try{}catch(_){}`) — architecture §1.4,
    named as a YouTube-release co-requirement, out of scope here.
+8. Shared-checkout contamination hazard (§3.2) — an active concurrent lane, not this one's doing.
