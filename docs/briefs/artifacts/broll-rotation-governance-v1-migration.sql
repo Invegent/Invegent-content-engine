@@ -28,6 +28,25 @@
 --   ALL new selection logic is gated on `v_bg_is_video`. A template whose Background
 --   field is an IMAGE takes the v1.4 code path with byte-identical behaviour. Only the
 --   video B-roll path is governed by the new rules.
+--
+-- ⚠ APPLY CHANNEL + TRANSACTION — RESOLVED, and the two reviewers DISAGREED here.
+--   `db-rls-auditor` (must-fix 3) argued for stripping BEGIN;/COMMIT; and letting
+--   `apply_migration` supply the transaction, because an inner COMMIT can terminate a
+--   wrapping transaction early. External review rev-2 pushed back the other way: relying
+--   on an implicit, channel-dependent transaction is the weaker guarantee in production.
+--
+--   RESOLVED IN FAVOUR OF THE EXPLICIT TRANSACTION (kept below), on repo evidence rather
+--   than argument: 31 of 193 migrations in supabase/migrations carry a top-level `BEGIN;`,
+--   and ALL FOUR most recent ones do — the S9 publisher-enforcement migration + rollback
+--   pair (20260729173000 / 20260729183000), which are applied and live. Explicit
+--   BEGIN;/COMMIT; is the house pattern on this apply path, and it makes atomicity a
+--   property of THIS FILE rather than of whichever channel runs it.
+--
+--   RESIDUAL HAZARD, NAMED, NOT DISMISSED: if a channel independently wraps this file in
+--   its own transaction, the inner COMMIT commits the outer one. Because the COMMIT is the
+--   LAST statement in the file, that is harmless here — nothing follows it to be orphaned.
+--   Do NOT append statements after the COMMIT. `apply_migration` mints its own version
+--   number; this file name is not the migration identity.
 -- =====================================================================================
 
 BEGIN;
@@ -48,15 +67,29 @@ CREATE TABLE IF NOT EXISTS c.geo_class (
   -- a generic class can never have a parent; every non-national specific class must.
   CONSTRAINT geo_class_generic_is_root CHECK (geo_level <> 'generic' OR parent_key IS NULL),
   CONSTRAINT geo_class_national_is_root CHECK (geo_level <> 'national' OR parent_key IS NULL),
-  CONSTRAINT geo_class_specific_has_parent CHECK (geo_level NOT IN ('state','metro') OR parent_key IS NOT NULL)
+  CONSTRAINT geo_class_specific_has_parent CHECK (geo_level NOT IN ('state','metro') OR parent_key IS NOT NULL),
+  -- Cycle guard (db-rls-auditor should-fix). geo_relation() walks parent_key upward inside
+  -- a function on the render path; a self-parenting row would make that walk non-terminating.
+  -- Paired with UNION (not UNION ALL) in geo_relation, which dedups and so terminates on any
+  -- longer cycle too.
+  CONSTRAINT geo_class_no_self_parent CHECK (parent_key IS DISTINCT FROM geo_key)
 );
 
--- PostgREST fence: schema `c` IS exposed, and a new table is born anon-writable under the
--- default ACL. Revoke explicitly (PUBLIC alone is insufficient) and enable RLS.
--- RLS is ENABLE, NOT FORCE — the resolver is SECURITY DEFINER owned by postgres and must
--- still read these rows; FORCE would block the owner with no policies present.
+-- Exposure fence. Schema `c` grants USAGE to anon + authenticated, so it is reachable in
+-- principle; REVOKE explicitly (naming PUBLIC alone is insufficient) and enable RLS.
+--   ⚠ CORRECTED (db-rls-auditor must-fix 2): an earlier draft of this comment claimed FORCE
+--   would block the SECURITY DEFINER owner. That is FALSE — `postgres` has
+--   rolbypassrls = TRUE (verified live), and BYPASSRLS bypasses row security
+--   unconditionally, FORCE included. ENABLE and FORCE are behaviourally IDENTICAL for every
+--   principal that exists here. ENABLE is kept because it matches the 22 schema-`c` tables
+--   already carrying rls_enabled_no_policy, not because FORCE would break anything. The
+--   standing ICE note "RLS needs FORCE" is imprecise for the same reason.
+--   Note also: the "new tables are born anon-writable" trap is specific to schema `public`.
+--   pg_default_acl for schema `c` is {service_role=r, inspector_ro=r} — not anon/authenticated.
 REVOKE ALL ON c.geo_class FROM PUBLIC, anon, authenticated;
 ALTER TABLE c.geo_class ENABLE ROW LEVEL SECURITY;
+COMMENT ON TABLE c.geo_class IS
+  'Canonical B-roll geography containment tree. Service-role-only; RLS enabled with ZERO policies = deliberate deny-all for non-BYPASSRLS roles (inspector_ro therefore sees an empty table, not an error). All production reads go through postgres-owned SECURITY DEFINER public.resolve_slot_assets. Writes are postgres-only.';
 
 INSERT INTO c.geo_class (geo_key, geo_level, parent_key, label) VALUES
   ('generic',              'generic',  NULL,      'Generic — no identifiable locale'),
@@ -93,8 +126,12 @@ CREATE TABLE IF NOT EXISTS c.client_format_copy_geography (
   PRIMARY KEY (client_id, format_key)
 );
 
+-- Same posture and the same corrected rationale as c.geo_class above (ENABLE, not FORCE,
+-- because they are equivalent here — NOT because FORCE would block the owner).
 REVOKE ALL ON c.client_format_copy_geography FROM PUBLIC, anon, authenticated;
 ALTER TABLE c.client_format_copy_geography ENABLE ROW LEVEL SECURITY;
+COMMENT ON TABLE c.client_format_copy_geography IS
+  'GOVERNED declaration of copy geography per (client, format). A DECLARED human fact, never inferred from copy text or filenames. AN ABSENT ROW MEANS UNKNOWN AND FAILS CLOSED to generic/national-safe assets only. Service-role-only; RLS enabled with ZERO policies = deny-all for non-BYPASSRLS roles. Reads go through SECURITY DEFINER public.resolve_slot_assets; WRITES ARE POSTGRES-ONLY (no service_role or dashboard write path exists) — changing copy_geo_key requires apply_migration/execute_sql.';
 
 -- Seed: property-pulse / video_short_stat is declared NATIONAL AUSTRALIA.
 -- EVIDENCE for the declaration (not an assumption): every live video_short_stat draft
@@ -109,6 +146,33 @@ SELECT cl.client_id, 'video_short_stat', 'au', 'PK',
        'Declared national: live video_short_stat copy is national macro-economic content (RBA/CPI/jobs). Locality copy would require changing this row.'
 FROM c.client cl WHERE cl.client_slug = 'property-pulse'
 ON CONFLICT (client_id, format_key) DO NOTHING;
+
+-- ⚠ FAIL-CLOSED SEED ASSERTION (db-rls-auditor MUST-FIX 1 — the packet's only
+-- declared-protection-without-executable-enforcement gap, now closed).
+-- The INSERT above is SELECT-driven. If that SELECT returns ZERO rows (slug renamed,
+-- typo, wrong environment) the INSERT is a silent no-op, the packet COMMITs successfully,
+-- and the resolver then takes the copy-geography UNKNOWN branch — which admits only
+-- geo_scope='generic' or geo_national_safe='true'. ALL SIX live B-roll clips have
+-- geo_national_safe = NULL, so the eligible pool would collapse 6 -> 1 (generic only):
+-- exactly the outcome this whole lane exists to prevent, arriving silently.
+-- An unevaluated check is a failed check. This RAISEs and aborts the whole apply.
+DO $seed_assert$
+DECLARE
+  v_client uuid;
+  v_rows   int;
+BEGIN
+  SELECT cl.client_id INTO v_client FROM c.client cl WHERE cl.client_slug = 'property-pulse';
+  IF v_client IS NULL THEN
+    RAISE EXCEPTION 'APPLY ABORTED: client_slug=''property-pulse'' not found — the copy-geography seed could not be written. Applying without it would collapse the eligible B-roll pool from 6 to 1 (UNKNOWN branch; all six clips have geo_national_safe = NULL).';
+  END IF;
+  SELECT count(*) INTO v_rows
+  FROM c.client_format_copy_geography g
+  WHERE g.client_id = v_client AND g.format_key = 'video_short_stat';
+  IF v_rows <> 1 THEN
+    RAISE EXCEPTION 'APPLY ABORTED: expected exactly 1 copy-geography declaration for property-pulse/video_short_stat, found %. Without it the resolver takes the UNKNOWN branch and the eligible B-roll pool collapses 6 -> 1.', v_rows;
+  END IF;
+END
+$seed_assert$;
 
 -- -------------------------------------------------------------------------------------
 -- 3. STRUCTURED GEOGRAPHY RELATION
@@ -135,7 +199,7 @@ BEGIN
   -- is p_a an ancestor of p_b?  (walk p_b upward)
   WITH RECURSIVE up AS (
     SELECT g.geo_key, g.parent_key FROM c.geo_class g WHERE g.geo_key = p_b
-    UNION ALL
+    UNION            -- UNION, not UNION ALL: dedups, so any cycle terminates (see geo_class_no_self_parent)
     SELECT g.geo_key, g.parent_key FROM c.geo_class g JOIN up ON g.geo_key = up.parent_key
   )
   SELECT EXISTS (SELECT 1 FROM up WHERE up.geo_key = p_a) INTO v_hit;
@@ -144,7 +208,7 @@ BEGIN
   -- is p_b an ancestor of p_a?  (walk p_a upward)
   WITH RECURSIVE up AS (
     SELECT g.geo_key, g.parent_key FROM c.geo_class g WHERE g.geo_key = p_a
-    UNION ALL
+    UNION            -- UNION, not UNION ALL: dedups, so any cycle terminates (see geo_class_no_self_parent)
     SELECT g.geo_key, g.parent_key FROM c.geo_class g JOIN up ON g.geo_key = up.parent_key
   )
   SELECT EXISTS (SELECT 1 FROM up WHERE up.geo_key = p_b) INTO v_hit;
@@ -512,7 +576,11 @@ BEGIN
     --                               as generic — that is exactly the relabelling this
     --                               lane forbids.
     ---------------------------------------------------------------------------------
-    FOR v_e IN SELECT * FROM jsonb_array_elements(v_ranked_bg) LOOP
+    -- WITH ORDINALITY + ORDER BY: candidate order is indexed POSITIONALLY by the seeded
+    -- index below, so ordering must be a contractual property of this code, not an
+    -- incidental property of the FunctionScan (db-rls-auditor should-fix).
+    FOR v_e IN SELECT t.e FROM jsonb_array_elements(v_ranked_bg) WITH ORDINALITY AS t(e, ord)
+               ORDER BY t.ord LOOP
       v_asset_geo  := v_e->>'geo_scope';
       v_geo_compat := NULL;
       v_reason     := NULL;
@@ -586,6 +654,19 @@ BEGIN
     -- retry storm cannot walk the pool). If p_seed is not a draft id (tests), no row
     -- matches and the behaviour degrades safely to "exclude over all history".
     ---------------------------------------------------------------------------------
+    -- Make the D2 caller convention VISIBLE instead of silently assumed (external review
+    -- pushback 1). Production passes p_seed = post_draft_id, but the function cannot
+    -- enforce that. A non-UUID seed simply matches no row, so stickiness degrades safely
+    -- to "exclude over all history" — which is correct, but must not be silent.
+    IF p_seed IS NOT NULL
+       AND p_seed !~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' THEN
+      v_warnings := v_warnings || to_jsonb('recent_use_seed_not_draft_id'::text);
+    END IF;
+
+    -- NOTE (recorded, not a defect): `prl.client_id = v_client_id` also excludes SMOKE
+    -- renders, which the video-worker logs with client_id = NULL. That is the intended
+    -- semantics — a smoke render must not consume a rotation slot — and is stated here so
+    -- it is a design decision rather than a side effect.
     SELECT COALESCE(array_agg(x.bg_key ORDER BY x.last_used DESC), '{}')
     INTO v_recent_keys
     FROM (
@@ -599,6 +680,10 @@ BEGIN
       WHERE prl.client_id     = v_client_id
         AND prl.ice_format_key = p_format
         AND prl.status         = 'succeeded'
+        -- Bounded window: only the two most recent keys are ever consumed, so a bound costs
+        -- nothing behaviourally and stops this aggregating an unbounded, monotonically
+        -- growing history forever (db-rls-auditor should-fix).
+        AND prl.created_at     > now() - interval '90 days'
         AND (p_seed IS NULL OR prl.post_draft_id::text IS DISTINCT FROM p_seed)
       GROUP BY 1
     ) x
@@ -608,18 +693,19 @@ BEGIN
     v_excl_2 := v_recent_keys[2];   -- one before that
 
     -- Tier 1: exclude the two most recent (preferred).
-    SELECT COALESCE(jsonb_agg(e), '[]'::jsonb) INTO v_after_recent
-    FROM jsonb_array_elements(v_geo_ok) AS e
-    WHERE (e->>'asset_key') IS DISTINCT FROM v_excl_1
-      AND (e->>'asset_key') IS DISTINCT FROM v_excl_2;
+    -- ORDER BY ord is load-bearing: the surviving array is indexed positionally below.
+    SELECT COALESCE(jsonb_agg(t.e ORDER BY t.ord), '[]'::jsonb) INTO v_after_recent
+    FROM jsonb_array_elements(v_geo_ok) WITH ORDINALITY AS t(e, ord)
+    WHERE (t.e->>'asset_key') IS DISTINCT FROM v_excl_1
+      AND (t.e->>'asset_key') IS DISTINCT FROM v_excl_2;
     v_recent_level := 'excluded_2';
 
     -- Tier 2: not enough alternatives -> exclude only the immediately previous.
     -- This tier is the HARD requirement; tier 1 is the preference.
     IF jsonb_array_length(v_after_recent) = 0 THEN
-      SELECT COALESCE(jsonb_agg(e), '[]'::jsonb) INTO v_after_recent
-      FROM jsonb_array_elements(v_geo_ok) AS e
-      WHERE (e->>'asset_key') IS DISTINCT FROM v_excl_1;
+      SELECT COALESCE(jsonb_agg(t.e ORDER BY t.ord), '[]'::jsonb) INTO v_after_recent
+      FROM jsonb_array_elements(v_geo_ok) WITH ORDINALITY AS t(e, ord)
+      WHERE (t.e->>'asset_key') IS DISTINCT FROM v_excl_1;
       v_recent_level    := 'excluded_1';
       v_fallback_reason := 'insufficient_alternatives_for_two_exclusions';
     END IF;
@@ -774,4 +860,6 @@ $function$;
 REVOKE ALL ON FUNCTION public.resolve_slot_assets(text, text, text, uuid, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.resolve_slot_assets(text, text, text, uuid, text) TO service_role;
 
+-- Explicit COMMIT — see the APPLY CHANNEL note in the header. This is the LAST statement in
+-- the file; nothing may be appended after it.
 COMMIT;

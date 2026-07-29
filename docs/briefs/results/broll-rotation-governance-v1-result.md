@@ -3,8 +3,9 @@ CLAIMED · broll-rotation-governance-v1 · main-checkout `C:\Users\parve\Invegen
 # Result — Governed Creatomate B-roll: Rotation Governance v1 (PRE-APPLY)
 
 **Date:** 2026-07-29 Sydney · **Lane:** SAFETY_GATE · **Tier: T3**
-**Status:** **BUILT + DRY-RUN PROVEN + ROLLBACK VALIDATED — NOT APPLIED.** Stops at the PK
-apply gate exactly as instructed.
+**Status:** **BUILT + DRY-RUN PROVEN + ROLLBACK VALIDATED + BOTH REVIEW GATES CLEAN — NOT APPLIED.**
+Stops at the PK apply gate exactly as instructed. Artifact hashes: migration `8c32c08259bb0767` ·
+rollback `f74353d587fff290`.
 **Brief:** `docs/briefs/broll-rotation-governance-v1-brief.md`
 **Artifacts:** `docs/briefs/artifacts/broll-rotation-governance-v1-migration.sql` ·
 `docs/briefs/artifacts/broll-rotation-governance-v1-rollback.sql`
@@ -200,22 +201,92 @@ until it runs, the claim is "semantically proven", not "byte-proven".
   declaration is only as true as the copy it describes.
 - ❌ Not claimed: repeats are impossible. Tier 3 permits a repeat when only one compatible
   clip exists — deliberately, and it is recorded when it happens.
-- ❌ Not claimed: `db-rls-auditor` reviewed this. It did not run in this session (brief §9.2)
-  — required at the gate.
-- ❌ Not claimed: byte-identity between the executed text and the file (§5).
+- ❌ Not claimed: byte-identity between the executed text and the file (§5). Closed at apply time by
+  the runbook's `pg_get_functiondef` diff.
+- ❌ Not claimed: that a clean external review authorises the apply. It does not — **PK ratification
+  of D1 and D2 is still outstanding**, and the apply itself is PK's act.
+- ❌ Not claimed: that the reviewers agreed with each other. They did not, on the transaction
+  question (§8.3); repo evidence decided it.
 - ❌ Not claimed: the four-of-six Sydney concentration is fixed. Rotation is now even across
   what exists; the pool's *content* diversity is a separate sourcing question.
 
-## 8. Review chain
+## 8. Review chain — BOTH GATES NOW RUN AND CLEAN
 
 | Check | Verdict | Note |
 |---|---|---|
 | Live read-only ground truth | complete | resolver body, ACL, asset rows, render-log shape, draft lineage, worker call site |
-| Dry-run proofs (production, rolled back) | 20 / 21 checks PASS | the one non-PASS is the arbitrary max-gap bar, §4.1 |
+| Dry-run proofs (production, rolled back) | 20 / 21 PASS | the one non-PASS is my own arbitrary max-gap bar, §4.1 |
+| `db-rls-auditor` | **`concerns`** → **all 3 must-fix APPLIED** | §8.1 |
+| Re-proofs on the revised artifact | **17 / 17 PASS** | §8.2 |
+| External review (4 rounds) | **`agree` · medium · high · no escalation** | §8.3 |
 | Rollback validated pre-apply | PASS | byte-for-byte restore + ACL preserved |
-| Git state | `main`, HEAD `b32d601`, ahead 0 / behind 0 | source-truth-check at session start |
-| `db-rls-auditor` | **NOT RUN** | required at the gate (brief §9.2) |
-| External review | **NOT RUN** | required before the apply gate per CLAUDE.md |
+| `branch-warden` | pending | run before the apply commit |
+| **PK ratification of D1 + D2** | ⛔ **pending — the remaining hard stop** | brief §3 |
+
+### 8.1 `db-rls-auditor` — verdict `concerns`, 3 must-fix, 9 should-fix
+
+**Must-fix — all three applied:**
+
+1. **A real defect it caught and I had missed.** The copy-geography seed was a SELECT-driven
+   `INSERT … ON CONFLICT DO NOTHING` with **no row-count guard**. A zero-row SELECT would have
+   committed silently, sent the resolver down the UNKNOWN branch, and — because all six clips
+   have `geo_national_safe = NULL` — collapsed the eligible pool **6 → 1**, the exact failure this
+   lane exists to prevent. A declared protection with no executable enforcement, in my own packet.
+   **Fixed:** a fail-closed `DO … RAISE` block now aborts the apply if the client is missing or the
+   declaration count ≠ 1. Proven in **both** directions.
+2. **My ENABLE-vs-FORCE rationale was factually wrong.** I wrote that FORCE would block the
+   SECURITY DEFINER owner. `postgres` has `rolbypassrls = TRUE`, so it would not. Conclusion (keep
+   ENABLE) was right, premise was false. **Fixed in place**, and later proven empirically (§8.3).
+3. **Apply-channel/transaction hazard.** Addressed — see §8.3, where the two reviewers disagreed.
+
+**Should-fix — 6 applied:** cycle guard (`CHECK (parent_key IS DISTINCT FROM geo_key)` +
+`UNION ALL` → `UNION`) · determinism made contractual via `WITH ORDINALITY` · 90-day history bound ·
+rollback assertion extended to all four objects · corrected the overstated ordering note ·
+`COMMENT ON TABLE` on both tables. **3 carried** with impact analysis — runbook §1.1.
+
+**Findings that came back cleaner than I feared:** the history query is index-backed (BitmapAnd,
+21 rows, **31 ms**) and runs **once per render, not once per candidate** (only one of three
+candidate templates has `bg_is_video=true`); `p_seed` has no injection or type-error surface because
+the predicate casts the uuid **column** to text rather than caller text to uuid; every relation is
+schema-qualified; zero dynamic SQL; and it independently diffed the rollback body against live
+`pg_get_functiondef` — 14314 chars, identical.
+
+### 8.2 Re-proofs on the revised artifact — 17/17 PASS
+
+Seed assertion both directions · self-parent row rejected by the cycle guard · `geo_relation` still
+correct after the `UNION` change · 90 production-shaped renders, 0 consecutive repeats, all 6 clips
+reached · non-UUID seed emits `recent_use_seed_not_draft_id`, UUID seed does not · Perth copy → 4
+`geo_conflict` · shortage → `fail_closed` · image path identical to v1.4 · determinism.
+
+### 8.3 External review — 4 rounds, hash re-pinned each time
+
+| Rev | `reviewed_input_hash` | Verdict | Outcome |
+|---|---|---|---|
+| 1 | `7199fff5…` (proposal) / migration `6d4211c1…` | `partial` · high · escalate | 2 pushback: p_seed convention unenforceable; RLS ENABLE-vs-FORCE |
+| 2 | migration `71e929d7…` | `partial` · high · escalate | pushback: implicit transactions weaken atomicity; carried items unquantified |
+| 3 | migration `8c32c082…` | `partial` · high · escalate | verified the transaction + FORCE claims; 2 `missing_evidence` items left |
+| **4** | migration `8c32c082…` (**unchanged** — evidence only) | **`agree` · medium · high · no escalation** | `pushback_points: []`, `unverified_claims: []` |
+
+`review_id` rev-4 `c6022ff0-a5bf-4eaf-9755-6cd2a8e066ce`.
+
+**The two reviewers disagreed, and repo evidence broke the tie against me.** `db-rls-auditor`
+must-fix 3 said strip `BEGIN;`/`COMMIT;` and let `apply_migration` supply the transaction; external
+review rev-2 said an implicit, channel-dependent transaction is the weaker production guarantee.
+I had followed the auditor. Decided on evidence rather than either reviewer's authority: **31 of 193
+files in `supabase/migrations` carry a top-level `BEGIN;`, and all four most recent do** — including
+the applied-and-live S9 publisher-enforcement migration and its rollback, on this same apply path.
+**Explicit `BEGIN;`/`COMMIT;` restored.** Residual hazard named, not dismissed: a channel that
+double-wraps would have its outer transaction committed by the inner `COMMIT` — harmless here
+because the `COMMIT` is mechanically verified to be the **last statement** in the file, with an
+explicit "do not append after `COMMIT`" instruction.
+
+**Two claims I stopped asserting and measured instead:**
+
+| Claim | Measurement | Result |
+|---|---|---|
+| FORCE vs ENABLE RLS | live probe: table with `FORCE` + zero policies, read as owner | `postgres`/`service_role` `rolbypassrls = true`; **1 row still visible** ⇒ FORCE would not have blocked the owner |
+| `WITH ORDINALITY` rewrite is behaviour-preserving | both expressions over the real 6-clip pool across **all 49** exclusion combinations | **49/49 byte-identical** — it makes existing order contractual and changes nothing |
+| 90-day history bound is safe | live cadence + boundary test (100-day-old vs 5-day-old render) | 13 renders in-window vs the 2 needed (mean 5.6 days apart); bound only ever **shrinks** exclusion 2→1, releasing a >90-day-stale clip. Failure direction is less exclusion, **never contradictory footage** — geography filters first |
 
 ## 9. Stop condition
 

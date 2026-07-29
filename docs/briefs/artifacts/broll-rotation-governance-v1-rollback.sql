@@ -10,11 +10,19 @@
 --   4. resolve_slot_assets v1.4 -> v1.5 -> RESTORED here to the verbatim v1.4 body
 -- Nothing else is touched by the apply, so nothing else is touched by the rollback.
 --
--- ⚠ ORDER MATTERS: restore the resolver FIRST. v1.5 reads c.geo_class and
--- c.client_format_copy_geography; dropping those tables while v1.5 is still installed
--- would leave production resolving against missing relations (hard error on every
--- governed video render). Restoring v1.4 first removes every reference, and only then
--- are the tables safe to drop.
+-- ⚠ ORDER MATTERS — but for a narrower reason than an earlier draft of this comment gave
+-- (corrected per db-rls-auditor). plpgsql function bodies are late-bound and create no
+-- pg_depend entries, so DROP TABLE would NOT error merely because v1.5 is installed; and
+-- when the whole file runs in one transaction no other session observes the intermediate
+-- state. The ordering is load-bearing in the case that actually matters: a rollback
+-- executed STATEMENT-BY-STATEMENT through separate tool calls (the pooled-channel case),
+-- where dropping first would leave production resolving against missing relations — a hard
+-- error on every governed video render. Restore the resolver FIRST. Do not reorder.
+--
+-- ⚠ TRANSACTION: explicit BEGIN;/COMMIT; below, matching the migration and the house pattern
+-- (the four most recent supabase/migrations entries, incl. the applied S9 rollback, do the
+-- same). Atomicity is a property of this file, not of whichever channel runs it. The COMMIT
+-- is the last statement; nothing may be appended after it.
 --
 -- ⚠ NOT ROLLED BACK (by design, because the apply never wrote them): zero rows in
 -- c.client_brand_asset are created, updated or deleted by the apply packet, so no asset
@@ -429,6 +437,14 @@ BEGIN
   END IF;
   IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='c' AND tablename IN ('geo_class','client_format_copy_geography')) THEN
     RAISE EXCEPTION 'ROLLBACK ASSERTION FAILED: governance tables still present';
+  END IF;
+  -- 4th object — was missing from an earlier draft (db-rls-auditor should-fix). The packet
+  -- creates FOUR things; the assertion must cover all four.
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'geo_relation'
+  ) THEN
+    RAISE EXCEPTION 'ROLLBACK ASSERTION FAILED: public.geo_relation still present';
   END IF;
 END $$;
 
