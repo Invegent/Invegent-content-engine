@@ -6,6 +6,14 @@
 
 ---
 
+> **✅ v6.58 — S9 Capability Enforcement Objective 1 (resolver Layers 1+2) APPLIED + DEPLOYED + PROVEN (T3 · SAFETY_GATE)** — result: `docs/briefs/results/s9-resolver-enforcement-build-gate1-result-v1.md`, packet: `docs/briefs/artifacts/s9-resolver-enforcement-apply-deploy-packet-v1.md` (rev 3).
+> · **LIVE:** `m.fill_pending_slots` fail-closed capability gate (`prosrc` md5 `b56bbd305b8808c59b074891de06b52a`) · NEW `public.is_capability_exempt_format(text)` (SECDEF, `search_path=''`, service_role-only) · `ai-worker` **v2.25.0** marker `ai-worker-s9-capability-enforcement`. Ledger row `20260729143000` written. A non-Ready format now skips/blocks with evidence, requested format preserved, **no fallback substitution, no LLM/render spend on blocked demand**.
+> · **PK rulings:** skipped slots are **TERMINAL in v1** (no re-open path built — the 9 identified occasions are accepted as lost) · Layer-1 exemption set is **exactly `{text}`**, not expandable without a fresh PK policy gate, 4 monitoring controls retained (result §5).
+> · **Proven:** deploy-verifier content **PASS** (deployed entrypoint byte-identical to `8495f0f`) · drift **A-LE 2.25.0==2.25.0** · rollback executed-then-aborted restored `afd62a21…` exactly · 84/84 tests · every behaviour proof run in an ABORTED txn so **zero real occasions were consumed**. First real block expected ~2026-07-30 07:00 UTC.
+> · **⚠ NDIS remains PAUSED** (all 4 platforms) — untouched. **Next: publisher enforcement build.** **⚠ Process finding: the service-role key was printed to a session transcript — rotation recommended (result §8).**
+
+---
+
 > **🔒 v6.57 — TPR-1 Addendum v1 RATIFIED + B-roll pool floor CONFIRMED (T1 · SAFETY_GATE; governance ratification, zero production effect)** — addendum: `docs/briefs/tpr-1-addendum-v1.md`, handoff: `docs/briefs/results/broll-rotation-readiness-handoff-v1.md`.
 > · **TPR-1 Addendum v1 RATIFIED (PK, 2026-07-29), sub-rules a–f in force.** Any repoint of a governed format's default template must now diff the **EFFECTIVE** output spec — saved provider-template spec (A) ⊕ worker parity overlay (B), confirmed by a spec **measured from the produced file** (C) — and declare A, B, the derived effective spec + its source, C for the incoming template, and `specs_match` at Gate 1. Registry rows stay truthful to the provider object; divergence is **declared, never reconciled by mutating the row**. The registry-only check is no longer sufficient alone for any overlay-carrying template (today exactly one: `46c5c4ac`/`dd5fd75e`). **CARRY CLOSED:** "TPR-1 addendum PROPOSED NOT RATIFIED" (opened v6.54).
 > · **Pool floor CONFIRMED: min 4 / target 6 ELIGIBLE clips** (live-resolver count) governs **resume-of-normal-volume**; the intake brief's min 3 / target 8 governs **how much to source**. Both stand — neither supersedes the other; a lane citing one must name which.
