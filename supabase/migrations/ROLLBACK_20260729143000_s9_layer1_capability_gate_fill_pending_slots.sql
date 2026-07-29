@@ -1,15 +1,25 @@
 -- =====================================================================
--- ROLLBACK -- S9 Layer 1 capability gate (migration 20260729143000)
+-- ROLLBACK -- S9 Layer 1 capability gate (migration 20260729143000, rev 2)
 --
--- Restores m.fill_pending_slots to its EXACT pre-change body.
+-- Inverts BOTH objects the forward migration creates, in one transaction:
+--   1. restores m.fill_pending_slots to its EXACT pre-change body;
+--   2. drops the helper public.is_capability_exempt_format(text).
+-- Order matters for clarity only (plpgsql late-binds), but the body is restored
+-- FIRST so no restored code can reference a dropped function at any point.
+--
 -- Baseline provenance: live prosrc md5 afd62a2116d23cb0a03d089d108e6a36, length 27080
--- (pulled fresh via pg_get_functiondef 2026-07-29; byte-identical to
---  supabase/migrations/20260613020000_t1_creative_intent.sql).
+-- (pulled fresh via pg_get_functiondef 2026-07-29).
 --
--- Function-body revert ONLY. No table DDL, no data change, nothing to un-write:
--- slots already skipped with skip_reason='capability_blocked:...' remain as historical
--- fact (consistent with every other skip_reason code, none of which are retro-cleared).
--- After rollback, no NEW capability skips are produced.
+-- No table DDL, no data change, nothing to un-write: slots already skipped with
+-- skip_reason='capability_blocked:...' remain as historical fact (consistent with
+-- every other skip_reason code, none of which are retro-cleared). After rollback,
+-- no NEW capability skips are produced.
+--
+-- ! KNOWN LIMIT (disclosed, not silently accepted): a slot already skipped by the
+--   gate is TERMINAL -- m.recover_stuck_slots only touches 'fill_in_progress',
+--   m.promote_slots_to_pending only touches 'future', and m.materialise_slots
+--   re-inserts ON CONFLICT DO NOTHING. Rollback restores FUTURE behaviour only; it
+--   does NOT re-open slots already skipped. Those publishing occasions are lost.
 --
 -- CONCURRENCY: m.fill_pending_slots runs via cron job 75 every 10 minutes as postgres.
 -- PostgreSQL resolves a plpgsql body at the start of each individual call; CREATE OR
@@ -23,6 +33,8 @@
 --   SELECT md5(prosrc) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
 --    WHERE n.nspname = 'm' AND p.proname = 'fill_pending_slots';
 --   -- expect exactly: afd62a2116d23cb0a03d089d108e6a36
+--   SELECT to_regprocedure('public.is_capability_exempt_format(text)');
+--   -- expect: NULL (dropped)
 -- =====================================================================
 
 BEGIN;
@@ -697,5 +709,7 @@ BEGIN
   );
 END;
 $function$;
+
+DROP FUNCTION IF EXISTS public.is_capability_exempt_format(text);
 
 COMMIT;

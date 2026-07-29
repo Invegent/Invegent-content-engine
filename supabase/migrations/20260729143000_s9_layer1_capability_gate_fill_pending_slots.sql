@@ -1,66 +1,140 @@
 -- =====================================================================
 -- S9 Capability Enforcement -- Objective 1 / LAYER 1 (schedule-fill chokepoint)
+--   REV 2 (2026-07-29) -- incorporates PK ruling "Option A" (template-less carve-out).
 --
 -- Brief:        docs/briefs/s9-resolver-enforcement-build-brief-v1.md
 -- Architecture: docs/briefs/s9-capability-enforcement-architecture-gate1-v1.md
 --               (PK-approved 2026-07-28, five rulings) section 2.1 Layer 1, section 4.
 -- Tier:         T3 (production schedule-fill function; the PK apply gate is a HARD STOP)
 --
--- WHAT CHANGES
---   m.fill_pending_slots gains ONE fail-closed capability gate, placed immediately
---   after the existing cc-0019 publish-eligibility gate and ABOVE the T0 manual
---   branch (so manual and automated slots are gated uniformly -- PK ruling 2026-07-29).
---   For each pending slot it classifies the candidate format via the live, dark,
---   service-role-only public.classify_format_capability(client_slug, platform, format).
---     * status = 'ready'  -> behaviour is byte-for-byte UNCHANGED.
---     * anything else     -> the slot is SKIPPED WITH EVIDENCE and the loop CONTINUEs
---                            before any pool query / skeleton draft / ai_job / token spend.
---   NO substitution, no re-pick, no fallback to a legacy default: the schedule's
---   desired format is preserved as unmet demand (PK ruling 3).
+-- NOT PREVIOUSLY APPLIED. This file was re-cut in place after the PK ruling; the
+-- version identity 20260729143000 was never applied and holds no schema_migrations
+-- ledger row, so re-cutting it is not a rewrite of an applied migration.
 --
--- BLOCKED-STATE REPRESENTATION (no new schema -- ZERO DDL in this migration)
+-- WHAT CHANGES (two objects, ONE transaction -- they must apply together, because
+-- the gate calls the helper)
+--   1. NEW public.is_capability_exempt_format(text) -- read-only registry accessor.
+--   2. m.fill_pending_slots gains ONE fail-closed capability gate, placed immediately
+--      after the existing cc-0019 publish-eligibility gate and ABOVE the T0 manual
+--      branch (so manual and automated slots are gated uniformly).
+--      For each pending slot it classifies the candidate format via the live, dark,
+--      service-role-only public.classify_format_capability(client_slug, platform, format).
+--        * status = 'ready'      -> behaviour is byte-for-byte UNCHANGED.
+--        * non-ready + EXEMPT    -> proceeds unchanged (template-less carve-out, below).
+--        * non-ready + NOT exempt-> the slot is SKIPPED WITH EVIDENCE and the loop
+--                                   CONTINUEs before any pool query / skeleton draft /
+--                                   ai_job / token spend.
+--      NO substitution, no re-pick, no fallback to a legacy default: the schedule's
+--      desired format is preserved as unmet demand (PK ruling 3).
+--
+-- TEMPLATE-LESS CARVE-OUT (PK ruling 2026-07-29, "Option A")
+--   Formats with render_engine='none' need no visual template, so select_template
+--   legitimately fail-closes for them and the classifier reports
+--   unsupported_silent_degrade -- a coverage artefact, not a capability gap. Without
+--   the carve-out the gate would stop ALL plain-text posting (~220 publishes/90d).
+--   The exemption is evaluated ONLY on the non-ready path (ready path byte-unchanged,
+--   no added latency) and on exactly the format string that was classified.
+--   Audit the exempt set with ONE query -- it is never hardcoded in a worker:
+--     SELECT ice_format_key FROM t."5.3_content_format" WHERE render_engine='none';
+--
+-- BLOCKED-STATE REPRESENTATION (no TABLE schema change -- no ALTER TABLE anywhere)
 --   m.slot.status                     = 'skipped'                 (existing value)
 --   m.slot.skip_reason                = 'capability_blocked:<status>:<format>'
 --   m.slot_fill_attempt.decision      = 'skipped'                 (existing value)
 --   m.slot_fill_attempt.skip_reason   = the same composed code
 --   m.slot_fill_attempt.pool_snapshot = { gate, client_slug, capability: <classifier jsonb> }
---   m.slot_fill_attempt.error_message = SQLSTATE/SQLERRM, exception path only
+--   m.slot_fill_attempt.error_message = SQLSTATE/SQLERRM, exception paths only
 --   m.slot.format_chosen is NOT overwritten, and no m.post_draft row is created, so
 --   video_status / approval_status / publish-failure statuses are untouched by
 --   construction (PK ruling 3 forbids reusing any of them for capability blocking).
 --
 -- FAIL-CLOSED SEMANTICS
---   * Unresolvable client_slug -> status 'unknown'                -> skip.
---   * Classifier raises        -> status 'capability_check_error' -> skip THAT SLOT
+--   * Unresolvable client_slug   -> status 'unknown'                -> skip.
+--   * Classifier raises          -> status 'capability_check_error' -> skip THAT SLOT
 --     ONLY. Never re-raised: re-raising would abort the whole batch transaction and
 --     roll back other clients' already-filled slots in the same cron tick. SQLSTATE
 --     and SQLERRM are captured to error_message AND emitted as a RAISE WARNING.
---   * The exception block wraps ONLY the classifier call, never surrounding logic,
---     so it cannot mask an unrelated defect in the slot loop.
+--   * Exemption lookup raises    -> treated as NOT exempt (stays gated) + WARNING.
+--     An exemption that cannot be proven is never granted.
+--   * Each EXCEPTION block wraps ONLY its single call, never surrounding logic, so
+--     neither can mask an unrelated defect in the slot loop.
 --   * The ready test is generic (IS DISTINCT FROM 'ready'), never an enumeration of
 --     blocked statuses, so any future classifier status is covered by construction.
 --
 -- BASELINE PROVENANCE
 --   The pre-change body embedded below is byte-identical to the LIVE function pulled
 --   fresh via pg_get_functiondef on 2026-07-29: prosrc md5
---   afd62a2116d23cb0a03d089d108e6a36, length 27080 -- and identical to
---   supabase/migrations/20260613020000_t1_creative_intent.sql. No drift; the repo
---   baseline was verified trustworthy for this edit rather than assumed.
+--   afd62a2116d23cb0a03d089d108e6a36, length 27080. Verified, not assumed.
 --
 -- SECURITY / GRANTS
---   No change. m.fill_pending_slots stays SECURITY INVOKER, owner postgres, and is
+--   m.fill_pending_slots is unchanged in posture: SECURITY INVOKER, owner postgres,
 --   invoked only by cron job 75 ("*/10 * * * *", username postgres), which holds
---   EXECUTE on public.classify_format_capability (acl {postgres=X/postgres,
---   service_role=X/postgres}). No GRANT/REVOKE is issued here. Every reference is
---   schema-qualified, as the function carries no SET search_path.
+--   EXECUTE on public.classify_format_capability. The ONLY grant statements in this
+--   migration are the four on the NEW helper (REVOKE from PUBLIC/anon/authenticated,
+--   GRANT to service_role) -- required because new public functions are born
+--   anon-executable via pg_default_acl. Every reference is schema-qualified.
 --
 -- ROLLBACK
 --   supabase/migrations/ROLLBACK_20260729143000_s9_layer1_capability_gate_fill_pending_slots.sql
---   (restores the exact pre-change body; function-body revert only, no data change).
+--   (restores the exact pre-change body, then drops the new helper).
 -- =====================================================================
 
 BEGIN;
 
+-- ---------------------------------------------------------------------------
+-- 1/2 — public.is_capability_exempt_format(text)  [NEW, read-only]
+--
+-- WHY THIS EXISTS (PK ruling 2026-07-29, Option A). A format whose registry row
+-- says render_engine='none' needs no visual template. public.select_template
+-- therefore legitimately fail-closes 'format_unmapped' for it, and because such
+-- posts DO publish, classify_format_capability's precedence-first silent-degrade
+-- overlay reports 'unsupported_silent_degrade'. That is a classifier-coverage
+-- artefact, not a capability gap. Today exactly ONE active format matches:
+--   SELECT ice_format_key FROM t."5.3_content_format" WHERE render_engine='none';
+--   -> 'text'   (output_mime_type='text/plain')
+-- That one-line query IS the audit of the exempt set — the list is never
+-- hardcoded in a worker, so it cannot drift from the registry.
+--
+-- WHY A FUNCTION rather than an inline query in each layer: schema `t` grants
+-- USAGE to postgres/inspector_ro/retool_ui ONLY — NOT service_role — so the
+-- ai-worker edge function (service_role) cannot read t."5.3_content_format"
+-- directly. A single SECURITY DEFINER accessor gives BOTH layers one shared
+-- source of truth and avoids routing a safety gate through the arbitrary-SQL
+-- exec_sql function (a known authz hazard).
+--
+-- FAIL-CLOSED BY CONSTRUCTION: returns TRUE only when a row positively matches.
+-- NULL input, unknown format, missing row, or NULL render_engine all yield
+-- FALSE (= NOT exempt = still gated). EXISTS never returns NULL.
+--
+-- Security posture mirrors public.classify_format_capability / select_template:
+-- SECURITY DEFINER, owner postgres, STABLE, SET search_path='' with every
+-- reference schema-qualified, no dynamic SQL, EXECUTE revoked from PUBLIC/anon/
+-- authenticated and granted to service_role only. The REVOKEs are MANDATORY, not
+-- decorative: new public functions are born anon-executable via pg_default_acl.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.is_capability_exempt_format(p_format text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $fn$
+  SELECT EXISTS (
+    SELECT 1
+    FROM t."5.3_content_format" f
+    WHERE f.ice_format_key = p_format
+      AND f.render_engine  = 'none'
+  );
+$fn$;
+
+REVOKE ALL ON FUNCTION public.is_capability_exempt_format(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.is_capability_exempt_format(text) FROM anon;
+REVOKE ALL ON FUNCTION public.is_capability_exempt_format(text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.is_capability_exempt_format(text) TO service_role;
+
+-- ---------------------------------------------------------------------------
+-- 2/2 — m.fill_pending_slots: add the fail-closed capability gate
+-- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION m.fill_pending_slots(p_max_slots integer DEFAULT 5)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -103,6 +177,7 @@ DECLARE
   v_cap_evidence          jsonb;
   v_cap_error             text;
   v_cap_skip              text;
+  v_cap_exempt            boolean;
 BEGIN
   SELECT * INTO v_dedup
   FROM t.dedup_policy
@@ -177,7 +252,7 @@ BEGIN
     -- format (PK ruling 3: no silent degrade; the schedule's desired format is
     -- preserved as unmet demand). Deliberately positioned ABOVE the T0 manual
     -- branch so operator-authored slots are gated identically to automated ones
-    -- (PK ruling 2026-07-29: apply uniformly, no carve-out).
+    -- (PK ruling 2026-07-29: apply uniformly, no carve-out by slot origin).
     -- The ready test is GENERIC, never an enumeration of blocked statuses, so any
     -- status the classifier gains later (e.g. publisher_path_missing) is covered
     -- by construction.
@@ -187,6 +262,7 @@ BEGIN
     v_cap_error    := NULL;
     v_cap_skip     := NULL;
     v_cap_slug     := NULL;
+    v_cap_exempt   := false;
 
     -- classify_format_capability takes p_client_slug; this function otherwise
     -- works purely in client_id (uuid), so resolve the slug explicitly.
@@ -221,6 +297,28 @@ BEGIN
     END IF;
 
     IF v_cap_status IS DISTINCT FROM 'ready' THEN
+      -- ---- TEMPLATE-LESS CARVE-OUT (PK ruling 2026-07-29, Option A) ----------
+      -- A format with render_engine='none' needs no visual template, so
+      -- select_template legitimately fail-closes 'format_unmapped' for it and
+      -- the classifier's silent-degrade overlay then reports
+      -- unsupported_silent_degrade. That is a classifier-coverage artefact, NOT
+      -- a capability gap: today this is true of 'text' and nothing else. Without
+      -- this carve-out the gate would stop ALL plain-text posting.
+      -- The exemption is evaluated ONLY on the non-ready path, so the ready path
+      -- is byte-unchanged and pays no extra call; and it is evaluated on exactly
+      -- the format string that was classified, so the two cannot diverge.
+      -- FAIL-CLOSED: a lookup error means NOT exempt (stay gated) — an exemption
+      -- lookup that cannot prove exemption must never grant it.
+      BEGIN
+        v_cap_exempt := COALESCE(public.is_capability_exempt_format(v_cap_format), false);
+      EXCEPTION WHEN OTHERS THEN
+        v_cap_exempt := false;
+        RAISE WARNING '[s9-layer1] is_capability_exempt_format failed (treated as NOT exempt): slot=% format=% sqlstate=% sqlerrm=%',
+          v_slot.slot_id, v_cap_format, SQLSTATE, SQLERRM;
+      END;
+    END IF;
+
+    IF v_cap_status IS DISTINCT FROM 'ready' AND NOT v_cap_exempt THEN
       v_cap_skip := 'capability_blocked:' || v_cap_status || ':' || v_cap_format;
 
       INSERT INTO m.slot_fill_attempt (

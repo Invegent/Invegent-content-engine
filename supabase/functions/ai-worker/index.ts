@@ -38,6 +38,14 @@ const VERSION = "ai-worker-v2.25.0";
 //   retry/dead-letter loop). slot -> 'skipped' + skip_reason 'capability_blocked:<status>:<format>'.
 //   The check runs BEFORE writeVisualSpec/assemblePrompts/the LLM call and before any video-script
 //   or dialogue generation, so a blocked draft incurs zero generation cost (PK ruling 2026-07-29).
+//   TEMPLATE-LESS CARVE-OUT (PK ruling 2026-07-29, "Option A"): a non-ready verdict does NOT block
+//   when the format's registry row says render_engine='none' — such formats need no visual template,
+//   so select_template legitimately fail-closes and the classifier reports unsupported_silent_degrade
+//   (a coverage artefact, not a capability gap). Without it the gate would stop ALL plain-text posting.
+//   The exempt set is read from the registry via public.is_capability_exempt_format(text) — the SAME
+//   accessor Layer 1 uses, never a list hardcoded here, so the layers cannot drift. Checked ONLY after
+//   a non-ready verdict, so the ready path is byte-unchanged and pays no extra round-trip. Exemption
+//   lookup failure => NOT exempt => stays gated.
 //   FAIL-CLOSED ALWAYS: RPC error, throw, unresolvable client_slug, or unrecognised classifier
 //   payload all classify as NOT ready — no path turns a failure into 'ready'. The ready test is
 //   generic (status === 'ready'), never an enumeration of blocked statuses, so a future 7th/8th
@@ -564,6 +572,58 @@ export async function classifyCapability(
 }
 
 export const isCapabilityReady = (v: CapabilityVerdict): boolean => v.status === 'ready';
+
+// ── Template-less carve-out (PK ruling 2026-07-29, "Option A") ────────────────
+// A format whose registry row says render_engine='none' needs no visual template, so
+// public.select_template legitimately fail-closes 'format_unmapped' for it, and because
+// such posts DO publish, the classifier's precedence-first silent-degrade overlay reports
+// unsupported_silent_degrade. That is a classifier-COVERAGE artefact, not a capability
+// gap — without this carve-out the gate would stop ALL plain-text posting.
+//
+// The exempt set is NEVER hardcoded here: it is read from the registry through
+// public.is_capability_exempt_format(text), the same accessor Layer 1 uses, so the two
+// layers cannot drift from each other or from the registry. Audit it with one query:
+//   SELECT ice_format_key FROM t."5.3_content_format" WHERE render_engine='none';
+// (An RPC is required rather than a direct read because schema `t` grants USAGE to
+// postgres/inspector_ro/retool_ui only — service_role cannot read it.)
+//
+// FAIL-CLOSED: any error, throw, or non-true payload => NOT exempt => stays gated.
+// An exemption that cannot be proven is never granted. Not cached — this runs only on
+// the already-rare non-ready path, so a stale exemption is not worth the risk.
+export async function isCapabilityExemptFormat(
+  supabase: ReturnType<typeof getServiceClient>,
+  format: string | null,
+): Promise<boolean> {
+  if (!format) return false;
+  try {
+    const { data, error } = await supabase.rpc('is_capability_exempt_format', { p_format: format });
+    if (error) {
+      console.error('[ai-worker] is_capability_exempt_format error (treated as NOT exempt)', { code: error.code, message: error.message });
+      return false;
+    }
+    return data === true;
+  } catch (e) {
+    console.error('[ai-worker] is_capability_exempt_format threw (treated as NOT exempt)', { message: e instanceof Error ? e.message : String(e) });
+    return false;
+  }
+}
+
+// The single block decision, shared by the main and evergreen paths.
+// Evaluated in this order deliberately: ready short-circuits FIRST, so the common path
+// pays no extra round-trip and stays byte-unchanged; and the exemption is checked against
+// exactly the format string that was classified, so the two cannot diverge.
+export async function shouldBlockOnCapability(
+  supabase: ReturnType<typeof getServiceClient>,
+  v: CapabilityVerdict,
+  format: string | null,
+): Promise<boolean> {
+  if (isCapabilityReady(v)) return false;
+  if (await isCapabilityExemptFormat(supabase, format)) {
+    console.log(`[ai-worker] ${S9_CAPABILITY_MARKER} EXEMPT (template-less, render_engine=none) format=${format} classifier_status=${v.status} — proceeding unblocked`);
+    return false;
+  }
+  return true;
+}
 
 // The canonical blocked-state write (PK ruling 3 — existing format-authority columns ONLY,
 // zero new schema). Deliberate omissions are as load-bearing as the fields present:
@@ -1402,7 +1462,7 @@ app.post('*', async (c) => {
         // check below can never see it. Same canonical blocked state, same fail-closed
         // semantics, same 'cancelled' terminal job status.
         const evergreenCapability = await classifyCapability(supabase, job.client_id, platform, evergreenFormat);
-        if (!isCapabilityReady(evergreenCapability)) {
+        if (await shouldBlockOnCapability(supabase, evergreenCapability, evergreenFormat)) {
           console.log(`[ai-worker] ${VERSION} — job ${jobId}: ${S9_CAPABILITY_MARKER} BLOCKED (evergreen) format=${evergreenFormat} status=${evergreenCapability.status} reason=${evergreenCapability.reason_code ?? 'none'}`);
 
           const evBlockedAt = nowIso();
@@ -1651,7 +1711,7 @@ app.post('*', async (c) => {
       // dead-letters 'failed', but never touches 'cancelled', so a capability block cannot
       // enter a retry or dead-letter loop).
       const capability = await classifyCapability(supabase, job.client_id, platform, decidedFormat);
-      if (!isCapabilityReady(capability)) {
+      if (await shouldBlockOnCapability(supabase, capability, decidedFormat)) {
         console.log(`[ai-worker] ${VERSION} — job ${jobId}: ${S9_CAPABILITY_MARKER} BLOCKED format=${decidedFormat} status=${capability.status} reason=${capability.reason_code ?? 'none'}`);
 
         const blockedAt = nowIso();

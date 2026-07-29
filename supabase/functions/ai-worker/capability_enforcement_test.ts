@@ -24,8 +24,10 @@ import {
   type CapabilityVerdict,
   classifyCapability,
   getClientSlug,
+  isCapabilityExemptFormat,
   isCapabilityReady,
   S9_CAPABILITY_MARKER,
+  shouldBlockOnCapability,
 } from './index.ts';
 
 // --- stub -------------------------------------------------------------------
@@ -37,6 +39,8 @@ function stubClient(opts: {
   slugThrows?: boolean;
   rpc?: { data: any; error: any };
   rpcThrows?: boolean;
+  exempt?: { data: any; error: any };
+  exemptThrows?: boolean;
 } = {}): any {
   const slugResult = opts.slug ?? { data: { client_slug: 'ndis-yarns' }, error: null };
   const chain: any = {
@@ -49,7 +53,11 @@ function stubClient(opts: {
   };
   return {
     schema: (_s: string) => ({ from: (_t: string) => chain }),
-    rpc: async (_fn: string, _args: unknown) => {
+    rpc: async (fn: string, _args: unknown) => {
+      if (fn === 'is_capability_exempt_format') {
+        if (opts.exemptThrows) throw new Error('stub exempt throw');
+        return opts.exempt ?? { data: false, error: null };
+      }
       if (opts.rpcThrows) throw new Error('stub rpc throw');
       return opts.rpc ?? { data: null, error: null };
     },
@@ -204,6 +212,70 @@ Deno.test('an unknown FUTURE status blocks by construction', async () => {
   const sb = stubClient({ rpc: { data: { status: 'some_status_invented_in_2027', reason_code: 'x' }, error: null } });
   const v = await classifyCapability(sb, ...CALL);
   assertEquals(isCapabilityReady(v), false);
+});
+
+// --- (6) template-less carve-out — PK ruling 2026-07-29, Option A ------------
+const NOT_READY: CapabilityVerdict = {
+  status: 'unsupported_silent_degrade', reason_code: 'format_unmapped',
+  routed_lane: 'enforcement_r3', evidence: null, error: null,
+};
+
+Deno.test('CARVE-OUT: a template-less format (render_engine=none) does NOT block despite non-ready', async () => {
+  __resetClientSlugCacheForTests();
+  const sb = stubClient({ exempt: { data: true, error: null } });
+  assertEquals(await isCapabilityExemptFormat(sb, 'text'), true);
+  assertEquals(await shouldBlockOnCapability(sb, NOT_READY, 'text'), false);
+});
+
+Deno.test('CARVE-OUT: a NON-exempt format still blocks on the same non-ready verdict', async () => {
+  __resetClientSlugCacheForTests();
+  const sb = stubClient({ exempt: { data: false, error: null } });
+  assertEquals(await shouldBlockOnCapability(sb, NOT_READY, 'video_short_avatar'), true);
+});
+
+Deno.test('CARVE-OUT: ready short-circuits BEFORE the exemption lookup (no extra round-trip)', async () => {
+  __resetClientSlugCacheForTests();
+  let exemptCalled = false;
+  const sb = stubClient();
+  sb.rpc = async (fn: string) => {
+    if (fn === 'is_capability_exempt_format') { exemptCalled = true; return { data: true, error: null }; }
+    return { data: READY, error: null };
+  };
+  const v = await classifyCapability(sb, ...CALL);
+  assertEquals(await shouldBlockOnCapability(sb, v, 'image_quote'), false);
+  assertEquals(exemptCalled, false, 'ready must not pay for an exemption lookup');
+});
+
+Deno.test('CARVE-OUT FAIL-CLOSED: an exemption lookup error/throw/non-true NEVER grants exemption', async () => {
+  for (const opts of [
+    { exempt: { data: null, error: { code: '42501', message: 'permission denied' } } },
+    { exemptThrows: true },
+    { exempt: { data: false, error: null } },
+    { exempt: { data: null, error: null } },
+    { exempt: { data: 'true', error: null } },   // string, not boolean true
+    { exempt: { data: 1, error: null } },
+  ]) {
+    __resetClientSlugCacheForTests();
+    const sb = stubClient(opts as any);
+    assertEquals(await isCapabilityExemptFormat(sb, 'text'), false, `${JSON.stringify(opts)} must not be exempt`);
+    assertEquals(await shouldBlockOnCapability(sb, NOT_READY, 'text'), true, 'unproven exemption must still block');
+  }
+});
+
+Deno.test('CARVE-OUT: an absent format is never exempt', async () => {
+  const sb = stubClient({ exempt: { data: true, error: null } });
+  assertEquals(await isCapabilityExemptFormat(sb, null), false);
+});
+
+Deno.test('CARVE-OUT: the exempt set is not hardcoded — the format string is passed straight through', async () => {
+  let seen: any = null;
+  const sb = stubClient();
+  sb.rpc = async (fn: string, args: any) => {
+    if (fn === 'is_capability_exempt_format') { seen = args; return { data: true, error: null }; }
+    return { data: null, error: null };
+  };
+  await isCapabilityExemptFormat(sb, 'some_future_templateless_format');
+  assertEquals(seen, { p_format: 'some_future_templateless_format' });
 });
 
 // --- (5) evidence string formats -------------------------------------------
