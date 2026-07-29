@@ -206,6 +206,61 @@ guarded insert, the v6.63 pattern) followed by a promotion — not a fence-flip.
 1080×1920 portrait and re-intake it as a new asset. **Editing `sfto` in place is not recommended** —
 it fixes the symptom and ships the upscale.
 
+## 12. ADDENDUM — Batch 3: intake + promote `31639439` · 🎯 **TARGET 6 REACHED**
+
+**PK instruction:** *"Intake and promote 31639439 to hit 6."* Executed as **two guarded applies** —
+a pool-neutral fenced intake (T2), then a promotion (T3) — not one combined write, so the
+pool-neutrality property of intake stayed provable.
+
+### 12.1 Geography corrected before insert
+
+The clip's Pexels **query tag was `adelaide australia aerial`**, but its **source title is
+`stunning-aerial-view-of-hurstville-at-sunset-31639439`** ⇒ it is **Hurstville, Sydney NSW**. Labelled
+`geo_scope='au_nsw_sydney_metro'`, never generic and never Adelaide. **Fourth independent instance this
+arc of a Pexels tag being wrong about geography.**
+
+### 12.2 Intake (T2, pool-neutral)
+
+`broll_pp_au_nsw_urban_centre` · native **1080×1920**, 51.6s, no audio, zero upscale · sha256
+`acb408d2…` **re-verified** and **byte-verified** local == public URL · full Pexels provenance.
+Collision checks all **CLEAN** (provider-ID, sha256, asset-key). Guards G0–G8; **G8 asserted pool
+neutrality — pool held at 5 across the intake.** All fences closed on insert.
+
+### 12.3 Promotion (T3) — pool 5 → 6
+
+Guards: G0 atomicity · G1 intake row present · G2 baseline pool==5 · G3 exactly 1 promoted (CAS-pinned)
+· G4 pool **exactly 6** · **G5 declared == resolver-reachable** (the guard added at v6.67) ·
+G6 the 16:9 Perth clip stays fenced · **G7 every eligible clip is native 1080×1920** (new — blocks the
+upscale-injection class directly) · G8 template winner unchanged.
+
+### 12.4 Live verification — 90 seeds
+
+| clip | geo_scope | dims | share |
+|---|---|---|---|
+| `broll_pp_generic_apartment_abstract` | `generic` | 1080×1920 | 20.0% |
+| `broll_pp_au_wa_perth_coastal` | `au_wa_perth` | 1080×1920 | 18.9% |
+| `broll_pp_au_nsw_urban_centre` | `au_nsw_sydney_metro` | 1080×1920 | 16.7% |
+| `broll_pp_au_suburb_aerial` | `au_nsw` | 1080×1920 | 15.6% |
+| `broll_pp_au_nsw_suburb_skyline` | `au_nsw_sydney_metro` | 1080×1920 | 14.4% |
+| `broll_pp_au_nsw_suburb_waterway` | `au_nsw_sydney_metro` | 1080×1920 | 14.4% |
+
+**Pool = 6, all `governed`, all native 1080×1920, all six resolver-reachable** (uniform expectation
+16.7%). **The ratified target of 6 is MET** — floor 4 met at v6.64, target 6 met here.
+
+### 12.5 ⚠ Geographic concentration — stated plainly
+
+**Four of the six clips are Sydney/Hurstville** (`au_nsw_sydney_metro` ×3 + `au_nsw` ×1 — all from the
+same suburb, three from the same creator). The pool is **6 distinct clips but only 3 distinct
+localities**: Sydney ×4, Perth ×1, generic ×1.
+
+Rotation is genuinely varied in *subject* (low-rise suburb aerial · waterway · CBD-skyline aerial ·
+mid-rise urban centre · coastal · architectural abstract), but a viewer seeing several PP videos will
+mostly see Hurstville. **Reaching the target did not fix the concentration** — a future batch should
+deliberately target non-Sydney, non-aerial footage (Melbourne/Brisbane/regional, street-level).
+
+Remaining fenced: `broll_pp_perth_skyline` (`42211c0f`) — still blocked as 16:9 requiring a ≈1.78×
+upscale (§11.2); **G7 now blocks its promotion mechanically**, not just by review.
+
 ## 9. Stop condition
 
 **Met.** Promotion applied, pool increase and rotation proven on live state, result recorded, committed,

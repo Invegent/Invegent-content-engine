@@ -6,6 +6,15 @@
 
 ---
 
+> **🎯 v6.69 — Governed B-roll: TARGET 6 REACHED — intake + promote `31639439` (T2 intake + T3 promotion; pool 5 → 6)** — record: `docs/briefs/results/broll-promotion-batch1-result.md` §12.
+> · Executed as **two guarded applies** — a **pool-neutral fenced intake** then a promotion — so intake's pool-neutrality stayed provable. New asset `broll_pp_au_nsw_urban_centre`: native **1080×1920**, 51.6s, zero upscale, sha256 re-verified + **byte-verified local == public URL**, all three collision checks CLEAN.
+> · **GEOGRAPHY CORRECTED BEFORE INSERT:** its Pexels query tag said `adelaide`, but the source title is `…hurstville-at-sunset-31639439` ⇒ labelled **`au_nsw_sydney_metro`**, never generic, never Adelaide. **4th instance this arc of a Pexels tag being wrong about geography.**
+> · **🏁 POOL = 6 — the ratified TARGET is MET** (floor 4 met at v6.64). Live verification over 90 seeds: 20.0 / 18.9 / 16.7 / 15.6 / 14.4 / 14.4 % — **all six resolver-reachable**, all `governed`, **all native 1080×1920**.
+> · **🔒 NEW GUARD G7: every eligible clip must be native 1080×1920.** This blocks the upscale-injection class MECHANICALLY, not just by review — `broll_pp_perth_skyline` (16:9, ≈1.78× upscale) can no longer be promoted even if its `sfto` were corrected. G5 (declared == resolver-reachable, added v6.67) also enforced.
+> · **⚠ CONCENTRATION — target reached, diversity NOT fixed.** **4 of 6 clips are Sydney/Hurstville** (3 from one creator): the pool is **6 distinct clips but only 3 distinct localities** (Sydney ×4 · Perth ×1 · generic ×1). Subject variety is real (suburb aerial · waterway · CBD skyline · mid-rise urban centre · coastal · architectural abstract), but viewers will mostly see Hurstville. A future batch should target non-Sydney, non-aerial footage.
+
+---
+
 > **✅ v6.68 — S9 Capability Enforcement Objective 2 (PUBLISHER chokepoint) APPLIED + DEPLOYED + PROVEN (T3 · SAFETY_GATE)** — result: `docs/briefs/results/s9-publisher-enforcement-build-result-v1.md`, packet: `docs/briefs/artifacts/s9-publisher-enforcement-apply-deploy-packet-v1.md` (rev 3).
 > · **LIVE — six guards, two boundaries:** cron 48 candidate filter (`faca2e87…`) · `m.gate_queue_on_asset_status` enqueue guard (`1dbfe725…`) · `m.publisher_lock_queue_v2` dequeue guard (`bd265650…`, inherited by FB+IG via the pure v1 wrapper and LI-zapier direct, **no EF change**) · `youtube-publisher` **v1.16.0** both entry paths (SELECT + atomic pre-claim, closing TOCTOU before the irreversible upload) · `m.auto_approver_fetch_drafts` (`2e64247e…`). Ledger rows written for BOTH migrations. Zero table DDL.
 > · **A capability-blocked draft can no longer publish on FB/IG/LI/YT — even if already approved.** Unknown draft provenance (NULL/dangling) fails closed and is RETAINED with a visible reason (PK ruling 1). Proven live in aborted txns: enqueue 0-inserted · dequeue blocked=0/ready=1/nullprov=0 · auto-approve ready=1/blocked=0. All four rollbacks proven exact.
