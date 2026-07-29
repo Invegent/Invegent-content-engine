@@ -6,6 +6,12 @@
 
 ---
 
+> **🎨 v6.61 — Creative Templates Dashboard + Seven-State Capability Correction LIVE (T2 · PRODUCT_PROOF; additive read-only RPCs applied + dashboard deploy, PK Gate-2 explicit)** — result: `docs/briefs/results/creative-template-portfolio-dashboard-result-v1.md`, brief: `docs/briefs/creative-template-portfolio-dashboard-gate1-v1.md`.
+> · New read-only "Creative Templates" tab on `/clients` (`invegent-dashboard` `aa8209f`, Vercel READY) backed by two new additive-only RPCs `get_creative_template_portfolio[/_summary]` (CE `dbe7956`, applied live to `mbkmaxqhsohbtwsqolns`) — per-template Lifecycle/Runtime dual-badge dossier, B-roll status card (saved 720×1280/8s vs effective 1080×1920/12s, one-clip pool warning), portfolio variety signal. Zero controls.
+> · Also ships the 7th `classify_format_capability` status, `publisher_path_missing`, in the dashboard (label-only, no new decision logic) — live-verified against `care-for-welfare-pty-ltd`×`youtube`.
+> · **Chain:** db-rls-auditor pass (1 blocking defect found+fixed live) · branch-warden safe ×2 (both repos) · external review 2 rounds, round 2 agree/zero pushback (`e34e2e42…`) · PK-explicit deploy authorization.
+> · **CARRY:** UI visual smoke pending PK's own login pass (dashboard is login-gated); DB-side + deploy-health verification complete and live-proven.
+
 > **🎬 v6.60 — B-roll Platform Suitability (facebook + instagram) v1 APPLIED (T3 · PRODUCT_PROOF; 2-row DML repoint, PK Gate-2 explicit)** — result: `docs/briefs/results/broll-suitability-fb-ig-v1-result.md`, packet: `docs/briefs/broll-suitability-fb-ig-v1-apply-packet.md`.
 > · **A REPOINT, not a no-op:** 2 rows INSERTed into `c.creative_template_platform_suitability` for `dd5fd75e`/`46c5c4ac` (`facebook`+`instagram`, `feed`, `candidate`) ⇒ **fb+ig move from the incumbent `video_stat_reveal_9x16_v2` to the governed B-roll template.** B-roll is `strong_candidate` vs the incumbent's `candidate` (demoted v6.54), so it outranks once the platform gate passes.
 > · **🔒 FIRST REAL USE OF TPR-1 ADDENDUM v1** (ratified this morning, v6.57). Three-surface effective-spec diff: outgoing `c11bb8ab` A=1080×1920/12s · B=absent · effective 1080×1920/12s (`provider_template_default`); incoming `46c5c4ac` A=720×1280/8s · B=overlay(1080×1920, `.duration=12` ×8 elements) · effective 1080×1920/12s (`render_time_parity_overlay`) ⇒ **`specs_match = TRUE`**. Registry row left untouched per TPR-1.c.
