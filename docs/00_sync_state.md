@@ -15,6 +15,13 @@
 
 ---
 
+> **📊 v6.71 — Client Platform Readiness Summary — dashboard-only, LIVE (T2 · PRODUCT_PROOF)** — result: `docs/briefs/results/client-platform-readiness-summary-result-v1.md`, brief: `docs/briefs/client-platform-readiness-summary-gate1-v1.md`. **(renumbered v6.70→v6.71 — v6.70 was already claimed by the NDIS Facebook containment-release lane, merged first.)**
+> · New read-only panel on `invegent-dashboard`'s `/clients` Schedule tab: one row per FIXED platform (facebook/instagram/linkedin/youtube), even with zero `c.client_publish_schedule` rows — closes the v6.65-flagged gap where `publisher_path_missing` had no dashboard surface. Reuses `classify_format_capability` via the existing, unmodified `getFormatCapabilityMap`/`CapabilityCell` — zero classifier/DB/grant change.
+> · **CFW proof:** YouTube row appears with zero schedule rows, shows `Publisher path missing` (not Unknown); FB/IG/LI unchanged. **PP proof:** all 4 platforms show real live readiness — surfaced a genuine, pre-existing, unremediated finding: PP's LinkedIn (`text`) and YouTube (`video_short_kinetic`) currently-allocated formats have no selectable template (`unsupported_silent_degrade`/`format_unmapped`), 69 + 28 posts published in the last 90 days on that ungoverned path. Live-reverified against the DB, not a panel bug.
+> · Merged `invegent-dashboard` `a8ebd05` onto `main` (fork `aa8209f`), Vercel `dpl_8R4hNrh5av4k6pDBY3Ueoudz6eUW` READY, zero build/runtime errors. Full chain clean: `db-rls-auditor` grounding, `ef-builder`, `branch-warden` safe, external review agree/proceed, explicit PK visual + deploy authorization (no gate bypass).
+
+---
+
 > **🎯 v6.69 — Governed B-roll: TARGET 6 REACHED — intake + promote `31639439` (T2 intake + T3 promotion; pool 5 → 6)** — record: `docs/briefs/results/broll-promotion-batch1-result.md` §12.
 > · Executed as **two guarded applies** — a **pool-neutral fenced intake** then a promotion — so intake's pool-neutrality stayed provable. New asset `broll_pp_au_nsw_urban_centre`: native **1080×1920**, 51.6s, zero upscale, sha256 re-verified + **byte-verified local == public URL**, all three collision checks CLEAN.
 > · **GEOGRAPHY CORRECTED BEFORE INSERT:** its Pexels query tag said `adelaide`, but the source title is `…hurstville-at-sunset-31639439` ⇒ labelled **`au_nsw_sydney_metro`**, never generic, never Adelaide. **4th instance this arc of a Pexels tag being wrong about geography.**
