@@ -1,0 +1,58 @@
+{
+  "results": {
+    "control_baked_only": {
+      "label": "control_baked_only",
+      "render_id": "92961a07-ea4c-4987-9694-c1b0d49f4bcd",
+      "wall_clock_s": 13.1,
+      "url": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/92961a07-ea4c-4987-9694-c1b0d49f4bcd.mp4",
+      "path": "C:\\Users\\parve\\Invegent-content-engine\\_harness\\cc_broll_activation_20260728\\renders\\control_baked_only.mp4",
+      "bytes": 4429318,
+      "sha256": "58fd69c13eb34da54c681c02722da65b4e8a06b4e18d3cb48c98c6ee72150882",
+      "audio": {
+        "handlers": [
+          "vide",
+          "soun",
+          "mdir"
+        ],
+        "has_soun": true,
+        "has_vide": true,
+        "duration": "00:00:08.00",
+        "video_stream": "Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(progressive), 720x1280, 4141 kb/s, 30 fps, 30 tbr, 15360 tbn (default)",
+        "audio_stream": "Stream #0:0(und): Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s (default)",
+        "integrated_lufs": "-29.0 LUFS",
+        "true_peak": "-16.8 dBFS"
+      }
+    },
+    "production_shape_with_audio": {
+      "label": "production_shape_with_audio",
+      "render_id": "12e89f92-9493-4d03-af84-ac26500c0ffd",
+      "wall_clock_s": 13.1,
+      "url": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/12e89f92-9493-4d03-af84-ac26500c0ffd.mp4",
+      "path": "C:\\Users\\parve\\Invegent-content-engine\\_harness\\cc_broll_activation_20260728\\renders\\production_shape_with_audio.mp4",
+      "bytes": 4319468,
+      "sha256": "99f38d0e142e3710e888dac1b41551d199d2848fb28cdd27a32a56ad9f6606ef",
+      "audio": {
+        "handlers": [
+          "vide",
+          "soun",
+          "mdir"
+        ],
+        "has_soun": true,
+        "has_vide": true,
+        "duration": "00:00:08.00",
+        "video_stream": "Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(progressive), 720x1280, 4141 kb/s, 30 fps, 30 tbr, 15360 tbn (default)",
+        "audio_stream": "Stream #0:0(und): Audio: pcm_s16le, 48000 Hz, stereo, s16, 1536 kb/s (default)",
+        "integrated_lufs": "-27.4 LUFS",
+        "true_peak": "-13.0 dBFS"
+      }
+    }
+  },
+  "verdict": {
+    "byte_identical": false,
+    "control_sha": "58fd69c13eb34da54c681c02722da65b4e8a06b4e18d3cb48c98c6ee72150882",
+    "production_sha": "99f38d0e142e3710e888dac1b41551d199d2848fb28cdd27a32a56ad9f6606ef",
+    "control_lufs": "-29.0 LUFS",
+    "production_lufs": "-27.4 LUFS",
+    "audio_keys_bind": true
+  }
+}
