@@ -83,11 +83,11 @@ overridden the first we would have seen `ndis-yarns + invegent`. Both YouTube gu
 
 | Artifact | sha256 |
 |---|---|
-| `supabase/migrations/20260729173000_s9_publisher_enforcement.sql` | *(recompute at freeze)* |
-| `supabase/migrations/ROLLBACK_20260729173000_s9_publisher_enforcement.sql` | *(recompute at freeze)* |
-| `supabase/migrations/20260729183000_s9_cron48_capability_filter.sql` | *(recompute at freeze)* |
-| `supabase/migrations/ROLLBACK_20260729183000_s9_cron48_capability_filter.sql` | *(recompute at freeze)* |
-| `supabase/functions/youtube-publisher/index.ts` (v1.16.0) | *(recompute at freeze)* |
+| `supabase/migrations/20260729173000_s9_publisher_enforcement.sql` | `536d128f6d8227f1f47c7796705a9e48944eb9d409ebb10af625f89ac8ce0a50` |
+| `supabase/migrations/ROLLBACK_20260729173000_s9_publisher_enforcement.sql` | `1efe88b0088ed0df9b526756ae99a55805e6fe17c5ad05b5aaa7fcd8e070a4a7` |
+| `supabase/migrations/20260729183000_s9_cron48_capability_filter.sql` | `3d581850dfdccd5ec76dcce207e5b163b20a5abdcc3402fa5de4c28adc49ad40` |
+| `supabase/migrations/ROLLBACK_20260729183000_s9_cron48_capability_filter.sql` | `03a3e5a1bc46b850f58a3e8f4cca5fd61ce870a1b1a17d61b5ceb0cbeb70534c` |
+| `supabase/functions/youtube-publisher/index.ts` (v1.16.0) | `a4c96cdbb5d3bf2aeda597b29721b8c4655ae31d3b3fd61c91c4d344888de50a` |
 
 > **⚠ LINE ENDINGS (`db-rls-auditor` F-3).** The repo sets `* text=auto`: git stores **LF**, Windows checks
 > out **CRLF**. Verify with `git show HEAD:<path> | sha256sum`, never by hashing the working-tree file.
