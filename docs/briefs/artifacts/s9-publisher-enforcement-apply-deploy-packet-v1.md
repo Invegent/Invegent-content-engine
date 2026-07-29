@@ -184,6 +184,23 @@ draft stays `'draft'` and cron 48's `approval_status IN (...)` filter already ex
 therefore requires a draft blocked **after** approval, or manually approved. Narrower than first stated,
 but real — and the manual approve path reaches it.
 
+## 7b. External review — CLEAN
+
+| Field | Value |
+|---|---|
+| `review_id` | `08661e17-7bb9-420a-b88c-f15c5590ef32` |
+| `reviewed_input_sha256` | `ce3785bf6c8c2ad84640d6e793a785d7d40538afa24d424dc86590881f6163fa` |
+| Verdict | **`agree`** · risk **medium** · confidence **high** · **zero pushback points** · `requires_pk_escalation = false` |
+| Bridge decision | **`proceed`** — "Reviewer agrees; safe to proceed" |
+
+`verified_claims`: no new objects and no DDL/GRANT changes · all changes purely additive with rollbacks
+that are true inverses · enforcement inert on day 1 · self-verifying md5 guards correctly implemented
+with rollback mechanisms. **No `unverified_claims`, no assumptions, no corrected_action.**
+
+Per CCF-02 this is a clean verdict requiring no triage routing — the first fully clean external review
+in the S9 arc. The chain is now complete: `db-rls-auditor` re-audit `concerns`/**zero must-fix**,
+`branch-warden` lane-clean, external review `agree`. **The remaining gate is PK's.**
+
 ## 8. Carries (not fixed here)
 
 1. **F-4** — `draft_approve_and_enqueue_scheduled` returns `ok:true` even when the enqueue row was
