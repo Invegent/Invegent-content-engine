@@ -6,6 +6,13 @@
 
 ---
 
+> **✅ v6.55 — Brand Host Voice governed dashboard config LIVE (T3 · PRODUCT_PROOF; migration + EF deploy + dashboard deploy, PK Gate 1+2 both explicit)** — brief: `docs/briefs/cc-0086-brand-host-voice-config-brief-v1.md`, result: `docs/briefs/results/cc-0086-brand-host-voice-config-result-v1.md`.
+> · `c.client_voice_config` (2 rows: property-pulse, ndis-yarns; already read live by `video-worker`'s `resolveGovernedVoice`) gains its first RPC/dashboard surface: `get_voice_config`/`save_voice_config` (SECURITY DEFINER, service_role-only, upsert-capable) + append-only audit table `c.client_voice_config_change_log`, applied CE `32a1081`; `voice-preview` EF deployed (`verify_jwt=true`, v1); dashboard "Brand Host Voice" tab on `/clients` deployed (`invegent-dashboard` `80e7185`, production READY).
+> · **Chain:** branch-warden safe · db-rls-auditor pass (after an atomicity fix — explicit BEGIN/COMMIT + defensive REVOKE) · apply-harness-auditor PASS (shadow) · security-auditor GREEN · external review `partial` → PK-resolved policy point (ship as-is) · post-apply no-regression proof: PP/NDIS rows byte-identical to baseline, `voice_id_test.ts` 7/7, `video-worker` untouched.
+> · **CARRY:** `voice-preview` accepts any valid project JWT (incl. public anon key) — cost/abuse-only, no data exposure, PK-elected to track a role-check/rate-limit hardening item separately, not blocking.
+
+---
+
 > **🎬 v6.54 — B-roll PARITY Activation v1 LIVE (T3 · PRODUCT_PROOF; EF deploy + 3-row DML repoint)** — result: `docs/briefs/results/broll-parity-activation-v1-result.md`, packet: `docs/briefs/broll-parity-activation-v1-apply-packet.md`.
 > · **PP governed `video_short_stat` now defaults to the governed B-roll footage template** (`dd5fd75e`/`46c5c4ac`) at the incumbent's FULL output contract **1080×1920/12s** — closing the 720p/8s regression that forced the v6.48 rollback. video-worker **v3.15.0** (`d5ddca1`) adds a render-time output-parity overlay: allow-list of exactly ONE `provider_template_id`, merged BEFORE governed bindings, with a disjointness guard so it can never displace a resolver-selected asset. Every other template renders byte-unchanged.
 > · **Evidence:** 142/142 hermetic · TPR-1 diff measured on BOTH sides (`specs_match=true`) · post-activation render on the REAL production signature = 1080×1920/12.00s, −22.9 LUFS, 25.7s, **byte-identical** to the PK-approved pre-apply render · rollback proven BEFORE apply (digest-exact, zero prod effect) · external review 2 rounds, no concrete defect.
