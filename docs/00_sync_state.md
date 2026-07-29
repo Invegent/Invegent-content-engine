@@ -6,6 +6,15 @@
 
 ---
 
+> **🟢 v6.70 — NDIS **FACEBOOK** CONTAINMENT RELEASED (T3 · SAFETY_GATE; 1-row DML, PK Gate-2 explicit)** — result: `docs/briefs/results/s9-facebook-containment-release-result-v1.md`, packet: `docs/briefs/s9-facebook-containment-release-packet-v1.md`.
+> · **`c.client_publish_profile d469a8f3…` (ndis-yarns·facebook) `paused_until` 2027-01-01 → NULL.** First of the four platforms to come out of the 2026-07-28 containment. **instagram / linkedin / youtube REMAIN PAUSED at 2027-01-01** (re-asserted inside the same transaction).
+> · **Self-verifying apply, 3 in-transaction STOPs:** all five enforcement identities asserted (`publisher_lock_queue_v2 bd265650…` · `gate_queue_on_asset_status 1dbfe725…` · `auto_approver_fetch_drafts 2e64247e…` · `fill_pending_slots b56bbd30…` · cron 48 `faca2e87…`) · target row had to be exactly 2027-01-01 · `ROW_COUNT=1` + other three still paused.
+> · **Release backtest (pre-apply, aborted txn, live enforcement, pause simulated lifted): `blocked_draft_dequeued=0`, `ready_draft_dequeued=1`** — the blocked row was scheduled EARLIER, so absent the guard it would have been picked first. All eight applicable §5 criteria met.
+> · **The ONLY behavioural change is `carousel` stops** (7 publishes/90d, `no_selectable_template` — a genuine silent-degrade cell). NDIS Facebook's reachable palette is exactly 3 formats: `image_quote` ready (49/90d) ✓ · `text` exempt via the template-less carve-out (21/90d) ✓ · `carousel` BLOCKED. **70 of the last 77 FB publishes unaffected.** PK accepted carousel stopping; those occasions are terminal (ruling 1).
+> · **⚠ Recorded caveat: `classify_format_capability` does NOT consult `platform_support`, so `ready` ≠ reachable.** `video_short_stat` classifies ready for ndis-yarns/facebook (with `platform_suitability_unproven` + `platform_scope_unbacked` warnings) but is unreachable — `platform_support.facebook=false` and ai-worker filters the palette on it. **NEXT: Instagram** (own evidence pass; its carousel is its own cell). Rollback = restore `paused_until`, one column.
+
+---
+
 > **🎯 v6.69 — Governed B-roll: TARGET 6 REACHED — intake + promote `31639439` (T2 intake + T3 promotion; pool 5 → 6)** — record: `docs/briefs/results/broll-promotion-batch1-result.md` §12.
 > · Executed as **two guarded applies** — a **pool-neutral fenced intake** then a promotion — so intake's pool-neutrality stayed provable. New asset `broll_pp_au_nsw_urban_centre`: native **1080×1920**, 51.6s, zero upscale, sha256 re-verified + **byte-verified local == public URL**, all three collision checks CLEAN.
 > · **GEOGRAPHY CORRECTED BEFORE INSERT:** its Pexels query tag said `adelaide`, but the source title is `…hurstville-at-sunset-31639439` ⇒ labelled **`au_nsw_sydney_metro`**, never generic, never Adelaide. **4th instance this arc of a Pexels tag being wrong about geography.**
