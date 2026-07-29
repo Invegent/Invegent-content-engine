@@ -6,6 +6,17 @@
 
 ---
 
+> **🎬 v6.63 — Governed B-roll FENCED INTAKE Batch 1 APPLIED (T2 · PRODUCT_PROOF; 4-row additive DML + 4 storage objects; pool-neutral)** — result: `docs/briefs/results/broll-fenced-intake-batch1-result.md`.
+> · **4 (not 5) governed-but-FENCED B-roll rows registered** for Property Pulse — `broll_pp_au_wa_perth_coastal` (`au_wa_perth`) · `broll_pp_generic_apartment_abstract` (**`generic`**) · `broll_pp_au_nsw_suburb_waterway` + `broll_pp_au_nsw_suburb_skyline` (`au_nsw_sydney_metro`). All: `usage='broll_background'`, `sfto='needs_scrim'`, `platform_scope={facebook,instagram,youtube}`, full Pexels provenance + byte-verified sha256, **all four fences CLOSED**.
+> · **⛔ PK's provider-ID collision guard FIRED on a real collision — candidate `31663307` DROPPED.** It is the **live production clip** `2d62b04e` re-downloaded at a different rendition ⇒ **sha256 DIFFERS** (`6ff304e5…` vs `4c89358d…`), so **a sha-only dedup would NOT have caught it**. Had it landed and been promoted, the rotation pool would hold the SAME footage twice — silently defeating rotation.
+> · **Census reconciled (PK precondition):** the missing 14th is `31639439` — a 4th bucket omitted from the 5/1/7 summary. Reviewed for the first time: **AU-authentic, clean, mid-rise urban centre**; the original "surplus same-look" reason was NOT evidence-based and is **withdrawn**. Final disposition **HELD, quality-eligible, batch-2 candidate**. 5+1+7+1 = 14 exact.
+> · **All 10 guards passed** (G0 atomicity · G1 client identity · **G2 provider-ID** · G3 asset-key · G4 sha256 · G5 live baseline · G6 exactly-4-all-fenced · **G7 pool neutrality** · G8 winner unchanged · G9 none resolver-reachable). Storage byte-verified BEFORE insert. **Rollback proven before apply** (`ROLLBACK_PROOF_PASSED`, real rollback body, zero prod effect).
+> · **Verified post-apply: eligible pool STILL 1 · resolver REJECTS all 4 · production winner + resolver pick unchanged.** Intake is NOT promotion.
+> · **PK VISUAL GATE OPEN.** Recommended promotion ranking for diversity: **1** Perth coastal (different state+subject, best text-safety) · **2** apartment abstract (only non-aerial, geo-neutral) · **3** Sydney waterway. Ranks 1–3 take the pool **1 → 4**. **⚠ Both Sydney candidates are Hurstville — same suburb as the incumbent clip**; promoting all four gives 3 Hurstville aerials, hence rank 4 last.
+> · **CARRIES:** `label_constraint` is documentation only (**no renderer reads geo labels** — carry C1) · storage-object deletion is separate from the SQL rollback · `original_download_url` not captured in the harvest manifest (all other provenance complete).
+
+---
+
 > **🗄️ v6.62 — Creatomate Global: Current Migration Integrity Closeout v1 (T1 · SAFETY_GATE; docs-only, no DB mutation)** — result: `docs/briefs/results/creatomate-migration-integrity-closeout-v1-result.md`.
 > · Closes the two carries `cc-0087` flagged out of scope: the B-roll `46c5c4ac` activation arc (3 already-applied DML changes — fit-status repoint, `platform_scope` correction, fb/ig suitability insert — none had a git-tracked migration file) now has 3 reconciliation files; the six ledger/filename version mismatches now have one authoritative mapping (5 documentation-only, `gcp_slice3` renamed — it was never git-tracked and had zero citations, unlike the other five which are cited by docs/code/an adjacent migration).
 > · Zero live DB mutation, zero template/selector/worker change, zero replay of already-applied SQL. Next Creatomate Global outcome: Static Template Graduation Batch 1.
