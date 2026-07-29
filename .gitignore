@@ -16,3 +16,9 @@ supabase/.branches
 Thumbs.db
 .vscode/
 .idea/.claude/
+
+# Scratch / proof harness output (large, transient, never shipped)
+_harness/
+
+# Local Desktop/repo health-check routine output (machine-local, never shipped)
+docs/runtime/health/
