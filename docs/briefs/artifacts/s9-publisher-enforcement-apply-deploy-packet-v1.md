@@ -1,6 +1,6 @@
 # S9 Publisher Enforcement (Objective 2) — Apply / Deploy / Rollback packet
 
-**Rev 2 (2026-07-29)** — incorporates the `db-rls-auditor` F-1 starvation defect (PK ruling: **option (a)**,
+**Rev 3 (2026-07-29)** — incorporates the `db-rls-auditor` F-1 starvation defect (PK ruling: **option (a)**,
 filter cron 48 and keep the trigger) and closes F-2 with live evidence.
 
 **Lane:** S9 Capability Enforcement · Objective 2 (publisher chokepoint)
@@ -83,10 +83,10 @@ overridden the first we would have seen `ndis-yarns + invegent`. Both YouTube gu
 
 | Artifact | sha256 |
 |---|---|
-| `supabase/migrations/20260729173000_s9_publisher_enforcement.sql` | `536d128f6d8227f1f47c7796705a9e48944eb9d409ebb10af625f89ac8ce0a50` |
-| `supabase/migrations/ROLLBACK_20260729173000_s9_publisher_enforcement.sql` | `1efe88b0088ed0df9b526756ae99a55805e6fe17c5ad05b5aaa7fcd8e070a4a7` |
-| `supabase/migrations/20260729183000_s9_cron48_capability_filter.sql` | `3d581850dfdccd5ec76dcce207e5b163b20a5abdcc3402fa5de4c28adc49ad40` |
-| `supabase/migrations/ROLLBACK_20260729183000_s9_cron48_capability_filter.sql` | `03a3e5a1bc46b850f58a3e8f4cca5fd61ce870a1b1a17d61b5ceb0cbeb70534c` |
+| `supabase/migrations/20260729173000_s9_publisher_enforcement.sql` | `6d07e49960cc6e1ef04b74b84fb5de3a6ce7e1dfedcd4b1f91b7fec71826931b` |
+| `supabase/migrations/ROLLBACK_20260729173000_s9_publisher_enforcement.sql` | `66c677641c28c14d5a469dc245f5a5fcef95859d0197d7de511b2ddfae4ca8f1` |
+| `supabase/migrations/20260729183000_s9_cron48_capability_filter.sql` | `c73ae9a5f532e4c1a700530175ee79f4588ce89979e2eb75167cec3a31d75864` |
+| `supabase/migrations/ROLLBACK_20260729183000_s9_cron48_capability_filter.sql` | `7c0537821dd76f314f2ee48813447fa0610dee0f7ed11555a3ea964a0f538757` |
 | `supabase/functions/youtube-publisher/index.ts` (v1.16.0) | `a4c96cdbb5d3bf2aeda597b29721b8c4655ae31d3b3fd61c91c4d344888de50a` |
 
 > **⚠ LINE ENDINGS (`db-rls-auditor` F-3).** The repo sets `* text=auto`: git stores **LF**, Windows checks
