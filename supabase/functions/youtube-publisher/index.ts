@@ -1,4 +1,4 @@
-// youtube-publisher v1.15.0
+// youtube-publisher v1.16.0
 // v1.14.0 (F-YT-RELEASE-CONTROL) — publish only at the authorised release time. Until now youtube-publisher
 //   was a direct-read publisher whose draft SELECT had NO release-time gate: it published any eligible draft on
 //   the next tick regardless of scheduled_for. v1.14.0 adds a release-time gate in TWO layers:
@@ -112,7 +112,25 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { requireAssetPresent } from './asset_backstop.ts';
 
-const VERSION = 'youtube-publisher-v1.15.0';
+const VERSION = 'youtube-publisher-v1.16.0';
+// v1.16.0 (2026-07-29) — S9 CAPABILITY ENFORCEMENT, Objective 2 (publisher chokepoint).
+//   marker: youtube-publisher-s9-capability-enforcement (grep-able in the deployed bundle).
+//   Brief: docs/briefs/s9-publisher-enforcement-build-brief-v1.md
+//   WHY YOUTUBE IS SPECIAL: every other publisher dequeues through m.publisher_lock_queue_v2, which
+//   now carries a DB-side capability guard those three inherit for free. This publisher does a DIRECT
+//   READ on m.post_draft and never touches that queue, so it needs its own enforcement — in TWO places,
+//   because it has two entry points:
+//     (1) the draft SELECT gains an exclusion on final_format_authority;
+//     (2) the atomic pre-claim UPDATE — "the last guard before the irreversible public upload" — carries
+//         the SAME predicate, closing the TOCTOU window between SELECT and claim. A cheap in-loop check
+//         runs first so the ordinary case logs a precise reason; the claim predicate is what makes it safe.
+//   NULL HANDLING IS LOAD-BEARING: the filter is `.or(is.null, neq)`, never a bare `.neq`. NULL is the
+//   normal state for a healthy draft, and PostgREST `neq` does not match NULL, so a bare neq would have
+//   silently stopped ALL YouTube publishing.
+//   Blocked drafts are skipped, never mutated: no video_status change, no approval_status change, no
+//   publish-failure status — capability blocking stays distinct from render/approval/publish failure.
+const S9_PUBLISHER_MARKER = 'youtube-publisher-s9-capability-enforcement';
+const CAPABILITY_BLOCKED = 'blocked_by_capability';
 // v1.15.0 (2026-07-27, F-YT-PUBLISH-CLAIM) — close the concurrent-double-PUBLIC-publish race with an
 //   ATOMIC single-row claim immediately before uploadToYouTube. The existing m.post_publish idempotency
 //   reconcile guard only catches a COMPLETED prior publish (a landed row), NOT a CONCURRENT one: two
@@ -295,9 +313,16 @@ Deno.serve(async (req: Request) => {
   //   only eligible when scheduled_for IS NULL (non-scheduled / studio drafts — today's behaviour) OR
   //   scheduled_for <= now (its authorised release time has arrived). NULL preserves the pre-v1.14.0 path,
   //   matching the enqueue cron's COALESCE(pd.scheduled_for, NOW()); a future scheduled_for now waits.
+  // v1.16.0 (S9 OBJECTIVE 2 — ENTRY PATH 1 of 2, marker youtube-publisher-s9-capability-enforcement): exclude
+  // capability-blocked drafts. This publisher BYPASSES m.publisher_lock_queue_v2 entirely (direct
+  // read), so the shared DB-side dequeue guard that protects facebook/instagram/linkedin cannot see
+  // it — YouTube needs its own exclusion here AND a re-check at the claim below.
+  // `.or(is.null, neq)` is deliberate: a plain `.neq` would drop rows where the column IS NULL,
+  // which is the NORMAL state for every healthy draft, so a bare neq would silently stop all
+  // YouTube publishing. NULL means "never classified" and must remain eligible.
   const releaseCutoff = nowIso();
   const { data: drafts } = await supabase.schema('m').from('post_draft')
-    .select('post_draft_id, platform, client_id, draft_title, draft_body, recommended_format, video_url, video_status, draft_format, approval_status, scheduled_for')
+    .select('post_draft_id, platform, client_id, draft_title, draft_body, recommended_format, video_url, video_status, draft_format, approval_status, scheduled_for, final_format_authority')
     .eq('platform', 'youtube')
     .eq('video_status', 'generated')
     .in('approval_status', ['approved', 'published'])
@@ -305,6 +330,7 @@ Deno.serve(async (req: Request) => {
     .not('video_url', 'is', null)
     .in('recommended_format', ELIGIBLE_FORMATS)
     .or(`scheduled_for.is.null,scheduled_for.lte.${releaseCutoff}`)
+    .or(`final_format_authority.is.null,final_format_authority.neq.${CAPABILITY_BLOCKED}`)
     .limit(SELECT_LIMIT);
 
   // v1.8.0: best-effort preload of channel holds (paused_until). Correctness does NOT depend on this —
@@ -406,12 +432,26 @@ Deno.serve(async (req: Request) => {
     // Under READ COMMITTED the loser's WHERE re-evaluates after the winner commits -> 0 rows -> it yields.
     // video_status stays 'generated'; the marker is auto-dropped by every downstream draft_format rebuild
     // from `df`. Timestamps are ISO-8601-Z (lexicographic == chronological).
+    // v1.16.0 (S9 OBJECTIVE 2 — ENTRY PATH 2 of 2): capability re-check at the claim.
+    // (i) Cheap check on the row already read, so the ordinary case logs a precise reason.
+    if (draft.final_format_authority === CAPABILITY_BLOCKED) {
+      console.log(`[youtube-publisher] ${S9_PUBLISHER_MARKER} skipped:capability_blocked post_draft_id=${draft.post_draft_id} format=${draft.recommended_format}`);
+      results.push({ post_draft_id: draft.post_draft_id, status: 'skipped', reason: 'capability_blocked' });
+      continue;
+    }
+
     const claimStaleCutoff = futureIso(-YT_PUBLISH_CLAIM_TTL_MIN * 60 * 1000);
     const { data: claimRows, error: claimErr } = await supabase.schema('m').from('post_draft')
       .update({ draft_format: { ...df, yt_publish_claim_at: nowIso() }, updated_at: nowIso() })
       .eq('post_draft_id', draft.post_draft_id)
       .eq('video_status', 'generated')
       .is('draft_format->youtube_video_id', null)
+      // (ii) TOCTOU closure: the SELECT above and check (i) both ran BEFORE this claim, so a draft
+      // blocked in the interval would still reach the irreversible upload. Carrying the predicate
+      // INSIDE the atomic claim UPDATE means a draft blocked between SELECT and claim yields 0 rows
+      // and the loop yields — exactly the pattern this file already uses for video_status and the
+      // youtube_video_id guard, extended to capability.
+      .or(`final_format_authority.is.null,final_format_authority.neq.${CAPABILITY_BLOCKED}`)
       .or(`draft_format->>yt_publish_claim_at.is.null,draft_format->>yt_publish_claim_at.lt.${claimStaleCutoff}`)
       .select('post_draft_id');
     if (claimErr) {
