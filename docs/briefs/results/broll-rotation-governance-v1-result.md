@@ -3,9 +3,10 @@ CLAIMED · broll-rotation-governance-v1 · main-checkout `C:\Users\parve\Invegen
 # Result — Governed Creatomate B-roll: Rotation Governance v1 (PRE-APPLY)
 
 **Date:** 2026-07-29 Sydney · **Lane:** SAFETY_GATE · **Tier: T3**
-**Status:** **BUILT + DRY-RUN PROVEN + ROLLBACK VALIDATED + BOTH REVIEW GATES CLEAN — NOT APPLIED.**
-Stops at the PK apply gate exactly as instructed. Artifact hashes: migration `8c32c08259bb0767` ·
-rollback `f74353d587fff290`.
+**Status:** ✅ **APPLIED AND PROVEN IN PRODUCTION** (PK-authorised T3 apply, 2026-07-30).
+Migration ledger `20260729225034_resolve_slot_assets_v1_5_rotation_governance`.
+Artifact hashes: migration `8c32c08259bb0767` (**the exact hash PK pinned**) · rollback
+`f74353d587fff290`. **The applied `prosrc` is byte-identical to the approved artifact** — see §10.1.
 **Brief:** `docs/briefs/broll-rotation-governance-v1-brief.md`
 **Artifacts:** `docs/briefs/artifacts/broll-rotation-governance-v1-migration.sql` ·
 `docs/briefs/artifacts/broll-rotation-governance-v1-rollback.sql`
@@ -290,5 +291,94 @@ explicit "do not append after `COMMIT`" instruction.
 
 ## 9. Stop condition
 
-**Met.** Artifacts built, proven, rollback validated, records written, committed and pushed.
-**The apply is PK's.** Nothing in production has changed.
+**Met, then superseded by the PK-authorised apply.** See §10.
+
+---
+
+## 10. POST-APPLY — applied 2026-07-30 under explicit PK authorisation
+
+PK approved the T3 apply pinned to hash `8c32c08259bb0767`, requiring the explicit `BEGIN/COMMIT`,
+the copy-geography row-count guard, the 90-day bounded history query and sticky-retry behaviour to be
+preserved. All four were verified present **before** the apply, along with hash equality, branch
+`main` / HEAD `36c601e` / parity 0-0, and a clean artifact working tree.
+
+Applied via `apply_migration` (the sanctioned channel) → ledger version **`20260729225034`**.
+The SQL is now also tracked at
+`supabase/migrations/20260729225034_resolve_slot_assets_v1_5_rotation_governance.sql`
+(+ its `ROLLBACK_` pair), byte-identical to the artifact — closing the ledger-vs-git drift the audit
+flagged as a closeout item.
+
+### 10.1 The hash pin was honoured, and proven — not asserted
+
+The only write channel requires the SQL to be inlined, so byte-fidelity could not be guaranteed *by
+construction*. It was therefore verified immediately after apply against `pg_proc.prosrc` (the exact
+body Postgres stores):
+
+| Function | Expected | Live | Verdict |
+|---|---|---|---|
+| `resolve_slot_assets` | 27007 chars, md5 `6748a19432c3beea5108dff9128ded51` | identical | ✅ **byte-identical to `8c32c08259bb0767`** |
+| `geo_relation` | 1318 chars, md5 `0701c44493ca661d2df8fdc538791d22` | identical | ✅ byte-identical |
+
+Both `STABLE SECURITY DEFINER`, `search_path=''`, ACL `postgres=X/postgres | service_role=X/postgres`
+— **no anon, no authenticated**. Had this mismatched, the proven rollback was ready; it did not.
+
+### 10.2 Post-apply proof list — every item PK required
+
+| # | Required proof | Result | Verdict |
+|---|---|---|---|
+| 1 | Eligible pool remains six | `pool_eligible=6` on all 120 sweep calls | ✅ |
+| 2 | Declared pool == resolver-reachable pool | 6 declared / 6 reachable | ✅ |
+| 3 | All six clips remain reachable | 6 distinct over 120 seeds, and 6 again inside a 60-render sequence | ✅ |
+| 4 | Immediate predecessor excluded | verified on **all 59 transitions** of a production-shaped sequence | ✅ |
+| 5 | Two most recent excluded when alternatives exist | `recent_use_level=excluded_2` throughout | ✅ |
+| 6 | Retry of same draft returns same clip | ✅ **with a named limit — see §10.3** | ✅ scoped |
+| 7 | New drafts still rotate | **0 consecutive repeats** across 60 real draft IDs | ✅ |
+| 8 | Incompatible locality footage never selected | live: only `generic_asset` / `asset_narrower_than_copy` ever chosen. Forced Perth copy → **4 `geo_conflict` rejects** (all Sydney clips), pick constrained to `au_wa_perth`/`generic` | ✅ |
+| 9 | Unknown / general-AU copy uses only AU-safe or generic footage | live `copy_geo=au`, `copy_geo_declared=true`. Declaration deleted → pool→1, picked `generic`, `copy_geography_undeclared` warning raised | ✅ |
+| 10 | Empty compatible pool fails closed as asset shortage | `fail_closed` / `no_geo_compatible_background` / **nothing bound** / `fallback_reason=asset_shortage_no_geo_compatible_clip` | ✅ |
+| 11 | Output remains 1080×1920 / 12s | `B1_VIDEO_GOVERNED_OUTPUT_SPEC = {1080,1920,12}` unchanged; parity overlay still keyed to winner `46c5c4ac`; **video-worker source unmodified, VERSION `v3.15.0`, no EF deployed** | ✅ |
+| 12 | Voice, music, logo, template winner unchanged | winner still `46c5c4ac`/`dd5fd75e`; `Logo.source` identical to baseline and to `brand_logo_url`; resolver binds **only** `Logo.source` + `Background.source` — no voice/music key exists in its output, and no worker deploy occurred | ✅ |
+| 13 | Rollback restores exact prior resolver body and behaviour | proven in an aborted transaction **after** apply: v1.5 markers gone · pick for seed `rb-seed` returns `broll_pp_au_nsw_urban_centre`, matching the pre-apply baseline exactly · ACL preserved · all 4 created objects removed | ✅ |
+
+Also verified: **zero DML on `c.client_brand_asset`** (7 B-roll rows, 6 eligible — unchanged) ·
+both new tables have RLS enabled and grant **nothing** to anon/authenticated (`service_role=r`,
+`inspector_ro=r` only, exactly as the audit predicted) · the declaration row is
+`property-pulse / video_short_stat / au / by PK`.
+
+**Advisor delta — exactly the prediction, nothing else:** `rls_enabled_no_policy` 58 → **60 (+2)`;
+`function_search_path_mutable` 92 → 92; `anon_security_definer_function_executable` 41 → 41;
+`authenticated_…` 50 → 50; `security_definer_view` 3 → 3. `geo_relation` and `resolve_slot_assets`
+appear in **zero** findings.
+
+### 10.3 ⚠️ Proof 6 needs a precise statement — the first test of it FAILED
+
+An early version of this check failed and the failure was real, not a bad test. Reported exactly:
+
+- **Retry with nothing intervening (the actual production path — video-worker's 2-minute render
+  timeout then retry): PASSES, and structurally so.** Stickiness removes the draft's own history row,
+  which restores precisely the exclusion set the original resolution saw ⇒ same pool, same history,
+  same seed, same pick. Proven under an **active** exclusion set (`excluded_2` with two real clips
+  excluded), not just the trivial empty case.
+- **Retry after other successful renders have landed in between: the clip MAY differ.** Measured: with
+  59 intervening renders the retry returned `broll_pp_au_wa_perth_coastal` where the original had been
+  `broll_pp_au_nsw_suburb_skyline`. The exclusion window has moved on, so the seeded index lands
+  elsewhere. A 2-intervening-render case happened to return the same clip — **that was coincidence
+  over a 4-element list, not a guarantee**, and is recorded as such.
+
+So the honest claim is: **"a retry reproduces the same clip provided no other successful render for
+the same client+format has landed in between."** That covers the real retry path. The earlier
+unqualified wording in this document ("re-rendering the SAME draft reproduces the SAME clip") was too
+strong and is corrected here. Selection is always **deterministic** given (pool, history, seed).
+
+**If unconditional retry-identity is wanted, the mechanism cannot deliver it** — it would require
+persisting the chosen asset on the draft and re-reading it, instead of recomputing. That is a
+separate design change and is **not** in the applied artifact. Flagged for PK; not silently added.
+
+### 10.4 What is now live
+
+Governed PP `video_short_stat` B-roll selection excludes the two most recently used clips, filters
+geography by structured containment, fails closed on shortage, and stamps
+`geo_class` / `geo_copy` / `geo_compat` / `recent_use` / `pool_eligible` / `pool_after_geo` /
+`pool_after_recent` (+ `fallback:` when one fires) into `render_spec.template.tmr` on every render —
+with no worker change and no edge-function deploy. The three carried should-fix items (runbook §1.1)
+remain carried and unchanged by the apply.
