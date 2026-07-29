@@ -151,6 +151,12 @@ export type B1Fields = {
   // by design so every existing caller/consumer is unchanged.
   attribution?: string;
   source_label?: string;
+  // OPTIONAL per-winner values (not required_for_render — confirmed live via
+  // c.creative_provider_template_field for announcement_card / carousel_cover). Unlike
+  // quote_card's fail-closed attribution/source_label, absence is a normal, expected case:
+  // the winner map below simply omits the corresponding key when these are undefined.
+  cta?: string;
+  slide_number?: string;
 };
 
 // Minimal structural view of the `public.select_template` jsonb response — ONLY the
@@ -238,6 +244,31 @@ export const TMR_WINNER_TEXT_FIELDS: Record<string, (f: B1Fields) => Record<stri
       'Footer.text': f.footer,
     };
   },
+  // announcement_card winner — element names/types/dynamic flags read from the AUTHORITATIVE
+  // governed capture c.creative_provider_template_field for provider_template_id
+  // a75e7139-1eec-4bba-a8c1-40b8e07b2b0e: Headline (required_for_render=true), Subtitle/CTA/Footer
+  // (required_for_render=false), all four confirmed live. CTA is genuinely OPTIONAL (per-winner,
+  // not a client brand field) — omit the key entirely (not `undefined`) when f.cta is absent, since
+  // it is not required_for_render.
+  'generic_announcement_card_1x1_v1': (f) => ({
+    'Headline.text': f.headline,
+    'Subtitle.text': f.subtitle,
+    ...(f.cta !== undefined ? { 'CTA.text': f.cta } : {}),
+    'Footer.text': f.footer,
+  }),
+  // carousel_cover winner — element names/types/dynamic flags read from the AUTHORITATIVE
+  // governed capture c.creative_provider_template_field for provider_template_id
+  // c9a59faa-6600-4f2b-817e-6051f824f5e7: Headline (required_for_render=true), Subtitle/
+  // SlideNumber/CategoryBadge (required_for_render=false), all four confirmed live.
+  // CategoryBadge.text reuses the existing f.category member (same pattern as market_insight's
+  // CategoryBadge.text: f.category above). SlideNumber is genuinely OPTIONAL — omit the key
+  // entirely (not `undefined`) when f.slide_number is absent, since it is not required_for_render.
+  'generic_carousel_cover_1x1_v1': (f) => ({
+    'Headline.text': f.headline,
+    'Subtitle.text': f.subtitle,
+    ...(f.slide_number !== undefined ? { 'SlideNumber.text': f.slide_number } : {}),
+    'CategoryBadge.text': f.category,
+  }),
 };
 
 // Layout guard — the STRUCTURAL fix for the headline/subtitle overprint (cc-0033a).
