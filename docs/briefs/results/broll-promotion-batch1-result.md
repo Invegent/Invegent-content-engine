@@ -153,6 +153,59 @@ carry C1) — it is documentation, not a control. **Neutral national copy was de
 proof** to avoid baking a mismatch into the evidence. Two closure options, neither taken here: keep
 governed video copy geo-neutral by policy, or make the resolver geo-aware (a reviewed resolver change).
 
+## 11. ADDENDUM — Promotion Batch 2 (partial) · pool 4 → 5 · target 6 NOT reached
+
+**PK instruction:** *"Promote the remaining two to hit target 6."* **Only ONE of the two was
+promotable. Executed the half that qualifies; the second is blocked on two independent grounds.**
+
+### 11.1 Promoted (pool 4 → 5)
+
+`9cf9d01a` **`broll_pp_au_nsw_suburb_skyline`** (`au_nsw_sydney_metro`, 1080×1920, 62.7s,
+`sfto='needs_scrim'`) → `governed` / `approved_by=PK`. Guards: G0 atomicity · G1 baseline pool==4 ·
+G2 exactly 1 promoted (CAS-pinned) · G3 pool==5 · **G4 declared == resolver-reachable** ·
+G5 the 16:9 Perth clip stays fenced · G6 winner unchanged. Rollback proven digest-exact beforehand.
+
+**Live verification:** pool **5**, all native 1080×1920, all `needs_scrim`, distribution over 50 seeds
+**11 / 11 / 10 / 10 / 8** — all five reachable.
+
+### 11.2 ⛔ `42211c0f` `broll_pp_perth_skyline` NOT promoted — two independent blockers
+
+**Blocker 1 — it would create a FALSE 6.** Measured in an aborted transaction, promoting both:
+
+| measure | value |
+|---|---|
+| flag-based pool count (`is_active` + `approved`) | **6** |
+| **resolver-reachable distinct clips** | **5** |
+| rejection | `broll_pp_perth_skyline => text_safety_unknown` |
+
+Its `safe_for_text_overlay='needs_gradient_scrim'` is **not in the resolver's accepted vocabulary**
+(`'true'` / `'needs_scrim'` only), so the resolver fails it closed. The pool would *report* 6 while
+production could only ever reach 5 — precisely the declared-vs-actual failure mode this arc exists to
+eliminate. **A new guard (G4) was added to this lane asserting declared == resolver-reachable**, so a
+future promotion cannot reintroduce this silently.
+
+**Blocker 2 — it is 16:9 LANDSCAPE, and editing `sfto` would NOT fix it.** The row is
+**1920×1080** (`aspect_ratio: 16:9`, `render_crop: "cover-crop to 9:16"`). Cropping to 9:16 retains a
+608×1080 region — **~32% of frame** — and requires a **≈1.78× upscale** to reach 1080×1920. Every one
+of the five pooled clips is **native 1080×1920 with zero upscale**. Promoting it would inject a
+visibly soft, heavily-cropped background whose degradation is invisible in the pool count.
+
+It fails the same acceptance bar applied to every batch-1 candidate (§ intake brief: "must crop safely
+to 1080×1920", no upscale). **Correcting `sfto` alone would clear Blocker 1 and leave Blocker 2
+untouched** — producing a genuine 6 made of five sharp clips and one soft one.
+
+### 11.3 Target 6 — the clean route (NOT taken; PK decision)
+
+`31639439` (Macourt Media, mid-rise urban centre) is **already downloaded, reviewed clean this session
+and machine-PASS at native 1080×1920 / 51.6s** — but it is **NOT in the database**; it exists only as a
+local harvest artifact. Reaching a genuine 6 with it requires a **fenced intake** (upload +
+guarded insert, the v6.63 pattern) followed by a promotion — not a fence-flip.
+
+**Options for PK:** (a) accept the honest **5**; (b) intake + promote `31639439` → genuine **6**;
+(c) re-source a portrait Perth clip to replace `42211c0f`'s intent; (d) re-encode `42211c0f` to native
+1080×1920 portrait and re-intake it as a new asset. **Editing `sfto` in place is not recommended** —
+it fixes the symptom and ships the upscale.
+
 ## 9. Stop condition
 
 **Met.** Promotion applied, pool increase and rotation proven on live state, result recorded, committed,
