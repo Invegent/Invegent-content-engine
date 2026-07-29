@@ -115,9 +115,15 @@ CE repo:
 
 ## 7. Next recommended step
 
-PK visual smoke pass on the live tab. Beyond that: no further action required this lane —
-governed controls (promote/retire/activate) are explicitly a separate, later, governed outcome
-per PK's original brief, not started here.
+PK visual smoke pass **completed** (2026-07-29) — §1/§2 confirmed exactly as expected; §3
+(seven-state fix) surfaced a real, traced dashboard visibility gap, now tracked as its own
+follow-up: `docs/00_sync_state.md` v6.65, pointer `docs/00_action_list.md`. Not a classifier
+defect — `classify_format_capability` still correctly returns `publisher_path_missing` live;
+the gap is that the one page rendering the status (`WeekFormatPlanTab.tsx`) only shows
+scheduled `(platform,format)` pairs, and the two clients missing a publisher path also have
+zero YouTube schedule rows. Needs its own Gate-1 scope decision before any build. Beyond that:
+no further action required this lane — governed controls (promote/retire/activate) are
+explicitly a separate, later, governed outcome per PK's original brief, not started here.
 
 ---
 
