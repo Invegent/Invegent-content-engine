@@ -6,6 +6,14 @@
 
 ---
 
+> **🚀 v6.74 — Static Template Graduation Batch 1 — image-worker DEPLOYED (T3 · PRODUCT_PROOF; code-only, Convention-2 sequence approval)** — result: `docs/briefs/results/static-template-graduation-batch1-image-worker-deploy-result-v1.md`.
+> · **image-worker v3.33.0 → v3.34.0, merge `a7577c2` (`fad8780`) → `main` → deployed via `scripts/safe-deploy.sh --allow-warn`.** Maps `generic_announcement_card_1x1_v1` + `generic_carousel_cover_1x1_v1` into `TMR_WINNER_TEXT_FIELDS`; `generic_stat_hero_card_1x1_v1` stays deferred/unmapped (confirmed live: `tmr_winner_unmapped` fail-closed).
+> · **Preconditions verified before merge:** exact 4-file scope match, zero overlap with 4 intervening docs-only main commits, diff hash `93c243a6d5…` matches the already-reviewed `reviewed_input_hash` (no re-review needed), `branch-warden` safe.
+> · **Post-deploy proof (all live, ground-truth):** deployed bundle byte-identical to repo HEAD · both new mappings render `ok:true` through the DEPLOYED worker (not a local re-import) · both outputs independently verified 1080×1080 · governed background/logo bindings intact · production selector's unforced default winner unchanged (`generic_market_insight_card_1x1_v1`) · zero registry/fit-status mutation (`updated_at` predates this session) · `verify_jwt:false` preserved.
+> · **Does NOT graduate either template into production selection** — both remain reachable only via explicit `variant_intent` override. Next (separate, later, freshly-gated): real-draft/publish/selector graduation.
+
+---
+
 > **🟢 v6.73 — NDIS **INSTAGRAM** CONTAINMENT RELEASED (T3 · SAFETY_GATE; 1-row DML, PK Gate-2 explicit)** — result: `docs/briefs/results/s9-instagram-containment-release-result-v1.md`, packet: `docs/briefs/s9-instagram-containment-release-packet-v1.md`.
 > · **`c.client_publish_profile 3827af5c…` (ndis-yarns·instagram) `paused_until` 2027-01-01 → NULL.** Platform **2 of 4**. **facebook stays RELEASED · linkedin + youtube REMAIN PAUSED** — all three re-asserted inside the same transaction alongside `ROW_COUNT=1` and the five enforcement-identity STOPs.
 > · **Restores `image_quote` (27/90d, 79% of IG's pre-containment publishing); `carousel` (3/90d) + `video_short_avatar` (4/90d) + `video_short` stay stopped** with honest `capability_blocked:*` reasons. PK accepted; the 12 already-scheduled slots for those formats are terminal (ruling 1). **`text` is NOT reachable on IG** (`platform_support.instagram=false`) so the carve-out plays no part — unlike FB where it carried 21.
