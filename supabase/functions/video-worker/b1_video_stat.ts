@@ -45,6 +45,17 @@
 // no per-client code (the c11bb8ab provider template already exposes an addressable `Background` image
 // element). Logo.source stays REQUIRED (fail-loud). STRICTLY OUT OF SCOPE: the governance enable/flip,
 // any registry mutation, the _voice variant / voice map (Lane 4), non-video-worker functions, and any DDL.
+//
+// v3.15.0 (B-roll Template Parity — TPR-1 WIRING): buildGovernedVideoStatPlan now applies a
+// TEMPLATE-SCOPED RENDER-TIME OUTPUT-PARITY OVERLAY (B1_VIDEO_TEMPLATE_OUTPUT_PARITY) so a provider
+// template whose SAVED object under-specifies the governed output contract still renders AT that
+// contract. Creatomate has NO template create/update API (re-verified live 2026-07-29), so the saved
+// 46c5c4ac object cannot be corrected in place — the correction has to happen at render time, on every
+// call, deterministically. Proven recipe + measurements:
+// `docs/briefs/results/broll-template-parity-v1-result.md` + `_harness/cc_broll_parity_20260729/`.
+// The overlay is keyed by provider_template_id and is EMPTY for every other template, so every
+// currently-selectable template renders BYTE-UNCHANGED. Governed bindings always win over the overlay
+// (assertParityOverlayDisjoint + merge order), so this can never overwrite a resolver-selected asset.
 
 // The Property-Pulse client_id — retained as the reference identity for the hermetic gate tests and
 // the governed smoke. It no longer gates the production path (index.ts gates on the runtime
@@ -87,11 +98,88 @@ export function isB1GovernedVideoStat(clientId: string, format: string): boolean
 // hazard the image path retired). Mirrors image-worker/b1_production.assertExpectedProviderTemplate.
 // This is a PROOF-HARNESS constraint ONLY — it is NEVER called on the production render path
 // (renderGovernedVideoStat stays fully spine-driven). Pure / no I/O — unit-tested pass + throw paths.
-export function assertExpectedVideoProviderTemplate(actual: string, expected: string): void {
-  if (actual !== expected) {
+//
+// v3.15.0 (B-roll Template Parity): `expected` widens from ONE id to a NON-EMPTY SET of ids. The
+// governed video_short_stat default is a selector-owned choice that PK can repoint (and roll back)
+// with a DML-only apply; a single-id constant makes the smoke red in exactly one of the two valid
+// selector states, so it cannot survive an activation AND its rollback. The set is the enumeration of
+// templates the smoke is ENTITLED to prove against — every member must independently render the
+// governed output contract (1080x1920/12s), natively or via B1_VIDEO_TEMPLATE_OUTPUT_PARITY. It is NOT
+// a licence to accept whatever the selector returns: an id outside the set still refuses to render.
+export function assertExpectedVideoProviderTemplate(actual: string, expected: string | readonly string[]): void {
+  const allowed = typeof expected === 'string' ? [expected] : [...expected];
+  if (allowed.length === 0) {
+    throw new Error('governed_video_stat_smoke provider drift: empty expected-template set (refusing to render)');
+  }
+  if (!allowed.includes(actual)) {
     throw new Error(
-      `governed_video_stat_smoke provider drift: expected ${expected} (the template the smoke proves render parity against), got ${actual} — refusing to render (smoke parity guard)`,
+      `governed_video_stat_smoke provider drift: expected ${allowed.join(' | ')} (the template(s) the smoke proves render parity against), got ${actual} — refusing to render (smoke parity guard)`,
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────
+// v3.15.0 — RENDER-TIME OUTPUT-PARITY OVERLAY (TPR-1 wiring). Mirrors the image path's
+// TMR_WINNER_LAYOUT_GUARD idiom (b1_production.ts:255): a per-template constant merged into the
+// template-mode modifications, empty for every unlisted template.
+// ─────────────────────────────────────────────────────────────────────────────────────
+
+// The governed video_short_stat OUTPUT CONTRACT. This is the incumbent's native spec
+// (a3d8472d / provider c11bb8ab = 1080x1920/12s, registry-confirmed) and therefore the spec any
+// template that becomes the governed default must also render at (TPR-1).
+export const B1_VIDEO_GOVERNED_OUTPUT_SPEC = { width: 1080, height: 1920, duration_seconds: 12 } as const;
+
+// Per-provider-template render-time correction, keyed by provider_template_id (the Creatomate object
+// UUID — NOT provider_template_name, which is editor-renameable and therefore a weaker identity than
+// the thing being corrected). A template appears here ONLY when its saved provider object cannot be
+// edited to meet B1_VIDEO_GOVERNED_OUTPUT_SPEC on its own.
+//
+// 46c5c4ac-4d35-488c-b57c-44e05d790fb9 = AU_generic_national_Suburb_9:16_V1 (registry dd5fd75e), the
+// governed B-roll footage template. Saved object is 720x1280 with every element at duration 8. Both
+// composition geometry (top-level width/height) and per-element duration proved reachable through
+// `modifications` at render time; layout is percentage/vmin-based and the aspect ratio is unchanged
+// (9:16), so the elements scale rather than reflow. Per-element duration must be set for EVERY element
+// — the composition length is the max element duration, so a missed element would render its content
+// short against a 12s composition.
+// Evidence: `_harness/cc_broll_parity_20260729/render_proof_parity_meta.json` — provider-reported AND
+// ffmpeg-measured 1080x1920 / 00:00:12.00 on both proof renders.
+export const B1_VIDEO_TEMPLATE_OUTPUT_PARITY: Record<string, Readonly<Record<string, string | number>>> = {
+  '46c5c4ac-4d35-488c-b57c-44e05d790fb9': {
+    'width': B1_VIDEO_GOVERNED_OUTPUT_SPEC.width,
+    'height': B1_VIDEO_GOVERNED_OUTPUT_SPEC.height,
+    'Background.duration': B1_VIDEO_GOVERNED_OUTPUT_SPEC.duration_seconds,
+    'Logo.duration': B1_VIDEO_GOVERNED_OUTPUT_SPEC.duration_seconds,
+    'StatValue.duration': B1_VIDEO_GOVERNED_OUTPUT_SPEC.duration_seconds,
+    'StatLabel.duration': B1_VIDEO_GOVERNED_OUTPUT_SPEC.duration_seconds,
+    'ContextLine.duration': B1_VIDEO_GOVERNED_OUTPUT_SPEC.duration_seconds,
+    'CtaText.duration': B1_VIDEO_GOVERNED_OUTPUT_SPEC.duration_seconds,
+    'MusicBed.duration': B1_VIDEO_GOVERNED_OUTPUT_SPEC.duration_seconds,
+    'VoiceAudio.duration': B1_VIDEO_GOVERNED_OUTPUT_SPEC.duration_seconds,
+  },
+};
+
+// PURE lookup. Returns the parity overlay for a provider template, or an EMPTY object when the
+// template needs no correction — so an unlisted template's modification set is byte-unchanged.
+export function parityOverlayForProviderTemplate(providerTemplateId: string): Readonly<Record<string, string | number>> {
+  return B1_VIDEO_TEMPLATE_OUTPUT_PARITY[providerTemplateId] ?? {};
+}
+
+// PURE containment guard (fail-loud). The overlay corrects OUTPUT GEOMETRY ONLY; it must never be able
+// to set a governed binding — a resolver-selected asset (`*.source`), an AI-authored text slot, or an
+// audio level. If a future overlay entry ever collides with a governed key, this throws BEFORE the
+// render rather than silently shipping a template constant in place of governed data. Belt-and-braces
+// with the merge order in buildGovernedVideoStatPlan (governed keys are applied AFTER the overlay).
+export function assertParityOverlayDisjoint(
+  overlay: Readonly<Record<string, string | number>>,
+  governedKeys: readonly string[],
+): void {
+  const governed = new Set(governedKeys);
+  for (const key of Object.keys(overlay)) {
+    if (governed.has(key) || key.endsWith('.source') || key.endsWith('.volume')) {
+      throw new Error(
+        `b1_video_parity_overlay_conflict: overlay key '${key}' collides with a governed binding (overlay may set output geometry only)`,
+      );
+    }
   }
 }
 
@@ -225,6 +313,17 @@ export type B1VideoTmrEvidence = {
   // combo-audio evidence: voiceover is always true on the governed branch (VO REQUIRED). music_bed
   // reflects whether a bed URL was bound (false = explicitly silent, N1).
   audio: { voiceover: true; music_bed: boolean };
+  // v3.15.0 (TPR-1): the EFFECTIVE output spec of this render, stamped into render_spec so the output
+  // contract is machine-checkable per render instead of inferred from a registry row that describes the
+  // provider object rather than what production actually renders. source='render_time_parity_overlay'
+  // when B1_VIDEO_TEMPLATE_OUTPUT_PARITY supplied the geometry; 'provider_template_default' (with null
+  // dimensions) when the saved template's own spec governs and the worker asserts nothing about it.
+  output_spec: {
+    width: number | null;
+    height: number | null;
+    duration_seconds: number | null;
+    source: 'render_time_parity_overlay' | 'provider_template_default';
+  };
 };
 
 // The render_spec.template sub-object (nested inside the templateSpec passed to renderUploadAndLog,
@@ -247,10 +346,12 @@ export type B1VideoTemplateSpec = {
 
 export type B1VideoStatPlan = {
   providerTemplateId: string;
-  // Creatomate template-mode modifications. All string-valued (4 text slots + Logo + 2 audio slots,
-  // plus an OPTIONAL Background.source for a generic Option-B variant; a baked-bg variant omits it,
-  // v3.10.0).
-  modifications: Record<string, string>;
+  // Creatomate template-mode modifications: 4 text slots + Logo + 2 audio slots, plus an OPTIONAL
+  // Background.source for a generic Option-B variant (a baked-bg variant omits it, v3.10.0), plus —
+  // for a template listed in B1_VIDEO_TEMPLATE_OUTPUT_PARITY only — the NUMERIC output-geometry keys
+  // (v3.15.0). Value type widened string → string | number for those; every governed binding stays a
+  // string.
+  modifications: Record<string, string | number>;
   templateSpec: B1VideoTemplateSpec;
 };
 
@@ -262,6 +363,7 @@ export type B1VideoStatPlan = {
 //   - missing selected.provider_template_id      → throw tmr_video_selector_fail_closed
 //   - missing/blank slot_resolution Logo.source  → throw tmr_video_slot_resolution_incomplete
 //   - blank voiceover URL                        → throw b1_video_missing_voiceover (VO is REQUIRED)
+//   - a parity-overlay key colliding with a governed binding → throw b1_video_parity_overlay_conflict
 // BAKED-BG DIVERGENCE FROM IMAGE: require Logo.source ONLY — Background is baked into the provider
 // template (D2), so the resolver returns no Background slot; this builder never reads/requires
 // Background.source (the one deliberate difference from b1_production.buildTmrRenderPlan). The music
@@ -317,7 +419,7 @@ export function buildGovernedVideoStatPlan(
   // Template-mode modifications: 4 dynamic text slots + Logo + 2 audio slots (+ optional Background,
   // v3.10.0). MusicBed.volume is NOT set (N3 — template-controlled at 70%). Key presence is the guard
   // for the silent bed (N1: MusicBed.source is ALWAYS a key; omitting it plays the baked default).
-  const modifications: Record<string, string> = {
+  const governedModifications: Record<string, string> = {
     'StatValue': fields.statValue.trim(),
     'StatLabel': fields.statLabel.trim(),
     'ContextLine': fields.contextLine.trim(),
@@ -330,8 +432,18 @@ export function buildGovernedVideoStatPlan(
   // MusicBed (always a key, '' = silent), Background.source is OMITTED when absent so a baked-bg
   // template's background is left untouched — sending Background.source='' would blank the element.
   if (resolvedBackground) {
-    modifications['Background.source'] = resolvedBackground;
+    governedModifications['Background.source'] = resolvedBackground;
   }
+
+  // v3.15.0 (TPR-1): merge the template-scoped output-parity overlay. EMPTY for every template not
+  // listed in B1_VIDEO_TEMPLATE_OUTPUT_PARITY, so an unlisted template's modification set is
+  // BYTE-UNCHANGED from v3.14.0. Overlay FIRST, governed bindings SECOND — a governed value can never
+  // be displaced by a template constant even if the two maps were ever to overlap (and
+  // assertParityOverlayDisjoint refuses that overlap outright, before the render).
+  const parityOverlay = parityOverlayForProviderTemplate(providerTemplateId);
+  assertParityOverlayDisjoint(parityOverlay, Object.keys(governedModifications));
+  const parityApplied = Object.keys(parityOverlay).length > 0;
+  const modifications: Record<string, string | number> = { ...parityOverlay, ...governedModifications };
 
   const slotReasons = (slot.selected ?? []).map((s) => ({
     slot: s?.slot ?? null,
@@ -353,6 +465,14 @@ export function buildGovernedVideoStatPlan(
     slot_warnings: Array.isArray(slot.warnings) ? slot.warnings : [],
     selector_status: 'ok',
     audio: { voiceover: true, music_bed: resolvedBed.length > 0 },
+    output_spec: parityApplied
+      ? {
+        width: B1_VIDEO_GOVERNED_OUTPUT_SPEC.width,
+        height: B1_VIDEO_GOVERNED_OUTPUT_SPEC.height,
+        duration_seconds: B1_VIDEO_GOVERNED_OUTPUT_SPEC.duration_seconds,
+        source: 'render_time_parity_overlay',
+      }
+      : { width: null, height: null, duration_seconds: null, source: 'provider_template_default' },
   };
 
   const templateSpec: B1VideoTemplateSpec = {

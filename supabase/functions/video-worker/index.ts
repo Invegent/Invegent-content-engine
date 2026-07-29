@@ -485,7 +485,27 @@ import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsage
 //   deploy, no grant, no secret, no flag flip in this change.
 //
 // v3.11.0 (cc-0044 Checkpoint E — NARRATION DE-HARDCODE): see the block below the import list.
-const VERSION = 'video-worker-v3.14.0';
+//
+// v3.15.0 (B-ROLL TEMPLATE PARITY — TPR-1 WIRING): the governed video_short_stat plan builder now
+// applies a template-scoped RENDER-TIME OUTPUT-PARITY OVERLAY (b1_video_stat.B1_VIDEO_TEMPLATE_OUTPUT_PARITY),
+// so a provider template whose SAVED Creatomate object under-specifies the governed output contract
+// (1080x1920/12s) still renders AT that contract. Today exactly ONE template is listed — 46c5c4ac
+// (the governed B-roll footage template, saved as 720x1280/8s, uneditable: Creatomate has no template
+// write API). Every other template resolves an EMPTY overlay and renders BYTE-UNCHANGED, so the live
+// incumbent (c11bb8ab, natively 1080x1920/12s) is untouched by this deploy.
+//   WHAT CHANGED IN THIS ENTRYPOINT (surgical, 2 edits):
+//     (1) this VERSION bump — the drift gate hashes ONLY index.ts, so a helper-only change would stay
+//         classified A-LE; the bump makes the b1_video_stat.ts change visible to the drift gate (B-FD).
+//     (2) EXPECTED_SMOKE_VIDEO_PROVIDER_TEMPLATE_ID → EXPECTED_SMOKE_VIDEO_PROVIDER_TEMPLATE_IDS, a
+//         two-member SET {c11bb8ab, 46c5c4ac}. Both render the governed output contract (the first
+//         natively, the second via the overlay), so the smoke stays green across a selector repoint AND
+//         its rollback. A single-id constant is red in one of the two valid states and would make the
+//         rollback path itself fail the smoke. Any OTHER id still refuses to render (guard intact).
+//   STRICTLY OUT OF SCOPE / BYTE-UNCHANGED: renderUploadAndLog, pollRender, composeRenderSpec, the
+//   audio guards, select_template/select_music, voice/TTS, the claim/publish paths, every legacy render
+//   builder, and every registry/DB row. This deploy performs NO selector repoint — activation is a
+//   SEPARATE, PK-gated DML apply.
+const VERSION = 'video-worker-v3.15.0';
 const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 const POLL_INTERVAL_MS  = 2500;
@@ -1439,8 +1459,17 @@ Deno.serve(async (req: Request) => {
       // constraint ONLY — production (renderGovernedVideoStat) stays fully spine-driven and carries NO
       // expected-id assert. A drift here means the live selector no longer resolves the proven template,
       // so the smoke refuses to render rather than prove against a different surface.
-      const EXPECTED_SMOKE_VIDEO_PROVIDER_TEMPLATE_ID = 'c11bb8ab-18bd-45ff-aedd-0a59cb3773ab';
-      assertExpectedVideoProviderTemplate(plan.providerTemplateId, EXPECTED_SMOKE_VIDEO_PROVIDER_TEMPLATE_ID);
+      // v3.15.0 (B-roll Template Parity): a SET, not a single id — see the VERSION block. Members:
+      //   c11bb8ab = video_stat_reveal_9x16_v2 (incumbent; natively 1080x1920/12s)
+      //   46c5c4ac = AU_generic_national_Suburb_9:16_V1 (B-roll; 1080x1920/12s via the parity overlay,
+      //              measured in _harness/cc_broll_parity_20260729/render_proof_parity_meta.json)
+      // Both prove render parity at the governed output contract, so the smoke survives an activation
+      // and its rollback. Any id outside this set still refuses to render.
+      const EXPECTED_SMOKE_VIDEO_PROVIDER_TEMPLATE_IDS = [
+        'c11bb8ab-18bd-45ff-aedd-0a59cb3773ab',
+        '46c5c4ac-4d35-488c-b57c-44e05d790fb9',
+      ] as const;
+      assertExpectedVideoProviderTemplate(plan.providerTemplateId, EXPECTED_SMOKE_VIDEO_PROVIDER_TEMPLATE_IDS);
       const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'mp4' };
       const storageUrl = await renderUploadAndLog({
         supabase: smokeSupabase, creatomateKey, renderScript,

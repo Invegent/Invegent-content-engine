@@ -13,6 +13,11 @@ import {
   assertExpectedVideoProviderTemplate,
   buildGovernedVideoStatPlan,
   composeGovernedVideoNarration,
+  // v3.15.0 (B-roll Template Parity — TPR-1 wiring)
+  parityOverlayForProviderTemplate,
+  assertParityOverlayDisjoint,
+  B1_VIDEO_TEMPLATE_OUTPUT_PARITY,
+  B1_VIDEO_GOVERNED_OUTPUT_SPEC,
   B1_VIDEO_GOVERNED_CLIENT_ID,
   B1_VIDEO_GOVERNED_FORMAT,
   B1_VIDEO_PRODUCTION_LABEL,
@@ -404,4 +409,210 @@ Deno.test('narration: brandIntro trailing punctuation is normalized to one separ
 });
 Deno.test('narration: brandIntro is trimmed', () => {
   assertEquals(composeGovernedVideoNarration(okFields, '  Property Pulse  ').startsWith('Property Pulse. '), true);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// v3.15.0 — B-ROLL TEMPLATE PARITY (TPR-1 wiring). The render-time output-parity overlay.
+//
+// Contract under test:
+//   A. the overlay is TEMPLATE-SCOPED — empty for every template not in the map, so the incumbent
+//      (and every other selectable template) is byte-unchanged by this version;
+//   B. for 46c5c4ac it forces the governed output contract 1080x1920/12s on EVERY element;
+//   C. it can NEVER displace a governed binding (resolver asset / AI text / audio);
+//   D. the effective output spec is stamped into the render evidence.
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+const BROLL_PROVIDER_ID = '46c5c4ac-4d35-488c-b57c-44e05d790fb9';
+const BROLL_BG = 'https://x.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Broll/broll_pp_au_suburb_aerial.mp4';
+
+// Live-shape fixture for the B-roll selection: same selector response shape, but the winner is the
+// B-roll template and the resolver returns a governed VIDEO Background (resolver v1.4 exclusive-by-type).
+function brollFixture(): TmrSelectorResponse {
+  const fx = liveShapeFixture();
+  fx.selected!.provider_template_id = BROLL_PROVIDER_ID;
+  fx.selected!.provider_template_name = 'AU_generic_national_Suburb_9:16_V1';
+  fx.selected!.template_id = 'dd5fd75e-982d-4c3d-89cd-7ce0936076b2';
+  fx.selected!.variant_key = 'stat-reveal-9x16-broll-v1';
+  fx.slot_resolution!.modifications!['Background.source'] = BROLL_BG;
+  fx.slot_resolution!.selected!.push({
+    slot: 'Background', asset_key: 'broll_pp_au_suburb_aerial',
+    asset_id: '2d62b04e-c1b5-44df-b382-59cbb991e166', asset_url: BROLL_BG,
+    reasons: ['governed', 'license_ok', 'client_match', 'broll_background'],
+  });
+  return fx;
+}
+
+// (A) SCOPE — the incumbent gets NO overlay. This is the regression that keeps the live production
+// render byte-identical to v3.14.0 while this version is deployed but not yet activated.
+Deno.test('parity: incumbent template gets an EMPTY overlay (byte-unchanged from v3.14.0)', () => {
+  assertEquals(parityOverlayForProviderTemplate(PROVIDER_ID), {});
+  const plan = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
+  assertEquals(Object.keys(plan.modifications).sort(), [
+    'ContextLine', 'CtaText', 'Logo.source', 'MusicBed.source', 'StatLabel', 'StatValue', 'VoiceAudio.source',
+  ]);
+  assertEquals('width' in plan.modifications, false);
+  assertEquals('height' in plan.modifications, false);
+  assertEquals(Object.keys(plan.modifications).some((k) => k.endsWith('.duration')), false);
+  assertEquals(plan.templateSpec.tmr.output_spec, {
+    width: null, height: null, duration_seconds: null, source: 'provider_template_default',
+  });
+});
+
+// (A) SCOPE — an unknown/never-seen template also gets nothing (the map is an allow-list, not a default).
+Deno.test('parity: unlisted template gets an EMPTY overlay', () => {
+  assertEquals(parityOverlayForProviderTemplate('00000000-0000-4000-8000-000000000000'), {});
+  assertEquals(parityOverlayForProviderTemplate(''), {});
+});
+
+// (B) THE OVERLAY — the B-roll template renders at the governed output contract.
+Deno.test('parity: B-roll template forces 1080x1920 and duration 12 on EVERY element', () => {
+  const plan = buildGovernedVideoStatPlan(brollFixture(), okFields, VOICE, BED);
+  assertEquals(plan.providerTemplateId, BROLL_PROVIDER_ID);
+  assertEquals(plan.modifications['width'], 1080);
+  assertEquals(plan.modifications['height'], 1920);
+  for (const el of ['Background', 'Logo', 'StatValue', 'StatLabel', 'ContextLine', 'CtaText', 'MusicBed', 'VoiceAudio']) {
+    assertEquals(plan.modifications[el + '.duration'], 12, el + '.duration must be 12');
+  }
+  // exact key set: 8 governed keys (7 + Background.source) + 2 geometry + 8 durations = 18.
+  assertEquals(Object.keys(plan.modifications).length, 18);
+});
+
+// (B) the overlay matches the incumbent's registry-confirmed native spec — the point of TPR-1.
+Deno.test('parity: overlay target equals the governed output contract 1080x1920/12s', () => {
+  assertEquals(B1_VIDEO_GOVERNED_OUTPUT_SPEC, { width: 1080, height: 1920, duration_seconds: 12 });
+  const ov = parityOverlayForProviderTemplate(BROLL_PROVIDER_ID);
+  assertEquals(ov['width'], 1080);
+  assertEquals(ov['height'], 1920);
+  // EVERY overlay duration key is the contract duration — no element left at the saved object's 8s.
+  const durations = Object.entries(ov).filter(([k]) => k.endsWith('.duration')).map(([, v]) => v);
+  assertEquals(durations.length, 8);
+  assertEquals(durations.every((d) => d === 12), true);
+});
+
+// (C) GOVERNANCE — the overlay never touches a governed binding. Resolver-selected asset URLs, the four
+// AI-authored text slots and both audio sources survive the merge exactly as the resolver/AI supplied them.
+Deno.test('parity: governed bindings are UNCHANGED by the overlay (assets stay resolver-governed)', () => {
+  const plan = buildGovernedVideoStatPlan(brollFixture(), okFields, VOICE, BED);
+  assertEquals(plan.modifications['Background.source'], BROLL_BG);   // resolver-supplied, not a constant
+  assertEquals(plan.modifications['Logo.source'], LOGO_URL);
+  assertEquals(plan.modifications['VoiceAudio.source'], VOICE);
+  assertEquals(plan.modifications['MusicBed.source'], BED);
+  assertEquals(plan.modifications['StatValue'], okFields.statValue);
+  assertEquals(plan.modifications['StatLabel'], okFields.statLabel);
+  assertEquals(plan.modifications['ContextLine'], okFields.contextLine);
+  assertEquals(plan.modifications['CtaText'], okFields.ctaText);
+  // N3 still holds: the worker never sets an audio LEVEL (bed volume stays template-controlled).
+  assertEquals('MusicBed.volume' in plan.modifications, false);
+  assertEquals('VoiceAudio.volume' in plan.modifications, false);
+});
+
+// (C) the shipped overlay map contains no key that could ever bind an asset or a level.
+Deno.test('parity: no shipped overlay entry carries a .source or .volume key', () => {
+  for (const [tid, ov] of Object.entries(B1_VIDEO_TEMPLATE_OUTPUT_PARITY)) {
+    for (const k of Object.keys(ov)) {
+      assertEquals(k.endsWith('.source'), false, tid + ': ' + k);
+      assertEquals(k.endsWith('.volume'), false, tid + ': ' + k);
+    }
+  }
+});
+
+// (C) the disjointness guard is real — a hypothetical bad overlay entry is refused, not merged.
+Deno.test('parity: assertParityOverlayDisjoint throws on a governed-key collision', () => {
+  assertThrows(
+    () => assertParityOverlayDisjoint({ 'Logo.source': 'https://evil.test/logo.png' }, ['Logo.source']),
+    Error, 'b1_video_parity_overlay_conflict',
+  );
+  assertThrows(
+    () => assertParityOverlayDisjoint({ 'StatValue': 'hardcoded' }, ['StatValue']),
+    Error, 'b1_video_parity_overlay_conflict',
+  );
+  // a .source key is refused even when it is NOT in the current governed set (future-proofing).
+  assertThrows(
+    () => assertParityOverlayDisjoint({ 'Watermark.source': 'https://x.test/w.png' }, []),
+    Error, 'b1_video_parity_overlay_conflict',
+  );
+  // geometry-only overlays pass.
+  assertParityOverlayDisjoint({ width: 1080, 'Logo.duration': 12 }, ['Logo.source']);
+});
+
+// (C) the LIVE shipped overlay is disjoint from the LIVE governed key set (guards the real config).
+Deno.test('parity: shipped B-roll overlay is disjoint from the real governed modification set', () => {
+  const plan = buildGovernedVideoStatPlan(brollFixture(), okFields, VOICE, BED);
+  const governed = ['StatValue', 'StatLabel', 'ContextLine', 'CtaText', 'Logo.source', 'VoiceAudio.source', 'MusicBed.source', 'Background.source'];
+  assertParityOverlayDisjoint(parityOverlayForProviderTemplate(BROLL_PROVIDER_ID), governed);
+  assertEquals(governed.every((k) => k in plan.modifications), true);
+});
+
+// (D) EVIDENCE — the effective output spec is stamped, so a render log proves what was rendered.
+Deno.test('parity: tmr evidence stamps the effective output spec + its source', () => {
+  const plan = buildGovernedVideoStatPlan(brollFixture(), okFields, VOICE, BED);
+  assertEquals(plan.templateSpec.tmr.output_spec, {
+    width: 1080, height: 1920, duration_seconds: 12, source: 'render_time_parity_overlay',
+  });
+  // the rest of the evidence stays resolver-driven for the B-roll winner.
+  assertEquals(plan.templateSpec.tmr.provider_template_id, BROLL_PROVIDER_ID);
+  assertEquals(plan.templateSpec.tmr.variant_key, 'stat-reveal-9x16-broll-v1');
+  assertEquals(plan.templateSpec.tmr.resolver_used, true);
+  assertEquals(plan.templateSpec.tmr.slot_reasons.some((s) => s.slot === 'Background'), true);
+  assertEquals(plan.templateSpec.tmr.audio, { voiceover: true, music_bed: true });
+});
+
+// (B/C) determinism — the overlay is a constant, so the B-roll plan is still pure.
+Deno.test('parity: B-roll plan is pure/deterministic', () => {
+  const a = buildGovernedVideoStatPlan(brollFixture(), okFields, VOICE, BED);
+  const b = buildGovernedVideoStatPlan(brollFixture(), okFields, VOICE, BED);
+  assertEquals(a.modifications, b.modifications);
+  assertEquals(JSON.stringify(a.templateSpec), JSON.stringify(b.templateSpec));
+});
+
+// (B) fail-loud still wins over the overlay: a fail-closed selection never reaches the merge.
+Deno.test('parity: overlay does NOT rescue a fail-closed selection', () => {
+  const fx = brollFixture();
+  fx.status = 'fail_closed';
+  fx.fail_reason = 'no_selectable_template';
+  assertThrows(() => buildGovernedVideoStatPlan(fx, okFields, VOICE, BED), Error, 'tmr_video_selector_fail_closed');
+  const fx2 = brollFixture();
+  delete fx2.slot_resolution!.modifications!['Logo.source'];
+  assertThrows(() => buildGovernedVideoStatPlan(fx2, okFields, VOICE, BED), Error, 'tmr_video_slot_resolution_incomplete');
+  const fx3 = brollFixture();
+  assertThrows(() => buildGovernedVideoStatPlan(fx3, okFields, '', BED), Error, 'b1_video_missing_voiceover');
+});
+
+// ── v3.15.0 — smoke parity guard widened from ONE id to a SET ──────────────────────
+Deno.test('smoke guard: accepts EITHER parity-proven template, refuses anything else', () => {
+  const SET = [PROVIDER_ID, BROLL_PROVIDER_ID] as const;
+  assertExpectedVideoProviderTemplate(PROVIDER_ID, SET);         // incumbent  -> ok
+  assertExpectedVideoProviderTemplate(BROLL_PROVIDER_ID, SET);   // B-roll     -> ok
+  assertThrows(() => assertExpectedVideoProviderTemplate('03bc6a3c-985a-4488-b008-67632372783c', SET), Error, 'provider drift');
+  // single-string form still works (back-compat with every existing call/test).
+  assertExpectedVideoProviderTemplate(PROVIDER_ID, PROVIDER_ID);
+  assertThrows(() => assertExpectedVideoProviderTemplate(BROLL_PROVIDER_ID, PROVIDER_ID), Error, 'provider drift');
+  // an EMPTY expected set is fail-closed, never an accept-all.
+  assertThrows(() => assertExpectedVideoProviderTemplate(PROVIDER_ID, []), Error, 'empty expected-template set');
+});
+
+// (A) CANARY — the overlay allow-list must contain EXACTLY ONE template. This is deliberately a
+// brittle test: it exists so that ADDING a template to the parity map cannot happen quietly. Any new
+// entry is a product-output change for whichever format selects that template and must go through
+// TPR-1 (diff the outgoing vs incoming output spec) at its own gate — updating this assertion is the
+// mechanical reminder to do that. Raised by the external review of the activation packet as the
+// residual risk of a widened surface.
+Deno.test('parity: CANARY — overlay allow-list holds exactly one template (46c5c4ac)', () => {
+  assertEquals(Object.keys(B1_VIDEO_TEMPLATE_OUTPUT_PARITY), [BROLL_PROVIDER_ID]);
+});
+
+// (A) CANARY — every overlay entry must declare the FULL contract: both geometry keys and a duration
+// for every element. A partial entry would produce a mixed-spec render (e.g. 1080x1920 but an element
+// still ending at 8s), which is the failure mode this whole lane exists to prevent.
+Deno.test('parity: CANARY — every overlay entry is complete (2 geometry keys + 8 element durations)', () => {
+  for (const [tid, ov] of Object.entries(B1_VIDEO_TEMPLATE_OUTPUT_PARITY)) {
+    assertEquals(ov['width'], B1_VIDEO_GOVERNED_OUTPUT_SPEC.width, tid);
+    assertEquals(ov['height'], B1_VIDEO_GOVERNED_OUTPUT_SPEC.height, tid);
+    const durs = Object.keys(ov).filter((k) => k.endsWith('.duration')).sort();
+    assertEquals(durs, [
+      'Background.duration', 'ContextLine.duration', 'CtaText.duration', 'Logo.duration',
+      'MusicBed.duration', 'StatLabel.duration', 'StatValue.duration', 'VoiceAudio.duration',
+    ], tid);
+    assertEquals(Object.keys(ov).length, 10, tid);
+  }
 });
