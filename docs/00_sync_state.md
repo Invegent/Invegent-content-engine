@@ -6,6 +6,14 @@
 
 ---
 
+> **🧾 v6.66 — Static Template Graduation Batch 1 (T1 · SIDE_PROVING; docs-only readiness + proposal, zero production effect)** — result: `docs/briefs/results/static-template-graduation-batch1-result-v1.md`, brief: `docs/briefs/static-template-graduation-batch1-gate1-brief-v1.md`.
+> · PK Gate 1: readiness+proposal only (no code/commit), candidates = `generic_stat_hero_card_1x1_v1` / `generic_announcement_card_1x1_v1` / `generic_carousel_cover_1x1_v1`. **Core finding: none of the 13 unproven static families can render today** — `image-worker`'s `TMR_WINNER_TEXT_FIELDS` allowlist (`b1_production.ts:206-240`) has exactly 2 entries (the current production winners); every other winner name throws `tmr_winner_unmapped`.
+> · **Differentiated gap, not uniform:** `announcement_card`/`carousel_cover` have a real dynamic `Background` image field — resolvable live via `resolve_slot_assets` — so each needs only a narrow `TMR_WINNER_TEXT_FIELDS` mapping addition. `stat_hero_card` (and carousel `body`/`closing`) use a static `BackgroundSolid` shape that never produces `Background.source` at all, so `buildTmrRenderPlan`'s line-328 hard requirement throws `tmr_slot_resolution_incomplete` even WITH a mapping — a structural blocker, not a mapping gap.
+> · **Rung 6 (PK visual approval) already satisfied for all 3 candidates + both carousel partners** — each carries a passed `visual_approval` proof_event from PK's 2026-07-03 proof-wall review, discovered not created by this pass.
+> · Proposed (unexecuted) field-mapping specs for the 2 narrow-blocker candidates; `stat_hero_card`'s structural fix deferred to its own scoping decision. Zero code/registry mutation. **Open for next Gate 1:** follow-on lane scope, stat_hero_card's fix direction, carousel single-vs-3-part framing.
+
+---
+
 > **📋 v6.65 — Follow-up flagged: `publisher_path_missing` has no observable dashboard surface today (T1 · SIDE_PROVING; docs-only, zero production effect)** — carried from `docs/briefs/results/creative-template-portfolio-dashboard-result-v1.md` §6 (v6.61).
 > · PK's post-deploy visual smoke on the Creative Templates lane found the Format Plan tab (`WeekFormatPlanTab.tsx`, the only page that renders `CapabilityCell`) never shows a YouTube row for `care-for-welfare-pty-ltd`/`invegent`. **Traced, not guessed:** that tab only builds `(platform,format)` capability pairs from a client's *scheduled* rows (`c.client_publish_schedule`); live-checked, both clients have **zero** YouTube schedule rows at all (not just this week) — so the exact `(client, platform)` pairs the classifier's 7th status was built to catch structurally never reach that page.
 > · **Not a classifier defect** — `classify_format_capability` still correctly returns `publisher_path_missing` live for both clients (re-verified). This is a **dashboard visibility gap**: the status exists and is correctly labelled, but has no page today where an operator would actually see it.
