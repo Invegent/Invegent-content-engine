@@ -6,6 +6,17 @@
 
 ---
 
+> **🎉 v6.64 — Governed B-roll PROMOTION Batch 1 APPLIED — ROTATION IS LIVE, POOL 1 → 4 (T3 · PRODUCT_PROOF; 3-row fence-flip)** — result: `docs/briefs/results/broll-promotion-batch1-result.md`, artifacts: `docs/briefs/artifacts/broll-promotion-batch1-{forward,rollback}.sql`.
+> · **PK visual verdict "Promote the top three"** → promoted `broll_pp_au_wa_perth_coastal` (`au_wa_perth`) · `broll_pp_generic_apartment_abstract` (`generic`) · `broll_pp_au_nsw_suburb_waterway` (`au_nsw_sydney_metro`) to `governed`/`approved_by=PK`. **Rank 4 (`broll_pp_au_nsw_suburb_skyline`) deliberately NOT promoted** — closest look to the incumbent (both Hurstville); G4 asserted it stayed fenced.
+> · **🏁 THE ELIGIBLE B-ROLL POOL IS NOW 4 — the ratified rotation-readiness floor (v6.57 min 4 / target 6) is MET.** The one-clip carry that has run since v6.48 is **CLOSED**: PP governed video no longer renders the identical AU suburb aerial every time.
+> · **ROTATION PROVEN ON LIVE PRODUCTION STATE: 40 seeds → 10 / 10 / 10 / 10 — perfectly uniform, zero unreachable clips.** Three genuinely distinct looks (WA coastal · architectural abstract · Sydney waterway) + the incumbent.
+> · **All 8 guards passed** (G0 atomicity · G1 pre-image digest `2cae61b9…` · G2 baseline pool==1 · G3 exactly-3 CAS-pinned · **G4 rank-4 stays fenced** · G5 incumbent undisturbed · **G6 pool EXACTLY 4** · G7 winner unchanged · **G8 rotation all-4-reachable**). **Rollback proven BEFORE apply** — digest-exact, pool 4→1, zero prod effect; storage objects untouched so re-promotion needs no re-upload.
+> · **TPR-1 NON-TRIGGER (stated):** not a template repoint — template + parity overlay untouched, only background-asset selection changed; all 3 clips native 1080×1920 and longer than the 12s composition.
+> · **External review `agree`** — `pushback_points: []`, `unverified_claims: []`, no escalation (`ed4ccd65`, pinned `19f48b62…`). First clean agree of the arc.
+> · **⚠ CARRY UNCHANGED — no recent-use avoidance.** The resolver is `STABLE` and reads no render history ⇒ memoryless sampling; at pool 4 the **consecutive-repeat rate is ≈25%**. Uniform distribution ≠ no repeats. Only a history-aware selector would fix it (out of scope). **Target 6 still open** — batch-2 stock: `31639439` (HELD, quality-eligible) + `broll_pp_au_nsw_suburb_skyline` (fenced).
+
+---
+
 > **🎬 v6.63 — Governed B-roll FENCED INTAKE Batch 1 APPLIED (T2 · PRODUCT_PROOF; 4-row additive DML + 4 storage objects; pool-neutral)** — result: `docs/briefs/results/broll-fenced-intake-batch1-result.md`.
 > · **4 (not 5) governed-but-FENCED B-roll rows registered** for Property Pulse — `broll_pp_au_wa_perth_coastal` (`au_wa_perth`) · `broll_pp_generic_apartment_abstract` (**`generic`**) · `broll_pp_au_nsw_suburb_waterway` + `broll_pp_au_nsw_suburb_skyline` (`au_nsw_sydney_metro`). All: `usage='broll_background'`, `sfto='needs_scrim'`, `platform_scope={facebook,instagram,youtube}`, full Pexels provenance + byte-verified sha256, **all four fences CLOSED**.
 > · **⛔ PK's provider-ID collision guard FIRED on a real collision — candidate `31663307` DROPPED.** It is the **live production clip** `2d62b04e` re-downloaded at a different rendition ⇒ **sha256 DIFFERS** (`6ff304e5…` vs `4c89358d…`), so **a sha-only dedup would NOT have caught it**. Had it landed and been promoted, the rotation pool would hold the SAME footage twice — silently defeating rotation.
