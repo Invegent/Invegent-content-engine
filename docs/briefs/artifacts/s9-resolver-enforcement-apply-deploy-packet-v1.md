@@ -9,7 +9,7 @@ current `origin/main`.
 **Architecture:** `docs/briefs/s9-capability-enforcement-architecture-gate1-v1.md` (PK-approved 2026-07-28, five rulings)
 **Tier:** T3 · **Lane class:** SAFETY_GATE
 **Branch:** `lane/s9-resolver-enforcement` (isolated worktree) — **rebased onto `origin/main` @ `b7568ce`, 3 ahead / 0 behind. Local only, not pushed.**
-**Status:** BUILD COMPLETE, rev-2 re-cut and re-proven — **STOPPED AT THE PK APPLY/DEPLOY GATE.
+**Status:** BUILD COMPLETE, rev-3 re-cut and re-proven — **STOPPED AT THE PK APPLY/DEPLOY GATE.
 Nothing applied, deployed, merged or pushed.**
 
 > **Rev-1 blocker §1 (`text` would be blocked for every client) is RESOLVED** by PK ruling Option A,
@@ -18,7 +18,7 @@ Nothing applied, deployed, merged or pushed.**
 
 ---
 
-## 0. Artifacts (pin these hashes — **all four changed in rev 2**)
+## 0. Artifacts (pin these hashes — **all changed again in rev 3**)
 
 | Artifact | sha256 (LF-canonical — see note) |
 |---|---|
@@ -34,8 +34,7 @@ Change set is exactly 5 files (2 migrations, 1 modified EF, 1 new test, this pac
 > `git show HEAD:<path> | sha256sum`, **not** by hashing the Windows working-tree file.
 > **The migration must be applied as LF.** Applying CRLF content still works functionally, but the
 > resulting `prosrc` contains carriage returns, so the post-apply `md5` assertion in §4 would fail and
-> trip a STOP for the wrong reason. If applying by copy-paste, strip `
-` first.
+> trip a STOP for the wrong reason. If applying by copy-paste, strip carriage returns first.
 
 **Baseline provenance (verified, not assumed):** live `m.fill_pending_slots` `prosrc` md5 =
 `afd62a2116d23cb0a03d089d108e6a36`, length 27080. The migration's embedded pre-change body matches
