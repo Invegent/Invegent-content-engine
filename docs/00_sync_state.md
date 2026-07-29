@@ -6,6 +6,13 @@
 
 ---
 
+> **✅ v6.53 — Creatomate Template Graduation Matrix v1 RECORDED (T1 · SIDE_PROVING; read-only classification, NO template activation/production mutation)** — record: `docs/briefs/results/creatomate-template-graduation-matrix-v1.md`.
+> · All 27 `c.creative_provider_template` rows classified: 3 have real render/draft/publish proof (`48cba556`, `2140ca19`, `c11bb8ab`); 22 have zero; 6 (the "reskin" batch) are deliberately fenced by design (no worker path for 4 of the 6). **Flagged:** row `fb9820f8` shows DB `status='production_proven'` but its Creatomate provider template was deleted upstream — DB status is stale/misleading, treat as RETIRED not production.
+> · Practical production winners: static 1:1 market-insight card (`48cba556`) + quote-card (`2140ca19`); video 9:16 stat-reveal (`c11bb8ab`, 38% render-timeout rate flagged as a live risk, not fixed this lane).
+> · **NEXT:** PK decision on the data-only status corrections named in the record (incl. retiring `fb9820f8`) + whether to open a proof-run lane for the 13 unproven static families and near-miss video row `03bc6a3c`. No registry row mutated this lane.
+
+---
+
 > **⚠ v6.52 — Process exception: concurrent-session commit bundled into a push, reconciled (T1 · docs-only; NO code/DB change this lane)** — addendum: `docs/briefs/s9-resolver-enforcement-build-brief-v1.md` Addendum 1.
 > · **Process finding:** a plain `git push` fast-forwarded a concurrent session's already-committed `0e69306` (S5 `publisher_path_missing` classifier extension) alongside this session's own commit — left on `main` per PK, not reverted. **Corrective rule:** fetch + inspect the full `origin/main..HEAD` list before every push on this shared `main`, not just the pushing session's own commit.
 > · **Independent reconciliation of `0e69306` — verdict `concerns`, one real gap:** live function correctly extended to 7 statuses (byte-verified, all cells re-run fresh, zero regression), but `supabase_migrations.schema_migrations` has **no ledger row for `20260729120000`** — the applied change is under-recorded, timestamp free for future collision. **Not fixed (read-only scope) — open carry for whoever owns that lane.**
