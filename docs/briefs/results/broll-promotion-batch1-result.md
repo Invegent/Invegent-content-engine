@@ -112,12 +112,46 @@ The uniform 10/10/10/10 distribution is about *reachability and balance*, not ab
 ## 8. Non-claims
 
 - ❌ Not claimed: repeats are eliminated. They are not (§7).
-- ❌ Not claimed: a render has been produced through the new pool. This lane changed **selection state**
-  and proved it via the resolver; no video was rendered.
+- ~~Not claimed: a render has been produced through the new pool.~~ **SUPERSEDED — see §10: two live
+  renders were produced through the new pool at PK's request, both succeeded.**
 - ❌ Not claimed: `label_constraint` / geo labels are enforced. **No renderer reads them** (carry C1) —
   documentation only.
 - ❌ Not claimed: the target of 6 is met. The floor of **4** is met; target 6 remains open, with
   `31639439` (held, quality-eligible) and `broll_pp_au_nsw_suburb_skyline` (fenced) as batch-2 stock.
+
+## 10. ADDENDUM — live render proof through the new pool (PK request, same day)
+
+Two `governed_video_stat_smoke` renders were run against **live production code** (video-worker
+**v3.15.0**), which uses the *same spine path as production* (`select_template` at `p_platform=null`
+→ `buildGovernedVideoStatPlan`). The smoke is render-only: `postDraftId=null`, `clientId=null`,
+writes to `post-videos/_smoke/`, **reads no draft and publishes nothing**.
+
+| seed | background clip selected | status | render ms | output_spec | source | music |
+|---|---|---|---|---|---|---|
+| `rotation-proof-b` | **`broll_pp_au_wa_perth_coastal`** (newly promoted) | `succeeded` | 38 184 | 1080×1920 / 12s | `render_time_parity_overlay` | ✓ |
+| `rotation-proof-d` | **`broll_pp_au_nsw_suburb_waterway`** (newly promoted) | `succeeded` | 29 794 | 1080×1920 / 12s | `render_time_parity_overlay` | ✓ |
+
+**Two different newly-promoted clips rendered end-to-end** — rotation is proven in real renders, not
+just in resolver calls. **Measured from the produced file** (not provider-reported): `1080×1920`,
+**12.0s**, h264, audio present ⇒ the governed output contract holds with the new pool, and the
+render-time parity overlay still delivers it (TPR-1 contract intact under rotation).
+
+Visual check of the surviving render: governed Property Pulse logo, all four text slots bound, Sydney
+waterway aerial background — matching the reviewed clip.
+
+**Harness limitation found:** the smoke writes to a **fixed** storage path
+(`_smoke/governed_video_stat_v1.mp4`), so the second render **overwrote** the first. Only the last
+render's bytes survive at that URL; per-render evidence lives in `m.post_render_log`. A seed-scoped
+smoke path would let multiple rotation renders be compared side by side — recorded, not fixed here.
+
+**⚠ NEW PRODUCT RISK SURFACED BY ROTATION — geo/copy mismatch.** The pool now spans Perth coastal, two
+Sydney clips and a generic abstract. **Any geo-specific stat copy can now land on a mismatched
+background** — the smoke's own built-in sample copy is literally *"Perth median house price"*, which
+under rotation can render over a Sydney aerial. This was impossible while the pool held one clip.
+Every row carries a `label_constraint` documenting the rule, but **no renderer reads it** (standing
+carry C1) — it is documentation, not a control. **Neutral national copy was deliberately used for this
+proof** to avoid baking a mismatch into the evidence. Two closure options, neither taken here: keep
+governed video copy geo-neutral by policy, or make the resolver geo-aware (a reviewed resolver change).
 
 ## 9. Stop condition
 
