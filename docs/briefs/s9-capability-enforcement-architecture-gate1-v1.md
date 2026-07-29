@@ -249,4 +249,51 @@ Per the boundary — *"do not build resolver and publisher changes simultaneousl
 | Grounding method | Read-only: `db-rls-auditor` (live classifier/schema/R3a state, run twice — once pre-ruling, once post-ruling to re-verify §0b), 2× `Explore` (ai-worker fallback map; publisher dequeue map), direct `Read`/`Grep`/`Bash` (branch content, cc-0079/S5/S2 prior artifacts, git fetch/log verification) |
 | DB/DDL/config touched | None — zero writes, zero migrations, zero deploys, zero re-application of the classifier this session |
 | External review (`ask_chatgpt_review`) | **Run, adversarial, pinned.** First attempt (`review_id 9a277aa4-…`) was **void** — a placeholder was accidentally left in the `proposal` field instead of the packet text, so nothing was actually reviewed; discarded, not used as evidence. **Second, corrected attempt is the one of record**: `review_id f5b823e3-0db5-4abe-9978-7e342776f2e8`, pinned to `reviewed_input_hash = f0fd60d9a8ec5eac4bbfe5b23b9b1fdc935ce8419a667589e1ff26176a3a3753` (this file's sha256 at review time, post the §1.1 heading fix). **Verdict: `agree`, risk `medium`, confidence `high`, zero pushback points, zero unverified claims flagged.** Per CCF-02 triage: a clean `agree` with no `concrete_defect`/`missing_evidence`/`policy_decision` items — no routing action required. |
-| PK gate | Architecture direction already approved (§0a); this revision + its clean external review is the final artifact for the commit/push in §11 |
+| PK gate | Architecture direction already approved (§0a); this revision + its clean external review is the final artifact for the commit (`e28391d`, pushed) |
+
+---
+
+## 11. Erratum 1 — §1.3 row 11 citation corrected (2026-07-29, additive, does not alter the reviewed text above)
+
+**This section is an addition made after the packet above was committed (`e28391d`) and externally reviewed (`review_id f5b823e3-0db5-4abe-9978-7e342776f2e8`, pinned to `reviewed_input_hash f0fd60d9a8ec5eac4bbfe5b23b9b1fdc935ce8419a667589e1ff26176a3a3753`). Nothing above this line is altered, reworded, or deleted — that text and its review hash remain the historical record of what was reviewed and approved. This erratum was triggered by the resolver build brief's own grounding pass (`docs/briefs/s9-resolver-enforcement-build-brief-v1.md`), which could not corroborate row 11's citation and named it a live-truth gap; PK ordered a full retrace before Gate-1 completion (rather than accepting or silently correcting it).**
+
+### 11.1 The incorrect statement
+
+§1.3 row 11 (original text, unchanged above) reads: *"`m.fill_pending_slots` (schedule-fill, upstream of ai-worker...) — Legacy path falls to `c.client_publish_profile.preferred_format_<platform>`, **YouTube hardcoded to `'video_short_avatar'` in the function body**... Sets `job.input_payload.format` before ai-worker ever runs — the origin of the `video_short_avatar` request in the incident."*
+
+**This attributes the hardcode to the wrong function.** `m.fill_pending_slots` was re-verified live twice this session (once during the original Gate-1 grounding, once again during this retrace) and contains **zero platform-conditional logic of any kind** — its entire format-selection logic is `COALESCE(v_slot.format_preference[1], 'image_quote')`, reading whatever `format_preference` array a slot already carries. There is no `IF/ELSIF platform = 'youtube'` branch, no reference to `c.client_publish_profile.preferred_format_<platform>`, anywhere in this function.
+
+### 11.2 The verified current truth
+
+The hardcode is real — it exists, live, right now — but in a **different, upstream function**: `m.materialise_slots(p_days_forward integer)`, the function that creates `m.slot` rows from `c.client_publish_schedule` (days ahead of `m.fill_pending_slots`, which later fills an already-created slot into a draft). Confirmed via fresh `pg_get_functiondef('m.materialise_slots(integer)'::regprocedure)`, byte-identical to the newest tracked migration (`supabase/migrations/20260727100100_p1c_materialise_slots_honour_format_override.sql`):
+
+```sql
+IF v_rule.platform = 'facebook' THEN
+  SELECT preferred_format_facebook INTO v_preferred_fmt FROM c.client_publish_profile ...
+ELSIF v_rule.platform = 'instagram' THEN
+  SELECT preferred_format_instagram INTO v_preferred_fmt FROM c.client_publish_profile ...
+ELSIF v_rule.platform = 'linkedin' THEN
+  SELECT preferred_format_linkedin INTO v_preferred_fmt FROM c.client_publish_profile ...
+ELSIF v_rule.platform = 'youtube' THEN
+  v_preferred_fmt := 'video_short_avatar';
+END IF;
+```
+
+This exact line is present identically in three tracked migrations (oldest `20260628000000_format_mix_enforcement_phase1.sql:217`, then `20260725120000_durable_platform_support_guard_grid_and_materialiser.sql:487` — **never applied to production**, confirmed absent from the migration ledger, its paired rollback file is unused/inert — then `20260727100100_p1c_materialise_slots_honour_format_override.sql:75`, the version actually live today, ledger entry `20260727032613` — a version-number-vs-filename-timestamp mismatch consistent with the known `apply_migration mints own version` trap, not a naming-collision violation, since content is identical).
+
+**Additional live facts, not in the original packet:**
+- This `v_preferred_fmt` assignment only fires on the function's **legacy (non-format-mix-enrolled) path** — confirmed live: `m.format_mix_enrolled('fb98a472-ae4d-432d-8738-2273231c1ef4'::uuid)` (NDIS-Yarns) → `false`, so NDIS-Yarns's YouTube slots do take this legacy branch, not the weekly-demand-grid allocator.
+- **The hardcode is currently latent, not operative, for NDIS-Yarns specifically**: every one of NDIS-Yarns's enabled YouTube rows in `c.client_publish_schedule` carries an explicit, non-NULL `format_override` (confirmed live) — and per the same function's own final precedence step (`IF v_rule.format_override IS NOT NULL THEN v_format_pref := ARRAY[v_rule.format_override]; END IF;`, added by the newest migration), an explicit override always supersedes the hardcode. **Some of those override values are themselves explicitly set to `'video_short_avatar'`** — i.e., today's exposure comes from a deliberate schedule configuration, not from the hardcode silently firing. The hardcode remains live, unexercised-for-NDIS code that would become operative the moment any NDIS YouTube row's `format_override` were ever cleared back to NULL.
+- `m.fill_pending_slots` reads whichever `format_preference[1]` value `m.materialise_slots` (or a manual override) already set, days later, at fill time — it does not itself decide anything platform-specific; it is a generic reader.
+
+### 11.3 Does this change the approved implementation boundary? — **No.**
+
+The resolver architecture's Layer 1 chokepoint (§2.1) was already designed to be **origin-agnostic**: it checks whatever candidate format sits in a slot at fill time, regardless of which upstream mechanism (the `materialise_slots` hardcode, an enrolled client's weekly-allocator assignment, or a human-set `format_override`) put it there. Since `m.fill_pending_slots` is confirmed to be the single point every one of those origins funnels through before a draft is created, **Layer 1's insertion point stays exactly as designed** — no redesign, no additional insertion point, no scope change to the resolver build.
+
+One nuance worth naming, not adopted as a requirement: since the hardcode is set as early as `m.materialise_slots` (up to 7 days before fill, per `p_days_forward`), an *additional* capability check at that earlier point would surface a block to operators sooner than the existing Layer 1 design does. This is a genuine possible enhancement, **not required by this design and not added to the resolver build's scope** — Layer 1 at `m.fill_pending_slots` remains sufficient to guarantee no non-Ready draft is ever created, which is the boundary's actual requirement.
+
+### 11.4 Carries into the resolver build
+
+- The resolver build brief's Layer 1 design, scope, and insertion point are **unchanged** by this erratum.
+- The `20260725120000_durable_platform_support_guard_grid_and_materialiser` migration and its rollback are confirmed **inert** (never applied) — any future lane must not assume a "platform-support guard" already exists inside `materialise_slots`; it does not.
+- NDIS-Yarns currently has live, human-configured YouTube schedule rows explicitly requesting `video_short_avatar` (a confirmed `unsupported_silent_degrade` cell) — this is existing, real demand the resolver build will correctly convert to `blocked_by_capability`, not a hypothetical edge case.
