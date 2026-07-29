@@ -2,7 +2,10 @@ CLAIMED · tpr-1-addendum-v1 · main-checkout `C:\Users\parve\Invegent-content-e
 
 # TPR-1 Addendum v1 — Three-Surface Output-Parity Comparison
 
-**Created:** 2026-07-29 Sydney · **Status: PROPOSED — awaiting PK ratification.**
+**Created:** 2026-07-29 Sydney · **Status: ✅ RATIFIED (PK, 2026-07-29).**
+Ratified as written — sub-rules **a–f** are in force from this date and bind the next repoint of any
+governed format's default template. This ratification authorises **no** apply, deploy, or repoint; it
+changes what a future repoint must prove at Gate 1.
 **Author:** orchestrator (direct) · **Type:** additive amendment to standing requirement **TPR-1**.
 **Lane classification:** SAFETY_GATE · **Tier: T1** (governance text only — no code, no DDL/DML, no
 deploy, no resolver change).
@@ -52,7 +55,7 @@ A ≠ C. Only B explains the difference. A rule that reads A alone is wrong abou
 
 ---
 
-## 3. The addendum (proposed text — additive; removes nothing from TPR-1)
+## 3. The addendum (RATIFIED text — additive; removes nothing from TPR-1)
 
 > ### TPR-1.a — Effective-spec sourcing
 >
@@ -125,13 +128,19 @@ A ≠ C. Only B explains the difference. A rule that reads A alone is wrong abou
 **This addendum authorises no apply, no deploy, no repoint.** It changes what a *future* repoint must
 prove at Gate 1.
 
-## 5. Effect if ratified
+## 5. Effect (now in force)
 
-1. The next repoint of any governed format's default template must produce a three-surface table and a
-   `specs_match` verdict on **effective** specs.
+1. The next repoint of any governed format's default template **must** produce a three-surface table
+   and a `specs_match` verdict on **effective** specs. A repoint packet without them is not
+   TPR-1-complete and does not reach Gate 2.
 2. The v6.54 activation is retrospectively TPR-1.a-complete — it already measured both sides and
    recorded `specs_match = true`; this addendum codifies what that lane did ad hoc.
-3. The carry "TPR-1 addendum proposed, NOT ratified" (`docs/00_sync_state.md:13`) closes.
+3. **The carry "TPR-1 addendum proposed, NOT ratified" is CLOSED** (opened v6.54,
+   `docs/00_sync_state.md`; closed v6.57).
+4. The cheap registry-only check named in the original TPR-1 text
+   (`SELECT width, height, duration_seconds FROM c.creative_provider_template`) is **no longer
+   sufficient on its own** for any template carrying a Surface-B overlay — today exactly one:
+   `46c5c4ac` (registry `dd5fd75e`). It remains correct as the Surface-A input.
 
 ## 6. Non-claims
 
@@ -143,4 +152,5 @@ prove at Gate 1.
 
 ## 7. Stop condition
 
-Ratified or rejected by PK. No execution follows from this document.
+**Met — RATIFIED by PK 2026-07-29.** No execution follows from this document. Sub-rules a–f bind the
+next governed-default-template repoint at its Gate 1; this lane performs none.

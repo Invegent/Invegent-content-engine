@@ -153,7 +153,7 @@ required, non-defaultable field rather than an optional note.
 
 ## 3. Minimum governed pool before normal production volume continues
 
-**Ratified in this lane (PK, 2026-07-29):**
+**✅ RATIFIED (PK, 2026-07-29) — confirmed explicitly at the gate, and now binding:**
 
 | Threshold | Value | Meaning |
 |---|---|---|
@@ -182,7 +182,9 @@ count (§4.5).
 > source**. They are compatible — sourcing 8 and accepting 4–6 (that brief's own §2 batch target)
 > lands exactly on this floor. Where they are read as competing, **PK's 4 / 6 issued in this lane is
 > the later instruction and governs the volume decision.** Flagged for PK confirmation rather than
-> silently reconciled.
+> silently reconciled — **and CONFIRMED by PK on 2026-07-29.** The two floors stand side by side:
+> **3 / 8 governs how much to source** (intake brief), **4 / 6 governs when normal production volume
+> resumes** (this document). Neither supersedes the other; a lane citing one must name which.
 
 **Also note (unchanged by pool size):** no pool size fixes §2.3. At the 6-clip target, roughly one
 render in six still repeats its predecessor. That is an accepted property of a stateless seeded
@@ -388,7 +390,8 @@ allowed to make it.
 - ❌ Not claimed: that rotation avoids repeats. It cannot (§2.3).
 - ❌ Not claimed: that platform scope is enforced in production. It is not (§2.4).
 - ❌ Not claimed: that geography is filterable. It is not (§2.5).
-- ❌ Not claimed: that TPR-1 Addendum v1 is ratified — it is **proposed**.
+- ❌ Not claimed: that ratifying TPR-1 Addendum v1 or confirming the 4 / 6 floor changed anything in
+  production. Both are governance rules. **The pool is still 1 and B-roll is still below the floor.**
 
 ## 7.1 Review chain
 
@@ -429,11 +432,18 @@ built here because a detector requires a worker and/or resolver change, which th
 boundaries explicitly forbid; building it would have been the lane exceeding its authority, not
 closing a gap. It is carried as §8.5.
 
-## 8. Open questions for PK
+## 8. PK gate outcomes and remaining open questions
 
-1. **Ratify TPR-1 Addendum v1?** (`docs/briefs/tpr-1-addendum-v1.md`) — closes the standing
-   "addendum proposed, NOT ratified" carry.
-2. **Confirm 4 / 6 over the intake brief's 3 / 8** for the resume-volume decision (§3 divergence note).
+**Resolved at the gate (PK, 2026-07-29):**
+
+1. ✅ **TPR-1 Addendum v1 RATIFIED** (`docs/briefs/tpr-1-addendum-v1.md`) — sub-rules a–f in force.
+   The standing "addendum proposed, NOT ratified" carry (opened v6.54) is **CLOSED**.
+2. ✅ **4 / 6 CONFIRMED** as the eligible-pool floor governing resume-of-normal-volume, alongside the
+   intake brief's 3 / 8 sourcing floor (§3). **Current eligible pool = 1, so governed B-roll video
+   remains below the floor and normal volume does not resume on this ratification.**
+
+**Still open — nothing below was decided at this gate:**
+
 3. **Platform scope on the two existing rows** (§2.4): correcting `{youtube}` →
    `{facebook,instagram,youtube}` on `2d62b04e` is a one-row DML the intake brief explicitly forbids
    itself from doing ("do not mutate"). It therefore needs its own gate. **Until it happens, every
@@ -448,5 +458,7 @@ closing a gap. It is carried as §8.5.
 
 ## 9. Stop condition
 
-**Met.** Addendum and handoff written, reviewed, recorded, committed, pushed. The next production
-outcome begins only after Asset Sufficiency delivers approved B-roll clips against §4.
+**Met.** Addendum and handoff written, reviewed, recorded, committed, pushed (v6.56 `ade7947`);
+PK gate taken 2026-07-29 — addendum **ratified**, 4 / 6 floor **confirmed** (v6.57). The next
+production outcome begins only after Asset Sufficiency delivers approved B-roll clips against §4 and
+the eligible pool reaches **4**.
