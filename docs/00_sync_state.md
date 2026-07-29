@@ -6,6 +6,19 @@
 
 ---
 
+> **🎬 v6.60 — B-roll Platform Suitability (facebook + instagram) v1 APPLIED (T3 · PRODUCT_PROOF; 2-row DML repoint, PK Gate-2 explicit)** — result: `docs/briefs/results/broll-suitability-fb-ig-v1-result.md`, packet: `docs/briefs/broll-suitability-fb-ig-v1-apply-packet.md`.
+> · **A REPOINT, not a no-op:** 2 rows INSERTed into `c.creative_template_platform_suitability` for `dd5fd75e`/`46c5c4ac` (`facebook`+`instagram`, `feed`, `candidate`) ⇒ **fb+ig move from the incumbent `video_stat_reveal_9x16_v2` to the governed B-roll template.** B-roll is `strong_candidate` vs the incumbent's `candidate` (demoted v6.54), so it outranks once the platform gate passes.
+> · **🔒 FIRST REAL USE OF TPR-1 ADDENDUM v1** (ratified this morning, v6.57). Three-surface effective-spec diff: outgoing `c11bb8ab` A=1080×1920/12s · B=absent · effective 1080×1920/12s (`provider_template_default`); incoming `46c5c4ac` A=720×1280/8s · B=overlay(1080×1920, `.duration=12` ×8 elements) · effective 1080×1920/12s (`render_time_parity_overlay`) ⇒ **`specs_match = TRUE`**. Registry row left untouched per TPR-1.c.
+> · **Surface C accepted by PK as a CODE-LEVEL INFERENCE, not a measurement** — C was measured at `p_platform=NULL`; no fb/ig render exists to measure because no caller passes an explicit platform. Inference: `parityOverlayForProviderTemplate` is keyed solely by provider-template id, so platform never reaches the Creatomate payload. **Recorded as accepted-inference so no later lane cites it as a measured fb/ig result.**
+> · **All eight guards passed** (G0 atomicity · G1 pre-state exactly 0 rows · G2 rowcount==2 · G3 post-state exact · **G4 production winner unchanged** · G5 repoint took · **G6 no linkedin leakage** · **G7 no youtube enablement**), one `execute_sql` call. **Rollback proven BEFORE apply** and still valid.
+> · **Verified post-apply:** `NULL`(production) → B-roll **unchanged** · `facebook`/`instagram` → **B-roll (repointed)** · `linkedin` → incumbent · `youtube` → `(none)`.
+> · **⚠ ZERO LIVE EFFECT TODAY — preparatory only.** No caller passes an explicit platform for `video_short_stat` (video-worker passes `null` in prod + smoke; image-worker is `image_quote`). **Must NOT be read as "fb/ig B-roll now renders".**
+> · **Deliberate exclusions:** LinkedIn (asset `platform_scope` omits it ⇒ a row would declare suitability the assets block) · **YouTube (safety: no template has a youtube row, so youtube fails closed globally; opening it exposes the schedule-blind auto-publish path — needs its own PK decision).**
+> · **Chain:** external review `8a990dde` `partial`, **no concrete defect**, 2 pushbacks escalated — Surface C (`runtime_verification_required`) **resolved by explicit PK acceptance at the gate**; G7-durability acknowledged as an apply-time guard, not a standing control.
+> · **UNCHANGED:** B-roll pool **still 1 eligible clip, still below the floor of 4** — nothing sourced or promoted; normal volume does not resume.
+
+---
+
 > **✅ v6.59 — B-roll `platform_scope` Correction v1 APPLIED (T2 · SAFETY_GATE; 2-row DML, PK Gate-2 explicit)** — result: `docs/briefs/results/broll-platform-scope-correction-v1-result.md`, packet: `docs/briefs/broll-platform-scope-correction-v1-apply-packet.md`.
 > · Both `usage='broll_background'` rows (`2d62b04e` live · `42211c0f` fenced) moved `platform_scope` **`{youtube}` → `{facebook,instagram,youtube}`**; LinkedIn excluded per ratified intake ruling 4. One column, 2 rows. No DDL/GRANT/fence/`fit_status`/template/resolver/code/deploy change. Pre-image `a779f700…` → post-image `0801049c…`.
 > · **All six guards passed** (G0 atomicity · G1 pre-image digest · G2 rowcount==2 CAS-pinned · G3 post-image exact · **G4 production-signature resolver payload byte-identical** · G5 linkedin still `fail_closed`), applied as ONE `execute_sql` call so `BEGIN`/`DO`/`COMMIT` composed. **Rollback proven BEFORE apply** (digest-exact, zero prod effect) and remains valid.
