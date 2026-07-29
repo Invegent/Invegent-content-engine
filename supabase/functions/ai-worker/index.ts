@@ -11,7 +11,39 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.24.1";
+const VERSION = "ai-worker-v2.25.0";
+// v2.25.0 (2026-07-29) — S9 CAPABILITY ENFORCEMENT, Objective 1 / LAYER 2 (resolver chokepoint).
+//   marker: ai-worker-s9-capability-enforcement (grep-able in the deployed bundle).
+//   Brief: docs/briefs/s9-resolver-enforcement-build-brief-v1.md
+//   Architecture: docs/briefs/s9-capability-enforcement-architecture-gate1-v1.md §2.1 Layer 2, §4.
+//   WHAT: one fail-closed call to public.classify_format_capability(client_slug, platform, format)
+//   immediately before the single write site that finalises recommended_format — on BOTH draft
+//   paths: the main success path (after the Advisor's pick AND after all three unconditional pins,
+//   so it is the true last word regardless of which of the 11 documented fallback paths produced
+//   decidedFormat) and the evergreen path (§1.3 path #6, which writes recommended_format directly
+//   from input_payload.format and bypasses Advisor + resolver entirely, so it carries its own copy).
+//   READY -> behaviour byte-unchanged. NON-READY -> canonical blocked state, using EXISTING
+//   format-authority columns only (PK ruling 3, zero DDL):
+//     recommended_format   = NULL  (NEVER a substitute — no legacy format is ever written back;
+//                                   every renderer/publisher keys off an exact value, so NULL is
+//                                   unreachable downstream by construction)
+//     requested_format     preserved unconditionally
+//     final_format_authority = 'blocked_by_capability'
+//     final_format_reason  = '<classifier status>:<reason_code>'; full classifier jsonb verbatim
+//                            in resolver_evidence (never re-derived locally)
+//   NOT written on a block: approval_status (skeleton stays 'draft', so m.auto_approver_fetch_drafts
+//   — WHERE approval_status='needs_review' — cannot see it), video_status, any publish-failure
+//   status, draft_title/draft_body. ai_job -> 'cancelled' (NOT 'failed': pipeline-fixer re-queues
+//   'locked' and dead-letters 'failed' but never touches 'cancelled', so a block cannot enter a
+//   retry/dead-letter loop). slot -> 'skipped' + skip_reason 'capability_blocked:<status>:<format>'.
+//   The check runs BEFORE writeVisualSpec/assemblePrompts/the LLM call and before any video-script
+//   or dialogue generation, so a blocked draft incurs zero generation cost (PK ruling 2026-07-29).
+//   FAIL-CLOSED ALWAYS: RPC error, throw, unresolvable client_slug, or unrecognised classifier
+//   payload all classify as NOT ready — no path turns a failure into 'ready'. The ready test is
+//   generic (status === 'ready'), never an enumeration of blocked statuses, so a future 7th/8th
+//   classifier status is covered by construction. Layer 1 (m.fill_pending_slots) ships in the
+//   paired migration 20260729143000. STRICTLY OUT OF SCOPE (separate future brief): publisher-side
+//   enforcement, the auto-approver guard, Layer 3 render-dispatch, WordPress.
 // v2.24.1 (2026-07-28) — cc-0084 Slice 2 write-order fix (Slice 3 live proof). marker unchanged:
 //   ai-worker-cc0084-dialogue-script. The dialogue-success path was persisting video_script via
 //   set_draft_video_script (a jsonb `||` MERGE into draft_format) and THEN doing a plain
@@ -433,6 +465,145 @@ async function resolveShadow(
     console.error('[ai-worker] resolve_final_format shadow threw', { message: e instanceof Error ? e.message : String(e) });
     return null;
   }
+}
+
+// ── S9 LAYER 2 — capability enforcement (fail-closed) ────────────────────────
+// Brief:        docs/briefs/s9-resolver-enforcement-build-brief-v1.md
+// Architecture: docs/briefs/s9-capability-enforcement-architecture-gate1-v1.md §2.1 Layer 2, §4.
+//
+// This is the resolver chokepoint: EVERY one of the 11 fallback paths enumerated in
+// the architecture packet §1.3 terminates at the single write site that finalises
+// recommended_format, so ONE check placed immediately before it — and AFTER the
+// Advisor's pick and all three unconditional pins — is the true last word on format.
+//
+// FAIL-CLOSED, ALWAYS: an RPC error, a throw, an unresolvable client_slug, or an
+// unrecognised classifier payload are ALL treated as NOT ready. There is no branch
+// anywhere below that turns a failure into 'ready' — a capability check that cannot
+// prove readiness must never let content through.
+//
+// The ready test is generic (status === 'ready'); blocked statuses are NEVER
+// enumerated, so any status the classifier gains later (e.g. the 7th,
+// publisher_path_missing) is covered by construction rather than by a list to update.
+export const S9_CAPABILITY_MARKER = 'ai-worker-s9-capability-enforcement';
+
+export type CapabilityVerdict = {
+  status: string;
+  reason_code: string | null;
+  routed_lane: string | null;
+  evidence: any | null;
+  error: string | null;
+};
+
+// client_slug is not carried on the ai_job (the worker works purely in client_id uuid),
+// and classify_format_capability is keyed by slug — so resolve it explicitly. Cached per
+// isolate: the mapping is immutable in practice and this runs once per client per cold start.
+// A negative result is cached as null and still fails closed at the call site.
+const s9ClientSlugCache = new Map<string, string | null>();
+
+// Test-only: the slug cache is process-global, so hermetic tests must be able to clear it.
+export function __resetClientSlugCacheForTests(): void { s9ClientSlugCache.clear(); }
+
+export async function getClientSlug(
+  supabase: ReturnType<typeof getServiceClient>,
+  clientId: string,
+): Promise<string | null> {
+  if (s9ClientSlugCache.has(clientId)) return s9ClientSlugCache.get(clientId) ?? null;
+  let slug: string | null = null;
+  try {
+    const { data, error } = await supabase.schema('c').from('client')
+      .select('client_slug').eq('client_id', clientId).maybeSingle();
+    if (error) console.error('[ai-worker] getClientSlug error', { code: error.code, message: error.message });
+    slug = (data as any)?.client_slug ?? null;
+  } catch (e) {
+    console.error('[ai-worker] getClientSlug threw', { message: e instanceof Error ? e.message : String(e) });
+    slug = null;
+  }
+  s9ClientSlugCache.set(clientId, slug);
+  return slug;
+}
+
+export async function classifyCapability(
+  supabase: ReturnType<typeof getServiceClient>,
+  clientId: string,
+  platform: string,
+  format: string | null,
+): Promise<CapabilityVerdict> {
+  const fail = (status: string, reason: string, error: string | null = null): CapabilityVerdict =>
+    ({ status, reason_code: reason, routed_lane: null, evidence: null, error });
+
+  if (!format) return fail('unknown', 'format_absent');
+
+  const slug = await getClientSlug(supabase, clientId);
+  if (!slug) return fail('unknown', 'client_slug_unresolved');
+
+  try {
+    const { data, error } = await supabase.rpc('classify_format_capability', {
+      p_client_slug: slug, p_platform: platform, p_format: format,
+    });
+    if (error) {
+      console.error('[ai-worker] classify_format_capability error', { code: error.code, message: error.message });
+      return fail('capability_check_error', 'rpc_error', `${error.code ?? ''}:${error.message ?? ''}`.slice(0, 400));
+    }
+    const status = (data as any)?.status;
+    if (typeof status !== 'string' || status.length === 0) {
+      // Unrecognised payload shape — never guess, never assume ready.
+      return fail('unknown', 'classifier_shape_unrecognised');
+    }
+    return {
+      status,
+      reason_code: (data as any)?.reason_code ?? null,
+      routed_lane: (data as any)?.routed_lane ?? null,
+      evidence: data ?? null,
+      error: null,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[ai-worker] classify_format_capability threw', { message: msg });
+    return fail('capability_check_error', 'rpc_threw', msg.slice(0, 400));
+  }
+}
+
+export const isCapabilityReady = (v: CapabilityVerdict): boolean => v.status === 'ready';
+
+// The canonical blocked-state write (PK ruling 3 — existing format-authority columns ONLY,
+// zero new schema). Deliberate omissions are as load-bearing as the fields present:
+//   * recommended_format -> null. NEVER a substitute value ('text' or otherwise). Every
+//     renderer and queue-population path keys off an exact recommended_format value
+//     (heygen-worker .eq('recommended_format','video_short_avatar'), video-worker IN (...)),
+//     so null matches none of them and the draft is unreachable downstream.
+//   * requested_format   -> preserved unconditionally: what was actually asked for.
+//   * approval_status    -> NOT WRITTEN. The skeleton row is still 'draft', so
+//     m.auto_approver_fetch_drafts (WHERE approval_status='needs_review') cannot see it.
+//     Writing 'needs_review' here would hand a blocked draft straight to the auto-approver.
+//   * video_status / any publish-failure status -> NOT WRITTEN. Capability blocking is not
+//     a render failure and not an approval decision (PK ruling 3 forbids conflating them).
+//   * draft_title / draft_body -> NOT WRITTEN: no generation ran.
+export function buildBlockedDraftUpdate(
+  v: CapabilityVerdict,
+  opts: { requestedFormat: string | null; advisorFormat: string | null; formatMode: string | null; blockedFormat: string | null; at: string },
+): Record<string, unknown> {
+  return {
+    recommended_format: null,
+    recommended_reason: null,
+    advisor_format: opts.advisorFormat,
+    requested_format: opts.requestedFormat,
+    format_mode: opts.formatMode,
+    shadow_resolved_format: null,
+    final_format_authority: 'blocked_by_capability',
+    final_format_reason: `${v.status}:${v.reason_code ?? 'none'}`,
+    format_resolved_at: opts.at,
+    resolver_evidence: {
+      gate: 's9_layer2',
+      marker: S9_CAPABILITY_MARKER,
+      blocked_format: opts.blockedFormat,
+      capability_status: v.status,
+      capability_reason_code: v.reason_code,
+      capability_routed_lane: v.routed_lane,
+      capability_error: v.error,
+      capability: v.evidence,
+    },
+    updated_at: opts.at,
+  };
 }
 
 function trimSeedPayload(raw: any, jobType: string): any {
@@ -1224,6 +1395,59 @@ app.post('*', async (c) => {
         const evergreenFormat = job.input_payload?.format ?? 'text';
         const evergreenRequestedFormat = (job.input_payload?.requested_format ?? null) as string | null;
         const evergreenFormatMode = (job.input_payload?.format_mode ?? null) as string | null;
+        // ── S9 LAYER 2 CAPABILITY CHOKEPOINT — evergreen path ──────────────────────
+        // Architecture packet §1.3 fallback path #6: this path writes recommended_format
+        // DIRECTLY from input_payload.format (defaulting to 'text'), bypassing both the
+        // Advisor and the resolver — so it needs its own copy of the gate; the main-path
+        // check below can never see it. Same canonical blocked state, same fail-closed
+        // semantics, same 'cancelled' terminal job status.
+        const evergreenCapability = await classifyCapability(supabase, job.client_id, platform, evergreenFormat);
+        if (!isCapabilityReady(evergreenCapability)) {
+          console.log(`[ai-worker] ${VERSION} — job ${jobId}: ${S9_CAPABILITY_MARKER} BLOCKED (evergreen) format=${evergreenFormat} status=${evergreenCapability.status} reason=${evergreenCapability.reason_code ?? 'none'}`);
+
+          const evBlockedAt = nowIso();
+          const { error: evBlockedDraftErr } = await supabase.schema('m').from('post_draft')
+            .update(buildBlockedDraftUpdate(evergreenCapability, {
+              requestedFormat: evergreenRequestedFormat,
+              advisorFormat: evergreenFormat,
+              formatMode: evergreenFormatMode,
+              blockedFormat: evergreenFormat,
+              at: evBlockedAt,
+            }))
+            .eq('post_draft_id', job.post_draft_id);
+          if (evBlockedDraftErr) throw new Error(`capability_blocked_evergreen_post_draft_update_failed:${evBlockedDraftErr.message}`);
+
+          if (job.slot_id) {
+            const { error: evBlockedSlotErr } = await supabase.schema('m').from('slot').update({
+              status: 'skipped',
+              skip_reason: `capability_blocked:${evergreenCapability.status}:${evergreenFormat}`,
+              updated_at: evBlockedAt,
+            }).eq('slot_id', job.slot_id);
+            if (evBlockedSlotErr) throw new Error(`capability_blocked_evergreen_slot_update_failed:${evBlockedSlotErr.message}`);
+          }
+
+          const { error: evBlockedJobErr } = await supabase.schema('m').from('ai_job').update({
+            status: 'cancelled',
+            output_payload: {
+              capability_blocked: true, evergreen_render: true, marker: S9_CAPABILITY_MARKER,
+              blocked_format: evergreenFormat,
+              capability_status: evergreenCapability.status,
+              capability_reason_code: evergreenCapability.reason_code,
+              capability_error: evergreenCapability.error,
+            },
+            error: null, locked_by: null, locked_at: null, updated_at: evBlockedAt,
+          }).eq('ai_job_id', jobId);
+          if (evBlockedJobErr) throw new Error(`capability_blocked_evergreen_ai_job_update_failed:${evBlockedJobErr.message}`);
+
+          results.push({
+            ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'capability_blocked',
+            evergreen_render: true, blocked_format: evergreenFormat,
+            capability_status: evergreenCapability.status,
+            capability_reason_code: evergreenCapability.reason_code,
+          });
+          continue;
+        }
+
         const evergreenShadow = await resolveShadow(supabase, job.client_id, platform, evergreenRequestedFormat, evergreenFormatMode, evergreenFormat);
         const { error: evergreenDraftErr } = await supabase.schema('m').from('post_draft').update({
           draft_title: evergreenContent.title,
@@ -1414,6 +1638,63 @@ app.post('*', async (c) => {
         decidedFormat = 'video_short_stat';
         advisorReason = `schedule_authority_pin (video_short_stat golden-path); advisor_would_have=${advisorWouldHave}${advisorReason ? `; ${advisorReason}` : ''}`;
         console.log(`[ai-worker] ${VERSION} — job ${jobId}: schedule-authority pin video_short_stat (advisor_would_have=${advisorWouldHave})`);
+      }
+
+      // ── S9 LAYER 2 CAPABILITY CHOKEPOINT (fail-closed) ────────────────────────────
+      // Placed AFTER the Advisor's pick and AFTER all three unconditional pins (A2 avatar,
+      // cc-0084 dialogue, schedule-authority video_short_stat) so it is the true last word
+      // on decidedFormat regardless of which of the 11 fallback paths produced it — and
+      // BEFORE writeVisualSpec / assemblePrompts / the LLM call, so a blocked draft incurs
+      // NO generation cost for output that could never execute (PK ruling 2026-07-29:
+      // short-circuit). Non-ready => canonical blocked state, no substitute format, and the
+      // job terminates as 'cancelled' (NOT 'failed': pipeline-fixer re-queues 'locked' and
+      // dead-letters 'failed', but never touches 'cancelled', so a capability block cannot
+      // enter a retry or dead-letter loop).
+      const capability = await classifyCapability(supabase, job.client_id, platform, decidedFormat);
+      if (!isCapabilityReady(capability)) {
+        console.log(`[ai-worker] ${VERSION} — job ${jobId}: ${S9_CAPABILITY_MARKER} BLOCKED format=${decidedFormat} status=${capability.status} reason=${capability.reason_code ?? 'none'}`);
+
+        const blockedAt = nowIso();
+        const { error: blockedDraftErr } = await supabase.schema('m').from('post_draft')
+          .update(buildBlockedDraftUpdate(capability, {
+            requestedFormat: (job.input_payload?.requested_format ?? null) as string | null,
+            advisorFormat: decidedFormat,
+            formatMode: (job.input_payload?.format_mode ?? null) as string | null,
+            blockedFormat: decidedFormat,
+            at: blockedAt,
+          }))
+          .eq('post_draft_id', job.post_draft_id);
+        if (blockedDraftErr) throw new Error(`capability_blocked_post_draft_update_failed:${blockedDraftErr.message}`);
+
+        if (job.slot_id) {
+          const { error: blockedSlotErr } = await supabase.schema('m').from('slot').update({
+            status: 'skipped',
+            skip_reason: `capability_blocked:${capability.status}:${decidedFormat}`,
+            updated_at: blockedAt,
+          }).eq('slot_id', job.slot_id);
+          if (blockedSlotErr) throw new Error(`capability_blocked_slot_update_failed:${blockedSlotErr.message}`);
+        }
+
+        const { error: blockedJobErr } = await supabase.schema('m').from('ai_job').update({
+          status: 'cancelled',
+          output_payload: {
+            capability_blocked: true,
+            marker: S9_CAPABILITY_MARKER,
+            blocked_format: decidedFormat,
+            capability_status: capability.status,
+            capability_reason_code: capability.reason_code,
+            capability_error: capability.error,
+          },
+          error: null, locked_by: null, locked_at: null, updated_at: blockedAt,
+        }).eq('ai_job_id', jobId);
+        if (blockedJobErr) throw new Error(`capability_blocked_ai_job_update_failed:${blockedJobErr.message}`);
+
+        results.push({
+          ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'capability_blocked',
+          blocked_format: decidedFormat, capability_status: capability.status,
+          capability_reason_code: capability.reason_code,
+        });
+        continue;   // no visual spec, no prompt assembly, no LLM call, no video script
       }
 
       // ACI v0 / Slice B1 — resolve the vendored creative contract for the FINAL decidedFormat.
