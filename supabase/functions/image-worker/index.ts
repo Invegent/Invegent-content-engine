@@ -1,4 +1,24 @@
-// image-worker v3.33.0
+// image-worker v3.34.0
+// v3.34.0 (2026-07-29) — TMR winner-allowlist ext: generic_announcement_card_1x1_v1 +
+//   generic_carousel_cover_1x1_v1 mapping (fail-closed allowlist extension). Changes:
+//   (1) b1_production.ts: TMR_WINNER_TEXT_FIELDS gains the two winners above, mapped from the
+//   AUTHORITATIVE governed capture c.creative_provider_template_field for provider_template_id
+//   a75e7139-1eec-4bba-a8c1-40b8e07b2b0e (announcement_card) and c9a59faa-6600-4f2b-817e-6051f824f5e7
+//   (carousel_cover); B1Fields gains OPTIONAL cta/slide_number (per-winner, NOT required_for_render,
+//   NOT client brand values like quote_card's attribution/source_label — omitted from the output
+//   object, never emitted as `undefined`, when absent). (2) THIS entrypoint: the existing
+//   governed_image_quote_smoke branch (cc-0037) gains PURELY ADDITIVE optional overrides —
+//   body.variant_intent / body.format now forward into select_template (previously hardcoded
+//   null / 'image_quote'); body.expected_provider_template_id now overrides the
+//   EXPECTED_SMOKE_PROVIDER_TEMPLATE_ID constant passed to assertExpectedProviderTemplate;
+//   body.fields.cta / body.fields.slide_number fold into the smoke's buildTmrRenderPlan call. A
+//   default smoke call (no new body keys) is BYTE-IDENTICAL to v3.33.0 — every new read falls back
+//   to the exact prior hardcoded value. OUT OF SCOPE (untouched): generic_stat_hero_card_1x1_v1
+//   (explicitly NOT mapped), buildTmrRenderPlan's logic, TMR_WINNER_LAYOUT_GUARD, the two
+//   pre-existing TMR_WINNER_TEXT_FIELDS entries, creative_contract.ts, the four 410 guards, the
+//   production image_quote loop, B1_SMOKE_LABEL, the headline-gate try/catch, asset-reachability
+//   checks, and the render/upload call shape. NO DB/migration/registry change; NO change to
+//   template selection ranking, asset resolution, or publish behaviour.
 // v3.33.0 (2026-07-22) — cc-0049 INCIDENT RECOVERY (Invegent quote-card winner mapping).
 //   NO logic change in THIS entrypoint — version bump + header only (the drift gate hashes
 //   ONLY index.ts). Actual changes: (1) TMR_WINNER_TEXT_FIELDS gains
@@ -469,7 +489,7 @@ import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C:
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.33.0';  // cc-0049 incident recovery — entrypoint bump only (drift-gate reclassify); the changes are the quote-card winner mapping + optional contract-sourced brand fields
+const VERSION = 'image-worker-v3.34.0';  // TMR winner-allowlist ext — announcement_card + carousel_cover mapping + additive governed_image_quote_smoke optional overrides (variant_intent/format/expected_provider_template_id/cta/slide_number); stat_hero_card explicitly out of scope
 // cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
 // Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
 // provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1
@@ -821,6 +841,13 @@ Deno.serve(async (req: Request) => {
     const smokeSubtitleRaw = String(body?.fields?.subtitle ?? 'Auction clearance rates held above 70% for a third straight week.');
     const smokePlatform: string | null = body?.platform ?? null;
     const smokeSeed = String(body?.seed ?? SMOKE_SEED);
+    // ADDITIVE + OPTIONAL (winner-allowlist extension): default-call body has neither key, so
+    // these fall back to the exact hardcoded values the smoke has always used — byte-identical
+    // default behaviour. Only an explicit body.variant_intent / body.format / body.fields.cta /
+    // body.fields.slide_number / body.expected_provider_template_id changes anything below.
+    const smokeVariantIntent: string | null = body?.variant_intent ?? null;
+    const smokeFormat: string = body?.format ?? 'image_quote';
+    const smokeExpectedProviderTemplateId: string = body?.expected_provider_template_id ?? EXPECTED_SMOKE_PROVIDER_TEMPLATE_ID;
     try {
       assertHeadlineWithinGate(smokeHeadline);
     } catch {
@@ -830,17 +857,25 @@ Deno.serve(async (req: Request) => {
       const smokeSupabase = getServiceClient();
       // SAME selector RPC as production (:660). Read-only; NO writes. p_seed rotates the governed
       // background only — the winner template never depends on the seed. RPC error = fail loud.
-      const { data: selection, error: selectErr } = await smokeSupabase.rpc('select_template', { p_client_slug: B1_GOVERNED_CLIENT_SLUG, p_platform: smokePlatform, p_format: 'image_quote', p_variant_intent: null, p_seed: smokeSeed });
+      const { data: selection, error: selectErr } = await smokeSupabase.rpc('select_template', { p_client_slug: B1_GOVERNED_CLIENT_SLUG, p_platform: smokePlatform, p_format: smokeFormat, p_variant_intent: smokeVariantIntent, p_seed: smokeSeed });
       if (selectErr) throw new Error(`governed_image_quote_smoke tmr_selector_rpc_failed: ${selectErr.message}`);
       // Fields via the SAME builder production uses (:662) — it supplies category/date/footer. The
       // subtitle is supervisor-supplied directly here (no draft_body → NOT deriveB1Subtitle), but is
       // bounded to B1_SUBTITLE_MAX_CHARS exactly as production's derived subtitle is.
       const smokeFields = buildProofFieldsFromDraft({ image_headline: smokeHeadline, client_id: B1_GOVERNED_CLIENT_ID, recommended_format: 'image_quote' });
       const smokeSubtitle = smokeSubtitleRaw.slice(0, B1_SUBTITLE_MAX_CHARS);
-      const plan = buildTmrRenderPlan(selection as TmrSelectorResponse, { ...smokeFields, subtitle: smokeSubtitle }, smokeFields.date);
+      // ADDITIVE: cta/slide_number fold in ONLY when the winner map's own `f.cta !== undefined` /
+      // `f.slide_number !== undefined` guards see a value — a default call has body?.fields
+      // undefined, so both are `undefined` here too, which is exactly what those guards expect
+      // (b1_production.ts omits the key entirely in that case). Inert for every existing caller.
+      const plan = buildTmrRenderPlan(
+        selection as TmrSelectorResponse,
+        { ...smokeFields, subtitle: smokeSubtitle, cta: body?.fields?.cta, slide_number: body?.fields?.slide_number },
+        smokeFields.date,
+      );
       // THE OPTION-B ASSERT: the derived provider id MUST equal the id of record. Throws (naming
       // BOTH ids) on mismatch — converts silent C4 drift into an immediate failure, never renders.
-      assertExpectedProviderTemplate(plan.providerTemplateId, EXPECTED_SMOKE_PROVIDER_TEMPLATE_ID);
+      assertExpectedProviderTemplate(plan.providerTemplateId, smokeExpectedProviderTemplateId);
       // Governed assets are fail-loud, as production (:712-713). Fresh local memo for this request.
       const smokeMemo = new Map<string, Promise<AssetVerdict>>();
       const smokeLogoUrl = String(plan.modifications['Logo.source']);

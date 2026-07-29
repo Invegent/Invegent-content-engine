@@ -244,9 +244,17 @@ function liveShapeFixture(): TmrSelectorResponse {
 // (D-1) The D1 allowlist maps ONLY the market-insight winner in v1.
 // cc-0049: the allowlist gained generic_quote_card_1x1_v1 (Invegent's governed winner). The
 // allowlist is still CLOSED — any winner outside it fails loud (see B1-D-7 / B1-LG-4).
-Deno.test('B1-D-1: TMR_WINNER_TEXT_FIELDS allowlist = market-insight + quote-card ONLY', () => {
-  assertEquals(Object.keys(TMR_WINNER_TEXT_FIELDS).sort(),
-    ['generic_market_insight_card_1x1_v1', 'generic_quote_card_1x1_v1']);
+// TMR winner-allowlist ext: the allowlist gained generic_announcement_card_1x1_v1 +
+// generic_carousel_cover_1x1_v1 (4 keys total). generic_stat_hero_card_1x1_v1 is explicitly
+// OUT OF SCOPE for this change — asserted absent here as the proof.
+Deno.test('B1-D-1: TMR_WINNER_TEXT_FIELDS allowlist = the 4 mapped winners ONLY (stat_hero excluded)', () => {
+  assertEquals(Object.keys(TMR_WINNER_TEXT_FIELDS).sort(), [
+    'generic_announcement_card_1x1_v1',
+    'generic_carousel_cover_1x1_v1',
+    'generic_market_insight_card_1x1_v1',
+    'generic_quote_card_1x1_v1',
+  ]);
+  assert(!('generic_stat_hero_card_1x1_v1' in TMR_WINNER_TEXT_FIELDS));
 });
 
 // (D-2) Happy path: exact 13-key modification set (3 slot keys + 4 layout-guard keys +
@@ -448,6 +456,134 @@ Deno.test('B1-LG-4: unmapped winner still throws tmr_winner_unmapped (fail-close
   // market-insight geometry is explicitly non-portable and must never be reused for it).
   assertEquals(TMR_WINNER_LAYOUT_GUARD['generic_quote_card_1x1_v1'], undefined);
   assertEquals(TMR_WINNER_LAYOUT_GUARD['generic_unregistered_card_1x1_v9'], undefined);
+});
+
+// ── TMR winner-allowlist ext: generic_announcement_card_1x1_v1 + generic_carousel_cover_1x1_v1 ──
+// Two new mapped winners, modeled on the market-insight/quote-card fixtures above.
+// generic_stat_hero_card_1x1_v1 stays explicitly OUT OF SCOPE (proved unmapped in B1-D-1 /
+// B1-AC-5 below).
+
+const ANNOUNCEMENT_PROVIDER_ID = 'a75e7139-1eec-4bba-a8c1-40b8e07b2b0e';
+const CAROUSEL_PROVIDER_ID = 'c9a59faa-6600-4f2b-817e-6051f824f5e7';
+
+// Reuses the base live-shape fixture's Background/Logo/Scrim + selected[] evidence — only the
+// `selected` winner identity fields differ, so Background.source/Logo.source/Scrim.opacity in
+// the resulting plan can only have come from slot_resolution, never the winner map.
+function liveShapeFixtureFor(providerId: string, providerName: string, variantKey: string, formatKey: string): TmrSelectorResponse {
+  const fx = liveShapeFixture();
+  fx.selected = { ...fx.selected!, provider_template_id: providerId, provider_template_name: providerName, variant_key: variantKey, format_key: formatKey };
+  return fx;
+}
+
+// (AC-1) Announcement-card mapping: CTA present → Headline/Subtitle/CTA/Footer all populated
+// from fields; Background/Logo/Scrim come ONLY from the fixture's slot_resolution.
+Deno.test('B1-AC-1: generic_announcement_card_1x1_v1 mapping (CTA present)', () => {
+  const fx = liveShapeFixtureFor(ANNOUNCEMENT_PROVIDER_ID, 'generic_announcement_card_1x1_v1', 'announcement.v1', 'image_quote');
+  const fields: B1Fields = { ...FIELDS, cta: 'Call to action' };
+  const plan = buildTmrRenderPlan(fx, fields, '5 July 2026');
+  assertEquals(plan.providerTemplateId, ANNOUNCEMENT_PROVIDER_ID);
+  assertEquals(plan.modifications['CTA.text'], 'Call to action');
+  assertEquals(plan.modifications['Headline.text'], fields.headline);
+  assertEquals(plan.modifications['Subtitle.text'], fields.subtitle);
+  assertEquals(plan.modifications['Footer.text'], fields.footer);
+  // asset/scrim keys are authoritative from slot_resolution ONLY — never present in the winner map.
+  assertEquals(plan.modifications['Background.source'], BG_URL);
+  assertEquals(plan.modifications['Logo.source'], LOGO_URL);
+  assertEquals(plan.modifications['Scrim.opacity'], 48);
+});
+
+// (AC-2) Carousel-cover mapping: slide_number present → Headline/Subtitle/SlideNumber/
+// CategoryBadge all populated; CategoryBadge.text reuses fields.category (same pattern as
+// market_insight). Background/Logo/Scrim come ONLY from slot_resolution.
+Deno.test('B1-AC-2: generic_carousel_cover_1x1_v1 mapping (slide_number present)', () => {
+  const fx = liveShapeFixtureFor(CAROUSEL_PROVIDER_ID, 'generic_carousel_cover_1x1_v1', 'carousel_cover.v1', 'carousel');
+  const fields: B1Fields = { ...FIELDS, slide_number: '1/5' };
+  const plan = buildTmrRenderPlan(fx, fields, '5 July 2026');
+  assertEquals(plan.providerTemplateId, CAROUSEL_PROVIDER_ID);
+  assertEquals(plan.modifications['SlideNumber.text'], '1/5');
+  assertEquals(plan.modifications['CategoryBadge.text'], fields.category);
+  assertEquals(plan.modifications['Headline.text'], fields.headline);
+  assertEquals(plan.modifications['Subtitle.text'], fields.subtitle);
+  assertEquals(plan.modifications['Background.source'], BG_URL);
+  assertEquals(plan.modifications['Logo.source'], LOGO_URL);
+  assertEquals(plan.modifications['Scrim.opacity'], 48);
+});
+
+// (AC-3) Existing production-template parity: this diff must not change market_insight's or
+// quote_card's behaviour at all. Thin re-assertion of the pre-existing D-2/quote-card contract.
+Deno.test('B1-AC-3: pre-existing market_insight + quote_card mappings are byte-identical to before', () => {
+  const miPlan = buildTmrRenderPlan(liveShapeFixture(), FIELDS, '5 July 2026');
+  assertEquals(Object.keys(miPlan.modifications).sort(), [
+    'Background.source', 'CategoryBadge.text', 'Date.text', 'Footer.text',
+    'Headline.font_size', 'Headline.font_size_maximum', 'Headline.font_size_minimum',
+    'Headline.height', 'Headline.text', 'Location.text', 'Logo.source',
+    'Scrim.opacity', 'Subtitle.text',
+  ]);
+
+  const QUOTE_PROVIDER_ID = '2140ca19-d075-49d3-9dc9-30d924805e22';
+  const quoteFx = liveShapeFixtureFor(QUOTE_PROVIDER_ID, 'generic_quote_card_1x1_v1', 'quote.v1', 'image_quote');
+  const quoteFields: B1Fields = { ...FIELDS, attribution: 'Jane Smith, Buyer Agent', source_label: 'REIWA' };
+  const quotePlan = buildTmrRenderPlan(quoteFx, quoteFields, '5 July 2026');
+  assertEquals(Object.keys(quotePlan.modifications).sort(), [
+    'Background.source', 'Footer.text', 'Logo.source', 'QuoteText.text',
+    'Attribution.text', 'SourceLabel.text', 'Scrim.opacity',
+  ].sort());
+  assertEquals(quotePlan.modifications['QuoteText.text'], quoteFields.headline);
+  assertEquals(quotePlan.modifications['Attribution.text'], quoteFields.attribution);
+  assertEquals(quotePlan.modifications['SourceLabel.text'], quoteFields.source_label);
+});
+
+// (AC-4) Unknown-template refusal — explicitly proves generic_stat_hero_card_1x1_v1 is
+// genuinely unmapped (out of scope), plus a nonsense name, extending the B1-D-7 pattern.
+Deno.test('B1-AC-4: generic_stat_hero_card_1x1_v1 (and a nonsense name) still throw tmr_winner_unmapped', () => {
+  const fxStatHero = liveShapeFixtureFor('deadbeef-0000-4000-8000-000000000001', 'generic_stat_hero_card_1x1_v1', 'stat_hero.v1', 'image_quote');
+  assertThrows(() => buildTmrRenderPlan(fxStatHero, FIELDS, '5 July 2026'), Error, 'tmr_winner_unmapped: generic_stat_hero_card_1x1_v1');
+
+  const fxNonsense = liveShapeFixtureFor('deadbeef-0000-4000-8000-000000000002', 'totally_not_a_real_template', 'x', 'y');
+  assertThrows(() => buildTmrRenderPlan(fxNonsense, FIELDS, '5 July 2026'), Error, 'tmr_winner_unmapped: totally_not_a_real_template');
+});
+
+// (AC-5) Missing-required-field refusal: the shared headline hard-gate (assertHeadlineWithinGate)
+// applies regardless of winner — buildTmrRenderPlan itself does not independently gate blank
+// headlines (that gate runs upstream in the real caller, e.g. index.ts before buildTmrRenderPlan
+// is ever invoked), so this proves the gate throws for blank/whitespace headline input destined
+// for either new winner.
+Deno.test('B1-AC-5: assertHeadlineWithinGate rejects blank headline for both new winners (shared hard-gate)', () => {
+  assertThrows(() => assertHeadlineWithinGate(''), Error, 'b1: missing image_headline');
+  assertThrows(() => assertHeadlineWithinGate('   '), Error, 'b1: missing image_headline');
+  assertThrows(() => assertHeadlineWithinGate(null), Error, 'b1: missing image_headline');
+  // sanity: buildTmrRenderPlan itself does NOT gate a blank headline (it is not part of its
+  // fail-closed contract) — it will happily emit an empty Headline.text if called directly.
+  const fx = liveShapeFixtureFor(ANNOUNCEMENT_PROVIDER_ID, 'generic_announcement_card_1x1_v1', 'announcement.v1', 'image_quote');
+  const plan = buildTmrRenderPlan(fx, { ...FIELDS, headline: '' }, '5 July 2026');
+  assertEquals(plan.modifications['Headline.text'], '');
+});
+
+// (AC-6) CTA/SlideNumber optionality: omitted from fields → the key is GENUINELY ABSENT from
+// modifications (not present with an `undefined` value), while Headline/Footer/CategoryBadge
+// are still present. Proves the guard, unlike quote_card's fail-closed attribution/source_label.
+Deno.test('B1-AC-6: CTA/SlideNumber are genuinely absent (not undefined) when omitted from fields', () => {
+  const annFx = liveShapeFixtureFor(ANNOUNCEMENT_PROVIDER_ID, 'generic_announcement_card_1x1_v1', 'announcement.v1', 'image_quote');
+  const annPlan = buildTmrRenderPlan(annFx, FIELDS, '5 July 2026'); // FIELDS has no cta
+  assertEquals('CTA.text' in annPlan.modifications, false);
+  assertEquals(annPlan.modifications['Headline.text'], FIELDS.headline);
+  assertEquals(annPlan.modifications['Footer.text'], FIELDS.footer);
+
+  const carFx = liveShapeFixtureFor(CAROUSEL_PROVIDER_ID, 'generic_carousel_cover_1x1_v1', 'carousel_cover.v1', 'carousel');
+  const carPlan = buildTmrRenderPlan(carFx, FIELDS, '5 July 2026'); // FIELDS has no slide_number
+  assertEquals('SlideNumber.text' in carPlan.modifications, false);
+  assertEquals(carPlan.modifications['Headline.text'], FIELDS.headline);
+  assertEquals(carPlan.modifications['CategoryBadge.text'], FIELDS.category);
+});
+
+// (AC-7) Scope/exact-match proof: the map keys on EXACT provider_template_name string equality —
+// no prefix/family matching. A near-miss version suffix and a bare family name both still throw.
+Deno.test('B1-AC-7: near-miss provider_template_name strings still throw tmr_winner_unmapped (exact-match only)', () => {
+  const fxV2 = liveShapeFixtureFor('deadbeef-0000-4000-8000-000000000003', 'generic_announcement_card_1x1_v2', 'announcement.v2', 'image_quote');
+  assertThrows(() => buildTmrRenderPlan(fxV2, FIELDS, '5 July 2026'), Error, 'tmr_winner_unmapped: generic_announcement_card_1x1_v2');
+
+  const fxBare = liveShapeFixtureFor('deadbeef-0000-4000-8000-000000000004', 'announcement_card', 'announcement.v1', 'image_quote');
+  assertThrows(() => buildTmrRenderPlan(fxBare, FIELDS, '5 July 2026'), Error, 'tmr_winner_unmapped: announcement_card');
 });
 
 // ── cc-0037: SUPERVISED GOVERNED IMAGE_QUOTE SMOKE (b1_production.ts contributions) ──────

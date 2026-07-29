@@ -103,8 +103,14 @@ Deno.test('T6 unknown winners still fail closed with tmr_winner_unmapped', () =>
     assertThrows(() => buildTmrRenderPlan(sel(bad) as never, invFields(), '22 July 2026'),
       Error, 'tmr_winner_unmapped');
   }
-  assertEquals(Object.keys(TMR_WINNER_TEXT_FIELDS).sort(),
-    ['generic_market_insight_card_1x1_v1', 'generic_quote_card_1x1_v1']);
+  // TMR winner-allowlist ext: the allowlist gained generic_announcement_card_1x1_v1 +
+  // generic_carousel_cover_1x1_v1 (4 keys total); see b1_production_test.ts B1-D-1/B1-AC-*.
+  assertEquals(Object.keys(TMR_WINNER_TEXT_FIELDS).sort(), [
+    'generic_announcement_card_1x1_v1',
+    'generic_carousel_cover_1x1_v1',
+    'generic_market_insight_card_1x1_v1',
+    'generic_quote_card_1x1_v1',
+  ]);
 });
 
 // ── T7 — no selection / asset / publish behaviour change ────────────────────────────────
