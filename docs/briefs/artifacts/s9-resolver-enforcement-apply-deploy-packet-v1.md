@@ -13,8 +13,10 @@ current `origin/main`.
 Nothing applied, deployed, merged or pushed.**
 
 > **Rev-1 blocker §1 (`text` would be blocked for every client) is RESOLVED** by PK ruling Option A,
-> implemented and proven below. **One open item remains for PK: §1A (capability-skipped slots are
-> terminal)** — now much smaller in scope, but still a decision, not a defect.
+> implemented and proven below. **Open for PK: §1A (capability-skipped slots are terminal)** — much
+> smaller in scope now, but a decision, not a defect — **and the external review's `policy_decision`
+> escalation on the carve-out itself (§3.4)**. Both belong to one PK gate. Everything buildable is built,
+> reviewed, and verified.
 
 ---
 
@@ -384,6 +386,45 @@ SELECT skip_reason, count(*) FROM m.slot
   `video_short_kinetic` / `video_short_stat_voice` / `video_short_kinetic_voice`. **Any
   `capability_blocked:*:text` row means the carve-out has failed — roll back.**
 
+**Step 4 — standing exemption monitor (adopted from external review `f636301a`'s `corrected_action`).**
+
+The reviewer's point has teeth and is worth stating plainly: **a Layer-1 exemption is silent by design.**
+An exempt slot proceeds down the normal path, which keeps the ready path byte-unchanged (a deliberate
+property this build is verified on) — but it also means nothing is written to say "this slot proceeded
+*because* it was exempt". Layer 2 logs a line; Layer 1 does not. The compensating control is a standing
+monitor rather than a code change, so the audited artifact is not disturbed.
+
+**(a) Exempt-set tripwire — the exempt set is the whole trust boundary.** It must stay exactly `{text}`:
+```sql
+SELECT ice_format_key, render_engine, is_active
+  FROM t."5.3_content_format"
+ WHERE render_engine = 'none' AND is_active = true;
+-- expect exactly one row: text
+```
+Any other result means someone widened the carve-out by editing registry **data** — no DDL, no gate.
+Treat a change here as a reviewable event, not a routine data edit.
+
+**(b) Who is actually riding the exemption** — slots that would have blocked without it:
+```sql
+SELECT cl.client_slug, sl.platform,
+       COALESCE(sl.format_preference[1],'image_quote') AS fmt,
+       public.classify_format_capability(cl.client_slug, sl.platform,
+              COALESCE(sl.format_preference[1],'image_quote'))->>'status' AS cap_status,
+       count(*) AS slots
+  FROM m.slot sl JOIN c.client cl ON cl.client_id = sl.client_id
+ WHERE sl.status IN ('pending_fill','future')
+   AND public.is_capability_exempt_format(COALESCE(sl.format_preference[1],'image_quote'))
+   AND public.classify_format_capability(cl.client_slug, sl.platform,
+              COALESCE(sl.format_preference[1],'image_quote'))->>'status' <> 'ready'
+ GROUP BY 1,2,3,4 ORDER BY slots DESC;
+-- today: property-pulse linkedin/facebook 'text' (7 slots), unsupported_silent_degrade
+```
+If a format other than `text` ever appears here, or if a cell's `cap_status` moves to something outside
+`{template_missing, unsupported_silent_degrade}`, the carve-out is doing more than it was ruled to do.
+
+**(c) The inverse tripwire, already in Step 3:** any `capability_blocked:*:text` row means the carve-out
+*failed* (most likely a stale PostgREST cache per Step 1b) — that is a rollback trigger.
+
 ## 5. Rollback
 
 | Layer | Rollback | Proven |
@@ -445,15 +486,46 @@ roughly 24 h after apply. Size the monitoring window to that, not to weeks.
 narrowings in §1.0 (both strictly reduce what is exempt), the doc/plan additions above, and the rebase.
 A confirmatory pass is item 2 of §7.
 
+### 3.4 External review — RUN on rev 3
+
+| Field | Value |
+|---|---|
+| `review_id` | `f636301a-78b4-4956-81d9-b26f3dfc3c78` |
+| `reviewed_input_sha256` | `346cd54f3b429040e9bb3d5a614b924699e8611ce8c3a1e732d995d796233208` |
+| Verdict | **`partial`** · risk **medium** · confidence **high** · `requires_pk_escalation = true` |
+| Escalation reason (verbatim) | *"The proposed changes involve nuanced content management policies that require human judgment regarding potential format abuses."* |
+
+**CCF-02 triage — no `concrete_defect`, no named `missing_evidence`.** Point by point:
+
+| Reviewer point | Class | Routing / disposition |
+|---|---|---|
+| "The carve-out for `text` being template-less raises concerns about potential abuse if not carefully monitored" | `policy_decision` | → **PK decision gate.** This is the ruling PK already made; the reviewer is flagging it as a judgment call, not identifying a fault. The "if not carefully monitored" half is **actioned** — §4 Step 4. |
+| "Fail-closed should be rigorously tested for all edge cases" | `missing_evidence` (generic, no gap named) | The submitted input already enumerated 20 hermetic tests covering every fail-closed path (rpc error · rpc throw · unresolved slug · slug throw · 5 unrecognised payload shapes · absent format · 6 exemption-lookup failure variants · 7 genuine-gap statuses). No specific untested case was identified. **No further action; re-raise if a concrete case is named.** |
+| `unverified_claims`: exemption limited to `template_missing`/`unsupported_silent_degrade` "assumes these are the only statuses needing consideration" | `scope_design_concern` | Correct as stated, and **deliberate**: the enumeration is on the narrowing side, so an unlisted status is *not* exempt and still blocks. Being wrong here fails **toward** blocking, never toward leaking. Disclosed for PK. |
+| `corrected_action`: "Introduce a monitoring mechanism post-implementation to review exemptions" | actionable | **ADOPTED — §4 Step 4** (exempt-set tripwire + who-is-riding-the-exemption query + the existing inverse tripwire). |
+
+`verified_claims` explicitly credits the rev-3 narrowing: *"The carve-out limits to statuses that should be
+exempt, addressing the issue without broadly exempting other formats."*
+
+**Per the contract, a non-clean verdict is a stop → surface to PK — which is exactly where this lane already
+sits.** The escalation is a `policy_decision` on a call PK has already made, so it does not reopen the
+build; it belongs in the same PK gate as §1A.
+
+**Hash note:** the review pinned `346cd54f…`, the review-input text, which embedded the four code-artifact
+hashes. **Those four are unchanged** — §4 Step 4 and this section touch only the packet, so the reviewed
+*substance* is intact. The packet's own sha256 has moved from `090c60b2…` (its value at review time) as a
+result; disclosed rather than papered over.
+
 ## 7. Required before apply
 
 1. **PK ruling on §1A** (terminal slots) — the one open decision.
 2. **Confirmatory `db-rls-auditor` pass on rev 3** — scoped to the §1.0 narrowings (SF-1 status-class
    condition, SF-2 `is_active` filter). Rev 2 was already audited `concerns` with everything else clean.
 3. **Re-run `branch-warden`** against the rebased rev-3 commit (base is now `b7568ce`).
-4. **Run external review** (`ask_chatgpt_review`) pinned to the rev-3 hashes in §0. Deliberately not run
-   on rev 1 or rev 2, because each ruling/finding re-cut the artifact and would have made the review
-   stale on arrival; rev 3 is the first candidate-final artifact.
+4. ~~Run external review~~ — **DONE on rev 3** (§3.4): `review_id f636301a-78b4-4956-81d9-b26f3dfc3c78`,
+   pinned `346cd54f…`, verdict `partial`/medium/high with `requires_pk_escalation=true`. No
+   `concrete_defect`; its `corrected_action` (exemption monitoring) is adopted as §4 Step 4. The
+   escalation is a `policy_decision` that folds into the same PK gate as §1A.
 
 ## 8. Carries surfaced (not fixed here)
 
