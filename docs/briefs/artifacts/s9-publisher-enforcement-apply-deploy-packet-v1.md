@@ -102,7 +102,7 @@ overridden the first we would have seen `ndis-yarns + invegent`. Both YouTube gu
 | `m.publisher_lock_queue_v2` | `d3fa9f82937ad7f9cbad79ad21ce0b46` |
 | `m.auto_approver_fetch_drafts` | `1bf1dbf52ce56fd51b2f81c059dcfe29` |
 | `m.gate_queue_on_asset_status` | `f58c2e4daa8288446689a513cb06fd54` |
-| cron 48 `command` | `4a78f1bdba9c598f0799c8ba1cc40186` (post-change `747c643163f1f7a1c500e63ec5411d31`) |
+| cron 48 `command` | `4a78f1bdba9c598f0799c8ba1cc40186` (post-change `faca2e873364216c55b46e2974a469cd`) |
 
 `m.publisher_lock_queue_v1` is **not** modified — a pure delegating wrapper, live body md5
 `54a6af1f965d40be2c7769d7e57e8ed2`, recorded in the rollback header for provenance.
@@ -112,9 +112,10 @@ overridden the first we would have seen `ndis-yarns + invegent`. Both YouTube gu
 | Boundary | Result |
 |---|---|
 | Enqueue trigger | body md5 == generated file · blocked draft → **0 rows inserted** · NULL provenance → **retained with visible `last_error`** |
-| Enqueue cron 48 | OLD → starves on the blocked draft · NEW → healthy draft proceeds (§2) |
+| Enqueue cron 48 | OLD → starves on the blocked draft · NEW → healthy draft proceeds (§2). Migration dry-run in an aborted txn: applied command md5 = **`faca2e873364216c55b46e2974a469cd`** (matches artifact), predicate present |
 | Dequeue `v2` | blocked → **0** · ready → **1** · NULL provenance → **0**. The blocked row was scheduled **earliest**, so absent the guard it would have been picked first |
 | Auto-approval | body md5 == generated file · ready → fetched · blocked → **not fetched** |
+| Executable drift guard (G-4) | run live: all three baselines match, and it aborts on mismatch by construction |
 | YouTube | chained `or=` proven to AND (§3); `deno check` clean |
 | Regression | **402 passed / 0 failed** excluding `image-worker`, whose single failure is **pre-existing** (verified identical on clean `origin/main`: its `index.ts` calls `Deno.serve` at top level, needing `--allow-net`) |
 
@@ -158,6 +159,30 @@ or unrelated drift aborts rather than clobbering.
 
 ⚠ Rollback does **not** re-open slots or drafts already blocked — consistent with PK ruling 1
 (capability-skipped occasions are terminal).
+
+## 7a. `db-rls-auditor` re-audit dispositions
+
+Re-audit verdict: **`concerns`, zero must-fix** (up from `block`). F-1 fix confirmed structurally
+correct — the predicate is **inside** the `DISTINCT ON` subquery, so the blocked draft leaves the
+candidate set before the partition collapses. F-2 closure independently validated, including the
+load-bearing premise that all three test slugs exist (without `invegent` present, the discriminator
+would not have distinguished AND from last-wins).
+
+| Finding | Disposition |
+|---|---|
+| G-1 apply order opens the F-1 window | **FIXED** — §6 now applies cron 48 first |
+| G-2 provenance claim wrong + non-existent filename cited | **FIXED** — corrected in both migration headers and §2 |
+| G-3 `jobname` not unique alone | **FIXED** — lookup is now `(jobname, username)` with `INTO STRICT` |
+| G-4 function migration had md5 baselines in comments only | **FIXED** — executable `DO $guard$` assertion added, verified to pass and to abort on drift |
+| G-5 rollback verify omitted the third md5 | **FIXED** — `gate_queue_on_asset_status` expected md5 added |
+| G-6 `--` comments inside a stored cron command are fragile | **FIXED** — converted to `/* */` block comments (this changed the post-change command md5 to `faca2e87…`) |
+| G-7 `or=` discriminator was run on SELECT, not the claim UPDATE | **ACCEPTED as low.** PostgREST parses filters identically for SELECT and PATCH; the SELECT site also has per-row re-checks behind it. Recorded, not fixed. |
+
+**Auditor observation worth carrying:** it re-derived the starvation scenario against live data and found
+**zero** current instances — because `ai-worker` deliberately does not write `approval_status`, a blocked
+draft stays `'draft'` and cron 48's `approval_status IN (...)` filter already excludes it. Starvation
+therefore requires a draft blocked **after** approval, or manually approved. Narrower than first stated,
+but real — and the manual approve path reaches it.
 
 ## 8. Carries (not fixed here)
 

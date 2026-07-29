@@ -7,13 +7,18 @@
 -- Restores job 48 to its EXACT pre-change command. Asserts the CURRENT command is the
 -- post-change one before reverting, so a double-rollback or unrelated drift aborts.
 --
--- cron.job is DB state with NO repo provenance, exactly like publisher_lock_queue
--- v1/v2 which this lane already backfills. These two files are the first repo
--- record of job 48's command.
+-- PROVENANCE (corrected per db-rls-auditor G-2): cron.job is DB state, and there is
+-- no APPLIED provenance for job 48's CURRENT command. A staged file
+-- supabase/migrations/20260523_fpub_jobid48_starvation_fix.sql DOES already embed job
+-- 48's command, but it was never applied as written -- its own drift guard asserts
+-- md5 57bbafb19a51308a69db18607c8ad991 / len 2203, whereas the live command today is
+-- md5 4a78f1bdba9c598f0799c8ba1cc40186 / len 2061. These two files are therefore the
+-- first repo record of the command as it ACTUALLY runs.
 --
--- SELF-VERIFYING: the job is located by jobname (stable) rather than a hardcoded
--- jobid, and the CURRENT command md5 is asserted before any change. Drift => the
--- transaction aborts and nothing is altered.
+-- SELF-VERIFYING: the job is located by (jobname, username) -- cron.job's unique index
+-- is on that PAIR, not jobname alone -- using INTO STRICT so 0 or >1 matches raise
+-- rather than silently picking one (G-3). The CURRENT command md5 is asserted before
+-- any change; drift => the transaction aborts and nothing is altered.
 -- Baseline: jobname 'enqueue-publish-queue-every-5m', schedule '*/5 * * * *',
 --           username postgres, md5(command) = 4a78f1bdba9c598f0799c8ba1cc40186.
 -- =====================================================================
@@ -25,14 +30,15 @@ DECLARE
   v_id bigint;
   v_md5 text;
 BEGIN
-  SELECT jobid, md5(command) INTO v_id, v_md5
-    FROM cron.job WHERE jobname = 'enqueue-publish-queue-every-5m';
+  -- G-3: cron.job's unique index is (jobname, username), NOT jobname alone. INTO STRICT
+  -- raises NO_DATA_FOUND / TOO_MANY_ROWS instead of silently taking an arbitrary row.
+  SELECT jobid, md5(command) INTO STRICT v_id, v_md5
+    FROM cron.job
+   WHERE jobname = 'enqueue-publish-queue-every-5m'
+     AND username = 'postgres';
 
-  IF v_id IS NULL THEN
-    RAISE EXCEPTION 'STOP: cron job enqueue-publish-queue-every-5m not found';
-  END IF;
-  IF v_md5 <> '747c643163f1f7a1c500e63ec5411d31' THEN
-    RAISE EXCEPTION 'STOP: cron 48 command drift — got %, expected 747c643163f1f7a1c500e63ec5411d31', v_md5;
+  IF v_md5 <> 'faca2e873364216c55b46e2974a469cd' THEN
+    RAISE EXCEPTION 'STOP: cron 48 command drift — got %, expected faca2e873364216c55b46e2974a469cd', v_md5;
   END IF;
 
   PERFORM cron.alter_job(job_id := v_id, command := $cron$

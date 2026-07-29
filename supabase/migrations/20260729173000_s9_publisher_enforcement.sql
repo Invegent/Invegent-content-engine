@@ -46,6 +46,39 @@
 
 BEGIN;
 
+-- G-4 (db-rls-auditor): EXECUTABLE drift guard. The baselines are asserted at APPLY
+-- time, not merely documented in a header comment. If any of the three bodies has
+-- drifted since authoring, this transaction ABORTS instead of silently clobbering it.
+-- (The authoring-time equivalent of this check already caught a real transcription
+-- drift during this lane's dry runs, which is the argument for making it executable.)
+DO $guard$
+DECLARE
+  r        record;
+  expected text;
+  n        int := 0;
+BEGIN
+  FOR r IN
+    SELECT p.proname, md5(p.prosrc) AS live
+      FROM pg_proc p JOIN pg_namespace n2 ON n2.oid = p.pronamespace
+     WHERE n2.nspname = 'm'
+       AND p.proname IN ('publisher_lock_queue_v2','auto_approver_fetch_drafts','gate_queue_on_asset_status')
+  LOOP
+    expected := CASE r.proname
+      WHEN 'publisher_lock_queue_v2'    THEN 'd3fa9f82937ad7f9cbad79ad21ce0b46'
+      WHEN 'auto_approver_fetch_drafts' THEN '1bf1dbf52ce56fd51b2f81c059dcfe29'
+      WHEN 'gate_queue_on_asset_status' THEN 'f58c2e4daa8288446689a513cb06fd54'
+    END;
+    IF r.live <> expected THEN
+      RAISE EXCEPTION 'STOP: baseline drift on m.% -- live md5 %, expected %', r.proname, r.live, expected;
+    END IF;
+    n := n + 1;
+  END LOOP;
+  IF n <> 3 THEN
+    RAISE EXCEPTION 'STOP: expected 3 baseline functions, found %', n;
+  END IF;
+END
+$guard$;
+
 -- 1/3 ENQUEUE boundary
 CREATE OR REPLACE FUNCTION m.gate_queue_on_asset_status()
  RETURNS trigger

@@ -31,6 +31,7 @@
 --      ('publisher_lock_queue_v2','auto_approver_fetch_drafts','gate_queue_on_asset_status');
 --   -- expect publisher_lock_queue_v2    = d3fa9f82937ad7f9cbad79ad21ce0b46
 --   --        auto_approver_fetch_drafts = 1bf1dbf52ce56fd51b2f81c059dcfe29
+--   --        gate_queue_on_asset_status = f58c2e4daa8288446689a513cb06fd54   (G-5)
 -- =====================================================================
 
 BEGIN;
