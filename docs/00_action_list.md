@@ -5,7 +5,7 @@
 > Read at the start of every session alongside `docs/00_sync_state.md`.
 > **🧭 OWNERSHIP (planning-docs boundary):** Authoritative **for the active task queue** (Today / Next-5 + carries) — **not** truth-of-record. Siblings: product roadmap → `04_phases.md` · live truth-of-stack → `00_sync_state.md`.
 >
-> Last updated: 2026-07-29 Sydney — **current marker v6.61 — Creative Templates Dashboard + Seven-State Capability Correction LIVE (T2 · PRODUCT_PROOF; additive read-only RPCs applied + dashboard deploy, PK Gate-2 explicit).** New read-only Creative Templates tab on `/clients` (per-template Lifecycle/Runtime dossier, honest B-roll saved-vs-effective spec + one-clip pool warning, seven-state capability fix) — zero controls, full review chain clean, PK-authorized deploy. Result: `docs/briefs/results/creative-template-portfolio-dashboard-result-v1.md`. **CARRY:** UI visual smoke pending PK's own login pass (DB-side + deploy-health verification already live-proven).
+> Last updated: 2026-07-29 Sydney — **current marker v6.62 — Creatomate Global: Current Migration Integrity Closeout v1 (T1 · SAFETY_GATE; docs-only, no DB mutation).** Closes both carries `cc-0087` flagged out of scope: 3 new git-history reconciliation files for the B-roll `46c5c4ac` activation arc (fit-status repoint + `platform_scope` correction + fb/ig suitability insert — all already live, none previously git-tracked), and an authoritative repair mapping for the 6 ledger/filename version mismatches (5 documentation-only, 1 renamed — `gcp_slice3`, which was never git-tracked and had zero citations). Result: `docs/briefs/results/creatomate-migration-integrity-closeout-v1-result.md`. **NEXT:** Static Template Graduation Batch 1 (multiple image-quote layouts into production).
 
 ---
 

@@ -6,6 +6,12 @@
 
 ---
 
+> **🗄️ v6.62 — Creatomate Global: Current Migration Integrity Closeout v1 (T1 · SAFETY_GATE; docs-only, no DB mutation)** — result: `docs/briefs/results/creatomate-migration-integrity-closeout-v1-result.md`.
+> · Closes the two carries `cc-0087` flagged out of scope: the B-roll `46c5c4ac` activation arc (3 already-applied DML changes — fit-status repoint, `platform_scope` correction, fb/ig suitability insert — none had a git-tracked migration file) now has 3 reconciliation files; the six ledger/filename version mismatches now have one authoritative mapping (5 documentation-only, `gcp_slice3` renamed — it was never git-tracked and had zero citations, unlike the other five which are cited by docs/code/an adjacent migration).
+> · Zero live DB mutation, zero template/selector/worker change, zero replay of already-applied SQL. Next Creatomate Global outcome: Static Template Graduation Batch 1.
+
+---
+
 > **🎨 v6.61 — Creative Templates Dashboard + Seven-State Capability Correction LIVE (T2 · PRODUCT_PROOF; additive read-only RPCs applied + dashboard deploy, PK Gate-2 explicit)** — result: `docs/briefs/results/creative-template-portfolio-dashboard-result-v1.md`, brief: `docs/briefs/creative-template-portfolio-dashboard-gate1-v1.md`.
 > · New read-only "Creative Templates" tab on `/clients` (`invegent-dashboard` `aa8209f`, Vercel READY) backed by two new additive-only RPCs `get_creative_template_portfolio[/_summary]` (CE `dbe7956`, applied live to `mbkmaxqhsohbtwsqolns`) — per-template Lifecycle/Runtime dual-badge dossier, B-roll status card (saved 720×1280/8s vs effective 1080×1920/12s, one-clip pool warning), portfolio variety signal. Zero controls.
 > · Also ships the 7th `classify_format_capability` status, `publisher_path_missing`, in the dashboard (label-only, no new decision logic) — live-verified against `care-for-welfare-pty-ltd`×`youtube`.
