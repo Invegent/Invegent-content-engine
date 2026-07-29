@@ -612,12 +612,27 @@ export async function isCapabilityExemptFormat(
 // Evaluated in this order deliberately: ready short-circuits FIRST, so the common path
 // pays no extra round-trip and stays byte-unchanged; and the exemption is checked against
 // exactly the format string that was classified, so the two cannot diverge.
+//
+// SCOPED TO THE STATUS CLASS THE RULING ADDRESSES (db-rls-auditor SF-1). The carve-out
+// exists because a template-less format makes select_template fail closed spuriously —
+// and that artefact surfaces ONLY as template_missing / unsupported_silent_degrade. A
+// template-less format can still have a GENUINE capability gap (publisher_path_missing,
+// governance_unproven, asset_shortage, pipeline_missing) and those must still block.
+// Note the enumeration sits on the EXEMPTION (narrowing) side, never on the block side:
+// any status not listed — including a future 8th — is NOT exempt and therefore still
+// blocks. Fail-closed by construction, the same property the generic block test has.
+export const CARVE_OUT_ELIGIBLE_STATUSES: ReadonlySet<string> = new Set([
+  'template_missing',
+  'unsupported_silent_degrade',
+]);
+
 export async function shouldBlockOnCapability(
   supabase: ReturnType<typeof getServiceClient>,
   v: CapabilityVerdict,
   format: string | null,
 ): Promise<boolean> {
   if (isCapabilityReady(v)) return false;
+  if (!CARVE_OUT_ELIGIBLE_STATUSES.has(v.status)) return true;   // genuine gap -> always blocks
   if (await isCapabilityExemptFormat(supabase, format)) {
     console.log(`[ai-worker] ${S9_CAPABILITY_MARKER} EXEMPT (template-less, render_engine=none) format=${format} classifier_status=${v.status} — proceeding unblocked`);
     return false;

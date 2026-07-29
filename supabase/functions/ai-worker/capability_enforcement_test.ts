@@ -24,6 +24,7 @@ import {
   type CapabilityVerdict,
   classifyCapability,
   getClientSlug,
+  CARVE_OUT_ELIGIBLE_STATUSES,
   isCapabilityExemptFormat,
   isCapabilityReady,
   S9_CAPABILITY_MARKER,
@@ -260,6 +261,42 @@ Deno.test('CARVE-OUT FAIL-CLOSED: an exemption lookup error/throw/non-true NEVER
     assertEquals(await isCapabilityExemptFormat(sb, 'text'), false, `${JSON.stringify(opts)} must not be exempt`);
     assertEquals(await shouldBlockOnCapability(sb, NOT_READY, 'text'), true, 'unproven exemption must still block');
   }
+});
+
+Deno.test('CARVE-OUT SCOPE: an exempt format still BLOCKS on a genuine capability gap', async () => {
+  // The carve-out must not become a blanket pass for template-less formats: it covers
+  // only the template-coverage artefact, never a real gap.
+  const genuineGaps: CapabilityVerdict[] = [
+    { status: 'publisher_path_missing', reason_code: 'no_publish_profile_row', routed_lane: null, evidence: null, error: null },
+    { status: 'governance_unproven', reason_code: 'not_visually_proven', routed_lane: null, evidence: null, error: null },
+    { status: 'asset_shortage', reason_code: 'assets_fail_closed', routed_lane: null, evidence: null, error: null },
+    { status: 'pipeline_missing', reason_code: 'missing_required_logo', routed_lane: null, evidence: null, error: null },
+    { status: 'unknown', reason_code: 'fail_closed', routed_lane: null, evidence: null, error: null },
+    { status: 'capability_check_error', reason_code: 'rpc_error', routed_lane: null, evidence: null, error: null },
+    { status: 'a_future_status_invented_in_2027', reason_code: null, routed_lane: null, evidence: null, error: null },
+  ];
+  for (const v of genuineGaps) {
+    let exemptCalled = false;
+    const sb = stubClient();
+    sb.rpc = async (fn: string) => {
+      if (fn === 'is_capability_exempt_format') { exemptCalled = true; return { data: true, error: null }; }
+      return { data: null, error: null };
+    };
+    // Even with the registry saying "exempt", a genuine gap must block.
+    assertEquals(await shouldBlockOnCapability(sb, v, 'text'), true, `${v.status} must still block`);
+    assertEquals(exemptCalled, false, `${v.status} must not even consult the exemption`);
+  }
+});
+
+Deno.test('CARVE-OUT SCOPE: only the two artefact statuses are carve-out eligible', () => {
+  assertEquals([...CARVE_OUT_ELIGIBLE_STATUSES].sort(), ['template_missing', 'unsupported_silent_degrade']);
+});
+
+Deno.test('CARVE-OUT: template_missing on a template-less format is exempt too', async () => {
+  __resetClientSlugCacheForTests();
+  const sb = stubClient({ exempt: { data: true, error: null } });
+  const v: CapabilityVerdict = { status: 'template_missing', reason_code: 'format_unmapped', routed_lane: null, evidence: null, error: null };
+  assertEquals(await shouldBlockOnCapability(sb, v, 'text'), false);
 });
 
 Deno.test('CARVE-OUT: an absent format is never exempt', async () => {

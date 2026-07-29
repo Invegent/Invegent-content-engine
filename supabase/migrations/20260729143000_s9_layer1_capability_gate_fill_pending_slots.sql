@@ -1,6 +1,7 @@
 -- =====================================================================
 -- S9 Capability Enforcement -- Objective 1 / LAYER 1 (schedule-fill chokepoint)
---   REV 2 (2026-07-29) -- incorporates PK ruling "Option A" (template-less carve-out).
+--   REV 3 (2026-07-29) -- PK ruling "Option A" (template-less carve-out), narrowed per
+--   db-rls-auditor SF-1 (status-class scope) and SF-2 (is_active filter).
 --
 -- Brief:        docs/briefs/s9-resolver-enforcement-build-brief-v1.md
 -- Architecture: docs/briefs/s9-capability-enforcement-architecture-gate1-v1.md
@@ -34,6 +35,11 @@
 --   the carve-out the gate would stop ALL plain-text posting (~220 publishes/90d).
 --   The exemption is evaluated ONLY on the non-ready path (ready path byte-unchanged,
 --   no added latency) and on exactly the format string that was classified.
+--   SCOPE (rev 3): the exemption applies ONLY to the status class the artefact can
+--   produce -- template_missing / unsupported_silent_degrade. A template-less format
+--   with a GENUINE gap (publisher_path_missing, governance_unproven, asset_shortage,
+--   pipeline_missing) still blocks. The enumeration sits on the NARROWING side, so an
+--   unlisted or future status is never exempt.
 --   Audit the exempt set with ONE query -- it is never hardcoded in a worker:
 --     SELECT ice_format_key FROM t."5.3_content_format" WHERE render_engine='none';
 --
@@ -121,9 +127,10 @@ SET search_path = ''
 AS $fn$
   SELECT EXISTS (
     SELECT 1
-    FROM t."5.3_content_format" f
-    WHERE f.ice_format_key = p_format
-      AND f.render_engine  = 'none'
+    FROM t."5.3_content_format" fmt
+    WHERE fmt.ice_format_key = p_format
+      AND fmt.render_engine  = 'none'
+      AND fmt.is_active      = true
   );
 $fn$;
 
@@ -309,13 +316,24 @@ BEGIN
       -- the format string that was classified, so the two cannot diverge.
       -- FAIL-CLOSED: a lookup error means NOT exempt (stay gated) — an exemption
       -- lookup that cannot prove exemption must never grant it.
-      BEGIN
-        v_cap_exempt := COALESCE(public.is_capability_exempt_format(v_cap_format), false);
-      EXCEPTION WHEN OTHERS THEN
-        v_cap_exempt := false;
-        RAISE WARNING '[s9-layer1] is_capability_exempt_format failed (treated as NOT exempt): slot=% format=% sqlstate=% sqlerrm=%',
-          v_slot.slot_id, v_cap_format, SQLSTATE, SQLERRM;
-      END;
+      -- SCOPED TO THE STATUS CLASS THE RULING ADDRESSES (db-rls-auditor SF-1).
+      -- The carve-out exists because a template-less format makes select_template
+      -- fail-closed spuriously -- that artefact surfaces ONLY as template_missing
+      -- or unsupported_silent_degrade. A template-less format can still have a
+      -- GENUINE capability gap (publisher_path_missing, governance_unproven,
+      -- asset_shortage, pipeline_missing), and those must still block.
+      -- The enumeration is deliberately on the EXEMPTION (narrowing) side, never
+      -- on the block side: any status not listed here -- including a future 8th --
+      -- is NOT exempt and therefore still blocks. Fail-closed by construction.
+      IF v_cap_status IN ('template_missing', 'unsupported_silent_degrade') THEN
+        BEGIN
+          v_cap_exempt := COALESCE(public.is_capability_exempt_format(v_cap_format), false);
+        EXCEPTION WHEN OTHERS THEN
+          v_cap_exempt := false;
+          RAISE WARNING '[s9-layer1] is_capability_exempt_format failed (treated as NOT exempt): slot=% format=% sqlstate=% sqlerrm=%',
+            v_slot.slot_id, v_cap_format, SQLSTATE, SQLERRM;
+        END;
+      END IF;
     END IF;
 
     IF v_cap_status IS DISTINCT FROM 'ready' AND NOT v_cap_exempt THEN

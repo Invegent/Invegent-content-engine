@@ -1,12 +1,14 @@
 # S9 Resolver Enforcement — Apply / Deploy / Rollback packet
 
-**Rev 2 (2026-07-29)** — incorporates PK ruling **"Option A"** (template-less carve-out).
+**Rev 3 (2026-07-29)** — PK ruling **"Option A"** (template-less carve-out), **narrowed** per
+`db-rls-auditor` findings SF-1 (status-class scope) and SF-2 (`is_active` filter); rebased onto
+current `origin/main`.
 
 **Lane:** S9 Capability Enforcement · Objective 1 (resolver chokepoint, Layers 1+2)
 **Brief:** `docs/briefs/s9-resolver-enforcement-build-brief-v1.md`
 **Architecture:** `docs/briefs/s9-capability-enforcement-architecture-gate1-v1.md` (PK-approved 2026-07-28, five rulings)
 **Tier:** T3 · **Lane class:** SAFETY_GATE
-**Branch:** `lane/s9-resolver-enforcement` (isolated worktree, off `origin/main` @ `2b5e44b`) — **local only, not pushed**
+**Branch:** `lane/s9-resolver-enforcement` (isolated worktree) — **rebased onto `origin/main` @ `b7568ce`, 3 ahead / 0 behind. Local only, not pushed.**
 **Status:** BUILD COMPLETE, rev-2 re-cut and re-proven — **STOPPED AT THE PK APPLY/DEPLOY GATE.
 Nothing applied, deployed, merged or pushed.**
 
@@ -18,14 +20,22 @@ Nothing applied, deployed, merged or pushed.**
 
 ## 0. Artifacts (pin these hashes — **all four changed in rev 2**)
 
-| Artifact | sha256 |
+| Artifact | sha256 (LF-canonical — see note) |
 |---|---|
-| `supabase/migrations/20260729143000_s9_layer1_capability_gate_fill_pending_slots.sql` | `e6cbf2a0354a181177f4f7991f162212878f52fdccc9dac53ac531f6f4bb79e3` |
+| `supabase/migrations/20260729143000_s9_layer1_capability_gate_fill_pending_slots.sql` | `0d15dfe422a81aa2734afc14b6503328ffdeae0bc9120f94f0b8537e9d7ed09b` |
 | `supabase/migrations/ROLLBACK_20260729143000_…sql` | `3e53b34afe31d7812463c65a453a30b86e91646b0ad9e12849f6a89b58e29af6` |
-| `supabase/functions/ai-worker/index.ts` (v2.25.0) | `409d78612d56133583ff94f96d3086764a71ec0cbc01725e5cce3c1dcf1d8be2` |
-| `supabase/functions/ai-worker/capability_enforcement_test.ts` | `5b276b35ead8abcf07a55358fa223919107804eeeb638c0c03545801884c61f5` |
+| `supabase/functions/ai-worker/index.ts` (v2.25.0) | `4604c06a706ee1f274db910e205933e900d3a192818ef1f6849b88da217cac24` |
+| `supabase/functions/ai-worker/capability_enforcement_test.ts` | `fb328fac894f7f3ef4282a59b65239b5269215aebcf20900a735b0bfa570bb6b` |
 
 Change set is exactly 5 files (2 migrations, 1 modified EF, 1 new test, this packet). Nothing out of scope.
+
+> **⚠ LINE ENDINGS — READ BEFORE APPLYING.** The repo sets `* text=auto`, so git stores **LF** while a
+> Windows checkout renders **CRLF**. The hashes above are of the **LF/git-blob** content; verify with
+> `git show HEAD:<path> | sha256sum`, **not** by hashing the Windows working-tree file.
+> **The migration must be applied as LF.** Applying CRLF content still works functionally, but the
+> resulting `prosrc` contains carriage returns, so the post-apply `md5` assertion in §4 would fail and
+> trip a STOP for the wrong reason. If applying by copy-paste, strip `
+` first.
 
 **Baseline provenance (verified, not assumed):** live `m.fill_pending_slots` `prosrc` md5 =
 `afd62a2116d23cb0a03d089d108e6a36`, length 27080. The migration's embedded pre-change body matches
@@ -56,15 +66,18 @@ source of truth and cannot drift between them or from the registry:
 CREATE OR REPLACE FUNCTION public.is_capability_exempt_format(p_format text)
 RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
 AS $fn$
-  SELECT EXISTS (SELECT 1 FROM t."5.3_content_format" f
-                  WHERE f.ice_format_key = p_format AND f.render_engine = 'none');
+  SELECT EXISTS (SELECT 1 FROM t."5.3_content_format" fmt
+                  WHERE fmt.ice_format_key = p_format
+                    AND fmt.render_engine  = 'none'
+                    AND fmt.is_active      = true);
 $fn$;
 ```
 
 Audit the entire exempt set with one query — **it is never hardcoded in a worker**:
 
 ```sql
-SELECT ice_format_key FROM t."5.3_content_format" WHERE render_engine='none';
+SELECT ice_format_key FROM t."5.3_content_format"
+ WHERE render_engine='none' AND is_active=true;
 -- -> 'text'   (output_mime_type='text/plain'), and nothing else across 13 populated rows
 ```
 
@@ -82,8 +95,28 @@ Option A necessarily introduces `CREATE FUNCTION` plus four grant statements. Th
 `PUBLIC`/`anon`/`authenticated` + `GRANT` to `service_role` is required to match the security posture of
 `classify_format_capability` / `select_template`.
 
-**Evaluation order (deliberate).** The exemption is checked **only after** a non-ready verdict, and
-against **exactly the format string that was classified**:
+### 1.0 Rev-3 narrowings (applied after `db-rls-auditor` re-audit — both make the carve-out *smaller*)
+
+**SF-1 — the exemption is scoped to the status class the ruling actually addresses.** As first built,
+an exempt format bypassed *every* non-ready status. The auditor was right that this is too wide: the
+template-coverage artefact surfaces **only** as `template_missing` / `unsupported_silent_degrade`, and a
+template-less format can still carry a **genuine** gap (`publisher_path_missing`, `governance_unproven`,
+`asset_shortage`, `pipeline_missing`) that must still block. Both layers now require the status to be in
+`{template_missing, unsupported_silent_degrade}` before the exemption is even consulted.
+
+Note where the enumeration sits: on the **exemption (narrowing) side**, never the block side. Any status
+not listed — including a future 8th — is **not** exempt and therefore still blocks. The block decision
+remains generic (`<> 'ready'`), so the "covered by construction" property is preserved rather than
+traded away. *(This does qualify the rev-2 wording, which the auditor correctly flagged as overclaiming.)*
+
+**SF-2 — the helper now filters `is_active = true`.** Without it, inserting a deactivated registry row
+with `render_engine='none'` would silently grant an exemption — a plain data edit becoming a safety-gate
+change with no DDL and no gate. `NULL` `is_active` does not match, so this is fail-closed too.
+
+Both are one-line narrowings; neither can widen the gate. Proven again in an aborted transaction (§3).
+
+**Evaluation order (deliberate).** The exemption is checked **only after** a non-ready verdict, **and
+only for a carve-out-eligible status**, and against **exactly the format string that was classified**:
 - the ready path is byte-unchanged and pays **no** extra round-trip;
 - classification and exemption cannot diverge onto different format strings;
 - the carve-out is a *narrowing of the block*, never a widening of "ready".
@@ -107,7 +140,7 @@ PP linkedin  image_quote         -> filled  (ai_job enqueued)   <- zero regressi
 | outcome | slots | detail |
 |---|---|---|
 | never reaches the gate (cc-0019 ineligible) | **102** | all NDIS — see §1.3 |
-| `ready`, unaffected | **85** | image_quote / carousel across invegent, care-for-welfare, property-pulse |
+| `ready`, unaffected | **84** | image_quote / carousel across invegent, care-for-welfare, property-pulse |
 | **exempt** (template-less, proceeds) | **7** | property-pulse `text`: 6 LinkedIn + 1 Facebook |
 | **BLOCKED** | **9** | property-pulse YouTube only: `video_short_kinetic` ×4, `video_short_stat_voice` ×3, `video_short_kinetic_voice` ×2 |
 
@@ -228,9 +261,9 @@ enumerated, so `publisher_path_missing` and any future status are covered **by c
 | Check | Result |
 |---|---|
 | `deno check` | **clean** |
-| Hermetic suite `capability_enforcement_test.ts` | **17/17 pass** — ready-unchanged · canonical blocked write · rpc-error · rpc-throw · unresolved-slug (proves the classifier is not called) · slug-throw · 5 unrecognised payload shapes · absent format · `publisher_path_missing` · hypothetical future status · reason-string formats · **+6 carve-out**: exempt-does-not-block · non-exempt-still-blocks · ready-short-circuits-before-exemption-lookup · 6 fail-closed exemption variants · absent-format-never-exempt · format passed through (not hardcoded) |
-| Full `ai-worker` suite (regression) | **81/81 pass, 0 failed** |
-| Layer 1 compiles & installs | **PASS** — rebuilt in-DB from live `prosrc` inside an aborted transaction; resulting `prosrc` md5 = `81d235ee28db54da1210b8d9e5074a5d`, **exactly equal** to the rev-2 artifact's body |
+| Hermetic suite `capability_enforcement_test.ts` | **20/20 pass** — ready-unchanged · canonical blocked write · rpc-error · rpc-throw · unresolved-slug (proves the classifier is not called) · slug-throw · 5 unrecognised payload shapes · absent format · `publisher_path_missing` · hypothetical future status · reason-string formats · **+6 carve-out**: exempt-does-not-block · non-exempt-still-blocks · ready-short-circuits-before-exemption-lookup · 6 fail-closed exemption variants · absent-format-never-exempt · format passed through (not hardcoded) · **+3 rev-3 scope tests**: 7 genuine-gap statuses still block on a template-less format *and never even consult the exemption* · the eligible-status set is exactly the two artefact statuses · `template_missing` on a template-less format is exempt |
+| Full `ai-worker` suite (regression) | **84/84 pass, 0 failed** |
+| Layer 1 compiles & installs | **PASS** — rebuilt in-DB from live `prosrc` inside an aborted transaction; resulting `prosrc` md5 = `b56bbd305b8808c59b074891de06b52a`, **exactly equal** to the rev-2 artifact's body |
 | Helper behaviour + ACL | **PASS** — `text`=true, `video_short_avatar`/NULL/unknown=false; acl `{postgres=X/postgres,service_role=X/postgres}`, anon/authenticated absent |
 | Layer 1 behaviour dry run (aborted) | **PASS** — PP LinkedIn `text` **filled** (carve-out) · PP YouTube `video_short_kinetic` **skipped** with the exact composed code · PP LinkedIn `image_quote` **filled** (zero regression) |
 | Rollback identity | **PASS** — rollback file's embedded body hashes to `afd62a2116d23cb0a03d089d108e6a36`, exactly the live baseline; also drops the new helper |
@@ -288,15 +321,15 @@ stops the work earlier; Layer 2 is the backstop for anything already past fill.
 4. `public.classify_format_capability` acl ≠ `{postgres=X/postgres,service_role=X/postgres}`.
 5. `recommended_format` has gained a `NOT NULL`, or `final_format_authority` a CHECK.
 6. Any change set beyond the 5 files in §0.
-7. `SELECT ice_format_key FROM t."5.3_content_format" WHERE render_engine='none'` returns anything other
-   than exactly `{text}` — the exempt set must be what was reviewed.
+7. `SELECT ice_format_key FROM t."5.3_content_format" WHERE render_engine='none' AND is_active=true`
+   returns anything other than exactly `{text}` — the exempt set must be what was reviewed.
 8. §1A has not been ruled on.
 
 **Step 1 — apply Layer 1** (`20260729143000_…sql`). Post-apply assertions:
 ```sql
 SELECT md5(prosrc) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
  WHERE n.nspname='m' AND p.proname='fill_pending_slots';
--- expect: 81d235ee28db54da1210b8d9e5074a5d
+-- expect: b56bbd305b8808c59b074891de06b52a
 
 SELECT proacl::text FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
  WHERE n.nspname='public' AND p.proname='is_capability_exempt_format';
@@ -309,6 +342,21 @@ SELECT public.is_capability_exempt_format('text'), public.is_capability_exempt_f
 the `supabase_migrations.schema_migrations` row explicitly. The concurrent S5 lane (`20260729120000`)
 skipped this and left a real provenance gap; do not repeat it. With two ledger-less files now in
 `supabase/migrations/`, a future `supabase db push` would treat **both** as pending.
+
+**Step 1b — PostgREST schema reload + REST probe (NAMED STOP — `db-rls-auditor` SF-3).**
+`ai-worker` reaches the new helper over PostgREST. A stale schema cache returns **PGRST202**, the
+worker's fail-closed branch treats that as *not exempt*, and **`text` gets blocked at Layer 2** — the
+exact symptom §4 Step 3 says means "roll back". Close the window before deploying:
+```sql
+NOTIFY pgrst, 'reload schema';
+```
+Then probe over REST as `service_role` (not just in SQL) and require `true`:
+```bash
+curl -s -X POST "$SUPABASE_URL/rest/v1/rpc/is_capability_exempt_format" \
+  -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+  -H "Content-Type: application/json" -d '{"p_format":"text"}'
+# expect: true    — anything else (esp. PGRST202) is a STOP; do not deploy ai-worker
+```
 
 **Step 2 — push, then deploy `ai-worker`**
 - ⚠ **The drift gate hashes GitHub `main`, not the local worktree** — the code must be on `origin/main`
@@ -348,6 +396,13 @@ SELECT skip_reason, count(*) FROM m.slot
 `blocked_by_capability` remain as historical fact — and per **§1A are NOT re-opened**. Rollback restores
 *future* behaviour only.
 
+**⚠ Rollback ordering (`db-rls-auditor` SF-4).** The concurrency argument below covers the function
+*body*, but not the **dropped helper**: a tick that started on the new body can call
+`is_capability_exempt_format` after the rollback commits. It fails closed (⇒ not exempt), which means
+`text` slots in that one tick are **terminally** skipped (§1A). Mitigation: run the rollback **immediately
+after a tick**, or restore the body first and defer the `DROP` by one cron cycle — the helper is inert
+once the gate is gone.
+
 **Concurrency (evidenced):** `m.fill_pending_slots` runs via `cron.job` **jobid 75**, `*/10 * * * *`, as
 `postgres`. PostgreSQL resolves a `plpgsql` body at the start of each call; `CREATE OR REPLACE` takes a
 brief catalog lock but does not alter or abort a call already in progress. An in-flight tick completes
@@ -368,25 +423,49 @@ containment pause · `lane/s9-cta-text-bounded-regen`.
 
 Avatar remains paused; nothing here alters that.
 
+### 3.3 Rev-2 review chain and how rev 3 answers it
+
+| Reviewer | Rev-2 verdict | Disposition in rev 3 |
+|---|---|---|
+| `db-rls-auditor` | **`concerns`** (up from rev-1 `block`) | text blocker confirmed **resolved**; security posture confirmed correct; `pg_default_acl` trap confirmed **closed** (it verified live that the function *is* born anon/authenticated-executable, so the REVOKEs are load-bearing, and that all four grant statements sit inside the same transaction ⇒ no committed exposure window). 5 should-fixes → **SF-1 and SF-2 implemented** (§1.0); **SF-3 and SF-4 added to the plan** (§4 Step 1b, §5); **SF-5 count corrected** (84, not 85). MF-2 carried as §1A. |
+| `branch-warden` | **`stop`** (environment) | Lane artifact impeccable — exact 5-file set, all four sha256 byte-matched, clean isolated worktree, nothing pushed, no leakage to `main`. The `stop` was that `origin/main` advanced `2b5e44b → b7568ce` (a concurrent lane pushed B-roll Parity Activation v1 / video-worker v3.15.0 **LIVE**), making the base pin stale. **Resolved: lane rebased onto `b7568ce`** — zero file overlap, `merge-tree` clean, 3 ahead / 0 behind. |
+
+Other things `db-rls-auditor` established that are worth keeping: no bypass path
+(`try_urgent_breaking_fills` / `create_manual_slot_internal` create slots only, so they *are* gated);
+classifier latency 37–84 ms/call ⇒ ~0.2–0.4 s per 10-min tick; **zero new advisor lints** (the helper
+carries `search_path=''` and REVOKEs anon/authenticated, so it joins neither the 41 anon- nor the 50
+authenticated-SECDEF-executable populations); the helper leaks nothing (a single boolean membership
+oracle to `service_role`, over a table with no RLS and no anon/authenticated grant) and has **no
+injection surface** (`LANGUAGE sql`, static `SELECT EXISTS`, no dynamic SQL).
+
+**Timing precision it added:** all 9 blocked slots are `source_kind='scheduled'`, `status='future'`,
+earliest `scheduled_publish_at` 2026-07-31 07:00 UTC ⇒ **first real block lands ~2026-07-30 07:00 UTC**,
+roughly 24 h after apply. Size the monitoring window to that, not to weeks.
+
+**⚠ Rev 3 has not itself been re-audited.** It differs from the audited rev 2 by exactly the two
+narrowings in §1.0 (both strictly reduce what is exempt), the doc/plan additions above, and the rebase.
+A confirmatory pass is item 2 of §7.
+
 ## 7. Required before apply
 
 1. **PK ruling on §1A** (terminal slots) — the one open decision.
-2. **Re-run `db-rls-auditor`** against the rev-2 artifacts — it must specifically cover the **new
-   `CREATE FUNCTION` + grants** (the DDL posture changed) and the carve-out's fail-closed direction.
-3. **Re-run `branch-warden`** against the rev-2 commit.
-4. **Run external review** (`ask_chatgpt_review`) pinned to the rev-2 hashes in §0. Deliberately not run
-   on rev 1, since any Option-A ruling re-cut the artifact and would have made the review stale on arrival.
+2. **Confirmatory `db-rls-auditor` pass on rev 3** — scoped to the §1.0 narrowings (SF-1 status-class
+   condition, SF-2 `is_active` filter). Rev 2 was already audited `concerns` with everything else clean.
+3. **Re-run `branch-warden`** against the rebased rev-3 commit (base is now `b7568ce`).
+4. **Run external review** (`ask_chatgpt_review`) pinned to the rev-3 hashes in §0. Deliberately not run
+   on rev 1 or rev 2, because each ruling/finding re-cut the artifact and would have made the review
+   stale on arrival; rev 3 is the first candidate-final artifact.
 
 ## 8. Carries surfaced (not fixed here)
 
-1. **§1A** — capability-skipped slots are terminal; needs a ruling.
+1. **§1A** — capability-skipped slots are terminal; needs a ruling. **This is the only open blocker.**
 2. **Latent NDIS exposure on containment lift** (§1.3) — should be a named precondition on that lane.
    NDIS `text` is now exempt and will not block.
 3. `20260729120000` (S5 classifier extension) still has **no `schema_migrations` ledger row**.
 4. A **rejected** draft (`m.handle_draft_rejection`) whose slot returns toward `pending_fill` now
    terminates permanently at `'skipped'` if its format is blocked. Confirm intended.
 5. `m.fill_pending_slots` carries no `SET search_path` (pre-existing advisor WARN). Deliberately not
-   fixed — changing the header would invalidate the pinned `81d235ee…` assertion. Separate lane.
+   fixed — changing the header would invalidate the pinned `b56bbd30…` assertion. Separate lane.
 6. `youtube-publisher`'s fail-open `paused_until` preload — architecture §1.4, YouTube-release
    co-requirement, out of scope here.
 7. Shared-checkout contamination hazard (§3.2) — an active concurrent lane, not this one's doing.
