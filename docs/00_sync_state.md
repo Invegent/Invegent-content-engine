@@ -6,6 +6,14 @@
 
 ---
 
+> **🎬 v6.54 — B-roll PARITY Activation v1 LIVE (T3 · PRODUCT_PROOF; EF deploy + 3-row DML repoint)** — result: `docs/briefs/results/broll-parity-activation-v1-result.md`, packet: `docs/briefs/broll-parity-activation-v1-apply-packet.md`.
+> · **PP governed `video_short_stat` now defaults to the governed B-roll footage template** (`dd5fd75e`/`46c5c4ac`) at the incumbent's FULL output contract **1080×1920/12s** — closing the 720p/8s regression that forced the v6.48 rollback. video-worker **v3.15.0** (`d5ddca1`) adds a render-time output-parity overlay: allow-list of exactly ONE `provider_template_id`, merged BEFORE governed bindings, with a disjointness guard so it can never displace a resolver-selected asset. Every other template renders byte-unchanged.
+> · **Evidence:** 142/142 hermetic · TPR-1 diff measured on BOTH sides (`specs_match=true`) · post-activation render on the REAL production signature = 1080×1920/12.00s, −22.9 LUFS, 25.7s, **byte-identical** to the PK-approved pre-apply render · rollback proven BEFORE apply (digest-exact, zero prod effect) · external review 2 rounds, no concrete defect.
+> · **Process findings (2):** the sanctioned deploy gate reads **GitHub main, not local** (`drift-check/index.ts:392`), so a lane's code must be pushed BEFORE it can be deployed — the approved deploy→apply→push order had to invert; and a concurrent session's unpushed `8e1c0ff` was caught by the pre-push full-range inspection (v6.52 rule working), handled via an isolated worktree + rebase so the push carried exactly one commit.
+> · **CARRIES:** one-clip B-roll pool ⇒ **every PP governed video now gets the identical clip** until Video B-roll Intake v1 lands · **TPR-1 addendum proposed, NOT ratified** (the diff must consult the registry row AND the code-side overlay map; the registry row correctly still reads 720/1280/8) · smoke guard now accepts 2 template ids.
+
+---
+
 > **✅ v6.53 — Creatomate Template Graduation Matrix v1 RECORDED (T1 · SIDE_PROVING; read-only classification, NO template activation/production mutation)** — record: `docs/briefs/results/creatomate-template-graduation-matrix-v1.md`.
 > · All 27 `c.creative_provider_template` rows classified: 3 have real render/draft/publish proof (`48cba556`, `2140ca19`, `c11bb8ab`); 22 have zero; 6 (the "reskin" batch) are deliberately fenced by design (no worker path for 4 of the 6). **Flagged:** row `fb9820f8` shows DB `status='production_proven'` but its Creatomate provider template was deleted upstream — DB status is stale/misleading, treat as RETIRED not production.
 > · Practical production winners: static 1:1 market-insight card (`48cba556`) + quote-card (`2140ca19`); video 9:16 stat-reveal (`c11bb8ab`, 38% render-timeout rate flagged as a live risk, not fixed this lane).
