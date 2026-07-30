@@ -1,4 +1,4 @@
-// youtube-publisher v1.16.0
+// youtube-publisher v1.17.0
 // v1.14.0 (F-YT-RELEASE-CONTROL) — publish only at the authorised release time. Until now youtube-publisher
 //   was a direct-read publisher whose draft SELECT had NO release-time gate: it published any eligible draft on
 //   the next tick regardless of scheduled_for. v1.14.0 adds a release-time gate in TWO layers:
@@ -112,7 +112,33 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { requireAssetPresent } from './asset_backstop.ts';
 
-const VERSION = 'youtube-publisher-v1.16.0';
+const VERSION = 'youtube-publisher-v1.17.0';
+// v1.17.0 (2026-07-30) — S9 FINAL BOUNDARY: fail-closed channel-pause gate.
+//   marker: youtube-publisher-s9-failclosed-pause-gate (grep-able in the deployed bundle).
+//   CLOSES the last fail-open hole in the S9 arc, named by the architecture packet as an explicit
+//   co-requirement for YouTube's containment release. The v1.8.0 paused_until preload was fail-OPEN
+//   in TWO ways, and the second was worse than the documented one:
+//     (1) it wrapped the read in `catch (_) {}`, swallowing throws; and
+//     (2) it destructured ONLY `data`, never `error` — a PostgREST failure returns
+//         { data: null, error } WITHOUT throwing, so the catch never fired either.
+//   Either way the hold map ended up EMPTY, and an empty map read as "nobody is paused", so every
+//   draft proceeded to the irreversible public upload. That is uniquely dangerous here because the
+//   YouTube containment hold IS paused_until — a failed read of the hold was precisely the thing
+//   that could let a paused channel publish.
+//   NOW: buildPauseGate() returns an explicit per-client verdict and an ok verdict is REQUIRED to
+//   proceed. DENY on: active pause · missing youtube profile row · read error · throw · non-array
+//   payload · unparseable paused_until · absent verdict. Each DENY records a structured reason with
+//   a `retryable` flag (transient read failure = retryable; missing profile = needs a human) and
+//   NEVER consumes the draft — no claim, no approval change, no upload, no draft mutation — so the
+//   next tick simply re-evaluates.
+//   Checked at BOTH entry points: once per tick before the loop, and again as a FRESH read
+//   immediately before the atomic pre-upload claim so a pause applied mid-tick still stops it.
+//   SCOPE stated honestly: the CAPABILITY predicate is inside the atomic claim UPDATE (genuinely
+//   atomic); the PAUSE lives on c.client_publish_profile which that UPDATE cannot join, so its
+//   check is a fresh read immediately prior — window narrowed to the claim round-trip, not
+//   mathematically eliminated. Closing it fully needs a claim-and-check RPC; recorded as a carry.
+//   Unchanged: the v1.16.0 capability predicates (2 occurrences), the in-run pausedClients hold,
+//   platform isolation, release-time gate, backoff, idempotency guards, the 2/tick cap.
 // v1.16.0 (2026-07-29) — S9 CAPABILITY ENFORCEMENT, Objective 2 (publisher chokepoint).
 //   marker: youtube-publisher-s9-capability-enforcement (grep-able in the deployed bundle).
 //   Brief: docs/briefs/s9-publisher-enforcement-build-brief-v1.md
@@ -131,6 +157,99 @@ const VERSION = 'youtube-publisher-v1.16.0';
 //   publish-failure status — capability blocking stays distinct from render/approval/publish failure.
 const S9_PUBLISHER_MARKER = 'youtube-publisher-s9-capability-enforcement';
 const CAPABILITY_BLOCKED = 'blocked_by_capability';
+const S9_PAUSE_GATE_MARKER = 'youtube-publisher-s9-failclosed-pause-gate';
+
+// ── S9 — FAIL-CLOSED CHANNEL-PAUSE GATE (v1.17.0) ────────────────────────────
+// Replaces the v1.8.0 "best-effort" paused_until preload, which was fail-OPEN in two
+// distinct ways — and the second was the more dangerous:
+//   1. it wrapped the read in `catch (_) {}`, swallowing any throw; and
+//   2. it destructured ONLY `data` (`const { data: profs } = await …`), never `error`.
+//      A PostgREST failure returns { data: null, error } WITHOUT throwing, so the catch
+//      never fired either. Both paths left the hold map EMPTY, and an empty map means
+//      "nobody is paused" ⇒ every draft proceeded to the irreversible public upload.
+// That mattered more here than anywhere else in ICE, because the YouTube containment
+// hold IS `paused_until` — so a failed read of the hold was exactly the thing that
+// could let a paused channel publish.
+//
+// This gate is fail-CLOSED and returns an explicit per-client verdict:
+//   * successful read, no active pause          -> ok        (may proceed)
+//   * successful read, pause active             -> DENY channel_paused_until:<iso>
+//   * client has no youtube profile row         -> DENY pause_profile_missing
+//   * read error / throw / unrecognised payload  -> DENY pause_preload_read_error|threw|…
+//   * unparseable paused_until value            -> DENY pause_unparseable:<raw>
+// A DENY is recorded as a structured reason and NEVER consumes the draft: no claim, no
+// approval change, no upload, no draft mutation of any kind — so the next tick simply
+// re-evaluates it. `retryable` distinguishes transient causes (read error/timeout, worth
+// an automatic retry) from configuration causes (missing profile row, which needs a human).
+export type PauseVerdict = { ok: true } | { ok: false; reason: string; retryable: boolean };
+
+export async function buildPauseGate(
+  supabase: ReturnType<typeof getServiceClient>,
+  clientIds: string[],
+  nowMs: number,
+): Promise<Map<string, PauseVerdict>> {
+  const gate = new Map<string, PauseVerdict>();
+  const ids = [...new Set(clientIds)].filter((x) => !!x);
+  if (ids.length === 0) return gate;
+
+  const denyAll = (reason: string, retryable: boolean) => {
+    for (const id of ids) gate.set(id, { ok: false, reason, retryable });
+    return gate;
+  };
+
+  let rows: any[];
+  try {
+    const { data, error } = await supabase.schema('c').from('client_publish_profile')
+      .select('client_id, paused_until').eq('platform', 'youtube').in('client_id', ids);
+    if (error) {
+      console.error(`[youtube-publisher] ${S9_PAUSE_GATE_MARKER} pause read ERROR -> denying all ${ids.length} client(s)`, { code: error.code, message: error.message });
+      return denyAll(`pause_preload_read_error:${error.code ?? ''}:${(error.message ?? '').slice(0, 200)}`, true);
+    }
+    if (!Array.isArray(data)) {
+      console.error(`[youtube-publisher] ${S9_PAUSE_GATE_MARKER} pause read returned a non-array payload -> denying all`);
+      return denyAll('pause_preload_unrecognised_payload', true);
+    }
+    rows = data;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[youtube-publisher] ${S9_PAUSE_GATE_MARKER} pause read THREW -> denying all ${ids.length} client(s)`, { message: msg });
+    return denyAll(`pause_preload_threw:${msg.slice(0, 200)}`, true);
+  }
+
+  const byClient = new Map<string, any>();
+  for (const r of rows) if (r && r.client_id) byClient.set(r.client_id, r);
+
+  for (const id of ids) {
+    const row = byClient.get(id);
+    if (!row) {
+      // Absence of a row is NOT permission. The old code silently treated it as "not paused".
+      gate.set(id, { ok: false, reason: 'pause_profile_missing', retryable: false });
+      continue;
+    }
+    const raw = row.paused_until;
+    if (raw !== null && raw !== undefined) {
+      const t = new Date(raw).getTime();
+      if (!Number.isFinite(t)) {
+        gate.set(id, { ok: false, reason: `pause_unparseable:${String(raw).slice(0, 60)}`, retryable: true });
+        continue;
+      }
+      if (t > nowMs) {
+        gate.set(id, { ok: false, reason: `channel_paused_until:${new Date(t).toISOString()}`, retryable: true });
+        continue;
+      }
+      // a pause that has EXPIRED is not an active pause -> fall through to ok
+    }
+    gate.set(id, { ok: true });
+  }
+  return gate;
+}
+
+// An absent verdict is itself a denial — never default to "allowed".
+export function pauseVerdictFor(
+  gate: Map<string, PauseVerdict>, clientId: string,
+): PauseVerdict {
+  return gate.get(clientId) ?? { ok: false, reason: 'pause_gate_absent', retryable: true };
+}
 // v1.15.0 (2026-07-27, F-YT-PUBLISH-CLAIM) — close the concurrent-double-PUBLIC-publish race with an
 //   ATOMIC single-row claim immediately before uploadToYouTube. The existing m.post_publish idempotency
 //   reconcile guard only catches a COMPLETED prior publish (a landed row), NOT a CONCURRENT one: two
@@ -333,17 +452,11 @@ Deno.serve(async (req: Request) => {
     .or(`final_format_authority.is.null,final_format_authority.neq.${CAPABILITY_BLOCKED}`)
     .limit(SELECT_LIMIT);
 
-  // v1.8.0: best-effort preload of channel holds (paused_until). Correctness does NOT depend on this —
-  // the in-run pausedClients set is the guarantee; this only avoids re-probing a known-dead channel.
-  const pausedUntil = new Map<string, number>();
-  try {
-    const ids = [...new Set((drafts ?? []).map((d: any) => d.client_id))];
-    if (ids.length) {
-      const { data: profs } = await supabase.schema('c').from('client_publish_profile')
-        .select('client_id, paused_until').eq('platform', 'youtube').in('client_id', ids);
-      for (const p of (profs ?? [])) { if (p.paused_until) pausedUntil.set(p.client_id, new Date(p.paused_until).getTime()); }
-    }
-  } catch (_) { /* best-effort: proceed with no preloaded holds */ }
+  // v1.17.0 (youtube-publisher-s9-failclosed-pause-gate) — FAIL-CLOSED channel-pause gate.
+  // Was v1.8.0's "best-effort" preload, which was fail-OPEN: it swallowed throws AND never
+  // read `error`, so any failure produced an empty hold map, and an empty map meant nobody
+  // was paused. Correctness now DOES depend on this read succeeding — by design.
+  const pauseGate = await buildPauseGate(supabase, (drafts ?? []).map((d: any) => d.client_id), Date.now());
 
   const pausedClients = new Set<string>(); // in-run channel hold — the actual guarantee
   let publishCount = 0;
@@ -369,10 +482,24 @@ Deno.serve(async (req: Request) => {
       continue;
     }
 
-    // channel hold (persistent best-effort OR in-run)
-    const heldUntil = pausedUntil.get(draft.client_id);
-    if (pausedClients.has(draft.client_id) || (heldUntil && heldUntil > nowMs)) {
-      results.push({ post_draft_id: draft.post_draft_id, status: 'skipped_channel_paused' });
+    // ── ENTRY PATH 1 — channel hold, now FAIL-CLOSED (v1.17.0) ────────────────
+    // in-run hold (set on a channel auth failure later in this same tick) is unchanged
+    if (pausedClients.has(draft.client_id)) {
+      results.push({ post_draft_id: draft.post_draft_id, status: 'skipped_channel_paused', reason: 'in_run_channel_hold' });
+      continue;
+    }
+    // persistent hold: an ok verdict is REQUIRED to proceed. Anything else — active pause,
+    // missing profile row, read error, unparseable value, or an absent verdict — stops here,
+    // BEFORE the atomic claim, so the draft is never consumed, approved or uploaded.
+    const pv = pauseVerdictFor(pauseGate, draft.client_id);
+    if (!pv.ok) {
+      console.warn(`[youtube-publisher] ${S9_PAUSE_GATE_MARKER} DENY post_draft_id=${draft.post_draft_id} client=${draft.client_id} reason=${pv.reason} retryable=${pv.retryable}`);
+      results.push({
+        post_draft_id: draft.post_draft_id,
+        status: 'skipped_channel_pause_gate',
+        reason: pv.reason,
+        retryable: pv.retryable,
+      });
       continue;
     }
     // per-draft backoff
@@ -437,6 +564,33 @@ Deno.serve(async (req: Request) => {
     if (draft.final_format_authority === CAPABILITY_BLOCKED) {
       console.log(`[youtube-publisher] ${S9_PUBLISHER_MARKER} skipped:capability_blocked post_draft_id=${draft.post_draft_id} format=${draft.recommended_format}`);
       results.push({ post_draft_id: draft.post_draft_id, status: 'skipped', reason: 'capability_blocked' });
+      continue;
+    }
+
+    // ── ENTRY PATH 2 — FRESH fail-closed pause re-read immediately before the claim ──
+    // The tick-level gate above was read once, potentially many drafts (and many seconds)
+    // ago. Re-read THIS client's hold immediately before the irreversible claim so a pause
+    // applied mid-tick still stops it. Fail-closed on every non-ok verdict, and again
+    // BEFORE the claim, so nothing is consumed.
+    // SCOPE, stated honestly: the CAPABILITY predicate is carried INSIDE the atomic claim
+    // UPDATE below, so it is genuinely atomic. The PAUSE lives on c.client_publish_profile,
+    // which a PostgREST UPDATE on m.post_draft cannot join, so the pause check is a fresh
+    // read taken immediately prior rather than part of the same statement. That narrows the
+    // window to the claim round-trip; it does not mathematically eliminate it. Closing it
+    // fully would need an RPC that claims and checks the hold in one statement — recorded
+    // as a carry, not silently claimed as atomic.
+    const freshPause = pauseVerdictFor(
+      await buildPauseGate(supabase, [draft.client_id], Date.now()),
+      draft.client_id,
+    );
+    if (!freshPause.ok) {
+      console.warn(`[youtube-publisher] ${S9_PAUSE_GATE_MARKER} DENY at pre-claim post_draft_id=${draft.post_draft_id} reason=${freshPause.reason}`);
+      results.push({
+        post_draft_id: draft.post_draft_id,
+        status: 'skipped_channel_pause_gate_preclaim',
+        reason: freshPause.reason,
+        retryable: freshPause.retryable,
+      });
       continue;
     }
 
