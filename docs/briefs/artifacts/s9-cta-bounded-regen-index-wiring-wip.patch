@@ -1,0 +1,149 @@
+commit 2aeedb3ec86723d5ad064606d81dce0a5820527c
+Author: Invegent <pk@invegent.com>
+Date:   Tue Jul 28 18:24:28 2026 +1000
+
+    chore(s9-cta-text-bounded-regen): recovery-session snapshot of WIP
+    
+    Preserving modified ai-worker/index.ts + new video_stat_bounds.ts /
+    video_stat_bounds_test.ts / video_stat_bounds_parity_test.ts before
+    machine restart. Not tested-clean, not reviewed, not gated — snapshot only.
+    
+    Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+
+diff --git a/supabase/functions/ai-worker/index.ts b/supabase/functions/ai-worker/index.ts
+index 148934c..d5c03bb 100644
+--- a/supabase/functions/ai-worker/index.ts
++++ b/supabase/functions/ai-worker/index.ts
+@@ -2,6 +2,7 @@ import { Hono } from "jsr:@hono/hono";
+ import { createClient } from "jsr:@supabase/supabase-js@2";
+ import { resolveCreativeContract } from "./creative_contract.ts";
+ import { buildContractStamp } from "./contract_stamp.ts";
++import { buildBoundReminder, type StatBoundViolation, validateStatScriptBounds } from "./video_stat_bounds.ts";
+ 
+ const app = new Hono();
+ 
+@@ -11,7 +12,26 @@ const corsHeaders = {
+   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+ };
+ 
+-const VERSION = "ai-worker-v2.20.0";
++const VERSION = "ai-worker-v2.21.0";
++// v2.21.0 (2026-07-25) — S9 BOUNDED-COPY REPAIR (video_short_stat cta_text dead-draft precondition).
++//   Producer-side guard so a governed video_short_stat script that would trip the video-worker render
++//   gate (b1_video_stat.ts assertStatFieldsWithinGate) is caught BEFORE set_draft_video_script enrols
++//   the draft (video_status='pending'). NEW vendored module video_stat_bounds.ts re-declares the four
++//   canonical bounds (b1_video_stat.ts:67-70) + a PURE non-throwing validator measuring the IDENTICAL
++//   String.trim().length; test-only video_stat_bounds_parity_test.ts binds the vendored numbers to the
++//   canonical exports (no cross-function RUNTIME import — house rule). generateVideoScript's stat branch
++//   is refactored so the Anthropic call+parse is a helper taking an OPTIONAL boundReminder (model/
++//   temperature/max_tokens IDENTICAL); for formatKey==='video_short_stat' ONLY it runs bounded
++//   regeneration (attempt 1 + up to N=2 re-prompts, 3 total) and on exhaustion returns a TYPED rejection
++//   sentinel { __videoScriptRejected:true, reason:'stat_bounds_exhausted', attempts, violations } — NO
++//   truncation, NO best-effort persist. At the write site the sentinel means set_draft_video_script is
++//   NOT called (draft never enrols → no dead render-queue object), videoScriptGenerated=false, a queryable
++//   video_script_rejected record is added to output_payload.meta (m.ai_job, no schema change), and a typed
++//   console.error is emitted. The text draft still succeeds. STRICTLY OUT OF SCOPE: kinetic / avatar /
++//   video_short_stat_voice / all long formats stay BYTE-UNCHANGED (validated ONLY for video_short_stat);
++//   NO DB read / governance lookup / schema / migration; the set_draft_video_script vsErr swallow at the
++//   write site is a SEPARATE named finding (diagnosis §7 trap 3) and is left exactly as-is; the render gate
++//   in b1_video_stat.ts stays the sole source of truth and is unchanged; no deploy/publish here.
+ // v2.20.0 (2026-07-18) — cc-0040 Step 2 (advisor image_headline char budget) + the shared
+ //   creative_contract.ts cc-0040 edits (PP+NDIS headline max_chars 90→180; NDIS footer
+ //   ''→'NDIS Yarns' — D7 fold-in), applied IDENTICALLY to the ai-worker vendored twin
+@@ -259,22 +279,54 @@ async function generateVideoScript(opts: {
+ 
+   if (formatKey === 'video_short_stat' || formatKey === 'video_short_stat_voice') {
+     const systemPrompt = `You are extracting data for an animated social media video for ${clientName}.\n\nIdentify the single most compelling numeric stat and build a 20-second video spec.\n\nRules:\n- stat_value: the number formatted for screen, max 12 chars (e.g. \"$62.17/hr\", \"4.35%\", \"+3.7%\"). Include unit/symbol.\n- stat_label: what the number IS, max 35 chars.\n- context_line: one sentence making the stat meaningful, max 75 chars.\n- cta_text: one engagement question, max 65 chars.\n- narration_text: spoken 20-second script (~45-55 words).\n\nReturn ONLY valid JSON:\n{\n  \"format\": \"stat_reveal\",\n  \"stat_value\": string,\n  \"stat_label\": string,\n  \"context_line\": string,\n  \"cta_text\": string,\n  \"total_duration_s\": 20,\n  \"narration_text\": string\n}`;
+-    const userPrompt = `Post title: ${postTitle || '(none)'}\n\nPost body:\n${postBody.slice(0, 600)}\n\nExtract the video stat spec.`;
+-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+-      method: 'POST',
+-      headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
+-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, temperature: 0.1, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
+-    });
+-    if (!resp.ok) { console.error('[ai-worker] video_script_stat http', resp.status); return null; }
+-    const data = await resp.json();
+-    const raw = data?.content?.[0]?.text ?? '';
+-    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+-    try {
+-      const parsed = JSON.parse(cleaned);
+-      if (!parsed?.stat_value) return null;
+-      parsed.total_duration_s = 20;
+-      return parsed;
+-    } catch { console.error('[ai-worker] video_script_stat parse failed'); return null; }
++    const baseUserPrompt = `Post title: ${postTitle || '(none)'}\n\nPost body:\n${postBody.slice(0, 600)}\n\nExtract the video stat spec.`;
++    // One Anthropic stat call + parse. model/temperature/max_tokens are IDENTICAL to the
++    // pre-refactor single call; boundReminder (bounded-regen re-prompt) is appended to the user
++    // prompt when present — absent/empty → byte-identical request to the original. Returns the
++    // parsed script, or null on http/parse miss (same null semantics as before the refactor).
++    const callStatScript = async (boundReminder?: string): Promise<any | null> => {
++      const userPrompt = boundReminder ? `${baseUserPrompt}\n\n${boundReminder}` : baseUserPrompt;
++      const resp = await fetch('https://api.anthropic.com/v1/messages', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
++        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, temperature: 0.1, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
++      });
++      if (!resp.ok) { console.error('[ai-worker] video_script_stat http', resp.status); return null; }
++      const data = await resp.json();
++      const raw = data?.content?.[0]?.text ?? '';
++      const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
++      try {
++        const parsed = JSON.parse(cleaned);
++        if (!parsed?.stat_value) return null;
++        parsed.total_duration_s = 20;
++        return parsed;
++      } catch { console.error('[ai-worker] video_script_stat parse failed'); return null; }
++    };
++
++    // video_short_stat_voice keeps today's single-call behaviour — NO validation, byte-unchanged
++    // (D2: only video_short_stat is governed by the render gate today; _voice is a later lane).
++    if (formatKey === 'video_short_stat_voice') {
++      return await callStatScript();
++    }
++
++    // video_short_stat — bounded regeneration (S9). Validate the generated script against the
++    // vendored render-contract bounds (same String.trim().length measurement as the render gate);
++    // on over-length re-prompt with the explicit bound, capped at N=2 extra attempts (3 total).
++    // Return the FIRST conformant script. On exhaustion return a TYPED rejection sentinel (NOT a
++    // script, NOT null) — no truncation, no best-effort persist; the write site withholds the
++    // script and records a queryable reason. A generation miss (http/parse → null) preserves the
++    // pre-refactor null semantics (draft simply gets no video_script; recoverable on a later pass).
++    const MAX_STAT_ATTEMPTS = 3;
++    let lastViolations: StatBoundViolation[] = [];
++    for (let attempt = 1; attempt <= MAX_STAT_ATTEMPTS; attempt++) {
++      const reminder = attempt === 1 ? undefined : buildBoundReminder(lastViolations);
++      const script = await callStatScript(reminder);
++      if (!script) return null;
++      const violations = validateStatScriptBounds(script);
++      if (violations.length === 0) return script;
++      lastViolations = violations;
++    }
++    return { __videoScriptRejected: true, reason: 'stat_bounds_exhausted', attempts: MAX_STAT_ATTEMPTS, violations: lastViolations };
+   }
+ 
+   if (formatKey === 'video_short_avatar') {
+@@ -1157,7 +1209,24 @@ app.post('*', async (c) => {
+       if (VIDEO_FORMATS.has(decidedFormat) && anthropicKey) {
+         try {
+           const videoScript = await generateVideoScript({ anthropicKey, formatKey: decidedFormat, postTitle: result.title, postBody: result.body, clientName, vertical });
+-          if (videoScript) {
++          if (videoScript && (videoScript as any).__videoScriptRejected === true) {
++            // S9 — bounded-regeneration exhausted for a governed video_short_stat script (the
++            // producer-side guard against the b1_video_stat.ts render gate). Withhold the script:
++            // do NOT call set_draft_video_script, so the draft is NEVER enrolled (video_status
++            // never reaches 'pending') — no dead render-queue object is created. Record a VISIBLE
++            // TYPED, queryable rejection on draftMeta, which flows into ai_job.output_payload.meta
++            // (queryable in m.ai_job — NO schema change, NO new table). The text draft still
++            // succeeds (ai_job stays 'succeeded'); only the video_script is withheld, with a reason.
++            //
++            // RECOVERY: a rejected draft is NOT enrolled and NOT failed-terminal — video_status is
++            // left UNTOUCHED (no 'pending', no 'failed', no dead_reason), so it carries no
++            // dead-letter state. It is recoverable by a subsequent ai-worker regeneration pass on
++            // the slot/draft (fresh content → fresh bounded-regen). There is no dead-letter gap.
++            const rej = videoScript as { reason: string; attempts: number; violations: StatBoundViolation[] };
++            (draftMeta as any).video_script_rejected = { reason: rej.reason, attempts: rej.attempts, violations: rej.violations };
++            videoScriptGenerated = false;
++            console.error('[ai-worker] video_script rejected (bounds exhausted):', { post_draft_id: job.post_draft_id, format: decidedFormat, reason: rej.reason, attempts: rej.attempts, violations: rej.violations });
++          } else if (videoScript) {
+             // v2.15.0 — F-SERIES-AVATAR-DIFFERENTIATION Stage 1 (shadow, observability-only):
+             // attach a SUGGESTED presenter role under video_script.avatar_role_suggestion.
+             // heygen-worker does NOT read this key; stakeholder_role (the consumed field)
