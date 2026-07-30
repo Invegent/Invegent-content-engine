@@ -6,6 +6,14 @@
 
 ---
 
+> **🟢 v6.84 — Creatomate Global: PK RULING — Facebook production_proven APPLIED · Selector packet STAYS UNAPPLIED (T2 · PRODUCT_PROOF)** — result: `docs/briefs/results/creatomate-announcement-card-pk-ruling-and-handoff-v1.md`.
+> · **Publish incident ruling:** the Facebook proof stands — real post, real delivery-path pass, backfilled audit preserves evidence. Two defects kept separate: duplicate-detection gap (queue-only check) + the publisher's own silent audit-write failure (`task_05bf8b3d`). **`task_05bf8b3d` is now a standing RELEASE GATE — announcement_card may not enter unattended automatic selection until it's proven fixed.**
+> · **Platform suitability APPLIED:** `generic_announcement_card_1x1_v1` × facebook → `production_proven` (`proof_reference='122118714753268380'`, external review agree/low-risk, row re-verified unchanged before apply). **Explicitly NOT extended to LinkedIn/Instagram/other** — PK ruling, not a technical constraint.
+> · **Selector-ranking packet stays UNAPPLIED — architectural ruling, not just a pending fix:** PK ruled template-selection ordering and Asset Gap demand derivation must be separate governed decisions; a shared tiebreak must never let selector ranking silently alter Asset Gap output.
+> · **NEXT (fresh session, PK-instructed): "Creatomate Global — Selector and Asset Gap Decoupling."** Decouple the shared tiebreak, make announcement_card explicitly selectable via a governed field/policy, prove Asset Gap output unchanged absent a genuine underlying change, prove one natural selector win + render + publish + rollback. Same release gate applies (`task_05bf8b3d`). Boundaries: no carousel, no B-roll governance, no other client, no Dashboard portfolio-weights yet, no worker layout-logic changes without a new concrete defect.
+
+---
+
 > **🟡 v6.83 — Creatomate Global: Announcement Card Publish Proof LIVE (real Facebook post) + Selector-Ranking packet STOPPED at apply gate (T3 · PRODUCT_PROOF)** — result: `docs/briefs/results/creatomate-announcement-card-publish-graduation-result-v1.md`.
 > · **Real, live, supervised Facebook publish proven:** platform switched from LinkedIn (no deployed native publisher EF exists — only the Zapier bridge) to Facebook (genuine native `publisher` EF). Real platform_post_id `122118714753268380` confirmed via the provider's own response.
 > · **⚠ Disclosed incident + recovery, not hidden:** the draft reused for the proof (`881602ab…`) had already been published to LinkedIn hours earlier — missed because only `m.post_publish_queue` (empty) was checked, not `m.post_publish` itself. Net result is an unintended duplicate cross-post; PK's explicit call was to leave the real live post up rather than delete it, and fix the bookkeeping only. Audit row backfilled accurately and clearly labeled as a manual backfill.
