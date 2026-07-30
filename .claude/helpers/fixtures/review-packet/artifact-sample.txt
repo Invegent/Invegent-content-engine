@@ -1,0 +1,11 @@
+-- SYNTHETIC review artifact (fixture only — not a real migration/packet)
+-- CCF-04 review-packet helper backtest fixture. Its bytes are hashed at TEST
+-- TIME to produce a pinned reviewed_input_hash; NO hash is baked into module
+-- logic or into any fixture JSON. Editing this file simply changes the hash the
+-- test computes — it never encodes a match target.
+
+BEGIN;
+  -- additive, dark, fenced — synthetic content standing in for a reviewed diff
+  ALTER TABLE synthetic.example ADD COLUMN IF NOT EXISTS shadow_flag boolean NOT NULL DEFAULT false;
+  COMMENT ON COLUMN synthetic.example.shadow_flag IS 'fixture-only; read by nothing';
+COMMIT;

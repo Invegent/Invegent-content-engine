@@ -1,0 +1,21 @@
+{
+  "_note": "Synthetic fixture mimicking a REAL session review-request shape (proposal-heavy + minimal structured context). The reviewed_input_hash is intentionally OMITTED here — the test computes it from artifact-sample.txt at run time (real hash used only as fixture DATA, never as a hardcoded match target).",
+  "action_type": "plan_review",
+  "artifact_ref": { "path": "fixtures/review-packet/artifact-sample.txt", "git_ref": null },
+  "proposal": "Freeze the CCF-04 review-packet helper candidate and open external review. The helper composes/validates the ask_chatgpt_review packet, pins the exact reviewed_input_hash, and refuses oversized/raw-diff context up front. Requesting a cross-model read of the verdict contract (READY/INCOMPLETE/OVERSIZED-CONTEXT/HASH-UNPINNED-OR-STALE -> clean/block) and the fail-closed no-false-READY posture before PK Gate 2.",
+  "context_fields": {
+    "decision_under_review": "Open Gate-2 external review of the frozen review-packet helper candidate.",
+    "production_action_if_approved": "None yet — review only; no deploy, no merge, no migration. Registration is a separate later gate.",
+    "consequence_if_delayed": "The CCF-04 #5 slot stays open; no production impact.",
+    "cost_of_waiting": "zero — no production path depends on this helper.",
+    "current_evidence": "hermetic node:test suite green; deterministic byte-identical output; zero-write/zero-network/zero-git-mutation self-audit.",
+    "known_weak_evidence": "context-size threshold is a conservative default, not yet re-confirmed against the live bridge (B-1).",
+    "default_action": "hold the candidate frozen, awaiting PK Gate-2 decision."
+  },
+  "evidence_pointers": [
+    "test-suite: .claude/helpers/review-packet.test.mjs",
+    "sibling-precedent: .claude/helpers/hash-checkpoint.mjs",
+    "review-id-prior: none"
+  ],
+  "triage_labels": ["policy_decision"]
+}

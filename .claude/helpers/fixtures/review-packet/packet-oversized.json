@@ -1,0 +1,18 @@
+{
+  "_note": "Synthetic packet whose context carries a raw-diff blob in current_evidence. No hash match is needed to prove the OVERSIZED-CONTEXT (raw-diff-blob) refusal; this fixture is used by a CLI integration test. artifact_ref points at the fixture artifact so staleness is readable.",
+  "schema": "ccf-04-review-packet/v1",
+  "action_type": "sql_destructive",
+  "artifact_ref": { "path": "fixtures/review-packet/artifact-sample.txt", "git_ref": null },
+  "proposal": "Apply the reviewed destructive migration; requesting cross-model confirmation the FK order is safe.",
+  "reviewed_input_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "context": {
+    "decision_under_review": "apply the migration",
+    "production_action_if_approved": "DROP + recreate FK",
+    "consequence_if_delayed": "backlog grows",
+    "cost_of_waiting": "low",
+    "current_evidence": "@@ -1,6 +1,8 @@\n-old line one\n-old line two\n+new line one\n+new line two\n+new line three\n context unchanged\n-old line three\n+new line four\n more context",
+    "known_weak_evidence": "n=2",
+    "default_action": "hold"
+  },
+  "triage_labels": ["structural_DDL_DML_escalation"]
+}
