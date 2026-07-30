@@ -13,7 +13,7 @@
 #   v3.0.0 deploy broke cron jobid 33 until a manual --no-verify-jwt
 #   redeploy.
 #
-# Contents (26 functions total — 13 custom-header + 13 service-role):
+# Contents (29 functions total — 16 custom-header + 13 service-role):
 #   • Custom-header-auth:   functions whose cron call carries a literal
 #                           secret header (x-*-key); the function body
 #                           compares against an env var.
@@ -96,6 +96,25 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.cadence-drift-checker]
+verify_jwt = false
+
+# publisher/instagram-publisher/linkedin-publisher (cc-0089, 2026-07-30): pre-existing
+# gap found while preparing to deploy the task_05bf8b3d audit-write fix — these three
+# are x-*-key custom-header-auth publishers (same pattern as youtube-publisher /
+# linkedin-zapier-publisher / wordpress-publisher above) and were confirmed live
+# verify_jwt=false via list_edge_functions, but had NO entry here, so a plain
+# `supabase functions deploy` would have silently regressed them to the CLI default
+# verify_jwt=true (401→502 for their cron/webhook callers) — the exact class of
+# regression this file exists to prevent. linkedin-publisher is currently repo-only /
+# not deployed (activates with B24/F06); pinned here now so its first deploy is safe
+# by default.
+[functions.publisher]
+verify_jwt = false
+
+[functions.instagram-publisher]
+verify_jwt = false
+
+[functions.linkedin-publisher]
 verify_jwt = false
 
 # ---------------------------------------------------------------------
