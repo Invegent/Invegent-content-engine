@@ -85,6 +85,7 @@
 import { Hono } from 'jsr:@hono/hono';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { requireAssetPresent } from './asset_backstop.ts';
+import { nextAttemptNoFrom } from './attempt_no.ts';
 
 const app = new Hono();
 
@@ -94,7 +95,21 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
 };
 
-const VERSION = 'instagram-publisher-v2.5.0';
+const VERSION = 'instagram-publisher-v2.6.0';
+// v2.6.0 (30 Jul 2026) — ATTEMPT_NO AUDIT-GAP FIX — cc-0089 / task_05bf8b3d; mirrors
+//   youtube-publisher v1.10.0 F-YT-PUB-PUBLISH-AUDIT-GAP and linkedin-zapier-publisher
+//   v1.4.0. All THREE m.post_publish insert call-sites (draft-platform-mismatch,
+//   success, catch-all failure) previously omitted attempt_no, so it silently
+//   defaulted to 1 and could collide with a prior/cross-posted platform's row on
+//   uq_publish_attempt (post_draft_id, attempt_no); none of the three captured or
+//   checked the insert's .error. Fix: derive the next free attempt_no per
+//   post_draft_id (nextAttemptNoFrom, ./attempt_no.ts — pure + unit-tested)
+//   immediately before each insert, set attempt_no on the payload, CAPTURE + check the
+//   insert .error (console.error when truthy), and reflect audit_row_inserted +
+//   attempt_no in each results.push entry. STRICTLY OUT OF SCOPE: the existing
+//   hold-gate/throttle/backstop/container-poll/retry/dead-letter logic is
+//   byte-unchanged; no schema/DB change beyond the attempt_no VALUE now set
+//   explicitly (column already existed, NOT NULL DEFAULT 1); no T2.
 // v2.5.0 (2026-06-17) — UNIFORM FINAL-ASSERTION BACKSTOP (Lane A). Adds a single
 //   pure final assertion (requireAssetPresent in ./asset_backstop.ts) as the LAST
 //   gate immediately before the IG POST, AFTER the existing image/video hold gates
@@ -576,15 +591,27 @@ app.post('*', async (c) => {
           locked_at: null, locked_by: null,
           updated_at: nowIso(),
         }).eq('queue_id', queueId);
-        await supabase.schema('m').from('post_publish').insert({
+        // v2.6.0 (cc-0089): next free attempt_no + capture the insert error (was
+        // previously hardcoded to attempt_no=1 with no error check).
+        let nextAttemptNo = 1;
+        try {
+          const { data: priorRows } = await supabase.schema('m').from('post_publish')
+            .select('attempt_no').eq('post_draft_id', q.post_draft_id)
+            .order('attempt_no', { ascending: false }).limit(1);
+          nextAttemptNo = nextAttemptNoFrom(priorRows);
+        } catch (_) { nextAttemptNo = 1; }
+        const { error: mismatchInsertErr } = await supabase.schema('m').from('post_publish').insert({
           queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id,
           client_id: q.client_id, platform: 'instagram', destination_id: igUserId,
-          status: 'failed', platform_post_id: null,
+          status: 'failed', platform_post_id: null, attempt_no: nextAttemptNo,
           request_payload: { reason: 'draft_platform_mismatch' },
           response_payload: null,
           error: errMsg, created_at: nowIso(),
         });
-        results.push({ queue_id: queueId, status: 'failed', error: 'draft_platform_mismatch' });
+        if (mismatchInsertErr) {
+          console.error(`[instagram-publisher] post_publish INSERT failed (draft_platform_mismatch):`, mismatchInsertErr.message);
+        }
+        results.push({ queue_id: queueId, status: 'failed', error: 'draft_platform_mismatch', audit_row_inserted: !mismatchInsertErr, attempt_no: nextAttemptNo });
         continue;
       }
 
@@ -843,7 +870,18 @@ app.post('*', async (c) => {
       const durationMs = Date.now() - startMs;
 
       // ── WRITE SUCCESS RECORDS ─────────────────────────────────────────
-      await supabase.schema('m').from('post_publish').insert({
+      // v2.6.0 (cc-0089): next free attempt_no + capture the insert error (was
+      // previously hardcoded to attempt_no=1 with no error check; the post is already
+      // live, so we do NOT throw on an insert failure — log + surface
+      // audit_row_inserted:false instead).
+      let nextAttemptNo = 1;
+      try {
+        const { data: priorRows } = await supabase.schema('m').from('post_publish')
+          .select('attempt_no').eq('post_draft_id', q.post_draft_id)
+          .order('attempt_no', { ascending: false }).limit(1);
+        nextAttemptNo = nextAttemptNoFrom(priorRows);
+      } catch (_) { nextAttemptNo = 1; }
+      const { error: publishInsertErr } = await supabase.schema('m').from('post_publish').insert({
         queue_id: queueId,
         ai_job_id: q.ai_job_id,
         post_draft_id: q.post_draft_id,
@@ -853,6 +891,7 @@ app.post('*', async (c) => {
         status: 'published',
         platform_post_id: igMediaId,
         published_at: nowIso(),
+        attempt_no: nextAttemptNo,
         request_payload: {
           publish_method: publishMethod,
           format: recFormat,
@@ -863,6 +902,9 @@ app.post('*', async (c) => {
         error: null,
         created_at: nowIso(),
       });
+      if (publishInsertErr) {
+        console.error(`[instagram-publisher] post_publish INSERT failed (published):`, publishInsertErr.message);
+      }
 
       await supabase.schema('m').from('post_publish_queue').update({
         status: 'published',
@@ -885,6 +927,8 @@ app.post('*', async (c) => {
         format: recFormat,
         ig_media_id: igMediaId,
         duration_ms: durationMs,
+        audit_row_inserted: !publishInsertErr,
+        attempt_no: nextAttemptNo,
         ...extra,
       });
 
@@ -943,8 +987,17 @@ app.post('*', async (c) => {
         console.log(`[instagram-publisher] requeue ${queueId} attempt=${newAttempt}/${MAX_PUBLISH_ATTEMPTS} rate_limited=${rateLimited} next=${backoffIso}`);
       }
 
-      // Audit-trail failed publish row (unchanged behaviour)
-      await supabase.schema('m').from('post_publish').insert({
+      // Audit-trail failed publish row.
+      // v2.6.0 (cc-0089): next free attempt_no + capture the insert error (was
+      // previously hardcoded to attempt_no=1 with no error check).
+      let nextAttemptNo = 1;
+      try {
+        const { data: priorRows } = await supabase.schema('m').from('post_publish')
+          .select('attempt_no').eq('post_draft_id', q.post_draft_id)
+          .order('attempt_no', { ascending: false }).limit(1);
+        nextAttemptNo = nextAttemptNoFrom(priorRows);
+      } catch (_) { nextAttemptNo = 1; }
+      const { error: failInsertErr } = await supabase.schema('m').from('post_publish').insert({
         queue_id: queueId,
         ai_job_id: q.ai_job_id,
         post_draft_id: q.post_draft_id,
@@ -953,11 +1006,15 @@ app.post('*', async (c) => {
         destination_id: profileForPause?.destination_id ?? null,
         status: 'failed',
         platform_post_id: null,
+        attempt_no: nextAttemptNo,
         request_payload: null,
         response_payload: null,
         error: errMsg,
         created_at: nowIso(),
       });
+      if (failInsertErr) {
+        console.error(`[instagram-publisher] post_publish INSERT failed (catch-all):`, failInsertErr.message);
+      }
 
       results.push({
         queue_id: queueId,
@@ -966,6 +1023,8 @@ app.post('*', async (c) => {
         error: errMsg,
         auto_paused: rateLimited,
         dead: exhausted,
+        audit_row_inserted: !failInsertErr,
+        attempt_no: nextAttemptNo,
       });
     }
   }

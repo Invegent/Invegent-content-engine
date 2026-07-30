@@ -3,6 +3,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { classifyFbFormat, decideAssetGuard, IMAGE_HOLD_MINUTES } from "./guard.ts";
 import { requireAssetPresent } from "./asset_backstop.ts";
 import { decideStudioMinGap, isStudioOrigin, STUDIO_MIN_GAP_MINUTES } from "./origin.ts";
+import { nextAttemptNoFrom } from "./attempt_no.ts";
 
 const app = new Hono();
 
@@ -12,7 +13,24 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "publisher-v1.11.0";
+const VERSION = "publisher-v1.12.0";
+// v1.12.0 (30 Jul 2026): ATTEMPT_NO AUDIT-GAP FIX — cc-0089 / task_05bf8b3d; mirrors
+//   youtube-publisher v1.10.0 F-YT-PUB-PUBLISH-AUDIT-GAP and linkedin-zapier-publisher
+//   v1.4.0. All FOUR m.post_publish insert call-sites (asset-guard-block, invalid-token,
+//   success, catch-all failure) previously omitted attempt_no, so it silently defaulted
+//   to 1 and could collide with a prior/cross-posted platform's row on
+//   uq_publish_attempt (post_draft_id, attempt_no); none of the four inserts captured or
+//   checked the insert's .error, so a collision silently dropped the audit row while the
+//   queue/draft state still advanced. Fix: derive the next free attempt_no per
+//   post_draft_id (nextAttemptNoFrom, ./attempt_no.ts — pure + unit-tested) immediately
+//   before each insert, set attempt_no on the payload, and CAPTURE + check the insert
+//   .error, logging it via console.error when truthy. All four results.push entries now
+//   carry audit_row_inserted (+ attempt_no where the call site already tracks one),
+//   matching youtube-publisher / linkedin-zapier-publisher's shape.
+//   STRICTLY OUT OF SCOPE: the existing decideAssetGuard/classifyFbFormat/backstop/
+//   throttle/schedule/studio-origin logic is byte-unchanged (NOT replaced, NOT
+//   weakened); no new asset path; no schema/DB change beyond the attempt_no VALUE now
+//   set explicitly (the column already existed, NOT NULL DEFAULT 1); no T2.
 // v1.11.0 (23 Jun 2026): PUBLISHING-ORIGIN — Content Studio cadence bypass.
 //   Reads m.post_publish_queue.publish_origin (new column; migration
 //   20260623150000_publish_origin_studio_cadence_bypass.sql). For studio rows
@@ -215,18 +233,33 @@ function resolvePageToken(p: PublishProfile) {
 }
 
 // v1.9.0: terminal, reviewable block — no publish, draft preserved, reason recorded.
+// v1.12.0 (cc-0089): pick the next free attempt_no for this draft so the failed-audit
+// row never collides with a prior/cross-posted platform's row on uq_publish_attempt
+// (post_draft_id, attempt_no); capture + surface the insert error instead of swallowing
+// it. Returns { audit_row_inserted, attempt_no } so the call site can reflect it.
 async function assetGuardBlock(supabase: any, q: PublishQueueRow, queueId: string, pageId: string | null, reason: string) {
   await supabase.schema("m").from("post_publish_queue").update({
     status: "skipped", last_error: `asset_guard_blocked:${reason}`,
     locked_at: null, locked_by: null, updated_at: nowIso(),
   }).eq("queue_id", queueId);
-  await supabase.schema("m").from("post_publish").insert({
+  let nextAttemptNo = 1;
+  try {
+    const { data: priorRows } = await supabase.schema("m").from("post_publish")
+      .select("attempt_no").eq("post_draft_id", q.post_draft_id)
+      .order("attempt_no", { ascending: false }).limit(1);
+    nextAttemptNo = nextAttemptNoFrom(priorRows);
+  } catch (_) { nextAttemptNo = 1; }
+  const { error: insertErr } = await supabase.schema("m").from("post_publish").insert({
     queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id,
     client_id: q.client_id, platform: "facebook", destination_id: pageId,
-    status: "failed", platform_post_id: null,
+    status: "failed", platform_post_id: null, attempt_no: nextAttemptNo,
     request_payload: { asset_guard: true, reason }, response_payload: null,
     error: `asset_guard_blocked:${reason}`, created_at: nowIso(),
   });
+  if (insertErr) {
+    console.error(`[publisher] post_publish INSERT failed (asset_guard_block):`, insertErr.message);
+  }
+  return { audit_row_inserted: !insertErr, attempt_no: nextAttemptNo };
 }
 // v1.9.0: retryable hold — requeue, no post_publish row (mirrors pending pattern).
 async function assetGuardHold(supabase: any, queueId: string, reason: string, minutes: number) {
@@ -351,8 +384,18 @@ app.post("*", async (c) => {
         if (!dbg?.data?.is_valid) {
           const backoffIso = new Date(Date.now() + 6 * 3600_000).toISOString();
           await supabase.schema("m").from("post_publish_queue").update({ status: "queued", scheduled_for: backoffIso, last_error: "invalid_facebook_token", locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
-          await supabase.schema("m").from("post_publish").insert({ queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id, client_id: q.client_id, platform: "facebook", destination_id: pageId, status: "failed", platform_post_id: null, request_payload: { graph_version: graphVersion, token_source: tokenSource }, response_payload: dbg, error: "invalid_facebook_token", created_at: nowIso() });
-          results.push({ queue_id: queueId, status: "failed", error: "invalid_facebook_token" }); continue;
+          // v1.12.0 (cc-0089): next free attempt_no + capture the insert error (was previously
+          // hardcoded to attempt_no=1 with no error check — see the VERSION header note).
+          let nextAttemptNo = 1;
+          try {
+            const { data: priorRows } = await supabase.schema("m").from("post_publish")
+              .select("attempt_no").eq("post_draft_id", q.post_draft_id)
+              .order("attempt_no", { ascending: false }).limit(1);
+            nextAttemptNo = nextAttemptNoFrom(priorRows);
+          } catch (_) { nextAttemptNo = 1; }
+          const { error: insertErr } = await supabase.schema("m").from("post_publish").insert({ queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id, client_id: q.client_id, platform: "facebook", destination_id: pageId, status: "failed", platform_post_id: null, attempt_no: nextAttemptNo, request_payload: { graph_version: graphVersion, token_source: tokenSource }, response_payload: dbg, error: "invalid_facebook_token", created_at: nowIso() });
+          if (insertErr) console.error(`[publisher] post_publish INSERT failed (invalid_token):`, insertErr.message);
+          results.push({ queue_id: queueId, status: "failed", error: "invalid_facebook_token", audit_row_inserted: !insertErr, attempt_no: nextAttemptNo }); continue;
         }
       }
 
@@ -408,8 +451,8 @@ app.post("*", async (c) => {
         continue;
       }
       if (decision.kind === "block") {
-        await assetGuardBlock(supabase, q, queueId, pageId, decision.reason);
-        results.push({ queue_id: queueId, status: "blocked", reason: decision.reason, asset_class: assetClass });
+        const auditResult = await assetGuardBlock(supabase, q, queueId, pageId, decision.reason);
+        results.push({ queue_id: queueId, status: "blocked", reason: decision.reason, asset_class: assetClass, audit_row_inserted: auditResult.audit_row_inserted, attempt_no: auditResult.attempt_no });
         continue;
       }
       // decision.kind === "publish" → method text | image | carousel
@@ -497,23 +540,47 @@ app.post("*", async (c) => {
       }
       const platformPostId = fbResp?.id ?? null;
 
-      await supabase.schema("m").from("post_publish").insert({
+      // v1.12.0 (cc-0089): next free attempt_no + capture the insert error (was previously
+      // hardcoded to attempt_no=1 with no error check — the post was already live, so we do
+      // NOT throw on an insert failure; log + surface audit_row_inserted:false instead).
+      let nextAttemptNo = 1;
+      try {
+        const { data: priorRows } = await supabase.schema("m").from("post_publish")
+          .select("attempt_no").eq("post_draft_id", q.post_draft_id)
+          .order("attempt_no", { ascending: false }).limit(1);
+        nextAttemptNo = nextAttemptNoFrom(priorRows);
+      } catch (_) { nextAttemptNo = 1; }
+      const { error: insertErr } = await supabase.schema("m").from("post_publish").insert({
         queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id,
         client_id: q.client_id, platform: "facebook", destination_id: pageId,
         status: "published", platform_post_id: platformPostId, published_at: nowIso(),
+        attempt_no: nextAttemptNo,
         request_payload: { endpoint, graph_version: graphVersion, publish_method: publishMethod, has_image: publishMethod !== "text", asset_class: assetClass, slide_count: slideCountOut, token_source: tokenSource },
         response_payload: fbResp, error: null, created_at: nowIso(),
       });
+      if (insertErr) {
+        console.error(`[publisher] post_publish INSERT failed (published):`, insertErr.message);
+      }
       await supabase.schema("m").from("post_publish_queue").update({ status: "published", last_error: null, locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
       await supabase.schema("m").from("post_draft").update({ approval_status: "published", updated_at: nowIso() }).eq("post_draft_id", q.post_draft_id);
-      results.push({ queue_id: queueId, status: "published", publish_method: publishMethod, platform_post_id: platformPostId, slide_count: slideCountOut });
+      results.push({ queue_id: queueId, status: "published", publish_method: publishMethod, platform_post_id: platformPostId, slide_count: slideCountOut, audit_row_inserted: !insertErr, attempt_no: nextAttemptNo });
 
     } catch (e: any) {
       const errMsg = (e?.message ?? String(e)).slice(0, 4000);
       const backoffIso = new Date(Date.now() + 10 * 60_000).toISOString();
       await supabase.schema("m").from("post_publish_queue").update({ status: "queued", scheduled_for: backoffIso, last_error: errMsg, locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
-      await supabase.schema("m").from("post_publish").insert({ queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id, client_id: q.client_id, platform: "facebook", destination_id: null, status: "failed", platform_post_id: null, request_payload: { graph_version: graphVersion }, response_payload: null, error: errMsg, created_at: nowIso() });
-      results.push({ queue_id: queueId, status: "failed", error: errMsg });
+      // v1.12.0 (cc-0089): next free attempt_no + capture the insert error (was previously
+      // hardcoded to attempt_no=1 with no error check).
+      let nextAttemptNo = 1;
+      try {
+        const { data: priorRows } = await supabase.schema("m").from("post_publish")
+          .select("attempt_no").eq("post_draft_id", q.post_draft_id)
+          .order("attempt_no", { ascending: false }).limit(1);
+        nextAttemptNo = nextAttemptNoFrom(priorRows);
+      } catch (_) { nextAttemptNo = 1; }
+      const { error: insertErr } = await supabase.schema("m").from("post_publish").insert({ queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id, client_id: q.client_id, platform: "facebook", destination_id: null, status: "failed", platform_post_id: null, attempt_no: nextAttemptNo, request_payload: { graph_version: graphVersion }, response_payload: null, error: errMsg, created_at: nowIso() });
+      if (insertErr) console.error(`[publisher] post_publish INSERT failed (catch-all):`, insertErr.message);
+      results.push({ queue_id: queueId, status: "failed", error: errMsg, audit_row_inserted: !insertErr, attempt_no: nextAttemptNo });
     }
   }
 

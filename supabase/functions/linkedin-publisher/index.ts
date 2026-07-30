@@ -1,7 +1,24 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { classifyLinkedinFormat, decideLinkedinAssetGuard } from "./guard.ts";
+import { nextAttemptNoFrom } from "./attempt_no.ts";
 
-// linkedin-publisher v1.3.0
+// linkedin-publisher v1.4.0
+// v1.4.0 (30 Jul 2026): ATTEMPT_NO AUDIT-GAP FIX — cc-0089 / task_05bf8b3d; mirrors
+//   youtube-publisher v1.10.0 F-YT-PUB-PUBLISH-AUDIT-GAP and linkedin-zapier-publisher
+//   v1.4.0. All THREE m.post_publish insert call-sites (asset-guard-block, success,
+//   catch-all failure) previously omitted attempt_no, so it silently defaulted to 1
+//   and could collide with a prior/cross-posted platform's row on uq_publish_attempt
+//   (post_draft_id, attempt_no); none captured or checked the insert's .error. Fix:
+//   derive the next free attempt_no per post_draft_id (nextAttemptNoFrom,
+//   ./attempt_no.ts — pure + unit-tested) immediately before each insert, set
+//   attempt_no on the payload, CAPTURE + check the insert .error (console.error when
+//   truthy), and reflect audit_row_inserted + attempt_no in each results.push entry.
+//   REPO-ONLY EF; NOT deployed (no cron.job entry today — activates with B24/F06), so
+//   this fix is dormant until activation but must not regress before then.
+//   STRICTLY OUT OF SCOPE: the existing approval gate / platform-isolation skip /
+//   asset guard / throttle / text path / dry_run are byte-unchanged; no DB/schema
+//   change beyond the attempt_no VALUE now set explicitly (column already existed,
+//   NOT NULL DEFAULT 1); no T2.
 // v1.3.0 (18 Jun 2026): INTERIM ASSETLESS-PUBLISH GUARD (LinkedIn) — F-PUBLISHER-ASSETGUARD-LINKEDIN.
 //   Repo-only EF; NOT deployed (activates with B24/F06). Ports the proven FB interim asset
 //   guard so this EF is asset-safe from day-1 of activation. linkedInPost() posts
@@ -21,7 +38,7 @@ import { classifyLinkedinFormat, decideLinkedinAssetGuard } from "./guard.ts";
 //   activates this EF (LinkedIn Community Management API approval), the gate
 //   is in place from day-1 — prevents reintroducing the F-PUB-005-class bug.
 // v1.1.0 (prior): direct LinkedIn API integration, repo-staged for B24/F06 future activation.
-const VERSION = "linkedin-publisher-v1.3.0";
+const VERSION = "linkedin-publisher-v1.4.0";
 
 function nowIso() { return new Date().toISOString(); }
 function getServiceClient() {
@@ -149,14 +166,27 @@ Deno.serve(async (req: Request) => {
           last_error: `asset_guard_blocked:${decision.reason}`,
           locked_at: null, locked_by: null, updated_at: nowIso(),
         }).eq("queue_id", queueId);
-        await supabase.schema("m").from("post_publish").insert({
+        // v1.4.0 (cc-0089): next free attempt_no + capture the insert error (was
+        // previously hardcoded to attempt_no=1 with no error check). No post was sent
+        // on this path, so there is no duplicate-post risk.
+        let nextAttemptNo = 1;
+        try {
+          const { data: priorRows } = await supabase.schema("m").from("post_publish")
+            .select("attempt_no").eq("post_draft_id", q.post_draft_id)
+            .order("attempt_no", { ascending: false }).limit(1);
+          nextAttemptNo = nextAttemptNoFrom(priorRows);
+        } catch (_) { nextAttemptNo = 1; }
+        const { error: blockInsertErr } = await supabase.schema("m").from("post_publish").insert({
           queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id,
           client_id: q.client_id, platform: "linkedin", destination_id: orgUrn,
-          status: "failed", platform_post_id: null,
+          status: "failed", platform_post_id: null, attempt_no: nextAttemptNo,
           request_payload: { asset_guard: true, reason: decision.reason, asset_class: assetClass },
           response_payload: null, error: `asset_guard_blocked:${decision.reason}`, created_at: nowIso(),
         });
-        results.push({ queue_id: queueId, status: "blocked", reason: decision.reason, asset_class: assetClass });
+        if (blockInsertErr) {
+          console.error(`[linkedin-publisher] post_publish INSERT failed (asset_guard_block):`, blockInsertErr.message);
+        }
+        results.push({ queue_id: queueId, status: "blocked", reason: decision.reason, asset_class: assetClass, audit_row_inserted: !blockInsertErr, attempt_no: nextAttemptNo });
         continue;
       }
       // decision.kind === "publish" (method 'text' this lane) → fall through to the
@@ -182,15 +212,41 @@ Deno.serve(async (req: Request) => {
         results.push({ queue_id: queueId, status: "dry_run_ok" }); continue;
       }
       const liResp = await linkedInPost({ accessToken, orgUrn, text });
-      await supabase.schema("m").from("post_publish").insert({ queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id, client_id: q.client_id, platform: "linkedin", destination_id: orgUrn, status: "published", platform_post_id: liResp.id, published_at: nowIso(), request_payload: { org_urn: orgUrn, text_len: text.length }, response_payload: liResp, error: null, created_at: nowIso() });
+      // v1.4.0 (cc-0089): next free attempt_no + capture the insert error (was
+      // previously hardcoded to attempt_no=1 with no error check; the post is already
+      // live, so we do NOT throw on an insert failure — log + surface
+      // audit_row_inserted:false instead).
+      let publishNextAttemptNo = 1;
+      try {
+        const { data: priorRows } = await supabase.schema("m").from("post_publish")
+          .select("attempt_no").eq("post_draft_id", q.post_draft_id)
+          .order("attempt_no", { ascending: false }).limit(1);
+        publishNextAttemptNo = nextAttemptNoFrom(priorRows);
+      } catch (_) { publishNextAttemptNo = 1; }
+      const { error: publishInsertErr } = await supabase.schema("m").from("post_publish").insert({ queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id, client_id: q.client_id, platform: "linkedin", destination_id: orgUrn, status: "published", platform_post_id: liResp.id, published_at: nowIso(), attempt_no: publishNextAttemptNo, request_payload: { org_urn: orgUrn, text_len: text.length }, response_payload: liResp, error: null, created_at: nowIso() });
+      if (publishInsertErr) {
+        console.error(`[linkedin-publisher] post_publish INSERT failed (published):`, publishInsertErr.message);
+      }
       await supabase.schema("m").from("post_publish_queue").update({ status: "published", last_error: null, locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
       await supabase.schema("m").from("post_draft").update({ approval_status: "published", updated_at: nowIso() }).eq("post_draft_id", q.post_draft_id);
-      results.push({ queue_id: queueId, post_draft_id: q.post_draft_id, status: "published", platform_post_id: liResp.id });
+      results.push({ queue_id: queueId, post_draft_id: q.post_draft_id, status: "published", platform_post_id: liResp.id, audit_row_inserted: !publishInsertErr, attempt_no: publishNextAttemptNo });
     } catch (e: any) {
       const errMsg = (e?.message ?? String(e)).slice(0, 4000);
       await supabase.schema("m").from("post_publish_queue").update({ status: "queued", scheduled_for: new Date(Date.now() + 10 * 60_000).toISOString(), last_error: errMsg, locked_at: null, locked_by: null, updated_at: nowIso() }).eq("queue_id", queueId);
-      await supabase.schema("m").from("post_publish").insert({ queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id, client_id: q.client_id, platform: "linkedin", destination_id: null, status: "failed", platform_post_id: null, request_payload: {}, response_payload: null, error: errMsg, created_at: nowIso() });
-      results.push({ queue_id: queueId, status: "failed", error: errMsg });
+      // v1.4.0 (cc-0089): next free attempt_no + capture the insert error (was
+      // previously hardcoded to attempt_no=1 with no error check).
+      let catchNextAttemptNo = 1;
+      try {
+        const { data: priorRows } = await supabase.schema("m").from("post_publish")
+          .select("attempt_no").eq("post_draft_id", q.post_draft_id)
+          .order("attempt_no", { ascending: false }).limit(1);
+        catchNextAttemptNo = nextAttemptNoFrom(priorRows);
+      } catch (_) { catchNextAttemptNo = 1; }
+      const { error: catchInsertErr } = await supabase.schema("m").from("post_publish").insert({ queue_id: queueId, ai_job_id: q.ai_job_id, post_draft_id: q.post_draft_id, client_id: q.client_id, platform: "linkedin", destination_id: null, status: "failed", platform_post_id: null, attempt_no: catchNextAttemptNo, request_payload: {}, response_payload: null, error: errMsg, created_at: nowIso() });
+      if (catchInsertErr) {
+        console.error(`[linkedin-publisher] post_publish INSERT failed (catch-all):`, catchInsertErr.message);
+      }
+      results.push({ queue_id: queueId, status: "failed", error: errMsg, audit_row_inserted: !catchInsertErr, attempt_no: catchNextAttemptNo });
     }
   }
 

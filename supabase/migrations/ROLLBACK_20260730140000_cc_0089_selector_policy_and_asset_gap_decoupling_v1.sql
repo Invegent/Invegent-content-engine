@@ -1,0 +1,401 @@
+-- =====================================================================================
+-- cc-0089 — Selector-Policy Decoupling — ROLLBACK
+-- Pairs with: 20260730140000_cc_0089_selector_policy_and_asset_gap_decoupling_v1.sql
+--
+-- IDENTITY CHECK (apply/rollback pairing): the apply packet creates/changes exactly
+-- THREE things:
+--   1. c.creative_template_selector_policy (new table)          -> NOT dropped by the
+--      default (cheap) rollback below; DROPPED only under the FULL option (commented
+--      out at the bottom of this file).
+--   2. ONE governed policy row (fb8a4a9b-904e-4a50-8ade-873aff4a53ae, facebook,
+--      priority=100)                                            -> DELETED here (Step 1,
+--      the cheap/default/preferred rollback).
+--   3. public.select_template v0 -> v0+cc-0089 (LEFT JOIN + ORDER BY tiebreak added)
+--                                                                -> UNCHANGED by the
+--      default rollback (the LEFT JOIN is a structural no-op with zero policy rows —
+--      COALESCE(priority,0)=0 for every candidate, so the ORDER BY collapses back to
+--      the original t.created_at ASC, t.id ASC, vc.variant_key ASC and market_insight
+--      wins again, exactly as before this migration); RESTORED to its verbatim
+--      pre-change body only under the FULL option below.
+--
+-- TWO ROLLBACK OPTIONS (per the cc-0089 brief — both preserve "market_insight card
+-- eligible again" as the outcome; the CHEAP option is preferred and is what this file
+-- EXECUTES by default):
+--   (a) CHEAP (preferred, EXECUTED below): DELETE the one policy row. select_template's
+--       LEFT JOIN then finds no match for ANY (template_id, platform), COALESCE degrades
+--       to 0 for every row, and the ORDER BY is functionally the original
+--       t.created_at ASC, t.id ASC, vc.variant_key ASC — market_insight (lowest UUID
+--       among the tied created_at group) wins again, byte-identical to the pre-cc-0089
+--       baseline. The table, its RLS/grants, and the LEFT JOIN in select_template all
+--       stay in place (inert, zero rows) — cheapest, fully reversible, no function
+--       redeploy needed if only the migration/DB side is rolled back.
+--   (b) FULL (documented, COMMENTED OUT below): also DROP FUNCTION-restore
+--       select_template to its EXACT pre-cc-0089 body (the verbatim
+--       20260703035154_create_select_template_v1.sql function) and DROP TABLE
+--       c.creative_template_selector_policy. Use this only if the table/column itself
+--       must be removed (e.g. abandoning the selector-policy design entirely), since it
+--       also requires redeploying select_template's replaced SQL.
+--
+-- ⚠ TRANSACTION: explicit BEGIN;/COMMIT; below (house pattern — see the four most recent
+-- supabase/migrations ROLLBACK_* entries). Atomicity is a property of this file.
+--
+-- ⚠ NOT ROLLED BACK (by design, because the apply never wrote them): zero rows in
+-- c.creative_provider_template, c.creative_template_variant_candidate,
+-- c.creative_template_platform_suitability, c.creative_template_client_assignment, or
+-- c.creative_template_proof_event are created/updated/deleted by the apply — nothing
+-- there needs restoring in either direction. derive_asset_appetite and
+-- analyze_asset_gap are never touched by the apply, so they need no rollback action.
+-- =====================================================================================
+
+BEGIN;
+
+-- -------------------------------------------------------------------------------------
+-- STEP 1 (DEFAULT / CHEAP / PREFERRED): delete the one governed policy row.
+-- -------------------------------------------------------------------------------------
+DELETE FROM c.creative_template_selector_policy
+WHERE template_id = 'fb8a4a9b-904e-4a50-8ade-873aff4a53ae'::uuid
+  AND platform = 'facebook'
+  AND created_by = 'cc-0089-selector-decoupling';
+
+-- -------------------------------------------------------------------------------------
+-- STEP 2: post-rollback assertion — fail closed if the row is somehow still present,
+-- or if more than the expected one row existed (would indicate an out-of-band write).
+-- -------------------------------------------------------------------------------------
+DO $$
+DECLARE
+  v_remaining int;
+BEGIN
+  SELECT count(*) INTO v_remaining
+  FROM c.creative_template_selector_policy
+  WHERE template_id = 'fb8a4a9b-904e-4a50-8ade-873aff4a53ae'::uuid
+    AND platform = 'facebook';
+  IF v_remaining <> 0 THEN
+    RAISE EXCEPTION 'ROLLBACK ASSERTION FAILED: % row(s) still present for the cc-0089 policy key (expected 0)', v_remaining;
+  END IF;
+END $$;
+
+COMMIT;
+
+-- =====================================================================================
+-- FULL OPTION (reference only — NOT executed; uncomment and run as its own reviewed
+-- statement/transaction if the table/column itself must be removed). Restores
+-- select_template to the EXACT pre-cc-0089 body (verbatim
+-- 20260703035154_create_select_template_v1.sql) and then drops the new table.
+-- =====================================================================================
+--
+-- BEGIN;
+--
+-- CREATE OR REPLACE FUNCTION public.select_template(
+--   p_client_slug    text,
+--   p_platform       text,
+--   p_format         text,
+--   p_variant_intent text DEFAULT NULL,
+--   p_seed           text DEFAULT NULL
+-- )
+-- RETURNS jsonb
+-- LANGUAGE plpgsql
+-- STABLE
+-- SECURITY DEFINER
+-- SET search_path = ''
+-- AS $$
+-- DECLARE
+--   v_context   jsonb;
+--   v_client_id uuid;
+--   v_candidate_count int   := 0;
+--   v_rejected        jsonb := '[]'::jsonb;
+--   v_warnings        jsonb := '[]'::jsonb;
+--   v_platform_unproven_warned boolean := false;
+--   v_intent_matched           boolean := false;
+--   v_b_intent_strong jsonb := '[]'::jsonb;
+--   v_b_intent_other  jsonb := '[]'::jsonb;
+--   v_b_strong        jsonb := '[]'::jsonb;
+--   v_b_other         jsonb := '[]'::jsonb;
+--   v_ranked          jsonb;
+--   v_n               int;
+--   r        record;
+--   v_reason text;
+--   v_detail text;
+--   v_ps_total   int;
+--   v_ps_passing int;
+--   v_ps_proven  int;
+--   v_assign_id          uuid;
+--   v_assign_status      text;
+--   v_assign_approved_by text;
+--   v_proof_occurred_at timestamptz;
+--   v_proof_evidence    text;
+--   v_slot         jsonb;
+--   v_entry        jsonb;
+--   v_winner       jsonb;
+--   v_selected     jsonb;
+--   v_reasons      jsonb;
+--   v_alts         jsonb := '[]'::jsonb;
+--   v_alt          jsonb;
+--   v_rank_reasons jsonb;
+-- BEGIN
+--   v_context := jsonb_build_object(
+--     'client_slug',    p_client_slug,
+--     'platform',       p_platform,
+--     'format',         p_format,
+--     'variant_intent', p_variant_intent,
+--     'seed',           p_seed,
+--     'selectable_definition', 'visually_approved+ AND passed visual_approval proof'
+--   );
+--
+--   SELECT cl.client_id INTO v_client_id
+--   FROM c.client cl
+--   WHERE cl.client_slug = p_client_slug;
+--   IF NOT FOUND THEN
+--     RETURN jsonb_build_object(
+--       'status', 'fail_closed', 'selected', NULL, 'slot_resolution', NULL,
+--       'alternatives', '[]'::jsonb, 'rejected', v_rejected, 'warnings', v_warnings,
+--       'fail_reason', 'client_not_found', 'context', v_context);
+--   END IF;
+--
+--   IF p_platform IS NULL THEN
+--     v_warnings := v_warnings || to_jsonb('platform_input_missing'::text);
+--   END IF;
+--
+--   FOR r IN
+--     SELECT
+--       t.id                     AS template_id,
+--       t.provider_template_id,
+--       t.provider_template_name,
+--       t.scope,
+--       t.status,
+--       t.aspect_ratio,
+--       t.created_at,
+--       vc.variant_key,
+--       vc.format_key,
+--       vc.fit_status
+--     FROM c.creative_template_variant_candidate vc
+--     JOIN c.creative_provider_template t ON t.id = vc.template_id
+--     WHERE vc.format_key = p_format
+--     ORDER BY t.created_at ASC, t.id ASC, vc.variant_key ASC
+--   LOOP
+--     v_candidate_count := v_candidate_count + 1;
+--     v_reason := NULL;
+--     v_detail := NULL;
+--     v_slot   := NULL;
+--
+--     IF r.scope <> 'generic' THEN
+--       v_reason := 'wrong_scope';
+--       v_detail := 'scope=' || r.scope;
+--     ELSIF r.status NOT IN
+--       ('smoke_rendered', 'visually_approved', 'platform_safe', 'client_enabled', 'production_proven') THEN
+--       v_reason := 'status_below_smoke';
+--       v_detail := 'status=' || r.status;
+--     END IF;
+--
+--     IF v_reason IS NULL AND p_platform IS NOT NULL THEN
+--       SELECT
+--         count(*),
+--         count(*) FILTER (WHERE s.suitability_status NOT IN ('not_suitable', 'blocked')),
+--         count(*) FILTER (WHERE s.suitability_status IN ('platform_safe', 'production_proven'))
+--       INTO v_ps_total, v_ps_passing, v_ps_proven
+--       FROM c.creative_template_platform_suitability s
+--       WHERE s.template_id = r.template_id
+--         AND s.platform    = p_platform;
+--
+--       IF v_ps_total = 0 THEN
+--         v_reason := 'platform_unsuitable';
+--         v_detail := 'no_suitability_row_for_platform';
+--       ELSIF v_ps_passing = 0 THEN
+--         v_reason := 'platform_unsuitable';
+--         v_detail := 'suitability_status_negative';
+--       ELSIF v_ps_proven = 0 THEN
+--         IF NOT v_platform_unproven_warned THEN
+--           v_warnings := v_warnings || to_jsonb('platform_suitability_unproven'::text);
+--           v_platform_unproven_warned := true;
+--         END IF;
+--       END IF;
+--     END IF;
+--
+--     IF v_reason IS NULL THEN
+--       SELECT a.id, a.assignment_status, a.approved_by
+--       INTO v_assign_id, v_assign_status, v_assign_approved_by
+--       FROM c.creative_template_client_assignment a
+--       WHERE a.template_id = r.template_id
+--         AND a.client_id   = v_client_id;
+--
+--       IF NOT FOUND THEN
+--         v_reason := 'no_assignment';
+--       ELSIF v_assign_status = 'proposed' THEN
+--         v_reason := 'assignment_not_approved';
+--       ELSIF v_assign_status IN ('blocked', 'deprecated') THEN
+--         v_reason := 'assignment_blocked';
+--         v_detail := 'assignment_status=' || v_assign_status;
+--       ELSIF v_assign_status = 'approved' THEN
+--         v_reason := 'not_visually_proven';
+--         v_detail := 'assignment_approved_but_no_visual_rung';
+--       ELSIF v_assign_status NOT IN ('visually_approved', 'client_enabled', 'production_proven') THEN
+--         v_reason := 'assignment_not_approved';
+--         v_detail := 'unrecognised_assignment_status=' || v_assign_status;
+--       END IF;
+--     END IF;
+--
+--     IF v_reason IS NULL THEN
+--       SELECT p.occurred_at, p.evidence_reference
+--       INTO v_proof_occurred_at, v_proof_evidence
+--       FROM c.creative_template_proof_event p
+--       WHERE p.assignment_id = v_assign_id
+--         AND p.proof_type    = 'visual_approval'
+--         AND p.proof_status  = 'passed'
+--       ORDER BY p.occurred_at DESC NULLS LAST, p.created_at DESC, p.id ASC
+--       LIMIT 1;
+--       IF NOT FOUND THEN
+--         v_reason := 'not_visually_proven';
+--         v_detail := 'no_passed_visual_approval_proof_on_assignment';
+--       END IF;
+--     END IF;
+--
+--     IF v_reason IS NULL THEN
+--       v_slot := public.resolve_slot_assets(p_client_slug, p_platform, p_format, r.template_id, p_seed);
+--       IF (v_slot->>'status') IS DISTINCT FROM 'ok' THEN
+--         v_reason := 'assets_fail_closed:' || COALESCE(v_slot->>'fail_reason', 'unknown');
+--       END IF;
+--     END IF;
+--
+--     IF v_reason IS NOT NULL THEN
+--       v_entry := jsonb_build_object(
+--         'template_id',            r.template_id,
+--         'provider_template_name', r.provider_template_name,
+--         'variant_key',            r.variant_key,
+--         'reason_code',            v_reason);
+--       IF v_detail IS NOT NULL THEN
+--         v_entry := v_entry || jsonb_build_object('detail', v_detail);
+--       END IF;
+--       v_rejected := v_rejected || v_entry;
+--     ELSE
+--       v_entry := jsonb_build_object(
+--         'assignment_id',          v_assign_id,
+--         'template_id',            r.template_id,
+--         'provider_template_id',   r.provider_template_id,
+--         'provider_template_name', r.provider_template_name,
+--         'variant_key',            r.variant_key,
+--         'format_key',             r.format_key,
+--         'aspect_ratio',           r.aspect_ratio,
+--         'assignment_status',      v_assign_status,
+--         'approved_by',            v_assign_approved_by,
+--         'fit_status',             r.fit_status,
+--         'proof_occurred_at',      v_proof_occurred_at,
+--         'proof_evidence',         v_proof_evidence,
+--         'intent_match',           (p_variant_intent IS NOT NULL AND r.variant_key = p_variant_intent),
+--         'slot_resolution',        v_slot);
+--
+--       IF p_variant_intent IS NOT NULL AND r.variant_key = p_variant_intent THEN
+--         v_intent_matched := true;
+--         IF r.fit_status = 'strong_candidate' THEN
+--           v_b_intent_strong := v_b_intent_strong || v_entry;
+--         ELSE
+--           v_b_intent_other := v_b_intent_other || v_entry;
+--         END IF;
+--       ELSIF r.fit_status = 'strong_candidate' THEN
+--         v_b_strong := v_b_strong || v_entry;
+--       ELSE
+--         v_b_other := v_b_other || v_entry;
+--       END IF;
+--     END IF;
+--   END LOOP;
+--
+--   IF v_candidate_count = 0 THEN
+--     RETURN jsonb_build_object(
+--       'status', 'fail_closed', 'selected', NULL, 'slot_resolution', NULL,
+--       'alternatives', '[]'::jsonb, 'rejected', v_rejected, 'warnings', v_warnings,
+--       'fail_reason', 'format_unmapped', 'context', v_context);
+--   END IF;
+--
+--   v_ranked := v_b_intent_strong || v_b_intent_other || v_b_strong || v_b_other;
+--   v_n      := jsonb_array_length(v_ranked);
+--
+--   IF v_n = 0 THEN
+--     RETURN jsonb_build_object(
+--       'status', 'fail_closed', 'selected', NULL, 'slot_resolution', NULL,
+--       'alternatives', '[]'::jsonb, 'rejected', v_rejected, 'warnings', v_warnings,
+--       'fail_reason', 'no_selectable_template', 'context', v_context);
+--   END IF;
+--
+--   IF p_variant_intent IS NOT NULL AND NOT v_intent_matched THEN
+--     v_warnings := v_warnings || to_jsonb('variant_intent_unmatched'::text);
+--   END IF;
+--
+--   v_winner := v_ranked -> 0;
+--
+--   v_reasons := jsonb_build_array(
+--     'format_match',
+--     'generic_scope',
+--     CASE WHEN p_platform IS NOT NULL THEN 'platform_declared' ELSE 'platform_skipped_null_input' END,
+--     'assignment_visually_approved',
+--     'visual_proof_passed',
+--     'assets_resolved');
+--   IF (v_winner->>'intent_match')::boolean THEN
+--     v_reasons := v_reasons || to_jsonb('variant_intent_match'::text);
+--   END IF;
+--
+--   v_selected := jsonb_build_object(
+--     'assignment_id',          v_winner->'assignment_id',
+--     'template_id',            v_winner->'template_id',
+--     'provider_template_id',   v_winner->'provider_template_id',
+--     'provider_template_name', v_winner->'provider_template_name',
+--     'variant_key',            v_winner->'variant_key',
+--     'format_key',             v_winner->'format_key',
+--     'aspect_ratio',           v_winner->'aspect_ratio',
+--     'assignment_status',      v_winner->'assignment_status',
+--     'approved_by',            v_winner->'approved_by',
+--     'proof', jsonb_build_object(
+--       'visual_approval',    'passed',
+--       'occurred_at',        v_winner->'proof_occurred_at',
+--       'evidence_reference', v_winner->'proof_evidence'),
+--     'reasons', v_reasons);
+--
+--   FOR i IN 1 .. v_n - 1 LOOP
+--     v_alt := v_ranked -> i;
+--     v_rank_reasons := '[]'::jsonb;
+--     IF (v_alt->>'intent_match')::boolean THEN
+--       v_rank_reasons := v_rank_reasons || to_jsonb('variant_intent_match'::text);
+--     END IF;
+--     v_rank_reasons := v_rank_reasons || to_jsonb(('fit_' || (v_alt->>'fit_status'))::text);
+--     v_rank_reasons := v_rank_reasons || to_jsonb('registry_order_tiebreak'::text);
+--     v_alts := v_alts || jsonb_build_object(
+--       'template_id',            v_alt->'template_id',
+--       'provider_template_name', v_alt->'provider_template_name',
+--       'variant_key',            v_alt->'variant_key',
+--       'rank_reasons',           v_rank_reasons);
+--   END LOOP;
+--
+--   RETURN jsonb_build_object(
+--     'status',          'ok',
+--     'selected',        v_selected,
+--     'slot_resolution', v_winner->'slot_resolution',
+--     'alternatives',    v_alts,
+--     'rejected',        v_rejected,
+--     'warnings',        v_warnings,
+--     'fail_reason',     NULL,
+--     'context',         v_context);
+-- END;
+-- $$;
+--
+-- COMMENT ON FUNCTION public.select_template(text, text, text, text, text) IS
+-- 'Template Selection v0 (Lane C): read-only TMR template selector. Given (client_slug, platform, format, variant_intent?, seed?) returns the approved + visually proven template assignment ICE would use, composing public.resolve_slot_assets for the winner''s slot fill — or fails closed with per-candidate reason codes. Generic scope only; variant_intent is a ranker not a filter; no template-level seed rotation (seed = background rotation only). Service-role-only. Ships dark (no production consumer).';
+--
+-- REVOKE ALL ON FUNCTION public.select_template(text, text, text, text, text) FROM PUBLIC;
+-- REVOKE ALL ON FUNCTION public.select_template(text, text, text, text, text) FROM anon, authenticated;
+-- GRANT EXECUTE ON FUNCTION public.select_template(text, text, text, text, text) TO service_role;
+--
+-- DROP TABLE IF EXISTS c.creative_template_selector_policy;
+--
+-- DO $$
+-- BEGIN
+--   IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='c' AND tablename='creative_template_selector_policy') THEN
+--     RAISE EXCEPTION 'ROLLBACK ASSERTION FAILED: c.creative_template_selector_policy still present';
+--   END IF;
+--   IF EXISTS (
+--     SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+--     WHERE n.nspname = 'public' AND p.proname = 'select_template'
+--       AND pg_get_functiondef(p.oid) LIKE '%creative_template_selector_policy%'
+--   ) THEN
+--     RAISE EXCEPTION 'ROLLBACK ASSERTION FAILED: select_template still references creative_template_selector_policy';
+--   END IF;
+-- END $$;
+--
+-- COMMIT;
+-- =====================================================================================
