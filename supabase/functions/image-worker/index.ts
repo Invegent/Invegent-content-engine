@@ -1,3 +1,28 @@
+// image-worker v3.36.0
+// v3.36.0 (2026-07-30) — Creatomate Global Static Graduation Batch 1 — announcement_card
+//   layout-guard fix. NO logic change in THIS entrypoint or in buildTmrRenderPlan — version
+//   bump + header only, to reclassify the drift gate off A-LE (the drift gate hashes ONLY
+//   index.ts, so a helper-only change stays A-LE without this bump). The actual change is a
+//   pure DATA addition in b1_production.ts: ONE new entry in TMR_WINNER_LAYOUT_GUARD for
+//   generic_announcement_card_1x1_v1 (provider_template_id a75e7139-1eec-4bba-a8c1-40b8e07b2b0e),
+//   fixing the same headline/subtitle overprint defect class as the pre-existing
+//   generic_market_insight_card_1x1_v1 entry (cc-0033a): Headline is top-anchored at 32% with
+//   NO height bound and a FIXED font_size: 72, while Subtitle sits at a fixed y: 55%, so a long
+//   real headline wraps into more lines than the unbounded box was ever measured against and
+//   grows straight into the subtitle. A real production draft (78-char headline) wrapped to 4
+//   lines and visually overlapped the subtitle — PK issued a REJECT verdict on the render. The
+//   fix bounds Headline.height to 20% and lets font_size auto-fit (null) within
+//   font_size_minimum 24px / font_size_maximum 72px, mirroring the market_insight_card fix
+//   exactly: bounding the box makes overflow structurally impossible, so no headline length can
+//   collide. Values verified via live Creatomate template-mode render probes against real
+//   m.post_draft headline text, 2026-07-30 (94-char worst-case, the exact 78-char headline that
+//   broke the real draft, and a 52-char short headline — all three clean, no overlap, no
+//   awkward over-shrinking). buildTmrRenderPlan itself is UNCHANGED — it already generically
+//   reads TMR_WINNER_LAYOUT_GUARD[winnerName], so this is a pure data-table addition. STRICTLY
+//   OUT OF SCOPE (this change): the pre-existing generic_market_insight_card_1x1_v1 entry,
+//   TMR_WINNER_TEXT_FIELDS, any other export in b1_production.ts, buildTmrRenderPlan's logic,
+//   template selection/ranking, asset resolution, any DDL/migration, any deploy/apply (both are
+//   a later PK gate).
 // image-worker v3.35.0
 // v3.35.0 (2026-07-30) — Creatomate Global Static Graduation Batch 1, Part A (Open Question 1,
 //   option (a) — docs/briefs/creatomate-global-static-graduation-batch1-gate1-brief-v1.md): the
@@ -516,7 +541,7 @@ import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C:
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.35.0';  // Creatomate Global Static Graduation Batch 1 Part A (OQ-1 option a) — additive per-draft b1_variant_intent_override column + select_template override + templateSpec evidence fields; NULL column = byte-identical to v3.34.0
+const VERSION = 'image-worker-v3.36.0';  // Creatomate Global Static Graduation Batch 1 — announcement_card layout-guard fix: new TMR_WINNER_LAYOUT_GUARD entry (Headline.height 20% + auto-fit), pure data addition, buildTmrRenderPlan unchanged
 // cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
 // Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
 // provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1

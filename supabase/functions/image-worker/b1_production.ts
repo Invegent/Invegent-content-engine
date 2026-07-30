@@ -290,6 +290,30 @@ export const TMR_WINNER_LAYOUT_GUARD: Record<string, Record<string, string | num
     'Headline.font_size_minimum': '30 px',
     'Headline.font_size_maximum': '74 px', // the template's authored size; never grow past it
   },
+  // Same defect class as market_insight_card above, on template
+  // `generic_announcement_card_1x1_v1` (provider_template_id a75e7139-1eec-4bba-a8c1-40b8e07b2b0e).
+  // The provider template under-specifies the card the same way: `Headline` is top-anchored at
+  // 32% with NO height bound and a FIXED `font_size: 72`, while `Subtitle` sits at a fixed y: 55%.
+  // A long real headline wraps to more lines than the unbounded box was ever measured against and
+  // grows straight into the subtitle. A real production draft (78-char headline) wrapped to 4
+  // lines and visually overlapped the subtitle — PK issued a REJECT verdict on the render.
+  // Bounding the headline's height and letting its font auto-shrink makes overflow structurally
+  // impossible here for the same reason as market_insight_card: the box stops growing, so no
+  // headline length can collide, and nothing has to be rejected to keep the card readable.
+  // These values are geometry for template `generic_announcement_card_1x1_v1` ONLY — not a
+  // portable constant, not a line budget.
+  // Verified via live Creatomate template-mode render probes against real m.post_draft headline
+  // text, 2026-07-30: worst-case real headline (94 chars) — WITHOUT the guard: visual overlap with
+  // subtitle (5 lines, unreadable); WITH the guard: clean 3-line render, no overlap. The exact
+  // headline that broke the real draft (78 chars) — WITH the guard: clean 3-line render, no
+  // overlap, still near-full font size. A short real headline (52 chars) — WITH the guard: clean
+  // 2-line render at full 72px, no awkward over-shrinking.
+  'generic_announcement_card_1x1_v1': {
+    'Headline.height': '20%',
+    'Headline.font_size': null,
+    'Headline.font_size_minimum': '24 px',
+    'Headline.font_size_maximum': '72 px',
+  },
 };
 
 // Additive render_spec.tmr evidence block (design decision D3).
