@@ -6,6 +6,12 @@
 
 ---
 
+> **🟢 v6.78 — Client Production Readiness Queue v1 — LIVE (T2 · PRODUCT_PROOF)** — result: `docs/briefs/results/cc-0088-client-production-readiness-queue-result-v1.md`, brief: `docs/briefs/cc-0088-client-production-readiness-queue-brief-v1.md`.
+> · **New client×platform×format read-only queue**, applied+deployed: CE `public.get_client_production_readiness_queue(p_client_slug)` (migration `20260730120000_client_production_readiness_queue_rpc_v1.sql`, `service_role`-only, zero existing object modified) + `invegent-dashboard` "Production Readiness Queue" tab on `/clients` (Vercel `dpl_Depi6PAekXru9yWEumsFM4d5UftK`, READY). Composes `classify_format_capability`/`get_creative_template_portfolio_summary`/`platform_support`×`client_format_config`/`client_publish_profile`/`client_publish_schedule`/`m.slot`/`client_brand_asset` — no decision logic reimplemented, `capability_status` and `runtime_reachable` render as two distinct fields, declared/resolver-reachable asset counts always render together, `responsible_lane` fails closed and only ever maps `asset_shortage`→Asset Gap.
+> · Review chain: `db-rls-auditor` concerns→fixed→clean · `branch-warden` safe ×5 · `dashboard-ia-lint` WARN non-blocking · external review escalated (generic, no defect) → `security-auditor` **GREEN**. Mid-lane: NDIS Instagram pause-state question raised then resolved by direct evidence in `ba084d5`; origin moved twice during build, both independently verified benign.
+
+---
+
 > **🟢 v6.77 — NDIS **LINKEDIN** CONTAINMENT RELEASED (T3 · SAFETY_GATE; 1-row DML, PK Gate-2 explicit)** — result: `docs/briefs/results/s9-linkedin-containment-release-result-v1.md`, packet: `docs/briefs/s9-linkedin-containment-release-packet-v1.md`.
 > · **`c.client_publish_profile 198f7328…` (ndis-yarns·linkedin) `paused_until` 2027-01-01 → NULL.** Platform **3 of 4**. **facebook + instagram stay RELEASED · YOUTUBE REMAINS PAUSED** — all re-asserted inside the same transaction with `ROW_COUNT=1` and the five enforcement-identity STOPs.
 > · **⭐ ANSWERED the question this pass existed for.** v6.71 flagged that LinkedIn `text` has no selectable template, and NDIS LinkedIn `text` is **71 publishes/90d — the largest cell in the whole containment**. Measured directly, NOT carried across from FB: `unsupported_silent_degrade`/`format_unmapped` + `is_capability_exempt_format('text')=true` + status IS carve-out-eligible ⇒ **PROCEEDS**. **Proven, not computed:** 5 REAL scheduled `text` slots driven through the LIVE Layer-1 gate ⇒ **`capability_skips=0`**.
