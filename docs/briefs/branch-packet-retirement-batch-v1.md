@@ -116,3 +116,24 @@ no branch/ref-deletion tool exists. **No ref was changed; nothing half-deleted**
 archive-proven lossless (`f95d220`), and safe to run as-is. Should a tip move before PK runs them, the §8
 rule applies: stop only that deletion. **S3 (Branch and Packet Retirement) is CLOSED** — archive landed,
 E1/E2 applied, E3 packet delivered, STOP list untouched, deletions handed to PK as a mechanical action.
+
+## 8. OPERATOR ACTION RECORD — five deletions attempted, S3 CLOSED (2026-07-31)
+
+Per PK instruction ("record the five deletions as a small operator action"):
+
+1. **Tip verification (pre-delete, per PK condition):** all five current remote tips re-read via
+   `ls-remote` and **ALL FIVE MATCH the recorded SHAs exactly** — CE r0vbuf `73d82bf` · w1-v2 `391f47f` ·
+   s9-v2 `b7e371e` · dashboard r0vbuf `2f8d5e5` · dashboard s2-gcp-slice3 `07d9c42`. No tip moved; no
+   per-branch stop triggered.
+2. **Deletion attempts:** executed per-branch (CE ×3, dashboard ×2). **All five REJECTED by the
+   container's git proxy** (destructive ref updates blocked; HTTP 403 signature, refs confirmed intact
+   by post-attempt `ls-remote`). The GitHub MCP surface was also checked after reconnect: it exposes
+   `create_branch` but **no branch/ref deletion tool** — no alternate path exists from this environment.
+3. **Outcome:** zero deletions performed here; all five remain archive-proven lossless and
+   tip-verified as of this record. The §1 commands remain valid for PK's own (unproxied) push access —
+   re-verify tips against the SHAs above before running if any time has passed.
+4. **S3 (Branch and Packet Retirement) CLOSED** as a session: batch prepared → PK rulings applied →
+   archive `f95d220` landed on `main` → E3 packet delivered (now carrying its §5 pre-gate verification
+   record; conveyance still pending) → deletions prepared + tip-verified, execution PK-side. Residual
+   open items ride their own gates: E3 conveyance/landing · the five PK-run deletions · the future
+   legacy-branch sweep (out of scope, unstarted).
