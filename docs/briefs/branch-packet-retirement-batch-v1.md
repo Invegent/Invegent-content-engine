@@ -83,3 +83,14 @@ active refs → STOP list) · classification (retire R1–R5 · preserve via STO
 dashboard if PK wants P4 mirrored there → (2) PK rules E1/E2 → (3) run §1 deletions → (4) E3 backfill
 lane for `cc-sched-editor-p1`'s 7 files as its own small gate → (5) one register pointer for the batch
 (Convention 1). Legacy-branch sweep = separate future lane.
+
+---
+
+## 7. EXECUTION RECORD — 2026-07-31 (PK rulings applied)
+
+- **Archive commit LANDED on CE `main`: `f95d220`** (`docs/archive/retirement-batch-v1-20260731/` — P1/P2/P3/P4 byte-exact + MANIFEST.md). All four sha256s verified identical to the §2 recorded values BEFORE commit (`8504abd6…` · `1dcde08e…` · `20d72b0c…` · `97cfa1f7…`). Zero unique evidence lost: every sole-copy artifact now lives on `main`; the w1 SQL remains hash-recorded per §2 (PK ruling — no archive copy).
+- **E1 applied:** NDIS YouTube suitability draft archived as UNADOPTED HISTORICAL INPUT (manifest banner); the proposed suitability row is NOT adopted.
+- **E2 applied:** dashboard template-mix/repetition-controls draft archived as PK-PAUSED RESEARCH (manifest banner); not promoted, not implemented.
+- **E3 delivered:** `docs/briefs/cc-sched-editor-p1-ledger-backfill-packet-v1.md` (bounded, 7 files, verify-or-abort; branch NOT retired).
+- **⚠ Branch deletions BLOCKED by environment policy:** `git push --delete` returns HTTP 403 through this container's git proxy (both repos; retried; ls-remote confirms all five refs intact). Retirement therefore reverts to the v6.89 precedent — **PK runs the §1 commands** (all preservation preconditions are now satisfied; every §1 deletion is archive-proven lossless). Tip SHAs at record time: CE r0vbuf `73d82bf` · w1-v2 `391f47f` · s9-v2 `b7e371e` · dashboard r0vbuf `2f8d5e5` · dashboard s2-gcp-slice3 `07d9c42` (merged-ancestor re-confirmed at deletion attempt).
+- **STOP list untouched** (S5 lane · S6 lane · ccf04-review-packet-v2 · cc-sched-editor-p1 · tmr-template-intake-ui-v0 · legacy mass). Local CE `main` fast-forwarded to `origin/main` (pointer hygiene only).
