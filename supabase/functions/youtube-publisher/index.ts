@@ -1,4 +1,13 @@
-// youtube-publisher v1.17.0
+// youtube-publisher v1.18.0
+// v1.18.0 (2026-07-31, F-YT-CLAIM-RPC-FIX) — fix the atomic pre-claim UPDATE, which had been failing
+//   100% of attempts since ~2026-07-30 22:15Z with 42703 "column does not exist" (root cause: this
+//   project's PostgREST cannot resolve column names when a composite or=() filter is combined with a
+//   PATCH/UPDATE — confirmed method-specific, column-agnostic, not a schema-cache issue), silently
+//   blocking all YouTube publishing. Replaces the two chained `.or()` filters on `.update()` with a
+//   single call to the new `public.claim_post_draft_for_youtube_publish` RPC (native SQL, bypasses
+//   PostgREST's composite-filter translation entirely). Data/behavior-preserving: the exact same
+//   predicate (video_status='generated', no prior youtube_video_id, NULL-safe capability exclusion,
+//   15-min stale-claim TTL) moved verbatim into the function; no enforcement semantics changed.
 // v1.14.0 (F-YT-RELEASE-CONTROL) — publish only at the authorised release time. Until now youtube-publisher
 //   was a direct-read publisher whose draft SELECT had NO release-time gate: it published any eligible draft on
 //   the next tick regardless of scheduled_for. v1.14.0 adds a release-time gate in TWO layers:
@@ -112,7 +121,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { requireAssetPresent } from './asset_backstop.ts';
 
-const VERSION = 'youtube-publisher-v1.17.0';
+const VERSION = 'youtube-publisher-v1.18.0';
 // v1.17.0 (2026-07-30) — S9 FINAL BOUNDARY: fail-closed channel-pause gate.
 //   marker: youtube-publisher-s9-failclosed-pause-gate (grep-able in the deployed bundle).
 //   CLOSES the last fail-open hole in the S9 arc, named by the architecture packet as an explicit
@@ -595,19 +604,17 @@ Deno.serve(async (req: Request) => {
     }
 
     const claimStaleCutoff = futureIso(-YT_PUBLISH_CLAIM_TTL_MIN * 60 * 1000);
-    const { data: claimRows, error: claimErr } = await supabase.schema('m').from('post_draft')
-      .update({ draft_format: { ...df, yt_publish_claim_at: nowIso() }, updated_at: nowIso() })
-      .eq('post_draft_id', draft.post_draft_id)
-      .eq('video_status', 'generated')
-      .is('draft_format->youtube_video_id', null)
-      // (ii) TOCTOU closure: the SELECT above and check (i) both ran BEFORE this claim, so a draft
-      // blocked in the interval would still reach the irreversible upload. Carrying the predicate
-      // INSIDE the atomic claim UPDATE means a draft blocked between SELECT and claim yields 0 rows
-      // and the loop yields — exactly the pattern this file already uses for video_status and the
-      // youtube_video_id guard, extended to capability.
-      .or(`final_format_authority.is.null,final_format_authority.neq.${CAPABILITY_BLOCKED}`)
-      .or(`draft_format->>yt_publish_claim_at.is.null,draft_format->>yt_publish_claim_at.lt.${claimStaleCutoff}`)
-      .select('post_draft_id');
+    // v1.18.0 (F-YT-CLAIM-RPC-FIX): the same claim predicate (video_status, no prior youtube_video_id,
+    // NULL-safe capability exclusion (ii), 15-min stale-claim TTL) now lives in native SQL inside
+    // public.claim_post_draft_for_youtube_publish, called via RPC — this project's PostgREST fails to
+    // resolve column names when a composite or=() filter is combined with a PATCH/UPDATE, and this was
+    // the only mutation in the repo using that pattern. The RPC bypasses that translation path entirely;
+    // no predicate/semantics changed. Returned column is `claimed_post_draft_id` (see migration); the
+    // downstream checks below only inspect array length, never a field value, so the rename is inert.
+    const { data: claimRows, error: claimErr } = await supabase.rpc('claim_post_draft_for_youtube_publish', {
+      p_post_draft_id: draft.post_draft_id,
+      p_claim_stale_cutoff: claimStaleCutoff,
+    });
     if (claimErr) {
       console.error(`[youtube-publisher] publish_claim_error post_draft_id=${draft.post_draft_id}: ${claimErr.message}`);
       results.push({ post_draft_id: draft.post_draft_id, status: 'skipped_publish_claim_error' });
