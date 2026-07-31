@@ -146,3 +146,10 @@ artifacts unreadable.
    still never writes `paused_until`.
 5. **Payloads inspected: unchanged** — the resolution touches no schedule/cadence/override/mix
    data; `s5-apply-a1-payloads-v1.json` and `s5-rollback-a1-payloads-v1.json` stand byte-identical.
+6. **[EXECUTED 2026-07-31] Pre-window clearing DONE:** PK issued the separate explicit mutation
+   authorisation and the exact one-row CAS ran:
+   `UPDATE c.client_publish_profile SET paused_until = NULL WHERE client=property-pulse AND
+   platform='facebook' AND paused_until='2026-08-03 12:00:00+00'` — **1 row, RETURNING
+   `paused_until=NULL`**; readback confirms `paused_until NULL · paused_reason NULL ·
+   publish_enabled true`, and `classify_format_capability('property-pulse','facebook','image_quote')`
+   = `ready`. §R2 item 3 is satisfied; S0's transitional branch is now vestigial (expect NULL).
