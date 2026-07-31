@@ -1,0 +1,3346 @@
+[
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "09:06:00",
+  "schedule_id": "29d106ce-08d1-41ad-b158-eccca09101a6"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:02:00",
+  "schedule_id": "2b1b00a7-93b3-4cae-8493-ebccaf089792"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "13:04:00",
+  "schedule_id": "38c64008-db51-4e77-96ac-e4f1130715ff"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:30:00",
+  "schedule_id": "8c6be37b-92ab-4ead-887e-1f4d5c84bf45"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:06:00",
+  "schedule_id": "433c52c1-9385-4a5e-83ae-96c5c603f915"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:02:00",
+  "schedule_id": "6d3a3a3f-8fb7-45b6-b36c-44cfca67c3f6"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "13:04:00",
+  "schedule_id": "49ced206-838a-48b5-acf8-9e3fbe73d480"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:30:00",
+  "schedule_id": "9d22040d-dfcd-43a8-bb9b-31ce316a3f72"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:06:00",
+  "schedule_id": "cb3e86fa-0b7b-4ab0-8b98-93de30bc699f"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:02:00",
+  "schedule_id": "40339124-5240-4bd9-9603-1d638c83f9a2"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "13:04:00",
+  "schedule_id": "24ace1dc-1274-451f-b75e-78cb3ec2fef6"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:30:00",
+  "schedule_id": "039b3aa2-ef07-462c-8b36-2333769cf91a"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:06:00",
+  "schedule_id": "f9e49b40-9e04-4548-860f-875c907ad8d8"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:02:00",
+  "schedule_id": "225b88db-3013-418c-a3fc-6dd6a8a461bd"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "13:04:00",
+  "schedule_id": "c36946f1-9dc5-4256-a52f-9df7ce0320f3"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:30:00",
+  "schedule_id": "1d52157e-e275-4f86-8993-81c0d745af7f"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:06:00",
+  "schedule_id": "6966af5b-5a2e-4f0c-81e0-0e20b3c6afb1"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:02:00",
+  "schedule_id": "4192a1f6-781b-499a-98be-6d8480b03165"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "13:04:00",
+  "schedule_id": "29a7d941-4b94-4d9d-9752-e1adffa47246"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:30:00",
+  "schedule_id": "f4a365e1-90e2-4390-a78e-b9bccb167bc0"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:06:00",
+  "schedule_id": "90b8583e-b77d-498d-ba03-52e64c727a6b"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:02:00",
+  "schedule_id": "7a6912d5-9bf5-46ab-8273-01ef08e65297"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "13:04:00",
+  "schedule_id": "9b8de513-5b1e-4f35-b9a0-f43f774c6831"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:30:00",
+  "schedule_id": "79ea2d24-aead-4d8b-be30-50f7d875834a"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "09:06:00",
+  "schedule_id": "680f7b0c-a27f-4d32-bf45-a1f2b91b1832"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:02:00",
+  "schedule_id": "963f5cb3-45b5-4034-8f04-82d521414123"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "13:04:00",
+  "schedule_id": "ff0ca8ff-17d1-4de5-bc7a-83efd9f735c8"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:30:00",
+  "schedule_id": "edef233f-9654-4bd9-86dc-af30b4162e70"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:06:00",
+  "schedule_id": "0242e748-bbde-4824-8d80-9825110dd6c5"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "11:02:00",
+  "schedule_id": "38918874-6350-4ec5-997e-1af0825cf19e"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "13:04:00",
+  "schedule_id": "25c584bc-4ce7-46dc-a5da-736e5aed09db"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:30:00",
+  "schedule_id": "cf4288bd-d547-4fee-9d98-c9dba82c2069"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:06:00",
+  "schedule_id": "44d2ac07-ee4e-4a6a-8b33-7a06abf4f25b"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:02:00",
+  "schedule_id": "e2024323-c0e0-468d-ac84-ff7e6cc90c66"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "13:04:00",
+  "schedule_id": "b92a39ba-b235-49f4-9fcc-ffeaafbec1a4"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:30:00",
+  "schedule_id": "4e3bb607-83b9-4c17-8134-a3967314bcf5"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:06:00",
+  "schedule_id": "4fe3e1fa-d9f3-4e71-ba07-94dc4ca70b83"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:02:00",
+  "schedule_id": "9e0ce8da-861a-4b22-ab5e-415d1330e6dc"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "13:04:00",
+  "schedule_id": "eb55589e-88a7-458b-b1e3-e4956e80fcbc"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:30:00",
+  "schedule_id": "b8a82165-3e65-417f-ac56-a68615e7f5cb"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:06:00",
+  "schedule_id": "cd4ee053-26ad-41b7-992f-794e89cb1cd2"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:02:00",
+  "schedule_id": "544a05d8-bcb4-4c36-a336-ebfc99237d54"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "13:04:00",
+  "schedule_id": "cb4c1046-73a1-4c79-88a3-126acd7b6e5d"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:30:00",
+  "schedule_id": "27e33a8a-2d88-48f8-b7ed-bca977c95a4a"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:06:00",
+  "schedule_id": "b4ce3b90-0341-4d8e-8946-2066b4d00803"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:02:00",
+  "schedule_id": "ce03f531-b40c-4705-b40d-1480c78aa48b"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "13:04:00",
+  "schedule_id": "55a122ec-2ec5-404e-9bd9-49d8e81a3047"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:30:00",
+  "schedule_id": "6f18fd54-2c51-4de8-9eb7-3bad06a9c979"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:06:00",
+  "schedule_id": "2e1cd469-3ba1-43c8-938f-bd83cefe16a1"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:02:00",
+  "schedule_id": "525ab2af-cb29-4a4b-a7e6-d85597838410"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "13:04:00",
+  "schedule_id": "80123284-860d-4164-9c75-7146b714d857"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:30:00",
+  "schedule_id": "5a8c067e-5a54-4043-ae8b-170afd687077"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:06:00",
+  "schedule_id": "5700e89c-6119-41b7-9f90-ccca88c6e35b"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "11:02:00",
+  "schedule_id": "abd163c3-e6bf-4bdf-8a50-f236c8359fc5"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "13:04:00",
+  "schedule_id": "2fc600e6-b7ec-40a8-bb7e-a98f2a5cebe4"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:30:00",
+  "schedule_id": "539bd1ae-e7b2-4c68-a97b-daceb599b456"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:06:00",
+  "schedule_id": "e6a3171a-3f23-4f94-8314-0488ebb4b208"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:02:00",
+  "schedule_id": "bcc46c2d-808c-4355-8229-87e66fe0d0ed"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "13:04:00",
+  "schedule_id": "4356247a-b85c-4e07-8567-85a7e3781e1a"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:30:00",
+  "schedule_id": "92d1273c-b6b0-4b32-8143-7b565c550f1e"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:06:00",
+  "schedule_id": "af50fdb2-35af-4107-93d2-9b1282c4b8ce"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:02:00",
+  "schedule_id": "8230048a-f7a3-409f-bbe7-3fcf7bf2a66f"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "13:04:00",
+  "schedule_id": "4bb57dbb-fa45-40a4-a749-2ff4ca39f2ce"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:30:00",
+  "schedule_id": "add1fa03-7d92-4aed-9ad2-20942b6b49ad"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:06:00",
+  "schedule_id": "6e6363de-d875-40b1-9fb7-9bdb8df357c1"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:02:00",
+  "schedule_id": "9e543eaa-c908-4ff1-88e1-a81e035ff9f9"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "13:04:00",
+  "schedule_id": "0a3958a8-87e5-48fe-8ab9-aeb6b57cf9d4"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:30:00",
+  "schedule_id": "d35ed141-1357-456d-898d-18d39f5b9aaa"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:06:00",
+  "schedule_id": "779ef3e5-7af4-414f-b6f4-4f0ae8d6e856"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:02:00",
+  "schedule_id": "e65d805d-e76b-42a7-bf6c-622198d82110"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "13:04:00",
+  "schedule_id": "fd359088-507c-4b83-80da-b4736c51e64f"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:30:00",
+  "schedule_id": "3c64b943-942e-4b4b-a22e-32ec14a46736"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:06:00",
+  "schedule_id": "adae9ed1-49be-4177-b859-14d2e174f621"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:02:00",
+  "schedule_id": "bd34d3f9-fe97-41c5-95f5-629a912198c2"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "13:04:00",
+  "schedule_id": "9e826d46-29e3-40da-839a-ca19bf61bfe7"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:30:00",
+  "schedule_id": "81ce196e-b290-485f-a109-4d9b3db3f59f"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:06:00",
+  "schedule_id": "250245ab-5119-41ce-b825-278ca3d80210"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:02:00",
+  "schedule_id": "7eff9033-62f9-4ba9-b397-9ba6adb6b952"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "13:04:00",
+  "schedule_id": "8ad8f4e9-a07e-41ad-873f-852287846daa"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:30:00",
+  "schedule_id": "fdfa1895-2939-4473-bff8-306ec1259dd4"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:06:00",
+  "schedule_id": "aef0fea5-cb0d-402c-a9a2-6f320968f66a"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:02:00",
+  "schedule_id": "473ecfdd-bee3-4ff3-9b5d-1c493eec9300"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "13:04:00",
+  "schedule_id": "8fbcd902-12f1-4894-8a2a-477ff51ee224"
+ },
+ {
+  "client_slug": "care-for-welfare-pty-ltd",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:30:00",
+  "schedule_id": "c99cac5c-2985-4f63-a412-01128b9d71c3"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "08:06:00",
+  "schedule_id": "030f82cf-fce9-49b7-9185-285a915f2155"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:36:00",
+  "schedule_id": "583cf45b-e227-411e-9545-e91c4eb0490f"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "12:36:00",
+  "schedule_id": "850e20a0-5d20-4ca6-9437-567eb864e364"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:36:00",
+  "schedule_id": "d90ca113-f845-4c88-84af-8987584783a1"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:06:00",
+  "schedule_id": "1fd9a842-4db0-4292-a760-8155874b33ac"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:36:00",
+  "schedule_id": "86e226a5-26c4-44a4-b0c7-dac83196b03b"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "12:36:00",
+  "schedule_id": "4c6a9308-1819-49a3-836d-7863f3787a0b"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:36:00",
+  "schedule_id": "80822e1a-36cd-4b33-8ed8-cdfc84b17839"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:06:00",
+  "schedule_id": "a7ea2dc4-8adf-439b-9d9e-ba985fce5548"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:36:00",
+  "schedule_id": "9b870e70-1b24-4689-bb72-c99d40c8e348"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "12:36:00",
+  "schedule_id": "caad0a84-2137-454d-ba6d-5b5dccb01b7f"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:36:00",
+  "schedule_id": "def07b28-eb78-4fcd-9902-4348b97d170a"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:06:00",
+  "schedule_id": "c1abb720-4060-496d-8312-97cb9286c04d"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:36:00",
+  "schedule_id": "405a2539-3c43-408b-8eb0-faf2a6d727df"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "12:36:00",
+  "schedule_id": "efa5dce6-546f-43e2-8004-8dea00a4699e"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:36:00",
+  "schedule_id": "db8803e6-2ee5-4bcd-8ad8-2e0989da26b6"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:06:00",
+  "schedule_id": "1bddacbc-af9c-4adb-b764-b9d44c75b44b"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:36:00",
+  "schedule_id": "92dc22a9-43e2-4320-b0fa-19ff9397ac36"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "12:36:00",
+  "schedule_id": "fbed611e-74a9-46b4-a723-c4c3cb4cffe5"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:36:00",
+  "schedule_id": "5ec40f1d-d001-4f96-aa8d-5a4594e0bc43"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:06:00",
+  "schedule_id": "5ad2665f-c0f8-4add-a6fe-b876c4bceeba"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:36:00",
+  "schedule_id": "b1714696-1fb7-4dd1-a278-29276fd06c9b"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "12:36:00",
+  "schedule_id": "19c5c20c-bced-40a6-bf5d-bc568f456e2c"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:36:00",
+  "schedule_id": "3e222e7d-710b-424b-b486-e1b323a165ce"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "08:06:00",
+  "schedule_id": "f5005061-3eb6-4c30-990c-fcf2acb24b63"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:36:00",
+  "schedule_id": "b305030d-ca8d-47f6-bb3e-44b88df269e9"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "12:36:00",
+  "schedule_id": "29d8283b-321c-43a4-8dfe-d908682ab8dd"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:36:00",
+  "schedule_id": "0b643cc9-4294-48d7-88a0-e4972e8e21ae"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "08:06:00",
+  "schedule_id": "b7cf0b1d-91e9-498a-82a5-cd186dd6c429"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "10:36:00",
+  "schedule_id": "e08848ba-a2a1-444b-a7f2-803a24cd5e69"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "12:36:00",
+  "schedule_id": "afb1bbce-ae9f-4bf0-9bd9-6856709439a3"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:36:00",
+  "schedule_id": "47915efd-c9b1-4be6-8278-ff7448f318b7"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "08:06:00",
+  "schedule_id": "63ae412d-532e-4866-8bbe-7afffe054944"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "10:36:00",
+  "schedule_id": "8f6c2266-8e37-4ba0-b1b6-57434432f4ff"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "12:36:00",
+  "schedule_id": "ef024e9d-a9ee-484d-ac5f-6af20d40bf85"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:36:00",
+  "schedule_id": "4bce763a-5568-4b3f-aa49-a1520fea8305"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "08:06:00",
+  "schedule_id": "f6f99efb-16c2-4038-8ef7-999433777799"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "10:36:00",
+  "schedule_id": "6c52b1d4-bdbc-48fc-9e21-9b5d139b70f8"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "12:36:00",
+  "schedule_id": "0e53382c-8163-4bdf-9110-ba42b7cf3917"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:36:00",
+  "schedule_id": "6e0f8724-0586-45f4-9b79-dfbfb6436c4b"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "08:06:00",
+  "schedule_id": "c8ffaf4c-db60-4434-bad3-cd2129221eb8"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "10:36:00",
+  "schedule_id": "fd8aae40-6c75-4dcb-bb2b-6ae36e51793e"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "12:36:00",
+  "schedule_id": "27a967fe-5b83-4f71-9539-460f02f52c88"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:36:00",
+  "schedule_id": "fda247e5-7a95-4aa6-bd4a-b0420efbc547"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "08:06:00",
+  "schedule_id": "fca57fec-4dcd-4b61-8065-1258be71ec66"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "10:36:00",
+  "schedule_id": "3fb1c2e6-b427-4b5d-bd7b-589e38663f0d"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "12:36:00",
+  "schedule_id": "4350d0db-de08-46ab-87db-1fd7296894f8"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:36:00",
+  "schedule_id": "cf935b7e-7654-4d48-84eb-9bf78d2b2495"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "08:06:00",
+  "schedule_id": "29db6aa5-7aec-4779-8d33-4b4f87aa971c"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "10:36:00",
+  "schedule_id": "ff5927b4-184d-4a57-948d-7623e75f7008"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "12:36:00",
+  "schedule_id": "77faf17a-7e54-49cf-8b4e-d35171ae6590"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:36:00",
+  "schedule_id": "18ce7b44-d6a9-4bdc-8d68-5ff610d404a9"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "08:06:00",
+  "schedule_id": "e2e54e54-ba9f-450d-a81a-e0051194dc15"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "10:36:00",
+  "schedule_id": "cfcd7db1-acba-41e2-871b-1f8b9feeec0f"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "12:36:00",
+  "schedule_id": "e0db7153-daa8-4079-8eb3-70dd45951310"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "17:36:00",
+  "schedule_id": "2dd09577-98f6-4a69-9e45-d15ad5e3f4a0"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:06:00",
+  "schedule_id": "c4fd81fc-c855-4a26-b5ea-e5282a7ba349"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "10:36:00",
+  "schedule_id": "11977266-8918-40c4-a8f1-34e42155f230"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "12:36:00",
+  "schedule_id": "38589670-22c0-41d2-bd35-7bc6c834cd98"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:36:00",
+  "schedule_id": "26b6f61b-7df1-4959-b18a-6b1852605ea5"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:06:00",
+  "schedule_id": "24242d81-bbf8-47cc-a671-c701898ff5ed"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "10:36:00",
+  "schedule_id": "2c5ad13e-c5ef-4a92-9a8a-285e3e12a317"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "12:36:00",
+  "schedule_id": "b66abd5a-5541-4de0-acfa-60a53d36bb9b"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:36:00",
+  "schedule_id": "333e498a-888b-4865-b6c8-8b9c2e807c99"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:06:00",
+  "schedule_id": "540287e9-711d-426c-b8ce-bfbc097dc5b9"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "10:36:00",
+  "schedule_id": "afac4e6d-71d0-4328-ade6-114a5fe48404"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "12:36:00",
+  "schedule_id": "1a6c4fde-030e-44f4-9d22-9ca00b4c9fa1"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:36:00",
+  "schedule_id": "e8c716da-4616-412a-b071-0a6bbfd941b1"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:06:00",
+  "schedule_id": "3851fb0d-1e3f-48e0-9925-a18d5e9fe402"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "10:36:00",
+  "schedule_id": "e9609478-8bc7-4fb8-bb21-d1e32ad89968"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "12:36:00",
+  "schedule_id": "10fb5b91-c580-4a10-bb5a-625fec75ff37"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:36:00",
+  "schedule_id": "44d060fb-d354-4bf8-a01f-dd485481cf09"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:06:00",
+  "schedule_id": "420b3b3f-d51b-45bf-94c9-3d25995e2aaf"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "10:36:00",
+  "schedule_id": "5b657ad4-5782-439c-9097-f95bfd3753dd"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "12:36:00",
+  "schedule_id": "e22560a5-d584-468f-8c9d-accc921c330a"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:36:00",
+  "schedule_id": "710126d6-c7b2-4e95-b3ca-14264d651f09"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:06:00",
+  "schedule_id": "b9399258-1c85-4939-9b0b-b00421d6f186"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "10:36:00",
+  "schedule_id": "bde07965-32d7-418a-ab31-ef5126791471"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "12:36:00",
+  "schedule_id": "135a32a0-4a45-4687-af3a-839b40eb6cf2"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:36:00",
+  "schedule_id": "5884e27f-68eb-4c79-ac14-52148199ec6d"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:06:00",
+  "schedule_id": "0e30baf5-a92d-44de-8935-a166610f9f1b"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "10:36:00",
+  "schedule_id": "540d801d-79a7-45ef-b0ca-badf035c53d1"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "12:36:00",
+  "schedule_id": "bee333e1-962d-4398-829f-eacbfe917e28"
+ },
+ {
+  "client_slug": "invegent",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "17:36:00",
+  "schedule_id": "04848d52-0b5f-4cb7-aa61-0cd851c0a1c6"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:00:00",
+  "schedule_id": "fcc9042d-1132-4955-bccd-efa67fb24ab5"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:30:00",
+  "schedule_id": "3404a622-c796-4f42-85d7-dadd8c61e8d8"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:00:00",
+  "schedule_id": "073de167-5ebd-4664-b8ec-1fbecb301e53"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:30:00",
+  "schedule_id": "b68d689e-4b41-4e66-988f-9dd2090019a7"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:30:00",
+  "schedule_id": "249a5d06-898c-45f7-abe0-21d1890d5e98"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:00:00",
+  "schedule_id": "b2b7cf92-bc4d-4a42-9ea8-30fbf98c1dfc"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:30:00",
+  "schedule_id": "6d9e7e47-c4eb-4b8a-a6e7-f7c394abbb65"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:00:00",
+  "schedule_id": "760e45d9-542c-4b8b-b329-53ba77c22381"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:30:00",
+  "schedule_id": "965b3d09-d297-4479-9249-7957b13be7a3"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:00:00",
+  "schedule_id": "0cf80c5f-2469-4387-a100-6b5044b693ea"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:30:00",
+  "schedule_id": "3e044993-6839-457c-a9fa-57038006c1eb"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:30:00",
+  "schedule_id": "1f1fefc4-c28b-4ed5-9ae0-e18e3b2ed8ab"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:00:00",
+  "schedule_id": "843843c6-024a-440b-9147-b43896274f5a"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:30:00",
+  "schedule_id": "2622f63b-d9ca-41b1-a30a-5f4bb05b3682"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:00:00",
+  "schedule_id": "0582d122-1c7b-4f29-9f88-abe16c961a52"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:30:00",
+  "schedule_id": "1bdf8fdf-e58a-46ab-b00c-c6317797feb0"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:00:00",
+  "schedule_id": "722a79b0-8279-4021-9158-d742797f4309"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:30:00",
+  "schedule_id": "5da5170b-a299-47d4-a4ac-d748e5f5210d"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:30:00",
+  "schedule_id": "ea3e92a8-9576-4bce-b090-f79eb3c8d541"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:00:00",
+  "schedule_id": "1e22bc82-eb0b-40c7-8a63-3651c4552b63"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:30:00",
+  "schedule_id": "abbd49df-957e-4fb8-ab4f-3f65feb7cd99"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "12:00:00",
+  "schedule_id": "38d4fdeb-eaa6-4fa0-8542-3ed785df4c28"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:00:00",
+  "schedule_id": "6fee130f-3fd6-473c-8c1c-1f1106c95f86"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:30:00",
+  "schedule_id": "5e5d43bc-3bff-4c68-9f1b-112b2f89e75d"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:00:00",
+  "schedule_id": "c0f109cf-961f-4c13-b516-abb29d981cf4"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:30:00",
+  "schedule_id": "792b5730-37f1-485d-8630-e6d2efdb2d33"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:30:00",
+  "schedule_id": "ff96fb35-b239-4488-94dd-a9dfcf3550c8"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:00:00",
+  "schedule_id": "c4597a72-31d7-4020-8458-478ebfb26c25"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:30:00",
+  "schedule_id": "e4095322-1bce-4b12-b21a-19052b703ab0"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "19:00:00",
+  "schedule_id": "9051d761-9523-40c3-a5be-32b6da654111"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:00:00",
+  "schedule_id": "898805b1-b0d1-48f2-b7f8-a93240672648"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:30:00",
+  "schedule_id": "afcf6ede-d8e8-4577-9975-f165a75444ca"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:00:00",
+  "schedule_id": "7f6d483d-f74f-4cf5-997e-c68837446f95"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:30:00",
+  "schedule_id": "3eea8e57-2372-4992-852f-69181d2ec9b4"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:30:00",
+  "schedule_id": "5a77d248-1ca5-4290-8c03-0141c6e5a377"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:00:00",
+  "schedule_id": "7298f168-29df-4d48-9156-d8c69abc6911"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:30:00",
+  "schedule_id": "8ba2c589-bc79-445d-aec4-a49cded93ca2"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:00:00",
+  "schedule_id": "515d29ae-e733-4baf-ab4a-05789b634a9b"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:30:00",
+  "schedule_id": "c97a9d2a-1b7a-48c5-9c71-aaadbcaef568"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:00:00",
+  "schedule_id": "00200f6e-01ee-4af0-b783-5b0c56648668"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:30:00",
+  "schedule_id": "199121f2-e215-4538-b10f-76f04802bb01"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:30:00",
+  "schedule_id": "61c57bab-e003-4618-a54b-77c44f0069df"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:00:00",
+  "schedule_id": "cb6bd7d6-f6a8-410a-9d95-6fd9147dac5f"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:30:00",
+  "schedule_id": "e8a5be8f-eb6e-4313-940f-77bc97073e2f"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "12:00:00",
+  "schedule_id": "2899d4bf-4dba-43e4-9fd8-a126df163f24"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:00:00",
+  "schedule_id": "c4b040ea-a461-4213-9db2-b5e5f507e4e8"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "08:30:00",
+  "schedule_id": "3e273d85-7779-4a79-bea7-9504900f1559"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:00:00",
+  "schedule_id": "e850df9f-9e9f-478b-86a7-36a63db09f6a"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "09:30:00",
+  "schedule_id": "9454330d-0a6e-492c-b683-4d59652f0887"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:00:00",
+  "schedule_id": "e9b518d8-4518-45a9-aa71-bc943e3c04ca"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:30:00",
+  "schedule_id": "400abc22-3bff-4a71-a26e-a78f72f36ff1"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:00:00",
+  "schedule_id": "56c55735-39e3-4652-8809-f89418132b88"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "11:30:00",
+  "schedule_id": "4792746f-31d2-474f-a952-4924359b02e2"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "08:30:00",
+  "schedule_id": "cb022c88-38af-48ec-a584-aae32dc4c03d"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:00:00",
+  "schedule_id": "f14e6e7f-4187-4329-812d-68ab8aed4e4d"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:30:00",
+  "schedule_id": "b276eecc-630e-4845-b7fb-615fc6331ad3"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "10:30:00",
+  "schedule_id": "4e848d26-6122-45b3-8f93-fb44a5601636"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:00:00",
+  "schedule_id": "5d9d10b5-8991-46ea-9b25-93a47c78da41"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:30:00",
+  "schedule_id": "00e1c92b-cdae-482d-809a-697309db5d7c"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "12:00:00",
+  "schedule_id": "d2d87149-4440-43c9-a4b3-8ac434cc93b9"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "08:30:00",
+  "schedule_id": "633db37f-d79a-4653-9794-e91cf6807ab6"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:00:00",
+  "schedule_id": "b687d768-e3eb-4dff-9260-2969ccb681c5"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:30:00",
+  "schedule_id": "9666cde2-39fc-42a6-9866-1d2487995af5"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "10:00:00",
+  "schedule_id": "1c5cf083-c796-4d5b-82ce-954e69295f91"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "10:30:00",
+  "schedule_id": "c285bc31-215a-499a-a9fa-7e8911b13d4b"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:00:00",
+  "schedule_id": "ba9ae783-3676-46e9-97af-86e18ee62e16"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:30:00",
+  "schedule_id": "a69bdae4-f040-4a03-ab37-20cb9b45253c"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "12:00:00",
+  "schedule_id": "f3092ee5-3fdf-408e-a4e0-29a5b72215d4"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "08:30:00",
+  "schedule_id": "39d5ac62-c953-48e9-bea7-29ab9eec4038"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:00:00",
+  "schedule_id": "346b009a-334f-4ca4-9e2b-6d8b5aa36f86"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:30:00",
+  "schedule_id": "6399dea1-bd67-4c48-a525-9cfee7db8a1b"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "10:30:00",
+  "schedule_id": "dbcf7adf-cf06-4229-890e-c7ed0030c101"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:00:00",
+  "schedule_id": "c6419022-e8f2-41ac-a5be-7b6abecc1138"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:30:00",
+  "schedule_id": "11890abb-02ae-46db-a5b1-55891b8b75da"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "12:00:00",
+  "schedule_id": "ed82fd5c-3f13-4394-a3a1-f3c33429673f"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "08:30:00",
+  "schedule_id": "ef0677a9-e87b-4a04-8a06-6b6b36562d86"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:00:00",
+  "schedule_id": "36da26e4-0095-4fc3-9cc2-a0b8680a25cf"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:30:00",
+  "schedule_id": "2adc0a00-ea80-42c5-b8c5-298b07171cfc"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "10:00:00",
+  "schedule_id": "008d4aaf-b831-4f04-ab65-91fc0d68b9a9"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "10:30:00",
+  "schedule_id": "1a209ef9-0bac-41f4-841d-208e22eb5a26"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:00:00",
+  "schedule_id": "27789e3a-6612-4392-a937-60b2ce23f3c0"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:30:00",
+  "schedule_id": "f0e3664f-417f-46d6-b57e-e85105252469"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "12:00:00",
+  "schedule_id": "ff35d328-f5bf-4b53-aefc-334745d79b99"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "08:00:00",
+  "schedule_id": "c6d1c903-dc1d-435a-b2ed-7282b17bc45e"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "08:30:00",
+  "schedule_id": "c038a040-b3cc-4fdc-91d3-dfa925efc1e5"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:00:00",
+  "schedule_id": "2f6b57e0-02cb-4de3-b076-f5f0db9c5530"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:30:00",
+  "schedule_id": "71212b5f-973c-488f-a52d-6a911a768bde"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "10:30:00",
+  "schedule_id": "d23b9a1e-1ef4-476f-ba5b-caa2f5888c31"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:00:00",
+  "schedule_id": "6124d946-2991-4b07-be11-caa13ceb7e40"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:30:00",
+  "schedule_id": "bef7d0d6-f1d4-4851-a0c1-c52414d81b38"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "12:00:00",
+  "schedule_id": "fcb62704-8563-41fc-a162-b6c055f877c0"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "08:30:00",
+  "schedule_id": "953b8fea-a1cb-4e52-888c-71e0e68f8535"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:00:00",
+  "schedule_id": "f66ba6d1-85db-4a68-8145-ed4ec2eb911e"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:30:00",
+  "schedule_id": "cef3e68a-43f5-4139-8f09-5359b0aae148"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "10:30:00",
+  "schedule_id": "ccbf7907-6b45-44c5-9e6b-cfe0a88edf43"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:00:00",
+  "schedule_id": "53ce47ec-6c0f-4e99-8575-eb80c3804163"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:30:00",
+  "schedule_id": "2fe80416-c4fb-47d8-b8c9-1e5e55d5828f"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "12:00:00",
+  "schedule_id": "14d73efc-6d43-4aff-a4e6-58df436d105c"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "08:30:00",
+  "schedule_id": "747b5c92-61b9-4745-9ef5-2df4bd3e25e2"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:00:00",
+  "schedule_id": "86553c2f-436a-444c-92d2-3a23e40543aa"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "09:30:00",
+  "schedule_id": "56499d3b-6147-4c80-a1b3-1f0c4fd308f2"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "10:30:00",
+  "schedule_id": "35e1df2a-ffc1-4fb4-8840-7d8db206cad0"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:00:00",
+  "schedule_id": "1043cc01-5311-4c8e-a588-e8c6456bf9ce"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "11:30:00",
+  "schedule_id": "2c0d8f18-b8ed-408c-9240-59c2d93f1655"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "12:00:00",
+  "schedule_id": "d3c96a3c-e8c4-4132-a57d-e760bc6de9c1"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:30:00",
+  "schedule_id": "276a0d60-568f-4080-8293-bd7e8ac95413"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:00:00",
+  "schedule_id": "03a00fcf-0ded-4b7b-8153-b228ca402c5b"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:30:00",
+  "schedule_id": "36dfa888-24fa-4e01-9961-f57faeeb009a"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:00:00",
+  "schedule_id": "9e815308-33cd-419d-b841-02a204c4ad0c"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:30:00",
+  "schedule_id": "a4cc165d-6fc2-402c-a9b9-b9d59ff447bb"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:00:00",
+  "schedule_id": "97ccb2f8-dd39-4873-ad2d-32f66ad59fe0"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:30:00",
+  "schedule_id": "afc92b3d-7751-49b5-84a7-a12d92fb6d7a"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:30:00",
+  "schedule_id": "6a0c28ec-7e66-494d-8d84-3db93cf9bf1b"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:00:00",
+  "schedule_id": "bcd3f11a-d04c-4083-a9d2-0446fb91b9d9"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:30:00",
+  "schedule_id": "5e137d79-c213-4475-bc24-0101ce84b634"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:00:00",
+  "schedule_id": "27ad0657-d1a3-4ab0-8084-7b1bace334a8"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:30:00",
+  "schedule_id": "eef77eb7-91d4-4fce-822a-a85400aae7d0"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:00:00",
+  "schedule_id": "e3d70b2a-42d8-4582-8514-c5ca93341cc9"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:30:00",
+  "schedule_id": "f641ab8d-d0e0-4959-a95b-e4e20e99b4b5"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "12:00:00",
+  "schedule_id": "f9a66f10-cbed-4ff8-9dd3-48559b325aed"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:00:00",
+  "schedule_id": "e4657921-ad99-4d8b-87ba-1d40e4c9b970"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:30:00",
+  "schedule_id": "99524e86-486a-43f3-9d18-efb04c09f10c"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:00:00",
+  "schedule_id": "5298b294-e0d2-4ce9-bee7-ebe98a5f9b93"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:30:00",
+  "schedule_id": "74cb1863-32de-4397-b604-b80793c216ef"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:00:00",
+  "schedule_id": "716bc220-c117-4e5d-b933-d0a737750eb5"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:30:00",
+  "schedule_id": "63557c64-303b-4b5d-b3d6-091e5d09e2e5"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:00:00",
+  "schedule_id": "f3750417-ec15-4307-a688-eb33722b6d04"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:30:00",
+  "schedule_id": "507c57ee-404f-4fe4-b6f8-bca95cad3e65"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:30:00",
+  "schedule_id": "dcb6db3a-54bc-4fc5-b790-948f0d5dacfb"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:00:00",
+  "schedule_id": "4570b847-3351-4249-8cbd-333137c4ea1b"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:30:00",
+  "schedule_id": "c0f92395-d76f-4df6-8ecf-4a52b014b004"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:00:00",
+  "schedule_id": "9a04b657-ab7c-4bbb-b08e-8d7e731304da"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:30:00",
+  "schedule_id": "a9816e56-5dee-48c1-a5db-09a69a2feae2"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:00:00",
+  "schedule_id": "84f190b9-f608-4b81-991c-35f6c7426e99"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:30:00",
+  "schedule_id": "51ddf711-910d-4bc1-993a-aa534949c785"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "12:00:00",
+  "schedule_id": "044013ae-310b-4f76-9d66-df2862dacac0"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:30:00",
+  "schedule_id": "d26acc48-ee4d-4f4e-a89f-bd6f5207498a"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:00:00",
+  "schedule_id": "f6ddd0cb-f436-4126-977d-cf03e0b4e775"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:30:00",
+  "schedule_id": "2aab498f-6401-4bc2-b93a-74b5c89fcda8"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:00:00",
+  "schedule_id": "bd2d0185-c1d8-4403-9ce9-47f94c3c0fd2"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:30:00",
+  "schedule_id": "3400a30b-0215-46ac-8875-e2e8942b5a1d"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:00:00",
+  "schedule_id": "d5cde293-af5d-461c-b321-2d27951502f7"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:30:00",
+  "schedule_id": "91d5d402-34a2-4165-96d4-f679220a43c9"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:30:00",
+  "schedule_id": "10272284-150c-45c1-bab6-974271fad7b2"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:00:00",
+  "schedule_id": "6949a3fb-a15e-40ba-bfd4-cb0ab5ad95fe"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:30:00",
+  "schedule_id": "b3901b9f-8056-48b4-addf-5f6438ee8423"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:00:00",
+  "schedule_id": "20162f2c-6d02-4995-8b25-e951d5e3b82c"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:30:00",
+  "schedule_id": "5b2d73b2-b163-42c0-a8eb-3a3cb49501af"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:00:00",
+  "schedule_id": "b263d393-ba59-4cf6-8b15-c7148b738fe2"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:30:00",
+  "schedule_id": "3060fcea-3c05-4596-a2c4-327b3d1a1e09"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "08:30:00",
+  "schedule_id": "f0caa29d-580a-4de7-913c-421dde260c60"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:00:00",
+  "schedule_id": "50114848-c431-4be1-a7ab-3aad3f3ff2a8"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "09:30:00",
+  "schedule_id": "1c667c9b-7b29-489d-af39-c3c2572821ad"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:00:00",
+  "schedule_id": "44cf474b-67f9-4c4b-bdbc-4fa298273425"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "10:30:00",
+  "schedule_id": "5cde2cc6-965c-4baa-b18f-10cb8159824a"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:00:00",
+  "schedule_id": "e1db79a4-53f0-4013-9180-478dbc490728"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "11:30:00",
+  "schedule_id": "c748ca73-4efe-4e53-b025-f9860969f0cf"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "08:00:00",
+  "schedule_id": "cc78b906-62f2-43ab-9cec-402bc5d54275"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "08:30:00",
+  "schedule_id": "2a6f5f01-8f18-4c71-b110-ce01cf540e94"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "09:00:00",
+  "schedule_id": "b0f10406-5a98-4ddc-8b81-5df84ae1cf7b"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "09:30:00",
+  "schedule_id": "2204aa6c-e153-414d-ad3c-f8f38d8cc386"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "10:30:00",
+  "schedule_id": "6626c44a-a0bd-4e4d-a688-fba34534baf9"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "11:00:00",
+  "schedule_id": "972f73f8-dd88-4ebc-80bb-05855df46706"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "11:30:00",
+  "schedule_id": "95153ba2-ff9c-4846-b920-ab9c1cce8857"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 0,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "19:00:00",
+  "schedule_id": "e5d4dd4c-aace-460f-ab90-f3e0bf5fea73"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "08:00:00",
+  "schedule_id": "2209a43a-2577-41cd-a7e5-90075b07af77"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "08:30:00",
+  "schedule_id": "5a607cde-405c-4b98-ad7a-8993cbc1832d"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "09:00:00",
+  "schedule_id": "39b22053-73e9-48d3-a6a5-a6574e3feb4a"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "09:30:00",
+  "schedule_id": "eb31b6dc-0b90-43aa-a5be-793f6c3d2be8"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "10:30:00",
+  "schedule_id": "f8aaf754-1131-4bff-91f4-80476d3d14aa"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "11:00:00",
+  "schedule_id": "2a04da5e-1d74-4d2b-b5f4-47dba5ca2b53"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "11:30:00",
+  "schedule_id": "48469965-41fd-4dd5-895a-de6eb8df54d0"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "19:00:00",
+  "schedule_id": "5b2cdba0-03a3-407c-a123-7abbeb8971f1"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "08:00:00",
+  "schedule_id": "8ecb3dca-98d3-47ed-94d3-58e6ca564e15"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "08:30:00",
+  "schedule_id": "31e12cfd-841d-4ffd-af24-1bcf3d905fbe"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "09:00:00",
+  "schedule_id": "79be2744-9411-4182-8d87-b4a5c43e12cd"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "09:30:00",
+  "schedule_id": "27032abb-8d4a-4a96-88a8-5a07b0cba40b"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "10:00:00",
+  "schedule_id": "0c57c0d9-05db-4609-a909-56183c4cbabd"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "10:30:00",
+  "schedule_id": "62b1e020-2095-46aa-8526-0e719db55beb"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "11:00:00",
+  "schedule_id": "510595fb-e702-41b6-a738-79383dad1b42"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "11:30:00",
+  "schedule_id": "713252b4-510a-4f04-995c-e85e6736e0f7"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "19:00:00",
+  "schedule_id": "ba95b4ab-666f-45c0-9f00-cc72b88155a5"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "08:00:00",
+  "schedule_id": "46a1d126-2933-4da9-b45c-78670f92ed2c"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "08:30:00",
+  "schedule_id": "5b1e1646-c004-423a-be38-6d95365071b1"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "09:00:00",
+  "schedule_id": "ada6bb41-0ae1-402b-8204-847b5d2a9486"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "09:30:00",
+  "schedule_id": "f040361b-e897-4135-af0f-38ab94d8857d"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "10:30:00",
+  "schedule_id": "6d543da3-5a82-407b-a4bf-ede04b7673f8"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "11:00:00",
+  "schedule_id": "c199cf73-3184-465b-acfb-0b5b2ea26225"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "11:30:00",
+  "schedule_id": "60262d20-42a3-4b0a-8e31-f27bb9e11384"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "19:00:00",
+  "schedule_id": "33dfa214-bd09-455d-807c-75dc1bb12f64"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "08:00:00",
+  "schedule_id": "deb81600-90e0-494c-b7f6-af551b6f07f9"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "08:30:00",
+  "schedule_id": "4d63defa-ded8-4566-a666-b1ccb7a05c1c"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "09:00:00",
+  "schedule_id": "3cae69da-ac7c-4249-b6d3-bca9ded41451"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "09:30:00",
+  "schedule_id": "5d63f6da-b57b-40c3-834b-a0aa9499c913"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "10:30:00",
+  "schedule_id": "9ca5d268-e703-406f-bb27-b8c04aa4862f"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "11:00:00",
+  "schedule_id": "ea4cd383-61f9-4cc0-bdf8-c62f4a09f819"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "11:30:00",
+  "schedule_id": "5c31ac01-c310-4b39-ae87-a3c1157d0339"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "12:00:00",
+  "schedule_id": "4e5ebf54-e4c7-42b8-94ca-dccc68ec0987"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "19:00:00",
+  "schedule_id": "b9b53d59-92be-4b39-a0e5-b9e40fec39ad"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "08:00:00",
+  "schedule_id": "11fe1ffd-747d-4e9d-869c-d9523048a301"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "08:30:00",
+  "schedule_id": "de38c3c8-f467-4d13-a8b2-b041a50ae5f7"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "09:00:00",
+  "schedule_id": "9371c6fe-dbb0-4f17-86cd-c809425fb290"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "09:30:00",
+  "schedule_id": "005825db-a3e7-4a29-9691-3f1c1982bb54"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "10:30:00",
+  "schedule_id": "2f7491ce-a756-46b9-b03f-9001f6dbf125"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "11:00:00",
+  "schedule_id": "846a0ac1-b18e-4911-8cc5-a4235609dcf5"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "11:30:00",
+  "schedule_id": "051762a3-c517-44ab-96cf-c73cd6a18350"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "19:00:00",
+  "schedule_id": "d8d77bce-e041-4c22-bde4-94f3356bd71b"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "08:00:00",
+  "schedule_id": "8f66f05b-5be3-4e81-bcdc-6772c10087f6"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "08:30:00",
+  "schedule_id": "2c140eee-9960-4dd1-b4e8-1f0c6584d20a"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "09:00:00",
+  "schedule_id": "d8d310db-0242-4fde-b55b-f61d72954c0d"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "09:30:00",
+  "schedule_id": "67656b73-3e83-4233-a5c7-b9b201dc7705"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "10:30:00",
+  "schedule_id": "5e6660fd-2b41-45da-a20f-efcc3d620512"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "11:00:00",
+  "schedule_id": "ba537076-1d87-4643-b97c-4417c4bcf9e1"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "11:30:00",
+  "schedule_id": "5d65eb5e-6aa3-4085-9e0f-54af94d5e9fd"
+ },
+ {
+  "client_slug": "ndis-yarns",
+  "day_of_week": 6,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "19:00:00",
+  "schedule_id": "3824b3f4-af5c-4ec0-b664-268d25dd69ce"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "07:30:00",
+  "schedule_id": "d9f0133f-d17d-41ca-98a2-6cef69640cbe"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "07:30:00",
+  "schedule_id": "4e02686f-1a93-4948-ad15-699d41b2bdce"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "12:00:00",
+  "schedule_id": "650f9990-de1b-403c-98d9-a5f83744abca"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "07:30:00",
+  "schedule_id": "0b0c7566-e86a-41f8-8e1c-091b6de3a961"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "07:30:00",
+  "schedule_id": "9a5ee988-c136-4840-b36c-5c032b1d4e76"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "12:00:00",
+  "schedule_id": "5128e83b-230e-4319-8437-d20cbbfacd49"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "facebook",
+  "publish_time": "07:30:00",
+  "schedule_id": "14cad228-52a2-4894-9e88-447b6c7f52d0"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "17:00:00",
+  "schedule_id": "ba116829-a610-4617-b9dc-69f396afbd41"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 6,
+  "enabled": false,
+  "platform": "facebook",
+  "publish_time": "10:00:00",
+  "schedule_id": "2287b0ef-d42a-496f-b209-3be9d49ada25"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "07:30:00",
+  "schedule_id": "4e3af121-0862-4152-b95b-ac8570324516"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "10:00:00",
+  "schedule_id": "25f898b8-3c04-4b3a-abda-50a7100eef27"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "07:30:00",
+  "schedule_id": "2854042e-0db1-475d-bad0-717cf8c35d01"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "10:00:00",
+  "schedule_id": "1ef988e4-f194-49e1-9dca-2803956d1c1b"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "10:00:00",
+  "schedule_id": "decff684-6e23-4984-bcb6-ffc2753cf20d"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "10:00:00",
+  "schedule_id": "754c9709-0c7c-4706-8584-2941ed0c7f73"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "12:00:00",
+  "schedule_id": "d6133598-e596-4e4b-aca8-ccb743f48f9b"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "instagram",
+  "publish_time": "10:00:00",
+  "schedule_id": "caad22fc-884d-4a3c-8e7d-ba597d278b4a"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "instagram",
+  "publish_time": "12:00:00",
+  "schedule_id": "ebc79c6e-ee6b-4aa1-b64a-cac87ef30b8c"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "07:30:00",
+  "schedule_id": "0e32f772-4b21-40d0-b5c3-3be296f3da11"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "12:00:00",
+  "schedule_id": "78df15a7-5680-40f6-a3fd-dd4b831dec54"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "10:00:00",
+  "schedule_id": "394451af-d3c2-4ca5-86ef-5d0dfcda2f63"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "12:00:00",
+  "schedule_id": "3302792a-9ee6-485a-9c4a-c7422ad4fbec"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "12:00:00",
+  "schedule_id": "027eaf88-8665-494c-873d-99567f278012"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "linkedin",
+  "publish_time": "10:00:00",
+  "schedule_id": "ca22d53f-4560-4281-bc93-269bfb5df18d"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "12:00:00",
+  "schedule_id": "297db9b5-7c63-4f3f-ad1a-1a9764c04bee"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "linkedin",
+  "publish_time": "12:00:00",
+  "schedule_id": "01ed1f30-290f-45ed-b4e9-7851958e24b1"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 1,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "10:00:00",
+  "schedule_id": "1065cbd6-fc1a-4d2d-9d27-8d258a1e278a"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 1,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "17:00:00",
+  "schedule_id": "e951069c-e995-4cc8-a56e-b4c33291683f"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 2,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "12:00:00",
+  "schedule_id": "a488deba-8aed-4c93-95b1-f01d117714e0"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 2,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "17:00:00",
+  "schedule_id": "abdc58c4-8aff-4483-bd91-bc2c248b6932"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 3,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "17:00:00",
+  "schedule_id": "f1cc1c32-0759-4ab7-a748-a70f8ae9aade"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 4,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "07:30:00",
+  "schedule_id": "bf3ca2af-bffe-48e8-8399-a383ff989093"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 4,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "17:00:00",
+  "schedule_id": "71a9fbd3-7ed1-41f9-b776-b63adfa3ad8b"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 5,
+  "enabled": false,
+  "platform": "youtube",
+  "publish_time": "07:30:00",
+  "schedule_id": "e70ce306-acfd-44ed-b52d-e00b58a8dc1c"
+ },
+ {
+  "client_slug": "property-pulse",
+  "day_of_week": 5,
+  "enabled": true,
+  "platform": "youtube",
+  "publish_time": "17:00:00",
+  "schedule_id": "bf705fed-6f90-49c8-becd-10b07c64b09c"
+ }
+]

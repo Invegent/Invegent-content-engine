@@ -1,15 +1,24 @@
 # S5 — Cross-Brand Maximum Evidence Schedule — Plan v1 (PROPOSAL — NOT APPLIED)
 
-**Status:** PROPOSED · awaiting PK review + separate apply authorisation. **No schedule row, cap,
-policy, cron, or profile mutation has been made.** This document is the complete reviewable plan.
+**Status:** PROPOSED **rev-2** · P1–P8 live verification COMPLETE (2026-07-31, read-only — see
+`docs/briefs/s5-evidence-window-p1-snapshot-v1.md`, schedule baseline hash `7b8fecd8…`) · awaiting
+PK gate + separate apply authorisation. **No schedule row, cap, policy, cron, or profile mutation
+has been made.** Rev-2 corrections from live truth: A1/A2 shrunk (NDIS needs no demand change;
+CFW/Invegent need weekend rows only), PP animated slots re-pointed to ready tests (`video_short_stat`
+instagram is live-selectable; both animated formats confirmed `template_missing`), replace-all
+semantics of `save_publish_schedule` pinned, dow=0..6 (0=Sunday) confirmed, brand-kit blockers
+confirmed resolved, and one 🔴 STOP-class policy finding raised (announcement_card selector vs
+`task_05bf8b3d` — snapshot doc, final section). §2a below carries the schedule corrections; §2
+tables remain the rev-1 intent for traceability. This document is the complete reviewable plan.
 **Task:** S5 — design a temporary seven-day evidence schedule for all four ICE brands to exercise
 the maximum number of currently available platform × format capabilities through **normal scheduled
 generation**, accumulating real evidence toward Creatomate Global graduation.
 **Lane classification (CCF-02):** PRODUCT_PROOF · **T3** (publish-cadence + schedule mutations are
 production posture; several amendments have no RPC/audit path and need a postgres-level channel).
 **Evidence basis:** CE repo HEAD `9112972` (register v6.87, 2026-07-31); four read-only research
-sweeps over CE + dashboard repos. The live DB was **not** read in this session (no `ICE_READONLY_DSN`
-in this environment) — every live-state dependency is named as a **verify-or-abort pre-check** in §8.
+sweeps over CE + dashboard repos; **rev-2: P1–P8 read-only live verification against the production
+DB (2026-07-31)** — results and the rollback baseline in
+`docs/briefs/s5-evidence-window-p1-snapshot-v1.md`; the volatile subset re-runs at apply (§8).
 **Window:** Mon **2026-08-03** 00:00 → Sun **2026-08-09** 23:59 Australia/Sydney (AEST, UTC+10).
 **Rollback date:** Mon **2026-08-10**, 09:00 Sydney (§7). Apply deadline: **Sun 2026-08-02 ~22:00
 Sydney**, before the 01:00 Mon nightly `materialise-slots` run.
@@ -189,6 +198,31 @@ config, no avatar, no templates) → §9. Website channel deliberately untouched
 
 ---
 
+### §2a — Rev-2 schedule corrections (from P1 live verification, 2026-07-31)
+
+The §2 tables were designed against repo-derived assumptions; live truth changes them as follows —
+**this section governs where they conflict:**
+
+1. **NDIS Yarns: NO schedule change at all.** Live grid is already 4/day×7 (fb, ig, yt) and
+   2/day×7 (li) — at or above the S5 target. NDIS's window contribution runs on the existing grid;
+   its YT slots already produce the capability-skip gap evidence daily.
+2. **CFW + Invegent: weekend extension only.** Both already run 1/day weekdays on fb/ig/li; the
+   only Layer-C change is adding dow 0 (Sun) and dow 6 (Sat) rows at their existing times.
+3. **Property Pulse is the real expansion:** fb/ig/li go from 1/day×5 (07:30/10:00/12:00) to
+   2/day×7 — second daily slot at 16:30 (fb), 17:30 (ig), 16:45 (li), and weekend rows added at
+   both times. PP fb's 360-min gap is respected (08:00→16:30 ≈ 8.5 h; the existing 07:30 slot
+   moves to 08:00 for uniformity **only if PK prefers — default: keep 07:30, add 16:30**). YT
+   unchanged (its 5 weekly skip rows are the gap evidence).
+4. **PP format intents re-pointed to live-ready cells:** `animated_text_reveal` (fb) and
+   `animated_data` (ig) are live-confirmed `template_missing` → each keeps exactly **one**
+   deliberate gap-evidence slot in the week (Tue), and every other §2 slot that named them becomes:
+   ig → **`video_short_stat`** (live-selectable governed video via the B-roll template — also feeds
+   the "no natural video_short_stat render since the rotation apply" carry), fb → carousel or
+   image_quote. Live-ready PP cells for the window: fb iq (⚠ announcement_card STOP flag) ·
+   fb carousel · ig iq · ig carousel · ig video_short_stat · li iq · plus exempt text on fb/li.
+5. **PP facebook is paused until 2026-08-01 10:33Z** (expires before the window) — re-verify NULL
+   at apply; if still set, that is a named live pre-check failure → STOP.
+
 ## 3. Exact temporary cap amendments required
 
 Three structural layers (research-confirmed): **Layer A** dashboard schedule caps (UI-advisory only,
@@ -200,50 +234,53 @@ amendments plus the §7 dated rollback.
 
 ### A1 — Layer C: temporary schedule rows (the actual evidence driver)
 
-Target state for the window (rows added = target minus live snapshot; **record every inserted row id
-for rollback**):
+Target state for the window — **rev-2, live-verified baseline** (P1 snapshot hash `7b8fecd8…`):
 
 | Brand | facebook | instagram | linkedin | youtube |
 |---|---|---|---|---|
-| property-pulse | 2/day × 7 (08:00, 16:30) | 2/day × 7 (09:00, 17:30) | 2/day × 7 (10:00, 14:45) | **no change** |
-| ndis-yarns | 2/day × 7 (08:15, 16:45) | 2/day × 7 (09:15, 17:45) | 2/day × 7 (10:15, 15:00) | **no change** |
-| care-for-welfare-pty-ltd | 1/day × 7 (08:30) | 1/day × 7 (09:30) | 1/day × 7 (11:00) | **none (no profile — do not create)** |
-| invegent | 1/day × 7 (08:45) | 1/day × 7 (09:45) | 1/day × 7 (11:15) | **none** |
+| property-pulse | 1/day×5 → **2/day × 7** (07:30, 16:30) | 1/day×5 → **2/day × 7** (10:00, 17:30) | 1/day×5 → **2/day × 7** (12:00, 16:45) | **no change** (5 skip-evidence rows/wk stand) |
+| ndis-yarns | **NO CHANGE** (already 4/day × 7) | **NO CHANGE** (4/day × 7) | **NO CHANGE** (2/day × 7) | **NO CHANGE** (4/day × 7 — daily skip evidence) |
+| care-for-welfare-pty-ltd | add Sat+Sun @ 09:06 → **1/day × 7** | add Sat+Sun @ 11:02 → **1/day × 7** | add Sat+Sun @ 13:04 → **1/day × 7** | **none (no profile — do not create)** |
+| invegent | add Sat+Sun @ 08:06 → **1/day × 7** | add Sat+Sun @ 10:36 → **1/day × 7** | add Sat+Sun @ 12:36 → **1/day × 7** | **none** |
 
-Mechanism: `public.save_publish_schedule(client_id, platform, slots_jsonb)` — ⚠ this RPC has **no
-repo migration** (live-DB-only object; upsert-vs-replace semantics unverified → pre-check P3). If
-semantics are replace-all, the apply must submit *existing + new* rows together. Fallback: governed
-direct INSERT on `c.client_publish_schedule` (postgres channel). Known trigger side-effect:
-`trg_handle_schedule_rule_change` **deletes unfilled future slots for the edited schedule and
-re-materialises** — therefore all A1 edits land in **one batch, before the 2026-08-03 window**, never
-mid-window. Known footgun: two sources conflict on the `day_of_week` convention (0..6 vs ISO 1..7;
-`EXTRACT(isodow)` matching means a `0` row would silently never materialise) → pre-check P4.
+Mechanism (P3-resolved): `public.save_publish_schedule(client_id, platform, slots_jsonb)` is
+**REPLACE-ALL** — it deletes every row for the (client, platform) and inserts the submitted set.
+Therefore each call submits the **complete** desired row set (P1 dump rows + the additions above,
+including the disabled grid rows if their preservation is desired — default: resubmit enabled rows
+only and accept disabled-grid loss is NOT acceptable → **submit the full per-cell row set from the
+P1 dump plus additions, preserving each row's `enabled` flag**). Rollback = resubmit the P1 dump's
+rows verbatim per cell. The delete fires `trg_handle_schedule_rule_change` (unfilled future slots
+re-flowed) — all A1 calls land in **one batch, before the 2026-08-03 window**, never mid-window.
+P4-resolved: `day_of_week` is **0..6 with 0=Sunday** (`EXTRACT(dow)` in the live
+`m.compute_rule_slot_times`); weekend rows use dow 6 (Sat) and 0 (Sun).
 
 ### A2 — Layer B: publish cadence raises (`public.save_publish_cadence`, service_role; audit rows automatic in `c.publish_cadence_change_log`)
 
-| Brand | Platform | max_per_day now → window | max_queued now → window | Call |
-|---|---|---|---|---|
-| property-pulse | facebook | 2 → **4** | 10 → 10 | `save_publish_cadence('4036a6b5-…','facebook',4,10,'s5-evidence-window')` |
-| property-pulse | instagram | 2 → **4** | 10 → 10 | same shape |
-| property-pulse | linkedin | 2 → **2 (no change — hard clamp)** | 10 → 10 | none |
-| ndis-yarns | facebook | 2 → **4** | 10 → 10 | |
-| ndis-yarns | instagram | 4 → **4 (no change)** | 10 → 10 | none |
-| ndis-yarns | linkedin | 2 → **2 (clamp)** | **6 → 10** | `save_publish_cadence('fb98a472-…','linkedin',2,10,'s5-evidence-window')` |
-| care-for-welfare | fb / ig | 2 → **3** | 10 | |
-| care-for-welfare | linkedin | 2 → **2 (clamp)** | 10 | none |
-| invegent | fb / ig | 2 → **3** | 10 | |
-| invegent | linkedin | 2 → **2 (clamp)** | 10 | none |
+**Rev-2 — exactly five calls remain** (live baseline from the P1 snapshot; max_queued passed back
+unchanged at each cell's current value so the RPC alters only max_per_day):
 
-"Now" values are the research-recorded state ("all clients 2"; NDIS IG 4; NDIS LI queue 6) — the
-**pre-apply snapshot (P1) is authoritative** for both apply and rollback. The 4s (not 10s) give
-deferral headroom over the 2-slot/day demand without opening uncontrolled volume; LinkedIn's
-design clamp (`>2` rejected, SQLSTATE 23514) is **deliberately preserved**.
+| Brand | Platform | max_per_day now → window | max_queued (unchanged) | Call |
+|---|---|---|---|---|
+| property-pulse | facebook | 2 → **4** | 20 | `save_publish_cadence('4036a6b5-b4a3-406e-998d-c2fe14a8bbdd','facebook',4,20,'s5-evidence-window')` |
+| property-pulse | instagram | 2 → **4** | 6 | `save_publish_cadence('4036a6b5-…','instagram',4,6,'s5-evidence-window')` |
+| ndis-yarns | facebook | 2 → **4** | 10 | `save_publish_cadence('fb98a472-ae4d-432d-8738-2273231c1ef4','facebook',4,10,'s5-evidence-window')` |
+| care-for-welfare | facebook + instagram | 2 → **3** | 10 | `save_publish_cadence('3eca32aa-e460-462f-a846-3f6ace6a3cae',<platform>,3,10,'s5-evidence-window')` |
+| invegent | facebook + instagram | 2 → **3** | 10 | `save_publish_cadence('93494a09-cc89-41d1-b364-cb63983063a6',<platform>,3,10,'s5-evidence-window')` |
+
+No change (rev-2): PP linkedin (clamp 2) · PP youtube (2, no governed cell) · NDIS instagram
+(already 4) · NDIS linkedin (clamp 2; **queue raise 6→10 dropped** — 6 has served 2/day×7 fine) ·
+NDIS youtube (already 4; publishes impossible anyway) · CFW/Invegent linkedin (clamp 2). The 4s/3s
+give deferral headroom over the ≤2-slot/day demand without opening uncontrolled volume; LinkedIn's
+design clamp (`>2` rejected, SQLSTATE 23514) is **deliberately preserved**. min_gap facts absorbed:
+PP fb + NDIS fb run **360** (not 240) — slot spacing in §2a respects it; still no min_gap change.
 
 ### A3 — Layer A: UI schedule-cap overrides (advisory; prevents operator-facing UI blocks during the window)
 
-`public.save_schedule_cap_override(client_id, platform, 4, 20)` for every (brand, platform) cell in
-A1. Clean rollback: `(client_id, platform, NULL, NULL)` deletes the row → tier default (2/day,
-5/week). No audit table — snapshot `c.client_schedule_cap_override` in P1.
+`public.save_schedule_cap_override(client_id, platform, 4, 20)` — **rev-2: only for the cells A1
+touches**: PP fb/ig/li and CFW + Invegent fb/ig/li (9 calls). **NDIS's four pre-existing override
+rows (set 2026-07-27: fb/ig/yt 4/28, li 2/14) are NOT touched and NOT rolled back** — they predate
+the window. Clean rollback for the 9 new rows: `(client_id, platform, NULL, NULL)` deletes the row →
+tier default (2/day, 5/week). No audit table — baseline captured in the P1 snapshot doc.
 
 ### A4 — PP temporary format-mix overrides (the only per-format steering that exists)
 
@@ -379,9 +416,9 @@ a tripped STOP voids the remainder of the window per Convention 2).
 
 | Amendment | Restoration action | Restoration value |
 |---|---|---|
-| A1 schedule rows | DELETE the recorded inserted row ids (from the apply record); re-materialise | live snapshot P1 row set, byte-for-byte |
-| A2 max_per_day / max_queued | `save_publish_cadence` back to P1 snapshot per (client, platform) | expected per research: all `max_per_day=2` except ndis-yarns×instagram=4; `max_queued=10` except ndis-yarns×linkedin=6 — **P1 snapshot is authoritative over this expectation** |
-| A3 UI cap overrides | `save_schedule_cap_override(client, platform, NULL, NULL)` per cell | row deleted → tier default (2/day, 5/week) |
+| A1 schedule rows | `save_publish_schedule` per touched cell (PP fb/ig/li · CFW fb/ig/li · Invegent fb/ig/li), resubmitting the P1 dump rows verbatim (replace-all restores exactly); NDIS untouched | P1 dump `docs/briefs/data/s5-p1-client-publish-schedule-dump-2026-07-31.json`, sha256 `7b8fecd83ef51c7a5aeaec080d9372f6e4488497693ae963b17f1ab954c5b07a` |
+| A2 max_per_day (5 calls) | `save_publish_cadence` back to P1 values | PP fb (2,20) · PP ig (2,6) · NDIS fb (2,10) · CFW fb/ig (2,10) · Invegent fb/ig (2,10) — live-verified 2026-07-31 |
+| A3 UI cap overrides (9 new rows) | `save_schedule_cap_override(client, platform, NULL, NULL)` per new row; **NDIS's 4 pre-existing rows left untouched** | new rows deleted → tier default (2/day, 5/week); NDIS rows remain fb/ig/yt 4/28 · li 2/14 |
 | A4 PP mix overrides | DELETE the inserted `c.client_format_mix_override` rows | table back to 0 rows (global state pre-window) |
 | A6 dedup (only if elected) | `UPDATE t.dedup_policy SET same_canonical_block_hours=168 WHERE policy_name='default' AND is_current=true` | 168 |
 | (nothing else changed) | — | — |
@@ -405,7 +442,14 @@ the hash. (Optional, zero-authority: a shadow `apply-harness-auditor` pass over 
 any non-clean verdict routes by triage class per the orchestration contract. A review is valid only
 for the frozen hash — any edit re-runs it.
 
-**Pre-apply live checks (verify-or-abort; run via R0 views + `execute_sql` where needed):**
+**Rev-2 status of the pre-apply checks:** P1–P8 were run read-only on 2026-07-31 and are recorded in
+`docs/briefs/s5-evidence-window-p1-snapshot-v1.md`. P2/P3/P4/P6/P7 are **resolved** (P3: replace-all;
+P4: dow 0..6, 0=Sunday; P6: brand kits complete). P5 reclassified the matrix (§2a). At apply time,
+re-run only the volatile subset — the P1 value snapshot (STOP on drift from the recorded baseline),
+P8 (incl. **PP facebook `paused_until` must be NULL** — its 2026-08-01 pause must have expired), and
+the 🔴 **announcement_card / `task_05bf8b3d` PK ruling** (snapshot doc, final section) which **must
+be decided before the window opens**. The original check list is retained below for the apply
+session's use:
 - **P1 snapshot (rollback baseline):** `get_publishing_plan_pyramid()` × 4 clients ·
   `get_publish_cadence()` × 4 · `get_schedule_caps()` × 4 · full `c.client_publish_schedule` dump ·
   `c.client_format_mix_override` (expect 0 rows) · `t.dedup_policy` current row · `cron.job`
