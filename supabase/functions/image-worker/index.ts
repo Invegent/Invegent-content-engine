@@ -1,3 +1,31 @@
+// image-worker v3.38.0
+// v3.38.0 (2026-07-31) — cc-0089 follow-up #2: SMOKE-ONLY field-merge BUG FIX (does NOT
+//   touch production). The just-shipped v3.37.0 CTA content fix (creative_contract.ts's
+//   PP_IMAGE_QUOTE_NEWS_CARD_V1 renderer_fixed 'cta' entry, mirrored into
+//   branch_b_proof.ts's buildProofFieldsFromDraft) works correctly for the REAL production
+//   image_quote render path, but the governed_image_quote_smoke diagnostic branch
+//   (mode==='governed_image_quote_smoke', cc-0037) had its OWN pre-existing, unrelated bug
+//   that stomped it back out: its buildTmrRenderPlan call built the fields object as
+//   `{ ...smokeFields, subtitle: smokeSubtitle, cta: body?.fields?.cta, slide_number:
+//   body?.fields?.slide_number }` — `cta`/`slide_number` sit AFTER `...smokeFields` in the
+//   SAME object literal, so a caller with no `body.fields.cta` produced `cta: undefined`,
+//   which — because later keys win in a JS object literal — silently OVERWROTE
+//   smokeFields' own contract-resolved `cta` (e.g. PP's 'Explore the latest market
+//   update') back to undefined. Identical defect for `slide_number`. Verified this session:
+//   an identical `props_hash` before/after the v3.37.0 contract fix on a default (no
+//   explicit CTA) smoke call, until CTA was passed explicitly as a workaround. Fix: the
+//   merge is now via a new pure helper, smoke_field_merge.ts's mergeSmokeOverrideFields —
+//   `cta`/`slide_number` fold in ONLY when the caller EXPLICITLY supplies
+//   body.fields.cta / body.fields.slide_number (`!== undefined`, mirroring the exact guard
+//   already used downstream in b1_production.ts's TMR_WINNER_TEXT_FIELDS map); otherwise
+//   smokeFields' own value — contract-resolved or absent — survives untouched. The
+//   2026-07-29 compat lane's explicit-override "supervisor steer" capability is unchanged:
+//   an explicit body.fields.cta/slide_number still wins. PRODUCTION IS UNAFFECTED: the
+//   production image_quote branch's own buildTmrRenderPlan call (`{ ...fields, subtitle }`,
+//   no cta/slide_number keys at all) is BYTE-IDENTICAL to v3.37.0 — confirmed by diff, not
+//   touched by this change. STRICTLY OUT OF SCOPE: creative_contract.ts, branch_b_proof.ts,
+//   select_template, buildTmrRenderPlan's own logic, any other client's contract, any
+//   migration, the publisher, any deploy/apply (later PK gate).
 // image-worker v3.37.0
 // v3.37.0 (2026-07-31) — cc-0089 follow-up: PP announcement_card CTA CONTENT FIX. PP's
 //   generic_announcement_card_1x1_v1 CTA element was rendering Creatomate's generic
@@ -556,11 +584,12 @@ import { isImageGovernanceEnabled, getGovernedClientSlug } from './image_governa
 import { resolveLegacyLogo, assertGovernedAssetReachable, type AssetVerdict } from './asset_url_guard.ts';  // v3.15.0: H2 asset-URL validation before Creatomate
 import { echoContractToRenderSpec } from './contract_echo.ts';  // v3.18.0: ACI v0 Slice B2 — echo draft_format.contract identity fields into render_spec (governed PP image_quote; evidence-only)
 import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C: warn-only contract validation (evidence-only, never throws)
+import { mergeSmokeOverrideFields } from './smoke_field_merge.ts';  // v3.38.0: cc-0089 follow-up #2 — pure helper fixing the governed_image_quote_smoke-ONLY cta/slide_number field-merge stomp (see smoke_field_merge.ts header). NOT imported/used by the production image_quote branch.
 // v3.23.0 LANE W: tmr_smoke.ts import removed — module DELETED (provider template 490ad9ea… deleted; mode now 410-guarded below)
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.37.0';  // cc-0089 follow-up: PP announcement_card CTA now sourced from creative_contract.ts ('Explore the latest market update'), mirroring the cc-0049 attribution/source_label pattern; zero behavior change for any other client/template/winner
+const VERSION = 'image-worker-v3.38.0';  // cc-0089 follow-up #2: governed_image_quote_smoke-ONLY cta/slide_number field-merge stomp fixed (see smoke_field_merge.ts + header comment above); production image_quote branch byte-identical, confirmed by diff
 // cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
 // Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
 // provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1
@@ -935,13 +964,19 @@ Deno.serve(async (req: Request) => {
       // bounded to B1_SUBTITLE_MAX_CHARS exactly as production's derived subtitle is.
       const smokeFields = buildProofFieldsFromDraft({ image_headline: smokeHeadline, client_id: B1_GOVERNED_CLIENT_ID, recommended_format: 'image_quote' });
       const smokeSubtitle = smokeSubtitleRaw.slice(0, B1_SUBTITLE_MAX_CHARS);
-      // ADDITIVE: cta/slide_number fold in ONLY when the winner map's own `f.cta !== undefined` /
-      // `f.slide_number !== undefined` guards see a value — a default call has body?.fields
-      // undefined, so both are `undefined` here too, which is exactly what those guards expect
-      // (b1_production.ts omits the key entirely in that case). Inert for every existing caller.
+      // v3.38.0 (cc-0089 follow-up #2 fix): cta/slide_number now fold in via
+      // mergeSmokeOverrideFields — ONLY when the caller EXPLICITLY supplies
+      // body.fields.cta / body.fields.slide_number does the override win; otherwise
+      // smokeFields' own value (contract-resolved, e.g. PP's cta, or absent for a client
+      // with no contract entry) survives untouched. The prior inline object literal
+      // (`cta: body?.fields?.cta`) always set the key — including to `undefined` on a
+      // default call — which, coming AFTER `...smokeFields` in the same literal, silently
+      // overwrote a real contract-resolved value. See smoke_field_merge.ts for the full
+      // defect writeup. Same b1_production.ts `f.cta !== undefined` guard this always
+      // mirrored; still inert for every caller that supplies neither key.
       const plan = buildTmrRenderPlan(
         selection as TmrSelectorResponse,
-        { ...smokeFields, subtitle: smokeSubtitle, cta: body?.fields?.cta, slide_number: body?.fields?.slide_number },
+        mergeSmokeOverrideFields({ ...smokeFields, subtitle: smokeSubtitle }, { cta: body?.fields?.cta, slide_number: body?.fields?.slide_number }),
         smokeFields.date,
       );
       // THE OPTION-B ASSERT: the derived provider id MUST equal the id of record. Throws (naming
