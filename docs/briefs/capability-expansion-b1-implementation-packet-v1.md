@@ -2,7 +2,17 @@
 
 **Created:** 2026-07-31 Sydney · **Lane:** S6 capability expansion, Slice B1 (Gate-1 approved with amendments 2026-07-31)
 **Governing brief:** `docs/briefs/capability-expansion-format-reachability-gate1-brief-v1.md` (commit `fde6bbc`)
-**Status:** AUTHORED — awaiting shadow harness audit → external review → **PK apply gate. NOTHING APPLIED.**
+**Status:** RE-CUT rev-2 — awaiting re-review → **fresh PK apply gate. NOTHING APPLIED.**
+
+> **Rev-2 changelog (2026-07-31, post first PK apply gate — that gate's STOP tripped and voided the
+> sequence):** the fresh `db-rls-auditor` pass (repo-static; no live path reached the subagent) returned
+> **block** with a concrete defect: the rev-1 §7 INSERT omitted `template_id` (`uuid NOT NULL`, no
+> default, no populating trigger — live-confirmed via `information_schema` 2026-07-31), so W1 would have
+> aborted 23502 (fail-closed, non-corrupting, unapplyable). Rev-2: adds `template_id`; adds
+> `platform='facebook'` + `evidence_kind='production_publish'` mirroring the existing PP
+> `platform_publish` row `5a1b4304` (live-read); adds **G3b** machine-verifying the cited publishes'
+> client attribution (auditor should-fix); rollback predicate unchanged (same row set). Rev-1 hash
+> `b67928a4…` and its reviews are VOID; this revision is re-frozen and re-reviewed under a new hash.
 **Tier:** T2 (production DML, additive governance-trail rows only, selection-neutral — see §6) · Lane class: SAFETY_GATE
 **Result file:** `docs/briefs/results/capability-expansion-b1-result-v1.md` (on completion)
 
@@ -29,6 +39,7 @@ Three INSERTs into `c.creative_template_proof_event` (schema: `20260630042316_tm
 | W3 | `ecba211b-5217-4790-afe5-a2f98616712f` | invegent (`93494a09-…`) | generic_quote_card_1x1_v1 (`1cfe0f9c-…` · provider `2140ca19-…`) | platform_publish | passed | `2026-07-26 22:10:17.187+00` | post_publish `33814cef-fc15-4c29-9eb2-9c9288349d39` (facebook) · render_log `beff3c64-ad6b-4217-9aae-b438a86e0855` · draft `e4ce17c6-fd3a-41b4-8c49-39e656851151` — first post-assignment publish (assignment created 2026-07-20 09:16Z); 11 publishes total (fb/ig/li) |
 
 `recorded_by` (identical, deterministic, all three): `S6 B1 platform_publish trail alignment (PK apply gate, packet capability-expansion-b1-implementation-packet-v1)`.
+Common columns all three rows (mirroring live PP row `5a1b4304`): `template_id` as tabled above (NOT NULL, live-confirmed) · `platform='facebook'` (the cited publishes are facebook) · `evidence_kind='production_publish'` · `placement` NULL.
 
 **Explicitly NOT proposed:** any `assignment_status` change (all already truthful) · any PP row (PP quote-card stays `visually_approved` — live evidence shows **zero** PP renders on the quote card, so its current status is correct) · any template-level `c.creative_provider_template.status` bump (both templates still read `smoke_rendered`; a bump is selection-neutral — the selector only floors at `smoke_rendered` — but it touches rows shared with PP, so it is **deferred as a named PK option, recommended NOT in this window**) · any row for the video template `c11bb8ab`/row 19 (NDIS/YouTube-lane baseline, PK boundary) · any enrolment/schedule/cap/mix row (S5 surface).
 
@@ -94,15 +105,21 @@ BEGIN
    WHERE post_publish_id IN ('6210dae9-ce92-4008-ac96-1e2175a7cea0','951eae29-fb77-4135-aa37-3a11b082b2f2','33814cef-fc15-4c29-9eb2-9c9288349d39')
      AND status='published';
   IF v_n <> 3 THEN RAISE EXCEPTION 'B1 ABORT G3: expected the 3 cited published rows, got %', v_n; END IF;
+  -- G3b: cited publishes belong to the claimed clients (machine-verified attribution, else ABORT)
+  SELECT count(*) INTO v_n FROM m.post_publish p
+   WHERE (p.post_publish_id='6210dae9-ce92-4008-ac96-1e2175a7cea0' AND p.client_id='fb98a472-ae4d-432d-8738-2273231c1ef4')
+      OR (p.post_publish_id='951eae29-fb77-4135-aa37-3a11b082b2f2' AND p.client_id='3eca32aa-e460-462f-a846-3f6ace6a3cae')
+      OR (p.post_publish_id='33814cef-fc15-4c29-9eb2-9c9288349d39' AND p.client_id='93494a09-cc89-41d1-b364-cb63983063a6');
+  IF v_n <> 3 THEN RAISE EXCEPTION 'B1 ABORT G3b: cited publish client attribution mismatch, matched %', v_n; END IF;
   -- W1..W3
-  INSERT INTO c.creative_template_proof_event (assignment_id, proof_type, proof_status, occurred_at, evidence_reference, recorded_by) VALUES
-  ('c4737728-eb87-462f-aa79-ce6b321ba8ef','platform_publish','passed','2026-07-19 22:00:18.134+00',
+  INSERT INTO c.creative_template_proof_event (template_id, assignment_id, platform, proof_type, proof_status, evidence_kind, occurred_at, evidence_reference, recorded_by) VALUES
+  ('0e006c5c-45aa-4829-82ec-89dd282a8c56','c4737728-eb87-462f-aa79-ce6b321ba8ef','facebook','platform_publish','passed','production_publish','2026-07-19 22:00:18.134+00',
    'First post-assignment client-attributed publish: post_publish 6210dae9-ce92-4008-ac96-1e2175a7cea0 (facebook 2026-07-19) · render_log a62650db-e2a9-456a-951c-c86349b44682 · draft 0f00d7d0-4574-479c-8438-6c72484f69e2; 16 NDIS-attributed publishes fb/ig/li 2026-07-18→07-31. Packet: docs/briefs/capability-expansion-b1-implementation-packet-v1.md',
    'S6 B1 platform_publish trail alignment (PK apply gate, packet capability-expansion-b1-implementation-packet-v1)'),
-  ('60e43a0e-8ac3-497d-b823-8d41c2aa123b','platform_publish','passed','2026-07-30 23:10:09.254+00',
+  ('0e006c5c-45aa-4829-82ec-89dd282a8c56','60e43a0e-8ac3-497d-b823-8d41c2aa123b','facebook','platform_publish','passed','production_publish','2026-07-30 23:10:09.254+00',
    'Client-attributed facebook publish: post_publish 951eae29-fb77-4135-aa37-3a11b082b2f2 (2026-07-30) · render_log b2883ff3-5940-4365-a284-12967e9eb817 · draft 51cc9770-e22b-4951-98ae-f2b7513c5163; earliest post-assignment publish website 2026-07-21 (140673af-2f65-4251-95c6-23c50615d625); 10 CFW-attributed publishes fb/ig/website 2026-07-21→07-31. Packet: docs/briefs/capability-expansion-b1-implementation-packet-v1.md',
    'S6 B1 platform_publish trail alignment (PK apply gate, packet capability-expansion-b1-implementation-packet-v1)'),
-  ('ecba211b-5217-4790-afe5-a2f98616712f','platform_publish','passed','2026-07-26 22:10:17.187+00',
+  ('1cfe0f9c-3810-4bf1-8785-083fead4eefe','ecba211b-5217-4790-afe5-a2f98616712f','facebook','platform_publish','passed','production_publish','2026-07-26 22:10:17.187+00',
    'First post-assignment client-attributed publish: post_publish 33814cef-fc15-4c29-9eb2-9c9288349d39 (facebook 2026-07-26) · render_log beff3c64-ad6b-4217-9aae-b438a86e0855 · draft e4ce17c6-fd3a-41b4-8c49-39e656851151; 11 Invegent-attributed publishes fb/ig/li 2026-07-23→07-31. Packet: docs/briefs/capability-expansion-b1-implementation-packet-v1.md',
    'S6 B1 platform_publish trail alignment (PK apply gate, packet capability-expansion-b1-implementation-packet-v1)');
   -- G4: exactly 3 rows landed (fail-closed row count)
@@ -157,7 +174,7 @@ No rung is bypassed; no rung is claimed by inheritance — every row above is cl
 
 1. `apply-harness-auditor` (registered SHADOW — advisory only, clears nothing) on this packet — done before freeze, result recorded below the freeze line.
 2. External review (`ask_chatgpt_review`) pinned to this file's frozen sha256; any non-clean → triage per CLAUDE.md.
-3. **PK APPLY GATE (hard stop):** PK runs (or authorises as a Convention-2 sequence) the §7 apply — one execute_sql call. STOP conditions: packet-hash mismatch · G1/G2/G3 abort · any non-clean review · unexpected origin movement · rollback invalidated.
+3. **FRESH PK APPLY GATE (hard stop — the 2026-07-31 gate's STOP tripped; its authorisation is void):** PK runs (or authorises as a Convention-2 sequence) the §7 apply — one execute_sql call. STOP conditions: packet-hash mismatch · G1/G2/G3/G3b abort · any non-clean review · unexpected origin movement · rollback invalidated.
 4. Post-apply verification (§7) + result doc + one register pointer (Convention 1) + matrix-staleness handoff to `register-reconciler`.
 
 **Named substitution (CCF-02 R1, recorded):** the registered `db-rls-auditor` had no live DB path this session (no `ice_readonly` DSN provisioned; Supabase MCP toolset not attached to subagents) and fail-closed with repo-static findings (id-trap, selector purity, S5-disjointness-minus-one). The live reads in §2–§3/§5 were run by the orchestrator via `execute_sql`, read-only, queries recorded in the session transcript. A fresh `db-rls-auditor` live pass is required at/after the apply gate in a DB-capable session.
