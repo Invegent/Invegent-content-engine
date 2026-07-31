@@ -51,7 +51,10 @@ Deno.test('T1 PP resolves exactly as before (identity + byte-identical brand pay
   assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.contract_ref, 'property_pulse.image_quote.news_card');
   assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.contract_version, 'v2');
   assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.selector_reason_default, 'pp_image_quote_default');
-  // End-to-end through the real consumer.
+  // End-to-end through the real consumer. cc-0089 (2026-07-31) DELIBERATELY adds a 'cta' key
+  // to PP's output (a real-brand-copy fix for the CTA placeholder defect, PK-authored value) —
+  // this is the one intentional deviation from "exactly as before"; every other key/value here
+  // is unchanged.
   assertEquals(buildProofFieldsFromDraft(draft(PP_ID), FIXED), {
     category: 'PROPERTY NEWS',
     headline: HEADLINE,
@@ -59,6 +62,7 @@ Deno.test('T1 PP resolves exactly as before (identity + byte-identical brand pay
     location: '',
     date: EXPECTED_DATE,
     footer: 'propertypulse.com.au',
+    cta: 'Explore the latest market update',
   });
 });
 
@@ -223,16 +227,27 @@ Deno.test('T7 patch changes contract resolution only — surrounding behaviour u
       'missing image_headline hard-gate field',
     );
   }
-  // (b) The emitted field shape is still EXACTLY the 6 keys, for every registered client.
-  // cc-0049: clients that declare NO attribution/source_label still emit EXACTLY the original
-  // 6 keys (byte-identical shape); Invegent additionally emits those two — asserted separately
-  // below so the no-shape-change guarantee for PP/NDIS/CFW stays explicit.
-  for (const id of [PP_ID, NDIS_ID, CFW_ID]) {
+  // (b) The emitted field shape is still EXACTLY the 6 keys, for every registered client that
+  // declares NO optional per-client extra. cc-0049: clients that declare NO
+  // attribution/source_label still emit EXACTLY the original 6 keys (byte-identical shape);
+  // Invegent additionally emits those two — asserted separately below. cc-0089 (2026-07-31):
+  // PP additionally emits 'cta' (a real-brand-copy fix, PK-authored) — asserted separately too,
+  // so the no-shape-change guarantee for NDIS/CFW stays explicit and PP's ONE intentional
+  // deviation is named, not silently absorbed into a loop.
+  for (const id of [NDIS_ID, CFW_ID]) {
     const f = buildProofFieldsFromDraft(draft(id), FIXED);
     assertEquals(Object.keys(f).sort(), ['category', 'date', 'footer', 'headline', 'location', 'subtitle']);
     assertEquals(f.headline, HEADLINE);   // headline still passes through untouched
     assertEquals(f.subtitle, '');         // subtitle still derived downstream, not here
     assertEquals(f.date, EXPECTED_DATE);  // date still render-time via the injectable clock
+  }
+  {
+    const f = buildProofFieldsFromDraft(draft(PP_ID), FIXED);
+    assertEquals(Object.keys(f).sort(), ['category', 'cta', 'date', 'footer', 'headline', 'location', 'subtitle']);
+    assertEquals(f.headline, HEADLINE);
+    assertEquals(f.subtitle, '');
+    assertEquals(f.date, EXPECTED_DATE);
+    assertEquals(f.cta, 'Explore the latest market update');
   }
   {
     const f = buildProofFieldsFromDraft(draft(INV_ID), FIXED);

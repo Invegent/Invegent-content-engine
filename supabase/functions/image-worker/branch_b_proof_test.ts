@@ -77,18 +77,37 @@ Deno.test('buildProofFieldsFromDraft fails CLOSED (contract_unresolved) for an u
   );
 });
 
-Deno.test('proof fields have EXACTLY the 6 text keys the B1 field consumer expects', () => {
+Deno.test('proof fields have EXACTLY the 6 text keys the B1 field consumer expects (base shape, cc-0089-agnostic client)', () => {
+  // cc-0089 (2026-07-31): PP's own contract now DELIBERATELY adds a 7th optional key ('cta') —
+  // see the dedicated PP-shape test below. This test keeps proving the pre-existing BASE 6-key
+  // shape by using a client_id whose contract does NOT declare cta (NDIS), so it stays a true
+  // no-regression guard on the base shape rather than silently drifting to 7 keys.
+  const NDIS_CLIENT_ID = 'fb98a472-ae4d-432d-8738-2273231c1ef4';
+  const f = buildProofFieldsFromDraft(
+    { image_headline: 'h', client_id: NDIS_CLIENT_ID, recommended_format: 'image_quote' },
+    FIXED,
+  );
+  assertEquals(Object.keys(f).sort(), ['category', 'date', 'footer', 'headline', 'location', 'subtitle']);
+  assertEquals(f.headline, 'h');
+  assertEquals(f.subtitle, '');
+  assertEquals(f.location, '');
+  assertEquals(f.date, '24 June 2026');
+  assert(!('elements' in f));
+});
+
+Deno.test('cc-0089: PP proof fields now carry EXACTLY the 7 keys (base 6 + cta)', () => {
   const f = buildProofFieldsFromDraft(
     { image_headline: 'h', client_id: B1_GOVERNED_CLIENT_ID, recommended_format: 'image_quote' },
     FIXED,
   );
-  assertEquals(Object.keys(f).sort(), ['category', 'date', 'footer', 'headline', 'location', 'subtitle']);
+  assertEquals(Object.keys(f).sort(), ['category', 'cta', 'date', 'footer', 'headline', 'location', 'subtitle']);
   assertEquals(f.category, 'PROPERTY NEWS');
   assertEquals(f.headline, 'h');
   assertEquals(f.subtitle, '');
   assertEquals(f.location, '');
   assertEquals(f.date, '24 June 2026');
   assertEquals(f.footer, 'propertypulse.com.au');
+  assertEquals(f.cta, 'Explore the latest market update');
   assert(!('elements' in f));
 });
 
@@ -160,6 +179,65 @@ Deno.test('D7 N7b NDIS resolves-clean (REAL resolver): NDIS footer "NDIS Yarns" 
     subtitle: '',
     date: '18 July 2026',
   });
+});
+
+Deno.test('cc-0089: PP contract emits fields.cta === "Explore the latest market update"', () => {
+  const f = buildProofFieldsFromDraft(
+    { image_headline: 'Perth median rent climbs to record high', client_id: B1_GOVERNED_CLIENT_ID, recommended_format: 'image_quote' },
+    FIXED,
+  );
+  assertEquals(f.cta, 'Explore the latest market update');
+
+  // Compose through the REAL winner→text-field mapping and prove it reaches the render key.
+  const emitted = TMR_WINNER_TEXT_FIELDS['generic_announcement_card_1x1_v1']({ ...f, subtitle: '' } as Parameters<typeof TMR_WINNER_TEXT_FIELDS['generic_announcement_card_1x1_v1']>[0]);
+  assertEquals(emitted['CTA.text'], 'Explore the latest market update');
+});
+
+Deno.test('cc-0089: NDIS contract does NOT emit cta — byte-identical to pre-cc-0089 (no regression)', () => {
+  const NDIS_CLIENT_ID = 'fb98a472-ae4d-432d-8738-2273231c1ef4';
+  const f = buildProofFieldsFromDraft(
+    { image_headline: 'Test headline', client_id: NDIS_CLIENT_ID, recommended_format: 'image_quote' },
+    new Date('2026-07-18T00:00:00Z'),
+  );
+  assert(!('cta' in f), 'NDIS must NOT emit a cta key');
+  assertEquals(f, {
+    category: 'NDIS UPDATE',
+    footer: 'NDIS Yarns',
+    location: '',
+    headline: 'Test headline',
+    subtitle: '',
+    date: '18 July 2026',
+  });
+});
+
+Deno.test('cc-0089: CFW contract does NOT emit cta — byte-identical output', () => {
+  const CFW_CLIENT_ID = '3eca32aa-e460-462f-a846-3f6ace6a3cae';
+  const f = buildProofFieldsFromDraft(
+    { image_headline: 'Test headline', client_id: CFW_CLIENT_ID, recommended_format: 'image_quote' },
+    new Date('2026-07-18T00:00:00Z'),
+  );
+  assert(!('cta' in f), 'CFW must NOT emit a cta key');
+  assertEquals(f, {
+    category: 'CARE UPDATE',
+    footer: 'Care For Welfare',
+    location: '',
+    headline: 'Test headline',
+    subtitle: '',
+    date: '18 July 2026',
+  });
+});
+
+Deno.test('cc-0089: Invegent contract does NOT emit cta (attribution/source_label unaffected)', () => {
+  const INVEGENT_CLIENT_ID = '93494a09-cc89-41d1-b364-cb63983063a6';
+  const f = buildProofFieldsFromDraft(
+    { image_headline: 'Test headline', client_id: INVEGENT_CLIENT_ID, recommended_format: 'image_quote' },
+    new Date('2026-07-18T00:00:00Z'),
+  );
+  assert(!('cta' in f), 'Invegent must NOT emit a cta key');
+  assertEquals(f.attribution, 'Invegent — AI & Automation');
+  assertEquals(f.source_label, 'invegent.com');
+  assertEquals(f.category, 'AI & AUTOMATION');
+  assertEquals(f.footer, 'Invegent');
 });
 
 Deno.test('D6-5 headline-gate precedence: missing headline + unregistered client throws the HEADLINE error', () => {

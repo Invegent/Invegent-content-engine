@@ -1,3 +1,22 @@
+// image-worker v3.37.0
+// v3.37.0 (2026-07-31) — cc-0089 follow-up: PP announcement_card CTA CONTENT FIX. PP's
+//   generic_announcement_card_1x1_v1 CTA element was rendering Creatomate's generic
+//   placeholder text ("Call to action") because no real brand copy had ever been authored
+//   for it — PK flagged this on a supervised render. Fix: creative_contract.ts's
+//   PP_IMAGE_QUOTE_NEWS_CARD_V1 gains ONE new renderer_fixed entry
+//   ({ field: 'cta', value: 'Explore the latest market update' }, PK-authored copy);
+//   branch_b_proof.ts's buildProofFieldsFromDraft mirrors the EXACT cc-0049
+//   attribution/source_label pattern — reads the OPTIONAL contract field and folds it into
+//   the return shape (now `cta?: string`) only when present. NO change to this entrypoint's
+//   production call site: `{ ...fields, subtitle }` at the buildTmrRenderPlan call already
+//   spreads whatever optional keys `fields` carries, and b1_production.ts's
+//   TMR_WINNER_TEXT_FIELDS['generic_announcement_card_1x1_v1'] already reads f.cta
+//   (2026-07-30 compat lane, commit fad8780) — so this bump is header/drift-gate-reclassify
+//   only (the drift gate hashes ONLY index.ts). STRICTLY OUT OF SCOPE: NDIS / CFW / Invegent
+//   contracts (unchanged — no 'cta' entry, byte-identical output), carousel_cover /
+//   slide_number, select_template, derive_asset_appetite, analyze_asset_gap, any
+//   migration/DB write, the publisher, any other client's contract, any deploy (deploy is a
+//   later PK gate).
 // image-worker v3.36.0
 // v3.36.0 (2026-07-30) — Creatomate Global Static Graduation Batch 1 — announcement_card
 //   layout-guard fix. NO logic change in THIS entrypoint or in buildTmrRenderPlan — version
@@ -541,7 +560,7 @@ import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C:
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.36.0';  // Creatomate Global Static Graduation Batch 1 — announcement_card layout-guard fix: new TMR_WINNER_LAYOUT_GUARD entry (Headline.height 20% + auto-fit), pure data addition, buildTmrRenderPlan unchanged
+const VERSION = 'image-worker-v3.37.0';  // cc-0089 follow-up: PP announcement_card CTA now sourced from creative_contract.ts ('Explore the latest market update'), mirroring the cc-0049 attribution/source_label pattern; zero behavior change for any other client/template/winner
 // cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
 // Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
 // provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1

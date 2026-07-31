@@ -165,6 +165,16 @@ Deno.test('D6-3 registry resolver: PP image_quote → PP contract; unknown clien
   assertEquals(resolveCreativeContract('', ''), null);
 });
 
+// Test cc-0089 — PP contract gains a PK-authored 'cta' renderer_fixed entry (the generic
+// "Call to action" Creatomate placeholder fix); contract_version STAYS 'v2' (Test 4, unchanged
+// above) — an additive renderer_fixed content field is not a stamped-evidence version bump,
+// matching the AP-4 / cc-0049 precedent.
+Deno.test('cc-0089: PP renderer_fixed carries cta = "Explore the latest market update"; contract_version unchanged', () => {
+  const rf = (n: string) => PP_IMAGE_QUOTE_NEWS_CARD_V1.fields.renderer_fixed.find((e) => e.field === n)?.value;
+  assertEquals(rf('cta'), 'Explore the latest market update');
+  assertEquals(PP_IMAGE_QUOTE_NEWS_CARD_V1.contract_version, 'v2');
+});
+
 // Test 11 — TMR D7 N7b: NDIS_IMAGE_QUOTE_NEWS_CARD_V1 is registered and resolves for the
 // NDIS Yarns client_id + image_quote; PP is unchanged; every cross/negative pair is null.
 Deno.test('D7 N7b registry: NDIS image_quote → NDIS contract; PP unchanged; negatives null', () => {

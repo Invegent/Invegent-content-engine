@@ -18,6 +18,15 @@
 // docs/briefs/tmr-dead-reference-cleanup-plan-packet.md). buildProofFieldsFromDraft
 // stays LIVE: the Option-D B1 TMR production branch in index.ts consumes it.
 //
+// cc-0089 follow-up (2026-07-31, image-worker v3.37.0) — CTA CONTENT FIX: PP's
+// generic_announcement_card_1x1_v1 CTA element rendered Creatomate's placeholder text
+// ("Call to action") because no real brand copy had ever been authored. Mirrors the
+// cc-0049 attribution/source_label pattern exactly: an OPTIONAL renderer_fixed('cta') read
+// off the client's contract, folded into the return shape ONLY when present. PP's contract
+// now declares it ('Explore the latest market update' — PK-authored); NDIS/CFW/Invegent do
+// NOT, so their output stays byte-identical (no 'cta' key). STRICTLY OUT OF SCOPE: no other
+// field, no other client's contract, no template/selector/DB/migration change.
+//
 // TMR D6-5 (2026-07-17, image-worker v3.28.0) — BRAND-PAYLOAD DE-HARDCODE: the
 // category/footer/location fields are NO LONGER PP literals baked into this builder. They
 // are now sourced from the D6-3 governed contract registry via resolveCreativeContract
@@ -57,7 +66,7 @@ export function buildProofFieldsFromDraft(
   draft: ProofDraftRow | null | undefined,
   today: Date = new Date(),
   resolve: (clientId: string, recommendedFormat: string) => CreativeContract | null = resolveCreativeContract,
-): { category: string; headline: string; subtitle: string; location: string; date: string; footer: string; attribution?: string; source_label?: string } {
+): { category: string; headline: string; subtitle: string; location: string; date: string; footer: string; attribution?: string; source_label?: string; cta?: string } {
   // (1) Headline hard-gate FIRST — a missing-headline draft throws the headline error
   // regardless of client_id, so this MUST precede the contract resolution below.
   const headline = (draft?.image_headline ?? '').trim();
@@ -104,5 +113,12 @@ export function buildProofFieldsFromDraft(
   if (attribution !== undefined) out.attribution = attribution;
   const sourceLabel = fixedValue('source_label');
   if (sourceLabel !== undefined) out.source_label = sourceLabel;
-  return out as { category: string; headline: string; subtitle: string; location: string; date: string; footer: string; attribution?: string; source_label?: string };
+  // cc-0089 follow-up — same OPTIONAL pattern as attribution/source_label above: the
+  // announcement_card winner's CTA element is genuinely optional (b1_production.ts's
+  // TMR_WINNER_TEXT_FIELDS omits 'CTA.text' entirely when f.cta is undefined), so a client
+  // contract with no 'cta' renderer_fixed entry (NDIS/CFW/Invegent) emits the EXACT same key
+  // set as before — byte-identical output, no consumer change. Only PP's contract declares it.
+  const cta = fixedValue('cta');
+  if (cta !== undefined) out.cta = cta;
+  return out as { category: string; headline: string; subtitle: string; location: string; date: string; footer: string; attribution?: string; source_label?: string; cta?: string };
 }

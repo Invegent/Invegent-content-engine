@@ -72,10 +72,13 @@ Deno.test('T3-T5 PP / NDIS / CFW mappings and emitted fields are unchanged', () 
   assertEquals(Object.keys(mi({
     category: 'C', headline: 'H', subtitle: 'S', location: 'L', date: 'D', footer: 'F',
   })).sort(), MARKET_INSIGHT_DYNAMIC_TEXT.map((e) => `${e}.text`).sort());
-  // Those three clients declare NO attribution/source_label, so their emitted field object is
-  // still EXACTLY the original 6 keys — no consumer sees a shape change.
+  // Those three clients declare NO attribution/source_label, so those two keys stay absent for
+  // all three (this test's actual subject). NDIS/CFW additionally still emit EXACTLY the
+  // original 6 keys — no consumer sees a shape change. PP is asserted separately below: cc-0089
+  // (2026-07-31) DELIBERATELY adds a 7th key ('cta', a real-brand-copy CTA-placeholder fix,
+  // PK-authored) to PP ONLY, so it is intentionally excluded from the "still exactly 6 keys"
+  // shape assertion here — this test's attribution/source_label claim is unaffected either way.
   for (const [id, cat, foot] of [
-    [PP_ID, 'PROPERTY NEWS', 'propertypulse.com.au'],
     [NDIS_ID, 'NDIS UPDATE', 'NDIS Yarns'],
     [CFW_ID, 'CARE UPDATE', 'Care For Welfare'],
   ] as const) {
@@ -85,6 +88,15 @@ Deno.test('T3-T5 PP / NDIS / CFW mappings and emitted fields are unchanged', () 
     assertEquals(f.footer, foot);
     assertEquals((f as Record<string, unknown>).attribution, undefined);
     assertEquals((f as Record<string, unknown>).source_label, undefined);
+  }
+  {
+    const f = buildProofFieldsFromDraft(draft(PP_ID), FIXED);
+    assertEquals(Object.keys(f).sort(), ['category', 'cta', 'date', 'footer', 'headline', 'location', 'subtitle']);
+    assertEquals(f.category, 'PROPERTY NEWS');
+    assertEquals(f.footer, 'propertypulse.com.au');
+    assertEquals((f as Record<string, unknown>).attribution, undefined);
+    assertEquals((f as Record<string, unknown>).source_label, undefined);
+    assertEquals((f as Record<string, unknown>).cta, 'Explore the latest market update');
   }
   for (const c of [PP_IMAGE_QUOTE_NEWS_CARD_V1, NDIS_IMAGE_QUOTE_NEWS_CARD_V1, CFW_IMAGE_QUOTE_NEWS_CARD_V1]) {
     assertEquals(fixed(c, 'attribution'), undefined);
