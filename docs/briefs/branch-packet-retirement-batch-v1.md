@@ -94,3 +94,25 @@ lane for `cc-sched-editor-p1`'s 7 files as its own small gate → (5) one regist
 - **E3 delivered:** `docs/briefs/cc-sched-editor-p1-ledger-backfill-packet-v1.md` (bounded, 7 files, verify-or-abort; branch NOT retired).
 - **⚠ Branch deletions BLOCKED by environment policy:** `git push --delete` returns HTTP 403 through this container's git proxy (both repos; retried; ls-remote confirms all five refs intact). Retirement therefore reverts to the v6.89 precedent — **PK runs the §1 commands** (all preservation preconditions are now satisfied; every §1 deletion is archive-proven lossless). Tip SHAs at record time: CE r0vbuf `73d82bf` · w1-v2 `391f47f` · s9-v2 `b7e371e` · dashboard r0vbuf `2f8d5e5` · dashboard s2-gcp-slice3 `07d9c42` (merged-ancestor re-confirmed at deletion attempt).
 - **STOP list untouched** (S5 lane · S6 lane · ccf04-review-packet-v2 · cc-sched-editor-p1 · tmr-template-intake-ui-v0 · legacy mass). Local CE `main` fast-forwarded to `origin/main` (pointer hygiene only).
+
+## 8. S3 CLOSE — operator deletion action, 2026-07-31 (recorded, not re-investigated)
+
+Per PK instruction, the five deletions were run as a small operator action with per-ref tip verification:
+
+| Ref | Recorded SHA | Live tip at action | Tip check | Deletion result |
+|---|---|---|---|---|
+| CE `claude/creatomate-global-progress-r0vbuf` | `73d82bf` | `73d82bf` | MATCH | **BLOCKED — proxy 403** |
+| CE `lane/w1-planner-dark-v2` | `391f47f` | `391f47f` | MATCH | **BLOCKED — proxy 403** |
+| CE `lane/s9-cta-text-bounded-regen-v2` | `b7e371e` | `b7e371e` | MATCH | **BLOCKED — proxy 403** |
+| dashboard `claude/creatomate-global-progress-r0vbuf` | `2f8d5e5` | `2f8d5e5` | MATCH | **BLOCKED — proxy 403** |
+| dashboard `s2-gcp-slice3` | `07d9c42` | `07d9c42` | MATCH | **BLOCKED — proxy 403** |
+
+All five tips verified unmoved (zero drift — no per-ref STOP tripped). Deletion attempted individually per
+ref via `git push origin --delete`; every attempt rejected by the container git proxy (HTTP 403 — destructive
+ref updates blocked at the environment level, both repos). The session's GitHub MCP toolset was also checked:
+no branch/ref-deletion tool exists. **No ref was changed; nothing half-deleted** (re-confirmed by ls-remote).
+
+**Disposition:** the five deletions remain exactly the §1 PK-run commands — every one is tip-verified,
+archive-proven lossless (`f95d220`), and safe to run as-is. Should a tip move before PK runs them, the §8
+rule applies: stop only that deletion. **S3 (Branch and Packet Retirement) is CLOSED** — archive landed,
+E1/E2 applied, E3 packet delivered, STOP list untouched, deletions handed to PK as a mechanical action.
