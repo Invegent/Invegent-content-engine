@@ -220,8 +220,14 @@ The §2 tables were designed against repo-derived assumptions; live truth change
    the "no natural video_short_stat render since the rotation apply" carry), fb → carousel or
    image_quote. Live-ready PP cells for the window: fb iq (⚠ announcement_card STOP flag) ·
    fb carousel · ig iq · ig carousel · ig video_short_stat · li iq · plus exempt text on fb/li.
-5. **PP facebook is paused until 2026-08-01 10:33Z** (expires before the window) — re-verify NULL
-   at apply; if still set, that is a named live pre-check failure → STOP.
+5. **[SUPERSEDED by PK reconciliation 2026-07-31 — see runbook §R]** PP facebook now carries the
+   **`VISUAL_RELEASE_HOLD — CTA_PLACEHOLDER`** bounded exception: `paused_until` CAS-moved
+   `2026-08-02 12:00Z → 2026-08-03 12:00Z` (hold rollback value `2026-08-02 12:00Z`; rationale-only
+   reference: selector-policy row `efd263a5…`). The active hold is an ACCEPTED bounded exception,
+   not an apply STOP; PP×fb×image_quote (and all PP facebook publishing + fills) is excluded while
+   paused — day-1 (Mon) PP fb slots are expected `publish_path_disabled` skips; PP fb evidence runs
+   Tue–Sun. Apply STOP fires only if `paused_until` reads any value other than
+   `2026-08-03 12:00:00+00` or NULL.
 
 ## 3. Exact temporary cap amendments required
 
@@ -418,6 +424,7 @@ a tripped STOP voids the remainder of the window per Convention 2).
 |---|---|---|
 | A1 schedule rows | `save_publish_schedule` per touched cell (PP fb/ig/li · CFW fb/ig/li · Invegent fb/ig/li), resubmitting the P1 dump rows verbatim (replace-all restores exactly); NDIS untouched | P1 dump `docs/briefs/data/s5-p1-client-publish-schedule-dump-2026-07-31.json`, sha256 `7b8fecd83ef51c7a5aeaec080d9372f6e4488497693ae963b17f1ab954c5b07a` |
 | A2 max_per_day (5 calls) | `save_publish_cadence` back to P1 values | PP fb (2,20) · PP ig (2,6) · NDIS fb (2,10) · CFW fb/ig (2,10) · Invegent fb/ig (2,10) — live-verified 2026-07-31 |
+| PP fb `paused_until` | **EXCLUDED from S5 rollback** — PK-owned visual release hold (runbook §R); S5 never writes this column | hold's own rollback value: `2026-08-02 12:00:00+00` (PK's, outside S5) |
 | A3 UI cap overrides (9 new rows) | `save_schedule_cap_override(client, platform, NULL, NULL)` per new row; **NDIS's 4 pre-existing rows left untouched** | new rows deleted → tier default (2/day, 5/week); NDIS rows remain fb/ig/yt 4/28 · li 2/14 |
 | A4 PP mix overrides | DELETE the inserted `c.client_format_mix_override` rows | table back to 0 rows (global state pre-window) |
 | A6 dedup (only if elected) | `UPDATE t.dedup_policy SET same_canonical_block_hours=168 WHERE policy_name='default' AND is_current=true` | 168 |

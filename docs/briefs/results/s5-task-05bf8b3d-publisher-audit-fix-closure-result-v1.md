@@ -73,3 +73,19 @@ announcement_card barred from unattended automatic selection until proven fixed.
   that the pause is no longer active.
 - S5 consequence: **PP × facebook × image_quote is INCLUDED in the evidence window (decision 2
   first preference met — Variant A of `s5-apply-runbook-v1.md`).**
+
+## 5. Reconciliation addendum (2026-07-31 — supersedes §4's unqualified inclusion)
+
+PK reconciliation ruling (same day, after this doc was cut): PP × facebook × image_quote is
+classified **`VISUAL_RELEASE_HOLD — CTA_PLACEHOLDER`**. Inclusion stands **subject to the hold**:
+- Hold **mechanism** = `c.client_publish_profile.paused_until` (property-pulse × facebook);
+  selector-policy row `efd263a5…` is **rationale only**, not a mechanism.
+- Successful CAS mutation recorded: `2026-08-02 12:00:00+00` → **`2026-08-03 12:00:00+00`**
+  (live-verified 2026-07-31); hold rollback value `2026-08-02 12:00:00+00` (PK-owned, outside S5's
+  restoration set — S5 never writes `paused_until`).
+- The path stays **excluded while paused** (with all PP facebook publishing + fills); the active
+  hold is converted from a global apply STOP into **one accepted bounded exception** (runbook §R);
+  all unaffected S5 schedule/cadence/evidence changes continue. Day-1 PP fb slots = expected
+  `publish_path_disabled` skips; PP fb evidence runs Tue 2026-08-04 onward unless PK extends.
+- The `task_05bf8b3d` audit-defect closure in §1–§3 is unaffected — the gate stays cleared; the
+  remaining withhold on this cell is the visual (CTA placeholder) release, not the audit defect.

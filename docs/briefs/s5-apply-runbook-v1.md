@@ -14,9 +14,11 @@ before the Sun 22:00 Sydney deadline and the Mon 01:00 materialise.
 ## Ordered sequence (single batch; a tripped STOP voids the remainder)
 
 **S0 — pre-checks (read-only):**
-1. `SELECT paused_until, publish_enabled FROM c.client_publish_profile` for property-pulse×facebook →
-   **STOP unless `paused_until IS NULL OR paused_until <= now()`** (decision 4; the recorded value
-   `2026-08-01 10:33:02Z` in the past satisfies "pause not active" — record the literal value).
+1. **[AMENDED — PK reconciliation 2026-07-31]** `SELECT paused_until, publish_enabled FROM
+   c.client_publish_profile` for property-pulse×facebook → **EXPECT exactly
+   `paused_until = '2026-08-03 12:00:00+00'`** (the accepted bounded exception, §R below). This
+   active hold is **NOT a STOP**. STOP only if the value is anything OTHER than
+   `2026-08-03 12:00:00+00` or NULL (a different value = un-reconciled drift → fresh PK gate).
 2. Baseline drift check: re-read the 14 profile rows + per-cell schedule row counts + cap-override
    rows + mix-override count (expect 0) and diff against the P1 snapshot → **STOP on any drift**
    other than the known pause expiry (something else changed production since P1 → fresh PK gate).
@@ -62,6 +64,13 @@ VALUES
  ('4036a6b5-b4a3-406e-998d-c2fe14a8bbdd','linkedin','image_quote',50,'s5-evidence-window','2026-08-01')
 RETURNING override_id;
 ```
+**Variant A qualification [PK reconciliation 2026-07-31]:** PP fb image_quote is included **subject
+to the §R visual release hold** — the path is excluded (with all PP facebook publishing) while
+`paused_until` is active, and resumes when the hold lapses (Mon 2026-08-03 22:00 Sydney) or PK
+clears it earlier. Day-1 PP facebook slots are **expected `publish_path_disabled` skips** (the
+cc-0019 fill-eligibility gate blocks fills while paused) — recorded evidence, not a failure. The A4
+facebook mix rows are applied unchanged; their day-1 allocations skip, and flow from Tue 2026-08-04.
+
 Variant B (PP fb image_quote EXCLUDED — decision 3): replace the four facebook rows with
 `carousel 60 · text 25 · animated_text_reveal 15` (image_quote share 0 — no row). **Named residual
 (not silent):** the ai-worker format advisor can override a slot's allocated format; a Variant-B
@@ -79,5 +88,30 @@ nightly run (or trigger re-flow evidence immediately).
 restoration values (§7 of the plan) reproduce P1; schedule the 2026-08-10 09:00 Sydney rollback
 reminder.
 
-**STOPs (non-removable):** PP fb pause active · baseline drift · any RPC error/bounds rejection ·
-readback ≠ submitted · unexpected rows in any touched table · rollback artifacts unreadable.
+**STOPs (non-removable, as amended 2026-07-31):** PP fb `paused_until` ≠ `2026-08-03 12:00:00+00`
+and ≠ NULL (the pinned bounded exception; any other value = drift) · baseline drift elsewhere · any
+RPC error/bounds rejection · readback ≠ submitted · unexpected rows in any touched table · rollback
+artifacts unreadable.
+
+## §R — PP Facebook visual release hold (PK reconciliation record, 2026-07-31)
+
+- **Classification: PP × facebook × image_quote = `VISUAL_RELEASE_HOLD — CTA_PLACEHOLDER`.**
+- **Hold mechanism:** `c.client_publish_profile.paused_until` (property-pulse × facebook) — the
+  platform-level pause is the exclusion mechanism; while active it holds ALL PP facebook publishing
+  and (via the cc-0019 fill-eligibility gate) PP facebook slot fills.
+- **Rationale only (not a mechanism):** selector-policy row `efd263a5-c86c-427b-9b75-add157e95c96`
+  ("supervised hold pending render inspection") — announcement_card's CTA still carries Creatomate
+  placeholder text; visual release withheld until PK passes it.
+- **CAS mutation (successful, PK-recorded):** `paused_until` `2026-08-02 12:00:00+00` →
+  **`2026-08-03 12:00:00+00`** (live-verified 2026-07-31; hold now lapses Mon 2026-08-03 22:00
+  Sydney — inside window day 1). **Rollback value for the hold: `2026-08-02 12:00:00+00`.**
+- **Bounded exception:** the active hold at apply time is accepted and is NOT an apply STOP; its
+  scope is exactly the pause interval. Effect on the window: PP facebook day-1 slots (Mon 07:30 +
+  16:30 Sydney) skip `publish_path_disabled` (recorded evidence); PP facebook evidence — all
+  formats — runs Tue 2026-08-04 through Sun 2026-08-09 unless PK extends the hold.
+- **S5 rollback carve-out:** S5's restoration set **never writes `paused_until`**. The P1 snapshot's
+  recorded value (`2026-08-01 10:33:02Z`) is historical only — restoring it would shorten a PK-owned
+  hold. The hold's own rollback (`2026-08-02 12:00:00+00`) is PK's, outside S5.
+- Unaffected: every other S5 schedule, cadence, cap and mix change proceeds unchanged; payloads
+  (`s5-apply-a1-payloads-v1.json`, `s5-rollback-a1-payloads-v1.json`) require **no data change** —
+  this reconciliation is expectation/runbook-level only.
