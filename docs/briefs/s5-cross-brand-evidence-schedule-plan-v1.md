@@ -220,14 +220,18 @@ The §2 tables were designed against repo-derived assumptions; live truth change
    the "no natural video_short_stat render since the rotation apply" carry), fb → carousel or
    image_quote. Live-ready PP cells for the window: fb iq (⚠ announcement_card STOP flag) ·
    fb carousel · ig iq · ig carousel · ig video_short_stat · li iq · plus exempt text on fb/li.
-5. **[SUPERSEDED by PK reconciliation 2026-07-31 — see runbook §R]** PP facebook now carries the
-   **`VISUAL_RELEASE_HOLD — CTA_PLACEHOLDER`** bounded exception: `paused_until` CAS-moved
-   `2026-08-02 12:00Z → 2026-08-03 12:00Z` (hold rollback value `2026-08-02 12:00Z`; rationale-only
-   reference: selector-policy row `efd263a5…`). The active hold is an ACCEPTED bounded exception,
-   not an apply STOP; PP×fb×image_quote (and all PP facebook publishing + fills) is excluded while
-   paused — day-1 (Mon) PP fb slots are expected `publish_path_disabled` skips; PP fb evidence runs
-   Tue–Sun. Apply STOP fires only if `paused_until` reads any value other than
-   `2026-08-03 12:00:00+00` or NULL.
+5. **[Reconciliation history — final state: `VISUAL_RELEASE_PASS — CTA_RESOLVED` (runbook §R2)]**
+   First reconciliation (2026-07-31, runbook §R, now superseded): PP facebook carried a
+   **`VISUAL_RELEASE_HOLD — CTA_PLACEHOLDER`** bounded exception — `paused_until` CAS-moved
+   `2026-08-02 12:00Z → 2026-08-03 12:00Z` (hold rollback `2026-08-02 12:00Z`; rationale-only
+   selector-policy row `efd263a5…`), path excluded while paused, day-1 skips expected.
+   Second reconciliation (2026-07-31, runbook §R2, **governing**): CTA production fix deployed +
+   PK visual PASS → hold resolved; PP×fb×image_quote restored to **Variant A without
+   qualification**; day-1 skip expectation withdrawn; because the pause is **platform-wide**, its
+   clearing (`→ NULL`) is a named **pre-window requirement under separate explicit mutation
+   authorisation** — never written by this lane. Apply STOP fires only if `paused_until` reads a
+   non-NULL value other than the transitional `2026-08-03 12:00:00+00`. A smoke-only field-merge
+   defect remains separately bounded and does not affect the production render path.
 
 ## 3. Exact temporary cap amendments required
 

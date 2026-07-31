@@ -14,11 +14,14 @@ before the Sun 22:00 Sydney deadline and the Mon 01:00 materialise.
 ## Ordered sequence (single batch; a tripped STOP voids the remainder)
 
 **S0 — pre-checks (read-only):**
-1. **[AMENDED — PK reconciliation 2026-07-31]** `SELECT paused_until, publish_enabled FROM
-   c.client_publish_profile` for property-pulse×facebook → **EXPECT exactly
-   `paused_until = '2026-08-03 12:00:00+00'`** (the accepted bounded exception, §R below). This
-   active hold is **NOT a STOP**. STOP only if the value is anything OTHER than
-   `2026-08-03 12:00:00+00` or NULL (a different value = un-reconciled drift → fresh PK gate).
+1. **[AMENDED AGAIN — PK reconciliation #2, 2026-07-31, §R2 below]** `SELECT paused_until,
+   publish_enabled FROM c.client_publish_profile` for property-pulse×facebook → **EXPECT `NULL`
+   (cleared) or, transitionally, `'2026-08-03 12:00:00+00'`** (the now-superseded hold value, if
+   the separately-authorised clearing mutation has not yet run). Neither is a STOP. STOP only on
+   any OTHER non-NULL value (= un-reconciled drift → fresh PK gate). **If the value still reads
+   `2026-08-03 12:00:00+00` at apply time, record in the apply result that the pre-window clearing
+   (§R2 item 3) is still outstanding and must land before the Monday fills** — this lane holds no
+   authorisation to write `paused_until`.
 2. Baseline drift check: re-read the 14 profile rows + per-cell schedule row counts + cap-override
    rows + mix-override count (expect 0) and diff against the P1 snapshot → **STOP on any drift**
    other than the known pause expiry (something else changed production since P1 → fresh PK gate).
@@ -64,12 +67,13 @@ VALUES
  ('4036a6b5-b4a3-406e-998d-c2fe14a8bbdd','linkedin','image_quote',50,'s5-evidence-window','2026-08-01')
 RETURNING override_id;
 ```
-**Variant A qualification [PK reconciliation 2026-07-31]:** PP fb image_quote is included **subject
-to the §R visual release hold** — the path is excluded (with all PP facebook publishing) while
-`paused_until` is active, and resumes when the hold lapses (Mon 2026-08-03 22:00 Sydney) or PK
-clears it earlier. Day-1 PP facebook slots are **expected `publish_path_disabled` skips** (the
-cc-0019 fill-eligibility gate blocks fills while paused) — recorded evidence, not a failure. The A4
-facebook mix rows are applied unchanged; their day-1 allocations skip, and flow from Tue 2026-08-04.
+**Variant A qualification [SUPERSEDED by §R2 — PK reconciliation #2, 2026-07-31]:** the visual
+hold is resolved (`VISUAL_RELEASE_PASS — CTA_RESOLVED`). **PP fb image_quote is included in
+Variant A without qualification**; all PP facebook formats are expected to operate normally from
+window day 1, provided the pre-window `paused_until` clearing (§R2 item 3, separately authorised)
+lands before the Monday fills. The prior text of this block (hold-scoped exclusion + expected
+day-1 `publish_path_disabled` skips) is retained in git history and summarised in §R; it no longer
+applies.
 
 Variant B (PP fb image_quote EXCLUDED — decision 3): replace the four facebook rows with
 `carousel 60 · text 25 · animated_text_reveal 15` (image_quote share 0 — no row). **Named residual
@@ -88,12 +92,12 @@ nightly run (or trigger re-flow evidence immediately).
 restoration values (§7 of the plan) reproduce P1; schedule the 2026-08-10 09:00 Sydney rollback
 reminder.
 
-**STOPs (non-removable, as amended 2026-07-31):** PP fb `paused_until` ≠ `2026-08-03 12:00:00+00`
-and ≠ NULL (the pinned bounded exception; any other value = drift) · baseline drift elsewhere · any
-RPC error/bounds rejection · readback ≠ submitted · unexpected rows in any touched table · rollback
+**STOPs (non-removable, as amended by §R2):** PP fb `paused_until` reads any non-NULL value other
+than the transitional `2026-08-03 12:00:00+00` (= drift) · baseline drift elsewhere · any RPC
+error/bounds rejection · readback ≠ submitted · unexpected rows in any touched table · rollback
 artifacts unreadable.
 
-## §R — PP Facebook visual release hold (PK reconciliation record, 2026-07-31)
+## §R — PP Facebook visual release hold (PK reconciliation record, 2026-07-31) — **SUPERSEDED by §R2; retained append-only as history**
 
 - **Classification: PP × facebook × image_quote = `VISUAL_RELEASE_HOLD — CTA_PLACEHOLDER`.**
 - **Hold mechanism:** `c.client_publish_profile.paused_until` (property-pulse × facebook) — the
@@ -115,3 +119,30 @@ artifacts unreadable.
 - Unaffected: every other S5 schedule, cadence, cap and mix change proceeds unchanged; payloads
   (`s5-apply-a1-payloads-v1.json`, `s5-rollback-a1-payloads-v1.json`) require **no data change** —
   this reconciliation is expectation/runbook-level only.
+
+## §R2 — Visual hold RESOLVED (PK reconciliation #2, 2026-07-31) — governs over §R
+
+1. **Classification superseded:** PP × facebook × image_quote =
+   **`VISUAL_RELEASE_PASS — CTA_RESOLVED`** (was `VISUAL_RELEASE_HOLD — CTA_PLACEHOLDER`).
+   Authoritative facts (PK): the governed Announcement Card CTA production fix is **deployed**; the
+   corrected render received **PK visual PASS**; the CTA-placeholder release condition is
+   **closed**. A **smoke-only field-merge defect** remains under its own separately bounded
+   follow-up and **does not affect the production render path** — it is not an S5 condition.
+2. **Bounded exception removed:** the active hold is no longer an accepted exception in the S5
+   apply conditions; PP fb image_quote returns to **Variant A without qualification**; the expected
+   Monday `publish_path_disabled` outcome is **withdrawn** — all PP facebook formats are expected
+   to operate normally across the full window.
+3. **Pause clearing is a named PRE-WINDOW requirement, not an expiry wait:** the pause is
+   **platform-wide** (it blocks all PP facebook publishing and fills), so leaving it to lapse at
+   2026-08-03 22:00 Sydney would consume window day 1 — it **must be cleared before the window**
+   (before the Monday fills). **This lane holds NO authorisation to write `paused_until`** — the
+   clearing is a separate explicit mutation authorisation (PK, or a PK-authorised single-column
+   UPDATE/CAS `'2026-08-03 12:00:00+00' → NULL`). Until that lands, S0 treats the old value as
+   transitional, applies everything else, and records the outstanding clearing in the apply result.
+4. **History preserved append-only (§R + result-doc §5):** hold mechanism
+   `c.client_publish_profile.paused_until` · rationale-only selector-policy row `efd263a5…` · CAS
+   extension `2026-08-02 12:00Z → 2026-08-03 12:00Z` (hold rollback value `2026-08-02 12:00Z`,
+   PK-owned) · the earlier bounded exception · this visual PASS and supersession. S5's rollback
+   still never writes `paused_until`.
+5. **Payloads inspected: unchanged** — the resolution touches no schedule/cadence/override/mix
+   data; `s5-apply-a1-payloads-v1.json` and `s5-rollback-a1-payloads-v1.json` stand byte-identical.

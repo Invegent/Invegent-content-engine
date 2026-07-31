@@ -89,3 +89,19 @@ classified **`VISUAL_RELEASE_HOLD — CTA_PLACEHOLDER`**. Inclusion stands **sub
   `publish_path_disabled` skips; PP fb evidence runs Tue 2026-08-04 onward unless PK extends.
 - The `task_05bf8b3d` audit-defect closure in §1–§3 is unaffected — the gate stays cleared; the
   remaining withhold on this cell is the visual (CTA placeholder) release, not the audit defect.
+
+## 6. Second reconciliation addendum (2026-07-31 — hold RESOLVED; supersedes §5's exclusion)
+
+PK reconciliation #2 (authoritative facts): the governed Announcement Card **CTA production fix is
+deployed**, the corrected render received **PK visual PASS**, and the CTA-placeholder release
+condition is **closed**. Classification superseded: **`VISUAL_RELEASE_PASS — CTA_RESOLVED`**.
+- PP × facebook × image_quote restored to **Variant A without qualification**; the expected Monday
+  `publish_path_disabled` outcome is withdrawn; all PP facebook formats are expected to operate
+  normally across the window.
+- The platform-wide pause **must be cleared before the evidence window** (not left to expire mid
+  day-1); the clearing is a **separate explicit mutation authorisation** — this lane never writes
+  `paused_until`.
+- A **smoke-only field-merge defect** remains under its own separately bounded follow-up; it does
+  **not** affect the production render path and is not an S5 condition.
+- §5's history (hold mechanism · CAS extension · bounded exception) is preserved append-only above;
+  full record: runbook §R (historical) + §R2 (governing).
