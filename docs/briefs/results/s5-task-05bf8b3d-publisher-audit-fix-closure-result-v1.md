@@ -1,10 +1,11 @@
-CLAIMED v6.94 · s5-cross-brand-evidence-schedule (task_05bf8b3d closure) · claude/s5-cross-brand-evidence-schedule-x7rbn8 · PK-decision-2 gate · 2026-07-31T03:35Z
+CLAIMED v6.95 · s5-cross-brand-evidence-schedule (task_05bf8b3d closure) · claude/s5-cross-brand-evidence-schedule-x7rbn8 · PK-decision-2 gate · 2026-07-31T03:35Z
 > Renumbered v6.88 → v6.94: collision with main's already-landed v6.88 (`c1a8aa6`, claimed 2026-07-31T04:09:47Z, chained by main v6.89–v6.93). Original claim timestamp preserved above for audit. PK ratified 2026-07-31 (Register Integrity — v6.88 Collision).
+> Re-renumbered v6.94 → v6.95: revalidation against origin/main found a second, later collision — main landed its own v6.94 (`e804112`, "S6 Slice B1") after the first reconciliation was pushed. Mechanical +1 shift applied to the same S5 entries; no new policy question (same PK-ratified rule: main's landed history wins, S5 shifts pre-merge).
 
 # task_05bf8b3d — Facebook Publisher Audit-Write Defect: CLOSED + PROVEN (S5 decision-2 lane)
 
 **Verdict:** CLOSED — fix live, verified, live-behaviour-proven, recorded here; register release
-gate formally cleared at v6.94 under explicit PK authority (S5 apply authorisation, decision 2,
+gate formally cleared at v6.95 under explicit PK authority (S5 apply authorisation, decision 2,
 2026-07-31: *"Close and prove that publisher defect under its own governed gate before the S5 apply
 deadline. Include the PP Facebook image_quote cell only if the fix is live, verified, recorded, and
 the register restriction is formally cleared."*).
@@ -65,7 +66,7 @@ announcement_card barred from unattended automatic selection until proven fixed.
 
 ## 4. Register clearing + conditions
 
-- v6.94 pointer entry (this lane) formally clears the `task_05bf8b3d` release gate. The v6.84
+- v6.95 pointer entry (this lane) formally clears the `task_05bf8b3d` release gate. The v6.84
   **platform scope ruling stands unchanged**: announcement_card production_proven suitability is
   Facebook-only, not extended to LinkedIn/Instagram.
 - **Surfaced, not silent:** the supervised hold ("pending render inspection") expires on its own at

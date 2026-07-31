@@ -6,19 +6,19 @@
 
 ---
 
-> **🟢 v6.96 — S5 reconciliation #2: PP×fb×image_quote = VISUAL_RELEASE_PASS — CTA_RESOLVED (hold resolved; T3 · PRODUCT_PROOF)** — record: `docs/briefs/s5-apply-runbook-v1.md` §R2 + closure result doc §6.
-> · CTA production fix deployed + PK visual PASS → CTA-placeholder release condition CLOSED; supersedes v6.95's bounded exception; PP×fb×image_quote restored to Variant A **without qualification**; Monday `publish_path_disabled` expectation withdrawn — all PP fb formats expected normal across the 2026-08-03→09 window.
+> **🟢 v6.97 — S5 reconciliation #2: PP×fb×image_quote = VISUAL_RELEASE_PASS — CTA_RESOLVED (hold resolved; T3 · PRODUCT_PROOF)** — record: `docs/briefs/s5-apply-runbook-v1.md` §R2 + closure result doc §6.
+> · CTA production fix deployed + PK visual PASS → CTA-placeholder release condition CLOSED; supersedes v6.96's bounded exception; PP×fb×image_quote restored to Variant A **without qualification**; Monday `publish_path_disabled` expectation withdrawn — all PP fb formats expected normal across the 2026-08-03→09 window.
 > · Pause is platform-wide → **clearing `paused_until` (`2026-08-03 12:00Z` → NULL) is a named PRE-WINDOW requirement under separate explicit mutation authorisation** — the S5 lane never writes it. Smoke-only field-merge defect: separately bounded follow-up, does NOT affect the production render path. Payloads inspected: unchanged. History (§R · CAS `2026-08-02→03 12:00Z` · hold rollback `2026-08-02 12:00Z`) preserved append-only.
 
 ---
 
-> **🟡 v6.95 — S5 reconciliation: PP×fb×image_quote = VISUAL_RELEASE_HOLD — CTA_PLACEHOLDER (bounded exception; T3 · PRODUCT_PROOF)** — record: `docs/briefs/s5-apply-runbook-v1.md` §R + `docs/briefs/results/s5-task-05bf8b3d-publisher-audit-fix-closure-result-v1.md` §5.
+> **🟡 v6.96 — S5 reconciliation: PP×fb×image_quote = VISUAL_RELEASE_HOLD — CTA_PLACEHOLDER (bounded exception; T3 · PRODUCT_PROOF)** — record: `docs/briefs/s5-apply-runbook-v1.md` §R + `docs/briefs/results/s5-task-05bf8b3d-publisher-audit-fix-closure-result-v1.md` §5.
 > · Hold mechanism = `c.client_publish_profile.paused_until` (PP×fb); selector-policy `efd263a5…` = rationale only. CAS `2026-08-02 12:00Z` → `2026-08-03 12:00Z` (live-verified); hold rollback `2026-08-02 12:00Z` (PK-owned; S5 rollback never writes `paused_until`).
-> · Supersedes v6.94's unqualified "INCLUDED": path excluded while paused; hold converted from apply STOP to ONE accepted bounded exception; all other S5 changes continue; payloads unchanged (expectation/runbook amendment only). Day-1 PP fb slots = expected `publish_path_disabled` skips; PP fb evidence Tue–Sun.
+> · Supersedes v6.95's unqualified "INCLUDED": path excluded while paused; hold converted from apply STOP to ONE accepted bounded exception; all other S5 changes continue; payloads unchanged (expectation/runbook amendment only). Day-1 PP fb slots = expected `publish_path_disabled` skips; PP fb evidence Tue–Sun.
 
 ---
 
-> **✅ v6.94 — task_05bf8b3d CLOSED: FB publisher audit-write fix live+proven → announcement_card release gate CLEARED (T3 · SAFETY_GATE; PK decision-2, S5 lane)** — result: `docs/briefs/results/s5-task-05bf8b3d-publisher-audit-fix-closure-result-v1.md`.
+> **✅ v6.95 — task_05bf8b3d CLOSED: FB publisher audit-write fix live+proven → announcement_card release gate CLEARED (T3 · SAFETY_GATE; PK decision-2, S5 lane)** — result: `docs/briefs/results/s5-task-05bf8b3d-publisher-audit-fix-closure-result-v1.md`.
 > · publisher v1.12.0 (`701b374`) deployed v102 2026-07-30T09:41Z, bundle byte-verified == repo (sha `95cfb20d…`), verify_jwt=false; live proof: draft `51cc9770…` attempt 1 (website) + attempt 2 (facebook, post-deploy, error NULL) — the exact pre-fix silent-loss scenario, now audited. deploy-verifier sandbox UNREADABLE (fail-closed) → content checks completed orchestrator-side (CCF-02 R1, named); drift advisory unread (FLAG).
 > · Gate cleared per explicit PK decision 2 (S5 apply authorisation 2026-07-31); v6.84 Facebook-only suitability ruling unchanged. Supervised-hold note: PP×fb `paused_until` 2026-08-01T10:33Z = cc-0089 render-inspection hold, expires on its own — flagged to PK in the result doc.
 > · S5: PP×facebook×image_quote INCLUDED in the 2026-08-03→09 evidence window (runbook Variant A).
