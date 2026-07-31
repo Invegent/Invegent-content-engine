@@ -2,6 +2,10 @@
 
 **Created:** 2026-07-31 · **Authority:** PK ruling E3 on `docs/briefs/branch-packet-retirement-batch-v1.md`
 **Status:** AUTHORED — awaiting PK gate. **Nothing recovered, committed, or deleted by this packet.**
+**Amended 2026-07-31 (pre-gate, packet not frozen):** §5 pre-gate verification record added; the §3
+step-1 ledger check corrected from version-number-presence to migration-NAME-presence after the live
+ledger read returned the actual applied identities (§5.2) — the branch filenames and the ledger
+versions differ by the established MCP-apply pattern, a recorded fact, not a defect in the files.
 **Tier:** T1 (docs/repo-record only — zero DB change; the migrations are ALREADY APPLIED live, verified v6.88)
 **Boundary:** `cc-sched-editor-p1` is **NOT retired** (PK ruling); it stays the sole reference copy until this packet lands.
 
@@ -31,10 +35,17 @@ this packet intentionally records none (this container cannot read the branch �
 
 ## 3. Execution steps (docs-only register-lane discipline, verify-or-abort)
 
-1. **Verify-or-abort (per file):** sha256 of each received file matches PK's conveyed hash; F1/F2
-   version identities `20260727100000`/`20260727100100` are ABSENT from `supabase/migrations/` on
-   `main` (no collision) and PRESENT in the live `schema_migrations` ledger (read-only check — proves
-   these are records of applied history, not new migrations). Any mismatch → STOP, return actuals.
+1. **Verify-or-abort (per file):** sha256 of each received file matches PK's conveyed hash; the F1/F2
+   migration NAMES `p1a_schedule_format_override_surface` / `p1c_materialise_slots_honour_format_override`
+   are ABSENT from `supabase/migrations/` on `main` under ANY version prefix (no collision) and PRESENT
+   in the live `schema_migrations` ledger BY NAME (read-only check — proves these are records of applied
+   history, not new migrations). The live ledger identities are `20260727032218` (p1a) and `20260727032613`
+   (p1c) — NOT the branch filenames' `20260727100000`/`20260727100100`; this version-prefix difference is
+   the established pattern for MCP-applied migrations already on `main` (precedents:
+   `20260727120000_video_render_claim_rpc.sql` vs ledger `20260727101335`;
+   `20260727150000_pb1_publish_cadence_write_rpc.sql` vs ledger `20260727090955`) and is RECORDED in the
+   result note, never a STOP. Any hash mismatch, name-collision on `main`, or name-absence from the live
+   ledger → STOP, return actuals.
 2. **Byte-exact placement** at the canonical paths (no edits, no banner stamped into F1/F2 — an
    APPLIED-banner already in the files stays as-is; provenance goes in the commit message + result note).
 3. **`branch-warden`** (authorized-main-docs mode): file set == exactly F1–F7, nothing else; readback diff.
@@ -46,6 +57,28 @@ this packet intentionally records none (this container cannot read the branch �
 
 ## 4. STOP conditions
 
-Hash mismatch on any file · migration-version collision on `main` · either version missing from the live
-ledger · any file content contradicting the live function bodies re-verified in v6.88 (surface to PK — no
-hand-reconciliation) · any eighth file in the change set.
+Hash mismatch on any file · migration NAME collision on `main` (any version prefix) · either migration
+NAME missing from the live ledger · any file content contradicting the live function bodies re-verified
+in v6.88 (surface to PK — no hand-reconciliation) · any eighth file in the change set.
+
+## 5. Pre-gate verification record — 2026-07-31 (from this container; conveyance still pending)
+
+Everything checkable WITHOUT the branch was verified this session, ahead of PK's gate:
+
+1. **No collision on `origin/main` (F1–F7):** `git ls-tree origin/main` shows no `p1a_*`/`p1c_*`
+   migration under any version prefix, no `20260727100000`/`20260727100100`, and none of the five
+   `docs/briefs/artifacts/p1-*` paths. All seven canonical landing paths are free.
+2. **Live ledger presence BY NAME (read-only `list_migrations`, project `mbkmaxqhsohbtwsqolns`):**
+   `20260727032218_p1a_schedule_format_override_surface` and
+   `20260727032613_p1c_materialise_slots_honour_format_override` are both in the applied ledger.
+   The branch filenames carry `20260727100000`/`20260727100100` (per v6.88 §6) — the prefix difference
+   matches the two `main` precedents named in §3.1 (MCP `apply_migration` stamps its own apply-time
+   version). Consequence to record, not fix, in this lane: like those precedents, the backfilled F1/F2
+   will show as "not applied" to filename-based tooling (`supabase migration list` / `db push`) — a
+   known cosmetic drift class on `main`; any repair-history step is a separate future PK decision,
+   never part of this T1 lane.
+3. **Conveyance NOT yet received:** `git ls-remote origin 'refs/heads/cc-sched-editor-p1*'` returns
+   nothing — the branch exists only on PK's machine, and no out-of-band file+sha256 set has been
+   supplied. **The lane is blocked at §2 until PK conveys (Option A push, or Option B files+hashes).**
+4. **Retirement boundary re-confirmed:** `cc-sched-editor-p1` is deleted nowhere; per PK ruling it is
+   assessed for retirement only AFTER this backfill lands (then via the next retirement batch).
