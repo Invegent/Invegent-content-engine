@@ -1,0 +1,1129 @@
+{
+ "generated_from_dump_sha256": "7b8fecd83ef51c7a5aeaec080d9372f6e4488497693ae963b17f1ab954c5b07a",
+ "semantics": "save_publish_schedule replace-all: each payload is the COMPLETE row set for its (client,platform); untouched cells (all ndis-yarns, all youtube) get NO call",
+ "payloads": {
+  "property-pulse|facebook": [
+   {
+    "day_of_week": 0,
+    "publish_time": "07:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "16:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "07:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "16:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "07:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "12:00:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "16:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "07:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "16:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "07:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "12:00:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "16:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "07:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "16:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "17:00:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "07:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "10:00:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "16:30:00",
+    "enabled": true
+   }
+  ],
+  "property-pulse|instagram": [
+   {
+    "day_of_week": 0,
+    "publish_time": "10:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "17:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "07:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "10:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "17:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "07:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "10:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "17:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "10:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "17:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "10:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "12:00:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "17:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "10:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "12:00:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "17:30:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "10:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "17:30:00",
+    "enabled": true
+   }
+  ],
+  "property-pulse|linkedin": [
+   {
+    "day_of_week": 0,
+    "publish_time": "12:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "16:45:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "07:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "12:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "16:45:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "10:00:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "12:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "16:45:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "12:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "16:45:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "10:00:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "12:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "16:45:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "12:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "16:45:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "12:00:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "16:45:00",
+    "enabled": true
+   }
+  ],
+  "care-for-welfare-pty-ltd|facebook": [
+   {
+    "day_of_week": 0,
+    "publish_time": "09:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "09:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "09:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "09:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "09:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "09:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "09:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "17:30:00",
+    "enabled": false
+   }
+  ],
+  "care-for-welfare-pty-ltd|instagram": [
+   {
+    "day_of_week": 0,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "11:02:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "11:02:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "11:02:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "11:02:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "11:02:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "11:02:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "11:02:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "13:04:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "17:30:00",
+    "enabled": false
+   }
+  ],
+  "care-for-welfare-pty-ltd|linkedin": [
+   {
+    "day_of_week": 0,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "13:04:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "13:04:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "13:04:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "13:04:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "13:04:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "13:04:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "17:30:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "09:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "11:02:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "13:04:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "17:30:00",
+    "enabled": false
+   }
+  ],
+  "invegent|facebook": [
+   {
+    "day_of_week": 0,
+    "publish_time": "08:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "08:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "08:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "08:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "08:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "08:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "08:06:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "17:36:00",
+    "enabled": false
+   }
+  ],
+  "invegent|instagram": [
+   {
+    "day_of_week": 0,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "10:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "10:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "10:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "10:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "10:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "10:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "10:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "12:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "17:36:00",
+    "enabled": false
+   }
+  ],
+  "invegent|linkedin": [
+   {
+    "day_of_week": 0,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "12:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 0,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "12:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 1,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "12:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 2,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "12:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 3,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "12:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 4,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "12:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 5,
+    "publish_time": "17:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "08:06:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "10:36:00",
+    "enabled": false
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "12:36:00",
+    "enabled": true
+   },
+   {
+    "day_of_week": 6,
+    "publish_time": "17:36:00",
+    "enabled": false
+   }
+  ]
+ }
+}

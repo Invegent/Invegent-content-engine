@@ -6,6 +6,13 @@
 
 ---
 
+> **✅ v6.88 — task_05bf8b3d CLOSED: FB publisher audit-write fix live+proven → announcement_card release gate CLEARED (T3 · SAFETY_GATE; PK decision-2, S5 lane)** — result: `docs/briefs/results/s5-task-05bf8b3d-publisher-audit-fix-closure-result-v1.md`.
+> · publisher v1.12.0 (`701b374`) deployed v102 2026-07-30T09:41Z, bundle byte-verified == repo (sha `95cfb20d…`), verify_jwt=false; live proof: draft `51cc9770…` attempt 1 (website) + attempt 2 (facebook, post-deploy, error NULL) — the exact pre-fix silent-loss scenario, now audited. deploy-verifier sandbox UNREADABLE (fail-closed) → content checks completed orchestrator-side (CCF-02 R1, named); drift advisory unread (FLAG).
+> · Gate cleared per explicit PK decision 2 (S5 apply authorisation 2026-07-31); v6.84 Facebook-only suitability ruling unchanged. Supervised-hold note: PP×fb `paused_until` 2026-08-01T10:33Z = cc-0089 render-inspection hold, expires on its own — flagged to PK in the result doc.
+> · S5: PP×facebook×image_quote INCLUDED in the 2026-08-03→09 evidence window (runbook Variant A).
+
+---
+
 > **✅ v6.87 — Asset Graduation Read Model v1 LIVE (T3 · SAFETY_GATE; read-only, zero production authority)** — result: `docs/briefs/results/cc-0090-asset-graduation-read-model-v1-result.md`, brief: `docs/briefs/cc-0090-asset-graduation-read-model-v1-brief.md`.
 > · Instantiates O-4 from `asset-graduation-contract-v1.md` — the required follow-on before any unattended graduation authority. Migration `20260731001557_cc_0090_asset_graduation_read_model_v1` adds 4 secret-free `ice_ro` views (`asset_graduation_client_owned`, `asset_graduation_shared_reachability`, `asset_graduation_client_pool_policy`, `asset_graduation_geo_classes`), extending the G-RO v2 confined-role pattern (zero PUBLIC/anon/authenticated exposure, `ice_readonly` total grants 10→14, live-asserted). `db-rls-auditor` `concerns`→both should-fix items fixed and re-verified live; `branch-warden` `safe`; external review `agree`/low/high-confidence/no-escalation. Live-reproduced the Slice-1 15-asset shadow batch byte-identically (re-ran the actual evaluator against the new views' output) and confirmed end-to-end zero-prompt reads via `db-read.py`. Adds NO production authority — read-only evidence surface only; C12/C13 still unimplemented.
 
