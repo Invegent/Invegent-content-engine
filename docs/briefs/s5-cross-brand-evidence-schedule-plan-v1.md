@@ -438,9 +438,17 @@ Mid-window slots already consumed are not "rolled back" — they are the evidenc
 **Freeze:** on acceptance, pin this file with `node .claude/helpers/hash-checkpoint.mjs` and record
 the hash. (Optional, zero-authority: a shadow `apply-harness-auditor` pass over the apply packet.)
 
-**External review:** `ask_chatgpt_review` on the frozen packet; `reviewed_input_hash` recorded;
-any non-clean verdict routes by triage class per the orchestration contract. A review is valid only
-for the frozen hash — any edit re-runs it.
+**External review — RUN (2026-07-31):** `ask_chatgpt_review` review_id `49d12314-2726-4082-b4af-83b03a8b3fbb`
+on the frozen packet — `reviewed_input_hash` = rollup `52c87048743b3511971c88c63f5c597fdeaaf131e0a041e5303c0dfbe8ce8fd0`
+(commit `ad72a6d`; freeze verdict STABLE via hash-checkpoint, purpose author-freeze). **Verdict:
+partial · risk medium · confidence high · escalate to PK.** Pushback points (both already
+PK-routed in this packet, no new defect raised): (1) the announcement_card / `task_05bf8b3d`
+policy finding must be ruled before apply — triage class `policy_decision` → PK decision gate;
+(2) PP facebook `paused_until` expiry must be confirmed at apply — already a named live pre-check
+STOP. Reviewer's unverified-claims note (Creatomate quota / 429 handling absent) matches named
+risk R1. **Routing: this lane is correctly stopped at the PK gate.** The only edit after the
+freeze is this review-record block itself; any further substantive edit to the packet re-runs
+external review against a new hash.
 
 **Rev-2 status of the pre-apply checks:** P1–P8 were run read-only on 2026-07-31 and are recorded in
 `docs/briefs/s5-evidence-window-p1-snapshot-v1.md`. P2/P3/P4/P6/P7 are **resolved** (P3: replace-all;
