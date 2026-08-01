@@ -37,7 +37,40 @@
 | Pre-apply check 1 — all-NULL constraints baseline | **CLOSED — CONFIRMED (live `execute_sql`, 2026-08-01, this session)** | `c.creative_provider_template_field`: 144 rows, 0 non-null `constraints` · `c.creative_template_platform_suitability`: 66 rows, 0 non-null. Exactly the packet's claimed baseline (suitability rows additionally confirmed all-NULL). |
 | Pre-apply check 2 — live PostgREST exposed-schema list | **CLOSED — CONFIRMED empirically (REST probe, 2026-08-01)** | PGRST106 contrast probe returned the authoritative live list: `public, graphql_public, k, f, m, c, r, a, t, friction` — **schema `c` IS exposed**, as prior evidence said. Anon probe on the field table via `Accept-Profile: c` correctly bounced `42501 permission denied` (table grants hold). Consequence confirmed: the §9 function REVOKEs are load-bearing (new `c`-schema functions would otherwise be REST-callable by anon via default PUBLIC EXECUTE + anon USAGE on `c`). |
 | Pre-apply advisor baseline (optional, auditor-suggested) | **CAPTURED** | `get_advisors(security)` 2026-08-01: 251 findings — 3 ERROR `security_definer_view` · 92 WARN `function_search_path_mutable` · 50 WARN `authenticated_security_definer_function_executable` · 41 WARN `anon_security_definer_function_executable` · 61 INFO `rls_enabled_no_policy` · 4 other WARN. Only "tmr" hits: two INFO deny-all-RLS notes on unrelated `c.tmr_drift_probe_run`/`c.tmr_shadow_decision`. **Post-apply expectation: ZERO new findings** — in particular none of the 8 new functions may appear under the two SECDEF-executable classes or `function_search_path_mutable`. |
-| PK apply gate | **STOPPED — the ONLY remaining act.** | Nothing applied, deployed, migrated, or on main. Every other prerequisite is now closed (external review clean on the frozen hash · Q1–Q5 decided · both pre-apply checks confirmed · advisor baseline captured). Apply requires PK's separate authorisation against packet hash `7cc5636d…`, per the 2026-08-01 sitting directive ("No apply authority is granted"). |
+| PK apply gate | **AUTHORISED & EXECUTED — 2026-08-01** | PK (direct, this session): "Apply authorised against hash 7cc5636d — execute the sequence." Pre-apply hash re-verified byte-exact = the authorised hash (STOP #1 clear); §5 SQL extracted byte-exact (48,331 B, extraction sha256 `6cbe52dc…`, 8 creates/8 revokes/8 grants confirmed). |
+
+## APPLIED — live record (2026-08-01)
+
+- **Channel:** ONE `apply_migration` call (the named single-call channel), name
+  `tmr5_field_constraints_write_rpcs_and_intake_validator_v2`, minted version **`20260801043347`**
+  (ledger row confirmed). The §0 fail-closed DO-block precondition passed (no pre-existing
+  signature). In-repo record of the applied statement:
+  `supabase/migrations/20260801043347_tmr5_field_constraints_write_rpcs_and_intake_validator_v2.sql`
+  (ledger⇄git drift closed same-day). Honest delta note: the applied string carried §5's
+  executable statements byte-faithfully; §5's trailing reference-only ROLLBACK **comment** block
+  was not part of the applied string (non-executable; preserved in the repo migration file).
+- **Post-apply verification (all PASS, recomputed from ground truth):**
+  1. 8/8 functions live; 5 public entry points `prosecdef=true` + `proconfig={search_path=""}`;
+     3 `c`-schema helpers `search_path=""` pinned; **all 8 ACLs exactly
+     `{postgres=X, service_role=X}`** — anon/authenticated absent.
+  2. **Zero rows written:** field 144/0 and suitability 66/0 unchanged; smoke throwaway rows 0.
+  3. **Advisors 251 → 251:** zero new findings, zero resolved, zero naming any of the 8 new
+     functions (exactly the declared acceptance).
+- **Acceptance smoke — `WS5_SMOKE_PASS`, 6 checks, self-aborting transaction (nothing persisted):**
+  (a) good `HookHeadline` insert → `ok` · (b) duplicate → `field_already_exists` · (c) unknown
+  top-level key → `constraints_invalid:constraints_unknown_key` · (c2) element/key prefix
+  mismatch → `constraints_invalid:modification_key_invalid` (discovered live in smoke run 1,
+  where a script bug passed HookHeadline-keyed constraints under CtaHeadline and the RPC
+  correctly fail-closed — an unplanned live proof of the prefix guard) · (d) TBC triple carrying
+  a number → `limit_tbc_must_have_null_value` · (e) `validate_tmr_template_intake` declared-only
+  mode → `verdict=pass`, `calibration_required=[{HookHeadline, max_lines}]`.
+- **Rollback posture:** the 8 exact-signature `DROP FUNCTION`s (packet §5 tail) remain valid —
+  no data was written, so rollback stays a pure function drop.
+
+**Lane state: WS-5 Phase 1 COMPLETE AND LIVE.** The constraints shapes, governed write RPCs, and
+the P-7 intake-validation consumer exist in production, dark (no caller until the Phase-2 capture
+lane). **Phase 2 remains BLOCKED on PK's `{template_name, provider_template_id}`** from the
+Creatomate transposition sitting. |
 
 ## Named handoffs / carries
 
