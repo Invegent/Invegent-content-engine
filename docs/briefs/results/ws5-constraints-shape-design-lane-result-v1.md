@@ -69,8 +69,38 @@
 
 **Lane state: WS-5 Phase 1 COMPLETE AND LIVE.** The constraints shapes, governed write RPCs, and
 the P-7 intake-validation consumer exist in production, dark (no caller until the Phase-2 capture
-lane). **Phase 2 remains BLOCKED on PK's `{template_name, provider_template_id}`** from the
-Creatomate transposition sitting. |
+lane). |
+
+## PHASE 2 — kinetic template registry capture (EXECUTED 2026-08-01)
+
+**Unblock:** PK delivered `{generic_kinetic_text_9x16_v1, 0bd871ae-79c1-431a-a7bd-9f631a6cf75a}`
+directly (with layer-list screenshots — all 26 element names verified exact; deviations: none).
+**Declared contract:** `docs/briefs/artifacts/ws4-kinetic-declared-contract-v1.json`
+(sha256 `eecab2e731216ff2a692f3ac2570e82bbad1b0c7d084175f2b5bc5eaf120020f`; 26 elements; zero
+invented numbers — every limit `declared_from_source` ai-worker/index.ts:728 or
+`to_be_calibrated`). **Declared-only intake validation: `pass`, 0 hard** (10 `calibration_required`
+items = the probe queue; 6 advisory shape-collapse warnings only).
+**External review (capture plan): CLEAN** — agree · medium · high · zero pushback,
+`review_id f7c1a748-8780-4dab-8e53-d9811e9a47c2`, pinned to the artifact hash.
+**PK capture authorisation:** direct, this session ("capture … and go").
+
+**Executed** as ONE self-aborting transaction (any failure → full rollback): template row
+(`scope='generic'`) → 26 × `record_tmr_template_field` (each fail-closed shape-validated) →
+1 × `record_tmr_platform_suitability` (youtube/default, `candidate`) → 1 append-only audit row
+(Q4) → **in-transaction gate `validate_tmr_template_intake(tid, contract)` = `pass`/0-hard**.
+
+**Post-capture ground truth:** registry id **`9ad024cc-3eda-488e-b346-bc661ec70a6a`** ·
+`scope='generic'` · `status='inventory_captured'` · `inventory_hash` = artifact hash · 26/26
+field rows all with constraints · 1 suitability + 1 audit row · table totals 144→170 fields /
+66→67 suitability, **non-null `constraints` 0→26 (exactly the kinetic rows — the NULL era ended
+here, P-7 consumer already consuming)**. Dark by construction: no client assignment, no variant
+candidate, no proof events — invisible to `select_template` until graduation.
+
+**Post-capture db-rls-auditor pass on the written rows:** _{recorded on return}_
+
+**Next (WS-4 loop):** probe renders against the 10-item calibration queue — first probe =
+top-level `duration` overridability (WS-4 pkg §15 Q4, highest-leverage) — then PK visual verdict,
+then 13-rung graduation.
 
 ## Named handoffs / carries
 
