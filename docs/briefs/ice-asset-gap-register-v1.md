@@ -144,6 +144,35 @@ leverage-to-cost now that the true P0s are closed:
 
 (P1-2/P1-4 brand-colour fill dropped from this ranking — already closed 2026-07-26, see correction above.)
 
+### 0.3 2026-08-01 reconciliation (WS-3(c) — DB ledger ⇄ this file)
+
+**Full record:** `docs/briefs/results/ws3-asset-gap-register-reconciliation-result-v1.md`
+(verdict `CONCERNS`). Read-only; no DB mutation; §§0.1–0.2 and §§1–6 below are unchanged.
+
+- **Ledger re-verified live 2026-08-01: still 8 rows (4 open / 4 resolved), still nothing
+  newer than 2026-07-20.** §0.2's headline claims hold twelve days on. The reason is now
+  named: the analyzer's `p_dry_run` default is `true` and no schedule exists, so it has
+  never run live (WS-3(b) packet, `docs/briefs/ws3-asset-gap-live-writer-scheduler-packet-v1.md`).
+- **This file is a superset of the ledger, not a stale copy of it.** Of its 15 items, 2
+  reconcile to ledger rows (P1-1, P1-3 — both `resolved`, independent agreement), 3 closed
+  without ever leaving a ledger trace, **9 are structurally not representable** by the
+  analyzer (music / avatar / voice / brand colours / video governance — subject-type
+  expansion is out of Ultimate v1), and **1 is a live divergence: P1-5 (NDIS authoritative
+  logo)** — a representable type the detector will never emit, because a fail-closed
+  resolver cannot see a promotion-quality gap.
+- **⚠ Status of this file: still AUTHORITATIVE.** The programme brief's WS-3(c) demotion to
+  "commentary" is **held** pending PK decision D-1: demoting before WS-3(d)
+  `responsible_lane` routing would drop 10 live items with nothing inheriting them. Do not
+  treat this file as commentary until D-1 is recorded.
+- **D-1 DECIDED by PK (2026-08-01): Option A — route via WS-3(d) first, demote second.**
+  WS-3(d) `responsible_lane` routing must complete for the 10 non-representable /
+  non-detectable items named in §3 of the result doc before this file is demoted to
+  commentary — nothing is dropped, only the brief's internal (c)/(d) letter order is
+  reversed in execution. **This file remains AUTHORITATIVE until WS-3(d) routing is
+  complete and independently verified against this file's own item list.** D-2 (P1-5, the
+  NDIS authoritative-logo divergence) is resolved as a direct consequence: it is routed
+  under WS-3(d) alongside the other 9, not carved out as a standing analyzer limitation.
+
 ---
 
 ## 1. Executive summary

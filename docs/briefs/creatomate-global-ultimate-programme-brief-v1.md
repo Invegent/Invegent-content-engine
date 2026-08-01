@@ -221,6 +221,12 @@ commentary); (d) route every non-ready target cell to an owner (readiness queue
 `responsible_lane` coverage extended, not rebuilt). Capability gaps stay live-computed; asset
 gaps persist. Subject expansion deferred until the loop is proven live.
 
+*(WS-3(c)/(d) sequencing, PK-decided 2026-08-01: reconciliation found the markdown register is a
+superset the DB ledger cannot fully represent (9 of 15 items structurally invisible to the
+analyzer, plus a live divergence), so demoting it per (c) before (d) routes those items would
+silently drop them. **(d) now runs before (c)** — the reverse of the letter order above; neither
+workstream's content changes. Record: `docs/briefs/results/ws3-asset-gap-register-reconciliation-result-v1.md`.)*
+
 ### WS-4 — Creatomate Specialist (charter APPROVED; candidate lane; operator-transposition loop)
 **Charter approved by PK 2026-08-01 (P-6 closed).** Read-only/design agent, candidate-level until
 its first mission proves. The closed loop:
