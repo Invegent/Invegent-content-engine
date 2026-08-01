@@ -83,7 +83,7 @@ your visual verdict).
       "width": "1080px", "height": "8px", "x": "0px", "y": "140px", "x_anchor": "0%", "y_anchor": "0%" },
     { "name": "BarBottom", "type": "shape", "shape": "rectangle", "fill_color": "#1C8A8A",
       "width": "1080px", "height": "8px", "x": "0px", "y": "1620px", "x_anchor": "0%", "y_anchor": "100%" },
-    { "name": "Logo", "type": "image", "source": "https://x.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png",
+    { "name": "Logo", "type": "image", "source": "https://mbkmaxqhsohbtwsqolns.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png",
       "width": "90px", "height": "90px", "x": "44px", "y": "160px", "x_anchor": "0%", "y_anchor": "0%", "fit": "contain" },
 
     { "name": "HookHeadline", "type": "text", "text": "Perth rents just hit a 10-year high",
@@ -181,8 +181,10 @@ is written per render.*
 
 ## If something goes wrong
 
-- **Logo doesn't load** — fine for now; leave the element in place (it's re-pointed to the
-  governed asset at render time).
+- **Logo doesn't load** — the JSON above now carries the real production URL (verified serving,
+  from `c.client_brand_profile.brand_logo_url`; the package §5a had a placeholder host). Either
+  way the element is re-pointed to the governed asset at render time — what matters is that the
+  element exists, named `Logo`.
 - **Fonts:** Montserrat is a built-in Google font in Creatomate; weights 400/700/900.
 - **Pasting the JSON errors out** — tell me the exact error message and I'll adapt the JSON to
   what your editor version expects.
