@@ -309,6 +309,46 @@ this session's record contains or supports such a decision — it would be a fre
 change (new package revision → template edit → re-capture → re-calibration), explicitly NOT
 started here.
 
+## POST-CLOSE ADDENDUM — WS-4 "stale calibration" handoff RECEIVED, HELD AT PK DESIGN GATE (2026-08-01)
+
+After close-out, the WS-4 specialist session (`creatomate-specialist-charter-and-kinetic-design`)
+sent a facts-only handoff asserting the capture is stale and asking for revision to a **1–2
+point-slot / 21-element** contract (retiring Point3), collapse via "empty-text + off-canvas ONLY".
+
+**Empirical CONCURRENCE (independent replication, both lanes agree):** their Q4 duration-override
+PASS ≡ this lane's probe 1; their Q2 near-zero-duration frame-0 leak (149/150 frames clean,
+frame 0 legible) ≡ this lane's probe 2b (1500 teal px at t=0.0, zero at t≥0.033). Two
+independent probe harnesses, same physics. No factual dispute.
+
+**Design-conclusion CONFLICT — three facts that session did not have:**
+1. **Probe 2c (this lane, on the ACTUAL captured template):** OFF-TIMELINE collapse
+   (`.time` beyond composition end) is **leak-free** (render `49159807…`, 7-timestamp scan,
+   detector self-proof) — which restores full 3-slot viability. Their revision predates/knows
+   nothing of this mechanism.
+2. **Their proposed mechanism is unimplementable in template mode:** "off-canvas" requires
+   per-render positional modification keys; the PK-ratified 7-suffix vocabulary
+   (`text·source·fill_color·time·duration·width·height`, packet §8 Q1 accepted as written) has
+   NO positional key. Empty-text cannot apply to shape elements (bars/dividers). Under their
+   1–2-slot design, an optional Point2's shapes would have NO executable collapse mechanism —
+   the exact hole off-timeline fills.
+3. **The 3-slot template is not a proposal — it is BUILT and APPROVED:** PK transposed the
+   26-element template (`0bd871ae…`), it was captured (`9ad024cc…`), calibrated (10/10), and PK
+   gave the rung-6 visual verdict on a 3-point render; PK then challenged consistency and
+   accepted the evidence-exact reconciliation, all landed on main (`4babe11`). Their run-sheet
+   (`ws4-kinetic-transposition-run-sheet-v1.md`) and package §5d/§5e are NOT on main.
+
+**Action taken: NONE against the registry** (their handoff correctly leaves revision to this
+lane's gates). The 26-row capture, calibration, and visual approval stand as landed. **The
+slot-count design authority question is escalated to PK** (`policy_decision`-class, two lanes
+with conflicting conclusions):
+- **Option A (this lane's recommendation):** keep the built/approved/landed 3-slot design; the
+  WS-4 package + run-sheet adopt OFF-TIMELINE as the collapse mechanism (their §5d/§5e revise on
+  the fuller evidence); the standing `off_timeline` vocabulary carry proceeds as planned.
+- **Option B:** adopt their 1–2-slot design — requires a NEW template edit (delete Point3),
+  re-capture (21 rows), re-calibration, a FRESH visual verdict, **and still needs off-timeline
+  (or a vocab extension) for Point2's shapes** — plus it narrows the AI content contract from
+  1–3 to 1–2 points (`ai-worker` §9 scene range), a product change beyond collapse mechanics.
+
 ## VISUAL-APPROVAL SCOPE RIDER (recorded at PK direction, 2026-08-01)
 
 PK's `visual_approval` (proof event `2ccdb697…`) covers **the silent, solid-brand-background
