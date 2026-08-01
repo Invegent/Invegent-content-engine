@@ -65,18 +65,29 @@ reviewer (all wired to the ai-worker path only).
    nothing in the system *could* have caught a false service offer mechanically. Until that exists,
    the same class of post can recur through any hand-authored path.
 
-## 5. ⚠ Companion investigation record is OFF-MAIN
+## 5. ✅ Companion investigation record — LANDED on `main` (resolved at v6.104)
 
 The full root-cause investigation —
-`docs/briefs/results/ndis-yarns-free-chat-post-investigation-result-v1.md`, register **v6.98** — lives
-**only** on the unmerged branch `claude/ndis-yarns-free-chat-post-ou0tuj` (`3dfc5ff`). It is not on
-`main`.
+`docs/briefs/results/ndis-yarns-free-chat-post-investigation-result-v1.md`, register **v6.98** — was
+landed on `main` by PK instruction at **v6.104**, byte-exact from `3dfc5ff` (blob
+`48cc64bb…`, sha256 `58182cee…`). **The evidence for §4 is now resolvable on `main`.**
 
-This remediation record was written **onto `main` specifically so this register pointer does not
-reference a document that `main` cannot resolve** — the exact off-main-governing-document defect the
-v6.99 docs-hygiene lane was run to fix. **Landing that investigation record on `main` is recommended
-and is NOT done here** (it belongs to its own lane; this lane holds no authority over it). Until it
-lands, the evidence for §4 is off-main.
+> *This section originally recorded the investigation as OFF-MAIN and recommended landing it. It was
+> corrected when the landing happened, rather than left to go stale — the same failure mode this
+> record exists to document.*
+
+**What was deliberately NOT landed with it:** the `docs/00_action_list.md` half of `3dfc5ff`. That
+edit chains the marker off **v6.94** (four register versions stale by the time of landing —
+v6.99/v6.100/v6.101/v6.102 have since landed) and re-asserts the video is **"still PUBLIC"**, which
+§1–2 prove false. Landing it verbatim would have corrupted the marker chain and re-introduced a
+statement contradicted by the remediation. The open items it carried are preserved in §4 above and in
+the v6.101 register entry, so nothing is dropped.
+
+**Register-number note:** `v6.98` remains the investigation's claimed number (its own claim stub,
+`2026-08-01T01:10Z`) and is now **consumed by a landed record on `main`** — no longer "reserved
+off-main", and it must not be re-cut. No separate `00_sync_state.md` entry was cut for v6.98 by this
+lane: that is the investigation lane's own record to write, and this lane holds no authority to author
+another lane's register entry. The v6.101 pointer resolves to the landed document, so nothing dangles.
 
 ## 6. Constraints respected
 
