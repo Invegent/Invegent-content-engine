@@ -265,6 +265,59 @@ PP client assignment + worker-side render path (the §16 named gap: kinetic has 
 worker branch yet — THAT is the real build) + supervised render → real draft → publish proof
 (rungs 7–13) + S7's self-healing allocation pickup.
 
+## CLOSE-OUT RECONCILIATION (PK consistency question, 2026-08-01) — evidence-exact
+
+**Premise correction (against the record, verbatim-checkable):** Q2 did NOT resolve the design
+to a fixed 1–2 point-slot contract. WS-4 pkg §15 defines **Q1** = slot COUNT (3-slot default vs
+a simpler 1-or-2 alternative — the default was adopted at transposition and never overturned)
+and **Q2** = collapse-mechanism TRUST ("does the collapse prove sufficient, or does an unused
+slot leak a frame? This gates whether the fixed-slot design (§4) is viable at all, or whether
+kinetic needs … separate 3/4/5-scene template variants"). Probe 2b/2c resolved Q2 by **validating
+the 3-point fixed-slot design** — collapse = off-timeline, leak-free, "no per-scene-count
+template variants needed." The design before and after Q2 is the SAME 26-element / 3-point-slot
+contract; Q2 selected a runtime modification recipe, not a composition change.
+
+**The five requested evidence items:**
+1. **Provider template actual point elements** (saved source read from the live API after the
+   syntax fix): 26 elements; exactly 15 point elements = 3 full slots —
+   `Point{1,2,3}{Counter,Bar,Headline,Divider,Body}`.
+2. **Captured registry field rows** (live query): 26 rows; the identical 15 `Point*` rows;
+   `slot_key` set = `{chrome, hook, point1, point2, point3, cta, audio}`.
+3. **Hash implemented by the captured template:** registry `inventory_hash` =
+   `eecab2e731216ff2…` = the v1 declared contract byte-hash, which declares all three point
+   slots and `scene_contract {min_active_scenes: 3, max_active_scenes: 5}` (i.e. 1–3 ACTIVE
+   points per render + hook + cta — activity is per-render, slots are fixed at 3). Calibrated
+   v2 artifact `ce578164…`; corrected editor source `072fd3ed…`.
+4. **Calibration render point count:** all THREE points active in both renders (mods set
+   `Point1/2/3` texts) — intentionally: calibration loads every slot at its char gate.
+5. **Is the captured template definitively the post-Q2 design? YES.** The only template mutation
+   after capture was the probe-2 syntax fix (shape paths + opacity units) — zero change to
+   element names, slot structure, or anything the registry constraints encode. Q2 changed no
+   composition property. **Therefore the calibration and the visual approval stand as evidence
+   for the current contract — no correction, recalibration, or verdict re-anchor is warranted.**
+
+**One genuine adjacent delta, already a named carry (not silently absorbed):** the captured
+constraints' `collapse.mechanism` arrays predate the Q2 finding (they list
+`near_zero_duration/empty_text/off_canvas`; the probe-proven mechanism is `off_timeline`, and
+`off_canvas` is template-mode-unreachable). That is the standing **off_timeline vocabulary
+lane** (validator vocab + CAS updates of the 15 conditional rows, own T2 gate). It affects no
+calibrated limit and no visual property; the graduation-lane worker build uses the proven
+off-timeline recipe regardless.
+
+**If PK intends a NEW design decision to reduce the contract to 1–2 point slots:** nothing in
+this session's record contains or supports such a decision — it would be a fresh WS-4 design
+change (new package revision → template edit → re-capture → re-calibration), explicitly NOT
+started here.
+
+## VISUAL-APPROVAL SCOPE RIDER (recorded at PK direction, 2026-08-01)
+
+PK's `visual_approval` (proof event `2ccdb697…`) covers **the silent, solid-brand-background
+visual v1 ONLY** — the composition as rendered in `480d4333…`: no voiceover, no music, no
+B-roll/image background. **Voice, music, and any imagery-backed variant remain UNAPPROVED** and
+each requires its own election + probes + fresh visual verdict (WS-4 §11/§15 Q3; the audio
+elements exist in the template solely as unbound sockets). Graduation of `video_short_kinetic`
+proceeds on the silent v1 scope; `video_short_kinetic_voice` is out of scope of this approval.
+
 ## Named handoffs / carries
 
 - ~~External review carry~~ **CLOSED 2026-08-01** — executed by the bridge-holding session on PK
