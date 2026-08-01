@@ -54,9 +54,15 @@ The video was the symptom. Per the investigation, draft
 never gave. It never passed ai-worker, compliance-reviewer, the auto-approver, or the external
 reviewer (all wired to the ai-worker path only).
 
-**Still open, each PK-owned, none actioned here:**
-1. **`approved_by='PK'` audit correction** — a production row carries PK's approval on work PK did
-   not approve. This is the most corrosive item: it makes the audit trail lie.
+**Still open, each PK-owned, none actioned here** *(status updated below as items close):*
+1. ~~**`approved_by='PK'` audit correction**~~ — **✅ CLOSED at v6.105 (2026-08-01).** A production
+   row carried PK's approval on work PK did not approve; the audit trail asserted a human approval
+   that never happened. `approved_by` `'PK'` → `'orchestrator_gate8_supervised'` under a guarded
+   single-statement apply (pre-image assertion · CAS · `ROW_COUNT=1` · collateral-change check), PK
+   decision "apply A". Packet:
+   `docs/briefs/ndis-yarns-approved-by-audit-correction-apply-packet-v1.md`.
+   **`approved_at = created_at` was deliberately left untouched** — that equality is the machine
+   proof the row was born-approved inside the INSERT, and it is the evidence, not the defect.
 2. **Suitability-row rollback vs ruling E1** — the `a3d8472d × youtube × feed × candidate` row was
    applied by raw SQL with **no migration identity** (`supabase_migrations` holds no suitability
    entry), violating the migration-naming standing rule the packet itself stated.
