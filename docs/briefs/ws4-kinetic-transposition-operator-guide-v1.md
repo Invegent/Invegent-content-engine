@@ -69,6 +69,16 @@ your visual verdict).
 
 ## Step 6 — The paste JSON (template state — all 3 points active, 35 s)
 
+> **⚠ SUPERSEDED (2026-08-01, found by probe 2):** the JSON below carries two defects inherited
+> from the design package's §5a syntax — (1) shape elements use `"shape": "rectangle"` where
+> Creatomate templates require a `path` (the editor silently dropped the key, so all 10 shapes
+> rendered NOTHING — black background, no bars/dividers); (2) opacity values are CSS-style
+> fractions (`0.7`) which the editor read as **percent** (`0.7%` ≈ invisible). **Use the
+> corrected source instead:** `docs/briefs/artifacts/ws4-kinetic-template-source-corrected-v2.json`
+> (adds full-rect `path` to all shapes, converts 12 opacities to percent strings — verified
+> against a production-proven template's syntax on this account). Kept below unchanged for the
+> record.
+
 ```json
 {
   "output_format": "mp4",

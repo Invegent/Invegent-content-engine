@@ -140,6 +140,48 @@ render id `fc7e2707…`, `proof_event_id 25c20718-5028-45fa-a826-0a7854ddca87`.
 **Remaining probe queue:** collapse-mechanism leak test (§15 Q2) · shape-element timing overrides ·
 `source:""` silence on this composition · the 10 text-calibration items.
 
+## PROBE 2 — structural batch (EXECUTED 2026-08-01) — render OK; **TWO TRANSPOSITION DEFECTS FOUND**
+
+One render (`D_two_point_collapsed`, id `304161dc-c3bb-4028-a8b3-9385c7e9105c`): the WS-4 §5a
+representative composition as template-mode modifications — hook + 2 points + Point3 collapsed
+via guards 1+2 (guard 3 off-canvas is UNREACHABLE in template mode under the ratified 7-suffix
+vocabulary — no `.y` key; recorded as a design fact). Succeeded, 27.00 s exact, wall-clock
+27.7 s.
+
+**Answered cleanly:**
+- **Audio (§14): CONFIRMED** — zero audio streams in both probe files; `source:""` = silent by
+  absence, not an error, on this composition.
+- Duration override re-confirmed (27.00 s), text mod-keys re-confirmed.
+
+**Defects found (frame inspection + saved-source API read; BOTH trace to the operator-guide
+paste JSON, which inherited the syntax from WS-4 pkg §5a — NOT a PK build error):**
+1. **All 9 shape elements pathless** — the guide used `"shape": "rectangle"`; Creatomate
+   templates require `path`; the editor silently dropped the unknown key, so Background/BarTop/
+   BarBottom/bars/dividers render NOTHING (black canvas, no chrome). House memory
+   `creatomate-direct-source-render-recipe` ("shapes require path") strikes again — in the
+   template-paste context this time.
+2. **Opacity unit mismatch** — CSS-style fractions (`0.7`) were saved by the editor as PERCENT
+   (`"0.7%"`), rendering 12 decorated elements (counters/subtitle/bars/dividers/watermark/footer)
+   at <1% opacity — present but invisible.
+
+**Consequence for Q2 (collapse leak): INCONCLUSIVE this probe** — the collapsed Point3 elements
+that could visibly leak are exactly the currently-invisible shapes, so a leak cannot be observed
+until the template is fixed. Pixel scanner (Windows temp-file variant) verified working data path;
+zero teal anywhere including the self-proof region — consistent with the shape defect, not with
+a clean collapse. **Q2 re-runs after the fix.**
+
+**Fix issued (no registry change needed — layout geometry is provider-side; the captured
+constraints encode neither paths nor opacities):** corrected full template source generated from
+the SAVED source + the production-proven Scrim syntax (path added to 9 shapes, 12 opacities →
+percent strings): `docs/briefs/artifacts/ws4-kinetic-template-source-corrected-v2.json`
+(sha256 `072fd3ed…`), delivered to PK to paste over the template in the editor; operator guide
+§6 banner-superseded. **Waiting on PK re-save, then probe 2 re-runs (one render).**
+**Package feedback for the WS-4 record:** §5a's source-mode JSON syntax (`"shape":"rectangle"`,
+fraction opacities) does not survive the editor-paste path — a v2 of the package should carry
+editor-schema source (path + percent strings). The §2 provenance claim ("carried unchanged from
+the proven legacy builder") holds for geometry/timing but NOT for these two syntax classes,
+because the legacy path renders via API source-mode where the units/keys differ.
+
 ## Named handoffs / carries
 
 - ~~External review carry~~ **CLOSED 2026-08-01** — executed by the bridge-holding session on PK
