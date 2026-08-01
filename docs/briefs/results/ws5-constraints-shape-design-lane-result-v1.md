@@ -349,6 +349,14 @@ with conflicting conclusions):
   (or a vocab extension) for Point2's shapes** — plus it narrows the AI content contract from
   1–3 to 1–2 points (`ai-worker` §9 scene range), a product change beyond collapse mechanics.
 
+**→ RESOLVED — PK RULING (direct, this session, 2026-08-01): OPTION A.** The 3-point/5-slot
+design as built, captured, calibrated, and visually approved STANDS; no re-capture, no
+re-calibration, no verdict re-anchor. The WS-4 package/run-sheet revise to adopt OFF-TIMELINE as
+the template-mode collapse mechanism (their §5d/§5e 1–2-slot revision is superseded before
+landing; ruling relayed to the specialist session facts-only). Graduation
+(`pp-yt-kinetic-worker-and-graduation`) proceeds on the existing landed evidence; the
+`off_timeline` vocabulary carry remains the one open constraints follow-up.
+
 ## VISUAL-APPROVAL SCOPE RIDER (recorded at PK direction, 2026-08-01)
 
 PK's `visual_approval` (proof event `2ccdb697…`) covers **the silent, solid-brand-background
