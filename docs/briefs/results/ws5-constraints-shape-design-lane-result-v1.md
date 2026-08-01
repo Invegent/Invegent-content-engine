@@ -1,8 +1,8 @@
 # WS-5 Constraints Shape + Write RPCs + Intake Validator — Design Lane Result (v1)
 
 **Lane:** ws5-constraints-shape-and-kinetic-registration, Phase 1 (seed packet relayed 2026-08-01)
-**Tier/class:** T2 · SIDE_PROVING (design/docs only this lane; the packet's migration is NOT applied)
-**Status:** `DESIGN COMPLETE — STOPPED AT THE PK APPLY GATE` (as the seed packet requires)
+**Tier/class:** T2 · SIDE_PROVING (design/docs only this lane at authoring time; ~~the packet's migration is NOT applied~~ — **UPDATED 2026-08-01: APPLIED AND LIVE**, see "APPLIED — live record" section below)
+**Status:** ~~`DESIGN COMPLETE — STOPPED AT THE PK APPLY GATE`~~ → **`DESIGN COMPLETE — APPLIED AND LIVE (2026-08-01)`** (PK authorised + executed against frozen hash `7cc5636d…`; see the "PK apply gate" row and "APPLIED — live record" section below)
 **Deliverable:** `docs/briefs/ws5-constraints-shape-and-write-rpc-design-packet-v1.md`
 **Packet sha256 (pre-review, rev-0):** `013c74699a2205703aa2f841705750b2cd95bdd86fc501efb46bcb1effd3db2f`
 **Packet sha256 (FINAL, rev-1):** `7cc5636dad5a518fe53597cdde9aadbf644a3077e7e4cc47899182c786c81b49`
