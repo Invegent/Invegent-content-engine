@@ -356,6 +356,11 @@ the template-mode collapse mechanism (their §5d/§5e 1–2-slot revision is sup
 landing; ruling relayed to the specialist session facts-only). Graduation
 (`pp-yt-kinetic-worker-and-graduation`) proceeds on the existing landed evidence; the
 `off_timeline` vocabulary carry remains the one open constraints follow-up.
+**Loop closed 2026-08-01:** the specialist session read `ff5cacb`, accepted all three
+counter-facts without dispute, retracted the 1–2-slot conclusion in the WS-4 package (its new
+§5e supersedes the old §5d + §15 Q1/Q2 text), marked its run-sheet SUPERSEDED in favour of this
+lane's operator guide + calibrated contract, and confirmed its wrong-conclusion commit was never
+pushed. Both lanes aligned; conflict fully resolved.
 
 ## VISUAL-APPROVAL SCOPE RIDER (recorded at PK direction, 2026-08-01)
 
