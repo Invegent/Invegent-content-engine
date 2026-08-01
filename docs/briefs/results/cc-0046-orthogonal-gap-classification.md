@@ -6,13 +6,35 @@
 
 ---
 
+> **⚠️ STATUS SUPERSEDED — 2026-08-01 (docs-hygiene reconciliation, register v6.98).**
+> **This document's "UNAPPLIED / awaiting PK T3 apply gate" status is STALE.** All three
+> artifacts were subsequently APPLIED to production and the lane CLOSED — recorded at register
+> **v6.06** (`docs/00_sync_state.md`), reconciled to `origin/main` at `a741335`.
+> Verified independently against the **live** migration ledger on 2026-08-01 (not from the
+> register): `20260721100000_cc0046_asset_gap_orthogonal_classification_ddl_v1` ·
+> `20260721110000_cc0046_analyze_and_writer_orthogonal_v1` ·
+> `20260721120000_cc0046_backfill_open_rows_v1` — all three present.
+> **The body below is preserved AS AUTHORED (2026-07-21 pre-apply state) — it is an accurate
+> record of the build/proof lane at that moment, not of current production.** For current
+> truth read the v6.06 register entry. Individual stale claims are annotated inline; nothing
+> in the original text has been deleted or rewritten.
+
+---
+
 ## 1. Result status
 
 `Partial — awaiting PK T3 apply gate` — build, hermetic proof, live-fixture proof, concern-fixes, and the **full clean review chain** (branch-warden safe · db-rls-auditor pass · external agree/proceed) are complete; **three T3 apply gates (DDL+helpers · functions · backfill) remain PK-gated and UNAPPLIED.** Nothing deployed, migrated, backfilled, or sourced.
 
+> **[SUPERSEDED 2026-08-01]** Accurate as at 2026-07-21. The three T3 gates were subsequently
+> passed and all three artifacts APPLIED (live-ledger verified); lane CLOSED at register v6.06.
+
 ## 2. Commit(s)
 
 - (to be committed to `claude/new-session-10ofji` after the review chain is clean — feature-branch record only; **not** applied to production)
+
+> **[SUPERSEDED 2026-08-01]** The artifacts were subsequently reconciled to `origin/main` at
+> `a741335` (13 files, additive); the three migration files are on `main` under
+> `supabase/migrations/`.
 
 ## 3. Files changed (all additive; feature-branch only). **rev-2 hashes (post-Concern-fix; supersede `ce3e4732…`/`1989bc76…`):**
 
@@ -46,6 +68,9 @@
 ## 5. Constraints confirmed (brief Forbidden actions — all respected)
 
 - No migration applied; no production DML/DDL; no deploy; no merge — the three artifacts are UNAPPLIED (three separate T3 gates).
+  > **[SUPERSEDED 2026-08-01]** True of THIS lane as recorded (it stopped at the gate). The
+  > applies were performed later, under their own PK T3 gates, and recorded at v6.06 — this
+  > line documents the build lane's own boundary, not current production state.
 - No image search/download/provider call; no drain dispatcher; no claim-state; no assignment/suitability/candidate mutation; no promotion; no browser automation.
 - No legacy output key, vocabulary, or writer validation semantics changed (additive-only, proven).
 - Active hold-states untouched: NDIS production video enablement OFF (`c.client_creative_governance` untouched); diverged `invegent-dashboard` main + orphaned `AddTemplateDraftWizard.tsx` untouched; no logo/video/generative sourcing.
