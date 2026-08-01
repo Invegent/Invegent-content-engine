@@ -118,6 +118,28 @@ and awaits the graduation-lane gates.
 top-level `duration` overridability (WS-4 pkg §15 Q4, highest-leverage) — then PK visual verdict,
 then 13-rung graduation.
 
+## PROBE 1 — duration overridability (EXECUTED 2026-08-01, PK-authorised) — **Q4 = YES**
+
+Two paid renders on the live template (key conveyance per cc-0033 precedent; key found ROTATED —
+new pin `bcde13d1` validated read-only before spend; value never in transcript):
+
+| Probe | Result | ffprobe duration | Wall-clock | Render id |
+|---|---|---|---|---|
+| A_control (no override, `HookHeadline.text` modified) | succeeded | **35.00 s** (= saved) | 30.9 s | `982e8abb-1e48-4240-94b9-39ef2fd57526` |
+| B_bare_duration_mod (`"duration": 27` inside `modifications`) | succeeded | **27.00 s** | 23.4 s | `fc7e2707-7507-4d82-bb29-e690112b0ae4` |
+
+Findings: (1) **the §5 timing mechanism is viable as designed** — bare `duration` modification
+key overrides the saved 35 s timeline exactly; fallback probe C not needed; (2) **suffixed
+modification-key form confirmed on the video family** (cc-0049's resolution now proven beyond
+image cards); (3) reliability: both renders far under the 2-min ceiling (§9a); (4) bonus rung-1:
+provider existence confirmed by DIRECT `GET /v1/templates` read (id + exact name). mp4 sha256s:
+`58abac67…` (A) / `bc8c6e9d…` (B); local evidence `_harness/ws5_kinetic_probe1_duration/`
+(untracked by repo convention — this section is the canonical record).
+**Proof event recorded** via `record_tmr_proof_event`: `smoke_render`/`passed`, evidence =
+render id `fc7e2707…`, `proof_event_id 25c20718-5028-45fa-a826-0a7854ddca87`.
+**Remaining probe queue:** collapse-mechanism leak test (§15 Q2) · shape-element timing overrides ·
+`source:""` silence on this composition · the 10 text-calibration items.
+
 ## Named handoffs / carries
 
 - ~~External review carry~~ **CLOSED 2026-08-01** — executed by the bridge-holding session on PK
