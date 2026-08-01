@@ -96,7 +96,23 @@ field rows all with constraints · 1 suitability + 1 audit row · table totals 1
 here, P-7 consumer already consuming)**. Dark by construction: no client assignment, no variant
 candidate, no proof events — invisible to `select_template` until graduation.
 
-**Post-capture db-rls-auditor pass on the written rows:** _{recorded on return}_
+**Post-capture db-rls-auditor pass on the written rows: CLEAN (`pass`, high confidence, 0
+must-fix / 0 should-fix)** — template row exact-match on every attribute incl. `scope='generic'`;
+26/26 element names + constraints shape verified; modification-key prefixes checked across ALL 26
+rows (zero violations); zero invented numeric limits (spot-checked citations); blast radius exact
+(170/26/67, all 144 pre-existing rows still NULL); dark-capture confirmed (0 assignment, 0
+variant rows); **advisors still exactly the 251 baseline — zero new findings.**
+**Orchestrator hash-checkpoint (auditor-named step): CLOSED** — artifact bytes recomputed
+2026-08-01: sha256 = `eecab2e7…` = the stored `inventory_hash`, byte-exact (artifact committed at
+`b72efc8`).
+**Carries from the auditor (recorded, not blockers):** (1) the five TMR `c.*` tables' deny-all
+RLS (enabled, zero policies) is a PRE-EXISTING posture inside the 251 baseline — if these tables
+are ever served to dashboard callers, that needs explicit policies or an RPC (its own lane);
+(2) `evidence_reference` semantics for `declared_from_source` limits: the `source` citation IS
+the terminal reference by design (packet §2 — `evidence_reference` is mandatory only for
+`probe_calibrated`); recorded here as the authoritative answer.
+**Audit row review fields (`reviewed_by`/`decision`) intentionally NULL** — the capture is dark
+and awaits the graduation-lane gates.
 
 **Next (WS-4 loop):** probe renders against the 10-item calibration queue — first probe =
 top-level `duration` overridability (WS-4 pkg §15 Q4, highest-leverage) — then PK visual verdict,
