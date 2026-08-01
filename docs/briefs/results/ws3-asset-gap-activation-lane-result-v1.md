@@ -220,6 +220,14 @@ disarm/arm calls are valid; the rollback-C normaliser works). What remains is PK
 OQ-10 and OQ-11, and — if OQ-10 goes to Option B — one re-freeze plus a fresh external review
 on the new hash.
 
+## 7.1 Session closed — P-5A complete
+
+Handoff record: **`docs/briefs/results/ws3-p5a-handoff-v1.md`** — the eight frozen hashes
+(re-verified byte-exact at handoff), the four outstanding decisions (D-1, D-3, D-4, OQ-10),
+confirmation that P-5B is untaken, and a live-verified table showing nothing was applied.
+
+**Continuation session: `asset-gap-p5b-apply-and-closeout`.**
+
 ## 8. Non-claims
 
 Nothing was applied, deployed, migrated, committed, or pushed. No DML or DDL was executed
