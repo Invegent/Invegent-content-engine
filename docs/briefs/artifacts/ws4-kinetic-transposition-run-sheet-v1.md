@@ -1,5 +1,17 @@
 # WS-4 — PP YouTube Kinetic — FINAL Operator Transposition Run-Sheet (v1)
 
+> **⚠ SUPERSEDED (2026-08-01) — DO NOT USE.** This run-sheet's 1-2 point-slot conclusion was
+> reached without knowing a 3-point/26-element template was already built, captured, calibrated,
+> and PK-visually-approved in a parallel session (WS-5). PK ruled directly to keep the 3-slot
+> design and adopt off-timeline collapse instead (`ff5cacb` on `main`,
+> `docs/briefs/results/ws5-constraints-shape-design-lane-result-v1.md` "POST-CLOSE ADDENDUM";
+> retraction recorded at `docs/briefs/ws4-pp-yt-kinetic-operator-transposition-package-v1.md` §5e).
+> **Use the real operator artifacts instead:** `docs/briefs/ws4-kinetic-transposition-operator-guide-v1.md`,
+> `docs/briefs/artifacts/ws4-kinetic-declared-contract-v2-calibrated.json`, and
+> `docs/briefs/artifacts/ws4-kinetic-template-source-corrected-v2.json`. This file is kept only as
+> a historical record of this session's (incorrect) reasoning — see §12's open questions, which
+> are also moot under the 3-slot design.
+
 **Status:** PACKAGE_READY (creatomate-specialist, 2026-08-01). Design package only — no template
 created/edited in Creatomate, no registry row written, nothing registered, proven, or graduated.
 For PK to transpose into a saved Creatomate template in the editor.

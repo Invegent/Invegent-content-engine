@@ -482,30 +482,75 @@ Collapsed `PointN` slots must be governed by the **empty-text + off-canvas pair 
 2+3, each independently reliable by construction); a collapsed slot's `duration` can simply match
 its neighbours' timing since it no longer carries guard responsibility.
 
-**Downstream resolution (§15):** Q2 FAIL mechanically resolves Q1 per PK's conditional decision
-(§15) — **fall back to the simpler fixed 1-2 point-slot design**, not the 3-slot default, since the
-3-guard collapse mechanism the 3-slot design depended on is not sound. No further PK sitting needed
-to pick between them; this is the named mechanical resolution.
+**Downstream resolution — RETRACTED, see §5e.** This session's original conclusion here ("Q2 FAIL
+mechanically resolves Q1 → fall back to fixed 1-2 point-slot design") was reached without knowing a
+3-point template had already been built, captured, calibrated, and PK-visually-approved in a
+parallel session, and without knowing of the off-timeline collapse mechanism that resolves Q2
+without narrowing the slot count. **Do not read this paragraph as current guidance — see §5e.**
 
-## 5e. WS-5 handoff (2026-08-01) — revised slot contract, not the stale 3-slot calibration
+## 5e. RETRACTION (2026-08-01) — 3-slot design STANDS; PK ruling; §5d's Q2 finding stays true, its conclusion does not
 
-WS-5 Phase 1 (`local_d28268f1-3836-416d-9059-7332ee8da5be`, "Design WS-5 constraints jsonb shape +
-kinetic registration", worktree branch `claude/admiring-shtern-6fdb19`, not yet merged to main) had
-already **CAPTURED** a kinetic template (`9ad024cc…`, scope=`generic`, 26 constraints rows, dark,
-auditor-clean) ahead of these probes, per its own record: "NEXT probe renders (first: duration
-override) → PK verdict → graduation." That capture predates today's Q2 FAIL and therefore reflects
-the retired **3-point / near-zero-duration-guard** design, not the fixed 1-2 point-slot design this
-package now resolves to.
+**What happened:** this session ran Q4/Q2 as isolated API probes — Q4 against an unrelated stat
+template (`46c5c4ac…`), Q2 against a bare ad-hoc composition, neither the real kinetic template.
+Unknown to this session at the time, the **WS-5 lane** (`local_d28268f1-3836-416d-9059-7332ee8da5be`)
+had, that same day, already: had PK transpose the real 3-point/26-element template in the
+Creatomate editor (`0bd871ae…`), captured it to the registry (`9ad024cc…`, scope=`generic`, 26
+calibrated constraint rows, `db-rls-auditor` clean), run the identical Q4/Q2 probes **against that
+real template**, and obtained PK's rung-6 **visual approval** on a full 3-point render (proof event
+`2ccdb697…`, silent solid-background v1 scope). This session's §5d Q4 PASS and Q2 near-zero-duration
+FAIL are **empirically correct and independently replicate WS-5's own probes 1 and 2b** — no factual
+dispute there. What this session got wrong was the **conclusion drawn from Q2's FAIL**: WS-5 ran a
+third mechanism this session never tested — **off-timeline collapse** (`.time` set beyond the
+composition's end, e.g. `9999`) — and found it **leak-free** (probe 2c, 7-timestamp frame scan,
+detector self-proof passed), which restores full 3-slot viability without narrowing to 1-2 slots.
+Separately, this session's proposed "empty-text + off-canvas" fallback recipe is **unimplementable
+in template mode regardless**: the PK-ratified modification-key vocabulary (`text·source·
+fill_color·time·duration·width·height`) has no positional key, so off-canvas position cannot be
+applied via `modifications` at render time, and empty-text cannot apply to shape elements
+(`PointNBar`/`PointNDivider` have no `.text`).
 
-**Sent directly to the WS-5 session (cross-session message, 2026-08-01):** the Q4 PASS / Q2 FAIL
-results, the mechanical Q1 resolution (fixed 1-2 point slots), the 21-element slot contract (down
-from 26 — Point3's 5 elements retired), and an explicit flag that its already-captured 26-row/3-slot
-calibration must **not** be persisted or graduated as-is — it needs revision to match the fixed
-1-2 point-slot contract (`docs/briefs/artifacts/ws4-kinetic-transposition-run-sheet-v1.md` §5)
-before any graduation step. This is a fact/finding handoff only — no DB write was made by this
-session; WS-5's own lane owns whether/how to revise its captured rows, under its own gates.
+This session sent a cross-session handoff to WS-5 (§5d's superseded text, above) asserting its
+capture was stale and needed revision to a 1-2 point-slot / 21-element contract. WS-5 replied
+facts-only with the three counter-facts above and escalated the slot-count question to PK as a
+`policy_decision` (Option A: keep the built/approved 3-slot design, adopt off-timeline collapse;
+Option B: this session's 1-2-slot design, which would additionally require a template edit,
+re-capture, re-calibration, a fresh visual verdict, still need off-timeline for Point2's shapes
+anyway, and narrow the AI content contract from 1-3 to 1-2 points).
 
-## 6. Element names and slot contract
+**PK ruled directly, on origin/main, ahead of this session fetching it (`ff5cacb`, authored
+`pk@invegent.com`):** **Option A.** *"The 3-point/5-slot design as built, captured, calibrated, and
+visually approved STANDS; no re-capture, no re-calibration, no verdict re-anchor. The WS-4 package/
+run-sheet revise to adopt OFF-TIMELINE as the template-mode collapse mechanism... Graduation
+proceeds on the existing landed evidence; the `off_timeline` vocabulary carry remains the one open
+constraints follow-up."* Full record: `docs/briefs/results/ws5-constraints-shape-design-lane-result-v1.md`
+("POST-CLOSE ADDENDUM" section).
+
+**Effective, current state (supersedes §5d's downstream-resolution paragraph and all of §6/§15 as
+originally revised by this session):**
+- **Slot count: 3 points, unchanged** (`Point1`/`Point2`/`Point3`, 26 elements total — the
+  original v1 draft's design, never actually invalidated).
+- **Collapse mechanism: OFF-TIMELINE** (`.time` set beyond composition duration, e.g. `9999`,
+  combined with `duration:0.01` + empty text as belt-and-braces) — not near-zero-duration alone,
+  not empty-text+off-canvas.
+- **This package's own §5c/§5d probe design (near-zero-duration only, off-canvas position) is
+  retired** — kept in this file for the historical record, not as current guidance.
+- **`docs/briefs/artifacts/ws4-kinetic-transposition-run-sheet-v1.md` (this session's 1-2-slot
+  run-sheet) is SUPERSEDED** — do not use it. The authoritative operator artifacts are
+  `docs/briefs/ws4-kinetic-transposition-operator-guide-v1.md`, the calibrated declared contract
+  `docs/briefs/artifacts/ws4-kinetic-declared-contract-v2-calibrated.json`, and the corrected
+  template source `docs/briefs/artifacts/ws4-kinetic-template-source-corrected-v2.json`, all
+  already on `main` from the WS-5 lane.
+- **Graduation is unblocked and proceeds on the WS-5 lane's landed evidence** — no action needed
+  from this package to enable it. The one open follow-up is the `off_timeline` vocabulary carry
+  (validator vocab + CAS-update of the 15 conditional constraint rows), owned by WS-5's own T2
+  gate, not this package.
+
+**Correction issued (2026-08-01):** the cross-session handoff this session sent to WS-5 (§5d) and
+the version-less register pointer sent to the register-owner session both carried the retracted
+1-2-slot conclusion; correction messages sent to both. This session's local git commit carrying the
+retracted conclusion (`33228db`) was never pushed; this retraction supersedes it before any push.
+
+## 6. Element names and slot contract (§4's original 3-slot design — reaffirmed, not superseded)
 
 Mirrors the `dynamic_elements` shape from `branch-b-template-capability-contracts.md` §1
 (`name` / `type` / `modification_key` / `required` / `empty_ok`), extended with each element's
@@ -796,14 +841,19 @@ structure is.
 
 ## 15. Open questions — PK-sequenced decisions (updated 2026-08-01)
 
-- **Q1 — fixed-slot count. RESOLVED 2026-08-01 (mechanical, per Q2).** Q2 FAILED (§5d) → **fixed
-  1-2 point-slot design**, not the 3-slot default. The 3-guard collapse mechanism the 3-slot design
-  depended on is not sound (§5d), so the simpler fixed-slot design is the one to build.
-- **Q2 — collapse mechanism trust. RESOLVED 2026-08-01 — FAIL (§5d).** The 3-guard collapse
-  (near-zero duration + empty text + off-canvas position) does NOT hold: frame-accurate inspection
-  (150 extracted frames, `signalstats` + visual confirmation) found the `duration:0.01` marker text
-  fully legible in the composition's first frame. Drop `duration≈0` as an independent guard; govern
-  collapsed slots by empty-text + off-canvas alone (§4 guards 2+3, §5c/§5d).
+- **Q1 — fixed-slot count. RESOLVED 2026-08-01 — 3-SLOT STANDS (PK ruling, §5e; this entry
+  corrects an earlier same-day error).** This session originally wrote "Q2 FAILED → fixed 1-2
+  point-slot design" here — that conclusion is retracted (§5e). The 3-point/26-element design
+  (§4's original default) is built, captured, calibrated, and PK-visually-approved; PK ruled
+  directly (`ff5cacb`) that it stands, no re-capture/re-calibration needed.
+- **Q2 — collapse mechanism trust. RESOLVED 2026-08-01 — the 3-guard recipe fails, but a 4th
+  mechanism (off-timeline) succeeds (§5e).** Near-zero-duration alone does NOT reliably suppress
+  rendering (this session's own frame-accurate probe confirmed it, independently replicated by
+  WS-5's probe 2b) — that finding stands. But WS-5's probe 2c found **off-timeline collapse**
+  (`.time` set beyond the composition's end) leak-free, restoring full 3-slot viability. This
+  session's proposed empty-text+off-canvas fallback is moot — it's unimplementable in template
+  mode regardless (no positional modification key in the ratified vocabulary, and shapes have no
+  `.text`). **Current guidance: off-timeline collapse (§5e), not empty-text+off-canvas.**
 - **Q3 — voice variant approach. DECIDED, and out of scope for mission 1.** Deterministic narration
   composition (mirroring stat) — see §11. Voice variants themselves are deferred out of mission 1
   entirely, so this decision is recorded for a future mission, not acted on now.
