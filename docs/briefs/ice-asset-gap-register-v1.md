@@ -30,6 +30,19 @@ as the unmodified 2026-07-26 historical record.
 
 ### 0.1 First outcome 1 — the authoritative analyzer/writer packet
 
+> **⚠ 2026-08-01 CORRECTION — the git↔DB parity gap described below is CLOSED.** It was closed
+> by the cc-0087 migration-ledger reconciliation (commit `8fbba80`, "backfill 19 missing
+> migration files"), which cherry-picked
+> `supabase/migrations/20260719210000_cc0043_asset_gap_analyzer_writer_v1.sql` from exactly the
+> `ice-wt-cc0044-cpc-writer @ 7c66f80` commit named below. Verified 2026-08-01: the file is
+> **tracked, on `main` and on `origin/main`**, and the replay chain is complete
+> (cc-0043 `20260719210000` → cc-0044 `20260720190000` → cc-0046 `20260721110000`, the last
+> carrying the classifier markers present in the live body). **`main` reproduces what runs.**
+> The "Recommended next step" and "Worktree disposition" paragraphs below are therefore both
+> **DONE / obsolete** — the two parked worktrees are no longer the only surviving source and
+> are safe to remove pending PK confirmation. The §0.1 text is preserved unmodified beneath
+> this note as the 2026-07-28 record (no historical rewrite).
+
 The two "parked cc-0043/cc-0044 analyzer/writer worktrees" named in the carry are:
 
 - `C:\Users\parve\ice-wt-cc0043-writer` (branch `ice-wt-cc0043-writer` @ `89d57aa`, 2026-07-19)
@@ -161,9 +174,18 @@ leverage-to-cost now that the true P0s are closed:
   logo)** — a representable type the detector will never emit, because a fail-closed
   resolver cannot see a promotion-quality gap.
 - **⚠ Status of this file: still AUTHORITATIVE.** The programme brief's WS-3(c) demotion to
-  "commentary" is **held** pending PK decision D-1: demoting before WS-3(d)
-  `responsible_lane` routing would drop 10 live items with nothing inheriting them. Do not
-  treat this file as commentary until D-1 is recorded.
+  "commentary" is **held** pending PK decision D-1: demoting would drop 10 live items with
+  nothing inheriting them. Do not treat this file as commentary until D-1 is recorded.
+- **⚠ D-1 recommendation CORRECTED later the same day.** The first cut of the reconciliation
+  recommended "route the 10 items via WS-3(d) `responsible_lane`, then demote". The WS-3(d)
+  design (`docs/briefs/results/ws3-responsible-lane-routing-design-v1.md`) **disproved that
+  route**: the readiness queue is cell-shaped (client × platform × format) and the orphans are
+  cross-cell **pool-depth** facts, so it structurally cannot inherit them — and building a
+  depth detector is forbidden by the standing "no `subject_kind` expansion" constraint. Cell
+  routing is already complete (46/46 NDIS cells routed; **zero** route to `asset_gap`).
+  **Corrected recommendation: the two-register model** — DB ledger for detected cell-level
+  demand, readiness queue for cell ownership, and this file retained but **re-scoped to
+  pool-depth items only**.
 - **D-1 DECIDED by PK (2026-08-01): Option A — route via WS-3(d) first, demote second.**
   WS-3(d) `responsible_lane` routing must complete for the 10 non-representable /
   non-detectable items named in §3 of the result doc before this file is demoted to

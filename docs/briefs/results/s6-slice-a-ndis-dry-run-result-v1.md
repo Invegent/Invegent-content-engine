@@ -10,6 +10,8 @@
 
 `Complete` — dry-run executed, gate evaluated. **Verdict: STOP.** No apply-packet proposal follows (per the brief's own gate: a frozen packet is returned only after PASS).
 
+**⚠ ADDENDUM 2026-08-01 (additive — original STOP finding below is unchanged and remains correct as of its own date):** both of this STOP's two independent reasons are now cleared. §6 reason 1 (unsupported allocations reach the grid) is closed by S7's live capability guard (`docs/briefs/results/s7-demand-grid-capability-guard-applied-v1.md`, v6.106). §6 reason 2 / §4.8 (OQ4 ambiguity) is closed by PK's ruling — Option A, supersede (`docs/briefs/results/p4-oq4-disposition-decided-v1.md`, v6.107). **Slice A's STOP is lifted; resumption itself is a separate, not-yet-scoped execution lane** — this addendum records the gate clearing only, it does not constitute a fresh PASS or re-run this dry-run's evidence.
+
 ## 2. Commit(s)
 
 N/A — read-only investigation, zero writes. (The Gate-1 brief itself, `s6-slice-a-ndis-format-mix-enrolment-gate1-brief-v1.md`, remains uncommitted pending PK's decision on how to file this dry-run's outcome.)
