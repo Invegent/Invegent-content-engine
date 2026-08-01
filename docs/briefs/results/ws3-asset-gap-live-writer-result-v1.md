@@ -49,7 +49,7 @@ No step raised. No STOP condition from packet §8 tripped. No channel substituti
 - ✅ Stage A applied dark, all A3 assertions passed.
 - ✅ Stage B committed with `error_count=0`, bounded delta (0 inserted ≤ 25; 1 resolved ≤ ceiling), complete before-image (43/43 columns, both proving runs).
 - ✅ Stage C schedules `asset-gap-analysis-daily` at `50 16 * * *` calling the persisting wrapper with explicit `p_dry_run => false`, health expectation seeded at 1440.
-- ⏳ First scheduled fire — pending (job armed now; next fire is the next `16:50 UTC`). Verification query named in packet §6 for that check.
+- ✅ First scheduled fire — **verified clean, 2026-08-01 16:50:00 UTC.** `cron.job_run_details` (jobid 94): `status='succeeded'`, ran `16:50:00.37 → 16:50:01.19`. `m.asset_gap_analysis_run`: new row `run_id=agr_0dc027ed3a6f78383cac4a4151fd2d461bbf2b2fed05ad39fb0687a8847be2be`, `triggered_by='cron'`, `dry_run=false`, `error_count=0`, scanned 20, inserted 0, reconciled_resolved 0 (the one resolvable gap had already cleared during the standing proving run — expected, not a defect). `m.cron_health_check`: heartbeat advanced to `16:50:00.37`, `consecutive_misses=0`. The standing writer has now completed one full autonomous cycle with zero errors.
 - ✅ Rollback rehearsed as the first act of P-5B, per §5.1 — steps 3–4 and 7 both observed clean live, exactly as the packet specified. Rollback A was **not** rehearsed, per PK's OQ-11 Option B ruling (cost of a second permanent ledger identity not worth paying) — unchanged by this apply.
 - ✅ ≥1 gap row observed `open → resolved` through the live loop — satisfied by the standing proving run itself, ahead of the first scheduled fire.
 
@@ -62,8 +62,19 @@ No step raised. No STOP condition from packet §8 tripped. No channel substituti
 
 ## 5. Freeze status
 
-Both `b2-visual-verdict-promotion-and-proof` and `docs-register-cut-continuation` remain paused pending this closeout commit, per PK's explicit instruction to release only after the WS-3 closeout commit is complete.
+Released. All three sessions holding on the shared checkout during the P-5B apply window (`b2-visual-verdict-promotion-and-proof`, `docs-register-cut-continuation`, `pp-yt-kinetic-worker-and-graduation`) received explicit lift broadcasts after the closeout commit (`2a52900`) landed and was pushed (`aed93d8..2a52900`). Confirmed: the shared checkout has had ordinary multi-session traffic since (register/lane commits from other sessions), consistent with a normal, unfrozen checkout.
 
 ## 6. Non-claims
 
 Nothing beyond the eight authorised steps was executed. No schema besides the six frozen artifacts' declared objects was touched. No other WS-3 open question (OQ-1 through OQ-9, all already closed or PK-ruled prior to this gate) was re-opened or re-litigated by this apply. The dashboard repository was grepped read-only as part of Step-0 re-verification, not modified.
+
+## 7. Lane closed
+
+**WS-3 (b) — Asset Gap live writer + scheduler is CLOSED, 2026-08-01.** P-5A (design, review, freeze) and P-5B (apply) are both complete; the standing writer has now proven one full autonomous cycle (the 16:50 UTC scheduled fire, §3) with zero errors, on top of the two live-authorised proving runs during the apply sequence itself. Nothing further is gated at this session.
+
+**Standing, not closed — operator carries, unchanged by lane closure:**
+- §6.1's `error_count > 0` monitor — manual named read, daily for the first week then weekly. Not automated (OQ-6, deferred).
+- OQ-10's declared limit on rollback-B (whole-table restore, not per-run diff) — conditional on the two gap tables staying provably unread/unwritten by anything but the analyzer. Re-decide if that ever changes.
+- OQ-5 (reconcile pass unbounded), OQ-3 (run-log retention/size), OQ-4 (7-day lookback re-scan redundancy), OQ-8 (transitive selector-policy coupling), OQ-9 (guard 3b live-vs-frozen column count) — all pre-existing, PK-acknowledged, unchanged by this apply or its first fire.
+
+No register version is allocated by this lane (Convention 1 — pointer-only). This result document is the canonical, full-evidence record.
