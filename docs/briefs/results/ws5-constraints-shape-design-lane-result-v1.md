@@ -182,6 +182,36 @@ editor-schema source (path + percent strings). The §2 provenance claim ("carrie
 the proven legacy builder") holds for geometry/timing but NOT for these two syntax classes,
 because the legacy path renders via API source-mode where the units/keys differ.
 
+## PROBE 2b/2c — fixed template re-run + Q2 RESOLUTION (2026-08-01)
+
+PK re-pasted the corrected source (verified by API read: 9/9 shapes with paths, 12/12 percent
+opacities, same name/id). Two renders:
+
+| Probe | Collapse mechanism under test | Verdict | Evidence |
+|---|---|---|---|
+| **2b** `D2_two_point_collapsed_fixed` (`40083e31…`, 23.7 s wall) | guards 1+2 (near-zero duration + empty text) | **LEAK** — Point3Bar paints frame 0 (1500 teal px at t=0.0; zero at t≥0.033). Detector self-proof PASSED this time (BarTop 8640/8640 · Point1Bar 1500/3000), so the verdict is trusted. Confirms WS-4 §14's suspicion: `duration: 0.01` still renders one frame | mp4 `8020b524…` |
+| **2c** `D3_offtimeline_collapse` (`49159807…`, 26.6 s wall) | **off-timeline** — collapsed elements' `.time` = 9999 (beyond the 27 s composition) + duration 0.01 + empty text | **NO LEAK** — zero teal at t = 0.0/0.033/0.066/0.1/0.5/1.0/26.9; detector self-proof passed; duration 27.00 exact; Creatomate accepts `time > duration` without error | mp4 `139da509…` |
+
+**Q2 RESOLVED: the production collapse mechanism for template mode is OFF-TIMELINE
+(`.time` beyond composition end), with near-zero duration + empty text as belt-and-braces.**
+The fixed-slot design (§4) is VIABLE — no per-scene-count template variants needed. Visual state
+confirmed by frame inspection: the full §13 design now renders (navy canvas, teal chrome,
+counters, bars, dividers, watermark).
+**Proof event:** `smoke_render`/`passed`, evidence render `49159807…`,
+`proof_event_id bc738219-54c7-42ce-b1d4-76decba6b1f1`.
+
+**Named governance carry (small T2 lane, PK gate):** the collapse-mechanism vocabulary in
+`c.tmr_validate_field_constraints` + the 15 captured conditional rows' `collapse.mechanism`
+arrays list `(near_zero_duration, empty_text, off_canvas)` — probes now show `off_canvas` is
+template-mode-unreachable (no `.y` in the ratified 7-suffix vocabulary) and the working guard is
+`off_timeline`. Carry: add `off_timeline` to the validator vocabulary (function migration, new
+name) + CAS-update the 15 conditional rows via `set_tmr_field_constraints` + note `off_canvas`
+as source-mode-only. Worker guidance until then: collapse = `.time=9999` + `.duration=0.01` +
+`.text=''`.
+
+**Probe queue remaining:** the 10 text-calibration items (hook/point/CTA max_lines sweeps,
+worker-string max_chars) — then PK visual verdict on a full 3-point render, then graduation.
+
 ## Named handoffs / carries
 
 - ~~External review carry~~ **CLOSED 2026-08-01** — executed by the bridge-holding session on PK
