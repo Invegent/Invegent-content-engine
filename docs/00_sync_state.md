@@ -6,6 +6,11 @@
 
 ---
 
+> **✅ v6.107 — P-4: OQ4 (Track-B queue currency) disposition DECIDED — Slice A UNBLOCKED (T1 · SAFETY_GATE · docs-only; zero code/DB/deploy/merge change)** — record: `docs/briefs/results/p4-oq4-disposition-decided-v1.md` (governing: `docs/briefs/creatomate-global-ultimate-programme-brief-v1.md` §4.4).
+> · **PK ruling: Option A — supersede.** S7's live guard (v6.106) is now the safety control at the allocation boundary; Track-B Slice-2 data-cleanup demoted to a named T2 hygiene carry, no longer a Slice A precondition. **Both of the S6 Slice A dry-run's independent STOP reasons are now cleared** (S7 absent → landed v6.106; OQ4 ambiguous → decided here) — Slice A's STOP is lifted. Dry-run result (`s6-slice-a-ndis-dry-run-result-v1.md`) annotated additively, original finding preserved. Resumption itself (the §1.1 zero-code enrolment proof) remains a separate, not-yet-scoped execution lane (WS-1) — not run here.
+
+---
+
 > **✅ v6.106 — S7 demand-grid capability guard — APPLIED / LIVE-PROVEN (T3 · SAFETY_GATE)** — record: `docs/briefs/results/s7-demand-grid-capability-guard-applied-v1.md` (packet `docs/briefs/s7-demand-grid-capability-guard-apply-packet-v1.md`, frozen sha256 `c6d5b622…fcbf`; migration `s7_demand_grid_capability_guard_v1`; PK P-3B 2026-08-01).
 > · Amended predicate (D1 `{text}` exemption ∩ platform_support + fail-closed `COALESCE`) live in `m.build_weekly_demand_grid`; single-txn apply, executable C-1/C-4/C-2/C-3 gates all PASSED; post-apply readback == frozen 14-row matrix; **PP live change YouTube-only** (video_short_stat 100%/5). Chain clean: AHA shadow (2 findings remediated pre-freeze) · db-rls-auditor clean · external agree (`12852f0c`) · branch-warden safe. Queue impact: **Slice A unblocked** · P-8 moot · B2 tranches may proceed. Carries: grid search_path pin · `ice_ro.format_mix_capability_gaps` T2 view · three-way predicate consolidation.
 

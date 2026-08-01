@@ -167,11 +167,14 @@ readiness surfaces.
    (`s7-durable-capability-enforcement-demand-grid-gate1-v1.md` §2/§6). **Precedes any
    reachability expansion.** Note rev-2: the drafted packet requires the D1 exemption amendment
    (§0) before freeze.
-2. **Slice A halted** at its dry-run STOP; unblocks when S7 lands.
+2. **Slice A UNBLOCKED (2026-08-01)** — both original dry-run STOP reasons cleared: S7 landed
+   (v6.106) and OQ4 decided (Option A, below). Resumption itself is a separate, not-yet-scoped
+   execution lane (WS-1).
 3. **`task_05bf8b3d`** — standing release gate on unattended `announcement_card` selection (STOP
    condition for B2 lanes).
 4. **F-AIW-PREF-COL-HARDCODE** — fix before any platform-specific preferred-format config.
-5. **OQ4** — decision-ready treatment now at §4.4 (P-4).
+5. **OQ4 — DECIDED** (Option A, PK 2026-08-01; §4.4/P-4). Track-B Slice-2 demoted to a named
+   T2 hygiene carry, no longer a Slice A precondition.
 6. **Registry/docs hygiene:** S6 governing brief + B1 packet off-main; S7 brief + Slice-A
    brief/result + this brief untracked; v6.94 double-assigned across branches; stale cc-0046
    "UNAPPLIED" doc.
@@ -296,7 +299,7 @@ constraint: one writer per edge function; same-EF lanes serialise at the PK depl
 | P-2 | 13-rung contract as formal proof authority | **CLOSED — ratified 2026-08-01 (§1.4)** |
 | P-3A | S7 scope approval + packet amendment (§0 exemption clause) + freeze + full review chain | Resolves at P-1 ratification; produces the frozen packet + hashes |
 | P-3B | **Separate** PK T3 apply authorisation for S7, against the exact reviewed packet and hashes | **OPEN — never bundled with P-1/P-3A** |
-| P-4 | OQ4 disposition | **OPEN — decision-ready options at §4.4** |
+| P-4 | OQ4 disposition | **DECIDED 2026-08-01 — Option A (supersede); see §4.4. Record: `docs/briefs/results/p4-oq4-disposition-decided-v1.md`** |
 | P-5A | Asset Gap live-writer + scheduler scope approval + freeze + review | Resolves at P-1 ratification; produces the frozen packet |
 | P-5B | **Separate** PK apply authorisation for the Asset Gap live writer/scheduler | **OPEN — never bundled** |
 | P-6 | Specialist charter + first mission | **CLOSED — approved 2026-08-01; mission = PP YT kinetic (D4)** |
@@ -323,6 +326,13 @@ state (the S7 brief itself: cleanup becomes "less urgent but not moot").
 Recommendation: **A**, on the grounds that a mechanical fail-closed guard at the allocation
 boundary is strictly stronger than data cleanliness as a control, and the cleanup retains value
 only as hygiene.
+
+**PK RULING (2026-08-01): Option A — supersede.** S7's live guard (v6.106,
+`m.build_weekly_demand_grid`) is now the safety control; Track-B Slice-2 data cleanup is demoted
+to a named hygiene carry, cleaned in a later T2 lane. **Both of Slice A's original STOP reasons
+(S7 absent; OQ4 ambiguous) are now cleared — Slice A is unblocked.** Resumption itself (the §1.1
+zero-code enrolment proof) remains a separate, not-yet-scoped execution lane. Record:
+`docs/briefs/results/p4-oq4-disposition-decided-v1.md`.
 
 ---
 
@@ -391,8 +401,8 @@ approval.**
 
 | Programme | Current state | Owner lane | Blockers | Next milestone |
 |---|---|---|---|---|
-| Capability Expansion (incl. S5 evidence window) | Active — B1 done; A halted; B2 held pending S7 | S6 | P-3B; P-4; `task_05bf8b3d` | Slice A resumed + enrolment proof + B2 tranche 1 |
-| S7 Capability Enforcement | Design complete; packet amendment (D1 exemption) pending freeze | S7 | P-3A→P-3B | Guard live + amended-predicate matrices verified |
+| Capability Expansion (incl. S5 evidence window) | Active — B1 done; S7 live; Slice A unblocked (resumption not yet scoped); B2 held pending Slice A | S6 | `task_05bf8b3d`; Slice A resumption scoping | Slice A resumed + enrolment proof + B2 tranche 1 |
+| S7 Capability Enforcement | **COMPLETE — applied/live-proven v6.106** | S7 | none | Guard live + amended-predicate matrices verified (met) |
 | Asset Gap | Activation (substrate built, idle) | New lane (WS-3) | P-5A→P-5B; read view | Live detector + one register |
 | Creatomate Specialist | **Charter approved**; first mission designated (PP YT kinetic) | New lane (WS-4) | Operator transposition sitting (PK) | First template graduated |
 | Template Metadata | Foundation exists; consumer decided (intake validation) | New lane (WS-5) | Write RPC | First governed metadata consumed at WS-4 registration |
@@ -406,10 +416,12 @@ programme. Register: v6.100, result: `docs/briefs/results/slice-f-seven-state-in
 ---
 
 ## 8. Standing risks (carried, monitored, not blocking ratification)
-- PP text + PP YT kinetic degrade continues until P-3B lands — P-8 interim containment is the
-  optional lever if P-3B is delayed.
+- ~~PP text + PP YT kinetic degrade continues until P-3B lands~~ — **RETIRED 2026-08-01**: S7
+  landed (v6.106); PP's YouTube kinetic-family degrade is now structurally excluded, PP text is
+  D1-governed and allocating. P-8 interim containment is now moot (per its own redefinition).
 - NDIS `client_format_config` enables two unsupported animated formats with no guard — S7 closes
-  the allocation edge; the config rows are Track-B hygiene material (see P-4 Option A carry).
+  the allocation edge (live). The config rows are Track-B hygiene material — **now formally a
+  named T2 hygiene carry, not a Slice A precondition** (P-4 Option A, decided 2026-08-01).
 - Provider-side template deletion invisible in-repo (row-17 precedent) — WS-4's future CI-4
   slices are the durable answer; the WS-4 mission's registry capture must record provider
   identity + probe evidence for exactly this reason.
