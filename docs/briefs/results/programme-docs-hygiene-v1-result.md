@@ -1,4 +1,4 @@
-CLAIMED v6.98 · programme-docs-hygiene · main · T1 docs-only · 2026-08-01T02:20Z
+CLAIMED v6.99 · programme-docs-hygiene · main · T1 docs-only · 2026-08-01T02:20Z
 
 # Result — Creatomate Global Ultimate: programme docs/registry hygiene (T1)
 
@@ -72,20 +72,36 @@ Reconstructed from git history (not from the registers):
 5. S5 re-renumbered v6.94–v6.96 → **v6.95–v6.97** (`7b80ee4`, 16:38), applying the same PK-ratified
    rule (main's landed history wins; S5 shifts pre-merge).
 
-**Current state — verified, not assumed:** `v6.94` now resolves to exactly ONE lane, S6 Slice B1, on
-`main`. A scan of every local and remote ref found `v6.95`/`v6.96`/`v6.97` claimed **only** by the S5
-branch's own renumber, and `v6.98` unclaimed anywhere.
+**Current state:** `v6.94` now resolves to exactly ONE lane, S6 Slice B1, on `main`. No renumber of
+`v6.94` was needed — the durable fix was the missing *record*, so `main` now carries the resolution.
 
-**Reconciliation action:** no renumber was performed by this lane — nothing needed one. The durable
-fix is the missing *record*: `main` now carries the resolution (register entry v6.98) so the next
-lane does not re-collide with S5's off-main block.
+**Numbering decision (and why it is neither v6.95 nor v6.98):** CCF-04 `claim-stub` correctly reports
+the *sequential* next cut as v6.95 and flagged the ahead-of-head claim (finding CS-01). Per the CCF-02
+claim protocol — *earlier timestamp keeps the number, later claimant renumbers*:
 
-**Numbering decision (and why it is not v6.95):** CCF-04 `claim-stub` correctly reports the *sequential*
-next cut as v6.95 and flagged the ahead-of-head claim (finding CS-01). Cutting v6.95 would force S5 to
-renumber a **third** time. Per the CCF-02 claim protocol — *earlier timestamp keeps the number, later
-claimant renumbers* — S5's claim to v6.95–v6.97 (2026-07-31) precedes this lane's (2026-08-01), so
-**S5 keeps v6.95–v6.97 and this lane takes v6.98**. `v6.95–v6.97` are recorded on `main` as
-RESERVED-off-main so the block is visible to any future claimant.
+| Number | Claimant | Claim stub | Disposition |
+|---|---|---|---|
+| v6.95–v6.97 | `claude/s5-cross-brand-evidence-schedule-x7rbn8` | 2026-07-31 (renumbered `7b80ee4`) | **S5 keeps** — earlier; recorded on `main` as RESERVED-off-main |
+| v6.98 | `origin/claude/ndis-yarns-free-chat-post-ou0tuj` | `2026-08-01T01:10Z` | **that lane keeps** — earlier by 70 min |
+| **v6.99** | **this lane** | `2026-08-01T02:20Z` | **taken** — latest claimant renumbers to the next free number |
+
+> **Renumbered v6.98 → v6.99 (provenance, S5 precedent).** This lane first cut **v6.98** and committed
+> it (`edd8bd7`). A subsequent complete ref scan found `v6.98` already claimed by the unmerged branch
+> `origin/claude/ndis-yarns-free-chat-post-ou0tuj` (commit `3dfc5ff`, claim stub `2026-08-01T01:10Z`) —
+> **earlier than this lane's `02:20Z`**, so under the protocol that lane keeps v6.98 and this one
+> shifts. Mechanical +1 renumber only, across `00_sync_state.md`, `00_action_list.md`, this result doc
+> and the cc-0046 annotation; **no evidence, verdict, date, hash, file, or payload content changed.**
+> Original claim timestamp preserved above for audit. The other branch was **not** touched.
+
+**Correction — an inaccurate claim in the first cut of this document, recorded rather than quietly
+fixed.** The v6.98 cut asserted that "a scan of every local and remote ref" had found v6.98 unclaimed.
+That was an **overclaim**: the scan (a per-ref `git show` loop) **timed out after 2 minutes having
+covered roughly 36 of the refs**, and the incomplete result was reported as complete. The collision it
+missed was surfaced by a cross-session relay, not by this lane's own verification. The scan was then
+redone by a method that completes — a single `git grep` across all local + remote refs, over both
+register files **and** the `docs/briefs/results/**` claim stubs — which is the basis for the table
+above and confirms `v6.99` unclaimed anywhere. **Method note for future lanes: a timed-out scan is
+`UNKNOWN`, never `clear`.**
 
 ## 4. Sub-task 3 — correct the stale cc-0046 doc
 
@@ -111,7 +127,7 @@ at 2026-07-21; the annotations distinguish that from current production truth.
 Programme brief §1.4 records PK's 2026-08-01 ratification of the **13-rung graduation contract**
 (`docs/briefs/results/creatomate-registry-integrity-graduation-contract-v1.md` §4) as the **formal
 proof authority for cell state-1 classification**, closing S6 OQ1, and states *"Register pointer to be
-cut at the next register update."* That pointer is cut here, at v6.98.
+cut at the next register update."* That pointer is cut here, at v6.99.
 
 **This records a ratification that PK already made; it does not make one.** No cell was reclassified,
 no template graduated, and no proof re-judged by this lane.
@@ -120,14 +136,14 @@ no template graduated, and no proof re-judged by this lane.
 
 - 8 files added (§2).
 - `docs/briefs/results/cc-0046-orthogonal-gap-classification.md` — annotated (§4).
-- `docs/00_sync_state.md`, `docs/00_action_list.md` — v6.98 pointer (Convention-1 pointer-only).
+- `docs/00_sync_state.md`, `docs/00_action_list.md` — v6.99 pointer (Convention-1 pointer-only).
 - `docs/briefs/results/programme-docs-hygiene-v1-result.md` — this doc.
 
 ## 7. Constraints respected
 
 - No code, DB, migration, DML/DDL, deploy, EF, dashboard, cron, render, or publish change.
-- No branch merged, deleted, rebased, or pushed; `claude/gate-1-capability-expansion-paw1ew` and the
-  S5 branch both untouched.
+- No branch merged, deleted, rebased, or pushed; `claude/gate-1-capability-expansion-paw1ew`, the S5
+  branch, and `claude/ndis-yarns-free-chat-post-ou0tuj` all untouched.
 - No gate cleared, no brief approved, no artifact re-frozen, nothing marked proven.
 - The only DB access was a single read-only `list_migrations` call (§4).
 - Push remains a separate PK gate — not performed by this lane.
@@ -135,10 +151,19 @@ no template graduated, and no proof re-judged by this lane.
 ## 8. Open / carried
 
 - **S5 branch (`claude/s5-cross-brand-evidence-schedule-x7rbn8`) still holds v6.95–v6.97 off-main.**
-  Whoever merges it should expect those three entries to arrive *below* v6.98 in sequence — this is
+  Whoever merges it should expect those three entries to arrive *below* v6.99 in sequence — this is
   the recorded, PK-ratified outcome, not a new collision.
+- **`v6.98` is claimed by the unmerged `claude/ndis-yarns-free-chat-post-ou0tuj`** (investigation
+  result doc + an `00_action_list.md` marker; `00_sync_state.md` NOT cut on that branch). Merging it
+  will land v6.98 *below* this lane's v6.99 — recorded, expected, not a new collision.
 - The two out-of-scope branch files (§2) remain unlanded and are named for a future lane.
+- **Read while verifying the v6.98 claim, and surfaced rather than left buried** (NOT this lane's
+  scope, no action taken): that branch's register text reports an NDIS Yarns YouTube video making a
+  false service claim ("Your First NDIS Chat Is Free", `3TisjgII01s`) **live and PUBLIC**, with a PK
+  takedown decision pending. Flagged to PK for its own lane; this lane touched nothing related.
 - Root cause unchanged and unaddressed by this lane: register numbers are claimed by reading the
   highest number in a working tree — a read-then-write race by construction (the standing
-  `register-reconciler` finding; the durable fix is an allocator, not more diligence). This lane is
-  the third collision-adjacent reconciliation in eight days.
+  `register-reconciler` finding; the durable fix is an allocator, not more diligence). **This lane is
+  itself the fourth collision in eight days and the second to be caught only by an outside relay — the
+  strongest evidence yet that the allocator is overdue.** A serialising allocator would have made all
+  four impossible; no amount of scanning discipline will.

@@ -6,7 +6,7 @@
 
 ---
 
-> **⚠️ STATUS SUPERSEDED — 2026-08-01 (docs-hygiene reconciliation, register v6.98).**
+> **⚠️ STATUS SUPERSEDED — 2026-08-01 (docs-hygiene reconciliation, register v6.99).**
 > **This document's "UNAPPLIED / awaiting PK T3 apply gate" status is STALE.** All three
 > artifacts were subsequently APPLIED to production and the lane CLOSED — recorded at register
 > **v6.06** (`docs/00_sync_state.md`), reconciled to `origin/main` at `a741335`.
