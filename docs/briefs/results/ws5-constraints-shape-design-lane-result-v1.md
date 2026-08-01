@@ -245,6 +245,26 @@ then the ICE-side graduation lane (variant candidate + PP client assignment + su
 render → real draft → publish proof, rungs 7–13). Audio/voice stays a separate PK election
 (§15 Q3). Also carried: the `off_timeline` vocabulary lane (from probe 2).
 
+## PK VISUAL VERDICT (rung 6) — **"visually approved"** (PK direct, 2026-08-01)
+
+Verdict given on the R1 realistic-max render (`480d4333…` — full 3-point 35 s, every field at
+its char gate). Proof event `visual_approval`/`passed` recorded:
+`proof_event_id 2ccdb697-0553-46e6-bc97-e4ef9d79fb49`, evidence = the render id.
+**Rung-6 strictness note (recorded, not waived):** the graduation contract wants visual approval
+attached to the SPECIFIC client assignment being graduated; no assignment row exists yet (dark
+capture — deliberately). This template-level approval anchors the verdict + evidence; the
+graduation lane re-anchors it client-specifically when the PP assignment row is created (the
+contract itself notes rung 6 may precede rungs 2–5 full pipeline verification; row-26 precedent).
+Template `status` deliberately NOT elevated (no status-transition RPC exists; elevation is the
+graduation lane's own governed act).
+
+**Lane frontier now:** the WS-5 seed packet is fully executed (shape → RPCs → consumer → capture
+→ probes → calibration → visual verdict). What remains to close the PP YT kinetic cell (D4) is
+the ICE-side graduation lane — its own Gate-1: variant-candidate row (`video_short_kinetic`) +
+PP client assignment + worker-side render path (the §16 named gap: kinetic has no governed
+worker branch yet — THAT is the real build) + supervised render → real draft → publish proof
+(rungs 7–13) + S7's self-healing allocation pickup.
+
 ## Named handoffs / carries
 
 - ~~External review carry~~ **CLOSED 2026-08-01** — executed by the bridge-holding session on PK
