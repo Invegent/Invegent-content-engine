@@ -120,6 +120,15 @@ Legend: ✅ proven today · 🎯 committed, to close inside Ultimate · ⏸ expl
   reaches rung 10, the S7 guard correctly allocates PP YT to `video_short_stat` only; the moment
   kinetic graduates, allocation self-heals with zero code change (that self-healing property is
   the point of S7's data-driven design).
+  **Clarification (PK direction, 2026-08-01 — visual-approval scope rider):** the design/build/
+  approval work executed under D4 so far is scoped to **silent, solid-brand-background, 3-point**
+  kinetic — the rung-6 visual verdict (proof event `2ccdb697…`) covers exactly that composition,
+  no more. **Voice, music, and any imagery-backed (B-roll/image) variant are explicitly deferred**
+  — each is a separate election requiring its own probes and a fresh visual verdict before it can
+  count toward D4's graduation. `video_short_kinetic` (silent) proceeds on the landed evidence;
+  `video_short_kinetic_voice` and any B-roll-backed variant are out of scope of every approval
+  recorded to date. Full record: `docs/briefs/results/ws5-constraints-shape-design-lane-result-v1.md`
+  ("VISUAL-APPROVAL SCOPE RIDER"); register pointer: `docs/00_sync_state.md` v6.115.
 
 ### 1.3 Explicitly OUT of Ultimate v1
 Unchanged from rev-1: Weekly Digest implementation (design contract may be authored; build is
