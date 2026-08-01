@@ -390,9 +390,12 @@ approval.**
 | Asset Gap | Activation (substrate built, idle) | New lane (WS-3) | P-5A→P-5B; read view | Live detector + one register |
 | Creatomate Specialist | **Charter approved**; first mission designated (PP YT kinetic) | New lane (WS-4) | Operator transposition sitting (PK) | First template graduated |
 | Template Metadata | Foundation exists; consumer decided (intake validation) | New lane (WS-5) | Write RPC | First governed metadata consumed at WS-4 registration |
-| Dashboard Visibility | Active | Dashboard lane | none | Seven-state indicator (Slice F) |
+| Dashboard Visibility | **Complete — Slice F landed** | Dashboard lane | none | None — WS-6 scope closed |
 
 *(Owner-lane note: Capability Expansion = **S6**; S4 is NDIS controlled render, a different lane.)*
+*(Dashboard Visibility closed 2026-08-01 — Slice F was found already landed on `invegent-dashboard`
+`origin/main` `aa8209f` (2026-07-29); independently re-verified, zero code change needed from this
+programme. Register: v6.100, result: `docs/briefs/results/slice-f-seven-state-indicator-verification-result-v1.md`.)*
 
 ---
 
