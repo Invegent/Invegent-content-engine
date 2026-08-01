@@ -1,0 +1,22 @@
+[
+  {
+    "probe": "A_control",
+    "render_id": "982e8abb-1e48-4240-94b9-39ef2fd57526",
+    "status": "succeeded",
+    "wall_clock_s": 30.9,
+    "error": null,
+    "measured_duration_s": 35.0,
+    "bytes": 173447,
+    "sha256": "58abac67b05a03b56f320ab5289d266f2dd0dd4806ee960a1f49c05a17dfbc1c"
+  },
+  {
+    "probe": "B_bare_duration_mod",
+    "render_id": "fc7e2707-7507-4d82-bb29-e690112b0ae4",
+    "status": "succeeded",
+    "wall_clock_s": 23.4,
+    "error": null,
+    "measured_duration_s": 27.0,
+    "bytes": 141998,
+    "sha256": "bc8c6e9d56c9d99bb612fd4ee0ede992b4105b05405ce4aa3c9b5e30a4f52866"
+  }
+]

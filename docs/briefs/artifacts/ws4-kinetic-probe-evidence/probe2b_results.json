@@ -1,0 +1,95 @@
+{
+  "probe": "D2_two_point_collapsed_fixed",
+  "render_id": "40083e31-565e-4a58-91ec-26b0f1134ffd",
+  "status": "succeeded",
+  "wall_clock_s": 23.7,
+  "error": null,
+  "measured_duration_s": 27.0,
+  "sha256": "8020b524ef7a38991c3b59c2717abbcad7703f9ff37480c2a416aa5c4a928ff9",
+  "audio_streams": 0,
+  "detector_selfproof": {
+    "bartop_t8": {
+      "teal": 8640,
+      "sampled": 8640
+    },
+    "point1bar_t8": {
+      "teal": 1500,
+      "sampled": 3000
+    }
+  },
+  "detector_selfproof_ok": true,
+  "leak_scan": {
+    "t0.0": {
+      "bar": {
+        "teal": 1500,
+        "sampled": 3000
+      },
+      "divider": {
+        "teal": 0,
+        "sampled": 3520
+      }
+    },
+    "t0.033": {
+      "bar": {
+        "teal": 0,
+        "sampled": 3000
+      },
+      "divider": {
+        "teal": 0,
+        "sampled": 3520
+      }
+    },
+    "t0.066": {
+      "bar": {
+        "teal": 0,
+        "sampled": 3000
+      },
+      "divider": {
+        "teal": 0,
+        "sampled": 3520
+      }
+    },
+    "t0.1": {
+      "bar": {
+        "teal": 0,
+        "sampled": 3000
+      },
+      "divider": {
+        "teal": 0,
+        "sampled": 3520
+      }
+    },
+    "t0.2": {
+      "bar": {
+        "teal": 0,
+        "sampled": 3000
+      },
+      "divider": {
+        "teal": 0,
+        "sampled": 3520
+      }
+    },
+    "t0.5": {
+      "bar": {
+        "teal": 0,
+        "sampled": 3000
+      },
+      "divider": {
+        "teal": 0,
+        "sampled": 3520
+      }
+    },
+    "t1.0": {
+      "bar": {
+        "teal": 0,
+        "sampled": 3000
+      },
+      "divider": {
+        "teal": 0,
+        "sampled": 3520
+      }
+    }
+  },
+  "leak_detected": true,
+  "q2_verdict": "LEAK"
+}
