@@ -14,6 +14,19 @@ kinetic; do NOT collapse PP to stat-only."
 **Mission format:** `video_short_kinetic` (v1 scope). `video_short_kinetic_voice` is explicitly
 **out of this package's build scope** — see §11 (Audio) for why, and how it activates later without
 a re-transposition.
+**Freeze (CCF-04 Hash Checkpoint, `author-freeze`, lane `ws4-pp-yt-kinetic-design`) — pin recorded
+OUTSIDE this file from here forward, deliberately, to stop chasing a self-reference:** an earlier
+version of this note tried to name this file's own resulting hash inline and got it wrong twice in a
+row — writing the hash into the file changes the file's bytes, which changes the hash, forever one
+edit behind itself. **Fix: this file no longer states its own current hash.** The authoritative
+rollup for §5c's probe-firing authorisation is recorded in the orchestrator's session transcript at
+the point PK authorised firing, and is re-derivable at any time by running
+`.claude/helpers/hash-checkpoint.mjs` fresh against the three-file set (this file,
+`ws4-creatomate-specialist-agent-charter-v1.md`, `.claude/agents/creatomate-specialist.md`) — never by
+reading a number off this page. **Substantive content changes** (§5c's probes, the slot contract,
+anything beyond this note) still require a fresh freeze before the probes are treated as
+pinned-and-authorised; this note's own presence is exempt from that requirement since it can never
+describe itself.
 
 ---
 
@@ -268,6 +281,230 @@ resolution. **This is a declared assumption inherited from a resolved precedent,
 — still worth a one-render confirmation at the first probe (§14), since cc-0049's resolution was for
 a different template family (image quote cards, not video).
 
+## 5c. Probe-render blocks — paste-ready, PK-fired (2026-08-01, PK-sequenced)
+
+PK has sequenced these two probes **before** any editor time — per §14/§15, they resolve the two
+highest-leverage unknowns in this design. **Neither touches the Creatomate key from this session —
+both are plain `curl` blocks for PK to fire manually with `$CREATOMATE_API_KEY` set on PK's own
+side**, per the standing EF-env-only-secret rule. Header/body shape matches the live code exactly
+(`Authorization: Bearer <key>` + `Content-Type: application/json`, `video-worker/index.ts:509,804-
+808`; template-mode body `{template_id, modifications, output_format}`, `index.ts:110-113`).
+
+**Side-effect claim, narrowed (`apply-harness-auditor` pass, 2026-08-01, finding AHA-07-1):**
+**ICE-side, verified by construction** — neither probe writes to any ICE table, creates a draft, or
+affects any live selector output, because a manually-fired `curl` to `api.creatomate.com` never
+calls Supabase; `select_template`'s output is determined purely by `c.creative_provider_template`
+rows, which a third-party API call cannot touch. **Creatomate-side, an assumption, not a repo-proven
+fact:** whether a render call ever mutates/caches/versions anything against the SAVED template
+object itself (Q4 targets `46c5c4ac…`, the same id currently used in production), or only ever
+creates an independent, immutable render resource, is not directly evidenced anywhere in this repo —
+the closest indirect evidence (`_harness/cc_broll_parity_20260729/render_proof_parity_meta.json`,
+two prior renders against the same template, no visible cross-contamination) is suggestive, not
+dispositive. Treated here as a standard stateless job-submission API assumption, named rather than
+silently relied on.
+
+### Probe Q4 — does a bare top-level `duration` key override composition length?
+
+**Why this template:** `46c5c4ac-4d35-488c-b57c-44e05d790fb9` (`AU_generic_national_Suburb_9:16_V1`)
+is the one template in this repo with **already-proven** bare top-level `width`/`height` overrides
+(`B1_VIDEO_TEMPLATE_OUTPUT_PARITY`, `b1_video_stat.ts:146-159`, evidenced live by
+`_harness/cc_broll_parity_20260729/render_proof_parity_meta.json`). Testing `duration` on the same
+template is the smallest, most-grounded extension of already-proven behaviour. **Isolating design:**
+every element's own `.duration` is set to `5`; a bare top-level `"duration": 10` is added on top.
+`10 ≠ 5` and `10 ≠` the template's native `8`, so the result is unambiguous either way.
+
+```bash
+curl -sS -X POST https://api.creatomate.com/v2/renders \
+  -H "Authorization: Bearer ${CREATOMATE_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "template_id": "46c5c4ac-4d35-488c-b57c-44e05d790fb9",
+    "output_format": "mp4",
+    "modifications": {
+      "duration": 10,
+      "width": 1080,
+      "height": 1920,
+      "Background.duration": 5,
+      "Logo.duration": 5,
+      "Logo.source": "https://x.supabase.co/storage/v1/object/public/brand-assets/Property_Pulse/Logos/PP_logo_2.png",
+      "StatValue.duration": 5,
+      "StatValue.text": "Q4 PROBE",
+      "StatLabel.duration": 5,
+      "StatLabel.text": "WS-4 duration-key probe -- not for publication",
+      "ContextLine.duration": 5,
+      "ContextLine.text": "Testing whether a bare top-level duration key overrides composition length.",
+      "CtaText.duration": 5,
+      "CtaText.text": "Discard this render.",
+      "MusicBed.duration": 5,
+      "VoiceAudio.duration": 5
+    }
+  }'
+```
+
+Then poll (mirrors `index.ts:753`'s poll shape AND its bound —
+`apply-harness-auditor` finding AHA-08-1: the earlier draft named only the shape, not the ceiling)
+until `"status":"succeeded"`:
+
+```bash
+curl -sS https://api.creatomate.com/v2/renders/<RENDER_ID_FROM_ABOVE> \
+  -H "Authorization: Bearer ${CREATOMATE_API_KEY}"
+```
+
+**Poll bound, explicit:** every ~2-3s, up to ~48 attempts (~2 minutes total) — mirroring production's
+own `POLL_INTERVAL_MS=2500`/`POLL_MAX_ATTEMPTS=48` ceiling (`index.ts:511-512`). If still not
+`"succeeded"`/`"failed"` after ~2 minutes, **stop polling and treat as anomalous** — do not keep
+waiting indefinitely.
+
+**Observation to record:** the succeeded response's own `duration`/`output.duration` field (if
+Creatomate reports one) AND the actual playable length of the downloaded mp4 (e.g. `ffprobe -v
+error -show_entries format=duration -of csv=p=0 <file>.mp4` — `ffmpeg` is confirmed installed per
+house notes).
+
+**Cost note:** one render on an existing 8s-native template, ~10s output — negligible against the
+2-minute ceiling; no different in cost class from any other stat probe already run in this repo.
+
+**What each outcome means:**
+- **Output ≈ 10s → PASS.** Bare `duration` is an authoritative top-level override, symmetric with
+  `width`/`height`. §5's timing mechanism proceeds as designed: the kinetic template's variable
+  20-45s composition length is set via one bare `duration` key per render, computed as the true
+  Σ active-scene durations.
+- **Output ≈ 5s (or anything ≠ 10s, but the render DID succeed) → FAIL, but not fatal.** Bare
+  `duration` is ignored; composition length is governed purely by max per-element end-time, exactly
+  as the existing `video_short_stat` comment already implies (`b1_video_stat.ts:141-143`: "the
+  composition length is the max element duration"). **Workable fallback, no redesign needed beyond
+  this:** the worker computes the kinetic composition's true end time and sets the trailing `Cta*`
+  elements' `.time`/`.duration` to land exactly there — the composition naturally ends when its
+  longest-running element does. §5's per-element flat-modification mechanism already does this for
+  every element; only the (unused, if this fails) bare `duration` key is dropped from the design.
+- **HTTP non-2xx from the POST, OR `"status":"failed"`/an `error_message` in the poll response →
+  NEITHER PASS NOR FAIL** (`apply-harness-auditor` finding AHA-09-1). The probe did not validly run —
+  do not draw the "duration key is ignored" conclusion from a request that never actually rendered.
+  Investigate the error (bad `template_id`, malformed body, auth failure) and re-fire before
+  recording an outcome.
+
+### Probe Q2 — does a `duration: 0.01` element actually stay invisible?
+
+**Isolating design:** a full-length (5s) background rectangle establishes the composition length
+independent of the test element, so the probe measures ONLY the near-zero-duration guard, not a
+confound from the whole composition collapsing to near-zero. One large, unmissable text element is
+placed on-screen with `time: 0, duration: 0.01` — if it is visible at all, it will be obvious on
+playback; if the guard works, the 5s clip shows nothing but the background.
+
+```bash
+curl -sS -X POST https://api.creatomate.com/v2/renders \
+  -H "Authorization: Bearer ${CREATOMATE_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "output_format": "mp4",
+    "width": 1080,
+    "height": 1920,
+    "frame_rate": 30,
+    "duration": 5,
+    "elements": [
+      { "name": "Background", "type": "shape", "shape": "rectangle", "fill_color": "#0A2A4A",
+        "width": "1080px", "height": "1920px", "x": "0px", "y": "0px", "x_anchor": "0%", "y_anchor": "0%",
+        "time": 0, "duration": 5 },
+      { "name": "MarkerText", "type": "text",
+        "text": "IF YOU CAN READ THIS THE 0.01s GUARD FAILED",
+        "font_family": "Montserrat", "font_weight": "900", "font_size": "60px", "fill_color": "#FFFFFF",
+        "width": "960px", "x_alignment": "50%", "y_alignment": "50%",
+        "x": "60px", "y": "960px", "x_anchor": "0%", "y_anchor": "0%",
+        "time": 0, "duration": 0.01 }
+    ]
+  }'
+```
+
+Poll the same way as Q4 (same ~2-3s / ~48-attempt / ~2-minute bound — see Q4's poll bound above).
+
+**Observation to record — frame-accurate, not playback (`apply-harness-auditor` finding AHA-01-1):**
+the test element's `duration: 0.01` is **below one frame interval at 30fps** (1/30 ≈ 0.0333s) — the
+phenomenon being tested is inherently sub-frame, and ordinary playback is not a reliable instrument
+for detecting or ruling out a single-frame flash (a human could both miss a real leak and imagine
+one that isn't there). Extract every frame instead, mirroring the existing
+`_harness/cc_broll_parity_20260729` frame-still idiom:
+```bash
+ffmpeg -i <downloaded_file>.mp4 -vf "select='not(mod(n\,1))'" -vsync 0 frame_%04d.png
+```
+Inspect all ~150 extracted stills (5s × 30fps) for `"IF YOU CAN READ THIS..."` — not just play the
+clip back.
+
+**Cost note:** source-mode, 5s, two elements — the cheapest possible probe render in this package.
+
+**What each outcome means:**
+- **Text never visible in any extracted frame → PASS.** The near-zero-duration guard is confirmed
+  reliable; §4's 3-guard collapse mechanism stands as designed (all three guards independently
+  sufficient, deliberately redundant).
+- **Text visible in any extracted frame → FAIL, use the 2-guard fallback.** Drop reliance on
+  `duration≈0` as an independent guard. The **empty-text + off-canvas** pair (§4 guards 2+3) are
+  each trivially, independently reliable by construction (an empty string cannot render visible
+  content; `y: "3000px"` is off the 1920px-tall canvas) — collapsed `PointN` slots stay governed by
+  those two alone. `duration` for a collapsed slot can then simply be set to match the slot's
+  neighbours' timing (no need for a special near-zero value at all) since it no longer carries any
+  guard responsibility.
+- **HTTP non-2xx from the POST, OR `"status":"failed"`/an `error_message` in the poll response →
+  NEITHER PASS NOR FAIL.** Same as Q4's third branch — the probe did not validly run; investigate
+  before recording an outcome.
+
+**Both results — request + response + observation — go into this package's findings once run,**
+per the probe-render precedent this repo already follows (capacity established by probe, never
+assumed from source, `cc-0033-headline-capability-contract-wiring.md:38`).
+
+## 5d. Probe-render results (2026-08-01, fired PK-approved, session-executed)
+
+**Q4 — top-level `duration` override → PASS.** First fire (with `Logo.source` set to a
+`brand-assets` Supabase Storage URL) returned `"status":"failed"`,
+`"error_message":"A file could not be downloaded: https://x.supabase.co/storage/v1/object/public/
+brand-assets/Property_Pulse/Logos/PP_logo_2.png (element Logo)"` — **NEITHER PASS NOR FAIL** per
+the pre-declared third branch; the URL was not fetchable by Creatomate's renderer (unrelated to the
+mechanism under test). **Design deviation:** re-fired with `Logo.source` dropped from
+`modifications` entirely (the saved template's own default Logo asset used instead) — everything
+else, including `"duration":10`, unchanged. Re-fire: POST → HTTP 202, `id
+c31dcdd6-f4a7-43cc-b8a5-f2f03847f8ba`; polled to `"status":"succeeded"` in 3 attempts
+(~5-7.5s); response reported `"duration":10` at top level. Downloaded the output mp4
+(`file_size:5777252`) and measured actual playable length with `ffprobe -show_entries
+format=duration`: **`10.000000`s exactly** — matches the override, not the elements' `5` or the
+template's native `8`. Bare `duration` is confirmed an authoritative top-level override, symmetric
+with the already-proven `width`/`height` behaviour. **§5's timing mechanism (variable composition
+length via one bare `duration` key per render) proceeds as designed — no redesign needed.**
+
+**Q2 — `duration: 0.01` collapse guard → FAIL.** POST → HTTP 202, `id
+8acd4302-e2a9-4ff0-9114-5dc11342ff08`; polled to `"status":"succeeded"` on the first attempt
+(`file_size:22384`). **Collapsed-slot observation (frame-accurate, not playback):** downloaded the
+mp4, extracted all 150 frames (5s × 30fps) with `ffmpeg -vf "select='not(mod(n\,1))'"`, then cropped
+each frame to the `MarkerText` region (`960x100` at `60,940`) and ran `signalstats` across every
+frame. 149 of 150 frames measured a uniform `YAVG≈16.0`/`YMAX≈17` (pure background, no text). **Frame
+0 (`pts_time:0`) measured `YAVG=64.29`, `YMAX=250`** — a clear outlier. Visual confirmation
+(extracted `frame_0001.png`) shows the full marker text **"IF YOU CAN READ THIS THE 0.01s GUARD
+FAILED" fully legible**, not a partial/sub-pixel flash. **The near-zero-duration guard does NOT
+reliably suppress rendering — a `duration:0.01` element is fully visible in the composition's first
+frame.** Per the pre-declared FAIL branch: **drop reliance on `duration≈0` as an independent guard.**
+Collapsed `PointN` slots must be governed by the **empty-text + off-canvas pair alone** (§4 guards
+2+3, each independently reliable by construction); a collapsed slot's `duration` can simply match
+its neighbours' timing since it no longer carries guard responsibility.
+
+**Downstream resolution (§15):** Q2 FAIL mechanically resolves Q1 per PK's conditional decision
+(§15) — **fall back to the simpler fixed 1-2 point-slot design**, not the 3-slot default, since the
+3-guard collapse mechanism the 3-slot design depended on is not sound. No further PK sitting needed
+to pick between them; this is the named mechanical resolution.
+
+## 5e. WS-5 handoff (2026-08-01) — revised slot contract, not the stale 3-slot calibration
+
+WS-5 Phase 1 (`local_d28268f1-3836-416d-9059-7332ee8da5be`, "Design WS-5 constraints jsonb shape +
+kinetic registration", worktree branch `claude/admiring-shtern-6fdb19`, not yet merged to main) had
+already **CAPTURED** a kinetic template (`9ad024cc…`, scope=`generic`, 26 constraints rows, dark,
+auditor-clean) ahead of these probes, per its own record: "NEXT probe renders (first: duration
+override) → PK verdict → graduation." That capture predates today's Q2 FAIL and therefore reflects
+the retired **3-point / near-zero-duration-guard** design, not the fixed 1-2 point-slot design this
+package now resolves to.
+
+**Sent directly to the WS-5 session (cross-session message, 2026-08-01):** the Q4 PASS / Q2 FAIL
+results, the mechanical Q1 resolution (fixed 1-2 point slots), the 21-element slot contract (down
+from 26 — Point3's 5 elements retired), and an explicit flag that its already-captured 26-row/3-slot
+calibration must **not** be persisted or graduated as-is — it needs revision to match the fixed
+1-2 point-slot contract (`docs/briefs/artifacts/ws4-kinetic-transposition-run-sheet-v1.md` §5)
+before any graduation step. This is a fact/finding handoff only — no DB write was made by this
+session; WS-5's own lane owns whether/how to revise its captured rows, under its own gates.
+
 ## 6. Element names and slot contract
 
 Mirrors the `dynamic_elements` shape from `branch-b-template-capability-contracts.md` §1
@@ -418,19 +655,17 @@ path, by contrast, treats voiceover as **always required** regardless of the `_v
 (`b1_video_stat.ts` — "VO REQUIRED" — a `cc-0032` design decision specific to stat). These are two
 different existing conventions; **this package does not silently pick one for kinetic.**
 
-**v1 mission scope: silent kinetic only** (`video_short_kinetic`, no VO/music, matching the WS-4
-mission text's "voice variants as PK elects" — implying they are an election, not the default).
-`VoiceAudio`/`MusicBed` elements exist in the template (§6.5) but stay unbound (`source:""` →
-silent, per house convention) for the v1 registration.
+**PK decision (2026-08-01): voice variants DEFERRED out of mission 1 entirely** — mission 1 builds
+**silent kinetic only** (`video_short_kinetic`, no VO/music). `VoiceAudio`/`MusicBed` elements
+still exist in the template (§6.5, kept for forward compatibility so no re-transposition is needed
+later) but stay unbound (`source:""` → silent, per house convention) for the v1 registration, and
+no voice-variant registration/probe/graduation work is in scope for this mission.
 
-**If PK later elects a voice variant:** two options, named but not decided here —
-(a) mirror stat's `composeGovernedVideoNarration` pattern — a **deterministic** narration string
-built from the same structured scene fields already gated by §9 (no separate free-text
-`narration_text` field, no duration-fit risk against the visual timing), or
-(b) accept the AI's free-form `narration_text` (as the legacy path does today) and accept an
-unmeasured VO-vs-visual duration-fit risk. **Recommendation: (a)**, for the same reason stat adopted
-it — deterministic composition from already-gated fields cannot desync from the visual timing the
-way free narration text can. **This is §15 Q3, a named PK decision, not assumed.**
+**If a future mission builds a voice variant:** PK has also decided the approach in advance —
+**deterministic narration composition**, mirroring stat's `composeGovernedVideoNarration` pattern: a
+narration string built from the same structured scene fields already gated by §9, not a separate
+free-text `narration_text` field. This was §15 Q3; it is now **decided, not open** — recorded here
+so the choice isn't re-litigated when that future mission starts.
 
 ## 12. Platform / aspect suitability
 
@@ -559,23 +794,24 @@ graph has held video variants before (`stat-reveal-9x16-video-v1/v2`, `property-
 so a video template per se is not unprecedented, only this template's element count/timing
 structure is.
 
-## 15. Open questions — named PK decisions, not assumed
+## 15. Open questions — PK-sequenced decisions (updated 2026-08-01)
 
-- **Q1 — fixed-slot count.** Build to the AI contract's max (3 point slots, this package's default,
-  §4) or a simpler fixed 1 or 2 point slots (discarding some of the AI contract's range, fewer
-  elements to register/maintain, less flexible content)? Recommend the 3-slot default; PK may elect
-  otherwise before the operator sitting.
-- **Q2 — collapse mechanism trust.** Once §14's structural probes run, does the 3-guard collapse
-  (near-zero duration + empty text + off-canvas position) prove sufficient, or does an unused slot
-  leak a frame? This gates whether the fixed-slot design (§4) is viable at all, or whether kinetic
-  needs a different mechanism (e.g. separate 3-scene / 4-scene / 5-scene template variants — more
-  registry rows, no collapse-risk).
-- **Q3 — voice variant approach.** Deterministic narration composition (mirroring stat, recommended,
-  §11) vs. free AI `narration_text` (matches the legacy UX but carries an unmeasured duration-fit
-  risk) — only relevant once PK elects to build `video_short_kinetic_voice`.
-- **Q4 — top-level `duration` override.** If §14's probe shows this is NOT overridable via a bare
-  key, this package's core timing mechanism (§5) needs a redesign before any registration proceeds —
-  flagged as the single highest-leverage probe to run first.
+- **Q1 — fixed-slot count. RESOLVED 2026-08-01 (mechanical, per Q2).** Q2 FAILED (§5d) → **fixed
+  1-2 point-slot design**, not the 3-slot default. The 3-guard collapse mechanism the 3-slot design
+  depended on is not sound (§5d), so the simpler fixed-slot design is the one to build.
+- **Q2 — collapse mechanism trust. RESOLVED 2026-08-01 — FAIL (§5d).** The 3-guard collapse
+  (near-zero duration + empty text + off-canvas position) does NOT hold: frame-accurate inspection
+  (150 extracted frames, `signalstats` + visual confirmation) found the `duration:0.01` marker text
+  fully legible in the composition's first frame. Drop `duration≈0` as an independent guard; govern
+  collapsed slots by empty-text + off-canvas alone (§4 guards 2+3, §5c/§5d).
+- **Q3 — voice variant approach. DECIDED, and out of scope for mission 1.** Deterministic narration
+  composition (mirroring stat) — see §11. Voice variants themselves are deferred out of mission 1
+  entirely, so this decision is recorded for a future mission, not acted on now.
+- **Q4 — top-level `duration` override. RESOLVED 2026-08-01 — PASS (§5d).** Confirmed via
+  `ffprobe`-measured actual output length (`10.000000`s exact match to the override) after a
+  design-deviation re-fire dropped an unfetchable `Logo.source` URL from the first attempt. §5's
+  timing mechanism proceeds as designed — no fallback needed, no redesign. This changes exactly which
+  modification keys the operator's transposed template needs to expose.
 
 ## 16. Named gap surfaced by this design pass (not this package's job to fix)
 
@@ -589,6 +825,47 @@ stat's) would avoid the wasted draft entirely. Named here as a follow-on candida
 implements the render-side hard gate; not fixed in this design-only package.
 
 ---
+
+## 18. WS-5 handoff — capture requirements for the `constraints` jsonb shape
+
+**The WS-5 `constraints` jsonb shape is being designed as its own parallel T2 lane — not by this
+package or this agent.** `db-rls-auditor`'s pass (§14 registration items) found `modification_key`
+and `empty_ok` have no dedicated column on `c.creative_provider_template_field` and would need to
+live in `constraints`, which is `NULL` on all 144 live field rows today — zero precedent to copy.
+This section hands WS-5 the **requirements** this template's 26-field capture needs the eventual
+shape to express — a named input, not a design.
+
+1. **An element can need more than one modification key.** `HookHeadline`, for example, needs
+   `.text` AND `.time` AND `.duration` simultaneously (§6.2, §8) — the shape must support a **list**
+   of `{property, required, empty_ok}`-style entries per field row, not a single string. 19 of this
+   template's 26 elements carry `.time`/`.duration` in addition to their content property
+   (`.text`/`.source`/`.fill_color`); 4 persistent-chrome elements carry only their content property
+   (§6.1); 2 audio elements carry only `.source` (§6.5).
+2. **Modification-key form is `<element_name>.property`** (suffixed, cc-0049-resolved, §5b) — the
+   shape should record the *property* per entry (`text`/`source`/`fill_color`/`time`/`duration`),
+   not require re-deriving it from a free-text key string.
+3. **A persistent-vs-scene-timed distinction.** 4 elements (§6.1) span the full composition and
+   never carry `.time`/`.duration`; the other 22 always do. The shape needs to express this, since a
+   future validator (or the intake-validation consumer, §14) should be able to tell "this element is
+   missing its required timing modification" from "this element correctly has none."
+4. **Scene-slot grouping.** Every element belongs to exactly one of `Hook`/`Point1`/`Point2`/
+   `Point3`/`Cta` (§6.2-§6.4) — needed so a future consumer can check "all elements of an *active*
+   scene slot are present," not just "all 26 elements individually exist," especially once Q1/Q2
+   (§15) resolve which point-slot count is actually built.
+5. **Conditional required/empty_ok, not flat booleans.** `PointNCounter`/`PointNBar`/
+   `PointNHeadline` are required **only when that slot is active** (§6.3) — collapsed per §4/§5c when
+   inactive. The shape needs to express "required conditional on slot-activation," not a single
+   fixed `required: true/false` per element.
+6. **Collapse-guard values, once Q2 resolves.** Whichever guard combination Q2's probe (§5c)
+   confirms — either all three (duration≈0 + empty text + off-canvas) or the two-guard fallback
+   (empty text + off-canvas only) — the shape should be able to record the actual sentinel values
+   used (e.g. the off-canvas `y` coordinate), so a future registration-time validator can check the
+   operator's saved template actually implements the confirmed mechanism, not just trust it did.
+7. **Text-limit metadata may already have a home.** `creative-graph-auditor`'s pass found the Creative
+   Library's **separate** `capability_contracts[].fields` mechanism (§7 of `registry-schema-v2.md`)
+   already classifies fields as `ai_authored`/`derived`/`renderer_fixed`/`governed_assets` — WS-5
+   should check whether §9's per-field `max_chars`/`overflow_risk` metadata belongs there instead of
+   duplicating it inside the DB-side `constraints` jsonb; not this package's call to make.
 
 ## Package summary (per the charter's §2 step-1 deliverable list)
 
