@@ -1,0 +1,20 @@
+{
+  "probe": "D3_offtimeline_collapse",
+  "render_id": "49159807-6e0a-42ac-a0f1-b89fc2ea7592",
+  "status": "succeeded",
+  "wall_clock_s": 26.6,
+  "error": null,
+  "measured_duration_s": 27.0,
+  "detector_selfproof_ok": true,
+  "leak_scan_bar_teal": {
+    "t0.0": 0,
+    "t0.033": 0,
+    "t0.066": 0,
+    "t0.1": 0,
+    "t0.5": 0,
+    "t1.0": 0,
+    "t26.9": 0
+  },
+  "q2_offtimeline_verdict": "NO_LEAK",
+  "sha256": "139da509442a6ac78a266d07c24149895edd38320074aec2adbf986c87c544eb"
+}

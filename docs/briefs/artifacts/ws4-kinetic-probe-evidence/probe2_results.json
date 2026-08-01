@@ -1,0 +1,43 @@
+{
+  "probe": "D_two_point_collapsed",
+  "render_id": "304161dc-c3bb-4028-a8b3-9385c7e9105c",
+  "status": "succeeded",
+  "wall_clock_s": 27.7,
+  "error": null,
+  "measured_duration_s": 27.0,
+  "sha256": "0d8297b872fbd52cb4178b3fa65db7911336290fd3f65da6086db028e0d1d631",
+  "audio_streams_D": 0,
+  "audio_streams_probe1_control": 0,
+  "leak_scan_teal_px": {
+    "t0.0": {
+      "bar_region": 0,
+      "divider_region": 0
+    },
+    "t0.033": {
+      "bar_region": 0,
+      "divider_region": 0
+    },
+    "t0.066": {
+      "bar_region": 0,
+      "divider_region": 0
+    },
+    "t0.1": {
+      "bar_region": 0,
+      "divider_region": 0
+    },
+    "t0.2": {
+      "bar_region": 0,
+      "divider_region": 0
+    },
+    "t0.5": {
+      "bar_region": 0,
+      "divider_region": 0
+    },
+    "t8.0_point1_active_detector_proof": {
+      "bar_region": 0,
+      "divider_region": 0
+    }
+  },
+  "leak_detected": false,
+  "detector_selfproof_ok": false
+}

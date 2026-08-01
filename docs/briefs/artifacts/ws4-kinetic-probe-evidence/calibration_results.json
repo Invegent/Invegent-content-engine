@@ -1,0 +1,50 @@
+[
+  {
+    "probe": "R1_realistic",
+    "render_id": "480d4333-bb23-4696-be9b-8ff43b61828b",
+    "status": "succeeded",
+    "wall_clock_s": 40.8,
+    "error": null,
+    "url": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/480d4333-bb23-4696-be9b-8ff43b61828b.mp4",
+    "sha256": "f75331e469fdb18efcbdba9fed5b8395ca797a2fea96ff0d7d292c2ebf3eaf04",
+    "measured_duration_s": 35.0,
+    "caption_band_intrusion": {
+      "point1": {
+        "nonnavy": 0,
+        "sampled": 237600
+      },
+      "point2": {
+        "nonnavy": 0,
+        "sampled": 237600
+      },
+      "point3": {
+        "nonnavy": 0,
+        "sampled": 237600
+      }
+    }
+  },
+  {
+    "probe": "R2_wideglyph",
+    "render_id": "5976f431-6326-45c9-a34e-f0b1aceb6b7d",
+    "status": "succeeded",
+    "wall_clock_s": 42.3,
+    "error": null,
+    "url": "https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/5976f431-6326-45c9-a34e-f0b1aceb6b7d.mp4",
+    "sha256": "ba8f7a353544ef0f8bac0a877575b47c0caf1346a975e89111ce7e3bc32309e9",
+    "measured_duration_s": 35.0,
+    "caption_band_intrusion": {
+      "point1": {
+        "nonnavy": 0,
+        "sampled": 237600
+      },
+      "point2": {
+        "nonnavy": 0,
+        "sampled": 237600
+      },
+      "point3": {
+        "nonnavy": 0,
+        "sampled": 237600
+      }
+    }
+  }
+]
