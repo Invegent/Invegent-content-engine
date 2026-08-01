@@ -212,6 +212,39 @@ as source-mode-only. Worker guidance until then: collapse = `.time=9999` + `.dur
 **Probe queue remaining:** the 10 text-calibration items (hook/point/CTA max_lines sweeps,
 worker-string max_chars) — then PK visual verdict on a full 3-point render, then graduation.
 
+## PROBE 3 — text calibration batch (EXECUTED 2026-08-01, PK-authorised) — **ALL 10 ITEMS CALIBRATED**
+
+Two renders, every text slot at its exact char gate simultaneously:
+`R1_realistic` (`480d4333…`, 40.8 s wall, sha `f75331e4…`) · `R2_wideglyph` machine-built
+worst case (`5976f431…`, 42.3 s wall, sha `ba8f7a35…`). Both 35.00 s. **Caption band
+(y1300–1520): ZERO intrusion in all six point-scene measurements — even 100-char bodies.**
+
+| Field (gate) | Realistic | Wide-glyph worst | Calibrated value |
+|---|---|---|---|
+| HookHeadline (60ch) | 3 lines, clean | **8 lines — overflows the 960×700 box** (recorded; realistic prose never approaches this; `overflow_risk` stays `high`) | `max_lines: 3` |
+| PointNHeadline (55ch) | 3 lines | 4 lines — no divider collision | `max_lines: 4` |
+| PointNBody (100ch) | 3 lines | 5 lines — band still clear | (no TBC slot; evidence recorded here) |
+| CtaHeadline (65ch) | fits centered | 5 lines — fits 880×600 | `max_lines: 5` |
+| HookSubtitle (40ch) | 1 line | 1 line | `max_chars: 40` |
+| PointNCounter (5ch `10/10`) | 1 line | 1 line | `max_chars: 5` |
+| CtaFooter (50ch, longest client name) | 1 line | wraps to 2 centered lines, still clean (cta scene — caption-band rule inapplicable, footer collapses under a caption variant) | `max_chars: 50` |
+
+**Registry recorded:** 10 CAS updates via `set_tmr_field_constraints` (each verified
+`to_be_calibrated`-before / `ok`-after), triples now `probe_calibrated` with evidence = both
+render ids. Ground truth: 0 TBC remaining, 10 probe-calibrated-with-evidence.
+**Calibrated contract artifact:** `docs/briefs/artifacts/ws4-kinetic-declared-contract-v2-calibrated.json`
+(v1 stays untouched — its hash remains the capture-time `inventory_hash`, honest lineage).
+**Formal capture-check vs v2 (the P-7 consumer demonstrably reading calibrated metadata — the
+WS-5 DoD clause): `pass` · 0 hard · 0 calibration_required · 0 findings** (6 standing advisory
+shape-collapse warnings only). Proof event `abcf33b6-09ac-43ac-900a-10ec4ca669ce`.
+**Render-reliability ledger to date (§9a):** 30.9 / 23.4 / 27.7 / 23.4 / 26.6 / 40.8 / 42.3 s —
+all far under the 2-min ceiling, 7/7 succeeded, zero timeouts.
+
+**REMAINING before graduation:** PK visual verdict on a full three-point render (rung 6) →
+then the ICE-side graduation lane (variant candidate + PP client assignment + supervised
+render → real draft → publish proof, rungs 7–13). Audio/voice stays a separate PK election
+(§15 Q3). Also carried: the `off_timeline` vocabulary lane (from probe 2).
+
 ## Named handoffs / carries
 
 - ~~External review carry~~ **CLOSED 2026-08-01** — executed by the bridge-holding session on PK

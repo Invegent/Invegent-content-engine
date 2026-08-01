@@ -1,0 +1,976 @@
+{
+  "contract": {
+    "contract_version": "tmr_intake_declared_contract_v1",
+    "template": {
+      "provider": "creatomate",
+      "scope": "generic",
+      "output_type": "video",
+      "width": 1080,
+      "height": 1920
+    },
+    "platforms": [
+      {
+        "platform": "youtube",
+        "placement": "default"
+      }
+    ],
+    "elements": [
+      {
+        "element_name": "Background",
+        "field_kind": "shape",
+        "required_for_render": true,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Background.fill_color"
+          ],
+          "slot": {
+            "slot_key": "chrome",
+            "activation": "persistent"
+          },
+          "content_source": "brand_profile_colour",
+          "empty_ok": false,
+          "collapse": {
+            "collapsible": false
+          },
+          "asset": {
+            "profile_column": "brand_colour_primary",
+            "fallback_hex": "#0A2A4A"
+          }
+        }
+      },
+      {
+        "element_name": "BarTop",
+        "field_kind": "shape",
+        "required_for_render": true,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "BarTop.fill_color"
+          ],
+          "slot": {
+            "slot_key": "chrome",
+            "activation": "persistent"
+          },
+          "content_source": "brand_profile_colour",
+          "empty_ok": false,
+          "collapse": {
+            "collapsible": false
+          },
+          "asset": {
+            "profile_column": "brand_colour_secondary",
+            "fallback_hex": "#1C8A8A"
+          }
+        }
+      },
+      {
+        "element_name": "BarBottom",
+        "field_kind": "shape",
+        "required_for_render": true,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "BarBottom.fill_color"
+          ],
+          "slot": {
+            "slot_key": "chrome",
+            "activation": "persistent"
+          },
+          "content_source": "brand_profile_colour",
+          "empty_ok": false,
+          "collapse": {
+            "collapsible": false
+          },
+          "asset": {
+            "profile_column": "brand_colour_secondary",
+            "fallback_hex": "#1C8A8A"
+          }
+        }
+      },
+      {
+        "element_name": "Logo",
+        "field_kind": "logo",
+        "required_for_render": true,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Logo.source"
+          ],
+          "slot": {
+            "slot_key": "chrome",
+            "activation": "persistent"
+          },
+          "content_source": "governed_asset",
+          "empty_ok": false,
+          "collapse": {
+            "collapsible": false
+          },
+          "asset": {
+            "resolver": "resolve_brand_assets",
+            "missing_behaviour": "fail_loud",
+            "asset_kind": "logo"
+          },
+          "notes": "No client-name text fallback - governed fail-loud (WS-4 pkg s6.1)"
+        }
+      },
+      {
+        "element_name": "HookHeadline",
+        "field_kind": "text",
+        "required_for_render": true,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "HookHeadline.text",
+            "HookHeadline.time",
+            "HookHeadline.duration"
+          ],
+          "slot": {
+            "slot_key": "hook",
+            "activation": "always"
+          },
+          "content_source": "ai_authored",
+          "empty_ok": false,
+          "collapse": {
+            "collapsible": false
+          },
+          "text_limits": {
+            "max_chars": {
+              "value": 60,
+              "basis": "declared_from_source",
+              "source": "ai-worker/index.ts:728 via WS-4 pkg s9",
+              "evidence_reference": null
+            },
+            "max_lines": {
+              "value": 3,
+              "basis": "probe_calibrated",
+              "source": null,
+              "evidence_reference": "renders 480d4333-bb23-4696-be9b-8ff43b61828b + 5976f431-6326-45c9-a34e-f0b1aceb6b7d (R1 realistic max + R2 wide-glyph max, 2026-08-01)"
+            }
+          },
+          "overflow_risk": "high",
+          "container": {
+            "summary": "960x700 fixed box at x60 y560 (WS-4 s9: probe sweep 40/50/60 chars)"
+          }
+        }
+      },
+      {
+        "element_name": "HookSubtitle",
+        "field_kind": "text",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "HookSubtitle.text",
+            "HookSubtitle.time",
+            "HookSubtitle.duration"
+          ],
+          "slot": {
+            "slot_key": "hook",
+            "activation": "always"
+          },
+          "content_source": "worker_computed",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": false
+          },
+          "text_limits": {
+            "max_chars": {
+              "value": 40,
+              "basis": "probe_calibrated",
+              "source": null,
+              "evidence_reference": "renders 480d4333-bb23-4696-be9b-8ff43b61828b + 5976f431-6326-45c9-a34e-f0b1aceb6b7d (R1 realistic max + R2 wide-glyph max, 2026-08-01)"
+            }
+          },
+          "overflow_risk": "low",
+          "notes": "Fixed decorative string (WS-4 s6.2); collapsed under a future caption variant"
+        }
+      },
+      {
+        "element_name": "Point1Counter",
+        "field_kind": "text",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point1Counter.text",
+            "Point1Counter.time",
+            "Point1Counter.duration"
+          ],
+          "slot": {
+            "slot_key": "point1",
+            "activation": "conditional"
+          },
+          "content_source": "worker_computed",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "empty_text",
+              "off_canvas"
+            ]
+          },
+          "text_limits": {
+            "max_chars": {
+              "value": 5,
+              "basis": "probe_calibrated",
+              "source": null,
+              "evidence_reference": "renders 480d4333-bb23-4696-be9b-8ff43b61828b + 5976f431-6326-45c9-a34e-f0b1aceb6b7d (R1 realistic max + R2 wide-glyph max, 2026-08-01)"
+            }
+          },
+          "overflow_risk": "low",
+          "notes": "Worker-computed N/Total from true active-point count (WS-4 s6.4)"
+        }
+      },
+      {
+        "element_name": "Point1Bar",
+        "field_kind": "shape",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point1Bar.time",
+            "Point1Bar.duration"
+          ],
+          "slot": {
+            "slot_key": "point1",
+            "activation": "conditional"
+          },
+          "content_source": "template_fixed",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "off_canvas"
+            ]
+          },
+          "baked": {
+            "entry_direction": "270"
+          }
+        }
+      },
+      {
+        "element_name": "Point1Headline",
+        "field_kind": "text",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point1Headline.text",
+            "Point1Headline.time",
+            "Point1Headline.duration"
+          ],
+          "slot": {
+            "slot_key": "point1",
+            "activation": "conditional"
+          },
+          "content_source": "ai_authored",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "empty_text",
+              "off_canvas"
+            ]
+          },
+          "text_limits": {
+            "max_chars": {
+              "value": 55,
+              "basis": "declared_from_source",
+              "source": "ai-worker/index.ts:728 via WS-4 pkg s9",
+              "evidence_reference": null
+            },
+            "max_lines": {
+              "value": 4,
+              "basis": "probe_calibrated",
+              "source": null,
+              "evidence_reference": "renders 480d4333-bb23-4696-be9b-8ff43b61828b + 5976f431-6326-45c9-a34e-f0b1aceb6b7d (R1 realistic max + R2 wide-glyph max, 2026-08-01)"
+            }
+          },
+          "overflow_risk": "medium",
+          "container": {
+            "summary": "880px column at x100 y480; divider fixed at y870",
+            "shared_with": [
+              "Point1Body"
+            ]
+          }
+        }
+      },
+      {
+        "element_name": "Point1Divider",
+        "field_kind": "shape",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point1Divider.time",
+            "Point1Divider.duration"
+          ],
+          "slot": {
+            "slot_key": "point1",
+            "activation": "conditional"
+          },
+          "content_source": "template_fixed",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "off_canvas"
+            ]
+          },
+          "baked": {
+            "entry_direction": "270"
+          },
+          "notes": "Present only when the body line is non-empty (WS-4 s6.3)"
+        }
+      },
+      {
+        "element_name": "Point1Body",
+        "field_kind": "text",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point1Body.text",
+            "Point1Body.time",
+            "Point1Body.duration"
+          ],
+          "slot": {
+            "slot_key": "point1",
+            "activation": "conditional"
+          },
+          "content_source": "ai_authored",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "empty_text",
+              "off_canvas"
+            ]
+          },
+          "text_limits": {
+            "max_chars": {
+              "value": 100,
+              "basis": "declared_from_source",
+              "source": "ai-worker/index.ts:728 via WS-4 pkg s9",
+              "evidence_reference": null
+            }
+          },
+          "overflow_risk": "low",
+          "container": {
+            "summary": "880px column at y895; caption-safe band y1300-1520 below must stay clear"
+          }
+        }
+      },
+      {
+        "element_name": "Point2Counter",
+        "field_kind": "text",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point2Counter.text",
+            "Point2Counter.time",
+            "Point2Counter.duration"
+          ],
+          "slot": {
+            "slot_key": "point2",
+            "activation": "conditional"
+          },
+          "content_source": "worker_computed",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "empty_text",
+              "off_canvas"
+            ]
+          },
+          "text_limits": {
+            "max_chars": {
+              "value": 5,
+              "basis": "probe_calibrated",
+              "source": null,
+              "evidence_reference": "renders 480d4333-bb23-4696-be9b-8ff43b61828b + 5976f431-6326-45c9-a34e-f0b1aceb6b7d (R1 realistic max + R2 wide-glyph max, 2026-08-01)"
+            }
+          },
+          "overflow_risk": "low",
+          "notes": "Worker-computed N/Total from true active-point count (WS-4 s6.4)"
+        }
+      },
+      {
+        "element_name": "Point2Bar",
+        "field_kind": "shape",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point2Bar.time",
+            "Point2Bar.duration"
+          ],
+          "slot": {
+            "slot_key": "point2",
+            "activation": "conditional"
+          },
+          "content_source": "template_fixed",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "off_canvas"
+            ]
+          },
+          "baked": {
+            "entry_direction": "0"
+          }
+        }
+      },
+      {
+        "element_name": "Point2Headline",
+        "field_kind": "text",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point2Headline.text",
+            "Point2Headline.time",
+            "Point2Headline.duration"
+          ],
+          "slot": {
+            "slot_key": "point2",
+            "activation": "conditional"
+          },
+          "content_source": "ai_authored",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "empty_text",
+              "off_canvas"
+            ]
+          },
+          "text_limits": {
+            "max_chars": {
+              "value": 55,
+              "basis": "declared_from_source",
+              "source": "ai-worker/index.ts:728 via WS-4 pkg s9",
+              "evidence_reference": null
+            },
+            "max_lines": {
+              "value": 4,
+              "basis": "probe_calibrated",
+              "source": null,
+              "evidence_reference": "renders 480d4333-bb23-4696-be9b-8ff43b61828b + 5976f431-6326-45c9-a34e-f0b1aceb6b7d (R1 realistic max + R2 wide-glyph max, 2026-08-01)"
+            }
+          },
+          "overflow_risk": "medium",
+          "container": {
+            "summary": "880px column at x100 y480; divider fixed at y870",
+            "shared_with": [
+              "Point2Body"
+            ]
+          }
+        }
+      },
+      {
+        "element_name": "Point2Divider",
+        "field_kind": "shape",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point2Divider.time",
+            "Point2Divider.duration"
+          ],
+          "slot": {
+            "slot_key": "point2",
+            "activation": "conditional"
+          },
+          "content_source": "template_fixed",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "off_canvas"
+            ]
+          },
+          "baked": {
+            "entry_direction": "0"
+          },
+          "notes": "Present only when the body line is non-empty (WS-4 s6.3)"
+        }
+      },
+      {
+        "element_name": "Point2Body",
+        "field_kind": "text",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point2Body.text",
+            "Point2Body.time",
+            "Point2Body.duration"
+          ],
+          "slot": {
+            "slot_key": "point2",
+            "activation": "conditional"
+          },
+          "content_source": "ai_authored",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "empty_text",
+              "off_canvas"
+            ]
+          },
+          "text_limits": {
+            "max_chars": {
+              "value": 100,
+              "basis": "declared_from_source",
+              "source": "ai-worker/index.ts:728 via WS-4 pkg s9",
+              "evidence_reference": null
+            }
+          },
+          "overflow_risk": "low",
+          "container": {
+            "summary": "880px column at y895; caption-safe band y1300-1520 below must stay clear"
+          }
+        }
+      },
+      {
+        "element_name": "Point3Counter",
+        "field_kind": "text",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point3Counter.text",
+            "Point3Counter.time",
+            "Point3Counter.duration"
+          ],
+          "slot": {
+            "slot_key": "point3",
+            "activation": "conditional"
+          },
+          "content_source": "worker_computed",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "empty_text",
+              "off_canvas"
+            ]
+          },
+          "text_limits": {
+            "max_chars": {
+              "value": 5,
+              "basis": "probe_calibrated",
+              "source": null,
+              "evidence_reference": "renders 480d4333-bb23-4696-be9b-8ff43b61828b + 5976f431-6326-45c9-a34e-f0b1aceb6b7d (R1 realistic max + R2 wide-glyph max, 2026-08-01)"
+            }
+          },
+          "overflow_risk": "low",
+          "notes": "Worker-computed N/Total from true active-point count (WS-4 s6.4)"
+        }
+      },
+      {
+        "element_name": "Point3Bar",
+        "field_kind": "shape",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point3Bar.time",
+            "Point3Bar.duration"
+          ],
+          "slot": {
+            "slot_key": "point3",
+            "activation": "conditional"
+          },
+          "content_source": "template_fixed",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "off_canvas"
+            ]
+          },
+          "baked": {
+            "entry_direction": "180"
+          }
+        }
+      },
+      {
+        "element_name": "Point3Headline",
+        "field_kind": "text",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point3Headline.text",
+            "Point3Headline.time",
+            "Point3Headline.duration"
+          ],
+          "slot": {
+            "slot_key": "point3",
+            "activation": "conditional"
+          },
+          "content_source": "ai_authored",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "empty_text",
+              "off_canvas"
+            ]
+          },
+          "text_limits": {
+            "max_chars": {
+              "value": 55,
+              "basis": "declared_from_source",
+              "source": "ai-worker/index.ts:728 via WS-4 pkg s9",
+              "evidence_reference": null
+            },
+            "max_lines": {
+              "value": 4,
+              "basis": "probe_calibrated",
+              "source": null,
+              "evidence_reference": "renders 480d4333-bb23-4696-be9b-8ff43b61828b + 5976f431-6326-45c9-a34e-f0b1aceb6b7d (R1 realistic max + R2 wide-glyph max, 2026-08-01)"
+            }
+          },
+          "overflow_risk": "medium",
+          "container": {
+            "summary": "880px column at x100 y480; divider fixed at y870",
+            "shared_with": [
+              "Point3Body"
+            ]
+          }
+        }
+      },
+      {
+        "element_name": "Point3Divider",
+        "field_kind": "shape",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point3Divider.time",
+            "Point3Divider.duration"
+          ],
+          "slot": {
+            "slot_key": "point3",
+            "activation": "conditional"
+          },
+          "content_source": "template_fixed",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "off_canvas"
+            ]
+          },
+          "baked": {
+            "entry_direction": "180"
+          },
+          "notes": "Present only when the body line is non-empty (WS-4 s6.3)"
+        }
+      },
+      {
+        "element_name": "Point3Body",
+        "field_kind": "text",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "Point3Body.text",
+            "Point3Body.time",
+            "Point3Body.duration"
+          ],
+          "slot": {
+            "slot_key": "point3",
+            "activation": "conditional"
+          },
+          "content_source": "ai_authored",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": true,
+            "mechanism": [
+              "near_zero_duration",
+              "empty_text",
+              "off_canvas"
+            ]
+          },
+          "text_limits": {
+            "max_chars": {
+              "value": 100,
+              "basis": "declared_from_source",
+              "source": "ai-worker/index.ts:728 via WS-4 pkg s9",
+              "evidence_reference": null
+            }
+          },
+          "overflow_risk": "low",
+          "container": {
+            "summary": "880px column at y895; caption-safe band y1300-1520 below must stay clear"
+          }
+        }
+      },
+      {
+        "element_name": "CtaWatermark",
+        "field_kind": "text",
+        "required_for_render": true,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "CtaWatermark.time",
+            "CtaWatermark.duration"
+          ],
+          "slot": {
+            "slot_key": "cta",
+            "activation": "always"
+          },
+          "content_source": "template_fixed",
+          "empty_ok": false,
+          "collapse": {
+            "collapsible": false
+          },
+          "baked": {
+            "glyph": "?",
+            "opacity": "0.07"
+          }
+        }
+      },
+      {
+        "element_name": "CtaHeadline",
+        "field_kind": "text",
+        "required_for_render": true,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "CtaHeadline.text",
+            "CtaHeadline.time",
+            "CtaHeadline.duration"
+          ],
+          "slot": {
+            "slot_key": "cta",
+            "activation": "always"
+          },
+          "content_source": "ai_authored",
+          "empty_ok": false,
+          "collapse": {
+            "collapsible": false
+          },
+          "text_limits": {
+            "max_chars": {
+              "value": 65,
+              "basis": "declared_from_source",
+              "source": "ai-worker/index.ts:728 via WS-4 pkg s9",
+              "evidence_reference": null
+            },
+            "max_lines": {
+              "value": 5,
+              "basis": "probe_calibrated",
+              "source": null,
+              "evidence_reference": "renders 480d4333-bb23-4696-be9b-8ff43b61828b + 5976f431-6326-45c9-a34e-f0b1aceb6b7d (R1 realistic max + R2 wide-glyph max, 2026-08-01)"
+            }
+          },
+          "overflow_risk": "medium",
+          "container": {
+            "summary": "880x600 box at x100 y650 over the faint watermark"
+          }
+        }
+      },
+      {
+        "element_name": "CtaFooter",
+        "field_kind": "text",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "CtaFooter.text",
+            "CtaFooter.time",
+            "CtaFooter.duration"
+          ],
+          "slot": {
+            "slot_key": "cta",
+            "activation": "always"
+          },
+          "content_source": "worker_computed",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": false
+          },
+          "text_limits": {
+            "max_chars": {
+              "value": 50,
+              "basis": "probe_calibrated",
+              "source": null,
+              "evidence_reference": "renders 480d4333-bb23-4696-be9b-8ff43b61828b + 5976f431-6326-45c9-a34e-f0b1aceb6b7d (R1 realistic max + R2 wide-glyph max, 2026-08-01)"
+            }
+          },
+          "overflow_risk": "low",
+          "notes": "Worker-computed 'Follow {ClientName} for more' - length varies by client name; calibrate"
+        }
+      },
+      {
+        "element_name": "VoiceAudio",
+        "field_kind": "audio",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "VoiceAudio.source"
+          ],
+          "slot": {
+            "slot_key": "audio",
+            "activation": "persistent"
+          },
+          "content_source": "render_binding",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": false
+          },
+          "notes": "v1 mission unbound (source:'' renders silent, house-proven); future voice/music binding"
+        }
+      },
+      {
+        "element_name": "MusicBed",
+        "field_kind": "audio",
+        "required_for_render": false,
+        "constraints": {
+          "schema_version": "tmr_field_constraints_v1",
+          "modification_keys": [
+            "MusicBed.source"
+          ],
+          "slot": {
+            "slot_key": "audio",
+            "activation": "persistent"
+          },
+          "content_source": "render_binding",
+          "empty_ok": true,
+          "collapse": {
+            "collapsible": false
+          },
+          "notes": "v1 mission unbound (source:'' renders silent, house-proven); future voice/music binding"
+        }
+      }
+    ]
+  },
+  "_meta_not_part_of_contract": {
+    "template_name_saved_by_pk": "generic_kinetic_text_9x16_v1",
+    "provider_template_id": "0bd871ae-79c1-431a-a7bd-9f631a6cf75a",
+    "pk_deviations": "none declared (2026-08-01)",
+    "platform_constraints_youtube_default": {
+      "schema_version": "tmr_platform_constraints_v1",
+      "aspect": {
+        "canvas_width": 1080,
+        "canvas_height": 1920,
+        "ratio": "9:16"
+      },
+      "safe_zones": [
+        {
+          "zone_key": "caption_band",
+          "summary": "y1300-1520 reserved clear for future voice/caption variant",
+          "keep_clear": true,
+          "source": "video-worker/index.ts:965-973"
+        }
+      ],
+      "scene_contract": {
+        "slots": [
+          "hook",
+          "point1",
+          "point2",
+          "point3",
+          "cta"
+        ],
+        "min_active_scenes": 3,
+        "max_active_scenes": 5,
+        "collapse_mechanisms": [
+          "near_zero_duration",
+          "empty_text",
+          "off_canvas"
+        ],
+        "source": "ai-worker/index.ts:728 via WS-4 pkg s4"
+      },
+      "duration_bounds_s": {
+        "total_min": {
+          "value": 20,
+          "basis": "declared_from_source",
+          "source": "WS-4 pkg s9 (widened from ai contract 25-40s)",
+          "evidence_reference": null
+        },
+        "total_max": {
+          "value": 45,
+          "basis": "declared_from_source",
+          "source": "WS-4 pkg s9",
+          "evidence_reference": null
+        },
+        "per_slot": {
+          "hook": {
+            "min": {
+              "value": 4,
+              "basis": "declared_from_source",
+              "source": "WS-4 pkg s9",
+              "evidence_reference": null
+            },
+            "max": {
+              "value": 8,
+              "basis": "declared_from_source",
+              "source": "WS-4 pkg s9",
+              "evidence_reference": null
+            }
+          },
+          "point": {
+            "min": {
+              "value": 5,
+              "basis": "declared_from_source",
+              "source": "WS-4 pkg s9",
+              "evidence_reference": null
+            },
+            "max": {
+              "value": 10,
+              "basis": "declared_from_source",
+              "source": "WS-4 pkg s9",
+              "evidence_reference": null
+            }
+          },
+          "cta": {
+            "min": {
+              "value": 3,
+              "basis": "declared_from_source",
+              "source": "WS-4 pkg s9",
+              "evidence_reference": null
+            },
+            "max": {
+              "value": 7,
+              "basis": "declared_from_source",
+              "source": "WS-4 pkg s9",
+              "evidence_reference": null
+            }
+          }
+        }
+      }
+    },
+    "calibration": {
+      "date": "2026-08-01",
+      "renders": [
+        "480d4333-bb23-4696-be9b-8ff43b61828b",
+        "5976f431-6326-45c9-a34e-f0b1aceb6b7d"
+      ],
+      "supersedes": "ws4-kinetic-declared-contract-v1.json (capture-time; its hash stays the registry inventory_hash)"
+    }
+  }
+}
