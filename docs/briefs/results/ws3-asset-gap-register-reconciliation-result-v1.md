@@ -127,16 +127,28 @@ drift in the first place.
 
 **D-1 — sequencing of the demotion.** Pick one:
 
-- **Option A (recommended) — route first, demote second.** Complete WS-3(d)
+> **⚠ CORRECTION, same day.** Option A below was recommended first and is **withdrawn**. The
+> WS-3(d) design (`docs/briefs/results/ws3-responsible-lane-routing-design-v1.md`) established
+> that `responsible_lane` **cannot** inherit these items: the readiness queue is cell-shaped
+> and the orphans are cross-cell pool-depth facts, so routing-then-demoting would produce
+> exactly the silent loss Option A was meant to prevent. Cell routing is already complete
+> (46/46 NDIS cells routed; zero route to `asset_gap`), and the alternative — a pool-depth
+> detector — is forbidden by the standing "no `subject_kind` expansion" constraint.
+> **Corrected recommendation: Option C**, reached from evidence rather than as a compromise.
+
+- **Option A — route first, demote second (WITHDRAWN, see above).** Complete WS-3(d)
   `responsible_lane` routing for the 10 non-representable / non-detectable items, then
-  demote the markdown to commentary. Nothing is dropped; the brief's ordering within WS-3
-  shifts, its content does not.
+  demote the markdown to commentary. *Disproved: the destination cannot hold them.*
 - **Option B — demote now, accept the loss.** Faster, and defensible only if PK judges the
   10 items already tracked elsewhere. Reconciliation evidence says they are not.
-- **Option C — permanent two-register model.** DB register for analyzer-detected demand;
-  markdown (or its successor) remains authoritative for class-level coverage. Honest, but
-  it declines the brief's "ONE register" goal and should be an explicit amendment, not a
-  drift.
+- **Option C (RECOMMENDED after the WS-3(d) correction) — the two-register model.** DB ledger
+  authoritative for analyzer-detected, cell-attributable demand; readiness queue authoritative
+  for cell ownership; this file retained but **re-scoped to pool-depth items only** (~6 live
+  orphans after closures), with everything a detector can see deleted from it so it stops
+  competing with the ledger. This is still "ONE register per kind of thing" — the brief's
+  actual intent — rather than one register for everything, because the three instruments
+  measure genuinely different objects. It should be recorded as an explicit amendment to the
+  brief's WS-3(c) wording, not allowed to happen as drift.
 
 **D-2 — P1-5 (NDIS authoritative logo).** The one live divergence: an open markdown item
 whose type the ledger *could* represent but never will, because a fail-closed detector

@@ -6,6 +6,22 @@
 
 ---
 
+> **🧾 v6.109 — P-1 formal ratification: Creatomate Global Ultimate programme brief (T1 · governance record; zero code/DB/deploy/merge change)** — governing: `docs/briefs/creatomate-global-ultimate-programme-brief-v1.md` (v1 rev-2).
+> · Records PK's 2026-08-01 ratification of the programme brief — the gate table's **P-1 row closes**. P-2 (13-rung graduation contract as formal proof authority), P-6 (Creatomate Specialist charter) and P-7 were already recorded closed in the brief itself; this entry closes the remaining P-1 row. No cell reclassified, no scope changed, no other gate affected.
+> · **Governance note (PK item 7, standing as of this cut):** this session (`docs-hygiene-register-reconciliation-t1`) is now the **single register-cut owner**. Other lanes submit version-less pointer payloads; versions are allocated here, claim-stub-checked at every cut, per the CCF-02 claim protocol already in force.
+
+---
+
+> **✅ v6.108 — WS-3 Asset Gap activation: read view · register reconciliation · WS-3(d) routing · P-5A packet — SUBMITTED, NOT APPLIED (T1/T2/T3 · SAFETY_GATE)** — canonical: `docs/briefs/results/ws3-asset-gap-activation-lane-result-v1.md` (governing: `docs/briefs/creatomate-global-ultimate-programme-brief-v1.md` §3 WS-3).
+> · **WS-3(a) read view** `ice_ro.asset_gap_backlog` FROZEN (`8d5ca12d…8985`, rollback `7d41520f…e014`) — chain complete: `db-rls-auditor` PASS ×2, external `partial`→PK. Open: PK-D3 (INNER vs LEFT join to `c.client`) · PK-D4 (hardcoded `ice_ro` grant-total 15).
+> · **WS-3(c) reconciliation** DONE, verdict `CONCERNS`. The markdown register (`docs/briefs/ice-asset-gap-register-v1.md`) is a **superset** of the DB ledger, not a stale copy: of 15 items only 2 map to ledger rows, 9 are structurally unrepresentable, 1 is a live divergence (P1-5 NDIS logo). **Demotion HELD** — PK-D1: two-register model. Ledger live-verified unchanged since 2026-07-20 (8 rows, 4 open / 4 resolved) — the analyzer has never run live (`p_dry_run` defaults `true`, no cron).
+> · **WS-3(d)** DONE: cell routing is **already complete** (46/46 NDIS cells routed), **zero** cells route to `asset_gap`; `responsible_lane` structurally cannot inherit pool-depth items — this **overturned** the earlier "route-then-demote" recommendation.
+> · **WS-3(b) live writer** at rev-4/4a, 6 artifacts frozen, 3 auditor rounds + external review. M-1 remediated structurally (cron job created DISARMED, armed only by the last statement behind a full re-check). **P-5B NOT taken — separate PK activation gate.**
+> · **⚠ Standing condition, carried into the register (not just the packet):** the Stage-B rollback is a whole-table restore that would destroy concurrent third-party writes to `m.asset_gap_suggestion`/`m.asset_gap_observation` **and report success while doing so**. Accepted only because both tables are provably unread (zero readers, no views/triggers/FKs/rules/publications, service-role-only + RLS deny-all) — **PK-owned re-open trigger: if any consumer or writer of either table is ever added, this must be re-decided before that lane ships.**
+> · Submitted via the docs-hygiene register-cut channel (PK item 7c); this lane allocated no version. Zero DB mutations; nothing applied, committed, or pushed by the originating lane.
+
+---
+
 > **✅ v6.107 — P-4: OQ4 (Track-B queue currency) disposition DECIDED — Slice A UNBLOCKED (T1 · SAFETY_GATE · docs-only; zero code/DB/deploy/merge change)** — record: `docs/briefs/results/p4-oq4-disposition-decided-v1.md` (governing: `docs/briefs/creatomate-global-ultimate-programme-brief-v1.md` §4.4).
 > · **PK ruling: Option A — supersede.** S7's live guard (v6.106) is now the safety control at the allocation boundary; Track-B Slice-2 data-cleanup demoted to a named T2 hygiene carry, no longer a Slice A precondition. **Both of the S6 Slice A dry-run's independent STOP reasons are now cleared** (S7 absent → landed v6.106; OQ4 ambiguous → decided here) — Slice A's STOP is lifted. Dry-run result (`s6-slice-a-ndis-dry-run-result-v1.md`) annotated additively, original finding preserved. Resumption itself (the §1.1 zero-code enrolment proof) remains a separate, not-yet-scoped execution lane (WS-1) — not run here.
 
