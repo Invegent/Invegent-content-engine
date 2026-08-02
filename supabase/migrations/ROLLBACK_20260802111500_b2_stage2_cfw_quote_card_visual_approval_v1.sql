@@ -1,6 +1,10 @@
 -- =====================================================================
 -- ROLLBACK for 20260802111500_b2_stage2_cfw_quote_card_visual_approval_v1.sql
 -- State-guarded (only reverts if still exactly in the forward-applied state).
+--
+-- ATOMICITY: apply as a single pooled call — one mcp__supabase__apply_migration
+-- call with this entire script as the `query` parameter, or one un-split
+-- `psql -f` run. Never split across multiple tool calls.
 -- =====================================================================
 
 BEGIN;
