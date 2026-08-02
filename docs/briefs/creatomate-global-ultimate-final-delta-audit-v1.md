@@ -64,6 +64,29 @@ these are additive/corrective, not further baseline reconciliation:
 4. **Appendix B (first-week operating plan) restored** (§7), rebuilt against the reconciled
    baseline, not rev-1's stale one.
 
+### 0c. Correction (PK-directed, 2026-08-03 — additive; prompted by a live production defect)
+
+**WS-5 infrastructure is inherited, but complete per-template calibration and live bounds
+enforcement remain REQUIRED across every production-selectable template.** Row 9 / §2.1's "WS-5
+DoD met" stands as written for WS-5's own scoped DoD (write RPC + 2–3 populated templates + a live
+consumer) — but must NOT be read as "template text-fit is a solved, inherited property." The live
+counter-example, same day as this proposal: the first governed NDIS `video_short_stat` publish
+(`oCrtq6R9VFQ`, 2026-08-02) shipped with three template-fit defects (static "MARKET UPDATE" eyebrow
+colliding with StatValue and carrying wrong-brand copy · a two-word `stat_value` breaking geometry
+past the char-count-only clamp · ContextLine exceeding never-calibrated text-safe bounds) —
+`video_stat_reveal_9x16_v2` is production-selectable yet is NOT one of the 3 calibrated templates,
+and no generation- or render-time bounds enforcement exists for it. Rung-6 visual approval is
+per-render, not per-content-envelope. Consequences for Final: (a) calibration coverage must extend
+to **every production-selectable template**, not 2–3; (b) constraints must be **enforced live**
+(generation-time clamp/reject against the template's measured envelope + the parked
+`video_stat_bounds` validator landed and wired), not merely persisted; (c) **calibrated constraints
+become a mandatory graduation requirement** for any future template — the direct answer to the
+auto-onboarded-template quality risk. Incident disposition + contained repair plan:
+`docs/briefs/cgu-ndis-yt-stat-supervised-proof-runsheet-v1.md` (ADDENDUM), disposition
+`published_proof_captured / visual_quality_remediation_required / final_acceptance_open`; the
+NDIS assignment is contained (`blocked`) pending remediation, so the §1 baseline's NDIS stat
+state-1 reading is 22/25 again until re-close.
+
 ---
 
 ## 1. Exact current baseline (2026-08-02)
