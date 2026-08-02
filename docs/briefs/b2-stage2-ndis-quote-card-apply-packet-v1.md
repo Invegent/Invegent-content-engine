@@ -41,7 +41,7 @@ AHA-07-1 already incorporated from the start, not retrofitted):
 | 2 | Rowcount assertion in same DO block as its statement | Every UPDATE/INSERT wrapped with `GET DIAGNOSTICS`+`RAISE EXCEPTION` in one `DO $$...$$` |
 | 3 | Target-state assertion | Dedicated `DO $$...$$` block, `COUNT(*)` on the 1 target ID |
 | 4 | Real whole-table pool-neutrality assertion | `b2_stage2_ndis_baseline` temp table snapshot at transaction start; final block asserts `+1` exactly on both tables |
-| 5 | Atomicity: single pooled call required | Header comment names it explicitly |
+| 5 | Atomicity: single pooled call required | Migration + rollback headers name the channel explicitly: one `mcp__supabase__apply_migration` call with the full script as `query`, or one un-split `psql -f` run — never split across tool calls (fixed post-apply-harness-auditor finding AHA-04-1) |
 | 6 | Rollback identity + state guard | Rollback DELETEs the 1 proof-event ID, then UPDATE-reverts the 1 assignment ID guarded on `assignment_status='visually_approved' AND approved_by='PK'` |
 
 ## 5. Forbidden actions

@@ -27,6 +27,14 @@
 -- real-draft render, publish proof) are separate future apply gates, NOT
 -- authorised here.
 --
+-- ATOMICITY: this file MUST be applied as a single pooled call — one
+-- mcp__supabase__apply_migration call with this entire script as the
+-- `query` parameter, or one un-split `psql -f` run. NEVER split the
+-- statements below across multiple tool calls or a pooled multi-call
+-- channel (fixed post-apply-harness-auditor finding AHA-04-1: the original
+-- header only used the descriptive phrase "single-pooled-call atomicity"
+-- without naming an actual execution channel).
+--
 -- (R) ROLLBACK: see the paired
 --   ROLLBACK_20260802110000_b2_stage2_ndis_quote_card_visual_approval_v1.sql
 -- =====================================================================
