@@ -43,7 +43,15 @@ only on PK's explicit gate over this packet.
 Predicted cell flips (re-run contract R1): the 6 CFW/INV image_quote cells `blocked`→`ready`
 (`reach` true on FB/IG/LI; YT unchanged — `platform_support.youtube` false/null for image_quote and the
 platform is `publisher_path_missing` anyway). CFW/INV FB/LI `text` cells: `reach` flips true (cosmetic —
-they are already `ready` via the D1 overlay). No other queue change predicted.
+they are already `ready` via the D1 overlay).
+
+**Additional benign queue-output diffs (db-rls-auditor re-derivation, 2026-08-02 — NOT stop conditions):**
+the queue's `cfg_cells` CTE cross-joins NULL-platform config rows over all four platforms, so per client
+the R1 re-run will ALSO show: new `instagram/text` and `youtube/text` cells (blocked/not_configured —
+`text` platform_support: instagram=false, youtube absent), and the existing `youtube/image_quote` cell's
+`is_probe_cell` flips true→false (its state may shift not_configured→blocked). ~6 extra output-row diffs
+across the two clients, all benign and expected — the post-apply R1 diff should be read against THIS
+list, not the six named flips alone.
 
 **CFW-LI evidence-decay check (folded in per PK):** CFW×LinkedIn×image_quote has ZERO publishes in 90d
 (last: none in window; queue shows no scheduled LI slot for CFW, `next_occurrence_source='none'`).
@@ -65,6 +73,13 @@ BEGIN
   -- If any row exists, the zero-rows->allowlist analysis in this packet is stale: ABORT.
   IF EXISTS (SELECT 1 FROM c.client_format_config WHERE client_id IN (v_cfw, v_inv)) THEN
     RAISE EXCEPTION 'G2 STOP: a client_format_config row now exists for CFW/INV — packet analysis stale';
+  END IF;
+
+  -- G2b (AHA-02-1 remediation): the "no allocation change" blast-radius claim rests on CFW/INV
+  -- being format-mix UNENROLLED. Guard it at apply time, not only at review time.
+  IF EXISTS (SELECT 1 FROM c.client_control_tower_enrollment
+              WHERE client_id IN (v_cfw, v_inv) AND control_type='format_mix') THEN
+    RAISE EXCEPTION 'G2b STOP: CFW/INV now format-mix enrolled — blast-radius analysis stale';
   END IF;
 
   SELECT count(*) INTO v_pre FROM c.client_format_config;
@@ -101,11 +116,44 @@ Pre-image = zero rows (G2 asserts it), so provenance-qualified DELETE (notes pre
 registration-rollback lesson: never identity-only) restores the exact pre-apply state: zero rows,
 advisor palette back to all-buildable default.
 
-## 6. Blast radius (complete reader inventory)
+## 6. Blast radius (reader inventory — CORRECTED per db-rls-auditor must-fix, 2026-08-02)
 
-- **`ai-worker` advisor palette** (`index.ts:1015-1018`) — the §3 restriction; only code reader in `supabase/functions/**` (repo-wide grep).
-- **Readiness-queue RPC** `runtime_reachable` + its `config_cells` universe — the intended flip.
-- **`m.build_weekly_demand_grid` (S7)** `enabled_set` CTE — reads the same table, but CFW/INV are not
-  format-mix enrolled (`c.client_control_tower_enrollment` has PP + NDIS only), so the grid never runs
-  for them; no allocation change. (Auditor to re-confirm enrolment state at review.)
-- No RLS/grant/DDL change; table is service-role-only.
+The original "complete inventory" here named only two readers; the auditor's live `pg_proc` search
+found FOUR DB-side readers plus one indirect. The corrected, complete list:
+
+- **`ai-worker` advisor palette** (`index.ts:1015-1018`) — the §3 restriction; only code reader in `supabase/functions/**` (repo-wide grep, auditor-confirmed).
+- **Readiness-queue RPC** `runtime_reachable` + its `cfg_cells` universe — the intended flip (+ the §3 benign extra cells).
+- **`m.resolve_final_format` (R3a SHADOW resolver)** — called best-effort from ai-worker for any
+  client's draft build, **log-only** (shadow, never enforcing). Its `p3_client` gate is a pure EXISTS
+  with NO zero-rows→all fallback, so this apply changes its shadow allowed-set for CFW/INV from
+  "nothing passes" to `{image_quote, text}` — an alignment improvement, but a real reader-behaviour
+  change. **Operator note for the shadow-divergence monitoring lane: expect a CFW/INV
+  divergence-rate shift dated from this apply; do not misattribute it.**
+- **`public.get_publishing_plan_pyramid`** — reporting-only RPC; its cell universe /
+  `client_format_enabled` / `max_per_week` enrichment for CFW/INV changes. No production writer reads it.
+- **`m.build_weekly_demand_grid` (S7)** `enabled_set` CTE — reads the same table. **Mechanism, stated
+  precisely (auditor correction):** the grid itself contains NO enrolment check and is callable for any
+  client_id; the guard lives in `m.materialise_slots` (`v_enrolled := m.format_mix_enrolled(client_id)`;
+  the grid call sits inside `IF v_enrolled`). CFW/INV are not format-mix enrolled
+  (`c.client_control_tower_enrollment` = PP + NDIS only, live-confirmed), so no allocation change.
+  **Guarded at apply time by G2b** (per `apply-harness-auditor` shadow finding AHA-02-1: aborts if
+  either client becomes format-mix enrolled before the apply lands). Indirect reader
+  `public.get_week_format_allocation` (calls the grid; reporting-only) inherits the same non-effect.
+- No RLS/grant/DDL change. Table posture (auditor-read): `relacl` = postgres + `inspector_ro` read only,
+  schema `c` not PostgREST-exposed; a data-only DML cannot add advisor findings (verified zero).
+
+## 7. Review chain (2026-08-02 — packet STOPPED at PK apply gate)
+
+- `apply-harness-auditor` (SHADOW, clears no gate): **CONCERNS** — one low finding AHA-02-1
+  (enrolment precondition review-time-only) → **remediated executably as G2b** in §4; all other
+  checks clean, check-7 rollback identity verified exact.
+- `db-rls-auditor`: **concerns, high confidence** — SQL payload confirmed sound (G2 zero-rows live-true
+  for both clients · rollback provenance pattern matches all-and-only the 4 rows · schema/constraint/
+  FK/ACL fit verified · queue-flip re-derivation confirmed against live baseline · zero-rows→allowlist
+  ai-worker semantics confirmed by code read · enrolment = PP+NDIS only, live). Must-fix was the §6
+  reader-inventory omission (R3a shadow resolver + publishing-plan pyramid) and §3's incomplete
+  predicted-diff list — **both corrected in place above; the SQL payload is byte-unchanged from what
+  the auditor verified.** Open question for PK carried: whether R1 comparison uses the full §3 diff
+  list (recommended, adopted here) — and the R3a shadow-divergence operator note (§6) stands.
+- External review + `branch-warden` + hash freeze: recorded below at freeze time.
+- **Apply authority: NOT granted by this chain.** The apply is a separate PK act against this exact packet.

@@ -114,6 +114,15 @@ Pre-image = zero (G4 asserts the IDs are unused), so DELETE-by-fixed-ID restores
 - `select_template` does not read `c.creative_template_proof_event` for `platform_publish` rows in its eligibility gate (it gates on `visual_approval`) — zero selector impact. The readiness queue reads publish history from `m.post_publish`, not this table — zero queue-output change.
 - Consumers of these rows: audit/graduation evidence readers (the 13-rung ladder rung-9 record) and the Milestone re-run contract R2 (`cgu-final-readiness-audit-result-v1.md` §6).
 
+## 4b. Review chain (complete 2026-08-02 — packet STOPPED at PK apply gate)
+
+- `db-rls-auditor`: **clean/pass, high confidence, zero must-fix** — all live assertions re-verified (3 assignment statuses exact · 5 publish rows published, platforms/timestamps byte-matching · zero duplicate events · 4 fixed IDs unused · live `select_template` body filters proof events on `visual_approval` only, zero selector impact · schema/constraint fit confirmed · single-statement DO = single txn, all guards abort-and-rollback). One benign note: G5's v_pre/v_post under READ COMMITTED can false-abort on a concurrent commit — fail-closed direction, accepted.
+- `apply-harness-auditor` (SHADOW, clears no gate): **PASS/clean, zero findings**; check-7 identity chain exact.
+- `branch-warden`: **safe** (isolated worktree, this branch).
+- External review: **agree / proceed, no escalation** — `review_id ce70d9c6-d3b6-4218-a1ac-4e5dbb449eb7`, `reviewed_input_hash` (this file, pre-§4b revision) `169d881b5087c415f0c1e5b465fcf9b729a462b0b2a2b378c85f3486de89b75b`. This §4b block was appended AFTER the review; the reviewed content (§1–§5 apply substance) is unchanged — any edit to §1–§5 voids the review.
+
+**Apply authority: NOT granted by this chain.** The apply is a separate PK act against this exact packet.
+
 ## 5. Expected post-apply verification
 
 `SELECT id, assignment_id, platform FROM c.creative_template_proof_event WHERE id::text LIKE 'c9150001%'` → exactly 4 rows; re-run of audit query R2 shows the four cells carrying `platform_publish/passed`.
