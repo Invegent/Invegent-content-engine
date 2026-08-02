@@ -202,10 +202,26 @@ WHERE v.format_key IN ('video_short_stat','video_short_kinetic');
 
 ---
 
+## 6b. PK DECISIONS (2026-08-02, direct chat — post-audit addendum)
+
+PK ruled on all six open items, accepting each recommendation:
+
+| # | Item | PK ruling |
+|---|---|---|
+| 1 | INV FB/IG carousel queue-absence (§3.2) | **Option (a)** — queue-absence-of-an-inert-cell satisfies state-2 for matrix-recorded deferrals. **This paragraph is the D3-style note:** INV FB/IG carousel are ⏸ per the ratified matrix (D2 scoped carousel to PP only for Ultimate v1); both cells are inert (zero demand, zero `client_format_config` enablement, zero 90d publishes) and therefore produce no readiness-queue row; an inert cell cannot silently degrade, which is the property Milestone 1 guarantees. No overlay is built (mirrors the v6.120 D3 disposition). **Milestone-1 cells #27/#28 are hereby state-2.** |
+| 2 | Trail-alignment proof events (PP-LI, NDIS-IG, NDIS-LI image_quote) | **Authorized** — B1-pattern additive `platform_publish` proof-event DML (v6.94 precedent). Executes as a packet through the standard chain → PK apply gate. |
+| 3 | PP YT `video_short_stat` | **Record against the accepted publishes** — proof events recorded against the two PK-accepted 2026-07-27 governed publishes (`XPQ26cF9sBA`, `oHDyazW1isQ`); no waiting for a natural slot post-D4 allocation may never schedule. Folded into the same packet as #2. |
+| 4 | NDIS YT `video_short_stat` | **Supervised force-fill proof** through the real pipeline (PP 3-consec precedent), its own lane with PK gates mid-flight (publish is auto-public ≤30min). Re-defer remains the named fallback. |
+| 5 | CFW/INV image_quote reconciliation (6 cells) | **Authorized** — data-only `client_format_config`/`platform_support` reconciliation lane, including the CFW-LI evidence-decay check. |
+| 6 | Audit branch push | **Push** — `lane/cgu-final-readiness-audit` pushed to origin. |
+
+Consequence for the verdicts: with #1 recorded, the strict Milestone-1 failing set drops from 8 cells to 6 (#27/#28 close as state-2); the remaining 6 close via the #2/#3 packet (3 cells + PP YT stat), the kinetic natural slot (#33), and the #4 lane (#30). Milestone-2 distance is unchanged in substance — every remaining cell now has an authorized, named lane.
+
 ## 7. Register payload (version-less — for the WS-5 session's register-cut pass)
 
 > **✅ vX.XXX — CGU final readiness audit: Milestone-1 FAIL(strict, 8 cells)/PASS(operational, 1 disposition) · Milestone-2 = 12/25 committed cells state-1, gap ledger + 10-min re-run contract delivered (T1 · read-only; zero writes/applies)** — result: `docs/briefs/results/cgu-final-readiness-audit-result-v1.md` (branch `lane/cgu-final-readiness-audit`).
-> · Failing/open cells: 3 image_quote proof-event recording gaps (PP-LI/NDIS-IG/NDIS-LI) · PP+NDIS YT `video_short_stat` (wait-vs-accelerate to PK; **no natural stat slot scheduled for either**) · PP YT kinetic rungs 8–9 (natural slot 2026-08-03T07:00Z; approve = auto-public ≤30min) · 6 CFW/INV image_quote cells blocked on `client_format_config` reconciliation only · INV FB/IG carousel ⏸ not queue-visible (PK disposition: D3-style note vs overlay). D1/D2/D3 all verified executed/closed on live truth (D2 applied 2026-08-02 03:43Z); enrolment clause met (v6.113).
+> · Failing/open cells: 3 image_quote proof-event recording gaps (PP-LI/NDIS-IG/NDIS-LI) · PP+NDIS YT `video_short_stat` (**no natural stat slot scheduled for either**) · PP YT kinetic rungs 8–9 (natural slot 2026-08-03T07:00Z; approve = auto-public ≤30min) · 6 CFW/INV image_quote cells blocked on `client_format_config` reconciliation only. D1/D2/D3 all verified executed/closed on live truth (D2 applied 2026-08-02 03:43Z); enrolment clause met (v6.113).
+> · **PK decisions 2026-08-02 (§6b, all six):** INV FB/IG carousel queue-absence = state-2 (D3-style note, no overlay — strict-fail set 8→6 cells) · trail-alignment proof-event DML authorized (3 image_quote cells + PP YT stat against the accepted 07-27 publishes) · NDIS YT stat = supervised force-fill lane (re-defer fallback) · CFW/INV config reconciliation authorized (incl. CFW-LI evidence-decay check) · branch pushed.
 
 ## 8. Constraints confirmed
 
