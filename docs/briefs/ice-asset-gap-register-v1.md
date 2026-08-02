@@ -14,6 +14,14 @@ the cc-0041/cc-0042/cc-0043 AGP infra + `m.analyze_asset_gap` governed verdicts.
 > status; §§1–6 are preserved unmodified as the 2026-07-26 historical record (Recording-compression
 > convention — no historical rewrite).
 
+> **⚠ 2026-08-02 RE-SCOPE — see §0.4.** This file is now ONE half of a two-register model
+> (D-1, decided by PK 2026-08-01 — Option C): the DB ledger (`m.asset_gap_suggestion`,
+> surfaced read-only via `ice_ro.asset_gap_backlog`) is authoritative for analyzer-detected,
+> cell-attributable asset demand; this file is retained **only** for the pool-depth items no
+> detector can see. §0.4 names exactly what is live-tracked here now and what has moved to the
+> DB ledger / the readiness queue. §§0.1–0.3 and §§1–6 remain byte-unchanged below as the
+> historical record — do not read their tables as the current register; §0.4 is current.
+
 > **Operating rule (governs every severity call):** the objective is **NOT** maximum volume — it is
 > **"every active template has a sufficient governed, licence-safe, rotation-capable asset pool."** A
 > thin-but-rendering pool is a **P1 quality/rotation** gap, not a P0 blocker. P0 is reserved for a
@@ -194,6 +202,73 @@ leverage-to-cost now that the true P0s are closed:
   complete and independently verified against this file's own item list.** D-2 (P1-5, the
   NDIS authoritative-logo divergence) is resolved as a direct consequence: it is routed
   under WS-3(d) alongside the other 9, not carved out as a standing analyzer limitation.
+
+> **⚠ Same-day correction, recorded in §0.4 below.** The Option A ruling immediately above
+> was overturned hours later, same day, once WS-3(d) was actually designed: the readiness
+> queue proved structurally unable to inherit these items (§0.4). Preserved here unmodified
+> per Convention 1 — §0.4 is current.
+
+### 0.4 2026-08-02 re-scope — two-register model (D-1 Option C) EXECUTED
+
+**Author:** Claude Code (orchestrator) · **Governing decision:** PK, D-1 = Option C (the
+two-register model), reached via the same-day correction recorded in
+`docs/briefs/results/ws3-responsible-lane-routing-design-v1.md` §5 (WS-3(d) found the
+readiness queue is cell-shaped and cannot inherit cross-cell pool-depth facts — Option A
+above is disproved, not just superseded) and restated in
+`docs/briefs/results/ws3-p5a-handoff-v1.md` §2. **This supersedes the §0.3 "Option A"
+line above without rewriting it** (Convention 1 — no historical rewrite).
+
+**What D-1/Option C means, executed today:**
+
+- **`m.asset_gap_suggestion`, surfaced read-only via `ice_ro.asset_gap_backlog`** (WS-3(a),
+  T2 apply — see `docs/briefs/ws3-asset-gap-read-view-packet-v1.md`) is now the **machine
+  register**: authoritative for analyzer-detected, cell-attributable asset demand. It is
+  DB-generated, live, and requires no markdown.
+- **`get_client_production_readiness_queue`** remains authoritative for **cell ownership**
+  — already complete (live-reverified 2026-08-02 across all four brands: zero unrouted
+  non-ready cells, zero cells routed to `asset_gap`; see the WS-3 closeout result doc for
+  the full table). Not rebuilt, not touched here.
+- **This file is retained, but re-scoped to pool-depth items only** — the items no
+  detector can and will ever emit, per the item-by-item reconciliation in
+  `docs/briefs/results/ws3-asset-gap-register-reconciliation-result-v1.md` §3. Concretely,
+  of the 15 original §2 register items:
+  - **Retained here (9 items — still open, structurally invisible to the analyzer or, for
+    P1-5, invisible by construction to a fail-closed detector):** P0-2 (governed video
+    single point), P0-3 (ungoverned legacy video volume), P1-5 (NDIS authoritative logo —
+    the one live divergence: a representable `slot_kind='logo'` type the analyzer will
+    never emit, because NDIS's one governed logo resolves fine and a fail-closed detector
+    cannot see a *promotion-quality* gap), P1-6 (PP YouTube-thumbnail foreground image),
+    P2-1 (music depth), P2-2 (PP/NDIS single-character avatars), P2-3/P2-4 (CFW/Invegent
+    avatar + voice absence), P2-5 (PP video B-roll depth). **§§1–2's tables below are
+    NOT rewritten** (Convention 1) — treat every row in §2 **other than these nine** as
+    superseded by the ledger/queue and no longer live-tracked in this file.
+  - **Removed from live tracking here (6 items — now owned elsewhere):** P0-1 (closed;
+    was never ledger-representable, sourced from a direct probe, not tracked anywhere
+    going forward — closed items need no owner), P1-1 and P1-3 (closed; **independently
+    confirmed by 3 + 1 `resolved` ledger rows** — the ledger is now their record of
+    truth), P1-2 and P1-4 (closed; brand-profile data, not asset-subject-typed, needed
+    no register to begin with), P2-6 (was never a gap — "covered", n/a).
+- **Cross-references (both ways):**
+  - This file → ledger: `python scripts/db-read.py "SELECT * FROM ice_ro.asset_gap_backlog"`
+    once WS-3(a) is applied (until then, gated `execute_sql` against
+    `m.asset_gap_suggestion`).
+  - This file → cell ownership:
+    `SELECT * FROM get_client_production_readiness_queue(p_client_slug)`.
+  - Ledger/queue → this file: any of the nine retained pool-depth items, if it is ever
+    later found to make a specific cell fail (making it representable), moves **out** of
+    this file and **into** the ledger's own detection at that point — not before.
+
+**Live re-verification, 2026-08-02** (project `mbkmaxqhsohbtwsqolns`, evidence for the
+closure claims above): `m.asset_gap_suggestion` — still 3 open / 5 resolved (unchanged
+since the P-5B standing proving run, 2026-08-01); `ice_ro` schema — 14 relations, 14
+matching `ice_readonly` SELECT grants (pre-WS-3(a)-apply baseline, confirms the read-view
+packet's grant-total pin of 15 is still correct, D-4). Full evidence in the WS-3 closeout
+result doc.
+
+**Non-claims:** this re-scope does not promote, source, or close any of the nine retained
+items; it does not build the pool-depth detector §0.2/WS-3(d) rule out; it does not alter
+`get_client_production_readiness_queue` or any DB object. It is a documentation-only
+re-scope of this file's own live-tracking claim.
 
 ---
 
