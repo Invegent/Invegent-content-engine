@@ -1,10 +1,13 @@
-# Creatomate Global Ultimate — v1 → Final Delta Audit (rev-3, PK-accepted baseline)
+# Creatomate Global Ultimate — v1 → Final Delta Audit (rev-3, PK-accepted, preserved for closeout)
 
 **Lane classification:** T1 (docs/read-only) · SIDE_PROVING · audit + packet preparation only.
-**Status:** **The proposed CGU Final programme.** PK has accepted the reconciled baseline (rev-2)
-and directed four final amendments (rev-3, this revision) plus a commit. **Committed to `main` as
-a proposal — NOT registered, NOT ratified.** No register pointer has been cut; no implementation
-starts until PK issues the CGU-v1 final verdict.
+**Status:** **The accepted proposed CGU Final programme, preserved for closeout.** PK accepted the
+reconciled baseline (rev-2), directed four amendments (rev-3, committed `f59d680`), then directed
+one further lane-order amendment (§4 — M1 replaces M8 in the first-three list; M8 now explicitly
+follows) before pushing for preservation. **NOT registered, NOT ratified.** No register pointer has
+been cut; no implementation starts until PK issues the CGU-v1 final verdict, at which point a fresh
+session (`cgu-final-ratification-and-launch`) reconciles this proposal against the final 25-cell
+result and ratifies.
 **Scope:** Creatomate-side production pipeline only. HeyGen remains out of scope (parked
 2026-08-02) — not analysed, not assumed as a dependency.
 **Why rev-2 exists:** rev-1 (same filename, superseded in place — never committed, so no
@@ -308,14 +311,20 @@ excluding M11b/M12 pending their inventory/PK-number prerequisites): ~15–19 la
 three T3 (M6's template/worker path, possibly M4's `platform_scope` decision, and any M11b closure
 that touches live selection behavior).
 
-**First three implementation lanes proposed** (cheapest, highest-leverage, fewest dependencies —
-none require a further PK decision to start):
+**First three implementation lanes proposed (amended, PK direction 2026-08-02)** — the three
+foundation/measurement lanes from Phase 1 (§3), none requiring a further PK decision to start:
 1. **M11a — legacy-routing inventory.** T1, read-only, no dependency. Bounds M11's real size before
    anything else in that workstream is scoped, and directly informs M10's real format count.
-2. **M7 — render cost/queue-depth capture** (observability only, no cap proposed). T1/T2, pure
+2. **M7 — render monitoring + cost capture** (observability only, no cap proposed). T1/T2, pure
    additive logging, no dependency, cheapest lane that unblocks a real future cost conversation.
-3. **M8 — Dashboard Asset Gap Register.** T2, WS-3's backlog is already live to build against;
-   `dashboard-ia-lint` pass first, then the panel. No dependency on anything else in this table.
+3. **M1 — automated loudness measurement.** T2, 1–2 lanes (design + wiring). Completes the Phase-1
+   foundation trio — M2's voice-acceptance quality and M6's multi-scene reproducibility bar both
+   need this landed first (§3), so it earns its place in the first three over M8 despite M8 having
+   no technical blocker of its own.
+
+**M8 — Dashboard Asset Gap Register follows these three** (Phase 4, §3) — not technically blocked by
+them (WS-3's backlog is already live to build against), but sequenced after the foundation trio by
+priority. T2, `dashboard-ia-lint` pass first, then the panel.
 
 ---
 
