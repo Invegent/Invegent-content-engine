@@ -242,12 +242,28 @@ apply substance (post-freeze hash movement = the disclosed appended chain-record
    proof-event row each — a mechanical "Packet A2" awaiting PK authorization; CFW-LI additionally has
    zero 90d publishes → needs one fresh natural publish or PK acceptance of >90d evidence first.
 
+## 6d. PACKET A2 APPLY RECORD (2026-08-02, ~06:0x UTC — PK "authorize Packet A2" then "apply A2")
+
+Packet `docs/briefs/cgu-trail-alignment-proof-event-packet-a2-v1.md` (frozen `d1fcf582…`, chain:
+`db-rls-auditor` clean · AHA shadow PASS all-10 · external agree `ba05dfdb`) **APPLIED** — one
+`execute_sql` call, the exact §2 DO block, no guard tripped. Post-apply R2 readback: 3 rows
+`c9150002-…{1..3}` live; **every publishing image_quote cell across all four brands now carries its
+recorded `platform_publish` proof event** — the sole image_quote cell without one is CFW×LinkedIn
+(deliberately excluded: zero 90d publishes; awaits a fresh natural publish or a PK evidence ruling).
+
+**Tally CORRECTION (honest recount, no delta was wrong — the base was):** §4's "fully state-1 today: 12"
+undercounted by one (3 iq + 8 text + 2 carousel = **13**); §6c's "12→18" is therefore **13→19**; after
+A2 the correct count is **22 of 25 committed cells state-1**. Remaining 3: **PP YT kinetic** (rungs
+8–9, natural slot 2026-08-03T07:00Z + PK publish gate) · **NDIS YT stat** (supervised lane, run-sheet
+on this branch) · **CFW-LI image_quote** (evidence ruling: fresh publish vs acceptance of >90d evidence).
+
 ## 7. Register payload (version-less — for the WS-5 session's register-cut pass)
 
 > **✅ vX.XXX — CGU final readiness audit: Milestone-1 FAIL(strict, 8 cells)/PASS(operational, 1 disposition) · Milestone-2 = 12/25 committed cells state-1, gap ledger + 10-min re-run contract delivered (T1 · read-only; zero writes/applies)** — result: `docs/briefs/results/cgu-final-readiness-audit-result-v1.md` (branch `lane/cgu-final-readiness-audit`).
 > · Failing/open cells: 3 image_quote proof-event recording gaps (PP-LI/NDIS-IG/NDIS-LI) · PP+NDIS YT `video_short_stat` (**no natural stat slot scheduled for either**) · PP YT kinetic rungs 8–9 (natural slot 2026-08-03T07:00Z; approve = auto-public ≤30min) · 6 CFW/INV image_quote cells blocked on `client_format_config` reconciliation only. D1/D2/D3 all verified executed/closed on live truth (D2 applied 2026-08-02 03:43Z); enrolment clause met (v6.113).
 > · **PK decisions 2026-08-02 (§6b, all six):** INV FB/IG carousel queue-absence = state-2 (D3-style note, no overlay — strict-fail set 8→6 cells) · trail-alignment proof-event DML authorized (3 image_quote cells + PP YT stat against the accepted 07-27 publishes) · NDIS YT stat = supervised force-fill lane (re-defer fallback) · CFW/INV config reconciliation authorized (incl. CFW-LI evidence-decay check) · branch pushed.
-> · **BOTH PACKETS APPLIED 2026-08-02 (§6c, PK "apply A and apply B"):** Packet A (4 `platform_publish` proof events, hash `169d881b…`/`957d5379…`, chain clean+external agree `ce70d9c6`) and Packet B (4 CFW/INV `client_format_config` rows, hash `7503e1e7…`, chain clean+external partial→PK-ruled `aba9169b`) — zero guards tripped, post-apply verification exact (6 image_quote cells `blocked`→`ready`; one benign prediction deviation recorded). **Committed-cell state-1: 12→18.** Remaining M2 distance: PP YT kinetic rungs 8–9 (slot 08-03T07:00Z) · NDIS YT stat supervised lane · 4 CFW/INV IG/LI recording residuals outside decision #2's scope (§6c item 3, incl. the CFW-LI evidence-decay ruling).
+> · **BOTH PACKETS APPLIED 2026-08-02 (§6c, PK "apply A and apply B"):** Packet A (4 `platform_publish` proof events, hash `169d881b…`/`957d5379…`, chain clean+external agree `ce70d9c6`) and Packet B (4 CFW/INV `client_format_config` rows, hash `7503e1e7…`, chain clean+external partial→PK-ruled `aba9169b`) — zero guards tripped, post-apply verification exact (6 image_quote cells `blocked`→`ready`; one benign prediction deviation recorded). **Committed-cell state-1: 12→18** *(corrected at §6d: 13→19)*. Remaining M2 distance: PP YT kinetic rungs 8–9 (slot 08-03T07:00Z) · NDIS YT stat supervised lane · 4 CFW/INV IG/LI recording residuals outside decision #2's scope (§6c item 3, incl. the CFW-LI evidence-decay ruling).
+> · **PACKET A2 APPLIED same day (§6d):** 3 further trail-alignment events (CFW-IG, INV-IG, INV-LI; hash `d1fcf582…`, chain clean, external agree `ba05dfdb`) — every publishing image_quote cell now carries its recorded proof event. **State-1: 22 of 25 committed cells.** Remaining 3: PP YT kinetic (natural slot 08-03T07:00Z + PK publish gate) · NDIS YT stat (supervised lane) · CFW-LI (evidence ruling).
 
 ## 8. Constraints confirmed
 
