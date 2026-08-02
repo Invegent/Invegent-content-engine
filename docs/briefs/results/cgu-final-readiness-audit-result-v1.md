@@ -286,6 +286,22 @@ work from this one): PP YT kinetic (natural slot 2026-08-03T07:00Z + PK publish 
 image_quote (controlled slot `46387fda…` fills ~03:04Z, publishes 2026-08-04T03:04Z, then its
 trail-alignment event + the final §6 re-run).
 
+## 6g. NDIS YT STAT REOPENED — VISUAL-QUALITY REMEDIATION (PK ruling 2026-08-03; additive, §6f stands as the record of its moment)
+
+PK's on-device review of `oCrtq6R9VFQ` found three template-fit defects (static "MARKET UPDATE"
+eyebrow collision + wrong-brand copy · two-word StatValue geometry break past the char-only clamp ·
+ContextLine exceeding the never-calibrated text-safe bounds). **Disposition:
+`published_proof_captured / visual_quality_remediation_required / final_acceptance_open`.** All
+publish/render/proof evidence preserved. Assignment `aa2179eb…` CONTAINED `visually_approved`→
+`blocked` (approval columns untouched); live-verified `select_template` fail-closes and the queue
+cell reopened as a routed owned gap. The PK-defined 7-point contained repair outcome (incl. making
+calibrated constraints a mandatory graduation requirement) is recorded in the run-sheet ADDENDUM —
+a future lane, not started from this one. **Corrected tally: 22 of 25 committed cells state-1**
+(NDIS YT stat leaves state-1 until remediated re-close). Root-cause class recorded: rung-6 approval
+is per-render, not per-content-envelope — nothing mechanically enforces a template's content
+envelope at generation/render time; this is the substantive answer to the auto-onboarded-template
+quality question and is also lodged as a correction against the (unratified) CGU Final proposal.
+
 ## 7. Register payload (version-less — for the WS-5 session's register-cut pass)
 
 > **✅ vX.XXX — CGU final readiness audit: Milestone-1 FAIL(strict, 8 cells)/PASS(operational, 1 disposition) · Milestone-2 = 12/25 committed cells state-1, gap ledger + 10-min re-run contract delivered (T1 · read-only; zero writes/applies)** — result: `docs/briefs/results/cgu-final-readiness-audit-result-v1.md` (branch `lane/cgu-final-readiness-audit`).
@@ -293,7 +309,8 @@ trail-alignment event + the final §6 re-run).
 > · **PK decisions 2026-08-02 (§6b, all six):** INV FB/IG carousel queue-absence = state-2 (D3-style note, no overlay — strict-fail set 8→6 cells) · trail-alignment proof-event DML authorized (3 image_quote cells + PP YT stat against the accepted 07-27 publishes) · NDIS YT stat = supervised force-fill lane (re-defer fallback) · CFW/INV config reconciliation authorized (incl. CFW-LI evidence-decay check) · branch pushed.
 > · **BOTH PACKETS APPLIED 2026-08-02 (§6c, PK "apply A and apply B"):** Packet A (4 `platform_publish` proof events, hash `169d881b…`/`957d5379…`, chain clean+external agree `ce70d9c6`) and Packet B (4 CFW/INV `client_format_config` rows, hash `7503e1e7…`, chain clean+external partial→PK-ruled `aba9169b`) — zero guards tripped, post-apply verification exact (6 image_quote cells `blocked`→`ready`; one benign prediction deviation recorded). **Committed-cell state-1: 12→18** *(corrected at §6d: 13→19)*. Remaining M2 distance: PP YT kinetic rungs 8–9 (slot 08-03T07:00Z) · NDIS YT stat supervised lane · 4 CFW/INV IG/LI recording residuals outside decision #2's scope (§6c item 3, incl. the CFW-LI evidence-decay ruling).
 > · **PACKET A2 APPLIED same day (§6d):** 3 further trail-alignment events (CFW-IG, INV-IG, INV-LI; hash `d1fcf582…`, chain clean, external agree `ba05dfdb`) — every publishing image_quote cell now carries its recorded proof event.
-> · **NDIS YT STAT PUBLISHED + STATE-1 (§6e/§6f):** supervised lane complete under PK gates — 4 attempts, 4 structural findings (pause-blocks-fill · stat pool fitness-starved 0/26 ≥65 · missing governance row added `c9150004-…0001` · publisher v1.14.0 release-date gate), sensitive-keyword rejection preserved as evidence (`d6c7e3e3…`), publish `oCrtq6R9VFQ` (19:15Z), proof events `c9150005-…{1,2}`. **State-1: 23 of 25 committed cells.** Remaining 2 for the next session: PP YT kinetic (slot 08-03T07:00Z + PK gate) · CFW-LI (controlled slot fills ~03:04Z, publishes 08-04T03:04Z, then event + final §6 re-run).
+> · **NDIS YT STAT PUBLISHED + STATE-1 (§6e/§6f):** supervised lane complete under PK gates — 4 attempts, 4 structural findings (pause-blocks-fill · stat pool fitness-starved 0/26 ≥65 · missing governance row added `c9150004-…0001` · publisher v1.14.0 release-date gate), sensitive-keyword rejection preserved as evidence (`d6c7e3e3…`), publish `oCrtq6R9VFQ` (19:15Z), proof events `c9150005-…{1,2}`.
+> · **REOPENED next day (§6g, PK 2026-08-03):** three visual template-fit defects on the live video → disposition `published_proof_captured / visual_quality_remediation_required / final_acceptance_open`; assignment `aa2179eb…` CONTAINED (`blocked`, approval history + all evidence preserved; selector fail-closes, cell = routed owned gap). 7-point contained repair outcome recorded (run-sheet ADDENDUM) incl. calibrated-constraints-as-mandatory-graduation-rung; WS-5 correction lodged against the unratified CGU Final proposal. **State-1: 22 of 25.** Open: PP YT kinetic (slot 08-03T07:00Z + PK gate) · CFW-LI (publishes 08-04T03:04Z + event) · NDIS stat remediated re-close.
 
 ## 8. Constraints confirmed
 

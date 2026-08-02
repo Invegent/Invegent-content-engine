@@ -91,7 +91,54 @@ Commission keyword rejection) untouched, plus the complete four-attempt record a
 ended in its standing pre-lane state (`paused_until NULL`, containment reason string restored).
 Rung-12 (`production_proven` promotion) deliberately NOT taken — a separate future PK election.
 
-## Fallback
+## ADDENDUM — VISUAL-DEFECT FINDING; CELL REOPENED (PK feedback + ruling, 2026-08-03)
+
+**Disposition (PK):** `published_proof_captured / visual_quality_remediation_required / final_acceptance_open`
+
+PK reviewed the live published video (`oCrtq6R9VFQ`) on-device and found three template-fit defects
+(screenshot supplied; frame at the stat beat):
+
+1. **Eyebrow collision + wrong copy** — "MARKET UPDATE" is STATIC template text (not a modification
+   field; the render's modifications were Background/Logo/stat fields only). The StatValue overlaps it
+   ("MARK…2…PDATE"), and "MARKET UPDATE" is wrong copy for a non-market brand — a PP-era design
+   assumption baked into the "generic" template.
+2. **StatValue geometry break** — the AI wrote `stat_value="2 people"`; ai-worker's `clampField()`
+   guard checks characters (≤12 — passes at 8) not words/layout, and the template's StatValue element
+   (designed for compact numerics) line-wraps a two-word value into the eyebrow above and the
+   StatLabel bar below.
+3. **ContextLine edge truncation** — first/last words clip the text-safe width. The stat template's
+   limits were never probe-calibrated (WS-5 calibration was done for the KINETIC template only;
+   `video_stat_reveal_9x16_v2` has no calibrated constraints). The purpose-built text-bounds validator
+   (`video_stat_bounds.ts`, v6.91 minimal landing packet) exists but is PARKED un-landed/unwired.
+
+**Root cause class:** rung-6 visual approval is per-RENDER, not per-content-envelope — a template can
+pass the human gate on one content instance and fail on another content shape; no mechanical
+per-template envelope enforcement exists at generation or render time. This is also the honest answer
+to PK's auto-onboarding question: the human graduation ladder protects WHAT becomes selectable, but
+nothing yet protects the full content range a selectable template will receive.
+
+**All evidence PRESERVED (nothing deleted or rewritten):** publish `9fb06e0a…`/`oCrtq6R9VFQ` ·
+render `ebfb44cf…` · proof events `c9150005-…{1,2}` + CP-E `visual_approval` · the rejected "$3.31"
+draft `d6c7e3e3…` · the four-attempt record above. The close-out section above stands as the record
+of what was true at close; THIS addendum reopens the cell's acceptance, it does not unwrite the proof.
+
+**CONTAINMENT APPLIED (live, 2026-08-03):** assignment `aa2179eb…` (`NDIS × video_stat_reveal_9x16_v2`)
+`visually_approved` → **`blocked`** (`approved_by`/`approved_at` untouched). Live-verified:
+`select_template('ndis-yarns','youtube','video_short_stat')` now `fail_closed/no_selectable_template`;
+the readiness cell reopened as a routed owned gap (`blocked / capability_template_remediation`) — no
+further NDIS content can select this template before remediation; S9 skips any stat slot terminally.
+
+**CONTAINED REPAIR OUTCOME (PK-defined; a FUTURE lane — nothing below executed from this one):**
+1. remove or parameterise the baked-in "MARKET UPDATE" eyebrow;
+2. define a safe numeric/content envelope for `StatValue`;
+3. probe-calibrate `video_stat_reveal_9x16_v2` and persist its constraints;
+4. land and wire the parked video text-bounds validator;
+5. make calibrated constraints a MANDATORY graduation requirement;
+6. produce one replacement NDIS render for PK visual approval;
+7. publish only after approval, then re-close the NDIS YouTube stat cell.
+
+Re-close = repair lane completes 1–7 → PK visual approval → assignment unblocked → publish → the §6
+re-run reads the cell state-1 again with the remediated evidence.
 
 If any gate fails twice (render timeout persists, voice unresolvable, PK rejects), stop and take the
 named fallback: **PK re-defers the cell to state-2** (Milestone 2 explicitly allows re-deferral) with
