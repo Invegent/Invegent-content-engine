@@ -32,9 +32,12 @@ Invegent's **current, live** `select_template` winner for `image_quote` is **Row
 `ecba211b-5217-4790-afe5-a2f98616712f`, `production_proven`) — this is Invegent's real,
 currently-serving image_quote template.
 
-Row 5 (this candidate) and Row 7 share an **identical `created_at`**
-(`2026-07-02 11:12:41.987075+00`) and have **zero** `c.creative_template_selector_policy`
-priority rows, so `select_template`'s tiebreak falls through to raw `template.id ASC` ordering,
+Row 5 (this candidate) and Row 7 share an **identical `c.creative_provider_template.created_at`**
+(`2026-07-02 11:12:41.987075+00` for both — precision note added post-`db-rls-auditor` review: the
+tiebreak keys off the **template** rows' `created_at`, not the assignment rows', which differ
+substantially — 2026-07-20 vs 2026-08-01) and have **zero** `c.creative_template_selector_policy`
+priority rows, so `select_template`'s tiebreak falls through to raw `t.id ASC` ordering (`t` =
+`c.creative_provider_template`),
 which favours Row 5 (`0e006c5c...` sorts before `1cfe0f9c...`). **The instant this migration
 commits, Row 5 becomes selectable and `select_template`'s winner for Invegent x
 {facebook, instagram, linkedin, website} x image_quote flips from Row 7 to Row 5 — immediately,

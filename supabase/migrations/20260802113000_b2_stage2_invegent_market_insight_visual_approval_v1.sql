@@ -27,10 +27,14 @@
 -- assignment ecba211b-5217-4790-afe5-a2f98616712f, production_proven) —
 -- this is Invegent's real, live, currently-serving image_quote template.
 -- Row 5 (this candidate, 0e006c5c-45aa-4829-82ec-89dd282a8c56) and Row 7
--- share an IDENTICAL created_at (2026-07-02 11:12:41.987075+00) and have
--- ZERO c.creative_template_selector_policy priority rows, so
--- select_template's tiebreak falls through to raw template.id ASC
--- ordering, which favours Row 5 (0e006c5c < 1cfe0f9c lexicographically).
+-- share an IDENTICAL c.creative_provider_template.created_at (precision
+-- note added post-db-rls-auditor review: the tiebreak keys off the
+-- TEMPLATE rows' created_at, 2026-07-02 11:12:41.987075+00 for both —
+-- NOT the assignment rows', which differ substantially, 2026-07-20 vs
+-- 2026-08-01) and have ZERO c.creative_template_selector_policy priority
+-- rows, so select_template's tiebreak falls through to raw
+-- t.id ASC ordering (t = c.creative_provider_template), which favours
+-- Row 5 (0e006c5c < 1cfe0f9c lexicographically).
 -- THE INSTANT this migration commits, promoting Row 5 to visually_approved
 -- makes it selectable, and select_template's winner for Invegent x
 -- {facebook,instagram,linkedin,website} x image_quote FLIPS from Row 7 to
