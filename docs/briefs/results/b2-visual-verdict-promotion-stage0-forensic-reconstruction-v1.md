@@ -86,8 +86,24 @@ seen there).
 live function body exactly, with a paired exact-predecessor rollback
 (`ROLLBACK_20260801120000_...sql`, restores the byte-identical pre-rider body from
 `20260730120000`). **This backfill changes no production behaviour — the rider was already live.**
-It is pending `db-rls-auditor` review (Stage 0 review step, not yet run as of this doc) before any
-commit is treated as final.
+
+**CORRECTED 2026-08-02** (this line originally read "pending review, not yet run as of this doc" —
+the review was actually run, in the same session, before the commit that landed this file; the
+text below was simply never updated at the time. Caught by a later register-cut session's chase,
+`docs/00_sync_state.md` v6.120, which correctly found no written record of the outcome anywhere —
+this correction supplies it): **`db-rls-auditor` review COMPLETE, verdict `concerns`
+(non-blocking).** Confirmed the forward migration's function body is code-identical to the live
+`pg_get_functiondef` output (only cosmetic comment-line differences); confirmed the rollback body
+is code-identical to the tracked `20260730120000` predecessor; confirmed
+`public.is_capability_exempt_format` is unchanged live vs. tracked and not created/altered by this
+migration; confirmed grants unchanged (`service_role` EXECUTE only, no anon/authenticated); no RLS
+gap, no new REST exposure, no upsert/DML risk; migration naming has zero ledger collision. One
+pre-existing, non-blocking observation noted (the predecessor file's name-embedded timestamp
+doesn't match its ledger-recorded apply version — the already-known "migration ledger ≠ git
+history" drift pattern, not introduced by this pair). **`branch-warden` review COMPLETE, verdict
+`safe`** — HEAD/branch/file-set all matched immediately before the commit. Both reviews ran before
+`c8a6d61` (the commit that landed these files) and before `474be78` (the merge to `main`) — the
+review gate was never actually skipped, only under-documented.
 
 ## 5. Stage 0B — D1 / D2 reconstruction
 
@@ -210,8 +226,10 @@ will present.
   as still-open.
 - The Stage 0A ledger backfill changes no production behaviour (the rider was already live); it
   was authored on an isolated branch, not applied to any environment in this pass.
-- Nothing was committed to `main`; result docs are on `lane/b2-stage0-forensic-reconstruction`
-  pending the review step below.
+- At original authoring time, nothing had yet been committed to `main` — result docs were staged
+  on `lane/b2-stage0-forensic-reconstruction` pending the review step. **CORRECTED 2026-08-02: the
+  review step ran before that commit** (see §4 correction above); the branch was then committed
+  (`c8a6d61`) and merged to `main` (`474be78`).
 
 ## 9. Open issues
 
@@ -219,31 +237,42 @@ will present.
   run D2's declaration + proof-event lane for real, or (b) confirm PK considers D2's intent
   already satisfied by the pre-existing `generic_carousel_cover_1x1_v1` TMR template and update
   the programme brief's language accordingly. This reconstruction does not decide between those —
-  it only establishes that today, no D2-specific artifact exists.
+  it only establishes that today, no D2-specific artifact exists. **Still open as of 2026-08-02**
+  (a separate D2 declaration packet was later drafted and reviewed on `lane/d2-pp-legacy-carousel-
+  governance`, but remains unapplied, blocked on its own PK scope decision — not part of this
+  Stage-0 doc's original scope).
 - **The original "eight-call" selector baseline design is unrecoverable.** §6's 9-call rerun is
   this session's own equivalent-quality substitute, not a restoration of the original.
 - **`task_05bf8b3d` remains open** — a real, standing release gate, not resolved by this lane.
-- Stage 0A's migration backfill has not yet been through `db-rls-auditor` review or
-  `branch-warden` — that is the next step (Stage 0 review), not yet done as of this doc.
+- ~~Stage 0A's migration backfill has not yet been through `db-rls-auditor` review or
+  `branch-warden`~~ — **RESOLVED, see §4 correction.** Both reviews ran before this file's commit;
+  the strikethrough claim above was stale documentation, not a real gap.
 
 ## 10. Next recommended step
 
-Run the Stage 0 review step (`db-rls-auditor` on the migration backfill pair, `branch-warden` on
-this branch), then commit. Only after that: generate fresh previews from the three live candidates
-(§6) and return the three-option PK visual sitting card, per the seed packet's Stage 1 — no
-promotion or winner change before that verdict.
+~~Run the Stage 0 review step (`db-rls-auditor` on the migration backfill pair, `branch-warden` on
+this branch), then commit.~~ **Done — see §4.** Realised next: generate fresh previews from the
+three live candidates (§6) and return the three-option PK visual sitting card, per the seed
+packet's Stage 1 — no promotion or winner change before that verdict. (This subsequently happened
+in the same session; see the B2 Stage 1/Stage 2 result docs for what followed.)
 
 ---
 
 ## 11. Verification (chat fills this)
 
-**Verdict:** `Needs follow-up` (D2 gap; review step still pending)
+**Verdict:** `Needs follow-up` (D2 gap only — the review step is complete, see 2026-08-02 correction
+in §4/§9/§10)
 
 **Notes:** D1 and B2 Stage-1's factual claims were independently verified against live DB state
 and matched closely (exact assignment IDs, exact template names, exact cell counts). D2's claim
 did not hold up under verification and is reported as a gap rather than reconciled away.
 `task_05bf8b3d` was mis-searched earlier in this session (false negative) and is corrected here
-with its actual source cited.
+with its actual source cited. **2026-08-02 addendum:** a later register-cut session (`docs/00_
+sync_state.md` v6.120) chased this doc's own "review step pending" language and correctly found no
+written record of the outcome — the review had actually been run, just never documented back into
+this file before commit. Corrected in place above; v6.120 itself is not rewritten (register
+entries don't get retroactively edited), but its "found absent" framing is superseded by this
+correction.
 
 ## 12. Learning notes (chat fills this)
 
@@ -256,3 +285,12 @@ with its actual source cited.
   (`proof.occurred_at: 2026-07-03`) showed it predated D2 by four weeks and came from an unrelated
   TMR template. Always trace a status back to its selected/evidence payload before citing it as
   proof of a specific decision's execution.
+- **A "next step" sentence in a result doc must be updated the moment that step actually happens
+  — writing the doc early and running the step late (even seconds later, before the same commit)
+  creates a false "not done" record if the text isn't revisited.** This doc said "pending review"
+  right up through its own commit, even though the review had by then already run — a later
+  register-cut session correctly took that sentence at face value and cut a "found absent" entry
+  (v6.120) for work that had, in fact, been done. The gap was purely documentary, but it read as a
+  real one to anyone checking the written record instead of the conversation history. Going
+  forward: when a review/check runs after a doc's prose is drafted but before the doc is committed,
+  go back and edit the prose before committing — don't rely on remembering to fix it later.
