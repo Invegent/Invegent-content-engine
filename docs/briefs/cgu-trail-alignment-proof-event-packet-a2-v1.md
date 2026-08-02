@@ -104,6 +104,22 @@ schema reads, both unchanged since): additive INSERT only; zero selector impact 
 gates on `visual_approval` events only); zero queue-output change (queue reads `m.post_publish`);
 no status/grant/DDL change. Consumers: audit/graduation evidence readers + re-run contract R2.
 
+## 4b. Review chain (complete 2026-08-02 — packet STOPPED at PK apply gate)
+
+- `db-rls-auditor`: **clean/pass, high confidence, zero must/should-fix** — all live assertions
+  re-verified (assignments production_proven with matching templates · 3 publish rows byte-exact ·
+  zero collisions, Packet A's 4 rows present and disjoint · render-log attribution confirmed per row ·
+  the Invegent winner-flip note independently confirmed live: `select_template` ig/li now returns
+  market_insight, so attributing to quote_card — what actually rendered — is correct). One posture
+  observation: no unique constraint on (assignment, platform, proof_type); G2 is the sole duplicate
+  guard — same accepted single-writer posture as Packet A.
+- `apply-harness-auditor` (SHADOW, clears no gate): **PASS/clean, all 10 checks**; check-7 identity
+  chain byte-exact.
+- External review: **agree / proceed, no escalation** — `review_id ba05dfdb-1f0e-41ef-b77c-ca45b2c9563e`,
+  `reviewed_input_hash` `d1fcf58245b5c7bb2e1d207d3620bf68d6ad31c8aa75c113aa0853fce3f7e58d` (this file
+  at commit `d69f819`; this §4b block appended after the review — any edit to §1–§5 voids it).
+- **Apply authority: NOT granted by this chain.** The apply is a separate PK act against this exact packet.
+
 ## 5. Post-apply verification
 
 `SELECT id, assignment_id, platform FROM c.creative_template_proof_event WHERE id::text LIKE 'c9150002%'`
