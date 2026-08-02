@@ -302,6 +302,24 @@ is per-render, not per-content-envelope — nothing mechanically enforces a temp
 envelope at generation/render time; this is the substantive answer to the auto-onboarded-template
 quality question and is also lodged as a correction against the (unratified) CGU Final proposal.
 
+## 6h. RE-CLOSE RULE ADJUSTED + v1/FINAL QUALITY BOUNDARY (PK ruling 2026-08-03)
+
+PK ruled the incident splits cleanly: **CGU v1 = one contained repair of a known defective committed
+cell; universal future quality perfection is NOT a v1 pass condition.** The NDIS cell re-closes on
+five conditions (eyebrow removed/parameterised · safe StatValue+ContextLine bounds for
+`video_stat_reveal_9x16_v2` · one corrected NDIS replacement render · PK visual PASS · assignment
+restored + selector/readiness verified) — **no second public publish** unless the repair changes
+governed routing, rendering authority, or publisher behaviour; the preserved publish stands as the
+platform-transport/evidence proof, the corrected render supplies the visual-quality proof. Full rule:
+run-sheet §RE-CLOSE RULE ADJUSTED. Repair executes as **Lane A
+`ws5-production-envelope-enforcement-foundation`** (reusable foundation + this repair); the
+fleet-wide controls (calibration coverage across every production-selectable template · live bounds
+validation · layout-aware generation · calibration as a mandatory graduation rung · ongoing
+sampling/quality policy · reopen-only-on-systemic-failure) are **CGU Final quality hardening**
+(Lane B `ws5-production-template-calibration-backfill`), recorded in the proposal's §0c on
+`lane/cgu-final-proposal-ws5-correction`. Milestone-2 remaining set unchanged: PP YT kinetic ·
+CFW-LI · NDIS stat re-close (by the adjusted rule).
+
 ## 7. Register payload (version-less — for the WS-5 session's register-cut pass)
 
 > **✅ vX.XXX — CGU final readiness audit: Milestone-1 FAIL(strict, 8 cells)/PASS(operational, 1 disposition) · Milestone-2 = 12/25 committed cells state-1, gap ledger + 10-min re-run contract delivered (T1 · read-only; zero writes/applies)** — result: `docs/briefs/results/cgu-final-readiness-audit-result-v1.md` (branch `lane/cgu-final-readiness-audit`).

@@ -140,6 +140,38 @@ further NDIS content can select this template before remediation; S9 skips any s
 Re-close = repair lane completes 1–7 → PK visual approval → assignment unblocked → publish → the §6
 re-run reads the cell state-1 again with the remediated evidence.
 
+### RE-CLOSE RULE ADJUSTED (PK ruling, 2026-08-03 — supersedes items 6–7 above in effect; text above preserved unrewritten)
+
+**A second public YouTube publish is NOT required.** The existing preserved publish (`oCrtq6R9VFQ`,
+`m.post_publish` `9fb06e0a…`) already proves the governed render path, YouTube transport, the
+publisher, and the evidence-writing chain; what it failed to prove is acceptable visual output.
+**The NDIS × YouTube × `video_short_stat` cell RE-CLOSES when all five hold:**
+1. the baked-in "MARKET UPDATE" copy is removed or parameterised;
+2. safe `StatValue` and `ContextLine` bounds are implemented for `video_stat_reveal_9x16_v2`;
+3. one corrected NDIS replacement render is produced;
+4. PK gives a visual PASS on that corrected render;
+5. the NDIS assignment is restored (`blocked`→eligible) and the selector/readiness state verified.
+
+A new public publish is required ONLY if the repair changes governed routing, rendering authority,
+or publisher behaviour. Evidence model at re-close: preserved publish = platform-transport +
+evidence proof · corrected render = visual-quality proof.
+
+**Scope boundary (PK):** this is one contained CGU-v1 repair of a known defective committed cell —
+CGU v1 promises every committed capability a governed route, fail-closed containment, evidence, and
+an accepted production output; it does NOT promise no future content will ever expose another
+layout defect. Future defects follow the contain→record→repair→re-prove→restore model (only the
+affected cell pauses); the programme reopens only for a systemic governance failure (silent
+fallback across many cells, governance bypass, publishing past a failed control) — this incident
+was a contained content-envelope defect, and the detection→containment→evidence chain working is
+itself part of what v1 proves.
+
+**Named repair lane (NOT started from this lane): `ws5-production-envelope-enforcement-foundation`**
+(PK "Lane A") — the reusable foundation + the v1 repair in one: land the reusable bounds validator ·
+make the generator consume stored constraints · enforce calibration-presence at graduation ·
+calibrate + repair `video_stat_reveal_9x16_v2` (incl. the eyebrow) · return the corrected NDIS
+render for PK's visual PASS. Fleet-wide backfill is Lane B, CGU Final
+(`ws5-production-template-calibration-backfill`) — recorded in the CGU Final proposal §0c.
+
 If any gate fails twice (render timeout persists, voice unresolvable, PK rejects), stop and take the
 named fallback: **PK re-defers the cell to state-2** (Milestone 2 explicitly allows re-deferral) with
 the failure evidence recorded — no forcing, no synthetic proof.
