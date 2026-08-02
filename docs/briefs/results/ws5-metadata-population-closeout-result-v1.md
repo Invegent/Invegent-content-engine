@@ -10,28 +10,34 @@
 
 ## 1. Result status
 
-`Partial — by design.` Task A (declared contracts) is drafted and validator-clean, but the actual
-governed writes (`set_tmr_field_constraints`/`set_tmr_platform_constraints`) are **NOT applied** —
-that is its own PK apply gate, per the packet's own instruction ("Every apply is its own PK gate").
-Task B is complete (both items verified/closed). Task C (register-cut pass) is complete for every
-payload that was ready to cut; one payload (B2 Stage 2) was found already recorded and was
-deliberately **not** re-cut (see §5).
+`Complete.` Task A's declared contracts are authored, validated, and **now APPLIED** — both
+templates' field/platform constraints are live (PK-authorised, 2026-08-02, see §4a). Task B is
+complete (both items verified/closed). Task C (register-cut pass) is complete for every payload
+that was ready to cut; one payload (B2 Stage 2) was found already recorded and was deliberately
+**not** re-cut (see §5).
 
 ## 2. Commit(s)
 
-- Committed on `main` at HEAD `8d92fe0` (verified clean/safe by `branch-warden` immediately before
-  this session's edits — 0 ahead/behind `origin/main`, no staged/modified tracked files). Per the
-  packet's instruction, **not pushed** — push remains a separate, explicit PK gate.
+- First commit `80ab857` on `main` (register cut v6.121–v6.125 + Task A/B artifacts) — **pushed to
+  `origin/main`, PK-authorised** (fast-forward, verified conflict-free by fresh `branch-warden`
+  immediately before push).
+- Second commit (this update, pending) — records the Task A apply (corrected `field_kind` values,
+  applied contracts, before/after validator outputs, register entry v6.126). Push authorization to
+  be confirmed with PK per this repo's standing per-commit push gate.
 
 ## 3. Files changed
 
-- `docs/briefs/artifacts/ws5-market-insight-declared-contract-v1.json` — created (Task A)
-- `docs/briefs/artifacts/ws5-quote-card-declared-contract-v1.json` — created (Task A)
+- `docs/briefs/artifacts/ws5-market-insight-declared-contract-v1.json` — created, then corrected
+  (`output_type: image→static_image`; `Background`/`Logo` `field_kind: image→background/logo`)
+  (Task A)
+- `docs/briefs/artifacts/ws5-quote-card-declared-contract-v1.json` — same two corrections (Task A)
 - `supabase/migrations/20260802010109_ws3_asset_gap_backlog_read_view_v1.sql` — created, byte-exact
   backfill (Task B1)
-- `docs/00_sync_state.md` — 5 new pointer entries appended (v6.121–v6.125) (Task C)
+- `docs/00_sync_state.md` — 5 pointer entries (v6.121–v6.125) + 1 more (v6.126, the Task A apply)
+  (Task C)
 - `docs/00_action_list.md` — marker updated + 1 new carry line (`tmr-drift-probe` Option-B patch) (Task C)
-- `docs/briefs/results/ws5-metadata-population-closeout-result-v1.md` — created (this file)
+- `docs/briefs/results/ws5-metadata-population-closeout-result-v1.md` — this file, updated with the
+  apply record
 
 ---
 
@@ -78,9 +84,57 @@ discipline.
   against a stored dimension column — the live registry query that returned template rows did not
   surface width/height. Flag for confirmation before any future capture-check-mode validation run.
 
-**NOT done this lane (explicit non-claim):** no `set_tmr_field_constraints`/
-`set_tmr_platform_constraints` calls were made — zero DB writes. The two JSON artifacts above are
-the PK apply-gate input; PK's own choice (per the packet) is one combined gate or one per template.
+## 4a. Task A — APPLY (PK-authorised, 2026-08-02)
+
+**PK authorisation (direct, this session):** population writes authorised for both templates,
+under an explicit discipline — per template: fresh declared-only PASS immediately before writing;
+writes via `set_tmr_field_constraints`/`set_tmr_platform_constraints` CAS-from-NULL only; every
+numeric limit a calibration triple; re-run the validator after writing and attach both outputs;
+**any validator failure or CAS mismatch = STOP and report, don't adapt silently.**
+
+**A real defect was found and reported, not silently fixed.** The first real-apply attempt for
+`generic_market_insight_card_1x1_v1` (a self-aborting transaction — dry-run first, then the real
+attempt) failed its in-transaction `validate_tmr_template_intake` capture-check gate:
+`field_kind_mismatch` on `Background` (`captured: "background"`, `declared: "image"`) and `Logo`
+(`captured: "logo"`, `declared: "image"`) — 2 hard failures. **Root cause:** the live registry's
+`field_kind` controlled vocabulary (`text·image·logo·background·shape·audio·video`, enforced inside
+`set_tmr_field_constraints` itself) distinguishes `background`/`logo` as their own values, not a
+generic `image`; the declared contracts had used `"image"` for both, a misreading of an earlier
+evidence summary's ambiguous "image/background"/"image/logo" notation. **Zero writes persisted** —
+independently re-verified by direct table read immediately after the error
+(`c.creative_provider_template_field`: 0/9 non-null, `c.creative_template_platform_suitability`:
+0/4 non-null for the market-insight template) before reporting to PK. Per instruction, stopped and
+reported rather than auto-correcting. **PK reviewed and authorised the fix + retry** ("Fix it and
+retry both templates").
+
+**Fix applied to both artifacts:** `field_kind` corrected to `"background"`/`"logo"` for the
+`Background`/`Logo` elements (matching the live registry exactly); both files re-confirmed valid
+JSON. Declared-only validation re-run fresh on both (immediately before writing, per PK's
+discipline) — both `verdict=pass`, `hard_failure_count=0` (identical to the pre-fix runs; the
+`field_kind` key is not checked in declared-only mode, only in capture-check mode against the live
+row, which is exactly where the original defect surfaced).
+
+**Live writes executed, each as one self-aborting transaction (all field CAS writes + all platform
+CAS writes + an in-transaction `validate_tmr_template_intake` capture-check gate; any `error` key
+or non-`pass` verdict → `RAISE EXCEPTION` → full rollback):**
+
+| Template | Field writes | Platform writes | In-txn gate | Committed |
+|---|---|---|---|---|
+| `generic_market_insight_card_1x1_v1` (`0e006c5c…`) | 9/9 `ok:true` (Headline/Subtitle/CategoryBadge/Location/Date/Footer/Background/Logo/Scrim, all CAS-from-NULL) | 4/4 `ok:true` (facebook/instagram/linkedin feed, website card) | `verdict:pass, hard_failure_count:0` | ✅ |
+| `generic_quote_card_1x1_v1` (`1cfe0f9c…`) | 8/8 `ok:true` (QuoteText/Attribution/SourceLabel/Footer/Background/Logo/QuoteMark/Scrim, all CAS-from-NULL) | 4/4 `ok:true` (same 4 platform/placement pairs) | `verdict:pass, hard_failure_count:0` | ✅ |
+
+**Independent post-commit verification (separate reads, not the in-transaction result):**
+- Row counts: market-insight fields 9/9 non-null, suitability 4/4 non-null; quote-card fields 8/8
+  non-null, suitability 4/4 non-null — exactly the expected population, nothing extra, nothing
+  missing.
+- Fresh, independently-run `validate_tmr_template_intake(template_id, contract)` capture-check for
+  **both** templates: `verdict=pass, hard_failure_count=0`, identical `calibration_required[]`
+  queues to the in-transaction result (6 items market-insight, 4 items quote-card — see §4).
+
+**Both templates now carry live, governed, validator-confirmed constraints.** This is the WS-5 DoD's
+"2–3 production-proven templates populated" clause — 3 templates now carry calibrated/declared
+constraints counting the kinetic template (v6.109-era) plus these two. The registry `status`-vs-
+proof-event discrepancy (§4) is unchanged by this apply — still an open item, not resolved here.
 
 ## 5. Task B — hygiene carries
 
@@ -141,7 +195,16 @@ ahead/behind `origin/main` — safe to commit.
   rider-rollback carry closure (folded into v6.122's own text rather than duplicated here).
 - **v6.125** — WS-5 metadata population closeout (Task A, §4 above): both declared contracts
   authored + validator-clean, **NOT applied** — awaiting a PK Gate-2 apply decision (one combined
-  gate or one per template, PK's choice per the packet).
+  gate or one per template, PK's choice per the packet). **Superseded same-session by v6.126** (§4a)
+  once PK authorised and the apply completed — v6.125 itself is not rewritten, per Convention 1.
+- **v6.126** — WS-5 metadata population: Task A **APPLIED** (§4a above). PK-authorised both
+  templates; one real defect found and reported (STOP, not silently fixed) — `field_kind` mismatch
+  on `Background`/`Logo` (declared `image`, live `background`/`logo`) — zero writes persisted on
+  that attempt; PK reviewed and authorised the fix + retry. Both templates now committed:
+  `generic_market_insight_card_1x1_v1` (9 fields + 4 platforms) and `generic_quote_card_1x1_v1`
+  (8 fields + 4 platforms), each via one self-aborting transaction with an in-transaction
+  capture-check gate, independently re-verified post-commit. `verdict=pass, hard_failure_count=0`
+  for both, both times.
 
 **Action-list carry added (no version — per the drafted payload's own instruction):**
 `tmr-drift-probe` should be patched to skip governance rows with no resolvable
@@ -159,30 +222,35 @@ was written).
 
 ## 7. Constraints confirmed
 
-- Zero DB writes performed by Task A (the two declared contracts are read-only validator inputs).
-- Zero DDL/DML beyond the B1 backfill, which is a repo-file-only change (no `apply_migration`/
-  `execute_sql` write call was made for it — the object has been live since 2026-08-02).
-- No push to `origin/main` — commit only, per the packet's instruction and this repo's standing
-  push-is-a-hard-stop rule.
-- No file outside the declared set touched; `branch-warden` re-verification confirms the staged set
-  matches exactly what's listed in §3.
+- Task A's writes were exactly the PK-authorised discipline: CAS-from-NULL only, every numeric limit
+  a calibration triple, no invented numbers, fresh validator immediately before writing, in-transaction
+  + independent post-commit re-validation both attached.
+- The one real defect found (`field_kind` mismatch) triggered a genuine STOP-and-report, not a
+  silent fix — zero writes persisted from the failed attempt, independently re-verified before
+  reporting.
+- Zero DDL/DML beyond the B1 backfill and the Task A field/platform-constraint writes (both governed
+  writer-RPC calls, no raw table DML, no DDL).
+- No file outside the declared set touched; `branch-warden` re-verification confirmed the first
+  commit's staged set matched exactly what's listed in §3.
+- First commit (`80ab857`) pushed to `origin/main`, PK-authorised, verified fast-forward/
+  conflict-free immediately before push.
 
 ## 8. Open issues
 
-- Task A's actual population apply (the `set_tmr_field_constraints`/`set_tmr_platform_constraints`
-  CAS writes) is unstarted — PK gate pending, per §4.
-- The registry-status / proof-event discrepancy (§4) is unresolved — a PK/owner judgment call, not a
-  defect this lane can fix.
+- The registry `status`-vs-proof-event discrepancy (§4) is unresolved by this apply — a PK/owner
+  judgment call, not a defect this lane can fix.
 - The `content_source` vocabulary gap (§4) is an open question for whoever owns the WS-5 shape spec.
+- `generic_quote_card_1x1_v1`'s missing structural layout guard (§4) remains open — a probe/design
+  carry, unaffected by this metadata population.
 - `tmr-drift-probe` Option-B patch (action-list carry) is real, scoped, future work — not started.
-- Push to `origin/main` is withheld pending explicit PK instruction.
+- The second commit (this apply + v6.126 register entry) has not yet been pushed — confirm with PK.
 
 ## 9. Next recommended step
 
-PK gate on Task A: authorize (or decline/modify) the `set_tmr_field_constraints`/
-`set_tmr_platform_constraints` population for both templates against the two validated declared
-contracts — one combined gate or one per template. Separately, confirm whether this session's commit
-(register cut + Task A/B artifacts) should be pushed to `origin/main`.
+Confirm push of the second commit (Task A apply + v6.126 register entry) to `origin/main`. Beyond
+that, this lane's own scope is closed — the registry-status discrepancy, content_source vocabulary
+question, quote-card layout-guard gap, and `tmr-drift-probe` patch are each their own future,
+separately-gated lane.
 
 ---
 
@@ -191,10 +259,11 @@ contracts — one combined gate or one per template. Separately, confirm whether
 **Verdict:** `Pass with notes` — every claim in this doc is evidence-cited against live reads or
 byte-verified file state; the two genuine open items (registry status vs. proof events; the
 content_source vocabulary gap) are surfaced, not smoothed over; the duplicate Stage-2 payload was
-caught before being re-cut.
+caught before being re-cut; the one real write-time defect (`field_kind` mismatch) was caught,
+reported, and fixed only after PK review — not silently adapted.
 
 ## 11. Non-claims
 
-This result does not apply the WS-5 population writes, does not resolve the registry-status
-discrepancy, does not decide the content_source vocabulary question, does not patch
-`tmr-drift-probe`, and does not push or merge anything to `origin/main`.
+This result does not resolve the registry-status discrepancy, does not decide the content_source
+vocabulary question, does not build the quote-card layout guard, does not patch `tmr-drift-probe`,
+and does not push the second commit without PK confirmation.

@@ -3,7 +3,7 @@
   "template": {
     "provider": "creatomate",
     "scope": "generic",
-    "output_type": "image",
+    "output_type": "static_image",
     "width": 1080,
     "height": 1080
   },
@@ -89,7 +89,7 @@
     },
     {
       "element_name": "Background",
-      "field_kind": "image",
+      "field_kind": "background",
       "required_for_render": true,
       "constraints": {
         "schema_version": "tmr_field_constraints_v1",
@@ -104,7 +104,7 @@
     },
     {
       "element_name": "Logo",
-      "field_kind": "image",
+      "field_kind": "logo",
       "required_for_render": false,
       "constraints": {
         "schema_version": "tmr_field_constraints_v1",
