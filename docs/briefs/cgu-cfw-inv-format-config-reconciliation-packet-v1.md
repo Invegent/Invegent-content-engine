@@ -155,5 +155,14 @@ found FOUR DB-side readers plus one indirect. The corrected, complete list:
   predicted-diff list — **both corrected in place above; the SQL payload is byte-unchanged from what
   the auditor verified.** Open question for PK carried: whether R1 comparison uses the full §3 diff
   list (recommended, adopted here) — and the R3a shadow-divergence operator note (§6) stands.
-- External review + `branch-warden` + hash freeze: recorded below at freeze time.
+- **Hash freeze:** sha256 `7503e1e76b5dfa3da338d082f0fc263e79506d3af7a9bacf259ec751fdbb1d8f`
+  (this file at commit `cb21a8b`, i.e. §1–§6 + the chain text above; this freeze line and the
+  external-review record below were appended after hashing — any edit to §1–§6 voids the review).
+- **External review: `partial` → auto-escalated to PK** (`review_id aba9169b-9deb-46ff-bf01-eeb32254541a`,
+  pinned to the frozen hash). No `concrete_defect` raised. Triage classification: **`policy_decision`**
+  (whether the disclosed advisor-palette restriction is the right product call — exactly the judgment
+  the PK apply gate exists to make) + **`runtime_verification_required`** (post-apply impact check —
+  satisfied by the named R1 re-run gate against the full §3 predicted-diff list). Reviewer's two
+  pushback points restate the packet's own disclosed change and the shadow-divergence note; both are
+  presented to PK unresolved-by-machine, as the contract requires.
 - **Apply authority: NOT granted by this chain.** The apply is a separate PK act against this exact packet.
