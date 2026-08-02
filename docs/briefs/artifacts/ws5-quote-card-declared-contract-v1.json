@@ -1,0 +1,150 @@
+{
+  "contract_version": "tmr_intake_declared_contract_v1",
+  "template": {
+    "provider": "creatomate",
+    "scope": "generic",
+    "output_type": "image",
+    "width": 1080,
+    "height": 1080
+  },
+  "platforms": [
+    { "platform": "facebook", "placement": "feed" },
+    { "platform": "instagram", "placement": "feed" },
+    { "platform": "linkedin", "placement": "feed" },
+    { "platform": "website", "placement": "card" }
+  ],
+  "elements": [
+    {
+      "element_name": "QuoteText",
+      "field_kind": "text",
+      "required_for_render": true,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["QuoteText.text"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "ai_authored",
+        "empty_ok": false,
+        "text_limits": {
+          "max_chars": { "value": 180, "basis": "declared_from_source", "source": "supabase/functions/image-worker/b1_production.ts:41 (B1_HEADLINE_MAX_CHARS) via TMR_WINNER_TEXT_FIELDS['generic_quote_card_1x1_v1']: 'QuoteText.text': f.headline (b1_production.ts:241) — the same headline value, gated by assertHeadlineWithinGate before any winner mapping, so the 180-char/40-char-token bound applies here too", "evidence_reference": null },
+          "max_lines": { "value": null, "basis": "to_be_calibrated", "source": null, "evidence_reference": null }
+        },
+        "overflow_risk": "high",
+        "collapse": { "collapsible": false },
+        "notes": "KNOWN GAP: unlike market_insight/announcement_card, no TMR_WINNER_LAYOUT_GUARD exists for generic_quote_card_1x1_v1 — no structural fix built. cc-0049 result doc states the PK visual PASS is scoped to two specific renders only and is 'NOT a standing waiver' since headline lengths near 180 chars were never probed against this box. overflow_risk=high reflects this open, named risk. max_chars=180 inherited via TMR_WINNER_TEXT_FIELDS mapping QuoteText.text: f.headline (b1_production.ts:241)."
+      }
+    },
+    {
+      "element_name": "Attribution",
+      "field_kind": "text",
+      "required_for_render": false,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["Attribution.text"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "worker_computed",
+        "empty_ok": true,
+        "text_limits": {
+          "max_chars": { "value": null, "basis": "to_be_calibrated", "source": null, "evidence_reference": null }
+        },
+        "overflow_risk": "medium",
+        "collapse": { "collapsible": false },
+        "notes": "cc-0049 fail-closed field: resolved via resolveCreativeContract(...).fields.renderer_fixed['attribution'] (branch_b_proof.ts:112-113) — per-client value declared only by clients using this winner, never a template default (avoids leaking one brand's attribution onto another's card). buildTmrRenderPlan throws tmr_winner_brand_fields_missing if attribution+source_label aren't both declared. No max_chars measured; overflow_risk=medium (less length-controlled than a category badge)."
+      }
+    },
+    {
+      "element_name": "SourceLabel",
+      "field_kind": "text",
+      "required_for_render": false,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["SourceLabel.text"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "worker_computed",
+        "empty_ok": true,
+        "text_limits": {
+          "max_chars": { "value": null, "basis": "to_be_calibrated", "source": null, "evidence_reference": null }
+        },
+        "overflow_risk": "low",
+        "collapse": { "collapsible": false },
+        "notes": "Same fail-closed pairing as Attribution (branch_b_proof.ts:114-115) — resolved via resolveCreativeContract(...).fields.renderer_fixed['source_label']. buildTmrRenderPlan throws tmr_winner_brand_fields_missing if a client selects this winner without both Attribution and SourceLabel declared."
+      }
+    },
+    {
+      "element_name": "Footer",
+      "field_kind": "text",
+      "required_for_render": false,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["Footer.text"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "worker_computed",
+        "empty_ok": true,
+        "text_limits": {
+          "max_chars": { "value": null, "basis": "to_be_calibrated", "source": null, "evidence_reference": null }
+        },
+        "overflow_risk": "low",
+        "collapse": { "collapsible": false },
+        "notes": "Same governed brand-payload resolution as market-insight's Footer (branch_b_proof.ts:91, TMR D6-5). Live registry's Footer row for this template carries element_id d306d254... (a UUID) rather than literal 'Footer' — a capture inconsistency per db-rls-auditor, not a defect; the element_name column itself reads 'Footer', confirmed."
+      }
+    },
+    {
+      "element_name": "Background",
+      "field_kind": "image",
+      "required_for_render": true,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["Background.source"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "governed_asset",
+        "empty_ok": false,
+        "collapse": { "collapsible": false },
+        "asset": { "resolver": "resolve_brand_assets", "missing_behaviour": "fail_loud", "asset_kind": "background" },
+        "notes": "Same slot_resolution-governed path as the market-insight card's Background."
+      }
+    },
+    {
+      "element_name": "Logo",
+      "field_kind": "image",
+      "required_for_render": false,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["Logo.source"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "governed_asset",
+        "empty_ok": false,
+        "collapse": { "collapsible": false },
+        "asset": { "resolver": "resolve_brand_assets", "missing_behaviour": "fail_loud", "asset_kind": "logo" },
+        "notes": "Same slot_resolution-governed path as the market-insight card's Logo."
+      }
+    },
+    {
+      "element_name": "QuoteMark",
+      "field_kind": "text",
+      "required_for_render": false,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": [],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "template_fixed",
+        "empty_ok": true,
+        "baked": { "content": "quote_mark_glyph" },
+        "collapse": { "collapsible": false },
+        "notes": "dynamic=false per the live registry row — the baked opening-quote glyph ('\"'), deliberately NOT mapped in TMR_WINNER_TEXT_FIELDS (b1_production.ts:225-226: 'QuoteMark (the baked ...) ... deliberately NOT mapped')."
+      }
+    },
+    {
+      "element_name": "Scrim",
+      "field_kind": "shape",
+      "required_for_render": false,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": [],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "template_fixed",
+        "empty_ok": true,
+        "collapse": { "collapsible": false },
+        "notes": "dynamic=false per the live registry row — same fixed-contrast-overlay pattern as the market-insight card's Scrim."
+      }
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+{
+  "contract_version": "tmr_intake_declared_contract_v1",
+  "template": {
+    "provider": "creatomate",
+    "scope": "generic",
+    "output_type": "image",
+    "width": 1080,
+    "height": 1080
+  },
+  "platforms": [
+    { "platform": "facebook", "placement": "feed" },
+    { "platform": "instagram", "placement": "feed" },
+    { "platform": "linkedin", "placement": "feed" },
+    { "platform": "website", "placement": "card" }
+  ],
+  "elements": [
+    {
+      "element_name": "Headline",
+      "field_kind": "text",
+      "required_for_render": true,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["Headline.text"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "ai_authored",
+        "empty_ok": false,
+        "text_limits": {
+          "max_chars": { "value": 180, "basis": "declared_from_source", "source": "supabase/functions/image-worker/b1_production.ts:41 (B1_HEADLINE_MAX_CHARS)", "evidence_reference": null },
+          "max_lines": { "value": null, "basis": "to_be_calibrated", "source": null, "evidence_reference": null }
+        },
+        "overflow_risk": "high",
+        "container": { "summary": "Top-anchored y26%, height capped 22% (bottom ≈518px/1080), font auto-shrinks 30-74px — cc-0033a overprint fix. Source: b1_production.ts:281-292." },
+        "collapse": { "collapsible": false },
+        "notes": "assertHeadlineWithinGate (b1_production.ts:102) also enforces an unbreakable-token bound of 40 chars (B1_HEADLINE_MAX_TOKEN_CHARS, b1_production.ts:47) — not representable in the max_chars/max_lines/min_font_px vocabulary, recorded here for completeness. Hard-gate field: throws on blank or over-180-char headline before any render call."
+      }
+    },
+    {
+      "element_name": "Subtitle",
+      "field_kind": "text",
+      "required_for_render": false,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["Subtitle.text"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "worker_computed",
+        "empty_ok": true,
+        "text_limits": {
+          "max_chars": { "value": 90, "basis": "declared_from_source", "source": "supabase/functions/image-worker/b1_production.ts:52 (B1_SUBTITLE_MAX_CHARS)", "evidence_reference": null },
+          "max_lines": { "value": null, "basis": "to_be_calibrated", "source": null, "evidence_reference": null }
+        },
+        "overflow_risk": "high",
+        "collapse": { "collapsible": false },
+        "notes": "Derived via deriveB1Subtitle (b1_production.ts:59-67): first non-empty paragraph of draft_body, truncated to 90 chars — worker_computed, not ai_authored. overflow_risk=high: per b1_production.ts:275-276, Subtitle has no declared y/height bound of its own (falls back to provider default y540); cc-0033a fixed only Headline's box. No container geometry evidence exists in source for this element."
+      }
+    },
+    {
+      "element_name": "CategoryBadge",
+      "field_kind": "text",
+      "required_for_render": false,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["CategoryBadge.text"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "worker_computed",
+        "empty_ok": true,
+        "text_limits": {
+          "max_chars": { "value": null, "basis": "to_be_calibrated", "source": null, "evidence_reference": null }
+        },
+        "overflow_risk": "low",
+        "collapse": { "collapsible": false },
+        "notes": "Resolved via resolveCreativeContract(...).fields.renderer_fixed['category'] (branch_b_proof.ts:86-93, TMR D6-5) — per-client governed brand-payload string (e.g. PP='PROPERTY NEWS'), not ai_authored, not template-fixed. Classified worker_computed as closest vocabulary fit; flagged as an open question — no vocabulary value exists for 'per-client governed contract text'. No max_chars ever declared; overflow_risk=low is an assessment, not probe evidence."
+      }
+    },
+    {
+      "element_name": "Location",
+      "field_kind": "text",
+      "required_for_render": false,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["Location.text"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "worker_computed",
+        "empty_ok": true,
+        "text_limits": {
+          "max_chars": { "value": null, "basis": "to_be_calibrated", "source": null, "evidence_reference": null }
+        },
+        "overflow_risk": "low",
+        "collapse": { "collapsible": false },
+        "notes": "Resolved via resolveCreativeContract(...).fields.renderer_fixed['location'] (branch_b_proof.ts:95), OPTIONAL — defaults to '' when the client's contract omits it (PP's contract carries location=''). Same worker_computed classification and open-vocabulary-question as CategoryBadge above."
+      }
+    },
+    {
+      "element_name": "Date",
+      "field_kind": "text",
+      "required_for_render": false,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["Date.text"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "worker_computed",
+        "empty_ok": false,
+        "text_limits": {
+          "max_chars": { "value": null, "basis": "to_be_calibrated", "source": null, "evidence_reference": null }
+        },
+        "overflow_risk": "low",
+        "collapse": { "collapsible": false },
+        "notes": "formatProofDate (branch_b_proof.ts:57-59) emits a deterministic 'D Month YYYY' string (e.g. '2 August 2026') at render time — worker_computed, always present. Mechanically bounded (longest month + day + year + spaces = 18 chars) but no MAX_CHARS constant exists in source, so max_chars stays to_be_calibrated rather than self-deriving a number, per the never-invent discipline."
+      }
+    },
+    {
+      "element_name": "Footer",
+      "field_kind": "text",
+      "required_for_render": false,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["Footer.text"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "worker_computed",
+        "empty_ok": true,
+        "text_limits": {
+          "max_chars": { "value": null, "basis": "to_be_calibrated", "source": null, "evidence_reference": null }
+        },
+        "overflow_risk": "low",
+        "collapse": { "collapsible": false },
+        "notes": "Resolved via resolveCreativeContract(...).fields.renderer_fixed['footer'] (branch_b_proof.ts:91), REQUIRED at the contract level (throws brand_payload_contract_incomplete if missing) but not required_for_render at the template-field level per the live registry row. Same worker_computed classification as CategoryBadge/Location/Date above."
+      }
+    },
+    {
+      "element_name": "Background",
+      "field_kind": "image",
+      "required_for_render": true,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["Background.source"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "governed_asset",
+        "empty_ok": false,
+        "collapse": { "collapsible": false },
+        "asset": { "resolver": "resolve_brand_assets", "missing_behaviour": "fail_loud", "asset_kind": "background" },
+        "notes": "Governed via public.select_template's embedded slot_resolution (Background.source URL) — arrives through slot_resolution.modifications, never through TMR_WINNER_TEXT_FIELDS (b1_production.ts:140-141). No legacy client-name-text fallback (Option D retired the hardcoded rotation)."
+      }
+    },
+    {
+      "element_name": "Logo",
+      "field_kind": "image",
+      "required_for_render": false,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": ["Logo.source"],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "governed_asset",
+        "empty_ok": false,
+        "collapse": { "collapsible": false },
+        "asset": { "resolver": "resolve_brand_assets", "missing_behaviour": "fail_loud", "asset_kind": "logo" },
+        "notes": "Same slot_resolution-governed path as Background. required_for_render=false per live registry, but the resolver still fails loud (not silently blank) when a client's logo asset is unresolved."
+      }
+    },
+    {
+      "element_name": "Scrim",
+      "field_kind": "shape",
+      "required_for_render": false,
+      "constraints": {
+        "schema_version": "tmr_field_constraints_v1",
+        "modification_keys": [],
+        "slot": { "slot_key": "card", "activation": "persistent" },
+        "content_source": "template_fixed",
+        "empty_ok": true,
+        "collapse": { "collapsible": false },
+        "notes": "dynamic=false per the live registry row — never modified per-render (no modification key), baked into the template as a fixed contrast overlay. Empty modification_keys array reflects genuine absence of a per-render write path, not an omission."
+      }
+    }
+  ]
+}
