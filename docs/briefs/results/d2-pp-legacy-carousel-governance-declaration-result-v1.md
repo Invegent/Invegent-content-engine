@@ -23,12 +23,14 @@ schema — its own design-gate lane, not a same-day fix.
 
 ## 1. Result status
 
-`Partial` — packet prepared and evidence gathered; **no DML has been executed yet.**
-`db-rls-auditor` review (§8) found the packet's own "zero production behaviour change" claim
-materially incomplete (a real, verified daily-cron side effect on `tmr-drift-probe`, distinct from
-the render-gate claim which IS correct). **PK has since decided (see header): proceed with Option
-C, side effect disclosed and accepted.** Proceeding now to fresh hash/`branch-warden`
-re-verification, external review, and the PK apply gate.
+`Complete` — **APPLIED 2026-08-02.** Migration `d2_pp_legacy_carousel_governance_declaration_v1`
+applied live to project `mbkmaxqhsohbtwsqolns` via `mcp__supabase__apply_migration`, one pooled
+call, per PK's explicit apply-gate confirmation ("confirmed, apply it"). Post-apply independent
+verification: `c.client_creative_governance` id `d2510001-0000-4000-8000-000000000001` —
+`client_id`=property-pulse, `format='carousel'`, `contract_ref='property_pulse.carousel.legacy_
+pipeline'`, `declarative_registry_ref=NULL`, `render_label='image_worker_legacy_carousel_v1'`,
+`enabled=true`, `created_at='2026-08-02 03:43:40.710635+00'`. This result document remains the
+accepted Ultimate-v1 evidence ledger for D2 — no proof-event rows exist or were needed.
 
 ## 2. Commit(s)
 
@@ -153,7 +155,7 @@ mention in the brand-constitution purpose string).
 
 ## 9. Next recommended step
 
-Fresh hash + `branch-warden` re-verification, external review pinned to this packet's final hash,
-then present for the PK apply gate (PK decision already given: Option C). After apply: hand the
-`tmr-drift-probe` Option-B patch off as a named follow-up carry in the closing pointer payloads —
-not part of this lane's remaining work.
+**Done.** `branch-warden` safe, external review agree/proceed (`review_id ddd62a6c-d853-4410-8689-
+5467a29ce445`), PK apply-gate confirmed, applied and independently verified live. D2 is closed.
+Remaining carry: hand the `tmr-drift-probe` Option-B patch off as a named follow-up in the lane's
+closing pointer payloads — not part of this lane's remaining work.
