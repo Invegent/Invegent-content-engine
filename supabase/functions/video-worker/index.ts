@@ -1,3 +1,95 @@
+// video-worker v3.16.2
+// ============================================================================
+// v3.16.2 (2026-08-02, Fix 1 — db-rls-auditor finding on the v3.16.1 extraction below, NOT
+//   byte-identical as v3.16.1 claimed): in the ORIGINAL inline code, `renderId` was assigned
+//   IMMEDIATELY after Creatomate submit succeeded, BEFORE pollRender was called — so a subsequent
+//   pollRender throw (a 2-minute render timeout is a real, documented, recurring ICE failure mode,
+//   not hypothetical) still left the outer catch with the real render id for the failure-path
+//   write_render_log write (p_creatomate_render_id) and the render-QA provider_job_id_present flag.
+//   Wrapping submit+poll inside ONE awaited call that only returns on full success broke that: a
+//   poll-stage throw never reached the `renderId = submitted.renderId` line, so the id was silently
+//   lost to null on exactly the failure class that matters most for operator traceability. WHAT
+//   CHANGED (both files, additive/surgical): (1) creatomate_submit.ts's submitAndPollCreatomateRender
+//   now catches a poll-stage throw, attaches the already-known render id to the SAME error object as
+//   a plain `.creatomateRenderId` property (duck-typed, not a class, so it survives bundling/
+//   instanceof edge cases), and rethrows unchanged (same message/stack); (2) this file's
+//   renderUploadAndLog now wraps the call in its own try/catch, reads `.creatomateRenderId` off a
+//   thrown error into the hoisted `renderId` variable, then rethrows to the EXISTING outer catch —
+//   which is otherwise completely unchanged (same classification, same write_render_log call, same
+//   QA fields). A submit-stage failure (no id was ever minted) is unaffected. STRICTLY OUT OF SCOPE /
+//   BYTE-UNCHANGED: pollRender itself, every other line of renderUploadAndLog, the v3.16.0/v3.16.1
+//   kinetic branch + extraction, b1_video_kinetic.ts, the legacy isKinetic/isStat paths.
+//
+// video-worker v3.16.1
+// ============================================================================
+// v3.16.1 (2026-08-01, WS-4/WS-5 D4 — OUT-OF-BAND PROOF RENDER, SUPPORTING EXTRACTION): db-rls-auditor
+//   found (post-review of the v3.16.0 diff below) that c.client_creative_governance.enabled gates
+//   ONLY this file's early-return branch — it does NOT gate public.select_template's normal
+//   eligibility path (read every 10 minutes by the live S9 production cron,
+//   m.fill_pending_slots). The moment ANY future migration promotes the kinetic template's status +
+//   proof event far enough for select_template to succeed, the S9 self-healing cron starts
+//   auto-filling REAL production PP kinetic slots — independent of this file's governance flag. PK
+//   decision: prove the untested renderGovernedVideoKinetic/buildGovernedVideoKineticPlan code path
+//   with ONE human-observed render BEFORE any such registry promotion, via a standalone,
+//   out-of-band harness that bypasses select_template entirely (a hand-supplied provider_template_id,
+//   no registry read). WHAT CHANGED (additive, behaviour-preserving):
+//     (1) pollRender + the Creatomate submit-POST block MOVED (verbatim, not reimplemented) out of
+//         this file into NEW sibling module ./creatomate_submit.ts (exports pollRender +
+//         submitAndPollCreatomateRender(renderScript, creatomateKey, startMs)). renderUploadAndLog
+//         now imports and calls that same function — its own behaviour is BYTE-IDENTICAL to before
+//         this move (same fetch calls, same poll loop, same error strings). The move (not a plain
+//         in-file export) exists because this file has a TOP-LEVEL, UNGUARDED Deno.serve(...) call —
+//         importing index.ts as a module from anywhere else (a standalone script, a test) would start
+//         a live HTTP listener as an import side effect. The new module has no such side effect.
+//     (2) This lets the new out-of-band harness (scripts/ws4-d4-kinetic-proof-render.ts) import the
+//         REAL submit+poll HTTP logic directly from ./creatomate_submit.ts, without importing
+//         index.ts at all, and without pulling in renderUploadAndLog's storage-upload /
+//         write_render_log / record_music_usage DB-write side effects — the proof harness must not
+//         write to any live table (PK instruction; the orchestrator does any DB write, later, as its
+//         own reviewable step, after PK's visual confirmation).
+//   STRICTLY OUT OF SCOPE / BYTE-UNCHANGED: every other line of renderUploadAndLog's behaviour, the
+//   v3.16.0 kinetic branch below, b1_video_kinetic.ts, the legacy isKinetic/isStat paths, and all
+//   DB/registry state (this change performs no migration apply, no deploy, no live call).
+//
+// video-worker v3.16.0
+// ============================================================================
+// v3.16.0 (2026-08-01, WS-4/WS-5 D4 — GOVERNED PP YouTube kinetic, template-mode): NEW governed
+//   branch for format 'video_short_kinetic' (silent v1 scope only — 'video_short_kinetic_voice' is
+//   DELIBERATELY EXCLUDED and its legacy code path is UNTOUCHED, byte-identical). Governing design
+//   record: `docs/briefs/ws4-pp-yt-kinetic-operator-transposition-package-v1.md` (§4-§9, §5e
+//   RETRACTION — 3-point/26-element fixed-slot design STANDS, PK ruling `ff5cacb`) +
+//   `docs/briefs/results/ws5-constraints-shape-design-lane-result-v1.md` (probe evidence, worker
+//   collapse guidance). WHAT CHANGED (all additive; every existing branch body + helper stays
+//   byte-unchanged):
+//     (1) NEW pure module ./b1_video_kinetic.ts (no side effects) — assertKineticScenesWithinGate
+//         (structural + WS-4 §9 widened char-limit hard gate, fail-loud/no-truncation) and PURE
+//         buildGovernedVideoKineticPlan(selectorResponse, scenes, brand) → { providerTemplateId,
+//         modifications, templateSpec }. CRITICAL, PROBE-VERIFIED DIVERGENCE from b1_video_stat.ts:
+//         this template uses SUFFIXED modification keys ('HookHeadline.text', not the bare
+//         'HookHeadline' stat uses) — confirmed independently against the real kinetic template, NOT
+//         copied from stat's bare-key convention.
+//     (2) NEW async renderGovernedVideoKinetic(...) — mirrors renderGovernedVideoStat's CONTROL-FLOW
+//         SHAPE ONLY (hard-gate scenes → resolve governed client slug → public.select_template →
+//         build the governed plan → reuse the UNCHANGED renderUploadAndLog). Logo.source is governed/
+//         fail-loud via the SAME selector slot_resolution mechanism as stat (no legacy client-name-
+//         text fallback). Background/BarTop/BarBottom fill_color come from
+//         c.client_brand_profile primary/secondary colour columns (via the existing getBrand() —
+//         NOT resolve_brand_assets, no asset row involved). VoiceAudio.source/MusicBed.source are
+//         ALWAYS '' (v1 silent scope, PK decision 2026-08-01 — no audio wiring in this lane).
+//     (3) EARLY-RETURN governance gate at the top of processDraft, mirroring the EXISTING
+//         B1_VIDEO_GOVERNED_FORMAT ('video_short_stat') gate one line below it, REUSING the SAME
+//         generic isVideoGovernanceEnabled(supabase, clientId, format) helper (already
+//         format-parameterised — no change to that function). Placed BEFORE the legacy
+//         isKinetic/isStat block so both legacy branch bodies (including 'video_short_kinetic_voice',
+//         which never matches B1_VIDEO_KINETIC_GOVERNED_FORMAT) stay fully reachable, byte-untouched,
+//         as the fallback for ungoverned clients and for the excluded _voice variant.
+//   NO ai-worker change (the per-field char-clamp gap named in WS-4 §16 is EXPLICITLY DEFERRED — PK
+//   2026-08-01), NO DDL/migration APPLY (a draft only, reviewed separately), NO deploy in this change.
+//   STRICTLY OUT OF SCOPE / BYTE-UNCHANGED: buildKineticTextSpec, the legacy isKinetic/isStat block,
+//   renderGovernedVideoStat, b1_video_stat.ts, renderUploadAndLog, pollRender, composeRenderSpec, the
+//   audio guards, select_music/voice/TTS, the claim/publish paths, and every registry/DB row (this
+//   change performs NO selector activation — that is the separate, PK-gated migration).
+//
 // video-worker v3.14.0
 // ============================================================================
 // v3.14.0 (2026-07-27, F-VIDEO-AUDIO-FAILCLOSED — Phase A, AUDIO-EXPECTED fail-close, DENO-NATIVE):
@@ -345,7 +437,9 @@ import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (a
 import { composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2; v3.4.0 LANE W: module trimmed to this single live export (production render_spec composer) — the smoke surface is retired
 import { resolveLegacyLogo, type AssetVerdict } from './asset_url_guard.ts';  // v3.3.0: H2 asset-URL validation before Creatomate
 import { buildGovernedVideoStatPlan, composeGovernedVideoNarration, assertStatFieldsWithinGate, assertExpectedVideoProviderTemplate, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields, type TmrSelectorResponse } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO. v3.8.0 (Video D6 Lane 3): spine de-hardcode — buildGovernedVideoStatPlan consumes select_template; isB1GovernedVideoStat no longer imported (production gate is now runtime governance); assertExpectedVideoProviderTemplate is the SMOKE-ONLY parity guard.
+import { buildGovernedVideoKineticPlan, assertKineticScenesWithinGate, B1_VIDEO_KINETIC_PRODUCTION_LABEL, B1_VIDEO_KINETIC_GOVERNED_FORMAT, type KineticScene } from './b1_video_kinetic.ts';  // v3.16.0 (WS-4/WS-5 D4): CREATIVE-LIBRARY VIDEO TMR — governed PP YouTube kinetic (silent v1 scope). TmrSelectorResponse type reused from b1_video_stat.ts (identical selector response shape).
 import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsageDescriptor } from './music_usage.ts';  // v3.7.0 (cc-0034): governed music-usage recording (record_music_usage)
+import { submitAndPollCreatomateRender } from './creatomate_submit.ts';  // v3.16.1 (WS-4/WS-5 D4 out-of-band proof render): pollRender + the submit-POST block moved here verbatim (not reimplemented) — safe to import from a standalone script without index.ts's top-level Deno.serve side effect.
 
 // v3.9.0 (Video D6 Lane 4b — VOICE DE-HARDCODE / GOVERNED VOICE, D6-9): voice identity is now
 // resolved from the governed DB table c.client_voice_config (applied dark in Lane 4a), retiring the
@@ -505,11 +599,12 @@ import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsage
 //   audio guards, select_template/select_music, voice/TTS, the claim/publish paths, every legacy render
 //   builder, and every registry/DB row. This deploy performs NO selector repoint — activation is a
 //   SEPARATE, PK-gated DML apply.
-const VERSION = 'video-worker-v3.15.0';
-const CREATOMATE_API    = 'https://api.creatomate.com/v2/renders';
+const VERSION = 'video-worker-v3.16.2';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
-const POLL_INTERVAL_MS  = 2500;
-const POLL_MAX_ATTEMPTS = 48;  // 2 min max
+// v3.16.1: CREATOMATE_API / POLL_INTERVAL_MS / POLL_MAX_ATTEMPTS moved to ./creatomate_submit.ts
+// (imported below) — values UNCHANGED, now single-sourced there so the out-of-band proof-render
+// harness (scripts/ws4-d4-kinetic-proof-render.ts) uses the exact same constants without importing
+// this file (which would start its top-level Deno.serve listener as an import side effect).
 // F-VIDEO-RENDER-RETRY (v3.12.0): bounded VISIBLE retry knobs for render timeout / transient failures.
 const MAX_VIDEO_RENDER_ATTEMPTS = 3;   // transient failures terminalise at this many attempts
 const VIDEO_RETRY_BACKOFF_MIN   = 10;  // transient backoff (minutes) before the draft is re-selected
@@ -524,7 +619,6 @@ function jsonResponse(body: unknown, status = 200) {
 }
 function nowIso() { return new Date().toISOString(); }
 function futureIso(ms: number) { return new Date(Date.now() + ms).toISOString(); }  // v3.12.0 F-VIDEO-RENDER-RETRY
-function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 function getServiceClient() {
   const url = Deno.env.get('SUPABASE_URL');
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -747,18 +841,13 @@ async function resolveGovernedMusicBedUrl(
   return mapSelectMusicRow(rows, publicObjectBaseUrl);
 }
 
-async function pollRender(renderId: string, apiKey: string, startMs: number): Promise<{ url: string; creditsUsed: number | null; durationMs: number }> {
-  for (let i = 0; i < POLL_MAX_ATTEMPTS; i++) {
-    await sleep(POLL_INTERVAL_MS);
-    const resp = await fetch(`${CREATOMATE_API}/${renderId}`, { headers: { 'Authorization': `Bearer ${apiKey}` } });
-    if (!resp.ok) throw new Error(`Poll failed: ${resp.status}`);
-    const data = await resp.json();
-    if (data.status === 'succeeded') return { url: data.url, creditsUsed: data.credits != null ? Number(data.credits) : null, durationMs: Date.now() - startMs };
-    if (data.status === 'failed') throw new Error(`Creatomate failed: ${data.error_message ?? 'unknown'}`);
-    console.log(`[video-worker] render ${renderId}: ${data.status} (${i + 1}/${POLL_MAX_ATTEMPTS})`);
-  }
-  throw new Error('Render timed out after 2 minutes');
-}
+// v3.16.1: pollRender + submitAndPollCreatomateRender MOVED (verbatim, not reimplemented) to
+// ./creatomate_submit.ts (imported above) — see that module's header for why: index.ts has a
+// top-level, unguarded Deno.serve(...) call, so importing index.ts from anywhere else (a standalone
+// script, a test) would start a live HTTP listener as an import side effect. The new module has no
+// such side effect and is safe to import from the out-of-band proof-render harness
+// (scripts/ws4-d4-kinetic-proof-render.ts) without pulling in renderUploadAndLog's storage-upload /
+// write_render_log / record_music_usage DB-write side effects. Values/behaviour unchanged.
 
 // v3.1.5 (QA-VISIBILITY-V0): minimal, render-derived QA context threaded from
 // processDraft. Pure data already in scope — no probe, no fetch, no secret read.
@@ -801,17 +890,22 @@ export async function renderUploadAndLog(opts: {
     // volume = the -58 LUFS fraction misconfig). No-ops when the spec declares no audio. Throws
     // AUDIO_SPEC_ASSERT_FAILED (terminal) → in-render catch logs a failed render_log and rethrows.
     assertAudioSpec(renderScript);
-    const submitResp = await fetch(CREATOMATE_API, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${creatomateKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(renderScript),
-    });
-    if (!submitResp.ok) throw new Error(`Creatomate submit ${submitResp.status}: ${await submitResp.text()}`);
-    const sub = await submitResp.json();
-    const render = Array.isArray(sub) ? sub[0] : sub;
-    renderId = render?.id ?? null;
-    if (!renderId) throw new Error('No render ID in Creatomate response');
-    const { url: renderUrl, creditsUsed, durationMs } = await pollRender(renderId, creatomateKey, startMs);
+    // v3.16.1: submit+poll EXTRACTED to submitAndPollCreatomateRender (shared with the out-of-band
+    // proof-render harness) — behaviour unchanged, same fetch/poll calls, just no longer inlined here.
+    // v3.16.2 (Fix 1): if the poll stage throws AFTER a successful submit, the thrown error carries
+    // `.creatomateRenderId` (the real Creatomate render id, known at that point) — capture it into the
+    // hoisted `renderId` BEFORE rethrowing, so the outer catch's failure-path write_render_log call
+    // still reports the real id (was previously silently lost to null on exactly this failure class —
+    // 2-minute render timeouts — the one that matters most for operator traceability).
+    let submitted: Awaited<ReturnType<typeof submitAndPollCreatomateRender>>;
+    try {
+      submitted = await submitAndPollCreatomateRender(renderScript, creatomateKey, startMs);
+    } catch (submitErr: any) {
+      if (submitErr?.creatomateRenderId) renderId = submitErr.creatomateRenderId;
+      throw submitErr;
+    }
+    renderId = submitted.renderId;
+    const { url: renderUrl, creditsUsed, durationMs } = submitted;
     const vidBuf = await (await fetch(renderUrl)).arrayBuffer();
     // v3.14.0 (F-VIDEO-AUDIO-FAILCLOSED Phase A, layer 1 — PRIMARY, PK option A): if the spec declared
     // audio, the rendered mp4 MUST carry an audio track (a 'soun' hdlr handler_type). A voiced/music
@@ -1294,6 +1388,69 @@ async function renderGovernedVideoStat(opts: {
   return { post_draft_id: draft.post_draft_id, format: fmt, status: 'generated', video_url: videoUrl, governed: true };
 }
 
+// v3.16.0 (WS-4/WS-5 D4) — Governed VIDEO kinetic-typography render (silent v1 scope). Mirrors
+// renderGovernedVideoStat's CONTROL-FLOW SHAPE ONLY (hard-gate → resolve client slug → select_template
+// → build the governed plan → reuse the UNCHANGED renderUploadAndLog) — it does NOT copy stat's
+// literal modification-key-building lines, because this template's key form (suffixed, e.g.
+// 'HookHeadline.text') is the OPPOSITE of stat's bare-key convention ('StatValue') — see
+// b1_video_kinetic.ts's header for the probe evidence. Governed-only / fail-loud: any throw (scene
+// gate / slug / selector / missing Logo.source / render) hits the caller's per-draft catch →
+// video_status='failed'. There is NO fallback to the legacy buildKineticTextSpec for this branch.
+// video_short_kinetic_voice NEVER reaches this function (excluded by the B1_VIDEO_KINETIC_GOVERNED_
+// FORMAT gate at the call site) — it stays on the legacy isKinetic path untouched.
+async function renderGovernedVideoKinetic(opts: {
+  supabase: ReturnType<typeof getServiceClient>;
+  creatomateKey: string;
+  draft: { post_draft_id: string; client_id: string; draft_format: any; recommended_format: string; };
+  brand: { primaryColour: string; secondaryColour: string; clientName: string; brandName: string | null; logoUrl: string | null; clientSlug: string };
+  qaCtx: QaCtx;
+}): Promise<object> {
+  const { supabase, creatomateKey, draft, brand, qaCtx } = opts;
+  const fmt = draft.recommended_format;
+  const vs = draft.draft_format?.video_script;
+  const scenes = (vs?.scenes ?? []) as KineticScene[];
+
+  // Hard-gate the scene array FAIL-FAST — BEFORE any slug/selector/Creatomate work (mirrors
+  // renderGovernedVideoStat's field-gate-first ordering). The plan builder re-gates (idempotent).
+  assertKineticScenesWithinGate(scenes);
+
+  // Resolve the LIVE TMR spine BEFORE any render work — CANONICAL c.client.client_slug (fail-loud,
+  // NEVER the getBrand UUID fallback), mirroring renderGovernedVideoStat exactly. Platform = NULL
+  // (design decision 1a, same as stat — one 9:16 render, not per-platform). p_seed = post_draft_id.
+  const governedSlug = await getGovernedVideoClientSlug(supabase, draft.client_id);
+  const { data: selection, error: selectErr } = await supabase.rpc('select_template', { p_client_slug: governedSlug, p_platform: null, p_format: B1_VIDEO_KINETIC_GOVERNED_FORMAT, p_variant_intent: null, p_seed: draft.post_draft_id });
+  if (selectErr) throw new Error(`b1_video_kinetic tmr_selector_rpc_failed: ${selectErr.message}`);
+
+  // SPINE-DRIVEN plan: Logo.source governed (fail-loud, no fallback); Background/BarTop/BarBottom
+  // colours from the caller's already-resolved brand profile (NOT resolve_brand_assets — no asset
+  // row); VoiceAudio/MusicBed always '' (v1 silent scope). Throws tmr_video_selector_fail_closed /
+  // tmr_video_slot_resolution_incomplete — never guesses, no fallback.
+  const plan = buildGovernedVideoKineticPlan(selection as TmrSelectorResponse, scenes, {
+    primaryColour: brand.primaryColour, secondaryColour: brand.secondaryColour, clientName: brand.clientName,
+  });
+
+  // Template-mode renderScript (Creatomate v2/renders template-mode): { template_id, modifications,
+  // output_format:'mp4' } — identical shape to the stat/image governed paths; renderUploadAndLog is
+  // polymorphic on renderScript shape and passes it verbatim to the provider.
+  const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'mp4' };
+
+  // qaCtx: v1 silent scope — no voice, no captions (captions are a kinetic_voice-only concern and this
+  // branch never handles that format).
+  const kineticQaCtx: QaCtx = { ...qaCtx, withVoice: false, captionsExpected: false, captionsPresent: false, sceneCount: scenes.length };
+  const storagePath = `${brand.clientSlug}/${draft.post_draft_id}_kinetic_governed.mp4`;
+  const videoUrl = await renderUploadAndLog({
+    supabase, creatomateKey, renderScript, storagePath,
+    postDraftId: draft.post_draft_id, clientId: draft.client_id, iceFormatKey: fmt, qaCtx: kineticQaCtx,
+    templateSpec: plan.templateSpec as unknown as Record<string, unknown>,
+    renderSpecLabel: B1_VIDEO_KINETIC_PRODUCTION_LABEL,
+    musicUsage: null,  // v1 silent scope — no music bed bound, nothing to record.
+  });
+  // v3.12.0 (F-VIDEO-RENDER-RETRY) idiom preserved: also clear any retry bookkeeping so a recovered
+  // render carries no stale state.
+  await supabase.schema('m').from('post_draft').update({ video_url: videoUrl, video_status: 'generated', draft_format: clearVideoRetryMeta(draft.draft_format), updated_at: nowIso() }).eq('post_draft_id', draft.post_draft_id);
+  return { post_draft_id: draft.post_draft_id, format: fmt, status: 'generated', video_url: videoUrl, governed: true };
+}
+
 async function processDraft(opts: {
   supabase: ReturnType<typeof getServiceClient>;
   creatomateKey: string;
@@ -1349,6 +1506,19 @@ async function processDraft(opts: {
   // legacy fallback for this branch). Every other client / format falls through unchanged (fail-closed).
   if (fmt === B1_VIDEO_GOVERNED_FORMAT && await isVideoGovernanceEnabled(supabase, draft.client_id, B1_VIDEO_GOVERNED_FORMAT)) {
     return await renderGovernedVideoStat({ supabase, creatomateKey, draft, brand: b, qaCtx });
+  }
+
+  // ── v3.16.0 (WS-4/WS-5 D4): CREATIVE-LIBRARY VIDEO TMR — governed video_short_kinetic branch.
+  // Runs BEFORE the legacy isKinetic/isStat block with an EARLY RETURN, so both legacy branch bodies
+  // stay byte-untouched. REUSES the SAME generic isVideoGovernanceEnabled gate as stat above (already
+  // format-parameterised) — `fmt === B1_VIDEO_KINETIC_GOVERNED_FORMAT && await isVideoGovernanceEnabled
+  // (...)`. B1_VIDEO_KINETIC_GOVERNED_FORMAT is the exact literal 'video_short_kinetic' — the _voice
+  // variant ('video_short_kinetic_voice') does NOT match and falls through unchanged to the legacy
+  // isKinetic branch below (explicitly out of scope — WS-4 §11/§15 Q3, a later PK-elected mission).
+  // Governed-only, fail-loud: any throw hits the existing per-draft catch → video_status='failed' (no
+  // legacy fallback for this branch). Every other client / format falls through unchanged (fail-closed).
+  if (fmt === B1_VIDEO_KINETIC_GOVERNED_FORMAT && await isVideoGovernanceEnabled(supabase, draft.client_id, B1_VIDEO_KINETIC_GOVERNED_FORMAT)) {
+    return await renderGovernedVideoKinetic({ supabase, creatomateKey, draft, brand: b, qaCtx });
   }
 
   const isKinetic = fmt === 'video_short_kinetic' || fmt === 'video_short_kinetic_voice';
