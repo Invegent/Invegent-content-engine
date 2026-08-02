@@ -217,11 +217,37 @@ PK ruled on all six open items, accepting each recommendation:
 
 Consequence for the verdicts: with #1 recorded, the strict Milestone-1 failing set drops from 8 cells to 6 (#27/#28 close as state-2); the remaining 6 close via the #2/#3 packet (3 cells + PP YT stat), the kinetic natural slot (#33), and the #4 lane (#30). Milestone-2 distance is unchanged in substance — every remaining cell now has an authorized, named lane.
 
+## 6c. APPLY RECORD (2026-08-02, ~05:2x UTC — PK "apply A and apply B")
+
+Pre-apply drift check: worktree clean at `903c5ba`; both packets byte-identical to their frozen
+apply substance (post-freeze hash movement = the disclosed appended chain-record blocks only).
+
+- **Packet A APPLIED** — one `execute_sql` call, the exact §2 DO block; no guard tripped (G1–G5 all
+  passed). Post-apply §5 readback: exactly 4 rows `c9150001-…{1..4}` live with the specified
+  assignment/platform/occurred_at values.
+- **Packet B APPLIED** — one `execute_sql` call, the exact §4 DO block (incl. G2b); no guard tripped.
+  Post-apply R1 re-read (CFW+INV, full queue): **all 6 image_quote cells now `ready`/`ready`/`reach=true`**;
+  FB/LI text cells reach-true (still `governed_exempt`/`ready`); YT image_quote `is_probe_cell`
+  flipped true→false as predicted; carousel cells untouched. **One honest prediction deviation:** the
+  new IG `text` cells read `template_missing`/`blocked` (routed `creatomate_global`), not the predicted
+  `not_configured` — same benign class (text is IG-unsupported; nothing publishes), noted, not a STOP.
+
+**Milestone tally after the applies:** strict-fail set 6→2 in-flight cells (PP YT kinetic — natural slot
+2026-08-03T07:00Z; NDIS YT stat — supervised lane per §6b #4). Committed-cell state-1 count 12→18
+(PP-LI, NDIS-IG, NDIS-LI, PP-YT-stat, CFW-FB, INV-FB close). **Remaining Milestone-2 distance, exactly:**
+1. PP YT kinetic rungs 8–9 (tomorrow's natural slot + PK publish gate + proof events);
+2. NDIS YT stat supervised lane (run-sheet on this branch);
+3. **4 residual image_quote recording items NOT covered by PK decision #2's scope** (it named 3 cells):
+   CFW-IG (44 real publishes/90d), INV-IG (45/90d), INV-LI (5/90d) need only the same B1-pattern
+   proof-event row each — a mechanical "Packet A2" awaiting PK authorization; CFW-LI additionally has
+   zero 90d publishes → needs one fresh natural publish or PK acceptance of >90d evidence first.
+
 ## 7. Register payload (version-less — for the WS-5 session's register-cut pass)
 
 > **✅ vX.XXX — CGU final readiness audit: Milestone-1 FAIL(strict, 8 cells)/PASS(operational, 1 disposition) · Milestone-2 = 12/25 committed cells state-1, gap ledger + 10-min re-run contract delivered (T1 · read-only; zero writes/applies)** — result: `docs/briefs/results/cgu-final-readiness-audit-result-v1.md` (branch `lane/cgu-final-readiness-audit`).
 > · Failing/open cells: 3 image_quote proof-event recording gaps (PP-LI/NDIS-IG/NDIS-LI) · PP+NDIS YT `video_short_stat` (**no natural stat slot scheduled for either**) · PP YT kinetic rungs 8–9 (natural slot 2026-08-03T07:00Z; approve = auto-public ≤30min) · 6 CFW/INV image_quote cells blocked on `client_format_config` reconciliation only. D1/D2/D3 all verified executed/closed on live truth (D2 applied 2026-08-02 03:43Z); enrolment clause met (v6.113).
 > · **PK decisions 2026-08-02 (§6b, all six):** INV FB/IG carousel queue-absence = state-2 (D3-style note, no overlay — strict-fail set 8→6 cells) · trail-alignment proof-event DML authorized (3 image_quote cells + PP YT stat against the accepted 07-27 publishes) · NDIS YT stat = supervised force-fill lane (re-defer fallback) · CFW/INV config reconciliation authorized (incl. CFW-LI evidence-decay check) · branch pushed.
+> · **BOTH PACKETS APPLIED 2026-08-02 (§6c, PK "apply A and apply B"):** Packet A (4 `platform_publish` proof events, hash `169d881b…`/`957d5379…`, chain clean+external agree `ce70d9c6`) and Packet B (4 CFW/INV `client_format_config` rows, hash `7503e1e7…`, chain clean+external partial→PK-ruled `aba9169b`) — zero guards tripped, post-apply verification exact (6 image_quote cells `blocked`→`ready`; one benign prediction deviation recorded). **Committed-cell state-1: 12→18.** Remaining M2 distance: PP YT kinetic rungs 8–9 (slot 08-03T07:00Z) · NDIS YT stat supervised lane · 4 CFW/INV IG/LI recording residuals outside decision #2's scope (§6c item 3, incl. the CFW-LI evidence-decay ruling).
 
 ## 8. Constraints confirmed
 
