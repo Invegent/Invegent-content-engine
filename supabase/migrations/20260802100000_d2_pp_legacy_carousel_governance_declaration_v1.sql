@@ -46,7 +46,7 @@
 -- purpose string) — so declarative_registry_ref is left NULL, honestly,
 -- rather than inventing a reference.
 --
--- MATERIAL, HONEST DISCLOSURE — this row currently has ZERO production
+-- RENDER-GATE DISCLOSURE (verified correct) — this row has ZERO render-path
 -- consumers. Confirmed by reading image-worker/index.ts: the runtime
 -- governance gate isImageGovernanceEnabled(supabase, clientId, format) is
 -- called EXACTLY ONCE in production code, hardcoded to format='image_quote'
@@ -54,11 +54,25 @@
 -- 1208-1256) runs unconditionally on any carousel-format pending draft,
 -- gated only by the unrelated isImageEnabled(clientId) client-level toggle
 -- — it does NOT consult c.client_creative_governance at all. This INSERT
--- therefore changes NO production behaviour today; it is a pure
--- declarative/record-keeping act that formally closes D2 as decided AND
--- recorded, and gives any FUTURE code that might consult this table for
--- carousel the correct governed state from day one. This is stated plainly
--- so nobody later assumes this migration flipped a live gate — it did not.
+-- changes NO render behaviour today.
+--
+-- CORRECTED 2026-08-02 (db-rls-auditor review): the render-gate claim above
+-- is correct but was originally overstated as "changes NO production
+-- behaviour" full stop. It does not hold for every consumer of this table:
+-- supabase/functions/tmr-drift-probe/index.ts's fetchGovernedClients() reads
+-- c.client_creative_governance WHERE enabled=true with NO format filter, and
+-- runs daily via the live cron tmr-drift-probe-daily (35 17 * * *). Once
+-- this row exists, its declarative_registry_ref=NULL (honest, see below)
+-- causes fetchDeclarativeRegistry() to throw declarative_registry_ref_
+-- missing, which flips the probe's daily status from ok to error starting
+-- the next cron run. PK DECISION (2026-08-02, direct chat, "go with your
+-- recommendation" on a 3-option card): ACCEPT this as a disclosed, known
+-- side effect (Option C) rather than block on it. Patching tmr-drift-probe
+-- to skip rows with no resolvable registry ref (Option B) is the correct
+-- long-term fix and is queued as a separate, later follow-up carry — NOT
+-- part of this migration. This declarative/record-keeping act formally
+-- closes D2 as decided AND recorded, and gives any FUTURE code that reads
+-- this table for carousel the correct governed state from day one.
 --
 -- NO PROOF-EVENT ROWS ARE WRITTEN BY THIS MIGRATION. c.creative_template_
 -- proof_event.template_id is NOT NULL and references c.creative_provider_

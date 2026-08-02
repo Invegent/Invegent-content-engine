@@ -8,15 +8,27 @@ document as the evidence ledger and zero synthetic proof rows").
 **Completed (this pass):** 2026-08-02 Sydney — **PREPARED, NOT APPLIED.** Pending review chain +
 PK apply gate, same discipline as every other DB-touching lane this session.
 
+**PK DECISION (2026-08-02, direct chat):** presented with a 3-option decision card for the
+`tmr-drift-probe` side effect (§8) — PK confirmed "go with your recommendation": **Option C —
+apply as-is, accept the daily `tmr-drift-probe` status flip (`ok`→`error`) as a disclosed,
+known side effect.** Option B (patch `tmr-drift-probe` to skip rows with no resolvable
+`declarative_registry_ref` instead of failing the whole run) is the correct long-term fix but was
+explicitly named as **out of scope for this closeout — queued as a follow-up carry, not
+applied here.** Option A (fabricate/build a Creative Library registry entry for the legacy
+pipeline) was recommended against: the Creative Library v2 schema is template-family/variant
+shaped and this pipeline has no template family, so a real Option-A fix means extending that
+schema — its own design-gate lane, not a same-day fix.
+
 ---
 
 ## 1. Result status
 
-`Partial` — packet prepared and evidence gathered; **no DML has been executed.** `db-rls-auditor`
-review (§8) found the packet's own "zero production behaviour change" claim materially incomplete
-(a real, verified daily-cron side effect on `tmr-drift-probe`, distinct from the render-gate claim
-which IS correct) — stopping here for a PK decision, not proceeding to external review or an
-apply gate until that's resolved.
+`Partial` — packet prepared and evidence gathered; **no DML has been executed yet.**
+`db-rls-auditor` review (§8) found the packet's own "zero production behaviour change" claim
+materially incomplete (a real, verified daily-cron side effect on `tmr-drift-probe`, distinct from
+the render-gate claim which IS correct). **PK has since decided (see header): proceed with Option
+C, side effect disclosed and accepted.** Proceeding now to fresh hash/`branch-warden`
+re-verification, external review, and the PK apply gate.
 
 ## 2. Commit(s)
 
@@ -71,16 +83,21 @@ drafts, not published-post count. This is stated plainly because the two numbers
 **and** governed, matching the shape of PP's existing `video_short_stat`/`image_quote` governance
 rows in the same table.
 
-**Does NOT change any production behaviour today.** Verified by reading `image-worker/index.ts`
+**Does NOT change any render behaviour today** — verified by reading `image-worker/index.ts`
 directly: the runtime governance gate `isImageGovernanceEnabled(supabase, clientId, format)` is
 called **exactly once** in production code, hardcoded to `format='image_quote'` (line 1082) —
 **never** with `'carousel'`. The carousel render block runs unconditionally on any
 carousel-format pending draft, gated only by the separate, unrelated `isImageEnabled(clientId)`
-client-level toggle. It does not consult `c.client_creative_governance` at all. **This INSERT is a
-pure declarative/record-keeping act** — it formally closes D2 as decided-and-recorded and gives
-any future code that might read this table for `carousel` the correct governed state from day
-one, but it flips no live gate. Stated plainly so this is never mistaken later for a behavioral
-change.
+client-level toggle. It does not consult `c.client_creative_governance` at all.
+
+**CORRECTED 2026-08-02:** this section originally claimed "no production behaviour change" without
+qualification — `db-rls-auditor` found that overstated. It holds for the render path only; it does
+**not** hold for `tmr-drift-probe`'s daily cron, which reads this table with no format filter and
+will flip its daily status `ok`→`error` once this row exists (§8 has the full mechanism). **PK
+decided (2026-08-02) to accept that side effect as disclosed** rather than block the declaration on
+it — see header. This INSERT is otherwise a declarative/record-keeping act — it formally closes D2
+as decided-and-recorded and gives any future code that might read this table for `carousel` the
+correct governed state from day one.
 
 **No proof-event rows are written.** `c.creative_template_proof_event.template_id` is `NOT NULL`
 and references `c.creative_provider_template` — the legacy carousel pipeline has no such row (it
@@ -113,13 +130,12 @@ mention in the brand-constitution purpose string).
   `computeVerdict()` treats as a run-level error — **`tmr-drift-probe`'s daily status would flip
   from `ok` to `error` starting with the first cron fire after this migration lands, and stay
   there until fixed.** This is a genuine, verified (not hypothetical) production side effect.
-  **Not resolved in this pass — surfaced to PK as a decision, per the auditor's three named
-  options:** (a) point `declarative_registry_ref` at a real Creative Library entry (none currently
-  exists — would require creating one, out of this packet's scope), (b) patch
+  **RESOLVED 2026-08-02 — PK elected Option C** (see header): apply as-is, accept the daily
+  `tmr-drift-probe` status flip (`ok`→`error`) as a disclosed, known side effect. Option B (patch
   `tmr-drift-probe` to skip/scope its declarative-coverage check to formats it actually knows how
-  to check (a code change with its own review/deploy cycle), or (c) explicitly accept the daily
-  false-error status as a disclosed, PK-approved side effect. **This packet does not pick one —
-  that choice belongs to PK, not to this reconstruction.**
+  to check) is the correct long-term fix and is **queued as a named follow-up carry** — not part
+  of this apply. Option A (a Creative Library registry entry) was recommended against — the
+  schema doesn't cleanly fit a non-template pipeline without its own design-gate change.
 - Evidence numbers (§5) and the render-gate claim were independently re-verified by
   `db-rls-auditor` and confirmed exact — only the *scope* of the "zero behaviour change" claim was
   wrong, not the underlying facts.
@@ -129,9 +145,15 @@ mention in the brand-constitution purpose string).
   itself (separate from the drift-probe issue above), this row's `enabled=true` will become
   load-bearing for the render gate for the first time — worth a note at that point, not a concern
   today.
+- **NEW CARRY (2026-08-02): `tmr-drift-probe` should be patched (Option B) to skip governance rows
+  with no resolvable `declarative_registry_ref` instead of failing its whole daily run.** Not
+  scoped into this apply — a future, separate T2 code lane (own build/test/review/deploy cycle).
+  Until it lands, `tmr-drift-probe`'s daily status will read `error` (not `ok`) starting from the
+  first cron run after this migration applies — expected, disclosed, not a new incident if seen.
 
 ## 9. Next recommended step
 
-Run the same review chain as the B2 Stage-2 promotion packet (`db-rls-auditor` at minimum, given
-the low blast radius already established here), then present for a separate PK apply gate — not
-bundled with Stage 2's promotion decision.
+Fresh hash + `branch-warden` re-verification, external review pinned to this packet's final hash,
+then present for the PK apply gate (PK decision already given: Option C). After apply: hand the
+`tmr-drift-probe` Option-B patch off as a named follow-up carry in the closing pointer payloads —
+not part of this lane's remaining work.
