@@ -52,9 +52,11 @@ Rung 6 only. No rungs 7-9. No other assignment row touched. No selector/capabili
 touched — the flip is a **read-time consequence** of `select_template`'s existing tiebreak logic
 reacting to this row's new state, not a direct change to any selector code or ranking rule.
 
-## 5. Declared controls / assertion register
+## 5. Declared controls / assertion register (mechanically enforced — this section ONLY)
 
-Same proven pattern as the NDIS/CFW packets, plus one additional mandatory manual step:
+Same proven pattern as the NDIS/CFW packets. Per `apply-harness-auditor` review (findings AHA-01-1/
+AHA-02-1/AHA-04-1, fixed below), this table now lists **only controls with real executable
+enforcement** — the post-commit verification step is deliberately NOT in this table; see §5a.
 
 | # | Control | Mechanism |
 |---|---|---|
@@ -62,9 +64,23 @@ Same proven pattern as the NDIS/CFW packets, plus one additional mandatory manua
 | 2 | Rowcount assertion in same DO block as its statement | Every UPDATE/INSERT wrapped with `GET DIAGNOSTICS`+`RAISE EXCEPTION` in one `DO $$...$$` |
 | 3 | Target-state assertion | Dedicated `DO $$...$$` block, `COUNT(*)` on the 1 target ID |
 | 4 | Real whole-table pool-neutrality assertion | `b2_stage2_invegent_baseline` temp table snapshot at transaction start; final block asserts `+1` exactly on both tables |
-| 5 | Atomicity: single pooled call required | Header comment names it explicitly |
+| 5 | Atomicity: single pooled call required | Migration + rollback headers now name the channel explicitly: one `mcp__supabase__apply_migration` call with the full script as `query`, or one un-split `psql -f` run — never split across tool calls (fixed post-AHA-04-1; the original header only used the descriptive phrase "single-pooled-call atomicity" without naming a channel) |
 | 6 | Rollback identity + state guard | Rollback DELETEs the 1 proof-event ID, then UPDATE-reverts the 1 assignment ID guarded on `assignment_status='visually_approved' AND approved_by='PK'` |
-| 7 | **Mandatory post-apply live verification (NOT automated in-transaction)** | Immediately after commit, re-run `select_template('invegent', <each platform>, 'image_quote', NULL, NULL)` and confirm the winner is now Row 5 as predicted. **A mismatch here is a hard STOP**, not a footnote — matches the house convention from `creatomate-registry-integrity-graduation-contract-v1.md` §3.5 finding 3. |
+
+## 5a. Post-commit operator checklist (manual, NOT mechanically enforced — deliberately separate from §5)
+
+`apply-harness-auditor` (finding AHA-01-1) correctly flagged that the item below cannot be an
+in-transaction "hard STOP": by the time it could run, the migration has already committed and the
+live winner has already flipped. It is a **required human action taken immediately after commit**,
+not a control this file enforces on itself. Listing it in §5 alongside mechanically-enforced
+controls would overstate what the SQL actually guarantees — so it lives here instead:
+
+- [ ] Immediately after commit, re-run `select_template('invegent', <each of facebook/instagram/
+      linkedin/website>, 'image_quote', NULL, NULL)` and confirm the winner is now Row 5
+      (`0e006c5c-45aa-4829-82ec-89dd282a8c56`) as predicted.
+- [ ] **If the winner is anything other than Row 5:** something about the predicted tiebreak was
+      wrong. Treat this as grounds to run the paired rollback immediately, not as a footnote to
+      note and move past.
 
 ## 6. Forbidden actions
 

@@ -49,12 +49,23 @@
 -- SCOPE — rung 6 ONLY (visual approval). Rungs 7-9 are separate future
 -- apply gates, NOT authorised here.
 --
--- POST-APPLY VERIFICATION REQUIRED (not automated by this migration —
--- named here as a mandatory manual step before this apply is considered
--- closed): re-run select_template('invegent','facebook'|'instagram'|
--- 'linkedin'|'website','image_quote',NULL,NULL) immediately after commit
--- and confirm the winner is now Row 5 (0e006c5c...) as predicted — a
--- mismatch here is a hard STOP, not a footnote.
+-- ATOMICITY: this file MUST be applied as a single pooled call — one
+-- mcp__supabase__apply_migration call with this entire script as the
+-- `query` parameter, or one un-split `psql -f` run. NEVER split the
+-- statements below across multiple tool calls or a pooled multi-call
+-- channel; BEGIN/COMMIT alone does not guarantee atomicity across a
+-- connection-pooled multi-call channel.
+--
+-- POST-COMMIT MANUAL OPERATOR STEP (NOT enforced by this migration file —
+-- there is no in-transaction way to gate on it, since the flip this step
+-- verifies has already committed by the time it can run; this is a
+-- separate, human-initiated verification + rollback-if-needed action, not
+-- an in-file STOP): immediately after commit, re-run
+-- select_template('invegent','facebook'|'instagram'|'linkedin'|'website',
+-- 'image_quote',NULL,NULL) and confirm the winner is now Row 5
+-- (0e006c5c...) as predicted. A mismatch means something about the
+-- predicted tiebreak was wrong — treat it as grounds to run the paired
+-- rollback, not as a footnote to note and move past.
 --
 -- (R) ROLLBACK: see the paired
 --   ROLLBACK_20260802113000_b2_stage2_invegent_market_insight_visual_approval_v1.sql

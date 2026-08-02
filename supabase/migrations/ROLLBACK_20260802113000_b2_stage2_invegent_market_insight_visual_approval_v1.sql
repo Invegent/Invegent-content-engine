@@ -10,8 +10,14 @@
 -- State-guarded (only reverts if still exactly in the forward-applied
 -- state) — same fix class as the NDIS/CFW packets.
 --
--- POST-ROLLBACK VERIFICATION REQUIRED: re-run select_template for invegent
--- x image_quote and confirm the winner is back to Row 7.
+-- ATOMICITY: apply as a single pooled call — one mcp__supabase__apply_migration
+-- call with this entire script as the `query` parameter, or one un-split
+-- `psql -f` run. Never split across multiple tool calls.
+--
+-- POST-ROLLBACK VERIFICATION REQUIRED (manual, same reasoning as the
+-- forward file's post-commit step — not enforceable in-transaction): re-run
+-- select_template for invegent x image_quote and confirm the winner is
+-- back to Row 7.
 -- =====================================================================
 
 BEGIN;
