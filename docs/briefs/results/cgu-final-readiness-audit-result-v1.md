@@ -257,6 +257,21 @@ A2 the correct count is **22 of 25 committed cells state-1**. Remaining 3: **PP 
 8–9, natural slot 2026-08-03T07:00Z + PK publish gate) · **NDIS YT stat** (supervised lane, run-sheet
 on this branch) · **CFW-LI image_quote** (evidence ruling: fresh publish vs acceptance of >90d evidence).
 
+## 6e. NDIS YT STAT SUPERVISED LANE — Gate A executed; three findings (2026-08-02)
+
+Gate A (PK "proceed") executed; full attempt-by-attempt record + the three structural findings live in
+`docs/briefs/cgu-ndis-yt-stat-supervised-proof-runsheet-v1.md` §Execution record. Summary: (1) the
+publisher pause also blocks slot fill (`m.is_publish_eligible` shared predicate — attempt 1 terminally
+skipped); (2) NDIS stat natural fills are fitness-starved (0 of 26 candidates ≥ threshold 65, max 40 —
+the `ready` cell can never naturally fill today; named programme carry); (3) NDIS's missing
+`video_short_stat` governance row was a hidden prerequisite (classifier doesn't read it; both worker
+gates fail closed without it) — added as a disclosed, reversible lane-prerequisite
+(`c9150004-…0001`, PP row shape). Attempt 3 (Grattan "$3.31" source) was REJECTED by the auto-approver's
+sensitive-keyword gate ("royal commission") — **PK Option B ruling: kept as honest evidence, never
+approved/rendered**. Attempt 4 (health.gov.au source) proceeds on the preserved chain; publish remains
+behind PK's final verdict + the active channel pause. CFW-LI: controlled `image_quote` nudge on natural
+slot `46387fda…` (publishes 2026-08-04T03:04Z).
+
 ## 7. Register payload (version-less — for the WS-5 session's register-cut pass)
 
 > **✅ vX.XXX — CGU final readiness audit: Milestone-1 FAIL(strict, 8 cells)/PASS(operational, 1 disposition) · Milestone-2 = 12/25 committed cells state-1, gap ledger + 10-min re-run contract delivered (T1 · read-only; zero writes/applies)** — result: `docs/briefs/results/cgu-final-readiness-audit-result-v1.md` (branch `lane/cgu-final-readiness-audit`).

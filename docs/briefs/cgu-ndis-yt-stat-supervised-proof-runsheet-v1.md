@@ -46,6 +46,22 @@ each ⛔ step is its own PK hard stop at execution time — decision #4 authoriz
 7. **Close:** re-run the CGU re-run contract R1+R2 (audit doc §6) — the NDIS YT stat cell flips state-1;
    result doc + version-less pointer payload.
 
+## Execution record (2026-08-02, appended live per PK instruction)
+
+**Gate A confirmed by PK 2026-08-02 (~06:1x UTC "Gate A — proceed"). Four slots, three findings.**
+
+| Attempt | Slot | Outcome | Cause |
+|---|---|---|---|
+| 1 | `c9150003-…0001` (scheduled-shape, window now, channel PAUSED first) | **skipped** `publish_path_disabled` at first fill tick (06:50Z), terminal | **Finding 1** below |
+| 2 | `c9150003-…0002` (channel unpaused, same shape) | **skipped** `pool_thin;no_eligible_evergreen` (09:20Z): `pool_size_at_attempt=0`, 26 in scope | **Finding 2** below |
+| 3 | `c9150003-…0003` (T0 manual branch, Grattan "$3.31 an hour?" source `09211020…`) | filled 09:40Z, pin held `video_short_stat`, synthesis succeeded, draft `d6c7e3e3…` — then **auto-approver REJECTED on the sensitive-keyword gate** (blocked keyword "royal commission"; all other gates passed) | Working as designed; **PK ruled: keep as honest evidence, do NOT approve/render** (Option B, 2026-08-02) |
+| 4 | `c9150003-…0004` (T0 manual branch, health.gov.au "Technical experts to guide fairer, more consistent NDIS access" source `d8ddb949…`) | IN FLIGHT — same preserved chain: authority pin · channel pause (re-applied at fill) · Advisor→compliance→approval→governed render · no publish before PK's final verdict | — |
+
+**Structural findings (all live-verified from function bodies/code, not inferred):**
+1. **The publisher pause also blocks slot fill.** `m.fill_pending_slots` gates on `m.is_publish_eligible(client, platform)`, which reads the same `paused_until` the publish hold uses — so a channel paused for publish containment terminally skips its own fills (`publish_path_disabled`; skips never retry). The PP 3-consec precedent never hit this because it accepted auto-publish and never paused. Workaround used here: unpause → fill → re-pause (safe because `youtube-publisher` v1.17.0's fail-closed pause gate is re-checked at claim time, and no draft was in publishable state during any window). A future lane wanting fill-but-hold semantics has no single mechanism — worth a named T2 follow-up if supervised proofs recur.
+2. **NDIS YT `video_short_stat` natural fills are fitness-starved.** `m.signal_pool.fitness_per_format` for vertical 11: 26 candidates in scope, ZERO at stat's `min_fitness_threshold=65` (`t.format_quality_policy`); NDIS stat fitness maxes at 40. A `ready`-classified cell that can never naturally fill — the supervised election (PK decision #4) was the only arriving path, and post-graduation natural production stays starved until pool fitness or policy changes. Named carry for the programme.
+3. **The missing NDIS governance row was a hidden prerequisite — added.** `classify_format_capability` does not consult `c.client_creative_governance`, but BOTH the ai-worker v2.22.0 authority pin and video-worker's governed stat branch fail closed without an enabled `(client,'video_short_stat')` row — NDIS had none, so the "ready" cell's governed path was dead (the D4 discovery's mirror image). Inserted `c9150004-0000-4000-8000-000000000001` (mirrors PP's row shape: `contract_ref='ndis_yarns.video_short_stat.cgu_supervised_proof_v1'`, `declarative_registry_ref='ndis-yarns.json'`, `render_label='creative_library_video_stat_production'`, `enabled=true`) as a disclosed lane-prerequisite write; reversible (`enabled=false`/delete); only readers are the two worker gates (enabled-only) + tmr-drift-probe's daily sweep (already in the disclosed D2 `error` state).
+
 ## Fallback
 
 If any gate fails twice (render timeout persists, voice unresolvable, PK rejects), stop and take the
