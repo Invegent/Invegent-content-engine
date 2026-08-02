@@ -87,6 +87,34 @@ auto-onboarded-template quality risk. Incident disposition + contained repair pl
 NDIS assignment is contained (`blocked`) pending remediation, so the §1 baseline's NDIS stat
 state-1 reading is 22/25 again until re-close.
 
+**PK boundary ruling (2026-08-03, same directive):** the incident splits into a contained CGU-v1
+repair and CGU-Final systemic hardening — **v1 does NOT reopen for single layout defects, and
+universal future quality perfection is not a v1 pass condition.** v1's promise: every committed
+capability has a governed route, fail-closed containment, evidence, and an accepted production
+output. The v1 repair (Lane A, `ws5-production-envelope-enforcement-foundation`) re-closes the NDIS
+cell on: eyebrow removed/parameterised · safe StatValue+ContextLine bounds for
+`video_stat_reveal_9x16_v2` · one corrected replacement render · PK visual PASS · assignment
+restored — **no second public publish** unless routing/authority/publisher behaviour changed (the
+preserved publish stands as transport+evidence proof).
+
+**CGU-Final quality hardening (this correction's must-have-shaped content — "full WS-5", PK-defined
+as seven outcomes; Lane B `ws5-production-template-calibration-backfill`):**
+1. **Calibration coverage** — every production-selectable template has persisted, probe-derived constraints;
+2. **Field-shape rules** — constraints express char count, word count, numeric-only expectation, line count, safe-width behaviour;
+3. **Generation-time enforcement** — the AI worker receives the selected template's real limits before writing content;
+4. **Render-time bounds enforcement** — the (currently parked) bounds validator landed, checking final modifications/geometry;
+5. **Graduation enforcement** — no template becomes production-selectable without completed calibration + passing probes;
+6. **Existing-template backfill** — all currently selectable templates checked, not only future ones;
+7. **Change invalidation** — material template edits invalidate calibration until reproven.
+
+**Ongoing quality policy (PK, operative post-v1):** for every newly graduated template, visually
+inspect its first three natural production renders, then a weekly sample; automatically validate
+text bounds on every render where possible; on defect, immediately block only the affected
+template/client assignment and record the issue in the Asset Gap/quality register; repair →
+recalibrate → replacement visual proof → restore. **Reopen the programme only for a systemic
+governance failure** (silent fallback across many cells, governance bypass, publishing past a
+failed control) — never for a single content-envelope defect.
+
 ---
 
 ## 1. Exact current baseline (2026-08-02)
