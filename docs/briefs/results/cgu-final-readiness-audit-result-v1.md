@@ -272,13 +272,28 @@ approved/rendered**. Attempt 4 (health.gov.au source) proceeds on the preserved 
 behind PK's final verdict + the active channel pause. CFW-LI: controlled `image_quote` nudge on natural
 slot `46387fda…` (publishes 2026-08-04T03:04Z).
 
+## 6f. NDIS YT STAT — PUBLISHED, CELL STATE-1 (PK publish verdict; lane CLOSED)
+
+Attempt 4 published under PK's explicit Gate-B verdict: YouTube **`oCrtq6R9VFQ`** (2026-08-02 19:15:08Z,
+`m.post_publish` `9fb06e0a…`, draft `4d81324a…`, governed render 43.9s, audio gate PASS −18.3 LUFS).
+Proof events `c9150005-…{1,2}` (`platform_render` [supervised — vocabulary substitution disclosed] +
+`platform_publish`) recorded on assignment `aa2179eb…`; re-read confirms the cell **STATE-1**.
+Rejected "$3.31" draft `d6c7e3e3…` + the four-attempt record preserved as governance evidence
+(run-sheet §Execution record + §Close-out). Fourth mechanism finding: `youtube-publisher` v1.14.0+
+release-date gate held the future-dated draft correctly; released by CAS update under PK instruction.
+**Committed-cell tally: 23 of 25 state-1.** Remaining 2, handed to the next session (PK: no new CGU
+work from this one): PP YT kinetic (natural slot 2026-08-03T07:00Z + PK publish gate) · CFW-LI
+image_quote (controlled slot `46387fda…` fills ~03:04Z, publishes 2026-08-04T03:04Z, then its
+trail-alignment event + the final §6 re-run).
+
 ## 7. Register payload (version-less — for the WS-5 session's register-cut pass)
 
 > **✅ vX.XXX — CGU final readiness audit: Milestone-1 FAIL(strict, 8 cells)/PASS(operational, 1 disposition) · Milestone-2 = 12/25 committed cells state-1, gap ledger + 10-min re-run contract delivered (T1 · read-only; zero writes/applies)** — result: `docs/briefs/results/cgu-final-readiness-audit-result-v1.md` (branch `lane/cgu-final-readiness-audit`).
 > · Failing/open cells: 3 image_quote proof-event recording gaps (PP-LI/NDIS-IG/NDIS-LI) · PP+NDIS YT `video_short_stat` (**no natural stat slot scheduled for either**) · PP YT kinetic rungs 8–9 (natural slot 2026-08-03T07:00Z; approve = auto-public ≤30min) · 6 CFW/INV image_quote cells blocked on `client_format_config` reconciliation only. D1/D2/D3 all verified executed/closed on live truth (D2 applied 2026-08-02 03:43Z); enrolment clause met (v6.113).
 > · **PK decisions 2026-08-02 (§6b, all six):** INV FB/IG carousel queue-absence = state-2 (D3-style note, no overlay — strict-fail set 8→6 cells) · trail-alignment proof-event DML authorized (3 image_quote cells + PP YT stat against the accepted 07-27 publishes) · NDIS YT stat = supervised force-fill lane (re-defer fallback) · CFW/INV config reconciliation authorized (incl. CFW-LI evidence-decay check) · branch pushed.
 > · **BOTH PACKETS APPLIED 2026-08-02 (§6c, PK "apply A and apply B"):** Packet A (4 `platform_publish` proof events, hash `169d881b…`/`957d5379…`, chain clean+external agree `ce70d9c6`) and Packet B (4 CFW/INV `client_format_config` rows, hash `7503e1e7…`, chain clean+external partial→PK-ruled `aba9169b`) — zero guards tripped, post-apply verification exact (6 image_quote cells `blocked`→`ready`; one benign prediction deviation recorded). **Committed-cell state-1: 12→18** *(corrected at §6d: 13→19)*. Remaining M2 distance: PP YT kinetic rungs 8–9 (slot 08-03T07:00Z) · NDIS YT stat supervised lane · 4 CFW/INV IG/LI recording residuals outside decision #2's scope (§6c item 3, incl. the CFW-LI evidence-decay ruling).
-> · **PACKET A2 APPLIED same day (§6d):** 3 further trail-alignment events (CFW-IG, INV-IG, INV-LI; hash `d1fcf582…`, chain clean, external agree `ba05dfdb`) — every publishing image_quote cell now carries its recorded proof event. **State-1: 22 of 25 committed cells.** Remaining 3: PP YT kinetic (natural slot 08-03T07:00Z + PK publish gate) · NDIS YT stat (supervised lane) · CFW-LI (evidence ruling).
+> · **PACKET A2 APPLIED same day (§6d):** 3 further trail-alignment events (CFW-IG, INV-IG, INV-LI; hash `d1fcf582…`, chain clean, external agree `ba05dfdb`) — every publishing image_quote cell now carries its recorded proof event.
+> · **NDIS YT STAT PUBLISHED + STATE-1 (§6e/§6f):** supervised lane complete under PK gates — 4 attempts, 4 structural findings (pause-blocks-fill · stat pool fitness-starved 0/26 ≥65 · missing governance row added `c9150004-…0001` · publisher v1.14.0 release-date gate), sensitive-keyword rejection preserved as evidence (`d6c7e3e3…`), publish `oCrtq6R9VFQ` (19:15Z), proof events `c9150005-…{1,2}`. **State-1: 23 of 25 committed cells.** Remaining 2 for the next session: PP YT kinetic (slot 08-03T07:00Z + PK gate) · CFW-LI (controlled slot fills ~03:04Z, publishes 08-04T03:04Z, then event + final §6 re-run).
 
 ## 8. Constraints confirmed
 

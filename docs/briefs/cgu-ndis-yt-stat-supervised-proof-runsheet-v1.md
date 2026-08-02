@@ -62,6 +62,35 @@ each ⛔ step is its own PK hard stop at execution time — decision #4 authoriz
 2. **NDIS YT `video_short_stat` natural fills are fitness-starved.** `m.signal_pool.fitness_per_format` for vertical 11: 26 candidates in scope, ZERO at stat's `min_fitness_threshold=65` (`t.format_quality_policy`); NDIS stat fitness maxes at 40. A `ready`-classified cell that can never naturally fill — the supervised election (PK decision #4) was the only arriving path, and post-graduation natural production stays starved until pool fitness or policy changes. Named carry for the programme.
 3. **The missing NDIS governance row was a hidden prerequisite — added.** `classify_format_capability` does not consult `c.client_creative_governance`, but BOTH the ai-worker v2.22.0 authority pin and video-worker's governed stat branch fail closed without an enabled `(client,'video_short_stat')` row — NDIS had none, so the "ready" cell's governed path was dead (the D4 discovery's mirror image). Inserted `c9150004-0000-4000-8000-000000000001` (mirrors PP's row shape: `contract_ref='ndis_yarns.video_short_stat.cgu_supervised_proof_v1'`, `declarative_registry_ref='ndis-yarns.json'`, `render_label='creative_library_video_stat_production'`, `enabled=true`) as a disclosed lane-prerequisite write; reversible (`enabled=false`/delete); only readers are the two worker gates (enabled-only) + tmr-drift-probe's daily sweep (already in the disclosed D2 `error` state).
 
+## CLOSE-OUT — PUBLISHED, CELL STATE-1 (PK publish verdict, executed 2026-08-02 19:15Z)
+
+Attempt 4 completed the full chain: draft `4d81324a…` ("NDIS Access Is Getting an Overhaul — Here's
+Why", health.gov.au source `d8ddb949…`) — authority pin held (`schedule_authority_pin` recorded in
+`draft_format.ai.format_reason`; advisor would have chosen kinetic) · compliance flags empty ·
+auto-approver passed ALL gates incl. sensitive-keywords (`auto-agent-v1`, 10:20Z) · **governed render**
+`ebfb44cf…`/creatomate `bf399d21…` in 43.9s (tmr winner `video_stat_reveal_9x16_v2`, governed
+`bg_ny_accessible_pathway` + `ny_logo_full_colour`, voiceover + music bed) · **audio gate PASS
+−18.3 LUFS / −6.6 dBTP** · PK reviewed the actual video and copy at Gate B and ruled **Publish** ·
+pause lifted · published at the 19:15Z tick: **`m.post_publish` `9fb06e0a…`, YouTube `oCrtq6R9VFQ`**
+(https://www.youtube.com/watch?v=oCrtq6R9VFQ), `queue_id=null` (direct-read path, as designed).
+
+**One more mechanism note (4th finding):** `youtube-publisher` v1.14.0+ gates on `scheduled_for`
+(release-date gate, shipped 2026-07-27) — the draft inherited the slot's future `scheduled_for`
+(2026-08-03T13:00Z) and correctly WAITED; released by a CAS-guarded single-column update under PK's
+"next tick" instruction. The historic "schedule-blind" claim is pre-v1.14 only (memory corrected).
+
+**Proof events recorded** (PK instruction) against assignment `aa2179eb…`:
+`c9150005-…0001` `platform_render`/passed (the supervised worker-path render — recorded as
+`platform_render` because `supervised_render` is not in the `proof_type` CHECK vocabulary; substitution
+disclosed in the row's own evidence text) · `c9150005-…0002` `platform_publish`/passed (the real
+publish above). **Re-read confirms the NDIS × YouTube × `video_short_stat` cell is STATE-1**:
+`classify=ready`, `overall_state=ready`, `reach=true`, live `platform_publish` proof event present.
+
+**Governance evidence preserved (PK instruction):** rejected draft `d6c7e3e3…` ("$3.31" / Royal
+Commission keyword rejection) untouched, plus the complete four-attempt record above. Channel pause
+ended in its standing pre-lane state (`paused_until NULL`, containment reason string restored).
+Rung-12 (`production_proven` promotion) deliberately NOT taken — a separate future PK election.
+
 ## Fallback
 
 If any gate fails twice (render timeout persists, voice unresolvable, PK rejects), stop and take the
