@@ -162,6 +162,18 @@ export const PP_IMAGE_QUOTE_NEWS_CARD_V1: CreativeContract = Object.freeze({
       Object.freeze({ field: 'date', value: 'render date (today)' }),
       Object.freeze({ field: 'footer', value: 'propertypulse.com.au' }),
       Object.freeze({ field: 'location', value: '' }),
+      // cc-0089 follow-up (2026-07-31): CTA is a PK-AUTHORED, PROPERTY-PULSE-SPECIFIC brand
+      // value (real copy, not a Creatomate placeholder) — fixes the generic "Call to action"
+      // placeholder PK flagged on a supervised render of generic_announcement_card_1x1_v1.
+      // Same pattern as cc-0049's attribution/source_label: an OPTIONAL per-client renderer_fixed
+      // entry, read by buildProofFieldsFromDraft (branch_b_proof.ts) and folded into B1Fields.cta
+      // ONLY when present. NOT added to NDIS/CFW/Invegent — this is a PP brand decision, not a
+      // template-wide default. contract_version STAYS 'v2' (matches the AP-4 / cc-0049 precedent:
+      // an additive renderer_fixed content field is not a stamped-evidence version bump — see
+      // creative_contract_test.ts Test 4).
+      // (Vendored sync 2026-08-03, WS-5 P1 lane: re-synced from the canonical
+      // image-worker/creative_contract.ts @ 2b71d23 — the parity test caught this copy stale.)
+      Object.freeze({ field: 'cta', value: 'Explore the latest market update' }),
     ]),
     governed_assets: Object.freeze({
       logo: Object.freeze({
