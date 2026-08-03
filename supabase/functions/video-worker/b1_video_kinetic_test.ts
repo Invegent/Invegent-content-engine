@@ -180,7 +180,8 @@ Deno.test('plan: 3-point script — exact suffixed-key modifications dict (cross
     'BarTop.fill_color': '#1C8A8A',
     'BarBottom.fill_color': '#1C8A8A',
     'Logo.source': LOGO_URL,
-    'VoiceAudio.source': '',
+    // v3.17.1 (PK ruling 2026-08-03): VoiceAudio.source OMITTED — silent format declares no
+    // voice (the old always-'' binding tripped assertAudioSpec terminally). MusicBed stays ''.
     'MusicBed.source': '',
     'duration': 35,
 
@@ -276,8 +277,10 @@ Deno.test('plan: 1-point script — Point2 + Point3 collapse off-timeline across
 
   // Exact key count sanity: every point slot (active OR collapsed) sets the SAME key set, just with
   // sentinel vs. real values — 13 keys/slot either way (Counter 3 + Bar 2 + Headline 3 + Divider 2 +
-  // Body 3). 7 global + 6 hook + 13*3 points + 8 cta = 7+6+39+8 = 60.
-  assertEquals(Object.keys(plan.modifications).length, 60);
+  // Body 3). 6 global + 6 hook + 13*3 points + 8 cta = 6+6+39+8 = 59.
+  // (v3.17.1: global dropped 7 → 6 — VoiceAudio.source is OMITTED, the silent format declares no
+  // voice; MusicBed.source '' remains.)
+  assertEquals(Object.keys(plan.modifications).length, 59);
 });
 
 // ── fail-loud contract (mirrors b1_video_stat.ts) ─────────────────────────────────
@@ -325,4 +328,42 @@ Deno.test('plan: tmr evidence is resolver-driven, audio always false (v1 silent 
   assertEquals(ev.audio, { voiceover: false, music_bed: false });
   assertEquals(plan.templateSpec.provider, 'creatomate');
   assertEquals(plan.templateSpec.resolver_used, true);
+});
+
+// ── v3.17.1 (PK ruling 2026-08-03) — the silent plan vs the REAL audio gate ───────
+// The production defect this fix closes: 'VoiceAudio.source': '' in the silent kinetic plan
+// tripped assertAudioSpec's AUDIO_SPEC_ASSERT_FAILED (only MusicBed's '' is the exempt N1
+// silent bed), terminally killing EVERY governed kinetic render (live: draft 90381483).
+// These tests run the REAL exported gate functions from index.ts against the REAL
+// buildGovernedVideoKineticPlan output, wrapped in the EXACT template-mode renderScript shape
+// renderGovernedVideoKinetic submits ({ template_id, modifications, output_format: 'mp4' }).
+// Direction (b) — voiced formats still fail closed on declared-but-empty VoiceAudio — is
+// covered by the UNTOUCHED audio_failclosed_test.ts assertions.
+//
+// index.ts has a top-level Deno.serve entrypoint — neutralise it BEFORE the dynamic import
+// (the proven house pattern from audio_failclosed_test.ts / render_upload_music_usage_test.ts)
+// so importing the module does not bind a port. Production code is byte-unchanged.
+// deno-lint-ignore no-explicit-any
+(Deno as any).serve = (..._args: any[]) => ({ finished: Promise.resolve(), async shutdown() {}, ref() {}, unref() {}, addr: { transport: 'tcp', hostname: '0.0.0.0', port: 0 } });
+const { assertAudioSpec, specHasAudio } = await import('./index.ts');
+
+Deno.test('v3.17.1: silent kinetic plan OMITS VoiceAudio.source and keeps the explicit N1 MusicBed', () => {
+  const scenes: KineticScene[] = [okScene('hook', 'H', null, 5), okScene('point', 'P', 'B', 8), okScene('cta', 'C', null, 5)];
+  const plan = buildGovernedVideoKineticPlan(liveShapeFixture(), scenes, brand);
+  assertEquals('VoiceAudio.source' in plan.modifications, false);   // spec declares NO voice
+  assertEquals(plan.modifications['MusicBed.source'], '');          // intentional silent bed (N1), byte-unchanged
+});
+
+Deno.test('v3.17.1: REAL assertAudioSpec passes the silent kinetic renderScript (no VoiceAudio key → no-op)', () => {
+  const scenes: KineticScene[] = [okScene('hook', 'H', null, 5), okScene('point', 'P', 'B', 8), okScene('cta', 'C', null, 5)];
+  const plan = buildGovernedVideoKineticPlan(liveShapeFixture(), scenes, brand);
+  const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'mp4' };
+  assertAudioSpec(renderScript);   // would have thrown AUDIO_SPEC_ASSERT_FAILED before v3.17.1
+});
+
+Deno.test('v3.17.1: REAL specHasAudio returns false for the silent kinetic renderScript (post-render silent-mp4 enforcement exempt)', () => {
+  const scenes: KineticScene[] = [okScene('hook', 'H', null, 5), okScene('point', 'P', 'B', 8), okScene('cta', 'C', null, 5)];
+  const plan = buildGovernedVideoKineticPlan(liveShapeFixture(), scenes, brand);
+  const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'mp4' };
+  assertEquals(specHasAudio(renderScript), false);
 });

@@ -1,3 +1,27 @@
+// video-worker v3.17.1
+// ============================================================================
+// v3.17.1 (2026-08-03, PK-authorized bounded fix — KINETIC SILENT RENDERS DIED AT THE AUDIO GATE).
+//   marker: video-worker-kinetic-silent-voice-omit (grep-able in the deployed bundle).
+//   DEFECT (found via CGU supervised recovery; live evidence draft 90381483, video_last_error
+//   "AUDIO_SPEC_ASSERT_FAILED: audio VoiceAudio.source source is empty (silent render refused)"):
+//   the governed video_short_kinetic v1 SILENT-SCOPE plan (b1_video_kinetic.ts) ALWAYS bound
+//   'VoiceAudio.source': ''. The v3.14.0 pre-render gate assertAudioSpec exempts ONLY
+//   MusicBed.source='' (the intentional N1 silent bed) and throws on every other empty declared
+//   source — TERMINAL by design (classifyRenderFailure: no transient token) — so EVERY governed
+//   kinetic render died at the gate before spending a Creatomate credit.
+//   FIX (ONE SITE, PK ruling 2026-08-03): the silent kinetic plan now OMITS 'VoiceAudio.source'
+//   ENTIRELY — per assertAudioSpec's own contract, a legitimately-silent format DECLARES NO
+//   audio. collectSpecAudio only collects modification keys that are PRESENT, so with the key
+//   omitted: assertAudioSpec is a NO-OP for voice on this plan, and specHasAudio() returns false
+//   (MusicBed '' is not a non-empty source) → the post-render mp4HasAudioTrack silent-mp4
+//   enforcement correctly EXEMPTS the by-design-silent kinetic render. MusicBed.source handling
+//   is BYTE-UNCHANGED (still explicitly '' — N1). Voiced formats are UNTOUCHED: an empty
+//   VoiceAudio.source anywhere it IS declared still fails closed (audio_failclosed_test.ts
+//   assertions unmodified and green).
+//   STRICTLY OUT OF SCOPE (unchanged): routing, selectors, publishers, every other format's
+//   audio wiring, kinetic_voice palette hygiene (separate lane — no t."5.3_content_format" /
+//   config touch), assertAudioSpec/specHasAudio/collectSpecAudio themselves, any DB, any deploy.
+//
 // video-worker v3.17.0
 // ============================================================================
 // v3.17.0 (2026-08-03, WS-5 P1 / PK ruling D-4 — GOVERNED EyebrowText, DATA-GATED). ADDITIVE.
@@ -644,7 +668,10 @@ import { submitAndPollCreatomateRender } from './creatomate_submit.ts';  // v3.1
 //   audio guards, select_template/select_music, voice/TTS, the claim/publish paths, every legacy render
 //   builder, and every registry/DB row. This deploy performs NO selector repoint — activation is a
 //   SEPARATE, PK-gated DML apply.
-const VERSION = 'video-worker-v3.17.0';
+const VERSION = 'video-worker-v3.17.1';
+
+// v3.17.1 — grep-able marker string for the deployed bundle (bundles-from-CWD guard).
+export const KINETIC_SILENT_VOICE_OMIT_MARKER = 'video-worker-kinetic-silent-voice-omit';
 
 // v3.17.0 (WS-5 P1, D-4) — grep-able marker string for the deployed bundle (bundles-from-CWD guard).
 export const WS5_EYEBROW_MARKER = 'video-worker-ws5-eyebrow-text';

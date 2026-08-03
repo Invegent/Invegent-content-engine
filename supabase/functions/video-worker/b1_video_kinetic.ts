@@ -46,9 +46,13 @@
 //   legacy buildKineticTextSpec branch, `index.ts:1079-1081`, which substitutes a text wordmark when
 //   logoUrl is absent — governed paths in this repo never do that).
 //
-//   v1 SILENT SCOPE (WS-4 §11, PK decision 2026-08-01): VoiceAudio.source / MusicBed.source are ALWAYS
-//   set to '' (present as keys, per the house N1 silent-bed convention — `source:''` renders silent,
-//   not an error). No voice/music wiring in this module. STRICTLY OUT OF SCOPE.
+//   v1 SILENT SCOPE (WS-4 §11, PK decision 2026-08-01; corrected v3.17.1, PK ruling 2026-08-03):
+//   VoiceAudio.source is OMITTED ENTIRELY — a legitimately-silent format DECLARES NO voice, per
+//   assertAudioSpec's own contract (index.ts: an empty non-bed source throws
+//   AUDIO_SPEC_ASSERT_FAILED; the original always-'' binding killed EVERY governed kinetic render
+//   terminally at the audio gate — live evidence draft 90381483). MusicBed.source REMAINS
+//   explicitly '' (the intentional N1 silent bed — the ONE empty source assertAudioSpec exempts).
+//   No voice/music wiring in this module. STRICTLY OUT OF SCOPE.
 //
 //   TEXT HARD-GATE (WS-4 §9 — mirrors b1_video_stat.ts's assertStatFieldsWithinGate / the
 //   'hard_gate_throw' policy already governing the sibling format): fail loud, no truncation, no AI
@@ -290,8 +294,10 @@ export function buildGovernedVideoKineticPlan(
     'BarTop.fill_color': brand.secondaryColour,
     'BarBottom.fill_color': brand.secondaryColour,
     'Logo.source': resolvedLogo,
-    // v1 silent scope (WS-4 §11, PK decision 2026-08-01) — present, always empty. No audio wiring.
-    'VoiceAudio.source': '',
+    // v1 silent scope (WS-4 §11; corrected v3.17.1, PK ruling 2026-08-03): VoiceAudio.source is
+    // OMITTED — the silent format declares NO voice (an empty '' here trips assertAudioSpec's
+    // AUDIO_SPEC_ASSERT_FAILED and terminally killed every governed kinetic render). MusicBed
+    // stays explicitly '' — the intentional N1 silent bed, the one empty source the gate exempts.
     'MusicBed.source': '',
     // WS-4 §5d Q4 (PASS, replicated by WS-5 probe 1): bare top-level `duration` is an authoritative
     // composition-length override. Kinetic's composition length is VARIABLE (Σ active scene
