@@ -616,3 +616,90 @@ Deno.test('parity: CANARY — every overlay entry is complete (2 geometry keys +
     assertEquals(Object.keys(ov).length, 10, tid);
   }
 });
+
+// ── v3.17.0 (WS-5 P1, D-4) — governed EyebrowText ─────────────────────────────────────
+// Data-gated: no eyebrow arg / null / blank → the modification set is BYTE-UNCHANGED;
+// a provided governed value adds ONLY 'EyebrowText.text'. extractGovernedEyebrowValue is
+// the pure baked-key extraction/validation helper (fail-loud, never a default).
+import { extractGovernedEyebrowValue } from './b1_video_stat.ts';
+
+Deno.test('eyebrow: 4-arg builder call (no eyebrow) → NO EyebrowText.text key (byte-compat)', () => {
+  const plan = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
+  assertEquals('EyebrowText.text' in plan.modifications, false);
+});
+
+Deno.test('eyebrow: null / blank eyebrowText → key omitted, modifications identical to 4-arg call', () => {
+  const base = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
+  const withNull = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED, null);
+  const withBlank = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED, '   ');
+  assertEquals(withNull.modifications, base.modifications);
+  assertEquals(withBlank.modifications, base.modifications);
+});
+
+Deno.test('eyebrow: provided value → adds EyebrowText.text ONLY; every existing key untouched', () => {
+  const base = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
+  const plan = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED, 'MARKET UPDATE');
+  assertEquals(plan.modifications['EyebrowText.text'], 'MARKET UPDATE');
+  const { 'EyebrowText.text': _eb, ...rest } = plan.modifications;
+  assertEquals(rest, base.modifications);
+});
+
+Deno.test('eyebrow: value is trimmed before binding', () => {
+  const plan = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED, '  NDIS UPDATE  ');
+  assertEquals(plan.modifications['EyebrowText.text'], 'NDIS UPDATE');
+});
+
+// extractGovernedEyebrowValue — pure baked-key extraction/validation.
+
+const eyebrowRow = (baked: Record<string, unknown> | undefined, maxChars?: { basis: string; value: unknown }) => ({
+  element_name: 'EyebrowText',
+  constraints: {
+    schema_version: 'tmr_field_constraints_v1',
+    content_source: 'baked',
+    ...(baked !== undefined ? { baked } : {}),
+    ...(maxChars !== undefined ? { text_limits: { max_chars: maxChars } } : {}),
+  },
+});
+
+Deno.test('eyebrow extract: NO row → null (pre-template-edit safe no-op)', () => {
+  assertEquals(extractGovernedEyebrowValue(null, 'property-pulse'), null);
+  assertEquals(extractGovernedEyebrowValue(undefined, 'property-pulse'), null);
+});
+
+Deno.test('eyebrow extract: slug hyphens map to underscores in the baked key', () => {
+  const row = eyebrowRow({ eyebrow_value_ndis_yarns: 'NDIS UPDATE', eyebrow_value_property_pulse: 'MARKET UPDATE' });
+  assertEquals(extractGovernedEyebrowValue(row, 'ndis-yarns'), 'NDIS UPDATE');
+  assertEquals(extractGovernedEyebrowValue(row, 'property-pulse'), 'MARKET UPDATE');
+});
+
+Deno.test('eyebrow extract: value is trimmed', () => {
+  const row = eyebrowRow({ eyebrow_value_property_pulse: '  MARKET UPDATE  ' });
+  assertEquals(extractGovernedEyebrowValue(row, 'property-pulse'), 'MARKET UPDATE');
+});
+
+Deno.test('eyebrow extract: row exists but client key missing/blank/non-string → THROWS named error (no default text)', () => {
+  assertThrows(() => extractGovernedEyebrowValue(eyebrowRow({ eyebrow_value_ndis_yarns: 'NDIS UPDATE' }), 'property-pulse'),
+    Error, 'b1_video_stat_eyebrow_value_missing');
+  assertThrows(() => extractGovernedEyebrowValue(eyebrowRow({ eyebrow_value_property_pulse: '   ' }), 'property-pulse'),
+    Error, 'b1_video_stat_eyebrow_value_missing');
+  assertThrows(() => extractGovernedEyebrowValue(eyebrowRow({ eyebrow_value_property_pulse: 42 }), 'property-pulse'),
+    Error, 'b1_video_stat_eyebrow_value_missing');
+  assertThrows(() => extractGovernedEyebrowValue(eyebrowRow(undefined), 'property-pulse'),
+    Error, 'b1_video_stat_eyebrow_value_missing');
+  // The error names the exact baked key it looked for (operator debuggability).
+  assertThrows(() => extractGovernedEyebrowValue(eyebrowRow({}), 'ndis-yarns'),
+    Error, 'eyebrow_value_ndis_yarns');
+});
+
+Deno.test('eyebrow extract: persisted max_chars enforced throw-not-truncate; exact-at-limit conformant', () => {
+  const at = eyebrowRow({ eyebrow_value_property_pulse: 'MARKET UPDATE' }, { basis: 'declared_from_source', value: 13 });
+  assertEquals(extractGovernedEyebrowValue(at, 'property-pulse'), 'MARKET UPDATE'); // 13 chars = at limit
+  const over = eyebrowRow({ eyebrow_value_property_pulse: 'MARKET UPDATE' }, { basis: 'declared_from_source', value: 12 });
+  assertThrows(() => extractGovernedEyebrowValue(over, 'property-pulse'),
+    Error, 'eyebrow_text length 13 exceeds max_chars=12');
+});
+
+Deno.test('eyebrow extract: to_be_calibrated max_chars → no gate (limit absent)', () => {
+  const row = eyebrowRow({ eyebrow_value_property_pulse: 'MARKET UPDATE' }, { basis: 'to_be_calibrated', value: null });
+  assertEquals(extractGovernedEyebrowValue(row, 'property-pulse'), 'MARKET UPDATE');
+});

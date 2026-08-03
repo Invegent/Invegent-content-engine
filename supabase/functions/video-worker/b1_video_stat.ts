@@ -57,6 +57,20 @@
 // currently-selectable template renders BYTE-UNCHANGED. Governed bindings always win over the overlay
 // (assertParityOverlayDisjoint + merge order), so this can never overwrite a resolver-selected asset.
 
+// v3.17.0 (WS-5 P1, PK ruling D-4 — GOVERNED EyebrowText, DATA-GATED): the Creatomate stat template
+// video_stat_reveal_9x16_v2 will gain a parameterised EyebrowText field (PK template edit — NOT this
+// lane). buildGovernedVideoStatPlan accepts an OPTIONAL eyebrowText: when provided (non-blank) it adds
+// 'EyebrowText.text' to the governed modifications; when absent the modification set is BYTE-UNCHANGED
+// (pre-template-edit safe no-op — safe to deploy BEFORE the template edit). NOTE the deliberate key
+// form: 'EyebrowText.text' (suffixed) per the lane brief — unlike this template's four bare AI-text
+// keys, Creatomate accepts both address forms. The value is GOVERNED PER-CLIENT data, never freeform
+// AI: the caller resolves constraints.baked['eyebrow_value_<slug>'] from the winner's EyebrowText
+// field row via extractGovernedEyebrowValue (pure, fail-loud b1_video_stat_eyebrow_value_missing when
+// the row exists but the client's baked value is missing/blank — governed values only, no default
+// text; validates text_limits.max_chars when persisted, throw-not-truncate, mirroring
+// assertStatFieldsWithinGate). STRICTLY OUT OF SCOPE: the four exported *_MAX_CHARS constants and the
+// existing modification keys / parity constants / throwing char-gate are all UNCHANGED.
+
 // The Property-Pulse client_id — retained as the reference identity for the hermetic gate tests and
 // the governed smoke. It no longer gates the production path (index.ts gates on the runtime
 // governance lookup, so a second governed brand is a DATA addition, not a code edit). A client_id,
@@ -216,6 +230,52 @@ export function assertStatFieldsWithinGate(fields: B1VideoStatFields): void {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────────────
+// v3.17.0 (WS-5 P1, D-4) — governed EyebrowText value extraction (PURE, fail-loud).
+// ─────────────────────────────────────────────────────────────────────────────────────
+
+// Resolve the governed per-client eyebrow value from the winner's EyebrowText field row
+// (c.creative_provider_template_field). Contract:
+//   • fieldRow null/undefined (NO EyebrowText row on the template) → null: the caller omits the
+//     key and today's render is BYTE-UNCHANGED (pre-template-edit safe no-op).
+//   • Row present → the value MUST be constraints.baked['eyebrow_value_<client_slug with - → _>']
+//     (e.g. eyebrow_value_property_pulse='MARKET UPDATE', eyebrow_value_ndis_yarns='NDIS UPDATE').
+//     Missing/blank → THROW b1_video_stat_eyebrow_value_missing — governed values only, NEVER a
+//     default/freeform fallback (a wrong-brand eyebrow must be impossible by construction).
+//   • When the row persists text_limits.max_chars (limit-TRIPLE; basis='to_be_calibrated' →
+//     absent), the value is validated against it — THROW on violation, no truncation (mirrors
+//     assertStatFieldsWithinGate's render-contract gate style).
+// PURE: no I/O, no Date, no random — hermetically tested in b1_video_stat_test.ts.
+export function extractGovernedEyebrowValue(
+  fieldRow: { constraints?: unknown } | null | undefined,
+  clientSlug: string,
+): string | null {
+  if (!fieldRow) return null;
+  const constraints = (fieldRow.constraints ?? null) as {
+    baked?: Record<string, unknown>;
+    text_limits?: { max_chars?: { basis?: unknown; value?: unknown } };
+  } | null;
+  const key = `eyebrow_value_${clientSlug.replaceAll('-', '_')}`;
+  const baked = constraints?.baked;
+  const raw = (baked && typeof baked === 'object') ? baked[key] : undefined;
+  const value = typeof raw === 'string' ? raw.trim() : '';
+  if (!value) {
+    throw new Error(
+      `b1_video_stat_eyebrow_value_missing: EyebrowText row exists but constraints.baked.${key} is missing/blank (governed values only — no default text)`,
+    );
+  }
+  const trip = constraints?.text_limits?.max_chars;
+  if (trip && typeof trip === 'object' && trip.basis !== 'to_be_calibrated') {
+    const max = Number(trip.value);
+    if (Number.isFinite(max) && max > 0 && value.length > Math.floor(max)) {
+      throw new Error(
+        `b1_video: eyebrow_text length ${value.length} exceeds max_chars=${Math.floor(max)} (no truncation / no AI rewrite)`,
+      );
+    }
+  }
+  return value;
+}
+
 // PURE narration composer (cc-0032 step 5 D3 / N2). Deterministic spoken form of the governed stat
 // fields for the ElevenLabs voiceover. CONCISE by design: statLabel + statValue + contextLine ONLY —
 // the CTA is DELIBERATELY NOT spoken (N2: the CTA stays a VISUAL element), so the VO fits the 12s
@@ -369,11 +429,15 @@ export type B1VideoStatPlan = {
 // Background.source (the one deliberate difference from b1_production.buildTmrRenderPlan). The music
 // bed is OPTIONAL: musicBedUrl='' (or null/undefined) binds an EXPLICITLY SILENT bed
 // ('MusicBed.source'='') — N1. Bed LEVEL stays template-controlled (N3 — never sets MusicBed.volume).
+// v3.17.0 (WS-5 P1, D-4): OPTIONAL eyebrowText — provided (non-blank) → adds 'EyebrowText.text';
+// absent/blank → the modification set is BYTE-UNCHANGED (pre-template-edit safe no-op). Every
+// existing 4-arg call is byte-compatible.
 export function buildGovernedVideoStatPlan(
   selectorResponse: TmrSelectorResponse | null | undefined,
   fields: B1VideoStatFields,
   voiceUrl: string | null | undefined,
   musicBedUrl: string | null | undefined,
+  eyebrowText?: string | null,
 ): B1VideoStatPlan {
   // Hard-gate the four text fields (fail loud) BEFORE consuming the selector.
   assertStatFieldsWithinGate(fields);
@@ -433,6 +497,13 @@ export function buildGovernedVideoStatPlan(
   // template's background is left untouched — sending Background.source='' would blank the element.
   if (resolvedBackground) {
     governedModifications['Background.source'] = resolvedBackground;
+  }
+  // v3.17.0 (WS-5 P1, D-4): governed EyebrowText — bound ONLY when the caller resolved a
+  // non-blank governed value (extractGovernedEyebrowValue). Omitted otherwise, so a template
+  // without the EyebrowText row (pre-template-edit) renders BYTE-UNCHANGED. Never a default.
+  const resolvedEyebrow = (eyebrowText ?? '').trim();
+  if (resolvedEyebrow) {
+    governedModifications['EyebrowText.text'] = resolvedEyebrow;
   }
 
   // v3.15.0 (TPR-1): merge the template-scoped output-parity overlay. EMPTY for every template not

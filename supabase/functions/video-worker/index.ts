@@ -1,3 +1,35 @@
+// video-worker v3.17.0
+// ============================================================================
+// v3.17.0 (2026-08-03, WS-5 P1 / PK ruling D-4 — GOVERNED EyebrowText, DATA-GATED). ADDITIVE.
+//   marker: video-worker-ws5-eyebrow-text (grep-able in the deployed bundle).
+//   Lane: ws5-production-envelope-enforcement-foundation (Gate-1 approved 2026-08-03).
+//   WHAT: the Creatomate stat template video_stat_reveal_9x16_v2 will gain a parameterised
+//   EyebrowText field (a LATER PK template edit — not this deploy). renderGovernedVideoStat now:
+//     (1) after select_template returns the winner, reads the winner's EyebrowText row from
+//         c.creative_provider_template_field (resolveGovernedEyebrowText — placed BEFORE the
+//         expensive VO generation, same fail-loud-early doctrine as the selector call);
+//     (2) NO row → today's behaviour EXACTLY (key omitted; the render payload is byte-identical) —
+//         which is what makes this SAFE TO DEPLOY BEFORE THE TEMPLATE EDIT: until the EyebrowText
+//         field row is captured into the registry, this change is a no-op on every render;
+//     (3) row EXISTS → the governed value is constraints.baked['eyebrow_value_<client_slug with
+//         - → _>'] (PK D-4: Property Pulse 'MARKET UPDATE', NDIS Yarns 'NDIS UPDATE' — governed
+//         per-client data, NEVER freeform AI/default text). Missing/blank value → THROW
+//         b1_video_stat_eyebrow_value_missing (fail-loud → the existing per-draft catch →
+//         video_status='failed'); a persisted text_limits.max_chars is enforced throw-not-truncate
+//         (render-contract gate style). Field-row READ error also throws (fail-loud, named
+//         b1_video_eyebrow_field_read_failed) — the governed path never guesses.
+//     (4) buildGovernedVideoStatPlan gains an OPTIONAL eyebrowText param that adds
+//         'EyebrowText.text' to the modifications when non-blank (b1_video_stat.ts v3.17.0 note).
+//   DEPLOY SEQUENCING: deploy this worker FIRST, then PK edits the Creatomate template, then the
+//   EyebrowText field row (with baked eyebrow_value_* keys) is captured into the registry under
+//   its own gate. Any earlier ordering is also safe EXCEPT registry-row-before-worker-deploy is
+//   moot (old worker ignores the row) — the only UNSAFE state would be a template whose saved
+//   object REQUIRES EyebrowText content while no row/value exists, which the PK template edit
+//   owns avoiding.
+//   STRICTLY OUT OF SCOPE / BYTE-UNCHANGED: select_template itself, the kinetic/legacy/avatar
+//   paths, every publisher, routing, capability gates, the four *_MAX_CHARS render-gate
+//   constants, all parity constants, any DB schema (reads an existing table only), any deploy.
+//
 // video-worker v3.16.2
 // ============================================================================
 // v3.16.2 (2026-08-02, Fix 1 — db-rls-auditor finding on the v3.16.1 extraction below, NOT
@@ -436,7 +468,7 @@ import { resolveGovernedVoice } from './voice_id.ts';
 import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (additive)
 import { composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2; v3.4.0 LANE W: module trimmed to this single live export (production render_spec composer) — the smoke surface is retired
 import { resolveLegacyLogo, type AssetVerdict } from './asset_url_guard.ts';  // v3.3.0: H2 asset-URL validation before Creatomate
-import { buildGovernedVideoStatPlan, composeGovernedVideoNarration, assertStatFieldsWithinGate, assertExpectedVideoProviderTemplate, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields, type TmrSelectorResponse } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO. v3.8.0 (Video D6 Lane 3): spine de-hardcode — buildGovernedVideoStatPlan consumes select_template; isB1GovernedVideoStat no longer imported (production gate is now runtime governance); assertExpectedVideoProviderTemplate is the SMOKE-ONLY parity guard.
+import { buildGovernedVideoStatPlan, composeGovernedVideoNarration, assertStatFieldsWithinGate, assertExpectedVideoProviderTemplate, extractGovernedEyebrowValue, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields, type TmrSelectorResponse } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO. v3.8.0 (Video D6 Lane 3): spine de-hardcode — buildGovernedVideoStatPlan consumes select_template; isB1GovernedVideoStat no longer imported (production gate is now runtime governance); assertExpectedVideoProviderTemplate is the SMOKE-ONLY parity guard.
 import { buildGovernedVideoKineticPlan, assertKineticScenesWithinGate, B1_VIDEO_KINETIC_PRODUCTION_LABEL, B1_VIDEO_KINETIC_GOVERNED_FORMAT, type KineticScene } from './b1_video_kinetic.ts';  // v3.16.0 (WS-4/WS-5 D4): CREATIVE-LIBRARY VIDEO TMR — governed PP YouTube kinetic (silent v1 scope). TmrSelectorResponse type reused from b1_video_stat.ts (identical selector response shape).
 import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsageDescriptor } from './music_usage.ts';  // v3.7.0 (cc-0034): governed music-usage recording (record_music_usage)
 import { submitAndPollCreatomateRender } from './creatomate_submit.ts';  // v3.16.1 (WS-4/WS-5 D4 out-of-band proof render): pollRender + the submit-POST block moved here verbatim (not reimplemented) — safe to import from a standalone script without index.ts's top-level Deno.serve side effect.
@@ -599,7 +631,10 @@ import { submitAndPollCreatomateRender } from './creatomate_submit.ts';  // v3.1
 //   audio guards, select_template/select_music, voice/TTS, the claim/publish paths, every legacy render
 //   builder, and every registry/DB row. This deploy performs NO selector repoint — activation is a
 //   SEPARATE, PK-gated DML apply.
-const VERSION = 'video-worker-v3.16.2';
+const VERSION = 'video-worker-v3.17.0';
+
+// v3.17.0 (WS-5 P1, D-4) — grep-able marker string for the deployed bundle (bundles-from-CWD guard).
+export const WS5_EYEBROW_MARKER = 'video-worker-ws5-eyebrow-text';
 const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
 // v3.16.1: CREATOMATE_API / POLL_INTERVAL_MS / POLL_MAX_ATTEMPTS moved to ./creatomate_submit.ts
 // (imported below) — values UNCHANGED, now single-sourced there so the out-of-band proof-render
@@ -1301,6 +1336,34 @@ async function getGovernedVideoClientSlug(
   return slug;
 }
 
+// v3.17.0 (WS-5 P1, D-4) — THIN impure reader for the governed EyebrowText value. Reads the
+// selected winner's EyebrowText row from c.creative_provider_template_field and delegates the
+// value/limit judgment to the PURE extractGovernedEyebrowValue (b1_video_stat.ts — hermetically
+// tested; DB-touching logic stays thin and untested-by-mock per house style). Contract:
+//   • selection not usable / no template_id → null (the plan builder fail-louds on a bad
+//     selection right after — this reader never pre-empts that named error);
+//   • NO EyebrowText row → null → key omitted → render BYTE-UNCHANGED (data-gated no-op);
+//   • read ERROR → THROW b1_video_eyebrow_field_read_failed (governed path never guesses —
+//     an unreadable registry is a fail-loud condition, not a silent omit);
+//   • row present → extractGovernedEyebrowValue (throws b1_video_stat_eyebrow_value_missing /
+//     the max_chars gate; returns the governed value).
+async function resolveGovernedEyebrowText(
+  supabase: ReturnType<typeof getServiceClient>,
+  selection: unknown,
+  clientSlug: string,
+): Promise<string | null> {
+  const templateId = (selection as { selected?: { template_id?: unknown } } | null)?.selected?.template_id;
+  if (typeof templateId !== 'string' || !templateId) return null;
+  const { data, error } = await supabase.schema('c').from('creative_provider_template_field')
+    .select('element_name, constraints')
+    .eq('template_id', templateId)
+    .eq('element_name', 'EyebrowText')
+    .maybeSingle();
+  if (error) throw new Error(`b1_video_eyebrow_field_read_failed: ${error.message}`);
+  if (!data) return null;
+  return extractGovernedEyebrowValue(data as { constraints?: unknown }, clientSlug);
+}
+
 // Governed VIDEO stat-reveal render. Mirrors the proven image-worker B1 governed image_quote
 // branch: hard-gate the 4 text fields → resolve the LIVE TMR spine (public.select_template) →
 // build the SPINE-DRIVEN, BAKED-BG template-mode plan → reuse the UNMODIFIED renderUploadAndLog
@@ -1345,6 +1408,14 @@ async function renderGovernedVideoStat(opts: {
   const { data: selection, error: selectErr } = await supabase.rpc('select_template', { p_client_slug: governedSlug, p_platform: null, p_format: B1_VIDEO_GOVERNED_FORMAT, p_variant_intent: null, p_seed: draft.post_draft_id });
   if (selectErr) throw new Error(`b1_video tmr_selector_rpc_failed: ${selectErr.message}`);
 
+  // v3.17.0 (WS-5 P1, D-4): governed EyebrowText — DATA-GATED. Read the winner's EyebrowText field
+  // row; NO row → null → the key is omitted and the render is BYTE-UNCHANGED (pre-template-edit
+  // safe no-op). Row present → constraints.baked['eyebrow_value_<slug>'] is REQUIRED (fail-loud
+  // b1_video_stat_eyebrow_value_missing — governed per-client values only, never default text) and
+  // a persisted text_limits.max_chars is enforced throw-not-truncate. Placed BEFORE the expensive
+  // VO generation (fail-loud-early, same doctrine as the selector call above).
+  const eyebrowText = await resolveGovernedEyebrowText(supabase, selection, governedSlug);
+
   // v3.6.0 (cc-0032 step 5): COMBO AUDIO. Compose the concise VO narration (CTA visual-only),
   // resolve the PP voice by client_id (fail-loud if unresolved — existing behaviour), generate the
   // VO, and resolve the governed music bed via select_music (empty result → '' silent bed per N1; an
@@ -1362,7 +1433,8 @@ async function renderGovernedVideoStat(opts: {
   // v3.8.0 (D6-8): SPINE-DRIVEN, BAKED-BG plan. Throws tmr_video_selector_fail_closed /
   // tmr_video_slot_resolution_incomplete (missing Logo.source) / b1_video_missing_voiceover — never
   // guesses, no fallback. provider_template_id + Logo.source come from `selection`.
-  const plan = buildGovernedVideoStatPlan(selection as TmrSelectorResponse, fields, voiceUrl, bed.url);
+  // v3.17.0 (WS-5 P1, D-4): eyebrowText rides as the OPTIONAL 5th arg — null omits the key.
+  const plan = buildGovernedVideoStatPlan(selection as TmrSelectorResponse, fields, voiceUrl, bed.url, eyebrowText);
 
   // Template-mode renderScript (Creatomate v2/renders template-mode): { template_id, modifications,
   // output_format:'mp4' }. output_format is the template-mode video output field (mirrors the
