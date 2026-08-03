@@ -231,6 +231,65 @@ export function assertStatFieldsWithinGate(fields: B1VideoStatFields): void {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────
+// v3.17.0 (WS-5 P1, PK gate correction 1) — TEMPLATE IDENTITY CONTINUITY (PURE, fail-loud).
+// ─────────────────────────────────────────────────────────────────────────────────────
+
+// The ai-worker (v2.26.0) records video_script.stat_template_binding = { template_id,
+// provider_template_id, variant_key?, selected_at, envelope_source } whenever its
+// generation-time select_template call selected a winner. PK ruling: the render worker MUST
+// render against that same identity or fail closed with a NAMED reason — never validate
+// against template A and silently render against template B. Contract:
+//   • binding null/undefined (legacy pre-v2.26.0 drafts, or generation-time selector
+//     fail-closed) → NO-OP: those drafts were validated only against the universal
+//     render-gate floor (assertStatFieldsWithinGate), so no A-validated/B-rendered condition
+//     exists — proceed exactly as today.
+//   • binding MALFORMED (truthy but not an object with a usable non-empty string
+//     template_id) → THROW (FAIL-CLOSED semantics, deliberate): something recorded a binding
+//     but the identity cannot be verified, and the ruling forbids rendering on unverifiable
+//     identity. Named the same b1_video_stat_template_binding_mismatch reason.
+//   • binding present + selection unusable (status!='ok' / no selected.template_id) →
+//     THROW: the bound template disappeared or became ineligible.
+//   • binding present + usable selection → selected.template_id MUST equal
+//     binding.template_id; provider_template_id compared ONLY when BOTH sides carry one.
+//     Mismatch → THROW naming both identities.
+// A throw hits the caller's existing per-draft catch → video_status='failed' (no fallback).
+// PURE: no I/O, no Date, no random — hermetically tested in b1_video_stat_test.ts.
+export function assertStatTemplateBindingMatch(
+  binding: unknown,
+  selectorResponse: TmrSelectorResponse | null | undefined,
+): void {
+  if (binding === null || binding === undefined) return;   // legacy / no-binding drafts
+
+  const b = (typeof binding === 'object' ? binding : {}) as { template_id?: unknown; provider_template_id?: unknown };
+  const boundTemplateId = typeof b.template_id === 'string' ? b.template_id.trim() : '';
+  if (typeof binding !== 'object' || !boundTemplateId) {
+    throw new Error(
+      'b1_video_stat_template_binding_mismatch: malformed stat_template_binding (no usable template_id) — template identity cannot be verified, refusing to render (fail-closed)',
+    );
+  }
+  const boundProvider = typeof b.provider_template_id === 'string' && b.provider_template_id.trim()
+    ? b.provider_template_id.trim() : null;
+  const boundLabel = `${boundTemplateId} / ${boundProvider ?? 'n/a'}`;
+
+  const resp = selectorResponse ?? {};
+  const sel = resp.status === 'ok' ? resp.selected : null;
+  const nowTemplateId = typeof sel?.template_id === 'string' ? sel.template_id.trim() : '';
+  const nowProvider = typeof sel?.provider_template_id === 'string' && sel.provider_template_id.trim()
+    ? sel.provider_template_id.trim() : null;
+
+  if (!nowTemplateId) {
+    throw new Error(
+      `b1_video_stat_template_binding_mismatch: generated-for ${boundLabel} but selector now returns no usable selection (status=${resp.status ?? 'missing'}, fail_reason=${resp.fail_reason ?? 'n/a'}) — bound template disappeared or became ineligible`,
+    );
+  }
+  if (nowTemplateId !== boundTemplateId || (boundProvider !== null && nowProvider !== null && nowProvider !== boundProvider)) {
+    throw new Error(
+      `b1_video_stat_template_binding_mismatch: generated-for ${boundLabel} but selector now returns ${nowTemplateId} / ${nowProvider ?? 'n/a'}`,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────
 // v3.17.0 (WS-5 P1, D-4) — governed EyebrowText value extraction (PURE, fail-loud).
 // ─────────────────────────────────────────────────────────────────────────────────────
 

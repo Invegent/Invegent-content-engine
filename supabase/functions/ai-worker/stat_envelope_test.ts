@@ -17,9 +17,11 @@ import {
   buildEnvelopeFromFieldRows,
   buildFallbackStatEnvelope,
   buildStatBoundsQa,
+  buildStatTemplateBinding,
   decideStatBoundsNextStep,
   describeFieldLimit,
   extractFieldLimits,
+  extractStatTemplateSelection,
   isStatBoundsFailClosed,
   limitTripleValue,
   loadStatTemplateEnvelope,
@@ -28,6 +30,7 @@ import {
   validateStatScriptAgainstEnvelope,
   type StatBoundsAttempt,
   type StatEnvelope,
+  type StatTemplateSelection,
 } from './stat_envelope.ts';
 
 // ── Fixtures ───────────────────────────────────────────────────────────────────────────
@@ -64,12 +67,20 @@ const ALL_FOUR_ROWS = [
 ];
 
 const TEMPLATE_ID = 'a3d8472d-0000-0000-0000-000000000001';
+const PROVIDER_ID = 'c11bb8ab-18bd-45ff-aedd-0a59cb3773ab';
+
+const SELECTION: StatTemplateSelection = {
+  templateId: TEMPLATE_ID,
+  providerTemplateId: PROVIDER_ID,
+  variantKey: 'stat-reveal-9x16-video-v2',
+};
 
 // A persisted envelope with chars+lines+words limits for the validation tests.
 const RICH_ENVELOPE: StatEnvelope = {
   source: 'persisted',
   templateId: TEMPLATE_ID,
   fallbackReason: null,
+  selected: SELECTION,
   limits: {
     stat_value: { maxChars: 12 },
     stat_label: { maxChars: 48, maxLines: 2 },
@@ -424,4 +435,87 @@ Deno.test('loader miss: throw anywhere → fallback, NEVER a throw out of the lo
   const env = await loadStatTemplateEnvelope(db, 'pp', 'd1');
   assertEquals(env.source, 'fallback_char_bounds');
   assert(env.fallbackReason!.startsWith('envelope_loader_threw:'));
+});
+
+// ── Template identity continuity (PK gate correction 1) ───────────────────────────────
+
+Deno.test('extractStatTemplateSelection: ok selection → full identity (trimmed)', () => {
+  const sel = extractStatTemplateSelection({
+    status: 'ok',
+    selected: { template_id: ` ${TEMPLATE_ID} `, provider_template_id: PROVIDER_ID, variant_key: 'stat-reveal-9x16-video-v2' },
+  });
+  assertEquals(sel, SELECTION);
+});
+
+Deno.test('extractStatTemplateSelection: variant/provider absent → nulls; still a selection', () => {
+  const sel = extractStatTemplateSelection({ status: 'ok', selected: { template_id: TEMPLATE_ID } });
+  assertEquals(sel, { templateId: TEMPLATE_ID, providerTemplateId: null, variantKey: null });
+});
+
+Deno.test('extractStatTemplateSelection: fail_closed / missing template_id / non-object → null (nothing selected)', () => {
+  assertEquals(extractStatTemplateSelection({ status: 'fail_closed', selected: null }), null);
+  assertEquals(extractStatTemplateSelection({ status: 'ok', selected: {} }), null);
+  assertEquals(extractStatTemplateSelection({ status: 'ok', selected: { template_id: '   ' } }), null);
+  assertEquals(extractStatTemplateSelection(null), null);
+  assertEquals(extractStatTemplateSelection('nope'), null);
+});
+
+Deno.test('buildStatTemplateBinding: winner present → full binding with caller timestamp + envelope source', () => {
+  const b = buildStatTemplateBinding(RICH_ENVELOPE, '2026-08-03T01:02:03.000Z');
+  assertEquals(b, {
+    template_id: TEMPLATE_ID,
+    provider_template_id: PROVIDER_ID,
+    variant_key: 'stat-reveal-9x16-video-v2',
+    selected_at: '2026-08-03T01:02:03.000Z',
+    envelope_source: 'persisted',
+  });
+});
+
+Deno.test('buildStatTemplateBinding: variant_key key OMITTED when the selection carried none', () => {
+  const env: StatEnvelope = { ...RICH_ENVELOPE, selected: { templateId: TEMPLATE_ID, providerTemplateId: null, variantKey: null } };
+  const b = buildStatTemplateBinding(env, 't0');
+  assertEquals(b, { template_id: TEMPLATE_ID, provider_template_id: null, selected_at: 't0', envelope_source: 'persisted' });
+  assertEquals('variant_key' in b!, false);
+});
+
+Deno.test('buildStatTemplateBinding: no winner (selected null) → null (no binding recorded)', () => {
+  assertEquals(buildStatTemplateBinding(buildFallbackStatEnvelope('select_template_not_ok:fail_closed:x'), 't0'), null);
+});
+
+Deno.test('buildStatTemplateBinding: fallback-envelope-with-winner → binding with envelope_source=fallback_char_bounds', () => {
+  const env = buildFallbackStatEnvelope('constraints_unusable:StatLabel', SELECTION);
+  assertEquals(env.templateId, TEMPLATE_ID);          // identity carried on the fallback too
+  const b = buildStatTemplateBinding(env, 't1');
+  assertEquals(b!.template_id, TEMPLATE_ID);
+  assertEquals(b!.envelope_source, 'fallback_char_bounds');
+});
+
+Deno.test('QA: binding included as stat_template_binding when provided; absent otherwise', () => {
+  const binding = buildStatTemplateBinding(RICH_ENVELOPE, 't2')!;
+  const withB = buildStatBoundsQa(RICH_ENVELOPE, [], 'fail_closed', binding);
+  assertEquals(withB.stat_template_binding, binding);
+  assertEquals(withB.dead_reason, STAT_BOUNDS_DEAD_REASON);
+  const withoutB = buildStatBoundsQa(RICH_ENVELOPE, [], 'accepted_first_attempt', null);
+  assertEquals('stat_template_binding' in withoutB, false);
+});
+
+Deno.test('loader: happy path also surfaces the winner identity (selected)', async () => {
+  const { db } = stubDb({ rpcResult: OK_SELECTION, rowsResult: { data: ALL_FOUR_ROWS, error: null } });
+  const env = await loadStatTemplateEnvelope(db, 'ndis-yarns', 'draft-123');
+  assertEquals(env.selected, { templateId: TEMPLATE_ID, providerTemplateId: 'c11bb8ab', variantKey: null });
+});
+
+Deno.test('loader: winner selected but constraints unusable → FALLBACK envelope STILL carries selected (binding recordable)', async () => {
+  const { db } = stubDb({ rpcResult: OK_SELECTION, rowsResult: { data: [], error: null } });
+  const env = await loadStatTemplateEnvelope(db, 'pp', 'd1');
+  assertEquals(env.source, 'fallback_char_bounds');
+  assertEquals(env.fallbackReason, 'element_row_missing:StatValue');
+  assertEquals(env.selected, { templateId: TEMPLATE_ID, providerTemplateId: 'c11bb8ab', variantKey: null });
+});
+
+Deno.test('loader: selector fail-closed / RPC error → selected null (no binding possible)', async () => {
+  const failClosed = stubDb({ rpcResult: { data: { status: 'fail_closed', selected: null, fail_reason: 'x' }, error: null } });
+  assertEquals((await loadStatTemplateEnvelope(failClosed.db, 'pp', 'd1')).selected, null);
+  const rpcErr = stubDb({ rpcResult: { data: null, error: { code: 'X', message: 'y' } } });
+  assertEquals((await loadStatTemplateEnvelope(rpcErr.db, 'pp', 'd1')).selected, null);
 });

@@ -6,6 +6,7 @@ import {
   buildEnvelopeBoundReminder,
   buildFallbackStatEnvelope,
   buildStatBoundsQa,
+  buildStatTemplateBinding,
   decideStatBoundsNextStep,
   describeFieldLimit,
   isStatBoundsFailClosed,
@@ -66,6 +67,20 @@ const VERSION = "ai-worker-v2.26.0";
 //         draft_format via READ-MERGE-WRITE (v2.24.1 clobber lesson: a plain .update() REPLACES
 //         draft_format), deliberately NOT under video_script so a dead draft never looks
 //         renderable.
+//     (6) TEMPLATE IDENTITY CONTINUITY (PK gate correction 1, ruling: never validate against
+//         template A and silently render against template B): whenever the generation-time
+//         select_template call actually SELECTED a winner — independent of whether its
+//         constraints were usable (a fallback_char_bounds envelope can still carry the winner)
+//         — a binding { template_id, provider_template_id, variant_key?, selected_at,
+//         envelope_source } is recorded: inside video_script.stat_template_binding on BOTH
+//         accept outcomes (rides the set_draft_video_script merge, no schema change) and inside
+//         stat_bounds_qa.stat_template_binding on fail-closed drafts (evidence). Selector
+//         fail-closed/errored at generation → NO binding (nothing was selected; the fallback
+//         envelope is the universal render-gate floor and render-time fails closed at its own
+//         selector if still ineligible). video-worker v3.17.0 enforces the match at render time
+//         (assertStatTemplateBindingMatch → named b1_video_stat_template_binding_mismatch).
+//         generateVideoScript is now EXPORTED (inert — no caller change) for the hermetic
+//         stat-flow test (stat_generation_binding_test.ts, fetch stubbed).
 //   Re-prompt infra/parse failure after a first-attempt violation → return null (no
 //   video_script written — the existing non-fatal generation-failure behaviour); the violating
 //   attempt-1 content is never persisted.
@@ -777,7 +792,10 @@ function trimSeedPayload(raw: any, jobType: string): any {
 // WS-5 P1 — grep-able marker string for the deployed bundle (bundles-from-CWD guard).
 export const WS5_STAT_ENVELOPE_MARKER = 'ai-worker-ws5-stat-envelope-enforcement';
 
-async function generateVideoScript(opts: {
+// EXPORTED for the hermetic stat-flow unit test (stat_generation_binding_test.ts — fetch is
+// stubbed there; no production caller changes: the export is inert, same precedent as
+// video-worker's clearVideoRetryMeta export).
+export async function generateVideoScript(opts: {
   anthropicKey: string;
   formatKey: string;
   postTitle: string;
@@ -844,6 +862,13 @@ async function generateVideoScript(opts: {
 
     const attempts: StatBoundsAttempt[] = [];
 
+    // Template identity continuity (PK ruling): whenever generation-time selection had a
+    // winner — INDEPENDENT of whether its constraints were usable — record the binding.
+    // Persisted inside video_script on accept (rides the set_draft_video_script merge) and
+    // inside stat_bounds_qa on fail-closed. Null when nothing was selected (no binding —
+    // render-time fails closed at its own selector if still ineligible).
+    const binding = buildStatTemplateBinding(envelope, nowIso());
+
     // Attempt 1.
     const first = await callStatModel(userPrompt);
     if (!first) return null;   // infra/parse miss — unchanged legacy non-fatal behaviour
@@ -851,7 +876,8 @@ async function generateVideoScript(opts: {
     attempts.push({ attempt: 1, fields: snapshotStatFields(first), violations: v1, at: nowIso() });
     if (decideStatBoundsNextStep(1, v1.length) === 'accept') {
       first.total_duration_s = 20;
-      first.stat_bounds_qa = buildStatBoundsQa(envelope, attempts, 'accepted_first_attempt');
+      if (binding) first.stat_template_binding = binding;
+      first.stat_bounds_qa = buildStatBoundsQa(envelope, attempts, 'accepted_first_attempt', binding);
       return first;
     }
 
@@ -870,13 +896,15 @@ async function generateVideoScript(opts: {
     attempts.push({ attempt: 2, fields: snapshotStatFields(second), violations: v2, at: nowIso() });
     if (decideStatBoundsNextStep(2, v2.length) === 'accept') {
       second.total_duration_s = 20;
-      second.stat_bounds_qa = buildStatBoundsQa(envelope, attempts, 'accepted_after_reprompt');
+      if (binding) second.stat_template_binding = binding;
+      second.stat_bounds_qa = buildStatBoundsQa(envelope, attempts, 'accepted_after_reprompt', binding);
       return second;
     }
 
     // Second violation → FAIL CLOSED (D-1). The sentinel carries BOTH attempts as QA
-    // evidence; the caller marks the draft dead and never calls set_draft_video_script.
-    return { stat_bounds_fail_closed: true, stat_bounds_qa: buildStatBoundsQa(envelope, attempts, 'fail_closed') };
+    // evidence (incl. the template binding when one was selected); the caller marks the
+    // draft dead and never calls set_draft_video_script.
+    return { stat_bounds_fail_closed: true, stat_bounds_qa: buildStatBoundsQa(envelope, attempts, 'fail_closed', binding) };
   }
 
   if (formatKey === 'video_short_avatar') {

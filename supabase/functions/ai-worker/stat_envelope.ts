@@ -47,11 +47,36 @@ export type StatFieldKey = 'stat_value' | 'stat_label' | 'context_line' | 'cta_t
 // keys are IGNORED, never an error.
 export type StatFieldLimits = { maxChars: number; maxLines?: number; maxWords?: number };
 
+// The generation-time winner identity (template identity continuity, PK ruling: the content
+// validated here must render against THIS template — or fail closed). Present whenever the
+// generation-time select_template call actually SELECTED a winner, INDEPENDENT of whether its
+// constraints were usable (a fallback_char_bounds envelope can still carry a winner identity).
+export type StatTemplateSelection = {
+  templateId: string;                  // registry template id (c.creative_provider_template.id)
+  providerTemplateId: string | null;   // Creatomate object UUID (stronger identity when present)
+  variantKey: string | null;
+};
+
 export type StatEnvelope = {
   source: 'persisted' | 'fallback_char_bounds';
   templateId: string | null;           // registry template id (c.creative_provider_template.id)
   fallbackReason: string | null;       // machine-readable, null when source='persisted'
+  // Winner identity, or null when NOTHING was selected (selector fail-closed/errored/threw —
+  // then the fallback envelope is the universal render-gate floor and render-time fails
+  // closed at its own selector if still ineligible; no binding is recorded).
+  selected: StatTemplateSelection | null;
   limits: Record<StatFieldKey, StatFieldLimits>;
+};
+
+// The persisted binding object (video_script.stat_template_binding on accepted drafts;
+// stat_bounds_qa.stat_template_binding on fail-closed drafts). variant_key is included only
+// when the selection carried one.
+export type StatTemplateBinding = {
+  template_id: string;
+  provider_template_id: string | null;
+  variant_key?: string;
+  selected_at: string;                 // ISO timestamp (caller-supplied — module stays pure)
+  envelope_source: StatEnvelope['source'];
 };
 
 // Violation shape mirrors video_stat_bounds.StatBoundViolation ({field, length, max}) plus
@@ -83,6 +108,9 @@ export type StatBoundsQa = {
   attempts: StatBoundsAttempt[];
   outcome: StatBoundsOutcome;
   dead_reason?: string;                // present ONLY when outcome='fail_closed'
+  // Template identity continuity: present whenever generation-time selection had a winner
+  // (evidence on fail-closed drafts; consistency echo on accepted drafts).
+  stat_template_binding?: StatTemplateBinding;
 };
 
 // The named dead_reason PK ruled for the second-violation fail-closed path (D-1).
@@ -110,11 +138,15 @@ export const STAT_ELEMENT_FIELD_MAP: Readonly<Record<string, StatFieldKey>> = {
 
 // ── Pure: fallback envelope (vendored render-gate char bounds) ────────────────────────
 
-export function buildFallbackStatEnvelope(reason: string): StatEnvelope {
+// `selected` is non-null when a winner WAS selected but its constraints were unusable —
+// the identity binding is still recorded (template identity continuity) even though the
+// validation bounds fell back to the render-gate floor.
+export function buildFallbackStatEnvelope(reason: string, selected: StatTemplateSelection | null = null): StatEnvelope {
   return {
     source: 'fallback_char_bounds',
-    templateId: null,
+    templateId: selected?.templateId ?? null,
     fallbackReason: reason,
+    selected,
     limits: {
       stat_value: { maxChars: B1_VIDEO_STAT_VALUE_MAX_CHARS },
       stat_label: { maxChars: B1_VIDEO_STAT_LABEL_MAX_CHARS },
@@ -162,6 +194,7 @@ export function extractFieldLimits(constraints: unknown): StatFieldLimits | null
 export function buildEnvelopeFromFieldRows(
   rows: ReadonlyArray<{ element_name?: unknown; constraints?: unknown }>,
   templateId: string,
+  selected: StatTemplateSelection | null = null,
 ): { ok: true; envelope: StatEnvelope } | { ok: false; reason: string } {
   const limits: Partial<Record<StatFieldKey, StatFieldLimits>> = {};
   for (const row of rows ?? []) {
@@ -181,9 +214,45 @@ export function buildEnvelopeFromFieldRows(
       source: 'persisted',
       templateId,
       fallbackReason: null,
+      selected,
       limits: limits as Record<StatFieldKey, StatFieldLimits>,
     },
   };
+}
+
+// ── Pure: winner-identity extraction + binding builder (template identity continuity) ──
+
+// Extract the winner identity from a select_template response. Null when the response is
+// not an 'ok' selection with a usable template_id — meaning NOTHING was selected and no
+// binding may be recorded.
+export function extractStatTemplateSelection(resp: unknown): StatTemplateSelection | null {
+  const r = resp as { status?: unknown; selected?: Record<string, unknown> | null } | null | undefined;
+  if (r?.status !== 'ok' || !r.selected || typeof r.selected !== 'object') return null;
+  const sel = r.selected;
+  const templateId = typeof sel.template_id === 'string' && sel.template_id.trim() ? sel.template_id.trim() : null;
+  if (!templateId) return null;
+  return {
+    templateId,
+    providerTemplateId: typeof sel.provider_template_id === 'string' && sel.provider_template_id.trim()
+      ? sel.provider_template_id.trim() : null,
+    variantKey: typeof sel.variant_key === 'string' && sel.variant_key.trim() ? sel.variant_key.trim() : null,
+  };
+}
+
+// Build the persistable binding from an envelope. Null when the envelope carries no winner
+// (selector fail-closed/errored at generation time → nothing to bind; render-time fails
+// closed at its own selector if still ineligible). variant_key included only when present.
+export function buildStatTemplateBinding(envelope: StatEnvelope, at: string): StatTemplateBinding | null {
+  const sel = envelope.selected;
+  if (!sel) return null;
+  const binding: StatTemplateBinding = {
+    template_id: sel.templateId,
+    provider_template_id: sel.providerTemplateId,
+    selected_at: at,
+    envelope_source: envelope.source,
+  };
+  if (sel.variantKey) binding.variant_key = sel.variantKey;
+  return binding;
 }
 
 // ── Pure: envelope validation ──────────────────────────────────────────────────────────
@@ -278,6 +347,7 @@ export function buildStatBoundsQa(
   envelope: StatEnvelope,
   attempts: StatBoundsAttempt[],
   outcome: StatBoundsOutcome,
+  binding: StatTemplateBinding | null = null,
 ): StatBoundsQa {
   const qa: StatBoundsQa = {
     schema: 'stat_bounds_qa_v1',
@@ -291,6 +361,7 @@ export function buildStatBoundsQa(
     outcome,
   };
   if (outcome === 'fail_closed') qa.dead_reason = STAT_BOUNDS_DEAD_REASON;
+  if (binding) qa.stat_template_binding = binding;   // identity continuity evidence
   return qa;
 }
 
@@ -337,20 +408,24 @@ export async function loadStatTemplateEnvelope(
         `select_template_not_ok:${String(resp?.status ?? 'no_response')}:${String(resp?.fail_reason ?? '')}`.replace(/:$/, ''),
       );
     }
-    const templateId = typeof resp.selected?.template_id === 'string' ? resp.selected.template_id : '';
-    if (!templateId) return buildFallbackStatEnvelope('select_template_missing_template_id');
+    // Winner identity (template identity continuity): captured from the SAME response the
+    // envelope is derived from. When a winner was selected, every fallback below STILL
+    // carries `selected` so the caller records the binding even for unusable constraints.
+    const selected = extractStatTemplateSelection(resp);
+    if (!selected) return buildFallbackStatEnvelope('select_template_missing_template_id');
 
     const { data: rows, error: rowsErr } = await supabase.schema('c').from('creative_provider_template_field')
       .select('element_name, constraints')
-      .eq('template_id', templateId)
+      .eq('template_id', selected.templateId)
       .in('element_name', Object.keys(STAT_ELEMENT_FIELD_MAP));
-    if (rowsErr) return buildFallbackStatEnvelope(`field_rows_read_error:${errBrief(rowsErr)}`);
+    if (rowsErr) return buildFallbackStatEnvelope(`field_rows_read_error:${errBrief(rowsErr)}`, selected);
 
     const built = buildEnvelopeFromFieldRows(
       (rows ?? []) as Array<{ element_name?: unknown; constraints?: unknown }>,
-      templateId,
+      selected.templateId,
+      selected,
     );
-    if (!built.ok) return buildFallbackStatEnvelope(built.reason);
+    if (!built.ok) return buildFallbackStatEnvelope(built.reason, selected);
     return built.envelope;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

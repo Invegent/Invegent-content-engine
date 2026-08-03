@@ -703,3 +703,81 @@ Deno.test('eyebrow extract: to_be_calibrated max_chars → no gate (limit absent
   const row = eyebrowRow({ eyebrow_value_property_pulse: 'MARKET UPDATE' }, { basis: 'to_be_calibrated', value: null });
   assertEquals(extractGovernedEyebrowValue(row, 'property-pulse'), 'MARKET UPDATE');
 });
+
+// ── v3.17.0 (WS-5 P1, PK gate correction 1) — template identity continuity ────────────
+// assertStatTemplateBindingMatch: the render-time selection must be the SAME template the
+// ai-worker validated against, or fail closed with the named reason. Malformed-binding
+// semantics are deliberately FAIL-CLOSED (unverifiable identity never renders); binding
+// ABSENT (null/undefined) is the documented legacy no-op.
+import { assertStatTemplateBindingMatch } from './b1_video_stat.ts';
+
+const BOUND_TEMPLATE_ID = '22222222-2222-2222-2222-222222222202';   // matches liveShapeFixture
+
+const binding = (over: Record<string, unknown> = {}) => ({
+  template_id: BOUND_TEMPLATE_ID,
+  provider_template_id: PROVIDER_ID,
+  variant_key: 'stat-reveal-9x16-video-v2',
+  selected_at: '2026-08-03T00:00:00.000Z',
+  envelope_source: 'persisted',
+  ...over,
+});
+
+Deno.test('binding: exact match (template_id + provider_template_id) → no throw', () => {
+  assertStatTemplateBindingMatch(binding(), liveShapeFixture());
+});
+
+Deno.test('binding: absent (null/undefined) → NO-OP, even against a fail-closed selection (legacy path)', () => {
+  assertStatTemplateBindingMatch(null, liveShapeFixture());
+  assertStatTemplateBindingMatch(undefined, { status: 'fail_closed', selected: null, fail_reason: 'no_selectable_template' });
+});
+
+Deno.test('binding: template_id mismatch → throws NAMED reason with both identities', () => {
+  const err = assertThrows(
+    () => assertStatTemplateBindingMatch(binding({ template_id: '33333333-3333-3333-3333-333333333303' }), liveShapeFixture()),
+    Error, 'b1_video_stat_template_binding_mismatch',
+  );
+  assert(err.message.includes('generated-for 33333333-3333-3333-3333-333333333303'));
+  assert(err.message.includes(`but selector now returns ${BOUND_TEMPLATE_ID}`));
+});
+
+Deno.test('binding: provider_template_id mismatch (same template_id) → throws named reason', () => {
+  assertThrows(
+    () => assertStatTemplateBindingMatch(binding({ provider_template_id: 'deadbeef-0000-0000-0000-000000000000' }), liveShapeFixture()),
+    Error, 'b1_video_stat_template_binding_mismatch',
+  );
+});
+
+Deno.test('binding: provider on ONE side only → template_id alone decides (no throw)', () => {
+  // binding without provider, selection with provider
+  assertStatTemplateBindingMatch(binding({ provider_template_id: null }), liveShapeFixture());
+  // binding with provider, selection without provider
+  const noProviderSel = liveShapeFixture();
+  delete (noProviderSel.selected as Record<string, unknown>)['provider_template_id'];
+  assertStatTemplateBindingMatch(binding(), noProviderSel);
+});
+
+Deno.test('binding: present but selection unusable (fail_closed / no template_id) → throws named reason naming the disappearance', () => {
+  const err = assertThrows(
+    () => assertStatTemplateBindingMatch(binding(), { status: 'fail_closed', selected: null, fail_reason: 'no_selectable_template' }),
+    Error, 'b1_video_stat_template_binding_mismatch',
+  );
+  assert(err.message.includes('no usable selection'));
+  assert(err.message.includes('fail_reason=no_selectable_template'));
+  assertThrows(
+    () => assertStatTemplateBindingMatch(binding(), null),
+    Error, 'b1_video_stat_template_binding_mismatch',
+  );
+});
+
+Deno.test('binding: MALFORMED (non-object / no usable template_id) → FAIL-CLOSED throw (documented semantics)', () => {
+  for (const bad of ['a-string-binding', 42, {}, { template_id: '' }, { template_id: '   ' }, { template_id: 7 }, []]) {
+    assertThrows(
+      () => assertStatTemplateBindingMatch(bad, liveShapeFixture()),
+      Error, 'b1_video_stat_template_binding_mismatch',
+    );
+  }
+});
+
+Deno.test('binding: match tolerates surrounding whitespace in recorded ids (trim-equal)', () => {
+  assertStatTemplateBindingMatch(binding({ template_id: ` ${BOUND_TEMPLATE_ID} ` }), liveShapeFixture());
+});

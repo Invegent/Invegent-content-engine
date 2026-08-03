@@ -20,6 +20,19 @@
 //         b1_video_eyebrow_field_read_failed) — the governed path never guesses.
 //     (4) buildGovernedVideoStatPlan gains an OPTIONAL eyebrowText param that adds
 //         'EyebrowText.text' to the modifications when non-blank (b1_video_stat.ts v3.17.0 note).
+//     (5) TEMPLATE IDENTITY CONTINUITY (PK gate correction 1): renderGovernedVideoStat now
+//         verifies the draft's video_script.stat_template_binding (written by ai-worker
+//         v2.26.0 at generation time) against THIS render's select_template winner via the
+//         PURE assertStatTemplateBindingMatch (b1_video_stat.ts). Binding present +
+//         template_id mismatch / provider_template_id mismatch (when both sides carry one) /
+//         selection unusable / malformed binding → THROW the NAMED reason
+//         'b1_video_stat_template_binding_mismatch: generated-for <A/B> but selector now
+//         returns <C/D>' (per-draft catch → video_status='failed'; never validate against A
+//         and silently render against B). Binding ABSENT (legacy pre-v2.26.0 drafts, or
+//         generation-time selector fail-closed) → proceed exactly as before: those drafts
+//         were validated only against the universal render-gate floor, so no
+//         A-validated/B-rendered condition exists. Malformed-binding semantics are
+//         deliberately FAIL-CLOSED (unverifiable identity never renders).
 //   DEPLOY SEQUENCING: deploy this worker FIRST, then PK edits the Creatomate template, then the
 //   EyebrowText field row (with baked eyebrow_value_* keys) is captured into the registry under
 //   its own gate. Any earlier ordering is also safe EXCEPT registry-row-before-worker-deploy is
@@ -468,7 +481,7 @@ import { resolveGovernedVoice } from './voice_id.ts';
 import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (additive)
 import { composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2; v3.4.0 LANE W: module trimmed to this single live export (production render_spec composer) — the smoke surface is retired
 import { resolveLegacyLogo, type AssetVerdict } from './asset_url_guard.ts';  // v3.3.0: H2 asset-URL validation before Creatomate
-import { buildGovernedVideoStatPlan, composeGovernedVideoNarration, assertStatFieldsWithinGate, assertExpectedVideoProviderTemplate, extractGovernedEyebrowValue, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields, type TmrSelectorResponse } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO. v3.8.0 (Video D6 Lane 3): spine de-hardcode — buildGovernedVideoStatPlan consumes select_template; isB1GovernedVideoStat no longer imported (production gate is now runtime governance); assertExpectedVideoProviderTemplate is the SMOKE-ONLY parity guard.
+import { buildGovernedVideoStatPlan, composeGovernedVideoNarration, assertStatFieldsWithinGate, assertStatTemplateBindingMatch, assertExpectedVideoProviderTemplate, extractGovernedEyebrowValue, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields, type TmrSelectorResponse } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO. v3.8.0 (Video D6 Lane 3): spine de-hardcode — buildGovernedVideoStatPlan consumes select_template; isB1GovernedVideoStat no longer imported (production gate is now runtime governance); assertExpectedVideoProviderTemplate is the SMOKE-ONLY parity guard.
 import { buildGovernedVideoKineticPlan, assertKineticScenesWithinGate, B1_VIDEO_KINETIC_PRODUCTION_LABEL, B1_VIDEO_KINETIC_GOVERNED_FORMAT, type KineticScene } from './b1_video_kinetic.ts';  // v3.16.0 (WS-4/WS-5 D4): CREATIVE-LIBRARY VIDEO TMR — governed PP YouTube kinetic (silent v1 scope). TmrSelectorResponse type reused from b1_video_stat.ts (identical selector response shape).
 import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsageDescriptor } from './music_usage.ts';  // v3.7.0 (cc-0034): governed music-usage recording (record_music_usage)
 import { submitAndPollCreatomateRender } from './creatomate_submit.ts';  // v3.16.1 (WS-4/WS-5 D4 out-of-band proof render): pollRender + the submit-POST block moved here verbatim (not reimplemented) — safe to import from a standalone script without index.ts's top-level Deno.serve side effect.
@@ -1407,6 +1420,15 @@ async function renderGovernedVideoStat(opts: {
   const governedSlug = await getGovernedVideoClientSlug(supabase, draft.client_id);
   const { data: selection, error: selectErr } = await supabase.rpc('select_template', { p_client_slug: governedSlug, p_platform: null, p_format: B1_VIDEO_GOVERNED_FORMAT, p_variant_intent: null, p_seed: draft.post_draft_id });
   if (selectErr) throw new Error(`b1_video tmr_selector_rpc_failed: ${selectErr.message}`);
+
+  // v3.17.0 (WS-5 P1, PK gate correction 1): TEMPLATE IDENTITY CONTINUITY. If ai-worker
+  // v2.26.0 recorded a stat_template_binding at generation time, the selection here MUST be
+  // the SAME template — mismatch / disappeared / ineligible / malformed binding → named
+  // fail-loud b1_video_stat_template_binding_mismatch (per-draft catch → video_status='failed').
+  // Binding absent (legacy drafts, or generation-time selector fail-closed) → proceed exactly
+  // as today: those drafts were validated only against the universal render-gate floor, so no
+  // A-validated/B-rendered condition exists. Pure comparison lives in b1_video_stat.ts.
+  assertStatTemplateBindingMatch(vs?.stat_template_binding, selection as TmrSelectorResponse);
 
   // v3.17.0 (WS-5 P1, D-4): governed EyebrowText — DATA-GATED. Read the winner's EyebrowText field
   // row; NO row → null → the key is omitted and the render is BYTE-UNCHANGED (pre-template-edit
