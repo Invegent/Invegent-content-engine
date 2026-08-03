@@ -4,10 +4,11 @@
 **Status:** **The accepted proposed CGU Final programme, preserved for closeout.** PK accepted the
 reconciled baseline (rev-2), directed four amendments (rev-3, committed `f59d680`), then directed
 one further lane-order amendment (§4 — M1 replaces M8 in the first-three list; M8 now explicitly
-follows) before pushing for preservation. **NOT registered, NOT ratified.** No register pointer has
-been cut; no implementation starts until PK issues the CGU-v1 final verdict, at which point a fresh
-session (`cgu-final-ratification-and-launch`) reconciles this proposal against the final 25-cell
-result and ratifies.
+follows) before pushing for preservation. PK then directed one further **additive** amendment
+(§0d, 2026-08-03) adding must-have **M13 — Governed Template Build Pack v1**. **NOT registered, NOT
+ratified.** No register pointer has been cut; no implementation starts until PK issues the CGU-v1
+final verdict, at which point a fresh session (`cgu-final-ratification-and-launch`) reconciles this
+proposal against the final 25-cell result and ratifies.
 **Scope:** Creatomate-side production pipeline only. HeyGen remains out of scope (parked
 2026-08-02) — not analysed, not assumed as a dependency.
 **Why rev-2 exists:** rev-1 (same filename, superseded in place — never committed, so no
@@ -63,6 +64,40 @@ these are additive/corrective, not further baseline reconciliation:
    decision rather than assumed.
 4. **Appendix B (first-week operating plan) restored** (§7), rebuilt against the reconciled
    baseline, not rev-1's stale one.
+
+### 0d. Additive amendment — new must-have M13 (PK-directed, 2026-08-03)
+
+PK directed one further amendment to the accepted baseline — purely additive, not a reconciliation
+of anything already accepted:
+
+**New must-have M13 — Governed Template Build Pack v1.**
+
+**Outcome:** Asset Gap can produce a versioned Template Blueprint JSON describing the intended
+provider-neutral template contract. A human transposes that design into Creatomate. ICE then
+captures a versioned Creatomate implementation JSON, compares expected versus actual structure,
+persists the governed registry/constraint records, runs calibration and probes, obtains PK visual
+approval, and graduates the template.
+
+**Finite acceptance** (carried into the §2.2 table below):
+- versioned Blueprint JSON schema;
+- versioned Creatomate Capture JSON schema;
+- artifact IDs, hashes, and registry linkage;
+- Asset Gap attachment/display;
+- automated blueprint-versus-capture structural diff;
+- mismatches block graduation;
+- one real end-to-end template proof.
+
+**Explicitly excluded** (carried into the §2.4 hard exclusions below): automatic Creatomate
+template creation, automatic promotion, bidirectional synchronization, and any removal of the PK
+visual gate.
+
+**Sequencing** (carried into §3 below): after the reusable WS-5 envelope foundation, before the
+first multi-scene template (M6). M8's dashboard implementation must account for displaying the
+Build Pack.
+
+**Scope guardrails (PK-directed):** docs-only amendment. Not added to the current WS-5/NDIS repair
+scope. No implementation begins before CGU Final ratification — the same standing rule that already
+governs the rest of this document (§8).
 
 ---
 
@@ -210,6 +245,7 @@ Every row states a bounded, checkable acceptance test. Final is declared when ev
 | M10 | Docs-only provider-neutral render contract (Creatomate-scoped) | One aspirational sketch exists (`render-provider-creatomate-capability-audit.md` §7); zero abstraction in code | A design doc exists, extracted from ≥2 real format implementations (stat + kinetic, once both close), that a future provider-abstraction lane could implement against without re-deriving this programme's learnings (TPR-1, the silent-template trap, the audio-presence-vs-loudness gap) | **OPEN**, but cheap — docs-only, no code |
 | M11 | Governed legacy-path migration & retirement | **NEW, PK-directed (§0b).** No repo-wide accounting exists of which scheduled Creatomate format×client×platform occurrences actually execute the governed builder vs a legacy code-composed route. Known live instances of the trap this targets: PP YouTube's 2-of-44 real governed-occurrence rate (§1); the historical `video_short_stat_voice` naming trap ("reads governed, routes legacy" — `B1_VIDEO_GOVERNED_FORMAT` string-matches the base format key only, so voice-suffixed variants silently miss the governed fork); legacy `video_short_kinetic`/`_kinetic_voice` composing in code with no `select_template` call at all pre-D4 | **Per-cell, binary, no percentage gate:** for every scheduled Creatomate format×client×platform cell, either (a) it demonstrably routes through the governed selector + asset resolver + metadata + QA + evidence path for its real scheduled occurrences (not just readiness-queue eligibility), or (b) the legacy route is explicitly retired (code removed/disabled) or explicitly PK-deferred with a recorded reason. Zero cells remain on a silent, undocumented legacy route | **OPEN** — starts with an inventory (cheap, T1); closure lanes follow per finding |
 | M12 | Music depth, rotation & monotony avoidance | Basic capability MET (M3, inherited, §2.1) — but exactly 1 track means every governed video plays identical music indefinitely; PK has previously rejected a fully-silent video and accepted a single-track 70%-bed render once, but a *week* of the same bed on every video is a real, untested aesthetic question, not yet asked | A PK-set minimum selectable-library-depth target (§5 open decision) is met, with rotation producing a measurably non-uniform aural experience across a sample week of renders (reuse the existing B-roll rotation-uniformity proof method — seed distribution across the eligible pool) | **OPEN** — blocked on the PK depth-number decision (§5) before any sourcing work is scoped |
+| M13 | Governed Template Build Pack v1 | **NEW, PK-directed additive amendment (§0d, 2026-08-03).** No Blueprint/Capture artifact pipeline exists today; Asset Gap has no mechanism to declare an intended provider-neutral template contract, and no automated structural diff exists between an intended design and what a human actually built in Creatomate | Versioned Blueprint JSON schema + versioned Creatomate Capture JSON schema both exist; every Blueprint/Capture pair carries artifact IDs, hashes, and registry linkage; Asset Gap can attach/display a Blueprint; an automated blueprint-vs-capture structural diff runs and any mismatch blocks graduation; one real end-to-end template proves the full loop (Blueprint → human transposition → Capture → diff clean → registry/constraint persistence → calibration/probes → PK visual approval → graduation) | **OPEN** — new, unscoped |
 
 ### 2.3 Optional / post-Final — explicitly deferred, does not gate Final
 
@@ -238,6 +274,17 @@ Every row states a bounded, checkable acceptance test. Final is declared when ev
   reconsideration in a Final scoping pass.
 - Browser-automated Creatomate template creation — no template-create API exists; this is a
   standing out-of-scope rule, not a backlog item.
+- **M13 Build Pack — no automatic Creatomate template creation** (reinforces the rule directly
+  above, scoped explicitly to the Build Pack): a human always transposes the Blueprint into
+  Creatomate; the Capture step only ever reads back what a human built.
+- **M13 Build Pack — no automatic promotion or graduation.** The Build Pack automates the
+  blueprint-vs-capture structural diff only; PK visual approval remains the only act that graduates
+  a template, unchanged.
+- **M13 Build Pack — no bidirectional synchronization.** Capture is one-directional, read-only
+  observation of the live Creatomate implementation; nothing is ever written back into Creatomate
+  from the Blueprint or the registry.
+- **M13 Build Pack — the PK visual gate is never removed or bypassed.** A clean structural diff is
+  a precondition for graduation, never a substitute for PK's visual approval.
 
 ---
 
@@ -265,16 +312,22 @@ Phase 2 — Close known content gaps
        proven fenced-first sourcing pattern (same shape as the B-roll batch-2 lane)
 
 Phase 3 — New capability
+  M13  Governed Template Build Pack v1  ← needs: the reusable WS-5 envelope foundation complete
+                                            (inherited infra, in flight elsewhere); PK-directed to
+                                            sequence BEFORE M6 — the first multi-scene template
+                                            should graduate through the Build Pack, not around it
   M6   Multi-scene production-proven format ← needs: Phase 0 closed (a 2nd video family gives multi-scene
                                                 something real to compose from) + the 2-min render-ceiling
-                                                budget question resolved
+                                                budget question resolved + M13 landed (§0d sequencing)
   M10  Provider-neutral contract (design)  ← needs: Phase 0 closed (needs ≥2 real format implementations
                                                 to extract a real shared shape, not 1); benefits from M11a's
                                                 inventory to know the real (not nominal) format count
 
 Phase 4 — Operational surfacing
   M8   Dashboard Asset Gap Register     ← needs: nothing further — WS-3's backlog is already live;
-                                            this can start immediately, in parallel with everything above
+                                            this can start immediately, in parallel with everything above;
+                                            once M13 lands, the same panel must also display M13's
+                                            Build Pack status per template (§0d)
   M9   Day-1 package + replay proof     ← needs: nothing structurally if replayed on an isolated fixture
                                             brand (can start immediately, parallel to everything above);
                                             becomes dependent on M2 completing first ONLY if PK elects to
@@ -305,9 +358,11 @@ lane duration varies from same-day to multi-day depending on review-chain findin
 | M9 Day-1 package + replay proof | 1 spec-authoring lane + 1 replay lane | T1 (spec), T2/T3 (replay) | No longer a pure decision gate (§0b) — a literal 5th client is off the table, so this is now bounded, buildable work |
 | M11 Governed legacy-path migration & retirement | 1 inventory lane (M11a) + N closure lanes (M11b, count TBD; at minimum 2 known naming-trap variants: `video_short_stat_voice`, `video_short_kinetic_voice`) | T1 (inventory), T2/T3 per closure | Inventory is cheap and should run first regardless of priority — the only way to bound this workstream's real size |
 | M12 Music depth/rotation | 0 lanes until §5's depth number is set, then 1 sourcing batch + 1 rotation-proof lane | T2 (sourcing), T1 (proof, reuses B-roll's uniformity method) | Blocked on a PK number, not on engineering capacity |
+| M13 Governed Template Build Pack v1 | Not yet scoped | T2 (schema design + structural-diff automation), T3 (registry/constraint-record persistence + graduation-gate authority) | New PK-directed additive amendment (§0d, 2026-08-03); sequenced after the WS-5 envelope foundation, before M6 (first multi-scene template); lane count TBD pending a scoping pass |
 
 **Total estimated new-work lanes (excluding Phase 0, which is already authorized/in-flight, and
-excluding M11b/M12 pending their inventory/PK-number prerequisites): ~15–19 lanes**, most T2,
+excluding M11b/M12 pending their inventory/PK-number prerequisites, and excluding M13 pending its
+own lane scoping, §0d): ~15–19 lanes**, most T2,
 three T3 (M6's template/worker path, possibly M4's `platform_scope` decision, and any M11b closure
 that touches live selection behavior).
 
