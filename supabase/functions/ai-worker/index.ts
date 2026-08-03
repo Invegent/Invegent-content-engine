@@ -2,6 +2,21 @@ import { Hono } from "jsr:@hono/hono";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { resolveCreativeContract } from "./creative_contract.ts";
 import { buildContractStamp } from "./contract_stamp.ts";
+import {
+  buildEnvelopeBoundReminder,
+  buildFallbackStatEnvelope,
+  buildStatBoundsQa,
+  decideStatBoundsNextStep,
+  describeFieldLimit,
+  isStatBoundsFailClosed,
+  loadStatTemplateEnvelope,
+  snapshotStatFields,
+  STAT_BOUNDS_DEAD_REASON,
+  validateStatScriptAgainstEnvelope,
+  type StatBoundsAttempt,
+  type StatBoundsQa,
+  type StatEnvelope,
+} from "./stat_envelope.ts";
 
 const app = new Hono();
 
@@ -11,7 +26,52 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
 };
 
-const VERSION = "ai-worker-v2.25.0";
+const VERSION = "ai-worker-v2.26.0";
+// v2.26.0 (2026-08-03) — WS-5 P1 STAT PRODUCTION-ENVELOPE ENFORCEMENT (PK ruling D-1, Option B).
+//   marker: ai-worker-ws5-stat-envelope-enforcement (grep-able in the deployed bundle).
+//   Lane: ws5-production-envelope-enforcement-foundation (Gate-1 approved 2026-08-03).
+//   WHAT: the video_short_stat / video_short_stat_voice generator branch now VALIDATES its
+//   parsed output against the PERSISTED per-template constraints instead of silently clamping.
+//   NEW module stat_envelope.ts (pure core + thin loader, house pattern):
+//     (1) loadStatTemplateEnvelope() resolves the would-be render-time winner by MIRRORING
+//         video-worker's select_template call exactly (p_platform null, p_format
+//         'video_short_stat', p_variant_intent null, p_seed=post_draft_id; select_template is
+//         STABLE/read-only — verified in migrations 20260703035154 + 20260719010700), then reads
+//         the winner's StatValue/StatLabel/ContextLine/CtaText rows from
+//         c.creative_provider_template_field (constraints shape tmr_field_constraints_v1:
+//         text_limits limit-TRIPLEs; basis='to_be_calibrated' → absent; unknown keys ignored;
+//         max_words honored if ever present). ANY miss (selector fail-closed / RPC error /
+//         unparseable or missing constraints / absent element rows / throw) → FALLBACK envelope
+//         from the vendored render-gate char bounds (video_stat_bounds.ts: 12/48/160/90) with a
+//         machine-readable fallback_reason. The fallback is still VALIDATION bounds — never a
+//         clamp. The loader NEVER throws and never blocks the job loop.
+//     (2) The stat system prompt now states the ACTUAL envelope limits (chars + lines/words when
+//         persisted) instead of the old hardcoded 12/35/75/65.
+//     (3) After parse: validate all 4 fields (same trimmed UTF-16 measurement as the render
+//         gate). On violation: exactly ONE bounded re-prompt (same system prompt + an appended
+//         bounds-reminder naming each violated field, actual vs limit) → re-parse → re-validate.
+//         A second violation FAILS THE DRAFT CLOSED: set_draft_video_script is NOT called; the
+//         draft is marked dead via the house pattern (pipeline-fixer render_attempts_exhausted
+//         idiom: dead_reason COLUMN + terminal medium status + updated_at, approval untouched) —
+//         dead_reason='stat_bounds_violation_after_bounded_reprompt', video_status='failed' (the
+//         claim RPC public.claim_pending_video_drafts only claims 'pending', so a dead draft is
+//         unreachable by the render path). The job itself still succeeds (mirrors every other
+//         non-fatal content failure); the per-job result entry carries stat_bounds_outcome.
+//     (4) The four v2.22.0 clampField() calls are REMOVED from the stat branch (D-1: NO silent
+//         truncation, NO legacy clamp fallback, NO persistence of out-of-envelope content).
+//         clampField itself stays exported (dialogue path + tests still use it).
+//     (5) QA EVIDENCE (D-1 mandate): BOTH attempts (fields as generated, violations, envelope
+//         source + limits, timestamps) persist additively as stat_bounds_qa — on success inside
+//         video_script (rides the set_draft_video_script jsonb `||` merge); on fail-closed into
+//         draft_format via READ-MERGE-WRITE (v2.24.1 clobber lesson: a plain .update() REPLACES
+//         draft_format), deliberately NOT under video_script so a dead draft never looks
+//         renderable.
+//   Re-prompt infra/parse failure after a first-attempt violation → return null (no
+//   video_script written — the existing non-fatal generation-failure behaviour); the violating
+//   attempt-1 content is never persisted.
+//   STRICTLY OUT OF SCOPE (unchanged): select_template itself, every publisher, routing,
+//   capability-gate behaviour, the kinetic/avatar/dialogue generator branches, the schedule
+//   pin, all DB schema (zero DDL — reads existing tables/RPCs only), any deploy.
 // v2.25.0 (2026-07-29) — S9 CAPABILITY ENFORCEMENT, Objective 1 / LAYER 2 (resolver chokepoint).
 //   marker: ai-worker-s9-capability-enforcement (grep-able in the deployed bundle).
 //   Brief: docs/briefs/s9-resolver-enforcement-build-brief-v1.md
@@ -714,6 +774,9 @@ function trimSeedPayload(raw: any, jobType: string): any {
   return lean;
 }
 
+// WS-5 P1 — grep-able marker string for the deployed bundle (bundles-from-CWD guard).
+export const WS5_STAT_ENVELOPE_MARKER = 'ai-worker-ws5-stat-envelope-enforcement';
+
 async function generateVideoScript(opts: {
   anthropicKey: string;
   formatKey: string;
@@ -721,6 +784,10 @@ async function generateVideoScript(opts: {
   postBody: string;
   clientName: string;
   vertical: string;
+  // WS-5 P1 (D-1): the persisted per-template envelope for the stat formats, loaded by the
+  // caller BEFORE generation. Optional so every non-stat call site is byte-compatible; the
+  // stat branch falls back to the vendored char bounds when absent (validation, never a clamp).
+  statEnvelope?: StatEnvelope;
 }): Promise<object | null> {
   const { anthropicKey, formatKey, postTitle, postBody, clientName, vertical } = opts;
 
@@ -746,31 +813,70 @@ async function generateVideoScript(opts: {
   }
 
   if (formatKey === 'video_short_stat' || formatKey === 'video_short_stat_voice') {
-    const systemPrompt = `You are extracting data for an animated social media video for ${clientName}.\n\nIdentify the single most compelling numeric stat and build a 20-second video spec.\n\nRules:\n- stat_value: the number formatted for screen, max 12 chars (e.g. \"$62.17/hr\", \"4.35%\", \"+3.7%\"). Include unit/symbol.\n- stat_label: what the number IS, max 35 chars.\n- context_line: one sentence making the stat meaningful, max 75 chars.\n- cta_text: one engagement question, max 65 chars.\n- narration_text: spoken 20-second script (~45-55 words).\n\nReturn ONLY valid JSON:\n{\n  \"format\": \"stat_reveal\",\n  \"stat_value\": string,\n  \"stat_label\": string,\n  \"context_line\": string,\n  \"cta_text\": string,\n  \"total_duration_s\": 20,\n  \"narration_text\": string\n}`;
+    // WS-5 P1 (v2.26.0, PK ruling D-1 Option B): the prompt states the ACTUAL envelope limits,
+    // the parsed output is VALIDATED against them (never clamped), one bounded re-prompt is
+    // allowed, and a second violation returns the fail-closed sentinel (the caller marks the
+    // draft dead). The v2.22.0 clampField() calls are REMOVED from this branch — no silent
+    // truncation, no persistence of out-of-envelope content.
+    const envelope = opts.statEnvelope ?? buildFallbackStatEnvelope('envelope_not_provided');
+    const lim = envelope.limits;
+    const systemPrompt = `You are extracting data for an animated social media video for ${clientName}.\n\nIdentify the single most compelling numeric stat and build a 20-second video spec.\n\nRules:\n- stat_value: the number formatted for screen, ${describeFieldLimit(lim.stat_value)} (e.g. \"$62.17/hr\", \"4.35%\", \"+3.7%\"). Include unit/symbol.\n- stat_label: what the number IS, ${describeFieldLimit(lim.stat_label)}.\n- context_line: one sentence making the stat meaningful, ${describeFieldLimit(lim.context_line)}.\n- cta_text: one engagement question, ${describeFieldLimit(lim.cta_text)}.\n- narration_text: spoken 20-second script (~45-55 words).\n\nReturn ONLY valid JSON:\n{\n  \"format\": \"stat_reveal\",\n  \"stat_value\": string,\n  \"stat_label\": string,\n  \"context_line\": string,\n  \"cta_text\": string,\n  \"total_duration_s\": 20,\n  \"narration_text\": string\n}`;
     const userPrompt = `Post title: ${postTitle || '(none)'}\n\nPost body:\n${postBody.slice(0, 600)}\n\nExtract the video stat spec.`;
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, temperature: 0.1, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
-    });
-    if (!resp.ok) { console.error('[ai-worker] video_script_stat http', resp.status); return null; }
-    const data = await resp.json();
-    const raw = data?.content?.[0]?.text ?? '';
-    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
-    try {
-      const parsed = JSON.parse(cleaned);
-      if (!parsed?.stat_value) return null;
-      // v2.22.0 — deterministic field clamp to the generator's own stated prompt limits (all ≤
-      // the downstream video-worker contract maxima) so an over-long model field (observed
-      // cta_text=133) cannot die fail-loud at the render contract gate. No-op when compliant;
-      // narration_text is left untouched.
-      parsed.stat_value = clampField(parsed.stat_value, 12);
-      parsed.stat_label = clampField(parsed.stat_label, 35);
-      parsed.context_line = clampField(parsed.context_line, 75);
-      parsed.cta_text = clampField(parsed.cta_text, 65);
-      parsed.total_duration_s = 20;
-      return parsed;
-    } catch { console.error('[ai-worker] video_script_stat parse failed'); return null; }
+
+    // One model call: fetch → parse → minimal shape check. Same request shape/model/params as
+    // v2.25.0; an http/parse/shape miss returns null (the existing non-fatal behaviour).
+    const callStatModel = async (userText: string): Promise<any | null> => {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, temperature: 0.1, system: systemPrompt, messages: [{ role: 'user', content: userText }] }),
+      });
+      if (!resp.ok) { console.error('[ai-worker] video_script_stat http', resp.status); return null; }
+      const data = await resp.json();
+      const raw = data?.content?.[0]?.text ?? '';
+      const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+      try {
+        const parsed = JSON.parse(cleaned);
+        if (!parsed?.stat_value) return null;
+        return parsed;
+      } catch { console.error('[ai-worker] video_script_stat parse failed'); return null; }
+    };
+
+    const attempts: StatBoundsAttempt[] = [];
+
+    // Attempt 1.
+    const first = await callStatModel(userPrompt);
+    if (!first) return null;   // infra/parse miss — unchanged legacy non-fatal behaviour
+    const v1 = validateStatScriptAgainstEnvelope(first, envelope);
+    attempts.push({ attempt: 1, fields: snapshotStatFields(first), violations: v1, at: nowIso() });
+    if (decideStatBoundsNextStep(1, v1.length) === 'accept') {
+      first.total_duration_s = 20;
+      first.stat_bounds_qa = buildStatBoundsQa(envelope, attempts, 'accepted_first_attempt');
+      return first;
+    }
+
+    // Exactly ONE bounded re-prompt: same system prompt, user prompt + appended bounds
+    // reminder naming each violated field with actual vs limit (D-1).
+    console.log(`[ai-worker] ${WS5_STAT_ENVELOPE_MARKER} attempt 1 violated bounds (${envelope.source}) — one bounded re-prompt:`, JSON.stringify(v1));
+    const second = await callStatModel(`${userPrompt}\n\n${buildEnvelopeBoundReminder(v1)}`);
+    if (!second) {
+      // Re-prompt infra/parse miss: attempt-1 content is KNOWN out-of-envelope so it is never
+      // persisted (D-1); mirror the existing non-fatal generation-failure handling (no
+      // video_script written) rather than killing the draft on an infra blip.
+      console.error(`[ai-worker] ${WS5_STAT_ENVELOPE_MARKER} re-prompt call failed after attempt-1 violations — no video_script written`);
+      return null;
+    }
+    const v2 = validateStatScriptAgainstEnvelope(second, envelope);
+    attempts.push({ attempt: 2, fields: snapshotStatFields(second), violations: v2, at: nowIso() });
+    if (decideStatBoundsNextStep(2, v2.length) === 'accept') {
+      second.total_duration_s = 20;
+      second.stat_bounds_qa = buildStatBoundsQa(envelope, attempts, 'accepted_after_reprompt');
+      return second;
+    }
+
+    // Second violation → FAIL CLOSED (D-1). The sentinel carries BOTH attempts as QA
+    // evidence; the caller marks the draft dead and never calls set_draft_video_script.
+    return { stat_bounds_fail_closed: true, stat_bounds_qa: buildStatBoundsQa(envelope, attempts, 'fail_closed') };
   }
 
   if (formatKey === 'video_short_avatar') {
@@ -797,6 +903,50 @@ async function generateVideoScript(opts: {
   }
 
   return null;
+}
+
+// WS-5 P1 (v2.26.0, D-1) — the fail-closed dead-draft write for a stat draft whose generated
+// content violated the envelope on BOTH attempts. Mirrors the EXISTING house dead-draft
+// pattern (pipeline-fixer's render_attempts_exhausted idiom on m.post_draft: dead_reason
+// COLUMN + terminal medium-status + updated_at; approval_status untouched):
+//   video_status = 'failed'  → public.claim_pending_video_drafts only claims 'pending', so the
+//                              draft is unreachable by the render path;
+//   dead_reason  = 'stat_bounds_violation_after_bounded_reprompt' (the D-1 named reason).
+// QA evidence goes into draft_format ADDITIVELY via READ-MERGE-WRITE (the v2.24.1 clobber
+// lesson: a plain .update() REPLACES the whole draft_format column) — deliberately NOT under
+// video_script, so a dead draft never looks like it has a renderable script. If the read
+// misses, the caller-supplied draftMeta (the value baseUpdate just wrote) is the merge base.
+// BEST-EFFORT: never throws into the job loop (mirrors persistDialogueDraft's posture).
+async function markStatDraftDeadOnBounds(
+  supabase: ReturnType<typeof getServiceClient>,
+  postDraftId: string,
+  draftMetaFallback: Record<string, unknown> | null | undefined,
+  qa: StatBoundsQa,
+): Promise<boolean> {
+  try {
+    let current: Record<string, unknown> | null = null;
+    try {
+      const { data, error } = await supabase.schema('m').from('post_draft')
+        .select('draft_format').eq('post_draft_id', postDraftId).maybeSingle();
+      if (error) console.error('[ai-worker] markStatDraftDeadOnBounds read error:', error.message);
+      const df = (data as any)?.draft_format;
+      if (df && typeof df === 'object' && !Array.isArray(df)) current = df;
+    } catch (re: any) { console.error('[ai-worker] markStatDraftDeadOnBounds read threw:', re?.message); }
+    const base = current
+      ?? ((draftMetaFallback && typeof draftMetaFallback === 'object') ? draftMetaFallback : {});
+    const { error: updErr } = await supabase.schema('m').from('post_draft').update({
+      draft_format: { ...base, stat_bounds_qa: qa },
+      video_status: 'failed',
+      dead_reason: STAT_BOUNDS_DEAD_REASON,
+      updated_at: nowIso(),
+    }).eq('post_draft_id', postDraftId);
+    if (updErr) { console.error('[ai-worker] markStatDraftDeadOnBounds update error:', updErr.message); return false; }
+    console.log(`[ai-worker] ${WS5_STAT_ENVELOPE_MARKER} draft ${postDraftId} FAILED CLOSED dead_reason=${STAT_BOUNDS_DEAD_REASON} (envelope=${qa.envelope.source})`);
+    return true;
+  } catch (e: any) {
+    console.error('[ai-worker] markStatDraftDeadOnBounds threw:', e?.message);
+    return false;
+  }
 }
 
 // v2.15.0 — F-SERIES-AVATAR-DIFFERENTIATION Stage 1 (shadow, observability-only).
@@ -1930,6 +2080,10 @@ app.post('*', async (c) => {
 
       let videoScriptGenerated = false;
       let dialogueHandled = false;
+      // WS-5 P1 (v2.26.0): per-job stat-bounds outcome for the results entry
+      // ('accepted_first_attempt' | 'accepted_after_reprompt' | 'fail_closed' | null for
+      // non-stat formats / generation misses).
+      let statBoundsOutcome: string | null = null;
 
       // cc-0084 Slice 2 — dialogue avatar path. Fires ONLY when the slot requested
       // video_short_avatar_dialogue (dialogueMode). generateDialogueScript emits the { speaker_role,
@@ -1958,8 +2112,23 @@ app.post('*', async (c) => {
 
       if (!dialogueHandled && VIDEO_FORMATS.has(decidedFormat) && anthropicKey) {
         try {
-          const videoScript = await generateVideoScript({ anthropicKey, formatKey: decidedFormat, postTitle: result.title, postBody: result.body, clientName, vertical });
-          if (videoScript) {
+          // WS-5 P1 (v2.26.0, D-1): for the stat formats ONLY, load the persisted per-template
+          // envelope BEFORE generation. getClientSlug is the existing cached S9 resolver; a null
+          // slug (or any loader miss) yields the fallback char-bounds envelope — the loader never
+          // throws. Every other format passes statEnvelope=undefined (byte-compatible).
+          let statEnvelope: StatEnvelope | undefined;
+          if (decidedFormat === 'video_short_stat' || decidedFormat === 'video_short_stat_voice') {
+            statEnvelope = await loadStatTemplateEnvelope(supabase, await getClientSlug(supabase, job.client_id), job.post_draft_id);
+          }
+          const videoScript = await generateVideoScript({ anthropicKey, formatKey: decidedFormat, postTitle: result.title, postBody: result.body, clientName, vertical, statEnvelope });
+          if (isStatBoundsFailClosed(videoScript)) {
+            // Second envelope violation → FAIL CLOSED (D-1): NO set_draft_video_script, draft
+            // marked dead with the named dead_reason, BOTH attempts preserved in draft_format.
+            // The job itself still completes (mirrors other non-fatal content failures).
+            statBoundsOutcome = 'fail_closed';
+            await markStatDraftDeadOnBounds(supabase, job.post_draft_id, draftMeta, videoScript.stat_bounds_qa);
+          } else if (videoScript) {
+            statBoundsOutcome = (videoScript as any)?.stat_bounds_qa?.outcome ?? null;
             // v2.15.0 — F-SERIES-AVATAR-DIFFERENTIATION Stage 1 (shadow, observability-only):
             // attach a SUGGESTED presenter role under video_script.avatar_role_suggestion.
             // heygen-worker does NOT read this key. suggestAvatarRole never throws; the extra
@@ -1987,7 +2156,7 @@ app.post('*', async (c) => {
       const { error: successJobErr } = await supabase.schema('m').from('ai_job').update({ status: 'succeeded', output_payload: { title: result.title, body: result.body, meta: draftMeta }, error: null, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
       if (successJobErr) throw new Error(`success_ai_job_update_failed:${successJobErr.message}`);
 
-      results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'succeeded', provider: fallbackUsed ? 'openai_fallback' : primaryProvider, model: fallbackUsed ? 'gpt-4o' : model, format_decided: decidedFormat, format_reason: advisorReason, compliance_rules_injected: complianceRuleCount, video_script_generated: videoScriptGenerated, input_tokens: result.inputTokens, output_tokens: result.outputTokens });
+      results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'succeeded', provider: fallbackUsed ? 'openai_fallback' : primaryProvider, model: fallbackUsed ? 'gpt-4o' : model, format_decided: decidedFormat, format_reason: advisorReason, compliance_rules_injected: complianceRuleCount, video_script_generated: videoScriptGenerated, stat_bounds_outcome: statBoundsOutcome, input_tokens: result.inputTokens, output_tokens: result.outputTokens });
 
     } catch (e: any) {
       const msg = (e?.message ?? String(e)).slice(0, 4000);
