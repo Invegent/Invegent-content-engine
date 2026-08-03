@@ -1,0 +1,1648 @@
+diff --git a/supabase/functions/ai-worker/index.ts b/supabase/functions/ai-worker/index.ts
+index 564b2a2..58f620f 100644
+--- a/supabase/functions/ai-worker/index.ts
++++ b/supabase/functions/ai-worker/index.ts
+@@ -2,6 +2,21 @@ import { Hono } from "jsr:@hono/hono";
+ import { createClient } from "jsr:@supabase/supabase-js@2";
+ import { resolveCreativeContract } from "./creative_contract.ts";
+ import { buildContractStamp } from "./contract_stamp.ts";
++import {
++  buildEnvelopeBoundReminder,
++  buildFallbackStatEnvelope,
++  buildStatBoundsQa,
++  decideStatBoundsNextStep,
++  describeFieldLimit,
++  isStatBoundsFailClosed,
++  loadStatTemplateEnvelope,
++  snapshotStatFields,
++  STAT_BOUNDS_DEAD_REASON,
++  validateStatScriptAgainstEnvelope,
++  type StatBoundsAttempt,
++  type StatBoundsQa,
++  type StatEnvelope,
++} from "./stat_envelope.ts";
+ 
+ const app = new Hono();
+ 
+@@ -11,7 +26,52 @@ const corsHeaders = {
+   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+ };
+ 
+-const VERSION = "ai-worker-v2.25.0";
++const VERSION = "ai-worker-v2.26.0";
++// v2.26.0 (2026-08-03) — WS-5 P1 STAT PRODUCTION-ENVELOPE ENFORCEMENT (PK ruling D-1, Option B).
++//   marker: ai-worker-ws5-stat-envelope-enforcement (grep-able in the deployed bundle).
++//   Lane: ws5-production-envelope-enforcement-foundation (Gate-1 approved 2026-08-03).
++//   WHAT: the video_short_stat / video_short_stat_voice generator branch now VALIDATES its
++//   parsed output against the PERSISTED per-template constraints instead of silently clamping.
++//   NEW module stat_envelope.ts (pure core + thin loader, house pattern):
++//     (1) loadStatTemplateEnvelope() resolves the would-be render-time winner by MIRRORING
++//         video-worker's select_template call exactly (p_platform null, p_format
++//         'video_short_stat', p_variant_intent null, p_seed=post_draft_id; select_template is
++//         STABLE/read-only — verified in migrations 20260703035154 + 20260719010700), then reads
++//         the winner's StatValue/StatLabel/ContextLine/CtaText rows from
++//         c.creative_provider_template_field (constraints shape tmr_field_constraints_v1:
++//         text_limits limit-TRIPLEs; basis='to_be_calibrated' → absent; unknown keys ignored;
++//         max_words honored if ever present). ANY miss (selector fail-closed / RPC error /
++//         unparseable or missing constraints / absent element rows / throw) → FALLBACK envelope
++//         from the vendored render-gate char bounds (video_stat_bounds.ts: 12/48/160/90) with a
++//         machine-readable fallback_reason. The fallback is still VALIDATION bounds — never a
++//         clamp. The loader NEVER throws and never blocks the job loop.
++//     (2) The stat system prompt now states the ACTUAL envelope limits (chars + lines/words when
++//         persisted) instead of the old hardcoded 12/35/75/65.
++//     (3) After parse: validate all 4 fields (same trimmed UTF-16 measurement as the render
++//         gate). On violation: exactly ONE bounded re-prompt (same system prompt + an appended
++//         bounds-reminder naming each violated field, actual vs limit) → re-parse → re-validate.
++//         A second violation FAILS THE DRAFT CLOSED: set_draft_video_script is NOT called; the
++//         draft is marked dead via the house pattern (pipeline-fixer render_attempts_exhausted
++//         idiom: dead_reason COLUMN + terminal medium status + updated_at, approval untouched) —
++//         dead_reason='stat_bounds_violation_after_bounded_reprompt', video_status='failed' (the
++//         claim RPC public.claim_pending_video_drafts only claims 'pending', so a dead draft is
++//         unreachable by the render path). The job itself still succeeds (mirrors every other
++//         non-fatal content failure); the per-job result entry carries stat_bounds_outcome.
++//     (4) The four v2.22.0 clampField() calls are REMOVED from the stat branch (D-1: NO silent
++//         truncation, NO legacy clamp fallback, NO persistence of out-of-envelope content).
++//         clampField itself stays exported (dialogue path + tests still use it).
++//     (5) QA EVIDENCE (D-1 mandate): BOTH attempts (fields as generated, violations, envelope
++//         source + limits, timestamps) persist additively as stat_bounds_qa — on success inside
++//         video_script (rides the set_draft_video_script jsonb `||` merge); on fail-closed into
++//         draft_format via READ-MERGE-WRITE (v2.24.1 clobber lesson: a plain .update() REPLACES
++//         draft_format), deliberately NOT under video_script so a dead draft never looks
++//         renderable.
++//   Re-prompt infra/parse failure after a first-attempt violation → return null (no
++//   video_script written — the existing non-fatal generation-failure behaviour); the violating
++//   attempt-1 content is never persisted.
++//   STRICTLY OUT OF SCOPE (unchanged): select_template itself, every publisher, routing,
++//   capability-gate behaviour, the kinetic/avatar/dialogue generator branches, the schedule
++//   pin, all DB schema (zero DDL — reads existing tables/RPCs only), any deploy.
+ // v2.25.0 (2026-07-29) — S9 CAPABILITY ENFORCEMENT, Objective 1 / LAYER 2 (resolver chokepoint).
+ //   marker: ai-worker-s9-capability-enforcement (grep-able in the deployed bundle).
+ //   Brief: docs/briefs/s9-resolver-enforcement-build-brief-v1.md
+@@ -714,6 +774,9 @@ function trimSeedPayload(raw: any, jobType: string): any {
+   return lean;
+ }
+ 
++// WS-5 P1 — grep-able marker string for the deployed bundle (bundles-from-CWD guard).
++export const WS5_STAT_ENVELOPE_MARKER = 'ai-worker-ws5-stat-envelope-enforcement';
++
+ async function generateVideoScript(opts: {
+   anthropicKey: string;
+   formatKey: string;
+@@ -721,6 +784,10 @@ async function generateVideoScript(opts: {
+   postBody: string;
+   clientName: string;
+   vertical: string;
++  // WS-5 P1 (D-1): the persisted per-template envelope for the stat formats, loaded by the
++  // caller BEFORE generation. Optional so every non-stat call site is byte-compatible; the
++  // stat branch falls back to the vendored char bounds when absent (validation, never a clamp).
++  statEnvelope?: StatEnvelope;
+ }): Promise<object | null> {
+   const { anthropicKey, formatKey, postTitle, postBody, clientName, vertical } = opts;
+ 
+@@ -746,31 +813,70 @@ async function generateVideoScript(opts: {
+   }
+ 
+   if (formatKey === 'video_short_stat' || formatKey === 'video_short_stat_voice') {
+-    const systemPrompt = `You are extracting data for an animated social media video for ${clientName}.\n\nIdentify the single most compelling numeric stat and build a 20-second video spec.\n\nRules:\n- stat_value: the number formatted for screen, max 12 chars (e.g. \"$62.17/hr\", \"4.35%\", \"+3.7%\"). Include unit/symbol.\n- stat_label: what the number IS, max 35 chars.\n- context_line: one sentence making the stat meaningful, max 75 chars.\n- cta_text: one engagement question, max 65 chars.\n- narration_text: spoken 20-second script (~45-55 words).\n\nReturn ONLY valid JSON:\n{\n  \"format\": \"stat_reveal\",\n  \"stat_value\": string,\n  \"stat_label\": string,\n  \"context_line\": string,\n  \"cta_text\": string,\n  \"total_duration_s\": 20,\n  \"narration_text\": string\n}`;
++    // WS-5 P1 (v2.26.0, PK ruling D-1 Option B): the prompt states the ACTUAL envelope limits,
++    // the parsed output is VALIDATED against them (never clamped), one bounded re-prompt is
++    // allowed, and a second violation returns the fail-closed sentinel (the caller marks the
++    // draft dead). The v2.22.0 clampField() calls are REMOVED from this branch — no silent
++    // truncation, no persistence of out-of-envelope content.
++    const envelope = opts.statEnvelope ?? buildFallbackStatEnvelope('envelope_not_provided');
++    const lim = envelope.limits;
++    const systemPrompt = `You are extracting data for an animated social media video for ${clientName}.\n\nIdentify the single most compelling numeric stat and build a 20-second video spec.\n\nRules:\n- stat_value: the number formatted for screen, ${describeFieldLimit(lim.stat_value)} (e.g. \"$62.17/hr\", \"4.35%\", \"+3.7%\"). Include unit/symbol.\n- stat_label: what the number IS, ${describeFieldLimit(lim.stat_label)}.\n- context_line: one sentence making the stat meaningful, ${describeFieldLimit(lim.context_line)}.\n- cta_text: one engagement question, ${describeFieldLimit(lim.cta_text)}.\n- narration_text: spoken 20-second script (~45-55 words).\n\nReturn ONLY valid JSON:\n{\n  \"format\": \"stat_reveal\",\n  \"stat_value\": string,\n  \"stat_label\": string,\n  \"context_line\": string,\n  \"cta_text\": string,\n  \"total_duration_s\": 20,\n  \"narration_text\": string\n}`;
+     const userPrompt = `Post title: ${postTitle || '(none)'}\n\nPost body:\n${postBody.slice(0, 600)}\n\nExtract the video stat spec.`;
+-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+-      method: 'POST',
+-      headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
+-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, temperature: 0.1, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
+-    });
+-    if (!resp.ok) { console.error('[ai-worker] video_script_stat http', resp.status); return null; }
+-    const data = await resp.json();
+-    const raw = data?.content?.[0]?.text ?? '';
+-    const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+-    try {
+-      const parsed = JSON.parse(cleaned);
+-      if (!parsed?.stat_value) return null;
+-      // v2.22.0 — deterministic field clamp to the generator's own stated prompt limits (all ≤
+-      // the downstream video-worker contract maxima) so an over-long model field (observed
+-      // cta_text=133) cannot die fail-loud at the render contract gate. No-op when compliant;
+-      // narration_text is left untouched.
+-      parsed.stat_value = clampField(parsed.stat_value, 12);
+-      parsed.stat_label = clampField(parsed.stat_label, 35);
+-      parsed.context_line = clampField(parsed.context_line, 75);
+-      parsed.cta_text = clampField(parsed.cta_text, 65);
+-      parsed.total_duration_s = 20;
+-      return parsed;
+-    } catch { console.error('[ai-worker] video_script_stat parse failed'); return null; }
++
++    // One model call: fetch → parse → minimal shape check. Same request shape/model/params as
++    // v2.25.0; an http/parse/shape miss returns null (the existing non-fatal behaviour).
++    const callStatModel = async (userText: string): Promise<any | null> => {
++      const resp = await fetch('https://api.anthropic.com/v1/messages', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
++        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300, temperature: 0.1, system: systemPrompt, messages: [{ role: 'user', content: userText }] }),
++      });
++      if (!resp.ok) { console.error('[ai-worker] video_script_stat http', resp.status); return null; }
++      const data = await resp.json();
++      const raw = data?.content?.[0]?.text ?? '';
++      const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
++      try {
++        const parsed = JSON.parse(cleaned);
++        if (!parsed?.stat_value) return null;
++        return parsed;
++      } catch { console.error('[ai-worker] video_script_stat parse failed'); return null; }
++    };
++
++    const attempts: StatBoundsAttempt[] = [];
++
++    // Attempt 1.
++    const first = await callStatModel(userPrompt);
++    if (!first) return null;   // infra/parse miss — unchanged legacy non-fatal behaviour
++    const v1 = validateStatScriptAgainstEnvelope(first, envelope);
++    attempts.push({ attempt: 1, fields: snapshotStatFields(first), violations: v1, at: nowIso() });
++    if (decideStatBoundsNextStep(1, v1.length) === 'accept') {
++      first.total_duration_s = 20;
++      first.stat_bounds_qa = buildStatBoundsQa(envelope, attempts, 'accepted_first_attempt');
++      return first;
++    }
++
++    // Exactly ONE bounded re-prompt: same system prompt, user prompt + appended bounds
++    // reminder naming each violated field with actual vs limit (D-1).
++    console.log(`[ai-worker] ${WS5_STAT_ENVELOPE_MARKER} attempt 1 violated bounds (${envelope.source}) — one bounded re-prompt:`, JSON.stringify(v1));
++    const second = await callStatModel(`${userPrompt}\n\n${buildEnvelopeBoundReminder(v1)}`);
++    if (!second) {
++      // Re-prompt infra/parse miss: attempt-1 content is KNOWN out-of-envelope so it is never
++      // persisted (D-1); mirror the existing non-fatal generation-failure handling (no
++      // video_script written) rather than killing the draft on an infra blip.
++      console.error(`[ai-worker] ${WS5_STAT_ENVELOPE_MARKER} re-prompt call failed after attempt-1 violations — no video_script written`);
++      return null;
++    }
++    const v2 = validateStatScriptAgainstEnvelope(second, envelope);
++    attempts.push({ attempt: 2, fields: snapshotStatFields(second), violations: v2, at: nowIso() });
++    if (decideStatBoundsNextStep(2, v2.length) === 'accept') {
++      second.total_duration_s = 20;
++      second.stat_bounds_qa = buildStatBoundsQa(envelope, attempts, 'accepted_after_reprompt');
++      return second;
++    }
++
++    // Second violation → FAIL CLOSED (D-1). The sentinel carries BOTH attempts as QA
++    // evidence; the caller marks the draft dead and never calls set_draft_video_script.
++    return { stat_bounds_fail_closed: true, stat_bounds_qa: buildStatBoundsQa(envelope, attempts, 'fail_closed') };
+   }
+ 
+   if (formatKey === 'video_short_avatar') {
+@@ -799,6 +905,50 @@ async function generateVideoScript(opts: {
+   return null;
+ }
+ 
++// WS-5 P1 (v2.26.0, D-1) — the fail-closed dead-draft write for a stat draft whose generated
++// content violated the envelope on BOTH attempts. Mirrors the EXISTING house dead-draft
++// pattern (pipeline-fixer's render_attempts_exhausted idiom on m.post_draft: dead_reason
++// COLUMN + terminal medium-status + updated_at; approval_status untouched):
++//   video_status = 'failed'  → public.claim_pending_video_drafts only claims 'pending', so the
++//                              draft is unreachable by the render path;
++//   dead_reason  = 'stat_bounds_violation_after_bounded_reprompt' (the D-1 named reason).
++// QA evidence goes into draft_format ADDITIVELY via READ-MERGE-WRITE (the v2.24.1 clobber
++// lesson: a plain .update() REPLACES the whole draft_format column) — deliberately NOT under
++// video_script, so a dead draft never looks like it has a renderable script. If the read
++// misses, the caller-supplied draftMeta (the value baseUpdate just wrote) is the merge base.
++// BEST-EFFORT: never throws into the job loop (mirrors persistDialogueDraft's posture).
++async function markStatDraftDeadOnBounds(
++  supabase: ReturnType<typeof getServiceClient>,
++  postDraftId: string,
++  draftMetaFallback: Record<string, unknown> | null | undefined,
++  qa: StatBoundsQa,
++): Promise<boolean> {
++  try {
++    let current: Record<string, unknown> | null = null;
++    try {
++      const { data, error } = await supabase.schema('m').from('post_draft')
++        .select('draft_format').eq('post_draft_id', postDraftId).maybeSingle();
++      if (error) console.error('[ai-worker] markStatDraftDeadOnBounds read error:', error.message);
++      const df = (data as any)?.draft_format;
++      if (df && typeof df === 'object' && !Array.isArray(df)) current = df;
++    } catch (re: any) { console.error('[ai-worker] markStatDraftDeadOnBounds read threw:', re?.message); }
++    const base = current
++      ?? ((draftMetaFallback && typeof draftMetaFallback === 'object') ? draftMetaFallback : {});
++    const { error: updErr } = await supabase.schema('m').from('post_draft').update({
++      draft_format: { ...base, stat_bounds_qa: qa },
++      video_status: 'failed',
++      dead_reason: STAT_BOUNDS_DEAD_REASON,
++      updated_at: nowIso(),
++    }).eq('post_draft_id', postDraftId);
++    if (updErr) { console.error('[ai-worker] markStatDraftDeadOnBounds update error:', updErr.message); return false; }
++    console.log(`[ai-worker] ${WS5_STAT_ENVELOPE_MARKER} draft ${postDraftId} FAILED CLOSED dead_reason=${STAT_BOUNDS_DEAD_REASON} (envelope=${qa.envelope.source})`);
++    return true;
++  } catch (e: any) {
++    console.error('[ai-worker] markStatDraftDeadOnBounds threw:', e?.message);
++    return false;
++  }
++}
++
+ // v2.15.0 — F-SERIES-AVATAR-DIFFERENTIATION Stage 1 (shadow, observability-only).
+ // Map an episode persona to ONE of the brand's ACTIVE stakeholder role_codes and return
+ // a SUGGESTION object. The caller stores it under video_script.avatar_role_suggestion —
+@@ -1930,6 +2080,10 @@ app.post('*', async (c) => {
+ 
+       let videoScriptGenerated = false;
+       let dialogueHandled = false;
++      // WS-5 P1 (v2.26.0): per-job stat-bounds outcome for the results entry
++      // ('accepted_first_attempt' | 'accepted_after_reprompt' | 'fail_closed' | null for
++      // non-stat formats / generation misses).
++      let statBoundsOutcome: string | null = null;
+ 
+       // cc-0084 Slice 2 — dialogue avatar path. Fires ONLY when the slot requested
+       // video_short_avatar_dialogue (dialogueMode). generateDialogueScript emits the { speaker_role,
+@@ -1958,8 +2112,23 @@ app.post('*', async (c) => {
+ 
+       if (!dialogueHandled && VIDEO_FORMATS.has(decidedFormat) && anthropicKey) {
+         try {
+-          const videoScript = await generateVideoScript({ anthropicKey, formatKey: decidedFormat, postTitle: result.title, postBody: result.body, clientName, vertical });
+-          if (videoScript) {
++          // WS-5 P1 (v2.26.0, D-1): for the stat formats ONLY, load the persisted per-template
++          // envelope BEFORE generation. getClientSlug is the existing cached S9 resolver; a null
++          // slug (or any loader miss) yields the fallback char-bounds envelope — the loader never
++          // throws. Every other format passes statEnvelope=undefined (byte-compatible).
++          let statEnvelope: StatEnvelope | undefined;
++          if (decidedFormat === 'video_short_stat' || decidedFormat === 'video_short_stat_voice') {
++            statEnvelope = await loadStatTemplateEnvelope(supabase, await getClientSlug(supabase, job.client_id), job.post_draft_id);
++          }
++          const videoScript = await generateVideoScript({ anthropicKey, formatKey: decidedFormat, postTitle: result.title, postBody: result.body, clientName, vertical, statEnvelope });
++          if (isStatBoundsFailClosed(videoScript)) {
++            // Second envelope violation → FAIL CLOSED (D-1): NO set_draft_video_script, draft
++            // marked dead with the named dead_reason, BOTH attempts preserved in draft_format.
++            // The job itself still completes (mirrors other non-fatal content failures).
++            statBoundsOutcome = 'fail_closed';
++            await markStatDraftDeadOnBounds(supabase, job.post_draft_id, draftMeta, videoScript.stat_bounds_qa);
++          } else if (videoScript) {
++            statBoundsOutcome = (videoScript as any)?.stat_bounds_qa?.outcome ?? null;
+             // v2.15.0 — F-SERIES-AVATAR-DIFFERENTIATION Stage 1 (shadow, observability-only):
+             // attach a SUGGESTED presenter role under video_script.avatar_role_suggestion.
+             // heygen-worker does NOT read this key. suggestAvatarRole never throws; the extra
+@@ -1987,7 +2156,7 @@ app.post('*', async (c) => {
+       const { error: successJobErr } = await supabase.schema('m').from('ai_job').update({ status: 'succeeded', output_payload: { title: result.title, body: result.body, meta: draftMeta }, error: null, locked_by: null, locked_at: null, updated_at: nowIso() }).eq('ai_job_id', jobId);
+       if (successJobErr) throw new Error(`success_ai_job_update_failed:${successJobErr.message}`);
+ 
+-      results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'succeeded', provider: fallbackUsed ? 'openai_fallback' : primaryProvider, model: fallbackUsed ? 'gpt-4o' : model, format_decided: decidedFormat, format_reason: advisorReason, compliance_rules_injected: complianceRuleCount, video_script_generated: videoScriptGenerated, input_tokens: result.inputTokens, output_tokens: result.outputTokens });
++      results.push({ ai_job_id: jobId, post_draft_id: job.post_draft_id, status: 'succeeded', provider: fallbackUsed ? 'openai_fallback' : primaryProvider, model: fallbackUsed ? 'gpt-4o' : model, format_decided: decidedFormat, format_reason: advisorReason, compliance_rules_injected: complianceRuleCount, video_script_generated: videoScriptGenerated, stat_bounds_outcome: statBoundsOutcome, input_tokens: result.inputTokens, output_tokens: result.outputTokens });
+ 
+     } catch (e: any) {
+       const msg = (e?.message ?? String(e)).slice(0, 4000);
+diff --git a/supabase/functions/ai-worker/stat_envelope.ts b/supabase/functions/ai-worker/stat_envelope.ts
+new file mode 100644
+index 0000000..bc08de1
+--- /dev/null
++++ b/supabase/functions/ai-worker/stat_envelope.ts
+@@ -0,0 +1,359 @@
++// stat_envelope.ts — WS-5 P1 PRODUCTION-ENVELOPE ENFORCEMENT for the governed
++// video_short_stat / video_short_stat_voice generator (ai-worker).
++//
++// PK ruling D-1 (Option B): generated stat content is VALIDATED against the persisted
++// per-template constraints (c.creative_provider_template_field.constraints, shape
++// tmr_field_constraints_v1) for the template public.select_template would pick at render
++// time; exactly ONE bounded re-prompt is allowed; a second violation FAILS THE DRAFT CLOSED
++// with a named dead_reason. NO silent truncation, NO legacy clamp fallback, NO persistence
++// of out-of-envelope content. Both validation attempts are preserved in QA evidence.
++//
++// House pattern: PURE CORE + THIN IMPURE LOADER. Everything except
++// loadStatTemplateEnvelope is pure (no I/O, no Date, no random) and hermetically tested in
++// stat_envelope_test.ts. The loader mirrors video-worker's render-time selector call
++// EXACTLY (video-worker/index.ts:1345 — p_platform:null, p_variant_intent:null,
++// p_seed:postDraftId) so the envelope is read from the SAME template the render worker
++// will later enforce. select_template is READ-ONLY (STABLE, no DML — verified against
++// supabase/migrations/20260703035154_create_select_template_v1.sql and the 20260719010700
++// client-scope revision, both STABLE with zero INSERT/UPDATE/DELETE).
++//
++// FALLBACK DOCTRINE (fail to BOUNDS, never to a clamp): on ANY envelope miss — selector
++// fail-closed, RPC error, missing/unparseable constraints, absent element rows, thrown —
++// the loader returns the vendored render-gate char bounds from ./video_stat_bounds.ts
++// (12/48/160/90) as VALIDATION limits with source='fallback_char_bounds' and a
++// machine-readable fallback_reason. The fallback is still validation: content is never
++// truncated to fit it. The loader NEVER throws.
++//
++// Measurement contract: chars = String(value ?? '').trim().length (UTF-16 code units),
++// IDENTICAL to the render gate (b1_video_stat.assertStatFieldsWithinGate) and to
++// ./video_stat_bounds.ts. Blank fields are NOT this module's concern — the render gate
++// owns the blank/missing check (same doctrine as video_stat_bounds.ts).
++
++import {
++  B1_VIDEO_CONTEXT_LINE_MAX_CHARS,
++  B1_VIDEO_CTA_TEXT_MAX_CHARS,
++  B1_VIDEO_STAT_LABEL_MAX_CHARS,
++  B1_VIDEO_STAT_VALUE_MAX_CHARS,
++  buildBoundReminder,
++} from './video_stat_bounds.ts';
++
++// ── Types ─────────────────────────────────────────────────────────────────────────────
++
++export type StatFieldKey = 'stat_value' | 'stat_label' | 'context_line' | 'cta_text';
++
++// Per-field limits extracted from tmr_field_constraints_v1 text_limits. maxChars is the
++// load-bearing bound (always present); maxLines/maxWords are honored WHEN persisted
++// (max_words is absent in today's data — tolerated by construction). Unknown text_limits
++// keys are IGNORED, never an error.
++export type StatFieldLimits = { maxChars: number; maxLines?: number; maxWords?: number };
++
++export type StatEnvelope = {
++  source: 'persisted' | 'fallback_char_bounds';
++  templateId: string | null;           // registry template id (c.creative_provider_template.id)
++  fallbackReason: string | null;       // machine-readable, null when source='persisted'
++  limits: Record<StatFieldKey, StatFieldLimits>;
++};
++
++// Violation shape mirrors video_stat_bounds.StatBoundViolation ({field, length, max}) plus
++// a unit discriminator so line/word violations stay distinguishable in QA evidence.
++export type EnvelopeViolation = {
++  field: string;
++  kind: 'chars' | 'lines' | 'words';
++  length: number;
++  max: number;
++};
++
++export type StatBoundsAttempt = {
++  attempt: number;                     // 1 = initial generation, 2 = the ONE bounded re-prompt
++  fields: Record<StatFieldKey, string>;
++  violations: EnvelopeViolation[];
++  at: string;                          // ISO timestamp, caller-supplied (module stays pure)
++};
++
++export type StatBoundsOutcome = 'accepted_first_attempt' | 'accepted_after_reprompt' | 'fail_closed';
++
++export type StatBoundsQa = {
++  schema: 'stat_bounds_qa_v1';
++  envelope: {
++    source: StatEnvelope['source'];
++    template_id: string | null;
++    fallback_reason: string | null;
++    limits: Record<StatFieldKey, StatFieldLimits>;
++  };
++  attempts: StatBoundsAttempt[];
++  outcome: StatBoundsOutcome;
++  dead_reason?: string;                // present ONLY when outcome='fail_closed'
++};
++
++// The named dead_reason PK ruled for the second-violation fail-closed path (D-1).
++export const STAT_BOUNDS_DEAD_REASON = 'stat_bounds_violation_after_bounded_reprompt';
++
++// Sentinel returned by the stat generator instead of a script when the draft must die.
++// Deliberately does NOT look like a video_script (no stat_value key), so it can never be
++// mistaken for renderable content by any consumer.
++export type StatBoundsFailClosed = { stat_bounds_fail_closed: true; stat_bounds_qa: StatBoundsQa };
++
++export function isStatBoundsFailClosed(v: unknown): v is StatBoundsFailClosed {
++  return !!v && typeof v === 'object' && (v as { stat_bounds_fail_closed?: unknown }).stat_bounds_fail_closed === true;
++}
++
++// Registry element_name → generator field key. The four AI-authored text elements of the
++// governed stat template (b1_video_stat.ts modification keys StatValue/StatLabel/
++// ContextLine/CtaText). EyebrowText is DELIBERATELY absent: it is governed per-client data
++// (D-4), never AI-authored, so it has no generator envelope.
++export const STAT_ELEMENT_FIELD_MAP: Readonly<Record<string, StatFieldKey>> = {
++  StatValue: 'stat_value',
++  StatLabel: 'stat_label',
++  ContextLine: 'context_line',
++  CtaText: 'cta_text',
++};
++
++// ── Pure: fallback envelope (vendored render-gate char bounds) ────────────────────────
++
++export function buildFallbackStatEnvelope(reason: string): StatEnvelope {
++  return {
++    source: 'fallback_char_bounds',
++    templateId: null,
++    fallbackReason: reason,
++    limits: {
++      stat_value: { maxChars: B1_VIDEO_STAT_VALUE_MAX_CHARS },
++      stat_label: { maxChars: B1_VIDEO_STAT_LABEL_MAX_CHARS },
++      context_line: { maxChars: B1_VIDEO_CONTEXT_LINE_MAX_CHARS },
++      cta_text: { maxChars: B1_VIDEO_CTA_TEXT_MAX_CHARS },
++    },
++  };
++}
++
++// ── Pure: tmr_field_constraints_v1 parsing ─────────────────────────────────────────────
++
++// A text_limits entry is a limit-TRIPLE { value, basis, source?, evidence_reference? }.
++// basis='to_be_calibrated' means value is null → the limit is ABSENT. Any non-object,
++// non-finite, or non-positive value is also treated as absent (never a guess).
++export function limitTripleValue(triple: unknown): number | null {
++  if (!triple || typeof triple !== 'object') return null;
++  const t = triple as { basis?: unknown; value?: unknown };
++  if (t.basis === 'to_be_calibrated') return null;
++  const v = Number(t.value);
++  return Number.isFinite(v) && v > 0 ? Math.floor(v) : null;
++}
++
++// Extract this element's limits from a constraints jsonb. Returns null when the element
++// carries no usable max_chars (schema missing, text_limits missing/non-object, max_chars
++// absent or to_be_calibrated) — the caller treats that as an envelope miss. Unknown
++// text_limits keys (anything besides max_chars/max_lines/max_words) are ignored.
++export function extractFieldLimits(constraints: unknown): StatFieldLimits | null {
++  const tl = (constraints as { text_limits?: unknown } | null | undefined)?.text_limits;
++  if (!tl || typeof tl !== 'object') return null;
++  const t = tl as Record<string, unknown>;
++  const maxChars = limitTripleValue(t.max_chars);
++  if (maxChars === null) return null;
++  const out: StatFieldLimits = { maxChars };
++  const maxLines = limitTripleValue(t.max_lines);
++  if (maxLines !== null) out.maxLines = maxLines;
++  const maxWords = limitTripleValue(t.max_words);
++  if (maxWords !== null) out.maxWords = maxWords;
++  return out;
++}
++
++// Build the persisted envelope from the element rows, ALL-OR-NOTHING: every one of the four
++// elements must yield a usable max_chars, else the whole envelope is a miss (the caller
++// falls back to char bounds — mixed persisted/fallback limits would blur which contract a
++// draft was validated against). Returns { ok:false, reason } on any miss.
++export function buildEnvelopeFromFieldRows(
++  rows: ReadonlyArray<{ element_name?: unknown; constraints?: unknown }>,
++  templateId: string,
++): { ok: true; envelope: StatEnvelope } | { ok: false; reason: string } {
++  const limits: Partial<Record<StatFieldKey, StatFieldLimits>> = {};
++  for (const row of rows ?? []) {
++    const key = STAT_ELEMENT_FIELD_MAP[String(row?.element_name ?? '')];
++    if (!key) continue;                                   // not one of the four — ignore
++    const fl = extractFieldLimits(row?.constraints);
++    if (fl === null) return { ok: false, reason: `constraints_unusable:${String(row?.element_name)}` };
++    limits[key] = fl;
++  }
++  for (const element of Object.keys(STAT_ELEMENT_FIELD_MAP)) {
++    const key = STAT_ELEMENT_FIELD_MAP[element];
++    if (!limits[key]) return { ok: false, reason: `element_row_missing:${element}` };
++  }
++  return {
++    ok: true,
++    envelope: {
++      source: 'persisted',
++      templateId,
++      fallbackReason: null,
++      limits: limits as Record<StatFieldKey, StatFieldLimits>,
++    },
++  };
++}
++
++// ── Pure: envelope validation ──────────────────────────────────────────────────────────
++
++// Human/prompt-readable limit description, e.g. "max 60 chars, max 3 lines". Used to state
++// the ACTUAL persisted limits in the generation prompt (D-1: the prompt names the real
++// envelope, not hardcoded numbers).
++export function describeFieldLimit(l: StatFieldLimits): string {
++  const parts = [`max ${l.maxChars} chars`];
++  if (l.maxLines !== undefined) parts.push(`max ${l.maxLines} line${l.maxLines === 1 ? '' : 's'}`);
++  if (l.maxWords !== undefined) parts.push(`max ${l.maxWords} word${l.maxWords === 1 ? '' : 's'}`);
++  return parts.join(', ');
++}
++
++// Measurement identical to the render gate: trimmed String, UTF-16 code units for chars.
++// Lines = 1 + newline count on the trimmed value; words = whitespace-separated tokens.
++// Blank fields yield NO violations here (the render gate owns blanks — same doctrine as
++// video_stat_bounds.validateStatScriptBounds). A field exactly AT a limit is conformant.
++export function validateStatScriptAgainstEnvelope(
++  script: { stat_value?: unknown; stat_label?: unknown; context_line?: unknown; cta_text?: unknown },
++  envelope: StatEnvelope,
++): EnvelopeViolation[] {
++  const violations: EnvelopeViolation[] = [];
++  const fields: StatFieldKey[] = ['stat_value', 'stat_label', 'context_line', 'cta_text'];
++  for (const field of fields) {
++    const trimmed = String((script as Record<string, unknown>)[field] ?? '').trim();
++    if (trimmed.length === 0) continue;                   // blanks: render gate's concern
++    const l = envelope.limits[field];
++    if (trimmed.length > l.maxChars) {
++      violations.push({ field, kind: 'chars', length: trimmed.length, max: l.maxChars });
++    }
++    if (l.maxLines !== undefined) {
++      const lines = trimmed.split(/\r?\n/).length;
++      if (lines > l.maxLines) violations.push({ field, kind: 'lines', length: lines, max: l.maxLines });
++    }
++    if (l.maxWords !== undefined) {
++      const words = trimmed.split(/\s+/).length;
++      if (words > l.maxWords) violations.push({ field, kind: 'words', length: words, max: l.maxWords });
++    }
++  }
++  return violations;
++}
++
++// ── Pure: the one-re-prompt-then-fail-closed decision (D-1 state machine) ──────────────
++
++export type StatBoundsDecision = 'accept' | 'reprompt' | 'fail_closed';
++
++// attemptNumber is 1-based. Violations on attempt 1 → exactly ONE re-prompt; violations on
++// attempt 2 (or any later — defensive, the caller never goes past 2) → fail closed.
++export function decideStatBoundsNextStep(attemptNumber: number, violationCount: number): StatBoundsDecision {
++  if (violationCount === 0) return 'accept';
++  return attemptNumber <= 1 ? 'reprompt' : 'fail_closed';
++}
++
++// ── Pure: re-prompt reminder ───────────────────────────────────────────────────────────
++
++// Bounds-reminder block for the ONE re-prompt: names each violated field with actual vs
++// limit. When every violation is a chars violation, this DELEGATES to the Task-A
++// buildBoundReminder (video_stat_bounds.ts — unmodifiable, its wording is proven);
++// otherwise it emits the same-shaped sentence with unit-aware wording.
++export function buildEnvelopeBoundReminder(violations: EnvelopeViolation[]): string {
++  if (violations.every((v) => v.kind === 'chars')) {
++    return buildBoundReminder(violations.map((v) => ({ field: v.field, length: v.length, max: v.max })));
++  }
++  const unit = (k: EnvelopeViolation['kind']) => k;
++  const measured = violations
++    .map((v) => `${v.field} was ${v.length} ${unit(v.kind)} (max ${v.max})`)
++    .join(', ');
++  const limits = violations
++    .map((v) => `${v.field} max ${v.max} ${unit(v.kind)}`)
++    .join(', ');
++  return `Your previous response violated hard limits: ${measured}. ` +
++    `Rewrite so EVERY field is within its limit: ${limits}. Return ONLY the JSON.`;
++}
++
++// ── Pure: QA evidence (D-1 mandate — both attempts preserved) ──────────────────────────
++
++// Snapshot the four fields AS GENERATED (stringified verbatim, untrimmed — evidence, not
++// content: this object is never rendered).
++export function snapshotStatFields(script: {
++  stat_value?: unknown; stat_label?: unknown; context_line?: unknown; cta_text?: unknown;
++}): Record<StatFieldKey, string> {
++  return {
++    stat_value: String(script.stat_value ?? ''),
++    stat_label: String(script.stat_label ?? ''),
++    context_line: String(script.context_line ?? ''),
++    cta_text: String(script.cta_text ?? ''),
++  };
++}
++
++export function buildStatBoundsQa(
++  envelope: StatEnvelope,
++  attempts: StatBoundsAttempt[],
++  outcome: StatBoundsOutcome,
++): StatBoundsQa {
++  const qa: StatBoundsQa = {
++    schema: 'stat_bounds_qa_v1',
++    envelope: {
++      source: envelope.source,
++      template_id: envelope.templateId,
++      fallback_reason: envelope.fallbackReason,
++      limits: envelope.limits,
++    },
++    attempts,
++    outcome,
++  };
++  if (outcome === 'fail_closed') qa.dead_reason = STAT_BOUNDS_DEAD_REASON;
++  return qa;
++}
++
++// ── Impure: the thin envelope loader ──────────────────────────────────────────────────
++
++// Minimal structural view of the service client — keeps the loader mockable in hermetic
++// tests without importing @supabase/supabase-js here. Deliberately `any`-returning: binding
++// the real supabase-js generic chain here trips TS2589 (excessively deep instantiation) at
++// the index.ts call site; the loader guards every read defensively regardless.
++type EnvelopeDb = {
++  // deno-lint-ignore no-explicit-any
++  rpc: (fn: string, args: Record<string, unknown>) => any;
++  // deno-lint-ignore no-explicit-any
++  schema: (s: string) => any;
++};
++
++const errBrief = (e: { code?: string; message?: string } | null | undefined): string =>
++  `${e?.code ?? ''}:${String(e?.message ?? '').slice(0, 200)}`;
++
++// Resolve the envelope for the would-be render-time winner. MIRRORS video-worker's
++// select_template call EXACTLY (index.ts:1345): p_platform null, p_format
++// 'video_short_stat' (the governed format — the _voice generator variant shares the same
++// governed template contract), p_variant_intent null, p_seed = post_draft_id (seed never
++// changes the winner — select_template v0 contract). NEVER throws; every miss class
++// returns the fallback char-bounds envelope with a machine-readable reason.
++export async function loadStatTemplateEnvelope(
++  supabase: EnvelopeDb,
++  clientSlug: string | null,
++  postDraftId: string,
++): Promise<StatEnvelope> {
++  if (!clientSlug) return buildFallbackStatEnvelope('client_slug_unresolved');
++  try {
++    const { data, error } = await supabase.rpc('select_template', {
++      p_client_slug: clientSlug,
++      p_platform: null,
++      p_format: 'video_short_stat',
++      p_variant_intent: null,
++      p_seed: postDraftId,
++    });
++    if (error) return buildFallbackStatEnvelope(`select_template_rpc_error:${errBrief(error)}`);
++    const resp = data as { status?: unknown; fail_reason?: unknown; selected?: { template_id?: unknown } | null } | null;
++    if (resp?.status !== 'ok') {
++      return buildFallbackStatEnvelope(
++        `select_template_not_ok:${String(resp?.status ?? 'no_response')}:${String(resp?.fail_reason ?? '')}`.replace(/:$/, ''),
++      );
++    }
++    const templateId = typeof resp.selected?.template_id === 'string' ? resp.selected.template_id : '';
++    if (!templateId) return buildFallbackStatEnvelope('select_template_missing_template_id');
++
++    const { data: rows, error: rowsErr } = await supabase.schema('c').from('creative_provider_template_field')
++      .select('element_name, constraints')
++      .eq('template_id', templateId)
++      .in('element_name', Object.keys(STAT_ELEMENT_FIELD_MAP));
++    if (rowsErr) return buildFallbackStatEnvelope(`field_rows_read_error:${errBrief(rowsErr)}`);
++
++    const built = buildEnvelopeFromFieldRows(
++      (rows ?? []) as Array<{ element_name?: unknown; constraints?: unknown }>,
++      templateId,
++    );
++    if (!built.ok) return buildFallbackStatEnvelope(built.reason);
++    return built.envelope;
++  } catch (e) {
++    const msg = e instanceof Error ? e.message : String(e);
++    return buildFallbackStatEnvelope(`envelope_loader_threw:${msg.slice(0, 200)}`);
++  }
++}
+diff --git a/supabase/functions/ai-worker/stat_envelope_test.ts b/supabase/functions/ai-worker/stat_envelope_test.ts
+new file mode 100644
+index 0000000..87a1356
+--- /dev/null
++++ b/supabase/functions/ai-worker/stat_envelope_test.ts
+@@ -0,0 +1,427 @@
++// stat_envelope_test.ts — WS-5 P1 hermetic unit tests for the stat production-envelope
++// module (D-1 Option B). Fully hermetic: NO DB, NO network, NO Date/random inside the
++// assertions (timestamps are caller-supplied fixtures). The loader is exercised against a
++// hand-rolled chainable supabase stub (house pattern: schedule_authority_pin_test.ts).
++// Run: deno test --allow-read --allow-env supabase/functions/ai-worker/stat_envelope_test.ts
++
++import { assert, assertEquals } from 'jsr:@std/assert@1';
++import {
++  buildBoundReminder,
++  B1_VIDEO_CONTEXT_LINE_MAX_CHARS,
++  B1_VIDEO_CTA_TEXT_MAX_CHARS,
++  B1_VIDEO_STAT_LABEL_MAX_CHARS,
++  B1_VIDEO_STAT_VALUE_MAX_CHARS,
++} from './video_stat_bounds.ts';
++import {
++  buildEnvelopeBoundReminder,
++  buildEnvelopeFromFieldRows,
++  buildFallbackStatEnvelope,
++  buildStatBoundsQa,
++  decideStatBoundsNextStep,
++  describeFieldLimit,
++  extractFieldLimits,
++  isStatBoundsFailClosed,
++  limitTripleValue,
++  loadStatTemplateEnvelope,
++  snapshotStatFields,
++  STAT_BOUNDS_DEAD_REASON,
++  validateStatScriptAgainstEnvelope,
++  type StatBoundsAttempt,
++  type StatEnvelope,
++} from './stat_envelope.ts';
++
++// ── Fixtures ───────────────────────────────────────────────────────────────────────────
++
++// The LIVE tmr_field_constraints_v1 shape (real example from the WS-5 metadata population —
++// a limit-TRIPLE per text_limits key; unknown sibling keys must be tolerated).
++const LIVE_CONSTRAINTS = {
++  slot: { kind: 'text' },
++  collapse: { mode: 'none' },
++  empty_ok: false,
++  container: { w: 980, h: 220 },
++  text_limits: {
++    max_chars: { basis: 'declared_from_source', value: 60, source: 'ws5-probe', evidence_reference: null },
++    max_lines: { basis: 'probe_calibrated', value: 3, source: 'ws5-probe', evidence_reference: 'probe-7' },
++  },
++  overflow_risk: 'high',
++  content_source: 'ai_authored',
++  schema_version: 'tmr_field_constraints_v1',
++  modification_keys: ['HookHeadline.text', 'HookHeadline.time', 'HookHeadline.duration'],
++};
++
++const triple = (value: number | null, basis = 'declared_from_source') => ({ basis, value, source: 's', evidence_reference: null });
++
++const fieldRow = (element: string, maxChars: number, extra: Record<string, unknown> = {}) => ({
++  element_name: element,
++  constraints: { schema_version: 'tmr_field_constraints_v1', text_limits: { max_chars: triple(maxChars), ...extra } },
++});
++
++const ALL_FOUR_ROWS = [
++  fieldRow('StatValue', 12),
++  fieldRow('StatLabel', 48, { max_lines: triple(2, 'probe_calibrated') }),
++  fieldRow('ContextLine', 160),
++  fieldRow('CtaText', 90),
++];
++
++const TEMPLATE_ID = 'a3d8472d-0000-0000-0000-000000000001';
++
++// A persisted envelope with chars+lines+words limits for the validation tests.
++const RICH_ENVELOPE: StatEnvelope = {
++  source: 'persisted',
++  templateId: TEMPLATE_ID,
++  fallbackReason: null,
++  limits: {
++    stat_value: { maxChars: 12 },
++    stat_label: { maxChars: 48, maxLines: 2 },
++    context_line: { maxChars: 160, maxWords: 10 },
++    cta_text: { maxChars: 90 },
++  },
++};
++
++const CONFORMANT = {
++  stat_value: '$62.17/hr',
++  stat_label: 'Median Perth rental yield',
++  context_line: 'Perth rents climbed again this quarter.',
++  cta_text: 'What does this mean for your next move?',
++};
++
++// ── limitTripleValue / extractFieldLimits (constraints parsing) ────────────────────────
++
++Deno.test('limitTripleValue: live triple → its numeric value', () => {
++  assertEquals(limitTripleValue(LIVE_CONSTRAINTS.text_limits.max_chars), 60);
++  assertEquals(limitTripleValue(LIVE_CONSTRAINTS.text_limits.max_lines), 3);
++});
++
++Deno.test('limitTripleValue: to_be_calibrated → absent (null), regardless of value', () => {
++  assertEquals(limitTripleValue({ basis: 'to_be_calibrated', value: null }), null);
++  assertEquals(limitTripleValue({ basis: 'to_be_calibrated', value: 40 }), null);
++});
++
++Deno.test('limitTripleValue: non-object / non-finite / non-positive → absent', () => {
++  assertEquals(limitTripleValue(null), null);
++  assertEquals(limitTripleValue(60), null);
++  assertEquals(limitTripleValue({ basis: 'declared_from_source', value: 'sixty' }), null);
++  assertEquals(limitTripleValue({ basis: 'declared_from_source', value: 0 }), null);
++  assertEquals(limitTripleValue({ basis: 'declared_from_source', value: -5 }), null);
++});
++
++Deno.test('extractFieldLimits: live constraints fixture → chars + lines, no words', () => {
++  assertEquals(extractFieldLimits(LIVE_CONSTRAINTS), { maxChars: 60, maxLines: 3 });
++});
++
++Deno.test('extractFieldLimits: unknown text_limits keys are IGNORED, never an error', () => {
++  const c = {
++    text_limits: {
++      max_chars: triple(60),
++      max_glyph_width_px: triple(940),          // future/unknown key — must be ignored
++      some_new_thing: { whatever: true },       // non-triple unknown — must be ignored
++    },
++  };
++  assertEquals(extractFieldLimits(c), { maxChars: 60 });
++});
++
++Deno.test('extractFieldLimits: honors max_words when present (future key, absent today)', () => {
++  const c = { text_limits: { max_chars: triple(60), max_words: triple(9, 'probe_calibrated') } };
++  assertEquals(extractFieldLimits(c), { maxChars: 60, maxWords: 9 });
++});
++
++Deno.test('extractFieldLimits: missing/unusable max_chars → null (envelope miss)', () => {
++  assertEquals(extractFieldLimits({}), null);
++  assertEquals(extractFieldLimits({ text_limits: {} }), null);
++  assertEquals(extractFieldLimits({ text_limits: { max_chars: { basis: 'to_be_calibrated', value: null } } }), null);
++  assertEquals(extractFieldLimits(null), null);
++  assertEquals(extractFieldLimits('not an object'), null);
++});
++
++// ── buildEnvelopeFromFieldRows ──────────────────────────────────────────────────────────
++
++Deno.test('buildEnvelopeFromFieldRows: all four elements usable → persisted envelope', () => {
++  const built = buildEnvelopeFromFieldRows(ALL_FOUR_ROWS, TEMPLATE_ID);
++  assert(built.ok);
++  assertEquals(built.envelope.source, 'persisted');
++  assertEquals(built.envelope.templateId, TEMPLATE_ID);
++  assertEquals(built.envelope.fallbackReason, null);
++  assertEquals(built.envelope.limits.stat_value, { maxChars: 12 });
++  assertEquals(built.envelope.limits.stat_label, { maxChars: 48, maxLines: 2 });
++  assertEquals(built.envelope.limits.context_line, { maxChars: 160 });
++  assertEquals(built.envelope.limits.cta_text, { maxChars: 90 });
++});
++
++Deno.test('buildEnvelopeFromFieldRows: a missing element row → miss with named reason', () => {
++  const built = buildEnvelopeFromFieldRows(ALL_FOUR_ROWS.filter((r) => r.element_name !== 'CtaText'), TEMPLATE_ID);
++  assertEquals(built, { ok: false, reason: 'element_row_missing:CtaText' });
++});
++
++Deno.test('buildEnvelopeFromFieldRows: an element with unusable constraints → miss (all-or-nothing)', () => {
++  const rows = [
++    ...ALL_FOUR_ROWS.filter((r) => r.element_name !== 'StatLabel'),
++    { element_name: 'StatLabel', constraints: { text_limits: { max_chars: { basis: 'to_be_calibrated', value: null } } } },
++  ];
++  const built = buildEnvelopeFromFieldRows(rows, TEMPLATE_ID);
++  assertEquals(built, { ok: false, reason: 'constraints_unusable:StatLabel' });
++});
++
++Deno.test('buildEnvelopeFromFieldRows: extra non-stat elements (e.g. EyebrowText) are ignored', () => {
++  const rows = [...ALL_FOUR_ROWS, { element_name: 'EyebrowText', constraints: { baked: { eyebrow_value_ndis_yarns: 'NDIS UPDATE' } } }];
++  const built = buildEnvelopeFromFieldRows(rows, TEMPLATE_ID);
++  assert(built.ok);
++});
++
++// ── Fallback envelope ───────────────────────────────────────────────────────────────────
++
++Deno.test('buildFallbackStatEnvelope: vendored render-gate char bounds + machine-readable reason', () => {
++  const env = buildFallbackStatEnvelope('select_template_fail_closed:no_selectable_template');
++  assertEquals(env.source, 'fallback_char_bounds');
++  assertEquals(env.templateId, null);
++  assertEquals(env.fallbackReason, 'select_template_fail_closed:no_selectable_template');
++  assertEquals(env.limits.stat_value.maxChars, B1_VIDEO_STAT_VALUE_MAX_CHARS);
++  assertEquals(env.limits.stat_label.maxChars, B1_VIDEO_STAT_LABEL_MAX_CHARS);
++  assertEquals(env.limits.context_line.maxChars, B1_VIDEO_CONTEXT_LINE_MAX_CHARS);
++  assertEquals(env.limits.cta_text.maxChars, B1_VIDEO_CTA_TEXT_MAX_CHARS);
++  // Fallback carries char bounds ONLY — no lines/words invented.
++  assertEquals(env.limits.stat_label.maxLines, undefined);
++});
++
++// ── describeFieldLimit (prompt limit text) ─────────────────────────────────────────────
++
++Deno.test('describeFieldLimit: chars only / chars+lines / chars+lines+words', () => {
++  assertEquals(describeFieldLimit({ maxChars: 12 }), 'max 12 chars');
++  assertEquals(describeFieldLimit({ maxChars: 60, maxLines: 3 }), 'max 60 chars, max 3 lines');
++  assertEquals(describeFieldLimit({ maxChars: 60, maxLines: 1, maxWords: 9 }), 'max 60 chars, max 1 line, max 9 words');
++});
++
++// ── validateStatScriptAgainstEnvelope ───────────────────────────────────────────────────
++
++Deno.test('validate: conformant script → no violations', () => {
++  assertEquals(validateStatScriptAgainstEnvelope(CONFORMANT, RICH_ENVELOPE), []);
++});
++
++Deno.test('validate: boundary-exact is conformant (strictly-greater), one over violates', () => {
++  const exact = { ...CONFORMANT, cta_text: 'q'.repeat(90) };
++  assertEquals(validateStatScriptAgainstEnvelope(exact, RICH_ENVELOPE), []);
++  const over = { ...CONFORMANT, cta_text: 'q'.repeat(91) };
++  assertEquals(validateStatScriptAgainstEnvelope(over, RICH_ENVELOPE), [
++    { field: 'cta_text', kind: 'chars', length: 91, max: 90 },
++  ]);
++});
++
++Deno.test('validate: max_lines violation detected (kind=lines); at-limit conformant', () => {
++  const two = { ...CONFORMANT, stat_label: 'line one\nline two' };
++  assertEquals(validateStatScriptAgainstEnvelope(two, RICH_ENVELOPE), []);
++  const three = { ...CONFORMANT, stat_label: 'one\ntwo\nthree' };
++  assertEquals(validateStatScriptAgainstEnvelope(three, RICH_ENVELOPE), [
++    { field: 'stat_label', kind: 'lines', length: 3, max: 2 },
++  ]);
++});
++
++Deno.test('validate: max_words violation detected (kind=words); at-limit conformant', () => {
++  const ten = { ...CONFORMANT, context_line: 'w1 w2 w3 w4 w5 w6 w7 w8 w9 w10' };
++  assertEquals(validateStatScriptAgainstEnvelope(ten, RICH_ENVELOPE), []);
++  const eleven = { ...CONFORMANT, context_line: 'w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11' };
++  assertEquals(validateStatScriptAgainstEnvelope(eleven, RICH_ENVELOPE), [
++    { field: 'context_line', kind: 'words', length: 11, max: 10 },
++  ]);
++});
++
++Deno.test('validate: measurement matches the render gate (trimmed UTF-16 units, emoji = 2)', () => {
++  // 👇 is 2 UTF-16 code units — same measurement doctrine as video_stat_bounds/the gate.
++  const v = validateStatScriptAgainstEnvelope({ ...CONFORMANT, stat_value: '1234567890👇' }, RICH_ENVELOPE);
++  assertEquals(v, []); // 10 + 2 = 12 = at limit
++  const over = validateStatScriptAgainstEnvelope({ ...CONFORMANT, stat_value: '12345678901👇' }, RICH_ENVELOPE);
++  assertEquals(over, [{ field: 'stat_value', kind: 'chars', length: 13, max: 12 }]);
++});
++
++Deno.test('validate: blank fields are NOT violations (render gate owns blanks)', () => {
++  assertEquals(validateStatScriptAgainstEnvelope({ stat_value: '', stat_label: '  ', cta_text: undefined }, RICH_ENVELOPE), []);
++});
++
++// ── decideStatBoundsNextStep (the D-1 state machine, pure) ─────────────────────────────
++
++Deno.test('decide: no violations → accept (both attempts)', () => {
++  assertEquals(decideStatBoundsNextStep(1, 0), 'accept');
++  assertEquals(decideStatBoundsNextStep(2, 0), 'accept');
++});
++
++Deno.test('decide: violations on attempt 1 → exactly one re-prompt', () => {
++  assertEquals(decideStatBoundsNextStep(1, 1), 'reprompt');
++  assertEquals(decideStatBoundsNextStep(1, 4), 'reprompt');
++});
++
++Deno.test('decide: violations on attempt 2 (or later, defensive) → fail_closed', () => {
++  assertEquals(decideStatBoundsNextStep(2, 1), 'fail_closed');
++  assertEquals(decideStatBoundsNextStep(3, 1), 'fail_closed');
++});
++
++// ── buildEnvelopeBoundReminder ─────────────────────────────────────────────────────────
++
++Deno.test('reminder: all-chars violations DELEGATE to the Task-A buildBoundReminder verbatim', () => {
++  const v = [{ field: 'cta_text', kind: 'chars' as const, length: 133, max: 90 }];
++  assertEquals(buildEnvelopeBoundReminder(v), buildBoundReminder([{ field: 'cta_text', length: 133, max: 90 }]));
++});
++
++Deno.test('reminder: mixed-kind violations name units and demand JSON-only', () => {
++  const v = [
++    { field: 'cta_text', kind: 'chars' as const, length: 133, max: 90 },
++    { field: 'stat_label', kind: 'lines' as const, length: 3, max: 2 },
++  ];
++  const r = buildEnvelopeBoundReminder(v);
++  assert(r.includes('cta_text was 133 chars (max 90)'));
++  assert(r.includes('stat_label was 3 lines (max 2)'));
++  assert(r.includes('stat_label max 2 lines'));
++  assert(r.includes('Return ONLY the JSON.'));
++});
++
++// ── QA evidence shape ──────────────────────────────────────────────────────────────────
++
++Deno.test('QA: both attempts preserved, envelope echoed, fail_closed carries the named dead_reason', () => {
++  const a1: StatBoundsAttempt = {
++    attempt: 1,
++    fields: snapshotStatFields({ stat_value: '$62.17/hr', stat_label: 'x'.repeat(50), context_line: 'c', cta_text: 'q' }),
++    violations: [{ field: 'stat_label', kind: 'chars', length: 50, max: 48 }],
++    at: '2026-08-03T00:00:00.000Z',
++  };
++  const a2: StatBoundsAttempt = {
++    attempt: 2,
++    fields: snapshotStatFields({ stat_value: '$62.17/hr', stat_label: 'y'.repeat(49), context_line: 'c', cta_text: 'q' }),
++    violations: [{ field: 'stat_label', kind: 'chars', length: 49, max: 48 }],
++    at: '2026-08-03T00:00:01.000Z',
++  };
++  const qa = buildStatBoundsQa(RICH_ENVELOPE, [a1, a2], 'fail_closed');
++  assertEquals(qa.schema, 'stat_bounds_qa_v1');
++  assertEquals(qa.envelope, {
++    source: 'persisted',
++    template_id: TEMPLATE_ID,
++    fallback_reason: null,
++    limits: RICH_ENVELOPE.limits,
++  });
++  assertEquals(qa.attempts.length, 2);
++  assertEquals(qa.attempts[0].fields.stat_label, 'x'.repeat(50));   // attempt-1 content preserved
++  assertEquals(qa.attempts[1].fields.stat_label, 'y'.repeat(49));   // attempt-2 content preserved
++  assertEquals(qa.outcome, 'fail_closed');
++  assertEquals(qa.dead_reason, STAT_BOUNDS_DEAD_REASON);
++  assertEquals(STAT_BOUNDS_DEAD_REASON, 'stat_bounds_violation_after_bounded_reprompt');
++});
++
++Deno.test('QA: success outcomes carry NO dead_reason key', () => {
++  const qa = buildStatBoundsQa(RICH_ENVELOPE, [], 'accepted_first_attempt');
++  assertEquals('dead_reason' in qa, false);
++  assertEquals(buildStatBoundsQa(RICH_ENVELOPE, [], 'accepted_after_reprompt').dead_reason, undefined);
++});
++
++Deno.test('snapshotStatFields: stringifies verbatim (untrimmed), null/undefined → empty', () => {
++  assertEquals(snapshotStatFields({ stat_value: ' 42% ', stat_label: undefined, context_line: null, cta_text: 7 as unknown }), {
++    stat_value: ' 42% ',
++    stat_label: '',
++    context_line: '',
++    cta_text: '7',
++  });
++});
++
++// ── isStatBoundsFailClosed sentinel guard ───────────────────────────────────────────────
++
++Deno.test('sentinel: guard accepts only the fail-closed marker object', () => {
++  const qa = buildStatBoundsQa(RICH_ENVELOPE, [], 'fail_closed');
++  assert(isStatBoundsFailClosed({ stat_bounds_fail_closed: true, stat_bounds_qa: qa }));
++  assertEquals(isStatBoundsFailClosed(null), false);
++  assertEquals(isStatBoundsFailClosed(undefined), false);
++  assertEquals(isStatBoundsFailClosed({ stat_value: '42%' }), false);
++  assertEquals(isStatBoundsFailClosed({ stat_bounds_fail_closed: false }), false);
++  // A real video_script carrying stat_bounds_qa (success path) is NOT the sentinel.
++  assertEquals(isStatBoundsFailClosed({ stat_value: '42%', stat_bounds_qa: qa }), false);
++});
++
++// ── loadStatTemplateEnvelope (thin loader, chainable stub — house pattern) ─────────────
++
++type StubOpts = {
++  rpcResult?: { data: unknown; error: { code?: string; message?: string } | null };
++  rpcThrows?: boolean;
++  rowsResult?: { data: unknown; error: { code?: string; message?: string } | null };
++};
++
++function stubDb(opts: StubOpts) {
++  const calls: { rpc: Array<{ fn: string; args: Record<string, unknown> }>; reads: number } = { rpc: [], reads: 0 };
++  const db = {
++    rpc: (fn: string, args: Record<string, unknown>) => {
++      calls.rpc.push({ fn, args });
++      if (opts.rpcThrows) throw new Error('stub rpc threw');
++      return Promise.resolve(opts.rpcResult ?? { data: null, error: null });
++    },
++    schema: (_s: string) => ({
++      from: (_t: string) => ({
++        select: (_c: string) => ({
++          eq: (_k: string, _v: unknown) => ({
++            in: (_k2: string, _vals: string[]) => {
++              calls.reads += 1;
++              return Promise.resolve(opts.rowsResult ?? { data: null, error: null });
++            },
++          }),
++        }),
++      }),
++    }),
++  };
++  return { db, calls };
++}
++
++const OK_SELECTION = {
++  data: { status: 'ok', selected: { template_id: TEMPLATE_ID, provider_template_id: 'c11bb8ab' }, fail_reason: null },
++  error: null,
++};
++
++Deno.test('loader: happy path → persisted envelope; select_template call MIRRORS video-worker (platform null, format video_short_stat, seed=post_draft_id)', async () => {
++  const { db, calls } = stubDb({ rpcResult: OK_SELECTION, rowsResult: { data: ALL_FOUR_ROWS, error: null } });
++  const env = await loadStatTemplateEnvelope(db, 'ndis-yarns', 'draft-123');
++  assertEquals(env.source, 'persisted');
++  assertEquals(env.templateId, TEMPLATE_ID);
++  assertEquals(env.limits.stat_label, { maxChars: 48, maxLines: 2 });
++  assertEquals(calls.rpc, [{
++    fn: 'select_template',
++    args: { p_client_slug: 'ndis-yarns', p_platform: null, p_format: 'video_short_stat', p_variant_intent: null, p_seed: 'draft-123' },
++  }]);
++});
++
++Deno.test('loader miss: null client slug → fallback, no RPC call', async () => {
++  const { db, calls } = stubDb({});
++  const env = await loadStatTemplateEnvelope(db, null, 'draft-123');
++  assertEquals(env.source, 'fallback_char_bounds');
++  assertEquals(env.fallbackReason, 'client_slug_unresolved');
++  assertEquals(calls.rpc.length, 0);
++});
++
++Deno.test('loader miss: select_template RPC error → fallback with reason', async () => {
++  const { db } = stubDb({ rpcResult: { data: null, error: { code: 'PGRST301', message: 'boom' } } });
++  const env = await loadStatTemplateEnvelope(db, 'pp', 'd1');
++  assertEquals(env.source, 'fallback_char_bounds');
++  assert(env.fallbackReason!.startsWith('select_template_rpc_error:PGRST301'));
++});
++
++Deno.test('loader miss: fail-closed selection → fallback naming the fail_reason', async () => {
++  const { db } = stubDb({ rpcResult: { data: { status: 'fail_closed', selected: null, fail_reason: 'no_selectable_template' }, error: null } });
++  const env = await loadStatTemplateEnvelope(db, 'pp', 'd1');
++  assertEquals(env.source, 'fallback_char_bounds');
++  assertEquals(env.fallbackReason, 'select_template_not_ok:fail_closed:no_selectable_template');
++});
++
++Deno.test('loader miss: ok selection without template_id → fallback', async () => {
++  const { db } = stubDb({ rpcResult: { data: { status: 'ok', selected: {} }, error: null } });
++  const env = await loadStatTemplateEnvelope(db, 'pp', 'd1');
++  assertEquals(env.fallbackReason, 'select_template_missing_template_id');
++});
++
++Deno.test('loader miss: field-rows read error → fallback', async () => {
++  const { db } = stubDb({ rpcResult: OK_SELECTION, rowsResult: { data: null, error: { code: '42501', message: 'denied' } } });
++  const env = await loadStatTemplateEnvelope(db, 'pp', 'd1');
++  assert(env.fallbackReason!.startsWith('field_rows_read_error:42501'));
++});
++
++Deno.test('loader miss: element rows absent → fallback (element_row_missing)', async () => {
++  const { db } = stubDb({ rpcResult: OK_SELECTION, rowsResult: { data: [], error: null } });
++  const env = await loadStatTemplateEnvelope(db, 'pp', 'd1');
++  assertEquals(env.fallbackReason, 'element_row_missing:StatValue');
++});
++
++Deno.test('loader miss: throw anywhere → fallback, NEVER a throw out of the loader', async () => {
++  const { db } = stubDb({ rpcThrows: true });
++  const env = await loadStatTemplateEnvelope(db, 'pp', 'd1');
++  assertEquals(env.source, 'fallback_char_bounds');
++  assert(env.fallbackReason!.startsWith('envelope_loader_threw:'));
++});
+diff --git a/supabase/functions/ai-worker/video_stat_bounds.ts b/supabase/functions/ai-worker/video_stat_bounds.ts
+new file mode 100644
+index 0000000..eb01b71
+--- /dev/null
++++ b/supabase/functions/ai-worker/video_stat_bounds.ts
+@@ -0,0 +1,74 @@
++// video_stat_bounds.ts — VENDORED projection of the canonical governed video_short_stat
++// render-contract character bounds.
++//
++// The canonical, sole source of truth for these four numbers is
++// `../video-worker/b1_video_stat.ts:67-70` (the four EXPORTED constants consumed by the
++// throwing render gate `assertStatFieldsWithinGate`, b1_video_stat.ts:112-129). This module
++// is a VENDORED COPY of those numbers plus a PURE, NON-throwing validator so the PRODUCER
++// (ai-worker) can measure a freshly-generated stat script against the exact bounds the render
++// worker will later enforce — BEFORE the draft is enrolled in the render queue.
++//
++// Why a vendored copy and NOT a runtime import: the ICE house rule (proven) forbids any
++// production path cross-importing across function dirs (no `import ... from '../video-worker/'`
++// on a deployed path). See `creative_contract_parity_test.ts` — the sanctioned pattern is a
++// vendored copy guarded by a TEST-ONLY parity import. This module's numbers are bound to the
++// canonical source by `video_stat_bounds_parity_test.ts` (test-only cross-dir import), which
++// deep-equals each constant against the `b1_video_stat.ts` export. If that parity test fails,
++// the vendored copy has drifted and MUST be re-synced — the render gate stays the authority.
++//
++// Measurement contract: this validator measures `String(value ?? '').trim().length` — UTF-16
++// code units — IDENTICAL to the render gate's `.trim().length`. It is NOT a SQL `length()`
++// (Postgres counts characters, not UTF-16 units) — that divergence is exactly why validation
++// lives here in TypeScript, sharing the gate's measurement, and not in the DB.
++
++// VENDORED — must deep-equal `../video-worker/b1_video_stat.ts:67-70`.
++// (Guarded by video_stat_bounds_parity_test.ts.)
++export const B1_VIDEO_STAT_VALUE_MAX_CHARS = 12;
++export const B1_VIDEO_STAT_LABEL_MAX_CHARS = 48;
++export const B1_VIDEO_CONTEXT_LINE_MAX_CHARS = 160;
++export const B1_VIDEO_CTA_TEXT_MAX_CHARS = 90;
++
++export type StatBoundViolation = { field: string; length: number; max: number };
++
++// PURE, NON-throwing per-field length validator. Returns one violation per field whose trimmed
++// UTF-16 length EXCEEDS its max (strictly greater — a field at exactly its max is conformant).
++// Blank fields are NOT this validator's concern: the render gate (assertStatFieldsWithinGate)
++// owns the blank/missing check via `throw` at render time; here we validate LENGTH only, so a
++// bounded-regeneration loop re-prompts strictly on over-length. No I/O, no Date, no random.
++export function validateStatScriptBounds(script: {
++  stat_value?: unknown;
++  stat_label?: unknown;
++  context_line?: unknown;
++  cta_text?: unknown;
++}): StatBoundViolation[] {
++  const checks: Array<{ field: string; value: unknown; max: number }> = [
++    { field: 'stat_value', value: script.stat_value, max: B1_VIDEO_STAT_VALUE_MAX_CHARS },
++    { field: 'stat_label', value: script.stat_label, max: B1_VIDEO_STAT_LABEL_MAX_CHARS },
++    { field: 'context_line', value: script.context_line, max: B1_VIDEO_CONTEXT_LINE_MAX_CHARS },
++    { field: 'cta_text', value: script.cta_text, max: B1_VIDEO_CTA_TEXT_MAX_CHARS },
++  ];
++  const violations: StatBoundViolation[] = [];
++  for (const c of checks) {
++    const length = String(c.value ?? '').trim().length;
++    if (length > c.max) {
++      violations.push({ field: c.field, length, max: c.max });
++    }
++  }
++  return violations;
++}
++
++// PURE re-prompt reminder builder. Turns a violation list into an explicit instruction that
++// names each violated field, its measured length, and its hard max, then restates every
++// violated field's limit and demands JSON-only output. Deterministic — same input yields the
++// same string (no Date, no random). Intended to be appended to the stat user prompt on a
++// bounded-regeneration retry.
++export function buildBoundReminder(violations: StatBoundViolation[]): string {
++  const measured = violations
++    .map((v) => `${v.field} was ${v.length} chars (max ${v.max})`)
++    .join(', ');
++  const limits = violations
++    .map((v) => `${v.field} max ${v.max}`)
++    .join(', ');
++  return `Your previous response violated hard character limits: ${measured}. ` +
++    `Rewrite so EVERY field is within its limit: ${limits}. Return ONLY the JSON.`;
++}
+diff --git a/supabase/functions/ai-worker/video_stat_bounds_parity_test.ts b/supabase/functions/ai-worker/video_stat_bounds_parity_test.ts
+new file mode 100644
+index 0000000..2eb9787
+--- /dev/null
++++ b/supabase/functions/ai-worker/video_stat_bounds_parity_test.ts
+@@ -0,0 +1,41 @@
++// video_stat_bounds_parity_test.ts — one-source-of-truth guard for the vendored governed
++// video_short_stat character bounds.
++//
++// TEST-ONLY cross-dir import: this file imports the four canonical constants from
++// ../video-worker/b1_video_stat.ts ONLY to compare them against the ai-worker vendored copy in
++// ./video_stat_bounds.ts. Tests are NOT deployed, so this does NOT violate the no cross-function
++// RUNTIME-import house rule — no production ai-worker path imports anything under ../video-worker.
++// (Same sanctioned pattern as creative_contract_parity_test.ts.) If any pair diverges, the
++// vendored bounds have drifted from the render gate's authority and must be re-synced.
++
++import { assertEquals } from 'jsr:@std/assert@1';
++
++import {
++  B1_VIDEO_CONTEXT_LINE_MAX_CHARS as AI_CONTEXT_LINE,
++  B1_VIDEO_CTA_TEXT_MAX_CHARS as AI_CTA_TEXT,
++  B1_VIDEO_STAT_LABEL_MAX_CHARS as AI_STAT_LABEL,
++  B1_VIDEO_STAT_VALUE_MAX_CHARS as AI_STAT_VALUE,
++} from './video_stat_bounds.ts';
++
++import {
++  B1_VIDEO_CONTEXT_LINE_MAX_CHARS as CANON_CONTEXT_LINE,
++  B1_VIDEO_CTA_TEXT_MAX_CHARS as CANON_CTA_TEXT,
++  B1_VIDEO_STAT_LABEL_MAX_CHARS as CANON_STAT_LABEL,
++  B1_VIDEO_STAT_VALUE_MAX_CHARS as CANON_STAT_VALUE,
++} from '../video-worker/b1_video_stat.ts';
++
++Deno.test('parity: B1_VIDEO_STAT_VALUE_MAX_CHARS equal (vendored == canonical)', () => {
++  assertEquals(AI_STAT_VALUE, CANON_STAT_VALUE);
++});
++
++Deno.test('parity: B1_VIDEO_STAT_LABEL_MAX_CHARS equal (vendored == canonical)', () => {
++  assertEquals(AI_STAT_LABEL, CANON_STAT_LABEL);
++});
++
++Deno.test('parity: B1_VIDEO_CONTEXT_LINE_MAX_CHARS equal (vendored == canonical)', () => {
++  assertEquals(AI_CONTEXT_LINE, CANON_CONTEXT_LINE);
++});
++
++Deno.test('parity: B1_VIDEO_CTA_TEXT_MAX_CHARS equal (vendored == canonical)', () => {
++  assertEquals(AI_CTA_TEXT, CANON_CTA_TEXT);
++});
+diff --git a/supabase/functions/ai-worker/video_stat_bounds_test.ts b/supabase/functions/ai-worker/video_stat_bounds_test.ts
+new file mode 100644
+index 0000000..3668b4c
+--- /dev/null
++++ b/supabase/functions/ai-worker/video_stat_bounds_test.ts
+@@ -0,0 +1,100 @@
++// video_stat_bounds_test.ts — hermetic, PURE unit tests for the vendored governed
++// video_short_stat bounds validator + re-prompt builder. No network, no DB, no Date/random.
++//
++// Both directions: a conformant script yields [], and every over-bound case yields exactly one
++// violation for the right field with the exact measured length + max. The headline fixture is
++// cc-0038 B4's own 133-char cta_text padding literal (byte-identical to
++// _harness/cc0038_b4_proof/B4_1_write.sql) — the one input already proven to trip the render
++// gate — so this test proves the producer-side validator measures IDENTICALLY to the gate.
++
++import { assertEquals } from 'jsr:@std/assert@1';
++import {
++  B1_VIDEO_CONTEXT_LINE_MAX_CHARS,
++  B1_VIDEO_CTA_TEXT_MAX_CHARS,
++  B1_VIDEO_STAT_LABEL_MAX_CHARS,
++  B1_VIDEO_STAT_VALUE_MAX_CHARS,
++  buildBoundReminder,
++  validateStatScriptBounds,
++} from './video_stat_bounds.ts';
++
++// cc-0038 B4 gate-trip padding literal — copied VERBATIM from _harness/cc0038_b4_proof/B4_1_write.sql.
++// The 👇 (U+1F447) is one emoji = 2 UTF-16 code units, so String.length yields 133 (NOT the 131
++// codepoints Postgres length() would count) — this is the render gate's measurement.
++const CC0038_B4_CTA_133 =
++  'Are you watching the Perth market? Drop your thoughts below 👇 [cc-0038 B4 gate-trip padding to exceed the 90-char CtaText hard gate]';
++
++// A fully conformant governed stat script (every field within its bound).
++const CONFORMANT = {
++  stat_value: '$62.17/hr',
++  stat_label: 'Median Perth rental yield',
++  context_line: 'Perth rents climbed again this quarter, tightening an already-scarce market.',
++  cta_text: 'What does this mean for your next move?',
++};
++
++Deno.test('validate: conformant stat script returns no violations', () => {
++  assertEquals(validateStatScriptBounds(CONFORMANT), []);
++});
++
++Deno.test('validate: measurement guard — the cc-0038 B4 133-char literal measures 133 UTF-16 units', () => {
++  // If this ever differs from 133 the producer validator would enforce a different bound than
++  // the render gate (which measures the same String.length) — a measurement mismatch. Fail loud.
++  assertEquals(CC0038_B4_CTA_133.length, 133);
++  assertEquals(CC0038_B4_CTA_133.trim().length, 133);
++});
++
++Deno.test('validate: cc-0038 B4 over-length cta_text → exactly one cta_text violation (133 > 90)', () => {
++  const violations = validateStatScriptBounds({ ...CONFORMANT, cta_text: CC0038_B4_CTA_133 });
++  assertEquals(violations, [{ field: 'cta_text', length: 133, max: B1_VIDEO_CTA_TEXT_MAX_CHARS }]);
++});
++
++Deno.test('validate: over-length stat_value → exactly one stat_value violation', () => {
++  const over = 'X'.repeat(B1_VIDEO_STAT_VALUE_MAX_CHARS + 1); // 13
++  const violations = validateStatScriptBounds({ ...CONFORMANT, stat_value: over });
++  assertEquals(violations, [{ field: 'stat_value', length: 13, max: B1_VIDEO_STAT_VALUE_MAX_CHARS }]);
++});
++
++Deno.test('validate: over-length stat_label → exactly one stat_label violation', () => {
++  const over = 'y'.repeat(B1_VIDEO_STAT_LABEL_MAX_CHARS + 5); // 53
++  const violations = validateStatScriptBounds({ ...CONFORMANT, stat_label: over });
++  assertEquals(violations, [{ field: 'stat_label', length: 53, max: B1_VIDEO_STAT_LABEL_MAX_CHARS }]);
++});
++
++Deno.test('validate: over-length context_line → exactly one context_line violation', () => {
++  const over = 'z'.repeat(B1_VIDEO_CONTEXT_LINE_MAX_CHARS + 2); // 162
++  const violations = validateStatScriptBounds({ ...CONFORMANT, context_line: over });
++  assertEquals(violations, [{ field: 'context_line', length: 162, max: B1_VIDEO_CONTEXT_LINE_MAX_CHARS }]);
++});
++
++Deno.test('validate: a field exactly at its max is conformant (strictly-greater boundary)', () => {
++  const exact = 'q'.repeat(B1_VIDEO_CTA_TEXT_MAX_CHARS); // 90
++  assertEquals(validateStatScriptBounds({ ...CONFORMANT, cta_text: exact }), []);
++});
++
++Deno.test('validate: multiple over-length fields → one violation each', () => {
++  const violations = validateStatScriptBounds({
++    stat_value: 'X'.repeat(20),
++    stat_label: CONFORMANT.stat_label,
++    context_line: CONFORMANT.context_line,
++    cta_text: CC0038_B4_CTA_133,
++  });
++  assertEquals(violations, [
++    { field: 'stat_value', length: 20, max: B1_VIDEO_STAT_VALUE_MAX_CHARS },
++    { field: 'cta_text', length: 133, max: B1_VIDEO_CTA_TEXT_MAX_CHARS },
++  ]);
++});
++
++Deno.test('validate: blank fields are NOT length violations (render gate owns blanks)', () => {
++  assertEquals(validateStatScriptBounds({ stat_value: '', stat_label: '   ', cta_text: undefined }), []);
++});
++
++Deno.test('buildBoundReminder: names the violated field, its length, and its max', () => {
++  const reminder = buildBoundReminder([{ field: 'cta_text', length: 133, max: 90 }]);
++  assertEquals(reminder.includes('cta_text was 133 chars (max 90)'), true);
++  assertEquals(reminder.includes('cta_text max 90'), true);
++  assertEquals(reminder.includes('Return ONLY the JSON.'), true);
++});
++
++Deno.test('buildBoundReminder: deterministic — same input yields the same string', () => {
++  const v = [{ field: 'cta_text', length: 133, max: 90 }, { field: 'stat_value', length: 20, max: 12 }];
++  assertEquals(buildBoundReminder(v), buildBoundReminder(v));
++});
+diff --git a/supabase/functions/video-worker/b1_video_stat.ts b/supabase/functions/video-worker/b1_video_stat.ts
+index 5a98cac..afa2f7a 100644
+--- a/supabase/functions/video-worker/b1_video_stat.ts
++++ b/supabase/functions/video-worker/b1_video_stat.ts
+@@ -57,6 +57,20 @@
+ // currently-selectable template renders BYTE-UNCHANGED. Governed bindings always win over the overlay
+ // (assertParityOverlayDisjoint + merge order), so this can never overwrite a resolver-selected asset.
+ 
++// v3.17.0 (WS-5 P1, PK ruling D-4 — GOVERNED EyebrowText, DATA-GATED): the Creatomate stat template
++// video_stat_reveal_9x16_v2 will gain a parameterised EyebrowText field (PK template edit — NOT this
++// lane). buildGovernedVideoStatPlan accepts an OPTIONAL eyebrowText: when provided (non-blank) it adds
++// 'EyebrowText.text' to the governed modifications; when absent the modification set is BYTE-UNCHANGED
++// (pre-template-edit safe no-op — safe to deploy BEFORE the template edit). NOTE the deliberate key
++// form: 'EyebrowText.text' (suffixed) per the lane brief — unlike this template's four bare AI-text
++// keys, Creatomate accepts both address forms. The value is GOVERNED PER-CLIENT data, never freeform
++// AI: the caller resolves constraints.baked['eyebrow_value_<slug>'] from the winner's EyebrowText
++// field row via extractGovernedEyebrowValue (pure, fail-loud b1_video_stat_eyebrow_value_missing when
++// the row exists but the client's baked value is missing/blank — governed values only, no default
++// text; validates text_limits.max_chars when persisted, throw-not-truncate, mirroring
++// assertStatFieldsWithinGate). STRICTLY OUT OF SCOPE: the four exported *_MAX_CHARS constants and the
++// existing modification keys / parity constants / throwing char-gate are all UNCHANGED.
++
+ // The Property-Pulse client_id — retained as the reference identity for the hermetic gate tests and
+ // the governed smoke. It no longer gates the production path (index.ts gates on the runtime
+ // governance lookup, so a second governed brand is a DATA addition, not a code edit). A client_id,
+@@ -216,6 +230,52 @@ export function assertStatFieldsWithinGate(fields: B1VideoStatFields): void {
+   }
+ }
+ 
++// ─────────────────────────────────────────────────────────────────────────────────────
++// v3.17.0 (WS-5 P1, D-4) — governed EyebrowText value extraction (PURE, fail-loud).
++// ─────────────────────────────────────────────────────────────────────────────────────
++
++// Resolve the governed per-client eyebrow value from the winner's EyebrowText field row
++// (c.creative_provider_template_field). Contract:
++//   • fieldRow null/undefined (NO EyebrowText row on the template) → null: the caller omits the
++//     key and today's render is BYTE-UNCHANGED (pre-template-edit safe no-op).
++//   • Row present → the value MUST be constraints.baked['eyebrow_value_<client_slug with - → _>']
++//     (e.g. eyebrow_value_property_pulse='MARKET UPDATE', eyebrow_value_ndis_yarns='NDIS UPDATE').
++//     Missing/blank → THROW b1_video_stat_eyebrow_value_missing — governed values only, NEVER a
++//     default/freeform fallback (a wrong-brand eyebrow must be impossible by construction).
++//   • When the row persists text_limits.max_chars (limit-TRIPLE; basis='to_be_calibrated' →
++//     absent), the value is validated against it — THROW on violation, no truncation (mirrors
++//     assertStatFieldsWithinGate's render-contract gate style).
++// PURE: no I/O, no Date, no random — hermetically tested in b1_video_stat_test.ts.
++export function extractGovernedEyebrowValue(
++  fieldRow: { constraints?: unknown } | null | undefined,
++  clientSlug: string,
++): string | null {
++  if (!fieldRow) return null;
++  const constraints = (fieldRow.constraints ?? null) as {
++    baked?: Record<string, unknown>;
++    text_limits?: { max_chars?: { basis?: unknown; value?: unknown } };
++  } | null;
++  const key = `eyebrow_value_${clientSlug.replaceAll('-', '_')}`;
++  const baked = constraints?.baked;
++  const raw = (baked && typeof baked === 'object') ? baked[key] : undefined;
++  const value = typeof raw === 'string' ? raw.trim() : '';
++  if (!value) {
++    throw new Error(
++      `b1_video_stat_eyebrow_value_missing: EyebrowText row exists but constraints.baked.${key} is missing/blank (governed values only — no default text)`,
++    );
++  }
++  const trip = constraints?.text_limits?.max_chars;
++  if (trip && typeof trip === 'object' && trip.basis !== 'to_be_calibrated') {
++    const max = Number(trip.value);
++    if (Number.isFinite(max) && max > 0 && value.length > Math.floor(max)) {
++      throw new Error(
++        `b1_video: eyebrow_text length ${value.length} exceeds max_chars=${Math.floor(max)} (no truncation / no AI rewrite)`,
++      );
++    }
++  }
++  return value;
++}
++
+ // PURE narration composer (cc-0032 step 5 D3 / N2). Deterministic spoken form of the governed stat
+ // fields for the ElevenLabs voiceover. CONCISE by design: statLabel + statValue + contextLine ONLY —
+ // the CTA is DELIBERATELY NOT spoken (N2: the CTA stays a VISUAL element), so the VO fits the 12s
+@@ -369,11 +429,15 @@ export type B1VideoStatPlan = {
+ // Background.source (the one deliberate difference from b1_production.buildTmrRenderPlan). The music
+ // bed is OPTIONAL: musicBedUrl='' (or null/undefined) binds an EXPLICITLY SILENT bed
+ // ('MusicBed.source'='') — N1. Bed LEVEL stays template-controlled (N3 — never sets MusicBed.volume).
++// v3.17.0 (WS-5 P1, D-4): OPTIONAL eyebrowText — provided (non-blank) → adds 'EyebrowText.text';
++// absent/blank → the modification set is BYTE-UNCHANGED (pre-template-edit safe no-op). Every
++// existing 4-arg call is byte-compatible.
+ export function buildGovernedVideoStatPlan(
+   selectorResponse: TmrSelectorResponse | null | undefined,
+   fields: B1VideoStatFields,
+   voiceUrl: string | null | undefined,
+   musicBedUrl: string | null | undefined,
++  eyebrowText?: string | null,
+ ): B1VideoStatPlan {
+   // Hard-gate the four text fields (fail loud) BEFORE consuming the selector.
+   assertStatFieldsWithinGate(fields);
+@@ -434,6 +498,13 @@ export function buildGovernedVideoStatPlan(
+   if (resolvedBackground) {
+     governedModifications['Background.source'] = resolvedBackground;
+   }
++  // v3.17.0 (WS-5 P1, D-4): governed EyebrowText — bound ONLY when the caller resolved a
++  // non-blank governed value (extractGovernedEyebrowValue). Omitted otherwise, so a template
++  // without the EyebrowText row (pre-template-edit) renders BYTE-UNCHANGED. Never a default.
++  const resolvedEyebrow = (eyebrowText ?? '').trim();
++  if (resolvedEyebrow) {
++    governedModifications['EyebrowText.text'] = resolvedEyebrow;
++  }
+ 
+   // v3.15.0 (TPR-1): merge the template-scoped output-parity overlay. EMPTY for every template not
+   // listed in B1_VIDEO_TEMPLATE_OUTPUT_PARITY, so an unlisted template's modification set is
+diff --git a/supabase/functions/video-worker/b1_video_stat_test.ts b/supabase/functions/video-worker/b1_video_stat_test.ts
+index 34163b2..6f93b5c 100644
+--- a/supabase/functions/video-worker/b1_video_stat_test.ts
++++ b/supabase/functions/video-worker/b1_video_stat_test.ts
+@@ -616,3 +616,90 @@ Deno.test('parity: CANARY — every overlay entry is complete (2 geometry keys +
+     assertEquals(Object.keys(ov).length, 10, tid);
+   }
+ });
++
++// ── v3.17.0 (WS-5 P1, D-4) — governed EyebrowText ─────────────────────────────────────
++// Data-gated: no eyebrow arg / null / blank → the modification set is BYTE-UNCHANGED;
++// a provided governed value adds ONLY 'EyebrowText.text'. extractGovernedEyebrowValue is
++// the pure baked-key extraction/validation helper (fail-loud, never a default).
++import { extractGovernedEyebrowValue } from './b1_video_stat.ts';
++
++Deno.test('eyebrow: 4-arg builder call (no eyebrow) → NO EyebrowText.text key (byte-compat)', () => {
++  const plan = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
++  assertEquals('EyebrowText.text' in plan.modifications, false);
++});
++
++Deno.test('eyebrow: null / blank eyebrowText → key omitted, modifications identical to 4-arg call', () => {
++  const base = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
++  const withNull = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED, null);
++  const withBlank = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED, '   ');
++  assertEquals(withNull.modifications, base.modifications);
++  assertEquals(withBlank.modifications, base.modifications);
++});
++
++Deno.test('eyebrow: provided value → adds EyebrowText.text ONLY; every existing key untouched', () => {
++  const base = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED);
++  const plan = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED, 'MARKET UPDATE');
++  assertEquals(plan.modifications['EyebrowText.text'], 'MARKET UPDATE');
++  const { 'EyebrowText.text': _eb, ...rest } = plan.modifications;
++  assertEquals(rest, base.modifications);
++});
++
++Deno.test('eyebrow: value is trimmed before binding', () => {
++  const plan = buildGovernedVideoStatPlan(liveShapeFixture(), okFields, VOICE, BED, '  NDIS UPDATE  ');
++  assertEquals(plan.modifications['EyebrowText.text'], 'NDIS UPDATE');
++});
++
++// extractGovernedEyebrowValue — pure baked-key extraction/validation.
++
++const eyebrowRow = (baked: Record<string, unknown> | undefined, maxChars?: { basis: string; value: unknown }) => ({
++  element_name: 'EyebrowText',
++  constraints: {
++    schema_version: 'tmr_field_constraints_v1',
++    content_source: 'baked',
++    ...(baked !== undefined ? { baked } : {}),
++    ...(maxChars !== undefined ? { text_limits: { max_chars: maxChars } } : {}),
++  },
++});
++
++Deno.test('eyebrow extract: NO row → null (pre-template-edit safe no-op)', () => {
++  assertEquals(extractGovernedEyebrowValue(null, 'property-pulse'), null);
++  assertEquals(extractGovernedEyebrowValue(undefined, 'property-pulse'), null);
++});
++
++Deno.test('eyebrow extract: slug hyphens map to underscores in the baked key', () => {
++  const row = eyebrowRow({ eyebrow_value_ndis_yarns: 'NDIS UPDATE', eyebrow_value_property_pulse: 'MARKET UPDATE' });
++  assertEquals(extractGovernedEyebrowValue(row, 'ndis-yarns'), 'NDIS UPDATE');
++  assertEquals(extractGovernedEyebrowValue(row, 'property-pulse'), 'MARKET UPDATE');
++});
++
++Deno.test('eyebrow extract: value is trimmed', () => {
++  const row = eyebrowRow({ eyebrow_value_property_pulse: '  MARKET UPDATE  ' });
++  assertEquals(extractGovernedEyebrowValue(row, 'property-pulse'), 'MARKET UPDATE');
++});
++
++Deno.test('eyebrow extract: row exists but client key missing/blank/non-string → THROWS named error (no default text)', () => {
++  assertThrows(() => extractGovernedEyebrowValue(eyebrowRow({ eyebrow_value_ndis_yarns: 'NDIS UPDATE' }), 'property-pulse'),
++    Error, 'b1_video_stat_eyebrow_value_missing');
++  assertThrows(() => extractGovernedEyebrowValue(eyebrowRow({ eyebrow_value_property_pulse: '   ' }), 'property-pulse'),
++    Error, 'b1_video_stat_eyebrow_value_missing');
++  assertThrows(() => extractGovernedEyebrowValue(eyebrowRow({ eyebrow_value_property_pulse: 42 }), 'property-pulse'),
++    Error, 'b1_video_stat_eyebrow_value_missing');
++  assertThrows(() => extractGovernedEyebrowValue(eyebrowRow(undefined), 'property-pulse'),
++    Error, 'b1_video_stat_eyebrow_value_missing');
++  // The error names the exact baked key it looked for (operator debuggability).
++  assertThrows(() => extractGovernedEyebrowValue(eyebrowRow({}), 'ndis-yarns'),
++    Error, 'eyebrow_value_ndis_yarns');
++});
++
++Deno.test('eyebrow extract: persisted max_chars enforced throw-not-truncate; exact-at-limit conformant', () => {
++  const at = eyebrowRow({ eyebrow_value_property_pulse: 'MARKET UPDATE' }, { basis: 'declared_from_source', value: 13 });
++  assertEquals(extractGovernedEyebrowValue(at, 'property-pulse'), 'MARKET UPDATE'); // 13 chars = at limit
++  const over = eyebrowRow({ eyebrow_value_property_pulse: 'MARKET UPDATE' }, { basis: 'declared_from_source', value: 12 });
++  assertThrows(() => extractGovernedEyebrowValue(over, 'property-pulse'),
++    Error, 'eyebrow_text length 13 exceeds max_chars=12');
++});
++
++Deno.test('eyebrow extract: to_be_calibrated max_chars → no gate (limit absent)', () => {
++  const row = eyebrowRow({ eyebrow_value_property_pulse: 'MARKET UPDATE' }, { basis: 'to_be_calibrated', value: null });
++  assertEquals(extractGovernedEyebrowValue(row, 'property-pulse'), 'MARKET UPDATE');
++});
+diff --git a/supabase/functions/video-worker/index.ts b/supabase/functions/video-worker/index.ts
+index 59a91f7..4835309 100644
+--- a/supabase/functions/video-worker/index.ts
++++ b/supabase/functions/video-worker/index.ts
+@@ -1,3 +1,35 @@
++// video-worker v3.17.0
++// ============================================================================
++// v3.17.0 (2026-08-03, WS-5 P1 / PK ruling D-4 — GOVERNED EyebrowText, DATA-GATED). ADDITIVE.
++//   marker: video-worker-ws5-eyebrow-text (grep-able in the deployed bundle).
++//   Lane: ws5-production-envelope-enforcement-foundation (Gate-1 approved 2026-08-03).
++//   WHAT: the Creatomate stat template video_stat_reveal_9x16_v2 will gain a parameterised
++//   EyebrowText field (a LATER PK template edit — not this deploy). renderGovernedVideoStat now:
++//     (1) after select_template returns the winner, reads the winner's EyebrowText row from
++//         c.creative_provider_template_field (resolveGovernedEyebrowText — placed BEFORE the
++//         expensive VO generation, same fail-loud-early doctrine as the selector call);
++//     (2) NO row → today's behaviour EXACTLY (key omitted; the render payload is byte-identical) —
++//         which is what makes this SAFE TO DEPLOY BEFORE THE TEMPLATE EDIT: until the EyebrowText
++//         field row is captured into the registry, this change is a no-op on every render;
++//     (3) row EXISTS → the governed value is constraints.baked['eyebrow_value_<client_slug with
++//         - → _>'] (PK D-4: Property Pulse 'MARKET UPDATE', NDIS Yarns 'NDIS UPDATE' — governed
++//         per-client data, NEVER freeform AI/default text). Missing/blank value → THROW
++//         b1_video_stat_eyebrow_value_missing (fail-loud → the existing per-draft catch →
++//         video_status='failed'); a persisted text_limits.max_chars is enforced throw-not-truncate
++//         (render-contract gate style). Field-row READ error also throws (fail-loud, named
++//         b1_video_eyebrow_field_read_failed) — the governed path never guesses.
++//     (4) buildGovernedVideoStatPlan gains an OPTIONAL eyebrowText param that adds
++//         'EyebrowText.text' to the modifications when non-blank (b1_video_stat.ts v3.17.0 note).
++//   DEPLOY SEQUENCING: deploy this worker FIRST, then PK edits the Creatomate template, then the
++//   EyebrowText field row (with baked eyebrow_value_* keys) is captured into the registry under
++//   its own gate. Any earlier ordering is also safe EXCEPT registry-row-before-worker-deploy is
++//   moot (old worker ignores the row) — the only UNSAFE state would be a template whose saved
++//   object REQUIRES EyebrowText content while no row/value exists, which the PK template edit
++//   owns avoiding.
++//   STRICTLY OUT OF SCOPE / BYTE-UNCHANGED: select_template itself, the kinetic/legacy/avatar
++//   paths, every publisher, routing, capability gates, the four *_MAX_CHARS render-gate
++//   constants, all parity constants, any DB schema (reads an existing table only), any deploy.
++//
+ // video-worker v3.16.2
+ // ============================================================================
+ // v3.16.2 (2026-08-02, Fix 1 — db-rls-auditor finding on the v3.16.1 extraction below, NOT
+@@ -436,7 +468,7 @@ import { resolveGovernedVoice } from './voice_id.ts';
+ import { buildRenderQa, safeQa } from './qa.ts';  // v3.1.5: QA-VISIBILITY-V0 (additive)
+ import { composeRenderSpec } from './template_smoke.ts';  // v3.2.0: GATE D2; v3.4.0 LANE W: module trimmed to this single live export (production render_spec composer) — the smoke surface is retired
+ import { resolveLegacyLogo, type AssetVerdict } from './asset_url_guard.ts';  // v3.3.0: H2 asset-URL validation before Creatomate
+-import { buildGovernedVideoStatPlan, composeGovernedVideoNarration, assertStatFieldsWithinGate, assertExpectedVideoProviderTemplate, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields, type TmrSelectorResponse } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO. v3.8.0 (Video D6 Lane 3): spine de-hardcode — buildGovernedVideoStatPlan consumes select_template; isB1GovernedVideoStat no longer imported (production gate is now runtime governance); assertExpectedVideoProviderTemplate is the SMOKE-ONLY parity guard.
++import { buildGovernedVideoStatPlan, composeGovernedVideoNarration, assertStatFieldsWithinGate, assertExpectedVideoProviderTemplate, extractGovernedEyebrowValue, B1_VIDEO_PRODUCTION_LABEL, B1_VIDEO_GOVERNED_FORMAT, B1_VIDEO_GOVERNED_CLIENT_ID, type B1VideoStatFields, type TmrSelectorResponse } from './b1_video_stat.ts';  // v3.6.0: CREATIVE-LIBRARY VIDEO TMR — governed PP video_short_stat COMBO AUDIO. v3.8.0 (Video D6 Lane 3): spine de-hardcode — buildGovernedVideoStatPlan consumes select_template; isB1GovernedVideoStat no longer imported (production gate is now runtime governance); assertExpectedVideoProviderTemplate is the SMOKE-ONLY parity guard.
+ import { buildGovernedVideoKineticPlan, assertKineticScenesWithinGate, B1_VIDEO_KINETIC_PRODUCTION_LABEL, B1_VIDEO_KINETIC_GOVERNED_FORMAT, type KineticScene } from './b1_video_kinetic.ts';  // v3.16.0 (WS-4/WS-5 D4): CREATIVE-LIBRARY VIDEO TMR — governed PP YouTube kinetic (silent v1 scope). TmrSelectorResponse type reused from b1_video_stat.ts (identical selector response shape).
+ import { mapSelectMusicRow, musicUsageFromBed, recordMusicUsage, type MusicUsageDescriptor } from './music_usage.ts';  // v3.7.0 (cc-0034): governed music-usage recording (record_music_usage)
+ import { submitAndPollCreatomateRender } from './creatomate_submit.ts';  // v3.16.1 (WS-4/WS-5 D4 out-of-band proof render): pollRender + the submit-POST block moved here verbatim (not reimplemented) — safe to import from a standalone script without index.ts's top-level Deno.serve side effect.
+@@ -599,7 +631,10 @@ import { submitAndPollCreatomateRender } from './creatomate_submit.ts';  // v3.1
+ //   audio guards, select_template/select_music, voice/TTS, the claim/publish paths, every legacy render
+ //   builder, and every registry/DB row. This deploy performs NO selector repoint — activation is a
+ //   SEPARATE, PK-gated DML apply.
+-const VERSION = 'video-worker-v3.16.2';
++const VERSION = 'video-worker-v3.17.0';
++
++// v3.17.0 (WS-5 P1, D-4) — grep-able marker string for the deployed bundle (bundles-from-CWD guard).
++export const WS5_EYEBROW_MARKER = 'video-worker-ws5-eyebrow-text';
+ const ELEVENLABS_TTS    = 'https://api.elevenlabs.io/v1/text-to-speech';
+ // v3.16.1: CREATOMATE_API / POLL_INTERVAL_MS / POLL_MAX_ATTEMPTS moved to ./creatomate_submit.ts
+ // (imported below) — values UNCHANGED, now single-sourced there so the out-of-band proof-render
+@@ -1301,6 +1336,34 @@ async function getGovernedVideoClientSlug(
+   return slug;
+ }
+ 
++// v3.17.0 (WS-5 P1, D-4) — THIN impure reader for the governed EyebrowText value. Reads the
++// selected winner's EyebrowText row from c.creative_provider_template_field and delegates the
++// value/limit judgment to the PURE extractGovernedEyebrowValue (b1_video_stat.ts — hermetically
++// tested; DB-touching logic stays thin and untested-by-mock per house style). Contract:
++//   • selection not usable / no template_id → null (the plan builder fail-louds on a bad
++//     selection right after — this reader never pre-empts that named error);
++//   • NO EyebrowText row → null → key omitted → render BYTE-UNCHANGED (data-gated no-op);
++//   • read ERROR → THROW b1_video_eyebrow_field_read_failed (governed path never guesses —
++//     an unreadable registry is a fail-loud condition, not a silent omit);
++//   • row present → extractGovernedEyebrowValue (throws b1_video_stat_eyebrow_value_missing /
++//     the max_chars gate; returns the governed value).
++async function resolveGovernedEyebrowText(
++  supabase: ReturnType<typeof getServiceClient>,
++  selection: unknown,
++  clientSlug: string,
++): Promise<string | null> {
++  const templateId = (selection as { selected?: { template_id?: unknown } } | null)?.selected?.template_id;
++  if (typeof templateId !== 'string' || !templateId) return null;
++  const { data, error } = await supabase.schema('c').from('creative_provider_template_field')
++    .select('element_name, constraints')
++    .eq('template_id', templateId)
++    .eq('element_name', 'EyebrowText')
++    .maybeSingle();
++  if (error) throw new Error(`b1_video_eyebrow_field_read_failed: ${error.message}`);
++  if (!data) return null;
++  return extractGovernedEyebrowValue(data as { constraints?: unknown }, clientSlug);
++}
++
+ // Governed VIDEO stat-reveal render. Mirrors the proven image-worker B1 governed image_quote
+ // branch: hard-gate the 4 text fields → resolve the LIVE TMR spine (public.select_template) →
+ // build the SPINE-DRIVEN, BAKED-BG template-mode plan → reuse the UNMODIFIED renderUploadAndLog
+@@ -1345,6 +1408,14 @@ async function renderGovernedVideoStat(opts: {
+   const { data: selection, error: selectErr } = await supabase.rpc('select_template', { p_client_slug: governedSlug, p_platform: null, p_format: B1_VIDEO_GOVERNED_FORMAT, p_variant_intent: null, p_seed: draft.post_draft_id });
+   if (selectErr) throw new Error(`b1_video tmr_selector_rpc_failed: ${selectErr.message}`);
+ 
++  // v3.17.0 (WS-5 P1, D-4): governed EyebrowText — DATA-GATED. Read the winner's EyebrowText field
++  // row; NO row → null → the key is omitted and the render is BYTE-UNCHANGED (pre-template-edit
++  // safe no-op). Row present → constraints.baked['eyebrow_value_<slug>'] is REQUIRED (fail-loud
++  // b1_video_stat_eyebrow_value_missing — governed per-client values only, never default text) and
++  // a persisted text_limits.max_chars is enforced throw-not-truncate. Placed BEFORE the expensive
++  // VO generation (fail-loud-early, same doctrine as the selector call above).
++  const eyebrowText = await resolveGovernedEyebrowText(supabase, selection, governedSlug);
++
+   // v3.6.0 (cc-0032 step 5): COMBO AUDIO. Compose the concise VO narration (CTA visual-only),
+   // resolve the PP voice by client_id (fail-loud if unresolved — existing behaviour), generate the
+   // VO, and resolve the governed music bed via select_music (empty result → '' silent bed per N1; an
+@@ -1362,7 +1433,8 @@ async function renderGovernedVideoStat(opts: {
+   // v3.8.0 (D6-8): SPINE-DRIVEN, BAKED-BG plan. Throws tmr_video_selector_fail_closed /
+   // tmr_video_slot_resolution_incomplete (missing Logo.source) / b1_video_missing_voiceover — never
+   // guesses, no fallback. provider_template_id + Logo.source come from `selection`.
+-  const plan = buildGovernedVideoStatPlan(selection as TmrSelectorResponse, fields, voiceUrl, bed.url);
++  // v3.17.0 (WS-5 P1, D-4): eyebrowText rides as the OPTIONAL 5th arg — null omits the key.
++  const plan = buildGovernedVideoStatPlan(selection as TmrSelectorResponse, fields, voiceUrl, bed.url, eyebrowText);
+ 
+   // Template-mode renderScript (Creatomate v2/renders template-mode): { template_id, modifications,
+   // output_format:'mp4' }. output_format is the template-mode video output field (mirrors the
