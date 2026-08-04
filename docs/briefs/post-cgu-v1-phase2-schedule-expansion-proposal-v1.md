@@ -184,3 +184,60 @@ matrix awaits explicit approval before any apply packet is drafted; if approved,
 step is a CAS-guarded apply packet (same discipline as v11: frozen row-level `schedule_id`
 targets, pre-image capture, durable rollback, apply-harness-auditor + branch-warden +
 hash-pinned external review) sized to exactly this table — nothing broader.
+
+---
+
+## 8. Addendum (2026-08-04, same day) — §3/§5/§6-item-2 correction: background-scarcity theory tested and rejected; open item 2 resolved
+
+Prompted by PK reviewing this proposal and flagging §3/§6-item-2 for a direct trace rather than
+accepting the background-asset theory as given. Two read-only `db-rls-auditor` passes (zero
+mutations) plus a parallel `brief-author` draft (not issued) investigated and found:
+
+**§6 open item 2 is resolved:** invegent's `image_quote` renders succeed because its resolver
+(`select_template`→`resolve_slot_assets`) deliberately falls through to a **PK-proven governed
+shared-pool background** (`bg_shared_datacentre_server.jpg`, per
+`docs/briefs/results/cc-0044-proof1-invegent-shared-pool-render-result-v1.md`, 2026-07-20 PK visual
+PASS) — a deliberate, working mechanism, not a bug, gap, or silent fallback. Separately,
+`docs/briefs/results/cc-0073-d2-background-pool-promotion-result.md` (2026-07-27) already gave
+**both** CFW and invegent 4 rotation-pool backgrounds each via shared-pool promotion — the "CFW=1/
+invegent=0" figures this proposal's §3 cites are scoped to each client's own-table asset count
+only, not their effective rotation pool.
+
+**§3/§5's "hard constraint found in the data" is superseded — background-asset scarcity was never
+the cause of the CFW/invegent failure rates.** A direct query of `m.post_render_log.error_message`
+(30-day window, both clients) found the failure counts fully and exactly accounted for by two
+already-fixed incidents that both fall inside this proposal's evidence-gathering window:
+
+- **cc-0048** (`brand_payload_contract_unresolved`, 2026-07-20 15:30Z→2026-07-22, 312 rows total):
+  CFW+invegent had no entry in image-worker's `CREATIVE_CONTRACT_REGISTRY`, so every `image_quote`
+  render fail-closed before reaching Creatomate. Fixed by adding registry entries.
+- **cc-0049** (`tmr_winner_unmapped: generic_quote_card_1x1_v1`, fixed 2026-07-23, 38 rows):
+  invegent's winning template had no winner→field mapping. Fixed the next day.
+
+`202+2=204` = CFW's exact reported failed count; `110+38=148` = invegent's exact reported failed
+count — zero unexplained residual for either client. **Both clients have rendered `image_quote` at
+~100% success for the 12 days since the cc-0049 fix** (modest volume, ~34 renders/12 days combined
+— caveat noted). The decisive disconfirmation: **CFW already has its own dedicated background
+asset (unlike invegent) and still failed at an equal-or-worse rate during the incident window**
+(85% vs invegent's 78%) — a client that already satisfies the hypothesized cause and still exhibits
+the effect rules out that cause. Control check: NDIS (registry-present throughout) ran 0% failure
+in the same window, ruling out a platform-wide cause; PP's unrelated 24.1% fail rate is its own
+separate, also-historical headline-length gate issue, not recurring in the 17 days prior.
+
+Full evidence, per-incident counts, and control-group detail:
+`docs/briefs/results/image-quote-reliability-diagnosis-result-v1.md`.
+
+**What this changes, and what it doesn't:** this addendum corrects the *reasoning* in §3/§5/§6 —
+it does **not** itself revise the proposed row counts in §3's table, §4's totals, or §7's
+dashboard-outcome table. Those held CFW/invegent `image_quote` flat for a reason that no longer
+applies, but re-opening image_quote capacity for either client is a distinct decision this
+addendum does not make. **Recommended for the Phase-2 approval gate:** PK should decide whether to
+(a) approve this proposal's existing text-only matrix as-is and treat an image_quote capacity
+increase as a separate, later decision now that the reliability blocker is gone, or (b) fold an
+image_quote increase into this same Phase-2 packet before it's authored. Either way, the "do not
+expand — already over-drawn/already failing" framing in §3/§5's tables should be read as
+superseded, not current, when this decision is made.
+
+This addendum does not authorize any apply and does not touch the active 7-day monitoring watch
+on the v11 apply (armed 2026-08-04 ~20:20 Sydney → 2026-08-11 ~20:20 Sydney, per
+`docs/00_sync_state.md` v6.130) — no schedule/DB mutation is made here.

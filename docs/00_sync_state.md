@@ -6,6 +6,13 @@
 
 ---
 
+> **✅ v6.131 — image_quote reliability diagnosis: background-scarcity theory REJECTED, CFW/invegent failure rate root-caused to already-fixed cc-0048/cc-0049 (T1 · read-only, zero DB/repo mutation)** — result: `docs/briefs/results/image-quote-reliability-diagnosis-result-v1.md`; addendum §8 of `docs/briefs/post-cgu-v1-phase2-schedule-expansion-proposal-v1.md`.
+> · Two `db-rls-auditor` passes: CFW's 85%/invegent's 78% 30-day failure rates are fully accounted for by two already-fixed incidents (cc-0048 registry gap 2026-07-20→22, cc-0049 winner-mapping gap fixed 2026-07-23) — zero unexplained residual. Both clients ~100% success since 2026-07-23 (12 days, modest volume).
+> · CFW already has its own background asset and still failed worse than invegent (which relies on a PK-proven shared-pool fallback) — disproves background-asset scarcity as the cause, twice over.
+> · Phase-2 proposal §3/§5/§6-item-2's "hold image_quote flat" reasoning is corrected in place (addendum, row counts unchanged) — PK decision needed at the Phase-2 gate on whether to revise capacity now that the blocker is gone.
+
+---
+
 > **✅ v6.130 — SCHEDULE-EXPANSION APPLY (v11) CLOSED, execution provenance + dashboard acceptance verified (T2/T3 · production DB apply, independently verified post-hoc)** — result: `docs/briefs/results/post-cgu-v1-optimum-schedule-expansion-apply-result-v1.md`.
 > · Applied by session `f20f008f-e98c-43ab-b9c2-747c9a460f01` (main checkout) — one atomic transaction, all 111 rows (102 schedule + 9 config), AHA-10-1 ownership protections included; dispatched `2026-08-04T10:19:49.758Z`, committed `2026-08-04T10:20:38.286Z`.
 > · Independently re-verified (this closeout, separate session): DB after-state PASS, live dashboard UI PASS across all four brands, `pg_stat_statements calls=3` on the shared guarded UPDATE resolved as 3 platform-scoped sub-runs (18+21+28=67), not extra executions.
