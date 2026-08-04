@@ -1,9 +1,15 @@
-# Creatomate Global Ultimate — Programme Brief (v1, rev-2)
+# Creatomate Global Ultimate — Programme Brief (v1, rev-2 — RATIFIED)
 
-**Created:** 2026-08-01 Sydney · **Revised:** 2026-08-01 (rev-2, PK amendment directive)
+**Created:** 2026-08-01 Sydney · **Revised:** 2026-08-01 (rev-2, PK amendment directive) ·
+**Ratified:** 2026-08-04 (P-1, PK final ratification act)
 **Author:** chat (Claude Code orchestrator) · **Approver:** PK
-**Status:** DRAFT rev-2 — **awaiting final PK ratification.** Direction approved by PK 2026-08-01;
-this revision applies PK's eight named amendments (log in §0).
+**Status:** **RATIFIED (2026-08-04).** Direction approved by PK 2026-08-01; this revision applies
+PK's eight named amendments (log in §0); P-1 (§4.3) closed the same session as the CGU-v1 verdict
+(`docs/briefs/results/cgu-v1-final-reread-and-verdict-v1.md`, Milestone 2 PASS 25/25) and the CGU
+Final proposal's own PK ratification (`docs/briefs/creatomate-global-ultimate-final-delta-audit-v1.md`
+§0f). **Preserved as the historical v1 contract** — this document defines what v1 was, not what
+Final adds; Final's must-have list and PK's rulings on it live in the Final delta-audit doc, not
+here.
 **Supersedes as planning reference:** the daily planning-brief cadence for this programme. Once
 ratified, execution runs against THIS document; implementation packets are created only when a
 workstream reaches an apply gate.
@@ -304,16 +310,16 @@ constraint: one writer per edge function; same-EF lanes serialise at the PK depl
 ### 4.3 PK decision points (rev-2 state)
 | # | Decision | Status |
 |---|---|---|
-| P-1 | Ratify this rev-2 brief (definitions §1.1, matrix §1.2 with D1–D4 as recorded, workstreams, gates) | **OPEN — the final ratification act** |
+| P-1 | Ratify this rev-2 brief (definitions §1.1, matrix §1.2 with D1–D4 as recorded, workstreams, gates) | **CLOSED — RATIFIED 2026-08-04**, linked to the CGU-v1 verdict (Milestone 2 PASS 25/25) and the CGU Final proposal's own ratification. Preserved as the historical v1 contract |
 | P-2 | 13-rung contract as formal proof authority | **CLOSED — ratified 2026-08-01 (§1.4)** |
-| P-3A | S7 scope approval + packet amendment (§0 exemption clause) + freeze + full review chain | Resolves at P-1 ratification; produces the frozen packet + hashes |
-| P-3B | **Separate** PK T3 apply authorisation for S7, against the exact reviewed packet and hashes | **OPEN — never bundled with P-1/P-3A** |
+| P-3A | S7 scope approval + packet amendment (§0 exemption clause) + freeze + full review chain | **CLOSED — resolved at P-1 ratification (2026-08-04).** Retroactive note: WS-2 S7 capability enforcement is independently confirmed COMPLETE/live (v6.106) per the CGU Final proposal §2.1 — this row's own freeze/review-chain bookkeeping was never updated to match; not re-verified live by this ratification pass |
+| P-3B | **Separate** PK T3 apply authorisation for S7, against the exact reviewed packet and hashes | **STALE — likely resolved, not formally closed.** S7 is independently confirmed live (see P-3A note); this row's own apply-authorisation record was never cut. Flagged for a future hygiene pass, not closed by this ratification (scope: ratify P-1 only) |
 | P-4 | OQ4 disposition | **DECIDED 2026-08-01 — Option A (supersede); see §4.4. Record: `docs/briefs/results/p4-oq4-disposition-decided-v1.md`** |
-| P-5A | Asset Gap live-writer + scheduler scope approval + freeze + review | Resolves at P-1 ratification; produces the frozen packet |
-| P-5B | **Separate** PK apply authorisation for the Asset Gap live writer/scheduler | **OPEN — never bundled** |
+| P-5A | Asset Gap live-writer + scheduler scope approval + freeze + review | **CLOSED — resolved at P-1 ratification (2026-08-04).** Retroactive note: WS-3 Asset Gap Activation is independently confirmed CLOSED per its own DoD (live writer, read view, full routing) per the CGU Final proposal §2.1 |
+| P-5B | **Separate** PK apply authorisation for the Asset Gap live writer/scheduler | **STALE — likely resolved, not formally closed.** Same disposition as P-3B: independently confirmed live, this row's own record was never cut. Flagged, not closed here |
 | P-6 | Specialist charter + first mission | **CLOSED — approved 2026-08-01; mission = PP YT kinetic (D4)** |
 | P-7 | WS-5 first consumer | **CLOSED — operator template-intake validation** |
-| P-8 | **Interim containment only (redefined):** whether to pause PP text (FB/LI) and/or PP YT kinetic-family publishing between now and S7's P-3B apply. Default = no action (S7 is imminent and D1/D4 give both cells owned treatments); PK may elect containment if P-3B is delayed | **OPEN — optional, default no-action** |
+| P-8 | **Interim containment only (redefined):** whether to pause PP text (FB/LI) and/or PP YT kinetic-family publishing between now and S7's P-3B apply. Default = no action (S7 is imminent and D1/D4 give both cells owned treatments); PK may elect containment if P-3B is delayed | **STALE — moot.** S7 and D1/D4 are all independently confirmed live/closed; the containment window this row gated has passed. Not formally closed by this ratification (scope: ratify P-1 only) |
 
 ### 4.4 P-4: OQ4 decision-ready treatment (Track-B / cc-0079 queue currency)
 **The question:** Track-B's Slice-2 data-cleanup queue (format-mix table hygiene) has an
@@ -440,4 +446,7 @@ programme. Register: v6.100, result: `docs/briefs/results/slice-f-seven-state-in
 - Shared-worktree / register-collision hazards — claim-stub + source-truth hooks remain the
   standing mitigations.
 
-— End v1 rev-2 — awaiting final PK ratification (P-1; P-3B/P-4/P-5B/P-8 remain separate acts) —
+— End v1 rev-2 — **RATIFIED 2026-08-04 (P-1)**, preserved as the historical v1 contract. P-4
+DECIDED; P-3B/P-5B/P-8 bookkeeping is stale (independently confirmed live elsewhere, not formally
+closed by this ratification — see §4.3 notes). Final's own must-have list and PK's rulings live in
+`docs/briefs/creatomate-global-ultimate-final-delta-audit-v1.md` (§0f), not here. —
