@@ -6,6 +6,14 @@
 
 ---
 
+> **⚠ v6.129 — M11a LEGACY-ROUTING INVENTORY COMPLETE, two findings exceed original scope (T1 · read-only, zero DB/repo mutation)** — result: `docs/briefs/results/m11a-legacy-routing-inventory-result-v1.md`.
+> · Confirmed: `_voice` naming trap 100% legacy (0/24 sampled); `text` is capability-exempt (`is_capability_exempt_format('text')=true`, no `select_template` fork exists); `image_quote` governed for all 4 clients/12 cells; PP carousel declared-legacy-governed (D2).
+> · **Finding 1 (new category, not in the brief's taxonomy):** carousel is real, high-volume production for CFW (171 succeeded/90d) and NDIS (89/90d) with **ZERO `client_creative_governance` row of any kind** — undeclared-legacy, not the PP-only picture the CGU Final proposal's §6.1 baseline assumed.
+> · **Finding 2 (second legacy pathway):** base-key `video_short_stat`/`video_short_kinetic` matches (no `_voice` suffix) still legacy-route until the client's governance row exists — PP kinetic's row is only 3 days old as of this audit; reconciles the prior "2 of 44" figure to 5 true-governed of 47 distinct PP drafts.
+> · Flagged for PK before the §6 schedule-expansion approval (§0f sequencing directive); feeds M11b scoping, larger than originally estimated.
+
+---
+
 > **✅ v6.128 — CGU FINAL RATIFIED: programme brief rev-2 (P-1) + delta-audit proposal §5 decisions all resolved (T1 · docs-only · PK ratification, zero DB/deploy)** — proposal: `docs/briefs/creatomate-global-ultimate-final-delta-audit-v1.md` (§0f); brief: `docs/briefs/creatomate-global-ultimate-programme-brief-v1.md` (RATIFIED, preserved as the historical v1 contract).
 > · PK ruled on every §5 decision the same session as the v6.127 verdict cut: M9 replay-target default (existing brand, fixture fallback) · M12 depth=4 tracks, ≥3 exercised weekly, no unnecessary consecutive reuse · M4 `platform_scope` enforced live, fails closed on missing platform context · M6 shape 3 scenes/30–45s/hard-max-45s, longer-form post-Final · M11 retirement default = migrate-unless-disproportionate · the four verdict-carry tiers settled (M16/M18 must-have, M17 optional/post-Final, M15 folded into M11).
 > · New must-have list (§2.2): M1, M2, M4, M6, M7, M8, M9, M10, M11 (incl. folded M15), M12, M13, M14, M16, M18 — M5 MET (verdict), M17 moved to optional/post-Final (§2.3).
