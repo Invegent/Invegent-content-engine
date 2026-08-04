@@ -153,6 +153,62 @@ Build Pack.
 scope. No implementation begins before CGU Final ratification — the same standing rule that already
 governs the rest of this document (§8).
 
+### 0e. CGU-v1 verdict reconciliation (2026-08-04, ratification session)
+
+**CGU-v1 is COMPLETE.** Per the final mechanical re-read
+(`docs/briefs/results/cgu-v1-final-reread-and-verdict-v1.md`, on origin `4ac3724`): Milestone 2
+PASS **25/25** committed cells (R1 queue + R2 proof-events + R3 provenance all PASS, INV-carousel
+disposition recorded, enrolment clause met); Milestone 1 PASS. The three cells this proposal's
+Phase 0 (§3, §4) tracked as "already in flight" **all closed** via PK-gated supervised recoveries:
+
+1. **PP YT `video_short_kinetic`** — diagnosed double blocker (advisor `_voice` palette deviation +
+   silent-plan/audio-gate contradiction), fixed `video-worker` v3.17.1 (`79f1717`), production
+   publish `ZScjrWU09AQ`, PK visual PASS, proofs `ffe3f705…`/`374745df…`.
+2. **NDIS YT `video_short_stat`** — Lane A re-close
+   (`ws5-envelope-foundation-lane-a-result-v1.md`): eyebrow removed, safe StatValue/ContextLine
+   bounds applied, one corrected replacement render, PK visual PASS, **no second public publish**
+   (the preserved `oCrtq6R9VFQ` publish stands as transport+evidence proof, per the §0c boundary
+   ruling above).
+3. **CFW × LinkedIn `image_quote`** — diagnosed `pool_thin` (40 in scope, 0 ≥ fitness 60); governed
+   manual replacement slot (pool-bypassing T0 path), published, proof `9fde0213…`.
+
+**Effective immediately in this document: Phase 0 is CLOSED (was: "already in flight"); M5 (§2.2)
+is MET (was: IN FLIGHT); D4 disposition (§1) is DECIDED AND EXECUTED (was: "in flight"); the
+25-cell baseline throughout this document (§1, §6.1, §6.2) supersedes every prior "22 of 25" /
+"22 state-1" reading** — those readings are retained in place below as the dated historical record
+they were at time of writing, not restated as current.
+
+**§0c disposition:** the **v1 contained repair is DELIVERED** — Lane A
+(`ws5-production-envelope-enforcement-foundation`) re-closed the NDIS cell exactly per the §0c
+boundary ruling (eyebrow removed/parameterised, safe bounds, one corrected render, PK visual PASS,
+no second publish). §0c's **CGU-Final quality-hardening content is NOT yet delivered** — the seven
+outcomes (calibration coverage · field-shape rules · generation-time enforcement · render-time
+bounds enforcement · graduation enforcement · existing-template backfill · change invalidation)
+survive into CGU Final as **Lane B, `ws5-production-template-calibration-backfill`** — see new
+must-have **M14** (§2.2).
+
+**Four further carries from the verdict** — none of these are a v1 defect (v1 does not reopen for
+any of them); each is folded into the tier tables below as a new candidate must-have, **status
+PENDING PK TIER RULING** (§5 item 8):
+
+- **M15 — `kinetic_voice` palette hygiene.** PK order: REQUIRED before PP kinetic returns to
+  *unsupervised* scheduling (the advisor `_voice` palette deviation diagnosed during the PP kinetic
+  recovery, §0e above). Recommended tier: **must-have** — narrow, cheap, and directly gates removing
+  the supervised-recovery training wheels from a now-live cell.
+- **M16 — CFW natural-pool fitness starvation.** The CFW-LI recovery used a manual replacement slot
+  (pool-bypassing T0 path) because the natural pool returned 0 candidates ≥ fitness 60 out of 40 in
+  scope — a bridge, not a fix; without sourcing work the same starvation recurs on CFW-LI's next
+  natural cycle. Recommended tier: **must-have** — a repeat manual bypass on a committed cell is
+  exactly the "silent legacy/manual dependency" pattern M11 already targets elsewhere.
+- **M17 — auto-approver dead-draft hygiene.** Recommended tier: **optional/post-Final** — a
+  hygiene/cleanup finding from the recovery lanes, no evidence yet that it blocks a committed cell
+  or causes a live-publish risk; escalate to must-have only if PK knows otherwise.
+- **M18 — Creatomate key rotation / managed storage.** Plaintext key exposure carried since before
+  this audit (`docs/briefs/results/` security triage; see also the CGU-v1 verdict's carry list).
+  Recommended tier: **must-have**, but as a **parallel security lane**, not a capability-matrix
+  gate — a credential-exposure fix should not wait on Final's feature completeness, nor should
+  Final's declaration wait on it if the two are independently schedulable.
+
 ---
 
 ## 1. Exact current baseline (2026-08-02)
@@ -172,23 +228,25 @@ non-ready target cells" — met) with one cosmetic disposition recorded (INV FB/
 queue-absence accepted as state-2, PK ruling 2026-08-02). Strict-letter reading needs only
 bookkeeping, not new governance work.
 
-**Milestone 2 (Ultimate, as currently defined by the rev-2 brief):** **22 of 25 committed cells are
-state-1** (ready + a recorded `platform_publish` proof event), after three same-day applies
-(Packets A, B, A2). Remaining 3:
+**Milestone 2 (Ultimate, as currently defined by the rev-2 brief):** *(as read 2026-08-02 — dated
+historical record; superseded by the CGU-v1 verdict, §0e: Milestone 2 is now PASS, 25/25, all three
+cells below closed)* **22 of 25 committed cells are state-1** (ready + a recorded `platform_publish`
+proof event), after three same-day applies (Packets A, B, A2). Remaining 3:
 1. **PP YT `video_short_kinetic`** — rungs 8–9 only; natural slot **2026-08-03T07:00:00Z**.
    ⚠ `youtube-publisher` is schedule-blind — approving the resulting draft auto-publishes publicly
-   within ≤30 min.
+   within ≤30 min. **CLOSED (§0e)** — production publish `ZScjrWU09AQ`.
 2. **NDIS YT `video_short_stat`** — PK-authorized supervised force-fill lane (run-sheet exists on
-   the readiness-audit branch), zero governed evidence today.
+   the readiness-audit branch), zero governed evidence today. **CLOSED (§0e)** — Lane A re-close, no
+   second publish.
 3. **CFW × LinkedIn `image_quote`** — zero 90-day publishes; needs a PK evidence ruling (accept
    >90d-old evidence, or wait for a fresh natural publish) — the only image_quote cell without a
-   resolvable proof-event path.
+   resolvable proof-event path. **CLOSED (§0e)** — governed manual replacement slot, published.
 The Milestone-2 zero-code enrolment-proof clause is **already satisfied** (NDIS, empty CE code
 diff, v6.113).
 
-**D1–D4 disposition:** all four DECIDED and EXECUTED (D1/D2/D3 live; D4 in flight, see above).
-No open design question remains on any of the four — only the mechanical closure of the 3 cells
-above.
+**D1–D4 disposition:** all four DECIDED and EXECUTED (D1/D2/D3 live; D4 **CLOSED as of the verdict,
+§0e** — was "in flight" at time of writing, see above).
+No open design question remains on any of the four.
 
 **B2 (template-family expansion to NDIS/CFW/Invegent):** three promotions applied 2026-08-02, all
 `visually_approved` and live-selectable (not yet `production_proven` — render/draft/publish rungs
@@ -263,9 +321,9 @@ side effect of the D2 apply, Option-B patch queued and unbuilt. Not a new incide
 - **WS-5 Template Metadata** Phase 1 — write RPC live, 3 templates populated, consumer live. Future
   population of *more* templates reuses this machinery; it is not new infrastructure.
 - **WS-6 Dashboard Capability Visibility** — COMPLETE (Slice F, landed pre-existing, v6.100).
-- D1 (governed text carve-out), D2 (PP legacy carousel), D3 (CFW/INV YouTube deferred) — decided
-  and executed. Only D4 (kinetic) has open mechanical rungs, tracked as a Milestone-2 closure item,
-  not a Final workstream.
+- D1 (governed text carve-out), D2 (PP legacy carousel), D3 (CFW/INV YouTube deferred), D4
+  (kinetic) — all four decided and executed; D4's mechanical rungs closed per the CGU-v1 verdict
+  (§0e). None is a Final workstream.
 - Production Reliability lane (fail-closed audio-*presence* gate, visible retry/recovery,
   schedule-safe publish) — all 3 fixes deployed and live-proven.
 - B-roll re-activation + resolver v1.5 — live (depth/diversity is a genuine remaining gap, carried
@@ -291,7 +349,7 @@ Every row states a bounded, checkable acceptance test. Final is declared when ev
 | M2 | Governed voice for all 4 active clients | PP + NDIS configured, live-reconfirmed; CFW + Invegent have zero rows in `c.client_voice_config` | 4/4 clients produce one audible, correctly-attributed governed voice render each, via the same controlled single-draft protocol used for the PP/NDIS recovery | **OPEN** (2/4) |
 | ~~M3~~ | ~~≥1 Content-ID-safe governed music bed~~ | **MOVED to Inherited, §2.1 — MET, not a must-have.** `select_music('format','video_short_stat')` returns Drifting Piano, `content_id_safe=true`, live-verified this session | — | **MET (inherited)** — the depth/rotation question continues as M12, below |
 | M4 | Deeper, truthful B-roll coverage | Pool=6, 4/6 Sydney-concentrated (3 distinct localities); `platform_scope` inert at the production call site | ≥3 distinct AU localities represented with ≥2 clips each in the eligible pool (not just ≥3 total localities on 6 clips); `platform_scope` is either provably enforced or formally documented as intentionally unenforced — no third, undocumented state | **OPEN** |
-| M5 | Multiple production-proven governed video families | Per the programme's own definition, "production-proven" = readiness-queue state-1 (ready + recorded proof event). Today: PP `video_short_stat` and PP `video_short_kinetic` are the only two committed video families; kinetic is 1 slot from its first governed publish, stat needs its accepted publishes' proof events recorded (already PK-authorized, in the same packet as the trail-alignment work) | Both PP `video_short_stat` and PP `video_short_kinetic` reach state-1; **"multiple" is met at exactly 2 families** unless PK elects to require a 3rd (e.g. NDIS stat, which is already a separate in-flight Milestone-2 cell) | **IN FLIGHT** — closes automatically as Milestone-2's remaining 3 cells close; not separate new work |
+| M5 | Multiple production-proven governed video families | Per the programme's own definition, "production-proven" = readiness-queue state-1 (ready + recorded proof event). **MET per the CGU-v1 verdict (§0e, 2026-08-04):** PP `video_short_stat` and PP `video_short_kinetic` both reached state-1 (kinetic's production publish `ZScjrWU09AQ`, PK visual PASS) | Both PP `video_short_stat` and PP `video_short_kinetic` reach state-1; **"multiple" is met at exactly 2 families** unless PK elects to require a 3rd (e.g. NDIS stat, which closed the same verdict pass) | **MET** — closed by the CGU-v1 verdict (§0e); no separate work required |
 | M6 | One production-proven multi-scene format | Creatomate has no multi-scene lane in this repo at all — confirmed explicitly out of scope in `video-broll-intake-v1-gate1-brief-DRAFT.md` | One PK-approved, audibly+visually verified, reproducible multi-scene render exists, within the 2-min render-ceiling budget | **OPEN** — zero prior art; largest single lift in this table |
 | M7 | Render monitoring + cost capture | Cron-health Layer-1 live; render-path cost/queue-depth observability does not exist; `render_spec` cost fields uncaptured; no LLM-cost-guardrail design was ever built for render providers | `render_spec` carries a non-null cost/credit value for a sample of recent Creatomate renders; a documented weekly cost figure exists (even if the honest figure today is "previously unknown, now observed") | **OPEN** |
 | M8 | Dashboard Asset Gap Register | WS-3's backlog (`ice_ro.asset_gap_backlog`) is live and populated; **no dashboard UI reads it** — the only UI surface today (Static-Image Governance Dashboard) is a different, already-closed surface | A dashboard panel shows the same open-gap count as a direct ledger read, refreshes on the writer's own cadence, passes `dashboard-ia-lint` | **OPEN** — the one item WS-3's own closure explicitly deferred |
@@ -300,6 +358,11 @@ Every row states a bounded, checkable acceptance test. Final is declared when ev
 | M11 | Governed legacy-path migration & retirement | **NEW, PK-directed (§0b).** No repo-wide accounting exists of which scheduled Creatomate format×client×platform occurrences actually execute the governed builder vs a legacy code-composed route. Known live instances of the trap this targets: PP YouTube's 2-of-44 real governed-occurrence rate (§1); the historical `video_short_stat_voice` naming trap ("reads governed, routes legacy" — `B1_VIDEO_GOVERNED_FORMAT` string-matches the base format key only, so voice-suffixed variants silently miss the governed fork); legacy `video_short_kinetic`/`_kinetic_voice` composing in code with no `select_template` call at all pre-D4 | **Per-cell, binary, no percentage gate:** for every scheduled Creatomate format×client×platform cell, either (a) it demonstrably routes through the governed selector + asset resolver + metadata + QA + evidence path for its real scheduled occurrences (not just readiness-queue eligibility), or (b) the legacy route is explicitly retired (code removed/disabled) or explicitly PK-deferred with a recorded reason. Zero cells remain on a silent, undocumented legacy route | **OPEN** — starts with an inventory (cheap, T1); closure lanes follow per finding |
 | M12 | Music depth, rotation & monotony avoidance | Basic capability MET (M3, inherited, §2.1) — but exactly 1 track means every governed video plays identical music indefinitely; PK has previously rejected a fully-silent video and accepted a single-track 70%-bed render once, but a *week* of the same bed on every video is a real, untested aesthetic question, not yet asked | A PK-set minimum selectable-library-depth target (§5 open decision) is met, with rotation producing a measurably non-uniform aural experience across a sample week of renders (reuse the existing B-roll rotation-uniformity proof method — seed distribution across the eligible pool) | **OPEN** — blocked on the PK depth-number decision (§5) before any sourcing work is scoped |
 | M13 | Governed Template Build Pack v1 | **NEW, PK-directed additive amendment (§0d, 2026-08-03).** No Blueprint/Capture artifact pipeline exists today; Asset Gap has no mechanism to declare an intended provider-neutral template contract, and no automated structural diff exists between an intended design and what a human actually built in Creatomate | Versioned Blueprint JSON schema + versioned Creatomate Capture JSON schema both exist; every Blueprint/Capture pair carries artifact IDs, hashes, and registry linkage; Asset Gap can attach/display a Blueprint; an automated blueprint-vs-capture structural diff runs and any mismatch blocks graduation; one real end-to-end template proves the full loop (Blueprint → human transposition → Capture → diff clean → registry/constraint persistence → calibration/probes → PK visual approval → graduation) | **OPEN** — new, unscoped |
+| M14 | WS-5 quality hardening — full per-template calibration + live bounds enforcement (Lane B) | **NEW, carried from §0c via the CGU-v1 verdict (§0e).** §0c's v1 contained repair (Lane A) is delivered; the seven-outcome CGU-Final hardening is not: calibration coverage, field-shape rules, generation-time enforcement, render-time bounds enforcement, graduation enforcement, existing-template backfill, change invalidation (§0c) | All seven §0c outcomes MET; Lane B (`ws5-production-template-calibration-backfill`) delivered and PK visual-verified per the §0c ongoing quality policy | **OPEN** — surviving requirement from §0c, tier already settled (must-have) by §0c's own text |
+| M15 | `kinetic_voice` palette hygiene | **NEW, carried from the CGU-v1 verdict (§0e).** Advisor `_voice` palette deviation diagnosed during the PP kinetic recovery; PK order: REQUIRED before PP kinetic returns to unsupervised scheduling | Palette hygiene fix landed and verified; PP kinetic runs at least one unsupervised natural-slot cycle clean | **OPEN — PENDING PK TIER RULING (§5 item 8)**; recommended: must-have |
+| M16 | CFW natural-pool fitness starvation | **NEW, carried from the CGU-v1 verdict (§0e).** CFW-LI's natural pool returned 0/40 candidates ≥ fitness 60, forcing a manual pool-bypassing replacement slot — a bridge, not a fix; recurs on the next natural cycle without sourcing work | CFW-LI's natural pool sustains ≥1 candidate ≥ fitness 60 across a sample week, with zero further manual bypasses needed | **OPEN — PENDING PK TIER RULING (§5 item 8)**; recommended: must-have |
+| M17 | Auto-approver dead-draft hygiene | **NEW, carried from the CGU-v1 verdict (§0e).** A hygiene/cleanup finding surfaced during the recovery lanes; no evidence yet that it blocks a committed cell or creates live-publish risk | To be scoped once tiered — likely a dead-draft cleanup/expiry pass on the auto-approver's queue | **OPEN — PENDING PK TIER RULING (§5 item 8)**; recommended: optional/post-Final |
+| M18 | Creatomate key rotation / managed storage | **NEW, carried from the CGU-v1 verdict (§0e).** Plaintext Creatomate API key exposure, carried since before this audit | Key rotated; managed-secret storage in place (no plaintext key in downloads/repo) | **OPEN — PENDING PK TIER RULING (§5 item 8)**; recommended: must-have, run as a parallel security lane, not a capability-matrix gate |
 
 ### 2.3 Optional / post-Final — explicitly deferred, does not gate Final
 
@@ -345,10 +408,10 @@ Every row states a bounded, checkable acceptance test. Final is declared when ev
 ## 3. Workstream dependencies and order (must-have items only — inherited items need no sequencing)
 
 ```
-Phase 0 (already in flight, not new work — closes automatically)
-  Milestone-2's remaining 3 cells: PP kinetic rungs 8-9 (slot 2026-08-03T07:00Z) ·
-  NDIS YT stat supervised lane · CFW-LI evidence ruling
-  → this closes M5 as a side effect; do not schedule it as separate work
+Phase 0 — CLOSED (2026-08-04, CGU-v1 verdict, §0e) — was "already in flight, closes automatically"
+  Milestone-2's remaining 3 cells, all closed via PK-gated supervised recovery:
+  PP kinetic (production publish ZScjrWU09AQ) · NDIS YT stat (Lane A re-close) · CFW-LI (manual slot, published)
+  → closed M5 as a side effect, per plan; M11b and M6/M10's "Phase 0 closed" dependency are now unblocked
 
 Phase 1 — Foundation (measure before you gate; nothing else is trustworthy without this)
   M1   Loudness measurement            ← blocks: M2 acceptance quality, M6's reproducibility bar, M12's rotation proof
@@ -356,26 +419,37 @@ Phase 1 — Foundation (measure before you gate; nothing else is trustworthy wit
   M11a Legacy-routing INVENTORY (which scheduled cells are governed/legacy/retired, incl. voice-suffix
        naming-trap variants) ← no dependency, cheap (T1), start immediately — everything in Phase 2's
        M11b closure work is scoped BY this inventory's findings
+  M14  WS-5 quality hardening (Lane B) ← no dependency beyond the already-inherited WS-5 envelope
+       (§0c/§0e); a foundation item like M1 — M13's own graduation-enforcement outcome and M6's
+       template quality both need this landed, not just the 3-template scope §2.1 already covers
+  M15  kinetic_voice palette hygiene   ← no dependency, cheap, PK-ordered gate before PP kinetic
+       returns to unsupervised scheduling (§0e) — pending tier ruling, §5 item 8
 
 Phase 2 — Close known content gaps
   M2   Voice for CFW + Invegent         ← needs: M1 (a voice proof needs a real loudness number, not presence-only)
   M4   B-roll depth + platform_scope truth ← needs: M1 (combined B-roll+VO QA proof pattern)
-  M11b Per-cell legacy migration/retirement closures ← needs: M11a inventory + Phase 0 closed (3 of the
-       cells M11 must classify are exactly Phase 0's remaining cells)
+  M11b Per-cell legacy migration/retirement closures ← needs: M11a inventory (Phase 0 is CLOSED, no
+       longer a blocker — the 3 cells M11 must classify as a baseline are exactly Phase 0's closed cells)
   M12  Music depth/rotation sourcing    ← needs: the PK depth-number decision (§5) FIRST, then reuses the
        proven fenced-first sourcing pattern (same shape as the B-roll batch-2 lane)
+  M16  CFW natural-pool fitness starvation ← same sourcing shape as M4/M12; needs no PK decision to
+       start, only tier confirmation (§5 item 8) — the manual-slot bridge already proved the recovery
+       path, this closes the underlying pool health
 
 Phase 3 — New capability
   M13  Governed Template Build Pack v1  ← needs: the reusable WS-5 envelope foundation complete
-                                            (inherited infra, in flight elsewhere); PK-directed to
-                                            sequence BEFORE M6 — the first multi-scene template
-                                            should graduate through the Build Pack, not around it
-  M6   Multi-scene production-proven format ← needs: Phase 0 closed (a 2nd video family gives multi-scene
-                                                something real to compose from) + the 2-min render-ceiling
-                                                budget question resolved + M13 landed (§0d sequencing)
-  M10  Provider-neutral contract (design)  ← needs: Phase 0 closed (needs ≥2 real format implementations
-                                                to extract a real shared shape, not 1); benefits from M11a's
-                                                inventory to know the real (not nominal) format count
+                                            (inherited infra, in flight elsewhere); benefits from M14
+                                            landing first (its own graduation-enforcement outcome);
+                                            PK-directed to sequence BEFORE M6 — the first multi-scene
+                                            template should graduate through the Build Pack, not around it
+  M6   Multi-scene production-proven format ← needs: Phase 0 CLOSED (done — a 2nd video family gives
+                                                multi-scene something real to compose from) + the
+                                                2-min render-ceiling budget question resolved + M13
+                                                landed (§0d sequencing)
+  M10  Provider-neutral contract (design)  ← needs: Phase 0 CLOSED (done — ≥2 real format
+                                                implementations now exist to extract a real shared
+                                                shape); benefits from M11a's inventory to know the
+                                                real (not nominal) format count
 
 Phase 4 — Operational surfacing
   M8   Dashboard Asset Gap Register     ← needs: nothing further — WS-3's backlog is already live;
@@ -386,6 +460,12 @@ Phase 4 — Operational surfacing
                                             brand (can start immediately, parallel to everything above);
                                             becomes dependent on M2 completing first ONLY if PK elects to
                                             replay specifically on CFW or Invegent
+  M17  Auto-approver dead-draft hygiene ← no dependency; lowest-priority of the new carries (§0e) —
+                                            pending tier ruling, §5 item 8
+
+Parallel, any phase, no dependency
+  M18  Creatomate key rotation / managed storage ← a security lane, not a capability-matrix gate
+       (§0e) — schedule independently of Final's declaration; pending tier ruling, §5 item 8
 ```
 
 **Rule preserved from rev-1:** no item is sequenced ahead of the measurement it needs to prove
@@ -401,7 +481,7 @@ lane duration varies from same-day to multi-day depending on review-chain findin
 
 | Item | Est. lanes | Tier | Notes |
 |---|---|---|---|
-| Phase 0 closure (3 cells) | 3 (already scoped/authorized) | T3 (2), T2 (1) | Not new scoping — PK already authorized all three (§6b of the readiness audit); this is execution, not planning |
+| Phase 0 closure (3 cells) | 3 — **EXECUTED, CLOSED 2026-08-04** | T3 (2), T2 (1) | Verdict: `docs/briefs/results/cgu-v1-final-reread-and-verdict-v1.md` (§0e). All three closed via PK-gated supervised recovery, not the originally-scoped straight-line rungs 8-9/force-fill/evidence-ruling path — each hit a real diagnosed defect en route (kinetic audio-gate contradiction, NDIS template-fit defects, CFW pool starvation) |
 | M1 Loudness | 1–2 | T2 | 1 design lane (how to run ffmpeg-equivalent from a Deno EF) + 1 wiring lane; could collapse to 1 if the design is simple |
 | M2 Voice ×2 clients | 1 (config) + 2 (proof) = 3 | T2 | Config addition is trivial; the blocker is PK sourcing/approving 2 ElevenLabs voice IDs — a content decision, not an engineering one |
 | M4 B-roll depth | 1 sourcing batch + 1 design-decision lane (`platform_scope`) | T2 (sourcing), T2/T3 (scope decision) | Sourcing reuses the proven fenced-first batch pattern; the scope decision is PK's, not engineering's |
@@ -413,12 +493,18 @@ lane duration varies from same-day to multi-day depending on review-chain findin
 | M11 Governed legacy-path migration & retirement | 1 inventory lane (M11a) + N closure lanes (M11b, count TBD; at minimum 2 known naming-trap variants: `video_short_stat_voice`, `video_short_kinetic_voice`) | T1 (inventory), T2/T3 per closure | Inventory is cheap and should run first regardless of priority — the only way to bound this workstream's real size |
 | M12 Music depth/rotation | 0 lanes until §5's depth number is set, then 1 sourcing batch + 1 rotation-proof lane | T2 (sourcing), T1 (proof, reuses B-roll's uniformity method) | Blocked on a PK number, not on engineering capacity |
 | M13 Governed Template Build Pack v1 | Not yet scoped | T2 (schema design + structural-diff automation), T3 (registry/constraint-record persistence + graduation-gate authority) | New PK-directed additive amendment (§0d, 2026-08-03); sequenced after the WS-5 envelope foundation, before M6 (first multi-scene template); lane count TBD pending a scoping pass |
+| M14 WS-5 quality hardening (Lane B) | Not yet scoped | T2 (calibration/enforcement wiring per §0c outcomes 1-4,6-7), T3 (graduation-gate authority, §0c outcome 5) | Carried from §0c via the verdict (§0e); `ws5-production-template-calibration-backfill`; tier already settled (must-have) — only lane count is open |
+| M15 kinetic_voice palette hygiene | 1 | T2 | Cheap, narrow config-hygiene fix; PK-ordered gate before unsupervised PP kinetic scheduling (§0e); pending tier ruling (§5 item 8) |
+| M16 CFW natural-pool fitness starvation | 1 sourcing batch + 1 pool-health proof lane | T2 (sourcing), T1 (proof) | Same shape as M4/M12 sourcing; pending tier ruling (§5 item 8) |
+| M17 Auto-approver dead-draft hygiene | Not yet scoped | T1/T2 | Lowest-priority new carry; pending tier ruling (§5 item 8), recommended optional/post-Final |
+| M18 Creatomate key rotation / managed storage | Not yet scoped | T3 (secret rotation touches live credentials) | Security lane, runs parallel to the capability matrix, not gated by it (§0e); pending tier ruling (§5 item 8) |
 
-**Total estimated new-work lanes (excluding Phase 0, which is already authorized/in-flight, and
-excluding M11b/M12 pending their inventory/PK-number prerequisites, and excluding M13 pending its
-own lane scoping, §0d): ~15–19 lanes**, most T2,
-three T3 (M6's template/worker path, possibly M4's `platform_scope` decision, and any M11b closure
-that touches live selection behavior).
+**Total estimated new-work lanes (excluding Phase 0, which is now closed/executed rather than
+estimated, and excluding M11b/M12 pending their inventory/PK-number prerequisites, and excluding
+M13/M14/M16/M17/M18 pending their own lane scoping): ~15–19 lanes** for the original rev-3/§0d
+must-haves, most T2, three T3 (M6's template/worker path, possibly M4's `platform_scope` decision,
+and any M11b closure that touches live selection behavior) — **plus the five new §0e carries
+(M14–M18) once PK tiers and scopes them (§5 item 8).**
 
 **First three implementation lanes proposed (amended, PK direction 2026-08-02)** — the three
 foundation/measurement lanes from Phase 1 (§3), none requiring a further PK decision to start:
@@ -459,9 +545,18 @@ priority. T2, `dashboard-ia-lint` pass first, then the panel.
 6. **Programme brief's own still-open P-1 (final ratification)** is a precondition this document
    inherits, not resolves — Final's finish line technically waits on rev-2 of the programme brief
    itself being ratified, separate from anything in this audit.
-7. **Whether to close the 3 remaining Milestone-2 cells (Phase 0) before or in parallel with
-   starting must-have work** — nothing here blocks starting M1/M7/M8/M11a immediately; M5/M10/M11b
-   benefit from Phase 0 closing first.
+7. ~~**Whether to close the 3 remaining Milestone-2 cells (Phase 0) before or in parallel with
+   starting must-have work.**~~ **RESOLVED — moot.** Phase 0 closed 2026-08-04 (CGU-v1 verdict,
+   §0e) before this decision was reached; M5/M10/M11b are unblocked.
+8. **New — tier ruling for the four CGU-v1 verdict carries (§0e).** Each is added to §2.2 as
+   `OPEN — PENDING PK TIER RULING`; PK confirms or overrides the recommended tier for each:
+   - **M15 — `kinetic_voice` palette hygiene** — recommended must-have.
+   - **M16 — CFW natural-pool fitness starvation** — recommended must-have.
+   - **M17 — auto-approver dead-draft hygiene** — recommended optional/post-Final.
+   - **M18 — Creatomate key rotation/managed storage** — recommended must-have, run as a parallel
+     security lane (not gated by, and not gating, the rest of the capability matrix).
+   (§0c's Lane B — new must-have M14 — is not part of this decision: its tier was already settled
+   as must-have by §0c's own text; only its lane count is open, §4.)
 
 ---
 
@@ -472,11 +567,14 @@ or mix below is authorised.**
 
 ### 6.1 Baseline this appendix now measures against (not rev-1's PP-only baseline)
 
-- 25 committed cells across 4 clients; 22 state-1 today; 3 closing via already-authorized lanes
-  (Phase 0, §3).
-- Governed formats live or closing: `image_quote` (12/12 cells routed or state-1), `text` (8/8
+- **25 committed cells across 4 clients; 25/25 state-1 as of the CGU-v1 verdict, 2026-08-04 (§0e)**
+  — dated historical reading at time of writing was 22 state-1, 3 closing via already-authorized
+  lanes (Phase 0, §3); all three since closed.
+- Governed formats live: `image_quote` (12/12 cells routed or state-1), `text` (8/8
   state-1 via D1), `carousel` (PP FB/IG state-1 via D2; NDIS/CFW deferred), `video_short_stat` (PP
-  closing, NDIS closing), `video_short_kinetic` (PP closing 2026-08-03).
+  live, NDIS live — contained per §0c/§0e, visual remediation via Lane B/M14 still owed),
+  `video_short_kinetic` (PP live, `kinetic_voice` palette hygiene/M15 owed before unsupervised
+  scheduling).
 - CFW/INV YouTube: explicitly deferred (D3) — not part of any expansion mix below.
 - LinkedIn cadence: max 2/day by design — any raise is Open PK Decision, not proposed here.
 
@@ -484,10 +582,10 @@ or mix below is authorised.**
 
 | Mix | Client(s) | Cell(s) | Proposed cap | Unlocked by |
 |---|---|---|---|---|
-| E1 | PP, NDIS | the 22 already-state-1 cells | unchanged — already live | nothing; this is the current baseline, not an expansion |
-| E2 | PP | `video_short_kinetic` YT, post-graduation | match current legacy kinetic cadence, no increase at first | Phase 0 item 1 closing (2026-08-03) |
-| E3 | NDIS | `video_short_stat` YT, post-proof | 1/week initial | Phase 0 item 2 (supervised lane) closing |
-| E4 | CFW | LinkedIn `image_quote` | resume at existing cadence once evidence ruling made | Phase 0 item 3 (PK evidence ruling) |
+| E1 | PP, NDIS, CFW, INV | all 25 state-1 cells | unchanged — already live | nothing; this is the current baseline, not an expansion (Phase 0 CLOSED, §0e) |
+| E2 | PP | `video_short_kinetic` YT, post-graduation | match current legacy kinetic cadence, no increase at first | Phase 0 item 1 CLOSED (production publish `ZScjrWU09AQ`) — still gated on M15 (`kinetic_voice` palette hygiene) before *unsupervised* cadence |
+| E3 | NDIS | `video_short_stat` YT, post-proof | 1/week initial | Phase 0 item 2 CLOSED (Lane A re-close) — still gated on M14/Lane B (full calibration) before further volume, per §0c's containment |
+| E4 | CFW | LinkedIn `image_quote` | resume at existing cadence once evidence ruling made | Phase 0 item 3 CLOSED (manual-slot publish) — natural-cadence resumption still gated on M16 (pool fitness starvation); the manual slot is a bridge, not a fix |
 | E5 | CFW, Invegent | any video format | none proposed | **blocked on M2** — 0/2 voice-configured; do not expand video onto voice-blind clients |
 | E6 | CFW, Invegent | YouTube, any format | none proposed | **blocked on D3** — explicitly deferred, not reopened by this appendix |
 | E7 | any | LinkedIn cadence raise | none proposed | Open PK Decision (§5), Path-B lever exists but unpulled |
@@ -585,9 +683,12 @@ not rev-1's stale one.**
 ## 8. Non-claims
 
 This document does not ratify the programme brief's rev-2 (P-1 remains PK's act), does not resolve
-the M9 replay-target choice, the M11 retirement-authority default, or the M12 depth number (§5),
-does not authorise any expansion mix in §6 or the Appendix B measurement plan's activation, does
-not build any must-have item, and does not register or ratify itself as the CGU Final programme —
-only commits it to `main` as PK's accepted proposal. It corrects rev-1's stale baseline, carries
-PK's four rev-3 amendments, and gives PK a finite must-have list plus the specific decisions in §5
-to rule on next.
+the M9 replay-target choice, the M11 retirement-authority default, the M12 depth number, or the new
+M15/M16/M17/M18 tier ruling (§5), does not authorise any expansion mix in §6 or the Appendix B
+measurement plan's activation, does not build any must-have item, and does not register or ratify
+itself as the CGU Final programme — only commits it to `main` as PK's accepted proposal. It
+corrects rev-1's stale baseline, carries PK's four rev-3 amendments, reconciles the CGU-v1 verdict
+(§0e — Phase 0 closed, M5 MET, §0c's Lane A delivered/Lane B surviving), and gives PK a finite
+must-have list plus the specific decisions in §5 to rule on next. The CGU-v1 verdict itself
+(`docs/briefs/results/cgu-v1-final-reread-and-verdict-v1.md`) already declared v1 COMPLETE — this
+document governs Final only.
