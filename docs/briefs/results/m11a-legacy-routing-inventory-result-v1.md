@@ -195,6 +195,35 @@ brief's own anticipated scope and are surfaced explicitly rather than smoothed i
 - Follow-up: M11b scoping should treat this result doc, not the original brief's own naming-trap
   count, as the authoritative starting scope.
 
+## 12. Addendum (2026-08-04, same day) — carousel-provenance investigation, per-client disposition
+
+Prompted by this result's own Finding 1 (undeclared-legacy carousel volume, 3 non-PP clients) and by
+PK's direct instruction not to trust `client_format_config` as protective for the
+`post-cgu-v1-optimum-schedule-expansion` apply packet without proving the production lineage first. Four
+parallel read-only investigations (one per client, `db-rls-auditor`, zero mutations) extended Finding 1
+with the exact upstream control per client and a live-vs-historical disposition:
+
+| Client | Disposition | Real control (verified in code, not assumed) |
+|---|---|---|
+| property-pulse | `live_legacy_route` | `c.client_format_config` row `config_id=fc339e1e-5809-4b9c-9c03-2c60a4166a80` (`carousel`, `is_enabled`) — consumed at `ai-worker/index.ts:1193-1196`. Genuinely live (40 drafts/90d, most recent ~9d old at investigation time), matches this result's own D2 declared-legacy finding. Not touched by the schedule packet, by design — this is the intentionally-accepted declared-legacy route. |
+| care-for-welfare-pty-ltd | `historical_route_now_contained` | `c.client_format_config` row-presence itself: zero rows → fail-open (all buildable formats offered); CFW went from 0 rows to 2 (`image_quote`,`text`, both `is_enabled=true`) on 2026-08-02, which flips `ai-worker/index.ts:1192-1197`'s `NOT EXISTS` fallback to a strict allowlist, structurally excluding carousel. Zero carousel activity in 7d/14d. **Fragility:** holds only while those 2 rows continue to exist — deletion (not disablement) would silently reopen the full palette. |
+| ndis-yarns | `live_legacy_route` | Same `client_format_config` mechanism, but NDIS's `carousel` row (`config_id=61e4f143-f0cf-4a9b-853c-f592daf82aaf`) is still `is_enabled=true` — never touched. Current silence (0 activity in 7d/14d) is an **incidental** render-time `select_template` fail-closed gap (no live template resolves for NDIS carousel today), not a deliberate control — could resume the moment a template graduates, with zero further change. The schedule packet's own carousel-protection assertion checked CFW's config row instead of NDIS's own — a real bug, now corrected in packet v5. |
+| invegent | `historical_route_now_contained` | Same row-presence mechanism as CFW (0→2 rows, 2026-08-02), holding 8/8 real drafts since. Additional correction to this result's own §6 table: Invegent's "5 succeeded" carousel-render figure reflects successful *slide-image renders*, not delivered carousel posts — 2 drafts were voided pre-publish and 3 were silently downgraded to plain text by a since-fixed (v1.3.0, 2026-07-06) Zapier bridge bug. Zero real carousel posts were ever delivered for Invegent. Same fragility caveat as CFW (row-deletion would reopen). LinkedIn additionally carries an independent downstream backstop (`linkedin-zapier-publisher`'s hard `text\|image` allowlist); Instagram does not — a defense-in-depth gap, not a live route. |
+
+**Also confirmed, independently, across all four investigations:** `c.client_publish_schedule.format_override`
+is **never read by any edge function in this repository** (repo-wide grep, zero matches) — it is dead
+code with respect to format selection. The live, effective gate for every client is exclusively
+`c.client_format_config`. This means the schedule-mutation apply packet's `format_override` writes
+change posting cadence/mix among already-eligible formats, but cannot themselves open or close carousel
+eligibility in either direction — confirmed structurally, not just by absence of a counterexample.
+
+**Follow-up recorded, not actioned here:** NDIS's carousel `client_format_config` row is being frozen
+(`is_enabled=false`) as part of packet v5, closing this result's Finding-1 gap for that one client. PP
+remains intentionally untouched (already declared, D2). CFW/Invegent's fragility (row-deletion reopens
+the palette) is now an explicit assertion in packet v5 rather than an unmonitored assumption. This
+addendum does not re-open or re-score M11a's own completion — it supplements Finding 1 with the
+per-client mechanism detail M11b scoping will need.
+
 ## 11. Learning notes (chat fills this)
 
 - The brief's own taxonomy (governed/legacy/declared-legacy-governed/capability-exempt) was a good
