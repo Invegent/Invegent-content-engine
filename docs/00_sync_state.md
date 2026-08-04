@@ -6,6 +6,14 @@
 
 ---
 
+> **✅ v6.128 — CGU FINAL RATIFIED: programme brief rev-2 (P-1) + delta-audit proposal §5 decisions all resolved (T1 · docs-only · PK ratification, zero DB/deploy)** — proposal: `docs/briefs/creatomate-global-ultimate-final-delta-audit-v1.md` (§0f); brief: `docs/briefs/creatomate-global-ultimate-programme-brief-v1.md` (RATIFIED, preserved as the historical v1 contract).
+> · PK ruled on every §5 decision the same session as the v6.127 verdict cut: M9 replay-target default (existing brand, fixture fallback) · M12 depth=4 tracks, ≥3 exercised weekly, no unnecessary consecutive reuse · M4 `platform_scope` enforced live, fails closed on missing platform context · M6 shape 3 scenes/30–45s/hard-max-45s, longer-form post-Final · M11 retirement default = migrate-unless-disproportionate · the four verdict-carry tiers settled (M16/M18 must-have, M17 optional/post-Final, M15 folded into M11).
+> · New must-have list (§2.2): M1, M2, M4, M6, M7, M8, M9, M10, M11 (incl. folded M15), M12, M13, M14, M16, M18 — M5 MET (verdict), M17 moved to optional/post-Final (§2.3).
+> · Sequencing directive (PK): M11a (read-only legacy-routing inventory) authorised to start now as preflight input to the §6 schedule-expansion plan; heavy Final implementation waits on that plan's own PK approval.
+> · Next: M11a seed packet issued this same session — `docs/briefs/m11a-legacy-routing-inventory-seed-packet-v1.md`.
+
+---
+
 > **✅ v6.127 — CGU-v1 COMPLETE: Milestone 2 PASS 25/25 committed cells (final mechanical re-read per the audit's re-run contract; R1/R2/R3 all PASS)** — verdict record: `docs/briefs/results/cgu-v1-final-reread-and-verdict-v1.md`.
 > · Last three cells closed by PK-ruled supervised recoveries: NDIS YT stat (Lane A re-close, no second publish) · PP YT kinetic (audio-gate fix v3.17.1 `79f1717` + production publish `ZScjrWU09AQ`, proofs `ffe3f705…`/`374745df…`) · CFW-LI image_quote (manual replacement slot after diagnosed pool starvation, publish `zapier-li-1785813602647`, proof `9fde0213…`).
 > · Recovery diagnoses recorded: advisor `_voice` palette deviation (config hygiene owed pre-unsupervised) · silent-kinetic/audio-gate contradiction (fixed) · CFW pool fitness starvation (carry).
