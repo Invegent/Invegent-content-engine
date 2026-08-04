@@ -6,6 +6,13 @@
 
 ---
 
+> **✅ v6.130 — SCHEDULE-EXPANSION APPLY (v11) CLOSED, execution provenance + dashboard acceptance verified (T2/T3 · production DB apply, independently verified post-hoc)** — result: `docs/briefs/results/post-cgu-v1-optimum-schedule-expansion-apply-result-v1.md`.
+> · Applied by session `f20f008f-e98c-43ab-b9c2-747c9a460f01` (main checkout) — one atomic transaction, all 111 rows (102 schedule + 9 config), AHA-10-1 ownership protections included; dispatched `2026-08-04T10:19:49.758Z`, committed `2026-08-04T10:20:38.286Z`.
+> · Independently re-verified (this closeout, separate session): DB after-state PASS, live dashboard UI PASS across all four brands, `pg_stat_statements calls=3` on the shared guarded UPDATE resolved as 3 platform-scoped sub-runs (18+21+28=67), not extra executions.
+> · Seven-day monitoring watch armed 2026-08-04 ~20:20 Sydney → 2026-08-11 ~20:20 Sydney; no automatic cap raise or Phase-2 mutation during the watch. Lane CLOSED.
+
+---
+
 > **⚠ v6.129 — M11a LEGACY-ROUTING INVENTORY COMPLETE, two findings exceed original scope (T1 · read-only, zero DB/repo mutation)** — result: `docs/briefs/results/m11a-legacy-routing-inventory-result-v1.md`.
 > · Confirmed: `_voice` naming trap 100% legacy (0/24 sampled); `text` is capability-exempt (`is_capability_exempt_format('text')=true`, no `select_template` fork exists); `image_quote` governed for all 4 clients/12 cells; PP carousel declared-legacy-governed (D2).
 > · **Finding 1 (new category, not in the brief's taxonomy):** carousel is real, high-volume production for CFW (171 succeeded/90d) and NDIS (89/90d) with **ZERO `client_creative_governance` row of any kind** — undeclared-legacy, not the PP-only picture the CGU Final proposal's §6.1 baseline assumed.
