@@ -1,0 +1,147 @@
+diff --git a/supabase/functions/video-worker/b1_video_kinetic.ts b/supabase/functions/video-worker/b1_video_kinetic.ts
+index ae7facf..0272b9f 100644
+--- a/supabase/functions/video-worker/b1_video_kinetic.ts
++++ b/supabase/functions/video-worker/b1_video_kinetic.ts
+@@ -46,9 +46,13 @@
+ //   legacy buildKineticTextSpec branch, `index.ts:1079-1081`, which substitutes a text wordmark when
+ //   logoUrl is absent — governed paths in this repo never do that).
+ //
+-//   v1 SILENT SCOPE (WS-4 §11, PK decision 2026-08-01): VoiceAudio.source / MusicBed.source are ALWAYS
+-//   set to '' (present as keys, per the house N1 silent-bed convention — `source:''` renders silent,
+-//   not an error). No voice/music wiring in this module. STRICTLY OUT OF SCOPE.
++//   v1 SILENT SCOPE (WS-4 §11, PK decision 2026-08-01; corrected v3.17.1, PK ruling 2026-08-03):
++//   VoiceAudio.source is OMITTED ENTIRELY — a legitimately-silent format DECLARES NO voice, per
++//   assertAudioSpec's own contract (index.ts: an empty non-bed source throws
++//   AUDIO_SPEC_ASSERT_FAILED; the original always-'' binding killed EVERY governed kinetic render
++//   terminally at the audio gate — live evidence draft 90381483). MusicBed.source REMAINS
++//   explicitly '' (the intentional N1 silent bed — the ONE empty source assertAudioSpec exempts).
++//   No voice/music wiring in this module. STRICTLY OUT OF SCOPE.
+ //
+ //   TEXT HARD-GATE (WS-4 §9 — mirrors b1_video_stat.ts's assertStatFieldsWithinGate / the
+ //   'hard_gate_throw' policy already governing the sibling format): fail loud, no truncation, no AI
+@@ -290,8 +294,10 @@ export function buildGovernedVideoKineticPlan(
+     'BarTop.fill_color': brand.secondaryColour,
+     'BarBottom.fill_color': brand.secondaryColour,
+     'Logo.source': resolvedLogo,
+-    // v1 silent scope (WS-4 §11, PK decision 2026-08-01) — present, always empty. No audio wiring.
+-    'VoiceAudio.source': '',
++    // v1 silent scope (WS-4 §11; corrected v3.17.1, PK ruling 2026-08-03): VoiceAudio.source is
++    // OMITTED — the silent format declares NO voice (an empty '' here trips assertAudioSpec's
++    // AUDIO_SPEC_ASSERT_FAILED and terminally killed every governed kinetic render). MusicBed
++    // stays explicitly '' — the intentional N1 silent bed, the one empty source the gate exempts.
+     'MusicBed.source': '',
+     // WS-4 §5d Q4 (PASS, replicated by WS-5 probe 1): bare top-level `duration` is an authoritative
+     // composition-length override. Kinetic's composition length is VARIABLE (Σ active scene
+diff --git a/supabase/functions/video-worker/b1_video_kinetic_test.ts b/supabase/functions/video-worker/b1_video_kinetic_test.ts
+index f137ace..f44f6d5 100644
+--- a/supabase/functions/video-worker/b1_video_kinetic_test.ts
++++ b/supabase/functions/video-worker/b1_video_kinetic_test.ts
+@@ -180,7 +180,8 @@ Deno.test('plan: 3-point script — exact suffixed-key modifications dict (cross
+     'BarTop.fill_color': '#1C8A8A',
+     'BarBottom.fill_color': '#1C8A8A',
+     'Logo.source': LOGO_URL,
+-    'VoiceAudio.source': '',
++    // v3.17.1 (PK ruling 2026-08-03): VoiceAudio.source OMITTED — silent format declares no
++    // voice (the old always-'' binding tripped assertAudioSpec terminally). MusicBed stays ''.
+     'MusicBed.source': '',
+     'duration': 35,
+ 
+@@ -276,8 +277,10 @@ Deno.test('plan: 1-point script — Point2 + Point3 collapse off-timeline across
+ 
+   // Exact key count sanity: every point slot (active OR collapsed) sets the SAME key set, just with
+   // sentinel vs. real values — 13 keys/slot either way (Counter 3 + Bar 2 + Headline 3 + Divider 2 +
+-  // Body 3). 7 global + 6 hook + 13*3 points + 8 cta = 7+6+39+8 = 60.
+-  assertEquals(Object.keys(plan.modifications).length, 60);
++  // Body 3). 6 global + 6 hook + 13*3 points + 8 cta = 6+6+39+8 = 59.
++  // (v3.17.1: global dropped 7 → 6 — VoiceAudio.source is OMITTED, the silent format declares no
++  // voice; MusicBed.source '' remains.)
++  assertEquals(Object.keys(plan.modifications).length, 59);
+ });
+ 
+ // ── fail-loud contract (mirrors b1_video_stat.ts) ─────────────────────────────────
+@@ -326,3 +329,41 @@ Deno.test('plan: tmr evidence is resolver-driven, audio always false (v1 silent
+   assertEquals(plan.templateSpec.provider, 'creatomate');
+   assertEquals(plan.templateSpec.resolver_used, true);
+ });
++
++// ── v3.17.1 (PK ruling 2026-08-03) — the silent plan vs the REAL audio gate ───────
++// The production defect this fix closes: 'VoiceAudio.source': '' in the silent kinetic plan
++// tripped assertAudioSpec's AUDIO_SPEC_ASSERT_FAILED (only MusicBed's '' is the exempt N1
++// silent bed), terminally killing EVERY governed kinetic render (live: draft 90381483).
++// These tests run the REAL exported gate functions from index.ts against the REAL
++// buildGovernedVideoKineticPlan output, wrapped in the EXACT template-mode renderScript shape
++// renderGovernedVideoKinetic submits ({ template_id, modifications, output_format: 'mp4' }).
++// Direction (b) — voiced formats still fail closed on declared-but-empty VoiceAudio — is
++// covered by the UNTOUCHED audio_failclosed_test.ts assertions.
++//
++// index.ts has a top-level Deno.serve entrypoint — neutralise it BEFORE the dynamic import
++// (the proven house pattern from audio_failclosed_test.ts / render_upload_music_usage_test.ts)
++// so importing the module does not bind a port. Production code is byte-unchanged.
++// deno-lint-ignore no-explicit-any
++(Deno as any).serve = (..._args: any[]) => ({ finished: Promise.resolve(), async shutdown() {}, ref() {}, unref() {}, addr: { transport: 'tcp', hostname: '0.0.0.0', port: 0 } });
++const { assertAudioSpec, specHasAudio } = await import('./index.ts');
++
++Deno.test('v3.17.1: silent kinetic plan OMITS VoiceAudio.source and keeps the explicit N1 MusicBed', () => {
++  const scenes: KineticScene[] = [okScene('hook', 'H', null, 5), okScene('point', 'P', 'B', 8), okScene('cta', 'C', null, 5)];
++  const plan = buildGovernedVideoKineticPlan(liveShapeFixture(), scenes, brand);
++  assertEquals('VoiceAudio.source' in plan.modifications, false);   // spec declares NO voice
++  assertEquals(plan.modifications['MusicBed.source'], '');          // intentional silent bed (N1), byte-unchanged
++});
++
++Deno.test('v3.17.1: REAL assertAudioSpec passes the silent kinetic renderScript (no VoiceAudio key → no-op)', () => {
++  const scenes: KineticScene[] = [okScene('hook', 'H', null, 5), okScene('point', 'P', 'B', 8), okScene('cta', 'C', null, 5)];
++  const plan = buildGovernedVideoKineticPlan(liveShapeFixture(), scenes, brand);
++  const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'mp4' };
++  assertAudioSpec(renderScript);   // would have thrown AUDIO_SPEC_ASSERT_FAILED before v3.17.1
++});
++
++Deno.test('v3.17.1: REAL specHasAudio returns false for the silent kinetic renderScript (post-render silent-mp4 enforcement exempt)', () => {
++  const scenes: KineticScene[] = [okScene('hook', 'H', null, 5), okScene('point', 'P', 'B', 8), okScene('cta', 'C', null, 5)];
++  const plan = buildGovernedVideoKineticPlan(liveShapeFixture(), scenes, brand);
++  const renderScript = { template_id: plan.providerTemplateId, modifications: plan.modifications, output_format: 'mp4' };
++  assertEquals(specHasAudio(renderScript), false);
++});
+diff --git a/supabase/functions/video-worker/index.ts b/supabase/functions/video-worker/index.ts
+index 2119126..d30c0dd 100644
+--- a/supabase/functions/video-worker/index.ts
++++ b/supabase/functions/video-worker/index.ts
+@@ -1,3 +1,27 @@
++// video-worker v3.17.1
++// ============================================================================
++// v3.17.1 (2026-08-03, PK-authorized bounded fix — KINETIC SILENT RENDERS DIED AT THE AUDIO GATE).
++//   marker: video-worker-kinetic-silent-voice-omit (grep-able in the deployed bundle).
++//   DEFECT (found via CGU supervised recovery; live evidence draft 90381483, video_last_error
++//   "AUDIO_SPEC_ASSERT_FAILED: audio VoiceAudio.source source is empty (silent render refused)"):
++//   the governed video_short_kinetic v1 SILENT-SCOPE plan (b1_video_kinetic.ts) ALWAYS bound
++//   'VoiceAudio.source': ''. The v3.14.0 pre-render gate assertAudioSpec exempts ONLY
++//   MusicBed.source='' (the intentional N1 silent bed) and throws on every other empty declared
++//   source — TERMINAL by design (classifyRenderFailure: no transient token) — so EVERY governed
++//   kinetic render died at the gate before spending a Creatomate credit.
++//   FIX (ONE SITE, PK ruling 2026-08-03): the silent kinetic plan now OMITS 'VoiceAudio.source'
++//   ENTIRELY — per assertAudioSpec's own contract, a legitimately-silent format DECLARES NO
++//   audio. collectSpecAudio only collects modification keys that are PRESENT, so with the key
++//   omitted: assertAudioSpec is a NO-OP for voice on this plan, and specHasAudio() returns false
++//   (MusicBed '' is not a non-empty source) → the post-render mp4HasAudioTrack silent-mp4
++//   enforcement correctly EXEMPTS the by-design-silent kinetic render. MusicBed.source handling
++//   is BYTE-UNCHANGED (still explicitly '' — N1). Voiced formats are UNTOUCHED: an empty
++//   VoiceAudio.source anywhere it IS declared still fails closed (audio_failclosed_test.ts
++//   assertions unmodified and green).
++//   STRICTLY OUT OF SCOPE (unchanged): routing, selectors, publishers, every other format's
++//   audio wiring, kinetic_voice palette hygiene (separate lane — no t."5.3_content_format" /
++//   config touch), assertAudioSpec/specHasAudio/collectSpecAudio themselves, any DB, any deploy.
++//
+ // video-worker v3.17.0
+ // ============================================================================
+ // v3.17.0 (2026-08-03, WS-5 P1 / PK ruling D-4 — GOVERNED EyebrowText, DATA-GATED). ADDITIVE.
+@@ -644,7 +668,10 @@ import { submitAndPollCreatomateRender } from './creatomate_submit.ts';  // v3.1
+ //   audio guards, select_template/select_music, voice/TTS, the claim/publish paths, every legacy render
+ //   builder, and every registry/DB row. This deploy performs NO selector repoint — activation is a
+ //   SEPARATE, PK-gated DML apply.
+-const VERSION = 'video-worker-v3.17.0';
++const VERSION = 'video-worker-v3.17.1';
++
++// v3.17.1 — grep-able marker string for the deployed bundle (bundles-from-CWD guard).
++export const KINETIC_SILENT_VOICE_OMIT_MARKER = 'video-worker-kinetic-silent-voice-omit';
+ 
+ // v3.17.0 (WS-5 P1, D-4) — grep-able marker string for the deployed bundle (bundles-from-CWD guard).
+ export const WS5_EYEBROW_MARKER = 'video-worker-ws5-eyebrow-text';
