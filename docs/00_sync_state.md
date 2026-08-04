@@ -6,6 +6,14 @@
 
 ---
 
+> **✅ v6.127 — CGU-v1 COMPLETE: Milestone 2 PASS 25/25 committed cells (final mechanical re-read per the audit's re-run contract; R1/R2/R3 all PASS)** — verdict record: `docs/briefs/results/cgu-v1-final-reread-and-verdict-v1.md`.
+> · Last three cells closed by PK-ruled supervised recoveries: NDIS YT stat (Lane A re-close, no second publish) · PP YT kinetic (audio-gate fix v3.17.1 `79f1717` + production publish `ZScjrWU09AQ`, proofs `ffe3f705…`/`374745df…`) · CFW-LI image_quote (manual replacement slot after diagnosed pool starvation, publish `zapier-li-1785813602647`, proof `9fde0213…`).
+> · Recovery diagnoses recorded: advisor `_voice` palette deviation (config hygiene owed pre-unsupervised) · silent-kinetic/audio-gate contradiction (fixed) · CFW pool fitness starvation (carry).
+> · Carries → CGU Final: kinetic_voice palette hygiene · Lane B fleet calibration backfill · CFW pool health · proposal ratification + `85e2c63` rebase.
+> · Reconciliation (this session): CGU Final proposal (`creatomate-global-ultimate-final-delta-audit-v1.md`) rebased onto origin + `lane/cgu-final-proposal-ws5-correction` folded in (`2595e41`), then reconciled against this verdict — §0e added: Phase 0 closed, M5 MET (`8157ebf`). §5 open decisions (incl. new item 8, the four carries' tier ruling) await PK ratification.
+
+---
+
 > **✅ v6.126 — WS-5 metadata population: Task A APPLIED, both templates LIVE (T2 · SAFETY_GATE · PK-authorised) — supersedes v6.125's "NOT applied" framing** — result: `docs/briefs/results/ws5-metadata-population-closeout-result-v1.md` §4a; artifacts (corrected): `docs/briefs/artifacts/ws5-{market-insight,quote-card}-declared-contract-v1.json`.
 > · PK authorised both templates' population under an explicit discipline: fresh declared-only PASS immediately before writing, `set_tmr_field_constraints`/`set_tmr_platform_constraints` CAS-from-NULL only, every numeric limit a calibration triple, re-run the validator after writing, **any validator failure or CAS mismatch = STOP and report, don't adapt silently.**
 > · **A real defect was found and reported, not silently fixed.** The first real-apply attempt (self-aborting transaction) failed its in-transaction capture-check gate: `field_kind_mismatch` on `Background`/`Logo` (declared `image`, live `background`/`logo` — the controlled vocabulary's own distinct values). Zero writes persisted (independently re-verified: 0/9 and 0/4 non-null immediately after). Reported to PK per instruction; PK reviewed and authorised the fix + retry.
