@@ -4,11 +4,14 @@
 **Status:** **The accepted proposed CGU Final programme, preserved for closeout.** PK accepted the
 reconciled baseline (rev-2), directed four amendments (rev-3, committed `f59d680`), then directed
 one further lane-order amendment (§4 — M1 replaces M8 in the first-three list; M8 now explicitly
-follows) before pushing for preservation. PK then directed one further **additive** amendment
-(§0d, 2026-08-03) adding must-have **M13 — Governed Template Build Pack v1**. **NOT registered, NOT
-ratified.** No register pointer has been cut; no implementation starts until PK issues the CGU-v1
-final verdict, at which point a fresh session (`cgu-final-ratification-and-launch`) reconciles this
-proposal against the final 25-cell result and ratifies.
+follows) before pushing for preservation. PK then directed two further same-day amendments
+(2026-08-03): a **correction** (§0c) requiring complete per-template calibration + live bounds
+enforcement across every production-selectable template (prompted by the NDIS `video_short_stat`
+visual-defect incident, contained per the §0c boundary ruling — v1 does not reopen for it), and an
+**additive** amendment (§0d) adding must-have **M13 — Governed Template Build Pack v1**. **NOT
+registered, NOT ratified.** No register pointer has been cut; no implementation starts until PK
+issues the CGU-v1 final verdict, at which point a fresh session (`cgu-final-ratification-and-launch`)
+reconciles this proposal against the final 25-cell result and ratifies.
 **Scope:** Creatomate-side production pipeline only. HeyGen remains out of scope (parked
 2026-08-02) — not analysed, not assumed as a dependency.
 **Why rev-2 exists:** rev-1 (same filename, superseded in place — never committed, so no
@@ -64,6 +67,57 @@ these are additive/corrective, not further baseline reconciliation:
    decision rather than assumed.
 4. **Appendix B (first-week operating plan) restored** (§7), rebuilt against the reconciled
    baseline, not rev-1's stale one.
+
+### 0c. Correction (PK-directed, 2026-08-03 — additive; prompted by a live production defect)
+
+**WS-5 infrastructure is inherited, but complete per-template calibration and live bounds
+enforcement remain REQUIRED across every production-selectable template.** Row 9 / §2.1's "WS-5
+DoD met" stands as written for WS-5's own scoped DoD (write RPC + 2–3 populated templates + a live
+consumer) — but must NOT be read as "template text-fit is a solved, inherited property." The live
+counter-example, same day as this proposal: the first governed NDIS `video_short_stat` publish
+(`oCrtq6R9VFQ`, 2026-08-02) shipped with three template-fit defects (static "MARKET UPDATE" eyebrow
+colliding with StatValue and carrying wrong-brand copy · a two-word `stat_value` breaking geometry
+past the char-count-only clamp · ContextLine exceeding never-calibrated text-safe bounds) —
+`video_stat_reveal_9x16_v2` is production-selectable yet is NOT one of the 3 calibrated templates,
+and no generation- or render-time bounds enforcement exists for it. Rung-6 visual approval is
+per-render, not per-content-envelope. Consequences for Final: (a) calibration coverage must extend
+to **every production-selectable template**, not 2–3; (b) constraints must be **enforced live**
+(generation-time clamp/reject against the template's measured envelope + the parked
+`video_stat_bounds` validator landed and wired), not merely persisted; (c) **calibrated constraints
+become a mandatory graduation requirement** for any future template — the direct answer to the
+auto-onboarded-template quality risk. Incident disposition + contained repair plan:
+`docs/briefs/cgu-ndis-yt-stat-supervised-proof-runsheet-v1.md` (ADDENDUM), disposition
+`published_proof_captured / visual_quality_remediation_required / final_acceptance_open`; the
+NDIS assignment is contained (`blocked`) pending remediation, so the §1 baseline's NDIS stat
+state-1 reading is 22/25 again until re-close.
+
+**PK boundary ruling (2026-08-03, same directive):** the incident splits into a contained CGU-v1
+repair and CGU-Final systemic hardening — **v1 does NOT reopen for single layout defects, and
+universal future quality perfection is not a v1 pass condition.** v1's promise: every committed
+capability has a governed route, fail-closed containment, evidence, and an accepted production
+output. The v1 repair (Lane A, `ws5-production-envelope-enforcement-foundation`) re-closes the NDIS
+cell on: eyebrow removed/parameterised · safe StatValue+ContextLine bounds for
+`video_stat_reveal_9x16_v2` · one corrected replacement render · PK visual PASS · assignment
+restored — **no second public publish** unless routing/authority/publisher behaviour changed (the
+preserved publish stands as transport+evidence proof).
+
+**CGU-Final quality hardening (this correction's must-have-shaped content — "full WS-5", PK-defined
+as seven outcomes; Lane B `ws5-production-template-calibration-backfill`):**
+1. **Calibration coverage** — every production-selectable template has persisted, probe-derived constraints;
+2. **Field-shape rules** — constraints express char count, word count, numeric-only expectation, line count, safe-width behaviour;
+3. **Generation-time enforcement** — the AI worker receives the selected template's real limits before writing content;
+4. **Render-time bounds enforcement** — the (currently parked) bounds validator landed, checking final modifications/geometry;
+5. **Graduation enforcement** — no template becomes production-selectable without completed calibration + passing probes;
+6. **Existing-template backfill** — all currently selectable templates checked, not only future ones;
+7. **Change invalidation** — material template edits invalidate calibration until reproven.
+
+**Ongoing quality policy (PK, operative post-v1):** for every newly graduated template, visually
+inspect its first three natural production renders, then a weekly sample; automatically validate
+text bounds on every render where possible; on defect, immediately block only the affected
+template/client assignment and record the issue in the Asset Gap/quality register; repair →
+recalibrate → replacement visual proof → restore. **Reopen the programme only for a systemic
+governance failure** (silent fallback across many cells, governance bypass, publishing past a
+failed control) — never for a single content-envelope defect.
 
 ### 0d. Additive amendment — new must-have M13 (PK-directed, 2026-08-03)
 
