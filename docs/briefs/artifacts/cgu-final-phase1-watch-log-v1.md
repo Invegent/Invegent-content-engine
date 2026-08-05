@@ -64,5 +64,23 @@ M13 scoping). Active: control tower + CFW/INV asset sourcing only.
   (v6.129/M11c memo) — §H's rotation proof must use provider-access success (templates-list
   reachable), NOT the logical status, which will stay `error` for unrelated reasons.
 
+## M18 — ROTATION EXECUTED, 3/4 verifications PASS (2026-08-05 ~21:10 Sydney)
+
+- Sequence (single-key model — Creatomate has no dual-key overlap; §F adapted accordingly):
+  PK regenerated in-dashboard → pre-tested the value locally (200) → stored ONLY in Bitwarden
+  (new managed store, replacing the Downloads/spreadsheet habit) → `secrets set --env-file`.
+  Live secret digest lineage this rotation: `bcde13d1` (exposed old) → `04df9270` (bad first
+  copy, never valid at provider, caused a ~90-min contained STOP; zero production impact —
+  cutover ran inside a verified zero-fill window) → **`39bdf541` (final, verified)**.
+- Verifications: video-worker smoke `ok:true` 11:07:16Z · image-worker smoke `ok:true` 11:07:37Z
+  (both timestamped post-rotation per §H) · advisors recheck **unchanged** 3 ERROR + 185 WARN,
+  zero Creatomate findings · **drift-probe deferred to tonight's 17:35Z cron** — pass signal =
+  no `401/invalid_api_key` cause (logical `error` persists for known unrelated causes). Failed
+  render row 11:03:30Z = the pre-fix 401 attempt, expected artifact.
+- Old keys: dead by regeneration (single-key model — each regenerate revokes). PK-side closing
+  facts still owed (§H): delete `Downloads/creatomate api key.txt` · delete the spreadsheet key
+  row (revision-history caveat recorded: unpurgeable, mitigated by the key being dead) · clear
+  any shell `CREATOMATE_API_KEY` export · optional old-key 401 test before deletion.
+
 *(Subsequent daily entries append below; one line-block per day; any STOP-condition match →
 surface to PK immediately, do not wait for watch expiry.)*
