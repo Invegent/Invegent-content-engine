@@ -6,6 +6,13 @@
 
 ---
 
+> **✅ v6.146 — M18 ROTATION VERIFIED 4/4 + HARVEST BATCH PK VISUAL GATE COMPLETE (T3 rotation closeout evidence + T1 batch pointer; watch day 2, no STOP)** — evidence: `docs/briefs/artifacts/cgu-final-phase1-watch-log-v1.md` (M18 + day-2 entries).
+> · **M18 rotation:** all 3 consumers proven on the rotated key (video-worker + image-worker smokes 2026-08-05 ~11:07Z · drift-probe 17:35Z full provider fetch, zero 401 · advisors unchanged 3 ERROR/185 WARN). Secret digest lineage `bcde13d1`→`04df9270` (bad copy, contained STOP, zero production impact)→`39bdf541` (verified). New key stored in Bitwarden (managed store adopted). Owed: PK attestations — Downloads file + spreadsheet row deletion, shell env clear; then M18's storage-migration half (other credentials → Bitwarden).
+> · **Harvest batch (P4 pointer):** PK visual gate 2026-08-06 — CFW 6 accepted/7 rejected (cfw-05 harvester self-reject RATIFIED) · INV 8 accepted/3 rejected; `pk_visual_gate` block in package manifest, bytes untouched. Visual sign-off only; intake/promotion = post-watch T2/T3 chain. E-1 precondition-1 satisfiable (6 ≥ 3) but MET only at post-watch `approved=true` applies. Intake-lane carries: cfw-09 zoom-check · cfw-13 authenticity · inv-07/08 never geo-captioned.
+> · Watch day 2: cron 0 non-green · pipeline flat (failed 15, stuck true — unchanged baseline) · one unrelated `pipeline-ai-summary` 500 observed, watch-item only. Also recorded: v6.142's "self-committed/pushed" corrects to committed-only (S-A never pushed) · commit `a814e4f`'s M13 §13 addendum was authored by the M13 scoping session (shared-checkout stage swept in), not the Gate-1 batch lane.
+
+---
+
 > **🔐 v6.145 — PK RULINGS BATCH (2026-08-05 evening): M18 ROTATION AUTHORIZED (trigger MET) · matrix E-1 gains M16 precondition · M2 voices decided · M14 staged · fleet frozen (T1 docs + T3 rotation authorization)** — rulings recorded verbatim-faithful; sources: PK control-tower feedback message this session.
 > · **M18 (highest priority): the Downloads-key exposure trigger is ruled MET — rotate NOW via the packet's §F sequence** (new-key-set → smoke all 3 consumers → provider-access verify → old-key revoke → local plaintext removal → digest-only evidence). Rotation affects provider auth, not schedule/caps — no watch conflict. Value never enters chat/docs/logs; §G rollback stands; any new advisor finding = STOP.
 > · **Matrix amendment (PK-directed):** E-1 CFW image_quote increment now carries TWO non-waivable preconditions — ≥3 PK-approved CFW backgrounds AND a landed bounded M16 fix (health-check/reuse) — reliability (healthy) and signal-pool capacity (constrained) are recorded as distinct constraints. Matrix doc §2.2 amended in place.

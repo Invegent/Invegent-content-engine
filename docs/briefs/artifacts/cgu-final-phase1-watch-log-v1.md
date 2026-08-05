@@ -82,5 +82,28 @@ M13 scoping). Active: control tower + CFW/INV asset sourcing only.
   row (revision-history caveat recorded: unpurgeable, mitigated by the key being dead) · clear
   any shell `CREATOMATE_API_KEY` export · optional old-key 401 test before deletion.
 
+## Day 2 — 2026-08-06 ~10:15 Sydney
+
+- **M18 verification 4/4 — ROTATION FULLY VERIFIED.** `tmr-drift-probe` 2026-08-05T17:35:07Z run
+  (6.5h post-rotation, v2.1.0) completed its full provider templates-list fetch on the new key —
+  complete provider_check produced (impossible without provider access) — and its logical `error`
+  carries only the three KNOWN pre-existing declarative-coverage causes; zero `401`/
+  `invalid_api_key`. Combined with day-1's two smoke passes + unchanged advisors: **all three
+  consumers proven on the rotated key.** Remaining M18-rotation items are PK-side attestations
+  (Downloads file delete · spreadsheet row delete · shell env clear).
+- **Overnight production: healthy on the new key.** Edge-function log sweep: all worker/publisher
+  invocations 200. One `pipeline-ai-summary` 500 observed (~23:35Z) — unrelated to Creatomate
+  (no Creatomate dependency), logged as a watch observation, not escalated; re-check day 3.
+- **Cron:** 0 non-green jobs. **Pipeline trend:** queue_failed 15 (flat vs day-1 15),
+  has_stuck_items=true (flat), queue_total 830→834 (normal accretion). No STOP condition.
+- **Harvest batch — PK VISUAL GATE COMPLETE (2026-08-06):** CFW 6 accepted / 7 rejected
+  (cfw-05 self-reject RATIFIED by PK) · Invegent 8 accepted / 3 rejected. Recorded as a
+  `pk_visual_gate` block in the package manifest (worktree `admiring-shtern-6fdb19`), byte/sha256
+  re-verified untouched. Visual sign-off ONLY — intake/promotion stays post-watch (own T2/T3
+  chain). E-1 precondition-1 note: 6 CFW backgrounds PK-visually-accepted ≥ the 3 required, but
+  the precondition is met only when they are `approved=true` IN DB — i.e., after the post-watch
+  intake+promotion applies. Carry-forwards for that intake lane: cfw-09 wall-mark zoom-check ·
+  cfw-13 authenticity confirm · inv-07/inv-08 never geo-captioned.
+
 *(Subsequent daily entries append below; one line-block per day; any STOP-condition match →
 surface to PK immediately, do not wait for watch expiry.)*
