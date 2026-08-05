@@ -6,6 +6,12 @@
 
 ---
 
+> **✅ v6.141 — M13 Governed Template Build Pack v1: SCOPING PACKET COMPLETE (T1, docs-only, zero implementation/DB/deploy; PK Gate-1 pending per-lane)** — drafts the Blueprint + Creatomate Capture JSON schemas (extend `registry-schema-v2.md` §3/§7), designs (does not build) the blueprint-vs-capture structural diff (missing-in-capture + dimension/output parity block graduation; field-class mismatch advisory-only in v1), plans 5 lanes matching §0d's own T2/T3 split, restates all 4 §2.4 hard exclusions verbatim. Record: `docs/briefs/m13-governed-template-build-pack-scoping-packet-v1.md`.
+> · Names two coordination findings as open PK decisions, not resolved: M11c's carousel packet found the Variant object scalar/single-render (a carousel migration would be the first multi-object registry extension) — this packet recommends reserving a schema seam now, not building multi-object support yet; M6 (sequenced immediately after M13) is itself unscoped and could independently need the same seam.
+> · Next: none of the 5 lanes is started by this cut — each needs its own Gate-1 brief + PK approval. Watch-ruling v6.140 (still active, below) applicability to lanes 3/5 (T3, live registry) is named as PK's call, not resolved here.
+
+---
+
 > **🛑 v6.140 — PK CONTROL-TOWER RULING: Phase-2 HELD to watch close (~2026-08-11 20:20 Sydney); packet v3 = review-only evidence, lineage frozen; no schedule DML/cap raises; session/worktree reduction ordered (T1 · docs-only · PK ruling record)** — record: `docs/briefs/cgu-final-control-tower-watch-ruling-v1.md` (PK ruling verbatim §1).
 > · Watch-period tasks: read-only R0 schedule monitoring · one revised Phase-2 matrix (CFW reliability correction in, Invegent conservative, Layer-2/YouTube exclusions preserved) · no new heavy CGU Final lanes before the Phase-2 ruling.
 > · Watch-expiry deliverable: watch verdict + one revised matrix → PK approval → only then a fresh apply packet. M18 executes after the watch unless a current accessible unmanaged credential is found.
