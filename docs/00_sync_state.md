@@ -6,6 +6,25 @@
 
 ---
 
+> **✅ v6.135 — M18 Creatomate key rotation: security packet complete, rotation PENDING PK gate
+> (T3 · SAFETY_GATE)** — record: `docs/briefs/m18-creatomate-key-rotation-security-packet-v1.md`.
+> · Inventory: 1 credential (`CREATOMATE_API_KEY`), 3 deployed EF consumers (video-worker,
+> image-worker, tmr-drift-probe) + 4 local out-of-band scripts sharing the same env-var name (3 of the
+> 4 created 2026-08-03). Storage confirmed GREEN (Supabase EF project secret only, zero DB footprint,
+> `get_advisors` clean of Creatomate findings). Credential-value exposure classified **AMBER**:
+> confirmed historical unmanaged local copy (`P1_FINDINGS.md` 2026-07-10, digest-confirmed; prior
+> rotation v5.89 closed a related carry) with the local-script pattern still recurring as of
+> 2026-08-03; no active leak found in repo/git/CI/DB. Target architecture unchanged (EF project
+> secrets, not Vault — Vault serves a different secret class). Bounded rotation packet + rollback +
+> per-consumer smoke proof plan + old-key-dead proof plan (PK-manual, Creatomate-dashboard-side)
+> designed, **NOT executed** — held per standing instruction pending PK's own exposure-urgency call and
+> the schedule-expansion 7-day watch (v6.130, confirmed unrelated but named as the co-occurring hold
+> context). **NEXT (PK gate):** go/no-go on rotation timing + explicit sequence approval (new-key-set →
+> smoke-all-3 → old-key-revoke → local-copy-clear), or a ruling that exposure warrants immediate action
+> ahead of the watch window.
+
+---
+
 > **✅ v6.134 — M10/M9 DOCS FOUNDATION DRAFTED — both spec documents review-ready, submitted for PK
 > Gate-1 (T1, docs-only, zero DB/deploy/replay)** — M10: `docs/briefs/m10-provider-neutral-render-contract-v1.md`
 > (extracted from stat+kinetic+image_quote, Phase 0 dependency satisfied); M9:
