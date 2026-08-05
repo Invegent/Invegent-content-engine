@@ -178,3 +178,47 @@ detection (via `client_creative_governance`) is wanted for the execution-path ba
   the gap explicitly in the result doc — matches this codebase's own established "never
   guess toward a real enum member" discipline (`normaliseResponsibleLane`'s file-header rule)
   extended to a task-level ambiguity, not just a parsing one.
+
+---
+
+## 10. Addendum (2026-08-05) — PK closure attestation, M8 CLOSED
+
+**PK accepts M8 as CLOSED (direct chat, 2026-08-05).** This closes the live-verification gap
+named in §6/§7 above — the tab's correctness previously rested on typecheck/build/tests/code
+review only ("no live visual verification was possible in this environment"); PK has now
+supplied the missing production-side confirmation directly, per this project's established
+evidence-ledger discipline (PK's own recorded attestation, not a synthetic proof row — the
+same pattern used for D2's evidence ledger and every PK visual-approval gate in this repo).
+
+**PK attests, this chat:**
+- Production screenshots reviewed showing the Asset Gap tab rendering, including the
+  Property Pulse row.
+- Live read-only verification performed across all 8 backlog rows.
+- Direct evidence observed for three of the tab's four execution-path badge states:
+  **Blocked**, **Autonomy-ready**, and **Unclassified**. **Not explicitly named in PK's
+  attestation:** the fourth state, **Supervised** — recorded here as a factual gap in the
+  attestation's coverage, not assumed covered by omission. Does not block PK's own closure
+  decision; named so a future reader doesn't over-read "all four states verified" into this
+  record.
+
+**Independently confirmed by this session (not solely PK attestation):** `invegent-dashboard`'s
+`origin/main` is at `1d87ec7` — the commit named in §2 above was pushed directly to that
+repo's `origin/main` (fast-forward from `fc9c5c9c`, zero conflicts) during the 2026-08-05
+completed-lane ingest pass, with post-push parity independently re-verified (`0	0` ahead/
+behind). The dashboard implementation is confirmed live on `main`, not merely on the feature
+branch §1's original wording described.
+
+**Follow-ons preserved, per PK's explicit instruction — neither implemented nor scoped in
+this pass:**
+- **M8.1 — dashboard legacy-route authority integration.** Closes the gap named in §6/§7:
+  true legacy-routed detection via `client_creative_governance` presence/proof-posture per
+  (client, platform, format) — the fourth category from the task's original outcome wording
+  that this lane deliberately did not implement (no in-scope data source), substituting the
+  honest `unclassified` fallback instead.
+- **M8.2 — Production Readiness `scheduled_demand` contract repair.** Named by PK this turn;
+  no further detail supplied in this session. Recorded here as a named carry for future
+  scoping, not investigated or characterised further by this addendum.
+
+This addendum does not reopen or re-score M8's own completion (§1–§9 stand as originally
+recorded); it records PK's closure attestation and the two preserved follow-ons as of
+2026-08-05.

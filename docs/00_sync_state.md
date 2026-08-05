@@ -6,6 +6,21 @@
 
 ---
 
+> **✅ v6.136 — M8: Asset Gap dashboard panel CLOSED (PK-attested, direct chat 2026-08-05)** —
+> result addendum: `docs/briefs/results/m8-asset-gap-dashboard-panel-result-v1.md` §10.
+> · PK attests production screenshots reviewed (Asset Gap tab + Property Pulse row), live
+> read-only verification across all 8 backlog rows, and direct evidence for 3 of the 4
+> execution-path badge states (Blocked, Autonomy-ready, Unclassified — Supervised not
+> explicitly named in the attestation, recorded as a coverage gap not a blocker). Independently
+> confirmed this session: `invegent-dashboard`'s `origin/main` is at `1d87ec7`, pushed
+> directly during the 2026-08-05 completed-lane ingest pass, parity re-verified.
+> · **Follow-ons preserved, not implemented:** M8.1 — dashboard legacy-route authority
+> integration (`client_creative_governance` presence/proof-posture per client/platform/format,
+> closing the "legacy-routed" badge gap named in the original result §6/§7). M8.2 — Production
+> Readiness `scheduled_demand` contract repair (named by PK, no further detail supplied yet).
+
+---
+
 > **✅ v6.135 — M18 Creatomate key rotation: security packet complete, rotation PENDING PK gate
 > (T3 · SAFETY_GATE)** — record: `docs/briefs/m18-creatomate-key-rotation-security-packet-v1.md`.
 > · Inventory: 1 credential (`CREATOMATE_API_KEY`), 3 deployed EF consumers (video-worker,
