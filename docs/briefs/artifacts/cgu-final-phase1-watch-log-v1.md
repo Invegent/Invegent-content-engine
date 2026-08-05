@@ -50,5 +50,19 @@ M13 scoping). Active: control tower + CFW/INV asset sourcing only.
   `Elevellabsapikey.txt`, `ICE_HEYGEN_API_KEY.txt`, `ICE_PEXELS_API_KEY.txt`, `ICE_Pixabay_API_KEY.txt`,
   and 3 Google `client_secret_*.json` files — same unmanaged-plaintext habit across 6+ other credentials.
 
+## M18 — trigger CONFIRMED + rotation pre-flight baseline (2026-08-05 evening, PK-authorized rotation in progress)
+
+- **Exposure upgraded PROBABLE → CONFIRMED:** `supabase secrets list` shows the live
+  `CREATOMATE_API_KEY` value-digest = `bcde13d1…` — exact match to the Downloads file's digest.
+  The plaintext `Downloads/creatomate api key.txt` IS the current production key. Digest-only
+  discipline maintained (no value in any transcript/doc/log).
+- **PK ruling (v6.145): trigger MET, rotate now via packet §F.** Sequence in flight.
+- **Pre-flight baseline (read-only, per §F):** secret present by name ✓ · last successful
+  creatomate renders — image-worker/image_quote 2026-08-05T04:30Z · video-worker/video_short_stat
+  2026-08-04T11:01Z (kinetic 08-03T19:00Z) · `tmr-drift-probe`: absent from `ice_ro.cron_health`
+  (0 rows); its daily logical `status='error'` is the KNOWN pre-existing multi-cause condition
+  (v6.129/M11c memo) — §H's rotation proof must use provider-access success (templates-list
+  reachable), NOT the logical status, which will stay `error` for unrelated reasons.
+
 *(Subsequent daily entries append below; one line-block per day; any STOP-condition match →
 surface to PK immediately, do not wait for watch expiry.)*
