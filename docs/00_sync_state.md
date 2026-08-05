@@ -6,6 +6,13 @@
 
 ---
 
+> **✅ v6.132 — M11b fleet-carousel closure scoping COMPLETE (T1 · docs-only; zero code/DB/deploy/merge change)** — packet: `docs/briefs/m11b-fleet-carousel-closure-scoping-packet-v1.md`.
+> · Fleet-wide per-client disposition: Property Pulse declared-legacy/live (migrate-vs-retire still open, 90d ~104 drafts/37 real posts); NDIS Yarns historically contained (config-layer closed 2026-08-04, governance-layer record still open); Care For Welfare historically contained (fragile row-presence fence, retirement record still open — 171 real historical posts); Invegent historically contained + unused (zero real carousel posts ever delivered, cleanest retire case).
+> · Seeds 3 bounded closure lanes, none authorised to start by this scoping itself — each needs its own fresh Gate-1 brief: A (NDIS formal governance-layer closure record), B (CFW + Invegent fence-hardening + retirement records), C (PP migrate-vs-retire feasibility, read-only).
+> · DB access was unavailable to the scoping session — no client's current live carousel state was independently re-verified when this was authored; every seed packet's own proof requirements name a fresh `db-rls-auditor` read as a precondition, not an assumption. Standing constraint for the whole M11b programme: no carousel draft/render/publish volume increase for any client until its own closure lane lands, CAS-asserted per lane. Any new `client_creative_governance` row (Seed Packets A/B) will trip `tmr-drift-probe`'s known `declarative_registry_ref_missing` failure mode (same mechanism as PP's D2 side effect) unless sequenced with that awareness.
+
+---
+
 > **✅ v6.131 — image_quote reliability diagnosis: background-scarcity theory REJECTED, CFW/invegent failure rate root-caused to already-fixed cc-0048/cc-0049 (T1 · read-only, zero DB/repo mutation)** — result: `docs/briefs/results/image-quote-reliability-diagnosis-result-v1.md`; addendum §8 of `docs/briefs/post-cgu-v1-phase2-schedule-expansion-proposal-v1.md`.
 > · Two `db-rls-auditor` passes: CFW's 85%/invegent's 78% 30-day failure rates are fully accounted for by two already-fixed incidents (cc-0048 registry gap 2026-07-20→22, cc-0049 winner-mapping gap fixed 2026-07-23) — zero unexplained residual. Both clients ~100% success since 2026-07-23 (12 days, modest volume).
 > · CFW already has its own background asset and still failed worse than invegent (which relies on a PK-proven shared-pool fallback) — disproves background-asset scarcity as the cause, twice over.
