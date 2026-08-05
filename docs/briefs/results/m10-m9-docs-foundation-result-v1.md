@@ -132,7 +132,8 @@ version number intentionally omitted:
 > Result: `docs/briefs/results/m10-m9-docs-foundation-result-v1.md`. Awaiting PK Gate-1.
 ```
 
-## 7. Next recommended step
+## 7. Next recommended step (as originally written — superseded by §8 below on M10, unchanged on M9's
+replay half)
 
 PK reviews both documents at Gate 1. If accepted: (a) the register-cut-owner session applies §6's payloads
 with an allocated version number; (b) M9/M10's status cells in
@@ -142,3 +143,125 @@ consistent with the docs-only, no-self-ratification constraint. If PK elects to 
 schedule-expansion gate separately, M9's replay lane (T2/T3, per the delta-audit's own lane estimate) can
 then be scoped as its own follow-on task, executed under the full apply-gate chain named in M9 §6/§7 — not
 by extending this lane.
+
+---
+
+## 8. Addendum (2026-08-05, same day) — PK Gate-1 outcome: M10 ratified/closed, M9 spec accepted
+
+PK returned Gate-1 rulings directly, same session:
+
+**M10 — RATIFIED, CLOSED.** PK instructed: move to Gate-1 ratification; if the document review confirms it
+matches the proven stat/kinetic/image paths, ratify and close M10.
+
+- An independent adversarial fact-check review was run (general-purpose agent, read-only, no shared context
+  with the drafting pass) against `m10-provider-neutral-render-contract-v1.md`'s full citation set. Verdict:
+  **CONCERNS** — ~30 direct source citations spot-checked and confirmed accurate, core stat/kinetic/
+  image_quote extraction found well-sourced and free of overclaims, but six defects found: two stale/
+  mis-lined citations (`docs/00_sync_state.md:48` — a running log, line drifted to 578 since the addendum
+  that originally cited it; delta-audit `:505-506` off by two lines from `:503-504`), a duplicated wrong
+  internal cross-reference ("§9" where "§13" was meant, twice), one open question (§13's render_spec-
+  population question) the document's own cited sources could already resolve, and one table row (§9's
+  carousel classification) one addendum-read short of current.
+- All six were independently re-verified against source by the orchestrator (not merely accepted from the
+  review) before correction — including a targeted grep the reviewing agent had not run, which confirmed
+  NDIS's carousel row actually was disabled in the 2026-08-04 schedule-expansion apply ("Change 11"),
+  changing what the §9 table should say. All six fixed in place; none were structural; none touched the
+  document's core contract extraction.
+- **M10's status header, §10 acceptance-matrix closing row, and the delta-audit's own M10 cell
+  (`creatomate-global-ultimate-final-delta-audit-v1.md:399`) were updated to RATIFIED/MET, PK, 2026-08-05.**
+  M10 is CLOSED. Per PK's framing, it is intentionally provider-neutral (no second provider implemented or
+  scoped) and docs-only (zero code/DB change) — this was not a defect to remediate, it was the design
+  target.
+
+**M9 — SPECIFICATION ACCEPTED, MILESTONE STAYS OPEN.** PK instructed the exact state to record:
+*"Package specification complete; replay proof outstanding."* Explicitly: accepting the spec is not closing
+M9. Two further directives:
+
+- **Replay-target default reconfirmed, not changed:** an existing active brand entering a genuinely new
+  governed format-mix (§0f) — already this document's default; PK's instruction restates it as a standing
+  requirement on the outstanding replay, not a new decision.
+- **The dashboard-visibility contradiction (§5) converted into a named prerequisite, not left ambiguous.**
+  Added as **Prerequisite P-1** — a formal blocking gate (dashboard-visibility audit finding must be
+  recorded, either outcome clears it) — into `m9-zero-code-day1-onboarding-package-v1.md`'s status header,
+  §5, §6 (operator decisions table), §7 (now two independent named blocking gates, not one soft
+  precondition among several), §8 (acceptance matrix), §9 (dependencies diagram + list), §10 (exclusions),
+  and §11 (open question 3 reframed: the ambiguity is resolved, only P-1's *execution* remains outstanding).
+- **M9's status header, §8 acceptance-matrix rows, and the delta-audit's own M9 cell
+  (`creatomate-global-ultimate-final-delta-audit-v1.md:398`) were updated to record exactly: "PACKAGE
+  SPECIFICATION: COMPLETE; REPLAY PROOF: OUTSTANDING."** M9's Status column stays **OPEN** — replay waits on
+  BOTH the §6 schedule-expansion PK approval (not yet obtained) AND Prerequisite P-1.
+
+**Constraints upheld through this addendum:** still zero DB/code/deploy/replay execution — every action
+here is a docs edit (the two spec documents, the delta-audit table, this result doc, and the register
+entries in §9 below). M9's replay was not attempted; P-1's audit was not executed (it is named, not
+performed). Per PK's direct instruction to ratify/accept, this lane departs from §4's original
+"no register self-cut" posture — branch-warden re-confirmed a clean, in-sync, uncontested git state (HEAD
+`e4f4300b…`, no claim-stub collision, current highest version v6.130) immediately before this cut, on the
+branch's own base. That base was already stale by the time of ingestion: origin/main had independently
+advanced to v6.131 (an unrelated image_quote reliability diagnosis) and onward to v6.138 before this
+branch reached programme-control. §9 below was therefore **not** applied as this branch's self-cut v6.131
+— see §10 for the reconciliation and the version actually cut (v6.139).
+
+## 9. Register payloads as originally self-cut on the branch (v6.131 — SUPERSEDED, not applied — see §10)
+
+Per Convention 1 shape, now versioned rather than left as a pointer payload for a separate register-cut
+owner — PK's direct Gate-1 ruling in this same session is the triggering event, and branch-warden confirmed
+no concurrent claim on v6.131 against the branch's own (stale) base before this cut. **This payload was
+never applied to origin/main** — programme-control found the v6.131 slot already taken by unrelated work
+and re-stamped the same substantive content as v6.139 (§10):
+
+```
+> **✅ v6.131 — M10 RATIFIED + CLOSED; M9 SPECIFICATION ACCEPTED, MILESTONE STAYS OPEN (T1, docs-only,
+> zero DB/deploy/replay; PK Gate-1)** — M10: `docs/briefs/m10-provider-neutral-render-contract-v1.md`,
+> independently fact-checked (6 citation/cross-ref defects found + corrected, none structural), ratified
+> and closed in `creatomate-global-ultimate-final-delta-audit-v1.md:399` — intentionally provider-neutral,
+> docs-only, by design. M9: `docs/briefs/m9-zero-code-day1-onboarding-package-v1.md` — spec ACCEPTED
+> ("package specification complete; replay proof outstanding"); dashboard-visibility contradiction
+> converted into blocking Prerequisite P-1 (§5); replay-target default reconfirmed (existing active brand,
+> genuinely new format-mix, §0f); M9 stays OPEN, replay gated on §6 schedule-expansion approval AND P-1.
+> Result: `docs/briefs/results/m10-m9-docs-foundation-result-v1.md` §8.
+> · Next: M9 replay is a separate future T2/T3 lane once both blocking gates clear; no work scoped by
+> this cut. Queue impact: M10 row CLOSED; M9 row OPEN with the exact PK-specified state text.
+```
+
+```
+> Previous marker v6.131 — M10 RATIFIED/CLOSED, M9 SPECIFICATION ACCEPTED (milestone stays OPEN) (T1,
+> docs-only; zero code/DB/deploy/replay change). M10 provider-neutral render contract independently
+> fact-checked against the stat/kinetic/image_quote governed paths (six citation/cross-reference defects
+> found and corrected pre-ratification, none structural); PK ratified and closed it same-session —
+> intentionally provider-neutral and docs-only, per PK's own framing, not a gap. M9 Day-1 onboarding
+> package spec PK-accepted with the exact state "package specification complete; replay proof
+> outstanding" — M9 is NOT closed; its dashboard-visibility open question was converted into a named
+> blocking prerequisite (P-1) rather than left ambiguous, and its replay-target default (existing active
+> brand, genuinely new format-mix) was reconfirmed. Result:
+> `docs/briefs/results/m10-m9-docs-foundation-result-v1.md` §8. M9's replay remains queued behind the
+> unobtained §6 schedule-expansion approval and Prerequisite P-1 — not scoped or started by this cut.
+```
+
+## 10. Programme-control reconciliation (2026-08-05, same day) — version collision resolved, v6.139 applied
+
+Handed to `cgu-final-programme-control` (control session) because this branch's self-cut v6.131 register
+edits (§9 above) were authored against a stale base (branch merge-base `a8ed9de`, last-known highest
+v6.130) and collided with a real, different v6.131 already committed to origin/main in the interim
+("runtime: v6.131 — image_quote reliability diagnosis: background-scarcity theory rejected", commit
+`9a44cda`) — followed by six more intervening cuts (v6.132–v6.138) before this branch reached ingestion.
+Note the drafting half of this same lane (commit `e4f4300`) had *already* been separately ingested as
+v6.134 ("M10/M9 DOCS FOUNDATION LANE ... Awaiting PK Gate-1"); only this ratification half (`c3d8464`) —
+the six citation/cross-reference fixes, the P-1 prerequisite threading through both spec documents, the
+delta-audit table update, and this §8/§9 addendum — was outstanding.
+
+**Outcome, per PK's explicit programme-control instruction:**
+
+- M10 preserved as **MET — RATIFIED** (delta-audit `creatomate-global-ultimate-final-delta-audit-v1.md:399`).
+- M9 preserved as **"Package specification complete; replay proof outstanding"** (milestone stays OPEN).
+- Dashboard prerequisite **P-1** preserved, threaded through both spec documents as authored on the branch.
+- The branch's conflicting v6.131 register edits (§9 above) were **removed, not applied** — origin/main's
+  real v6.131 (image_quote diagnosis) is untouched.
+- Next-free register version allocated against origin/main HEAD `ea1fcb8` (v6.138, current at reconciliation
+  time): **v6.139**. Both register entries recreated under v6.139 with the same substantive content as §9
+  above (only the version stamp, the "prepended above"/"Previous marker" anchor point, and one added
+  provenance line differ) — see `docs/00_sync_state.md` and `docs/00_action_list.md`.
+- Body-document edits from `c3d8464` (M10/M9 spec corrections, delta-audit table update) applied to main
+  as-is — those were never version-numbered and carried no collision.
+- Reconciled baseline pushed to origin/main by programme-control; this branch (`claude/m10-m9-docs-foundation-j9g1qq`)
+  was not merged directly, per PK's explicit instruction.

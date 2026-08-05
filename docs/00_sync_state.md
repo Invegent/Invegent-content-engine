@@ -6,6 +6,23 @@
 
 ---
 
+> **✅ v6.139 — M10 RATIFIED + CLOSED; M9 SPECIFICATION ACCEPTED, MILESTONE STAYS OPEN (T1, docs-only,
+> zero DB/deploy/replay; PK Gate-1)** — M10: `docs/briefs/m10-provider-neutral-render-contract-v1.md`,
+> independently fact-checked (6 citation/cross-ref defects found + corrected, none structural), ratified
+> and closed in `creatomate-global-ultimate-final-delta-audit-v1.md:399` — intentionally provider-neutral,
+> docs-only, by design. M9: `docs/briefs/m9-zero-code-day1-onboarding-package-v1.md` — spec ACCEPTED
+> ("package specification complete; replay proof outstanding"); dashboard-visibility contradiction
+> converted into blocking Prerequisite P-1 (§5); replay-target default reconfirmed (existing active brand,
+> genuinely new format-mix, §0f); M9 stays OPEN, replay gated on §6 schedule-expansion approval AND P-1.
+> Result: `docs/briefs/results/m10-m9-docs-foundation-result-v1.md` §8/§10.
+> · Ingested by programme-control from branch `claude/m10-m9-docs-foundation-j9g1qq` — that branch's own
+> self-cut v6.131 conflicted with an unrelated v6.131 (image_quote reliability diagnosis) already on
+> origin/main and was not applied; re-stamped v6.139, the next-free version against origin/main `ea1fcb8`.
+> · Next: M9 replay is a separate future T2/T3 lane once both blocking gates clear; no work scoped by
+> this cut. Queue impact: M10 row CLOSED; M9 row OPEN with the exact PK-specified state text.
+
+---
+
 > **✅ v6.138 — M8 CLOSEOUT (PK-attested visual + full 8-row live badge-state evidence) + M8.2
 > CLOSED same day (scheduled_demand boolean contract repair, T2 · isolated 5-file dashboard fix,
 > zero DB/RPC/schedule/readiness-semantics touch)** — results:
