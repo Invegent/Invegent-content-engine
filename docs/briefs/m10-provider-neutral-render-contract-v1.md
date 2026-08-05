@@ -1,15 +1,21 @@
 # M10 — Provider-Neutral Governed Render Contract (v1, design doc)
 
 **Created:** 2026-08-05 Sydney · **Author:** orchestrator (docs-only lane `m10-m9-docs-foundation`)
-**Status:** DRAFT — submitted for PK Gate-1 review. This document's existence is the artifact the M10
-finite acceptance test names, but closing M10's row in the CGU Final must-have table
-(`docs/briefs/creatomate-global-ultimate-final-delta-audit-v1.md:399`) is a PK ratification act, not an
-act this document performs on itself. Until ratified, M10 stays **OPEN** in the register.
+**Status:** **RATIFIED — PK, 2026-08-05.** An independent adversarial fact-check reviewed this document
+against the cited source (video-worker, image-worker, migrations, `youtube-publisher`/`auto-approver`/
+`publisher`, TPR-1, the M11a inventory) before ratification: ~30 direct source citations spot-checked and
+confirmed accurate; the review returned CONCERNS on six items (two stale/off-by-line citations, two
+duplicated wrong internal cross-references, one under-verified claim the cited sources actually resolved,
+one table row one addendum-read short of current) — all six were corrected in this document before
+ratification, none were structural, and none touched the document's core extraction of the stat/kinetic/
+image_quote contract, which the review found well-sourced throughout. M10's row in the CGU Final
+must-have table (`docs/briefs/creatomate-global-ultimate-final-delta-audit-v1.md:399`) is closed by this
+ratification — see that document's §2.2 for the updated cell.
 **Class:** docs_only — 0 code / 0 DB / 0 migration / 0 RPC / 0 EF deploy / 0 provider call by this document.
 **Extracted from:** the two real, closed governed video format implementations (`video_short_stat`,
 `video_short_kinetic`) cross-checked against the governed image implementation (`image_quote`), per the
 CGU-v1 25/25 verdict (`docs/briefs/results/cgu-v1-final-reread-and-verdict-v1.md`, 2026-08-04) — satisfying
-M10's own dependency ("Phase 0 CLOSED... ≥2 real format implementations", delta-audit `:505-506`).
+M10's own dependency ("Phase 0 CLOSED... ≥2 real format implementations", delta-audit `:503-504`).
 **Companions:** `docs/briefs/render-provider-creatomate-capability-audit.md` §7 (the aspirational sketch
 this formalizes), `docs/governance/governor-architecture.md` (Governor-pattern alignment, §8),
 `docs/creative-library/registry-schema-v2.md` (the declarative registry this contract's §2 must not be
@@ -62,9 +68,11 @@ name the split rather than assume one canonical shape:
   `buildImageQuoteScript`/`buildAnimatedDataScript` (`image-worker/index.ts:774-866`).
 
 **Contract clause:** a governed render request never carries free-floating asset URLs or unreviewed text —
-every field traces back through §2/§3 to a resolver, not to inline client-profile lookups. The legacy path
-is the only place `c.client_brand_profile` is read directly for logo/colour at render time
-(`video-worker/index.ts:1113-1130`).
+every field traces back through §2/§3 to a resolver, not to inline client-profile lookups. `getBrand()`
+(`video-worker/index.ts:1113-1130`) itself is called unconditionally for every draft, governed or legacy,
+before the branch decision (`:1585`) — but `renderGovernedVideoStat` never *uses* `brand.logoUrl`,
+`primaryColour`, or `secondaryColour` from it, only `brand.clientSlug`/`brandName`. The legacy path is the
+only place those brand-profile logo/colour fields are actually consumed for render content.
 
 ---
 
@@ -209,19 +217,24 @@ The production writer is `renderUploadAndLog` (`video-worker/index.ts:940-1111`)
 render id, `status`, output/storage URL, credits, duration, error, `render_spec`) into **`m.post_render_log`**
 (column-purpose audit: `supabase/migrations/20260502102054_audit_post_render_log_column_purposes.sql:66-97`).
 
-- **Currency note:** that audit (2026-05-02) found `render_spec` NULL on all 932 rows at the time. By the
-  current code, `render_spec` **is** populated for governed branches via `composeRenderSpec(qa,
-  {label, template})` (`video-worker/template_smoke.ts:20-29`) — a `qa` block, an optional `label`
-  (e.g. `B1_VIDEO_PRODUCTION_LABEL`), and an optional `template` block carrying the full TMR evidence
-  (winner id, registry template id, assignment id, variant key, seed, `bind_mode:'resolved'`,
+- **Currency note, and a per-worker asymmetry resolved on review.** That audit (2026-05-02) found
+  `render_spec` NULL on all 932 rows at the time; the picture has since diverged by worker. **Video:**
+  `renderUploadAndLog` calls `composeRenderSpec(qa, {label, template})` unconditionally, on every call
+  site — governed and legacy alike, success and failure paths alike (`video-worker/template_smoke.ts:20-29`,
+  consumed at all 4 `render_spec` log sites, `video-worker/index.ts:1499,1562,1652,1661,1765`). A legacy
+  video render therefore **does** get a `render_spec` — a `qa` block always, plus an optional `label` and
+  `template` block that only governed calls supply. **Image:** legacy calls to `renderUploadAndLog` never
+  pass a `renderSpec` argument at all, so `p_render_spec` resolves to `null`
+  (`image-worker/index.ts:638,727,749`, `opts.renderSpec ?? null`) — only the governed branch supplies one
+  (`image-worker/index.ts:1140-1160`). **Legacy image renders are genuinely `render_spec IS NULL`; legacy
+  video renders are not** — a real, worker-specific asymmetry, not a uniform gap. The full TMR evidence
+  block (winner id, registry template id, assignment id, variant key, seed, `bind_mode:'resolved'`,
   `resolver_used:true`, `slot_reasons[]`/`slot_warnings[]`, `selector_status`, an `audio:{voiceover,
-  music_bed}` flag pair, and an `output_spec` naming whether dimensions came from the parity overlay or
-  the provider default). **Whether legacy composition-mode renders populate `render_spec` today was not
-  independently confirmed in this pass — named open question, §9.**
+  music_bed}` flag pair, `output_spec`) is governed-only on both workers.
 - **This is telemetry evidence, not proof-ladder evidence — the two are separate systems.** The TMR proof
   ladder (`c.creative_template_proof_event`, `proof_type ∈ {smoke_render, visual_approval, platform_render,
   platform_publish}`) is a distinct table, written through a separate (and, as of this pass, unverified —
-  §9) write path. No code in either worker inserts into `c.creative_template_proof_event`. A `render_spec`
+  §13) write path. No code in either worker inserts into `c.creative_template_proof_event`. A `render_spec`
   block on a `post_render_log` row is evidence a human/auditor can inspect after the fact; it is not itself
   a proof-event insert.
 - **Music provenance is explicitly best-effort, not guaranteed.** `record_music_usage`
@@ -239,9 +252,11 @@ response-normalization layer must encode without re-deriving them the expensive 
 
 ### 6.1 TPR-1 (Template Parity) — declared spec ≠ measured output
 
-**Origin rule** (`docs/00_sync_state.md:48`, restated `docs/briefs/tpr-1-addendum-v1.md:18-20`): any
-repoint of a governed format's default template must diff the output spec (resolution/duration/codec) of
-outgoing vs. incoming and state the delta at Gate 1. **Origin incident:** a v6.48 B-roll activation shipped
+**Origin rule** (`docs/00_sync_state.md`, v6.48 entry — this file is a stack-ordered running log, newest
+entries prepended, so a fixed entry's raw line number drifts as later entries land above it; currently
+line 578, restated stably at `docs/briefs/tpr-1-addendum-v1.md:18-20`): any repoint of a governed format's
+default template must diff the output spec (resolution/duration/codec) of outgoing vs. incoming and state
+the delta at Gate 1. **Origin incident:** a v6.48 B-roll activation shipped
 a silent `1080×1920/12s → 720×1280/8s` product downgrade that three independent review rounds
 (`db-rls-auditor`, `apply-harness-auditor`, external review) all missed, because a selector repoint reads
 as a config change, not a product-output change (`tpr-1-addendum-v1.md:22-24`).
@@ -357,7 +372,7 @@ state, proven) and — per CLAUDE.md's team table, cross-referencing this same s
 (post-deploy content/drift verification, proven 2026-07-19). **Neither governs the render contract itself**
 (template identity resolution, asset binding, render-evidence correctness) — both govern deploy/git/DB-apply
 state. `drift-check`/`tmr-drift-probe` exist as separate edge functions; their depth was not independently
-re-verified in this pass (§9).
+re-verified in this pass (§13).
 
 **The actual render-correctness enforcement mechanism today is entirely in-path, inside the worker** — the
 Tier-1 fail-closed gates of §4 and the audio-track check of §6.3. This is architecturally different from
@@ -373,7 +388,9 @@ outside it. Conflating them would misdescribe both.
 ## 9. Current production footprint (grounding, not spec)
 
 Per the M11a legacy-routing inventory (`docs/briefs/results/m11a-legacy-routing-inventory-result-v1.md`,
-2026-08-04) and the CGU-v1 verdict, the honest current split — not a universal claim:
+Finding 1, 2026-08-04) **and its same-day §12 addendum** (per-client carousel disposition), plus the
+CGU-v1 verdict and the schedule-expansion apply that closed one leg of Finding 1, the honest current
+split — not a universal claim:
 
 | Client × format | Verdict | Note |
 |---|---|---|
@@ -383,7 +400,8 @@ Per the M11a legacy-routing inventory (`docs/briefs/results/m11a-legacy-routing-
 | PP × `video_short_stat` (YT) | **MIXED, transitioning** | governance row since 2026-07-09; `_voice` variant 100% legacy, permanently |
 | NDIS × `video_short_stat` (YT) | **MIXED, just switched on** | governance row 2 days old at audit time |
 | PP × `video_short_kinetic` (YT) | **MIXED, was legacy 3 days before this audit** | 19 legacy successes pre-governance-row vs. 1 true-governed success |
-| CFW/NDIS × `carousel` | **UNDECLARED-LEGACY** | identical legacy path as PP, zero governance row of any kind — CFW alone: 171 succeeded/90d |
+| CFW/Invegent × `carousel` | **HISTORICALLY UNDECLARED, NOW CONTAINED (fragile)** | Zero `c.client_creative_governance` row for either — still true. Eligibility is contained via 2 `c.client_format_config` rows added 2026-08-02 each (row-presence flips the code from fail-open to a strict allowlist); holds only while those rows exist — **deletion, not disablement, would silently reopen the full palette** (`m11a-legacy-routing-inventory-result-v1.md:198-218`). Invegent's earlier "5 succeeded" carousel figure was a since-fixed (v1.3.0, 2026-07-06) Zapier bridge artifact — successful slide-image renders, not delivered posts; zero real carousel posts were ever delivered for Invegent (`:218`). |
+| NDIS × `carousel` | **CLOSED (2026-08-04)** | The M11a addendum flagged this as incidental-silence, not a real control; the same-day `post-cgu-v1-optimum-schedule-expansion` apply (packet v5, "Change 11") explicitly disabled the row (`is_enabled=false`, config `61e4f143…`), confirmed applied — "Off on FB+IG — Change 11 closure ✓" (`docs/briefs/results/post-cgu-v1-optimum-schedule-expansion-apply-result-v1.md:62`). This leg of Finding 1 is closed, not merely contained. |
 
 Two structural traps this footprint makes concrete, and any provider-neutral contract must design *for*,
 not just document: **(1)** the `_voice` format-key suffix is **permanently, structurally excluded** from
@@ -407,12 +425,12 @@ directly against worker source (§1–§8), not against that stale snapshot.
 | 2 | Template/format identity (§2) | `create_select_template_v1.sql`, graduation-contract §1.2, `assertStatTemplateBindingMatch` | Yes — shared RPC, per-template key-grammar divergence shown | PASS |
 | 3 | Asset/field binding (§3) | voice/music/eyebrow resolvers, `assertParityOverlayDisjoint` | Yes — video vs. image asymmetry named | PASS |
 | 4 | Validation/fail-closed (§4) | Tier-1/Tier-2 asserts, governance-enablement fail-closed-to-legacy | Yes — video Tier-1 exhaustive, image Tier-2 named as video-absent | PASS |
-| 5 | Render evidence (§5) | `write_render_log`, `composeRenderSpec`, proof-event table separation | Partial — legacy `render_spec` population unverified (§9 open item) | PASS WITH OPEN ITEM |
+| 5 | Render evidence (§5) | `write_render_log`, `composeRenderSpec`, proof-event table separation | Yes — governed-vs-legacy `render_spec` population traced per worker (video legacy populates a `qa`-only spec; image legacy is NULL) | PASS |
 | 6 | Provider response normalization — TPR-1 / silent-template trap / audio-loudness (§6) | `tpr-1-addendum-v1.md`, kinetic v3.17.1 fix, `assertAudioSpec`/`mp4HasAudioTrack` | Yes — all three lessons cited to closed production incidents | PASS |
 | 7 | Publication handoff (§7) | `youtube-publisher`, `auto-approver`/`publisher` queue path | Yes — two coexisting shapes both cited | PASS |
 | 8 | Observability/rollback boundaries (§8) | `governor-architecture.md`, in-worker gate enforcement | N/A (architectural, not per-format) | PASS |
 | 9 | Current-footprint honesty check (§9) | M11a inventory, CGU-v1 verdict | N/A | PASS |
-| — | **M10's own finite acceptance test** (delta-audit `:399`): *"A design doc exists, extracted from ≥2 real format implementations... without re-deriving TPR-1, the silent-template trap, the audio-presence-vs-loudness gap"* | This document | Yes | **DRAFT COMPLETE — pending PK ratification** |
+| — | **M10's own finite acceptance test** (delta-audit `:399`): *"A design doc exists, extracted from ≥2 real format implementations... without re-deriving TPR-1, the silent-template trap, the audio-presence-vs-loudness gap"* | This document | Yes | **MET — RATIFIED, PK, 2026-08-05** |
 
 ---
 
@@ -450,11 +468,8 @@ M9 document's §4, not this one) · closing M10 in the register (a PK ratificati
    `docs/briefs/tmr-template-proof-lifecycle-v1-g1-write-rpc-apply-result.md`, appears by title to record
    its application, but was not read here — verify before assuming §5's proof-ladder/telemetry separation
    still matches current reality.
-2. **Whether legacy composition-mode renders populate `render_spec` today was not independently confirmed**
-   — the 2026-05-02 audit found it universally NULL; only governed-branch population was directly traced in
-   this pass (§5, §10 row 5).
-3. **The "silent-template trap" term has no single canonical definition elsewhere in the repo** — this
+2. **The "silent-template trap" term has no single canonical definition elsewhere in the repo** — this
    document treats it as covering both named incidents (§6.2); if PK intends a narrower or different
    referent, this section should be revised, not silently reinterpreted downstream.
-4. **`drift-check`/`tmr-drift-probe` depth was not independently re-verified** — named present, not audited,
+3. **`drift-check`/`tmr-drift-probe` depth was not independently re-verified** — named present, not audited,
    in §8.

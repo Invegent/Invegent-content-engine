@@ -1,12 +1,18 @@
 # M9 — Zero-Code Day-1 Client Format-Mix Onboarding Package (v1, design spec)
 
 **Created:** 2026-08-05 Sydney · **Author:** orchestrator (docs-only lane `m10-m9-docs-foundation`)
-**Status:** DRAFT — satisfies the **spec-authoring half only** of M9's finite acceptance test
-(`docs/briefs/creatomate-global-ultimate-final-delta-audit-v1.md:398`). The **replay half** — executing
-this package end-to-end against a real brand with zero worker-code changes — is explicitly **not
-performed** by this document and stays gated behind the §6 schedule-expansion PK approval, which has not
-yet been obtained (`creatomate-global-ultimate-final-delta-audit-v1.md:581-583`). M9 stays **OPEN** in the
-register until both halves close and PK ratifies.
+**Status:** **PACKAGE SPECIFICATION: COMPLETE — ACCEPTED (PK, 2026-08-05). REPLAY PROOF: OUTSTANDING.**
+This is the milestone's own state, stated exactly: **package specification complete; replay proof
+outstanding.** The spec-authoring half of M9's finite acceptance test
+(`docs/briefs/creatomate-global-ultimate-final-delta-audit-v1.md:398`) is done and PK-accepted. **M9 stays
+OPEN** — accepting the spec is not closing the milestone. The **replay half** — executing this package
+end-to-end against a real brand with zero worker-code changes — is explicitly **not performed** by this
+document and remains gated behind two named preconditions, both must clear before replay execution:
+(1) the **§6 schedule-expansion PK approval**, not yet obtained
+(`creatomate-global-ultimate-final-delta-audit-v1.md:581-583`); (2) **Prerequisite P-1** (dashboard-visibility
+audit, §5) — converted from an open question into a named blocking prerequisite on this acceptance, per PK
+instruction. The replay target, when executed, remains the §0f default: **an existing active brand entering
+a genuinely new governed format-mix** (fixture only if no real brand is eligible at execution time).
 **Class:** docs_only — 0 code / 0 DB / 0 migration / 0 RPC / 0 deploy / 0 replay execution by this document.
 **Extracted from:** the one real precedent that exists — NDIS Yarns' S6 Slice A zero-code format-mix
 enrolment (`docs/briefs/results/s6-slice-a-ndis-format-mix-enrolment-applied-v1.md`, applied 2026-08-01).
@@ -210,11 +216,25 @@ NOT gate, block, or change any production behaviour" (`supabase/migrations/20260
   `client_control_tower_enrollment`/`client_creative_governance`/`client_format_config` state. This
   directly contradicts the apparent existence of the components named above.
 
-**This package does not resolve the contradiction** — it names it as an open item (§9) and recommends a
-dedicated dashboard-visibility read (or a `dashboard-ia-lint` pass, once that agent is proven) **before**
-replay execution claims an operator can see a brand's Day-1 package completeness in one place. Replay
-execution should treat "can an operator see this brand's readiness state today" as a finding to make, not
-an assumption to carry in.
+**PK ruling (2026-08-05): this contradiction does not stay an ambiguous open question — it is converted
+into a named, blocking prerequisite.**
+
+> **Prerequisite P-1 — Dashboard Visibility Audit (blocking, must clear before replay execution).**
+> Before replay execution is authorized, a dedicated read (or a `dashboard-ia-lint` pass, once that agent
+> is proven — CLAUDE.md, `dashboard-ia-lint` row: candidate, not yet proven) of
+> `invegent-dashboard/components/clients/{WeekFormatAllocation,WeekFormatPlanTab,CreativeConfigGapCard,
+> PublishingPlanPyramid}.tsx` and `invegent-dashboard/actions/{production-readiness-queue,
+> client-creative-config-audit}.ts` MUST determine, and state as a finding (not an assumption): whether an
+> operator can currently see a brand's Day-1 package completeness (asset-pool depth, governance-row state,
+> ladder position per §4) anywhere in the dashboard. **Until P-1's finding is recorded, dashboard
+> operator-visibility for format-mix governance state is treated as UNKNOWN, not as "exists" or "absent."**
+> P-1 is satisfied by either outcome — a finding of "visible" or a finding of "not visible, here is the
+> gap" both clear it; only an unaudited, assumed-either-way state fails to clear it. P-1 is independent of,
+> and does not substitute for, the §6 schedule-expansion PK approval — both must clear before replay.
+
+This closes the ambiguity that existed in the original draft (an unresolved contradiction with no assigned
+owner or gate). It does not itself perform the audit — P-1 is a named handoff, not work executed by this
+document (§9, §10).
 
 ---
 
@@ -227,6 +247,7 @@ an assumption to carry in.
 | Governance-row creation/enable (`client_creative_governance`, `client_format_config`) | PK apply gate | `db-rls-auditor` + `branch-warden` clean | T2 (dark/additive DB) |
 | Replay-target brand selection | PK, **at execution time, not pre-committed here** | §0f default (existing brand) vs. fixture fallback, decided against live eligibility | governance decision |
 | Allocation-eligibility enrolment flip (`c.client_control_tower_enrollment`) | PK apply gate | full chain: `db-rls-auditor`, `branch-warden`, external review pinned to hash, rollback validated | T2/T3 per CLAUDE.md's risk-tiered review chains (DML ≥ T2) |
+| **Prerequisite P-1 — dashboard-visibility audit finding** (§5) | orchestrator (read-only audit) or `dashboard-ia-lint` once proven | dedicated read of the named dashboard components/actions, finding recorded either way | blocking prerequisite, must clear before replay |
 | §6 schedule-expansion approval | PK | — a **separate, not-yet-obtained** gate the *replay* (not this spec) requires before execution | hard PK gate, `creatomate-global-ultimate-final-delta-audit-v1.md:581-583` |
 
 ---
@@ -236,14 +257,19 @@ an assumption to carry in.
 **This section defines what "done" looks like when PK clears the §6 gate and authorizes execution — it is
 not itself that authorization, and no replay is performed by this document.**
 
-**Preconditions to independently, live-verify before replay** (not to assume from this document):
+**Two hard, named blocking gates** — replay is not authorized until BOTH clear, independent of each other:
+- **Blocking gate 1 — Prerequisite P-1 (§5):** the dashboard-visibility audit finding must be recorded.
+- **Blocking gate 2 — §6 schedule-expansion PK approval:** not yet obtained
+  (`creatomate-global-ultimate-final-delta-audit-v1.md:581-583`).
+
+**Further preconditions to independently, live-verify before replay** (not to assume from this document,
+but not independently blocking in the way the two gates above are):
 1. Whether `c.client_creative_governance`'s live-gate read path has landed since its 2026-07-07 dark/additive
    state (§2 Layer B).
 2. The exact `c.client_format_config` DDL/semantics (needs a live `information_schema` read — §2 Layer B).
-3. Dashboard visibility depth (§5) — what an operator can actually see before/during the replay.
-4. The target brand's real, current asset-pool depth and ladder position for the target format (§2 Layer A,
+3. The target brand's real, current asset-pool depth and ladder position for the target format (§2 Layer A,
    §4) — do not assume from this document's examples.
-5. Per M11a: confirm the target client×format×platform cell is not **already** quietly legacy-routing under
+4. Per M11a: confirm the target client×format×platform cell is not **already** quietly legacy-routing under
    the same format key before treating the replay as "a genuinely new format-mix" — a governance-row-timing
    window (M10 §9) can make a cell look new when legacy traffic already exists under it.
 
@@ -261,8 +287,8 @@ migration ledger.
 - **R3 — provenance:** a real draft with `created_by`/`slot_backed` fields consistent with the governed
   fill → advisor → synthesis → render → publish chain — not a synthetic or manually forced draft.
 
-**Replay is not authorized by this document.** It remains gated behind the §6 schedule-expansion PK
-approval (§6 table, last row).
+**Replay is not authorized by this document.** It remains gated behind both blocking gates above:
+the §6 schedule-expansion PK approval and Prerequisite P-1 (§5).
 
 ---
 
@@ -274,19 +300,21 @@ approval (§6 table, last row).
 | 2 | Assets and governance rows (§2, Layers A–C) | S6 Slice A packet, cc-0086, asset-gap register, registry-schema-v2, TMR-3 schema | PASS |
 | 3 | Provider configuration (§3) | Provider-template registry scope, M18 exclusion | PASS |
 | 4 | Readiness and proof ladder (§4) | Graduation contract §1.2 (canonical), superseded/unreconciled ladders named | PASS |
-| 5 | Dashboard visibility (§5) | Client picker brief, operator-journey IA, named contradiction | PASS WITH NAMED GAP |
-| 6 | Operator decisions (§6) | CLAUDE.md tiering, image-workflow §2 non-negotiables | PASS |
-| 7 | Replay acceptance criteria (§7) | CGU-v1 R1/R2/R3 method, zero-diff refinement | PASS |
-| — | **M9's own finite acceptance test, spec half** (delta-audit `:398`): *"Author the Day-1 governed setup package as a spec"* | This document | **DRAFT COMPLETE — pending PK ratification** |
-| — | **M9's own finite acceptance test, replay half**: *"replay it end-to-end with zero worker-code changes"* | Not attempted by this document | **OPEN — gated behind §6 approval** |
+| 5 | Dashboard visibility (§5) | Client picker brief, operator-journey IA, contradiction converted to Prerequisite P-1 | PASS — gap resolved into a named blocking prerequisite, not left ambiguous |
+| 6 | Operator decisions (§6) | CLAUDE.md tiering, image-workflow §2 non-negotiables, P-1 row added | PASS |
+| 7 | Replay acceptance criteria (§7) | CGU-v1 R1/R2/R3 method, zero-diff refinement, two named blocking gates | PASS |
+| — | **M9's own finite acceptance test, spec half** (delta-audit `:398`): *"Author the Day-1 governed setup package as a spec"* | This document | **COMPLETE — ACCEPTED, PK, 2026-08-05** |
+| — | **M9's own finite acceptance test, replay half**: *"replay it end-to-end with zero worker-code changes"* | Not attempted by this document | **OUTSTANDING — gated behind §6 approval AND Prerequisite P-1** |
 
 ---
 
 ## 9. Dependencies
 
 ```
-§6 schedule-expansion PK approval ─────────────────────→ replay execution authorized
-                                                            (this document does NOT clear this gate)
+§6 schedule-expansion PK approval  ─┐
+                                     ├──→ BOTH required ──→ replay execution authorized
+Prerequisite P-1 (dashboard-       ─┘      (this document clears NEITHER gate)
+  visibility audit finding, §5)
 M11a inventory (avoid replaying into a cell already
   quietly legacy-routed under the same format key) ────→ informs replay-target selection
 cc-0086 voice-config surface (live) ──────────────────→ satisfied, reusable as-is
@@ -296,7 +324,11 @@ Asset-pool sourcing lane (image-harvester/-reviewer,
                                                             not assumed pre-existing
 ```
 
-- **§6 schedule-expansion PK approval** blocks the **replay only**, not this spec.
+- **§6 schedule-expansion PK approval** blocks the **replay only**, not this spec. Not yet obtained.
+- **Prerequisite P-1 (dashboard-visibility audit, §5)** — a named, blocking dependency added on
+  PK's 2026-08-05 instruction, converting what was an ambiguous open question into a concrete gate: the
+  audit finding (visible or not-visible-here's-the-gap) must be recorded before replay, independent of the
+  §6 approval.
 - **M11a's inventory** informs which brand/format-mix combination is genuinely new vs. already quietly
   legacy-routed.
 - **cc-0086's voice-config surface** is already live and satisfied — no further build needed there.
@@ -310,9 +342,10 @@ Asset-pool sourcing lane (image-harvester/-reviewer,
 Replay execution · true fifth-brand (net-new client) onboarding — that remains
 `docs/09_client_onboarding.md`'s domain, unchanged · any DB/migration/RPC write · resolving whether
 `c.client_creative_governance`'s live-gate rewire has landed · resolving the exact `c.client_format_config`
-DDL · a dashboard-visibility audit (named handoff, §9/§11, not performed here) · reconciling the WS-5
-"rung 6–13" proof numbering against the canonical 9-state ladder (§4, named not resolved) · closing M9 in
-the register (a PK ratification act).
+DDL · **executing** Prerequisite P-1's dashboard-visibility audit (named as a blocking gate, §5/§9 — not
+performed here) · reconciling the WS-5 "rung 6–13" proof numbering against the canonical 9-state ladder
+(§4, named not resolved) · closing M9 in the register (a PK act, and — per PK's explicit 2026-08-05
+instruction — spec acceptance is NOT that act; M9 stays OPEN until the replay half also closes).
 
 ---
 
@@ -323,9 +356,12 @@ the register (a PK ratification act).
    gate (§2 Layer B).
 2. **`c.client_format_config` exact DDL** — no `CREATE TABLE` exists in tracked migrations; a live
    `information_schema` read is required before replay treats this layer as fully specified (§2 Layer B).
-3. **Dashboard visibility depth** — the named contradiction between the operator-journey IA (no
-   format-mix-governance UI mentioned) and the components found by name (§5) needs a dedicated read or a
-   `dashboard-ia-lint` pass before replay assumes either "no visibility" or "full visibility."
+3. **Dashboard visibility depth — RESOLVED INTO Prerequisite P-1, not left ambiguous (PK, 2026-08-05).**
+   The named contradiction between the operator-journey IA (no format-mix-governance UI mentioned) and the
+   components found by name (§5) is now a formal blocking prerequisite: P-1 requires a dedicated read or a
+   `dashboard-ia-lint` pass, with the finding recorded either way, before replay. What remains open is only
+   the *execution* of that audit (a named handoff, not performed by this document), not the ambiguity about
+   what to do with the contradiction — that decision is made.
 4. **The WS-5 kinetic lane's "rung 6–13" numbering** is inconsistent with the canonical 9-state ladder and
    is flagged, not resolved, here (§4).
 5. **Migration-ledger-vs-git commit convention** — this package recommends committing the migration file on

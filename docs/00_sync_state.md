@@ -6,6 +6,11 @@
 
 ---
 
+> **✅ v6.131 — M10 RATIFIED + CLOSED; M9 SPECIFICATION ACCEPTED, MILESTONE STAYS OPEN (T1, docs-only, zero DB/deploy/replay; PK Gate-1)** — M10: `docs/briefs/m10-provider-neutral-render-contract-v1.md`, independently fact-checked (6 citation/cross-ref defects found + corrected, none structural), ratified and closed in `creatomate-global-ultimate-final-delta-audit-v1.md:399` — intentionally provider-neutral, docs-only, by design. M9: `docs/briefs/m9-zero-code-day1-onboarding-package-v1.md` — spec ACCEPTED ("package specification complete; replay proof outstanding"); dashboard-visibility contradiction converted into blocking Prerequisite P-1 (§5); replay-target default reconfirmed (existing active brand, genuinely new format-mix, §0f); M9 stays OPEN, replay gated on §6 schedule-expansion approval AND P-1. Result: `docs/briefs/results/m10-m9-docs-foundation-result-v1.md` §8.
+> · Next: M9 replay is a separate future T2/T3 lane once both blocking gates clear; no work scoped by this cut. Queue impact: M10 row CLOSED; M9 row OPEN with the exact PK-specified state text.
+
+---
+
 > **✅ v6.130 — SCHEDULE-EXPANSION APPLY (v11) CLOSED, execution provenance + dashboard acceptance verified (T2/T3 · production DB apply, independently verified post-hoc)** — result: `docs/briefs/results/post-cgu-v1-optimum-schedule-expansion-apply-result-v1.md`.
 > · Applied by session `f20f008f-e98c-43ab-b9c2-747c9a460f01` (main checkout) — one atomic transaction, all 111 rows (102 schedule + 9 config), AHA-10-1 ownership protections included; dispatched `2026-08-04T10:19:49.758Z`, committed `2026-08-04T10:20:38.286Z`.
 > · Independently re-verified (this closeout, separate session): DB after-state PASS, live dashboard UI PASS across all four brands, `pg_stat_statements calls=3` on the shared guarded UPDATE resolved as 3 platform-scoped sub-runs (18+21+28=67), not extra executions.
