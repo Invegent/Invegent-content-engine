@@ -94,4 +94,32 @@ Once the drafted artifact, the fresh live pre-check evidence, the T2 review-chai
 ## Evidence gaps (named, not invented)
 
 - No DB tool was available to this drafting session — current (2026-08-05) live state of NDIS's `client_format_config` row, carousel occurrence count since 2026-08-04T10:20 UTC, PP D2's current `declarative_registry_ref` value, and `tmr-drift-probe`'s current daily-run status were NOT independently re-verified; handoff to `db-rls-auditor` at execution time.
-- Whether `tmr-drift-probe/index.ts:251` is the only read site of `c.client_creative_governance` with no `enabled` filter anywhere in the repo was not exhaustively audited (43-file grep match, only the probe function itself was fully read) — handoff to `register-reconciler` if this needs closing before relying on the "no re-trip" conclusion.
+- ~~Whether `tmr-drift-probe/index.ts:251` is the only read site of `c.client_creative_governance` with no `enabled` filter anywhere in the repo was not exhaustively audited (43-file grep match, only the probe function itself was fully read) — handoff to `register-reconciler` if this needs closing before relying on the "no re-trip" conclusion.~~ **Closed by the 2026-08-05 addendum below — VERIFIED against the deployed function.**
+
+---
+
+## Addendum — 2026-08-05 Sydney (control-tower-directed verification, read-only, no spec change)
+
+**Task:** per control-tower directive (relay of PK instruction, `cgu-final-control-tower-watch-ruling-v1.md` governance), confirm or refute the Notes-section inference above — that an `enabled=false` NDIS closure row would NOT trip `tmr-drift-probe`'s `declarative_registry_ref_missing` failure — by reading the **deployed** function body (not just the repo), since the deployed/tracked drift precedent (`drift-check hashes GitHub main, not local` — standing ICE gotcha) means repo state and live state can diverge.
+
+**Method:** `mcp__supabase__get_edge_function` against project `mbkmaxqhsohbtwsqolns`, function slug `tmr-drift-probe`. Read-only; no DB write, no probe invocation, no code change.
+
+**Result — VERIFIED:**
+
+- Deployed function: `tmr-drift-probe`, version **10**, source header `tmr-drift-probe-v2.1.0`, `updated_at` 1784274366225 (epoch ms), `verify_jwt: false`.
+- The deployed source contains **exactly one** read of `c.client_creative_governance`, inside `fetchGovernedClients()`:
+  ```ts
+  const { data, error } = await supabase
+    .schema("c")
+    .from("client_creative_governance")
+    .select(
+      "client_id, format, contract_ref, declarative_registry_ref, render_label, client:client_id(client_slug)",
+    )
+    .eq("enabled", true);
+  ```
+- The deployed source's own doc-comment confirms this is the sole entry point: *"Reads the Spine Generalisation v1 governance source (`c.client_creative_governance` WHERE `enabled = true`) joined to `c.client` for the slug. This is the **ONLY place** the probe learns which clients to check — no PP literal remains."*
+- A full-text scan of the deployed function for every occurrence of `client_creative_governance` (5 total hits: 3 doc-comments, 1 inline comment, 1 the query itself) found **no second, unfiltered read site**. The `enabled = true` filter is not bypassed anywhere else in the deployed bundle.
+
+**Conclusion:** the Seed-A brief's inference is **VERIFIED against the live/deployed function**, not merely the repo copy — an NDIS closure row inserted with `enabled=false` (as this brief's own Option (a) spec requires) will **not** be returned by `fetchGovernedClients()`, and therefore **cannot** reach `fetchDeclarativeRegistry()`'s `declarative_registry_ref_missing` throw. The hazard the scoping packet's §7 warned of does not apply to this specific `enabled=false` design, **provided the deployed function is not changed before this lane executes** — this addendum is a point-in-time confirmation (2026-08-05), not a standing guarantee; the executing session should still re-check version/hash if meaningful time has passed.
+
+**No change to this brief's spec, scope, or Option (a)/(b) framing.** PK still decides (a) vs (b); this addendum only removes the drift-probe trip risk as a factor weighing toward "wait" — it does not decide the (a)/(b) question itself, and does not authorize any apply.

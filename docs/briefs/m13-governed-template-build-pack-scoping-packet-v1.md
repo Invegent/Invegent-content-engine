@@ -384,3 +384,59 @@ claimed by this packet.)*
 This scoping packet is complete. No implementation, DB, deploy, registry-file, or worker-code change
 was made in producing it. Report to PK for §6/§7/§9/§10's open decisions; do not begin any of the five
 §8 lanes without its own separate Gate-1 brief and PK approval.
+
+---
+
+## 13. Addendum (2026-08-05 Sydney, post-freeze — §1–§12 body unchanged)
+
+**Trigger:** `docs/briefs/m11c-reconciliation-decision-memo-v1.md` (commit `e3129d1`, landed after this
+packet's own commit `0caf7b7`) performed a fresh live `db-rls-auditor` read that materially corrects a
+premise §6 quoted verbatim from the PK-accepted M11c packet. Surfaced via a cross-session message;
+independently re-verified against the memo file itself before this addendum was written (not taken on
+the message's own say-so).
+
+**The correction (reconciliation memo §2, D2):** §6 above states, quoting M11c: *"a carousel migration
+would be 'the first multi-object/multi-render Creative Library extension of any kind in this repo...
+zero prior art.'"* This premise is **refuted, not merely stale** (memo's own word). Ground truth, live
+2026-08-05: three PP-assigned Creatomate provider templates already exist —
+`generic_carousel_cover_1x1_v1` / `generic_carousel_body_1x1_v1` / `generic_carousel_closing_1x1_v1` —
+created 2026-07-02, assigned to Property Pulse 2026-07-03 at `assignment_status='visually_approved'`
+(rung 6 of the 13-rung graduation ladder, `creatomate-registry-integrity-graduation-contract-v1.md`
+§4), with 3 passed `smoke_render` + 3 passed `visual_approval` proof events. Stalled since:
+`required_field_mapping_status='pending'` on all three, unchanged; zero `platform_render`/
+`platform_publish` events; the D2 governance row (`declarative_registry_ref=NULL`) untouched since
+2026-08-02.
+
+**Effect on §6 — strengthens the recommendation, does not change it:** each of the three existing
+templates is itself a normal **scalar, single-render** provider template (one `provider_template_id`
+per slide type) — consistent with the existing Variant object shape (`registry-schema-v2.md` §3) as-is,
+requiring no Variant-level schema change at all. What is missing is a binding layer that sequences the
+three into one ordered carousel unit. This is new information sharpening, not overturning, §6's "reserve
+the seam, defer the full build" answer: the reserved seam (`sub_sequence_key` / a `sequence: {
+slide_variant_keys: [...] }` block) is exactly the shape that would bind an **ordered sequence of
+already-existing, already-rung-6-approved separate Template Family/Variant objects** — cheaper than a
+scalar-to-array Variant redesign from scratch, and closer to finishing stalled, PK-approved work than to
+greenfield design. **No change to the §3/§4 draft schemas is made by this addendum** — §3's `elements[]`
+and single `template_variant_key_intended` per Blueprint remain correct for each of the three slide-type
+Blueprints individually; the open question narrows to *where* the sequence-binding lives.
+
+**New, narrower open sub-question (not resolved here, added to §10's list):** the reconciliation memo's
+own §3 decision 2 suggests the sequence-binding may belong at the **Capability Contract layer**
+(`registry-schema-v2.md` §7, `maps_to_variant`) rather than inside the Blueprint/Variant object itself —
+i.e., a Capability Contract that maps to an *ordered list* of `template_variant_key`s instead of one,
+rather than any single Variant growing a `slides[]` array. This is a materially different, and possibly
+simpler, seam than the one §6 speculatively reserved, and is not decided by this addendum — it is named
+as a sharper version of open question §10 item 1, to be resolved alongside it, not in place of it.
+
+**What does not change:** §7's M6 fork (a vs. b) is untouched — the three existing templates are a
+carousel-specific fact, not evidence either way about M6's own internal shape. §8's lane plan and tier
+split are unchanged — no lane is started, resequenced, or re-scoped by this addendum. §9's watch-ruling
+compatibility check is unchanged. §6's own text above is left exactly as originally written (the docs-lane
+no-historical-rewrite discipline, matching the reconciliation memo's own §4 treatment of Packet A) — this
+addendum is the correction mechanism, not an edit to the original claim.
+
+**Provenance note:** the "protocol deviation" framing in the cross-session message that surfaced this
+correction (asserting this packet's author self-cut v6.141 against a version-less instruction) does not
+match this session's own record — the v6.141 cut was directly authorized by PK in-chat via an explicit
+choice among named options, not an out-of-channel bypass. Recorded here for the trail, not disputed
+elsewhere; the underlying factual correction above stands on its own regardless of that framing question.
