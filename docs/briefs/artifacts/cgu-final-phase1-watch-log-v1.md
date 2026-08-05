@@ -32,5 +32,23 @@ watch-expiry verdict; resolves nothing by itself.
 All three watch-week decision-prep lanes TERMINAL and archived (Gate-1 batch · M11c reconciliation ·
 M13 scoping). Active: control tower + CFW/INV asset sourcing only.
 
+## M18 escalation-trigger sweep — 2026-08-05 ~16:45 Sydney (read-only; digest-only discipline, no value read into any transcript)
+
+- Repo: **zero literal key assignments** (pattern scan, 35 env-var-name references all benign).
+- The 4 local out-of-band scripts (M18 packet §B rows 4–7): all read `Deno.env.get('CREATOMATE_API_KEY')`,
+  **zero embedded literals**.
+- Operator shell env: `CREATOMATE_API_KEY` **SET**, sha256 prefix `df13b951` = the key P1_FINDINGS
+  (2026-07-10) digest-confirmed as **invalid** — benign unless the v5.89 rotation reused it (unlikely, unverified).
+- **⚠ FINDING — probable trigger match:** `C:/Users/parve/Downloads/creatomate api key.txt` exists,
+  96 chars trimmed, file dated **2026-07-19** (the v5.89 rotation window), sha256 prefix `bcde13d1` —
+  a **third digest**, matching neither the P1-invalid key nor the pre-rotation production key
+  (`8ab5a356`). Most probable classification: **plaintext copy of the CURRENT production key,
+  unmanaged, on disk**. Liveness NOT confirmed — confirming would require using the key (R2 secret-USE,
+  needs its own Gate-1 rider; not done). Surfaced to PK same session as a probable match to the
+  v6.140 M18 early-execution trigger ("current accessible unmanaged credential").
+- Out-of-M18-scope pattern, noted for PK: Downloads also holds plaintext `ANTHROPIC_API_KEY.txt`,
+  `Elevellabsapikey.txt`, `ICE_HEYGEN_API_KEY.txt`, `ICE_PEXELS_API_KEY.txt`, `ICE_Pixabay_API_KEY.txt`,
+  and 3 Google `client_secret_*.json` files — same unmanaged-plaintext habit across 6+ other credentials.
+
 *(Subsequent daily entries append below; one line-block per day; any STOP-condition match →
 surface to PK immediately, do not wait for watch expiry.)*
