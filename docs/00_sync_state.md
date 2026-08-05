@@ -6,6 +6,13 @@
 
 ---
 
+> **✅ v6.133 — M8: Asset Gap dashboard panel COMPLETE (T2 · isolated worktree code + docs; zero CE-repo DB/schema/RPC change)** — brief: `docs/briefs/m8-asset-gap-dashboard-panel-gate1-brief-v1.md`; result: `docs/briefs/results/m8-asset-gap-dashboard-panel-result-v1.md`.
+> · Read-only Asset Gap backlog tab added to `invegent-dashboard`'s `/clients` page, sourced from the live WS-3 `ice_ro.asset_gap_backlog` view via a fixed-literal `exec_sql` (zero interpolation, precedented pattern). `dashboard-ia-lint` WARN → both findings fixed pre-implementation (derived execution-path badge labelled as inferred; client-scoping corrected from an assumed RPC bind-param to fetch-all + client-side filter, avoiding a new injection-sink call site). `ef-builder` implemented 4 files; a real bug (`evidence_confidence` mistyped as numeric, actually a 2-value text enum) was caught in manual review and fixed. `tsc --noEmit` clean, `next build` clean (all 65 routes), 362/362 tests pass, `branch-warden` safe (diff confined to exactly the 4 intended files).
+> · **`invegent-dashboard`** `1d87ec7` — pushed directly to `origin/main` this pass (fast-forward, zero conflicts, same 4-file diff verified against the result doc). **`invegent-content-engine`** — this brief + result doc only; zero code/DB/migration touched in this repo.
+> · Known gaps, named not hidden: no live visual verification (sandbox has no Supabase credentials — a pre-existing, environment-wide condition, not new); "legacy-routed" execution-path state not implemented (no defensible data source in scope, honestly surfaced rather than fabricated).
+
+---
+
 > **✅ v6.132 — M11b fleet-carousel closure scoping COMPLETE (T1 · docs-only; zero code/DB/deploy/merge change)** — packet: `docs/briefs/m11b-fleet-carousel-closure-scoping-packet-v1.md`.
 > · Fleet-wide per-client disposition: Property Pulse declared-legacy/live (migrate-vs-retire still open, 90d ~104 drafts/37 real posts); NDIS Yarns historically contained (config-layer closed 2026-08-04, governance-layer record still open); Care For Welfare historically contained (fragile row-presence fence, retirement record still open — 171 real historical posts); Invegent historically contained + unused (zero real carousel posts ever delivered, cleanest retire case).
 > · Seeds 3 bounded closure lanes, none authorised to start by this scoping itself — each needs its own fresh Gate-1 brief: A (NDIS formal governance-layer closure record), B (CFW + Invegent fence-hardening + retirement records), C (PP migrate-vs-retire feasibility, read-only).
