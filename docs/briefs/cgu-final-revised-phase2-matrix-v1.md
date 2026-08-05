@@ -57,11 +57,20 @@ five clean reviews + three apply-harness-auditor rounds unchanged. Per-client/pl
 ### 2.2 Election E-1 (PK choice at the gate): CFW image_quote conditional increment
 
 Now that the reliability blocker is gone, PK may elect **+1 CFW facebook image_quote/week and
-+1 CFW instagram image_quote/week**, under a hard precondition:
++1 CFW instagram image_quote/week**, under hard preconditions:
 
-> **Precondition (non-waivable):** ≥3 CFW background assets `approved=true` past the PK visual
-> gate (the re-seeded harvest lane's output). Until then the election, even if approved, stays
-> dormant — no apply packet row is authored for it.
+> **Precondition 1 (non-waivable):** ≥3 CFW background assets `approved=true` past the PK visual
+> gate (the re-seeded harvest lane's output).
+> **Precondition 2 (non-waivable — PK-directed amendment, 2026-08-05):** a bounded M16 fix has
+> LANDED for the CFW signal-pool health-check/reuse defects (S1 diagnosis, v6.143) — at minimum
+> the green-blind `check_pool_health()` decay visibility and/or the reuse-penalty interaction,
+> per whichever remediation option PK selects. Rationale (PK): reliability is healthy but
+> **signal-pool capacity is still constrained** — the pool currently reports healthy while being
+> effectively unusable, so added image_quote demand would draw on a starving pool whose
+> auto-recovery valve never fires. Reliability and pool capacity are distinct constraints; this
+> matrix treats them separately by design.
+> Until BOTH hold, the election — though approved in shape — stays dormant; no apply packet row
+> is authored for it.
 
 If PK declines E-1, CFW image_quote stays flat and re-enters at a future gate on asset evidence.
 **Repetition note either way:** with 1 background today, current CFW image_quote volume already

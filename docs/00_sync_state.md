@@ -6,6 +6,15 @@
 
 ---
 
+> **🔐 v6.145 — PK RULINGS BATCH (2026-08-05 evening): M18 ROTATION AUTHORIZED (trigger MET) · matrix E-1 gains M16 precondition · M2 voices decided · M14 staged · fleet frozen (T1 docs + T3 rotation authorization)** — rulings recorded verbatim-faithful; sources: PK control-tower feedback message this session.
+> · **M18 (highest priority): the Downloads-key exposure trigger is ruled MET — rotate NOW via the packet's §F sequence** (new-key-set → smoke all 3 consumers → provider-access verify → old-key revoke → local plaintext removal → digest-only evidence). Rotation affects provider auth, not schedule/caps — no watch conflict. Value never enters chat/docs/logs; §G rollback stands; any new advisor finding = STOP.
+> · **Matrix amendment (PK-directed):** E-1 CFW image_quote increment now carries TWO non-waivable preconditions — ≥3 PK-approved CFW backgrounds AND a landed bounded M16 fix (health-check/reuse) — reliability (healthy) and signal-pool capacity (constrained) are recorded as distinct constraints. Matrix doc §2.2 amended in place.
+> · **M2 decided:** CFW = Matilda-type warm-professional direction APPROVED · Invegent = **Stream B** (first-person builder voice; PK: strategically stronger, may later use a governed representation of PK's own voice rather than stock). Config applies remain post-watch.
+> · **M12:** PK runs the 3-track Content-ID test personally; NO new sourcing (fenced-8 sufficient for depth=4); seeded-resolver gap = post-watch engineering follow-on, not a sourcing reason. **M14: ruled a SUBSTANTIAL STAGED foundation lane** (3 outcomes: limit values · shape capture · image-worker enforcement build-out), NOT quick cleanup. **M1/M7 manual items:** deferred, non-urgent, due before their post-watch gates.
+> · **Fleet FROZEN:** control tower + CFW/INV asset sourcing only; no new sessions. Control-tower remaining scope: M18 rotation orchestration · daily watch evidence · watch-expiry package.
+
+---
+
 > **✅ v6.144 — REVISED PHASE-2 MATRIX PK-APPROVED, shape = base + E-1 (T1 · docs-only · PK gate; execution still watch-gated)** — matrix: `docs/briefs/cgu-final-revised-phase2-matrix-v1.md`.
 > · Approved shape: the frozen-v3 17-row text-led base (NDIS +9 · CFW +4 text · INV +4 text · PP zero) + Election E-1 (CFW FB/IG +1/+1 image_quote/week), E-1 **DORMANT** behind ≥3 PK-visually-approved CFW backgrounds. Invegent image_quote HELD FLAT (PK conservatism ruling); all Layer-2/YouTube exclusions verbatim; CFW-LI reopens only via the M16 remediation lane.
 > · **This fixes the SHAPE only.** Sequence unchanged per v6.140: watch verdict at ~2026-08-11 20:20 Sydney → if PASS, author ONE fresh apply packet on this approved shape (v3 stays review-only evidence) → full T2/T3 chain → PK production authorization. No mutation before that gate; a STOP-condition watch finding voids this matrix pending re-cut.
