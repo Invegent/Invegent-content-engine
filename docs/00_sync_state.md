@@ -6,6 +6,38 @@
 
 ---
 
+> **✅ v6.137 — M11c PP carousel migrate-vs-retire — DECISION PACKET COMPLETE, PK-ACCEPTED (T1 ·
+> docs-only; zero code/DB/deploy/merge change)** — record:
+> `docs/briefs/m11c-pp-carousel-migrate-vs-retire-decision-packet-v1.md`.
+> · Answers the question M11b's own Seed Packet C deferred: compares migrate/retain/retire for
+> Property Pulse's carousel format across volume (104 drafts/37 real posts per 90d, last
+> live-verified 2026-08-04, not re-verified live this session), strategy dependency (carousel is
+> the top-weighted target-mix format on Instagram/LinkedIn and 2nd on Facebook per
+> `platform_format_mix_defaults.md`, already shadow-evaluated live by the R3a resolver), the
+> complete draft→slide→render→publish code route (fully cited), and the missing template
+> identity/asset-binding/render-provenance evidence (carousel omits `renderSpec` entirely at its
+> `write_render_log` call site, unlike `image_quote`).
+> · **Schema finding:** the Creative Library v2 Variant object is scalar/single-render by design —
+> a carousel migration would be the first multi-object/multi-render registry extension in the repo,
+> overlapping CGU Final's own not-yet-scoped M13. `select_template`/`resolve_slot_assets` generalize
+> cleanly to future clients by design, but the *deployed* function has drifted from tracked
+> migrations before — a live function-body read is named as a mandatory Phase-1 precondition.
+> · **Recommends MIGRATE**, sequenced as its own future 3-phase build lane (design → build →
+> dark-then-flip proof), reusing the proven `video_short_stat`/`video_short_kinetic` pattern,
+> coordinated with M13 rather than run in isolation. Names 7 PK decisions still required before
+> that lane can start. **DB access was unavailable to the authoring session (second consecutive
+> occurrence)** — every figure is either code-cited or explicitly dated to its last live-verified
+> source, not re-asserted as current.
+> · **Note for the register:** a separate, independently-authored M11c packet
+> (`docs/briefs/m11c-pp-carousel-migrate-vs-retire-packet-v1.md`, produced the same day with a
+> live `db-rls-auditor` pass) reaches the same MIGRATE recommendation but differs materially on
+> current volume (45 drafts/90d vs. this packet's 104/90d) and found carousel already has 3 stalled
+> TMR registry templates (visually-approved, never graduated) — a fact this packet's DB-access gap
+> did not surface. PK accepted this commit (`96095e8`) as the complete M11c record; the other draft
+> remains uncommitted pending PK's disposition.
+
+---
+
 > **✅ v6.136 — M8: Asset Gap dashboard panel CLOSED (PK-attested, direct chat 2026-08-05)** —
 > result addendum: `docs/briefs/results/m8-asset-gap-dashboard-panel-result-v1.md` §10.
 > · PK attests production screenshots reviewed (Asset Gap tab + Property Pulse row), live
