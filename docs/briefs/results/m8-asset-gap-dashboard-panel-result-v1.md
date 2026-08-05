@@ -79,6 +79,41 @@ already-shipped, already-live classifier status (`governance_unproven` appears e
 the already-merged `lib/format-capability.ts` vocabulary) — not fabricated, simply not
 currently instantiated by live data.
 
+**Direct badge-state evidence, named explicitly (closeout addendum, 2026-08-05):**
+
+- **Blocked:** CFW facebook/carousel and CFW linkedin/carousel — both live `overall_state=blocked`
+  / `capability_status=unsupported_silent_degrade`, both against open `governance_gap` backlog
+  rows (row table above, rows 1 and 3).
+- **Autonomy-ready:** CFW facebook/image_quote, all three Invegent image_quote cells
+  (facebook/instagram/linkedin), and Property Pulse youtube/video_short_stat — all five live
+  `overall_state=ready` / `capability_status=ready`, all five against `resolved` backlog rows.
+- **Unclassified:** Invegent linkedin/carousel — an open backlog row with genuinely no
+  cross-referenceable Production Readiness Queue cell returned at all; the honest no-signal
+  fallback exercised live, not a parsing failure.
+- (`supervised` remains not live-instantiated, as recorded above — the derivation branch itself
+  is unchanged and already reviewed, not a gap in this evidence pass.)
+
+**All 8 live `ice_ro.asset_gap_backlog` rows** are the exact 8 rows in the table above — this
+was a full read of the view for the queried clients at closeout, not a sample; every row's
+`primary_route`/`status`/`asset_gap_drainability` is accounted for and cross-referenced against
+the readiness queue in the second table above.
+
+### 0.1 PK-attested visual confirmation (2026-08-05, closeout addendum)
+
+**PK personally opened the live production dashboard** (`/clients?tab=asset-gap`) and visually
+confirmed, first-hand:
+
+- The Asset Gap tab renders with real backlog rows for the active client.
+- The **Property Pulse** row (`youtube` / `video_short_stat`, `template_gap` primary route,
+  `resolved` status, `blocked_by_template` drainability) renders correctly, consistent with the
+  live-DB row recorded in the table above (row 8).
+
+This is a first-hand PK visual attestation, not a data-layer inference — it supersedes, for this
+specific client/row, the "no browser-rendered screenshot was ever obtained" caveat below (§6).
+No image file is attached to this record (none was captured in-session by the executing agent,
+which has no browser/credentials available — see §0/§6); the record is PK's own dated
+confirmation, made from the real production session, not a substitute inference by chat.
+
 **A real, pre-existing defect was found during this verification, NOT introduced by M8:**
 `get_client_production_readiness_queue`'s live `scheduled_demand` field is a **boolean**
 at the SQL level (`NOT ac.is_probe_cell AS scheduled_demand`,
@@ -189,17 +224,21 @@ scope. Tracked as its own follow-up (see §7).
   ordering ("run the review before implementation"). A second `dashboard-ia-lint` pass
   against the ACTUAL diff was not run in this lane (time-boxed); recommended as the next
   step before this proves the agent on a real diff rather than a design doc.
-- **No browser-rendered screenshot was ever obtained (superseded/closed by §0).** A live
-  read-only data-layer gate against the real production Supabase project was run instead and
-  PK accepted it in place of a screenshot (2026-08-05 decision). Still true: a genuine
-  pixel-level rendered check has never happened for this tab — if PK later gets a chance to
-  open `/clients?tab=asset-gap` logged in, that remains the one outstanding first-hand look.
-- **A real, pre-existing (non-M8) defect was found during the §0 live gate:** the
-  already-shipped `lib/production-readiness-queue.ts` mistypes the live RPC's boolean
-  `scheduled_demand` field as `number | null`, silently nulling every real value — this has
-  always broken the existing Production Readiness Queue tab's "Scheduled demand" count, and
-  structurally prevents M8's new schedule-plan warning from ever firing. **Logged, not fixed,
-  per PK direction (2026-08-05)** — needs its own scoped follow-up (see §7).
+- **No browser-rendered screenshot was ever obtained by the executing agent (superseded/closed
+  by §0/§0.1).** A live read-only data-layer gate against the real production Supabase project
+  was run first, and PK accepted it in place of an agent-captured screenshot (2026-08-05
+  decision). **PK subsequently performed the first-hand visual check personally** (§0.1,
+  2026-08-05 closeout addendum): opened `/clients?tab=asset-gap` in the real production
+  dashboard and confirmed the tab and the Property Pulse row render correctly. That is the one
+  outstanding first-hand look this section previously flagged — now done, by PK directly, not
+  by the agent (which still has no browser/credentials in this environment).
+- **A real, pre-existing (non-M8) defect was found during the §0 live gate — now FIXED,
+  separately from M8 (M8.2, closed 2026-08-05):** the already-shipped
+  `lib/production-readiness-queue.ts` mistyped the live RPC's boolean `scheduled_demand` field
+  as `number | null`, silently nulling every real value. Logged here at M8 closeout, then
+  repaired in its own bounded follow-on lane — see
+  `docs/briefs/results/m8.2-scheduled-demand-contract-repair-result-v1.md` for the full record
+  (authoritative-meaning research, live-data verification, the fix, and regression tests).
 - **`dashboard-ia-lint`'s own ungoverned-question finding stands, unresolved by this lane**:
   whether the IA spec's single-status-vocabulary rule (§6.2) is meant to exempt non-content-
   pipeline domain objects (the capability/readiness/asset-gap vocabulary family) — this
@@ -220,20 +259,27 @@ scope. Tracked as its own follow-up (see §7).
 
 ## 7. Next recommended step
 
-**M8 is closed.** Two named follow-ons, neither blocking, both PK-scoped at closeout
-(2026-08-05):
+**M8 is closed.** Two named follow-ons from M8 closeout (2026-08-05), preserved here as the
+durable record of the original scope decision:
 
 - **"M8.1 — dashboard legacy-route authority integration."** Add true legacy-vs-governed
   routing detection to the execution-path badge by reading `client_creative_governance`
   presence/proof-posture per (client, platform, format) — the data source this lane
   deliberately left out of scope (§6). Replaces `unclassified` with a real `legacy_routed`
   state where the evidence supports it; `unclassified` remains the honest fallback everywhere
-  else. **Explicitly does not block M8** (PK direction).
-- **`scheduled_demand` type-mismatch fix.** One-line correction in the already-shipped
-  `lib/production-readiness-queue.ts` (§0) — retype `scheduled_demand` as `boolean | null` and
-  parse with `asBoolOrNull` instead of `asNum`. Fixes the existing Production Readiness Queue
-  tab's "Scheduled demand" display AND unblocks M8's schedule-plan warning. **Logged per PK
-  direction 2026-08-05, not fixed in this lane** (shared code outside M8's authorised scope).
+  else. **Explicitly does not block M8** (PK direction). **Status: not started** — still open,
+  bounded, non-blocking.
+- **"M8.2 — `scheduled_demand` type-mismatch fix."** Originally logged 2026-08-05 as a
+  one-line correction, not fixed in the M8 lane (shared code outside M8's authorised 4-file
+  scope). **Status: CLOSED 2026-08-05, same day** — opened as its own bounded lane and
+  completed. Full record: `docs/briefs/results/m8.2-scheduled-demand-contract-repair-result-v1.md`
+  (brief: `docs/briefs/m8.2-scheduled-demand-contract-repair-gate1-brief-v1.md`). Summary:
+  `scheduled_demand` retyped `boolean | null`, parsed with `asBoolOrNull`; the Production
+  Readiness Queue tab's "Scheduled demand" cell and `hasScheduledButNotExecutable` (Asset Gap
+  schedule-plan flag) both repaired off the same authoritative field; regression tests added
+  for true/false/null-missing/malformed; live-verified; pushed to
+  `claude/asset-gap-dashboard-panel-bdey55` (`b3440ec`). No schedule-row, readiness-semantics,
+  or Asset Gap backend data changed, per PK constraint.
 - Separately, still open but non-blocking: a second `dashboard-ia-lint` pass against the
   actual merged diff (this lane's lint pass ran pre-implementation, against the design) would
   complete that agent's first real-diff proving run per `CLAUDE.md`.
