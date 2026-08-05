@@ -6,6 +6,13 @@
 
 ---
 
+> **🛑 v6.140 — PK CONTROL-TOWER RULING: Phase-2 HELD to watch close (~2026-08-11 20:20 Sydney); packet v3 = review-only evidence, lineage frozen; no schedule DML/cap raises; session/worktree reduction ordered (T1 · docs-only · PK ruling record)** — record: `docs/briefs/cgu-final-control-tower-watch-ruling-v1.md` (PK ruling verbatim §1).
+> · Watch-period tasks: read-only R0 schedule monitoring · one revised Phase-2 matrix (CFW reliability correction in, Invegent conservative, Layer-2/YouTube exclusions preserved) · no new heavy CGU Final lanes before the Phase-2 ruling.
+> · Watch-expiry deliverable: watch verdict + one revised matrix → PK approval → only then a fresh apply packet. M18 executes after the watch unless a current accessible unmanaged credential is found.
+> · Phase-2 packets v1–v3 committed as frozen review-only evidence this cut.
+
+---
+
 > **✅ v6.139 — M10 RATIFIED + CLOSED; M9 SPECIFICATION ACCEPTED, MILESTONE STAYS OPEN (T1, docs-only,
 > zero DB/deploy/replay; PK Gate-1)** — M10: `docs/briefs/m10-provider-neutral-render-contract-v1.md`,
 > independently fact-checked (6 citation/cross-ref defects found + corrected, none structural), ratified
