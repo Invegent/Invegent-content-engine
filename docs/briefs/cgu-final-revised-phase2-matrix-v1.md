@@ -1,11 +1,12 @@
 # CGU Final — Revised Phase-2 Schedule-Expansion Matrix (v1, DRAFT for PK preview)
 
-**Status:** DRAFT — the "one revised Phase-2 matrix" ordered by the PK watch ruling
-(`docs/briefs/cgu-final-control-tower-watch-ruling-v1.md`, v6.140). Delivered early for PK preview;
-final approval belongs to the watch-expiry gate (~2026-08-11 20:20 Sydney) alongside the watch
-verdict. **This is a matrix document, not an apply packet** — per the ruling, a fresh apply packet
-is authored only AFTER PK approves this matrix + the watch verdict. Nothing here authorizes any
-schedule DML, cap change, or mutation.
+**Status:** **PK-APPROVED 2026-08-05 — shape: base + E-1** (PK, direct in the control-tower
+session: "matrix approved base + E-1, proceed on that shape at expiry"). The E-1 CFW increment
+remains DORMANT behind its §2.2 precondition (≥3 PK-visually-approved CFW backgrounds); the
+Invegent hold and every §2.4 exclusion stand unchanged. **Execution remains gated:** per the
+v6.140 ruling, the fresh apply packet is authored only at/after watch expiry (~2026-08-11 20:20
+Sydney) AND only if the watch verdict passes — this approval fixes the SHAPE, not the timing.
+Nothing here authorizes any schedule DML, cap change, or mutation before that gate.
 **Author:** CGU Final control tower, 2026-08-05.
 **Inputs:** frozen packet v3 manifest (review-only evidence, committed `c7aef0b`) · the v6.131
 CFW/Invegent reliability correction · the §3 asset-constraint live finding (packet proposal-v1) ·
