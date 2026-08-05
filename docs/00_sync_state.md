@@ -6,6 +6,18 @@
 
 ---
 
+> **✅ v6.134 — M10/M9 DOCS FOUNDATION DRAFTED — both spec documents review-ready, submitted for PK
+> Gate-1 (T1, docs-only, zero DB/deploy/replay)** — M10: `docs/briefs/m10-provider-neutral-render-contract-v1.md`
+> (extracted from stat+kinetic+image_quote, Phase 0 dependency satisfied); M9:
+> `docs/briefs/m9-zero-code-day1-onboarding-package-v1.md` (spec half only — replay half stays OPEN,
+> gated behind the unratified §6 schedule-expansion approval). Result:
+> `docs/briefs/results/m10-m9-docs-foundation-result-v1.md`.
+> · Next gate: PK Gate-1 review of both documents; neither milestone's must-have row closes until PK
+> ratifies. Queue impact: M9/M10 remain OPEN in `creatomate-global-ultimate-final-delta-audit-v1.md` §2.2
+> pending that ratification — this lane does not edit that table itself.
+
+---
+
 > **✅ v6.133 — M8: Asset Gap dashboard panel COMPLETE (T2 · isolated worktree code + docs; zero CE-repo DB/schema/RPC change)** — brief: `docs/briefs/m8-asset-gap-dashboard-panel-gate1-brief-v1.md`; result: `docs/briefs/results/m8-asset-gap-dashboard-panel-result-v1.md`.
 > · Read-only Asset Gap backlog tab added to `invegent-dashboard`'s `/clients` page, sourced from the live WS-3 `ice_ro.asset_gap_backlog` view via a fixed-literal `exec_sql` (zero interpolation, precedented pattern). `dashboard-ia-lint` WARN → both findings fixed pre-implementation (derived execution-path badge labelled as inferred; client-scoping corrected from an assumed RPC bind-param to fetch-all + client-side filter, avoiding a new injection-sink call site). `ef-builder` implemented 4 files; a real bug (`evidence_confidence` mistyped as numeric, actually a 2-value text enum) was caught in manual review and fixed. `tsc --noEmit` clean, `next build` clean (all 65 routes), 362/362 tests pass, `branch-warden` safe (diff confined to exactly the 4 intended files).
 > · **`invegent-dashboard`** `1d87ec7` — pushed directly to `origin/main` this pass (fast-forward, zero conflicts, same 4-file diff verified against the result doc). **`invegent-content-engine`** — this brief + result doc only; zero code/DB/migration touched in this repo.
