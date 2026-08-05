@@ -18,5 +18,19 @@ watch-expiry verdict; resolves nothing by itself.
 - **Watched supervised-only cells (v11 exception list):** no volume observed outside baseline —
   PP YT kinetic / NDIS YT stat / CFW LI image_quote remain supervised-only; NDIS carousel frozen.
 
+## Control-tower notes — corrections owed at the NEXT register cut (not a daily entry)
+
+1. **v6.142 protocol-note correction:** S-A (M11c reconciliation) committed `e3129d1` locally only
+   and never pushed — content reached origin via the control tower's subsequent pushes. The entry's
+   "self-committed/pushed" overstates by one word; deviation was commit-instead-of-return only.
+2. **Commit `a814e4f` attribution:** the M13 packet §13 addendum in that commit was authored by the
+   M13 scoping session (S-B, staged in the shared checkout, swept in by the control tower's Seed-A
+   commit) — not by the Gate-1 batch lane the commit message names.
+
+## Session-reduction status (v6.140 order) — as of 2026-08-05 ~16:20 Sydney
+
+All three watch-week decision-prep lanes TERMINAL and archived (Gate-1 batch · M11c reconciliation ·
+M13 scoping). Active: control tower + CFW/INV asset sourcing only.
+
 *(Subsequent daily entries append below; one line-block per day; any STOP-condition match →
 surface to PK immediately, do not wait for watch expiry.)*
