@@ -6,8 +6,8 @@ production_state: no_commit_to_build
 supabase_writes: none
 github_writes: doc_only
 created: 2026-05-08
-last_updated: 2026-05-08
-session: v2.55
+last_updated: 2026-08-06
+session: v2.55 (created) / 2026-08-06 addendum (live vendor terms re-verification)
 supersedes: none
 related:
   - docs/00_action_list.md (P3 "Music library activation checklist", PENDING PK ACTION)
@@ -428,4 +428,50 @@ When Stage 1 (or any subsequent stage) authors a schema, an EF, a CRON, or any p
 
 ---
 
-*End of v0.1 draft. Status: needs vendor license confirmation. Production state: no commit to build. Next step: PK Stage 0 prompt sandbox.*
+---
+
+## Addendum — 2026-08-06: live vendor terms re-verification (no build action taken)
+
+PK re-opened the vendor question (prompted by "we're on ElevenLabs Creator for voice already — can it also do music, or is there one vendor for both"). This session re-verified Landmine 3 against the **live, current** ElevenLabs pages (not the May snapshot) and evaluated a new candidate, Epidemic Sound, against its actual license text. **No purchase, signup, or build action was taken — doc-only, per the standing flag above.** PK's decision: continue on the current course (9-CC0-track pool, 1 selectable, `content_id_safe=false` blocker unresolved) and revisit this later.
+
+### ElevenLabs Music — Landmine 3 CONFIRMED with precision (supersedes the May inference)
+
+Read live 2026-08-06: `elevenlabs.io/music-terms` and `elevenlabs.io/eleven-music-model-specific-terms` (both dated "Last Updated: 26 May 2026" — post-dates the original brief).
+
+The Model-Specific Terms page carries a **Music Commercial Rights table** with a named row, **"Music Libraries & Repositories"**, defined as: *"any arrangement in which Customer creates or permits others to create a library, catalogue, database, or other repository of Output with the intent of licensing it or otherwise making it available to third parties."* This row is **"Prohibited" on every self-serve tier** — Free, Starter, Creator, Pro, Scale, and **Business** (the top self-serve tier). It is **"Custom"** only on Enterprise Music Lite / Enterprise Music (contact-sales, unpriced). ICE's Vibe Pool design (generate once, store, reuse across clients/platforms within a 90-day window) is exactly this category of repository — no self-serve tier, however high, clears it. This is no longer an inference from FAQ wording (per the May draft) — it is a named, tabulated contract term.
+
+Other confirmed table facts, not previously this precise:
+- **Media Rights** (self-serve): "all online and offline commercial use permitted, **except film, TV, radio, & Studio Games**" — ordinary social-video use is fine; the *stored, reusable pool* is the specific thing that's blocked, not video use in general.
+- **Reseller Rights**: also self-serve-prohibited, but governs reselling the ElevenLabs model/API itself — not ICE's use case, not the actual constraint here.
+- **Eligibility**: Business plan is capped at "entities with fewer than 50 employees."
+- **Attribution**: only the Free tier requires "Created in collaboration with ElevenLabs" credit.
+
+**PK's current ElevenLabs usage (Creator plan, two brand voice IDs) is unaffected** — that's the Voice/TTS service, governed by separate terms, not the "Music" service the Libraries & Repositories clause applies to.
+
+Could not verify PK's actual current plan/usage figures — `/app/subscription/api` and `/app/subscription/creative` require login; the sandboxed browser used for this research has no ElevenLabs session. PK self-reported "Creator plan, two brand voice IDs" in chat.
+
+### New candidate found: Epidemic Sound (music + voice cloning, one vendor)
+
+Not evaluated in the May draft. Live-read 2026-08-06: `epidemicsound.com/business/`, `epidemicsound.com/pricing/`, and the actual **Business Subscription Music License** (`epidemicsound.com/policy/business-subscription/`, updated 13-04-26 — current version, distinct from a superseded "Legacy Business Plan Terms").
+
+**Business tier — $40/mo self-serve, no Enterprise negotiation required:**
+- Explicitly sold for *"brands, freelancers, and agencies creating content for their own channels **or clients**"*, with **"License work for clients"** as a named included feature — the inverse of ElevenLabs' posture (Epidemic Sound sells the agency-reuse case at the base paid tier; ElevenLabs walls it off to Enterprise).
+- Core sync grant (license text, not marketing copy): *"the right to access the Site and to make copies of the Licensed Works in order to synchronize them... in video and podcast productions, produced by or on behalf of yourself."* Distribution grant: *"the perpetual right to make available any Productions containing any Licensed Works... worldwide on any and all online channels and platforms"* — completed Productions stay licensed even after cancellation. Text explicitly contemplates clearing *"video URLs outside of your own channels (e.g. Productions posted on your end clients' channels)"*.
+- Bundles voice cloning in the same tier: **"Voice replicas — turn your own voice into a voiceover"** (Business tier count not confirmed — individual-tier table showed Creator:1/Pro:3/Pro Plus:5; Business-tier number unread), plus up to 5 hrs/mo of stock-voice voiceover. Untested: fidelity vs. ElevenLabs' existing two cloned brand voices — no audio sample evaluated.
+- Pitch directly targets ICE's existing blocker: *"Direct ownership — every track cleared upfront, globally. No PROs. No claims. No retroactive risk."* — i.e., Content-ID-safe by design, unlike the current 9 CC0 FMA tracks (`content_id_safe=false` on all 9, see [[music-library-v0-starter-intake]]).
+
+**Real numeric constraints in the license text (not marketing fine print):**
+- Agency turnover cap: your org <$5M/yr; cannot produce for an end client whose org is >$50M/yr.
+- **"You may only create Productions for up to five (5) end clients per month."** — **PK clarified this session: NDIS Yarns / Property Pulse / CFW are Invegent-owned brands, not third-party clients**, so they fall under "Productions produced by or on behalf of yourself," not this clause. At "yourself = 1," this cap is not currently binding and has headroom as real third-party clients are onboarded (reads as a monthly, not lifetime, cap).
+- **"Protect up to 3 channels per platform"** (Business tier) — this is the constraint that's actually live right now: if each of the 3 owned brands has its own YouTube channel, that's already 3/3 on the Business tier's YouTube quota, with zero headroom for a 4th brand or a future client's YouTube channel without stepping up to Business Plus ($140/mo, 10 channels/platform). **Not yet sized** — needs an actual per-brand, per-platform channel count (deferred, PK: "will focus on this later").
+- Two-user account cap (extra users = extra fees, feature-gated).
+
+**Open question, NOT resolved — flagged for before any build/signup, not after:** the license's "No standalone use" clause prohibits using tracks *"in any third party AI tool, as audio samples, music or sound libraries, sound effects, **music beds**... or to upload them in any music recognition systems for any purpose, and/or in any way use, distribute or otherwise exploit the Licensed Works as your property."* Read in context (the clause's own stated purpose is barring *standalone* exploitation, separate from a specific Production), this most plausibly targets repackaging the catalog into a redistributable third-party sample library/AI tool — not the ordinary practice of syncing a track into one video. But ICE's actual architecture (an automated `video-worker`/`select_music()`-style pipeline: download once, cache privately, programmatically re-select and embed across many renders) sits close enough to that language ("AI tool," "music beds," "library") that a favorable reading should not be assumed without asking. **Recommendation carried forward: get written confirmation from Epidemic Sound support describing the automated-pipeline pattern before building anything against this vendor** — same category of risk as the ElevenLabs Music Libraries clause, just not yet triggered because nothing has been built.
+
+### Status after this addendum
+
+No vendor decision made. No signup, trial, or Enterprise-quote request initiated for either vendor. PK's instruction this session: **continue on the current course; revisit this lane later.** The five "Required confirmations" in the original §[Required confirmations before implementation] section are unchanged and still open — this addendum adds a sixth, informal one: *Epidemic Sound's "no standalone use / no third-party AI tool" clause as applied to an automated selection pipeline, unconfirmed.* This does not retire or supersede the Stage-0 prompt-sandbox plan (Mubert/Stable Audio/Beatoven) — Epidemic Sound is an additional candidate for the *licensed-catalog* path (curated stock library), not the *generative* path those three represent; the two are different mechanisms toward the same music-bed goal and both remain open.
+
+---
+
+*End of v0.1 draft. Status: needs vendor license confirmation. Production state: no commit to build. Next step: PK Stage 0 prompt sandbox (still open) — plus the two 2026-08-06 confirmations above (channel-count sizing, Epidemic Sound standalone-use clarification) whenever this lane is picked back up.*
