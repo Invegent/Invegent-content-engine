@@ -1,0 +1,92 @@
+# CGU Final — Watch-Expiry Sitting Agenda (v1 DRAFT — maintained by the control tower until ~2026-08-11 20:20 Sydney)
+
+**Purpose:** the single ordered agenda for PK's one sitting at watch expiry. Every item pre-staged;
+every recommendation advisory-only. Updated as watch days 4–7 land. Companion evidence:
+`docs/briefs/artifacts/cgu-final-phase1-watch-log-v1.md` (the watch log) and the v6.140–v6.158
+register arc.
+
+---
+
+## Part 1 — The gate itself (sequential, blocking)
+
+1. **Watch verdict** (control tower presents): 7-day evidence, W-1 root-caused (causal, not
+   statistical), STOP-condition audit. Verdict PASS expected unless days 5–7 change the picture.
+2. **Phase-2 apply authorization**: on PASS, the control tower authors ONE fresh apply packet on
+   the PK-approved shape (base + dormant E-1, v6.144/v6.145) → full T2/T3 chain → PK production
+   authorization. v3 remains review-only evidence, never executed.
+3. **Time-bound rider — slot `c1f38536…` (PP YouTube 2026-08-13T07:00Z)**: bound draft
+   `video_status='failed'`; silent schedule-miss risk (no backfill path). Options: re-render ·
+   T0 manual replacement (CFW-LI precedent) · accept miss. *Must be ruled at this sitting —
+   only 2 days of margin after it.*
+
+## Part 2 — Post-watch apply-wave ordering (one ruling, recommended order below)
+
+> Control-tower recommended order, per W-1 causality and dependency chains:
+1. **M16 fix apply** (T2/T3 Gate — the two-function fix, branch `lane/m16-pool-health-fix-build`):
+   FIRST — restores CFW *and* NDIS image_quote fills (W-1 upgraded fleet-relevance to CERTAIN);
+   E-1 precondition-2.
+2. **Background intake + promotion** (the PK-visually-approved 6 CFW / 8 INV) — E-1
+   precondition-1; carries: cfw-09 zoom-check · cfw-13 authenticity · inv-07/08 never geo-label.
+3. **E-1 activation check** (both preconditions then met → the dormant CFW election goes live in
+   the Phase-2 apply or a follow-up rider).
+4. **M11b closure applies** (kinetic_voice T2-DB then T3-code sub-gates · Seed A · Seed B — all
+   AHA-shadow-hardened, `apply_migration` channel pinned).
+5. **M14 calibration writes + image-worker v3.39.0 deploy** (branch `lane/m14-ws1-ws3-build`).
+6. **M7 snapshot schema apply** (+ PK's first manual weekly cost entry).
+7. **M1 Gate-2 chain** (branch `worktree-cgu-l1-m1-loudness-phase1`; preconditions: Edge-Runtime
+   proof · outlier explanation · grant/name/cadence decisions).
+8. **Publish-truth view apply + cockpit deploy** (once Tasks 2–3 are authored — see Part 3.C).
+
+## Part 3 — Decisions (batchable, each with recommendation)
+
+**A. M12 design fork** — pure seed-hash rotation (works NOW, no M1 gate) vs loudness pre-rank
+(waits on M1). *Recommend: pure seed-hash; loudness becomes a later enhancement.*
+**B. NDIS text supply** — source-diversification decision (top-2 picks share a source_domain):
+add sources vs adjust the diversity dimension. *Recommend: add 2–3 NDIS-vertical sources first
+(supply-true fix); touching the diversity check changes fleet behavior.*
+**C. Publish-truth Tasks 2–3 go** — the authoring is watch-legal; PK's word in that session
+unlocks it pre-sitting. *Recommend: give the go early; the apply still waits.*
+**D. Evergreen library seeding** — `t.evergreen_library` empty fleet-wide (never seeded); a whole
+skip-reason class. *Recommend: elect a small T2 seeding lane, per-client curated.*
+**E. `Location.max_chars`** — content policy call; zero live evidence exists (all clients declare
+''). *Recommend: set a generous provisional (e.g. 40) marked provisional_uncalibrated, or defer
+until a client actually uses Location.*
+**F. Legacy-publish dispositions** — `4ejuEQ15j0U` (published kinetic_voice video): *recommend
+leave + record as legacy-era publish.* `a44288f7…` (NDIS stale approved draft, stable-blocked):
+*recommend void inside the kinetic_voice/M11b apply.*
+**G. M6 five design opens** — S3's advisory (2026-08-06, propose-only, full chain in the M6
+result §9 + S3 transcript):
+  1. format_key → **`video_short_triptych`** (names the fixed-3-panel narrative shape; style
+     names stay free for future formats).
+  2. Scope → **client-generic, PP as first proving client** (avoids the known
+     hardcoded→generic migration pain; both composited scenes are already resolver-driven).
+  3. Scene3Headline → **65 chars** (Scene 3 is modeled verbatim on kinetic's cta scene —
+     borrowing stat's 90 would be internally inconsistent).
+  4. Durations → **anchor Hook 5–7s + CTA 4–6s from the live kinetic prompt's own bounds;
+     Proof = remainder** (reused provenance, not three invented numbers).
+  5. Audio → **silent v1, audio deferred to v2** (kinetic's documented VoiceAudio regression +
+     the first-proof risk is the 13-element render vs the 120s ceiling — don't conflate risks).
+**H. M8.1 + P-1 Gate-1s** — both now cheap independent dashboard wirings (v6.158: M8.1 reuses a
+live+wired RPC; P-1 renders a live-but-dark RPC). *Recommend: approve both as one small
+dashboard lane each, post-watch.*
+**I. Agent-status reviews** — `apply-harness-auditor`: 3-for-3 real pre-freeze catches in shadow
+→ *recommend promotion review packet (control tower drafts).* `creatomate-specialist`: first
+mission PACKAGE_READY, zero charter violations → *candidate→proven is PK's call; one more
+mission (the M6 transposition support) would give a 2-mission record.*
+**J. M13 lane sequencing** — Lane 2 next? Lanes 3 (registry persistence — carries the
+`video_short_triptych` format_key precondition), 4 (Asset Gap display), 5 (e2e proof — now has
+a REAL Blueprint input). *Recommend: Lane 3 + the format_key decision together, then Lane 5
+using the M6 blueprint; Lane 4 rides the next dashboard batch.*
+**K. M11c migrate design lane timing** — ruled "after M13 v1"; clarify whether Lane-1-landed
+suffices or full-M13. *Recommend: after Lane 3 lands (registry persistence is what the
+migration actually needs).*
+
+## Part 4 — Standing confirmations (no decision unless PK objects)
+
+- M18: rotation half CLOSED; migration tail continues at PK's pace.
+- M2: directions stand (CFW Matilda-type · INV Stream B); config apply joins the wave post-pick.
+- W-1 monitoring continues through expiry; fills-vs-skips trend included in the verdict.
+- Fleet: control tower + asset-sourcing hold; lane slots closed as archived.
+
+*(Control-tower notes: agenda updated in place as days 4–7 land; the verdict section is written
+last. PK may pre-rule any Part-3 item early — each early ruling shrinks the sitting.)*
