@@ -1,0 +1,736 @@
+{
+  "lane": "music-harvester-v1-batch2-four-brands",
+  "status": "harvested_pending_pk_aural_review",
+  "harvest_date_utc": "2026-08-06",
+  "harvester": "Claude Code (mechanical sourcing) — NO approval/upload/DB/git; all aural + final-licence judgment is PK's",
+  "schema_target": "m.music_track + m.music_license (live migration 20260708224532)",
+  "predecessor_batch": "_harness/music_harvester_v0 (9 tracks, keys 001-009) — this batch continues the key sequence at 010",
+  "source_summary": {
+    "used": "Free Music Archive — CC0 1.0 tracks by HoliznaCC0, albums: public-domain-lofi, spring-woke-me-up, summer-air-lo-fi, we-drove-all-night-game-soundtrack (direct CDN files.freemusicarchive.org)",
+    "fma_cc0_search_filter": "UNRELIABLE — FMA's 'music-filter-CC0=1' search parameter returned CC BY-ND / CC BY-NC-ND albums (audiocoffee/corporate, synclab-music/corporate-2, waveloom/corporate-3, lowtone-music, tolsetmusic). ALL EXCLUDED after per-album licence verification. Never trust the filter; verify the licence URL on the page.",
+    "pixabay_music": "RE-ATTEMPTED 2026-08-06, STILL NOT HARVESTABLE — https://pixabay.com/music/search/corporate/ returns HTTP 403 (Cloudflare). Unchanged from batch 1. Flagged PK-manual.",
+    "youtube_audio_library": "SKIPPED — YouTube Studio login unavailable in this environment. PK-manual source.",
+    "ccmixter": "NOT USED — default licence CC-BY (attribution-required, excluded in v0)."
+  },
+  "constraints_applied": {
+    "license_types_present": [
+      "cc0"
+    ],
+    "attribution_required_on_every_track": false,
+    "content_id_safe_on_every_track": false,
+    "vocals": "instrumental_only",
+    "per_track_licence_verification": "Every track page was independently re-checked for creativecommons.org/publicdomain/zero/1.0/ AND the absence of any creativecommons.org/licenses/* URL. Fail-closed: a non-CC0 page is excluded before download.",
+    "storage_path_pattern": "post-music/global/<mood>/<track_key>.mp3 (PATH ONLY — nothing uploaded)",
+    "dedup": "No sha256 or track_key collision with the 9 live rows. Intra-batch audio-frame hashing (ID3 stripped) found no duplicate recordings."
+  },
+  "mood_spread_this_batch": {
+    "calm": 2,
+    "neutral": 2,
+    "uplifting": 5,
+    "warm": 4
+  },
+  "mood_spread_library_after_intake_if_applied": {
+    "warm": 6,
+    "calm": 4,
+    "neutral": 5,
+    "uplifting": 6,
+    "corporate": 1
+  },
+  "brand_fit_advisory": {
+    "WARNING": "ADVISORY ONLY. m.music_track is a GLOBAL pool with no client_id column. Per-brand fit is expressed by m.music_suitability + c.client_music_profile rows, which belong to the SCOPED-APPROVAL gate, NOT to intake. Nothing in this section is applied by the intake SQL.",
+    "brand_tone_basis": {
+      "property-pulse": "Property market news — professional, credible, non-salesy. Wants neutral/calm beds and restrained uplift for positive market data.",
+      "ndis-yarns": "NDIS/disability services — warmth and dignity, never clinical and never saccharine. Wants warm + genuinely hopeful uplift.",
+      "care-for-welfare": "Welfare/care sector — warm, human, gentle. Wants warm + calm.",
+      "invegent": "Parent/consulting brand — neutral, composed, corporate-leaning. Wants neutral + corporate (the batch's thinnest mood — see gaps)."
+    },
+    "suggested_index": {
+      "property-pulse": [
+        "calm_lofi_calmcurrents_019",
+        "calm_lofi_saturation_020",
+        "neutral_lofi_shimmer_021",
+        "neutral_lofi_softreset_022",
+        "uplifting_lofi_bubbles_014",
+        "uplifting_lofi_hope_010",
+        "uplifting_lofi_walkingaway_013",
+        "warm_lofi_rooftops_018",
+        "warm_lofi_warmfuzz_017"
+      ],
+      "ndis-yarns": [
+        "calm_lofi_calmcurrents_019",
+        "uplifting_lofi_hope_010",
+        "uplifting_lofi_springsight_011",
+        "uplifting_lofi_tranquilmind_012",
+        "warm_lofi_humanagain_015",
+        "warm_lofi_sunlight_016"
+      ],
+      "care-for-welfare": [
+        "calm_lofi_calmcurrents_019",
+        "uplifting_lofi_hope_010",
+        "uplifting_lofi_springsight_011",
+        "uplifting_lofi_tranquilmind_012",
+        "warm_lofi_humanagain_015",
+        "warm_lofi_sunlight_016",
+        "warm_lofi_warmfuzz_017"
+      ],
+      "invegent": [
+        "calm_lofi_saturation_020",
+        "neutral_lofi_shimmer_021",
+        "neutral_lofi_softreset_022",
+        "uplifting_lofi_bubbles_014",
+        "uplifting_lofi_walkingaway_013"
+      ]
+    }
+  },
+  "count": 13,
+  "important_notes": [
+    "NO track uploaded to the post-music bucket. NO DB row. NO fence flipped. NO approval. Upload + intake-apply are SEPARATE future PK gates.",
+    "mood/energy/tempo_band/genre are HARVESTER GUESSES (CHECK-valid values only); PK aural review is authoritative for facets + eligibility.",
+    "genre='electronic' on all 13 — lo-fi is sample-based/electronic and 'lofi' is not in the CHECK vocabulary. Honest mapping, not a claim about instrumentation.",
+    "content_id_safe=false on ALL 13 (fail-closed, PK decision #3) => none are YouTube-eligible, and none become selectable by select_music, which requires content_id_safe IS TRUE.",
+    "loudness_lufs/bpm/text_overlay_safe left null (no automated audio QA; M1 is the named prerequisite).",
+    "CORPORATE mood: ZERO added. The mood remains at 1 (the batch-1 'Medieval Theme', itself flagged as a mis-tag). Corporate beds are not harvestable from FMA CC0 — they live on Pixabay / YouTube Audio Library, both PK-manual. This is an unresolved gap, reported not papered over.",
+    "uplifting_lofi_walkingaway_013 is the batch's best corporate-adjacent candidate (source tags: 'Peaceful, Motivating') — PK may elect mood=corporate at the aural gate.",
+    "Four tracks exceed 180s (015 231s, 018 214s, 022 186s, 021 181s) — trim/loop candidates, not disqualifiers (video-worker requests a 12s minimum)."
+  ],
+  "tracks": [
+    {
+      "music_track": {
+        "track_key": "calm_lofi_calmcurrents_019",
+        "title": "Calm Currents (Lofi, Relax, Calm)",
+        "source": "manual_harvest",
+        "storage_bucket": "post-music",
+        "storage_path": "post-music/global/calm/calm_lofi_calmcurrents_019.mp3",
+        "sha256": "2dcb297376cfe0cb8a547ce74e4d10f406649e007ff01d6e2edb573996d23dc4",
+        "mime": "audio/mpeg",
+        "bytes": 5907043,
+        "duration_seconds": 147.648,
+        "loudness_lufs": null,
+        "bpm": null,
+        "mood": "calm",
+        "energy": "low",
+        "tempo_band": "slow",
+        "genre": "electronic",
+        "vocals": "instrumental_only",
+        "text_overlay_safe": null,
+        "approval_status": "intake_candidate",
+        "approved": false,
+        "production_use_allowed": false,
+        "is_active": false
+      },
+      "music_license": {
+        "license_type": "cc0",
+        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
+        "source_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/calm-currents-lofi-relax-calm/",
+        "license_snapshot_hash": "81fd8c8600eafc57e712356764640a28dd02648e125cf611b0895ddb2302a6a4",
+        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/calm_lofi_calmcurrents_019.license.txt",
+        "commercial_use_allowed": true,
+        "social_use_allowed": true,
+        "modification_allowed": true,
+        "paid_ads_allowed": true,
+        "attribution_required": false,
+        "content_id_safe": false,
+        "expiry_date": null
+      },
+      "advisory_only": {
+        "brand_fit_suggestion": [
+          "ndis-yarns",
+          "care-for-welfare",
+          "property-pulse"
+        ],
+        "facet_note": "Source tags it 'Relax, Calm' — general-purpose calm bed.",
+        "local_file": "candidates/calm_lofi_calmcurrents_019.mp3",
+        "bitrate": 320000,
+        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi"
+      }
+    },
+    {
+      "music_track": {
+        "track_key": "calm_lofi_saturation_020",
+        "title": "Saturation (Lofi, Calm, Relaxed)",
+        "source": "manual_harvest",
+        "storage_bucket": "post-music",
+        "storage_path": "post-music/global/calm/calm_lofi_saturation_020.mp3",
+        "sha256": "340a14dffd98001edbae1e7da16e2b9f8f54e0687cd215fa5dfc0b351f4777c2",
+        "mime": "audio/mpeg",
+        "bytes": 6240163,
+        "duration_seconds": 155.976,
+        "loudness_lufs": null,
+        "bpm": null,
+        "mood": "calm",
+        "energy": "low",
+        "tempo_band": "slow",
+        "genre": "electronic",
+        "vocals": "instrumental_only",
+        "text_overlay_safe": null,
+        "approval_status": "intake_candidate",
+        "approved": false,
+        "production_use_allowed": false,
+        "is_active": false
+      },
+      "music_license": {
+        "license_type": "cc0",
+        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
+        "source_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/saturation-lofi-calm-relaxed/",
+        "license_snapshot_hash": "4797da125ea98423243b1ffa58d4f4e9ec3fbfaa9a9f657b4ef1053596c81b22",
+        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/calm_lofi_saturation_020.license.txt",
+        "commercial_use_allowed": true,
+        "social_use_allowed": true,
+        "modification_allowed": true,
+        "paid_ads_allowed": true,
+        "attribution_required": false,
+        "content_id_safe": false,
+        "expiry_date": null
+      },
+      "advisory_only": {
+        "brand_fit_suggestion": [
+          "property-pulse",
+          "invegent"
+        ],
+        "facet_note": "Source tags it 'Calm, Relaxed'.",
+        "local_file": "candidates/calm_lofi_saturation_020.mp3",
+        "bitrate": 320000,
+        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi"
+      }
+    },
+    {
+      "music_track": {
+        "track_key": "neutral_lofi_shimmer_021",
+        "title": "Shimmer (LoFi, Chill)",
+        "source": "manual_harvest",
+        "storage_bucket": "post-music",
+        "storage_path": "post-music/global/neutral/neutral_lofi_shimmer_021.mp3",
+        "sha256": "5bf681363f35db4e0872f63fdeb1b18d1bdb9e305ef2171777922ef9fcdb8464",
+        "mime": "audio/mpeg",
+        "bytes": 7228045,
+        "duration_seconds": 180.672,
+        "loudness_lufs": null,
+        "bpm": null,
+        "mood": "neutral",
+        "energy": "low",
+        "tempo_band": "mid",
+        "genre": "electronic",
+        "vocals": "instrumental_only",
+        "text_overlay_safe": null,
+        "approval_status": "intake_candidate",
+        "approved": false,
+        "production_use_allowed": false,
+        "is_active": false
+      },
+      "music_license": {
+        "license_type": "cc0",
+        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
+        "source_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/shimmer-lofi-chill/",
+        "license_snapshot_hash": "a0d84326450c82502250ec0faa57add532bef638747f3348c03b8ac80b854b5f",
+        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/neutral_lofi_shimmer_021.license.txt",
+        "commercial_use_allowed": true,
+        "social_use_allowed": true,
+        "modification_allowed": true,
+        "paid_ads_allowed": true,
+        "attribution_required": false,
+        "content_id_safe": false,
+        "expiry_date": null
+      },
+      "advisory_only": {
+        "brand_fit_suggestion": [
+          "invegent",
+          "property-pulse"
+        ],
+        "facet_note": "Unobtrusive chill bed — neutral backdrop, low personality.",
+        "local_file": "candidates/neutral_lofi_shimmer_021.mp3",
+        "bitrate": 320000,
+        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi"
+      }
+    },
+    {
+      "music_track": {
+        "track_key": "neutral_lofi_softreset_022",
+        "title": "Soft Reset",
+        "source": "manual_harvest",
+        "storage_bucket": "post-music",
+        "storage_path": "post-music/global/neutral/neutral_lofi_softreset_022.mp3",
+        "sha256": "9bedd59cdd0706be2d0ab9f436d73c45d95eecf55d2d1a7e68b1e484dfeabb99",
+        "mime": "audio/mpeg",
+        "bytes": 7669852,
+        "duration_seconds": 185.568,
+        "loudness_lufs": null,
+        "bpm": null,
+        "mood": "neutral",
+        "energy": "low",
+        "tempo_band": "slow",
+        "genre": "electronic",
+        "vocals": "instrumental_only",
+        "text_overlay_safe": null,
+        "approval_status": "intake_candidate",
+        "approved": false,
+        "production_use_allowed": false,
+        "is_active": false
+      },
+      "music_license": {
+        "license_type": "cc0",
+        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
+        "source_url": "https://freemusicarchive.org/music/holiznacc0/we-drove-all-night-game-soundtrack/soft-reset/",
+        "license_snapshot_hash": "0eb130a78b1e2353685cf3395fc04577d0491275e56822c60028288aca995bb9",
+        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/neutral_lofi_softreset_022.license.txt",
+        "commercial_use_allowed": true,
+        "social_use_allowed": true,
+        "modification_allowed": true,
+        "paid_ads_allowed": true,
+        "attribution_required": false,
+        "content_id_safe": false,
+        "expiry_date": null
+      },
+      "advisory_only": {
+        "brand_fit_suggestion": [
+          "invegent",
+          "property-pulse"
+        ],
+        "facet_note": "From a game-soundtrack album; restrained, non-narrative.",
+        "local_file": "candidates/neutral_lofi_softreset_022.mp3",
+        "bitrate": 320000,
+        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/we-drove-all-night-game-soundtrack"
+      }
+    },
+    {
+      "music_track": {
+        "track_key": "uplifting_lofi_bubbles_014",
+        "title": "Bubbles (Lofi, Bright, Relaxed)",
+        "source": "manual_harvest",
+        "storage_bucket": "post-music",
+        "storage_path": "post-music/global/uplifting/uplifting_lofi_bubbles_014.mp3",
+        "sha256": "73efb557d8cfcca0f5cf3b435d3a0157bf9a702115b55266b8a2529f3997b542",
+        "mime": "audio/mpeg",
+        "bytes": 5907043,
+        "duration_seconds": 147.648,
+        "loudness_lufs": null,
+        "bpm": null,
+        "mood": "uplifting",
+        "energy": "medium",
+        "tempo_band": "mid",
+        "genre": "electronic",
+        "vocals": "instrumental_only",
+        "text_overlay_safe": null,
+        "approval_status": "intake_candidate",
+        "approved": false,
+        "production_use_allowed": false,
+        "is_active": false
+      },
+      "music_license": {
+        "license_type": "cc0",
+        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
+        "source_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/bubbles-lofi-bright-relaxed/",
+        "license_snapshot_hash": "b6d970f4795741986aaa9b69c1783b7fb0e23841db7d32442cf73d67e4bb755a",
+        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/uplifting_lofi_bubbles_014.license.txt",
+        "commercial_use_allowed": true,
+        "social_use_allowed": true,
+        "modification_allowed": true,
+        "paid_ads_allowed": true,
+        "attribution_required": false,
+        "content_id_safe": false,
+        "expiry_date": null
+      },
+      "advisory_only": {
+        "brand_fit_suggestion": [
+          "property-pulse",
+          "invegent"
+        ],
+        "facet_note": "Source tags it 'Bright, Relaxed' — bright without being saccharine.",
+        "local_file": "candidates/uplifting_lofi_bubbles_014.mp3",
+        "bitrate": 320000,
+        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi"
+      }
+    },
+    {
+      "music_track": {
+        "track_key": "uplifting_lofi_hope_010",
+        "title": "Hope On Repeat",
+        "source": "manual_harvest",
+        "storage_bucket": "post-music",
+        "storage_path": "post-music/global/uplifting/uplifting_lofi_hope_010.mp3",
+        "sha256": "e781cf3926ea5b769f3b5667011234f4524cbcb06e539ba563c7f15fd805477a",
+        "mime": "audio/mpeg",
+        "bytes": 6884136,
+        "duration_seconds": 163.728,
+        "loudness_lufs": null,
+        "bpm": null,
+        "mood": "uplifting",
+        "energy": "medium",
+        "tempo_band": "mid",
+        "genre": "electronic",
+        "vocals": "instrumental_only",
+        "text_overlay_safe": null,
+        "approval_status": "intake_candidate",
+        "approved": false,
+        "production_use_allowed": false,
+        "is_active": false
+      },
+      "music_license": {
+        "license_type": "cc0",
+        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
+        "source_url": "https://freemusicarchive.org/music/holiznacc0/spring-woke-me-up/hope-on-repeat/",
+        "license_snapshot_hash": "062d7c38b74261fd6f583bb495fcb32a2c88d7f95e6e4348266521309cb042da",
+        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/uplifting_lofi_hope_010.license.txt",
+        "commercial_use_allowed": true,
+        "social_use_allowed": true,
+        "modification_allowed": true,
+        "paid_ads_allowed": true,
+        "attribution_required": false,
+        "content_id_safe": false,
+        "expiry_date": null
+      },
+      "advisory_only": {
+        "brand_fit_suggestion": [
+          "ndis-yarns",
+          "care-for-welfare",
+          "property-pulse"
+        ],
+        "facet_note": "Title reads hopeful/forward-moving; strongest 'positive news' bed candidate in the batch.",
+        "local_file": "candidates/uplifting_lofi_hope_010.mp3",
+        "bitrate": 320000,
+        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/spring-woke-me-up"
+      }
+    },
+    {
+      "music_track": {
+        "track_key": "uplifting_lofi_springsight_011",
+        "title": "Spring In Sight",
+        "source": "manual_harvest",
+        "storage_bucket": "post-music",
+        "storage_path": "post-music/global/uplifting/uplifting_lofi_springsight_011.mp3",
+        "sha256": "31b8701fbc795f05881d7544943e64983cd008732d1388bef07bd7dd6d4a87a8",
+        "mime": "audio/mpeg",
+        "bytes": 5614056,
+        "duration_seconds": 131.976,
+        "loudness_lufs": null,
+        "bpm": null,
+        "mood": "uplifting",
+        "energy": "medium",
+        "tempo_band": "mid",
+        "genre": "electronic",
+        "vocals": "instrumental_only",
+        "text_overlay_safe": null,
+        "approval_status": "intake_candidate",
+        "approved": false,
+        "production_use_allowed": false,
+        "is_active": false
+      },
+      "music_license": {
+        "license_type": "cc0",
+        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
+        "source_url": "https://freemusicarchive.org/music/holiznacc0/spring-woke-me-up/spring-in-sight/",
+        "license_snapshot_hash": "6807ba0bf6748316fc1e2a35a34cbd8633928fef4d21e3c47717f5671bdb70d8",
+        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/uplifting_lofi_springsight_011.license.txt",
+        "commercial_use_allowed": true,
+        "social_use_allowed": true,
+        "modification_allowed": true,
+        "paid_ads_allowed": true,
+        "attribution_required": false,
+        "content_id_safe": false,
+        "expiry_date": null
+      },
+      "advisory_only": {
+        "brand_fit_suggestion": [
+          "ndis-yarns",
+          "care-for-welfare"
+        ],
+        "facet_note": "Spring/renewal framing; shortest uplifting track (132s).",
+        "local_file": "candidates/uplifting_lofi_springsight_011.mp3",
+        "bitrate": 320000,
+        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/spring-woke-me-up"
+      }
+    },
+    {
+      "music_track": {
+        "track_key": "uplifting_lofi_tranquilmind_012",
+        "title": "Tranquil Mindscape (Lofi, Happy, Reflection)",
+        "source": "manual_harvest",
+        "storage_bucket": "post-music",
+        "storage_path": "post-music/global/uplifting/uplifting_lofi_tranquilmind_012.mp3",
+        "sha256": "488d9693c13e44c5213c0647ee89ea91b21e17d9ac602225a78ee089720134c0",
+        "mime": "audio/mpeg",
+        "bytes": 6143203,
+        "duration_seconds": 153.552,
+        "loudness_lufs": null,
+        "bpm": null,
+        "mood": "uplifting",
+        "energy": "low",
+        "tempo_band": "slow",
+        "genre": "electronic",
+        "vocals": "instrumental_only",
+        "text_overlay_safe": null,
+        "approval_status": "intake_candidate",
+        "approved": false,
+        "production_use_allowed": false,
+        "is_active": false
+      },
+      "music_license": {
+        "license_type": "cc0",
+        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
+        "source_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/tranquil-mindscape-lofi-happy-reflection/",
+        "license_snapshot_hash": "14d77b5b065656bfdbcc3acb4b9f020fce356948cab82e2562d0d770952fb81a",
+        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/uplifting_lofi_tranquilmind_012.license.txt",
+        "commercial_use_allowed": true,
+        "social_use_allowed": true,
+        "modification_allowed": true,
+        "paid_ads_allowed": true,
+        "attribution_required": false,
+        "content_id_safe": false,
+        "expiry_date": null
+      },
+      "advisory_only": {
+        "brand_fit_suggestion": [
+          "ndis-yarns",
+          "care-for-welfare"
+        ],
+        "facet_note": "Source tags it 'Happy, Reflection' — uplifting but low-energy; sits between calm and uplifting.",
+        "local_file": "candidates/uplifting_lofi_tranquilmind_012.mp3",
+        "bitrate": 320000,
+        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi"
+      }
+    },
+    {
+      "music_track": {
+        "track_key": "uplifting_lofi_walkingaway_013",
+        "title": "Walking Away (Lofi, Peaceful, Motivating)",
+        "source": "manual_harvest",
+        "storage_bucket": "post-music",
+        "storage_path": "post-music/global/uplifting/uplifting_lofi_walkingaway_013.mp3",
+        "sha256": "fd8a618a4076b76f02f69414d6beb4ad7ddf3b8c26164085bd6dc1a9fd2f7610",
+        "mime": "audio/mpeg",
+        "bytes": 6243043,
+        "duration_seconds": 156.048,
+        "loudness_lufs": null,
+        "bpm": null,
+        "mood": "uplifting",
+        "energy": "medium",
+        "tempo_band": "mid",
+        "genre": "electronic",
+        "vocals": "instrumental_only",
+        "text_overlay_safe": null,
+        "approval_status": "intake_candidate",
+        "approved": false,
+        "production_use_allowed": false,
+        "is_active": false
+      },
+      "music_license": {
+        "license_type": "cc0",
+        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
+        "source_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/walking-away-lofi-peaceful-motivating/",
+        "license_snapshot_hash": "99bf92297e1b92dadb01acd3fdd57738e11f77e04d543bccd3f7aace583cb4cc",
+        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/uplifting_lofi_walkingaway_013.license.txt",
+        "commercial_use_allowed": true,
+        "social_use_allowed": true,
+        "modification_allowed": true,
+        "paid_ads_allowed": true,
+        "attribution_required": false,
+        "content_id_safe": false,
+        "expiry_date": null
+      },
+      "advisory_only": {
+        "brand_fit_suggestion": [
+          "invegent",
+          "property-pulse"
+        ],
+        "facet_note": "Source tags it 'Peaceful, Motivating' — the closest thing in this batch to a CORPORATE bed; PK may prefer re-tagging mood=corporate after a listen.",
+        "local_file": "candidates/uplifting_lofi_walkingaway_013.mp3",
+        "bitrate": 320000,
+        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi"
+      }
+    },
+    {
+      "music_track": {
+        "track_key": "warm_lofi_humanagain_015",
+        "title": "Feeling Human Again",
+        "source": "manual_harvest",
+        "storage_bucket": "post-music",
+        "storage_path": "post-music/global/warm/warm_lofi_humanagain_015.mp3",
+        "sha256": "896a6ddf192c6bca7f135d44bd42c7070b263215039cde22f19501f9beb9dbaf",
+        "mime": "audio/mpeg",
+        "bytes": 9569256,
+        "duration_seconds": 230.856,
+        "loudness_lufs": null,
+        "bpm": null,
+        "mood": "warm",
+        "energy": "low",
+        "tempo_band": "slow",
+        "genre": "electronic",
+        "vocals": "instrumental_only",
+        "text_overlay_safe": null,
+        "approval_status": "intake_candidate",
+        "approved": false,
+        "production_use_allowed": false,
+        "is_active": false
+      },
+      "music_license": {
+        "license_type": "cc0",
+        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
+        "source_url": "https://freemusicarchive.org/music/holiznacc0/spring-woke-me-up/feeling-human-again/",
+        "license_snapshot_hash": "2e12bd949e2cd3345ae02627257b4aef78b59f4dd9d31e91c3df0817213b6ebe",
+        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/warm_lofi_humanagain_015.license.txt",
+        "commercial_use_allowed": true,
+        "social_use_allowed": true,
+        "modification_allowed": true,
+        "paid_ads_allowed": true,
+        "attribution_required": false,
+        "content_id_safe": false,
+        "expiry_date": null
+      },
+      "advisory_only": {
+        "brand_fit_suggestion": [
+          "ndis-yarns",
+          "care-for-welfare"
+        ],
+        "facet_note": "Longest in batch (231s) — trim/loop candidate. Human-centred title suits care-sector tone.",
+        "local_file": "candidates/warm_lofi_humanagain_015.mp3",
+        "bitrate": 320000,
+        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/spring-woke-me-up"
+      }
+    },
+    {
+      "music_track": {
+        "track_key": "warm_lofi_rooftops_018",
+        "title": "Roof Tops",
+        "source": "manual_harvest",
+        "storage_bucket": "post-music",
+        "storage_path": "post-music/global/warm/warm_lofi_rooftops_018.mp3",
+        "sha256": "f6e619fbfdc0898c409494d5c810d34d9cd29be2b75bb2d8c197e1edb37155b5",
+        "mime": "audio/mpeg",
+        "bytes": 8902309,
+        "duration_seconds": 214.464,
+        "loudness_lufs": null,
+        "bpm": null,
+        "mood": "warm",
+        "energy": "low",
+        "tempo_band": "slow",
+        "genre": "electronic",
+        "vocals": "instrumental_only",
+        "text_overlay_safe": null,
+        "approval_status": "intake_candidate",
+        "approved": false,
+        "production_use_allowed": false,
+        "is_active": false
+      },
+      "music_license": {
+        "license_type": "cc0",
+        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
+        "source_url": "https://freemusicarchive.org/music/holiznacc0/summer-air-lo-fi/roof-tops/",
+        "license_snapshot_hash": "b4753f366b953044228fb392845619817dc7236411e784c0a20fc793eb83b55e",
+        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/warm_lofi_rooftops_018.license.txt",
+        "commercial_use_allowed": true,
+        "social_use_allowed": true,
+        "modification_allowed": true,
+        "paid_ads_allowed": true,
+        "attribution_required": false,
+        "content_id_safe": false,
+        "expiry_date": null
+      },
+      "advisory_only": {
+        "brand_fit_suggestion": [
+          "property-pulse"
+        ],
+        "facet_note": "214s — trim/loop candidate. Rooftop/urban framing reads property-adjacent.",
+        "local_file": "candidates/warm_lofi_rooftops_018.mp3",
+        "bitrate": 320000,
+        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/summer-air-lo-fi"
+      }
+    },
+    {
+      "music_track": {
+        "track_key": "warm_lofi_sunlight_016",
+        "title": "Faded in the Sunlight",
+        "source": "manual_harvest",
+        "storage_bucket": "post-music",
+        "storage_path": "post-music/global/warm/warm_lofi_sunlight_016.mp3",
+        "sha256": "0262718d6091a8a456b870b3af749a48b83d7903a6c551a99a662e67bf206aa4",
+        "mime": "audio/mpeg",
+        "bytes": 7453669,
+        "duration_seconds": 178.248,
+        "loudness_lufs": null,
+        "bpm": null,
+        "mood": "warm",
+        "energy": "low",
+        "tempo_band": "slow",
+        "genre": "electronic",
+        "vocals": "instrumental_only",
+        "text_overlay_safe": null,
+        "approval_status": "intake_candidate",
+        "approved": false,
+        "production_use_allowed": false,
+        "is_active": false
+      },
+      "music_license": {
+        "license_type": "cc0",
+        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
+        "source_url": "https://freemusicarchive.org/music/holiznacc0/summer-air-lo-fi/faded-in-the-sunlight/",
+        "license_snapshot_hash": "a79db1a008a56d0a34c7802dc974481d2b6a5fbe2705d621721f810048a7c1ea",
+        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/warm_lofi_sunlight_016.license.txt",
+        "commercial_use_allowed": true,
+        "social_use_allowed": true,
+        "modification_allowed": true,
+        "paid_ads_allowed": true,
+        "attribution_required": false,
+        "content_id_safe": false,
+        "expiry_date": null
+      },
+      "advisory_only": {
+        "brand_fit_suggestion": [
+          "care-for-welfare",
+          "ndis-yarns"
+        ],
+        "facet_note": "Soft/warm summer framing.",
+        "local_file": "candidates/warm_lofi_sunlight_016.mp3",
+        "bitrate": 320000,
+        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/summer-air-lo-fi"
+      }
+    },
+    {
+      "music_track": {
+        "track_key": "warm_lofi_warmfuzz_017",
+        "title": "Warm Fuzz (LoFi, Retro)",
+        "source": "manual_harvest",
+        "storage_bucket": "post-music",
+        "storage_path": "post-music/global/warm/warm_lofi_warmfuzz_017.mp3",
+        "sha256": "974ffd083b09aecbe60412f3376db07fb241adbbb0abf89698a22229a2de02c6",
+        "mime": "audio/mpeg",
+        "bytes": 6905485,
+        "duration_seconds": 172.608,
+        "loudness_lufs": null,
+        "bpm": null,
+        "mood": "warm",
+        "energy": "medium",
+        "tempo_band": "mid",
+        "genre": "electronic",
+        "vocals": "instrumental_only",
+        "text_overlay_safe": null,
+        "approval_status": "intake_candidate",
+        "approved": false,
+        "production_use_allowed": false,
+        "is_active": false
+      },
+      "music_license": {
+        "license_type": "cc0",
+        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
+        "source_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/warm-fuzz-lofi-retro/",
+        "license_snapshot_hash": "2d76c867bbbfaee128421d7050461d4e6b010c9191067ca9111c503b0681b14e",
+        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/warm_lofi_warmfuzz_017.license.txt",
+        "commercial_use_allowed": true,
+        "social_use_allowed": true,
+        "modification_allowed": true,
+        "paid_ads_allowed": true,
+        "attribution_required": false,
+        "content_id_safe": false,
+        "expiry_date": null
+      },
+      "advisory_only": {
+        "brand_fit_suggestion": [
+          "property-pulse",
+          "care-for-welfare"
+        ],
+        "facet_note": "Retro-tinted warmth; more texture than the other warm picks.",
+        "local_file": "candidates/warm_lofi_warmfuzz_017.mp3",
+        "bitrate": 320000,
+        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi"
+      }
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+[
+  {
+    "track_key": "warm_lofi_warmfuzz_017",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/warm-fuzz-lofi-retro/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/Qrd0JkjTC7XXJwtS6LvCHIJ9K1FLXewdrYOQHhc5.mp3",
+    "license_urls_found": [
+      "creativecommons.org/ns",
+      "creativecommons.org/p/zero/1.0/88x31.png",
+      "creativecommons.org/publicdomain/zero/1.0/"
+    ],
+    "local_file": "candidates/warm_lofi_warmfuzz_017.mp3",
+    "bytes": 6905485,
+    "sha256": "974ffd083b09aecbe60412f3376db07fb241adbbb0abf89698a22229a2de02c6",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 172.608,
+    "bitrate": 320000
+  },
+  {
+    "track_key": "warm_lofi_rooftops_018",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/summer-air-lo-fi/roof-tops/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/2hFTiuqYI7onbLzpi9ldoBP8AYeuStsCUxTqm6vd.mp3",
+    "license_urls_found": [
+      "creativecommons.org/ns",
+      "creativecommons.org/p/zero/1.0/88x31.png",
+      "creativecommons.org/publicdomain/zero/1.0/"
+    ],
+    "local_file": "candidates/warm_lofi_rooftops_018.mp3",
+    "bytes": 8902309,
+    "sha256": "f6e619fbfdc0898c409494d5c810d34d9cd29be2b75bb2d8c197e1edb37155b5",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 214.464,
+    "bitrate": 320000
+  },
+  {
+    "track_key": "calm_lofi_calmcurrents_019",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/calm-currents-lofi-relax-calm/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/4rKapZUMNnNSPAOvpjlfSH6B5Ib8rgEWdvjnM7C6.mp3",
+    "license_urls_found": [
+      "creativecommons.org/ns",
+      "creativecommons.org/p/zero/1.0/88x31.png",
+      "creativecommons.org/publicdomain/zero/1.0/"
+    ],
+    "local_file": "candidates/calm_lofi_calmcurrents_019.mp3",
+    "bytes": 5907043,
+    "sha256": "2dcb297376cfe0cb8a547ce74e4d10f406649e007ff01d6e2edb573996d23dc4",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 147.648,
+    "bitrate": 320000
+  },
+  {
+    "track_key": "calm_lofi_saturation_020",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/saturation-lofi-calm-relaxed/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/AzjU0CJxOfUq7297vkoAR1oh6oz2JHI3aOlzjVOV.mp3",
+    "license_urls_found": [
+      "creativecommons.org/ns",
+      "creativecommons.org/p/zero/1.0/88x31.png",
+      "creativecommons.org/publicdomain/zero/1.0/"
+    ],
+    "local_file": "candidates/calm_lofi_saturation_020.mp3",
+    "bytes": 6240163,
+    "sha256": "340a14dffd98001edbae1e7da16e2b9f8f54e0687cd215fa5dfc0b351f4777c2",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 155.976,
+    "bitrate": 320000
+  },
+  {
+    "track_key": "neutral_lofi_shimmer_021",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/shimmer-lofi-chill/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/JX8dB2Y2tCty4tibXtqqd04m1IVgPegvzOeLOSzP.mp3",
+    "license_urls_found": [
+      "creativecommons.org/ns",
+      "creativecommons.org/p/zero/1.0/88x31.png",
+      "creativecommons.org/publicdomain/zero/1.0/"
+    ],
+    "local_file": "candidates/neutral_lofi_shimmer_021.mp3",
+    "bytes": 7228045,
+    "sha256": "5bf681363f35db4e0872f63fdeb1b18d1bdb9e305ef2171777922ef9fcdb8464",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 180.672,
+    "bitrate": 320000
+  },
+  {
+    "track_key": "neutral_lofi_softreset_022",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/we-drove-all-night-game-soundtrack/soft-reset/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/JWMIamNyg7RL9rhqfbTtEPmV2SHevdYvYFpOmUVO.mp3",
+    "license_urls_found": [
+      "creativecommons.org/ns",
+      "creativecommons.org/p/zero/1.0/88x31.png",
+      "creativecommons.org/publicdomain/zero/1.0/"
+    ],
+    "local_file": "candidates/neutral_lofi_softreset_022.mp3",
+    "bytes": 7669852,
+    "sha256": "9bedd59cdd0706be2d0ab9f436d73c45d95eecf55d2d1a7e68b1e484dfeabb99",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 185.568,
+    "bitrate": 320000
+  }
+]

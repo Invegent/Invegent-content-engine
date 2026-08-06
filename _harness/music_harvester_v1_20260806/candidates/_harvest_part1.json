@@ -1,0 +1,121 @@
+[
+  {
+    "track_key": "uplifting_lofi_hope_010",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/spring-woke-me-up/hope-on-repeat/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/MvP2fPRhrWkQwsrgVB7U9rqSgLBtOfbD0vssM4LP.mp3",
+    "license_urls_found": [
+      "creativecommons.org/ns",
+      "creativecommons.org/p/zero/1.0/88x31.png",
+      "creativecommons.org/publicdomain/zero/1.0/"
+    ],
+    "local_file": "candidates/uplifting_lofi_hope_010.mp3",
+    "bytes": 6884136,
+    "sha256": "e781cf3926ea5b769f3b5667011234f4524cbcb06e539ba563c7f15fd805477a",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 163.728,
+    "bitrate": 320000
+  },
+  {
+    "track_key": "uplifting_lofi_springsight_011",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/spring-woke-me-up/spring-in-sight/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/gB8bYfRNFcBbVVlfcKy1geZIynWwq4JzuejzBIYI.mp3",
+    "license_urls_found": [
+      "creativecommons.org/ns",
+      "creativecommons.org/p/zero/1.0/88x31.png",
+      "creativecommons.org/publicdomain/zero/1.0/"
+    ],
+    "local_file": "candidates/uplifting_lofi_springsight_011.mp3",
+    "bytes": 5614056,
+    "sha256": "31b8701fbc795f05881d7544943e64983cd008732d1388bef07bd7dd6d4a87a8",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 131.976,
+    "bitrate": 320000
+  },
+  {
+    "track_key": "uplifting_lofi_tranquilmind_012",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/tranquil-mindscape-lofi-happy-reflection/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/uxGaqYrlWHy1w4jA6fJki0NlNx6xkkFG5BMwI8JN.mp3",
+    "license_urls_found": [
+      "creativecommons.org/ns",
+      "creativecommons.org/p/zero/1.0/88x31.png",
+      "creativecommons.org/publicdomain/zero/1.0/"
+    ],
+    "local_file": "candidates/uplifting_lofi_tranquilmind_012.mp3",
+    "bytes": 6143203,
+    "sha256": "488d9693c13e44c5213c0647ee89ea91b21e17d9ac602225a78ee089720134c0",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 153.552,
+    "bitrate": 320000
+  },
+  {
+    "track_key": "uplifting_lofi_walkingaway_013",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/walking-away-lofi-peaceful-motivating/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/WOtcP3GhbgTD8CuC6sEgpQOEXMyNeXYbTNmHjgN6.mp3",
+    "license_urls_found": [
+      "creativecommons.org/ns",
+      "creativecommons.org/p/zero/1.0/88x31.png",
+      "creativecommons.org/publicdomain/zero/1.0/"
+    ],
+    "local_file": "candidates/uplifting_lofi_walkingaway_013.mp3",
+    "bytes": 6243043,
+    "sha256": "fd8a618a4076b76f02f69414d6beb4ad7ddf3b8c26164085bd6dc1a9fd2f7610",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 156.048,
+    "bitrate": 320000
+  },
+  {
+    "track_key": "uplifting_lofi_bubbles_014",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/bubbles-lofi-bright-relaxed/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/zh5usndkyEfVvKOz8dvsrCd1Ga0jfz4xIcLUendD.mp3",
+    "license_urls_found": [
+      "creativecommons.org/ns",
+      "creativecommons.org/p/zero/1.0/88x31.png",
+      "creativecommons.org/publicdomain/zero/1.0/"
+    ],
+    "local_file": "candidates/uplifting_lofi_bubbles_014.mp3",
+    "bytes": 5907043,
+    "sha256": "73efb557d8cfcca0f5cf3b435d3a0157bf9a702115b55266b8a2529f3997b542",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 147.648,
+    "bitrate": 320000
+  },
+  {
+    "track_key": "warm_lofi_humanagain_015",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/spring-woke-me-up/feeling-human-again/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/34HeXCcKQZgCc2eJyy2SN7advmBQKLN82bCHYpFL.mp3",
+    "license_urls_found": [
+      "creativecommons.org/ns",
+      "creativecommons.org/p/zero/1.0/88x31.png",
+      "creativecommons.org/publicdomain/zero/1.0/"
+    ],
+    "local_file": "candidates/warm_lofi_humanagain_015.mp3",
+    "bytes": 9569256,
+    "sha256": "896a6ddf192c6bca7f135d44bd42c7070b263215039cde22f19501f9beb9dbaf",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 230.856,
+    "bitrate": 320000
+  },
+  {
+    "track_key": "warm_lofi_sunlight_016",
+    "page_url": "https://freemusicarchive.org/music/holiznacc0/summer-air-lo-fi/faded-in-the-sunlight/",
+    "mp3_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/N2IaHMtlOUlfXdZHt4UGciKbJV7mB4vemZjAlj5K.mp3",
+    "license_urls_found": [
+      "creativecommons.org/ns",
+      "creativecommons.org/p/zero/1.0/88x31.png",
+      "creativecommons.org/publicdomain/zero/1.0/"
+    ],
+    "local_file": "candidates/warm_lofi_sunlight_016.mp3",
+    "bytes": 7453669,
+    "sha256": "0262718d6091a8a456b870b3af749a48b83d7903a6c551a99a662e67bf206aa4",
+    "mime": "audio/mpeg",
+    "is_valid_mp3": true,
+    "duration_seconds": 178.248,
+    "bitrate": 320000
+  }
+]
