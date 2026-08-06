@@ -6,6 +6,13 @@
 
 ---
 
+> **✅ v6.161 — M13 LANE 4 BUILT: Asset Gap Build-Pack status display (T2 · isolated dashboard branch `claude/m13-lane4-asset-gap-buildpack-status` @ `e90a469`, PUSHED for evidence; UNDEPLOYED, no PR/merge)** — result: `docs/briefs/results/m13-lane4-asset-gap-buildpack-status-result-v1.md`; design + IA-lint record: `docs/briefs/artifacts/m13-lane4-asset-gap-buildpack-status-design-v1.md` (commit `fe1a3f7`).
+> · **Honesty contract implemented as designed:** `diff_verdict` never renders alone — always paired with `capture_provenance` (none/fixture/self_check/live_read); a pinned test invariant forbids any row claiming `live_read` until Lane 5 performs one; fixture/self_check pills neutral-toned; non-dismissable amber banner states the snapshot is manual/dated until Lane 3 replaces it with a live read. Read-only/advisory throughout (§2.4 exclusions honored in the UI).
+> · Full chain: ia-lint pre-impl (WARN, 0 blocks) → 13/13 new tests + M8 regression suite → tsc + prod build clean → PK-authenticated live visual verification (populated + honest-empty states; one console error confirmed PRE-EXISTING on base) → branch-warden safe → ia-lint re-run on the real diff (0 blocks, prior warn resolved).
+> · Residual advisories recorded (non-blocking): 3 style/DRY items · static-snapshot drift carry until Lane 3 · two adjacent primary questions on the asset-gap tab (PK glance if a third accretes) · **merge-time note: dashboard base carries one unpushed cockpit-only commit (`e52951a`, disjoint files) — later merge won't be plain fast-forward.** Deploy = post-watch, rides the dashboard batch with M8.1/P-1.
+
+---
+
 > **✅ v6.160 — PK PRE-RULING (agenda item J): M13 LANE SEQUENCING SETTLED + LANE 4 PULLED FORWARD (T1 ruling record; Lane-4 build opened, isolated/undeployed)** — recorded verbatim-faithful in `docs/briefs/cgu-final-watch-expiry-sitting-agenda-v1.md` item J.
 > · Lane 2 CONFIRMED DONE (folded into landed Lane 1; diff engine now proven on a second real artifact — M6 Blueprint clean + deliberately-drifted-caught). **Lane 4 (Asset Gap Build-Pack display, T2): runs NOW** — never watch-gated; seeded to the M13-context session (isolated dashboard branch, undeployed, read-only/advisory UI, §2.4 exclusions reach the UI). **Lane 3 (T3): starts when Phase-2 apply authorization clears** — its only remaining gate is the hold itself. **Lane 5 (T3): immediately after Lane 3**, proof input = the real M6 Blueprint.
 > · First sitting-agenda item retired by pre-ruling; the sitting shrinks. Register head note: this cut is the control tower's; the pre-ruling arrived via the S3 session relay, PK-attributed.
