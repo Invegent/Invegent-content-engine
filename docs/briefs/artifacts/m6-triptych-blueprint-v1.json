@@ -1,0 +1,134 @@
+{
+  "_transcription_note": "M6 multi-scene (Hook/Proof/CTA) Blueprint JSON, transcribed from the creatomate-specialist design package (v6.147 build-acceleration lane, agent run ae5924be310089a5b) into the M13 v1 Blueprint schema (docs/creative-library/m13-blueprint-capture-schema-v1.md §1). This is a DESIGN-STAGE instance: no Creatomate template exists yet, nothing here is registered, proven, or approved. Two schema gaps were found while transcribing (see the result doc's §Blueprint-schema-fit-findings) and are surfaced here inline rather than silently worked around: (1) `compatible_ice_format_keys` names a format_key ('video_short_triptych') that does NOT yet exist in ai-worker's format taxonomy -- the schema (registry-schema-v2.md:90, reused verbatim) states 'existing governed format keys only, no new taxonomy invented by a Blueprint', so this field is, strictly, in schema violation by construction until a format_key is minted elsewhere (PK/product decision, specialist open_questions #1) -- flagged, not silently substituted. (2) `composed_of_patterns` is empty: no registered Pattern object in either property-pulse.json or registry-schema-v2.md's Pattern vocabulary covers video-SCENE composition (registered patterns are static/carousel branding+headline patterns only, e.g. pp_branding_strip_v1, pp_headline_block_v1) -- there is no existing pattern_key to cite, so none was invented. `client_slug` is set to 'property-pulse' as a WORKING PLACEHOLDER for this draft instance only, NOT a PK client-scoping decision -- chosen because PP is the only client with proven governed video templates today (video_short_stat, video_short_kinetic) and every evidence citation in the design package (getBrand/brand_colour_primary+secondary conventions) is drawn from PP's live implementation; the specialist's own open_questions #2 leaves client-generic-vs-client-scoped explicitly open. The dormant `sub_sequence_key` seam is null on every element -- per the mission's own instruction and per the specialist's package (which resolved the M13 packet's named M6 (a)/(b) fork as (a): one richer-elements single render, not an N-stitched multi-object sequence), this Blueprint needs NO M13 schema extension; the scalar v1 schema already expresses M6's 3-scene design without modification.",
+  "blueprint_id": "blueprint_m6_triptych_v1",
+  "blueprint_version": "v1.0.0",
+  "schema_version": "v1",
+  "artifact_hash": "sha256:7c184d13e6af3aac1bb4e85e7dc8ae5b1f8bf0b45b0cfcf65eab73dc47c88a48",
+  "client_slug": "property-pulse",
+  "template_family_key": "property-pulse-video-triptych",
+  "template_variant_key_intended": "triptych-hook-proof-cta-9x16-video-v1",
+  "compatible_ice_format_keys": ["video_short_triptych"],
+  "aspect_ratio": "9:16",
+  "output_type": "mp4",
+  "render_engine": "creatomate",
+  "duration_seconds": 38,
+  "composed_of_patterns": [],
+  "elements": [
+    {
+      "element_key": "BarTop",
+      "purpose": "Persistent brand chrome bar (top) -- accent colour band framing the composition throughout all 3 scenes.",
+      "field_class": "derived",
+      "policy": "c.client_brand_profile.brand_colour_secondary via getBrand() -- video-worker/index.ts:1115-1121, NOT resolve_brand_assets.",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "BarBottom",
+      "purpose": "Persistent brand chrome bar (bottom) -- mirrors BarTop.",
+      "field_class": "derived",
+      "policy": "c.client_brand_profile.brand_colour_secondary via getBrand() -- video-worker/index.ts:1115-1121.",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "Logo",
+      "purpose": "Brand mark, persistent top-left across all 3 scenes.",
+      "field_class": "governed_asset",
+      "policy": "Resolver-driven via slot_resolution.modifications['Logo.source'], REQUIRED fail-loud (no text-wordmark fallback) -- mirrors b1_video_kinetic.ts:266-273. asset_key pp_logo_primary (property-pulse.json:41,344,396) for the property-pulse placeholder scoping.",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "Scene1Headline",
+      "purpose": "Scene 1 (Hook, t=0-6s): pattern-interrupt headline that opens the video.",
+      "field_class": "ai_authored",
+      "max_chars": 60,
+      "policy": "hard_gate_throw -- borrowed from b1_video_kinetic.ts:91 (B1_VIDEO_KINETIC_HOOK_HEADLINE_MAX_CHARS), matching the live ai-worker kinetic prompt (ai-worker/index.ts:813).",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "Scene1Subtitle",
+      "purpose": "Scene 1: fixed decorative continuation cue beneath the hook headline.",
+      "field_class": "renderer_fixed",
+      "policy": "Worker-set literal '↓ Keep watching' -- mirrors buildKineticTextSpec/b1_video_kinetic.ts HookSubtitle (index.ts:1261 / b1_video_kinetic.ts:315).",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "Scene2Circle",
+      "purpose": "Scene 2 (Proof, t=6-32s): decorative background circle behind the stat value -- not modifiable, not AI-authored.",
+      "field_class": "renderer_fixed",
+      "policy": "Static decorative shape, brand-accent colour, low opacity -- no field value, present for visual composition only.",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "Scene2StatValue",
+      "purpose": "Scene 2: the headline number/stat -- the proof payload.",
+      "field_class": "ai_authored",
+      "max_chars": 12,
+      "policy": "hard_gate_throw -- BORROWED from b1_video_stat.ts:92 (B1_VIDEO_STAT_VALUE_MAX_CHARS). No M6-specific ai-worker prompt/envelope exists yet to source a native limit; flagged to_be_calibrated in the design package (overflow_risk=med) since this borrowed limit was set for a 12s single-beat scene, not M6's 24.5s-duration proof scene.",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "Scene2Rule",
+      "purpose": "Scene 2: decorative underline/divider beneath the stat value -- not modifiable.",
+      "field_class": "renderer_fixed",
+      "policy": "Static decorative rule, brand-accent colour, wipe-in animation.",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "Scene2StatLabel",
+      "purpose": "Scene 2: what the stat number IS (label).",
+      "field_class": "ai_authored",
+      "max_chars": 48,
+      "policy": "hard_gate_throw -- BORROWED from b1_video_stat.ts:93 (B1_VIDEO_STAT_LABEL_MAX_CHARS). Same to_be_calibrated caveat as Scene2StatValue.",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "Scene2ContextLine",
+      "purpose": "Scene 2: one supporting sentence making the stat meaningful.",
+      "field_class": "ai_authored",
+      "max_chars": 160,
+      "policy": "hard_gate_throw -- BORROWED from b1_video_stat.ts:94 (B1_VIDEO_CONTEXT_LINE_MAX_CHARS). Same to_be_calibrated caveat as Scene2StatValue.",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "Scene3Watermark",
+      "purpose": "Scene 3 (CTA, t=32-38s): decorative oversized '?' watermark behind the CTA headline -- not modifiable.",
+      "field_class": "renderer_fixed",
+      "policy": "Static decorative text glyph, brand-accent colour, very low opacity.",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "Scene3Headline",
+      "purpose": "Scene 3: engagement-question CTA headline that closes the video.",
+      "field_class": "ai_authored",
+      "max_chars": 65,
+      "policy": "hard_gate_throw -- borrowed from b1_video_kinetic.ts:94 (B1_VIDEO_KINETIC_CTA_HEADLINE_MAX_CHARS), chosen over stat's differing 90-char CtaText limit (b1_video_stat.ts:95) because Scene3's purpose (a dedicated closing engagement-question scene) structurally matches kinetic's cta scene, not stat's single-beat CtaText line -- flagged as an open PK/ai-worker-authoring decision (specialist open_questions #3), not a settled limit.",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "Scene3Footer",
+      "purpose": "Scene 3: fixed follow-prompt footer beneath the CTA headline.",
+      "field_class": "renderer_fixed",
+      "policy": "Worker-computed literal 'Follow {ClientName} for more' -- mirrors buildKineticTextSpec/b1_video_kinetic.ts CtaFooter (index.ts:1267 / b1_video_kinetic.ts:384).",
+      "sub_sequence_key": null
+    }
+  ],
+  "expected_assets": ["pp_logo_primary"],
+  "registry_linkage": {
+    "target_template_family_key": "property-pulse-video-triptych",
+    "target_template_variant_key": "triptych-hook-proof-cta-9x16-video-v1",
+    "target_capability_contract_ref": null
+  },
+  "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+  "proof_posture": "draft",
+  "evidence": {
+    "status": "draft",
+    "proof_status": "unproven",
+    "proof_gate": null,
+    "render_log_id": null,
+    "source_commit": null,
+    "review_packet": "docs/briefs/results/m6-multi-scene-design-blueprint-result-v1.md",
+    "approved_by": null,
+    "approved_at": null,
+    "notes": "Design-stage Blueprint transcribed from a creatomate-specialist design package (candidate agent, first real mission). No Creatomate template exists; no render has been attempted; nothing here is proven or approved. A Blueprint precedes any render by design (schema doc §1)."
+  },
+  "source_of_authorship": "asset_gap"
+}

@@ -1,0 +1,45 @@
+{
+  "_selfcheck_note": "SELF-CHECK ARTIFACT ONLY -- NOT a real Creatomate capture, NOT a real GET /v1/templates/{id} response. No Creatomate template exists for M6 yet (design-stage). This document is a hand-derived, element-for-element mirror of m6-triptych-blueprint-v1.json, produced solely to run m13-blueprint-capture-diff.mjs in self-check mode and confirm (a) the Blueprint instance is structurally well-formed against the diff engine's validateBlueprint() checks, and (b) the diff engine's four finding classes behave as documented when a Capture matches a Blueprint element-for-element. A CLEAN verdict here proves NOTHING about a live template -- it is a blueprint-vs-blueprint self-consistency check, not Lane 5's real end-to-end proof (schema doc §Handoff, 'still needed').",
+  "capture_id": "capture_m6_triptych_v1_selfcheck",
+  "capture_version": "v1.0.0",
+  "schema_version": "v1",
+  "artifact_hash": "sha256:selfcheck-not-a-real-capture-0000000000000000000000000000000",
+  "captured_at": "2026-08-06T00:00:00Z",
+  "capture_method": "GET /v1/templates/{id}",
+  "provider_template_id": "SELFCHECK-NO-LIVE-TEMPLATE-EXISTS",
+  "raw_source_json": {
+    "_selfcheck_note": "Stand-in only. No live Creatomate read was performed -- no template exists to read."
+  },
+  "raw_source_hash": "sha256:selfcheck-not-a-real-capture-1111111111111111111111111111111",
+  "normalized_elements": [
+    { "element_key": "BarTop", "element_type": "shape", "detected_field_class": "derived", "dimensions": { "x": 0, "y": 140, "width": 1080, "height": 8 } },
+    { "element_key": "BarBottom", "element_type": "shape", "detected_field_class": "derived", "dimensions": { "x": 0, "y": 1620, "width": 1080, "height": 8 } },
+    { "element_key": "Logo", "element_type": "image", "detected_field_class": "governed_asset", "dimensions": { "x": 44, "y": 160, "width": 90, "height": 90 } },
+    { "element_key": "Scene1Headline", "element_type": "text", "detected_field_class": "ai_authored", "dimensions": { "x": 60, "y": 560, "width": 960, "height": 700 } },
+    { "element_key": "Scene1Subtitle", "element_type": "text", "detected_field_class": "renderer_fixed", "dimensions": { "x": 0, "y": 1480, "width": 1080, "height": 40 } },
+    { "element_key": "Scene2Circle", "element_type": "shape", "detected_field_class": "renderer_fixed", "dimensions": { "x": 90, "y": 470, "width": 900, "height": 900 } },
+    { "element_key": "Scene2StatValue", "element_type": "text", "detected_field_class": "ai_authored", "dimensions": { "x": 0, "y": 680, "width": 1080, "height": 220 } },
+    { "element_key": "Scene2Rule", "element_type": "shape", "detected_field_class": "renderer_fixed", "dimensions": { "x": 220, "y": 1060, "width": 640, "height": 6 } },
+    { "element_key": "Scene2StatLabel", "element_type": "text", "detected_field_class": "ai_authored", "dimensions": { "x": 0, "y": 1090, "width": 1080, "height": 50 } },
+    { "element_key": "Scene2ContextLine", "element_type": "text", "detected_field_class": "ai_authored", "dimensions": { "x": 110, "y": 1200, "width": 860, "height": 150 } },
+    { "element_key": "Scene3Watermark", "element_type": "text", "detected_field_class": "renderer_fixed", "dimensions": { "x": 0, "y": 400, "width": 1080, "height": 500 } },
+    { "element_key": "Scene3Headline", "element_type": "text", "detected_field_class": "ai_authored", "dimensions": { "x": 100, "y": 650, "width": 880, "height": 600 } },
+    { "element_key": "Scene3Footer", "element_type": "text", "detected_field_class": "renderer_fixed", "dimensions": { "x": 0, "y": 1450, "width": 1080, "height": 40 } }
+  ],
+  "aspect_ratio": "9:16",
+  "output_type": "mp4",
+  "duration_seconds": 38,
+  "template_variant_key_matched": "triptych-hook-proof-cta-9x16-video-v1",
+  "capture_actor": "selfcheck:m6-transcription-lane-orchestrator",
+  "evidence": {
+    "status": "draft",
+    "proof_status": "unproven",
+    "proof_gate": null,
+    "render_log_id": null,
+    "source_commit": null,
+    "review_packet": null,
+    "approved_by": null,
+    "approved_at": null,
+    "notes": "Self-check fixture only, hand-derived from the Blueprint to exercise the diff engine. Not a Capture of anything real."
+  }
+}
