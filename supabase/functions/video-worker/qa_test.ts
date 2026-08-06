@@ -14,6 +14,7 @@ const FULL_KEYS = [
   'audio_expected', 'voice_expected', 'tts_provider', 'captions_expected',
   'captions_present', 'scene_count', 'avatar_expected', 'fallback_taken',
   'cost_present', 'cost_estimated_flag',
+  'loudness_lufs', 'true_peak_dbtp', 'loudness_measurement_status',
 ];
 
 function assertShape(qa: Record<string, unknown>) {
@@ -150,4 +151,38 @@ Deno.test('safeQa: a normal build passes through unchanged', () => {
   assertEquals(out.v, 1);
   assertEquals(out.engine, 'creatomate');
   assert(!('qa_error' in out), 'no qa_error on a clean build');
+});
+
+// (9) M1 loudness fields (CGU Final L1 lane, dark-write): call sites do not pass
+// these — buildRenderQa must default them, "missing" observable per design §6.
+Deno.test('M1: audio_expected=true render defaults loudness_measurement_status to "pending" with null values', () => {
+  const qa = buildRenderQa({ engine: 'creatomate', audio_expected: true, status: 'succeeded' });
+  assertShape(qa);
+  assertEquals(qa.loudness_measurement_status, 'pending');
+  assertEquals(qa.loudness_lufs, null);
+  assertEquals(qa.true_peak_dbtp, null);
+});
+
+Deno.test('M1: audio_expected=false render stays loudness_measurement_status=null — never falsely "pending"', () => {
+  const qa = buildRenderQa({ engine: 'creatomate', audio_expected: false, status: 'succeeded' });
+  assertShape(qa);
+  assertEquals(qa.loudness_measurement_status, null);
+  assertEquals(qa.loudness_lufs, null);
+});
+
+Deno.test('M1: audio_expected undefined (older call shape) also stays null, not "pending"', () => {
+  const qa = buildRenderQa({ engine: 'creatomate', status: 'succeeded' });
+  assertShape(qa);
+  assertEquals(qa.loudness_measurement_status, null);
+});
+
+Deno.test('M1: an explicitly-supplied measured value passes through verbatim (sweep-write shape)', () => {
+  const qa = buildRenderQa({
+    engine: 'creatomate', audio_expected: true, status: 'succeeded',
+    loudness_lufs: -23.4, true_peak_dbtp: -7.6, loudness_measurement_status: 'measured',
+  });
+  assertShape(qa);
+  assertEquals(qa.loudness_lufs, -23.4);
+  assertEquals(qa.true_peak_dbtp, -7.6);
+  assertEquals(qa.loudness_measurement_status, 'measured');
 });

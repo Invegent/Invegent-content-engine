@@ -15,8 +15,19 @@
 // heygen-worker/qa.ts (each Supabase edge function bundles its own directory).
 //
 // DEFERRED (NOT computed here, by design — no probing/re-fetch): audio_present,
-// loudness_lufs, true file duration, true dimensions, visual legibility, text
-// overflow, cost value, and any publish-blocking verdict.
+// true file duration, true dimensions, visual legibility, text overflow, cost
+// value, and any publish-blocking verdict.
+//
+// loudness_lufs / true_peak_dbtp / loudness_measurement_status (M1, CGU Final
+// L1 lane — dark-write, undeployed at authoring time): threaded through as
+// OPTIONAL inputs so this module stays a pure passthrough. The values
+// themselves are ALWAYS supplied by the separate async loudness-sweep EF
+// (supabase/functions/loudness-sweep/), NEVER measured here and NEVER
+// measured synchronously in the render path — qa.ts's own no-probing/
+// no-re-fetch contract (line above) is unchanged. renderUploadAndLog's own
+// call sites do not populate these three fields; they default to
+// null/'pending' until the sweep's write-back RPC merges a real measurement
+// into render_spec.qa after the fact.
 
 export type RenderQaInput = {
   expected_format?: string | null;
@@ -42,6 +53,9 @@ export type RenderQaInput = {
   fallback_taken?: boolean | null;
   cost_present?: boolean | null;
   cost_estimated_flag?: boolean | null;
+  loudness_lufs?: number | null;
+  true_peak_dbtp?: number | null;
+  loudness_measurement_status?: 'measured' | 'pending' | 'unmeasurable' | 'error' | null;
 };
 
 // Fail-safe wrapper: a QA-build glitch can NEVER fail the render/log path.
@@ -77,5 +91,8 @@ export function buildRenderQa(i: RenderQaInput): Record<string, unknown> {
     fallback_taken: i.fallback_taken ?? null,
     cost_present: !!i.cost_present,
     cost_estimated_flag: !!i.cost_estimated_flag,
+    loudness_lufs: i.loudness_lufs ?? null,
+    true_peak_dbtp: i.true_peak_dbtp ?? null,
+    loudness_measurement_status: i.loudness_measurement_status ?? (i.audio_expected ? 'pending' : null),
   };
 }
