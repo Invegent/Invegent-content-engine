@@ -33,21 +33,20 @@ This is a combined scoping brief for Tasks 2 and 3 of the 4-task publish-truth l
 **In scope:**
 - Task 2: one `NOT_APPLIED_*`-named artifact in `supabase/migrations/` in this repo, correcting the publish-status read source to `m.post_publish`; a repo-wide grep-grounded consumer enumeration (this repo +, so far as reachable, `invegent-dashboard`); explicit disposition (handled or explicitly deferred-with-reason) of each cc-0080 gotcha named above; a designed (not exercised) rollback alongside the artifact.
 - Task 3: isolated, undeployed changes in `invegent-dashboard` that repoint the cockpit's publish-evidence query logic away from a `m.post_publish_queue`-driven shape onto a `m.post_publish`-driven shape consistent with Task 2's corrected pattern; hermetic test/`tsc`/build verification; a `dashboard-ia-lint` run (or a named reasoned exception) given the /cockpit gap found above.
-- Naming, in the result doc, which branch/worktree Task 3 uses and why (see Open Questions — this brief does not decide it).
+- Task 3 uses the existing `dashboard-operator-cockpit-v1` branch/worktree — PK decision, 2026-08-06 (see Allowed actions).
 
 **Out of scope:**
 - Any `apply_migration`, deploy, push, or merge in either repo, in this lane, for any artifact this lane produces.
 - Approving, merging, deploying, or otherwise advancing the pre-existing `dashboard-operator-cockpit-v1` branch's own pending PK visual-approval + watch-safe deployment gate — that gate is independent of and unaffected by this brief.
 - Any schedule/cap DML, production migration, live selector/palette/routing/voice-config change, deploy/cron activation, intake/promotion affecting live selection, or M11 closure apply (v6.147 hold).
 - Deciding the final SQL predicate set for the cc-0080 gotchas as settled fact — each disposition is a design proposal for review, not a pre-approved answer.
-- Resolving whether Task 3 continues the pre-existing cockpit branch or opens a new one (named open question below).
 - Touching any watch-evidence artifact (e.g. `docs/briefs/artifacts/cgu-final-phase1-watch-log-v1.md` or any file under `docs/briefs/artifacts/*watch-log*`).
 
 ## Allowed actions
 
 - Author the `NOT_APPLIED_*` migration artifact in `supabase/migrations/` (Task 2), following the R0 explicit-column-list, secret-free, non-`security_invoker` house pattern.
 - Grep/Read this repo and (where reachable, per the existing worktree precedent at `C:\Users\parve\ice-wt\dash-operator-cockpit-v1`) the `invegent-dashboard` repo for every consumer of `ice_ro.publish_status` and of the dashboard's current publish-evidence read path.
-- Work Task 3 in an **isolated** `invegent-dashboard` worktree/branch — either continuing `dashboard-operator-cockpit-v1` at its existing worktree, or opening a fresh isolated branch — whichever the executor picks, with the choice and rationale named explicitly in the result doc (this brief does not pre-decide it).
+- Work Task 3 by **continuing on the existing `dashboard-operator-cockpit-v1` branch/worktree** (`C:\Users\parve\ice-wt\dash-operator-cockpit-v1`, base `b3440ec`) — **PK decision, 2026-08-06**. Task 3's fix lands as additional commits on that same branch, not a fresh one. Note (unchanged from the draft): this conflates the branch history of two gate tracks — the original cockpit build's own pending PK visual-approval + deployment gate, and this new publish-truth fix — both remain independently gated regardless.
 - Run hermetic tests (`npx vitest run`), `npx tsc --noEmit`, `npm run build` in the isolated dashboard worktree.
 - Run `dashboard-ia-lint` against the changed surface if it is judged IA-relevant; if judged not, state the reasoning.
 - Design (author, do not exercise) a rollback path for the Task 2 DDL artifact, matching the house pattern used by the cc-0080 and M1-loudness `NOT_APPLIED_*` precedents.
@@ -62,14 +61,14 @@ This is a combined scoping brief for Tasks 2 and 3 of the 4-task publish-truth l
 - No touching any watch-evidence file (e.g. `docs/briefs/artifacts/cgu-final-phase1-watch-log-v1.md` or anything matching `*watch-log*` under `docs/briefs/artifacts/`).
 - No approving, merging, deploying, or otherwise advancing the pre-existing `dashboard-operator-cockpit-v1` branch's own separate, still-open PK visual-approval + watch-safe deployment gate — that gate's status is unchanged by this lane regardless of which branch Task 3 uses.
 - No pushing the isolated `invegent-dashboard` branch to that repo's origin/main, and no pushing to any remote at all, without a fresh, explicit PK instruction naming this lane.
-- No deciding, as settled fact, the final disposition of any cc-0080 gotcha (e.g. whether to filter the ~140 dead/rejected-yet-published rows, or merely flag them) — each must be presented as a named design choice with trade-offs, not asserted as correct.
+- No deciding, as settled fact, the final disposition of the remaining (not-yet-PK-decided) cc-0080 gotchas — multi-platform drafts, `pp.platform` vs `pd.platform` mismatch, YouTube's `video_status` keying — each must be presented as a named design choice with trade-offs, not asserted as correct. (The ~140 dead/rejected-yet-published rows are resolved — see PK decision below: surface with an explicit anomaly flag, never filtered or passed through unlabeled.)
 - No writing/editing any file outside (a) the one `NOT_APPLIED_*` artifact + its own result-doc/register-pointer discipline in this repo, and (b) the isolated dashboard worktree/branch for Task 3.
 - No register version cut outside the single-register-cut-owner arrangement and the CCF-02 claim-stub discipline (claim via result-doc stub, re-verify at commit) — pointer-only entries (Convention 1), not full re-narration.
 - No fabricated consumer list — every claimed consumer (or claimed absence of one) must be grep-citable; anything not independently verifiable goes to open questions, not the artifact's header claims.
 
 ## Success criteria
 
-- Task 2 artifact exists at `supabase/migrations/NOT_APPLIED_*`, sources completed-publish state from `m.post_publish`, is secret-free, and its header explicitly addresses (handled or named-deferred-with-reason) each of the four cc-0080 gotchas.
+- Task 2 artifact exists at `supabase/migrations/NOT_APPLIED_*`, sources completed-publish state from `m.post_publish`, is secret-free, and its header explicitly addresses (handled or named-deferred-with-reason) each of the four cc-0080 gotchas — the dead/rejected-yet-published-row gotcha specifically implemented as an explicit anomaly flag (PK decision), not a filter and not a silent pass-through.
 - A repo-wide, grep-grounded list of every consumer of `ice_ro.publish_status` (this repo) and of the dashboard's current publish-evidence read path exists, with any shape-breaking consumer named.
 - Task 3 change exists on a named isolated, undeployed `invegent-dashboard` branch; `cockpit-evidence.ts`'s (or its replacement's) query logic is repointed off the `m.post_publish_queue`-driven shape onto a pattern consistent with Task 2's corrected source, OR an explicit, evidenced reason is recorded for why not.
 - `npx vitest run`, `npx tsc --noEmit`, `npm run build` all clean in the dashboard worktree.
@@ -78,7 +77,7 @@ This is a combined scoping brief for Tasks 2 and 3 of the 4-task publish-truth l
 - `apply-harness-auditor` shadow pass run against the Task 2 artifact, findings recorded (clears no gate).
 - `branch-warden` confirms both isolated worktrees are exactly at their intended base with no unexpected files touched.
 - Zero apply/deploy/push/merge occurred anywhere.
-- Result doc filed per `docs/briefs/_template_result.md`, naming every open design choice made (branch continuation vs new branch; each cc-0080 disposition; the exec_sql-vs-view reachability finding) as a choice for review, not settled fact.
+- Result doc filed per `docs/briefs/_template_result.md`, naming every open design choice made (each cc-0080 disposition; the exec_sql-vs-view reachability finding) as a choice for review, not settled fact.
 
 ## Stop condition
 
@@ -88,6 +87,8 @@ Report result per the result template, then stop. Do not proceed to any apply/de
 
 ## Notes (optional)
 
+- **PK decision (2026-08-06):** Task 3 continues on the existing `dashboard-operator-cockpit-v1` branch/worktree rather than opening a fresh one — resolves the branch-choice open question.
+- **PK decision (2026-08-06):** the ~140 dead/rejected/draft rows that still carry a published `m.post_publish` row must be **surfaced with an explicit anomaly flag** (e.g. a `draft_state_mismatch`-style indicator distinct from the row's publish status) — not filtered out, and not passed through unlabeled. Both cc-0080-derived open questions from the original draft are now resolved; the remaining undecided items are the other three cc-0080 gotchas (multi-platform drafts, `pp.platform`/`pd.platform` mismatch, YouTube `video_status` keying), which stay open design choices for the ef-builder lane to propose, not decide.
 - The single most consequential finding in this drafting pass: **the pre-existing, unmerged `dashboard-operator-cockpit-v1` build's own publish-evidence query is code-read-grounded to share Task 1's root-cause shape** (driven by `m.post_publish_queue`, not `m.post_publish`). If independently confirmed live (a named Task-3 precondition), this means Task 3 is not really "point an existing correct surface at a new source" — it is "fix a second instance of the same defect Task 1 found," inside a build that is otherwise fully reviewed and awaiting only a visual/deployment gate unrelated to this bug. This is exactly the kind of scope-shape fact PK should see named plainly at Gate 1, not discovered mid-build.
 - Because the dashboard cannot reach schema `ice_ro` via PostgREST (M8 precedent), Task 3's "source from the corrected view/pattern" almost certainly means replicating the corrected *SQL logic* as a static `exec_sql` literal (matching the cockpit build's existing pattern), not literally querying the Task 2 view by name — worth stating explicitly to avoid an ef-builder wasting effort on an unreachable approach.
 - The `/cockpit` route is not yet reflected in the dashboard's governing IA doc (`operator-journey-ia-v1.md`) and was not run through `dashboard-ia-lint` in its original build — Task 3 is a natural point to close that gap, but this brief does not mandate retrofitting IA governance for the whole existing cockpit, only for the surface Task 3 touches.
