@@ -119,5 +119,30 @@ M13 scoping). Active: control tower + CFW/INV asset sourcing only.
   attested. Remaining M18 scope before Final PASS: complete the credential migration (PK, ongoing)
   + the packet's target-architecture confirmation at the M18 closeout gate.
 
+## Day 3 — 2026-08-06 ~10:30 Sydney (PK-requested check)
+
+- **Steady state:** cron 12/12 green · pipeline flat vs baseline (834/30/15/stuck=true, unchanged)
+  · advisors posture unchanged · supervised-only exception cells all quiet · no readiness
+  regression · NO STOP CONDITION.
+- **⚠ FINDING W-1 (watch finding, not a STOP): NDIS added capacity is partially outrunning its
+  content supply.** Since the v11 apply, NDIS fills = 7 (FB 4 iq · IG 1 iq · LI 2 iq, **zero text
+  fills**) vs 17 non-capability skips. Skip reasons (m.slot_fill_attempt, R1 read):
+  `bundle_diversity_insufficient:got_1_need_2;no_eligible_evergreen` (FB 5 · LI 4, pool avg 42 —
+  populated but diversity-thin) and `pool_thin;no_eligible_evergreen` (IG 3 · LI 2 · FB 1,
+  eligible pool 0 at attempt). Every reason also shows an EMPTY eligible-evergreen fallback.
+  Layer-2/YT skips (`capability_blocked:unsupported_silent_degrade:*`) are correct fail-closed
+  behavior, as designed.
+- **Reading:** the apply itself is behaving exactly as designed — slots fail closed, no bad
+  content, schedule state undisturbed. But added NDIS capacity only yields output when the signal
+  pool feeds it; current NDIS pool diversity/evergreen depth cannot fill the increased slot count.
+  **Implication carried to the watch verdict:** Phase-2's NDIS rows (the largest share of the 17)
+  should be weighed against pool supply — same principle PK set for CFW/M16 (capacity ≠ output on
+  a thin pool; reliability vs pool-capacity are distinct constraints, now observed for a second
+  client). No remediation performed or authorized during the watch; NDIS content ingestion
+  (content_fetch cron) continues normally and may organically improve the ratio — day 4–7 entries
+  will trend fills-vs-skips to give the verdict real numbers.
+- CFW-LI skips (5) = the known M16 starved cell, expected. Invegent: zero notable skips.
+  `pipeline-ai-summary` 500: no recurrence check this pass (log window); re-check day 4.
+
 *(Subsequent daily entries append below; one line-block per day; any STOP-condition match →
 surface to PK immediately, do not wait for watch expiry.)*
