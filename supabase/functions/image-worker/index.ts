@@ -1,3 +1,32 @@
+// image-worker v3.39.0
+// v3.39.0 (2026-08-06) — M14 WS-3 (isolated worktree, NOT deployed): REGISTRY-DRIVEN
+//   text_limits ENFORCEMENT for the production image_quote branch. New pure/loader
+//   module text_limits_envelope.ts reads the WINNER template's governed
+//   c.creative_provider_template_field.constraints.text_limits.max_chars for exactly
+//   the elements the render's TMR_WINNER_TEXT_FIELDS mapping produced (generic across
+//   any winner, not hardcoded to the two M14 WS-1 templates), and hard-gate-throws on
+//   an actual over-limit governed value — NO truncation, NO AI rewrite, matching the
+//   fleet's existing assertHeadlineWithinGate / b1_video_stat.assertStatFieldsWithinGate
+//   doctrine. A field whose registry max_chars is still to_be_calibrated/absent is a
+//   silent no-op (nothing to enforce, unchanged behaviour). A WHOLE envelope-load
+//   failure (selector/registry unreachable, DB error, thrown) is FAIL-OPEN — proceeds
+//   with zero NEW enforcement for that render, reasoned explicitly in
+//   text_limits_envelope.ts's header (image-worker has no pre-existing vendored floor
+//   bound for 6 of the 8 newly-covered fields, unlike ai-worker's stat_envelope, so a
+//   fabricated fallback would violate the same "never invent an unbacked value"
+//   discipline; Headline/Subtitle keep their OWN independent existing hard gates
+//   regardless of this module's load outcome). ADDITIVE / BELT-AND-BRACES: the existing
+//   hardcoded gates (assertHeadlineWithinGate, B1_SUBTITLE_MAX_CHARS truncation,
+//   TMR_WINNER_LAYOUT_GUARD) are UNCHANGED and still run — this is a second, independent
+//   registry-sourced check, not a replacement. Wired ONLY into the production
+//   image_quote branch (after buildTmrRenderPlan, before the Creatomate render call) —
+//   the governed_image_quote_smoke diagnostic branch is UNTOUCHED (out of this lane's
+//   scope). STRICTLY OUT OF SCOPE: any DB write (paired NOT_APPLIED_m14_ws1_calibration_
+//   backfill_v1.sql migration is author-only, never applied/deployed by this lane), any
+//   of the 16 zero-coverage templates (WS-2, separately staged), platform-suitability
+//   constraints, m.post_render_log / m.check_pool_health / m.fill_pending_slots (M7/M16
+//   lanes, different worktrees), any deploy (deploy is a later PK gate — this worktree
+//   is isolated and non-production per the PK build-acceleration ruling).
 // image-worker v3.38.0
 // v3.38.0 (2026-07-31) — cc-0089 follow-up #2: SMOKE-ONLY field-merge BUG FIX (does NOT
 //   touch production). The just-shipped v3.37.0 CTA content fix (creative_contract.ts's
@@ -585,11 +614,12 @@ import { resolveLegacyLogo, assertGovernedAssetReachable, type AssetVerdict } fr
 import { echoContractToRenderSpec } from './contract_echo.ts';  // v3.18.0: ACI v0 Slice B2 — echo draft_format.contract identity fields into render_spec (governed PP image_quote; evidence-only)
 import { validateContract } from './contract_validation.ts';  // ACI v0 Slice C: warn-only contract validation (evidence-only, never throws)
 import { mergeSmokeOverrideFields } from './smoke_field_merge.ts';  // v3.38.0: cc-0089 follow-up #2 — pure helper fixing the governed_image_quote_smoke-ONLY cta/slide_number field-merge stomp (see smoke_field_merge.ts header). NOT imported/used by the production image_quote branch.
+import { extractTextElementValues, assertTextFieldsWithinRegistryLimits, loadTextLimitsEnvelope } from './text_limits_envelope.ts';  // v3.39.0 (M14 WS-3): registry-driven text_limits.max_chars enforcement, additive/belt-and-braces alongside the existing hardcoded gates (assertHeadlineWithinGate / B1_SUBTITLE_MAX_CHARS). Fail-OPEN on a whole envelope-LOAD failure (posture (b) — see text_limits_envelope.ts header); ALWAYS throws on an actual over-limit governed value. Wired ONLY into the production image_quote branch below — NOT the governed_image_quote_smoke diagnostic branch (out of this lane's scope).
 // v3.23.0 LANE W: tmr_smoke.ts import removed — module DELETED (provider template 490ad9ea… deleted; mode now 410-guarded below)
 
 // v3.20.1 — TMR G2 fix: tmr_template_smoke neutral placeholders 1x1 -> valid 1080x1080 bg + 512x512 logo (Creatomate rejected the 1x1 as damaged/unsupported)
 // v3.22.0 — VERSION const re-synced with the header (it had been left at v3.20.1 through v3.21.0 — recorded carry).
-const VERSION = 'image-worker-v3.38.0';  // cc-0089 follow-up #2: governed_image_quote_smoke-ONLY cta/slide_number field-merge stomp fixed (see smoke_field_merge.ts + header comment above); production image_quote branch byte-identical, confirmed by diff
+const VERSION = 'image-worker-v3.39.0';  // M14 WS-3: registry-driven text_limits enforcement wired into the production image_quote branch (see text_limits_envelope.ts + header comment above); isolated worktree, NOT deployed
 // cc-0037 (v3.25.0) — SUPERVISED GOVERNED IMAGE_QUOTE SMOKE constants.
 // Provider template of record: generic_market_insight_card_1x1_v1. The smoke DERIVES its
 // provider id via select_template + buildTmrRenderPlan and ASSERTS it equals this (OQ-1
@@ -1105,6 +1135,18 @@ Deno.serve(async (req: Request) => {
         // tmr_slot_resolution_incomplete — never guesses a layout, no fallback.
         const plan = buildTmrRenderPlan(selection as TmrSelectorResponse, { ...fields, subtitle }, fields.date);
         const modifications = plan.modifications;
+        // v3.39.0 (M14 WS-3): REGISTRY-DRIVEN text_limits enforcement — additive,
+        // belt-and-braces alongside the existing hardcoded gates above (which stay in
+        // place unchanged). Reads the WINNER's (plan.tmrEvidence.registry_template_id)
+        // governed c.creative_provider_template_field.constraints.text_limits.max_chars
+        // for exactly the elements THIS render produced text for (generic across any
+        // winner — see text_limits_envelope.ts). Fail-OPEN on a whole envelope-LOAD
+        // failure (source='unavailable' -> limits={} -> nothing to enforce, proceed);
+        // ALWAYS throws on an actual governed over-limit value (fail loud, no
+        // truncation, no AI rewrite — same doctrine as assertHeadlineWithinGate).
+        const textElementValues = extractTextElementValues(modifications);
+        const textLimitsEnvelope = await loadTextLimitsEnvelope(supabase, plan.tmrEvidence.registry_template_id, Object.keys(textElementValues));
+        assertTextFieldsWithinRegistryLimits(textElementValues, textLimitsEnvelope.limits);
         const tmrSelected = (selection as TmrSelectorResponse)?.selected ?? null;
         const slotSelected = (selection as TmrSelectorResponse)?.slot_resolution?.selected ?? [];
         const props_hash = await computePropsHash(modifications as Record<string, string>);  // JSON-stringify hash; Scrim.opacity number serialises deterministically
