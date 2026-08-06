@@ -144,5 +144,27 @@ M13 scoping). Active: control tower + CFW/INV asset sourcing only.
 - CFW-LI skips (5) = the known M16 starved cell, expected. Invegent: zero notable skips.
   `pipeline-ai-summary` 500: no recurrence check this pass (log window); re-check day 4.
 
+## W-1 ROOT-CAUSED (2026-08-06 evening — diagnosis lane, read-only; full doc `docs/briefs/results/w1-ndis-content-supply-diagnosis-v1.md`, commit `836a54d`)
+
+- **The two NDIS skip classes are format-segregated, distinct causes:**
+  · TEXT (26 skips/7d) = `bundle_diversity_insufficient` on SOURCE CONCENTRATION only (pool size
+  clears the gate; top-2 picks share a `source_domain`). Supply-side fix class; M16 does not apply.
+  · IMAGE_QUOTE (26/7d) = `pool_thin`, **the EXACT M16 defect, now LIVE-CONFIRMED for NDIS**
+  (all 64 body-healthy items at reuse≥2 → effective fitness caps ~57.2 < 60; `check_pool_health()`
+  still 'green', masking the relax path that would clear at ≥50). M16's fleet-relevance caveat
+  upgrades plausible → CERTAIN: **the already-built M16 fix, once applied post-watch, is expected
+  to restore NDIS image_quote fills as well as CFW's.**
+  · `no_eligible_evergreen` = trivial + fleet-wide: `t.evergreen_library` has ZERO rows for any
+  client/format. New small lane candidate: populate the evergreen library (was never seeded).
+- **Slot `c1f38536…` (PP YouTube, 2026-08-13T07:00Z):** filled, but its bound draft is
+  `video_status='failed'` — publisher gate prevents bad publish; the real risk is a SILENT
+  SCHEDULE MISS (no slot re-open/backfill path exists — reconfirmed). **PK decision needed before
+  08-13** (fits the 08-11 sitting): re-render / T0 manual replacement (CFW-LI precedent) / accept
+  miss. One data discrepancy flagged (hand-authored-looking dead_reason; attempt-count mismatch
+  vs the Lane-1 citation) — unresolved, named.
+- Verdict implication: the Phase-2 supply-side story is now CAUSAL, not statistical — approve
+  base+E-1 with (a) M16 apply early in the post-watch wave (fixes CFW + NDIS image_quote fills),
+  (b) an NDIS text source-diversification decision, (c) an evergreen-seeding lane election.
+
 *(Subsequent daily entries append below; one line-block per day; any STOP-condition match →
 surface to PK immediately, do not wait for watch expiry.)*
