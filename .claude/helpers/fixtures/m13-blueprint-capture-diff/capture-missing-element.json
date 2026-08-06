@@ -1,0 +1,34 @@
+{
+  "_fixture_note": "Variant of capture-pp-carousel-cover-clean.json with the SlideIndicator element DROPPED — exercises missing_in_capture (BLOCK). No live API call.",
+  "capture_id": "capture_pp_carousel_cover_v1_missing_element",
+  "capture_version": "v1.0.1",
+  "schema_version": "v1",
+  "artifact_hash": "sha256:fixture-not-computed-3333333333333333333333333333333333333333",
+  "captured_at": "2026-08-06T00:05:00Z",
+  "capture_method": "GET /v1/templates/{id}",
+  "provider_template_id": "c9a59faa-fixture-not-a-live-read",
+  "raw_source_json": {
+    "_fixture_note": "Stand-in for the verbatim GET /v1/templates/{id} response body — not a real capture. The human transposition dropped the SlideIndicator element."
+  },
+  "raw_source_hash": "sha256:fixture-not-computed-4444444444444444444444444444444444444444",
+  "normalized_elements": [
+    { "element_key": "Headline", "element_type": "text", "detected_field_class": "ai_authored", "dimensions": { "x": 80, "y": 760, "width": 920, "height": 160 } },
+    { "element_key": "Background", "element_type": "image", "detected_field_class": "governed_asset", "dimensions": { "x": 0, "y": 0, "width": 1080, "height": 1080 } },
+    { "element_key": "Logo", "element_type": "image", "detected_field_class": "governed_asset", "dimensions": { "x": 40, "y": 40, "width": 160, "height": 48 } }
+  ],
+  "aspect_ratio": "1:1",
+  "output_type": "jpg",
+  "template_variant_key_matched": "carousel-cover-1x1-v1",
+  "capture_actor": "fixture:m13-lane1-scalar-proof",
+  "evidence": {
+    "status": "draft",
+    "proof_status": "unproven",
+    "proof_gate": null,
+    "render_log_id": null,
+    "source_commit": null,
+    "review_packet": null,
+    "approved_by": null,
+    "approved_at": null,
+    "notes": "Fixture only — deliberately missing an element to exercise missing_in_capture."
+  }
+}

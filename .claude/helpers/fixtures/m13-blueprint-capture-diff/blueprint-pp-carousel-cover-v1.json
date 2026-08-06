@@ -1,0 +1,63 @@
+{
+  "_fixture_note": "Hand-authored fixture for M13 Build Pack Lane 1 (scalar proof). NOT a real Asset Gap output. Grounded in the REAL, already-registered PP template generic_carousel_cover_1x1_v1: name + provider_template_id (truncated 8-char form c9a59faa) + dims (1080x1080 static) + scope (generic, PP) from docs/briefs/results/creatomate-template-graduation-matrix-v1.md:37 (row 15); assignment_status=visually_approved + 2026-07-02 creation + 2026-07-03 PP assignment + 3 passed smoke_render/visual_approval proof events from docs/briefs/m13-governed-template-build-pack-scoping-packet-v1.md:401-406 (§13 addendum). No field-level (elements[]) capture of this specific template exists anywhere in the repo today (docs/briefs/m11c-pp-carousel-migrate-vs-retire-decision-packet-v1.md:227-229 confirms property-pulse.json has zero carousel/multi-slide declarative object) — the elements[] below are a PLAUSIBLE RECONSTRUCTION for a carousel cover slide, following the established field-naming convention used elsewhere in property-pulse.json for other generic_* PP templates (Headline/Background/Logo — see property-pulse.json:194,238).",
+  "blueprint_id": "blueprint_pp_carousel_cover_v1",
+  "blueprint_version": "v1.0.0",
+  "schema_version": "v1",
+  "artifact_hash": "sha256:fixture-not-computed-0000000000000000000000000000000000000000",
+  "client_slug": "property-pulse",
+  "template_family_key": "property-pulse-carousel",
+  "template_variant_key_intended": "carousel-cover-1x1-v1",
+  "compatible_ice_format_keys": ["carousel"],
+  "aspect_ratio": "1:1",
+  "output_type": "jpg",
+  "render_engine": "creatomate",
+  "composed_of_patterns": ["pp_headline_block_v1", "pp_branding_strip_v1"],
+  "elements": [
+    {
+      "element_key": "Headline",
+      "purpose": "Cover slide headline text — the carousel's opening statement.",
+      "field_class": "ai_authored",
+      "max_chars": 90,
+      "policy": "hard_gate_throw",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "Background",
+      "purpose": "Governed background image for the cover slide.",
+      "field_class": "governed_asset",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "Logo",
+      "purpose": "Property Pulse primary logo mark.",
+      "field_class": "governed_asset",
+      "sub_sequence_key": null
+    },
+    {
+      "element_key": "SlideIndicator",
+      "purpose": "Renderer-fixed slide-position marker, e.g. '1/5'.",
+      "field_class": "renderer_fixed",
+      "sub_sequence_key": null
+    }
+  ],
+  "expected_assets": ["pp_logo_primary", "bg_perth_cbd"],
+  "registry_linkage": {
+    "target_template_family_key": "property-pulse-carousel",
+    "target_template_variant_key": "carousel-cover-1x1-v1",
+    "target_capability_contract_ref": null
+  },
+  "governance": { "owner": "ICE", "approval": "PK", "ai_role": "propose-only" },
+  "proof_posture": "draft",
+  "evidence": {
+    "status": "draft",
+    "proof_status": "unproven",
+    "proof_gate": null,
+    "render_log_id": null,
+    "source_commit": null,
+    "review_packet": "docs/briefs/m13-buildpack-lane1-scalar-proof-brief-v1.md",
+    "approved_by": null,
+    "approved_at": null,
+    "notes": "Fixture only — M13 Lane 1. Not a real render-based proof; a Blueprint precedes any render by design."
+  },
+  "source_of_authorship": "asset_gap"
+}

@@ -1,0 +1,35 @@
+{
+  "_fixture_note": "Hand-authored fixture standing in for a real GET /v1/templates/{id} response. NO live Creatomate API call was made to produce this document — M13 Lane 1 scope is fixtures-only (packet §8 lane 5, the real end-to-end proof, is explicitly out of scope). Matches blueprint-pp-carousel-cover-v1.json element-for-element -> expected verdict CLEAN.",
+  "capture_id": "capture_pp_carousel_cover_v1_001",
+  "capture_version": "v1.0.0",
+  "schema_version": "v1",
+  "artifact_hash": "sha256:fixture-not-computed-1111111111111111111111111111111111111111",
+  "captured_at": "2026-08-06T00:00:00Z",
+  "capture_method": "GET /v1/templates/{id}",
+  "provider_template_id": "c9a59faa-fixture-not-a-live-read",
+  "raw_source_json": {
+    "_fixture_note": "Stand-in for the verbatim GET /v1/templates/{id} response body — not a real capture."
+  },
+  "raw_source_hash": "sha256:fixture-not-computed-2222222222222222222222222222222222222222",
+  "normalized_elements": [
+    { "element_key": "Headline", "element_type": "text", "detected_field_class": "ai_authored", "dimensions": { "x": 80, "y": 760, "width": 920, "height": 160 } },
+    { "element_key": "Background", "element_type": "image", "detected_field_class": "governed_asset", "dimensions": { "x": 0, "y": 0, "width": 1080, "height": 1080 } },
+    { "element_key": "Logo", "element_type": "image", "detected_field_class": "governed_asset", "dimensions": { "x": 40, "y": 40, "width": 160, "height": 48 } },
+    { "element_key": "SlideIndicator", "element_type": "text", "detected_field_class": "renderer_fixed", "dimensions": { "x": 960, "y": 40, "width": 80, "height": 32 } }
+  ],
+  "aspect_ratio": "1:1",
+  "output_type": "jpg",
+  "template_variant_key_matched": "carousel-cover-1x1-v1",
+  "capture_actor": "fixture:m13-lane1-scalar-proof",
+  "evidence": {
+    "status": "draft",
+    "proof_status": "unproven",
+    "proof_gate": null,
+    "render_log_id": null,
+    "source_commit": null,
+    "review_packet": null,
+    "approved_by": null,
+    "approved_at": null,
+    "notes": "Fixture only. A Capture proves the template exists as configured, not that it renders correctly."
+  }
+}

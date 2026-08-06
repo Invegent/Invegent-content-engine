@@ -1,0 +1,6 @@
+{
+  "_fixture_note": "DELIBERATELY INVALID JSON — exercises the fail-closed path at main()'s JSON.parse boundary. Do not fix the trailing comma/unterminated structure below; that is the point of this fixture.",
+  "capture_id": "capture_pp_carousel_cover_v1_malformed",
+  "normalized_elements": [
+    { "element_key": "Headline", "detected_field_class": "ai_authored", }
+  ,
