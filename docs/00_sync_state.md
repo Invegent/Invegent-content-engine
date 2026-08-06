@@ -6,6 +6,12 @@
 
 ---
 
+> **✅ v6.153 — L1/M1 EVIDENCE SECURED: loudness Phase-1 build committed + pushed (branch `worktree-cgu-l1-m1-loudness-phase1`, commit `106e0e6`, control-tower-verified on origin) — ALL build-wave artifacts now durable; every lane session closed (T1 pointer)** — result: `docs/briefs/results/cgu-m1-loudness-phase1-l1-result-v1.md` (on the branch); payload facts per v6.151.
+> · 13 files, 835 insertions: additive qa.ts both workers · `NOT_APPLIED_m1_create_record_render_loudness_rpc.sql` · undeployed loudness-sweep EF (Option C′ pure-Deno WASM) · 38/38 tests. PK authorized the commit+push directly in the lane session. Branch only; main untouched by the lane.
+> · Next gate: post-watch Gate-2 chain (branch-warden · db-rls-auditor · external review · PK) with the §6 preconditions (Edge-Runtime proof · outlier · grant/name/cadence). Fleet: S1/S2/S3 all archived; build-wave evidence ledger — main: `0154589` (M13-L1) · branches on origin: m7 · m16 · m14 · loudness. Watch continues; expiry package next.
+
+---
+
 > **✅ v6.152 — M13 BUILD PACK LANE 1 (SCALAR PROOF) LANDED ON MAIN, commit `0154589` — PK-ruled merge, the build wave's first artifact set to land (T2 · docs+zero-authority helper · zero DB/network/deploy)** — record: `docs/briefs/results/m13-buildpack-lane1-scalar-proof-result-v1.md`.
 > · Versioned Blueprint + Creatomate Capture JSON schemas (`docs/creative-library/m13-blueprint-capture-schema-v1.md`, sibling doc — `registry-schema-v2.md` untouched) verbatim from the ratified scoping packet + the dormant `sub_sequence_key` seam per the PK reserve-the-seam ruling. Zero-authority structural-diff engine (`.claude/helpers/m13-blueprint-capture-diff.mjs`, AHA-pattern): 4 finding classes, clean/concerns/blocked rollup, fail-closed; 29/29 hermetic tests (independently re-run + control-tower smoke on main post-merge); fixtures grounded in `generic_carousel_cover_1x1_v1` with the field-list honestly disclosed as reconstruction-not-live-capture.
 > · Chain before the PK merge gate: independent test re-run · branch-warden safe · external review agree/low/high (hash-pinned). Push handled two mid-operation main movements with per-move collision re-verification, no force. Worktrees + branches cleaned post-push.
