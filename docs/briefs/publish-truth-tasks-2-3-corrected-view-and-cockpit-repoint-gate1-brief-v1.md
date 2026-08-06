@@ -1,0 +1,93 @@
+# Brief — Publish-truth Tasks 2–3: corrected publish-record source artifact + operator-cockpit repoint
+
+**Created:** 2026-08-06 Sydney
+**Author:** Claude Code (orchestrator), drafted via `brief-author`
+**Executor:** Claude Code (`ef-builder` lanes — one in `Invegent-content-engine` for Task 2, one in `invegent-dashboard` for Task 3)
+**Status:** draft
+**Tier:** **T2** (Task 2 is an unapplied/undeployed DDL artifact — DML/DDL-adjacent per CLAUDE.md Convention 3, but never applied in this lane; Task 3 is isolated, undeployed dashboard code. Neither task is production-touching, deploy, publish, posture, secret, or irreversible — the T3 triggers do not fire.)
+**Lane class (CCF-02):** PRODUCT_PROOF (both tasks build toward a real product fix — accurate operator-facing publish status — staged for a future PK apply/deploy gate, not this brief's gate)
+**Result file:** `docs/briefs/results/publish-truth-tasks-2-3-corrected-view-and-cockpit-repoint-result-v1.md` (created on completion)
+
+---
+
+## Task
+
+This is a combined scoping brief for Tasks 2 and 3 of the 4-task publish-truth lane, following Task 1's completed, committed diagnosis (`docs/briefs/results/publish-status-view-blindness-diagnosis-v1.md`, commit `b4e0c97`, register pointer v6.155). **Task 2:** author a `NOT_APPLIED_*`-named migration artifact (no apply, no deploy) that corrects the operator-facing publish-status read surface to source completed-publish truth from the durable, delete-protected `m.post_publish` table rather than `m.post_publish_queue` (which a live trigger, `trg_cleanup_queue_on_publish_v1`, deletes on FB/IG/LinkedIn publish success, and which YouTube never populates at all — `queue_id` is NULL from row creation). The artifact must be secret-free per the `ice_ro` R0 discipline and must either account for the four cc-0080-documented denormalization gotchas (multi-platform drafts, `pp.platform` vs `pd.platform` mismatch, dead/rejected/draft rows that still carry a published `post_publish` row, YouTube's `video_status`-keyed special case) or explicitly name each one it defers, with a reason. It must also enumerate, by repo-wide grep, every existing consumer of `ice_ro.publish_status` and of the current dashboard publish-evidence read path, flagging any whose column/row shape would break. **Task 3:** on an isolated, undeployed `invegent-dashboard` branch, repoint the dashboard's operator-cockpit publish-record surface onto the corrected pattern authored in Task 2, once that shape is known — with hermetic tests/`tsc`/build clean, and `dashboard-ia-lint` run if the changed surface is judged IA-relevant. Neither task applies, deploys, merges, or pushes anything; this brief authorizes drafting and isolated building only.
+
+## Source context
+
+- `docs/briefs/results/publish-status-view-blindness-diagnosis-v1.md` (commit `b4e0c97`) — Task 1's completed diagnosis. Root cause: `trg_cleanup_queue_on_publish_v1` (`AFTER INSERT ON m.post_publish`, function `m.cleanup_queue_on_publish_v1()`) deletes the matching `m.post_publish_queue` row the instant `status='published'` and `queue_id IS NOT NULL`, for FB/IG/LinkedIn; YouTube's `queue_id` is NULL from creation, so it is structurally invisible from the moment of publish for a different, independent reason. `m.post_publish` is the durable truth-of-record, delete-protected by `trg_prevent_post_publish_delete`.
+- `supabase/migrations/20260719150000_ice_ro_r0_views_and_confined_role.sql:59-64` — the live `ice_ro.publish_status` view: `SELECT queue_id, ai_job_id, post_draft_id, client_id, platform, status, scheduled_for, attempt_count, locked_at, last_error_code, last_error_subcode, err_368_streak, last_error_at, acknowledged_at, publish_origin, created_at, updated_at FROM m.post_publish_queue` — a straight passthrough, zero filters, zero join to `m.post_publish`. Same file (lines 1-30) documents the R0 view-authoring pattern any corrected view must match: explicit column lists (SAFE + IDENTIFIER columns only), no `security_invoker`, owned by the migration executor.
+- `supabase/migrations/NOT_APPLIED_cc0080_reconcile_publish_status_v3.sql` — existing but **unapplied** prior art. **Important scope note: this artifact is a data-ADVANCE reconciler function (writes `m.slot.status` and `m.post_draft.approval_status`), not a view-definition fix** — it is cited here purely for its ground-truth-verified gotcha catalogue, which any *read* surface (view or query) built from `m.post_publish` will independently need to reason about for honest display: 28 drafts publish on two platforms (`approval_status` is whole-draft, not per-platform); 155 rows where `pp.platform ≠ pd.platform` (key on `pp.platform` always); ~140 dead/rejected/draft rows that still carry a published `post_publish` row (a *read* surface showing these as "published" without the draft's own terminal state visible would mislead an operator, even though it isn't "resurrecting" anything the way a write-advance would); YouTube needs special-casing (keys off `video_status`, not `approval_status`).
+- `CLAUDE.md` §"Operator read path (R0)" — the 10 existing `ice_ro` R0 views (schema-USAGE confined, secret-free, PostgREST-exposed, allowlisted via `scripts/db-read.py`) are the proven precedent pattern for any view addition/change.
+- `CLAUDE.md` §"Workflow acceleration conventions" Convention 3 — tier assignment rule: DML/DDL ≥ T2; this lane's Task 2 artifact stays unapplied so no T3 trigger fires.
+- `CLAUDE.md` §"CGU Final" v6.147 acceleration ruling (as PK-ratified, quoted from `docs/00_sync_state.md` v6.147 marker) — **isolated, non-production implementation is currently allowed**: isolated branches, unapplied migrations/RPCs, undeployed worker/dashboard code, tests/fixtures, diagnostics, docs. **Still prohibited until watch PASS + PK production authorization** (watch verdict due ~2026-08-11 20:20 Sydney, not yet reached as of this brief): schedule/cap DML, production migrations, live selector/palette/routing/voice-config changes, deploys/cron activation, intake/promotion affecting live selection, M11 closure applies, **anything touching watch evidence**. Both Task 2 and Task 3 as scoped fall inside the allowed carve-out.
+- **`docs/briefs/results/dashboard-operator-cockpit-v1-result.md`** — a pre-existing, unmerged, isolated `invegent-dashboard` build (branch `dashboard-operator-cockpit-v1`, worktree `C:\Users\parve\ice-wt\dash-operator-cockpit-v1`, base commit `b3440ec` = confirmed live production HEAD via Vercel API at build time) titled "Operator Cockpit", **BUILT, ISOLATED, UNPUSHED, awaiting PK visual approval + watch-safe deployment ruling — a separate, still-open gate this brief does not touch.** Its Section 2 ("Clickable Publication Evidence") already reads `m.post_draft` / `m.post_publish_queue` / `m.post_publish`. All three of its own review gates (branch-warden SAFE, db-rls-auditor concerns-resolved, external review agree/low/high) are already clear for the build as it stands.
+- **`C:\Users\parve\ice-wt\dash-operator-cockpit-v1\actions\cockpit-evidence.ts:47-92`** (read directly, not inferred) — the `Q_PUBLICATION_EVIDENCE` query's "queue" half is `FROM m.post_publish_queue ppq LEFT JOIN m.post_draft pd … LEFT JOIN m.post_publish pub ON pub.queue_id = ppq.queue_id`, i.e. **driven by `m.post_publish_queue` as the enumerating table** — the same structural shape Task 1 diagnosed as blind. Because `trg_cleanup_queue_on_publish_v1` deletes the queue row on FB/IG/LinkedIn publish success, this query's "queue" half would structurally never enumerate those completed publishes; because YouTube never gets a queue row, its "draft" half (`LEFT JOIN q … WHERE q.queue_id IS NULL`) would keep showing a published YouTube draft as `row_state='draft'` indefinitely. **This is a grounded code-reading inference, not an independently live-verified live-data finding** — no fresh DB read was run by this drafting pass to confirm it against current rows; a `db-rls-auditor` pass against this exact query is named as a Task-3 precondition below.
+- `docs/briefs/m8-asset-gap-dashboard-panel-gate1-brief-v1.md:38-47` — confirms the dashboard's service-role `supabase-js` client **cannot reach schema `ice_ro` directly** (not in PostgREST's exposed schema list — the standing PGRST106 gotcha class). The established, already-shipped pattern (used by `capability-matrix.ts`, `asset-gap.ts`, and the cockpit build itself) is a **static, zero-interpolation SELECT string via the `exec_sql` SECURITY DEFINER RPC**. This means Task 3 almost certainly cannot literally `SELECT * FROM ice_ro.publish_status` even once Task 2's view is (hypothetically, later) applied — it will need to replicate the *corrected query logic* as a static `exec_sql` literal, mirroring the cockpit build's own pattern, not point at the view by name.
+- `docs/briefs/m8-asset-gap-dashboard-panel-gate1-brief-v1.md:55-57` — names `invegent-dashboard/docs/dashboard/operator-journey-ia-v1.md` as the governing IA spec. Checked directly: **it contains zero mentions of "cockpit"** — the `/cockpit` route added by the pre-existing unmerged build is not yet reflected in the governing IA doc, and (per the cockpit result doc's own review-chain list) `dashboard-ia-lint` was not run against it.
+- `CLAUDE.md` team table — `dashboard-ia-lint` (built, candidate, not yet proven — stays a required check, not a proof of correctness) and `apply-harness-auditor` (registered, SHADOW MODE — its PASS clears no gate but is a named pre-freeze author-review signal for any DDL artifact).
+
+## Scope
+
+**In scope:**
+- Task 2: one `NOT_APPLIED_*`-named artifact in `supabase/migrations/` in this repo, correcting the publish-status read source to `m.post_publish`; a repo-wide grep-grounded consumer enumeration (this repo +, so far as reachable, `invegent-dashboard`); explicit disposition (handled or explicitly deferred-with-reason) of each cc-0080 gotcha named above; a designed (not exercised) rollback alongside the artifact.
+- Task 3: isolated, undeployed changes in `invegent-dashboard` that repoint the cockpit's publish-evidence query logic away from a `m.post_publish_queue`-driven shape onto a `m.post_publish`-driven shape consistent with Task 2's corrected pattern; hermetic test/`tsc`/build verification; a `dashboard-ia-lint` run (or a named reasoned exception) given the /cockpit gap found above.
+- Naming, in the result doc, which branch/worktree Task 3 uses and why (see Open Questions — this brief does not decide it).
+
+**Out of scope:**
+- Any `apply_migration`, deploy, push, or merge in either repo, in this lane, for any artifact this lane produces.
+- Approving, merging, deploying, or otherwise advancing the pre-existing `dashboard-operator-cockpit-v1` branch's own pending PK visual-approval + watch-safe deployment gate — that gate is independent of and unaffected by this brief.
+- Any schedule/cap DML, production migration, live selector/palette/routing/voice-config change, deploy/cron activation, intake/promotion affecting live selection, or M11 closure apply (v6.147 hold).
+- Deciding the final SQL predicate set for the cc-0080 gotchas as settled fact — each disposition is a design proposal for review, not a pre-approved answer.
+- Resolving whether Task 3 continues the pre-existing cockpit branch or opens a new one (named open question below).
+- Touching any watch-evidence artifact (e.g. `docs/briefs/artifacts/cgu-final-phase1-watch-log-v1.md` or any file under `docs/briefs/artifacts/*watch-log*`).
+
+## Allowed actions
+
+- Author the `NOT_APPLIED_*` migration artifact in `supabase/migrations/` (Task 2), following the R0 explicit-column-list, secret-free, non-`security_invoker` house pattern.
+- Grep/Read this repo and (where reachable, per the existing worktree precedent at `C:\Users\parve\ice-wt\dash-operator-cockpit-v1`) the `invegent-dashboard` repo for every consumer of `ice_ro.publish_status` and of the dashboard's current publish-evidence read path.
+- Work Task 3 in an **isolated** `invegent-dashboard` worktree/branch — either continuing `dashboard-operator-cockpit-v1` at its existing worktree, or opening a fresh isolated branch — whichever the executor picks, with the choice and rationale named explicitly in the result doc (this brief does not pre-decide it).
+- Run hermetic tests (`npx vitest run`), `npx tsc --noEmit`, `npm run build` in the isolated dashboard worktree.
+- Run `dashboard-ia-lint` against the changed surface if it is judged IA-relevant; if judged not, state the reasoning.
+- Design (author, do not exercise) a rollback path for the Task 2 DDL artifact, matching the house pattern used by the cc-0080 and M1-loudness `NOT_APPLIED_*` precedents.
+- Invoke `apply-harness-auditor` (registered SHADOW MODE) against the Task 2 artifact before it is treated as frozen/ready for the next gate — its PASS clears no gate but is a named pre-freeze signal per the CCF-04 build-order checklist.
+- Invoke `branch-warden` to verify HEAD/branch/diff-scope in both repos' isolated worktrees.
+- Invoke `db-rls-auditor` (read-only) if a live structural check is needed to confirm or refute the grounded-but-unverified inference above (that `cockpit-evidence.ts`'s query reproduces the same blindness) against fresh live data.
+
+## Forbidden actions
+
+- No `apply_migration`, `execute_sql` DML/DDL against production, deploy, cron-activation, push, merge, or PR in either repo, for any artifact this lane produces (v6.147 hold, active until watch PASS + PK production authorization, due ~2026-08-11 20:20 Sydney).
+- No schedule/cap DML, no production migration, no live selector/palette/routing/voice-config change, no intake/promotion affecting live selection, no M11 closure apply (v6.147 §2 verbatim prohibitions).
+- No touching any watch-evidence file (e.g. `docs/briefs/artifacts/cgu-final-phase1-watch-log-v1.md` or anything matching `*watch-log*` under `docs/briefs/artifacts/`).
+- No approving, merging, deploying, or otherwise advancing the pre-existing `dashboard-operator-cockpit-v1` branch's own separate, still-open PK visual-approval + watch-safe deployment gate — that gate's status is unchanged by this lane regardless of which branch Task 3 uses.
+- No pushing the isolated `invegent-dashboard` branch to that repo's origin/main, and no pushing to any remote at all, without a fresh, explicit PK instruction naming this lane.
+- No deciding, as settled fact, the final disposition of any cc-0080 gotcha (e.g. whether to filter the ~140 dead/rejected-yet-published rows, or merely flag them) — each must be presented as a named design choice with trade-offs, not asserted as correct.
+- No writing/editing any file outside (a) the one `NOT_APPLIED_*` artifact + its own result-doc/register-pointer discipline in this repo, and (b) the isolated dashboard worktree/branch for Task 3.
+- No register version cut outside the single-register-cut-owner arrangement and the CCF-02 claim-stub discipline (claim via result-doc stub, re-verify at commit) — pointer-only entries (Convention 1), not full re-narration.
+- No fabricated consumer list — every claimed consumer (or claimed absence of one) must be grep-citable; anything not independently verifiable goes to open questions, not the artifact's header claims.
+
+## Success criteria
+
+- Task 2 artifact exists at `supabase/migrations/NOT_APPLIED_*`, sources completed-publish state from `m.post_publish`, is secret-free, and its header explicitly addresses (handled or named-deferred-with-reason) each of the four cc-0080 gotchas.
+- A repo-wide, grep-grounded list of every consumer of `ice_ro.publish_status` (this repo) and of the dashboard's current publish-evidence read path exists, with any shape-breaking consumer named.
+- Task 3 change exists on a named isolated, undeployed `invegent-dashboard` branch; `cockpit-evidence.ts`'s (or its replacement's) query logic is repointed off the `m.post_publish_queue`-driven shape onto a pattern consistent with Task 2's corrected source, OR an explicit, evidenced reason is recorded for why not.
+- `npx vitest run`, `npx tsc --noEmit`, `npm run build` all clean in the dashboard worktree.
+- `dashboard-ia-lint` result recorded (PASS/WARN/BLOCK) or an explicit reasoned exception if judged not IA-relevant.
+- Rollback designed alongside the Task 2 artifact (not exercised).
+- `apply-harness-auditor` shadow pass run against the Task 2 artifact, findings recorded (clears no gate).
+- `branch-warden` confirms both isolated worktrees are exactly at their intended base with no unexpected files touched.
+- Zero apply/deploy/push/merge occurred anywhere.
+- Result doc filed per `docs/briefs/_template_result.md`, naming every open design choice made (branch continuation vs new branch; each cc-0080 disposition; the exec_sql-vs-view reachability finding) as a choice for review, not settled fact.
+
+## Stop condition
+
+Report result per the result template, then stop. Do not proceed to any apply/deploy/push/merge action, and do not treat this brief's completion as authorization for the pending, separate `dashboard-operator-cockpit-v1` visual-approval/deployment gate — both remain hard stops for a fresh PK gate.
+
+---
+
+## Notes (optional)
+
+- The single most consequential finding in this drafting pass: **the pre-existing, unmerged `dashboard-operator-cockpit-v1` build's own publish-evidence query is code-read-grounded to share Task 1's root-cause shape** (driven by `m.post_publish_queue`, not `m.post_publish`). If independently confirmed live (a named Task-3 precondition), this means Task 3 is not really "point an existing correct surface at a new source" — it is "fix a second instance of the same defect Task 1 found," inside a build that is otherwise fully reviewed and awaiting only a visual/deployment gate unrelated to this bug. This is exactly the kind of scope-shape fact PK should see named plainly at Gate 1, not discovered mid-build.
+- Because the dashboard cannot reach schema `ice_ro` via PostgREST (M8 precedent), Task 3's "source from the corrected view/pattern" almost certainly means replicating the corrected *SQL logic* as a static `exec_sql` literal (matching the cockpit build's existing pattern), not literally querying the Task 2 view by name — worth stating explicitly to avoid an ef-builder wasting effort on an unreachable approach.
+- The `/cockpit` route is not yet reflected in the dashboard's governing IA doc (`operator-journey-ia-v1.md`) and was not run through `dashboard-ia-lint` in its original build — Task 3 is a natural point to close that gap, but this brief does not mandate retrofitting IA governance for the whole existing cockpit, only for the surface Task 3 touches.
