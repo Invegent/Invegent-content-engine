@@ -105,5 +105,19 @@ M13 scoping). Active: control tower + CFW/INV asset sourcing only.
   intake+promotion applies. Carry-forwards for that intake lane: cfw-09 wall-mark zoom-check ·
   cfw-13 authenticity confirm · inv-07/inv-08 never geo-captioned.
 
+## M18 — ROTATION HALF FORMALLY CLOSED (2026-08-06, PK attestations + final cleanup)
+
+- **PK attests (direct, control-tower session 2026-08-06):** (1) `Downloads/creatomate api key.txt`
+  DELETED (independently confirmed absent by control-tower read; Recycle Bin emptying advised) ·
+  (2) spreadsheet key row(s) DELETED (revision-history caveat stands, accepted — keys dead).
+- **(3) Shell export CLEARED by control tower on PK instruction:** `CREATOMATE_API_KEY` existed as
+  a persistent User-level env var (`HKCU:\Environment`, held the long-dead `df13b951` key) —
+  registry entry removed, re-verified null. Open terminals retain inherited copies until closed.
+- **Managed storage adopted:** Bitwarden vault live with ICE credential entries (Creatomate,
+  ElevenLabs, HeyGen, Pexels, Pixabay, Supabase service backend; remainder migrating at PK's pace).
+- **M18 rotation half: CLOSED** — trigger confirmed → rotated → 4/4 verified → old copies removed →
+  attested. Remaining M18 scope before Final PASS: complete the credential migration (PK, ongoing)
+  + the packet's target-architecture confirmation at the M18 closeout gate.
+
 *(Subsequent daily entries append below; one line-block per day; any STOP-condition match →
 surface to PK immediately, do not wait for watch expiry.)*
