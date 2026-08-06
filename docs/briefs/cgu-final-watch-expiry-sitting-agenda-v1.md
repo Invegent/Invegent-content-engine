@@ -73,10 +73,16 @@ dashboard lane each, post-watch.*
 → *recommend promotion review packet (control tower drafts).* `creatomate-specialist`: first
 mission PACKAGE_READY, zero charter violations → *candidate→proven is PK's call; one more
 mission (the M6 transposition support) would give a 2-mission record.*
-**J. M13 lane sequencing** — Lane 2 next? Lanes 3 (registry persistence — carries the
-`video_short_triptych` format_key precondition), 4 (Asset Gap display), 5 (e2e proof — now has
-a REAL Blueprint input). *Recommend: Lane 3 + the format_key decision together, then Lane 5
-using the M6 blueprint; Lane 4 rides the next dashboard batch.*
+**J. M13 lane sequencing — ✅ PK PRE-RULED (2026-08-06, via the S3 session; supersedes the draft
+recommendation):** Lane 2 is CONFIRMED DONE (folded into the landed Lane 1; the diff engine now
+has a second real-artifact proof — clean + deliberately-drifted-caught against the M6 Blueprint,
+satisfying §8's proven-fixture-pass precondition twice over). **Lane 4 (Asset Gap Build-Pack
+display, T2): PULLED FORWARD — runs now** (never watch-gated; §9 holds only lanes 3/5; isolated/
+undeployed dashboard work). **Lane 3 (registry persistence, T3): starts the moment Phase-2 apply
+authorization clears at the sitting** — its only remaining gate is the Phase-2 hold itself (diff
+engine proven + format_key decision at item G are its internal preconditions). **Lane 5 (e2e
+proof, T3): immediately after Lane 3 lands**, using the real M6 Blueprint
+(`docs/briefs/artifacts/m6-triptych-blueprint-v1.json`) as its proof input.
 **K. M11c migrate design lane timing** — ruled "after M13 v1"; clarify whether Lane-1-landed
 suffices or full-M13. *Recommend: after Lane 3 lands (registry persistence is what the
 migration actually needs).*

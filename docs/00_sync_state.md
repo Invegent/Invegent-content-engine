@@ -6,6 +6,12 @@
 
 ---
 
+> **✅ v6.160 — PK PRE-RULING (agenda item J): M13 LANE SEQUENCING SETTLED + LANE 4 PULLED FORWARD (T1 ruling record; Lane-4 build opened, isolated/undeployed)** — recorded verbatim-faithful in `docs/briefs/cgu-final-watch-expiry-sitting-agenda-v1.md` item J.
+> · Lane 2 CONFIRMED DONE (folded into landed Lane 1; diff engine now proven on a second real artifact — M6 Blueprint clean + deliberately-drifted-caught). **Lane 4 (Asset Gap Build-Pack display, T2): runs NOW** — never watch-gated; seeded to the M13-context session (isolated dashboard branch, undeployed, read-only/advisory UI, §2.4 exclusions reach the UI). **Lane 3 (T3): starts when Phase-2 apply authorization clears** — its only remaining gate is the hold itself. **Lane 5 (T3): immediately after Lane 3**, proof input = the real M6 Blueprint.
+> · First sitting-agenda item retired by pre-ruling; the sitting shrinks. Register head note: this cut is the control tower's; the pre-ruling arrived via the S3 session relay, PK-attributed.
+
+---
+
 > **✅ v6.159 — M4 B-ROLL LOCALITY SOURCING MANIFEST PREPPED — the watch-window work queue is EXHAUSTED (T1 · docs/manifest only · zero downloads/harvest/intake)** — result: `docs/briefs/results/m4-broll-locality-sourcing-manifest-prep-v1.md` (commit `7f2ed28`); agenda item L added.
 > · Live pool truth: 6 eligible clips (all Pexels, distinct provider IDs) = Sydney/NSW 4 · Perth 1 · generic 1 — only 2 real localities, Perth below the per-locality floor. Manifest: Perth reinforcement (source 3 → accept 1–2) + Brisbane new 3rd locality (source 5 → accept 2–3); Melbourne alternate; clears the M4 bar (≥3 × ≥2) with margin. **Geo-declaration pre-verified live:** PP video `copy_geo='au'` → any AU locality reachable with NO governance change (checked so the manifest can't recommend geo-rejected clips).
 > · Precision correction recorded: "provider ID" = `source_pexels_id`/`source_pixabay_id` per-provider keys, not a literal `provider_id`. Flagged not fixed: all 6 eligible rows show `platform_scope=null` live (broader than previously recorded — feeds the ruled M4 enforcement design) · fenced Perth clip `42211c0f` still dead. Sourcing lane: T2 same-shape (P2 rule; per-apply guards never waived), full chain named; locality/batch choice = recommendation pending PK at the sitting (agenda L).
