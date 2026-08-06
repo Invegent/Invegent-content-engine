@@ -95,6 +95,25 @@ post-watch (or PK may elect harvest-only earlier — harvest is watch-legal).* C
 in this lane: all 6 eligible clips show `platform_scope=null` live — feeds the ruled M4
 enforcement design.
 
+**M. B-roll sourcing batch — six PK decisions + ONE PRIORITY VERIFICATION (added 2026-08-07 from
+the 4-brand sourcing completion report):**
+  · **⚠ PRIORITY — live asset `f84ac010` ("Perth Cottesloe", `eligible`, `source_pexels_id=32433684`):**
+    the harvest independently re-sourced that exact provider ID and REJECTED it — a **legible
+    "Fremantle" wordmark survives at 1080×1920 at every sampled timestamp (no trim removes it)**.
+    If confirmed, a currently-eligible LIVE rotation clip violates the safe-content rule AND
+    carries a wrong geo label (Cottesloe vs Fremantle signage). *Recommend: db-rls-auditor
+    verification first item of the post-watch wave; PK may elect an earlier fence if content risk
+    warrants (live-selection change — PK-only election during the watch).*
+  · The six sourcing decisions: 2 contested CFW clips · NDIS Thailand-sourced clip (geo-neutral
+    read) · PP incidental-people posture (top-down/faceless vs person-free claim) · one 185MB
+    clip trim-before-upload · storage policy for video assets.
+  · M4 intel folded into item L: this corpus advances the M4 locality bar by ZERO (all PP clips
+    geo-neutral; pp-broll-06's Perth claim downgraded — the grounding tower falls outside the
+    9:16 crop). **Brisbane CBD aerials are a dead lane (0/5 clean — all failed on readable
+    corporate signage); the M4 batch must target suburban/coastal Brisbane.** Sourcing epistemics
+    note for every visual gate: person-free is verified to the standard of the LAST pass, not
+    absolutely — deeper inspection kept finding people across three lanes.
+
 ## Part 4 — Standing confirmations (no decision unless PK objects)
 
 - M18: rotation half CLOSED; migration tail continues at PK's pace.
