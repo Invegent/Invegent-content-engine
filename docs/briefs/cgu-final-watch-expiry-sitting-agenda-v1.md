@@ -80,6 +80,14 @@ using the M6 blueprint; Lane 4 rides the next dashboard batch.*
 **K. M11c migrate design lane timing** — ruled "after M13 v1"; clarify whether Lane-1-landed
 suffices or full-M13. *Recommend: after Lane 3 lands (registry persistence is what the
 migration actually needs).*
+**L. M4 B-roll sourcing batch election** — manifest prepped (v6.159): Perth reinforcement
+(source 3 → 1–2 accepted) + Brisbane as the new 3rd locality (source 5 → 2–3 accepted);
+Melbourne alternate. Geo-declaration pre-verified: PP video copy_geo='au' means any AU locality
+is reachable without governance change. Lane = T2 same-shape under the P2 rule (per-apply guards
+never waived), full chain named. *Recommend: approve the manifest as drafted; sourcing runs
+post-watch (or PK may elect harvest-only earlier — harvest is watch-legal).* Carry flagged, not
+in this lane: all 6 eligible clips show `platform_scope=null` live — feeds the ruled M4
+enforcement design.
 
 ## Part 4 — Standing confirmations (no decision unless PK objects)
 
