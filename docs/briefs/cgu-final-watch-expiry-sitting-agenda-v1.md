@@ -152,6 +152,28 @@ production write, full gate trail); successor decisions below:**
     consider a periodic re-verification pass and/or requiring signage/person claims to cite frame
     ARTIFACTS rather than prose. **UPDATE 2026-08-07: the lane should scan for PII (vehicle
     plates class, per cfw-broll-05), not only signage** — redirect recorded v6.168.
+  · **✅ M CONSOLIDATED 2026-08-07 — open ONE doc at the sitting:**
+    `docs/briefs/results/broll-image-harvest-consolidated-handoff-v1.md` (commit `3387716`) —
+    38-asset ledger across BOTH corpora with real sha256s, post-fence pool state, **12
+    deduplicated PK decisions**, and the custody map. It supersedes the need to reconcile the
+    four predecessor docs at the gate. Three findings the consolidation itself surfaced:
+    **(i)** the 14 accepted IMAGES are `usage='background'`, a DIFFERENT intake shape from
+    B-roll — own packet, own db-rls-auditor pass (decision 8); **(ii)** the sibling-packet
+    review does NOT carry — `geo_national_safe` is an eligibility-touching structural diff AND
+    the shape already uses 86/100 `jsonb_build_object` arguments, so a clone adding 8 pairs
+    fails at PARSE time (decision 7); **(iii)** the still-background lane must be widened from
+    signage to **PII** (near-legible vehicle plates, `cfw-broll-05`) — decision 9.
+    Ledger corrections carried: predecessor's "22 INTAKE" → **20 INTAKE / 3 HOLD / 1 REJECT**;
+    `ndis-broll-10` Thai signage recorded INSIDE the trim window.
+    **§5 verification posture (read before ruling intake):** person-free is PROVISIONAL —
+    detection is clearance-grade only on static-camera footage (~30px floor), and
+    `cfw-broll-02`'s figure existed in its own original tier, so that claim was false against
+    the very file it was made on. *An intake lane inheriting these verdicts as settled is the
+    likeliest way this corpus causes a later problem.*
+  · **⚠ CUSTODY (restated):** `_harness/**` is git-excluded, worktree-only, ~5.3GB. Archiving
+    the sourcing session or cleaning its worktree destroys the VIDEO evidence; the control
+    tower's metadata backup covers manifests/frames/sheets but NOT video. Videos are re-fetchable
+    by provider ID + sha256 — **frames and contact sheets are not.**
   · **NEW M-5 (from the person-detection pass):** the intake election's per-clip accept/reject
     set is READY for PK (§10 of the detection result doc) — person findings are metadata under
     the 2026-08-07 ruling; live blockers are signage/geo; one lane recommendation on record:
