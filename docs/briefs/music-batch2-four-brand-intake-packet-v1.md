@@ -28,7 +28,7 @@ reviewed or gated against them. Full history: §2a.
 | `_harness/music_harvester_v1_20260806/music_v1_batch2_intake_rollback.sql` | `6eb94d4e95390f3b92a2ae64048e7d80000e3d97ffe118157a8877e51edbab74` |
 | `_harness/music_harvester_v1_20260806/manifest.json` | `9be3f403fe797da8b6c9b216faf627e876a8293b5abc2618be28c43916c55652` |
 | `_harness/music_harvester_v1_20260806/_build_manifest.py` (upstream manifest builder — pinned per AHA-01-2 run 4) | `3f2f60f50cf21df3dead39aed69962e991dd5bac29bc09e3804e2c52165ef1f5` |
-| `_harness/music_harvester_v1_20260806/audit/technical-audio-decision-table-v1.csv` (loudness source of truth) | `a8244de7a016e95965060ab417f836ef3a98198af547b6f68d1919f0a25b80da` |
+| `_harness/music_harvester_v1_20260806/audit/technical-audio-decision-table-v1.csv` (loudness source of truth) | `8d0d393fbb7895e61f61df7d80ea8b3738cdf3886b8c0b108f8bb7dc8520b89c` |
 | `_harness/music_harvester_v1_20260806/build_intake.py` (the generator — pinned per AHA-02-2) | `47b99d57e12e1283c7daee290aef5e3900c37dcf045254d1047501c0d7602a9f` |
 
 **Generator determinism proven:** regenerating both SQL files from the pinned manifest with the
@@ -42,6 +42,11 @@ therefore checked, not merely asserted.
 > (manifest), `62772a03…` (generator).
 > **The git blob is authoritative** (git stores LF); verify with `git cat-file` or
 > `git show HEAD:<path> | sha256sum`, not with a hash of the checked-out working copy.
+> **This trap already bit once, in this packet.** The audit CSV arrived from an external tool with
+> CRLF; I pinned its working-copy bytes (`a8244de7…`) while git stored the LF-normalised blob
+> (`8d0d393f…`), so the first pin failed verification against `origin/main`. The working copy is now
+> LF-normalised and the pin is the blob hash. `csv.DictReader` is line-ending agnostic, so
+> `manifest.json` reproduces byte-identically either way — the defect was in the pin, not the data.
 > This is the same trap recorded against the `apply-harness-auditor` merge. It matters at **§6
 > step 3** (regenerate-and-byte-diff) and for any `reviewed_input_hash` pinned by an external
 > reviewer working from a different checkout.
