@@ -56,10 +56,22 @@ cockpit session.** Residual process finding for the record (from the lane): acro
 every material error lived in PROSE, never in SQL — including one false claim that briefed a
 live PK decision; argues for keeping narrative out of reviewed SQL artifacts (pairs with the
 §8.3 artifact-cited-claims recommendation).
-**C-2 (register governance, small):** third PK-authorized in-session register cut this window
-(v6.155, v6.163/166 music, v6.169) — the single-cut-owner arrangement has effectively evolved;
-*recommend PK formalize: control tower cuts by default; a session cuts only with direct PK
-in-session authorization, claim-stub-checked — which is what practice already is.*
+**C-2 (register + shared-checkout governance) — ESCALATED 2026-08-07, two live incidents:**
+· **Register cuts:** FOUR PK-authorized in-session cuts this window (v6.155 · v6.163/166 music ·
+v6.169 · v6.170 cockpit). v6.170 produced a real COLLISION — the cockpit session cut it in-session
+on PK authorization while the control tower default-cut the same payload; reconciled per CCF-02
+(earlier timestamp keeps the number): cockpit's stands, control tower's RETRACTED (`25b4317`).
+*Recommend PK formalize what practice already is: control tower cuts by default; a session cuts
+only on direct PK in-session authorization AND notifies the control tower BEFORE cutting.*
+· **⚠ NEW — shared-checkout PUSH SWEEP (control-tower self-report):** the cockpit session held
+`ae40dfd` on shared-checkout main deliberately unpushed under a PK push-gate. A control-tower
+`git push origin main` for unrelated register work **carried that commit to origin** —
+`6b412f4..ae40dfd`. Nothing altered, nothing forced, but a PK push-gate was bypassed by
+MECHANISM, not decision. This is the same class as v6.156's staging sweep. *Recommend a standing
+rule: work held under a PK push-gate lives on an ISOLATED BRANCH, never on shared-checkout main —
+because any concurrent push publishes every local commit ahead of origin regardless of author.*
+The affected session closed before the control tower could deliver this disclosure to it, so it
+is surfaced to PK here instead.
 **D. Evergreen library seeding** — `t.evergreen_library` empty fleet-wide (never seeded); a whole
 skip-reason class. *Recommend: elect a small T2 seeding lane, per-client curated.*
 **E. `Location.max_chars`** — content policy call; zero live evidence exists (all clients declare
