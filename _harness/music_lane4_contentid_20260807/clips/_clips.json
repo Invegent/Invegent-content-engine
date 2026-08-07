@@ -1,0 +1,29 @@
+[
+  {
+    "track_key": "uplifting_composed_pluto_007",
+    "mood": "uplifting",
+    "rationale": "sole uplifting track in batch 1",
+    "source_mp3_sha256": "da6426f0753d11173a39dfdf0b6078afa833d4b1ec499a0b2b02550e8cd7501b",
+    "clip": "uplifting_composed_pluto_007__contentid_test.mp4",
+    "clip_bytes": 5880983,
+    "clip_sha256": "4baeba53d37fb73be916fb9a7efa98961bb1328b20daf2b36d13528598e20bfa"
+  },
+  {
+    "track_key": "warm_acoustic_simple_001",
+    "mood": "warm",
+    "rationale": "shortest warm track (97.3s)",
+    "source_mp3_sha256": "e870e4994da2d7238b6bfa5bf1e96f2e432f71b7285f834edd332737ac747512",
+    "clip": "warm_acoustic_simple_001__contentid_test.mp4",
+    "clip_bytes": 2465148,
+    "clip_sha256": "c4ee6f622ea638966bcef950a18092f857770371577dfcd397aacfc85720ba73"
+  },
+  {
+    "track_key": "neutral_short_4mei_009",
+    "mood": "neutral",
+    "rationale": "shortest track overall (65.8s) - cheapest to test",
+    "source_mp3_sha256": "956f7e96b736d729906092eceab484c7b803922f63e04a4f3f54406493e01283",
+    "clip": "neutral_short_4mei_009__contentid_test.mp4",
+    "clip_bytes": 1668783,
+    "clip_sha256": "623f23fee6e6757a1b43d1b2fac3f133962f308fce2b832d752c456f7c6e94ef"
+  }
+]
