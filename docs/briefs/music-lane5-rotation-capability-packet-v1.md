@@ -94,20 +94,41 @@ this lane.
 
 ## 4. The three hazards this lane must not walk into
 
-**(a) Signature change on a live production function.** The live signature is 4-arg
-`(p_scope_kind, p_scope_value, p_min_duration_seconds, p_mood)`; `video-worker` calls it at
-`supabase/functions/video-worker/index.ts:906`. `CREATE OR REPLACE` **cannot add a parameter** — a
-5-arg version is a *new overload*, not a replacement. Recommended order (additive-first, mirroring
-house discipline that the migration precedes the deploy):
-1. create the 5-arg `p_seed` version alongside the 4-arg;
-2. deploy `video-worker` to call the 5-arg with the draft id as seed;
-3. drop the 4-arg **later**, as its own gate, once nothing calls it.
+**(a) Signature change on a live production function. — CORRECTED 2026-08-07, see
+`docs/briefs/music-lane5-step1-5arg-draft-reconciliation-v1.md` §4.**
 
-**Verify — do not assume — how PostgREST resolves the overload** when the worker still sends four
-named arguments and two overloads exist. Ambiguous resolution here would be a live-render defect,
-and it is cheap to test before committing to the order.
+~~Recommended order: create the 5-arg alongside the 4-arg, deploy the worker, drop the 4-arg later.~~
+**That recommendation was wrong and is withdrawn.**
 
-**(b) A conflicting unapplied 5-arg draft already exists in the repo.**
+Two facts, both verified live:
+- The worker sends **TWO** named arguments, not four —
+  `rpc('select_music', { p_scope_kind, p_scope_value })` at
+  `supabase/functions/video-worker/index.ts:906-909`. The live function carries defaults for the
+  other two (`p_min_duration_seconds numeric DEFAULT 12`, `p_mood text DEFAULT NULL`;
+  `pronargdefaults = 2`).
+- With only two arguments on the wire, a 4-arg and a 5-arg would **both** be satisfiable by those two
+  plus defaults — genuine PostgREST ambiguity, on the live render path. The additive-overload order
+  walks straight into it.
+
+**Use `DROP FUNCTION` + `CREATE FUNCTION` instead**, so exactly one function ever exists. That is
+what the parked cc-0038 draft already does, and it is the correct vehicle.
+
+**Consequence that must be carried (standing `public fns born anon-executable` gotcha):** a freshly
+`CREATE`d function is EXECUTE-able by `anon`+`authenticated` by default ACL — `CREATE OR REPLACE`
+preserves ACL, `CREATE` does not — and `REVOKE FROM PUBLIC` does **not** clear it. Lane 5 must
+`REVOKE ... FROM PUBLIC` **and** `FROM anon, authenticated`, `GRANT` to `service_role`, and carry an
+**in-transaction `has_function_privilege` post-assert** that aborts on a leak.
+
+**Decoupling bonus:** because the worker passes no `p_seed`, adding it with `DEFAULT NULL` needs no
+worker change to be safe — the seed path stays dormant (index 0 = today's behaviour) until the worker
+is updated. Migration and deploy are independent.
+
+**(b) A conflicting unapplied 5-arg draft already exists in the repo. — RECONCILED 2026-08-07:
+`docs/briefs/music-lane5-step1-5arg-draft-reconciliation-v1.md`. Verdict: NOT ancestry for Lane 5
+(it deliberately relaxes the Content-ID gate, which Lane 5's bounded outcome forbids, and its
+composed scope takes Drifting Piano dark on apply). Park it as its own cc-0038 lane; inherit its
+DROP+CREATE and ACL technique, not its content. ⚠ It sits UNTRACKED in `supabase/migrations/` and
+should be moved out of that scanned directory today.** Original note follows:
 `supabase/migrations/20260711003222_select_music_per_platform_scope.sql` is an untracked, unapplied
 per-platform 5-arg design from a parallel session (`music-completion-gate1-packet-v1.md:65-70`).
 **Two different 5-arg `select_music` definitions would collide.** Reconcile or explicitly retire
