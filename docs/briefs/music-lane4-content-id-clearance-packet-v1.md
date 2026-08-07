@@ -1,6 +1,7 @@
 # Music Lane 4 — Content-ID clearance, minimum representative set — packet v1 (NOTHING APPLIED)
 
-**Status: PREPARED AND HELD.** No Content-ID verdict exists yet. No flip applied. No fence touched.
+**Status: VERDICTS RECORDED — 3/3 CLEAN (PK, 2026-08-07). Flip UNBLOCKED ON EVIDENCE, STILL HELD ON GATES.**
+No flip applied. No fence touched. Verdict record: `_harness/music_lane4_contentid_20260807/VERDICTS.md`.
 **Lane:** cc-0039 method, batch application · **Tier: T3** (the flip is production DML on a
 governance column) · **Authored:** 2026-08-07 · Harness `_harness/music_lane4_contentid_20260807/`.
 
@@ -63,7 +64,22 @@ that would weaken the fingerprint. Filenames carry identity because YouTube titl
 its filename, so the three are distinguishable in Studio at a glance.
 `clips/_clips.json` records each clip's sha256 and its source mp3's sha256.
 
-**Steps:**
+### ✅ OUTCOME (2026-08-07): all three CLEAN
+
+PK uploaded all three **Private** to YouTube and observed `—` in the Studio Notices column for each,
+with the tooltip *"No notices"*. Cross-checked on the evidence: the listed durations (1:40 · 3:53 ·
+1:09) match the built clips (1:39 · 3:52 · 1:08, YouTube rounds up) and the titles match the
+filenames — confirming the three uploads were the three intended clips, so no CLEAN verdict is
+attached to an untested track.
+
+**No edit to the flip is required** — it targets exactly these three and asserts exactly 3 rows.
+
+**One residual carried into the apply gate:** Content-ID can raise a claim after an initially clean
+read, and the flip will not run today (it sits behind a PK gate, the watch, and Lane 5). **Re-check
+the Notices column immediately before applying**, and keep the three test uploads until then — they
+are the only way to perform that re-check. This supersedes step 5 below for this run.
+
+**Steps (as executed):**
 
 1. Upload all three to a YouTube channel as **UNLISTED or PRIVATE**. Never public. A test/personal
    channel is preferred over a production client channel (cc-0039 precedent).
