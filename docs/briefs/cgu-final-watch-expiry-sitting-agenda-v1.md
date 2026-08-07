@@ -124,7 +124,14 @@ production write, full gate trail); successor decisions below:**
     post-watch T1/T2 lane.* **Structural recommendation (§8.3, for PK's stack):** nothing
     re-checks live pool contents against admission rules — both defects surfaced by accident;
     consider a periodic re-verification pass and/or requiring signage/person claims to cite frame
-    ARTIFACTS rather than prose.
+    ARTIFACTS rather than prose. **UPDATE 2026-08-07: the lane should scan for PII (vehicle
+    plates class, per cfw-broll-05), not only signage** — redirect recorded v6.168.
+  · **NEW M-5 (from the person-detection pass):** the intake election's per-clip accept/reject
+    set is READY for PK (§10 of the detection result doc) — person findings are metadata under
+    the 2026-08-07 ruling; live blockers are signage/geo; one lane recommendation on record:
+    `ndis-broll-10` REJECT. Also: `ndis-broll-R4` has no declared 9:16 crop (record defect) ·
+    NDIS policy-doc amendment named (non-identifying vs person-free wording, PK-gated, not
+    written).
   · **NEW M-4: follow-up writes** — f84ac010 geo-label correction (Cottesloe→Fremantle; separate
     write, not done) · `42211c0f`'s unrecognized `needs_gradient_scrim` value (inert while fenced;
     fix before any promotion).
