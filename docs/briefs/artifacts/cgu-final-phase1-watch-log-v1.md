@@ -166,5 +166,22 @@ M13 scoping). Active: control tower + CFW/INV asset sourcing only.
   base+E-1 with (a) M16 apply early in the post-watch wave (fixes CFW + NDIS image_quote fills),
   (b) an NDIS text source-diversification decision, (c) an evergreen-seeding lane election.
 
+## Day 5 — 2026-08-07 (PK-authorized production write DISCLOSED + watch health)
+
+- **PRODUCTION WRITE (PK-authorized, explicit-authorization carve-out; NOT a watch breach):**
+  2-row fence on `c.client_brand_asset` — `f84ac010` (Fremantle-signage defect, the agenda-M P1)
+  + `e6e24358` (NEW: Owen Hodge law-firm signage, found by the PK-directed full-pool audit).
+  Full gate trail (external review partial→fixed→`5d7651db` agree/clean → applied → post-verified;
+  rollback held outside DB). **PP B-roll eligible pool 6→4** — below the recorded POOL=6
+  threshold, no auto-backfill; the natural refill (the 2026-08-07 B-roll corpus) is intake-gated.
+  Schedule surface untouched; not a STOP; disclosed here because pool composition is watch-visible
+  context for video renders.
+- **Systemic finding (register-bound):** the 2026-07-29 intake batch's `review_notes` assert
+  verifications that were NOT performed (identical false "no signage across 9 frames" phrasing on
+  both fenced rows) — all signage/person claims from that batch are UNVERIFIED pending a
+  re-verification lane.
+- Watch health: cron/pipeline steady (no STOP); detailed trend reads continue; verdict drafting
+  begins on day-6 evidence.
+
 *(Subsequent daily entries append below; one line-block per day; any STOP-condition match →
 surface to PK immediately, do not wait for watch expiry.)*

@@ -95,15 +95,27 @@ post-watch (or PK may elect harvest-only earlier — harvest is watch-legal).* C
 in this lane: all 6 eligible clips show `platform_scope=null` live — feeds the ruled M4
 enforcement design.
 
-**M. B-roll sourcing batch — six PK decisions + ONE PRIORITY VERIFICATION (added 2026-08-07 from
-the 4-brand sourcing completion report):**
-  · **⚠ PRIORITY — live asset `f84ac010` ("Perth Cottesloe", `eligible`, `source_pexels_id=32433684`):**
-    the harvest independently re-sourced that exact provider ID and REJECTED it — a **legible
-    "Fremantle" wordmark survives at 1080×1920 at every sampled timestamp (no trim removes it)**.
-    If confirmed, a currently-eligible LIVE rotation clip violates the safe-content rule AND
-    carries a wrong geo label (Cottesloe vs Fremantle signage). *Recommend: db-rls-auditor
-    verification first item of the post-watch wave; PK may elect an earlier fence if content risk
-    warrants (live-selection change — PK-only election during the watch).*
+**M. B-roll batch — UPDATED 2026-08-07 evening: the P1 is RESOLVED-BY-FENCE (PK-authorized
+production write, full gate trail); successor decisions below:**
+  · ✅ `f84ac010` + `e6e24358` (NEW second defect: Owen Hodge law-firm signage, found by the
+    PK-directed full-pool audit) — both FENCED (`is_active=false·approved=false·
+    approval_status='fenced_signage_defect'`), post-verified, reversible. Pool 6→4.
+  · **NEW M-1: `2d62b04e` yes/no** — McDonald's arches identifiable ~15px at 1:1 (brand mark, no
+    wordmark); deliberately NOT fenced as materially weaker; also mislabeled "Generic" while
+    geo-tagged Hurstville. *Explicit PK ruling needed.*
+  · **NEW M-2: pool backfill urgency** — eligible pool now 4, below the recorded POOL=6
+    threshold, no auto-backfill; the watch-gated 2026-08-07 B-roll corpus is the natural refill →
+    *the intake election (7 batch decisions) gains urgency; recommend early in the post-watch
+    wave, after the pre-intake person-detection pass.*
+  · **NEW M-3: systemic intake-integrity finding** — the 2026-07-29 batch's `review_notes` assert
+    verifications never performed (identical false phrasing on both fenced rows, both approved on
+    their strength) → *elect a re-verification lane over that whole batch's signage/person claims;
+    treat its remaining rows as unverified meanwhile.*
+  · **NEW M-4: follow-up writes** — f84ac010 geo-label correction (Cottesloe→Fremantle; separate
+    write, not done) · `42211c0f`'s unrecognized `needs_gradient_scrim` value (inert while fenced;
+    fix before any promotion).
+  · Fence-targeting fact (register-bound): `resolve_slot_assets` reads ONLY `is_active`+`approved`
+    — `production_use_allowed`/`approval_status` are never consulted (declared-control class).
   · The six sourcing decisions: 2 contested CFW clips · NDIS Thailand-sourced clip (geo-neutral
     read) · PP incidental-people posture (top-down/faceless vs person-free claim) · one 185MB
     clip trim-before-upload · storage policy for video assets.
