@@ -6,6 +6,13 @@
 
 ---
 
+> **📦 v6.169 — PUBLISH-TRUTH TASK 2: corrected publish-status read surface AUTHORED + FULLY REVIEWED, NOT APPLIED (T2 · PRODUCT_PROOF · PK-own session, outside the CGU Final fleet)** — result: `docs/briefs/results/publish-truth-task2-corrected-view-and-rpc-result-v1.md`; artifacts on branch `worktree-agent-a8016aefa5cab42d1` (commit `a45f7a3`, pushed; **branch only, `main` untouched**).
+> · Fixes the v6.155 blindness: `ice_ro.publish_status` passes through `m.post_publish_queue`, which `trg_cleanup_queue_on_publish_v1` purges on FB/IG/LI publish success and YouTube never enters. Two additive objects sourced from durable `m.post_publish` — `ice_ro.publish_status_v2` (19 cols, `ice_readonly`-only) + `public.get_publish_status_v2()` (SECDEF, `service_role`-only, `RETURNS SETOF` the view type so the two cannot drift). Existing broken view untouched.
+> · Chain, all vs the final revision: branch-warden safe · **db-rls-auditor PASS** · **apply-harness-auditor PASS** (shadow) · external review `109d62a7` partial/med/high → escalated → **PK ruled: cross-tenant scope ACCEPTED AND RECORDED**, no client filter, no rev-5 reopen. Five revisions; the last deliberately net-subtractive (1438→1195 lines).
+> · Pinned: forward blob `300c337f` (sha256 `52a6d11a`) · rollback blob `ef11a8fc` (sha256 `4e9a5a1f`) — **use BLOB hashes to re-verify; `core.autocrlf` smudges a fresh checkout**. **NOT apply authorization** — live apply returns for its own gate under the existing hold, with a mandatory post-apply PostgREST consumption check (`SETOF` a composite from an unexposed schema has ZERO precedent in this DB; gated, not asserted). Task 3 (cockpit repoint) is dashboard-session-owned per PK ruling; source contract for handoff in result-doc §11.
+
+---
+
 > **✅ v6.168 — PERSON-DETECTION PASS RESULT DOC LANDED (harness+docs only, no mutation) — with three record corrections/redirects (T1)** — result: `docs/briefs/results/broll-person-detection-pass-result-v1.md` (commit `1aaff71`); predecessors untouched.
 > · **Scope corrected 33→37 clip files** (composition stated §1, checkable: INV 6 · CFW 10 incl. the superseded HD tier re-scanned as a deliberate control · PP 6 · NDIS 15 incl. 9 reserve). **New record defect: `ndis-broll-R4` has NO declared 9:16 crop** (2560×1440 landscape, no delivered frame defined — its person-free claim anchors to an ASSUMED centre crop, flagged as assumption).
 > · **Lane redirect (agenda M-3): `still-background-signage-verification-v1` should scan for PII, not only signage** — the `cfw-broll-05` near-legible vehicle plates expose a PII class never scanned anywhere in the corpus.
