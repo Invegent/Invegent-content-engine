@@ -107,10 +107,17 @@ production write, full gate trail); successor decisions below:**
     threshold, no auto-backfill; the watch-gated 2026-08-07 B-roll corpus is the natural refill →
     *the intake election (7 batch decisions) gains urgency; recommend early in the post-watch
     wave, after the pre-intake person-detection pass.*
-  · **NEW M-3: systemic intake-integrity finding** — the 2026-07-29 batch's `review_notes` assert
-    verifications never performed (identical false phrasing on both fenced rows, both approved on
-    their strength) → *elect a re-verification lane over that whole batch's signage/person claims;
-    treat its remaining rows as unverified meanwhile.*
+  · **M-3 (CORRECTED per the fence result doc §8.1 — supersedes the earlier whole-batch framing):**
+    the false-claim pattern is **contained to `broll_background` (7 rows, 4 carrying the claim) —
+    and all 7 have now been re-verified first-hand by the fence lane; the broll re-verification
+    is DISCHARGED.** The remaining ruling is only `2d62b04e` (M-1). **The REAL implied lane
+    (§8.2, not started/authorized): `still-background-signage-verification-v1`** — the 44 live
+    still-image `background` rows carry NO recorded signage verification under any phrasing
+    (unrecorded, not falsely recorded; single-frame, cheap per-asset). *Recommend: elect it as a
+    post-watch T1/T2 lane.* **Structural recommendation (§8.3, for PK's stack):** nothing
+    re-checks live pool contents against admission rules — both defects surfaced by accident;
+    consider a periodic re-verification pass and/or requiring signage/person claims to cite frame
+    ARTIFACTS rather than prose.
   · **NEW M-4: follow-up writes** — f84ac010 geo-label correction (Cottesloe→Fremantle; separate
     write, not done) · `42211c0f`'s unrecognized `needs_gradient_scrim` value (inert while fenced;
     fix before any promotion).
