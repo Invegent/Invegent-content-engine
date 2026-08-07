@@ -34,6 +34,41 @@ Task 1 asks this session to *"finish"* the Lane 5 FORWARD/ROLLBACK artifacts. Th
 **Task 1 is therefore redirected to the Lane 5 owner session, not performed here.** This session's
 Lane 5 contribution is review/audit only and is already complete (§3).
 
+## 0a. PERSISTENCE AUTHORISATION — verified 2026-08-07, second control-tower request
+
+**Definitive answer: this lane has NOTHING outstanding to persist. All 11 files it authored are
+already durable on `origin/main`** (verified with `git cat-file -e origin/main:<path>`, not inferred):
+
+`music-batch2-four-brand-intake-packet-v1.md` · `music-lane4-content-id-clearance-packet-v1.md` ·
+`music-lane5-rotation-capability-packet-v1.md` · `music-lane5-step1-5arg-draft-reconciliation-v1.md` ·
+`select-music-seed-rotation-pk-freeze-record-v1.md` · `music-lanes-4-5-parallel-handoff-v1.md` ·
+`NOT_APPLIED_SUPERSEDED_cc0038_…sql` · `VERDICTS.md` · `flip_content_id_safe_FORWARD.sql` ·
+`flip_content_id_safe_ROLLBACK.sql` · the batch-2 harness (apply/rollback/manifest/generator/audit CSV).
+
+**This report itself** is durable on branch `lane/music-closure-report-20260807` @ `2f59c1f` —
+deliberately not on `main`, per the hardened rule.
+
+### ⚠ FOUR OF THE FIVE FILES NAMED IN THE DURABILITY WARNING ARE NOT THIS LANE'S
+
+The warning is **correct and urgent — but aimed at the wrong session.** Verified status of each:
+
+| File named | Actually |
+|---|---|
+| `select-music-seed-rotation-pk-freeze-record-v1.md` | **THIS LANE'S — and already TRACKED and ON ORIGIN** (`9e1dda3`). The claim that it is untracked is wrong. |
+| `select-music-seed-rotation-gate1-brief-v1.md` | **NOT this lane's** — the Lane 5 owner's 34 KB brief. Untracked, genuinely at risk. |
+| `migration-directory-hygiene-gate1-brief-v1.md` | **NOT this lane's** — never authored here. Untracked. *(It appears to answer the 8-untracked-`.sql`-in-`supabase/migrations/` hazard this lane surfaced via branch-warden — so that flag now has an owner.)* |
+| `artifacts/lane5-select-music-seed-rotation-FORWARD.sql` | **NOT this lane's** — Lane 5 owner's. Untracked, genuinely at risk. |
+| `artifacts/lane5-select-music-seed-rotation-ROLLBACK.sql` | **NOT this lane's** — Lane 5 owner's. Untracked, genuinely at risk. |
+
+**Route the durability request to the Lane 5 owner session.** If it waits on this lane, those four
+files stay at risk — which is precisely the v6.151 "evidence homeless" shape the warning cites.
+
+**If the control tower persists them without the owner's confirmation**, label them
+*"untracked working state captured for durability; owner unconfirmed; NOT a frozen artifact."*
+They may be mid-draft. Recording a half-written migration as Lane 5's frozen deliverable would be the
+inverse of the v6.151 error — **frozen-state claimed, work actually unfinished** — and this lane
+cannot attest to their completeness.
+
 ## 1. Shared-checkout disclosure (control tower asked to be told NOW)
 
 **This session holds ZERO local commits on `main`.** Parity 0/0 at time of writing.
