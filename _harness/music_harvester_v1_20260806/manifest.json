@@ -1,6 +1,6 @@
 {
   "lane": "music-harvester-v1-batch2-four-brands",
-  "status": "harvested_pending_pk_aural_review",
+  "status": "pk_aural_review_COMPLETE_pending_apply_gate",
   "harvest_date_utc": "2026-08-06",
   "harvester": "Claude Code (mechanical sourcing) — NO approval/upload/DB/git; all aural + final-licence judgment is PK's",
   "schema_target": "m.music_track + m.music_license (live migration 20260708224532)",
@@ -23,18 +23,32 @@
     "storage_path_pattern": "post-music/global/<mood>/<track_key>.mp3 (PATH ONLY — nothing uploaded)",
     "dedup": "No sha256 or track_key collision with the 9 live rows. Intra-batch audio-frame hashing (ID3 stripped) found no duplicate recordings."
   },
+  "pk_aural_review": {
+    "date": "2026-08-07",
+    "verdict": "COMPLETE — 12 KEEP, 1 CULL",
+    "culled": [
+      {
+        "track_key": "neutral_lofi_shimmer_021",
+        "reason": "PK aural review 2026-08-07 — culled"
+      }
+    ],
+    "facet_corrections": "NONE required from PK review at this stage",
+    "corporate_gap": "REMAINS OPEN — uplifting_lofi_walkingaway_013 NOT re-tagged corporate",
+    "batch_identity": "all-lo-fi register ACCEPTED for this batch (sub-pool, not fleet identity)",
+    "note": "PK retained all three tracks the independent technical audit placed on HOLD (calm_lofi_saturation_020, uplifting_lofi_tranquilmind_012, warm_lofi_warmfuzz_017) and culled neutral_lofi_shimmer_021 instead. The aural verdict is the deciding act; the technical audit is advisory."
+  },
   "mood_spread_this_batch": {
     "calm": 2,
-    "neutral": 2,
+    "neutral": 1,
     "uplifting": 5,
     "warm": 4
   },
   "mood_spread_library_after_intake_if_applied": {
-    "warm": 6,
     "calm": 4,
-    "neutral": 5,
+    "corporate": 1,
+    "neutral": 4,
     "uplifting": 6,
-    "corporate": 1
+    "warm": 6
   },
   "brand_fit_advisory": {
     "WARNING": "ADVISORY ONLY. m.music_track is a GLOBAL pool with no client_id column. Per-brand fit is expressed by m.music_suitability + c.client_music_profile rows, which belong to the SCOPED-APPROVAL gate, NOT to intake. Nothing in this section is applied by the intake SQL.",
@@ -48,7 +62,6 @@
       "property-pulse": [
         "calm_lofi_calmcurrents_019",
         "calm_lofi_saturation_020",
-        "neutral_lofi_shimmer_021",
         "neutral_lofi_softreset_022",
         "uplifting_lofi_bubbles_014",
         "uplifting_lofi_hope_010",
@@ -75,23 +88,26 @@
       ],
       "invegent": [
         "calm_lofi_saturation_020",
-        "neutral_lofi_shimmer_021",
         "neutral_lofi_softreset_022",
         "uplifting_lofi_bubbles_014",
         "uplifting_lofi_walkingaway_013"
       ]
     }
   },
-  "count": 13,
+  "count": 12,
   "important_notes": [
     "NO track uploaded to the post-music bucket. NO DB row. NO fence flipped. NO approval. Upload + intake-apply are SEPARATE future PK gates.",
     "mood/energy/tempo_band/genre are HARVESTER GUESSES (CHECK-valid values only); PK aural review is authoritative for facets + eligibility.",
-    "genre='electronic' on all 13 — lo-fi is sample-based/electronic and 'lofi' is not in the CHECK vocabulary. Honest mapping, not a claim about instrumentation.",
-    "content_id_safe=false on ALL 13 (fail-closed, PK decision #3) => none are YouTube-eligible, and none become selectable by select_music, which requires content_id_safe IS TRUE.",
-    "loudness_lufs/bpm/text_overlay_safe left null (no automated audio QA; M1 is the named prerequisite).",
+    "genre='electronic' on all survivors — lo-fi is sample-based/electronic and 'lofi' is not in the CHECK vocabulary. Honest mapping, not a claim about instrumentation.",
+    "content_id_safe=false on ALL survivors (fail-closed, PK decision #3) => none are YouTube-eligible, and none become selectable by select_music, which requires content_id_safe IS TRUE.",
+    "loudness_lufs is now MEASURED (EBU R128 integrated, from the independent technical audit) and written to every survivor row. SELECTION-NEUTRAL: the live winner calm_piano_drifting_006 is -27.2 LUFS and still sorts ahead of all survivors under select_music's ORDER BY loudness_lufs ASC.",
+    "bpm stays NULL — the audit's tempo estimate is explicitly flagged double-time ambiguous and unreliable on lo-fi; fail-closed rather than write an unreliable value.",
+    "text_overlay_safe stays NULL — neither audit measured it (it is a visual judgment about text over video, not an audio property).",
+    "7 survivors carry POSITIVE true peaks (+0.01..+0.29 dBTP) and integrated loudness spans 6.22 dB. ICE has NO loudness normalisation or true-peak limiting in the render path (ffmpeg cannot run in an Edge Function; true-LUFS is a deferred Phase B). Bed volume is baked into the Creatomate template and is NOT readable from this repo — that value decides whether this is neutralised or real. Intake stores the licence-exact CC0 bytes; normalisation is a decision for when a track becomes selectable, NOT for intake (it would change every sha256).",
     "CORPORATE mood: ZERO added. The mood remains at 1 (the batch-1 'Medieval Theme', itself flagged as a mis-tag). Corporate beds are not harvestable from FMA CC0 — they live on Pixabay / YouTube Audio Library, both PK-manual. This is an unresolved gap, reported not papered over.",
-    "uplifting_lofi_walkingaway_013 is the batch's best corporate-adjacent candidate (source tags: 'Peaceful, Motivating') — PK may elect mood=corporate at the aural gate.",
-    "Four tracks exceed 180s (015 231s, 018 214s, 022 186s, 021 181s) — trim/loop candidates, not disqualifiers (video-worker requests a 12s minimum)."
+    "uplifting_lofi_walkingaway_013 was NOT re-tagged corporate (PK 2026-08-07, backed by the audit: it clusters acoustically with the rest of the lo-fi batch and is not a distinct corporate register).",
+    "Three survivors exceed 180s (015 231s, 018 214s, 022 186s) — trim/loop candidates, not disqualifiers (video-worker requests a 12s minimum).",
+    "CULLED at the PK aural gate: neutral_lofi_shimmer_021. Its licence evidence and audio remain in the harness for provenance but it is NOT in the intake set. Culling it drops NEUTRAL to a single new track and reduces Invegent's advisory suggestions from 5 to 4 — Invegent stays the weakest-covered brand."
   ],
   "tracks": [
     {
@@ -105,7 +121,7 @@
         "mime": "audio/mpeg",
         "bytes": 5907043,
         "duration_seconds": 147.648,
-        "loudness_lufs": null,
+        "loudness_lufs": -15.08,
         "bpm": null,
         "mood": "calm",
         "energy": "low",
@@ -155,7 +171,7 @@
         "mime": "audio/mpeg",
         "bytes": 6240163,
         "duration_seconds": 155.976,
-        "loudness_lufs": null,
+        "loudness_lufs": -10.51,
         "bpm": null,
         "mood": "calm",
         "energy": "low",
@@ -195,55 +211,6 @@
     },
     {
       "music_track": {
-        "track_key": "neutral_lofi_shimmer_021",
-        "title": "Shimmer (LoFi, Chill)",
-        "source": "manual_harvest",
-        "storage_bucket": "post-music",
-        "storage_path": "post-music/global/neutral/neutral_lofi_shimmer_021.mp3",
-        "sha256": "5bf681363f35db4e0872f63fdeb1b18d1bdb9e305ef2171777922ef9fcdb8464",
-        "mime": "audio/mpeg",
-        "bytes": 7228045,
-        "duration_seconds": 180.672,
-        "loudness_lufs": null,
-        "bpm": null,
-        "mood": "neutral",
-        "energy": "low",
-        "tempo_band": "mid",
-        "genre": "electronic",
-        "vocals": "instrumental_only",
-        "text_overlay_safe": null,
-        "approval_status": "intake_candidate",
-        "approved": false,
-        "production_use_allowed": false,
-        "is_active": false
-      },
-      "music_license": {
-        "license_type": "cc0",
-        "license_name": "CC0 1.0 Universal (Public Domain Dedication)",
-        "source_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/shimmer-lofi-chill/",
-        "license_snapshot_hash": "a0d84326450c82502250ec0faa57add532bef638747f3348c03b8ac80b854b5f",
-        "license_snapshot_path": "_harness/music_harvester_v1_20260806/candidates/neutral_lofi_shimmer_021.license.txt",
-        "commercial_use_allowed": true,
-        "social_use_allowed": true,
-        "modification_allowed": true,
-        "paid_ads_allowed": true,
-        "attribution_required": false,
-        "content_id_safe": false,
-        "expiry_date": null
-      },
-      "advisory_only": {
-        "brand_fit_suggestion": [
-          "invegent",
-          "property-pulse"
-        ],
-        "facet_note": "Unobtrusive chill bed — neutral backdrop, low personality.",
-        "local_file": "candidates/neutral_lofi_shimmer_021.mp3",
-        "bitrate": 320000,
-        "album_page_url": "https://freemusicarchive.org/music/holiznacc0/public-domain-lofi"
-      }
-    },
-    {
-      "music_track": {
         "track_key": "neutral_lofi_softreset_022",
         "title": "Soft Reset",
         "source": "manual_harvest",
@@ -253,7 +220,7 @@
         "mime": "audio/mpeg",
         "bytes": 7669852,
         "duration_seconds": 185.568,
-        "loudness_lufs": null,
+        "loudness_lufs": -14.08,
         "bpm": null,
         "mood": "neutral",
         "energy": "low",
@@ -302,7 +269,7 @@
         "mime": "audio/mpeg",
         "bytes": 5907043,
         "duration_seconds": 147.648,
-        "loudness_lufs": null,
+        "loudness_lufs": -13.69,
         "bpm": null,
         "mood": "uplifting",
         "energy": "medium",
@@ -351,7 +318,7 @@
         "mime": "audio/mpeg",
         "bytes": 6884136,
         "duration_seconds": 163.728,
-        "loudness_lufs": null,
+        "loudness_lufs": -15.38,
         "bpm": null,
         "mood": "uplifting",
         "energy": "medium",
@@ -401,7 +368,7 @@
         "mime": "audio/mpeg",
         "bytes": 5614056,
         "duration_seconds": 131.976,
-        "loudness_lufs": null,
+        "loudness_lufs": -16.73,
         "bpm": null,
         "mood": "uplifting",
         "energy": "medium",
@@ -450,7 +417,7 @@
         "mime": "audio/mpeg",
         "bytes": 6143203,
         "duration_seconds": 153.552,
-        "loudness_lufs": null,
+        "loudness_lufs": -13.79,
         "bpm": null,
         "mood": "uplifting",
         "energy": "low",
@@ -499,7 +466,7 @@
         "mime": "audio/mpeg",
         "bytes": 6243043,
         "duration_seconds": 156.048,
-        "loudness_lufs": null,
+        "loudness_lufs": -13.28,
         "bpm": null,
         "mood": "uplifting",
         "energy": "medium",
@@ -548,7 +515,7 @@
         "mime": "audio/mpeg",
         "bytes": 9569256,
         "duration_seconds": 230.856,
-        "loudness_lufs": null,
+        "loudness_lufs": -13.93,
         "bpm": null,
         "mood": "warm",
         "energy": "low",
@@ -597,7 +564,7 @@
         "mime": "audio/mpeg",
         "bytes": 8902309,
         "duration_seconds": 214.464,
-        "loudness_lufs": null,
+        "loudness_lufs": -14.88,
         "bpm": null,
         "mood": "warm",
         "energy": "low",
@@ -645,7 +612,7 @@
         "mime": "audio/mpeg",
         "bytes": 7453669,
         "duration_seconds": 178.248,
-        "loudness_lufs": null,
+        "loudness_lufs": -15.83,
         "bpm": null,
         "mood": "warm",
         "energy": "low",
@@ -694,7 +661,7 @@
         "mime": "audio/mpeg",
         "bytes": 6905485,
         "duration_seconds": 172.608,
-        "loudness_lufs": null,
+        "loudness_lufs": -14.17,
         "bpm": null,
         "mood": "warm",
         "energy": "medium",

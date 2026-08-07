@@ -1,6 +1,7 @@
--- Music Library v0 — BATCH 2 fenced intake (13 CC0 instrumental tracks, four-brand mood cover)
--- GENERATED from manifest.json by build_intake.py (v3) — do not hand-edit; regenerate instead.
--- v3: re-authored across three apply-harness-auditor shadow runs (see the generator docstring).
+-- Music Library v0 — BATCH 2 fenced intake (12 CC0 instrumental tracks, four-brand mood cover)
+-- GENERATED from manifest.json by build_intake.py (v4) — do not hand-edit; regenerate instead.
+-- v4: PK aural review complete (12 survivors, measured loudness_lufs written). Harness hardened
+--     across three apply-harness-auditor shadow runs — see the generator docstring.
 --
 -- FENCED intake ONLY: all four fences written explicitly OFF (approval_status='intake_candidate',
 --   approved / production_use_allowed / is_active = false). Nothing becomes selectable.
@@ -28,7 +29,7 @@
 --   assert accounts for rows already present, so a clean re-run still passes.
 --
 -- ROLLBACK: music_v1_batch2_intake_rollback.sql (a real transactional script keyed on the
---   same 13 track_keys this file inserts). Storage objects are LEFT IN PLACE for re-attempt
+--   same 12 track_keys this file inserts). Storage objects are LEFT IN PLACE for re-attempt
 --   (PK ruling 2026-08-06).
 
 BEGIN;
@@ -43,7 +44,7 @@ CREATE TEMP TABLE _music_intake_baseline ON COMMIT DROP AS
 CREATE TEMP TABLE _music_intake_counts ON COMMIT DROP AS
   SELECT (SELECT count(*) FROM m.music_track)   AS track_n,
          (SELECT count(*) FROM m.music_license) AS license_n,
-         (SELECT count(*) FROM m.music_track WHERE track_key IN ('calm_lofi_calmcurrents_019', 'calm_lofi_saturation_020', 'neutral_lofi_shimmer_021', 'neutral_lofi_softreset_022', 'uplifting_lofi_bubbles_014', 'uplifting_lofi_hope_010', 'uplifting_lofi_springsight_011', 'uplifting_lofi_tranquilmind_012', 'uplifting_lofi_walkingaway_013', 'warm_lofi_humanagain_015', 'warm_lofi_rooftops_018', 'warm_lofi_sunlight_016', 'warm_lofi_warmfuzz_017')) AS pre_existing;
+         (SELECT count(*) FROM m.music_track WHERE track_key IN ('calm_lofi_calmcurrents_019', 'calm_lofi_saturation_020', 'neutral_lofi_softreset_022', 'uplifting_lofi_bubbles_014', 'uplifting_lofi_hope_010', 'uplifting_lofi_springsight_011', 'uplifting_lofi_tranquilmind_012', 'uplifting_lofi_walkingaway_013', 'warm_lofi_humanagain_015', 'warm_lofi_rooftops_018', 'warm_lofi_sunlight_016', 'warm_lofi_warmfuzz_017')) AS pre_existing;
 
 -- C-12
 -- SPLIT-CHANNEL GUARD (executable; runs BEFORE any INSERT).
@@ -85,8 +86,8 @@ DO $$ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/calm/calm_lofi_calmcurrents_019.mp3'; END IF;
 END $$;
 WITH ins AS (
-  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
-  SELECT 'calm_lofi_calmcurrents_019', 'Calm Currents (Lofi, Relax, Calm)', 'manual_harvest', 'post-music', 'post-music/global/calm/calm_lofi_calmcurrents_019.mp3', '2dcb297376cfe0cb8a547ce74e4d10f406649e007ff01d6e2edb573996d23dc4', 'audio/mpeg', 5907043, 147.648, 'calm', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
+  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, loudness_lufs, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
+  SELECT 'calm_lofi_calmcurrents_019', 'Calm Currents (Lofi, Relax, Calm)', 'manual_harvest', 'post-music', 'post-music/global/calm/calm_lofi_calmcurrents_019.mp3', '2dcb297376cfe0cb8a547ce74e4d10f406649e007ff01d6e2edb573996d23dc4', 'audio/mpeg', 5907043, 147.648, -15.08, 'calm', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
   WHERE NOT EXISTS (SELECT 1 FROM m.music_track WHERE track_key = 'calm_lofi_calmcurrents_019')
   RETURNING track_id
 )
@@ -100,28 +101,13 @@ DO $$ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/calm/calm_lofi_saturation_020.mp3'; END IF;
 END $$;
 WITH ins AS (
-  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
-  SELECT 'calm_lofi_saturation_020', 'Saturation (Lofi, Calm, Relaxed)', 'manual_harvest', 'post-music', 'post-music/global/calm/calm_lofi_saturation_020.mp3', '340a14dffd98001edbae1e7da16e2b9f8f54e0687cd215fa5dfc0b351f4777c2', 'audio/mpeg', 6240163, 155.976, 'calm', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
+  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, loudness_lufs, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
+  SELECT 'calm_lofi_saturation_020', 'Saturation (Lofi, Calm, Relaxed)', 'manual_harvest', 'post-music', 'post-music/global/calm/calm_lofi_saturation_020.mp3', '340a14dffd98001edbae1e7da16e2b9f8f54e0687cd215fa5dfc0b351f4777c2', 'audio/mpeg', 6240163, 155.976, -10.51, 'calm', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
   WHERE NOT EXISTS (SELECT 1 FROM m.music_track WHERE track_key = 'calm_lofi_saturation_020')
   RETURNING track_id
 )
 INSERT INTO m.music_license (track_id, license_type, license_name, source_url, license_snapshot_hash, license_snapshot_path, commercial_use_allowed, social_use_allowed, modification_allowed, paid_ads_allowed, attribution_required, content_id_safe)
 SELECT ins.track_id, 'cc0', 'CC0 1.0 Universal (Public Domain Dedication)', 'https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/saturation-lofi-calm-relaxed/', '4797da125ea98423243b1ffa58d4f4e9ec3fbfaa9a9f657b4ef1053596c81b22', '_harness/music_harvester_v1_20260806/candidates/calm_lofi_saturation_020.license.txt', true, true, true, true, false, false FROM ins;
-
--- neutral_lofi_shimmer_021  (Shimmer (LoFi, Chill) · neutral · 181s · cc0)
-DO $$ BEGIN
-  PERFORM 1 FROM storage.objects WHERE bucket_id = 'post-music'
-    AND name = 'global/neutral/neutral_lofi_shimmer_021.mp3' AND (metadata->>'size')::bigint = 7228045;
-  IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/neutral/neutral_lofi_shimmer_021.mp3'; END IF;
-END $$;
-WITH ins AS (
-  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
-  SELECT 'neutral_lofi_shimmer_021', 'Shimmer (LoFi, Chill)', 'manual_harvest', 'post-music', 'post-music/global/neutral/neutral_lofi_shimmer_021.mp3', '5bf681363f35db4e0872f63fdeb1b18d1bdb9e305ef2171777922ef9fcdb8464', 'audio/mpeg', 7228045, 180.672, 'neutral', 'low', 'mid', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
-  WHERE NOT EXISTS (SELECT 1 FROM m.music_track WHERE track_key = 'neutral_lofi_shimmer_021')
-  RETURNING track_id
-)
-INSERT INTO m.music_license (track_id, license_type, license_name, source_url, license_snapshot_hash, license_snapshot_path, commercial_use_allowed, social_use_allowed, modification_allowed, paid_ads_allowed, attribution_required, content_id_safe)
-SELECT ins.track_id, 'cc0', 'CC0 1.0 Universal (Public Domain Dedication)', 'https://freemusicarchive.org/music/holiznacc0/public-domain-lofi/shimmer-lofi-chill/', 'a0d84326450c82502250ec0faa57add532bef638747f3348c03b8ac80b854b5f', '_harness/music_harvester_v1_20260806/candidates/neutral_lofi_shimmer_021.license.txt', true, true, true, true, false, false FROM ins;
 
 -- neutral_lofi_softreset_022  (Soft Reset · neutral · 186s · cc0)
 DO $$ BEGIN
@@ -130,8 +116,8 @@ DO $$ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/neutral/neutral_lofi_softreset_022.mp3'; END IF;
 END $$;
 WITH ins AS (
-  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
-  SELECT 'neutral_lofi_softreset_022', 'Soft Reset', 'manual_harvest', 'post-music', 'post-music/global/neutral/neutral_lofi_softreset_022.mp3', '9bedd59cdd0706be2d0ab9f436d73c45d95eecf55d2d1a7e68b1e484dfeabb99', 'audio/mpeg', 7669852, 185.568, 'neutral', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
+  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, loudness_lufs, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
+  SELECT 'neutral_lofi_softreset_022', 'Soft Reset', 'manual_harvest', 'post-music', 'post-music/global/neutral/neutral_lofi_softreset_022.mp3', '9bedd59cdd0706be2d0ab9f436d73c45d95eecf55d2d1a7e68b1e484dfeabb99', 'audio/mpeg', 7669852, 185.568, -14.08, 'neutral', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
   WHERE NOT EXISTS (SELECT 1 FROM m.music_track WHERE track_key = 'neutral_lofi_softreset_022')
   RETURNING track_id
 )
@@ -145,8 +131,8 @@ DO $$ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/uplifting/uplifting_lofi_bubbles_014.mp3'; END IF;
 END $$;
 WITH ins AS (
-  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
-  SELECT 'uplifting_lofi_bubbles_014', 'Bubbles (Lofi, Bright, Relaxed)', 'manual_harvest', 'post-music', 'post-music/global/uplifting/uplifting_lofi_bubbles_014.mp3', '73efb557d8cfcca0f5cf3b435d3a0157bf9a702115b55266b8a2529f3997b542', 'audio/mpeg', 5907043, 147.648, 'uplifting', 'medium', 'mid', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
+  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, loudness_lufs, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
+  SELECT 'uplifting_lofi_bubbles_014', 'Bubbles (Lofi, Bright, Relaxed)', 'manual_harvest', 'post-music', 'post-music/global/uplifting/uplifting_lofi_bubbles_014.mp3', '73efb557d8cfcca0f5cf3b435d3a0157bf9a702115b55266b8a2529f3997b542', 'audio/mpeg', 5907043, 147.648, -13.69, 'uplifting', 'medium', 'mid', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
   WHERE NOT EXISTS (SELECT 1 FROM m.music_track WHERE track_key = 'uplifting_lofi_bubbles_014')
   RETURNING track_id
 )
@@ -160,8 +146,8 @@ DO $$ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/uplifting/uplifting_lofi_hope_010.mp3'; END IF;
 END $$;
 WITH ins AS (
-  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
-  SELECT 'uplifting_lofi_hope_010', 'Hope On Repeat', 'manual_harvest', 'post-music', 'post-music/global/uplifting/uplifting_lofi_hope_010.mp3', 'e781cf3926ea5b769f3b5667011234f4524cbcb06e539ba563c7f15fd805477a', 'audio/mpeg', 6884136, 163.728, 'uplifting', 'medium', 'mid', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
+  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, loudness_lufs, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
+  SELECT 'uplifting_lofi_hope_010', 'Hope On Repeat', 'manual_harvest', 'post-music', 'post-music/global/uplifting/uplifting_lofi_hope_010.mp3', 'e781cf3926ea5b769f3b5667011234f4524cbcb06e539ba563c7f15fd805477a', 'audio/mpeg', 6884136, 163.728, -15.38, 'uplifting', 'medium', 'mid', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
   WHERE NOT EXISTS (SELECT 1 FROM m.music_track WHERE track_key = 'uplifting_lofi_hope_010')
   RETURNING track_id
 )
@@ -175,8 +161,8 @@ DO $$ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/uplifting/uplifting_lofi_springsight_011.mp3'; END IF;
 END $$;
 WITH ins AS (
-  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
-  SELECT 'uplifting_lofi_springsight_011', 'Spring In Sight', 'manual_harvest', 'post-music', 'post-music/global/uplifting/uplifting_lofi_springsight_011.mp3', '31b8701fbc795f05881d7544943e64983cd008732d1388bef07bd7dd6d4a87a8', 'audio/mpeg', 5614056, 131.976, 'uplifting', 'medium', 'mid', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
+  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, loudness_lufs, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
+  SELECT 'uplifting_lofi_springsight_011', 'Spring In Sight', 'manual_harvest', 'post-music', 'post-music/global/uplifting/uplifting_lofi_springsight_011.mp3', '31b8701fbc795f05881d7544943e64983cd008732d1388bef07bd7dd6d4a87a8', 'audio/mpeg', 5614056, 131.976, -16.73, 'uplifting', 'medium', 'mid', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
   WHERE NOT EXISTS (SELECT 1 FROM m.music_track WHERE track_key = 'uplifting_lofi_springsight_011')
   RETURNING track_id
 )
@@ -190,8 +176,8 @@ DO $$ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/uplifting/uplifting_lofi_tranquilmind_012.mp3'; END IF;
 END $$;
 WITH ins AS (
-  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
-  SELECT 'uplifting_lofi_tranquilmind_012', 'Tranquil Mindscape (Lofi, Happy, Reflection)', 'manual_harvest', 'post-music', 'post-music/global/uplifting/uplifting_lofi_tranquilmind_012.mp3', '488d9693c13e44c5213c0647ee89ea91b21e17d9ac602225a78ee089720134c0', 'audio/mpeg', 6143203, 153.552, 'uplifting', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
+  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, loudness_lufs, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
+  SELECT 'uplifting_lofi_tranquilmind_012', 'Tranquil Mindscape (Lofi, Happy, Reflection)', 'manual_harvest', 'post-music', 'post-music/global/uplifting/uplifting_lofi_tranquilmind_012.mp3', '488d9693c13e44c5213c0647ee89ea91b21e17d9ac602225a78ee089720134c0', 'audio/mpeg', 6143203, 153.552, -13.79, 'uplifting', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
   WHERE NOT EXISTS (SELECT 1 FROM m.music_track WHERE track_key = 'uplifting_lofi_tranquilmind_012')
   RETURNING track_id
 )
@@ -205,8 +191,8 @@ DO $$ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/uplifting/uplifting_lofi_walkingaway_013.mp3'; END IF;
 END $$;
 WITH ins AS (
-  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
-  SELECT 'uplifting_lofi_walkingaway_013', 'Walking Away (Lofi, Peaceful, Motivating)', 'manual_harvest', 'post-music', 'post-music/global/uplifting/uplifting_lofi_walkingaway_013.mp3', 'fd8a618a4076b76f02f69414d6beb4ad7ddf3b8c26164085bd6dc1a9fd2f7610', 'audio/mpeg', 6243043, 156.048, 'uplifting', 'medium', 'mid', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
+  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, loudness_lufs, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
+  SELECT 'uplifting_lofi_walkingaway_013', 'Walking Away (Lofi, Peaceful, Motivating)', 'manual_harvest', 'post-music', 'post-music/global/uplifting/uplifting_lofi_walkingaway_013.mp3', 'fd8a618a4076b76f02f69414d6beb4ad7ddf3b8c26164085bd6dc1a9fd2f7610', 'audio/mpeg', 6243043, 156.048, -13.28, 'uplifting', 'medium', 'mid', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
   WHERE NOT EXISTS (SELECT 1 FROM m.music_track WHERE track_key = 'uplifting_lofi_walkingaway_013')
   RETURNING track_id
 )
@@ -220,8 +206,8 @@ DO $$ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/warm/warm_lofi_humanagain_015.mp3'; END IF;
 END $$;
 WITH ins AS (
-  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
-  SELECT 'warm_lofi_humanagain_015', 'Feeling Human Again', 'manual_harvest', 'post-music', 'post-music/global/warm/warm_lofi_humanagain_015.mp3', '896a6ddf192c6bca7f135d44bd42c7070b263215039cde22f19501f9beb9dbaf', 'audio/mpeg', 9569256, 230.856, 'warm', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
+  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, loudness_lufs, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
+  SELECT 'warm_lofi_humanagain_015', 'Feeling Human Again', 'manual_harvest', 'post-music', 'post-music/global/warm/warm_lofi_humanagain_015.mp3', '896a6ddf192c6bca7f135d44bd42c7070b263215039cde22f19501f9beb9dbaf', 'audio/mpeg', 9569256, 230.856, -13.93, 'warm', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
   WHERE NOT EXISTS (SELECT 1 FROM m.music_track WHERE track_key = 'warm_lofi_humanagain_015')
   RETURNING track_id
 )
@@ -235,8 +221,8 @@ DO $$ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/warm/warm_lofi_rooftops_018.mp3'; END IF;
 END $$;
 WITH ins AS (
-  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
-  SELECT 'warm_lofi_rooftops_018', 'Roof Tops', 'manual_harvest', 'post-music', 'post-music/global/warm/warm_lofi_rooftops_018.mp3', 'f6e619fbfdc0898c409494d5c810d34d9cd29be2b75bb2d8c197e1edb37155b5', 'audio/mpeg', 8902309, 214.464, 'warm', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
+  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, loudness_lufs, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
+  SELECT 'warm_lofi_rooftops_018', 'Roof Tops', 'manual_harvest', 'post-music', 'post-music/global/warm/warm_lofi_rooftops_018.mp3', 'f6e619fbfdc0898c409494d5c810d34d9cd29be2b75bb2d8c197e1edb37155b5', 'audio/mpeg', 8902309, 214.464, -14.88, 'warm', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
   WHERE NOT EXISTS (SELECT 1 FROM m.music_track WHERE track_key = 'warm_lofi_rooftops_018')
   RETURNING track_id
 )
@@ -250,8 +236,8 @@ DO $$ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/warm/warm_lofi_sunlight_016.mp3'; END IF;
 END $$;
 WITH ins AS (
-  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
-  SELECT 'warm_lofi_sunlight_016', 'Faded in the Sunlight', 'manual_harvest', 'post-music', 'post-music/global/warm/warm_lofi_sunlight_016.mp3', '0262718d6091a8a456b870b3af749a48b83d7903a6c551a99a662e67bf206aa4', 'audio/mpeg', 7453669, 178.248, 'warm', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
+  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, loudness_lufs, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
+  SELECT 'warm_lofi_sunlight_016', 'Faded in the Sunlight', 'manual_harvest', 'post-music', 'post-music/global/warm/warm_lofi_sunlight_016.mp3', '0262718d6091a8a456b870b3af749a48b83d7903a6c551a99a662e67bf206aa4', 'audio/mpeg', 7453669, 178.248, -15.83, 'warm', 'low', 'slow', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
   WHERE NOT EXISTS (SELECT 1 FROM m.music_track WHERE track_key = 'warm_lofi_sunlight_016')
   RETURNING track_id
 )
@@ -265,8 +251,8 @@ DO $$ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'music-intake precheck failed: post-music/% missing or wrong size — rolled back', 'global/warm/warm_lofi_warmfuzz_017.mp3'; END IF;
 END $$;
 WITH ins AS (
-  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
-  SELECT 'warm_lofi_warmfuzz_017', 'Warm Fuzz (LoFi, Retro)', 'manual_harvest', 'post-music', 'post-music/global/warm/warm_lofi_warmfuzz_017.mp3', '974ffd083b09aecbe60412f3376db07fb241adbbb0abf89698a22229a2de02c6', 'audio/mpeg', 6905485, 172.608, 'warm', 'medium', 'mid', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
+  INSERT INTO m.music_track (track_key, title, source, storage_bucket, storage_path, sha256, mime, bytes, duration_seconds, loudness_lufs, mood, energy, tempo_band, genre, vocals, approval_status, approved, production_use_allowed, is_active, notes)
+  SELECT 'warm_lofi_warmfuzz_017', 'Warm Fuzz (LoFi, Retro)', 'manual_harvest', 'post-music', 'post-music/global/warm/warm_lofi_warmfuzz_017.mp3', '974ffd083b09aecbe60412f3376db07fb241adbbb0abf89698a22229a2de02c6', 'audio/mpeg', 6905485, 172.608, -14.17, 'warm', 'medium', 'mid', 'electronic', 'instrumental_only', 'intake_candidate', false, false, false, 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
   WHERE NOT EXISTS (SELECT 1 FROM m.music_track WHERE track_key = 'warm_lofi_warmfuzz_017')
   RETURNING track_id
 )
@@ -288,11 +274,11 @@ BEGIN
   --    Scoped on track_key, NOT on notes: notes is nullable unconstrained free text that a
   --    human may legitimately edit at the aural gate, so it is not a safe identity predicate
   --    (the same reasoning that re-keyed the rollback).
-  SELECT count(*) INTO batch FROM m.music_track WHERE track_key IN ('calm_lofi_calmcurrents_019', 'calm_lofi_saturation_020', 'neutral_lofi_shimmer_021', 'neutral_lofi_softreset_022', 'uplifting_lofi_bubbles_014', 'uplifting_lofi_hope_010', 'uplifting_lofi_springsight_011', 'uplifting_lofi_tranquilmind_012', 'uplifting_lofi_walkingaway_013', 'warm_lofi_humanagain_015', 'warm_lofi_rooftops_018', 'warm_lofi_sunlight_016', 'warm_lofi_warmfuzz_017')
+  SELECT count(*) INTO batch FROM m.music_track WHERE track_key IN ('calm_lofi_calmcurrents_019', 'calm_lofi_saturation_020', 'neutral_lofi_softreset_022', 'uplifting_lofi_bubbles_014', 'uplifting_lofi_hope_010', 'uplifting_lofi_springsight_011', 'uplifting_lofi_tranquilmind_012', 'uplifting_lofi_walkingaway_013', 'warm_lofi_humanagain_015', 'warm_lofi_rooftops_018', 'warm_lofi_sunlight_016', 'warm_lofi_warmfuzz_017')
     AND is_active IS FALSE AND approved IS FALSE
     AND approval_status = 'intake_candidate' AND production_use_allowed IS FALSE;
-  IF batch <> 13 THEN
-    RAISE EXCEPTION 'music-intake verify: % fenced rows in batch, expected 13 — rolled back', batch;
+  IF batch <> 12 THEN
+    RAISE EXCEPTION 'music-intake verify: % fenced rows in batch, expected 12 — rolled back', batch;
   END IF;
 
   -- 2. MARKER CONSISTENCY (data quality, not identity): every row this apply is responsible
@@ -301,9 +287,9 @@ BEGIN
   SELECT string_agg(track_key, ', ') INTO incongruent FROM (
     (SELECT track_key FROM m.music_track WHERE notes = 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable'
      EXCEPT
-     SELECT * FROM (VALUES ('calm_lofi_calmcurrents_019'), ('calm_lofi_saturation_020'), ('neutral_lofi_shimmer_021'), ('neutral_lofi_softreset_022'), ('uplifting_lofi_bubbles_014'), ('uplifting_lofi_hope_010'), ('uplifting_lofi_springsight_011'), ('uplifting_lofi_tranquilmind_012'), ('uplifting_lofi_walkingaway_013'), ('warm_lofi_humanagain_015'), ('warm_lofi_rooftops_018'), ('warm_lofi_sunlight_016'), ('warm_lofi_warmfuzz_017')) v(track_key))
+     SELECT * FROM (VALUES ('calm_lofi_calmcurrents_019'), ('calm_lofi_saturation_020'), ('neutral_lofi_softreset_022'), ('uplifting_lofi_bubbles_014'), ('uplifting_lofi_hope_010'), ('uplifting_lofi_springsight_011'), ('uplifting_lofi_tranquilmind_012'), ('uplifting_lofi_walkingaway_013'), ('warm_lofi_humanagain_015'), ('warm_lofi_rooftops_018'), ('warm_lofi_sunlight_016'), ('warm_lofi_warmfuzz_017')) v(track_key))
     UNION ALL
-    (SELECT * FROM (VALUES ('calm_lofi_calmcurrents_019'), ('calm_lofi_saturation_020'), ('neutral_lofi_shimmer_021'), ('neutral_lofi_softreset_022'), ('uplifting_lofi_bubbles_014'), ('uplifting_lofi_hope_010'), ('uplifting_lofi_springsight_011'), ('uplifting_lofi_tranquilmind_012'), ('uplifting_lofi_walkingaway_013'), ('warm_lofi_humanagain_015'), ('warm_lofi_rooftops_018'), ('warm_lofi_sunlight_016'), ('warm_lofi_warmfuzz_017')) v(track_key)
+    (SELECT * FROM (VALUES ('calm_lofi_calmcurrents_019'), ('calm_lofi_saturation_020'), ('neutral_lofi_softreset_022'), ('uplifting_lofi_bubbles_014'), ('uplifting_lofi_hope_010'), ('uplifting_lofi_springsight_011'), ('uplifting_lofi_tranquilmind_012'), ('uplifting_lofi_walkingaway_013'), ('warm_lofi_humanagain_015'), ('warm_lofi_rooftops_018'), ('warm_lofi_sunlight_016'), ('warm_lofi_warmfuzz_017')) v(track_key)
      EXCEPT
      SELECT track_key FROM m.music_track WHERE notes = 'music-harvester-v1 batch2 four-brand intake (2026-08-06) — fenced candidate, not selectable')
   ) d;
@@ -313,7 +299,7 @@ BEGIN
 
   -- 3. Every batch track has its 1:1 licence row (no orphan track).
   SELECT count(*) INTO missing_lic FROM m.music_track t
-    WHERE t.track_key IN ('calm_lofi_calmcurrents_019', 'calm_lofi_saturation_020', 'neutral_lofi_shimmer_021', 'neutral_lofi_softreset_022', 'uplifting_lofi_bubbles_014', 'uplifting_lofi_hope_010', 'uplifting_lofi_springsight_011', 'uplifting_lofi_tranquilmind_012', 'uplifting_lofi_walkingaway_013', 'warm_lofi_humanagain_015', 'warm_lofi_rooftops_018', 'warm_lofi_sunlight_016', 'warm_lofi_warmfuzz_017')
+    WHERE t.track_key IN ('calm_lofi_calmcurrents_019', 'calm_lofi_saturation_020', 'neutral_lofi_softreset_022', 'uplifting_lofi_bubbles_014', 'uplifting_lofi_hope_010', 'uplifting_lofi_springsight_011', 'uplifting_lofi_tranquilmind_012', 'uplifting_lofi_walkingaway_013', 'warm_lofi_humanagain_015', 'warm_lofi_rooftops_018', 'warm_lofi_sunlight_016', 'warm_lofi_warmfuzz_017')
       AND NOT EXISTS (SELECT 1 FROM m.music_license l WHERE l.track_id = t.track_id);
   IF missing_lic <> 0 THEN
     RAISE EXCEPTION 'music-intake verify: % batch track(s) with no licence row — rolled back', missing_lic;
@@ -321,7 +307,7 @@ BEGIN
 
   -- 4. v0 licence invariants: cc0, no attribution obligation, Content-ID fail-closed.
   SELECT count(*) INTO bad_lic FROM m.music_track t JOIN m.music_license l USING (track_id)
-    WHERE t.track_key IN ('calm_lofi_calmcurrents_019', 'calm_lofi_saturation_020', 'neutral_lofi_shimmer_021', 'neutral_lofi_softreset_022', 'uplifting_lofi_bubbles_014', 'uplifting_lofi_hope_010', 'uplifting_lofi_springsight_011', 'uplifting_lofi_tranquilmind_012', 'uplifting_lofi_walkingaway_013', 'warm_lofi_humanagain_015', 'warm_lofi_rooftops_018', 'warm_lofi_sunlight_016', 'warm_lofi_warmfuzz_017')
+    WHERE t.track_key IN ('calm_lofi_calmcurrents_019', 'calm_lofi_saturation_020', 'neutral_lofi_softreset_022', 'uplifting_lofi_bubbles_014', 'uplifting_lofi_hope_010', 'uplifting_lofi_springsight_011', 'uplifting_lofi_tranquilmind_012', 'uplifting_lofi_walkingaway_013', 'warm_lofi_humanagain_015', 'warm_lofi_rooftops_018', 'warm_lofi_sunlight_016', 'warm_lofi_warmfuzz_017')
       AND NOT (l.license_type = 'cc0'
                AND l.attribution_required IS FALSE
                AND l.content_id_safe IS FALSE
@@ -332,10 +318,10 @@ BEGIN
   END IF;
 
   -- 5. ADDITIVE-ONLY: both tables grew by exactly the number of rows this run inserted
-  --    (13 minus any already present), so nothing else was created or destroyed.
+  --    (12 minus any already present), so nothing else was created or destroyed.
   SELECT track_n, license_n, pre_existing INTO base_track, base_lic, pre_ex
     FROM pg_temp._music_intake_counts;
-  expected_new := 13 - pre_ex;
+  expected_new := 12 - pre_ex;
   SELECT count(*) - base_track INTO grew_track FROM m.music_track;
   SELECT count(*) - base_lic   INTO grew_lic   FROM m.music_license;
   IF grew_track <> expected_new THEN

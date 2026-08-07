@@ -6,12 +6,32 @@ Joins the mechanical harvest output (sha256/bytes/duration) + the licence-eviden
 LIVE schema (supabase/migrations/20260708224532_create_music_library_v0.sql:81-137).
 
 Facets (mood/energy/tempo_band/genre) are HARVESTER GUESSES from title/album context — no
-aural QA was performed. PK's aural verdict is authoritative. Nothing here is approved.
+aural QA was performed by the harvester. PK's aural verdict is authoritative.
+
+v2 (2026-08-07) — PK AURAL REVIEW COMPLETE:
+  · CULLED 1 track (neutral_lofi_shimmer_021) -> 12 survivors.
+  · loudness_lufs now WRITTEN from the independent technical audit's measured EBU R128 values
+    (audit/technical-audio-decision-table-v1.csv) instead of NULL. Read from the CSV at build
+    time so the value is traceable to its evidence rather than hand-transcribed.
+  · bpm stays NULL: the audit supplies an estimate but explicitly flags it double-time
+    ambiguous and unreliable on lo-fi. Fail-closed — do not write a value the source itself
+    calls unreliable.
+  · text_overlay_safe stays NULL: neither audit measured it (it is a visual judgment about
+    text over video, not an audio property).
+  · PK ruled NO facet corrections at this stage, so mood/energy/tempo_band/genre are unchanged.
 """
-import json, os
+import csv, json, os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CAND = os.path.join(HERE, "candidates")
+AUDIT_CSV = os.path.join(HERE, "audit", "technical-audio-decision-table-v1.csv")
+
+# PK aural review 2026-08-07 — the ONLY cull. PK kept all three tracks the technical audit
+# placed on HOLD and culled this one instead; the aural verdict is the deciding act.
+CULLED = {"neutral_lofi_shimmer_021": "PK aural review 2026-08-07 — culled"}
+
+# Live library mood counts BEFORE this batch (ice_ro.music_governance_status, read 2026-08-06).
+LIVE_LIBRARY_SPREAD = {"warm": 2, "calm": 2, "neutral": 3, "corporate": 1, "uplifting": 1}
 
 # track_key -> (mood, energy, tempo_band, genre, brand_fit_advisory, facet_note)
 # CHECK vocabularies (live schema):
@@ -50,11 +70,21 @@ def main():
     lic_hashes = json.load(open(os.path.join(CAND, "_license_hashes.json")))
     meta = json.load(open(os.path.join(CAND, "_track_meta.json")))
 
+    # Measured EBU R128 integrated loudness, read from the independent audit's own table.
+    audit = {row["track_key"]: row
+             for row in csv.DictReader(open(AUDIT_CSV, encoding="utf-8-sig"))}
+
     tracks, mood_spread, brand_index = [], {}, {b: [] for b in BRAND_TONE}
+    culled = []
     for r in sorted(recs, key=lambda x: x["track_key"]):
         tk = r["track_key"]
         if r.get("error") or tk not in lic_hashes:
             continue
+        if tk in CULLED:
+            culled.append({"track_key": tk, "reason": CULLED[tk]})
+            continue
+        if tk not in audit:
+            raise SystemExit(f"ABORT: no measured loudness for surviving track {tk}")
         mood, energy, tempo, genre, brands, note = FACETS[tk]
         mood_spread[mood] = mood_spread.get(mood, 0) + 1
         for b in brands:
@@ -70,7 +100,10 @@ def main():
                 "mime": "audio/mpeg",
                 "bytes": r["bytes"],
                 "duration_seconds": r["duration_seconds"],
-                "loudness_lufs": None,
+                # Measured (EBU R128 integrated), from the independent technical audit.
+                "loudness_lufs": float(audit[tk]["integrated_lufs"]),
+                # Deliberately NULL — the audit's tempo estimate is flagged double-time
+                # ambiguous and unreliable on lo-fi. Fail-closed.
                 "bpm": None,
                 "mood": mood,
                 "energy": energy,
@@ -108,7 +141,7 @@ def main():
 
     manifest = {
         "lane": "music-harvester-v1-batch2-four-brands",
-        "status": "harvested_pending_pk_aural_review",
+        "status": "pk_aural_review_COMPLETE_pending_apply_gate",
         "harvest_date_utc": "2026-08-06",
         "harvester": "Claude Code (mechanical sourcing) — NO approval/upload/DB/git; all aural + final-licence judgment is PK's",
         "schema_target": "m.music_track + m.music_license (live migration 20260708224532)",
@@ -129,9 +162,22 @@ def main():
             "storage_path_pattern": "post-music/global/<mood>/<track_key>.mp3 (PATH ONLY — nothing uploaded)",
             "dedup": "No sha256 or track_key collision with the 9 live rows. Intra-batch audio-frame hashing (ID3 stripped) found no duplicate recordings.",
         },
+        "pk_aural_review": {
+            "date": "2026-08-07",
+            "verdict": "COMPLETE — 12 KEEP, 1 CULL",
+            "culled": culled,
+            "facet_corrections": "NONE required from PK review at this stage",
+            "corporate_gap": "REMAINS OPEN — uplifting_lofi_walkingaway_013 NOT re-tagged corporate",
+            "batch_identity": "all-lo-fi register ACCEPTED for this batch (sub-pool, not fleet identity)",
+            "note": "PK retained all three tracks the independent technical audit placed on HOLD "
+                    "(calm_lofi_saturation_020, uplifting_lofi_tranquilmind_012, warm_lofi_warmfuzz_017) "
+                    "and culled neutral_lofi_shimmer_021 instead. The aural verdict is the deciding act; "
+                    "the technical audit is advisory.",
+        },
         "mood_spread_this_batch": mood_spread,
         "mood_spread_library_after_intake_if_applied": {
-            "warm": 6, "calm": 4, "neutral": 5, "uplifting": 6, "corporate": 1,
+            k: LIVE_LIBRARY_SPREAD.get(k, 0) + mood_spread.get(k, 0)
+            for k in sorted(set(LIVE_LIBRARY_SPREAD) | set(mood_spread))
         },
         "brand_fit_advisory": {
             "WARNING": "ADVISORY ONLY. m.music_track is a GLOBAL pool with no client_id column. Per-brand fit is expressed by m.music_suitability + c.client_music_profile rows, which belong to the SCOPED-APPROVAL gate, NOT to intake. Nothing in this section is applied by the intake SQL.",
@@ -142,12 +188,16 @@ def main():
         "important_notes": [
             "NO track uploaded to the post-music bucket. NO DB row. NO fence flipped. NO approval. Upload + intake-apply are SEPARATE future PK gates.",
             "mood/energy/tempo_band/genre are HARVESTER GUESSES (CHECK-valid values only); PK aural review is authoritative for facets + eligibility.",
-            "genre='electronic' on all 13 — lo-fi is sample-based/electronic and 'lofi' is not in the CHECK vocabulary. Honest mapping, not a claim about instrumentation.",
-            "content_id_safe=false on ALL 13 (fail-closed, PK decision #3) => none are YouTube-eligible, and none become selectable by select_music, which requires content_id_safe IS TRUE.",
-            "loudness_lufs/bpm/text_overlay_safe left null (no automated audio QA; M1 is the named prerequisite).",
+            "genre='electronic' on all survivors — lo-fi is sample-based/electronic and 'lofi' is not in the CHECK vocabulary. Honest mapping, not a claim about instrumentation.",
+            "content_id_safe=false on ALL survivors (fail-closed, PK decision #3) => none are YouTube-eligible, and none become selectable by select_music, which requires content_id_safe IS TRUE.",
+            "loudness_lufs is now MEASURED (EBU R128 integrated, from the independent technical audit) and written to every survivor row. SELECTION-NEUTRAL: the live winner calm_piano_drifting_006 is -27.2 LUFS and still sorts ahead of all survivors under select_music's ORDER BY loudness_lufs ASC.",
+            "bpm stays NULL — the audit's tempo estimate is explicitly flagged double-time ambiguous and unreliable on lo-fi; fail-closed rather than write an unreliable value.",
+            "text_overlay_safe stays NULL — neither audit measured it (it is a visual judgment about text over video, not an audio property).",
+            "7 survivors carry POSITIVE true peaks (+0.01..+0.29 dBTP) and integrated loudness spans 6.22 dB. ICE has NO loudness normalisation or true-peak limiting in the render path (ffmpeg cannot run in an Edge Function; true-LUFS is a deferred Phase B). Bed volume is baked into the Creatomate template and is NOT readable from this repo — that value decides whether this is neutralised or real. Intake stores the licence-exact CC0 bytes; normalisation is a decision for when a track becomes selectable, NOT for intake (it would change every sha256).",
             "CORPORATE mood: ZERO added. The mood remains at 1 (the batch-1 'Medieval Theme', itself flagged as a mis-tag). Corporate beds are not harvestable from FMA CC0 — they live on Pixabay / YouTube Audio Library, both PK-manual. This is an unresolved gap, reported not papered over.",
-            "uplifting_lofi_walkingaway_013 is the batch's best corporate-adjacent candidate (source tags: 'Peaceful, Motivating') — PK may elect mood=corporate at the aural gate.",
-            "Four tracks exceed 180s (015 231s, 018 214s, 022 186s, 021 181s) — trim/loop candidates, not disqualifiers (video-worker requests a 12s minimum).",
+            "uplifting_lofi_walkingaway_013 was NOT re-tagged corporate (PK 2026-08-07, backed by the audit: it clusters acoustically with the rest of the lo-fi batch and is not a distinct corporate register).",
+            "Three survivors exceed 180s (015 231s, 018 214s, 022 186s) — trim/loop candidates, not disqualifiers (video-worker requests a 12s minimum).",
+            "CULLED at the PK aural gate: neutral_lofi_shimmer_021. Its licence evidence and audio remain in the harness for provenance but it is NOT in the intake set. Culling it drops NEUTRAL to a single new track and reduces Invegent's advisory suggestions from 5 to 4 — Invegent stays the weakest-covered brand.",
         ],
         "tracks": tracks,
     }
@@ -155,7 +205,7 @@ def main():
     out = os.path.join(HERE, "manifest.json")
     with open(out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
-    print(f"manifest.json written — {len(tracks)} tracks")
+    print(f"manifest.json written — {len(tracks)} tracks ({len(culled)} culled)")
     print("mood spread this batch:", mood_spread)
     for b, ks in brand_index.items():
         print(f"  {b:18} {len(ks)} suggested")

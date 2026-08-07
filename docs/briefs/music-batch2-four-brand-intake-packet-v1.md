@@ -1,27 +1,35 @@
-# Music Library — BATCH 2 four-brand fenced intake — Gate-1 packet **v3** (NOT applied)
+# Music Library — BATCH 2 four-brand fenced intake — Gate-1 packet **v4** (NOT applied)
 
-**Status: DRAFT — awaiting PK aural + licence review. Nothing in this packet has been applied.**
+**Status: PK AURAL REVIEW COMPLETE (2026-08-07) — 12 survivors, at the FINAL APPLY GATE.**
+**Nothing in this packet has been applied. No DB write, no storage write, no fence flipped.**
 **Lane:** music sourcing/intake, batch 2. Successor to the batch-1 starter harvest
 (`docs/briefs/music-library-v0-manual-starter-harvest-brief.md`, gate1_approved 2026-07-09).
 **Lane label (CCF-02):** PRODUCT_PROOF · **Tier: T2** (additive, fully-fenced, INSERT-only, no DDL,
 no GRANT/REVOKE, no upsert — same shape as the batch-1 intake; the apply itself is a PK hard stop).
 **Scope:** global `m.music_track` / `m.music_license` (project `mbkmaxqhsohbtwsqolns`).
 
-**v3 supersedes v2 supersedes v1.** The packet was audited pre-freeze **three times** by
-`apply-harness-auditor` (SHADOW MODE — its verdict clears no gate): v1 **CONCERNS/10** · v2
-**CONCERNS/7** · v3 **CONCERNS/6, 0 high**. Runs 1 and 2 each closed findings while *introducing*
-new ones; run 3 confirmed all seven run-2 fixes closed **in the executable text** (it declined to
-credit §2a prose on its own) and found six more, all now fixed. v1's and v2's hashes are void;
-nothing was reviewed or gated against them. Full history: §2a.
+**v4 supersedes v3/v2/v1.** v4 is the post-aural-gate re-author: **13 → 12 tracks**
+(`neutral_lofi_shimmer_021` culled by PK), **measured `loudness_lufs` written into every surviving
+row** (was NULL), all four fences and `content_id_safe` **unchanged**. Every count in the harness
+derives from the manifest, so the fenced-count assert, the rollback cardinality floor and all key
+lists followed to 12 automatically.
+
+The *harness* was hardened in v1→v3 by **three** `apply-harness-auditor` pre-freeze runs (SHADOW
+MODE — clears no gate): v1 **CONCERNS/10** · v2 **CONCERNS/7** · v3 **CONCERNS/6, 0 high**. Runs 1
+and 2 each closed findings while *introducing* new ones; run 3 confirmed all seven run-2 fixes
+closed **in the executable text** and found six more, all fixed. v1–v3 hashes are void; nothing was
+reviewed or gated against them. Full history: §2a.
 
 **Frozen artifacts (pin any review to these hashes):**
 
 | Artifact | sha256 |
 |---|---|
-| `_harness/music_harvester_v1_20260806/music_v1_batch2_intake_apply.sql` | `97937388bf9990cde222cdc2891d142dc8890e64b75b2dce83e7e8d9083ed958` |
-| `_harness/music_harvester_v1_20260806/music_v1_batch2_intake_rollback.sql` | `f1efe5a16178ccde24762bd765f2f54f510da34eee07fa4a8cc8ea108cb7e99b` |
-| `_harness/music_harvester_v1_20260806/manifest.json` | `bbb6fde47e7c229a33b79ba48902895d015f1348700e9a8daf27b8cb10a037f2` |
-| `_harness/music_harvester_v1_20260806/build_intake.py` (the generator — pinned per AHA-02-2) | `d386b1c1a734f9f0f21c336a7d15fff6e99ebcb3ba676549b22af3816dfcdd72` |
+| `_harness/music_harvester_v1_20260806/music_v1_batch2_intake_apply.sql` | `64af3d944942eb991cfbdfb6ce645d3fe4cde6b1252d23dd0e325841f275f2dc` |
+| `_harness/music_harvester_v1_20260806/music_v1_batch2_intake_rollback.sql` | `6eb94d4e95390f3b92a2ae64048e7d80000e3d97ffe118157a8877e51edbab74` |
+| `_harness/music_harvester_v1_20260806/manifest.json` | `9be3f403fe797da8b6c9b216faf627e876a8293b5abc2618be28c43916c55652` |
+| `_harness/music_harvester_v1_20260806/_build_manifest.py` (upstream manifest builder — pinned per AHA-01-2 run 4) | `3f2f60f50cf21df3dead39aed69962e991dd5bac29bc09e3804e2c52165ef1f5` |
+| `_harness/music_harvester_v1_20260806/audit/technical-audio-decision-table-v1.csv` (loudness source of truth) | `a8244de7a016e95965060ab417f836ef3a98198af547b6f68d1919f0a25b80da` |
+| `_harness/music_harvester_v1_20260806/build_intake.py` (the generator — pinned per AHA-02-2) | `47b99d57e12e1283c7daee290aef5e3900c37dcf045254d1047501c0d7602a9f` |
 
 **Generator determinism proven:** regenerating both SQL files from the pinned manifest with the
 pinned generator reproduces them **byte-identically**. The manifest → apply → rollback chain is
@@ -44,13 +52,14 @@ Full sourcing narrative, exclusions and caveats: `_harness/music_harvester_v1_20
 
 ## 0. Headline — what this delivers, and what it deliberately does not
 
-**Delivers:** 13 licence-clean CC0 instrumental candidates (keys `010`–`022`), downloaded, hashed,
-licence-evidenced, manifested, and packaged as a fenced-intake apply **with a matching executable
-rollback**. Mood weighting was chosen against the four brands' registers: uplifting ×5, warm ×4,
-calm ×2, neutral ×2.
+**Delivers:** **12** licence-clean CC0 instrumental candidates (from keys `010`–`022`; PK culled
+`neutral_lofi_shimmer_021` at the aural gate), downloaded, hashed, licence-evidenced, loudness-
+measured, manifested, and packaged as a fenced-intake apply **with a matching executable rollback**.
+Batch mood spread: uplifting ×5 · warm ×4 · calm ×2 · neutral ×1.
+Library after intake (if applied): uplifting 6 · warm 6 · calm 4 · neutral 4 · **corporate 1**.
 
 **Does not deliver — and cannot:**
-1. **No track becomes selectable.** All 13 carry `content_id_safe=false` (fail-closed). Live
+1. **No track becomes selectable.** All 12 carry `content_id_safe=false` (fail-closed). Live
    `select_music` requires `content_id_safe IS TRUE` unconditionally, so the apply changes live
    render behaviour by exactly nothing.
 2. **The corporate mood gap is NOT closed** — zero corporate tracks added; see §4. This is the
@@ -67,10 +76,10 @@ intake** — this packet writes neither, and the brand mapping in `manifest.json
 
 | Brand | Register wanted | Batch coverage |
 |---|---|---|
-| Property Pulse | Professional, credible, non-salesy — neutral/calm beds, restrained uplift on positive market data | 9 suggested |
+| Property Pulse | Professional, credible, non-salesy — neutral/calm beds, restrained uplift on positive market data | 8 suggested |
 | NDIS Yarns | Warmth + dignity; never clinical, never saccharine | 6 suggested |
 | Care For Welfare | Warm, human, gentle | 7 suggested |
-| Invegent | Neutral, composed, corporate-leaning | 5 suggested — **weakest covered; corporate is the missing mood** |
+| Invegent | Neutral, composed, corporate-leaning | **4 suggested — weakest covered, and the cull cost it one.** Corporate is the missing mood |
 
 ## 2. Declared control / assertion register
 
@@ -78,39 +87,42 @@ Controls fall into **three** classes, not two. Every earlier version of this pac
 and thereby over-claimed enforcement (AHA-02-1 run 1, AHA-02-1 run 2, AHA-01-1 run 3):
 
 - **RAISE-backed asserts** — executable, and a breach aborts the transaction:
-  **C-3, C-4, C-6, C-7, C-8, C-9, C-10, C-12, C-14, C-15, C-18, C-19.**
+  **C-3, C-4, C-7, C-8, C-9, C-10, C-12, C-14, C-15, C-18, C-19.** (11 of them.)
 - **Non-asserting executable mechanics** — real SQL, but they cannot "fail" and have no `RAISE`:
   **C-1** (the transaction wrapper itself), **C-2** (baseline capture), **C-5** (a provenance
-  *write*, not a check), **C-17** (the identity basis the asserts are keyed on).
+  *write*, not a check), **C-6** (idempotency — twelve bare `WHERE NOT EXISTS` predicates; they
+  suppress a duplicate insert, they never abort), **C-17** (the identity basis the asserts are
+  keyed on), **C-20** (the measured-loudness write).
 - **Operator preconditions** — not executable at all: **C-11, C-13, C-16.**
 
 The "Kind" column below carries these three values verbatim.
 
 | # | Control | Kind | Enforcement site | Failure behaviour |
 |---|---|---|---|---|
-| C-1 | **Single-transaction atomicity** | executable mechanic (no RAISE) | one `BEGIN;` … `COMMIT;` around all 13 inserts + all asserts | any exception → whole batch rolled back |
+| C-1 | **Single-transaction atomicity** | executable mechanic (no RAISE) | one `BEGIN;` … `COMMIT;` around all 12 inserts + all asserts | any exception → whole batch rolled back |
 | C-2 | **Baseline capture before ALL DML** | executable mechanic (no RAISE) | three `CREATE TEMP TABLE … ON COMMIT DROP` (`_music_intake_txn`, `_music_intake_baseline`, `_music_intake_counts`), all before the first insert | n/a (capture step) |
 | C-3 | **Baseline is the expected pool** — exactly 1 selectable track, and it is `calm_piano_drifting_006` | executable | `DO $$`: count + `NOT IN` membership | `RAISE` → rollback. Catches "the live pool moved since authoring" |
-| C-4 | **Per-object storage byte precheck** (×13) | executable | `PERFORM 1 FROM storage.objects WHERE bucket_id='post-music' AND name=… AND (metadata->>'size')::bigint = …` | `RAISE` → rollback if missing or wrong size |
+| C-4 | **Per-object storage byte precheck** (×12) | executable | `PERFORM 1 FROM storage.objects WHERE bucket_id='post-music' AND name=… AND (metadata->>'size')::bigint = …` | `RAISE` → rollback if missing or wrong size |
 | C-5 | **sha256-of-bytes recorded in every row** | executable mechanic (no RAISE) | `m.music_track.sha256` literal per insert | n/a — see AHA-01-2 in §2a for the residual gap |
-| C-6 | **Idempotency** | executable | `WHERE NOT EXISTS (… track_key = …)` (×13) | re-run inserts nothing; asserts still pass (C-15 is delta-aware) |
-| C-7 | **Fenced-count assert** — exactly 13 batch rows, all four fences off | executable | `DO $$` verify, scoped on the 13 `track_key`s (**not** on `notes` — AHA-01-3 run 2) | `RAISE` → rollback |
+| C-6 | **Idempotency** | executable mechanic (no RAISE) | `WHERE NOT EXISTS (… track_key = …)` (×12) | re-run inserts nothing; asserts still pass (C-15 is delta-aware) |
+| C-7 | **Fenced-count assert** — exactly 12 batch rows, all four fences off | executable | `DO $$` verify, scoped on the 12 `track_key`s (**not** on `notes` — AHA-01-3 run 2) | `RAISE` → rollback |
 | C-8 | **1:1 licence-row assert** — no batch track without its licence row | executable | `DO $$` verify, `NOT EXISTS`, scoped on `track_key` | `RAISE` → rollback |
 | C-9 | **v0 licence invariant** — every batch licence row `cc0`, `attribution_required=false`, `content_id_safe=false`, `commercial_use_allowed=true`, `social_use_allowed=true` | executable | `DO $$` verify, scoped on `track_key` | `RAISE` → rollback |
 | C-10 | **Pool-neutrality** — selectable set after == baseline, BOTH directions | executable | `DO $$` verify, parenthesised `(A EXCEPT B) UNION ALL (B EXCEPT A)` over `pg_temp.` relations | `RAISE` → rollback |
 | C-11 | **Pinned execution channel** — `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f <file>`; `apply_migration` **ruled out** (mints its own migration version + nests the transaction) | **operator precondition — NOT executably backed** | packet §6 + both SQL headers | Operator STOP only. **C-12 covers the SPLIT case only.** A *nesting* wrapper is undetectable from inside the file: temp relations survive and the txid is unchanged, so C-12 passes while this file's `BEGIN`/`COMMIT` silently join the outer transaction. After the fact it surfaces as an unexpected migration-ledger entry — a `db-rls-auditor` read |
 | C-12 | **Split-channel guard** — temp relations present **and** `txid_current()` unchanged, asserted before the first write and re-checked at the end. Emitted in **BOTH** files (apply: before the first INSERT; rollback: before the first DELETE) | executable | `DO $$` immediately after baseline capture, in each file | `RAISE` → **nothing written** (v1 detected this only post-commit — AHA-05-1; v2 claimed it in the rollback header without emitting it — AHA-02-1 run 2) |
 | C-13 | **Mandatory `BEGIN … ROLLBACK` rehearsal** on the live schema before the real apply | **operator precondition (mandatory STOP)** | §6 step 4 | rehearsal error → re-author → re-freeze → **the pinned hashes and any review against them are void** |
-| C-14 | **Batch-marker consistency** — the `notes`-marker set equals the apply's own 13 `track_key` set | executable | `DO $$` verify, bidirectional `EXCEPT` | `RAISE` → rollback. **Scope note:** this proves marker ↔ *this file's* key literals. It does NOT bind the rollback file's independent key list — that congruence is established mechanically by the regenerate-and-byte-diff step (§6 step 3), not by C-14 |
-| C-15 | **Additive-only** — `m.music_track` and `m.music_license` each grew by exactly `13 − pre_existing` | executable | `DO $$` verify against `pg_temp._music_intake_counts` | `RAISE` → rollback. Delta-based, so idempotent re-runs pass |
-| C-16 | **Storage disposition on abort** — the 13 uploaded objects are **LEFT IN PLACE for re-attempt** (PK ruling 2026-08-06); removal, if the batch is abandoned, is a separate explicit operator step | **operator precondition** | rollback header | documented, not enforced |
-| C-17 | **Rollback identity = the apply's identity** — rollback keyed on the same 13 literal `track_key`s, never on `notes`. The apply's own verify asserts (C-7/C-8/C-9) are likewise keyed on `track_key` | executable mechanic (no RAISE) | temp key table (`track_key` + `sha256`) + `JOIN … USING (track_key)` | n/a (identity basis; the asserts keyed on it do the raising) |
-| C-18 | **Rollback preconditions** — ABORT rather than delete on any of: **(0)** cardinality — the key table did not load 13 rows, or fewer than 13 targets are present (without this, every rollback assert is satisfied *vacuously* by a zero-match run — wrong database, apply never committed, already rolled back — and reports success while deleting nothing: AHA-03-1 run 3); **(a)** any target row has left the fenced state; **(b)** any row exists in the four FK child tables; **(c)** any target row's `sha256` differs from the manifest value for that `track_key` (the apply *skips* a pre-existing `track_key` under C-6, so without this the rollback could delete a same-keyed row this batch never created: AHA-07-1 run 3) | executable | two `DO $$` preconditions before the first DELETE | `RAISE` → nothing removed. **(a) is the load-bearing half**: approval state lives in *columns* on `m.music_track` and no trigger forces a review-event row on a fence flip, so a child-only check would let the rollback delete an approved, selectable track (AHA-01-2 run 2, severity high) |
+| C-14 | **Batch-marker consistency** — the `notes`-marker set equals the apply's own 12 `track_key` set | executable | `DO $$` verify, bidirectional `EXCEPT` | `RAISE` → rollback. **Scope note:** this proves marker ↔ *this file's* key literals. It does NOT bind the rollback file's independent key list — that congruence is established mechanically by the regenerate-and-byte-diff step (§6 step 3), not by C-14 |
+| C-15 | **Additive-only** — `m.music_track` and `m.music_license` each grew by exactly `12 − pre_existing` | executable | `DO $$` verify against `pg_temp._music_intake_counts` | `RAISE` → rollback. Delta-based, so idempotent re-runs pass |
+| C-16 | **Storage disposition on abort** — the 12 uploaded objects are **LEFT IN PLACE for re-attempt** (PK ruling 2026-08-06); removal, if the batch is abandoned, is a separate explicit operator step | **operator precondition** | rollback header | documented, not enforced |
+| C-17 | **Rollback identity = the apply's identity** — rollback keyed on the same 12 literal `track_key`s, never on `notes`. The apply's own verify asserts (C-7/C-8/C-9) are likewise keyed on `track_key` | executable mechanic (no RAISE) | temp key table (`track_key` + `sha256`) + `JOIN … USING (track_key)` | n/a (identity basis; the asserts keyed on it do the raising) |
+| C-18 | **Rollback preconditions** — ABORT rather than delete on any of: **(0)** cardinality — the key table did not load 12 rows, or fewer than 12 targets are present (without this, every rollback assert is satisfied *vacuously* by a zero-match run — wrong database, apply never committed, already rolled back — and reports success while deleting nothing: AHA-03-1 run 3); **(a)** any target row has left the fenced state; **(b)** any row exists in the four FK child tables; **(c)** any target row's `sha256` differs from the manifest value for that `track_key` (the apply *skips* a pre-existing `track_key` under C-6, so without this the rollback could delete a same-keyed row this batch never created: AHA-07-1 run 3) | executable | **four** `DO $$` preconditions — (0) cardinality · (c) sha256 provenance · (a) fenced-state · (b) child rows — all before the first DELETE | `RAISE` → nothing removed. **(a) is the load-bearing half**: approval state lives in *columns* on `m.music_track` and no trigger forces a review-event row on a fence flip, so a child-only check would let the rollback delete an approved, selectable track (AHA-01-2 run 2, severity high) |
+| C-20 | **Measured-loudness write** — `loudness_lufs` (EBU R128 integrated, from the independent technical audit) written as a literal on all 12 rows; added to the INSERT column list in v4 | executable mechanic (no RAISE) | `m.music_track.loudness_lufs` literal per insert | n/a. **NO control asserts this value** — same residual class as C-5 (sha256): recorded, never re-verified in-transaction. Its provenance chain is CSV → manifest → SQL, and only the manifest → SQL leg is inside the pinned regeneration proof (§6 step 3) |
 | C-19 | **Rollback is bounded and pool-neutral** — both tables fall by exactly the number of rows that MATCHED the key list; the selectable set is unchanged in both directions; the orphan count is exactly unchanged (the SQL enforces equality, not a one-sided bound) | executable | `DO $$` verify against four pre-DELETE baselines | `RAISE` → rollback. v2 baselined only a scalar orphan count, which could not detect an out-of-scope delete (AHA-06-1 run 2) |
 
 ### 2a. The `apply-harness-auditor` shadow runs and what changed
 
-The packet was audited pre-freeze **twice**, in SHADOW MODE (its verdict clears no gate; every
+The packet was audited pre-freeze **four times**, in SHADOW MODE (its verdict clears no gate; every
 specialist and PK gate runs unchanged above it).
 
 **Run 1 on v1 — CONCERNS, 10 findings, 0 INCOMPLETE.** It independently confirmed the v1 C-10 fix
@@ -178,12 +190,12 @@ returned 1), and a `%%` in a `RAISE` format string.
 
 **Neither SQL file has been executed against any database, not even `BEGIN … ROLLBACK`** — the watch
 holds DB writes and a trial transaction is still a write attempt. The controls are verified
-**statically**: 1 `BEGIN`/1 `COMMIT` per file · 13 prechecks · 13 track + 13 licence INSERTs ·
-13 idempotency guards · 16 balanced `DO $$`/`END $$;` in the apply and 6 in the rollback · 25 and 13
-`RAISE EXCEPTION` guards, **every one with a matching `%`-placeholder/argument count** · fence literals in all 13 INSERTs · zero `notes`-scoped identity predicates
+**statically**: 1 `BEGIN`/1 `COMMIT` per file · 12 prechecks · 12 track + 12 licence INSERTs ·
+12 idempotency guards · 15 balanced `DO $$`/`END $$;` in the apply and 6 in the rollback · 24 and 13
+`RAISE EXCEPTION` guards, **every one with a matching `%`-placeholder/argument count** · fence literals in all 12 INSERTs · `loudness_lufs` present in the INSERT column list · zero `notes`-scoped identity predicates
 in the rollback · no `UPDATE`/`DELETE`/`ALTER`/`GRANT`/`REVOKE`/`ON CONFLICT` in the apply (the only
 `DROP`s are `ON COMMIT DROP` on temp tables) · every temp **reference** `pg_temp.`-qualified (reads *and* the identity write — AHA-06-1 run 3) · balanced
-quoting · 2 `DELETE`s and both preconditions in the rollback. Plus the live read-only proof of the
+quoting · 2 `DELETE`s and **all four** rollback preconditions ((0) cardinality · (c) provenance · (a) fenced-state · (b) child rows). Plus the live read-only proof of the
 C-10 set-logic and the byte-identical regeneration proof.
 
 That is sufficient for presence, shape, balance and fail-closed wiring. It is **not** sufficient for
@@ -216,19 +228,122 @@ five CC BY-ND / CC BY-NC-ND albums as "CC0". All were caught by per-album licenc
 excluded before download. Standing rule for future music lanes: read the `creativecommons.org/...`
 URL off each track page; never trust the filter.
 
+## 4a. Independent technical audio audit (external, 2026-08-07) — TWO DECISIONS TAKEN
+
+An external technical audit was run on the 13 files and supplied by PK. Artifacts recorded at
+`_harness/music_harvester_v1_20260806/audit/` (`technical-audio-audit-v1.md`,
+`technical-audio-decision-table-v1.csv`).
+
+**It independently corroborates this lane's provenance chain:** 13/13 filenames present, 13/13
+sha256 match the manifest, 13/13 byte counts match, 13/13 decoded audio streams unique, all stereo
+48 kHz, no mono-cancellation problem. Cross-checked here: the audit's key set is identical to the
+manifest's, and its decoded durations differ from the manifest's mutagen header values by at most
+**0.023 s** (immaterial — every track is far above the 12 s video-worker minimum).
+
+**Coverage boundary — the two audits are complementary, not overlapping.** The technical audit
+states it received no licence text files and therefore did **not** re-hash the licence snapshots.
+Licence verification is this lane's (per-track CC0 re-check before download + evidence snapshot +
+`license_snapshot_hash`). Neither audit covers the other's ground, and there is no gap between them.
+
+### PK AURAL REVIEW — COMPLETE (2026-08-07). This is the deciding act.
+
+**CULL (1):** `neutral_lofi_shimmer_021`. **KEEP (12):** all other batch-2 tracks.
+**Facet corrections:** none required at this stage — mood/energy/tempo_band/genre are unchanged.
+
+**PK retained all three tracks the technical audit placed on HOLD** (`calm_lofi_saturation_020`,
+`uplifting_lofi_tranquilmind_012`, `warm_lofi_warmfuzz_017`) and culled `shimmer_021` instead — a
+track the audit rated KEEP — NORMALISE. That is the declared authority order working as intended:
+the technical audit is advisory, the ear decides. The audit's HOLD reasoning (compression, onset
+density, voice-band masking) is preserved in this packet as recorded evidence, not as a veto.
+
+**Effect of the cull:** neutral drops from 2 new tracks to 1 (`softreset_022` only), and Invegent's
+advisory suggestions fall from 5 to 4 — **Invegent remains the weakest-covered brand**, now on both
+the corporate-mood gap and the thinnest advisory index. `shimmer_021`'s audio and licence evidence
+stay in the harness for provenance; it is simply not in the intake set.
+
+### PK decisions taken on the audit (2026-08-07)
+
+- **Corporate gap stays OPEN. `uplifting_lofi_walkingaway_013` is NOT re-tagged corporate.** The
+  audit found it acoustically clustered with the rest of the lo-fi batch — not a distinct corporate
+  register. §4's suggestion is withdrawn. At least one genuinely non-lo-fi corporate bed must be
+  hand-sourced (Pixabay / YouTube Audio Library, both PK-manual).
+- **All-lo-fi is accepted as THIS BATCH's identity — a lo-fi sub-pool — not the fleet identity.**
+  It serves NDIS Yarns, Care For Welfare and parts of Property Pulse. Property Pulse and
+  **especially Invegent** still require a non-lo-fi alternative.
+
+### Audit verdicts (advisory to the aural gate, which remains authoritative)
+
+- **Technical priority:** `uplifting_lofi_hope_010`, `warm_lofi_sunlight_016`,
+  `calm_lofi_calmcurrents_019`, `neutral_lofi_softreset_022`.
+- **HOLD pending listen (3):** `calm_lofi_saturation_020` (−10.51 LUFS, LRA **0.7 dB** — brick-walled,
+  heavy narration-band energy) · `uplifting_lofi_tranquilmind_012` (busy first 3 s, high onset
+  density) · `warm_lofi_warmfuzz_017` (best loopability in the batch, but the highest voice-band
+  masking risk).
+- **Culling those three leaves 10** — mood spread uplifting 4 · warm 3 · neutral 2 · **calm 1**
+  (calm drops to a single new track; the live library's calm cover is Drifting Piano + `glen_003`).
+
+### Loudness / true-peak finding — scoped against the ACTUAL render path
+
+The audit flags **7 tracks with positive true peaks** (+0.01 to +0.29 dBTP) and a **6.22 dB
+integrated-loudness spread** (−16.73 to −10.51 LUFS), recommending normalisation + true-peak
+limiting before production use. Two facts scope how much this matters:
+
+1. **ICE has no loudness normalisation or true-peak limiting anywhere in the render path.** `ffmpeg`
+   cannot run in an Edge Function, so `video-worker`'s audio handling is a byte/spec heuristic and
+   true integrated-LUFS is an explicitly DEFERRED Phase B (`video-worker/index.ts` v3.14.0 header,
+   `:167-172`, `:204`). Nothing downstream will fix a hot master.
+2. **The bed rides at a volume baked into the Creatomate template, not the render spec**
+   (`video-worker/index.ts` v3.1.1 header) — and that value is not readable from this repo. **If it
+   is a normal bed level (~10–25 %), both findings are largely neutralised**: a +0.29 dBTP source at
+   20 % lands near −14 dBTP, nowhere near clipping, and the 6.22 dB spread becomes a mild
+   bed-consistency issue rather than a defect. **If the bed plays near unity, both are real.**
+   Confirming that template volume is the cheapest way to close this question.
+
+**No normalisation is proposed for intake.** Normalising would change the bytes, hence every
+`sha256`, hence the C-4 byte precheck and the whole frozen packet — and it is unnecessary now,
+because nothing in this batch can be selected while `content_id_safe=false`. **Recommendation:
+intake the licence-exact CC0 bytes, and treat normalisation as a decision at the point a track
+becomes selectable**, not at intake. Deferring does not dissolve it: a normalisation step must
+eventually live either in a pre-upload processing stage (changing the stored asset and its hashes)
+or in a render-time capability that does not currently exist.
+
+**Loudness column — now WRITTEN (v4).** The audit supplied real integrated-LUFS for all 13; the 12
+survivors' values are written into the intake rows, read from the audit's own CSV at build time so
+each value is traceable to its evidence rather than hand-transcribed — and as of v4 that leg is
+inside the pinned regeneration proof (§6 step 3a), with `_build_manifest.py` and the audit CSV both
+frozen. **No control asserts loudness** (C-20); it is recorded provenance, like `sha256`. This fills the field that was
+NULL on every row and that `select_music` orders on — effectively M1-grade loudness data for this
+batch, though **M1 itself (automated loudness measurement as a capability) remains unbuilt**; this
+is one batch measured by an external audit, not a pipeline.
+
 ## 5. Open questions for PK (Gate 1)
 
-1. **Aural verdict** — listen to the 13 in `_harness/music_harvester_v1_20260806/candidates/` and
-   cull/confirm. Facets are harvester guesses; your verdict is authoritative.
-2. **Corporate** — accept the gap, re-tag `uplifting_lofi_walkingaway_013` as corporate, or
-   hand-source corporate beds from Pixabay/YAL yourself (§4)?
-3. **All-lo-fi register** — acceptable as the batch's identity, or should a non-lo-fi register be
-   hand-sourced for Property Pulse / Invegent?
+1. ~~**Aural verdict**~~ — **COMPLETE 2026-08-07 (§4a): 12 KEEP, 1 CULL (`neutral_lofi_shimmer_021`),
+   no facet corrections.** Packet re-authored to 12 survivors; measured `loudness_lufs` written.
+2. ~~**Corporate**~~ — **DECIDED 2026-08-07 (§4a): gap stays OPEN, `013` NOT re-tagged.**
+   Carry: hand-source ≥1 non-lo-fi corporate bed (PK-manual).
+3. ~~**All-lo-fi register**~~ — **DECIDED 2026-08-07 (§4a): accepted as this batch's sub-pool
+   identity, NOT the fleet identity.** Carry: PP and especially Invegent need a non-lo-fi bed.
 4. **Watch interaction** — this packet is harness-only and applies nothing, so it does not touch the
    Phase-1 watch's no-DB-writes constraint. Confirm whether the **apply** waits for watch expiry
    (~2026-08-11 20:20 Sydney) or is authorised earlier as an off-schedule, pool-neutral intake.
-5. **Content-ID** — run the cc-0039 check on any of these 13, or keep the batch fenced-but-
+5. **Content-ID** — run the cc-0039 check on any of these 12, or keep the batch fenced-but-
    unselectable until the existing 7 candidates are resolved first?
+6. **NEW — Creatomate bed volume** (§4a): what volume is baked into the governed video template?
+   It decides whether the positive-true-peak and loudness-spread findings are real or neutralised.
+   Not readable from this repo.
+
+> **Re-author note — DONE (v4, 2026-08-07).** Culled track dropped, measured `loudness_lufs`
+> written into all 12 survivor rows, all four hashes re-frozen, generator determinism re-proven
+> byte-identical. `bpm` deliberately left NULL (the audit flags its tempo estimate double-time
+> ambiguous and unreliable on lo-fi — fail-closed rather than write an unreliable value);
+> `text_overlay_safe` left NULL (neither audit measured it; it is a visual judgment, not audio).
+>
+> **Selection-neutrality of writing loudness, re-verified:** `select_music` orders
+> `loudness_lufs NULLS LAST` ascending. The live winner `calm_piano_drifting_006` is **−27.2 LUFS**;
+> the loudest survivor is **−10.51** and the quietest **−16.73**, so Drifting Piano still sorts
+> first. Writing measured loudness changes **no** selection outcome — and in any case all 12 remain
+> `content_id_safe=false`, which excludes them from `select_music` entirely.
 
 ## 6. Gate — the ordered apply sequence
 
@@ -237,11 +352,16 @@ Each step is a STOP on failure.
 1. **Pre-upload sha256 re-verify** (AHA-01-2 run 1) — confirm each local file's hash still matches
    `manifest.json`, with particular attention to the two sharing byte count 5,907,043
    (`uplifting_lofi_bubbles_014`, `calm_lofi_calmcurrents_019`), so an upload swap cannot pass C-4.
-2. **Upload** the 13 objects to `post-music/global/<mood>/<track_key>.mp3`.
-3. **Regenerate-and-byte-diff** (AHA-02-2 run 2) — re-run the pinned `build_intake.py` against the
-   pinned `manifest.json` and byte-compare both SQL files against the frozen hashes. Any diff →
-   re-freeze, hashes void. This is what binds the apply's and the rollback's key lists together;
-   C-14 alone does not (see its scope note).
+2. **Upload** the **12 surviving** objects to `post-music/global/<mood>/<track_key>.mp3`.
+   **Do NOT upload `neutral_lofi_shimmer_021`** — it was culled at the aural gate and is not in the
+   intake set; uploading it would leave an orphaned public object with no DB row.
+3. **Regenerate-and-byte-diff, BOTH legs** (AHA-02-2 run 2 · AHA-01-2 run 4) —
+   (a) re-run the pinned `_build_manifest.py` against the pinned audit CSV and byte-compare
+   `manifest.json` against its frozen hash — this is the leg that proves every `loudness_lufs`
+   still derives from the audit's measurements rather than from a hand edit; then
+   (b) re-run the pinned `build_intake.py` against that manifest and byte-compare both SQL files.
+   Any diff → re-freeze, hashes void. Leg (b) is also what binds the apply's and the rollback's key
+   lists together; C-14 alone does not (see its scope note).
 4. **C-13 mandatory rehearsal** — run **both** files as `BEGIN … ROLLBACK` on the live schema via
    the pinned channel. Any error → re-author → re-freeze → **hashes and any review against them are
    void**. This is the named compensator for everything §2b says static analysis cannot reach.
@@ -252,7 +372,7 @@ Each step is a STOP on failure.
 6. **PK apply gate** (hard stop).
 7. **Apply** via the pinned channel:
    `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f music_v1_batch2_intake_apply.sql`.
-8. **Live readback** — confirm 13 fenced rows, 13 licence rows, and `select_music` still returns
+8. **Live readback** — confirm 12 fenced rows, 12 licence rows, and `select_music` still returns
    exactly `calm_piano_drifting_006`.
 9. **Post-apply channel check** — read the migration ledger and confirm **no** new migration version
    was minted. This is the only after-the-fact detection of the nesting-wrapper case C-12 cannot
