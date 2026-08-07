@@ -100,13 +100,20 @@ production write, full gate trail); successor decisions below:**
   · ✅ `f84ac010` + `e6e24358` (NEW second defect: Owen Hodge law-firm signage, found by the
     PK-directed full-pool audit) — both FENCED (`is_active=false·approved=false·
     approval_status='fenced_signage_defect'`), post-verified, reversible. Pool 6→4.
-  · **NEW M-1: `2d62b04e` yes/no** — McDonald's arches identifiable ~15px at 1:1 (brand mark, no
-    wordmark); deliberately NOT fenced as materially weaker; also mislabeled "Generic" while
-    geo-tagged Hurstville. *Explicit PK ruling needed.*
-  · **NEW M-2: pool backfill urgency** — eligible pool now 4, below the recorded POOL=6
-    threshold, no auto-backfill; the watch-gated 2026-08-07 B-roll corpus is the natural refill →
-    *the intake election (7 batch decisions) gains urgency; recommend early in the post-watch
-    wave, after the pre-intake person-detection pass.*
+  · **M-1: ✅ RULED AND CLOSED (2026-08-07)** — `2d62b04e` FENCED (third fence; PK reaffirmed
+    with the depletion facts in hand; two escalating reviews addressed, neither overridden;
+    row was `review_notes=null` — unrecorded class, no retraction implied). Addendum doc
+    `broll-live-pool-fence-addendum-v1.md`.
+  · **M-2 (URGENCY ESCALATED): pool is now 3, effective selection 2** (recent-use exclusion
+    leaves `pool_after_recent_use=2`; two of three are tonally similar aerials). **Measured
+    resolver facts (rolled-back-txn simulations + live confirm):** NO minimum-pool threshold
+    exists mechanically ("POOL=6 MET" is governance, not code) · video backgrounds have NO
+    shared-pool fallback · pool=0 → `fail_closed`, slot does not fill. **Treat the third fence
+    as the LAST before backfill** — a fourth leaves effective selection at 1. *Recommendation:
+    the pre-intake person-detection pass runs NOW (harness-side, watch-legal — seeded); the
+    intake→promotion chain then becomes ONE PK gate, electable before the sitting under the
+    same explicit-authorization carve-out as the fences, or at the sitting (4 days) if no
+    further defect forces it.*
   · **M-3 (CORRECTED per the fence result doc §8.1 — supersedes the earlier whole-batch framing):**
     the false-claim pattern is **contained to `broll_background` (7 rows, 4 carrying the claim) —
     and all 7 have now been re-verified first-hand by the fence lane; the broll re-verification
