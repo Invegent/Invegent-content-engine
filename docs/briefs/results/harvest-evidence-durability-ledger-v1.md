@@ -237,9 +237,11 @@ All five files re-hashed from the second copy and compared to the primary — **
 `Attributes: Normal` and **no Offline/placeholder flag**, while the local DriveFS cache holds only
 **0.47 GB** — less than the 1.14 GB file. The content therefore cannot be resident purely in local
 cache; it was uploaded and streamed back for hashing. The `GoogleDriveFS` client is running.
-⚠ **Not claimed as proof.** Definitive upload confirmation is the Drive UI ("Available offline" /
-sync-complete indicator). The hash match proves the bytes are correct and retrievable through the
-mount; it does not by itself prove server-side durability.
+⚠ Not claimed as proof by this session — the hash match proves the bytes are correct and retrievable
+through the mount, not server-side durability.
+
+✅ **CLOSED — PK confirmed 2026-08-07: "G drive is synced."** Server-side durability is therefore
+confirmed by the account owner. The second copy is fully durable and off-machine.
 
 ### 9.4 Custody now has two independent copies
 
