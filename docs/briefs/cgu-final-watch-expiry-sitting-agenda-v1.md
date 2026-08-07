@@ -35,7 +35,14 @@ register arc.
 6. **M7 snapshot schema apply** (+ PK's first manual weekly cost entry).
 7. **M1 Gate-2 chain** (branch `worktree-cgu-l1-m1-loudness-phase1`; preconditions: Edge-Runtime
    proof · outlier explanation · grant/name/cadence decisions).
-8. **Publish-truth view apply + cockpit deploy** (once Tasks 2–3 are authored — see Part 3.C).
+8. **Publish-truth view apply** — Task 2 READY (v6.169: authored through 5 revisions, full chain
+   passed, PK ruled the cross-tenant scope accepted; branch `worktree-agent-a8016aefa5cab42d1`
+   @ `a45f7a3`, blob-hash-pinned per the CRLF trap). **Carries a MANDATORY post-apply PostgREST
+   consumption check** — the RPC's SETOF-composite from unexposed `ice_ro` has ZERO precedent
+   here; named contingency: re-cut to `RETURNS TABLE` under a NEW migration number. Cockpit
+   repoint (old Task 3) is PK-rescoped to the dashboard/cockpit session (§11 handoff contract).
+   *Also schedule (recommend, same wave): RETIREMENT of the blind queue-backed
+   `ice_ro.publish_status` — the corrected surface is additive beside the defective object.*
 
 ## Part 3 — Decisions (batchable, each with recommendation)
 
@@ -44,8 +51,15 @@ register arc.
 **B. NDIS text supply** — source-diversification decision (top-2 picks share a source_domain):
 add sources vs adjust the diversity dimension. *Recommend: add 2–3 NDIS-vertical sources first
 (supply-true fix); touching the diversity check changes fleet behavior.*
-**C. Publish-truth Tasks 2–3 go** — the authoring is watch-legal; PK's word in that session
-unlocks it pre-sitting. *Recommend: give the go early; the apply still waits.*
+**C. ✅ RESOLVED pre-sitting — publish-truth Task 2 done (v6.169), Task 3 PK-rescoped to the
+cockpit session.** Residual process finding for the record (from the lane): across 5 revisions
+every material error lived in PROSE, never in SQL — including one false claim that briefed a
+live PK decision; argues for keeping narrative out of reviewed SQL artifacts (pairs with the
+§8.3 artifact-cited-claims recommendation).
+**C-2 (register governance, small):** third PK-authorized in-session register cut this window
+(v6.155, v6.163/166 music, v6.169) — the single-cut-owner arrangement has effectively evolved;
+*recommend PK formalize: control tower cuts by default; a session cuts only with direct PK
+in-session authorization, claim-stub-checked — which is what practice already is.*
 **D. Evergreen library seeding** — `t.evergreen_library` empty fleet-wide (never seeded); a whole
 skip-reason class. *Recommend: elect a small T2 seeding lane, per-client curated.*
 **E. `Location.max_chars`** — content policy call; zero live evidence exists (all clients declare
