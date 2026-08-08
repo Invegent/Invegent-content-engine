@@ -126,6 +126,45 @@
 
 BEGIN;
 
+-- ── M2 FIX (db-rls-auditor, 2026-08-08) — EXECUTABLE pre-state assertion ─────
+-- The EXPECTED BASELINE above is a COMMENT, and the post-state assertion below cannot
+-- tell the two cases apart: after the UPDATE, a _voice row looks identical whether it
+-- started with the instagram key ABSENT or with an explicit 'false'.
+-- The ROLLBACK hardcodes the absent-key assumption and issues `platform_support -
+-- 'instagram'` on both _voice rows. So if the baseline drifts between freeze and apply,
+-- the forward would still pass and the rollback would then DELETE a key that legitimately
+-- existed — converting a stated denial into "never stated", which is the exact
+-- absent-vs-denied corruption this artifact exists to prevent, inverted into the rollback.
+-- This block makes the baseline an enforced precondition instead of prose.
+DO $$
+DECLARE v_n integer;
+BEGIN
+  SELECT count(*) INTO v_n
+    FROM t."5.3_content_format"
+   WHERE ice_format_key = 'video_short_stat'
+     AND platform_support ? 'instagram'
+     AND platform_support ->> 'instagram' = 'false';
+  IF v_n <> 1 THEN
+    RAISE EXCEPTION 'cc-0091 A1 ABORT (pre-state): video_short_stat must hold an EXPLICIT instagram=false (found % rows) — baseline moved, artifact is stale', v_n;
+  END IF;
+
+  SELECT count(*) INTO v_n
+    FROM t."5.3_content_format"
+   WHERE ice_format_key IN ('video_short_stat_voice','video_short_kinetic_voice')
+     AND NOT (platform_support ? 'instagram');
+  IF v_n <> 2 THEN
+    RAISE EXCEPTION 'cc-0091 A1 ABORT (pre-state): both _voice rows must have the instagram key ABSENT (found % of 2) — if a value was since written, the ROLLBACK''s key-removal would destroy it', v_n;
+  END IF;
+
+  SELECT count(*) INTO v_n
+    FROM t."5.3_content_format"
+   WHERE ice_format_key = 'video_short_kinetic'
+     AND platform_support ->> 'instagram' = 'false';
+  IF v_n <> 1 THEN
+    RAISE EXCEPTION 'cc-0091 A1 ABORT (pre-state): video_short_kinetic must hold instagram=false (found % rows)', v_n;
+  END IF;
+END $$;
+
 UPDATE t."5.3_content_format"
    SET platform_support = jsonb_set(platform_support, '{instagram}', 'true'::jsonb, true),
        updated_at = now()

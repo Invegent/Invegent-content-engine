@@ -168,7 +168,12 @@ BEGIN
     detection_source, week_start, client_id, client_slug, platform,
     requested_format, requested_share_pct,
     capability_status, reason_code, routed_lane, classifier_evidence, classifier_error,
-    platform_support_raw, platform_support_key_present
+    platform_support_raw, platform_support_key_present,
+    -- M1 FIX: persist the class-elimination facts AS AT DETECTION TIME so the operator
+    -- view can be a pure table projection (owner-rights) instead of calling this
+    -- SECURITY INVOKER function, which ice_readonly cannot execute against schema t.
+    prior_effective_from, output_mime_type,
+    class_share_before, class_share_after, class_eliminated
   )
   SELECT
     'mix_rewrite',
@@ -179,8 +184,12 @@ BEGIN
     NULL, NULL, NULL, NULL,                 -- classifier is client-scoped; NOT applicable here
     'platform_support_read_at_detection_time_not_removal_time',
     d.platform_support_raw_now,
-    d.platform_support_key_present
-  FROM m.detect_mix_rewrite_removals(p_platform) d;
+    d.platform_support_key_present,
+    d.prior_effective_from, d.output_mime_type,
+    d.class_share_before, d.class_share_after, d.class_eliminated
+  FROM m.detect_mix_rewrite_removals(p_platform) d
+  ON CONFLICT DO NOTHING;   -- S4: the prior generation is STATIC, so a nightly call site
+                            -- would otherwise re-record the same removals every night.
   GET DIAGNOSTICS v_n = ROW_COUNT;
   RETURN v_n;
 END;
@@ -200,21 +209,26 @@ CREATE OR REPLACE VIEW ice_ro.mix_rewrite_class_elimination AS
 SELECT platform,
        output_mime_type,
        min(prior_effective_from)   AS removed_from_generation,
-       min(current_effective_from) AS current_generation,
+       min(observed_at)            AS first_observed_at,
        max(class_share_before)     AS class_share_before,
        max(class_share_after)      AS class_share_after,
        count(*)                    AS formats_removed,
        array_agg(requested_format ORDER BY requested_format) AS removed_formats,
-       sum(removed_share_pct)      AS total_share_removed
-  FROM m.detect_mix_rewrite_removals(NULL)
- WHERE class_eliminated
+       sum(requested_share_pct)    AS total_share_removed
+  FROM m.format_capability_drop
+ WHERE detection_source = 'mix_rewrite'
+   AND class_eliminated
  GROUP BY platform, output_mime_type;
 
 COMMENT ON VIEW ice_ro.mix_rewrite_class_elimination IS
   'cc-0091 A3-3. Platforms where an authoring-time mix rewrite took an entire '
   'output_mime_type class from non-zero share to zero. Advisory: it means "this is large, '
   'confirm it was intended", NOT "this is an error". A correct elimination (e.g. facebook '
-  'video, which its publisher genuinely cannot post) is expected to appear here.';
+  'video, which its publisher genuinely cannot post) is expected to appear here. '
+  'M1 FIX: this is a PURE PROJECTION over m.format_capability_drop (owner-rights, readable '
+  'by ice_readonly), NOT a call to m.detect_mix_rewrite_removals. CONSEQUENCE, stated '
+  'plainly: it shows what the writer has PERSISTED, not live truth — it is empty until '
+  'm.record_mix_rewrite_removals() has run, and its figures are as-at detection time.';
 
 REVOKE ALL ON ice_ro.mix_rewrite_class_elimination FROM PUBLIC;
 REVOKE ALL ON ice_ro.mix_rewrite_class_elimination FROM anon;
@@ -257,7 +271,16 @@ COMMIT;
 --    Facebook video/mp4 IS expected here and is a CORRECT elimination (its publisher has
 --    no video path). Its presence is the guard working as designed, not a false positive:
 --    the alarm means "this is large, confirm it was intended".
---    SELECT * FROM ice_ro.mix_rewrite_class_elimination ORDER BY platform, output_mime_type;
+--
+--    ⚠ M1 FIX CHANGED THIS VIEW'S SEMANTICS. It is now a PURE PROJECTION over
+--    m.format_capability_drop, so it is EMPTY until m.record_mix_rewrite_removals() has
+--    run. Verify in that order:
+--      SELECT m.record_mix_rewrite_removals(NULL);          -- expect 10
+--      SELECT * FROM ice_ro.mix_rewrite_class_elimination
+--       ORDER BY platform, output_mime_type;                -- expect 5 rows
+--      SELECT m.record_mix_rewrite_removals(NULL);          -- expect 0 (S4 dedupe)
+--    A read of the view BEFORE the writer returns zero rows and that is CORRECT, not a
+--    detector failure — use m.detect_mix_rewrite_removals(NULL) for live truth.
 --
 -- 4. No call site was created:
 --    SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace

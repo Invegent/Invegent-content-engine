@@ -11,8 +11,13 @@
 -- and m.slot_fill_attempt records decision='filled', chosen_format='image_quote' — with
 -- nothing distinguishing "image_quote was requested" from "image_quote was the default".
 --
--- Measured: 909 of 1157 'filled' attempts in the last 60 days chose image_quote. How many
--- were genuine requests versus silent defaults is currently UNANSWERABLE. This closes that.
+-- Measured: 909 of 1157 'filled' attempts in the last 60 days chose image_quote.
+--
+-- S9 CORRECTION (db-rls-auditor): an earlier draft of this header claimed the split was
+-- "currently UNANSWERABLE". That OVER-CLAIMED. Live m.fill_pending_slots already writes
+-- 'format_preference_explicit' into pool_snapshot at some insert sites. The real gap is
+-- narrower and still worth closing: the signal is PARTIAL and NON-UNIFORM across the four
+-- sites. This makes it complete, uniform, and explicit in both directions.
 --
 -- ─── Why a TRIGGER and not a rewrite of m.fill_pending_slots ─────────────────
 -- The obvious implementation is CREATE OR REPLACE on m.fill_pending_slots to annotate at
@@ -64,20 +69,36 @@ BEGIN
       FROM m.slot s
      WHERE s.slot_id = NEW.slot_id;
 
-    -- A default was taken iff the slot carried NO surviving preference. A slot whose
-    -- preference is explicitly ['image_quote'] is a genuine request and is NOT annotated —
-    -- this is the distinction that does not exist in the data today.
-    IF array_length(v_pref, 1) IS NULL AND NEW.chosen_format IS NOT NULL THEN
+    -- S2 FIX (db-rls-auditor): gate on decision='filled'. m.fill_pending_slots writes a
+    -- non-NULL chosen_format on NON-fill rows too — ('skipped','publish_path_disabled'),
+    -- ('skipped','capability_blocked:...'), ('failed','manual_source_material_missing').
+    -- Without this the annotation would stamp "a default fill occurred" on rows where no
+    -- fill occurred at all, and the key name, reason string and view comment all say fill.
+    IF NEW.decision = 'filled' AND NEW.chosen_format IS NOT NULL THEN
+      -- S3 FIX (db-rls-auditor): write BOTH branches. The fail-open EXCEPTION handler
+      -- below also leaves the key absent, so "key absent" previously conflated
+      -- "explicit request" with "annotation failed" — reintroducing, inside the new
+      -- observability surface, the exact absent-vs-stated ambiguity cc-0091 exists to
+      -- eliminate. Now: key present with true/false = a stated fact; key ABSENT = the
+      -- row predates the trigger OR the annotation errored. Never ambiguous again.
       NEW.pool_snapshot := COALESCE(NEW.pool_snapshot, '{}'::jsonb)
         || jsonb_build_object(
              'cc0091_a3_2',
-             jsonb_build_object(
-               'format_defaulted', true,
-               'requested_format', NULL,          -- unrecoverable here, by design
-               'applied_format',   NEW.chosen_format,
-               'reason',           'no_surviving_format_preference',
-               'annotated_at',     now()
-             )
+             CASE WHEN array_length(v_pref, 1) IS NULL THEN
+               jsonb_build_object(
+                 'format_defaulted', true,
+                 'requested_format', NULL,        -- unrecoverable here, by design
+                 'applied_format',   NEW.chosen_format,
+                 'reason',           'no_surviving_format_preference',
+                 'annotated_at',     now())
+             ELSE
+               jsonb_build_object(
+                 'format_defaulted', false,
+                 'requested_format', v_pref[1],
+                 'applied_format',   NEW.chosen_format,
+                 'reason',           'explicit_format_preference',
+                 'annotated_at',     now())
+             END
            );
     END IF;
   EXCEPTION WHEN OTHERS THEN
@@ -95,7 +116,11 @@ COMMENT ON FUNCTION m.tg_annotate_format_default() IS
   'explicit request. Never modifies decision, skip_reason or chosen_format. Fail-open: any '
   'error is swallowed with a WARNING so the fill path cannot be broken by observability.';
 
-CREATE TRIGGER tg_slot_fill_attempt_annotate_format_default
+-- M3 FIX (db-rls-auditor): CREATE OR REPLACE, not bare CREATE. A bare CREATE TRIGGER
+-- raises 42710 on a second apply and aborts the transaction — fail-closed, but it
+-- contradicts this file's "purely ADDITIVE" framing and is a live hazard in any
+-- Convention-2 sequence that resumes after a partial apply. PG14+ supports OR REPLACE.
+CREATE OR REPLACE TRIGGER tg_slot_fill_attempt_annotate_format_default
   BEFORE INSERT ON m.slot_fill_attempt
   FOR EACH ROW
   EXECUTE FUNCTION m.tg_annotate_format_default();
@@ -107,13 +132,16 @@ SELECT a.attempted_at,
        a.decision,
        a.chosen_format,
        (a.pool_snapshot -> 'cc0091_a3_2' ->> 'format_defaulted')::boolean AS format_defaulted,
+       a.pool_snapshot -> 'cc0091_a3_2' ->> 'requested_format'            AS requested_format,
        a.pool_snapshot -> 'cc0091_a3_2' ->> 'reason'                      AS default_reason
   FROM m.slot_fill_attempt a;
 
 COMMENT ON VIEW ice_ro.slot_format_default_status IS
   'cc-0091 A3-2. Distinguishes a fill that took the image_quote DEFAULT from one that '
-  'filled an explicitly requested format. format_defaulted IS NULL for rows written before '
-  'this trigger existed — NULL means "unknown", never "was not a default".';
+  'filled an explicitly requested format. THREE states, unambiguous (S3 fix): '
+  'true = a default was taken · false = an explicit preference was honoured · '
+  'NULL = UNKNOWN, meaning the row predates this trigger, was not a ''filled'' decision, '
+  'or the annotation hit its fail-open handler. NULL NEVER means "was not a default".';
 
 REVOKE ALL ON ice_ro.slot_format_default_status FROM PUBLIC;
 REVOKE ALL ON ice_ro.slot_format_default_status FROM anon;

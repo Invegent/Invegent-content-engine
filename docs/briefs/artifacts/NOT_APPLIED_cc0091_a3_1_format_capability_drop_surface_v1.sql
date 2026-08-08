@@ -94,6 +94,23 @@ CREATE TABLE IF NOT EXISTS m.format_capability_drop (
   -- raw platform_support facts (absent-key vs explicit-false); NOT a derived label
   platform_support_raw          text,
   platform_support_key_present  boolean NOT NULL,
+  -- ── M1 FIX (db-rls-auditor, 2026-08-08) ────────────────────────────────────
+  -- The class-elimination facts are PERSISTED here rather than recomputed by a view.
+  -- Two reasons, one of which is a defect fix:
+  --   (a) DEFECT: a view that CALLS m.detect_mix_rewrite_removals is privilege-checked
+  --       against the INVOKER (functions in views are not owner-rights, and a function
+  --       carrying SET search_path is non-inlinable), so ice_readonly — which has no
+  --       USAGE on schema t — would get 42501 on a surface that appears to exist and
+  --       appears to be granted. All 15 pre-existing ice_ro views are pure relation
+  --       projections; that is exactly why they work. This restores that pattern.
+  --   (b) CORRECTNESS: these are facts AS AT DETECTION TIME. Recomputing them later
+  --       would silently re-answer against a mix and a platform_support that have since
+  --       moved — which is the same class of error this lane exists to eliminate.
+  prior_effective_from          date,      -- mix_rewrite: generation removed FROM
+  output_mime_type              text,      -- class axis (format_category is NULL for video)
+  class_share_before            numeric,
+  class_share_after             numeric,
+  class_eliminated              boolean,
   created_at                    timestamptz NOT NULL DEFAULT now(),
   -- A runtime drop MUST be client-attributable; a mix rewrite MUST NOT pretend to be.
   CONSTRAINT ck_fcd_client_scope CHECK (
@@ -125,6 +142,23 @@ CREATE INDEX IF NOT EXISTS ix_fcd_source
 CREATE INDEX IF NOT EXISTS ix_fcd_routed_lane
   ON m.format_capability_drop (routed_lane)
   WHERE routed_lane IS NOT NULL;                        -- Asset Gap consumption
+
+-- ── S4 FIX (db-rls-auditor, 2026-08-08) — dedupe keys ────────────────────────
+-- Without these, both writers are pure appends. The mix_rewrite writer is the acute
+-- case: the prior generation is STATIC (effective_from 2026-04-22 for fb/ig/li), so a
+-- nightly Gate-B call site would re-record the SAME 10 historical removals every night —
+-- ~900 byte-identical rows inside the 90-day retention window, degrading the very
+-- evidence surface this table exists to provide. Added NOW, while the table is not live;
+-- retrofitting a unique constraint onto a populated table is far more expensive.
+-- Partial, because the natural key differs per detection_source: a runtime drop is
+-- client+week scoped, a mix rewrite is platform+generation scoped and client-less.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_fcd_runtime_grid
+  ON m.format_capability_drop (client_id, platform, requested_format, week_start)
+  WHERE detection_source = 'runtime_grid';
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_fcd_mix_rewrite
+  ON m.format_capability_drop (platform, requested_format, prior_effective_from)
+  WHERE detection_source = 'mix_rewrite';
 
 -- Sibling-consistent exposure posture (m is not REST-exposed).
 ALTER TABLE m.format_capability_drop DISABLE ROW LEVEL SECURITY;
@@ -269,7 +303,8 @@ BEGIN
          d.requested_share_pct, d.capability_status, d.reason_code, d.routed_lane,
          d.classifier_evidence, d.classifier_error, d.platform_support_raw,
          d.platform_support_key_present
-    FROM m.detect_format_capability_drops(p_client_id, p_week_start) d;
+    FROM m.detect_format_capability_drops(p_client_id, p_week_start) d
+  ON CONFLICT DO NOTHING;            -- S4: idempotent per (client, platform, format, week)
   GET DIAGNOSTICS v_n = ROW_COUNT;
   RETURN v_n;
 END;
@@ -307,10 +342,12 @@ COMMENT ON FUNCTION m.prune_format_capability_drop(integer) IS
 
 -- ── 5. Secret-free operator/dashboard read (R0 path) ─────────────────────────
 CREATE OR REPLACE VIEW ice_ro.format_capability_drop_status AS
-SELECT observed_at, detection_source, week_start, client_id, client_slug, platform,
+SELECT observed_at, detection_source, week_start, prior_effective_from,
+       client_id, client_slug, platform,
        requested_format, requested_share_pct,
        capability_status, reason_code, routed_lane,
-       platform_support_raw, platform_support_key_present
+       platform_support_raw, platform_support_key_present,
+       output_mime_type, class_share_before, class_share_after, class_eliminated
   FROM m.format_capability_drop;
 
 COMMENT ON VIEW ice_ro.format_capability_drop_status IS

@@ -229,7 +229,8 @@ async function main() {
   const dflt = ann.rows[0], expl = ann.rows[1];
 
   ok('a DEFAULTED fill is annotated format_defaulted=true', dflt.defaulted === 'true', JSON.stringify(dflt));
-  ok('an EXPLICITLY REQUESTED image_quote is NOT annotated', expl.defaulted === null, JSON.stringify(expl));
+  ok('S3 — an EXPLICIT request is annotated format_defaulted=FALSE (not left absent)',
+     expl.defaulted === 'false', JSON.stringify(expl));
   ok('pre-existing pool_snapshot keys are PRESERVED (merge, not overwrite)',
      dflt.pool_preserved === '7' && expl.pool_preserved === '7');
   ok('decision is UNCHANGED by the annotation', dflt.decision === 'filled' && expl.decision === 'filled');
@@ -243,6 +244,43 @@ async function main() {
                    VALUES ('33333333-3333-3333-3333-333333333333','filled','image_quote')`);
   } catch { inserted = false; }
   ok('annotation is FAIL-OPEN — an unresolvable slot never blocks the fill record', inserted);
+
+
+  // ── S2: non-'filled' decisions must NOT be annotated ────────────────────────
+  await db.exec(`
+    INSERT INTO m.slot (slot_id, format_preference)
+      VALUES ('44444444-4444-4444-4444-444444444444', NULL);
+    INSERT INTO m.slot_fill_attempt (slot_id, decision, skip_reason, chosen_format)
+      VALUES ('44444444-4444-4444-4444-444444444444','skipped','capability_blocked:x','image_quote');
+  `);
+  // COALESCE: an un-annotated row leaves pool_snapshot NULL, and NULL ? 'k' is NULL,
+  // not false — assert on the coalesced fact, not on the three-valued operator result.
+  const skipped = await db.query(`SELECT COALESCE(pool_snapshot ? 'cc0091_a3_2', false) AS annotated
+    FROM m.slot_fill_attempt WHERE slot_id='44444444-4444-4444-4444-444444444444'`);
+  ok("S2 — a 'skipped' row carrying chosen_format is NOT annotated as a fill",
+     skipped.rows[0].annotated === false, JSON.stringify(skipped.rows[0]));
+
+  let reapplied = true;
+  try {
+    await db.exec(`CREATE OR REPLACE TRIGGER tg_slot_fill_attempt_annotate_format_default
+      BEFORE INSERT ON m.slot_fill_attempt FOR EACH ROW
+      EXECUTE FUNCTION m.tg_annotate_format_default();`);
+  } catch { reapplied = false; }
+  ok('M3 — re-applying the trigger DDL succeeds (idempotent)', reapplied);
+
+  console.log('GROUP 6 — S4 dedupe and M1 view shape');
+  const before = await db.query(`SELECT count(*)::int AS n FROM m.format_capability_drop`);
+  const again  = await db.query(`SELECT m.record_mix_rewrite_removals('instagram') AS n`);
+  const after  = await db.query(`SELECT count(*)::int AS n FROM m.format_capability_drop`);
+  ok('S4 — re-running the mix_rewrite writer inserts ZERO duplicates',
+     again.rows[0].n === 0 && after.rows[0].n === before.rows[0].n,
+     `reinserted=${again.rows[0].n}, before=${before.rows[0].n}, after=${after.rows[0].n}`);
+
+  const vdef = await db.query(`SELECT pg_get_viewdef('ice_ro.mix_rewrite_class_elimination'::regclass, true) AS d`);
+  ok('M1 — alarm view no longer calls detect_mix_rewrite_removals (table-backed)',
+     !/detect_mix_rewrite_removals/i.test(vdef.rows[0].d), vdef.rows[0].d.slice(0,120));
+  ok('M1 — alarm view reads m.format_capability_drop',
+     /format_capability_drop/i.test(vdef.rows[0].d));
 
   console.log(`\n${'='.repeat(60)}\ncc-0091 A3 validation: ${pass} passed, ${fail} failed`);
   if (fail) { console.log('\nFAILURES:'); fails.forEach(f => console.log('  - ' + f)); process.exit(1); }
