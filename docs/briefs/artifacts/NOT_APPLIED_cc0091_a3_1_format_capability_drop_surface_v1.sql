@@ -423,6 +423,22 @@ BEGIN
   v_clsver := md5(pg_get_functiondef(
                 'public.classify_format_capability(text,text,text)'::regprocedure));
 
+  -- GUARD RESTORED, and its removal was a MISTAKE I should record rather than quietly undo.
+  -- When F1 replaced the catalog join with ::regprocedure I deleted the old deferred guard
+  -- as "provably dead", reasoning that regprocedure raises 42883 when the function is
+  -- absent so v_clsver could never be NULL. THE VERY NEXT TEST RUN DISPROVED THAT.
+  -- Why: a 'literal'::regprocedure cast is folded to an OID at PLAN time, and plpgsql
+  -- caches the plan. A DROP + CREATE of the classifier gives it a NEW OID; the cached plan
+  -- still holds the OLD one, pg_get_functiondef on that dead OID yields NULL, and the row
+  -- lands with a NULL stamp — unattributable, and indistinguishable from the legitimate
+  -- "not applicable" NULL. CREATE OR REPLACE preserves the OID and is safe; DROP + CREATE
+  -- is not, and that is a normal thing for someone to do to a function.
+  -- So the check is genuinely reachable. It is now PRE-INSERT (fail fast, nothing to roll
+  -- back) rather than the deferred post-INSERT form it replaced.
+  IF v_clsver IS NULL THEN
+    RAISE EXCEPTION 'cc-0091 A3-1: refusing to write unattributable evidence — could not hash public.classify_format_capability. Most likely a STALE CACHED OID after the function was DROPped and re-CREATEd (CREATE OR REPLACE preserves the OID; DROP+CREATE does not). Reconnect or re-plan, then retry. classifier_version NULL must always mean "not applicable", never "we could not check".';
+  END IF;
+
   v_week := date_trunc('week', COALESCE(p_week_start, CURRENT_DATE))::date;
 
   INSERT INTO m.format_capability_drop (
@@ -447,15 +463,9 @@ BEGIN
     DO UPDATE SET last_observed_at = now();
   GET DIAGNOSTICS v_n = ROW_COUNT;
 
-  -- The deferred "IF v_n > 0 AND v_clsver IS NULL THEN RAISE" guard that stood here was
-  -- REMOVED with the F1 fix, deliberately and not by oversight. With ::regprocedure the
-  -- lookup itself raises when the classifier is absent, before a single row is written, so
-  -- v_clsver can no longer be NULL on this path at all -- the guard became provably dead.
-  -- Dead code asserting an impossible condition is worse than no code: it implies a live
-  -- risk and invites a reader to wonder what else here is theatre. The invariant it
-  -- protected is now enforced twice, at better layers -- fail-closed at the lookup above,
-  -- and durably by ck_fcd_class_scope on the table, which binds every write path including
-  -- ones that never touch this function.
+  -- (The deferred post-INSERT form of the stamp guard that once stood here has MOVED to
+  -- immediately after the lookup above — fail fast, with nothing to roll back. See the
+  -- note there, including why deleting it outright was wrong.)
 
   RETURN v_n;
 END;

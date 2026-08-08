@@ -497,8 +497,19 @@ async function main() {
     CREATE OR REPLACE FUNCTION public.classify_format_capability(p_slug text, p_platform text, p_format text)
     RETURNS jsonb LANGUAGE sql STABLE AS $s$
       SELECT jsonb_build_object('status','unknown','reason_code','stub_v2','routed_lane',NULL,'evidence','{}'::jsonb) $s$;`);
-  ok('fail-soft fix — a zero-drop run must NOT raise (the guard is row-conditional)',
-     (await db.query(`SELECT m.record_format_capability_drops('${CID_ORPHAN}', DATE '2026-08-05') n`)).rows[0].n >= 0);
+  // A DROP+CREATE gives the classifier a NEW OID while plpgsql still holds the OLD one in
+  // its cached plan (the ::regprocedure literal is folded at plan time). pg_get_functiondef
+  // on that dead OID yields NULL — so the stamp guard IS reachable, contrary to the
+  // reasoning that briefly deleted it. Assert the writer refuses rather than writing an
+  // unattributable row.
+  let staleErr = null;
+  try { await db.query(`SELECT m.record_format_capability_drops('${CID_ORPHAN}', DATE '2026-08-05')`); }
+  catch (e) { staleErr = String(e.message || e); try { await db.exec('ROLLBACK'); } catch {} }
+  ok('stamp guard — a STALE CACHED OID (DROP+CREATE) makes the writer REFUSE, not write NULL',
+     staleErr !== null && /unattributable/i.test(staleErr), (staleErr || 'no exception').slice(0, 110));
+  ok('stamp guard — and nothing unattributable was persisted',
+     (await db.query(`SELECT count(*)::int n FROM m.format_capability_drop
+        WHERE detection_source='runtime_grid' AND classifier_version IS NULL`)).rows[0].n === 0);
 
   // ── N8 — ck_fcd_class_scope, the silent-merge guard ─────────────────────────
   // R1's NULLS NOT DISTINCT flipped a NULL evidence_iso_week from "duplicate rows"
@@ -519,8 +530,8 @@ async function main() {
 
   await N8('N8 — runtime_grid with NULL evidence_iso_week is REJECTED (the silent-merge hole)',
     `INSERT INTO m.format_capability_drop (detection_source, client_id, platform,
-       requested_format, evidence_iso_week, platform_support_key_present)
-     VALUES ('runtime_grid', ${CID}, 'instagram', 'f1', NULL, false)`, true);
+       requested_format, evidence_iso_week, classifier_version, platform_support_key_present)
+     VALUES ('runtime_grid', ${CID}, 'instagram', 'f1', NULL, 'fixture-stamp', false)`, true);
 
   await N8('N8 — mix_rewrite with NULL prior_effective_from is REJECTED (dedupe key would break)',
     `INSERT INTO m.format_capability_drop (detection_source, platform, requested_format,
@@ -529,13 +540,17 @@ async function main() {
 
   await N8('N8 — runtime_grid carrying mix-rewrite-only class facts is REJECTED',
     `INSERT INTO m.format_capability_drop (detection_source, client_id, platform,
-       requested_format, evidence_iso_week, class_eliminated, platform_support_key_present)
-     VALUES ('runtime_grid', ${CID}, 'instagram', 'f3', DATE '2026-08-03', true, false)`, true);
+       requested_format, evidence_iso_week, classifier_version, class_eliminated,
+       platform_support_key_present)
+     VALUES ('runtime_grid', ${CID}, 'instagram', 'f3', DATE '2026-08-03', 'fixture-stamp',
+             true, false)`, true);
 
   await N8('N8 — a VALID runtime_grid row is ACCEPTED (constraint does not over-reach)',
     `INSERT INTO m.format_capability_drop (detection_source, client_id, platform,
-       requested_format, evidence_iso_week, reason_code, platform_support_key_present)
-     VALUES ('runtime_grid', ${CID}, 'instagram', 'f4', DATE '2026-08-03', 'ok', false)`, false);
+       requested_format, evidence_iso_week, reason_code, classifier_version,
+       platform_support_key_present)
+     VALUES ('runtime_grid', ${CID}, 'instagram', 'f4', DATE '2026-08-03', 'ok',
+             'fixture-stamp', false)`, false);
 
   await N8('N8 — a VALID mix_rewrite row is ACCEPTED',
     `INSERT INTO m.format_capability_drop (detection_source, platform, requested_format,
@@ -562,11 +577,14 @@ async function main() {
   // So exercise the index directly: m.detect_format_capability_drops emits a NULL
   // reason_code on its own documented v_slug IS NULL classifier-failure path, and before
   // the fix those rows could never conflict and would duplicate nightly, unbounded.
+  // NOTE: classifier_version is REQUIRED on runtime_grid rows since the F2 conjuncts
+  // joined ck_fcd_class_scope. A direct-insert fixture must supply it, exactly as the
+  // writer does — the constraint binds every path, which is the point of F2.
   const R1ROW = `INSERT INTO m.format_capability_drop
     (detection_source, client_id, platform, requested_format, evidence_iso_week,
-     reason_code, platform_support_key_present)
+     reason_code, classifier_version, platform_support_key_present)
     VALUES ('runtime_grid','55555555-5555-5555-5555-555555555555','instagram','vid_x',
-            DATE '2026-08-03', NULL, false)`;
+            DATE '2026-08-03', NULL, 'fixture-stamp', false)`;
   await db.exec(R1ROW);
   let r1state = null;
   try { await db.exec(R1ROW); }
