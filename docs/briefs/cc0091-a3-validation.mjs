@@ -312,6 +312,32 @@ async function main() {
      /DO NOT prove it by running the writer in Gate A/.test(a33) &&
      /PROVE IT READ-ONLY/.test(a33));
 
+  // ── R1 — NULLS NOT DISTINCT on the runtime key ──────────────────────────────
+  // The auditor flagged that this harness structurally CANNOT reach the NULL-reason_code
+  // path through the writer, because the classifier stub hardcodes reason_code='stub'.
+  // So exercise the index directly: m.detect_format_capability_drops emits a NULL
+  // reason_code on its own documented v_slug IS NULL classifier-failure path, and before
+  // the fix those rows could never conflict and would duplicate nightly, unbounded.
+  const R1ROW = `INSERT INTO m.format_capability_drop
+    (detection_source, client_id, platform, requested_format, evidence_iso_week,
+     reason_code, platform_support_key_present)
+    VALUES ('runtime_grid','55555555-5555-5555-5555-555555555555','instagram','vid_x',
+            DATE '2026-08-03', NULL, false)`;
+  await db.exec(R1ROW);
+  let rejected = false;
+  try { await db.exec(R1ROW); } catch { rejected = true; try { await db.exec('ROLLBACK'); } catch {} }
+  ok('R1 — a SECOND row with NULL reason_code is REJECTED (NULLS NOT DISTINCT is active)',
+     rejected);
+
+  const beforeR1 = (await db.query(`SELECT count(*)::int n FROM m.format_capability_drop
+    WHERE detection_source='runtime_grid'`)).rows[0].n;
+  await db.exec(R1ROW + ` ON CONFLICT (client_id, platform, requested_format, evidence_iso_week, reason_code)
+    WHERE detection_source = 'runtime_grid' DO UPDATE SET last_observed_at = now()`);
+  const afterR1 = (await db.query(`SELECT count(*)::int n FROM m.format_capability_drop
+    WHERE detection_source='runtime_grid'`)).rows[0].n;
+  ok('R1 — the ON CONFLICT path DEDUPES a NULL-reason_code row instead of duplicating',
+     afterR1 === beforeR1, `before=${beforeR1} after=${afterR1}`);
+
   const vdef = await db.query(`SELECT pg_get_viewdef('ice_ro.mix_rewrite_class_elimination'::regclass, true) AS d`);
   ok('M1 — alarm view no longer calls detect_mix_rewrite_removals (table-backed)',
      !/detect_mix_rewrite_removals/i.test(vdef.rows[0].d), vdef.rows[0].d.slice(0,120));

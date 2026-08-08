@@ -48,7 +48,7 @@
 --
 -- ─── Evidence preserved (PK Q1: what/who/why/where) ───────────────────────────
 --   what was requested  -> requested_format, requested_share_pct
---   for which cell      -> client_id, client_slug, platform, week_start
+--   for which cell      -> client_id, client_slug, platform, evidence_iso_week
 --   what state caused it-> capability_status  (classifier verbatim)
 --   why                 -> reason_code, classifier_evidence (classifier verbatim)
 --   where it routes     -> routed_lane        (classifier verbatim; incl. asset_gap_s8)
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS m.format_capability_drop (
   --   'mix_rewrite'  : A3-3 — held a share in the prior mix generation, absent from current
   detection_source              text NOT NULL DEFAULT 'runtime_grid'
                                   CHECK (detection_source IN ('runtime_grid','mix_rewrite')),
-  week_start                    date,
+  evidence_iso_week                    date,
   -- NULLABLE by design: a 'mix_rewrite' removal is PLATFORM-level
   -- (t.platform_format_mix_default has no client_id), whereas a 'runtime_grid' drop is
   -- always client-scoped. The CHECK below enforces exactly that, so nullability cannot
@@ -131,6 +131,14 @@ COMMENT ON TABLE m.format_capability_drop IS
   'this table defines NO capability taxonomy of its own. Retention: 90 days via '
   'm.prune_format_capability_drop(). Write path: m.record_format_capability_drops().';
 
+COMMENT ON COLUMN m.format_capability_drop.evidence_iso_week IS
+  'cc-0091 A3-1. ISO/Monday-based week bucket (date_trunc(''week'')), pinned inside '
+  'm.record_format_capability_drops — callers do not choose it. DELIBERATELY NOT the ICE '
+  'scheduling week: ICE''s live schedule functions are Sunday-based (DOW, Sunday=0). This '
+  'column is an EVIDENCE bucket for deduplication, NOT a scheduling coordinate, and was '
+  'renamed from week_start (PK ruling 2026-08-08, R3) precisely so it cannot be joined to '
+  'a scheduling week by mistake. Do not derive a schedule from it.';
+
 COMMENT ON COLUMN m.format_capability_drop.platform_support_key_present IS
   'RAW fact, not a classification: false means the platform key was ABSENT from '
   't."5.3_content_format".platform_support (never stated), true means a value was stated. '
@@ -138,7 +146,7 @@ COMMENT ON COLUMN m.format_capability_drop.platform_support_key_present IS
   'without introducing a second enum.';
 
 CREATE INDEX IF NOT EXISTS ix_fcd_cell
-  ON m.format_capability_drop (client_id, platform, week_start);
+  ON m.format_capability_drop (client_id, platform, evidence_iso_week);
 CREATE INDEX IF NOT EXISTS ix_fcd_observed_at
   ON m.format_capability_drop (observed_at);           -- retention pruning
 CREATE INDEX IF NOT EXISTS ix_fcd_source
@@ -161,8 +169,17 @@ CREATE INDEX IF NOT EXISTS ix_fcd_routed_lane
 -- the second row was silently discarded — a dedupe that HIDES evidence, worse than the
 -- duplication it replaced. With it, a changed reason records a NEW row while a repeated
 -- reason merely advances last_observed_at.
+-- R1 FIX (db-rls-auditor, 3rd round): NULLS NOT DISTINCT. Adding reason_code to the key
+-- was right, but PostgreSQL treats NULLs as DISTINCT in a unique index by default — and
+-- m.detect_format_capability_drops emits a NULL reason_code on its OWN documented
+-- classifier-failure path (v_slug IS NULL -> classifier_error='client_slug_unresolved').
+-- Those rows would never conflict, so the dedupe would silently fail on exactly the rows
+-- an operator most needs to trust. The NULL hole had MOVED from evidence_iso_week to
+-- reason_code, not closed. PG 15+ (live is 17.6) supports NULLS NOT DISTINCT, and
+-- ON CONFLICT inference still resolves against such an index, so no writer change needed.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_fcd_runtime_grid
-  ON m.format_capability_drop (client_id, platform, requested_format, week_start, reason_code)
+  ON m.format_capability_drop (client_id, platform, requested_format, evidence_iso_week, reason_code)
+  NULLS NOT DISTINCT
   WHERE detection_source = 'runtime_grid';
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_fcd_mix_rewrite
@@ -304,7 +321,7 @@ DECLARE
   v_week date;
 BEGIN
   -- N2 (PK decision): the week bucket is PINNED HERE, not left to the caller.
-  -- m.build_weekly_demand_grid never reads its p_week_start, so week_start exists solely
+  -- m.build_weekly_demand_grid never reads its p_week_start, so evidence_iso_week exists solely
   -- as a dedupe-key component; leaving it to a Gate-B convention would make the index
   -- either inert (run-date) or lossy. COALESCE closes the NULL hole at the writer, since
   -- NULLs are DISTINCT in a unique index and a NULL would silently restore duplication.
@@ -312,7 +329,7 @@ BEGIN
 
   INSERT INTO m.format_capability_drop (
     detection_source,
-    week_start, client_id, client_slug, platform, requested_format, requested_share_pct,
+    evidence_iso_week, client_id, client_slug, platform, requested_format, requested_share_pct,
     capability_status, reason_code, routed_lane, classifier_evidence, classifier_error,
     platform_support_raw, platform_support_key_present
   )
@@ -325,7 +342,7 @@ BEGIN
   -- N2/N3: LAST-SEEN. Every detected row either inserts or updates, so ROW_COUNT below
   -- equals rows DETECTED — which repairs the return contract DO NOTHING had silently
   -- changed to "rows newly inserted" (a 0 that could not be told from "no drops").
-  ON CONFLICT (client_id, platform, requested_format, week_start, reason_code)
+  ON CONFLICT (client_id, platform, requested_format, evidence_iso_week, reason_code)
     WHERE detection_source = 'runtime_grid'
     DO UPDATE SET last_observed_at = now();
   GET DIAGNOSTICS v_n = ROW_COUNT;
@@ -337,7 +354,7 @@ COMMENT ON FUNCTION m.record_format_capability_drops(uuid, date) IS
   'cc-0091 A3-1. Persists m.detect_format_capability_drops output. RETURN VALUE = rows '
   'DETECTED (each detected row either inserts or advances last_observed_at, so ROW_COUNT '
   'covers both) — it is NOT "rows newly inserted", and 0 therefore means "no drops '
-  'detected", unambiguously. week_start is bucketed to date_trunc(''week'') INSIDE this '
+  'detected", unambiguously. evidence_iso_week is bucketed to date_trunc(''week'') INSIDE this '
   'function; callers do not choose it. NOT wired to any trigger or cron — Gate B owns the '
   'nightly call site.';
 
@@ -369,7 +386,7 @@ COMMENT ON FUNCTION m.prune_format_capability_drop(integer) IS
 
 -- ── 5. Secret-free operator/dashboard read (R0 path) ─────────────────────────
 CREATE OR REPLACE VIEW ice_ro.format_capability_drop_status AS
-SELECT observed_at, last_observed_at, detection_source, week_start, prior_effective_from,
+SELECT observed_at, last_observed_at, detection_source, evidence_iso_week, prior_effective_from,
        client_id, client_slug, platform,
        requested_format, requested_share_pct,
        capability_status, reason_code, routed_lane,

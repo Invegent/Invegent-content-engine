@@ -176,7 +176,7 @@ AS $function$
 DECLARE v_n integer;
 BEGIN
   INSERT INTO m.format_capability_drop (
-    detection_source, week_start, client_id, client_slug, platform,
+    detection_source, evidence_iso_week, client_id, client_slug, platform,
     requested_format, requested_share_pct,
     capability_status, reason_code, routed_lane, classifier_evidence, classifier_error,
     platform_support_raw, platform_support_key_present,
@@ -310,7 +310,17 @@ COMMIT;
 --      SELECT * FROM m.detect_mix_rewrite_removals(NULL)
 --       ORDER BY platform, requested_format;      -- expect the 10 rows tabulated above
 --      SELECT count(*) FILTER (WHERE class_eliminated) FROM m.detect_mix_rewrite_removals(NULL);
---                                                  -- expect 8 rows across 5 (platform,mime) alarms
+--                                                  -- expect 9 rows across 5 (platform,mime) alarms
+--        R2 FIX (db-rls-auditor, 3rd round): this read 'expect 8' and was WRONG. Of the 10
+--        removals tabulated above exactly ONE is not class-eliminated — linkedin carousel
+--        (image/png 55 -> 42.86), the "does not cry wolf" case. 10 - 1 = 9. Self-verifying
+--        breakdown, so the next reader can recount rather than trust:
+--          (facebook, image/gif) 1 · (facebook, video/mp4) 2
+--          (instagram, image/gif) 2 · (instagram, video/mp4) 2
+--          (linkedin, video/mp4) 2                              = 9 rows / 5 alarm groups
+--        A wrong expected value in a FAIL-CLOSED acceptance step is worse than no value:
+--        the operator either stops on a false mismatch at the PK gate, or learns the
+--        artifact's own numbers are not to be trusted.
 --      SELECT count(*) FROM m.format_capability_drop;   -- expect 0, STILL, afterwards
 --    The write-then-read proof belongs to Gate B, or to an explicitly-named
 --    BEGIN … ROLLBACK harness that never leaves rows behind.
