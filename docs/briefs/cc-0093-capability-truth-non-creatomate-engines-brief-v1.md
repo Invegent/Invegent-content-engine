@@ -3,13 +3,18 @@
 **Created:** 2026-08-08 Sydney
 **Author:** Claude Code (orchestrator)
 **Executor:** TBD at Gate 1
-**Status:** **DRAFT — AWAITING GATE 1.** Nothing here is authorised. Raised on PK instruction
-("raise Option 3 as its own lane", 2026-08-08) out of cc-0092 Amendment 1.
+**Executor:** Claude Code (orchestrator) — authoring + evidence · **PK (every apply)**
+**Status:** **ISSUED — Gate 1 PASSED (PK, 2026-08-08).** Raised out of cc-0092 Amendment 1 on PK
+instruction ("raise Option 3 as its own lane"), issued the same day. Execution authorised **strictly
+within** the Scope and Forbidden actions below — which authorise **authoring only, no apply.**
+**⛔ The production-mutation watch gate (~2026-08-11 20:20 Sydney) is NOT waived for this lane
+either.** It authorises no mutation regardless, so the two do not conflict.
 **Result file:** `docs/briefs/results/cc-0093-capability-truth-non-creatomate-engines.md` (on completion)
 
 > **Lane:** Capability model — structural. **CCF-02 class:** SAFETY_GATE (an enforcement gate is
-> acting on incomplete truth). **Tier: T3 provisional** — it touches the scheduling admission rule
-> for every client and platform. Gate 1 confirms the tier.
+> acting on incomplete truth). **Tier: T3 — CONFIRMED at Gate 1**, on the ground that the change
+> alters the scheduling admission rule for every client and platform even if the artifact is small.
+> Nothing is waived. De-escalation requires a fresh Gate 1 (Convention 3).
 > **Predecessors:** AB-01 (root cause #2, already diagnosed) · cc-0091 Gate A (the same defect
 > class one layer down) · cc-0092 Gate B (where it became load-bearing).
 
@@ -157,20 +162,30 @@ format in the system cannot currently be scheduled.
 Report per `docs/briefs/_template_result.md`, then stop at the authored-and-reviewed packet. The
 apply is a separate PK gate.
 
-## Open questions for Gate 1
+## Gate-1 resolutions *(the four open questions, answered at issue)*
 
-1. **Tier.** T3 provisional here. The change alters the scheduling admission rule system-wide, which
-   argues T3 even though the artifact may be small.
-2. **Sequencing against cc-0092.** AB-01 suggested (b) *"should ride with"* cc-0091 Gate A. Gate A
-   has since closed and Gate B is mid-flight under a watch gate. Does this lane run concurrently
-   with Gate B authoring, or strictly after B4's verdict? Concurrent is possible — the lanes touch
-   disjoint objects — but it splits attention during a T3 apply window.
-3. **Does `video_short_avatar` come first?** It is the strongest case (142 real publishes, zero
-   render failures, `platform_support.instagram` already `true`) and is blocked at a *second*,
-   simpler gate too — it has **no `c.client_format_config` row at all** for any client. That may be
-   a smaller, separable fix worth splitting out ahead of the structural one.
-4. **Executor.** Whether `brief-author` drafts the artifact packet; note its DB-lane work still
-   carries candidate-level scrutiny.
+1. **Tier — T3, confirmed.** See the header. The artifact may be small; the admission rule it
+   changes is system-wide. Escalation up stays free; de-escalation needs a fresh Gate 1.
+2. **Sequencing against cc-0092 — CONCURRENT AUTHORING, SEPARATE APPLY.** The lanes touch disjoint
+   objects: cc-0092 writes `c.client_format_mix_override` and `t.platform_format_mix_default`;
+   cc-0093 concerns `capability_gated`'s admission predicate and the template/engine model. Authoring
+   may proceed now. **This lane applies nothing**, so it cannot collide with Gate B's apply window,
+   and its own apply is a later, separate PK gate after cc-0092 B4.
+   **One ordering constraint that is NOT optional:** if this lane's remediation were applied before
+   cc-0092 B3 publishes, it could admit `_voice` formats to the Instagram grid and change what Gate
+   B is measuring mid-proof. It must not.
+3. **`video_short_avatar` first? — DEFERRED TO THE MECHANISM DECISION POINT, deliberately, and this
+   is not a dodge.** Scope item 1 (the inventory) has to be built regardless and is what tells us
+   whether avatar is genuinely separable or whether splitting it just ships the same fix twice.
+   Deciding execution order before that evidence exists is the error this whole programme keeps
+   correcting. **Recorded expectation, not a commitment:** avatar looks like the strongest and
+   smallest first slice — 142 real publishes, 90 renders / 0 failures,
+   `platform_support.instagram` already `true`, and blocked at a *second* and much simpler gate
+   (no `c.client_format_config` row at all, for any client). If the inventory bears that out, split
+   it; if not, say why in the result doc.
+4. **Executor — Claude Code (orchestrator).** Not `brief-author`: this is a DB lane, where its work
+   still carries candidate-level scrutiny, and the brief is already written. `db-rls-auditor` is
+   **required, not substitutable** — the DB is this lane's subject (CCF-02 Phase 2 R1).
 
 ## Notes
 

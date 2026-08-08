@@ -52,13 +52,21 @@
 -- inventing a new number. Only the CARRIER changes: video_short_stat is the one currently
 -- schedulable short-video format, so it holds the 35.00 that kinetic+stat_voice held.
 --
---   PROPOSED: carousel 40.00 / image_quote 25.00 / video_short_stat 35.00  (= 100.00)
+--   ✅ PK-CONFIRMED 2026-08-08: carousel 40.00 / image_quote 25.00 / video_short_stat 35.00
+--                                (= 100.00)
 --
 -- The 40/25 split keeps carousel ahead of image_quote as every prior version did.
--- ⚠ 35.00 IS A PRODUCT ELECTION, not a derivation. It is defensible because it restores a
---   documented prior position, but PK may set any figure — the arithmetic below must then
---   be recomputed and this artifact re-frozen. It is the ONE parameter here that evidence
---   constrains but does not determine.
+--
+-- 35.00 IS A PRODUCT ELECTION, not a derivation — evidence constrains it (it restores the
+-- documented 2026-04-22 short-video weighting) but does not determine it. PK made that
+-- election explicitly on 2026-08-08 ("confirm 35.00 for A2b"). It is now RATIFIED, and the
+-- allocation table below is computed against it and verified in-transaction by the
+-- post-state assertions.
+-- ⚠ IF THE FIGURE EVER CHANGES: every number in the allocation block below, and both
+--   post-state assertions 2 and 3, are computed from 35.00 and hardcode the resulting slot
+--   counts. They are FAIL-CLOSED, so a changed share makes this artifact ABORT rather than
+--   silently ship a different mix — but that means the artifact must be re-derived and
+--   re-frozen, not edited in one place.
 --
 -- ─── Computed allocation (largest-remainder, live allocator semantics) ────────
 -- Reaches EXACTLY TWO brands. invegent and care-for-welfare-pty-ltd are unaffected —

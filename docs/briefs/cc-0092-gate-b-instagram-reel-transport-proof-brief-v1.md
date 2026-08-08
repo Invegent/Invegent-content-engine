@@ -180,10 +180,17 @@ behavioural change.
 `video_short_stat` post exists for property-pulse — a prose "depends on B3" is exactly the
 declared-but-unenforced protection class this programme exists to remove.
 
-**A2b's 35.00 share is the one PK-elected parameter.** Evidence constrains it (it restores the
+**A2b's 35.00 share — ✅ PK-CONFIRMED 2026-08-08.** Evidence constrained it (it restores the
 2026-04-22 mix's documented 35.00 short-video weighting, which cc-0079 Slice-2 zeroed on the wrong
-`platform_support` data) but does not determine it. A different figure requires recomputing the
-allocation table and re-freezing.
+`platform_support` data) but did not determine it; PK elected it explicitly. Now ratified. A
+different figure would require re-deriving the allocation table and both post-state assertions and
+re-freezing the artifact — they hardcode the resulting slot counts and are fail-closed, so a changed
+share aborts rather than silently shipping a different mix.
+
+**cc-0093 issued (Gate 1 PASSED, PK 2026-08-08)** —
+[cc-0093 brief](docs/briefs/cc-0093-capability-truth-non-creatomate-engines-brief-v1.md), T3,
+authoring-only. It runs concurrently with this lane and **must not apply before B3 publishes** —
+admitting the `_voice` formats mid-proof would change what Gate B is measuring.
 
 ### B2 — Apply the minimum, under PK's hand
 
