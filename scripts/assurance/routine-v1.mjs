@@ -219,9 +219,62 @@ for (const r of results) {
   for (const f of r.flags) md += `- **FLAG:** ${f}\n`;
   if (r.note) md += `- note: ${r.note}\n`;
 }
-const outDir = join(REPO, 'docs', 'architecture', 'assurance-runs');
-mkdirSync(outDir, { recursive: true });
-const outPath = join(outDir, `${stamp}-routine-v1.md`);
-writeFileSync(outPath, md);
-console.log(md);
-console.log(`\n[written] ${outPath}`);
+const DAILY = process.argv.includes('--daily');
+
+if (!DAILY) {
+  // Manual/notable run: record under docs/ (commit is a human act, never this script's).
+  const outDir = join(REPO, 'docs', 'architecture', 'assurance-runs');
+  mkdirSync(outDir, { recursive: true });
+  const outPath = join(outDir, `${stamp}-routine-v1.md`);
+  writeFileSync(outPath, md);
+  console.log(md);
+  console.log(`\n[written] ${outPath}`);
+} else {
+  // DAILY CRON MODE — inform-only, incapable of remediation/gating/approval/register mutation.
+  // Writes ONLY under gitignored _harness/assurance_routine/. Full output is preserved in the
+  // ordinary execution log; operator attention is raised ONLY for deltas (NEW FLAG / RECOVERED)
+  // and for UNKNOWN — unchanged known FLAGs are listed as standing, never re-alerted.
+  const routineDir = join(REPO, '_harness', 'assurance_routine');
+  const logDir = join(routineDir, 'logs');
+  mkdirSync(logDir, { recursive: true });
+
+  // Previous state = the latest durable run record (logs dir, else the committed docs run records).
+  // Derived from durable artifacts only — the check layer itself stays stateless.
+  const latestStatuses = (dir) => {
+    try {
+      const files = readdirSync(dir).filter((f) => /^\d{4}-\d{2}-\d{2}.*\.md$/.test(f)).sort();
+      if (!files.length) return null;
+      const txt = readFileSync(join(dir, files[files.length - 1]), 'utf8');
+      const map = {};
+      for (const m of txt.matchAll(/^\|\s*(AR-\d+)[^|]*\|\s*\*\*([A-Z]+)\*\*/gm)) map[m[1]] = m[2];
+      return Object.keys(map).length ? { file: files[files.length - 1], map } : null;
+    } catch { return null; }
+  };
+  const prev = latestStatuses(logDir) ?? latestStatuses(join(REPO, 'docs', 'architecture', 'assurance-runs'));
+
+  const attention = [], standing = [];
+  for (const r of results) {
+    const p = prev?.map[r.id];
+    if (r.status === 'UNKNOWN') attention.push(`${r.id} ${r.name}: UNKNOWN (fail-closed) — ${r.note ?? ''}`);
+    else if (r.status === 'FLAG' && p !== 'FLAG') attention.push(`${r.id} ${r.name}: NEW FLAG — ${r.flags[0] ?? ''}`);
+    else if (r.status === 'OK' && p === 'FLAG') attention.push(`${r.id} ${r.name}: RECOVERED (was FLAG)`);
+    else if (r.status === 'FLAG') standing.push(r.id);
+  }
+
+  let delta = `\n## Delta vs previous run (${prev ? prev.file : 'none — first daily run'})\n`;
+  delta += attention.length ? attention.map((a) => `- **${a}**\n`).join('') : '- no attention conditions (no NEW FLAG / RECOVERED / UNKNOWN)\n';
+  delta += standing.length ? `- standing known FLAGs (not re-alerted): ${standing.join(', ')}\n` : '';
+
+  writeFileSync(join(logDir, `${stamp}-routine-v1.md`), md + delta);
+  writeFileSync(join(routineDir, 'ATTENTION-latest.md'),
+    `# Assurance Routine — attention (${now.toISOString()})\n\n` +
+    (attention.length ? attention.map((a) => `- ${a}\n`).join('') : 'No attention conditions today.\n') +
+    (standing.length ? `\nStanding known FLAGs: ${standing.join(', ')} (full detail in logs/${stamp}-routine-v1.md)\n` : ''));
+  if (attention.length) {
+    // Best-effort, non-blocking operator toast; failure is irrelevant to the run.
+    try { spawnSync('msg', ['*', '/TIME:30', `ICE Assurance Routine: ${attention.length} attention item(s) — see _harness/assurance_routine/ATTENTION-latest.md`], { timeout: 5000 }); } catch { /* best-effort */ }
+  }
+  console.log(md + delta);
+  console.log(`\n[daily log] _harness/assurance_routine/logs/${stamp}-routine-v1.md · attention items: ${attention.length}`);
+  process.exitCode = 0; // always: a FLAG informs, it never fails/gates anything
+}
