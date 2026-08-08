@@ -284,5 +284,68 @@ the v6.147 ruling that held all production writes to the watch gate.
   of 71 active cron jobs**, so daily "12/12 green" is a PARTIAL signal, not fleet-wide scheduler proof
   (`video-worker-every-30min`, the job this recovery depended on, is not in the view).
 
+## Deferred day-3 check DISCHARGED — `pipeline-ai-summary` 500 recurrence (2026-08-08, read-only)
+
+Day 3 recorded *"`pipeline-ai-summary` 500: no recurrence check this pass (log window); re-check day 4."*
+Because **no Day 4 was ever written** (see the backfill block above), that check was never performed.
+Run 2026-08-08 at PK's instruction. **It is not a recurrence — it is a 100% outage.**
+
+**FINDING 1 — `pipeline-ai-summary` has been DEAD for 53.6 days.**
+
+| measure | value |
+|---|---|
+| cron fires, last 10d (jobid 30, `55 * * * *`) | **240** |
+| hours with output in `m.pipeline_ai_summary` | **0** |
+| failure rate | **100%** |
+| rows all-time | 720, spanning 2026-05-16 → **2026-06-15 16:55Z** |
+| time since last output | **53.6 days** |
+
+It produced hourly rows for ~30 days, stopped dead on 2026-06-15, and has written nothing since. The
+500s observed on day 2 and day 6 are not sporadic — **every run has failed for nearly eight weeks.**
+
+**Why nothing caught it — three stacked blind spots:**
+1. **`cron.job_run_details` reports 240/240 `succeeded`**, message `"1 row"`. That is `net.http_post`
+   reporting the **DISPATCH**, not the response. **Cron status cannot detect an EF returning 500 —
+   at all.** This generalises the day-6 `cron_health` carry: the gap is not merely 12-of-71 job
+   coverage, it is that the cron layer is structurally blind to edge-function failure.
+2. `ice_ro.cron_health` cannot see it either — jobid 30 is not among its 12 covered jobs.
+3. **Nothing monitors the output table.** A summariser that stops summarising emits silence, and
+   silence is indistinguishable from success — the same shape as the two proven silent-loss classes.
+
+**Root cause — strongly supported, NOT proven.** Its last successful run used
+`claude-sonnet-4-20250514`; the live fleet runs `claude-sonnet-4-6` (1,869 calls, current) and
+`gpt-4o`, and the old ID appears nowhere in `m.ai_usage_log` since May. A stale hardcoded model ID
+fits every observable fact. **It could not be migrated with the fleet because its SOURCE DOES NOT
+EXIST in the repo** — the documented `F-CRON-PIPELINE-AI-SUMMARY-STALE (P2)` (`supabase/config.toml`;
+deploy-only ghost bucket per source-recovery commit `8ee27b4`, 30 Mar 2026, never recovered). Drift
+concurs: class **D**, P2, `repo_path_status='missing'`, deployed v1.1.0, `repo_version=null`.
+**Confidence limit stated honestly:** the 500 body is unreadable (24h log retention; HTTP-level logs
+carry no response body) and the source is absent, so the model hypothesis is inference, not evidence.
+`m.ai_usage_log` may also simply not be written by this function.
+
+**FINDING 2 — `pipeline-doctor` is HEALTHY. The ghost-bucket assumption is WRONG.**
+
+Checked identically because it sits in the same deploy-only ghost bucket (`F-CRON-PIPELINE-DOCTOR-STALE`,
+class D/P2, source absent) and runs every 30 minutes:
+
+| measure | value |
+|---|---|
+| output rows in `m.pipeline_doctor_log`, last 10d | **476** (vs 480 cron fires — ~99.2%) |
+| last output | **2026-08-08 06:15Z (0.2 h ago)** |
+| rows carrying an `error` | **0** |
+| work done, last 10d | 3,332 checks · 967 issues found · **489 fixes applied** |
+| rows all-time | 6,146, continuous since 2026-04-01 |
+
+**"Source absent from the repo" does NOT imply "function broken."** The ghost bucket is a
+source-provenance defect, not automatically a runtime one — `pipeline-doctor` is not merely alive, it
+is actively repairing the pipeline (489 fixes in 10 days). Each ghost EF must be judged on its own
+output, never by bucket membership. `ingest` and `compliance-monitor` remain **unchecked** — this pass
+covered only the two PK named.
+
+**Verdict impact: NONE.** No production behaviour changed, nothing downstream consumed the missing
+summaries, and no STOP condition is implicated. Both findings are **carries, not blockers**. But
+finding 1's structural half — *cron `succeeded` ≠ EF succeeded* — should be read alongside the day-6
+`cron_health` carry when the verdict weighs "the fleet was green all week."
+
 *(Subsequent daily entries append below; one line-block per day; any STOP-condition match →
 surface to PK immediately, do not wait for watch expiry.)*
