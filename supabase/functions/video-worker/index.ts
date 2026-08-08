@@ -668,7 +668,7 @@ import { submitAndPollCreatomateRender } from './creatomate_submit.ts';  // v3.1
 //   audio guards, select_template/select_music, voice/TTS, the claim/publish paths, every legacy render
 //   builder, and every registry/DB row. This deploy performs NO selector repoint — activation is a
 //   SEPARATE, PK-gated DML apply.
-const VERSION = 'video-worker-v3.17.1';
+const VERSION = 'video-worker-v3.18.0';
 
 // v3.17.1 — grep-able marker string for the deployed bundle (bundles-from-CWD guard).
 export const KINETIC_SILENT_VOICE_OMIT_MARKER = 'video-worker-kinetic-silent-voice-omit';
@@ -861,24 +861,103 @@ function slideDirForPoint(pointIndex1Based: number): string {
   }
 }
 
+// v3.18.0 (F-VOICE-DIAGNOSABILITY): a VO failure used to collapse THREE distinct causes into one
+// bare `null`, so every caller threw the same opaque string and the real cause reached NO durable
+// record — not m.post_render_log.error_message, not draft_format.video_last_error. The only trace was
+// a console.error inside an invocation that still returns HTTP 200, i.e. effectively unretrievable.
+// That is what turned the 2026-08-08 draft 452f58b9 failure into a multi-session investigation.
+// This returns a DISCRIMINATED result; callers append `reason` to their (unchanged) error prefixes.
+export type VoiceGenResult = { url: string; reason: null } | { url: null; reason: string };
+
+// EXACT mirror of classifyRenderFailure's transient test (non-global, for .test()). The sanitizer's
+// job is defined ENTIRELY by this predicate: neutralise what this matches, preserve everything else.
+const CLASSIFIER_TRANSIENT_PREDICATE = /timed out|timeout|\b5\d\d\b|fetch failed|network|temporar|failed to download/i;
+
+// The LITERAL word triggers only. The numeric trigger is handled separately because it is the one
+// case where the useful information IS the number.
+const VOICE_DETAIL_WORD_TRIGGERS = /timed out|timeout|fetch failed|network|temporar|failed to download/gi;
+
+// PURE + exported for the focused test. INVARIANT: a sanitized detail can NEVER change
+// classifyRenderFailure's verdict for the message it is embedded in. Provider bodies are free text;
+// without this, an ElevenLabs body containing "Gateway Timeout" or a bare "500" would silently flip a
+// terminal VO failure into a retried one.
+//
+// v3.18.0 rev-2 (external review 083e73ea — "ensure the sanitizer does not mask critical operational
+// data"): NARROWED. rev-1 replaced ANY 3-digit run with '~', destroying useful provider numbers
+// ("character limit 5000 exceeded" -> "character limit ~ exceeded"). The classifier's ONLY numeric
+// hazard is \b5\d\d\b — a word-bounded, exactly-3-digit number starting with 5. So:
+//   * 429 / 404 / 5000 / 12  -> PRESERVED VERBATIM (they cannot match: wrong leading digit, or the
+//     4th digit denies the trailing \b).
+//   * a bare 5xx (500/502/503…) -> prefixed with '_' ("_502"). The underscore is a word character, so
+//     it denies \b5\d\d\b its LEADING boundary while keeping the exact status readable.
+//   * word triggers -> a '~' after the first character ("n~etwork"), readable, match broken.
+// Retry SEMANTICS remain deliberately UNCHANGED by this fix. PK direction 2026-08-08: genuine
+// provider HTTP 5xx SHOULD become retryable — recorded as a SEPARATE bounded change, NOT done here.
+export function sanitizeVoiceFailureDetail(detail: string): string {
+  let s = (detail || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  const neutralise = (t: string) =>
+    t.replace(VOICE_DETAIL_WORD_TRIGGERS, (m) => m[0] + '~' + m.slice(1))
+     .replace(/\b(5\d\d)\b/g, '_$1');
+  s = neutralise(s);
+  // FAIL-CLOSED BACKSTOP. Adjacent/overlapping triggers can re-form after a single pass — e.g.
+  // "fetch failed to download": the leftmost alternative consumes "fetch failed", leaving an intact
+  // "failed to download" behind it. Re-run until the predicate is provably clear, then hard-withhold
+  // rather than ever return a detail that could flip classification.
+  for (let i = 0; i < 5 && CLASSIFIER_TRANSIENT_PREDICATE.test(s); i++) s = neutralise(s);
+  if (CLASSIFIER_TRANSIENT_PREDICATE.test(s)) return '[detail withheld: unsanitizable]';
+  return s.trim();
+}
+
 async function generateAndUploadVoice(
   supabase: ReturnType<typeof getServiceClient>,
   narrationText: string,
   voiceId: string,
   storagePath: string,
-): Promise<string | null> {
+): Promise<VoiceGenResult> {
   const apiKey = Deno.env.get('ELEVENLABS_API_KEY');
-  if (!apiKey || !voiceId) { console.error('[video-worker] ElevenLabs key or voice ID missing'); return null; }
-  const resp = await fetch(`${ELEVENLABS_TTS}/${voiceId}`, {
-    method: 'POST',
-    headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg' },
-    body: JSON.stringify({ text: narrationText, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
-  });
-  if (!resp.ok) { console.error(`[video-worker] ElevenLabs TTS ${resp.status}: ${(await resp.text()).slice(0, 300)}`); return null; }
+  // Distinguish the two halves of the old combined guard — they have different fixes (a missing
+  // platform secret vs. an unresolved per-client voice config).
+  if (!apiKey) { console.error('[video-worker] ELEVENLABS_API_KEY not set'); return { url: null, reason: 'voice_api_key_missing' }; }
+  if (!voiceId) { console.error('[video-worker] voice ID missing at generateAndUploadVoice'); return { url: null, reason: 'voice_id_missing' }; }
+
+  let resp: Response;
+  try {
+    resp = await fetch(`${ELEVENLABS_TTS}/${voiceId}`, {
+      method: 'POST',
+      headers: { 'xi-api-key': apiKey, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg' },
+      body: JSON.stringify({ text: narrationText, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
+    });
+  } catch (e) {
+    // A thrown fetch (DNS/TLS/connection) previously escaped this function entirely and surfaced as
+    // an unrelated stack. Named so it is distinguishable from an HTTP-level rejection.
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[video-worker] ElevenLabs TTS fetch threw:', msg);
+    return { url: null, reason: `tts_fetch_threw:${sanitizeVoiceFailureDetail(msg)}` };
+  }
+
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '');
+    // Full body to console for a human; sanitized excerpt into the DURABLE thrown message.
+    console.error(`[video-worker] ElevenLabs TTS ${resp.status}: ${body.slice(0, 300)}`);
+    // `tts_http_status_<n>`: the underscore before the digits denies \b5\d\d\b a word boundary, so a
+    // 5xx status token cannot itself flip classification. Verified by test.
+    return { url: null, reason: `tts_http_status_${resp.status}:${sanitizeVoiceFailureDetail(body)}` };
+  }
+
   const audioBuf = await resp.arrayBuffer();
+  // Zero-byte audio passed the old !resp.ok gate and produced a URL to an empty object — a silent
+  // wrong-render rather than a loud failure. Fail closed.
+  if (audioBuf.byteLength === 0) {
+    console.error('[video-worker] ElevenLabs returned a 200 with an EMPTY audio body');
+    return { url: null, reason: 'tts_empty_audio_body' };
+  }
+
   const { error: upErr } = await supabase.storage.from('post-videos').upload(storagePath, audioBuf, { contentType: 'audio/mpeg', upsert: true });
-  if (upErr) { console.error('[video-worker] audio upload failed:', upErr.message); return null; }
-  return `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/post-videos/${storagePath}`;
+  if (upErr) {
+    console.error('[video-worker] audio upload failed:', upErr.message);
+    return { url: null, reason: `audio_upload_failed:${sanitizeVoiceFailureDetail(upErr.message)}` };
+  }
+  return { url: `${Deno.env.get('SUPABASE_URL')}/storage/v1/object/public/post-videos/${storagePath}`, reason: null };
 }
 
 // v3.6.0 (cc-0032 step 5): resolve the governed music bed via the service-role public.select_music
@@ -1474,8 +1553,10 @@ async function renderGovernedVideoStat(opts: {
   const { voiceId, method } = await resolveGovernedVoice(supabase, draft.client_id);
   if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for client_id=${draft.client_id} client_slug=${brand.clientSlug} method=${method} format=${fmt} (governed video_short_stat)`);
   const voicePath = `${brand.clientSlug}/${draft.post_draft_id}_stat_governed_voice.mp3`;
-  const voiceUrl = await generateAndUploadVoice(supabase, narration, voiceId, voicePath);
-  if (!voiceUrl) throw new Error('b1_video_governed_voiceover_failed');
+  const voice = await generateAndUploadVoice(supabase, narration, voiceId, voicePath);
+  // v3.18.0: prefix BYTE-UNCHANGED (existing greps/records still match); the cause is now appended.
+  if (!voice.url) throw new Error(`b1_video_governed_voiceover_failed: ${voice.reason}`);
+  const voiceUrl = voice.url;
 
   const bed = await resolveGovernedMusicBedUrl(supabase, { scopeKind: 'format', scopeValue: B1_VIDEO_GOVERNED_FORMAT });
 
@@ -1601,8 +1682,10 @@ async function processDraft(opts: {
     const narration = vs?.narration_text ?? '';
     if (!narration) throw new Error('video_script.narration_text is empty');
     const audioPath = `${b.clientSlug}/${draft.post_draft_id}_voice.mp3`;
-    audioUrl = await generateAndUploadVoice(supabase, narration, voiceId, audioPath);
-    if (!audioUrl) throw new Error('ElevenLabs TTS failed');
+    const voice = await generateAndUploadVoice(supabase, narration, voiceId, audioPath);
+    // v3.18.0: prefix BYTE-UNCHANGED; cause appended.
+    if (!voice.url) throw new Error(`ElevenLabs TTS failed: ${voice.reason}`);
+    audioUrl = voice.url;
     captionText = narration;  // captions derive from the same narration as the TTS
   }
   // v3.1.5 (QA-VISIBILITY-V0): minimal QA context — render-derived data already in scope.
@@ -1739,8 +1822,11 @@ Deno.serve(async (req: Request) => {
       const narration = composeGovernedVideoNarration(sampleFields, smokeBrand.brandName);
       const { voiceId, method } = await resolveGovernedVoice(smokeSupabase, smokeClientId);
       if (!voiceId) throw new Error(`No ElevenLabs voice ID configured for governed smoke (client_id=${smokeClientId} method=${method})`);
-      const smokeVoiceUrl = await generateAndUploadVoice(smokeSupabase, narration, voiceId, '_smoke/governed_video_stat_v1_voice.mp3');
-      if (!smokeVoiceUrl) throw new Error('b1_video_governed_smoke_voiceover_failed');
+      const smokeVoice = await generateAndUploadVoice(smokeSupabase, narration, voiceId, '_smoke/governed_video_stat_v1_voice.mp3');
+      // v3.18.0: prefix BYTE-UNCHANGED; cause appended. The smoke is the fastest live probe of which
+      // VO cause is firing — run it before re-queuing a draft that failed on voiceover.
+      if (!smokeVoice.url) throw new Error(`b1_video_governed_smoke_voiceover_failed: ${smokeVoice.reason}`);
+      const smokeVoiceUrl = smokeVoice.url;
       const smokeBed = await resolveGovernedMusicBedUrl(smokeSupabase, { scopeKind: 'format', scopeValue: B1_VIDEO_GOVERNED_FORMAT });
 
       // v3.8.0 (D6-8): SPINE-DRIVEN, BAKED-BG plan (Logo.source from the resolver, no hardcoded logo).
