@@ -94,8 +94,18 @@ number. Schedule the retirement of the blind queue-backed `ice_ro.publish_status
 where a B-roll-capable render ran it used B-roll and published (1/1). B-roll is reachable from exactly
 one fleet cell — **PP × YouTube × `video_short_stat`** — and **Phase-2 as approved adds ZERO
 B-roll-capable slots**. Post-watch work must address **governed-video / B-roll-capable schedule
-demand**. Shaped question already drafted, no lane opened:
-`docs/briefs/video-demand-generation-post-watch-brief-v1.md`.
+demand**. Shaped question already drafted, no lane opened — **branch-resident, NOT on `main`:**
+`docs/briefs/video-demand-generation-post-watch-brief-v1.md` **on
+`origin/lane/cgu-watch-hygiene-20260808`**.
+
+> **⚠ WHERE THE ARTIFACTS LIVE — check the branch before assuming `main`.**
+> These three are on **`origin/lane/cgu-watch-hygiene-20260808`** and are **NOT on `main`**:
+> · `docs/briefs/music-promotion-gate-gate1-brief-v1.md` (the frozen cc-0091 brief)
+> · `docs/briefs/artifacts/silent-schedule-loss-detector-v1.sql`
+> · `docs/briefs/video-demand-generation-post-watch-brief-v1.md`
+> Read them with `git show origin/lane/cgu-watch-hygiene-20260808:<path>`. That branch also carries
+> the retired migration artifacts and the ledger-identity renames. **Do not re-author any of them
+> because a `main` lookup came back empty** — that is how duplicate competing artifacts get created.
 
 ## 7. Closed — do not reopen
 
