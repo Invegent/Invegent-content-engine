@@ -1,11 +1,11 @@
-# Brief cc-XXXX — Music Promotion Gate (GATE 1)
+# Brief cc-0091 — Music Promotion Gate (GATE 1)
 
 **Created:** 2026-08-07 Sydney
 **Author:** CGU final-watch coordination session (PK directive 2026-08-07, watch-window priority 1)
 **Executor:** TBD — **not yet issued**
-**Status:** **draft — awaiting PK Gate-1 approval + task-ID allocation**
-**Task ID:** `cc-XXXX` — **PK to allocate** (single cut owner)
-**Result file:** `docs/briefs/results/cc-XXXX-music-promotion-gate.md`
+**Status:** **Gate-1 direction APPROVED by PK 2026-08-07; task ID CONFIRMED 2026-08-08. Amended per PK ruling 2026-08-08; at review/freeze. NOT APPLIED.**
+**Task ID:** `cc-0091` — **PK-CONFIRMED 2026-08-08** (scanned-highest `cc-0090`, next-free, no collision)
+**Result file:** `docs/briefs/results/cc-0091-music-promotion-gate.md`
 **Tier:** **T3** — opens eligibility fences on the live governed render path.
 **Lane classification (CCF-02):** SAFETY_GATE.
 
@@ -81,6 +81,47 @@ that produced the measured 11/11.
 Do not record this gate as delivering rotation, and do not let its completion be read as the music
 problem being solved.
 
+## 🔴 ALL THREE CLEAN TRACKS MUST PROMOTE TOGETHER — pool 3 provides NO rotation
+
+**Proven mechanically, not asserted** (R6 Part-1 deterministic algorithm proof — PASS, 2026-08-08;
+40 controlled seeds, FNV-1a expression executed verbatim from the frozen
+`lane5-select-music-seed-rotation-FORWARD.sql`, read-only, no schema touched).
+
+Under the PK-ratified bounded cooldown **`N = min(2, eligible_pool_size − 1)`**, the candidate set
+`C` that seed indexing actually draws from is:
+
+| eligible pool | cooldown `N` | candidate set \|C\| | rotation available? |
+|---|---|---|---|
+| 1 | 0 | 1 | no (identical to today) |
+| 2 | 1 | 1 | **no** |
+| 3 | 2 | **1** | **NO — collapses to a single candidate** |
+| 4 | 2 | **2** | **yes — first pool size that rotates** |
+
+**A pool of 3 collapses to exactly one candidate and therefore delivers no rotation at all** — the
+observable behaviour would be indistinguishable from today's 11/11 single track, despite two
+successful promotions. **Pool 4 is the mechanical minimum**, not a preference.
+
+**Consequence, binding on this lane:** promoting one or two of the three CLEAN tracks is **not a
+partial success — it is a null result**. All three (`warm_acoustic_simple_001`,
+`uplifting_composed_pluto_007`, `neutral_short_4mei_009`) must reach the full nine-condition state
+**together**, taking the eligible pool **1 → 4**. A partial promotion must be rolled back, not
+accepted as progress.
+
+## Distribution acceptance wording — CORRECTED (PK ruling 2026-08-08)
+
+The concentration failure condition for the applicable **multi-track** distribution test is
+**`> 50%`**, NOT `>= 50%`.
+
+Reason, from the same proof: at eligible pool 2 the candidate split is exactly **20 / 20 of 40 seeds
+= 50%**, which is *uniform* and mathematically optimal for two candidates. Read as `>= 50%` the
+criterion fails a perfect result. Recorded so the corrected wording reaches the apply gate:
+
+- **FAIL** when any single track takes **more than 50%** of draws in a multi-track test.
+- Exactly 50% on a two-candidate test is a **PASS** (uniform).
+- A materially worse spread than the B-roll v1.5 precedent (10/10/10/10 at pool 4) is an
+  **investigation trigger**, not an automatic failure. Measured here at pool 4: **10/10/10/10** —
+  exact parity with that precedent.
+
 ---
 
 ## In scope
@@ -113,7 +154,7 @@ problem being solved.
 
 ## Blocking preconditions
 
-1. **PK Gate-1 approval + task ID.**
+1. ~~PK Gate-1 approval + task ID~~ — **DONE** (direction approved 2026-08-07, `cc-0091` confirmed 2026-08-08).
 2. **The Phase-1 production-write watch (~2026-08-11 20:20 Sydney) is NOT waived.** Per PK's standing
    2026-08-07 direction, authorisation on one step does not override an independent hold. This lane
    applies **after** the watch unless PK rules otherwise at the sitting.
@@ -121,9 +162,12 @@ problem being solved.
 
 ## Success criteria
 
-- All nine conditions TRUE for all three tracks, verified by a fresh live read post-apply.
+- All nine conditions TRUE for **all three** tracks, verified by a fresh live read post-apply.
+  **ALL-OR-NOTHING:** two-of-three is a null result (pool 3 → \|C\| = 1 → no rotation), not partial
+  progress. Roll back rather than accept it.
 - `select_music` eligible candidate set for `('format','video_short_stat')` = **4 distinct tracks,
-  4 distinct moods** (calm · warm · uplifting · neutral).
+  4 distinct moods** (calm · warm · uplifting · neutral) — i.e. the pool moved **1 → 4**, the
+  mechanical minimum for rotation.
 - Rollback authored, reviewed and proven **before** apply; every step asserts an exact row count and
   fails closed.
 - Result doc records that the observable winner is unchanged and names Lane 5 as the remaining step.
