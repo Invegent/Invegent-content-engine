@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS m.format_capability_drop (
   --   'mix_rewrite'  : A3-3 — held a share in the prior mix generation, absent from current
   detection_source              text NOT NULL DEFAULT 'runtime_grid'
                                   CHECK (detection_source IN ('runtime_grid','mix_rewrite')),
-  evidence_iso_week                    date,
+  evidence_iso_week             date,
+
   -- NULLABLE by design: a 'mix_rewrite' removal is PLATFORM-level
   -- (t.platform_format_mix_default has no client_id), whereas a 'runtime_grid' drop is
   -- always client-scoped. The CHECK below enforces exactly that, so nullability cannot

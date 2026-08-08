@@ -312,14 +312,100 @@ async function main() {
      /DO NOT prove it by running the writer in Gate A/.test(a33) &&
      /PROVE IT READ-ONLY/.test(a33));
 
+  // ══ C1 — RUNTIME-GRID PATH, END TO END ══════════════════════════════════════
+  // Both internal audit and external review independently landed on this: the runtime
+  // detector and writer had ZERO execution coverage — verified structurally and by hand,
+  // never run. They would first have executed against production at Gate B.
+  //
+  // Closing it needs a fixture the previous one could not provide: the grid stub returned
+  // `WHERE false`, so survivors was always empty and there was nothing to LEFT JOIN
+  // against. Here facebook carries a two-format enabled_set, the grid returns ONE of them,
+  // and the detector must therefore report exactly the other as dropped. That also
+  // exercises the enabled_set mirror the artifact names as its own residual.
+  console.log('GROUP 7 — C1: runtime-grid detector + writer, executed');
+  const CID_OK = '88888888-8888-8888-8888-888888888888';
+  const CID_NOSLUG = '99999999-9999-9999-9999-999999999999';
+
+  await db.exec(`
+    INSERT INTO c.client (client_id, client_slug) VALUES ('${CID_OK}','test-brand');
+    -- facebook only: leaves the instagram mix generations (and every mix_rewrite
+    -- assertion above) untouched.
+    INSERT INTO t.platform_format_mix_default
+      (platform, ice_format_key, default_share_pct, effective_from, is_current) VALUES
+      ('facebook','img_static', 60, DATE '2026-07-25', true),
+      ('facebook','vid_denied', 40, DATE '2026-07-25', true);
+    INSERT INTO c.client_format_config (client_id, platform, ice_format_key, is_enabled) VALUES
+      ('${CID_OK}','facebook','img_static', true),
+      ('${CID_OK}','facebook','vid_denied', true),
+      ('${CID_NOSLUG}','facebook','img_static', true),
+      ('${CID_NOSLUG}','facebook','vid_denied', true);
+  `);
+  // The detector is plpgsql, so it resolves the grid at RUNTIME — replacing the stub now
+  // is enough. Returning img_static makes it a survivor; vid_denied must drop.
+  await db.exec(`
+    CREATE OR REPLACE FUNCTION m.build_weekly_demand_grid(p_client_id uuid, p_week_start date DEFAULT CURRENT_DATE)
+    RETURNS TABLE(client_id uuid, platform text, ice_format_key text, share_pct numeric, weekly_slot_count integer)
+    LANGUAGE sql STABLE AS $s$
+      SELECT p_client_id, 'facebook'::text, 'img_static'::text, 60::numeric, 3::integer
+    $s$;`);
+
+  const det = await db.query(`SELECT requested_format, capability_status, reason_code
+    FROM m.detect_format_capability_drops('${CID_OK}', DATE '2026-08-05')`);
+  ok('C1 — the runtime detector EXECUTES and returns exactly the dropped format',
+     det.rows.length === 1 && det.rows[0].requested_format === 'vid_denied',
+     JSON.stringify(det.rows));
+  ok('C1 — the grid SURVIVOR is correctly excluded (enabled_set mirror behaves)',
+     !det.rows.some(r => r.requested_format === 'img_static'));
+
+  const w1 = (await db.query(`SELECT m.record_format_capability_drops('${CID_OK}', DATE '2026-08-05') n`)).rows[0].n;
+  const rows1 = (await db.query(`SELECT count(*)::int n FROM m.format_capability_drop WHERE detection_source='runtime_grid'`)).rows[0].n;
+  ok('C1 — the runtime WRITER executes and persists the drop', Number(w1) === 1 && rows1 >= 1,
+     `returned=${w1} rows=${rows1}`);
+
+  const stampA = (await db.query(`SELECT max(last_observed_at) t FROM m.format_capability_drop WHERE detection_source='runtime_grid'`)).rows[0].t;
+  await new Promise(r => setTimeout(r, 20));
+  const w2 = (await db.query(`SELECT m.record_format_capability_drops('${CID_OK}', DATE '2026-08-05') n`)).rows[0].n;
+  const rows2 = (await db.query(`SELECT count(*)::int n FROM m.format_capability_drop WHERE detection_source='runtime_grid'`)).rows[0].n;
+  const stampB = (await db.query(`SELECT max(last_observed_at) t FROM m.format_capability_drop WHERE detection_source='runtime_grid'`)).rows[0].t;
+
+  ok('C1/N3 — the SECOND call returns rows DETECTED (1), not 0 — the repaired contract',
+     Number(w2) === 1, `returned=${w2}`);
+  ok('C1/S4 — the second call creates NO duplicate row', rows2 === rows1, `${rows1} -> ${rows2}`);
+  ok('C1/N2 — last_observed_at ADVANCES on the runtime path too',
+     new Date(stampB).getTime() > new Date(stampA).getTime());
+
+  // ── R1 END-TO-END: a client absent from c.client makes the detector emit a NULL
+  //    reason_code via its own documented classifier-failure path. Previously provable
+  //    only by poking the index directly, because the stub could never produce NULL.
+  const wn1 = (await db.query(`SELECT m.record_format_capability_drops('${CID_NOSLUG}', DATE '2026-08-05') n`)).rows[0].n;
+  const nullRow = await db.query(`SELECT reason_code, classifier_error, client_slug
+    FROM m.format_capability_drop WHERE client_id='${CID_NOSLUG}'`);
+  ok('R1 e2e — an unresolvable client yields a NULL reason_code via the real detector',
+     Number(wn1) === 1 && nullRow.rows.length === 1 && nullRow.rows[0].reason_code === null,
+     JSON.stringify(nullRow.rows));
+  ok('R1 e2e — and it is recorded as client_slug_unresolved, not silently blank',
+     nullRow.rows[0]?.classifier_error === 'client_slug_unresolved');
+
+  const nrows1 = (await db.query(`SELECT count(*)::int n FROM m.format_capability_drop WHERE client_id='${CID_NOSLUG}'`)).rows[0].n;
+  const wn2 = (await db.query(`SELECT m.record_format_capability_drops('${CID_NOSLUG}', DATE '2026-08-05') n`)).rows[0].n;
+  const nrows2 = (await db.query(`SELECT count(*)::int n FROM m.format_capability_drop WHERE client_id='${CID_NOSLUG}'`)).rows[0].n;
+  ok('R1 e2e — NULLS NOT DISTINCT dedupes the NULL-reason_code row THROUGH THE WRITER',
+     nrows2 === nrows1 && Number(wn2) === 1, `${nrows1} -> ${nrows2}, returned=${wn2}`);
+
   // ── N8 — ck_fcd_class_scope, the silent-merge guard ─────────────────────────
   // R1's NULLS NOT DISTINCT flipped a NULL evidence_iso_week from "duplicate rows"
   // (lossless) to "rows collapse into one" (evidence LOSS). These assertions prove the
   // constraint closes that, and that it does not over-reach onto valid rows.
-  const N8 = async (label, stmt, shouldReject) => {
-    let threw = false;
-    try { await db.exec(stmt); } catch { threw = true; try { await db.exec('ROLLBACK'); } catch {} }
-    ok(label, threw === shouldReject, `threw=${threw} expected=${shouldReject}`);
+  // D3: assert the SQLSTATE, not merely that SOMETHING threw. An expected-failure test
+  // that accepts any exception can pass on a typo or a type error and still look green.
+  // 23514 = check_violation, 23505 = unique_violation.
+  const N8 = async (label, stmt, shouldReject, code = '23514') => {
+    let state = null;
+    try { await db.exec(stmt); }
+    catch (e) { state = e?.cause?.code ?? e?.code ?? String(e.message || e); try { await db.exec('ROLLBACK'); } catch {} }
+    const rejected = state !== null;
+    const rightReason = !shouldReject || String(state).includes(code);
+    ok(label, rejected === shouldReject && rightReason, `state=${state} expected_reject=${shouldReject} code=${code}`);
   };
   const CID = "'66666666-6666-6666-6666-666666666666'";
 
@@ -353,8 +439,11 @@ async function main() {
   const depBlock = a33src.split('BEGIN;')[1].split('CREATE OR REPLACE FUNCTION')[0];
   ok('C2 — A3-3 dependency assertion names evidence_iso_week (the renamed column)',
      /evidence_iso_week/.test(depBlock));
-  const written = [...a33src.matchAll(/^\s*(detection_source|evidence_iso_week|prior_effective_from|output_mime_type|class_share_before|class_share_after|class_eliminated|last_observed_at)/gm)].length;
-  ok('C2 — every column A3-3 depends on appears in its dependency assertion',
+  // D1(b): label this for what it ACTUALLY does. It checks a fixed list of the 8
+  // skew-capable columns, so it catches a REMOVAL but cannot catch a forgotten 9th —
+  // which is precisely what C2 was. Making it genuinely drift-proof would mean parsing
+  // A3-3's INSERT list against A3-1's CREATE TABLE; more machinery than the risk warrants.
+  ok('C2 — the dependency assertion still names all 8 skew-capable columns (catches removal, NOT a forgotten 9th)',
      ['detection_source','prior_effective_from','output_mime_type','class_share_before',
       'class_share_after','class_eliminated','last_observed_at','evidence_iso_week']
        .every(c => depBlock.includes(`'${c}'`)));
@@ -371,10 +460,13 @@ async function main() {
     VALUES ('runtime_grid','55555555-5555-5555-5555-555555555555','instagram','vid_x',
             DATE '2026-08-03', NULL, false)`;
   await db.exec(R1ROW);
-  let rejected = false;
-  try { await db.exec(R1ROW); } catch { rejected = true; try { await db.exec('ROLLBACK'); } catch {} }
-  ok('R1 — a SECOND row with NULL reason_code is REJECTED (NULLS NOT DISTINCT is active)',
-     rejected);
+  let r1state = null;
+  try { await db.exec(R1ROW); }
+  catch (e) { r1state = e?.code ?? String(e.message || e); try { await db.exec('ROLLBACK'); } catch {} }
+  // D3: 23505 = unique_violation specifically. A bare "something threw" would pass on a
+  // typo or a CHECK violation and still look green — the exact defect class this suite exists for.
+  ok('R1 — a SECOND row with NULL reason_code is REJECTED with 23505 (NULLS NOT DISTINCT is active)',
+     String(r1state) === '23505', `sqlstate=${r1state}`);
 
   const beforeR1 = (await db.query(`SELECT count(*)::int n FROM m.format_capability_drop
     WHERE detection_source='runtime_grid'`)).rows[0].n;
