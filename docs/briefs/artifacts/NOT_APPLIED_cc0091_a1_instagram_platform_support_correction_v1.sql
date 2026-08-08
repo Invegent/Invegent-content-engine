@@ -96,11 +96,17 @@
 -- touch linkedin.
 --
 -- ─── Safety ───────────────────────────────────────────────────────────────────
--- Idempotent: the "IS DISTINCT FROM 'true'" guard makes re-runs a no-op and correctly
---   covers BOTH the absent-key rows (NULL) and the explicit-false row.
+-- ⚠ NOT IDEMPOTENT (corrected — N4). An earlier draft of this header claimed "re-runs are
+--   a no-op". That is FALSE since the M2 pre-state block was added: this forward is now
+--   SINGLE-SHOT WITH BASELINE ENFORCEMENT. A re-run does not silently no-op — it ABORTS,
+--   and it now distinguishes the two reasons: "ALREADY APPLIED" (benign, no action) from
+--   "baseline moved, artifact is stale" (genuine drift, STOP). The UPDATE statement itself
+--   remains guarded by IS DISTINCT FROM 'true', covering both the absent-key rows (NULL)
+--   and the explicit-false row, so no double-write is possible either way.
 -- Scope: single UPDATE, exactly 3 rows, one JSONB key each. No DDL. No GRANT/REVOKE.
 --   No other key touched (jsonb_set is key-scoped; youtube/facebook/linkedin preserved).
--- Row-count assertion: the expected affected count is 3 on first apply, 0 on re-run.
+-- Row-count assertion: the expected affected count is 3 on first apply. A re-run does not
+--   reach the UPDATE at all — it aborts in the pre-state block (see NOT IDEMPOTENT above).
 --   Verify with the SELECT below BEFORE and AFTER; do not infer success from silence.
 --
 -- ─── Apply/rollback identity (NON-SYMMETRIC — read before applying) ───────────
@@ -139,6 +145,26 @@ BEGIN;
 DO $$
 DECLARE v_n integer;
 BEGIN
+  -- N4 FIX (db-rls-auditor): recognise ALREADY-APPLIED before asserting drift.
+  -- Without this, a legitimate re-run aborts with "baseline moved, artifact is stale",
+  -- which is FALSE and actively misleading — the baseline did not drift, the migration
+  -- already succeeded. An operator resuming a Convention-2 sequence after an ambiguous
+  -- COMMIT could not tell "already applied" from "someone else changed the data": the
+  -- exact ambiguity this lane exists to abolish, re-created in its own apply path.
+  SELECT count(*) INTO v_n
+    FROM t."5.3_content_format"
+   WHERE ice_format_key IN ('video_short_stat','video_short_stat_voice','video_short_kinetic_voice')
+     AND platform_support ->> 'instagram' = 'true';
+  IF v_n = 3 THEN
+    SELECT count(*) INTO v_n
+      FROM t."5.3_content_format"
+     WHERE ice_format_key = 'video_short_kinetic'
+       AND platform_support ->> 'instagram' = 'false';
+    IF v_n = 1 THEN
+      RAISE EXCEPTION 'cc-0091 A1: ALREADY APPLIED — all three rows are at instagram=true and video_short_kinetic is untouched. This is a NO-OP, not a drift. No action needed; do not treat this as a failure.';
+    END IF;
+  END IF;
+
   SELECT count(*) INTO v_n
     FROM t."5.3_content_format"
    WHERE ice_format_key = 'video_short_stat'

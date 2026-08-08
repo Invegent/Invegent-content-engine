@@ -111,6 +111,10 @@ CREATE TABLE IF NOT EXISTS m.format_capability_drop (
   class_share_before            numeric,
   class_share_after             numeric,
   class_eliminated              boolean,
+  -- N2 (PK decision 2026-08-08): LAST-SEEN semantics. observed_at is FIRST seen and is
+  -- never rewritten; last_observed_at advances on every re-detection of the same key.
+  -- The pair makes recurrence visible without duplicating evidence.
+  last_observed_at              timestamptz NOT NULL DEFAULT now(),
   created_at                    timestamptz NOT NULL DEFAULT now(),
   -- A runtime drop MUST be client-attributable; a mix rewrite MUST NOT pretend to be.
   CONSTRAINT ck_fcd_client_scope CHECK (
@@ -152,8 +156,13 @@ CREATE INDEX IF NOT EXISTS ix_fcd_routed_lane
 -- retrofitting a unique constraint onto a populated table is far more expensive.
 -- Partial, because the natural key differs per detection_source: a runtime drop is
 -- client+week scoped, a mix rewrite is platform+generation scoped and client-less.
+-- N2 (db-rls-auditor + PK decision): reason_code is PART OF THE KEY. Without it, a format
+-- dropped early in the week for reason A and later the same week for reason B collided, and
+-- the second row was silently discarded — a dedupe that HIDES evidence, worse than the
+-- duplication it replaced. With it, a changed reason records a NEW row while a repeated
+-- reason merely advances last_observed_at.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_fcd_runtime_grid
-  ON m.format_capability_drop (client_id, platform, requested_format, week_start)
+  ON m.format_capability_drop (client_id, platform, requested_format, week_start, reason_code)
   WHERE detection_source = 'runtime_grid';
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_fcd_mix_rewrite
@@ -290,8 +299,17 @@ VOLATILE
 SECURITY INVOKER
 SET search_path = ''
 AS $function$
-DECLARE v_n integer;
+DECLARE
+  v_n    integer;
+  v_week date;
 BEGIN
+  -- N2 (PK decision): the week bucket is PINNED HERE, not left to the caller.
+  -- m.build_weekly_demand_grid never reads its p_week_start, so week_start exists solely
+  -- as a dedupe-key component; leaving it to a Gate-B convention would make the index
+  -- either inert (run-date) or lossy. COALESCE closes the NULL hole at the writer, since
+  -- NULLs are DISTINCT in a unique index and a NULL would silently restore duplication.
+  v_week := date_trunc('week', COALESCE(p_week_start, CURRENT_DATE))::date;
+
   INSERT INTO m.format_capability_drop (
     detection_source,
     week_start, client_id, client_slug, platform, requested_format, requested_share_pct,
@@ -299,20 +317,29 @@ BEGIN
     platform_support_raw, platform_support_key_present
   )
   SELECT 'runtime_grid',
-         p_week_start, d.client_id, d.client_slug, d.platform, d.requested_format,
+         v_week, d.client_id, d.client_slug, d.platform, d.requested_format,
          d.requested_share_pct, d.capability_status, d.reason_code, d.routed_lane,
          d.classifier_evidence, d.classifier_error, d.platform_support_raw,
          d.platform_support_key_present
     FROM m.detect_format_capability_drops(p_client_id, p_week_start) d
-  ON CONFLICT DO NOTHING;            -- S4: idempotent per (client, platform, format, week)
+  -- N2/N3: LAST-SEEN. Every detected row either inserts or updates, so ROW_COUNT below
+  -- equals rows DETECTED — which repairs the return contract DO NOTHING had silently
+  -- changed to "rows newly inserted" (a 0 that could not be told from "no drops").
+  ON CONFLICT (client_id, platform, requested_format, week_start, reason_code)
+    WHERE detection_source = 'runtime_grid'
+    DO UPDATE SET last_observed_at = now();
   GET DIAGNOSTICS v_n = ROW_COUNT;
   RETURN v_n;
 END;
 $function$;
 
 COMMENT ON FUNCTION m.record_format_capability_drops(uuid, date) IS
-  'cc-0091 A3-1. Persists m.detect_format_capability_drops output. NOT wired to any '
-  'trigger or cron by this migration — Gate B owns the nightly call site.';
+  'cc-0091 A3-1. Persists m.detect_format_capability_drops output. RETURN VALUE = rows '
+  'DETECTED (each detected row either inserts or advances last_observed_at, so ROW_COUNT '
+  'covers both) — it is NOT "rows newly inserted", and 0 therefore means "no drops '
+  'detected", unambiguously. week_start is bucketed to date_trunc(''week'') INSIDE this '
+  'function; callers do not choose it. NOT wired to any trigger or cron — Gate B owns the '
+  'nightly call site.';
 
 -- ── 4. Bounded retention (PK Q2: 90 days) ────────────────────────────────────
 CREATE OR REPLACE FUNCTION m.prune_format_capability_drop(p_retain_days integer DEFAULT 90)
@@ -342,7 +369,7 @@ COMMENT ON FUNCTION m.prune_format_capability_drop(integer) IS
 
 -- ── 5. Secret-free operator/dashboard read (R0 path) ─────────────────────────
 CREATE OR REPLACE VIEW ice_ro.format_capability_drop_status AS
-SELECT observed_at, detection_source, week_start, prior_effective_from,
+SELECT observed_at, last_observed_at, detection_source, week_start, prior_effective_from,
        client_id, client_slug, platform,
        requested_format, requested_share_pct,
        capability_status, reason_code, routed_lane,

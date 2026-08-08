@@ -12,7 +12,20 @@
 --   m.record_format_capability_drops(uuid,date) (writer — depends on the detector)
 --   m.detect_format_capability_drops(uuid,date) (detector)
 --   m.prune_format_capability_drop(integer)     (retention)
---   m.format_capability_drop                    (table; its 3 indexes drop with it)
+--   m.format_capability_drop                    (table; ALL SIX indexes drop with it:
+--                                                ix_fcd_cell / ix_fcd_observed_at /
+--                                                ix_fcd_source / ix_fcd_routed_lane /
+--                                                uq_fcd_runtime_grid / uq_fcd_mix_rewrite)
+--
+-- ⚠ ORDER NOW MATTERS — RUN A3-3'S ROLLBACK FIRST.
+-- Since the M1 fix, ice_ro.mix_rewrite_class_elimination is a view ON this table, i.e. a
+-- TRACKED dependency. DROP TABLE below is deliberately NOT cascaded, so if A3-3's view
+-- still exists this rollback fails with a raw 2BP01 'cannot drop table ... because other
+-- objects depend on it'. That is fail-closed and CORRECT — previously (view backed by a
+-- plpgsql function, which creates no tracked dependency) this rollback would have
+-- SUCCEEDED and left A3-3's writer silently pointing at a dropped table. The error is the
+-- improvement; this note exists so the operator meets an explanation rather than a bare
+-- PostgreSQL error.
 --
 -- ⚠ DATA-LOSS GUARD — READ THIS BEFORE RUNNING
 -- If Gate B has wired the nightly call site, this table holds the ONLY durable record of

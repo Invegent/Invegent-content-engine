@@ -8,7 +8,12 @@
 -- dependency order, and touches nothing else.
 --
 -- Created by the forward, removed here:
---   ice_ro.mix_rewrite_class_elimination        (view — depends on the detector)
+--   ice_ro.mix_rewrite_class_elimination        (view — CORRECTED: since the M1 fix it
+--                                                depends on A3-1's TABLE, not on the
+--                                                detector. Drop order here is unchanged
+--                                                and still safe; only the stated reason
+--                                                was wrong. Dropping it first is also what
+--                                                unblocks A3-1's rollback — see that file.)
 --   m.record_mix_rewrite_removals(text)         (writer — depends on the detector)
 --   m.detect_mix_rewrite_removals(text)         (detector)
 --

@@ -270,11 +270,47 @@ async function main() {
 
   console.log('GROUP 6 — S4 dedupe and M1 view shape');
   const before = await db.query(`SELECT count(*)::int AS n FROM m.format_capability_drop`);
+  const stamp0 = await db.query(`SELECT max(last_observed_at) AS t FROM m.format_capability_drop`);
+  await new Promise(r => setTimeout(r, 20));
   const again  = await db.query(`SELECT m.record_mix_rewrite_removals('instagram') AS n`);
   const after  = await db.query(`SELECT count(*)::int AS n FROM m.format_capability_drop`);
-  ok('S4 — re-running the mix_rewrite writer inserts ZERO duplicates',
-     again.rows[0].n === 0 && after.rows[0].n === before.rows[0].n,
-     `reinserted=${again.rows[0].n}, before=${before.rows[0].n}, after=${after.rows[0].n}`);
+  const stamp1 = await db.query(`SELECT max(last_observed_at) AS t FROM m.format_capability_drop`);
+
+  ok('S4 — re-running the writer creates NO duplicate rows',
+     after.rows[0].n === before.rows[0].n,
+     `before=${before.rows[0].n}, after=${after.rows[0].n}`);
+  ok('N3 — return value is rows DETECTED, not rows inserted (0 would be ambiguous)',
+     again.rows[0].n === 3, `returned=${again.rows[0].n}, expected 3`);
+  ok('N2 — last-seen: last_observed_at ADVANCES on re-detection',
+     new Date(stamp1.rows[0].t).getTime() > new Date(stamp0.rows[0].t).getTime(),
+     `${stamp0.rows[0].t} -> ${stamp1.rows[0].t}`);
+
+  const firstSeen = await db.query(`SELECT count(*)::int AS n FROM m.format_capability_drop
+    WHERE observed_at > last_observed_at`);
+  ok('N2 — observed_at (FIRST seen) is never rewritten by a re-detection',
+     firstSeen.rows[0].n === 0);
+
+  // N2 — reason_code is part of the runtime natural key
+  const idx = await db.query(`SELECT pg_get_indexdef(i.indexrelid) AS d FROM pg_index i
+     JOIN pg_class c ON c.oid=i.indexrelid WHERE c.relname='uq_fcd_runtime_grid'`);
+  ok('N2 — uq_fcd_runtime_grid includes reason_code (a changed reason records a NEW row)',
+     /reason_code/.test(idx.rows[0].d), idx.rows[0].d);
+
+  // N5 — A3-3 dependency guard names every column it needs
+  const a33 = readFileSync(A3_3, 'utf8');
+  ok('N5 — A3-3 dependency assertion covers class_eliminated and last_observed_at',
+     /class_eliminated/.test(a33.split('BEGIN;')[1].split('CREATE OR REPLACE FUNCTION')[0]) &&
+     /last_observed_at/.test(a33.split('BEGIN;')[1].split('CREATE OR REPLACE FUNCTION')[0]));
+
+  // N1 — Gate-A verification must not INSTRUCT a production write.
+  // Match an instructional comment line only (`--   SELECT m.record_...`), not the
+  // artifact's own quotation of the retired instruction inside its warning text.
+  const liveWriteInstruction = /^--\s+SELECT m\.record_mix_rewrite_removals/m.test(a33);
+  ok('N1 — A3-3 no longer INSTRUCTS running the writer as Gate-A verification',
+     !liveWriteInstruction);
+  ok('N1 — A3-3 carries the explicit DO-NOT-WRITE warning and a read-only proof',
+     /DO NOT prove it by running the writer in Gate A/.test(a33) &&
+     /PROVE IT READ-ONLY/.test(a33));
 
   const vdef = await db.query(`SELECT pg_get_viewdef('ice_ro.mix_rewrite_class_elimination'::regclass, true) AS d`);
   ok('M1 — alarm view no longer calls detect_mix_rewrite_removals (table-backed)',

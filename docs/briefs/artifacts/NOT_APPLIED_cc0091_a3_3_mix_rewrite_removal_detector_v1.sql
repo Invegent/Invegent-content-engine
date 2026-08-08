@@ -55,13 +55,24 @@ BEGIN
   IF to_regclass('m.format_capability_drop') IS NULL THEN
     RAISE EXCEPTION 'cc-0091 A3-3 ABORT: m.format_capability_drop does not exist — apply A3-1 first';
   END IF;
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-     WHERE table_schema='m' AND table_name='format_capability_drop'
-       AND column_name='detection_source'
-  ) THEN
-    RAISE EXCEPTION 'cc-0091 A3-3 ABORT: m.format_capability_drop lacks detection_source — apply the AMENDED A3-1';
-  END IF;
+  -- N5 (db-rls-auditor): assert EVERY column this file writes or reads, not just the
+  -- discriminator. Without this, a pre-M1-fix A3-1 passes the guard and then fails late
+  -- with a raw 42703 inside CREATE OR REPLACE VIEW — fail-closed, but with an unexplained
+  -- error instead of the authored "apply the AMENDED A3-1" message.
+  DECLARE v_missing text;
+  BEGIN
+    SELECT string_agg(c.col, ', ' ORDER BY c.col) INTO v_missing
+      FROM (VALUES ('detection_source'),('prior_effective_from'),('output_mime_type'),
+                   ('class_share_before'),('class_share_after'),('class_eliminated'),
+                   ('last_observed_at')) AS c(col)
+     WHERE NOT EXISTS (
+       SELECT 1 FROM information_schema.columns ic
+        WHERE ic.table_schema='m' AND ic.table_name='format_capability_drop'
+          AND ic.column_name = c.col);
+    IF v_missing IS NOT NULL THEN
+      RAISE EXCEPTION 'cc-0091 A3-3 ABORT: m.format_capability_drop lacks column(s) % — apply the AMENDED A3-1 first', v_missing;
+    END IF;
+  END;
 END $$;
 
 -- ── 1. Detector — STABLE, writes nothing ─────────────────────────────────────
@@ -188,8 +199,14 @@ BEGIN
     d.prior_effective_from, d.output_mime_type,
     d.class_share_before, d.class_share_after, d.class_eliminated
   FROM m.detect_mix_rewrite_removals(p_platform) d
-  ON CONFLICT DO NOTHING;   -- S4: the prior generation is STATIC, so a nightly call site
-                            -- would otherwise re-record the same removals every night.
+  -- N2/N3: LAST-SEEN, matching A3-1's writer. The prior generation is STATIC, so without
+  -- dedupe a nightly call site would re-record the same removals every night; with
+  -- DO UPDATE every detected row still counts, so ROW_COUNT equals rows DETECTED rather
+  -- than "rows newly inserted". last_observed_at also proves the detector still sees the
+  -- removal, which a plain DO NOTHING could not distinguish from the detector going blind.
+  ON CONFLICT (platform, requested_format, prior_effective_from)
+    WHERE detection_source = 'mix_rewrite'
+    DO UPDATE SET last_observed_at = now();
   GET DIAGNOSTICS v_n = ROW_COUNT;
   RETURN v_n;
 END;
@@ -199,7 +216,10 @@ COMMENT ON FUNCTION m.record_mix_rewrite_removals(text) IS
   'cc-0091 A3-3. Persists m.detect_mix_rewrite_removals output into m.format_capability_drop '
   'with detection_source=''mix_rewrite'' and client_id NULL. Classifier columns are '
   'deliberately NULL (client-scoped classifier, platform-level event) rather than fabricated. '
-  'NOT wired to any trigger or cron — Gate B owns the call site.';
+  'RETURN VALUE = rows DETECTED (insert or last_observed_at advance), NOT "rows newly '
+  'inserted"; 0 unambiguously means no removals detected. First-detection values '
+  '(platform_support_raw, class_share_*) are FROZEN at first sight by design — see '
+  'classifier_error. NOT wired to any trigger or cron — Gate B owns the call site.';
 
 -- ── 3. Class-elimination alarm view ──────────────────────────────────────────
 -- "This is BIG — confirm it", never "this is wrong". On the 2026-07-25 data this fires
@@ -242,6 +262,7 @@ COMMIT;
 --    SELECT count(*) FROM m.format_capability_drop;                    -- record it
 --    SELECT * FROM m.detect_mix_rewrite_removals(NULL) ORDER BY platform, requested_format;
 --    SELECT count(*) FROM m.format_capability_drop;                    -- UNCHANGED
+--    (This and item 3 below are now CONSISTENT; the earlier write-based item 3 is retired.)
 --
 -- 2. EXPECTED detector output — VERIFIED read-only against live data 2026-08-08.
 --    10 removals across 3 platforms (youtube has no superseded generation, so none):
@@ -272,15 +293,27 @@ COMMIT;
 --    no video path). Its presence is the guard working as designed, not a false positive:
 --    the alarm means "this is large, confirm it was intended".
 --
---    ⚠ M1 FIX CHANGED THIS VIEW'S SEMANTICS. It is now a PURE PROJECTION over
---    m.format_capability_drop, so it is EMPTY until m.record_mix_rewrite_removals() has
---    run. Verify in that order:
---      SELECT m.record_mix_rewrite_removals(NULL);          -- expect 10
---      SELECT * FROM ice_ro.mix_rewrite_class_elimination
---       ORDER BY platform, output_mime_type;                -- expect 5 rows
---      SELECT m.record_mix_rewrite_removals(NULL);          -- expect 0 (S4 dedupe)
---    A read of the view BEFORE the writer returns zero rows and that is CORRECT, not a
---    detector failure — use m.detect_mix_rewrite_removals(NULL) for live truth.
+--    ⚠ M1 FIX CHANGED THIS VIEW'S SEMANTICS, and N1 CHANGED HOW IT IS PROVEN.
+--    The view is now a PURE PROJECTION over m.format_capability_drop, so it is EMPTY in
+--    Gate A — BY DESIGN, because the writer is Gate B's. That is NOT a detector failure.
+--
+--    ⛔ DO NOT prove it by running the writer in Gate A. An earlier draft of this block
+--    said "SELECT m.record_mix_rewrite_removals(NULL); -- expect 10", which is a
+--    PRODUCTION WRITE inside Gate A's acceptance procedure. It contradicted this file's
+--    own "Gate A changes no live behaviour" header AND A3-1's "table exists and is EMPTY"
+--    check, and — decisively — it left rows in m.format_capability_drop, which trips
+--    A3-1's ROLLBACK Guard 0 ("refusing to destroy capability evidence"). Completing a
+--    Gate-A rollback would then have required an operator to comment out a safety guard,
+--    making PK ruling Q3 ("rollback-proven in Gate A") unsatisfiable.
+--
+--    PROVE IT READ-ONLY instead — the detector is STABLE and writes nothing:
+--      SELECT * FROM m.detect_mix_rewrite_removals(NULL)
+--       ORDER BY platform, requested_format;      -- expect the 10 rows tabulated above
+--      SELECT count(*) FILTER (WHERE class_eliminated) FROM m.detect_mix_rewrite_removals(NULL);
+--                                                  -- expect 8 rows across 5 (platform,mime) alarms
+--      SELECT count(*) FROM m.format_capability_drop;   -- expect 0, STILL, afterwards
+--    The write-then-read proof belongs to Gate B, or to an explicitly-named
+--    BEGIN … ROLLBACK harness that never leaves rows behind.
 --
 -- 4. No call site was created:
 --    SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
