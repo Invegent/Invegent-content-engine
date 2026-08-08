@@ -347,5 +347,60 @@ summaries, and no STOP condition is implicated. Both findings are **carries, not
 finding 1's structural half — *cron `succeeded` ≠ EF succeeded* — should be read alongside the day-6
 `cron_health` carry when the verdict weighs "the fleet was green all week."
 
+## Ghost-EF sweep CLOSED — `ingest` + `compliance-monitor` (2026-08-08, read-only; PK-scoped)
+
+PK scoped this deliberately narrow: classify each remaining ghost EF **healthy / dead / indeterminate**
+by *cron fires vs durable output-or-effect*. **No source recovery, no fixes, no design, no new
+monitoring project.** Both are **HEALTHY** — effect-confirmed, not inferred.
+
+**`ingest`** (jobid 1, `0 */6 * * *`, 360 fires/90d, 0 non-succeeded) — **HEALTHY.**
+Cron fired **06:00:01Z**; the exact three-stage chain its URL requests
+(`write=true&normalize=true&canonicalize=true`) landed ~70 s later:
+`f.raw_content_item` **06:01:10.78** · `f.content_item` **06:01:11.19** ·
+`f.canonical_content_item` **06:01:11.61**. Sustained throughput over 7 days: 350 / 348 / 322 rows.
+
+**`compliance-monitor`** (jobid 31, `0 9 1 * *` monthly, 4 fires/90d, 0 non-succeeded) — **HEALTHY.**
+Output in **every** monthly fire, each within seconds of 09:00: Aug 4 rows · Jul 3 · Jun 6 · May 6 ·
+Apr 5 (`m.compliance_review_queue`), and `m.compliance_policy_source` last touched 2026-08-01
+09:00:06.5. **5/5 fires produced effect.**
+
+**GHOST-BUCKET TALLY — 3 of 4 HEALTHY, exactly 1 dead:**
+
+| ghost EF (all class D / P2 / `repo_path_status='missing'`) | verdict |
+|---|---|
+| `ingest` | **HEALTHY** — effect confirmed |
+| `compliance-monitor` | **HEALTHY** — effect confirmed |
+| `pipeline-doctor` | **HEALTHY** — 476/480, 489 fixes applied /10d |
+| `pipeline-ai-summary` | **DEAD 53.6 days** — 240 fires, zero output |
+
+**The ghost-bucket assumption is now formally disproven, not just doubted.** "Source absent from the
+repo" is a **source-provenance defect and predicts nothing about runtime health.** Membership is not
+evidence; only output/effect is. The uncertainty this sweep existed to close is closed.
+
+## 📌 POST-WATCH CAPABILITY ITEM (ONE item, PK-directed 2026-08-08 — recorded, NOT started)
+
+> **EF health must be measured by OUTPUT/EFFECT FRESHNESS, not cron dispatch success.**
+
+Grounding: `cron.job_run_details` records `net.http_post` **dispatch**, so a function returning 500 on
+every invocation for eight weeks reports `succeeded` throughout — proven on `pipeline-ai-summary`
+(240/240 `succeeded`, zero output). Later shape: a small recurring monitor asserting *"last successful
+output within expected cadence"* for critical scheduled EFs. **This is explicitly preferred over merely
+widening `ice_ro.cron_health` from 12 jobs to 71** — more jobs on a dispatch-based signal would still
+have reported this outage green for eight weeks. Not scoped, not started, not a watch lane.
+
+**PK rulings recorded (2026-08-08):**
+- **Do NOT revive `pipeline-ai-summary` before the verdict.** Dead 53.6 days with **no downstream
+  operational consequence** — not worth disturbing the watch. **Post-watch decision is
+  recover-or-RETIRE:** if the capability is still wanted, rebuild against a current model *with
+  output-freshness monitoring around it*; if not, **formally retire cron jobid 30** rather than keep a
+  permanently-failing ghost alive.
+- **No large "fix monitoring" lane during the watch.** Two cheap checks, then stop. Done.
+- **Governance (post-watch, firm):** gated work sits on **isolated branches**; shared `main` is **not**
+  a holding area for unapproved commits. Recurrence noted — the 2026-08-08 pushes carried parallel
+  cc-0091 commits (`cc8270c`, then `a5c9034`) by mechanism; each was disclosed to PK *before* the push
+  and authorized, but the mechanism keeps re-presenting. Third instance of the class after v6.156/v6.172.
+
+**Verdict impact: NONE.** No production behaviour changed by any of this; no STOP condition implicated.
+
 *(Subsequent daily entries append below; one line-block per day; any STOP-condition match →
 surface to PK immediately, do not wait for watch expiry.)*
