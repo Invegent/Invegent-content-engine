@@ -253,6 +253,54 @@ infrastructure, not per-packet.
 Re-audit these bounded corrections. **If no must-fix behavioural or correctness defect: freeze and
 stop.** Assertion-strength findings below must-fix are recorded and accepted, not fixed.
 
+### ✅ FROZEN — 2026-08-08. Confirming re-audit returned CLEAN; the correction cycle is CLOSED.
+
+**`db-rls-auditor` final pass: `must_fix: []`, `should_fix: []`, normalized `clean`.** All seven
+corrections verified present and correct. The stop rule is satisfied, so **B1 authoring ends here.**
+No further edits to these artifacts. Any byte change voids this pass and requires a re-run.
+
+**FROZEN DIGESTS** (sha256:16, working-copy LF, shared default worktree; CRLF checkout differs):
+
+| Freeze set | Artifact | sha256:16 |
+|---|---|---|
+| **A2a** *(independent)* | forward | `8708ba7b952d04c8` |
+| | rollback | `f1e47c4b4920703f` |
+| **A2b v2** *(independent)* | forward | `c88c5a87f099b676` |
+| | rollback | `44b9ddbfe1548eef` |
+
+**The two highest-risk edits were tested directly, not accepted on my word:**
+
+- **N-1 transcription** — compared character-by-character against `pg_get_functiondef`'s
+  `enabled_set` text in both files, parenthesis depth checked per form (A2a closes 3, A2b v2 closes
+  4), NULL-platform branch confirmed as a *fallback* not an alternative, then run against live data
+  beside the grid's own verdict: identical results for all three formats.
+- **Static write confinement** (PK ruling 3) — tested as an attack. One `INSERT` per artifact and
+  nothing else; `client_id` bound to a `UNIQUE NOT NULL` slug lookup; no `EXECUTE`/`format()`
+  anywhere so no runtime-constructed statement; `relhasrules=false`, zero rewrite rules; zero *user*
+  triggers; both functions the assertions call are `STABLE`, so PostgreSQL forbids DML inside them;
+  the `ON DELETE CASCADE` runs inward from `c.client` and is unreachable without a `DELETE`. **No
+  path found to another brand's row.**
+
+**This pass changed NO behaviour.** Both `INSERT`s and A2b v2's post-state 2 are textually unchanged
+from the versions verified against the live allocator, so those arithmetic confirmations carry
+forward to these digests: A2b v2 → PP carousel 2 / image_quote 1 / **video 2 of 5**; A2a → 2/2/**1**.
+
+**CARRIED AS EXPLICITLY ACCEPTED — not to be "fixed" by a later reader.** Every one is
+**false-abort-only, never false-pass**, verified by enumerating reachable values:
+
+| Item | Why accepted |
+|---|---|
+| N-7(a) | A2a requires `status='ok'`; grid requires `<> 'fail_closed'`. Stricter — `'ok'` cannot coexist with the grid discarding. |
+| N-7(b) | `platform_support->>'instagram' = 'true'` vs the grid's `::boolean`. No value makes the text `'true'` while the cast is false. |
+| N-7(c) | A2a's `0` sentinel for the two static formats. Expected 2; both "absent" and "zero slots" fail `<> 2`. |
+| F-8 | Duplicate-current-default hypothetical — benign for A2b v2 (overrides supply all cells, `UNION` dedups, total stays 100); A2a aborts. Requires an already-corrupt default table. |
+| F-9 | New post-state 4 counts rows at any currency, so an inert retired row aborts. Deliberate footprint discipline. |
+| F-10 | `LIKE 'video%'` does not match `animated_*`. Both are `instagram=false` and the message claims a video property its predicate matches exactly. Widening = assertion strengthening. |
+
+**Nothing is applied. No gate is cleared.** A clean audit is not approval. Whatever comes next —
+external review pinned to these digests, the PK apply gate, or parking A2b v2 pending B3/B4 — is
+PK's call. **A1-first and the ~2026-08-11 20:20 Sydney watch gate remain binding on any apply.**
+
 **Why the elapsed time is not the bottleneck:** the production watch does not clear until
 ~2026-08-11 20:20 Sydney. Mutation is prohibited until then, so this weekend is spent getting the
 packet clean at zero opportunity cost. Then: **A1 apply → A2a apply → nightly pipeline generates
