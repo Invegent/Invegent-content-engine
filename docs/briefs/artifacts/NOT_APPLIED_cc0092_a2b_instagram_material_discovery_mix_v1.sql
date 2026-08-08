@@ -187,17 +187,23 @@ WITH inserted AS (
     ('instagram','carousel',        40.00,'cc-0092-a2b',
      'Restores the 2026-04-22 evidence-based ordering (carousel leads static). cc-0079-slice-2 '
      'had inflated carousel to 60.00 only because video was removed on WRONG platform_support '
-     'data, corrected by cc-0091 A1.'),
+     'data, corrected by cc-0091 A1.', true),
     ('instagram','image_quote',     25.00,'cc-0092-a2b',
      'Buffer 2026 — single images 4.4%; lowest production cost. Retains the carousel>image '
-     'ordering held in every prior version.'),
+     'ordering held in every prior version.', true),
     ('instagram','video_short_stat',35.00,'cc-0092-a2b',
      'Restores the 35.00 SHORT-VIDEO weighting of the 2026-04-22 mix (video_short_kinetic 20.00 '
      '+ video_short_stat_voice 15.00), which cc-0079-slice-2 zeroed on platform_support values '
      'cc-0091 A1 proved wrong. Original basis: "Reels get 2.25x reach of single-image posts" '
      '(Buffer 2026 reach analysis). Carrier changed to video_short_stat — the only currently '
      'schedulable short-video format; the _voice formats are unreachable (cc-0093). Transport '
-     'proven by the cc-0092 B3 Reel proof, enforced executably by this migration.')
+     'proven by the cc-0092 B3 Reel proof, enforced executably by this migration.', true)
+  -- is_current is passed EXPLICITLY rather than left to the column default. The first cut
+  -- named is_current in the column list but supplied only 5 expressions per tuple, which is
+  -- a hard 42601 at apply ("INSERT has more target columns than expressions") — caught
+  -- pre-review, 2026-08-08. Explicit beats relying on the default: if the default is ever
+  -- changed to false, silently inserting non-current rows would leave Instagram with NO
+  -- current mix and the grid would fall through to zero video with nothing failing loudly.
   RETURNING mix_default_id, ice_format_key
 )
 UPDATE t.platform_format_mix_default d
