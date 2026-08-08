@@ -1,3 +1,30 @@
+-- =====================================================================
+-- RETIRED -- destructive DML rollback against live rows
+-- =====================================================================
+-- ORIGINAL PATH : supabase/migrations/20260724120100_cc0063_brand_host_designation_rollback_v1.sql
+-- CLASS         : DESTRUCTIVE ROLLBACK (DML), correctly timestamped -> IN the db push attempt set
+--
+-- WHAT IT MUTATES (VERIFIED LIVE 2026-08-08, read-only):
+--   UPDATE c.brand_avatar  -- table LIVE with 28 rows; reverts cc-0063 brand-host designation
+--
+--   Unlike the two authz rollbacks this is DML, not DDL -- it would silently rewrite live
+--   designation state rather than drop objects. Equally silent, equally unwanted in an
+--   automated apply run.
+--
+-- DO NOT RESTORE. DO NOT EXECUTE.
+--
+-- RETIRED FROM THE MIGRATION DISCOVERY PATH -- DO NOT RESTORE, DO NOT EXECUTE
+-- Authorized by PK 2026-08-08 (CGU final-watch window). File move only; NO DB execution.
+--
+-- WHY THIS CLASS IS DIFFERENT FROM THE ROLLBACK_*.sql CLUTTER:
+--   `supabase db push` SKIPS non-timestamped filenames ("file name must match pattern
+--   <timestamp>_name.sql") -- proven by db push --dry-run, 2026-08-08. THIS file is
+--   correctly timestamped, so the CLI does NOT skip it: it sits in the real attempt set
+--   of 65 pending migrations and WOULD be executed by a `supabase db push`.
+--
+-- BODY BELOW IS BYTE-IDENTICAL TO THE ORIGINAL.
+-- =====================================================================
+
 -- cc-0063 — Brand Host Designation v0 — ROLLBACK
 -- =============================================================================================
 -- ⛔ DESIGN — NOT APPLIED. Authored BEFORE the forward apply, per the T2 chain requirement that a
