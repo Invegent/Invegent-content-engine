@@ -23,9 +23,19 @@
 -- format through FOUR CTEs:
 --     candidate_share -> enabled_set -> capability_gated -> policy_backed
 -- Live state, Instagram, verified read-only 2026-08-08:
---   video_short_stat           is_enabled=true   platform_support=false(A1 fixes)  select_template=ok
---   video_short_stat_voice     is_enabled=FALSE  platform_support=absent(A1 fixes) select_template=format_unmapped
---   video_short_kinetic_voice  is_enabled=FALSE  platform_support=absent(A1 fixes) select_template=format_unmapped
+--   video_short_stat           is_enabled=true   platform_support=false(A1 fixes)  select_template status=ok
+--   video_short_stat_voice     is_enabled=FALSE  platform_support=absent(A1 fixes) status=fail_closed (fail_reason=format_unmapped)
+--   video_short_kinetic_voice  is_enabled=FALSE  platform_support=absent(A1 fixes) status=fail_closed (fail_reason=format_unmapped)
+--
+-- ⚠ STATUS vs FAIL_REASON — the distinction is load-bearing (db-rls-auditor S-8). An earlier
+--   cut of these lines wrote "select_template=format_unmapped" as though that were the
+--   status. It is not: the status is 'fail_closed' and 'format_unmapped' is the fail_reason.
+--   capability_gated filters on status <> 'fail_closed', so a status of 'format_unmapped'
+--   would PASS the gate — meaning the stated reason for these formats being excluded would
+--   have been wrong even though the conclusion was right. A reader reasoning from the old
+--   wording about a FUTURE format would reason wrongly, which is how this class of error
+--   propagates.
+--
 -- 'format_unmapped' is literal: c.creative_template_variant_candidate holds ZERO rows for
 -- either _voice key. The _voice formats render through the LEGACY branch in video-worker
 -- (index.ts:1728 — B1_VIDEO_GOVERNED_FORMAT is the exact literal 'video_short_stat', so the
@@ -38,10 +48,19 @@
 --                     UNION c.client_format_mix_override(this client, is_current)
 --   candidate_share = COALESCE(<this client's override share for the cell>,
 --                              max(default share), 0)
--- So ONE override row ADDS one (platform, format) cell for ONE client and leaves every
--- other cell — and every other brand — byte-identical. Blast radius is one brand, one
--- platform, one format. Rewriting t.platform_format_mix_default would have moved the mix
--- for EVERY client on Instagram to prove one Reel for one of them.
+-- So ONE override row ADDS one (platform, format) cell for ONE client, and leaves every
+-- other BRAND byte-identical. Blast radius is one brand, one platform, one format.
+-- Rewriting t.platform_format_mix_default would have moved the mix for EVERY client on
+-- Instagram to prove one Reel for one of them.
+--
+-- ⚠ CORRECTION (db-rls-auditor S-9): an earlier cut of the sentence above also claimed
+--   "every other CELL" is byte-identical. That is FALSE for the same client on the same
+--   platform, and the delta block below always said so. Because the `normalised` CTE divides
+--   by per_platform_total, adding a 25.00 cell renormalises PP's existing cells: carousel
+--   60.00 -> 48.00 (3 -> 2 slots) and image_quote 40.00 -> 32.00. Nothing is hidden — the
+--   effect is stated 25 lines down — but the summary contradicted the detail, and a summary
+--   is what gets quoted into a gate. CROSS-BRAND isolation is the real and verified claim:
+--   candidate and candidate_share are both filtered by client_id = p_client_id.
 --
 -- ─── Why 25.00 — DERIVED, not chosen ──────────────────────────────────────────
 -- Allocation is largest-remainder (Hare quota) over weekly_slots = COUNT(*) of enabled
@@ -52,7 +71,15 @@
 -- 25 is therefore the SMALLEST share that wins a slot BY FLOOR ALONE rather than by
 -- remainder competition. X=20 also yields 1 slot today, but only via the largest-remainder
 -- tiebreak (rem .833 ranking first) — which silently loses the slot the moment another
--- format survives into the set. 25 is minimal AND stable under a changing surviving set.
+-- format survives into the set.
+--
+-- ⚠ SCOPE OF THAT CLAIM, CORRECTED (db-rls-auditor O-3): 25 is minimal, and it is stable
+--   against the TIEBREAK — it is NOT stable against a changing surviving set, as an earlier
+--   cut of this line claimed. A third surviving format at share 20 would raise
+--   per_platform_total to 145, drop video's raw to 0.862, and cost it the floor slot. The
+--   protection is not the number, it is pre-state assertion 4, which pins the current default
+--   set to exactly 2 rows and aborts otherwise. Overstating a guarantee that an assertion is
+--   actually providing is how a later reader deletes the assertion as redundant.
 --
 -- Computed allocation at X=25 (carousel 48/image_quote 32/video 20 after renormalisation):
 --   carousel      raw 2.4  fl 2  rem .4
@@ -186,6 +213,27 @@ BEGIN
      AND cfg.is_enabled = true;
   IF v_n < 1 THEN
     RAISE EXCEPTION 'cc-0092 A2a ABORT (pre-state 7): no enabled c.client_format_config row for property-pulse/video_short_stat — the row would be filtered at enabled_set';
+  END IF;
+
+  -- 8. The two gate legs the header ADVERTISED but did not assert (db-rls-auditor S-6).
+  --    capability_gated also requires cf.is_active = true, and policy_backed requires a
+  --    current row in BOTH t.format_synthesis_policy and t.format_quality_policy. Both hold
+  --    live, and the post-state v_vid <> 1 check would have caught either failure — so the
+  --    artifact was already fail-closed. But an artifact whose header names four gate legs
+  --    and enforces two is a declared-vs-enforced gap, which is precisely the class this
+  --    programme exists to close. Asserting them costs nothing and makes the failure message
+  --    name the actual cause instead of "video_short_stat allocated -1 slots".
+  IF NOT EXISTS (SELECT 1 FROM t."5.3_content_format" cf
+                  WHERE cf.ice_format_key = 'video_short_stat' AND cf.is_active = true) THEN
+    RAISE EXCEPTION 'cc-0092 A2a ABORT (pre-state 8): video_short_stat is not is_active — capability_gated requires it and the format would be discarded';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM t.format_synthesis_policy sp
+                  WHERE sp.ice_format_key = 'video_short_stat' AND sp.is_current) THEN
+    RAISE EXCEPTION 'cc-0092 A2a ABORT (pre-state 8): no current t.format_synthesis_policy row for video_short_stat — the format would be filtered at policy_backed';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM t.format_quality_policy qp
+                  WHERE qp.ice_format_key = 'video_short_stat' AND qp.is_current) THEN
+    RAISE EXCEPTION 'cc-0092 A2a ABORT (pre-state 8): no current t.format_quality_policy row for video_short_stat — the format would be filtered at policy_backed';
   END IF;
 END $$;
 

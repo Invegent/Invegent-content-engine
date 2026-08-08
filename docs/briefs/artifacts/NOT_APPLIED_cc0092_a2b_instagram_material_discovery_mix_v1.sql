@@ -1,3 +1,29 @@
+-- ╔═══════════════════════════════════════════════════════════════════════════╗
+-- ║ ⛔ SUPERSEDED — DO NOT APPLY. NEVER APPLIED.                              ║
+-- ║                                                                           ║
+-- ║ Superseded by: NOT_APPLIED_cc0092_a2b_instagram_material_discovery_mix_   ║
+-- ║                v2.sql (per-client override instrument).                   ║
+-- ║                                                                           ║
+-- ║ db-rls-auditor returned BLOCK on this artifact (2026-08-08), finding M-1:  ║
+-- ║ the per-brand allocation table below was derived from the PLATFORM        ║
+-- ║ default set, assuming carousel survives every brand's gate chain. It does ║
+-- ║ not survive for ndis-yarns (select_template -> fail_closed,               ║
+-- ║ no_selectable_template), whose live Instagram grid is image_quote 100.00  ║
+-- ║ -> 7 slots with NO carousel. This artifact therefore understated NDIS by  ║
+-- ║ 2x: it claims 2 of 7 weekly slots become video; the true figure is 4 of 7.║
+-- ║ Post-state assertion 3 would have caught it AT APPLY, but it did not      ║
+-- ║ catch it at the PK ratification of 35.00, which had already happened      ║
+-- ║ against the wrong table.                                                  ║
+-- ║                                                                           ║
+-- ║ RETAINED UNALTERED (except this banner) as the audit record of that       ║
+-- ║ defect and of a ratification made against wrong data. Do not "fix" this   ║
+-- ║ file — v2 changes the INSTRUMENT, on PK ruling 2026-08-08 ("Per-client    ║
+-- ║ overrides, decouple A2a, and re-put 35.00 for PP only"), which makes the  ║
+-- ║ M-1 error class structurally impossible rather than merely corrected.     ║
+-- ║                                                                           ║
+-- ║ Frozen hash of this file at BLOCK: 65d7f533031a1ba3 (sha256:16, LF).      ║
+-- ╚═══════════════════════════════════════════════════════════════════════════╝
+--
 -- cc-0092 A2b — Instagram MATERIAL discovery mix (FORWARD)
 --
 -- STATUS: NOT APPLIED — AND NOT APPLICABLE BY cc-0092 UNDER ANY OUTCOME.

@@ -1,3 +1,21 @@
+-- ╔═══════════════════════════════════════════════════════════════════════════╗
+-- ║ ⛔ SUPERSEDED — DO NOT APPLY. Its forward was NEVER APPLIED, so there is   ║
+-- ║ nothing this file could roll back.                                        ║
+-- ║                                                                           ║
+-- ║ Superseded by: NOT_APPLIED_cc0092_a2b_instagram_material_discovery_mix_   ║
+-- ║                ROLLBACK_v2.sql                                            ║
+-- ║                                                                           ║
+-- ║ Retained unaltered (except this banner) alongside the v1 forward it        ║
+-- ║ reverses. Also preserves db-rls-auditor S-3: the UPDATE-before-DELETE      ║
+-- ║ order below is MANDATORY because of the non-deferrable self-referential FK ║
+-- ║ platform_format_mix_default_superseded_by_fkey — NOT for the reason the    ║
+-- ║ comment at "Reinstate the prior version FIRST" gives. Reordering these two ║
+-- ║ statements would raise a hard 23503. v2 has no lineage column and no       ║
+-- ║ self-FK, so that hazard does not exist there at all.                       ║
+-- ║                                                                           ║
+-- ║ Frozen hash of this file at BLOCK: a4af2889eb38f3ab (sha256:16, LF).       ║
+-- ╚═══════════════════════════════════════════════════════════════════════════╝
+--
 -- cc-0092 A2b — Instagram MATERIAL discovery mix (ROLLBACK)
 --
 -- STATUS: NOT APPLIED. Rollback for

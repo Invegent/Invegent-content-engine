@@ -102,6 +102,60 @@ claims and only the second one produces a Reel.
 6. **`apply_migration` MINTS ITS OWN VERSION.** Do not assume an artifact's filename number
    survives. Record the version actually minted.
 
+## ⚠ AMENDMENT 2 — 2026-08-08, after `db-rls-auditor` BLOCK. PK ruling: per-client overrides, decouple A2a, re-put 35.00 for PP only
+
+**`db-rls-auditor` returned BLOCK on the first freeze set.** The defect (M-1) was mine and it had
+already reached a PK ratification, which is the part that matters: A2b v1 rewrote the **platform**
+default mix and derived its per-brand impact table from the platform default set, assuming carousel
+survives every brand. It does not survive for ndis-yarns, whose live Instagram grid is
+`image_quote 100.00 → 7` with **no carousel**. A2b v1 claimed NDIS would go to 2 of 7 video slots;
+the true figure was **4 of 7** — a brand with zero Instagram video history going majority-video.
+Its own post-state assertion would have aborted at apply, so the fail-closed design worked; it did
+**not** protect the ratification decision made against the wrong table.
+
+**Root lesson, now enforced structurally rather than remembered:** a platform-level share cannot
+express a per-brand intent, because each brand's surviving set differs by **template graduation
+state**. The identical 35.00 meant 40% of PP's Instagram and 57% of NDIS's.
+
+**PK ruling, verbatim:** *"Per-client overrides, decouple A2a, and re-put 35.00 for PP only."*
+
+### What changed
+
+- **A2b is re-cut as v2** — three `c.client_format_mix_override` rows for **property-pulse only**.
+  No platform default is touched and no row is written for any other brand, so the M-1 error class
+  is **structurally impossible**, not merely corrected. v1 is retained unaltered behind a SUPERSEDED
+  banner as the audit record.
+- **35.00 re-put and re-confirmed for PP only — and its meaning changed with the instrument.** A
+  bare 35.00 override sits *on top of* the unchanged 100-point default base (35/135 = 25.9% → **one**
+  slot, no better than A2a's proof tier). So v2 expresses PP's **whole** mix as three overrides
+  summing to exactly 100 — carousel 40 / image_quote 25 / `video_short_stat` 35 — which makes
+  `per_platform_total` exactly 100 and the normalised shares exactly 40/25/35. **"35.00" now means
+  precisely "35% of Property Pulse's Instagram".** Under v1 that meaning was emergent; here it is
+  exact by construction. Result: PP carousel 2 / image_quote 1 / **video 2** of 5 (40%).
+  ⚠ The sum-to-100 coverage property is load-bearing and is asserted (v2 pre-state 6 pins PP's
+  surviving set to exactly those three formats, checking **all** gate legs per format for that brand).
+- **A2a is DECOUPLED.** It proceeds on its own gate, independent of A2b. `db-rls-auditor` found no
+  defect changing A2a's committed outcome; its 25.00 derivation re-verified exactly. Its bytes did
+  change for the named precision items (S-6 assertion coverage, S-8/S-9/O-3 prose over-claims), so
+  it needs a re-audit, but its **design and outcome are unchanged**.
+- **NDIS Yarns gets nothing from this lane.** It stays `image_quote 100.00 → 7`, no video. v2
+  post-state assertion 4 pins that explicitly — the brand v1 got wrong is now the brand whose
+  invariance is asserted by name.
+
+### CURRENT freeze set — this supersedes the table above
+
+| Artifact | sha256:16 | State |
+|---|---|---|
+| A2a forward | `1851151ad4dafb0f` | current *(was `a6f4243f3c3f9f7e`)* |
+| A2a rollback | `d89a56e5e126e5e0` | current, **unchanged** |
+| A2b v2 forward | `ffc606a85f54d18d` | current |
+| A2b v2 rollback | `44b9ddbfe1548eef` | current |
+| A2b v1 forward | `bef8e4e76f14b9dd` | ⛔ SUPERSEDED *(banner added; was `65d7f533031a1ba3` at BLOCK)* |
+| A2b v1 rollback | `6ebab56bce1470fd` | ⛔ SUPERSEDED *(banner added; was `a4af2889eb38f3ab` at BLOCK)* |
+
+**The BLOCK-era review is void.** A re-audit against these digests is required before external
+review, and external review before any PK apply gate.
+
 ## Precondition status for the A1 + A2a apply *(closed 2026-08-08 during B1; no mutation)*
 
 Amendment 1 narrows what is actually in the B2 apply, and that discharges three of the five
@@ -140,7 +194,14 @@ behavioural change.
     **property-pulse**, NOT a rewrite of `t.platform_format_mix_default`. Verified from the live
     function: `candidate` UNIONs overrides onto defaults and `candidate_share` COALESCEs the
     override share per cell, so a single row adds one format for one client on one platform and
-    leaves every other cell — and every other brand — untouched. Rollback = flip `is_current`.
+    leaves **every other brand** untouched. ~~leaves every other cell — and every other brand —
+    untouched~~ **`(AMENDED-2)`** — the "every other cell" half was wrong: the `normalised` CTE
+    renormalises PP's own cells (carousel 60→48, 3→2 slots; image_quote 40→32). Cross-brand
+    isolation is the real claim. ~~Rollback = flip `is_current`.~~ **`(AMENDED-2)` Rollback
+    DELETEs the row** — the artifact is authoritative here and the brief was wrong: true prior
+    state is an empty table, and an `is_current` flip would collide with the unique key
+    `(client_id, platform, ice_format_key, effective_from)` on same-day re-apply, breaking the
+    required forward→rollback→forward lifecycle (db-rls-auditor S-10).
   - **Renormalisation is STRUCTURAL, not the artifact's job `(AMENDED-1)`.** The `normalised` CTE
     divides by `per_platform_total`, so the grid renormalises to 100% itself. A2a must NOT
     hand-renormalise; doing so would double-count.
@@ -150,8 +211,19 @@ behavioural change.
     competition — minimal AND deterministic under a changing surviving set. Computed delta:
     carousel 3→2, image_quote 2→2, `video_short_stat` 0→**1**. The entire behavioural change is
     **one carousel slot per week becomes one video slot.**
-  - **Named alternative:** ndis-yarns (7 IG slots) → threshold `X ≥ 16.67`. Also governance-armed.
-    PP is preferred on render history; switching brands requires recomputing the share.
+  - **`(AMENDED-2)` ⛔ THE METHOD STATED HERE WAS WRONG — read this before deriving any share.**
+    ~~Named alternative: ndis-yarns (7 IG slots) → threshold `X ≥ 16.67`.~~ That solved
+    `floor(7X/(100+X)) ≥ 1`, which assumes a **100-point surviving base** for NDIS. NDIS's actual
+    surviving base is `image_quote 40` **alone** — its carousel returns `select_template` status
+    `fail_closed` (`no_selectable_template`, no template assignment), so NDIS's live Instagram grid
+    is `image_quote 100.00 → 7` with no carousel at all. The correct threshold is
+    `floor(7X/(40+X)) ≥ 1 ⟺ X ≥ 6.67` — the stated figure was off by 2.5×.
+    **CORRECT METHOD, and the only one to use:** largest-remainder over **that brand's actual
+    surviving set** after `enabled_set` + `capability_gated` + `policy_backed` — never over the
+    platform default table. Derive it from a per-client `SELECT`, not from
+    `t.platform_format_mix_default`. Property Pulse was unaffected because both defaults genuinely
+    do survive for PP, which is exactly why this error stayed invisible through authoring, review
+    and a PK ratification (db-rls-auditor M-1/M-2).
 - **A2b — material discovery mix.** Authored, **NOT applied**, carrying an explicit machine-readable
   block naming the three Reel proofs it depends on.
 - **Neither tier may be weighted toward `video_short_kinetic`** — it stays `instagram:false` with
@@ -164,12 +236,15 @@ behavioural change.
 Any review is valid ONLY for these hashes; if a file changes, the review is stale and must be re-run
 (orchestration contract rule 4). ⚠ A CRLF checkout yields different digests — always re-hash here.
 
+**⚠ SUPERSEDED FREEZE SET — the digests below are the ones `db-rls-auditor` BLOCKed. Kept as the
+audit record; see the CURRENT freeze set under Amendment 2.**
+
 | Artifact | sha256:16 | Path |
 |---|---|---|
-| A2a forward | `a6f4243f3c3f9f7e` | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2a_instagram_proof_tier_mix_v1.sql` |
+| A2a forward | ~~`a6f4243f3c3f9f7e`~~ | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2a_instagram_proof_tier_mix_v1.sql` |
 | A2a rollback | `d89a56e5e126e5e0` | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2a_instagram_proof_tier_mix_ROLLBACK_v1.sql` |
-| A2b forward | `65d7f533031a1ba3` | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2b_instagram_material_discovery_mix_v1.sql` |
-| A2b rollback | `a4af2889eb38f3ab` | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2b_instagram_material_discovery_mix_ROLLBACK_v1.sql` |
+| A2b forward | ~~`65d7f533031a1ba3`~~ **SUPERSEDED by v2** | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2b_instagram_material_discovery_mix_v1.sql` |
+| A2b rollback | ~~`a4af2889eb38f3ab`~~ **SUPERSEDED by v2** | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2b_instagram_material_discovery_mix_ROLLBACK_v1.sql` |
 
 **⚠ KNOWN COVERAGE GAP — disclosed, not accepted silently.** These two packets have **no executable
 offline harness**. cc-0091's A3 packets had one (57 + 31 assertions over the real artifact files via
