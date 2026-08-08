@@ -183,5 +183,58 @@ M13 scoping). Active: control tower + CFW/INV asset sourcing only.
 - Watch health: cron/pipeline steady (no STOP); detailed trend reads continue; verdict drafting
   begins on day-6 evidence.
 
+## Day 6 — 2026-08-08 (PK-authorized EF deploy + the W-1 time-bound slot decision CLOSED)
+
+- **Watch health:** cron **12/12 green, 0 consecutive misses**. Pipeline 04:00Z snapshot
+  `queue_total 831 / queued 26 / failed 15 / has_stuck_items=true` — flat against the day-1 baseline
+  (830/26/15/true). **NO STOP CONDITION.**
+
+- **✅ SLOT `c1f38536…` (PP YouTube 2026-08-13T07:00Z) RECOVERED — the W-1 time-bound PK decision is
+  CLOSED, no longer a sitting item.** Draft `452f58b9…` is `video_status='generated'` with a real
+  `video_url` (`…/property-pulse/452f58b9…_stat_governed.mp4`); render `succeeded`, creatomate
+  `e75b4f2b…`, **27,483 ms**. Slot binding, approval and content all unchanged (body 720 chars,
+  title unchanged). PK elected re-render; no content was redesigned or replaced.
+
+- **TWO STACKED DEFECTS, both cleared. The second had been masking the first:**
+  1. **ElevenLabs API key INVALID** — introduced by the 08-05/06 credential migration to Bitwarden
+     (VO last verified working 2026-08-05T11:06:40Z via the smoke artifact). Failed *earlier* in the
+     chain than the original fault, so it presented as the same opaque error. **PK-side fix, 3
+     attempts** (key **ID** pasted → wrong field → correct `sk_` key; secret digest lineage
+     `4bcfd78a` → `f5db81db` → `46a7a289`). Now proven: VO generated 158,450 B of real audio.
+  2. **Creatomate MARGINAL render timeout** — the ORIGINAL 07-27 blocker. Not a code defect and not
+     draft-specific (**reproduced in the smoke using SAMPLE fields**). Measured latency for the same
+     governed `video_short_stat` template on the same day: **27.5 s (success) vs 129–132 s
+     (timeouts)** against a fixed **120 s** poll ceiling — a ~5× spread. It needed no fix; it needed
+     the retry model to be *allowed to run*. The draft had previously received exactly ONE attempt
+     because a human stamped `manual_terminal:known_timeout_08-13_retry_proof_done`.
+
+- **🔐 PRODUCTION MUTATIONS THIS DAY (all PK-authorized, disclosed per the fence precedent):**
+  · **EF DEPLOY — `video-worker` v3.17.1 → v3.18.0** via the sanctioned `scripts/safe-deploy.sh
+  --allow-warn` after a drift refresh moved it `A-LE` → `B-FD`. Deployed marker verified in the live
+  bundle (`video-worker-v3.18.0`, bundles-from-CWD guard satisfied); **`verify_jwt` confirmed still
+  false** (unauthenticated POST returns the function's own key-guard 401, not a gateway rejection).
+  · **2 single-row draft re-queues** on `452f58b9…` (`video_status` failed→pending + terminal/retry
+  markers stripped), each CAS-guarded on 5 columns and each preserving the prior row as rollback
+  (md5 `66be2c9a…`, then `d2f0741f…`).
+  · **Drift-log refresh** (`drift-check?write=true`), 14 rows written across two runs.
+  · **`ELEVENLABS_API_KEY` secret rotated** (PK-side, digest-only discipline maintained).
+  · Merge + push of v3.18.0 to `origin/main` (`b1a26e9..42be22d`) — **disclosed:** that push also
+  carried `cc8270c`, an unrelated cc-0091 docs commit from a parallel session that landed on shared
+  main between the pre-merge verification and the merge. Surfaced to PK BEFORE pushing; PK authorized.
+  Same push-sweep mechanism as v6.156/v6.172 — the standing isolated-branch rule remains the fix.
+
+- **v3.18.0 is why any of this was diagnosable.** A VO failure previously collapsed THREE causes into
+  one bare `null`, reaching no durable record. Within four minutes of deploy it named three *different*
+  causes in sequence — `tts_http_status_401 invalid_api_key`, then `tts_http_status_400 "API key ID
+  used as API key"`, then the render timeout. Under v3.17.1 all three were the identical opaque string.
+  External review `ec74aa07` (agree/med/high) after `083e73ea` (partial) was addressed by narrowing
+  the sanitizer. Retry semantics deliberately UNCHANGED.
+
+- **Carried, none urgent, none blocking the verdict:** the marginal 120 s render ceiling (intermittent
+  by construction — will recur) · PK direction that genuine provider **5xx should become retryable**
+  in a later bounded change · the sanitizer's 200-char detail clip · **`ice_ro.cron_health` covers 12
+  of 71 active cron jobs**, so daily "12/12 green" is a PARTIAL signal, not fleet-wide scheduler proof
+  (`video-worker-every-30min`, the job this recovery depended on, is not in the view).
+
 *(Subsequent daily entries append below; one line-block per day; any STOP-condition match →
 surface to PK immediately, do not wait for watch expiry.)*
