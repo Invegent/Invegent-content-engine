@@ -121,6 +121,37 @@ CREATE TABLE IF NOT EXISTS m.format_capability_drop (
     (detection_source = 'runtime_grid' AND client_id IS NOT NULL)
     OR
     (detection_source = 'mix_rewrite'  AND client_id IS NULL)
+  ),
+
+  -- ── N8 (db-rls-auditor; priority RAISED in the 4th round) ──────────────────
+  -- This stopped being tidy schema design the moment R1 added NULLS NOT DISTINCT to
+  -- uq_fcd_runtime_grid. That option applies to ALL FIVE key columns, not only
+  -- reason_code, and evidence_iso_week is nullable at the table — pinned NOT NULL only
+  -- by the writer. So the failure direction FLIPPED:
+  --   before R1: a NULL evidence_iso_week meant no conflict -> unbounded DUPLICATE rows.
+  --              Noisy, but LOSSLESS.
+  --   after  R1: every NULL-week row sharing (client_id, platform, requested_format,
+  --              reason_code) COLLAPSES INTO ONE -> silent EVIDENCE LOSS.
+  -- Silent evidence loss is the precise defect class cc-0091 exists to abolish, so this
+  -- constraint is now load-bearing rather than hygienic. It is unreachable through the
+  -- sanctioned writer (which pins the value) and only postgres can INSERT at all, but it
+  -- is the single thing standing between a future second writer — or one hand-written
+  -- row — and exactly that failure.
+  -- CHECK violations are NOT swallowed by ON CONFLICT DO NOTHING/DO UPDATE, so this stays
+  -- genuinely fail-closed. Free now on an empty unapplied table; a validate scan under the
+  -- T3 gate later.
+  CONSTRAINT ck_fcd_class_scope CHECK (
+    (detection_source = 'mix_rewrite'
+       AND prior_effective_from IS NOT NULL      -- uq_fcd_mix_rewrite depends on it
+       AND evidence_iso_week    IS NULL)          -- platform-level: no week bucket
+    OR
+    (detection_source = 'runtime_grid'
+       AND evidence_iso_week    IS NOT NULL       -- closes the silent-merge hole above
+       AND prior_effective_from IS NULL
+       AND output_mime_type     IS NULL           -- class facts are mix-rewrite-only
+       AND class_share_before   IS NULL
+       AND class_share_after    IS NULL
+       AND class_eliminated     IS NULL)
   )
 );
 

@@ -312,6 +312,53 @@ async function main() {
      /DO NOT prove it by running the writer in Gate A/.test(a33) &&
      /PROVE IT READ-ONLY/.test(a33));
 
+  // ── N8 — ck_fcd_class_scope, the silent-merge guard ─────────────────────────
+  // R1's NULLS NOT DISTINCT flipped a NULL evidence_iso_week from "duplicate rows"
+  // (lossless) to "rows collapse into one" (evidence LOSS). These assertions prove the
+  // constraint closes that, and that it does not over-reach onto valid rows.
+  const N8 = async (label, stmt, shouldReject) => {
+    let threw = false;
+    try { await db.exec(stmt); } catch { threw = true; try { await db.exec('ROLLBACK'); } catch {} }
+    ok(label, threw === shouldReject, `threw=${threw} expected=${shouldReject}`);
+  };
+  const CID = "'66666666-6666-6666-6666-666666666666'";
+
+  await N8('N8 — runtime_grid with NULL evidence_iso_week is REJECTED (the silent-merge hole)',
+    `INSERT INTO m.format_capability_drop (detection_source, client_id, platform,
+       requested_format, evidence_iso_week, platform_support_key_present)
+     VALUES ('runtime_grid', ${CID}, 'instagram', 'f1', NULL, false)`, true);
+
+  await N8('N8 — mix_rewrite with NULL prior_effective_from is REJECTED (dedupe key would break)',
+    `INSERT INTO m.format_capability_drop (detection_source, platform, requested_format,
+       prior_effective_from, platform_support_key_present)
+     VALUES ('mix_rewrite', 'instagram', 'f2', NULL, false)`, true);
+
+  await N8('N8 — runtime_grid carrying mix-rewrite-only class facts is REJECTED',
+    `INSERT INTO m.format_capability_drop (detection_source, client_id, platform,
+       requested_format, evidence_iso_week, class_eliminated, platform_support_key_present)
+     VALUES ('runtime_grid', ${CID}, 'instagram', 'f3', DATE '2026-08-03', true, false)`, true);
+
+  await N8('N8 — a VALID runtime_grid row is ACCEPTED (constraint does not over-reach)',
+    `INSERT INTO m.format_capability_drop (detection_source, client_id, platform,
+       requested_format, evidence_iso_week, reason_code, platform_support_key_present)
+     VALUES ('runtime_grid', ${CID}, 'instagram', 'f4', DATE '2026-08-03', 'ok', false)`, false);
+
+  await N8('N8 — a VALID mix_rewrite row is ACCEPTED',
+    `INSERT INTO m.format_capability_drop (detection_source, platform, requested_format,
+       prior_effective_from, output_mime_type, class_eliminated, platform_support_key_present)
+     VALUES ('mix_rewrite', 'instagram', 'f5', DATE '2026-04-22', 'video/mp4', true, false)`, false);
+
+  // ── C2 — the dependency assertion must name every column A3-3 writes ─────────
+  const a33src = readFileSync(A3_3, 'utf8');
+  const depBlock = a33src.split('BEGIN;')[1].split('CREATE OR REPLACE FUNCTION')[0];
+  ok('C2 — A3-3 dependency assertion names evidence_iso_week (the renamed column)',
+     /evidence_iso_week/.test(depBlock));
+  const written = [...a33src.matchAll(/^\s*(detection_source|evidence_iso_week|prior_effective_from|output_mime_type|class_share_before|class_share_after|class_eliminated|last_observed_at)/gm)].length;
+  ok('C2 — every column A3-3 depends on appears in its dependency assertion',
+     ['detection_source','prior_effective_from','output_mime_type','class_share_before',
+      'class_share_after','class_eliminated','last_observed_at','evidence_iso_week']
+       .every(c => depBlock.includes(`'${c}'`)));
+
   // ── R1 — NULLS NOT DISTINCT on the runtime key ──────────────────────────────
   // The auditor flagged that this harness structurally CANNOT reach the NULL-reason_code
   // path through the writer, because the classifier stub hardcodes reason_code='stub'.

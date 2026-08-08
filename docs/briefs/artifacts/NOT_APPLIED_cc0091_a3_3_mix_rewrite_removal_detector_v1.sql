@@ -64,7 +64,16 @@ BEGIN
     SELECT string_agg(c.col, ', ' ORDER BY c.col) INTO v_missing
       FROM (VALUES ('detection_source'),('prior_effective_from'),('output_mime_type'),
                    ('class_share_before'),('class_share_after'),('class_eliminated'),
-                   ('last_observed_at')) AS c(col)
+                   ('last_observed_at'),
+                   -- C2 FIX (db-rls-auditor, 4th round): evidence_iso_week was OMITTED.
+                   -- This writer INSERTs into it, but every other column in this list
+                   -- existed in the PRE-RENAME A3-1, so a pre-rename A3-1 followed by this
+                   -- A3-3 passed the guard cleanly and then failed at first write with a
+                   -- raw 42703 — exactly the late-and-confusing failure this assertion was
+                   -- added to prevent, reopened for the single column that changed. Not
+                   -- hypothetical: three materially different A3-1 versions exist in
+                   -- this repo's history.
+                   ('evidence_iso_week')) AS c(col)
      WHERE NOT EXISTS (
        SELECT 1 FROM information_schema.columns ic
         WHERE ic.table_schema='m' AND ic.table_name='format_capability_drop'
