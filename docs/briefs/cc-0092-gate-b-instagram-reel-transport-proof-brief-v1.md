@@ -102,6 +102,28 @@ claims and only the second one produces a Reel.
 6. **`apply_migration` MINTS ITS OWN VERSION.** Do not assume an artifact's filename number
    survives. Record the version actually minted.
 
+## Precondition status for the A1 + A2a apply *(closed 2026-08-08 during B1; no mutation)*
+
+Amendment 1 narrows what is actually in the B2 apply, and that discharges three of the five
+preconditions **by scope rather than by work** — they attach to A3, which B2 explicitly excludes.
+Recorded so nobody re-litigates them at the gate, and so the exclusion is deliberate rather than
+forgotten.
+
+| # | Precondition | Status for A1 + A2a |
+|---|---|---|
+| 1 | Watch gate | **OPEN — the binding one.** Not waived, not waivable by the executor. |
+| 2 | N10 apply channel NAMED | **CLOSED: Supabase `apply_migration`.** Both artifacts embed `BEGIN`/`COMMIT` and their pre/post-state assertions are only atomic if the channel does not split statements. `apply_migration` honours it. ⚠ It **mints its own version** — record the version actually minted, not the filename. |
+| 3 | S5 write-path contract | **N/A to this apply.** S5 concerns the `SECURITY INVOKER` A3 writers and `service_role`'s lack of USAGE on `t`. A1 and A2a are plain DML executed by the migration role, not RPC-invoked. Re-opens the moment A3 is applied. |
+| 4 | F4 no swallowing handler at A3 call sites | **N/A to this apply.** A3 is not applied and not wired. Re-opens with A3. |
+| 5 | R7(a) `ice_ro` views readable as `ice_readonly` | **N/A to this apply.** The three views ship with A3. Re-opens with A3. |
+
+**Added by Amendment 1 — ordering preconditions that did not exist when this brief was issued:**
+
+| # | Precondition | Enforcement |
+|---|---|---|
+| 6 | **A1 applied before A2a** | Executable — A2a pre-state assertion 3 aborts otherwise |
+| 7 | **A2a rolled back before A2b** | Executable — A2b pre-state assertion 3 aborts otherwise (A2b is not in this lane's apply regardless) |
+
 ## Scope
 
 ### B1 — Author A2a and A2b *(safe during the watch; nothing applied)*
