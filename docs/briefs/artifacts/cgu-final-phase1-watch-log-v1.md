@@ -166,6 +166,54 @@ M13 scoping). Active: control tower + CFW/INV asset sourcing only.
   base+E-1 with (a) M16 apply early in the post-watch wave (fixes CFW + NDIS image_quote fills),
   (b) an NDIS text source-diversification decision, (c) an evergreen-seeding lane election.
 
+## Day 4 — 2026-08-06 (post-10:30 remainder) — ⚠ BACKFILLED 2026-08-08, NOT a contemporaneous observation
+
+> **Read this header first.** This block was written on **2026-08-08**, two days after the window it
+> describes. It is a **retrospective reconstruction from retained telemetry**, not a watch reading
+> taken at the time. No one observed this window live and no STOP-condition judgement was exercised
+> during it. It is labelled so that it can never be mistaken for a performed check — the same failure
+> class as the 2026-07-29 intake `review_notes` that asserted verifications which were never done
+> (day-5 entry, systemic finding). Backfilled at PK's instruction after the gap was noticed at the
+> day-6 cut.
+
+**Why the gap existed.** Partly a numbering artifact: Day 2 and Day 3 are BOTH dated 2026-08-06
+(~10:15 and ~10:30, the second a PK-requested re-check), so the day counter ran ahead of the calendar.
+But the artifact is not the whole story — **the remainder of 2026-08-06 after ~10:30 genuinely received
+no watch-health entry.** Its analytical content is covered by the `W-1 ROOT-CAUSED` block above
+(2026-08-06 evening); what was missing is the health observation, reconstructed below.
+
+**Pipeline — REAL retained data** (`ice_ro.pipeline_health`, **48 snapshots** across 2026-08-06,
+read 2026-08-08). Dead flat for 22 hours:
+`queue_total 834 / queued 30 / failed 15 / has_stuck_items=true / has_failed_images=false`
+held constant from 00:00Z to 22:00Z, easing to `832 / 28 / 15` at 22:30Z through end of day.
+Against the day-1 baseline (830/26/15/true) this is normal accretion and drain. **`queue_failed` never
+moved off 15 all day**, and `has_failed_images` was false at every single snapshot.
+
+**Cron — REAL retained data, and BROADER than any live entry in this log** (`cron.job_run_details`,
+read 2026-08-08): **3,664 job runs across 60 distinct jobs on 2026-08-06, and every one recorded
+`status='succeeded'`. Zero failures, zero non-succeeded rows.**
+Note this materially exceeds the daily "cron 12/12 green" figure used elsewhere in this log, which
+comes from `ice_ro.cron_health` — a curated view covering only **12 of the 71 active jobs** (day-6
+carry). For this one window the scheduler evidence is therefore *stronger* than the contemporaneous
+entries, not weaker.
+
+**⇒ NO STOP CONDITION OCCURRED IN THIS WINDOW.** Both watched signals — pipeline trend and scheduler
+health — are verifiable from retained telemetry and both are clean. The verdict's seven-day trend is
+not compromised by the missing entry.
+
+**What CANNOT be reconstructed, and is therefore NOT claimed here:** the supervised-only exception-cell
+observation (PP YT kinetic / NDIS YT stat / CFW LI image_quote) · the advisors posture at that time ·
+the `pipeline-ai-summary` 500 recurrence check that day-3 deferred to "day 4" · and any judgement that
+would have depended on looking at the system in the moment. Those are gaps in the record and remain so.
+
+**Activity in the window (from committed evidence, for context only — not watch observation):** the
+v6.147 build-acceleration ruling and the entire authorized build wave landed here — kinetic_voice
+closure packet (v6.148), M11b Seed A/B (v6.149), M12 scoping (v6.150), build wave complete (v6.151),
+M13 Lane-1 landed on main (v6.152), L1 evidence secured (v6.153), W-1 root-caused (v6.156), M6 design
++ first Blueprint (v6.157), M9-P1/M8.1 disproven (v6.158), M4 manifest (v6.159), item-J pre-ruling
+(v6.160), M13 Lane 4 built (v6.161). **Zero production mutation across the wave** — consistent with
+the v6.147 ruling that held all production writes to the watch gate.
+
 ## Day 5 — 2026-08-07 (PK-authorized production write DISCLOSED + watch health)
 
 - **PRODUCTION WRITE (PK-authorized, explicit-authorization carve-out; NOT a watch breach):**
