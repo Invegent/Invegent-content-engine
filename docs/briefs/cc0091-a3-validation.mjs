@@ -429,6 +429,40 @@ async function main() {
   ok('R1 e2e — NULLS NOT DISTINCT dedupes the NULL-reason_code row THROUGH THE WRITER',
      nrows2 === nrows1 && Number(wn2) === 1, `${nrows1} -> ${nrows2}, returned=${wn2}`);
 
+  // ── F1 — the stamp must be OVERLOAD-PROOF ───────────────────────────────────
+  // This assertion FAILED before the F1 fix. The lookup matched on name alone with a bare
+  // LIMIT 1 and no ORDER BY, so adding an overload made the stamp non-deterministic: it
+  // could hash a function that was never called, and because the documented reading rule
+  // is "a different stamp means different logic", an unstable stamp MANUFACTURES false
+  // reinterpretation warnings. Pinning the exact signature makes it deterministic.
+  const CID_OVL = '14141414-1414-1414-1414-141414141414';
+  const hash3 = (await db.query(`SELECT md5(pg_get_functiondef(
+    'public.classify_format_capability(text,text,text)'::regprocedure)) v`)).rows[0].v;
+  await db.exec(`
+    CREATE FUNCTION public.classify_format_capability(a text, b text, c text, d jsonb)
+    RETURNS jsonb LANGUAGE sql STABLE AS $s$ SELECT '{"status":"overload"}'::jsonb $s$;
+    INSERT INTO c.client (client_id, client_slug) VALUES ('${CID_OVL}','brand-ovl');
+    INSERT INTO c.client_format_config (client_id, platform, ice_format_key, is_enabled) VALUES
+      ('${CID_OVL}','facebook','img_static', true),
+      ('${CID_OVL}','facebook','vid_denied', true);
+  `);
+  await db.query(`SELECT m.record_format_capability_drops('${CID_OVL}', DATE '2026-08-05')`);
+  const ovlStamp = (await db.query(`SELECT classifier_version FROM m.format_capability_drop
+    WHERE client_id='${CID_OVL}'`)).rows[0]?.classifier_version;
+  ok('F1 — an OVERLOAD does not corrupt the stamp; it still hashes the 3-arg function called',
+     ovlStamp === hash3, `stamped=${ovlStamp} expected3arg=${hash3}`);
+  await db.exec(`DROP FUNCTION public.classify_format_capability(text,text,text,jsonb);`);
+
+  // F2 — the invariant is now a TABLE guarantee, not a writer convention
+  let f2 = null;
+  try {
+    await db.exec(`INSERT INTO m.format_capability_drop (detection_source, client_id, platform,
+      requested_format, evidence_iso_week, classifier_version, platform_support_key_present)
+      VALUES ('runtime_grid','${CID_OVL}','facebook','x', DATE '2026-08-03', NULL, false)`);
+  } catch (e) { f2 = e?.code; try { await db.exec('ROLLBACK'); } catch {} }
+  ok('F2 — a runtime_grid row with NULL classifier_version is REJECTED by the table (23514)',
+     f2 === '23514', `sqlstate=${f2}`);
+
   // ── fail-soft NULL fix: the ambiguous path is REACHABLE, so prove it raises ──
   // Reachable because a client absent from c.client makes the detector take its documented
   // v_slug IS NULL branch and NEVER call the classifier — so a missing classifier would go

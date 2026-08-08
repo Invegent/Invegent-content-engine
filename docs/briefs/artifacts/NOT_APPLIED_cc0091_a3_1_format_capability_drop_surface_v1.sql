@@ -107,13 +107,28 @@ CREATE TABLE IF NOT EXISTS m.format_capability_drop (
   -- ambiguity this lane exists to abolish. The column is deliberately NOT in
   -- ck_fcd_class_scope, since a legitimate NULL is expected on the platform-level path.
   --
-  -- READING IT: this is FIRST-SEEN, like observed_at and unlike last_observed_at. A row
-  -- therefore reads "first seen at observed_at under classifier X, still seen at
-  -- last_observed_at". That asymmetry is deliberate and is what makes the evidence
-  -- point-in-time. To learn whether the classifier has moved since, compare this value to
-  -- md5(pg_get_functiondef('public.classify_format_capability'::regproc)) — a difference
-  -- means the row was classified by older logic and must NOT be compared like-for-like
-  -- with freshly classified rows. That comparison is the whole point of the column.
+  -- WHY FIRST-SEEN (F3 -- and this is the strong reason, not the one first recorded):
+  -- capability_status, reason_code, routed_lane and classifier_evidence are ALL first-seen;
+  -- the DO UPDATE arm refreshes none of them. classifier_version is therefore not an
+  -- anomaly needing justification, it is the correct provenance marker for exactly the
+  -- values sitting beside it. A stamp that advanced with last_observed_at would actively
+  -- LIE about which classifier produced the stored outputs.
+  --
+  -- WHAT A DIFFERENCE ACTUALLY PROVES (F3 correction -- the earlier wording overstated it):
+  -- this is an md5 of DEFINITION TEXT, not of logic. A comment-only edit moves it, and so
+  -- potentially does a server-version change to pg_get_functiondef's rendering. So a
+  -- difference means NOT PROVABLY THE SAME -- never proof that the logic changed. The error
+  -- direction is fail-safe (false positives, never false negatives), which is the right way
+  -- round, but do not read more into it than that. Compare against:
+  --   md5(pg_get_functiondef(
+  --     'public.classify_format_capability(text,text,text)'::regprocedure))
+  --
+  -- THE STRONGER INFERENCE THIS TABLE SUPPORTS: because reason_code is IN
+  -- uq_fcd_runtime_grid, a classifier change that ALTERS the reason_code creates a NEW row
+  -- carrying the NEW stamp; an existing row is only UPDATEd when the re-derived reason_code
+  -- is IDENTICAL. So "last_observed_at > observed_at AND classifier_version <> <live>"
+  -- means a DIFFERENT classifier re-derived the SAME reason_code -- i.e. the two classifiers
+  -- AGREE on this cell. Far more useful than "they differ, do not compare".
   classifier_version            text,
   -- raw platform_support facts (absent-key vs explicit-false); NOT a derived label
   platform_support_raw          text,
@@ -164,13 +179,21 @@ CREATE TABLE IF NOT EXISTS m.format_capability_drop (
   -- CHECK violations are NOT swallowed by ON CONFLICT DO NOTHING/DO UPDATE, so this stays
   -- genuinely fail-closed. Free now on an empty unapplied table; a validate scan under the
   -- T3 gate later.
+  -- F2 (6th round) added the classifier_version conjuncts on exactly the reasoning above.
+  -- Without them, "NULL means not-applicable" was a WRITER CONVENTION, not a table
+  -- guarantee -- and the entire point of the preceding round was to make that meaning
+  -- unambiguous. The argument that justified the evidence_iso_week conjuncts applies
+  -- verbatim: unreachable through the sanctioned writer, but the one thing standing
+  -- between a future second writer, or a single hand-written row, and that same failure.
   CONSTRAINT ck_fcd_class_scope CHECK (
     (detection_source = 'mix_rewrite'
        AND prior_effective_from IS NOT NULL      -- uq_fcd_mix_rewrite depends on it
-       AND evidence_iso_week    IS NULL)          -- platform-level: no week bucket
+       AND evidence_iso_week    IS NULL          -- platform-level: no week bucket
+       AND classifier_version   IS NULL)         -- F2: classifier never consulted here
     OR
     (detection_source = 'runtime_grid'
        AND evidence_iso_week    IS NOT NULL       -- closes the silent-merge hole above
+       AND classifier_version   IS NOT NULL       -- F2: see the note below
        AND prior_effective_from IS NULL
        AND output_mime_type     IS NULL           -- class facts are mix-rewrite-only
        AND class_share_before   IS NULL
@@ -377,19 +400,29 @@ DECLARE
   v_clsver  text;
 BEGIN
   -- Point-in-time identity of the classifier whose output we are about to persist.
-  -- Catalog-only lookup: safe under search_path='' (pg_catalog is implicitly searched).
-  -- NOTE the lookup itself does not raise; the check is DEFERRED to after the INSERT so a
-  -- zero-drop run cannot raise spuriously. See the guard below.
-  SELECT md5(pg_get_functiondef(p.oid)) INTO v_clsver
-    FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace
-   WHERE n.nspname = 'public' AND p.proname = 'classify_format_capability'
-   LIMIT 1;
-  -- N2 (PK decision): the week bucket is PINNED HERE, not left to the caller.
-  -- m.build_weekly_demand_grid never reads its p_week_start, so evidence_iso_week exists solely
-  -- as a dedupe-key component; leaving it to a Gate-B convention would make the index
-  -- either inert (run-date) or lossy. COALESCE closes the NULL hole at the writer, since
-  -- NULLs are DISTINCT in a unique index and a NULL would silently restore duplication.
+  --
+  -- F1 FIX (db-rls-auditor, 6th round): pinned to an EXACT SIGNATURE. The first cut
+  -- matched on name alone with a bare LIMIT 1 and no ORDER BY. Deterministic today
+  -- (exactly one such function exists, verified live), but arity-blind: the moment an
+  -- overload appears -- a 4-arg debug variant is precisely how a classifier gets extended
+  -- -- LIMIT 1 has NO ordering guarantee and the chosen row can change after a VACUUM. It
+  -- could then stamp the hash of a function that was never called, and because the
+  -- documented reading rule is "a different stamp means classified by different logic",
+  -- an unstable stamp MANUFACTURES false reinterpretation warnings. A non-deterministic
+  -- stamp is worse than no stamp: no stamp leaves a reader knowingly blind, a wrong one
+  -- makes them confidently wrong -- this lane's own failure family, reproduced inside the
+  -- mechanism built to prevent it.
+  -- Worse, the two halves disagreed: the reader recipe uses ::regprocedure, which RAISES
+  -- 42725 under overload, while the writer silently picked one. Writer and reader now
+  -- resolve identity identically, by construction.
+  --
+  -- ::regprocedure is FAIL-CLOSED -- it raises 42883 if the function is absent, BEFORE the
+  -- INSERT rather than after it. That is strictly better than the deferred guard this
+  -- replaces (which rolled a write back); nothing unattributable is ever written at all.
+  -- The literal is schema-qualified, so it resolves under search_path = ''.
+  v_clsver := md5(pg_get_functiondef(
+                'public.classify_format_capability(text,text,text)'::regprocedure));
+
   v_week := date_trunc('week', COALESCE(p_week_start, CURRENT_DATE))::date;
 
   INSERT INTO m.format_capability_drop (
@@ -414,29 +447,15 @@ BEGIN
     DO UPDATE SET last_observed_at = now();
   GET DIAGNOSTICS v_n = ROW_COUNT;
 
-  -- ── FAIL-SOFT NULL FIX (external review a9c87df1, 2026-08-08) ──────────────
-  -- The first cut let a failed classifier lookup write a NULL stamp. That made NULL mean
-  -- EITHER "not applicable — platform-level path, classifier never consulted" OR "the
-  -- lookup failed", with nothing distinguishing them: the exact absent-vs-stated ambiguity
-  -- cc-0091 exists to abolish, recreated inside the column added to close a
-  -- reinterpretation hole.
-  -- CORRECTION, established by test rather than argued: I first believed there was a
-  -- reachable path where the detector would NOT notice a missing classifier — a client
-  -- absent from c.client takes the documented v_slug IS NULL branch, which never evaluates
-  -- the classifier call. THAT IS WRONG. plpgsql resolves the whole query at PLAN time, so
-  -- the reference inside the CASE is resolved even when the branch would not execute: drop
-  -- the classifier and the DETECTOR raises 42883 before producing a single row. Verified.
-  -- So the detector is the first and effective line of defence, and this guard is
-  -- DEFENCE-IN-DEPTH that cannot fire through the current call path. It is kept anyway,
-  -- deliberately: it makes the invariant explicit and enforceable rather than incidental,
-  -- and it would fire if a future change reached this writer without the detector's
-  -- plan-time reference (dynamic SQL, a different detector, a direct call).
-  -- Guarded on v_n > 0 so a zero-drop run cannot raise spuriously; the RAISE rolls back
-  -- this statement's INSERT, so no unattributable row can persist by either route.
-  -- NET EFFECT, which is the point: NULL now means exactly one thing — NOT APPLICABLE.
-  IF v_n > 0 AND v_clsver IS NULL THEN
-    RAISE EXCEPTION 'cc-0091 A3-1: refusing to write % unattributable evidence row(s) — public.classify_format_capability could not be resolved, so classifier_version cannot be stamped. NULL in that column must mean "not applicable", never "we did not check".', v_n;
-  END IF;
+  -- The deferred "IF v_n > 0 AND v_clsver IS NULL THEN RAISE" guard that stood here was
+  -- REMOVED with the F1 fix, deliberately and not by oversight. With ::regprocedure the
+  -- lookup itself raises when the classifier is absent, before a single row is written, so
+  -- v_clsver can no longer be NULL on this path at all -- the guard became provably dead.
+  -- Dead code asserting an impossible condition is worse than no code: it implies a live
+  -- risk and invites a reader to wonder what else here is theatre. The invariant it
+  -- protected is now enforced twice, at better layers -- fail-closed at the lookup above,
+  -- and durably by ck_fcd_class_scope on the table, which binds every write path including
+  -- ones that never touch this function.
 
   RETURN v_n;
 END;

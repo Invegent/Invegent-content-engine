@@ -63,7 +63,8 @@ BEGIN
   -- MAINTENANCE RULE: if you add or rename a column in A3-1 AND this file reads or writes
   -- it, add it here. D1(a) fix, 5th round: the earlier wording claimed "every column
   -- this file writes or reads", which was literally false and would have told the next
-  -- reader they had nothing to update. Without this, a pre-M1-fix A3-1 passes the guard and then fails late
+  -- reader they had nothing to update.
+  -- WHY THE GUARD EXISTS AT ALL: without it a pre-M1-fix A3-1 passes and then fails late
   -- with a raw 42703 inside CREATE OR REPLACE VIEW — fail-closed, but with an unexplained
   -- error instead of the authored "apply the AMENDED A3-1" message.
   DECLARE v_missing text;
