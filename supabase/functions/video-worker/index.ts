@@ -869,18 +869,43 @@ function slideDirForPoint(pointIndex1Based: number): string {
 // This returns a DISCRIMINATED result; callers append `reason` to their (unchanged) error prefixes.
 export type VoiceGenResult = { url: string; reason: null } | { url: null; reason: string };
 
-// The transient-classification triggers from classifyRenderFailure, plus ANY 3-digit run (stricter
-// than the \b5\d\d\b it actually uses — deliberately over-broad).
-const VOICE_DETAIL_TRANSIENT_TRIGGERS = /timed out|timeout|\b\d{3}\b|fetch failed|network|temporar|failed to download/gi;
+// EXACT mirror of classifyRenderFailure's transient test (non-global, for .test()). The sanitizer's
+// job is defined ENTIRELY by this predicate: neutralise what this matches, preserve everything else.
+const CLASSIFIER_TRANSIENT_PREDICATE = /timed out|timeout|\b5\d\d\b|fetch failed|network|temporar|failed to download/i;
+
+// The LITERAL word triggers only. The numeric trigger is handled separately because it is the one
+// case where the useful information IS the number.
+const VOICE_DETAIL_WORD_TRIGGERS = /timed out|timeout|fetch failed|network|temporar|failed to download/gi;
 
 // PURE + exported for the focused test. INVARIANT: a sanitized detail can NEVER change
-// classifyRenderFailure's verdict for the message it is embedded in. Provider bodies are attacker-
-// adjacent free text; without this, an ElevenLabs body containing "Gateway Timeout" or "500" would
-// silently flip a terminal VO failure into a retried one. Retry SEMANTICS are deliberately UNCHANGED
-// by this fix — see the v3.18.0 header note; whether a real 5xx SHOULD retry is a separate PK call.
+// classifyRenderFailure's verdict for the message it is embedded in. Provider bodies are free text;
+// without this, an ElevenLabs body containing "Gateway Timeout" or a bare "500" would silently flip a
+// terminal VO failure into a retried one.
+//
+// v3.18.0 rev-2 (external review 083e73ea — "ensure the sanitizer does not mask critical operational
+// data"): NARROWED. rev-1 replaced ANY 3-digit run with '~', destroying useful provider numbers
+// ("character limit 5000 exceeded" -> "character limit ~ exceeded"). The classifier's ONLY numeric
+// hazard is \b5\d\d\b — a word-bounded, exactly-3-digit number starting with 5. So:
+//   * 429 / 404 / 5000 / 12  -> PRESERVED VERBATIM (they cannot match: wrong leading digit, or the
+//     4th digit denies the trailing \b).
+//   * a bare 5xx (500/502/503…) -> prefixed with '_' ("_502"). The underscore is a word character, so
+//     it denies \b5\d\d\b its LEADING boundary while keeping the exact status readable.
+//   * word triggers -> a '~' after the first character ("n~etwork"), readable, match broken.
+// Retry SEMANTICS remain deliberately UNCHANGED by this fix. PK direction 2026-08-08: genuine
+// provider HTTP 5xx SHOULD become retryable — recorded as a SEPARATE bounded change, NOT done here.
 export function sanitizeVoiceFailureDetail(detail: string): string {
-  return (detail || '').replace(/\s+/g, ' ').trim().slice(0, 200)
-    .replace(VOICE_DETAIL_TRANSIENT_TRIGGERS, '~').trim();
+  let s = (detail || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  const neutralise = (t: string) =>
+    t.replace(VOICE_DETAIL_WORD_TRIGGERS, (m) => m[0] + '~' + m.slice(1))
+     .replace(/\b(5\d\d)\b/g, '_$1');
+  s = neutralise(s);
+  // FAIL-CLOSED BACKSTOP. Adjacent/overlapping triggers can re-form after a single pass — e.g.
+  // "fetch failed to download": the leftmost alternative consumes "fetch failed", leaving an intact
+  // "failed to download" behind it. Re-run until the predicate is provably clear, then hard-withhold
+  // rather than ever return a detail that could flip classification.
+  for (let i = 0; i < 5 && CLASSIFIER_TRANSIENT_PREDICATE.test(s); i++) s = neutralise(s);
+  if (CLASSIFIER_TRANSIENT_PREDICATE.test(s)) return '[detail withheld: unsanitizable]';
+  return s.trim();
 }
 
 async function generateAndUploadVoice(

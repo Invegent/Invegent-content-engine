@@ -20,6 +20,11 @@ import { assert, assertEquals } from 'jsr:@std/assert@1';
 
 const { classifyRenderFailure, sanitizeVoiceFailureDetail } = await import('./index.ts');
 
+// Independent re-declaration of classifyRenderFailure's transient regex. Deliberately NOT imported
+// from index.ts: if someone edits the production regex, this copy stops mirroring it and the tests
+// below fail loudly rather than silently re-deriving the same (possibly wrong) answer.
+const CLASSIFIER_MIRROR = /timed out|timeout|\b5\d\d\b|fetch failed|network|temporar|failed to download/i;
+
 // Real-shaped ElevenLabs / storage failure bodies, including ones deliberately chosen because they
 // contain transient-classifier trigger words.
 const PROVIDER_BODIES = [
@@ -82,6 +87,49 @@ Deno.test('sanitizer preserves the diagnostically useful part', () => {
   const d = sanitizeVoiceFailureDetail('{"detail":{"status":"invalid_api_key","message":"Invalid API key provided"}}');
   assert(d.includes('invalid_api_key'), `lost the useful token: ${d}`);
   assert(d.includes('Invalid API key provided'), `lost the useful message: ${d}`);
+});
+
+// ── v3.18.0 rev-2 (external review 083e73ea): the NARROWING ────────────────────────────────────
+// rev-1 replaced ANY 3-digit run with '~', destroying operationally useful provider numbers. These
+// assert the narrowed behaviour: only a bare word-bounded 5xx is touched; everything else survives.
+
+Deno.test('rev-2: numbers that CANNOT flip classification are preserved VERBATIM', () => {
+  for (const [body, mustKeep] of [
+    ['character limit 5000 exceeded', '5000'],   // 4 digits → trailing \b denied → safe
+    ['status 429 rate limited', '429'],          // wrong leading digit → safe
+    ['HTTP 404 voice not found', '404'],         // wrong leading digit → safe
+    ['retry after 30 seconds', '30'],            // 2 digits → safe
+    ['quota 12345 of 300000', '300000'],         // long runs → safe
+  ] as const) {
+    const d = sanitizeVoiceFailureDetail(body);
+    assert(d.includes(mustKeep), `rev-1 regression: ${JSON.stringify(mustKeep)} was destroyed in ${JSON.stringify(d)}`);
+  }
+});
+
+Deno.test('rev-2: a bare 5xx is neutralised but its EXACT value is still readable', () => {
+  for (const s of ['500', '502', '503', '504', '599']) {
+    const d = sanitizeVoiceFailureDetail(`upstream returned ${s} from provider`);
+    assert(d.includes(s), `lost the status value entirely: ${d}`);
+    assertEquals(classifyRenderFailure(`b1_video_governed_voiceover_failed: tts_http_status_${s}:${d}`), 'terminal');
+  }
+});
+
+Deno.test('rev-2: overlapping triggers that re-form after one pass are still neutralised', () => {
+  // "fetch failed to download": the leftmost alternative consumes "fetch failed", leaving an intact
+  // "failed to download" behind it. This is exactly what the fail-closed backstop exists for.
+  for (const nasty of [
+    'fetch failed to download the asset',
+    'network timeout: fetch failed to download',
+    'timed out timeout timed out',
+    'fetch failed failed to download network 503 temporary',
+  ]) {
+    const d = sanitizeVoiceFailureDetail(nasty);
+    assertEquals(
+      CLASSIFIER_MIRROR.test(d), false,
+      `a transient trigger SURVIVED sanitisation: ${JSON.stringify(d)}`,
+    );
+    assertEquals(classifyRenderFailure(`b1_video_governed_voiceover_failed: tts_http_status_502:${d}`), 'terminal');
+  }
 });
 
 Deno.test('sanitizer bounds length and normalises whitespace', () => {
