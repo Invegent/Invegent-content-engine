@@ -100,9 +100,20 @@ CREATE TABLE IF NOT EXISTS m.format_capability_drop (
   -- This stamps the classifier's identity at write time: md5 of its pg_get_functiondef,
   -- the same function-pinning pattern ICE already uses elsewhere. A reader can then tell
   -- whether two rows were classified by the SAME logic, and refuse to compare them if not.
-  -- NULL is legitimate and expected on 'mix_rewrite' rows (the classifier is client-scoped
-  -- and a mix rewrite is platform-level, so it is never consulted) and on any row whose
-  -- classifier lookup failed. It is therefore deliberately NOT in ck_fcd_class_scope.
+  -- NULL means EXACTLY ONE THING: not applicable — a 'mix_rewrite' row, where the
+  -- classifier is client-scoped and is never consulted. A FAILED lookup does NOT write
+  -- NULL; the writer RAISES instead (see the guard in m.record_format_capability_drops),
+  -- because a NULL that could mean either "n/a" or "we did not check" would be the very
+  -- ambiguity this lane exists to abolish. The column is deliberately NOT in
+  -- ck_fcd_class_scope, since a legitimate NULL is expected on the platform-level path.
+  --
+  -- READING IT: this is FIRST-SEEN, like observed_at and unlike last_observed_at. A row
+  -- therefore reads "first seen at observed_at under classifier X, still seen at
+  -- last_observed_at". That asymmetry is deliberate and is what makes the evidence
+  -- point-in-time. To learn whether the classifier has moved since, compare this value to
+  -- md5(pg_get_functiondef('public.classify_format_capability'::regproc)) — a difference
+  -- means the row was classified by older logic and must NOT be compared like-for-like
+  -- with freshly classified rows. That comparison is the whole point of the column.
   classifier_version            text,
   -- raw platform_support facts (absent-key vs explicit-false); NOT a derived label
   platform_support_raw          text,
@@ -366,9 +377,9 @@ DECLARE
   v_clsver  text;
 BEGIN
   -- Point-in-time identity of the classifier whose output we are about to persist.
-  -- Catalog-only lookup: safe under search_path='' (pg_catalog is implicitly searched),
-  -- and it yields NULL rather than raising if the classifier is absent — a metadata stamp
-  -- must never be able to abort the evidence write it annotates.
+  -- Catalog-only lookup: safe under search_path='' (pg_catalog is implicitly searched).
+  -- NOTE the lookup itself does not raise; the check is DEFERRED to after the INSERT so a
+  -- zero-drop run cannot raise spuriously. See the guard below.
   SELECT md5(pg_get_functiondef(p.oid)) INTO v_clsver
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
@@ -402,6 +413,31 @@ BEGIN
     WHERE detection_source = 'runtime_grid'
     DO UPDATE SET last_observed_at = now();
   GET DIAGNOSTICS v_n = ROW_COUNT;
+
+  -- ── FAIL-SOFT NULL FIX (external review a9c87df1, 2026-08-08) ──────────────
+  -- The first cut let a failed classifier lookup write a NULL stamp. That made NULL mean
+  -- EITHER "not applicable — platform-level path, classifier never consulted" OR "the
+  -- lookup failed", with nothing distinguishing them: the exact absent-vs-stated ambiguity
+  -- cc-0091 exists to abolish, recreated inside the column added to close a
+  -- reinterpretation hole.
+  -- CORRECTION, established by test rather than argued: I first believed there was a
+  -- reachable path where the detector would NOT notice a missing classifier — a client
+  -- absent from c.client takes the documented v_slug IS NULL branch, which never evaluates
+  -- the classifier call. THAT IS WRONG. plpgsql resolves the whole query at PLAN time, so
+  -- the reference inside the CASE is resolved even when the branch would not execute: drop
+  -- the classifier and the DETECTOR raises 42883 before producing a single row. Verified.
+  -- So the detector is the first and effective line of defence, and this guard is
+  -- DEFENCE-IN-DEPTH that cannot fire through the current call path. It is kept anyway,
+  -- deliberately: it makes the invariant explicit and enforceable rather than incidental,
+  -- and it would fire if a future change reached this writer without the detector's
+  -- plan-time reference (dynamic SQL, a different detector, a direct call).
+  -- Guarded on v_n > 0 so a zero-drop run cannot raise spuriously; the RAISE rolls back
+  -- this statement's INSERT, so no unattributable row can persist by either route.
+  -- NET EFFECT, which is the point: NULL now means exactly one thing — NOT APPLICABLE.
+  IF v_n > 0 AND v_clsver IS NULL THEN
+    RAISE EXCEPTION 'cc-0091 A3-1: refusing to write % unattributable evidence row(s) — public.classify_format_capability could not be resolved, so classifier_version cannot be stamped. NULL in that column must mean "not applicable", never "we did not check".', v_n;
+  END IF;
+
   RETURN v_n;
 END;
 $function$;

@@ -429,6 +429,43 @@ async function main() {
   ok('R1 e2e — NULLS NOT DISTINCT dedupes the NULL-reason_code row THROUGH THE WRITER',
      nrows2 === nrows1 && Number(wn2) === 1, `${nrows1} -> ${nrows2}, returned=${wn2}`);
 
+  // ── fail-soft NULL fix: the ambiguous path is REACHABLE, so prove it raises ──
+  // Reachable because a client absent from c.client makes the detector take its documented
+  // v_slug IS NULL branch and NEVER call the classifier — so a missing classifier would go
+  // unnoticed and unattributable rows would land with a NULL stamp indistinguishable from
+  // the legitimate "not applicable" NULL. That is the ambiguity this lane exists to kill.
+  const CID_ORPHAN = '13131313-1313-1313-1313-131313131313';
+  await db.exec(`
+    INSERT INTO c.client_format_config (client_id, platform, ice_format_key, is_enabled) VALUES
+      ('${CID_ORPHAN}','facebook','img_static', true),
+      ('${CID_ORPHAN}','facebook','vid_denied', true);
+    DROP FUNCTION public.classify_format_capability(text, text, text);
+  `);
+  const beforeOrphan = (await db.query(`SELECT count(*)::int n FROM m.format_capability_drop`)).rows[0].n;
+  let raised = null;
+  try { await db.query(`SELECT m.record_format_capability_drops('${CID_ORPHAN}', DATE '2026-08-05')`); }
+  catch (e) { raised = String(e.message || e); try { await db.exec('ROLLBACK'); } catch {} }
+  const afterOrphan = (await db.query(`SELECT count(*)::int n FROM m.format_capability_drop`)).rows[0].n;
+
+  // The FIRST cut of this assertion demanded the WRITER's guard fire. It does not, and
+  // that is correct: plpgsql resolves the detector's classifier reference at PLAN time, so
+  // a missing classifier raises 42883 in the DETECTOR before any row exists. The property
+  // that actually matters is not WHICH layer refuses — it is that SOME layer does, and
+  // that nothing unattributable is ever persisted. Assert that.
+  ok('fail-soft fix — a missing classifier RAISES somewhere (detector plan-time or writer guard), never writes',
+     raised !== null && (/unattributable/i.test(raised) || /does not exist/i.test(raised)),
+     (raised || 'NO EXCEPTION — an unattributable row would have been written').slice(0, 130));
+  ok('fail-soft fix — and NOTHING was persisted (the RAISE rolled the INSERT back)',
+     afterOrphan === beforeOrphan, `${beforeOrphan} -> ${afterOrphan}`);
+
+  // restore the classifier for any later assertion
+  await db.exec(`
+    CREATE OR REPLACE FUNCTION public.classify_format_capability(p_slug text, p_platform text, p_format text)
+    RETURNS jsonb LANGUAGE sql STABLE AS $s$
+      SELECT jsonb_build_object('status','unknown','reason_code','stub_v2','routed_lane',NULL,'evidence','{}'::jsonb) $s$;`);
+  ok('fail-soft fix — a zero-drop run must NOT raise (the guard is row-conditional)',
+     (await db.query(`SELECT m.record_format_capability_drops('${CID_ORPHAN}', DATE '2026-08-05') n`)).rows[0].n >= 0);
+
   // ── N8 — ck_fcd_class_scope, the silent-merge guard ─────────────────────────
   // R1's NULLS NOT DISTINCT flipped a NULL evidence_iso_week from "duplicate rows"
   // (lossless) to "rows collapse into one" (evidence LOSS). These assertions prove the
