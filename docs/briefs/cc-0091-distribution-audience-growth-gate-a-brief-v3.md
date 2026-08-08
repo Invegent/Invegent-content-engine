@@ -3,7 +3,10 @@
 **Created:** 2026-08-08 Sydney
 **Author:** chat
 **Executor:** Claude Code
-**Status:** draft — **Gate-1 scope APPROVED by PK 2026-08-08**, ready to issue
+**Status:** **ISSUED — Gate 1 PASSED (PK, 2026-08-08)**
+**Issued:** 2026-08-08 Sydney, on direct PK instruction. Execution authorised **strictly within**
+the Scope and Forbidden actions below. Gate 2 (apply/deploy/merge) remains a PK hard stop, and the
+production-mutation watch gate (~2026-08-11 20:20 Sydney) is **not** waived by this issuance.
 **Supersedes:** `...-brief-v2.md` (which superseded `...-brief-v1.md`)
 **Result file:** `docs/briefs/results/cc-0091-distribution-audience-growth-gate-a.md` (on completion)
 
