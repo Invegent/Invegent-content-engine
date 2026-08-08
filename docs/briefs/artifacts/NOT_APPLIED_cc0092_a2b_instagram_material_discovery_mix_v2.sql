@@ -72,10 +72,23 @@
 -- emergent; here it is exact by construction. That is the point of covering the whole mix
 -- rather than overriding one cell.
 --
--- ⚠ THE COVERAGE PROPERTY IS LOAD-BEARING AND IS ASSERTED. If a fourth format ever survives
---   PP's chain without an override row, it contributes its DEFAULT share, per_platform_total
---   exceeds 100, and all three shares silently dilute. Pre-state assertion 6 pins the
---   surviving set to exactly these three; post-state assertion 2 pins the resulting slots.
+-- ⚠ THE COVERAGE PROPERTY IS LOAD-BEARING AND IS ASSERTED — but credit the RIGHT assertions.
+--   If a fourth format ever survives PP's chain without an override row, it contributes its
+--   DEFAULT share, per_platform_total exceeds 100, and all three shares silently dilute.
+--   N-2 FIX (db-rls-auditor re-audit): an earlier cut of this note claimed "pre-state assertion
+--   6 pins the surviving set to exactly these three". IT DOES NOT. Pre-state 6 iterates a fixed
+--   list of the three named formats and reports any that FAIL to survive; it never tests the
+--   converse, that no FOURTH format survives. The protection is the COMBINATION of:
+--     pre-state 5   — only 2 current platform defaults exist, and they ARE carousel 60 /
+--                     image_quote 40, so no third default can contribute an uncovered cell;
+--     post-state 1  — exactly 3 current PP/instagram override rows summing to exactly 100.00;
+--     post-state 2  — the resulting allocation is exactly carousel 2 / image_quote 1 / video 2.
+--   That combination IS adequate. The defect was crediting one assertion with another's work —
+--   which matters because A2a:76-82 names this exact failure mode in its own voice:
+--   "Overstating a guarantee that an assertion is actually providing is how a later reader
+--   deletes the assertion as redundant." This packet diagnosed the pattern and then repeated it.
+--   Pre-state 6's real job is narrower and still essential: verify that each of the three named
+--   formats DOES survive every leg of PP's gate chain.
 --
 -- ─── Computed allocation (largest-remainder; PP's ACTUAL surviving set) ────────
 -- Verified live 2026-08-08 — every leg, per format, for THIS brand rather than assumed from
@@ -211,6 +224,24 @@ BEGIN
   IF v_n <> 2 THEN
     RAISE EXCEPTION 'cc-0092 A2b v2 ABORT (pre-state 5): % current Instagram platform-default rows, expected exactly 2 (carousel, image_quote). A third default could survive PP''s gate chain WITHOUT an override row, inflating per_platform_total above 100 and silently diluting all three shares.', v_n;
   END IF;
+  -- N-3 FIX (db-rls-auditor re-audit) — RESTORED REGRESSION. v1 carried TWO checks here; the
+  -- v2 re-cut kept only the bare count above, while this header still justified pre-state 5 as
+  -- the guard for the sum-to-100 coverage property. A count does not guard that: a SUBSTITUTED
+  -- default set (two current rows that are not carousel 60 / image_quote 40) passes a count and
+  -- then, if a substituted default survives PP's chain, adds a fourth candidate cell,
+  -- per_platform_total exceeds 100, and all three ratified shares dilute. Measured magnitude
+  -- (auditor's read-only simulation, carousel override removed so carousel falls back to its
+  -- default 60): PP becomes carousel 3 / video_short_stat 1 / image_quote 1 — THE VIDEO SLOT
+  -- COUNT HALVES, 2 -> 1, which is the entire point of this artifact. A2a never lost this
+  -- check, so v2 was weaker than both its predecessor and its sibling in the same freeze set.
+  SELECT count(*) INTO v_n
+    FROM t.platform_format_mix_default d
+   WHERE d.platform='instagram' AND d.is_current
+     AND ( (d.ice_format_key='carousel'    AND d.default_share_pct=60.00)
+        OR (d.ice_format_key='image_quote' AND d.default_share_pct=40.00) );
+  IF v_n <> 2 THEN
+    RAISE EXCEPTION 'cc-0092 A2b v2 ABORT (pre-state 5): the two current Instagram defaults are not carousel 60.00 and image_quote 40.00 (matched % of 2). The 40/25/35 override set was designed to COVER exactly the formats those defaults produce; a substituted default could survive PP''s chain uncovered, push per_platform_total above 100 and dilute every ratified share.', v_n;
+  END IF;
 
   -- 6. ⚠ FULL PER-BRAND GATE-CHAIN CHECK — every leg, every format, for THIS brand.
   --    This is the direct closure of the v1 M-1 defect (an allocation derived from the
@@ -230,10 +261,24 @@ BEGIN
              WHEN COALESCE(public.select_template('property-pulse','instagram',f.fmt)
                              ->>'status','fail_closed') = 'fail_closed'
                THEN 'select_template_fail_closed'
+             -- N-1 FIX (db-rls-auditor re-audit): the live enabled_set predicate REPRODUCED
+             -- VERBATIM. The first cut omitted the platform dimension entirely, so a format
+             -- enabled for another platform alongside a DISABLED instagram-specific row
+             -- satisfied this leg while the grid DISCARDED it — a false-PASS that would report
+             -- the coverage property intact when it was broken, redirecting the failure to
+             -- post-state 2 with a slot-count message instead of a cause. A NULL-platform row
+             -- is a FALLBACK, live only when no instagram-specific row exists.
              WHEN NOT EXISTS (SELECT 1 FROM c.client_format_config cfg
                                WHERE cfg.client_id=v_pp AND cfg.ice_format_key=f.fmt
-                                 AND cfg.is_enabled=true)
-               THEN 'client_format_config_not_enabled'
+                                 AND cfg.is_enabled=true
+                                 AND ( cfg.platform = 'instagram'
+                                    OR ( cfg.platform IS NULL
+                                         AND NOT EXISTS (
+                                           SELECT 1 FROM c.client_format_config cfg2
+                                            WHERE cfg2.client_id=v_pp
+                                              AND cfg2.ice_format_key=f.fmt
+                                              AND cfg2.platform='instagram') ) ))
+               THEN 'not_enabled_for_instagram_under_grid_rule'
              WHEN NOT EXISTS (SELECT 1 FROM t.format_synthesis_policy sp
                                WHERE sp.ice_format_key=f.fmt AND sp.is_current)
                THEN 'no_current_synthesis_policy'
@@ -328,31 +373,52 @@ BEGIN
     RAISE EXCEPTION 'cc-0092 A2b v2 ABORT (post-state 2): property-pulse Instagram expected carousel 2 / image_quote 1 / video_short_stat 2 / total 5, got % / % / % / % (-1 = format absent from the grid entirely)', v_car, v_img, v_vid, v_tot;
   END IF;
 
-  -- 3. ⚠ NO OTHER BRAND MOVED. Asserted as INVARIANCE against values captured in THIS
-  --    transaction, not against magic constants (db-rls-auditor S-2). Because this artifact
-  --    writes no row for any other brand and touches no platform default, this should be
-  --    structurally impossible — which is exactly why it is cheap to assert and worth
-  --    asserting: if it ever fires, an assumption about the instrument is wrong.
+  -- 3. ⚠ NO VIDEO REACHES ANY OTHER BRAND — a safety DENYLIST, and named as one.
+  --    N-4 FIX (db-rls-auditor re-audit), two parts:
+  --    (a) HONEST DESCRIPTION. The first cut called this "INVARIANCE against values captured in
+  --        THIS transaction". It is not — nothing is captured; it is an absolute "zero video
+  --        rows for other brands" test. That mislabel MATTERED: invariance would be
+  --        format-agnostic by nature, so calling it invariance made a hand-written key list
+  --        look adequate when a key list can never be.
+  --    (b) FORMAT-AGNOSTIC PREDICATE. The old IN-list named 5 keys; t."5.3_content_format"
+  --        holds 8 active video-prefixed formats. It omitted `video_short` — is_active=true AND
+  --        platform_support->>'instagram'='true', i.e. the one omitted format Instagram already
+  --        accepts — plus video_long_explainer and video_long_podcast_clip. LIKE 'video%' cannot
+  --        go stale as formats are added, which a maintained list always eventually does.
   SELECT count(*) INTO v_n
     FROM c.client cl
     CROSS JOIN LATERAL m.build_weekly_demand_grid(cl.client_id) g
    WHERE g.platform = 'instagram'
      AND cl.client_slug <> 'property-pulse'
-     AND g.ice_format_key IN ('video_short_stat','video_short_stat_voice',
-                              'video_short_kinetic_voice','video_short_kinetic',
-                              'video_short_avatar');
+     AND g.ice_format_key LIKE 'video%';
   IF v_n <> 0 THEN
     RAISE EXCEPTION 'cc-0092 A2b v2 ABORT (post-state 3): % video row(s) appeared in the Instagram grid for a brand other than property-pulse. This artifact writes nothing for any other brand, so this must not happen — do NOT ship video to a brand that has not proven transport.', v_n;
   END IF;
 
-  -- 4. ndis-yarns specifically — the brand v1 got wrong. Pinned to its live truth.
-  SELECT COALESCE(max(g.weekly_slot_count) FILTER (WHERE g.ice_format_key='image_quote'),-1),
-         COALESCE(sum(g.weekly_slot_count),0)
-    INTO v_img, v_tot
-    FROM m.build_weekly_demand_grid((SELECT client_id FROM c.client WHERE client_slug='ndis-yarns')) g
-   WHERE g.platform='instagram';
-  IF v_img<>7 OR v_tot<>7 THEN
-    RAISE EXCEPTION 'cc-0092 A2b v2 ABORT (post-state 4): ndis-yarns Instagram expected image_quote 7 / total 7 (UNCHANGED — its carousel does not survive select_template and it gets no video from this artifact), got image_quote % / total %', v_img, v_tot;
+  -- 4. ⚠ WRITE CONFINEMENT — this artifact wrote ONLY property-pulse rows.
+  --    PK RULING 2026-08-08, and it replaces what stood here. The previous post-state 4 pinned
+  --    ndis-yarns to image_quote 7 / total 7. That directly contradicted this artifact's own
+  --    central design claim (lines 51-54: "no other brand's surviving set can affect this
+  --    artifact's outcome") by making its applicability depend on exactly such a fact — and on
+  --    facts that ordinary governance changes falsify (ndis/carousel is_enabled, its template
+  --    assignments, its cadence). A Property-Pulse-only artifact must not refuse to apply
+  --    because NDIS legitimately changed. PK: "Its blast-radius proof should establish that it
+  --    writes only PP rows, rather than asserting what NDIS happens to look like."
+  --
+  --    Note this was the sharpest second-order defect of the v2 re-cut: the remedy for M-1
+  --    ("you asserted a wrong fact about NDIS") reintroduced an assertion of a fact about NDIS.
+  --
+  --    WRITE CONFINEMENT IS GUARANTEED STATICALLY, which is stronger than any runtime probe of
+  --    another brand's state: the INSERT's only source of client_id is
+  --    `FROM c.client cl WHERE cl.client_slug = 'property-pulse'`, and this artifact contains
+  --    no UPDATE and no DELETE. It therefore CANNOT write another brand's row. What is worth
+  --    asserting at runtime is the resulting FOOTPRINT — that PP's own rows are exactly the
+  --    three intended, with nothing extra accumulated.
+  SELECT count(*) INTO v_n
+    FROM c.client_format_mix_override o
+   WHERE o.client_id = v_pp AND o.platform = 'instagram';
+  IF v_n <> 3 THEN
+    RAISE EXCEPTION 'cc-0092 A2b v2 ABORT (post-state 4): % total property-pulse/instagram override row(s) (ANY share, ANY is_current), expected exactly the 3 this artifact writes. A different count means rows accumulated beyond this artifact''s footprint — and a second is_current row for any cell makes candidate_share (LIMIT 1, no ORDER BY) nondeterministic.', v_n;
   END IF;
 END $$;
 
@@ -365,6 +431,8 @@ COMMIT;
 -- EXPECTED:
 --   property-pulse            carousel 40.00 -> 2 ; image_quote 25.00 -> 1 ;
 --                             video_short_stat 35.00 -> 2
---   ndis-yarns                image_quote 100.00 -> 7   (UNCHANGED, no video)
---   invegent                  UNCHANGED, no video
---   care-for-welfare-pty-ltd  UNCHANGED, no video
+--   every other brand         IDENTICAL to the pre-apply baseline you recorded above, and NO
+--                             video row. Compare against YOUR recorded baseline, not against
+--                             figures written here — those brands' mixes are free to change for
+--                             their own reasons between authoring and apply, and this artifact
+--                             writes nothing for them (PK ruling 2026-08-08; see post-state 4).

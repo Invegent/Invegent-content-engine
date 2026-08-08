@@ -89,6 +89,23 @@ BEGIN
   IF v_n <> 0 THEN
     RAISE EXCEPTION 'cc-0092 A2a ROLLBACK ABORT (pre-state): % unrelated override row(s) exist. The table was EMPTY when A2a was authored, so unrelated rows mean another lane has since written here. This rollback does not touch them, but their presence means the "restore to empty" assumption no longer holds — STOP and re-verify who owns them before proceeding.', v_n;
   END IF;
+
+  -- COVERAGE GUARD — S-7 BACK-PORT (db-rls-auditor re-audit N-6). The two guards above have a
+  -- hole BETWEEN them: guard one filters on override_share_pct=25.00 AND is_current=true, and
+  -- the data-loss guard EXCLUDES this cell via NOT(...). So a same-cell row at a DIFFERENT
+  -- share, or with is_current=false, is invisible to BOTH — the DELETE would then proceed and
+  -- the whole rollback would abort at post-state with "rows remain for the cell", which is
+  -- fail-closed but names the symptom rather than the cause. This counts EVERY row for the
+  -- cell regardless of share or currency, so a divergent row is caught here with an accurate
+  -- message. The fix was written for the A2b v2 rollback first and is back-ported unchanged.
+  SELECT count(*) INTO v_n
+    FROM c.client_format_mix_override o
+   WHERE o.client_id = v_client
+     AND o.platform = 'instagram'
+     AND o.ice_format_key = 'video_short_stat';
+  IF v_n <> 1 THEN
+    RAISE EXCEPTION 'cc-0092 A2a ROLLBACK ABORT (pre-state): % total row(s) for property-pulse/instagram/video_short_stat (ANY share, ANY is_current), expected exactly 1. More than one means the two-current-rows hazard materialised or a share was altered; this rollback deletes only the 25.00 current row it authored — STOP and establish who owns the others before proceeding.', v_n;
+  END IF;
 END $$;
 
 DELETE FROM c.client_format_mix_override o

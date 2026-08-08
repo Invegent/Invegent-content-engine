@@ -155,6 +155,109 @@ state**. The identical 35.00 meant 40% of PP's Instagram and 57% of NDIS's.
 
 **The BLOCK-era review is void.** A re-audit against these digests is required before external
 review, and external review before any PK apply gate.
+**→ That re-audit ran and cleared the BLOCK → CONCERNS. See Amendment 3, which supersedes the
+freeze table above.**
+
+## ⚠ AMENDMENT 3 — 2026-08-08. Re-audit CLEARED the BLOCK; PK ordered ONE bounded correction pass and a stop rule
+
+**Re-audit verdict: CONCERNS — BLOCK cleared.** M-1 and M-2 closed; S-3/S-4/S-5 **dissolved** with
+the instrument change; S-1/S-6/S-8/S-9/O-3 closed. The auditor confirmed the arithmetic **by
+execution** — it rebuilt the live allocator's CTE chain as a read-only query — rather than by
+reading my header: three overrides → normalised exactly 40/25/35 → PP carousel 2 / image_quote 1 /
+video 2 of 5; a bare 35.00 override → 1 slot; A2a → 48/32/20 → 2/2/1.
+
+Five medium findings remained, **all fail-closed, none overturning the Reel-proof design.**
+
+### ⛔ PK STOP RULE (2026-08-08) — this bounds the lane
+
+> *"Gate B has started to show the same over-hardening tendency that Gate A had… I would allow one
+> bounded correction pass, not another design cycle… Then re-audit the bounded corrections. If there
+> is no must-fix behavioural/correctness defect, freeze and stop. Don't keep strengthening
+> assertions indefinitely."*
+
+**Gate B's job is narrow: prove the newly supported Instagram formats travel the real pipeline and
+publish as Reels.** Gate A is finished and closed. The lane has already caught two real
+production-impacting defects before apply — that is the value delivered, and it is not a reason to
+keep polishing the proof machinery.
+
+### The bounded pass — exactly these items, nothing else
+
+| Item | Fix | Where |
+|---|---|---|
+| **N-3** *(regression I introduced)* | Restored the "which two defaults" half of pre-state 5. v1 had it, A2a never lost it, the v2 re-cut dropped it while the header still credited it. Auditor measured the cost: PP's video slots **halve, 2 → 1**. | A2b v2 pre-state 5 |
+| **N-1** *(auditor's own prior miss, not caused by the re-cut)* | Live `enabled_set` predicate **reproduced verbatim** instead of paraphrased. The paraphrase was platform-blind and could **false-pass**; latent only because every live config row has `platform IS NULL`. | A2b v2 leg 4 **and** A2a pre-state 7 |
+| **N-2** | Header no longer credits pre-state 6 with pinning the surviving set. Credit moved to the assertions that actually do it (pre-state 5 + post-state 1 + post-state 2). **No new machinery added** — the claim was wrong, not the protection. | A2b v2 header |
+| **N-4** | Post-state 3 renamed honestly as a **denylist** (it never captured a baseline), and the key list replaced with `LIKE 'video%'` — the old list omitted `video_short`, which is active **and already Instagram-supported**. | A2b v2 post-state 3 |
+| **S-7 back-port** | Coverage guard added: counts every row for the cell regardless of share or currency. The fix existed in the A2b v2 rollback and had not been carried to its sibling. | A2a rollback |
+| **Ruling 3** | **NDIS post-state dependency REMOVED.** Replaced with a write-confinement footprint check. | A2b v2 post-state 4 |
+| **N-8** *(documentation)* | Two stale brief claims corrected — they contradicted the artifacts they govern, which is exactly how M-1's ratification harm happened. | this brief |
+
+**Deliberately NOT done, per the stop rule:** N-7's three cross-artifact inconsistencies (A2a
+requires `status='ok'` where A2b matches the grid's `<> 'fail_closed'`; text-vs-boolean
+`platform_support` comparison; `-1` vs `0` absent-format sentinel). All are **safe-direction** — they
+can only false-abort, never false-pass — and normalising them is assertion-strengthening, not
+defect-fixing. **Accepted as-is.**
+
+### Ruling 3 — why post-state 4 changed shape rather than being tightened
+
+The old post-state 4 pinned ndis-yarns to `image_quote 7 / total 7`, which **contradicted this
+artifact's own design claim** that no other brand's state can affect its outcome — and depended on
+facts ordinary governance changes falsify (`ndis/carousel is_enabled`, template assignments,
+cadence). PK: *"A Property Pulse-only artifact should not refuse to apply because NDIS legitimately
+changed. Its blast-radius proof should establish that it writes only PP rows."*
+
+**Write confinement is now established STATICALLY**, which is stronger than any runtime probe: the
+`INSERT`'s only source of `client_id` is `WHERE cl.client_slug = 'property-pulse'`, and the artifact
+contains no `UPDATE` and no `DELETE`. It **cannot** write another brand's row. Post-state 4 now
+asserts the resulting **footprint** (PP's rows are exactly the 3 intended). Post-state 3 keeps the
+real safety net — no video reaches any other brand — which is a property, not a fact about NDIS.
+
+*This was the sharpest second-order defect of the re-cut: the remedy for M-1 ("you asserted a wrong
+fact about NDIS") had reintroduced an assertion of a fact about NDIS.*
+
+### Ruling 2 — TWO INDEPENDENT FREEZE SETS
+
+A2a is frozen **separately** so further A2b work cannot destabilise it. It is **NOT advanced and NOT
+applied** — nothing can be applied until the watch clears regardless.
+
+**A2a freeze set — INDEPENDENT, frozen 2026-08-08:**
+
+| Artifact | sha256:16 |
+|---|---|
+| A2a forward | `8708ba7b952d04c8` *(was `1851151ad4dafb0f`; N-1)* |
+| A2a rollback | `f1e47c4b4920703f` *(was `d89a56e5e126e5e0`; S-7 back-port)* |
+
+**A2b v2 freeze set — INDEPENDENT:**
+
+| Artifact | sha256:16 |
+|---|---|
+| A2b v2 forward | `c88c5a87f099b676` *(was `1743f4339abffdc5`; N-1/N-2/N-3/N-4 + ruling 3)* |
+| A2b v2 rollback | `44b9ddbfe1548eef` — **unchanged** |
+
+### Ruling 4 — CARRY, out of cc-0092
+
+**The `apply_migration` embedded-`BEGIN`/`COMMIT` question is NOT a cc-0092 problem.** It is closed
+by assertion, not proof, and is unprovable without a write. PK: *"Do not turn it into another
+cc-0092 rabbit hole. Record it as a reusable infrastructure-proof item. If it needs proving, prove
+it once independently and let future gates cite that evidence."*
+
+**CARRY-INFRA-1 — prove once, cite thereafter:** does the Supabase `apply_migration` channel execute
+a multi-statement script with an embedded `BEGIN`/`COMMIT` as ONE transaction without splitting it?
+Every in-transaction assertion in this programme depends on it. Exposure for *these* artifacts is
+small (`BEGIN` first, `COMMIT` last, so assertion-to-write atomicity holds either way), and both
+artifacts disclose the gap honestly in-file rather than asserting it settled. Own it as
+infrastructure, not per-packet.
+
+### Stop condition for the packet
+
+Re-audit these bounded corrections. **If no must-fix behavioural or correctness defect: freeze and
+stop.** Assertion-strength findings below must-fix are recorded and accepted, not fixed.
+
+**Why the elapsed time is not the bottleneck:** the production watch does not clear until
+~2026-08-11 20:20 Sydney. Mutation is prohibited until then, so this weekend is spent getting the
+packet clean at zero opportunity cost. Then: **A1 apply → A2a apply → nightly pipeline generates
+Reel candidates → governed Reel transport proof → B4 permit/block → restore meaningful Instagram
+video.**
 
 ## Precondition status for the A1 + A2a apply *(closed 2026-08-08 during B1; no mutation)*
 
@@ -208,7 +311,11 @@ behavioural change.
   - **Share = 25%, and that number is derived, not chosen.** Allocation is largest-remainder
     (Hare quota) over PP's 5 enabled Instagram schedule rows. `floor(5X/(100+X)) ≥ 1 ⟺ X ≥ 25`, so
     25 is the smallest share that wins a slot **by floor alone** rather than by remainder
-    competition — minimal AND deterministic under a changing surviving set. Computed delta:
+    competition — minimal, and deterministic **against the tiebreak**. ~~minimal AND deterministic
+    under a changing surviving set~~ **`(AMENDED-3)` corrected (N-8/O-3):** 25.00 is *not* stable
+    against a changing surviving set — a third surviving format at share 20 would drop video's raw
+    to 0.862 and cost it the floor slot. The protection is A2a's pre-state 4, not the number.
+    Computed delta:
     carousel 3→2, image_quote 2→2, `video_short_stat` 0→**1**. The entire behavioural change is
     **one carousel slot per week becomes one video slot.**
   - **`(AMENDED-2)` ⛔ THE METHOD STATED HERE WAS WRONG — read this before deriving any share.**
@@ -225,7 +332,9 @@ behavioural change.
     do survive for PP, which is exactly why this error stayed invisible through authoring, review
     and a PK ratification (db-rls-auditor M-1/M-2).
 - **A2b — material discovery mix.** Authored, **NOT applied**, carrying an explicit machine-readable
-  block naming the three Reel proofs it depends on.
+  block naming ~~the three Reel proofs~~ **`(AMENDED-3)` the ONE Reel proof (N-8)** it depends on —
+  stale since Amendment 1; the frozen block reads `proof_count_required: 1`,
+  `proof_formats: video_short_stat`.
 - **Neither tier may be weighted toward `video_short_kinetic`** — it stays `instagram:false` with
   its audio-gap cause recorded (no audio stream, 4/4 renders). It is **not** one of the three.
 - Both as `NOT_APPLIED_*` + ROLLBACK, byte-hashed, validated by the existing harness pattern.

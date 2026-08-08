@@ -206,13 +206,30 @@ BEGIN
     RAISE EXCEPTION 'cc-0092 A2a ABORT (pre-state 6): select_template returned % for property-pulse/instagram/video_short_stat — the format would be filtered at capability_gated and this row would be inert', COALESCE(v_txt, 'NULL');
   END IF;
 
-  -- 7. enabled_set leg.
+  -- 7. enabled_set leg — the live predicate REPRODUCED VERBATIM, not paraphrased.
+  --    N-1 FIX (db-rls-auditor, re-audit): the first cut tested only
+  --    (client_id, ice_format_key, is_enabled=true) with NO platform predicate. The live
+  --    enabled_set CTE is platform-AWARE: a NULL-platform row is a FALLBACK that applies only
+  --    when no platform-specific row exists for that (client, format, platform). So a format
+  --    enabled for facebook only, alongside a DISABLED instagram-specific row, satisfied the
+  --    old test but is DISCARDED by the grid — a false-PASS, leaving the row inert with the
+  --    pre-state reporting all clear. Latent today (every live row has platform IS NULL) but
+  --    the platform-specific shape is fully supported by the grid.
+  --    Any assertion that paraphrases a gate will drift from it; this one is copied.
   SELECT count(*) INTO v_n
     FROM c.client_format_config cfg
-   WHERE cfg.client_id = v_client AND cfg.ice_format_key = 'video_short_stat'
-     AND cfg.is_enabled = true;
+   WHERE cfg.client_id = v_client
+     AND cfg.ice_format_key = 'video_short_stat'
+     AND cfg.is_enabled = true
+     AND ( cfg.platform = 'instagram'
+        OR ( cfg.platform IS NULL
+             AND NOT EXISTS (
+               SELECT 1 FROM c.client_format_config cfg2
+                WHERE cfg2.client_id = v_client
+                  AND cfg2.ice_format_key = 'video_short_stat'
+                  AND cfg2.platform = 'instagram') ) );
   IF v_n < 1 THEN
-    RAISE EXCEPTION 'cc-0092 A2a ABORT (pre-state 7): no enabled c.client_format_config row for property-pulse/video_short_stat — the row would be filtered at enabled_set';
+    RAISE EXCEPTION 'cc-0092 A2a ABORT (pre-state 7): no c.client_format_config row enables property-pulse/video_short_stat FOR INSTAGRAM under the grid''s own enabled_set rule (a platform-specific instagram row, or a NULL-platform fallback with no instagram-specific row overriding it) — the row would be filtered at enabled_set and this override would be inert';
   END IF;
 
   -- 8. The two gate legs the header ADVERTISED but did not assert (db-rls-auditor S-6).
