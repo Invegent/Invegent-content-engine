@@ -6,6 +6,12 @@
 
 ---
 
+> **📜 v6.176 — OAP v1 RATIFIED: ICE Operational Autonomy Principle (T1 · docs-only · zero authority granted, zero live behaviour change)** — `docs/governance/operational-autonomy-principle-v1.md` (frozen sha256 `455ac757…`) + empty failure-class registry `docs/governance/failure-classes-v1.md`; commit `d4f9b28`. External review `a262214a` agree/low/high, zero pushback (hash-pinned).
+> · **Doctrine:** four-layer capability model (outcome · truth · failure · recovery-readiness) · operative rule **"nothing important ships blind"** (self-healing explicitly NOT a shipping prerequisite) · **Operational Contract** section in every important capability brief (new + touched-existing) · shared failure-class vocabulary (seeded lazily) · **RP-NNN recovery-playbook shape reserved, none ratified** — recovery authority only via explicit per-playbook PK ratification (Convention-2 generalized); verified-trigger rule (playbooks never key off blind/inferred signals); fail-closed default unchanged; automated actors stay zero-authority.
+> · **NEXT/queue impact:** unchanged from v6.175 — future briefs inherit the Operational Contract; from 08-12 AR v1 system-side evidence + PK one-line intervention log (bucket · ~minutes · failure class) accumulate toward RP-001 election (~Sep 2026). Watch gate ~2026-08-11 20:20 Sydney.
+
+---
+
 > **⏰ v6.175 — ASSURANCE ROUTINE v1 DAILY CRON WIRED (T1 · local scheduler + tooling edits · inform-only, zero authority, zero live behaviour change)** — Windows task `ICE Assurance Routine v1 daily`, first trigger **2026-08-12 08:00 Sydney (after the mutation-watch expiry ~08-11 20:20)**, then daily; launcher `.claude/routines/run-assurance-routine.ps1` → `scripts/assurance/routine-v1.mjs --daily`.
 > · **Contract (PK-specified):** read-only · stateless (delta derived from durable run records) · exit 0 always · incapable of remediation/gating/approval/register mutation · writes only gitignored `_harness/assurance_routine/` (full logs preserved) · operator attention ONLY on **NEW FLAG / RECOVERED / UNKNOWN** — standing known FLAGs never re-alerted. Validated end-to-end through the task path (result 0; AR-01/05/07/10 correctly standing, zero attention). AR-04 deploy verification stays lifecycle-invoked via `deploy-verifier`, never cron; AR-02/03/11 auto-join the daily run when their stubs are implemented.
 > · **NEXT/queue impact:** unchanged from v6.174 — AB-01 options (a)–(f) open · routine tranche 2 · watch gate ~2026-08-11 20:20 Sydney.
