@@ -338,7 +338,17 @@ async function publishSingleMedia(opts: {
 
   if (isVideo) {
     // VIDEO path — UNCHANGED from v2.2.0: poll the reel container to FINISHED,
-    // then publish once. (No reel has published yet; left exactly as-is.)
+    // then publish once.
+    //
+    // cc-0091 A1 (2026-08-08) — comment correction ONLY, no behaviour change.
+    // The previous note here read "No reel has published yet". That was STALE and
+    // materially misleading: m.post_publish records SIX successfully published reels
+    // (publish_method='reel', all recommended_format='video_short_avatar'), the most
+    // recent on 2026-06-19. Reels stopped not because this path is unproven, but
+    // because cc-0079 Slice-2 renormalised the Instagram format mix to 100% static on
+    // 2026-07-25, so no video draft has reached this function since.
+    // This path is PROVEN in production. See
+    // docs/briefs/cc-0091-a1-instagram-video-format-determination-v1.md.
     await pollContainerReady(creationId, accessToken, {
       maxWaitMs: VIDEO_CONTAINER_POLL_MAX_MS, intervalMs: VIDEO_CONTAINER_POLL_INTERVAL_MS, label: 'reel',
     });
