@@ -160,12 +160,25 @@ behavioural change.
 
 **B1 DELIVERABLES — authored 2026-08-08, NOTHING APPLIED:**
 
-| Artifact | Path |
-|---|---|
-| A2a forward | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2a_instagram_proof_tier_mix_v1.sql` |
-| A2a rollback | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2a_instagram_proof_tier_mix_ROLLBACK_v1.sql` |
-| A2b forward | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2b_instagram_material_discovery_mix_v1.sql` |
-| A2b rollback | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2b_instagram_material_discovery_mix_ROLLBACK_v1.sql` |
+**FREEZE RECORD — sha256 (first 16), working-copy LF, hashed in the shared default worktree.**
+Any review is valid ONLY for these hashes; if a file changes, the review is stale and must be re-run
+(orchestration contract rule 4). ⚠ A CRLF checkout yields different digests — always re-hash here.
+
+| Artifact | sha256:16 | Path |
+|---|---|---|
+| A2a forward | `a6f4243f3c3f9f7e` | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2a_instagram_proof_tier_mix_v1.sql` |
+| A2a rollback | `d89a56e5e126e5e0` | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2a_instagram_proof_tier_mix_ROLLBACK_v1.sql` |
+| A2b forward | `65d7f533031a1ba3` | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2b_instagram_material_discovery_mix_v1.sql` |
+| A2b rollback | `a4af2889eb38f3ab` | `docs/briefs/artifacts/NOT_APPLIED_cc0092_a2b_instagram_material_discovery_mix_ROLLBACK_v1.sql` |
+
+**⚠ KNOWN COVERAGE GAP — disclosed, not accepted silently.** These two packets have **no executable
+offline harness**. cc-0091's A3 packets had one (57 + 31 assertions over the real artifact files via
+PGlite) and it repeatedly caught defects a prose read missed — including, in this lane, an
+`INSERT` arity error in A2b that would have failed at apply with 42601 and was found only by a
+second manual pass. A2a and A2b currently rest on review plus their own in-transaction fail-closed
+assertions. A full harness would need `m.build_weekly_demand_grid`, `select_template` and
+`resolve_slot_assets` stood up in PGlite; that is judged disproportionate for two DML artifacts, but
+the gap is real and belongs in the apply record.
 
 **Two cross-artifact ordering dependencies, both made EXECUTABLE rather than prose:**
 
