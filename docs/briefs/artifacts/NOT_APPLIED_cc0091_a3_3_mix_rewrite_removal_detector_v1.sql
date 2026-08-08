@@ -55,10 +55,13 @@ BEGIN
   IF to_regclass('m.format_capability_drop') IS NULL THEN
     RAISE EXCEPTION 'cc-0091 A3-3 ABORT: m.format_capability_drop does not exist — apply A3-1 first';
   END IF;
-  -- N5 (db-rls-auditor): assert every column whose PRESENCE has VARIED across A3-1
-  -- revisions — NOT every column this file touches (it touches 21; these 8 are the ones
-  -- capable of causing version skew). MAINTENANCE RULE: if you add or rename a column in
-  -- A3-1, add it here. D1(a) fix, 5th round: the earlier wording claimed "every column
+  -- N5 (db-rls-auditor): assert every column THIS FILE DEPENDS ON whose PRESENCE has
+  -- VARIED across A3-1 revisions — the INTERSECTION of those two sets, which is these 8.
+  -- Not every column this file touches (21), and NOT every column that has varied:
+  -- A3-1's classifier_version varies but this file never writes it, so listing it would
+  -- make A3-3 refuse to install against an older A3-1 over a column it does not use.
+  -- MAINTENANCE RULE: if you add or rename a column in A3-1 AND this file reads or writes
+  -- it, add it here. D1(a) fix, 5th round: the earlier wording claimed "every column
   -- this file writes or reads", which was literally false and would have told the next
   -- reader they had nothing to update. Without this, a pre-M1-fix A3-1 passes the guard and then fails late
   -- with a raw 42703 inside CREATE OR REPLACE VIEW — fail-closed, but with an unexplained

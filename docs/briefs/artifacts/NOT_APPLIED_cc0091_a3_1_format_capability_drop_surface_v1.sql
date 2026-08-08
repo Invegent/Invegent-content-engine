@@ -92,6 +92,18 @@ CREATE TABLE IF NOT EXISTS m.format_capability_drop (
   routed_lane                   text,
   classifier_evidence           jsonb,
   classifier_error              text,
+  -- External review corrected_action (review_id 692a9f1c, 2026-08-08): the packet
+  -- persists public.classify_format_capability's output VERBATIM rather than inventing a
+  -- second taxonomy (owner ruling C1). Nothing versioned that classifier, so a future
+  -- change to it would silently change what OLD evidence rows MEAN — reinterpretation
+  -- without notice, a quieter cousin of the defect this lane exists to fix.
+  -- This stamps the classifier's identity at write time: md5 of its pg_get_functiondef,
+  -- the same function-pinning pattern ICE already uses elsewhere. A reader can then tell
+  -- whether two rows were classified by the SAME logic, and refuse to compare them if not.
+  -- NULL is legitimate and expected on 'mix_rewrite' rows (the classifier is client-scoped
+  -- and a mix rewrite is platform-level, so it is never consulted) and on any row whose
+  -- classifier lookup failed. It is therefore deliberately NOT in ck_fcd_class_scope.
+  classifier_version            text,
   -- raw platform_support facts (absent-key vs explicit-false); NOT a derived label
   platform_support_raw          text,
   platform_support_key_present  boolean NOT NULL,
@@ -349,9 +361,19 @@ SECURITY INVOKER
 SET search_path = ''
 AS $function$
 DECLARE
-  v_n    integer;
-  v_week date;
+  v_n       integer;
+  v_week    date;
+  v_clsver  text;
 BEGIN
+  -- Point-in-time identity of the classifier whose output we are about to persist.
+  -- Catalog-only lookup: safe under search_path='' (pg_catalog is implicitly searched),
+  -- and it yields NULL rather than raising if the classifier is absent — a metadata stamp
+  -- must never be able to abort the evidence write it annotates.
+  SELECT md5(pg_get_functiondef(p.oid)) INTO v_clsver
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public' AND p.proname = 'classify_format_capability'
+   LIMIT 1;
   -- N2 (PK decision): the week bucket is PINNED HERE, not left to the caller.
   -- m.build_weekly_demand_grid never reads its p_week_start, so evidence_iso_week exists solely
   -- as a dedupe-key component; leaving it to a Gate-B convention would make the index
@@ -363,13 +385,15 @@ BEGIN
     detection_source,
     evidence_iso_week, client_id, client_slug, platform, requested_format, requested_share_pct,
     capability_status, reason_code, routed_lane, classifier_evidence, classifier_error,
+    classifier_version,
     platform_support_raw, platform_support_key_present
   )
   SELECT 'runtime_grid',
          v_week, d.client_id, d.client_slug, d.platform, d.requested_format,
          d.requested_share_pct, d.capability_status, d.reason_code, d.routed_lane,
-         d.classifier_evidence, d.classifier_error, d.platform_support_raw,
-         d.platform_support_key_present
+         d.classifier_evidence, d.classifier_error,
+         v_clsver,
+         d.platform_support_raw, d.platform_support_key_present
     FROM m.detect_format_capability_drops(p_client_id, p_week_start) d
   -- N2/N3: LAST-SEEN. Every detected row either inserts or updates, so ROW_COUNT below
   -- equals rows DETECTED — which repairs the return contract DO NOTHING had silently
@@ -387,8 +411,11 @@ COMMENT ON FUNCTION m.record_format_capability_drops(uuid, date) IS
   'DETECTED (each detected row either inserts or advances last_observed_at, so ROW_COUNT '
   'covers both) — it is NOT "rows newly inserted", and 0 therefore means "no drops '
   'detected", unambiguously. evidence_iso_week is bucketed to date_trunc(''week'') INSIDE this '
-  'function; callers do not choose it. NOT wired to any trigger or cron — Gate B owns the '
-  'nightly call site.';
+  'function; callers do not choose it and it is an ISO/Monday bucket, NOT the Sunday-based '
+  'ICE scheduling week. classifier_version records the classifier identity AT FIRST '
+  'DETECTION and is NOT refreshed by the DO UPDATE arm — consistent with every other '
+  'column being first-seen-wins, and it is what makes the row honestly point-in-time. '
+  'NOT wired to any trigger or cron — Gate B owns the nightly call site.';
 
 -- ── 4. Bounded retention (PK Q2: 90 days) ────────────────────────────────────
 CREATE OR REPLACE FUNCTION m.prune_format_capability_drop(p_retain_days integer DEFAULT 90)
@@ -421,7 +448,7 @@ CREATE OR REPLACE VIEW ice_ro.format_capability_drop_status AS
 SELECT observed_at, last_observed_at, detection_source, evidence_iso_week, prior_effective_from,
        client_id, client_slug, platform,
        requested_format, requested_share_pct,
-       capability_status, reason_code, routed_lane,
+       capability_status, reason_code, routed_lane, classifier_version,
        platform_support_raw, platform_support_key_present,
        output_mime_type, class_share_before, class_share_after, class_eliminated
   FROM m.format_capability_drop;

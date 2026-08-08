@@ -325,6 +325,7 @@ async function main() {
   console.log('GROUP 7 — C1: runtime-grid detector + writer, executed');
   const CID_OK = '88888888-8888-8888-8888-888888888888';
   const CID_NOSLUG = '99999999-9999-9999-9999-999999999999';
+  const CID_V2 = '12121212-1212-1212-1212-121212121212';
 
   await db.exec(`
     INSERT INTO c.client (client_id, client_slug) VALUES ('${CID_OK}','test-brand');
@@ -373,6 +374,42 @@ async function main() {
   ok('C1/S4 — the second call creates NO duplicate row', rows2 === rows1, `${rows1} -> ${rows2}`);
   ok('C1/N2 — last_observed_at ADVANCES on the runtime path too',
      new Date(stampB).getTime() > new Date(stampA).getTime());
+
+  // ── classifier_version — the external review's corrected_action ─────────────
+  // The point is not that a column exists; it is that the stamp TRACKS the classifier,
+  // so two rows classified by different logic are distinguishable rather than silently
+  // comparable. Prove it changes when the classifier changes.
+  const cv1 = (await db.query(`SELECT classifier_version FROM m.format_capability_drop
+    WHERE client_id='${CID_OK}'`)).rows[0]?.classifier_version;
+  const live = (await db.query(`SELECT md5(pg_get_functiondef(p.oid)) v FROM pg_proc p
+    JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE n.nspname='public' AND p.proname='classify_format_capability'`)).rows[0].v;
+  ok('classifier_version — stamped, and equals the LIVE classifier definition hash',
+     !!cv1 && cv1 === live, `stamped=${cv1} live=${live}`);
+
+  // Change the classifier, write a NEW row, and assert the stamp moved with it.
+  await db.exec(`
+    CREATE OR REPLACE FUNCTION public.classify_format_capability(p_slug text, p_platform text, p_format text)
+    RETURNS jsonb LANGUAGE sql STABLE AS $s$
+      SELECT jsonb_build_object('status','unknown','reason_code','stub_v2','routed_lane',NULL,'evidence','{}'::jsonb) $s$;
+    INSERT INTO c.client (client_id, client_slug) VALUES ('${CID_V2}','brand-v2');
+    INSERT INTO c.client_format_config (client_id, platform, ice_format_key, is_enabled) VALUES
+      ('${CID_V2}','facebook','img_static', true),
+      ('${CID_V2}','facebook','vid_denied', true);
+  `);
+  await db.query(`SELECT m.record_format_capability_drops('${CID_V2}', DATE '2026-08-05')`);
+  const cv2 = (await db.query(`SELECT classifier_version FROM m.format_capability_drop
+    WHERE client_id='${CID_V2}'`)).rows[0]?.classifier_version;
+  ok('classifier_version — a CHANGED classifier yields a DIFFERENT stamp (silent reinterpretation is detectable)',
+     !!cv2 && cv2 !== cv1, `before=${cv1} after=${cv2}`);
+  ok('classifier_version — the ORIGINAL row keeps its first-seen stamp (point-in-time, not rewritten)',
+     (await db.query(`SELECT classifier_version FROM m.format_capability_drop
+       WHERE client_id='${CID_OK}'`)).rows[0].classifier_version === cv1);
+
+  const mixCv = await db.query(`SELECT count(*)::int n FROM m.format_capability_drop
+    WHERE detection_source='mix_rewrite' AND classifier_version IS NOT NULL`);
+  ok('classifier_version — NULL on mix_rewrite rows (classifier is client-scoped, never consulted)',
+     mixCv.rows[0].n === 0);
 
   // ── R1 END-TO-END: a client absent from c.client makes the detector emit a NULL
   //    reason_code via its own documented classifier-failure path. Previously provable
