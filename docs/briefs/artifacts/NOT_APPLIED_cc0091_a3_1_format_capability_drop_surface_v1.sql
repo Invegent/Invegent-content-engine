@@ -68,8 +68,19 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS m.format_capability_drop (
   drop_id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   observed_at                   timestamptz NOT NULL DEFAULT now(),
+  -- Discriminator added by A3-3 analysis while this table was still unapplied.
+  -- One evidence surface, two detection sources — retrofitting this onto a live
+  -- table later would be far more expensive.
+  --   'runtime_grid' : A3-1 — carried a mix share, dropped by m.build_weekly_demand_grid
+  --   'mix_rewrite'  : A3-3 — held a share in the prior mix generation, absent from current
+  detection_source              text NOT NULL DEFAULT 'runtime_grid'
+                                  CHECK (detection_source IN ('runtime_grid','mix_rewrite')),
   week_start                    date,
-  client_id                     uuid NOT NULL,
+  -- NULLABLE by design: a 'mix_rewrite' removal is PLATFORM-level
+  -- (t.platform_format_mix_default has no client_id), whereas a 'runtime_grid' drop is
+  -- always client-scoped. The CHECK below enforces exactly that, so nullability cannot
+  -- be abused to write an unattributable runtime drop.
+  client_id                     uuid,
   client_slug                   text,
   platform                      text NOT NULL,
   requested_format              text NOT NULL,
@@ -83,7 +94,13 @@ CREATE TABLE IF NOT EXISTS m.format_capability_drop (
   -- raw platform_support facts (absent-key vs explicit-false); NOT a derived label
   platform_support_raw          text,
   platform_support_key_present  boolean NOT NULL,
-  created_at                    timestamptz NOT NULL DEFAULT now()
+  created_at                    timestamptz NOT NULL DEFAULT now(),
+  -- A runtime drop MUST be client-attributable; a mix rewrite MUST NOT pretend to be.
+  CONSTRAINT ck_fcd_client_scope CHECK (
+    (detection_source = 'runtime_grid' AND client_id IS NOT NULL)
+    OR
+    (detection_source = 'mix_rewrite'  AND client_id IS NULL)
+  )
 );
 
 COMMENT ON TABLE m.format_capability_drop IS
@@ -103,6 +120,8 @@ CREATE INDEX IF NOT EXISTS ix_fcd_cell
   ON m.format_capability_drop (client_id, platform, week_start);
 CREATE INDEX IF NOT EXISTS ix_fcd_observed_at
   ON m.format_capability_drop (observed_at);           -- retention pruning
+CREATE INDEX IF NOT EXISTS ix_fcd_source
+  ON m.format_capability_drop (detection_source, observed_at);
 CREATE INDEX IF NOT EXISTS ix_fcd_routed_lane
   ON m.format_capability_drop (routed_lane)
   WHERE routed_lane IS NOT NULL;                        -- Asset Gap consumption
@@ -240,11 +259,13 @@ AS $function$
 DECLARE v_n integer;
 BEGIN
   INSERT INTO m.format_capability_drop (
+    detection_source,
     week_start, client_id, client_slug, platform, requested_format, requested_share_pct,
     capability_status, reason_code, routed_lane, classifier_evidence, classifier_error,
     platform_support_raw, platform_support_key_present
   )
-  SELECT p_week_start, d.client_id, d.client_slug, d.platform, d.requested_format,
+  SELECT 'runtime_grid',
+         p_week_start, d.client_id, d.client_slug, d.platform, d.requested_format,
          d.requested_share_pct, d.capability_status, d.reason_code, d.routed_lane,
          d.classifier_evidence, d.classifier_error, d.platform_support_raw,
          d.platform_support_key_present
@@ -286,7 +307,7 @@ COMMENT ON FUNCTION m.prune_format_capability_drop(integer) IS
 
 -- ── 5. Secret-free operator/dashboard read (R0 path) ─────────────────────────
 CREATE OR REPLACE VIEW ice_ro.format_capability_drop_status AS
-SELECT observed_at, week_start, client_id, client_slug, platform,
+SELECT observed_at, detection_source, week_start, client_id, client_slug, platform,
        requested_format, requested_share_pct,
        capability_status, reason_code, routed_lane,
        platform_support_raw, platform_support_key_present
