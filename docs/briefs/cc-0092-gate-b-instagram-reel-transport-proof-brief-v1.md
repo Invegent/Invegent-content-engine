@@ -148,7 +148,7 @@ state**. The identical 35.00 meant 40% of PP's Instagram and 57% of NDIS's.
 |---|---|---|
 | A2a forward | `1851151ad4dafb0f` | current *(was `a6f4243f3c3f9f7e`)* |
 | A2a rollback | `d89a56e5e126e5e0` | current, **unchanged** |
-| A2b v2 forward | `ffc606a85f54d18d` | current |
+| A2b v2 forward | `1743f4339abffdc5` | current *(was `ffc606a85f54d18d`; percent-escape fix)* |
 | A2b v2 rollback | `44b9ddbfe1548eef` | current |
 | A2b v1 forward | `bef8e4e76f14b9dd` | ⛔ SUPERSEDED *(banner added; was `65d7f533031a1ba3` at BLOCK)* |
 | A2b v1 rollback | `6ebab56bce1470fd` | ⛔ SUPERSEDED *(banner added; was `a4af2889eb38f3ab` at BLOCK)* |

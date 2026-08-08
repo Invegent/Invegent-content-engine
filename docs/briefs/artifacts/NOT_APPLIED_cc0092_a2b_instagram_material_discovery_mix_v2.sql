@@ -257,6 +257,11 @@ BEGIN
   END IF;
 END $$;
 
+-- ⚠ PERCENT SIGNS: the `reason` literal below uses SINGLE % ("40% of PP's Instagram"), while
+-- the RAISE strings above use DOUBLED %%. Both are correct and the difference is not a
+-- typo: plpgsql collapses %% only inside RAISE format strings. `reason` is STORED DATA, so a
+-- doubled %% would persist literally into the column. Two occurrences were wrong in the first
+-- v2 cut and are fixed here — caught pre-review, 2026-08-08. Do not "normalise" them.
 INSERT INTO c.client_format_mix_override
   (client_id, platform, ice_format_key, override_share_pct, reason, is_current)
 SELECT cl.client_id, 'instagram', v.fmt, v.share,
@@ -264,9 +269,9 @@ SELECT cl.client_id, 'instagram', v.fmt, v.share,
        'Per-client instrument on PK ruling 2026-08-08 after db-rls-auditor BLOCKed v1: a '
        'PLATFORM-level share cannot express a per-brand intent, because each brand''s '
        'surviving format set differs by template graduation state (the identical 35.00 meant '
-       '40%% of PP''s Instagram and 57%% of NDIS''s). These three rows COVER PP''s whole '
+       '40% of PP''s Instagram and 57% of NDIS''s). These three rows COVER PP''s whole '
        'surviving mix and sum to 100, so the normalised shares are exactly 40/25/35 and '
-       '"35.00" means precisely 35%% of PP''s Instagram. Restores the 35.00 short-video '
+       '"35.00" means precisely 35% of PP''s Instagram. Restores the 35.00 short-video '
        'weighting of the 2026-04-22 evidence-based mix (video_short_kinetic 20.00 + '
        'video_short_stat_voice 15.00; "Reels get 2.25x reach of single-image posts", Buffer '
        '2026) which cc-0079-slice-2 zeroed on platform_support values cc-0091 A1 proved '
